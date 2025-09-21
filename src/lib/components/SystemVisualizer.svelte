@@ -1,16 +1,30 @@
 <script lang="ts">
   import type { System, CelestialBody } from "$lib/types";
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
+  import { propagate } from "$lib/api";
 
   export let system: System | null;
+  export let currentTime: number;
 
   let canvas: HTMLCanvasElement;
+  let animationFrameId: number;
 
-  // Redraw when the system object changes
-  $: if (canvas && system) {
+  function render() {
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    if (ctx) drawSystem(ctx);
+    if (ctx) {
+      drawSystem(ctx);
+    }
+    animationFrameId = requestAnimationFrame(render);
   }
+
+  onMount(() => {
+    render();
+  });
+
+  onDestroy(() => {
+    cancelAnimationFrame(animationFrameId);
+  });
 
   const STAR_COLOR_MAP: Record<string, string> = {
     "star/O": "#9bb0ff",
@@ -35,23 +49,20 @@
     const centerX = width / 2;
     const centerY = height / 2;
 
-    // Clear canvas
     ctx.fillStyle = "#08090d";
     ctx.fillRect(0, 0, width, height);
 
     const star = system.nodes.find(n => n.parentId === null) as CelestialBody;
     if (!star) return;
 
-    // Determine scale
     const maxOrbit = system.nodes.reduce((max, node) => {
         if (node.kind === 'body' && node.orbit) {
             return Math.max(max, node.orbit.elements.a_AU);
         }
         return max;
     }, 0);
-    const scale = (Math.min(width, height) / 2) / (maxOrbit * 1.2 || 10); // pixels per AU
+    const scale = (Math.min(width, height) / 2) / (maxOrbit * 1.2 || 10);
 
-    // --- Draw Orbits ---
     ctx.strokeStyle = "#333";
     ctx.lineWidth = 1;
     for (const node of system.nodes) {
@@ -63,22 +74,21 @@
         }
     }
 
-    // --- Draw Star ---
-    const starClass = star.classes[0] || 'default';
-    const starColor = STAR_COLOR_MAP[starClass.split('/')[1]] || STAR_COLOR_MAP['default'];
-    const starRadius = Math.max(5, (star.radiusKm || 696340) / 696340 * 5); // Scaled radius
+    const starClassKey = star.classes[0]?.split('/')[1] || 'default';
+    const starColor = STAR_COLOR_MAP[starClassKey] || STAR_COLOR_MAP['default'];
+    const starRadius = Math.max(5, (star.radiusKm || 696340) / 696340 * 5);
     ctx.beginPath();
     ctx.arc(centerX, centerY, starRadius, 0, 2 * Math.PI);
     ctx.fillStyle = starColor;
     ctx.fill();
 
-    // --- Draw Planets ---
     for (const node of system.nodes) {
         if (node.kind === 'body' && node.orbit) {
-            const radius = node.orbit.elements.a_AU * scale;
-            const angle = node.orbit.elements.M0_rad;
-            const x = centerX + radius * Math.cos(angle);
-            const y = centerY + radius * Math.sin(angle);
+            const pos = propagate(node, currentTime);
+            if (!pos) continue;
+
+            const x = centerX + pos.x * scale;
+            const y = centerY + pos.y * scale;
             
             const planetRadius = Math.max(1.5, (node.radiusKm || 6371) / 6371 * 2);
             ctx.beginPath();

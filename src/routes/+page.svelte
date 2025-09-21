@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import type { RulePack, System } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import { generateSystem } from '$lib/api';
@@ -9,6 +9,44 @@
   let generatedSystem: System | null = null;
   let isLoading = true;
   let error: string | null = null;
+
+  // Time state
+  let currentTime = Date.now();
+  let isPlaying = false;
+  let timeScale = 3600 * 24 * 30; // 1 real second = 1 month
+  let animationFrameId: number;
+
+  function play() {
+    isPlaying = true;
+    let lastTimestamp: number | null = null;
+
+    function tick(timestamp: number) {
+      if (lastTimestamp) {
+        const delta = (timestamp - lastTimestamp) / 1000; // seconds
+        currentTime += delta * timeScale * 1000; // ms
+      }
+      lastTimestamp = timestamp;
+      if (isPlaying) {
+        animationFrameId = requestAnimationFrame(tick);
+      }
+    }
+    animationFrameId = requestAnimationFrame(tick);
+  }
+
+  function pause() {
+    isPlaying = false;
+    cancelAnimationFrame(animationFrameId);
+  }
+
+  function handleGenerate() {
+    if (!rulePack) {
+      error = 'Rule pack not loaded.';
+      return;
+    }
+    const seed = `seed-${Date.now()}`;
+    generatedSystem = generateSystem(seed, rulePack);
+    currentTime = generatedSystem.epochT0;
+  }
 
   onMount(async () => {
     try {
@@ -20,14 +58,10 @@
     }
   });
 
-  function handleGenerate() {
-    if (!rulePack) {
-      error = 'Rule pack not loaded.';
-      return;
-    }
-    const seed = `seed-${Date.now()}`;
-    generatedSystem = generateSystem(seed, rulePack);
-  }
+  onDestroy(() => {
+    pause(); // Clean up animation frame
+  });
+
 </script>
 
 <main>
@@ -44,7 +78,13 @@
   {/if}
 
   {#if generatedSystem}
-    <SystemVisualizer system={generatedSystem} />
+    <div class="controls">
+        <button on:click={() => isPlaying ? pause() : play()}>
+            {isPlaying ? 'Pause' : 'Play'}
+        </button>
+        <span>Time Scale: 1s = {Math.round(timeScale / 3600 / 24)} days</span>
+    </div>
+    <SystemVisualizer system={generatedSystem} {currentTime} />
     <h2>Generated System (JSON):</h2>
     <pre>{JSON.stringify(generatedSystem, null, 2)}</pre>
   {/if}
@@ -60,5 +100,11 @@
     padding: 1em;
     border-radius: 5px;
     white-space: pre-wrap;
+  }
+  .controls {
+    margin: 1em 0;
+    display: flex;
+    align-items: center;
+    gap: 1em;
   }
 </style>

@@ -163,9 +163,52 @@ export function computePlayerSnapshot(sys: System, scopeRootId?: ID): System {
 }
 
 // M2+ (signatures included for planning)
-export function propagate(node: CelestialBody | Barycenter, tMs: number, sys: System) {
-  // TODO M2: Kepler propagation; return pose {r,v} or 2D projection coordinates
-  throw new Error("TODO: implement propagate (M2)");
+const AU_KM = 149597870.7;
+
+// ... (rest of the file is the same until propagate)
+
+export function propagate(node: CelestialBody | Barycenter, tMs: number): {x: number, y: number} | null {
+  if (node.kind !== 'body' || !node.orbit) {
+    return { x: 0, y: 0 }; // Barycenters or root nodes are at the origin of their frame
+  }
+
+  const { elements, hostMu, t0 } = node.orbit;
+  const { a_AU, e, M0_rad } = elements;
+
+  if (hostMu === 0) return { x: 0, y: 0 };
+
+  const a_m = a_AU * AU_KM * 1000; // semi-major axis in meters
+
+  // 1. Mean motion (n)
+  const n = Math.sqrt(hostMu / Math.pow(a_m, 3));
+
+  // 2. Mean anomaly (M) at time t
+  const M = M0_rad + n * ((tMs - t0) / 1000);
+
+  // 3. Solve Kepler's Equation for Eccentric Anomaly (E) using Newton-Raphson
+  let E = M; // Initial guess
+  for (let i = 0; i < 10; i++) { // Iterate a few times for precision
+    const dE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+    E -= dE;
+    if (Math.abs(dE) < 1e-6) break;
+  }
+
+  // 4. True Anomaly (f)
+  const f = 2 * Math.atan2(
+      Math.sqrt(1 + e) * Math.sin(E / 2),
+      Math.sqrt(1 - e) * Math.cos(E / 2)
+  );
+
+  // 5. Distance to central body (r)
+  const r = a_m * (1 - e * Math.cos(E));
+
+  // 6. Position in orbital frame (z=0 for 2D projection)
+  const x = r * Math.cos(f) / AU_KM / 1000; // convert back to AU for visualization scale
+  const y = r * Math.sin(f) / AU_KM / 1000;
+
+  // TODO: Apply argument of periapsis and longitude of ascending node rotations for inclined orbits
+
+  return { x, y };
 }
 
 export function applyImpulsiveBurn(body: CelestialBody, burn: BurnPlan, sys: System): CelestialBody {
