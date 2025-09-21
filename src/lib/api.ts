@@ -1,0 +1,174 @@
+// ===== api.ts (stubs for M0–M1) =====
+import type { System, RulePack, ID, CelestialBody, Barycenter, BurnPlan, Orbit, Expr } from "./types";
+import { SeededRNG } from './rng';
+import { weightedChoice, randomFromRange } from './utils';
+
+export interface GenOptions { starCount?: number; maxBodies?: number; }
+
+const SOLAR_MASS_KG = 1.989e30;
+const SOLAR_RADIUS_KM = 696340;
+const EARTH_MASS_KG = 5.972e24;
+const EARTH_RADIUS_KM = 6371;
+const G = 6.67430e-11; // Gravitational constant
+
+export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOptions> = {}): System {
+  const rng = new SeededRNG(seed);
+  const nodes: (CelestialBody | Barycenter)[] = [];
+
+  // --- Star Generation ---
+  const starTypeTable = pack.distributions['star_types'];
+  const starClass = starTypeTable ? weightedChoice<string>(rng, starTypeTable) : 'star/G2V';
+  const starTemplate = pack.statTemplates?.[starClass] || pack.statTemplates?.['star/default'];
+
+  let starMassKg = SOLAR_MASS_KG;
+  let starRadiusKm = SOLAR_RADIUS_KM;
+  let starTemperatureK = 5778;
+  let starMagneticField;
+
+  if (starTemplate) {
+    starMassKg = randomFromRange(rng, starTemplate.mass_solar[0], starTemplate.mass_solar[1]) * SOLAR_MASS_KG;
+    starRadiusKm = randomFromRange(rng, starTemplate.radius_solar[0], starTemplate.radius_solar[1]) * SOLAR_RADIUS_KM;
+    starTemperatureK = randomFromRange(rng, starTemplate.temp_k[0], starTemplate.temp_k[1]);
+    if (starTemplate.mag_gauss) {
+        starMagneticField = { strengthGauss: randomFromRange(rng, starTemplate.mag_gauss[0], starTemplate.mag_gauss[1]) };
+    }
+  }
+
+  const primaryStar: CelestialBody = {
+    id: `${seed}-star-1`,
+    parentId: null,
+    name: `Star ${seed}`,
+    kind: 'body',
+    roleHint: 'star',
+    classes: [starClass],
+    massKg: starMassKg,
+    radiusKm: starRadiusKm,
+    temperatureK: starTemperatureK,
+    magneticField: starMagneticField,
+    tags: [],
+    areas: [],
+  };
+  nodes.push(primaryStar);
+
+  // --- Planet Generation ---
+  const planetCountTable = pack.distributions['planet_count'];
+  const numPlanets = planetCountTable ? weightedChoice<number>(rng, planetCountTable) : rng.nextInt(0, 8);
+  
+  let lastOrbitalRadius = 0.1;
+
+  for (let i = 0; i < numPlanets; i++) {
+    const planetId = `${seed}-planet-${i + 1}`;
+    lastOrbitalRadius += randomFromRange(rng, 0.2, 2.0);
+
+    const orbit: Orbit = {
+        hostId: primaryStar.id,
+        hostMu: G * primaryStar.massKg,
+        t0: Date.now(),
+        elements: {
+            a_AU: lastOrbitalRadius,
+            e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0,
+            M0_rad: randomFromRange(rng, 0, 2 * Math.PI)
+        }
+    };
+
+    const planetType = pack.distributions['planet_type'] ? weightedChoice<string>(rng, pack.distributions['planet_type']) : 'planet/terrestrial';
+    const planetTemplate = pack.statTemplates?.[planetType];
+    let planetMassKg, planetRadiusKm;
+
+    if (planetTemplate) {
+        planetMassKg = randomFromRange(rng, planetTemplate.mass_earth[0], planetTemplate.mass_earth[1]) * EARTH_MASS_KG;
+        planetRadiusKm = randomFromRange(rng, planetTemplate.radius_earth[0], planetTemplate.radius_earth[1]) * EARTH_RADIUS_KM;
+    }
+
+    const planet: CelestialBody = {
+        id: planetId,
+        parentId: primaryStar.id,
+        name: `${primaryStar.name} ${i + 1}`,
+        kind: 'body',
+        roleHint: 'planet',
+        classes: [],
+        orbit: orbit,
+        massKg: planetMassKg,
+        radiusKm: planetRadiusKm,
+        tags: [],
+        areas: [],
+    };
+    planet.classes = classifyBody(planet, primaryStar, pack);
+    nodes.push(planet);
+  }
+
+  const system: System = {
+    id: seed,
+    name: `System ${seed}`,
+    seed: seed,
+    epochT0: Date.now(),
+    nodes: nodes,
+    rulePackId: pack.id,
+    rulePackVersion: pack.version,
+    tags: [],
+  };
+
+  return system;
+}
+
+export function rerollNode(sys: System, nodeId: ID, pack: RulePack): System {
+  // TODO M0: respect lock flags (future), re-generate subtree deterministically
+  throw new Error("TODO: implement rerollNode (M0)");
+}
+
+// Helper function to recursively evaluate classifier expressions
+function evaluateExpr(features: Record<string, number | string>, expr: Expr): boolean {
+    if (expr.all) return expr.all.every(e => evaluateExpr(features, e));
+    if (expr.any) return expr.any.some(e => evaluateExpr(features, e));
+    if (expr.not) return !evaluateExpr(features, expr.not);
+    if (expr.gt) return (features[expr.gt[0]] ?? -Infinity) > expr.gt[1];
+    if (expr.lt) return (features[expr.lt[0]] ?? Infinity) < expr.lt[1];
+    if (expr.between) {
+        const val = features[expr.between[0]];
+        return val !== undefined && val >= expr.between[1] && val <= expr.between[2];
+    }
+    if (expr.eq) return features[expr.eq[0]] === expr.eq[1];
+    // hasTag is not implemented yet as tags are not generated for planets
+    return false;
+}
+
+export function classifyBody(body: CelestialBody, host: CelestialBody | Barycenter | undefined, pack: RulePack): string[] {
+  if (!pack.classifier) return [];
+
+    const features: Record<string, number | string> = {};
+    
+    // --- Compute Features ---
+    if (body.massKg) features['mass_Me'] = body.massKg / EARTH_MASS_KG;
+    if (body.radiusKm) features['radius_Re'] = body.radiusKm / EARTH_RADIUS_KM;
+    // TODO: Add more feature calculations (Teq_K, period_days, etc.)
+
+    const scores: Record<string, number> = {};
+
+    for (const rule of pack.classifier.rules) {
+        if (evaluateExpr(features, rule.when)) {
+            scores[rule.addClass] = (scores[rule.addClass] || 0) + rule.score;
+        }
+    }
+
+    const sortedClasses = Object.entries(scores)
+        .filter(([, score]) => score >= pack.classifier.minScore)
+        .sort((a, b) => b[1] - a[1]);
+
+    return sortedClasses.slice(0, pack.classifier.maxClasses).map(([className]) => className);
+}
+
+export function computePlayerSnapshot(sys: System, scopeRootId?: ID): System {
+  // TODO M3: prune nodes by visibility & scope; strip gmNotes/hidden fields per rules
+  return sys; // placeholder for early UI
+}
+
+// M2+ (signatures included for planning)
+export function propagate(node: CelestialBody | Barycenter, tMs: number, sys: System) {
+  // TODO M2: Kepler propagation; return pose {r,v} or 2D projection coordinates
+  throw new Error("TODO: implement propagate (M2)");
+}
+
+export function applyImpulsiveBurn(body: CelestialBody, burn: BurnPlan, sys: System): CelestialBody {
+  // TODO M6: apply Δv in perifocal frame; recompute elements via Gauss equations
+  throw new Error("TODO: implement applyImpulsiveBurn (M6)");
+}

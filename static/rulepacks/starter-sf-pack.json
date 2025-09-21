@@ -1,0 +1,181 @@
+{
+  "id": "starter-sf-pack",
+  "version": "0.1.0",
+  "name": "Starter Sci‑Fi Pack (Budassi + Basics)",
+  "distributions": {
+    "star_types": {
+      "name": "Stellar Spectral Types",
+      "entries": [
+        { "weight": 1, "value": "star/O" },
+        { "weight": 5, "value": "star/B" },
+        { "weight": 10, "value": "star/A" },
+        { "weight": 20, "value": "star/F" },
+        { "weight": 40, "value": "star/G" },
+        { "weight": 80, "value": "star/K" },
+        { "weight": 700, "value": "star/M" },
+        { "weight": 15, "value": "star/WD" },
+        { "weight": 4, "value": "star/NS" },
+        { "weight": 1, "value": "star/magnetar" },
+        { "weight": 2, "value": "star/BH" }
+      ]
+    },
+    "planet_count": {
+        "name": "Number of Planets per Star",
+        "entries": [
+            { "weight": 5, "value": 0 },
+            { "weight": 10, "value": 1 },
+            { "weight": 15, "value": 2 },
+            { "weight": 20, "value": 3 },
+            { "weight": 20, "value": 4 },
+            { "weight": 15, "value": 5 },
+            { "weight": 10, "value": 6 },
+            { "weight": 5, "value": 7 },
+            { "weight": 2, "value": 8 }
+        ]
+    },
+    "planet_type": {
+        "name": "Planet Type",
+        "entries": [
+            { "weight": 70, "value": "planet/terrestrial" },
+            { "weight": 30, "value": "planet/gas-giant" }
+        ]
+    }
+  },
+  "tagVocab": [
+    "star/O","star/B","star/A","star/F","star/G","star/K","star/M","star/G2V","star/WD","star/NS","star/BH","star/magnetar",
+    "planet/alkali-metal-clouds-gas-giant",
+    "planet/ammonia-clouds-gas-giant",
+    "planet/ammonia-planet",
+    "planet/barren",
+    "planet/brown-dwarf",
+    "planet/carbon",
+    "planet/chlorine",
+    "planet/chthonian",
+    "planet/cloudless-gas-giant",
+    "planet/cold-eyeball",
+    "planet/coreless",
+    "planet/crater",
+    "planet/desert",
+    "planet/disrupted",
+    "planet/dwarf-planet",
+    "planet/earth-analog",
+    "planet/earth-like",
+    "planet/ecumenopolis",
+    "planet/ellipsoid",
+    "planet/exoplanet",
+    "planet/eyeball",
+    "planet/fluorine",
+    "planet/forest",
+    "planet/gas-giant",
+    "planet/giant-planet",
+    "planet/habitable",
+    "planet/helium",
+    "planet/hot-eyeball",
+    "planet/hot-jupiter",
+    "planet/hot-neptune",
+    "planet/hycean",
+    "planet/ice-giant",
+    "planet/ice",
+    "planet/iron",
+    "planet/jungle",
+    "planet/lava",
+    "planet/mega-earth",
+    "planet/mesoplanet",
+    "planet/methane",
+    "planet/mini-jupiter",
+    "planet/mini-neptune",
+    "planet/mountain",
+    "planet/ocean",
+    "planet/phosphorus",
+    "planet/planetesimal",
+    "planet/protoplanet",
+    "planet/puffy",
+    "planet/ringed",
+    "planet/rogue",
+    "planet/silicate-clouds-gas-giant",
+    "planet/silicate",
+    "planet/sub-brown-dwarf",
+    "planet/sub-earth",
+    "planet/sub-neptune",
+    "planet/subsurface-ocean",
+    "planet/sulfur",
+    "planet/super-earth",
+    "planet/super-jupiter",
+    "planet/super-neptune",
+    "planet/super-puff",
+    "planet/superhabitable",
+    "planet/supermassive-terrestrial",
+    "planet/swamp",
+    "planet/terrestrial",
+    "planet/toroidal",
+    "planet/ultra-cool-dwarf",
+    "planet/ultra-hot-jupiter",
+    "planet/ultra-hot-neptune",
+    "planet/ultra-short-period",
+    "planet/water-clouds-gas-giant",
+    "ring/system",
+    "ring/planetary",
+    "belt/asteroid",
+    "artifact/ringworld",
+    "artifact/megastation",
+    "artifact/ship",
+    "artifact/other"
+  ],
+  "prompts": {
+    "systemPreamble": "You are an assistant expanding sci‑fi star system details. Keep output concise, game‑usable, and consistent with provided JSON and tags. Avoid changing facts. Use flavor only as garnish.",
+    "fewShots": [
+      { "input": { "entity": "Body", "tags": ["planet/super-earth"], "notes": "Rocky world with thin clouds." }, "output": "A high‑gravity super‑Earth with basaltic highlands and scattered rift valleys; settlements cluster in low‑lying river basins sheltered from katabatic winds." }
+    ],
+    "perEntityPrompts": {
+      "Body.description": "Describe the body's surface, hazards, and one adventure hook in 60–120 words, grounded in the JSON fields and tags."
+    }
+  },
+  "statTemplates": {
+    "star/default": { "mass_solar": [0.8, 1.04], "radius_solar": [0.9, 1.1], "temp_k": [5200, 6000], "mag_gauss": [0.5, 2] },
+    "star/M": { "mass_solar": [0.08, 0.45], "radius_solar": [0.1, 0.7], "temp_k": [2400, 3700], "mag_gauss": [100, 1000] },
+    "star/K": { "mass_solar": [0.45, 0.8], "radius_solar": [0.7, 0.96], "temp_k": [3700, 5200], "mag_gauss": [10, 100] },
+    "star/G": { "mass_solar": [0.8, 1.04], "radius_solar": [0.96, 1.15], "temp_k": [5200, 6000], "mag_gauss": [1, 10] },
+    "star/F": { "mass_solar": [1.04, 1.4], "radius_solar": [1.15, 1.4], "temp_k": [6000, 7500], "mag_gauss": [1, 10] },
+    "star/A": { "mass_solar": [1.4, 2.1], "radius_solar": [1.4, 1.8], "temp_k": [7500, 10000], "mag_gauss": [1, 10] },
+    "star/B": { "mass_solar": [2.1, 16], "radius_solar": [1.8, 6.6], "temp_k": [10000, 30000], "mag_gauss": [0.1, 1] },
+    "star/O": { "mass_solar": [16, 90], "radius_solar": [6.6, 15], "temp_k": [30000, 50000], "mag_gauss": [0.1, 1] },
+    "star/WD": { "mass_solar": [0.6, 1.4], "radius_solar": [0.008, 0.02], "temp_k": [8000, 40000], "mag_gauss": [10000, 1000000] },
+    "star/NS": { "mass_solar": [1.4, 2.2], "radius_solar": [0.000014, 0.000028], "temp_k": [100000, 1000000], "mag_gauss": [100000000, 100000000000] },
+    "star/magnetar": { "mass_solar": [1.4, 2.2], "radius_solar": [0.000014, 0.000028], "temp_k": [100000, 1000000], "mag_gauss": [100000000000, 1000000000000000] },
+    "star/BH": { "mass_solar": [3, 100], "radius_solar": [0.0000126, 0.000423], "temp_k": [0, 0], "mag_gauss": [0, 0] },
+    "planet/terrestrial": { "mass_earth": [0.5, 2.0], "radius_earth": [0.8, 1.5] },
+    "planet/gas-giant": { "mass_earth": [10, 3000], "radius_earth": [4, 20] }
+  },
+  "viewPresets": {
+    "defaultPlayerVisibility": {
+      "discoveredBasics": true,
+      "showTags": ["planet/habitable", "risk/*"],
+      "hiddenFields": ["gmNotes", "areas", "resources"]
+    },
+    "overrides": [
+      { "match": { "class": "artifact/*" }, "visibleFields": ["notes"], "hiddenFields": ["gmNotes"] }
+    ]
+  },
+  "metrics": {
+    "habitability": { "key": "habitability", "label": "Habitability", "min": 0, "max": 100, "default": 40 },
+    "threat": { "key": "threat", "label": "Threat", "min": 0, "max": 100, "default": 20 },
+    "tech": { "key": "tech", "label": "Tech Level", "min": 0, "max": 10, "default": 3 }
+  },
+  "classifier": {
+    "maxClasses": 2,
+    "minScore": 10,
+    "rules": [
+      { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "any": [ { "between": ["a_AU", 0.0, 0.12] }, { "gt": ["Teq_K", 1000] } ] } ] }, "addClass": "planet/hot-jupiter", "score": 50 },
+      { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "between": ["Teq_K", 500, 1000] } ] }, "addClass": "planet/warm-jupiter", "score": 40 },
+      { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "lt": ["Teq_K", 250] } ] }, "addClass": "planet/cold-jupiter", "score": 30 },
+      { "when": { "all": [ { "between": ["mass_Me", 2, 10] }, { "between": ["radius_Re", 1.25, 1.9] }, { "any": [ { "lt": ["atm.pressure_bar", 5] }, { "eq": ["atm.main", "CO2"] } ] } ] }, "addClass": "planet/super-earth", "score": 40 },
+      { "when": { "all": [ { "between": ["mass_Me", 5, 20] }, { "between": ["radius_Re", 2.0, 4.0] }, { "any": [ { "gt": ["atm.pressure_bar", 5] }, { "any": [ { "eq": ["atm.main", "H2"] }, { "eq": ["atm.main", "He"] } ] } ] } ] }, "addClass": "planet/mini-neptune", "score": 40 },
+      { "when": { "any": [ { "gt": ["Teq_K", 1200] }, { "all": [ { "eq": ["tidallyLocked", 1] }, { "gt": ["Teq_K", 1000] } ] } ] }, "addClass": "planet/lava", "score": 35 },
+      { "when": { "all": [ { "gt": ["hydrosphere.coverage", 0.8] }, { "between": ["Teq_K", 250, 350] } ] }, "addClass": "planet/ocean", "score": 30 },
+      { "when": { "all": [ { "eq": ["tidallyLocked", 1] }, { "between": ["Teq_K", 200, 300] }, { "any": [ { "eq": ["stellarType", "M"] }, { "lt": ["a_AU", 0.2] } ] } ] }, "addClass": "planet/cold-eyeball", "score": 35 },
+      { "when": { "all": [ { "eq": ["tidallyLocked", 1] }, { "gt": ["Teq_K", 300] } ] }, "addClass": "planet/hot-eyeball", "score": 35 },
+      { "when": { "between": ["radius_Re", 0.4, 1.6] }, "addClass": "planet/terrestrial", "score": 15 },
+      { "when": { "all": [ { "gt": ["radius_Re", 3.5] }, { "gt": ["mass_Me", 50] } ] }, "addClass": "planet/gas-giant", "score": 15 }
+    ]
+  }
+}
