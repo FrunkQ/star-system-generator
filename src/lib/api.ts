@@ -101,16 +101,16 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
     const moonCountTable = pack.distributions[isGasGiant ? 'gas_giant_moon_count' : 'terrestrial_moon_count'];
     const numMoons = moonCountTable ? weightedChoice<number>(rng, moonCountTable) : 0;
 
-    let lastMoonRadius = (planet.radiusKm / AU_KM) * 5; // Start moons outside planet radius
+    let lastMoonRadiusAU = (planet.radiusKm / AU_KM) * 30; // Start moons outside planet radius
 
     for (let j = 0; j < numMoons; j++) {
-        lastMoonRadius += (planet.radiusKm / AU_KM) * randomFromRange(rng, 1.5, 3);
+        lastMoonRadiusAU += (planet.radiusKm / AU_KM) * randomFromRange(rng, 15, 30);
         const moonOrbit: Orbit = {
             hostId: planet.id,
             hostMu: G * (planet.massKg || 0),
             t0: Date.now(),
             elements: {
-                a_AU: lastMoonRadius,
+                a_AU: lastMoonRadiusAU,
                 e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0,
                 M0_rad: randomFromRange(rng, 0, 2 * Math.PI)
             }
