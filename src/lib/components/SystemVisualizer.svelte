@@ -115,11 +115,11 @@
         if (node.roleHint === 'star') {
             const starClassKey = node.classes[0]?.split('/')[1] || 'default';
             color = STAR_COLOR_MAP[starClassKey] || STAR_COLOR_MAP['default'];
-            bodyRadius = Math.max(8, (node.radiusKm || 696340) / 696340 * 10);
+            bodyRadius = Math.max(15, (node.radiusKm || 696340) / 696340 * 20);
         } else if (node.roleHint === 'planet') {
-            bodyRadius = Math.max(1.5, (node.radiusKm || 6371) / 6371 * 1.5);
+            bodyRadius = Math.max(2, (node.radiusKm || 6371) / 6371 * 1.2);
         } else if (node.roleHint === 'moon') {
-            bodyRadius = Math.max(1, (node.radiusKm || 1737) / 1737 * 0.8);
+            bodyRadius = Math.max(1, (node.radiusKm || 1737) / 1737 * 0.7);
         }
 
         ctx.beginPath();
