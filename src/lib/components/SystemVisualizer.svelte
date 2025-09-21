@@ -27,18 +27,9 @@
   });
 
   const STAR_COLOR_MAP: Record<string, string> = {
-    "star/O": "#9bb0ff",
-    "star/B": "#aabfff",
-    "star/A": "#cad8ff",
-    "star/F": "#f8f7ff",
-    "star/G": "#fff4ea",
-    "star/K": "#ffd2a1",
-    "star/M": "#ffc46f",
-    "star/WD": "#f0f0f0",
-    "star/NS": "#c0c0ff",
-    "star/magnetar": "#d0a0ff",
-    "star/BH": "#000000",
-    "default": "#ffffff",
+    "O": "#9bb0ff", "B": "#aabfff", "A": "#cad8ff", "F": "#f8f7ff",
+    "G": "#fff4ea", "K": "#ffd2a1", "M": "#ffc46f", "WD": "#f0f0f0",
+    "NS": "#c0c0ff", "magnetar": "#d0a0ff", "BH": "#000000", "default": "#ffffff",
   };
 
   function drawSystem(ctx: CanvasRenderingContext2D) {
@@ -52,50 +43,89 @@
     ctx.fillStyle = "#08090d";
     ctx.fillRect(0, 0, width, height);
 
-    const star = system.nodes.find(n => n.parentId === null) as CelestialBody;
-    if (!star) return;
+    const nodesById = new Map(system.nodes.map(n => [n.id, n]));
+    const positions = new Map<string, { x: number, y: number }>();
 
     const maxOrbit = system.nodes.reduce((max, node) => {
-        if (node.kind === 'body' && node.orbit) {
+        if (node.kind === 'body' && node.orbit && node.orbit.hostId.endsWith('-star-1')) {
             return Math.max(max, node.orbit.elements.a_AU);
         }
         return max;
     }, 0);
     const scale = (Math.min(width, height) / 2) / (maxOrbit * 1.2 || 10);
 
+    // --- Calculate all positions first (handles hierarchy) ---
+    for (const node of system.nodes) {
+        if (positions.has(node.id)) continue; // Already calculated
+        
+        const path = [node];
+        let current = node;
+        while (current.parentId && !positions.has(current.parentId)) {
+            const parent = nodesById.get(current.parentId);
+            if (!parent) break;
+            path.unshift(parent);
+            current = parent;
+        }
+
+        for (const body of path) {
+            if (positions.has(body.id)) continue;
+            let parentPos = { x: centerX, y: centerY };
+            if (body.parentId) {
+                parentPos = positions.get(body.parentId) || parentPos;
+            }
+
+            if (body.kind === 'body' && body.orbit) {
+                const pos = propagate(body, currentTime);
+                if (pos) {
+                    positions.set(body.id, { x: parentPos.x + pos.x * scale, y: parentPos.y + pos.y * scale });
+                } else {
+                    positions.set(body.id, parentPos);
+                }
+            } else {
+                positions.set(body.id, parentPos);
+            }
+        }
+    }
+
+    // --- Draw Orbits and Bodies ---
     ctx.strokeStyle = "#333";
     ctx.lineWidth = 1;
+
     for (const node of system.nodes) {
+        const pos = positions.get(node.id);
+        if (!pos) continue;
+
+        // Draw Orbit
         if (node.kind === 'body' && node.orbit) {
+            const parentPos = positions.get(node.parentId!) || { x: centerX, y: centerY };
             ctx.beginPath();
             const radius = node.orbit.elements.a_AU * scale;
-            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.arc(parentPos.x, parentPos.y, radius, 0, 2 * Math.PI);
             ctx.stroke();
         }
     }
 
-    const starClassKey = star.classes[0]?.split('/')[1] || 'default';
-    const starColor = STAR_COLOR_MAP[starClassKey] || STAR_COLOR_MAP['default'];
-    const starRadius = Math.max(5, (star.radiusKm || 696340) / 696340 * 5);
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, starRadius, 0, 2 * Math.PI);
-    ctx.fillStyle = starColor;
-    ctx.fill();
-
     for (const node of system.nodes) {
-        if (node.kind === 'body' && node.orbit) {
-            const pos = propagate(node, currentTime);
-            if (!pos) continue;
+        const pos = positions.get(node.id);
+        if (!pos || node.kind !== 'body') continue;
 
-            const x = centerX + pos.x * scale;
-            const y = centerY + pos.y * scale;
-            
-            const planetRadius = Math.max(1.5, (node.radiusKm || 6371) / 6371 * 2);
-            ctx.beginPath();
-            ctx.arc(x, y, planetRadius, 0, 2 * Math.PI);
-            ctx.fillStyle = "#aaa";
-            ctx.fill();
+        let bodyRadius = 2;
+        let color = "#aaa";
+
+        if (node.roleHint === 'star') {
+            const starClassKey = node.classes[0]?.split('/')[1] || 'default';
+            color = STAR_COLOR_MAP[starClassKey] || STAR_COLOR_MAP['default'];
+            bodyRadius = Math.max(5, (node.radiusKm || 696340) / 696340 * 5);
+        } else if (node.roleHint === 'planet') {
+            bodyRadius = Math.max(1.5, (node.radiusKm || 6371) / 6371 * 2);
+        } else if (node.roleHint === 'moon') {
+            bodyRadius = Math.max(1, (node.radiusKm || 1737) / 1737 * 1);
         }
+
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, bodyRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
     }
   }
 

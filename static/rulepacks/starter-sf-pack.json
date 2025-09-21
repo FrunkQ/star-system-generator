@@ -39,6 +39,27 @@
             { "weight": 70, "value": "planet/terrestrial" },
             { "weight": 30, "value": "planet/gas-giant" }
         ]
+    },
+    "terrestrial_moon_count": {
+        "name": "Number of Moons for a Terrestrial Planet",
+        "entries": [
+            { "weight": 60, "value": 0 },
+            { "weight": 25, "value": 1 },
+            { "weight": 15, "value": 2 }
+        ]
+    },
+    "gas_giant_moon_count": {
+        "name": "Number of Moons for a Gas Giant",
+        "entries": [
+            { "weight": 10, "value": 0 },
+            { "weight": 10, "value": 1 },
+            { "weight": 15, "value": 2 },
+            { "weight": 15, "value": 3 },
+            { "weight": 10, "value": 4 },
+            { "weight": 5, "value": 5 },
+            { "weight": 5, "value": 10 },
+            { "weight": 2, "value": 20 }
+        ]
     }
   },
   "tagVocab": [

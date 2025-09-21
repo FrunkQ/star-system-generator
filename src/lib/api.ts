@@ -60,7 +60,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
     const planetId = `${seed}-planet-${i + 1}`;
     lastOrbitalRadius += randomFromRange(rng, 0.2, 2.0);
 
-    const orbit: Orbit = {
+    const planetOrbit: Orbit = {
         hostId: primaryStar.id,
         hostMu: G * primaryStar.massKg,
         t0: Date.now(),
@@ -87,7 +87,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
         kind: 'body',
         roleHint: 'planet',
         classes: [],
-        orbit: orbit,
+        orbit: planetOrbit,
         massKg: planetMassKg,
         radiusKm: planetRadiusKm,
         tags: [],
@@ -95,6 +95,42 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
     };
     planet.classes = classifyBody(planet, primaryStar, pack);
     nodes.push(planet);
+
+    // --- Moon Generation ---
+    const isGasGiant = planet.classes.includes('planet/gas-giant');
+    const moonCountTable = pack.distributions[isGasGiant ? 'gas_giant_moon_count' : 'terrestrial_moon_count'];
+    const numMoons = moonCountTable ? weightedChoice<number>(rng, moonCountTable) : 0;
+
+    let lastMoonRadius = (planet.radiusKm / AU_KM) * 5; // Start moons outside planet radius
+
+    for (let j = 0; j < numMoons; j++) {
+        lastMoonRadius += (planet.radiusKm / AU_KM) * randomFromRange(rng, 1.5, 3);
+        const moonOrbit: Orbit = {
+            hostId: planet.id,
+            hostMu: G * (planet.massKg || 0),
+            t0: Date.now(),
+            elements: {
+                a_AU: lastMoonRadius,
+                e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0,
+                M0_rad: randomFromRange(rng, 0, 2 * Math.PI)
+            }
+        };
+
+        const moon: CelestialBody = {
+            id: `${planet.id}-moon-${j + 1}`,
+            parentId: planet.id,
+            name: `${planet.name}.${j + 1}`,
+            kind: 'body',
+            roleHint: 'moon',
+            classes: [],
+            orbit: moonOrbit,
+            massKg: (planet.massKg || 0) * randomFromRange(rng, 0.0001, 0.01),
+            radiusKm: (planet.radiusKm || 0) * randomFromRange(rng, 0.1, 0.25),
+            tags: [],
+            areas: [],
+        };
+        nodes.push(moon);
+    }
   }
 
   const system: System = {
