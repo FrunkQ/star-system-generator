@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { browser } from '$app/environment';
   import type { RulePack, System } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import { generateSystem } from '$lib/api';
@@ -17,6 +18,7 @@
   let animationFrameId: number;
 
   function play() {
+    if (!browser) return;
     isPlaying = true;
     let lastTimestamp: number | null = null;
 
@@ -34,6 +36,7 @@
   }
 
   function pause() {
+    if (!browser) return;
     isPlaying = false;
     cancelAnimationFrame(animationFrameId);
   }
@@ -59,7 +62,9 @@
   });
 
   onDestroy(() => {
-    pause(); // Clean up animation frame
+    if (browser) {
+      pause(); // Clean up animation frame
+    }
   });
 
 </script>
