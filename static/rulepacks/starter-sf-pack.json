@@ -60,6 +60,25 @@
             { "weight": 5, "value": 10 },
             { "weight": 2, "value": 20 }
         ]
+    },
+    "star_name_prefix": {
+        "name": "Star Catalogue Prefix",
+        "entries": [
+            { "weight": 30, "value": "HD" },
+            { "weight": 30, "value": "HIP" },
+            { "weight": 20, "value": "GJ" },
+            { "weight": 10, "value": "LHS" },
+            { "weight": 5, "value": "AC" }
+        ]
+    },
+    "star_name_number_digits": {
+        "name": "Number of digits in star catalogue number",
+        "entries": [
+            { "weight": 10, "value": 3 },
+            { "weight": 30, "value": 4 },
+            { "weight": 40, "value": 5 },
+            { "weight": 20, "value": 6 }
+        ]
     }
   },
   "tagVocab": [

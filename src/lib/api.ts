@@ -1,7 +1,7 @@
 // ===== api.ts (stubs for M0–M1) =====
 import type { System, RulePack, ID, CelestialBody, Barycenter, BurnPlan, Orbit, Expr } from "./types";
 import { SeededRNG } from './rng';
-import { weightedChoice, randomFromRange } from './utils';
+import { weightedChoice, randomFromRange, toRoman } from './utils';
 
 export interface GenOptions { starCount?: number; maxBodies?: number; }
 
@@ -10,12 +10,23 @@ const SOLAR_RADIUS_KM = 696340;
 const EARTH_MASS_KG = 5.972e24;
 const EARTH_RADIUS_KM = 6371;
 const G = 6.67430e-11; // Gravitational constant
+const AU_KM = 149597870.7;
 
 export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOptions> = {}): System {
   const rng = new SeededRNG(seed);
   const nodes: (CelestialBody | Barycenter)[] = [];
 
   // --- Star Generation ---
+  const starNamePrefixTable = pack.distributions['star_name_prefix'];
+  const starNameDigitsTable = pack.distributions['star_name_number_digits'];
+  let starName = `Star ${seed}`;
+  if (starNamePrefixTable && starNameDigitsTable) {
+      const prefix = weightedChoice<string>(rng, starNamePrefixTable);
+      const numDigits = weightedChoice<number>(rng, starNameDigitsTable);
+      const number = ' '.padStart(numDigits, '0').replace(/0/g, () => rng.nextInt(0, 9).toString());
+      starName = `${prefix}${number}`;
+  }
+
   const starTypeTable = pack.distributions['star_types'];
   const starClass = starTypeTable ? weightedChoice<string>(rng, starTypeTable) : 'star/G2V';
   const starTemplate = pack.statTemplates?.[starClass] || pack.statTemplates?.['star/default'];
@@ -37,7 +48,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
   const primaryStar: CelestialBody = {
     id: `${seed}-star-1`,
     parentId: null,
-    name: `Star ${seed}`,
+    name: starName,
     kind: 'body',
     roleHint: 'star',
     classes: [starClass],
@@ -80,10 +91,12 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
         planetRadiusKm = randomFromRange(rng, planetTemplate.radius_earth[0], planetTemplate.radius_earth[1]) * EARTH_RADIUS_KM;
     }
 
+    const planetName = `${starName} ${String.fromCharCode(98 + i)}`; // 98 is ASCII for 'b'
+
     const planet: CelestialBody = {
         id: planetId,
         parentId: primaryStar.id,
-        name: `${primaryStar.name} ${i + 1}`,
+        name: planetName,
         kind: 'body',
         roleHint: 'planet',
         classes: [],
@@ -101,10 +114,10 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
     const moonCountTable = pack.distributions[isGasGiant ? 'gas_giant_moon_count' : 'terrestrial_moon_count'];
     const numMoons = moonCountTable ? weightedChoice<number>(rng, moonCountTable) : 0;
 
-    let lastMoonRadiusAU = 0.001; // Use a small, fixed AU value for the first moon orbit
+    let lastMoonRadiusAU = 0.001;
 
     for (let j = 0; j < numMoons; j++) {
-        lastMoonRadiusAU += randomFromRange(rng, 0.0005, 0.002); // Increment by a small AU value
+        lastMoonRadiusAU += randomFromRange(rng, 0.0005, 0.002);
         const moonOrbit: Orbit = {
             hostId: planet.id,
             hostMu: G * (planet.massKg || 0),
@@ -119,7 +132,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
         const moon: CelestialBody = {
             id: `${planet.id}-moon-${j + 1}`,
             parentId: planet.id,
-            name: `${planet.name}.${j + 1}`,
+            name: `${planetName} ${toRoman(j + 1)}`,
             kind: 'body',
             roleHint: 'moon',
             classes: [],
@@ -135,7 +148,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
 
   const system: System = {
     id: seed,
-    name: `System ${seed}`,
+    name: starName,
     seed: seed,
     epochT0: Date.now(),
     nodes: nodes,
@@ -197,11 +210,6 @@ export function computePlayerSnapshot(sys: System, scopeRootId?: ID): System {
   // TODO M3: prune nodes by visibility & scope; strip gmNotes/hidden fields per rules
   return sys; // placeholder for early UI
 }
-
-// M2+ (signatures included for planning)
-const AU_KM = 149597870.7;
-
-// ... (rest of the file is the same until propagate)
 
 export function propagate(node: CelestialBody | Barycenter, tMs: number): {x: number, y: number} | null {
   if (node.kind !== 'body' || !node.orbit) {
