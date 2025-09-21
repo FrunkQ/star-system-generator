@@ -3,6 +3,7 @@
   import type { RulePack, System } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import { generateSystem } from '$lib/api';
+  import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
 
   let rulePack: RulePack | null = null;
   let generatedSystem: System | null = null;
@@ -43,7 +44,8 @@
   {/if}
 
   {#if generatedSystem}
-    <h2>Generated System:</h2>
+    <SystemVisualizer system={generatedSystem} />
+    <h2>Generated System (JSON):</h2>
     <pre>{JSON.stringify(generatedSystem, null, 2)}</pre>
   {/if}
 </main>
