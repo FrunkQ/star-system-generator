@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
-  import type { RulePack, System } from '$lib/types';
+  import type { RulePack, System, CelestialBody } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import { generateSystem } from '$lib/api';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
@@ -17,6 +17,20 @@
   let timeScale = 3600 * 24 * 30; // 1 real second = 1 month
   let animationFrameId: number;
 
+  // Focus state
+  let focusedBodyId: string | null = null;
+  let focusedBody: CelestialBody | null = null;
+
+  $: {
+    if (generatedSystem && focusedBodyId) {
+        focusedBody = generatedSystem.nodes.find(n => n.id === focusedBodyId) as CelestialBody;
+    } else if (generatedSystem) {
+        focusedBody = generatedSystem.nodes.find(n => n.parentId === null) as CelestialBody;
+    } else {
+        focusedBody = null;
+    }
+  }
+
   function play() {
     if (!browser) return;
     isPlaying = true;
@@ -24,8 +38,8 @@
 
     function tick(timestamp: number) {
       if (lastTimestamp) {
-        const delta = (timestamp - lastTimestamp) / 1000; // seconds
-        currentTime += delta * timeScale * 1000; // ms
+        const delta = (timestamp - lastTimestamp) / 1000;
+        currentTime += delta * timeScale * 1000;
       }
       lastTimestamp = timestamp;
       if (isPlaying) {
@@ -49,6 +63,19 @@
     const seed = `seed-${Date.now()}`;
     generatedSystem = generateSystem(seed, rulePack);
     currentTime = generatedSystem.epochT0;
+    focusedBodyId = null; // Reset focus to the star
+  }
+
+  function handleFocus(event: CustomEvent<string | null>) {
+    focusedBodyId = event.detail;
+  }
+
+  function zoomOut() {
+      if (focusedBody?.parentId) {
+          focusedBodyId = focusedBody.parentId;
+      } else {
+          focusedBodyId = null;
+      }
   }
 
   onMount(async () => {
@@ -63,7 +90,7 @@
 
   onDestroy(() => {
     if (browser) {
-      pause(); // Clean up animation frame
+      pause();
     }
   });
 
@@ -89,7 +116,16 @@
         </button>
         <span>Time Scale: 1s = {Math.round(timeScale / 3600 / 24)} days</span>
     </div>
-    <SystemVisualizer system={generatedSystem} {currentTime} />
+
+    <div class="focus-header">
+        <h2>Current Focus: {focusedBody?.name || 'System View'}</h2>
+        {#if focusedBody?.parentId}
+            <button on:click={zoomOut}>Zoom Out</button>
+        {/if}
+    </div>
+
+    <SystemVisualizer system={generatedSystem} {currentTime} {focusedBodyId} on:focus={handleFocus} />
+    
     <h2>Generated System (JSON):</h2>
     <pre>{JSON.stringify(generatedSystem, null, 2)}</pre>
   {/if}
@@ -106,10 +142,13 @@
     border-radius: 5px;
     white-space: pre-wrap;
   }
-  .controls {
+  .controls, .focus-header {
     margin: 1em 0;
     display: flex;
     align-items: center;
     gap: 1em;
+  }
+  .focus-header h2 {
+      margin: 0;
   }
 </style>
