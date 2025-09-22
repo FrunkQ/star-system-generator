@@ -116,7 +116,9 @@
         </button>
         <div class="time-scales">
             <span>1s = </span>
-            <button on:click={() => timeScale = 3600 * 24 * 1} class:active={timeScale === 3600 * 24 * 1}>1d</button>
+            <button on:click={() => timeScale = 1} class:active={timeScale === 1}>1s</button>
+            <button on:click={() => timeScale = 3600} class:active={timeScale === 3600}>1h</button>
+            <button on:click={() => timeScale = 3600 * 24} class:active={timeScale === 3600 * 24}>1d</button>
             <button on:click={() => timeScale = 3600 * 24 * 30} class:active={timeScale === 3600 * 24 * 30}>30d</button>
             <button on:click={() => timeScale = 3600 * 24 * 90} class:active={timeScale === 3600 * 24 * 90}>90d</button>
             <button on:click={() => timeScale = 3600 * 24 * 365} class:active={timeScale === 3600 * 24 * 365}>1y</button>
