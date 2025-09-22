@@ -10,11 +10,12 @@
   let generatedSystem: System | null = null;
   let isLoading = true;
   let error: string | null = null;
+  let visualizer: SystemVisualizer;
 
   // Time state
   let currentTime = Date.now();
   let isPlaying = false;
-  let timeScale = 3600 * 24 * 30; // Default: 1 real second = 30 days
+  let timeScale = 3600 * 24 * 30;
   let animationFrameId: number;
 
   // Focus state
@@ -64,10 +65,12 @@
     generatedSystem = generateSystem(seed, rulePack);
     currentTime = generatedSystem.epochT0;
     focusedBodyId = null;
+    visualizer?.resetView();
   }
 
   function handleFocus(event: CustomEvent<string | null>) {
     focusedBodyId = event.detail;
+    visualizer?.resetView();
   }
 
   function zoomOut() {
@@ -76,6 +79,7 @@
       } else {
           focusedBodyId = null;
       }
+      visualizer?.resetView();
   }
 
   onMount(async () => {
@@ -127,12 +131,13 @@
 
     <div class="focus-header">
         <h2>Current Focus: {focusedBody?.name || 'System View'}</h2>
+        <button on:click={() => visualizer?.resetView()}>Reset View</button>
         {#if focusedBody?.parentId}
             <button on:click={zoomOut}>Zoom Out</button>
         {/if}
     </div>
 
-    <SystemVisualizer system={generatedSystem} {currentTime} {focusedBodyId} on:focus={handleFocus} />
+    <SystemVisualizer bind:this={visualizer} system={generatedSystem} {currentTime} {focusedBodyId} on:focus={handleFocus} />
     
     <h2>Generated System (JSON):</h2>
     <pre>{JSON.stringify(generatedSystem, null, 2)}</pre>

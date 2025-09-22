@@ -21,6 +21,13 @@
   let lastPanX: number;
   let lastPanY: number;
 
+  // Public method to reset the view
+  export function resetView() {
+      panX = 0;
+      panY = 0;
+      zoom = 1;
+  }
+
   function render() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -41,15 +48,22 @@
   // --- Event Handlers ---
   function handleClick(event: MouseEvent) {
     const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const clickX = event.clientX - rect.left;
+    const clickY = event.clientY - rect.top;
 
-    for (const [id, pos] of positions.entries()) {
-        const dx = x - pos.x;
-        const dy = y - pos.y;
+    // Must check in reverse order so we click the top-most item
+    const nodes = system?.nodes || [];
+    for (let i = nodes.length - 1; i >= 0; i--) {
+        const node = nodes[i];
+        const pos = positions.get(node.id);
+        if (!pos) continue;
+
+        const dx = clickX - pos.x;
+        const dy = clickY - pos.y;
         const clickRadius = Math.max(10, pos.radius + 5);
         if (dx * dx + dy * dy < clickRadius * clickRadius) {
-            dispatch("focus", id);
+            dispatch("focus", node.id);
+            resetView();
             return;
         }
     }
@@ -57,18 +71,29 @@
 
   function handleWheel(event: WheelEvent) {
     event.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+
     const zoomFactor = event.deltaY < 0 ? 1.1 : 0.9;
-    zoom *= zoomFactor;
+    const newZoom = zoom * zoomFactor;
+
+    // Adjust pan to keep the point under the mouse stationary
+    panX = mouseX - (mouseX - panX) * zoomFactor;
+    panY = mouseY - (mouseY - panY) * zoomFactor;
+    zoom = newZoom;
   }
 
   function handleMouseDown(event: MouseEvent) {
     isPanning = true;
     lastPanX = event.clientX;
     lastPanY = event.clientY;
+    canvas.style.cursor = 'grabbing';
   }
 
   function handleMouseUp() {
     isPanning = false;
+    canvas.style.cursor = 'grab';
   }
 
   function handleMouseMove(event: MouseEvent) {
@@ -92,26 +117,22 @@
 
     const width = canvas.width;
     const height = canvas.height;
-    const viewCenterX = width / 2;
-    const viewCenterY = height / 2;
-
+    
     ctx.save();
     ctx.fillStyle = "#08090d";
     ctx.fillRect(0, 0, width, height);
     
-    // Apply pan and zoom
-    ctx.translate(viewCenterX + panX, viewCenterY + panY);
+    ctx.translate(panX, panY);
     ctx.scale(zoom, zoom);
-    ctx.translate(-viewCenterX, -viewCenterY);
 
     const nodesById = new Map(system.nodes.map(n => [n.id, n]));
     positions.clear();
 
     const focusId = focusedBodyId || system.nodes.find(n => n.parentId === null)?.id;
-    if (!focusId) return;
+    if (!focusId) { ctx.restore(); return; }
 
     const focusBody = nodesById.get(focusId);
-    if (!focusBody) return;
+    if (!focusBody) { ctx.restore(); return; }
 
     const children = system.nodes.filter(n => n.parentId === focusId);
 
@@ -123,8 +144,11 @@
     }, 0);
     const scale = (Math.min(width, height) / 2) / (maxOrbit * 1.2 || 0.1);
 
+    const viewCenterX = width / 2 / zoom;
+    const viewCenterY = height / 2 / zoom;
+
     ctx.strokeStyle = "#333";
-    ctx.lineWidth = 1 / zoom; // Keep line width consistent when zooming
+    ctx.lineWidth = 1 / zoom;
 
     // Draw focus body at center
     let bodyRadius = 2;
@@ -142,7 +166,7 @@
     ctx.arc(viewCenterX, viewCenterY, bodyRadius, 0, 2 * Math.PI);
     ctx.fillStyle = color;
     ctx.fill();
-    positions.set(focusBody.id, { x: viewCenterX + panX, y: viewCenterY + panY, radius: bodyRadius * zoom });
+    positions.set(focusBody.id, { x: viewCenterX * zoom + panX, y: viewCenterY * zoom + panY, radius: bodyRadius * zoom });
 
     // Draw children
     for (const node of children) {
@@ -175,8 +199,8 @@
         ctx.fillStyle = "#aaa";
         ctx.fill();
         
-        const screenX = (x - viewCenterX) * zoom + viewCenterX + panX;
-        const screenY = (y - viewCenterY) * zoom + viewCenterY + panY;
+        const screenX = x * zoom + panX;
+        const screenY = y * zoom + panY;
         positions.set(node.id, { x: screenX, y: screenY, radius: childRadius * zoom });
     }
     ctx.restore();
