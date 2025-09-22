@@ -13,7 +13,7 @@
   let animationFrameId: number;
   const positions = new Map<string, { x: number, y: number, radius: number }>();
 
-  // Pan & Zoom state
+  // --- Viewport State ---
   let panX = 0;
   let panY = 0;
   let zoom = 1;
@@ -21,13 +21,22 @@
   let lastPanX: number;
   let lastPanY: number;
 
-  // Public method to reset the view
   export function resetView() {
       panX = 0;
       panY = 0;
       zoom = 1;
   }
 
+  // --- Svelte Lifecycle ---
+  onMount(() => {
+    animationFrameId = requestAnimationFrame(render);
+  });
+
+  onDestroy(() => {
+    cancelAnimationFrame(animationFrameId);
+  });
+
+  // --- Main Render Loop ---
   function render() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -37,21 +46,12 @@
     animationFrameId = requestAnimationFrame(render);
   }
 
-  onMount(() => {
-    render();
-  });
-
-  onDestroy(() => {
-    cancelAnimationFrame(animationFrameId);
-  });
-
   // --- Event Handlers ---
   function handleClick(event: MouseEvent) {
     const rect = canvas.getBoundingClientRect();
     const clickX = event.clientX - rect.left;
     const clickY = event.clientY - rect.top;
 
-    // Must check in reverse order so we click the top-most item
     const nodes = system?.nodes || [];
     for (let i = nodes.length - 1; i >= 0; i--) {
         const node = nodes[i];
@@ -63,7 +63,6 @@
         const clickRadius = Math.max(10, pos.radius + 5);
         if (dx * dx + dy * dy < clickRadius * clickRadius) {
             dispatch("focus", node.id);
-            resetView();
             return;
         }
     }
@@ -78,7 +77,6 @@
     const zoomFactor = event.deltaY < 0 ? 1.1 : 0.9;
     const newZoom = zoom * zoomFactor;
 
-    // Adjust pan to keep the point under the mouse stationary
     panX = mouseX - (mouseX - panX) * zoomFactor;
     panY = mouseY - (mouseY - panY) * zoomFactor;
     zoom = newZoom;
@@ -106,6 +104,7 @@
     lastPanY = event.clientY;
   }
 
+  // --- Drawing Logic ---
   const STAR_COLOR_MAP: Record<string, string> = {
     "O": "#9bb0ff", "B": "#aabfff", "A": "#cad8ff", "F": "#f8f7ff",
     "G": "#fff4ea", "K": "#ffd2a1", "M": "#ffc46f", "WD": "#f0f0f0",
@@ -122,6 +121,7 @@
     ctx.fillStyle = "#08090d";
     ctx.fillRect(0, 0, width, height);
     
+    // Apply pan & zoom transformation
     ctx.translate(panX, panY);
     ctx.scale(zoom, zoom);
 
@@ -144,34 +144,16 @@
     }, 0);
     const scale = (Math.min(width, height) / 2) / (maxOrbit * 1.2 || 0.1);
 
-    const viewCenterX = width / 2 / zoom;
-    const viewCenterY = height / 2 / zoom;
+    // The center of the view in the "world" coordinate space
+    const viewCenterX = width / 2;
+    const viewCenterY = height / 2;
 
     ctx.strokeStyle = "#333";
     ctx.lineWidth = 1 / zoom;
 
-    // Draw focus body at center
-    let bodyRadius = 2;
-    let color = "#aaa";
-    if (focusBody.kind === 'body') {
-        if (focusBody.roleHint === 'star') {
-            const starClassKey = focusBody.classes[0]?.split('/')[1] || 'default';
-            color = STAR_COLOR_MAP[starClassKey] || STAR_COLOR_MAP['default'];
-            bodyRadius = Math.max(15, (focusBody.radiusKm || 696340) / 696340 * 20);
-        } else { 
-            bodyRadius = 25;
-        }
-    }
-    ctx.beginPath();
-    ctx.arc(viewCenterX, viewCenterY, bodyRadius, 0, 2 * Math.PI);
-    ctx.fillStyle = color;
-    ctx.fill();
-    positions.set(focusBody.id, { x: viewCenterX * zoom + panX, y: viewCenterY * zoom + panY, radius: bodyRadius * zoom });
-
-    // Draw children
+    // --- Draw Orbits ---
     for (const node of children) {
         if (node.kind !== 'body' || !node.orbit) continue;
-
         const a = node.orbit.elements.a_AU * scale;
         const e = node.orbit.elements.e;
         const b = a * Math.sqrt(1 - e * e);
@@ -180,6 +162,30 @@
         ctx.beginPath();
         ctx.ellipse(viewCenterX - c, viewCenterY, a, b, 0, 0, 2 * Math.PI);
         ctx.stroke();
+    }
+
+    // --- Draw Bodies ---
+    // Draw focus body at center
+    let focusBodyRadius = 2;
+    let focusBodyColor = "#aaa";
+    if (focusBody.kind === 'body') {
+        if (focusBody.roleHint === 'star') {
+            const starClassKey = focusBody.classes[0]?.split('/')[1] || 'default';
+            focusBodyColor = STAR_COLOR_MAP[starClassKey] || STAR_COLOR_MAP['default'];
+            focusBodyRadius = Math.max(15, (focusBody.radiusKm || 696340) / 696340 * 20);
+        } else { 
+            focusBodyRadius = 25;
+        }
+    }
+    ctx.beginPath();
+    ctx.arc(viewCenterX, viewCenterY, focusBodyRadius, 0, 2 * Math.PI);
+    ctx.fillStyle = focusBodyColor;
+    ctx.fill();
+    positions.set(focusBody.id, { x: viewCenterX * zoom + panX, y: viewCenterY * zoom + panY, radius: focusBodyRadius * zoom });
+
+    // Draw children
+    for (const node of children) {
+        if (node.kind !== 'body' || !node.orbit) continue;
 
         const pos = propagate(node, currentTime);
         if (!pos) continue;
@@ -199,8 +205,8 @@
         ctx.fillStyle = "#aaa";
         ctx.fill();
         
-        const screenX = x * zoom + panX;
-        const screenY = y * zoom + panY;
+        const screenX = (x - viewCenterX) * zoom + viewCenterX + panX;
+        const screenY = (y - viewCenterY) * zoom + viewCenterY + panY;
         positions.set(node.id, { x: screenX, y: screenY, radius: childRadius * zoom });
     }
     ctx.restore();
