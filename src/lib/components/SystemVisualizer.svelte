@@ -38,7 +38,8 @@
     for (const [id, pos] of positions.entries()) {
         const dx = x - pos.x;
         const dy = y - pos.y;
-        if (dx * dx + dy * dy < pos.radius * pos.radius) {
+        const clickRadius = Math.max(10, pos.radius + 5); // Ensure a minimum click area
+        if (dx * dx + dy * dy < clickRadius * clickRadius) {
             dispatch("focus", id);
             return;
         }

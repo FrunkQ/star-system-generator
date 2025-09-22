@@ -14,7 +14,7 @@
   // Time state
   let currentTime = Date.now();
   let isPlaying = false;
-  let timeScale = 3600 * 24 * 30; // 1 real second = 1 month
+  let timeScale = 3600 * 24 * 30; // Default: 1 real second = 30 days
   let animationFrameId: number;
 
   // Focus state
@@ -63,7 +63,7 @@
     const seed = `seed-${Date.now()}`;
     generatedSystem = generateSystem(seed, rulePack);
     currentTime = generatedSystem.epochT0;
-    focusedBodyId = null; // Reset focus to the star
+    focusedBodyId = null;
   }
 
   function handleFocus(event: CustomEvent<string | null>) {
@@ -114,7 +114,13 @@
         <button on:click={() => isPlaying ? pause() : play()}>
             {isPlaying ? 'Pause' : 'Play'}
         </button>
-        <span>Time Scale: 1s = {Math.round(timeScale / 3600 / 24)} days</span>
+        <div class="time-scales">
+            <span>1s = </span>
+            <button on:click={() => timeScale = 3600 * 24 * 1} class:active={timeScale === 3600 * 24 * 1}>1d</button>
+            <button on:click={() => timeScale = 3600 * 24 * 30} class:active={timeScale === 3600 * 24 * 30}>30d</button>
+            <button on:click={() => timeScale = 3600 * 24 * 90} class:active={timeScale === 3600 * 24 * 90}>90d</button>
+            <button on:click={() => timeScale = 3600 * 24 * 365} class:active={timeScale === 3600 * 24 * 365}>1y</button>
+        </div>
     </div>
 
     <div class="focus-header">
@@ -150,5 +156,22 @@
   }
   .focus-header h2 {
       margin: 0;
+  }
+  .time-scales {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    background-color: #eee;
+    padding: 0.25em;
+    border-radius: 5px;
+  }
+  .time-scales button {
+      border: 1px solid #ccc;
+      background-color: white;
+  }
+  .time-scales button.active {
+      border-color: #2d69a6;
+      background-color: #3b82f6;
+      color: white;
   }
 </style>
