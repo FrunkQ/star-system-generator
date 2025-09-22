@@ -77,7 +77,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
         t0: Date.now(),
         elements: {
             a_AU: lastOrbitalRadius,
-            e: randomFromRange(rng, 0, 0.2), // Add eccentricity
+            e: randomFromRange(rng, 0.1, 0.6),
             i_deg: 0, omega_deg: 0, Omega_deg: 0,
             M0_rad: randomFromRange(rng, 0, 2 * Math.PI)
         }
@@ -125,7 +125,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
             t0: Date.now(),
             elements: {
                 a_AU: lastMoonRadiusAU,
-                e: randomFromRange(rng, 0, 0.05), // Add eccentricity
+                e: randomFromRange(rng, 0, 0.2),
                 i_deg: 0, omega_deg: 0, Omega_deg: 0,
                 M0_rad: randomFromRange(rng, 0, 2 * Math.PI)
             }
