@@ -13,6 +13,14 @@
   let animationFrameId: number;
   const positions = new Map<string, { x: number, y: number, radius: number }>();
 
+  // Pan & Zoom state
+  let panX = 0;
+  let panY = 0;
+  let zoom = 1;
+  let isPanning = false;
+  let lastPanX: number;
+  let lastPanY: number;
+
   function render() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -30,6 +38,7 @@
     cancelAnimationFrame(animationFrameId);
   });
 
+  // --- Event Handlers ---
   function handleClick(event: MouseEvent) {
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
@@ -38,12 +47,38 @@
     for (const [id, pos] of positions.entries()) {
         const dx = x - pos.x;
         const dy = y - pos.y;
-        const clickRadius = Math.max(10, pos.radius + 5); // Ensure a minimum click area
+        const clickRadius = Math.max(10, pos.radius + 5);
         if (dx * dx + dy * dy < clickRadius * clickRadius) {
             dispatch("focus", id);
             return;
         }
     }
+  }
+
+  function handleWheel(event: WheelEvent) {
+    event.preventDefault();
+    const zoomFactor = event.deltaY < 0 ? 1.1 : 0.9;
+    zoom *= zoomFactor;
+  }
+
+  function handleMouseDown(event: MouseEvent) {
+    isPanning = true;
+    lastPanX = event.clientX;
+    lastPanY = event.clientY;
+  }
+
+  function handleMouseUp() {
+    isPanning = false;
+  }
+
+  function handleMouseMove(event: MouseEvent) {
+    if (!isPanning) return;
+    const dx = event.clientX - lastPanX;
+    const dy = event.clientY - lastPanY;
+    panX += dx;
+    panY += dy;
+    lastPanX = event.clientX;
+    lastPanY = event.clientY;
   }
 
   const STAR_COLOR_MAP: Record<string, string> = {
@@ -57,11 +92,17 @@
 
     const width = canvas.width;
     const height = canvas.height;
-    const centerX = width / 2;
-    const centerY = height / 2;
+    const viewCenterX = width / 2;
+    const viewCenterY = height / 2;
 
+    ctx.save();
     ctx.fillStyle = "#08090d";
     ctx.fillRect(0, 0, width, height);
+    
+    // Apply pan and zoom
+    ctx.translate(viewCenterX + panX, viewCenterY + panY);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-viewCenterX, -viewCenterY);
 
     const nodesById = new Map(system.nodes.map(n => [n.id, n]));
     positions.clear();
@@ -83,7 +124,7 @@
     const scale = (Math.min(width, height) / 2) / (maxOrbit * 1.2 || 0.1);
 
     ctx.strokeStyle = "#333";
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1 / zoom; // Keep line width consistent when zooming
 
     // Draw focus body at center
     let bodyRadius = 2;
@@ -93,37 +134,34 @@
             const starClassKey = focusBody.classes[0]?.split('/')[1] || 'default';
             color = STAR_COLOR_MAP[starClassKey] || STAR_COLOR_MAP['default'];
             bodyRadius = Math.max(15, (focusBody.radiusKm || 696340) / 696340 * 20);
-        } else { // It's a planet
+        } else { 
             bodyRadius = 25;
         }
     }
     ctx.beginPath();
-    ctx.arc(centerX, centerY, bodyRadius, 0, 2 * Math.PI);
+    ctx.arc(viewCenterX, viewCenterY, bodyRadius, 0, 2 * Math.PI);
     ctx.fillStyle = color;
     ctx.fill();
-    positions.set(focusBody.id, { x: centerX, y: centerY, radius: bodyRadius });
+    positions.set(focusBody.id, { x: viewCenterX + panX, y: viewCenterY + panY, radius: bodyRadius * zoom });
 
-    // Draw children (planets or moons)
+    // Draw children
     for (const node of children) {
         if (node.kind !== 'body' || !node.orbit) continue;
 
-        // Draw Orbit as an ellipse
         const a = node.orbit.elements.a_AU * scale;
         const e = node.orbit.elements.e;
         const b = a * Math.sqrt(1 - e * e);
-        const c = a * e; // distance from center to focus
+        const c = a * e;
         
         ctx.beginPath();
-        // The parent body is at one focus, so the ellipse is offset
-        ctx.ellipse(centerX - c, centerY, a, b, 0, 0, 2 * Math.PI);
+        ctx.ellipse(viewCenterX - c, viewCenterY, a, b, 0, 0, 2 * Math.PI);
         ctx.stroke();
 
-        // Draw Body
         const pos = propagate(node, currentTime);
         if (!pos) continue;
 
-        const x = centerX + pos.x * scale;
-        const y = centerY + pos.y * scale;
+        const x = viewCenterX + pos.x * scale;
+        const y = viewCenterY + pos.y * scale;
 
         let childRadius = 2;
         if (node.roleHint === 'planet') {
@@ -136,9 +174,25 @@
         ctx.arc(x, y, childRadius, 0, 2 * Math.PI);
         ctx.fillStyle = "#aaa";
         ctx.fill();
-        positions.set(node.id, { x, y, radius: childRadius });
+        
+        const screenX = (x - viewCenterX) * zoom + viewCenterX + panX;
+        const screenY = (y - viewCenterY) * zoom + viewCenterY + panY;
+        positions.set(node.id, { x: screenX, y: screenY, radius: childRadius * zoom });
     }
+    ctx.restore();
   }
+
 </script>
 
-<canvas bind:this={canvas} on:click={handleClick} width={800} height={600} style="border: 1px solid #333; margin-top: 1em; background-color: #08090d;"></canvas>
+<canvas 
+    bind:this={canvas} 
+    on:click={handleClick} 
+    on:wheel={handleWheel}
+    on:mousedown={handleMouseDown}
+    on:mouseup={handleMouseUp}
+    on:mouseleave={handleMouseUp}
+    on:mousemove={handleMouseMove}
+    width={800} 
+    height={600} 
+    style="border: 1px solid #333; margin-top: 1em; background-color: #08090d; cursor: grab;"
+></canvas>
