@@ -61,26 +61,46 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
   };
   nodes.push(primaryStar);
 
-  // --- Planet Generation ---
-  const planetCountTable = pack.distributions['planet_count'];
-  const numPlanets = planetCountTable ? weightedChoice<number>(rng, planetCountTable) : rng.nextInt(0, 8);
+  // --- Planet & Belt Generation ---
+  const bodyCountTable = pack.distributions['planet_count']; // Using planet_count for total bodies
+  const numBodies = bodyCountTable ? weightedChoice<number>(rng, bodyCountTable) : rng.nextInt(0, 8);
   
   let lastOrbitalRadius = 0.1;
 
-  for (let i = 0; i < numPlanets; i++) {
-    const planetId = `${seed}-planet-${i + 1}`;
+  for (let i = 0; i < numBodies; i++) {
     lastOrbitalRadius += randomFromRange(rng, 0.2, 2.0);
 
+    const beltChanceTable = pack.distributions['belt_chance'];
+    const isBelt = beltChanceTable ? weightedChoice<boolean>(rng, beltChanceTable) : false;
+
+    if (isBelt) {
+        const belt: CelestialBody = {
+            id: `${seed}-belt-${i + 1}`,
+            parentId: primaryStar.id,
+            name: `${starName} Belt ${String.fromCharCode(65 + i)}`,
+            kind: 'body',
+            roleHint: 'belt',
+            classes: ['belt/asteroid'],
+            orbit: {
+                hostId: primaryStar.id,
+                hostMu: G * primaryStar.massKg,
+                t0: Date.now(),
+                elements: { a_AU: lastOrbitalRadius, e: randomFromRange(rng, 0.05, 0.2), i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
+            },
+            tags: [],
+            areas: [],
+        };
+        nodes.push(belt);
+        continue; // Skip to next body
+    }
+
+    // --- Generate Planet ---
+    const planetId = `${seed}-planet-${i + 1}`;
     const planetOrbit: Orbit = {
         hostId: primaryStar.id,
         hostMu: G * primaryStar.massKg,
         t0: Date.now(),
-        elements: {
-            a_AU: lastOrbitalRadius,
-            e: randomFromRange(rng, 0.1, 0.6),
-            i_deg: 0, omega_deg: 0, Omega_deg: 0,
-            M0_rad: randomFromRange(rng, 0, 2 * Math.PI)
-        }
+        elements: { a_AU: lastOrbitalRadius, e: randomFromRange(rng, 0.1, 0.6), i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
     };
 
     const planetType = pack.distributions['planet_type'] ? weightedChoice<string>(rng, pack.distributions['planet_type']) : 'planet/terrestrial';
@@ -93,7 +113,6 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
     }
 
     const planetName = `${starName} ${String.fromCharCode(98 + i)}`;
-
     const planet: CelestialBody = {
         id: planetId,
         parentId: primaryStar.id,
@@ -110,11 +129,37 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
     planet.classes = classifyBody(planet, primaryStar, pack);
     nodes.push(planet);
 
-    // --- Moon Generation ---
+    // --- Ring Generation ---
     const isGasGiant = planet.classes.includes('planet/gas-giant');
+    const ringChanceTable = pack.distributions[isGasGiant ? 'gas_giant_ring_chance' : 'terrestrial_ring_chance'];
+    const hasRing = ringChanceTable ? weightedChoice<boolean>(rng, ringChanceTable) : false;
+
+    if (hasRing) {
+        const ringTemplate = pack.statTemplates?.['ring/planetary'];
+        let ringInnerKm = (planet.radiusKm || 0) * 1.5;
+        let ringOuterKm = (planet.radiusKm || 0) * 2.5;
+        if (ringTemplate) {
+            ringInnerKm = (planet.radiusKm || 0) * randomFromRange(rng, ringTemplate.radius_inner_multiple[0], ringTemplate.radius_inner_multiple[1]);
+            ringOuterKm = (planet.radiusKm || 0) * randomFromRange(rng, ringTemplate.radius_outer_multiple[0], ringTemplate.radius_outer_multiple[1]);
+        }
+        const ring: CelestialBody = {
+            id: `${planetId}-ring-1`,
+            parentId: planet.id,
+            name: `${planetName} Ring`,
+            kind: 'body',
+            roleHint: 'ring',
+            classes: ['ring/planetary'],
+            radiusInnerKm: ringInnerKm,
+            radiusOuterKm: ringOuterKm,
+            tags: [],
+            areas: [],
+        };
+        nodes.push(ring);
+    }
+
+    // --- Moon Generation ---
     const moonCountTable = pack.distributions[isGasGiant ? 'gas_giant_moon_count' : 'terrestrial_moon_count'];
     const numMoons = moonCountTable ? weightedChoice<number>(rng, moonCountTable) : 0;
-
     let lastMoonRadiusAU = 0.001;
 
     for (let j = 0; j < numMoons; j++) {
@@ -123,14 +168,8 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
             hostId: planet.id,
             hostMu: G * (planet.massKg || 0),
             t0: Date.now(),
-            elements: {
-                a_AU: lastMoonRadiusAU,
-                e: randomFromRange(rng, 0, 0.2),
-                i_deg: 0, omega_deg: 0, Omega_deg: 0,
-                M0_rad: randomFromRange(rng, 0, 2 * Math.PI)
-            }
+            elements: { a_AU: lastMoonRadiusAU, e: randomFromRange(rng, 0, 0.2), i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
         };
-
         const moon: CelestialBody = {
             id: `${planet.id}-moon-${j + 1}`,
             parentId: planet.id,

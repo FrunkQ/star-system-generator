@@ -79,6 +79,27 @@
             { "weight": 40, "value": 5 },
             { "weight": 20, "value": 6 }
         ]
+    },
+    "belt_chance": {
+        "name": "Chance of an asteroid belt",
+        "entries": [
+            { "weight": 85, "value": false },
+            { "weight": 15, "value": true }
+        ]
+    },
+    "gas_giant_ring_chance": {
+        "name": "Chance of a gas giant having rings",
+        "entries": [
+            { "weight": 60, "value": false },
+            { "weight": 40, "value": true }
+        ]
+    },
+    "terrestrial_ring_chance": {
+        "name": "Chance of a terrestrial planet having rings",
+        "entries": [
+            { "weight": 95, "value": false },
+            { "weight": 5, "value": true }
+        ]
     }
   },
   "tagVocab": [
@@ -184,7 +205,9 @@
     "star/magnetar": { "mass_solar": [1.4, 2.2], "radius_solar": [0.000014, 0.000028], "temp_k": [100000, 1000000], "mag_gauss": [100000000000, 1000000000000000] },
     "star/BH": { "mass_solar": [3, 100], "radius_solar": [0.0000126, 0.000423], "temp_k": [0, 0], "mag_gauss": [0, 0] },
     "planet/terrestrial": { "mass_earth": [0.5, 2.0], "radius_earth": [0.8, 1.5] },
-    "planet/gas-giant": { "mass_earth": [10, 3000], "radius_earth": [4, 20] }
+    "planet/gas-giant": { "mass_earth": [10, 3000], "radius_earth": [4, 20] },
+    "belt/asteroid": { "mass_earth": [0.01, 0.1], "radius_km": [1, 100] },
+    "ring/planetary": { "radius_inner_multiple": [1.5, 2.0], "radius_outer_multiple": [2.5, 4.0] }
   },
   "viewPresets": {
     "defaultPlayerVisibility": {

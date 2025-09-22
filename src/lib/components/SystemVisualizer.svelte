@@ -152,17 +152,30 @@
     ctx.strokeStyle = "#333";
     ctx.lineWidth = 1 / zoom;
 
-    // --- Draw Orbits ---
+    // --- Draw Orbits, Rings, and Belts ---
     for (const node of children) {
-        if (node.kind !== 'body' || !node.orbit) continue;
-        const a = node.orbit.elements.a_AU * scale;
-        const e = node.orbit.elements.e;
-        const b = a * Math.sqrt(1 - e * e);
-        const c = a * e;
-        
-        ctx.beginPath();
-        ctx.ellipse(viewCenterX - c, viewCenterY, a, b, 0, 0, 2 * Math.PI);
-        ctx.stroke();
+        if (node.kind !== 'body') continue;
+
+        if (node.roleHint === 'belt' && node.orbit) {
+            const a = node.orbit.elements.a_AU * scale;
+            const e = node.orbit.elements.e;
+            const b = a * Math.sqrt(1 - e * e);
+            const c = a * e;
+            ctx.strokeStyle = "#666";
+            ctx.beginPath();
+            ctx.ellipse(viewCenterX - c, viewCenterY, a, b, 0, 0, 2 * Math.PI);
+            ctx.stroke();
+            // Could draw dots here in the future
+        } else if (node.orbit) {
+            const a = node.orbit.elements.a_AU * scale;
+            const e = node.orbit.elements.e;
+            const b = a * Math.sqrt(1 - e * e);
+            const c = a * e;
+            ctx.strokeStyle = "#333";
+            ctx.beginPath();
+            ctx.ellipse(viewCenterX - c, viewCenterY, a, b, 0, 0, 2 * Math.PI);
+            ctx.stroke();
+        }
     }
 
     // --- Draw Bodies ---
@@ -183,6 +196,19 @@
     ctx.fillStyle = focusBodyColor;
     ctx.fill();
     positions.set(focusBody.id, { x: viewCenterX, y: viewCenterY, radius: focusBodyRadius });
+
+    // Draw Rings under children
+    const rings = system.nodes.filter(n => n.parentId === focusId && n.roleHint === 'ring');
+    for (const ring of rings) {
+        if (ring.kind !== 'body') continue;
+        const innerRadius = (ring.radiusInnerKm || 0) / AU_KM * scale;
+        const outerRadius = (ring.radiusOuterKm || 0) / AU_KM * scale;
+        ctx.fillStyle = "rgba(150, 150, 150, 0.3)";
+        ctx.beginPath();
+        ctx.arc(viewCenterX, viewCenterY, outerRadius, 0, 2 * Math.PI);
+        ctx.arc(viewCenterX, viewCenterY, innerRadius, 0, 2 * Math.PI, true); // Counter-clockwise for inner hole
+        ctx.fill();
+    }
 
     // Draw children
     for (const node of children) {

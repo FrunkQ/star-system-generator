@@ -45,7 +45,7 @@ export interface CelestialBody extends NodeBase {
   kind: "body";
   roleHint?: "star" | "planet" | "moon" | "submoon" | "ring" | "belt" | "artifact" | "station" | "other";
   classes: string[];
-  massKg?: number; radiusKm?: number; density?: number;
+  massKg?: number; radiusKm?: number; density?: number; radiusInnerKm?: number; radiusOuterKm?: number;
   atmosphere?: Atmosphere; hydrosphere?: Hydrosphere;
   albedo?: number; temperatureK?: number; gravityG?: number; magneticField?: MagneticField;
   orbit?: Orbit; areas: Area[]; image?: ImageRef; deltaV?: DeltaVCapability;
