@@ -77,7 +77,8 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
         t0: Date.now(),
         elements: {
             a_AU: lastOrbitalRadius,
-            e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0,
+            e: randomFromRange(rng, 0, 0.2), // Add eccentricity
+            i_deg: 0, omega_deg: 0, Omega_deg: 0,
             M0_rad: randomFromRange(rng, 0, 2 * Math.PI)
         }
     };
@@ -91,7 +92,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
         planetRadiusKm = randomFromRange(rng, planetTemplate.radius_earth[0], planetTemplate.radius_earth[1]) * EARTH_RADIUS_KM;
     }
 
-    const planetName = `${starName} ${String.fromCharCode(98 + i)}`; // 98 is ASCII for 'b'
+    const planetName = `${starName} ${String.fromCharCode(98 + i)}`;
 
     const planet: CelestialBody = {
         id: planetId,
@@ -124,7 +125,8 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
             t0: Date.now(),
             elements: {
                 a_AU: lastMoonRadiusAU,
-                e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0,
+                e: randomFromRange(rng, 0, 0.05), // Add eccentricity
+                i_deg: 0, omega_deg: 0, Omega_deg: 0,
                 M0_rad: randomFromRange(rng, 0, 2 * Math.PI)
             }
         };
@@ -142,6 +144,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
             tags: [],
             areas: [],
         };
+        moon.classes = classifyBody(moon, planet, pack);
         nodes.push(moon);
     }
   }
