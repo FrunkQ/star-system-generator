@@ -108,6 +108,8 @@
   }
 
   // --- Drawing Logic ---
+  const AU_KM = 149597870.7;
+
   const STAR_COLOR_MAP: Record<string, string> = {
     "O": "#9bb0ff", "B": "#aabfff", "A": "#cad8ff", "F": "#f8f7ff",
     "G": "#fff4ea", "K": "#ffd2a1", "M": "#ffc46f", "WD": "#f0f0f0",
