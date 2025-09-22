@@ -11,6 +11,7 @@
 
   let canvas: HTMLCanvasElement;
   let animationFrameId: number;
+  // This map will now store coordinates in the "world" space of the current view
   const positions = new Map<string, { x: number, y: number, radius: number }>();
 
   // --- Viewport State ---
@@ -49,8 +50,9 @@
   // --- Event Handlers ---
   function handleClick(event: MouseEvent) {
     const rect = canvas.getBoundingClientRect();
-    const clickX = event.clientX - rect.left;
-    const clickY = event.clientY - rect.top;
+    // Transform click coordinates into the "world" space by inverting pan and zoom
+    const clickX = (event.clientX - rect.left - panX) / zoom;
+    const clickY = (event.clientY - rect.top - panY) / zoom;
 
     const nodes = system?.nodes || [];
     for (let i = nodes.length - 1; i >= 0; i--) {
@@ -60,7 +62,8 @@
 
         const dx = clickX - pos.x;
         const dy = clickY - pos.y;
-        const clickRadius = Math.max(10, pos.radius + 5);
+        // The click radius also needs to be in world space
+        const clickRadius = Math.max(10 / zoom, pos.radius + (5 / zoom));
         if (dx * dx + dy * dy < clickRadius * clickRadius) {
             dispatch("focus", node.id);
             return;
@@ -121,7 +124,6 @@
     ctx.fillStyle = "#08090d";
     ctx.fillRect(0, 0, width, height);
     
-    // Apply pan & zoom transformation
     ctx.translate(panX, panY);
     ctx.scale(zoom, zoom);
 
@@ -144,7 +146,6 @@
     }, 0);
     const scale = (Math.min(width, height) / 2) / (maxOrbit * 1.2 || 0.1);
 
-    // The center of the view in the "world" coordinate space
     const viewCenterX = width / 2;
     const viewCenterY = height / 2;
 
@@ -181,7 +182,7 @@
     ctx.arc(viewCenterX, viewCenterY, focusBodyRadius, 0, 2 * Math.PI);
     ctx.fillStyle = focusBodyColor;
     ctx.fill();
-    positions.set(focusBody.id, { x: viewCenterX * zoom + panX, y: viewCenterY * zoom + panY, radius: focusBodyRadius * zoom });
+    positions.set(focusBody.id, { x: viewCenterX, y: viewCenterY, radius: focusBodyRadius });
 
     // Draw children
     for (const node of children) {
@@ -204,10 +205,7 @@
         ctx.arc(x, y, childRadius, 0, 2 * Math.PI);
         ctx.fillStyle = "#aaa";
         ctx.fill();
-        
-        const screenX = (x - viewCenterX) * zoom + viewCenterX + panX;
-        const screenY = (y - viewCenterY) * zoom + viewCenterY + panY;
-        positions.set(node.id, { x: screenX, y: screenY, radius: childRadius * zoom });
+        positions.set(node.id, { x: x, y: y, radius: childRadius });
     }
     ctx.restore();
   }
