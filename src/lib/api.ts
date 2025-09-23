@@ -162,7 +162,6 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
     }
 
     // --- Moon Generation ---
-    const isGasGiant = planet.classes.includes('planet/gas-giant');
     const moonCountTable = pack.distributions[isGasGiant ? 'gas_giant_moon_count' : 'terrestrial_moon_count'];
     const numMoons = moonCountTable ? weightedChoice<number>(rng, moonCountTable) : 0;
 
