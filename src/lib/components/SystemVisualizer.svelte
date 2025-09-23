@@ -10,13 +10,13 @@
   const dispatch = createEventDispatcher<{ focus: string | null }>();
 
   // --- Configurable Visuals ---
-  // You can tweak these values to change the look of the visualization.
   const VISUAL_SCALING = {
       star:       { base: 12, multiplier: 15 },
       planet:     { base: 2,  multiplier: 1.0 },
       moon:       { base: 1,  multiplier: 0.8 },
       ring:       { min_px: 2, opacity: 0.3 },
-      click_area: { base: 10, buffer: 5 }, // Minimum click radius and extra pixel buffer
+      belt:       { width_px: 4, opacity: 0.4 },
+      click_area: { base: 10, buffer: 5 },
   };
 
   let canvas: HTMLCanvasElement;
@@ -157,9 +157,6 @@
     const viewCenterX = width / 2;
     const viewCenterY = height / 2;
 
-    ctx.strokeStyle = "#333";
-    ctx.lineWidth = 1 / zoom;
-
     // --- Draw Orbits and Belts ---
     for (const node of children) {
         if (node.kind !== 'body' || !node.orbit) continue;
@@ -168,10 +165,18 @@
         const b = a * Math.sqrt(1 - e * e);
         const c = a * e;
         
-        ctx.strokeStyle = node.roleHint === 'belt' ? "#666" : "#333";
         ctx.beginPath();
-        ctx.ellipse(viewCenterX - c, viewCenterY, a, b, 0, 0, 2 * Math.PI);
-        ctx.stroke();
+        if (node.roleHint === 'belt') {
+            ctx.strokeStyle = `rgba(150, 150, 150, ${VISUAL_SCALING.belt.opacity})`;
+            ctx.lineWidth = VISUAL_SCALING.belt.width_px / zoom;
+            ctx.ellipse(viewCenterX - c, viewCenterY, a, b, 0, 0, 2 * Math.PI);
+            ctx.stroke();
+        } else {
+            ctx.strokeStyle = "#333";
+            ctx.lineWidth = 1 / zoom;
+            ctx.ellipse(viewCenterX - c, viewCenterY, a, b, 0, 0, 2 * Math.PI);
+            ctx.stroke();
+        }
     }
 
     // --- Draw Rings ---
@@ -182,7 +187,6 @@
         const outerRadius = (ring.radiusOuterKm || 0) / AU_KM * scale;
         const ringWidth = outerRadius - innerRadius;
 
-        // Ensure ring is visible
         if (ringWidth < VISUAL_SCALING.ring.min_px) {
             const midRadius = (innerRadius + outerRadius) / 2;
             ctx.strokeStyle = `rgba(150, 150, 150, ${VISUAL_SCALING.ring.opacity})`;
@@ -218,7 +222,7 @@
 
     // Draw children
     for (const node of children) {
-        if (node.kind !== 'body' || !node.orbit) continue;
+        if (node.kind !== 'body' || !node.orbit || node.roleHint === 'belt') continue; // Don't draw a body for belts
 
         const pos = propagate(node, currentTime);
         if (!pos) continue;
