@@ -195,7 +195,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
         moon.classes = classifyBody(moon, planet, pack);
         nodes.push(moon);
     }
-
+  }
 
   const system: System = {
     id: seed,
