@@ -9,9 +9,18 @@
 
   const dispatch = createEventDispatcher<{ focus: string | null }>();
 
+  // --- Configurable Visuals ---
+  // You can tweak these values to change the look of the visualization.
+  const VISUAL_SCALING = {
+      star:       { base: 12, multiplier: 15 },
+      planet:     { base: 2,  multiplier: 1.0 },
+      moon:       { base: 1,  multiplier: 0.8 },
+      ring:       { min_px: 2, opacity: 0.3 },
+      click_area: { base: 10, buffer: 5 }, // Minimum click radius and extra pixel buffer
+  };
+
   let canvas: HTMLCanvasElement;
   let animationFrameId: number;
-  // This map will now store coordinates in the "world" space of the current view
   const positions = new Map<string, { x: number, y: number, radius: number }>();
 
   // --- Viewport State ---
@@ -50,7 +59,6 @@
   // --- Event Handlers ---
   function handleClick(event: MouseEvent) {
     const rect = canvas.getBoundingClientRect();
-    // Transform click coordinates into the "world" space by inverting pan and zoom
     const clickX = (event.clientX - rect.left - panX) / zoom;
     const clickY = (event.clientY - rect.top - panY) / zoom;
 
@@ -62,8 +70,7 @@
 
         const dx = clickX - pos.x;
         const dy = clickY - pos.y;
-        // The click radius also needs to be in world space
-        const clickRadius = Math.max(10 / zoom, pos.radius + (5 / zoom));
+        const clickRadius = Math.max(VISUAL_SCALING.click_area.base / zoom, pos.radius + (VISUAL_SCALING.click_area.buffer / zoom));
         if (dx * dx + dy * dy < clickRadius * clickRadius) {
             dispatch("focus", node.id);
             return;
@@ -109,7 +116,6 @@
 
   // --- Drawing Logic ---
   const AU_KM = 149597870.7;
-
   const STAR_COLOR_MAP: Record<string, string> = {
     "O": "#9bb0ff", "B": "#aabfff", "A": "#cad8ff", "F": "#f8f7ff",
     "G": "#fff4ea", "K": "#ffd2a1", "M": "#ffc46f", "WD": "#f0f0f0",
@@ -136,7 +142,7 @@
     if (!focusId) { ctx.restore(); return; }
 
     const focusBody = nodesById.get(focusId);
-    if (!focusBody) { ctx.restore(); return; }
+    if (!focusBody || focusBody.kind !== 'body') { ctx.restore(); return; }
 
     const children = system.nodes.filter(n => n.parentId === focusId);
 
@@ -154,29 +160,42 @@
     ctx.strokeStyle = "#333";
     ctx.lineWidth = 1 / zoom;
 
-    // --- Draw Orbits, Rings, and Belts ---
+    // --- Draw Orbits and Belts ---
     for (const node of children) {
-        if (node.kind !== 'body') continue;
+        if (node.kind !== 'body' || !node.orbit) continue;
+        const a = node.orbit.elements.a_AU * scale;
+        const e = node.orbit.elements.e;
+        const b = a * Math.sqrt(1 - e * e);
+        const c = a * e;
+        
+        ctx.strokeStyle = node.roleHint === 'belt' ? "#666" : "#333";
+        ctx.beginPath();
+        ctx.ellipse(viewCenterX - c, viewCenterY, a, b, 0, 0, 2 * Math.PI);
+        ctx.stroke();
+    }
 
-        if (node.roleHint === 'belt' && node.orbit) {
-            const a = node.orbit.elements.a_AU * scale;
-            const e = node.orbit.elements.e;
-            const b = a * Math.sqrt(1 - e * e);
-            const c = a * e;
-            ctx.strokeStyle = "#666";
+    // --- Draw Rings ---
+    const rings = system.nodes.filter(n => n.parentId === focusId && n.roleHint === 'ring');
+    for (const ring of rings) {
+        if (ring.kind !== 'body') continue;
+        const innerRadius = (ring.radiusInnerKm || 0) / AU_KM * scale;
+        const outerRadius = (ring.radiusOuterKm || 0) / AU_KM * scale;
+        const ringWidth = outerRadius - innerRadius;
+
+        // Ensure ring is visible
+        if (ringWidth < VISUAL_SCALING.ring.min_px) {
+            const midRadius = (innerRadius + outerRadius) / 2;
+            ctx.strokeStyle = `rgba(150, 150, 150, ${VISUAL_SCALING.ring.opacity})`;
+            ctx.lineWidth = VISUAL_SCALING.ring.min_px;
             ctx.beginPath();
-            ctx.ellipse(viewCenterX - c, viewCenterY, a, b, 0, 0, 2 * Math.PI);
+            ctx.arc(viewCenterX, viewCenterY, midRadius, 0, 2 * Math.PI);
             ctx.stroke();
-            // Could draw dots here in the future
-        } else if (node.orbit) {
-            const a = node.orbit.elements.a_AU * scale;
-            const e = node.orbit.elements.e;
-            const b = a * Math.sqrt(1 - e * e);
-            const c = a * e;
-            ctx.strokeStyle = "#333";
+        } else {
+            ctx.fillStyle = `rgba(150, 150, 150, ${VISUAL_SCALING.ring.opacity})`;
             ctx.beginPath();
-            ctx.ellipse(viewCenterX - c, viewCenterY, a, b, 0, 0, 2 * Math.PI);
-            ctx.stroke();
+            ctx.arc(viewCenterX, viewCenterY, outerRadius, 0, 2 * Math.PI);
+            ctx.arc(viewCenterX, viewCenterY, innerRadius, 0, 2 * Math.PI, true);
+            ctx.fill();
         }
     }
 
@@ -184,34 +203,18 @@
     // Draw focus body at center
     let focusBodyRadius = 2;
     let focusBodyColor = "#aaa";
-    if (focusBody.kind === 'body') {
-        if (focusBody.roleHint === 'star') {
-            const starClassKey = focusBody.classes[0]?.split('/')[1] || 'default';
-            focusBodyColor = STAR_COLOR_MAP[starClassKey] || STAR_COLOR_MAP['default'];
-            focusBodyRadius = Math.max(15, (focusBody.radiusKm || 696340) / 696340 * 20);
-        } else { 
-            focusBodyRadius = 25;
-        }
+    if (focusBody.roleHint === 'star') {
+        const starClassKey = focusBody.classes[0]?.split('/')[1] || 'default';
+        focusBodyColor = STAR_COLOR_MAP[starClassKey] || STAR_COLOR_MAP['default'];
+        focusBodyRadius = Math.max(VISUAL_SCALING.star.base, (focusBody.radiusKm || 696340) / 696340 * VISUAL_SCALING.star.multiplier);
+    } else { 
+        focusBodyRadius = 25;
     }
     ctx.beginPath();
     ctx.arc(viewCenterX, viewCenterY, focusBodyRadius, 0, 2 * Math.PI);
     ctx.fillStyle = focusBodyColor;
     ctx.fill();
     positions.set(focusBody.id, { x: viewCenterX, y: viewCenterY, radius: focusBodyRadius });
-
-    // Draw Rings under children
-    const rings = system.nodes.filter(n => n.parentId === focusId && n.roleHint === 'ring');
-    for (const ring of rings) {
-        if (ring.kind !== 'body') continue;
-        const innerRadius = (ring.radiusInnerKm || 0) / AU_KM * scale;
-        const outerRadius = (ring.radiusOuterKm || 0) / AU_KM * scale;
-        
-        ctx.fillStyle = "rgba(150, 150, 150, 0.3)";
-        ctx.beginPath();
-        ctx.arc(viewCenterX, viewCenterY, outerRadius, 0, 2 * Math.PI);
-        ctx.arc(viewCenterX, viewCenterY, innerRadius, 0, 2 * Math.PI, true); // Counter-clockwise for inner hole
-        ctx.fill();
-    }
 
     // Draw children
     for (const node of children) {
@@ -225,9 +228,9 @@
 
         let childRadius = 2;
         if (node.roleHint === 'planet') {
-            childRadius = Math.max(2, (node.radiusKm || 6371) / 6371 * 0.9);
+            childRadius = Math.max(VISUAL_SCALING.planet.base, (node.radiusKm || 6371) / 6371 * VISUAL_SCALING.planet.multiplier);
         } else if (node.roleHint === 'moon') {
-            childRadius = Math.max(1, (node.radiusKm || 1737) / 1737 * 0.7);
+            childRadius = Math.max(VISUAL_SCALING.moon.base, (node.radiusKm || 1737) / 1737 * VISUAL_SCALING.moon.multiplier);
         }
 
         ctx.beginPath();
