@@ -247,9 +247,9 @@
         const hasRing = system.nodes.some(n => n.parentId === node.id && n.roleHint === 'ring');
         if (hasRing) {
             ctx.strokeStyle = `rgba(150, 150, 150, ${VISUAL_SCALING.ring.opacity})`;
-            ctx.lineWidth = 1 / zoom;
+            ctx.lineWidth = (VISUAL_SCALING.ring.min_px || 2) / zoom;
             ctx.beginPath();
-            ctx.arc(x, y, childRadius + (3 / zoom), 0, 2 * Math.PI);
+            ctx.arc(x, y, childRadius + (4 / zoom), 0, 2 * Math.PI);
             ctx.stroke();
         }
     }

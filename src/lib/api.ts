@@ -62,13 +62,17 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
   nodes.push(primaryStar);
 
   // --- Planet & Belt Generation ---
-  const bodyCountTable = pack.distributions['planet_count']; // Using planet_count for total bodies
+  const bodyCountTable = pack.distributions['planet_count'];
   const numBodies = bodyCountTable ? weightedChoice<number>(rng, bodyCountTable) : rng.nextInt(0, 8);
   
-  let lastOrbitalRadius = 0.1;
+  let lastApoapsisAU = 0.1; // Start first body at 0.1 AU
 
   for (let i = 0; i < numBodies; i++) {
-    lastOrbitalRadius += randomFromRange(rng, 0.2, 2.0);
+    const minGap = 0.5; // Minimum AU gap between orbits
+    const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
+    const newEccentricity = randomFromRange(rng, 0.01, 0.15);
+    const newA_AU = newPeriapsis / (1 - newEccentricity);
+    lastApoapsisAU = newA_AU * (1 + newEccentricity);
 
     const beltChanceTable = pack.distributions['belt_chance'];
     const isBelt = beltChanceTable ? weightedChoice<boolean>(rng, beltChanceTable) : false;
@@ -85,13 +89,13 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
                 hostId: primaryStar.id,
                 hostMu: G * primaryStar.massKg,
                 t0: Date.now(),
-                elements: { a_AU: lastOrbitalRadius, e: randomFromRange(rng, 0.05, 0.2), i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
+                elements: { a_AU: newA_AU, e: newEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
             },
             tags: [],
             areas: [],
         };
         nodes.push(belt);
-        continue; // Skip to next body
+        continue; 
     }
 
     // --- Generate Planet ---
@@ -100,7 +104,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
         hostId: primaryStar.id,
         hostMu: G * primaryStar.massKg,
         t0: Date.now(),
-        elements: { a_AU: lastOrbitalRadius, e: randomFromRange(rng, 0.01, 0.15), i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
+        elements: { a_AU: newA_AU, e: newEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
     };
 
     const planetType = pack.distributions['planet_type'] ? weightedChoice<string>(rng, pack.distributions['planet_type']) : 'planet/terrestrial';
