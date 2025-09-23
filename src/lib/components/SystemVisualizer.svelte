@@ -147,8 +147,13 @@
     const children = system.nodes.filter(n => n.parentId === focusId);
 
     const maxOrbit = children.reduce((max, node) => {
-        if (node.kind === 'body' && node.orbit) {
+        if (node.kind !== 'body') return max;
+        if (node.orbit) {
             return Math.max(max, node.orbit.elements.a_AU * (1 + node.orbit.elements.e));
+        }
+        if (node.roleHint === 'ring') {
+            // Also consider ring radius for scale
+            return Math.max(max, (node.radiusOuterKm || 0) / AU_KM);
         }
         return max;
     }, 0);
@@ -156,6 +161,9 @@
 
     const viewCenterX = width / 2;
     const viewCenterY = height / 2;
+
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 1 / zoom;
 
     // --- Draw Orbits and Belts ---
     for (const node of children) {
@@ -179,28 +187,18 @@
         }
     }
 
-    // --- Draw Rings ---
+    // --- Draw Rings for focused body ---
     const rings = system.nodes.filter(n => n.parentId === focusId && n.roleHint === 'ring');
     for (const ring of rings) {
         if (ring.kind !== 'body') continue;
         const innerRadius = (ring.radiusInnerKm || 0) / AU_KM * scale;
         const outerRadius = (ring.radiusOuterKm || 0) / AU_KM * scale;
-        const ringWidth = outerRadius - innerRadius;
-
-        if (ringWidth < VISUAL_SCALING.ring.min_px) {
-            const midRadius = (innerRadius + outerRadius) / 2;
-            ctx.strokeStyle = `rgba(150, 150, 150, ${VISUAL_SCALING.ring.opacity})`;
-            ctx.lineWidth = VISUAL_SCALING.ring.min_px;
-            ctx.beginPath();
-            ctx.arc(viewCenterX, viewCenterY, midRadius, 0, 2 * Math.PI);
-            ctx.stroke();
-        } else {
-            ctx.fillStyle = `rgba(150, 150, 150, ${VISUAL_SCALING.ring.opacity})`;
-            ctx.beginPath();
-            ctx.arc(viewCenterX, viewCenterY, outerRadius, 0, 2 * Math.PI);
-            ctx.arc(viewCenterX, viewCenterY, innerRadius, 0, 2 * Math.PI, true);
-            ctx.fill();
-        }
+        
+        ctx.fillStyle = `rgba(150, 150, 150, ${VISUAL_SCALING.ring.opacity})`;
+        ctx.beginPath();
+        ctx.arc(viewCenterX, viewCenterY, outerRadius, 0, 2 * Math.PI);
+        ctx.arc(viewCenterX, viewCenterY, innerRadius, 0, 2 * Math.PI, true);
+        ctx.fill();
     }
 
     // --- Draw Bodies ---
@@ -222,7 +220,7 @@
 
     // Draw children
     for (const node of children) {
-        if (node.kind !== 'body' || !node.orbit || node.roleHint === 'belt') continue; // Don't draw a body for belts
+        if (node.kind !== 'body' || !node.orbit || node.roleHint === 'belt') continue;
 
         const pos = propagate(node, currentTime);
         if (!pos) continue;
@@ -246,12 +244,12 @@
         // Draw miniature rings if they exist
         const hasRing = system.nodes.some(n => n.parentId === node.id && n.roleHint === 'ring');
         if (hasRing) {
-            const innerRadius = childRadius + (2 / zoom);
-            const outerRadius = childRadius + (5 / zoom);
+            const inner = childRadius + (2 / zoom);
+            const outer = childRadius + (5 / zoom);
             ctx.fillStyle = `rgba(150, 150, 150, ${VISUAL_SCALING.ring.opacity})`;
             ctx.beginPath();
-            ctx.arc(x, y, outerRadius, 0, 2 * Math.PI);
-            ctx.arc(x, y, innerRadius, 0, 2 * Math.PI, true);
+            ctx.arc(x, y, outer, 0, 2 * Math.PI);
+            ctx.arc(x, y, inner, 0, 2 * Math.PI, true);
             ctx.fill();
         }
     }

@@ -65,10 +65,10 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
   const bodyCountTable = pack.distributions['planet_count'];
   const numBodies = bodyCountTable ? weightedChoice<number>(rng, bodyCountTable) : rng.nextInt(0, 8);
   
-  let lastApoapsisAU = 0.1; // Start first body at 0.1 AU
+  let lastApoapsisAU = (primaryStar.radiusKm / AU_KM) + 0.1; // Start first body 0.1 AU from the star's surface
 
   for (let i = 0; i < numBodies; i++) {
-    const minGap = 0.5; // Minimum AU gap between orbits
+    const minGap = 0.5;
     const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
     const newEccentricity = randomFromRange(rng, 0.01, 0.15);
     const newA_AU = newPeriapsis / (1 - newEccentricity);
@@ -164,24 +164,21 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
     // --- Moon Generation ---
     const moonCountTable = pack.distributions[isGasGiant ? 'gas_giant_moon_count' : 'terrestrial_moon_count'];
     const numMoons = moonCountTable ? weightedChoice<number>(rng, moonCountTable) : 0;
-
-    let lastMoonApoapsisAU = (planet.radiusKm / AU_KM) * 3; // Start just outside the planet
+    let lastMoonApoapsisAU = (planet.radiusKm / AU_KM) * 3;
 
     for (let j = 0; j < numMoons; j++) {
-        const minGap = (planet.radiusKm / AU_KM) * 2; // Set a minimum gap based on planet size
-        const newPeriapsis = lastMoonApoapsisAU + randomFromRange(rng, minGap, minGap * 3);
-        const newEccentricity = randomFromRange(rng, 0, 0.05); // Moons usually have low eccentricity
-
-        const newA_AU = newPeriapsis / (1 - newEccentricity);
-        lastMoonApoapsisAU = newA_AU * (1 + newEccentricity);
+        const moonMinGap = (planet.radiusKm / AU_KM) * 2;
+        const newMoonPeriapsis = lastMoonApoapsisAU + randomFromRange(rng, moonMinGap, moonMinGap * 3);
+        const newMoonEccentricity = randomFromRange(rng, 0, 0.05);
+        const newMoonA_AU = newMoonPeriapsis / (1 - newMoonEccentricity);
+        lastMoonApoapsisAU = newMoonA_AU * (1 + newMoonEccentricity);
 
         const moonOrbit: Orbit = {
             hostId: planet.id,
             hostMu: G * (planet.massKg || 0),
             t0: Date.now(),
-            elements: { a_AU: newA_AU, e: newEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
+            elements: { a_AU: newMoonA_AU, e: newMoonEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
         };
-
         const moon: CelestialBody = {
             id: `${planet.id}-moon-${j + 1}`,
             parentId: planet.id,
@@ -198,7 +195,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
         moon.classes = classifyBody(moon, planet, pack);
         nodes.push(moon);
     }
-  }
+
 
   const system: System = {
     id: seed,
