@@ -162,18 +162,27 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
     }
 
     // --- Moon Generation ---
+    const isGasGiant = planet.classes.includes('planet/gas-giant');
     const moonCountTable = pack.distributions[isGasGiant ? 'gas_giant_moon_count' : 'terrestrial_moon_count'];
     const numMoons = moonCountTable ? weightedChoice<number>(rng, moonCountTable) : 0;
-    let lastMoonRadiusAU = 0.001;
+
+    let lastMoonApoapsisAU = (planet.radiusKm / AU_KM) * 3; // Start just outside the planet
 
     for (let j = 0; j < numMoons; j++) {
-        lastMoonRadiusAU += randomFromRange(rng, 0.0005, 0.002);
+        const minGap = (planet.radiusKm / AU_KM) * 2; // Set a minimum gap based on planet size
+        const newPeriapsis = lastMoonApoapsisAU + randomFromRange(rng, minGap, minGap * 3);
+        const newEccentricity = randomFromRange(rng, 0, 0.05); // Moons usually have low eccentricity
+
+        const newA_AU = newPeriapsis / (1 - newEccentricity);
+        lastMoonApoapsisAU = newA_AU * (1 + newEccentricity);
+
         const moonOrbit: Orbit = {
             hostId: planet.id,
             hostMu: G * (planet.massKg || 0),
             t0: Date.now(),
-            elements: { a_AU: lastMoonRadiusAU, e: randomFromRange(rng, 0, 0.2), i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
+            elements: { a_AU: newA_AU, e: newEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
         };
+
         const moon: CelestialBody = {
             id: `${planet.id}-moon-${j + 1}`,
             parentId: planet.id,

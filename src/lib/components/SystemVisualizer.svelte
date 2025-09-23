@@ -246,11 +246,13 @@
         // Draw miniature rings if they exist
         const hasRing = system.nodes.some(n => n.parentId === node.id && n.roleHint === 'ring');
         if (hasRing) {
-            ctx.strokeStyle = `rgba(150, 150, 150, ${VISUAL_SCALING.ring.opacity})`;
-            ctx.lineWidth = (VISUAL_SCALING.ring.min_px || 2) / zoom;
+            const innerRadius = childRadius + (2 / zoom);
+            const outerRadius = childRadius + (5 / zoom);
+            ctx.fillStyle = `rgba(150, 150, 150, ${VISUAL_SCALING.ring.opacity})`;
             ctx.beginPath();
-            ctx.arc(x, y, childRadius + (4 / zoom), 0, 2 * Math.PI);
-            ctx.stroke();
+            ctx.arc(x, y, outerRadius, 0, 2 * Math.PI);
+            ctx.arc(x, y, innerRadius, 0, 2 * Math.PI, true);
+            ctx.fill();
         }
     }
     ctx.restore();
