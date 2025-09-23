@@ -146,17 +146,16 @@
 
     const children = system.nodes.filter(n => n.parentId === focusId);
 
-    const maxOrbit = children.reduce((max, node) => {
-        if (node.kind !== 'body') return max;
-        if (node.orbit) {
-            return Math.max(max, node.orbit.elements.a_AU * (1 + node.orbit.elements.e));
-        }
-        if (node.roleHint === 'ring') {
-            // Also consider ring radius for scale
-            return Math.max(max, (node.radiusOuterKm || 0) / AU_KM);
-        }
-        return max;
+    const orbitingChildren = children.filter(n => n.kind === 'body' && n.orbit);
+    let maxOrbit = orbitingChildren.reduce((max, node) => {
+        return Math.max(max, node.orbit!.elements.a_AU * (1 + node.orbit!.elements.e));
     }, 0);
+
+    const ringChildren = children.filter(n => n.kind === 'body' && n.roleHint === 'ring');
+    for (const ring of ringChildren) {
+        maxOrbit = Math.max(maxOrbit, (ring.radiusOuterKm || 0) / AU_KM);
+    }
+
     const scale = (Math.min(width, height) / 2) / (maxOrbit * 1.2 || 0.1);
 
     const viewCenterX = width / 2;
@@ -166,10 +165,9 @@
     ctx.lineWidth = 1 / zoom;
 
     // --- Draw Orbits and Belts ---
-    for (const node of children) {
-        if (node.kind !== 'body' || !node.orbit) continue;
-        const a = node.orbit.elements.a_AU * scale;
-        const e = node.orbit.elements.e;
+    for (const node of orbitingChildren) {
+        const a = node.orbit!.elements.a_AU * scale;
+        const e = node.orbit!.elements.e;
         const b = a * Math.sqrt(1 - e * e);
         const c = a * e;
         
@@ -188,9 +186,7 @@
     }
 
     // --- Draw Rings for focused body ---
-    const rings = system.nodes.filter(n => n.parentId === focusId && n.roleHint === 'ring');
-    for (const ring of rings) {
-        if (ring.kind !== 'body') continue;
+    for (const ring of ringChildren) {
         const innerRadius = (ring.radiusInnerKm || 0) / AU_KM * scale;
         const outerRadius = (ring.radiusOuterKm || 0) / AU_KM * scale;
         
@@ -219,8 +215,8 @@
     positions.set(focusBody.id, { x: viewCenterX, y: viewCenterY, radius: focusBodyRadius });
 
     // Draw children
-    for (const node of children) {
-        if (node.kind !== 'body' || !node.orbit || node.roleHint === 'belt') continue;
+    for (const node of orbitingChildren) {
+        if (node.roleHint === 'belt') continue;
 
         const pos = propagate(node, currentTime);
         if (!pos) continue;
