@@ -258,8 +258,29 @@ export function classifyBody(body: CelestialBody, host: CelestialBody | Barycent
 }
 
 export function computePlayerSnapshot(sys: System, scopeRootId?: ID): System {
-  // TODO M3: prune nodes by visibility & scope; strip gmNotes/hidden fields per rules
-  return sys; // placeholder for early UI
+  const playerSystem = JSON.parse(JSON.stringify(sys)); // Deep copy to avoid modifying the original
+
+  // TODO: Implement scoping by scopeRootId
+
+  playerSystem.nodes = playerSystem.nodes.map((node: any) => {
+      // Remove GM-only fields
+      delete node.gmNotes;
+
+      // Field-level visibility (not yet implemented in generator)
+      if (node.visibility?.fields) {
+          for (const [field, isVisible] of Object.entries(node.visibility.fields)) {
+              if (!isVisible) {
+                  delete node[field];
+              }
+          }
+      }
+      return node;
+  }).filter((node: any) => node.visibility?.visibleToPlayers !== false);
+
+  // Also filter from the top-level system object
+  delete playerSystem.gmNotes;
+
+  return playerSystem;
 }
 
 export function propagate(node: CelestialBody | Barycenter, tMs: number): {x: number, y: number} | null {

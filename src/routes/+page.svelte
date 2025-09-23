@@ -3,7 +3,7 @@
   import { browser } from '$app/environment';
   import type { RulePack, System, CelestialBody } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
-  import { generateSystem } from '$lib/api';
+  import { generateSystem, computePlayerSnapshot } from '$lib/api';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
 
   let rulePack: RulePack | null = null;
@@ -11,6 +11,7 @@
   let isLoading = true;
   let error: string | null = null;
   let visualizer: SystemVisualizer;
+  let shareStatus = '';
 
   // Time state
   let currentTime = Date.now();
@@ -82,6 +83,22 @@
       visualizer?.resetView();
   }
 
+  async function handleShare() {
+      if (!generatedSystem) return;
+      try {
+          const snapshot = computePlayerSnapshot(generatedSystem);
+          const json = JSON.stringify(snapshot);
+          const base64 = btoa(json);
+          const url = `${window.location.origin}/p/${base64}`;
+          await navigator.clipboard.writeText(url);
+          shareStatus = 'Link copied to clipboard!';
+      } catch (err) {
+          shareStatus = 'Failed to copy link.';
+          console.error(err);
+      }
+      setTimeout(() => shareStatus = '', 3000);
+  }
+
   onMount(async () => {
     try {
       rulePack = await fetchAndLoadRulePack('/rulepacks/starter-sf-pack.json');
@@ -108,9 +125,15 @@
   {:else if error}
     <p style="color: red;">Error: {error}</p>
   {:else}
-    <button on:click={handleGenerate} disabled={!rulePack}>
-      Generate System
-    </button>
+    <div class="top-bar">
+        <button on:click={handleGenerate} disabled={!rulePack}>
+          Generate System
+        </button>
+        {#if generatedSystem}
+            <button on:click={handleShare}>Share Player Link</button>
+            {#if shareStatus}<span>{shareStatus}</span>{/if}
+        {/if}
+    </div>
   {/if}
 
   {#if generatedSystem}
@@ -155,7 +178,7 @@
     border-radius: 5px;
     white-space: pre-wrap;
   }
-  .controls, .focus-header {
+  .top-bar, .controls, .focus-header {
     margin: 1em 0;
     display: flex;
     align-items: center;
