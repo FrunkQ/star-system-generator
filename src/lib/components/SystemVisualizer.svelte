@@ -242,6 +242,16 @@
         ctx.fillStyle = "#aaa";
         ctx.fill();
         positions.set(node.id, { x: x, y: y, radius: childRadius });
+
+        // Draw miniature rings if they exist
+        const hasRing = system.nodes.some(n => n.parentId === node.id && n.roleHint === 'ring');
+        if (hasRing) {
+            ctx.strokeStyle = `rgba(150, 150, 150, ${VISUAL_SCALING.ring.opacity})`;
+            ctx.lineWidth = 1 / zoom;
+            ctx.beginPath();
+            ctx.arc(x, y, childRadius + (3 / zoom), 0, 2 * Math.PI);
+            ctx.stroke();
+        }
     }
     ctx.restore();
   }
