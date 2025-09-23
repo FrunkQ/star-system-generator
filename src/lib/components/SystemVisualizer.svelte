@@ -206,14 +206,11 @@
         const innerRadius = (ring.radiusInnerKm || 0) / AU_KM * scale;
         const outerRadius = (ring.radiusOuterKm || 0) / AU_KM * scale;
         
-        const avgRadius = (innerRadius + outerRadius) / 2;
-        const ringWidth = outerRadius - innerRadius;
-
-        ctx.strokeStyle = "rgba(150, 150, 150, 0.4)";
-        ctx.lineWidth = ringWidth;
+        ctx.fillStyle = "rgba(150, 150, 150, 0.3)";
         ctx.beginPath();
-        ctx.arc(viewCenterX, viewCenterY, avgRadius, 0, 2 * Math.PI);
-        ctx.stroke();
+        ctx.arc(viewCenterX, viewCenterY, outerRadius, 0, 2 * Math.PI);
+        ctx.arc(viewCenterX, viewCenterY, innerRadius, 0, 2 * Math.PI, true); // Counter-clockwise for inner hole
+        ctx.fill();
     }
 
     // Draw children

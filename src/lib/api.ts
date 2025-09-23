@@ -100,7 +100,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
         hostId: primaryStar.id,
         hostMu: G * primaryStar.massKg,
         t0: Date.now(),
-        elements: { a_AU: lastOrbitalRadius, e: randomFromRange(rng, 0.05, 0.25), i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
+        elements: { a_AU: lastOrbitalRadius, e: randomFromRange(rng, 0.01, 0.15), i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
     };
 
     const planetType = pack.distributions['planet_type'] ? weightedChoice<string>(rng, pack.distributions['planet_type']) : 'planet/terrestrial';
