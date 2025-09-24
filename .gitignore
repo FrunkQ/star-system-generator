@@ -22,3 +22,6 @@ pnpm-debug.log*
 
 # Temporary files
 /temp/
+
+# Gemini Log
+gemini.md
