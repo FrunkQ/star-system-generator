@@ -1,9 +1,9 @@
-// ===== api.ts (stubs for M0–M1) =====
+// ===== api.ts =====
 import type { System, RulePack, ID, CelestialBody, Barycenter, BurnPlan, Orbit, Expr } from "./types";
 import { SeededRNG } from './rng';
 import { weightedChoice, randomFromRange, toRoman } from './utils';
 
-export interface GenOptions { starCount?: number; maxBodies?: number; }
+export interface GenOptions { maxBodies?: number; } // starCount is no longer an option
 
 const SOLAR_MASS_KG = 1.989e30;
 const SOLAR_RADIUS_KM = 696340;
@@ -12,17 +12,8 @@ const EARTH_RADIUS_KM = 6371;
 const G = 6.67430e-11; // Gravitational constant
 const AU_KM = 149597870.7;
 
-function _generateStar(seed: string, id: ID, parentId: ID | null, pack: RulePack, rng: SeededRNG): CelestialBody {
-    const starNamePrefixTable = pack.distributions['star_name_prefix'];
-    const starNameDigitsTable = pack.distributions['star_name_number_digits'];
-    let starName = `Star ${seed}`;
-    if (starNamePrefixTable && starNameDigitsTable) {
-        const prefix = weightedChoice<string>(rng, starNamePrefixTable);
-        const numDigits = weightedChoice<number>(rng, starNameDigitsTable);
-        const number = ' '.padStart(numDigits, '0').replace(/0/g, () => rng.nextInt(0, 9).toString());
-        starName = `${prefix}${number}`;
-    }
-
+// Generates a star object, but not its name, which is determined by the system context.
+function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: SeededRNG): CelestialBody {
     const starTypeTable = pack.distributions['star_types'];
     const starClass = starTypeTable ? weightedChoice<string>(rng, starTypeTable) : 'star/G2V';
     const starTemplate = pack.statTemplates?.[starClass] || pack.statTemplates?.['star/default'];
@@ -44,7 +35,7 @@ function _generateStar(seed: string, id: ID, parentId: ID | null, pack: RulePack
     return {
         id: id,
         parentId: parentId,
-        name: starName,
+        name: "", // Name is set by the caller
         kind: 'body',
         roleHint: 'star',
         classes: [starClass],
@@ -60,81 +51,92 @@ function _generateStar(seed: string, id: ID, parentId: ID | null, pack: RulePack
 export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOptions> = {}): System {
   const rng = new SeededRNG(seed);
   const nodes: (CelestialBody | Barycenter)[] = [];
-  const starCount = opts.starCount || 1;
 
   let systemRoot: CelestialBody | Barycenter;
   let systemName: string;
   let totalMassKg = 0;
   let rootRadiusKm = 0;
 
-  if (starCount === 1) {
-    const primaryStar = _generateStar(seed, `${seed}-star-1`, null, pack, rng);
-    nodes.push(primaryStar);
-    systemRoot = primaryStar;
-    systemName = primaryStar.name;
-    totalMassKg = primaryStar.massKg || 0;
-    rootRadiusKm = primaryStar.radiusKm || 0;
+  // --- Star Generation ---
+  const baseNamePrefixTable = pack.distributions['star_name_prefix'];
+  const baseNameDigitsTable = pack.distributions['star_name_number_digits'];
+  let baseName = `System ${seed}`;
+  if (baseNamePrefixTable && baseNameDigitsTable) {
+      const prefix = weightedChoice<string>(rng, baseNamePrefixTable);
+      const numDigits = weightedChoice<number>(rng, baseNameDigitsTable);
+      baseName = `${prefix}${ ' '.padStart(numDigits, '0').replace(/0/g, () => rng.nextInt(0, 9).toString())}`;
+  }
+
+  const starA = _generateStar(`${seed}-star-a`, null, pack, rng);
+  const starClass = starA.classes[0].split('/')[1]; // e.g., "G2V" -> "G"
+
+  let isBinary = false;
+  if (['O', 'B'].includes(starClass)) {
+      isBinary = weightedChoice<boolean>(rng, pack.distributions['is_binary_chance_massive']);
+  } else if (['A', 'F', 'G', 'K'].includes(starClass)) {
+      isBinary = weightedChoice<boolean>(rng, pack.distributions['is_binary_chance_sunlike']);
+  } else { // M, WD, etc.
+      isBinary = weightedChoice<boolean>(rng, pack.distributions['is_binary_chance_lowmass']);
+  }
+
+  if (!isBinary) {
+    starA.name = baseName;
+    nodes.push(starA);
+    systemRoot = starA;
+    systemName = starA.name;
+    totalMassKg = starA.massKg || 0;
+    rootRadiusKm = starA.radiusKm || 0;
   } else {
-    // --- Barycenter & Multi-Star Generation ---
     const barycenterId = `${seed}-barycenter-0`;
     const barycenter: Barycenter = {
         id: barycenterId,
         parentId: null,
-        name: "System Barycenter", // temporary name
+        name: `${baseName} System Barycenter`,
         kind: "barycenter",
-        memberIds: [],
+        memberIds: [starA.id],
         tags: [],
     };
 
-    // Generate a single base name for the system
-    const starNamePrefixTable = pack.distributions['star_name_prefix'];
-    const starNameDigitsTable = pack.distributions['star_name_number_digits'];
-    let baseName = `System ${seed}`;
-    if (starNamePrefixTable && starNameDigitsTable) {
-        const prefix = weightedChoice<string>(rng, starNamePrefixTable);
-        const numDigits = weightedChoice<number>(rng, starNameDigitsTable);
-        baseName = `${prefix}${ ' '.padStart(numDigits, '0').replace(/0/g, () => rng.nextInt(0, 9).toString())}`;
-    }
-    
-    const stars: CelestialBody[] = [];
-    for (let i = 0; i < starCount; i++) {
-        const star = _generateStar(seed, `${seed}-star-${i + 1}`, barycenterId, pack, rng);
-        star.name = `${baseName} ${String.fromCharCode(65 + i)}`;
-        stars.push(star);
-        totalMassKg += star.massKg || 0;
-    }
-    
-    // Simple circular orbit assignment for binary/trinary systems
-    const totalSeparationAU = 0.2 * (starCount - 1); // Arbitrary separation
-    stars.forEach((star, i) => {
-        const otherStarsMass = totalMassKg - (star.massKg || 0);
-        const semiMajorAxisAU = totalSeparationAU * (otherStarsMass / totalMassKg);
-        
-        star.orbit = {
-            hostId: barycenterId,
-            hostMu: G * totalMassKg,
-            t0: Date.now(),
-            elements: {
-                a_AU: semiMajorAxisAU,
-                e: 0, // Circular orbit for simplicity
-                i_deg: 0,
-                omega_deg: 0,
-                Omega_deg: 0,
-                M0_rad: (2 * Math.PI / starCount) * i, // Evenly space stars
-            }
-        };
-        barycenter.memberIds.push(star.id);
-        nodes.push(star);
-    });
+    starA.parentId = barycenterId;
+    starA.name = `${baseName} A`;
 
+    const starB = _generateStar(`${seed}-star-b`, barycenterId, pack, rng);
+    starB.name = `${baseName} B`;
+    barycenter.memberIds.push(starB.id);
+
+    totalMassKg = (starA.massKg || 0) + (starB.massKg || 0);
     barycenter.effectiveMassKg = totalMassKg;
-    barycenter.name = `${baseName} System`;
-    nodes.unshift(barycenter); // Add barycenter at the beginning
-    systemRoot = barycenter;
-    systemName = barycenter.name;
-    rootRadiusKm = stars.reduce((acc, s) => acc + (s.radiusKm || 0), 0); // Not physically accurate, but a placeholder
-  }
 
+    const separationRange = weightedChoice<[number, number]>(rng, pack.distributions['binary_star_separation_au']);
+    const totalSeparationAU = randomFromRange(rng, separationRange[0], separationRange[1]);
+
+    const m1 = starA.massKg || 0;
+    const m2 = starB.massKg || 0;
+
+    starA.orbit = {
+        hostId: barycenterId,
+        hostMu: G * totalMassKg,
+        t0: Date.now(),
+        elements: { 
+            a_AU: totalSeparationAU * (m2 / (m1 + m2)), 
+            e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 
+        }
+    };
+    starB.orbit = {
+        hostId: barycenterId,
+        hostMu: G * totalMassKg,
+        t0: Date.now(),
+        elements: { 
+            a_AU: totalSeparationAU * (m1 / (m1 + m2)), 
+            e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: Math.PI // Opposite side
+        }
+    };
+
+    nodes.push(barycenter, starA, starB);
+    systemRoot = barycenter;
+    systemName = `${baseName} System`;
+    rootRadiusKm = (starA.radiusKm || 0) + (starB.radiusKm || 0); // Placeholder radius
+  }
 
   // --- Planet & Belt Generation ---
   const bodyCountTable = pack.distributions['planet_count'];

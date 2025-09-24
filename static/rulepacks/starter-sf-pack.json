@@ -1,6 +1,6 @@
 {
   "id": "starter-sf-pack",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "name": "Starter Sci‑Fi Pack (Budassi + Basics)",
   "distributions": {
     "star_types": {
@@ -18,6 +18,37 @@
         { "weight": 1, "value": "star/magnetar" },
         { "weight": 2, "value": "star/BH" }
       ]
+    },
+    "is_binary_chance_massive": {
+        "name": "Chance of Massive Star (O, B) being binary",
+        "entries": [
+            { "weight": 95, "value": true },
+            { "weight": 5, "value": false }
+        ]
+    },
+    "is_binary_chance_sunlike": {
+        "name": "Chance of Sun-like Star (A, F, G, K) being binary",
+        "entries": [
+            { "weight": 50, "value": true },
+            { "weight": 50, "value": false }
+        ]
+    },
+    "is_binary_chance_lowmass": {
+        "name": "Chance of Low-mass Star (M) being binary",
+        "entries": [
+            { "weight": 25, "value": true },
+            { "weight": 75, "value": false }
+        ]
+    },
+    "binary_star_separation_au": {
+        "name": "Separation of binary stars in AU",
+        "entries": [
+            { "weight": 20, "value": [0.05, 0.5] },
+            { "weight": 30, "value": [0.5, 5] },
+            { "weight": 30, "value": [5, 50] },
+            { "weight": 15, "value": [50, 500] },
+            { "weight": 5, "value": [500, 5000] }
+        ]
     },
     "planet_count": {
         "name": "Number of Planets per Star",

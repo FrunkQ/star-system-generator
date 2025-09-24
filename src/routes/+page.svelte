@@ -13,9 +13,6 @@
   let visualizer: SystemVisualizer;
   let shareStatus = '';
 
-  // Generation options
-  let starCount = 1;
-
   // Time state
   let currentTime = Date.now();
   let isPlaying = false;
@@ -66,7 +63,7 @@
       return;
     }
     const seed = `seed-${Date.now()}`;
-    generatedSystem = generateSystem(seed, rulePack, { starCount });
+    generatedSystem = generateSystem(seed, rulePack);
     currentTime = generatedSystem.epochT0;
     focusedBodyId = null;
     visualizer?.resetView();
@@ -133,12 +130,6 @@
             <button on:click={handleGenerate} disabled={!rulePack}>
               Generate System
             </button>
-            <fieldset class="star-count">
-                <legend>Stars:</legend>
-                <label><input type="radio" bind:group={starCount} name="star-count" value={1}> 1</label>
-                <label><input type="radio" bind:group={starCount} name="star-count" value={2}> 2</label>
-                <label><input type="radio" bind:group={starCount} name="star-count" value={3}> 3</label>
-            </fieldset>
         </div>
         {#if generatedSystem}
             <div class="share-controls">
@@ -204,22 +195,6 @@
       display: flex;
       align-items: center;
       gap: 1em;
-  }
-  .star-count {
-      display: flex;
-      align-items: center;
-      gap: 0.5em;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      padding: 0.2em 0.6em;
-  }
-  .star-count legend {
-      font-size: 0.8em;
-      font-weight: bold;
-      padding: 0 0.3em;
-  }
-  .star-count label {
-      font-size: 0.9em;
   }
   .focus-header h2 {
       margin: 0;
