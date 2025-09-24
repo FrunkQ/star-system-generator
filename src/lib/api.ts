@@ -113,10 +113,14 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
     const m1 = starA.massKg || 0;
     const m2 = starB.massKg || 0;
 
+    // Shared mean motion for the binary pair
+    const n_rad_per_s = Math.sqrt(G * totalMassKg / Math.pow(totalSeparationAU * AU_KM * 1000, 3));
+
     starA.orbit = {
         hostId: barycenterId,
         hostMu: G * totalMassKg,
         t0: Date.now(),
+        n_rad_per_s: n_rad_per_s,
         elements: { 
             a_AU: totalSeparationAU * (m2 / (m1 + m2)), 
             e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 
@@ -126,6 +130,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
         hostId: barycenterId,
         hostMu: G * totalMassKg,
         t0: Date.now(),
+        n_rad_per_s: n_rad_per_s,
         elements: { 
             a_AU: totalSeparationAU * (m1 / (m1 + m2)), 
             e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: Math.PI // Opposite side
@@ -462,7 +467,8 @@ export function propagate(node: CelestialBody | Barycenter, tMs: number): {x: nu
   const a_m = a_AU * AU_KM * 1000; // semi-major axis in meters
 
   // 1. Mean motion (n)
-  const n = Math.sqrt(hostMu / Math.pow(a_m, 3));
+  // Use pre-calculated mean motion for binary stars, otherwise calculate it.
+  const n = node.orbit.n_rad_per_s ?? Math.sqrt(hostMu / Math.pow(a_m, 3));
 
   // 2. Mean anomaly (M) at time t
   const M = M0_rad + n * ((tMs - t0) / 1000);
