@@ -50,6 +50,14 @@
             { "weight": 5, "value": [500, 5000] }
         ]
     },
+    "binary_planet_placement": {
+        "name": "Initial placement of planets in a binary system",
+        "entries": [
+            { "weight": 50, "value": "circumbinary" },
+            { "weight": 35, "value": "around_primary" },
+            { "weight": 15, "value": "around_secondary" }
+        ]
+    },
     "planet_count": {
         "name": "Number of Planets per Star",
         "entries": [
