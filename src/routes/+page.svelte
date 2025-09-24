@@ -5,6 +5,7 @@
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import { generateSystem, computePlayerSnapshot } from '$lib/api';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
+  import BodyDetails from '$lib/components/BodyDetails.svelte';
 
   let rulePack: RulePack | null = null;
   let generatedSystem: System | null = null;
@@ -165,9 +166,8 @@
     </div>
 
     <SystemVisualizer bind:this={visualizer} system={generatedSystem} {currentTime} {focusedBodyId} on:focus={handleFocus} />
-    
-    <h2>Generated System (JSON):</h2>
-    <pre>{JSON.stringify(generatedSystem, null, 2)}</pre>
+
+    <BodyDetails body={focusedBody} />
   {/if}
 </main>
 
@@ -175,12 +175,6 @@
   main {
     font-family: sans-serif;
     padding: 2em;
-  }
-  pre {
-    background-color: #f4f4f4;
-    padding: 1em;
-    border-radius: 5px;
-    white-space: pre-wrap;
   }
   .top-bar, .controls, .focus-header {
     margin: 1em 0;
