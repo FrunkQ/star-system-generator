@@ -139,6 +139,41 @@
             { "weight": 95, "value": false },
             { "weight": 5, "value": true }
         ]
+    },
+    "hydrosphere_coverage": {
+        "name": "Hydrosphere Coverage",
+        "entries": [
+            { "weight": 60, "value": [0, 0.1] },
+            { "weight": 20, "value": [0.1, 0.5] },
+            { "weight": 15, "value": [0.5, 0.9] },
+            { "weight": 5, "value": [0.9, 1.0] }
+        ]
+    },
+    "hydrosphere_composition": {
+        "name": "Hydrosphere Composition",
+        "entries": [
+            { "weight": 80, "value": "water" },
+            { "weight": 15, "value": "methane" },
+            { "weight": 5, "value": "ammonia" }
+        ]
+    },
+    "atmosphere_pressure_bar": {
+        "name": "Atmosphere Pressure (bar)",
+        "entries": [
+            { "weight": 20, "value": [0.01, 0.1] },
+            { "weight": 50, "value": [0.1, 2.0] },
+            { "weight": 20, "value": [2.0, 10.0] },
+            { "weight": 10, "value": [10.0, 100.0] }
+        ]
+    },
+    "atmosphere_composition": {
+        "name": "Atmosphere Composition",
+        "entries": [
+            { "weight": 40, "value": {"main": "N2", "secondary": "O2"} },
+            { "weight": 30, "value": {"main": "CO2", "secondary": "N2"} },
+            { "weight": 20, "value": {"main": "H2", "secondary": "He"} },
+            { "weight": 10, "value": {"main": "CH4", "secondary": "N2"} }
+        ]
     }
   },
   "tagVocab": [

@@ -100,6 +100,23 @@ function _generatePlanetaryBody(
         planet.radiusKm = randomFromRange(rng, planetTemplate.radius_earth[0], planetTemplate.radius_earth[1]) * EARTH_RADIUS_KM;
     }
 
+    // Generate atmosphere and hydrosphere for terrestrial planets
+    if (planetType === 'planet/terrestrial') {
+        const pressureRange = weightedChoice<[number, number]>(rng, pack.distributions['atmosphere_pressure_bar']);
+        const atmComp = weightedChoice<{main: string, secondary: string}>(rng, pack.distributions['atmosphere_composition']);
+        planet.atmosphere = {
+            pressure_bar: randomFromRange(rng, pressureRange[0], pressureRange[1]),
+            main: atmComp.main,
+            composition: { [atmComp.main]: 0.8, [atmComp.secondary]: 0.2 }
+        };
+
+        const hydroCoverageRange = weightedChoice<[number, number]>(rng, pack.distributions['hydrosphere_coverage']);
+        planet.hydrosphere = {
+            coverage: randomFromRange(rng, hydroCoverageRange[0], hydroCoverageRange[1]),
+            composition: weightedChoice<string>(rng, pack.distributions['hydrosphere_composition'])
+        };
+    }
+
     planet.classes = classifyBody(planet, host, pack);
     newNodes.push(planet);
 
