@@ -55,14 +55,15 @@ function _generatePlanetaryBody(
     i: number,
     host: CelestialBody | Barycenter,
     orbit: Orbit,
-    name: string
+    name: string,
+    allNodes: (CelestialBody | Barycenter)[]
 ): CelestialBody[] {
     const newNodes: CelestialBody[] = [];
 
     const beltChanceTable = pack.distributions['belt_chance'];
     const isBelt = beltChanceTable ? weightedChoice<boolean>(rng, beltChanceTable) : false;
 
-    if (isBelt) {
+    if (isBelt && host.kind !== 'body') { // Belts only form around stars/barycenters
         const belt: CelestialBody = {
             id: `${seed}-belt-${i + 1}`,
             parentId: host.id,
@@ -78,13 +79,13 @@ function _generatePlanetaryBody(
         return newNodes;
     }
 
-    const planetId = `${seed}-planet-${i + 1}`;
+    const planetId = `${seed}-body-${i + 1}`;
     const planet: CelestialBody = {
         id: planetId,
         parentId: host.id,
         name: name,
         kind: 'body',
-        roleHint: 'planet',
+        roleHint: (host.kind === 'body' && (host.roleHint === 'planet' || host.roleHint === 'moon')) ? 'moon' : 'planet',
         classes: [],
         orbit: orbit,
         massKg: 0, // placeholder
@@ -100,85 +101,117 @@ function _generatePlanetaryBody(
         planet.radiusKm = randomFromRange(rng, planetTemplate.radius_earth[0], planetTemplate.radius_earth[1]) * EARTH_RADIUS_KM;
     }
 
-    // Generate atmosphere and hydrosphere for terrestrial planets
+    // --- Feature Calculation for Classifier ---
+    const features: Record<string, number | string> = {};
+    if (planet.massKg) features['mass_Me'] = planet.massKg / EARTH_MASS_KG;
+    if (planet.radiusKm) features['radius_Re'] = planet.radiusKm / EARTH_RADIUS_KM;
+    if (planet.orbit) features['a_AU'] = planet.orbit.elements.a_AU;
+
+    let ultimateHost = allNodes.find(n => n.id === orbit.hostId);
+    while(ultimateHost && ultimateHost.parentId) {
+        const nextHost = allNodes.find(n => n.id === ultimateHost!.parentId);
+        if (nextHost) ultimateHost = nextHost; else break;
+    }
+
+    let primaryStar: CelestialBody | undefined;
+    if (ultimateHost?.kind === 'body') primaryStar = ultimateHost as CelestialBody;
+    if (ultimateHost?.kind === 'barycenter') primaryStar = allNodes.find(n => n.id === ultimateHost.memberIds[0]) as CelestialBody;
+
+    if (primaryStar && primaryStar.roleHint === 'star') {
+        features['stellarType'] = primaryStar.classes[0].split('/')[1]?.[0] || 'G';
+        const albedo = 0.3; // Placeholder albedo
+        const starTemp = primaryStar.temperatureK || 5778;
+        const starRadius_AU = (primaryStar.radiusKm || SOLAR_RADIUS_KM) / AU_KM;
+        const planetDist_AU = planet.orbit?.elements.a_AU || 0;
+        if (planetDist_AU > 0) {
+            features['Teq_K'] = starTemp * Math.sqrt(starRadius_AU / (2 * planetDist_AU)) * Math.pow(1 - albedo, 0.25);
+        }
+        features['stellarIrradiation'] = primaryStar.magneticField?.strengthGauss || 1;
+    }
+
+    const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
+    features['tidalHeating'] = (hostMass / Math.pow(features['a_AU'] as number, 3)) * (planet.orbit?.elements.e || 0);
+
+    const escapeVelocity = Math.sqrt(2 * G * (planet.massKg || 0) / ((planet.radiusKm || 1) * 1000)) / 1000; // in km/s
+    features['escapeVelocity_kms'] = escapeVelocity;
+
     if (planetType === 'planet/terrestrial') {
-        const pressureRange = weightedChoice<[number, number]>(rng, pack.distributions['atmosphere_pressure_bar']);
-        const atmComp = weightedChoice<{main: string, secondary: string}>(rng, pack.distributions['atmosphere_composition']);
-        planet.atmosphere = {
-            pressure_bar: randomFromRange(rng, pressureRange[0], pressureRange[1]),
-            main: atmComp.main,
-            composition: { [atmComp.main]: 0.8, [atmComp.secondary]: 0.2 }
-        };
+        let hasAtmosphere = true;
+        if (escapeVelocity < 3.0) hasAtmosphere = false;
+        if ((features['stellarIrradiation'] as number) > 100 && (features['a_AU'] as number) < 0.5) hasAtmosphere = false;
+
+        if (hasAtmosphere) {
+            const pressureRange = weightedChoice<[number, number]>(rng, pack.distributions['atmosphere_pressure_bar']);
+            const atmComp = weightedChoice<{main: string, secondary: string}>(rng, pack.distributions['atmosphere_composition']);
+            planet.atmosphere = {
+                pressure_bar: randomFromRange(rng, pressureRange[0], pressureRange[1]),
+                main: atmComp.main,
+                composition: { [atmComp.main]: 0.8, [atmComp.secondary]: 0.2 }
+            };
+            features['atm.main'] = planet.atmosphere.main;
+            features['atm.pressure_bar'] = planet.atmosphere.pressure_bar;
+        }
 
         const hydroCoverageRange = weightedChoice<[number, number]>(rng, pack.distributions['hydrosphere_coverage']);
         planet.hydrosphere = {
             coverage: randomFromRange(rng, hydroCoverageRange[0], hydroCoverageRange[1]),
             composition: weightedChoice<string>(rng, pack.distributions['hydrosphere_composition'])
         };
+        features['hydrosphere.coverage'] = planet.hydrosphere.coverage;
     }
 
-    planet.classes = classifyBody(planet, host, pack);
+    planet.classes = classifyBody(features, pack);
     newNodes.push(planet);
 
-    const isGasGiant = planet.classes.includes('planet/gas-giant');
-    const ringChanceTable = pack.distributions[isGasGiant ? 'gas_giant_ring_chance' : 'terrestrial_ring_chance'];
-    const hasRing = ringChanceTable ? weightedChoice<boolean>(rng, ringChanceTable) : false;
+    if (planet.roleHint === 'planet') {
+        const isGasGiant = planet.classes.includes('planet/gas-giant');
+        const ringChanceTable = pack.distributions[isGasGiant ? 'gas_giant_ring_chance' : 'terrestrial_ring_chance'];
+        const hasRing = ringChanceTable ? weightedChoice<boolean>(rng, ringChanceTable) : false;
 
-    if (hasRing) {
-        const ringTemplate = pack.statTemplates?.['ring/planetary'];
-        let ringInnerKm = (planet.radiusKm || 0) * 1.5;
-        let ringOuterKm = (planet.radiusKm || 0) * 2.5;
-        if (ringTemplate) {
-            ringInnerKm = (planet.radiusKm || 0) * randomFromRange(rng, ringTemplate.radius_inner_multiple[0], ringTemplate.radius_inner_multiple[1]);
-            ringOuterKm = (planet.radiusKm || 0) * randomFromRange(rng, ringTemplate.radius_outer_multiple[0], ringTemplate.radius_outer_multiple[1]);
+        if (hasRing) {
+            const ringTemplate = pack.statTemplates?.['ring/planetary'];
+            let ringInnerKm = (planet.radiusKm || 0) * 1.5;
+            let ringOuterKm = (planet.radiusKm || 0) * 2.5;
+            if (ringTemplate) {
+                ringInnerKm = (planet.radiusKm || 0) * randomFromRange(rng, ringTemplate.radius_inner_multiple[0], ringTemplate.radius_inner_multiple[1]);
+                ringOuterKm = (planet.radiusKm || 0) * randomFromRange(rng, ringTemplate.radius_outer_multiple[0], ringTemplate.radius_outer_multiple[1]);
+            }
+            const ring: CelestialBody = {
+                id: `${planetId}-ring-1`,
+                parentId: planet.id,
+                name: `${planet.name} Ring`,
+                kind: 'body',
+                roleHint: 'ring',
+                classes: ['ring/planetary'],
+                radiusInnerKm: ringInnerKm,
+                radiusOuterKm: ringOuterKm,
+                tags: [],
+                areas: [],
+            };
+            newNodes.push(ring);
         }
-        const ring: CelestialBody = {
-            id: `${planetId}-ring-1`,
-            parentId: planet.id,
-            name: `${planet.name} Ring`,
-            kind: 'body',
-            roleHint: 'ring',
-            classes: ['ring/planetary'],
-            radiusInnerKm: ringInnerKm,
-            radiusOuterKm: ringOuterKm,
-            tags: [],
-            areas: [],
-        };
-        newNodes.push(ring);
-    }
 
-    const moonCountTable = pack.distributions[isGasGiant ? 'gas_giant_moon_count' : 'terrestrial_moon_count'];
-    const numMoons = moonCountTable ? weightedChoice<number>(rng, moonCountTable) : 0;
-    let lastMoonApoapsisAU = (planet.radiusKm || 0) / AU_KM * 3;
+        const moonCountTable = pack.distributions[isGasGiant ? 'gas_giant_moon_count' : 'terrestrial_moon_count'];
+        const numMoons = moonCountTable ? weightedChoice<number>(rng, moonCountTable) : 0;
+        let lastMoonApoapsisAU = (planet.radiusKm || 0) / AU_KM * 3;
 
-    for (let j = 0; j < numMoons; j++) {
-        const moonMinGap = (planet.radiusKm || 0) / AU_KM * 2;
-        const newMoonPeriapsis = lastMoonApoapsisAU + randomFromRange(rng, moonMinGap, moonMinGap * 3);
-        const newMoonEccentricity = randomFromRange(rng, 0, 0.05);
-        const newMoonA_AU = newMoonPeriapsis / (1 - newMoonEccentricity);
-        lastMoonApoapsisAU = newMoonA_AU * (1 + newMoonEccentricity);
+        for (let j = 0; j < numMoons; j++) {
+            const moonMinGap = (planet.radiusKm || 0) / AU_KM * 2;
+            const newMoonPeriapsis = lastMoonApoapsisAU + randomFromRange(rng, moonMinGap, moonMinGap * 3);
+            const newMoonEccentricity = randomFromRange(rng, 0, 0.05);
+            const newMoonA_AU = newMoonPeriapsis / (1 - newMoonEccentricity);
+            lastMoonApoapsisAU = newMoonA_AU * (1 + newMoonEccentricity);
 
-        const moonOrbit: Orbit = {
-            hostId: planet.id,
-            hostMu: G * (planet.massKg || 0),
-            t0: Date.now(),
-            elements: { a_AU: newMoonA_AU, e: newMoonEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
-        };
-        const moon: CelestialBody = {
-            id: `${planet.id}-moon-${j + 1}`,
-            parentId: planet.id,
-            name: `${planet.name} ${toRoman(j + 1)}`,
-            kind: 'body',
-            roleHint: 'moon',
-            classes: [],
-            orbit: moonOrbit,
-            massKg: (planet.massKg || 0) * randomFromRange(rng, 0.0001, 0.01),
-            radiusKm: (planet.radiusKm || 0) * randomFromRange(rng, 0.1, 0.25),
-            tags: [],
-            areas: [],
-        };
-        moon.classes = classifyBody(moon, planet, pack);
-        newNodes.push(moon);
+            const moonOrbit: Orbit = {
+                hostId: planet.id,
+                hostMu: G * (planet.massKg || 0),
+                t0: Date.now(),
+                elements: { a_AU: newMoonA_AU, e: newMoonEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
+            };
+            
+            const moonNodes = _generatePlanetaryBody(rng, pack, `${planet.id}-moon`, j, planet, moonOrbit, `${planet.name} ${toRoman(j + 1)}`, [...allNodes, ...newNodes]);
+            newNodes.push(...moonNodes);
+        }
     }
 
     return newNodes;
@@ -291,7 +324,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
             t0: Date.now(),
             elements: { a_AU: newA_AU, e: newEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
         };
-        const newNodes = _generatePlanetaryBody(rng, pack, seed, i, systemRoot, orbit, `${systemName} ${String.fromCharCode(98 + i)}`);
+        const newNodes = _generatePlanetaryBody(rng, pack, seed, i, systemRoot, orbit, `${systemName} ${String.fromCharCode(98 + i)}`, nodes);
         nodes.push(...newNodes);
     }
   } else {
@@ -357,7 +390,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
             elements: { a_AU: newA_AU, e: newEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
         };
 
-        const newNodes = _generatePlanetaryBody(rng, pack, seed, i, host, orbit, `${planetNamePrefix}${toRoman(i + 1)}`);
+        const newNodes = _generatePlanetaryBody(rng, pack, seed, i, host, orbit, `${planetNamePrefix}${toRoman(i + 1)}`, nodes);
         nodes.push(...newNodes);
 
         if (placement === 'circumbinary') lastApo_p = newApoapsis;
@@ -401,15 +434,8 @@ function evaluateExpr(features: Record<string, number | string>, expr: Expr): bo
     return false;
 }
 
-export function classifyBody(body: CelestialBody, host: CelestialBody | Barycenter | undefined, pack: RulePack): string[] {
+export function classifyBody(features: Record<string, number | string>, pack: RulePack): string[] {
   if (!pack.classifier) return [];
-
-    const features: Record<string, number | string> = {};
-    
-    // --- Compute Features ---
-    if (body.massKg) features['mass_Me'] = body.massKg / EARTH_MASS_KG;
-    if (body.radiusKm) features['radius_Re'] = body.radiusKm / EARTH_RADIUS_KM;
-    // TODO: Add more feature calculations (Teq_K, period_days, etc.)
 
     const scores: Record<string, number> = {};
 
@@ -423,7 +449,16 @@ export function classifyBody(body: CelestialBody, host: CelestialBody | Barycent
         .filter(([, score]) => score >= pack.classifier.minScore)
         .sort((a, b) => b[1] - a[1]);
 
-    return sortedClasses.slice(0, pack.classifier.maxClasses).map(([className]) => className);
+    // Start with the most likely class, but also add generic fallbacks.
+    const primaryClass = sortedClasses.slice(0, pack.classifier.maxClasses).map(([className]) => className);
+    if (primaryClass.length === 0) {
+        if ((features['mass_Me'] as number) > 10) {
+            primaryClass.push('planet/gas-giant');
+        } else {
+            primaryClass.push('planet/terrestrial');
+        }
+    }
+    return primaryClass;
 }
 
 export function computePlayerSnapshot(sys: System, scopeRootId?: ID): System {

@@ -68,6 +68,7 @@ export interface System {
 export interface ClassifierRule { when: Expr; addClass: string; score: number; }
 export type Feature =
   | "mass_Me" | "radius_Re" | "density" | "Teq_K" | "period_days" | "a_AU" | "stellarType"
+  | "tidalHeating" | "escapeVelocity_kms" | "stellarIrradiation"
   | "atm.main" | "atm.pressure_bar" | "hydrosphere.coverage" | "tidallyLocked" | "ringSystem" | "age_Gyr";
 export type Expr = { all?: Expr[]; any?: Expr[]; not?: Expr }
   | { gt: [Feature, number] } | { lt: [Feature, number] } | { between: [Feature, number, number] }
