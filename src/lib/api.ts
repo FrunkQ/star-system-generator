@@ -12,60 +12,124 @@ const EARTH_RADIUS_KM = 6371;
 const G = 6.67430e-11; // Gravitational constant
 const AU_KM = 149597870.7;
 
+function _generateStar(seed: string, id: ID, parentId: ID | null, pack: RulePack, rng: SeededRNG): CelestialBody {
+    const starNamePrefixTable = pack.distributions['star_name_prefix'];
+    const starNameDigitsTable = pack.distributions['star_name_number_digits'];
+    let starName = `Star ${seed}`;
+    if (starNamePrefixTable && starNameDigitsTable) {
+        const prefix = weightedChoice<string>(rng, starNamePrefixTable);
+        const numDigits = weightedChoice<number>(rng, starNameDigitsTable);
+        const number = ' '.padStart(numDigits, '0').replace(/0/g, () => rng.nextInt(0, 9).toString());
+        starName = `${prefix}${number}`;
+    }
+
+    const starTypeTable = pack.distributions['star_types'];
+    const starClass = starTypeTable ? weightedChoice<string>(rng, starTypeTable) : 'star/G2V';
+    const starTemplate = pack.statTemplates?.[starClass] || pack.statTemplates?.['star/default'];
+
+    let starMassKg = SOLAR_MASS_KG;
+    let starRadiusKm = SOLAR_RADIUS_KM;
+    let starTemperatureK = 5778;
+    let starMagneticField;
+
+    if (starTemplate) {
+        starMassKg = randomFromRange(rng, starTemplate.mass_solar[0], starTemplate.mass_solar[1]) * SOLAR_MASS_KG;
+        starRadiusKm = randomFromRange(rng, starTemplate.radius_solar[0], starTemplate.radius_solar[1]) * SOLAR_RADIUS_KM;
+        starTemperatureK = randomFromRange(rng, starTemplate.temp_k[0], starTemplate.temp_k[1]);
+        if (starTemplate.mag_gauss) {
+            starMagneticField = { strengthGauss: randomFromRange(rng, starTemplate.mag_gauss[0], starTemplate.mag_gauss[1]) };
+        }
+    }
+
+    return {
+        id: id,
+        parentId: parentId,
+        name: starName,
+        kind: 'body',
+        roleHint: 'star',
+        classes: [starClass],
+        massKg: starMassKg,
+        radiusKm: starRadiusKm,
+        temperatureK: starTemperatureK,
+        magneticField: starMagneticField,
+        tags: [],
+        areas: [],
+    };
+}
+
 export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOptions> = {}): System {
   const rng = new SeededRNG(seed);
   const nodes: (CelestialBody | Barycenter)[] = [];
+  const starCount = opts.starCount || 1;
 
-  // --- Star Generation ---
-  const starNamePrefixTable = pack.distributions['star_name_prefix'];
-  const starNameDigitsTable = pack.distributions['star_name_number_digits'];
-  let starName = `Star ${seed}`;
-  if (starNamePrefixTable && starNameDigitsTable) {
-      const prefix = weightedChoice<string>(rng, starNamePrefixTable);
-      const numDigits = weightedChoice<number>(rng, starNameDigitsTable);
-      const number = ' '.padStart(numDigits, '0').replace(/0/g, () => rng.nextInt(0, 9).toString());
-      starName = `${prefix}${number}`;
-  }
+  let systemRoot: CelestialBody | Barycenter;
+  let systemName: string;
+  let totalMassKg = 0;
+  let rootRadiusKm = 0;
 
-  const starTypeTable = pack.distributions['star_types'];
-  const starClass = starTypeTable ? weightedChoice<string>(rng, starTypeTable) : 'star/G2V';
-  const starTemplate = pack.statTemplates?.[starClass] || pack.statTemplates?.['star/default'];
-
-  let starMassKg = SOLAR_MASS_KG;
-  let starRadiusKm = SOLAR_RADIUS_KM;
-  let starTemperatureK = 5778;
-  let starMagneticField;
-
-  if (starTemplate) {
-    starMassKg = randomFromRange(rng, starTemplate.mass_solar[0], starTemplate.mass_solar[1]) * SOLAR_MASS_KG;
-    starRadiusKm = randomFromRange(rng, starTemplate.radius_solar[0], starTemplate.radius_solar[1]) * SOLAR_RADIUS_KM;
-    starTemperatureK = randomFromRange(rng, starTemplate.temp_k[0], starTemplate.temp_k[1]);
-    if (starTemplate.mag_gauss) {
-        starMagneticField = { strengthGauss: randomFromRange(rng, starTemplate.mag_gauss[0], starTemplate.mag_gauss[1]) };
+  if (starCount === 1) {
+    const primaryStar = _generateStar(seed, `${seed}-star-1`, null, pack, rng);
+    nodes.push(primaryStar);
+    systemRoot = primaryStar;
+    systemName = primaryStar.name;
+    totalMassKg = primaryStar.massKg || 0;
+    rootRadiusKm = primaryStar.radiusKm || 0;
+  } else {
+    // --- Barycenter & Multi-Star Generation ---
+    const barycenterId = `${seed}-barycenter-0`;
+    const barycenter: Barycenter = {
+        id: barycenterId,
+        parentId: null,
+        name: "System Barycenter",
+        kind: "barycenter",
+        memberIds: [],
+        tags: [],
+    };
+    
+    const stars: CelestialBody[] = [];
+    for (let i = 0; i < starCount; i++) {
+        const star = _generateStar(seed, `${seed}-star-${i + 1}`, barycenterId, pack, rng);
+        stars.push(star);
+        totalMassKg += star.massKg || 0;
     }
+    
+    // Simple circular orbit assignment for binary/trinary systems
+    const totalSeparationAU = 0.2 * (starCount - 1); // Arbitrary separation
+    stars.forEach((star, i) => {
+        const otherStarsMass = totalMassKg - (star.massKg || 0);
+        const semiMajorAxisAU = totalSeparationAU * (otherStarsMass / totalMassKg);
+        
+        star.orbit = {
+            hostId: barycenterId,
+            hostMu: G * totalMassKg,
+            t0: Date.now(),
+            elements: {
+                a_AU: semiMajorAxisAU,
+                e: 0, // Circular orbit for simplicity
+                i_deg: 0,
+                omega_deg: 0,
+                Omega_deg: 0,
+                M0_rad: (2 * Math.PI / starCount) * i, // Evenly space stars
+            }
+        };
+        barycenter.memberIds.push(star.id);
+        nodes.push(star);
+    });
+
+    barycenter.effectiveMassKg = totalMassKg;
+    barycenter.name = `${stars[0].name} System`;
+    nodes.unshift(barycenter); // Add barycenter at the beginning
+    systemRoot = barycenter;
+    systemName = barycenter.name;
+    rootRadiusKm = stars.reduce((acc, s) => acc + (s.radiusKm || 0), 0); // Not physically accurate, but a placeholder
   }
 
-  const primaryStar: CelestialBody = {
-    id: `${seed}-star-1`,
-    parentId: null,
-    name: starName,
-    kind: 'body',
-    roleHint: 'star',
-    classes: [starClass],
-    massKg: starMassKg,
-    radiusKm: starRadiusKm,
-    temperatureK: starTemperatureK,
-    magneticField: starMagneticField,
-    tags: [],
-    areas: [],
-  };
-  nodes.push(primaryStar);
 
   // --- Planet & Belt Generation ---
   const bodyCountTable = pack.distributions['planet_count'];
   const numBodies = bodyCountTable ? weightedChoice<number>(rng, bodyCountTable) : rng.nextInt(0, 8);
   
-  let lastApoapsisAU = (primaryStar.radiusKm / AU_KM) + 0.1; // Start first body 0.1 AU from the star's surface
+  let lastApoapsisAU = (rootRadiusKm / AU_KM) + 0.5; // Start bodies out from the stars
 
   for (let i = 0; i < numBodies; i++) {
     const minGap = 0.5;
@@ -80,14 +144,14 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
     if (isBelt) {
         const belt: CelestialBody = {
             id: `${seed}-belt-${i + 1}`,
-            parentId: primaryStar.id,
-            name: `${starName} Belt ${String.fromCharCode(65 + i)}`,
+            parentId: systemRoot.id,
+            name: `${systemName} Belt ${String.fromCharCode(65 + i)}`,
             kind: 'body',
             roleHint: 'belt',
             classes: ['belt/asteroid'],
             orbit: {
-                hostId: primaryStar.id,
-                hostMu: G * primaryStar.massKg,
+                hostId: systemRoot.id,
+                hostMu: G * totalMassKg,
                 t0: Date.now(),
                 elements: { a_AU: newA_AU, e: newEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
             },
@@ -101,8 +165,8 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
     // --- Generate Planet ---
     const planetId = `${seed}-planet-${i + 1}`;
     const planetOrbit: Orbit = {
-        hostId: primaryStar.id,
-        hostMu: G * primaryStar.massKg,
+        hostId: systemRoot.id,
+        hostMu: G * totalMassKg,
         t0: Date.now(),
         elements: { a_AU: newA_AU, e: newEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
     };
@@ -116,10 +180,10 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
         planetRadiusKm = randomFromRange(rng, planetTemplate.radius_earth[0], planetTemplate.radius_earth[1]) * EARTH_RADIUS_KM;
     }
 
-    const planetName = `${starName} ${String.fromCharCode(98 + i)}`;
+    const planetName = `${systemName} ${String.fromCharCode(98 + i)}`;
     const planet: CelestialBody = {
         id: planetId,
-        parentId: primaryStar.id,
+        parentId: systemRoot.id,
         name: planetName,
         kind: 'body',
         roleHint: 'planet',
@@ -130,7 +194,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
         tags: [],
         areas: [],
     };
-    planet.classes = classifyBody(planet, primaryStar, pack);
+    planet.classes = classifyBody(planet, systemRoot, pack);
     nodes.push(planet);
 
     // --- Ring Generation ---
@@ -199,7 +263,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
 
   const system: System = {
     id: seed,
-    name: starName,
+    name: systemName,
     seed: seed,
     epochT0: Date.now(),
     nodes: nodes,
