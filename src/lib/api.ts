@@ -80,15 +80,26 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
     const barycenter: Barycenter = {
         id: barycenterId,
         parentId: null,
-        name: "System Barycenter",
+        name: "System Barycenter", // temporary name
         kind: "barycenter",
         memberIds: [],
         tags: [],
     };
+
+    // Generate a single base name for the system
+    const starNamePrefixTable = pack.distributions['star_name_prefix'];
+    const starNameDigitsTable = pack.distributions['star_name_number_digits'];
+    let baseName = `System ${seed}`;
+    if (starNamePrefixTable && starNameDigitsTable) {
+        const prefix = weightedChoice<string>(rng, starNamePrefixTable);
+        const numDigits = weightedChoice<number>(rng, starNameDigitsTable);
+        baseName = `${prefix}${ ' '.padStart(numDigits, '0').replace(/0/g, () => rng.nextInt(0, 9).toString())}`;
+    }
     
     const stars: CelestialBody[] = [];
     for (let i = 0; i < starCount; i++) {
         const star = _generateStar(seed, `${seed}-star-${i + 1}`, barycenterId, pack, rng);
+        star.name = `${baseName} ${String.fromCharCode(65 + i)}`;
         stars.push(star);
         totalMassKg += star.massKg || 0;
     }
@@ -117,7 +128,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
     });
 
     barycenter.effectiveMassKg = totalMassKg;
-    barycenter.name = `${stars[0].name} System`;
+    barycenter.name = `${baseName} System`;
     nodes.unshift(barycenter); // Add barycenter at the beginning
     systemRoot = barycenter;
     systemName = barycenter.name;

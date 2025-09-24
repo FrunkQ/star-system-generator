@@ -1,8 +1,8 @@
 # Gemini Development Log
 
 ## Current State
-- **Last Change:** Implemented barycenter generation for multi-star systems. This included refactoring `api.ts` to handle `starCount > 1` and adding UI controls to `+page.svelte` to select the number of stars.
-- **Next Step:** Awaiting user feedback on the multi-star implementation.
+- **Last Change:** Fixed star naming (A, B, C suffixes) and visualizer rendering for multi-star (barycentric) systems.
+- **Next Step:** Awaiting user feedback on the multi-star implementation and fixes.
 
 ## Development Plan & Backlog
 

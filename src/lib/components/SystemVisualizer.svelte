@@ -142,7 +142,7 @@
     if (!focusId) { ctx.restore(); return; }
 
     const focusBody = nodesById.get(focusId);
-    if (!focusBody || focusBody.kind !== 'body') { ctx.restore(); return; }
+    if (!focusBody) { ctx.restore(); return; } // Allow barycenters
 
     const children = system.nodes.filter(n => n.parentId === focusId);
 
@@ -198,21 +198,33 @@
     }
 
     // --- Draw Bodies ---
-    // Draw focus body at center
-    let focusBodyRadius = 2;
-    let focusBodyColor = "#aaa";
-    if (focusBody.roleHint === 'star') {
-        const starClassKey = focusBody.classes[0]?.split('/')[1] || 'default';
-        focusBodyColor = STAR_COLOR_MAP[starClassKey] || STAR_COLOR_MAP['default'];
-        focusBodyRadius = Math.max(VISUAL_SCALING.star.base, (focusBody.radiusKm || 696340) / 696340 * VISUAL_SCALING.star.multiplier);
-    } else { 
-        focusBodyRadius = 25;
+    // Draw focus body at center, or a marker for a barycenter
+    if (focusBody.kind === 'barycenter') {
+        ctx.strokeStyle = '#888';
+        ctx.lineWidth = 1 / zoom;
+        ctx.beginPath();
+        ctx.moveTo(viewCenterX - 10 / zoom, viewCenterY);
+        ctx.lineTo(viewCenterX + 10 / zoom, viewCenterY);
+        ctx.moveTo(viewCenterX, viewCenterY - 10 / zoom);
+        ctx.lineTo(viewCenterX, viewCenterY + 10 / zoom);
+        ctx.stroke();
+        positions.set(focusBody.id, { x: viewCenterX, y: viewCenterY, radius: 10 / zoom });
+    } else if (focusBody.kind === 'body') {
+        let focusBodyRadius = 2;
+        let focusBodyColor = "#aaa";
+        if (focusBody.roleHint === 'star') {
+            const starClassKey = focusBody.classes[0]?.split('/')[1] || 'default';
+            focusBodyColor = STAR_COLOR_MAP[starClassKey] || STAR_COLOR_MAP['default'];
+            focusBodyRadius = Math.max(VISUAL_SCALING.star.base, (focusBody.radiusKm || 696340) / 696340 * VISUAL_SCALING.star.multiplier);
+        } else { 
+            focusBodyRadius = 25;
+        }
+        ctx.beginPath();
+        ctx.arc(viewCenterX, viewCenterY, focusBodyRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = focusBodyColor;
+        ctx.fill();
+        positions.set(focusBody.id, { x: viewCenterX, y: viewCenterY, radius: focusBodyRadius });
     }
-    ctx.beginPath();
-    ctx.arc(viewCenterX, viewCenterY, focusBodyRadius, 0, 2 * Math.PI);
-    ctx.fillStyle = focusBodyColor;
-    ctx.fill();
-    positions.set(focusBody.id, { x: viewCenterX, y: viewCenterY, radius: focusBodyRadius });
 
     // Draw children
     for (const node of orbitingChildren) {
@@ -225,7 +237,13 @@
         const y = viewCenterY + pos.y * scale;
 
         let childRadius = 2;
-        if (node.roleHint === 'planet') {
+        let childColor = "#aaa";
+
+        if (node.roleHint === 'star') {
+            const starClassKey = node.classes[0]?.split('/')[1] || 'default';
+            childColor = STAR_COLOR_MAP[starClassKey] || STAR_COLOR_MAP['default'];
+            childRadius = Math.max(VISUAL_SCALING.star.base, (node.radiusKm || 696340) / 696340 * VISUAL_SCALING.star.multiplier);
+        } else if (node.roleHint === 'planet') {
             childRadius = Math.max(VISUAL_SCALING.planet.base, (node.radiusKm || 6371) / 6371 * VISUAL_SCALING.planet.multiplier);
         } else if (node.roleHint === 'moon') {
             childRadius = Math.max(VISUAL_SCALING.moon.base, (node.radiusKm || 1737) / 1737 * VISUAL_SCALING.moon.multiplier);
@@ -233,7 +251,7 @@
 
         ctx.beginPath();
         ctx.arc(x, y, childRadius, 0, 2 * Math.PI);
-        ctx.fillStyle = "#aaa";
+        ctx.fillStyle = childColor;
         ctx.fill();
         positions.set(node.id, { x: x, y: y, radius: childRadius });
 
