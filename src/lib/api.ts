@@ -126,10 +126,14 @@ function _generatePlanetaryBody(
         const albedo = 0.3; // Placeholder albedo
         const starTemp = primaryStar.temperatureK || 5778;
         const starRadius_AU = (primaryStar.radiusKm || SOLAR_RADIUS_KM) / AU_KM;
-        const planetDist_AU = planet.orbit?.elements.a_AU || 0;
+        
+        // BUG FIX: For moons, use the host planet's distance from the star, not the moon's orbit around the planet.
+        const hostBody = allNodes.find(n => n.id === planet.parentId);
+        const relevantOrbit = (planet.roleHint === 'moon' && hostBody?.kind === 'body') ? (hostBody as CelestialBody).orbit : planet.orbit;
+        const planetDist_AU = relevantOrbit?.elements.a_AU || 0;
+
         if (planetDist_AU > 0) {
             equilibriumTempK = starTemp * Math.sqrt(starRadius_AU / (2 * planetDist_AU)) * Math.pow(1 - albedo, 0.25);
-            features['Teq_K'] = equilibriumTempK;
         }
         features['stellarIrradiation'] = primaryStar.magneticField?.strengthGauss || 1;
     }
