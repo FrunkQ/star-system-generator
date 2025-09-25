@@ -307,6 +307,27 @@
       { "when": { "lt": ["Teq_K", 180] }, "addClass": "planet/ice", "score": 100 },
       { "when": { "all": [ { "lt": ["hydrosphere.coverage", 0.1] }, { "between": ["Teq_K", 273, 400] } ] }, "addClass": "planet/desert", "score": 100 },
       { "when": { "lt": ["escapeVelocity_kms", 3.0] }, "addClass": "planet/barren", "score": 100 },
+
+      { "when": { "all": [ { "gt": ["hydrosphere.coverage", 0.9] }, { "eq": ["atm.main", "H2"] } ] }, "addClass": "planet/hycean", "score": 110 },
+      { "when": { "all": [ { "gt": ["mass_Me", 1] }, { "eq": ["atm.main", "CO2"] } ] }, "addClass": "planet/carbon", "score": 105 },
+      { "when": { "all": [ { "lt": ["mass_Me", 10] }, { "gt": ["stellarIrradiation", 1000] } ] }, "addClass": "planet/chthonian", "score": 110 },
+
+      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "lt": ["Teq_K", 150] } ] }, "addClass": "planet/ammonia-clouds-gas-giant", "score": 80 },
+      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "between": ["Teq_K", 150, 250] } ] }, "addClass": "planet/water-clouds-gas-giant", "score": 80 },
+      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "between": ["Teq_K", 350, 800] } ] }, "addClass": "planet/cloudless-gas-giant", "score": 80 },
+      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "gt": ["Teq_K", 1400] } ] }, "addClass": "planet/silicate-clouds-gas-giant", "score": 80 },
+      { "when": { "all": [ { "lt": ["mass_Me", 10] }, { "gt": ["mass_Me", 1.5] }, { "lt": ["radius_Re", 1.2] } ] }, "addClass": "planet/iron", "score": 90 },
+
+      { "when": { "all": [ { "gt": ["hydrosphere.coverage", 0.9] }, { "eq": ["atm.main", "H2"] } ] }, "addClass": "planet/hycean", "score": 110 },
+      { "when": { "all": [ { "gt": ["mass_Me", 1] }, { "eq": ["atm.main", "CO2"] } ] }, "addClass": "planet/carbon", "score": 105 },
+      { "when": { "all": [ { "lt": ["mass_Me", 10] }, { "gt": ["stellarIrradiation", 1000] } ] }, "addClass": "planet/chthonian", "score": 110 },
+
+      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "lt": ["Teq_K", 150] } ] }, "addClass": "planet/ammonia-clouds-gas-giant", "score": 80 },
+      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "between": ["Teq_K", 150, 250] } ] }, "addClass": "planet/water-clouds-gas-giant", "score": 80 },
+      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "between": ["Teq_K", 350, 800] } ] }, "addClass": "planet/cloudless-gas-giant", "score": 80 },
+      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "gt": ["Teq_K", 1400] } ] }, "addClass": "planet/silicate-clouds-gas-giant", "score": 80 },
+      { "when": { "all": [ { "lt": ["mass_Me", 10] }, { "gt": ["mass_Me", 1.5] }, { "lt": ["radius_Re", 1.2] } ] }, "addClass": "planet/iron", "score": 90 },
+
       { "when": { "gt": ["Teq_K", 1000] }, "addClass": "planet/lava", "score": 100 },
       { "when": { "all": [ { "gt": ["hydrosphere.coverage", 0.8] }, { "between": ["Teq_K", 250, 370] } ] }, "addClass": "planet/ocean", "score": 100 },
       { "when": { "all": [ { "lt": ["Teq_K", 180] }, { "gt": ["hydrosphere.coverage", 0.1] } ] }, "addClass": "planet/ice", "score": 100 },
