@@ -22,15 +22,23 @@
       'BH': 'Black Hole. A region of spacetime where gravity is so strong nothing can escape. Extreme radiation.'
   }
 
-  let surfaceGravityG: number | null = null;
-  let densityRelative: number | null = null;
   let surfaceTempC: number | null = null;
+  let hotSideTempC: number | null = null;
+  let coldSideTempC: number | null = null;
   let massDisplay: string | null = null;
   let radiationLevel: string | null = null;
 
   $: {
+    surfaceGravityG = null;
+    densityRelative = null;
+    surfaceTempC = null;
+    hotSideTempC = null;
+    coldSideTempC = null;
+    massDisplay = null;
+    radiationLevel = null;
+
     if (body && body.kind === 'body') {
-        if (body.massKg && body.radiusKm) {
+        if (body.massKg && body.radiusKm && body.radiusKm > 0) {
             const mass = body.massKg;
             const radiusM = body.radiusKm * 1000;
             surfaceGravityG = (G * mass / (radiusM * radiusM)) / EARTH_GRAVITY;
@@ -43,27 +51,22 @@
         if (body.roleHint === 'star') {
             massDisplay = `${(body.massKg / SOLAR_MASS_KG).toPrecision(3)} Solar Masses`;
             const starClass = body.classes[0]?.split('/')[1]?.[0];
-            if (starClass && (starClass === 'N' || starClass === 'B')) radiationLevel = 'Extreme';
-            else if (starClass && (starClass === 'W' || starClass === 'A')) radiationLevel = 'High';
+            if (starClass && (starClass === 'O' || starClass === 'B' || starClass === 'N')) radiationLevel = 'Extreme';
+            else if (starClass && (starClass === 'A' || starClass === 'W')) radiationLevel = 'High';
             else if (starClass && (starClass === 'F' || starClass === 'G')) radiationLevel = 'Moderate';
             else radiationLevel = 'Low';
-        } else {
+        } else if (body.massKg) {
             massDisplay = `${(body.massKg / EARTH_MASS_KG).toPrecision(3)} Earth Masses`;
-            radiationLevel = null; // Radiation is a property of the star
         }
 
         if (body.temperatureK) {
-            surfaceTempC = body.temperatureK - 273.15;
-        } else {
-            surfaceTempC = null;
+            if (body.tidallyLocked) {
+                hotSideTempC = body.temperatureK * 1.41 - 273.15; // Simplified model for hot side
+                coldSideTempC = body.temperatureK * 0.5 - 273.15; // Simplified model for cold side
+            } else {
+                surfaceTempC = body.temperatureK - 273.15;
+            }
         }
-
-    } else {
-        surfaceGravityG = null;
-        densityRelative = null;
-        surfaceTempC = null;
-        massDisplay = null;
-        radiationLevel = null;
     }
   }
 
@@ -111,9 +114,18 @@
             </div>
         {/if}
 
-        {#if surfaceTempC !== null}
+        {#if hotSideTempC !== null && coldSideTempC !== null}
             <div class="detail-item">
-                <span class="label">Surface Temp.</span>
+                <span class="label">Day-side Temp.</span>
+                <span class="value">{Math.round(hotSideTempC)} °C</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">Night-side Temp.</span>
+                <span class="value">{Math.round(coldSideTempC)} °C</span>
+            </div>
+        {:else if surfaceTempC !== null}
+            <div class="detail-item">
+                <span class="label">Avg. Surface Temp.</span>
                 <span class="value">{Math.round(surfaceTempC)} °C</span>
             </div>
         {/if}

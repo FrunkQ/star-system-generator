@@ -104,7 +104,7 @@ function _generatePlanetaryBody(
         planet.radiusKm = randomFromRange(rng, planetTemplate.radius_earth[0], planetTemplate.radius_earth[1]) * EARTH_RADIUS_KM;
     }
 
-    // --- Feature Calculation for Classifier ---
+    // --- Feature Calculation & Property Assignment ---
     const features: Record<string, number | string> = {};
     if (planet.massKg) features['mass_Me'] = planet.massKg / EARTH_MASS_KG;
     if (planet.radiusKm) features['radius_Re'] = planet.radiusKm / EARTH_RADIUS_KM;
@@ -120,6 +120,7 @@ function _generatePlanetaryBody(
     if (ultimateHost?.kind === 'body') primaryStar = ultimateHost as CelestialBody;
     if (ultimateHost?.kind === 'barycenter') primaryStar = allNodes.find(n => n.id === ultimateHost.memberIds[0]) as CelestialBody;
 
+    let equilibriumTempK = 0;
     if (primaryStar && primaryStar.roleHint === 'star') {
         features['stellarType'] = primaryStar.classes[0].split('/')[1]?.[0] || 'G';
         const albedo = 0.3; // Placeholder albedo
@@ -127,16 +128,24 @@ function _generatePlanetaryBody(
         const starRadius_AU = (primaryStar.radiusKm || SOLAR_RADIUS_KM) / AU_KM;
         const planetDist_AU = planet.orbit?.elements.a_AU || 0;
         if (planetDist_AU > 0) {
-            features['Teq_K'] = starTemp * Math.sqrt(starRadius_AU / (2 * planetDist_AU)) * Math.pow(1 - albedo, 0.25);
+            equilibriumTempK = starTemp * Math.sqrt(starRadius_AU / (2 * planetDist_AU)) * Math.pow(1 - albedo, 0.25);
+            features['Teq_K'] = equilibriumTempK;
         }
         features['stellarIrradiation'] = primaryStar.magneticField?.strengthGauss || 1;
     }
 
     const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
-    features['tidalHeating'] = (hostMass / Math.pow(features['a_AU'] as number, 3)) * (planet.orbit?.elements.e || 0);
+    const tidalHeatingFactor = (hostMass / Math.pow(features['a_AU'] as number, 3)) * (planet.orbit?.elements.e || 0);
+    features['tidalHeating'] = tidalHeatingFactor;
+    planet.temperatureK = equilibriumTempK + (tidalHeatingFactor / 1e15); // Scaled factor
 
     const escapeVelocity = Math.sqrt(2 * G * (planet.massKg || 0) / ((planet.radiusKm || 1) * 1000)) / 1000; // in km/s
     features['escapeVelocity_kms'] = escapeVelocity;
+
+    // Determine tidal locking
+    const isTidallyLocked = (features['a_AU'] as number) < 0.1 * Math.pow(hostMass / SOLAR_MASS_KG, 1/3);
+    planet.tidallyLocked = isTidallyLocked;
+    features['tidallyLocked'] = isTidallyLocked ? 1 : 0;
 
     if (planetType === 'planet/terrestrial') {
         let hasAtmosphere = true;
