@@ -94,7 +94,10 @@ function _generatePlanetaryBody(
         areas: [],
     };
 
-    const planetType = pack.distributions['planet_type'] ? weightedChoice<string>(rng, pack.distributions['planet_type']) : 'planet/terrestrial';
+    const planetType = (planet.roleHint === 'moon') 
+        ? 'planet/terrestrial' 
+        : pack.distributions['planet_type'] ? weightedChoice<string>(rng, pack.distributions['planet_type']) : 'planet/terrestrial';
+
     const planetTemplate = pack.statTemplates?.[planetType];
     if (planetTemplate) {
         planet.massKg = randomFromRange(rng, planetTemplate.mass_earth[0], planetTemplate.mass_earth[1]) * EARTH_MASS_KG;

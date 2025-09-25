@@ -13,6 +13,7 @@
   let error: string | null = null;
   let visualizer: SystemVisualizer;
   let shareStatus = '';
+  let showJson = false;
 
   // Time state
   let currentTime = Date.now();
@@ -168,6 +169,16 @@
     <SystemVisualizer bind:this={visualizer} system={generatedSystem} {currentTime} {focusedBodyId} on:focus={handleFocus} />
 
     <BodyDetails body={focusedBody} />
+
+    <div class="debug-controls">
+        <button on:click={() => showJson = !showJson}>
+            {showJson ? 'Hide' : 'Show'} JSON
+        </button>
+    </div>
+
+    {#if showJson}
+        <pre>{JSON.stringify(generatedSystem, null, 2)}</pre>
+    {/if}
   {/if}
 </main>
 
@@ -210,4 +221,15 @@
       background-color: #3b82f6;
       color: white;
   }
-</style>
+  .debug-controls {
+      margin-top: 1em;
+  }
+  pre {
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    padding: 1em;
+    border-radius: 5px;
+    white-space: pre-wrap;
+    color: #eee;
+    font-family: monospace;
+  }</style>
