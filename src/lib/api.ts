@@ -173,6 +173,12 @@ function _generatePlanetaryBody(
     }
 
     planet.classes = classifyBody(features, pack);
+
+    const primaryClass = planet.classes[0];
+    if (primaryClass && pack.classifier?.planetImages?.[primaryClass]) {
+        planet.image = pack.classifier.planetImages[primaryClass];
+    }
+
     newNodes.push(planet);
 
     if (planet.roleHint === 'planet') {

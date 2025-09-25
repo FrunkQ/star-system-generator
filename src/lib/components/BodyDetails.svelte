@@ -75,6 +75,13 @@
 <div class="details-panel">
   {#if body}
     <h2>{body.name}</h2>
+
+    {#if body.kind === 'body' && body.image}
+      <div class="planet-image-container">
+        <img src={body.image} alt="Artist's impression of {body.name}" class="planet-image" />
+      </div>
+    {/if}
+
     <div class="details-grid">
         <div class="detail-item">
             <span class="label">Kind</span>
@@ -198,4 +205,10 @@
       font-size: 1.1em;
       color: #eee;
   }
-</style>
+  .planet-image-container {
+    margin-bottom: 1em;
+  }
+  .planet-image {
+    max-width: 100%;
+    border-radius: 5px;
+  }</style>

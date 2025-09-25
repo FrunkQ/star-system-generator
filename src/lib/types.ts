@@ -50,7 +50,7 @@ export interface CelestialBody extends NodeBase {
   atmosphere?: Atmosphere; hydrosphere?: Hydrosphere;
   albedo?: number; temperatureK?: number; gravityG?: number; magneticField?: MagneticField;
   tidallyLocked?: boolean;
-  orbit?: Orbit; areas: Area[]; image?: ImageRef; deltaV?: DeltaVCapability;
+  orbit?: Orbit; areas: Area[]; image?: string; deltaV?: DeltaVCapability;
 }
 
 export interface Barycenter extends NodeBase {

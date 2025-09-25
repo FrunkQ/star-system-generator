@@ -319,6 +319,16 @@
       { "when": { "all": [ { "eq": ["tidallyLocked", 1] }, { "gt": ["Teq_K", 300] } ] }, "addClass": "planet/hot-eyeball", "score": 35 },
       { "when": { "between": ["radius_Re", 0.4, 1.6] }, "addClass": "planet/terrestrial", "score": 15 },
       { "when": { "all": [ { "gt": ["radius_Re", 3.5] }, { "gt": ["mass_Me", 50] } ] }, "addClass": "planet/gas-giant", "score": 15 }
-    ]
+    ],
+    "planetImages": {
+      "planet/lava": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20lava20planet.jpg",
+      "planet/ocean": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20ocean20planet.jpg",
+      "planet/ice": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20ice20planet.jpg",
+      "planet/desert": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20desert20planet.jpg",
+      "planet/barren": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20barren20planet.jpg",
+      "planet/hycean": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20hycean20planet.jpg",
+      "planet/carbon": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20carbon20planet.jpg",
+      "planet/chthonian": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20chthonian20planet.jpg"
+    }
   }
 }
