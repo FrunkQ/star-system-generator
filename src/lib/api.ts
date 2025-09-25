@@ -134,18 +134,8 @@ function _generatePlanetaryBody(
         features['stellarIrradiation'] = primaryStar.magneticField?.strengthGauss || 1;
     }
 
-    const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
-    const orbitalRadiusMeters = (features['a_AU'] as number) * AU_KM;
-    let tidalHeatingTempK = 0;
-    if (orbitalRadiusMeters > 0) {
-        // This is a simplified proxy for tidal heating effect, not a rigorous physical calculation.
-        // It's scaled to produce noticeable temperature increases for close-in bodies with eccentric orbits.
-        const tidalHeatingFactor = (hostMass / Math.pow(orbitalRadiusMeters, 3)) * (planet.orbit?.elements.e || 0);
-        tidalHeatingTempK = tidalHeatingFactor * 1e12; // Scaling factor to bring the value into a reasonable Kelvin range.
-    }
-
-    features['tidalHeating'] = tidalHeatingTempK;
-    planet.temperatureK = equilibriumTempK + tidalHeatingTempK;
+    features['tidalHeating'] = 0;
+    planet.temperatureK = equilibriumTempK;
     features['Teq_K'] = planet.temperatureK; // Update the feature for the classifier to use the total temperature
 
     const escapeVelocity = Math.sqrt(2 * G * (planet.massKg || 0) / ((planet.radiusKm || 1) * 1000)) / 1000; // in km/s
