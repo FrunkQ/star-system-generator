@@ -6,42 +6,64 @@
   const G = 6.67430e-11;
   const EARTH_GRAVITY = 9.80665; // m/s^2
   const EARTH_DENSITY = 5514; // kg/m^3
+  const SOLAR_MASS_KG = 1.989e30;
+  const EARTH_MASS_KG = 5.972e24;
 
   const STAR_TYPE_DESC: Record<string, string> = {
-      'O': 'Extremely hot, luminous, and blue. Very rare and short-lived.',
-      'B': 'Hot, luminous, blue-white stars.',
-      'A': 'White or bluish-white stars, like Sirius.',
-      'F': 'Yellow-white stars, stronger than the Sun.',
+      'O': 'Extremely hot, luminous, and blue. Very rare and short-lived. High radiation.',
+      'B': 'Hot, luminous, blue-white stars. High radiation.',
+      'A': 'White or bluish-white stars, like Sirius. Moderate radiation.',
+      'F': 'Yellow-white stars, stronger than the Sun. Moderate radiation.',
       'G': 'Yellow, sun-like stars. Good candidates for habitable planets.',
-      'K': 'Orange dwarfs, cooler and longer-lived than the Sun.',
-      'M': 'Red dwarfs. The most common, very long-lived, but dim and cool.',
-      'WD': 'White Dwarf. The dense, hot remnant of a dead star.',
-      'NS': 'Neutron Star. An extremely dense, rapidly spinning stellar remnant.',
-      'BH': 'Black Hole. A region of spacetime where gravity is so strong nothing can escape.'
+      'K': 'Orange dwarfs, cooler and longer-lived than the Sun. Low radiation.',
+      'M': 'Red dwarfs. The most common, very long-lived, but dim and cool. Low radiation.',
+      'WD': 'White Dwarf. The dense, hot remnant of a dead star. High radiation.',
+      'NS': 'Neutron Star. An extremely dense, rapidly spinning stellar remnant. Extreme radiation.',
+      'BH': 'Black Hole. A region of spacetime where gravity is so strong nothing can escape. Extreme radiation.'
   }
 
   let surfaceGravityG: number | null = null;
   let densityRelative: number | null = null;
   let surfaceTempC: number | null = null;
+  let massDisplay: string | null = null;
+  let radiationLevel: string | null = null;
 
   $: {
-    if (body && body.kind === 'body' && body.massKg && body.radiusKm) {
-        const mass = body.massKg;
-        const radiusM = body.radiusKm * 1000;
-        surfaceGravityG = (G * mass / (radiusM * radiusM)) / EARTH_GRAVITY;
-        
-        const volume = (4/3) * Math.PI * Math.pow(radiusM, 3);
-        const density = mass / volume;
-        densityRelative = density / EARTH_DENSITY;
+    if (body && body.kind === 'body') {
+        if (body.massKg && body.radiusKm) {
+            const mass = body.massKg;
+            const radiusM = body.radiusKm * 1000;
+            surfaceGravityG = (G * mass / (radiusM * radiusM)) / EARTH_GRAVITY;
+            
+            const volume = (4/3) * Math.PI * Math.pow(radiusM, 3);
+            const density = mass / volume;
+            densityRelative = density / EARTH_DENSITY;
+        }
+
+        if (body.roleHint === 'star') {
+            massDisplay = `${(body.massKg / SOLAR_MASS_KG).toPrecision(3)} Solar Masses`;
+            const starClass = body.classes[0]?.split('/')[1]?.[0];
+            if (starClass && (starClass === 'N' || starClass === 'B')) radiationLevel = 'Extreme';
+            else if (starClass && (starClass === 'W' || starClass === 'A')) radiationLevel = 'High';
+            else if (starClass && (starClass === 'F' || starClass === 'G')) radiationLevel = 'Moderate';
+            else radiationLevel = 'Low';
+        } else {
+            massDisplay = `${(body.massKg / EARTH_MASS_KG).toPrecision(3)} Earth Masses`;
+            radiationLevel = null; // Radiation is a property of the star
+        }
+
+        if (body.temperatureK) {
+            surfaceTempC = body.temperatureK - 273.15;
+        } else {
+            surfaceTempC = null;
+        }
+
     } else {
         surfaceGravityG = null;
         densityRelative = null;
-    }
-
-    if (body && body.kind === 'body' && body.temperatureK) {
-        surfaceTempC = body.temperatureK - 273.15;
-    } else {
         surfaceTempC = null;
+        massDisplay = null;
+        radiationLevel = null;
     }
   }
 
@@ -68,6 +90,13 @@
             {/if}
         {/if}
 
+        {#if massDisplay}
+            <div class="detail-item">
+                <span class="label">Mass</span>
+                <span class="value">{massDisplay}</span>
+            </div>
+        {/if}
+
         {#if surfaceGravityG !== null}
             <div class="detail-item">
                 <span class="label">Surface Gravity</span>
@@ -86,6 +115,13 @@
             <div class="detail-item">
                 <span class="label">Surface Temp.</span>
                 <span class="value">{Math.round(surfaceTempC)} °C</span>
+            </div>
+        {/if}
+
+        {#if radiationLevel}
+            <div class="detail-item">
+                <span class="label">Radiation Level</span>
+                <span class="value">{radiationLevel}</span>
             </div>
         {/if}
 

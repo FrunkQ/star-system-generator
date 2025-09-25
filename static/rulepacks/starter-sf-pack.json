@@ -302,11 +302,12 @@
     "maxClasses": 2,
     "minScore": 10,
     "rules": [
-      { "when": { "any": [ { "gt": ["Teq_K", 1400] }, { "gt": ["tidalHeating", 10000] } ] }, "addClass": "planet/lava", "score": 100 },
+      { "when": { "any": [ { "gt": ["Teq_K", 1000] }, { "gt": ["tidalHeating", 10000] } ] }, "addClass": "planet/lava", "score": 100 },
       { "when": { "all": [ { "gt": ["hydrosphere.coverage", 0.8] }, { "between": ["Teq_K", 250, 370] } ] }, "addClass": "planet/ocean", "score": 100 },
-      { "when": { "lt": ["Teq_K", 180] }, "addClass": "planet/ice", "score": 100 },
-      { "when": { "all": [ { "lt": ["hydrosphere.coverage", 0.1] }, { "between": ["Teq_K", 273, 400] } ] }, "addClass": "planet/desert", "score": 100 },
-      { "when": { "lt": ["escapeVelocity_kms", 3.0] }, "addClass": "planet/barren", "score": 100 },
+      { "when": { "all": [ { "lt": ["Teq_K", 180] }, { "gt": ["hydrosphere.coverage", 0.1] } ] }, "addClass": "planet/ice", "score": 100 },
+      { "when": { "all": [ { "lt": ["hydrosphere.coverage", 0.1] }, { "between": ["Teq_K", 250, 400] } ] }, "addClass": "planet/desert", "score": 100 },
+      { "when": { "all": [ { "lt": ["escapeVelocity_kms", 3.0] }, { "lt": ["hydrosphere.coverage", 0.01] } ] }, "addClass": "planet/barren", "score": 100 },
+
       { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "any": [ { "between": ["a_AU", 0.0, 0.12] }, { "gt": ["Teq_K", 1000] } ] } ] }, "addClass": "planet/hot-jupiter", "score": 50 },
       { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "between": ["Teq_K", 500, 1000] } ] }, "addClass": "planet/warm-jupiter", "score": 40 },
       { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "lt": ["Teq_K", 250] } ] }, "addClass": "planet/cold-jupiter", "score": 30 },
