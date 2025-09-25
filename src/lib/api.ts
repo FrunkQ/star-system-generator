@@ -127,7 +127,6 @@ function _generatePlanetaryBody(
         const starTemp = primaryStar.temperatureK || 5778;
         const starRadius_AU = (primaryStar.radiusKm || SOLAR_RADIUS_KM) / AU_KM;
         
-        // BUG FIX: For moons, use the host planet's distance from the star, not the moon's orbit around the planet.
         const hostBody = allNodes.find(n => n.id === planet.parentId);
         const relevantOrbit = (planet.roleHint === 'moon' && hostBody?.kind === 'body') ? (hostBody as CelestialBody).orbit : planet.orbit;
         const planetDist_AU = relevantOrbit?.elements.a_AU || 0;
@@ -145,18 +144,16 @@ function _generatePlanetaryBody(
         else if (planet.atmosphere.main === 'CH4') greenhouseFactor = 100;
         else if (planet.atmosphere.main === 'N2') greenhouseFactor = 20;
 
-        // Use Math.log1p(x) which is log(1+x), to handle pressures < 1 gracefully
         greenhouseContributionK = greenhouseFactor * Math.log1p(planet.atmosphere.pressure_bar);
     }
 
     features['tidalHeating'] = 0; // This feature is parked for now
     planet.temperatureK = equilibriumTempK + greenhouseContributionK;
-    features['Teq_K'] = planet.temperatureK; // Update the feature for the classifier to use the total temperature
+    features['Teq_K'] = planet.temperatureK;
 
     const escapeVelocity = Math.sqrt(2 * G * (planet.massKg || 0) / ((planet.radiusKm || 1) * 1000)) / 1000; // in km/s
     features['escapeVelocity_kms'] = escapeVelocity;
 
-    // Determine tidal locking
     const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
     const isTidallyLocked = (features['a_AU'] as number) < 0.1 * Math.pow(hostMass / SOLAR_MASS_KG, 1/3);
     planet.tidallyLocked = isTidallyLocked;
