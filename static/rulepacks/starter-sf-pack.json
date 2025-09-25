@@ -318,7 +318,12 @@
       { "when": { "all": [ { "eq": ["tidallyLocked", 1] }, { "between": ["Teq_K", 200, 300] }, { "any": [ { "eq": ["stellarType", "M"] }, { "lt": ["a_AU", 0.2] } ] } ] }, "addClass": "planet/cold-eyeball", "score": 35 },
       { "when": { "all": [ { "eq": ["tidallyLocked", 1] }, { "gt": ["Teq_K", 300] } ] }, "addClass": "planet/hot-eyeball", "score": 35 },
       { "when": { "between": ["radius_Re", 0.4, 1.6] }, "addClass": "planet/terrestrial", "score": 15 },
-      { "when": { "all": [ { "gt": ["radius_Re", 3.5] }, { "gt": ["mass_Me", 50] } ] }, "addClass": "planet/gas-giant", "score": 15 }
+      { "when": { "all": [ { "gt": ["radius_Re", 3.5] }, { "gt": ["mass_Me", 50] } ] }, "addClass": "planet/gas-giant", "score": 15 },
+      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "lt": ["Teq_K", 150] } ] }, "addClass": "planet/ammonia-clouds-gas-giant", "score": 80 },
+      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "between": ["Teq_K", 150, 250] } ] }, "addClass": "planet/water-clouds-gas-giant", "score": 80 },
+      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "between": ["Teq_K", 350, 800] } ] }, "addClass": "planet/cloudless-gas-giant", "score": 80 },
+      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "gt": ["Teq_K", 1400] } ] }, "addClass": "planet/silicate-clouds-gas-giant", "score": 80 },
+      { "when": { "all": [ { "lt": ["mass_Me", 10] }, { "gt": ["mass_Me", 1.5] }, { "lt": ["radius_Re", 1.2] } ] }, "addClass": "planet/iron", "score": 90 }
     ],
     "planetImages": {
       "planet/lava": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20lava20planet.jpg",
@@ -328,7 +333,12 @@
       "planet/barren": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20barren20planet.jpg",
       "planet/hycean": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20hycean20planet.jpg",
       "planet/carbon": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20carbon20planet.jpg",
-      "planet/chthonian": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20chthonian20planet.jpg"
+      "planet/chthonian": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20chthonian20planet.jpg",
+      "planet/ammonia-clouds-gas-giant": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20ammonia20clouds20gas20giant.jpg",
+      "planet/water-clouds-gas-giant": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20water20clouds20gas20giant.jpg",
+      "planet/cloudless-gas-giant": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20cloudless20gas20giant.jpg",
+      "planet/silicate-clouds-gas-giant": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20silicate20clouds20gas20giant.jpg",
+      "planet/iron": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20iron20planet.jpg"
     }
   }
 }
