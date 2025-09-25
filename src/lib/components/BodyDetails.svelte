@@ -93,7 +93,7 @@
 
     {#if body.kind === 'body' && body.image}
       <div class="planet-image-container">
-        <img src={body.image} alt="Artist's impression of {body.name}" class="planet-image" />
+        <img src={body.image.url} alt="Artist's impression of {body.name}" class="planet-image" />
       </div>
     {/if}
 
