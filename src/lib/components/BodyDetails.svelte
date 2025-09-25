@@ -29,6 +29,7 @@
   let radiationLevel: string | null = null;
   let surfaceGravityG: number | null = null;
   let densityRelative: number | null = null;
+  let orbitalDistanceDisplay: string | null = null;
 
   $: {
     surfaceGravityG = null;
@@ -38,8 +39,13 @@
     coldSideTempC = null;
     massDisplay = null;
     radiationLevel = null;
+    orbitalDistanceDisplay = null;
 
     if (body && body.kind === 'body') {
+        if (body.orbit) {
+            orbitalDistanceDisplay = `${body.orbit.elements.a_AU.toFixed(3)} AU`;
+        }
+
         if (body.massKg && body.radiusKm && body.radiusKm > 0) {
             const mass = body.massKg;
             const radiusM = body.radiusKm * 1000;
@@ -113,6 +119,13 @@
             <div class="detail-item">
                 <span class="label">Mass</span>
                 <span class="value">{massDisplay}</span>
+            </div>
+        {/if}
+
+        {#if orbitalDistanceDisplay}
+            <div class="detail-item">
+                <span class="label">{body.roleHint === 'moon' ? 'Orbit (from Planet)' : 'Orbit (from Star)'}</span>
+                <span class="value">{orbitalDistanceDisplay}</span>
             </div>
         {/if}
 

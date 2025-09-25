@@ -138,8 +138,19 @@ function _generatePlanetaryBody(
         features['stellarIrradiation'] = primaryStar.magneticField?.strengthGauss || 1;
     }
 
-    features['tidalHeating'] = 0;
-    planet.temperatureK = equilibriumTempK;
+    let greenhouseContributionK = 0;
+    if (planet.atmosphere && planet.atmosphere.pressure_bar) {
+        let greenhouseFactor = 0;
+        if (planet.atmosphere.main === 'CO2') greenhouseFactor = 150;
+        else if (planet.atmosphere.main === 'CH4') greenhouseFactor = 100;
+        else if (planet.atmosphere.main === 'N2') greenhouseFactor = 20;
+
+        // Use Math.log1p(x) which is log(1+x), to handle pressures < 1 gracefully
+        greenhouseContributionK = greenhouseFactor * Math.log1p(planet.atmosphere.pressure_bar);
+    }
+
+    features['tidalHeating'] = 0; // This feature is parked for now
+    planet.temperatureK = equilibriumTempK + greenhouseContributionK;
     features['Teq_K'] = planet.temperatureK; // Update the feature for the classifier to use the total temperature
 
     const escapeVelocity = Math.sqrt(2 * G * (planet.massKg || 0) / ((planet.radiusKm || 1) * 1000)) / 1000; // in km/s
