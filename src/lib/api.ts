@@ -142,6 +142,7 @@ function _generatePlanetaryBody(
     features['escapeVelocity_kms'] = escapeVelocity;
 
     // Determine tidal locking
+    const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
     const isTidallyLocked = (features['a_AU'] as number) < 0.1 * Math.pow(hostMass / SOLAR_MASS_KG, 1/3);
     planet.tidallyLocked = isTidallyLocked;
     features['tidallyLocked'] = isTidallyLocked ? 1 : 0;
