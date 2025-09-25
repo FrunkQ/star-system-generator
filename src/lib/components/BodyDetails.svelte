@@ -27,6 +27,8 @@
   let coldSideTempC: number | null = null;
   let massDisplay: string | null = null;
   let radiationLevel: string | null = null;
+  let surfaceGravityG: number | null = null;
+  let densityRelative: number | null = null;
 
   $: {
     surfaceGravityG = null;
