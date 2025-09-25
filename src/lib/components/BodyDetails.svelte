@@ -51,14 +51,21 @@
         }
 
         if (body.roleHint === 'star') {
-            massDisplay = `${(body.massKg / SOLAR_MASS_KG).toPrecision(3)} Solar Masses`;
+            const massInSuns = body.massKg / SOLAR_MASS_KG;
+            massDisplay = massInSuns < 1000000 
+                ? `${massInSuns.toLocaleString(undefined, {maximumFractionDigits: 3})} Solar Masses` 
+                : `${massInSuns.toExponential(2)} Solar Masses`;
+
             const starClass = body.classes[0]?.split('/')[1]?.[0];
             if (starClass && (starClass === 'O' || starClass === 'B' || starClass === 'N')) radiationLevel = 'Extreme';
             else if (starClass && (starClass === 'A' || starClass === 'W')) radiationLevel = 'High';
             else if (starClass && (starClass === 'F' || starClass === 'G')) radiationLevel = 'Moderate';
             else radiationLevel = 'Low';
         } else if (body.massKg) {
-            massDisplay = `${(body.massKg / EARTH_MASS_KG).toPrecision(3)} Earth Masses`;
+            const massInEarths = body.massKg / EARTH_MASS_KG;
+            massDisplay = massInEarths < 1000000 
+                ? `${massInEarths.toLocaleString(undefined, {maximumFractionDigits: 2})} Earth Masses` 
+                : `${massInEarths.toExponential(2)} Earth Masses`;
         }
 
         if (body.temperatureK) {
