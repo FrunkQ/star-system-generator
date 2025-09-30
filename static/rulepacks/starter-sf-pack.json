@@ -1,6 +1,6 @@
 {
   "id": "starter-sf-pack",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "name": "Starter Sci‑Fi Pack (Budassi + Basics)",
   "distributions": {
     "star_types": {
@@ -304,52 +304,26 @@
     "rules": [
       { "when": { "any": [ { "gt": ["Teq_K", 1400] }, { "gt": ["tidalHeating", 10000] } ] }, "addClass": "planet/lava", "score": 100 },
       { "when": { "all": [ { "gt": ["hydrosphere.coverage", 0.8] }, { "between": ["Teq_K", 250, 370] } ] }, "addClass": "planet/ocean", "score": 100 },
-      { "when": { "lt": ["Teq_K", 180] }, "addClass": "planet/ice", "score": 100 },
-      { "when": { "all": [ { "lt": ["hydrosphere.coverage", 0.1] }, { "between": ["Teq_K", 273, 400] } ] }, "addClass": "planet/desert", "score": 100 },
-      { "when": { "lt": ["escapeVelocity_kms", 3.0] }, "addClass": "planet/barren", "score": 100 },
-
-      { "when": { "all": [ { "gt": ["hydrosphere.coverage", 0.9] }, { "eq": ["atm.main", "H2"] } ] }, "addClass": "planet/hycean", "score": 110 },
-      { "when": { "all": [ { "gt": ["mass_Me", 1] }, { "eq": ["atm.main", "CO2"] } ] }, "addClass": "planet/carbon", "score": 105 },
-      { "when": { "all": [ { "lt": ["mass_Me", 10] }, { "gt": ["stellarIrradiation", 1000] } ] }, "addClass": "planet/chthonian", "score": 110 },
-
-      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "lt": ["Teq_K", 150] } ] }, "addClass": "planet/ammonia-clouds-gas-giant", "score": 80 },
-      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "between": ["Teq_K", 150, 250] } ] }, "addClass": "planet/water-clouds-gas-giant", "score": 80 },
-      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "between": ["Teq_K", 350, 800] } ] }, "addClass": "planet/cloudless-gas-giant", "score": 80 },
-      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "gt": ["Teq_K", 1400] } ] }, "addClass": "planet/silicate-clouds-gas-giant", "score": 80 },
-      { "when": { "all": [ { "lt": ["mass_Me", 10] }, { "gt": ["mass_Me", 1.5] }, { "lt": ["radius_Re", 1.2] } ] }, "addClass": "planet/iron", "score": 90 },
-
-      { "when": { "all": [ { "gt": ["hydrosphere.coverage", 0.9] }, { "eq": ["atm.main", "H2"] } ] }, "addClass": "planet/hycean", "score": 110 },
-      { "when": { "all": [ { "gt": ["mass_Me", 1] }, { "eq": ["atm.main", "CO2"] } ] }, "addClass": "planet/carbon", "score": 105 },
-      { "when": { "all": [ { "lt": ["mass_Me", 10] }, { "gt": ["stellarIrradiation", 1000] } ] }, "addClass": "planet/chthonian", "score": 110 },
-
-      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "lt": ["Teq_K", 150] } ] }, "addClass": "planet/ammonia-clouds-gas-giant", "score": 80 },
-      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "between": ["Teq_K", 150, 250] } ] }, "addClass": "planet/water-clouds-gas-giant", "score": 80 },
-      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "between": ["Teq_K", 350, 800] } ] }, "addClass": "planet/cloudless-gas-giant", "score": 80 },
-      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "gt": ["Teq_K", 1400] } ] }, "addClass": "planet/silicate-clouds-gas-giant", "score": 80 },
-      { "when": { "all": [ { "lt": ["mass_Me", 10] }, { "gt": ["mass_Me", 1.5] }, { "lt": ["radius_Re", 1.2] } ] }, "addClass": "planet/iron", "score": 90 },
-
-      { "when": { "gt": ["Teq_K", 1000] }, "addClass": "planet/lava", "score": 100 },
-      { "when": { "all": [ { "gt": ["hydrosphere.coverage", 0.8] }, { "between": ["Teq_K", 250, 370] } ] }, "addClass": "planet/ocean", "score": 100 },
       { "when": { "all": [ { "lt": ["Teq_K", 180] }, { "gt": ["hydrosphere.coverage", 0.1] } ] }, "addClass": "planet/ice", "score": 100 },
       { "when": { "all": [ { "lt": ["hydrosphere.coverage", 0.1] }, { "between": ["Teq_K", 250, 400] } ] }, "addClass": "planet/desert", "score": 100 },
       { "when": { "all": [ { "lt": ["escapeVelocity_kms", 3.0] }, { "lt": ["hydrosphere.coverage", 0.01] } ] }, "addClass": "planet/barren", "score": 100 },
-
+      { "when": { "all": [ { "gt": ["hydrosphere.coverage", 0.9] }, { "eq": ["atm.main", "H2"] } ] }, "addClass": "planet/hycean", "score": 110 },
+      { "when": { "all": [ { "gt": ["mass_Me", 1] }, { "eq": ["atm.main", "CO2"] } ] }, "addClass": "planet/carbon", "score": 105 },
+      { "when": { "all": [ { "lt": ["mass_Me", 10] }, { "gt": ["stellarIrradiation", 1000] } ] }, "addClass": "planet/chthonian", "score": 110 },
+      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "lt": ["Teq_K", 150] } ] }, "addClass": "planet/ammonia-clouds-gas-giant", "score": 80 },
+      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "between": ["Teq_K", 150, 250] } ] }, "addClass": "planet/water-clouds-gas-giant", "score": 80 },
+      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "between": ["Teq_K", 350, 800] } ] }, "addClass": "planet/cloudless-gas-giant", "score": 80 },
+      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "gt": ["Teq_K", 1400] } ] }, "addClass": "planet/silicate-clouds-gas-giant", "score": 80 },
+      { "when": { "all": [ { "lt": ["mass_Me", 10] }, { "gt": ["mass_Me", 1.5] }, { "lt": ["radius_Re", 1.2] } ] }, "addClass": "planet/iron", "score": 90 },
       { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "any": [ { "between": ["a_AU", 0.0, 0.12] }, { "gt": ["Teq_K", 1000] } ] } ] }, "addClass": "planet/hot-jupiter", "score": 50 },
       { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "between": ["Teq_K", 500, 1000] } ] }, "addClass": "planet/warm-jupiter", "score": 40 },
       { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "lt": ["Teq_K", 250] } ] }, "addClass": "planet/cold-jupiter", "score": 30 },
       { "when": { "all": [ { "between": ["mass_Me", 2, 10] }, { "between": ["radius_Re", 1.25, 1.9] }, { "any": [ { "lt": ["atm.pressure_bar", 5] }, { "eq": ["atm.main", "CO2"] } ] } ] }, "addClass": "planet/super-earth", "score": 40 },
       { "when": { "all": [ { "between": ["mass_Me", 5, 20] }, { "between": ["radius_Re", 2.0, 4.0] }, { "any": [ { "gt": ["atm.pressure_bar", 5] }, { "any": [ { "eq": ["atm.main", "H2"] }, { "eq": ["atm.main", "He"] } ] } ] } ] }, "addClass": "planet/mini-neptune", "score": 40 },
-      { "when": { "any": [ { "gt": ["Teq_K", 1200] }, { "all": [ { "eq": ["tidallyLocked", 1] }, { "gt": ["Teq_K", 1000] } ] } ] }, "addClass": "planet/lava", "score": 35 },
-      { "when": { "all": [ { "gt": ["hydrosphere.coverage", 0.8] }, { "between": ["Teq_K", 250, 350] } ] }, "addClass": "planet/ocean", "score": 30 },
       { "when": { "all": [ { "eq": ["tidallyLocked", 1] }, { "between": ["Teq_K", 200, 300] }, { "any": [ { "eq": ["stellarType", "M"] }, { "lt": ["a_AU", 0.2] } ] } ] }, "addClass": "planet/cold-eyeball", "score": 35 },
       { "when": { "all": [ { "eq": ["tidallyLocked", 1] }, { "gt": ["Teq_K", 300] } ] }, "addClass": "planet/hot-eyeball", "score": 35 },
       { "when": { "between": ["radius_Re", 0.4, 1.6] }, "addClass": "planet/terrestrial", "score": 15 },
-      { "when": { "all": [ { "gt": ["radius_Re", 3.5] }, { "gt": ["mass_Me", 50] } ] }, "addClass": "planet/gas-giant", "score": 15 },
-      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "lt": ["Teq_K", 150] } ] }, "addClass": "planet/ammonia-clouds-gas-giant", "score": 80 },
-      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "between": ["Teq_K", 150, 250] } ] }, "addClass": "planet/water-clouds-gas-giant", "score": 80 },
-      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "between": ["Teq_K", 350, 800] } ] }, "addClass": "planet/cloudless-gas-giant", "score": 80 },
-      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "gt": ["Teq_K", 1400] } ] }, "addClass": "planet/silicate-clouds-gas-giant", "score": 80 },
-      { "when": { "all": [ { "lt": ["mass_Me", 10] }, { "gt": ["mass_Me", 1.5] }, { "lt": ["radius_Re", 1.2] } ] }, "addClass": "planet/iron", "score": 90 }
+      { "when": { "all": [ { "gt": ["radius_Re", 3.5] }, { "gt": ["mass_Me", 50] } ] }, "addClass": "planet/gas-giant", "score": 15 }
     ],
     "planetImages": {
       "planet/lava": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20lava20planet.jpg",
