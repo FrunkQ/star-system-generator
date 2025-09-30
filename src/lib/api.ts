@@ -1,5 +1,5 @@
 // ===== api.ts =====
-import type { System, RulePack, ID, CelestialBody, Barycenter, BurnPlan, Orbit, Expr } from "./types";
+import type { System, RulePack, ID, CelestialBody, Barycenter, BurnPlan, Orbit, Expr, ImageRef } from "./types";
 import { SeededRNG } from './rng';
 import { weightedChoice, randomFromRange, toRoman } from './utils';
 
@@ -188,7 +188,7 @@ function _generatePlanetaryBody(
 
     const primaryClass = planet.classes[0];
     if (primaryClass && pack.classifier?.planetImages?.[primaryClass]) {
-        planet.image = pack.classifier.planetImages[primaryClass];
+        planet.image = { url: pack.classifier.planetImages[primaryClass] };
     }
 
     newNodes.push(planet);
