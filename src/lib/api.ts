@@ -189,6 +189,9 @@ function _generatePlanetaryBody(
 
     features['age_Gyr'] = age_Gyr;
 
+    const isTidallyLocked = (features['a_AU'] as number) < 0.1 * Math.pow(hostMass / SOLAR_MASS_KG, 1/3);
+    features['tidallyLocked'] = isTidallyLocked ? 1 : 0;
+
     planet.axial_tilt_deg = Math.pow(rng.nextFloat(), 3) * 90;
     if (isTidallyLocked) {
         planet.rotation_period_hours = orbital_period_days * 24;
@@ -207,9 +210,6 @@ function _generatePlanetaryBody(
     if (isDisrupted) {
         planet.classes.push('planet/disrupted');
     }
-
-
-    const isTidallyLocked = (features['a_AU'] as number) < 0.1 * Math.pow(hostMass / SOLAR_MASS_KG, 1/3);
 
     // --- Habitability Scores ---
     let human_habitability_score = 0;
