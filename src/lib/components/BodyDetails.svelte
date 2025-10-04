@@ -104,137 +104,138 @@
 <div class="details-panel">
   {#if body}
     <h2>{body.name}</h2>
-
-    {#if body.kind === 'body' && body.image}
-      <div class="planet-image-container">
-        <img src={body.image.url} alt="Artist's impression of {body.name}" class="planet-image" />
-      </div>
-    {/if}
-
-    <div class="details-grid">
-        <div class="detail-item">
-            <span class="label">Kind</span>
-            <span class="value">{body.kind}{#if body.kind === 'body'} ({body.roleHint}){/if}</span>
-        </div>
-        
-        {#if body.kind === 'body'}
-            <div class="detail-item">
-                <span class="label">Classification</span>
-                <span class="value">{body.classes.join(', ')}</span>
+    <div class="content-wrapper">
+        {#if body.kind === 'body' && body.image}
+            <div class="planet-image-container">
+                <img src={body.image.url} alt="Artist's impression of {body.name}" class="planet-image" />
             </div>
-            {#if STAR_TYPE_DESC[body.classes[0]?.split('/')[1]?.[0]]}
-                <div class="detail-item description">
-                    <span class="value">{STAR_TYPE_DESC[body.classes[0].split('/')[1][0]]}</span>
+        {/if}
+
+        <div class="details-grid">
+            <div class="detail-item">
+                <span class="label">Kind</span>
+                <span class="value">{body.kind}{#if body.kind === 'body'} ({body.roleHint}){/if}</span>
+            </div>
+            
+            {#if body.kind === 'body'}
+                <div class="detail-item">
+                    <span class="label">Classification</span>
+                    <span class="value">{body.classes.join(', ')}</span>
+                </div>
+                {#if STAR_TYPE_DESC[body.classes[0]?.split('/')[1]?.[0]]}
+                    <div class="detail-item description">
+                        <span class="value">{STAR_TYPE_DESC[body.classes[0].split('/')[1][0]]}</span>
+                    </div>
+                {/if}
+            {/if}
+
+            {#if massDisplay}
+                <div class="detail-item">
+                    <span class="label">Mass</span>
+                    <span class="value">{massDisplay}</span>
                 </div>
             {/if}
-        {/if}
 
-        {#if massDisplay}
-            <div class="detail-item">
-                <span class="label">Mass</span>
-                <span class="value">{massDisplay}</span>
-            </div>
-        {/if}
+            {#if body.kind === 'body' && body.radiusKm}
+                <div class="detail-item">
+                    <span class="label">Radius</span>
+                    <span class="value">{body.radiusKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+                </div>
+            {/if}
 
-        {#if body.kind === 'body' && body.radiusKm}
-            <div class="detail-item">
-                <span class="label">Radius</span>
-                <span class="value">{body.radiusKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
-            </div>
-        {/if}
+            {#if circumferenceKm}
+                <div class="detail-item">
+                    <span class="label">Circumference</span>
+                    <span class="value">{circumferenceKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+                </div>
+            {/if}
 
-        {#if circumferenceKm}
-            <div class="detail-item">
-                <span class="label">Circumference</span>
-                <span class="value">{circumferenceKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
-            </div>
-        {/if}
+            {#if surfaceGravityG !== null}
+                <div class="detail-item">
+                    <span class="label">Surface Gravity</span>
+                    <span class="value">{surfaceGravityG.toFixed(2)} G</span>
+                </div>
+            {/if}
 
-        {#if surfaceGravityG !== null}
-            <div class="detail-item">
-                <span class="label">Surface Gravity</span>
-                <span class="value">{surfaceGravityG.toFixed(2)} G</span>
-            </div>
-        {/if}
+            {#if densityRelative !== null}
+                <div class="detail-item">
+                    <span class="label">Density (rel. to Earth)</span>
+                    <span class="value">{densityRelative.toFixed(2)}</span>
+                </div>
+            {/if}
 
-        {#if densityRelative !== null}
-            <div class="detail-item">
-                <span class="label">Density (rel. to Earth)</span>
-                <span class="value">{densityRelative.toFixed(2)}</span>
-            </div>
-        {/if}
+            {#if body.kind === 'body' && body.axial_tilt_deg}
+                <div class="detail-item">
+                    <span class="label">Axial Tilt</span>
+                    <span class="value">{body.axial_tilt_deg.toFixed(1)}°</span>
+                </div>
+            {/if}
 
-        {#if body.kind === 'body' && body.axial_tilt_deg}
-            <div class="detail-item">
-                <span class="label">Axial Tilt</span>
-                <span class="value">{body.axial_tilt_deg.toFixed(1)}°</span>
-            </div>
-        {/if}
+            {#if body.kind === 'body' && body.rotation_period_hours}
+                <div class="detail-item">
+                    <span class="label">Day Length</span>
+                    <span class="value">{body.rotation_period_hours.toFixed(1)} hours</span>
+                </div>
+            {/if}
 
-        {#if body.kind === 'body' && body.rotation_period_hours}
-            <div class="detail-item">
-                <span class="label">Day Length</span>
-                <span class="value">{body.rotation_period_hours.toFixed(1)} hours</span>
-            </div>
-        {/if}
+            {#if orbitalDistanceDisplay}
+                <div class="detail-item">
+                    <span class="label">{body.roleHint === 'moon' ? 'Orbit (from Planet)' : 'Orbit (from Star)'}</span>
+                    <span class="value">{orbitalDistanceDisplay}</span>
+                </div>
+            {/if}
 
-        {#if orbitalDistanceDisplay}
-            <div class="detail-item">
-                <span class="label">{body.roleHint === 'moon' ? 'Orbit (from Planet)' : 'Orbit (from Star)'}</span>
-                <span class="value">{orbitalDistanceDisplay}</span>
-            </div>
-        {/if}
+            {#if body.kind === 'body' && body.orbital_period_days}
+                <div class="detail-item">
+                    <span class="label">Orbital Period</span>
+                    <span class="value">{body.orbital_period_days.toFixed(1)} days</span>
+                </div>
+            {/if}
 
-        {#if body.kind === 'body' && body.orbit?.elements.e}
-            <div class="detail-item">
-                <span class="label">Orbital Eccentricity</span>
-                <span class="value">{body.orbit.elements.e.toFixed(3)}</span>
-            </div>
-        {/if}
+            {#if body.kind === 'body' && body.orbit?.elements.e}
+                <div class="detail-item">
+                    <span class="label">Orbital Eccentricity</span>
+                    <span class="value">{body.orbit.elements.e.toFixed(3)}</span>
+                </div>
+            {/if}
 
-        {#if body.kind === 'body' && body.orbital_period_days}
-            <div class="detail-item">
-                <span class="label">Orbital Period</span>
-                <span class="value">{body.orbital_period_days.toFixed(1)} days</span>
-            </div>
-        {/if}
+            {#if hotSideTempC !== null && coldSideTempC !== null}
+                <div class="detail-item" title={tempTooltip}>
+                    <span class="label">Day-side Temp.</span>
+                    <span class="value">{Math.round(hotSideTempC)} °C</span>
+                </div>
+                <div class="detail-item" title={tempTooltip}>
+                    <span class="label">Night-side Temp.</span>
+                    <span class="value">{Math.round(coldSideTempC)} °C</span>
+                </div>
+            {:else if surfaceTempC !== null}
+                <div class="detail-item" title={tempTooltip}>
+                    <span class="label">Avg. Surface Temp.</span>
+                    <span class="value">{Math.round(surfaceTempC)} °C</span>
+                </div>
+            {/if}
 
-        {#if hotSideTempC !== null && coldSideTempC !== null}
-            <div class="detail-item" title={tempTooltip}>
-                <span class="label">Day-side Temp.</span>
-                <span class="value">{Math.round(hotSideTempC)} °C</span>
-            </div>
-            <div class="detail-item" title={tempTooltip}>
-                <span class="label">Night-side Temp.</span>
-                <span class="value">{Math.round(coldSideTempC)} °C</span>
-            </div>
-        {:else if surfaceTempC !== null}
-            <div class="detail-item" title={tempTooltip}>
-                <span class="label">Avg. Surface Temp.</span>
-                <span class="value">{Math.round(surfaceTempC)} °C</span>
-            </div>
-        {/if}
+            {#if radiationLevel}
+                <div class="detail-item">
+                    <span class="label">Radiation Level</span>
+                    <span class="value">{radiationLevel}</span>
+                </div>
+            {/if}
 
-        {#if radiationLevel}
-            <div class="detail-item">
-                <span class="label">Radiation Level</span>
-                <span class="value">{radiationLevel}</span>
-            </div>
-        {/if}
+            {#if body.kind === 'body' && body.atmosphere}
+                <div class="detail-item">
+                    <span class="label">Atmosphere</span>
+                    <span class="value">{body.atmosphere.pressure_bar?.toFixed(2)} bar ({body.atmosphere.main})</span>
+                </div>
+            {/if}
 
-        {#if body.kind === 'body' && body.atmosphere}
-            <div class="detail-item">
-                <span class="label">Atmosphere</span>
-                <span class="value">{body.atmosphere.pressure_bar?.toFixed(2)} bar ({body.atmosphere.main})</span>
-            </div>
-        {/if}
-
-        {#if body.kind === 'body' && body.hydrosphere && body.hydrosphere.coverage > 0}
-            <div class="detail-item">
-                <span class="label">Hydrosphere</span>
-                <span class="value">{Math.round(body.hydrosphere.coverage * 100)}% {body.hydrosphere.composition}</span>
-            </div>
-        {/if}
+            {#if body.kind === 'body' && body.hydrosphere && body.hydrosphere.coverage > 0}
+                <div class="detail-item">
+                    <span class="label">Hydrosphere</span>
+                    <span class="value">{Math.round(body.hydrosphere.coverage * 100)}% {body.hydrosphere.composition}</span>
+                </div>
+            {/if}
+        </div>
     </div>
 
   {:else}
@@ -255,7 +256,16 @@
     margin-top: 0;
     color: #ff3e00;
   }
+  .content-wrapper {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1em;
+  }
+  .planet-image-container {
+      grid-column: 1;
+  }
   .details-grid {
+      grid-column: 2;
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
       gap: 0.75em;
@@ -282,9 +292,6 @@
   .value {
       font-size: 1.1em;
       color: #eee;
-  }
-  .planet-image-container {
-    margin-bottom: 1em;
   }
   .planet-image {
     max-width: 100%;
