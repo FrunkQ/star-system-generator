@@ -102,6 +102,13 @@ function _generatePlanetaryBody(
     if (planetTemplate) {
         planet.massKg = randomFromRange(rng, planetTemplate.mass_earth[0], planetTemplate.mass_earth[1]) * EARTH_MASS_KG;
         planet.radiusKm = randomFromRange(rng, planetTemplate.radius_earth[0], planetTemplate.radius_earth[1]) * EARTH_RADIUS_KM;
+
+        if (planet.roleHint === 'moon' && host.kind === 'body') {
+            const parentMass = (host as CelestialBody).massKg || 0;
+            const parentRadius = (host as CelestialBody).radiusKm || 0;
+            planet.massKg = Math.min(planet.massKg, parentMass * 0.05);
+            planet.radiusKm = Math.min(planet.radiusKm, parentRadius * 0.5);
+        }
     }
 
     // --- Feature Calculation & Property Assignment ---
