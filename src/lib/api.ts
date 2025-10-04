@@ -189,6 +189,26 @@ function _generatePlanetaryBody(
 
     features['age_Gyr'] = age_Gyr;
 
+    planet.axial_tilt_deg = randomFromRange(rng, 0, 90);
+    if (isTidallyLocked) {
+        planet.rotation_period_hours = orbital_period_days * 24;
+    } else {
+        planet.rotation_period_hours = randomFromRange(rng, 8, 48);
+    }
+    features['rotation_period_hours'] = planet.rotation_period_hours;
+
+    // Disrupted planet chance
+    let isDisrupted = false;
+    if (features['age_Gyr'] < 0.1 && rng.next() < 0.2) { // Higher chance for young systems
+        isDisrupted = true;
+    } else if (rng.next() < 0.01) { // Low base chance
+        isDisrupted = true;
+    }
+    if (isDisrupted) {
+        planet.classes.push('planet/disrupted');
+    }
+
+
     const isTidallyLocked = (features['a_AU'] as number) < 0.1 * Math.pow(hostMass / SOLAR_MASS_KG, 1/3);
 
     // --- Habitability Scores ---

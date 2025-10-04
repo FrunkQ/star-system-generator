@@ -351,7 +351,10 @@
       { "when": { "all": [ { "gt": ["mass_Me", 50] }, { "lt": ["mass_Me", 500] } ] }, "addClass": "planet/super-jupiter", "score": 50 },
       { "when": { "all": [ { "between": ["mass_Me", 10, 50] }, { "gt": ["Teq_K", 1000] } ] }, "addClass": "planet/hot-neptune", "score": 60 },
       { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "gt": ["Teq_K", 1500] } ] }, "addClass": "planet/ultra-hot-jupiter", "score": 60 },
-      { "when": { "all": [ { "between": ["mass_Me", 10, 50] }, { "gt": ["Teq_K", 1200] } ] }, "addClass": "planet/ultra-hot-neptune", "score": 60 }
+      { "when": { "all": [ { "between": ["mass_Me", 10, 50] }, { "gt": ["Teq_K", 1200] } ] }, "addClass": "planet/ultra-hot-neptune", "score": 60 },
+
+      { "when": { "lt": ["rotation_period_hours", 2] }, "addClass": "planet/toroidal", "score": 90 },
+      { "when": { "all": [ { "lt": ["rotation_period_hours", 6] }, { "gt": ["rotation_period_hours", 2] } ] }, "addClass": "planet/ellipsoid", "score": 80 }
     ],
     "planetImages": {
       "planet/lava": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20lava20planet.jpg",
