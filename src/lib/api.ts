@@ -372,108 +372,109 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
   const bodyCountTable = pack.distributions['planet_count'];
   const numBodies = bodyCountTable ? weightedChoice<number>(rng, bodyCountTable) : rng.nextInt(0, 8);
 
-  if (!isBinary) {
-    let lastApoapsisAU = (rootRadiusKm / AU_KM) + 0.5;
-    for (let i = 0; i < numBodies; i++) {
-        const minGap = 0.5;
-        const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
-        const newEccentricity = randomFromRange(rng, 0.01, 0.15);
-        const newA_AU = newPeriapsis / (1 - newEccentricity);
-        lastApoapsisAU = newA_AU * (1 + newEccentricity);
-
-        const orbit: Orbit = {
-            hostId: systemRoot.id,
-            hostMu: G * totalMassKg,
-            t0: Date.now(),
-            elements: { a_AU: newA_AU, e: newEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
-        };
-        const newNodes = _generatePlanetaryBody(rng, pack, seed, i, systemRoot, orbit, `${systemName} ${String.fromCharCode(98 + i)}`, nodes, system.age_Gyr);
-        nodes.push(...newNodes);
+    const system_age_Gyr = randomFromRange(rng, 0.1, 10.0);
+  
+    if (!isBinary) {
+      let lastApoapsisAU = (rootRadiusKm / AU_KM) + 0.5;
+      for (let i = 0; i < numBodies; i++) {
+          const minGap = 0.5;
+          const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
+          const newEccentricity = randomFromRange(rng, 0.01, 0.15);
+          const newA_AU = newPeriapsis / (1 - newEccentricity);
+          lastApoapsisAU = newA_AU * (1 + newEccentricity);
+  
+          const orbit: Orbit = {
+              hostId: systemRoot.id,
+              hostMu: G * totalMassKg,
+              t0: Date.now(),
+              elements: { a_AU: newA_AU, e: newEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
+          };
+          const newNodes = _generatePlanetaryBody(rng, pack, seed, i, systemRoot, orbit, `${systemName} ${String.fromCharCode(98 + i)}`, nodes, system_age_Gyr);
+          nodes.push(...newNodes);
+      }
+    } else {
+      const starA = nodes.find(n => n.id.endsWith('-star-a')) as CelestialBody;
+      const starB = nodes.find(n => n.id.endsWith('-star-b')) as CelestialBody;
+      const barycenter = systemRoot as Barycenter;
+  
+      const m1 = starA.massKg || 0;
+      const m2 = starB.massKg || 0;
+      const mu = m2 / (m1 + m2);
+      const starSeparationAU = (starA.orbit?.elements.a_AU || 0) + (starB.orbit?.elements.a_AU || 0);
+  
+      const pTypeCriticalAU = 1.60 * starSeparationAU;
+      const sTypeACriticalAU = 0.464 * (1 - mu) * starSeparationAU;
+      const sTypeBCriticalAU = 0.464 * mu * starSeparationAU;
+  
+      let lastApo_p = pTypeCriticalAU * 1.5;
+      let lastApo_sA = (starA.radiusKm || 0) / AU_KM;
+      let lastApo_sB = (starB.radiusKm || 0) / AU_KM;
+  
+      for (let i = 0; i < numBodies; i++) {
+          const placement = weightedChoice<string>(rng, pack.distributions['binary_planet_placement']);
+  
+          let host: CelestialBody | Barycenter;
+          let lastApo: number;
+          let maxApo: number | null = null;
+          let planetNamePrefix: string;
+          let hostMassKg: number;
+  
+          if (placement === 'circumbinary') {
+              host = barycenter;
+              lastApo = lastApo_p;
+              planetNamePrefix = `${baseName} P`;
+              hostMassKg = totalMassKg;
+          } else if (placement === 'around_primary') {
+              host = starA;
+              lastApo = lastApo_sA;
+              maxApo = sTypeACriticalAU;
+              planetNamePrefix = `${starA.name} `;
+              hostMassKg = m1;
+          } else { // around_secondary
+              host = starB;
+              lastApo = lastApo_sB;
+              maxApo = sTypeBCriticalAU;
+              planetNamePrefix = `${starB.name} `;
+              hostMassKg = m2;
+          }
+  
+          const minGap = 0.1 * (host.kind === 'barycenter' ? starSeparationAU : 1);
+          const newPeriapsis = lastApo + randomFromRange(rng, minGap, minGap * 3);
+          if (maxApo && newPeriapsis > maxApo) continue;
+  
+          const newEccentricity = randomFromRange(rng, 0.01, 0.15);
+          const newA_AU = newPeriapsis / (1 - newEccentricity);
+          const newApoapsis = newA_AU * (1 + newEccentricity);
+  
+          if (maxApo && newApoapsis > maxApo) continue;
+  
+          const orbit: Orbit = {
+              hostId: host.id,
+              hostMu: G * hostMassKg,
+              t0: Date.now(),
+              elements: { a_AU: newA_AU, e: newEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
+          };
+  
+          const newNodes = _generatePlanetaryBody(rng, pack, seed, i, host, orbit, `${planetNamePrefix}${toRoman(i + 1)}`, nodes, system_age_Gyr);
+          nodes.push(...newNodes);
+  
+          if (placement === 'circumbinary') lastApo_p = newApoapsis;
+          else if (placement === 'around_primary') lastApo_sA = newApoapsis;
+          else lastApo_sB = newApoapsis;
+      }
     }
-  } else {
-    const starA = nodes.find(n => n.id.endsWith('-star-a')) as CelestialBody;
-    const starB = nodes.find(n => n.id.endsWith('-star-b')) as CelestialBody;
-    const barycenter = systemRoot as Barycenter;
-
-    const m1 = starA.massKg || 0;
-    const m2 = starB.massKg || 0;
-    const mu = m2 / (m1 + m2);
-    const starSeparationAU = (starA.orbit?.elements.a_AU || 0) + (starB.orbit?.elements.a_AU || 0);
-
-    const pTypeCriticalAU = 1.60 * starSeparationAU;
-    const sTypeACriticalAU = 0.464 * (1 - mu) * starSeparationAU;
-    const sTypeBCriticalAU = 0.464 * mu * starSeparationAU;
-
-    let lastApo_p = pTypeCriticalAU * 1.5;
-    let lastApo_sA = (starA.radiusKm || 0) / AU_KM;
-    let lastApo_sB = (starB.radiusKm || 0) / AU_KM;
-
-    for (let i = 0; i < numBodies; i++) {
-        const placement = weightedChoice<string>(rng, pack.distributions['binary_planet_placement']);
-
-        let host: CelestialBody | Barycenter;
-        let lastApo: number;
-        let maxApo: number | null = null;
-        let planetNamePrefix: string;
-        let hostMassKg: number;
-
-        if (placement === 'circumbinary') {
-            host = barycenter;
-            lastApo = lastApo_p;
-            planetNamePrefix = `${baseName} P`;
-            hostMassKg = totalMassKg;
-        } else if (placement === 'around_primary') {
-            host = starA;
-            lastApo = lastApo_sA;
-            maxApo = sTypeACriticalAU;
-            planetNamePrefix = `${starA.name} `;
-            hostMassKg = m1;
-        } else { // around_secondary
-            host = starB;
-            lastApo = lastApo_sB;
-            maxApo = sTypeBCriticalAU;
-            planetNamePrefix = `${starB.name} `;
-            hostMassKg = m2;
-        }
-
-        const minGap = 0.1 * (host.kind === 'barycenter' ? starSeparationAU : 1);
-        const newPeriapsis = lastApo + randomFromRange(rng, minGap, minGap * 3);
-        if (maxApo && newPeriapsis > maxApo) continue;
-
-        const newEccentricity = randomFromRange(rng, 0.01, 0.15);
-        const newA_AU = newPeriapsis / (1 - newEccentricity);
-        const newApoapsis = newA_AU * (1 + newEccentricity);
-
-        if (maxApo && newApoapsis > maxApo) continue;
-
-        const orbit: Orbit = {
-            hostId: host.id,
-            hostMu: G * hostMassKg,
-            t0: Date.now(),
-            elements: { a_AU: newA_AU, e: newEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
-        };
-
-        const newNodes = _generatePlanetaryBody(rng, pack, seed, i, host, orbit, `${planetNamePrefix}${toRoman(i + 1)}`, nodes, system.age_Gyr);
-        nodes.push(...newNodes);
-
-        if (placement === 'circumbinary') lastApo_p = newApoapsis;
-        else if (placement === 'around_primary') lastApo_sA = newApoapsis;
-        else lastApo_sB = newApoapsis;
-    }
-  }
-
-      const system: System = {
+  
+    const system: System = {
       id: seed,
       name: systemName,
       seed: seed,
       epochT0: Date.now(),
-      age_Gyr: randomFromRange(rng, 0.1, 10.0),
+      age_Gyr: system_age_Gyr,
       nodes: nodes,
       rulePackId: pack.id,
       rulePackVersion: pack.version,
       tags: [],
-    };
-  return system;
+    };  return system;
 }
 
 export function rerollNode(sys: System, nodeId: ID, pack: RulePack): System {
