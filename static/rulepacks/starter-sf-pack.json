@@ -322,6 +322,11 @@
       { "when": { "all": [ { "between": ["mass_Me", 5, 20] }, { "between": ["radius_Re", 2.0, 4.0] }, { "any": [ { "gt": ["atm.pressure_bar", 5] }, { "any": [ { "eq": ["atm.main", "H2"] }, { "eq": ["atm.main", "He"] } ] } ] } ] }, "addClass": "planet/mini-neptune", "score": 40 },
       { "when": { "all": [ { "eq": ["tidallyLocked", 1] }, { "between": ["Teq_K", 200, 300] }, { "any": [ { "eq": ["stellarType", "M"] }, { "lt": ["a_AU", 0.2] } ] } ] }, "addClass": "planet/cold-eyeball", "score": 35 },
       { "when": { "all": [ { "eq": ["tidallyLocked", 1] }, { "gt": ["Teq_K", 300] } ] }, "addClass": "planet/hot-eyeball", "score": 35 },
+
+      { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "any": [ { "between": ["a_AU", 0.0, 0.12] }, { "gt": ["Teq_K", 1000] } ] } ] }, "addClass": "planet/hot-jupiter", "score": 50 },
+      { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "between": ["Teq_K", 500, 1000] } ] }, "addClass": "planet/warm-jupiter", "score": 40 },
+      { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "lt": ["Teq_K", 250] } ] }, "addClass": "planet/cold-jupiter", "score": 30 },
+
       { "when": { "between": ["radius_Re", 0.4, 1.6] }, "addClass": "planet/terrestrial", "score": 15 },
       { "when": { "all": [ { "gt": ["radius_Re", 3.5] }, { "gt": ["mass_Me", 50] } ] }, "addClass": "planet/gas-giant", "score": 15 }
     ],
