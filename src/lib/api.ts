@@ -140,11 +140,13 @@ function _generatePlanetaryBody(
     let greenhouseContributionK = 0;
     if (planet.atmosphere && planet.atmosphere.pressure_bar) {
         let greenhouseFactor = 0;
-        if (planet.atmosphere.main === 'CO2') greenhouseFactor = 150;
-        else if (planet.atmosphere.main === 'CH4') greenhouseFactor = 100;
-        else if (planet.atmosphere.main === 'N2') greenhouseFactor = 20;
+        if (planet.atmosphere.main === 'CO2') greenhouseFactor = 0.18; // Venus-like
+        else if (planet.atmosphere.main === 'CH4') greenhouseFactor = 0.05;
+        else if (planet.atmosphere.main === 'N2') greenhouseFactor = 0.01;
 
-        greenhouseContributionK = greenhouseFactor * Math.log1p(planet.atmosphere.pressure_bar);
+        // A non-linear model: T_greenhouse = T_eq * (1 + pressure * factor)^0.25 - T_eq
+        const totalTemp = equilibriumTempK * Math.pow(1 + (planet.atmosphere.pressure_bar * greenhouseFactor), 0.25);
+        greenhouseContributionK = totalTemp - equilibriumTempK;
     }
 
     features['tidalHeating'] = 0; // This feature is parked for now

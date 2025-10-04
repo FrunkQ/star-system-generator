@@ -1,7 +1,7 @@
 {
   "id": "starter-sf-pack",
   "version": "0.1.2",
-  "name": "Starter Sci‑Fi Pack (Budassi + Basics)",
+  "name": "Starter Sci-Fi Pack (Budassi + Basics)",
   "distributions": {
     "star_types": {
       "name": "Stellar Spectral Types",
@@ -257,12 +257,12 @@
     "artifact/other"
   ],
   "prompts": {
-    "systemPreamble": "You are an assistant expanding sci‑fi star system details. Keep output concise, game‑usable, and consistent with provided JSON and tags. Avoid changing facts. Use flavor only as garnish.",
+    "systemPreamble": "You are an assistant expanding sci-fi star system details. Keep output concise, game-usable, and consistent with provided JSON and tags. Avoid changing facts. Use flavor only as garnish.",
     "fewShots": [
-      { "input": { "entity": "Body", "tags": ["planet/super-earth"], "notes": "Rocky world with thin clouds." }, "output": "A high‑gravity super‑Earth with basaltic highlands and scattered rift valleys; settlements cluster in low‑lying river basins sheltered from katabatic winds." }
+      { "input": { "entity": "Body", "tags": ["planet/super-earth"], "notes": "Rocky world with thin clouds." }, "output": "A high-gravity super-Earth with basaltic highlands and scattered rift valleys; settlements cluster in low-lying river basins sheltered from katabatic winds." }
     ],
     "perEntityPrompts": {
-      "Body.description": "Describe the body's surface, hazards, and one adventure hook in 60–120 words, grounded in the JSON fields and tags."
+      "Body.description": "Describe the body's surface, hazards, and one adventure hook in 60-120 words, grounded in the JSON fields and tags."
     }
   },
   "statTemplates": {
@@ -322,13 +322,6 @@
       { "when": { "all": [ { "between": ["mass_Me", 5, 20] }, { "between": ["radius_Re", 2.0, 4.0] }, { "any": [ { "gt": ["atm.pressure_bar", 5] }, { "any": [ { "eq": ["atm.main", "H2"] }, { "eq": ["atm.main", "He"] } ] } ] } ] }, "addClass": "planet/mini-neptune", "score": 40 },
       { "when": { "all": [ { "eq": ["tidallyLocked", 1] }, { "between": ["Teq_K", 200, 300] }, { "any": [ { "eq": ["stellarType", "M"] }, { "lt": ["a_AU", 0.2] } ] } ] }, "addClass": "planet/cold-eyeball", "score": 35 },
       { "when": { "all": [ { "eq": ["tidallyLocked", 1] }, { "gt": ["Teq_K", 300] } ] }, "addClass": "planet/hot-eyeball", "score": 35 },
-
-      { "when": { "between": ["radius_Re", 0.4, 1.6] }, "addClass": "planet/terrestrial", "score": 15 },
-      { "when": { "all": [ { "gt": ["radius_Re", 3.5] }, { "gt": ["mass_Me", 50] } ] }, "addClass": "planet/gas-giant", "score": 15 }
-
-      { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "any": [ { "between": ["a_AU", 0.0, 0.12] }, { "gt": ["Teq_K", 1000] } ] } ] }, "addClass": "planet/hot-jupiter", "score": 50 },
-      { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "between": ["Teq_K", 500, 1000] } ] }, "addClass": "planet/warm-jupiter", "score": 40 },
-      { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "lt": ["Teq_K", 250] } ] }, "addClass": "planet/cold-jupiter", "score": 30 },
       { "when": { "between": ["radius_Re", 0.4, 1.6] }, "addClass": "planet/terrestrial", "score": 15 },
       { "when": { "all": [ { "gt": ["radius_Re", 3.5] }, { "gt": ["mass_Me", 50] } ] }, "addClass": "planet/gas-giant", "score": 15 }
     ],
