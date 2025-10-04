@@ -144,6 +144,8 @@ function _generatePlanetaryBody(
         features['stellarIrradiation'] = primaryStar.magneticField?.strengthGauss || 1;
     }
 
+    planet.equilibriumTempK = equilibriumTempK;
+
     let greenhouseContributionK = 0;
     if (planet.atmosphere && planet.atmosphere.pressure_bar) {
         let greenhouseFactor = 0;
@@ -152,10 +154,10 @@ function _generatePlanetaryBody(
         else if (planet.atmosphere.main === 'N2') greenhouseFactor = 0.01;
 
         // A non-linear model: T_greenhouse = T_eq * (1 + pressure * factor)^0.25 - T_eq
-        const totalTemp = equilibriumTempK * Math.pow(1 + (planet.atmosphere.pressure_bar * greenhouseFactor), 0.25);
-        greenhouseContributionK = totalTemp - equilibriumTempK;
-        greenhouseContributionK = totalTemp - equilibriumTempK;
+        const tempWithGreenhouse = equilibriumTempK * Math.pow(1 + (planet.atmosphere.pressure_bar * greenhouseFactor), 0.25);
+        greenhouseContributionK = tempWithGreenhouse - equilibriumTempK;
     }
+    planet.greenhouseTempK = greenhouseContributionK;
 
     // Add heat from internal sources
     let tidalHeatingK = 0;
@@ -166,9 +168,11 @@ function _generatePlanetaryBody(
         // Scaled to produce noticeable, but not extreme, effects.
         tidalHeatingK = (parentMass / EARTH_MASS_KG) * eccentricity * 100;
     }
+    planet.tidalHeatK = tidalHeatingK;
 
     // A small, constant amount of heat from radioactive decay for rocky worlds
     const radiogenicHeatK = (planetType === 'planet/terrestrial') ? 10 : 0;
+    planet.radiogenicHeatK = radiogenicHeatK;
 
     features['tidalHeating'] = tidalHeatingK;
     planet.temperatureK = equilibriumTempK + greenhouseContributionK + tidalHeatingK + radiogenicHeatK;

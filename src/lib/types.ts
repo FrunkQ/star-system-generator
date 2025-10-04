@@ -49,6 +49,7 @@ export interface CelestialBody extends NodeBase {
   massKg?: number; radiusKm?: number; density?: number; radiusInnerKm?: number; radiusOuterKm?: number;
   atmosphere?: Atmosphere; hydrosphere?: Hydrosphere;
   albedo?: number; temperatureK?: number; gravityG?: number; magneticField?: MagneticField;
+  equilibriumTempK?: number; greenhouseTempK?: number; tidalHeatK?: number; radiogenicHeatK?: number;
   tidallyLocked?: boolean;
   orbit?: Orbit; areas: Area[]; image?: string; deltaV?: DeltaVCapability;
 }
