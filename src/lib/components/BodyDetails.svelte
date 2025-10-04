@@ -8,6 +8,7 @@
   const EARTH_DENSITY = 5514; // kg/m^3
   const SOLAR_MASS_KG = 1.989e30;
   const EARTH_MASS_KG = 5.972e24;
+  const AU_KM = 149597870.7;
 
   const STAR_TYPE_DESC: Record<string, string> = {
       'O': 'Extremely hot, luminous, and blue. Very rare and short-lived. High radiation.',
@@ -30,6 +31,8 @@
   let surfaceGravityG: number | null = null;
   let densityRelative: number | null = null;
   let orbitalDistanceDisplay: string | null = null;
+  let circumferenceKm: number | null = null;
+  let tempTooltip: string = '';
 
   $: {
     surfaceGravityG = null;
@@ -40,10 +43,20 @@
     massDisplay = null;
     radiationLevel = null;
     orbitalDistanceDisplay = null;
+    circumferenceKm = null;
+    tempTooltip = '';
 
     if (body && body.kind === 'body') {
         if (body.orbit) {
-            orbitalDistanceDisplay = `${body.orbit.elements.a_AU.toFixed(3)} AU`;
+            if (body.roleHint === 'moon') {
+                orbitalDistanceDisplay = `${(body.orbit.elements.a_AU * AU_KM).toLocaleString(undefined, {maximumFractionDigits: 0})} km`;
+            } else {
+                orbitalDistanceDisplay = `${body.orbit.elements.a_AU.toFixed(3)} AU`;
+            }
+        }
+
+        if (body.radiusKm && body.radiusKm > 0) {
+            circumferenceKm = 2 * Math.PI * body.radiusKm;
         }
 
         if (body.massKg && body.radiusKm && body.radiusKm > 0) {
@@ -81,6 +94,7 @@
             } else {
                 surfaceTempC = body.temperatureK - 273.15;
             }
+            tempTooltip = `Equilibrium: ${Math.round((body.equilibriumTempK || 0) - 273.15)}°C | Greenhouse: +${Math.round(body.greenhouseTempK || 0)}°C | Tidal: +${Math.round(body.tidalHeatK || 0)}°C | Radiogenic: +${Math.round(body.radiogenicHeatK || 0)}°C`;
         }
     }
   }
@@ -122,10 +136,17 @@
             </div>
         {/if}
 
-        {#if orbitalDistanceDisplay}
+        {#if body.kind === 'body' && body.radiusKm}
             <div class="detail-item">
-                <span class="label">{body.roleHint === 'moon' ? 'Orbit (from Planet)' : 'Orbit (from Star)'}</span>
-                <span class="value">{orbitalDistanceDisplay}</span>
+                <span class="label">Radius</span>
+                <span class="value">{body.radiusKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+            </div>
+        {/if}
+
+        {#if circumferenceKm}
+            <div class="detail-item">
+                <span class="label">Circumference</span>
+                <span class="value">{circumferenceKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
             </div>
         {/if}
 
@@ -143,17 +164,45 @@
             </div>
         {/if}
 
-        {#if hotSideTempC !== null && coldSideTempC !== null}
+        {#if body.kind === 'body' && body.axial_tilt_deg}
             <div class="detail-item">
+                <span class="label">Axial Tilt</span>
+                <span class="value">{body.axial_tilt_deg.toFixed(1)}°</span>
+            </div>
+        {/if}
+
+        {#if body.kind === 'body' && body.rotation_period_hours}
+            <div class="detail-item">
+                <span class="label">Day Length</span>
+                <span class="value">{body.rotation_period_hours.toFixed(1)} hours</span>
+            </div>
+        {/if}
+
+        {#if orbitalDistanceDisplay}
+            <div class="detail-item">
+                <span class="label">{body.roleHint === 'moon' ? 'Orbit (from Planet)' : 'Orbit (from Star)'}</span>
+                <span class="value">{orbitalDistanceDisplay}</span>
+            </div>
+        {/if}
+
+        {#if body.kind === 'body' && body.orbit?.elements.e}
+            <div class="detail-item">
+                <span class="label">Orbital Eccentricity</span>
+                <span class="value">{body.orbit.elements.e.toFixed(3)}</span>
+            </div>
+        {/if}
+
+        {#if hotSideTempC !== null && coldSideTempC !== null}
+            <div class="detail-item" title={tempTooltip}>
                 <span class="label">Day-side Temp.</span>
                 <span class="value">{Math.round(hotSideTempC)} °C</span>
             </div>
-            <div class="detail-item">
+            <div class="detail-item" title={tempTooltip}>
                 <span class="label">Night-side Temp.</span>
                 <span class="value">{Math.round(coldSideTempC)} °C</span>
             </div>
         {:else if surfaceTempC !== null}
-            <div class="detail-item">
+            <div class="detail-item" title={tempTooltip}>
                 <span class="label">Avg. Surface Temp.</span>
                 <span class="value">{Math.round(surfaceTempC)} °C</span>
             </div>
@@ -212,6 +261,7 @@
       padding: 0.6em;
       border-radius: 4px;
       border-left: 3px solid #ff3e00;
+      cursor: default; /* So title attribute tooltips show up consistently */
   }
   .detail-item.description {
       grid-column: 1 / -1;
