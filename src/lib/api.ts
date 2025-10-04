@@ -189,7 +189,7 @@ function _generatePlanetaryBody(
 
     features['age_Gyr'] = age_Gyr;
 
-    planet.axial_tilt_deg = randomFromRange(rng, 0, 90);
+    planet.axial_tilt_deg = Math.pow(rng.next(), 3) * 90;
     if (isTidallyLocked) {
         planet.rotation_period_hours = orbital_period_days * 24;
     } else {
@@ -293,7 +293,7 @@ function _generatePlanetaryBody(
                 hostId: planet.id,
                 hostMu: G * (planet.massKg || 0),
                 t0: Date.now(),
-                elements: { a_AU: newMoonA_AU, e: newMoonEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
+                elements: { a_AU: newMoonA_AU, e: newMoonEccentricity, i_deg: Math.pow(rng.next(), 2) * 10, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
             };
             
             const moonNodes = _generatePlanetaryBody(rng, pack, `${planet.id}-moon`, j, planet, moonOrbit, `${planet.name} ${toRoman(j + 1)}`, [...allNodes, ...newNodes], age_Gyr);
@@ -404,16 +404,15 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
           const minGap = 0.5;
           const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
           const newEccentricity = randomFromRange(rng, 0.01, 0.15);
-          const newA_AU = newPeriapsis / (1 - newEccentricity);
-          lastApoapsisAU = newA_AU * (1 + newEccentricity);
-  
-          const orbit: Orbit = {
-              hostId: systemRoot.id,
-              hostMu: G * totalMassKg,
-              t0: Date.now(),
-              elements: { a_AU: newA_AU, e: newEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
-          };
-          const newNodes = _generatePlanetaryBody(rng, pack, seed, i, systemRoot, orbit, `${systemName} ${String.fromCharCode(98 + i)}`, nodes, system_age_Gyr);
+                  const newA_AU = newPeriapsis / (1 - newEccentricity);
+                  lastApoapsisAU = newA_AU * (1 + newEccentricity);
+          
+                  const orbit: Orbit = {
+                      hostId: systemRoot.id,
+                      hostMu: G * totalMassKg,
+                      t0: Date.now(),
+                      elements: { a_AU: newA_AU, e: newEccentricity, i_deg: Math.pow(rng.next(), 3) * 15, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
+                  };          const newNodes = _generatePlanetaryBody(rng, pack, seed, i, systemRoot, orbit, `${systemName} ${String.fromCharCode(98 + i)}`, nodes, system_age_Gyr);
           nodes.push(...newNodes);
       }
     } else {
@@ -467,18 +466,17 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
           if (maxApo && newPeriapsis > maxApo) continue;
   
           const newEccentricity = randomFromRange(rng, 0.01, 0.15);
-          const newA_AU = newPeriapsis / (1 - newEccentricity);
-          const newApoapsis = newA_AU * (1 + newEccentricity);
-  
-          if (maxApo && newApoapsis > maxApo) continue;
-  
-          const orbit: Orbit = {
-              hostId: host.id,
-              hostMu: G * hostMassKg,
-              t0: Date.now(),
-              elements: { a_AU: newA_AU, e: newEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
-          };
-  
+                  const newA_AU = newPeriapsis / (1 - newEccentricity);
+                  const newApoapsis = newA_AU * (1 + newEccentricity);
+          
+                  if (maxApo && newApoapsis > maxApo) continue;
+          
+                  const orbit: Orbit = {
+                      hostId: host.id,
+                      hostMu: G * hostMassKg,
+                      t0: Date.now(),
+                      elements: { a_AU: newA_AU, e: newEccentricity, i_deg: Math.pow(rng.next(), 3) * 15, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
+                  };  
           const newNodes = _generatePlanetaryBody(rng, pack, seed, i, host, orbit, `${planetNamePrefix}${toRoman(i + 1)}`, nodes, system_age_Gyr);
           nodes.push(...newNodes);
   
