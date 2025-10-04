@@ -72,7 +72,7 @@ export interface ClassifierRule { when: Expr; addClass: string; score: number; }
 export type Feature =
   | "mass_Me" | "radius_Re" | "density" | "Teq_K" | "a_AU" | "stellarType"
   | "atm.main" | "atm.pressure_bar" | "hydrosphere.coverage" | "tidalHeating" | "tidallyLocked" | "ringSystem"
-  | "age_Gyr" | "orbital_period_days" | "rotation_period_hours" | "human_habitability_score" | "alien_habitability_score";
+  | "age_Gyr" | "orbital_period_days" | "rotation_period_hours" | "ringSystem" | "human_habitability_score" | "alien_habitability_score";
 export type Expr = { all?: Expr[]; any?: Expr[]; not?: Expr }
   | { gt: [Feature, number] } | { lt: [Feature, number] } | { between: [Feature, number, number] }
   | { eq: [Feature, string] } | { hasTag: string };

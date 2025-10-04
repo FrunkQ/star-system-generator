@@ -354,7 +354,11 @@
       { "when": { "all": [ { "between": ["mass_Me", 10, 50] }, { "gt": ["Teq_K", 1200] } ] }, "addClass": "planet/ultra-hot-neptune", "score": 60 },
 
       { "when": { "lt": ["rotation_period_hours", 2] }, "addClass": "planet/toroidal", "score": 90 },
-      { "when": { "all": [ { "lt": ["rotation_period_hours", 6] }, { "gt": ["rotation_period_hours", 2] } ] }, "addClass": "planet/ellipsoid", "score": 80 }
+      { "when": { "all": [ { "lt": ["rotation_period_hours", 6] }, { "gt": ["rotation_period_hours", 2] } ] }, "addClass": "planet/ellipsoid", "score": 80 },
+
+      { "when": { "eq": ["ringSystem", 1] }, "addClass": "planet/ringed", "score": 100 },
+      { "when": { "all": [ { "eq": ["hydrosphere.composition", "methane"] }, { "gt": ["hydrosphere.coverage", 0.5] } ] }, "addClass": "planet/methane", "score": 90 },
+      { "when": { "all": [ { "lt": ["escapeVelocity_kms", 1.0] }, { "gt": ["age_Gyr", 4] } ] }, "addClass": "planet/crater", "score": 70 }
     ],
     "planetImages": {
       "planet/lava": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20lava20planet.jpg",

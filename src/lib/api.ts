@@ -254,6 +254,7 @@ function _generatePlanetaryBody(
         const isGasGiant = planet.classes.includes('planet/gas-giant');
         const ringChanceTable = pack.distributions[isGasGiant ? 'gas_giant_ring_chance' : 'terrestrial_ring_chance'];
         const hasRing = ringChanceTable ? weightedChoice<boolean>(rng, ringChanceTable) : false;
+        features['ringSystem'] = hasRing ? 1 : 0;
 
         if (hasRing) {
             const ringTemplate = pack.statTemplates?.['ring/planetary'];
