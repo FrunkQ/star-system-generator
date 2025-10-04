@@ -192,6 +192,13 @@
             </div>
         {/if}
 
+        {#if body.kind === 'body' && body.orbital_period_days}
+            <div class="detail-item">
+                <span class="label">Orbital Period</span>
+                <span class="value">{body.orbital_period_days.toFixed(1)} days</span>
+            </div>
+        {/if}
+
         {#if hotSideTempC !== null && coldSideTempC !== null}
             <div class="detail-item" title={tempTooltip}>
                 <span class="label">Day-side Temp.</span>
@@ -229,6 +236,12 @@
             </div>
         {/if}
 
+        {#if body.kind === 'body' && body.atmosphere}
+            <div class="detail-item">
+                <span class="label">Atmosphere</span>
+                <span class="value">{body.atmosphere.pressure_bar?.toFixed(2)} bar ({body.atmosphere.main})</span>
+            </div>
+        {/if}
     </div>
 
   {:else}

@@ -186,6 +186,7 @@ function _generatePlanetaryBody(
 
     const orbital_period_days = planet.orbit ? Math.sqrt(4 * Math.PI**2 * (planet.orbit.elements.a_AU * AU_KM * 1000)**3 / (G * hostMass)) / (60 * 60 * 24) : 0;
     features['orbital_period_days'] = orbital_period_days;
+    planet.orbital_period_days = orbital_period_days;
 
     features['age_Gyr'] = age_Gyr;
 
