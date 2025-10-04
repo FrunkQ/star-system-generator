@@ -344,7 +344,14 @@
 
       { "when": { "all": [ { "lt": ["mass_Me", 0.1] }, { "gt": ["mass_Me", 0.01] } ] }, "addClass": "planet/dwarf-planet", "score": 50 },
       { "when": { "all": [ { "lt": ["density", 0.5] }, { "gt": ["mass_Me", 1] } ] }, "addClass": "planet/coreless", "score": 60 },
-      { "when": { "gt": ["density", 1.5] }, "addClass": "planet/silicate", "score": 60 }
+      { "when": { "gt": ["density", 1.5] }, "addClass": "planet/silicate", "score": 60 },
+
+      { "when": { "lt": ["mass_Me", 0.5] }, "addClass": "planet/sub-earth", "score": 50 },
+      { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "lt": ["mass_Me", 50] } ] }, "addClass": "planet/mega-earth", "score": 50 },
+      { "when": { "all": [ { "gt": ["mass_Me", 50] }, { "lt": ["mass_Me", 500] } ] }, "addClass": "planet/super-jupiter", "score": 50 },
+      { "when": { "all": [ { "between": ["mass_Me", 10, 50] }, { "gt": ["Teq_K", 1000] } ] }, "addClass": "planet/hot-neptune", "score": 60 },
+      { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "gt": ["Teq_K", 1500] } ] }, "addClass": "planet/ultra-hot-jupiter", "score": 60 },
+      { "when": { "all": [ { "between": ["mass_Me", 10, 50] }, { "gt": ["Teq_K", 1200] } ] }, "addClass": "planet/ultra-hot-neptune", "score": 60 }
     ],
     "planetImages": {
       "planet/lava": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20lava20planet.jpg",
