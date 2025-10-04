@@ -332,7 +332,11 @@
 
       { "when": { "all": [ { "lt": ["Teq_K", 273] }, { "gt": ["tidalHeating", 50] }, { "gt": ["hydrosphere.coverage", 0.1] } ] }, "addClass": "planet/subsurface-ocean", "score": 90 },
       { "when": { "all": [ { "between": ["mass_Me", 10, 50] }, { "gt": ["Teq_K", 800] } ] }, "addClass": "planet/hot-neptune", "score": 60 },
-      { "when": { "gt": ["mass_Me", 1000] }, "addClass": "planet/super-jupiter", "score": 60 }
+      { "when": { "gt": ["mass_Me", 1000] }, "addClass": "planet/super-jupiter", "score": 60 },
+
+      { "when": { "all": [ { "eq": ["hydrosphere.composition", "ammonia"] }, { "gt": ["hydrosphere.coverage", 0.5] } ] }, "addClass": "planet/ammonia-planet", "score": 90 },
+      { "when": { "all": [ { "eq": ["atm.main", "Cl"] }, { "gt": ["atm.pressure_bar", 0.1] } ] }, "addClass": "planet/chlorine", "score": 90 },
+      { "when": { "all": [ { "eq": ["atm.main", "SO2"] }, { "gt": ["atm.pressure_bar", 0.1] } ] }, "addClass": "planet/sulfur", "score": 90 }
     ],
     "planetImages": {
       "planet/lava": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20lava20planet.jpg",
