@@ -358,7 +358,13 @@
 
       { "when": { "eq": ["has_ring_child", 1] }, "addClass": "planet/ringed", "score": 100 },
       { "when": { "all": [ { "eq": ["hydrosphere.composition", "methane"] }, { "gt": ["hydrosphere.coverage", 0.5] } ] }, "addClass": "planet/methane", "score": 90 },
-      { "when": { "all": [ { "lt": ["escapeVelocity_kms", 1.0] }, { "gt": ["age_Gyr", 4] } ] }, "addClass": "planet/crater", "score": 70 }
+      { "when": { "all": [ { "lt": ["escapeVelocity_kms", 1.0] }, { "gt": ["age_Gyr", 4] } ] }, "addClass": "planet/crater", "score": 70 },
+
+      { "when": { "between": ["mass_Me", 4000, 8000] }, "addClass": "planet/brown-dwarf", "score": 120 },
+      { "when": { "between": ["mass_Me", 1000, 4000] }, "addClass": "planet/sub-brown-dwarf", "score": 110 },
+      { "when": { "all": [ { "between": ["mass_Me", 10, 50] }, { "lt": ["Teq_K", 200] } ] }, "addClass": "planet/ice-giant", "score": 80 },
+      { "when": { "all": [ { "gt": ["radius_Re", 6] }, { "lt": ["mass_Me", 2] } ] }, "addClass": "planet/super-puff", "score": 90 },
+      { "when": { "eq": ["parentId", null] }, "addClass": "planet/rogue", "score": 200 }
     ],
     "planetImages": {
       "planet/lava": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20lava20planet.jpg",
