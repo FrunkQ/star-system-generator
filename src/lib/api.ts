@@ -187,36 +187,35 @@ function _generatePlanetaryBody(
 
     features['age_Gyr'] = age_Gyr;
 
-
-    const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
-    const isTidallyLocked = (features['a_AU'] as number) < 0.1 * Math.pow(hostMass / SOLAR_MASS_KG, 1/3);
-    planet.tidallyLocked = isTidallyLocked;
-    features['tidallyLocked'] = isTidallyLocked ? 1 : 0;
+    // --- Habitability Scores ---
+    let human_habitability_score = 0;
+    let alien_habitability_score = 0;
 
     if (planetType === 'planet/terrestrial') {
-        let hasAtmosphere = true;
-        if (escapeVelocity < 3.0) hasAtmosphere = false;
-        if ((features['stellarIrradiation'] as number) > 100 && (features['a_AU'] as number) < 0.5) hasAtmosphere = false;
+        // Human-like habitability (strict)
+        const tempOk = (planet.temperatureK > 273 && planet.temperatureK < 313); // 0-40C
+        const waterOk = (planet.hydrosphere?.composition === 'water' && (planet.hydrosphere?.coverage || 0) > 0.1);
+        const pressureOk = (planet.atmosphere?.pressure_bar > 0.5 && planet.atmosphere?.pressure_bar < 1.5);
+        const atmOk = (planet.atmosphere?.main === 'N2');
+        const gravityOk = ((features['mass_Me'] as number) > 0.5 && (features['mass_Me'] as number) < 1.5);
 
-        if (hasAtmosphere) {
-            const pressureRange = weightedChoice<[number, number]>(rng, pack.distributions['atmosphere_pressure_bar']);
-            const atmComp = weightedChoice<{main: string, secondary: string}>(rng, pack.distributions['atmosphere_composition']);
-            planet.atmosphere = {
-                pressure_bar: randomFromRange(rng, pressureRange[0], pressureRange[1]),
-                main: atmComp.main,
-                composition: { [atmComp.main]: 0.8, [atmComp.secondary]: 0.2 }
-            };
-            features['atm.main'] = planet.atmosphere.main;
-            features['atm.pressure_bar'] = planet.atmosphere.pressure_bar;
+        if (tempOk && waterOk && pressureOk && atmOk && gravityOk) {
+            human_habitability_score = 100;
         }
 
-        const hydroCoverageRange = weightedChoice<[number, number]>(rng, pack.distributions['hydrosphere_coverage']);
-        planet.hydrosphere = {
-            coverage: randomFromRange(rng, hydroCoverageRange[0], hydroCoverageRange[1]),
-            composition: weightedChoice<string>(rng, pack.distributions['hydrosphere_composition'])
-        };
-        features['hydrosphere.coverage'] = planet.hydrosphere.coverage;
+        // Alien habitability (broad)
+        const alienTempOk = (planet.temperatureK > 150 && planet.temperatureK < 400);
+        const liquidOk = ((planet.hydrosphere?.coverage || 0) > 0);
+        const alienPressureOk = (planet.atmosphere?.pressure_bar > 0.1);
+        const lowRadiation = ((features['stellarIrradiation'] as number) < 10);
+
+        if (alienTempOk && liquidOk && alienPressureOk && lowRadiation) {
+            alien_habitability_score = 100;
+        }
     }
+
+    features['human_habitability_score'] = human_habitability_score;
+    features['alien_habitability_score'] = alien_habitability_score;
 
     planet.classes = classifyBody(features, pack);
 

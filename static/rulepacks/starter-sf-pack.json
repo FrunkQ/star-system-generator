@@ -335,7 +335,12 @@
       { "when": { "gt": ["mass_Me", 1000] }, "addClass": "planet/super-jupiter", "score": 60 },
 
       { "when": { "lt": ["age_Gyr", 0.1] }, "addClass": "planet/protoplanet", "score": 90 },
-      { "when": { "lt": ["orbital_period_days", 1.0] }, "addClass": "planet/ultra-short-period", "score": 90 }
+      { "when": { "lt": ["orbital_period_days", 1.0] }, "addClass": "planet/ultra-short-period", "score": 90 },
+
+      { "when": { "gt": ["human_habitability_score", 90] }, "addClass": "planet/habitable", "score": 100 },
+      { "when": { "all": [ { "gt": ["human_habitability_score", 95] }, { "between": ["mass_Me", 0.8, 1.2] } ] }, "addClass": "planet/earth-analog", "score": 110 },
+      { "when": { "all": [ { "gt": ["human_habitability_score", 90] }, { "gt": ["mass_Me", 1.5] } ] }, "addClass": "planet/superhabitable", "score": 110 },
+      { "when": { "gt": ["alien_habitability_score", 90] }, "addClass": "planet/life-bearing", "score": 80 }
     ],
     "planetImages": {
       "planet/lava": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20lava20planet.jpg",
