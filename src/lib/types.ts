@@ -60,7 +60,7 @@ export interface Barycenter extends NodeBase {
 }
 
 export interface System {
-  id: ID; name: string; seed: string; epochT0: number;
+  id: ID; name: string; seed: string; epochT0: number; age_Gyr: number;
   nodes: Array<CelestialBody | Barycenter>;
   rulePackId: string; rulePackVersion: string;
   tags: Tag[]; notes?: string; gmNotes?: string;
@@ -69,9 +69,9 @@ export interface System {
 // Rule Pack interfaces (subset for M0–M1)
 export interface ClassifierRule { when: Expr; addClass: string; score: number; }
 export type Feature =
-  | "mass_Me" | "radius_Re" | "density" | "Teq_K" | "period_days" | "a_AU" | "stellarType"
-  | "tidalHeating" | "escapeVelocity_kms" | "stellarIrradiation"
-  | "atm.main" | "atm.pressure_bar" | "hydrosphere.coverage" | "tidallyLocked" | "ringSystem" | "age_Gyr";
+  | "mass_Me" | "radius_Re" | "density" | "Teq_K" | "a_AU" | "stellarType"
+  | "atm.main" | "atm.pressure_bar" | "hydrosphere.coverage" | "tidalHeating" | "tidallyLocked" | "ringSystem"
+  | "age_Gyr" | "orbital_period_days";
 export type Expr = { all?: Expr[]; any?: Expr[]; not?: Expr }
   | { gt: [Feature, number] } | { lt: [Feature, number] } | { between: [Feature, number, number] }
   | { eq: [Feature, string] } | { hasTag: string };

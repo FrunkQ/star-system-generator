@@ -56,7 +56,8 @@ function _generatePlanetaryBody(
     host: CelestialBody | Barycenter,
     orbit: Orbit,
     name: string,
-    allNodes: (CelestialBody | Barycenter)[]
+    allNodes: (CelestialBody | Barycenter)[],
+    age_Gyr: number
 ): CelestialBody[] {
     const newNodes: CelestialBody[] = [];
 
@@ -181,6 +182,12 @@ function _generatePlanetaryBody(
     const escapeVelocity = Math.sqrt(2 * G * (planet.massKg || 0) / ((planet.radiusKm || 1) * 1000)) / 1000; // in km/s
     features['escapeVelocity_kms'] = escapeVelocity;
 
+    const orbital_period_days = planet.orbit ? Math.sqrt(4 * Math.PI**2 * (planet.orbit.elements.a_AU * AU_KM * 1000)**3 / (G * hostMass)) / (60 * 60 * 24) : 0;
+    features['orbital_period_days'] = orbital_period_days;
+
+    features['age_Gyr'] = age_Gyr;
+
+
     const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
     const isTidallyLocked = (features['a_AU'] as number) < 0.1 * Math.pow(hostMass / SOLAR_MASS_KG, 1/3);
     planet.tidallyLocked = isTidallyLocked;
@@ -266,7 +273,7 @@ function _generatePlanetaryBody(
                 elements: { a_AU: newMoonA_AU, e: newMoonEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
             };
             
-            const moonNodes = _generatePlanetaryBody(rng, pack, `${planet.id}-moon`, j, planet, moonOrbit, `${planet.name} ${toRoman(j + 1)}`, [...allNodes, ...newNodes]);
+            const moonNodes = _generatePlanetaryBody(rng, pack, `${planet.id}-moon`, j, planet, moonOrbit, `${planet.name} ${toRoman(j + 1)}`, [...allNodes, ...newNodes], age_Gyr);
             newNodes.push(...moonNodes);
         }
     }
@@ -381,7 +388,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
             t0: Date.now(),
             elements: { a_AU: newA_AU, e: newEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
         };
-        const newNodes = _generatePlanetaryBody(rng, pack, seed, i, systemRoot, orbit, `${systemName} ${String.fromCharCode(98 + i)}`, nodes);
+        const newNodes = _generatePlanetaryBody(rng, pack, seed, i, systemRoot, orbit, `${systemName} ${String.fromCharCode(98 + i)}`, nodes, system.age_Gyr);
         nodes.push(...newNodes);
     }
   } else {
@@ -447,7 +454,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
             elements: { a_AU: newA_AU, e: newEccentricity, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
         };
 
-        const newNodes = _generatePlanetaryBody(rng, pack, seed, i, host, orbit, `${planetNamePrefix}${toRoman(i + 1)}`, nodes);
+        const newNodes = _generatePlanetaryBody(rng, pack, seed, i, host, orbit, `${planetNamePrefix}${toRoman(i + 1)}`, nodes, system.age_Gyr);
         nodes.push(...newNodes);
 
         if (placement === 'circumbinary') lastApo_p = newApoapsis;
@@ -456,17 +463,17 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
     }
   }
 
-  const system: System = {
-    id: seed,
-    name: systemName,
-    seed: seed,
-    epochT0: Date.now(),
-    nodes: nodes,
-    rulePackId: pack.id,
-    rulePackVersion: pack.version,
-    tags: [],
-  };
-
+      const system: System = {
+      id: seed,
+      name: systemName,
+      seed: seed,
+      epochT0: Date.now(),
+      age_Gyr: randomFromRange(rng, 0.1, 10.0),
+      nodes: nodes,
+      rulePackId: pack.id,
+      rulePackVersion: pack.version,
+      tags: [],
+    };
   return system;
 }
 
