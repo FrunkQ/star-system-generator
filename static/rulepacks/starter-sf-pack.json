@@ -340,7 +340,11 @@
       { "when": { "gt": ["human_habitability_score", 90] }, "addClass": "planet/habitable", "score": 100 },
       { "when": { "all": [ { "gt": ["human_habitability_score", 95] }, { "between": ["mass_Me", 0.8, 1.2] } ] }, "addClass": "planet/earth-analog", "score": 110 },
       { "when": { "all": [ { "gt": ["human_habitability_score", 90] }, { "gt": ["mass_Me", 1.5] } ] }, "addClass": "planet/superhabitable", "score": 110 },
-      { "when": { "gt": ["alien_habitability_score", 90] }, "addClass": "planet/life-bearing", "score": 80 }
+      { "when": { "gt": ["alien_habitability_score", 90] }, "addClass": "planet/life-bearing", "score": 80 },
+
+      { "when": { "all": [ { "lt": ["mass_Me", 0.1] }, { "gt": ["mass_Me", 0.01] } ] }, "addClass": "planet/dwarf-planet", "score": 50 },
+      { "when": { "all": [ { "lt": ["density", 0.5] }, { "gt": ["mass_Me", 1] } ] }, "addClass": "planet/coreless", "score": 60 },
+      { "when": { "gt": ["density", 1.5] }, "addClass": "planet/silicate", "score": 60 }
     ],
     "planetImages": {
       "planet/lava": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20lava20planet.jpg",
