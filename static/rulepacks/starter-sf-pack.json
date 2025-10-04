@@ -330,9 +330,9 @@
       { "when": { "between": ["radius_Re", 0.4, 1.6] }, "addClass": "planet/terrestrial", "score": 15 },
       { "when": { "all": [ { "gt": ["radius_Re", 3.5] }, { "gt": ["mass_Me", 50] } ] }, "addClass": "planet/gas-giant", "score": 15 },
 
-      { "when": { "lt": ["age_Gyr", 0.1] }, "addClass": "planet/protoplanet", "score": 60 },
-      { "when": { "all": [ { "gt": ["radius_Re", 8] }, { "lt": ["mass_Me", 10] } ] }, "addClass": "planet/puffy", "score": 70 },
-      { "when": { "all": [ { "gt": ["radius_Re", 15] }, { "lt": ["mass_Me", 10] } ] }, "addClass": "planet/super-puff", "score": 80 }
+      { "when": { "all": [ { "lt": ["Teq_K", 273] }, { "gt": ["tidalHeating", 50] }, { "gt": ["hydrosphere.coverage", 0.1] } ] }, "addClass": "planet/subsurface-ocean", "score": 90 },
+      { "when": { "all": [ { "between": ["mass_Me", 10, 50] }, { "gt": ["Teq_K", 800] } ] }, "addClass": "planet/hot-neptune", "score": 60 },
+      { "when": { "gt": ["mass_Me", 1000] }, "addClass": "planet/super-jupiter", "score": 60 }
     ],
     "planetImages": {
       "planet/lava": "https://pablocarlosbudassi.com/wp-content/uploads/2024/02/web20lava20planet.jpg",

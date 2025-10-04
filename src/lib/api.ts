@@ -154,10 +154,24 @@ function _generatePlanetaryBody(
         // A non-linear model: T_greenhouse = T_eq * (1 + pressure * factor)^0.25 - T_eq
         const totalTemp = equilibriumTempK * Math.pow(1 + (planet.atmosphere.pressure_bar * greenhouseFactor), 0.25);
         greenhouseContributionK = totalTemp - equilibriumTempK;
+        greenhouseContributionK = totalTemp - equilibriumTempK;
     }
 
-    features['tidalHeating'] = 0; // This feature is parked for now
-    planet.temperatureK = equilibriumTempK + greenhouseContributionK;
+    // Add heat from internal sources
+    let tidalHeatingK = 0;
+    if (planet.roleHint === 'moon' && host.kind === 'body') {
+        const parentMass = (host as CelestialBody).massKg || 0;
+        const eccentricity = planet.orbit?.elements.e || 0;
+        // Simplified model: more heating for massive parents and eccentric orbits.
+        // Scaled to produce noticeable, but not extreme, effects.
+        tidalHeatingK = (parentMass / EARTH_MASS_KG) * eccentricity * 100;
+    }
+
+    // A small, constant amount of heat from radioactive decay for rocky worlds
+    const radiogenicHeatK = (planetType === 'planet/terrestrial') ? 10 : 0;
+
+    features['tidalHeating'] = tidalHeatingK;
+    planet.temperatureK = equilibriumTempK + greenhouseContributionK + tidalHeatingK + radiogenicHeatK;
     features['Teq_K'] = planet.temperatureK;
 
     const escapeVelocity = Math.sqrt(2 * G * (planet.massKg || 0) / ((planet.radiusKm || 1) * 1000)) / 1000; // in km/s
