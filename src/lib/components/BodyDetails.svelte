@@ -235,13 +235,6 @@
                 <span class="value">{Math.round(body.hydrosphere.coverage * 100)}% {body.hydrosphere.composition}</span>
             </div>
         {/if}
-
-        {#if body.kind === 'body' && body.atmosphere}
-            <div class="detail-item">
-                <span class="label">Atmosphere</span>
-                <span class="value">{body.atmosphere.pressure_bar?.toFixed(2)} bar ({body.atmosphere.main})</span>
-            </div>
-        {/if}
     </div>
 
   {:else}
