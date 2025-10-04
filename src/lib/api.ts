@@ -113,7 +113,7 @@ function _generatePlanetaryBody(
     }
 
     // --- Feature Calculation & Property Assignment ---
-    const features: Record<string, number | string> = {};
+    const features: Record<string, number | string> = { id: planetId };
     if (planet.massKg) features['mass_Me'] = planet.massKg / EARTH_MASS_KG;
     if (planet.radiusKm) features['radius_Re'] = planet.radiusKm / EARTH_RADIUS_KM;
     if (planet.orbit) features['a_AU'] = planet.orbit.elements.a_AU;
@@ -241,7 +241,7 @@ function _generatePlanetaryBody(
     features['human_habitability_score'] = human_habitability_score;
     features['alien_habitability_score'] = alien_habitability_score;
 
-    planet.classes = classifyBody(features, pack);
+    planet.classes = classifyBody(features, pack, allNodes);
 
     const primaryClass = planet.classes[0];
     if (primaryClass && pack.classifier?.planetImages?.[primaryClass]) {
@@ -254,7 +254,6 @@ function _generatePlanetaryBody(
         const isGasGiant = planet.classes.includes('planet/gas-giant');
         const ringChanceTable = pack.distributions[isGasGiant ? 'gas_giant_ring_chance' : 'terrestrial_ring_chance'];
         const hasRing = ringChanceTable ? weightedChoice<boolean>(rng, ringChanceTable) : false;
-        features['ringSystem'] = hasRing ? 1 : 0;
 
         if (hasRing) {
             const ringTemplate = pack.statTemplates?.['ring/planetary'];
@@ -521,8 +520,12 @@ function evaluateExpr(features: Record<string, number | string>, expr: Expr): bo
     return false;
 }
 
-export function classifyBody(features: Record<string, number | string>, pack: RulePack): string[] {
+export function classifyBody(features: Record<string, number | string>, pack: RulePack, allNodes: (CelestialBody | Barycenter)[]): string[] {
   if (!pack.classifier) return [];
+
+    const planetId = features['id'] as string;
+    const hasRing = allNodes.some(n => n.parentId === planetId && n.kind === 'body' && n.roleHint === 'ring');
+    features['has_ring_child'] = hasRing ? 1 : 0;
 
     const scores: Record<string, number> = {};
 
