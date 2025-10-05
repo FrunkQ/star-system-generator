@@ -50,7 +50,12 @@ export interface CelestialBody extends NodeBase {
   atmosphere?: Atmosphere; hydrosphere?: Hydrosphere;
   albedo?: number; temperatureK?: number; gravityG?: number; magneticField?: MagneticField;
   orbital_period_days?: number;
-  axial_tilt_deg?: number; rotation_period_hours?: number;
+  axial_tilt_deg?: number;
+  rotation_period_hours?: number;
+  isNameUserDefined?: boolean;
+
+  // Physical Properties (GM-only, maybe)
+  gmNotes?: string;
   equilibriumTempK?: number; greenhouseTempK?: number; tidalHeatK?: number; radiogenicHeatK?: number;
   tidallyLocked?: boolean;
   orbit?: Orbit; areas: Area[]; image?: string; deltaV?: DeltaVCapability;
@@ -79,10 +84,10 @@ export type Expr = { all?: Expr[]; any?: Expr[]; not?: Expr }
   | { eq: [Feature, string] } | { hasTag: string };
 export interface ClassifierSpec { rules: ClassifierRule[]; maxClasses: number; minScore: number; }
 
-export interface PromptSpec { systemPreamble: string; fewShots?: Array<{input: any; output: string;}>; perEntityPrompts?: Record<string,string>; }
+export interface PromptSpec { systemPreamble: string; fewShots?: Array<{input: Record<string, unknown>; output: string;}>; perEntityPrompts?: Record<string,string>; }
 export interface ViewPresetSpec { defaultPlayerVisibility: { discoveredBasics: boolean; showTags: string[]; hiddenFields: string[]; }; overrides?: Array<{ match: { role?: string; class?: string; tag?: string }, visibleFields: string[], hiddenFields: string[] }>; }
 
-export interface TableSpec { name: string; entries: Array<{ weight: number; value: any }>; }
+export interface TableSpec { name: string; entries: Array<{ weight: number; value: unknown }>; }
 export interface MetricDef { key: string; label: string; min: number; max: number; default?: number; }
 
 export interface RulePack {

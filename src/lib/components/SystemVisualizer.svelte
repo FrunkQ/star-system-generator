@@ -1,5 +1,5 @@
-<script lang="ts">
-  import type { System, CelestialBody } from "$lib/types";
+'''<script lang="ts">
+  import type { System, CelestialBody, Barycenter } from '$lib/types';
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import { propagate } from "$lib/api";
 
@@ -21,7 +21,7 @@
 
   let canvas: HTMLCanvasElement;
   let animationFrameId: number;
-  const positions = new Map<string, { x: number, y: number, radius: number }>();
+  let positions: Record<string, { x: number, y: number, radius: number }> = {};
 
   // --- Viewport State ---
   let panX = 0;
@@ -65,7 +65,7 @@
     const nodes = system?.nodes || [];
     for (let i = nodes.length - 1; i >= 0; i--) {
         const node = nodes[i];
-        const pos = positions.get(node.id);
+        const pos = positions[node.id];
         if (!pos) continue;
 
         const dx = clickX - pos.x;
@@ -136,7 +136,7 @@
     ctx.scale(zoom, zoom);
 
     const nodesById = new Map(system.nodes.map(n => [n.id, n]));
-    positions.clear();
+    positions = {};
 
     const focusId = focusedBodyId || system.nodes.find(n => n.parentId === null)?.id;
     if (!focusId) { ctx.restore(); return; }
@@ -144,14 +144,14 @@
     const focusBody = nodesById.get(focusId);
     if (!focusBody) { ctx.restore(); return; } // Allow barycenters
 
-    const children = system.nodes.filter(n => n.parentId === focusId);
+    const children = system.nodes.filter(n => n.parentId === focusId) as (CelestialBody | Barycenter)[];
 
-    const orbitingChildren = children.filter(n => n.kind === 'body' && n.orbit);
+    const orbitingChildren = children.filter(n => n.kind === 'body' && n.orbit) as CelestialBody[];
     let maxOrbit = orbitingChildren.reduce((max, node) => {
         return Math.max(max, node.orbit!.elements.a_AU * (1 + node.orbit!.elements.e));
     }, 0);
 
-    const ringChildren = children.filter(n => n.kind === 'body' && n.roleHint === 'ring');
+    const ringChildren = children.filter(n => n.kind === 'body' && n.roleHint === 'ring') as CelestialBody[];
     for (const ring of ringChildren) {
         maxOrbit = Math.max(maxOrbit, (ring.radiusOuterKm || 0) / AU_KM);
     }
@@ -208,14 +208,15 @@
         ctx.moveTo(viewCenterX, viewCenterY - 10 / zoom);
         ctx.lineTo(viewCenterX, viewCenterY + 10 / zoom);
         ctx.stroke();
-        positions.set(focusBody.id, { x: viewCenterX, y: viewCenterY, radius: 10 / zoom });
+        positions[focusBody.id] = { x: viewCenterX, y: viewCenterY, radius: 10 / zoom };
     } else if (focusBody.kind === 'body') {
+        const body = focusBody as CelestialBody;
         let focusBodyRadius = 2;
         let focusBodyColor = "#aaa";
-        if (focusBody.roleHint === 'star') {
-            const starClassKey = focusBody.classes[0]?.split('/')[1] || 'default';
+        if (body.roleHint === 'star') {
+            const starClassKey = body.classes[0]?.split('/')[1] || 'default';
             focusBodyColor = STAR_COLOR_MAP[starClassKey] || STAR_COLOR_MAP['default'];
-            focusBodyRadius = Math.max(VISUAL_SCALING.star.base, (focusBody.radiusKm || 696340) / 696340 * VISUAL_SCALING.star.multiplier);
+            focusBodyRadius = Math.max(VISUAL_SCALING.star.base, (body.radiusKm || 696340) / 696340 * VISUAL_SCALING.star.multiplier);
         } else { 
             focusBodyRadius = 25;
         }
@@ -223,7 +224,7 @@
         ctx.arc(viewCenterX, viewCenterY, focusBodyRadius, 0, 2 * Math.PI);
         ctx.fillStyle = focusBodyColor;
         ctx.fill();
-        positions.set(focusBody.id, { x: viewCenterX, y: viewCenterY, radius: focusBodyRadius });
+        positions[focusBody.id] = { x: viewCenterX, y: viewCenterY, radius: focusBodyRadius };
     }
 
     // Draw children
@@ -253,10 +254,10 @@
         ctx.arc(x, y, childRadius, 0, 2 * Math.PI);
         ctx.fillStyle = childColor;
         ctx.fill();
-        positions.set(node.id, { x: x, y: y, radius: childRadius });
+        positions[node.id] = { x: x, y: y, radius: childRadius };
 
         // Draw miniature rings if they exist
-        const hasRing = system.nodes.some(n => n.parentId === node.id && n.roleHint === 'ring');
+        const hasRing = system.nodes.some(n => n.parentId === node.id && (n as CelestialBody).roleHint === 'ring');
         if (hasRing) {
             const inner = childRadius + (2 / zoom);
             const outer = childRadius + (5 / zoom);
@@ -283,4 +284,4 @@
     width={800} 
     height={600} 
     style="border: 1px solid #333; margin-top: 1em; background-color: #08090d; cursor: grab;"
-></canvas>
+></canvas>'''

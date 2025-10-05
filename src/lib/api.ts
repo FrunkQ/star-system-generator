@@ -1,5 +1,5 @@
 // ===== api.ts =====
-import type { System, RulePack, ID, CelestialBody, Barycenter, BurnPlan, Orbit, Expr, ImageRef } from "./types";
+import type { System, RulePack, ID, CelestialBody, Barycenter, BurnPlan, Orbit, Expr } from "./types";
 import { SeededRNG } from './rng';
 import { weightedChoice, randomFromRange, toRoman } from './utils';
 
@@ -13,9 +13,9 @@ const G = 6.67430e-11; // Gravitational constant
 const AU_KM = 149597870.7;
 
 // Generates a star object, but not its name, which is determined by the system context.
-function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: SeededRNG): CelestialBody {
+function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: SeededRNG, starTypeOverride?: string): CelestialBody {
     const starTypeTable = pack.distributions['star_types'];
-    const starClass = starTypeTable ? weightedChoice<string>(rng, starTypeTable) : 'star/G2V';
+    const starClass = starTypeOverride ?? (starTypeTable ? weightedChoice<string>(rng, starTypeTable) : 'star/G2V');
     const starTemplate = pack.statTemplates?.[starClass] || pack.statTemplates?.['star/default'];
 
     let starMassKg = SOLAR_MASS_KG;
@@ -32,6 +32,8 @@ function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: SeededR
         }
     }
 
+    const starImage = pack.classifier?.starImages?.[starClass];
+
     return {
         id: id,
         parentId: parentId,
@@ -43,6 +45,7 @@ function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: SeededR
         radiusKm: starRadiusKm,
         temperatureK: starTemperatureK,
         magneticField: starMagneticField,
+        image: starImage ? { url: starImage } : undefined,
         tags: [],
         areas: [],
     };
@@ -57,7 +60,9 @@ function _generatePlanetaryBody(
     orbit: Orbit,
     name: string,
     allNodes: (CelestialBody | Barycenter)[],
-    age_Gyr: number
+    age_Gyr: number,
+    planetTypeOverride?: string,
+    generateChildren: boolean = true
 ): CelestialBody[] {
     const newNodes: CelestialBody[] = [];
 
@@ -95,9 +100,9 @@ function _generatePlanetaryBody(
         areas: [],
     };
 
-    const planetType = (planet.roleHint === 'moon') 
+    const planetType = planetTypeOverride ?? ((planet.roleHint === 'moon') 
         ? 'planet/terrestrial' 
-        : pack.distributions['planet_type'] ? weightedChoice<string>(rng, pack.distributions['planet_type']) : 'planet/terrestrial';
+        : pack.distributions['planet_type'] ? weightedChoice<string>(rng, pack.distributions['planet_type']) : 'planet/terrestrial');
 
     const planetTemplate = pack.statTemplates?.[planetType];
     if (planetTemplate) {
@@ -145,6 +150,34 @@ function _generatePlanetaryBody(
         features['stellarIrradiation'] = primaryStar.magneticField?.strengthGauss || 1;
     }
 
+    const escapeVelocity = Math.sqrt(2 * G * (planet.massKg || 0) / ((planet.radiusKm || 1) * 1000)) / 1000; // in km/s
+    features['escapeVelocity_kms'] = escapeVelocity;
+
+    if (planetType === 'planet/terrestrial') {
+        let hasAtmosphere = true;
+        if (escapeVelocity < 3.0) hasAtmosphere = false;
+        if ((features['stellarIrradiation'] as number) > 100 && (features['a_AU'] as number) < 0.5) hasAtmosphere = false;
+
+        if (hasAtmosphere) {
+            const pressureRange = weightedChoice<[number, number]>(rng, pack.distributions['atmosphere_pressure_bar']);
+            const atmComp = weightedChoice<{main: string, secondary: string}>(rng, pack.distributions['atmosphere_composition']);
+            planet.atmosphere = {
+                pressure_bar: randomFromRange(rng, pressureRange[0], pressureRange[1]),
+                main: atmComp.main,
+                composition: { [atmComp.main]: 0.8, [atmComp.secondary]: 0.2 }
+            };
+            features['atm.main'] = planet.atmosphere.main;
+            features['atm.pressure_bar'] = planet.atmosphere.pressure_bar;
+        }
+
+        const hydroCoverageRange = weightedChoice<[number, number]>(rng, pack.distributions['hydrosphere_coverage']);
+        planet.hydrosphere = {
+            coverage: randomFromRange(rng, hydroCoverageRange[0], hydroCoverageRange[1]),
+            composition: weightedChoice<string>(rng, pack.distributions['hydrosphere_composition'])
+        };
+        features['hydrosphere.coverage'] = planet.hydrosphere.coverage;
+    }
+
     planet.equilibriumTempK = equilibriumTempK;
 
     let greenhouseContributionK = 0;
@@ -163,11 +196,22 @@ function _generatePlanetaryBody(
     // Add heat from internal sources
     let tidalHeatingK = 0;
     if (planet.roleHint === 'moon' && host.kind === 'body') {
-        const parentMass = (host as CelestialBody).massKg || 0;
+        const parentMassKg = (host as CelestialBody).massKg || 0;
         const eccentricity = planet.orbit?.elements.e || 0;
-        // Simplified model: more heating for massive parents and eccentric orbits.
-        // Scaled to produce noticeable, but not extreme, effects.
-        tidalHeatingK = (parentMass / EARTH_MASS_KG) * eccentricity * 100;
+        const moonRadiusKm = planet.radiusKm || 0;
+        const semiMajorAxisKm = (planet.orbit?.elements.a_AU || 0) * AU_KM;
+
+        if (parentMassKg > 0 && eccentricity > 0 && moonRadiusKm > 0 && semiMajorAxisKm > 0) {
+            // This formula is derived from the tidal power equation, calibrated to a user-provided example.
+            // The resulting temperature from tidal flux is proportional to (M_p^0.625 * R_m^0.75 * e^0.5 * a^-1.875)
+            const C = 4.06e-6; // Calibration constant
+
+            tidalHeatingK = C * 
+                (Math.pow(parentMassKg, 0.625)) * 
+                (Math.pow(moonRadiusKm, 0.75)) * 
+                (Math.pow(eccentricity, 0.5)) * 
+                (Math.pow(semiMajorAxisKm, -1.875));
+        }
     }
     planet.tidalHeatK = tidalHeatingK;
 
@@ -178,9 +222,6 @@ function _generatePlanetaryBody(
     features['tidalHeating'] = tidalHeatingK;
     planet.temperatureK = equilibriumTempK + greenhouseContributionK + tidalHeatingK + radiogenicHeatK;
     features['Teq_K'] = planet.temperatureK;
-
-    const escapeVelocity = Math.sqrt(2 * G * (planet.massKg || 0) / ((planet.radiusKm || 1) * 1000)) / 1000; // in km/s
-    features['escapeVelocity_kms'] = escapeVelocity;
 
     const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
 
@@ -251,7 +292,7 @@ function _generatePlanetaryBody(
 
     newNodes.push(planet);
 
-    if (planet.roleHint === 'planet') {
+    if (generateChildren && planet.roleHint === 'planet') {
         const isGasGiant = planet.classes.includes('planet/gas-giant');
         const ringChanceTable = pack.distributions[isGasGiant ? 'gas_giant_ring_chance' : 'terrestrial_ring_chance'];
         const hasRing = ringChanceTable ? weightedChoice<boolean>(rng, ringChanceTable) : false;
@@ -281,10 +322,10 @@ function _generatePlanetaryBody(
 
         const moonCountTable = pack.distributions[isGasGiant ? 'gas_giant_moon_count' : 'terrestrial_moon_count'];
         const numMoons = moonCountTable ? weightedChoice<number>(rng, moonCountTable) : 0;
-        let lastMoonApoapsisAU = (planet.radiusKm || 0) / AU_KM * 3;
+        let lastMoonApoapsisAU = (planet.radiusKm || 0) / AU_KM * 1.5;
 
         for (let j = 0; j < numMoons; j++) {
-            const moonMinGap = (planet.radiusKm || 0) / AU_KM * 2;
+            const moonMinGap = (planet.radiusKm || 0) / AU_KM * 1.2;
             const newMoonPeriapsis = lastMoonApoapsisAU + randomFromRange(rng, moonMinGap, moonMinGap * 3);
             const newMoonEccentricity = randomFromRange(rng, 0, 0.05);
             const newMoonA_AU = newMoonPeriapsis / (1 - newMoonEccentricity);
@@ -297,7 +338,7 @@ function _generatePlanetaryBody(
                 elements: { a_AU: newMoonA_AU, e: newMoonEccentricity, i_deg: Math.pow(rng.nextFloat(), 2) * 10, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
             };
             
-            const moonNodes = _generatePlanetaryBody(rng, pack, `${planet.id}-moon`, j, planet, moonOrbit, `${planet.name} ${toRoman(j + 1)}`, [...allNodes, ...newNodes], age_Gyr);
+            const moonNodes = _generatePlanetaryBody(rng, pack, `${planet.id}-moon`, j, planet, moonOrbit, `${planet.name} ${toRoman(j + 1)}`, [...allNodes, ...newNodes], age_Gyr, undefined, true);
             newNodes.push(...moonNodes);
         }
     }
@@ -305,7 +346,7 @@ function _generatePlanetaryBody(
     return newNodes;
 }
 
-export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOptions> = {}): System {
+export function generateSystem(seed: string, pack: RulePack, __opts: Partial<GenOptions> = {}, generationChoice?: string): System {
   const rng = new SeededRNG(seed);
   const nodes: (CelestialBody | Barycenter)[] = [];
 
@@ -324,16 +365,28 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
       baseName = `${prefix}${ ' '.padStart(numDigits, '0').replace(/0/g, () => rng.nextInt(0, 9).toString())}`;
   }
 
-  const starA = _generateStar(`${seed}-star-a`, null, pack, rng);
+  let starTypeOverride: string | undefined = undefined;
+  let forceBinary: boolean | undefined = undefined;
+
+  if (generationChoice && generationChoice !== 'Random') {
+    const isBinarySelection = generationChoice.endsWith(' Binary');
+    const type = generationChoice.replace('Type ', 'star/').replace(' Binary', '');
+    starTypeOverride = type;
+    forceBinary = isBinarySelection;
+  }
+
+  const starA = _generateStar(`${seed}-star-a`, null, pack, rng, starTypeOverride);
   const starClass = starA.classes[0].split('/')[1]; // e.g., "G2V" -> "G"
 
-  let isBinary = false;
-  if (['O', 'B'].includes(starClass)) {
-      isBinary = weightedChoice<boolean>(rng, pack.distributions['is_binary_chance_massive']);
-  } else if (['A', 'F', 'G', 'K'].includes(starClass)) {
-      isBinary = weightedChoice<boolean>(rng, pack.distributions['is_binary_chance_sunlike']);
-  } else { // M, WD, etc.
-      isBinary = weightedChoice<boolean>(rng, pack.distributions['is_binary_chance_lowmass']);
+  let isBinary = forceBinary ?? false;
+  if (forceBinary === undefined) { // Only use random chance if user didn't specify
+    if (['O', 'B'].includes(starClass)) {
+        isBinary = weightedChoice<boolean>(rng, pack.distributions['is_binary_chance_massive']);
+    } else if (['A', 'F', 'G', 'K'].includes(starClass)) {
+        isBinary = weightedChoice<boolean>(rng, pack.distributions['is_binary_chance_sunlike']);
+    } else { // M, WD, etc.
+        isBinary = weightedChoice<boolean>(rng, pack.distributions['is_binary_chance_lowmass']);
+    }
   }
 
   if (!isBinary) {
@@ -400,11 +453,11 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
     const system_age_Gyr = randomFromRange(rng, 0.1, 10.0);
   
     if (!isBinary) {
-      let lastApoapsisAU = (rootRadiusKm / AU_KM) + 0.5;
+      let lastApoapsisAU = (rootRadiusKm / AU_KM) + 0.1;
       for (let i = 0; i < numBodies; i++) {
-          const minGap = 0.5;
+          const minGap = 0.2;
           const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
-          const newEccentricity = randomFromRange(rng, 0.01, 0.15);
+                  const newEccentricity = randomFromRange(rng, 0.01, 0.15);
                   const newA_AU = newPeriapsis / (1 - newEccentricity);
                   lastApoapsisAU = newA_AU * (1 + newEccentricity);
           
@@ -413,7 +466,8 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
                       hostMu: G * totalMassKg,
                       t0: Date.now(),
                       elements: { a_AU: newA_AU, e: newEccentricity, i_deg: Math.pow(rng.nextFloat(), 3) * 15, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
-                  };          const newNodes = _generatePlanetaryBody(rng, pack, seed, i, systemRoot, orbit, `${systemName} ${String.fromCharCode(98 + i)}`, nodes, system_age_Gyr);
+                  };
+          const newNodes = _generatePlanetaryBody(rng, pack, seed, i, systemRoot, orbit, `${systemName} ${String.fromCharCode(98 + i)}`, nodes, system_age_Gyr, undefined, true);
           nodes.push(...newNodes);
       }
     } else {
@@ -478,7 +532,7 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
                       t0: Date.now(),
                       elements: { a_AU: newA_AU, e: newEccentricity, i_deg: Math.pow(rng.nextFloat(), 3) * 15, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
                   };  
-          const newNodes = _generatePlanetaryBody(rng, pack, seed, i, host, orbit, `${planetNamePrefix}${toRoman(i + 1)}`, nodes, system_age_Gyr);
+          const newNodes = _generatePlanetaryBody(rng, pack, seed, i, host, orbit, `${planetNamePrefix}${toRoman(i + 1)}`, nodes, system_age_Gyr, undefined, true);
           nodes.push(...newNodes);
   
           if (placement === 'circumbinary') lastApo_p = newApoapsis;
@@ -497,18 +551,163 @@ export function generateSystem(seed: string, pack: RulePack, opts: Partial<GenOp
       rulePackId: pack.id,
       rulePackVersion: pack.version,
       tags: [],
-    };  return system;
+    };
+  return system;
 }
 
-export function rerollNode(sys: System, nodeId: ID, pack: RulePack): System {
+export function deleteNode(sys: System, nodeId: ID): System {
+    const nodesToDelete = new Set<ID>([nodeId]);
+    let changed = true;
+    while (changed) {
+        changed = false;
+        sys.nodes.forEach(node => {
+            if (node.parentId && nodesToDelete.has(node.parentId) && !nodesToDelete.has(node.id)) {
+                nodesToDelete.add(node.id);
+                changed = true;
+            }
+        });
+    }
+
+    const newSystem = {
+        ...sys,
+        nodes: sys.nodes.filter(node => !nodesToDelete.has(node.id))
+    };
+
+    return newSystem;
+}
+
+export function getValidPlanetTypesForHost(host: CelestialBody | Barycenter, pack: RulePack): string[] {
+    if (!pack.statTemplates) return [];
+
+    const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
+    
+    // If host is a planet/moon, we can only add moons.
+    if (host.kind === 'body' && (host.roleHint === 'planet' || host.roleHint === 'moon')) {
+        return Object.keys(pack.statTemplates).filter(key => {
+            if (!key.startsWith('planet/')) return false; // Only allow planet types
+            
+            const template = pack.statTemplates![key];
+            // A moon's max mass should be significantly less than the parent's mass.
+            // Let's use the template's max mass and check if it's less than, say, 10% of the host's mass.
+            const maxMassEarths = template.mass_earth[1];
+            const maxMassKg = maxMassEarths * EARTH_MASS_KG;
+
+            return maxMassKg < hostMass * 0.1;
+        });
+    } 
+    // If host is a star or barycenter, we can add any planet.
+    else {
+        return Object.keys(pack.statTemplates).filter(key => key.startsWith('planet/'));
+    }
+}
+
+export function addPlanetaryBody(sys: System, hostId: ID, planetType: string, pack: RulePack): System {
+    const rng = new SeededRNG(sys.seed + Date.now()); // Use a new RNG seed to avoid determinism issues
+    const host = sys.nodes.find(n => n.id === hostId);
+    if (!host) throw new Error(`Host with id ${hostId} not found.`);
+
+    const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
+    if (hostMass === 0) throw new Error(`Host ${hostId} has no mass.`);
+
+    // 1. Find a valid orbit
+    const children = sys.nodes.filter(n => n.parentId === hostId && n.kind === 'body') as CelestialBody[];
+    let lastApoapsisAU = 0;
+
+    if (children.length > 0) {
+        children.forEach(child => {
+            if (child.orbit) {
+                const apoapsis = child.orbit.elements.a_AU * (1 + child.orbit.elements.e);
+                if (apoapsis > lastApoapsisAU) {
+                    lastApoapsisAU = apoapsis;
+                }
+            }
+        });
+    } else {
+        // If no children, start just outside the host body itself
+        lastApoapsisAU = ((host as CelestialBody).radiusKm || 0) / AU_KM;
+    }
+
+    // Use similar gap logic as in the main generator
+    const minGap = (host.kind === 'body') ? (host as CelestialBody).radiusKm / AU_KM * 1.2 : 0.2;
+    const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
+    const newEccentricity = randomFromRange(rng, 0.01, 0.15);
+    const newA_AU = newPeriapsis / (1 - newEccentricity);
+
+    const orbit: Orbit = {
+        hostId: hostId,
+        hostMu: G * hostMass,
+        t0: Date.now(),
+        elements: { 
+            a_AU: newA_AU, 
+            e: newEccentricity, 
+            i_deg: Math.pow(rng.nextFloat(), 3) * 15, 
+            omega_deg: 0, 
+            Omega_deg: 0, 
+            M0_rad: randomFromRange(rng, 0, 2 * Math.PI) 
+        }
+    };
+
+    const siblings = sys.nodes.filter(n => n.parentId === hostId);
+    const name = (host.roleHint === 'star' || host.kind === 'barycenter') 
+        ? `${host.name} ${String.fromCharCode(98 + siblings.length)}`
+        : `${host.name} ${toRoman(siblings.length + 1)}`;
+
+    const newNodes = _generatePlanetaryBody(rng, pack, `${sys.seed}-custom`, siblings.length, host, orbit, name, sys.nodes, sys.age_Gyr, planetType, false);
+    
+    const newSystem = {
+        ...sys,
+        nodes: [...sys.nodes, ...newNodes]
+    };
+
+    return newSystem;
+}
+
+export function renameNode(sys: System, nodeId: ID, newName: string): System {
+    const nodes = JSON.parse(JSON.stringify(sys.nodes));
+    const targetNode = nodes.find((n: CelestialBody | Barycenter) => n.id === nodeId);
+
+    if (!targetNode) return sys;
+
+    const oldName = targetNode.name;
+    targetNode.name = newName;
+    targetNode.isNameUserDefined = true;
+
+    const queue: { parentOldName: string, parentNewName: string, parentId: ID }[] = [{ parentOldName: oldName, parentNewName: newName, parentId: nodeId }];
+
+    while (queue.length > 0) {
+        const { parentOldName, parentNewName, parentId } = queue.shift()!;
+
+        nodes.filter((n: CelestialBody | Barycenter) => n.parentId === parentId).forEach((child: CelestialBody | Barycenter) => {
+            if (child.isNameUserDefined) {
+                return; // Stop propagation
+            }
+
+            const oldChildName = child.name;
+            // This replacement is based on the assumption that the child's auto-generated name contains the parent's name.
+            const newChildName = oldChildName.replace(parentOldName, parentNewName);
+            child.name = newChildName;
+
+            queue.push({ parentOldName: oldChildName, parentNewName: newChildName, parentId: child.id });
+        });
+    }
+
+    let systemName = sys.name;
+    if (targetNode.parentId === null) {
+        systemName = newName;
+    }
+
+    return { ...sys, name: systemName, nodes: nodes };
+}
+
+export function rerollNode(__sys: System, __nodeId: ID, __pack: RulePack): System {
   // TODO M0: respect lock flags (future), re-generate subtree deterministically
   throw new Error("TODO: implement rerollNode (M0)");
 }
 
 // Helper function to recursively evaluate classifier expressions
 function evaluateExpr(features: Record<string, number | string>, expr: Expr): boolean {
-    if (expr.all) return expr.all.every(e => evaluateExpr(features, e));
-    if (expr.any) return expr.any.some(e => evaluateExpr(features, e));
+    if (expr.all) return expr.all.every((e: Expr) => evaluateExpr(features, e));
+    if (expr.any) return expr.any.some((e: Expr) => evaluateExpr(features, e));
     if (expr.not) return !evaluateExpr(features, expr.not);
     if (expr.gt) return (features[expr.gt[0]] ?? -Infinity) > expr.gt[1];
     if (expr.lt) return (features[expr.lt[0]] ?? Infinity) < expr.lt[1];
@@ -552,12 +751,12 @@ export function classifyBody(features: Record<string, number | string>, pack: Ru
     return primaryClass;
 }
 
-export function computePlayerSnapshot(sys: System, scopeRootId?: ID): System {
+export function computePlayerSnapshot(sys: System, _scopeRootId?: ID): System {
   const playerSystem = JSON.parse(JSON.stringify(sys)); // Deep copy to avoid modifying the original
 
   // TODO: Implement scoping by scopeRootId
 
-  playerSystem.nodes = playerSystem.nodes.map((node: any) => {
+  playerSystem.nodes = playerSystem.nodes.map((node: CelestialBody | Barycenter) => {
       // Remove GM-only fields
       delete node.gmNotes;
 
@@ -570,7 +769,7 @@ export function computePlayerSnapshot(sys: System, scopeRootId?: ID): System {
           }
       }
       return node;
-  }).filter((node: any) => node.visibility?.visibleToPlayers !== false);
+  }).filter((node: CelestialBody | Barycenter) => node.visibility?.visibleToPlayers !== false);
 
   // Also filter from the top-level system object
   delete playerSystem.gmNotes;
@@ -623,7 +822,7 @@ export function propagate(node: CelestialBody | Barycenter, tMs: number): {x: nu
   return { x, y };
 }
 
-export function applyImpulsiveBurn(body: CelestialBody, burn: BurnPlan, sys: System): CelestialBody {
+export function applyImpulsiveBurn(__body: CelestialBody, __burn: BurnPlan, __sys: System): CelestialBody {
   // TODO M6: apply Δv in perifocal frame; recompute elements via Gauss equations
   throw new Error("TODO: implement applyImpulsiveBurn (M6)");
 }

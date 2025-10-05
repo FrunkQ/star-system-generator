@@ -1,28 +1,17 @@
-<script lang="ts">
-  import type { CelestialBody, Barycenter } from "$lib/types";
+'''<script lang="ts">
+  import { createEventDispatcher } from 'svelte';
+  import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
+  import { getValidPlanetTypesForHost } from '$lib/api';
 
   export let body: CelestialBody | Barycenter | null;
+  export let rulePack: RulePack | null;
 
-  const G = 6.67430e-11;
-  const EARTH_GRAVITY = 9.80665; // m/s^2
-  const EARTH_DENSITY = 5514; // kg/m^3
-  const SOLAR_MASS_KG = 1.989e30;
-  const EARTH_MASS_KG = 5.972e24;
-  const AU_KM = 149597870.7;
+  const dispatch = createEventDispatcher();
 
-  const STAR_TYPE_DESC: Record<string, string> = {
-      'O': 'Extremely hot, luminous, and blue. Very rare and short-lived. High radiation.',
-      'B': 'Hot, luminous, blue-white stars. High radiation.',
-      'A': 'White or bluish-white stars, like Sirius. Moderate radiation.',
-      'F': 'Yellow-white stars, stronger than the Sun. Moderate radiation.',
-      'G': 'Yellow, sun-like stars. Good candidates for habitable planets.',
-      'K': 'Orange dwarfs, cooler and longer-lived than the Sun. Low radiation.',
-      'M': 'Red dwarfs. The most common, very long-lived, but dim and cool. Low radiation.',
-      'WD': 'White Dwarf. The dense, hot remnant of a dead star. High radiation.',
-      'NS': 'Neutron Star. An extremely dense, rapidly spinning stellar remnant. Extreme radiation.',
-      'BH': 'Black Hole. A region of spacetime where gravity is so strong nothing can escape. Extreme radiation.'
-  }
+  let showAddUI = false;
+  let lastBodyId: string | null = null;
 
+  // Reactive properties
   let surfaceTempC: number | null = null;
   let hotSideTempC: number | null = null;
   let coldSideTempC: number | null = null;
@@ -33,6 +22,18 @@
   let orbitalDistanceDisplay: string | null = null;
   let circumferenceKm: number | null = null;
   let tempTooltip: string = '';
+  let validPlanetTypes: string[] = [];
+  let selectedPlanetType: string | null = null;
+
+  $: if (body && body.id !== lastBodyId) {
+      lastBodyId = body.id;
+      // Reset UI state only when the body actually changes
+      showAddUI = false;
+      if (rulePack) {
+          validPlanetTypes = getValidPlanetTypesForHost(body, rulePack);
+          selectedPlanetType = validPlanetTypes[0] ?? null;
+      }
+  }
 
   $: {
     surfaceGravityG = null;
@@ -99,11 +100,51 @@
     }
   }
 
+  function handleDelete() {
+      if (!body) return;
+      if (confirm(`Are you sure you want to delete ${body.name} and everything orbiting it?`)) {
+          dispatch('deleteNode', body.id);
+      }
+  }
+
+  function handleAdd() {
+      if (!body || !selectedPlanetType) return;
+      dispatch('addNode', { hostId: body.id, planetType: selectedPlanetType });
+      showAddUI = false;
+  }
+
+  function handleRename(event: Event) {
+    const newName = (event.target as HTMLInputElement).value;
+    if (body && newName && newName !== body.name) {
+        dispatch('renameNode', { nodeId: body.id, newName: newName });
+    }
+  }
+
+  const G = 6.67430e-11;
+  const EARTH_GRAVITY = 9.80665; // m/s^2
+  const EARTH_DENSITY = 5514; // kg/m^3
+  const SOLAR_MASS_KG = 1.989e30;
+  const EARTH_MASS_KG = 5.972e24;
+  const AU_KM = 149597870.7;
+
+  const STAR_TYPE_DESC: Record<string, string> = {
+      'O': 'Extremely hot, luminous, and blue. Very rare and short-lived. High radiation.',
+      'B': 'Hot, luminous, blue-white stars. High radiation.',
+      'A': 'White or bluish-white stars, like Sirius. Moderate radiation.',
+      'F': 'Yellow-white stars, stronger than the Sun. Moderate radiation.',
+      'G': 'Yellow, sun-like stars. Good candidates for habitable planets.',
+      'K': 'Orange dwarfs, cooler and longer-lived than the Sun. Low radiation.',
+      'M': 'Red dwarfs. The most common, very long-lived, but dim and cool. Low radiation.',
+      'WD': 'White Dwarf. The dense, hot remnant of a dead star. High radiation.',
+      'NS': 'Neutron Star. An extremely dense, rapidly spinning stellar remnant. Extreme radiation.',
+      'BH': 'Black Hole. A region of spacetime where gravity is so strong nothing can escape. Extreme radiation.'
+  }
+
 </script>
 
 <div class="details-panel">
   {#if body}
-    <h2>{body.name}</h2>
+        <input type="text" value={body.name} on:change={handleRename} class="name-input" title="Click to rename" />
     <div class="content-wrapper">
         {#if body.kind === 'body' && body.image}
             <div class="planet-image-container">
@@ -236,6 +277,30 @@
                 </div>
             {/if}
         </div>
+
+        <div class="gm-tools">
+            <h3>GM Tools</h3>
+            <div class="tools-container">
+                {#if body.parentId !== null}
+                    <button class="delete-button" on:click={handleDelete}>Delete {body.name}</button>
+                {/if}
+                
+                {#if validPlanetTypes.length > 0}
+                    <button on:click={() => showAddUI = !showAddUI}>Add Orbiting Body to {body.name}</button>
+                {/if}
+            </div>
+
+            {#if showAddUI}
+                <div class="add-ui">
+                    <select bind:value={selectedPlanetType}>
+                        {#each validPlanetTypes as type (type)}
+                            <option value={type}>{type.replace('planet/', '')}</option>
+                        {/each}
+                    </select>
+                    <button on:click={handleAdd} disabled={!selectedPlanetType}>Add</button>
+                </div>
+            {/if}
+        </div>
     </div>
 
   {:else}
@@ -252,11 +317,21 @@
     border-radius: 5px;
     color: #eee;
   }
-  h2 {
-    margin-top: 0;
+  .name-input {
+    background-color: transparent;
+    border: 1px solid transparent;
     color: #ff3e00;
+    font-size: 1.8em;
+    font-weight: bold;
+    padding: 0.1em;
+    margin: 0;
+    width: 100%;
+    border-radius: 4px;
   }
-  .content-wrapper {
+  .name-input:hover, .name-input:focus {
+      background-color: #252525;
+      border-color: #444;
+  }  .content-wrapper {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 1em;
@@ -296,4 +371,34 @@
   .planet-image {
     max-width: 100%;
     border-radius: 5px;
-  }</style>
+  }
+  .gm-tools {
+      grid-column: 1 / -1;
+      margin-top: 1.5em;
+      padding-top: 1em;
+      border-top: 1px solid #444;
+  }
+  .gm-tools h3 {
+      margin: 0 0 0.5em 0;
+      color: #ff3e00;
+  }
+  .tools-container {
+      display: flex;
+      gap: 1em;
+      margin-bottom: 1em;
+  }
+  .delete-button {
+      background-color: #800;
+      color: white;
+      border: 1px solid #c00;
+  }
+  .add-ui {
+      display: flex;
+      gap: 0.5em;
+      align-items: center;
+      background-color: #252525;
+      padding: 0.5em;
+      border-radius: 4px;
+  }
+</style>
+'''

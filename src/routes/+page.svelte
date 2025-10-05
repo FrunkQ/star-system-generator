@@ -1,9 +1,9 @@
-<script lang="ts">
+'''<script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
   import type { RulePack, System, CelestialBody } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
-  import { generateSystem, computePlayerSnapshot } from '$lib/api';
+  import { generateSystem, computePlayerSnapshot, deleteNode, addPlanetaryBody, renameNode } from '$lib/api';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import BodyDetails from '$lib/components/BodyDetails.svelte';
 
@@ -14,6 +14,8 @@
   let visualizer: SystemVisualizer;
   let shareStatus = '';
   let showJson = false;
+  let generationOptions: string[] = ['Random'];
+  let selectedGenerationOption = 'Random';
 
   // Time state
   let currentTime = Date.now();
@@ -65,7 +67,7 @@
       return;
     }
     const seed = `seed-${Date.now()}`;
-    generatedSystem = generateSystem(seed, rulePack);
+    generatedSystem = generateSystem(seed, rulePack, {}, selectedGenerationOption);
     currentTime = generatedSystem.epochT0;
     focusedBodyId = null;
     visualizer?.resetView();
@@ -82,7 +84,86 @@
       } else {
           focusedBodyId = null;
       }
-      visualizer?.resetView();
+    visualizer?.resetView();
+  }
+
+  function handleDeleteNode(event: CustomEvent<string>) {
+      if (!generatedSystem) return;
+      const nodeId = event.detail;
+      generatedSystem = deleteNode(generatedSystem, nodeId);
+      // If the deleted node was focused, zoom out to its parent
+      if (focusedBodyId === nodeId) {
+          zoomOut();
+      }
+  }
+
+  function handleAddNode(event: CustomEvent<{hostId: string, planetType: string}>) {
+      if (!generatedSystem || !rulePack) return;
+      const { hostId, planetType } = event.detail;
+      generatedSystem = addPlanetaryBody(generatedSystem, hostId, planetType, rulePack);
+  }
+
+  function handleRenameNode(event: CustomEvent<{nodeId: string, newName: string}>) {
+    if (!generatedSystem) return;
+    const { nodeId, newName } = event.detail;
+    generatedSystem = renameNode(generatedSystem, nodeId, newName);
+  }
+
+  function handleSaveToBrowser() {
+    if (!generatedSystem) return;
+    localStorage.setItem('stargen_saved_system', JSON.stringify(generatedSystem));
+    alert('System saved to browser storage.');
+  }
+
+  function handleLoadFromBrowser() {
+    const savedJson = localStorage.getItem('stargen_saved_system');
+    if (savedJson) {
+      try {
+        generatedSystem = JSON.parse(savedJson);
+        currentTime = generatedSystem?.epochT0 || Date.now();
+        focusedBodyId = null;
+        visualizer?.resetView();
+      } catch (e) {
+        alert('Failed to load system from browser storage. The data may be corrupt.');
+        console.error(e);
+      }
+    } else {
+      alert('No system found in browser storage.');
+    }
+  }
+
+  function handleDownloadJson() {
+    if (!generatedSystem) return;
+    const json = JSON.stringify(generatedSystem, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${generatedSystem.name.replace(/\s+/g, '_') || 'system'}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function handleUploadJson(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const json = e.target?.result as string;
+        generatedSystem = JSON.parse(json);
+        currentTime = generatedSystem?.epochT0 || Date.now();
+        focusedBodyId = null;
+        visualizer?.resetView();
+      } catch (err) {
+        alert('Failed to parse JSON file.');
+        console.error(err);
+      }
+    };
+    reader.readAsText(file);
   }
 
   async function handleShare() {
@@ -104,6 +185,14 @@
   onMount(async () => {
     try {
       rulePack = await fetchAndLoadRulePack('/rulepacks/starter-sf-pack.json');
+      const starTypes = rulePack.distributions['star_types'].entries.map(st => st.value);
+      const options: string[] = ['Random'];
+      starTypes.forEach(st => {
+        const typeName = st.replace('star/', '');
+        options.push(`Type ${typeName}`);
+        options.push(`Type ${typeName} Binary`);
+      });
+      generationOptions = options;
     } catch (e: any) {
       error = e.message;
     } finally {
@@ -129,9 +218,21 @@
   {:else}
     <div class="top-bar">
         <div class="gen-controls">
+            <select bind:value={selectedGenerationOption}>
+                {#each generationOptions as option (option)}
+                    <option value={option}>{option}</option>
+                {/each}
+            </select>
             <button on:click={handleGenerate} disabled={!rulePack}>
               Generate System
             </button>
+        </div>
+        <div class="save-load-controls">
+            <button on:click={handleSaveToBrowser}>Save to Browser</button>
+            <button on:click={handleLoadFromBrowser}>Load from Browser</button>
+            <button on:click={handleDownloadJson} disabled={!generatedSystem}>Download JSON</button>
+            <button on:click={() => document.getElementById('upload-json')?.click()}>Upload JSON</button>
+            <input type="file" id="upload-json" hidden accept=".json,application/json" on:change={handleUploadJson} />
         </div>
         {#if generatedSystem}
             <div class="share-controls">
@@ -168,7 +269,7 @@
 
     <SystemVisualizer bind:this={visualizer} system={generatedSystem} {currentTime} {focusedBodyId} on:focus={handleFocus} />
 
-    <BodyDetails body={focusedBody} />
+    <BodyDetails body={focusedBody} {rulePack} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:renameNode={handleRenameNode} />
 
     <div class="debug-controls">
         <button on:click={() => showJson = !showJson}>
@@ -180,8 +281,11 @@
         <pre>{JSON.stringify(generatedSystem, null, 2)}</pre>
     {/if}
   {/if}
-</main>
 
+  <footer>
+    <p>Planet images by Pablo Carlos Budassi, used under a CC BY-SA 4.0 license. Star images from beyond-universe.fandom.com (CC-BY-SA) and ESO/L. Calçada (CC BY 4.0 for magnetar image).</p>
+  </footer>
+</main>
 <style>
   main {
     font-family: sans-serif;
@@ -196,7 +300,7 @@
   .top-bar {
       justify-content: space-between;
   }
-  .gen-controls, .share-controls {
+  .gen-controls, .share-controls, .save-load-controls {
       display: flex;
       align-items: center;
       gap: 1em;
@@ -232,4 +336,13 @@
     white-space: pre-wrap;
     color: #eee;
     font-family: monospace;
-  }</style>
+  }
+  footer {
+      margin-top: 2em;
+      padding-top: 1em;
+      border-top: 1px solid #333;
+      color: #999;
+      font-size: 0.9em;
+  }
+</style>
+'''
