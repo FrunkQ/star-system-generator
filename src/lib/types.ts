@@ -1,4 +1,4 @@
-// ===== types.ts =====
+'''// ===== types.ts =====
 export type ID = string;
 
 export interface Visibility {
@@ -54,6 +54,10 @@ export interface CelestialBody extends NodeBase {
   rotation_period_hours?: number;
   isNameUserDefined?: boolean;
 
+  // Radiation & Magnetosphere
+  radiationOutput?: number; // For stars, intrinsic radiation level
+  surfaceRadiation?: number; // For planets, calculated incident radiation
+
   // Physical Properties (GM-only, maybe)
   gmNotes?: string;
   equilibriumTempK?: number; greenhouseTempK?: number; tidalHeatK?: number; radiogenicHeatK?: number;
@@ -78,7 +82,7 @@ export interface ClassifierRule { when: Expr; addClass: string; score: number; }
 export type Feature =
   | "mass_Me" | "radius_Re" | "density" | "Teq_K" | "a_AU" | "stellarType"
   | "atm.main" | "atm.pressure_bar" | "hydrosphere.coverage" | "tidalHeating" | "tidallyLocked" | "ringSystem"
-  | "age_Gyr" | "orbital_period_days" | "rotation_period_hours" | "has_ring_child" | "human_habitability_score" | "alien_habitability_score";
+  | "age_Gyr" | "orbital_period_days" | "rotation_period_hours" | "has_ring_child" | "human_habitability_score" | "alien_habitability_score" | "radiation_flux";
 export type Expr = { all?: Expr[]; any?: Expr[]; not?: Expr }
   | { gt: [Feature, number] } | { lt: [Feature, number] } | { between: [Feature, number, number] }
   | { eq: [Feature, string] } | { hasTag: string };
@@ -99,4 +103,4 @@ export interface RulePack {
   statTemplates?: Record<string,string>;
   metrics?: Record<string, MetricDef>;
   classifier?: ClassifierSpec;
-}
+}'''
