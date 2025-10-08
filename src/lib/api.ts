@@ -32,6 +32,8 @@ function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: SeededR
         }
     }
 
+    const radiationOutput = starTemplate?.radiation_output ? randomFromRange(rng, starTemplate.radiation_output[0], starTemplate.radiation_output[1]) : 1;
+
     const starImage = pack.classifier?.starImages?.[starClass];
 
     return {
@@ -45,6 +47,7 @@ function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: SeededR
         radiusKm: starRadiusKm,
         temperatureK: starTemperatureK,
         magneticField: starMagneticField,
+        radiationOutput: radiationOutput,
         image: starImage ? { url: starImage } : undefined,
         tags: [],
         areas: [],
@@ -108,6 +111,13 @@ function _generatePlanetaryBody(
     if (planetTemplate) {
         planet.massKg = randomFromRange(rng, planetTemplate.mass_earth[0], planetTemplate.mass_earth[1]) * EARTH_MASS_KG;
         planet.radiusKm = randomFromRange(rng, planetTemplate.radius_earth[0], planetTemplate.radius_earth[1]) * EARTH_RADIUS_KM;
+        
+        // Conditionally generate magnetic field for terrestrial planets
+        if (planetType === 'planet/terrestrial' && planet.massKg > 0.5 * EARTH_MASS_KG && rng.nextFloat() > 0.2) {
+             planet.magneticField = { strengthGauss: randomFromRange(rng, 0.1, 1.5) };
+        } else if (planetTemplate.mag_gauss) {
+            planet.magneticField = { strengthGauss: randomFromRange(rng, planetTemplate.mag_gauss[0], planetTemplate.mag_gauss[1]) };
+        }
 
         if (planet.roleHint === 'moon' && host.kind === 'body') {
             const parentMass = (host as CelestialBody).massKg || 0;
@@ -123,32 +133,71 @@ function _generatePlanetaryBody(
     if (planet.radiusKm) features['radius_Re'] = planet.radiusKm / EARTH_RADIUS_KM;
     if (planet.orbit) features['a_AU'] = planet.orbit.elements.a_AU;
 
-    let ultimateHost = allNodes.find(n => n.id === orbit.hostId);
-    while(ultimateHost && ultimateHost.parentId) {
-        const nextHost = allNodes.find(n => n.id === ultimateHost!.parentId);
-        if (nextHost) ultimateHost = nextHost; else break;
-    }
+    // Find all stars in the system for radiation calculation
+    const allStars = allNodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
 
-    let primaryStar: CelestialBody | undefined;
-    if (ultimateHost?.kind === 'body') primaryStar = ultimateHost as CelestialBody;
-    if (ultimateHost?.kind === 'barycenter') primaryStar = allNodes.find(n => n.id === ultimateHost.memberIds[0]) as CelestialBody;
-
+    let totalStellarRadiation = 0;
     let equilibriumTempK = 0;
-    if (primaryStar && primaryStar.roleHint === 'star') {
-        features['stellarType'] = primaryStar.classes[0].split('/')[1]?.[0] || 'G';
-        const albedo = 0.3; // Placeholder albedo
-        const starTemp = primaryStar.temperatureK || 5778;
-        const starRadius_AU = (primaryStar.radiusKm || SOLAR_RADIUS_KM) / AU_KM;
-        
-        const hostBody = allNodes.find(n => n.id === planet.parentId);
-        const relevantOrbit = (planet.roleHint === 'moon' && hostBody?.kind === 'body') ? (hostBody as CelestialBody).orbit : planet.orbit;
-        const planetDist_AU = relevantOrbit?.elements.a_AU || 0;
 
-        if (planetDist_AU > 0) {
-            equilibriumTempK = starTemp * Math.sqrt(starRadius_AU / (2 * planetDist_AU)) * Math.pow(1 - albedo, 0.25);
+    if (allStars.length > 0) {
+        const albedo = 0.3; // Placeholder albedo
+        let totalLuminosityTimesArea = 0;
+
+        for (const star of allStars) {
+            const starTemp = star.temperatureK || 5778;
+            const starRadius_m = (star.radiusKm || SOLAR_RADIUS_KM) * 1000;
+            const starLuminosity = 4 * Math.PI * Math.pow(starRadius_m, 2) * 5.67e-8 * Math.pow(starTemp, 4);
+
+            // Find distance from this star to the planet
+            let currentBody: CelestialBody | Barycenter = planet;
+            let distance_m = 0;
+            let path = [];
+
+            // This is a simplified distance calculation that does not account for the true 3D position of bodies in different orbital planes.
+            // It sums semi-major axes up and down the tree.
+            const findPath = (startNode: CelestialBody | Barycenter, targetId: ID): (CelestialBody | Barycenter)[] => {
+                let p = [];
+                let curr = startNode;
+                while(curr) {
+                    p.unshift(curr);
+                    if (curr.id === targetId) return p;
+                    curr = allNodes.find(n => n.id === curr.parentId)!;
+                }
+                return [];
+            }
+
+            const pathToStar = findPath(star, allNodes.find(n => n.parentId === null)!.id);
+            const pathToPlanet = findPath(planet, allNodes.find(n => n.parentId === null)!.id);
+
+            let lcaIndex = 0;
+            while(lcaIndex < pathToStar.length && lcaIndex < pathToPlanet.length && pathToStar[lcaIndex].id === pathToPlanet[lcaIndex].id) {
+                lcaIndex++;
+            }
+            lcaIndex--; // step back to the common ancestor
+
+            let dist_au = 0;
+            for (let i = lcaIndex + 1; i < pathToPlanet.length; i++) {
+                dist_au += (pathToPlanet[i] as CelestialBody).orbit?.elements.a_AU || 0;
+            }
+            for (let i = lcaIndex + 1; i < pathToStar.length; i++) {
+                dist_au += (pathToStar[i] as CelestialBody).orbit?.elements.a_AU || 0;
+            }
+
+            if (dist_au > 0) {
+                const dist_m = dist_au * AU_KM * 1000;
+                totalLuminosityTimesArea += starLuminosity / (4 * Math.PI * Math.pow(dist_m, 2));
+                totalStellarRadiation += (star.radiationOutput || 1) / (dist_au * dist_au);
+            }
         }
-        features['stellarIrradiation'] = primaryStar.magneticField?.strengthGauss || 1;
+
+        if (totalLuminosityTimesArea > 0) {
+            equilibriumTempK = Math.pow(totalLuminosityTimesArea * (1 - albedo) / (4 * 5.67e-8), 0.25);
+        }
     }
+
+    const magneticFieldStrength = planet.magneticField?.strengthGauss || 0;
+    planet.surfaceRadiation = Math.max(0, totalStellarRadiation - magneticFieldStrength);
+    features['radiation_flux'] = planet.surfaceRadiation;
 
     const escapeVelocity = Math.sqrt(2 * G * (planet.massKg || 0) / ((planet.radiusKm || 1) * 1000)) / 1000; // in km/s
     features['escapeVelocity_kms'] = escapeVelocity;
@@ -156,7 +205,7 @@ function _generatePlanetaryBody(
     if (planetType === 'planet/terrestrial') {
         let hasAtmosphere = true;
         if (escapeVelocity < 3.0) hasAtmosphere = false;
-        if ((features['stellarIrradiation'] as number) > 100 && (features['a_AU'] as number) < 0.5) hasAtmosphere = false;
+        if ((features['radiation_flux'] as number) > 100 && (features['a_AU'] as number) < 0.5) hasAtmosphere = false;
 
         if (hasAtmosphere) {
             const pressureRange = weightedChoice<[number, number]>(rng, pack.distributions['atmosphere_pressure_bar']);
@@ -261,7 +310,7 @@ function _generatePlanetaryBody(
         // Human-like habitability (strict)
         const tempOk = (planet.temperatureK > 273 && planet.temperatureK < 313); // 0-40C
         const waterOk = (planet.hydrosphere?.composition === 'water' && (planet.hydrosphere?.coverage || 0) > 0.1);
-        const pressureOk = (planet.atmosphere?.pressure_bar > 0.5 && planet.atmosphere?.pressure_bar < 1.5);
+        const pressureOk = (planet.atmosphere?.pressure_bar && planet.atmosphere.pressure_bar > 0.5 && planet.atmosphere.pressure_bar < 1.5);
         const atmOk = (planet.atmosphere?.main === 'N2');
         const gravityOk = ((features['mass_Me'] as number) > 0.5 && (features['mass_Me'] as number) < 1.5);
 
@@ -272,8 +321,8 @@ function _generatePlanetaryBody(
         // Alien habitability (broad)
         const alienTempOk = (planet.temperatureK > 150 && planet.temperatureK < 400);
         const liquidOk = ((planet.hydrosphere?.coverage || 0) > 0);
-        const alienPressureOk = (planet.atmosphere?.pressure_bar > 0.1);
-        const lowRadiation = ((features['stellarIrradiation'] as number) < 10);
+        const alienPressureOk = (planet.atmosphere?.pressure_bar && planet.atmosphere.pressure_bar > 0.1);
+        const lowRadiation = ((features['radiation_flux'] as number) < 10);
 
         if (alienTempOk && liquidOk && alienPressureOk && lowRadiation) {
             alien_habitability_score = 100;
@@ -582,7 +631,7 @@ export function getValidPlanetTypesForHost(host: CelestialBody | Barycenter, pac
     const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
     
     // If host is a planet/moon, we can only add moons.
-    if (host.kind === 'body' && (host.roleHint === 'planet' || host.roleHint === 'moon')) {
+    if (host.kind === 'body' && ((host as CelestialBody).roleHint === 'planet' || (host as CelestialBody).roleHint === 'moon')) {
         return Object.keys(pack.statTemplates).filter(key => {
             if (!key.startsWith('planet/')) return false; // Only allow planet types
             
@@ -648,7 +697,7 @@ export function addPlanetaryBody(sys: System, hostId: ID, planetType: string, pa
     };
 
     const siblings = sys.nodes.filter(n => n.parentId === hostId);
-    const name = (host.roleHint === 'star' || host.kind === 'barycenter') 
+    const name = ((host as CelestialBody).roleHint === 'star' || host.kind === 'barycenter') 
         ? `${host.name} ${String.fromCharCode(98 + siblings.length)}`
         : `${host.name} ${toRoman(siblings.length + 1)}`;
 
@@ -678,7 +727,7 @@ export function renameNode(sys: System, nodeId: ID, newName: string): System {
         const { parentOldName, parentNewName, parentId } = queue.shift()!;
 
         nodes.filter((n: CelestialBody | Barycenter) => n.parentId === parentId).forEach((child: CelestialBody | Barycenter) => {
-            if (child.isNameUserDefined) {
+            if ((child as CelestialBody).isNameUserDefined) {
                 return; // Stop propagation
             }
 
@@ -724,7 +773,7 @@ export function classifyBody(features: Record<string, number | string>, pack: Ru
   if (!pack.classifier) return [];
 
     const planetId = features['id'] as string;
-    const hasRing = allNodes.some(n => n.parentId === planetId && n.kind === 'body' && n.roleHint === 'ring');
+    const hasRing = allNodes.some(n => n.parentId === planetId && n.kind === 'body' && (n as CelestialBody).roleHint === 'ring');
     features['has_ring_child'] = hasRing ? 1 : 0;
 
     const scores: Record<string, number> = {};
@@ -736,11 +785,11 @@ export function classifyBody(features: Record<string, number | string>, pack: Ru
     }
 
     const sortedClasses = Object.entries(scores)
-        .filter(([, score]) => score >= pack.classifier.minScore)
+        .filter(([, score]) => score >= (pack.classifier?.minScore || 10))
         .sort((a, b) => b[1] - a[1]);
 
     // Start with the most likely class, but also add generic fallbacks.
-    const primaryClass = sortedClasses.slice(0, pack.classifier.maxClasses).map(([className]) => className);
+    const primaryClass = sortedClasses.slice(0, pack.classifier?.maxClasses || 2).map(([className]) => className);
     if (primaryClass.length === 0) {
         if ((features['mass_Me'] as number) > 10) {
             primaryClass.push('planet/gas-giant');
@@ -758,21 +807,21 @@ export function computePlayerSnapshot(sys: System, _scopeRootId?: ID): System {
 
   playerSystem.nodes = playerSystem.nodes.map((node: CelestialBody | Barycenter) => {
       // Remove GM-only fields
-      delete node.gmNotes;
+      delete (node as any).gmNotes;
 
       // Field-level visibility (not yet implemented in generator)
-      if (node.visibility?.fields) {
-          for (const [field, isVisible] of Object.entries(node.visibility.fields)) {
+      if ((node as any).visibility?.fields) {
+          for (const [field, isVisible] of Object.entries((node as any).visibility.fields)) {
               if (!isVisible) {
-                  delete node[field];
+                  delete (node as any)[field];
               }
           }
       }
       return node;
-  }).filter((node: CelestialBody | Barycenter) => node.visibility?.visibleToPlayers !== false);
+  }).filter((node: CelestialBody | Barycenter) => (node as any).visibility?.visibleToPlayers !== false);
 
   // Also filter from the top-level system object
-  delete playerSystem.gmNotes;
+  delete (playerSystem as any).gmNotes;
 
   return playerSystem;
 }

@@ -8,10 +8,11 @@
 
   const dispatch = createEventDispatcher();
 
+  // Component State
   let showAddUI = false;
-  let lastBodyId: string | null = null;
+  let selectedPlanetType: string | null = null;
 
-  // Reactive properties
+  // Derived Reactive Properties
   let surfaceTempC: number | null = null;
   let hotSideTempC: number | null = null;
   let coldSideTempC: number | null = null;
@@ -22,12 +23,12 @@
   let orbitalDistanceDisplay: string | null = null;
   let circumferenceKm: number | null = null;
   let tempTooltip: string = '';
+  let surfaceRadiationText: string | null = null;
+  let surfaceRadiationTooltip: string | null = null;
   let validPlanetTypes: string[] = [];
-  let selectedPlanetType: string | null = null;
 
-  $: if (body && body.id !== lastBodyId) {
-      lastBodyId = body.id;
-      // Reset UI state only when the body actually changes
+  // When the body changes, reset the UI and recalculate valid planet types
+  $: if (body) {
       showAddUI = false;
       if (rulePack) {
           validPlanetTypes = getValidPlanetTypesForHost(body, rulePack);
@@ -35,6 +36,7 @@
       }
   }
 
+  // Perform all other display calculations when the body changes
   $: {
     surfaceGravityG = null;
     densityRelative = null;
@@ -46,8 +48,16 @@
     orbitalDistanceDisplay = null;
     circumferenceKm = null;
     tempTooltip = '';
+    surfaceRadiationText = null;
+    surfaceRadiationTooltip = null;
 
     if (body && body.kind === 'body') {
+        if (body.surfaceRadiation !== undefined) {
+            const desc = getSurfaceRadiationDescription(body.surfaceRadiation);
+            surfaceRadiationText = desc.text;
+            surfaceRadiationTooltip = desc.tooltip;
+        }
+
         if (body.orbit) {
             if (body.roleHint === 'moon') {
                 orbitalDistanceDisplay = `${(body.orbit.elements.a_AU * AU_KM).toLocaleString(undefined, {maximumFractionDigits: 0})} km`;
@@ -100,6 +110,17 @@
     }
   }
 
+  // --- Helper Functions ---
+  function getSurfaceRadiationDescription(radiation: number): { text: string, tooltip: string } {
+      if (radiation < 1) return { text: 'Negligible', tooltip: 'No special shielding required for long-term survival.' };
+      if (radiation < 10) return { text: 'Low', tooltip: 'Standard habitat shielding is sufficient for long-term survival.' };
+      if (radiation < 50) return { text: 'Moderate', tooltip: 'Requires moderate habitat shielding (e.g., several cm of lead or equivalent) for long-term survival.' };
+      if (radiation < 100) return { text: 'High', tooltip: 'Requires heavy habitat shielding (e.g., dense alloys, significant depth underground) for long-term survival.' };
+      if (radiation < 500) return { text: 'Very High', tooltip: 'Long-term survival is difficult. Requires extreme shielding, such as deep subterranean or underwater habitats.' };
+      return { text: 'Fatal', tooltip: 'Surface survival is impossible without exotic technology. Lethal dose received in a short time.' };
+  }
+
+  // --- Event Handlers ---
   function handleDelete() {
       if (!body) return;
       if (confirm(`Are you sure you want to delete ${body.name} and everything orbiting it?`)) {
@@ -120,6 +141,7 @@
     }
   }
 
+  // --- Constants ---
   const G = 6.67430e-11;
   const EARTH_GRAVITY = 9.80665; // m/s^2
   const EARTH_DENSITY = 5514; // kg/m^3
@@ -144,7 +166,7 @@
 
 <div class="details-panel">
   {#if body}
-        <input type="text" value={body.name} on:change={handleRename} class="name-input" title="Click to rename" />
+    <input type="text" value={body.name} on:change={handleRename} class="name-input" title="Click to rename" />
     <div class="content-wrapper">
         {#if body.kind === 'body' && body.image}
             <div class="planet-image-container">
@@ -256,10 +278,24 @@
                 </div>
             {/if}
 
-            {#if radiationLevel}
-                <div class="detail-item">
+            {#if body.roleHint === 'star' && radiationLevel}
+                <div class="detail-item" title="A general measure of stellar radiation output. 1.0 is approximately Sun-like.">
                     <span class="label">Radiation Level</span>
-                    <span class="value">{radiationLevel}</span>
+                    <span class="value">{radiationLevel} ({body.radiationOutput?.toFixed(2)})</span>
+                </div>
+            {/if}
+
+            {#if body.magneticField}
+                <div class="detail-item" title="Magnetic field strength in Gauss. A value > 1 is strong enough to offer significant protection from stellar radiation.">
+                    <span class="label">Magnetic Field</span>
+                    <span class="value">{body.magneticField.strengthGauss.toFixed(2)} G</span>
+                </div>
+            {/if}
+
+            {#if surfaceRadiationText}
+                <div class="detail-item" title={surfaceRadiationTooltip}>
+                    <span class="label">Surface Radiation</span>
+                    <span class="value">{surfaceRadiationText} ({body.surfaceRadiation?.toFixed(2)})</span>
                 </div>
             {/if}
 
