@@ -284,6 +284,11 @@ function _generatePlanetaryBody(
     features['tidallyLocked'] = isTidallyLocked ? 1 : 0;
 
     planet.axial_tilt_deg = Math.pow(rng.nextFloat(), 3) * 90;
+    if (orbital_period_days < 10) {
+        // Heavy tidal forces from the close orbit reduce axial tilt over time
+        planet.axial_tilt_deg *= 0.1;
+    }
+
     if (isTidallyLocked) {
         planet.rotation_period_hours = orbital_period_days * 24;
     } else {
@@ -334,6 +339,23 @@ function _generatePlanetaryBody(
 
     planet.classes = classifyBody(features, pack, allNodes);
 
+    // --- Post-Generation Transformations (e.g., Atmospheric Stripping) ---
+    if (age_Gyr > 4.0 && (features['a_AU'] as number) < 0.5 && planet.classes.includes('planet/gas-giant')) {
+        // This hot gas giant has been stripped over billions of years
+        planet.classes = ['planet/chthonian'];
+        planet.radiusKm = (planet.radiusKm || 0) * 0.2; // Drastically reduce radius
+        planet.atmosphere = undefined;
+        planet.hydrosphere = undefined;
+    } else if ((planet.surfaceRadiation || 0) > 100 && planetType === 'planet/terrestrial') {
+        // Terrestrial planet is too close to the star and has had its atmosphere stripped
+        planet.atmosphere = undefined;
+        planet.hydrosphere = undefined;
+    } else if (planet.temperatureK && planet.temperatureK > 1000 && planetType === 'planet/terrestrial') {
+        // Terrestrial planet is too hot and has had its atmosphere and hydrosphere boiled off
+        planet.atmosphere = undefined;
+        planet.hydrosphere = undefined;
+    }
+
     const primaryClass = planet.classes[0];
     if (primaryClass && pack.classifier?.planetImages?.[primaryClass]) {
         planet.image = { url: pack.classifier.planetImages[primaryClass] };
@@ -370,13 +392,24 @@ function _generatePlanetaryBody(
         }
 
         const moonCountTable = pack.distributions[isGasGiant ? 'gas_giant_moon_count' : 'terrestrial_moon_count'];
-        const numMoons = moonCountTable ? weightedChoice<number>(rng, moonCountTable) : 0;
-        let lastMoonApoapsisAU = (planet.radiusKm || 0) / AU_KM * 1.5;
+        let numMoons = moonCountTable ? weightedChoice<number>(rng, moonCountTable) : 0;
+
+        if (isGasGiant) {
+            const massInEarths = (planet.massKg || 0) / EARTH_MASS_KG;
+            const scalingFactor = Math.log10(Math.max(1, massInEarths)); // Use log10 for a gentler curve
+            numMoons = Math.floor(numMoons * scalingFactor);
+        }
+
+        // Calculate Roche Limit for a rigid body (simplification)
+        const parentDensity = ((host as CelestialBody).massKg || 0) / (4/3 * Math.PI * Math.pow(((host as CelestialBody).radiusKm || 1) * 1000, 3));
+        const moonDensity = 3344; // Approximate density of Earth's moon in kg/m^3
+        const rocheLimit_km = ((host as CelestialBody).radiusKm || 1) * Math.pow(2 * (parentDensity / moonDensity), 1/3);
+        
+        let lastMoonApoapsisAU = rocheLimit_km / AU_KM * 1.5; // Start just outside the Roche limit
 
         for (let j = 0; j < numMoons; j++) {
-            const moonMinGap = (planet.radiusKm || 0) / AU_KM * 1.2;
-            const newMoonPeriapsis = lastMoonApoapsisAU + randomFromRange(rng, moonMinGap, moonMinGap * 3);
-            const newMoonEccentricity = randomFromRange(rng, 0, 0.05);
+            const moonMinGap = rocheLimit_km / AU_KM * 0.5;
+            const newMoonPeriapsis = lastMoonApoapsisAU + randomFromRange(rng, moonMinGap, moonMinGap * 3);            const newMoonEccentricity = randomFromRange(rng, 0, 0.05);
             const newMoonA_AU = newMoonPeriapsis / (1 - newMoonEccentricity);
             lastMoonApoapsisAU = newMoonA_AU * (1 + newMoonEccentricity);
 
@@ -506,7 +539,8 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
       for (let i = 0; i < numBodies; i++) {
           const minGap = 0.2;
           const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
-                  const newEccentricity = randomFromRange(rng, 0.01, 0.15);
+          const maxEccentricity = (system_age_Gyr > 5) ? 0.1 : 0.15;
+          const newEccentricity = randomFromRange(rng, 0.01, maxEccentricity);
                   const newA_AU = newPeriapsis / (1 - newEccentricity);
                   lastApoapsisAU = newA_AU * (1 + newEccentricity);
           
@@ -569,11 +603,10 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
           const newPeriapsis = lastApo + randomFromRange(rng, minGap, minGap * 3);
           if (maxApo && newPeriapsis > maxApo) continue;
   
-          const newEccentricity = randomFromRange(rng, 0.01, 0.15);
+          const maxEccentricity = (system_age_Gyr > 5) ? 0.1 : 0.15;
+          const newEccentricity = randomFromRange(rng, 0.01, maxEccentricity);
                   const newA_AU = newPeriapsis / (1 - newEccentricity);
                   const newApoapsis = newA_AU * (1 + newEccentricity);
-          
-                  if (maxApo && newApoapsis > maxApo) continue;
           
                   const orbit: Orbit = {
                       hostId: host.id,
