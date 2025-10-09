@@ -1,4 +1,4 @@
-<script lang="ts">
+'''<script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
   import { getValidPlanetTypesForHost } from '$lib/api';
@@ -11,6 +11,7 @@
   // Component State
   let showAddUI = false;
   let selectedPlanetType: string | null = null;
+  let lastBodyId: ID | null = null;
 
   // Derived Reactive Properties
   let surfaceTempC: number | null = null;
@@ -27,8 +28,9 @@
   let surfaceRadiationTooltip: string | null = null;
   let validPlanetTypes: string[] = [];
 
-  // When the body changes, reset the UI and recalculate valid planet types
-  $: if (body) {
+  // When the body prop changes, check if it's a new body. If so, reset the UI.
+  $: if (body && body.id !== lastBodyId) {
+      lastBodyId = body.id;
       showAddUI = false;
       if (rulePack) {
           validPlanetTypes = getValidPlanetTypesForHost(body, rulePack);
@@ -86,13 +88,15 @@
                 ? `${massInSuns.toLocaleString(undefined, {maximumFractionDigits: 3})} Solar Masses` 
                 : `${massInSuns.toExponential(2)} Solar Masses`;
 
-            const starClass = body.classes[0]?.split('/')[1]?.[0];
-            if (starClass && (starClass === 'O' || starClass === 'B' || starClass === 'N')) radiationLevel = 'Extreme';
-            else if (starClass && (starClass === 'A' || starClass === 'W')) radiationLevel = 'High';
-            else if (starClass && (starClass === 'F' || starClass === 'G')) radiationLevel = 'Moderate';
-            else radiationLevel = 'Low';
-        } else if (body.massKg) {
-            const massInEarths = body.massKg / EARTH_MASS_KG;
+            const rad = body.radiationOutput || 0;
+            if (rad > 1000) radiationLevel = 'Extreme';
+            else if (rad > 100) radiationLevel = 'Very High';
+            else if (rad > 10) radiationLevel = 'High';
+            else if (rad > 2) radiationLevel = 'Moderate';
+            else if (rad > 0.1) radiationLevel = 'Low';
+            else radiationLevel = 'Negligible';
+
+        } else if (body.massKg) {            const massInEarths = body.massKg / EARTH_MASS_KG;
             massDisplay = massInEarths < 1000000 
                 ? `${massInEarths.toLocaleString(undefined, {maximumFractionDigits: 2})} Earth Masses` 
                 : `${massInEarths.toExponential(2)} Earth Masses`;
@@ -150,16 +154,17 @@
   const AU_KM = 149597870.7;
 
   const STAR_TYPE_DESC: Record<string, string> = {
-      'O': 'Extremely hot, luminous, and blue. Very rare and short-lived. High radiation.',
-      'B': 'Hot, luminous, blue-white stars. High radiation.',
-      'A': 'White or bluish-white stars, like Sirius. Moderate radiation.',
-      'F': 'Yellow-white stars, stronger than the Sun. Moderate radiation.',
-      'G': 'Yellow, sun-like stars. Good candidates for habitable planets.',
-      'K': 'Orange dwarfs, cooler and longer-lived than the Sun. Low radiation.',
-      'M': 'Red dwarfs. The most common, very long-lived, but dim and cool. Low radiation.',
-      'WD': 'White Dwarf. The dense, hot remnant of a dead star. High radiation.',
-      'NS': 'Neutron Star. An extremely dense, rapidly spinning stellar remnant. Extreme radiation.',
-      'BH': 'Black Hole. A region of spacetime where gravity is so strong nothing can escape. Extreme radiation.'
+      'star/O': 'Extremely hot, luminous, and blue. Very rare and short-lived. High radiation.',
+      'star/B': 'Hot, luminous, blue-white stars. High radiation.',
+      'star/A': 'White or bluish-white stars, like Sirius. Moderate radiation.',
+      'star/F': 'Yellow-white stars, stronger than the Sun. Moderate radiation.',
+      'star/G': 'Yellow, sun-like stars. Good candidates for habitable planets.',
+      'star/K': 'Orange dwarfs, cooler and longer-lived than the Sun. Low radiation.',
+      'star/M': 'Red dwarfs. The most common, very long-lived, but dim and cool. Low radiation.',
+      'star/WD': 'White Dwarf. The dense, hot remnant of a dead star. High radiation.',
+      'star/NS': 'Neutron Star. An extremely dense, rapidly spinning stellar remnant. Extreme radiation.',
+      'star/BH': 'Quiescent Black Hole. A region of spacetime where gravity is so strong nothing can escape. Low radiation unless matter is actively falling in.',
+      'star/BH_active': 'Active Black Hole. A black hole actively feeding on surrounding matter, which forms a super-heated accretion disk, emitting extreme levels of radiation.'
   }
 
 </script>
@@ -185,12 +190,11 @@
                     <span class="label">Classification</span>
                     <span class="value">{body.classes.join(', ')}</span>
                 </div>
-                {#if STAR_TYPE_DESC[body.classes[0]?.split('/')[1]?.[0]]}
-                    <div class="detail-item description">
-                        <span class="value">{STAR_TYPE_DESC[body.classes[0].split('/')[1][0]]}</span>
-                    </div>
-                {/if}
-            {/if}
+                                {#if STAR_TYPE_DESC[body.classes[0]] || STAR_TYPE_DESC[body.classes[0]?.split('/')[1]?.[0]]}
+                                    <div class="detail-item description">
+                                        <span class="value">{STAR_TYPE_DESC[body.classes[0]] || STAR_TYPE_DESC[body.classes[0].split('/')[1][0]]}</span>
+                                    </div>
+                                {/if}            {/if}
 
             {#if massDisplay}
                 <div class="detail-item">

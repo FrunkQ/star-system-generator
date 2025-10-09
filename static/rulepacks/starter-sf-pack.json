@@ -16,7 +16,8 @@
         { "weight": 15, "value": "star/WD" },
         { "weight": 4, "value": "star/NS" },
         { "weight": 1, "value": "star/magnetar" },
-        { "weight": 2, "value": "star/BH" }
+        { "weight": 1, "value": "star/BH" },
+        { "weight": 1, "value": "star/BH_active" }
       ]
     },
     "is_binary_chance_massive": {
@@ -277,7 +278,9 @@
     "star/WD": { "mass_solar": [0.6, 1.4], "radius_solar": [0.008, 0.02], "temp_k": [8000, 40000], "mag_gauss": [10000, 1000000], "radiation_output": [5, 50] },
     "star/NS": { "mass_solar": [1.4, 2.2], "radius_solar": [0.000014, 0.000028], "temp_k": [100000, 1000000], "mag_gauss": [100000000, 100000000000], "radiation_output": [1000, 10000] },
     "star/magnetar": { "mass_solar": [1.4, 2.2], "radius_solar": [0.000014, 0.000028], "temp_k": [100000, 1000000], "mag_gauss": [100000000000, 1000000000000000], "radiation_output": [100000, 1000000] },
-    "star/BH": { "mass_solar": [3, 100], "radius_solar": [0.0000126, 0.000423], "temp_k": [0, 0], "mag_gauss": [0, 0], "radiation_output": [0, 10000] },
+    "star/magnetar": { "mass_solar": [1.4, 2.2], "radius_solar": [0.000014, 0.000028], "temp_k": [100000, 1000000], "mag_gauss": [100000000000, 1000000000000000], "radiation_output": [100000, 1000000] },
+    "star/BH": { "mass_solar": [3, 100], "radius_solar": [0.0000126, 0.000423], "temp_k": [0, 0], "mag_gauss": [0, 0], "radiation_output": [0.01, 0.1] },
+    "star/BH_active": { "mass_solar": [3, 100], "radius_solar": [0.0000126, 0.000423], "temp_k": [0, 0], "mag_gauss": [100000, 100000000], "radiation_output": [10000, 100000] },
     "planet/terrestrial": { "mass_earth": [0.5, 2.0], "radius_earth": [0.8, 1.5] },
     "planet/gas-giant": { "mass_earth": [10, 3000], "radius_earth": [4, 20], "mag_gauss": [5, 50] },
     "belt/asteroid": { "mass_earth": [0.01, 0.1], "radius_km": [1, 100] },
@@ -442,7 +445,7 @@
       "star/A": "/images/star_types/A.webp",
       "star/B": "/images/star_types/B.webp",
       "star/BH": "/images/star_types/BH.webp",
-      "star/F": "/images/star_types/F.webp",
+      "star/BH_active": "/images/star_types/BH_accretion_disk.png",      "star/F": "/images/star_types/F.webp",
       "star/G": "/images/star_types/G.webp",
       "star/K": "/images/star_types/K.ebp.webp",
       "star/M": "/images/star_types/M.webp",

@@ -478,6 +478,22 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
     systemName = starA.name;
     totalMassKg = starA.massKg || 0;
     rootRadiusKm = starA.radiusKm || 0;
+
+    if (starA.classes.includes('star/BH_active')) {
+        const ring: CelestialBody = {
+            id: `${starA.id}-accretion-disk`,
+            parentId: starA.id,
+            name: `${starA.name} Accretion Disk`,
+            kind: 'body',
+            roleHint: 'ring',
+            classes: ['ring/accretion_disk'],
+            radiusInnerKm: (starA.radiusKm || 0) * 1.1,
+            radiusOuterKm: (starA.radiusKm || 0) * randomFromRange(rng, 5, 20),
+            tags: [],
+            areas: [],
+        };
+        nodes.push(ring);
+    }
   } else {
     const barycenterId = `${seed}-barycenter-0`;
     const barycenter: Barycenter = {
@@ -704,13 +720,18 @@ export function addPlanetaryBody(sys: System, hostId: ID, planetType: string, pa
                 }
             }
         });
+    } else if (host.kind === 'body') {
+        // If no children, start just outside the host's Roche limit
+        const parentDensity = (host.massKg || 0) / (4/3 * Math.PI * Math.pow((host.radiusKm || 1) * 1000, 3));
+        const moonDensity = 3344; // Approximate density of Earth's moon
+        const rocheLimit_km = (host.radiusKm || 1) * Math.pow(2 * (parentDensity / moonDensity), 1/3);
+        lastApoapsisAU = rocheLimit_km / AU_KM * 1.5;
     } else {
-        // If no children, start just outside the host body itself
+        // Fallback for barycenters or other non-body hosts
         lastApoapsisAU = ((host as CelestialBody).radiusKm || 0) / AU_KM;
     }
 
-    // Use similar gap logic as in the main generator
-    const minGap = (host.kind === 'body') ? (host as CelestialBody).radiusKm / AU_KM * 1.2 : 0.2;
+    const minGap = (lastApoapsisAU > 0) ? lastApoapsisAU * 0.2 : 0.1;
     const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
     const newEccentricity = randomFromRange(rng, 0.01, 0.15);
     const newA_AU = newPeriapsis / (1 - newEccentricity);

@@ -185,18 +185,6 @@
         }
     }
 
-    // --- Draw Rings for focused body ---
-    for (const ring of ringChildren) {
-        const innerRadius = (ring.radiusInnerKm || 0) / AU_KM * scale;
-        const outerRadius = (ring.radiusOuterKm || 0) / AU_KM * scale;
-        
-        ctx.fillStyle = `rgba(150, 150, 150, ${VISUAL_SCALING.ring.opacity})`;
-        ctx.beginPath();
-        ctx.arc(viewCenterX, viewCenterY, outerRadius, 0, 2 * Math.PI);
-        ctx.arc(viewCenterX, viewCenterY, innerRadius, 0, 2 * Math.PI, true);
-        ctx.fill();
-    }
-
     // --- Draw Bodies ---
     // Draw focus body at center, or a marker for a barycenter
     if (focusBody.kind === 'barycenter') {
@@ -209,22 +197,47 @@
         ctx.lineTo(viewCenterX, viewCenterY + 10 / zoom);
         ctx.stroke();
         positions[focusBody.id] = { x: viewCenterX, y: viewCenterY, radius: 10 / zoom };
-    } else if (focusBody.kind === 'body') {
-        const body = focusBody as CelestialBody;
-        let focusBodyRadius = 2;
-        let focusBodyColor = "#aaa";
-        if (body.roleHint === 'star') {
-            const starClassKey = body.classes[0]?.split('/')[1] || 'default';
-            focusBodyColor = STAR_COLOR_MAP[starClassKey] || STAR_COLOR_MAP['default'];
-            focusBodyRadius = Math.max(VISUAL_SCALING.star.base, (body.radiusKm || 696340) / 696340 * VISUAL_SCALING.star.multiplier);
-        } else { 
-            focusBodyRadius = 25;
+        } else if (focusBody.kind === 'body') {
+            const hasAccretionDisk = ringChildren.some(r => r.classes.includes('ring/accretion_disk'));
+            if (hasAccretionDisk) {
+                // Don't draw the central body, the disk implies its presence
+                positions[focusBody.id] = { x: viewCenterX, y: viewCenterY, radius: 10 / zoom };
+            } else {
+                const body = focusBody as CelestialBody;
+                let focusBodyRadius = 2;
+                let focusBodyColor = "#aaa";
+                if (body.roleHint === 'star') {
+                    const starClassKey = body.classes[0] || 'default';
+                    focusBodyColor = STAR_COLOR_MAP[starClassKey.split('/')[1]] || STAR_COLOR_MAP['default'];
+                    focusBodyRadius = Math.max(VISUAL_SCALING.star.base, (body.radiusKm || 696340) / 696340 * VISUAL_SCALING.star.multiplier);
+                } else { 
+                    focusBodyRadius = 25;
+                }
+                ctx.beginPath();
+                ctx.arc(viewCenterX, viewCenterY, focusBodyRadius, 0, 2 * Math.PI);
+                ctx.fillStyle = focusBodyColor;
+                ctx.fill();
+                positions[focusBody.id] = { x: viewCenterX, y: viewCenterY, radius: focusBodyRadius };
+            }
         }
-        ctx.beginPath();
-        ctx.arc(viewCenterX, viewCenterY, focusBodyRadius, 0, 2 * Math.PI);
-        ctx.fillStyle = focusBodyColor;
-        ctx.fill();
-        positions[focusBody.id] = { x: viewCenterX, y: viewCenterY, radius: focusBodyRadius };
+    // --- Draw Rings for focused body ---
+    for (const ring of ringChildren) {
+        const innerRadius = (ring.radiusInnerKm || 0) / AU_KM * scale;
+        const outerRadius = (ring.radiusOuterKm || 0) / AU_KM * scale;
+        
+        if (ring.classes.includes('ring/accretion_disk')) {
+            ctx.strokeStyle = '#ff6600'; // Orange-red for the accretion disk
+            ctx.lineWidth = (outerRadius - innerRadius);
+            ctx.beginPath();
+            ctx.arc(viewCenterX, viewCenterY, innerRadius + (outerRadius - innerRadius) / 2, 0, 2 * Math.PI);
+            ctx.stroke();
+        } else {
+            ctx.fillStyle = `rgba(150, 150, 150, ${VISUAL_SCALING.ring.opacity})`;
+            ctx.beginPath();
+            ctx.arc(viewCenterX, viewCenterY, outerRadius, 0, 2 * Math.PI);
+            ctx.arc(viewCenterX, viewCenterY, innerRadius, 0, 2 * Math.PI, true);
+            ctx.fill();
+        }
     }
 
     // Draw children
@@ -241,8 +254,8 @@
         let childColor = "#aaa";
 
         if (node.roleHint === 'star') {
-            const starClassKey = node.classes[0]?.split('/')[1] || 'default';
-            childColor = STAR_COLOR_MAP[starClassKey] || STAR_COLOR_MAP['default'];
+            const starClassKey = node.classes[0] || 'default';
+            childColor = STAR_COLOR_MAP[starClassKey.split('/')[1]] || STAR_COLOR_MAP['default'];
             childRadius = Math.max(VISUAL_SCALING.star.base, (node.radiusKm || 696340) / 696340 * VISUAL_SCALING.star.multiplier);
         } else if (node.roleHint === 'planet') {
             childRadius = Math.max(VISUAL_SCALING.planet.base, (node.radiusKm || 6371) / 6371 * VISUAL_SCALING.planet.multiplier);
