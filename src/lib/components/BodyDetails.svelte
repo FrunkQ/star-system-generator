@@ -4,14 +4,8 @@
   import { getValidPlanetTypesForHost } from '$lib/api';
 
   export let body: CelestialBody | Barycenter | null;
-  export let rulePack: RulePack | null;
 
   const dispatch = createEventDispatcher();
-
-  // Component State
-  let showAddUI = false;
-  let selectedPlanetType: string | null = null;
-  let lastBodyId: ID | null = null;
 
   // Derived Reactive Properties
   let surfaceTempC: number | null = null;
@@ -28,15 +22,6 @@
   let surfaceRadiationTooltip: string | null = null;
   let validPlanetTypes: string[] = [];
 
-  // When the body prop changes, check if it's a new body. If so, reset the UI.
-  $: if (body && body.id !== lastBodyId) {
-      lastBodyId = body.id;
-      showAddUI = false;
-      if (rulePack) {
-          validPlanetTypes = getValidPlanetTypesForHost(body, rulePack);
-          selectedPlanetType = validPlanetTypes[0] ?? null;
-      }
-  }
 
   // Perform all other display calculations when the body changes
   $: {
@@ -132,11 +117,7 @@
       }
   }
 
-  function handleAdd() {
-      if (!body || !selectedPlanetType) return;
-      dispatch('addNode', { hostId: body.id, planetType: selectedPlanetType });
-      showAddUI = false;
-  }
+
 
   function handleRename(event: Event) {
     const newName = (event.target as HTMLInputElement).value;
@@ -320,26 +301,22 @@
 
         <div class="gm-tools">
             <h3>GM Tools</h3>
-            <div class="tools-container">
-                {#if body.parentId !== null}
-                    <button class="delete-button" on:click={handleDelete}>Delete {body.name}</button>
-                {/if}
-                
-                {#if validPlanetTypes.length > 0}
-                    <button on:click={() => showAddUI = !showAddUI}>Add Orbiting Body to {body.name}</button>
-                {/if}
-            </div>
-
-            {#if showAddUI}
-                <div class="add-ui">
-                    <select bind:value={selectedPlanetType}>
-                        {#each validPlanetTypes as type (type)}
-                            <option value={type}>{type.replace('planet/', '')}</option>
-                        {/each}
-                    </select>
-                    <button on:click={handleAdd} disabled={!selectedPlanetType}>Add</button>
-                </div>
-            {/if}
+                        <div class="tools-container">
+                            {#if body.parentId !== null}
+                                <button class="delete-button" on:click={handleDelete}>Delete {body.name}</button>
+                            {/if}
+                            
+                            <button on:click={() => dispatch('addNode', { hostId: body.id, planetType: 'planet/terrestrial' })}>Add Terrestrial</button>
+                            {#if body.kind !== 'body' || (body.massKg || 0) > 10 * EARTH_MASS_KG}
+                                <button on:click={() => dispatch('addNode', { hostId: body.id, planetType: 'planet/gas-giant' })}>Add Gas Giant</button>
+                            {/if}
+            
+                            {#if body.kind === 'body' && (body.roleHint === 'star' || body.roleHint === 'planet')}
+                                <button on:click={() => dispatch('addHabitablePlanet', { hostId: body.id, habitabilityType: 'earth-like' })}>Add Earth-like</button>
+                                <button on:click={() => dispatch('addHabitablePlanet', { hostId: body.id, habitabilityType: 'human-habitable' })}>Add Human-Habitable</button>
+                                <button on:click={() => dispatch('addHabitablePlanet', { hostId: body.id, habitabilityType: 'alien-habitable' })}>Add Alien-Habitable</button>
+                            {/if}
+                        </div>
         </div>
     </div>
 
@@ -432,12 +409,5 @@
       color: white;
       border: 1px solid #c00;
   }
-  .add-ui {
-      display: flex;
-      gap: 0.5em;
-      align-items: center;
-      background-color: #252525;
-      padding: 0.5em;
-      border-radius: 4px;
-  }
+
 </style>

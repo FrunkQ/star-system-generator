@@ -3,7 +3,8 @@ import type { System, ID, CelestialBody, Barycenter, RulePack, Orbit } from "../
 import { SeededRNG } from '../rng';
 import { randomFromRange, toRoman } from '../utils';
 import { _generatePlanetaryBody } from '../generation/planet';
-import { G, AU_KM, EARTH_MASS_KG } from '../constants';
+import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM } from '../constants';
+import { findHabitableOrbit } from '../physics/habitability';
 
 export function deleteNode(sys: System, nodeId: ID): System {
     const nodesToDelete = new Set<ID>([nodeId]);
@@ -152,4 +153,50 @@ export function renameNode(sys: System, nodeId: ID, newName: string): System {
     }
 
     return { ...sys, name: systemName, nodes: nodes };
+}
+
+export function addHabitablePlanet(sys: System, hostId: ID, habitabilityType: 'earth-like' | 'human-habitable' | 'alien-habitable', pack: RulePack): System {
+    const rng = new SeededRNG(sys.seed + Date.now());
+    const host = sys.nodes.find(n => n.id === hostId) as CelestialBody;
+    if (!host) throw new Error(`Host with id ${hostId} not found.`);
+
+    const tempRange: [number, number] = (habitabilityType === 'alien-habitable') ? [150, 400] : [273, 313];
+    const orbit = findHabitableOrbit(host, sys, tempRange);
+
+    if (!orbit) {
+        throw new Error(`No suitable habitable orbit found for a ${habitabilityType} planet around ${host.name}.`);
+    }
+
+    const propertyOverrides: Partial<CelestialBody> = {
+    };
+
+    if (habitabilityType === 'earth-like') {
+        propertyOverrides.massKg = randomFromRange(rng, 0.8, 1.2) * EARTH_MASS_KG;
+        propertyOverrides.radiusKm = randomFromRange(rng, 0.9, 1.1) * EARTH_RADIUS_KM;
+        propertyOverrides.atmosphere = { main: 'N2', composition: {'N2': 0.78, 'O2': 0.21, 'Ar': 0.01}, pressure_bar: 1.0 };
+        propertyOverrides.hydrosphere = { composition: 'water', coverage: 0.7 };
+    } else if (habitabilityType === 'human-habitable') {
+        propertyOverrides.massKg = randomFromRange(rng, 0.5, 1.5) * EARTH_MASS_KG;
+        propertyOverrides.radiusKm = randomFromRange(rng, 0.8, 1.2) * EARTH_RADIUS_KM;
+        propertyOverrides.atmosphere = { main: 'N2', composition: {'N2': 0.8, 'O2': 0.2}, pressure_bar: randomFromRange(rng, 0.5, 1.5) };
+        propertyOverrides.hydrosphere = { composition: 'water', coverage: randomFromRange(rng, 0.2, 0.8) };
+    } else { // alien-habitable
+        propertyOverrides.massKg = randomFromRange(rng, 0.5, 3.0) * EARTH_MASS_KG;
+        propertyOverrides.radiusKm = randomFromRange(rng, 0.8, 2.0) * EARTH_RADIUS_KM;
+        // Leave atmosphere and hydrosphere to be generated randomly, allowing for more exotic types
+    }
+
+    const siblings = sys.nodes.filter(n => n.parentId === hostId);
+    const name = ((host as CelestialBody).roleHint === 'star' || host.kind === 'barycenter') 
+        ? `${host.name} ${String.fromCharCode(98 + siblings.length)}`
+        : `${host.name} ${toRoman(siblings.length + 1)}`;
+
+    const newNodes = _generatePlanetaryBody(new SeededRNG(sys.seed + Date.now()), pack, `${sys.seed}-custom`, siblings.length, host, orbit, name, sys.nodes, sys.age_Gyr, 'planet/terrestrial', false, propertyOverrides);
+    
+    const newSystem = {
+        ...sys,
+        nodes: [...sys.nodes, ...newNodes]
+    };
+
+    return newSystem;
 }

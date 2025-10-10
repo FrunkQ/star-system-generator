@@ -12,29 +12,16 @@ const L_SUN = 3.828e26; // Watts
  * @returns A valid Orbit object or null if no suitable orbit is found.
  */
 export function findHabitableOrbit(host: CelestialBody, system: System, habitableTempRange: [number, number]): Orbit | null {
-    // Simplified luminosity calculation for stars
-    const hostLuminosity = (host.massKg || 0) / 1.989e30 * L_SUN;
+    if (host.kind !== 'body' || host.roleHint !== 'star') return null; // Can only find HZ for stars for now
+
+    // Simplified luminosity calculation based on mass-luminosity relation
+    const hostLuminosity = Math.pow((host.massKg || 0) / 1.989e30, 3.5) * L_SUN;
 
     // Calculate the inner and outer bounds of the habitable zone in AU
     const innerBoundary_AU = Math.sqrt(hostLuminosity / L_SUN / 1.1);
     const outerBoundary_AU = Math.sqrt(hostLuminosity / L_SUN / 0.53);
 
-    // For gas giants, tidal heating can make a moon habitable far beyond the star's HZ
-    // This is a complex calculation, so for now we will just find a stable orbit
-    // and assume tidal heating can make up the difference if the host is a gas giant.
-
-    let searchRadiusAU = (host.kind === 'body' && host.roleHint === 'star') 
-        ? randomFromRange(innerBoundary_AU, outerBoundary_AU) 
-        : 0;
-
-    if (host.kind === 'body' && host.roleHint === 'planet') {
-        const parentDensity = (host.massKg || 0) / (4/3 * Math.PI * Math.pow((host.radiusKm || 1) * 1000, 3));
-        const moonDensity = 3344; // Approximate density of Earth's moon
-        const rocheLimit_km = (host.radiusKm || 1) * Math.pow(2 * (parentDensity / moonDensity), 1/3);
-        searchRadiusAU = (rocheLimit_km / AU_KM) * 2.5; // Start well outside the Roche limit
-    }
-
-    if (searchRadiusAU === 0) return null; // Cannot find a habitable orbit
+    let searchRadiusAU = randomFromRange(innerBoundary_AU, outerBoundary_AU); 
 
     // Check for collisions with existing bodies
     const children = system.nodes.filter(n => n.parentId === host.id && n.kind === 'body') as CelestialBody[];
@@ -66,8 +53,8 @@ export function findHabitableOrbit(host: CelestialBody, system: System, habitabl
             };
         }
 
-        // If there was a collision, try a different radius
-        searchRadiusAU *= 1.2;
+        // If there was a collision, try a different radius within the habitable zone
+        searchRadiusAU = randomFromRange(innerBoundary_AU, outerBoundary_AU); 
         attempts++;
     }
 

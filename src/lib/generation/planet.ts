@@ -16,7 +16,8 @@ export function _generatePlanetaryBody(
     allNodes: (CelestialBody | Barycenter)[],
     age_Gyr: number,
     planetTypeOverride?: string,
-    generateChildren: boolean = true
+    generateChildren: boolean = true,
+    propertyOverrides?: Partial<CelestialBody>
 ): CelestialBody[] {
     const newNodes: CelestialBody[] = [];
 
@@ -52,6 +53,7 @@ export function _generatePlanetaryBody(
         radiusKm: 0, // placeholder
         tags: [],
         areas: [],
+        ...propertyOverrides,
     };
 
     const planetType = ((planet.roleHint === 'moon') 

@@ -3,7 +3,7 @@
   import { browser } from '$app/environment';
   import type { RulePack, System, CelestialBody } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
-  import { generateSystem, computePlayerSnapshot, deleteNode, addPlanetaryBody, renameNode } from '$lib/api';
+  import { generateSystem, computePlayerSnapshot, deleteNode, addPlanetaryBody, renameNode, addHabitablePlanet } from '$lib/api';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import BodyDetails from '$lib/components/BodyDetails.svelte';
 
@@ -103,14 +103,23 @@
       generatedSystem = addPlanetaryBody(generatedSystem, hostId, planetType, rulePack);
   }
 
-  function handleRenameNode(event: CustomEvent<{nodeId: string, newName: string}>) {
-    if (!generatedSystem) return;
-    const { nodeId, newName } = event.detail;
-    generatedSystem = renameNode(generatedSystem, nodeId, newName);
+  function handleAddHabitablePlanet(event: CustomEvent<{hostId: string, habitabilityType: 'earth-like' | 'human-habitable' | 'alien-habitable'}>) {
+      if (!generatedSystem || !rulePack) return;
+      const { hostId, habitabilityType } = event.detail;
+      try {
+        generatedSystem = addHabitablePlanet(generatedSystem, hostId, habitabilityType, rulePack);
+      } catch (e: any) {
+        alert(e.message);
+      }
   }
 
-  function handleSaveToBrowser() {
-    if (!generatedSystem) return;
+    function handleRenameNode(event: CustomEvent<{nodeId: string, newName: string}>) {
+      if (!generatedSystem) return;
+      const { nodeId, newName } = event.detail;
+      generatedSystem = renameNode(generatedSystem, nodeId, newName);
+    }
+  
+    function handleSaveToBrowser() {    if (!generatedSystem) return;
     localStorage.setItem('stargen_saved_system', JSON.stringify(generatedSystem));
     alert('System saved to browser storage.');
   }
@@ -269,7 +278,7 @@
 
     <SystemVisualizer bind:this={visualizer} system={generatedSystem} {currentTime} {focusedBodyId} on:focus={handleFocus} />
 
-    <BodyDetails body={focusedBody} {rulePack} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:renameNode={handleRenameNode} />
+    <BodyDetails body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:renameNode={handleRenameNode} on:addHabitablePlanet={handleAddHabitablePlanet} />
 
     <div class="debug-controls">
         <button on:click={() => showJson = !showJson}>
