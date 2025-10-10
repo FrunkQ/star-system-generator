@@ -1,4 +1,4 @@
-'''<script lang="ts">
+<script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
   import type { RulePack, System, CelestialBody } from '$lib/types';
@@ -345,4 +345,3 @@
       font-size: 0.9em;
   }
 </style>
-'''

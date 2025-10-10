@@ -1,4 +1,4 @@
-'''<script lang="ts">
+<script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
   import { getValidPlanetTypesForHost } from '$lib/api';

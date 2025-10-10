@@ -1,0 +1,235 @@
+// src/lib/generation/system.ts
+import type { System, RulePack, ID, CelestialBody, Barycenter, Orbit } from '../types';
+import { SeededRNG } from '../rng';
+import { weightedChoice, randomFromRange, toRoman } from '../utils';
+import { _generateStar } from './star';
+import { _generatePlanetaryBody } from './planet';
+import { G, AU_KM } from '../constants';
+import type { GenOptions } from '../api';
+
+export function generateSystem(seed: string, pack: RulePack, __opts: Partial<GenOptions> = {}, generationChoice?: string): System {
+  const rng = new SeededRNG(seed);
+  const nodes: (CelestialBody | Barycenter)[] = [];
+
+  let systemRoot: CelestialBody | Barycenter;
+  let systemName: string;
+  let totalMassKg = 0;
+  let rootRadiusKm = 0;
+  let baseName = `System ${seed}`;
+
+  // --- Star Generation ---
+  const baseNamePrefixTable = pack.distributions['star_name_prefix'];
+  const baseNameDigitsTable = pack.distributions['star_name_number_digits'];
+  if (baseNamePrefixTable && baseNameDigitsTable) {
+      const prefix = weightedChoice<string>(rng, baseNamePrefixTable);
+      const numDigits = weightedChoice<number>(rng, baseNameDigitsTable);
+      baseName = `${prefix}${ ' '.padStart(numDigits, '0').replace(/0/g, () => rng.nextInt(0, 9).toString())}`;
+  }
+
+  let starTypeOverride: string | undefined = undefined;
+  let forceBinary: boolean | undefined = undefined;
+
+  if (generationChoice && generationChoice !== 'Random') {
+    const isBinarySelection = generationChoice.endsWith(' Binary');
+    const type = generationChoice.replace('Type ', 'star/').replace(' Binary', '');
+    starTypeOverride = type;
+    forceBinary = isBinarySelection;
+  }
+
+  const starA = _generateStar(`${seed}-star-a`, null, pack, rng, starTypeOverride);
+  const starClass = starA.classes[0].split('/')[1]; // e.g., "G2V" -> "G"
+
+  let isBinary = forceBinary ?? false;
+  if (forceBinary === undefined) { // Only use random chance if user didn't specify
+    if (['O', 'B'].includes(starClass)) {
+        isBinary = weightedChoice<boolean>(rng, pack.distributions['is_binary_chance_massive']);
+    } else if (['A', 'F', 'G', 'K'].includes(starClass)) {
+        isBinary = weightedChoice<boolean>(rng, pack.distributions['is_binary_chance_sunlike']);
+    } else { // M, WD, etc.
+        isBinary = weightedChoice<boolean>(rng, pack.distributions['is_binary_chance_lowmass']);
+    }
+  }
+
+  if (!isBinary) {
+    starA.name = baseName;
+    nodes.push(starA);
+    systemRoot = starA;
+    systemName = starA.name;
+    totalMassKg = starA.massKg || 0;
+    rootRadiusKm = starA.radiusKm || 0;
+
+    if (starA.classes.includes('star/BH_active')) {
+        const ring: CelestialBody = {
+            id: `${starA.id}-accretion-disk`,
+            parentId: starA.id,
+            name: `${starA.name} Accretion Disk`,
+            kind: 'body',
+            roleHint: 'ring',
+            classes: ['ring/accretion_disk'],
+            radiusInnerKm: (starA.radiusKm || 0) * 1.1,
+            radiusOuterKm: (starA.radiusKm || 0) * randomFromRange(rng, 5, 20),
+            tags: [],
+            areas: [],
+        };
+        nodes.push(ring);
+    }
+  } else {
+    const barycenterId = `${seed}-barycenter-0`;
+    const barycenter: Barycenter = {
+        id: barycenterId,
+        parentId: null,
+        name: `${baseName} System Barycenter`,
+        kind: "barycenter",
+        memberIds: [starA.id],
+        tags: [],
+    };
+
+    starA.parentId = barycenterId;
+    starA.name = `${baseName} A`;
+
+    const starB = _generateStar(`${seed}-star-b`, barycenterId, pack, rng);
+    starB.name = `${baseName} B`;
+    barycenter.memberIds.push(starB.id);
+
+    totalMassKg = (starA.massKg || 0) + (starB.massKg || 0);
+    barycenter.effectiveMassKg = totalMassKg;
+
+    const separationRange = weightedChoice<[number, number]>(rng, pack.distributions['binary_star_separation_au']);
+    const totalSeparationAU = randomFromRange(rng, separationRange[0], separationRange[1]);
+
+    const m1 = starA.massKg || 0;
+    const m2 = starB.massKg || 0;
+
+    const n_rad_per_s = Math.sqrt(G * totalMassKg / Math.pow(totalSeparationAU * AU_KM * 1000, 3));
+
+    starA.orbit = {
+        hostId: barycenterId,
+        hostMu: G * totalMassKg,
+        t0: Date.now(),
+        n_rad_per_s: n_rad_per_s,
+        elements: { a_AU: totalSeparationAU * (m2 / (m1 + m2)), e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 }
+    };
+    starB.orbit = {
+        hostId: barycenterId,
+        hostMu: G * totalMassKg,
+        t0: Date.now(),
+        n_rad_per_s: n_rad_per_s,
+        elements: { a_AU: totalSeparationAU * (m1 / (m1 + m2)), e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: Math.PI }
+    };
+
+    nodes.push(barycenter, starA, starB);
+    systemRoot = barycenter;
+    systemName = `${baseName} System`;
+    rootRadiusKm = (starA.radiusKm || 0) + (starB.radiusKm || 0);
+  }
+
+  // --- Planet & Belt Generation ---
+  const bodyCountTable = pack.distributions['planet_count'];
+  const numBodies = bodyCountTable ? weightedChoice<number>(rng, bodyCountTable) : rng.nextInt(0, 8);
+
+    const system_age_Gyr = randomFromRange(rng, 0.1, 10.0);
+  
+    if (!isBinary) {
+      let lastApoapsisAU = (rootRadiusKm / AU_KM) + 0.1;
+      for (let i = 0; i < numBodies; i++) {
+          const minGap = 0.2;
+          const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
+          const maxEccentricity = (system_age_Gyr > 5) ? 0.1 : 0.15;
+          const newEccentricity = randomFromRange(rng, 0.01, maxEccentricity);
+                  const newA_AU = newPeriapsis / (1 - newEccentricity);
+                  lastApoapsisAU = newA_AU * (1 + newEccentricity);
+          
+                  const orbit: Orbit = {
+                      hostId: systemRoot.id,
+                      hostMu: G * totalMassKg,
+                      t0: Date.now(),
+                      elements: { a_AU: newA_AU, e: newEccentricity, i_deg: Math.pow(rng.nextFloat(), 3) * 15, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
+                  };
+          const newNodes = _generatePlanetaryBody(rng, pack, seed, i, systemRoot, orbit, `${systemName} ${String.fromCharCode(98 + i)}`, nodes, system_age_Gyr, undefined, true);
+          nodes.push(...newNodes);
+      }
+    } else {
+      const starA = nodes.find(n => n.id.endsWith('-star-a')) as CelestialBody;
+      const starB = nodes.find(n => n.id.endsWith('-star-b')) as CelestialBody;
+      const barycenter = systemRoot as Barycenter;
+  
+      const m1 = starA.massKg || 0;
+      const m2 = starB.massKg || 0;
+      const mu = m2 / (m1 + m2);
+      const starSeparationAU = (starA.orbit?.elements.a_AU || 0) + (starB.orbit?.elements.a_AU || 0);
+  
+      const pTypeCriticalAU = 1.60 * starSeparationAU;
+      const sTypeACriticalAU = 0.464 * (1 - mu) * starSeparationAU;
+      const sTypeBCriticalAU = 0.464 * mu * starSeparationAU;
+  
+      let lastApo_p = pTypeCriticalAU * 1.5;
+      let lastApo_sA = (starA.radiusKm || 0) / AU_KM;
+      let lastApo_sB = (starB.radiusKm || 0) / AU_KM;
+  
+      for (let i = 0; i < numBodies; i++) {
+          const placement = weightedChoice<string>(rng, pack.distributions['binary_planet_placement']);
+  
+          let host: CelestialBody | Barycenter;
+          let lastApo: number;
+          let maxApo: number | null = null;
+          let planetNamePrefix: string;
+          let hostMassKg: number;
+  
+          if (placement === 'circumbinary') {
+              host = barycenter;
+              lastApo = lastApo_p;
+              planetNamePrefix = `${baseName} P`;
+              hostMassKg = totalMassKg;
+          } else if (placement === 'around_primary') {
+              host = starA;
+              lastApo = lastApo_sA;
+              maxApo = sTypeACriticalAU;
+              planetNamePrefix = `${starA.name} `;
+              hostMassKg = m1;
+          } else { // around_secondary
+              host = starB;
+              lastApo = lastApo_sB;
+              maxApo = sTypeBCriticalAU;
+              planetNamePrefix = `${starB.name} `;
+              hostMassKg = m2;
+          }
+  
+          const minGap = 0.1 * (host.kind === 'barycenter' ? starSeparationAU : 1);
+          const newPeriapsis = lastApo + randomFromRange(rng, minGap, minGap * 3);
+          if (maxApo && newPeriapsis > maxApo) continue;
+  
+          const maxEccentricity = (system_age_Gyr > 5) ? 0.1 : 0.15;
+          const newEccentricity = randomFromRange(rng, 0.01, maxEccentricity);
+                  const newA_AU = newPeriapsis / (1 - newEccentricity);
+                  const newApoapsis = newA_AU * (1 + newEccentricity);
+          
+                  if (maxApo && newApoapsis > maxApo) continue;
+          
+                  const orbit: Orbit = {
+                      hostId: host.id,
+                      hostMu: G * hostMassKg,
+                      t0: Date.now(),
+                      elements: { a_AU: newA_AU, e: newEccentricity, i_deg: Math.pow(rng.nextFloat(), 3) * 15, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
+                  };  
+          const newNodes = _generatePlanetaryBody(rng, pack, seed, i, host, orbit, `${planetNamePrefix}${toRoman(i + 1)}`, nodes, system_age_Gyr, undefined, true);
+          nodes.push(...newNodes);
+  
+          if (placement === 'circumbinary') lastApo_p = newApoapsis;
+          else if (placement === 'around_primary') lastApo_sA = newApoapsis;
+          else lastApo_sB = newApoapsis;
+      }
+    }
+  
+    const system: System = {
+      id: seed,
+      name: systemName,
+      seed: seed,
+      epochT0: Date.now(),
+      age_Gyr: system_age_Gyr,
+      nodes: nodes,
+      rulePackId: pack.id,
+      rulePackVersion: pack.version,
+      tags: [],
+    };
+  return system;
+}

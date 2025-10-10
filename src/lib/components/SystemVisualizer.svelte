@@ -1,4 +1,4 @@
-'''<script lang="ts">
+<script lang="ts">
   import type { System, CelestialBody, Barycenter } from '$lib/types';
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import { propagate } from "$lib/api";
@@ -297,4 +297,4 @@
     width={800} 
     height={600} 
     style="border: 1px solid #333; margin-top: 1em; background-color: #08090d; cursor: grab;"
-></canvas>'''
+></canvas>
