@@ -41,7 +41,7 @@ export function _generatePlanetaryBody(
     }
 
     const planetId = `${seed}-body-${i + 1}`;
-    const planet: CelestialBody = {
+    let planet: CelestialBody = {
         id: planetId,
         parentId: host.id,
         name: name,
@@ -53,10 +53,9 @@ export function _generatePlanetaryBody(
         radiusKm: 0, // placeholder
         tags: [],
         areas: [],
-        ...propertyOverrides,
     };
 
-    const planetType = ((planet.roleHint === 'moon') 
+    const planetType = planetTypeOverride || ((planet.roleHint === 'moon') 
         ? 'planet/terrestrial' 
         : pack.distributions['planet_type'] ? weightedChoice<string>(rng, pack.distributions['planet_type']) : 'planet/terrestrial');
 
@@ -78,6 +77,10 @@ export function _generatePlanetaryBody(
             planet.massKg = Math.min(planet.massKg, parentMass * 0.05);
             planet.radiusKm = Math.min(planet.radiusKm, parentRadius * 0.5);
         }
+    }
+
+    if (propertyOverrides) {
+        planet = { ...planet, ...propertyOverrides };
     }
 
     // --- Feature Calculation & Property Assignment ---
@@ -155,23 +158,72 @@ export function _generatePlanetaryBody(
     const escapeVelocity = Math.sqrt(2 * G * (planet.massKg || 0) / ((planet.radiusKm || 1) * 1000)) / 1000; // in km/s
     features['escapeVelocity_kms'] = escapeVelocity;
 
-    if (planetType === 'planet/terrestrial') {
+    if (planetType === 'planet/terrestrial' || planetType === 'planet/gas-giant') {
         let hasAtmosphere = true;
-        if (escapeVelocity < 3.0) hasAtmosphere = false;
-        if ((features['radiation_flux'] as number) > 100 && (features['a_AU'] as number) < 0.5) hasAtmosphere = false;
+        if (escapeVelocity < 3.0 && planetType === 'planet/terrestrial') hasAtmosphere = false;
+        if ((features['radiation_flux'] as number) > 100 && (features['a_AU'] as number) < 0.5 && planetType === 'planet/terrestrial') hasAtmosphere = false;
 
-        if (hasAtmosphere) {
-            const pressureRange = weightedChoice<[number, number]>(rng, pack.distributions['atmosphere_pressure_bar']);
-            const atmComp = weightedChoice<{main: string, secondary: string}>(rng, pack.distributions['atmosphere_composition']);
-            planet.atmosphere = {
-                pressure_bar: randomFromRange(rng, pressureRange[0], pressureRange[1]),
-                main: atmComp.main,
-                composition: { [atmComp.main]: 0.8, [atmComp.secondary]: 0.2 }
-            };
+        if (hasAtmosphere && !planet.atmosphere) { // Check if atmosphere is not already set
+            const isGasGiant = planetType === 'planet/gas-giant';
+            const atmDistribution = pack.distributions['atmosphere_composition'];
+            const validAtmospheres = atmDistribution.entries.filter((entry: any) => {
+                const occursOn = entry.value.occurs_on;
+                if (occursOn === 'both') return true;
+                if (isGasGiant) return occursOn === 'gas giants';
+                return occursOn === 'terrestrial';
+            });
+
+            if (validAtmospheres.length > 0) {
+                const atmChoice = weightedChoice(rng, { ...atmDistribution, entries: validAtmospheres });
+
+                // Generate composition from ranges and normalize
+                const rawComposition: Record<string, number> = {};
+                let total = 0;
+                for (const gas in atmChoice.composition) {
+                    const value = atmChoice.composition[gas];
+                    const amount = Array.isArray(value) ? randomFromRange(rng, value[0], value[1]) : value;
+                    rawComposition[gas] = amount;
+                    total += amount;
+                }
+
+                const finalComposition: Record<string, number> = {};
+                if (total > 0) {
+                    for (const gas in rawComposition) {
+                        finalComposition[gas] = rawComposition[gas] / total;
+                    }
+                }
+
+                const mainGas = Object.keys(finalComposition).reduce((a, b) => finalComposition[a] > finalComposition[b] ? a : b);
+
+                // Determine pressure
+                let pressure_bar: number;
+                if (atmChoice.pressure_range_bar) {
+                    pressure_bar = randomFromRange(rng, atmChoice.pressure_range_bar[0], atmChoice.pressure_range_bar[1]);
+                } else {
+                    const pressureRange = weightedChoice<[number, number]>(rng, pack.distributions['atmosphere_pressure_bar']);
+                    pressure_bar = randomFromRange(rng, pressureRange[0], pressureRange[1]);
+                }
+
+                planet.atmosphere = {
+                    name: atmChoice.name,
+                    composition: finalComposition,
+                    main: mainGas,
+                    pressure_bar: pressure_bar,
+                };
+
+                if (atmChoice.tags) {
+                    planet.tags.push(...atmChoice.tags.map((t: string) => ({ key: t })));
+                }
+            }
+        }
+        
+        if (planet.atmosphere) {
             features['atm.main'] = planet.atmosphere.main;
             features['atm.pressure_bar'] = planet.atmosphere.pressure_bar;
         }
+    }
 
+    if (planetType === 'planet/terrestrial') {
         const hydroCoverageRange = weightedChoice<[number, number]>(rng, pack.distributions['hydrosphere_coverage']);
         planet.hydrosphere = {
             coverage: randomFromRange(rng, hydroCoverageRange[0], hydroCoverageRange[1]),
@@ -183,14 +235,24 @@ export function _generatePlanetaryBody(
     planet.equilibriumTempK = equilibriumTempK;
 
     let greenhouseContributionK = 0;
-    if (planet.atmosphere && planet.atmosphere.pressure_bar) {
-        let greenhouseFactor = 0;
-        if (planet.atmosphere.main === 'CO2') greenhouseFactor = 0.18; // Venus-like
-        else if (planet.atmosphere.main === 'CH4') greenhouseFactor = 0.05;
-        else if (planet.atmosphere.main === 'N2') greenhouseFactor = 0.01;
+    if (planet.atmosphere && planet.atmosphere.pressure_bar && planet.atmosphere.composition) {
+        const greenhouseFactors: Record<string, number> = {
+            'CO2': 0.18,
+            'CH4': 0.05,
+            'H2O': 0.10, // Water vapor is a potent greenhouse gas
+            'N2': 0.01
+        };
 
-        // A non-linear model: T_greenhouse = T_eq * (1 + pressure * factor)^0.25 - T_eq
-        const tempWithGreenhouse = equilibriumTempK * Math.pow(1 + (planet.atmosphere.pressure_bar * greenhouseFactor), 0.25);
+        let totalGreenhouseFactor = 0;
+        for (const gas in planet.atmosphere.composition) {
+            if (greenhouseFactors[gas]) {
+                const partialPressure = planet.atmosphere.pressure_bar * planet.atmosphere.composition[gas];
+                totalGreenhouseFactor += partialPressure * greenhouseFactors[gas];
+            }
+        }
+
+        // A non-linear model: T_greenhouse = T_eq * (1 + total_factor)^0.25 - T_eq
+        const tempWithGreenhouse = equilibriumTempK * Math.pow(1 + totalGreenhouseFactor, 0.25);
         greenhouseContributionK = tempWithGreenhouse - equilibriumTempK;
     }
     planet.greenhouseTempK = greenhouseContributionK;

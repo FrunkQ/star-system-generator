@@ -13,7 +13,7 @@ export interface NodeBase {
   tags: Tag[]; notes?: string; gmNotes?: string; visibility?: Visibility;
 }
 
-export interface Atmosphere { main?: string; pressure_bar?: number; composition?: Record<string, number>; tags?: Tag[]; }
+export interface Atmosphere { name: string; main?: string; pressure_bar?: number; composition: Record<string, number>; tags?: Tag[]; }
 export interface Hydrosphere { coverage?: number; depth_m?: number; composition?: string; tags?: Tag[]; }
 export interface ImageRef { url: string; title?: string; credit?: string; license?: string; sourceUrl?: string; }
 

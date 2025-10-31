@@ -168,13 +168,333 @@
         ]
     },
     "atmosphere_composition": {
-        "name": "Atmosphere Composition",
-        "entries": [
-            { "weight": 40, "value": {"main": "N2", "secondary": "O2"} },
-            { "weight": 30, "value": {"main": "CO2", "secondary": "N2"} },
-            { "weight": 20, "value": {"main": "H2", "secondary": "He"} },
-            { "weight": 10, "value": {"main": "CH4", "secondary": "N2"} }
-        ]
+      "name": "Atmosphere Composition",
+      "entries": [
+        {
+          "weight": 20,
+          "value": {
+            "name": "Nitrogen–Oxygen (Earth-like)",
+            "pressure_range_bar": [0.8, 1.2],
+            "composition": {
+              "N2": [0.75, 0.81],
+              "O2": [0.18, 0.24],
+              "Noble Gases": [0.0, 0.02],
+              "Other Trace": [0.0, 0.001]
+            },
+            "tags": [ "breathable-human" ],
+            "occurs_on": "terrestrial"
+          }
+        },
+        {
+          "weight": 15,
+          "value": {
+            "name": "Carbon Dioxide (Venus-like)",
+            "pressure_range_bar": [80, 100],
+            "composition": {
+              "CO2": [0.95, 0.98],
+              "N2": [0.02, 0.05]
+            },
+            "tags": [ "toxic-human", "corrosive", "greenhouse", "thick" ],
+            "occurs_on": "terrestrial"
+          }
+        },
+        {
+          "weight": 15,
+          "value": {
+            "name": "Carbon Dioxide (Mars-like)",
+            "pressure_range_bar": [0.005, 0.01],
+            "composition": {
+              "CO2": [0.94, 0.96],
+              "N2": [0.01, 0.03],
+              "Noble Gases": [0.01, 0.02],
+              "Other Trace": [0.0, 0.01]
+            },
+            "tags": [ "toxic-human", "thin" ],
+            "occurs_on": "terrestrial"
+          }
+        },
+        {
+          "weight": 8,
+          "value": {
+            "name": "High-CO₂ (Inert Carrier)",
+            "composition": {
+              "N2": [0.80, 0.90],
+              "CO2": [0.10, 0.20]
+            },
+            "tags": [ "toxic-human", "CO2-scrub-required" ],
+            "occurs_on": "terrestrial"
+          }
+        },
+        {
+          "weight": 8,
+          "value": {
+            "name": "Low-O₂, Low-CO₂ (Hypoxic Inert)",
+            "composition": {
+              "N2": [0.90, 0.95],
+              "O2": [0.04, 0.08],
+              "CO2": [0.0, 0.02]
+            },
+            "tags": [ "breathable-human-with-assistance", "hypoxic" ],
+            "occurs_on": "terrestrial"
+          }
+        },
+        {
+          "weight": 10,
+          "value": {
+            "name": "Methane Haze (Titan-like)",
+            "pressure_range_bar": [1.4, 1.6],
+            "composition": {
+              "N2": [0.94, 0.97],
+              "CH4": [0.03, 0.06]
+            },
+            "tags": [ "toxic-human", "reducing", "haze" ],
+            "occurs_on": "terrestrial"
+          }
+        },
+        {
+          "weight": 5,
+          "value": {
+            "name": "Sulfur Dioxide (Io-like)",
+            "pressure_range_bar": [1e-9, 1e-7],
+            "composition": {
+              "SO2": [0.8, 1.0],
+              "S": [0.0, 0.2]
+            },
+            "tags": [ "toxic-human", "corrosive", "volcanic", "thin", "exosphere" ],
+            "occurs_on": "terrestrial"
+          }
+        },
+        {
+          "weight": 5,
+          "value": {
+            "name": "Tenuous Oxygen (Europa-like)",
+            "pressure_range_bar": [1e-11, 1e-10],
+            "composition": {
+              "O2": 1.0
+            },
+            "tags": [ "exosphere", "thin" ],
+            "occurs_on": "terrestrial"
+          }
+        },
+        {
+          "weight": 5,
+          "value": {
+            "name": "Water Vapor Plume (Enceladus-like)",
+            "pressure_range_bar": [1e-9, 1e-8],
+            "composition": {
+              "H2O": [0.8, 0.95],
+              "H2": [0.0, 0.1],
+              "CO2": [0.0, 0.05],
+              "CH4": [0.0, 0.03],
+              "NH3": [0.0, 0.03]
+            },
+            "tags": [ "exosphere", "thin", "cryovolcanic" ],
+            "occurs_on": "terrestrial"
+          }
+        },
+        {
+          "weight": 8,
+          "value": {
+            "name": "Hydrogen–Helium (Jupiter-like)",
+            "composition": {
+              "H2": [0.82, 0.88],
+              "He": [0.12, 0.18],
+              "CH4": [0.0, 0.01]
+            },
+            "tags": [ "reducing" ],
+            "occurs_on": "gas giants"
+          }
+        },
+        {
+          "weight": 3,
+          "value": {
+            "name": "Helium-rich Escaping Envelope",
+            "composition": {
+              "He": [0.7, 0.9],
+              "H2": [0.1, 0.3],
+              "H": [0.0, 0.05]
+            },
+            "tags": [ "escaping", "hot", "reducing", "thin-upper" ],
+            "occurs_on": "gas giants"
+          }
+        },
+        {
+          "weight": 4,
+          "value": {
+            "name": "Hycean (H₂-rich, Wet)",
+            "composition": {
+              "H2": [0.85, 0.90],
+              "H2O": [0.07, 0.12],
+              "CH4": [0.01, 0.05]
+            },
+            "tags": [ "reducing", "greenhouse", "oceanic" ],
+            "occurs_on": "gas giants"
+          }
+        },
+        {
+          "weight": 2,
+          "value": {
+            "name": "Hycean (Drier Variant)",
+            "composition": {
+              "H2": [0.90, 0.95],
+              "H2O": [0.03, 0.06],
+              "CH4": [0.01, 0.05]
+            },
+            "tags": [ "reducing", "greenhouse", "oceanic" ],
+            "occurs_on": "gas giants"
+          }
+        },
+        {
+          "weight": 2,
+          "value": {
+            "name": "Magma Ocean Outgassing",
+            "pressure_range_bar": [1, 10],
+            "composition": {
+              "CO": [0.4, 0.6],
+              "CO2": [0.3, 0.5],
+              "N2": [0.05, 0.15]
+            },
+            "tags": [ "toxic-human", "reducing", "volcanic", "hot" ],
+            "occurs_on": "terrestrial"
+          }
+        },
+        {
+          "weight": 1,
+          "value": {
+            "name": "Carbon Monoxide Dominated (Lava World)",
+            "pressure_range_bar": [0.1, 5],
+            "composition": {
+              "CO": [0.5, 0.7],
+              "CO2": [0.2, 0.3],
+              "N2": [0.05, 0.15],
+              "SO2": [0.0, 0.1]
+            },
+            "tags": [ "toxic-human", "hot", "volcanic" ],
+            "occurs_on": "terrestrial"
+          }
+        },
+        {
+          "weight": 1,
+          "value": {
+            "name": "Abiotic Oxygen (Desiccated)",
+            "composition": {
+              "O2": [0.8, 1.0],
+              "CO2": [0.0, 0.2]
+            },
+            "tags": [ "oxidizing", "toxic-human", "false-biosignature" ],
+            "occurs_on": "terrestrial"
+          }
+        },
+        {
+          "weight": 2,
+          "value": {
+            "name": "Ultra-hot Metal Vapor (UHJ)",
+            "pressure_range_bar": [0.01, 0.1],
+            "composition": {
+              "Fe": [0.4, 0.6],
+              "SiO": [0.2, 0.4],
+              "K": [0.05, 0.15],
+              "Na": [0.05, 0.15]
+            },
+            "tags": [ "toxic-human", "corrosive", "extreme-heat" ],
+            "occurs_on": "both"
+          }
+        },
+        {
+          "weight": 6,
+          "value": {
+            "name": "Steam Atmosphere (Runaway/Impact)",
+            "pressure_range_bar": [10, 300],
+            "composition": {
+              "H2O": [0.9, 1.0],
+              "CO2": [0.0, 0.05],
+              "N2": [0.0, 0.03]
+            },
+            "tags": [ "toxic-human", "greenhouse", "hot" ],
+            "occurs_on": "terrestrial"
+          }
+        },
+        {
+          "weight": 6,
+          "value": {
+            "name": "Anoxic Nitrogen (Inert)",
+            "composition": {
+              "N2": [0.98, 1.0],
+              "CO2": [0.0, 0.01],
+              "Noble Gases": [0.0, 0.01]
+            },
+            "tags": [ "inert", "breathable-human-with-supplied-O2" ],
+            "occurs_on": "terrestrial"
+          }
+        },
+        {
+          "weight": 4,
+          "value": {
+            "name": "Ammonia-bearing Reducing",
+            "composition": {
+              "H2": [0.6, 0.8],
+              "He": [0.1, 0.3],
+              "NH3": [0.05, 0.15]
+            },
+            "tags": [ "toxic-human", "reducing", "clouds" ],
+            "occurs_on": "gas giants"
+          }
+        },
+        {
+          "weight": 4,
+          "value": {
+            "name": "Hydrogen Sulfide-bearing",
+            "composition": {
+              "H2": [0.7, 0.8],
+              "He": [0.15, 0.25],
+              "H2S": [0.02, 0.08]
+            },
+            "tags": [ "toxic-human", "reducing", "clouds" ],
+            "occurs_on": "gas giants"
+          }
+        },
+        {
+          "weight": 3,
+          "value": {
+            "name": "Sodium–Potassium Exosphere",
+            "pressure_range_bar": [1e-12, 1e-10],
+            "composition": {
+              "Na": [0.5, 0.7],
+              "K": [0.3, 0.5]
+            },
+            "tags": [ "exosphere", "thin", "hot", "escaping" ],
+            "occurs_on": "both"
+          }
+        },
+        {
+          "weight": 5,
+          "value": {
+            "name": "Hot Jupiter (H₂–He + CO/CO₂/H₂O)",
+            "composition": {
+              "H2": [0.75, 0.85],
+              "He": [0.1, 0.2],
+              "CO": [0.0, 0.05],
+              "CO2": [0.0, 0.03],
+              "H2O": [0.0, 0.02]
+            },
+            "tags": [ "reducing", "hot", "inverted-stratosphere-possible" ],
+            "occurs_on": "gas giants"
+          }
+        },
+        {
+          "weight": 3,
+          "value": {
+            "name": "Photochemical SO₂ (Irradiated)",
+            "composition": {
+              "H2": [0.7, 0.85],
+              "He": [0.15, 0.25],
+              "SO2": [0.01, 0.04]
+            },
+            "tags": [ "toxic-human", "photochemistry", "hot" ],
+            "occurs_on": "both"
+          }
+        }
+      ]
     }
   },
   "tagVocab": [
@@ -307,7 +627,7 @@
     "rules": [
       { "when": { "any": [ { "gt": ["Teq_K", 1400] }, { "gt": ["tidalHeating", 10000] } ] }, "addClass": "planet/lava", "score": 100 },
       { "when": { "all": [ { "gt": ["hydrosphere.coverage", 0.8] }, { "between": ["Teq_K", 250, 370] } ] }, "addClass": "planet/ocean", "score": 100 },
-      { "when": { "all": [ { "lt": ["Teq_K", 180] }, { "gt": ["hydrosphere.coverage", 0.1] } ] }, "addClass": "planet/ice", "score": 100 },
+      { "when": { "all": [ { "lt": ["Teq_K", 180] }, { "gt": ["hydrosphere.coverage", 0.1] }, { "not": { "gt": ["atm.pressure_bar", 2.0] } } ] }, "addClass": "planet/ice", "score": 100 },
       { "when": { "all": [ { "lt": ["hydrosphere.coverage", 0.1] }, { "between": ["Teq_K", 250, 400] } ] }, "addClass": "planet/desert", "score": 100 },
       { "when": { "all": [ { "lt": ["escapeVelocity_kms", 3.0] }, { "lt": ["hydrosphere.coverage", 0.01] } ] }, "addClass": "planet/barren", "score": 100 },
       { "when": { "all": [ { "gt": ["hydrosphere.coverage", 0.9] }, { "eq": ["atm.main", "H2"] } ] }, "addClass": "planet/hycean", "score": 110 },

@@ -155,6 +155,26 @@ export function renameNode(sys: System, nodeId: ID, newName: string): System {
     return { ...sys, name: systemName, nodes: nodes };
 }
 
+
+function generateAndNormalizeComposition(rng: SeededRNG, compositionRanges: Record<string, number | [number, number]>): Record<string, number> {
+    const rawComposition: Record<string, number> = {};
+    let total = 0;
+    for (const gas in compositionRanges) {
+        const value = compositionRanges[gas];
+        const amount = Array.isArray(value) ? randomFromRange(rng, value[0], value[1]) : value;
+        rawComposition[gas] = amount;
+        total += amount;
+    }
+
+    const finalComposition: Record<string, number> = {};
+    if (total > 0) {
+        for (const gas in rawComposition) {
+            finalComposition[gas] = rawComposition[gas] / total;
+        }
+    }
+    return finalComposition;
+}
+
 export function addHabitablePlanet(sys: System, hostId: ID, habitabilityType: 'earth-like' | 'human-habitable' | 'alien-habitable', pack: RulePack): System {
     const rng = new SeededRNG(sys.seed + Date.now());
     const host = sys.nodes.find(n => n.id === hostId) as CelestialBody;
@@ -171,15 +191,44 @@ export function addHabitablePlanet(sys: System, hostId: ID, habitabilityType: 'e
     };
 
     if (habitabilityType === 'earth-like') {
+        const earthLikeAtmDef = pack.distributions.atmosphere_composition.entries.find(e => e.value.name === 'Nitrogen–Oxygen (Earth-like)').value;
+        
+        const finalComposition = generateAndNormalizeComposition(rng, earthLikeAtmDef.composition);
+        const mainGas = Object.keys(finalComposition).reduce((a, b) => finalComposition[a] > finalComposition[b] ? a : b);
+        const pressure = randomFromRange(rng, earthLikeAtmDef.pressure_range_bar[0], earthLikeAtmDef.pressure_range_bar[1]);
+
         propertyOverrides.massKg = randomFromRange(rng, 0.8, 1.2) * EARTH_MASS_KG;
         propertyOverrides.radiusKm = randomFromRange(rng, 0.9, 1.1) * EARTH_RADIUS_KM;
-        propertyOverrides.atmosphere = { main: 'N2', composition: {'N2': 0.78, 'O2': 0.21, 'Ar': 0.01}, pressure_bar: 1.0 };
+        propertyOverrides.atmosphere = { 
+            name: earthLikeAtmDef.name,
+            main: mainGas, 
+            composition: finalComposition, 
+            pressure_bar: pressure
+        };
         propertyOverrides.hydrosphere = { composition: 'water', coverage: 0.7 };
+        if (earthLikeAtmDef.tags) {
+            propertyOverrides.tags = earthLikeAtmDef.tags.map((t: string) => ({ key: t }));
+        }
+
     } else if (habitabilityType === 'human-habitable') {
+        const hypoxicAtmDef = pack.distributions.atmosphere_composition.entries.find(e => e.value.name === 'Low-O₂, Low-CO₂ (Hypoxic Inert)').value;
+
+        const finalComposition = generateAndNormalizeComposition(rng, hypoxicAtmDef.composition);
+        const mainGas = Object.keys(finalComposition).reduce((a, b) => finalComposition[a] > finalComposition[b] ? a : b);
+        const pressure = hypoxicAtmDef.pressure_range_bar ? randomFromRange(rng, hypoxicAtmDef.pressure_range_bar[0], hypoxicAtmDef.pressure_range_bar[1]) : randomFromRange(rng, 0.5, 1.5);
+
         propertyOverrides.massKg = randomFromRange(rng, 0.5, 1.5) * EARTH_MASS_KG;
         propertyOverrides.radiusKm = randomFromRange(rng, 0.8, 1.2) * EARTH_RADIUS_KM;
-        propertyOverrides.atmosphere = { main: 'N2', composition: {'N2': 0.8, 'O2': 0.2}, pressure_bar: randomFromRange(rng, 0.5, 1.5) };
+        propertyOverrides.atmosphere = { 
+            name: 'Human-Habitable (Hypoxic)',
+            main: mainGas, 
+            composition: finalComposition,
+            pressure_bar: pressure
+        };
         propertyOverrides.hydrosphere = { composition: 'water', coverage: randomFromRange(rng, 0.2, 0.8) };
+        if (hypoxicAtmDef.tags) {
+            propertyOverrides.tags = hypoxicAtmDef.tags.map((t: string) => ({ key: t }));
+        }
     } else { // alien-habitable
         propertyOverrides.massKg = randomFromRange(rng, 0.5, 3.0) * EARTH_MASS_KG;
         propertyOverrides.radiusKm = randomFromRange(rng, 0.8, 2.0) * EARTH_RADIUS_KM;

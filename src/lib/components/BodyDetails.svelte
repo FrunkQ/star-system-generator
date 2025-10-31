@@ -285,9 +285,26 @@
             {/if}
 
             {#if body.kind === 'body' && body.atmosphere}
-                <div class="detail-item">
-                    <span class="label">Atmosphere</span>
-                    <span class="value">{body.atmosphere.pressure_bar?.toFixed(2)} bar ({body.atmosphere.main})</span>
+                {@const pressure = body.atmosphere.pressure_bar || 0}
+                <div class="detail-item atmosphere">
+                    <span class="label">Atmosphere ({pressure < 1e-3 ? pressure.toExponential(2) : pressure.toFixed(3)} bar)</span>
+                    <span class="value">{body.atmosphere.name}</span>
+                    {#if pressure < 1e-5}
+                        <div class="composition-trace">
+                            <p>Trace amounts of constituent gases (exosphere).</p>
+                        </div>
+                    {:else}
+                        <div class="composition">
+                            {#each Object.entries(body.atmosphere.composition) as [gas, percent]}
+                                {#if percent > 0.001}
+                                    <div class="gas">
+                                        <span class="gas-name">{gas}</span>
+                                        <span class="gas-percent">{(percent * 100).toFixed(1)}%</span>
+                                    </div>
+                                {/if}
+                            {/each}
+                        </div>
+                    {/if}
                 </div>
             {/if}
 
@@ -408,6 +425,34 @@
       background-color: #800;
       color: white;
       border: 1px solid #c00;
+  }
+  .detail-item.atmosphere {
+    grid-column: 1 / -1;
+    border-left-color: #3b82f6;
+  }
+  .composition {
+    margin-top: 0.5em;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+  }
+  .gas {
+    background-color: #333;
+    padding: 0.2em 0.5em;
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+  .gas-name {
+    font-weight: bold;
+  }
+  .gas-percent {
+    margin-left: 0.5em;
+    color: #ccc;
+  }
+  .composition-trace p {
+    font-style: italic;
+    color: #999;
+    margin: 0.5em 0 0 0;
   }
 
 </style>
