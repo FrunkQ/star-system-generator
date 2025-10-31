@@ -21,14 +21,14 @@ export function findViableHabitableOrbit(host: CelestialBody, system: System, ha
     switch (habitabilityTier) {
         case 'earth-like':
             targetParams = {
-                tempRangeK: [273, 313],
+                tempRangeK: [278, 318], // 5 to 45 C (accounts for +10K radiogenic)
                 maxRadiation: 5,
                 gravityRangeG: [0.8, 1.2]
             };
             break;
         case 'human-habitable':
             targetParams = {
-                tempRangeK: [260, 320],
+                tempRangeK: [265, 325], // -8 to 52 C (accounts for +10K radiogenic)
                 maxRadiation: 10,
                 gravityRangeG: [0.5, 1.5]
             };
@@ -53,6 +53,7 @@ export function findViableHabitableOrbit(host: CelestialBody, system: System, ha
 
     const children = system.nodes.filter(n => n.parentId === host.id && n.kind === 'body') as CelestialBody[];
     const stepSize = (tempSearchOuter_AU - tempSearchInner_AU) / 50; // 50 steps
+    let collisionFailures = 0;
 
     // Systematic search from outer to inner
     for (let i = 0; i < 50; i++) {
@@ -64,12 +65,15 @@ export function findViableHabitableOrbit(host: CelestialBody, system: System, ha
         for (const child of children) {
             const childApoapsis = (child.orbit?.elements.a_AU || 0) * (1 + (child.orbit?.elements.e || 0));
             const childPeriapsis = (child.orbit?.elements.a_AU || 0) * (1 - (child.orbit?.elements.e || 0));
-            if (searchRadiusAU > childPeriapsis * 0.9 && searchRadiusAU < childApoapsis * 1.1) { // Refined buffer
+            if (searchRadiusAU > childPeriapsis * 0.95 && searchRadiusAU < childApoapsis * 1.05) { // Reduced buffer
                 collision = true;
                 break;
             }
         }
-        if (collision) continue; // Try next orbit
+        if (collision) {
+            collisionFailures++;
+            continue; // Try next orbit
+        }
 
         // 2. Check radiation
         const radiation = (host.radiationOutput || 1) / (searchRadiusAU * searchRadiusAU);
@@ -105,6 +109,10 @@ export function findViableHabitableOrbit(host: CelestialBody, system: System, ha
     }
 
     // If we finish the loop without finding a spot
+    if (collisionFailures > 40) { // If >80% of attempts were collisions
+        return { success: false, reason: 'The habitable zone is too crowded. A GM may need to delete a planet to make room.' };
+    }
+    
     if (hostLuminosity / L_SUN < 0.01) return { success: false, reason: 'The host star is too cool to support a habitable planet.' };
     if (host.radiationOutput && host.radiationOutput > 100) return { success: false, reason: 'Radiation levels around this star are too high.' };
 

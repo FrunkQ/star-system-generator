@@ -21,6 +21,11 @@ Add the image credit: Black Hole Accredition Disk images: NASA’s Goddard Space
 - Bug fix: "Add Human-Habitable" button returns "No stable orbit found" for a K-type star, indicating the search logic is too restrictive.
 - Tune habitability tiers. A score of 76.4% should be "human habitable", not "alien".
 - Confirm that the system can create habitable moons and that the heat calculations are correct.
+- Follow-up on "No stable orbit found" error: User provides system data for K-type star GJ33526, confirming the bug is related to collision detection being too aggressive.
+- Improve error message when habitable zone is crowded, suggesting a GM can delete a planet to make room.
+- Tune: Adjust target temperature ranges in findViableHabitableOrbit to compensate for greenhouse effect, making "Add Earth-like" more consistent.
+- Bug fix: "Add Earth-like" planets are generating too hot (72 C) due to un-accounted for radiogenic heat.
+- Add a quick system summary view at the star/barycenter level, listing counts of planets, moons, and key habitability categories.
 
 ------
 

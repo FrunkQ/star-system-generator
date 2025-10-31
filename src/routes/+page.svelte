@@ -6,6 +6,7 @@
   import { generateSystem, computePlayerSnapshot, deleteNode, addPlanetaryBody, renameNode, addHabitablePlanet } from '$lib/api';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import BodyDetails from '$lib/components/BodyDetails.svelte';
+  import SystemSummary from '$lib/components/SystemSummary.svelte';
 
   let rulePack: RulePack | null = null;
   let generatedSystem: System | null = null;
@@ -275,6 +276,10 @@
             <button on:click={zoomOut}>Zoom Out</button>
         {/if}
     </div>
+
+    {#if focusedBody?.parentId === null}
+        <SystemSummary nodes={generatedSystem.nodes} />
+    {/if}
 
     <SystemVisualizer bind:this={visualizer} system={generatedSystem} {currentTime} {focusedBodyId} on:focus={handleFocus} />
 
