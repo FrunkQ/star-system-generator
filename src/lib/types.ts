@@ -42,6 +42,15 @@ export interface MagneticField {
   strengthGauss: number;
 }
 
+export interface Biosphere {
+  complexity: 'simple' | 'complex';
+  coverage: number;
+  biochemistry: 'water-carbon' | 'ammonia-silicon' | 'methane-carbon';
+  energy_source: 'photosynthesis' | 'chemosynthesis' | 'thermosynthesis';
+  morphologies: ('microbial' | 'fungal' | 'flora' | 'fauna')[];
+}
+
+
 export interface CelestialBody extends NodeBase {
   kind: "body";
   roleHint?: "star" | "planet" | "moon" | "submoon" | "ring" | "belt" | "artifact" | "station" | "other";
@@ -62,6 +71,8 @@ export interface CelestialBody extends NodeBase {
   gmNotes?: string;
   equilibriumTempK?: number; greenhouseTempK?: number; tidalHeatK?: number; radiogenicHeatK?: number;
   tidallyLocked?: boolean;
+  habitabilityScore?: number;
+  biosphere?: Biosphere;
   orbit?: Orbit; areas: Area[]; image?: string; deltaV?: DeltaVCapability;
 }
 
@@ -82,7 +93,7 @@ export interface ClassifierRule { when: Expr; addClass: string; score: number; }
 export type Feature =
   | "mass_Me" | "radius_Re" | "density" | "Teq_K" | "a_AU" | "stellarType"
   | "atm.main" | "atm.pressure_bar" | "hydrosphere.coverage" | "tidalHeating" | "tidallyLocked" | "ringSystem"
-  | "age_Gyr" | "orbital_period_days" | "rotation_period_hours" | "has_ring_child" | "human_habitability_score" | "alien_habitability_score" | "radiation_flux";
+  | "age_Gyr" | "orbital_period_days" | "rotation_period_hours" | "has_ring_child" | "radiation_flux";
 export type Expr = { all?: Expr[]; any?: Expr[]; not?: Expr }
   | { gt: [Feature, number] } | { lt: [Feature, number] } | { between: [Feature, number, number] }
   | { eq: [Feature, string] } | { hasTag: string };

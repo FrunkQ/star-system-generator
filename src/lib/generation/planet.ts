@@ -322,35 +322,9 @@ export function _generatePlanetaryBody(
         planet.classes.push('planet/disrupted');
     }
 
-    // --- Habitability Scores ---
-    let human_habitability_score = 0;
-    let alien_habitability_score = 0;
+    // --- Habitability & Biosphere ---
+    calculateHabitabilityAndBiosphere(planet, rng);
 
-    if (planetType === 'planet/terrestrial') {
-        // Human-like habitability (strict)
-        const tempOk = (planet.temperatureK > 273 && planet.temperatureK < 313); // 0-40C
-        const waterOk = (planet.hydrosphere?.composition === 'water' && (planet.hydrosphere?.coverage || 0) > 0.1);
-        const pressureOk = (planet.atmosphere?.pressure_bar && planet.atmosphere.pressure_bar > 0.5 && planet.atmosphere.pressure_bar < 1.5);
-        const atmOk = (planet.atmosphere?.main === 'N2');
-        const gravityOk = ((features['mass_Me'] as number) > 0.5 && (features['mass_Me'] as number) < 1.5);
-
-        if (tempOk && waterOk && pressureOk && atmOk && gravityOk) {
-            human_habitability_score = 100;
-        }
-
-        // Alien habitability (broad)
-        const alienTempOk = (planet.temperatureK > 150 && planet.temperatureK < 400);
-        const liquidOk = ((planet.hydrosphere?.coverage || 0) > 0);
-        const alienPressureOk = (planet.atmosphere?.pressure_bar && planet.atmosphere.pressure_bar > 0.1);
-        const lowRadiation = ((features['radiation_flux'] as number) < 10);
-
-        if (alienTempOk && liquidOk && alienPressureOk && lowRadiation) {
-            alien_habitability_score = 100;
-        }
-    }
-
-    features['human_habitability_score'] = human_habitability_score;
-    features['alien_habitability_score'] = alien_habitability_score;
 
     planet.classes = classifyBody(features, pack, allNodes);
 
@@ -441,4 +415,102 @@ export function _generatePlanetaryBody(
     }
 
     return newNodes;
+}
+
+function calculateHabitabilityAndBiosphere(planet: CelestialBody, rng: SeededRNG) {
+    if (planet.roleHint !== 'planet' && planet.roleHint !== 'moon') return;
+
+    const scoreFromRange = (value: number, optimal: number, range: number) => {
+        const diff = Math.abs(value - optimal);
+        return Math.max(0, 1 - (diff / range));
+    };
+
+    let score = 0;
+    let factors = {
+        temp: 0,
+        pressure: 0,
+        solvent: 0,
+        radiation: 0,
+        gravity: 0
+    };
+
+    // Temperature Score (Max 30 points)
+    if (planet.temperatureK) {
+        if (planet.hydrosphere?.composition === 'water' || !planet.hydrosphere) {
+            factors.temp = scoreFromRange(planet.temperatureK, 288, 50); // Optimal 15C, range +/- 50C
+        } else if (planet.hydrosphere?.composition === 'methane') {
+            factors.temp = scoreFromRange(planet.temperatureK, 111, 30); // Optimal -162C, range +/- 30C
+        } else if (planet.hydrosphere?.composition === 'ammonia') {
+            factors.temp = scoreFromRange(planet.temperatureK, 218, 30); // Optimal -55C, range +/- 30C
+        }
+    }
+    score += factors.temp * 30;
+
+    // Pressure Score (Max 20 points)
+    if (planet.atmosphere?.pressure_bar) {
+        factors.pressure = scoreFromRange(planet.atmosphere.pressure_bar, 1, 2);
+    }
+    score += factors.pressure * 20;
+
+    // Solvent Score (Max 20 points)
+    if ((planet.hydrosphere?.coverage || 0) > 0.1) {
+        factors.solvent = 1;
+        if (planet.hydrosphere?.composition === 'water') {
+            score += 5; // Bonus for water
+        }
+    }
+    score += factors.solvent * 15;
+
+    // Radiation Score (Max 15 points)
+    factors.radiation = scoreFromRange(planet.surfaceRadiation || 0, 0, 10);
+    score += factors.radiation * 15;
+
+    // Gravity Score (Max 15 points)
+    const surfaceGravityG = (planet.massKg && planet.radiusKm) ? (G * planet.massKg / ((planet.radiusKm*1000) * (planet.radiusKm*1000))) / 9.81 : 0;
+    if (surfaceGravityG > 0) {
+        factors.gravity = scoreFromRange(surfaceGravityG, 1, 1.5);
+    }
+    score += factors.gravity * 15;
+    
+    planet.habitabilityScore = Math.max(0, Math.min(100, score));
+
+    // Determine Tier and add Tag
+    let tier: string;
+    if (planet.habitabilityScore > 95) tier = 'habitability/earth-like';
+    else if (planet.habitabilityScore > 80) tier = 'habitability/human';
+    else if (planet.habitabilityScore > 40) tier = 'habitability/alien';
+    else tier = 'habitability/none';
+    planet.tags.push({ key: tier });
+
+    // --- Biosphere Generation ---
+    if (rng.nextFloat() < (planet.habitabilityScore / 100)) {
+        const morphologies: ('microbial' | 'fungal' | 'flora' | 'fauna')[] = ['microbial'];
+        
+        if (planet.habitabilityScore > 60) {
+            morphologies.push('flora');
+            if (rng.nextFloat() < 0.5) {
+                morphologies.push('fungal');
+            }
+        }
+        if (planet.habitabilityScore > 85 && morphologies.includes('flora')) {
+            morphologies.push('fauna');
+        }
+
+        let biochemistry: 'water-carbon' | 'ammonia-silicon' | 'methane-carbon' = 'water-carbon';
+        if (planet.hydrosphere?.composition === 'methane') biochemistry = 'methane-carbon';
+        else if (planet.hydrosphere?.composition === 'ammonia') biochemistry = 'ammonia-silicon';
+
+        let energy_source: 'photosynthesis' | 'chemosynthesis' | 'thermosynthesis' = 'photosynthesis';
+        if ((planet.surfaceRadiation || 0) < 0.1) { // Very low light
+            energy_source = (planet.tidalHeatK || 0) > 50 ? 'thermosynthesis' : 'chemosynthesis';
+        }
+
+        planet.biosphere = {
+            complexity: (morphologies.includes('flora') || morphologies.includes('fauna')) ? 'complex' : 'simple',
+            coverage: rng.nextFloat() * (planet.hydrosphere?.coverage || 0.1),
+            biochemistry: biochemistry,
+            energy_source: energy_source,
+            morphologies: morphologies
+        };
+    }
 }

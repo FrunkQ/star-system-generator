@@ -314,6 +314,29 @@
                     <span class="value">{Math.round(body.hydrosphere.coverage * 100)}% {body.hydrosphere.composition}</span>
                 </div>
             {/if}
+
+            {#if body.kind === 'body' && body.habitabilityScore}
+                <div class="detail-item habitability">
+                    <span class="label">Habitability Score</span>
+                    <span class="value">{body.habitabilityScore.toFixed(1)}%</span>
+                    {#if body.tags.find(t => t.key.startsWith('habitability/'))}
+                        <span class="habitability-tier">{body.tags.find(t => t.key.startsWith('habitability/')).key.split('/')[1]}</span>
+                    {/if}
+                </div>
+            {/if}
+
+            {#if body.kind === 'body' && body.biosphere}
+                <div class="detail-item biosphere">
+                    <span class="label">Biosphere</span>
+                    <div class="biosphere-details">
+                        <span><strong>Complexity:</strong> {body.biosphere.complexity}</span>
+                        <span><strong>Biochemistry:</strong> {body.biosphere.biochemistry}</span>
+                        <span><strong>Energy Source:</strong> {body.biosphere.energy_source}</span>
+                        <span><strong>Morphologies:</strong> {body.biosphere.morphologies.join(', ')}</span>
+                        <span><strong>Coverage:</strong> {(body.biosphere.coverage * 100).toFixed(0)}%</span>
+                    </div>
+                </div>
+            {/if}
         </div>
 
         <div class="gm-tools">
@@ -453,6 +476,23 @@
     font-style: italic;
     color: #999;
     margin: 0.5em 0 0 0;
+  }
+
+  .detail-item.habitability, .detail-item.biosphere {
+    grid-column: 1 / -1;
+    border-left-color: #10b981;
+  }
+  .habitability-tier {
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #10b981;
+    text-transform: capitalize;
+  }
+  .biosphere-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+    margin-top: 0.5em;
   }
 
 </style>

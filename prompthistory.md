@@ -14,6 +14,8 @@ Add the image credit: Black Hole Accredition Disk images: NASA’s Goddard Space
 - Sanity check system `seed-1761915333969` (HD75226 PII), which has a contradictory steam atmosphere at -109°C.
 - Very thin atmospheres (exospheres) should be displayed as "trace" and not have a detailed composition breakdown.
 - Reminder to update prompthistory.md and gemini.md as per instructions.
+- Proceed with biosphere implementation. Refine the approach to use a single, unified habitability score instead of three. Implement a tiered morphology system (fauna requires flora requires microbial) and refactor the old habitability tags and scores as part of the update.
+- Quick fix: Display "None" for habitability scores below the "Alien Habitable" threshold.
 
 ------
 
