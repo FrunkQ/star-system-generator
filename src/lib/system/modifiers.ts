@@ -4,7 +4,7 @@ import { SeededRNG } from '../rng';
 import { randomFromRange, toRoman } from '../utils';
 import { _generatePlanetaryBody } from '../generation/planet';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM } from '../constants';
-import { findHabitableOrbit } from '../physics/habitability';
+import { findViableHabitableOrbit } from '../physics/habitability';
 
 export function deleteNode(sys: System, nodeId: ID): System {
     const nodesToDelete = new Set<ID>([nodeId]);
@@ -180,15 +180,13 @@ export function addHabitablePlanet(sys: System, hostId: ID, habitabilityType: 'e
     const host = sys.nodes.find(n => n.id === hostId) as CelestialBody;
     if (!host) throw new Error(`Host with id ${hostId} not found.`);
 
-    const tempRange: [number, number] = (habitabilityType === 'alien-habitable') ? [150, 400] : [273, 313];
-    const orbit = findHabitableOrbit(host, sys, tempRange);
+    const orbitResult = findViableHabitableOrbit(host, sys, habitabilityType);
 
-    if (!orbit) {
-        throw new Error(`No suitable habitable orbit found for a ${habitabilityType} planet around ${host.name}.`);
+    if (!orbitResult.success) {
+        throw new Error(orbitResult.reason);
     }
 
-    const propertyOverrides: Partial<CelestialBody> = {
-    };
+    const propertyOverrides: Partial<CelestialBody> = {};
 
     if (habitabilityType === 'earth-like') {
         const earthLikeAtmDef = pack.distributions.atmosphere_composition.entries.find(e => e.value.name === 'Nitrogen–Oxygen (Earth-like)').value;
@@ -232,7 +230,6 @@ export function addHabitablePlanet(sys: System, hostId: ID, habitabilityType: 'e
     } else { // alien-habitable
         propertyOverrides.massKg = randomFromRange(rng, 0.5, 3.0) * EARTH_MASS_KG;
         propertyOverrides.radiusKm = randomFromRange(rng, 0.8, 2.0) * EARTH_RADIUS_KM;
-        // Leave atmosphere and hydrosphere to be generated randomly, allowing for more exotic types
     }
 
     const siblings = sys.nodes.filter(n => n.parentId === hostId);
@@ -240,7 +237,7 @@ export function addHabitablePlanet(sys: System, hostId: ID, habitabilityType: 'e
         ? `${host.name} ${String.fromCharCode(98 + siblings.length)}`
         : `${host.name} ${toRoman(siblings.length + 1)}`;
 
-    const newNodes = _generatePlanetaryBody(new SeededRNG(sys.seed + Date.now()), pack, `${sys.seed}-custom`, siblings.length, host, orbit, name, sys.nodes, sys.age_Gyr, 'planet/terrestrial', false, propertyOverrides);
+    const newNodes = _generatePlanetaryBody(new SeededRNG(sys.seed + Date.now()), pack, `${sys.seed}-custom`, siblings.length, host, orbitResult.orbit, name, sys.nodes, sys.age_Gyr, 'planet/terrestrial', false, propertyOverrides);
     
     const newSystem = {
         ...sys,

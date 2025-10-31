@@ -114,4 +114,12 @@ export interface RulePack {
   statTemplates?: Record<string,string>;
   metrics?: Record<string, MetricDef>;
   classifier?: ClassifierSpec;
-}'''
+}
+
+export type ViableOrbitResult = {
+  success: true;
+  orbit: Orbit;
+} | {
+  success: false;
+  reason: string;
+};'''

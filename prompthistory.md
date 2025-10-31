@@ -16,6 +16,11 @@ Add the image credit: Black Hole Accredition Disk images: NASA’s Goddard Space
 - Reminder to update prompthistory.md and gemini.md as per instructions.
 - Proceed with biosphere implementation. Refine the approach to use a single, unified habitability score instead of three. Implement a tiered morphology system (fauna requires flora requires microbial) and refactor the old habitability tags and scores as part of the update.
 - Quick fix: Display "None" for habitability scores below the "Alien Habitable" threshold.
+- Rework the "Add Habitable Planet" buttons to use a "smart search" function that validates orbits for temperature, radiation, and stability before creating a planet. Provide clear error messages if no viable orbit is found.
+- Bug fix: "Add Earth-like" button causes "findHabitableOrbit is not defined" error.
+- Bug fix: "Add Human-Habitable" button returns "No stable orbit found" for a K-type star, indicating the search logic is too restrictive.
+- Tune habitability tiers. A score of 76.4% should be "human habitable", not "alien".
+- Confirm that the system can create habitable moons and that the heat calculations are correct.
 
 ------
 

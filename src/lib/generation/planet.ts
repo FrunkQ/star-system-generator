@@ -475,10 +475,14 @@ function calculateHabitabilityAndBiosphere(planet: CelestialBody, rng: SeededRNG
     planet.habitabilityScore = Math.max(0, Math.min(100, score));
 
     // Determine Tier and add Tag
+    const isEarthLike = factors.temp > 0.9 && factors.pressure > 0.8 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.9 && factors.gravity > 0.8 && planet.atmosphere?.composition?.['O2'] > 0.1;
+    const isHumanHabitable = factors.temp > 0.7 && factors.pressure > 0.6 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.7 && factors.gravity > 0.6;
+    const isAlienHabitable = score > 40;
+
     let tier: string;
-    if (planet.habitabilityScore > 95) tier = 'habitability/earth-like';
-    else if (planet.habitabilityScore > 80) tier = 'habitability/human';
-    else if (planet.habitabilityScore > 40) tier = 'habitability/alien';
+    if (isEarthLike) tier = 'habitability/earth-like';
+    else if (isHumanHabitable) tier = 'habitability/human';
+    else if (isAlienHabitable) tier = 'habitability/alien';
     else tier = 'habitability/none';
     planet.tags.push({ key: tier });
 
