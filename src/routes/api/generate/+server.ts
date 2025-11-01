@@ -16,7 +16,44 @@ export const POST: RequestHandler = async ({ request }) => {
       return json({ error: 'No LLM model selected in settings.' }, { status: 400 });
     }
 
-    const system = body.system;\n    const hostStar = system.nodes.find((n: any) => n.id === body.orbit?.hostId);\n\n    const prompt = `\n      You are a creative world-building assistant for a science fiction game. Your task is to write a compelling, evocative description for the planet detailed below.\n\n      **Instructions:**\n      1. **Do NOT simply list or repeat the raw data.** Use the provided scientific data as a starting point for creative interpretation.\n      2. **Extrapolate and Invent:** Based on the data, invent 1-2 unique, interesting, and plausible features, landmarks, or phenomena for this planet. For example, if it's a high-gravity world, describe the squat, powerful native life. If it has a high orbital eccentricity, describe the extreme seasonal shifts.\n      3. **Weave in Details:** Subtly weave the \`GM's Seed Text\` and the \`Desired Tags\` into the narrative.\n      4. **Adhere to the Style:** Write the entire description in the requested \`Report Style\`, following the \`Style Guideline\`.\n      5. **Word Count:** The final description should be approximately ${length} words.\n\n      --- \n\n      **Scientific Data:**\n      - Star: ${JSON.stringify(hostStar, null, 2)}\n      - Planet: ${JSON.stringify(body, null, 2)}\n\n      **GM's Seed Text:** \"${seedText}\"\n\n      **Desired Tags:** ${tags.join(', ')}\n\n      **Report Style:** ${style.label}\n      **Style Guideline:** ${style.guideline}\n\n      --- \n\n      Begin the description now.\n    `;
+    const system = body.system;
+    const hostStar = system.nodes.find((n: any) => n.id === body.orbit?.hostId);
+
+    const prompt = `
+      You are a creative world-building assistant for a science fiction game. Your task is to write a compelling, evocative description for the planet detailed below.
+
+      **Instructions:**
+      1. **Do NOT simply list or repeat the raw data.** Use the provided scientific data as a starting point for creative interpretation.
+      2. **Extrapolate and Invent:** Based on the data, invent 1-2 unique, interesting, and plausible features, landmarks, or phenomena for this planet. For example, if it's a high-gravity world, describe the squat, powerful native life. If it has a high orbital eccentricity, describe the extreme seasonal shifts.
+      3. **Weave in Details:** Subtly weave the 
+GM's Seed Text
+ and the 
+Desired Tags
+ into the narrative.
+      4. **Adhere to the Style:** Write the entire description in the requested 
+Report Style
+, following the 
+Style Guideline
+.
+      5. **Word Count:** The final description should be approximately ${length} words.
+
+      --- 
+
+      **Scientific Data:**
+      - Star: ${JSON.stringify(hostStar, null, 2)}
+      - Planet: ${JSON.stringify(body, null, 2)}
+
+      **GM's Seed Text:** "${seedText}"
+
+      **Desired Tags:** ${tags.join(', ')}
+
+      **Report Style:** ${style.label}
+      **Style Guideline:** ${style.guideline}
+
+      --- 
+
+      Begin the description now.
+    `;
     console.log('[API /api/generate] Prompt constructed. Length: ', prompt.length);
 
     console.log(`[API /api/generate] Sending request to OpenRouter endpoint: ${settings.apiEndpoint}/chat/completions`);
