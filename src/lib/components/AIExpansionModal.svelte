@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import type { CelestialBody } from '../types';
   import { aiSettings, systemStore } from '../stores';
+  import styles from '$lib/ai/styles.json';
+  import tags from '$lib/ai/tags.json';
 
   export let body: CelestialBody;
   export let showModal: boolean;
@@ -13,9 +14,7 @@
   let isLoading = false;
   let error = '';
 
-  let styles: any[] = [];
-  let tags: any = {};
-  let selectedStyle: any;
+  let selectedStyle = styles[0];
   let selectedTags = new Set<string>();
   const lengthOptions = [
     { label: 'Note (~100 words)', value: 100 },
@@ -24,15 +23,6 @@
     { label: 'Long (~1000 words)', value: 1000 },
   ];
   let selectedLength = lengthOptions[2]; // Default to Medium
-
-  onMount(async () => {
-    const stylesRes = await fetch('/src/lib/ai/styles.json');
-    styles = await stylesRes.json();
-    selectedStyle = styles[0];
-
-    const tagsRes = await fetch('/src/lib/ai/tags.json');
-    tags = await tagsRes.json();
-  });
 
   function toggleTag(tag: string) {
     if (selectedTags.has(tag)) {
