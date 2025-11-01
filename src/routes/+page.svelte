@@ -62,13 +62,13 @@
     cancelAnimationFrame(animationFrameId);
   }
 
-  function handleGenerate() {
+  function handleGenerate(empty: boolean = false) {
     if (!rulePack) {
       error = 'Rule pack not loaded.';
       return;
     }
     const seed = `seed-${Date.now()}`;
-    generatedSystem = generateSystem(seed, rulePack, {}, selectedGenerationOption);
+    generatedSystem = generateSystem(seed, rulePack, {}, selectedGenerationOption, empty);
     currentTime = generatedSystem.epochT0;
     focusedBodyId = null;
     visualizer?.resetView();
@@ -233,8 +233,11 @@
                     <option value={option}>{option}</option>
                 {/each}
             </select>
-            <button on:click={handleGenerate} disabled={!rulePack}>
+            <button on:click={() => handleGenerate(false)} disabled={!rulePack}>
               Generate System
+            </button>
+            <button on:click={() => handleGenerate(true)} disabled={!rulePack}>
+              Generate Empty System
             </button>
         </div>
         <div class="save-load-controls">
@@ -278,7 +281,7 @@
     </div>
 
     {#if focusedBody?.parentId === null}
-        <SystemSummary nodes={generatedSystem.nodes} />
+        <SystemSummary system={generatedSystem} />
     {/if}
 
     <SystemVisualizer bind:this={visualizer} system={generatedSystem} {currentTime} {focusedBodyId} on:focus={handleFocus} />

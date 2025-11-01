@@ -26,6 +26,11 @@ Add the image credit: Black Hole Accredition Disk images: NASA’s Goddard Space
 - Tune: Adjust target temperature ranges in findViableHabitableOrbit to compensate for greenhouse effect, making "Add Earth-like" more consistent.
 - Bug fix: "Add Earth-like" planets are generating too hot (72 C) due to un-accounted for radiogenic heat.
 - Add a quick system summary view at the star/barycenter level, listing counts of planets, moons, and key habitability categories.
+- Bug fix: System summary does not refresh when planets are added/removed. Fix by passing the entire system object to the component.
+- Bug fix: System summary shows all zeros. Fix by making the component reactive to the entire system object.
+- Clarify "Terrestrial" count in summary: Now counts all non-gas-giant bodies and is labeled "Terrestrial Bodies".
+- Bug fix: System summary counting logic is flawed (counting stars as terrestrial, not counting all gas giants).
+- Add "Generate Empty System" button to create a system with only a star, for manual GM creation.
 
 ------
 

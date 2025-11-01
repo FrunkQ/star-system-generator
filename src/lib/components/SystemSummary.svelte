@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { CelestialBody, Barycenter } from "$lib/types";
+  import type { CelestialBody, Barycenter, System } from "$lib/types";
 
-  export let nodes: (CelestialBody | Barycenter)[];
+  export let system: System | null;
 
   let gasGiants = 0;
   let terrestrials = 0;
@@ -11,41 +11,87 @@
   let totalPlanets = 0;
   let totalMoons = 0;
 
-  $: {
-    gasGiants = 0;
-    terrestrials = 0;
-    humanHabitable = 0;
-    earthLike = 0;
-    biospheres = 0;
-    totalPlanets = 0;
-    totalMoons = 0;
+    $: {
 
-    for (const node of nodes) {
-        if (node.kind !== 'body') continue;
+      gasGiants = 0;
 
-        if (node.roleHint === 'planet') {
-            totalPlanets++;
-        } else if (node.roleHint === 'moon') {
-            totalMoons++;
-        }
+      terrestrials = 0;
 
-        if (node.classes?.includes('planet/gas-giant')) {
-            gasGiants++;
-        }
-        if (node.classes?.includes('planet/terrestrial')) {
-            terrestrials++;
-        }
-        if (node.tags?.some(t => t.key === 'habitability/human')) {
-            humanHabitable++;
-        }
-        if (node.tags?.some(t => t.key === 'habitability/earth-like')) {
-            earthLike++;
-        }
-        if (node.biosphere) {
-            biospheres++;
-        }
+      humanHabitable = 0;
+
+      earthLike = 0;
+
+      biospheres = 0;
+
+      totalPlanets = 0;
+
+      totalMoons = 0;
+
+  
+
+      if (system) {
+
+          for (const node of system.nodes) {
+
+              if (node.kind !== 'body') continue;
+
+  
+
+              if (node.roleHint === 'planet') {
+
+                  totalPlanets++;
+
+              } else if (node.roleHint === 'moon') {
+
+                  totalMoons++;
+
+              }
+
+  
+
+              if (node.roleHint === 'planet' || node.roleHint === 'moon') {
+
+                  const isGasGiant = node.classes?.some(c => c.includes('gas-giant'));
+
+  
+
+                  if (isGasGiant) {
+
+                      gasGiants++;
+
+                  } else {
+
+                      terrestrials++;
+
+                  }
+
+  
+
+                  if (node.tags?.some(t => t.key === 'habitability/human')) {
+
+                      humanHabitable++;
+
+                  }
+
+                  if (node.tags?.some(t => t.key === 'habitability/earth-like')) {
+
+                      earthLike++;
+
+                  }
+
+                  if (node.biosphere) {
+
+                      biospheres++;
+
+                  }
+
+              }
+
+          }
+
+      }
+
     }
-  }
 
 </script>
 
@@ -62,7 +108,7 @@
         </div>
         <div class="summary-item">
             <span class="value">{terrestrials}</span>
-            <span class="label">Terrestrial</span>
+            <span class="label">Terrestrial Bodies</span>
         </div>
         <div class="summary-item">
             <span class="value">{gasGiants}</span>
