@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
   import { getValidPlanetTypesForHost } from '$lib/api';
+  import DescriptionEditor from './DescriptionEditor.svelte';
 
   export let body: CelestialBody | Barycenter | null;
 
@@ -358,6 +359,10 @@
                             {/if}
                         </div>
         </div>
+
+        {#if body.kind === 'body'}
+            <DescriptionEditor body={body} />
+        {/if}
     </div>
 
   {:else}

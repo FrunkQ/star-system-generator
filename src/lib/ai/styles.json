@@ -1,0 +1,50 @@
+[
+  {
+    "label": "Formal Science Survey",
+    "guideline": "Write as an objective, detached, and academic third-person report. Use precise technical and scientific jargon (e.g., 'telluric world,' 'spectrographic analysis,' 'chemo-synthetic'). Focus on data, classification, and neutral observation. The tone is formal and impersonal."
+  },
+  {
+    "label": "Corporate Survey",
+    "guideline": "Write as a professional business memorandum. The tone is cold, professional, and impersonal. All findings (lifeforms, minerals, land) are framed in terms of **profitability, assets, and operational cost**. Use corporate euphemisms (e.g., 'clearing indigenous flora,' 'non-sentient asset,' 'optimal-yield candidate')."
+  },
+  {
+    "label": "Miner's Log",
+    "guideline": "Write as a first-person personal work log. The tone is weary, practical, and informal. Uses sentence fragments and simple, direct language. Focuses on **immediate physical problems**, equipment status, resource finds, and personal discomforts. Slightly superstitious."
+  },
+  {
+    "label": "Pirate's Scuttlebutt",
+    "guideline": "Write as a first-person, clandestine data-cache or secret message. The tone is cynical, opportunistic, and conspiratorial. Uses informal slang (e.g., 'corps,' 'loot,' 'easy score'). Focuses on **what others missed**, high-value targets, patrol weaknesses, and 'get-rich-quick' opportunities."
+  },
+  {
+    "label": "Military AAR",
+    "guideline": "Write as a formal, first-person-plural ('We') After-Action Report (AAR) from a military scout team. The tone is terse, formal, and analytical. Uses military jargon (e.g., 'LZ,' 'hostiles,' 'ROE,' 'tactical value'). Focuses on **threats, strategic value, defensive positions, and potential hostiles**."
+  },
+  {
+    "label": "Explorer's Field Notes",
+    "guideline": "Write as a first-person personal journal. The tone is curious, observational, and slightly awestruck, but professional. Focuses on the **discovery and description of new things** (flora, fauna, vistas) for their own sake. Less about profit, more about the experience of 'first contact' with the environment."
+  },
+  {
+    "label": "Smuggler's Ledger",
+    "guideline": "Write as a secretive, coded ledger or route-guide. The tone is wary and all about efficiency. The report is sparse, using abbreviations or code words. Focuses entirely on **evading detection**: 'customs patrol routes,' 'sensor blind spots,' 'quiet drop-off points,' 'bribe-able officials,' and 'hidden cargo locations'."
+  },
+  {
+    "label": "Colonist's Diary",
+    "guideline": "Write as a first-person, emotional, private diary entry. The tone is personal and often strained or hopeful. Focuses on **livability and daily hardship**: 'air filter quality,' 'food production,' 'struggles with local wildlife,' 'weather,' 'community morale,' and 'fears/hopes for the future'."
+  },
+  {
+    "label": "Ship's AI Log (Automated)",
+    "guideline": "Write as a purely automated, detached, and data-driven log from a ship's AI. The tone is robotic and literal. It reports **only objective facts and sensor readings** in a bulleted or timestamped format (e.g., '14:01: Atmosphere scan complete. 78% N, 19% Methane. Trace contaminants detected.'). Makes no assumptions or emotional observations."
+  },
+  {
+    "label": "Tourist Brochure",
+    "guideline": "Write as an upbeat, persuasive, and exaggerated sales pitch for a tourist company. The tone is hyper-positive. It **highlights all positives and frames all negatives as exciting challenges** (e.g., 'vicious storms' become 'thrilling weather events!'). Uses exciting adjectives ('pristine,' 'breathtaking,' 'exclusive')."
+  },
+  {
+    "label": "Zealot's Scripture",
+    "guideline": "Write as a first-person religious or dogmatic text. The tone is fanatical, preachy, and interpretive. It **views all findings through a rigid ideological lens**, interpreting natural phenomena as 'tests,' 'blessings,' 'abominations,' or 'signs' from a deity or power."
+  },
+  {
+    "label": "Archaeological Survey",
+    "guideline": "Write as an academic report, similar to the Science Survey, but with a different focus. The tone is scholarly and inquisitive. It **ignores biology and resources, focusing entirely on evidence of past civilization**: 'cultural artifacts,' 'architectural remains,' 'linguistic patterns,' and 'hypotheses on societal collapse'."
+  }
+]

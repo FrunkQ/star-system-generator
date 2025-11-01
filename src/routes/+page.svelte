@@ -7,9 +7,12 @@
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import BodyDetails from '$lib/components/BodyDetails.svelte';
   import SystemSummary from '$lib/components/SystemSummary.svelte';
+  import SettingsModal from '$lib/components/SettingsModal.svelte';
+
+  import { systemStore } from '$lib/stores';
 
   let rulePack: RulePack | null = null;
-  let generatedSystem: System | null = null;
+  const generatedSystem = systemStore;
   let isLoading = true;
   let error: string | null = null;
   let visualizer: SystemVisualizer;
@@ -17,6 +20,7 @@
   let showJson = false;
   let generationOptions: string[] = ['Random'];
   let selectedGenerationOption = 'Random';
+  let showSettingsModal = false;
 
   // Time state
   let currentTime = Date.now();
@@ -29,10 +33,10 @@
   let focusedBody: CelestialBody | null = null;
 
   $: {
-    if (generatedSystem && focusedBodyId) {
-        focusedBody = generatedSystem.nodes.find(n => n.id === focusedBodyId) as CelestialBody;
-    } else if (generatedSystem) {
-        focusedBody = generatedSystem.nodes.find(n => n.parentId === null) as CelestialBody;
+    if ($systemStore && focusedBodyId) {
+        focusedBody = $systemStore.nodes.find(n => n.id === focusedBodyId) as CelestialBody;
+    } else if ($systemStore) {
+        focusedBody = $systemStore.nodes.find(n => n.parentId === null) as CelestialBody;
     } else {
         focusedBody = null;
     }
@@ -68,8 +72,9 @@
       return;
     }
     const seed = `seed-${Date.now()}`;
-    generatedSystem = generateSystem(seed, rulePack, {}, selectedGenerationOption, empty);
-    currentTime = generatedSystem.epochT0;
+    const newSystem = generateSystem(seed, rulePack, {}, selectedGenerationOption, empty);
+    systemStore.set(newSystem);
+    currentTime = newSystem.epochT0;
     focusedBodyId = null;
     visualizer?.resetView();
   }
@@ -89,9 +94,9 @@
   }
 
   function handleDeleteNode(event: CustomEvent<string>) {
-      if (!generatedSystem) return;
+      if (!$systemStore) return;
       const nodeId = event.detail;
-      generatedSystem = deleteNode(generatedSystem, nodeId);
+      systemStore.set(deleteNode($systemStore, nodeId));
       // If the deleted node was focused, zoom out to its parent
       if (focusedBodyId === nodeId) {
           zoomOut();
@@ -99,29 +104,29 @@
   }
 
   function handleAddNode(event: CustomEvent<{hostId: string, planetType: string}>) {
-      if (!generatedSystem || !rulePack) return;
+      if (!$systemStore || !rulePack) return;
       const { hostId, planetType } = event.detail;
-      generatedSystem = addPlanetaryBody(generatedSystem, hostId, planetType, rulePack);
+      systemStore.set(addPlanetaryBody($systemStore, hostId, planetType, rulePack));
   }
 
   function handleAddHabitablePlanet(event: CustomEvent<{hostId: string, habitabilityType: 'earth-like' | 'human-habitable' | 'alien-habitable'}>) {
-      if (!generatedSystem || !rulePack) return;
+      if (!$systemStore || !rulePack) return;
       const { hostId, habitabilityType } = event.detail;
       try {
-        generatedSystem = addHabitablePlanet(generatedSystem, hostId, habitabilityType, rulePack);
+        systemStore.set(addHabitablePlanet($systemStore, hostId, habitabilityType, rulePack));
       } catch (e: any) {
         alert(e.message);
       }
   }
 
     function handleRenameNode(event: CustomEvent<{nodeId: string, newName: string}>) {
-      if (!generatedSystem) return;
+      if (!$systemStore) return;
       const { nodeId, newName } = event.detail;
-      generatedSystem = renameNode(generatedSystem, nodeId, newName);
+      systemStore.set(renameNode($systemStore, nodeId, newName));
     }
   
-    function handleSaveToBrowser() {    if (!generatedSystem) return;
-    localStorage.setItem('stargen_saved_system', JSON.stringify(generatedSystem));
+    function handleSaveToBrowser() {    if (!$systemStore) return;
+    localStorage.setItem('stargen_saved_system', JSON.stringify($systemStore));
     alert('System saved to browser storage.');
   }
 
@@ -129,8 +134,9 @@
     const savedJson = localStorage.getItem('stargen_saved_system');
     if (savedJson) {
       try {
-        generatedSystem = JSON.parse(savedJson);
-        currentTime = generatedSystem?.epochT0 || Date.now();
+        const newSystem = JSON.parse(savedJson);
+        systemStore.set(newSystem);
+        currentTime = newSystem?.epochT0 || Date.now();
         focusedBodyId = null;
         visualizer?.resetView();
       } catch (e) {
@@ -143,13 +149,13 @@
   }
 
   function handleDownloadJson() {
-    if (!generatedSystem) return;
-    const json = JSON.stringify(generatedSystem, null, 2);
+    if (!$systemStore) return;
+    const json = JSON.stringify($systemStore, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${generatedSystem.name.replace(/\s+/g, '_') || 'system'}.json`;
+    a.download = `${$systemStore.name.replace(/\s+/g, '_') || 'system'}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -164,8 +170,9 @@
     reader.onload = (e) => {
       try {
         const json = e.target?.result as string;
-        generatedSystem = JSON.parse(json);
-        currentTime = generatedSystem?.epochT0 || Date.now();
+        const newSystem = JSON.parse(json);
+        systemStore.set(newSystem);
+        currentTime = newSystem?.epochT0 || Date.now();
         focusedBodyId = null;
         visualizer?.resetView();
       } catch (err) {
@@ -177,9 +184,9 @@
   }
 
   async function handleShare() {
-      if (!generatedSystem) return;
+      if (!$systemStore) return;
       try {
-          const snapshot = computePlayerSnapshot(generatedSystem);
+          const snapshot = computePlayerSnapshot($systemStore);
           const json = JSON.stringify(snapshot);
           const base64 = btoa(json);
           const url = `${window.location.origin}/p/${base64}`;
@@ -243,11 +250,12 @@
         <div class="save-load-controls">
             <button on:click={handleSaveToBrowser}>Save to Browser</button>
             <button on:click={handleLoadFromBrowser}>Load from Browser</button>
-            <button on:click={handleDownloadJson} disabled={!generatedSystem}>Download JSON</button>
+            <button on:click={handleDownloadJson} disabled={!$systemStore}>Download JSON</button>
             <button on:click={() => document.getElementById('upload-json')?.click()}>Upload JSON</button>
             <input type="file" id="upload-json" hidden accept=".json,application/json" on:change={handleUploadJson} />
+            <button on:click={() => showSettingsModal = true}>Settings</button>
         </div>
-        {#if generatedSystem}
+        {#if $systemStore}
             <div class="share-controls">
                 <button on:click={handleShare}>Share Player Link</button>
                 {#if shareStatus}<span>{shareStatus}</span>{/if}
@@ -256,7 +264,7 @@
     </div>
   {/if}
 
-  {#if generatedSystem}
+  {#if $systemStore}
     <div class="controls">
         <button on:click={() => isPlaying ? pause() : play()}>
             {isPlaying ? 'Pause' : 'Play'}
@@ -281,10 +289,10 @@
     </div>
 
     {#if focusedBody?.parentId === null}
-        <SystemSummary system={generatedSystem} />
+        <SystemSummary system={$systemStore} />
     {/if}
 
-    <SystemVisualizer bind:this={visualizer} system={generatedSystem} {currentTime} {focusedBodyId} on:focus={handleFocus} />
+    <SystemVisualizer bind:this={visualizer} system={$systemStore} {currentTime} {focusedBodyId} on:focus={handleFocus} />
 
     <BodyDetails body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:renameNode={handleRenameNode} on:addHabitablePlanet={handleAddHabitablePlanet} />
 
@@ -295,7 +303,7 @@
     </div>
 
     {#if showJson}
-        <pre>{JSON.stringify(generatedSystem, null, 2)}</pre>
+        <pre>{JSON.stringify($systemStore, null, 2)}</pre>
     {/if}
   {/if}
 
@@ -303,6 +311,9 @@
     <p>Planet images by Pablo Carlos Budassi, used under a CC BY-SA 4.0 license. Star images from beyond-universe.fandom.com (CC-BY-SA) and ESO/L. Calçada (CC BY 4.0 for magnetar image).</p>
   </footer>
 </main>
+
+<SettingsModal bind:showModal={showSettingsModal} />
+
 <style>
   main {
     font-family: sans-serif;

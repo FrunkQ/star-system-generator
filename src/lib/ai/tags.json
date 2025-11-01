@@ -1,0 +1,80 @@
+{
+  "Population & Governance": {
+    "Population Level": [
+      "Uninhabited",
+      "Automated Only",
+      "Sparse (Outpost)",
+      "Medium (Colony)",
+      "High (Developed World)",
+      "Vast (Ecumenopolis)"
+    ],
+    "Primary Faction": [
+      "Corporate Enclave",
+      "Military Installation",
+      "Scientific Expedition",
+      "Independent Settlers",
+      "Syndicate / Cartel",
+      "Pirate Haven",
+      "Refugee Camp"
+    ],
+    "Governance Style": [
+      "Anarchy / Lawless",
+      "Military Junta",
+      "Corporate Stewardship",
+      "Theocracy",
+      "Syndicate-Run",
+      "Planetary Democracy",
+      "Authoritarian (Police State)"
+    ]
+  },
+  "Primary Activity": [
+    "Mining (Solid)",
+    "Gas Giant Harvesting",
+    "Refueling Depot",
+    "Science & Research",
+    "Terraforming Project",
+    "Agriculture (Foodstuffs)",
+    "Agriculture (Narcotics / Exotics)",
+    "Industrial Manufacturing",
+    "Trade Hub / Free Port",
+    "Military Base / Shipyards",
+    "Penal Colony",
+    "Tourist Destination",
+    "Religious Site / Pilgrimage",
+    "Listening Post / Comms Relay"
+  ],
+  "Biosphere & Native Life": {
+    "Dominant Life": [
+      "No Native Life",
+      "Microbial / Primal",
+      "Complex Flora",
+      "Non-Sentient Fauna",
+      "Sentient Life (Primitive)",
+      "Sentient Life (Space-faring)"
+    ],
+    "Ecosystem Type": [
+      "Imported Ecology",
+      "Hostile Ecosystem",
+      "Predatory Megafauna",
+      "Silicon-Based Life",
+      "Energy-Based Life",
+      "Psionic Flora/Fauna",
+      "Symbiotic Ecosystem"
+    ]
+  },
+  "X-Factor / Anomaly": [
+    "Alien Ruins (Ancient)",
+    "Alien Artifact (Dormant)",
+    "Alien Artifact (Active)",
+    "Precursor Technology",
+    "Unique Mineral Resource (Plot Device)",
+    "Psionic Field / Echo",
+    "Temporal Distortion",
+    "Gravitational Anomaly",
+    "Orbital Debris Field",
+    "Derelict Ships (Surface)",
+    "Derelict Ships (Orbital)",
+    "Terraforming Failure",
+    "Known Smuggling Route"
+  ]
+}

@@ -1,0 +1,84 @@
+<script lang="ts">
+  import type { CelestialBody } from "$lib/types";
+  import { aiSettings } from '$lib/stores';
+  import AIExpansionModal from './AIExpansionModal.svelte';
+
+  export let body: CelestialBody;
+
+  let showAIModal = false;
+  let isEditing = false;
+  let description = body.description || '';
+
+  function handleSave() {
+    body.description = description;
+    isEditing = false;
+  }
+
+  $: hasApiKey = $aiSettings.apiKey && $aiSettings.apiKey.length > 0;
+
+  function renderMarkdown(text: string): string {
+    if (!text) return '';
+    return text
+      .replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>') // Bold
+      .replace(/## (.*)/g, '<h2>$1</h2>') // H2
+      .replace(/\n/g, '<br>'); // Newlines
+  }
+</script>
+
+<div class="description-editor">
+  <h4>Description & Notes</h4>
+  
+  {#if isEditing}
+    <textarea bind:value={description}></textarea>
+    <div class="actions">
+      <button on:click={handleSave}>Save</button>
+      <button on:click={() => isEditing = false}>Cancel</button>
+    </div>
+  {:else}
+    <div class="display">
+      {@html renderMarkdown(body.description || 'No description yet.')}
+    </div>
+    <div class="actions">
+      <button on:click={() => isEditing = true}>Edit</button>
+      {#if hasApiKey}
+        <button class="ai-button" on:click={() => showAIModal = true}>
+          ✨ Expand with AI
+        </button>
+      {/if}
+    </div>
+  {/if}
+</div>
+
+<AIExpansionModal bind:showModal={showAIModal} body={body} initialText={description} />
+
+<style>
+  .description-editor {
+    margin-top: 1em;
+    border-top: 1px solid #444;
+    padding-top: 1em;
+  }
+  textarea {
+    width: 100%;
+    min-height: 150px;
+    background: #1a1a1a;
+    border: 1px solid #555;
+    color: #eee;
+    border-radius: 4px;
+  }
+  .display {
+    white-space: pre-wrap;
+    background: #252525;
+    padding: 1em;
+    border-radius: 4px;
+    min-height: 50px;
+  }
+  .actions {
+    margin-top: 0.5em;
+    display: flex;
+    gap: 0.5em;
+  }
+  .ai-button {
+    background-color: #2d69a6;
+    color: white;
+  }
+</style>
