@@ -1,6 +1,12 @@
-'''# Star System Generator & Visualizer
+# Star System Generator & Visualizer
 
 A procedural generator for creating scientifically-plausible star systems, complete with a real-time orbital visualizer.
+
+## What is it for?
+
+This tool was primarily designed to enhance Science Fiction Tabletop Role-Playing Games (TTRPGs). While not a perfectly accurate simulation, it aims to be 'close enough' for an RPG setting, appealing to those who, like me, marvel at the wonder and complexity of the real science behind astronomy and exoplanets. It should provide a wealth of interesting environments to serve as the backdrop for your narrative.  This has been "vibe-coded" using Gemini CLI (Pro 2.5) over a few months.
+
+ A quick note on data: This application runs entirely in your browser. Your generated systems are not saved on a remote server; they reside solely within your local browser storage. If you wish to access your systems on a different browser or device, remember to download your files.
 
 ## Features
 
@@ -9,8 +15,8 @@ A procedural generator for creating scientifically-plausible star systems, compl
 *   **Binary & Single Star Systems**: Can generate both single-star systems and complex binary systems with circumbinary planets or planets orbiting each star.
 *   **Detailed Planetology**: Generates planets with a wide range of properties, including mass, radius, temperature (with equilibrium, greenhouse, and tidal heating components), atmospheric pressure, and hydrosphere coverage.
 *   **Deep Classification**: Planets are classified into one of over 60 types (e.g., 'planet/ocean', 'planet/hot-jupiter', 'planet/super-earth') based on their physical characteristics.
-*   **Advanced Environmental Simulation**: Models stellar radiation output and surface radiation on planets, including the effects of magnetic fields.
-*   **Habitability & Biospheres**: A sophisticated habitability score is calculated based on multiple factors. Qualifying planets can develop unique, procedurally generated biospheres.
+*   **Environmental Simulation**: Models stellar radiation output and surface radiation on planets, including the effects of magnetic fields.
+*   **Habitability & Biospheres**: A habitability score is calculated based on multiple factors. Qualifying planets can develop unique, procedurally generated biospheres.
 *   **Interactive 2D Visualizer**: An orbital view of the generated system with playback controls, zoom, and focus abilities.
 *   **GM Editing Tools**:
     *   **Rename**: Click on any body's name to rename it.
@@ -87,4 +93,3 @@ This project uses images from several sources under Creative Commons licenses. W
 *   **Planet Images**: Courtesy of **Pablo Carlos Budassi** ([thecelestialzoo](https://www.deviantart.com/pablocarlosbudassi/gallery/79413331/the-celestial-zoo-official-collection)), used under a [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) license.
 *   **Star Images**: Sourced from the [Beyond Universe Wiki](https://beyond-universe.fandom.com/wiki/) on Fandom, used under a [CC-BY-SA](https://creativecommons.org/licenses/by-sa/3.0/us/) license.
 *   **Magnetar Image**: Courtesy of [ESO/L. Calçada](https://www.eso.org/public/images/eso1415a/), used under a [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license.
-'''
