@@ -86,6 +86,12 @@ npm run build
 
 You can preview the production build with `npm run preview`.
 
+## Planned Features
+
+*   **Orbital Mechanics**: Implementation of Delta-V and burn planning for spacecraft.
+*   **Protoplanetary Disks**: For very young systems, generate a dense disk instead of a full set of planets.
+*   **Expanded Classifications**: Add more detailed and specific planet classifications.
+
 ## Attributions
 
 This project uses images from several sources under Creative Commons licenses. We are grateful for their work.
@@ -93,3 +99,4 @@ This project uses images from several sources under Creative Commons licenses. W
 *   **Planet Images**: Courtesy of **Pablo Carlos Budassi** ([thecelestialzoo](https://www.deviantart.com/pablocarlosbudassi/gallery/79413331/the-celestial-zoo-official-collection)), used under a [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) license.
 *   **Star Images**: Sourced from the [Beyond Universe Wiki](https://beyond-universe.fandom.com/wiki/) on Fandom, used under a [CC-BY-SA](https://creativecommons.org/licenses/by-sa/3.0/us/) license.
 *   **Magnetar Image**: Courtesy of [ESO/L. Calçada](https://www.eso.org/public/images/eso1415a/), used under a [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license.
+*   **Black Hole Accretion Disk Image**: Courtesy of [NASA’s Goddard Space Flight Center/Jeremy Schnittman](https://svs.gsfc.nasa.gov/13232).

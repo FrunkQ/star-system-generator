@@ -308,7 +308,7 @@
   {/if}
 
   <footer>
-    <p>Planet images by Pablo Carlos Budassi, used under a CC BY-SA 4.0 license. Star images from beyond-universe.fandom.com (CC-BY-SA) and ESO/L. Calçada (CC BY 4.0 for magnetar image).</p>
+    <p>Planet images by Pablo Carlos Budassi, used under a CC BY-SA 4.0 license. Star images from beyond-universe.fandom.com (CC-BY-SA), ESO/L. Calçada (CC BY 4.0 for magnetar image), and NASA’s Goddard Space Flight Center/Jeremy Schnittman (accretion disk image).</p>
   </footer>
 </main>
 
