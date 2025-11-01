@@ -1,6 +1,6 @@
 '''# Star System Generator & Visualizer
 
-A procedural star system generator built with SvelteKit. This tool creates detailed, scientifically-plausible star systems, including single and binary stars, planets, moons, and asteroid belts. It features an interactive 2D visualizer and allows for GM-style editing and storytelling.
+A procedural generator for creating scientifically-plausible star systems, complete with a real-time orbital visualizer.
 
 ## Features
 
@@ -9,17 +9,52 @@ A procedural star system generator built with SvelteKit. This tool creates detai
 *   **Binary & Single Star Systems**: Can generate both single-star systems and complex binary systems with circumbinary planets or planets orbiting each star.
 *   **Detailed Planetology**: Generates planets with a wide range of properties, including mass, radius, temperature (with equilibrium, greenhouse, and tidal heating components), atmospheric pressure, and hydrosphere coverage.
 *   **Deep Classification**: Planets are classified into one of over 60 types (e.g., 'planet/ocean', 'planet/hot-jupiter', 'planet/super-earth') based on their physical characteristics.
+*   **Advanced Environmental Simulation**: Models stellar radiation output and surface radiation on planets, including the effects of magnetic fields.
+*   **Habitability & Biospheres**: A sophisticated habitability score is calculated based on multiple factors. Qualifying planets can develop unique, procedurally generated biospheres.
 *   **Interactive 2D Visualizer**: An orbital view of the generated system with playback controls, zoom, and focus abilities.
 *   **GM Editing Tools**:
-    *   **Rename**: Click on any body's name to rename it. The new name automatically propagates to its children.
+    *   **Rename**: Click on any body's name to rename it.
     *   **Add**: Add a new planet or moon to any star or planet.
     *   **Delete**: Remove any planet or moon and its entire orbital system.
+*   **AI-Powered Descriptions**: Integrates with OpenRouter to allow GMs to generate rich, narrative descriptions for any celestial body using customizable prompts, tags, and styles.
 *   **Save & Load**: 
     *   Save your creations to your browser's local storage.
     *   Download any system as a JSON file to your computer.
     *   Upload a previously saved JSON file to continue your work.
 
-## Getting Started
+## Usage
+
+### Generating a System
+1.  Use the dropdown on the top-left to select the type of star system you want to create (e.g., "Random", "Type G", "Type M Binary").
+2.  Click **"Generate System"**.
+
+### Exploring the System
+*   Click on any celestial body in the visualizer to focus on it and view its detailed stats in the panel below.
+*   Use the time controls to play, pause, and fast-forward the simulation.
+*   Click "Zoom Out" to return to the parent body's view.
+
+### Using the AI Description Generator
+1.  **Setup**:
+    *   Click the **"Settings"** button in the top-right.
+    *   Enter your [OpenRouter](https://openrouter.ai/) API Key.
+    *   Select a model from the dropdown. Free models are listed at the top.
+    *   Click **"Close"**.
+2.  **Generation**:
+    *   Select a planet or star.
+    *   In the "Description & Notes" section, click **"✨ Expand with AI"**.
+    *   In the modal window, you can:
+        *   Add your own notes or seed text.
+        *   Select a report style (e.g., "Formal Science Survey", "Pirate's Scuttlebutt").
+        *   Choose tags to guide the generation (e.g., "Alien Ruins", "Mining Outpost").
+        *   Select the desired length of the response.
+    *   Click **"Generate"**.
+    *   Once you are happy with the result, click **"Accept & Close"**.
+
+### Saving and Loading
+*   Use the **"Save to Browser"** and **"Load from Browser"** buttons to persist a single system across sessions.
+*   Use **"Download JSON"** and **"Upload JSON"** to save and load system files.
+
+## Getting Started (for Developers)
 
 1.  **Install Dependencies**
 
