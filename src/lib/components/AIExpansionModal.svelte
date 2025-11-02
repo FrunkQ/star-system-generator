@@ -4,7 +4,7 @@
   import { aiSettings, systemStore } from '../stores';
   import styles from '$lib/ai/styles.json';
   import tags from '$lib/ai/tags.json';
-  import promptTemplate from '$lib/ai/prompt-template.txt?raw';
+  import { PROMPT_TEMPLATE } from '$lib/ai/prompt.ts';
 
   export let body: CelestialBody;
   export let showModal: boolean;
@@ -35,6 +35,8 @@
     selectedStyle = styles.find(s => s.label === body.aiContext?.style?.label) || styles[0];
     selectedLength = lengthOptions.find(l => l.value === body.aiContext?.length) || lengthOptions[2];
     lastPrompt = body.aiContext?.lastPrompt || '';
+    generatedText = ''; // Reset generated text
+    error = ''; // Reset error
   }
 
   function toggleTag(tag: string) {
@@ -75,7 +77,7 @@
         // Create a clean version of the body for the prompt, excluding text fields
         const { description, aiContext, ...cleanBody } = body;
 
-        promptToUse = promptTemplate
+        promptToUse = PROMPT_TEMPLATE
           .replace('%%LENGTH%%', selectedLength.value.toString())
           .replace('%%HOST_STAR%%', JSON.stringify(starsForPrompt, null, 2))
           .replace('%%BODY%%', JSON.stringify(cleanBody, null, 2))

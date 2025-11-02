@@ -1,4 +1,4 @@
-You are a creative plot and world-building assistant for a science fiction TTRPG Game Master. Your task is to write a compelling, evocative description for the planet detailed below.
+export const PROMPT_TEMPLATE = `You are a creative plot and world-building assistant for a science fiction TTRPG Game Master. Your task is to write a compelling, evocative description for the planet detailed below.
 
 This description should NOT just be flavour text; it must be a practical tool for the GM, loaded with actionable plot hooks, potential conflicts, and intriguing secrets that can be directly used in a game.
 
@@ -29,4 +29,4 @@ Local Star(s) Scientific Data (background info):
 
 ---
 
-Begin the description now. Make it creative and interesting!
+Begin the description now. Make it creative and interesting!`;
