@@ -1,20 +1,24 @@
 <script lang="ts">
   import type { CelestialBody } from "$lib/types";
-  import { aiSettings } from '$lib/stores';
+  import { aiSettings } from 
+'$lib/stores';
   import AIExpansionModal from './AIExpansionModal.svelte';
 
   export let body: CelestialBody;
 
   let showAIModal = false;
   let isEditing = false;
-  let description = body.description || '';
+  let description = '';
+
+  function startEditing() {
+    description = body.description || '';
+    isEditing = true;
+  }
 
   function handleSave() {
     body.description = description;
     isEditing = false;
   }
-
-  $: hasApiKey = $aiSettings.apiKey && $aiSettings.apiKey.length > 0;
 
   function renderMarkdown(text: string): string {
     if (!text) return '';
@@ -23,6 +27,8 @@
       .replace(/## (.*)/g, '<h2>$1</h2>') // H2
       .replace(/\n/g, '<br>'); // Newlines
   }
+
+  $: hasApiKey = $aiSettings.apiKey && $aiSettings.apiKey.length > 0;
 </script>
 
 <div class="description-editor">
@@ -39,7 +45,7 @@
       {@html renderMarkdown(body.description || 'No description yet.')}
     </div>
     <div class="actions">
-      <button on:click={() => isEditing = true}>Edit</button>
+      <button on:click={startEditing}>Edit</button>
       {#if hasApiKey}
         <button class="ai-button" on:click={() => showAIModal = true}>
           ✨ Expand with AI
@@ -49,7 +55,7 @@
   {/if}
 </div>
 
-<AIExpansionModal bind:showModal={showAIModal} body={body} initialText={description} />
+<AIExpansionModal bind:showModal={showAIModal} {body} initialText={body.description} />
 
 <style>
   .description-editor {

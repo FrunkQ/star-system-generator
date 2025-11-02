@@ -74,7 +74,16 @@ export interface CelestialBody extends NodeBase {
   tidallyLocked?: boolean;
   habitabilityScore?: number;
   biosphere?: Biosphere;
+  aiContext?: AIContext;
   orbit?: Orbit; areas: Area[]; image?: string; deltaV?: DeltaVCapability;
+}
+
+export interface AIContext {
+  seedText?: string;
+  tags?: string[];
+  style?: any;
+  length?: number;
+  lastPrompt?: string;
 }
 
 export interface Barycenter extends NodeBase {

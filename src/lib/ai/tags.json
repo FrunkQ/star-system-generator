@@ -2,11 +2,14 @@
   "Population & Governance": {
     "Population Level": [
       "Uninhabited",
-      "Automated Only",
+      "Automated Only (And something is going wrong)",
+      "Automated Only (Working flawlessly, a model of efficiency)",
       "Sparse (Outpost)",
       "Medium (Colony)",
       "High (Developed World)",
-      "Vast (Ecumenopolis)"
+      "Vast (Ecumenopolis)",
+      "Exodus (Actively being abandoned)",
+      "Ghost Town (Populated, but feels empty)"
     ],
     "Primary Faction": [
       "Corporate Enclave",
@@ -15,24 +18,36 @@
       "Independent Settlers",
       "Syndicate / Cartel",
       "Pirate Haven",
-      "Refugee Camp"
+      "Refugee Camp",
+      "Exile Colony (Political/Religious dissidents)",
+      "Quarantine Zone (Medical/Biohazard lockdown)",
+      "Secret Base (Intelligence/Black ops)"
     ],
     "Governance Style": [
       "Anarchy / Lawless",
       "Military Junta",
-      "Corporate Stewardship",
-      "Theocracy",
-      "Syndicate-Run",
-      "Planetary Democracy",
-      "Authoritarian (Police State)"
+      "Corporate Stewardship (Profit = law)",
+      "Theocracy (Governed by faith/prophecy)",
+      "Syndicate-Run (Organized crime is the government)",
+      "Planetary Democracy (Often fragile)",
+      "Stable Democracy (A rare, peaceful society)",
+      "Authoritarian (Police state)",
+      "AI-Managed (Overseen by a benign or rogue AI)",
+      "Benign AI Stewardship (Prosperous and safe, but no free will)",
+      "Failing State (Govt. has no real power)",
+      "Warlord-Controlled (Factional territories)"
     ]
   },
   "Primary Activity": [
+    "Just a Boring Rock (Or is it?)",
+    "Just a Boring Rock (Officially cataloged and ignored)",
     "Mining (Solid)",
     "Gas Giant Harvesting",
     "Refueling Depot",
     "Science & Research",
-    "Terraforming Project",
+    "Scientific Utopia (Research is primary, all needs met)",
+    "Terraforming Project (Active or failed)",
+    "Terraforming Success (A new paradise, with a waiting list)",
     "Agriculture (Foodstuffs)",
     "Agriculture (Narcotics / Exotics)",
     "Industrial Manufacturing",
@@ -41,40 +56,73 @@
     "Penal Colony",
     "Tourist Destination",
     "Religious Site / Pilgrimage",
-    "Listening Post / Comms Relay"
+    "Listening Post / Comms Relay",
+    "Black Site / Secret Prison (High-value extraction)",
+    "Salvage Operation (High-risk, high-reward)",
+    "Illegal Research (Bioweapons, AI, psionics)",
+    "Boom Town (Rapid, uncontrolled growth)"
   ],
   "Biosphere & Native Life": {
     "Dominant Life": [
       "No Native Life",
       "Microbial / Primal",
-      "Complex Flora",
+      "Complex Flora (May be mobile or hostile)",
       "Non-Sentient Fauna",
       "Sentient Life (Primitive)",
-      "Sentient Life (Space-faring)"
+      "Sentient Life (Space-faring)",
+      "Uplifted Fauna (Failed/rogue experiment)",
+      "Sentient AI (A 'native' post-singularity mind)"
     ],
     "Ecosystem Type": [
-      "Imported Ecology",
-      "Hostile Ecosystem",
+      "Imported Ecology (Terraformed, maybe unstable)",
+      "Hostile Ecosystem (Actively anti-human)",
       "Predatory Megafauna",
       "Silicon-Based Life",
       "Energy-Based Life",
-      "Psionic Flora/Fauna",
-      "Symbiotic Ecosystem"
+      "Psionic Flora/Fauna (Mind-altering environment)",
+      "Symbiotic Ecosystem (Everything is connected)",
+      "Sentient Ecosystem (The planet itself is aware)",
+      "Parasitic / Infectious Lifeforms (Host-takers)",
+      "Crystalline / Mineral-Based Life",
+      "Benign Ecosystem (Passive, easily exploitable)",
+      "Harmonious Ecosystem (Natives and nature in perfect balance)"
     ]
   },
   "X-Factor / Anomaly": [
     "Alien Ruins (Ancient)",
     "Alien Artifact (Dormant)",
-    "Alien Artifact (Active)",
-    "Precursor Technology",
-    "Unique Mineral Resource (Plot Device)",
-    "Psionic Field / Echo",
-    "Temporal Distortion",
-    "Gravitational Anomaly",
-    "Orbital Debris Field",
+    "Alien Artifact (Active / Malfunctioning)",
+    "Precursor Technology (Poorly understood)",
+    "Active Precursor Defenses (Ruins are not empty)",
+    "Unique Mineral Resource (Plot device)",
+    "Psionic Field / Echo (A 'haunted' location)",
+    "Temporal Distortion (Time moves differently here)",
+    "Gravitational Anomaly (Physics is broken)",
+    "Orbital Debris Field (Dangerous to approach)",
     "Derelict Ships (Surface)",
-    "Derelict Ships (Orbital)",
-    "Terraforming Failure",
-    "Known Smuggling Route"
+    "Derelict Ships (Orbital 'graveyard')",
+    "Terraforming Failure (Actively collapsing)",
+    "Known Smuggling Route",
+    "Incomprehensible Signal (Drives people mad)",
+    "Zone of Silence (All tech fails in this area)",
+    "Navigational Hazard (Warp rift / space-time flaw)"
+  ],
+  "Planetary Situation / Conflict": [
+    "Resource Rush (Lawless boomtown atmosphere)",
+    "Failing Colony (Desperate for aid or escape)",
+    "Quarantine Zone (Blockaded, nothing in or out)",
+    "Factional War (Overt conflict for control)",
+    "Covert Conflict (Corporate or state espionage)",
+    "Lost Colony (Original settlers vanished)",
+    "Forbidden World (Interdicted, entry is illegal)",
+    "Local Uprising (Locals vs. rulers)",
+    "Imminent Disaster (Natural or man-made)",
+    "First Contact (Ongoing, and going badly)",
+    "Peaceful First Contact (Ongoing, and going well)",
+    "Strange 'Gold Rush' (A new, weird resource)",
+    "Criminal Safe Haven (A neutral, lawless port)",
+    "Prosperous Trade Hub (Wealthy, stable, and well-defended)",
+    "Post-Conflict Recovery (Actively rebuilding)",
+    "Open Frontier (Unregulated, unclaimed)"
   ]
 }

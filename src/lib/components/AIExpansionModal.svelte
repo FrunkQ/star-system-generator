@@ -4,25 +4,38 @@
   import { aiSettings, systemStore } from '../stores';
   import styles from '$lib/ai/styles.json';
   import tags from '$lib/ai/tags.json';
+  import promptTemplate from '$lib/ai/prompt-template.txt?raw';
 
   export let body: CelestialBody;
   export let showModal: boolean;
   export let initialText: string;
 
-  let seedText = initialText;
+  let seedText: string;
   let generatedText = '';
   let isLoading = false;
   let error = '';
+  let lastPrompt = '';
+  let showPromptEditor = false;
+  let editedPrompt = '';
 
-  let selectedStyle = styles[0];
-  let selectedTags = new Set<string>();
+  let selectedStyle: any;
+  let selectedTags: Set<string>;
   const lengthOptions = [
     { label: 'Note (~100 words)', value: 100 },
     { label: 'Short (~250 words)', value: 250 },
     { label: 'Medium (~500 words)', value: 500 },
     { label: 'Long (~1000 words)', value: 1000 },
   ];
-  let selectedLength = lengthOptions[2]; // Default to Medium
+  let selectedLength: any;
+
+  // Initialize state when the modal is opened (body changes)
+  $: if (body) {
+    seedText = body.aiContext?.seedText || initialText || '';
+    selectedTags = new Set(body.aiContext?.tags || []);
+    selectedStyle = styles.find(s => s.label === body.aiContext?.style?.label) || styles[0];
+    selectedLength = lengthOptions.find(l => l.value === body.aiContext?.length) || lengthOptions[2];
+    lastPrompt = body.aiContext?.lastPrompt || '';
+  }
 
   function toggleTag(tag: string) {
     if (selectedTags.has(tag)) {
@@ -33,24 +46,64 @@
     selectedTags = selectedTags;
   }
 
-  async function handleGenerate() {
+  async function handleGenerate(promptOverride: string | null = null) {
     isLoading = true;
     generatedText = '';
     error = '';
+
     try {
+      let promptToUse: string;
+      let requestBody: any = {
+        settings: get(aiSettings)
+      };
+
+      if (promptOverride) {
+        promptToUse = promptOverride;
+      } else {
+        const system = get(systemStore);
+        const host = system?.nodes.find((n: any) => n.id === body.orbit?.hostId);
+        
+        let starsForPrompt: any[] = [];
+        if (host?.kind === 'barycenter') {
+          starsForPrompt = host.memberIds.map((memberId: string) => 
+            system?.nodes.find(n => n.id === memberId)
+          ).filter(Boolean);
+        } else if (host) {
+          starsForPrompt.push(host);
+        }
+
+        // Create a clean version of the body for the prompt, excluding text fields
+        const { description, aiContext, ...cleanBody } = body;
+
+        promptToUse = promptTemplate
+          .replace('%%LENGTH%%', selectedLength.value.toString())
+          .replace('%%HOST_STAR%%', JSON.stringify(starsForPrompt, null, 2))
+          .replace('%%BODY%%', JSON.stringify(cleanBody, null, 2))
+          .replace('%%SEED_TEXT%%', seedText)
+          .replace('%%TAGS%%', Array.from(selectedTags).join(', '))
+          .replace('%%STYLE_LABEL%%', selectedStyle.label)
+          .replace('%%STYLE_GUIDELINE%%', selectedStyle.guideline);
+      }
+
+      lastPrompt = promptToUse;
+
+      // Save context to body before generating
+      body.aiContext = {
+        seedText: seedText,
+        tags: Array.from(selectedTags),
+        style: selectedStyle,
+        length: selectedLength.value,
+        lastPrompt: lastPrompt
+      };
+
+      requestBody.fullPrompt = promptToUse;
+
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          body: { ...body, system: get(systemStore) },
-          seedText,
-          tags: Array.from(selectedTags),
-          style: selectedStyle,
-          length: selectedLength.value,
-          settings: get(aiSettings)
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
@@ -90,6 +143,16 @@
     } finally {
       isLoading = false;
     }
+  }
+
+  function openPromptEditor() {
+    editedPrompt = lastPrompt;
+    showPromptEditor = true;
+  }
+
+  function handleRegenerate() {
+    showPromptEditor = false;
+    handleGenerate(editedPrompt);
   }
 
   function renderMarkdown(text: string): string {
@@ -195,12 +258,25 @@
     </div>
 
     <div class="modal-actions">
-      <button on:click={handleGenerate} disabled={isLoading}>
+      <button on:click={() => handleGenerate()} disabled={isLoading}>
         {isLoading ? 'Generating...' : 'Generate'}
       </button>
+      <button on:click={openPromptEditor} disabled={!lastPrompt || isLoading}>View/Edit Last Prompt</button>
       <button on:click={handleAccept} disabled={!generatedText || isLoading}>Accept & Close</button>
       <button on:click={handleClose}>Cancel</button>
     </div>
+
+    {#if showPromptEditor}
+      <div class="prompt-editor-overlay">
+        <h3>Edit Prompt</h3>
+        <textarea class="prompt-textarea" bind:value={editedPrompt}></textarea>
+        <div class="modal-actions">
+          <button on:click={handleRegenerate}>Regenerate with Edited Prompt</button>
+          <button on:click={() => { lastPrompt = editedPrompt; showPromptEditor = false; }}>Save Changes</button>
+          <button on:click={() => showPromptEditor = false}>Cancel</button>
+        </div>
+      </div>
+    {/if}
   </div>
 </div>
 {/if}
@@ -234,4 +310,23 @@
   .generated-text-display { height: calc(100% - 2em); background: #1a1a1a; border: 1px solid #555; border-radius: 4px; padding: 1em; white-space: pre-wrap; overflow-y: auto; }
   .blinking-cursor { display: inline-block; width: 8px; height: 1em; background: #eee; animation: blink 1s step-end infinite; }
   @keyframes blink { 50% { opacity: 0; } }
+
+  .prompt-editor-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(20, 20, 20, 0.95);
+    padding: 2em;
+    display: flex;
+    flex-direction: column;
+  }
+  .prompt-textarea {
+    flex-grow: 1;
+    width: 100%;
+    background: #111;
+    color: #eee;
+    border: 1px solid #555;
+  }
 </style>

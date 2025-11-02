@@ -4,8 +4,7 @@ import type { RequestHandler } from './$types';
 export const POST: RequestHandler = async ({ request }) => {
   console.log('[API /api/generate] Received request');
   try {
-    const { body, seedText, tags, style, length, settings } = await request.json();
-    console.log('[API /api/generate] Request body parsed successfully.');
+    const { settings, fullPrompt } = await request.json();
 
     if (!settings.apiKey) {
       console.error('[API /api/generate] Error: API key not set.');
@@ -15,46 +14,10 @@ export const POST: RequestHandler = async ({ request }) => {
       console.error('[API /api/generate] Error: Model not selected.');
       return json({ error: 'No LLM model selected in settings.' }, { status: 400 });
     }
-
-    const system = body.system;
-    const hostStar = system.nodes.find((n: any) => n.id === body.orbit?.hostId);
-
-    const prompt = `
-      You are a creative world-building assistant for a science fiction game. Your task is to write a compelling, evocative description for the planet detailed below.
-
-      **Instructions:**
-      1. **Do NOT simply list or repeat the raw data.** Use the provided scientific data as a starting point for creative interpretation.
-      2. **Extrapolate and Invent:** Based on the data, invent 1-2 unique, interesting, and plausible features, landmarks, or phenomena for this planet. For example, if it's a high-gravity world, describe the squat, powerful native life. If it has a high orbital eccentricity, describe the extreme seasonal shifts.
-      3. **Weave in Details:** Subtly weave the 
-GM's Seed Text
- and the 
-Desired Tags
- into the narrative.
-      4. **Adhere to the Style:** Write the entire description in the requested 
-Report Style
-, following the 
-Style Guideline
-.
-      5. **Word Count:** The final description should be approximately ${length} words.
-
-      --- 
-
-      **Scientific Data:**
-      - Star: ${JSON.stringify(hostStar, null, 2)}
-      - Planet: ${JSON.stringify(body, null, 2)}
-
-      **GM's Seed Text:** "${seedText}"
-
-      **Desired Tags:** ${tags.join(', ')}
-
-      **Report Style:** ${style.label}
-      **Style Guideline:** ${style.guideline}
-
-      --- 
-
-      Begin the description now.
-    `;
-    console.log('[API /api/generate] Prompt constructed. Length: ', prompt.length);
+    if (!fullPrompt) {
+      console.error('[API /api/generate] Error: No prompt provided.');
+      return json({ error: 'No prompt was provided to the API.' }, { status: 400 });
+    }
 
     console.log(`[API /api/generate] Sending request to OpenRouter endpoint: ${settings.apiEndpoint}/chat/completions`);
     const response = await fetch(`${settings.apiEndpoint}/chat/completions`, {
@@ -65,7 +28,7 @@ Style Guideline
       },
       body: JSON.stringify({
         model: settings.selectedModel,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: fullPrompt }],
         stream: true
       })
     });
@@ -95,7 +58,7 @@ Style Guideline
             break;
           }
           const chunk = decoder.decode(value, { stream: true });
-          console.log('[API /api/generate] Stream chunk received:', chunk);
+          // console.log('[API /api/generate] Stream chunk received:', chunk); // Optional: for debugging stream
           controller.enqueue(value);
         }
       }
