@@ -1,310 +1,322 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { browser } from '$app/environment';
-  import type { RulePack, System, CelestialBody } from '$lib/types';
+  import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
+  import type { RulePack, System, Starmap as StarmapType, StarSystemNode, Route } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
-  import { generateSystem, computePlayerSnapshot, deleteNode, addPlanetaryBody, renameNode, addHabitablePlanet } from '$lib/api';
-  import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
-  import BodyDetails from '$lib/components/BodyDetails.svelte';
-  import SystemSummary from '$lib/components/SystemSummary.svelte';
-  import SettingsModal from '$lib/components/SettingsModal.svelte';
-
+  import { generateSystem } from '$lib/api';
+  import { starmapStore } from '$lib/starmapStore';
   import { systemStore } from '$lib/stores';
+  import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
+  import Starmap from '$lib/components/Starmap.svelte';
+  import SystemView from '$lib/components/SystemView.svelte';
+  import RouteEditorModal from '$lib/components/RouteEditorModal.svelte';
 
-  let rulePack: RulePack | null = null;
-  const generatedSystem = systemStore;
+  let rulePacks: RulePack[] = [];
   let isLoading = true;
   let error: string | null = null;
-  let visualizer: SystemVisualizer;
-  let shareStatus = '';
-  let showJson = false;
-  let generationOptions: string[] = ['Random'];
-  let selectedGenerationOption = 'Random';
-  let showSettingsModal = false;
 
-  // Time state
-  let currentTime = Date.now();
-  let isPlaying = false;
-  let timeScale = 3600 * 24 * 30;
-  let animationFrameId: number;
+  let showNewStarmapModal = false;
+  let currentSystemId: string | null = null;
+  let selectedSystemForLink: string | null = null;
 
-  // Focus state
-  let focusedBodyId: string | null = null;
-  let focusedBody: CelestialBody | null = null;
+  let showRouteEditorModal = false;
+  let routeToEdit: Route | null = null;
 
-  $: {
-    if ($systemStore && focusedBodyId) {
-        focusedBody = $systemStore.nodes.find(n => n.id === focusedBodyId) as CelestialBody;
-    } else if ($systemStore) {
-        focusedBody = $systemStore.nodes.find(n => n.parentId === null) as CelestialBody;
-    } else {
-        focusedBody = null;
-    }
-  }
-
-  function play() {
-    if (!browser) return;
-    isPlaying = true;
-    let lastTimestamp: number | null = null;
-
-    function tick(timestamp: number) {
-      if (lastTimestamp) {
-        const delta = (timestamp - lastTimestamp) / 1000;
-        currentTime += delta * timeScale * 1000;
-      }
-      lastTimestamp = timestamp;
-      if (isPlaying) {
-        animationFrameId = requestAnimationFrame(tick);
-      }
-    }
-    animationFrameId = requestAnimationFrame(tick);
-  }
-
-  function pause() {
-    if (!browser) return;
-    isPlaying = false;
-    cancelAnimationFrame(animationFrameId);
-  }
-
-  function handleGenerate(empty: boolean = false) {
-    if (!rulePack) {
-      error = 'Rule pack not loaded.';
-      return;
-    }
-    const seed = `seed-${Date.now()}`;
-    const newSystem = generateSystem(seed, rulePack, {}, selectedGenerationOption, empty);
-    systemStore.set(newSystem);
-    currentTime = newSystem.epochT0;
-    focusedBodyId = null;
-    visualizer?.resetView();
-  }
-
-  function handleFocus(event: CustomEvent<string | null>) {
-    focusedBodyId = event.detail;
-    visualizer?.resetView();
-  }
-
-  function zoomOut() {
-      if (focusedBody?.parentId) {
-          focusedBodyId = focusedBody.parentId;
-      } else {
-          focusedBodyId = null;
-      }
-    visualizer?.resetView();
-  }
-
-  function handleDeleteNode(event: CustomEvent<string>) {
-      if (!$systemStore) return;
-      const nodeId = event.detail;
-      systemStore.set(deleteNode($systemStore, nodeId));
-      // If the deleted node was focused, zoom out to its parent
-      if (focusedBodyId === nodeId) {
-          zoomOut();
-      }
-  }
-
-  function handleAddNode(event: CustomEvent<{hostId: string, planetType: string}>) {
-      if (!$systemStore || !rulePack) return;
-      const { hostId, planetType } = event.detail;
-      systemStore.set(addPlanetaryBody($systemStore, hostId, planetType, rulePack));
-  }
-
-  function handleAddHabitablePlanet(event: CustomEvent<{hostId: string, habitabilityType: 'earth-like' | 'human-habitable' | 'alien-habitable'}>) {
-      if (!$systemStore || !rulePack) return;
-      const { hostId, habitabilityType } = event.detail;
-      try {
-        systemStore.set(addHabitablePlanet($systemStore, hostId, habitabilityType, rulePack));
-      } catch (e: any) {
-        alert(e.message);
-      }
-  }
-
-    function handleRenameNode(event: CustomEvent<{nodeId: string, newName: string}>) {
-      if (!$systemStore) return;
-      const { nodeId, newName } = event.detail;
-      systemStore.set(renameNode($systemStore, nodeId, newName));
-    }
-  
-    function handleSaveToBrowser() {    if (!$systemStore) return;
-    localStorage.setItem('stargen_saved_system', JSON.stringify($systemStore));
-    alert('System saved to browser storage.');
-  }
-
-  function handleLoadFromBrowser() {
-    const savedJson = localStorage.getItem('stargen_saved_system');
-    if (savedJson) {
-      try {
-        const newSystem = JSON.parse(savedJson);
-        systemStore.set(newSystem);
-        currentTime = newSystem?.epochT0 || Date.now();
-        focusedBodyId = null;
-        visualizer?.resetView();
-      } catch (e) {
-        alert('Failed to load system from browser storage. The data may be corrupt.');
-        console.error(e);
-      }
-    } else {
-      alert('No system found in browser storage.');
-    }
-  }
-
-  function handleDownloadJson() {
-    if (!$systemStore) return;
-    const json = JSON.stringify($systemStore, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${$systemStore.name.replace(/\s+/g, '_') || 'system'}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  function handleUploadJson(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (!input.files || input.files.length === 0) return;
-    const file = input.files[0];
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const json = e.target?.result as string;
-        const newSystem = JSON.parse(json);
-        systemStore.set(newSystem);
-        currentTime = newSystem?.epochT0 || Date.now();
-        focusedBodyId = null;
-        visualizer?.resetView();
-      } catch (err) {
-        alert('Failed to parse JSON file.');
-        console.error(err);
-      }
-    };
-    reader.readAsText(file);
-  }
-
-  async function handleShare() {
-      if (!$systemStore) return;
-      try {
-          const snapshot = computePlayerSnapshot($systemStore);
-          const json = JSON.stringify(snapshot);
-          const base64 = btoa(json);
-          const url = `${window.location.origin}/p/${base64}`;
-          await navigator.clipboard.writeText(url);
-          shareStatus = 'Link copied to clipboard!';
-      } catch (err) {
-          shareStatus = 'Failed to copy link.';
-          console.error(err);
-      }
-      setTimeout(() => shareStatus = '', 3000);
-  }
+  let selectedRulepack: RulePack | undefined;
+  let fileInput: HTMLInputElement;
+  let starmapComponent: Starmap;
 
   onMount(async () => {
     try {
-      rulePack = await fetchAndLoadRulePack('/rulepacks/starter-sf-pack.json');
-      const starTypes = rulePack.distributions['star_types'].entries.map(st => st.value);
-      const options: string[] = ['Random'];
-      starTypes.forEach(st => {
-        const typeName = st.replace('star/', '');
-        options.push(`Type ${typeName}`);
-        options.push(`Type ${typeName} Binary`);
-      });
-      generationOptions = options;
+      const starterRulepack = await fetchAndLoadRulePack('/rulepacks/starter-sf-pack.json');
+      rulePacks = [starterRulepack];
+      selectedRulepack = starterRulepack;
     } catch (e: any) {
       error = e.message;
     } finally {
       isLoading = false;
     }
-  });
 
-  onDestroy(() => {
-    if (browser) {
-      pause();
+    const savedStarmap = localStorage.getItem('stargen_saved_starmap');
+    if (savedStarmap) {
+      starmapStore.set(JSON.parse(savedStarmap));
+    } else {
+      showNewStarmapModal = true;
     }
   });
 
+  // Subscribe to systemStore and update starmapStore
+  systemStore.subscribe(system => {
+    if (system && currentSystemId) {
+      starmapStore.update(starmap => {
+        if (starmap) {
+          const systemNode = starmap.systems.find(s => s.id === currentSystemId);
+          if (systemNode) {
+            systemNode.system = system;
+          }
+        }
+        return starmap;
+      });
+    }
+  });
+
+  function handleCreateStarmap(event: CustomEvent<{ name: string; rulepack: RulePack; distanceUnit: string; unitIsPrefix: boolean }>) {
+    const { name, rulepack, distanceUnit, unitIsPrefix } = event.detail;
+    selectedRulepack = rulepack;
+    const seed = `seed-${Date.now()}`;
+    const newSystem = generateSystem(seed, rulepack, {}, 'Random', false);
+    const newStarmap: StarmapType = {
+      id: `starmap-${Date.now()}`,
+      name,
+      systems: [
+        {
+          id: newSystem.id,
+          name: newSystem.name,
+          position: { x: 400, y: 300 },
+          system: newSystem,
+        },
+      ],
+      routes: [],
+    };
+    starmapStore.set(newStarmap);
+    showNewStarmapModal = false;
+  }
+
+  function handleSystemClick(event: CustomEvent<string>) {
+    currentSystemId = event.detail;
+    const systemNode = get(starmapStore)?.systems.find(s => s.id === currentSystemId);
+    if (systemNode) {
+      systemStore.set(systemNode.system);
+    }
+  }
+
+  function handleSystemZoom(event: CustomEvent<string>) {
+    currentSystemId = event.detail;
+    const systemNode = get(starmapStore)?.systems.find(s => s.id === currentSystemId);
+    if (systemNode) {
+      systemStore.set(systemNode.system);
+    }
+  }
+
+  function handleBackToStarmap() {
+    currentSystemId = null;
+    systemStore.set(null);
+  }
+
+  function handleSaveStarmap() {
+    if ($starmapStore) {
+      console.log('Saving starmap:', $starmapStore);
+      localStorage.setItem('stargen_saved_starmap', JSON.stringify($starmapStore));
+      alert('Starmap saved to browser storage.');
+    }
+  }
+
+  function handleLoadStarmap() {
+    const savedStarmap = localStorage.getItem('stargen_saved_starmap');
+    if (savedStarmap) {
+      const loadedData = JSON.parse(savedStarmap);
+      console.log('Loaded starmap:', loadedData);
+      starmapStore.set(loadedData);
+      alert('Starmap loaded from browser storage.');
+    } else {
+      alert('No starmap found in browser storage.');
+    }
+  }
+
+  function handleAddSystemAt(event: CustomEvent<{ x: number; y: number }>) {
+    if (!$starmapStore || !selectedRulepack) return;
+
+    const { x, y } = event.detail;
+    const seed = `seed-${Date.now()}`;
+    const newSystem = generateSystem(seed, selectedRulepack, {}, 'Random', false);
+
+    const newSystemNode: StarSystemNode = {
+      id: newSystem.id,
+      name: newSystem.name,
+      position: { x, y },
+      system: newSystem,
+    };
+
+    starmapStore.update(starmap => {
+      if (starmap) {
+        starmap.systems = [...starmap.systems, newSystemNode];
+      }
+      return starmap;
+    });
+  }
+
+
+
+  function handleSelectSystemForLink(event: CustomEvent<string>) {
+    const systemId = event.detail;
+    if (!selectedSystemForLink) {
+      selectedSystemForLink = systemId;
+    } else if (selectedSystemForLink !== systemId) {
+      // Create a link between selectedSystemForLink and systemId
+      if (!$starmapStore) return;
+
+      const newRoute: Route = {
+        id: `route-${Date.now()}`,
+        sourceSystemId: selectedSystemForLink,
+        targetSystemId: systemId,
+        distance: Math.floor(Math.random() * 10) + 1, // Placeholder distance
+        unit: 'J', // Placeholder unit
+      };
+
+      starmapStore.update(starmap => {
+        if (starmap) {
+          starmap.routes = [...starmap.routes, newRoute];
+        }
+        return starmap;
+      });
+
+      selectedSystemForLink = null;
+    } else {
+      // Clicking the same system again deselects it
+      selectedSystemForLink = null;
+    }
+  }
+
+  function handleEditRoute(event: CustomEvent<Route>) {
+    routeToEdit = event.detail;
+    showRouteEditorModal = true;
+  }
+
+  function handleSaveRoute(event: CustomEvent<Route>) {
+    const updatedRoute = event.detail;
+    starmapStore.update(starmap => {
+      if (starmap) {
+        const index = starmap.routes.findIndex(r => r.id === updatedRoute.id);
+        if (index !== -1) {
+          starmap.routes[index] = updatedRoute;
+        }
+      }
+      return starmap;
+    });
+    routeToEdit = null;
+    showRouteEditorModal = false;
+  }
+
+  function handleDeleteRoute(event: CustomEvent<string>) {
+    const routeIdToDelete = event.detail;
+    starmapStore.update(starmap => {
+      if (starmap) {
+        starmap.routes = starmap.routes.filter(r => r.id !== routeIdToDelete);
+      }
+      return starmap;
+    });
+    routeToEdit = null;
+    showRouteEditorModal = false;
+  }
+
+  function handleDeleteSystem(event: CustomEvent<string>) {
+    const systemIdToDelete = event.detail;
+    starmapStore.update(starmap => {
+      if (starmap) {
+        starmap.systems = starmap.systems.filter(s => s.id !== systemIdToDelete);
+        starmap.routes = starmap.routes.filter(r => r.sourceSystemId !== systemIdToDelete && r.targetSystemId !== systemIdToDelete);
+      }
+      return starmap;
+    });
+    selectedSystemForLink = null; // Deselect after deletion
+    currentSystemId = null; // If the deleted system was being viewed, go back to starmap
+    systemStore.set(null);
+  }
+
+  function handleClearStarmap() {
+    if (confirm('ARE YOU SURE? This will clear the entire starmap and cannot be undone.')) {
+      starmapStore.set(null);
+      localStorage.removeItem('stargen_saved_starmap');
+      showNewStarmapModal = true;
+    }
+  }
+
+  function handleDownloadStarmap() {
+    if (!$starmapStore) return;
+
+    const data = JSON.stringify($starmapStore, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${$starmapStore.name.replace(/\s/g, '_') || 'starmap'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleUploadStarmap() {
+    fileInput.click();
+  }
+
+  function handleFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result as string);
+        // Basic validation
+        if (data.id && data.name && Array.isArray(data.systems) && Array.isArray(data.routes)) {
+          starmapStore.set(data);
+        } else {
+          alert('Invalid starmap file.');
+        }
+      } catch (e) {
+        alert('Error reading starmap file.');
+      }
+    };
+
+    reader.readAsText(file);
+  }
+
+  function handleResetView() {
+    if (starmapComponent) {
+      starmapComponent.resetView();
+    }
+  }
 </script>
 
 <main>
   <h1>Star System Generator</h1>
-  
+
+  <input type="file" bind:this={fileInput} on:change={handleFileSelected} style="display: none;" accept=".json" />
+
   {#if isLoading}
     <p>Loading rule pack...</p>
   {:else if error}
     <p style="color: red;">Error: {error}</p>
-  {:else}
-    <div class="top-bar">
-        <div class="gen-controls">
-            <select bind:value={selectedGenerationOption}>
-                {#each generationOptions as option (option)}
-                    <option value={option}>{option}</option>
-                {/each}
-            </select>
-            <button on:click={() => handleGenerate(false)} disabled={!rulePack}>
-              Generate System
-            </button>
-            <button on:click={() => handleGenerate(true)} disabled={!rulePack}>
-              Generate Empty System
-            </button>
-        </div>
-        <div class="save-load-controls">
-            <button on:click={handleSaveToBrowser}>Save to Browser</button>
-            <button on:click={handleLoadFromBrowser}>Load from Browser</button>
-            <button on:click={handleDownloadJson} disabled={!$systemStore}>Download JSON</button>
-            <button on:click={() => document.getElementById('upload-json')?.click()}>Upload JSON</button>
-            <input type="file" id="upload-json" hidden accept=".json,application/json" on:change={handleUploadJson} />
-            <button on:click={() => showSettingsModal = true}>Settings</button>
-        </div>
-        {#if $systemStore}
-            <div class="share-controls">
-                <button on:click={handleShare}>Share Player Link</button>
-                {#if shareStatus}<span>{shareStatus}</span>{/if}
-            </div>
-        {/if}
+  {:else if showNewStarmapModal}
+    <NewStarmapModal rulepacks={rulePacks} on:create={handleCreateStarmap} />
+  {:else if $starmapStore && !currentSystemId}
+    <Starmap
+      bind:this={starmapComponent}
+      starmap={$starmapStore}
+      on:systemclick={handleSystemClick}
+      on:systemzoom={handleSystemZoom}
+      on:addsystemat={handleAddSystemAt}
+      on:selectsystemforlink={handleSelectSystemForLink}
+      on:editroute={handleEditRoute}
+      on:deletesystem={handleDeleteSystem}
+      {selectedSystemForLink}
+    />
+    <div class="starmap-controls">
+      <button on:click={handleSaveStarmap}>Save to Browser</button>
+      <button on:click={handleLoadStarmap}>Load from Browser</button>
+      <button on:click={handleDownloadStarmap}>Download Starmap</button>
+      <button on:click={handleUploadStarmap}>Upload Starmap</button>
+
+      <button on:click={handleClearStarmap} class="delete-button">DELETE Starmap</button>
+
     </div>
+  {:else if $starmapStore && currentSystemId && $systemStore}
+    <SystemView system={$systemStore} rulePack={rulePacks[0]} on:back={handleBackToStarmap} />
   {/if}
 
-  {#if $systemStore}
-    <div class="controls">
-        <button on:click={() => isPlaying ? pause() : play()}>
-            {isPlaying ? 'Pause' : 'Play'}
-        </button>
-        <div class="time-scales">
-            <span>1s = </span>
-            <button on:click={() => timeScale = 1} class:active={timeScale === 1}>1s</button>
-            <button on:click={() => timeScale = 3600} class:active={timeScale === 3600}>1h</button>
-            <button on:click={() => timeScale = 3600 * 24} class:active={timeScale === 3600 * 24}>1d</button>
-            <button on:click={() => timeScale = 3600 * 24 * 30} class:active={timeScale === 3600 * 24 * 30}>30d</button>
-            <button on:click={() => timeScale = 3600 * 24 * 90} class:active={timeScale === 3600 * 24 * 90}>90d</button>
-            <button on:click={() => timeScale = 3600 * 24 * 365} class:active={timeScale === 3600 * 24 * 365}>1y</button>
-        </div>
-    </div>
-
-    <div class="focus-header">
-        <h2>Current Focus: {focusedBody?.name || 'System View'}</h2>
-        <button on:click={() => visualizer?.resetView()}>Reset View</button>
-        {#if focusedBody?.parentId}
-            <button on:click={zoomOut}>Zoom Out</button>
-        {/if}
-    </div>
-
-    {#if focusedBody?.parentId === null}
-        <SystemSummary system={$systemStore} />
-    {/if}
-
-    <SystemVisualizer bind:this={visualizer} system={$systemStore} {currentTime} {focusedBodyId} on:focus={handleFocus} />
-
-    <BodyDetails body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:renameNode={handleRenameNode} on:addHabitablePlanet={handleAddHabitablePlanet} />
-
-    <div class="debug-controls">
-        <button on:click={() => showJson = !showJson}>
-            {showJson ? 'Hide' : 'Show'} JSON
-        </button>
-    </div>
-
-    {#if showJson}
-        <pre>{JSON.stringify($systemStore, null, 2)}</pre>
-    {/if}
+  {#if showRouteEditorModal && routeToEdit}
+    <RouteEditorModal bind:showModal={showRouteEditorModal} route={routeToEdit} on:save={handleSaveRoute} on:delete={handleDeleteRoute} />
   {/if}
 
   <footer>
@@ -312,58 +324,10 @@
   </footer>
 </main>
 
-<SettingsModal bind:showModal={showSettingsModal} />
-
 <style>
   main {
     font-family: sans-serif;
     padding: 2em;
-  }
-  .top-bar, .controls, .focus-header {
-    margin: 1em 0;
-    display: flex;
-    align-items: center;
-    gap: 1em;
-  }
-  .top-bar {
-      justify-content: space-between;
-  }
-  .gen-controls, .share-controls, .save-load-controls {
-      display: flex;
-      align-items: center;
-      gap: 1em;
-  }
-  .focus-header h2 {
-      margin: 0;
-  }
-  .time-scales {
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-    background-color: #eee;
-    padding: 0.25em;
-    border-radius: 5px;
-  }
-  .time-scales button {
-      border: 1px solid #ccc;
-      background-color: white;
-  }
-  .time-scales button.active {
-      border-color: #2d69a6;
-      background-color: #3b82f6;
-      color: white;
-  }
-  .debug-controls {
-      margin-top: 1em;
-  }
-  pre {
-    background-color: #1a1a1a;
-    border: 1px solid #333;
-    padding: 1em;
-    border-radius: 5px;
-    white-space: pre-wrap;
-    color: #eee;
-    font-family: monospace;
   }
   footer {
       margin-top: 2em;
@@ -371,5 +335,16 @@
       border-top: 1px solid #333;
       color: #999;
       font-size: 0.9em;
+  }
+  .starmap-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 10px;
+  }
+
+  .delete-button {
+    color: red;
   }
 </style>

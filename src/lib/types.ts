@@ -132,4 +132,26 @@ export type ViableOrbitResult = {
 } | {
   success: false;
   reason: string;
-};'''
+};
+
+export interface StarSystemNode {
+  id: ID;
+  name: string;
+  position: { x: number; y: number };
+  system: System;
+}
+
+export interface Route {
+  id: ID;
+  sourceSystemId: ID;
+  targetSystemId: ID;
+  distance: number;
+  unit: string;
+}
+
+export interface Starmap {
+  id: ID;
+  name: string;
+  systems: StarSystemNode[];
+  routes: Route[];
+}'''

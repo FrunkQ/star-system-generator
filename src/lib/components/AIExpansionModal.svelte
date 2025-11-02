@@ -186,6 +186,7 @@
 <svelte:body on:keydown={handleKeyDown} />
 
 {#if showModal}
+<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 <div class="modal-backdrop" on:click={handleClose} role="button" tabindex="0" on:keydown={(e) => {if (e.key === 'Enter' || e.key === 'Space') handleClose()}}>
   <div class="modal" on:click|stopPropagation role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabindex="-1">
     <h2 id="dialog-title">Expand Description with AI</h2>

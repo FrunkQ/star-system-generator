@@ -27,6 +27,8 @@ Report Style: %%STYLE_LABEL%% Style Guideline: %%STYLE_GUIDELINE%%
 Local Star(s) Scientific Data (background info):
 - Local Star(s): %%HOST_STAR%%
 
+The resports can be from orbit or on the planet surface itself; if a has one. If the temp is too high, or atmosphere too thick it will have to be from orbit, unless specilaist equipment is used which should be included in the report.
+
 ---
 
 Begin the description now. Make it creative and interesting!`;
