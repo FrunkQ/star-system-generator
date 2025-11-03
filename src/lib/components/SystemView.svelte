@@ -6,7 +6,6 @@
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import BodyDetails from '$lib/components/BodyDetails.svelte';
   import SystemSummary from '$lib/components/SystemSummary.svelte';
-  import SettingsModal from '$lib/components/SettingsModal.svelte';
 
   import { systemStore } from '$lib/stores';
 
@@ -21,7 +20,6 @@
   let showJson = false;
   let generationOptions: string[] = ['Random'];
   let selectedGenerationOption = 'Random';
-  let showSettingsModal = false;
 
   // Time state
   let currentTime = Date.now();
@@ -239,7 +237,6 @@
             <button on:click={handleDownloadJson} disabled={!$systemStore}>Download JSON</button>
             <button on:click={() => document.getElementById('upload-json')?.click()}>Upload JSON</button>
             <input type="file" id="upload-json" hidden accept=".json,application/json" on:change={handleUploadJson} />
-            <button on:click={() => showSettingsModal = true}>Settings</button>
         </div>
         {#if $systemStore}
             <div class="share-controls">
@@ -293,7 +290,6 @@
   {/if}
 </main>
 
-<SettingsModal bind:showModal={showSettingsModal} />
 
 <style>
   main {

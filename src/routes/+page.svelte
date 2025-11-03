@@ -10,6 +10,7 @@
   import Starmap from '$lib/components/Starmap.svelte';
   import SystemView from '$lib/components/SystemView.svelte';
   import RouteEditorModal from '$lib/components/RouteEditorModal.svelte';
+  import SettingsModal from '$lib/components/SettingsModal.svelte';
 
   let rulePacks: RulePack[] = [];
   let isLoading = true;
@@ -21,6 +22,7 @@
 
   let showRouteEditorModal = false;
   let routeToEdit: Route | null = null;
+  let showSettingsModal = false;
 
   let selectedRulepack: RulePack | undefined;
   let fileInput: HTMLInputElement;
@@ -53,6 +55,7 @@
           const systemNode = starmap.systems.find(s => s.id === currentSystemId);
           if (systemNode) {
             systemNode.system = system;
+            systemNode.name = system.name;
           }
         }
         return starmap;
@@ -68,6 +71,8 @@
     const newStarmap: StarmapType = {
       id: `starmap-${Date.now()}`,
       name,
+      distanceUnit,
+      unitIsPrefix,
       systems: [
         {
           id: newSystem.id,
@@ -160,7 +165,8 @@
         sourceSystemId: selectedSystemForLink,
         targetSystemId: systemId,
         distance: Math.floor(Math.random() * 10) + 1, // Placeholder distance
-        unit: 'J', // Placeholder unit
+        unit: $starmapStore.distanceUnit,
+        lineStyle: 'solid',
       };
 
       starmapStore.update(starmap => {
@@ -272,11 +278,21 @@
     reader.readAsText(file);
   }
 
-  function handleResetView() {
-    if (starmapComponent) {
-      starmapComponent.resetView();
-    }
+
+  function handleSaveSettings(event: CustomEvent<{ starmap: Partial<StarmapType>, ai: any }>) {
+    const { starmap: starmapSettings, ai: aiSettings } = event.detail;
+    starmapStore.update(starmap => {
+      if (starmap) {
+        return { ...starmap, ...starmapSettings };
+      }
+      return starmap;
+    });
+    // Assuming aiSettings is the complete object to be saved
+    localStorage.setItem('stargen_ai_settings', JSON.stringify(aiSettings));
+    showSettingsModal = false;
   }
+
+
 </script>
 
 <main>
@@ -307,6 +323,7 @@
       <button on:click={handleLoadStarmap}>Load from Browser</button>
       <button on:click={handleDownloadStarmap}>Download Starmap</button>
       <button on:click={handleUploadStarmap}>Upload Starmap</button>
+      <button on:click={() => showSettingsModal = true}>Settings</button>
 
       <button on:click={handleClearStarmap} class="delete-button">DELETE Starmap</button>
 
@@ -315,8 +332,12 @@
     <SystemView system={$systemStore} rulePack={rulePacks[0]} on:back={handleBackToStarmap} />
   {/if}
 
-  {#if showRouteEditorModal && routeToEdit}
-    <RouteEditorModal bind:showModal={showRouteEditorModal} route={routeToEdit} on:save={handleSaveRoute} on:delete={handleDeleteRoute} />
+  {#if showRouteEditorModal && routeToEdit && $starmapStore}
+    <RouteEditorModal bind:showModal={showRouteEditorModal} route={routeToEdit} starmap={$starmapStore} on:save={handleSaveRoute} on:delete={handleDeleteRoute} />
+  {/if}
+
+  {#if showSettingsModal && $starmapStore}
+    <SettingsModal bind:showModal={showSettingsModal} starmap={$starmapStore} on:save={handleSaveSettings} />
   {/if}
 
   <footer>

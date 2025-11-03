@@ -1,17 +1,18 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { Route } from '../types';
+  import type { Route, Starmap } from '../types';
 
   export let showModal: boolean;
   export let route: Route;
+  export let starmap: Starmap;
 
   const dispatch = createEventDispatcher();
 
   let editedDistance: number = route.distance;
-  let editedUnit: string = route.unit;
+  let editedLineStyle: 'solid' | 'dashed' = route.lineStyle || 'solid';
 
   function saveChanges() {
-    dispatch('save', { ...route, distance: editedDistance, unit: editedUnit });
+    dispatch('save', { ...route, distance: editedDistance, unit: starmap.distanceUnit, lineStyle: editedLineStyle });
     showModal = false;
   }
 
@@ -32,10 +33,18 @@
       <label>
         Distance:
         <input type="number" bind:value={editedDistance} />
+        {#if starmap.unitIsPrefix}
+          <div>{starmap.distanceUnit}</div>
+        {:else}
+          <span>{starmap.distanceUnit}</span>
+        {/if}
       </label>
       <label>
-        Unit:
-        <input type="text" bind:value={editedUnit} />
+        Line Style:
+        <select bind:value={editedLineStyle}>
+          <option value="solid">Solid</option>
+          <option value="dashed">Dashed</option>
+        </select>
       </label>
       <div class="buttons">
         <button on:click={saveChanges}>Save</button>
@@ -66,6 +75,18 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    color: #fff; /* Set text color to white */
+  }
+
+  .modal label {
+    color: #fff; /* Ensure labels are white */
+  }
+
+  .modal input[type="number"],
+  .modal input[type="text"] { /* Added type="text" for consistency, though not currently used */
+    background-color: #555; /* Slightly lighter background for input fields */
+    color: #fff; /* White text for input fields */
+    border: 1px solid #777;
   }
 
   .buttons {

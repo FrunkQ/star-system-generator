@@ -10,8 +10,8 @@
   const dispatch = createEventDispatcher();
 
   let svgElement: SVGSVGElement;
-  let panzoomInstance: any; // Use 'any' to avoid type errors with dynamic import
   let groupElement: SVGGElement;
+  let starmapContainer: HTMLDivElement;
 
   let showContextMenu = false;
   let contextMenuX = 0;
@@ -20,27 +20,10 @@
   let isStarContextMenu = false;
 
   onMount(async () => {
-    const { default: Panzoom } = await import('@panzoom/panzoom');
-    if (groupElement) {
-      panzoomInstance = Panzoom(groupElement, {
-        maxScale: 5, // Maximum zoom level
-        minScale: 0.5, // Minimum zoom level
-        pan: true, // Enable panning
-      });
-
-      // Optional: Add event listeners for zoom controls
-      // For example, to zoom with mouse wheel:
-      svgElement.parentElement?.addEventListener('wheel', panzoomInstance.zoomWithWheel);
-    }
-
     document.addEventListener('click', handleClickOutside);
   });
 
   onDestroy(() => {
-    // Clean up the panzoom instance when the component is destroyed
-    if (panzoomInstance) {
-      panzoomInstance.destroy();
-    }
     document.removeEventListener('click', handleClickOutside);
   });
 
@@ -87,19 +70,42 @@
     event.stopPropagation();
     showContextMenu = true;
     isStarContextMenu = true;
-    contextMenuX = event.clientX;
-    contextMenuY = event.clientY;
+    const rect = starmapContainer.getBoundingClientRect();
+    contextMenuX = event.clientX - rect.left;
+    contextMenuY = event.clientY - rect.top;
     contextMenuSystemId = systemId;
   }
+
+  let contextMenuClickCoords = { x: 0, y: 0 };
 
   function handleMapContextMenu(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
+    showContextMenu = true;
+    isStarContextMenu = false;
+    const rect = starmapContainer.getBoundingClientRect();
+    contextMenuX = event.clientX - rect.left;
+    contextMenuY = event.clientY - rect.top;
+    contextMenuSystemId = null; // No system selected for map context menu
+
+    const svgRect = svgElement.getBoundingClientRect();
+    const viewBox = svgElement.viewBox.baseVal;
+    const scaleX = viewBox.width / svgRect.width;
+    const scaleY = viewBox.height / svgRect.height;
+    contextMenuClickCoords = {
+      x: (event.clientX - svgRect.left) * scaleX,
+      y: (event.clientY - svgRect.top) * scaleY
+    };
   }
 
   function closeContextMenu() {
     showContextMenu = false;
     contextMenuSystemId = null;
+  }
+
+  function handleContextMenuAddSystem() {
+    dispatch('addsystemat', contextMenuClickCoords);
+    closeContextMenu();
   }
 
   function handleContextMenuZoom() {
@@ -123,33 +129,13 @@
     closeContextMenu();
   }
 
-  let addingSystem = false;
 
-  function handleAddSystemClick() {
-    addingSystem = !addingSystem;
-  }
 
-  function handleMapClick(event: MouseEvent) {
-    if (addingSystem) {
-      const rect = svgElement.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      dispatch('addsystemat', { x, y });
-      addingSystem = false;
-    }
-  }
 
-  export function resetView() {
-    if (panzoomInstance) {
-      panzoomInstance.reset();
-    }
-  }
 </script>
 
-<div class="starmap-container" style="touch-action: none;">
+<div class="starmap-container" style="touch-action: none;" bind:this={starmapContainer}>
   <div class="reset-view-controls">
-    <button on:click={resetView}>Reset View</button>
-    <button on:click={handleAddSystemClick}>{addingSystem ? 'Adding System - click on map' : 'Add System'}</button>
   </div>
   <h1>{starmap.name}</h1>
   <svg
@@ -158,11 +144,42 @@
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 800 600"
     on:contextmenu={handleMapContextMenu}
-    on:click={handleMapClick}
     role="button"
     tabindex="0"
   >
     <g bind:this={groupElement}>
+      {#each starmap.routes as route}
+        {@const sourceSystem = starmap.systems.find(s => s.id === route.sourceSystemId)}
+        {@const targetSystem = starmap.systems.find(s => s.id === route.targetSystemId)}
+        {#if sourceSystem && targetSystem}
+          {@const strokeWidth = 2}
+          <line
+            x1={sourceSystem.position.x}
+            y1={sourceSystem.position.y}
+            x2={targetSystem.position.x}
+            y2={targetSystem.position.y}
+            class="route-clickable-area"
+          />
+          <line
+            x1={sourceSystem.position.x}
+            y1={sourceSystem.position.y}
+            x2={targetSystem.position.x}
+            y2={targetSystem.position.y}
+            class="route"
+            class:jump-route={route.lineStyle === 'dashed'}
+            style="stroke-width: {strokeWidth}px;"
+          />
+          <text
+            x={(sourceSystem.position.x + targetSystem.position.x) / 2}
+            y={(sourceSystem.position.y + targetSystem.position.y) / 2 - 5}
+            class="route-label"
+            on:click={() => dispatch('editroute', route)}
+          >
+            {starmap.unitIsPrefix ? starmap.distanceUnit : ''}{route.distance}{!starmap.unitIsPrefix ? ` ${starmap.distanceUnit}` : ''}
+          </text>
+        {/if}
+      {/each}
+
       {#each starmap.systems as systemNode}
         {@const rootNode = systemNode.system.nodes.find(n => n.parentId === null)}
         {#if rootNode && rootNode.kind === 'barycenter'}
@@ -228,39 +245,6 @@
           </text>
         {/if}
       {/each}
-
-      {#each starmap.routes as route}
-        {@const sourceSystem = starmap.systems.find(s => s.id === route.sourceSystemId)}
-        {@const targetSystem = starmap.systems.find(s => s.id === route.targetSystemId)}
-        {#if sourceSystem && targetSystem}
-          {@const strokeWidth = Math.max(1, route.distance / 2)}
-          <line
-            x1={sourceSystem.position.x}
-            y1={sourceSystem.position.y}
-            x2={targetSystem.position.x}
-            y2={targetSystem.position.y}
-            class="route-clickable-area"
-            on:click={() => dispatch('editroute', route)}
-          />
-          <line
-            x1={sourceSystem.position.x}
-            y1={sourceSystem.position.y}
-            x2={targetSystem.position.x}
-            y2={targetSystem.position.y}
-            class="route"
-            class:jump-route={route.unit === 'J'}
-            style="stroke-width: {strokeWidth}px;"
-          />
-          <text
-            x={(sourceSystem.position.x + targetSystem.position.x) / 2}
-            y={(sourceSystem.position.y + targetSystem.position.y) / 2 - 5}
-            class="route-label"
-            on:click={() => dispatch('editroute', route)}
-          >
-            {route.unit === 'J' ? 'J' : ''}{route.distance}{route.unit !== 'J' ? ` ${route.unit}` : ''}
-          </text>
-        {/if}
-      {/each}
     </g>
   </svg>
 
@@ -271,6 +255,7 @@
       on:zoom={handleContextMenuZoom}
       on:link={handleContextMenuLink}
       on:delete={handleContextMenuDelete}
+      on:addsystem={handleContextMenuAddSystem}
       isStar={isStarContextMenu}
     />
   {/if}
@@ -327,7 +312,7 @@
   }
 
   .route-label {
-    fill: #00ccff;
+    fill: #FFFF00;
     font-size: 10px;
     text-anchor: middle;
   }

@@ -147,11 +147,14 @@ export interface Route {
   targetSystemId: ID;
   distance: number;
   unit: string;
+  lineStyle: 'solid' | 'dashed';
 }
 
 export interface Starmap {
   id: ID;
   name: string;
+  distanceUnit: string;
+  unitIsPrefix: boolean;
   systems: StarSystemNode[];
   routes: Route[];
 }'''

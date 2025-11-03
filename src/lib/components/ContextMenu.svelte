@@ -14,6 +14,8 @@
       <li><button on:click={() => dispatch('zoom')}>Zoom In</button></li>
       <li><button on:click={() => dispatch('link')}>Link System</button></li>
       <li><button on:click={() => dispatch('delete')}>Delete System</button></li>
+    {:else}
+      <li><button on:click={() => dispatch('addsystem')}>Add System</button></li>
     {/if}
   </ul>
 </div>
