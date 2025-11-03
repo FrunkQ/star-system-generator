@@ -1,6 +1,6 @@
 # Star System Generator & Visualizer
 
-A procedural generator for creating scientifically-plausible star systems, complete with a real-time orbital visualizer.
+A procedural generator for creating scientifically-plausible star systems, complete with a real-time orbital visualizer and starmap.
 
 ## What is it for?
 
@@ -18,6 +18,7 @@ This tool was primarily designed to enhance Science Fiction Tabletop Role-Playin
 *   **Environmental Simulation**: Models stellar radiation output and surface radiation on planets, including the effects of magnetic fields.
 *   **Habitability & Biospheres**: A habitability score is calculated based on multiple factors. Qualifying planets can develop unique, procedurally generated biospheres.
 *   **Interactive 2D Visualizer**: An orbital view of the generated system with playback controls, zoom, and focus abilities.
+*   **Starmap**: A pan and zoomable map of multiple star systems, with the ability to add, link, and delete systems. Routes between systems can be created and edited.
 *   **GM Editing Tools**:
     *   **Rename**: Click on any body's name to rename it.
     *   **Add**: Add a new planet or moon to any star or planet.
@@ -25,14 +26,23 @@ This tool was primarily designed to enhance Science Fiction Tabletop Role-Playin
 *   **AI-Powered Descriptions**: Integrates with OpenRouter to allow GMs to generate rich, narrative descriptions for any celestial body using customizable prompts, tags, and styles.
 *   **Save & Load**: 
     *   Save your creations to your browser's local storage.
-    *   Download any system as a JSON file to your computer.
+    *   Download any system or the entire starmap as a JSON file to your computer.
     *   Upload a previously saved JSON file to continue your work.
 
 ## Usage
 
 ### Generating a System
-1.  Use the dropdown on the top-left to select the type of star system you want to create (e.g., "Random", "Type G", "Type M Binary").
-2.  Click **"Generate System"**.
+1.  On first load, you will be prompted to create a new starmap.
+2.  Give your starmap a name and click "Create".
+
+### Interacting with the Starmap
+*   **Pan and Zoom**: Use the mouse wheel to zoom and click and drag to pan the starmap.
+*   **Reset View**: Click the "Reset View" button at the top right of the starmap to reset the pan and zoom.
+*   **Add System**: Click the "Add System" button at the top right of the starmap. The button will change to "Adding System - click on map". Click anywhere on the starmap to add a new system at that location.
+*   **View System**: Click on a star system to view its details.
+*   **Link Systems**: Right-click on a star and select "Link System". Then right-click on another star to create a route between them.
+*   **Edit Route**: Click on a route line or its label to open the route editor.
+*   **Delete System**: Right-click on a star and select "Delete System".
 
 ### Exploring the System
 *   Click on any celestial body in the visualizer to focus on it and view its detailed stats in the panel below.
@@ -40,6 +50,7 @@ This tool was primarily designed to enhance Science Fiction Tabletop Role-Playin
 *   Click "Zoom Out" to return to the parent body's view.
 
 ### Using the AI Description Generator
+This is not complex LLM use and you can probaby enable these features without cost by using a free model off OpenRouter. Just sign up to OpenRouter - don't buy any credits (unless you want to use some of the more advanced models) and create an API key for yourself (save it somewhere secure!star). 
 1.  **Setup**:
     *   Click the **"Settings"** button in the top-right.
     *   Enter your [OpenRouter](https://openrouter.ai/) API Key.
@@ -57,10 +68,20 @@ This tool was primarily designed to enhance Science Fiction Tabletop Role-Playin
     *   Once you are happy with the result, click **"Accept & Close"**.
 
 ### Saving and Loading
-*   Use the **"Save to Browser"** and **"Load from Browser"** buttons to persist a single system across sessions.
-*   Use **"Download JSON"** and **"Upload JSON"** to save and load system files.
+*   Use the **"Save to Browser"** and **"Load from Browser"** buttons to persist the starmap across sessions.
+*   Use **"Download Starmap"** and **"Upload Starmap"** to save and load starmap files.
 
-## Getting Started (for Developers)
+## Known Issues
+
+*   **`panzoomInstance.getTransform is not a function`**: This error occurs when attempting to use `panzoomInstance.getTransform()` in `Starmap.svelte`, specifically when trying to transform mouse coordinates for the "Add System" functionality or the context menu. This prevents accurate placement of new systems and correct context menu positioning after pan/zoom.
+*   **Context Menu Positioning**: The right-click context menu does not appear under the mouse pointer after panning and zooming. This is directly related to the `panzoomInstance.getTransform` bug.
+*   **"Add System" Placement**: New star systems do not appear where clicked; there's a scaling factor involved, causing them to appear further away from the mouse click as you move away from the top-left corner. This is also directly related to the `panzoomInstance.getTransform` bug. There are various UI bugs just now as 
+*   **"Player View**: Player View is down just now - will return to it at some point for some love once the functionality is built out a little more. 
+
+## Getting Started (for Most Users)
+Just click here: https://star-system-generator.vercel.app/  This will be the lastest working version; automatically built off the code here. NB: while in dev-mode there are no guarentees saves will be forward compatible.
+
+## Getting Started (for Developers who want to install it locally)
 
 1.  **Install Dependencies**
 
