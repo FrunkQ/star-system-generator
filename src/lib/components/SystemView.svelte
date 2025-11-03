@@ -20,6 +20,7 @@
   let showJson = false;
   let generationOptions: string[] = ['Random'];
   let selectedGenerationOption = 'Random';
+  let showDropdown = false;
 
   // Time state
   let currentTime = Date.now();
@@ -83,7 +84,7 @@
       if (focusedBody?.parentId) {
           focusedBodyId = focusedBody.parentId;
       } else {
-          focusedBodyId = null;
+          dispatch('back');
       }
     visualizer?.resetView();
   }
@@ -120,28 +121,7 @@
       systemStore.set(renameNode($systemStore, nodeId, newName));
     }
   
-    function handleSaveToBrowser() {    if (!$systemStore) return;
-    localStorage.setItem('stargen_saved_system', JSON.stringify($systemStore));
-    alert('System saved to browser storage.');
-  }
 
-  function handleLoadFromBrowser() {
-    const savedJson = localStorage.getItem('stargen_saved_system');
-    if (savedJson) {
-      try {
-        const newSystem = JSON.parse(savedJson);
-        systemStore.set(newSystem);
-        currentTime = newSystem?.epochT0 || Date.now();
-        focusedBodyId = null;
-        visualizer?.resetView();
-      } catch (e) {
-        alert('Failed to load system from browser storage. The data may be corrupt.');
-        console.error(e);
-      }
-    } else {
-      alert('No system found in browser storage.');
-    }
-  }
 
   function handleDownloadJson() {
     if (!$systemStore) return;
@@ -150,7 +130,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${$systemStore.name.replace(/\s+/g, '_') || 'system'}.json`;
+    a.download = `${$systemStore.name.replace(/\s+/g, '_') || 'system'}-System.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -166,10 +146,14 @@
       try {
         const json = e.target?.result as string;
         const newSystem = JSON.parse(json);
-        systemStore.set(newSystem);
-        currentTime = newSystem?.epochT0 || Date.now();
-        focusedBodyId = null;
-        visualizer?.resetView();
+        if (newSystem.id && newSystem.name && Array.isArray(newSystem.nodes) && newSystem.rulePackId) {
+          systemStore.set(newSystem);
+          currentTime = newSystem?.epochT0 || Date.now();
+          focusedBodyId = null;
+          visualizer?.resetView();
+        } else {
+          alert('Invalid system file. Missing system-specific properties.');
+        }
       } catch (err) {
         alert('Failed to parse JSON file.');
         console.error(err);
@@ -217,37 +201,35 @@
 
 <main>
     <div class="top-bar">
-        <button on:click={() => dispatch('back')}>Back to Starmap</button>
-        <div class="gen-controls">
-            <select bind:value={selectedGenerationOption}>
-                {#each generationOptions as option (option)}
-                    <option value={option}>{option}</option>
-                {/each}
-            </select>
-            <button on:click={() => handleGenerate(false)}>
-              Generate System
-            </button>
-            <button on:click={() => handleGenerate(true)}>
-              Generate Empty System
-            </button>
+        <div class="focus-header">
+            <h2>Star System View - Current Focus: {focusedBody?.name || 'System View'}</h2>
         </div>
         <div class="save-load-controls">
-            <button on:click={handleSaveToBrowser}>Save to Browser</button>
-            <button on:click={handleLoadFromBrowser}>Load from Browser</button>
-            <button on:click={handleDownloadJson} disabled={!$systemStore}>Download JSON</button>
-            <button on:click={() => document.getElementById('upload-json')?.click()}>Upload JSON</button>
+            <div class="dropdown">
+                <button on:click={() => showDropdown = !showDropdown} class="hamburger-button">&#9776;</button>
+                {#if showDropdown}
+                    <div class="dropdown-content">
+                        <button on:click={handleDownloadJson} disabled={!$systemStore}>Download System</button>
+                        <button on:click={() => document.getElementById('upload-json')?.click()}>Upload System</button>
+                        <button on:click={handleShare} class="todo-button">Share Player Link (Todo)</button>
+                        <button on:click={() => alert('This is a star system generator.')}>About</button>
+                    </div>
+                {/if}
+            </div>
             <input type="file" id="upload-json" hidden accept=".json,application/json" on:change={handleUploadJson} />
         </div>
-        {#if $systemStore}
-            <div class="share-controls">
-                <button on:click={handleShare}>Share Player Link</button>
-                {#if shareStatus}<span>{shareStatus}</span>{/if}
-            </div>
-        {/if}
     </div>
 
   {#if $systemStore}
+    {#if focusedBody?.parentId === null}
+        <SystemSummary system={$systemStore} {generationOptions} bind:selectedGenerationOption={selectedGenerationOption} {handleGenerate} />
+    {/if}
+
     <div class="controls">
+        {#if focusedBody}
+            <button on:click={zoomOut}>Zoom Out</button>
+        {/if}
+        <button on:click={() => visualizer?.resetView()}>Reset View</button>
         <button on:click={() => isPlaying ? pause() : play()}>
             {isPlaying ? 'Pause' : 'Play'}
         </button>
@@ -259,20 +241,9 @@
             <button on:click={() => timeScale = 3600 * 24 * 30} class:active={timeScale === 3600 * 24 * 30}>30d</button>
             <button on:click={() => timeScale = 3600 * 24 * 90} class:active={timeScale === 3600 * 24 * 90}>90d</button>
             <button on:click={() => timeScale = 3600 * 24 * 365} class:active={timeScale === 3600 * 24 * 365}>1y</button>
+            <button on:click={() => timeScale = 3600 * 24 * 365 * 10} class:active={timeScale === 3600 * 24 * 365 * 10}>10y</button>
         </div>
     </div>
-
-    <div class="focus-header">
-        <h2>Current Focus: {focusedBody?.name || 'System View'}</h2>
-        <button on:click={() => visualizer?.resetView()}>Reset View</button>
-        {#if focusedBody?.parentId}
-            <button on:click={zoomOut}>Zoom Out</button>
-        {/if}
-    </div>
-
-    {#if focusedBody?.parentId === null}
-        <SystemSummary system={$systemStore} />
-    {/if}
 
     <SystemVisualizer bind:this={visualizer} system={$systemStore} {currentTime} {focusedBodyId} on:focus={handleFocus} />
 
@@ -294,10 +265,10 @@
 <style>
   main {
     font-family: sans-serif;
-    padding: 2em;
+    padding: 0.5em;
   }
   .top-bar, .controls, .focus-header {
-    margin: 1em 0;
+    margin: 0.5em 0;
     display: flex;
     align-items: center;
     gap: 1em;
@@ -317,17 +288,18 @@
     display: flex;
     align-items: center;
     gap: 0.5em;
-    background-color: #eee;
+    background-color: #444;
     padding: 0.25em;
     border-radius: 5px;
   }
   .time-scales button {
-      border: 1px solid #ccc;
-      background-color: white;
+      border: 1px solid #666;
+      background-color: #555;
+      color: #eee;
   }
   .time-scales button.active {
-      border-color: #2d69a6;
-      background-color: #3b82f6;
+      border-color: #88ccff;
+      background-color: #007bff;
       color: white;
   }
   .debug-controls {
@@ -341,5 +313,44 @@
     white-space: pre-wrap;
     color: #eee;
     font-family: monospace;
+  }
+
+  .dropdown {
+    position: relative;
+    display: inline-block;
+  }
+
+  .dropdown-content {
+    display: block;
+    position: absolute;
+    background-color: #333;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+    right: 0;
+  }
+
+  .dropdown-content button {
+    color: #eee;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+  }
+
+  .dropdown-content button:hover {background-color: #555;}
+
+  .hamburger-button {
+    font-size: 1.5em;
+    background: none;
+    border: none;
+    color: #eee;
+  }
+
+  .todo-button {
+    color: #888 !important;
   }
 </style>

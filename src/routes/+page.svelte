@@ -91,7 +91,7 @@
     currentSystemId = event.detail;
     const systemNode = get(starmapStore)?.systems.find(s => s.id === currentSystemId);
     if (systemNode) {
-      systemStore.set(systemNode.system);
+      systemStore.set(JSON.parse(JSON.stringify(systemNode.system)));
     }
   }
 
@@ -99,7 +99,7 @@
     currentSystemId = event.detail;
     const systemNode = get(starmapStore)?.systems.find(s => s.id === currentSystemId);
     if (systemNode) {
-      systemStore.set(systemNode.system);
+      systemStore.set(JSON.parse(JSON.stringify(systemNode.system)));
     }
   }
 
@@ -245,7 +245,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${$starmapStore.name.replace(/\s/g, '_') || 'starmap'}.json`;
+    a.download = `${$starmapStore.name.replace(/\s/g, '_') || 'starmap'}-Starmap.json`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -265,10 +265,10 @@
       try {
         const data = JSON.parse(reader.result as string);
         // Basic validation
-        if (data.id && data.name && Array.isArray(data.systems) && Array.isArray(data.routes)) {
+        if (data.id && data.name && Array.isArray(data.systems) && Array.isArray(data.routes) && typeof data.distanceUnit === 'string' && typeof data.unitIsPrefix === 'boolean') {
           starmapStore.set(data);
         } else {
-          alert('Invalid starmap file.');
+          alert('Invalid starmap file. Missing starmap-specific properties.');
         }
       } catch (e) {
         alert('Error reading starmap file.');
@@ -296,7 +296,7 @@
 </script>
 
 <main>
-  <h1>Star System Generator</h1>
+
 
   <input type="file" bind:this={fileInput} on:change={handleFileSelected} style="display: none;" accept=".json" />
 
@@ -348,7 +348,7 @@
 <style>
   main {
     font-family: sans-serif;
-    padding: 2em;
+    padding: 0.5em;
   }
   footer {
       margin-top: 2em;

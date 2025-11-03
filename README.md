@@ -73,10 +73,8 @@ This is not complex LLM use and you can probaby enable these features without co
 
 ## Known Issues
 
-*   **`panzoomInstance.getTransform is not a function`**: This error occurs when attempting to use `panzoomInstance.getTransform()` in `Starmap.svelte`, specifically when trying to transform mouse coordinates for the "Add System" functionality or the context menu. This prevents accurate placement of new systems and correct context menu positioning after pan/zoom.
-*   **Context Menu Positioning**: The right-click context menu does not appear under the mouse pointer after panning and zooming. This is directly related to the `panzoomInstance.getTransform` bug.
-*   **"Add System" Placement**: New star systems do not appear where clicked; there's a scaling factor involved, causing them to appear further away from the mouse click as you move away from the top-left corner. This is also directly related to the `panzoomInstance.getTransform` bug. There are various UI bugs just now as 
-*   **"Player View**: Player View is down just now - will return to it at some point for some love once the functionality is built out a little more. 
+*   **All major known issues have been resolved.** The application is now in a stable state.
+*   **"Player View"**: The player view functionality is currently hidden and marked as a future enhancement. It will be revisited for further development. 
 
 ## Getting Started (for Most Users)
 Just click here: https://star-system-generator.vercel.app/  This will be the lastest working version; automatically built off the code here. NB: while in dev-mode there are no guarentees saves will be forward compatible.

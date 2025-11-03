@@ -35,6 +35,8 @@
 
   function getStarColor(star: CelestialBody): string {
     if (star && star.classes && star.classes.length > 0) {
+        if (star.classes.includes('star/magnetar')) return '#800080'; // Purple for Magnetar
+        if (star.classes.includes('BH') || star.classes.includes('star/BH')) return '#000000'; // Black for Black Hole
         const starClass = star.classes[0].split('/')[1]; // e.g., "star/G2V" -> "G2V"
         const spectralType = starClass[0]; // e.g., "G2V" -> "G"
         switch (spectralType) {
@@ -201,6 +203,7 @@
               style="fill: {getStarColor(starA)};"
               class="star"
               class:selected={systemNode.id === selectedSystemForLink}
+              class:black-hole={starA.classes.includes('BH') || starA.classes.includes('star/BH')}
             />
             <circle
               cx={systemNode.position.x + 5}
@@ -209,6 +212,7 @@
               style="fill: {getStarColor(starB)};"
               class="star"
               class:selected={systemNode.id === selectedSystemForLink}
+              class:black-hole={starB.classes.includes('BH') || starB.classes.includes('star/BH')}
             />
           </g>
           <text
@@ -234,6 +238,7 @@
               style="fill: {getStarColor(rootNode as CelestialBody)};"
               class="star"
               class:selected={systemNode.id === selectedSystemForLink}
+              class:black-hole={(rootNode as CelestialBody).classes.includes('BH') || (rootNode as CelestialBody).classes.includes('star/BH')}
             />
           </g>
           <text
@@ -289,6 +294,11 @@
   .star.selected {
     stroke: #00ff00;
     stroke-width: 2;
+  }
+
+  .star.black-hole {
+    stroke: #ffffff;
+    stroke-width: 1;
   }
 
   .star-label {

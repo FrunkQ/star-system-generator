@@ -119,7 +119,7 @@
   const STAR_COLOR_MAP: Record<string, string> = {
     "O": "#9bb0ff", "B": "#aabfff", "A": "#cad8ff", "F": "#f8f7ff",
     "G": "#fff4ea", "K": "#ffd2a1", "M": "#ffc46f", "WD": "#f0f0f0",
-    "NS": "#c0c0ff", "magnetar": "#d0a0ff", "BH": "#000000", "default": "#ffffff",
+    "NS": "#c0c0ff", "magnetar": "#800080", "BH": "#000000", "default": "#ffffff",
   };
 
   function drawSystem(ctx: CanvasRenderingContext2D) {
@@ -217,6 +217,11 @@
                 ctx.arc(viewCenterX, viewCenterY, focusBodyRadius, 0, 2 * Math.PI);
                 ctx.fillStyle = focusBodyColor;
                 ctx.fill();
+                if (focusBodyColor === '#000000') { // If it's a black hole
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 1 / zoom;
+                    ctx.stroke();
+                }
                 positions[focusBody.id] = { x: viewCenterX, y: viewCenterY, radius: focusBodyRadius };
             }
         }
@@ -267,6 +272,11 @@
         ctx.arc(x, y, childRadius, 0, 2 * Math.PI);
         ctx.fillStyle = childColor;
         ctx.fill();
+        if (childColor === '#000000') { // If it's a black hole
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1 / zoom;
+            ctx.stroke();
+        }
         positions[node.id] = { x: x, y: y, radius: childRadius };
 
         // Draw miniature rings if they exist
