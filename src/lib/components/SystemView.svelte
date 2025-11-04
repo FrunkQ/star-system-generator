@@ -4,8 +4,11 @@
   import type { RulePack, System, CelestialBody } from '$lib/types';
   import { deleteNode, addPlanetaryBody, renameNode, addHabitablePlanet, generateSystem, computePlayerSnapshot } from '$lib/api';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
-  import BodyDetails from '$lib/components/BodyDetails.svelte';
-  import SystemSummary from '$lib/components/SystemSummary.svelte';
+  import SystemSummary from './SystemSummary.svelte';
+  import BodyTechnicalDetails from './BodyTechnicalDetails.svelte';
+  import BodyImage from './BodyImage.svelte';
+  import BodyGmTools from './BodyGmTools.svelte';
+  import DescriptionEditor from './DescriptionEditor.svelte';
 
   import { systemStore } from '$lib/stores';
 
@@ -114,12 +117,6 @@
         alert(e.message);
       }
   }
-
-    function handleRenameNode(event: CustomEvent<{nodeId: string, newName: string}>) {
-      if (!$systemStore) return;
-      const { nodeId, newName } = event.detail;
-      systemStore.set(renameNode($systemStore, nodeId, newName));
-    }
   
 
 
@@ -245,9 +242,21 @@
         </div>
     </div>
 
-    <SystemVisualizer bind:this={visualizer} system={$systemStore} {currentTime} {focusedBodyId} on:focus={handleFocus} />
+    <div class="system-view-grid">
+        <div class="main-view">
+            <SystemVisualizer bind:this={visualizer} system={$systemStore} {currentTime} {focusedBodyId} on:focus={handleFocus} />
+            <BodyGmTools body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:addHabitablePlanet={handleAddHabitablePlanet} />
+            {#if focusedBody && focusedBody.kind === 'body'}
+                <DescriptionEditor body={focusedBody} />
+            {/if}
+        </div>
+        <div class="details-view">
+            <input type="text" value={focusedBody.name} on:change={(e) => dispatch('renameNode', {nodeId: focusedBody.id, newName: e.target.value})} class="name-input" title="Click to rename" />
+            <BodyTechnicalDetails body={focusedBody} />
+            <BodyImage body={focusedBody} />
+        </div>
 
-    <BodyDetails body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:renameNode={handleRenameNode} on:addHabitablePlanet={handleAddHabitablePlanet} />
+    </div>
 
     <div class="debug-controls">
         <button on:click={() => showJson = !showJson}>
@@ -266,8 +275,9 @@
   main {
     font-family: sans-serif;
     padding: 0.5em;
+    font-size: 0.9em;
   }
-  .top-bar, .controls, .focus-header {
+  .top-bar, .controls {
     margin: 0.5em 0;
     display: flex;
     align-items: center;
@@ -275,11 +285,6 @@
   }
   .top-bar {
       justify-content: space-between;
-  }
-  .gen-controls, .share-controls, .save-load-controls {
-      display: flex;
-      align-items: center;
-      gap: 1em;
   }
   .focus-header h2 {
       margin: 0;
@@ -352,5 +357,35 @@
 
   .todo-button {
     color: #888 !important;
+  }
+
+  .system-view-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1em;
+  }
+
+  .main-view {
+    grid-column: 1;
+  }
+
+  .details-view {
+    grid-column: 2;
+  }
+
+  .name-input {
+    background-color: transparent;
+    border: 1px solid transparent;
+    color: #ff3e00;
+    font-size: 1.8em;
+    font-weight: bold;
+    padding: 0.1em;
+    margin: 0;
+    width: 100%;
+    border-radius: 4px;
+  }
+  .name-input:hover, .name-input:focus {
+      background-color: #252525;
+      border-color: #444;
   }
 </style>

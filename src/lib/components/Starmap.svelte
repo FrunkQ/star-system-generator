@@ -19,6 +19,95 @@
   let contextMenuSystemId: string | null = null;
   let isStarContextMenu = false;
 
+  let panX = 0;
+  let panY = 0;
+  let zoom = 1;
+
+  let isPanning = false;
+  let lastMouseX = 0;
+  let lastMouseY = 0;
+
+  function handleWheel(event: WheelEvent) {
+    event.preventDefault();
+    const scaleAmount = 0.1;
+    const scale = event.deltaY > 0 ? 1 - scaleAmount : 1 + scaleAmount;
+
+    const svgRect = svgElement.getBoundingClientRect();
+    const viewBox = svgElement.viewBox.baseVal;
+    const scaleX = viewBox.width / svgRect.width;
+    const scaleY = viewBox.height / svgRect.height;
+
+    const mouseX = (event.clientX - svgRect.left) * scaleX;
+    const mouseY = (event.clientY - svgRect.top) * scaleY;
+
+    const newZoom = zoom * scale;
+
+    panX = mouseX - (mouseX - panX) * scale;
+    panY = mouseY - (mouseY - panY) * scale;
+    zoom = newZoom;
+  }
+
+  function handleMouseDown(event: MouseEvent) {
+    if (event.button !== 0) return; // Left mouse button
+    if (event.target !== svgElement) return; // Only pan on blank space
+    isPanning = true;
+    lastMouseX = event.clientX;
+    lastMouseY = event.clientY;
+  }
+
+  function handleMouseMove(event: MouseEvent) {
+    if (!isPanning) return;
+    const deltaX = event.clientX - lastMouseX;
+    const deltaY = event.clientY - lastMouseY;
+    lastMouseX = event.clientX;
+    lastMouseY = event.clientY;
+
+    panX += deltaX;
+    panY += deltaY;
+  }
+
+  function handleMouseUp(event: MouseEvent) {
+    if (event.button !== 0) return;
+    isPanning = false;
+  }
+
+  function resetView() {
+    if (starmap.systems.length === 0) {
+      panX = 0;
+      panY = 0;
+      zoom = 1;
+      return;
+    }
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const system of starmap.systems) {
+      minX = Math.min(minX, system.position.x);
+      minY = Math.min(minY, system.position.y);
+      maxX = Math.max(maxX, system.position.x);
+      maxY = Math.max(maxY, system.position.y);
+    }
+
+    const padding = 50;
+    const bboxWidth = maxX - minX + padding * 2;
+    const bboxHeight = maxY - minY + padding * 2;
+
+    const viewBox = svgElement.viewBox.baseVal;
+    const zoomX = viewBox.width / bboxWidth;
+    const zoomY = viewBox.height / bboxHeight;
+    const newZoom = Math.min(zoomX, zoomY);
+
+    const centerX = minX + (maxX - minX) / 2;
+    const centerY = minY + (maxY - minY) / 2;
+
+    panX = viewBox.width / 2 - centerX * newZoom;
+    panY = viewBox.height / 2 - centerY * newZoom;
+    zoom = newZoom;
+  }
+
   onMount(async () => {
     document.addEventListener('click', handleClickOutside);
   });
@@ -94,9 +183,10 @@
     const viewBox = svgElement.viewBox.baseVal;
     const scaleX = viewBox.width / svgRect.width;
     const scaleY = viewBox.height / svgRect.height;
+
     contextMenuClickCoords = {
-      x: (event.clientX - svgRect.left) * scaleX,
-      y: (event.clientY - svgRect.top) * scaleY
+      x: ((event.clientX - svgRect.left) * scaleX - panX) / zoom,
+      y: ((event.clientY - svgRect.top) * scaleY - panY) / zoom
     };
   }
 
@@ -138,6 +228,7 @@
 
 <div class="starmap-container" style="touch-action: none;" bind:this={starmapContainer}>
   <div class="reset-view-controls">
+    <button on:click={resetView}>Reset View</button>
   </div>
   <h1>{starmap.name}</h1>
   <svg
@@ -146,10 +237,14 @@
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 800 600"
     on:contextmenu={handleMapContextMenu}
+    on:wheel={handleWheel}
+    on:mousedown={handleMouseDown}
+    on:mousemove={handleMouseMove}
+    on:mouseup={handleMouseUp}
     role="button"
     tabindex="0"
   >
-    <g bind:this={groupElement}>
+    <g bind:this={groupElement} transform={`translate(${panX}, ${panY}) scale(${zoom})`}>
       {#each starmap.routes as route}
         {@const sourceSystem = starmap.systems.find(s => s.id === route.sourceSystemId)}
         {@const targetSystem = starmap.systems.find(s => s.id === route.targetSystemId)}

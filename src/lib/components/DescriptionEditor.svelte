@@ -32,7 +32,7 @@
 </script>
 
 <div class="description-editor">
-  <h4>Description & Notes</h4>
+  <h3>Description & Notes</h3>
   
   {#if isEditing}
     <textarea bind:value={description}></textarea>
@@ -62,6 +62,10 @@
     margin-top: 1em;
     border-top: 1px solid #444;
     padding-top: 1em;
+  }
+  h3 {
+      margin: 0 0 0.5em 0;
+      color: #ff3e00;
   }
   textarea {
     width: 100%;

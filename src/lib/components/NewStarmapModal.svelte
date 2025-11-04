@@ -3,11 +3,12 @@
   import type { RulePack } from '$lib/types';
 
   export let rulepacks: RulePack[];
+  export let hasSavedStarmap: boolean;
 
   const dispatch = createEventDispatcher();
 
   let starmapName = 'My Starmap';
-  let selectedRulepack: RulePack | undefined = rulepacks.length > 0 ? rulepacks[0] : undefined;
+  let selectedRulepack: RulePack | undefined = rulepacks && rulepacks.length > 0 ? rulepacks[0] : undefined;
   let distanceUnit = 'LY';
   let unitIsPrefix = false;
 
@@ -23,29 +24,39 @@
 
 <div class="modal-background">
   <div class="modal">
-    <h2>New Starmap</h2>
-    <label>
-      Starmap Name:
-      <input type="text" bind:value={starmapName} />
-    </label>
-    <label>
-      Rulepack:
-      <select bind:value={selectedRulepack}>
-        {#each rulepacks as rp}
-          <option value={rp}>{rp.name}</option>
-        {/each}
-      </select>
-    </label>
-    <label>
-      Distance Unit:
-      <input type="text" bind:value={distanceUnit} />
-    </label>
-    <label>
-      <input type="checkbox" bind:checked={unitIsPrefix} />
-      Unit is a prefix (e.g., "J 1" instead of "50 LY")
-    </label>
-    <div class="buttons">
-      <button on:click={createStarmap}>Create</button>
+    <h2>Welcome to the Star System Generator!</h2>
+    <p>This tool allows you to create and explore scientifically-plausible star systems. Get started by creating a new starmap, or load a previous creation.</p>
+    
+    <div class="load-options">
+        <button on:click={() => dispatch('load')} disabled={!hasSavedStarmap}>Load from Browser</button>
+        <button on:click={() => dispatch('upload')}>Upload Starmap</button>
+    </div>
+
+    <div class="new-starmap-form">
+        <h3>Create a New Starmap</h3>
+        <label>
+          Starmap Name:
+          <input type="text" bind:value={starmapName} />
+        </label>
+        <label>
+          Rulepack:
+          <select bind:value={selectedRulepack}>
+            {#each rulepacks as rp}
+              <option value={rp}>{rp.name}</option>
+            {/each}
+          </select>
+        </label>
+        <label>
+          Distance Unit:
+          <input type="text" bind:value={distanceUnit} />
+        </label>
+        <label>
+          <input type="checkbox" bind:checked={unitIsPrefix} />
+          Unit is a prefix (e.g., "J 1" instead of "50 LY")
+        </label>
+        <div class="buttons">
+          <button on:click={createStarmap}>Create</button>
+        </div>
     </div>
   </div>
 </div>
@@ -95,6 +106,23 @@
 
   .modal button:hover {
     background-color: #0056b3;
+  }
+
+  .modal button:disabled {
+    background-color: #555;
+    cursor: not-allowed;
+  }
+
+  .load-options {
+    display: flex;
+    gap: 1em;
+    justify-content: center;
+    margin-bottom: 1em;
+  }
+
+  .new-starmap-form {
+    border-top: 1px solid #555;
+    padding-top: 1em;
   }
 
   .buttons {

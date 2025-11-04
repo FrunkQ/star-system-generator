@@ -27,6 +27,7 @@
   let selectedRulepack: RulePack | undefined;
   let fileInput: HTMLInputElement;
   let starmapComponent: Starmap;
+  let hasSavedStarmap = false;
 
   onMount(async () => {
     try {
@@ -39,9 +40,9 @@
       isLoading = false;
     }
 
-    const savedStarmap = localStorage.getItem('stargen_saved_starmap');
-    if (savedStarmap) {
-      starmapStore.set(JSON.parse(savedStarmap));
+    hasSavedStarmap = localStorage.getItem('stargen_saved_starmap') !== null;
+    if (hasSavedStarmap) {
+      handleLoadStarmap();
     } else {
       showNewStarmapModal = true;
     }
@@ -122,7 +123,6 @@
       const loadedData = JSON.parse(savedStarmap);
       console.log('Loaded starmap:', loadedData);
       starmapStore.set(loadedData);
-      alert('Starmap loaded from browser storage.');
     } else {
       alert('No starmap found in browser storage.');
     }
@@ -229,10 +229,15 @@
     systemStore.set(null);
   }
 
+  function handleRenameNode(event: CustomEvent<{nodeId: string, newName: string}>) {
+    if (!$systemStore) return;
+    const { nodeId, newName } = event.detail;
+    systemStore.set(renameNode($systemStore, nodeId, newName));
+  }
+
   function handleClearStarmap() {
-    if (confirm('ARE YOU SURE? This will clear the entire starmap and cannot be undone.')) {
+    if (confirm('ARE YOU SURE? This will clear the current starmap from the screen. Your saved starmap in browser storage will remain.')) {
       starmapStore.set(null);
-      localStorage.removeItem('stargen_saved_starmap');
       showNewStarmapModal = true;
     }
   }
@@ -267,6 +272,7 @@
         // Basic validation
         if (data.id && data.name && Array.isArray(data.systems) && Array.isArray(data.routes) && typeof data.distanceUnit === 'string' && typeof data.unitIsPrefix === 'boolean') {
           starmapStore.set(data);
+          showNewStarmapModal = false;
         } else {
           alert('Invalid starmap file. Missing starmap-specific properties.');
         }
@@ -305,7 +311,7 @@
   {:else if error}
     <p style="color: red;">Error: {error}</p>
   {:else if showNewStarmapModal}
-    <NewStarmapModal rulepacks={rulePacks} on:create={handleCreateStarmap} />
+    <NewStarmapModal rulepacks={rulePacks} {hasSavedStarmap} on:create={handleCreateStarmap} on:load={handleLoadStarmap} on:upload={handleUploadStarmap} />
   {:else if $starmapStore && !currentSystemId}
     <Starmap
       bind:this={starmapComponent}
@@ -320,16 +326,16 @@
     />
     <div class="starmap-controls">
       <button on:click={handleSaveStarmap}>Save to Browser</button>
-      <button on:click={handleLoadStarmap}>Load from Browser</button>
+      <button on:click={handleLoadStarmap} disabled={!hasSavedStarmap}>Load from Browser</button>
       <button on:click={handleDownloadStarmap}>Download Starmap</button>
       <button on:click={handleUploadStarmap}>Upload Starmap</button>
       <button on:click={() => showSettingsModal = true}>Settings</button>
 
-      <button on:click={handleClearStarmap} class="delete-button">DELETE Starmap</button>
+      <button on:click={handleClearStarmap} class="delete-button">Clear Starmap</button>
 
     </div>
   {:else if $starmapStore && currentSystemId && $systemStore}
-    <SystemView system={$systemStore} rulePack={rulePacks[0]} on:back={handleBackToStarmap} />
+    <SystemView system={$systemStore} rulePack={rulePacks[0]} on:back={handleBackToStarmap} on:renameNode={handleRenameNode} />
   {/if}
 
   {#if showRouteEditorModal && routeToEdit && $starmapStore}
