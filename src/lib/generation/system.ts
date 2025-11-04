@@ -4,7 +4,7 @@ import { SeededRNG } from '../rng';
 import { weightedChoice, randomFromRange, toRoman } from '../utils';
 import { _generateStar } from './star';
 import { _generatePlanetaryBody } from './planet';
-import { G, AU_KM } from '../constants';
+import { G, AU_KM, SOLAR_MASS_KG } from '../constants';
 import type { GenOptions } from '../api';
 
 export function generateSystem(seed: string, pack: RulePack, __opts: Partial<GenOptions> = {}, generationChoice?: string, empty: boolean = false): System {
@@ -129,6 +129,8 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
   if (!empty) {
       const bodyCountTable = pack.distributions['planet_count'];
       const numBodies = bodyCountTable ? weightedChoice<number>(rng, bodyCountTable) : rng.nextInt(0, 8);
+
+      const frostLineAU = (pack.generation_parameters?.frost_line_base_au || 2.7) * Math.sqrt((starA.massKg || SOLAR_MASS_KG) / SOLAR_MASS_KG);
     
       if (!isBinary) {
         const star = systemRoot as CelestialBody;

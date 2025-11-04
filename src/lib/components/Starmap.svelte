@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import type { Starmap, System, CelestialBody, RulePack, Barycenter } from '$lib/types';
   import ContextMenu from './ContextMenu.svelte';
+  import GmNotesEditor from './GmNotesEditor.svelte';
 
   export let starmap: Starmap;
   export let linkingMode: boolean = false;
@@ -347,6 +348,7 @@
       {/each}
     </g>
   </svg>
+  <GmNotesEditor body={starmap} />
 
   {#if showContextMenu}
     <ContextMenu

@@ -55,17 +55,29 @@ export function _generatePlanetaryBody(
         areas: [],
     };
 
-    const planetType = planetTypeOverride || ((planet.roleHint === 'moon') 
-        ? 'planet/terrestrial' 
-        : pack.distributions['planet_type'] ? weightedChoice<string>(rng, pack.distributions['planet_type']) : 'planet/terrestrial');
+    const frostLineAU = (pack.generation_parameters?.frost_line_base_au || 2.7) * Math.sqrt((host.massKg || SOLAR_MASS_KG) / SOLAR_MASS_KG);
+    const migrationChance = pack.generation_parameters?.planet_migration_chance || 0.1;
+
+    let planetType = planetTypeOverride;
+    if (!planetType) {
+        if (orbit.elements.a_AU > frostLineAU) {
+            planetType = weightedChoice<string>(rng, { entries: [{ weight: 70, value: 'planet/gas-giant' }, { weight: 30, value: 'planet/terrestrial' }] });
+        } else {
+            planetType = weightedChoice<string>(rng, { entries: [{ weight: 90, value: 'planet/terrestrial' }, { weight: 10, value: 'planet/gas-giant' }] });
+        }
+    }
+
+    if (planet.roleHint === 'moon') {
+        planetType = 'planet/terrestrial';
+    }
 
     const planetTemplate = pack.statTemplates?.[planetType];
     if (planetTemplate) {
         planet.massKg = randomFromRange(rng, planetTemplate.mass_earth[0], planetTemplate.mass_earth[1]) * EARTH_MASS_KG;
         planet.radiusKm = randomFromRange(rng, planetTemplate.radius_earth[0], planetTemplate.radius_earth[1]) * EARTH_RADIUS_KM;
         
-        // Conditionally generate magnetic field for terrestrial planets
-        if (planetType === 'planet/terrestrial' && planet.massKg > 0.5 * EARTH_MASS_KG && rng.nextFloat() > 0.2) {
+        const magneticFieldChance = pack.generation_parameters?.terrestrial_magnetic_field_chance || 0.8;
+        if (planetType === 'planet/terrestrial' && planet.massKg > 0.1 * EARTH_MASS_KG && rng.nextFloat() < magneticFieldChance) {
              planet.magneticField = { strengthGauss: randomFromRange(rng, 0.1, 1.5) };
         } else if (planetTemplate.mag_gauss) {
             planet.magneticField = { strengthGauss: randomFromRange(rng, planetTemplate.mag_gauss[0], planetTemplate.mag_gauss[1]) };
@@ -77,6 +89,12 @@ export function _generatePlanetaryBody(
             planet.massKg = Math.min(planet.massKg, parentMass * 0.05);
             planet.radiusKm = Math.min(planet.radiusKm, parentRadius * 0.5);
         }
+    }
+
+    if (rng.nextFloat() < migrationChance && planetType === 'planet/gas-giant') {
+        const newA_AU = randomFromRange(rng, 0.1, 0.5);
+        planet.orbit.elements.a_AU = newA_AU;
+        planet.tags.push({ key: 'Migrated Planet' });
     }
 
     if (propertyOverrides) {
@@ -163,70 +181,7 @@ export function _generatePlanetaryBody(
     const escapeVelocity = Math.sqrt(2 * G * (planet.massKg || 0) / ((planet.radiusKm || 1) * 1000)) / 1000; // in km/s
     features['escapeVelocity_kms'] = escapeVelocity;
 
-    if (planetType === 'planet/terrestrial' || planetType === 'planet/gas-giant') {
-        let hasAtmosphere = true;
-        if (escapeVelocity < 3.0 && planetType === 'planet/terrestrial') hasAtmosphere = false;
-        if ((features['radiation_flux'] as number) > 100 && (features['a_AU'] as number) < 0.5 && planetType === 'planet/terrestrial') hasAtmosphere = false;
 
-        if (hasAtmosphere && !planet.atmosphere) { // Check if atmosphere is not already set
-            const isGasGiant = planetType === 'planet/gas-giant';
-            const atmDistribution = pack.distributions['atmosphere_composition'];
-            const validAtmospheres = atmDistribution.entries.filter((entry: any) => {
-                const occursOn = entry.value.occurs_on;
-                if (occursOn === 'both') return true;
-                if (isGasGiant) return occursOn === 'gas giants';
-                return occursOn === 'terrestrial';
-            });
-
-            if (validAtmospheres.length > 0) {
-                const atmChoice = weightedChoice(rng, { ...atmDistribution, entries: validAtmospheres });
-
-                // Generate composition from ranges and normalize
-                const rawComposition: Record<string, number> = {};
-                let total = 0;
-                for (const gas in atmChoice.composition) {
-                    const value = atmChoice.composition[gas];
-                    const amount = Array.isArray(value) ? randomFromRange(rng, value[0], value[1]) : value;
-                    rawComposition[gas] = amount;
-                    total += amount;
-                }
-
-                const finalComposition: Record<string, number> = {};
-                if (total > 0) {
-                    for (const gas in rawComposition) {
-                        finalComposition[gas] = rawComposition[gas] / total;
-                    }
-                }
-
-                const mainGas = Object.keys(finalComposition).reduce((a, b) => finalComposition[a] > finalComposition[b] ? a : b);
-
-                // Determine pressure
-                let pressure_bar: number;
-                if (atmChoice.pressure_range_bar) {
-                    pressure_bar = randomFromRange(rng, atmChoice.pressure_range_bar[0], atmChoice.pressure_range_bar[1]);
-                } else {
-                    const pressureRange = weightedChoice<[number, number]>(rng, pack.distributions['atmosphere_pressure_bar']);
-                    pressure_bar = randomFromRange(rng, pressureRange[0], pressureRange[1]);
-                }
-
-                planet.atmosphere = {
-                    name: atmChoice.name,
-                    composition: finalComposition,
-                    main: mainGas,
-                    pressure_bar: pressure_bar,
-                };
-
-                if (atmChoice.tags) {
-                    planet.tags.push(...atmChoice.tags.map((t: string) => ({ key: t })));
-                }
-            }
-        }
-        
-        if (planet.atmosphere) {
-            features['atm.main'] = planet.atmosphere.main;
-            features['atm.pressure_bar'] = planet.atmosphere.pressure_bar;
-        }
-    }
 
     if (planetType === 'planet/terrestrial') {
         const hydroCoverageRange = weightedChoice<[number, number]>(rng, pack.distributions['hydrosphere_coverage']);
@@ -292,6 +247,10 @@ export function _generatePlanetaryBody(
     planet.temperatureK = equilibriumTempK + greenhouseContributionK + tidalHeatingK + radiogenicHeatK;
     features['Teq_K'] = planet.temperatureK;
 
+    planet.classes = classifyBody(planet, features, pack, allNodes);
+
+    _generateAtmosphere(rng, pack, planet, features);
+
     const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
 
     const orbital_period_days = planet.orbit ? Math.sqrt(4 * Math.PI**2 * (planet.orbit.elements.a_AU * AU_KM * 1000)**3 / (G * hostMass)) / (60 * 60 * 24) : 0;
@@ -348,7 +307,7 @@ export function _generatePlanetaryBody(
     calculateHabitabilityAndBiosphere(planet, rng);
 
 
-    planet.classes = classifyBody(features, pack, allNodes);
+    planet.classes = classifyBody(planet, features, pack, allNodes);
 
     const primaryClass = planet.classes[0];
     if (primaryClass && pack.classifier?.planetImages?.[primaryClass]) {
@@ -525,5 +484,107 @@ function calculateHabitabilityAndBiosphere(planet: CelestialBody, rng: SeededRNG
             energy_source: energy_source,
             morphologies: morphologies
         };
+    }
+}
+
+function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBody, features: Record<string, number | string>) {
+    const isGasGiant = planet.classes.includes('planet/gas-giant');
+    const isTerrestrial = !isGasGiant;
+
+    if (isTerrestrial) {
+        const massEarths = (planet.massKg || 0) / EARTH_MASS_KG;
+        const minMass = pack.generation_parameters?.terrestrial_min_mass_for_atmosphere_earth || 0.1;
+        const hasAtmosphereChance = pack.distributions['terrestrial_atmosphere_chance'];
+        const hasAtmosphere = hasAtmosphereChance ? weightedChoice<boolean>(rng, hasAtmosphereChance) : true;
+
+        if (massEarths < minMass || !hasAtmosphere) {
+            planet.atmosphere = undefined;
+            planet.tags.push({ key: 'Airless Rock' });
+            return;
+        }
+    }
+
+    const atmDistribution = pack.distributions['atmosphere_composition'];
+    const validAtmospheres = atmDistribution.entries.filter((entry: any) => {
+        const atm = entry.value;
+        const occursOn = atm.occurs_on;
+        const massRange = atm.mass_range_earths;
+        const tempRange = atm.temp_range_K;
+        const pressureRange = atm.pressure_range_bar;
+        const tidallyLocked = atm.tidally_locked;
+
+        if (isGasGiant && occursOn !== 'gas giants' && occursOn !== 'both') return false;
+        if (isTerrestrial && occursOn !== 'terrestrial' && occursOn !== 'both') return false;
+
+        if (massRange && (features['mass_Me'] < massRange[0] || features['mass_Me'] > massRange[1])) return false;
+        if (tempRange && (features['Teq_K'] < tempRange[0] || features['Teq_K'] > tempRange[1])) return false;
+        // Pressure check is tricky, as we don't have a pressure yet. We will select an atmosphere and then set the pressure.
+
+        if (tidallyLocked && tidallyLocked.includes('true') && !features['tidallyLocked']) return false;
+        if (tidallyLocked && tidallyLocked.includes('false') && features['tidallyLocked']) return false;
+
+        return true;
+    });
+
+    if (validAtmospheres.length > 0) {
+        const atmChoice = weightedChoice(rng, { ...atmDistribution, entries: validAtmospheres });
+
+        // Generate composition from ranges and normalize
+        const rawComposition: Record<string, number> = {};
+        let total = 0;
+        for (const gas in atmChoice.composition) {
+            const value = atmChoice.composition[gas];
+            const amount = Array.isArray(value) ? randomFromRange(rng, value[0], value[1]) : value;
+            rawComposition[gas] = amount;
+            total += amount;
+        }
+
+        const finalComposition: Record<string, number> = {};
+        if (total > 0) {
+            for (const gas in rawComposition) {
+                finalComposition[gas] = rawComposition[gas] / total;
+            }
+        }
+
+        const mainGas = Object.keys(finalComposition).reduce((a, b) => finalComposition[a] > finalComposition[b] ? a : b);
+
+        // Determine pressure
+        let pressure_bar: number;
+        if (atmChoice.pressure_range_bar) {
+            pressure_bar = randomFromRange(rng, atmChoice.pressure_range_bar[0], atmChoice.pressure_range_bar[1]);
+        } else {
+            const pressureRange = weightedChoice<[number, number]>(rng, pack.distributions['atmosphere_pressure_bar']);
+            pressure_bar = randomFromRange(rng, pressureRange[0], pressureRange[1]);
+        }
+
+        planet.atmosphere = {
+            name: atmChoice.name,
+            composition: finalComposition,
+            main: mainGas,
+            pressure_bar: pressure_bar,
+        };
+
+        if (atmChoice.tags) {
+            planet.tags.push(...atmChoice.tags.map((t: string) => ({ key: t })));
+        }
+
+        features['atm.main'] = planet.atmosphere.main;
+        features['atm.pressure_bar'] = planet.atmosphere.pressure_bar;
+
+    } else if (isGasGiant) {
+        // Default to Jupiter-like
+        planet.atmosphere = {
+            name: 'Hydrogen–Helium (Jupiter-like)',
+            composition: { H2: 0.86, He: 0.14 },
+            main: 'H2',
+            pressure_bar: 100,
+        };
+        planet.tags.push({ key: 'reducing' });
+        features['atm.main'] = 'H2';
+        features['atm.pressure_bar'] = 100;
+    } else {
+        planet.atmosphere = undefined;
+        planet.magneticField = undefined;
+        planet.tags.push({ key: 'Airless Rock' });
     }
 }

@@ -32,7 +32,7 @@
 </script>
 
 <div class="description-editor">
-  <h3>Description & Notes</h3>
+  <h3>Detailed Information</h3>
   
   {#if isEditing}
     <textarea bind:value={description}></textarea>

@@ -9,6 +9,7 @@
   import BodyImage from './BodyImage.svelte';
   import BodyGmTools from './BodyGmTools.svelte';
   import DescriptionEditor from './DescriptionEditor.svelte';
+  import GmNotesEditor from './GmNotesEditor.svelte';
 
   import { systemStore } from '$lib/stores';
 
@@ -254,6 +255,7 @@
             <input type="text" value={focusedBody.name} on:change={(e) => dispatch('renameNode', {nodeId: focusedBody.id, newName: e.target.value})} class="name-input" title="Click to rename" />
             <BodyTechnicalDetails body={focusedBody} />
             <BodyImage body={focusedBody} />
+            <GmNotesEditor body={focusedBody} />
         </div>
 
     </div>
