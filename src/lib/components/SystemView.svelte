@@ -25,6 +25,7 @@
   let generationOptions: string[] = ['Random'];
   let selectedGenerationOption = 'Random';
   let showDropdown = false;
+  let showNames = true;
 
   // Time state
   let currentTime = Date.now();
@@ -176,6 +177,15 @@
       setTimeout(() => shareStatus = '', 3000);
   }
 
+  function getPlanetColor(node: CelestialBody): string {
+    if (node.roleHint === 'star') return '#fff'; // White
+    if (node.tags?.some(t => t.key === 'habitability/earth-like' || t.key === 'habitability/human')) return '#007bff'; // Blue
+    if (node.biosphere) return '#00ff00'; // Green
+    const isGasGiant = node.classes?.some(c => c.includes('gas-giant'));
+    if (isGasGiant) return '#ff0000'; // Red
+    return '#ffa500'; // Orange
+  }
+
   onMount(() => {
     systemStore.set(system);
     currentTime = system.epochT0;
@@ -228,6 +238,10 @@
             <button on:click={zoomOut}>Zoom Out</button>
         {/if}
         <button on:click={() => visualizer?.resetView()}>Reset View</button>
+        <label>
+            <input type="checkbox" bind:checked={showNames} />
+            Toggle Names
+        </label>
         <button on:click={() => isPlaying ? pause() : play()}>
             {isPlaying ? 'Pause' : 'Play'}
         </button>
@@ -245,7 +259,7 @@
 
     <div class="system-view-grid">
         <div class="main-view">
-            <SystemVisualizer bind:this={visualizer} system={$systemStore} {currentTime} {focusedBodyId} on:focus={handleFocus} />
+            <SystemVisualizer bind:this={visualizer} system={$systemStore} {currentTime} {focusedBodyId} {showNames} {getPlanetColor} on:focus={handleFocus} />
             <BodyGmTools body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:addHabitablePlanet={handleAddHabitablePlanet} />
             {#if focusedBody && focusedBody.kind === 'body'}
                 <DescriptionEditor body={focusedBody} />

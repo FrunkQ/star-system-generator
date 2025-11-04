@@ -6,6 +6,8 @@
   export let system: System | null;
   export let currentTime: number;
   export let focusedBodyId: string | null = null;
+  export let showNames: boolean = false;
+  export let getPlanetColor: (node: CelestialBody) => string = () => '#fff';
 
   const dispatch = createEventDispatcher<{ focus: string | null }>();
 
@@ -289,6 +291,12 @@
             ctx.arc(x, y, outer, 0, 2 * Math.PI);
             ctx.arc(x, y, inner, 0, 2 * Math.PI, true);
             ctx.fill();
+        }
+
+        if (showNames) {
+            ctx.fillStyle = getPlanetColor(node);
+            ctx.font = `${12 / zoom}px sans-serif`;
+            ctx.fillText(node.name, x + childRadius + 5 / zoom, y);
         }
     }
     ctx.restore();

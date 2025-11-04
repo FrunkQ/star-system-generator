@@ -249,7 +249,7 @@ export function _generatePlanetaryBody(
 
     planet.classes = classifyBody(planet, features, pack, allNodes);
 
-    _generateAtmosphere(rng, pack, planet, features);
+    _generateAtmosphere(rng, pack, planet, features, planetType === 'planet/gas-giant');
 
     const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
 
@@ -487,9 +487,8 @@ function calculateHabitabilityAndBiosphere(planet: CelestialBody, rng: SeededRNG
     }
 }
 
-function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBody, features: Record<string, number | string>) {
-    const isGasGiant = planet.classes.includes('planet/gas-giant');
-    const isTerrestrial = !isGasGiant;
+function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBody, features: Record<string, number | string>, isGasGiantBody: boolean) {
+    const isTerrestrial = !isGasGiantBody;
 
     if (isTerrestrial) {
         const massEarths = (planet.massKg || 0) / EARTH_MASS_KG;
@@ -513,7 +512,7 @@ function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBo
         const pressureRange = atm.pressure_range_bar;
         const tidallyLocked = atm.tidally_locked;
 
-        if (isGasGiant && occursOn !== 'gas giants' && occursOn !== 'both') return false;
+        if (isGasGiantBody && occursOn !== 'gas giants' && occursOn !== 'both') return false;
         if (isTerrestrial && occursOn !== 'terrestrial' && occursOn !== 'both') return false;
 
         if (massRange && (features['mass_Me'] < massRange[0] || features['mass_Me'] > massRange[1])) return false;
@@ -571,7 +570,7 @@ function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBo
         features['atm.main'] = planet.atmosphere.main;
         features['atm.pressure_bar'] = planet.atmosphere.pressure_bar;
 
-    } else if (isGasGiant) {
+    } else if (isGasGiantBody) {
         // Default to Jupiter-like
         planet.atmosphere = {
             name: 'Hydrogen–Helium (Jupiter-like)',

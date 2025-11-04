@@ -14,87 +14,56 @@
   let totalPlanets = 0;
   let totalMoons = 0;
 
-    $: {
+  function getPlanetColor(node: CelestialBody): string {
+    if (node.roleHint === 'star') return '#fff'; // White
+    if (node.biosphere) return '#00ff00'; // Green
+    if (node.tags?.some(t => t.key === 'habitability/earth-like' || t.key === 'habitability/human')) return '#007bff'; // Blue
+    const isGasGiant = node.classes?.some(c => c.includes('gas-giant'));
+    if (isGasGiant) return '#ff0000'; // Red
+    return '#ffa500'; // Orange
+  }
 
-      gasGiants = 0;
+  $: {
+    gasGiants = 0;
+    terrestrials = 0;
+    humanHabitable = 0;
+    earthLike = 0;
+    biospheres = 0;
+    totalPlanets = 0;
+    totalMoons = 0;
 
-      terrestrials = 0;
+    if (system) {
+        for (const node of system.nodes) {
+            if (node.kind !== 'body') continue;
 
-      humanHabitable = 0;
+            if (node.roleHint === 'planet') {
+                totalPlanets++;
+            } else if (node.roleHint === 'moon') {
+                totalMoons++;
+            }
 
-      earthLike = 0;
+            if (node.roleHint === 'planet' || node.roleHint === 'moon') {
+                const isGasGiant = node.classes?.some(c => c.includes('gas-giant'));
 
-      biospheres = 0;
+                if (isGasGiant) {
+                    gasGiants++;
+                } else {
+                    terrestrials++;
+                }
 
-      totalPlanets = 0;
-
-      totalMoons = 0;
-
-  
-
-      if (system) {
-
-          for (const node of system.nodes) {
-
-              if (node.kind !== 'body') continue;
-
-  
-
-              if (node.roleHint === 'planet') {
-
-                  totalPlanets++;
-
-              } else if (node.roleHint === 'moon') {
-
-                  totalMoons++;
-
-              }
-
-  
-
-              if (node.roleHint === 'planet' || node.roleHint === 'moon') {
-
-                  const isGasGiant = node.classes?.some(c => c.includes('gas-giant'));
-
-  
-
-                  if (isGasGiant) {
-
-                      gasGiants++;
-
-                  } else {
-
-                      terrestrials++;
-
-                  }
-
-  
-
-                  if (node.tags?.some(t => t.key === 'habitability/human')) {
-
-                      humanHabitable++;
-
-                  }
-
-                  if (node.tags?.some(t => t.key === 'habitability/earth-like')) {
-
-                      earthLike++;
-
-                  }
-
-                  if (node.biosphere) {
-
-                      biospheres++;
-
-                  }
-
-              }
-
-          }
-
-      }
-
+                if (node.tags?.some(t => t.key === 'habitability/human')) {
+                    humanHabitable++;
+                }
+                if (node.tags?.some(t => t.key === 'habitability/earth-like')) {
+                    earthLike++;
+                }
+                if (node.biosphere) {
+                    biospheres++;
+                }
+            }
+        }
     }
+  }
 
 </script>
 
@@ -109,23 +78,23 @@
             <span class="value">{totalMoons}</span>
             <span class="label">Moons</span>
         </div>
-        <div class="summary-item">
+        <div class="summary-item" style="border: 2px solid #ffa500">
             <span class="value">{terrestrials}</span>
             <span class="label">Terrestrial Bodies</span>
         </div>
-        <div class="summary-item">
+        <div class="summary-item" style="border: 2px solid #ff0000">
             <span class="value">{gasGiants}</span>
             <span class="label">Gas Giants</span>
         </div>
-        <div class="summary-item">
+        <div class="summary-item" style="border: 2px solid #007bff">
             <span class="value">{humanHabitable}</span>
             <span class="label">Human-Habitable</span>
         </div>
-        <div class="summary-item">
+        <div class="summary-item" style="border: 2px solid #007bff">
             <span class="value">{earthLike}</span>
             <span class="label">Earth-like</span>
         </div>
-        <div class="summary-item">
+        <div class="summary-item" style="border: 2px solid #00ff00">
             <span class="value">{biospheres}</span>
             <span class="label">Biospheres</span>
         </div>
