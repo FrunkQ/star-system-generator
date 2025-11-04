@@ -47,7 +47,10 @@ export function propagate(node: CelestialBody | Barycenter, tMs: number): {x: nu
 
   // 1. Mean motion (n)
   // Use pre-calculated mean motion for binary stars, otherwise calculate it.
-  const n = node.orbit.n_rad_per_s ?? Math.sqrt(hostMu / Math.pow(a_m, 3));
+  let n = node.orbit.n_rad_per_s ?? Math.sqrt(hostMu / Math.pow(a_m, 3));
+  if (node.orbit.isRetrogradeOrbit) {
+    n = -n;
+  }
 
   // 2. Mean anomaly (M) at time t
   const M = M0_rad + n * ((tMs - t0) / 1000);

@@ -304,6 +304,17 @@
             </div>
         </div>
     {/if}
+
+    {#if body.tags && body.tags.length > 0}
+        <div class="detail-item tags-list">
+            <span class="label">Tags</span>
+            <div class="tags-container">
+                {#each body.tags as tag}
+                    <span class="tag">{tag.key}{#if tag.value}: {tag.value}{/if}</span>
+                {/each}
+            </div>
+        </div>
+    {/if}
 </div>
 {/if}
 
@@ -382,4 +393,23 @@
     margin-top: 0.5em;
   }
 
+  .tags-list {
+    grid-column: 1 / -1;
+    border-left-color: #888;
+  }
+
+  .tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    margin-top: 0.5em;
+  }
+
+  .tag {
+    background-color: #444;
+    padding: 0.2em 0.5em;
+    border-radius: 3px;
+    font-size: 0.8em;
+    color: #eee;
+  }
 </style>

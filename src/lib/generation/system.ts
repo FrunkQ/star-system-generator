@@ -146,6 +146,12 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
                         t0: Date.now(),
                         elements: { a_AU: newA_AU, e: newEccentricity, i_deg: Math.pow(rng.nextFloat(), 3) * 15, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
                     };
+
+                    if (weightedChoice<boolean>(rng, pack.distributions['retrograde_orbit_chance'])) {
+                        orbit.isRetrogradeOrbit = true;
+                    }
+
+
             const newNodes = _generatePlanetaryBody(rng, pack, seed, i, systemRoot, orbit, `${systemName} ${String.fromCharCode(98 + i)}`, nodes, system_age_Gyr, undefined, true);
             nodes.push(...newNodes);
         }
@@ -211,7 +217,12 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
                         hostMu: G * hostMassKg,
                         t0: Date.now(),
                         elements: { a_AU: newA_AU, e: newEccentricity, i_deg: Math.pow(rng.nextFloat(), 3) * 15, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
-                    };  
+                    };
+
+                    if (weightedChoice<boolean>(rng, pack.distributions['retrograde_orbit_chance'])) {
+                        orbit.isRetrogradeOrbit = true;
+                    }
+
             const newNodes = _generatePlanetaryBody(rng, pack, seed, i, host, orbit, `${planetNamePrefix}${toRoman(i + 1)}`, nodes, system_age_Gyr, undefined, true);
             nodes.push(...newNodes);
     

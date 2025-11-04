@@ -167,6 +167,20 @@
             { "weight": 10, "value": [10.0, 100.0] }
         ]
     },
+    "retrograde_orbit_chance": {
+        "name": "Chance of Retrograde Orbit",
+        "entries": [
+            { "weight": 99, "value": false },
+            { "weight": 1, "value": true }
+        ]
+    },
+    "retrograde_orbit_chance_moon": {
+        "name": "Chance of Retrograde Orbit for Moons",
+        "entries": [
+            { "weight": 80, "value": false },
+            { "weight": 20, "value": true }
+        ]
+    },
     "atmosphere_composition": {
       "name": "Atmosphere Composition",
       "entries": [

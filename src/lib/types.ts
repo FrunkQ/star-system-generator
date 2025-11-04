@@ -29,6 +29,7 @@ export interface Kepler { a_AU: number; e: number; i_deg: number; Omega_deg: num
 export interface Orbit {
   hostId: ID; elements: Kepler; t0: number; hostMu: number; seed?: string;
   n_rad_per_s?: number; // Optional pre-calculated mean motion (rad/s)
+  isRetrogradeOrbit?: boolean;
   resonance?: { numerator: number; denominator: number } | null;
 }
 

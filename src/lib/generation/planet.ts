@@ -83,6 +83,11 @@ export function _generatePlanetaryBody(
         planet = { ...planet, ...propertyOverrides };
     }
 
+    if (planet.orbit?.isRetrogradeOrbit) {
+        planet.tags.push({ key: 'Captured Body' });
+        planet.tags.push({ key: 'Retrograde Orbit' });
+    }
+
     // --- Feature Calculation & Property Assignment ---
     const features: Record<string, number | string> = { id: planetId };
     if (planet.massKg) features['mass_Me'] = planet.massKg / EARTH_MASS_KG;
@@ -322,12 +327,6 @@ export function _generatePlanetaryBody(
         planet.classes.push('planet/disrupted');
     }
 
-    // --- Habitability & Biosphere ---
-    calculateHabitabilityAndBiosphere(planet, rng);
-
-
-    planet.classes = classifyBody(features, pack, allNodes);
-
     // --- Post-Generation Transformations (e.g., Atmospheric Stripping) ---
     if (host.age_Gyr > 4.0 && (features['a_AU'] as number) < 0.5 && planet.classes.includes('planet/gas-giant')) {
         // This hot gas giant has been stripped over billions of years
@@ -344,6 +343,12 @@ export function _generatePlanetaryBody(
         planet.atmosphere = undefined;
         planet.hydrosphere = undefined;
     }
+
+    // --- Habitability & Biosphere ---
+    calculateHabitabilityAndBiosphere(planet, rng);
+
+
+    planet.classes = classifyBody(features, pack, allNodes);
 
     const primaryClass = planet.classes[0];
     if (primaryClass && pack.classifier?.planetImages?.[primaryClass]) {
@@ -408,6 +413,10 @@ export function _generatePlanetaryBody(
                 t0: Date.now(),
                 elements: { a_AU: newMoonA_AU, e: newMoonEccentricity, i_deg: Math.pow(rng.nextFloat(), 2) * 10, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
             };
+
+            if (weightedChoice<boolean>(rng, pack.distributions['retrograde_orbit_chance_moon'])) {
+                moonOrbit.isRetrogradeOrbit = true;
+            }
             
             const moonNodes = _generatePlanetaryBody(rng, pack, `${planet.id}-moon`, j, planet, moonOrbit, `${planet.name} ${toRoman(j + 1)}`, [...allNodes, ...newNodes], age_Gyr, undefined, true);
             newNodes.push(...moonNodes);
