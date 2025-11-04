@@ -3,7 +3,7 @@
   import { get } from 'svelte/store';
   import type { RulePack, System, Starmap as StarmapType, StarSystemNode, Route } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
-  import { generateSystem } from '$lib/api';
+  import { generateSystem, renameNode } from '$lib/api';
   import { starmapStore } from '$lib/starmapStore';
   import { systemStore } from '$lib/stores';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
