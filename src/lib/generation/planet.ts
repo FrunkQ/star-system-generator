@@ -73,14 +73,20 @@ export function _generatePlanetaryBody(
 
     const planetTemplate = pack.statTemplates?.[planetType];
     if (planetTemplate) {
-        planet.massKg = randomFromRange(rng, planetTemplate.mass_earth[0], planetTemplate.mass_earth[1]) * EARTH_MASS_KG;
-        planet.radiusKm = randomFromRange(rng, planetTemplate.radius_earth[0], planetTemplate.radius_earth[1]) * EARTH_RADIUS_KM;
+        if (!propertyOverrides?.massKg) {
+            planet.massKg = randomFromRange(rng, planetTemplate.mass_earth[0], planetTemplate.mass_earth[1]) * EARTH_MASS_KG;
+        }
+        if (!propertyOverrides?.radiusKm) {
+            planet.radiusKm = randomFromRange(rng, planetTemplate.radius_earth[0], planetTemplate.radius_earth[1]) * EARTH_RADIUS_KM;
+        }
         
-        const magneticFieldChance = pack.generation_parameters?.terrestrial_magnetic_field_chance || 0.8;
-        if (planetType === 'planet/terrestrial' && planet.massKg > 0.1 * EARTH_MASS_KG && rng.nextFloat() < magneticFieldChance) {
-             planet.magneticField = { strengthGauss: randomFromRange(rng, 0.1, 1.5) };
-        } else if (planetTemplate.mag_gauss) {
-            planet.magneticField = { strengthGauss: randomFromRange(rng, planetTemplate.mag_gauss[0], planetTemplate.mag_gauss[1]) };
+        if (!propertyOverrides?.magneticField) {
+            const magneticFieldChance = pack.generation_parameters?.terrestrial_magnetic_field_chance || 0.8;
+            if (planetType === 'planet/terrestrial' && planet.massKg > 0.1 * EARTH_MASS_KG && rng.nextFloat() < magneticFieldChance) {
+                 planet.magneticField = { strengthGauss: randomFromRange(rng, 0.1, 1.5) };
+            } else if (planetTemplate.mag_gauss) {
+                planet.magneticField = { strengthGauss: randomFromRange(rng, planetTemplate.mag_gauss[0], planetTemplate.mag_gauss[1]) };
+            }
         }
 
         if (planet.roleHint === 'moon' && host.kind === 'body') {
@@ -116,64 +122,65 @@ export function _generatePlanetaryBody(
     const allStars = allNodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
 
     let totalStellarRadiation = 0;
-    let equilibriumTempK = 0;
+    let equilibriumTempK = propertyOverrides?.equilibriumTempK || 0;
+    if (!propertyOverrides?.equilibriumTempK) {
 
-    if (allStars.length > 0) {
-        const albedo = 0.3; // Placeholder albedo
-        let totalLuminosityTimesArea = 0;
+        if (allStars.length > 0) {
+            const albedo = 0.3; // Placeholder albedo
+            let totalLuminosityTimesArea = 0;
 
-        for (const star of allStars) {
-            const starTemp = star.temperatureK || 5778;
-            const starRadius_m = (star.radiusKm || SOLAR_RADIUS_KM) * 1000;
-            const starLuminosity = 4 * Math.PI * Math.pow(starRadius_m, 2) * 5.67e-8 * Math.pow(starTemp, 4);
+            for (const star of allStars) {
+                const starTemp = star.temperatureK || 5778;
+                const starRadius_m = (star.radiusKm || SOLAR_RADIUS_KM) * 1000;
+                const starLuminosity = 4 * Math.PI * Math.pow(starRadius_m, 2) * 5.67e-8 * Math.pow(starTemp, 4);
 
-            // Find distance from this star to the planet
-            let currentBody: CelestialBody | Barycenter = planet;
-            let distance_m = 0;
-            let path = [];
+                // Find distance from this star to the planet
+                let currentBody: CelestialBody | Barycenter = planet;
+                let distance_m = 0;
+                let path = [];
 
-            // This is a simplified distance calculation that does not account for the true 3D position of bodies in different orbital planes.
-            // It sums semi-major axes up and down the tree.
-            const findPath = (startNode: CelestialBody | Barycenter, targetId: ID): (CelestialBody | Barycenter)[] => {
-                let p = [];
-                let curr = startNode;
-                while(curr) {
-                    p.unshift(curr);
-                    if (curr.id === targetId) return p;
-                    curr = allNodes.find(n => n.id === curr.parentId)!;
+                // This is a simplified distance calculation that does not account for the true 3D position of bodies in different orbital planes.
+                // It sums semi-major axes up and down the tree.
+                const findPath = (startNode: CelestialBody | Barycenter, targetId: ID): (CelestialBody | Barycenter)[] => {
+                    let p = [];
+                    let curr = startNode;
+                    while(curr) {
+                        p.unshift(curr);
+                        if (curr.id === targetId) return p;
+                        curr = allNodes.find(n => n.id === curr.parentId)!;
+                    }
+                    return [];
                 }
-                return [];
+
+                const pathToStar = findPath(star, allNodes.find(n => n.parentId === null)!.id);
+                const pathToPlanet = findPath(planet, allNodes.find(n => n.parentId === null)!.id);
+
+                let lcaIndex = 0;
+                while(lcaIndex < pathToStar.length && lcaIndex < pathToPlanet.length && pathToStar[lcaIndex].id === pathToPlanet[lcaIndex].id) {
+                    lcaIndex++;
+                }
+                lcaIndex--; // step back to the common ancestor
+
+                let dist_au = 0;
+                for (let i = lcaIndex + 1; i < pathToPlanet.length; i++) {
+                    dist_au += (pathToPlanet[i] as CelestialBody).orbit?.elements.a_AU || 0;
+                }
+                for (let i = lcaIndex + 1; i < pathToStar.length; i++) {
+                    dist_au += (pathToStar[i] as CelestialBody).orbit?.elements.a_AU || 0;
+                }
+
+                if (dist_au > 0) {
+                    const dist_m = dist_au * AU_KM * 1000;
+                    totalLuminosityTimesArea += starLuminosity / (4 * Math.PI * Math.pow(dist_m, 2));
+                    totalStellarRadiation += (star.radiationOutput || 1) / (dist_au * dist_au);
+                }
             }
 
-            const pathToStar = findPath(star, allNodes.find(n => n.parentId === null)!.id);
-            const pathToPlanet = findPath(planet, allNodes.find(n => n.parentId === null)!.id);
-
-            let lcaIndex = 0;
-            while(lcaIndex < pathToStar.length && lcaIndex < pathToPlanet.length && pathToStar[lcaIndex].id === pathToPlanet[lcaIndex].id) {
-                lcaIndex++;
+            if (totalLuminosityTimesArea > 0) {
+                equilibriumTempK = Math.pow(totalLuminosityTimesArea * (1 - albedo) / (4 * 5.67e-8), 0.25);
             }
-            lcaIndex--; // step back to the common ancestor
-
-            let dist_au = 0;
-            for (let i = lcaIndex + 1; i < pathToPlanet.length; i++) {
-                dist_au += (pathToPlanet[i] as CelestialBody).orbit?.elements.a_AU || 0;
-            }
-            for (let i = lcaIndex + 1; i < pathToStar.length; i++) {
-                dist_au += (pathToStar[i] as CelestialBody).orbit?.elements.a_AU || 0;
-            }
-
-            if (dist_au > 0) {
-                const dist_m = dist_au * AU_KM * 1000;
-                totalLuminosityTimesArea += starLuminosity / (4 * Math.PI * Math.pow(dist_m, 2));
-                totalStellarRadiation += (star.radiationOutput || 1) / (dist_au * dist_au);
-            }
-        }
-
-        if (totalLuminosityTimesArea > 0) {
-            equilibriumTempK = Math.pow(totalLuminosityTimesArea * (1 - albedo) / (4 * 5.67e-8), 0.25);
         }
     }
-
     const magneticFieldStrength = planet.magneticField?.strengthGauss || 0;
     planet.surfaceRadiation = Math.max(0, totalStellarRadiation - magneticFieldStrength);
     features['radiation_flux'] = planet.surfaceRadiation;
@@ -183,37 +190,21 @@ export function _generatePlanetaryBody(
 
 
 
-    if (planetType === 'planet/terrestrial') {
-        const hydroCoverageRange = weightedChoice<[number, number]>(rng, pack.distributions['hydrosphere_coverage']);
-        planet.hydrosphere = {
-            coverage: randomFromRange(rng, hydroCoverageRange[0], hydroCoverageRange[1]),
-            composition: weightedChoice<string>(rng, pack.distributions['hydrosphere_composition'])
-        };
+    if (planet.hydrosphere) {
         features['hydrosphere.coverage'] = planet.hydrosphere.coverage;
+        features['hydrosphere.composition'] = planet.hydrosphere.composition;
     }
 
     planet.equilibriumTempK = equilibriumTempK;
 
-    let greenhouseContributionK = 0;
-    if (planet.atmosphere && planet.atmosphere.pressure_bar && planet.atmosphere.composition) {
-        const greenhouseFactors: Record<string, number> = {
-            'CO2': 0.18,
-            'CH4': 0.05,
-            'H2O': 0.10, // Water vapor is a potent greenhouse gas
-            'N2': 0.01
-        };
-
-        let totalGreenhouseFactor = 0;
-        for (const gas in planet.atmosphere.composition) {
-            if (greenhouseFactors[gas]) {
-                const partialPressure = planet.atmosphere.pressure_bar * planet.atmosphere.composition[gas];
-                totalGreenhouseFactor += partialPressure * greenhouseFactors[gas];
-            }
+    let greenhouseContributionK = propertyOverrides?.greenhouseTempK || 0;
+    if (!propertyOverrides?.greenhouseTempK && planet.atmosphere) {
+        const atmDef = pack.distributions.atmosphere_composition.entries.find(e => e.value.name === planet.atmosphere.name)?.value;
+        if (atmDef && atmDef.greenhouse_effect_K) {
+            const nominalPressure = atmDef.pressure_range_bar ? (atmDef.pressure_range_bar[0] + atmDef.pressure_range_bar[1]) / 2 : 1;
+            const pressureRatio = planet.atmosphere.pressure_bar / nominalPressure;
+            greenhouseContributionK = atmDef.greenhouse_effect_K * pressureRatio;
         }
-
-        // A non-linear model: T_greenhouse = T_eq * (1 + total_factor)^0.25 - T_eq
-        const tempWithGreenhouse = equilibriumTempK * Math.pow(1 + totalGreenhouseFactor, 0.25);
-        greenhouseContributionK = tempWithGreenhouse - equilibriumTempK;
     }
     planet.greenhouseTempK = greenhouseContributionK;
 
@@ -247,9 +238,17 @@ export function _generatePlanetaryBody(
     planet.temperatureK = equilibriumTempK + greenhouseContributionK + tidalHeatingK + radiogenicHeatK;
     features['Teq_K'] = planet.temperatureK;
 
-    planet.classes = classifyBody(planet, features, pack, allNodes);
 
-    _generateAtmosphere(rng, pack, planet, features, planetType === 'planet/gas-giant');
+
+    if (propertyOverrides?.atmosphere) {
+        features['atm.main'] = propertyOverrides.atmosphere.main;
+        features['atm.pressure_bar'] = propertyOverrides.atmosphere.pressure_bar;
+        for (const gas in propertyOverrides.atmosphere.composition) {
+            features[`atm.composition.${gas}`] = propertyOverrides.atmosphere.composition[gas];
+        }
+    } else {
+        _generateAtmosphere(rng, pack, planet, features, planetType === 'planet/gas-giant');
+    }
 
     const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
 
@@ -569,6 +568,9 @@ function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBo
 
         features['atm.main'] = planet.atmosphere.main;
         features['atm.pressure_bar'] = planet.atmosphere.pressure_bar;
+        for (const gas in planet.atmosphere.composition) {
+            features[`atm.composition.${gas}`] = planet.atmosphere.composition[gas];
+        }
 
     } else if (isGasGiantBody) {
         // Default to Jupiter-like

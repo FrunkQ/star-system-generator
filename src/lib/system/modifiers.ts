@@ -176,73 +176,219 @@ function generateAndNormalizeComposition(rng: SeededRNG, compositionRanges: Reco
 }
 
 export function addHabitablePlanet(sys: System, hostId: ID, habitabilityType: 'earth-like' | 'human-habitable' | 'alien-habitable', pack: RulePack): System {
+
     const rng = new SeededRNG(sys.seed + Date.now());
+
     const host = sys.nodes.find(n => n.id === hostId) as CelestialBody;
+
     if (!host) throw new Error(`Host with id ${hostId} not found.`);
+
+
 
     const orbitResult = findViableHabitableOrbit(host, sys, habitabilityType);
 
+
+
     if (!orbitResult.success) {
+
         throw new Error(orbitResult.reason);
+
     }
 
-    const propertyOverrides: Partial<CelestialBody> = {};
 
-    if (habitabilityType === 'earth-like') {
-        const earthLikeAtmDef = pack.distributions.atmosphere_composition.entries.find(e => e.value.name === 'Nitrogen–Oxygen (Earth-like)').value;
-        
-        const finalComposition = generateAndNormalizeComposition(rng, earthLikeAtmDef.composition);
-        const mainGas = Object.keys(finalComposition).reduce((a, b) => finalComposition[a] > finalComposition[b] ? a : b);
-        const pressure = randomFromRange(rng, earthLikeAtmDef.pressure_range_bar[0], earthLikeAtmDef.pressure_range_bar[1]);
 
-        propertyOverrides.massKg = randomFromRange(rng, 0.8, 1.2) * EARTH_MASS_KG;
-        propertyOverrides.radiusKm = randomFromRange(rng, 0.9, 1.1) * EARTH_RADIUS_KM;
-        propertyOverrides.atmosphere = { 
-            name: earthLikeAtmDef.name,
-            main: mainGas, 
-            composition: finalComposition, 
-            pressure_bar: pressure
-        };
-        propertyOverrides.hydrosphere = { composition: 'water', coverage: 0.7 };
-        if (earthLikeAtmDef.tags) {
-            propertyOverrides.tags = earthLikeAtmDef.tags.map((t: string) => ({ key: t }));
-        }
+    // Radiation check
 
-    } else if (habitabilityType === 'human-habitable') {
-        const hypoxicAtmDef = pack.distributions.atmosphere_composition.entries.find(e => e.value.name === 'Low-O₂, Low-CO₂ (Hypoxic Inert)').value;
+    const allStars = sys.nodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
 
-        const finalComposition = generateAndNormalizeComposition(rng, hypoxicAtmDef.composition);
-        const mainGas = Object.keys(finalComposition).reduce((a, b) => finalComposition[a] > finalComposition[b] ? a : b);
-        const pressure = hypoxicAtmDef.pressure_range_bar ? randomFromRange(rng, hypoxicAtmDef.pressure_range_bar[0], hypoxicAtmDef.pressure_range_bar[1]) : randomFromRange(rng, 0.5, 1.5);
+    let totalStellarRadiation = 0;
 
-        propertyOverrides.massKg = randomFromRange(rng, 0.5, 1.5) * EARTH_MASS_KG;
-        propertyOverrides.radiusKm = randomFromRange(rng, 0.8, 1.2) * EARTH_RADIUS_KM;
-        propertyOverrides.atmosphere = { 
-            name: 'Human-Habitable (Hypoxic)',
-            main: mainGas, 
-            composition: finalComposition,
-            pressure_bar: pressure
-        };
-        propertyOverrides.hydrosphere = { composition: 'water', coverage: randomFromRange(rng, 0.2, 0.8) };
-        if (hypoxicAtmDef.tags) {
-            propertyOverrides.tags = hypoxicAtmDef.tags.map((t: string) => ({ key: t }));
-        }
-    } else { // alien-habitable
-        propertyOverrides.massKg = randomFromRange(rng, 0.5, 3.0) * EARTH_MASS_KG;
-        propertyOverrides.radiusKm = randomFromRange(rng, 0.8, 2.0) * EARTH_RADIUS_KM;
+    for (const star of allStars) {
+
+        totalStellarRadiation += (star.radiationOutput || 1) / (orbitResult.orbit.elements.a_AU * orbitResult.orbit.elements.a_AU);
+
     }
+
+    if (totalStellarRadiation > 10) { // 10 is a placeholder for "Medium" radiation
+
+        throw new Error('Could not create a habitable planet due to excess ionising radiation.');
+
+    }
+
+
 
     const siblings = sys.nodes.filter(n => n.parentId === hostId);
+
     const name = ((host as CelestialBody).roleHint === 'star' || host.kind === 'barycenter') 
+
         ? `${host.name} ${String.fromCharCode(98 + siblings.length)}`
+
         : `${host.name} ${toRoman(siblings.length + 1)}`;
 
-    const newNodes = _generatePlanetaryBody(new SeededRNG(sys.seed + Date.now()), pack, `${sys.seed}-custom`, siblings.length, host, orbitResult.orbit, name, sys.nodes, sys.age_Gyr, 'planet/terrestrial', false, propertyOverrides);
+
+
+        const propertyOverrides: Partial<CelestialBody> = {};
+
+
+
     
+
+
+
+        if (habitabilityType === 'earth-like') {
+
+
+
+            const earthLikeAtmDef = pack.distributions.atmosphere_composition.entries.find(e => e.value.name === 'Nitrogen–Oxygen (Earth-like)').value;
+
+
+
+            
+
+
+
+            const finalComposition = generateAndNormalizeComposition(rng, earthLikeAtmDef.composition);
+
+
+
+            const mainGas = Object.keys(finalComposition).reduce((a, b) => finalComposition[a] > finalComposition[b] ? a : b);
+
+
+
+            const pressure = randomFromRange(rng, earthLikeAtmDef.pressure_range_bar[0], earthLikeAtmDef.pressure_range_bar[1]);
+
+
+
+    
+
+
+
+            propertyOverrides.massKg = randomFromRange(rng, 0.5, 1.5) * EARTH_MASS_KG;
+
+
+
+            propertyOverrides.radiusKm = randomFromRange(rng, 0.8, 1.2) * EARTH_RADIUS_KM;
+
+
+
+            propertyOverrides.atmosphere = { 
+
+
+
+                name: earthLikeAtmDef.name,
+
+
+
+                main: mainGas, 
+
+
+
+                composition: finalComposition, 
+
+
+
+                pressure_bar: pressure
+
+
+
+            };
+
+
+
+            propertyOverrides.hydrosphere = { composition: 'water', coverage: 0.7 };
+
+
+
+            propertyOverrides.magneticField = { strengthGauss: randomFromRange(rng, 0.25, 0.65) };
+
+
+
+    
+
+
+
+            const hostLuminosity = Math.pow((host.massKg || 0) / 1.989e30, 3.5) * 3.828e26;
+
+
+
+            const equilibriumTempK = Math.pow(hostLuminosity * (1 - 0.3) / (16 * Math.PI * 5.67e-8 * Math.pow(orbitResult.orbit.elements.a_AU * AU_KM * 1000, 2)), 0.25);
+
+
+
+            propertyOverrides.equilibriumTempK = equilibriumTempK;
+
+
+
+            propertyOverrides.greenhouseTempK = 288 - equilibriumTempK;
+
+
+
+    
+
+
+
+        } else if (habitabilityType === 'human-habitable') {
+
+        const hypoxicAtmDef = pack.distributions.atmosphere_composition.entries.find(e => e.value.name === 'Low-O₂, Low-CO₂ (Hypoxic Inert)').value;
+
+
+
+        const finalComposition = generateAndNormalizeComposition(rng, hypoxicAtmDef.composition);
+
+        const mainGas = Object.keys(finalComposition).reduce((a, b) => finalComposition[a] > finalComposition[b] ? a : b);
+
+        const pressure = hypoxicAtmDef.pressure_range_bar ? randomFromRange(rng, hypoxicAtmDef.pressure_range_bar[0], hypoxicAtmDef.pressure_range_bar[1]) : randomFromRange(rng, 0.5, 1.5);
+
+
+
+        planet.massKg = randomFromRange(rng, 0.5, 1.5) * EARTH_MASS_KG;
+
+        planet.radiusKm = randomFromRange(rng, 0.8, 1.2) * EARTH_RADIUS_KM;
+
+        planet.atmosphere = { 
+
+            name: 'Human-Habitable (Hypoxic)',
+
+            main: mainGas, 
+
+            composition: finalComposition,
+
+            pressure_bar: pressure
+
+        };
+
+        planet.hydrosphere = { composition: 'water', coverage: randomFromRange(rng, 0.2, 0.8) };
+
+        if (hypoxicAtmDef.tags) {
+
+            planet.tags = hypoxicAtmDef.tags.map((t: string) => ({ key: t }));
+
+        }
+
+    } else { // alien-habitable
+
+        planet.massKg = randomFromRange(rng, 0.5, 3.0) * EARTH_MASS_KG;
+
+        planet.radiusKm = randomFromRange(rng, 0.8, 2.0) * EARTH_RADIUS_KM;
+
+    }
+
+
+
+    const newNodes = _generatePlanetaryBody(new SeededRNG(sys.seed + Date.now()), pack, `${sys.seed}-custom`, siblings.length, host, orbitResult.orbit, name, sys.nodes, sys.age_Gyr, 'planet/terrestrial', false, propertyOverrides);
+
+
+
     const newSystem = {
+
         ...sys,
+
         nodes: [...sys.nodes, ...newNodes]
+
     };
 
+
+
     return newSystem;
+
 }

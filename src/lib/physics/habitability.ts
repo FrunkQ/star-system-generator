@@ -54,6 +54,8 @@ export function findViableHabitableOrbit(host: CelestialBody, system: System, ha
     const children = system.nodes.filter(n => n.parentId === host.id && n.kind === 'body') as CelestialBody[];
     const stepSize = (tempSearchOuter_AU - tempSearchInner_AU) / 50; // 50 steps
     let collisionFailures = 0;
+    let allOrbitsTooHot = true;
+    let allOrbitsTooCold = true;
 
     // Systematic search from outer to inner
     for (let i = 0; i < 50; i++) {
@@ -87,6 +89,13 @@ export function findViableHabitableOrbit(host: CelestialBody, system: System, ha
         const bestCaseGreenhouseK = equilibriumTempK * (Math.pow(1 + (1.5 * 0.18), 0.25) - 1);
         const potentialSurfaceTempK = equilibriumTempK + bestCaseGreenhouseK;
 
+        if (potentialSurfaceTempK < targetParams.tempRangeK[0]) {
+            allOrbitsTooHot = false;
+        }
+        if (potentialSurfaceTempK > targetParams.tempRangeK[1]) {
+            allOrbitsTooCold = false;
+        }
+
         if (potentialSurfaceTempK >= targetParams.tempRangeK[0] && potentialSurfaceTempK <= targetParams.tempRangeK[1]) {
             // This orbit is viable!
             return {
@@ -115,6 +124,9 @@ export function findViableHabitableOrbit(host: CelestialBody, system: System, ha
     
     if (hostLuminosity / L_SUN < 0.01) return { success: false, reason: 'The host star is too cool to support a habitable planet.' };
     if (host.radiationOutput && host.radiationOutput > 100) return { success: false, reason: 'Radiation levels around this star are too high.' };
+
+    if (allOrbitsTooHot) return { success: false, reason: 'No stable orbit found in the habitable zone. All orbits are too hot.' };
+    if (allOrbitsTooCold) return { success: false, reason: 'No stable orbit found in the habitable zone. All orbits are too cold.' };
 
     return { success: false, reason: 'No stable orbit found in the habitable zone.' };
 }

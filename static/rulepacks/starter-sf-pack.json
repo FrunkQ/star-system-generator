@@ -211,6 +211,7 @@
             "Noble Gases": [0.0, 0.02],
             "Other Trace": [0.0, 0.001]
           },
+          "greenhouse_effect_K": 30,
           "tags": ["breathable-human"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -227,6 +228,7 @@
             "CO2": [0.95, 0.98],
             "N2": [0.02, 0.05]
           },
+          "greenhouse_effect_K": 400,
           "tags": ["toxic-human", "corrosive", "Runaway Greenhouse Effect", "Geologically Active (Volcanism)", "thick"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -245,6 +247,7 @@
             "Noble Gases": [0.01, 0.02],
             "Other Trace": [0.0, 0.01]
           },
+          "greenhouse_effect_K": 5,
           "tags": ["toxic-human", "thin"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -261,6 +264,7 @@
             "N2": [0.80, 0.90],
             "CO2": [0.10, 0.20]
           },
+          "greenhouse_effect_K": 50,
           "tags": ["toxic-human", "CO2-scrub-required", "Active Volcanism"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -278,6 +282,7 @@
             "O2": [0.04, 0.08],
             "CO2": [0.0, 0.02]
           },
+          "greenhouse_effect_K": 10,
           "tags": ["breathable-human-with-assistance", "hypoxic"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -294,6 +299,7 @@
             "N2": [0.94, 0.97],
             "CH4": [0.03, 0.06]
           },
+          "greenhouse_effect_K": 40,
           "tags": ["toxic-human", "reducing", "haze", "Cryovolcanism"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -310,6 +316,7 @@
             "SO2": [0.8, 1.0],
             "S": [0.0, 0.2]
           },
+          "greenhouse_effect_K": 2,
           "tags": ["toxic-human", "corrosive", "Active Volcanism", "thin", "exosphere"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -325,6 +332,7 @@
           "composition": {
             "O2": 1.0
           },
+          "greenhouse_effect_K": 1,
           "tags": ["exosphere", "thin"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -344,6 +352,7 @@
             "CH4": [0.0, 0.03],
             "NH3": [0.0, 0.03]
           },
+          "greenhouse_effect_K": 5,
           "tags": ["exosphere", "thin", "Subsurface Ocean", "Active Cryovolcanism (Plumes)"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -361,6 +370,7 @@
             "He": [0.12, 0.18],
             "CH4": [0.0, 0.01]
           },
+          "greenhouse_effect_K": 10,
           "tags": ["reducing"],
           "occurs_on": "gas giants",
           "tidally_locked": ["false"]
@@ -378,6 +388,7 @@
             "H2": [0.1, 0.3],
             "H": [0.0, 0.05]
           },
+          "greenhouse_effect_K": 5,
           "tags": ["escaping", "hot", "reducing", "thin-upper"],
           "occurs_on": "gas giants",
           "tidally_locked": ["false"]
@@ -395,6 +406,7 @@
             "H2O": [0.07, 0.12],
             "CH4": [0.01, 0.05]
           },
+          "greenhouse_effect_K": 60,
           "tags": ["reducing", "greenhouse", "Global Ocean"],
           "occurs_on": "gas giants",
           "tidally_locked": ["false"]
@@ -412,6 +424,7 @@
             "H2O": [0.03, 0.06],
             "CH4": [0.01, 0.05]
           },
+          "greenhouse_effect_K": 40,
           "tags": ["reducing", "greenhouse", "oceanic", "Global Ocean"],
           "occurs_on": "gas giants",
           "tidally_locked": ["false"]
@@ -429,6 +442,7 @@
             "CO2": [0.3, 0.5],
             "N2": [0.05, 0.15]
           },
+          "greenhouse_effect_K": 200,
           "tags": ["toxic-human", "reducing", "volcanic", "Magma Ocean Surface"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -447,6 +461,7 @@
             "N2": [0.05, 0.15],
             "SO2": [0.0, 0.1]
           },
+          "greenhouse_effect_K": 100,
           "tags": ["toxic-human", "Magma Ocean Surface", "volcanic"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["true"]
@@ -463,6 +478,7 @@
             "O2": [0.8, 1.0],
             "CO2": [0.0, 0.2]
           },
+          "greenhouse_effect_K": 10,
           "tags": ["oxidizing", "toxic-human", "Complete Water Loss (Photodissociation)"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -481,6 +497,7 @@
             "K": [0.05, 0.15],
             "Na": [0.05, 0.15]
           },
+          "greenhouse_effect_K": 20,
           "tags": ["toxic-human", "corrosive", "extreme-heat"],
           "occurs_on": "both",
           "tidally_locked": ["true"]
@@ -498,6 +515,7 @@
             "CO2": [0.0, 0.05],
             "N2": [0.0, 0.03]
           },
+          "greenhouse_effect_K": 300,
           "tags": ["toxic-human", "Runaway Greenhouse (Active)", "Evaporated Oceans"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -515,6 +533,7 @@
             "CO2": [0.0, 0.01],
             "Noble Gases": [0.0, 0.01]
           },
+          "greenhouse_effect_K": 2,
           "tags": ["inert", "breathable-human-with-supplied-O2", "Geologically Active"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -532,6 +551,7 @@
             "He": [0.1, 0.3],
             "NH3": [0.05, 0.15]
           },
+          "greenhouse_effect_K": 30,
           "tags": ["toxic-human", "reducing", "clouds"],
           "occurs_on": "gas giants",
           "tidally_locked": ["false"]
@@ -549,6 +569,7 @@
             "He": [0.15, 0.25],
             "H2S": [0.02, 0.08]
           },
+          "greenhouse_effect_K": 20,
           "tags": ["toxic-human", "reducing", "clouds"],
           "occurs_on": "gas giants",
           "tidally_locked": ["false"]
@@ -565,6 +586,7 @@
             "Na": [0.5, 0.7],
             "K": [0.3, 0.5]
           },
+          "greenhouse_effect_K": 1,
           "tags": ["exosphere", "thin", "hot", "escaping"],
           "occurs_on": "both",
           "tidally_locked": ["false"]
@@ -584,6 +606,7 @@
             "CO2": [0.0, 0.03],
             "H2O": [0.0, 0.02]
           },
+          "greenhouse_effect_K": 50,
           "tags": ["reducing", "hot", "Migrated Planet"],
           "occurs_on": "gas giants",
           "tidally_locked": ["false"]
@@ -601,6 +624,7 @@
             "He": [0.15, 0.25],
             "SO2": [0.01, 0.04]
           },
+          "greenhouse_effect_K": 10,
           "tags": ["toxic-human", "photochemistry", "hot"],
           "occurs_on": "both",
           "tidally_locked": ["false"]
@@ -626,7 +650,7 @@
     "planet/desert",
     "planet/disrupted",
     "planet/dwarf-planet",
-    "planet/earth-analog",
+    "planet/earth-analogue",
     "planet/earth-like",
     "planet/ecumenopolis",
     "planet/ellipsoid",
@@ -742,6 +766,7 @@
       { "when": { "all": [ { "lt": ["hydrosphere.coverage", 0.1] }, { "between": ["Teq_K", 250, 400] } ] }, "addClass": "planet/desert", "score": 100 },
       { "when": { "all": [ { "lt": ["escapeVelocity_kms", 3.0] }, { "lt": ["hydrosphere.coverage", 0.01] } ] }, "addClass": "planet/barren", "score": 100 },
       { "when": { "all": [ { "gt": ["hydrosphere.coverage", 0.9] }, { "eq": ["atm.main", "H2"] } ] }, "addClass": "planet/hycean", "score": 110 },
+      { "when": { "all": [ { "gt": ["mass_Me", 0.5] }, { "lt": ["mass_Me", 1.5] }, { "gt": ["hydrosphere.coverage", 0.5] }, { "eq": ["hydrosphere.composition", "water"] }, { "gt": ["atm.composition.O2", 0.1] } ] }, "addClass": "planet/earth-analogue", "score": 120 },
       { "when": { "all": [ { "gt": ["mass_Me", 1] }, { "eq": ["atm.main", "CO2"] } ] }, "addClass": "planet/carbon", "score": 105 },
       { "when": { "all": [ { "lt": ["mass_Me", 10] }, { "gt": ["stellarIrradiation", 1000] } ] }, "addClass": "planet/chthonian", "score": 110 },
       { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "lt": ["Teq_K", 150] } ] }, "addClass": "planet/ammonia-clouds-gas-giant", "score": 80 },
@@ -813,7 +838,7 @@
       "planet/desert": "/images/planet_types/web20desert20planet.jpg",
       "planet/disrupted": "/images/planet_types/web20disrupted20planet.jpg",
       "planet/dwarf-planet": "/images/planet_types/web20dwarf20planet.jpg",
-      "planet/earth-analog": "/images/planet_types/web20earth20analog20planet.jpg",
+      "planet/earth-analogue": "/images/planet_types/web20earth20analog20planet.jpg",
       "planet/earth-like": "/images/planet_types/web20earth-like20planet.jpg",
       "planet/ecumenopolis": "/images/planet_types/web20ecumenopolis20planet.jpg",
       "planet/ellipsoid": "/images/planet_types/web20ellipsoid20planet.jpg",
