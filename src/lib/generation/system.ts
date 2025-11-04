@@ -131,7 +131,11 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
       const numBodies = bodyCountTable ? weightedChoice<number>(rng, bodyCountTable) : rng.nextInt(0, 8);
     
       if (!isBinary) {
-        let lastApoapsisAU = (rootRadiusKm / AU_KM) + 0.1;
+        const star = systemRoot as CelestialBody;
+        const rocheLimitAU = (star.radiusKm * 2.44) / AU_KM;
+        const sootLineAU = ((star.radiusKm / 2) * Math.pow(star.temperatureK / 1800, 2)) / AU_KM;
+        let lastApoapsisAU = Math.max(rocheLimitAU, sootLineAU) * 1.2; // 20% buffer
+
         for (let i = 0; i < numBodies; i++) {
             const minGap = 0.2;
             const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
@@ -170,8 +174,14 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
         const sTypeBCriticalAU = 0.464 * mu * starSeparationAU;
     
         let lastApo_p = pTypeCriticalAU * 1.5;
-        let lastApo_sA = (starA.radiusKm || 0) / AU_KM;
-        let lastApo_sB = (starB.radiusKm || 0) / AU_KM;
+
+        const rocheLimitA_AU = (starA.radiusKm * 2.44) / AU_KM;
+        const sootLineA_AU = ((starA.radiusKm / 2) * Math.pow(starA.temperatureK / 1800, 2)) / AU_KM;
+        let lastApo_sA = Math.max(rocheLimitA_AU, sootLineA_AU) * 1.2;
+
+        const rocheLimitB_AU = (starB.radiusKm * 2.44) / AU_KM;
+        const sootLineB_AU = ((starB.radiusKm / 2) * Math.pow(starB.temperatureK / 1800, 2)) / AU_KM;
+        let lastApo_sB = Math.max(rocheLimitB_AU, sootLineB_AU) * 1.2;
     
         for (let i = 0; i < numBodies; i++) {
             const placement = weightedChoice<string>(rng, pack.distributions['binary_planet_placement']);

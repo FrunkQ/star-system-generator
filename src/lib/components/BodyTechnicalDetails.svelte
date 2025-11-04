@@ -16,6 +16,7 @@
   let tempTooltip: string = '';
   let surfaceRadiationText: string | null = null;
   let surfaceRadiationTooltip: string | null = null;
+  let stellarRadiationTooltip: string | null = null;
 
   // Perform all other display calculations when the body changes
   $: {
@@ -67,13 +68,9 @@
                 ? `${massInSuns.toLocaleString(undefined, {maximumFractionDigits: 3})} Solar Masses` 
                 : `${massInSuns.toExponential(2)} Solar Masses`;
 
-            const rad = body.radiationOutput || 0;
-            if (rad > 1000) radiationLevel = 'Extreme';
-            else if (rad > 100) radiationLevel = 'Very High';
-            else if (rad > 10) radiationLevel = 'High';
-            else if (rad > 2) radiationLevel = 'Moderate';
-            else if (rad > 0.1) radiationLevel = 'Low';
-            else radiationLevel = 'Negligible';
+            const desc = getStellarRadiationDescription(body.radiationOutput || 0);
+            radiationLevel = `${desc.text} (${body.radiationOutput?.toFixed(2)})`;
+            stellarRadiationTooltip = desc.tooltip;
 
         } else if (body.massKg) {            const massInEarths = body.massKg / EARTH_MASS_KG;
             massDisplay = massInEarths < 1000000 
@@ -95,12 +92,21 @@
 
   // --- Helper Functions ---
   function getSurfaceRadiationDescription(radiation: number): { text: string, tooltip: string } {
-      if (radiation < 1) return { text: 'Negligible', tooltip: 'No special shielding required for long-term survival.' };
-      if (radiation < 10) return { text: 'Low', tooltip: 'Standard habitat shielding is sufficient for long-term survival.' };
-      if (radiation < 50) return { text: 'Moderate', tooltip: 'Requires moderate habitat shielding (e.g., several cm of lead or equivalent) for long-term survival.' };
-      if (radiation < 100) return { text: 'High', tooltip: 'Requires heavy habitat shielding (e.g., dense alloys, significant depth underground) for long-term survival.' };
-      if (radiation < 500) return { text: 'Very High', tooltip: 'Long-term survival is difficult. Requires extreme shielding, such as deep subterranean or underwater habitats.' };
-      return { text: 'Fatal', tooltip: 'Surface survival is impossible without exotic technology. Lethal dose received in a short time.' };
+      if (radiation < 1) return { text: 'Negligible (<1 mSv/year)', tooltip: 'No special shielding required for long-term survival. Less than typical Earth background radiation.' };
+      if (radiation < 10) return { text: 'Low (1-50 mSv/year)', tooltip: 'Standard habitat shielding is sufficient for long-term survival. Comparable to airline crew or high-altitude cities.' };
+      if (radiation < 50) return { text: 'Moderate (50-500 mSv/year)', tooltip: 'Requires moderate habitat shielding (e.g., several cm of lead or equivalent) for long-term survival. Comparable to astronauts on ISS.' };
+      if (radiation < 100) return { text: 'High (500-1,000 mSv/year)', tooltip: 'Requires heavy habitat shielding (e.g., dense alloys, significant depth underground) for long-term survival. Serious health risks over long periods.' };
+      if (radiation < 500) return { text: 'Very High (1,000-5,000 mSv/year)', tooltip: 'Long-term survival is difficult. Requires extreme shielding, such as deep subterranean or underwater habitats. Mission-critical operations only.' };
+      return { text: 'Fatal (>5,000 mSv/year)', tooltip: 'Surface survival is impossible without exotic technology. Lethal dose received in a short time.' };
+  }
+
+  function getStellarRadiationDescription(radiation: number): { text: string, tooltip: string } {
+      if (radiation < 0.1) return { text: 'Negligible', tooltip: 'Very low stellar radiation output.' };
+      if (radiation < 2) return { text: 'Low', tooltip: 'Low stellar radiation output. Comparable to a dim red dwarf.' };
+      if (radiation < 10) return { text: 'Moderate', tooltip: 'Moderate stellar radiation output. Comparable to our Sun.' };
+      if (radiation < 100) return { text: 'High', tooltip: 'High stellar radiation output. Comparable to a bright F-type star.' };
+      if (radiation < 1000) return { text: 'Very High', tooltip: 'Very high stellar radiation output. Comparable to a hot B-type star.' };
+      return { text: 'Extreme', tooltip: 'Extreme stellar radiation output. Comparable to a massive O-type star or active stellar remnant.' };
   }
 
   // --- Constants ---
@@ -231,9 +237,9 @@
     {/if}
 
     {#if body.roleHint === 'star' && radiationLevel}
-        <div class="detail-item" title="A general measure of stellar radiation output. 1.0 is approximately Sun-like.">
+        <div class="detail-item" title={stellarRadiationTooltip}>
             <span class="label">Radiation Level</span>
-            <span class="value">{radiationLevel} ({body.radiationOutput?.toFixed(2)})</span>
+            <span class="value">{radiationLevel}</span>
         </div>
     {/if}
 
