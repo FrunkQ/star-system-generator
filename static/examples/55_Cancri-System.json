@@ -46,12 +46,12 @@
       "areas": [],
       "orbit": {
         "hostId": "55-cancri-barycenter",
-        "hostMu": 1.551e+20,
+        "hostMu": 155100000000000000000,
         "t0": 1762339146908,
         "n_rad_per_s": 6.1901e-12,
         "elements": {
           "a_AU": 240.6,
-          "e": 0.0,
+          "e": 0,
           "i_deg": 0,
           "omega_deg": 0,
           "Omega_deg": 0,
@@ -82,12 +82,12 @@
       "areas": [],
       "orbit": {
         "hostId": "55-cancri-barycenter",
-        "hostMu": 1.551e+20,
+        "hostMu": 155100000000000000000,
         "t0": 1762339146908,
         "n_rad_per_s": 6.1901e-12,
         "elements": {
           "a_AU": 824.4,
-          "e": 0.0,
+          "e": 0,
           "i_deg": 0,
           "omega_deg": 0,
           "Omega_deg": 0,
@@ -112,7 +112,7 @@
       ],
       "orbit": {
         "hostId": "55-cancri-a",
-        "hostMu": 1.200e+20,
+        "hostMu": 120000000000000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.01544,
@@ -169,11 +169,11 @@
       ],
       "orbit": {
         "hostId": "55-cancri-a",
-        "hostMu": 1.200e+20,
+        "hostMu": 120000000000000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.1134,
-          "e": 0.0,
+          "e": 0,
           "i_deg": 0,
           "omega_deg": 0,
           "Omega_deg": 0,
@@ -221,11 +221,11 @@
       ],
       "orbit": {
         "hostId": "55-cancri-a",
-        "hostMu": 1.200e+20,
+        "hostMu": 120000000000000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.2373,
-          "e": 0.0,
+          "e": 0,
           "i_deg": 0,
           "omega_deg": 0,
           "Omega_deg": 0,
@@ -271,11 +271,11 @@
       ],
       "orbit": {
         "hostId": "55-cancri-a",
-        "hostMu": 1.200e+20,
+        "hostMu": 120000000000000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.771,
-          "e": 0.0,
+          "e": 0,
           "i_deg": 0,
           "omega_deg": 0,
           "Omega_deg": 0,
@@ -322,7 +322,7 @@
       ],
       "orbit": {
         "hostId": "55-cancri-a",
-        "hostMu": 1.200e+20,
+        "hostMu": 120000000000000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 5.45,
@@ -368,5 +368,6 @@
     {
       "key": "Binary System"
     }
-  ]
+  ],
+  "visualScalingMultiplier": 0.175
 }

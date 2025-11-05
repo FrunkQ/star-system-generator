@@ -1,6 +1,6 @@
 {
   "id": "solar-system",
-  "name": "Solar System",
+  "name": "Sol",
   "seed": "solar-system-real-data",
   "epochT0": 1762339146908,
   "age_Gyr": 4.603,
@@ -44,11 +44,11 @@
       ],
       "orbit": {
         "hostId": "solar-system-sun",
-        "hostMu": 1.32712440018e+20,
+        "hostMu": 132712440018000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.387098,
-          "e": 0.205630,
+          "e": 0.20563,
           "i_deg": 7.005,
           "omega_deg": 0,
           "Omega_deg": 0,
@@ -58,9 +58,15 @@
       "massKg": 3.285e+23,
       "radiusKm": 2439.7,
       "tags": [
-        { "key": "exosphere" },
-        { "key": "thin" },
-        { "key": "hot" }
+        {
+          "key": "exosphere"
+        },
+        {
+          "key": "thin"
+        },
+        {
+          "key": "hot"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 440,
@@ -95,7 +101,7 @@
       ],
       "orbit": {
         "hostId": "solar-system-sun",
-        "hostMu": 1.32712440018e+20,
+        "hostMu": 132712440018000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.723332,
@@ -109,11 +115,21 @@
       "massKg": 4.867e+24,
       "radiusKm": 6051.8,
       "tags": [
-        { "key": "toxic-human" },
-        { "key": "corrosive" },
-        { "key": "Runaway Greenhouse Effect" },
-        { "key": "Geologically Active (Volcanism)" },
-        { "key": "thick" }
+        {
+          "key": "toxic-human"
+        },
+        {
+          "key": "corrosive"
+        },
+        {
+          "key": "Runaway Greenhouse Effect"
+        },
+        {
+          "key": "Geologically Active (Volcanism)"
+        },
+        {
+          "key": "thick"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 232,
@@ -149,7 +165,7 @@
       ],
       "orbit": {
         "hostId": "solar-system-sun",
-        "hostMu": 1.32712440018e+20,
+        "hostMu": 132712440018000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 1,
@@ -163,11 +179,17 @@
       "massKg": 5.972e+24,
       "radiusKm": 6371,
       "tags": [
-        { "key": "breathable-human" },
-        { "key": "habitability/human" }
+        {
+          "key": "breathable-human"
+        },
+        {
+          "key": "habitability/human"
+        }
       ],
       "areas": [],
-      "magneticField": { "strengthGauss": 0.5 },
+      "magneticField": {
+        "strengthGauss": 0.5
+      },
       "equilibriumTempK": 255,
       "temperatureK": 288,
       "atmosphere": {
@@ -190,7 +212,11 @@
         "coverage": 0.8,
         "biochemistry": "water-carbon",
         "energy_source": "photosynthesis",
-        "morphologies": [ "microbial", "flora", "fauna" ]
+        "morphologies": [
+          "microbial",
+          "flora",
+          "fauna"
+        ]
       },
       "orbital_period_days": 365.25,
       "axial_tilt_deg": 23.44,
@@ -207,10 +233,14 @@
       "name": "Luna",
       "kind": "body",
       "roleHint": "moon",
-      "classes": [ "planet/sub-earth", "planet/barren", "planet/crater" ],
+      "classes": [
+        "planet/sub-earth",
+        "planet/barren",
+        "planet/crater"
+      ],
       "orbit": {
         "hostId": "solar-system-earth",
-        "hostMu": 3.986004418e+14,
+        "hostMu": 398600441800000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.00257,
@@ -224,8 +254,12 @@
       "massKg": 7.342e+22,
       "radiusKm": 1737.4,
       "tags": [
-        { "key": "Airless Rock" },
-        { "key": "Tidally Locked" }
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 250,
@@ -245,15 +279,19 @@
       "name": "Mars",
       "kind": "body",
       "roleHint": "planet",
-      "classes": [ "planet/terrestrial", "planet/desert", "planet/ice" ],
+      "classes": [
+        "planet/terrestrial",
+        "planet/desert",
+        "planet/ice"
+      ],
       "orbit": {
         "hostId": "solar-system-sun",
-        "hostMu": 1.32712440018e+20,
+        "hostMu": 132712440018000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 1.52368,
           "e": 0.0934,
-          "i_deg": 1.850,
+          "i_deg": 1.85,
           "omega_deg": 0,
           "Omega_deg": 0,
           "M0_rad": 0
@@ -262,8 +300,12 @@
       "massKg": 6.39e+23,
       "radiusKm": 3389.5,
       "tags": [
-        { "key": "toxic-human" },
-        { "key": "thin" }
+        {
+          "key": "toxic-human"
+        },
+        {
+          "key": "thin"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 210,
@@ -278,7 +320,7 @@
         "main": "CO2",
         "pressure_bar": 0.006
       },
-      "orbital_period_days": 687.0,
+      "orbital_period_days": 687,
       "axial_tilt_deg": 25.19,
       "rotation_period_hours": 24.6,
       "description": "The fourth planet, known as the 'Red Planet' due to iron oxide (rust) on its surface. It's a cold desert world with a very thin CO2 atmosphere, polar ice caps, and the largest volcano (Olympus Mons) and canyon (Valles Marineris) in the Solar System.",
@@ -293,13 +335,17 @@
       "name": "Phobos",
       "kind": "body",
       "roleHint": "moon",
-      "classes": [ "planet/dwarf-planet", "planet/barren", "planet/crater" ],
+      "classes": [
+        "planet/dwarf-planet",
+        "planet/barren",
+        "planet/crater"
+      ],
       "orbit": {
         "hostId": "solar-system-mars",
-        "hostMu": 4.2643806e+13,
+        "hostMu": 42643806000000,
         "t0": 1762339146908,
         "elements": {
-          "a_AU": 6.26e-5,
+          "a_AU": 0.0000626,
           "e": 0.0151,
           "i_deg": 1.093,
           "omega_deg": 0,
@@ -307,11 +353,15 @@
           "M0_rad": 0
         }
       },
-      "massKg": 1.06e+16,
+      "massKg": 10600000000000000,
       "radiusKm": 11.2,
       "tags": [
-        { "key": "Airless Rock" },
-        { "key": "Tidally Locked" }
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 230,
@@ -331,10 +381,14 @@
       "name": "Deimos",
       "kind": "body",
       "roleHint": "moon",
-      "classes": [ "planet/dwarf-planet", "planet/barren", "planet/crater" ],
+      "classes": [
+        "planet/dwarf-planet",
+        "planet/barren",
+        "planet/crater"
+      ],
       "orbit": {
         "hostId": "solar-system-mars",
-        "hostMu": 4.2643806e+13,
+        "hostMu": 42643806000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.000156,
@@ -345,11 +399,15 @@
           "M0_rad": 0
         }
       },
-      "massKg": 1.47e+15,
+      "massKg": 1470000000000000,
       "radiusKm": 6.2,
       "tags": [
-        { "key": "Airless Rock" },
-        { "key": "Tidally Locked" }
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 230,
@@ -369,10 +427,12 @@
       "name": "The Main Belt",
       "kind": "body",
       "roleHint": "belt",
-      "classes": [ "belt/asteroid" ],
+      "classes": [
+        "belt/asteroid"
+      ],
       "orbit": {
         "hostId": "solar-system-sun",
-        "hostMu": 1.32712440018e+20,
+        "hostMu": 132712440018000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 2.7,
@@ -402,7 +462,7 @@
       ],
       "orbit": {
         "hostId": "solar-system-sun",
-        "hostMu": 1.32712440018e+20,
+        "hostMu": 132712440018000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 5.2044,
@@ -416,11 +476,17 @@
       "massKg": 1.898e+27,
       "radiusKm": 69911,
       "tags": [
-        { "key": "reducing" },
-        { "key": "planet/ringed" }
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "planet/ringed"
+        }
       ],
       "areas": [],
-      "magneticField": { "strengthGauss": 4.28 },
+      "magneticField": {
+        "strengthGauss": 4.28
+      },
       "equilibriumTempK": 110,
       "temperatureK": 110,
       "atmosphere": {
@@ -448,7 +514,9 @@
       "name": "Jupiter's Rings",
       "kind": "body",
       "roleHint": "ring",
-      "classes": [ "ring/planetary" ],
+      "classes": [
+        "ring/planetary"
+      ],
       "radiusInnerKm": 92000,
       "radiusOuterKm": 226000,
       "tags": [],
@@ -462,10 +530,13 @@
       "name": "Io",
       "kind": "body",
       "roleHint": "moon",
-      "classes": [ "planet/terrestrial", "planet/lava" ],
+      "classes": [
+        "planet/terrestrial",
+        "planet/lava"
+      ],
       "orbit": {
         "hostId": "solar-system-jupiter",
-        "hostMu": 1.26686534e+17,
+        "hostMu": 126686534000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.00282,
@@ -479,10 +550,18 @@
       "massKg": 8.93e+22,
       "radiusKm": 1821.6,
       "tags": [
-        { "key": "Active Volcanism" },
-        { "key": "toxic-human" },
-        { "key": "corrosive" },
-        { "key": "Tidally Locked" }
+        {
+          "key": "Active Volcanism"
+        },
+        {
+          "key": "toxic-human"
+        },
+        {
+          "key": "corrosive"
+        },
+        {
+          "key": "Tidally Locked"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 110,
@@ -518,7 +597,7 @@
       ],
       "orbit": {
         "hostId": "solar-system-jupiter",
-        "hostMu": 1.26686534e+17,
+        "hostMu": 126686534000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.00448,
@@ -532,17 +611,27 @@
       "massKg": 4.8e+22,
       "radiusKm": 1560.8,
       "tags": [
-        { "key": "exosphere" },
-        { "key": "thin" },
-        { "key": "Subsurface Ocean" },
-        { "key": "Tidally Locked" }
+        {
+          "key": "exosphere"
+        },
+        {
+          "key": "thin"
+        },
+        {
+          "key": "Subsurface Ocean"
+        },
+        {
+          "key": "Tidally Locked"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 102,
       "temperatureK": 102,
       "atmosphere": {
         "name": "Tenuous Oxygen (Europa-like)",
-        "composition": { "O2": 1.0 },
+        "composition": {
+          "O2": 1
+        },
         "main": "O2",
         "pressure_bar": 1e-11
       },
@@ -568,7 +657,7 @@
       ],
       "orbit": {
         "hostId": "solar-system-jupiter",
-        "hostMu": 1.26686534e+17,
+        "hostMu": 126686534000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.00715,
@@ -582,13 +671,23 @@
       "massKg": 1.48e+23,
       "radiusKm": 2634.1,
       "tags": [
-        { "key": "exosphere" },
-        { "key": "thin" },
-        { "key": "Subsurface Ocean" },
-        { "key": "Tidally Locked" }
+        {
+          "key": "exosphere"
+        },
+        {
+          "key": "thin"
+        },
+        {
+          "key": "Subsurface Ocean"
+        },
+        {
+          "key": "Tidally Locked"
+        }
       ],
       "areas": [],
-      "magneticField": { "strengthGauss": 0.007 },
+      "magneticField": {
+        "strengthGauss": 0.007
+      },
       "equilibriumTempK": 110,
       "temperatureK": 110,
       "orbital_period_days": 7.15,
@@ -606,10 +705,14 @@
       "name": "Callisto",
       "kind": "body",
       "roleHint": "moon",
-      "classes": [ "planet/terrestrial", "planet/ice", "planet/crater" ],
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice",
+        "planet/crater"
+      ],
       "orbit": {
         "hostId": "solar-system-jupiter",
-        "hostMu": 1.26686534e+17,
+        "hostMu": 126686534000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.01258,
@@ -623,9 +726,15 @@
       "massKg": 1.07e+23,
       "radiusKm": 2410.3,
       "tags": [
-        { "key": "exosphere" },
-        { "key": "thin" },
-        { "key": "Tidally Locked" }
+        {
+          "key": "exosphere"
+        },
+        {
+          "key": "thin"
+        },
+        {
+          "key": "Tidally Locked"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 134,
@@ -653,7 +762,7 @@
       ],
       "orbit": {
         "hostId": "solar-system-sun",
-        "hostMu": 1.32712440018e+20,
+        "hostMu": 132712440018000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 9.5826,
@@ -667,11 +776,17 @@
       "massKg": 5.683e+26,
       "radiusKm": 58232,
       "tags": [
-        { "key": "reducing" },
-        { "key": "planet/ringed" }
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "planet/ringed"
+        }
       ],
       "areas": [],
-      "magneticField": { "strengthGauss": 0.21 },
+      "magneticField": {
+        "strengthGauss": 0.21
+      },
       "equilibriumTempK": 81,
       "temperatureK": 81,
       "atmosphere": {
@@ -699,7 +814,9 @@
       "name": "Saturn's Rings",
       "kind": "body",
       "roleHint": "ring",
-      "classes": [ "ring/planetary" ],
+      "classes": [
+        "ring/planetary"
+      ],
       "radiusInnerKm": 66900,
       "radiusOuterKm": 140180,
       "description": "The most extensive and complex ring system in the Solar System. The rings are not solid but are made of billions of particles of water ice, with some rock and dust, ranging in size from a grain of sand to a house. They are incredibly thin, perhaps only 10 meters thick.",
@@ -713,10 +830,13 @@
       "name": "Titan",
       "kind": "body",
       "roleHint": "moon",
-      "classes": [ "planet/terrestrial", "planet/methane" ],
+      "classes": [
+        "planet/terrestrial",
+        "planet/methane"
+      ],
       "orbit": {
         "hostId": "solar-system-saturn",
-        "hostMu": 3.7931187e+16,
+        "hostMu": 37931187000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.00816,
@@ -730,10 +850,18 @@
       "massKg": 1.34e+23,
       "radiusKm": 2574.7,
       "tags": [
-        { "key": "haze" },
-        { "key": "toxic-human" },
-        { "key": "reducing" },
-        { "key": "Tidally Locked" }
+        {
+          "key": "haze"
+        },
+        {
+          "key": "toxic-human"
+        },
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "Tidally Locked"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 93.7,
@@ -769,7 +897,7 @@
       ],
       "orbit": {
         "hostId": "solar-system-saturn",
-        "hostMu": 3.7931187e+16,
+        "hostMu": 37931187000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.00159,
@@ -780,12 +908,18 @@
           "M0_rad": 0
         }
       },
-      "massKg": 1.08e+20,
+      "massKg": 108000000000000000000,
       "radiusKm": 252.1,
       "tags": [
-        { "key": "Active Cryovolcanism (Plumes)" },
-        { "key": "Subsurface Ocean" },
-        { "key": "Tidally Locked" }
+        {
+          "key": "Active Cryovolcanism (Plumes)"
+        },
+        {
+          "key": "Subsurface Ocean"
+        },
+        {
+          "key": "Tidally Locked"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 75,
@@ -816,10 +950,14 @@
       "name": "Mimas",
       "kind": "body",
       "roleHint": "moon",
-      "classes": [ "planet/dwarf-planet", "planet/ice", "planet/crater" ],
+      "classes": [
+        "planet/dwarf-planet",
+        "planet/ice",
+        "planet/crater"
+      ],
       "orbit": {
         "hostId": "solar-system-saturn",
-        "hostMu": 3.7931187e+16,
+        "hostMu": 37931187000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.00124,
@@ -830,11 +968,15 @@
           "M0_rad": 0
         }
       },
-      "massKg": 3.75e+19,
+      "massKg": 37500000000000000000,
       "radiusKm": 198.2,
       "tags": [
-        { "key": "Airless Rock" },
-        { "key": "Tidally Locked" }
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 64,
@@ -854,10 +996,13 @@
       "name": "Rhea",
       "kind": "body",
       "roleHint": "moon",
-      "classes": [ "planet/terrestrial", "planet/ice" ],
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice"
+      ],
       "orbit": {
         "hostId": "solar-system-saturn",
-        "hostMu": 3.7931187e+16,
+        "hostMu": 37931187000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.00352,
@@ -871,8 +1016,12 @@
       "massKg": 2.3e+21,
       "radiusKm": 763.8,
       "tags": [
-        { "key": "Airless Rock" },
-        { "key": "Tidally Locked" }
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 77,
@@ -892,10 +1041,14 @@
       "name": "Iapetus",
       "kind": "body",
       "roleHint": "moon",
-      "classes": [ "planet/terrestrial", "planet/ice", "planet/crater" ],
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice",
+        "planet/crater"
+      ],
       "orbit": {
         "hostId": "solar-system-saturn",
-        "hostMu": 3.7931187e+16,
+        "hostMu": 37931187000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.0238,
@@ -909,8 +1062,12 @@
       "massKg": 1.8e+21,
       "radiusKm": 734.5,
       "tags": [
-        { "key": "Airless Rock" },
-        { "key": "Tidally Locked" }
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 90,
@@ -930,10 +1087,13 @@
       "name": "Uranus",
       "kind": "body",
       "roleHint": "planet",
-      "classes": [ "planet/ice-giant", "planet/ringed" ],
+      "classes": [
+        "planet/ice-giant",
+        "planet/ringed"
+      ],
       "orbit": {
         "hostId": "solar-system-sun",
-        "hostMu": 1.32712440018e+20,
+        "hostMu": 132712440018000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 19.2184,
@@ -947,11 +1107,17 @@
       "massKg": 8.681e+25,
       "radiusKm": 25362,
       "tags": [
-        { "key": "reducing" },
-        { "key": "planet/ringed" }
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "planet/ringed"
+        }
       ],
       "areas": [],
-      "magneticField": { "strengthGauss": 0.23 },
+      "magneticField": {
+        "strengthGauss": 0.23
+      },
       "equilibriumTempK": 59,
       "temperatureK": 59,
       "atmosphere": {
@@ -979,7 +1145,9 @@
       "name": "Uranus' Rings",
       "kind": "body",
       "roleHint": "ring",
-      "classes": [ "ring/planetary" ],
+      "classes": [
+        "ring/planetary"
+      ],
       "radiusInnerKm": 38000,
       "radiusOuterKm": 98000,
       "description": "Uranus is surrounded by 13 known rings. Unlike Saturn's bright, icy rings, these are extremely dark and narrow, composed of particles as dark as coal, likely water ice mixed with radiation-processed organic compounds. They were the first to be discovered after Saturn's.",
@@ -993,10 +1161,13 @@
       "name": "Titania",
       "kind": "body",
       "roleHint": "moon",
-      "classes": [ "planet/terrestrial", "planet/ice" ],
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice"
+      ],
       "orbit": {
         "hostId": "solar-system-uranus",
-        "hostMu": 5.793939e+15,
+        "hostMu": 5793939000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.00291,
@@ -1010,8 +1181,12 @@
       "massKg": 3.4e+21,
       "radiusKm": 788.4,
       "tags": [
-        { "key": "Airless Rock" },
-        { "key": "Tidally Locked" }
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 60,
@@ -1031,13 +1206,17 @@
       "name": "Oberon",
       "kind": "body",
       "roleHint": "moon",
-      "classes": [ "planet/terrestrial", "planet/ice", "planet/crater" ],
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice",
+        "planet/crater"
+      ],
       "orbit": {
         "hostId": "solar-system-uranus",
-        "hostMu": 5.793939e+15,
+        "hostMu": 5793939000000000,
         "t0": 1762339146908,
         "elements": {
-          "a_AU": 0.00390,
+          "a_AU": 0.0039,
           "e": 0.0014,
           "i_deg": 0.058,
           "omega_deg": 0,
@@ -1045,18 +1224,22 @@
           "M0_rad": 0
         }
       },
-      "massKg": 3.0e+21,
+      "massKg": 3e+21,
       "radiusKm": 761.4,
       "tags": [
-        { "key": "Airless Rock" },
-        { "key": "Tidally Locked" }
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 60,
       "temperatureK": 60,
       "orbital_period_days": 13.46,
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 323.0,
+      "rotation_period_hours": 323,
       "description": "The outermost and second-largest of the major Uranian moons. Oberon has the most ancient and heavily cratered surface of Uranus's moons, showing little sign of past geological activity. Its dark, reddish surface is covered in impact craters, some with bright rays of ice.",
       "image": {
         "url": "/images/planet_types/web20crater20planet.jpg"
@@ -1069,10 +1252,13 @@
       "name": "Ariel",
       "kind": "body",
       "roleHint": "moon",
-      "classes": [ "planet/terrestrial", "planet/ice" ],
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice"
+      ],
       "orbit": {
         "hostId": "solar-system-uranus",
-        "hostMu": 5.793939e+15,
+        "hostMu": 5793939000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.00127,
@@ -1086,8 +1272,12 @@
       "massKg": 1.29e+21,
       "radiusKm": 578.9,
       "tags": [
-        { "key": "Airless Rock" },
-        { "key": "Tidally Locked" }
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 58,
@@ -1107,15 +1297,18 @@
       "name": "Neptune",
       "kind": "body",
       "roleHint": "planet",
-      "classes": [ "planet/ice-giant", "planet/ringed" ],
+      "classes": [
+        "planet/ice-giant",
+        "planet/ringed"
+      ],
       "orbit": {
         "hostId": "solar-system-sun",
-        "hostMu": 1.32712440018e+20,
+        "hostMu": 132712440018000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 30.11,
           "e": 0.0113,
-          "i_deg": 1.770,
+          "i_deg": 1.77,
           "omega_deg": 0,
           "Omega_deg": 0,
           "M0_rad": 0
@@ -1124,17 +1317,23 @@
       "massKg": 1.024e+26,
       "radiusKm": 24622,
       "tags": [
-        { "key": "reducing" },
-        { "key": "planet/ringed" }
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "planet/ringed"
+        }
       ],
       "areas": [],
-      "magneticField": { "strengthGauss": 0.14 },
+      "magneticField": {
+        "strengthGauss": 0.14
+      },
       "equilibriumTempK": 47,
       "temperatureK": 47,
       "atmosphere": {
         "name": "Ice Giant (Uranus-like)",
         "composition": {
-          "H2": 0.80,
+          "H2": 0.8,
           "He": 0.19,
           "CH4": 0.015
         },
@@ -1156,7 +1355,9 @@
       "name": "Neptune's Rings",
       "kind": "body",
       "roleHint": "ring",
-      "classes": [ "ring/planetary" ],
+      "classes": [
+        "ring/planetary"
+      ],
       "radiusInnerKm": 41900,
       "radiusOuterKm": 62930,
       "description": "Neptune is encircled by five faint, dark rings. They are notable for containing unstable, bright clumps of dust called 'arcs,' which are thought to be held in place by the gravity of the small moon Galatea. These rings are dusty and relatively young.",
@@ -1170,14 +1371,17 @@
       "name": "Triton",
       "kind": "body",
       "roleHint": "moon",
-      "classes": [ "planet/terrestrial", "planet/ice" ],
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice"
+      ],
       "orbit": {
         "hostId": "solar-system-neptune",
-        "hostMu": 6.8351e+15,
+        "hostMu": 6835100000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.00237,
-          "e": 0.0000,
+          "e": 0,
           "i_deg": 157.3,
           "omega_deg": 0,
           "Omega_deg": 0,
@@ -1188,10 +1392,18 @@
       "massKg": 2.14e+22,
       "radiusKm": 1353.4,
       "tags": [
-        { "key": "Retrograde Orbit" },
-        { "key": "Captured Body" },
-        { "key": "Active Cryovolcanism (Plumes)" },
-        { "key": "Tidally Locked" }
+        {
+          "key": "Retrograde Orbit"
+        },
+        {
+          "key": "Captured Body"
+        },
+        {
+          "key": "Active Cryovolcanism (Plumes)"
+        },
+        {
+          "key": "Tidally Locked"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 38,
@@ -1203,7 +1415,7 @@
           "CH4": 0.001
         },
         "main": "N2",
-        "pressure_bar": 1.4e-5
+        "pressure_bar": 0.000014
       },
       "orbital_period_days": 5.87,
       "axial_tilt_deg": 0,
@@ -1220,10 +1432,12 @@
       "name": "Kuiper Belt",
       "kind": "body",
       "roleHint": "belt",
-      "classes": [ "belt/asteroid" ],
+      "classes": [
+        "belt/asteroid"
+      ],
       "orbit": {
         "hostId": "solar-system-sun",
-        "hostMu": 1.32712440018e+20,
+        "hostMu": 132712440018000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 40,
@@ -1245,10 +1459,13 @@
       "name": "Pluto",
       "kind": "body",
       "roleHint": "planet",
-      "classes": [ "planet/dwarf-planet", "planet/ice" ],
+      "classes": [
+        "planet/dwarf-planet",
+        "planet/ice"
+      ],
       "orbit": {
         "hostId": "solar-system-sun",
-        "hostMu": 1.32712440018e+20,
+        "hostMu": 132712440018000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 39.48,
@@ -1262,8 +1479,12 @@
       "massKg": 1.303e+22,
       "radiusKm": 1188.3,
       "tags": [
-        { "key": "thin" },
-        { "key": "exosphere" }
+        {
+          "key": "thin"
+        },
+        {
+          "key": "exosphere"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 44,
@@ -1276,7 +1497,7 @@
           "CO": 0.01
         },
         "main": "N2",
-        "pressure_bar": 1e-5
+        "pressure_bar": 0.00001
       },
       "orbital_period_days": 90560,
       "axial_tilt_deg": 119.5,
@@ -1293,14 +1514,17 @@
       "name": "Charon",
       "kind": "body",
       "roleHint": "moon",
-      "classes": [ "planet/dwarf-planet", "planet/ice" ],
+      "classes": [
+        "planet/dwarf-planet",
+        "planet/ice"
+      ],
       "orbit": {
         "hostId": "solar-system-pluto",
-        "hostMu": 8.696358e+11,
+        "hostMu": 869635800000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.00013,
-          "e": 0.000,
+          "e": 0,
           "i_deg": 0.001,
           "omega_deg": 0,
           "Omega_deg": 0,
@@ -1310,8 +1534,12 @@
       "massKg": 1.58e+21,
       "radiusKm": 606,
       "tags": [
-        { "key": "Airless Rock" },
-        { "key": "Tidally Locked" }
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 44,
@@ -1328,5 +1556,6 @@
   ],
   "rulePackId": "starter-sf-pack",
   "rulePackVersion": "0.1.3",
-  "tags": []
+  "tags": [],
+  "visualScalingMultiplier": 0.23
 }

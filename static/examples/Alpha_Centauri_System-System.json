@@ -39,14 +39,16 @@
         "url": "/images/star_types/G.webp"
       },
       "tags": [
-        { "key": "Sun-like" }
+        {
+          "key": "Sun-like"
+        }
       ],
       "areas": [],
       "orbit": {
         "hostId": "alpha-centauri-barycenter",
-        "hostMu": 2.283e+20,
+        "hostMu": 228300000000000000000,
         "t0": 1762339146908,
-        "n_rad_per_s": 2.493e-09,
+        "n_rad_per_s": 2.493e-9,
         "elements": {
           "a_AU": 10.3,
           "e": 0.5179,
@@ -83,9 +85,9 @@
       "areas": [],
       "orbit": {
         "hostId": "alpha-centauri-barycenter",
-        "hostMu": 2.283e+20,
+        "hostMu": 228300000000000000000,
         "t0": 1762339146908,
-        "n_rad_per_s": 2.493e-09,
+        "n_rad_per_s": 2.493e-9,
         "elements": {
           "a_AU": 18.3,
           "e": 0.5179,
@@ -110,7 +112,7 @@
       ],
       "orbit": {
         "hostId": "alpha-centauri-barycenter",
-        "hostMu": 2.283e+20,
+        "hostMu": 228300000000000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 13000,
@@ -132,7 +134,9 @@
         "url": "/images/star_types/M.webp"
       },
       "tags": [
-        { "key": "Flare Star" }
+        {
+          "key": "Flare Star"
+        }
       ],
       "areas": [],
       "description": "The third star of the system and our Sun's closest neighbor. Proxima is a tiny, dim M-type red dwarf in a vast, 550,000-year orbit around the central A-B pair. It is a violent 'flare star,' frequently lashing its inner planets with radiation.",
@@ -152,11 +156,11 @@
       ],
       "orbit": {
         "hostId": "proxima-centauri-star",
-        "hostMu": 1.633e+19,
+        "hostMu": 16330000000000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.02885,
-          "e": 0.0,
+          "e": 0,
           "i_deg": 0,
           "omega_deg": 0,
           "Omega_deg": 0,
@@ -166,9 +170,15 @@
       "massKg": 1.55e+24,
       "radiusKm": 4830,
       "tags": [
-        { "key": "Tidally Locked" },
-        { "key": "hot" },
-        { "key": "K\"Airless Rock\"" }
+        {
+          "key": "Tidally Locked"
+        },
+        {
+          "key": "hot"
+        },
+        {
+          "key": "K\"Airless Rock\""
+        }
       ],
       "areas": [],
       "equilibriumTempK": 360,
@@ -194,11 +204,11 @@
       ],
       "orbit": {
         "hostId": "proxima-centauri-star",
-        "hostMu": 1.633e+19,
+        "hostMu": 16330000000000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.04857,
-          "e": 0.0,
+          "e": 0,
           "i_deg": 0,
           "omega_deg": 0,
           "Omega_deg": 0,
@@ -208,10 +218,18 @@
       "massKg": 6.98e+24,
       "radiusKm": 6753,
       "tags": [
-        { "key": "Tidally Locked" },
-        { "key": "m-dwarf-world" },
-        { "key": "eyeball-planet" },
-        { "key": "habitable-zone" }
+        {
+          "key": "Tidally Locked"
+        },
+        {
+          "key": "m-dwarf-world"
+        },
+        {
+          "key": "eyeball-planet"
+        },
+        {
+          "key": "habitable-zone"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 234,
@@ -247,7 +265,7 @@
       ],
       "orbit": {
         "hostId": "proxima-centauri-star",
-        "hostMu": 1.633e+19,
+        "hostMu": 16330000000000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 1.489,
@@ -261,9 +279,15 @@
       "massKg": 4.18e+25,
       "radiusKm": 16560,
       "tags": [
-        { "key": "cold" },
-        { "key": "reducing" },
-        { "key": "primordial" }
+        {
+          "key": "cold"
+        },
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "primordial"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 39,
@@ -290,6 +314,9 @@
   "rulePackId": "starter-sf-pack",
   "rulePackVersion": "0.1.4",
   "tags": [
-    { "key": "Triple Star System" }
-  ]
+    {
+      "key": "Triple Star System"
+    }
+  ],
+  "visualScalingMultiplier": 0.01
 }

@@ -52,10 +52,10 @@
 
   // Subscribe to systemStore and update starmapStore
   systemStore.subscribe(system => {
-    if (system && currentSystemId) {
+    if (system) { // No need to check currentSystemId, the system knows its own ID
       starmapStore.update(starmap => {
         if (starmap) {
-          const systemNode = starmap.systems.find(s => s.id === currentSystemId);
+          const systemNode = starmap.systems.find(s => s.id === system.id);
           if (systemNode) {
             systemNode.system = system;
             systemNode.name = system.name;
@@ -95,6 +95,7 @@
     const systemNode = get(starmapStore)?.systems.find(s => s.id === currentSystemId);
     if (systemNode) {
       systemStore.set(JSON.parse(JSON.stringify(systemNode.system)));
+      history.pushState({ systemId: currentSystemId }, '');
     }
   }
 
@@ -107,6 +108,7 @@
   }
 
   function handleBackToStarmap() {
+    console.log('handleBackToStarmap called');
     currentSystemId = null;
     systemStore.set(null);
   }

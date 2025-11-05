@@ -84,16 +84,24 @@
 
   function handleFocus(event: CustomEvent<string | null>) {
     focusedBodyId = event.detail;
+    history.pushState({ focusedBodyId }, '');
+    visualizer?.resetView();
+  }
+
+  function handlePopState(event: PopStateEvent) {
+    console.log('handlePopState called');
+    if (focusedBody?.parentId) {
+        console.log('Zooming out to parent');
+        focusedBodyId = focusedBody.parentId;
+    } else {
+        console.log('Dispatching back event');
+        dispatch('back');
+    }
     visualizer?.resetView();
   }
 
   function zoomOut() {
-      if (focusedBody?.parentId) {
-          focusedBodyId = focusedBody.parentId;
-      } else {
-          dispatch('back');
-      }
-    visualizer?.resetView();
+    history.back();
   }
 
   function handleDeleteNode(event: CustomEvent<string>) {
@@ -145,7 +153,6 @@
       console.error(err);
     }
   }
-  
 
 
   function handleDownloadJson() {
@@ -225,12 +232,15 @@
       options.push(`Type ${typeName} Binary`);
     });
     generationOptions = options;
+
+    window.addEventListener('popstate', handlePopState);
   });
 
   onDestroy(() => {
     if (browser) {
       pause();
     }
+    window.removeEventListener('popstate', handlePopState);
   });
 
 </script>
@@ -284,8 +294,6 @@
             <button on:click={() => timeScale = 3600 * 24 * 365 * 10} class:active={timeScale === 3600 * 24 * 365 * 10}>10y</button>
         </div>
     </div>
-
-
 
     <div class="system-view-grid">
         <div class="main-view">

@@ -43,7 +43,7 @@
       ],
       "orbit": {
         "hostId": "trappist-1-star",
-        "hostMu": 1.1918e+19,
+        "hostMu": 11918000000000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.01154,
@@ -57,9 +57,15 @@
       "massKg": 8.207e+24,
       "radiusKm": 7110,
       "tags": [
-        { "key": "Tidally Locked" },
-        { "key": "Airless Rock" },
-        { "key": "hot" }
+        {
+          "key": "Tidally Locked"
+        },
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "hot"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 397.6,
@@ -86,10 +92,10 @@
       ],
       "orbit": {
         "hostId": "trappist-1-star",
-        "hostMu": 1.1918e+19,
+        "hostMu": 11918000000000000000,
         "t0": 1762339146908,
         "elements": {
-          "a_AU": 0.01580,
+          "a_AU": 0.0158,
           "e": 0.00654,
           "i_deg": 89.778,
           "omega_deg": 0,
@@ -100,9 +106,15 @@
       "massKg": 7.812e+24,
       "radiusKm": 6989,
       "tags": [
-        { "key": "Tidally Locked" },
-        { "key": "toxic-human" },
-        { "key": "Runaway Greenhouse Effect" }
+        {
+          "key": "Tidally Locked"
+        },
+        {
+          "key": "toxic-human"
+        },
+        {
+          "key": "Runaway Greenhouse Effect"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 339.7,
@@ -138,7 +150,7 @@
       ],
       "orbit": {
         "hostId": "trappist-1-star",
-        "hostMu": 1.1918e+19,
+        "hostMu": 11918000000000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.02227,
@@ -152,9 +164,15 @@
       "massKg": 2.317e+24,
       "radiusKm": 4906,
       "tags": [
-        { "key": "Tidally Locked" },
-        { "key": "m-dwarf-world" },
-        { "key": "eyeball-planet" }
+        {
+          "key": "Tidally Locked"
+        },
+        {
+          "key": "m-dwarf-world"
+        },
+        {
+          "key": "eyeball-planet"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 286.2,
@@ -190,11 +208,11 @@
       ],
       "orbit": {
         "hostId": "trappist-1-star",
-        "hostMu": 1.1918e+19,
+        "hostMu": 11918000000000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.02925,
-          "e": 0.00510,
+          "e": 0.0051,
           "i_deg": 89.793,
           "omega_deg": 0,
           "Omega_deg": 0,
@@ -204,9 +222,15 @@
       "massKg": 4.134e+24,
       "radiusKm": 5861,
       "tags": [
-        { "key": "Tidally Locked" },
-        { "key": "m-dwarf-world" },
-        { "key": "eyeball-planet" }
+        {
+          "key": "Tidally Locked"
+        },
+        {
+          "key": "m-dwarf-world"
+        },
+        {
+          "key": "eyeball-planet"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 249.7,
@@ -220,7 +244,7 @@
         "main": "CO2",
         "pressure_bar": 1.5
       },
-      "orbital_period_days": 6.10,
+      "orbital_period_days": 6.1,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 146.4,
       "description": "This planet is the 'sweet spot' of the TRAPPIST-1 system. It is almost exactly the size of Earth, rocky, and orbits squarely in the middle of the habitable zone. It receives a similar amount of light as Earth and is a prime candidate for hosting liquid water on its surface.",
@@ -242,12 +266,12 @@
       ],
       "orbit": {
         "hostId": "trappist-1-star",
-        "hostMu": 1.1918e+19,
+        "hostMu": 11918000000000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.03849,
           "e": 0.01007,
-          "i_deg": 89.740,
+          "i_deg": 89.74,
           "omega_deg": 0,
           "Omega_deg": 0,
           "M0_rad": 0
@@ -256,9 +280,15 @@
       "massKg": 6.205e+24,
       "radiusKm": 6658,
       "tags": [
-        { "key": "Tidally Locked" },
-        { "key": "m-dwarf-world" },
-        { "key": "eyeball-planet" }
+        {
+          "key": "Tidally Locked"
+        },
+        {
+          "key": "m-dwarf-world"
+        },
+        {
+          "key": "eyeball-planet"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 217.7,
@@ -294,7 +324,7 @@
       ],
       "orbit": {
         "hostId": "trappist-1-star",
-        "hostMu": 1.1918e+19,
+        "hostMu": 11918000000000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.04683,
@@ -308,9 +338,15 @@
       "massKg": 7.889e+24,
       "radiusKm": 7192,
       "tags": [
-        { "key": "Tidally Locked" },
-        { "key": "super-earth" },
-        { "key": "reducing" }
+        {
+          "key": "Tidally Locked"
+        },
+        {
+          "key": "super-earth"
+        },
+        {
+          "key": "reducing"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 198.6,
@@ -346,12 +382,12 @@
       ],
       "orbit": {
         "hostId": "trappist-1-star",
-        "hostMu": 1.1918e+19,
+        "hostMu": 11918000000000000000,
         "t0": 1762339146908,
         "elements": {
           "a_AU": 0.06189,
           "e": 0.004,
-          "i_deg": 89.80,
+          "i_deg": 89.8,
           "omega_deg": 0,
           "Omega_deg": 0,
           "M0_rad": 0
@@ -360,9 +396,15 @@
       "massKg": 1.947e+24,
       "radiusKm": 4810,
       "tags": [
-        { "key": "Tidally Locked" },
-        { "key": "G\"exosphere\"" },
-        { "key": "cryogenic" }
+        {
+          "key": "Tidally Locked"
+        },
+        {
+          "key": "G\"exosphere\""
+        },
+        {
+          "key": "cryogenic"
+        }
       ],
       "areas": [],
       "equilibriumTempK": 168,
@@ -374,7 +416,7 @@
           "CH4": 0.02
         },
         "main": "N2",
-        "pressure_bar": 1e-5
+        "pressure_bar": 0.00001
       },
       "orbital_period_days": 18.77,
       "axial_tilt_deg": 0,
@@ -388,5 +430,6 @@
   ],
   "rulePackId": "starter-sf-pack",
   "rulePackVersion": "0.1.4",
-  "tags": []
+  "tags": [],
+  "visualScalingMultiplier": 1
 }
