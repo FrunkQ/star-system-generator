@@ -263,6 +263,7 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
       rulePackId: pack.id,
       rulePackVersion: pack.version,
       tags: [],
+      visualScalingMultiplier: 1.0,
     };
   return system;
 }

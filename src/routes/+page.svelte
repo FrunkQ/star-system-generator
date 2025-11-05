@@ -1,4 +1,6 @@
 <script lang="ts">
+  export let data;
+  const { exampleSystems } = data;
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import type { RulePack, System, Starmap as StarmapType, StarSystemNode, Route } from '$lib/types';
@@ -335,7 +337,7 @@
 
     </div>
   {:else if $starmapStore && currentSystemId && $systemStore}
-    <SystemView system={$systemStore} rulePack={rulePacks[0]} on:back={handleBackToStarmap} on:renameNode={handleRenameNode} />
+    <SystemView system={$systemStore} rulePack={rulePacks[0]} {exampleSystems} on:back={handleBackToStarmap} on:renameNode={handleRenameNode} />
   {/if}
 
   {#if showRouteEditorModal && routeToEdit && $starmapStore}

@@ -97,6 +97,7 @@ export interface System {
   nodes: Array<CelestialBody | Barycenter>;
   rulePackId: string; rulePackVersion: string;
   tags: Tag[]; notes?: string; gmNotes?: string;
+  visualScalingMultiplier?: number;
 }
 
 // Rule Pack interfaces (subset for M0–M1)

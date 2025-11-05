@@ -1,10 +1,14 @@
 <script lang="ts">
   import type { CelestialBody, Barycenter, System } from "$lib/types";
+  import { createEventDispatcher } from "svelte";
 
   export let system: System | null;
   export let generationOptions: string[];
   export let selectedGenerationOption: string;
+  export let exampleSystems: string[];
   export let handleGenerate: (empty: boolean) => void;
+
+  const dispatch = createEventDispatcher();
 
   let gasGiants = 0;
   let iceGiants = 0;
@@ -124,6 +128,13 @@
         <button on:click={() => handleGenerate(true)}>
           Generate Empty System
         </button>
+        <span>or select a preset:</span>
+        <select on:change={(e) => dispatch('loadexample', e.currentTarget.value)}>
+            <option value="">None selected</option>
+            {#each exampleSystems as example}
+                <option value={example}>{example.replace('.json', '')}</option>
+            {/each}
+        </select>
     </div>
 </div>
 

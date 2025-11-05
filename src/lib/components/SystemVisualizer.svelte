@@ -8,14 +8,15 @@
   export let focusedBodyId: string | null = null;
   export let showNames: boolean = false;
   export let getPlanetColor: (node: CelestialBody) => string = () => '#fff';
+  export let visualScalingMultiplier: number = 1.0;
 
   const dispatch = createEventDispatcher<{ focus: string | null }>();
 
   // --- Configurable Visuals ---
   const VISUAL_SCALING = {
-      star:       { base: 12, multiplier: 15 },
-      planet:     { base: 2,  multiplier: 1.0 },
-      moon:       { base: 1,  multiplier: 0.8 },
+      star:       { base: 2, multiplier: 30 },
+      planet:     { base: 1,  multiplier: 1.0 },
+      moon:       { base: 0.5,  multiplier: 0.8 },
       ring:       { min_px: 2, opacity: 0.3 },
       belt:       { width_px: 4, opacity: 0.4 },
       click_area: { base: 10, buffer: 5 },
@@ -211,7 +212,7 @@
                 if (body.roleHint === 'star') {
                     const starClassKey = body.classes[0] || 'default';
                     focusBodyColor = STAR_COLOR_MAP[starClassKey.split('/')[1]] || STAR_COLOR_MAP['default'];
-                    focusBodyRadius = Math.max(VISUAL_SCALING.star.base, (body.radiusKm || 696340) / 696340 * VISUAL_SCALING.star.multiplier);
+                    focusBodyRadius = Math.max(VISUAL_SCALING.star.base, (body.radiusKm || 696340) / 696340 * VISUAL_SCALING.star.multiplier * (visualScalingMultiplier ** 2));
                 } else { 
                     focusBodyRadius = 25;
                 }
@@ -263,11 +264,11 @@
         if (node.roleHint === 'star') {
             const starClassKey = node.classes[0] || 'default';
             childColor = STAR_COLOR_MAP[starClassKey.split('/')[1]] || STAR_COLOR_MAP['default'];
-            childRadius = Math.max(VISUAL_SCALING.star.base, (node.radiusKm || 696340) / 696340 * VISUAL_SCALING.star.multiplier);
+            childRadius = Math.max(VISUAL_SCALING.star.base, (node.radiusKm || 696340) / 696340 * VISUAL_SCALING.star.multiplier * (visualScalingMultiplier ** 2));
         } else if (node.roleHint === 'planet') {
-            childRadius = Math.max(VISUAL_SCALING.planet.base, (node.radiusKm || 6371) / 6371 * VISUAL_SCALING.planet.multiplier);
+            childRadius = Math.max(VISUAL_SCALING.planet.base, (node.radiusKm || 6371) / 6371 * visualScalingMultiplier);
         } else if (node.roleHint === 'moon') {
-            childRadius = Math.max(VISUAL_SCALING.moon.base, (node.radiusKm || 1737) / 1737 * VISUAL_SCALING.moon.multiplier);
+            childRadius = Math.max(VISUAL_SCALING.moon.base, (node.radiusKm || 1737) / 1737 * visualScalingMultiplier * 0.5); // Moons are half the multiplier of planets
         }
 
         ctx.beginPath();

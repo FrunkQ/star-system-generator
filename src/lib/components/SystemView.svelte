@@ -15,6 +15,7 @@
 
   export let system: System;
   export let rulePack: RulePack;
+  export let exampleSystems: string[];
 
   const dispatch = createEventDispatcher();
 
@@ -26,6 +27,7 @@
   let selectedGenerationOption = 'Random';
   let showDropdown = false;
   let showNames = true;
+
 
   // Time state
   let currentTime = Date.now();
@@ -118,6 +120,30 @@
       } catch (e: any) {
         alert(e.message);
       }
+  }
+
+  async function handleLoadExample(event: CustomEvent<string>) {
+    const fileName = event.detail;
+    if (!fileName) return;
+
+    try {
+      const response = await fetch(`/examples/${fileName}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${fileName}`);
+      }
+      const newSystem = await response.json();
+      if (newSystem.id && newSystem.name && Array.isArray(newSystem.nodes) && newSystem.rulePackId) {
+        systemStore.set(newSystem);
+        currentTime = newSystem?.epochT0 || Date.now();
+        focusedBodyId = null;
+        visualizer?.resetView();
+      } else {
+        alert('Invalid system file. Missing system-specific properties.');
+      }
+    } catch (err) {
+      alert('Failed to parse JSON file.');
+      console.error(err);
+    }
   }
   
 
@@ -232,7 +258,7 @@
 
   {#if $systemStore}
     {#if focusedBody?.parentId === null}
-        <SystemSummary system={$systemStore} {generationOptions} bind:selectedGenerationOption={selectedGenerationOption} {handleGenerate} />
+        <SystemSummary system={$systemStore} {generationOptions} bind:selectedGenerationOption={selectedGenerationOption} {exampleSystems} {handleGenerate} on:loadexample={handleLoadExample} />
     {/if}
 
     <div class="controls">
@@ -259,9 +285,17 @@
         </div>
     </div>
 
+
+
     <div class="system-view-grid">
         <div class="main-view">
-            <SystemVisualizer bind:this={visualizer} system={$systemStore} {currentTime} {focusedBodyId} {showNames} {getPlanetColor} on:focus={handleFocus} />
+            <SystemVisualizer bind:this={visualizer} system={$systemStore} {currentTime} {focusedBodyId} {showNames} {getPlanetColor} visualScalingMultiplier={$systemStore.visualScalingMultiplier || 1.0} on:focus={handleFocus} />
+            <div class="visual-scaling-slider">
+                <div class="slider-label">Visibility slider</div>
+                <span>Actual Size</span>
+                <input type="range" min="0.01" max="1.0" step="0.005" bind:value={$systemStore.visualScalingMultiplier} style="width: 80%;" />
+                <span>Enlarged</span>
+            </div>
             <BodyGmTools body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:addHabitablePlanet={handleAddHabitablePlanet} />
             {#if focusedBody && focusedBody.kind === 'body'}
                 <DescriptionEditor body={focusedBody} />
