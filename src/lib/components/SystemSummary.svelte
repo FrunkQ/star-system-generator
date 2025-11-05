@@ -7,6 +7,7 @@
   export let handleGenerate: (empty: boolean) => void;
 
   let gasGiants = 0;
+  let iceGiants = 0;
   let terrestrials = 0;
   let humanHabitable = 0;
   let earthLike = 0;
@@ -18,6 +19,8 @@
     if (node.roleHint === 'star') return '#fff'; // White
     if (node.biosphere) return '#00ff00'; // Green
     if (node.tags?.some(t => t.key === 'habitability/earth-like' || t.key === 'habitability/human')) return '#007bff'; // Blue
+    const isIceGiant = node.classes?.some(c => c.includes('ice-giant'));
+    if (isIceGiant) return '#add8e6'; // Light Blue
     const isGasGiant = node.classes?.some(c => c.includes('gas-giant'));
     if (isGasGiant) return '#ff0000'; // Red
     return '#ffa500'; // Orange
@@ -25,6 +28,7 @@
 
   $: {
     gasGiants = 0;
+    iceGiants = 0;
     terrestrials = 0;
     humanHabitable = 0;
     earthLike = 0;
@@ -44,8 +48,11 @@
 
             if (node.roleHint === 'planet' || node.roleHint === 'moon') {
                 const isGasGiant = node.classes?.some(c => c.includes('gas-giant'));
+                const isIceGiant = node.classes?.some(c => c.includes('ice-giant'));
 
-                if (isGasGiant) {
+                if (isIceGiant) {
+                    iceGiants++;
+                } else if (isGasGiant) {
                     gasGiants++;
                 } else {
                     terrestrials++;
@@ -85,6 +92,10 @@
         <div class="summary-item" style="border: 2px solid #ff0000">
             <span class="value">{gasGiants}</span>
             <span class="label">Gas Giants</span>
+        </div>
+        <div class="summary-item" style="border: 2px solid #add8e6">
+            <span class="value">{iceGiants}</span>
+            <span class="label">Ice Giants</span>
         </div>
         <div class="summary-item" style="border: 2px solid #007bff">
             <span class="value">{humanHabitable}</span>

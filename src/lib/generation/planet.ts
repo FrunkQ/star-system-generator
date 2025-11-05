@@ -61,9 +61,9 @@ export function _generatePlanetaryBody(
     let planetType = planetTypeOverride;
     if (!planetType) {
         if (orbit.elements.a_AU > frostLineAU) {
-            planetType = weightedChoice<string>(rng, { entries: [{ weight: 70, value: 'planet/gas-giant' }, { weight: 30, value: 'planet/terrestrial' }] });
+            planetType = weightedChoice<string>(rng, { entries: [{ weight: 40, value: 'planet/gas-giant' }, { weight: 30, value: 'planet/ice-giant' }, { weight: 30, value: 'planet/terrestrial' }] });
         } else {
-            planetType = weightedChoice<string>(rng, { entries: [{ weight: 90, value: 'planet/terrestrial' }, { weight: 10, value: 'planet/gas-giant' }] });
+            planetType = weightedChoice<string>(rng, { entries: [{ weight: 80, value: 'planet/terrestrial' }, { weight: 10, value: 'planet/gas-giant' }, { weight: 10, value: 'planet/ice-giant' }] });
         }
     }
 
@@ -247,7 +247,7 @@ export function _generatePlanetaryBody(
             features[`atm.composition.${gas}`] = propertyOverrides.atmosphere.composition[gas];
         }
     } else {
-        _generateAtmosphere(rng, pack, planet, features, planetType === 'planet/gas-giant');
+        _generateAtmosphere(rng, pack, planet, features, planetType);
     }
 
     const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
@@ -316,8 +316,8 @@ export function _generatePlanetaryBody(
     newNodes.push(planet);
 
     if (generateChildren && planet.roleHint === 'planet') {
-        const isGasGiant = planet.classes.includes('planet/gas-giant');
-        const ringChanceTable = pack.distributions[isGasGiant ? 'gas_giant_ring_chance' : 'terrestrial_ring_chance'];
+        const isGiant = planet.classes.includes('planet/gas-giant') || planet.classes.includes('planet/ice-giant');
+        const ringChanceTable = pack.distributions[isGiant ? 'gas_giant_ring_chance' : 'terrestrial_ring_chance'];
         const hasRing = ringChanceTable ? weightedChoice<boolean>(rng, ringChanceTable) : false;
 
         if (hasRing) {
@@ -343,10 +343,10 @@ export function _generatePlanetaryBody(
             newNodes.push(ring);
         }
 
-        const moonCountTable = pack.distributions[isGasGiant ? 'gas_giant_moon_count' : 'terrestrial_moon_count'];
+        const moonCountTable = pack.distributions[isGiant ? 'gas_giant_moon_count' : 'terrestrial_moon_count'];
         let numMoons = moonCountTable ? weightedChoice<number>(rng, moonCountTable) : 0;
 
-        if (isGasGiant) {
+        if (isGiant) {
             const massInEarths = (planet.massKg || 0) / EARTH_MASS_KG;
             const scalingFactor = Math.log10(Math.max(1, massInEarths)); // Use log10 for a gentler curve
             numMoons = Math.floor(numMoons * scalingFactor);
@@ -486,8 +486,10 @@ function calculateHabitabilityAndBiosphere(planet: CelestialBody, rng: SeededRNG
     }
 }
 
-function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBody, features: Record<string, number | string>, isGasGiantBody: boolean) {
-    const isTerrestrial = !isGasGiantBody;
+function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBody, features: Record<string, number | string>, planetType: string) {
+    const isTerrestrial = planetType === 'planet/terrestrial';
+    const isGasGiant = planetType === 'planet/gas-giant';
+    const isIceGiant = planetType === 'planet/ice-giant';
 
     if (isTerrestrial) {
         const massEarths = (planet.massKg || 0) / EARTH_MASS_KG;
@@ -511,7 +513,7 @@ function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBo
         const pressureRange = atm.pressure_range_bar;
         const tidallyLocked = atm.tidally_locked;
 
-        if (isGasGiantBody && occursOn !== 'gas giants' && occursOn !== 'both') return false;
+        if ((isGasGiant || isIceGiant) && occursOn !== 'gas giants' && occursOn !== 'both') return false;
         if (isTerrestrial && occursOn !== 'terrestrial' && occursOn !== 'both') return false;
 
         if (massRange && (features['mass_Me'] < massRange[0] || features['mass_Me'] > massRange[1])) return false;
@@ -572,7 +574,7 @@ function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBo
             features[`atm.composition.${gas}`] = planet.atmosphere.composition[gas];
         }
 
-    } else if (isGasGiantBody) {
+    } else if (isGasGiant || isIceGiant) {
         // Default to Jupiter-like
         planet.atmosphere = {
             name: 'Hydrogen–Helium (Jupiter-like)',

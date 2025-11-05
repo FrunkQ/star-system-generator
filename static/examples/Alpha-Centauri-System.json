@@ -1,0 +1,295 @@
+{
+  "id": "alpha-centauri-system",
+  "name": "Alpha Centauri System",
+  "seed": "alpha-centauri-real-data",
+  "epochT0": 1762339146908,
+  "age_Gyr": 4.85,
+  "nodes": [
+    {
+      "id": "alpha-centauri-barycenter",
+      "parentId": null,
+      "name": "Alpha Centauri Barycenter",
+      "kind": "barycenter",
+      "memberIds": [
+        "alpha-centauri-a",
+        "alpha-centauri-b"
+      ],
+      "tags": [],
+      "effectiveMassKg": 3.421e+30,
+      "description": "The common center of mass for the Alpha Centauri A/B binary pair. These two Sun-like stars orbit each other in a close, 80-year dance."
+    },
+    {
+      "id": "alpha-centauri-a",
+      "parentId": "alpha-centauri-barycenter",
+      "name": "Alpha Centauri A (Rigil Kentaurus)",
+      "kind": "body",
+      "roleHint": "star",
+      "classes": [
+        "star/G",
+        "star/G2V"
+      ],
+      "massKg": 2.189e+30,
+      "radiusKm": 854400,
+      "temperatureK": 5790,
+      "magneticField": {
+        "strengthGauss": 1
+      },
+      "radiationOutput": 1.519,
+      "image": {
+        "url": "/images/star_types/G.webp"
+      },
+      "tags": [
+        { "key": "Sun-like" }
+      ],
+      "areas": [],
+      "orbit": {
+        "hostId": "alpha-centauri-barycenter",
+        "hostMu": 2.283e+20,
+        "t0": 1762339146908,
+        "n_rad_per_s": 2.493e-09,
+        "elements": {
+          "a_AU": 10.3,
+          "e": 0.5179,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "description": "The primary star, a G-type star almost identical to our Sun (just slightly larger and brighter). From its perspective, Alpha Centauri B would be a dazzlingly bright 'second sun' that swings close and far every 80 years.",
+      "isNameUserDefined": true
+    },
+    {
+      "id": "alpha-centauri-b",
+      "parentId": "alpha-centauri-barycenter",
+      "name": "Alpha Centauri B (Toliman)",
+      "kind": "body",
+      "roleHint": "star",
+      "classes": [
+        "star/K",
+        "star/K1V"
+      ],
+      "massKg": 1.232e+30,
+      "radiusKm": 601300,
+      "temperatureK": 5260,
+      "magneticField": {
+        "strengthGauss": 5
+      },
+      "radiationOutput": 0.503,
+      "image": {
+        "url": "/images/star_types/K.ebp.webp"
+      },
+      "tags": [],
+      "areas": [],
+      "orbit": {
+        "hostId": "alpha-centauri-barycenter",
+        "hostMu": 2.283e+20,
+        "t0": 1762339146908,
+        "n_rad_per_s": 2.493e-09,
+        "elements": {
+          "a_AU": 18.3,
+          "e": 0.5179,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.141592653589793
+        }
+      },
+      "description": "The secondary star, a K-type orange dwarf. It is slightly smaller and cooler than our Sun. Its highly elliptical 80-year orbit brings it as close as Saturn and as far as Neptune from Star A.",
+      "isNameUserDefined": true
+    },
+    {
+      "id": "proxima-centauri-star",
+      "parentId": "alpha-centauri-barycenter",
+      "name": "Proxima Centauri (Alpha Centauri C)",
+      "kind": "body",
+      "roleHint": "star",
+      "classes": [
+        "star/M",
+        "star/M5.5V"
+      ],
+      "orbit": {
+        "hostId": "alpha-centauri-barycenter",
+        "hostMu": 2.283e+20,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 13000,
+          "e": 0.5,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 2.447e+29,
+      "radiusKm": 107280,
+      "temperatureK": 3042,
+      "magneticField": {
+        "strengthGauss": 600
+      },
+      "radiationOutput": 0.0017,
+      "image": {
+        "url": "/images/star_types/M.webp"
+      },
+      "tags": [
+        { "key": "Flare Star" }
+      ],
+      "areas": [],
+      "description": "The third star of the system and our Sun's closest neighbor. Proxima is a tiny, dim M-type red dwarf in a vast, 550,000-year orbit around the central A-B pair. It is a violent 'flare star,' frequently lashing its inner planets with radiation.",
+      "isNameUserDefined": true
+    },
+    {
+      "id": "proxima-centauri-d",
+      "parentId": "proxima-centauri-star",
+      "name": "Proxima Centauri d",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/terrestrial",
+        "planet/hot-eyeball",
+        "planet/sub-earth",
+        "planet/barren"
+      ],
+      "orbit": {
+        "hostId": "proxima-centauri-star",
+        "hostMu": 1.633e+19,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.02885,
+          "e": 0.0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 1.55e+24,
+      "radiusKm": 4830,
+      "tags": [
+        { "key": "Tidally Locked" },
+        { "key": "hot" },
+        { "key": "K\"Airless Rock\"" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 360,
+      "temperatureK": 360,
+      "orbital_period_days": 5.12,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 122.8,
+      "description": "The innermost planet of Proxima. This tiny 'Sub-Earth' orbits in just 5 days, placing it too close for liquid water. It is a small, scorched, and likely airless rocky world, tidally locked and blasted by the star's frequent, powerful flares.",
+      "image": {
+        "url": "/images/planet_types/web20hot20eyeball20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "proxima-centauri-b",
+      "parentId": "proxima-centauri-star",
+      "name": "Proxima Centauri b",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/terrestrial",
+        "planet/cold-eyeball"
+      ],
+      "orbit": {
+        "hostId": "proxima-centauri-star",
+        "hostMu": 1.633e+19,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.04857,
+          "e": 0.0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 6.98e+24,
+      "radiusKm": 6753,
+      "tags": [
+        { "key": "Tidally Locked" },
+        { "key": "m-dwarf-world" },
+        { "key": "eyeball-planet" },
+        { "key": "habitable-zone" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 234,
+      "temperatureK": 234,
+      "atmosphere": {
+        "name": "Collapsible CO₂ (Tidally Locked)",
+        "composition": {
+          "CO2": 0.95,
+          "N2": 0.05
+        },
+        "main": "CO2",
+        "pressure_bar": 0.5
+      },
+      "orbital_period_days": 11.18,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 268.3,
+      "description": "An Earth-sized world orbiting within Proxima's habitable zone. It is tidally locked, so one side is in endless day and the other in endless night. It may be a 'cold eyeball' planet, with a region of liquid water in a 'terminator' ring between the two extremes.",
+      "image": {
+        "url": "/images/planet_types/web20cold20eyeball20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "proxima-centauri-c",
+      "parentId": "proxima-centauri-star",
+      "name": "Proxima Centauri c",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/mini-neptune",
+        "planet/super-earth",
+        "planet/ice"
+      ],
+      "orbit": {
+        "hostId": "proxima-centauri-star",
+        "hostMu": 1.633e+19,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 1.489,
+          "e": 0.04,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 4.18e+25,
+      "radiusKm": 16560,
+      "tags": [
+        { "key": "cold" },
+        { "key": "reducing" },
+        { "key": "primordial" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 39,
+      "temperatureK": 39,
+      "atmosphere": {
+        "name": "Primordial Envelope (Super-Earth)",
+        "composition": {
+          "H2": 0.9,
+          "He": 0.1
+        },
+        "main": "H2",
+        "pressure_bar": 10
+      },
+      "orbital_period_days": 1928,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 46272,
+      "description": "A 'Mini-Neptune' or 'Super-Earth' orbiting far from its star, about 1.5 AU out. It takes over 5 years to complete one orbit. It is a frigid world, well beyond the system's frost line, and has likely retained a thick, primordial atmosphere of hydrogen and helium.",
+      "image": {
+        "url": "/images/planet_types/web20mini-neptune.jpg"
+      },
+      "isNameUserDefined": true
+    }
+  ],
+  "rulePackId": "starter-sf-pack",
+  "rulePackVersion": "0.1.4",
+  "tags": [
+    { "key": "Triple Star System" }
+  ]
+}

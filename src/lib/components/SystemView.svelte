@@ -181,6 +181,8 @@
     if (node.roleHint === 'star') return '#fff'; // White
     if (node.tags?.some(t => t.key === 'habitability/earth-like' || t.key === 'habitability/human')) return '#007bff'; // Blue
     if (node.biosphere) return '#00ff00'; // Green
+    const isIceGiant = node.classes?.some(c => c.includes('ice-giant'));
+    if (isIceGiant) return '#add8e6'; // Light Blue
     const isGasGiant = node.classes?.some(c => c.includes('gas-giant'));
     if (isGasGiant) return '#ff0000'; // Red
     return '#ffa500'; // Orange

@@ -258,7 +258,7 @@
         const y = viewCenterY + pos.y * scale;
 
         let childRadius = 2;
-        let childColor = "#aaa";
+        let childColor = getPlanetColor(node);
 
         if (node.roleHint === 'star') {
             const starClassKey = node.classes[0] || 'default';

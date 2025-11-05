@@ -1,0 +1,1332 @@
+{
+  "id": "solar-system",
+  "name": "Solar System",
+  "seed": "solar-system-real-data",
+  "epochT0": 1762339146908,
+  "age_Gyr": 4.603,
+  "nodes": [
+    {
+      "id": "solar-system-sun",
+      "parentId": null,
+      "name": "Sol",
+      "kind": "body",
+      "roleHint": "star",
+      "classes": [
+        "star/G",
+        "star/G2V"
+      ],
+      "massKg": 1.989e+30,
+      "radiusKm": 695700,
+      "temperatureK": 5778,
+      "magneticField": {
+        "strengthGauss": 1
+      },
+      "radiationOutput": 1,
+      "image": {
+        "url": "/images/star_types/G.webp"
+      },
+      "tags": [],
+      "areas": [],
+      "description": "The heart of our Solar System, Sol is a G-type main-sequence star (a yellow dwarf). It accounts for 99.8% of the system's total mass. Its energy, produced by nuclear fusion in its core, radiates outward, making life on Earth possible.",
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-mercury",
+      "parentId": "solar-system-sun",
+      "name": "Mercury",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/terrestrial",
+        "planet/barren",
+        "planet/crater",
+        "planet/iron"
+      ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 1.32712440018e+20,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.387098,
+          "e": 0.205630,
+          "i_deg": 7.005,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 3.285e+23,
+      "radiusKm": 2439.7,
+      "tags": [
+        { "key": "exosphere" },
+        { "key": "thin" },
+        { "key": "hot" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 440,
+      "temperatureK": 440,
+      "atmosphere": {
+        "name": "Sodium–Potassium Exosphere",
+        "composition": {
+          "Na": 0.6,
+          "K": 0.4
+        },
+        "main": "Na",
+        "pressure_bar": 1e-11
+      },
+      "orbital_period_days": 87.97,
+      "axial_tilt_deg": 0.034,
+      "rotation_period_hours": 1407.6,
+      "description": "The smallest planet and closest to the Sun. Mercury is a world of extremes, with scorching daytime temperatures (430°C) and frigid nights (-180°C). It has no real atmosphere, only a thin exosphere, and its cratered surface resembles Earth's Moon.",
+      "image": {
+        "url": "/images/planet_types/web20barren20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-venus",
+      "parentId": "solar-system-sun",
+      "name": "Venus",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/terrestrial",
+        "planet/silicate"
+      ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 1.32712440018e+20,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.723332,
+          "e": 0.006772,
+          "i_deg": 3.39458,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 4.867e+24,
+      "radiusKm": 6051.8,
+      "tags": [
+        { "key": "toxic-human" },
+        { "key": "corrosive" },
+        { "key": "Runaway Greenhouse Effect" },
+        { "key": "Geologically Active (Volcanism)" },
+        { "key": "thick" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 232,
+      "temperatureK": 735,
+      "atmosphere": {
+        "name": "Carbon Dioxide (Venus-like)",
+        "composition": {
+          "CO2": 0.965,
+          "N2": 0.035
+        },
+        "main": "CO2",
+        "pressure_bar": 92
+      },
+      "orbital_period_days": 224.7,
+      "axial_tilt_deg": 177.36,
+      "rotation_period_hours": -5832.5,
+      "description": "Earth's 'sister planet' in size, but a hellish world. Venus suffers from a runaway greenhouse effect, trapping heat under a thick, toxic atmosphere of CO2 and sulfuric acid clouds. Its surface pressure is 92 times that of Earth, and it's the hottest planet in the system.",
+      "image": {
+        "url": "/images/planet_types/web20terrestrial20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-earth",
+      "parentId": "solar-system-sun",
+      "name": "Earth",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/terrestrial",
+        "planet/earth-analogue",
+        "planet/ocean"
+      ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 1.32712440018e+20,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 1,
+          "e": 0.0167086,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 5.972e+24,
+      "radiusKm": 6371,
+      "tags": [
+        { "key": "breathable-human" },
+        { "key": "habitability/human" }
+      ],
+      "areas": [],
+      "magneticField": { "strengthGauss": 0.5 },
+      "equilibriumTempK": 255,
+      "temperatureK": 288,
+      "atmosphere": {
+        "name": "Nitrogen–Oxygen (Earth-like)",
+        "composition": {
+          "N2": 0.7808,
+          "O2": 0.2095,
+          "Noble Gases": 0.0093,
+          "Other Trace": 0.0004
+        },
+        "main": "N2",
+        "pressure_bar": 1.013
+      },
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.71
+      },
+      "biosphere": {
+        "complexity": "complex",
+        "coverage": 0.8,
+        "biochemistry": "water-carbon",
+        "energy_source": "photosynthesis",
+        "morphologies": [ "microbial", "flora", "fauna" ]
+      },
+      "orbital_period_days": 365.25,
+      "axial_tilt_deg": 23.44,
+      "rotation_period_hours": 23.934,
+      "description": "The third planet from the Sun and the only known astronomical object to harbor life. It is an ocean world, with 71% of its surface covered in liquid water, protected by a strong magnetic field and a breathable nitrogen-oxygen atmosphere.",
+      "image": {
+        "url": "/images/planet_types/web20earth20analog20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-luna",
+      "parentId": "solar-system-earth",
+      "name": "Luna",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [ "planet/sub-earth", "planet/barren", "planet/crater" ],
+      "orbit": {
+        "hostId": "solar-system-earth",
+        "hostMu": 3.986004418e+14,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00257,
+          "e": 0.0549,
+          "i_deg": 5.145,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 7.342e+22,
+      "radiusKm": 1737.4,
+      "tags": [
+        { "key": "Airless Rock" },
+        { "key": "Tidally Locked" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 250,
+      "temperatureK": 250,
+      "orbital_period_days": 27.32,
+      "axial_tilt_deg": 6.68,
+      "rotation_period_hours": 655.7,
+      "description": "Earth's only natural satellite and the largest relative to its host planet in the Solar System. It is tidally locked, always showing the same face to Earth. Its cratered, airless surface is composed of dark volcanic 'maria' and bright, ancient highlands.",
+      "image": {
+        "url": "/images/planet_types/web20crater20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-mars",
+      "parentId": "solar-system-sun",
+      "name": "Mars",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [ "planet/terrestrial", "planet/desert", "planet/ice" ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 1.32712440018e+20,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 1.52368,
+          "e": 0.0934,
+          "i_deg": 1.850,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 6.39e+23,
+      "radiusKm": 3389.5,
+      "tags": [
+        { "key": "toxic-human" },
+        { "key": "thin" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 210,
+      "temperatureK": 215,
+      "atmosphere": {
+        "name": "Carbon Dioxide (Mars-like)",
+        "composition": {
+          "CO2": 0.95,
+          "N2": 0.027,
+          "Noble Gases": 0.016
+        },
+        "main": "CO2",
+        "pressure_bar": 0.006
+      },
+      "orbital_period_days": 687.0,
+      "axial_tilt_deg": 25.19,
+      "rotation_period_hours": 24.6,
+      "description": "The fourth planet, known as the 'Red Planet' due to iron oxide (rust) on its surface. It's a cold desert world with a very thin CO2 atmosphere, polar ice caps, and the largest volcano (Olympus Mons) and canyon (Valles Marineris) in the Solar System.",
+      "image": {
+        "url": "/images/planet_types/web20desert20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-phobos",
+      "parentId": "solar-system-mars",
+      "name": "Phobos",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [ "planet/dwarf-planet", "planet/barren", "planet/crater" ],
+      "orbit": {
+        "hostId": "solar-system-mars",
+        "hostMu": 4.2643806e+13,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 6.26e-5,
+          "e": 0.0151,
+          "i_deg": 1.093,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 1.06e+16,
+      "radiusKm": 11.2,
+      "tags": [
+        { "key": "Airless Rock" },
+        { "key": "Tidally Locked" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 230,
+      "temperatureK": 230,
+      "orbital_period_days": 0.319,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 7.66,
+      "description": "The larger and innermost of Mars's two moons. It is a small, lumpy, and heavily cratered body, thought to be a captured asteroid. Phobos orbits so close to Mars that it will either crash into the planet or be torn apart into a ring in about 50 million years.",
+      "image": {
+        "url": "/images/planet_types/web20crater20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-deimos",
+      "parentId": "solar-system-mars",
+      "name": "Deimos",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [ "planet/dwarf-planet", "planet/barren", "planet/crater" ],
+      "orbit": {
+        "hostId": "solar-system-mars",
+        "hostMu": 4.2643806e+13,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.000156,
+          "e": 0.00033,
+          "i_deg": 0.93,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 1.47e+15,
+      "radiusKm": 6.2,
+      "tags": [
+        { "key": "Airless Rock" },
+        { "key": "Tidally Locked" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 230,
+      "temperatureK": 230,
+      "orbital_period_days": 1.26,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 30.35,
+      "description": "The smaller and outer of Mars's two moons. Like its sibling Phobos, Deimos is a small, dark, and irregularly shaped body, likely a captured C-type asteroid. Its surface is smoother than Phobos's, as many of its craters are filled with fine dust (regolith).",
+      "image": {
+        "url": "/images/planet_types/web20crater20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-asteroid-belt",
+      "parentId": "solar-system-sun",
+      "name": "The Main Belt",
+      "kind": "body",
+      "roleHint": "belt",
+      "classes": [ "belt/asteroid" ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 1.32712440018e+20,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 2.7,
+          "e": 0.07,
+          "i_deg": 10,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "tags": [],
+      "areas": [],
+      "description": "A torus-shaped region of space between Mars and Jupiter, occupied by millions of asteroids. This is leftover material from the early Solar System that was prevented from forming a planet by Jupiter's immense gravity. The largest object in the belt is the dwarf planet Ceres.",
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-jupiter",
+      "parentId": "solar-system-sun",
+      "name": "Jupiter",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/gas-giant",
+        "planet/cold-jupiter",
+        "planet/ammonia-clouds-gas-giant",
+        "planet/ringed"
+      ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 1.32712440018e+20,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 5.2044,
+          "e": 0.0489,
+          "i_deg": 1.303,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 1.898e+27,
+      "radiusKm": 69911,
+      "tags": [
+        { "key": "reducing" },
+        { "key": "planet/ringed" }
+      ],
+      "areas": [],
+      "magneticField": { "strengthGauss": 4.28 },
+      "equilibriumTempK": 110,
+      "temperatureK": 110,
+      "atmosphere": {
+        "name": "Hydrogen–Helium (Jupiter-like)",
+        "composition": {
+          "H2": 0.86,
+          "He": 0.13,
+          "CH4": 0.003
+        },
+        "main": "H2",
+        "pressure_bar": 200000
+      },
+      "orbital_period_days": 4332.6,
+      "axial_tilt_deg": 3.13,
+      "rotation_period_hours": 9.925,
+      "description": "The fifth planet and the largest in the Solar System. This gas giant is more than twice as massive as all other planets combined. It's known for its colorful cloud bands of ammonia ice and the Great Red Spot, a giant storm that has raged for centuries.",
+      "image": {
+        "url": "/images/planet_types/web20ammonia20clouds20gas20giant.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-jupiter-rings",
+      "parentId": "solar-system-jupiter",
+      "name": "Jupiter's Rings",
+      "kind": "body",
+      "roleHint": "ring",
+      "classes": [ "ring/planetary" ],
+      "radiusInnerKm": 92000,
+      "radiusOuterKm": 226000,
+      "tags": [],
+      "areas": [],
+      "description": "A faint ring system composed of three main parts: an inner 'halo', a bright 'main' ring, and an outer 'gossamer' ring. Unlike Saturn's icy rings, Jupiter's are made of small, dark dust particles, likely kicked up from its small inner moons by meteoroid impacts.",
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-io",
+      "parentId": "solar-system-jupiter",
+      "name": "Io",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [ "planet/terrestrial", "planet/lava" ],
+      "orbit": {
+        "hostId": "solar-system-jupiter",
+        "hostMu": 1.26686534e+17,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00282,
+          "e": 0.0041,
+          "i_deg": 0.05,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 8.93e+22,
+      "radiusKm": 1821.6,
+      "tags": [
+        { "key": "Active Volcanism" },
+        { "key": "toxic-human" },
+        { "key": "corrosive" },
+        { "key": "Tidally Locked" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 110,
+      "temperatureK": 110,
+      "atmosphere": {
+        "name": "Sulfur Dioxide (Io-like)",
+        "composition": {
+          "SO2": 0.9,
+          "S": 0.1
+        },
+        "main": "SO2",
+        "pressure_bar": 1e-8
+      },
+      "orbital_period_days": 1.77,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 42.48,
+      "description": "The innermost Galilean moon, Io is the most volcanically active body in the Solar System. It is caught in a tidal 'tug-of-war' between Jupiter and the other moons, which flexes its interior and powers hundreds of volcanoes that erupt sulfur and lava.",
+      "image": {
+        "url": "/images/planet_types/web20lava20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-europa",
+      "parentId": "solar-system-jupiter",
+      "name": "Europa",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice",
+        "planet/subsurface-ocean"
+      ],
+      "orbit": {
+        "hostId": "solar-system-jupiter",
+        "hostMu": 1.26686534e+17,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00448,
+          "e": 0.009,
+          "i_deg": 0.47,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 4.8e+22,
+      "radiusKm": 1560.8,
+      "tags": [
+        { "key": "exosphere" },
+        { "key": "thin" },
+        { "key": "Subsurface Ocean" },
+        { "key": "Tidally Locked" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 102,
+      "temperatureK": 102,
+      "atmosphere": {
+        "name": "Tenuous Oxygen (Europa-like)",
+        "composition": { "O2": 1.0 },
+        "main": "O2",
+        "pressure_bar": 1e-11
+      },
+      "orbital_period_days": 3.55,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 85.2,
+      "description": "A smooth, ice-covered world with a young surface crisscrossed by cracks and streaks. It is a prime candidate for life, as evidence strongly suggests a deep, liquid saltwater ocean exists beneath its 15-25 km thick ice shell, kept warm by tidal heating.",
+      "image": {
+        "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-ganymede",
+      "parentId": "solar-system-jupiter",
+      "name": "Ganymede",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice",
+        "planet/subsurface-ocean"
+      ],
+      "orbit": {
+        "hostId": "solar-system-jupiter",
+        "hostMu": 1.26686534e+17,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00715,
+          "e": 0.0013,
+          "i_deg": 0.2,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 1.48e+23,
+      "radiusKm": 2634.1,
+      "tags": [
+        { "key": "exosphere" },
+        { "key": "thin" },
+        { "key": "Subsurface Ocean" },
+        { "key": "Tidally Locked" }
+      ],
+      "areas": [],
+      "magneticField": { "strengthGauss": 0.007 },
+      "equilibriumTempK": 110,
+      "temperatureK": 110,
+      "orbital_period_days": 7.15,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 171.6,
+      "description": "The largest moon in the Solar System, even larger than the planet Mercury. Ganymede is a differentiated icy world and is the only moon known to have its own magnetic field. Its surface has both dark, ancient, cratered regions and lighter, younger, grooved terrain.",
+      "image": {
+        "url": "/images/planet_types/web20ice20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-callisto",
+      "parentId": "solar-system-jupiter",
+      "name": "Callisto",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [ "planet/terrestrial", "planet/ice", "planet/crater" ],
+      "orbit": {
+        "hostId": "solar-system-jupiter",
+        "hostMu": 1.26686534e+17,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.01258,
+          "e": 0.0074,
+          "i_deg": 0.192,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 1.07e+23,
+      "radiusKm": 2410.3,
+      "tags": [
+        { "key": "exosphere" },
+        { "key": "thin" },
+        { "key": "Tidally Locked" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 134,
+      "temperatureK": 134,
+      "orbital_period_days": 16.69,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 400.5,
+      "description": "The outermost Galilean moon, Callisto has the oldest and most heavily cratered surface in the Solar System, indicating a lack of geological activity. It is a geologically 'dead' world, composed of roughly equal parts rock and ice. It may also hide a subsurface ocean.",
+      "image": {
+        "url": "/images/planet_types/web20crater20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-saturn",
+      "parentId": "solar-system-sun",
+      "name": "Saturn",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/gas-giant",
+        "planet/cold-jupiter",
+        "planet/ammonia-clouds-gas-giant",
+        "planet/ringed"
+      ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 1.32712440018e+20,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 9.5826,
+          "e": 0.0565,
+          "i_deg": 2.485,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 5.683e+26,
+      "radiusKm": 58232,
+      "tags": [
+        { "key": "reducing" },
+        { "key": "planet/ringed" }
+      ],
+      "areas": [],
+      "magneticField": { "strengthGauss": 0.21 },
+      "equilibriumTempK": 81,
+      "temperatureK": 81,
+      "atmosphere": {
+        "name": "Hydrogen–Helium (Jupiter-like)",
+        "composition": {
+          "H2": 0.96,
+          "He": 0.03,
+          "CH4": 0.0045
+        },
+        "main": "H2",
+        "pressure_bar": 100000
+      },
+      "orbital_period_days": 10759.2,
+      "axial_tilt_deg": 26.73,
+      "rotation_period_hours": 10.656,
+      "description": "The sixth planet and the second-largest, Saturn is a gas giant famous for its spectacular ring system. It is the least dense planet—it would float in water. Its atmosphere is a pale yellow, striped with bands of ammonia ice clouds and powerful winds.",
+      "image": {
+        "url": "/images/planet_types/web20ringed20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-saturn-rings",
+      "parentId": "solar-system-saturn",
+      "name": "Saturn's Rings",
+      "kind": "body",
+      "roleHint": "ring",
+      "classes": [ "ring/planetary" ],
+      "radiusInnerKm": 66900,
+      "radiusOuterKm": 140180,
+      "description": "The most extensive and complex ring system in the Solar System. The rings are not solid but are made of billions of particles of water ice, with some rock and dust, ranging in size from a grain of sand to a house. They are incredibly thin, perhaps only 10 meters thick.",
+      "tags": [],
+      "areas": [],
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-titan",
+      "parentId": "solar-system-saturn",
+      "name": "Titan",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [ "planet/terrestrial", "planet/methane" ],
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 3.7931187e+16,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00816,
+          "e": 0.0288,
+          "i_deg": 0.348,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 1.34e+23,
+      "radiusKm": 2574.7,
+      "tags": [
+        { "key": "haze" },
+        { "key": "toxic-human" },
+        { "key": "reducing" },
+        { "key": "Tidally Locked" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 93.7,
+      "temperatureK": 93.7,
+      "atmosphere": {
+        "name": "Methane Haze (Titan-like)",
+        "composition": {
+          "N2": 0.95,
+          "CH4": 0.05
+        },
+        "main": "N2",
+        "pressure_bar": 1.45
+      },
+      "orbital_period_days": 15.94,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 382.6,
+      "description": "Saturn's largest moon and the only moon with a thick, Earth-like atmosphere (though it's 95% nitrogen and toxic). Its surface is -179°C, cold enough for liquid methane and ethane to form rivers, lakes, and seas in a 'hydrological' cycle similar to Earth's water cycle.",
+      "image": {
+        "url": "/images/planet_types/web20methane20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-enceladus",
+      "parentId": "solar-system-saturn",
+      "name": "Enceladus",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/dwarf-planet",
+        "planet/ice",
+        "planet/subsurface-ocean"
+      ],
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 3.7931187e+16,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00159,
+          "e": 0.0047,
+          "i_deg": 0.009,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 1.08e+20,
+      "radiusKm": 252.1,
+      "tags": [
+        { "key": "Active Cryovolcanism (Plumes)" },
+        { "key": "Subsurface Ocean" },
+        { "key": "Tidally Locked" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 75,
+      "temperatureK": 75,
+      "atmosphere": {
+        "name": "Water Vapor Plume (Enceladus-like)",
+        "composition": {
+          "H2O": 0.9,
+          "H2": 0.05,
+          "CO2": 0.03,
+          "CH4": 0.01
+        },
+        "main": "H2O",
+        "pressure_bar": 1e-9
+      },
+      "orbital_period_days": 1.37,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 32.88,
+      "description": "A small, bright white icy moon that is one of the most compelling places to search for life. It ejects massive plumes of water, ice, and organic molecules from 'tiger stripes' near its south pole, revealing a global subsurface ocean of liquid saltwater.",
+      "image": {
+        "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-mimas",
+      "parentId": "solar-system-saturn",
+      "name": "Mimas",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [ "planet/dwarf-planet", "planet/ice", "planet/crater" ],
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 3.7931187e+16,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00124,
+          "e": 0.0196,
+          "i_deg": 1.57,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 3.75e+19,
+      "radiusKm": 198.2,
+      "tags": [
+        { "key": "Airless Rock" },
+        { "key": "Tidally Locked" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 64,
+      "temperatureK": 64,
+      "orbital_period_days": 0.94,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 22.56,
+      "description": "The smallest and innermost of Saturn's major moons, Mimas is nicknamed the 'Death Star' moon. It is dominated by the Herschel crater, a massive impact basin 139 km wide—nearly a third of the moon's own diameter—that almost shattered the icy body.",
+      "image": {
+        "url": "/images/planet_types/web20crater20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-rhea",
+      "parentId": "solar-system-saturn",
+      "name": "Rhea",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [ "planet/terrestrial", "planet/ice" ],
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 3.7931187e+16,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00352,
+          "e": 0.001,
+          "i_deg": 0.345,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 2.3e+21,
+      "radiusKm": 763.8,
+      "tags": [
+        { "key": "Airless Rock" },
+        { "key": "Tidally Locked" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 77,
+      "temperatureK": 77,
+      "orbital_period_days": 4.51,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 108.2,
+      "description": "Saturn's second-largest moon, Rhea is a heavily cratered, airless body of ice and rock. Its surface is ancient, with one hemisphere being brighter and more cratered than the other. Its surface also features bright, 'wispy' streaks, which are exposed ice cliffs.",
+      "image": {
+        "url": "/images/planet_types/web20ice20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-iapetus",
+      "parentId": "solar-system-saturn",
+      "name": "Iapetus",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [ "planet/terrestrial", "planet/ice", "planet/crater" ],
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 3.7931187e+16,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.0238,
+          "e": 0.0283,
+          "i_deg": 15.47,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 1.8e+21,
+      "radiusKm": 734.5,
+      "tags": [
+        { "key": "Airless Rock" },
+        { "key": "Tidally Locked" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 90,
+      "temperatureK": 90,
+      "orbital_period_days": 79.32,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 1903.6,
+      "description": "Saturn's 'yin-yang' moon, Iapetus is famous for its dramatic two-tone coloration. Its leading hemisphere is as dark as coal, while its trailing hemisphere is as bright as fresh snow. It also possesses a massive, 20-km-high equatorial ridge.",
+      "image": {
+        "url": "/images/planet_types/web20crater20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-uranus",
+      "parentId": "solar-system-sun",
+      "name": "Uranus",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [ "planet/ice-giant", "planet/ringed" ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 1.32712440018e+20,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 19.2184,
+          "e": 0.046381,
+          "i_deg": 0.773,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 8.681e+25,
+      "radiusKm": 25362,
+      "tags": [
+        { "key": "reducing" },
+        { "key": "planet/ringed" }
+      ],
+      "areas": [],
+      "magneticField": { "strengthGauss": 0.23 },
+      "equilibriumTempK": 59,
+      "temperatureK": 59,
+      "atmosphere": {
+        "name": "Ice Giant (Uranus-like)",
+        "composition": {
+          "H2": 0.83,
+          "He": 0.15,
+          "CH4": 0.023
+        },
+        "main": "H2",
+        "pressure_bar": 100000
+      },
+      "orbital_period_days": 30688.5,
+      "axial_tilt_deg": 97.77,
+      "rotation_period_hours": -17.24,
+      "description": "The seventh planet, an ice giant tipped on its side. Uranus rotates at a 98-degree angle, likely from a past collision, causing extreme seasons where its poles face the Sun for 42 years at a time. Its blue-green color comes from methane in its H-He atmosphere.",
+      "image": {
+        "url": "/images/planet_types/web20ice20giant.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-uranus-rings",
+      "parentId": "solar-system-uranus",
+      "name": "Uranus' Rings",
+      "kind": "body",
+      "roleHint": "ring",
+      "classes": [ "ring/planetary" ],
+      "radiusInnerKm": 38000,
+      "radiusOuterKm": 98000,
+      "description": "Uranus is surrounded by 13 known rings. Unlike Saturn's bright, icy rings, these are extremely dark and narrow, composed of particles as dark as coal, likely water ice mixed with radiation-processed organic compounds. They were the first to be discovered after Saturn's.",
+      "tags": [],
+      "areas": [],
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-titania",
+      "parentId": "solar-system-uranus",
+      "name": "Titania",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [ "planet/terrestrial", "planet/ice" ],
+      "orbit": {
+        "hostId": "solar-system-uranus",
+        "hostMu": 5.793939e+15,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00291,
+          "e": 0.0011,
+          "i_deg": 0.34,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 3.4e+21,
+      "radiusKm": 788.4,
+      "tags": [
+        { "key": "Airless Rock" },
+        { "key": "Tidally Locked" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 60,
+      "temperatureK": 60,
+      "orbital_period_days": 8.7,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 208.8,
+      "description": "The largest of Uranus's moons. This icy, rocky world shows signs of past geological activity. Its surface is cut by a system of enormous canyons and fault valleys, some stretching for 1,000 miles, indicating its interior expanded and cracked the crust long ago.",
+      "image": {
+        "url": "/images/planet_types/web20ice20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-oberon",
+      "parentId": "solar-system-uranus",
+      "name": "Oberon",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [ "planet/terrestrial", "planet/ice", "planet/crater" ],
+      "orbit": {
+        "hostId": "solar-system-uranus",
+        "hostMu": 5.793939e+15,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00390,
+          "e": 0.0014,
+          "i_deg": 0.058,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 3.0e+21,
+      "radiusKm": 761.4,
+      "tags": [
+        { "key": "Airless Rock" },
+        { "key": "Tidally Locked" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 60,
+      "temperatureK": 60,
+      "orbital_period_days": 13.46,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 323.0,
+      "description": "The outermost and second-largest of the major Uranian moons. Oberon has the most ancient and heavily cratered surface of Uranus's moons, showing little sign of past geological activity. Its dark, reddish surface is covered in impact craters, some with bright rays of ice.",
+      "image": {
+        "url": "/images/planet_types/web20crater20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-ariel",
+      "parentId": "solar-system-uranus",
+      "name": "Ariel",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [ "planet/terrestrial", "planet/ice" ],
+      "orbit": {
+        "hostId": "solar-system-uranus",
+        "hostMu": 5.793939e+15,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00127,
+          "e": 0.0012,
+          "i_deg": 0.26,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 1.29e+21,
+      "radiusKm": 578.9,
+      "tags": [
+        { "key": "Airless Rock" },
+        { "key": "Tidally Locked" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 58,
+      "temperatureK": 58,
+      "orbital_period_days": 2.52,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 60.48,
+      "description": "The brightest and youngest-surfaced of Uranus's moons. Ariel shows clear signs of geologic activity, with vast, interconnected canyons and fault valleys. Smooth plains suggest that 'cryovolcanism' (ice volcanoes) may have once resurfaced parts of the moon.",
+      "image": {
+        "url": "/images/planet_types/web20ice20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-neptune",
+      "parentId": "solar-system-sun",
+      "name": "Neptune",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [ "planet/ice-giant", "planet/ringed" ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 1.32712440018e+20,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 30.11,
+          "e": 0.0113,
+          "i_deg": 1.770,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 1.024e+26,
+      "radiusKm": 24622,
+      "tags": [
+        { "key": "reducing" },
+        { "key": "planet/ringed" }
+      ],
+      "areas": [],
+      "magneticField": { "strengthGauss": 0.14 },
+      "equilibriumTempK": 47,
+      "temperatureK": 47,
+      "atmosphere": {
+        "name": "Ice Giant (Uranus-like)",
+        "composition": {
+          "H2": 0.80,
+          "He": 0.19,
+          "CH4": 0.015
+        },
+        "main": "H2",
+        "pressure_bar": 100000
+      },
+      "orbital_period_days": 60182,
+      "axial_tilt_deg": 28.32,
+      "rotation_period_hours": 16.11,
+      "description": "The eighth and most distant planet, Neptune is a dark, cold ice giant whipped by supersonic winds. It has a vivid blue color from methane in its atmosphere. It was the first planet found through mathematical prediction rather than direct observation.",
+      "image": {
+        "url": "/images/planet_types/web20ice20giant.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-neptune-rings",
+      "parentId": "solar-system-neptune",
+      "name": "Neptune's Rings",
+      "kind": "body",
+      "roleHint": "ring",
+      "classes": [ "ring/planetary" ],
+      "radiusInnerKm": 41900,
+      "radiusOuterKm": 62930,
+      "description": "Neptune is encircled by five faint, dark rings. They are notable for containing unstable, bright clumps of dust called 'arcs,' which are thought to be held in place by the gravity of the small moon Galatea. These rings are dusty and relatively young.",
+      "tags": [],
+      "areas": [],
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-triton",
+      "parentId": "solar-system-neptune",
+      "name": "Triton",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [ "planet/terrestrial", "planet/ice" ],
+      "orbit": {
+        "hostId": "solar-system-neptune",
+        "hostMu": 6.8351e+15,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00237,
+          "e": 0.0000,
+          "i_deg": 157.3,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        },
+        "isRetrogradeOrbit": true
+      },
+      "massKg": 2.14e+22,
+      "radiusKm": 1353.4,
+      "tags": [
+        { "key": "Retrograde Orbit" },
+        { "key": "Captured Body" },
+        { "key": "Active Cryovolcanism (Plumes)" },
+        { "key": "Tidally Locked" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 38,
+      "temperatureK": 38,
+      "atmosphere": {
+        "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
+        "composition": {
+          "N2": 0.999,
+          "CH4": 0.001
+        },
+        "main": "N2",
+        "pressure_bar": 1.4e-5
+      },
+      "orbital_period_days": 5.87,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 140.8,
+      "description": "Neptune's largest moon and likely a captured Kuiper Belt Object. It is one of the coldest worlds known (-235°C), yet it is geologically active, with geysers of nitrogen gas erupting from its icy surface. It orbits Neptune 'backwards' in a retrograde orbit.",
+      "image": {
+        "url": "/images/planet_types/web20ice20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-kuiper-belt",
+      "parentId": "solar-system-sun",
+      "name": "Kuiper Belt",
+      "kind": "body",
+      "roleHint": "belt",
+      "classes": [ "belt/asteroid" ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 1.32712440018e+20,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 40,
+          "e": 0.1,
+          "i_deg": 15,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "tags": [],
+      "areas": [],
+      "description": "A vast, doughnut-shaped ring of icy bodies beyond the orbit of Neptune, from about 30 to 50 AU. It is a reservoir of comets and contains many dwarf planets, including Pluto. This is a cold, distant region containing remnants from the formation of the Solar System.",
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-pluto",
+      "parentId": "solar-system-sun",
+      "name": "Pluto",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [ "planet/dwarf-planet", "planet/ice" ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 1.32712440018e+20,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 39.48,
+          "e": 0.2488,
+          "i_deg": 17.16,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 1.303e+22,
+      "radiusKm": 1188.3,
+      "tags": [
+        { "key": "thin" },
+        { "key": "exosphere" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 44,
+      "temperatureK": 44,
+      "atmosphere": {
+        "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
+        "composition": {
+          "N2": 0.98,
+          "CH4": 0.01,
+          "CO": 0.01
+        },
+        "main": "N2",
+        "pressure_bar": 1e-5
+      },
+      "orbital_period_days": 90560,
+      "axial_tilt_deg": 119.5,
+      "rotation_period_hours": -153.3,
+      "description": "A dwarf planet in the Kuiper Belt, formerly classified as the ninth planet. It is a complex world of ice mountains and frozen nitrogen plains. Its highly eccentric orbit sometimes brings it closer to the Sun than Neptune. It has five known moons.",
+      "image": {
+        "url": "/images/planet_types/web20dwarf20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-charon",
+      "parentId": "solar-system-pluto",
+      "name": "Charon",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [ "planet/dwarf-planet", "planet/ice" ],
+      "orbit": {
+        "hostId": "solar-system-pluto",
+        "hostMu": 8.696358e+11,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00013,
+          "e": 0.000,
+          "i_deg": 0.001,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 1.58e+21,
+      "radiusKm": 606,
+      "tags": [
+        { "key": "Airless Rock" },
+        { "key": "Tidally Locked" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 44,
+      "temperatureK": 44,
+      "orbital_period_days": 6.38,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 153.3,
+      "description": "Pluto's largest moon, so large (half of Pluto's diameter) that the two are considered a binary dwarf planet system. They orbit a common barycenter located in the space between them. Charon is tidally locked to Pluto, so they both always show the same face to each other.",
+      "image": {
+        "url": "/images/planet_types/web20crater20planet.jpg"
+      },
+      "isNameUserDefined": true
+    }
+  ],
+  "rulePackId": "starter-sf-pack",
+  "rulePackVersion": "0.1.3",
+  "tags": []
+}

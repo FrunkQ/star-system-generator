@@ -1,0 +1,392 @@
+{
+  "id": "trappist-1-system",
+  "name": "TRAPPIST-1",
+  "seed": "trappist-1-real-data",
+  "epochT0": 1762339146908,
+  "age_Gyr": 7.6,
+  "nodes": [
+    {
+      "id": "trappist-1-star",
+      "parentId": null,
+      "name": "TRAPPIST-1",
+      "kind": "body",
+      "roleHint": "star",
+      "classes": [
+        "star/M",
+        "star/M8V"
+      ],
+      "massKg": 1.786e+29,
+      "radiusKm": 82927,
+      "temperatureK": 2566,
+      "magneticField": {
+        "strengthGauss": 600
+      },
+      "radiationOutput": 0.0005,
+      "image": {
+        "url": "/images/star_types/M.webp"
+      },
+      "tags": [],
+      "areas": [],
+      "description": "An ultra-cool M-type red dwarf, TRAPPIST-1 is barely larger than the planet Jupiter. It is extremely old (7.6 Gyr) and has a very low temperature. Despite its small size, it hosts a remarkable, compact system of seven Earth-sized terrestrial planets.",
+      "isNameUserDefined": true
+    },
+    {
+      "id": "trappist-1-b",
+      "parentId": "trappist-1-star",
+      "name": "TRAPPIST-1 b",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/terrestrial",
+        "planet/hot-eyeball",
+        "planet/barren"
+      ],
+      "orbit": {
+        "hostId": "trappist-1-star",
+        "hostMu": 1.1918e+19,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.01154,
+          "e": 0.00622,
+          "i_deg": 89.728,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 8.207e+24,
+      "radiusKm": 7110,
+      "tags": [
+        { "key": "Tidally Locked" },
+        { "key": "Airless Rock" },
+        { "key": "hot" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 397.6,
+      "temperatureK": 397.6,
+      "orbital_period_days": 1.51,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 36.24,
+      "description": "The innermost planet, TRAPPIST-1 b orbits so close to its star that its 'year' is only 1.5 Earth days. It is tidally locked and scorched by radiation, making it far too hot for liquid water. It is likely a barren, airless rock, similar to Mercury.",
+      "image": {
+        "url": "/images/planet_types/web20hot20eyeball20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "trappist-1-c",
+      "parentId": "trappist-1-star",
+      "name": "TRAPPIST-1 c",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/terrestrial",
+        "planet/hot-eyeball",
+        "planet/carbon"
+      ],
+      "orbit": {
+        "hostId": "trappist-1-star",
+        "hostMu": 1.1918e+19,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.01580,
+          "e": 0.00654,
+          "i_deg": 89.778,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 7.812e+24,
+      "radiusKm": 6989,
+      "tags": [
+        { "key": "Tidally Locked" },
+        { "key": "toxic-human" },
+        { "key": "Runaway Greenhouse Effect" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 339.7,
+      "temperatureK": 600,
+      "atmosphere": {
+        "name": "Carbon Dioxide (Venus-like)",
+        "composition": {
+          "CO2": 0.96,
+          "N2": 0.04
+        },
+        "main": "CO2",
+        "pressure_bar": 10
+      },
+      "orbital_period_days": 2.42,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 58.08,
+      "description": "The second planet, 'c', is another tidally locked world, likely a 'hot eyeball' planet. Its dayside is perpetually baked by the star, creating a runaway greenhouse effect. It is thought to be a 'sister' to Venus: rocky, but with a crushing, toxic atmosphere.",
+      "image": {
+        "url": "/images/planet_types/web20hot20eyeball20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "trappist-1-d",
+      "parentId": "trappist-1-star",
+      "name": "TRAPPIST-1 d",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/terrestrial",
+        "planet/cold-eyeball",
+        "planet/sub-earth"
+      ],
+      "orbit": {
+        "hostId": "trappist-1-star",
+        "hostMu": 1.1918e+19,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.02227,
+          "e": 0.00837,
+          "i_deg": 89.896,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 2.317e+24,
+      "radiusKm": 4906,
+      "tags": [
+        { "key": "Tidally Locked" },
+        { "key": "m-dwarf-world" },
+        { "key": "eyeball-planet" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 286.2,
+      "temperatureK": 286.2,
+      "atmosphere": {
+        "name": "Collapsible CO₂ (Tidally Locked)",
+        "composition": {
+          "CO2": 0.95,
+          "N2": 0.05
+        },
+        "main": "CO2",
+        "pressure_bar": 0.8
+      },
+      "orbital_period_days": 4.05,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 97.2,
+      "description": "The third planet and the first to be located within the star's 'habitable zone.' It's tidally locked, so one side is in endless day and the other in endless night. It's a 'cold eyeball' world, where liquid water might exist only in a narrow 'terminator' ring between the two extremes.",
+      "image": {
+        "url": "/images/planet_types/web20cold20eyeball20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "trappist-1-e",
+      "parentId": "trappist-1-star",
+      "name": "TRAPPIST-1 e",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/terrestrial",
+        "planet/cold-eyeball",
+        "planet/ocean"
+      ],
+      "orbit": {
+        "hostId": "trappist-1-star",
+        "hostMu": 1.1918e+19,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.02925,
+          "e": 0.00510,
+          "i_deg": 89.793,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 4.134e+24,
+      "radiusKm": 5861,
+      "tags": [
+        { "key": "Tidally Locked" },
+        { "key": "m-dwarf-world" },
+        { "key": "eyeball-planet" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 249.7,
+      "temperatureK": 249.7,
+      "atmosphere": {
+        "name": "Collapsible CO₂ (Tidally Locked)",
+        "composition": {
+          "CO2": 0.92,
+          "N2": 0.08
+        },
+        "main": "CO2",
+        "pressure_bar": 1.5
+      },
+      "orbital_period_days": 6.10,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 146.4,
+      "description": "This planet is the 'sweet spot' of the TRAPPIST-1 system. It is almost exactly the size of Earth, rocky, and orbits squarely in the middle of the habitable zone. It receives a similar amount of light as Earth and is a prime candidate for hosting liquid water on its surface.",
+      "image": {
+        "url": "/images/planet_types/web20cold20eyeball20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "trappist-1-f",
+      "parentId": "trappist-1-star",
+      "name": "TRAPPIST-1 f",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/terrestrial",
+        "planet/cold-eyeball",
+        "planet/ocean"
+      ],
+      "orbit": {
+        "hostId": "trappist-1-star",
+        "hostMu": 1.1918e+19,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.03849,
+          "e": 0.01007,
+          "i_deg": 89.740,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 6.205e+24,
+      "radiusKm": 6658,
+      "tags": [
+        { "key": "Tidally Locked" },
+        { "key": "m-dwarf-world" },
+        { "key": "eyeball-planet" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 217.7,
+      "temperatureK": 217.7,
+      "atmosphere": {
+        "name": "Collapsible CO₂ (Tidally Locked)",
+        "composition": {
+          "CO2": 0.9,
+          "N2": 0.1
+        },
+        "main": "CO2",
+        "pressure_bar": 2.1
+      },
+      "orbital_period_days": 9.21,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 221.04,
+      "description": "Another large, rocky planet in the habitable zone. It's slightly larger than Earth and on the colder side, receiving about as much light as Mars. It is likely a 'cold eyeball' world, or a global 'water-world' covered in a thick ocean under a CO2-rich atmosphere.",
+      "image": {
+        "url": "/images/planet_types/web20cold20eyeball20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "trappist-1-g",
+      "parentId": "trappist-1-star",
+      "name": "TRAPPIST-1 g",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/terrestrial",
+        "planet/mini-neptune",
+        "planet/ice"
+      ],
+      "orbit": {
+        "hostId": "trappist-1-star",
+        "hostMu": 1.1918e+19,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.04683,
+          "e": 0.002,
+          "i_deg": 89.72,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 7.889e+24,
+      "radiusKm": 7192,
+      "tags": [
+        { "key": "Tidally Locked" },
+        { "key": "super-earth" },
+        { "key": "reducing" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 198.6,
+      "temperatureK": 198.6,
+      "atmosphere": {
+        "name": "Primordial Envelope (Super-Earth)",
+        "composition": {
+          "H2": 0.9,
+          "He": 0.1
+        },
+        "main": "H2",
+        "pressure_bar": 20
+      },
+      "orbital_period_days": 12.35,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 296.4,
+      "description": "The largest planet in the system, 'g' is a 'Super-Earth' or 'Mini-Neptune' located at the cold, outer edge of the habitable zone. It is likely a cold, icy world that has held onto a thick hydrogen/helium atmosphere, making it uninhabitable on the surface.",
+      "image": {
+        "url": "/images/planet_types/web20mini-neptune.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "trappist-1-h",
+      "parentId": "trappist-1-star",
+      "name": "TRAPPIST-1 h",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice",
+        "planet/sub-earth"
+      ],
+      "orbit": {
+        "hostId": "trappist-1-star",
+        "hostMu": 1.1918e+19,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.06189,
+          "e": 0.004,
+          "i_deg": 89.80,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 1.947e+24,
+      "radiusKm": 4810,
+      "tags": [
+        { "key": "Tidally Locked" },
+        { "key": "G\"exosphere\"" },
+        { "key": "cryogenic" }
+      ],
+      "areas": [],
+      "equilibriumTempK": 168,
+      "temperatureK": 168,
+      "atmosphere": {
+        "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
+        "composition": {
+          "N2": 0.98,
+          "CH4": 0.02
+        },
+        "main": "N2",
+        "pressure_bar": 1e-5
+      },
+      "orbital_period_days": 18.77,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 450.48,
+      "description": "The outermost and coldest planet in the system, 'h' is a small, frozen ice-ball. It orbits well beyond the habitable zone, receiving very little energy from its faint star. It is most likely a 'Pluto-like' world with a thin nitrogen exosphere.",
+      "image": {
+        "url": "/images/planet_types/web20ice20planet.jpg"
+      },
+      "isNameUserDefined": true
+    }
+  ],
+  "rulePackId": "starter-sf-pack",
+  "rulePackVersion": "0.1.4",
+  "tags": []
+}

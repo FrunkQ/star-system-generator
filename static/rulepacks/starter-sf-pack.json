@@ -811,6 +811,7 @@
     "star/BH_active": { "mass_solar": [3, 100], "radius_solar": [0.0000126, 0.000423], "temp_k": [0, 0], "mag_gauss": [100000, 100000000], "radiation_output": [10000, 100000] },
     "planet/terrestrial": { "mass_earth": [0.5, 2.0], "radius_earth": [0.8, 1.5] },
     "planet/gas-giant": { "mass_earth": [10, 3000], "radius_earth": [4, 20], "mag_gauss": [5, 50] },
+    "planet/ice-giant": { "mass_earth": [10, 50], "radius_earth": [3, 6], "mag_gauss": [1, 10] },
     "belt/asteroid": { "mass_earth": [0.01, 0.1], "radius_km": [1, 100] },
     "ring/planetary": { "radius_inner_multiple": [1.5, 2.0], "radius_outer_multiple": [2.5, 4.0] }
   },
