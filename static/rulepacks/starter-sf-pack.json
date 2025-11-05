@@ -1,6 +1,6 @@
 {
   "id": "starter-sf-pack",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "name": "Starter Sci-Fi Pack (Budassi + Basics)",
   "generation_parameters": {
     "terrestrial_min_mass_for_atmosphere_earth": 0.1,
@@ -629,7 +629,80 @@
           "occurs_on": "both",
           "tidally_locked": ["false"]
         }
+      },
+	  {
+      "weight": 6,
+      "value": {
+        "name": "Ice Giant (Uranus-like)",
+        "pressure_range_bar": [10, 100000],
+        "mass_range_earths": [10, 50],
+        "temp_range_K": [45, 80],
+        "composition": {
+          "H2": [0.78, 0.85],
+          "He": [0.14, 0.20],
+          "CH4": [0.01, 0.03]
+        },
+        "greenhouse_effect_K": 5,
+        "tags": ["reducing", "toxic-human", "cold", "methane-clouds", "deep"],
+        "occurs_on": "gas giants",
+        "tidally_locked": ["false"]
       }
+    },
+	{
+      "weight": 5,
+      "value": {
+        "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
+        "pressure_range_bar": [1e-6, 1e-4],
+        "mass_range_earths": [0.001, 0.05],
+        "temp_range_K": [30, 60],
+        "composition": {
+          "N2": [0.95, 1.0],
+          "CH4": [0.0, 0.03],
+          "CO": [0.0, 0.01]
+        },
+        "greenhouse_effect_K": 1,
+        "tags": ["exosphere", "thin", "toxic-human", "cryogenic", "Tidally Locked", "Captured Body"],
+        "occurs_on": "terrestrial",
+        "tidally_locked": ["false"]
+      }
+    },
+	{
+      "weight": 8,
+      "value": {
+        "name": "Primordial Envelope (Super-Earth)",
+        "pressure_range_bar": [10, 500],
+        "mass_range_earths": [2, 15],
+        "temp_range_K": [100, 400],
+        "composition": {
+          "H2": [0.80, 0.95],
+          "He": [0.05, 0.20],
+          "CH4": [0.0, 0.02],
+          "H2O": [0.0, 0.01]
+        },
+        "greenhouse_effect_K": 25,
+        "tags": ["reducing", "primordial", "toxic-human", "super-earth", "mini-neptune", "deep"],
+        "occurs_on": "terrestrial",
+        "tidally_locked": ["false"]
+      }
+    },
+	{
+      "weight": 7,
+      "value": {
+        "name": "Collapsible CO₂ (Tidally Locked)",
+        "pressure_range_bar": [0.1, 5.0],
+        "mass_range_earths": [0.5, 2.0],
+        "temp_range_K": [180, 270],
+        "composition": {
+          "CO2": [0.90, 0.98],
+          "N2": [0.01, 0.08],
+          "Noble Gases": [0.01, 0.02]
+        },
+        "greenhouse_effect_K": 30,
+        "tags": ["toxic-human", "thin-dayside", "frozen-nightside", "atmospheric-collapse", "cold-trap", "m-dwarf-world", "eyeball-planet"],
+        "occurs_on": "terrestrial",
+        "tidally_locked": ["true"]
+      }
+    }
     ]
   }
   },
