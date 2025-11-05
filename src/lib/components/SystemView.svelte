@@ -27,6 +27,7 @@
   let selectedGenerationOption = 'Random';
   let showDropdown = false;
   let showNames = true;
+  let showZones = false;
 
 
   // Time state
@@ -280,6 +281,10 @@
             <input type="checkbox" bind:checked={showNames} />
             Toggle Names
         </label>
+        <label>
+            <input type="checkbox" bind:checked={showZones} />
+            Show Zones
+        </label>
         <button on:click={() => isPlaying ? pause() : play()}>
             {isPlaying ? 'Pause' : 'Play'}
         </button>
@@ -297,7 +302,7 @@
 
     <div class="system-view-grid">
         <div class="main-view">
-            <SystemVisualizer bind:this={visualizer} system={$systemStore} {currentTime} {focusedBodyId} {showNames} {getPlanetColor} visualScalingMultiplier={$systemStore.visualScalingMultiplier || 1.0} on:focus={handleFocus} />
+            <SystemVisualizer bind:this={visualizer} system={$systemStore} {currentTime} {focusedBodyId} {showNames} {showZones} {getPlanetColor} visualScalingMultiplier={$systemStore.visualScalingMultiplier || 1.0} on:focus={handleFocus} />
             <div class="visual-scaling-slider">
                 <div class="slider-label">Visibility slider</div>
                 <span>Actual Size</span>

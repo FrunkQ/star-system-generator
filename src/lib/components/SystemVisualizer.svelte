@@ -2,11 +2,14 @@
   import type { System, CelestialBody, Barycenter } from '$lib/types';
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import { propagate } from "$lib/api";
+  import * as zones from "$lib/physics/zones";
+  import { calculateLagrangePoints } from "$lib/physics/lagrange";
 
   export let system: System | null;
   export let currentTime: number;
   export let focusedBodyId: string | null = null;
   export let showNames: boolean = false;
+  export let showZones: boolean = false;
   export let getPlanetColor: (node: CelestialBody) => string = () => '#fff';
   export let visualScalingMultiplier: number = 1.0;
 
@@ -14,9 +17,9 @@
 
   // --- Configurable Visuals ---
   const VISUAL_SCALING = {
-      star:       { base: 2, multiplier: 30 },
-      planet:     { base: 1,  multiplier: 1.0 },
-      moon:       { base: 0.5,  multiplier: 0.8 },
+      star:       { base: 0.1, multiplier: 30 },
+      planet:     { base: 0.1,  multiplier: 1.0 },
+      moon:       { base: 0.1,  multiplier: 0.8 },
       ring:       { min_px: 2, opacity: 0.3 },
       belt:       { width_px: 4, opacity: 0.4 },
       click_area: { base: 10, buffer: 5 },
@@ -125,6 +128,79 @@
     "NS": "#c0c0ff", "magnetar": "#800080", "BH": "#000000", "default": "#ffffff",
   };
 
+  function drawZones(ctx: CanvasRenderingContext2D, viewCenterX: number, viewCenterY: number, scale: number, focusBody: CelestialBody | Barycenter) {
+    if (!system || !focusBody) return;
+
+    const zoneStyles = {
+        roche: { color: 'rgba(255, 0, 0, 0.5)', label: 'Roche Limit' },
+        silicate: { color: 'rgba(165, 42, 42, 0.5)', label: 'Silicate Line' },
+        soot: { color: 'rgba(105, 105, 105, 0.5)', label: 'Soot Line' },
+        goldilocks: { color: 'rgba(0, 255, 0, 0.1)', label: 'Habitable Zone' },
+        frost: { color: 'rgba(173, 216, 230, 0.5)', label: 'Frost Line' },
+        co2: { color: 'rgba(255, 255, 255, 0.5)', label: 'CO2 Ice Line' },
+        co: { color: 'rgba(0, 0, 255, 0.5)', label: 'CO Ice Line' },
+    };
+
+    ctx.lineWidth = 1 / zoom;
+    ctx.font = `${12 / zoom}px sans-serif`;
+    ctx.setLineDash([5 / zoom, 15 / zoom]);
+
+    if (focusBody.kind === 'body' && focusBody.roleHint === 'star') {
+        const primaryStar = focusBody as CelestialBody;
+
+        // Goldilocks Zone (band)
+        const goldilocks = zones.calculateGoldilocksZone(primaryStar);
+        const innerRadius = goldilocks.inner * scale;
+        const outerRadius = goldilocks.outer * scale;
+        ctx.fillStyle = zoneStyles.goldilocks.color;
+        ctx.beginPath();
+        ctx.arc(viewCenterX, viewCenterY, outerRadius, 0, 2 * Math.PI);
+        ctx.arc(viewCenterX, viewCenterY, innerRadius, 0, 2 * Math.PI, true); // Counter-clockwise for the inner circle
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.fillText(zoneStyles.goldilocks.label, viewCenterX + (innerRadius + outerRadius) / 2, viewCenterY);
+
+        // Other zones (lines)
+        const zoneCalculations = {
+            silicate: zones.calculateSilicateLine(primaryStar),
+            soot: zones.calculateSootLine(primaryStar),
+            frost: zones.calculateFrostLine(primaryStar),
+            co2: zones.calculateCO2IceLine(primaryStar),
+            co: zones.calculateCOIceLine(primaryStar),
+        };
+
+        for (const [key, radiusAU] of Object.entries(zoneCalculations)) {
+            if (radiusAU > 0) {
+                const radius = radiusAU * scale;
+                const style = zoneStyles[key as keyof typeof zoneStyles];
+                ctx.strokeStyle = style.color;
+                ctx.beginPath();
+                ctx.arc(viewCenterX, viewCenterY, radius, 0, 2 * Math.PI);
+                ctx.stroke();
+                ctx.fillStyle = '#fff';
+                ctx.fillText(style.label, viewCenterX + radius, viewCenterY);
+            }
+        }
+    } else if (focusBody.kind === 'body') {
+        // Show Roche limit for planets
+        const primaryBody = focusBody as CelestialBody;
+        const radiusAU = zones.calculateRocheLimit(primaryBody);
+        if (radiusAU > 0) {
+            const radius = radiusAU * scale;
+            const style = zoneStyles.roche;
+            ctx.strokeStyle = style.color;
+            ctx.beginPath();
+            ctx.arc(viewCenterX, viewCenterY, radius, 0, 2 * Math.PI);
+            ctx.stroke();
+            ctx.fillStyle = '#fff';
+            ctx.fillText(style.label, viewCenterX + radius, viewCenterY);
+        }
+    }
+
+    ctx.setLineDash([]); // Reset to solid lines
+  }
+
+
   function drawSystem(ctx: CanvasRenderingContext2D) {
     if (!system || !system.nodes) return;
 
@@ -164,8 +240,69 @@
     const viewCenterX = width / 2;
     const viewCenterY = height / 2;
 
+    // --- Draw Focused Body's Orbit ---
+    if (focusBody && focusBody.kind === 'body' && focusBody.parentId) {
+        const parent = nodesById.get(focusBody.parentId) as CelestialBody;
+        if (parent && (focusBody as CelestialBody).orbit) {
+            const orbit = (focusBody as CelestialBody).orbit!;
+            const pos = propagate(focusBody as CelestialBody, currentTime);
+            if (pos) {
+                const parentX = viewCenterX - pos.x * scale;
+                const parentY = viewCenterY - pos.y * scale;
+
+                const a = orbit.elements.a_AU * scale;
+                const e = orbit.elements.e;
+                const b = a * Math.sqrt(1 - e * e);
+                const c = a * e;
+
+                ctx.strokeStyle = "#555"; // Faint color for the orbit line
+                ctx.lineWidth = 1 / zoom;
+                ctx.setLineDash([10 / zoom, 10 / zoom]);
+                ctx.beginPath();
+                ctx.ellipse(parentX - c, parentY, a, b, 0, 0, 2 * Math.PI);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                if (showZones) {
+                    const currentDistanceAU = Math.sqrt(pos.x**2 + pos.y**2);
+                    const lagrangePoints = calculateLagrangePoints(parent, focusBody as CelestialBody, currentDistanceAU);
+                    const angle = Math.atan2(pos.y, pos.x);
+
+                    ctx.font = `${10 / zoom}px sans-serif`;
+                    ctx.fillStyle = '#aaa';
+
+                    for (const lp of lagrangePoints) {
+                        const rotatedX = lp.x * Math.cos(angle) - lp.y * Math.sin(angle);
+                        const rotatedY = lp.x * Math.sin(angle) + lp.y * Math.cos(angle);
+
+                        const x = parentX + rotatedX * scale;
+                        const y = parentY + rotatedY * scale;
+
+                        ctx.beginPath();
+                        ctx.moveTo(x - 3 / zoom, y - 3 / zoom);
+                        ctx.lineTo(x + 3 / zoom, y + 3 / zoom);
+                        ctx.moveTo(x + 3 / zoom, y - 3 / zoom);
+                        ctx.lineTo(x - 3 / zoom, y + 3 / zoom);
+                        ctx.strokeStyle = '#aaa';
+                        ctx.lineWidth = 1 / zoom;
+                        ctx.stroke();
+                        ctx.fillText(lp.name, x + 5 / zoom, y);
+                    }
+                }
+            }
+        }
+    }
+
+
+    if (showZones) {
+        drawZones(ctx, viewCenterX, viewCenterY, scale, focusBody);
+    }
+
     ctx.strokeStyle = "#333";
     ctx.lineWidth = 1 / zoom;
+
+    const primaryStar = system.nodes.find(n => n.roleHint === 'star' && n.parentId === null) as CelestialBody;
+    const goldilocks = primaryStar ? zones.calculateGoldilocksZone(primaryStar) : null;
 
     // --- Draw Orbits and Belts ---
     for (const node of orbitingChildren) {
@@ -181,10 +318,54 @@
             ctx.ellipse(viewCenterX - c, viewCenterY, a, b, 0, 0, 2 * Math.PI);
             ctx.stroke();
         } else {
-            ctx.strokeStyle = "#333";
+            const isHabitable = goldilocks && node.orbit!.elements.a_AU > goldilocks.inner && node.orbit!.elements.a_AU < goldilocks.outer;
+            ctx.strokeStyle = isHabitable ? 'rgba(0, 255, 0, 0.5)' : "#333";
             ctx.lineWidth = 1 / zoom;
             ctx.ellipse(viewCenterX - c, viewCenterY, a, b, 0, 0, 2 * Math.PI);
             ctx.stroke();
+        }
+    }
+
+    // --- Draw Lagrange Points ---
+    if (showZones) {
+        ctx.font = `${10 / zoom}px sans-serif`;
+        ctx.fillStyle = '#aaa';
+
+        for (const node of orbitingChildren) {
+            if (node.roleHint === 'belt') continue;
+
+            const primary = system.nodes.find(n => n.id === node.parentId) as CelestialBody;
+            if (!primary) continue;
+
+            const pos = propagate(node, currentTime);
+            if (!pos) continue;
+
+            const currentDistanceAU = Math.sqrt(pos.x**2 + pos.y**2);
+            const lagrangePoints = calculateLagrangePoints(primary, node, currentDistanceAU);
+
+            const angle = Math.atan2(pos.y, pos.x);
+
+            for (const lp of lagrangePoints) {
+                // Rotate the Lagrange point position by the angle of the secondary body
+                const rotatedX = lp.x * Math.cos(angle) - lp.y * Math.sin(angle);
+                const rotatedY = lp.x * Math.sin(angle) + lp.y * Math.cos(angle);
+
+                const x = viewCenterX + rotatedX * scale;
+                const y = viewCenterY + rotatedY * scale;
+
+                // Draw a cross
+                ctx.beginPath();
+                ctx.moveTo(x - 3 / zoom, y - 3 / zoom);
+                ctx.lineTo(x + 3 / zoom, y + 3 / zoom);
+                ctx.moveTo(x + 3 / zoom, y - 3 / zoom);
+                ctx.lineTo(x - 3 / zoom, y + 3 / zoom);
+                ctx.strokeStyle = '#aaa';
+                ctx.lineWidth = 1 / zoom;
+                ctx.stroke();
+
+                // Draw label
+                ctx.fillText(lp.name, x + 5 / zoom, y);
+            }
         }
     }
 
