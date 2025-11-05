@@ -127,7 +127,15 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
 
   // --- Planet & Belt Generation ---
   if (!empty) {
-      const bodyCountTable = pack.distributions['planet_count'];
+      let bodyCountTable;
+      const spectralType = starClass[0];
+      if (['O', 'B', 'A'].includes(spectralType)) {
+        bodyCountTable = pack.distributions['planet_count_massive'];
+      } else if (['G', 'K', 'M', 'F'].includes(spectralType)) {
+        bodyCountTable = pack.distributions['planet_count_main_sequence'];
+      } else {
+        bodyCountTable = pack.distributions['planet_count_remnant'];
+      }
       const numBodies = bodyCountTable ? weightedChoice<number>(rng, bodyCountTable) : rng.nextInt(0, 8);
 
       const frostLineAU = (pack.generation_parameters?.frost_line_base_au || 2.7) * Math.sqrt((starA.massKg || SOLAR_MASS_KG) / SOLAR_MASS_KG);
