@@ -7,6 +7,7 @@
   import { calculateLagrangePoints } from "$lib/physics/lagrange";
 
   export let system: System | null;
+  export let rulePack: RulePack;
   export let currentTime: number;
   export let focusedBodyId: string | null = null;
   export let showNames: boolean = false;
@@ -173,7 +174,7 @@
 
     if (focusBody.kind === 'body' && focusBody.roleHint === 'star') {
         const primaryStar = focusBody as CelestialBody;
-        const allZones = zones.calculateAllStellarZones(primaryStar);
+        const allZones = zones.calculateAllStellarZones(primaryStar, rulePack);
 
         // Goldilocks Zone (band)
         const goldilocks = allZones.goldilocks;
@@ -186,6 +187,18 @@
         ctx.fill();
         ctx.fillStyle = '#fff';
         ctx.fillText(zoneStyles.goldilocks.label, viewCenterX + (innerRadius + outerRadius) / 2, viewCenterY);
+
+        // Danger Zone
+        const dangerZoneRadiusAU = allZones.dangerZone;
+        if (dangerZoneRadiusAU > 0) {
+            const radius = dangerZoneRadiusAU * scale;
+            ctx.fillStyle = 'rgba(255, 165, 0, 0.2)';
+            ctx.beginPath();
+            ctx.arc(viewCenterX, viewCenterY, radius, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.fillText('Danger Zone', viewCenterX + radius, viewCenterY);
+        }
 
         // Kill Zone
         const killZoneRadiusAU = allZones.killZone;

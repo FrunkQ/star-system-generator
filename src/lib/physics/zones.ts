@@ -118,9 +118,14 @@ export function calculateCOIceLine(star: CelestialBody): number {
     return getDistanceForTemperature(star, 30);
 }
 
-export function calculateAllStellarZones(star: CelestialBody): Record<string, any> {
+export function calculateAllStellarZones(star: CelestialBody, pack?: RulePack): Record<string, any> {
+    const killZone = calculateKillZone(star);
+    const dangerZoneMultiplier = pack?.generation_parameters?.danger_zone_multiplier || 5;
+    const dangerZone = killZone * dangerZoneMultiplier;
+
     return {
-        killZone: calculateKillZone(star),
+        killZone: killZone,
+        dangerZone: dangerZone,
         goldilocks: calculateGoldilocksZone(star),
         silicateLine: calculateSilicateLine(star),
         sootLine: calculateSootLine(star),

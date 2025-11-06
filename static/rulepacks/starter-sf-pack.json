@@ -6,7 +6,9 @@
     "terrestrial_min_mass_for_atmosphere_earth": 0.1,
     "terrestrial_magnetic_field_chance": 0.8,
     "frost_line_base_au": 2.7,
-    "planet_migration_chance": 0.1
+    "planet_migration_chance": 0.1,
+    "danger_zone_multiplier": 5,
+    "atmosphere_retention_factor": 100
   },
   "distributions": {
     "terrestrial_atmosphere_chance": {
@@ -229,6 +231,7 @@
             "Other Trace": [0.0, 0.001]
           },
           "greenhouse_effect_K": 30,
+          "radiation_blocking_factor": 0.995,
           "tags": ["breathable-human"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -246,6 +249,7 @@
             "N2": [0.02, 0.05]
           },
           "greenhouse_effect_K": 400,
+          "radiation_blocking_factor": 0.9999,
           "tags": ["toxic-human", "corrosive", "Runaway Greenhouse Effect", "Geologically Active (Volcanism)", "thick"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -265,6 +269,7 @@
             "Other Trace": [0.0, 0.01]
           },
           "greenhouse_effect_K": 5,
+          "radiation_blocking_factor": 0.1,
           "tags": ["toxic-human", "thin"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -282,6 +287,7 @@
             "CO2": [0.10, 0.20]
           },
           "greenhouse_effect_K": 50,
+          "radiation_blocking_factor": 0.997,
           "tags": ["toxic-human", "CO2-scrub-required", "Active Volcanism"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -300,6 +306,7 @@
             "CO2": [0.0, 0.02]
           },
           "greenhouse_effect_K": 10,
+          "radiation_blocking_factor": 0.99,
           "tags": ["breathable-human-with-assistance", "hypoxic"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -317,6 +324,7 @@
             "CH4": [0.03, 0.06]
           },
           "greenhouse_effect_K": 40,
+          "radiation_blocking_factor": 0.998,
           "tags": ["toxic-human", "reducing", "haze", "Cryovolcanism"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -334,6 +342,7 @@
             "S": [0.0, 0.2]
           },
           "greenhouse_effect_K": 2,
+          "radiation_blocking_factor": 0.01,
           "tags": ["toxic-human", "corrosive", "Active Volcanism", "thin", "exosphere"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -350,6 +359,7 @@
             "O2": 1.0
           },
           "greenhouse_effect_K": 1,
+          "radiation_blocking_factor": 0.001,
           "tags": ["exosphere", "thin"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -370,6 +380,7 @@
             "NH3": [0.0, 0.03]
           },
           "greenhouse_effect_K": 5,
+          "radiation_blocking_factor": 0.005,
           "tags": ["exosphere", "thin", "Subsurface Ocean", "Active Cryovolcanism (Plumes)"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -388,6 +399,7 @@
             "CH4": [0.0, 0.01]
           },
           "greenhouse_effect_K": 10,
+          "radiation_blocking_factor": 0.999,
           "tags": ["reducing"],
           "occurs_on": "gas giants",
           "tidally_locked": ["false"]
@@ -406,6 +418,7 @@
             "H": [0.0, 0.05]
           },
           "greenhouse_effect_K": 5,
+          "radiation_blocking_factor": 0.8,
           "tags": ["escaping", "hot", "reducing", "thin-upper"],
           "occurs_on": "gas giants",
           "tidally_locked": ["false"]
@@ -424,6 +437,7 @@
             "CH4": [0.01, 0.05]
           },
           "greenhouse_effect_K": 60,
+          "radiation_blocking_factor": 0.99,
           "tags": ["reducing", "greenhouse", "Global Ocean"],
           "occurs_on": "gas giants",
           "tidally_locked": ["false"]
@@ -442,6 +456,7 @@
             "CH4": [0.01, 0.05]
           },
           "greenhouse_effect_K": 40,
+          "radiation_blocking_factor": 0.98,
           "tags": ["reducing", "greenhouse", "oceanic", "Global Ocean"],
           "occurs_on": "gas giants",
           "tidally_locked": ["false"]
@@ -460,6 +475,7 @@
             "N2": [0.05, 0.15]
           },
           "greenhouse_effect_K": 200,
+          "radiation_blocking_factor": 0.9,
           "tags": ["toxic-human", "reducing", "volcanic", "Magma Ocean Surface"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -479,6 +495,7 @@
             "SO2": [0.0, 0.1]
           },
           "greenhouse_effect_K": 100,
+          "radiation_blocking_factor": 0.85,
           "tags": ["toxic-human", "Magma Ocean Surface", "volcanic"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["true"]
@@ -496,6 +513,7 @@
             "CO2": [0.0, 0.2]
           },
           "greenhouse_effect_K": 10,
+          "radiation_blocking_factor": 0.95,
           "tags": ["oxidizing", "toxic-human", "Complete Water Loss (Photodissociation)"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -515,6 +533,7 @@
             "Na": [0.05, 0.15]
           },
           "greenhouse_effect_K": 20,
+          "radiation_blocking_factor": 0.7,
           "tags": ["toxic-human", "corrosive", "extreme-heat"],
           "occurs_on": "both",
           "tidally_locked": ["true"]
@@ -533,6 +552,7 @@
             "N2": [0.0, 0.03]
           },
           "greenhouse_effect_K": 300,
+          "radiation_blocking_factor": 0.999,
           "tags": ["toxic-human", "Runaway Greenhouse (Active)", "Evaporated Oceans"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -551,6 +571,7 @@
             "Noble Gases": [0.0, 0.01]
           },
           "greenhouse_effect_K": 2,
+          "radiation_blocking_factor": 0.99,
           "tags": ["inert", "breathable-human-with-supplied-O2", "Geologically Active"],
           "occurs_on": "terrestrial",
           "tidally_locked": ["false"]
@@ -569,6 +590,7 @@
             "NH3": [0.05, 0.15]
           },
           "greenhouse_effect_K": 30,
+          "radiation_blocking_factor": 0.999,
           "tags": ["toxic-human", "reducing", "clouds"],
           "occurs_on": "gas giants",
           "tidally_locked": ["false"]
@@ -587,6 +609,7 @@
             "H2S": [0.02, 0.08]
           },
           "greenhouse_effect_K": 20,
+          "radiation_blocking_factor": 0.999,
           "tags": ["toxic-human", "reducing", "clouds"],
           "occurs_on": "gas giants",
           "tidally_locked": ["false"]
@@ -604,6 +627,7 @@
             "K": [0.3, 0.5]
           },
           "greenhouse_effect_K": 1,
+          "radiation_blocking_factor": 0.001,
           "tags": ["exosphere", "thin", "hot", "escaping"],
           "occurs_on": "both",
           "tidally_locked": ["false"]
@@ -624,6 +648,7 @@
             "H2O": [0.0, 0.02]
           },
           "greenhouse_effect_K": 50,
+          "radiation_blocking_factor": 0.99,
           "tags": ["reducing", "hot", "Migrated Planet"],
           "occurs_on": "gas giants",
           "tidally_locked": ["false"]
@@ -642,6 +667,7 @@
             "SO2": [0.01, 0.04]
           },
           "greenhouse_effect_K": 10,
+          "radiation_blocking_factor": 0.9,
           "tags": ["toxic-human", "photochemistry", "hot"],
           "occurs_on": "both",
           "tidally_locked": ["false"]
@@ -660,6 +686,7 @@
           "CH4": [0.01, 0.03]
         },
         "greenhouse_effect_K": 5,
+        "radiation_blocking_factor": 0.999,
         "tags": ["reducing", "toxic-human", "cold", "methane-clouds", "deep"],
         "occurs_on": "gas giants",
         "tidally_locked": ["false"]
@@ -678,6 +705,7 @@
           "CO": [0.0, 0.01]
         },
         "greenhouse_effect_K": 1,
+        "radiation_blocking_factor": 0.01,
         "tags": ["exosphere", "thin", "toxic-human", "cryogenic", "Tidally Locked", "Captured Body"],
         "occurs_on": "terrestrial",
         "tidally_locked": ["false"]
@@ -697,6 +725,7 @@
           "H2O": [0.0, 0.01]
         },
         "greenhouse_effect_K": 25,
+        "radiation_blocking_factor": 0.995,
         "tags": ["reducing", "primordial", "toxic-human", "super-earth", "mini-neptune", "deep"],
         "occurs_on": "terrestrial",
         "tidally_locked": ["false"]
@@ -715,6 +744,7 @@
           "Noble Gases": [0.01, 0.02]
         },
         "greenhouse_effect_K": 30,
+        "radiation_blocking_factor": 0.5,
         "tags": ["toxic-human", "thin-dayside", "frozen-nightside", "atmospheric-collapse", "cold-trap", "m-dwarf-world", "eyeball-planet"],
         "occurs_on": "terrestrial",
         "tidally_locked": ["true"]

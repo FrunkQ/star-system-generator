@@ -198,7 +198,12 @@ export function _generatePlanetaryBody(
     planet.equilibriumTempK = equilibriumTempK;
 
     let greenhouseContributionK = propertyOverrides?.greenhouseTempK || 0;
-    if (!propertyOverrides?.greenhouseTempK && planet.atmosphere) {
+    const tidalHeatingK = calculateTidalHeating(planet, host as CelestialBody);
+    const radiogenicHeatK = (planetType === 'planet/terrestrial') ? 10 : 0;
+
+    if (propertyOverrides?.targetTemperatureK) {
+        greenhouseContributionK = propertyOverrides.targetTemperatureK - equilibriumTempK - tidalHeatingK - radiogenicHeatK;
+    } else if (!propertyOverrides?.greenhouseTempK && planet.atmosphere) {
         const atmDef = pack.distributions.atmosphere_composition.entries.find(e => e.value.name === planet.atmosphere.name)?.value;
         if (atmDef && atmDef.greenhouse_effect_K) {
             const nominalPressure = atmDef.pressure_range_bar ? (atmDef.pressure_range_bar[0] + atmDef.pressure_range_bar[1]) / 2 : 1;
@@ -209,29 +214,7 @@ export function _generatePlanetaryBody(
     planet.greenhouseTempK = greenhouseContributionK;
 
     // Add heat from internal sources
-    let tidalHeatingK = 0;
-    if (planet.roleHint === 'moon' && host.kind === 'body') {
-        const parentMassKg = (host as CelestialBody).massKg || 0;
-        const eccentricity = planet.orbit?.elements.e || 0;
-        const moonRadiusKm = planet.radiusKm || 0;
-        const semiMajorAxisKm = (planet.orbit?.elements.a_AU || 0) * AU_KM;
-
-        if (parentMassKg > 0 && eccentricity > 0 && moonRadiusKm > 0 && semiMajorAxisKm > 0) {
-            // This formula is derived from the tidal power equation, calibrated to a user-provided example.
-            // The resulting temperature from tidal flux is proportional to (M_p^0.625 * R_m^0.75 * e^0.5 * a^-1.875)
-            const C = 4.06e-6; // Calibration constant
-
-            tidalHeatingK = C * 
-                (Math.pow(parentMassKg, 0.625)) * 
-                (Math.pow(moonRadiusKm, 0.75)) * 
-                (Math.pow(eccentricity, 0.5)) * 
-                (Math.pow(semiMajorAxisKm, -1.875));
-        }
-    }
     planet.tidalHeatK = tidalHeatingK;
-
-    // A small, constant amount of heat from radioactive decay for rocky worlds
-    const radiogenicHeatK = (planetType === 'planet/terrestrial') ? 10 : 0;
     planet.radiogenicHeatK = radiogenicHeatK;
 
     features['tidalHeating'] = tidalHeatingK;

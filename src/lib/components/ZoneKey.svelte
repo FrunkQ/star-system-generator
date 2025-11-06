@@ -32,13 +32,26 @@
 		<li>
 			<p>
 				<span class="color-box red"></span>
-				<strong>Kill Zone (Red):</strong> The "death zone" where the star's raw X-ray and UV
-				radiation is strong enough to cook the surface, destroy DNA, and strip atmospheres.
+				<strong>Kill Zone (Red):</strong> The "Sterilization Zone." Radiation is so intense
+				that it would prevent complex organic molecules like DNA from forming or surviving.
 			</p>
 			<p class="in-game-note">
-				<strong>In-Game: 'Ping! You're Cooked!'</strong> Make sure your ship has good
-				radiation shielding. Don't go outside, even in a vac-suit. (Note: Red Dwarfs are the
-				worst—their 'Kill Zone' is often <strong>inside</strong> their 'Goldilocks Zone'!)
+				<strong>In-Game: 'Ping! You're Cooked!'</strong> This is the 'Campfire Zone.'
+				Forget radiation shielding; you'll be vaporized. No life, not even microbes, can
+				start here.
+			</p>
+		</li>
+
+		<li>
+			<p>
+				<span class="color-box orange"></span>
+				<strong>Danger Zone (Orange):</strong> The "Complex Life Hazard Zone." Radiation is
+				too high for complex life (like humans) to survive long-term without heavy shielding.
+			</p>
+			<p class="in-game-note">
+				<strong>In-Game: 'The Slow-Burn.'</strong> You won't die in seconds, but you'll get
+				cancer in weeks. Planets here are a trap; they might be in the Goldilocks Zone, but
+				they're sterile on the surface and have probably had their atmospheres stripped away.
 			</p>
 		</li>
 
@@ -130,7 +143,7 @@
 		border-radius: 8px;
 		padding: 1em;
 		background-color: #252525;
-		font-size: 1.0em;
+		font-size: 1em; /* You had this set to 1.0em, just tidied it */
 		font-family: sans-serif;
 	}
 	h4 {
@@ -176,6 +189,9 @@
 
 	.color-box.red {
 		background-color: rgba(255, 0, 0, 0.2);
+	}
+	.color-box.orange {
+		background-color: rgba(255, 165, 0, 0.2);
 	}
 	.color-box.green {
 		background-color: rgba(0, 255, 0, 0.1);

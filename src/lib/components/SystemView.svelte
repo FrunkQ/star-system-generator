@@ -308,7 +308,7 @@
 
     <div class="system-view-grid">
         <div class="main-view">
-            <SystemVisualizer bind:this={visualizer} system={$systemStore} {currentTime} {focusedBodyId} {showNames} {showZones} {showLPoints} {getPlanetColor} visualScalingMultiplier={$systemStore.visualScalingMultiplier || 1.0} on:focus={handleFocus} />
+            <SystemVisualizer bind:this={visualizer} system={$systemStore} {rulePack} {currentTime} {focusedBodyId} {showNames} {showZones} {showLPoints} {getPlanetColor} visualScalingMultiplier={$systemStore.visualScalingMultiplier || 1.0} on:focus={handleFocus} />
             <div class="visual-scaling-slider">
                 <div class="slider-label">Visibility slider</div>
                 <span>Actual Size</span>
