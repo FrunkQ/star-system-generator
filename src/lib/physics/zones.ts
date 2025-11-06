@@ -1,6 +1,68 @@
 import type { CelestialBody } from '../types';
 import { SOLAR_RADIUS_KM } from '../constants';
 
+const SOLAR_TEMP_K = 5778;
+const STEFAN_BOLTZMANN_CONSTANT = 5.670374419e-8;
+
+/**
+ * Calculates the luminosity of a star relative to the Sun.
+ * @param star The star to calculate the luminosity for.
+ * @returns The star's luminosity relative to the Sun.
+ */
+function getLuminosity(star: CelestialBody): number {
+    if (!star.radiusKm || !star.temperatureK) return 1;
+    const radius_m = star.radiusKm * 1000;
+    const temp_k = star.temperatureK;
+
+    const solar_radius_m = SOLAR_RADIUS_KM * 1000;
+    const solar_luminosity = 4 * Math.PI * (solar_radius_m**2) * STEFAN_BOLTZMANN_CONSTANT * (SOLAR_TEMP_K**4);
+
+    const star_luminosity = 4 * Math.PI * (radius_m**2) * STEFAN_BOLTZMANN_CONSTANT * (temp_k**4);
+
+    return star_luminosity / solar_luminosity;
+}
+
+/**
+ * Calculates the radius of the "Kill Zone" (UV Habitable Zone) around a star.
+ * This is a simplified model based on stellar temperature and luminosity.
+ * @param star The star to calculate the kill zone for.
+ * @returns The radius of the kill zone in AU.
+ */
+export function calculateKillZone(star: CelestialBody): number {
+    if (!star.classes || star.classes.length === 0) return 0;
+
+    const spectralType = star.classes[0].split('/')[1];
+    let uvFactor = 1.0;
+
+    // Simplified UV factor based on spectral type
+    switch (spectralType) {
+        case 'O': uvFactor = 100; break;
+        case 'B': uvFactor = 50; break;
+        case 'A': uvFactor = 10; break;
+        case 'F': uvFactor = 5; break;
+        case 'G': uvFactor = 1; break;
+        case 'K': uvFactor = 0.5; break;
+        case 'M': uvFactor = 0.1; break;
+        default: uvFactor = 1; break;
+    }
+
+    const luminosity = getLuminosity(star);
+
+    // Base the kill zone on a factor of the star's luminosity, adjusted by the UV factor.
+    // The 0.1 is a tunable constant to set a baseline distance.
+    const killZoneRadius = 0.1 * Math.sqrt(uvFactor * luminosity);
+
+    return killZoneRadius;
+}
+
+/**
+ * Calculates the Roche Limit for a celestial body.
+ * This is the distance within which a celestial body held together only by its own gravity
+ * will disintegrate due to a second celestial body's tidal forces.
+ * @param primary The primary body (e.g., a planet).
+ * @returns The Roche limit in AU.
+ */
+
 const AU_KM = 149597870.7;
 
 /**

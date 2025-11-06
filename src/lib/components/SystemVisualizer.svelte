@@ -160,6 +160,18 @@
         ctx.fillStyle = '#fff';
         ctx.fillText(zoneStyles.goldilocks.label, viewCenterX + (innerRadius + outerRadius) / 2, viewCenterY);
 
+        // Kill Zone
+        const killZoneRadiusAU = zones.calculateKillZone(primaryStar);
+        if (killZoneRadiusAU > 0) {
+            const radius = killZoneRadiusAU * scale;
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+            ctx.beginPath();
+            ctx.arc(viewCenterX, viewCenterY, radius, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.fillText('Kill Zone', viewCenterX + radius, viewCenterY);
+        }
+
         // Other zones (lines)
         const zoneCalculations = {
             silicate: zones.calculateSilicateLine(primaryStar),
