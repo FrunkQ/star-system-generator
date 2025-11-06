@@ -240,10 +240,10 @@
     const viewCenterX = width / 2;
     const viewCenterY = height / 2;
 
-    // --- Draw Focused Body's Orbit ---
+    // --- Draw Focused Body's Orbit and L-Points ---
     if (focusBody && focusBody.kind === 'body' && focusBody.parentId) {
         const parent = nodesById.get(focusBody.parentId) as CelestialBody;
-        if (parent && (focusBody as CelestialBody).orbit) {
+        if (parent && parent.roleHint === 'star' && (focusBody as CelestialBody).orbit) {
             const orbit = (focusBody as CelestialBody).orbit!;
             const pos = propagate(focusBody as CelestialBody, currentTime);
             if (pos) {
@@ -257,26 +257,31 @@
 
                 ctx.strokeStyle = "#555"; // Faint color for the orbit line
                 ctx.lineWidth = 1 / zoom;
-                ctx.setLineDash([10 / zoom, 10 / zoom]);
                 ctx.beginPath();
                 ctx.ellipse(parentX - c, parentY, a, b, 0, 0, 2 * Math.PI);
                 ctx.stroke();
-                ctx.setLineDash([]);
 
                 if (showZones) {
                     const currentDistanceAU = Math.sqrt(pos.x**2 + pos.y**2);
-                    const lagrangePoints = calculateLagrangePoints(parent, focusBody as CelestialBody, currentDistanceAU);
+                    const lagrangePoints = calculateLagrangePoints(parent, focusBody as CelestialBody, pos);
                     const angle = Math.atan2(pos.y, pos.x);
 
                     ctx.font = `${10 / zoom}px sans-serif`;
                     ctx.fillStyle = '#aaa';
 
                     for (const lp of lagrangePoints) {
-                        const rotatedX = lp.x * Math.cos(angle) - lp.y * Math.sin(angle);
-                        const rotatedY = lp.x * Math.sin(angle) + lp.y * Math.cos(angle);
+                        let finalX = lp.x;
+                        let finalY = lp.y;
 
-                        const x = parentX + rotatedX * scale;
-                        const y = parentY + rotatedY * scale;
+                        if (!lp.isRotated) {
+                            const rotatedX = lp.x * Math.cos(angle) - lp.y * Math.sin(angle);
+                            const rotatedY = lp.x * Math.sin(angle) + lp.y * Math.cos(angle);
+                            finalX = rotatedX;
+                            finalY = rotatedY;
+                        }
+
+                        const x = parentX + finalX * scale;
+                        const y = parentY + finalY * scale;
 
                         ctx.beginPath();
                         ctx.moveTo(x - 3 / zoom, y - 3 / zoom);
@@ -292,7 +297,6 @@
             }
         }
     }
-
 
     if (showZones) {
         drawZones(ctx, viewCenterX, viewCenterY, scale, focusBody);
@@ -341,17 +345,24 @@
             if (!pos) continue;
 
             const currentDistanceAU = Math.sqrt(pos.x**2 + pos.y**2);
-            const lagrangePoints = calculateLagrangePoints(primary, node, currentDistanceAU);
+            const lagrangePoints = calculateLagrangePoints(primary, node, pos);
 
             const angle = Math.atan2(pos.y, pos.x);
 
             for (const lp of lagrangePoints) {
-                // Rotate the Lagrange point position by the angle of the secondary body
-                const rotatedX = lp.x * Math.cos(angle) - lp.y * Math.sin(angle);
-                const rotatedY = lp.x * Math.sin(angle) + lp.y * Math.cos(angle);
+                let finalX = lp.x;
+                let finalY = lp.y;
 
-                const x = viewCenterX + rotatedX * scale;
-                const y = viewCenterY + rotatedY * scale;
+                if (!lp.isRotated) {
+                    // Rotate the Lagrange point position by the angle of the secondary body
+                    const rotatedX = lp.x * Math.cos(angle) - lp.y * Math.sin(angle);
+                    const rotatedY = lp.x * Math.sin(angle) + lp.y * Math.cos(angle);
+                    finalX = rotatedX;
+                    finalY = rotatedY;
+                }
+
+                const x = viewCenterX + finalX * scale;
+                const y = viewCenterY + finalY * scale;
 
                 // Draw a cross
                 ctx.beginPath();

@@ -4,6 +4,19 @@ export interface LagrangePoint {
     name: string;
     x: number;
     y: number;
+    isRotated: boolean;
+}
+
+/**
+ * Calculates (x, y) coordinates on an ellipse relative to the focus.
+ * @param a Semi-major axis in AU.
+ * @param e Eccentricity.
+ * @param trueAnomaly True anomaly (angle from periapsis) in radians.
+ * @returns {x: number, y: number} Coordinates relative to the focus.
+ */
+function getPointOnEllipse(a: number, e: number, trueAnomaly: number): { x: number, y: number } {
+    const r = a * (1 - e * e) / (1 + e * Math.cos(trueAnomaly));
+    return { x: r * Math.cos(trueAnomaly), y: r * Math.sin(trueAnomaly) };
 }
 
 /**
@@ -12,14 +25,14 @@ export interface LagrangePoint {
  * @param secondary The secondary body (e.g., a planet).
  * @returns An array of LagrangePoint objects.
  */
-export function calculateLagrangePoints(primary: CelestialBody, secondary: CelestialBody, currentDistanceAU: number): LagrangePoint[] {
+export function calculateLagrangePoints(primary: CelestialBody, secondary: CelestialBody, secondaryPos: { x: number, y: number }): LagrangePoint[] {
     if (!primary.massKg || !secondary.massKg || !secondary.orbit) {
         return [];
     }
 
     const M1 = primary.massKg;
     const M2 = secondary.massKg;
-    const R = currentDistanceAU; // Use current distance instead of semi-major axis
+    const R = Math.sqrt(secondaryPos.x**2 + secondaryPos.y**2); // Use current distance from secondaryPos
 
     // Simplified calculations for the distances from the secondary body (M2)
     const r_L1 = R * Math.pow(M2 / (3 * M1), 1/3);
@@ -31,24 +44,21 @@ export function calculateLagrangePoints(primary: CelestialBody, secondary: Celes
     // L2 is beyond M2
     const l2 = { name: 'L2', distance: R + r_L2, angle: 0 };
 
-    // L3 is beyond M1
-    const l3_dist = R * (1 + 5 * M2 / (12 * M1));
-    const l3 = { name: 'L3', distance: -l3_dist, angle: 0 }; // Negative distance to indicate it's on the other side of M1
+    // --- L3, L4, L5 using the orbital ellipse ---
+    const secondaryTrueAnomaly = Math.atan2(secondaryPos.y, secondaryPos.x);
+
+    // L3 is on the opposite side of the primary from the secondary
+    const l3Point = getPointOnEllipse(secondary.orbit.elements.a_AU, secondary.orbit.elements.e, secondaryTrueAnomaly + Math.PI);
 
     // L4 and L5 form equilateral triangles
-    const l4 = { name: 'L4', distance: R, angle: Math.PI / 3 }; // +60 degrees
-    const l5 = { name: 'L5', distance: R, angle: -Math.PI / 3 }; // -60 degrees
+    const l4Point = getPointOnEllipse(secondary.orbit.elements.a_AU, secondary.orbit.elements.e, secondaryTrueAnomaly + Math.PI / 3);
+    const l5Point = getPointOnEllipse(secondary.orbit.elements.a_AU, secondary.orbit.elements.e, secondaryTrueAnomaly - Math.PI / 3);
 
-    // The positions need to be calculated relative to the primary, in the orbital plane of the secondary.
-    // This function will return the offsets, and the visualizer will handle the rotation.
-    
-    // For now, let's return simplified offsets from the primary in a non-rotated frame.
-    // The visualizer will need to apply the rotation based on the secondary's position.
     return [
-        { name: 'L1', x: l1.distance, y: 0 },
-        { name: 'L2', x: l2.distance, y: 0 },
-        { name: 'L3', x: l3.distance, y: 0 },
-        { name: 'L4', x: l4.distance * Math.cos(l4.angle), y: l4.distance * Math.sin(l4.angle) },
-        { name: 'L5', x: l5.distance * Math.cos(l5.angle), y: l5.distance * Math.sin(l5.angle) },
+        { name: 'L1', x: l1.distance, y: 0, isRotated: false },
+        { name: 'L2', x: l2.distance, y: 0, isRotated: false },
+        { name: 'L3', x: l3Point.x, y: l3Point.y, isRotated: true },
+        { name: 'L4', x: l4Point.x, y: l4Point.y, isRotated: true },
+        { name: 'L5', x: l5Point.x, y: l5Point.y, isRotated: true },
     ];
 }
