@@ -55,6 +55,7 @@ export interface Biosphere {
 export interface CelestialBody extends NodeBase {
   kind: "body";
   roleHint?: "star" | "planet" | "moon" | "submoon" | "ring" | "belt" | "artifact" | "station" | "other";
+  starCategory?: 'massive_star' | 'main_sequence_star' | 'low_mass_star' | 'star_remnant';
   classes: string[];
   description?: string;
   massKg?: number; radiusKm?: number; density?: number; radiusInnerKm?: number; radiusOuterKm?: number;

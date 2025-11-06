@@ -10,6 +10,7 @@
   import BodyGmTools from './BodyGmTools.svelte';
   import DescriptionEditor from './DescriptionEditor.svelte';
   import GmNotesEditor from './GmNotesEditor.svelte';
+  import ZoneKey from './ZoneKey.svelte';
 
   import { systemStore } from '$lib/stores';
 
@@ -28,6 +29,7 @@
   let showDropdown = false;
   let showNames = true;
   let showZones = false;
+  let showLPoints = false;
 
 
   // Time state
@@ -285,6 +287,10 @@
             <input type="checkbox" bind:checked={showZones} />
             Show Zones
         </label>
+        <label>
+            <input type="checkbox" bind:checked={showLPoints} />
+            Show L-Points
+        </label>
         <button on:click={() => isPlaying ? pause() : play()}>
             {isPlaying ? 'Pause' : 'Play'}
         </button>
@@ -302,7 +308,7 @@
 
     <div class="system-view-grid">
         <div class="main-view">
-            <SystemVisualizer bind:this={visualizer} system={$systemStore} {currentTime} {focusedBodyId} {showNames} {showZones} {getPlanetColor} visualScalingMultiplier={$systemStore.visualScalingMultiplier || 1.0} on:focus={handleFocus} />
+            <SystemVisualizer bind:this={visualizer} system={$systemStore} {currentTime} {focusedBodyId} {showNames} {showZones} {showLPoints} {getPlanetColor} visualScalingMultiplier={$systemStore.visualScalingMultiplier || 1.0} on:focus={handleFocus} />
             <div class="visual-scaling-slider">
                 <div class="slider-label">Visibility slider</div>
                 <span>Actual Size</span>
@@ -316,7 +322,11 @@
         </div>
         <div class="details-view">
             <input type="text" value={focusedBody.name} on:change={(e) => dispatch('renameNode', {nodeId: focusedBody.id, newName: e.target.value})} class="name-input" title="Click to rename" />
-            <BodyTechnicalDetails body={focusedBody} />
+            {#if showZones && focusedBody.roleHint === 'star'}
+                <ZoneKey />
+            {:else}
+                <BodyTechnicalDetails body={focusedBody} />
+            {/if}
             <BodyImage body={focusedBody} />
             <GmNotesEditor body={focusedBody} />
         </div>

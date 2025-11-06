@@ -28,12 +28,31 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
 
     const starImage = pack.classifier?.starImages?.[starClass];
 
+    const tags: Tag[] = [];
+    if (radiationOutput > 100) {
+        tags.push({ key: 'High Radiation (Flaring)' });
+    }
+
+    const spectralType = starClass.split('/')[1];
+    let starCategory: 'massive_star' | 'main_sequence_star' | 'low_mass_star' | 'star_remnant' | undefined;
+
+    if (['O', 'B'].includes(spectralType)) {
+        starCategory = 'massive_star';
+    } else if (['A', 'F', 'G', 'K'].includes(spectralType)) {
+        starCategory = 'main_sequence_star';
+    } else if (['M'].includes(spectralType)) {
+        starCategory = 'low_mass_star';
+    } else if (['WD', 'NS', 'magnetar', 'BH', 'BH_active'].includes(spectralType)) {
+        starCategory = 'star_remnant';
+    }
+
     return {
         id: id,
         parentId: parentId,
         name: "", // Name is set by the caller
         kind: 'body',
         roleHint: 'star',
+        starCategory: starCategory,
         classes: [starClass],
         massKg: starMassKg,
         radiusKm: starRadiusKm,
@@ -41,7 +60,7 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
         magneticField: starMagneticField,
         radiationOutput: radiationOutput,
         image: starImage ? { url: starImage } : undefined,
-        tags: [],
+        tags: tags,
         areas: [],
     };
 }

@@ -814,7 +814,7 @@
   },
   "statTemplates": {
     "star/default": { "mass_solar": [0.8, 1.04], "radius_solar": [0.9, 1.1], "temp_k": [5200, 6000], "mag_gauss": [0.5, 2], "radiation_output": [0.8, 1.2] },
-    "star/M": { "mass_solar": [0.08, 0.45], "radius_solar": [0.1, 0.7], "temp_k": [2400, 3700], "mag_gauss": [100, 1000], "radiation_output": [0.8, 15] },
+    "star/M": { "mass_solar": [0.08, 0.45], "radius_solar": [0.1, 0.7], "temp_k": [2400, 3700], "mag_gauss": [100, 1000], "radiation_output": [0.8, 1500] },
     "star/K": { "mass_solar": [0.45, 0.8], "radius_solar": [0.7, 0.96], "temp_k": [3700, 5200], "mag_gauss": [10, 100], "radiation_output": [0.5, 1.5] },
     "star/G": { "mass_solar": [0.8, 1.04], "radius_solar": [0.96, 1.15], "temp_k": [5200, 6000], "mag_gauss": [1, 10], "radiation_output": [0.8, 1.2] },
     "star/F": { "mass_solar": [1.04, 1.4], "radius_solar": [1.15, 1.4], "temp_k": [6000, 7500], "mag_gauss": [1, 10], "radiation_output": [1.5, 3] },

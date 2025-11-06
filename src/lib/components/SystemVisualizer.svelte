@@ -2,6 +2,7 @@
   import type { System, CelestialBody, Barycenter } from '$lib/types';
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import { propagate } from "$lib/api";
+  import { SOLAR_RADIUS_KM, EARTH_RADIUS_KM } from '../constants';
   import * as zones from "$lib/physics/zones";
   import { calculateLagrangePoints } from "$lib/physics/lagrange";
 
@@ -10,6 +11,7 @@
   export let focusedBodyId: string | null = null;
   export let showNames: boolean = false;
   export let showZones: boolean = false;
+  export let showLPoints: boolean = false;
   export let getPlanetColor: (node: CelestialBody) => string = () => '#fff';
   export let visualScalingMultiplier: number = 1.0;
 
@@ -17,12 +19,17 @@
 
   // --- Configurable Visuals ---
   const VISUAL_SCALING = {
-      star:       { base: 0.1, multiplier: 30 },
-      planet:     { base: 0.1,  multiplier: 1.0 },
-      moon:       { base: 0.1,  multiplier: 0.8 },
-      ring:       { min_px: 2, opacity: 0.3 },
-      belt:       { width_px: 4, opacity: 0.4 },
-      click_area: { base: 10, buffer: 5 },
+      massive_star: { base: 0.1, multiplier: 30 },
+      main_sequence_star: { base: 0.1, multiplier: 30 },
+      low_mass_star: { base: 0.1, multiplier: 30 },
+      star_remnant: { base: 0.1, multiplier: 10000 },
+      terrestrial: { base: 0.1, multiplier: 1.0 },
+      gas_giant:   { base: 0.1, multiplier: 1.0 },
+      ice_giant:   { base: 0.1, multiplier: 1.0 },
+      moon:        { base: 0.1,  multiplier: 0.8 },
+      ring:        { min_px: 2, opacity: 0.3 },
+      belt:        { width_px: 4, opacity: 0.4 },
+      click_area:  { base: 10, buffer: 5 },
   };
 
   let canvas: HTMLCanvasElement;
@@ -46,6 +53,25 @@
   // --- Svelte Lifecycle ---
   onMount(() => {
     animationFrameId = requestAnimationFrame(render);
+
+    const parent = canvas.parentElement;
+    if (parent) {
+        const resizeObserver = new ResizeObserver(() => {
+            canvas.width = parent.clientWidth;
+            canvas.height = parent.clientWidth * (3 / 4);
+        });
+        resizeObserver.observe(parent);
+
+        // Set initial size
+        canvas.width = parent.clientWidth;
+        canvas.height = parent.clientWidth * (3 / 4);
+
+        return () => {
+            if (parent) {
+                resizeObserver.unobserve(parent);
+            }
+        };
+    }
   });
 
   onDestroy(() => {
@@ -147,9 +173,10 @@
 
     if (focusBody.kind === 'body' && focusBody.roleHint === 'star') {
         const primaryStar = focusBody as CelestialBody;
+        const allZones = zones.calculateAllStellarZones(primaryStar);
 
         // Goldilocks Zone (band)
-        const goldilocks = zones.calculateGoldilocksZone(primaryStar);
+        const goldilocks = allZones.goldilocks;
         const innerRadius = goldilocks.inner * scale;
         const outerRadius = goldilocks.outer * scale;
         ctx.fillStyle = zoneStyles.goldilocks.color;
@@ -161,7 +188,7 @@
         ctx.fillText(zoneStyles.goldilocks.label, viewCenterX + (innerRadius + outerRadius) / 2, viewCenterY);
 
         // Kill Zone
-        const killZoneRadiusAU = zones.calculateKillZone(primaryStar);
+        const killZoneRadiusAU = allZones.killZone;
         if (killZoneRadiusAU > 0) {
             const radius = killZoneRadiusAU * scale;
             ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
@@ -174,11 +201,11 @@
 
         // Other zones (lines)
         const zoneCalculations = {
-            silicate: zones.calculateSilicateLine(primaryStar),
-            soot: zones.calculateSootLine(primaryStar),
-            frost: zones.calculateFrostLine(primaryStar),
-            co2: zones.calculateCO2IceLine(primaryStar),
-            co: zones.calculateCOIceLine(primaryStar),
+            silicate: allZones.silicateLine,
+            soot: allZones.sootLine,
+            frost: allZones.frostLine,
+            co2: allZones.co2IceLine,
+            co: allZones.coIceLine,
         };
 
         for (const [key, radiusAU] of Object.entries(zoneCalculations)) {
@@ -212,6 +239,16 @@
     ctx.setLineDash([]); // Reset to solid lines
   }
 
+
+  function getPlanetCategory(node: CelestialBody): 'terrestrial' | 'gas_giant' | 'ice_giant' {
+      if (node.classes.some(c => c.includes('gas-giant'))) {
+          return 'gas_giant';
+      }
+      if (node.classes.some(c => c.includes('ice-giant'))) {
+          return 'ice_giant';
+      }
+      return 'terrestrial';
+  }
 
   function drawSystem(ctx: CanvasRenderingContext2D) {
     if (!system || !system.nodes) return;
@@ -273,15 +310,17 @@
                 ctx.ellipse(parentX - c, parentY, a, b, 0, 0, 2 * Math.PI);
                 ctx.stroke();
 
-                if (showZones) {
-                    const currentDistanceAU = Math.sqrt(pos.x**2 + pos.y**2);
+                if (showLPoints) {
                     const lagrangePoints = calculateLagrangePoints(parent, focusBody as CelestialBody, pos);
                     const angle = Math.atan2(pos.y, pos.x);
 
                     ctx.font = `${10 / zoom}px sans-serif`;
-                    ctx.fillStyle = '#aaa';
 
                     for (const lp of lagrangePoints) {
+                        const isL4L5 = lp.name === 'L4' || lp.name === 'L5';
+                        ctx.fillStyle = isL4L5 ? '#00ff00' : '#aaa';
+                        ctx.strokeStyle = isL4L5 ? '#00ff00' : '#aaa';
+
                         let finalX = lp.x;
                         let finalY = lp.y;
 
@@ -300,7 +339,6 @@
                         ctx.lineTo(x + 3 / zoom, y + 3 / zoom);
                         ctx.moveTo(x + 3 / zoom, y - 3 / zoom);
                         ctx.lineTo(x - 3 / zoom, y + 3 / zoom);
-                        ctx.strokeStyle = '#aaa';
                         ctx.lineWidth = 1 / zoom;
                         ctx.stroke();
                         ctx.fillText(lp.name, x + 5 / zoom, y);
@@ -343,9 +381,8 @@
     }
 
     // --- Draw Lagrange Points ---
-    if (showZones) {
+    if (showLPoints) {
         ctx.font = `${10 / zoom}px sans-serif`;
-        ctx.fillStyle = '#aaa';
 
         for (const node of orbitingChildren) {
             if (node.roleHint === 'belt') continue;
@@ -356,12 +393,15 @@
             const pos = propagate(node, currentTime);
             if (!pos) continue;
 
-            const currentDistanceAU = Math.sqrt(pos.x**2 + pos.y**2);
             const lagrangePoints = calculateLagrangePoints(primary, node, pos);
 
             const angle = Math.atan2(pos.y, pos.x);
 
             for (const lp of lagrangePoints) {
+                const isL4L5 = lp.name === 'L4' || lp.name === 'L5';
+                ctx.fillStyle = isL4L5 ? '#00ff00' : '#aaa';
+                ctx.strokeStyle = isL4L5 ? '#00ff00' : '#aaa';
+
                 let finalX = lp.x;
                 let finalY = lp.y;
 
@@ -382,7 +422,6 @@
                 ctx.lineTo(x + 3 / zoom, y + 3 / zoom);
                 ctx.moveTo(x + 3 / zoom, y - 3 / zoom);
                 ctx.lineTo(x - 3 / zoom, y + 3 / zoom);
-                ctx.strokeStyle = '#aaa';
                 ctx.lineWidth = 1 / zoom;
                 ctx.stroke();
 
@@ -415,8 +454,12 @@
                 let focusBodyColor = "#aaa";
                 if (body.roleHint === 'star') {
                     const starClassKey = body.classes[0] || 'default';
-                    focusBodyColor = STAR_COLOR_MAP[starClassKey.split('/')[1]] || STAR_COLOR_MAP['default'];
-                    focusBodyRadius = Math.max(VISUAL_SCALING.star.base, (body.radiusKm || 696340) / 696340 * VISUAL_SCALING.star.multiplier * (visualScalingMultiplier ** 2));
+                    const spectralType = starClassKey.split('/')[1];
+                    focusBodyColor = STAR_COLOR_MAP[spectralType] || STAR_COLOR_MAP['default'];
+
+                    const scaling = VISUAL_SCALING[body.starCategory || 'main_sequence_star'] || VISUAL_SCALING.main_sequence_star;
+                    focusBodyRadius = Math.max(scaling.base, (body.radiusKm || SOLAR_RADIUS_KM) / SOLAR_RADIUS_KM * scaling.multiplier * (visualScalingMultiplier ** 2));
+
                 } else { 
                     focusBodyRadius = 25;
                 }
@@ -425,6 +468,8 @@
                 ctx.fillStyle = focusBodyColor;
                 ctx.fill();
                 if (focusBodyColor === '#000000') { // If it's a black hole
+                    ctx.beginPath();
+                    ctx.arc(viewCenterX, viewCenterY, focusBodyRadius, 0, 2 * Math.PI);
                     ctx.strokeStyle = '#ffffff';
                     ctx.lineWidth = 1 / zoom;
                     ctx.stroke();
@@ -467,10 +512,16 @@
 
         if (node.roleHint === 'star') {
             const starClassKey = node.classes[0] || 'default';
-            childColor = STAR_COLOR_MAP[starClassKey.split('/')[1]] || STAR_COLOR_MAP['default'];
-            childRadius = Math.max(VISUAL_SCALING.star.base, (node.radiusKm || 696340) / 696340 * VISUAL_SCALING.star.multiplier * (visualScalingMultiplier ** 2));
+            const spectralType = starClassKey.split('/')[1];
+            childColor = STAR_COLOR_MAP[spectralType] || STAR_COLOR_MAP['default'];
+
+            const scaling = VISUAL_SCALING[node.starCategory || 'main_sequence_star'] || VISUAL_SCALING.main_sequence_star;
+            childRadius = Math.max(scaling.base, (node.radiusKm || SOLAR_RADIUS_KM) / SOLAR_RADIUS_KM * scaling.multiplier * (visualScalingMultiplier ** 2));
+
         } else if (node.roleHint === 'planet') {
-            childRadius = Math.max(VISUAL_SCALING.planet.base, (node.radiusKm || 6371) / 6371 * visualScalingMultiplier);
+            const category = getPlanetCategory(node);
+            const scaling = VISUAL_SCALING[category] || VISUAL_SCALING.terrestrial;
+            childRadius = Math.max(scaling.base, (node.radiusKm || EARTH_RADIUS_KM) / EARTH_RADIUS_KM * scaling.multiplier * visualScalingMultiplier);
         } else if (node.roleHint === 'moon') {
             childRadius = Math.max(VISUAL_SCALING.moon.base, (node.radiusKm || 1737) / 1737 * visualScalingMultiplier * 0.5); // Moons are half the multiplier of planets
         }
@@ -480,6 +531,8 @@
         ctx.fillStyle = childColor;
         ctx.fill();
         if (childColor === '#000000') { // If it's a black hole
+            ctx.beginPath();
+            ctx.arc(x, y, childRadius, 0, 2 * Math.PI);
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 1 / zoom;
             ctx.stroke();
@@ -517,7 +570,5 @@
     on:mouseup={handleMouseUp}
     on:mouseleave={handleMouseUp}
     on:mousemove={handleMouseMove}
-    width={800} 
-    height={600} 
-    style="border: 1px solid #333; margin-top: 1em; background-color: #08090d; cursor: grab;"
+    style="border: 1px solid #333; margin-top: 1em; background-color: #08090d; cursor: grab; width: 100%;"
 ></canvas>

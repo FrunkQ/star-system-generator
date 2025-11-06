@@ -47,10 +47,14 @@ export function calculateKillZone(star: CelestialBody): number {
     }
 
     const luminosity = getLuminosity(star);
+    const radiation = star.radiationOutput || 1.0;
+
+    // Combine uvFactor and radiationOutput
+    const totalUVFactor = uvFactor * radiation;
 
     // Base the kill zone on a factor of the star's luminosity, adjusted by the UV factor.
     // The 0.1 is a tunable constant to set a baseline distance.
-    const killZoneRadius = 0.1 * Math.sqrt(uvFactor * luminosity);
+    const killZoneRadius = 0.1 * Math.sqrt(totalUVFactor * luminosity);
 
     return killZoneRadius;
 }
@@ -112,4 +116,16 @@ export function calculateCO2IceLine(star: CelestialBody): number {
 
 export function calculateCOIceLine(star: CelestialBody): number {
     return getDistanceForTemperature(star, 30);
+}
+
+export function calculateAllStellarZones(star: CelestialBody): Record<string, any> {
+    return {
+        killZone: calculateKillZone(star),
+        goldilocks: calculateGoldilocksZone(star),
+        silicateLine: calculateSilicateLine(star),
+        sootLine: calculateSootLine(star),
+        frostLine: calculateFrostLine(star),
+        co2IceLine: calculateCO2IceLine(star),
+        coIceLine: calculateCOIceLine(star),
+    };
 }
