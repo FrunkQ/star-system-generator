@@ -30,4 +30,23 @@ export class SeededRNG {
   public nextInt(min: number, max: number): number {
     return Math.floor(this.nextFloat() * (max - min + 1)) + min;
   }
+
+  // Shuffles an array in place using the Fisher-Yates algorithm.
+  public shuffle<T>(array: T[]): T[] {
+    let currentIndex = array.length;
+    let randomIndex;
+
+    // While there remain elements to shuffle.
+    while (currentIndex !== 0) {
+      // Pick a remaining element.
+      randomIndex = Math.floor(this.nextFloat() * currentIndex);
+      currentIndex--;
+
+      // And swap it with the current element.
+      [array[currentIndex], array[randomIndex]] = [
+        array[randomIndex], array[currentIndex]];
+    }
+
+    return array;
+  }
 }

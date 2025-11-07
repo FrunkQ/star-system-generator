@@ -142,6 +142,7 @@ export interface StarSystemNode {
   name: string;
   position: { x: number; y: number };
   system: System;
+  viewport?: { panX: number; panY: number; zoom: number; };
 }
 
 export interface Route {

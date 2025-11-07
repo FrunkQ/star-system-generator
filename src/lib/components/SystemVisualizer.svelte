@@ -1,10 +1,12 @@
 <script lang="ts">
   import type { System, CelestialBody, Barycenter } from '$lib/types';
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
+  import { get } from 'svelte/store';
   import { propagate } from "$lib/api";
   import { SOLAR_RADIUS_KM, EARTH_RADIUS_KM } from '../constants';
   import * as zones from "$lib/physics/zones";
   import { calculateLagrangePoints } from "$lib/physics/lagrange";
+  import { viewportStore } from '$lib/stores';
 
   export let system: System | null;
   export let rulePack: RulePack;
@@ -37,18 +39,22 @@
   let animationFrameId: number;
   let positions: Record<string, { x: number, y: number, radius: number }> = {};
 
-  // --- Viewport State ---
-  let panX = 0;
-  let panY = 0;
-  let zoom = 1;
+  // --- Viewport State (now from store) ---
+  let panX = get(viewportStore).panX;
+  let panY = get(viewportStore).panY;
+  let zoom = get(viewportStore).zoom;
+  viewportStore.subscribe(value => {
+      panX = value.panX;
+      panY = value.panY;
+      zoom = value.zoom;
+  });
+
   let isPanning = false;
   let lastPanX: number;
   let lastPanY: number;
 
   export function resetView() {
-      panX = 0;
-      panY = 0;
-      zoom = 1;
+      viewportStore.set({ panX: 0, panY: 0, zoom: 1 });
   }
 
   // --- Svelte Lifecycle ---
@@ -120,9 +126,10 @@
     const zoomFactor = event.deltaY < 0 ? 1.1 : 0.9;
     const newZoom = zoom * zoomFactor;
 
-    panX = mouseX - (mouseX - panX) * zoomFactor;
-    panY = mouseY - (mouseY - panY) * zoomFactor;
-    zoom = newZoom;
+    const newPanX = mouseX - (mouseX - panX) * zoomFactor;
+    const newPanY = mouseY - (mouseY - panY) * zoomFactor;
+    
+    viewportStore.set({ panX: newPanX, panY: newPanY, zoom: newZoom });
   }
 
   function handleMouseDown(event: MouseEvent) {
@@ -141,8 +148,7 @@
     if (!isPanning) return;
     const dx = event.clientX - lastPanX;
     const dy = event.clientY - lastPanY;
-    panX += dx;
-    panY += dy;
+    viewportStore.update(current => ({ ...current, panX: current.panX + dx, panY: current.panY + dy }));
     lastPanX = event.clientX;
     lastPanY = event.clientY;
   }
@@ -302,6 +308,7 @@
     const viewCenterX = width / 2;
     const viewCenterY = height / 2;
 
+    /*
     // --- Draw Focused Body's Orbit and L-Points ---
     if (focusBody && focusBody.kind === 'body' && focusBody.parentId) {
         const parent = nodesById.get(focusBody.parentId) as CelestialBody;
@@ -366,6 +373,7 @@
             }
         }
     }
+    */
 
     if (showZones) {
         drawZones(ctx, viewCenterX, viewCenterY, scale, focusBody);

@@ -2,12 +2,13 @@
   export let data;
   const { exampleSystems } = data;
   import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
   import { get } from 'svelte/store';
   import type { RulePack, System, Starmap as StarmapType, StarSystemNode, Route } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import { generateSystem, renameNode } from '$lib/api';
   import { starmapStore } from '$lib/starmapStore';
-  import { systemStore } from '$lib/stores';
+  import { systemStore, viewportStore } from '$lib/stores';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
   import Starmap from '$lib/components/Starmap.svelte';
   import SystemView from '$lib/components/SystemView.svelte';
@@ -66,6 +67,12 @@
     }
   });
 
+  // Auto-save the starmap to local storage whenever it changes
+  $: if (browser && $starmapStore) {
+    localStorage.setItem('stargen_saved_starmap', JSON.stringify($starmapStore));
+    hasSavedStarmap = true;
+  }
+
   function handleCreateStarmap(event: CustomEvent<{ name: string; rulepack: RulePack; distanceUnit: string; unitIsPrefix: boolean }>) {
     const { name, rulepack, distanceUnit, unitIsPrefix } = event.detail;
     selectedRulepack = rulepack;
@@ -94,6 +101,11 @@
     currentSystemId = event.detail;
     const systemNode = get(starmapStore)?.systems.find(s => s.id === currentSystemId);
     if (systemNode) {
+      if (systemNode.viewport) {
+        viewportStore.set(systemNode.viewport);
+      } else {
+        viewportStore.set({ panX: 0, panY: 0, zoom: 1 });
+      }
       systemStore.set(JSON.parse(JSON.stringify(systemNode.system)));
       history.pushState({ systemId: currentSystemId }, '');
     }
@@ -108,17 +120,26 @@
   }
 
   function handleBackToStarmap() {
+    if (currentSystemId) {
+        const currentViewport = get(viewportStore);
+        const currentSystem = get(systemStore);
+
+        starmapStore.update(starmap => {
+            if (starmap && currentSystem) {
+                const systemNode = starmap.systems.find(s => s.id === currentSystemId);
+                if (systemNode) {
+                    systemNode.viewport = currentViewport;
+                    systemNode.system = currentSystem;
+                    systemNode.name = currentSystem.name; // Also update the name at the node level
+                }
+            }
+            return starmap;
+        });
+    }
+
     console.log('handleBackToStarmap called');
     currentSystemId = null;
     systemStore.set(null);
-  }
-
-  function handleSaveStarmap() {
-    if ($starmapStore) {
-      console.log('Saving starmap:', $starmapStore);
-      localStorage.setItem('stargen_saved_starmap', JSON.stringify($starmapStore));
-      alert('Starmap saved to browser storage.');
-    }
   }
 
   function handleLoadStarmap() {
@@ -329,7 +350,6 @@
       {selectedSystemForLink}
     />
     <div class="starmap-controls">
-      <button on:click={handleSaveStarmap}>Save to Browser</button>
       <button on:click={handleLoadStarmap} disabled={!hasSavedStarmap}>Load from Browser</button>
       <button on:click={handleDownloadStarmap}>Download Starmap</button>
       <button on:click={handleUploadStarmap}>Upload Starmap</button>
