@@ -5,6 +5,26 @@ import { weightedChoice, randomFromRange, toRoman } from '../utils';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
 import { classifyBody } from '../system/classification';
 
+function calculateTidalHeating(planet: CelestialBody, host: CelestialBody): number {
+    let tidalHeatingK = 0;
+    if (planet.roleHint === 'moon' && host.kind === 'body') {
+        const parentMassKg = (host as CelestialBody).massKg || 0;
+        const eccentricity = planet.orbit?.elements.e || 0;
+        const moonRadiusKm = planet.radiusKm || 0;
+        const semiMajorAxisKm = (planet.orbit?.elements.a_AU || 0) * AU_KM;
+
+        if (parentMassKg > 0 && eccentricity > 0 && moonRadiusKm > 0 && semiMajorAxisKm > 0) {
+            const C = 4.06e-6; // Calibration constant
+            tidalHeatingK = C * 
+                (Math.pow(parentMassKg, 0.625)) * 
+                (Math.pow(moonRadiusKm, 0.75)) * 
+                (Math.pow(eccentricity, 0.5)) * 
+                (Math.pow(semiMajorAxisKm, -1.875));
+        }
+    }
+    return tidalHeatingK;
+}
+
 export function _generatePlanetaryBody(
     rng: SeededRNG,
     pack: RulePack,
@@ -182,7 +202,24 @@ export function _generatePlanetaryBody(
         }
     }
     const magneticFieldStrength = planet.magneticField?.strengthGauss || 0;
-    planet.surfaceRadiation = Math.max(0, totalStellarRadiation - magneticFieldStrength);
+    const atmosphereRetentionFactor = pack.generation_parameters?.atmosphere_retention_factor || 100;
+    const retainsAtmosphere = magneticFieldStrength * atmosphereRetentionFactor > totalStellarRadiation;
+
+    if (!retainsAtmosphere) {
+        planet.atmosphere = undefined;
+        planet.hydrosphere = undefined;
+    }
+
+    let surfaceRadiation = totalStellarRadiation;
+    if (planet.atmosphere) {
+        const atmDef = pack.distributions.atmosphere_composition.entries.find(e => e.value.name === planet.atmosphere.name)?.value;
+        if (atmDef && atmDef.radiation_blocking_factor) {
+            const blockingFactor = Math.min(1.0, atmDef.radiation_blocking_factor * planet.atmosphere.pressure_bar);
+            surfaceRadiation = totalStellarRadiation * (1 - blockingFactor);
+        }
+    }
+
+    planet.surfaceRadiation = Math.max(0, surfaceRadiation);
     features['radiation_flux'] = planet.surfaceRadiation;
 
     const escapeVelocity = Math.sqrt(2 * G * (planet.massKg || 0) / ((planet.radiusKm || 1) * 1000)) / 1000; // in km/s
@@ -273,10 +310,6 @@ export function _generatePlanetaryBody(
         // This hot gas giant has been stripped over billions of years
         planet.classes = ['planet/chthonian'];
         planet.radiusKm = (planet.radiusKm || 0) * 0.2; // Drastically reduce radius
-        planet.atmosphere = undefined;
-        planet.hydrosphere = undefined;
-    } else if ((planet.surfaceRadiation || 0) > 100 && planetType === 'planet/terrestrial') {
-        // Terrestrial planet is too close to the star and has had its atmosphere stripped
         planet.atmosphere = undefined;
         planet.hydrosphere = undefined;
     } else if (planet.temperatureK && planet.temperatureK > 1000 && planetType === 'planet/terrestrial') {

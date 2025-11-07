@@ -372,50 +372,32 @@ export function addHabitablePlanet(sys: System, hostId: ID, habitabilityType: 'e
 
 
                 } else if (habitabilityType === 'human-habitable') {
+            const hypoxicAtmDef = pack.distributions.atmosphere_composition.entries.find(e => e.value.name === 'Low-O₂, Low-CO₂ (Hypoxic Inert)').value;
 
-        const hypoxicAtmDef = pack.distributions.atmosphere_composition.entries.find(e => e.value.name === 'Low-O₂, Low-CO₂ (Hypoxic Inert)').value;
+            const finalComposition = generateAndNormalizeComposition(rng, hypoxicAtmDef.composition);
+            const mainGas = Object.keys(finalComposition).reduce((a, b) => finalComposition[a] > finalComposition[b] ? a : b);
+            const pressure = hypoxicAtmDef.pressure_range_bar ? randomFromRange(rng, hypoxicAtmDef.pressure_range_bar[0], hypoxicAtmDef.pressure_range_bar[1]) : randomFromRange(rng, 0.5, 1.5);
 
+            propertyOverrides.massKg = randomFromRange(rng, 0.5, 1.5) * EARTH_MASS_KG;
+            propertyOverrides.radiusKm = randomFromRange(rng, 0.8, 1.2) * EARTH_RADIUS_KM;
+            propertyOverrides.atmosphere = { 
+                name: 'Human-Habitable (Hypoxic)',
+                main: mainGas, 
+                composition: finalComposition,
+                pressure_bar: pressure
+            };
+            propertyOverrides.hydrosphere = { composition: 'water', coverage: randomFromRange(rng, 0.2, 0.8) };
+            propertyOverrides.magneticField = { strengthGauss: 1.0 }; // Ensure it has a magnetic field
+            propertyOverrides.targetTemperatureK = 288; // Target 15C
 
+            if (hypoxicAtmDef.tags) {
+                propertyOverrides.tags = hypoxicAtmDef.tags.map((t: string) => ({ key: t }));
+            }
 
-        const finalComposition = generateAndNormalizeComposition(rng, hypoxicAtmDef.composition);
-
-        const mainGas = Object.keys(finalComposition).reduce((a, b) => finalComposition[a] > finalComposition[b] ? a : b);
-
-        const pressure = hypoxicAtmDef.pressure_range_bar ? randomFromRange(rng, hypoxicAtmDef.pressure_range_bar[0], hypoxicAtmDef.pressure_range_bar[1]) : randomFromRange(rng, 0.5, 1.5);
-
-
-
-        planet.massKg = randomFromRange(rng, 0.5, 1.5) * EARTH_MASS_KG;
-
-        planet.radiusKm = randomFromRange(rng, 0.8, 1.2) * EARTH_RADIUS_KM;
-
-        planet.atmosphere = { 
-
-            name: 'Human-Habitable (Hypoxic)',
-
-            main: mainGas, 
-
-            composition: finalComposition,
-
-            pressure_bar: pressure
-
-        };
-
-        planet.hydrosphere = { composition: 'water', coverage: randomFromRange(rng, 0.2, 0.8) };
-
-        if (hypoxicAtmDef.tags) {
-
-            planet.tags = hypoxicAtmDef.tags.map((t: string) => ({ key: t }));
-
+        } else { // alien-habitable
+            propertyOverrides.massKg = randomFromRange(rng, 0.5, 3.0) * EARTH_MASS_KG;
+            propertyOverrides.radiusKm = randomFromRange(rng, 0.8, 2.0) * EARTH_RADIUS_KM;
         }
-
-    } else { // alien-habitable
-
-        planet.massKg = randomFromRange(rng, 0.5, 3.0) * EARTH_MASS_KG;
-
-        planet.radiusKm = randomFromRange(rng, 0.8, 2.0) * EARTH_RADIUS_KM;
-
-    }
 
 
 

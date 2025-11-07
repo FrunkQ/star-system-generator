@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
+		"build": "node scripts/generate-examples-list.cjs && vite build",
 		"preview": "vite preview",
 		"test": "vitest",
 		"prepare": "svelte-kit sync || echo ''",
