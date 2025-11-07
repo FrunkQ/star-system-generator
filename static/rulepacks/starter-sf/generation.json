@@ -1,0 +1,133 @@
+{
+    "generation_parameters": {
+        "terrestrial_min_mass_for_atmosphere_earth": 0.1,
+        "terrestrial_magnetic_field_chance": 0.8,
+        "frost_line_base_au": 2.7,
+        "planet_migration_chance": 0.1,
+        "danger_zone_multiplier": 5,
+        "atmosphere_retention_factor": 100
+    },
+    "distributions": {
+        "star_types": {
+            "name": "Stellar Spectral Types",
+            "entries": [
+                { "weight": 1, "value": "star/O" },
+                { "weight": 5, "value": "star/B" },
+                { "weight": 10, "value": "star/A" },
+                { "weight": 20, "value": "star/F" },
+                { "weight": 40, "value": "star/G" },
+                { "weight": 80, "value": "star/K" },
+                { "weight": 700, "value": "star/M" },
+                { "weight": 15, "value": "star/WD" },
+                { "weight": 4, "value": "star/NS" },
+                { "weight": 1, "value": "star/magnetar" },
+                { "weight": 1, "value": "star/BH" },
+                { "weight": 1, "value": "star/BH_active" }
+            ]
+        },
+        "is_binary_chance_massive": {
+            "name": "Chance of Massive Star (O, B) being binary",
+            "entries": [
+                { "weight": 95, "value": true },
+                { "weight": 5, "value": false }
+            ]
+        },
+        "is_binary_chance_sunlike": {
+            "name": "Chance of Sun-like Star (A, F, G, K) being binary",
+            "entries": [
+                { "weight": 50, "value": true },
+                { "weight": 50, "value": false }
+            ]
+        },
+        "is_binary_chance_lowmass": {
+            "name": "Chance of Low-mass Star (M) being binary",
+            "entries": [
+                { "weight": 25, "value": true },
+                { "weight": 75, "value": false }
+            ]
+        },
+        "binary_star_separation_au": {
+            "name": "Separation of binary stars in AU",
+            "entries": [
+                { "weight": 20, "value": [0.05, 0.5] },
+                { "weight": 30, "value": [0.5, 5] },
+                { "weight": 30, "value": [5, 50] },
+                { "weight": 15, "value": [50, 500] },
+                { "weight": 5, "value": [500, 5000] }
+            ]
+        },
+        "binary_planet_placement": {
+            "name": "Initial placement of planets in a binary system",
+            "entries": [
+                { "weight": 50, "value": "circumbinary" },
+                { "weight": 35, "value": "around_primary" },
+                { "weight": 15, "value": "around_secondary" }
+            ]
+        },
+        "planet_count_main_sequence": {
+            "name": "Number of Planets (Main Sequence G, K, M, F)",
+            "entries": [
+                { "weight": 5, "value": 0 },
+                { "weight": 10, "value": 1 },
+                { "weight": 15, "value": 2 },
+                { "weight": 20, "value": 3 },
+                { "weight": 20, "value": 4 },
+                { "weight": 15, "value": 5 },
+                { "weight": 10, "value": 6 },
+                { "weight": 5, "value": 7 },
+                { "weight": 2, "value": 8 }
+            ]
+        },
+        "planet_count_massive": {
+            "name": "Number of Planets (Massive O, B, A)",
+            "entries": [
+                { "weight": 40, "value": 0 },
+                { "weight": 30, "value": 1 },
+                { "weight": 20, "value": 2 },
+                { "weight": 10, "value": 3 }
+            ]
+        },
+        "planet_count_remnant": {
+            "name": "Number of Planets (Remnant WD, NS, BH, Magnetar)",
+            "entries": [
+                { "weight": 95, "value": 0 },
+                { "weight": 4, "value": 1 },
+                { "weight": 1, "value": 2 }
+            ]
+        },
+        "star_name_prefix": {
+            "name": "Star Catalogue Prefix",
+            "entries": [
+                { "weight": 30, "value": "HD" },
+                { "weight": 30, "value": "HIP" },
+                { "weight": 20, "value": "GJ" },
+                { "weight": 10, "value": "LHS" },
+                { "weight": 5, "value": "AC" }
+            ]
+        },
+        "star_name_number_digits": {
+            "name": "Number of digits in star catalogue number",
+            "entries": [
+                { "weight": 10, "value": 3 },
+                { "weight": 30, "value": 4 },
+                { "weight": 40, "value": 5 },
+                { "weight": 20, "value": 6 }
+            ]
+        },
+        "belt_chance": {
+            "name": "Chance of an asteroid belt",
+            "entries": [
+                { "weight": 85, "value": false },
+                { "weight": 15, "value": true }
+            ]
+        },
+        "titius_bode_law": {
+            "name": "Titius-Bode Law parameters for planet spacing",
+            "a": 0.4,
+            "b": 0.3,
+            "c": 2.0,
+            "sequence": [-999, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "jitter": 0.1
+        }
+    }
+}

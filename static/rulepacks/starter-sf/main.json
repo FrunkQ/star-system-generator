@@ -1,0 +1,12 @@
+{
+    "id": "starter-sf-pack",
+    "version": "0.1.5",
+    "name": "Starter Sci-Fi Pack (Budassi + Basics)",
+    "imports": [
+        "./generation.json",
+        "./stars.json",
+        "./planets.json",
+        "./atmospheres.json",
+        "./classification.json"
+    ]
+}

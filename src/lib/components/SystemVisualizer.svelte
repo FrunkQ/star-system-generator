@@ -305,14 +305,20 @@
     // --- Draw Focused Body's Orbit and L-Points ---
     if (focusBody && focusBody.kind === 'body' && focusBody.parentId) {
         const parent = nodesById.get(focusBody.parentId) as CelestialBody;
-        if (parent && parent.roleHint === 'star' && (focusBody as CelestialBody).orbit) {
+        if (parent && (focusBody as CelestialBody).orbit) {
             const orbit = (focusBody as CelestialBody).orbit!;
             const pos = propagate(focusBody as CelestialBody, currentTime);
-            if (pos) {
-                const parentX = viewCenterX - pos.x * scale;
-                const parentY = viewCenterY - pos.y * scale;
 
-                const a = orbit.elements.a_AU * scale;
+            // --- FIX FOR PRECISION BUG ---
+            // When focused on a body with no children, the main `scale` can become enormous.
+            // We must calculate a local scale for drawing this body's own orbit to prevent floating-point errors.
+            const parentOrbitScale = (Math.min(width, height) / 2) / (orbit.elements.a_AU * (1 + orbit.elements.e) * 1.2 || 0.1);
+
+            if (pos) {
+                const parentX = viewCenterX - pos.x * parentOrbitScale;
+                const parentY = viewCenterY - pos.y * parentOrbitScale;
+
+                const a = orbit.elements.a_AU * parentOrbitScale;
                 const e = orbit.elements.e;
                 const b = a * Math.sqrt(1 - e * e);
                 const c = a * e;
@@ -344,8 +350,8 @@
                             finalY = rotatedY;
                         }
 
-                        const x = parentX + finalX * scale;
-                        const y = parentY + finalY * scale;
+                        const x = parentX + finalX * parentOrbitScale;
+                        const y = parentY + finalY * parentOrbitScale;
 
                         ctx.beginPath();
                         ctx.moveTo(x - 3 / zoom, y - 3 / zoom);

@@ -18,7 +18,7 @@
 		<li>
 			<p>
 				<span class="color-box brown"></span>
-				<strong>Silicate Line (Brown):</strong> The point where it's <em>just</em> cool enough
+				<strong>Rock Line (Brown):</strong> The point where it's <em>just</em> cool enough
 				for rock and metal (silicates) to turn from gas into solid dust. This is the starting
 				line for building rocky planets.
 			</p>
@@ -72,8 +72,8 @@
 		<li>
 			<p>
 				<span class="color-box grey"></span>
-				<strong>Soot Line (Grey):</strong> The line where it gets cool enough for sticky,
-				complex carbon compounds (soot) to freeze from gas into solid particles.
+				<strong>Soot Line (Grey):</strong> The line is when it gets cool enough where 
+				carbon-rich compounds start to condense and polymerize into sticky solids.
 			</p>
 			<p class="in-game-note">
 				<strong>In-Game: 'The Gunk Line.'</strong> Planets here are often rich in carbon and
@@ -125,15 +125,15 @@
 
 	<div class="notes">
 		<h4>Other Features</h4>
-		<p>
-			<strong>Lagrange Points (L1-L5):</strong> These are stable "parking spots" in space created
-			by the gravity of two large bodies (like a star and a planet).
-		</p>
-		<p class="in-game-note">
-			<strong>In-Game:</strong> The L4 and L5 points are the most stable. This is where you'll
-			find shipyards, secret pirate bases, and massive trade hubs. They are the
-			'crossroads' of any planet's orbit.
-		</p>
+			<p>
+			  <strong>Lagrange Points (L1–L5):</strong> These are the five spots where the gravity of two large bodies—like a star and a planet—balances out a spacecraft’s orbital motion. 
+			  The L1, L2, and L3 points are useful for observation or transit routes but aren’t naturally stable, while 
+			  L4 and L5 form the only true "parking zones," where objects can remain for millennia.
+			</p>
+			<p class="in-game-note">
+			  <strong>In-Game:</strong> L4 and L5 are the system’s sweet spots—stable enough for shipyards, pirate bases, and trade hubs. 
+			  The others are waypoints or ambush points: handy for quick access, not for putting down roots.
+			</p>
 	</div>
 </div>
 

@@ -48,7 +48,7 @@
         "hostId": "alpha-centauri-barycenter",
         "hostMu": 228300000000000000000,
         "t0": 1762339146908,
-        "n_rad_per_s": 2.493e-9,
+        "n_rad_per_s": 2.493e-09,
         "elements": {
           "a_AU": 10.3,
           "e": 0.5179,
@@ -87,7 +87,7 @@
         "hostId": "alpha-centauri-barycenter",
         "hostMu": 228300000000000000000,
         "t0": 1762339146908,
-        "n_rad_per_s": 2.493e-9,
+        "n_rad_per_s": 2.493e-09,
         "elements": {
           "a_AU": 18.3,
           "e": 0.5179,
@@ -164,7 +164,7 @@
           "i_deg": 0,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 4.1446310265857464
         }
       },
       "massKg": 1.55e+24,
@@ -177,7 +177,7 @@
           "key": "hot"
         },
         {
-          "key": "K\"Airless Rock\""
+          "key": "Airless Rock"
         }
       ],
       "areas": [],
@@ -212,7 +212,7 @@
           "i_deg": 0,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 5.006958509868666
         }
       },
       "massKg": 6.98e+24,
@@ -273,7 +273,7 @@
           "i_deg": 0,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 4.325338249388114
         }
       },
       "massKg": 4.18e+25,

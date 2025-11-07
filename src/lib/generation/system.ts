@@ -144,27 +144,50 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
         const star = systemRoot as CelestialBody;
         const rocheLimitAU = (star.radiusKm * 2.44) / AU_KM;
         const sootLineAU = ((star.radiusKm / 2) * Math.pow(star.temperatureK / 1800, 2)) / AU_KM;
-        let lastApoapsisAU = Math.max(rocheLimitAU, sootLineAU) * 1.2; // 20% buffer
+        const minOrbitAU = Math.max(rocheLimitAU, sootLineAU) * 1.2; // 20% buffer
 
-        for (let i = 0; i < numBodies; i++) {
-            const minGap = 0.2;
-            const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
+        const tbParams = pack.distributions.titius_bode_law;
+        let orbitalSlotsAU: number[] = [];
+        if (tbParams) {
+            orbitalSlotsAU = tbParams.sequence.map((n: number) => {
+                const power = n === -999 ? 0 : Math.pow(tbParams.c, n);
+                return tbParams.a + tbParams.b * power;
+            });
+            orbitalSlotsAU = orbitalSlotsAU.filter(au => au > minOrbitAU);
+        } else {
+            // Fallback to old method if T-B params not in rulepack
+            let lastApoapsisAU = minOrbitAU;
+            for (let i = 0; i < numBodies; i++) {
+                const minGap = 0.2;
+                const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
+                const newA_AU = newPeriapsis / (1 - randomFromRange(rng, 0.01, 0.15));
+                orbitalSlotsAU.push(newA_AU);
+                lastApoapsisAU = newA_AU * (1 + randomFromRange(rng, 0.01, 0.15));
+            }
+        }
+
+        // Shuffle the slots and take the first numBodies
+        rng.shuffle(orbitalSlotsAU);
+        const planetSlots = orbitalSlotsAU.slice(0, numBodies);
+
+        for (let i = 0; i < planetSlots.length; i++) {
+            const slotAU = planetSlots[i];
+            const jitter = tbParams ? tbParams.jitter : 0.1;
+            const jitteredAU = slotAU * (1 + randomFromRange(rng, -jitter, jitter));
+
             const maxEccentricity = (system_age_Gyr > 5) ? 0.1 : 0.15;
             const newEccentricity = randomFromRange(rng, 0.01, maxEccentricity);
-                    const newA_AU = newPeriapsis / (1 - newEccentricity);
-                    lastApoapsisAU = newA_AU * (1 + newEccentricity);
-            
-                    const orbit: Orbit = {
-                        hostId: systemRoot.id,
-                        hostMu: G * totalMassKg,
-                        t0: Date.now(),
-                        elements: { a_AU: newA_AU, e: newEccentricity, i_deg: Math.pow(rng.nextFloat(), 3) * 15, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
-                    };
 
-                    if (weightedChoice<boolean>(rng, pack.distributions['retrograde_orbit_chance'])) {
-                        orbit.isRetrogradeOrbit = true;
-                    }
+            const orbit: Orbit = {
+                hostId: systemRoot.id,
+                hostMu: G * totalMassKg,
+                t0: Date.now(),
+                elements: { a_AU: jitteredAU, e: newEccentricity, i_deg: Math.pow(rng.nextFloat(), 3) * 15, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
+            };
 
+            if (weightedChoice<boolean>(rng, pack.distributions['retrograde_orbit_chance'])) {
+                orbit.isRetrogradeOrbit = true;
+            }
 
             const newNodes = _generatePlanetaryBody(rng, pack, seed, i, systemRoot, orbit, `${systemName} ${String.fromCharCode(98 + i)}`, nodes, system_age_Gyr, undefined, true);
             nodes.push(...newNodes);

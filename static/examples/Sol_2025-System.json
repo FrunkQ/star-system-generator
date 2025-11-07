@@ -52,7 +52,7 @@
           "i_deg": 7.005,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 5.020466586134799
         }
       },
       "massKg": 3.285e+23,
@@ -109,7 +109,7 @@
           "i_deg": 3.39458,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 1.3661033419802402
         }
       },
       "massKg": 4.867e+24,
@@ -173,7 +173,7 @@
           "i_deg": 0,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 3.9329429420805933
         }
       },
       "massKg": 5.972e+24,
@@ -248,7 +248,7 @@
           "i_deg": 5.145,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 4.367738497485062
         }
       },
       "massKg": 7.342e+22,
@@ -294,7 +294,7 @@
           "i_deg": 1.85,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 0.3838857522616697
         }
       },
       "massKg": 6.39e+23,
@@ -345,12 +345,12 @@
         "hostMu": 42643806000000,
         "t0": 1762339146908,
         "elements": {
-          "a_AU": 0.0000626,
+          "a_AU": 6.26e-05,
           "e": 0.0151,
           "i_deg": 1.093,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 3.6223949113506797
         }
       },
       "massKg": 10600000000000000,
@@ -396,7 +396,7 @@
           "i_deg": 0.93,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 3.9604747090378383
         }
       },
       "massKg": 1470000000000000,
@@ -440,7 +440,7 @@
           "i_deg": 10,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 4.1446310265857464
         }
       },
       "tags": [],
@@ -470,7 +470,7 @@
           "i_deg": 1.303,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 5.006958509868666
         }
       },
       "massKg": 1.898e+27,
@@ -544,7 +544,7 @@
           "i_deg": 0.05,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 4.325338249388114
         }
       },
       "massKg": 8.93e+22,
@@ -573,7 +573,7 @@
           "S": 0.1
         },
         "main": "SO2",
-        "pressure_bar": 1e-8
+        "pressure_bar": 1e-08
       },
       "orbital_period_days": 1.77,
       "axial_tilt_deg": 0,
@@ -605,7 +605,7 @@
           "i_deg": 0.47,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 1.2216403019719393
         }
       },
       "massKg": 4.8e+22,
@@ -665,7 +665,7 @@
           "i_deg": 0.2,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 4.486533643549892
         }
       },
       "massKg": 1.48e+23,
@@ -720,7 +720,7 @@
           "i_deg": 0.192,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 2.531239660985478
         }
       },
       "massKg": 1.07e+23,
@@ -770,7 +770,7 @@
           "i_deg": 2.485,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 0.5439917998244483
         }
       },
       "massKg": 5.683e+26,
@@ -844,7 +844,7 @@
           "i_deg": 0.348,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 2.932549245144177
         }
       },
       "massKg": 1.34e+23,
@@ -905,10 +905,10 @@
           "i_deg": 0.009,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 2.378906972412574
         }
       },
-      "massKg": 108000000000000000000,
+      "massKg": 1.08e+20,
       "radiusKm": 252.1,
       "tags": [
         {
@@ -933,7 +933,7 @@
           "CH4": 0.01
         },
         "main": "H2O",
-        "pressure_bar": 1e-9
+        "pressure_bar": 1e-09
       },
       "orbital_period_days": 1.37,
       "axial_tilt_deg": 0,
@@ -965,10 +965,10 @@
           "i_deg": 1.57,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 5.762193568853683
         }
       },
-      "massKg": 37500000000000000000,
+      "massKg": 3.75e+19,
       "radiusKm": 198.2,
       "tags": [
         {
@@ -1010,7 +1010,7 @@
           "i_deg": 0.345,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 0.7634431872120468
         }
       },
       "massKg": 2.3e+21,
@@ -1056,7 +1056,7 @@
           "i_deg": 15.47,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 5.22858850785196
         }
       },
       "massKg": 1.8e+21,
@@ -1101,7 +1101,7 @@
           "i_deg": 0.773,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 4.108892419074092
         }
       },
       "massKg": 8.681e+25,
@@ -1175,7 +1175,7 @@
           "i_deg": 0.34,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 1.7684307612745348
         }
       },
       "massKg": 3.4e+21,
@@ -1221,7 +1221,7 @@
           "i_deg": 0.058,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 3.966778972986873
         }
       },
       "massKg": 3e+21,
@@ -1266,7 +1266,7 @@
           "i_deg": 0.26,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 3.3283997576207127
         }
       },
       "massKg": 1.29e+21,
@@ -1311,7 +1311,7 @@
           "i_deg": 1.77,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 1.94099564119865
         }
       },
       "massKg": 1.024e+26,
@@ -1385,7 +1385,7 @@
           "i_deg": 157.3,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 5.105401925181754
         },
         "isRetrogradeOrbit": true
       },
@@ -1415,7 +1415,7 @@
           "CH4": 0.001
         },
         "main": "N2",
-        "pressure_bar": 0.000014
+        "pressure_bar": 1.4e-05
       },
       "orbital_period_days": 5.87,
       "axial_tilt_deg": 0,
@@ -1445,7 +1445,7 @@
           "i_deg": 15,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 5.882914102919315
         }
       },
       "tags": [],
@@ -1473,7 +1473,7 @@
           "i_deg": 17.16,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 1.4884242784532824
         }
       },
       "massKg": 1.303e+22,
@@ -1497,7 +1497,7 @@
           "CO": 0.01
         },
         "main": "N2",
-        "pressure_bar": 0.00001
+        "pressure_bar": 1e-05
       },
       "orbital_period_days": 90560,
       "axial_tilt_deg": 119.5,
@@ -1528,7 +1528,7 @@
           "i_deg": 0.001,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 0
+          "M0_rad": 1.350730626781299
         }
       },
       "massKg": 1.58e+21,
@@ -1556,6 +1556,5 @@
   ],
   "rulePackId": "starter-sf-pack",
   "rulePackVersion": "0.1.3",
-  "tags": [],
-  "visualScalingMultiplier": 0.23
+  "tags": []
 }

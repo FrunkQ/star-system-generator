@@ -1,0 +1,84 @@
+{
+    "statTemplates": {
+        "planet/terrestrial": { "mass_earth": [0.5, 2.0], "radius_earth": [0.8, 1.5] },
+        "planet/gas-giant": { "mass_earth": [10, 3000], "radius_earth": [4, 20], "mag_gauss": [5, 50] },
+        "planet/ice-giant": { "mass_earth": [10, 50], "radius_earth": [3, 6], "mag_gauss": [1, 10] },
+        "belt/asteroid": { "mass_earth": [0.01, 0.1], "radius_km": [1, 100] },
+        "ring/planetary": { "radius_inner_multiple": [1.5, 2.0], "radius_outer_multiple": [2.5, 4.0] }
+    },
+    "distributions": {
+        "planet_type": {
+            "name": "Planet Type",
+            "entries": [
+                { "weight": 70, "value": "planet/terrestrial" },
+                { "weight": 30, "value": "planet/gas-giant" }
+            ]
+        },
+        "terrestrial_moon_count": {
+            "name": "Number of Moons for a Terrestrial Planet",
+            "entries": [
+                { "weight": 60, "value": 0 },
+                { "weight": 25, "value": 1 },
+                { "weight": 15, "value": 2 }
+            ]
+        },
+        "gas_giant_moon_count": {
+            "name": "Number of Moons for a Gas Giant",
+            "entries": [
+                { "weight": 10, "value": 0 },
+                { "weight": 10, "value": 1 },
+                { "weight": 15, "value": 2 },
+                { "weight": 15, "value": 3 },
+                { "weight": 10, "value": 4 },
+                { "weight": 5, "value": 5 },
+                { "weight": 5, "value": 10 },
+                { "weight": 2, "value": 20 }
+            ]
+        },
+        "gas_giant_ring_chance": {
+            "name": "Chance of a gas giant having rings",
+            "entries": [
+                { "weight": 60, "value": false },
+                { "weight": 40, "value": true }
+            ]
+        },
+        "terrestrial_ring_chance": {
+            "name": "Chance of a terrestrial planet having rings",
+            "entries": [
+                { "weight": 95, "value": false },
+                { "weight": 5, "value": true }
+            ]
+        },
+        "hydrosphere_coverage": {
+            "name": "Hydrosphere Coverage",
+            "entries": [
+                { "weight": 60, "value": [0, 0.1] },
+                { "weight": 20, "value": [0.1, 0.5] },
+                { "weight": 15, "value": [0.5, 0.9] },
+                { "weight": 5, "value": [0.9, 1.0] }
+            ]
+        },
+        "hydrosphere_composition": {
+            "name": "Hydrosphere Composition",
+            "entries": [
+                { "weight": 80, "value": "water" },
+                { "weight": 15, "value": "methane" },
+                { "weight": 5, "value": "ammonia" }
+            ]
+        },
+        "retrograde_orbit_chance": {
+            "name": "Chance of Retrograde Orbit",
+            "entries": [
+                { "weight": 99, "value": false },
+                { "weight": 1, "value": true }
+            ]
+        },
+        "retrograde_orbit_chance_moon": {
+            "name": "Chance of Retrograde Orbit for Moons",
+            "entries": [
+                { "weight": 80, "value": false },
+                { "weight": 20, "value": true }
+            ]
+        }
+    }
+}

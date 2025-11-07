@@ -33,7 +33,7 @@
 
   onMount(async () => {
     try {
-      const starterRulepack = await fetchAndLoadRulePack('/rulepacks/starter-sf-pack.json');
+      const starterRulepack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json');
       rulePacks = [starterRulepack];
       selectedRulepack = starterRulepack;
     } catch (e: any) {
