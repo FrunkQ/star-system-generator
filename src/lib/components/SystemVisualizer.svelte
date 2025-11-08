@@ -206,12 +206,40 @@
       let clickedNodeId: string | null = null;
       let minDistanceSq = Infinity;
 
-      const effectiveFocusId = focusedBodyId || system.nodes.find(n => n.parentId === null)?.id;
+      const nodesById = new Map(system.nodes.map(n => [n.id, n]));
+      const clickableIds = new Set<string>();
+      const primaryStar = system.nodes.find(n => n.parentId === null);
+      
+      const focusNode = nodesById.get(focusedBodyId || primaryStar?.id || '');
+      if (!focusNode) return;
+
+      const focusNodeHasChildren = system.nodes.some(n => n.parentId === focusNode.id);
+      
+      let labelContextId: string | null;
+      if (focusNodeHasChildren) {
+          labelContextId = focusNode.id;
+      } else {
+          labelContextId = focusNode.parentId;
+      }
+
+      // Add the context node and its direct children
+      if (labelContextId) {
+          clickableIds.add(labelContextId);
+          system.nodes.forEach(n => {
+              if (n.parentId === labelContextId) clickableIds.add(n.id);
+          });
+      }
+
+      // Add all ancestors of the original focus node
+      let current = focusNode;
+      while (current) {
+          clickableIds.add(current.id);
+          const parentNode = current.parentId ? nodesById.get(current.parentId) : undefined;
+          current = parentNode;
+      }
 
       for (const node of system.nodes) {
-          // A node is only clickable if it's the focus or a direct child of the focus
-          const isClickable = node.id === effectiveFocusId || node.parentId === effectiveFocusId;
-          if (!isClickable || node.kind !== 'body') continue;
+          if (!clickableIds.has(node.id) || node.kind !== 'body') continue;
 
           const pos = worldPositions.get(node.id);
           if (!pos) continue;
@@ -219,13 +247,11 @@
           const dx = clickPos.x - pos.x;
           const dy = clickPos.y - pos.y;
           const distanceSq = dx * dx + dy * dy;
-
           const radiusInAU = (node.radiusKm || 0) / AU_KM;
           const clickRadiusInAU = Math.max(
               radiusInAU + (CLICK_AREA.buffer_px / camera.zoom),
               CLICK_AREA.base_px / camera.zoom
           );
-
           if (distanceSq < clickRadiusInAU * clickRadiusInAU) {
               if (distanceSq < minDistanceSq) {
                   minDistanceSq = distanceSq;
@@ -233,10 +259,7 @@
               }
           }
       }
-      
-      if (clickedNodeId) {
-          dispatch("focus", clickedNodeId);
-      }
+      if (clickedNodeId) dispatch("focus", clickedNodeId);
   }
 
   function handleWheel(event: WheelEvent) {
@@ -367,12 +390,42 @@
 
       // --- Stage 2: Draw Non-Scaled Screen Overlays (Labels) ---
       if (showNames) {
-          const effectiveFocusId = focusedBodyId || system.nodes.find(n => n.parentId === null)?.id;
+          const nodesById = new Map(system.nodes.map(n => [n.id, n]));
+          const visibleLabelIds = new Set<string>();
+          const primaryStar = system.nodes.find(n => n.parentId === null);
+          
+          const focusNode = nodesById.get(focusedBodyId || primaryStar?.id || '');
+          if (!focusNode) return;
+
+          const focusNodeHasChildren = system.nodes.some(n => n.parentId === focusNode.id);
+          
+          let labelContextId: string | null;
+          if (focusNodeHasChildren) {
+              labelContextId = focusNode.id;
+          } else {
+              labelContextId = focusNode.parentId;
+          }
+
+          // Add the context node and its direct children
+          if (labelContextId) {
+              visibleLabelIds.add(labelContextId);
+              system.nodes.forEach(n => {
+                  if (n.parentId === labelContextId) visibleLabelIds.add(n.id);
+              });
+          }
+
+          // Add all ancestors of the original focus node
+          let current = focusNode;
+          while (current) {
+              visibleLabelIds.add(current.id);
+              const parentNode = current.parentId ? nodesById.get(current.parentId) : undefined;
+              current = parentNode;
+          }
+
           ctx.font = `12px sans-serif`;
           
           for (const node of system.nodes) {
-              const isLabelVisible = node.id === effectiveFocusId || node.parentId === effectiveFocusId;
-              if (!isLabelVisible || node.kind !== 'body') continue;
+              if (!visibleLabelIds.has(node.id) || node.kind !== 'body') continue;
 
               const worldPos = worldPositions.get(node.id);
               if (!worldPos) continue;
