@@ -5,6 +5,7 @@
   import { AU_KM } from '../constants';
   import * as zones from "$lib/physics/zones";
   import { calculateLagrangePoints } from "$lib/physics/lagrange";
+  import { get } from 'svelte/store';
   import { cameraStore } from '$lib/cameraStore';
   import type { CameraState } from '$lib/cameraStore';
 
@@ -114,13 +115,17 @@
       const targetId = focusedBodyId || system.nodes.find(n => n.parentId === null)?.id;
 
       if (targetId) {
+          const beforeViewport = get(cameraStore); // Capture current state
           const frame = calculateFrameForNode(targetId);
           cameraStore.set(frame);
+          const afterViewport = { ...frame }; // Capture new state
+          console.log('Viewport Change (Reset View):', { before: beforeViewport, after: afterViewport });
       }
   }
 
   // --- Reactive Logic for Triggering Animation ---
   $: if (focusedBodyId && focusedBodyId !== lastFocusedId && system && canvas && worldPositions.size > 0) {
+      isAnimatingFocus = true; // Prevent FOLLOW logic from running prematurely
       lastFocusedId = focusedBodyId;
       startFocusAnimation(focusedBodyId);
   }
@@ -132,17 +137,20 @@
 
       cameraMode = 'FOLLOW';
 
+      const beforeViewport = get(cameraStore); // Capture current state
       const newFrame = calculateFrameForNode(targetId);
 
       animState = {
           startTime: performance.now(),
-          startPan: { ...camera.pan },
+          startPan: { ...beforeViewport.pan },
           endPan: newFrame.pan,
-          startZoom: camera.zoom,
+          startZoom: beforeViewport.zoom,
           endZoom: newFrame.zoom,
       };
 
-      isAnimatingFocus = true;
+      // isAnimatingFocus is already set
+      const afterViewport = { pan: newFrame.pan, zoom: newFrame.zoom }; // Capture new state
+      console.log('Viewport Change (Focus Animation):', { before: beforeViewport, after: afterViewport });
   }
 
   // --- Svelte Lifecycle ---
@@ -204,7 +212,7 @@
             if (t >= 1.0) {
                 isAnimatingFocus = false;
             }
-        } else if (focusedBodyId && cameraMode === 'FOLLOW' && !isPanning) {
+        } else if (focusedBodyId && cameraMode === 'FOLLOW' && !isPanning && !isAnimatingFocus) {
             const targetPosition = worldPositions.get(focusedBodyId);
             if (targetPosition) {
                 cameraStore.update(c => ({ ...c, pan: targetPosition }));
@@ -452,6 +460,8 @@
       }
       ctx.restore();
 
+      drawScaleBar(ctx);
+
       if (showNames) {
           const visibleLabelIds = getVisibleNodeIds(system, focusedBodyId);
           ctx.font = `12px sans-serif`;
@@ -475,6 +485,76 @@
               ctx.fillText(node.name, screenPos.x + radiusPx + 5, screenPos.y);
           }
       }
+  }
+
+  function drawScaleBar(ctx: CanvasRenderingContext2D) {
+      if (!canvas || !camera) return;
+
+      const barLengthPx = 100; // Desired screen length of the scale bar in pixels
+      let worldLengthAU = barLengthPx / camera.zoom;
+
+      let unit: string;
+      let displayValue: number;
+      let actualBarLengthPx: number;
+
+      // Determine unit and value
+      if (worldLengthAU >= 0.1) {
+          unit = 'AU';
+          // Find a "nice" number for AU
+          const power = Math.pow(10, Math.floor(Math.log10(worldLengthAU)));
+          const multiples = [1, 2, 5];
+          let bestValue = 1;
+          for (const m of multiples) {
+              if (worldLengthAU / (m * power) >= 0.75) { // Aim for a bar that's at least 75% of the target length
+                  bestValue = m * power;
+              }
+          }
+          displayValue = bestValue;
+          actualBarLengthPx = displayValue * camera.zoom;
+      } else {
+          unit = 'km';
+          let worldLengthKM = worldLengthAU * AU_KM;
+          // Find a "nice" number for km
+          const power = Math.pow(10, Math.floor(Math.log10(worldLengthKM)));
+          const multiples = [1, 2, 5];
+          let bestValue = 1;
+          for (const m of multiples) {
+              if (worldLengthKM / (m * power) >= 0.75) {
+                  bestValue = m * power;
+              }
+          }
+          displayValue = bestValue;
+          actualBarLengthPx = (displayValue / AU_KM) * camera.zoom;
+      }
+
+      // Drawing
+      const margin = 20;
+      const x = margin;
+      const y = canvas.height - margin;
+
+      ctx.strokeStyle = '#ffffff';
+      ctx.fillStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+
+      // Draw the bar
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + actualBarLengthPx, y);
+      ctx.stroke();
+
+      // Draw end ticks
+      ctx.beginPath();
+      ctx.moveTo(x, y - 5);
+      ctx.lineTo(x, y + 5);
+      ctx.moveTo(x + actualBarLengthPx, y - 5);
+      ctx.lineTo(x + actualBarLengthPx, y + 5);
+      ctx.stroke();
+
+      // Draw text
+      ctx.fillText(`${displayValue} ${unit}`, x + actualBarLengthPx / 2, y - 8);
   }
 </script>
 <canvas 
