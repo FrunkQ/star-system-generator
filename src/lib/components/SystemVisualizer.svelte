@@ -51,13 +51,14 @@
 
   // --- Public Functions ---
   function calculateFrameForNode(nodeId: string): { pan: {x: number, y: number}, zoom: number } {
-      if (!system || !canvas) return camera; // Return current camera state if something is wrong
+      const currentCamera = get(cameraStore);
+      if (!system || !canvas) return currentCamera;
 
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       const targetNode = nodesById.get(nodeId);
       const targetPosition = worldPositions.get(nodeId);
 
-      if (!targetNode || !targetPosition) return camera;
+      if (!targetNode || !targetPosition) return currentCamera;
 
       const hasChildren = system.nodes.some(n => n.parentId === nodeId);
 
@@ -77,7 +78,7 @@
           const paddingFactor = 1.02; // 2% padding
           const targetWorldSize = maxOrbit * 2 * paddingFactor;
 
-          let newZoom = camera.zoom;
+          let newZoom = currentCamera.zoom;
           if (targetWorldSize > 0) {
               const zoomX = canvas.width / targetWorldSize;
               const zoomY = canvas.height / targetWorldSize;
@@ -97,13 +98,13 @@
                   if (distance > 0) {
                       newZoom = (Math.min(canvas.width, canvas.height) / 2) / (distance * 1.02);
                   } else {
-                      newZoom = camera.zoom * 2;
+                      newZoom = currentCamera.zoom * 2;
                   }
                   return { pan: targetPosition, zoom: newZoom };
               }
           }
           // No parent or parent position not found, just center with current zoom
-          return { pan: targetPosition, zoom: camera.zoom };
+          return { pan: targetPosition, zoom: currentCamera.zoom };
       }
   }
 
@@ -176,7 +177,7 @@
 
   // --- Coordinate Transformation ---
   function screenToWorld(screenX: number, screenY: number): { x: number, y: number } {
-      if (!canvas || !camera) return { x: 0, y: 0 };
+      if (!canvas || !camera || !camera.pan) return { x: 0, y: 0 };
       const { width, height } = canvas;
       const worldX = (screenX - width / 2) / camera.zoom + camera.pan.x;
       const worldY = (screenY - height / 2) / camera.zoom + camera.pan.y;
@@ -184,7 +185,7 @@
   }
   
   function worldToScreen(worldX: number, worldY: number): { x: number, y: number } {
-      if (!canvas || !camera) return { x: 0, y: 0 };
+      if (!canvas || !camera || !camera.pan) return { x: 0, y: 0 };
       const { width, height } = canvas;
       const screenX = (worldX - camera.pan.x) * camera.zoom + width / 2;
       const screenY = (worldY - camera.pan.y) * camera.zoom + height / 2;
@@ -490,7 +491,7 @@
   function drawScaleBar(ctx: CanvasRenderingContext2D) {
       if (!canvas || !camera) return;
 
-      const barLengthPx = 100; // Desired screen length of the scale bar in pixels
+      const barLengthPx = canvas.width / 3; // Desired screen length of the scale bar in pixels
       let worldLengthAU = barLengthPx / camera.zoom;
 
       let unit: string;

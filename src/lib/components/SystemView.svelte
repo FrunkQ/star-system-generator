@@ -258,7 +258,6 @@
   });
 
 </script>
-
 <main>
     <div class="top-bar">
         <div class="focus-header">
