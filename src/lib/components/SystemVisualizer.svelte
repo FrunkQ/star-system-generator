@@ -22,7 +22,7 @@
 
   // --- Configurable Visuals ---
   const CLICK_AREA = { base_px: 10, buffer_px: 5 };
-  const ANIMATION_DURATION = 1500; // ms for the crash zoom
+  const ANIMATION_DURATION = 0; // ms for the crash zoom
 
   // --- Canvas and Rendering State ---
   let canvas: HTMLCanvasElement;
@@ -49,24 +49,74 @@
   };
 
   // --- Public Functions ---
+  function calculateFrameForNode(nodeId: string): { pan: {x: number, y: number}, zoom: number } {
+      if (!system || !canvas) return camera; // Return current camera state if something is wrong
+
+      const nodesById = new Map(system.nodes.map(n => [n.id, n]));
+      const targetNode = nodesById.get(nodeId);
+      const targetPosition = worldPositions.get(nodeId);
+
+      if (!targetNode || !targetPosition) return camera;
+
+      const hasChildren = system.nodes.some(n => n.parentId === nodeId);
+
+      if (hasChildren) {
+          const children = system.nodes.filter(n => n.parentId === nodeId);
+          let maxOrbit = children.reduce((max, node) => {
+              if (node.kind === 'body' && node.orbit) {
+                  return Math.max(max, node.orbit.elements.a_AU * (1 + node.orbit.elements.e));
+              }
+              return max;
+          }, 0);
+
+          if (maxOrbit === 0 && targetNode.kind === 'body' && targetNode.radiusKm) {
+              maxOrbit = targetNode.radiusKm / AU_KM;
+          }
+
+          const paddingFactor = 1.02; // 2% padding
+          const targetWorldSize = maxOrbit * 2 * paddingFactor;
+
+          let newZoom = camera.zoom;
+          if (targetWorldSize > 0) {
+              const zoomX = canvas.width / targetWorldSize;
+              const zoomY = canvas.height / targetWorldSize;
+              newZoom = Math.min(zoomX, zoomY);
+          }
+          return { pan: targetPosition, zoom: newZoom };
+      } else {
+          // Body has NO children, frame it and its parent
+          const parentNode = targetNode.parentId ? nodesById.get(targetNode.parentId) : null;
+          if (parentNode) {
+              const parentPosition = worldPositions.get(parentNode.id);
+              if (parentPosition) {
+                  const dx = targetPosition.x - parentPosition.x;
+                  const dy = targetPosition.y - parentPosition.y;
+                  const distance = Math.sqrt(dx*dx + dy*dy);
+                  let newZoom;
+                  if (distance > 0) {
+                      newZoom = (Math.min(canvas.width, canvas.height) / 2) / (distance * 1.02);
+                  } else {
+                      newZoom = camera.zoom * 2;
+                  }
+                  return { pan: targetPosition, zoom: newZoom };
+              }
+          }
+          // No parent or parent position not found, just center with current zoom
+          return { pan: targetPosition, zoom: camera.zoom };
+      }
+  }
+
   export function resetView() {
       if (!system || !canvas) return;
       isAnimatingFocus = false; // Stop any ongoing animation
       cameraMode = 'FOLLOW'; // Reset mode on view reset
-      const primaryStar = system.nodes.find(n => n.parentId === null);
-      const initialPan = primaryStar ? worldPositions.get(primaryStar.id) || {x: 0, y: 0} : { x: 0, y: 0 };
       
-      const children = system.nodes.filter(n => n.parentId === primaryStar?.id);
-      const maxOrbit = children.reduce((max, node) => {
-          if (node.kind === 'body' && node.orbit) {
-              return Math.max(max, node.orbit.elements.a_AU * (1 + node.orbit.elements.e));
-          }
-          return max;
-      }, 0);
+      const targetId = focusedBodyId || system.nodes.find(n => n.parentId === null)?.id;
 
-      const initialZoom = maxOrbit > 0 ? (Math.min(canvas.width, canvas.height) / 2) / (maxOrbit * 1.2) : 100;
-
-      cameraStore.set({ pan: initialPan, zoom: initialZoom });
+      if (targetId) {
+          const frame = calculateFrameForNode(targetId);
+          cameraStore.set(frame);
+      }
   }
 
   // --- Reactive Logic for Triggering Animation ---
@@ -77,40 +127,19 @@
 
   function startFocusAnimation(targetId: string) {
       if (!system) return;
-      const nodesById = new Map(system.nodes.map(n => [n.id, n]));
-      const targetNode = nodesById.get(targetId);
       const targetPosition = worldPositions.get(targetId);
-
-      if (!targetNode || !targetPosition) return;
+      if (!targetPosition) return;
 
       cameraMode = 'FOLLOW';
 
-      // Determine the context body for framing the zoom
-      const targetHasChildren = system.nodes.some(n => n.parentId === targetId);
-      let contextBody = targetNode;
-      if (!targetHasChildren) {
-          contextBody = targetNode.parentId ? nodesById.get(targetNode.parentId) ?? targetNode : targetNode;
-      }
-
-      // Calculate zoom based on the context body's children
-      const children = system.nodes.filter(n => n.parentId === contextBody.id);
-      const maxOrbit = children.reduce((max, node) => {
-          if (node.kind === 'body' && node.orbit) {
-              return Math.max(max, node.orbit.elements.a_AU * (1 + node.orbit.elements.e));
-          }
-          return max;
-      }, 0);
-      
-      const newZoom = maxOrbit > 0 
-          ? (Math.min(canvas.width, canvas.height) / 2) / (maxOrbit * 1.5)
-          : camera.zoom; // Maintain zoom if context body has no orbiting children
+      const newFrame = calculateFrameForNode(targetId);
 
       animState = {
           startTime: performance.now(),
           startPan: { ...camera.pan },
-          endPan: targetPosition,
+          endPan: newFrame.pan,
           startZoom: camera.zoom,
-          endZoom: newZoom,
+          endZoom: newFrame.zoom,
       };
 
       isAnimatingFocus = true;
@@ -128,9 +157,6 @@
     canvas.width = parent.clientWidth;
     canvas.height = parent.clientWidth * (3 / 4);
     
-    calculateWorldPositions();
-    resetView();
-
     animationFrameId = requestAnimationFrame(render);
     return () => {
         if (parent) resizeObserver.unobserve(parent);
@@ -168,12 +194,10 @@
             const elapsedTime = performance.now() - animState.startTime;
             const t = Math.min(elapsedTime / ANIMATION_DURATION, 1.0);
 
-            const s = Math.sin(Math.PI / 2 * t);
-            const c = Math.cos(Math.PI / 2 * t);
-
-            const newX = animState.startPan.x * (1 - s) + animState.endPan.x * s;
-            const newY = animState.startPan.y * (1 - s) + animState.endPan.y * s;
-            const newZoom = animState.startZoom * (1 - s) + animState.endZoom * s;
+            // Directly set the final state without interpolation
+            const newX = animState.endPan.x;
+            const newY = animState.endPan.y;
+            const newZoom = animState.endZoom;
 
             cameraStore.set({ pan: { x: newX, y: newY }, zoom: newZoom });
 
@@ -299,7 +323,15 @@
               }
           }
       }
-      if (clickedNodeId) dispatch("focus", clickedNodeId);
+      if (clickedNodeId) {
+        if (clickedNodeId === focusedBodyId) {
+          // It IS the current focus, zoom in 2x
+          cameraStore.update(c => ({ ...c, zoom: c.zoom * 2 }));
+        } else {
+          // It is not the object in focus, dispatch focus event
+          dispatch("focus", clickedNodeId);
+        }
+      }
   }
 
   function handleWheel(event: WheelEvent) {
@@ -354,7 +386,7 @@
   const STAR_COLOR_MAP: Record<string, string> = { "O": "#9bb0ff", "B": "#aabfff", "A": "#cad8ff", "F": "#f8f7ff", "G": "#fff4ea", "K": "#ffd2a1", "M": "#ffc46f", "WD": "#f0f0f0", "NS": "#c0c0ff", "magnetar": "#800080", "BH": "#000000", "default": "#ffffff" };
 
   function drawSystem(ctx: CanvasRenderingContext2D) {
-      if (!system || !camera) return;
+      if (!system || !camera || !camera.pan) return;
       const { width, height } = canvas;
       
       ctx.save();

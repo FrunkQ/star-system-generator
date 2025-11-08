@@ -104,7 +104,7 @@
       if (systemNode.viewport) {
         viewportStore.set(systemNode.viewport);
       } else {
-        viewportStore.set({ panX: 0, panY: 0, zoom: 1 });
+        viewportStore.set({ pan: { x: 0, y: 0 }, zoom: 1 });
       }
       systemStore.set(JSON.parse(JSON.stringify(systemNode.system)));
       history.pushState({ systemId: currentSystemId }, '');
@@ -137,7 +137,6 @@
         });
     }
 
-    console.log('handleBackToStarmap called');
     currentSystemId = null;
     systemStore.set(null);
   }

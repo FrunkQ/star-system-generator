@@ -27,7 +27,7 @@ export const aiSettings = writable<AISettings>(getInitialSettings());
 
 export const systemStore = writable<System | null>(null);
 
-export const viewportStore = writable({ panX: 0, panY: 0, zoom: 1 });
+export const viewportStore = writable({ pan: { x: 0, y: 0 }, zoom: 1 });
 
 // Subscribe to changes and save to localStorage
 aiSettings.subscribe(value => {

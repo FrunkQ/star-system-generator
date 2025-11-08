@@ -12,7 +12,9 @@
   import GmNotesEditor from './GmNotesEditor.svelte';
   import ZoneKey from './ZoneKey.svelte';
 
-  import { systemStore } from '$lib/stores';
+  import { systemStore, viewportStore } from '$lib/stores';
+  import { cameraStore } from '$lib/cameraStore';
+  import { get } from 'svelte/store';
 
   export let system: System;
   export let rulePack: RulePack;
@@ -98,7 +100,6 @@
         console.log('Dispatching back event');
         dispatch('back');
     }
-    visualizer?.resetView();
   }
 
   function zoomOut() {
@@ -220,6 +221,8 @@
     return '#ffa500'; // Orange
   }
 
+  let unsubscribeCameraStore: () => void;
+
   onMount(() => {
     systemStore.set(system);
     currentTime = system.epochT0;
@@ -232,12 +235,24 @@
     });
     generationOptions = options;
 
+    // Sync viewportStore to cameraStore on mount
+    const currentViewport = get(viewportStore);
+    cameraStore.set(currentViewport);
+
+    // Sync cameraStore back to viewportStore on change
+    unsubscribeCameraStore = cameraStore.subscribe(cameraState => {
+        viewportStore.set(cameraState);
+    });
+
     window.addEventListener('popstate', handlePopState);
   });
 
   onDestroy(() => {
     if (browser) {
       pause();
+    }
+    if (unsubscribeCameraStore) {
+        unsubscribeCameraStore();
     }
     window.removeEventListener('popstate', handlePopState);
   });
