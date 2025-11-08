@@ -22,6 +22,7 @@
 
   // --- Configurable Visuals ---
   const CLICK_AREA = { base_px: 10, buffer_px: 5 };
+  const ANIMATION_DURATION = 1500; // ms for the crash zoom
 
   // --- Canvas and Rendering State ---
   let canvas: HTMLCanvasElement;
@@ -38,10 +39,19 @@
   let lastPanY: number;
   let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
   let lastFocusedId: string | null = null;
+  let isAnimatingFocus = false;
+  let animState = {
+      startTime: 0,
+      startPan: { x: 0, y: 0 },
+      endPan: { x: 0, y: 0 },
+      startZoom: 100,
+      endZoom: 100,
+  };
 
   // --- Public Functions ---
   export function resetView() {
       if (!system || !canvas) return;
+      isAnimatingFocus = false; // Stop any ongoing animation
       cameraMode = 'FOLLOW'; // Reset mode on view reset
       const primaryStar = system.nodes.find(n => n.parentId === null);
       const initialPan = primaryStar ? worldPositions.get(primaryStar.id) || {x: 0, y: 0} : { x: 0, y: 0 };
@@ -59,26 +69,51 @@
       cameraStore.set({ pan: initialPan, zoom: initialZoom });
   }
 
-  // --- Reactive Logic for Camera Control ---
+  // --- Reactive Logic for Triggering Animation ---
   $: if (focusedBodyId && focusedBodyId !== lastFocusedId && system && canvas && worldPositions.size > 0) {
       lastFocusedId = focusedBodyId;
-      cameraMode = 'FOLLOW'; // A new focus action should re-engage follow mode
-      const targetPosition = worldPositions.get(focusedBodyId);
-      if (targetPosition) {
-          const children = system.nodes.filter(n => n.parentId === focusedBodyId);
-          const maxOrbit = children.reduce((max, node) => {
-              if (node.kind === 'body' && node.orbit) {
-                  return Math.max(max, node.orbit.elements.a_AU * (1 + node.orbit.elements.e));
-              }
-              return max;
-          }, 0);
-          
-          const newZoom = maxOrbit > 0 
-              ? (Math.min(canvas.width, canvas.height) / 2) / (maxOrbit * 1.5)
-              : camera.zoom; // Maintain current zoom for childless bodies
+      startFocusAnimation(focusedBodyId);
+  }
 
-          cameraStore.set({ pan: targetPosition, zoom: newZoom });
+  function startFocusAnimation(targetId: string) {
+      if (!system) return;
+      const nodesById = new Map(system.nodes.map(n => [n.id, n]));
+      const targetNode = nodesById.get(targetId);
+      const targetPosition = worldPositions.get(targetId);
+
+      if (!targetNode || !targetPosition) return;
+
+      cameraMode = 'FOLLOW';
+
+      // Determine the context body for framing the zoom
+      const targetHasChildren = system.nodes.some(n => n.parentId === targetId);
+      let contextBody = targetNode;
+      if (!targetHasChildren) {
+          contextBody = targetNode.parentId ? nodesById.get(targetNode.parentId) ?? targetNode : targetNode;
       }
+
+      // Calculate zoom based on the context body's children
+      const children = system.nodes.filter(n => n.parentId === contextBody.id);
+      const maxOrbit = children.reduce((max, node) => {
+          if (node.kind === 'body' && node.orbit) {
+              return Math.max(max, node.orbit.elements.a_AU * (1 + node.orbit.elements.e));
+          }
+          return max;
+      }, 0);
+      
+      const newZoom = maxOrbit > 0 
+          ? (Math.min(canvas.width, canvas.height) / 2) / (maxOrbit * 1.5)
+          : camera.zoom; // Maintain zoom if context body has no orbiting children
+
+      animState = {
+          startTime: performance.now(),
+          startPan: { ...camera.pan },
+          endPan: targetPosition,
+          startZoom: camera.zoom,
+          endZoom: newZoom,
+      };
+
+      isAnimatingFocus = true;
   }
 
   // --- Svelte Lifecycle ---
@@ -129,10 +164,25 @@
       if (ctx) {
         calculateWorldPositions();
 
-        // Follow the focused body, but only when in FOLLOW mode and not being manually panned
-        if (focusedBodyId && cameraMode === 'FOLLOW' && !isPanning) {
+        if (isAnimatingFocus) {
+            const elapsedTime = performance.now() - animState.startTime;
+            const t = Math.min(elapsedTime / ANIMATION_DURATION, 1.0);
+
+            const s = Math.sin(Math.PI / 2 * t);
+            const c = Math.cos(Math.PI / 2 * t);
+
+            const newX = animState.startPan.x * (1 - s) + animState.endPan.x * s;
+            const newY = animState.startPan.y * (1 - s) + animState.endPan.y * s;
+            const newZoom = animState.startZoom * (1 - s) + animState.endZoom * s;
+
+            cameraStore.set({ pan: { x: newX, y: newY }, zoom: newZoom });
+
+            if (t >= 1.0) {
+                isAnimatingFocus = false;
+            }
+        } else if (focusedBodyId && cameraMode === 'FOLLOW' && !isPanning) {
             const targetPosition = worldPositions.get(focusedBodyId);
-            if (targetPosition && (targetPosition.x !== camera.pan.x || targetPosition.y !== camera.pan.y)) {
+            if (targetPosition) {
                 cameraStore.update(c => ({ ...c, pan: targetPosition }));
             }
         }
@@ -183,36 +233,36 @@
       const focusNode = nodesById.get(focusedBodyId || primaryStar?.id || '');
       if (!focusNode) return visibleIds;
 
-      // Always add ancestors of the focus node
+      // 1. Always add all ancestors of the focused body
       let current: SystemNode | undefined = focusNode;
       while (current) {
           visibleIds.add(current.id);
           current = current.parentId ? nodesById.get(current.parentId) : undefined;
       }
 
+      // 2. Determine the context body
       const focusNodeHasChildren = system.nodes.some(n => n.parentId === focusNode.id);
+      let contextBody = focusNode;
+      if (!focusNodeHasChildren) {
+          contextBody = focusNode.parentId ? nodesById.get(focusNode.parentId) ?? focusNode : focusNode;
+      }
 
-      if (focusNodeHasChildren) {
-          // If focus has children (e.g., a star or planet), show its direct children
-          system.nodes.forEach(n => {
-              if (n.parentId === focusNode.id) visibleIds.add(n.id);
-          });
-      } else {
-          // If focus has no children (e.g., a moon), show its siblings
-          if (focusNode.parentId) {
-              system.nodes.forEach(n => {
-                  if (n.parentId === focusNode.parentId) visibleIds.add(n.id);
-              });
-
-              // NEW LOGIC: Also show all planets
-              const parentNode = nodesById.get(focusNode.parentId);
-              if (parentNode && parentNode.parentId) { // If parent is not the star
-                  const grandparentId = parentNode.parentId;
-                  system.nodes.forEach(n => {
-                      if (n.parentId === grandparentId) visibleIds.add(n.id);
-                  });
-              }
+      // 3. Add the context body and its direct children
+      visibleIds.add(contextBody.id);
+      system.nodes.forEach(n => {
+          if (n.parentId === contextBody.id) {
+              visibleIds.add(n.id);
           }
+      });
+
+      // 4. If the context body has a parent, add all of its siblings
+      if (contextBody.parentId) {
+        const grandparentId = contextBody.parentId;
+        system.nodes.forEach(n => {
+            if (n.parentId === grandparentId) {
+                visibleIds.add(n.id);
+            }
+        });
       }
       
       return visibleIds;
@@ -254,6 +304,7 @@
 
   function handleWheel(event: WheelEvent) {
       event.preventDefault();
+      isAnimatingFocus = false; // Interrupt animation
       const rect = canvas.getBoundingClientRect();
       const mouseX = event.clientX - rect.left;
       const mouseY = event.clientY - rect.top;
@@ -266,6 +317,7 @@
   }
 
   function handleMouseDown(event: MouseEvent) {
+      isAnimatingFocus = false; // Interrupt animation
       isPanning = true;
       cameraMode = 'MANUAL'; // User is taking control
       lastPanX = event.clientX;
