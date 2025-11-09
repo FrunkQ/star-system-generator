@@ -565,12 +565,22 @@
           const dx = clickPos.x - pos.x;
           const dy = clickPos.y - pos.y;
           const distanceSq = dx * dx + dy * dy;
-          const radiusInAU = (node.radiusKm || 0) / AU_KM;
-          const clickRadiusInAU = Math.max(
-              radiusInAU + (CLICK_AREA.buffer_px / camera.zoom),
-              CLICK_AREA.base_px / camera.zoom
-          );
-          if (distanceSq < clickRadiusInAU * clickRadiusInAU) {
+
+          // Use the same radius calculation as in drawSystem for perfect click matching
+          let radiusInAU = (node.radiusKm || 0) / AU_KM;
+          if (toytownFactor > 0) {
+              radiusInAU = scaleBoxCox(radiusInAU, toytownFactor, x0_distance);
+          }
+          let minRadiusPx = 2;
+          if (node.roleHint === 'star') minRadiusPx = 4;
+          else if (node.roleHint === 'planet') {
+              const isGasGiant = node.classes.some(c => c.includes('gas-giant') || c.includes('ice-giant'));
+              minRadiusPx = isGasGiant ? 3 : 2;
+          } else if (node.roleHint === 'moon') minRadiusPx = 1;
+          const minRadiusInWorld = minRadiusPx / camera.zoom;
+          const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
+
+          if (distanceSq < finalRadius * finalRadius) {
               if (distanceSq < minDistanceSq) {
                   minDistanceSq = distanceSq;
                   clickedNodeId = node.id;
@@ -732,19 +742,30 @@
                       const grandParentPos = toytownFactor > 0 ? scaledWorldPositions.get(parent.parentId) : worldPositions.get(parent.parentId);
                       if (grandParentPos) {
                           const angleToStar = Math.atan2(parentPos.y - grandParentPos.y, parentPos.x - grandParentPos.x);
-                          const planetRadiusAU = (parent.radiusKm || 0) / AU_KM;
-                          let avgRadius = ((node.radiusInnerKm || 0) + (node.radiusOuterKm || 0)) / 2 / AU_KM;
-                          if (toytownFactor > 0) {
-                              avgRadius = scaleBoxCox(avgRadius, toytownFactor, x0_distance);
-                          }
                           
+                          let planetRadiusAU = (parent.radiusKm || 0) / AU_KM;
+                          if (toytownFactor > 0) {
+                              planetRadiusAU = scaleBoxCox(planetRadiusAU, toytownFactor, x0_distance);
+                          }
+
+                          // Re-calculate ring radii for shadow to ensure scope
+                          let innerRadiusAU = (node.radiusInnerKm || 0) / AU_KM;
+                          let outerRadiusAU = (node.radiusOuterKm || 0) / AU_KM;
+
+                          if (toytownFactor > 0) {
+                              innerRadiusAU = scaleBoxCox(innerRadiusAU, toytownFactor, x0_distance);
+                              outerRadiusAU = scaleBoxCox(outerRadiusAU, toytownFactor, x0_distance);
+                          }
+                          const avgRadius = (innerRadiusAU + outerRadiusAU) / 2;
+                          const widthAU = outerRadiusAU - innerRadiusAU;
+
                           const shadowAngle = Math.atan2(planetRadiusAU, avgRadius);
                           
                           const startAngle = angleToStar - shadowAngle;
                           const endAngle = angleToStar + shadowAngle;
                           
                           ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-                          ctx.lineWidth = (node.radiusOuterKm || 0) / AU_KM - (node.radiusInnerKm || 0) / AU_KM;
+                          ctx.lineWidth = widthAU; // Use the same width as the ring itself
                           ctx.beginPath();
                           ctx.arc(parentPos.x, parentPos.y, avgRadius, startAngle, endAngle);
                           ctx.stroke();
