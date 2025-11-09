@@ -1,4 +1,6 @@
-import { writable } from 'svelte/store';
+import { tweened } from 'svelte/motion';
+import type { Tweened } from 'svelte/motion';
+import { linear } from 'svelte/easing';
 
 export interface CameraState {
   pan: {
@@ -13,4 +15,7 @@ const initialState: CameraState = {
   zoom: 100,
 };
 
-export const cameraStore = writable<CameraState>(initialState);
+export const cameraStore: Tweened<CameraState> = tweened(initialState, {
+    duration: 1500, // Default duration
+    easing: linear,
+});

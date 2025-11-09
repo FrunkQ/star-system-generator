@@ -126,7 +126,6 @@
 
   // --- Reactive Logic for Triggering Animation ---
   $: if (focusedBodyId && focusedBodyId !== lastFocusedId && system && canvas && worldPositions.size > 0) {
-      isAnimatingFocus = true; // Prevent FOLLOW logic from running prematurely
       lastFocusedId = focusedBodyId;
       startFocusAnimation(focusedBodyId);
   }
@@ -137,21 +136,19 @@
       if (!targetPosition) return;
 
       cameraMode = 'FOLLOW';
+      isAnimatingFocus = true;
 
-      const beforeViewport = get(cameraStore); // Capture current state
-      const newFrame = calculateFrameForNode(targetId);
-
-      animState = {
-          startTime: performance.now(),
-          startPan: { ...beforeViewport.pan },
-          endPan: newFrame.pan,
-          startZoom: beforeViewport.zoom,
-          endZoom: newFrame.zoom,
-      };
-
-      // isAnimatingFocus is already set
-      const afterViewport = { pan: newFrame.pan, zoom: newFrame.zoom }; // Capture new state
+      const beforeViewport = get(cameraStore);
+      const afterViewport = calculateFrameForNode(targetId);
+      
       console.log('Viewport Change (Focus Animation):', { before: beforeViewport, after: afterViewport });
+
+      cameraStore.set(afterViewport, { duration: 1500 });
+
+      // Re-enable follow logic after the animation is complete
+      setTimeout(() => {
+          isAnimatingFocus = false;
+      }, 1500);
   }
 
   // --- Svelte Lifecycle ---
@@ -199,24 +196,11 @@
       if (ctx) {
         calculateWorldPositions();
 
-        if (isAnimatingFocus) {
-            const elapsedTime = performance.now() - animState.startTime;
-            const t = Math.min(elapsedTime / ANIMATION_DURATION, 1.0);
-
-            // Directly set the final state without interpolation
-            const newX = animState.endPan.x;
-            const newY = animState.endPan.y;
-            const newZoom = animState.endZoom;
-
-            cameraStore.set({ pan: { x: newX, y: newY }, zoom: newZoom });
-
-            if (t >= 1.0) {
-                isAnimatingFocus = false;
-            }
-        } else if (focusedBodyId && cameraMode === 'FOLLOW' && !isPanning && !isAnimatingFocus) {
+        if (focusedBodyId && cameraMode === 'FOLLOW' && !isPanning && !isAnimatingFocus) {
             const targetPosition = worldPositions.get(focusedBodyId);
             if (targetPosition) {
-                cameraStore.update(c => ({ ...c, pan: targetPosition }));
+                // Use set with duration 0 to avoid triggering another animation
+                cameraStore.set({ ...camera, pan: targetPosition }, { duration: 0 });
             }
         }
 
