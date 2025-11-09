@@ -9,6 +9,7 @@
   import { panStore, zoomStore } from '$lib/cameraStore';
   import type { PanState } from '$lib/cameraStore';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
+  import { scaleBoxCox } from '$lib/physics/scaling';
 
   export let system: System | null;
   export let rulePack: RulePack;
@@ -39,6 +40,7 @@
   let canvas: HTMLCanvasElement;
   let animationFrameId: number;
   let worldPositions = new Map<string, { x: number, y: number }>();
+  let scaledWorldPositions = new Map<string, { x: number, y: number }>();
   let stellarZones: Record<string, any> | null = null;
   let needsReset = false;
 
@@ -57,6 +59,7 @@
   let lastFocusedId: string | null = null;
   let isAnimatingFocus = false;
   let beltLabelClickAreas = new Map<string, { x1: number, y1: number, x2: number, y2: number }>();
+  let x0_distance = 0.01; // Default pivot for distance scaling
 
   // --- Reactive Calculations ---
   $: if (system) {
@@ -80,6 +83,75 @@
     } else {
       stellarZones = null;
     }
+  }
+
+  function calculateScaledPositions() {
+    if (!system || toytownFactor === 0) {
+      scaledWorldPositions = worldPositions; // If toytownFactor is 0, use original positions
+      return;
+    }
+
+    const nodesById = new Map(system.nodes.map(n => [n.id, n]));
+    const newScaledPositions = new Map<string, { x: number, y: number }>();
+
+    // Collect all distances for normalization
+    const distances: number[] = [];
+    for (const node of system.nodes) {
+      if (node.parentId && worldPositions.has(node.id) && worldPositions.has(node.parentId)) {
+        const parentPos = worldPositions.get(node.parentId)!;
+        const nodePos = worldPositions.get(node.id)!;
+        const dx = nodePos.x - parentPos.x;
+        const dy = nodePos.y - parentPos.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance > 0) {
+          distances.push(distance);
+        }
+      }
+    }
+
+    // Determine x0 for distances (e.g., 1/10th of the smallest non-zero distance)
+    const minDistance = distances.length > 0 ? Math.min(...distances) : 0.01; // Default if no distances
+    x0_distance = minDistance * 0.1; 
+
+    // Recursively calculate scaled positions
+    function getScaledPosition(nodeId: string): { x: number, y: number } {
+      if (newScaledPositions.has(nodeId)) return newScaledPositions.get(nodeId)!;
+
+      const node = nodesById.get(nodeId);
+      if (!node) return { x: 0, y: 0 };
+
+      if (node.parentId === null) {
+        newScaledPositions.set(nodeId, { x: 0, y: 0 });
+        return { x: 0, y: 0 };
+      }
+
+      const parentScaledPos = getScaledPosition(node.parentId); // Get parent's scaled position
+      const parentTruePos = worldPositions.get(node.parentId)!; // Get parent's true position
+      const nodeTruePos = worldPositions.get(node.id)!; // Get node's true position
+
+      const dxTrue = nodeTruePos.x - parentTruePos.x;
+      const dyTrue = nodeTruePos.y - parentTruePos.y;
+      const trueDistance = Math.sqrt(dxTrue * dxTrue + dyTrue * dyTrue);
+
+      let scaledDistance = trueDistance;
+      if (trueDistance > 0) {
+        scaledDistance = scaleBoxCox(trueDistance, toytownFactor, x0_distance);
+      }
+
+      // Reconstruct position based on scaled distance and original angle
+      const angle = Math.atan2(dyTrue, dxTrue);
+      const x = parentScaledPos.x + scaledDistance * Math.cos(angle);
+      const y = parentScaledPos.y + scaledDistance * Math.sin(angle);
+
+      newScaledPositions.set(nodeId, { x, y });
+      return { x, y };
+    }
+
+    // Populate scaledWorldPositions for all nodes
+    for (const node of system.nodes) {
+      getScaledPosition(node.id);
+    }
+    scaledWorldPositions = newScaledPositions;
   }
 
   // --- Public Functions ---
@@ -250,6 +322,7 @@
   function screenToWorld(screenX: number, screenY: number): { x: number, y: number } {
       if (!canvas || !camera || !camera.pan) return { x: 0, y: 0 };
       const { width, height } = canvas;
+      const targetWorldPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
       const worldX = (screenX - width / 2) / camera.zoom + camera.pan.x;
       const worldY = (screenY - height / 2) / camera.zoom + camera.pan.y;
       return { x: worldX, y: worldY };
@@ -271,6 +344,7 @@
 
       if (ctx) {
         calculateWorldPositions();
+        calculateScaledPositions(); // Ensure scaled positions are in sync
         if (needsReset) {
             resetView();
             needsReset = false;
@@ -278,7 +352,7 @@
         calculateLagrangePointPositions(); // Calculate L-points each frame
 
         if (focusedBodyId && cameraMode === 'FOLLOW' && !isPanning && !isAnimatingFocus) {
-            const targetPosition = worldPositions.get(focusedBodyId);
+            const targetPosition = toytownFactor > 0 ? scaledWorldPositions.get(focusedBodyId) : worldPositions.get(focusedBodyId);
             if (targetPosition) {
                 panStore.set(targetPosition, { duration: 0 });
             }
@@ -451,11 +525,12 @@
       let minDistanceSq = Infinity;
 
       const clickableIds = getVisibleNodeIds(system, focusedBodyId);
+      const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
 
       for (const node of system.nodes) {
           if (!clickableIds.has(node.id) || node.kind !== 'body') continue;
 
-          const pos = worldPositions.get(node.id);
+          const pos = targetPositions.get(node.id);
           if (!pos) continue;
 
           const dx = clickPos.x - pos.x;
@@ -555,11 +630,17 @@
       // --- Drawing Orbits (except for belts) ---
       for (const node of system.nodes) {
           if (node.kind !== 'body' || !node.orbit || !node.parentId || node.roleHint === 'belt') continue;
-          const parentPos = worldPositions.get(node.parentId);
+          
+          const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(node.parentId) : worldPositions.get(node.parentId);
           if (!parentPos) continue;
           
-          const a = node.orbit.elements.a_AU;
-          const e = node.orbit.elements.e;
+          let a = node.orbit.elements.a_AU;
+          let e = node.orbit.elements.e;
+
+          if (toytownFactor > 0) {
+              a = scaleBoxCox(a, toytownFactor, x0_distance);
+          }
+          
           const b = a * Math.sqrt(1 - e * e);
           const c = a * e; // distance from center to focus
           
@@ -653,7 +734,7 @@
 
       // --- Draw Celestial Bodies and Barycenters ---
       for (const node of system.nodes) {
-          const pos = worldPositions.get(node.id);
+          const pos = scaledWorldPositions.get(node.id);
           if (!pos) continue;
 
           if (node.kind === 'barycenter') {
@@ -708,11 +789,17 @@
               if (!visibleLabelIds.has(node.id) || node.kind !== 'body') continue;
 
               if (node.roleHint === 'belt' && node.orbit && node.parentId) {
-                  const parentPos = worldPositions.get(node.parentId);
+                  const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(node.parentId) : worldPositions.get(node.parentId);
                   if (!parentPos) continue;
 
-                  const a = node.orbit.elements.a_AU;
+                  let a = node.orbit.elements.a_AU;
                   const e = node.orbit.elements.e;
+
+                  if (toytownFactor > 0) {
+                      const minDistance = 0.01; // A small default to avoid issues with x0
+                      const x0_distance = minDistance * 0.1;
+                      a = scaleBoxCox(a, toytownFactor, x0_distance);
+                  }
                   
                   const apoapsisX = parentPos.x - (a * (1 + e));
                   const apoapsisY = parentPos.y;
@@ -732,7 +819,7 @@
                   beltLabelClickAreas.set(node.id, { x1, y1, x2, y2 });
 
               } else if (node.roleHint !== 'ring' && node.roleHint !== 'belt') {
-                  const worldPos = worldPositions.get(node.id);
+                  const worldPos = toytownFactor > 0 ? scaledWorldPositions.get(node.id) : worldPositions.get(node.id);
                   if (!worldPos) continue;
 
                   const screenPos = worldToScreen(worldPos.x, worldPos.y);
