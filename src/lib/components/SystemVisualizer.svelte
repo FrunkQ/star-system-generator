@@ -914,7 +914,7 @@
 
       if (showZones && stellarZones) {
           const primaryStar = system.nodes.find(n => n.parentId === null && n.kind === 'body');
-          const starPos = primaryStar ? worldPositions.get(primaryStar.id) : { x: 0, y: 0 };
+          const starPos = primaryStar ? (toytownFactor > 0 ? scaledWorldPositions.get(primaryStar.id) : worldPositions.get(primaryStar.id)) : { x: 0, y: 0 };
 
           if (starPos) {
               const zoneLabels = [
@@ -941,7 +941,11 @@
                   }
 
                   if (radius > 0) {
-                      const screenPos = worldToScreen(starPos.x, starPos.y - radius);
+                      let scaledRadius = radius;
+                      if (toytownFactor > 0) {
+                          scaledRadius = scaleBoxCox(radius, toytownFactor, x0_distance);
+                      }
+                      const screenPos = worldToScreen(starPos.x, starPos.y - scaledRadius);
                       ctx.fillStyle = label.color;
                       ctx.fillText(label.name, screenPos.x, screenPos.y - 5);
                   }
