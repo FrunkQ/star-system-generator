@@ -349,7 +349,6 @@
       {selectedSystemForLink}
     />
     <div class="starmap-controls">
-      <button on:click={handleLoadStarmap} disabled={!hasSavedStarmap}>Load from Browser</button>
       <button on:click={handleDownloadStarmap}>Download Starmap</button>
       <button on:click={handleUploadStarmap}>Upload Starmap</button>
       <button on:click={() => showSettingsModal = true}>Settings</button>
