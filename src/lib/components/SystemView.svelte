@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+  import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
   import { browser } from '$app/environment';
   import type { RulePack, System, CelestialBody } from '$lib/types';
   import { deleteNode, addPlanetaryBody, renameNode, addHabitablePlanet, generateSystem, computePlayerSnapshot } from '$lib/api';
@@ -32,6 +32,7 @@
   let showNames = true;
   let showZones = false;
   let showLPoints = false;
+
 
 
   // Time state
@@ -78,7 +79,7 @@
     cancelAnimationFrame(animationFrameId);
   }
 
-  function handleGenerate(empty: boolean = false) {
+  async function handleGenerate(empty: boolean = false) {
     const seed = `seed-${Date.now()}`;
     const newSystem = generateSystem(seed, rulePack, {}, selectedGenerationOption, empty);
     systemStore.set(newSystem);
@@ -175,7 +176,7 @@
     if (!input.files || input.files.length === 0) return;
     const file = input.files[0];
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const json = e.target?.result as string;
         const newSystem = JSON.parse(json);

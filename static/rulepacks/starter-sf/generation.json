@@ -121,6 +121,12 @@
                 { "weight": 15, "value": true }
             ]
         },
+        "belt_width_au_range": {
+            "name": "Range for asteroid belt width in AU",
+            "entries": [
+                { "weight": 100, "value": [0.5, 1.5] }
+            ]
+        },
         "titius_bode_law": {
             "name": "Titius-Bode Law parameters for planet spacing",
             "a": 0.4,

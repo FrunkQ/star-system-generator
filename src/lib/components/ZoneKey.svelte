@@ -188,10 +188,10 @@
 	}
 
 	.color-box.red {
-		background-color: rgba(255, 0, 0, 0.2);
+		background-color: rgba(180, 0, 0, 0.2);
 	}
 	.color-box.orange {
-		background-color: rgba(255, 165, 0, 0.2);
+		background-color: rgba(200, 100, 0, 0.2);
 	}
 	.color-box.green {
 		background-color: rgba(0, 255, 0, 0.1);
@@ -212,7 +212,7 @@
 		background-color: rgba(0, 0, 255, 0.5);
 	}
 	.color-box.red-line {
-		background-color: rgba(255, 0, 0, 0.5);
+		background-color: rgba(180, 0, 0, 0.5);
 	}
 
 	.notes {

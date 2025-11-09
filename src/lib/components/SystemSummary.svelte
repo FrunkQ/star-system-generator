@@ -18,6 +18,7 @@
   let biospheres = 0;
   let totalPlanets = 0;
   let totalMoons = 0;
+  let belts = 0;
 
   function getPlanetColor(node: CelestialBody): string {
     if (node.roleHint === 'star') return '#fff'; // White
@@ -26,8 +27,8 @@
     const isIceGiant = node.classes?.some(c => c.includes('ice-giant'));
     if (isIceGiant) return '#add8e6'; // Light Blue
     const isGasGiant = node.classes?.some(c => c.includes('gas-giant'));
-    if (isGasGiant) return '#ff0000'; // Red
-    return '#ffa500'; // Orange
+    if (isGasGiant) return '#cc0000'; // Darker Red for Gas Giants
+    return '#cc6600'; // Darker Orange/Brown for Terrestrial Bodies
   }
 
   $: {
@@ -39,6 +40,7 @@
     biospheres = 0;
     totalPlanets = 0;
     totalMoons = 0;
+    belts = 0;
 
     if (system) {
         for (const node of system.nodes) {
@@ -48,6 +50,8 @@
                 totalPlanets++;
             } else if (node.roleHint === 'moon') {
                 totalMoons++;
+            } else if (node.roleHint === 'belt') {
+                belts++;
             }
 
             if (node.roleHint === 'planet' || node.roleHint === 'moon') {
@@ -89,11 +93,15 @@
             <span class="value">{totalMoons}</span>
             <span class="label">Moons</span>
         </div>
-        <div class="summary-item" style="border: 2px solid #ffa500">
+        <div class="summary-item">
+            <span class="value">{belts}</span>
+            <span class="label">Belts</span>
+        </div>
+        <div class="summary-item" style="border: 2px solid #cc6600">
             <span class="value">{terrestrials}</span>
             <span class="label">Terrestrial Bodies</span>
         </div>
-        <div class="summary-item" style="border: 2px solid #ff0000">
+        <div class="summary-item" style="border: 2px solid #cc0000">
             <span class="value">{gasGiants}</span>
             <span class="label">Gas Giants</span>
         </div>

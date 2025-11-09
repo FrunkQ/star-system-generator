@@ -44,7 +44,14 @@ export function _generatePlanetaryBody(
     const beltChanceTable = pack.distributions['belt_chance'];
     const isBelt = beltChanceTable ? weightedChoice<boolean>(rng, beltChanceTable) : false;
 
-    if (isBelt && host.kind !== 'body') { // Belts only form around stars/barycenters
+    if (isBelt && !(host.kind === 'body' && host.roleHint === 'planet')) { // Belts don't form as moons
+        const beltWidthRange = pack.distributions['belt_width_au_range']?.entries[0]?.value || [0.5, 1.5];
+        const widthAU = randomFromRange(rng, beltWidthRange[0], beltWidthRange[1]);
+        const centerAU = orbit.elements.a_AU;
+
+        const radiusInnerKm = (centerAU - widthAU / 2) * AU_KM;
+        const radiusOuterKm = (centerAU + widthAU / 2) * AU_KM;
+
         const belt: CelestialBody = {
             id: `${seed}-belt-${i + 1}`,
             parentId: host.id,
@@ -53,6 +60,8 @@ export function _generatePlanetaryBody(
             roleHint: 'belt',
             classes: ['belt/asteroid'],
             orbit: orbit,
+            radiusInnerKm: radiusInnerKm,
+            radiusOuterKm: radiusOuterKm,
             tags: [],
             areas: [],
         };

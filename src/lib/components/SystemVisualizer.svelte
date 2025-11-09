@@ -10,7 +10,6 @@
   import type { PanState } from '$lib/cameraStore';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
 
-  // --- Component Props ---
   export let system: System | null;
   export let rulePack: RulePack;
   export let currentTime: number;
@@ -18,7 +17,16 @@
   export let showNames: boolean = false;
   export let showZones: boolean = false;
   export let showLPoints: boolean = false;
-  export let getPlanetColor: (node: CelestialBody) => string = () => '#fff';
+  function getPlanetColor(node: CelestialBody): string {
+    if (node.roleHint === 'star') return '#fff'; // White
+    if (node.tags?.some(t => t.key === 'habitability/earth-like' || t.key === 'habitability/human')) return '#007bff'; // Blue
+    if (node.biosphere) return '#00ff00'; // Green
+    const isIceGiant = node.classes?.some(c => c.includes('ice-giant'));
+    if (isIceGiant) return '#add8e6'; // Light Blue
+    const isGasGiant = node.classes?.some(c => c.includes('gas-giant'));
+    if (isGasGiant) return '#cc0000'; // Darker Red for Gas Giants
+    return '#cc6600'; // Darker Orange/Brown for Terrestrial Bodies
+  }
 
   const dispatch = createEventDispatcher<{ focus: string | null }>();
 
@@ -30,6 +38,7 @@
   let animationFrameId: number;
   let worldPositions = new Map<string, { x: number, y: number }>();
   let stellarZones: Record<string, any> | null = null;
+  let needsReset = false;
 
   // --- Camera State ---
   let pan: PanState;
@@ -48,6 +57,9 @@
   let beltLabelClickAreas = new Map<string, { x1: number, y1: number, x2: number, y2: number }>();
 
   // --- Reactive Calculations ---
+  $: if (system) {
+    needsReset = true;
+  }
   $: if (system && rulePack) {
     calculateAndStoreStellarZones();
   }
@@ -257,6 +269,10 @@
 
       if (ctx) {
         calculateWorldPositions();
+        if (needsReset) {
+            resetView();
+            needsReset = false;
+        }
         calculateLagrangePointPositions(); // Calculate L-points each frame
 
         if (focusedBodyId && cameraMode === 'FOLLOW' && !isPanning && !isAnimatingFocus) {
@@ -737,7 +753,7 @@
 
           if (starPos) {
               const zoneLabels = [
-                  { key: 'rocheLimit', name: 'Roche Limit', color: 'rgba(255, 0, 0, 0.8)' },
+                  { key: 'rocheLimit', name: 'Roche Limit', color: 'rgba(180, 0, 0, 0.8)' },
                   { key: 'silicateLine', name: 'Rock Line', color: 'rgba(165, 42, 42, 0.8)' },
                   { key: 'sootLine', name: 'Soot Line', color: 'rgba(105, 105, 105, 0.8)' },
                   { key: 'goldilocksInner', name: 'Habitable Zone', color: 'rgba(0, 255, 0, 0.8)' },
@@ -810,12 +826,12 @@
 
     // Render bands first: Habitable, Danger, Kill
     drawZoneBand(stellarZones.goldilocks.outer, stellarZones.goldilocks.inner, 'rgba(0, 255, 0, 0.1)');
-    drawZoneBand(stellarZones.dangerZone, stellarZones.killZone, 'rgba(255, 165, 0, 0.2)');
-    drawZoneBand(stellarZones.killZone, 0, 'rgba(255, 0, 0, 0.2)');
+    drawZoneBand(stellarZones.dangerZone, stellarZones.killZone, 'rgba(200, 100, 0, 0.2)');
+    drawZoneBand(stellarZones.killZone, 0, 'rgba(180, 0, 0, 0.2)');
 
     // Render dashed lines in order from inner to outer
     if (primaryStar) {
-       drawZoneLine(calculateRocheLimit(primaryStar as CelestialBody), 'rgba(255, 0, 0, 0.5)');
+       drawZoneLine(calculateRocheLimit(primaryStar as CelestialBody), 'rgba(180, 0, 0, 0.5)');
     }
     drawZoneLine(stellarZones.silicateLine, 'rgba(165, 42, 42, 0.5)');
     drawZoneLine(stellarZones.sootLine, 'rgba(105, 105, 105, 0.5)');
