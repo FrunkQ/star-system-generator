@@ -430,6 +430,8 @@
       "classes": [
         "belt/asteroid"
       ],
+      "radiusInnerKm": 329115315,
+      "radiusOuterKm": 508632758,
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,
@@ -1435,6 +1437,8 @@
       "classes": [
         "belt/asteroid"
       ],
+      "radiusInnerKm": 4487936121,
+      "radiusOuterKm": 7479893535,
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,

@@ -43,6 +43,7 @@
   let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
   let lastFocusedId: string | null = null;
   let isAnimatingFocus = false;
+  let beltLabelClickAreas = new Map<string, { x1: number, y1: number, x2: number, y2: number }>();
 
   // --- Public Functions ---
   function calculateFrameForNode(nodeId: string): { pan: PanState, zoom: number } {
@@ -118,8 +119,21 @@
 
   // --- Reactive Logic for Triggering Animation ---
   $: if (focusedBodyId && focusedBodyId !== lastFocusedId && system && canvas && worldPositions.size > 0) {
-      lastFocusedId = focusedBodyId;
-      startFocusAnimation(focusedBodyId);
+      handleFocusChange(focusedBodyId);
+  }
+
+  function handleFocusChange(newFocusId: string) {
+      lastFocusedId = newFocusId;
+
+      const nodesById = new Map(system.nodes.map(n => [n.id, n]));
+      const targetNode = nodesById.get(newFocusId);
+
+      // Do not animate camera for belts, just accept the focus change
+      if (targetNode && targetNode.kind === 'body' && targetNode.roleHint === 'belt') {
+          return;
+      }
+      
+      startFocusAnimation(newFocusId);
   }
 
   function startFocusAnimation(targetId: string) {
@@ -216,6 +230,8 @@
   function render() {
     if (canvas && system) {
       const ctx = canvas.getContext("2d");
+      if (!ctx) return; // Prevent drawing if context is not yet available
+
       if (ctx) {
         calculateWorldPositions();
         calculateLagrangePointPositions(); // Calculate L-points each frame
@@ -374,7 +390,20 @@
   function handleClick(event: MouseEvent) {
       if (!system) return;
       const rect = canvas.getBoundingClientRect();
-      const clickPos = screenToWorld(event.clientX - rect.left, event.clientY - rect.top);
+      const clickX = event.clientX - rect.left;
+      const clickY = event.clientY - rect.top;
+
+      // Check for belt label clicks first
+      if (showNames) {
+          for (const [beltId, area] of beltLabelClickAreas.entries()) {
+              if (clickX >= area.x1 && clickX <= area.x2 && clickY >= area.y1 && clickY <= area.y2) {
+                  dispatch("focus", beltId);
+                  return; // Belt clicked, do nothing else
+              }
+          }
+      }
+
+      const clickPos = screenToWorld(clickX, clickY);
       let clickedNodeId: string | null = null;
       let minDistanceSq = Infinity;
 
@@ -464,19 +493,20 @@
   function drawSystem(ctx: CanvasRenderingContext2D) {
       if (!system || !camera || !camera.pan) return;
       const { width, height } = canvas;
+      const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       
       ctx.save();
       ctx.fillStyle = "#08090d";
       ctx.fillRect(0, 0, width, height);
       
-      // --- Camera Transformation ---
+      // --- Camera Transformation (applies to all world-coordinate drawing below) ---
       ctx.translate(width / 2, height / 2);
       ctx.scale(camera.zoom, camera.zoom);
       ctx.translate(-camera.pan.x, -camera.pan.y);
 
-      // --- Drawing Logic (using absolute world coordinates) ---
+      // --- Drawing Orbits (except for belts) ---
       for (const node of system.nodes) {
-          if (node.kind !== 'body' || !node.orbit || !node.parentId) continue;
+          if (node.kind !== 'body' || !node.orbit || !node.parentId || node.roleHint === 'belt') continue;
           const parentPos = worldPositions.get(node.parentId);
           if (!parentPos) continue;
           
@@ -492,8 +522,71 @@
           ctx.stroke();
       }
 
+      // --- Draw Belts and Rings (in background) ---
+      for (const node of system.nodes) {
+          if (node.kind === 'body' && (node.roleHint === 'belt' || node.roleHint === 'ring') && node.parentId) {
+              const parentPos = worldPositions.get(node.parentId);
+              if (!parentPos) continue;
+
+              if (node.radiusInnerKm && node.radiusOuterKm) {
+                  const innerRadiusAU = node.radiusInnerKm / AU_KM;
+                  const outerRadiusAU = node.radiusOuterKm / AU_KM;
+                  const avgRadius = (innerRadiusAU + outerRadiusAU) / 2;
+                  const widthAU = outerRadiusAU - innerRadiusAU;
+
+                  if (widthAU <= 0) continue;
+
+                  if (node.roleHint === 'belt') {
+                      ctx.lineWidth = Math.max(4 / camera.zoom, widthAU);
+                  } else {
+                      ctx.lineWidth = widthAU;
+                  }
+
+                  let alpha = node.roleHint === 'ring' ? 0.3 : 0.07;
+                  
+                  ctx.strokeStyle = node.roleHint === 'ring' ? `rgba(200, 200, 200, ${alpha})` : `rgba(255, 255, 255, ${alpha})`;
+                  
+                  ctx.beginPath();
+                  if (node.roleHint === 'belt' && node.orbit) {
+                      const a = node.orbit.elements.a_AU;
+                      const e = node.orbit.elements.e;
+                      const b = a * Math.sqrt(1 - e * e);
+                      const c = a * e;
+                      ctx.ellipse(parentPos.x - c, parentPos.y, a, b, 0, 0, 2 * Math.PI);
+                  } else {
+                      ctx.arc(parentPos.x, parentPos.y, avgRadius, 0, 2 * Math.PI);
+                  }
+                  ctx.stroke();
+              }
+
+              if (node.roleHint === 'ring') {
+                  const parent = nodesById.get(node.parentId);
+                  if (parent && parent.kind === 'body' && parent.parentId) {
+                      const grandParentPos = worldPositions.get(parent.parentId);
+                      if (grandParentPos) {
+                          const angleToStar = Math.atan2(parentPos.y - grandParentPos.y, parentPos.x - grandParentPos.x);
+                          const planetRadiusAU = (parent.radiusKm || 0) / AU_KM;
+                          const avgRadius = ((node.radiusInnerKm || 0) + (node.radiusOuterKm || 0)) / 2 / AU_KM;
+                          
+                          const shadowAngle = Math.atan2(planetRadiusAU, avgRadius);
+                          
+                          const startAngle = angleToStar - shadowAngle;
+                          const endAngle = angleToStar + shadowAngle;
+                          
+                          ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+                          ctx.lineWidth = (node.radiusOuterKm || 0) / AU_KM - (node.radiusInnerKm || 0) / AU_KM;
+                          ctx.beginPath();
+                          ctx.arc(parentPos.x, parentPos.y, avgRadius, startAngle, endAngle);
+                          ctx.stroke();
+                      }
+                  }
+              }
+          }
+      }
+
+      // --- Draw Lagrange Points (crosses) ---
       if (showLPoints && lagrangePoints) {
-          const crossSize = 5 / camera.zoom; // Half the size
+          const crossSize = 5 / camera.zoom;
           ctx.lineWidth = 1.5 / camera.zoom;
 
           for (const [key, pos] of lagrangePoints.entries()) {
@@ -510,6 +603,7 @@
           }
       }
 
+      // --- Draw Celestial Bodies and Barycenters ---
       for (const node of system.nodes) {
           const pos = worldPositions.get(node.id);
           if (!pos) continue;
@@ -524,6 +618,8 @@
               ctx.lineTo(pos.x, pos.y + 10 / camera.zoom);
               ctx.stroke();
           } else if (node.kind === 'body') {
+              if (node.roleHint === 'ring' || node.roleHint === 'belt') continue;
+
               const radiusInAU = (node.radiusKm || 0) / AU_KM;
               let minRadiusPx = 2;
               if (node.roleHint === 'star') minRadiusPx = 4;
@@ -550,30 +646,58 @@
       }
       ctx.restore(); // Restores to pre-camera-transform state
 
-      // --- UI / Overlay Drawing (after restoring context) ---
+      // --- UI / Overlay Drawing (after restoring context, uses screen coordinates) ---
       drawScaleBar(ctx);
 
       if (showNames) {
+          beltLabelClickAreas.clear();
           const visibleLabelIds = getVisibleNodeIds(system, focusedBodyId);
           ctx.font = `12px sans-serif`;
           
           for (const node of system.nodes) {
               if (!visibleLabelIds.has(node.id) || node.kind !== 'body') continue;
 
-              const worldPos = worldPositions.get(node.id);
-              if (!worldPos) continue;
+              if (node.roleHint === 'belt' && node.orbit && node.parentId) {
+                  const parentPos = worldPositions.get(node.parentId);
+                  if (!parentPos) continue;
 
-              const screenPos = worldToScreen(worldPos.x, worldPos.y);
-              
-              let radiusPx = 2;
-              if (node.roleHint === 'star') radiusPx = 4;
-              else if (node.roleHint === 'planet') {
-                  const isGasGiant = node.classes.some(c => c.includes('gas-giant') || c.includes('ice-giant'));
-                  radiusPx = isGasGiant ? 3 : 2;
-              } else if (node.roleHint === 'moon') radiusPx = 1;
+                  const a = node.orbit.elements.a_AU;
+                  const e = node.orbit.elements.e;
+                  
+                  const apoapsisX = parentPos.x - (a * (1 + e));
+                  const apoapsisY = parentPos.y;
 
-              ctx.fillStyle = getPlanetColor(node);
-              ctx.fillText(node.name, screenPos.x + radiusPx + 5, screenPos.y);
+                  const screenPos = worldToScreen(apoapsisX, apoapsisY);
+
+                  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                  ctx.textAlign = 'center';
+                  ctx.fillText(node.name, screenPos.x, screenPos.y - 10);
+
+                  const textMetrics = ctx.measureText(node.name);
+                  const padding = 5;
+                  const x1 = screenPos.x - (textMetrics.width / 2) - padding;
+                  const y1 = screenPos.y - 20 - padding;
+                  const x2 = screenPos.x + (textMetrics.width / 2) + padding;
+                  const y2 = screenPos.y + padding;
+                  beltLabelClickAreas.set(node.id, { x1, y1, x2, y2 });
+
+              } else if (node.roleHint !== 'ring' && node.roleHint !== 'belt') {
+                  const worldPos = worldPositions.get(node.id);
+                  if (!worldPos) continue;
+
+                  const screenPos = worldToScreen(worldPos.x, worldPos.y);
+                  
+                  let radiusPx = 2;
+                  if (node.roleHint === 'star') radiusPx = 4;
+                  else if (node.roleHint === 'planet') {
+                      const isGasGiant = node.classes.some(c => c.includes('gas-giant') || c.includes('ice-giant'));
+                      radiusPx = isGasGiant ? 3 : 2;
+                  } else if (node.roleHint === 'moon') radiusPx = 1;
+
+                  ctx.textAlign = 'left';
+                  ctx.fillStyle = getPlanetColor(node);
+                  ctx.fillText(node.name, screenPos.x + radiusPx + 5, screenPos.y);
+              }
           }
       }
 
