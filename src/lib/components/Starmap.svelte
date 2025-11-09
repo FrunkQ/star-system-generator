@@ -3,6 +3,8 @@
   import type { Starmap, System, CelestialBody, RulePack, Barycenter } from '$lib/types';
   import ContextMenu from './ContextMenu.svelte';
   import GmNotesEditor from './GmNotesEditor.svelte';
+  import Grid from './Grid.svelte';
+  import { starmapUiStore } from '$lib/starmapUiStore';
 
   export let starmap: Starmap;
   export let linkingMode: boolean = false;
@@ -28,7 +30,10 @@
   let lastMouseX = 0;
   let lastMouseY = 0;
 
+  let gridSize = 50;
+
   function handleWheel(event: WheelEvent) {
+    if ($starmapUiStore.mouseZoomDisabled) return;
     event.preventDefault();
     const scaleAmount = 0.1;
     const scale = event.deltaY > 0 ? 1 - scaleAmount : 1 + scaleAmount;
@@ -101,16 +106,19 @@
     const zoomY = viewBox.height / bboxHeight;
     const newZoom = Math.min(zoomX, zoomY);
 
+    // Cap the newZoom at the default starting zoom of 1
+    zoom = Math.min(newZoom, 1);
+
     const centerX = minX + (maxX - minX) / 2;
     const centerY = minY + (maxY - minY) / 2;
 
-    panX = viewBox.width / 2 - centerX * newZoom;
-    panY = viewBox.height / 2 - centerY * newZoom;
-    zoom = newZoom;
+    panX = viewBox.width / 2 - centerX * zoom;
+    panY = viewBox.height / 2 - centerY * zoom;
   }
 
   onMount(async () => {
     document.addEventListener('click', handleClickOutside);
+    resetView();
   });
 
   onDestroy(() => {
@@ -178,17 +186,69 @@
     const rect = starmapContainer.getBoundingClientRect();
     contextMenuX = event.clientX - rect.left;
     contextMenuY = event.clientY - rect.top;
-    contextMenuSystemId = null; // No system selected for map context menu
+    contextMenuSystemId = null;
 
     const svgRect = svgElement.getBoundingClientRect();
     const viewBox = svgElement.viewBox.baseVal;
     const scaleX = viewBox.width / svgRect.width;
     const scaleY = viewBox.height / svgRect.height;
 
-    contextMenuClickCoords = {
-      x: ((event.clientX - svgRect.left) * scaleX - panX) / zoom,
-      y: ((event.clientY - svgRect.top) * scaleY - panY) / zoom
-    };
+    let clickX = ((event.clientX - svgRect.left) * scaleX - panX) / zoom;
+    let clickY = ((event.clientY - svgRect.top) * scaleY - panY) / zoom;
+
+    const firstSystemX = starmap.systems[0]?.position.x || 0;
+    const firstSystemY = starmap.systems[0]?.position.y || 0;
+
+    if ($starmapUiStore.gridType === 'grid') {
+      const originX = firstSystemX - gridSize / 2;
+      const originY = firstSystemY - gridSize / 2;
+      const cellIndexX = Math.floor((clickX - originX) / gridSize);
+      const cellIndexY = Math.floor((clickY - originY) / gridSize);
+      clickX = (cellIndexX * gridSize) + (gridSize / 2) + originX;
+      clickY = (cellIndexY * gridSize) + (gridSize / 2) + originY;
+    } else if ($starmapUiStore.gridType === 'hex') {
+      const hexSize = gridSize / 2;
+      const hexHeight = gridSize;
+      const hexWidth = Math.sqrt(3) * hexSize;
+
+      const originX = firstSystemX;
+      const originY = firstSystemY;
+
+      // Find the approximate row and column
+      const approxRow = (clickY - originY) / (hexHeight * 0.75);
+      const approxCol = (clickX - originX) / hexWidth - (approxRow % 2) * 0.5;
+
+      const r = Math.round(approxRow);
+      const c = Math.round(approxCol);
+
+      // Get the center of the nearest hex
+      const centerX = originX + c * hexWidth + (r % 2) * (hexWidth / 2);
+      const centerY = originY + r * hexHeight * 0.75;
+
+      // Check neighbors to find the true closest hex
+      let minDistSq = Infinity;
+      let closestCenter = { x: centerX, y: centerY };
+
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          const nr = r + dr;
+          const nc = c + dc;
+          const nx = originX + nc * hexWidth + (nr % 2) * (hexWidth / 2);
+          const ny = originY + nr * hexHeight * 0.75;
+          const dx = clickX - nx;
+          const dy = clickY - ny;
+          const distSq = dx * dx + dy * dy;
+          if (distSq < minDistSq) {
+            minDistSq = distSq;
+            closestCenter = { x: nx, y: ny };
+          }
+        }
+      }
+      clickX = closestCenter.x;
+      clickY = closestCenter.y;
+    }
+
+    contextMenuClickCoords = { x: clickX, y: clickY };
   }
 
   function closeContextMenu() {
@@ -221,14 +281,19 @@
     }
     closeContextMenu();
   }
-
-
-
-
 </script>
 
 <div class="starmap-container" style="touch-action: none;" bind:this={starmapContainer}>
   <div class="reset-view-controls">
+    <label>
+      <input type="checkbox" bind:checked={$starmapUiStore.mouseZoomDisabled} />
+      Disable Mouse Zoom
+    </label>
+    <select bind:value={$starmapUiStore.gridType}>
+      <option value="none">No Grid</option>
+      <option value="grid">Grid</option>
+      <option value="hex">Hex</option>
+    </select>
     <button on:click={resetView}>Reset View</button>
   </div>
   <h1>{starmap.name}</h1>
@@ -241,10 +306,28 @@
     on:mousedown={handleMouseDown}
     on:mousemove={handleMouseMove}
     on:mouseup={handleMouseUp}
+    on:wheel={handleWheel}
     role="button"
     tabindex="0"
   >
     <g bind:this={groupElement} transform={`translate(${panX}, ${panY}) scale(${zoom})`}>
+      <Grid 
+        gridType={$starmapUiStore.gridType} 
+        {gridSize} 
+        {panX} 
+        {panY} 
+        {zoom} 
+        viewWidth={800} 
+        viewHeight={600} 
+        originX={
+          $starmapUiStore.gridType === 'hex' 
+            ? (starmap.systems[0]?.position.x || 0) - (Math.sqrt(3) * gridSize / 4)
+            : (starmap.systems[0]?.position.x || 0) - gridSize / 2
+        } 
+        originY={
+          (starmap.systems[0]?.position.y || 0) - gridSize / 2
+        } 
+      />
       {#each starmap.routes as route}
         {@const sourceSystem = starmap.systems.find(s => s.id === route.sourceSystemId)}
         {@const targetSystem = starmap.systems.find(s => s.id === route.targetSystemId)}

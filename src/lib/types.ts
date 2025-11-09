@@ -156,10 +156,13 @@ export interface Route {
 }
 
 export interface Starmap {
-  id: ID;
+  id: string;
   name: string;
+  description: string;
+  systems: StarmapSystem[];
+  routes: StarmapRoute[];
   distanceUnit: string;
   unitIsPrefix: boolean;
-  systems: StarSystemNode[];
-  routes: Route[];
+  gridType?: 'grid' | 'hex' | 'none';
+  mouseZoomDisabled?: boolean;
 }'''
