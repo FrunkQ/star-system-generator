@@ -42,9 +42,8 @@ A quick note on data: This application runs entirely in your browser. Your gener
     *   **Delete**: Remove any planet or moon and its entire orbital system.
 *   **AI-Powered Descriptions**: Integrates with OpenRouter to allow GMs to generate rich, narrative descriptions for any celestial body using customizable prompts, tags, and styles.
 *   **Save & Load**: 
-    *   Save your creations to your browser's local storage.
     *   Download any system or the entire starmap as a JSON file to your computer.
-    *   Upload a previously saved JSON file to continue your work.
+    *   Upload a previously saved JSON file to continue your work. This can be at the starmap level or just a single star system to allow portability; you can add someone elses pre-designed star system into your own starmap.
 
 ## Usage
 
@@ -86,8 +85,9 @@ This is not complex LLM use and you can probably enable these features without c
     *   Once you are happy with the result, click **"Accept & Close"**.
 
 ### Saving and Loading
-*   Use the **"Save to Browser"** and **"Load from Browser"** buttons to persist the starmap across sessions.
-*   Use **"Download Starmap"** and **"Upload Starmap"** to save and load starmap files.
+*   Everything you do is automatically stored to the starmap (just zoom back after generating a new system to trigger)
+*   Use **"Download Starmap"** and **"Upload Starmap"** to save and load starmap files on the main page.
+*   Use the hamburger menu on the system view to Upload and Download individual Star Systems
 
 ## Getting Started
 
