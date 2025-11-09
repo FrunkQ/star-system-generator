@@ -67,9 +67,9 @@
 </script>
 
 {#if gridType === 'grid'}
-  <path d={gridPaths} stroke="#333" stroke-width={1 / zoom} />
+  <path d={gridPaths} stroke="#555" stroke-width={1 / zoom} />
 {/if}
 
 {#if gridType === 'hex'}
-  <path d={hexPaths} stroke="#333" stroke-width={1 / zoom} fill="none" />
+  <path d={hexPaths} stroke="#555" stroke-width={1 / zoom} fill="none" />
 {/if}

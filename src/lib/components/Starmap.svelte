@@ -284,22 +284,29 @@
 </script>
 
 <div class="starmap-container" style="touch-action: none;" bind:this={starmapContainer}>
-  <div class="reset-view-controls">
-    <label>
-      <input type="checkbox" bind:checked={$starmapUiStore.mouseZoomDisabled} />
-      Disable Mouse Zoom
-    </label>
-    <select bind:value={$starmapUiStore.gridType}>
-      <option value="none">No Grid</option>
-      <option value="grid">Grid</option>
-      <option value="hex">Hex</option>
-    </select>
-    <button on:click={resetView}>Reset View</button>
+  <div class="starmap-header">
+    <h1>{starmap.name}</h1>
+    <div class="reset-view-controls">
+      <label>
+        <input type="checkbox" bind:checked={$starmapUiStore.mouseZoomDisabled} />
+        Disable Mouse Zoom
+      </label>
+      <label>
+        <input type="checkbox" bind:checked={$starmapUiStore.showBackgroundImage} />
+        Show Background
+      </label>
+      <select bind:value={$starmapUiStore.gridType}>
+        <option value="none">No Grid</option>
+        <option value="grid">Grid</option>
+        <option value="hex">Hex</option>
+      </select>
+      <button on:click={resetView}>Reset View</button>
+    </div>
   </div>
-  <h1>{starmap.name}</h1>
   <svg
     bind:this={svgElement}
     class="starmap"
+    class:with-background={$starmapUiStore.showBackgroundImage}
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 800 600"
     on:contextmenu={handleMapContextMenu}
@@ -449,21 +456,47 @@
   .starmap-container {
     width: 100%;
     height: 100%;
-    position: relative; /* Added for positioning children */
+    display: flex;
+    flex-direction: column;
+  }
+
+  .starmap-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    flex-shrink: 0; /* Prevent header from shrinking */
+    margin-top: 40px; /* Add margin to clear the parent header */
+  }
+
+  .starmap-header h1 {
+    margin: 0;
+    font-size: 1.5rem;
   }
 
   .reset-view-controls {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 1001; /* Ensure it's above the SVG */
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-left: auto; /* Push controls to the right */
   }
 
   .starmap {
     width: 100%;
-    height: 100%;
+    flex: 1; /* Make the SVG take up remaining space */
     border: 1px solid #ccc;
-    background-color: #000;
+    background-color: #000; /* Default background */
+  }
+
+  .starmap.with-background {
+    /* 
+      Image Credit: ESO/S. Brunier 
+      https://www.eso.org/public/images/eso0932a/
+    */
+    background-image: url('/images/ui/MilkyWay.jpg');
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
   }
 
   .star {
@@ -483,6 +516,9 @@
   .star-label {
     fill: #fff;
     font-size: 12px;
+    paint-order: stroke;
+    stroke: #000;
+    stroke-width: 2px;
   }
 
   .route {
@@ -504,5 +540,8 @@
     fill: #FFFF00;
     font-size: 10px;
     text-anchor: middle;
+    paint-order: stroke;
+    stroke: #000;
+    stroke-width: 2px;
   }
 </style>

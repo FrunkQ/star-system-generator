@@ -368,10 +368,6 @@
   {#if showSettingsModal && $starmapStore}
     <SettingsModal bind:showModal={showSettingsModal} starmap={$starmapStore} on:save={handleSaveSettings} />
   {/if}
-
-  <footer>
-    <p>Planet images by Pablo Carlos Budassi, used under a CC BY-SA 4.0 license. Star images from beyond-universe.fandom.com (CC-BY-SA), ESO/L. Calçada (CC BY 4.0 for magnetar image), and NASA’s Goddard Space Flight Center/Jeremy Schnittman (accretion disk image).</p>
-  </footer>
 </main>
 
 <style>

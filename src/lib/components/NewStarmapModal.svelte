@@ -25,35 +25,38 @@
 <div class="modal-background">
   <div class="modal">
     <h2>Welcome to the Star System Generator!</h2>
-    <p>This tool allows you to create and explore scientifically-plausible star systems. Get started by creating a new starmap, or load a previous creation.</p>
+    <p>This tool allows you to create and explore scientifically-plausible star systems. Get started by creating a new starmap, or load a previous creation. For more information, see the <a href="https://github.com/FrunkQ/star-system-generator/blob/main/GettingStarted.md" target="_blank" rel="noopener noreferrer">Getting Started Guide</a>.</p>
     
+    <img src="/images/ui/weyland_yutani_corp_by_bagera3005_d2kcy4x.png" alt="Weyland-Yutani Corp" class="logo" />
+
     <div class="load-options">
-        <button on:click={() => dispatch('load')} disabled={!hasSavedStarmap}>Load from Browser</button>
         <button on:click={() => dispatch('upload')}>Upload Starmap</button>
     </div>
 
     <div class="new-starmap-form">
         <h3>Create a New Starmap</h3>
-        <label>
-          Starmap Name:
+        <label class="form-row">
+          <span>Starmap Name:</span>
           <input type="text" bind:value={starmapName} />
         </label>
-        <label>
-          Rulepack:
+        <label class="form-row">
+          <span>Rulepack:</span>
           <select bind:value={selectedRulepack}>
             {#each rulepacks as rp}
               <option value={rp}>{rp.name}</option>
             {/each}
           </select>
         </label>
-        <label>
-          Distance Unit:
-          <input type="text" bind:value={distanceUnit} />
-        </label>
-        <label>
-          <input type="checkbox" bind:checked={unitIsPrefix} />
-          Unit is a prefix (e.g., "J 1" instead of "50 LY")
-        </label>
+        <div class="form-row-group">
+            <label>
+              Distance Unit:
+              <input type="text" bind:value={distanceUnit} />
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" bind:checked={unitIsPrefix} />
+              Unit is a prefix (e.g., "J 1" instead of "50 LY")
+            </label>
+        </div>
         <div class="buttons">
           <button on:click={createStarmap}>Create</button>
         </div>
@@ -72,6 +75,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    z-index: 1000;
   }
 
   .modal {
@@ -81,17 +85,20 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    color: #fff; /* Set text color to white */
+    color: #fff;
+    max-width: 650px; /* Increased width */
+    text-align: center;
   }
 
-  .modal label {
-    color: #fff; /* Ensure labels are white */
+  .logo {
+    max-width: 300px;
+    margin: 10px auto;
   }
 
   .modal input[type="text"],
   .modal select {
-    background-color: #555; /* Slightly lighter background for input fields */
-    color: #fff; /* White text for input fields */
+    background-color: #555;
+    color: #fff;
     border: 1px solid #777;
   }
 
@@ -123,6 +130,41 @@
   .new-starmap-form {
     border-top: 1px solid #555;
     padding-top: 1em;
+    text-align: left;
+  }
+
+  .form-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .form-row span {
+    margin-right: 1rem;
+  }
+
+  .form-row input,
+  .form-row select {
+    flex-grow: 1;
+  }
+
+  .form-row-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    gap: 1rem;
+  }
+  
+  .form-row-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .checkbox-label {
+    white-space: nowrap; /* Prevent the long text from wrapping */
   }
 
   .buttons {
