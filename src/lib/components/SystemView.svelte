@@ -12,7 +12,7 @@
   import GmNotesEditor from './GmNotesEditor.svelte';
   import ZoneKey from './ZoneKey.svelte';
 
-  import { systemStore, viewportStore } from '$lib/stores';
+  import { systemStore, viewportStore, toytownFactor } from '$lib/stores';
   import { panStore, zoomStore } from '$lib/cameraStore';
   import { get } from 'svelte/store';
 
@@ -211,17 +211,6 @@
       setTimeout(() => shareStatus = '', 3000);
   }
 
-  function getPlanetColor(node: CelestialBody): string {
-    if (node.roleHint === 'star') return '#fff'; // White
-    if (node.tags?.some(t => t.key === 'habitability/earth-like' || t.key === 'habitability/human')) return '#007bff'; // Blue
-    if (node.biosphere) return '#00ff00'; // Green
-    const isIceGiant = node.classes?.some(c => c.includes('ice-giant'));
-    if (isIceGiant) return '#add8e6'; // Light Blue
-    const isGasGiant = node.classes?.some(c => c.includes('gas-giant'));
-    if (isGasGiant) return '#ff0000'; // Red
-    return '#ffa500'; // Orange
-  }
-
   let unsubscribePanStore: () => void;
   let unsubscribeZoomStore: () => void;
 
@@ -310,6 +299,10 @@
             <input type="checkbox" bind:checked={showLPoints} />
             Show L-Points
         </label>
+        <label>
+            Toytown View:
+            <input type="range" min="0" max="1" step="0.01" bind:value={$toytownFactor} />
+        </label>
         <button on:click={() => isPlaying ? pause() : play()}>
             {isPlaying ? 'Pause' : 'Play'}
         </button>
@@ -327,7 +320,7 @@
 
     <div class="system-view-grid">
         <div class="main-view">
-            <SystemVisualizer bind:this={visualizer} system={$systemStore} {rulePack} {currentTime} {focusedBodyId} {showNames} {showZones} {showLPoints} {getPlanetColor} on:focus={handleFocus} />
+            <SystemVisualizer bind:this={visualizer} system={$systemStore} {rulePack} {currentTime} {focusedBodyId} {showNames} {showZones} {showLPoints} toytownFactor={$toytownFactor} on:focus={handleFocus} />
 
             <BodyGmTools body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:addHabitablePlanet={handleAddHabitablePlanet} />
             {#if focusedBody && focusedBody.kind === 'body'}

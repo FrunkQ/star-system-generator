@@ -1,37 +1,25 @@
 import { writable } from 'svelte/store';
-
-export interface AISettings {
-  apiKey: string;
-  apiEndpoint: string;
-  selectedModel: string | null;
-}
-
-const defaultSettings: AISettings = {
-  apiKey: '',
-  apiEndpoint: 'https://openrouter.ai/api/v1',
-  selectedModel: null
-};
-
-// Function to get initial value from localStorage or use default
-const getInitialSettings = (): AISettings => {
-  if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('stargen_ai_settings');
-    if (saved) {
-      return { ...defaultSettings, ...JSON.parse(saved) };
-    }
-  }
-  return defaultSettings;
-};
-
-export const aiSettings = writable<AISettings>(getInitialSettings());
+import type { System } from '$lib/types';
 
 export const systemStore = writable<System | null>(null);
 
-export const viewportStore = writable({ pan: { x: 0, y: 0 }, zoom: 1 });
+export const viewportStore = writable({
+    pan: { x: 0, y: 0 },
+    zoom: 1
+});
 
-// Subscribe to changes and save to localStorage
-aiSettings.subscribe(value => {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('stargen_ai_settings', JSON.stringify(value));
-  }
+export const toytownFactor = writable(0);
+
+
+
+export const aiSettings = writable({
+
+    apiKey: '',
+
+    model: 'gemini-pro',
+
+    style: 'default',
+
+    tags: []
+
 });

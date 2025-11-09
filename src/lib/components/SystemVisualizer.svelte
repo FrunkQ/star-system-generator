@@ -17,6 +17,10 @@
   export let showNames: boolean = false;
   export let showZones: boolean = false;
   export let showLPoints: boolean = false;
+  export let toytownFactor: number = 0;
+
+  const dispatch = createEventDispatcher<{ focus: string | null }>();
+
   function getPlanetColor(node: CelestialBody): string {
     if (node.roleHint === 'star') return '#fff'; // White
     if (node.tags?.some(t => t.key === 'habitability/earth-like' || t.key === 'habitability/human')) return '#007bff'; // Blue
@@ -27,8 +31,6 @@
     if (isGasGiant) return '#cc0000'; // Darker Red for Gas Giants
     return '#cc6600'; // Darker Orange/Brown for Terrestrial Bodies
   }
-
-  const dispatch = createEventDispatcher<{ focus: string | null }>();
 
   // --- Configurable Visuals ---
   const CLICK_AREA = { base_px: 10, buffer_px: 5 };
@@ -693,7 +695,9 @@
       ctx.restore(); // Restores to pre-camera-transform state
 
       // --- UI / Overlay Drawing (after restoring context, uses screen coordinates) ---
-      drawScaleBar(ctx);
+      if (toytownFactor === 0) {
+        drawScaleBar(ctx);
+      }
 
       if (showNames) {
           beltLabelClickAreas.clear();
