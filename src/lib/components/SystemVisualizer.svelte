@@ -60,6 +60,7 @@
   let isAnimatingFocus = false;
   let beltLabelClickAreas = new Map<string, { x1: number, y1: number, x2: number, y2: number }>();
   let x0_distance = 0.01; // Default pivot for distance scaling
+  let x0_radius = 100; // Default pivot for radius scaling (in km)
 
   // --- Reactive Calculations ---
   $: if (system) {
@@ -654,12 +655,18 @@
       // --- Draw Belts and Rings (in background) ---
       for (const node of system.nodes) {
           if (node.kind === 'body' && (node.roleHint === 'belt' || node.roleHint === 'ring') && node.parentId) {
-              const parentPos = worldPositions.get(node.parentId);
+              const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(node.parentId) : worldPositions.get(node.parentId);
               if (!parentPos) continue;
 
               if (node.radiusInnerKm && node.radiusOuterKm) {
-                  const innerRadiusAU = node.radiusInnerKm / AU_KM;
-                  const outerRadiusAU = node.radiusOuterKm / AU_KM;
+                  let innerRadiusAU = node.radiusInnerKm / AU_KM;
+                  let outerRadiusAU = node.radiusOuterKm / AU_KM;
+
+                  if (toytownFactor > 0) {
+                      innerRadiusAU = scaleBoxCox(innerRadiusAU, toytownFactor, x0_distance);
+                      outerRadiusAU = scaleBoxCox(outerRadiusAU, toytownFactor, x0_distance);
+                  }
+
                   const avgRadius = (innerRadiusAU + outerRadiusAU) / 2;
                   const widthAU = outerRadiusAU - innerRadiusAU;
 
@@ -677,7 +684,10 @@
                   
                   ctx.beginPath();
                   if (node.roleHint === 'belt' && node.orbit) {
-                      const a = node.orbit.elements.a_AU;
+                      let a = node.orbit.elements.a_AU;
+                      if (toytownFactor > 0) {
+                          a = scaleBoxCox(a, toytownFactor, x0_distance);
+                      }
                       const e = node.orbit.elements.e;
                       const b = a * Math.sqrt(1 - e * e);
                       const c = a * e;
@@ -691,11 +701,14 @@
               if (node.roleHint === 'ring') {
                   const parent = nodesById.get(node.parentId);
                   if (parent && parent.kind === 'body' && parent.parentId) {
-                      const grandParentPos = worldPositions.get(parent.parentId);
+                      const grandParentPos = toytownFactor > 0 ? scaledWorldPositions.get(parent.parentId) : worldPositions.get(parent.parentId);
                       if (grandParentPos) {
                           const angleToStar = Math.atan2(parentPos.y - grandParentPos.y, parentPos.x - grandParentPos.x);
                           const planetRadiusAU = (parent.radiusKm || 0) / AU_KM;
-                          const avgRadius = ((node.radiusInnerKm || 0) + (node.radiusOuterKm || 0)) / 2 / AU_KM;
+                          let avgRadius = ((node.radiusInnerKm || 0) + (node.radiusOuterKm || 0)) / 2 / AU_KM;
+                          if (toytownFactor > 0) {
+                              avgRadius = scaleBoxCox(avgRadius, toytownFactor, x0_distance);
+                          }
                           
                           const shadowAngle = Math.atan2(planetRadiusAU, avgRadius);
                           
@@ -891,10 +904,14 @@
     if (!system || !stellarZones) return;
 
     const primaryStar = system.nodes.find(n => n.parentId === null && n.kind === 'body');
-    const starPos = primaryStar ? worldPositions.get(primaryStar.id) : { x: 0, y: 0 };
+    const starPos = primaryStar ? (toytownFactor > 0 ? scaledWorldPositions.get(primaryStar.id) : worldPositions.get(primaryStar.id)) : { x: 0, y: 0 };
     if (!starPos) return;
 
     const drawZoneBand = (radius: number, innerRadius: number, color: string) => {
+        if (toytownFactor > 0) {
+            radius = scaleBoxCox(radius, toytownFactor, x0_distance);
+            innerRadius = scaleBoxCox(innerRadius, toytownFactor, x0_distance);
+        }
         const widthAU = radius - innerRadius;
         if (widthAU <= 0) return;
         ctx.lineWidth = widthAU;
@@ -906,6 +923,9 @@
 
     const drawZoneLine = (radius: number, color: string) => {
         if (radius <= 0) return;
+        if (toytownFactor > 0) {
+            radius = scaleBoxCox(radius, toytownFactor, x0_distance);
+        }
         ctx.strokeStyle = color;
         ctx.lineWidth = 1 / camera.zoom;
         ctx.setLineDash([10 / camera.zoom, 10 / camera.zoom]);
