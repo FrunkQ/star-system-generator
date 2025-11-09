@@ -6,8 +6,8 @@
   import * as zones from "$lib/physics/zones";
   import { calculateLagrangePoints } from "$lib/physics/lagrange";
   import { get } from 'svelte/store';
-  import { cameraStore } from '$lib/cameraStore';
-  import type { CameraState } from '$lib/cameraStore';
+  import { panStore, zoomStore } from '$lib/cameraStore';
+  import type { PanState } from '$lib/cameraStore';
 
   // --- Component Props ---
   export let system: System | null;
@@ -23,7 +23,6 @@
 
   // --- Configurable Visuals ---
   const CLICK_AREA = { base_px: 10, buffer_px: 5 };
-  const ANIMATION_DURATION = 0; // ms for the crash zoom
 
   // --- Canvas and Rendering State ---
   let canvas: HTMLCanvasElement;
@@ -31,8 +30,11 @@
   let worldPositions = new Map<string, { x: number, y: number }>();
 
   // --- Camera State ---
-  let camera: CameraState;
-  cameraStore.subscribe(value => camera = value);
+  let pan: PanState;
+  let zoom: number;
+  panStore.subscribe(value => pan = value);
+  zoomStore.subscribe(value => zoom = value);
+  $: camera = { pan, zoom };
 
   // --- Interaction State ---
   let isPanning = false;
@@ -41,24 +43,18 @@
   let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
   let lastFocusedId: string | null = null;
   let isAnimatingFocus = false;
-  let animState = {
-      startTime: 0,
-      startPan: { x: 0, y: 0 },
-      endPan: { x: 0, y: 0 },
-      startZoom: 100,
-      endZoom: 100,
-  };
 
   // --- Public Functions ---
-  function calculateFrameForNode(nodeId: string): { pan: {x: number, y: number}, zoom: number } {
-      const currentCamera = get(cameraStore);
-      if (!system || !canvas) return currentCamera;
+  function calculateFrameForNode(nodeId: string): { pan: PanState, zoom: number } {
+      const currentPan = get(panStore);
+      const currentZoom = get(zoomStore);
+      if (!system || !canvas) return { pan: currentPan, zoom: currentZoom };
 
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       const targetNode = nodesById.get(nodeId);
       const targetPosition = worldPositions.get(nodeId);
 
-      if (!targetNode || !targetPosition) return currentCamera;
+      if (!targetNode || !targetPosition) return { pan: currentPan, zoom: currentZoom };
 
       const hasChildren = system.nodes.some(n => n.parentId === nodeId);
 
@@ -78,7 +74,7 @@
           const paddingFactor = 1.02; // 2% padding
           const targetWorldSize = maxOrbit * 2 * paddingFactor;
 
-          let newZoom = currentCamera.zoom;
+          let newZoom = currentZoom;
           if (targetWorldSize > 0) {
               const zoomX = canvas.width / targetWorldSize;
               const zoomY = canvas.height / targetWorldSize;
@@ -98,29 +94,25 @@
                   if (distance > 0) {
                       newZoom = (Math.min(canvas.width, canvas.height) / 2) / (distance * 1.02);
                   } else {
-                      newZoom = currentCamera.zoom * 2;
+                      newZoom = currentZoom * 2;
                   }
                   return { pan: targetPosition, zoom: newZoom };
               }
           }
           // No parent or parent position not found, just center with current zoom
-          return { pan: targetPosition, zoom: currentCamera.zoom };
+          return { pan: targetPosition, zoom: currentZoom };
       }
   }
 
   export function resetView() {
       if (!system || !canvas) return;
-      isAnimatingFocus = false; // Stop any ongoing animation
-      cameraMode = 'FOLLOW'; // Reset mode on view reset
-      
+      cameraMode = 'FOLLOW';
       const targetId = focusedBodyId || system.nodes.find(n => n.parentId === null)?.id;
 
       if (targetId) {
-          const beforeViewport = get(cameraStore); // Capture current state
           const frame = calculateFrameForNode(targetId);
-          cameraStore.set(frame);
-          const afterViewport = { ...frame }; // Capture new state
-          console.log('Viewport Change (Reset View):', { before: beforeViewport, after: afterViewport });
+          panStore.set(frame.pan, { duration: 0 });
+          zoomStore.set(frame.zoom, { duration: 0 });
       }
   }
 
@@ -138,17 +130,48 @@
       cameraMode = 'FOLLOW';
       isAnimatingFocus = true;
 
-      const beforeViewport = get(cameraStore);
+      const beforeViewport = { pan: get(panStore), zoom: get(zoomStore) };
       const afterViewport = calculateFrameForNode(targetId);
       
-      console.log('Viewport Change (Focus Animation):', { before: beforeViewport, after: afterViewport });
+      const zoomRatio = Math.max(beforeViewport.zoom, afterViewport.zoom) / Math.min(beforeViewport.zoom, afterViewport.zoom);
+      const isLongZoom = zoomRatio > 100;
+      const totalDuration = isLongZoom ? 1500 : 750;
 
-      cameraStore.set(afterViewport, { duration: 1500 });
+      console.log(`Animating transition. Long Zoom: ${isLongZoom}, Duration: ${totalDuration}ms, Zoom Ratio: ${zoomRatio.toFixed(2)}`, { before: beforeViewport, after: afterViewport });
+
+      if (isLongZoom) {
+          const isZoomingOut = afterViewport.zoom < beforeViewport.zoom;
+          const zoomDuration = totalDuration; // Keep zoom long
+          const panDuration = totalDuration / 2; // Shorten pan
+
+          if (isZoomingOut) {
+              // Zoom first, then pan. Start the pan when the zoom is halfway through.
+              const panStartDelay = totalDuration / 2;
+              zoomStore.set(afterViewport.zoom, { duration: zoomDuration });
+              setTimeout(() => {
+                  panStore.set(afterViewport.pan, { duration: panDuration });
+              }, panStartDelay);
+          } else {
+              // Pan first, then zoom. Pan completes, then zoom starts.
+              const panDuration = totalDuration / 6; // Pan takes 1/6 of total duration (quicker)
+              const zoomDuration = totalDuration * 5 / 6; // Zoom takes remaining 5/6
+              const zoomStartDelay = panDuration; // Start zoom after pan finishes
+
+              panStore.set(afterViewport.pan, { duration: panDuration });
+              setTimeout(() => {
+                  zoomStore.set(afterViewport.zoom, { duration: zoomDuration });
+              }, zoomStartDelay);
+          }
+      } else {
+          // Simultaneous animation for short zooms
+          panStore.set(afterViewport.pan, { duration: totalDuration });
+          zoomStore.set(afterViewport.zoom, { duration: totalDuration });
+      }
 
       // Re-enable follow logic after the animation is complete
       setTimeout(() => {
           isAnimatingFocus = false;
-      }, 1500);
+      }, totalDuration);
   }
 
   // --- Svelte Lifecycle ---
@@ -199,8 +222,7 @@
         if (focusedBodyId && cameraMode === 'FOLLOW' && !isPanning && !isAnimatingFocus) {
             const targetPosition = worldPositions.get(focusedBodyId);
             if (targetPosition) {
-                // Use set with duration 0 to avoid triggering another animation
-                cameraStore.set({ ...camera, pan: targetPosition }, { duration: 0 });
+                panStore.set(targetPosition, { duration: 0 });
             }
         }
 
@@ -319,7 +341,7 @@
       if (clickedNodeId) {
         if (clickedNodeId === focusedBodyId) {
           // It IS the current focus, zoom in 2x
-          cameraStore.update(c => ({ ...c, zoom: c.zoom * 2 }));
+          zoomStore.set(get(zoomStore) * 2);
         } else {
           // It is not the object in focus, dispatch focus event
           dispatch("focus", clickedNodeId);
@@ -329,20 +351,20 @@
 
   function handleWheel(event: WheelEvent) {
       event.preventDefault();
-      isAnimatingFocus = false; // Interrupt animation
       const rect = canvas.getBoundingClientRect();
       const mouseX = event.clientX - rect.left;
       const mouseY = event.clientY - rect.top;
       const worldPosBeforeZoom = screenToWorld(mouseX, mouseY);
       const zoomFactor = event.deltaY < 0 ? 1.2 : 1 / 1.2;
-      const newZoom = camera.zoom * zoomFactor;
+      const newZoom = get(zoomStore) * zoomFactor;
       const newPanX = worldPosBeforeZoom.x - (mouseX - canvas.width / 2) / newZoom;
       const newPanY = worldPosBeforeZoom.y - (mouseY - canvas.height / 2) / newZoom;
-      cameraStore.set({ pan: { x: newPanX, y: newPanY }, zoom: newZoom });
+      
+      panStore.set({ x: newPanX, y: newPanY }, { duration: 0 });
+      zoomStore.set(newZoom, { duration: 0 });
   }
 
   function handleMouseDown(event: MouseEvent) {
-      isAnimatingFocus = false; // Interrupt animation
       isPanning = true;
       cameraMode = 'MANUAL'; // User is taking control
       lastPanX = event.clientX;
@@ -360,16 +382,14 @@
       const dx = event.clientX - lastPanX;
       const dy = event.clientY - lastPanY;
       
-      const panDeltaX = dx / camera.zoom;
-      const panDeltaY = dy / camera.zoom;
+      const panDeltaX = dx / get(zoomStore);
+      const panDeltaY = dy / get(zoomStore);
 
-      cameraStore.update(current => ({
-          ...current,
-          pan: {
-              x: current.pan.x - panDeltaX,
-              y: current.pan.y - panDeltaY
-          }
-      }), { duration: 0 });
+      const currentPan = get(panStore);
+      panStore.set({
+          x: currentPan.x - panDeltaX,
+          y: currentPan.y - panDeltaY
+      }, { duration: 0 });
 
       lastPanX = event.clientX;
       lastPanY = event.clientY;
@@ -386,40 +406,41 @@
       ctx.fillStyle = "#08090d";
       ctx.fillRect(0, 0, width, height);
       
+      // --- Camera Transformation ---
       ctx.translate(width / 2, height / 2);
       ctx.scale(camera.zoom, camera.zoom);
+      ctx.translate(-camera.pan.x, -camera.pan.y);
 
+      // --- Drawing Logic (using absolute world coordinates) ---
       for (const node of system.nodes) {
           if (node.kind !== 'body' || !node.orbit || !node.parentId) continue;
           const parentPos = worldPositions.get(node.parentId);
           if (!parentPos) continue;
-          const relParentX = parentPos.x - camera.pan.x;
-          const relParentY = parentPos.y - camera.pan.y;
+          
           const a = node.orbit.elements.a_AU;
           const e = node.orbit.elements.e;
           const b = a * Math.sqrt(1 - e * e);
-          const c = a * e;
+          const c = a * e; // distance from center to focus
+          
           ctx.strokeStyle = "#333";
           ctx.lineWidth = 1 / camera.zoom;
           ctx.beginPath();
-          ctx.ellipse(relParentX - c, relParentY, a, b, 0, 0, 2 * Math.PI);
+          ctx.ellipse(parentPos.x - c, parentPos.y, a, b, 0, 0, 2 * Math.PI);
           ctx.stroke();
       }
 
       for (const node of system.nodes) {
           const pos = worldPositions.get(node.id);
           if (!pos) continue;
-          const relX = pos.x - camera.pan.x;
-          const relY = pos.y - camera.pan.y;
 
           if (node.kind === 'barycenter') {
               ctx.strokeStyle = '#888';
               ctx.lineWidth = 1 / camera.zoom;
               ctx.beginPath();
-              ctx.moveTo(relX - 10 / camera.zoom, relY);
-              ctx.lineTo(relX + 10 / camera.zoom, relY);
-              ctx.moveTo(relX, relY - 10 / camera.zoom);
-              ctx.lineTo(relX, relY + 10 / camera.zoom);
+              ctx.moveTo(pos.x - 10 / camera.zoom, pos.y);
+              ctx.lineTo(pos.x + 10 / camera.zoom, pos.y);
+              ctx.moveTo(pos.x, pos.y - 10 / camera.zoom);
+              ctx.lineTo(pos.x, pos.y + 10 / camera.zoom);
               ctx.stroke();
           } else if (node.kind === 'body') {
               const radiusInAU = (node.radiusKm || 0) / AU_KM;
@@ -429,22 +450,26 @@
                   const isGasGiant = node.classes.some(c => c.includes('gas-giant') || c.includes('ice-giant'));
                   minRadiusPx = isGasGiant ? 3 : 2;
               } else if (node.roleHint === 'moon') minRadiusPx = 1;
+              
               const minRadiusInWorld = minRadiusPx / camera.zoom;
               const finalRadius = Math.max(radiusInAU, minRadiusInWorld);
+              
               let color = getPlanetColor(node);
               if (node.roleHint === 'star') {
                   const starClassKey = node.classes[0] || 'default';
                   const spectralType = starClassKey.split('/')[1];
                   color = STAR_COLOR_MAP[spectralType] || STAR_COLOR_MAP['default'];
               }
+              
               ctx.beginPath();
-              ctx.arc(relX, relY, finalRadius, 0, 2 * Math.PI);
+              ctx.arc(pos.x, pos.y, finalRadius, 0, 2 * Math.PI);
               ctx.fillStyle = color;
               ctx.fill();
           }
       }
-      ctx.restore();
+      ctx.restore(); // Restores to pre-camera-transform state
 
+      // --- UI / Overlay Drawing (after restoring context) ---
       drawScaleBar(ctx);
 
       if (showNames) {

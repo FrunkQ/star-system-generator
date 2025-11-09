@@ -13,7 +13,7 @@
   import ZoneKey from './ZoneKey.svelte';
 
   import { systemStore, viewportStore } from '$lib/stores';
-  import { cameraStore } from '$lib/cameraStore';
+  import { panStore, zoomStore } from '$lib/cameraStore';
   import { get } from 'svelte/store';
 
   export let system: System;
@@ -221,7 +221,8 @@
     return '#ffa500'; // Orange
   }
 
-  let unsubscribeCameraStore: () => void;
+  let unsubscribePanStore: () => void;
+  let unsubscribeZoomStore: () => void;
 
   onMount(() => {
     systemStore.set(system);
@@ -235,13 +236,17 @@
     });
     generationOptions = options;
 
-    // Sync viewportStore to cameraStore on mount
+    // Sync viewportStore to panStore and zoomStore on mount
     const currentViewport = get(viewportStore);
-    cameraStore.set(currentViewport);
+    panStore.set(currentViewport.pan, { duration: 0 });
+    zoomStore.set(currentViewport.zoom, { duration: 0 });
 
-    // Sync cameraStore back to viewportStore on change
-    unsubscribeCameraStore = cameraStore.subscribe(cameraState => {
-        viewportStore.set(cameraState);
+    // Sync panStore and zoomStore back to viewportStore on change
+    unsubscribePanStore = panStore.subscribe(panState => {
+        viewportStore.update(v => ({ ...v, pan: panState }));
+    });
+    unsubscribeZoomStore = zoomStore.subscribe(zoomState => {
+        viewportStore.update(v => ({ ...v, zoom: zoomState }));
     });
 
     window.addEventListener('popstate', handlePopState);
@@ -251,8 +256,11 @@
     if (browser) {
       pause();
     }
-    if (unsubscribeCameraStore) {
-        unsubscribeCameraStore();
+    if (unsubscribePanStore) {
+        unsubscribePanStore();
+    }
+    if (unsubscribeZoomStore) {
+        unsubscribeZoomStore();
     }
     window.removeEventListener('popstate', handlePopState);
   });
