@@ -60,7 +60,6 @@
   let isAnimatingFocus = false;
   let beltLabelClickAreas = new Map<string, { x1: number, y1: number, x2: number, y2: number }>();
   let x0_distance = 0.01; // Default pivot for distance scaling
-  let x0_radius = 100; // Default pivot for radius scaling (in km)
 
   // --- Reactive Calculations ---
   $: if (system) {
@@ -762,7 +761,11 @@
           } else if (node.kind === 'body') {
               if (node.roleHint === 'ring' || node.roleHint === 'belt') continue;
 
-              const radiusInAU = (node.radiusKm || 0) / AU_KM;
+              let radiusInAU = (node.radiusKm || 0) / AU_KM;
+              if (toytownFactor > 0) {
+                  radiusInAU = scaleBoxCox(radiusInAU, toytownFactor, x0_distance);
+              }
+
               let minRadiusPx = 2;
               if (node.roleHint === 'star') minRadiusPx = 4;
               else if (node.roleHint === 'planet') {
@@ -771,7 +774,9 @@
               } else if (node.roleHint === 'moon') minRadiusPx = 1;
               
               const minRadiusInWorld = minRadiusPx / camera.zoom;
-              const finalRadius = Math.max(radiusInAU, minRadiusInWorld);
+              
+              // Apply quadrature floor for display radius
+              const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
               
               let color = getPlanetColor(node);
               if (node.roleHint === 'star') {
