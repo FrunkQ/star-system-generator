@@ -218,6 +218,7 @@
       const ctx = canvas.getContext("2d");
       if (ctx) {
         calculateWorldPositions();
+        calculateLagrangePointPositions(); // Calculate L-points each frame
 
         if (focusedBodyId && cameraMode === 'FOLLOW' && !isPanning && !isAnimatingFocus) {
             const targetPosition = worldPositions.get(focusedBodyId);
@@ -233,6 +234,68 @@
   }
 
   // --- Position Calculation ---
+  let lagrangePoints: Map<string, {x: number, y: number}> | null = null;
+
+  function calculateLagrangePointPositions() {
+      if (!system || !showLPoints || !focusedBodyId) {
+          lagrangePoints = null;
+          return;
+      }
+
+      const nodesById = new Map(system.nodes.map(n => [n.id, n]));
+      const focusedNode = nodesById.get(focusedBodyId);
+      if (!focusedNode || focusedNode.kind !== 'body') {
+          lagrangePoints = null;
+          return;
+      }
+
+      const allPoints = new Map<string, {x: number, y: number}>();
+
+      // Helper function to do the core calculation
+      const calculateAndStorePoints = (primary: CelestialBody, secondaries: CelestialBody[]) => {
+          const primaryPos = worldPositions.get(primary.id);
+          if (!primaryPos) return;
+
+          for (const secondary of secondaries) {
+              const secondaryPos = worldPositions.get(secondary.id);
+              if (!secondaryPos || !secondary.orbit) continue;
+
+              const relativeSecondaryPos = { x: secondaryPos.x - primaryPos.x, y: secondaryPos.y - primaryPos.y };
+              const points = calculateLagrangePoints(primary, secondary, relativeSecondaryPos);
+              const angle = Math.atan2(relativeSecondaryPos.y, relativeSecondaryPos.x);
+
+              points.forEach(p => {
+                  let x = p.x;
+                  let y = p.y;
+                  if (!p.isRotated) {
+                      const rotatedX = x * Math.cos(angle) - y * Math.sin(angle);
+                      const rotatedY = x * Math.sin(angle) + y * Math.cos(angle);
+                      x = rotatedX;
+                      y = rotatedY;
+                  }
+                  allPoints.set(`${p.name}-${secondary.id}`, { x: x + primaryPos.x, y: y + primaryPos.y });
+              });
+          }
+      };
+
+      // 1. Show L-points for the focused body and its siblings relative to their parent.
+      if (focusedNode.parentId) {
+          const parent = nodesById.get(focusedNode.parentId);
+          if (parent && parent.kind === 'body') {
+              const siblings = system.nodes.filter(n => n.parentId === parent.id && n.kind === 'body');
+              calculateAndStorePoints(parent, siblings);
+          }
+      }
+
+      // 2. If the focused body has children, show L-points for them relative to the focused body.
+      const children = system.nodes.filter(n => n.parentId === focusedNode.id && n.kind === 'body');
+      if (children.length > 0) {
+          calculateAndStorePoints(focusedNode, children);
+      }
+      
+      lagrangePoints = allPoints.size > 0 ? allPoints : null;
+  }
+
   function calculateWorldPositions() {
       if (!system) return;
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
@@ -429,6 +492,24 @@
           ctx.stroke();
       }
 
+      if (showLPoints && lagrangePoints) {
+          const crossSize = 5 / camera.zoom; // Half the size
+          ctx.lineWidth = 1.5 / camera.zoom;
+
+          for (const [key, pos] of lagrangePoints.entries()) {
+              const name = key.split('-')[0];
+              const isStable = name === 'L4' || name === 'L5';
+              ctx.strokeStyle = isStable ? 'green' : '#888';
+              
+              ctx.beginPath();
+              ctx.moveTo(pos.x - crossSize, pos.y);
+              ctx.lineTo(pos.x + crossSize, pos.y);
+              ctx.moveTo(pos.x, pos.y - crossSize);
+              ctx.lineTo(pos.x, pos.y + crossSize);
+              ctx.stroke();
+          }
+      }
+
       for (const node of system.nodes) {
           const pos = worldPositions.get(node.id);
           if (!pos) continue;
@@ -493,6 +574,17 @@
 
               ctx.fillStyle = getPlanetColor(node);
               ctx.fillText(node.name, screenPos.x + radiusPx + 5, screenPos.y);
+          }
+      }
+
+      if (showLPoints && lagrangePoints) {
+          ctx.font = `12px sans-serif`;
+          for (const [key, pos] of lagrangePoints.entries()) {
+              const name = key.split('-')[0];
+              const isStable = name === 'L4' || name === 'L5';
+              ctx.fillStyle = isStable ? 'green' : '#888';
+              const screenPos = worldToScreen(pos.x, pos.y);
+              ctx.fillText(name, screenPos.x + 8, screenPos.y);
           }
       }
   }
