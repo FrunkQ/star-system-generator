@@ -61,9 +61,12 @@
   let beltLabelClickAreas = new Map<string, { x1: number, y1: number, x2: number, y2: number }>();
   let x0_distance = 0.01; // Default pivot for distance scaling
 
+  let lastSystemId: string | null = null;
+
   // --- Reactive Calculations ---
-  $: if (system) {
+  $: if (system && system.id !== lastSystemId) {
     needsReset = true;
+    lastSystemId = system.id;
   }
   $: if (system && rulePack) {
     calculateAndStoreStellarZones();
@@ -162,7 +165,9 @@
 
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       const targetNode = nodesById.get(nodeId);
-      const targetPosition = worldPositions.get(nodeId);
+      
+      const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
+      const targetPosition = targetPositions.get(nodeId);
 
       if (!targetNode || !targetPosition) return { pan: currentPan, zoom: currentZoom };
 
@@ -170,19 +175,26 @@
 
       if (hasChildren) {
           const children = system.nodes.filter(n => n.parentId === nodeId);
-          let maxOrbit = children.reduce((max, node) => {
-              if (node.kind === 'body' && node.orbit) {
-                  return Math.max(max, node.orbit.elements.a_AU * (1 + node.orbit.elements.e));
+          let maxDistance = children.reduce((max, node) => {
+              const childPos = targetPositions.get(node.id);
+              if (childPos) {
+                  const dx = childPos.x - targetPosition.x;
+                  const dy = childPos.y - targetPosition.y;
+                  return Math.max(max, Math.sqrt(dx*dx + dy*dy));
               }
               return max;
           }, 0);
 
-          if (maxOrbit === 0 && targetNode.kind === 'body' && targetNode.radiusKm) {
-              maxOrbit = targetNode.radiusKm / AU_KM;
+          if (maxDistance === 0 && targetNode.kind === 'body' && targetNode.radiusKm) {
+              let radiusInAU = (targetNode.radiusKm || 0) / AU_KM;
+              if (toytownFactor > 0) {
+                  radiusInAU = scaleBoxCox(radiusInAU, toytownFactor, x0_distance);
+              }
+              maxDistance = radiusInAU;
           }
 
           const paddingFactor = 1.02; // 2% padding
-          const targetWorldSize = maxOrbit * 2 * paddingFactor;
+          const targetWorldSize = maxDistance * 2 * paddingFactor;
 
           let newZoom = currentZoom;
           if (targetWorldSize > 0) {
@@ -195,7 +207,7 @@
           // Body has NO children, frame it and its parent
           const parentNode = targetNode.parentId ? nodesById.get(targetNode.parentId) : null;
           if (parentNode) {
-              const parentPosition = worldPositions.get(parentNode.id);
+              const parentPosition = targetPositions.get(parentNode.id);
               if (parentPosition) {
                   const dx = targetPosition.x - parentPosition.x;
                   const dy = targetPosition.y - parentPosition.y;
@@ -386,27 +398,44 @@
 
       // Helper function to do the core calculation
       const calculateAndStorePoints = (primary: CelestialBody, secondaries: CelestialBody[]) => {
-          const primaryPos = worldPositions.get(primary.id);
-          if (!primaryPos) return;
+          const primaryPos = worldPositions.get(primary.id); // Use real pos to get relative vector for calculation
+          const scaledPrimaryPos = toytownFactor > 0 ? scaledWorldPositions.get(primary.id) : primaryPos; // Use scaled pos for final placement
+          if (!primaryPos || !scaledPrimaryPos) return;
 
           for (const secondary of secondaries) {
-              const secondaryPos = worldPositions.get(secondary.id);
+              const secondaryPos = worldPositions.get(secondary.id); // Use real pos
               if (!secondaryPos || !secondary.orbit) continue;
 
               const relativeSecondaryPos = { x: secondaryPos.x - primaryPos.x, y: secondaryPos.y - primaryPos.y };
               const points = calculateLagrangePoints(primary, secondary, relativeSecondaryPos);
-              const angle = Math.atan2(relativeSecondaryPos.y, relativeSecondaryPos.x);
+              
+              // This is the angle of the secondary in REAL space. We need the angle in SCALED space for rotation.
+              const scaledSecondaryPos = toytownFactor > 0 ? scaledWorldPositions.get(secondary.id) : secondaryPos;
+              if (!scaledSecondaryPos) continue;
+              const scaledRelativeSecondaryPos = { x: scaledSecondaryPos.x - scaledPrimaryPos.x, y: scaledSecondaryPos.y - scaledPrimaryPos.y };
+              const angle = Math.atan2(scaledRelativeSecondaryPos.y, scaledRelativeSecondaryPos.x);
 
               points.forEach(p => {
-                  let x = p.x;
-                  let y = p.y;
+                  let x = p.x; // real-world offset from primary
+                  let y = p.y; // real-world offset from primary
+
+                  if (toytownFactor > 0) {
+                      const dist = Math.sqrt(x*x + y*y);
+                      if (dist > 0) {
+                          const scaledDist = scaleBoxCox(dist, toytownFactor, x0_distance);
+                          const pointAngle = Math.atan2(y, x);
+                          x = scaledDist * Math.cos(pointAngle);
+                          y = scaledDist * Math.sin(pointAngle);
+                      }
+                  }
+
                   if (!p.isRotated) {
                       const rotatedX = x * Math.cos(angle) - y * Math.sin(angle);
                       const rotatedY = x * Math.sin(angle) + y * Math.cos(angle);
                       x = rotatedX;
                       y = rotatedY;
                   }
-                  allPoints.set(`${p.name}-${secondary.id}`, { x: x + primaryPos.x, y: y + primaryPos.y });
+                  allPoints.set(`${p.name}-${secondary.id}`, { x: x + scaledPrimaryPos.x, y: y + scaledPrimaryPos.y });
               });
           }
       };
@@ -733,6 +762,12 @@
           for (const [key, pos] of lagrangePoints.entries()) {
               const name = key.split('-')[0];
               const isStable = name === 'L4' || name === 'L5';
+
+              // In Toytown mode, only show stable L-points
+              if (toytownFactor > 0 && !isStable) {
+                  continue;
+              }
+
               ctx.strokeStyle = isStable ? 'green' : '#888';
               
               ctx.beginPath();
@@ -898,6 +933,12 @@
           for (const [key, pos] of lagrangePoints.entries()) {
               const name = key.split('-')[0];
               const isStable = name === 'L4' || name === 'L5';
+
+              // In Toytown mode, only show stable L-points
+              if (toytownFactor > 0 && !isStable) {
+                  continue;
+              }
+
               ctx.fillStyle = isStable ? 'green' : '#888';
               const screenPos = worldToScreen(pos.x, pos.y);
               ctx.fillText(name, screenPos.x + 8, screenPos.y);

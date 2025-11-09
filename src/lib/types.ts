@@ -99,6 +99,7 @@ export interface System {
   rulePackId: string; rulePackVersion: string;
   tags: Tag[]; notes?: string; gmNotes?: string;
   visualScalingMultiplier?: number;
+  toytownFactor?: number;
 }
 
 // Rule Pack interfaces (subset for M0–M1)

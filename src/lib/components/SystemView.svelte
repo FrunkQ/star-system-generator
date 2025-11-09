@@ -33,7 +33,15 @@
   let showZones = false;
   let showLPoints = false;
 
+  // When the toytown slider changes, update the system object in the store
+  $: if ($toytownFactor !== $systemStore?.toytownFactor) {
+    systemStore.update(s => s ? { ...s, toytownFactor: $toytownFactor } : s);
+  }
 
+  // When the system changes, update the toytown slider's value
+  $: if ($systemStore && $toytownFactor !== $systemStore.toytownFactor) {
+    toytownFactor.set($systemStore.toytownFactor || 0);
+  }
 
   // Time state
   let currentTime = Date.now();
