@@ -3,10 +3,11 @@
   import { createEventDispatcher } from "svelte";
 
   export let system: System | null;
-  export let generationOptions: string[];
-  export let selectedGenerationOption: string;
-  export let exampleSystems: string[];
-  export let handleGenerate: (empty: boolean) => void;
+  export let focusedBody: CelestialBody | Barycenter | null;
+  export let showDropdown: boolean;
+  export let handleDownloadJson: () => void;
+  export let handleUploadJson: (event: Event) => void;
+  export let handleShare: () => void;
 
   const dispatch = createEventDispatcher();
 
@@ -19,6 +20,8 @@
   let totalPlanets = 0;
   let totalMoons = 0;
   let belts = 0;
+  let starCount = 0;
+  const constructCount = 0; // Placeholder
 
   function getPlanetColor(node: CelestialBody): string {
     if (node.roleHint === 'star') return '#fff'; // White
@@ -41,6 +44,7 @@
     totalPlanets = 0;
     totalMoons = 0;
     belts = 0;
+    starCount = 0;
 
     if (system) {
         for (const node of system.nodes) {
@@ -52,6 +56,8 @@
                 totalMoons++;
             } else if (node.roleHint === 'belt') {
                 belts++;
+            } else if (node.roleHint === 'star') {
+                starCount++;
             }
 
             if (node.roleHint === 'planet' || node.roleHint === 'moon') {
@@ -83,8 +89,28 @@
 </script>
 
 <div class="summary-panel">
-    <h3>System Summary</h3>
+    <div class="header">
+      <h3 class="focus-title">Star System View - Current Focus: {focusedBody?.name || 'System View'}</h3>
+      <div class="save-load-controls">
+          <div class="dropdown">
+              <button on:click={() => showDropdown = !showDropdown} class="hamburger-button">&#9776;</button>
+              {#if showDropdown}
+                  <div class="dropdown-content">
+                      <button on:click={handleDownloadJson} disabled={!system}>Download System</button>
+                      <button on:click={() => document.getElementById('upload-json-summary')?.click()}>Upload System</button>
+                      <button on:click={handleShare} class="todo-button">Share Player Link (Todo)</button>
+                      <button on:click={() => alert('This is a star system generator.')}>About</button>
+                  </div>
+              {/if}
+          </div>
+          <input type="file" id="upload-json-summary" hidden accept=".json,application/json" on:change={handleUploadJson} />
+      </div>
+    </div>
     <div class="summary-grid">
+        <div class="summary-item" style="border: 2px solid #ffc107;">
+            <span class="value">{starCount}</span>
+            <span class="label">Stars</span>
+        </div>
         <div class="summary-item">
             <span class="value">{totalPlanets}</span>
             <span class="label">Planets</span>
@@ -121,28 +147,10 @@
             <span class="value">{biospheres}</span>
             <span class="label">Biospheres</span>
         </div>
-    </div>
-    <div class="regeneration-controls">
-        <span>Regenerate Solar System: Select Star Type:</span>
-        <select bind:value={selectedGenerationOption}>
-            {#each generationOptions as option (option)}
-                <option value={option}>{option}</option>
-            {/each}
-        </select>
-        <span>then:</span>
-        <button on:click={() => handleGenerate(false)}>
-          Generate System
-        </button>
-        <button on:click={() => handleGenerate(true)}>
-          Generate Empty System
-        </button>
-        <span>or select a preset:</span>
-        <select on:change={(e) => dispatch('loadexample', e.currentTarget.value)}>
-            <option value="">None selected</option>
-            {#each exampleSystems as example}
-                <option value={example}>{example.replace('.json', '')}</option>
-            {/each}
-        </select>
+        <div class="summary-item" style="border: 2px solid #f0f0f0;">
+            <span class="value">{constructCount}</span>
+            <span class="label">Constructs</span>
+        </div>
     </div>
 </div>
 
@@ -154,9 +162,16 @@
         margin: 0.5em 0;
         border-radius: 5px;
     }
-    h3 {
-        margin: 0 0 0.5em 0;
-        color: #ff3e00;
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5em;
+    }
+    h3.focus-title {
+        margin: 0;
+        color: #eee; /* White color for the title */
+        font-size: 1.5em;
     }
     .summary-grid {
         display: grid;
@@ -182,26 +197,42 @@
         color: #999;
         text-transform: uppercase;
     }
-    .regeneration-controls {
-        display: flex;
-        align-items: center;
-        gap: 0.5em;
-        margin-top: 0.5em;
-        padding-top: 0.5em;
-        border-top: 1px solid #333;
+    .dropdown {
+      position: relative;
+      display: inline-block;
     }
-    .regeneration-controls span {
-        color: #eee;
+
+    .dropdown-content {
+      display: block;
+      position: absolute;
+      background-color: #333;
+      min-width: 160px;
+      box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+      z-index: 1;
+      right: 0;
     }
-    .regeneration-controls select, .regeneration-controls button {
-        padding: 0.25em 0.5em;
-        border-radius: 4px;
-        border: 1px solid #666;
-        background-color: #555;
-        color: #eee;
-        cursor: pointer;
+
+    .dropdown-content button {
+      color: #eee;
+      padding: 12px 16px;
+      text-decoration: none;
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
     }
-    .regeneration-controls button:hover {
-        background-color: #666;
+
+    .dropdown-content button:hover {background-color: #555;}
+
+    .hamburger-button {
+      font-size: 1.5em;
+      background: none;
+      border: none;
+      color: #eee;
+    }
+
+    .todo-button {
+      color: #888 !important;
     }
 </style>

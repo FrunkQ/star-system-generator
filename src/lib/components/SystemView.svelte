@@ -5,6 +5,7 @@
   import { deleteNode, addPlanetaryBody, renameNode, addHabitablePlanet, generateSystem, computePlayerSnapshot } from '$lib/api';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import SystemSummary from './SystemSummary.svelte';
+  import SystemGenerationControls from './SystemGenerationControls.svelte'; // New import
   import BodyTechnicalDetails from './BodyTechnicalDetails.svelte';
   import BodyImage from './BodyImage.svelte';
   import BodyGmTools from './BodyGmTools.svelte';
@@ -301,28 +302,28 @@
 </script>
 <main>
     <div class="top-bar">
-        <div class="focus-header">
-            <h2>Star System View - Current Focus: {focusedBody?.name || 'System View'}</h2>
-        </div>
-        <div class="save-load-controls">
-            <div class="dropdown">
-                <button on:click={() => showDropdown = !showDropdown} class="hamburger-button">&#9776;</button>
-                {#if showDropdown}
-                    <div class="dropdown-content">
-                        <button on:click={handleDownloadJson} disabled={!$systemStore}>Download System</button>
-                        <button on:click={() => document.getElementById('upload-json')?.click()}>Upload System</button>
-                        <button on:click={handleShare} class="todo-button">Share Player Link (Todo)</button>
-                        <button on:click={() => alert('This is a star system generator.')}>About</button>
-                    </div>
-                {/if}
-            </div>
-            <input type="file" id="upload-json" hidden accept=".json,application/json" on:change={handleUploadJson} />
-        </div>
+        
     </div>
 
   {#if $systemStore}
+    <SystemSummary 
+      system={$systemStore} 
+      {focusedBody}
+      bind:showDropdown
+      {handleDownloadJson}
+      {handleUploadJson}
+      {handleShare}
+    />
+
     {#if focusedBody?.parentId === null}
-        <SystemSummary system={$systemStore} {generationOptions} bind:selectedGenerationOption={selectedGenerationOption} {exampleSystems} {handleGenerate} on:loadexample={handleLoadExample} />
+      <SystemGenerationControls
+        system={$systemStore}
+        {generationOptions}
+        bind:selectedGenerationOption={selectedGenerationOption}
+        {exampleSystems}
+        {handleGenerate}
+        on:loadexample={handleLoadExample}
+      />
     {/if}
 
     <div class="controls">
