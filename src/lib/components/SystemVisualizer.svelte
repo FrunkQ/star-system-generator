@@ -97,24 +97,21 @@
     const nodesById = new Map(system.nodes.map(n => [n.id, n]));
     const newScaledPositions = new Map<string, { x: number, y: number }>();
 
-    // Collect all distances for normalization
-    const distances: number[] = [];
-    for (const node of system.nodes) {
-      if (node.parentId && worldPositions.has(node.id) && worldPositions.has(node.parentId)) {
-        const parentPos = worldPositions.get(node.parentId)!;
-        const nodePos = worldPositions.get(node.id)!;
-        const dx = nodePos.x - parentPos.x;
-        const dy = nodePos.y - parentPos.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance > 0) {
-          distances.push(distance);
+    // Determine x0 for distances
+    const distances = Array.from(worldPositions.entries())
+      .map(([id, pos]) => {
+        const node = nodesById.get(id);
+        if (node && node.parentId && worldPositions.has(node.parentId)) {
+          const parentPos = worldPositions.get(node.parentId)!;
+          const dx = pos.x - parentPos.x;
+          const dy = pos.y - parentPos.y;
+          return Math.sqrt(dx * dx + dy * dy);
         }
-      }
-    }
-
-    // Determine x0 for distances (e.g., 1/10th of the smallest non-zero distance)
-    const minDistance = distances.length > 0 ? Math.min(...distances) : 0.01; // Default if no distances
-    x0_distance = minDistance * 0.1; 
+        return 0;
+      })
+      .filter(d => d > 0);
+    const minDistance = distances.length > 0 ? Math.min(...distances) : 0.01;
+    x0_distance = minDistance * 0.1;
 
     // Recursively calculate scaled positions
     function getScaledPosition(nodeId: string): { x: number, y: number } {
@@ -128,23 +125,47 @@
         return { x: 0, y: 0 };
       }
 
-      const parentScaledPos = getScaledPosition(node.parentId); // Get parent's scaled position
-      const parentTruePos = worldPositions.get(node.parentId)!; // Get parent's true position
-      const nodeTruePos = worldPositions.get(node.id)!; // Get node's true position
+      const parentScaledPos = getScaledPosition(node.parentId);
+      const parentTruePos = worldPositions.get(node.parentId)!;
+      const nodeTruePos = worldPositions.get(node.id)!;
 
-      const dxTrue = nodeTruePos.x - parentTruePos.x;
-      const dyTrue = nodeTruePos.y - parentTruePos.y;
-      const trueDistance = Math.sqrt(dxTrue * dxTrue + dyTrue * dyTrue);
+      let x: number, y: number;
 
-      let scaledDistance = trueDistance;
-      if (trueDistance > 0) {
-        scaledDistance = scaleBoxCox(trueDistance, toytownFactor, x0_distance);
+      if (node.kind === 'body' && node.orbit) {
+        // Correct logic for eccentric orbits
+        const { a_AU: a, e, ω_rad: w = 0 } = node.orbit.elements; // Default w to 0 for circular orbits
+        
+        const dxTrue = nodeTruePos.x - parentTruePos.x;
+        const dyTrue = nodeTruePos.y - parentTruePos.y;
+        
+        // This angle is the true anomaly (v) + argument of periapsis (w)
+        const totalAngle = Math.atan2(dyTrue, dxTrue);
+        const trueAnomaly = totalAngle - w;
+
+        const a_scaled = scaleBoxCox(a, toytownFactor, x0_distance);
+        
+        // Use the polar equation for an ellipse to find the correct scaled radius
+        const r_scaled = (a_scaled * (1 - e * e)) / (1 + e * Math.cos(trueAnomaly));
+
+        // Reconstruct the position using the scaled radius and the original total angle
+        x = parentScaledPos.x + r_scaled * Math.cos(totalAngle);
+        y = parentScaledPos.y + r_scaled * Math.sin(totalAngle);
+
+      } else {
+        // Fallback for nodes without orbits (e.g., barycenters)
+        const dxTrue = nodeTruePos.x - parentTruePos.x;
+        const dyTrue = nodeTruePos.y - parentTruePos.y;
+        const trueDistance = Math.sqrt(dxTrue * dxTrue + dyTrue);
+        
+        let scaledDistance = trueDistance;
+        if (trueDistance > 0) {
+          scaledDistance = scaleBoxCox(trueDistance, toytownFactor, x0_distance);
+        }
+        
+        const angle = Math.atan2(dyTrue, dxTrue);
+        x = parentScaledPos.x + scaledDistance * Math.cos(angle);
+        y = parentScaledPos.y + scaledDistance * Math.sin(angle);
       }
-
-      // Reconstruct position based on scaled distance and original angle
-      const angle = Math.atan2(dyTrue, dxTrue);
-      const x = parentScaledPos.x + scaledDistance * Math.cos(angle);
-      const y = parentScaledPos.y + scaledDistance * Math.sin(angle);
 
       newScaledPositions.set(nodeId, { x, y });
       return { x, y };
@@ -398,20 +419,20 @@
 
       // Helper function to do the core calculation
       const calculateAndStorePoints = (primary: CelestialBody, secondaries: CelestialBody[]) => {
-          const primaryPos = worldPositions.get(primary.id); // Use real pos to get relative vector for calculation
+          const primaryPos = worldPositions.get(primary.id); // Use real pos
           const scaledPrimaryPos = toytownFactor > 0 ? scaledWorldPositions.get(primary.id) : primaryPos; // Use scaled pos for final placement
           if (!primaryPos || !scaledPrimaryPos) return;
 
           for (const secondary of secondaries) {
-              const secondaryPos = worldPositions.get(secondary.id); // Use real pos
-              if (!secondaryPos || !secondary.orbit) continue;
+              const secondaryPos = worldPositions.get(secondary.id); // Real pos of secondary
+              const scaledSecondaryPos = toytownFactor > 0 ? scaledWorldPositions.get(secondary.id) : secondaryPos; // Scaled pos of secondary
+              if (!secondaryPos || !scaledSecondaryPos || !secondary.orbit) continue;
 
+              // 1. Calculate L-points in the REAL coordinate system
               const relativeSecondaryPos = { x: secondaryPos.x - primaryPos.x, y: secondaryPos.y - primaryPos.y };
               const points = calculateLagrangePoints(primary, secondary, relativeSecondaryPos);
               
-              // This is the angle of the secondary in REAL space. We need the angle in SCALED space for rotation.
-              const scaledSecondaryPos = toytownFactor > 0 ? scaledWorldPositions.get(secondary.id) : secondaryPos;
-              if (!scaledSecondaryPos) continue;
+              // 2. Determine the angle for rotation from the SCALED positions
               const scaledRelativeSecondaryPos = { x: scaledSecondaryPos.x - scaledPrimaryPos.x, y: scaledSecondaryPos.y - scaledPrimaryPos.y };
               const angle = Math.atan2(scaledRelativeSecondaryPos.y, scaledRelativeSecondaryPos.x);
 
@@ -419,22 +440,28 @@
                   let x = p.x; // real-world offset from primary
                   let y = p.y; // real-world offset from primary
 
+                  // 3. If in Toytown mode, apply a proportional scaling factor
                   if (toytownFactor > 0) {
-                      const dist = Math.sqrt(x*x + y*y);
-                      if (dist > 0) {
-                          const scaledDist = scaleBoxCox(dist, toytownFactor, x0_distance);
-                          const pointAngle = Math.atan2(y, x);
-                          x = scaledDist * Math.cos(pointAngle);
-                          y = scaledDist * Math.sin(pointAngle);
+                      const realSecondaryDist = Math.sqrt(relativeSecondaryPos.x * relativeSecondaryPos.x + relativeSecondaryPos.y * relativeSecondaryPos.y);
+                      const scaledSecondaryDist = Math.sqrt(scaledRelativeSecondaryPos.x * scaledRelativeSecondaryPos.x + scaledRelativeSecondaryPos.y * scaledRelativeSecondaryPos.y);
+
+                      if (realSecondaryDist > 0) {
+                          const scaleFactor = scaledSecondaryDist / realSecondaryDist;
+                          // Apply this uniform scaling factor to the real L-point offset
+                          x *= scaleFactor;
+                          y *= scaleFactor;
                       }
                   }
 
+                  // 4. Rotate the (now correctly scaled) offsets
                   if (!p.isRotated) {
                       const rotatedX = x * Math.cos(angle) - y * Math.sin(angle);
                       const rotatedY = x * Math.sin(angle) + y * Math.cos(angle);
                       x = rotatedX;
                       y = rotatedY;
                   }
+                  
+                  // 5. Add to the scaled primary position for final placement
                   allPoints.set(`${p.name}-${secondary.id}`, { x: x + scaledPrimaryPos.x, y: y + scaledPrimaryPos.y });
               });
           }
@@ -681,7 +708,7 @@
           }
           
           const b = a * Math.sqrt(1 - e * e);
-          const c = a * e; // distance from center to focus
+          const c = a * e; // distance from center to focus - MUST use scaled 'a'
           
           ctx.strokeStyle = "#333";
           ctx.lineWidth = 1 / camera.zoom;
