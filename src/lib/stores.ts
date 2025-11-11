@@ -9,8 +9,6 @@ export const viewportStore = writable({
     zoom: 1
 });
 
-export const toytownFactor = writable(0);
-
 export const aiSettings = writable({
     apiKey: '',
     model: 'gemini-pro',

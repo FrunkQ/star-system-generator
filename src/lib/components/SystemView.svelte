@@ -12,7 +12,7 @@
   import GmNotesEditor from './GmNotesEditor.svelte';
   import ZoneKey from './ZoneKey.svelte';
 
-  import { systemStore, viewportStore, toytownFactor } from '$lib/stores';
+  import { systemStore, viewportStore } from '$lib/stores';
   import { panStore, zoomStore } from '$lib/cameraStore';
   import { get } from 'svelte/store';
 
@@ -32,15 +32,21 @@
   let showNames = true;
   let showZones = false;
   let showLPoints = false;
+  let throttleTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  // When the toytown slider changes, update the system object in the store
-  $: if ($toytownFactor !== $systemStore?.toytownFactor) {
-    systemStore.update(s => s ? { ...s, toytownFactor: $toytownFactor } : s);
+  // Ensure toytownFactor exists for backward compatibility
+  $: if ($systemStore && typeof $systemStore.toytownFactor === 'undefined') {
+    $systemStore.toytownFactor = 0;
   }
 
-  // When the system changes, update the toytown slider's value
-  $: if ($systemStore && $toytownFactor !== $systemStore.toytownFactor) {
-    toytownFactor.set($systemStore.toytownFactor || 0);
+  // Throttle the resetView call while the slider is moving
+  $: if ($systemStore?.toytownFactor !== undefined) {
+    if (!throttleTimeout) {
+      throttleTimeout = setTimeout(() => {
+        visualizer?.resetView();
+        throttleTimeout = null;
+      }, 250);
+    }
   }
 
   // Time state
@@ -61,6 +67,15 @@
     } else {
         focusedBody = null;
     }
+  }
+
+  function handleSliderRelease() {
+    // Ensure a final reset is called when the user lets go of the slider
+    if (throttleTimeout) {
+      clearTimeout(throttleTimeout);
+      throttleTimeout = null;
+    }
+    visualizer?.resetView();
   }
 
   function play() {
@@ -309,7 +324,7 @@
         </label>
         <label>
             Toytown View:
-            <input type="range" min="0" max="1" step="0.01" bind:value={$toytownFactor} />
+            <input type="range" min="0" max="1" step="0.01" bind:value={$systemStore.toytownFactor} on:change={handleSliderRelease} />
         </label>
         <button on:click={() => isPlaying ? pause() : play()}>
             {isPlaying ? 'Pause' : 'Play'}
@@ -328,7 +343,7 @@
 
     <div class="system-view-grid">
         <div class="main-view">
-            <SystemVisualizer bind:this={visualizer} system={$systemStore} {rulePack} {currentTime} {focusedBodyId} {showNames} {showZones} {showLPoints} toytownFactor={$toytownFactor} on:focus={handleFocus} />
+            <SystemVisualizer bind:this={visualizer} system={$systemStore} {rulePack} {currentTime} {focusedBodyId} {showNames} {showZones} {showLPoints} toytownFactor={$systemStore.toytownFactor} on:focus={handleFocus} />
 
             <BodyGmTools body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:addHabitablePlanet={handleAddHabitablePlanet} />
             {#if focusedBody && focusedBody.kind === 'body'}

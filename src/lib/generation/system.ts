@@ -286,6 +286,7 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
       rulePackId: pack.id,
       rulePackVersion: pack.version,
       tags: [],
+      toytownFactor: 0,
       visualScalingMultiplier: 0.5,
     };
   return system;
