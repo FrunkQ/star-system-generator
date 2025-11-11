@@ -1,7 +1,7 @@
 import { _generatePlanetaryBody } from '../generation/planet';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM } from '../constants';
 import { findViableHabitableOrbit } from '../physics/habitability';
-import { calculateCO2IceLine } from '../physics/zones';
+import { calculateAllStellarZones } from '../physics/zones';
 import { SeededRNG } from '../rng';
 import { randomFromRange, toRoman } from '../utils';
 
@@ -73,44 +73,50 @@ export function addPlanetaryBody(sys: System, hostId: ID, planetType: string, pa
     const children = (sys.nodes.filter(n => n.parentId === hostId && n.kind === 'body' && n.orbit) as CelestialBody[])
                       .sort((a, b) => a.orbit!.elements.a_AU - b.orbit!.elements.a_AU);
     
+    const stellarZones = calculateAllStellarZones(host, pack);
     const hostRadiusAU = (host.radiusKm || 0) / AU_KM;
-    const co2IceLineAu = calculateCO2IceLine(host);
 
-    const orbitalBoundaries = [hostRadiusAU * 2]; // Start just outside the star
+    const orbitalPoints: number[] = [];
+    orbitalPoints.push(hostRadiusAU * 2); // Inner limit, just outside the host body
     children.forEach(child => {
-        orbitalBoundaries.push(child.orbit!.elements.a_AU * (1 - child.orbit!.elements.e)); // Periapsis
-        orbitalBoundaries.push(child.orbit!.elements.a_AU * (1 + child.orbit!.elements.e)); // Apoapsis
+        orbitalPoints.push(child.orbit!.elements.a_AU * (1 - child.orbit!.elements.e)); // Periapsis
+        orbitalPoints.push(child.orbit!.elements.a_AU * (1 + child.orbit!.elements.e)); // Apoapsis
     });
+    orbitalPoints.push(stellarZones.systemLimitAu); // Outer limit
+
+    orbitalPoints.sort((a, b) => a - b);
 
     const gaps: { start: number, end: number }[] = [];
-    for (let i = 0; i < orbitalBoundaries.length; i += 2) {
-        const start = orbitalBoundaries[i];
-        const end = orbitalBoundaries[i+1] || start * 10; // If no outer boundary, create a large gap
+    for (let i = 0; i < orbitalPoints.length - 1; i++) {
+        const start = orbitalPoints[i];
+        const end = orbitalPoints[i+1];
         if (end - start > 0.2) { // Minimum gap size of 0.2 AU
             gaps.push({ start, end });
         }
     }
 
-    const outerGaps = gaps.filter(g => g.start > co2IceLineAu);
-    const innerGaps = gaps.filter(g => g.end <= co2IceLineAu);
+    const outerGaps = gaps.filter(g => g.start > stellarZones.co2IceLine);
+    const innerGaps = gaps.filter(g => g.end <= stellarZones.co2IceLine);
 
     let chosenGap: { start: number, end: number } | null = null;
-    if (outerGaps.length > 0) {
-        chosenGap = outerGaps[Math.floor(rng.nextFloat() * outerGaps.length)];
-    } else if (innerGaps.length > 0) {
-        chosenGap = innerGaps[Math.floor(rng.nextFloat() * innerGaps.length)];
+    if (finalPlanetType.includes('giant')) {
+        if (outerGaps.length > 0) {
+            chosenGap = outerGaps[Math.floor(rng.nextFloat() * outerGaps.length)];
+        } else if (innerGaps.length > 0) {
+            chosenGap = innerGaps[Math.floor(rng.nextFloat() * innerGaps.length)];
+        }
+    } else { // For terrestrial planets, any gap is fine
+        const allGaps = [...outerGaps, ...innerGaps];
+        if (allGaps.length > 0) {
+            chosenGap = allGaps[Math.floor(rng.nextFloat() * allGaps.length)];
+        }
     }
 
-    let newA_AU: number;
-    if (chosenGap) {
-        newA_AU = randomFromRange(rng, chosenGap.start, chosenGap.end);
-    } else {
-        // Fallback: place it at the edge
-        const lastApoapsisAU = orbitalBoundaries[orbitalBoundaries.length - 1] || hostRadiusAU * 2;
-        const minGap = (lastApoapsisAU > 0) ? lastApoapsisAU * 0.2 : 0.1;
-        const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
-        newA_AU = newPeriapsis / (1 - randomFromRange(rng, 0.01, 0.15));
+    if (!chosenGap) {
+        throw new Error("There are no available orbital slots to add a new planet.");
     }
+
+    const newA_AU = randomFromRange(rng, chosenGap.start, chosenGap.end);
 
     const newEccentricity = randomFromRange(rng, 0.01, 0.15);
     const orbit: Orbit = {
@@ -133,7 +139,7 @@ export function addPlanetaryBody(sys: System, hostId: ID, planetType: string, pa
         : `${host.name} ${toRoman(siblings.length + 1)}`;
 
     const propertyOverrides: Partial<CelestialBody> = {};
-    if (newA_AU < co2IceLineAu) {
+    if (newA_AU < stellarZones.co2IceLine) {
         propertyOverrides.tags = [{ key: 'Migrated Planet' }];
     }
 

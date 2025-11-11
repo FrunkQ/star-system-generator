@@ -128,7 +128,7 @@
 
   async function handleGenerate(empty: boolean = false) {
     const seed = `seed-${Date.now()}`;
-    const newSystem = generateSystem(seed, rulePack, {}, selectedGenerationOption, empty);
+    const newSystem = generateSystem(seed, rulePack, {}, selectedGenerationOption, empty, $systemStore?.toytownFactor || 0);
     systemStore.set(newSystem);
     currentTime = newSystem.epochT0;
     focusedBodyId = null;
@@ -185,7 +185,14 @@
   function handleAddNode(event: CustomEvent<{hostId: string, planetType: string}>) {
       if (!$systemStore) return;
       const { hostId, planetType } = event.detail;
-      systemStore.set({ ...addPlanetaryBody($systemStore, hostId, planetType, rulePack), isManuallyEdited: true });
+      try {
+        systemStore.set({ ...addPlanetaryBody($systemStore, hostId, planetType, rulePack), isManuallyEdited: true });
+        if (visualizer) {
+          visualizer.resetView();
+        }
+      } catch (e: any) {
+        alert(e.message);
+      }
   }
 
   function handleAddHabitablePlanet(event: CustomEvent<{hostId: string, habitabilityType: 'earth-like' | 'human-habitable' | 'alien-habitable'}>) {

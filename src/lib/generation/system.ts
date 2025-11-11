@@ -6,8 +6,9 @@ import { _generateStar } from './star';
 import { _generatePlanetaryBody } from './planet';
 import { G, AU_KM, SOLAR_MASS_KG } from '../constants';
 import type { GenOptions } from '../api';
+import { calculateAllStellarZones } from '../physics/zones';
 
-export function generateSystem(seed: string, pack: RulePack, __opts: Partial<GenOptions> = {}, generationChoice?: string, empty: boolean = false): System {
+export function generateSystem(seed: string, pack: RulePack, __opts: Partial<GenOptions> = {}, generationChoice?: string, empty: boolean = false, initialToytownFactor: number = 0): System {
   const rng = new SeededRNG(seed);
   const nodes: (CelestialBody | Barycenter)[] = [];
 
@@ -142,6 +143,9 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
     
       if (!isBinary) {
         const star = systemRoot as CelestialBody;
+        const stellarZones = calculateAllStellarZones(star, pack);
+        const systemLimitAu = stellarZones.systemLimitAu;
+
         const rocheLimitAU = (star.radiusKm * 2.44) / AU_KM;
         const sootLineAU = ((star.radiusKm / 2) * Math.pow(star.temperatureK / 1800, 2)) / AU_KM;
         const minOrbitAU = Math.max(rocheLimitAU, sootLineAU) * 1.2; // 20% buffer
@@ -153,7 +157,7 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
                 const power = n === -999 ? 0 : Math.pow(tbParams.c, n);
                 return tbParams.a + tbParams.b * power;
             });
-            orbitalSlotsAU = orbitalSlotsAU.filter(au => au > minOrbitAU);
+            orbitalSlotsAU = orbitalSlotsAU.filter(au => au > minOrbitAU && au < systemLimitAu);
         } else {
             // Fallback to old method if T-B params not in rulepack
             let lastApoapsisAU = minOrbitAU;
@@ -161,6 +165,7 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
                 const minGap = 0.2;
                 const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
                 const newA_AU = newPeriapsis / (1 - randomFromRange(rng, 0.01, 0.15));
+                if (newA_AU > systemLimitAu) break; // Stop if we go beyond the limit
                 orbitalSlotsAU.push(newA_AU);
                 lastApoapsisAU = newA_AU * (1 + randomFromRange(rng, 0.01, 0.15));
             }
@@ -286,7 +291,7 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
       rulePackId: pack.id,
       rulePackVersion: pack.version,
       tags: [],
-      toytownFactor: 0,
+      toytownFactor: initialToytownFactor,
       visualScalingMultiplier: 0.5,
       isManuallyEdited: false,
     };

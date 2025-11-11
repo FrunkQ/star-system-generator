@@ -122,6 +122,8 @@ export function calculateAllStellarZones(star: CelestialBody, pack?: RulePack): 
     const killZone = calculateKillZone(star);
     const dangerZoneMultiplier = pack?.generation_parameters?.danger_zone_multiplier || 5;
     const dangerZone = killZone * dangerZoneMultiplier;
+    const coIceLine = calculateCOIceLine(star);
+    const systemLimitAu = coIceLine * 2;
 
     return {
         killZone: killZone,
@@ -131,6 +133,7 @@ export function calculateAllStellarZones(star: CelestialBody, pack?: RulePack): 
         sootLine: calculateSootLine(star),
         frostLine: calculateFrostLine(star),
         co2IceLine: calculateCO2IceLine(star),
-        coIceLine: calculateCOIceLine(star),
+        coIceLine: coIceLine,
+        systemLimitAu: systemLimitAu,
     };
 }
