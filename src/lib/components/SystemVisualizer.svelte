@@ -225,7 +225,46 @@
           }
           return { pan: targetPosition, zoom: newZoom };
       } else {
-          // Body has NO children, frame the body itself with some padding.
+          // Body has NO children.
+          // If it's a moon, frame it with its parent.
+          if (targetNode.kind === 'body' && targetNode.roleHint === 'moon' && targetNode.parentId) {
+              const parentNode = nodesById.get(targetNode.parentId);
+              const parentPosition = parentNode ? targetPositions.get(parentNode.id) : null;
+
+              if (parentPosition) {
+                  const dx = targetPosition.x - parentPosition.x;
+                  const dy = targetPosition.y - parentPosition.y;
+                  const distance = Math.sqrt(dx*dx + dy*dy);
+                  
+                  // Also consider the parent's radius for padding
+                  let parentRadius = 0;
+                  if (parentNode.kind === 'body' && parentNode.radiusKm) {
+                      parentRadius = parentNode.radiusKm / AU_KM;
+                      if (toytownFactor > 0) {
+                          parentRadius = scaleBoxCox(parentRadius, toytownFactor, x0_distance);
+                      }
+                  }
+
+                  const paddingFactor = 1.2; // 20% padding
+                  const targetWorldSize = (distance + parentRadius) * 2 * paddingFactor;
+
+                  let newZoom = currentZoom;
+                  if (targetWorldSize > 0) {
+                      const zoomX = canvas.width / targetWorldSize;
+                      const zoomY = canvas.height / targetWorldSize;
+                      newZoom = Math.min(zoomX, zoomY);
+                  }
+
+                  // Pan to the midpoint between the moon and its parent
+                  const midPoint = {
+                      x: (targetPosition.x + parentPosition.x) / 2,
+                      y: (targetPosition.y + parentPosition.y) / 2
+                  };
+                  return { pan: midPoint, zoom: newZoom };
+              }
+          }
+
+          // For other childless bodies (like planets), frame the body itself with padding.
           let bodyRadius = 0;
           if (targetNode.kind === 'body' && targetNode.radiusKm) {
               bodyRadius = targetNode.radiusKm / AU_KM;
@@ -234,7 +273,6 @@
               }
           }
           
-          // Give it a generous padding, say, 20x its radius, to give it context.
           const paddingFactor = 20; 
           const targetWorldSize = (bodyRadius > 0 ? bodyRadius * 2 : 0.01) * paddingFactor;
 
@@ -602,11 +640,11 @@
               radiusInAU = scaleBoxCox(radiusInAU, toytownFactor, x0_distance);
           }
           let minRadiusPx = 2;
-          if (node.roleHint === 'star') minRadiusPx = 4;
+          if (node.roleHint === 'star') minRadiusPx = 10;
           else if (node.roleHint === 'planet') {
               const isGasGiant = node.classes.some(c => c.includes('gas-giant') || c.includes('ice-giant'));
-              minRadiusPx = isGasGiant ? 3 : 2;
-          } else if (node.roleHint === 'moon') minRadiusPx = 1;
+              minRadiusPx = isGasGiant ? 15 : 12;
+          } else if (node.roleHint === 'moon') minRadiusPx = 8;
           const minRadiusInWorld = minRadiusPx / camera.zoom;
           const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
 
