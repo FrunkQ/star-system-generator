@@ -225,25 +225,28 @@
           }
           return { pan: targetPosition, zoom: newZoom };
       } else {
-          // Body has NO children, frame it and its parent
-          const parentNode = targetNode.parentId ? nodesById.get(targetNode.parentId) : null;
-          if (parentNode) {
-              const parentPosition = targetPositions.get(parentNode.id);
-              if (parentPosition) {
-                  const dx = targetPosition.x - parentPosition.x;
-                  const dy = targetPosition.y - parentPosition.y;
-                  const distance = Math.sqrt(dx*dx + dy*dy);
-                  let newZoom;
-                  if (distance > 0) {
-                      newZoom = (Math.min(canvas.width, canvas.height) / 2) / (distance * 1.02);
-                  } else {
-                      newZoom = currentZoom * 2;
-                  }
-                  return { pan: targetPosition, zoom: newZoom };
+          // Body has NO children, frame the body itself with some padding.
+          let bodyRadius = 0;
+          if (targetNode.kind === 'body' && targetNode.radiusKm) {
+              bodyRadius = targetNode.radiusKm / AU_KM;
+              if (toytownFactor > 0) {
+                  bodyRadius = scaleBoxCox(bodyRadius, toytownFactor, x0_distance);
               }
           }
-          // No parent or parent position not found, just center with current zoom
-          return { pan: targetPosition, zoom: currentZoom };
+          
+          // Give it a generous padding, say, 20x its radius, to give it context.
+          const paddingFactor = 20; 
+          const targetWorldSize = (bodyRadius > 0 ? bodyRadius * 2 : 0.01) * paddingFactor;
+
+          let newZoom = currentZoom;
+          if (targetWorldSize > 0) {
+              const zoomX = canvas.width / targetWorldSize;
+              const zoomY = canvas.height / targetWorldSize;
+              newZoom = Math.min(zoomX, zoomY);
+          } else {
+              newZoom = currentZoom * 2; // Fallback for things with no radius
+          }
+          return { pan: targetPosition, zoom: newZoom };
       }
   }
 

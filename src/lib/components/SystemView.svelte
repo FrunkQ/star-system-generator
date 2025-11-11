@@ -33,14 +33,16 @@
   let showZones = false;
   let showLPoints = false;
   let throttleTimeout: ReturnType<typeof setTimeout> | null = null;
+  let lastToytownFactor: number | undefined = undefined;
 
   // Ensure toytownFactor exists for backward compatibility
   $: if ($systemStore && typeof $systemStore.toytownFactor === 'undefined') {
     $systemStore.toytownFactor = 0;
   }
 
-  // Throttle the resetView call while the slider is moving
-  $: if ($systemStore?.toytownFactor !== undefined) {
+  // Throttle the resetView call only when the slider value actually changes
+  $: if ($systemStore && $systemStore.toytownFactor !== lastToytownFactor) {
+    lastToytownFactor = $systemStore.toytownFactor;
     if (!throttleTimeout) {
       throttleTimeout = setTimeout(() => {
         visualizer?.resetView();
@@ -131,13 +133,31 @@
   }
 
   function handleDeleteNode(event: CustomEvent<string>) {
-      if (!$systemStore) return;
-      const nodeId = event.detail;
-      systemStore.set(deleteNode($systemStore, nodeId));
-      // If the deleted node was focused, zoom out to its parent
-      if (focusedBodyId === nodeId) {
-          zoomOut();
-      }
+    if (!$systemStore) return;
+    const nodeId = event.detail;
+    const nodeToDelete = $systemStore.nodes.find(n => n.id === nodeId);
+
+    // Decide the next focus target BEFORE deleting
+    let nextFocusId: string | null = null;
+    if (focusedBodyId === nodeId) {
+        if (nodeToDelete?.parentId) {
+            nextFocusId = nodeToDelete.parentId;
+        } else {
+            // No parent, so we should go back to the starmap
+            dispatch('back'); 
+            // We still need to update the store to reflect the deletion
+            systemStore.set(deleteNode($systemStore, nodeId));
+            return; // Exit early
+        }
+    }
+
+    // Update the system state with the deleted node
+    systemStore.set(deleteNode($systemStore, nodeId));
+
+    // If we determined a new focus is needed, trigger it now to get the animation
+    if (nextFocusId) {
+        handleFocus({ detail: nextFocusId } as CustomEvent<string | null>);
+    }
   }
 
   function handleAddNode(event: CustomEvent<{hostId: string, planetType: string}>) {
