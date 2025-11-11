@@ -15,15 +15,15 @@
 </script>
 
 <div class="gm-tools">
-    <h3>GM Tools</h3>
+    <h3>Manual Editing Tools (Additions are buggy)</h3>
     <div class="tools-container">
         {#if body && body.parentId !== null}
             <button class="delete-button" on:click={handleDelete}>Delete {body.name}</button>
         {/if}
         
         <button on:click={() => dispatch('addNode', { hostId: body.id, planetType: 'planet/terrestrial' })}>Add Terrestrial</button>
-        {#if body && (body.kind !== 'body' || (body.massKg || 0) > 10 * 5.972e24)}
-            <button on:click={() => dispatch('addNode', { hostId: body.id, planetType: 'planet/gas-giant' })}>Add Gas Giant</button>
+        {#if body && (body.roleHint === 'star' || body.kind === 'barycenter')}
+            <button on:click={() => dispatch('addNode', { hostId: body.id, planetType: 'planet/any-giant' })}>Add Giant</button>
         {/if}
 
         {#if body && body.kind === 'body' && (body.roleHint === 'star' || body.roleHint === 'planet')}

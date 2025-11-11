@@ -1,10 +1,9 @@
-// src/lib/system/modifiers.ts
-import type { System, ID, CelestialBody, Barycenter, RulePack, Orbit } from "../types";
-import { SeededRNG } from '../rng';
-import { randomFromRange, toRoman } from '../utils';
 import { _generatePlanetaryBody } from '../generation/planet';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM } from '../constants';
 import { findViableHabitableOrbit } from '../physics/habitability';
+import { calculateCO2IceLine } from '../physics/zones';
+import { SeededRNG } from '../rng';
+import { randomFromRange, toRoman } from '../utils';
 
 export function deleteNode(sys: System, nodeId: ID): System {
     const nodesToDelete = new Set<ID>([nodeId]);
@@ -54,41 +53,66 @@ export function getValidPlanetTypesForHost(host: CelestialBody | Barycenter, pac
 
 export function addPlanetaryBody(sys: System, hostId: ID, planetType: string, pack: RulePack): System {
     const rng = new SeededRNG(sys.seed + Date.now()); // Use a new RNG seed to avoid determinism issues
-    const host = sys.nodes.find(n => n.id === hostId);
+    const host = sys.nodes.find(n => n.id === hostId) as CelestialBody;
     if (!host) throw new Error(`Host with id ${hostId} not found.`);
 
-    const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
+    const hostMass = host.massKg || 0;
     if (hostMass === 0) throw new Error(`Host ${hostId} has no mass.`);
 
-    // 1. Find a valid orbit
-    const children = sys.nodes.filter(n => n.parentId === hostId && n.kind === 'body') as CelestialBody[];
-    let lastApoapsisAU = 0;
-
-    if (children.length > 0) {
-        children.forEach(child => {
-            if (child.orbit) {
-                const apoapsis = child.orbit.elements.a_AU * (1 + child.orbit.elements.e);
-                if (apoapsis > lastApoapsisAU) {
-                    lastApoapsisAU = apoapsis;
-                }
-            }
-        });
-    } else if (host.kind === 'body') {
-        // If no children, start just outside the host's Roche limit
-        const parentDensity = (host.massKg || 0) / (4/3 * Math.PI * Math.pow((host.radiusKm || 1) * 1000, 3));
-        const moonDensity = 3344; // Approximate density of Earth's moon
-        const rocheLimit_km = (host.radiusKm || 1) * Math.pow(2 * (parentDensity / moonDensity), 1/3);
-        lastApoapsisAU = rocheLimit_km / AU_KM * 1.5;
-    } else {
-        // Fallback for barycenters or other non-body hosts
-        lastApoapsisAU = ((host as CelestialBody).radiusKm || 0) / AU_KM;
+    // Explicitly prevent adding giants as moons
+    if (host.roleHint === 'planet' && (planetType.includes('giant'))) {
+        throw new Error(`Cannot add a giant planet as a moon.`);
     }
 
-    const minGap = (lastApoapsisAU > 0) ? lastApoapsisAU * 0.2 : 0.1;
-    const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
-    const newEccentricity = randomFromRange(rng, 0.01, 0.15);
-    const newA_AU = newPeriapsis / (1 - newEccentricity);
+    let finalPlanetType = planetType;
+    if (planetType === 'planet/any-giant') {
+        finalPlanetType = rng.nextFloat() < 0.5 ? 'planet/gas-giant' : 'planet/ice-giant';
+    }
 
+    // 1. Find a valid orbit using gap logic
+    const children = (sys.nodes.filter(n => n.parentId === hostId && n.kind === 'body' && n.orbit) as CelestialBody[])
+                      .sort((a, b) => a.orbit!.elements.a_AU - b.orbit!.elements.a_AU);
+    
+    const hostRadiusAU = (host.radiusKm || 0) / AU_KM;
+    const co2IceLineAu = calculateCO2IceLine(host);
+
+    const orbitalBoundaries = [hostRadiusAU * 2]; // Start just outside the star
+    children.forEach(child => {
+        orbitalBoundaries.push(child.orbit!.elements.a_AU * (1 - child.orbit!.elements.e)); // Periapsis
+        orbitalBoundaries.push(child.orbit!.elements.a_AU * (1 + child.orbit!.elements.e)); // Apoapsis
+    });
+
+    const gaps: { start: number, end: number }[] = [];
+    for (let i = 0; i < orbitalBoundaries.length; i += 2) {
+        const start = orbitalBoundaries[i];
+        const end = orbitalBoundaries[i+1] || start * 10; // If no outer boundary, create a large gap
+        if (end - start > 0.2) { // Minimum gap size of 0.2 AU
+            gaps.push({ start, end });
+        }
+    }
+
+    const outerGaps = gaps.filter(g => g.start > co2IceLineAu);
+    const innerGaps = gaps.filter(g => g.end <= co2IceLineAu);
+
+    let chosenGap: { start: number, end: number } | null = null;
+    if (outerGaps.length > 0) {
+        chosenGap = outerGaps[Math.floor(rng.nextFloat() * outerGaps.length)];
+    } else if (innerGaps.length > 0) {
+        chosenGap = innerGaps[Math.floor(rng.nextFloat() * innerGaps.length)];
+    }
+
+    let newA_AU: number;
+    if (chosenGap) {
+        newA_AU = randomFromRange(rng, chosenGap.start, chosenGap.end);
+    } else {
+        // Fallback: place it at the edge
+        const lastApoapsisAU = orbitalBoundaries[orbitalBoundaries.length - 1] || hostRadiusAU * 2;
+        const minGap = (lastApoapsisAU > 0) ? lastApoapsisAU * 0.2 : 0.1;
+        const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
+        newA_AU = newPeriapsis / (1 - randomFromRange(rng, 0.01, 0.15));
+    }
+
+    const newEccentricity = randomFromRange(rng, 0.01, 0.15);
     const orbit: Orbit = {
         hostId: hostId,
         hostMu: G * hostMass,
@@ -104,11 +128,16 @@ export function addPlanetaryBody(sys: System, hostId: ID, planetType: string, pa
     };
 
     const siblings = sys.nodes.filter(n => n.parentId === hostId);
-    const name = ((host as CelestialBody).roleHint === 'star' || host.kind === 'barycenter') 
+    const name = (host.roleHint === 'star' || host.kind === 'barycenter') 
         ? `${host.name} ${String.fromCharCode(98 + siblings.length)}`
         : `${host.name} ${toRoman(siblings.length + 1)}`;
 
-    const newNodes = _generatePlanetaryBody(rng, pack, `${sys.seed}-custom`, siblings.length, host, orbit, name, sys.nodes, sys.age_Gyr, planetType, false);
+    const propertyOverrides: Partial<CelestialBody> = {};
+    if (newA_AU < co2IceLineAu) {
+        propertyOverrides.tags = [{ key: 'Migrated Planet' }];
+    }
+
+    const newNodes = _generatePlanetaryBody(rng, pack, `${sys.seed}-custom`, siblings.length, host, orbit, name, sys.nodes, sys.age_Gyr, finalPlanetType, false, propertyOverrides);
     
     const newSystem = {
         ...sys,

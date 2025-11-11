@@ -96,10 +96,6 @@ export function _generatePlanetaryBody(
         }
     }
 
-    if (planet.roleHint === 'moon') {
-        planetType = 'planet/terrestrial';
-    }
-
     const planetTemplate = pack.statTemplates?.[planetType];
     if (planetTemplate) {
         if (!propertyOverrides?.massKg) {
@@ -133,7 +129,10 @@ export function _generatePlanetaryBody(
     }
 
     if (propertyOverrides) {
+        const existingTags = planet.tags || [];
+        const overrideTags = propertyOverrides.tags || [];
         planet = { ...planet, ...propertyOverrides };
+        planet.tags = [...existingTags, ...overrideTags];
     }
 
     if (planet.orbit?.isRetrogradeOrbit) {
