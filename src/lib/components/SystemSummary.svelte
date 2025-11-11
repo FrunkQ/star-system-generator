@@ -34,6 +34,123 @@
     return '#cc6600'; // Darker Orange/Brown for Terrestrial Bodies
   }
 
+  function groupItemsByHost(items: CelestialBody[], allNodes: (CelestialBody | Barycenter)[]) {
+    const hosts = allNodes.filter(n => n.kind === 'body' && (n.roleHint === 'star' || n.roleHint === 'planet'));
+    const hostMap = new Map<string, (CelestialBody | Barycenter)>();
+    hosts.forEach(h => hostMap.set(h.id, h));
+
+    const grouped = new Map<string, CelestialBody[]>();
+
+    items.forEach(item => {
+      const hostId = item.orbit?.hostId;
+      if (hostId) {
+        if (!grouped.has(hostId)) {
+          grouped.set(hostId, []);
+        }
+        grouped.get(hostId)?.push(item);
+      }
+    });
+
+    const result = Array.from(grouped.entries()).map(([hostId, children]) => {
+      children.sort((a, b) => (a.orbit?.elements.a_AU || 0) - (b.orbit?.elements.a_AU || 0));
+      return {
+        host: hostMap.get(hostId),
+        children: children
+      };
+    });
+
+    // Sort the hosts themselves by their orbital distance
+    result.sort((a, b) => {
+        const aOrbit = (a.host as CelestialBody)?.orbit;
+        const bOrbit = (b.host as CelestialBody)?.orbit;
+        if (aOrbit && bOrbit) {
+            return aOrbit.elements.a_AU - bOrbit.elements.a_AU;
+        }
+        // Handle cases where one might be a star (no orbit)
+        if (!aOrbit) return -1;
+        if (!bOrbit) return 1;
+        return 0;
+    });
+
+    return result;
+  }
+
+  function showContextMenu(event: MouseEvent, type: string) {
+    event.stopPropagation(); // Prevent the click from bubbling up and closing the menu immediately
+    if (!system) return;
+
+    let items: CelestialBody[] = [];
+    let itemType = type;
+
+    switch (type) {
+      case 'star':
+        items = system.nodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
+        break;
+      case 'planet':
+        items = system.nodes.filter(n => n.kind === 'body' && n.roleHint === 'planet') as CelestialBody[];
+        break;
+      case 'moon':
+        const moons = system.nodes.filter(n => n.kind === 'body' && n.roleHint === 'moon') as CelestialBody[];
+        const groupedMoons = groupItemsByHost(moons, system.nodes);
+        if (groupedMoons.length > 0) {
+          dispatch('showcontextmenu', { x: event.clientX, y: event.clientY, items: groupedMoons, type: 'grouped' });
+        }
+        return;
+      case 'belt':
+        items = system.nodes.filter(n => n.kind === 'body' && n.roleHint === 'belt') as CelestialBody[];
+        break;
+      case 'terrestrial':
+        const terrestrialBodies = system.nodes.filter(n => n.kind === 'body' && (n.roleHint === 'planet' || n.roleHint === 'moon') && !n.classes?.some(c => c.includes('gas-giant') || c.includes('ice-giant'))) as CelestialBody[];
+        const groupedTerrestrials = groupItemsByHost(terrestrialBodies, system.nodes);
+        if (groupedTerrestrials.length > 0) {
+          dispatch('showcontextmenu', { x: event.clientX, y: event.clientY, items: groupedTerrestrials, type: 'grouped' });
+        }
+        return;
+      case 'gas-giant':
+        items = system.nodes.filter(n => n.kind === 'body' && n.classes?.some(c => c.includes('gas-giant'))) as CelestialBody[];
+        break;
+      case 'ice-giant':
+        items = system.nodes.filter(n => n.kind === 'body' && n.classes?.some(c => c.includes('ice-giant'))) as CelestialBody[];
+        break;
+      case 'human-habitable':
+        items = system.nodes.filter(n => n.kind === 'body' && n.tags?.some(t => t.key === 'habitability/human')) as CelestialBody[];
+        break;
+      case 'earth-like':
+        items = system.nodes.filter(n => n.kind === 'body' && n.tags?.some(t => t.key === 'habitability/earth-like')) as CelestialBody[];
+        break;
+      case 'biosphere':
+        items = system.nodes.filter(n => n.kind === 'body' && n.biosphere) as CelestialBody[];
+        break;
+    }
+
+    // Sort flat lists
+    items.sort((a, b) => {
+      const aOrbit = a.orbit;
+      const bOrbit = b.orbit;
+      if (aOrbit && bOrbit) {
+        if (aOrbit.hostId === bOrbit.hostId) {
+          return aOrbit.elements.a_AU - bOrbit.elements.a_AU;
+        }
+        // A bit of a hack to sort planets before moons if they are mixed
+        const aIsPlanet = (a as CelestialBody).roleHint === 'planet';
+        const bIsPlanet = (b as CelestialBody).roleHint === 'planet';
+        if (aIsPlanet && !bIsPlanet) return -1;
+        if (!aIsPlanet && bIsPlanet) return 1;
+        return aOrbit.hostId.localeCompare(bOrbit.hostId);
+      }
+      return 0;
+    });
+
+    if (items.length > 0) {
+      dispatch('showcontextmenu', {
+        x: event.clientX,
+        y: event.clientY,
+        items: items,
+        type: itemType
+      });
+    }
+  }
+
   $: {
     gasGiants = 0;
     iceGiants = 0;
@@ -99,6 +216,9 @@
                       <button on:click={handleDownloadJson} disabled={!system}>Download System</button>
                       <button on:click={() => document.getElementById('upload-json-summary')?.click()}>Upload System</button>
                       <button on:click={handleShare} class="todo-button">Share Player Link (Todo)</button>
+                      {#if system?.isManuallyEdited}
+                        <button on:click={() => dispatch('clearmanualedit')}>Show Regenerate Controls</button>
+                      {/if}
                       <button on:click={() => alert('This is a star system generator.')}>About</button>
                   </div>
               {/if}
@@ -107,43 +227,43 @@
       </div>
     </div>
     <div class="summary-grid">
-        <div class="summary-item" style="border: 2px solid #ffc107;">
+        <div class="summary-item" style="border: 2px solid #ffc107;" on:click={(e) => showContextMenu(e, 'star')}>
             <span class="value">{starCount}</span>
             <span class="label">Stars</span>
         </div>
-        <div class="summary-item">
+        <div class="summary-item" on:click={(e) => showContextMenu(e, 'planet')}>
             <span class="value">{totalPlanets}</span>
             <span class="label">Planets</span>
         </div>
-        <div class="summary-item">
+        <div class="summary-item" on:click={(e) => showContextMenu(e, 'moon')}>
             <span class="value">{totalMoons}</span>
             <span class="label">Moons</span>
         </div>
-        <div class="summary-item">
+        <div class="summary-item" on:click={(e) => showContextMenu(e, 'belt')}>
             <span class="value">{belts}</span>
             <span class="label">Belts</span>
         </div>
-        <div class="summary-item" style="border: 2px solid #cc6600">
+        <div class="summary-item" style="border: 2px solid #cc6600" on:click={(e) => showContextMenu(e, 'terrestrial')}>
             <span class="value">{terrestrials}</span>
-            <span class="label">Terrestrial Bodies</span>
+            <span class="label">Terrestrial</span>
         </div>
-        <div class="summary-item" style="border: 2px solid #cc0000">
+        <div class="summary-item" style="border: 2px solid #cc0000" on:click={(e) => showContextMenu(e, 'gas-giant')}>
             <span class="value">{gasGiants}</span>
             <span class="label">Gas Giants</span>
         </div>
-        <div class="summary-item" style="border: 2px solid #add8e6">
+        <div class="summary-item" style="border: 2px solid #add8e6" on:click={(e) => showContextMenu(e, 'ice-giant')}>
             <span class="value">{iceGiants}</span>
             <span class="label">Ice Giants</span>
         </div>
-        <div class="summary-item" style="border: 2px solid #007bff">
+        <div class="summary-item" style="border: 2px solid #007bff" on:click={(e) => showContextMenu(e, 'human-habitable')}>
             <span class="value">{humanHabitable}</span>
             <span class="label">Human-Habitable</span>
         </div>
-        <div class="summary-item" style="border: 2px solid #007bff">
+        <div class="summary-item" style="border: 2px solid #007bff" on:click={(e) => showContextMenu(e, 'earth-like')}>
             <span class="value">{earthLike}</span>
             <span class="label">Earth-like</span>
         </div>
-        <div class="summary-item" style="border: 2px solid #00ff00">
+        <div class="summary-item" style="border: 2px solid #00ff00" on:click={(e) => showContextMenu(e, 'biosphere')}>
             <span class="value">{biospheres}</span>
             <span class="label">Biospheres</span>
         </div>
@@ -186,6 +306,7 @@
         background-color: #252525;
         padding: 0.5em;
         border-radius: 4px;
+        cursor: pointer;
     }
     .value {
         font-size: 1.5em;

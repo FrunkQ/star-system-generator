@@ -11,11 +11,11 @@
 <div class="context-menu" style="left: {x}px; top: {y}px;">
   <ul>
     {#if isStar}
-      <li><button on:click={() => dispatch('zoom')}>Zoom In</button></li>
-      <li><button on:click={() => dispatch('link')}>Link System</button></li>
-      <li><button on:click={() => dispatch('delete')}>Delete System</button></li>
+      <li on:click={() => dispatch('zoom')}>Zoom to System</li>
+      <li on:click={() => dispatch('link')}>Start Link</li>
+      <li on:click={() => dispatch('delete')}>Delete System</li>
     {:else}
-      <li><button on:click={() => dispatch('addsystem')}>Add System</button></li>
+      <li on:click={() => dispatch('addsystem')}>Add System Here</li>
     {/if}
   </ul>
 </div>
@@ -23,30 +23,22 @@
 <style>
   .context-menu {
     position: absolute;
-    background-color: #444;
+    background-color: #333;
     border: 1px solid #555;
     border-radius: 5px;
-    padding: 5px;
-    z-index: 1000;
+    z-index: 100;
+    color: #eee;
   }
-
   ul {
     list-style: none;
     padding: 0;
     margin: 0;
   }
-
-  li button {
-    width: 100%;
-    padding: 5px 10px;
-    background: none;
-    border: none;
-    color: white;
-    text-align: left;
+  li {
+    padding: 0.5em 1em;
     cursor: pointer;
   }
-
-  li button:hover {
+  li:hover {
     background-color: #555;
   }
 </style>

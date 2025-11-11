@@ -288,6 +288,7 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
       tags: [],
       toytownFactor: 0,
       visualScalingMultiplier: 0.5,
+      isManuallyEdited: false,
     };
   return system;
 }

@@ -5,7 +5,8 @@
   import { deleteNode, addPlanetaryBody, renameNode, addHabitablePlanet, generateSystem, computePlayerSnapshot } from '$lib/api';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import SystemSummary from './SystemSummary.svelte';
-  import SystemGenerationControls from './SystemGenerationControls.svelte'; // New import
+  import SystemGenerationControls from './SystemGenerationControls.svelte';
+  import SystemSummaryContextMenu from './SystemSummaryContextMenu.svelte'; // New import
   import BodyTechnicalDetails from './BodyTechnicalDetails.svelte';
   import BodyImage from './BodyImage.svelte';
   import BodyGmTools from './BodyGmTools.svelte';
@@ -35,6 +36,26 @@
   let showLPoints = false;
   let throttleTimeout: ReturnType<typeof setTimeout> | null = null;
   let lastToytownFactor: number | undefined = undefined;
+
+  // Context Menu State
+  let showSummaryContextMenu = false;
+  let contextMenuX = 0;
+  let contextMenuY = 0;
+  let contextMenuItems: CelestialBody[] = [];
+  let contextMenuType = '';
+
+  function handleShowContextMenu(event: CustomEvent<{ x: number, y: number, items: any[], type: string }>) {
+    contextMenuItems = event.detail.items;
+    contextMenuX = event.detail.x;
+    contextMenuY = event.detail.y;
+    contextMenuType = event.detail.type;
+    showSummaryContextMenu = true;
+  }
+
+  function handleContextMenuSelect(event: CustomEvent<string>) {
+    showSummaryContextMenu = false;
+    handleFocus({ detail: event.detail } as CustomEvent<string | null>);
+  }
 
   // Ensure toytownFactor exists for backward compatibility
   $: if ($systemStore && typeof $systemStore.toytownFactor === 'undefined') {
@@ -152,8 +173,8 @@
         }
     }
 
-    // Update the system state with the deleted node
-    systemStore.set(deleteNode($systemStore, nodeId));
+    // Update the system state with the deleted node and mark as edited
+    systemStore.set({ ...deleteNode($systemStore, nodeId), isManuallyEdited: true });
 
     // If we determined a new focus is needed, trigger it now to get the animation
     if (nextFocusId) {
@@ -164,14 +185,14 @@
   function handleAddNode(event: CustomEvent<{hostId: string, planetType: string}>) {
       if (!$systemStore) return;
       const { hostId, planetType } = event.detail;
-      systemStore.set(addPlanetaryBody($systemStore, hostId, planetType, rulePack));
+      systemStore.set({ ...addPlanetaryBody($systemStore, hostId, planetType, rulePack), isManuallyEdited: true });
   }
 
   function handleAddHabitablePlanet(event: CustomEvent<{hostId: string, habitabilityType: 'earth-like' | 'human-habitable' | 'alien-habitable'}>) {
       if (!$systemStore) return;
       const { hostId, habitabilityType } = event.detail;
       try {
-        systemStore.set(addHabitablePlanet($systemStore, hostId, habitabilityType, rulePack));
+        systemStore.set({ ...addHabitablePlanet($systemStore, hostId, habitabilityType, rulePack), isManuallyEdited: true });
       } catch (e: any) {
         alert(e.message);
       }
@@ -284,6 +305,7 @@
     });
 
     window.addEventListener('popstate', handlePopState);
+    document.addEventListener('click', handleClickOutside);
   });
 
   onDestroy(() => {
@@ -297,7 +319,24 @@
         unsubscribeZoomStore();
     }
     window.removeEventListener('popstate', handlePopState);
+    document.removeEventListener('click', handleClickOutside);
   });
+
+  function handleClickOutside(event: MouseEvent) {
+    if (showSummaryContextMenu) {
+      const menu = document.querySelector('.context-menu');
+      if (menu && !menu.contains(event.target as Node)) {
+        showSummaryContextMenu = false;
+      }
+    }
+  }
+
+  function closeContextMenuOnClickOutside(event: MouseEvent) {
+    const contextMenu = document.querySelector('.context-menu');
+    if (contextMenu && !contextMenu.contains(event.target as Node)) {
+      showSummaryContextMenu = false;
+    }
+  }
 
 </script>
 <main>
@@ -313,9 +352,11 @@
       {handleDownloadJson}
       {handleUploadJson}
       {handleShare}
+      on:showcontextmenu={handleShowContextMenu}
+      on:clearmanualedit={() => systemStore.update(s => s ? { ...s, isManuallyEdited: false } : s)}
     />
 
-    {#if focusedBody?.parentId === null}
+    {#if !$systemStore.isManuallyEdited}
       <SystemGenerationControls
         system={$systemStore}
         {generationOptions}
@@ -368,21 +409,28 @@
 
             <BodyGmTools body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:addHabitablePlanet={handleAddHabitablePlanet} />
             {#if focusedBody && focusedBody.kind === 'body'}
-                <DescriptionEditor body={focusedBody} />
+                <DescriptionEditor body={focusedBody} on:change={() => systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s)} />
             {/if}
         </div>
         <div class="details-view">
-            <input type="text" value={focusedBody.name} on:change={(e) => dispatch('renameNode', {nodeId: focusedBody.id, newName: e.target.value})} class="name-input" title="Click to rename" />
+            <input type="text" value={focusedBody.name} on:change={(e) => {
+              dispatch('renameNode', {nodeId: focusedBody.id, newName: e.target.value});
+              systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s);
+            }} class="name-input" title="Click to rename" />
             {#if showZones && focusedBody.roleHint === 'star'}
                 <ZoneKey />
             {:else}
                 <BodyTechnicalDetails body={focusedBody} />
             {/if}
             <BodyImage body={focusedBody} />
-            <GmNotesEditor body={focusedBody} />
+            <GmNotesEditor body={focusedBody} on:change={() => systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s)} />
         </div>
 
     </div>
+
+    {#if showSummaryContextMenu}
+      <SystemSummaryContextMenu items={contextMenuItems} x={contextMenuX} y={contextMenuY} type={contextMenuType} on:select={handleContextMenuSelect} />
+    {/if}
 
     <div class="debug-controls">
         <button on:click={() => showJson = !showJson}>
@@ -402,6 +450,7 @@
     font-family: sans-serif;
     padding: 0.5em;
     font-size: 0.9em;
+    position: relative; /* Needed for context menu positioning */
   }
   .top-bar, .controls {
     margin: 0.5em 0;

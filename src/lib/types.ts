@@ -100,6 +100,7 @@ export interface System {
   tags: Tag[]; notes?: string; gmNotes?: string;
   visualScalingMultiplier?: number;
   toytownFactor?: number;
+  isManuallyEdited?: boolean;
 }
 
 // Rule Pack interfaces (subset for M0–M1)
