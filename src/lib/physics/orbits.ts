@@ -136,10 +136,10 @@ export function calculateOrbitalBoundaries(planet: PlanetData): OrbitalBoundarie
   
   // We must derive the planet's radius from its mass and gravity (g = GM/r²) -> r = sqrt(GM/g)
   const planetRadiusMeters = Math.sqrt((GRAVITATIONAL_CONSTANT_G * planet.massKg) / planet.gravity);
+  const T = Math.abs(planet.rotationPeriodSeconds);
 
-  if (planet.rotationPeriodSeconds > 0) {
+  if (T > 0) {
     // Standard formula for orbital radius: r = cuberoot( G * M * T² / (4 * π²) )
-    const T = planet.rotationPeriodSeconds;
     const M = planet.massKg;
     const G = GRAVITATIONAL_CONSTANT_G;
 
