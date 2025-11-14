@@ -1,7 +1,9 @@
 <script lang="ts">
   import type { CelestialBody, Barycenter } from "$lib/types";
+  import { calculateOrbitalBoundaries, type OrbitalBoundaries, type PlanetData } from "$lib/physics/orbits";
 
   export let body: CelestialBody | Barycenter | null;
+  export let rulePack: RulePack;
 
   // Derived Reactive Properties
   let surfaceTempC: number | null = null;
@@ -311,6 +313,19 @@
         </div>
     {/if}
 
+    {#if body.kind === 'body' && body.orbitalBoundaries}
+        <div class="detail-item orbital-zones">
+            <span class="label">Orbital Zones</span>
+            <div class="zone-details">
+                <span><strong>Low Orbit:</strong> {body.orbitalBoundaries.minLeoKm.toLocaleString(undefined, {maximumFractionDigits: 0})} - {body.orbitalBoundaries.leoMoeBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+                <span><strong>Mid Orbit:</strong> {body.orbitalBoundaries.leoMoeBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} - {body.orbitalBoundaries.meoHeoBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+                {#if body.orbitalBoundaries.geoStationaryKm}
+                    <span><strong>Geostationary:</strong> {body.orbitalBoundaries.geoStationaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+                {/if}
+            </div>
+        </div>
+    {/if}
+
     {#if body.tags && body.tags.length > 0}
         <div class="detail-item tags-list">
             <span class="label">Tags</span>
@@ -393,6 +408,17 @@
     text-transform: capitalize;
   }
   .biosphere-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+    margin-top: 0.5em;
+  }
+
+  .detail-item.orbital-zones {
+    grid-column: 1 / -1;
+    border-left-color: #a855f7;
+  }
+  .zone-details {
     display: flex;
     flex-direction: column;
     gap: 0.25em;

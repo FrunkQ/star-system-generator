@@ -7,6 +7,7 @@ import { _generatePlanetaryBody } from './planet';
 import { G, AU_KM, SOLAR_MASS_KG } from '../constants';
 import type { GenOptions } from '../api';
 import { calculateAllStellarZones } from '../physics/zones';
+import { processSystemData } from '../system/postprocessing';
 
 export function generateSystem(seed: string, pack: RulePack, __opts: Partial<GenOptions> = {}, generationChoice?: string, empty: boolean = false, initialToytownFactor: number = 0): System {
   const rng = new SeededRNG(seed);
@@ -295,5 +296,5 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
       visualScalingMultiplier: 0.5,
       isManuallyEdited: false,
     };
-  return system;
+  return processSystemData(system, pack);
 }

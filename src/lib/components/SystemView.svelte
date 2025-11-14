@@ -17,6 +17,7 @@
   import { systemStore, viewportStore } from '$lib/stores';
   import { panStore, zoomStore } from '$lib/cameraStore';
   import { get } from 'svelte/store';
+  import { processSystemData } from '$lib/system/postprocessing';
 
   export let system: System;
   export let rulePack: RulePack;
@@ -214,9 +215,9 @@
       if (!response.ok) {
         throw new Error(`Failed to fetch ${fileName}`);
       }
-      const newSystem = await response.json();
+      let newSystem = await response.json();
       if (newSystem.id && newSystem.name && Array.isArray(newSystem.nodes) && newSystem.rulePackId) {
-        systemStore.set(newSystem);
+        systemStore.set(processSystemData(newSystem, rulePack));
         currentTime = newSystem?.epochT0 || Date.now();
         focusedBodyId = null;
       } else {
@@ -251,9 +252,9 @@
     reader.onload = async (e) => {
       try {
         const json = e.target?.result as string;
-        const newSystem = JSON.parse(json);
+        let newSystem = JSON.parse(json);
         if (newSystem.id && newSystem.name && Array.isArray(newSystem.nodes) && newSystem.rulePackId) {
-          systemStore.set(newSystem);
+          systemStore.set(processSystemData(newSystem, rulePack));
           currentTime = newSystem?.epochT0 || Date.now();
           focusedBodyId = null;
         } else {
@@ -287,7 +288,7 @@
   let unsubscribeZoomStore: () => void;
 
   onMount(() => {
-    systemStore.set(system);
+    systemStore.set(processSystemData(system, rulePack));
     currentTime = system.epochT0;
     const starTypes = rulePack.distributions['star_types'].entries.map(st => st.value);
     const options: string[] = ['Random'];
@@ -427,7 +428,7 @@
             {#if showZones && focusedBody.roleHint === 'star'}
                 <ZoneKey />
             {:else}
-                <BodyTechnicalDetails body={focusedBody} />
+                <BodyTechnicalDetails body={focusedBody} {rulePack} />
             {/if}
             <BodyImage body={focusedBody} />
             <GmNotesEditor body={focusedBody} on:change={() => systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s)} />

@@ -302,6 +302,12 @@ export function _generatePlanetaryBody(
     }
     features['rotation_period_hours'] = planet.rotation_period_hours;
 
+    // Store calculated values for later use
+    if (planet.massKg && planet.radiusKm) {
+        planet.calculatedGravity_ms2 = (G * planet.massKg) / Math.pow(planet.radiusKm * 1000, 2);
+    }
+    planet.calculatedRotationPeriod_s = (planet.rotation_period_hours || 0) * 3600;
+
     // Disrupted planet chance
     let isDisrupted = false;
     if (features['age_Gyr'] < 0.1 && rng.nextFloat() < 0.2) { // Higher chance for young systems
@@ -572,6 +578,16 @@ function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBo
 
         const mainGas = Object.keys(finalComposition).reduce((a, b) => finalComposition[a] > finalComposition[b] ? a : b);
 
+        // Calculate weighted average molar mass
+        let totalMolarMass = 0;
+        if (pack.gasMolarMassesKg) {
+            for (const gas in finalComposition) {
+                const percentage = finalComposition[gas];
+                const molarMass = pack.gasMolarMassesKg[gas] || pack.gasMolarMassesKg['Other Trace'] || 0.028;
+                totalMolarMass += percentage * molarMass;
+            }
+        }
+
         // Determine pressure
         let pressure_bar: number;
         if (atmChoice.pressure_range_bar) {
@@ -586,6 +602,7 @@ function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBo
             composition: finalComposition,
             main: mainGas,
             pressure_bar: pressure_bar,
+            molarMassKg: totalMolarMass > 0 ? totalMolarMass : undefined,
         };
 
         if (atmChoice.tags) {

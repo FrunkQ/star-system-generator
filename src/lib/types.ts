@@ -1,4 +1,6 @@
 '''// ===== types.ts =====
+import type { OrbitalBoundaries } from './physics/orbits';
+
 export type ID = string;
 
 export interface Visibility {
@@ -13,7 +15,7 @@ export interface NodeBase {
   tags: Tag[]; notes?: string; gmNotes?: string; visibility?: Visibility;
 }
 
-export interface Atmosphere { name: string; main?: string; pressure_bar?: number; composition: Record<string, number>; tags?: Tag[]; }
+export interface Atmosphere { name: string; main?: string; pressure_bar?: number; composition: Record<string, number>; tags?: Tag[]; molarMassKg?: number; }
 export interface Hydrosphere { coverage?: number; depth_m?: number; composition?: string; tags?: Tag[]; }
 export interface ImageRef { url: string; title?: string; credit?: string; license?: string; sourceUrl?: string; }
 
@@ -64,6 +66,9 @@ export interface CelestialBody extends NodeBase {
   orbital_period_days?: number;
   axial_tilt_deg?: number;
   rotation_period_hours?: number;
+  calculatedGravity_ms2?: number;
+  calculatedRotationPeriod_s?: number;
+  orbitalBoundaries?: OrbitalBoundaries;
   isNameUserDefined?: boolean;
 
   // Radiation & Magnetosphere
@@ -123,12 +128,10 @@ export interface MetricDef { key: string; label: string; min: number; max: numbe
 export interface RulePack {
   id: string; version: string; name: string;
   distributions: Record<string, TableSpec>;
+  gasMolarMassesKg?: Record<string, number>;
   tagVocab: string[]; // taxonomy IDs
   prompts: PromptSpec;
   viewPresets?: ViewPresetSpec;
-  statTemplates?: Record<string,string>;
-  metrics?: Record<string, MetricDef>;
-  classifier?: ClassifierSpec;
 }
 
 export type ViableOrbitResult = {
