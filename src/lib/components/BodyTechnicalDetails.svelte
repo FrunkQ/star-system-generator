@@ -321,7 +321,10 @@
                 <span><strong>Mid Orbit:</strong> {body.orbitalBoundaries.leoMoeBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} - {body.orbitalBoundaries.meoHeoBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
                 {#if body.orbitalBoundaries.geoStationaryKm}
                     <span><strong>Geostationary:</strong> {body.orbitalBoundaries.geoStationaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+                {:else}
+                    <span><strong>Geostationary:</strong> Unstable</span>
                 {/if}
+                <span><strong>High Orbit:</strong> {body.orbitalBoundaries.meoHeoBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} - {body.orbitalBoundaries.heoUpperBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
             </div>
         </div>
     {/if}

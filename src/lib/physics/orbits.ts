@@ -29,6 +29,10 @@ export interface PlanetData {
   // For GEO (Orbital) Calculation
   massKg: number;              // Total mass of the planet (kg)
   rotationPeriodSeconds: number; // Sidereal rotation period (s)
+
+  // For HEO (Sphere of Influence) Calculation
+  distanceToHost_km: number;   // Body's average distance from its host (km)
+  hostMass_kg: number;         // Mass of the host body (kg)
 }
 
 // The object our function will return
@@ -36,6 +40,7 @@ export interface OrbitalBoundaries {
   minLeoKm: number;           // The "floor" of LEO
   leoMoeBoundaryKm: number; // The LEO/MEO boundary
   meoHeoBoundaryKm: number; // The MEO/HEO boundary
+  heoUpperBoundaryKm: number; // The "ceiling" of HEO (Sphere of Influence)
   geoStationaryKm: number | null; // GEO altitude (or null if impossible)
 }
 
@@ -126,8 +131,8 @@ export function calculateOrbitalBoundaries(planet: PlanetData): OrbitalBoundarie
   }
 
 
-  // --- 3. CALCULATE GEOSTATIONARY ORBIT (IF POSSIBLE) ---
-  let geoStationaryKm: number | null = null;
+  // --- 3. CALCULATE GEOSTATIONARY ORBIT (RAW VALUE) ---
+  let calculatedGeoKm: number | null = null;
   
   // We must derive the planet's radius from its mass and gravity (g = GM/r²) -> r = sqrt(GM/g)
   const planetRadiusMeters = Math.sqrt((GRAVITATIONAL_CONSTANT_G * planet.massKg) / planet.gravity);
@@ -145,36 +150,50 @@ export function calculateOrbitalBoundaries(planet: PlanetData): OrbitalBoundarie
     
     // Altitude is radius from center minus the planet's radius
     const altitudeMeters = radiusFromCenterMeters - planetRadiusMeters;
-    const altitudeKm = altitudeMeters / 1000;
-
-    // A GEO orbit is only valid if it's:
-    // 1. Above the planet's surface (altitudeKm > 0)
-    // 2. Above the minimum orbital altitude (the atmosphere)
-    if (altitudeKm > 0 && altitudeKm > minLeoKm) {
-      geoStationaryKm = altitudeKm;
-    }
+    calculatedGeoKm = altitudeMeters / 1000;
   }
-  // If T=0 or altitude is inside the planet/atmosphere, geoStationaryKm remains null
 
 
-  // --- 4. CALCULATE MEO/HEO BOUNDARY (GEO OR FALLBACK) ---
+  // --- 4. CALCULATE HEO UPPER BOUNDARY (SPHERE OF INFLUENCE) ---
+  let heoUpperBoundaryKm: number;
+  if (planet.hostMass_kg > 0) {
+    const massRatio = planet.massKg / (3.0 * planet.hostMass_kg);
+    const ratioCbrt = Math.cbrt(massRatio);
+    heoUpperBoundaryKm = planet.distanceToHost_km * ratioCbrt;
+  } else {
+    // Fallback for rogue planets or other edge cases
+    heoUpperBoundaryKm = planet.distanceToHost_km * 0.01; 
+  }
+
+
+  // --- 5. VALIDATE GEO & SET FINAL BOUNDARIES (THE FIX) ---
+  let finalGeoStationaryKm: number | null = calculatedGeoKm;
   let meoHeoBoundaryKm: number;
 
-  if (geoStationaryKm !== null) {
-    // The MEO/HEO boundary IS the geostationary altitude
-    meoHeoBoundaryKm = geoStationaryKm;
-  } else {
-    // No GEO is possible, so use the "galactic" default
+  // Check for all impossible GEO conditions
+  if (calculatedGeoKm === null || // It was never calculated (e.g., T=0)
+      calculatedGeoKm < minLeoKm ||  // It's inside the atmosphere
+      calculatedGeoKm > heoUpperBoundaryKm) // It's outside the Sphere of Influence
+  {
+    // This GEO orbit is physically impossible.
+    finalGeoStationaryKm = null;
+    
+    // Use the default "galactic" boundary
     meoHeoBoundaryKm = DEFAULT_MEO_HEO_BOUNDARY_KM;
+
+  } else {
+    // The GEO orbit is valid! Use it as the boundary.
+    meoHeoBoundaryKm = calculatedGeoKm;
   }
 
   
-  // --- 5. RETURN ALL BOUNDARIES ---
+  // --- 6. RETURN ALL BOUNDARIES ---
   return {
     minLeoKm: minLeoKm,
     leoMoeBoundaryKm: leoMoeBoundaryKm,
     meoHeoBoundaryKm: meoHeoBoundaryKm,
-    geoStationaryKm: geoStationaryKm
+    heoUpperBoundaryKm: heoUpperBoundaryKm,
+    geoStationaryKm: finalGeoStationaryKm // Return the *validated* value
   };
 }
 
