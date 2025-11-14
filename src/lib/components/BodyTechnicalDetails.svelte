@@ -18,12 +18,13 @@
   let tempTooltip: string = '';
   let surfaceRadiationText: string | null = null;
   let surfaceRadiationTooltip: string | null = null;
-  let stellarRadiationTooltip: string | null = null;
-
-  // Perform all other display calculations when the body changes
-  $: {
-    surfaceGravityG = null;
-    densityRelative = null;
+        let stellarRadiationTooltip: string | null = null;
+  
+        $: isGasGiant = body.classes?.some(c => c.includes('gas-giant')) ?? false;
+  
+        // Perform all other display calculations when the body changes
+        $: {
+          surfaceGravityG = null;    densityRelative = null;
     surfaceTempC = null;
     hotSideTempC = null;
     coldSideTempC = null;
@@ -318,13 +319,42 @@
             <span class="label">Orbital Zones</span>
             <div class="zone-details">
                 <span><strong>Low Orbit:</strong> {body.orbitalBoundaries.minLeoKm.toLocaleString(undefined, {maximumFractionDigits: 0})} - {body.orbitalBoundaries.leoMoeBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
-                <span><strong>Mid Orbit:</strong> {body.orbitalBoundaries.leoMoeBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} - {body.orbitalBoundaries.meoHeoBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+                <span><strong>Mid Orbit:</strong> {body.orbitalBoundaries.leoMoeBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} - {body.orbitalBoundaries.meoHeoBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km {#if body.orbitalBoundaries.isGeoFallback}(Galactic Standard){/if}</span>
                 {#if body.orbitalBoundaries.geoStationaryKm}
                     <span><strong>Geostationary:</strong> {body.orbitalBoundaries.geoStationaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
                 {:else}
                     <span><strong>Geostationary:</strong> Unstable</span>
                 {/if}
                 <span><strong>High Orbit:</strong> {body.orbitalBoundaries.meoHeoBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} - {body.orbitalBoundaries.heoUpperBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+            </div>
+        </div>
+    {/if}
+
+    {#if body.kind === 'body' && (body.loDeltaVBudget_ms !== undefined || body.propulsiveLandBudget_ms !== undefined || body.aerobrakeLandBudget_ms !== undefined)}
+        <div class="detail-item orbital-zones">
+            <span class="label">Delta-V Budgets</span>
+            <div class="budget-details">
+                {#if body.loDeltaVBudget_ms !== undefined}
+                    {#if isGasGiant}
+                        <div><span><strong>Surface to LO:</strong> N/A - No surface</span></div>
+                    {:else}
+                        <div><span><strong>Surface to LO:</strong> {body.loDeltaVBudget_ms.toLocaleString(undefined, {maximumFractionDigits: 0})} m/s</span></div>
+                    {/if}
+                {/if}
+                {#if body.propulsiveLandBudget_ms !== undefined}
+                     {#if isGasGiant}
+                        <div><span><strong>LO to Surface (Propulsive):</strong> N/A - No surface</span></div>
+                    {:else}
+                        <div><span><strong>LO to Surface (Propulsive):</strong> {body.propulsiveLandBudget_ms.toLocaleString(undefined, {maximumFractionDigits: 0})} m/s</span></div>
+                    {/if}
+                {/if}
+                {#if body.aerobrakeLandBudget_ms !== undefined}
+                    {#if body.aerobrakeLandBudget_ms !== -1}
+                        <div><span><strong>{isGasGiant ? 'Aerobrake / Fuel Scoop' : 'LO to Surface (Aerobrake)'}:</strong> {body.aerobrakeLandBudget_ms.toLocaleString(undefined, {maximumFractionDigits: 0})} m/s</span></div>
+                    {:else}
+                        <div><span><strong>{isGasGiant ? 'Aerobrake / Fuel Scoop' : 'LO to Surface (Aerobrake)'}:</strong> N/A (No Atmosphere)</span></div>
+                    {/if}
+                {/if}
             </div>
         </div>
     {/if}

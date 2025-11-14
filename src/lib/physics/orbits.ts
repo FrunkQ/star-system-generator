@@ -6,11 +6,6 @@
 const UNIVERSAL_GAS_CONSTANT: number = 8.314;     // J/(mol·K)
 const GRAVITATIONAL_CONSTANT_G: number = 6.674e-11; // N·m²/kg²
 
-// --- Simulator "Rules" & Fallbacks (in km) ---
-const DEFAULT_NO_ATMOSPHERE_LEO_KM: number = 30.0;    // Your "galactic recognised LO boundary"
-const DEFAULT_LEO_MEO_BOUNDARY_KM: number = 2000.0; // Conventional LEO/MEO boundary
-const DEFAULT_MEO_HEO_BOUNDARY_KM: number = 50000.0;  // Your "galactic recognised MO/HO boundary"
-
 // --- Thresholds (in Pascals) ---
 const TARGET_ORBITAL_PRESSURE_PA: number = 0.0001; // "Negligible" pressure for orbit
 const NEGLIGIBLE_ATMOSPHERE_PA: number = 1.0;      // Any pressure below this is "no atmosphere"
@@ -42,6 +37,7 @@ export interface OrbitalBoundaries {
   meoHeoBoundaryKm: number; // The MEO/HEO boundary
   heoUpperBoundaryKm: number; // The "ceiling" of HEO (Sphere of Influence)
   geoStationaryKm: number | null; // GEO altitude (or null if impossible)
+  isGeoFallback: boolean; // Flag indicating if MEO/HEO boundary is a fallback
 }
 
 
@@ -94,7 +90,12 @@ const PLANET_DATA_MAP: Record<string, PlanetData> = {
  * Calculates all plausible orbital boundaries for a planet.
  * All return values are in kilometers.
  */
-export function calculateOrbitalBoundaries(planet: PlanetData): OrbitalBoundaries {
+import type { RulePack } from '../types';
+export function calculateOrbitalBoundaries(planet: PlanetData, pack: RulePack): OrbitalBoundaries {
+  const constants = pack.orbitalConstants || {};
+  const DEFAULT_NO_ATMOSPHERE_LEO_KM = constants.DEFAULT_NO_ATMOSPHERE_LEO_KM || 30.0;
+  const DEFAULT_LEO_MEO_BOUNDARY_KM = constants.DEFAULT_LEO_MEO_BOUNDARY_KM || 2000.0;
+  const DEFAULT_MEO_HEO_BOUNDARY_KM = constants.DEFAULT_MEO_HEO_BOUNDARY_KM || 50000.0;
 
   // --- 1. CALCULATE MINIMUM LEO ALTITUDE (THE "FLOOR") ---
   let minLeoKm: number;
@@ -169,6 +170,7 @@ export function calculateOrbitalBoundaries(planet: PlanetData): OrbitalBoundarie
   // --- 5. VALIDATE GEO & SET FINAL BOUNDARIES (THE FIX) ---
   let finalGeoStationaryKm: number | null = calculatedGeoKm;
   let meoHeoBoundaryKm: number;
+  let isGeoFallback = false;
 
   // Check for all impossible GEO conditions
   if (calculatedGeoKm === null || // It was never calculated (e.g., T=0)
@@ -177,6 +179,7 @@ export function calculateOrbitalBoundaries(planet: PlanetData): OrbitalBoundarie
   {
     // This GEO orbit is physically impossible.
     finalGeoStationaryKm = null;
+    isGeoFallback = true;
     
     // Use the default "galactic" boundary
     meoHeoBoundaryKm = DEFAULT_MEO_HEO_BOUNDARY_KM;
@@ -193,35 +196,36 @@ export function calculateOrbitalBoundaries(planet: PlanetData): OrbitalBoundarie
     leoMoeBoundaryKm: leoMoeBoundaryKm,
     meoHeoBoundaryKm: meoHeoBoundaryKm,
     heoUpperBoundaryKm: heoUpperBoundaryKm,
-    geoStationaryKm: finalGeoStationaryKm // Return the *validated* value
+    geoStationaryKm: finalGeoStationaryKm, // Return the *validated* value
+    isGeoFallback: isGeoFallback
   };
 }
 
 
 // --- 5. EXAMPLE USAGE ---
 
-console.log("--- Calculating Orbital Boundaries ---");
+// console.log("--- Calculating Orbital Boundaries ---");
 
 // --- Earth (Normal Case) ---
-const earthOrbits = calculateOrbitalBoundaries(PLANET_DATA_MAP["Earth"]);
-console.log("Earth Orbits (km):", {
-  LEO: `${earthOrbits.minLeoKm.toFixed(0)} to ${earthOrbits.leoMoeBoundaryKm.toFixed(0)}`,
-  MEO: `${earthOrbits.leoMoeBoundaryKm.toFixed(0)} to ${earthOrbits.meoHeoBoundaryKm.toFixed(0)}`,
-  GEO: earthOrbits.geoStationaryKm?.toFixed(0) ?? 'N/A'
-});
+// const earthOrbits = calculateOrbitalBoundaries(PLANET_DATA_MAP["Earth"]);
+// console.log("Earth Orbits (km):", {
+//   LEO: `${earthOrbits.minLeoKm.toFixed(0)} to ${earthOrbits.leoMoeBoundaryKm.toFixed(0)}`,
+//   MEO: `${earthOrbits.leoMoeBoundaryKm.toFixed(0)} to ${earthOrbits.meoHeoBoundaryKm.toFixed(0)}`,
+//   GEO: earthOrbits.geoStationaryKm?.toFixed(0) ?? 'N/A'
+// });
 
 // --- Mars (GEO inside atmosphere/planet - Phobos) ---
-const marsOrbits = calculateOrbitalBoundaries(PLANET_DATA_MAP["Mars"]);
-console.log("Mars Orbits (km):", {
-  LEO: `${marsOrbits.minLeoKm.toFixed(0)} to ${marsOrbits.leoMoeBoundaryKm.toFixed(0)}`,
-  MEO: `${marsOrbits.leoMoeBoundaryKm.toFixed(0)} to ${marsOrbits.meoHeoBoundaryKm.toFixed(0)}`,
-  GEO: marsOrbits.geoStationaryKm?.toFixed(0) ?? 'N/A'
-});
+// const marsOrbits = calculateOrbitalBoundaries(PLANET_DATA_MAP["Mars"]);
+// console.log("Mars Orbits (km):", {
+//   LEO: `${marsOrbits.minLeoKm.toFixed(0)} to ${marsOrbits.leoMoeBoundaryKm.toFixed(0)}`,
+//   MEO: `${marsOrbits.leoMoeBoundaryKm.toFixed(0)} to ${marsOrbits.meoHeoBoundaryKm.toFixed(0)}`,
+//   GEO: marsOrbits.geoStationaryKm?.toFixed(0) ?? 'N/A'
+// });
 
 // --- Moon (No Atmosphere, No GEO) ---
-const moonOrbits = calculateOrbitalBoundaries(PLANET_DATA_MAP["Moon"]);
-console.log("Moon Orbits (km):", {
-  LEO: `${moonOrbits.minLeoKm.toFixed(0)} to ${moonOrbits.leoMoeBoundaryKm.toFixed(0)}`,
-  MEO: `${moonOrbits.leoMoeBoundaryKm.toFixed(0)} to ${moonOrbits.meoHeoBoundaryKm.toFixed(0)}`,
-  GEO: moonOrbits.geoStationaryKm?.toFixed(0) ?? 'N/A'
-});
+// const moonOrbits = calculateOrbitalBoundaries(PLANET_DATA_MAP["Moon"]);
+// console.log("Moon Orbits (km):", {
+//   LEO: `${moonOrbits.minLeoKm.toFixed(0)} to ${moonOrbits.leoMoeBoundaryKm.toFixed(0)}`,
+//   MEO: `${moonOrbits.leoMoeBoundaryKm.toFixed(0)} to ${moonOrbits.meoHeoBoundaryKm.toFixed(0)}`,
+//   GEO: moonOrbits.geoStationaryKm?.toFixed(0) ?? 'N/A'
+// });

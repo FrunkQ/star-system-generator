@@ -69,6 +69,9 @@ export interface CelestialBody extends NodeBase {
   calculatedGravity_ms2?: number;
   calculatedRotationPeriod_s?: number;
   orbitalBoundaries?: OrbitalBoundaries;
+  loDeltaVBudget_ms?: number;
+  propulsiveLandBudget_ms?: number;
+  aerobrakeLandBudget_ms?: number;
   isNameUserDefined?: boolean;
 
   // Radiation & Magnetosphere
@@ -129,6 +132,7 @@ export interface RulePack {
   id: string; version: string; name: string;
   distributions: Record<string, TableSpec>;
   gasMolarMassesKg?: Record<string, number>;
+  orbitalConstants?: Record<string, number>;
   tagVocab: string[]; // taxonomy IDs
   prompts: PromptSpec;
   viewPresets?: ViewPresetSpec;
