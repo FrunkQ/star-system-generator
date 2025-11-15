@@ -229,8 +229,8 @@
           return { pan: targetPosition, zoom: newZoom };
       } else {
           // Body has NO children.
-          // If it's a moon, frame it with its parent.
-          if (targetNode.kind === 'body' && targetNode.roleHint === 'moon' && targetNode.parentId) {
+          // If it's a moon or a construct, frame it with its parent.
+          if ((targetNode.kind === 'body' && targetNode.roleHint === 'moon' && targetNode.parentId) || (targetNode.kind === 'construct' && targetNode.parentId)) {
               const parentNode = nodesById.get(targetNode.parentId);
               const parentPosition = parentNode ? targetPositions.get(parentNode.id) : null;
 
@@ -258,7 +258,7 @@
                       newZoom = Math.min(zoomX, zoomY);
                   }
 
-                  // Pan to the midpoint between the moon and its parent
+                  // Pan to the midpoint between the construct/moon and its parent
                   const midPoint = {
                       x: (targetPosition.x + parentPosition.x) / 2,
                       y: (targetPosition.y + parentPosition.y) / 2
@@ -533,45 +533,14 @@
       if (!system) return;
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       const positions = new Map<string, { x: number, y: number }>();
-      
       function getPosition(nodeId: string): { x: number, y: number } {
           if (positions.has(nodeId)) return positions.get(nodeId)!;
-          
           const node = nodesById.get(nodeId);
           if (!node) return { x: 0, y: 0 };
-
           if (node.parentId === null) {
               positions.set(nodeId, { x: 0, y: 0 });
               return { x: 0, y: 0 };
           }
-
-          const parentNode = nodesById.get(node.parentId);
-
-          // Special kinematic positioning for L-points
-          if ((node.placement === 'L4' || node.placement === 'L5') && parentNode && parentNode.parentId) {
-            const grandparentPos = getPosition(parentNode.parentId);
-            const parentPos = getPosition(node.parentId); // Note: parent's position is calculated normally
-
-            const dx = parentPos.x - grandparentPos.x;
-            const dy = parentPos.y - grandparentPos.y;
-
-            const angleOffset = node.placement === 'L4' ? Math.PI / 3 : -Math.PI / 3; // 60 degrees
-
-            const cos = Math.cos(angleOffset);
-            const sin = Math.sin(angleOffset);
-
-            const rotatedX = dx * cos - dy * sin;
-            const rotatedY = dx * sin + dy * cos;
-
-            const finalPos = { 
-              x: grandparentPos.x + rotatedX, 
-              y: grandparentPos.y + rotatedY 
-            };
-            positions.set(nodeId, finalPos);
-            return finalPos;
-          }
-
-          // Standard orbital propagation for all other bodies
           const parentPos = getPosition(node.parentId);
           let relativePos = { x: 0, y: 0 };
           if ((node.kind === 'body' || node.kind === 'construct') && node.orbit) {
@@ -582,7 +551,6 @@
           positions.set(nodeId, absolutePos);
           return absolutePos;
       }
-
       for (const node of system.nodes) getPosition(node.id);
       worldPositions = positions;
   }
@@ -660,7 +628,7 @@
       const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
 
       for (const node of system.nodes) {
-          if (!clickableIds.has(node.id) || node.kind !== 'body') continue;
+          if (!clickableIds.has(node.id) || (node.kind !== 'body' && node.kind !== 'construct')) continue;
 
           const pos = targetPositions.get(node.id);
           if (!pos) continue;
@@ -716,7 +684,7 @@
       const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
 
       for (const node of system.nodes) {
-          if (!clickableIds.has(node.id) || node.kind !== 'body') continue;
+          if (!clickableIds.has(node.id) || (node.kind !== 'body' && node.kind !== 'construct')) continue;
 
           const pos = targetPositions.get(node.id);
           if (!pos) continue;
@@ -1096,6 +1064,21 @@
                   ctx.fillStyle = getPlanetColor(node);
                   ctx.fillText(node.name, screenPos.x + radiusPx + 5, screenPos.y);
               }
+          }
+
+          // Draw labels for constructs
+          for (const node of system.nodes) {
+              if (!visibleLabelIds.has(node.id) || node.kind !== 'construct') continue;
+
+              const worldPos = toytownFactor > 0 ? scaledWorldPositions.get(node.id) : worldPositions.get(node.id);
+              if (!worldPos) continue;
+
+              const screenPos = worldToScreen(worldPos.x, worldPos.y);
+              const size = 8; // Icon size in screen pixels
+
+              ctx.textAlign = 'left';
+              ctx.fillStyle = node.icon_color || '#f0f0f0';
+              ctx.fillText(node.name, screenPos.x + size / 2 + 5, screenPos.y);
           }
       }
 

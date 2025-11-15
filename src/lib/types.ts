@@ -11,7 +11,7 @@ export interface Visibility {
 export interface Tag { key: string; value?: string; ns?: string; }
 
 export interface NodeBase {
-  id: ID; name: string; parentId: ID | null;
+  id: ID; name: string; parentId: ID | null; ui_parentId?: ID | null;
   placement?: string; // e.g., 'L4', 'L5', 'Surface'
   tags: Tag[]; notes?: string; gmNotes?: string; visibility?: Visibility;
 }

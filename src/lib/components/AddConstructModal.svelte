@@ -58,53 +58,69 @@
     const newConstruct: CelestialBody = { ...templateCopy };
 
     newConstruct.id = generateId();
-    newConstruct.parentId = hostBody.id; // Parent is always the host body for hierarchy
     newConstruct.IsTemplate = false; // This is now an instance
     newConstruct.placement = selectedPlacement; // Store the placement type
 
-    // Create a new orbit object
-    newConstruct.orbit = {
-      hostId: hostBody.id, // This might be overridden for L-points during propagation
-      hostMu: (hostBody.massKg || 0) * 6.67430e-11, // G * M
-      t0: Date.now(),
-      elements: {
-        a_AU: 0, // Will be calculated below
-        e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0,
+    // Handle L-point parenting and orbit copying first
+    if (selectedPlacement === 'L4' || selectedPlacement === 'L5') {
+      newConstruct.parentId = hostBody.parentId; // Gravitational parent is the star/grandparent
+      newConstruct.ui_parentId = hostBody.id;   // UI parent is the planet/moon
+
+      if (hostBody.orbit) {
+        newConstruct.orbit = JSON.parse(JSON.stringify(hostBody.orbit)); // Deep copy orbit from host
+        
+        // The hostMu for this orbit is the STAR's/GRANDPARENT's, which is already in the copied orbit object.
+        // Adjust the mean anomaly for L4/L5 position
+        if (selectedPlacement === 'L4') {
+          newConstruct.orbit.elements.M0_rad = (hostBody.orbit.elements.M0_rad + Math.PI / 3) % (2 * Math.PI);
+        } else { // L5
+          newConstruct.orbit.elements.M0_rad = (hostBody.orbit.elements.M0_rad - Math.PI / 3 + 2 * Math.PI) % (2 * Math.PI);
+        }
       }
-    };
+    } else {
+      newConstruct.parentId = hostBody.id; // Gravitational and UI parent are the same
+      // Create a new orbit object for non-L-point placements
+      newConstruct.orbit = {
+        hostId: hostBody.id,
+        hostMu: (hostBody.massKg || 0) * 6.67430e-11, // G * M
+        t0: Date.now(),
+        elements: {
+          a_AU: 0, // Will be calculated below
+          e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0,
+        }
+      };
+    }
 
-    // Set initial orbit based on placement
-    const hostRadiusKm = hostBody.radiusKm || 0;
-    let altitudeKm = 0;
+    // Set initial orbit based on placement (for non-L-point cases)
+    if (selectedPlacement !== 'L4' && selectedPlacement !== 'L5') {
+      const hostRadiusKm = hostBody.radiusKm || 0;
+      let altitudeKm = 0;
 
-    switch (selectedPlacement) {
-      case 'Surface':
-        altitudeKm = 0;
-        newConstruct.orbit.elements.a_AU = (hostRadiusKm + altitudeKm) / 149597870.7;
-        break;
-      case 'Low Orbit':
-        altitudeKm = (orbitalBoundaries!.minLeoKm + orbitalBoundaries!.leoMoeBoundaryKm) / 2;
-        newConstruct.orbit.elements.a_AU = (hostRadiusKm + altitudeKm) / 149597870.7;
-        break;
-      case 'Mid Orbit':
-        altitudeKm = (orbitalBoundaries!.leoMoeBoundaryKm + orbitalBoundaries!.meoHeoBoundaryKm) / 2;
-        newConstruct.orbit.elements.a_AU = (hostRadiusKm + altitudeKm) / 149597870.7;
-        break;
-      case 'Geostationary Orbit':
-        altitudeKm = orbitalBoundaries!.geoStationaryKm || 0;
-        newConstruct.orbit.elements.a_AU = (hostRadiusKm + altitudeKm) / 149597870.7;
-        break;
-      case 'High Orbit':
-        altitudeKm = (orbitalBoundaries!.meoHeoBoundaryKm + orbitalBoundaries!.heoUpperBoundaryKm) / 2;
-        newConstruct.orbit.elements.a_AU = (hostRadiusKm + altitudeKm) / 149597870.7;
-        break;
-      case 'L4':
-      case 'L5':
-        newConstruct.orbit.elements.a_AU = hostBody.orbit?.elements.a_AU || 0;
-        break;
-      case 'AU Distance':
-        newConstruct.orbit.elements.a_AU = auDistance;
-        break;
+      switch (selectedPlacement) {
+        case 'Surface':
+          altitudeKm = 0;
+          newConstruct.orbit!.elements.a_AU = (hostRadiusKm + altitudeKm) / 149597870.7;
+          break;
+        case 'Low Orbit':
+          altitudeKm = (orbitalBoundaries!.minLeoKm + orbitalBoundaries!.leoMoeBoundaryKm) / 2;
+          newConstruct.orbit!.elements.a_AU = (hostRadiusKm + altitudeKm) / 149597870.7;
+          break;
+        case 'Mid Orbit':
+          altitudeKm = (orbitalBoundaries!.leoMoeBoundaryKm + orbitalBoundaries!.meoHeoBoundaryKm) / 2;
+          newConstruct.orbit!.elements.a_AU = (hostRadiusKm + altitudeKm) / 149597870.7;
+          break;
+        case 'Geostationary Orbit':
+          altitudeKm = orbitalBoundaries!.geoStationaryKm || 0;
+          newConstruct.orbit!.elements.a_AU = (hostRadiusKm + altitudeKm) / 149597870.7;
+          break;
+        case 'High Orbit':
+          altitudeKm = (orbitalBoundaries!.meoHeoBoundaryKm + orbitalBoundaries!.heoUpperBoundaryKm) / 2;
+          newConstruct.orbit!.elements.a_AU = (hostRadiusKm + altitudeKm) / 149597870.7;
+          break;
+        case 'AU Distance':
+          newConstruct.orbit!.elements.a_AU = auDistance;
+          break;
+      }
     }
     
     systemStore.update((system) => {
