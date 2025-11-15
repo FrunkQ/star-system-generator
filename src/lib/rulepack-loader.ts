@@ -42,6 +42,33 @@ export async function fetchAndLoadRulePack(url: string): Promise<RulePack> {
     }
     let mainPack: RulePack = await response.json();
 
+    // Determine the base URL for fetching related definition files
+    const baseUrl = new URL('.', absoluteUrl).href;
+
+    // Fetch construct templates
+    const constructTemplatesResponse = await fetch(new URL('construct_templates.json', baseUrl).href);
+    if (constructTemplatesResponse.ok) {
+        mainPack.constructTemplates = await constructTemplatesResponse.json();
+    } else {
+        console.warn(`Failed to load construct templates from ${new URL('construct_templates.json', baseUrl).href}: ${constructTemplatesResponse.statusText}`);
+    }
+
+    // Fetch engine definitions
+    const engineDefinitionsResponse = await fetch(new URL('engine-definitions.json', baseUrl).href);
+    if (engineDefinitionsResponse.ok) {
+        mainPack.engineDefinitions = await engineDefinitionsResponse.json();
+    } else {
+        console.warn(`Failed to load engine definitions from ${new URL('engine-definitions.json', baseUrl).href}: ${engineDefinitionsResponse.statusText}`);
+    }
+
+    // Fetch fuel definitions
+    const fuelDefinitionsResponse = await fetch(new URL('fuel-definitions.json', baseUrl).href);
+    if (fuelDefinitionsResponse.ok) {
+        mainPack.fuelDefinitions = await fuelDefinitionsResponse.json();
+    } else {
+        console.warn(`Failed to load fuel definitions from ${new URL('fuel-definitions.json', baseUrl).href}: ${fuelDefinitionsResponse.statusText}`);
+    }
+
     if (mainPack.imports) {
         // Use the absolute URL of the main pack as the base for imports
         const importPromises = mainPack.imports.map(async (importPath: string) => {

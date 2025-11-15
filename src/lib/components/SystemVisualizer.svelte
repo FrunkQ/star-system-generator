@@ -20,7 +20,10 @@
   export let showLPoints: boolean = false;
   export let toytownFactor: number = 0;
 
-  const dispatch = createEventDispatcher<{ focus: string | null }>();
+  const dispatch = createEventDispatcher<{ 
+    focus: string | null,
+    showBodyContextMenu: { node: CelestialBody, x: number, y: number }
+  }>();
 
   function getPlanetColor(node: CelestialBody): string {
     if (node.roleHint === 'star') return '#fff'; // White
@@ -530,17 +533,48 @@
       if (!system) return;
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       const positions = new Map<string, { x: number, y: number }>();
+      
       function getPosition(nodeId: string): { x: number, y: number } {
           if (positions.has(nodeId)) return positions.get(nodeId)!;
+          
           const node = nodesById.get(nodeId);
           if (!node) return { x: 0, y: 0 };
+
           if (node.parentId === null) {
               positions.set(nodeId, { x: 0, y: 0 });
               return { x: 0, y: 0 };
           }
+
+          const parentNode = nodesById.get(node.parentId);
+
+          // Special kinematic positioning for L-points
+          if ((node.placement === 'L4' || node.placement === 'L5') && parentNode && parentNode.parentId) {
+            const grandparentPos = getPosition(parentNode.parentId);
+            const parentPos = getPosition(node.parentId); // Note: parent's position is calculated normally
+
+            const dx = parentPos.x - grandparentPos.x;
+            const dy = parentPos.y - grandparentPos.y;
+
+            const angleOffset = node.placement === 'L4' ? Math.PI / 3 : -Math.PI / 3; // 60 degrees
+
+            const cos = Math.cos(angleOffset);
+            const sin = Math.sin(angleOffset);
+
+            const rotatedX = dx * cos - dy * sin;
+            const rotatedY = dx * sin + dy * cos;
+
+            const finalPos = { 
+              x: grandparentPos.x + rotatedX, 
+              y: grandparentPos.y + rotatedY 
+            };
+            positions.set(nodeId, finalPos);
+            return finalPos;
+          }
+
+          // Standard orbital propagation for all other bodies
           const parentPos = getPosition(node.parentId);
           let relativePos = { x: 0, y: 0 };
-          if (node.kind === 'body' && node.orbit) {
+          if ((node.kind === 'body' || node.kind === 'construct') && node.orbit) {
               const propagated = propagate(node, currentTime);
               if (propagated) relativePos = propagated;
           }
@@ -548,6 +582,7 @@
           positions.set(nodeId, absolutePos);
           return absolutePos;
       }
+
       for (const node of system.nodes) getPosition(node.id);
       worldPositions = positions;
   }
@@ -666,6 +701,55 @@
       }
   }
 
+  function handleContextMenu(event: MouseEvent) {
+      event.preventDefault(); // Prevent the default browser context menu
+      if (!system) return;
+      const rect = canvas.getBoundingClientRect();
+      const clickX = event.clientX - rect.left;
+      const clickY = event.clientY - rect.top;
+
+      const clickPos = screenToWorld(clickX, clickY);
+      let clickedNode: CelestialBody | null = null;
+      let minDistanceSq = Infinity;
+
+      const clickableIds = getVisibleNodeIds(system, focusedBodyId);
+      const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
+
+      for (const node of system.nodes) {
+          if (!clickableIds.has(node.id) || node.kind !== 'body') continue;
+
+          const pos = targetPositions.get(node.id);
+          if (!pos) continue;
+
+          const dx = clickPos.x - pos.x;
+          const dy = clickPos.y - pos.y;
+          const distanceSq = dx * dx + dy * dy;
+
+          let radiusInAU = (node.radiusKm || 0) / AU_KM;
+          if (toytownFactor > 0) {
+              radiusInAU = scaleBoxCox(radiusInAU, toytownFactor, x0_distance);
+          }
+          let minRadiusPx = 2;
+          if (node.roleHint === 'star') minRadiusPx = 10;
+          else if (node.roleHint === 'planet') {
+              const isGasGiant = node.classes.some(c => c.includes('gas-giant') || c.includes('ice-giant'));
+              minRadiusPx = isGasGiant ? 15 : 12;
+          } else if (node.roleHint === 'moon') minRadiusPx = 8;
+          const minRadiusInWorld = minRadiusPx / camera.zoom;
+          const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
+
+          if (distanceSq < finalRadius * finalRadius) {
+              if (distanceSq < minDistanceSq) {
+                  minDistanceSq = distanceSq;
+                  clickedNode = node;
+              }
+          }
+      }
+      if (clickedNode) {
+        dispatch("showBodyContextMenu", { node: clickedNode, x: event.clientX, y: event.clientY });
+      }
+  }
+
   function handleWheel(event: WheelEvent) {
       event.preventDefault();
       const rect = canvas.getBoundingClientRect();
@@ -736,13 +820,25 @@
 
       // --- Drawing Orbits (except for belts) ---
       for (const node of system.nodes) {
-          if (node.kind !== 'body' || !node.orbit || !node.parentId || node.roleHint === 'belt') continue;
+          if ((node.kind !== 'body' && node.kind !== 'construct') || !node.orbit || !node.parentId || node.roleHint === 'belt') continue;
           
-          const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(node.parentId) : worldPositions.get(node.parentId);
+          let orbitToDraw = node.orbit;
+          let parentIdForOrbit = node.parentId;
+
+          // For L-points, use the parent's orbit and the grandparent's position
+          if ((node.placement === 'L4' || node.placement === 'L5')) {
+            const parentNode = nodesById.get(node.parentId);
+            if (parentNode && parentNode.orbit && parentNode.parentId) {
+              orbitToDraw = parentNode.orbit;
+              parentIdForOrbit = parentNode.parentId;
+            }
+          }
+
+          const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(parentIdForOrbit) : worldPositions.get(parentIdForOrbit);
           if (!parentPos) continue;
           
-          let a = node.orbit.elements.a_AU;
-          let e = node.orbit.elements.e;
+          let a = orbitToDraw.elements.a_AU;
+          let e = orbitToDraw.elements.e;
 
           if (toytownFactor > 0) {
               a = scaleBoxCox(a, toytownFactor, x0_distance);
@@ -753,9 +849,18 @@
           
           ctx.strokeStyle = "#333";
           ctx.lineWidth = 1 / camera.zoom;
+
+          if (node.kind === 'construct') {
+            ctx.setLineDash([5 / camera.zoom, 10 / camera.zoom]);
+          }
+
           ctx.beginPath();
           ctx.ellipse(parentPos.x - c, parentPos.y, a, b, 0, 0, 2 * Math.PI);
           ctx.stroke();
+
+          if (node.kind === 'construct') {
+            ctx.setLineDash([]); // Reset for other elements
+          }
       }
 
       // --- Draw Belts and Rings (in background) ---
@@ -913,6 +1018,20 @@
               ctx.arc(pos.x, pos.y, finalRadius, 0, 2 * Math.PI);
               ctx.fillStyle = color;
               ctx.fill();
+          } else if (node.kind === 'construct') {
+              const size = 8 / camera.zoom; // Size of the icon in world units
+              ctx.fillStyle = node.icon_color || '#f0f0f0'; // Default to off-white
+
+              if (node.icon_type === 'triangle') {
+                  ctx.beginPath();
+                  ctx.moveTo(pos.x, pos.y - size / 2);
+                  ctx.lineTo(pos.x + size / 2, pos.y + size / 2);
+                  ctx.lineTo(pos.x - size / 2, pos.y + size / 2);
+                  ctx.closePath();
+                  ctx.fill();
+              } else { // Default to square
+                  ctx.fillRect(pos.x - size / 2, pos.y - size / 2, size, size);
+              }
           }
       }
       ctx.restore(); // Restores to pre-camera-transform state
@@ -1163,6 +1282,7 @@
 <canvas 
     bind:this={canvas} 
     on:click={handleClick} 
+    on:contextmenu={handleContextMenu}
     on:wheel={handleWheel}
     on:mousedown={handleMouseDown}
     on:mouseup={handleMouseUp}

@@ -34,7 +34,7 @@ export function computePlayerSnapshot(sys: System, _scopeRootId?: ID): System {
 }
 
 export function propagate(node: CelestialBody | Barycenter, tMs: number): {x: number, y: number} | null {
-  if (node.kind !== 'body' || !node.orbit) {
+  if ((node.kind !== 'body' && node.kind !== 'construct') || !node.orbit) {
     return { x: 0, y: 0 }; // Barycenters or root nodes are at the origin of their frame
   }
 

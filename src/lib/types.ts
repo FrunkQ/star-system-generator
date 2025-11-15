@@ -12,6 +12,7 @@ export interface Tag { key: string; value?: string; ns?: string; }
 
 export interface NodeBase {
   id: ID; name: string; parentId: ID | null;
+  placement?: string; // e.g., 'L4', 'L5', 'Surface'
   tags: Tag[]; notes?: string; gmNotes?: string; visibility?: Visibility;
 }
 
@@ -72,6 +73,18 @@ export interface CelestialBody extends NodeBase {
   loDeltaVBudget_ms?: number;
   propulsiveLandBudget_ms?: number;
   aerobrakeLandBudget_ms?: number;
+
+  // Construct-specific properties (optional)
+  gmNotes?: string;
+  IsTemplate?: boolean;
+  crew?: { current: number; max: number; };
+  physical_parameters?: PhysicalParameters;
+  engines?: { engine_id: string; quantity: number; }[];
+  fuel_tanks?: { fuel_type_id: string; capacity_units: number; current_units: number; }[];
+  systems?: Systems;
+  icon_type?: 'square' | 'triangle';
+  icon_color?: string;
+
   isNameUserDefined?: boolean;
 
   // Radiation & Magnetosphere
@@ -86,6 +99,32 @@ export interface CelestialBody extends NodeBase {
   biosphere?: Biosphere;
   aiContext?: AIContext;
   orbit?: Orbit; areas: Area[]; image?: string; deltaV?: DeltaVCapability;
+}
+
+export interface PhysicalParameters {
+  dimensionsM?: [number, number, number];
+  massKg?: number;
+  cargoCapacity_tonnes?: number;
+  rotation_period_hours?: number;
+  spinRadiusM?: number;
+  can_aerobrake?: boolean;
+  has_landing_gear?: boolean;
+}
+
+export interface PowerPlant {
+  type: string;
+  output_MW: number;
+}
+
+export interface LifeSupport {
+  consumables_max_person_days: number;
+  consumables_current_person_days: number;
+}
+
+export interface Systems {
+  power_plants?: PowerPlant[];
+  life_support?: LifeSupport;
+  modules?: string[];
 }
 
 export interface AIContext {
@@ -128,11 +167,21 @@ export interface ViewPresetSpec { defaultPlayerVisibility: { discoveredBasics: b
 export interface TableSpec { name: string; entries: Array<{ weight: number; value: unknown }>; }
 export interface MetricDef { key: string; label: string; min: number; max: number; default?: number; }
 
+export interface FuelDefinition {
+  id: string;
+  name: string;
+  density_kg_per_m3: number;
+  description: string;
+}
+
 export interface RulePack {
   id: string; version: string; name: string;
   distributions: Record<string, TableSpec>;
   gasMolarMassesKg?: Record<string, number>;
   orbitalConstants?: Record<string, number>;
+  constructTemplates?: Record<string, CelestialBody[]>; // Templates are CelestialBody objects
+  engineDefinitions?: EngineDefinition[];
+  fuelDefinitions?: FuelDefinition[];
   tagVocab: string[]; // taxonomy IDs
   prompts: PromptSpec;
   viewPresets?: ViewPresetSpec;

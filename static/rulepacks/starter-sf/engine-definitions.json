@@ -1,0 +1,83 @@
+{
+  "id": "engine-definitions",
+  "name": "Propulsion Systems",
+  "entries": [
+    {
+      "id": "engine-rcs-hydrazine",
+      "name": "RCS Thruster",
+      "type": "Chemical (Monopropellant)",
+      "fuel_type_id": "fuel-hydrazine",
+      "thrust_kN": 1,
+      "efficiency_isp": 230,
+      "atmo_efficiency": 0.6,
+      "powerDraw_MW": 0.01,
+      "description": "Standard, low-power thruster for station-keeping and maneuvering. Simple and reliable, but 'sips' fuel."
+    },
+    {
+      "id": "engine-chemical-methalox",
+      "name": "Methalox Engine (Raptor-class)",
+      "type": "Chemical (Bipropellant)",
+      "fuel_type_id": "fuel-methalox",
+      "thrust_kN": 2000,
+      "efficiency_isp": 380,
+      "atmo_efficiency": 0.9,
+      "powerDraw_MW": 0.1,
+      "description": "High-thrust, high-performance chemical engine. Ideal for launch, landing, and combat burns. A 'brute force' engine."
+    },
+    {
+      "id": "engine-ion-xenon",
+      "name": "Ion Drive (NEXIS-class)",
+      "type": "Electric (Ion)",
+      "fuel_type_id": "fuel-xenon",
+      "thrust_kN": 0.5,
+      "efficiency_isp": 10000,
+      "atmo_efficiency": 0.0,
+      "powerDraw_MW": 5.0,
+      "description": "Extremely low thrust, but incredible fuel efficiency. Useless in an atmosphere and requires a large power plant to run."
+    },
+    {
+      "id": "engine-ntr",
+      "name": "Nuclear Thermal (NTR)",
+      "type": "Nuclear Thermal",
+      "fuel_type_id": "fuel-hydrogen",
+      "thrust_kN": 330,
+      "efficiency_isp": 900,
+      "atmo_efficiency": 0.7,
+      "powerDraw_MW": 10.0,
+      "description": "Uses a fission reactor to superheat hydrogen. The classic 'torch ship' drive. A great balance of thrust and efficiency."
+    },
+    {
+      "id": "engine-fusion-epstein",
+      "name": "Fusion Torch (Epstein-class)",
+      "type": "Fusion",
+      "fuel_type_id": "fuel-fusion-pellets",
+      "thrust_kN": 20000,
+      "efficiency_isp": 1200000,
+      "atmo_efficiency": 1.0,
+      "powerDraw_MW": 50.0,
+      "description": "The ultimate sci-fi 'workhorse' drive. Constant-thrust, high-G burns are possible. Can cross a solar system in days or weeks. Requires a fusion reactor."
+    },
+    {
+      "id": "engine-antimatter",
+      "name": "Antimatter Beam-Core",
+      "type": "Annihilation",
+      "fuel_type_id": "fuel-antimatter",
+      "thrust_kN": 500000,
+      "efficiency_isp": 5000000,
+      "atmo_efficiency": 1.0,
+      "powerDraw_MW": 500.0,
+      "description": "Theoretical drive with performance that approaches the impossible. Requires a 'reaction mass' (like hydrogen) and massive power for containment."
+    },
+    {
+      "id": "engine-warp-drive",
+      "name": "Alcubierre Warp Drive",
+      "type": "Spacetime",
+      "fuel_type_id": "fuel-exotic-matter",
+      "thrust_kN": 0,
+      "efficiency_isp": 0,
+      "atmo_efficiency": 0.0,
+      "powerDraw_MW": 1000.0,
+      "description": "Does not provide 'thrust'. Consumes exotic matter to warp spacetime, enabling FTL travel. Requires a massive power plant and conventional drives for in-system maneuvering."
+    }
+  ]
+}

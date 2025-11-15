@@ -13,6 +13,8 @@
   import DescriptionEditor from './DescriptionEditor.svelte';
   import GmNotesEditor from './GmNotesEditor.svelte';
   import ZoneKey from './ZoneKey.svelte';
+  import ContextMenu from './ContextMenu.svelte'; // Import the generic context menu
+  import AddConstructModal from './AddConstructModal.svelte'; // Import the new modal
 
   import { systemStore, viewportStore } from '$lib/stores';
   import { panStore, zoomStore } from '$lib/cameraStore';
@@ -44,6 +46,11 @@
   let contextMenuY = 0;
   let contextMenuItems: CelestialBody[] = [];
   let contextMenuType = '';
+  let contextMenuNode: CelestialBody | Barycenter | null = null; // For the generic context menu
+
+  // Add Construct Modal State
+  let showAddConstructModal = false;
+  let constructHostBody: CelestialBody | null = null;
 
   function handleShowContextMenu(event: CustomEvent<{ x: number, y: number, items: any[], type: string }>) {
     contextMenuItems = event.detail.items;
@@ -51,6 +58,20 @@
     contextMenuY = event.detail.y;
     contextMenuType = event.detail.type;
     showSummaryContextMenu = true;
+  }
+
+  function handleShowBodyContextMenu(event: CustomEvent<{ node: CelestialBody, x: number, y: number }>) {
+    contextMenuNode = event.detail.node;
+    contextMenuX = event.detail.x;
+    contextMenuY = event.detail.y;
+    showSummaryContextMenu = true; // Re-use the same visibility flag
+    contextMenuType = 'generic'; // A new type to distinguish from the summary menu
+  }
+
+  function handleAddConstruct(event: CustomEvent<CelestialBody>) {
+    constructHostBody = event.detail;
+    showAddConstructModal = true;
+    showSummaryContextMenu = false; // Close the context menu
   }
 
   function handleContextMenuSelect(event: CustomEvent<string>) {
@@ -413,7 +434,7 @@
 
     <div class="system-view-grid">
         <div class="main-view">
-            <SystemVisualizer bind:this={visualizer} system={$systemStore} {rulePack} {currentTime} {focusedBodyId} {showNames} {showZones} {showLPoints} toytownFactor={$systemStore.toytownFactor} on:focus={handleFocus} />
+            <SystemVisualizer bind:this={visualizer} system={$systemStore} {rulePack} {currentTime} {focusedBodyId} {showNames} {showZones} {showLPoints} toytownFactor={$systemStore.toytownFactor} on:focus={handleFocus} on:showBodyContextMenu={handleShowBodyContextMenu} />
 
             <BodyGmTools body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:addHabitablePlanet={handleAddHabitablePlanet} />
             {#if focusedBody && focusedBody.kind === 'body'}
@@ -437,7 +458,15 @@
     </div>
 
     {#if showSummaryContextMenu}
-      <SystemSummaryContextMenu items={contextMenuItems} x={contextMenuX} y={contextMenuY} type={contextMenuType} on:select={handleContextMenuSelect} />
+      {#if contextMenuType === 'generic'}
+        <ContextMenu selectedNode={contextMenuNode} x={contextMenuX} y={contextMenuY} on:addConstruct={handleAddConstruct} />
+      {:else}
+        <SystemSummaryContextMenu items={contextMenuItems} x={contextMenuX} y={contextMenuY} type={contextMenuType} on:select={handleContextMenuSelect} />
+      {/if}
+    {/if}
+
+    {#if showAddConstructModal && constructHostBody}
+      <AddConstructModal {rulePack} hostBody={constructHostBody} orbitalBoundaries={constructHostBody.orbitalBoundaries} on:close={() => showAddConstructModal = false} />
     {/if}
 
     <div class="debug-controls">

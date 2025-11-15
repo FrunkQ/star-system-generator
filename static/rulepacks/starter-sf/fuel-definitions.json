@@ -1,0 +1,48 @@
+{
+  "id": "fuel-definitions",
+  "name": "Propellant and Fuel Types",
+  "entries": [
+    {
+      "id": "fuel-hydrazine",
+      "name": "Hydrazine",
+      "density_kg_per_m3": 1021,
+      "description": "A toxic, efficient monopropellant for small thrusters. Dense and stable for long-term storage."
+    },
+    {
+      "id": "fuel-methalox",
+      "name": "Methalox",
+      "density_kg_per_m3": 850,
+      "description": "A high-performance, clean-burning bipropellant (Methane/LOX). Good balance of density and performance."
+    },
+    {
+      "id": "fuel-hydrogen",
+      "name": "Liquid Hydrogen",
+      "density_kg_per_m3": 70.8,
+      "description": "Extremely high-efficiency propellant, but its incredibly low density requires massive, cryogenic tanks."
+    },
+    {
+      "id": "fuel-xenon",
+      "name": "Xenon (Liquid)",
+      "density_kg_per_m3": 1500,
+      "description": "An inert, heavy propellant for ion drives. Stored as a high-pressure liquid, making it very dense."
+    },
+    {
+      "id": "fuel-fusion-pellets",
+      "name": "Fusion Pellets (D-T)",
+      "density_kg_per_m3": 10000,
+      "description": "Hyper-compressed Deuterium-Tritium pellets for a fusion torch. Incredibly dense energy source."
+    },
+    {
+      "id": "fuel-antimatter",
+      "name": "Antihydrogen (Solid)",
+      "density_kg_per_m3": 70.8,
+      "description": "The ultimate propellant. Extremely low density, but its energy release is total. Requires massive magnetic containment."
+    },
+    {
+      "id": "fuel-exotic-matter",
+      "name": "Exotic Matter",
+      "density_kg_per_m3": 1000,
+      "description": "A substance with non-Newtonian properties, required to generate a 'warp' bubble. Density is a placeholder."
+    }
+  ]
+}

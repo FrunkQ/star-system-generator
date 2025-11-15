@@ -21,7 +21,7 @@
   let totalMoons = 0;
   let belts = 0;
   let starCount = 0;
-  const constructCount = 0; // Placeholder
+  let constructCount = 0;
 
   function getPlanetColor(node: CelestialBody): string {
     if (node.roleHint === 'star') return '#fff'; // White
@@ -35,14 +35,14 @@
   }
 
   function groupItemsByHost(items: CelestialBody[], allNodes: (CelestialBody | Barycenter)[]) {
-    const hosts = allNodes.filter(n => n.kind === 'body' && (n.roleHint === 'star' || n.roleHint === 'planet'));
+    const hosts = allNodes.filter(n => n.kind === 'body' && (n.roleHint === 'star' || n.roleHint === 'planet' || n.roleHint === 'moon'));
     const hostMap = new Map<string, (CelestialBody | Barycenter)>();
     hosts.forEach(h => hostMap.set(h.id, h));
 
     const grouped = new Map<string, CelestialBody[]>();
 
     items.forEach(item => {
-      const hostId = item.orbit?.hostId;
+      const hostId = item.ui_parentId || item.orbit?.hostId;
       if (hostId) {
         if (!grouped.has(hostId)) {
           grouped.set(hostId, []);
@@ -59,14 +59,28 @@
       };
     });
 
-    // Sort the hosts themselves by their orbital distance
+    const nodeMap = new Map(allNodes.map(n => [n.id, n]));
+    const getDepth = (nodeId: ID | null): number => {
+      if (!nodeId) return 0;
+      const node = nodeMap.get(nodeId);
+      if (!node || !node.parentId) return 0;
+      return 1 + getDepth(node.parentId);
+    };
+
+    // Sort the hosts themselves by their orbital distance and depth
     result.sort((a, b) => {
+        const aDepth = getDepth(a.host.id);
+        const bDepth = getDepth(b.host.id);
+
+        if (aDepth !== bDepth) {
+          return aDepth - bDepth;
+        }
+
         const aOrbit = (a.host as CelestialBody)?.orbit;
         const bOrbit = (b.host as CelestialBody)?.orbit;
         if (aOrbit && bOrbit) {
             return aOrbit.elements.a_AU - bOrbit.elements.a_AU;
         }
-        // Handle cases where one might be a star (no orbit)
         if (!aOrbit) return -1;
         if (!bOrbit) return 1;
         return 0;
@@ -121,6 +135,13 @@
       case 'biosphere':
         items = system.nodes.filter(n => n.kind === 'body' && n.biosphere) as CelestialBody[];
         break;
+      case 'construct':
+        const constructs = system.nodes.filter(n => n.kind === 'construct') as CelestialBody[];
+        const groupedConstructs = groupItemsByHost(constructs, system.nodes);
+        if (groupedConstructs.length > 0) {
+          dispatch('showcontextmenu', { x: event.clientX, y: event.clientY, items: groupedConstructs, type: 'grouped' });
+        }
+        return;
     }
 
     // Sort flat lists
@@ -162,9 +183,15 @@
     totalMoons = 0;
     belts = 0;
     starCount = 0;
+    constructCount = 0;
 
     if (system) {
         for (const node of system.nodes) {
+            if (node.kind === 'construct') {
+                constructCount++;
+                continue; // Skip to next node
+            }
+
             if (node.kind !== 'body') continue;
 
             if (node.roleHint === 'planet') {
@@ -267,7 +294,7 @@
             <span class="value">{biospheres}</span>
             <span class="label">Biospheres</span>
         </div>
-        <div class="summary-item" style="border: 2px solid #f0f0f0;">
+        <div class="summary-item" style="border: 2px solid #f0f0f0;" on:click={(e) => showContextMenu(e, 'construct')}>
             <span class="value">{constructCount}</span>
             <span class="label">Constructs</span>
         </div>
