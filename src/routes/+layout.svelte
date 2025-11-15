@@ -27,7 +27,7 @@
     Black Hole Accretion Disk Image: Courtesy of NASA’s Goddard Space Flight Center/Jeremy Schnittman, used under a Public Domain license. Source: <a href="https://svs.gsfc.nasa.gov/13326" target="_blank" rel="noopener noreferrer">NASA SVS</a>
   </p>
   <p>
-    Weyland-Yutani Logo: Courtesy of Bagera3005, used under a <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener noreferrer">CC BY 3.0</a> license. Source: <a href="https://www.deviantart.com/bagera3005/art/Weyland-Yutani-corp-155128785" target="_blank" rel="noopener noreferrer">DeviantArt</a>
+    Weyland-Yutani Logo: Sourced from <a href="https://commons.wikimedia.org/wiki/File:Weyland-Yutani_cryo-tube.jpg" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> by <a href="https://commons.wikimedia.org/wiki/User:IllaZilla" target="_blank" rel="noopener noreferrer">IllaZilla</a>, used under a <a href="https://creativecommons.org/licenses/by-sa/3.0/deed.en" target="_blank" rel="noopener noreferrer">Creative Commons Attribution-Share Alike 3.0 Unported</a> license. Changes made: Logo Extracted.
   </p>
   <p>&nbsp;</p> 
   <p>

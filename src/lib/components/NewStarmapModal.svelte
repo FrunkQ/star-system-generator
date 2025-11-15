@@ -27,7 +27,7 @@
     <h2>Welcome to the Star System Generator!</h2>
     <p>This tool allows you to create and explore scientifically-plausible star systems. Get started by creating a new starmap, or load a previous creation. For more information, see the <a href="https://github.com/FrunkQ/star-system-generator/blob/main/GettingStarted.md" target="_blank" rel="noopener noreferrer">Getting Started Guide</a>.</p>
     
-    <img src="/images/ui/weyland_yutani_corp_by_bagera3005_d2kcy4x.png" alt="Weyland-Yutani Corp" class="logo" />
+    <img src="/images/ui/Weyland-Yutani.png" alt="Weyland-Yutani Corp" class="logo" />
 
     <div class="load-options">
         <button on:click={() => dispatch('upload')}>Upload Starmap</button>
