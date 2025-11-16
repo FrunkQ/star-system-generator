@@ -15,6 +15,7 @@
   import ZoneKey from './ZoneKey.svelte';
   import ContextMenu from './ContextMenu.svelte'; // Import the generic context menu
   import AddConstructModal from './AddConstructModal.svelte'; // Import the new modal
+  import ConstructEditorModal from './ConstructEditorModal.svelte'; // Import the editor modal
 
   import { systemStore, viewportStore } from '$lib/stores';
   import { panStore, zoomStore } from '$lib/cameraStore';
@@ -52,6 +53,10 @@
   let showAddConstructModal = false;
   let constructHostBody: CelestialBody | null = null;
 
+  // Edit Construct Modal State
+  let showConstructEditorModal = false;
+  let constructToEdit: CelestialBody | null = null;
+
   function handleShowContextMenu(event: CustomEvent<{ x: number, y: number, items: any[], type: string }>) {
     contextMenuItems = event.detail.items;
     contextMenuX = event.detail.x;
@@ -72,6 +77,23 @@
     constructHostBody = event.detail;
     showAddConstructModal = true;
     showSummaryContextMenu = false; // Close the context menu
+  }
+
+  function handleEditConstruct(event: CustomEvent<CelestialBody>) {
+    constructToEdit = event.detail;
+    showConstructEditorModal = true;
+  }
+
+  function handleConstructUpdate(event: CustomEvent<CelestialBody>) {
+    const updatedConstruct = event.detail;
+    systemStore.update(system => {
+      if (!system) return null;
+      const nodeIndex = system.nodes.findIndex(n => n.id === updatedConstruct.id);
+      if (nodeIndex !== -1) {
+        system.nodes[nodeIndex] = updatedConstruct;
+      }
+      return { ...system, isManuallyEdited: true };
+    });
   }
 
   function handleContextMenuSelect(event: CustomEvent<string>) {
@@ -436,7 +458,7 @@
         <div class="main-view">
             <SystemVisualizer bind:this={visualizer} system={$systemStore} {rulePack} {currentTime} {focusedBodyId} {showNames} {showZones} {showLPoints} toytownFactor={$systemStore.toytownFactor} on:focus={handleFocus} on:showBodyContextMenu={handleShowBodyContextMenu} />
 
-            <BodyGmTools body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:addHabitablePlanet={handleAddHabitablePlanet} />
+            <BodyGmTools body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:addHabitablePlanet={handleAddHabitablePlanet} on:editConstruct={handleEditConstruct} />
             {#if focusedBody && focusedBody.kind === 'body'}
                 <DescriptionEditor body={focusedBody} on:change={() => systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s)} />
             {/if}
@@ -467,6 +489,10 @@
 
     {#if showAddConstructModal && constructHostBody}
       <AddConstructModal {rulePack} hostBody={constructHostBody} orbitalBoundaries={constructHostBody.orbitalBoundaries} on:close={() => showAddConstructModal = false} />
+    {/if}
+
+    {#if showConstructEditorModal && constructToEdit}
+      <ConstructEditorModal {rulePack} construct={constructToEdit} on:close={() => showConstructEditorModal = false} on:updateConstruct={handleConstructUpdate} />
     {/if}
 
     <div class="debug-controls">

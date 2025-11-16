@@ -112,18 +112,19 @@ export function calculateFullConstructSpecs(
         if (engineDef.type === "Chemical (Monopropellant)") continue; 
         
         // Add engine's power draw
-        totalPowerDraw_MW += engineDef.powerDraw_MW * engineSlot.quantity;
+        totalPowerDraw_MW += (engineDef.powerDraw_MW || 0) * engineSlot.quantity;
 
         // Get thrust
         const thrust_vac_N = engineDef.thrust_kN * 1000 * engineSlot.quantity;
-        const thrust_atmo_N = thrust_vac_N * engineDef.atmo_efficiency;
+        const atmoEfficiency = engineDef.atmo_efficiency || 1; // Default to 1 (no loss) if not specified
+        const thrust_atmo_N = thrust_vac_N * atmoEfficiency;
         
         totalVacThrust_N += thrust_vac_N;
         totalAtmoThrust_N += thrust_atmo_N;
         
         // "Weight" the ISP by its thrust contribution
         weightedVacISP_Sum += engineDef.efficiency_isp * thrust_vac_N;
-        weightedAtmoISP_Sum += (engineDef.efficiency_isp * engineDef.atmo_efficiency) * thrust_atmo_N;
+        weightedAtmoISP_Sum += (engineDef.efficiency_isp * atmoEfficiency) * thrust_atmo_N;
       }
     }
   }

@@ -1,0 +1,18 @@
+<script lang="ts">
+  import type { CelestialBody, RulePack } from '$lib/types';
+
+  export let construct: CelestialBody;
+  export let rulePack: RulePack;
+</script>
+
+<div class="tab-panel">
+  <h3>Crew</h3>
+  <p>Crew for {construct.name}</p>
+  <!-- Crew editing UI will go here -->
+</div>
+
+<style>
+  .tab-panel {
+    padding: 10px;
+  }
+</style>

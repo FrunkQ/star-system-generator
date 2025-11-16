@@ -20,6 +20,10 @@
         {#if body && body.parentId !== null}
             <button class="delete-button" on:click={handleDelete}>Delete {body.name}</button>
         {/if}
+
+        {#if body && body.kind === 'construct'}
+          <button on:click={() => dispatch('editConstruct', body)}>Edit Construct</button>
+        {/if}
         
         <button on:click={() => dispatch('addNode', { hostId: body.id, planetType: 'planet/terrestrial' })}>Add Terrestrial</button>
         {#if body && (body.roleHint === 'star' || body.kind === 'barycenter')}

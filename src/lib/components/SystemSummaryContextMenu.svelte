@@ -22,7 +22,7 @@
           <li class="planet-header" on:click={() => handleClick(group.host)}>{group.host.name}</li>
         {/if}
         {#each group.children as child}
-          <li on:click={() => handleClick(child)}>&nbsp;&nbsp;{child.name}</li>
+          <li on:click={() => handleClick(child)} style="color: {child.kind === 'construct' && child.icon_color ? child.icon_color : ''}">&nbsp;&nbsp;{child.name}</li>
         {/each}
       {/each}
     {:else}

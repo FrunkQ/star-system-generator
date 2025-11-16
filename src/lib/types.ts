@@ -1,4 +1,4 @@
-'''// ===== types.ts =====
+// ===== types.ts =====
 import type { OrbitalBoundaries } from './physics/orbits';
 
 export type ID = string;
@@ -54,51 +54,15 @@ export interface Biosphere {
   morphologies: ('microbial' | 'fungal' | 'flora' | 'fauna')[];
 }
 
+export interface Engine {
+  engine_id: ID;
+  quantity: number;
+}
 
 export interface CelestialBody extends NodeBase {
-  kind: "body";
-  roleHint?: "star" | "planet" | "moon" | "submoon" | "ring" | "belt" | "artifact" | "station" | "other";
-  starCategory?: 'massive_star' | 'main_sequence_star' | 'low_mass_star' | 'star_remnant';
-  classes: string[];
-  description?: string;
-  massKg?: number; radiusKm?: number; density?: number; radiusInnerKm?: number; radiusOuterKm?: number;
-  atmosphere?: Atmosphere; hydrosphere?: Hydrosphere;
-  albedo?: number; temperatureK?: number; gravityG?: number; magneticField?: MagneticField;
-  orbital_period_days?: number;
-  axial_tilt_deg?: number;
-  rotation_period_hours?: number;
-  calculatedGravity_ms2?: number;
-  calculatedRotationPeriod_s?: number;
-  orbitalBoundaries?: OrbitalBoundaries;
-  loDeltaVBudget_ms?: number;
-  propulsiveLandBudget_ms?: number;
-  aerobrakeLandBudget_ms?: number;
-
-  // Construct-specific properties (optional)
-  gmNotes?: string;
-  IsTemplate?: boolean;
-  crew?: { current: number; max: number; };
-  physical_parameters?: PhysicalParameters;
-  engines?: { engine_id: string; quantity: number; }[];
-  fuel_tanks?: { fuel_type_id: string; capacity_units: number; current_units: number; }[];
-  systems?: Systems;
-  icon_type?: 'square' | 'triangle';
-  icon_color?: string;
-
-  isNameUserDefined?: boolean;
-
-  // Radiation & Magnetosphere
-  radiationOutput?: number; // For stars, intrinsic radiation level
-  surfaceRadiation?: number; // For planets, calculated incident radiation
-
-  // Physical Properties (GM-only, maybe)
-  gmNotes?: string;
-  equilibriumTempK?: number; greenhouseTempK?: number; tidalHeatK?: number; radiogenicHeatK?: number;
-  tidallyLocked?: boolean;
-  habitabilityScore?: number;
-  biosphere?: Biosphere;
-  aiContext?: AIContext;
-  orbit?: Orbit; areas: Area[]; image?: string; deltaV?: DeltaVCapability;
+  kind: 'body' | 'construct';
+  engines?: Engine[]; // Array of engines attached to the construct
+  // ... existing properties ...
 }
 
 export interface PhysicalParameters {
@@ -174,13 +138,29 @@ export interface FuelDefinition {
   description: string;
 }
 
+export interface EngineDefinition {
+  id: string;
+  name: string;
+  type: string;
+  fuel_type_id: string;
+  thrust_kN: number;
+  efficiency_isp: number;
+  powerDraw_MW?: number; // Optional: Power drawn by the engine when active
+  atmo_efficiency?: number; // Optional: Thrust multiplier in atmosphere (0-1)
+  description: string;
+}
+
 export interface RulePack {
   id: string; version: string; name: string;
   distributions: Record<string, TableSpec>;
   gasMolarMassesKg?: Record<string, number>;
   orbitalConstants?: Record<string, number>;
   constructTemplates?: Record<string, CelestialBody[]>; // Templates are CelestialBody objects
-  engineDefinitions?: EngineDefinition[];
+  engineDefinitions?: {
+    id: string;
+    name: string;
+    entries: EngineDefinition[];
+  };
   fuelDefinitions?: FuelDefinition[];
   tagVocab: string[]; // taxonomy IDs
   prompts: PromptSpec;
@@ -222,4 +202,4 @@ export interface Starmap {
   unitIsPrefix: boolean;
   gridType?: 'grid' | 'hex' | 'none';
   mouseZoomDisabled?: boolean;
-}'''
+}
