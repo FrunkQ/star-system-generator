@@ -6,24 +6,28 @@
   import ConstructFuelTab from './ConstructFuelTab.svelte';
   import ConstructCargoTab from './ConstructCargoTab.svelte';
   import ConstructCrewTab from './ConstructCrewTab.svelte';
-  import ConstructLifeSupportTab from './ConstructLifeSupportTab.svelte';
   import ConstructPowerTab from './ConstructPowerTab.svelte';
-  import ConstructModulesTab from './ConstructModulesTab.svelte'; // Import the new tab component
+  import ConstructModulesTab from './ConstructModulesTab.svelte';
+  import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
 
+  export let system: System;
   export let construct: CelestialBody;
   export let rulePack: RulePack;
+  export let hostBody: CelestialBody | null;
 
   const dispatch = createEventDispatcher();
 
-  let selectedTab: string = 'General'; // Default selected tab
-
-  function handleUpdate(event: CustomEvent<CelestialBody>) {
-    construct = event.detail;
-    dispatch('updateConstruct', construct);
-  }
+  let selectedTab: string = 'General';
 
   function close() {
     dispatch('close');
+  }
+
+  function handleUpdate() {
+    // This triggers reactivity within the modal for the derived specs
+    construct = construct; 
+    // This sends the updated object out to the parent component (SystemView) 
+    dispatch('updateConstruct', construct);
   }
 </script>
 
@@ -37,30 +41,29 @@
       <button class:active={selectedTab === 'Fuel'} on:click={() => selectedTab = 'Fuel'}>Fuel</button>
       <button class:active={selectedTab === 'Cargo'} on:click={() => selectedTab = 'Cargo'}>Cargo</button>
       <button class:active={selectedTab === 'Crew'} on:click={() => selectedTab = 'Crew'}>Crew</button>
-      <button class:active={selectedTab === 'Life Support'} on:click={() => selectedTab = 'Life Support'}>Life Support</button>
       <button class:active={selectedTab === 'Power'} on:click={() => selectedTab = 'Power'}>Power</button>
       <button class:active={selectedTab === 'Modules'} on:click={() => selectedTab = 'Modules'}>Modules</button>
     </div>
 
     <div class="tab-content">
       {#if selectedTab === 'General'}
-        <ConstructGeneralTab {construct} on:update={handleUpdate} />
+        <ConstructGeneralTab {system} {construct} {hostBody} on:update={handleUpdate} />
       {:else if selectedTab === 'Engines'}
         <ConstructEnginesTab {construct} {rulePack} on:update={handleUpdate} />
       {:else if selectedTab === 'Fuel'}
-        <ConstructFuelTab {construct} {rulePack} />
+        <ConstructFuelTab {construct} {rulePack} on:update={handleUpdate} />
       {:else if selectedTab === 'Cargo'}
-        <ConstructCargoTab {construct} {rulePack} />
+        <ConstructCargoTab {construct} {rulePack} on:update={handleUpdate} />
       {:else if selectedTab === 'Crew'}
-        <ConstructCrewTab {construct} {rulePack} />
-      {:else if selectedTab === 'Life Support'}
-        <ConstructLifeSupportTab {construct} {rulePack} />
+        <ConstructCrewTab {construct} on:update={handleUpdate} />
       {:else if selectedTab === 'Power'}
-        <ConstructPowerTab {construct} {rulePack} />
+        <ConstructPowerTab {construct} {rulePack} on:update={handleUpdate} />
       {:else if selectedTab === 'Modules'}
-        <ConstructModulesTab {construct} {rulePack} />
+        <ConstructModulesTab {construct} on:update={handleUpdate} />
       {/if}
     </div>
+
+    <ConstructDerivedSpecs {construct} {rulePack} {hostBody} />
 
     <div class="buttons">
       <button on:click={close}>Close</button>
@@ -130,6 +133,7 @@
     border-radius: 5px;
     background-color: #2a2a2a;
     min-height: 200px; /* Ensure some height for content */
+    overflow-y: auto;
   }
 
   .buttons {

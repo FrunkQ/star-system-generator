@@ -1,4 +1,5 @@
 import type { CelestialBody, EngineDefinition, FuelDefinition, PhysicalParameters, Systems } from './types';
+import { AU_KM } from './constants';
 
 // Define constants
 const g0 = 9.81; // Standard gravity for ISP and G-force calcs
@@ -22,17 +23,15 @@ export interface ConstructSpecs {
   maxVacuumG: number; // Max acceleration in vacuum
   totalVacuumDeltaV_ms: number;
   totalAtmoDeltaV_ms: number;
+  orbit_string: string;
 }
 
 export function calculateFullConstructSpecs(
   construct: CelestialBody,
   engineDefinitions: EngineDefinition[],
   fuelDefinitions: FuelDefinition[],
-  current_cargo_tonnes: number,
-  current_fuel_tonnes: number,
-  current_crew_count: number,
+  hostBody: CelestialBody | null,
 ): ConstructSpecs {
-
   const specs: Partial<ConstructSpecs> = {}; // Use Partial for initial assignment
 
   // ========================================================================
@@ -63,15 +62,49 @@ export function calculateFullConstructSpecs(
 
   // --- Calculate Life Support Endurance ---
   const life_support = systems.life_support;
+  const current_crew_count = construct.crew?.current || 0; // Get from construct's crew object
   if (life_support) {
     const consumables = life_support.consumables_current_person_days;
     if (current_crew_count > 0) {
-      specs.endurance_days = consumables / current_crew_count;
+      specs.endurance_days = Math.floor(consumables / current_crew_count);
     } else {
-      specs.endurance_days = "Infinite"; // Or consumables, if you prefer
+      specs.endurance_days = "Indefinite";
     }
   } else {
     specs.endurance_days = "N/A";
+  }
+
+  // --- Determine Orbit String ---
+  const hostName = hostBody?.name || 'Unknown';
+  let placementDescription = construct.placement || 'Orbit';
+
+  // For orbital zones, use the specific placement name. For L-points, it's already descriptive.
+  if (construct.placement && construct.placement.endsWith(' Orbit')) {
+      placementDescription = construct.placement;
+  } else if (construct.placement === 'Surface') {
+      placementDescription = 'Surface';
+  } else if (construct.placement === 'L4' || construct.placement === 'L5') {
+      placementDescription = construct.placement;
+  } else if (hostBody && construct.orbit) {
+      // Fallback logic to determine zone from altitude if placement is generic 'Orbit'
+      if (hostBody.orbitalBoundaries) {
+          const altitudeKm = (construct.orbit.elements.a_AU * AU_KM) - (hostBody.radiusKm || 0);
+          const boundaries = hostBody.orbitalBoundaries;
+          if (boundaries.hasSurface && boundaries.surface && altitudeKm <= boundaries.surface.max) placementDescription = 'Surface';
+          else if (boundaries.lowOrbit && altitudeKm <= boundaries.lowOrbit.max) placementDescription = 'Low Orbit';
+          else if (boundaries.mediumOrbit && altitudeKm <= boundaries.mediumOrbit.max) placementDescription = 'Medium Orbit';
+          else if (boundaries.geosynchronousOrbit && altitudeKm <= boundaries.geosynchronousOrbit.max) placementDescription = 'Geosynchronous';
+          else if (boundaries.highOrbit && altitudeKm <= boundaries.highOrbit.max) placementDescription = 'High Orbit';
+          else placementDescription = 'Far Orbit';
+      } else {
+          placementDescription = 'Orbit';
+      }
+  }
+
+  specs.orbit_string = `${hostName} - ${placementDescription}`;
+  
+  if (!hostBody) {
+    specs.orbit_string = 'N/A';
   }
 
   // ========================================================================
@@ -80,14 +113,14 @@ export function calculateFullConstructSpecs(
   
   // --- Calculate Current Mass ---
   const dryMass_kg = physical_parameters.massKg || 0;
-  const cargoMass_kg = current_cargo_tonnes * 1000;
+  const cargoMass_kg = (construct.current_cargo_tonnes || 0) * 1000; // Use from construct
   
   let fuelMass_kg = 0;
   if (construct.fuel_tanks) {
     for (const tank of construct.fuel_tanks) {
       const fuelDef = findFuel(fuelDefinitions, tank.fuel_type_id);
       if (fuelDef) {
-        fuelMass_kg += tank.current_units * fuelDef.density_kg_per_m3; // Assuming units are volume for now
+        fuelMass_kg += tank.current_units * fuelDef.density_kg_per_m3;
       }
     }
   }

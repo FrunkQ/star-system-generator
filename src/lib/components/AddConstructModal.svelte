@@ -123,6 +123,7 @@
       }
     }
     
+    console.trace('Trace for createConstruct');
     systemStore.update((system) => {
       if (system) {
         system.nodes.push(newConstruct);

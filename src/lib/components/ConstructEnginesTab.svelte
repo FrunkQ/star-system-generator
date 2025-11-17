@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { CelestialBody, RulePack, Engine, EngineDefinition } from '$lib/types';
+  import type { CelestialBody, RulePack, Engine, EngineDefinition, FuelTank } from '$lib/types';
 
   export let construct: CelestialBody;
   export let rulePack: RulePack;
@@ -9,47 +9,57 @@
 
   const engineDefinitions: EngineDefinition[] = rulePack.engineDefinitions?.entries || [];
   const engineNameMap = new Map(engineDefinitions.map(e => [e.id, e.name]));
+  const engineFuelMap = new Map(engineDefinitions.map(e => [e.id, e.fuel_type_id]));
 
   let selectedEngineId: string | null = null;
 
-  function updateEngines(newEngines: Engine[]) {
-    dispatch('update', { ...construct, engines: newEngines });
-  }
-
   function addEngine() {
     if (!selectedEngineId) return;
-    const currentEngines = construct.engines || [];
-    const existingEngine = currentEngines.find(e => e.engine_id === selectedEngineId);
-    let newEngines: Engine[];
+
+    if (!construct.engines) construct.engines = [];
+    const existingEngine = construct.engines.find(e => e.engine_id === selectedEngineId);
+
     if (existingEngine) {
-      newEngines = currentEngines.map(e => e.engine_id === selectedEngineId ? { ...e, quantity: e.quantity + 1 } : e);
+      existingEngine.quantity++;
     } else {
-      newEngines = [...currentEngines, { engine_id: selectedEngineId, quantity: 1 }];
+      construct.engines.push({ engine_id: selectedEngineId, quantity: 1 });
     }
-    updateEngines(newEngines);
+
+    // Add a default fuel tank if one doesn't already exist for this fuel type
+    const fuelTypeId = engineFuelMap.get(selectedEngineId);
+    if (!construct.fuel_tanks) construct.fuel_tanks = [];
+    const hasFuelTank = construct.fuel_tanks.some(t => t.fuel_type_id === fuelTypeId);
+
+    if (fuelTypeId && !hasFuelTank) {
+      construct.fuel_tanks.push({ fuel_type_id: fuelTypeId, capacity_units: 100, current_units: 100 });
+    }
+
+    dispatch('update');
     selectedEngineId = null;
+    // Trigger reactivity
+    construct.engines = construct.engines;
+    construct.fuel_tanks = construct.fuel_tanks;
   }
 
   function removeEngine(engineId: string) {
-    const currentEngines = construct.engines || [];
-    const newEngines = currentEngines.filter(e => e.engine_id !== engineId);
-    updateEngines(newEngines);
+    if (!construct.engines) return;
+    construct.engines = construct.engines.filter(e => e.engine_id !== engineId);
+    dispatch('update');
   }
 
   function changeQuantity(engineId: string, delta: number) {
-    const currentEngines = construct.engines || [];
-    let newEngines = currentEngines.map(e => {
-      if (e.engine_id === engineId) {
-        return { ...e, quantity: Math.max(1, e.quantity + delta) }; // Ensure quantity doesn't go below 1
-      }
-      return e;
-    });
-    updateEngines(newEngines);
+    if (!construct.engines) return;
+    const engine = construct.engines.find(e => e.engine_id === engineId);
+    if (engine) {
+      engine.quantity = Math.max(1, engine.quantity + delta); // Ensure quantity doesn't go below 1
+    }
+    dispatch('update');
+    // Trigger reactivity
+    construct.engines = construct.engines;
   }
 </script>
 
 <div class="tab-panel">
-  <h3>Engine Configuration</h3>
 
   <h4>Attached Engines</h4>
   {#if !construct.engines || construct.engines.length === 0}
@@ -58,7 +68,10 @@
     <ul class="engine-list">
       {#each construct.engines as engine (engine.engine_id)}
         <li class="engine-item">
-          <span>{engineNameMap.get(engine.engine_id) || engine.engine_id}</span>
+          <div class="engine-info">
+            <span>{engineNameMap.get(engine.engine_id) || engine.engine_id}</span>
+            <small>({rulePack.fuelDefinitions?.entries.find(f => f.id === engineFuelMap.get(engine.engine_id))?.name || 'Unknown Fuel'})</small>
+          </div>
           <div class="quantity-controls">
             <button on:click={() => changeQuantity(engine.engine_id, -1)}>-</button>
             <span>{engine.quantity}</span>
@@ -89,8 +102,10 @@
   hr { border: 1px solid #555; margin: 1em 0; }
   .add-engine-form { display: flex; gap: 10px; align-items: center; }
   .engine-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-  .engine-item { display: flex; justify-content: space-between; align-items: center; background-color: #444; padding: 8px; border-radius: 4px; }
-  .quantity-controls { display: flex; align-items: center; gap: 10px; }
+  .engine-item { display: flex; justify-content: flex-start; align-items: center; background-color: #444; padding: 8px; border-radius: 4px; gap: 10px; }
+  .engine-info { display: flex; flex-direction: column; flex-grow: 1; }
+  .engine-info small { color: #ccc; font-size: 0.8em; }
+  .quantity-controls { display: flex; align-items: center; gap: 10px; margin-left: auto; }
   .quantity-controls button { padding: 2px 8px; }
   .remove-btn { background-color: #800; color: white; border: 1px solid #c00; }
 </style>

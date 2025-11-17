@@ -56,6 +56,7 @@
   // Edit Construct Modal State
   let showConstructEditorModal = false;
   let constructToEdit: CelestialBody | null = null;
+  let constructHostBodyForEditor: CelestialBody | null = null;
 
   function handleShowContextMenu(event: CustomEvent<{ x: number, y: number, items: any[], type: string }>) {
     contextMenuItems = event.detail.items;
@@ -81,6 +82,16 @@
 
   function handleEditConstruct(event: CustomEvent<CelestialBody>) {
     constructToEdit = event.detail;
+    if ($systemStore) {
+      const hostId = constructToEdit.ui_parentId || constructToEdit.parentId;
+      if (hostId) {
+        constructHostBodyForEditor = $systemStore.nodes.find(n => n.id === hostId) as CelestialBody;
+      } else {
+        constructHostBodyForEditor = null;
+      }
+    } else {
+      constructHostBodyForEditor = null;
+    }
     showConstructEditorModal = true;
   }
 
@@ -127,13 +138,13 @@
   let focusedBodyId: string | null = null;
   let focusedBody: CelestialBody | null = null;
 
-  $: {
-    if ($systemStore && focusedBodyId) {
-        focusedBody = $systemStore.nodes.find(n => n.id === focusedBodyId) as CelestialBody;
-    } else if ($systemStore) {
-        focusedBody = $systemStore.nodes.find(n => n.parentId === null) as CelestialBody;
+  $: if ($systemStore) {
+    if (focusedBodyId) {
+        const foundBody = $systemStore.nodes.find(n => n.id === focusedBodyId);
+        focusedBody = foundBody ? JSON.parse(JSON.stringify(foundBody)) as CelestialBody : null;
     } else {
-        focusedBody = null;
+        const foundBody = $systemStore.nodes.find(n => n.parentId === null);
+        focusedBody = foundBody ? JSON.parse(JSON.stringify(foundBody)) as CelestialBody : null;
     }
   }
 
@@ -184,12 +195,9 @@
   }
 
   function handlePopState(event: PopStateEvent) {
-    console.log('handlePopState called');
     if (focusedBody?.parentId) {
-        console.log('Zooming out to parent');
         focusedBodyId = focusedBody.parentId;
     } else {
-        console.log('Dispatching back event');
         dispatch('back');
     }
   }
@@ -460,7 +468,7 @@
 
             <BodyGmTools body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:addHabitablePlanet={handleAddHabitablePlanet} on:editConstruct={handleEditConstruct} />
             {#if focusedBody && focusedBody.kind === 'body'}
-                <DescriptionEditor body={focusedBody} on:change={() => systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s)} />
+                <DescriptionEditor body={focusedBody} on:change={() => { systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s); }} />
             {/if}
         </div>
         <div class="details-view">
@@ -471,10 +479,11 @@
             {#if showZones && focusedBody.roleHint === 'star'}
                 <ZoneKey />
             {:else}
-                <BodyTechnicalDetails body={focusedBody} {rulePack} />
+                {@const parentBody = focusedBody.parentId ? $systemStore.nodes.find(n => n.id === (focusedBody.ui_parentId || focusedBody.parentId)) : null}
+                <BodyTechnicalDetails body={focusedBody} {rulePack} parentBody={parentBody} />
             {/if}
             <BodyImage body={focusedBody} />
-            <GmNotesEditor body={focusedBody} on:change={() => systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s)} />
+            <GmNotesEditor body={focusedBody} on:change={() => { systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s); }} />
         </div>
 
     </div>
@@ -492,7 +501,7 @@
     {/if}
 
     {#if showConstructEditorModal && constructToEdit}
-      <ConstructEditorModal {rulePack} construct={constructToEdit} on:close={() => showConstructEditorModal = false} on:updateConstruct={handleConstructUpdate} />
+      <ConstructEditorModal system={$systemStore} {rulePack} construct={constructToEdit} hostBody={constructHostBodyForEditor} on:close={() => showConstructEditorModal = false} on:updateConstruct={handleConstructUpdate} />
     {/if}
 
     <div class="debug-controls">

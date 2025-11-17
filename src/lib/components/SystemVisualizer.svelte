@@ -48,11 +48,13 @@
   let needsReset = false;
 
   // --- Camera State ---
-  let pan: PanState;
+  let panState: PanState;
   let zoom: number;
-  panStore.subscribe(value => pan = value);
+  panStore.subscribe(value => panState = value);
   zoomStore.subscribe(value => zoom = value);
-  $: camera = { pan, zoom };
+  
+  // This is the pan value used for the current frame's render, to avoid store updates every frame
+  let renderPan: PanState = { x: 0, y: 0 };
 
   // --- Interaction State ---
   let isPanning = false;
@@ -74,8 +76,30 @@
   $: if (system && rulePack) {
     calculateAndStoreStellarZones();
   }
+
+  $: worldPositions = calculateWorldPositions(system, currentTime);
+
   $: if (showLPoints) {
     calculateLagrangePointPositions();
+  }
+
+  // Recalculate the scaling pivot point only when the system's positions change
+  $: if (worldPositions.size > 0 && system) {
+    const nodesById = new Map(system.nodes.map(n => [n.id, n]));
+    const distances = Array.from(worldPositions.entries())
+      .map(([id, pos]) => {
+        const node = nodesById.get(id);
+        if (node && node.parentId && worldPositions.has(node.parentId)) {
+          const parentPos = worldPositions.get(node.parentId)!;
+          const dx = pos.x - parentPos.x;
+          const dy = pos.y - parentPos.y;
+          return Math.sqrt(dx * dx + dy * dy);
+        }
+        return 0;
+      })
+      .filter(d => d > 0);
+    const minDistance = distances.length > 0 ? Math.min(...distances) : 0.01;
+    x0_distance = minDistance * 0.1;
   }
 
   function calculateAndStoreStellarZones() {
@@ -99,22 +123,6 @@
 
     const nodesById = new Map(system.nodes.map(n => [n.id, n]));
     const newScaledPositions = new Map<string, { x: number, y: number }>();
-
-    // Determine x0 for distances
-    const distances = Array.from(worldPositions.entries())
-      .map(([id, pos]) => {
-        const node = nodesById.get(id);
-        if (node && node.parentId && worldPositions.has(node.parentId)) {
-          const parentPos = worldPositions.get(node.parentId)!;
-          const dx = pos.x - parentPos.x;
-          const dy = pos.y - parentPos.y;
-          return Math.sqrt(dx * dx + dy * dy);
-        }
-        return 0;
-      })
-      .filter(d => d > 0);
-    const minDistance = distances.length > 0 ? Math.min(...distances) : 0.01;
-    x0_distance = minDistance * 0.1;
 
     // Recursively calculate scaled positions
     function getScaledPosition(nodeId: string): { x: number, y: number } {
@@ -397,19 +405,18 @@
 
   // --- Coordinate Transformation ---
   function screenToWorld(screenX: number, screenY: number): { x: number, y: number } {
-      if (!canvas || !camera || !camera.pan) return { x: 0, y: 0 };
+      if (!canvas || !zoom) return { x: 0, y: 0 };
       const { width, height } = canvas;
-      const targetWorldPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
-      const worldX = (screenX - width / 2) / camera.zoom + camera.pan.x;
-      const worldY = (screenY - height / 2) / camera.zoom + camera.pan.y;
+      const worldX = (screenX - width / 2) / zoom + renderPan.x;
+      const worldY = (screenY - height / 2) / zoom + renderPan.y;
       return { x: worldX, y: worldY };
   }
   
   function worldToScreen(worldX: number, worldY: number): { x: number, y: number } {
-      if (!canvas || !camera || !camera.pan) return { x: 0, y: 0 };
+      if (!canvas || !zoom) return { x: 0, y: 0 };
       const { width, height } = canvas;
-      const screenX = (worldX - camera.pan.x) * camera.zoom + width / 2;
-      const screenY = (worldY - camera.pan.y) * camera.zoom + height / 2;
+      const screenX = (worldX - renderPan.x) * zoom + width / 2;
+      const screenY = (worldY - renderPan.y) * zoom + height / 2;
       return { x: screenX, y: screenY };
   }
 
@@ -420,7 +427,6 @@
       if (!ctx) return; // Prevent drawing if context is not yet available
 
       if (ctx) {
-        calculateWorldPositions();
         calculateScaledPositions(); // Ensure scaled positions are in sync
         if (needsReset) {
             resetView();
@@ -428,11 +434,14 @@
         }
         calculateLagrangePointPositions(); // Calculate L-points each frame
 
+        // Update the renderPan for the current frame. This does NOT trigger a store update.
         if (focusedBodyId && cameraMode === 'FOLLOW' && !isPanning && !isAnimatingFocus) {
             const targetPosition = toytownFactor > 0 ? scaledWorldPositions.get(focusedBodyId) : worldPositions.get(focusedBodyId);
             if (targetPosition) {
-                panStore.set(targetPosition, { duration: 0 });
+                renderPan = targetPosition;
             }
+        } else {
+            renderPan = panState; // When not following, use the state from the store
         }
 
         drawSystem(ctx);
@@ -529,8 +538,8 @@
       lagrangePoints = allPoints.size > 0 ? allPoints : null;
   }
 
-  function calculateWorldPositions() {
-      if (!system) return;
+  function calculateWorldPositions(system: System | null, currentTime: number): Map<string, { x: number, y: number }> {
+      if (!system) return new Map();
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       const positions = new Map<string, { x: number, y: number }>();
       function getPosition(nodeId: string): { x: number, y: number } {
@@ -552,7 +561,7 @@
           return absolutePos;
       }
       for (const node of system.nodes) getPosition(node.id);
-      worldPositions = positions;
+      return positions;
   }
 
   /**
@@ -648,7 +657,7 @@
               const isGasGiant = node.classes.some(c => c.includes('gas-giant') || c.includes('ice-giant'));
               minRadiusPx = isGasGiant ? 15 : 12;
           } else if (node.roleHint === 'moon') minRadiusPx = 8;
-          const minRadiusInWorld = minRadiusPx / camera.zoom;
+          const minRadiusInWorld = minRadiusPx / zoom;
           const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
 
           if (distanceSq < finalRadius * finalRadius) {
@@ -703,7 +712,7 @@
               const isGasGiant = node.classes.some(c => c.includes('gas-giant') || c.includes('ice-giant'));
               minRadiusPx = isGasGiant ? 15 : 12;
           } else if (node.roleHint === 'moon') minRadiusPx = 8;
-          const minRadiusInWorld = minRadiusPx / camera.zoom;
+          const minRadiusInWorld = minRadiusPx / zoom;
           const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
 
           if (distanceSq < finalRadius * finalRadius) {
@@ -768,7 +777,7 @@
   const STAR_COLOR_MAP: Record<string, string> = { "O": "#9bb0ff", "B": "#aabfff", "A": "#cad8ff", "F": "#f8f7ff", "G": "#fff4ea", "K": "#ffd2a1", "M": "#ffc46f", "WD": "#f0f0f0", "NS": "#c0c0ff", "magnetar": "#800080", "BH": "#000000", "default": "#ffffff" };
 
   function drawSystem(ctx: CanvasRenderingContext2D) {
-      if (!system || !camera || !camera.pan) return;
+      if (!system || !zoom) return;
       const { width, height } = canvas;
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       
@@ -778,8 +787,8 @@
       
       // --- Camera Transformation (applies to all world-coordinate drawing below) ---
       ctx.translate(width / 2, height / 2);
-      ctx.scale(camera.zoom, camera.zoom);
-      ctx.translate(-camera.pan.x, -camera.pan.y);
+      ctx.scale(zoom, zoom);
+      ctx.translate(-renderPan.x, -renderPan.y);
 
       // --- Draw Stellar Zones (if enabled) ---
       if (showZones) {
@@ -788,25 +797,13 @@
 
       // --- Drawing Orbits (except for belts) ---
       for (const node of system.nodes) {
-          if ((node.kind !== 'body' && node.kind !== 'construct') || !node.orbit || !node.parentId || node.roleHint === 'belt') continue;
+          if (!node.orbit || !node.parentId || (node.kind === 'body' && node.roleHint === 'belt')) continue;
           
-          let orbitToDraw = node.orbit;
-          let parentIdForOrbit = node.parentId;
-
-          // For L-points, use the parent's orbit and the grandparent's position
-          if ((node.placement === 'L4' || node.placement === 'L5')) {
-            const parentNode = nodesById.get(node.parentId);
-            if (parentNode && parentNode.orbit && parentNode.parentId) {
-              orbitToDraw = parentNode.orbit;
-              parentIdForOrbit = parentNode.parentId;
-            }
-          }
-
-          const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(parentIdForOrbit) : worldPositions.get(parentIdForOrbit);
+          const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(node.parentId) : worldPositions.get(node.parentId);
           if (!parentPos) continue;
           
-          let a = orbitToDraw.elements.a_AU;
-          let e = orbitToDraw.elements.e;
+          let a = node.orbit.elements.a_AU;
+          let e = node.orbit.elements.e;
 
           if (toytownFactor > 0) {
               a = scaleBoxCox(a, toytownFactor, x0_distance);
@@ -816,19 +813,11 @@
           const c = a * e; // distance from center to focus - MUST use scaled 'a'
           
           ctx.strokeStyle = "#333";
-          ctx.lineWidth = 1 / camera.zoom;
-
-          if (node.kind === 'construct') {
-            ctx.setLineDash([5 / camera.zoom, 10 / camera.zoom]);
-          }
+          ctx.lineWidth = 1 / zoom;
 
           ctx.beginPath();
           ctx.ellipse(parentPos.x - c, parentPos.y, a, b, 0, 0, 2 * Math.PI);
           ctx.stroke();
-
-          if (node.kind === 'construct') {
-            ctx.setLineDash([]); // Reset for other elements
-          }
       }
 
       // --- Draw Belts and Rings (in background) ---
@@ -852,7 +841,7 @@
                   if (widthAU <= 0) continue;
 
                   if (node.roleHint === 'belt') {
-                      ctx.lineWidth = Math.max(4 / camera.zoom, widthAU);
+                      ctx.lineWidth = Math.max(4 / zoom, widthAU);
                   } else {
                       ctx.lineWidth = widthAU;
                   }
@@ -918,8 +907,8 @@
 
       // --- Draw Lagrange Points (crosses) ---
       if (showLPoints && lagrangePoints) {
-          const crossSize = 5 / camera.zoom;
-          ctx.lineWidth = 1.5 / camera.zoom;
+          const crossSize = 5 / zoom;
+          ctx.lineWidth = 1.5 / zoom;
 
           for (const [key, pos] of lagrangePoints.entries()) {
               const name = key.split('-')[0];
@@ -948,12 +937,12 @@
 
           if (node.kind === 'barycenter') {
               ctx.strokeStyle = '#888';
-              ctx.lineWidth = 1 / camera.zoom;
+              ctx.lineWidth = 1 / zoom;
               ctx.beginPath();
-              ctx.moveTo(pos.x - 10 / camera.zoom, pos.y);
-              ctx.lineTo(pos.x + 10 / camera.zoom, pos.y);
-              ctx.moveTo(pos.x, pos.y - 10 / camera.zoom);
-              ctx.lineTo(pos.x, pos.y + 10 / camera.zoom);
+              ctx.moveTo(pos.x - 10 / zoom, pos.y);
+              ctx.lineTo(pos.x + 10 / zoom, pos.y);
+              ctx.moveTo(pos.x, pos.y - 10 / zoom);
+              ctx.lineTo(pos.x, pos.y + 10 / zoom);
               ctx.stroke();
           } else if (node.kind === 'body') {
               if (node.roleHint === 'ring' || node.roleHint === 'belt') continue;
@@ -970,7 +959,7 @@
                   minRadiusPx = isGasGiant ? 3 : 2;
               } else if (node.roleHint === 'moon') minRadiusPx = 1;
               
-              const minRadiusInWorld = minRadiusPx / camera.zoom;
+              const minRadiusInWorld = minRadiusPx / zoom;
               
               // Apply quadrature floor for display radius
               const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
@@ -987,7 +976,7 @@
               ctx.fillStyle = color;
               ctx.fill();
           } else if (node.kind === 'construct') {
-              const size = 8 / camera.zoom; // Size of the icon in world units
+              const size = 8 / zoom; // Size of the icon in world units
               ctx.fillStyle = node.icon_color || '#f0f0f0'; // Default to off-white
 
               if (node.icon_type === 'triangle') {
@@ -1168,8 +1157,8 @@
             radius = scaleBoxCox(radius, toytownFactor, x0_distance);
         }
         ctx.strokeStyle = color;
-        ctx.lineWidth = 1 / camera.zoom;
-        ctx.setLineDash([10 / camera.zoom, 10 / camera.zoom]);
+        ctx.lineWidth = 1 / zoom;
+        ctx.setLineDash([10 / zoom, 10 / zoom]);
         ctx.beginPath();
         ctx.arc(starPos.x, starPos.y, radius, 0, 2 * Math.PI);
         ctx.stroke();
@@ -1193,10 +1182,10 @@
   }
 
   function drawScaleBar(ctx: CanvasRenderingContext2D) {
-      if (!canvas || !camera) return;
+      if (!canvas || !zoom) return;
 
       const barLengthPx = canvas.width / 3; // Desired screen length of the scale bar in pixels
-      let worldLengthAU = barLengthPx / camera.zoom;
+      let worldLengthAU = barLengthPx / zoom;
 
       let unit: string;
       let displayValue: number;
@@ -1215,7 +1204,7 @@
               }
           }
           displayValue = bestValue;
-          actualBarLengthPx = displayValue * camera.zoom;
+          actualBarLengthPx = displayValue * zoom;
       } else {
           unit = 'km';
           let worldLengthKM = worldLengthAU * AU_KM;
@@ -1229,7 +1218,7 @@
               }
           }
           displayValue = bestValue;
-          actualBarLengthPx = (displayValue / AU_KM) * camera.zoom;
+          actualBarLengthPx = (displayValue / AU_KM) * zoom;
       }
 
       // Drawing

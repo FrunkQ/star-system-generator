@@ -5,6 +5,7 @@
 
   export let body: CelestialBody | Barycenter | null;
   export let rulePack: RulePack;
+  export let parentBody: CelestialBody | null = null;
 
   // Derived Reactive Properties for Constructs
   let constructSpecs: ConstructSpecs | null = null;
@@ -22,13 +23,14 @@
   let tempTooltip: string = '';
   let surfaceRadiationText: string | null = null;
   let surfaceRadiationTooltip: string | null = null;
-        let stellarRadiationTooltip: string | null = null;
+  let stellarRadiationTooltip: string | null = null;
   
-        $: isGasGiant = body.classes?.some(c => c.includes('gas-giant')) ?? false;
+  $: isGasGiant = body.classes?.some(c => c.includes('gas-giant')) ?? false;
   
-        // Perform all other display calculations when the body changes
-        $: {
-          surfaceGravityG = null;    densityRelative = null;
+  // Perform all other display calculations when the body changes
+  $: {
+    surfaceGravityG = null;    
+    densityRelative = null;
     surfaceTempC = null;
     hotSideTempC = null;
     coldSideTempC = null;
@@ -102,9 +104,7 @@
         body,
         rulePack.engineDefinitions.entries,
         rulePack.fuelDefinitions.entries,
-        0, // current_cargo_tonnes (will be wired up later)
-        0, // current_fuel_tonnes (will be wired up later)
-        0  // current_crew_count (will be wired up later)
+        parentBody
       );
     } else {
       constructSpecs = null;
@@ -178,6 +178,13 @@
         </div>
       {/if}
 
+      {#if constructSpecs?.orbit_string}
+        <div class="detail-item">
+            <span class="label">Orbital Profile</span>
+            <span class="value">{constructSpecs.orbit_string}</span>
+        </div>
+      {/if}
+
       {#if constructSpecs}
         <div class="detail-item">
           <span class="label">Total Mass</span>
@@ -207,7 +214,8 @@
                             <div class="detail-item description">
                                 <span class="value">{STAR_TYPE_DESC[body.classes[0]] || STAR_TYPE_DESC[body.classes[0].split('/')[1][0]]}</span>
                             </div>
-                        {/if}            {/if}
+                        {/if}            
+    {/if}
 
     {#if massDisplay}
           <div class="detail-item">
@@ -423,10 +431,10 @@
                       <span class="tag">{tag.key}{#if tag.value}: {tag.value}{/if}</span>
                   {/each}
               </div>
-                  </div>
-              {/if}
           </div>
-          {/if}
+      {/if}
+</div>
+{/if}
 <style>
   .details-grid {
       display: grid;

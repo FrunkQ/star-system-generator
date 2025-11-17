@@ -59,20 +59,26 @@ export interface Engine {
   quantity: number;
 }
 
+export interface FuelTank {
+  fuel_type_id: ID;
+  capacity_units: number; // e.g., liters, kg, or arbitrary units
+  current_units: number;
+}
+
 export interface CelestialBody extends NodeBase {
   kind: 'body' | 'construct';
   engines?: Engine[]; // Array of engines attached to the construct
+  fuel_tanks?: FuelTank[]; // Array of fuel tanks attached to the construct
+  current_cargo_tonnes?: number; // Current cargo mass in tonnes
+  current_crew_count?: number; // Current number of crew members
   // ... existing properties ...
 }
 
 export interface PhysicalParameters {
   dimensionsM?: [number, number, number];
   massKg?: number;
-  cargoCapacity_tonnes?: number;
+  cargoCapacity_tonnes?: number; // Maximum cargo capacity in tonnes
   rotation_period_hours?: number;
-  spinRadiusM?: number;
-  can_aerobrake?: boolean;
-  has_landing_gear?: boolean;
 }
 
 export interface PowerPlant {
@@ -81,6 +87,7 @@ export interface PowerPlant {
 }
 
 export interface LifeSupport {
+  max_crew?: number; // Maximum crew capacity
   consumables_max_person_days: number;
   consumables_current_person_days: number;
 }
@@ -143,6 +150,7 @@ export interface EngineDefinition {
   name: string;
   type: string;
   fuel_type_id: string;
+  fuel_type?: string; // Optional: The name of the fuel type
   thrust_kN: number;
   efficiency_isp: number;
   powerDraw_MW?: number; // Optional: Power drawn by the engine when active
@@ -161,7 +169,11 @@ export interface RulePack {
     name: string;
     entries: EngineDefinition[];
   };
-  fuelDefinitions?: FuelDefinition[];
+  fuelDefinitions?: {
+    id: string;
+    name: string;
+    entries: FuelDefinition[];
+  };
   tagVocab: string[]; // taxonomy IDs
   prompts: PromptSpec;
   viewPresets?: ViewPresetSpec;
