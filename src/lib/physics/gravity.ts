@@ -34,3 +34,35 @@ export function findStrongestGravitationalHost(position: { x: number, y: number 
 
     return strongestHost;
 }
+
+/**
+ * Calculates the artificial gravity in G's from a spinning section.
+ * @param radiusM - The radius of the spinning section in meters.
+ * @param rpm - The rotation speed in revolutions per minute.
+ * @returns The artificial gravity in G's.
+ */
+export function calculateArtificialGravity(radiusM: number, rpm: number): number {
+  if (radiusM <= 0 || rpm <= 0) {
+    return 0;
+  }
+  const omega = rpm * (2 * Math.PI) / 60; // Convert RPM to rad/s
+  const acceleration = omega * omega * radiusM; // Centripetal acceleration in m/s^2
+  const gForce = acceleration / 9.80665; // Convert to G's
+  return gForce;
+}
+
+/**
+ * Calculates the required RPM to achieve a target G-force at a given radius.
+ * @param targetG - The desired G-force.
+ * @param radiusM - The radius of the spinning section in meters.
+ * @returns The required rotation speed in RPM.
+ */
+export function calculateRPMFromG(targetG: number, radiusM: number): number {
+  if (radiusM <= 0 || targetG <= 0) {
+    return 0;
+  }
+  const acceleration = targetG * 9.80665; // Convert G's to m/s^2
+  const omega = Math.sqrt(acceleration / radiusM); // Angular velocity in rad/s
+  const rpm = omega * 60 / (2 * Math.PI); // Convert rad/s to RPM
+  return rpm;
+}

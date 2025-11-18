@@ -77,6 +77,7 @@ export interface CelestialBody extends NodeBase {
 export interface PhysicalParameters {
   dimensionsM?: [number, number, number];
   massKg?: number;
+  spinRadiusM?: number;
   cargoCapacity_tonnes?: number; // Maximum cargo capacity in tonnes
   rotation_period_hours?: number;
 }

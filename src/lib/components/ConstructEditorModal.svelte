@@ -23,7 +23,7 @@
 
   const dispatch = createEventDispatcher();
 
-  let selectedTab: string = 'Description';
+  let selectedTab: string = 'Orbit';
   let showAIModal = false;
   let promptData = {};
 
@@ -38,7 +38,7 @@
 
   function handleUpdate() {
     construct = construct; 
-    dispatch('updateConstruct', construct);
+    dispatch('update', construct);
   }
 
   function openAIModal() {
@@ -74,7 +74,7 @@
 
     <div class="tabs">
       <button class:active={selectedTab === 'Description'} on:click={() => selectedTab = 'Description'}>Description</button>
-      <button class:active={selectedTab === 'General'} on:click={() => selectedTab = 'General'}>General</button>
+      <button class:active={selectedTab === 'Orbit'} on:click={() => selectedTab = 'Orbit'}>Orbit</button>
       <button class:active={selectedTab === 'Engines'} on:click={() => selectedTab = 'Engines'}>Engines</button>
       <button class:active={selectedTab === 'Fuel'} on:click={() => selectedTab = 'Fuel'}>Fuel</button>
       <button class:active={selectedTab === 'Cargo'} on:click={() => selectedTab = 'Cargo'}>Cargo</button>
@@ -85,21 +85,21 @@
 
     <div class="tab-content">
       {#if selectedTab === 'Description'}
-        <ConstructDescriptionTab {construct} on:update={handleUpdate} on:expandAI={openAIModal} />
-      {:else if selectedTab === 'General'}
-        <ConstructGeneralTab {system} {construct} on:update={handleUpdate} />
+        <ConstructDescriptionTab {construct} on:update={handleUpdate} on:expandAI={openAIModal} style="flex-grow: 1;" />
+      {:else if selectedTab === 'Orbit'}
+        <ConstructGeneralTab {system} {construct} on:update={handleUpdate} style="flex-grow: 1;" />
       {:else if selectedTab === 'Engines'}
-        <ConstructEnginesTab {construct} {rulePack} on:update={handleUpdate} />
+        <ConstructEnginesTab {construct} {rulePack} on:update={handleUpdate} style="flex-grow: 1;" />
       {:else if selectedTab === 'Fuel'}
-        <ConstructFuelTab {construct} {rulePack} on:update={handleUpdate} />
+        <ConstructFuelTab {construct} {rulePack} on:update={handleUpdate} style="flex-grow: 1;" />
       {:else if selectedTab === 'Cargo'}
-        <ConstructCargoTab {construct} {rulePack} on:update={handleUpdate} />
+        <ConstructCargoTab {construct} {rulePack} on:update={handleUpdate} style="flex-grow: 1;" />
       {:else if selectedTab === 'Crew'}
-        <ConstructCrewTab {construct} on:update={handleUpdate} />
+        <ConstructCrewTab {construct} on:update={handleUpdate} style="flex-grow: 1;" />
       {:else if selectedTab === 'Power'}
-        <ConstructPowerTab {construct} {rulePack} on:update={handleUpdate} />
+        <ConstructPowerTab {construct} {rulePack} on:update={handleUpdate} style="flex-grow: 1;" />
       {:else if selectedTab === 'Modules'}
-        <ConstructModulesTab {construct} on:update={handleUpdate} />
+        <ConstructModulesTab {construct} on:update={handleUpdate} style="flex-grow: 1;" />
       {/if}
     </div>
 
@@ -133,7 +133,7 @@
     flex-direction: column;
     gap: 10px;
     color: #fff;
-    max-width: 80vw;
+    max-width: min(80vw, 700px); /* Control overall modal width */
     max-height: 80vh;
     overflow-y: auto;
   }
@@ -168,12 +168,16 @@
 
   .tab-content {
     flex-grow: 1;
-    padding: 10px 0;
+    padding: 0;
     border: 1px solid #444;
     border-radius: 5px;
     background-color: #2a2a2a;
-    min-height: 200px; /* Ensure some height for content */
+    min-height: 350px;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    width: 100%; /* Ensure it fills parent */
+    box-sizing: border-box; /* Include border in width calculation */
   }
 
   .buttons {
