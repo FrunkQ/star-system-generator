@@ -78,8 +78,9 @@ export function calculateFullConstructSpecs(
   const hostName = hostBody?.name || 'Unknown';
   let placementDescription = construct.placement || 'Orbit';
 
-  // For orbital zones, use the specific placement name. For L-points, it's already descriptive.
-  if (construct.placement && construct.placement.endsWith(' Orbit')) {
+  if (hostBody?.roleHint === 'star' && construct.orbit?.elements.a_AU !== undefined) {
+      placementDescription = `${construct.orbit.elements.a_AU.toFixed(2)} AU`;
+  } else if (construct.placement && construct.placement.endsWith(' Orbit')) {
       placementDescription = construct.placement;
   } else if (construct.placement === 'Surface') {
       placementDescription = 'Surface';
@@ -101,7 +102,7 @@ export function calculateFullConstructSpecs(
       }
   }
 
-  specs.orbit_string = `${hostName} - ${placementDescription}`;
+  specs.orbit_string = `${hostName}: ${placementDescription}`;
   
   if (!hostBody) {
     specs.orbit_string = 'N/A';

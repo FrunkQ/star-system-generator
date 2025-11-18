@@ -107,6 +107,18 @@
     });
   }
 
+  function handleBodyUpdate(event: CustomEvent<CelestialBody>) {
+    const updatedBody = event.detail;
+    systemStore.update(system => {
+      if (!system) return null;
+      const nodeIndex = system.nodes.findIndex(n => n.id === updatedBody.id);
+      if (nodeIndex !== -1) {
+        system.nodes[nodeIndex] = updatedBody;
+      }
+      return { ...system, isManuallyEdited: true };
+    });
+  }
+
   function handleContextMenuSelect(event: CustomEvent<string>) {
     showSummaryContextMenu = false;
     handleFocus({ detail: event.detail } as CustomEvent<string | null>);
@@ -468,7 +480,7 @@
 
             <BodyGmTools body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:addHabitablePlanet={handleAddHabitablePlanet} on:editConstruct={handleEditConstruct} />
             {#if focusedBody && focusedBody.kind === 'body'}
-                <DescriptionEditor body={focusedBody} on:change={() => { systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s); }} />
+                <DescriptionEditor body={focusedBody} on:update={handleBodyUpdate} on:change={() => { systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s); }} />
             {/if}
         </div>
         <div class="details-view">
@@ -501,7 +513,7 @@
     {/if}
 
     {#if showConstructEditorModal && constructToEdit}
-      <ConstructEditorModal system={$systemStore} {rulePack} construct={constructToEdit} hostBody={constructHostBodyForEditor} on:close={() => showConstructEditorModal = false} on:updateConstruct={handleConstructUpdate} />
+      <ConstructEditorModal system={$systemStore} {rulePack} construct={constructToEdit} hostBody={constructHostBodyForEditor} on:close={() => showConstructEditorModal = false} on:update={handleConstructUpdate} />
     {/if}
 
     <div class="debug-controls">

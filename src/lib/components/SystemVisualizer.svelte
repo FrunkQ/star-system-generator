@@ -155,8 +155,15 @@
 
         const a_scaled = scaleBoxCox(a, toytownFactor, x0_distance);
         
-        // Use the polar equation for an ellipse to find the correct scaled radius
-        const r_scaled = (a_scaled * (1 - e * e)) / (1 + e * Math.cos(trueAnomaly));
+        let r_scaled: number;
+        if (e === 0) {
+          // For a perfect circle, the radius is always the semi-major axis
+          r_scaled = a_scaled;
+        } else {
+          // For an ellipse, use the polar equation to find the correct scaled radius
+          const trueAnomaly = totalAngle - w;
+          r_scaled = (a_scaled * (1 - e * e)) / (1 + e * Math.cos(trueAnomaly));
+        }
 
         // Reconstruct the position using the scaled radius and the original total angle
         x = parentScaledPos.x + r_scaled * Math.cos(totalAngle);
@@ -553,7 +560,9 @@
           const parentPos = getPosition(node.parentId);
           let relativePos = { x: 0, y: 0 };
           if ((node.kind === 'body' || node.kind === 'construct') && node.orbit) {
-              const propagated = propagate(node, currentTime);
+              const isStationary = node.kind === 'construct' && (node.physical_parameters?.massKg || 0) === 0;
+              const timeToPropagate = isStationary ? node.orbit.t0 : currentTime;
+              const propagated = propagate(node, timeToPropagate);
               if (propagated) relativePos = propagated;
           }
           const absolutePos = { x: parentPos.x + relativePos.x, y: parentPos.y + relativePos.y };
@@ -810,14 +819,21 @@
           }
           
           const b = a * Math.sqrt(1 - e * e);
-          const c = a * e; // distance from center to focus - MUST use scaled 'a'
+          const c = a * e; // distance from center to focus
+          const omega_rad = (node.orbit.elements.omega_deg || 0) * (Math.PI / 180);
           
           ctx.strokeStyle = "#333";
           ctx.lineWidth = 1 / zoom;
 
+          ctx.save(); // Save context state before rotation
+          ctx.translate(parentPos.x, parentPos.y); // Translate to the parent's position
+          ctx.rotate(omega_rad); // Rotate the entire coordinate system
+
           ctx.beginPath();
-          ctx.ellipse(parentPos.x - c, parentPos.y, a, b, 0, 0, 2 * Math.PI);
+          // Draw the ellipse centered on the focus, not the geometric center
+          ctx.ellipse(-c, 0, a, b, 0, 0, 2 * Math.PI);
           ctx.stroke();
+          ctx.restore(); // Restore context to pre-rotation state
       }
 
       // --- Draw Belts and Rings (in background) ---

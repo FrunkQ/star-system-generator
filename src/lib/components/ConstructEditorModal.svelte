@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { CelestialBody, RulePack } from '$lib/types';
+  import type { CelestialBody, RulePack, System } from '$lib/types';
   import ConstructGeneralTab from './ConstructGeneralTab.svelte';
   import ConstructEnginesTab from './ConstructEnginesTab.svelte';
   import ConstructFuelTab from './ConstructFuelTab.svelte';
@@ -9,6 +9,12 @@
   import ConstructPowerTab from './ConstructPowerTab.svelte';
   import ConstructModulesTab from './ConstructModulesTab.svelte';
   import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
+  import ConstructDescriptionTab from './ConstructDescriptionTab.svelte';
+  import AIExpansionModal from './AIExpansionModal.svelte';
+
+  import { CONSTRUCT_PROMPT } from '$lib/ai/construct-prompt';
+  import constructTags from '$lib/ai/construct-tags.json';
+  import constructStyles from '$lib/ai/construct-styles.json';
 
   export let system: System;
   export let construct: CelestialBody;
@@ -17,25 +23,57 @@
 
   const dispatch = createEventDispatcher();
 
-  let selectedTab: string = 'General';
+  let selectedTab: string = 'Description';
+  let showAIModal = false;
+  let promptData = {};
+
+  $: if (system && construct) {
+    const hostId = construct.ui_parentId || construct.parentId;
+    hostBody = system.nodes.find(n => n.id === hostId) as CelestialBody || null;
+  }
 
   function close() {
     dispatch('close');
   }
 
   function handleUpdate() {
-    // This triggers reactivity within the modal for the derived specs
     construct = construct; 
-    // This sends the updated object out to the parent component (SystemView) 
     dispatch('updateConstruct', construct);
   }
+
+  function openAIModal() {
+    promptData = {
+      CONSTRUCT: construct
+    };
+    showAIModal = true;
+  }
+
+  function handleAIDescription(event: CustomEvent<string>) {
+    construct.description = event.detail;
+    showAIModal = false;
+    dispatch('update', construct); // Immediately save the change to the store
+  }
 </script>
+
+{#if showAIModal}
+  <AIExpansionModal
+    bind:showModal={showAIModal}
+    promptTemplate={CONSTRUCT_PROMPT}
+    {promptData}
+    availableStyles={constructStyles}
+    availableTags={constructTags}
+    initialText={construct.description || ''}
+    on:close={() => showAIModal = false}
+    on:generate={handleAIDescription}
+  />
+{/if}
 
 <div class="modal-background" on:click={close}>
   <div class="modal" on:click|stopPropagation>
     <h2>Editing: {construct.name}</h2>
 
     <div class="tabs">
+      <button class:active={selectedTab === 'Description'} on:click={() => selectedTab = 'Description'}>Description</button>
       <button class:active={selectedTab === 'General'} on:click={() => selectedTab = 'General'}>General</button>
       <button class:active={selectedTab === 'Engines'} on:click={() => selectedTab = 'Engines'}>Engines</button>
       <button class:active={selectedTab === 'Fuel'} on:click={() => selectedTab = 'Fuel'}>Fuel</button>
@@ -46,8 +84,10 @@
     </div>
 
     <div class="tab-content">
-      {#if selectedTab === 'General'}
-        <ConstructGeneralTab {system} {construct} {hostBody} on:update={handleUpdate} />
+      {#if selectedTab === 'Description'}
+        <ConstructDescriptionTab {construct} on:update={handleUpdate} on:expandAI={openAIModal} />
+      {:else if selectedTab === 'General'}
+        <ConstructGeneralTab {system} {construct} on:update={handleUpdate} />
       {:else if selectedTab === 'Engines'}
         <ConstructEnginesTab {construct} {rulePack} on:update={handleUpdate} />
       {:else if selectedTab === 'Fuel'}

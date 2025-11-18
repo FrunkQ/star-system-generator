@@ -1,31 +1,55 @@
 <script lang="ts">
   import type { CelestialBody } from "$lib/types";
-  import { aiSettings } from 
-'$lib/stores';
+  import { aiSettings, systemStore } from '$lib/stores';
   import AIExpansionModal from './AIExpansionModal.svelte';
+  import { createEventDispatcher } from 'svelte';
+  import { get } from 'svelte/store';
+  import { PROMPT_TEMPLATE } from '$lib/ai/prompt';
+  import styles from '$lib/ai/styles.json';
+  import tags from '$lib/ai/tags.json';
 
   export let body: CelestialBody;
 
   let showAIModal = false;
   let isEditing = false;
-  let description = '';
+  let descriptionText = '';
+  let promptData = {};
+  const dispatch = createEventDispatcher();
 
   function startEditing() {
-    description = body.description || '';
+    descriptionText = body.description || '';
     isEditing = true;
   }
 
   function handleSave() {
-    body.description = description;
+    body.description = descriptionText;
     isEditing = false;
+    dispatch('update');
+  }
+
+  function handleCancel() {
+    isEditing = false;
+  }
+
+  function handleAIDescription(event: CustomEvent<string>) {
+    body.description = event.detail;
+    showAIModal = false;
+    dispatch('update', body); // Immediately save the change to the store
+  }
+
+  function openAIModal() {
+    const system = get(systemStore);
+    const host = system?.nodes.find((n: any) => n.id === body.orbit?.hostId);
+    promptData = {
+      HOST_STAR: host,
+      BODY: body
+    };
+    showAIModal = true;
   }
 
   function renderMarkdown(text: string): string {
     if (!text) return '';
-    return text
-      .replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>') // Bold
-      .replace(/## (.*)/g, '<h2>$1</h2>') // H2
-      .replace(/\n/g, '<br>'); // Newlines
+    return text.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>').replace(/## (.*)/g, '<h2>$1</h2>').replace(/\n/g, '<br>');
   }
 
   $: hasApiKey = $aiSettings.apiKey && $aiSettings.apiKey.length > 0;
@@ -33,21 +57,20 @@
 
 <div class="description-editor">
   <h3>Detailed Information</h3>
-  
   {#if isEditing}
-    <textarea bind:value={description}></textarea>
+    <textarea bind:value={descriptionText} rows="8"></textarea>
     <div class="actions">
-      <button on:click={handleSave}>Save</button>
-      <button on:click={() => isEditing = false}>Cancel</button>
+      <button type="button" on:click={handleSave}>Save</button>
+      <button type="button" on:click={handleCancel}>Cancel</button>
     </div>
   {:else}
     <div class="display">
-      {@html renderMarkdown(body.description || 'No description yet.')}
+      {@html renderMarkdown(body?.description || 'No description yet.')}
     </div>
     <div class="actions">
-      <button on:click={startEditing}>Edit</button>
+      <button type="button" on:click={startEditing}>Edit</button>
       {#if hasApiKey}
-        <button class="ai-button" on:click={() => showAIModal = true}>
+        <button type="button" class="ai-button" on:click={openAIModal}>
           ✨ Expand with AI
         </button>
       {/if}
@@ -55,7 +78,18 @@
   {/if}
 </div>
 
-<AIExpansionModal bind:showModal={showAIModal} {body} initialText={body.description} />
+{#if showAIModal}
+  <AIExpansionModal
+    bind:showModal={showAIModal}
+    promptTemplate={PROMPT_TEMPLATE}
+    promptData={{ BODY: body }}
+    availableStyles={styles}
+    availableTags={tags}
+    initialText={body.description || ''}
+    on:close={() => showAIModal = false}
+    on:generate={handleAIDescription}
+  />
+{/if}
 
 <style>
   .description-editor {

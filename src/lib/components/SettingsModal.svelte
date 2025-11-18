@@ -44,10 +44,20 @@
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Unknown error');
+        if (response.status === 429 || response.status === 503) {
+          throw new Error(`Provider is busy (HTTP ${response.status}). Please try again later or select a different model.`);
+        } else {
+          try {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || `HTTP error! status: ${response.status} - ${response.statusText}`);
+          } catch (jsonError) {
+            throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+          }
+        }
       }
 
+      // Consume the response body for successful requests, even if we don't need the content
+      await response.json(); 
       testStatus = 'Successful!';
     } catch (e: any) {
       testStatus = `Error: ${e.message}`;

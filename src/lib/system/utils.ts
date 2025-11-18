@@ -55,19 +55,29 @@ export function propagate(node: CelestialBody | Barycenter, tMs: number): {x: nu
   // 2. Mean anomaly (M) at time t
   const M = M0_rad + n * ((tMs - t0) / 1000);
 
-  // 3. Solve Kepler's Equation for Eccentric Anomaly (E) using Newton-Raphson
-  let E = M; // Initial guess
-  for (let i = 0; i < 10; i++) { // Iterate a few times for precision
-    const dE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
-    E -= dE;
-    if (Math.abs(dE) < 1e-6) break;
+  // 3. Solve Kepler's Equation for Eccentric Anomaly (E)
+  let E: number;
+  if (e === 0) {
+    E = M; // For a circle, Eccentric Anomaly is the same as Mean Anomaly
+  } else {
+    E = M; // Initial guess for Newton-Raphson
+    for (let i = 0; i < 10; i++) { // Iterate a few times for precision
+      const dE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+      E -= dE;
+      if (Math.abs(dE) < 1e-6) break;
+    }
   }
 
   // 4. True Anomaly (f)
-  const f = 2 * Math.atan2(
-      Math.sqrt(1 + e) * Math.sin(E / 2),
-      Math.sqrt(1 - e) * Math.cos(E / 2)
-  );
+  let f: number;
+  if (e === 0) {
+    f = M; // For a circle, True Anomaly is the same as Mean Anomaly
+  } else {
+    f = 2 * Math.atan2(
+        Math.sqrt(1 + e) * Math.sin(E / 2),
+        Math.sqrt(1 - e) * Math.cos(E / 2)
+    );
+  }
 
   // 5. Distance to central body (r)
   const r = a_m * (1 - e * Math.cos(E));

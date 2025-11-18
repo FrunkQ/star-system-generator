@@ -1,0 +1,37 @@
+{
+  "Role": [
+    "Military",
+    "Civilian",
+    "Industrial",
+    "Scientific",
+    "Exploration",
+    "Colonization",
+    "Transport",
+    "Luxury"
+  ],
+  "Design": [
+    "Sleek",
+    "Bulky",
+    "Utilitarian",
+    "Minimalist",
+    "Ornate",
+    "Asymmetrical",
+    "Modular"
+  ],
+  "Condition": [
+    "Brand New",
+    "Pristine",
+    "Used",
+    "Weathered",
+    "Damaged",
+    "Ancient",
+    "Derelict"
+  ],
+  "Origin": [
+    "Human",
+    "Alien",
+    "Corporate",
+    "Governmental",
+    "Mysterious"
+  ]
+}
