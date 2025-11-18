@@ -24,6 +24,11 @@ export interface ConstructSpecs {
   totalVacuumDeltaV_ms: number;
   totalAtmoDeltaV_ms: number;
   orbit_string: string;
+  surfaceTWR: number;
+  takeoffFuel_tonnes: number;
+  propulsiveLandFuel_tonnes: number;
+  aerobrakeLandFuel_tonnes: number;
+  roundTripFuel_tonnes: number;
 }
 
 export function calculateFullConstructSpecs(
@@ -200,6 +205,58 @@ export function calculateFullConstructSpecs(
     specs.totalAtmoDeltaV_ms = 0;
   }
 
-  // --- 3. RETURN THE COMPLETE SPEC SHEET ---
+  // Surface TWR
+  const hostGravity = hostBody?.calculatedGravity_ms2 || 0;
+  if (hostGravity > 0) {
+    const weightOnSurface = mass_wet * hostGravity;
+    specs.surfaceTWR = totalAtmoThrust_N / weightOnSurface;
+  } else {
+    specs.surfaceTWR = 0;
+  }
+
+  // --- 4. FUEL CONSUMPTION CALCS ---
+  function calculateFuelForDeltaV(initialMass_kg: number, Isp: number, targetDeltaV_ms: number): number {
+    if (Isp <= 0 || targetDeltaV_ms <= 0) return 0;
+    const finalMass_kg = initialMass_kg / Math.exp(targetDeltaV_ms / (Isp * g0));
+    return initialMass_kg - finalMass_kg;
+  }
+
+  // Takeoff Fuel
+  const takeoffBudget_ms = (hostBody as any)?.loDeltaVBudget_ms || 0;
+  const avgAtmoISP = totalAtmoThrust_N > 0 ? weightedAtmoISP_Sum / totalAtmoThrust_N : 0;
+  const fuelForTakeoff_kg = calculateFuelForDeltaV(mass_wet, avgAtmoISP, takeoffBudget_ms);
+  specs.takeoffFuel_tonnes = fuelForTakeoff_kg / 1000;
+
+  // Propulsive Landing Fuel
+  const propulsiveBudget_ms = (hostBody as any)?.propulsiveLandBudget_ms || 0;
+  const avgVacISP = totalVacThrust_N > 0 ? weightedVacISP_Sum / totalVacThrust_N : 0;
+  const fuelForPropulsiveLanding_kg = calculateFuelForDeltaV(mass_wet, avgVacISP, propulsiveBudget_ms);
+  specs.propulsiveLandFuel_tonnes = fuelForPropulsiveLanding_kg / 1000;
+
+  // Aerobraked Landing Fuel
+  const aerobrakeBudget_ms = (hostBody as any)?.aerobrakeLandBudget_ms || 0;
+  const fuelForAerobrakeLanding_kg = calculateFuelForDeltaV(mass_wet, avgVacISP, aerobrakeBudget_ms);
+  specs.aerobrakeLandFuel_tonnes = fuelForAerobrakeLanding_kg / 1000;
+
+  // Round Trip Fuel (Takeoff + Landing with reduced mass)
+  const mass_after_takeoff_kg = mass_wet - fuelForTakeoff_kg;
+  
+  // Determine the cheaper and *possible* landing method for the return trip
+  const canAerobrake = (construct as any).physical_parameters?.can_aerobrake && (hostBody as any)?.aerobrakeLandBudget_ms > 0;
+  const canPropulsivelyLand = (hostBody as any)?.propulsiveLandBudget_ms > 0;
+  let returnLandingBudget_ms = 0;
+
+  if (canAerobrake && canPropulsivelyLand) {
+    returnLandingBudget_ms = Math.min((hostBody as any).aerobrakeLandBudget_ms, (hostBody as any).propulsiveLandBudget_ms);
+  } else if (canPropulsivelyLand) {
+    returnLandingBudget_ms = (hostBody as any).propulsiveLandBudget_ms;
+  } else if (canAerobrake) { // This case is less likely but included for completeness
+    returnLandingBudget_ms = (hostBody as any).aerobrakeLandBudget_ms;
+  }
+
+  const fuelForReturnLanding_kg = calculateFuelForDeltaV(mass_after_takeoff_kg, avgVacISP, returnLandingBudget_ms);
+  specs.roundTripFuel_tonnes = (fuelForTakeoff_kg + fuelForReturnLanding_kg) / 1000;
+
+  // --- 5. RETURN THE COMPLETE SPEC SHEET ---
   return specs as ConstructSpecs;
 }
