@@ -6,16 +6,17 @@
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import SystemSummary from './SystemSummary.svelte';
   import SystemGenerationControls from './SystemGenerationControls.svelte';
-  import SystemSummaryContextMenu from './SystemSummaryContextMenu.svelte'; // New import
+  import SystemSummaryContextMenu from './SystemSummaryContextMenu.svelte'; 
   import BodyTechnicalDetails from './BodyTechnicalDetails.svelte';
   import BodyImage from './BodyImage.svelte';
   import BodyGmTools from './BodyGmTools.svelte';
   import DescriptionEditor from './DescriptionEditor.svelte';
   import GmNotesEditor from './GmNotesEditor.svelte';
   import ZoneKey from './ZoneKey.svelte';
-  import ContextMenu from './ContextMenu.svelte'; // Import the generic context menu
-  import AddConstructModal from './AddConstructModal.svelte'; // Import the new modal
-  import ConstructEditorModal from './ConstructEditorModal.svelte'; // Import the editor modal
+  import ContextMenu from './ContextMenu.svelte'; 
+  import AddConstructModal from './AddConstructModal.svelte'; 
+  import ConstructEditorModal from './ConstructEditorModal.svelte'; 
+  import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
 
   import { systemStore, viewportStore } from '$lib/stores';
   import { panStore, zoomStore } from '$lib/cameraStore';
@@ -47,7 +48,7 @@
   let contextMenuY = 0;
   let contextMenuItems: CelestialBody[] = [];
   let contextMenuType = '';
-  let contextMenuNode: CelestialBody | Barycenter | null = null; // For the generic context menu
+  let contextMenuNode: CelestialBody | Barycenter | null = null; 
 
   // Add Construct Modal State
   let showAddConstructModal = false;
@@ -70,14 +71,14 @@
     contextMenuNode = event.detail.node;
     contextMenuX = event.detail.x;
     contextMenuY = event.detail.y;
-    showSummaryContextMenu = true; // Re-use the same visibility flag
-    contextMenuType = 'generic'; // A new type to distinguish from the summary menu
+    showSummaryContextMenu = true; 
+    contextMenuType = 'generic'; 
   }
 
   function handleAddConstruct(event: CustomEvent<CelestialBody>) {
     constructHostBody = event.detail;
     showAddConstructModal = true;
-    showSummaryContextMenu = false; // Close the context menu
+    showSummaryContextMenu = false;
   }
 
   function handleEditConstruct(event: CustomEvent<CelestialBody>) {
@@ -124,12 +125,10 @@
     handleFocus({ detail: event.detail } as CustomEvent<string | null>);
   }
 
-  // Ensure toytownFactor exists for backward compatibility
   $: if ($systemStore && typeof $systemStore.toytownFactor === 'undefined') {
     $systemStore.toytownFactor = 0;
   }
 
-  // Throttle the resetView call only when the slider value actually changes
   $: if ($systemStore && $systemStore.toytownFactor !== lastToytownFactor) {
     lastToytownFactor = $systemStore.toytownFactor;
     if (!throttleTimeout) {
@@ -140,13 +139,11 @@
     }
   }
 
-  // Time state
   let currentTime = Date.now();
   let isPlaying = false;
   let timeScale = 3600 * 24 * 30;
   let animationFrameId: number;
 
-  // Focus state
   let focusedBodyId: string | null = null;
   let focusedBody: CelestialBody | null = null;
 
@@ -161,7 +158,6 @@
   }
 
   function handleSliderRelease() {
-    // Ensure a final reset is called when the user lets go of the slider
     if (throttleTimeout) {
       clearTimeout(throttleTimeout);
       throttleTimeout = null;
@@ -223,24 +219,19 @@
     const nodeId = event.detail;
     const nodeToDelete = $systemStore.nodes.find(n => n.id === nodeId);
 
-    // Decide the next focus target BEFORE deleting
     let nextFocusId: string | null = null;
     if (focusedBodyId === nodeId) {
         if (nodeToDelete?.parentId) {
             nextFocusId = nodeToDelete.parentId;
         } else {
-            // No parent, so we should go back to the starmap
             dispatch('back'); 
-            // We still need to update the store to reflect the deletion
             systemStore.set(deleteNode($systemStore, nodeId));
-            return; // Exit early
+            return; 
         }
     }
 
-    // Update the system state with the deleted node and mark as edited
     systemStore.set({ ...deleteNode($systemStore, nodeId), isManuallyEdited: true });
 
-    // If we determined a new focus is needed, trigger it now to get the animation
     if (nextFocusId) {
         handleFocus({ detail: nextFocusId } as CustomEvent<string | null>);
     }
@@ -302,7 +293,7 @@
     a.href = url;
     a.download = `${$systemStore.name.replace(/\s+/g, '_') || 'system'}-System.json`;
     document.body.appendChild(a);
-    a.click();
+a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
@@ -362,12 +353,10 @@
     });
     generationOptions = options;
 
-    // Sync viewportStore to panStore and zoomStore on mount
     const currentViewport = get(viewportStore);
     panStore.set(currentViewport.pan, { duration: 0 });
     zoomStore.set(currentViewport.zoom, { duration: 0 });
 
-    // Sync panStore and zoomStore back to viewportStore on change
     unsubscribePanStore = panStore.subscribe(panState => {
         viewportStore.update(v => ({ ...v, pan: panState }));
     });
@@ -479,7 +468,7 @@
             <SystemVisualizer bind:this={visualizer} system={$systemStore} {rulePack} {currentTime} {focusedBodyId} {showNames} {showZones} {showLPoints} toytownFactor={$systemStore.toytownFactor} on:focus={handleFocus} on:showBodyContextMenu={handleShowBodyContextMenu} />
 
             <BodyGmTools body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:addHabitablePlanet={handleAddHabitablePlanet} on:editConstruct={handleEditConstruct} />
-            {#if focusedBody && focusedBody.kind === 'body'}
+            {#if focusedBody}
                 <DescriptionEditor body={focusedBody} on:update={handleBodyUpdate} on:change={() => { systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s); }} />
             {/if}
         </div>
@@ -490,10 +479,16 @@
             }} class="name-input" title="Click to rename" />
             {#if showZones && focusedBody.roleHint === 'star'}
                 <ZoneKey />
-            {:else}
+            {:else if focusedBody.kind !== 'construct'}
                 {@const parentBody = focusedBody.parentId ? $systemStore.nodes.find(n => n.id === (focusedBody.ui_parentId || focusedBody.parentId)) : null}
                 <BodyTechnicalDetails body={focusedBody} {rulePack} parentBody={parentBody} />
             {/if}
+
+            {#if focusedBody && focusedBody.kind === 'construct'}
+              {@const parentBody = focusedBody.parentId ? $systemStore.nodes.find(n => n.id === (focusedBody.ui_parentId || focusedBody.parentId)) : null}
+              <ConstructDerivedSpecs construct={focusedBody} hostBody={parentBody} {rulePack} />
+            {/if}
+            
             <BodyImage body={focusedBody} />
             <GmNotesEditor body={focusedBody} on:change={() => { systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s); }} />
         </div>
@@ -534,7 +529,7 @@
     font-family: sans-serif;
     padding: 0.5em;
     font-size: 0.9em;
-    position: relative; /* Needed for context menu positioning */
+    position: relative; 
   }
   .top-bar, .controls {
     margin: 0.5em 0;

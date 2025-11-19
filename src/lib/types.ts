@@ -71,6 +71,7 @@ export interface CelestialBody extends NodeBase {
   fuel_tanks?: FuelTank[]; // Array of fuel tanks attached to the construct
   current_cargo_tonnes?: number; // Current cargo mass in tonnes
   current_crew_count?: number; // Current number of crew members
+  cargoDescription?: string; // User-editable description of the cargo
   // ... existing properties ...
 }
 

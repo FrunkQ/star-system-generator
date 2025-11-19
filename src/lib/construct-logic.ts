@@ -29,6 +29,11 @@ export interface ConstructSpecs {
   propulsiveLandFuel_tonnes: number;
   aerobrakeLandFuel_tonnes: number;
   roundTripFuel_tonnes: number;
+  dryMass_tonnes: number; // Added for UI display
+  fuelMass_tonnes: number; // Added for UI display
+  fuelCapacity_tonnes: number; // Added for UI display
+  fuelVolume_units: number; // Total current fuel volume in units
+  fuelCapacity_units: number; // Total max fuel volume in units
 }
 
 export function calculateFullConstructSpecs(
@@ -122,11 +127,21 @@ export function calculateFullConstructSpecs(
   const cargoMass_kg = (construct.current_cargo_tonnes || 0) * 1000; // Use from construct
   
   let fuelMass_kg = 0;
+  let fuelCapacity_kg = 0;
+  let fuelVolume_units = 0; // Track current volume in units
+  let fuelCapacity_units = 0; // Track max capacity in units
   if (construct.fuel_tanks) {
     for (const tank of construct.fuel_tanks) {
-      const fuelDef = findFuel(fuelDefinitions, tank.fuel_type_id);
+      const fuelDef = fuelDefinitions.find(f => f.id === tank.fuel_type_id);
       if (fuelDef) {
-        fuelMass_kg += tank.current_units * fuelDef.density_kg_per_m3;
+        const currentUnits = tank.current_units ?? 0;
+        const capacityUnits = tank.capacity_units ?? 0; // Directly use capacity_units
+        
+        fuelMass_kg += currentUnits * fuelDef.density_kg_per_m3;
+        fuelCapacity_kg += capacityUnits * fuelDef.density_kg_per_m3;
+        
+        fuelVolume_units += currentUnits;
+        fuelCapacity_units += capacityUnits;
       }
     }
   }
@@ -256,6 +271,13 @@ export function calculateFullConstructSpecs(
 
   const fuelForReturnLanding_kg = calculateFuelForDeltaV(mass_after_takeoff_kg, avgVacISP, returnLandingBudget_ms);
   specs.roundTripFuel_tonnes = (fuelForTakeoff_kg + fuelForReturnLanding_kg) / 1000;
+
+  // Expose component mass properties
+  specs.dryMass_tonnes = dryMass_kg / 1000;
+  specs.fuelMass_tonnes = fuelMass_kg / 1000;
+  specs.fuelCapacity_tonnes = fuelCapacity_kg / 1000;
+  specs.fuelVolume_units = fuelVolume_units;
+  specs.fuelCapacity_units = fuelCapacity_units;
 
   // --- 5. RETURN THE COMPLETE SPEC SHEET ---
   return specs as ConstructSpecs;

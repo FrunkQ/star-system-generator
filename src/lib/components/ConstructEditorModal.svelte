@@ -9,6 +9,7 @@
   import ConstructPowerTab from './ConstructPowerTab.svelte';
   import ConstructModulesTab from './ConstructModulesTab.svelte';
   import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
+  import ConstructDerivedSpecsModal from './ConstructDerivedSpecsModal.svelte';
   import ConstructDescriptionTab from './ConstructDescriptionTab.svelte';
   import AIExpansionModal from './AIExpansionModal.svelte';
 
@@ -26,6 +27,7 @@
   let selectedTab: string = 'Orbit';
   let showAIModal = false;
   let promptData = {};
+  let newModule = ''; // Moved from child component
 
   $: if (system && construct) {
     const hostId = construct.ui_parentId || construct.parentId;
@@ -41,6 +43,17 @@
     dispatch('update', construct);
   }
 
+  // Add Module logic now lives in the parent modal
+  function addModule() {
+    if (newModule.trim() === '') return;
+    if (!construct.systems) construct.systems = {};
+    if (!construct.systems.modules) construct.systems.modules = [];
+
+    construct.systems.modules.push(newModule.trim());
+    newModule = '';
+    handleUpdate(); // Dispatch a general update
+  }
+
   function openAIModal() {
     promptData = {
       CONSTRUCT: construct
@@ -51,17 +64,17 @@
   function handleAIDescription(event: CustomEvent<string>) {
     construct.description = event.detail;
     showAIModal = false;
-    dispatch('update', construct); // Immediately save the change to the store
+    dispatch('update', construct);
   }
 </script>
 
 {#if showAIModal}
   <AIExpansionModal
     bind:showModal={showAIModal}
-    promptTemplate={CONSTRUCT_PROMPT}
+    {promptTemplate}
     {promptData}
-    availableStyles={constructStyles}
-    availableTags={constructTags}
+    {availableStyles}
+    {availableTags}
     initialText={construct.description || ''}
     on:close={() => showAIModal = false}
     on:generate={handleAIDescription}
@@ -85,25 +98,33 @@
 
     <div class="tab-content">
       {#if selectedTab === 'Description'}
-        <ConstructDescriptionTab {construct} on:update={handleUpdate} on:expandAI={openAIModal} style="flex-grow: 1;" />
+        <ConstructDescriptionTab {construct} on:update={handleUpdate} on:expandAI={openAIModal} />
       {:else if selectedTab === 'Orbit'}
-        <ConstructGeneralTab {system} {construct} on:update={handleUpdate} style="flex-grow: 1;" />
+        <ConstructGeneralTab {system} {construct} on:update={handleUpdate} />
       {:else if selectedTab === 'Engines'}
-        <ConstructEnginesTab {construct} {rulePack} on:update={handleUpdate} style="flex-grow: 1;" />
+        <ConstructEnginesTab {construct} {rulePack} on:update={handleUpdate} />
       {:else if selectedTab === 'Fuel'}
-        <ConstructFuelTab {construct} {rulePack} on:update={handleUpdate} style="flex-grow: 1;" />
+        <ConstructFuelTab {construct} {rulePack} on:update={handleUpdate} />
       {:else if selectedTab === 'Cargo'}
-        <ConstructCargoTab {construct} {rulePack} on:update={handleUpdate} style="flex-grow: 1;" />
+        <ConstructCargoTab {construct} on:update={handleUpdate} />
       {:else if selectedTab === 'Crew'}
-        <ConstructCrewTab {construct} on:update={handleUpdate} style="flex-grow: 1;" />
+        <ConstructCrewTab {construct} on:update={handleUpdate} />
       {:else if selectedTab === 'Power'}
-        <ConstructPowerTab {construct} {rulePack} on:update={handleUpdate} style="flex-grow: 1;" />
+        <ConstructPowerTab {construct} {rulePack} on:update={handleUpdate} />
       {:else if selectedTab === 'Modules'}
-        <ConstructModulesTab {construct} on:update={handleUpdate} style="flex-grow: 1;" />
+        <ConstructModulesTab {construct} on:update={handleUpdate} />
       {/if}
     </div>
+    
+    <!-- Add Module section is now here, outside the tab content -->
+    {#if selectedTab === 'Modules'}
+      <div class="add-module-area">
+        <input type="text" bind:value={newModule} placeholder="Enter new module name" on:keydown={(e) => e.key === 'Enter' && addModule()} />
+        <button on:click={addModule}>Add Module</button>
+      </div>
+    {/if}
 
-    <ConstructDerivedSpecs {construct} {rulePack} {hostBody} />
+    <ConstructDerivedSpecsModal {construct} {rulePack} {hostBody} />
 
     <div class="buttons">
       <button on:click={close}>Close</button>
@@ -133,7 +154,7 @@
     flex-direction: column;
     gap: 10px;
     color: #fff;
-    max-width: min(80vw, 700px); /* Control overall modal width */
+    max-width: min(80vw, 700px);
     max-height: 80vh;
     overflow-y: auto;
   }
@@ -154,36 +175,35 @@
     padding: 8px 12px;
     border-radius: 3px;
     cursor: pointer;
-    transition: background-color 0.2s;
-  }
-
-  .tabs button:hover {
-    background-color: #777;
   }
 
   .tabs button.active {
     background-color: #ff3e00;
-    font-weight: bold;
   }
 
   .tab-content {
     flex-grow: 1;
-    padding: 0;
     border: 1px solid #444;
     border-radius: 5px;
     background-color: #2a2a2a;
     min-height: 350px;
-    overflow-y: auto;
+    display: flex; /* This is key */
+    flex-direction: column; /* This is key */
+  }
+
+  .add-module-area {
     display: flex;
-    flex-direction: column;
-    width: 100%; /* Ensure it fills parent */
-    box-sizing: border-box; /* Include border in width calculation */
+    gap: 0.5rem;
+    padding: 0 10px; /* Optional: adds some padding */
+  }
+
+  .add-module-area input {
+    flex-grow: 1;
   }
 
   .buttons {
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
     margin-top: 1rem;
   }
 </style>

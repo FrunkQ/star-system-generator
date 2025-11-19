@@ -18,7 +18,6 @@
         hostBody
       );
       
-      // Calculate available fuel separately to compare against needs
       let fuelMass_kg = 0;
       if (construct.fuel_tanks) {
         for (const tank of construct.fuel_tanks) {
@@ -127,65 +126,19 @@
 </script>
 
 {#if specs}
-  <div class="derived-specs">
+  <div class="derived-specs-modal">
+    <h4>Derived Specifications</h4>
     <div class="specs-grid">
-      <div class="spec-item fixed" title="The construct's designated class">
-        <span class="label">Class</span>
-        <span class="value">{construct.class || 'N/A'}</span>
-      </div>
-      <div class="spec-item fixed" title="Current crew / Maximum crew">
-        <span class="label">Crew</span>
-        <span class="value">{construct.crew?.current || 0} <span class="detail">(Max: {construct.crew?.max || 0})</span></span>
-      </div>
-      <div class="spec-item fixed" title="Dry mass of the vessel, excluding fuel and cargo">
-        <span class="label">Dry Mass</span>
-        <span class="value">{specs.dryMass_tonnes.toLocaleString(undefined, {maximumFractionDigits: 0})} t</span>
-      </div>
-      <div class="spec-item fixed" title="Current mass of cargo onboard">
-        <span class="label">Cargo Mass</span>
-        <span class="value">{(construct.current_cargo_tonnes || 0).toLocaleString(undefined, {maximumFractionDigits: 0})} t</span>
-      </div>
-      <div class="spec-item fixed" title="Current mass of fuel onboard">
-        <span class="label">Fuel Mass</span>
-        <span class="value">{specs.fuelMass_tonnes.toLocaleString(undefined, {maximumFractionDigits: 0})} t</span>
-      </div>
-      <div class="spec-item derived" title="Current total mass including fuel and cargo">
-        <span class="label">Total Mass</span>
-        <span class="value">{specs.totalMass_tonnes.toLocaleString(undefined, {maximumFractionDigits: 0})} t</span>
-      </div>
-      <div class="spec-item fixed" title="Physical dimensions of the vessel">
-        <span class="label">Dimensions</span>
-        <span class="value">{construct.physical_parameters?.dimensionsM?.join(' x ') || 'N/A'} m</span>
-      </div>
-      <div class="spec-item fixed" title="Current fuel volume / Maximum fuel volume">
-        <span class="label">Fuel Volume</span>
-        <span class="value">{specs.fuelVolume_units.toLocaleString(undefined, {maximumFractionDigits: 0})} m³ <span class="detail">(Max: {specs.fuelCapacity_units.toLocaleString(undefined, {maximumFractionDigits: 0})} m³)</span></span>
-      </div>
-      <div class="spec-item derived" title="Remaining power after all systems are active">
-        <span class="label">Power Surplus</span>
-        <span class="value">{specs.powerSurplus_MW.toLocaleString(undefined, {maximumFractionDigits: 1})} MW</span>
-      </div>
-      <div class="spec-item derived" title="Estimated endurance based on current crew and supplies">
-        <span class="label">Supplies Remaining</span>
-        <span class="value">{typeof specs.endurance_days === 'number' ? specs.endurance_days.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' days' : specs.endurance_days}</span>
-      </div>
-
-      <div class="spec-item derived" title="Maximum acceleration in vacuum">
-        <span class="label">Max Vacuum Accel.</span>
-        <span class="value">{specs.maxVacuumG.toFixed(2)} G</span>
-      </div>
-      <div class="spec-item derived" title="Total delta-V available in vacuum">
-        <span class="label">Total Vacuum Δv</span>
-        <span class="value">{(specs.totalVacuumDeltaV_ms / 1000).toLocaleString(undefined, {maximumFractionDigits: 1})} km/s</span>
-      </div>
-      <div class="spec-item derived" title="Orbital profile around the current host body">
-        <span class="label">Orbit</span>
-        <span class="value">{specs.orbit_string}</span>
-      </div>
+      <div class="spec-item derived"><span class="label">Total Mass</span><span class="value">{specs.totalMass_tonnes.toLocaleString(undefined, {maximumFractionDigits: 0})} t</span></div>
+      <div class="spec-item derived"><span class="label">Max Vacuum Accel.</span><span class="value">{specs.maxVacuumG.toFixed(2)} G</span></div>
+      <div class="spec-item derived"><span class="label">Total Vacuum Δv</span><span class="value">{(specs.totalVacuumDeltaV_ms / 1000).toLocaleString(undefined, {maximumFractionDigits: 1})} km/s</span></div>
+      <div class="spec-item derived"><span class="label">Power Surplus</span><span class="value">{specs.powerSurplus_MW.toLocaleString(undefined, {maximumFractionDigits: 1})} MW</span></div>
+      <div class="spec-item derived"><span class="label">Supplies Remaining</span><span class="value">{typeof specs.endurance_days === 'number' ? specs.endurance_days.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' days' : specs.endurance_days}</span></div>
+      <div class="spec-item derived"><span class="label">Orbit</span><span class="value">{specs.orbit_string}</span></div>
     </div>
 
     {#if landingAnalysis}
-      <h4 class="subheader landing-header">{construct.placement === 'Surface' ? 'Takeoff & Landing Analysis' : 'Landing & Takeoff Analysis'}</h4>
+      <h4 class="subheader">{construct.placement === 'Surface' ? 'Takeoff & Landing Analysis' : 'Landing & Takeoff Analysis'}</h4>
       <div class="specs-grid">
         {#if construct.placement === 'Surface'}
           <!-- On Surface -->
@@ -252,7 +205,7 @@
 {/if}
 
 <style>
-  .derived-specs {
+  .derived-specs-modal {
     margin-top: 1em;
     padding-top: 1em;
     border-top: 1px solid #555;
@@ -269,14 +222,6 @@
     font-size: 1em;
     color: #ccc;
   }
-  .fixed-header {
-    border-left: 3px solid #ff3e00; /* Red for Fixed */
-    padding-left: 0.5em;
-  }
-  .derived-header, .landing-header {
-    border-left: 3px solid #007bff; /* Blue for Derived */
-    padding-left: 0.5em;
-  }
   .specs-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -289,9 +234,6 @@
     padding: 0.6em;
     border-radius: 4px;
     cursor: help;
-  }
-  .spec-item.fixed {
-    border-left: 3px solid #ff3e00; /* Red */
   }
   .spec-item.derived {
     border-left: 3px solid #007bff; /* Blue */
