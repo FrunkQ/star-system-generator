@@ -145,7 +145,7 @@
       'star/F': 'Yellow-white stars, stronger than the Sun. Moderate radiation.',
       'star/G': 'Yellow, sun-like stars. Good candidates for habitable planets.',
       'star/K': 'Orange dwarfs, cooler and longer-lived than the Sun. Low radiation.',
-      'star/M': 'Red dwarfs. The most common, very long-lived, but dim and cool. Low radiation.',
+      'star/M': 'Red dwarfs. The most common, very long-lived, but dim and cool. While generally dim, they can have very high radiation due to frequent, powerful flares.',
       'star/WD': 'White Dwarf. The dense, hot remnant of a dead star. High radiation.',
       'star/NS': 'Neutron Star. An extremely dense, rapidly spinning stellar remnant. Extreme radiation.',
       'star/BH': 'Quiescent Black Hole. A region of spacetime where gravity is so strong nothing can escape. Low radiation unless matter is actively falling in.',
@@ -268,7 +268,7 @@
 
       {#if orbitalDistanceDisplay}
           <div class="detail-item">
-              <span class="label">{body.roleHint === 'moon' ? 'Orbit (from Planet)' : 'Orbit (from Star)'}</span>
+              <span class="label">Orbit (from {parentBody?.kind === 'barycenter' ? 'Barycenter' : (parentBody?.roleHint || 'Unknown')})</span>
               <span class="value">{orbitalDistanceDisplay}</span>
           </div>
       {/if}

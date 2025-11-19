@@ -84,17 +84,16 @@ export function calculateFullConstructSpecs(
     specs.endurance_days = "N/A";
   }
 
-  // --- Determine Orbit String ---
-  const hostName = hostBody?.name || 'Unknown';
-  let placementDescription = construct.placement || 'Orbit';
-
-  if (hostBody?.roleHint === 'star' && construct.orbit?.elements.a_AU !== undefined) {
-      placementDescription = `${construct.orbit.elements.a_AU.toFixed(2)} AU`;
-  } else if (construct.placement && construct.placement.endsWith(' Orbit')) {
-      placementDescription = construct.placement;
-  } else if (construct.placement === 'Surface') {
-      placementDescription = 'Surface';
-  } else if (construct.placement === 'L4' || construct.placement === 'L5') {
+    // --- Determine Orbit String ---
+    const hostName = hostBody?.name || 'Unknown';
+    let placementDescription = construct.placement || 'Orbit';
+  
+    if ((hostBody?.roleHint === 'star' || hostBody?.kind === 'barycenter') && construct.orbit?.elements.a_AU !== undefined) {
+        placementDescription = `${construct.orbit.elements.a_AU.toFixed(2)} AU`;
+    } else if (construct.placement && construct.placement.endsWith(' Orbit')) {
+        placementDescription = construct.placement;
+    } else if (construct.placement === 'Surface') {
+        placementDescription = 'Surface';  } else if (construct.placement === 'L4' || construct.placement === 'L5') {
       placementDescription = construct.placement;
   } else if (hostBody && construct.orbit) {
       // Fallback logic to determine zone from altitude if placement is generic 'Orbit'

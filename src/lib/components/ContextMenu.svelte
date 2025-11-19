@@ -5,8 +5,16 @@
   export let x: number;
   export let y: number;
   export let selectedNode: CelestialBody | Barycenter | null; // Changed from isStar
+  export let isLinking: boolean;
+  export let linkStartNode: CelestialBody | Barycenter | null;
 
   const dispatch = createEventDispatcher();
+
+  function handleLinkClick() {
+    if (selectedNode) {
+      dispatch('link', selectedNode);
+    }
+  }
 </script>
 
 <div class="context-menu" style="left: {x}px; top: {y}px;">
@@ -14,7 +22,13 @@
     {#if selectedNode}
       {#if selectedNode.kind === 'body' && (selectedNode.roleHint === 'star' || selectedNode.roleHint === 'barycenter')}
         <li on:click={() => dispatch('zoom')}>Zoom to System</li>
-        <li on:click={() => dispatch('link')}>Start Link</li>
+        {#if isLinking && linkStartNode?.id !== selectedNode.id}
+          <li on:click={handleLinkClick}>Finish Link to {selectedNode.name}</li>
+        {:else if isLinking && linkStartNode?.id === selectedNode.id}
+          <li on:click={handleLinkClick} class="cancel-link">Cancel Link</li>
+        {:else}
+          <li on:click={handleLinkClick}>Start Link</li>
+        {/if}
         <li on:click={() => dispatch('delete')}>Delete System</li>
         <li on:click={() => dispatch('addConstruct', selectedNode)}>Add Construct</li>
       {:else if selectedNode.kind === 'body' && (selectedNode.roleHint === 'planet' || selectedNode.roleHint === 'moon')}

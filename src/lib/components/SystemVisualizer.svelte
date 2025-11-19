@@ -46,7 +46,7 @@
   let animationFrameId: number;
   let worldPositions = new Map<string, { x: number, y: number }>();
   let scaledWorldPositions = new Map<string, { x: number, y: number }>();
-  let stellarZones: Record<string, any> | null = null;
+  let stellarZones = new Map<string, any>();
   let needsReset = false;
 
   // --- Camera State ---
@@ -105,15 +105,13 @@
   }
 
   function calculateAndStoreStellarZones() {
-    if (!system) {
-      stellarZones = null;
-      return;
-    }
-    const primaryStar = system.nodes.find(n => n.parentId === null && n.kind === 'body' && n.roleHint === 'star');
-    if (primaryStar) {
-      stellarZones = calculateAllStellarZones(primaryStar as CelestialBody, rulePack);
-    } else {
-      stellarZones = null;
+    stellarZones.clear();
+    if (!system) return;
+    
+    const stars = system.nodes.filter(n => n.kind === 'body' && n.roleHint === 'star');
+    for (const star of stars) {
+        const zones = calculateAllStellarZones(star as CelestialBody, rulePack);
+        stellarZones.set(star.id, zones);
     }
   }
 
@@ -1086,42 +1084,46 @@
           }
       }
 
-      if (showZones && stellarZones) {
-          const primaryStar = system.nodes.find(n => n.parentId === null && n.kind === 'body');
-          const starPos = primaryStar ? (toytownFactor > 0 ? scaledWorldPositions.get(primaryStar.id) : worldPositions.get(primaryStar.id)) : { x: 0, y: 0 };
+      if (showZones && stellarZones.size > 0) {
+          const zoneLabels = [
+              { key: 'rocheLimit', name: 'Roche Limit', color: 'rgba(180, 0, 0, 0.8)' },
+              { key: 'silicateLine', name: 'Rock Line', color: 'rgba(165, 42, 42, 0.8)' },
+              { key: 'sootLine', name: 'Soot Line', color: 'rgba(105, 105, 105, 0.8)' },
+              { key: 'goldilocksInner', name: 'Habitable Zone', color: 'rgba(0, 255, 0, 0.8)' },
+              { key: 'frostLine', name: 'Frost Line', color: 'rgba(173, 216, 230, 0.8)' },
+              { key: 'co2IceLine', name: 'CO2 Ice Line', color: 'rgba(255, 255, 255, 0.8)' },
+              { key: 'coIceLine', name: 'CO Ice Line', color: 'rgba(0, 0, 255, 0.8)' }
+          ];
 
-          if (starPos) {
-              const zoneLabels = [
-                  { key: 'rocheLimit', name: 'Roche Limit', color: 'rgba(180, 0, 0, 0.8)' },
-                  { key: 'silicateLine', name: 'Rock Line', color: 'rgba(165, 42, 42, 0.8)' },
-                  { key: 'sootLine', name: 'Soot Line', color: 'rgba(105, 105, 105, 0.8)' },
-                  { key: 'goldilocksInner', name: 'Habitable Zone', color: 'rgba(0, 255, 0, 0.8)' },
-                  { key: 'frostLine', name: 'Frost Line', color: 'rgba(173, 216, 230, 0.8)' },
-                  { key: 'co2IceLine', name: 'CO2 Ice Line', color: 'rgba(255, 255, 255, 0.8)' },
-                  { key: 'coIceLine', name: 'CO Ice Line', color: 'rgba(0, 0, 255, 0.8)' }
-              ];
+          ctx.font = `12px sans-serif`;
+          ctx.textAlign = 'center';
 
-              ctx.font = `12px sans-serif`;
-              ctx.textAlign = 'center';
-
-              for (const label of zoneLabels) {
-                  let radius = 0;
-                  if (label.key === 'goldilocksInner') {
-                      radius = stellarZones.goldilocks.inner;
-                  } else if (label.key === 'rocheLimit') {
-                      if (primaryStar) radius = calculateRocheLimit(primaryStar as CelestialBody);
-                  } else {
-                      radius = stellarZones[label.key];
-                  }
-
-                  if (radius > 0) {
-                      let scaledRadius = radius;
-                      if (toytownFactor > 0) {
-                          scaledRadius = scaleBoxCox(radius, toytownFactor, x0_distance);
+          for (const [starId, zones] of stellarZones) {
+              const starNode = system.nodes.find(n => n.id === starId) as CelestialBody;
+              const starPos = toytownFactor > 0 ? scaledWorldPositions.get(starId) : worldPositions.get(starId);
+              
+              if (starPos && zones) {
+                  for (const label of zoneLabels) {
+                      let radius = 0;
+                      if (label.key === 'goldilocksInner') {
+                          radius = zones.goldilocks.inner;
+                      } else if (label.key === 'rocheLimit') {
+                          if (starNode) radius = calculateRocheLimit(starNode);
+                      } else {
+                          radius = zones[label.key];
                       }
-                      const screenPos = worldToScreen(starPos.x, starPos.y - scaledRadius);
-                      ctx.fillStyle = label.color;
-                      ctx.fillText(label.name, screenPos.x, screenPos.y - 5);
+
+                      if (radius > 0) {
+                          let scaledRadius = radius;
+                          if (toytownFactor > 0) {
+                              scaledRadius = scaleBoxCox(radius, toytownFactor, x0_distance);
+                          }
+                          // Offset the text slightly if multiple stars to avoid perfect overlap? 
+                          // For now, center on star is fine.
+                          const screenPos = worldToScreen(starPos.x, starPos.y - scaledRadius);
+                          ctx.fillStyle = label.color;
+                          ctx.fillText(label.name, screenPos.x, screenPos.y - 5);
+                      }
                   }
               }
           }
@@ -1146,54 +1148,57 @@
   }
 
   function drawStellarZones(ctx: CanvasRenderingContext2D) {
-    if (!system || !stellarZones) return;
+    if (!system || stellarZones.size === 0) return;
 
-    const primaryStar = system.nodes.find(n => n.parentId === null && n.kind === 'body');
-    const starPos = primaryStar ? (toytownFactor > 0 ? scaledWorldPositions.get(primaryStar.id) : worldPositions.get(primaryStar.id)) : { x: 0, y: 0 };
-    if (!starPos) return;
+    for (const [starId, zones] of stellarZones) {
+        const starNode = system.nodes.find(n => n.id === starId) as CelestialBody;
+        const starPos = toytownFactor > 0 ? scaledWorldPositions.get(starId) : worldPositions.get(starId);
+        
+        if (!starPos) continue;
 
-    const drawZoneBand = (radius: number, innerRadius: number, color: string) => {
-        if (toytownFactor > 0) {
-            radius = scaleBoxCox(radius, toytownFactor, x0_distance);
-            innerRadius = scaleBoxCox(innerRadius, toytownFactor, x0_distance);
+        const drawZoneBand = (radius: number, innerRadius: number, color: string) => {
+            if (toytownFactor > 0) {
+                radius = scaleBoxCox(radius, toytownFactor, x0_distance);
+                innerRadius = scaleBoxCox(innerRadius, toytownFactor, x0_distance);
+            }
+            const widthAU = radius - innerRadius;
+            if (widthAU <= 0) return;
+            ctx.lineWidth = widthAU;
+            ctx.strokeStyle = color;
+            ctx.beginPath();
+            ctx.arc(starPos.x, starPos.y, innerRadius + widthAU / 2, 0, 2 * Math.PI);
+            ctx.stroke();
+        };
+
+        const drawZoneLine = (radius: number, color: string) => {
+            if (radius <= 0) return;
+            if (toytownFactor > 0) {
+                radius = scaleBoxCox(radius, toytownFactor, x0_distance);
+            }
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1 / zoom;
+            ctx.setLineDash([10 / zoom, 10 / zoom]);
+            ctx.beginPath();
+            ctx.arc(starPos.x, starPos.y, radius, 0, 2 * Math.PI);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        };
+
+        // Render bands first: Habitable, Danger, Kill
+        drawZoneBand(zones.goldilocks.outer, zones.goldilocks.inner, 'rgba(0, 255, 0, 0.1)');
+        drawZoneBand(zones.dangerZone, zones.killZone, 'rgba(200, 100, 0, 0.2)');
+        drawZoneBand(zones.killZone, 0, 'rgba(180, 0, 0, 0.2)');
+
+        // Render dashed lines in order from inner to outer
+        if (starNode) {
+           drawZoneLine(calculateRocheLimit(starNode), 'rgba(180, 0, 0, 0.5)');
         }
-        const widthAU = radius - innerRadius;
-        if (widthAU <= 0) return;
-        ctx.lineWidth = widthAU;
-        ctx.strokeStyle = color;
-        ctx.beginPath();
-        ctx.arc(starPos.x, starPos.y, innerRadius + widthAU / 2, 0, 2 * Math.PI);
-        ctx.stroke();
-    };
-
-    const drawZoneLine = (radius: number, color: string) => {
-        if (radius <= 0) return;
-        if (toytownFactor > 0) {
-            radius = scaleBoxCox(radius, toytownFactor, x0_distance);
-        }
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1 / zoom;
-        ctx.setLineDash([10 / zoom, 10 / zoom]);
-        ctx.beginPath();
-        ctx.arc(starPos.x, starPos.y, radius, 0, 2 * Math.PI);
-        ctx.stroke();
-        ctx.setLineDash([]);
-    };
-
-    // Render bands first: Habitable, Danger, Kill
-    drawZoneBand(stellarZones.goldilocks.outer, stellarZones.goldilocks.inner, 'rgba(0, 255, 0, 0.1)');
-    drawZoneBand(stellarZones.dangerZone, stellarZones.killZone, 'rgba(200, 100, 0, 0.2)');
-    drawZoneBand(stellarZones.killZone, 0, 'rgba(180, 0, 0, 0.2)');
-
-    // Render dashed lines in order from inner to outer
-    if (primaryStar) {
-       drawZoneLine(calculateRocheLimit(primaryStar as CelestialBody), 'rgba(180, 0, 0, 0.5)');
+        drawZoneLine(zones.silicateLine, 'rgba(165, 42, 42, 0.5)');
+        drawZoneLine(zones.sootLine, 'rgba(105, 105, 105, 0.5)');
+        drawZoneLine(zones.frostLine, 'rgba(173, 216, 230, 0.5)');
+        drawZoneLine(zones.co2IceLine, 'rgba(255, 255, 255, 0.5)');
+        drawZoneLine(zones.coIceLine, 'rgba(0, 0, 255, 0.5)');
     }
-    drawZoneLine(stellarZones.silicateLine, 'rgba(165, 42, 42, 0.5)');
-    drawZoneLine(stellarZones.sootLine, 'rgba(105, 105, 105, 0.5)');
-    drawZoneLine(stellarZones.frostLine, 'rgba(173, 216, 230, 0.5)');
-    drawZoneLine(stellarZones.co2IceLine, 'rgba(255, 255, 255, 0.5)');
-    drawZoneLine(stellarZones.coIceLine, 'rgba(0, 0, 255, 0.5)');
   }
 
   function drawScaleBar(ctx: CanvasRenderingContext2D) {

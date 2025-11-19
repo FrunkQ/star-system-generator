@@ -39,7 +39,7 @@
   let sliderEl: SVGSVGElement;
 
   onMount(() => {
-    availableParents = system.nodes.filter(n => n.kind === 'body' && (n.roleHint === 'planet' || n.roleHint === 'moon' || n.roleHint === 'star' || n.kind === 'barycenter'));
+    availableParents = system.nodes.filter(n => (n.kind === 'body' && (n.roleHint === 'planet' || n.roleHint === 'moon' || n.roleHint === 'star')) || n.kind === 'barycenter');
     selectedParentId = construct.ui_parentId || construct.parentId;
     selectedPlacement = construct.placement;
     if (construct.orbit) auDistance = construct.orbit.elements.a_AU;
@@ -70,7 +70,7 @@
 
     const placements: string[] = [];
     
-    if (parentBody.roleHint === 'star') {
+    if (parentBody.roleHint === 'star' || parentBody.kind === 'barycenter') {
       sortedPlanets = system.nodes
         .filter(n => n.parentId === parentBody.id && n.kind === 'body' && n.orbit)
         .sort((a, b) => (a.orbit?.elements.a_AU || 0) - (b.orbit?.elements.a_AU || 0));
@@ -120,7 +120,7 @@
 
     const isOrbital = ['Surface', 'Low Orbit', 'Medium Orbit', 'High Orbit', 'Geostationary Orbit'].includes(selectedPlacement || '');
 
-    if (parentBody.roleHint === 'star') {
+    if (parentBody.roleHint === 'star' || parentBody.kind === 'barycenter') {
       showInterplanetarySlider = true;
       interplanetarySliderMinAu = (sortedPlanets[0]?.orbit?.elements.a_AU || 0.1) * 0.5;
       interplanetarySliderMaxAu = (sortedPlanets[sortedPlanets.length - 1]?.orbit?.elements.a_AU || 50) * 1.5;
@@ -253,23 +253,25 @@
       const hostRadiusKm = parentBody.radiusKm || 0;
       let altitudeKm = 0;
 
-      if (parentBody.roleHint === 'star') {
+      if (parentBody.roleHint === 'star' || parentBody.kind === 'barycenter') {
         let new_a_AU = construct.orbit?.elements.a_AU || 1;
         if (selectedPlacement === 'Inner System') {
           new_a_AU = (sortedPlanets[0]?.orbit?.elements.a_AU || 1) / 2;
         } else if (selectedPlacement === 'Outer System') {
           new_a_AU = (sortedPlanets[sortedPlanets.length - 1]?.orbit?.elements.a_AU || 50) * 1.5;
-        } else if (selectedPlacement.includes(' - ')) {
+        } else if (selectedPlacement && selectedPlacement.includes(' - ')) {
           const [p1Name, p2Name] = selectedPlacement.split(' - ');
           const p1 = sortedPlanets.find(p => p.name === p1Name);
           const p2 = sortedPlanets.find(p => p.name === p2Name);
           new_a_AU = ((p1?.orbit?.elements.a_AU || 0) + (p2?.orbit?.elements.a_AU || 0)) / 2;
         }
 
+        const mass = (parentBody.kind === 'barycenter' ? (parentBody as any).effectiveMassKg : parentBody.massKg) || 0;
+
         // Create a perfect, circular, non-inclined orbit
         construct.orbit = {
           hostId: parentBody.id,
-          hostMu: (parentBody.massKg || 0) * 6.67430e-11,
+          hostMu: mass * 6.67430e-11,
           t0: Date.now(),
           elements: {
             a_AU: new_a_AU,

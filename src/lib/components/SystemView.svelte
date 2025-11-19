@@ -70,12 +70,40 @@
   let constructToEdit: CelestialBody | null = null;
   let constructHostBodyForEditor: CelestialBody | null = null;
 
+  // Route Creation State
+  let isLinking: boolean = false;
+  let linkStartNode: CelestialBody | Barycenter | null = null;
+
   function handleShowContextMenu(event: CustomEvent<{ x: number, y: number, items: any[], type: string }>) {
     contextMenuItems = event.detail.items;
     contextMenuX = event.detail.x;
     contextMenuY = event.detail.y;
     contextMenuType = event.detail.type;
     showSummaryContextMenu = true;
+  }
+
+  function handleLinkStartOrFinish(event: CustomEvent<CelestialBody | Barycenter>) {
+    const clickedNode = event.detail;
+    showSummaryContextMenu = false;
+
+    if (!isLinking) {
+      // Start a new link
+      isLinking = true;
+      linkStartNode = clickedNode;
+      // Future: Update cursor or provide visual feedback that linking is active
+      alert(`Linking started from ${linkStartNode.name}. Click another system to finish.`);
+    } else if (linkStartNode && clickedNode.id === linkStartNode.id) {
+      // Clicked the same node again, cancel linking
+      isLinking = false;
+      linkStartNode = null;
+      alert('Linking cancelled.');
+    } else if (linkStartNode && clickedNode.id !== linkStartNode.id) {
+      // Finish the link
+      // TODO: Implement actual route creation logic here
+      alert(`Link created from ${linkStartNode.name} to ${clickedNode.name}!`);
+      isLinking = false;
+      linkStartNode = null;
+    }
   }
 
   function handleShowBodyContextMenu(event: CustomEvent<{ node: CelestialBody, x: number, y: number }>) {
@@ -696,7 +724,15 @@ a.click();
 
     {#if showSummaryContextMenu}
       {#if contextMenuType === 'generic'}
-        <ContextMenu selectedNode={contextMenuNode} x={contextMenuX} y={contextMenuY} on:addConstruct={handleAddConstruct} />
+        <ContextMenu 
+          selectedNode={contextMenuNode} 
+          x={contextMenuX} 
+          y={contextMenuY} 
+          on:addConstruct={handleAddConstruct}
+          on:link={handleLinkStartOrFinish}
+          {isLinking}
+          {linkStartNode}
+        />
       {:else}
         <SystemSummaryContextMenu items={contextMenuItems} x={contextMenuX} y={contextMenuY} type={contextMenuType} on:select={handleContextMenuSelect} />
       {/if}

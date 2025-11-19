@@ -35,7 +35,7 @@
   }
 
   function groupItemsByHost(items: CelestialBody[], allNodes: (CelestialBody | Barycenter)[]) {
-    const hosts = allNodes.filter(n => n.kind === 'body' && (n.roleHint === 'star' || n.roleHint === 'planet' || n.roleHint === 'moon'));
+    const hosts = allNodes.filter(n => (n.kind === 'body' && (n.roleHint === 'star' || n.roleHint === 'planet' || n.roleHint === 'moon')) || n.kind === 'barycenter');
     const hostMap = new Map<string, (CelestialBody | Barycenter)>();
     hosts.forEach(h => hostMap.set(h.id, h));
 
@@ -69,6 +69,8 @@
 
     // Sort the hosts themselves by their orbital distance and depth
     result.sort((a, b) => {
+        if (!a.host || !b.host) return 0; // Safety check
+
         const aDepth = getDepth(a.host.id);
         const bDepth = getDepth(b.host.id);
 
