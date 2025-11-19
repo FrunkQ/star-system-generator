@@ -66,15 +66,83 @@
     showAIModal = false;
     dispatch('update', construct);
   }
+
+  function handleExport() {
+    // Create a deep copy to avoid modifying the original object
+    const exportConstruct = JSON.parse(JSON.stringify(construct));
+
+    // Remove system-specific volatile data
+    delete exportConstruct.id;
+    delete exportConstruct.parentId;
+    delete exportConstruct.ui_parentId;
+    delete exportConstruct.orbit;
+    delete exportConstruct.placement;
+
+    const json = JSON.stringify(exportConstruct, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${construct.name.replace(/\s+/g, '_') || 'construct'}-Construct.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImport(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const json = e.target?.result as string;
+        const importedConstruct = JSON.parse(json);
+
+        // Basic validation
+        if (importedConstruct.kind !== 'construct' || !importedConstruct.name || !importedConstruct.class) {
+          alert('Invalid construct file. Missing required properties like kind, name, or class.');
+          return;
+        }
+
+        // Preserve orbital data from the original construct
+        const preservedData = {
+          id: construct.id,
+          parentId: construct.parentId,
+          ui_parentId: construct.ui_parentId,
+          orbit: construct.orbit,
+          placement: construct.placement,
+        };
+
+        // Merge imported data with preserved orbital data
+        construct = { ...importedConstruct, ...preservedData };
+        
+        handleUpdate();
+        alert(`Successfully imported '${importedConstruct.name}'.`);
+
+      } catch (err) {
+        alert('Failed to parse JSON file.');
+        console.error(err);
+      } finally {
+        // Reset the input so the same file can be loaded again
+        input.value = '';
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  let fileInput: HTMLInputElement;
+
 </script>
 
 {#if showAIModal}
   <AIExpansionModal
     bind:showModal={showAIModal}
-    {promptTemplate}
+    promptTemplate={CONSTRUCT_PROMPT}
     {promptData}
-    {availableStyles}
-    {availableTags}
+    availableStyles={constructStyles.styles}
+    availableTags={constructTags.tags}
     initialText={construct.description || ''}
     on:close={() => showAIModal = false}
     on:generate={handleAIDescription}
@@ -127,6 +195,11 @@
     <ConstructDerivedSpecsModal {construct} {rulePack} {hostBody} />
 
     <div class="buttons">
+      <div class="import-export">
+        <button on:click={handleExport}>Export</button>
+        <button on:click={() => fileInput.click()}>Import</button>
+        <input type="file" bind:this={fileInput} on:change={handleImport} accept=".json" style="display: none;" />
+      </div>
       <button on:click={close}>Close</button>
     </div>
   </div>
@@ -203,7 +276,13 @@
 
   .buttons {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
     margin-top: 1rem;
+  }
+
+  .import-export {
+    display: flex;
+    gap: 0.5rem;
   }
 </style>
