@@ -111,7 +111,7 @@
           newConstruct.orbit!.elements.a_AU = (hostRadiusKm + altitudeKm) / 149597870.7;
           break;
         case 'Low Orbit':
-          altitudeKm = (orbitalBoundaries!.minLeoKm + orbitalBoundaries!.leoMoeBoundaryKm) / 2;
+          altitudeKm = ((orbitalBoundaries?.minLeoKm ?? 200) + (orbitalBoundaries?.leoMoeBoundaryKm ?? 2000)) / 2;
           newConstruct.orbit!.elements.a_AU = (hostRadiusKm + altitudeKm) / 149597870.7;
           break;
         case 'Mid Orbit':

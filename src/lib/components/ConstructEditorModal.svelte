@@ -165,8 +165,8 @@
     bind:showModal={showAIModal}
     promptTemplate={CONSTRUCT_PROMPT}
     {promptData}
-    availableStyles={constructStyles.styles}
-    availableTags={constructTags.tags}
+    availableStyles={constructStyles}
+    availableTags={constructTags}
     initialText={construct.description || ''}
     on:close={() => showAIModal = false}
     on:generate={handleAIDescription}

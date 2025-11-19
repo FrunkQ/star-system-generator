@@ -36,12 +36,29 @@ function _calculateDeltaVBudgets(body: CelestialBody) {
   // Base Orbital Velocity
   const v_orbit = Math.sqrt(g * r_meters);
 
-  // Takeoff Budget (Surface to LO)
-  const v_grav_loss = v_orbit * 0.15;
-  const v_drag_loss = 1500 * pressure_bar;
+  // --- FIXED ASCENT LOGIC ---
+  
+  // 1. Gravity Loss: 
+  // On thick worlds (Venus), you spend more time fighting gravity because you can't speed up.
+  // We add a multiplier based on pressure to simulate this efficiency loss.
+  const pressure_penalty = pressure_bar > 1 ? Math.log10(pressure_bar) * 0.1 : 0;
+  const v_grav_loss = v_orbit * (0.15 + pressure_penalty);
+
+  // 2. Drag/Atmospheric Loss: 
+  // detailed simulations show Venus ascent is ~27km/s total.
+  // Using Math.pow(pressure, 0.6) curves the difficulty appropriately.
+  // Earth (1 bar) ~= 1300 m/s
+  // Venus (93 bar) ~= 19,700 m/s
+  const v_drag_loss = pressure_bar > 0.001 
+    ? 1300 * Math.pow(pressure_bar, 0.6) 
+    : 0;
+
   body.loDeltaVBudget_ms = v_orbit + v_grav_loss + v_drag_loss;
 
-  // Propulsive Landing
+  // --- LANDING LOGIC ---
+
+  // Propulsive (Vacuum) Landing
+  // Note: This assumes a vacuum-style retro burn. 
   body.propulsiveLandBudget_ms = v_orbit + v_grav_loss;
 
   // Aerobraking Landing
@@ -49,6 +66,8 @@ function _calculateDeltaVBudgets(body: CelestialBody) {
     body.aerobrakeLandBudget_ms = -1;
   } else {
     const v_deorbit = 150;
+    // This logic was actually fine! 
+    // At 90 bar, exp is 0, so cost is just final touchdown burn.
     const v_final_burn = (1000 * Math.exp(-0.5 * pressure_bar)) + 50;
     body.aerobrakeLandBudget_ms = v_deorbit + v_final_burn;
   }

@@ -13,6 +13,13 @@
 
   let selectedEngineId: string | null = null;
 
+  function getEngineTooltip(engineId: string): string {
+    const def = engineDefinitions.find(e => e.id === engineId);
+    if (!def) return 'Unknown Engine';
+    const fuelName = rulePack.fuelDefinitions?.entries.find(f => f.id === def.fuel_type_id)?.name || def.fuel_type_id;
+    return `Thrust: ${def.thrust_kN.toLocaleString()} kN\nISP: ${def.efficiency_isp} s\nFuel: ${fuelName}`;
+  }
+
   function addEngine() {
     if (!selectedEngineId) return;
 
@@ -67,7 +74,7 @@
   {:else}
     <ul class="engine-list">
       {#each construct.engines as engine (engine.engine_id)}
-        <li class="engine-item">
+        <li class="engine-item" title={getEngineTooltip(engine.engine_id)}>
           <div class="engine-info">
             <span>{engineNameMap.get(engine.engine_id) || engine.engine_id}</span>
             <small>({rulePack.fuelDefinitions?.entries.find(f => f.id === engineFuelMap.get(engine.engine_id))?.name || 'Unknown Fuel'})</small>
@@ -90,7 +97,7 @@
     <select bind:value={selectedEngineId}>
       <option value={null} disabled>Select an engine type</option>
       {#each engineDefinitions as engineDef}
-        <option value={engineDef.id}>{engineDef.name}</option>
+        <option value={engineDef.id} title={getEngineTooltip(engineDef.id)}>{engineDef.name}</option>
       {/each}
     </select>
     <button on:click={addEngine} disabled={!selectedEngineId}>Add Engine</button>

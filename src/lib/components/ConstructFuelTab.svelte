@@ -13,6 +13,12 @@
   let selectedFuelTypeId: string | null = null;
   let newTankCapacity: number = 1000; // Default capacity
 
+  function getFuelTooltip(fuelId: string): string {
+    const def = fuelDefinitions.find(f => f.id === fuelId);
+    if (!def) return 'Unknown Fuel';
+    return `Density: ${def.density_kg_per_m3} kg/m³`;
+  }
+
   function addFuelTank() {
     if (!selectedFuelTypeId || newTankCapacity <= 0) return;
 
@@ -56,7 +62,7 @@
   {:else}
     <ul class="fuel-tank-list">
       {#each construct.fuel_tanks as tank, index (index)}
-        <li class="fuel-tank-item">
+        <li class="fuel-tank-item" title={getFuelTooltip(tank.fuel_type_id)}>
           <div class="fuel-info">
             <span>{fuelNameMap.get(tank.fuel_type_id) || tank.fuel_type_id} ({fuelDefinitions.find(f => f.id === tank.fuel_type_id)?.density_kg_per_m3 || 0} kg/m³)</span>
             <div class="capacity-info">
@@ -80,7 +86,7 @@
     <select bind:value={selectedFuelTypeId}>
       <option value={null} disabled>Select a fuel type</option>
       {#each fuelDefinitions as fuelDef}
-        <option value={fuelDef.id}>{fuelDef.name} ({fuelDef.density_kg_per_m3} kg/m³)</option>
+        <option value={fuelDef.id} title={getFuelTooltip(fuelDef.id)}>{fuelDef.name} ({fuelDef.density_kg_per_m3} kg/m³)</option>
       {/each}
     </select>
     <input type="number" bind:value={newTankCapacity} min="1" placeholder="Capacity (m³)" />

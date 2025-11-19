@@ -118,7 +118,7 @@
     showOrbitalSlider = false;
     showInterplanetarySlider = false;
 
-    const isOrbital = ['Surface', 'Low Orbit', 'Medium Orbit', 'High Orbit', 'Geosynchronous Orbit'].includes(selectedPlacement || '');
+    const isOrbital = ['Surface', 'Low Orbit', 'Medium Orbit', 'High Orbit', 'Geostationary Orbit'].includes(selectedPlacement || '');
 
     if (parentBody.roleHint === 'star') {
       showInterplanetarySlider = true;
@@ -193,7 +193,7 @@
           if (boundaries.hasSurface && newAltitudeKm <= boundaries.surface.max) selectedPlacement = 'Surface';
           else if (newAltitudeKm <= boundaries.leoMoeBoundaryKm) selectedPlacement = 'Low Orbit';
           else if (newAltitudeKm <= boundaries.meoHeoBoundaryKm) selectedPlacement = 'Medium Orbit';
-          else if (boundaries.geosynchronousOrbit && newAltitudeKm <= boundaries.geoStationaryKm + 1000) selectedPlacement = 'Geosynchronous Orbit';
+          else if (boundaries.geosynchronousOrbit && newAltitudeKm <= boundaries.geoStationaryKm + 1000) selectedPlacement = 'Geostationary Orbit';
           else selectedPlacement = 'High Orbit';
       }
     } else { // Interplanetary
@@ -286,7 +286,7 @@
           case 'Surface': altitudeKm = 0; break;
           case 'Low Orbit': altitudeKm = ((boundaries?.minLeoKm || 0) + (boundaries?.leoMoeBoundaryKm || 0)) / 2; break;
           case 'Medium Orbit': altitudeKm = ((boundaries?.leoMoeBoundaryKm || 0) + (boundaries?.meoHeoBoundaryKm || 0)) / 2; break;
-          case 'Geosynchronous Orbit': altitudeKm = boundaries?.geoStationaryKm || 0; break;
+          case 'Geostationary Orbit': altitudeKm = boundaries?.geoStationaryKm || 0; break;
           case 'High Orbit': altitudeKm = ((boundaries?.meoHeoBoundaryKm || 0) + (boundaries?.heoUpperBoundaryKm || 0)) / 2; break;
         }
         construct.orbit.elements.a_AU = (hostRadiusKm + altitudeKm) / AU_KM;

@@ -225,7 +225,7 @@
         </div>
       </div>
       <div class="right-column">
-        <div class="form-group">
+        <div class="form-group fill-column">
           <label for="generated-text">Generated Description</label>
           <div id="generated-text" class="generated-text-display">
             {@html generatedText.replace(/\n/g, '<br>')}
@@ -287,6 +287,7 @@
     min-height: 0; /* Important fix for flex children */
   }
   .form-group { display: flex; flex-direction: column; width: 100%; }
+  .form-group.fill-column { flex-grow: 1; min-height: 0; }
   .form-group.fixed-height { flex-shrink: 0; }
   .form-group label { margin-bottom: 0.5em; color: #eee; }
   .form-group textarea, .form-group select { width: 100%; padding: 0.5em; border-radius: 4px; border: 1px solid #555; background: #1a1a1a; color: #eee; }

@@ -275,12 +275,8 @@
                       newZoom = Math.min(zoomX, zoomY);
                   }
 
-                  // Pan to the midpoint between the construct/moon and its parent
-                  const midPoint = {
-                      x: (targetPosition.x + parentPosition.x) / 2,
-                      y: (targetPosition.y + parentPosition.y) / 2
-                  };
-                  return { pan: midPoint, zoom: newZoom };
+                  // Pan to the target node (child), keeping the parent in view
+                  return { pan: targetPosition, zoom: newZoom };
               }
           }
 

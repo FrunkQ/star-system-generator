@@ -42,6 +42,7 @@
   let showDropdown = false;
   let showNames = true;
   let showZones = false;
+  let showZoneKeyPanel = false; // Controls display of ZoneKey in the right panel
   let showLPoints = false;
   let throttleTimeout: ReturnType<typeof setTimeout> | null = null;
   let lastToytownFactor: number | undefined = undefined;
@@ -220,6 +221,7 @@
       constructHostBodyForEditor = backgroundClickHost as CelestialBody;
       showConstructEditorModal = true;
       console.log('Editor should be open');
+      handleFocus({ detail: newConstruct.id } as CustomEvent<string | null>);
   }
 
   function handleAddConstruct(event: CustomEvent<CelestialBody>) {
@@ -245,6 +247,7 @@
       constructToEdit = newConstruct;
       constructHostBodyForEditor = hostBodyForEditor;
       showConstructEditorModal = true;
+      handleFocus({ detail: newConstruct.id } as CustomEvent<string | null>);
   }
 
   function handleEditConstruct(event: CustomEvent<CelestialBody>) {
@@ -365,6 +368,7 @@
 
   function handleFocus(event: CustomEvent<string | null>) {
     focusedBodyId = event.detail;
+    showZoneKeyPanel = false; // Hide the ZoneKey panel when focus changes
     history.pushState({ focusedBodyId }, '');
   }
 
@@ -391,12 +395,12 @@
             nextFocusId = nodeToDelete.parentId;
         } else {
             dispatch('back'); 
-            systemStore.set(deleteNode($systemStore, nodeId));
+            systemStore.set(processSystemData(deleteNode($systemStore, nodeId), rulePack));
             return; 
         }
     }
 
-    systemStore.set({ ...deleteNode($systemStore, nodeId), isManuallyEdited: true });
+    systemStore.set({ ...processSystemData(deleteNode($systemStore, nodeId), rulePack), isManuallyEdited: true });
 
     if (nextFocusId) {
         handleFocus({ detail: nextFocusId } as CustomEvent<string | null>);
@@ -407,9 +411,16 @@
       if (!$systemStore) return;
       const { hostId, planetType } = event.detail;
       try {
-        systemStore.set({ ...addPlanetaryBody($systemStore, hostId, planetType, rulePack), isManuallyEdited: true });
+        const oldNodes = $systemStore.nodes; // Capture state before update
+        const newSys = addPlanetaryBody($systemStore, hostId, planetType, rulePack);
+        systemStore.set({ ...processSystemData(newSys, rulePack), isManuallyEdited: true });
         if (visualizer) {
           visualizer.resetView();
+        }
+        // Find the new planet by comparing node lists
+        const newPlanet = newSys.nodes.find(node => !oldNodes.some(oldNode => oldNode.id === node.id));
+        if (newPlanet) {
+            handleFocus({ detail: newPlanet.id } as CustomEvent<string | null>);
         }
       } catch (e: any) {
         alert(e.message);
@@ -420,7 +431,14 @@
       if (!$systemStore) return;
       const { hostId, habitabilityType } = event.detail;
       try {
-        systemStore.set({ ...addHabitablePlanet($systemStore, hostId, habitabilityType, rulePack), isManuallyEdited: true });
+        const oldNodes = $systemStore.nodes; // Capture state before update
+        const newSys = addHabitablePlanet($systemStore, hostId, habitabilityType, rulePack);
+        systemStore.set({ ...processSystemData(newSys, rulePack), isManuallyEdited: true });
+        // Find the new planet by comparing node lists
+        const newPlanet = newSys.nodes.find(node => !oldNodes.some(oldNode => oldNode.id === node.id));
+        if (newPlanet) {
+            handleFocus({ detail: newPlanet.id } as CustomEvent<string | null>);
+        }
       } catch (e: any) {
         alert(e.message);
       }
@@ -602,7 +620,7 @@ a.click();
             Toggle Names
         </label>
         <label>
-            <input type="checkbox" bind:checked={showZones} />
+            <input type="checkbox" bind:checked={showZones} on:change={() => showZoneKeyPanel = showZones} />
             Show Zones
         </label>
         <label>
@@ -656,16 +674,18 @@ a.click();
                 {/if}
             </div>
 
-            {#if showZones && focusedBody.roleHint === 'star'}
+            {#if showZoneKeyPanel}
                 <ZoneKey />
-            {:else if focusedBody.kind !== 'construct'}
-                {@const parentBody = focusedBody.parentId ? $systemStore.nodes.find(n => n.id === (focusedBody.ui_parentId || focusedBody.parentId)) : null}
-                <BodyTechnicalDetails body={focusedBody} {rulePack} parentBody={parentBody} />
-            {/if}
+            {:else}
+                {#if focusedBody.kind !== 'construct'}
+                    {@const parentBody = focusedBody.parentId ? $systemStore.nodes.find(n => n.id === (focusedBody.ui_parentId || focusedBody.parentId)) : null}
+                    <BodyTechnicalDetails body={focusedBody} {rulePack} parentBody={parentBody} />
+                {/if}
 
-            {#if focusedBody && focusedBody.kind === 'construct'}
-              {@const parentBody = focusedBody.parentId ? $systemStore.nodes.find(n => n.id === (focusedBody.ui_parentId || focusedBody.parentId)) : null}
-              <ConstructDerivedSpecs construct={focusedBody} hostBody={parentBody} {rulePack} />
+                {#if focusedBody && focusedBody.kind === 'construct'}
+                  {@const parentBody = focusedBody.parentId ? $systemStore.nodes.find(n => n.id === (focusedBody.ui_parentId || focusedBody.parentId)) : null}
+                  <ConstructDerivedSpecs construct={focusedBody} hostBody={parentBody} {rulePack} />
+                {/if}
             {/if}
             
             <BodyImage body={focusedBody} />
