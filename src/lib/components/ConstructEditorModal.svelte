@@ -12,6 +12,7 @@
   import ConstructDerivedSpecsModal from './ConstructDerivedSpecsModal.svelte';
   import ConstructDescriptionTab from './ConstructDescriptionTab.svelte';
   import AIExpansionModal from './AIExpansionModal.svelte';
+  import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
 
   import { CONSTRUCT_PROMPT } from '$lib/ai/construct-prompt';
   import constructTags from '$lib/ai/construct-tags.json';
@@ -24,8 +25,9 @@
 
   const dispatch = createEventDispatcher();
 
-  let selectedTab: string = 'Orbit';
+  let selectedTab: string = 'Description';
   let showAIModal = false;
+  let showLoadTemplateModal = false;
   let promptData = {};
   let newModule = ''; // Moved from child component
 
@@ -41,6 +43,28 @@
   function handleUpdate() {
     construct = construct; 
     dispatch('update', construct);
+  }
+
+  function handleLoadTemplate(event: CustomEvent<CelestialBody>) {
+    const template = event.detail;
+    
+    // Preserve orbital/identity data
+    const preservedData = {
+      id: construct.id,
+      parentId: construct.parentId,
+      ui_parentId: construct.ui_parentId,
+      orbit: construct.orbit,
+      placement: construct.placement,
+      IsTemplate: false // Ensure it's marked as an instance
+    };
+
+    // Prepare the new construct object from the template (excluding its orbit if present)
+    const newConstructData = JSON.parse(JSON.stringify(template));
+    delete newConstructData.orbit; // Safety check
+
+    // Merge
+    construct = { ...newConstructData, ...preservedData };
+    handleUpdate();
   }
 
   // Add Module logic now lives in the parent modal
@@ -149,6 +173,14 @@
   />
 {/if}
 
+{#if showLoadTemplateModal}
+  <LoadConstructTemplateModal
+    {rulePack}
+    on:load={handleLoadTemplate}
+    on:close={() => showLoadTemplateModal = false}
+  />
+{/if}
+
 <div class="modal-background" on:click={close}>
   <div class="modal" on:click|stopPropagation>
     <h2>Editing: {construct.name}</h2>
@@ -198,6 +230,7 @@
       <div class="import-export">
         <button on:click={handleExport}>Export</button>
         <button on:click={() => fileInput.click()}>Import</button>
+        <button on:click={() => showLoadTemplateModal = true}>Load Template</button>
         <input type="file" bind:this={fileInput} on:change={handleImport} accept=".json" style="display: none;" />
       </div>
       <button on:click={close}>Close</button>

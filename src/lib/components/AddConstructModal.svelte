@@ -31,9 +31,18 @@
       if (!isGasGiant) {
         placements.push('Surface');
       }
-      placements.push('Low Orbit', 'Mid Orbit', 'High Orbit');
-      if (orbitalBoundaries?.geoStationaryKm) {
-        placements.push('Geostationary Orbit');
+      placements.push('Low Orbit');
+      
+      if (orbitalBoundaries) {
+          if (orbitalBoundaries.leoMoeBoundaryKm < orbitalBoundaries.meoHeoBoundaryKm) {
+             placements.push('Mid Orbit');
+          }
+          if (orbitalBoundaries.meoHeoBoundaryKm < orbitalBoundaries.heoUpperBoundaryKm) {
+             placements.push('High Orbit');
+          }
+          if (orbitalBoundaries.geoStationaryKm && !orbitalBoundaries.isGeoFallback) {
+            placements.push('Geostationary Orbit');
+          }
       }
     }
 
@@ -132,6 +141,7 @@
       return system;
     });
 
+    dispatch('create', newConstruct);
     dispatch('close');
   }
 

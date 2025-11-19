@@ -1,231 +1,209 @@
 // ======== FILE: orbits.ts ========
+import type { RulePack, CelestialBody, Barycenter } from '../types';
+import { G, AU_KM } from '../constants';
 
 // --- 1. DEFINE UNIVERSAL CONSTANTS ---
+const UNIVERSAL_GAS_CONSTANT = 8.314;       // J/(mol·K)
 
-// --- Physics Constants ---
-const UNIVERSAL_GAS_CONSTANT: number = 8.314;     // J/(mol·K)
-const GRAVITATIONAL_CONSTANT_G: number = 6.674e-11; // N·m²/kg²
+// --- Helper Function: Find Dominant Gravity ---
+export function findDominantGravitationalBody(
+  x: number, 
+  y: number, 
+  nodes: (CelestialBody | Barycenter)[], 
+  worldPositions: Map<string, { x: number, y: number }>
+): CelestialBody | Barycenter | null {
+    let bestHost: CelestialBody | Barycenter | null = null;
+    let bestSoiRadiusAU = Infinity;
 
-// --- Thresholds (in Pascals) ---
-const TARGET_ORBITAL_PRESSURE_PA: number = 0.0001; // "Negligible" pressure for orbit
-const NEGLIGIBLE_ATMOSPHERE_PA: number = 1.0;      // Any pressure below this is "no atmosphere"
+    for (const node of nodes) {
+        if (node.kind !== 'body' && node.kind !== 'barycenter') continue;
+        const pos = worldPositions.get(node.id);
+        if (!pos) continue;
+        
+        const dx = x - pos.x;
+        const dy = y - pos.y;
+        const distAU = Math.sqrt(dx*dx + dy*dy);
+        
+        // Calculate Hill Sphere (SOI) in AU
+        // r_Hill = a * (m / 3M)^(1/3)
+        // If node is star (parentId null), SOI is effectively infinite
+        let soiAU = Infinity;
+        
+        if (node.parentId) {
+             const parent = nodes.find(n => n.id === node.parentId);
+             if (parent) {
+                 const parentPos = worldPositions.get(parent.id);
+                 const dParent = parentPos ? Math.sqrt(Math.pow(pos.x - parentPos.x, 2) + Math.pow(pos.y - parentPos.y, 2)) : 0;
+                 
+                 const mass = (node as CelestialBody).massKg || (node as Barycenter).effectiveMassKg || 0;
+                 const parentMass = (parent as CelestialBody).massKg || (parent as Barycenter).effectiveMassKg || 1;
+                 
+                 if (parentMass > 0) {
+                     soiAU = dParent * Math.pow(mass / (3 * parentMass), 1/3);
+                 }
+             }
+        } else {
+            // For root nodes (Stars), treat them as the default container.
+            // Set to a very large number so it's only picked if no smaller SOI is found.
+            soiAU = 1e9; 
+        }
+        
+        if (distAU <= soiAU) {
+            if (soiAU < bestSoiRadiusAU) {
+                bestSoiRadiusAU = soiAU;
+                bestHost = node;
+            }
+        }
+    }
+    
+    return bestHost;
+}
 
-
-// --- 2. DEFINE DATA STRUCTURES ---
-
-// We need more data for each planet now
+// --- Interfaces ---
 export interface PlanetData {
-  // For LEO (Atmosphere) Calculation
-  gravity: number;             // Surface gravity (m/s²)
-  surfaceTempKelvin: number;   // Average surface temperature (K)
-  molarMassKg: number;         // Molar mass of atmosphere (kg/mol)
-  surfacePressurePa: number;   // Surface atmospheric pressure (Pa)
-
-  // For GEO (Orbital) Calculation
-  massKg: number;              // Total mass of the planet (kg)
-  rotationPeriodSeconds: number; // Sidereal rotation period (s)
-
-  // For HEO (Sphere of Influence) Calculation
-  distanceToHost_km: number;   // Body's average distance from its host (km)
-  hostMass_kg: number;         // Mass of the host body (kg)
+  gravity: number;
+  surfaceTempKelvin: number;
+  molarMassKg: number;
+  surfacePressurePa: number;
+  massKg: number;
+  rotationPeriodSeconds: number;
+  distanceToHost_km: number;
+  hostMass_kg: number;
+  // Added radius to data structure as it is needed for altitude calc
+  radiusKm?: number; 
 }
 
-// The object our function will return
 export interface OrbitalBoundaries {
-  minLeoKm: number;           // The "floor" of LEO
-  leoMoeBoundaryKm: number; // The LEO/MEO boundary
-  meoHeoBoundaryKm: number; // The MEO/HEO boundary
-  heoUpperBoundaryKm: number; // The "ceiling" of HEO (Sphere of Influence)
-  geoStationaryKm: number | null; // GEO altitude (or null if impossible)
-  isGeoFallback: boolean; // Flag indicating if MEO/HEO boundary is a fallback
+  minLeoKm: number;
+  leoMoeBoundaryKm: number;
+  meoHeoBoundaryKm: number;
+  heoUpperBoundaryKm: number;
+  geoStationaryKm: number | null;
+  isGeoFallback: boolean;
 }
 
-
-// --- 3. DEFINE PLANET DATA MAP ---
-// This map is for example usage and will not be used in the final integration.
-// The actual planet data will come from the CelestialBody object.
-const PLANET_DATA_MAP: Record<string, PlanetData> = {
-  
-  "Earth": {
-    gravity: 9.8,
-    surfaceTempKelvin: 288,
-    molarMassKg: 0.029,
-    surfacePressurePa: 101325,
-    massKg: 5.972e24,
-    rotationPeriodSeconds: 86164 // Sidereal day
-  },
-
-  "Mars": {
-    gravity: 3.7,
-    surfaceTempKelvin: 210,
-    molarMassKg: 0.043,
-    surfacePressurePa: 600,
-    massKg: 6.417e23,
-    rotationPeriodSeconds: 88642 // Sidereal day (a "sol")
-  },
-
-  "Venus": {
-    gravity: 8.87,
-    surfaceTempKelvin: 737,
-    molarMassKg: 0.043,
-    surfacePressurePa: 9200000,
-    massKg: 4.867e24,
-    rotationPeriodSeconds: 20997360 // Very slow and retrograde
-  },
-
-  "Moon": {
-    gravity: 1.62,
-    surfaceTempKelvin: 150,  // Wildly variable, but let's use an average
-    molarMassKg: 0.0,      // N/A
-    surfacePressurePa: 0.0,  // Effectively zero
-    massKg: 7.342e22,
-    rotationPeriodSeconds: 2358720 // Tidally locked (27.3 days)
-  }
-};
-
-
-// --- 4. DEFINE THE MAIN CALCULATION FUNCTION ---
-
-/**
- * Calculates all plausible orbital boundaries for a planet.
- * All return values are in kilometers.
- */
-import type { RulePack } from '../types';
+// --- Main Function ---
 export function calculateOrbitalBoundaries(planet: PlanetData, pack: RulePack): OrbitalBoundaries {
   const constants = pack.orbitalConstants || {};
+  
+  // Extract constants from rulepack or use defaults
   const DEFAULT_NO_ATMOSPHERE_LEO_KM = constants.DEFAULT_NO_ATMOSPHERE_LEO_KM || 30.0;
   const DEFAULT_LEO_MEO_BOUNDARY_KM = constants.DEFAULT_LEO_MEO_BOUNDARY_KM || 2000.0;
   const DEFAULT_MEO_HEO_BOUNDARY_KM = constants.DEFAULT_MEO_HEO_BOUNDARY_KM || 50000.0;
+  
+  // Simulation Thresholds (Can now be overridden by RulePack)
+  const TARGET_ORBITAL_PRESSURE_PA = constants.TARGET_ORBITAL_PRESSURE_PA || 0.0001;
+  const NEGLIGIBLE_ATMOSPHERE_PA = constants.NEGLIGIBLE_ATMOSPHERE_PA || 1.0;
+  const MICRO_SYSTEM_THRESHOLD_KM = constants.MICRO_SYSTEM_THRESHOLD_KM || 1000;
 
-  // --- 1. CALCULATE MINIMUM LEO ALTITUDE (THE "FLOOR") ---
+  // 0. PHYSICAL PROPERTIES
+  // Use provided radius or derive it
+  let planetRadiusKm = planet.radiusKm;
+  if (!planetRadiusKm) {
+     const r_meters = Math.sqrt((G * planet.massKg) / planet.gravity);
+     planetRadiusKm = r_meters / 1000;
+  }
+
+  // --- 1. CALCULATE CEILING (SPHERE OF INFLUENCE) ---
+  // We calculate this FIRST to know how much room we have.
+  let soiRadiusKm: number;
+  if (planet.hostMass_kg > 0) {
+    // Hill Sphere: r = a * cbrt(m/3M)
+    const massRatio = planet.massKg / (3.0 * planet.hostMass_kg);
+    soiRadiusKm = planet.distanceToHost_km * Math.cbrt(massRatio);
+  } else {
+    soiRadiusKm = planet.distanceToHost_km * 0.01; // Rogue planet fallback
+  }
+  
+  // Convert from "Distance from Center" to "Altitude above Surface"
+  // Ensure we don't get negative numbers if SOI < Radius (physically impossible but safe to clamp)
+  const heoUpperBoundaryKm = Math.max(0.1, soiRadiusKm - planetRadiusKm);
+
+  // --- 2. CALCULATE FLOOR (MIN LEO) ---
   let minLeoKm: number;
 
   if (planet.surfacePressurePa < NEGLIGIBLE_ATMOSPHERE_PA) {
-    // ---- NO ATMOSPHERE CASE ----
-    minLeoKm = DEFAULT_NO_ATMOSPHERE_LEO_KM;
+    // No Atmosphere
+    // If the body is tiny (Phobos), 30km might be outside the SOI! 
+    // So we take the smaller of: Default (30km) OR 20% of the available space.
+    minLeoKm = Math.min(DEFAULT_NO_ATMOSPHERE_LEO_KM, heoUpperBoundaryKm * 0.2);
   } else {
-    // ---- ATMOSPHERE CASE ----
-    // Use the barometric formula to find where pressure drops to our target
+    // Atmosphere present
     const scaleHeight_H = (UNIVERSAL_GAS_CONSTANT * planet.surfaceTempKelvin) / 
                           (planet.molarMassKg * planet.gravity);
-    
     const pressureRatio = planet.surfacePressurePa / TARGET_ORBITAL_PRESSURE_PA;
-    
-    // Check for invalid math (e.g., pressure ratio < 1)
     const altitudeMeters = (pressureRatio > 1) ? (scaleHeight_H * Math.log(pressureRatio)) : 0;
-    
     minLeoKm = altitudeMeters / 1000;
   }
 
-
-  // --- 2. CALCULATE LEO/MEO BOUNDARY (THE "CEILING") ---
-  let leoMoeBoundaryKm: number;
-
-  // This handles the edge case of a very thick atmosphere (like a gas giant)
-  // where the "floor" (minLeoKm) is *already* past the conventional boundary.
-  if (minLeoKm >= DEFAULT_LEO_MEO_BOUNDARY_KM) {
-    // LEO is a 2000km band *above* the thick atmosphere
-    leoMoeBoundaryKm = minLeoKm + DEFAULT_LEO_MEO_BOUNDARY_KM;
-  } else {
-    // Normal case (like Earth): LEO is from minLeoKm up to the convention
-    leoMoeBoundaryKm = DEFAULT_LEO_MEO_BOUNDARY_KM;
+  // Safety Clamp: Floor cannot exceed Ceiling
+  if (minLeoKm >= heoUpperBoundaryKm) {
+      minLeoKm = heoUpperBoundaryKm * 0.9; // Force a 10% buffer if math fails
   }
 
-
-  // --- 3. CALCULATE GEOSTATIONARY ORBIT (RAW VALUE) ---
-  let calculatedGeoKm: number | null = null;
+  // --- 3. HANDLE MICRO-SYSTEMS (THE FIX) ---
+  // If the entire SOI is smaller than 1000km, standard zones don't apply.
+  // We collapse everything into one "Low Orbit" zone.
   
-  // We must derive the planet's radius from its mass and gravity (g = GM/r²) -> r = sqrt(GM/g)
-  const planetRadiusMeters = Math.sqrt((GRAVITATIONAL_CONSTANT_G * planet.massKg) / planet.gravity);
+  if (heoUpperBoundaryKm < MICRO_SYSTEM_THRESHOLD_KM) {
+      return {
+          minLeoKm: minLeoKm,
+          leoMoeBoundaryKm: heoUpperBoundaryKm, // LEO extends to the very edge
+          meoHeoBoundaryKm: heoUpperBoundaryKm, // MEO has 0 width
+          heoUpperBoundaryKm: heoUpperBoundaryKm, // HEO has 0 width
+          geoStationaryKm: null,
+          isGeoFallback: true
+      };
+  }
+
+  // --- 4. STANDARD ZONES (Earth/Mars/Venus) ---
+  
+  // Calculate LEO/MEO Boundary
+  let leoMoeBoundaryKm = (minLeoKm >= DEFAULT_LEO_MEO_BOUNDARY_KM) 
+      ? minLeoKm + DEFAULT_LEO_MEO_BOUNDARY_KM 
+      : DEFAULT_LEO_MEO_BOUNDARY_KM;
+
+  // Clamp LEO/MEO to SOI
+  leoMoeBoundaryKm = Math.min(leoMoeBoundaryKm, heoUpperBoundaryKm);
+
+  // Calculate GEO
+  let calculatedGeoKm: number | null = null;
   const T = Math.abs(planet.rotationPeriodSeconds);
-
   if (T > 0) {
-    // Standard formula for orbital radius: r = cuberoot( G * M * T² / (4 * π²) )
-    const M = planet.massKg;
-    const G = GRAVITATIONAL_CONSTANT_G;
-
-    const numerator = G * M * (T * T);
+    const numerator = G * planet.massKg * (T * T);
     const denominator = 4 * (Math.PI * Math.PI);
-    
     const radiusFromCenterMeters = Math.cbrt(numerator / denominator);
-    
-    // Altitude is radius from center minus the planet's radius
-    const altitudeMeters = radiusFromCenterMeters - planetRadiusMeters;
-    calculatedGeoKm = altitudeMeters / 1000;
+    calculatedGeoKm = (radiusFromCenterMeters / 1000) - planetRadiusKm;
   }
 
-
-  // --- 4. CALCULATE HEO UPPER BOUNDARY (SPHERE OF INFLUENCE) ---
-  let heoUpperBoundaryKm: number;
-  if (planet.hostMass_kg > 0) {
-    const massRatio = planet.massKg / (3.0 * planet.hostMass_kg);
-    const ratioCbrt = Math.cbrt(massRatio);
-    heoUpperBoundaryKm = planet.distanceToHost_km * ratioCbrt;
-  } else {
-    // Fallback for rogue planets or other edge cases
-    heoUpperBoundaryKm = planet.distanceToHost_km * 0.01; 
-  }
-
-
-  // --- 5. VALIDATE GEO & SET FINAL BOUNDARIES (THE FIX) ---
+  // Determine Final Boundaries
   let finalGeoStationaryKm: number | null = calculatedGeoKm;
   let meoHeoBoundaryKm: number;
   let isGeoFallback = false;
 
-  // Check for all impossible GEO conditions
-  if (calculatedGeoKm === null || // It was never calculated (e.g., T=0)
-      calculatedGeoKm < minLeoKm ||  // It's inside the atmosphere
-      calculatedGeoKm > heoUpperBoundaryKm) // It's outside the Sphere of Influence
+  // Validate GEO
+  if (calculatedGeoKm === null || 
+      calculatedGeoKm < minLeoKm || 
+      calculatedGeoKm > heoUpperBoundaryKm) 
   {
-    // This GEO orbit is physically impossible.
     finalGeoStationaryKm = null;
     isGeoFallback = true;
-    
-    // Use the default "galactic" boundary
     meoHeoBoundaryKm = DEFAULT_MEO_HEO_BOUNDARY_KM;
-
   } else {
-    // The GEO orbit is valid! Use it as the boundary.
     meoHeoBoundaryKm = calculatedGeoKm;
   }
 
-  
-  // --- 6. RETURN ALL BOUNDARIES ---
+  // Final Safety Clamping to ensure strictly increasing order
+  // Min <= LEO_Ceiling <= MEO_Ceiling <= HEO_Ceiling
+  leoMoeBoundaryKm = Math.max(minLeoKm, Math.min(leoMoeBoundaryKm, heoUpperBoundaryKm));
+  meoHeoBoundaryKm = Math.max(leoMoeBoundaryKm, Math.min(meoHeoBoundaryKm, heoUpperBoundaryKm));
+
   return {
-    minLeoKm: minLeoKm,
-    leoMoeBoundaryKm: leoMoeBoundaryKm,
-    meoHeoBoundaryKm: meoHeoBoundaryKm,
-    heoUpperBoundaryKm: heoUpperBoundaryKm,
-    geoStationaryKm: finalGeoStationaryKm, // Return the *validated* value
-    isGeoFallback: isGeoFallback
+    minLeoKm,
+    leoMoeBoundaryKm,
+    meoHeoBoundaryKm,
+    heoUpperBoundaryKm,
+    geoStationaryKm: finalGeoStationaryKm,
+    isGeoFallback
   };
 }
-
-
-// --- 5. EXAMPLE USAGE ---
-
-// console.log("--- Calculating Orbital Boundaries ---");
-
-// --- Earth (Normal Case) ---
-// const earthOrbits = calculateOrbitalBoundaries(PLANET_DATA_MAP["Earth"]);
-// console.log("Earth Orbits (km):", {
-//   LEO: `${earthOrbits.minLeoKm.toFixed(0)} to ${earthOrbits.leoMoeBoundaryKm.toFixed(0)}`,
-//   MEO: `${earthOrbits.leoMoeBoundaryKm.toFixed(0)} to ${earthOrbits.meoHeoBoundaryKm.toFixed(0)}`,
-//   GEO: earthOrbits.geoStationaryKm?.toFixed(0) ?? 'N/A'
-// });
-
-// --- Mars (GEO inside atmosphere/planet - Phobos) ---
-// const marsOrbits = calculateOrbitalBoundaries(PLANET_DATA_MAP["Mars"]);
-// console.log("Mars Orbits (km):", {
-//   LEO: `${marsOrbits.minLeoKm.toFixed(0)} to ${marsOrbits.leoMoeBoundaryKm.toFixed(0)}`,
-//   MEO: `${marsOrbits.leoMoeBoundaryKm.toFixed(0)} to ${marsOrbits.meoHeoBoundaryKm.toFixed(0)}`,
-//   GEO: marsOrbits.geoStationaryKm?.toFixed(0) ?? 'N/A'
-// });
-
-// --- Moon (No Atmosphere, No GEO) ---
-// const moonOrbits = calculateOrbitalBoundaries(PLANET_DATA_MAP["Moon"]);
-// console.log("Moon Orbits (km):", {
-//   LEO: `${moonOrbits.minLeoKm.toFixed(0)} to ${moonOrbits.leoMoeBoundaryKm.toFixed(0)}`,
-//   MEO: `${moonOrbits.leoMoeBoundaryKm.toFixed(0)} to ${moonOrbits.meoHeoBoundaryKm.toFixed(0)}`,
-//   GEO: moonOrbits.geoStationaryKm?.toFixed(0) ?? 'N/A'
-// });

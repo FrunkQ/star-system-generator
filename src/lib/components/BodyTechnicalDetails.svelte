@@ -383,13 +383,21 @@
               <span class="label">Orbital Zones</span>
               <div class="zone-details">
                   <span><strong>Low Orbit:</strong> {body.orbitalBoundaries.minLeoKm.toLocaleString(undefined, {maximumFractionDigits: 0})} - {body.orbitalBoundaries.leoMoeBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
-                  <span><strong>Mid Orbit:</strong> {body.orbitalBoundaries.leoMoeBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} - {body.orbitalBoundaries.meoHeoBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km {#if body.orbitalBoundaries.isGeoFallback}(Galactic Standard){/if}</span>
-                  {#if body.orbitalBoundaries.geoStationaryKm}
+                  
+                  {#if body.orbitalBoundaries.leoMoeBoundaryKm < body.orbitalBoundaries.meoHeoBoundaryKm}
+                    <span><strong>Mid Orbit:</strong> {body.orbitalBoundaries.leoMoeBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} - {body.orbitalBoundaries.meoHeoBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km {#if body.orbitalBoundaries.isGeoFallback}(Galactic Standard){/if}</span>
+                  {/if}
+                  
+                  {#if body.orbitalBoundaries.geoStationaryKm && !body.orbitalBoundaries.isGeoFallback}
                       <span><strong>Geostationary:</strong> {body.orbitalBoundaries.geoStationaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
-                  {:else}
+                  {:else if !body.orbitalBoundaries.isGeoFallback && body.orbitalBoundaries.heoUpperBoundaryKm >= 1000}
+                       <!-- Only show "Unstable" if it's not a micro-system (SOI >= 1000km) -->
                       <span><strong>Geostationary:</strong> Unstable</span>
                   {/if}
-                  <span><strong>High Orbit:</strong> {body.orbitalBoundaries.meoHeoBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} - {body.orbitalBoundaries.heoUpperBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+                  
+                  {#if body.orbitalBoundaries.meoHeoBoundaryKm < body.orbitalBoundaries.heoUpperBoundaryKm}
+                    <span><strong>High Orbit:</strong> {body.orbitalBoundaries.meoHeoBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} - {body.orbitalBoundaries.heoUpperBoundaryKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+                  {/if}
               </div>
           </div>
       {/if}

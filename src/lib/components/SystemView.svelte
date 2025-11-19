@@ -17,11 +17,15 @@
   import AddConstructModal from './AddConstructModal.svelte'; 
   import ConstructEditorModal from './ConstructEditorModal.svelte'; 
   import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
+  import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
 
   import { systemStore, viewportStore } from '$lib/stores';
   import { panStore, zoomStore } from '$lib/cameraStore';
   import { get } from 'svelte/store';
   import { processSystemData } from '$lib/system/postprocessing';
+  import { generateId } from '$lib/utils';
+  import { AU_KM } from '$lib/constants';
+  import { propagate } from '$lib/api';
 
   export let system: System;
   export let rulePack: RulePack;
@@ -54,6 +58,12 @@
   let showAddConstructModal = false;
   let constructHostBody: CelestialBody | null = null;
 
+  // Create Construct (Background) Modal State
+  let showCreateConstructModal = false;
+  let backgroundClickHost: CelestialBody | Barycenter | null = null;
+  let backgroundClickPosition: { x: number, y: number } | null = null;
+  let showBackgroundContextMenu = false;
+
   // Edit Construct Modal State
   let showConstructEditorModal = false;
   let constructToEdit: CelestialBody | null = null;
@@ -72,13 +82,169 @@
     contextMenuX = event.detail.x;
     contextMenuY = event.detail.y;
     showSummaryContextMenu = true; 
-    contextMenuType = 'generic'; 
+    contextMenuType = 'generic';
+    showBackgroundContextMenu = false;
+  }
+
+  function handleBackgroundContextMenu(event: CustomEvent<{ x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number }>) {
+      console.log('Background Context Menu Triggered:', event.detail);
+      backgroundClickHost = event.detail.dominantBody;
+      backgroundClickPosition = { x: event.detail.x, y: event.detail.y };
+      contextMenuX = event.detail.screenX;
+      contextMenuY = event.detail.screenY;
+      showBackgroundContextMenu = true;
+      showSummaryContextMenu = false;
+  }
+
+  function handleCreateConstructFromBackground() {
+      showCreateConstructModal = true;
+      showBackgroundContextMenu = false;
+  }
+
+  async function handleCreateConstructLoad(event: CustomEvent<CelestialBody>) {
+      console.log('handleCreateConstructLoad triggered', { backgroundClickHost, backgroundClickPosition });
+      if (!$systemStore || !backgroundClickHost || !backgroundClickPosition) {
+        console.error('Missing required state for construct creation', { systemStore: !!$systemStore, backgroundClickHost, backgroundClickPosition });
+        return;
+      }
+      const template = event.detail;
+      
+      // Prepare new construct
+      const newConstruct: CelestialBody = JSON.parse(JSON.stringify(template));
+      newConstruct.id = generateId();
+      newConstruct.IsTemplate = false;
+      newConstruct.parentId = backgroundClickHost.id;
+      newConstruct.ui_parentId = null;
+
+      // Calculate Orbit
+      // 1. Get Host Position
+      let hostPos = { x: 0, y: 0 };
+      if (backgroundClickHost.parentId) {
+         const getAbsolutePosition = (nodeId: string): { x: number, y: number } => {
+             const node = $systemStore.nodes.find(n => n.id === nodeId);
+             if (!node || !node.parentId) return { x: 0, y: 0 }; // Star/Root is 0,0
+             
+             const parentPos = getAbsolutePosition(node.parentId);
+             let relativePos = { x: 0, y: 0 };
+             if ((node.kind === 'body' || node.kind === 'construct') && node.orbit) {
+                 const p = propagate(node, currentTime);
+                 if (p) relativePos = p;
+             }
+             return { x: parentPos.x + relativePos.x, y: parentPos.y + relativePos.y };
+         };
+         hostPos = getAbsolutePosition(backgroundClickHost.id);
+      }
+
+      console.log('Host Absolute Position:', hostPos);
+
+      // 2. Calculate Distance (Semi-Major Axis 'a')
+      const dx = backgroundClickPosition.x - hostPos.x;
+      const dy = backgroundClickPosition.y - hostPos.y;
+      const distAU = Math.sqrt(dx*dx + dy*dy);
+
+      console.log('Calculated Distance (AU):', distAU);
+
+      // 3. Create Circular Orbit
+      const massKg = (backgroundClickHost as CelestialBody).massKg || (backgroundClickHost as Barycenter).effectiveMassKg || 0;
+      const G_constant = 6.67430e-11;
+      const altitudeKm = (distAU * AU_KM) - ((backgroundClickHost as CelestialBody).radiusKm || 0);
+      
+      newConstruct.orbit = {
+          hostId: backgroundClickHost.id,
+          hostMu: massKg * G_constant,
+          t0: currentTime,
+          elements: {
+              a_AU: Math.max(distAU, 0.000001),
+              e: 0,
+              i_deg: 0,
+              omega_deg: 0,
+              Omega_deg: 0,
+              M0_rad: Math.atan2(dy, dx)
+          }
+      };
+
+      // 4. Determine Placement String
+      let placement = 'High Orbit'; // Default fallback
+
+      if (backgroundClickHost.roleHint === 'star') {
+          // Star Logic: Inner System, Outer System, or Planet-Planet
+          const planets = $systemStore.nodes
+              .filter(n => n.parentId === backgroundClickHost!.id && n.kind === 'body' && n.orbit)
+              .sort((a, b) => (a.orbit?.elements.a_AU || 0) - (b.orbit?.elements.a_AU || 0));
+          
+          if (planets.length === 0) {
+              placement = 'AU Distance';
+          } else if (distAU < (planets[0].orbit?.elements.a_AU || 0)) {
+              placement = 'Inner System';
+          } else if (distAU > (planets[planets.length - 1].orbit?.elements.a_AU || 0)) {
+              placement = 'Outer System';
+          } else {
+              for (let i = 0; i < planets.length - 1; i++) {
+                  const p1Dist = planets[i].orbit?.elements.a_AU || 0;
+                  const p2Dist = planets[i+1].orbit?.elements.a_AU || 0;
+                  if (distAU >= p1Dist && distAU <= p2Dist) {
+                      placement = `${planets[i].name} - ${planets[i+1].name}`;
+                      break;
+                  }
+              }
+          }
+      } else {
+          // Planet/Moon Logic
+          const boundaries = (backgroundClickHost as CelestialBody).orbitalBoundaries;
+          if (boundaries) {
+              if (altitudeKm <= boundaries.surface?.max) placement = 'Surface';
+              else if (altitudeKm <= boundaries.leoMoeBoundaryKm) placement = 'Low Orbit';
+              else if (altitudeKm <= boundaries.meoHeoBoundaryKm) placement = 'Medium Orbit';
+              else if (boundaries.geosynchronousOrbit && Math.abs(altitudeKm - boundaries.geoStationaryKm!) < 1000) placement = 'Geosynchronous Orbit';
+              else placement = 'High Orbit';
+          }
+      }
+
+      newConstruct.placement = placement;
+      console.log('Creating New Construct:', newConstruct);
+
+      // Add to System
+      systemStore.update(s => {
+          if (!s) return s;
+          return {
+              ...s,
+              nodes: [...s.nodes, newConstruct],
+              isManuallyEdited: true
+          };
+      });
+
+      // Open Editor
+      showCreateConstructModal = false;
+      await tick();
+      constructToEdit = newConstruct;
+      constructHostBodyForEditor = backgroundClickHost as CelestialBody;
+      showConstructEditorModal = true;
+      console.log('Editor should be open');
   }
 
   function handleAddConstruct(event: CustomEvent<CelestialBody>) {
     constructHostBody = event.detail;
     showAddConstructModal = true;
     showSummaryContextMenu = false;
+  }
+
+  async function handleAddConstructCreated(event: CustomEvent<CelestialBody>) {
+      const newConstruct = event.detail;
+      showAddConstructModal = false;
+      
+      // Find the host body for the editor context
+      let hostBodyForEditor: CelestialBody | null = null;
+      if ($systemStore) {
+        const hostId = newConstruct.ui_parentId || newConstruct.parentId;
+        if (hostId) {
+           hostBodyForEditor = $systemStore.nodes.find(n => n.id === hostId) as CelestialBody || null;
+        }
+      }
+
+      await tick(); // Ensure store update is processed/rendered
+      constructToEdit = newConstruct;
+      constructHostBodyForEditor = hostBodyForEditor;
+      showConstructEditorModal = true;
   }
 
   function handleEditConstruct(event: CustomEvent<CelestialBody>) {
@@ -383,11 +549,10 @@ a.click();
   });
 
   function handleClickOutside(event: MouseEvent) {
-    if (showSummaryContextMenu) {
-      const menu = document.querySelector('.context-menu');
-      if (menu && !menu.contains(event.target as Node)) {
-        showSummaryContextMenu = false;
-      }
+    const menu = document.querySelector('.context-menu');
+    if (menu && !menu.contains(event.target as Node)) {
+      if (showSummaryContextMenu) showSummaryContextMenu = false;
+      if (showBackgroundContextMenu) showBackgroundContextMenu = false;
     }
   }
 
@@ -465,7 +630,7 @@ a.click();
 
     <div class="system-view-grid">
         <div class="main-view">
-            <SystemVisualizer bind:this={visualizer} system={$systemStore} {rulePack} {currentTime} {focusedBodyId} {showNames} {showZones} {showLPoints} toytownFactor={$systemStore.toytownFactor} on:focus={handleFocus} on:showBodyContextMenu={handleShowBodyContextMenu} />
+            <SystemVisualizer bind:this={visualizer} system={$systemStore} {rulePack} {currentTime} {focusedBodyId} {showNames} {showZones} {showLPoints} toytownFactor={$systemStore.toytownFactor} on:focus={handleFocus} on:showBodyContextMenu={handleShowBodyContextMenu} on:backgroundContextMenu={handleBackgroundContextMenu} />
 
             <BodyGmTools body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:addHabitablePlanet={handleAddHabitablePlanet} on:editConstruct={handleEditConstruct} />
             {#if focusedBody}
@@ -477,6 +642,20 @@ a.click();
               dispatch('renameNode', {nodeId: focusedBody.id, newName: e.target.value});
               systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s);
             }} class="name-input" title="Click to rename" />
+            
+            <div class="action-buttons">
+                {#if focusedBody.kind === 'construct'}
+                    <button class="edit-btn" on:click={() => handleEditConstruct({ detail: focusedBody })}>Edit Construct</button>
+                {/if}
+                {#if focusedBody.parentId}
+                    <button class="delete-btn" on:click={() => {
+                      if (confirm(`Are you sure you want to delete ${focusedBody.name} and all its children? This cannot be undone.`)) {
+                        handleDeleteNode({ detail: focusedBody.id });
+                      }
+                    }}>Delete</button>
+                {/if}
+            </div>
+
             {#if showZones && focusedBody.roleHint === 'star'}
                 <ZoneKey />
             {:else if focusedBody.kind !== 'construct'}
@@ -503,8 +682,20 @@ a.click();
       {/if}
     {/if}
 
+    {#if showBackgroundContextMenu}
+        <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px;" on:click|stopPropagation>
+            <ul>
+                <li on:click={handleCreateConstructFromBackground}>Add Construct Here</li>
+            </ul>
+        </div>
+    {/if}
+
     {#if showAddConstructModal && constructHostBody}
-      <AddConstructModal {rulePack} hostBody={constructHostBody} orbitalBoundaries={constructHostBody.orbitalBoundaries} on:close={() => showAddConstructModal = false} />
+      <AddConstructModal {rulePack} hostBody={constructHostBody} orbitalBoundaries={constructHostBody.orbitalBoundaries} on:create={handleAddConstructCreated} on:close={() => showAddConstructModal = false} />
+    {/if}
+
+    {#if showCreateConstructModal}
+        <LoadConstructTemplateModal {rulePack} mode="create" on:load={handleCreateConstructLoad} on:close={() => showCreateConstructModal = false} />
     {/if}
 
     {#if showConstructEditorModal && constructToEdit}
@@ -641,5 +832,54 @@ a.click();
   .name-input:hover, .name-input:focus {
       background-color: #252525;
       border-color: #444;
+  }
+
+  .context-menu {
+    position: fixed; /* Fixed positioning for clientX/clientY */
+    background-color: #333;
+    border: 1px solid #555;
+    border-radius: 5px;
+    z-index: 1000;
+    color: #eee;
+    min-width: 150px;
+  }
+  .context-menu ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .context-menu li {
+    padding: 0.8em 1em;
+    cursor: pointer;
+  }
+  .context-menu li:hover {
+    background-color: #555;
+  }
+
+  .action-buttons {
+      display: flex;
+      gap: 0.5em;
+      margin-bottom: 1em;
+      margin-top: 0.5em;
+  }
+  
+  .action-buttons button {
+      flex: 1;
+      padding: 0.4em;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.9em;
+      color: #eee;
+      background-color: #444;
+      transition: background-color 0.2s;
+  }
+
+  .action-buttons button.edit-btn:hover {
+      background-color: #007bff;
+  }
+
+  .action-buttons button.delete-btn:hover {
+      background-color: #c00;
   }
 </style>

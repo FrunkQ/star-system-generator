@@ -88,8 +88,19 @@
       const boundaries = parentBody.orbitalBoundaries;
       const isGasGiant = parentBody.classes?.some(c => c.includes('gas-giant')) ?? false;
       if (!isGasGiant) placements.push('Surface');
-      placements.push('Low Orbit', 'Medium Orbit', 'High Orbit');
-      if (boundaries?.geoStationaryKm) placements.push('Geosynchronous Orbit');
+      placements.push('Low Orbit');
+      
+      if (boundaries) {
+          if (boundaries.leoMoeBoundaryKm < boundaries.meoHeoBoundaryKm) {
+              placements.push('Medium Orbit');
+          }
+          if (boundaries.meoHeoBoundaryKm < boundaries.heoUpperBoundaryKm) {
+              placements.push('High Orbit');
+          }
+          if (boundaries.geoStationaryKm && !boundaries.isGeoFallback) {
+              placements.push('Geostationary Orbit');
+          }
+      }
     }
     
     if (parentBody.parentId && parentBody.roleHint !== 'star') {
@@ -145,12 +156,22 @@
       }
       const loEnd = logTransform(boundaries.leoMoeBoundaryKm) * 100;
       zones.push({ name: 'Low Orbit', startPos: lastPos, endPos: loEnd, color: '#3b82f6' });
-      const moEnd = logTransform(boundaries.meoHeoBoundaryKm) * 100;
-      zones.push({ name: 'Med Orbit', startPos: loEnd, endPos: moEnd, color: '#10b981' });
-      zones.push({ name: 'High Orbit', startPos: moEnd, endPos: 100, color: '#a855f7' });
+      
+      if (boundaries.leoMoeBoundaryKm < boundaries.meoHeoBoundaryKm) {
+        const moEnd = logTransform(boundaries.meoHeoBoundaryKm) * 100;
+        zones.push({ name: 'Med Orbit', startPos: loEnd, endPos: moEnd, color: '#10b981' });
+        
+        if (boundaries.meoHeoBoundaryKm < boundaries.heoUpperBoundaryKm) {
+            zones.push({ name: 'High Orbit', startPos: moEnd, endPos: 100, color: '#a855f7' });
+        }
+      } else if (boundaries.meoHeoBoundaryKm < boundaries.heoUpperBoundaryKm) {
+          // Fallback if Med is collapsed but High exists (unlikely but safe)
+           zones.push({ name: 'High Orbit', startPos: loEnd, endPos: 100, color: '#a855f7' });
+      }
+      
       orbitalZones = zones;
 
-      goTickPos = boundaries.geoStationaryKm ? logTransform(boundaries.geoStationaryKm) * 100 : null;
+      goTickPos = (boundaries.geoStationaryKm && !boundaries.isGeoFallback) ? logTransform(boundaries.geoStationaryKm) * 100 : null;
     }
   }
 

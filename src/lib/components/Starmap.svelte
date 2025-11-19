@@ -1,7 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import type { Starmap, System, CelestialBody, RulePack, Barycenter } from '$lib/types';
-  import ContextMenu from './ContextMenu.svelte';
   import GmNotesEditor from './GmNotesEditor.svelte';
   import Grid from './Grid.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
@@ -440,19 +439,42 @@
   <GmNotesEditor body={starmap} />
 
   {#if showContextMenu}
-    <ContextMenu
-      x={contextMenuX}
-      y={contextMenuY}
-      on:zoom={handleContextMenuZoom}
-      on:link={handleContextMenuLink}
-      on:delete={handleContextMenuDelete}
-      on:addsystem={handleContextMenuAddSystem}
-      isStar={isStarContextMenu}
-    />
+    <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px;">
+      <ul>
+        {#if contextMenuSystemId}
+            <li on:click={handleContextMenuZoom}>Zoom to System</li>
+            <li on:click={handleContextMenuLink}>Start Link</li>
+            <li on:click={handleContextMenuDelete}>Delete System</li>
+        {:else}
+          <li on:click={handleContextMenuAddSystem}>Add System Here</li>
+        {/if}
+      </ul>
+    </div>
   {/if}
 </div>
 
 <style>
+  .context-menu {
+    position: absolute;
+    background-color: #333;
+    border: 1px solid #555;
+    border-radius: 5px;
+    z-index: 100;
+    color: #eee;
+  }
+  .context-menu ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .context-menu li {
+    padding: 0.5em 1em;
+    cursor: pointer;
+  }
+  .context-menu li:hover {
+    background-color: #555;
+  }
+
   .starmap-container {
     width: 100%;
     height: 100%;

@@ -10,6 +10,7 @@
   import type { PanState } from '$lib/cameraStore';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
   import { scaleBoxCox } from '$lib/physics/scaling';
+  import { findDominantGravitationalBody } from '$lib/physics/orbits';
 
   export let system: System | null;
   export let rulePack: RulePack;
@@ -22,7 +23,8 @@
 
   const dispatch = createEventDispatcher<{ 
     focus: string | null,
-    showBodyContextMenu: { node: CelestialBody, x: number, y: number }
+    showBodyContextMenu: { node: CelestialBody, x: number, y: number },
+    backgroundContextMenu: { x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number }
   }>();
 
   function getPlanetColor(node: CelestialBody): string {
@@ -733,6 +735,15 @@
       }
       if (clickedNode) {
         dispatch("showBodyContextMenu", { node: clickedNode, x: event.clientX, y: event.clientY });
+      } else {
+        const dominantBody = findDominantGravitationalBody(clickPos.x, clickPos.y, system.nodes, targetPositions);
+        dispatch("backgroundContextMenu", { 
+            x: clickPos.x, 
+            y: clickPos.y, 
+            dominantBody, 
+            screenX: event.clientX, 
+            screenY: event.clientY 
+        });
       }
   }
 

@@ -17,6 +17,11 @@
   if (!Array.isArray(construct.physical_parameters.dimensionsM)) {
     construct.physical_parameters.dimensionsM = [0, 0, 0];
   }
+  
+  // Initialize icon color if missing
+  if (!construct.icon_color) {
+    construct.icon_color = '#f0f0f0';
+  }
 
   // UI variable for mass in tonnes
   let massTonnes: number = construct.physical_parameters.massKg / 1000;
