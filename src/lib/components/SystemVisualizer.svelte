@@ -212,10 +212,10 @@
 
       if (!targetNode || !targetPosition) return { pan: currentPan, zoom: currentZoom };
 
-      const hasChildren = system.nodes.some(n => n.parentId === nodeId);
+      const children = system.nodes.filter(n => n.parentId === nodeId);
 
-      if (hasChildren) {
-          const children = system.nodes.filter(n => n.parentId === nodeId);
+      if (children.length > 0) {
+          // Rule 1: Has children. Frame focus center and fit its whole local system.
           let maxDistance = children.reduce((max, node) => {
               const childPos = targetPositions.get(node.id);
               if (childPos) {
@@ -226,61 +226,46 @@
               return max;
           }, 0);
 
-          if (maxDistance === 0 && targetNode.kind === 'body' && targetNode.radiusKm) {
+          // Ensure we don't zoom in infinitely if children are at 0 distance or missing
+          let minSize = 0.0001;
+          if (targetNode.kind === 'body' && targetNode.radiusKm) {
               let radiusInAU = (targetNode.radiusKm || 0) / AU_KM;
               if (toytownFactor > 0) {
                   radiusInAU = scaleBoxCox(radiusInAU, toytownFactor, x0_distance);
               }
-              maxDistance = radiusInAU;
+              minSize = radiusInAU;
           }
+          maxDistance = Math.max(maxDistance, minSize * 3); // Ensure visible context around the body
 
-          const paddingFactor = 1.02; // 2% padding
-          const targetWorldSize = maxDistance * 2 * paddingFactor;
+          const paddingFactor = 1.1; // 10% padding
+          const targetWorldRadius = maxDistance * paddingFactor;
 
           let newZoom = currentZoom;
-          if (targetWorldSize > 0) {
-              const zoomX = canvas.width / targetWorldSize;
-              const zoomY = canvas.height / targetWorldSize;
-              newZoom = Math.min(zoomX, zoomY);
+          if (targetWorldRadius > 0) {
+              const minDimension = Math.min(canvas.width, canvas.height);
+              newZoom = (minDimension / 2) / targetWorldRadius;
           }
           return { pan: targetPosition, zoom: newZoom };
       } else {
-          // Body has NO children.
-          // If it's a moon or a construct, frame it with its parent.
-          if ((targetNode.kind === 'body' && targetNode.roleHint === 'moon' && targetNode.parentId) || (targetNode.kind === 'construct' && targetNode.parentId)) {
-              const parentNode = nodesById.get(targetNode.parentId);
-              const parentPosition = parentNode ? targetPositions.get(parentNode.id) : null;
-
-              if (parentPosition) {
-                  const dx = targetPosition.x - parentPosition.x;
-                  const dy = targetPosition.y - parentPosition.y;
+          // Rule 2: No children. Center with parent at the edge of viewport.
+          if (targetNode.parentId) {
+              const parentPos = targetPositions.get(targetNode.parentId);
+              if (parentPos) {
+                  const dx = targetPosition.x - parentPos.x;
+                  const dy = targetPosition.y - parentPos.y;
                   const distance = Math.sqrt(dx*dx + dy*dy);
                   
-                  // Also consider the parent's radius for padding
-                  let parentRadius = 0;
-                  if (parentNode.kind === 'body' && parentNode.radiusKm) {
-                      parentRadius = parentNode.radiusKm / AU_KM;
-                      if (toytownFactor > 0) {
-                          parentRadius = scaleBoxCox(parentRadius, toytownFactor, x0_distance);
-                      }
-                  }
+                  // Calculate zoom to put parent at ~90% of the way to the edge
+                  const minDimension = Math.min(canvas.width, canvas.height);
+                  const marginFactor = 0.9; 
+                  const newZoom = (minDimension / 2 * marginFactor) / distance;
 
-                  const paddingFactor = 1.2; // 20% padding
-                  const targetWorldSize = (distance + parentRadius) * 2 * paddingFactor;
-
-                  let newZoom = currentZoom;
-                  if (targetWorldSize > 0) {
-                      const zoomX = canvas.width / targetWorldSize;
-                      const zoomY = canvas.height / targetWorldSize;
-                      newZoom = Math.min(zoomX, zoomY);
-                  }
-
-                  // Pan to the target node (child), keeping the parent in view
                   return { pan: targetPosition, zoom: newZoom };
               }
           }
 
-          // For other childless bodies (like planets), frame the body itself with padding.
+          // Fallback: No children, no parent (e.g. Root Star with no planets yet).
+          // Frame the body itself comfortably.
           let bodyRadius = 0;
           if (targetNode.kind === 'body' && targetNode.radiusKm) {
               bodyRadius = targetNode.radiusKm / AU_KM;
@@ -294,11 +279,8 @@
 
           let newZoom = currentZoom;
           if (targetWorldSize > 0) {
-              const zoomX = canvas.width / targetWorldSize;
-              const zoomY = canvas.height / targetWorldSize;
-              newZoom = Math.min(zoomX, zoomY);
-          } else {
-              newZoom = currentZoom * 2; // Fallback for things with no radius
+              const minDimension = Math.min(canvas.width, canvas.height);
+              newZoom = minDimension / targetWorldSize;
           }
           return { pan: targetPosition, zoom: newZoom };
       }
@@ -659,7 +641,8 @@
               radiusInAU = scaleBoxCox(radiusInAU, toytownFactor, x0_distance);
           }
           let minRadiusPx = 2;
-          if (node.roleHint === 'star') minRadiusPx = 10;
+          if (node.kind === 'construct') minRadiusPx = 12;
+          else if (node.roleHint === 'star') minRadiusPx = 10;
           else if (node.roleHint === 'planet') {
               const isGasGiant = node.classes.some(c => c.includes('gas-giant') || c.includes('ice-giant'));
               minRadiusPx = isGasGiant ? 15 : 12;
@@ -714,7 +697,8 @@
               radiusInAU = scaleBoxCox(radiusInAU, toytownFactor, x0_distance);
           }
           let minRadiusPx = 2;
-          if (node.roleHint === 'star') minRadiusPx = 10;
+          if (node.kind === 'construct') minRadiusPx = 12;
+          else if (node.roleHint === 'star') minRadiusPx = 10;
           else if (node.roleHint === 'planet') {
               const isGasGiant = node.classes.some(c => c.includes('gas-giant') || c.includes('ice-giant'));
               minRadiusPx = isGasGiant ? 15 : 12;
@@ -953,7 +937,7 @@
           }
       }
 
-      // --- Draw Celestial Bodies and Barycenters ---
+      // --- Draw Constructs and Barycenters (Background Layer) ---
       for (const node of system.nodes) {
           const pos = scaledWorldPositions.get(node.id);
           if (!pos) continue;
@@ -967,7 +951,29 @@
               ctx.moveTo(pos.x, pos.y - 10 / zoom);
               ctx.lineTo(pos.x, pos.y + 10 / zoom);
               ctx.stroke();
-          } else if (node.kind === 'body') {
+          } else if (node.kind === 'construct') {
+              const size = 8 / zoom; // Size of the icon in world units
+              ctx.fillStyle = node.icon_color || '#f0f0f0'; // Default to off-white
+
+              if (node.icon_type === 'triangle') {
+                  ctx.beginPath();
+                  ctx.moveTo(pos.x, pos.y - size / 2);
+                  ctx.lineTo(pos.x + size / 2, pos.y + size / 2);
+                  ctx.lineTo(pos.x - size / 2, pos.y + size / 2);
+                  ctx.closePath();
+                  ctx.fill();
+              } else { // Default to square
+                  ctx.fillRect(pos.x - size / 2, pos.y - size / 2, size, size);
+              }
+          }
+      }
+
+      // --- Draw Celestial Bodies (Foreground Layer) ---
+      for (const node of system.nodes) {
+          const pos = scaledWorldPositions.get(node.id);
+          if (!pos) continue;
+
+          if (node.kind === 'body') {
               if (node.roleHint === 'ring' || node.roleHint === 'belt') continue;
 
               let radiusInAU = (node.radiusKm || 0) / AU_KM;
@@ -998,20 +1004,6 @@
               ctx.arc(pos.x, pos.y, finalRadius, 0, 2 * Math.PI);
               ctx.fillStyle = color;
               ctx.fill();
-          } else if (node.kind === 'construct') {
-              const size = 8 / zoom; // Size of the icon in world units
-              ctx.fillStyle = node.icon_color || '#f0f0f0'; // Default to off-white
-
-              if (node.icon_type === 'triangle') {
-                  ctx.beginPath();
-                  ctx.moveTo(pos.x, pos.y - size / 2);
-                  ctx.lineTo(pos.x + size / 2, pos.y + size / 2);
-                  ctx.lineTo(pos.x - size / 2, pos.y + size / 2);
-                  ctx.closePath();
-                  ctx.fill();
-              } else { // Default to square
-                  ctx.fillRect(pos.x - size / 2, pos.y - size / 2, size, size);
-              }
           }
       }
       ctx.restore(); // Restores to pre-camera-transform state
