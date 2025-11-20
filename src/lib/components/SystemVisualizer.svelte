@@ -142,9 +142,10 @@
 
       let x: number, y: number;
 
-      if (node.kind === 'body' && node.orbit) {
+      if ((node.kind === 'body' || node.kind === 'construct') && node.orbit) {
         // Correct logic for eccentric orbits
-        const { a_AU: a, e, ω_rad: w = 0 } = node.orbit.elements; // Default w to 0 for circular orbits
+        const { a_AU: a, e, omega_deg } = node.orbit.elements; 
+        const w = (omega_deg || 0) * (Math.PI / 180);
         
         const dxTrue = nodeTruePos.x - parentTruePos.x;
         const dyTrue = nodeTruePos.y - parentTruePos.y;
@@ -161,7 +162,6 @@
           r_scaled = a_scaled;
         } else {
           // For an ellipse, use the polar equation to find the correct scaled radius
-          const trueAnomaly = totalAngle - w;
           r_scaled = (a_scaled * (1 - e * e)) / (1 + e * Math.cos(trueAnomaly));
         }
 
@@ -173,7 +173,7 @@
         // Fallback for nodes without orbits (e.g., barycenters)
         const dxTrue = nodeTruePos.x - parentTruePos.x;
         const dyTrue = nodeTruePos.y - parentTruePos.y;
-        const trueDistance = Math.sqrt(dxTrue * dxTrue + dyTrue);
+        const trueDistance = Math.sqrt(dxTrue * dxTrue + dyTrue * dyTrue);
         
         let scaledDistance = trueDistance;
         if (trueDistance > 0) {
