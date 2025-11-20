@@ -83,10 +83,14 @@ export function propagate(node: CelestialBody | Barycenter, tMs: number): {x: nu
   const r = a_m * (1 - e * Math.cos(E));
 
   // 6. Position in orbital frame (z=0 for 2D projection)
-  const x = r * Math.cos(f) / AU_KM / 1000; // convert back to AU for visualization scale
-  const y = r * Math.sin(f) / AU_KM / 1000;
+  const x_perifocal = r * Math.cos(f) / AU_KM / 1000; // convert back to AU for visualization scale
+  const y_perifocal = r * Math.sin(f) / AU_KM / 1000;
 
-  // TODO: Apply argument of periapsis and longitude of ascending node rotations for inclined orbits
+  // Apply 2D rotation based on Argument of Periapsis (omega) to match visualizer
+  const omega_rad = (node.orbit.elements.omega_deg || 0) * (Math.PI / 180);
+  
+  const x = x_perifocal * Math.cos(omega_rad) - y_perifocal * Math.sin(omega_rad);
+  const y = x_perifocal * Math.sin(omega_rad) + y_perifocal * Math.cos(omega_rad);
 
   return { x, y };
 }
