@@ -12,7 +12,7 @@ Once in a system, you'll see the **System View**. This is where you can explore 
 
 * **Pan:** Click and drag on the background to move the view.
 * **Zoom:** Use your mouse wheel to zoom in and out.
-* **Focus:** Click on any celestial body (star, planet, moon) to focus on it. This will center the view on that body and update the details panel.
+* **Focus:** Click on any celestial body (star, planet, moon, or construct) to focus on it. This will center the view on that body and update the details panel.
 * **Zoom Out:** If you're focused on a planet or moon, click the "Zoom Out" button to go back to its parent body or the main star system view.
 
 ## 3. Understanding the UI Controls
@@ -24,30 +24,49 @@ At the top of the System View, you'll find several controls:
     * **Select Star Type:** Choose a specific star type (e.g., Type G, Type K) or keep it "Random". (Our Sun is a Type G star.)
     * **Generate System:** Creates a completely new, random system based on your selected star type.
     * **Generate Empty System:** Creates a system with just the central star, allowing you to add planets manually.
+
+    > **Note on Regenerate & Templates:** If the "Regenerate Solar System" options or certain template options for constructs are missing or disabled, it means you have manually edited the system. These options are automatically hidden to prevent accidental deletion of your work. You can re-enable them via the "Hamburger (☰)" menu on teh top right of the system page).
+
 * **Play/Pause & Time Scales:** Control the simulation of planetary orbits. You can play/pause and adjust the time scale (e.g., 1s, 1h, 1d, 1y) to observe orbital mechanics.
 * **Toggle Names:** A checkbox (on by default) that shows or hides the names of celestial bodies in the orbital diagram.
 * **Hamburger Menu (☰):** Contains options like "Download System" (to save your system as a JSON file) and "Upload System" (to load a previously saved system).
     > **Note:** The main Starmap view also has save/load options, which you should use for normal saving. This menu option is for saving a *single system* to move it to a new starmap.
 
-## 4. Adding Planets Manually
+## 4. Adding Planets & Constructs
 
-If you started with an empty system or want to expand an existing one, you can add planets:
+If you started with an empty system or want to expand an existing one, you have powerful tools to add new bodies.
 
+### Adding Planets
 1.  **Focus on the host body:** Click on the star or a planet to select it as the host for your new body.
 2.  **GM Tools:** Below the map, you'll see the body's "GM Tools".
 3.  **Add Planetary Body:** Select a "Planet Type" (e.g., Terrestrial, Gas Giant) and click "Add Planet".
-4.  **Adding Earth-like Planets:** For specific story needs, you can add a planet designed to be Earth-like. This option will attempt to generate a planet with parameters (mass, orbit, atmosphere, magnetosphere) that align with Earth-like conditions, making it suitable for your plot. This may fail if your star is too active or cold. Adding Earth-like planets as moons around gas giants is possible, but it is very difficult and will often fail.
+4.  **Adding Earth-like Planets:** For specific story needs, you can add a planet designed to be Earth-like. This option will attempt to generate a planet with parameters (mass, orbit, atmosphere, magnetosphere) that align with Earth-like conditions, making it suitable for your plot.
+
+### Adding Ships & Stations (Constructs)
+Want to populate your system with space stations, shipyards, or fleets?
+1.  **Right-click** on any planet, moon, or star in the visualizer.
+2.  Select **"Add Construct"**.
+3.  A library of templates will appear. You can choose from:
+    *   **Hard Sci-Fi:** Realistic stations and platforms.
+    *   **The Expanse:** Iconic ships and stations from the series.
+    *   **Aliens:** Classic vessels like the *Sulaco* or *Nostromo*.
+    *   **Mothership:** The pirate haven *Prospero's Dream*.
+4.  Select a template, and it will automatically be placed in a stable mid-range orbit around your chosen body.
+5.  Templates are just starting points to your own creations... have fun! Welcome to the "Tyranny of the Rocket Equation"!
+6.  Everything is just JSON files - so you can export constructs to share with others or to manually tweak from the contructs editor.
 
 ## 5. Detailed Information & GM Quick Notes
 
-When a celestial body is focused, the right-hand panel also displays:
+When a celestial body is focused, the right-hand panel displays:
 
-* **Scientific Data, Tags & Picture:** Provides in-depth technical data about the selected body.
-* **Detailed Information:** Your hand-created or AI-generated planetary description. You can edit this information using the edit/save/cancel buttons, and it supports Markdown rendering.
+* **Technical Data:**
+    *   **Planets:** Mass, Radius, Gravity, Atmosphere, Temperature, and Delta-V budgets for landing.
+    *   **Constructs:** Crew counts, Cargo capacity, Power output, Fuel reserves, and Engine specs.
+*   **Detailed Information:** Your hand-created or AI-generated planetary description. You can edit this information using the edit/save/cancel buttons, and it supports Markdown rendering.
     * I recommend trying to connect a free LLM from OpenRouter—sign up and get an API key (just an email is needed). I have found the free model: "DeepSeek: DeepSeek R1 0528 Qwen3 8B (free) (Free / Free)" to be very useful for this app during testing. It's slow but effective.
     * These descriptions are not designed to replace the GM, but to provide a variety of ideas to build upon. Try the different styles and settings; it is designed to be experimented with.
-    * You can set up the LLM options from the **Settings** on the main StarMap page (top level). You can tweak other settings there as well.
-* **GM Quick Notes:** A simple, auto-saving text area for you to jot down quick notes or plot hooks related to the selected body or the overall starmap.
+    * You can set up the LLM options from the **Settings** on the main StarMap page (top level).
+*   **GM Quick Notes:** A simple, auto-saving text area for you to jot down quick notes or plot hooks related to the selected body.
 
 ## 6. Back to the Starmap & Connecting Systems
 

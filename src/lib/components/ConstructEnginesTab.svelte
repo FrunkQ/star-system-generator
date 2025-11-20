@@ -80,8 +80,17 @@
             <small>({rulePack.fuelDefinitions?.entries.find(f => f.id === engineFuelMap.get(engine.engine_id))?.name || 'Unknown Fuel'})</small>
           </div>
           <div class="quantity-controls">
-            <button on:click={() => changeQuantity(engine.engine_id, -1)}>-</button>
-            <span>{engine.quantity}</span>
+            <button on:click={() => changeQuantity(engine.engine_id, -1)} disabled={engine.quantity <= 1}>-</button>
+            <input
+              type="number"
+              bind:value={engine.quantity}
+              min="1"
+              on:change={() => {
+                engine.quantity = Math.max(1, engine.quantity || 1);
+                dispatch('update');
+              }}
+              class="quantity-input"
+            />
             <button on:click={() => changeQuantity(engine.engine_id, 1)}>+</button>
           </div>
           <button class="remove-btn" on:click={() => removeEngine(engine.engine_id)}>Remove</button>

@@ -78,7 +78,8 @@
           "K": 0.4
         },
         "main": "Na",
-        "pressure_bar": 1e-11
+        "pressure_bar": 1e-11,
+        "molarMassKg": 0.0294332
       },
       "orbital_period_days": 87.97,
       "axial_tilt_deg": 0.034,
@@ -87,7 +88,20 @@
       "image": {
         "url": "/images/planet_types/web20barren20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 3.683564214339057,
+      "calculatedRotationPeriod_s": 5067360,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 217856.04974201214,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 3447.46746310225,
+      "propulsiveLandBudget_ms": 3447.46746310225,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-venus",
@@ -141,7 +155,8 @@
           "N2": 0.035
         },
         "main": "CO2",
-        "pressure_bar": 92
+        "pressure_bar": 92,
+        "molarMassKg": 0.04345014
       },
       "orbital_period_days": 224.7,
       "axial_tilt_deg": 177.36,
@@ -150,7 +165,20 @@
       "image": {
         "url": "/images/planet_types/web20terrestrial20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 8.869475448060673,
+      "calculatedRotationPeriod_s": -20997000,
+      "orbitalBoundaries": {
+        "minLeoKm": 400.29904535665696,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 1004980.1034093457,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 29462.31754996301,
+      "propulsiveLandBudget_ms": 9864.123715312962,
+      "aerobrakeLandBudget_ms": 200
     },
     {
       "id": "solar-system-earth",
@@ -201,7 +229,8 @@
           "Other Trace": 0.0004
         },
         "main": "N2",
-        "pressure_bar": 1.013
+        "pressure_bar": 1.013,
+        "molarMassKg": 0.028959634200000004
       },
       "hydrosphere": {
         "composition": "water",
@@ -225,7 +254,20 @@
       "image": {
         "url": "/images/planet_types/web20earth20analog20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 9.819973426224687,
+      "calculatedRotationPeriod_s": 86162.40000000001,
+      "orbitalBoundaries": {
+        "minLeoKm": 174.59343956330287,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 35792.2216003442,
+        "heoUpperBoundaryKm": 1490025.4381473116,
+        "geoStationaryKm": 35792.2216003442,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 10410.683631702896,
+      "propulsiveLandBudget_ms": 9100.569836997916,
+      "aerobrakeLandBudget_ms": 802.6009956683278
     },
     {
       "id": "solar-system-luna",
@@ -271,7 +313,20 @@
       "image": {
         "url": "/images/planet_types/web20crater20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 1.623381040294872,
+      "calculatedRotationPeriod_s": 2360520,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 59787.31975595439,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 1931.3366576460696,
+      "propulsiveLandBudget_ms": 1931.3366576460696,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-mars",
@@ -318,7 +373,8 @@
           "Noble Gases": 0.016
         },
         "main": "CO2",
-        "pressure_bar": 0.006
+        "pressure_bar": 0.006,
+        "molarMassKg": 0.043205046000000004
       },
       "orbital_period_days": 687,
       "axial_tilt_deg": 25.19,
@@ -327,7 +383,20 @@
       "image": {
         "url": "/images/planet_types/web20desert20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 3.7122336687009745,
+      "calculatedRotationPeriod_s": 88560,
+      "orbitalBoundaries": {
+        "minLeoKm": 173.9424757768996,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 16996.90684070823,
+        "heoUpperBoundaryKm": 1079042.9061374362,
+        "geoStationaryKm": 16996.90684070823,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 4139.6498809183695,
+      "propulsiveLandBudget_ms": 4079.2780839913244,
+      "aerobrakeLandBudget_ms": 1197.0044955033732
     },
     {
       "id": "solar-system-phobos",
@@ -345,7 +414,7 @@
         "hostMu": 42643806000000,
         "t0": 1762339146908,
         "elements": {
-          "a_AU": 6.26e-05,
+          "a_AU": 0.0000626,
           "e": 0.0151,
           "i_deg": 1.093,
           "omega_deg": 0,
@@ -373,7 +442,20 @@
       "image": {
         "url": "/images/planet_types/web20crater20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.005639953762755102,
+      "calculatedRotationPeriod_s": 27576,
+      "orbitalBoundaries": {
+        "minLeoKm": 1.0720050607463343,
+        "leoMoeBoundaryKm": 5.360025303731671,
+        "meoHeoBoundaryKm": 5.360025303731671,
+        "heoUpperBoundaryKm": 5.360025303731671,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 9.139966910986526,
+      "propulsiveLandBudget_ms": 9.139966910986526,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-deimos",
@@ -419,7 +501,20 @@
       "image": {
         "url": "/images/planet_types/web20crater20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.0025523467741935483,
+      "calculatedRotationPeriod_s": 109260,
+      "orbitalBoundaries": {
+        "minLeoKm": 3.032136101970908,
+        "leoMoeBoundaryKm": 15.16068050985454,
+        "meoHeoBoundaryKm": 15.16068050985454,
+        "heoUpperBoundaryKm": 15.16068050985454,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 4.574709539959887,
+      "propulsiveLandBudget_ms": 4.574709539959887,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-asteroid-belt",
@@ -499,7 +594,8 @@
           "CH4": 0.003
         },
         "main": "H2",
-        "pressure_bar": 200000
+        "pressure_bar": 200000,
+        "molarMassKg": 0.002302046
       },
       "orbital_period_days": 4332.6,
       "axial_tilt_deg": 3.13,
@@ -508,7 +604,20 @@
       "image": {
         "url": "/images/planet_types/web20ammonia20clouds20gas20giant.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 25.918562037153677,
+      "calculatedRotationPeriod_s": 35730,
+      "orbitalBoundaries": {
+        "minLeoKm": 504.7319662665522,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 90094.92904786355,
+        "heoUpperBoundaryKm": 53076768.64063506,
+        "geoStationaryKm": 90094.92904786355,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 2041949.331442323,
+      "propulsiveLandBudget_ms": 71517.79497880623,
+      "aerobrakeLandBudget_ms": 200
     },
     {
       "id": "solar-system-jupiter-rings",
@@ -575,7 +684,8 @@
           "S": 0.1
         },
         "main": "SO2",
-        "pressure_bar": 1e-08
+        "pressure_bar": 1e-8,
+        "molarMassKg": 0.0608654
       },
       "orbital_period_days": 1.77,
       "axial_tilt_deg": 0,
@@ -584,7 +694,20 @@
       "image": {
         "url": "/images/planet_types/web20lava20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 1.796185339436256,
+      "calculatedRotationPeriod_s": 152928,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 8738.122830139573,
+        "heoUpperBoundaryKm": 8738.122830139573,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 2080.1752404387335,
+      "propulsiveLandBudget_ms": 2080.1752404387335,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-europa",
@@ -635,7 +758,8 @@
           "O2": 1
         },
         "main": "O2",
-        "pressure_bar": 1e-11
+        "pressure_bar": 1e-11,
+        "molarMassKg": 0.031998
       },
       "orbital_period_days": 3.55,
       "axial_tilt_deg": 0,
@@ -644,7 +768,20 @@
       "image": {
         "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 1.3150808335748123,
+      "calculatedRotationPeriod_s": 306720,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 12079.105168563572,
+        "heoUpperBoundaryKm": 12079.105168563572,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 1647.5844813757253,
+      "propulsiveLandBudget_ms": 1647.5844813757253,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-ganymede",
@@ -699,7 +836,20 @@
       "image": {
         "url": "/images/planet_types/web20ice20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 1.4236489835736867,
+      "calculatedRotationPeriod_s": 617760,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 29050.35233147524,
+        "heoUpperBoundaryKm": 29050.35233147524,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 2226.9754565649328,
+      "propulsiveLandBudget_ms": 2226.9754565649328,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-callisto",
@@ -748,7 +898,20 @@
       "image": {
         "url": "/images/planet_types/web20crater20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 1.2292700478429286,
+      "calculatedRotationPeriod_s": 1441800,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 47623.269958132056,
+        "heoUpperBoundaryKm": 47623.269958132056,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 1979.5069944629295,
+      "propulsiveLandBudget_ms": 1979.5069944629295,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-saturn",
@@ -799,7 +962,8 @@
           "CH4": 0.0045
         },
         "main": "H2",
-        "pressure_bar": 100000
+        "pressure_bar": 100000,
+        "molarMassKg": 0.0021274259999999995
       },
       "orbital_period_days": 10759.2,
       "axial_tilt_deg": 26.73,
@@ -808,7 +972,20 @@
       "image": {
         "url": "/images/planet_types/web20ringed20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 11.185617569939861,
+      "calculatedRotationPeriod_s": 38361.6,
+      "orbitalBoundaries": {
+        "minLeoKm": 912.2719756914298,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 54005.76829774813,
+        "heoUpperBoundaryKm": 65407793.930461206,
+        "geoStationaryKm": 54005.76829774813,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 1342110.924973822,
+      "propulsiveLandBudget_ms": 42110.92497382216,
+      "aerobrakeLandBudget_ms": 200
     },
     {
       "id": "solar-system-saturn-rings",
@@ -875,7 +1052,8 @@
           "CH4": 0.05
         },
         "main": "N2",
-        "pressure_bar": 1.45
+        "pressure_bar": 1.45,
+        "molarMassKg": 0.0274153
       },
       "orbital_period_days": 15.94,
       "axial_tilt_deg": 0,
@@ -884,7 +1062,20 @@
       "image": {
         "url": "/images/planet_types/web20methane20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 1.3491407372632904,
+      "calculatedRotationPeriod_s": 1377360,
+      "orbitalBoundaries": {
+        "minLeoKm": 444.29903477693864,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 49715.16653476396,
+        "heoUpperBoundaryKm": 49715.16653476396,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 3798.0751515648462,
+      "propulsiveLandBudget_ms": 2173.408920646595,
+      "aerobrakeLandBudget_ms": 684.3245689553625
     },
     {
       "id": "solar-system-enceladus",
@@ -910,7 +1101,7 @@
           "M0_rad": 2.378906972412574
         }
       },
-      "massKg": 1.08e+20,
+      "massKg": 108000000000000000000,
       "radiusKm": 252.1,
       "tags": [
         {
@@ -935,7 +1126,8 @@
           "CH4": 0.01
         },
         "main": "H2O",
-        "pressure_bar": 1e-09
+        "pressure_bar": 1e-9,
+        "molarMassKg": 0.01779499
       },
       "orbital_period_days": 1.37,
       "axial_tilt_deg": 0,
@@ -944,7 +1136,20 @@
       "image": {
         "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.113418470881879,
+      "calculatedRotationPeriod_s": 118368.00000000001,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 696.0946151490805,
+        "meoHeoBoundaryKm": 696.0946151490805,
+        "heoUpperBoundaryKm": 696.0946151490805,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 194.45815329673874,
+      "propulsiveLandBudget_ms": 194.45815329673874,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-mimas",
@@ -970,7 +1175,7 @@
           "M0_rad": 5.762193568853683
         }
       },
-      "massKg": 3.75e+19,
+      "massKg": 37500000000000000000,
       "radiusKm": 198.2,
       "tags": [
         {
@@ -990,7 +1195,20 @@
       "image": {
         "url": "/images/planet_types/web20crater20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.06371324004842778,
+      "calculatedRotationPeriod_s": 81216,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 321.5460724502854,
+        "meoHeoBoundaryKm": 321.5460724502854,
+        "heoUpperBoundaryKm": 321.5460724502854,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 129.2303471514097,
+      "propulsiveLandBudget_ms": 129.2303471514097,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-rhea",
@@ -1035,7 +1253,20 @@
       "image": {
         "url": "/images/planet_types/web20ice20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.2631323543800272,
+      "calculatedRotationPeriod_s": 389520,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 5054.70016013434,
+        "heoUpperBoundaryKm": 5054.70016013434,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 515.554750763003,
+      "propulsiveLandBudget_ms": 515.554750763003,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-iapetus",
@@ -1081,7 +1312,20 @@
       "image": {
         "url": "/images/planet_types/web20crater20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.22268687895657055,
+      "calculatedRotationPeriod_s": 6852960,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 35519.859246410204,
+        "heoUpperBoundaryKm": 35519.859246410204,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 465.0943403278924,
+      "propulsiveLandBudget_ms": 465.0943403278924,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-uranus",
@@ -1130,7 +1374,8 @@
           "CH4": 0.023
         },
         "main": "H2",
-        "pressure_bar": 100000
+        "pressure_bar": 100000,
+        "molarMassKg": 0.002642424
       },
       "orbital_period_days": 30688.5,
       "axial_tilt_deg": 97.77,
@@ -1139,7 +1384,20 @@
       "image": {
         "url": "/images/planet_types/web20ice20giant.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 9.007587373223858,
+      "calculatedRotationPeriod_s": -62063.99999999999,
+      "orbitalBoundaries": {
+        "minLeoKm": 664.3466777341742,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 57323.95674102323,
+        "heoUpperBoundaryKm": 70160108.0952793,
+        "geoStationaryKm": 57323.95674102323,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 1324939.0516717813,
+      "propulsiveLandBudget_ms": 24939.051671781603,
+      "aerobrakeLandBudget_ms": 200
     },
     {
       "id": "solar-system-uranus-rings",
@@ -1177,7 +1435,7 @@
           "i_deg": 0.34,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 1.7684307612745348
+          "M0_rad": 1.7684307612745347
         }
       },
       "massKg": 3.4e+21,
@@ -1200,7 +1458,20 @@
       "image": {
         "url": "/images/planet_types/web20ice20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.3650828309318193,
+      "calculatedRotationPeriod_s": 751680,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 9462.162620228628,
+        "heoUpperBoundaryKm": 9462.162620228628,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 616.9739860128137,
+      "propulsiveLandBudget_ms": 616.9739860128137,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-oberon",
@@ -1246,7 +1517,20 @@
       "image": {
         "url": "/images/planet_types/web20crater20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.3453832194561757,
+      "calculatedRotationPeriod_s": 1162800,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 12415.101030640908,
+        "heoUpperBoundaryKm": 12415.101030640908,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 589.732270531489,
+      "propulsiveLandBudget_ms": 589.732270531489,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-ariel",
@@ -1268,7 +1552,7 @@
           "i_deg": 0.26,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 3.3283997576207127
+          "M0_rad": 3.3283997576207125
         }
       },
       "massKg": 1.29e+21,
@@ -1291,7 +1575,20 @@
       "image": {
         "url": "/images/planet_types/web20ice20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.25691433360086513,
+      "calculatedRotationPeriod_s": 217728,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 2659.7352072390545,
+        "heoUpperBoundaryKm": 2659.7352072390545,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 443.500161738119,
+      "propulsiveLandBudget_ms": 443.500161738119,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-neptune",
@@ -1340,7 +1637,8 @@
           "CH4": 0.015
         },
         "main": "H2",
-        "pressure_bar": 100000
+        "pressure_bar": 100000,
+        "molarMassKg": 0.002613734
       },
       "orbital_period_days": 60182,
       "axial_tilt_deg": 28.32,
@@ -1349,7 +1647,20 @@
       "image": {
         "url": "/images/planet_types/web20ice20giant.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 11.27350667591506,
+      "calculatedRotationPeriod_s": 57996,
+      "orbitalBoundaries": {
+        "minLeoKm": 427.4951469346782,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 58883.29385587132,
+        "heoUpperBoundaryKm": 116160577.26195094,
+        "geoStationaryKm": 58883.29385587132,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 1327490.0241186097,
+      "propulsiveLandBudget_ms": 27490.02411860985,
+      "aerobrakeLandBudget_ms": 200
     },
     {
       "id": "solar-system-neptune-rings",
@@ -1417,7 +1728,8 @@
           "CH4": 0.001
         },
         "main": "N2",
-        "pressure_bar": 1.4e-05
+        "pressure_bar": 0.000014,
+        "molarMassKg": 0.028002026
       },
       "orbital_period_days": 5.87,
       "axial_tilt_deg": 0,
@@ -1426,7 +1738,20 @@
       "image": {
         "url": "/images/planet_types/web20ice20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.7797711313361076,
+      "calculatedRotationPeriod_s": 506880.00000000006,
+      "orbitalBoundaries": {
+        "minLeoKm": 138.1323522888948,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 13234.897524442571,
+        "heoUpperBoundaryKm": 13234.897524442571,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 1181.393297975427,
+      "propulsiveLandBudget_ms": 1181.393297975427,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-kuiper-belt",
@@ -1501,7 +1826,8 @@
           "CO": 0.01
         },
         "main": "N2",
-        "pressure_bar": 1e-05
+        "pressure_bar": 0.00001,
+        "molarMassKg": 0.02789422
       },
       "orbital_period_days": 90560,
       "axial_tilt_deg": 119.5,
@@ -1510,7 +1836,20 @@
       "image": {
         "url": "/images/planet_types/web20dwarf20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.615882615041098,
+      "calculatedRotationPeriod_s": -551880,
+      "orbitalBoundaries": {
+        "minLeoKm": 196.12195317528366,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 17672.49108839615,
+        "heoUpperBoundaryKm": 7661221.032754107,
+        "geoStationaryKm": 17672.49108839615,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 983.8068938552108,
+      "propulsiveLandBudget_ms": 983.8068938552108,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-charon",
@@ -1555,10 +1894,335 @@
       "image": {
         "url": "/images/planet_types/web20crater20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.28715577993442903,
+      "calculatedRotationPeriod_s": 551880,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 6068.200305580403,
+        "heoUpperBoundaryKm": 6068.200305580403,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 479.7256429374493,
+      "propulsiveLandBudget_ms": 479.7256429374493,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "construct-iss",
+      "parentId": "solar-system-earth",
+      "name": "International Space Station",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Station/Real World/Research/Orbital",
+      "description": "The premier research facility in LEO. A modular habitation of modules and trusses.",
+      "gmNotes": "Fragile. Zero-G. High value personnel.",
+      "IsTemplate": false,
+      "icon_type": "square",
+      "icon_color": "#aaaaaa",
+      "crew": {
+        "current": 7,
+        "max": 11
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          109,
+          73,
+          20
+        ],
+        "massKg": 450000,
+        "cargoCapacity_tonnes": 10,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [
+        {
+          "engine_id": "engine-rcs-hydrazine",
+          "quantity": 16
+        }
+      ],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-hydrazine",
+          "capacity_units": 2000,
+          "current_units": 1500
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Solar Arrays",
+            "output_MW": 0.12
+          }
+        ],
+        "modules": [
+          "Zvezda",
+          "Destiny Lab",
+          "Unity Node"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 2000,
+          "consumables_current_person_days": 1800
+        }
+      },
+      "current_cargo_tonnes": 5,
+      "orbit": {
+        "hostId": "solar-system-earth",
+        "hostMu": 398600000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.000045,
+          "e": 0.0001,
+          "i_deg": 51.6,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "placement": "Low Orbit"
+    },
+    {
+      "id": "construct-tiangong",
+      "parentId": "solar-system-earth",
+      "name": "Tiangong Station",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Station/Real World/Research/Orbital",
+      "description": "A T-shaped modular station. Modern, automated, and efficient.",
+      "gmNotes": "China's space station. Uses Hall Effect thrusters for station keeping.",
+      "IsTemplate": false,
+      "icon_type": "square",
+      "icon_color": "#ff4444",
+      "crew": {
+        "current": 3,
+        "max": 6
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          37,
+          37,
+          10
+        ],
+        "massKg": 100000,
+        "cargoCapacity_tonnes": 5,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [
+        {
+          "engine_id": "engine-hall-effect",
+          "quantity": 4
+        }
+      ],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-xenon",
+          "capacity_units": 500,
+          "current_units": 500
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Flex Solar Wings",
+            "output_MW": 1
+          }
+        ],
+        "modules": [
+          "Tianhe Core",
+          "Wentian Lab"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 1000,
+          "consumables_current_person_days": 900
+        }
+      },
+      "current_cargo_tonnes": 2,
+      "orbit": {
+        "hostId": "solar-system-earth",
+        "hostMu": 398600000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.000045,
+          "e": 0.0001,
+          "i_deg": 41.5,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 2.1
+        }
+      },
+      "placement": "Low Orbit",
+      "cargoDescription": ""
+    },
+    {
+      "id": "construct-lunar-gateway",
+      "parentId": "solar-system-luna",
+      "name": "Lunar Gateway",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Station/Real World/Outpost/Lunar",
+      "description": "A small station in a Near-Rectilinear Halo Orbit around the Moon. Staging point for surface landings.",
+      "gmNotes": "The bridge to the surface. High radiation environment outside.",
+      "IsTemplate": false,
+      "icon_type": "square",
+      "icon_color": "#ffffff",
+      "crew": {
+        "current": 0,
+        "max": 4
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          20,
+          10,
+          10
+        ],
+        "massKg": 40000,
+        "cargoCapacity_tonnes": 5,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [
+        {
+          "engine_id": "engine-hall-effect",
+          "quantity": 2
+        }
+      ],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-xenon",
+          "capacity_units": 1000,
+          "current_units": 1000
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Solar Array",
+            "output_MW": 0.06
+          }
+        ],
+        "modules": [
+          "HALO Hab",
+          "PPE Power Module"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 120,
+          "consumables_current_person_days": 120
+        }
+      },
+      "current_cargo_tonnes": 1,
+      "orbit": {
+        "hostId": "solar-system-luna",
+        "hostMu": 4902.8,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00002,
+          "e": 0.05,
+          "i_deg": 90,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "placement": "High Orbit"
+    },
+    {
+      "id": "construct-ssto-heavy",
+      "parentId": "solar-system-earth",
+      "name": "Ascension Heavy Lifter",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Ship/Standard/Transport/SSTO",
+      "description": "A shimmering stainless steel tower. This reusable heavy lifter is capable of Single-Stage-To-Orbit with 100t of cargo. Uses 30 massive Methalox Raptors.",
+      "gmNotes": "The workhorse of the new era. Capable of landing on Mars or Earth.",
+      "IsTemplate": false,
+      "icon_type": "triangle",
+      "icon_color": "#ff7e38",
+      "crew": {
+        "current": 6,
+        "max": 20
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          95,
+          14,
+          14
+        ],
+        "massKg": 180000,
+        "cargoCapacity_tonnes": 120,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": true,
+        "has_landing_gear": true
+      },
+      "engines": [
+        {
+          "engine_id": "engine-chemical-methalox",
+          "quantity": 30
+        },
+        {
+          "engine_id": "engine-rcs-hydrazine",
+          "quantity": 24
+        }
+      ],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-methalox",
+          "capacity_units": 8000,
+          "current_units": 8000
+        },
+        {
+          "fuel_type_id": "fuel-hydrazine",
+          "capacity_units": 20,
+          "current_units": 20
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Fuel Cell",
+            "output_MW": 16
+          }
+        ],
+        "modules": [
+          "Cargo Bay (Large)",
+          "Header Tanks",
+          "Heat Tiles"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 200,
+          "consumables_current_person_days": 200
+        }
+      },
+      "current_cargo_tonnes": 120,
+      "orbit": {
+        "hostId": "solar-system-earth",
+        "hostMu": 398600000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00004258750455597227,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "placement": "Surface",
+      "cargoDescription": "",
+      "ui_parentId": null
     }
   ],
   "rulePackId": "starter-sf-pack",
   "rulePackVersion": "0.1.3",
-  "tags": []
+  "tags": [],
+  "toytownFactor": 0,
+  "isManuallyEdited": true
 }

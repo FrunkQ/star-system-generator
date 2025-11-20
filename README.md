@@ -23,27 +23,35 @@ A quick note on data: This application runs entirely in your browser. Your gener
 ## Features
 
 *   **Procedural Generation**: Creates unique star systems based on a seed and a JSON-based rulepack.
-*   **Variety of Star Types**: Supports generation of various spectral types (O, B, A, F, G, K, M) as well as exotic objects like White Dwarfs, Neutron Stars, and Black Holes.
-*   **Binary & Single Star Systems**: Can generate both single-star systems and complex binary systems with circumbinary planets or planets orbiting each star.
-*   **Detailed Planetology**: Generates planets with a wide range of properties, including mass, radius, temperature (with equilibrium, greenhouse, and tidal heating components), atmospheric pressure, and hydrosphere coverage.
-*   **Deep Classification**: Planets are classified into one of over 60 types (e.g., 'planet/ocean', 'planet/hot-jupiter', 'planet/super-earth') based on their physical characteristics.
-*   **Environmental Simulation**: Models stellar radiation output and surface radiation on planets, including the effects of magnetic fields.
-*   **Habitability & Biospheres**: A habitability score is calculated based on multiple factors. Qualifying planets can develop unique, procedurally generated biospheres.
+*   **Constructs & Infrastructure (NEW!)**:
+    *   **Ships & Stations**: Place artificial constructs anywhere in the system—from low orbit to deep space or even on planetary surfaces.
+    *   **Detailed Specs**: Every construct has tracked stats for Mass, Crew (Current/Max), Power, Fuel, Engines, and Cargo.
+    *   **Template System**: Includes a rich library of pre-built templates to get you started, featuring:
+        *   **Hard Sci-Fi**: Realistic near-future stations and outposts.
+        *   **The Expanse**: Accurate recreations of ships and stations like the *Rocinante*, *Tycho Station*, and *Ceres*.
+        *   **Aliens**: Famous vessels like the *USS Sulaco*, *Nostromo*, and *Dropship*.
+        *   **Mothership RPG**: The massive pirate haven *Prospero's Dream*.
+    *   **Customization**: Load any template, tweak its stats, refit its modules, and save it as a unique object in your system.
+    *   **Visual Distinction**: Distinct visual icons for Ships (Triangles), Stations (Squares), and natural bodies (Circles).
+*   **Orbital Mechanics & Planetology**:
+    *   **Delta-V Calculations**: Automatically calculates the Delta-V budget required to land on or ascend from any planet, broken down by Propulsive vs. Aerobraking methods.
+    *   **Orbital Boundaries**: Visualizes and calculates key zones like Low Orbit (LEO), Geostationary Orbit (GEO), and the Hill Sphere.
+    *   **Atmospheric Modeling**: Detailed atmospheric data including composition, pressure, and scale height, influencing aerobraking feasibility.
+    *   **Habitability**: Complex habitability scoring based on temperature, atmosphere, and magnetosphere protection.
 *   **Interactive 2D Visualizer**: An orbital view of the generated system with playback controls, zoom, and focus abilities.
 *   **Starmap**: A pan and zoomable map of multiple star systems, with enhanced usability and persistent UI settings.
-    *   **Dynamic Grid/Hex Overlay**: Toggle between a square grid, a hex grid (or as some might call it, the "Traveller hex view"), or no grid. The grid dynamically renders only the visible portion.
+    *   **Dynamic Grid/Hex Overlay**: Toggle between a square grid, a hex grid (or as some might call it, the "Traveller hex view"), or no grid.
     *   **Snap-to-Grid**: When adding new systems, coordinates snap to the center of the nearest grid or hex cell.
     *   **Toggleable Background**: Display a static, faded background image of the Milky Way.
-    *   **Mouse Zoom Control**: Enable or disable mouse wheel zooming.
     *   **State Persistence**: Grid type, background visibility, and mouse zoom settings are saved and loaded with your starmap data.
 *   **GM Editing Tools**:
     *   **Rename**: Click on any body's name to rename it.
-    *   **Add**: Add a new planet or moon to any star or planet.
-    *   **Delete**: Remove any planet or moon and its entire orbital system.
+    *   **Add**: Add a new planet, moon, or construct to any star or planet.
+    *   **Delete**: Remove any planet, moon, or construct.
 *   **AI-Powered Descriptions**: Integrates with OpenRouter to allow GMs to generate rich, narrative descriptions for any celestial body using customizable prompts, tags, and styles.
 *   **Save & Load**: 
     *   Download any system or the entire starmap as a JSON file to your computer.
-    *   Upload a previously saved JSON file to continue your work. This can be at the starmap level or just a single star system to allow portability; you can add someone elses pre-designed star system into your own starmap.
+    *   Upload a previously saved JSON file to continue your work. This can be at the starmap level or just a single star system to allow portability.
 
 ## Usage
 
@@ -62,6 +70,14 @@ A quick note on data: This application runs entirely in your browser. Your gener
 *   **UI Controls**: Use the dropdown to select 'No Grid', 'Grid', or 'Hex' view. Use the checkboxes to 'Disable Mouse Zoom' or 'Show Background'. These settings persist with your starmap.
 
 ### Exploring the System
+
+### Adding & Editing Constructs
+*   **Add New Construct**: Right-click on any celestial body (star, planet, or moon) in the visualizer and select "Add Construct". A modal will appear allowing you to:
+    *   Choose from a library of pre-defined **Templates** (e.g., *Rocinante*, *Tycho Station*, *Prospero's Dream*).
+    *   The construct will automatically be placed in a default mid-range orbit around the selected body.
+*   **Edit Construct Details**: Click on an existing construct to focus it. Its details will appear in the right-hand panel, allowing you to modify its name, description, crew, cargo, and other technical specifications.
+*   **Delete Construct**: Right-click on an existing construct and select "Delete Construct" to remove it and its associated data from the system.
+
 *   Click on any celestial body in the visualizer to focus on it and view its detailed stats in the panel below.
 *   Use the time controls to play, pause, and fast-forward the simulation.
 *   Click "Zoom Out" to return to the parent body's view.
@@ -122,7 +138,7 @@ You can preview the production build with `npm run preview`.
 
 ## Planned Features
 
-*   **Orbital Mechanics**: Implementation of Delta-V and burn planning for spacecraft.
+*   **Transfer Window Planner**: Tools to calculate optimal launch windows between planets based on orbital phasing.
 *   **Protoplanetary Disks**: For very young systems, generate a dense disk instead of a full set of planets.
 *   **Expanded Classifications**: Add more detailed and specific planet classifications.
 
@@ -139,6 +155,7 @@ This project uses images from several sources under Creative Commons licenses. W
 *   **Magnetar Image & Starmap Background**: Courtesy of **ESO/L. Calçada & S. Brunier**, used under a [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license. Sources: [ESO Magnetar](https://www.eso.org/public/images/eso1415a/), [ESO Milky Way](https://www.eso.org/public/images/eso0932a/)
 *   **Black Hole Accretion Disk Image**: Courtesy of **NASA’s Goddard Space Flight Center/Jeremy Schnittman**, used under a [Public Domain](https://svs.gsfc.nasa.gov/13232) license. Source: [NASA SVS](https://svs.gsfc.nasa.gov/13232).
 *   **Weyland-Yutani Logo**: Sourced from [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Weyland-Yutani_cryo-tube.jpg) by [IllaZilla](https://commons.wikimedia.org/wiki/User:IllaZilla), used under a [Creative Commons Attribution-Share Alike 3.0 Unported](https://creativecommons.org/licenses/by-sa/3.0/deed.en) license. Changes made: Logo Extracted.
+*   **Sci-Fi Template Inspirations**: *The Expanse* (James S.A. Corey), *Aliens* (20th Century Studios), *Mothership RPG* (Tuesday Knight Games). Templates are included as homage/fan content.
 
 ## License
 

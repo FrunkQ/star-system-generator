@@ -131,9 +131,13 @@
   }
 
   async function handleCreateConstructLoad(event: CustomEvent<CelestialBody>) {
-      console.log('handleCreateConstructLoad triggered', { backgroundClickHost, backgroundClickPosition });
-      if (!$systemStore || !backgroundClickHost || !backgroundClickPosition) {
-        console.error('Missing required state for construct creation', { systemStore: !!$systemStore, backgroundClickHost, backgroundClickPosition });
+      console.log('handleCreateConstructLoad triggered', { backgroundClickHost, backgroundClickPosition, constructHostBody });
+
+      // Determine context: Background click OR Direct "Add Construct" on body
+      const host = backgroundClickHost || constructHostBody;
+
+      if (!$systemStore || !host) {
+        console.error('Missing required state for construct creation', { systemStore: !!$systemStore, host });
         return;
       }
       const template = event.detail;
@@ -142,44 +146,52 @@
       const newConstruct: CelestialBody = JSON.parse(JSON.stringify(template));
       newConstruct.id = generateId();
       newConstruct.IsTemplate = false;
-      newConstruct.parentId = backgroundClickHost.id;
+      newConstruct.parentId = host.id;
       newConstruct.ui_parentId = null;
 
-      // Calculate Orbit
-      // 1. Get Host Position
-      let hostPos = { x: 0, y: 0 };
-      if (backgroundClickHost.parentId) {
-         const getAbsolutePosition = (nodeId: string): { x: number, y: number } => {
-             const node = $systemStore.nodes.find(n => n.id === nodeId);
-             if (!node || !node.parentId) return { x: 0, y: 0 }; // Star/Root is 0,0
-             
-             const parentPos = getAbsolutePosition(node.parentId);
-             let relativePos = { x: 0, y: 0 };
-             if ((node.kind === 'body' || node.kind === 'construct') && node.orbit) {
-                 const p = propagate(node, currentTime);
-                 if (p) relativePos = p;
-             }
-             return { x: parentPos.x + relativePos.x, y: parentPos.y + relativePos.y };
-         };
-         hostPos = getAbsolutePosition(backgroundClickHost.id);
+      let distAU = 0;
+      let startAngle = 0;
+
+      if (backgroundClickPosition && backgroundClickHost) {
+          // Case 1: Add Construct Here (Background Click)
+          // 1. Get Host Position
+          let hostPos = { x: 0, y: 0 };
+          if (host.parentId) {
+             const getAbsolutePosition = (nodeId: string): { x: number, y: number } => {
+                 const node = $systemStore.nodes.find(n => n.id === nodeId);
+                 if (!node || !node.parentId) return { x: 0, y: 0 }; // Star/Root is 0,0
+                 
+                 const parentPos = getAbsolutePosition(node.parentId);
+                 let relativePos = { x: 0, y: 0 };
+                 if ((node.kind === 'body' || node.kind === 'construct') && node.orbit) {
+                     const p = propagate(node, currentTime);
+                     if (p) relativePos = p;
+                 }
+                 return { x: parentPos.x + relativePos.x, y: parentPos.y + relativePos.y };
+             };
+             hostPos = getAbsolutePosition(host.id);
+          }
+
+          // 2. Calculate Distance
+          const dx = backgroundClickPosition.x - hostPos.x;
+          const dy = backgroundClickPosition.y - hostPos.y;
+          distAU = Math.sqrt(dx*dx + dy*dy);
+          startAngle = Math.atan2(dy, dx);
+      } else {
+          // Case 2: Add Construct (Direct on Planet) - Default Orbit
+          const minKm = host.orbitalBoundaries?.minLeoKm || (host.radiusKm ? (host.radiusKm + 500) : 6000); // Minimum LEO or a default
+          const maxKm = host.orbitalBoundaries?.heoUpperBoundaryKm || (host.radiusKm ? (host.radiusKm + 100000) : 100000); // Upper HEO or a default large value
+          const middleKm = (minKm + maxKm) / 2;
+          distAU = middleKm / AU_KM;
+          startAngle = Math.random() * 2 * Math.PI;
       }
 
-      console.log('Host Absolute Position:', hostPos);
-
-      // 2. Calculate Distance (Semi-Major Axis 'a')
-      const dx = backgroundClickPosition.x - hostPos.x;
-      const dy = backgroundClickPosition.y - hostPos.y;
-      const distAU = Math.sqrt(dx*dx + dy*dy);
-
-      console.log('Calculated Distance (AU):', distAU);
-
       // 3. Create Circular Orbit
-      const massKg = (backgroundClickHost as CelestialBody).massKg || (backgroundClickHost as Barycenter).effectiveMassKg || 0;
+      const massKg = (host as CelestialBody).massKg || (host as Barycenter).effectiveMassKg || 0;
       const G_constant = 6.67430e-11;
-      const altitudeKm = (distAU * AU_KM) - ((backgroundClickHost as CelestialBody).radiusKm || 0);
       
       newConstruct.orbit = {
-          hostId: backgroundClickHost.id,
+          hostId: host.id,
           hostMu: massKg * G_constant,
           t0: currentTime,
           elements: {
@@ -188,17 +200,18 @@
               i_deg: 0,
               omega_deg: 0,
               Omega_deg: 0,
-              M0_rad: Math.atan2(dy, dx)
+              M0_rad: startAngle
           }
       };
 
       // 4. Determine Placement String
       let placement = 'High Orbit'; // Default fallback
+      const altitudeKm = (distAU * AU_KM) - ((host as CelestialBody).radiusKm || 0);
 
-      if (backgroundClickHost.roleHint === 'star') {
+      if (host.roleHint === 'star') {
           // Star Logic: Inner System, Outer System, or Planet-Planet
           const planets = $systemStore.nodes
-              .filter(n => n.parentId === backgroundClickHost!.id && n.kind === 'body' && n.orbit)
+              .filter(n => n.parentId === host.id && n.kind === 'body' && n.orbit)
               .sort((a, b) => (a.orbit?.elements.a_AU || 0) - (b.orbit?.elements.a_AU || 0));
           
           if (planets.length === 0) {
@@ -219,12 +232,13 @@
           }
       } else {
           // Planet/Moon Logic
-          const boundaries = (backgroundClickHost as CelestialBody).orbitalBoundaries;
+          const boundaries = (host as CelestialBody).orbitalBoundaries;
           if (boundaries) {
-              if (altitudeKm <= boundaries.surface?.max) placement = 'Surface';
+              // Robust checks for placement
+              if (altitudeKm <= (boundaries.minLeoKm || 100)) placement = 'Low Orbit';
               else if (altitudeKm <= boundaries.leoMoeBoundaryKm) placement = 'Low Orbit';
               else if (altitudeKm <= boundaries.meoHeoBoundaryKm) placement = 'Medium Orbit';
-              else if (boundaries.geosynchronousOrbit && Math.abs(altitudeKm - boundaries.geoStationaryKm!) < 1000) placement = 'Geosynchronous Orbit';
+              else if (boundaries.geosynchronousOrbit && boundaries.geoStationaryKm && Math.abs(altitudeKm - boundaries.geoStationaryKm) < 1000) placement = 'Geosynchronous Orbit';
               else placement = 'High Orbit';
           }
       }
@@ -254,7 +268,7 @@
 
   function handleAddConstruct(event: CustomEvent<CelestialBody>) {
     constructHostBody = event.detail;
-    showAddConstructModal = true;
+    showCreateConstructModal = true;
     showSummaryContextMenu = false;
   }
 

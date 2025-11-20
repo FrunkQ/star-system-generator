@@ -3,6 +3,7 @@
 
 export const exampleSystems: string[] = [
     "Alpha_Centauri-System.json",
-    "Sol_2025-System.json",
+    "Sol_2030-System.json",
+    "Sol_Expanse-System.json",
     "TRAPPIST-1-System.json"
 ];

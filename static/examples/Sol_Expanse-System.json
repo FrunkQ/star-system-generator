@@ -1,0 +1,3040 @@
+{
+  "id": "solar-system",
+  "name": "Sol",
+  "seed": "solar-system-real-data",
+  "epochT0": 1762339146908,
+  "age_Gyr": 4.603,
+  "nodes": [
+    {
+      "id": "solar-system-sun",
+      "parentId": null,
+      "name": "Sol",
+      "kind": "body",
+      "roleHint": "star",
+      "classes": [
+        "star/G",
+        "star/G2V"
+      ],
+      "massKg": 1.989e+30,
+      "radiusKm": 695700,
+      "temperatureK": 5778,
+      "magneticField": {
+        "strengthGauss": 1
+      },
+      "radiationOutput": 1,
+      "image": {
+        "url": "/images/star_types/G.webp"
+      },
+      "tags": [],
+      "areas": [],
+      "description": "The heart of our Solar System, Sol is a G-type main-sequence star (a yellow dwarf). It accounts for 99.8% of the system's total mass. Its energy, produced by nuclear fusion in its core, radiates outward, making life on Earth possible.",
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-mercury",
+      "parentId": "solar-system-sun",
+      "name": "Mercury",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/terrestrial",
+        "planet/barren",
+        "planet/crater",
+        "planet/iron"
+      ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132712440018000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.387098,
+          "e": 0.20563,
+          "i_deg": 7.005,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.020466586134799
+        }
+      },
+      "massKg": 3.285e+23,
+      "radiusKm": 2439.7,
+      "tags": [
+        {
+          "key": "exosphere"
+        },
+        {
+          "key": "thin"
+        },
+        {
+          "key": "hot"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 440,
+      "temperatureK": 440,
+      "atmosphere": {
+        "name": "Sodium–Potassium Exosphere",
+        "composition": {
+          "Na": 0.6,
+          "K": 0.4
+        },
+        "main": "Na",
+        "pressure_bar": 1e-11,
+        "molarMassKg": 0.0294332
+      },
+      "orbital_period_days": 87.97,
+      "axial_tilt_deg": 0.034,
+      "rotation_period_hours": 1407.6,
+      "description": "The smallest planet and closest to the Sun. Mercury is a world of extremes, with scorching daytime temperatures (430°C) and frigid nights (-180°C). It has no real atmosphere, only a thin exosphere, and its cratered surface resembles Earth's Moon.",
+      "image": {
+        "url": "/images/planet_types/web20barren20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 3.683564214339057,
+      "calculatedRotationPeriod_s": 5067360,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 217856.04974201214,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 3447.46746310225,
+      "propulsiveLandBudget_ms": 3447.46746310225,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "solar-system-venus",
+      "parentId": "solar-system-sun",
+      "name": "Venus",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/terrestrial",
+        "planet/silicate"
+      ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132712440018000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.723332,
+          "e": 0.006772,
+          "i_deg": 3.39458,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.3661033419802402
+        }
+      },
+      "massKg": 4.867e+24,
+      "radiusKm": 6051.8,
+      "tags": [
+        {
+          "key": "toxic-human"
+        },
+        {
+          "key": "corrosive"
+        },
+        {
+          "key": "Runaway Greenhouse Effect"
+        },
+        {
+          "key": "Geologically Active (Volcanism)"
+        },
+        {
+          "key": "thick"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 232,
+      "temperatureK": 735,
+      "atmosphere": {
+        "name": "Carbon Dioxide (Venus-like)",
+        "composition": {
+          "CO2": 0.965,
+          "N2": 0.035
+        },
+        "main": "CO2",
+        "pressure_bar": 92,
+        "molarMassKg": 0.04345014
+      },
+      "orbital_period_days": 224.7,
+      "axial_tilt_deg": 177.36,
+      "rotation_period_hours": -5832.5,
+      "description": "Earth's 'sister planet' in size, but a hellish world. Venus suffers from a runaway greenhouse effect, trapping heat under a thick, toxic atmosphere of CO2 and sulfuric acid clouds. Its surface pressure is 92 times that of Earth, and it's the hottest planet in the system.",
+      "image": {
+        "url": "/images/planet_types/web20terrestrial20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 8.869475448060673,
+      "calculatedRotationPeriod_s": -20997000,
+      "orbitalBoundaries": {
+        "minLeoKm": 400.29904535665696,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 1004980.1034093457,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 29462.31754996301,
+      "propulsiveLandBudget_ms": 9864.123715312962,
+      "aerobrakeLandBudget_ms": 200
+    },
+    {
+      "id": "solar-system-earth",
+      "parentId": "solar-system-sun",
+      "name": "Earth",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/terrestrial",
+        "planet/earth-analogue",
+        "planet/ocean"
+      ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132712440018000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 1,
+          "e": 0.0167086,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.9329429420805933
+        }
+      },
+      "massKg": 5.972e+24,
+      "radiusKm": 6371,
+      "tags": [
+        {
+          "key": "breathable-human"
+        },
+        {
+          "key": "habitability/human"
+        }
+      ],
+      "areas": [],
+      "magneticField": {
+        "strengthGauss": 0.5
+      },
+      "equilibriumTempK": 255,
+      "temperatureK": 288,
+      "atmosphere": {
+        "name": "Nitrogen–Oxygen (Earth-like)",
+        "composition": {
+          "N2": 0.7808,
+          "O2": 0.2095,
+          "Noble Gases": 0.0093,
+          "Other Trace": 0.0004
+        },
+        "main": "N2",
+        "pressure_bar": 1.013,
+        "molarMassKg": 0.028959634200000004
+      },
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.71
+      },
+      "biosphere": {
+        "complexity": "complex",
+        "coverage": 0.8,
+        "biochemistry": "water-carbon",
+        "energy_source": "photosynthesis",
+        "morphologies": [
+          "microbial",
+          "flora",
+          "fauna"
+        ]
+      },
+      "orbital_period_days": 365.25,
+      "axial_tilt_deg": 23.44,
+      "rotation_period_hours": 23.934,
+      "description": "The third planet from the Sun and the only known astronomical object to harbor life. It is an ocean world, with 71% of its surface covered in liquid water, protected by a strong magnetic field and a breathable nitrogen-oxygen atmosphere.",
+      "image": {
+        "url": "/images/planet_types/web20earth20analog20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 9.819973426224687,
+      "calculatedRotationPeriod_s": 86162.40000000001,
+      "orbitalBoundaries": {
+        "minLeoKm": 174.59343956330287,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 35792.2216003442,
+        "heoUpperBoundaryKm": 1490025.4381473116,
+        "geoStationaryKm": 35792.2216003442,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 10410.683631702896,
+      "propulsiveLandBudget_ms": 9100.569836997916,
+      "aerobrakeLandBudget_ms": 802.6009956683278
+    },
+    {
+      "id": "solar-system-luna",
+      "parentId": "solar-system-earth",
+      "name": "Luna",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/sub-earth",
+        "planet/barren",
+        "planet/crater"
+      ],
+      "orbit": {
+        "hostId": "solar-system-earth",
+        "hostMu": 398600441800000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00257,
+          "e": 0.0549,
+          "i_deg": 5.145,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 4.367738497485062
+        }
+      },
+      "massKg": 7.342e+22,
+      "radiusKm": 1737.4,
+      "tags": [
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 250,
+      "temperatureK": 250,
+      "orbital_period_days": 27.32,
+      "axial_tilt_deg": 6.68,
+      "rotation_period_hours": 655.7,
+      "description": "Earth's only natural satellite and the largest relative to its host planet in the Solar System. It is tidally locked, always showing the same face to Earth. Its cratered, airless surface is composed of dark volcanic 'maria' and bright, ancient highlands.",
+      "image": {
+        "url": "/images/planet_types/web20crater20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 1.623381040294872,
+      "calculatedRotationPeriod_s": 2360520,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 59787.31975595439,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 1931.3366576460696,
+      "propulsiveLandBudget_ms": 1931.3366576460696,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "solar-system-mars",
+      "parentId": "solar-system-sun",
+      "name": "Mars",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/terrestrial",
+        "planet/desert",
+        "planet/ice"
+      ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132712440018000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 1.52368,
+          "e": 0.0934,
+          "i_deg": 1.85,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.3838857522616697
+        }
+      },
+      "massKg": 6.39e+23,
+      "radiusKm": 3389.5,
+      "tags": [
+        {
+          "key": "toxic-human"
+        },
+        {
+          "key": "thin"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 210,
+      "temperatureK": 215,
+      "atmosphere": {
+        "name": "Carbon Dioxide (Mars-like)",
+        "composition": {
+          "CO2": 0.95,
+          "N2": 0.027,
+          "Noble Gases": 0.016
+        },
+        "main": "CO2",
+        "pressure_bar": 0.006,
+        "molarMassKg": 0.043205046000000004
+      },
+      "orbital_period_days": 687,
+      "axial_tilt_deg": 25.19,
+      "rotation_period_hours": 24.6,
+      "description": "The fourth planet, known as the 'Red Planet' due to iron oxide (rust) on its surface. It's a cold desert world with a very thin CO2 atmosphere, polar ice caps, and the largest volcano (Olympus Mons) and canyon (Valles Marineris) in the Solar System.",
+      "image": {
+        "url": "/images/planet_types/web20desert20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 3.7122336687009745,
+      "calculatedRotationPeriod_s": 88560,
+      "orbitalBoundaries": {
+        "minLeoKm": 173.9424757768996,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 16996.90684070823,
+        "heoUpperBoundaryKm": 1079042.9061374362,
+        "geoStationaryKm": 16996.90684070823,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 4139.6498809183695,
+      "propulsiveLandBudget_ms": 4079.2780839913244,
+      "aerobrakeLandBudget_ms": 1197.0044955033732
+    },
+    {
+      "id": "solar-system-phobos",
+      "parentId": "solar-system-mars",
+      "name": "Phobos",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/dwarf-planet",
+        "planet/barren",
+        "planet/crater"
+      ],
+      "orbit": {
+        "hostId": "solar-system-mars",
+        "hostMu": 42643806000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.0000626,
+          "e": 0.0151,
+          "i_deg": 1.093,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.6223949113506797
+        }
+      },
+      "massKg": 10600000000000000,
+      "radiusKm": 11.2,
+      "tags": [
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 230,
+      "temperatureK": 230,
+      "orbital_period_days": 0.319,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 7.66,
+      "description": "The larger and innermost of Mars's two moons. It is a small, lumpy, and heavily cratered body, thought to be a captured asteroid. Phobos orbits so close to Mars that it will either crash into the planet or be torn apart into a ring in about 50 million years.",
+      "image": {
+        "url": "/images/planet_types/web20crater20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.005639953762755102,
+      "calculatedRotationPeriod_s": 27576,
+      "orbitalBoundaries": {
+        "minLeoKm": 1.0720050607463343,
+        "leoMoeBoundaryKm": 5.360025303731671,
+        "meoHeoBoundaryKm": 5.360025303731671,
+        "heoUpperBoundaryKm": 5.360025303731671,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 9.139966910986526,
+      "propulsiveLandBudget_ms": 9.139966910986526,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "solar-system-deimos",
+      "parentId": "solar-system-mars",
+      "name": "Deimos",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/dwarf-planet",
+        "planet/barren",
+        "planet/crater"
+      ],
+      "orbit": {
+        "hostId": "solar-system-mars",
+        "hostMu": 42643806000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.000156,
+          "e": 0.00033,
+          "i_deg": 0.93,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.9604747090378383
+        }
+      },
+      "massKg": 1470000000000000,
+      "radiusKm": 6.2,
+      "tags": [
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 230,
+      "temperatureK": 230,
+      "orbital_period_days": 1.26,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 30.35,
+      "description": "The smaller and outer of Mars's two moons. Like its sibling Phobos, Deimos is a small, dark, and irregularly shaped body, likely a captured C-type asteroid. Its surface is smoother than Phobos's, as many of its craters are filled with fine dust (regolith).",
+      "image": {
+        "url": "/images/planet_types/web20crater20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.0025523467741935483,
+      "calculatedRotationPeriod_s": 109260,
+      "orbitalBoundaries": {
+        "minLeoKm": 3.032136101970908,
+        "leoMoeBoundaryKm": 15.16068050985454,
+        "meoHeoBoundaryKm": 15.16068050985454,
+        "heoUpperBoundaryKm": 15.16068050985454,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 4.574709539959887,
+      "propulsiveLandBudget_ms": 4.574709539959887,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "solar-system-asteroid-belt",
+      "parentId": "solar-system-sun",
+      "name": "The Main Belt",
+      "kind": "body",
+      "roleHint": "belt",
+      "classes": [
+        "belt/asteroid"
+      ],
+      "radiusInnerKm": 329115315,
+      "radiusOuterKm": 508632758,
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132712440018000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 2.7,
+          "e": 0.07,
+          "i_deg": 10,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 4.1446310265857464
+        }
+      },
+      "tags": [],
+      "areas": [],
+      "description": "A torus-shaped region of space between Mars and Jupiter, occupied by millions of asteroids. This is leftover material from the early Solar System that was prevented from forming a planet by Jupiter's immense gravity. The largest object in the belt is the dwarf planet Ceres.",
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-jupiter",
+      "parentId": "solar-system-sun",
+      "name": "Jupiter",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/gas-giant",
+        "planet/cold-jupiter",
+        "planet/ammonia-clouds-gas-giant",
+        "planet/ringed"
+      ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132712440018000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 5.2044,
+          "e": 0.0489,
+          "i_deg": 1.303,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.006958509868666
+        }
+      },
+      "massKg": 1.898e+27,
+      "radiusKm": 69911,
+      "tags": [
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "planet/ringed"
+        }
+      ],
+      "areas": [],
+      "magneticField": {
+        "strengthGauss": 4.28
+      },
+      "equilibriumTempK": 110,
+      "temperatureK": 110,
+      "atmosphere": {
+        "name": "Hydrogen–Helium (Jupiter-like)",
+        "composition": {
+          "H2": 0.86,
+          "He": 0.13,
+          "CH4": 0.003
+        },
+        "main": "H2",
+        "pressure_bar": 200000,
+        "molarMassKg": 0.002302046
+      },
+      "orbital_period_days": 4332.6,
+      "axial_tilt_deg": 3.13,
+      "rotation_period_hours": 9.925,
+      "description": "The fifth planet and the largest in the Solar System. This gas giant is more than twice as massive as all other planets combined. It's known for its colorful cloud bands of ammonia ice and the Great Red Spot, a giant storm that has raged for centuries.",
+      "image": {
+        "url": "/images/planet_types/web20ammonia20clouds20gas20giant.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 25.918562037153677,
+      "calculatedRotationPeriod_s": 35730,
+      "orbitalBoundaries": {
+        "minLeoKm": 504.7319662665522,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 90094.92904786355,
+        "heoUpperBoundaryKm": 53076768.64063506,
+        "geoStationaryKm": 90094.92904786355,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 2041949.331442323,
+      "propulsiveLandBudget_ms": 71517.79497880623,
+      "aerobrakeLandBudget_ms": 200
+    },
+    {
+      "id": "solar-system-jupiter-rings",
+      "parentId": "solar-system-jupiter",
+      "name": "Jupiter's Rings",
+      "kind": "body",
+      "roleHint": "ring",
+      "classes": [
+        "ring/planetary"
+      ],
+      "radiusInnerKm": 92000,
+      "radiusOuterKm": 226000,
+      "tags": [],
+      "areas": [],
+      "description": "A faint ring system composed of three main parts: an inner 'halo', a bright 'main' ring, and an outer 'gossamer' ring. Unlike Saturn's icy rings, Jupiter's are made of small, dark dust particles, likely kicked up from its small inner moons by meteoroid impacts.",
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-io",
+      "parentId": "solar-system-jupiter",
+      "name": "Io",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/terrestrial",
+        "planet/lava"
+      ],
+      "orbit": {
+        "hostId": "solar-system-jupiter",
+        "hostMu": 126686534000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00282,
+          "e": 0.0041,
+          "i_deg": 0.05,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 4.325338249388114
+        }
+      },
+      "massKg": 8.93e+22,
+      "radiusKm": 1821.6,
+      "tags": [
+        {
+          "key": "Active Volcanism"
+        },
+        {
+          "key": "toxic-human"
+        },
+        {
+          "key": "corrosive"
+        },
+        {
+          "key": "Tidally Locked"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 110,
+      "temperatureK": 110,
+      "atmosphere": {
+        "name": "Sulfur Dioxide (Io-like)",
+        "composition": {
+          "SO2": 0.9,
+          "S": 0.1
+        },
+        "main": "SO2",
+        "pressure_bar": 1e-8,
+        "molarMassKg": 0.0608654
+      },
+      "orbital_period_days": 1.77,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 42.48,
+      "description": "The innermost Galilean moon, Io is the most volcanically active body in the Solar System. It is caught in a tidal 'tug-of-war' between Jupiter and the other moons, which flexes its interior and powers hundreds of volcanoes that erupt sulfur and lava.",
+      "image": {
+        "url": "/images/planet_types/web20lava20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 1.796185339436256,
+      "calculatedRotationPeriod_s": 152928,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 8738.122830139573,
+        "heoUpperBoundaryKm": 8738.122830139573,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 2080.1752404387335,
+      "propulsiveLandBudget_ms": 2080.1752404387335,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "solar-system-europa",
+      "parentId": "solar-system-jupiter",
+      "name": "Europa",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice",
+        "planet/subsurface-ocean"
+      ],
+      "orbit": {
+        "hostId": "solar-system-jupiter",
+        "hostMu": 126686534000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00448,
+          "e": 0.009,
+          "i_deg": 0.47,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.2216403019719393
+        }
+      },
+      "massKg": 4.8e+22,
+      "radiusKm": 1560.8,
+      "tags": [
+        {
+          "key": "exosphere"
+        },
+        {
+          "key": "thin"
+        },
+        {
+          "key": "Subsurface Ocean"
+        },
+        {
+          "key": "Tidally Locked"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 102,
+      "temperatureK": 102,
+      "atmosphere": {
+        "name": "Tenuous Oxygen (Europa-like)",
+        "composition": {
+          "O2": 1
+        },
+        "main": "O2",
+        "pressure_bar": 1e-11,
+        "molarMassKg": 0.031998
+      },
+      "orbital_period_days": 3.55,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 85.2,
+      "description": "A smooth, ice-covered world with a young surface crisscrossed by cracks and streaks. It is a prime candidate for life, as evidence strongly suggests a deep, liquid saltwater ocean exists beneath its 15-25 km thick ice shell, kept warm by tidal heating.",
+      "image": {
+        "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 1.3150808335748123,
+      "calculatedRotationPeriod_s": 306720,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 12079.105168563572,
+        "heoUpperBoundaryKm": 12079.105168563572,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 1647.5844813757253,
+      "propulsiveLandBudget_ms": 1647.5844813757253,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "solar-system-ganymede",
+      "parentId": "solar-system-jupiter",
+      "name": "Ganymede",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice",
+        "planet/subsurface-ocean"
+      ],
+      "orbit": {
+        "hostId": "solar-system-jupiter",
+        "hostMu": 126686534000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00715,
+          "e": 0.0013,
+          "i_deg": 0.2,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 4.486533643549892
+        }
+      },
+      "massKg": 1.48e+23,
+      "radiusKm": 2634.1,
+      "tags": [
+        {
+          "key": "exosphere"
+        },
+        {
+          "key": "thin"
+        },
+        {
+          "key": "Subsurface Ocean"
+        },
+        {
+          "key": "Tidally Locked"
+        }
+      ],
+      "areas": [],
+      "magneticField": {
+        "strengthGauss": 0.007
+      },
+      "equilibriumTempK": 110,
+      "temperatureK": 110,
+      "orbital_period_days": 7.15,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 171.6,
+      "description": "The largest moon in the Solar System, even larger than the planet Mercury. Ganymede is a differentiated icy world and is the only moon known to have its own magnetic field. Its surface has both dark, ancient, cratered regions and lighter, younger, grooved terrain.",
+      "image": {
+        "url": "/images/planet_types/web20ice20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 1.4236489835736867,
+      "calculatedRotationPeriod_s": 617760,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 29050.35233147524,
+        "heoUpperBoundaryKm": 29050.35233147524,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 2226.9754565649328,
+      "propulsiveLandBudget_ms": 2226.9754565649328,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "solar-system-callisto",
+      "parentId": "solar-system-jupiter",
+      "name": "Callisto",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice",
+        "planet/crater"
+      ],
+      "orbit": {
+        "hostId": "solar-system-jupiter",
+        "hostMu": 126686534000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.01258,
+          "e": 0.0074,
+          "i_deg": 0.192,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 2.531239660985478
+        }
+      },
+      "massKg": 1.07e+23,
+      "radiusKm": 2410.3,
+      "tags": [
+        {
+          "key": "exosphere"
+        },
+        {
+          "key": "thin"
+        },
+        {
+          "key": "Tidally Locked"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 134,
+      "temperatureK": 134,
+      "orbital_period_days": 16.69,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 400.5,
+      "description": "The outermost Galilean moon, Callisto has the oldest and most heavily cratered surface in the Solar System, indicating a lack of geological activity. It is a geologically 'dead' world, composed of roughly equal parts rock and ice. It may also hide a subsurface ocean.",
+      "image": {
+        "url": "/images/planet_types/web20crater20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 1.2292700478429286,
+      "calculatedRotationPeriod_s": 1441800,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 47623.269958132056,
+        "heoUpperBoundaryKm": 47623.269958132056,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 1979.5069944629295,
+      "propulsiveLandBudget_ms": 1979.5069944629295,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "solar-system-saturn",
+      "parentId": "solar-system-sun",
+      "name": "Saturn",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/gas-giant",
+        "planet/cold-jupiter",
+        "planet/ammonia-clouds-gas-giant",
+        "planet/ringed"
+      ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132712440018000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 9.5826,
+          "e": 0.0565,
+          "i_deg": 2.485,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.5439917998244483
+        }
+      },
+      "massKg": 5.683e+26,
+      "radiusKm": 58232,
+      "tags": [
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "planet/ringed"
+        }
+      ],
+      "areas": [],
+      "magneticField": {
+        "strengthGauss": 0.21
+      },
+      "equilibriumTempK": 81,
+      "temperatureK": 81,
+      "atmosphere": {
+        "name": "Hydrogen–Helium (Jupiter-like)",
+        "composition": {
+          "H2": 0.96,
+          "He": 0.03,
+          "CH4": 0.0045
+        },
+        "main": "H2",
+        "pressure_bar": 100000,
+        "molarMassKg": 0.0021274259999999995
+      },
+      "orbital_period_days": 10759.2,
+      "axial_tilt_deg": 26.73,
+      "rotation_period_hours": 10.656,
+      "description": "The sixth planet and the second-largest, Saturn is a gas giant famous for its spectacular ring system. It is the least dense planet—it would float in water. Its atmosphere is a pale yellow, striped with bands of ammonia ice clouds and powerful winds.",
+      "image": {
+        "url": "/images/planet_types/web20ringed20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 11.185617569939861,
+      "calculatedRotationPeriod_s": 38361.6,
+      "orbitalBoundaries": {
+        "minLeoKm": 912.2719756914298,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 54005.76829774813,
+        "heoUpperBoundaryKm": 65407793.930461206,
+        "geoStationaryKm": 54005.76829774813,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 1342110.924973822,
+      "propulsiveLandBudget_ms": 42110.92497382216,
+      "aerobrakeLandBudget_ms": 200
+    },
+    {
+      "id": "solar-system-saturn-rings",
+      "parentId": "solar-system-saturn",
+      "name": "Saturn's Rings",
+      "kind": "body",
+      "roleHint": "ring",
+      "classes": [
+        "ring/planetary"
+      ],
+      "radiusInnerKm": 66900,
+      "radiusOuterKm": 140180,
+      "description": "The most extensive and complex ring system in the Solar System. The rings are not solid but are made of billions of particles of water ice, with some rock and dust, ranging in size from a grain of sand to a house. They are incredibly thin, perhaps only 10 meters thick.",
+      "tags": [],
+      "areas": [],
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-titan",
+      "parentId": "solar-system-saturn",
+      "name": "Titan",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/terrestrial",
+        "planet/methane"
+      ],
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 37931187000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00816,
+          "e": 0.0288,
+          "i_deg": 0.348,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 2.932549245144177
+        }
+      },
+      "massKg": 1.34e+23,
+      "radiusKm": 2574.7,
+      "tags": [
+        {
+          "key": "haze"
+        },
+        {
+          "key": "toxic-human"
+        },
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "Tidally Locked"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 93.7,
+      "temperatureK": 93.7,
+      "atmosphere": {
+        "name": "Methane Haze (Titan-like)",
+        "composition": {
+          "N2": 0.95,
+          "CH4": 0.05
+        },
+        "main": "N2",
+        "pressure_bar": 1.45,
+        "molarMassKg": 0.0274153
+      },
+      "orbital_period_days": 15.94,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 382.6,
+      "description": "Saturn's largest moon and the only moon with a thick, Earth-like atmosphere (though it's 95% nitrogen and toxic). Its surface is -179°C, cold enough for liquid methane and ethane to form rivers, lakes, and seas in a 'hydrological' cycle similar to Earth's water cycle.",
+      "image": {
+        "url": "/images/planet_types/web20methane20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 1.3491407372632904,
+      "calculatedRotationPeriod_s": 1377360,
+      "orbitalBoundaries": {
+        "minLeoKm": 444.29903477693864,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 49715.16653476396,
+        "heoUpperBoundaryKm": 49715.16653476396,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 3798.0751515648462,
+      "propulsiveLandBudget_ms": 2173.408920646595,
+      "aerobrakeLandBudget_ms": 684.3245689553625
+    },
+    {
+      "id": "solar-system-enceladus",
+      "parentId": "solar-system-saturn",
+      "name": "Enceladus",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/dwarf-planet",
+        "planet/ice",
+        "planet/subsurface-ocean"
+      ],
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 37931187000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00159,
+          "e": 0.0047,
+          "i_deg": 0.009,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 2.378906972412574
+        }
+      },
+      "massKg": 108000000000000000000,
+      "radiusKm": 252.1,
+      "tags": [
+        {
+          "key": "Active Cryovolcanism (Plumes)"
+        },
+        {
+          "key": "Subsurface Ocean"
+        },
+        {
+          "key": "Tidally Locked"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 75,
+      "temperatureK": 75,
+      "atmosphere": {
+        "name": "Water Vapor Plume (Enceladus-like)",
+        "composition": {
+          "H2O": 0.9,
+          "H2": 0.05,
+          "CO2": 0.03,
+          "CH4": 0.01
+        },
+        "main": "H2O",
+        "pressure_bar": 1e-9,
+        "molarMassKg": 0.01779499
+      },
+      "orbital_period_days": 1.37,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 32.88,
+      "description": "A small, bright white icy moon that is one of the most compelling places to search for life. It ejects massive plumes of water, ice, and organic molecules from 'tiger stripes' near its south pole, revealing a global subsurface ocean of liquid saltwater.",
+      "image": {
+        "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.113418470881879,
+      "calculatedRotationPeriod_s": 118368.00000000001,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 696.0946151490805,
+        "meoHeoBoundaryKm": 696.0946151490805,
+        "heoUpperBoundaryKm": 696.0946151490805,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 194.45815329673874,
+      "propulsiveLandBudget_ms": 194.45815329673874,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "solar-system-mimas",
+      "parentId": "solar-system-saturn",
+      "name": "Mimas",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/dwarf-planet",
+        "planet/ice",
+        "planet/crater"
+      ],
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 37931187000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00124,
+          "e": 0.0196,
+          "i_deg": 1.57,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.762193568853683
+        }
+      },
+      "massKg": 37500000000000000000,
+      "radiusKm": 198.2,
+      "tags": [
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 64,
+      "temperatureK": 64,
+      "orbital_period_days": 0.94,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 22.56,
+      "description": "The smallest and innermost of Saturn's major moons, Mimas is nicknamed the 'Death Star' moon. It is dominated by the Herschel crater, a massive impact basin 139 km wide—nearly a third of the moon's own diameter—that almost shattered the icy body.",
+      "image": {
+        "url": "/images/planet_types/web20crater20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.06371324004842778,
+      "calculatedRotationPeriod_s": 81216,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 321.5460724502854,
+        "meoHeoBoundaryKm": 321.5460724502854,
+        "heoUpperBoundaryKm": 321.5460724502854,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 129.2303471514097,
+      "propulsiveLandBudget_ms": 129.2303471514097,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "solar-system-rhea",
+      "parentId": "solar-system-saturn",
+      "name": "Rhea",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice"
+      ],
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 37931187000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00352,
+          "e": 0.001,
+          "i_deg": 0.345,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.7634431872120468
+        }
+      },
+      "massKg": 2.3e+21,
+      "radiusKm": 763.8,
+      "tags": [
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 77,
+      "temperatureK": 77,
+      "orbital_period_days": 4.51,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 108.2,
+      "description": "Saturn's second-largest moon, Rhea is a heavily cratered, airless body of ice and rock. Its surface is ancient, with one hemisphere being brighter and more cratered than the other. Its surface also features bright, 'wispy' streaks, which are exposed ice cliffs.",
+      "image": {
+        "url": "/images/planet_types/web20ice20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.2631323543800272,
+      "calculatedRotationPeriod_s": 389520,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 5054.70016013434,
+        "heoUpperBoundaryKm": 5054.70016013434,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 515.554750763003,
+      "propulsiveLandBudget_ms": 515.554750763003,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "solar-system-iapetus",
+      "parentId": "solar-system-saturn",
+      "name": "Iapetus",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice",
+        "planet/crater"
+      ],
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 37931187000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.0238,
+          "e": 0.0283,
+          "i_deg": 15.47,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.22858850785196
+        }
+      },
+      "massKg": 1.8e+21,
+      "radiusKm": 734.5,
+      "tags": [
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 90,
+      "temperatureK": 90,
+      "orbital_period_days": 79.32,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 1903.6,
+      "description": "Saturn's 'yin-yang' moon, Iapetus is famous for its dramatic two-tone coloration. Its leading hemisphere is as dark as coal, while its trailing hemisphere is as bright as fresh snow. It also possesses a massive, 20-km-high equatorial ridge.",
+      "image": {
+        "url": "/images/planet_types/web20crater20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.22268687895657055,
+      "calculatedRotationPeriod_s": 6852960,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 35519.859246410204,
+        "heoUpperBoundaryKm": 35519.859246410204,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 465.0943403278924,
+      "propulsiveLandBudget_ms": 465.0943403278924,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "solar-system-uranus",
+      "parentId": "solar-system-sun",
+      "name": "Uranus",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/ice-giant",
+        "planet/ringed"
+      ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132712440018000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 19.2184,
+          "e": 0.046381,
+          "i_deg": 0.773,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 4.108892419074092
+        }
+      },
+      "massKg": 8.681e+25,
+      "radiusKm": 25362,
+      "tags": [
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "planet/ringed"
+        }
+      ],
+      "areas": [],
+      "magneticField": {
+        "strengthGauss": 0.23
+      },
+      "equilibriumTempK": 59,
+      "temperatureK": 59,
+      "atmosphere": {
+        "name": "Ice Giant (Uranus-like)",
+        "composition": {
+          "H2": 0.83,
+          "He": 0.15,
+          "CH4": 0.023
+        },
+        "main": "H2",
+        "pressure_bar": 100000,
+        "molarMassKg": 0.002642424
+      },
+      "orbital_period_days": 30688.5,
+      "axial_tilt_deg": 97.77,
+      "rotation_period_hours": -17.24,
+      "description": "The seventh planet, an ice giant tipped on its side. Uranus rotates at a 98-degree angle, likely from a past collision, causing extreme seasons where its poles face the Sun for 42 years at a time. Its blue-green color comes from methane in its H-He atmosphere.",
+      "image": {
+        "url": "/images/planet_types/web20ice20giant.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 9.007587373223858,
+      "calculatedRotationPeriod_s": -62063.99999999999,
+      "orbitalBoundaries": {
+        "minLeoKm": 664.3466777341742,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 57323.95674102323,
+        "heoUpperBoundaryKm": 70160108.0952793,
+        "geoStationaryKm": 57323.95674102323,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 1324939.0516717813,
+      "propulsiveLandBudget_ms": 24939.051671781603,
+      "aerobrakeLandBudget_ms": 200
+    },
+    {
+      "id": "solar-system-uranus-rings",
+      "parentId": "solar-system-uranus",
+      "name": "Uranus' Rings",
+      "kind": "body",
+      "roleHint": "ring",
+      "classes": [
+        "ring/planetary"
+      ],
+      "radiusInnerKm": 38000,
+      "radiusOuterKm": 98000,
+      "description": "Uranus is surrounded by 13 known rings. Unlike Saturn's bright, icy rings, these are extremely dark and narrow, composed of particles as dark as coal, likely water ice mixed with radiation-processed organic compounds. They were the first to be discovered after Saturn's.",
+      "tags": [],
+      "areas": [],
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-titania",
+      "parentId": "solar-system-uranus",
+      "name": "Titania",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice"
+      ],
+      "orbit": {
+        "hostId": "solar-system-uranus",
+        "hostMu": 5793939000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00291,
+          "e": 0.0011,
+          "i_deg": 0.34,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.7684307612745347
+        }
+      },
+      "massKg": 3.4e+21,
+      "radiusKm": 788.4,
+      "tags": [
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 60,
+      "temperatureK": 60,
+      "orbital_period_days": 8.7,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 208.8,
+      "description": "The largest of Uranus's moons. This icy, rocky world shows signs of past geological activity. Its surface is cut by a system of enormous canyons and fault valleys, some stretching for 1,000 miles, indicating its interior expanded and cracked the crust long ago.",
+      "image": {
+        "url": "/images/planet_types/web20ice20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.3650828309318193,
+      "calculatedRotationPeriod_s": 751680,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 9462.162620228628,
+        "heoUpperBoundaryKm": 9462.162620228628,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 616.9739860128137,
+      "propulsiveLandBudget_ms": 616.9739860128137,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "solar-system-oberon",
+      "parentId": "solar-system-uranus",
+      "name": "Oberon",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice",
+        "planet/crater"
+      ],
+      "orbit": {
+        "hostId": "solar-system-uranus",
+        "hostMu": 5793939000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.0039,
+          "e": 0.0014,
+          "i_deg": 0.058,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.966778972986873
+        }
+      },
+      "massKg": 3e+21,
+      "radiusKm": 761.4,
+      "tags": [
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 60,
+      "temperatureK": 60,
+      "orbital_period_days": 13.46,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 323,
+      "description": "The outermost and second-largest of the major Uranian moons. Oberon has the most ancient and heavily cratered surface of Uranus's moons, showing little sign of past geological activity. Its dark, reddish surface is covered in impact craters, some with bright rays of ice.",
+      "image": {
+        "url": "/images/planet_types/web20crater20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.3453832194561757,
+      "calculatedRotationPeriod_s": 1162800,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 12415.101030640908,
+        "heoUpperBoundaryKm": 12415.101030640908,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 589.732270531489,
+      "propulsiveLandBudget_ms": 589.732270531489,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "solar-system-ariel",
+      "parentId": "solar-system-uranus",
+      "name": "Ariel",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice"
+      ],
+      "orbit": {
+        "hostId": "solar-system-uranus",
+        "hostMu": 5793939000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00127,
+          "e": 0.0012,
+          "i_deg": 0.26,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.3283997576207125
+        }
+      },
+      "massKg": 1.29e+21,
+      "radiusKm": 578.9,
+      "tags": [
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 58,
+      "temperatureK": 58,
+      "orbital_period_days": 2.52,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 60.48,
+      "description": "The brightest and youngest-surfaced of Uranus's moons. Ariel shows clear signs of geologic activity, with vast, interconnected canyons and fault valleys. Smooth plains suggest that 'cryovolcanism' (ice volcanoes) may have once resurfaced parts of the moon.",
+      "image": {
+        "url": "/images/planet_types/web20ice20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.25691433360086513,
+      "calculatedRotationPeriod_s": 217728,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 2659.7352072390545,
+        "heoUpperBoundaryKm": 2659.7352072390545,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 443.500161738119,
+      "propulsiveLandBudget_ms": 443.500161738119,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "solar-system-neptune",
+      "parentId": "solar-system-sun",
+      "name": "Neptune",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/ice-giant",
+        "planet/ringed"
+      ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132712440018000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 30.11,
+          "e": 0.0113,
+          "i_deg": 1.77,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.94099564119865
+        }
+      },
+      "massKg": 1.024e+26,
+      "radiusKm": 24622,
+      "tags": [
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "planet/ringed"
+        }
+      ],
+      "areas": [],
+      "magneticField": {
+        "strengthGauss": 0.14
+      },
+      "equilibriumTempK": 47,
+      "temperatureK": 47,
+      "atmosphere": {
+        "name": "Ice Giant (Uranus-like)",
+        "composition": {
+          "H2": 0.8,
+          "He": 0.19,
+          "CH4": 0.015
+        },
+        "main": "H2",
+        "pressure_bar": 100000,
+        "molarMassKg": 0.002613734
+      },
+      "orbital_period_days": 60182,
+      "axial_tilt_deg": 28.32,
+      "rotation_period_hours": 16.11,
+      "description": "The eighth and most distant planet, Neptune is a dark, cold ice giant whipped by supersonic winds. It has a vivid blue color from methane in its atmosphere. It was the first planet found through mathematical prediction rather than direct observation.",
+      "image": {
+        "url": "/images/planet_types/web20ice20giant.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 11.27350667591506,
+      "calculatedRotationPeriod_s": 57996,
+      "orbitalBoundaries": {
+        "minLeoKm": 427.4951469346782,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 58883.29385587132,
+        "heoUpperBoundaryKm": 116160577.26195094,
+        "geoStationaryKm": 58883.29385587132,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 1327490.0241186097,
+      "propulsiveLandBudget_ms": 27490.02411860985,
+      "aerobrakeLandBudget_ms": 200
+    },
+    {
+      "id": "solar-system-neptune-rings",
+      "parentId": "solar-system-neptune",
+      "name": "Neptune's Rings",
+      "kind": "body",
+      "roleHint": "ring",
+      "classes": [
+        "ring/planetary"
+      ],
+      "radiusInnerKm": 41900,
+      "radiusOuterKm": 62930,
+      "description": "Neptune is encircled by five faint, dark rings. They are notable for containing unstable, bright clumps of dust called 'arcs,' which are thought to be held in place by the gravity of the small moon Galatea. These rings are dusty and relatively young.",
+      "tags": [],
+      "areas": [],
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-triton",
+      "parentId": "solar-system-neptune",
+      "name": "Triton",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/terrestrial",
+        "planet/ice"
+      ],
+      "orbit": {
+        "hostId": "solar-system-neptune",
+        "hostMu": 6835100000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00237,
+          "e": 0,
+          "i_deg": 157.3,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.105401925181754
+        },
+        "isRetrogradeOrbit": true
+      },
+      "massKg": 2.14e+22,
+      "radiusKm": 1353.4,
+      "tags": [
+        {
+          "key": "Retrograde Orbit"
+        },
+        {
+          "key": "Captured Body"
+        },
+        {
+          "key": "Active Cryovolcanism (Plumes)"
+        },
+        {
+          "key": "Tidally Locked"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 38,
+      "temperatureK": 38,
+      "atmosphere": {
+        "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
+        "composition": {
+          "N2": 0.999,
+          "CH4": 0.001
+        },
+        "main": "N2",
+        "pressure_bar": 0.000014,
+        "molarMassKg": 0.028002026
+      },
+      "orbital_period_days": 5.87,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 140.8,
+      "description": "Neptune's largest moon and likely a captured Kuiper Belt Object. It is one of the coldest worlds known (-235°C), yet it is geologically active, with geysers of nitrogen gas erupting from its icy surface. It orbits Neptune 'backwards' in a retrograde orbit.",
+      "image": {
+        "url": "/images/planet_types/web20ice20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.7797711313361076,
+      "calculatedRotationPeriod_s": 506880.00000000006,
+      "orbitalBoundaries": {
+        "minLeoKm": 138.1323522888948,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 13234.897524442571,
+        "heoUpperBoundaryKm": 13234.897524442571,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 1181.393297975427,
+      "propulsiveLandBudget_ms": 1181.393297975427,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "solar-system-kuiper-belt",
+      "parentId": "solar-system-sun",
+      "name": "Kuiper Belt",
+      "kind": "body",
+      "roleHint": "belt",
+      "classes": [
+        "belt/asteroid"
+      ],
+      "radiusInnerKm": 4487936121,
+      "radiusOuterKm": 7479893535,
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132712440018000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 40,
+          "e": 0.1,
+          "i_deg": 15,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.882914102919315
+        }
+      },
+      "tags": [],
+      "areas": [],
+      "description": "A vast, doughnut-shaped ring of icy bodies beyond the orbit of Neptune, from about 30 to 50 AU. It is a reservoir of comets and contains many dwarf planets, including Pluto. This is a cold, distant region containing remnants from the formation of the Solar System.",
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-pluto",
+      "parentId": "solar-system-sun",
+      "name": "Pluto",
+      "kind": "body",
+      "roleHint": "planet",
+      "classes": [
+        "planet/dwarf-planet",
+        "planet/ice"
+      ],
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132712440018000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 39.48,
+          "e": 0.2488,
+          "i_deg": 17.16,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.4884242784532824
+        }
+      },
+      "massKg": 1.303e+22,
+      "radiusKm": 1188.3,
+      "tags": [
+        {
+          "key": "thin"
+        },
+        {
+          "key": "exosphere"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 44,
+      "temperatureK": 44,
+      "atmosphere": {
+        "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
+        "composition": {
+          "N2": 0.98,
+          "CH4": 0.01,
+          "CO": 0.01
+        },
+        "main": "N2",
+        "pressure_bar": 0.00001,
+        "molarMassKg": 0.02789422
+      },
+      "orbital_period_days": 90560,
+      "axial_tilt_deg": 119.5,
+      "rotation_period_hours": -153.3,
+      "description": "A dwarf planet in the Kuiper Belt, formerly classified as the ninth planet. It is a complex world of ice mountains and frozen nitrogen plains. Its highly eccentric orbit sometimes brings it closer to the Sun than Neptune. It has five known moons.",
+      "image": {
+        "url": "/images/planet_types/web20dwarf20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.615882615041098,
+      "calculatedRotationPeriod_s": -551880,
+      "orbitalBoundaries": {
+        "minLeoKm": 196.12195317528366,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 17672.49108839615,
+        "heoUpperBoundaryKm": 7661221.032754107,
+        "geoStationaryKm": 17672.49108839615,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 983.8068938552108,
+      "propulsiveLandBudget_ms": 983.8068938552108,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "solar-system-charon",
+      "parentId": "solar-system-pluto",
+      "name": "Charon",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/dwarf-planet",
+        "planet/ice"
+      ],
+      "orbit": {
+        "hostId": "solar-system-pluto",
+        "hostMu": 869635800000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.00013,
+          "e": 0,
+          "i_deg": 0.001,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.350730626781299
+        }
+      },
+      "massKg": 1.58e+21,
+      "radiusKm": 606,
+      "tags": [
+        {
+          "key": "Airless Rock"
+        },
+        {
+          "key": "Tidally Locked"
+        }
+      ],
+      "areas": [],
+      "equilibriumTempK": 44,
+      "temperatureK": 44,
+      "orbital_period_days": 6.38,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 153.3,
+      "description": "Pluto's largest moon, so large (half of Pluto's diameter) that the two are considered a binary dwarf planet system. They orbit a common barycenter located in the space between them. Charon is tidally locked to Pluto, so they both always show the same face to each other.",
+      "image": {
+        "url": "/images/planet_types/web20crater20planet.jpg"
+      },
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 0.28715577993442903,
+      "calculatedRotationPeriod_s": 551880,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 6068.200305580403,
+        "heoUpperBoundaryKm": 6068.200305580403,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 479.7256429374493,
+      "propulsiveLandBudget_ms": 479.7256429374493,
+      "aerobrakeLandBudget_ms": -1
+    },
+    {
+      "id": "construct-expanse-ceres",
+      "parentId": "solar-system-sun",
+      "name": "Ceres Station",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Expanse/Station/Colony",
+      "description": "The capital of the Belt. A dwarf planet hollowed out and spun up to provide 0.3G gravity at the outer tunnels.",
+      "gmNotes": "Home to 6 million Belters. The Docks, Medina District, Star Helix Police HQ. 'Down' is toward the surface.",
+      "IsTemplate": false,
+      "icon_type": "hexagon",
+      "icon_color": "#ffff00",
+      "crew": {
+        "current": 6000000,
+        "max": 10000000
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          940000,
+          940000,
+          940000
+        ],
+        "massKg": 900000000000000000000,
+        "cargoCapacity_tonnes": 5000000000,
+        "rotation_period_hours": 2500,
+        "spinRadiusM": 470000,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Geothermal/Fusion Grid",
+            "output_MW": 5000000
+          }
+        ],
+        "modules": [
+          "The Docks",
+          "Medina District",
+          "Gov Sector",
+          "Hydroponics"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 10000000000,
+          "consumables_current_person_days": 10000000000
+        }
+      },
+      "current_cargo_tonnes": 200000000,
+      "cargoDescription": "Water, Ice, Air",
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132700000000000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 2.77,
+          "e": 0.075,
+          "i_deg": 10.6,
+          "omega_deg": 73,
+          "Omega_deg": 80,
+          "M0_rad": 1.2
+        }
+      },
+      "placement": "High Orbit"
+    },
+    {
+      "id": "construct-expanse-eros",
+      "parentId": "solar-system-sun",
+      "name": "Eros Station",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Expanse/Station/Colony",
+      "description": "An elongated asteroid spun for gravity. A hub for gambling, vice, and illicit trade.",
+      "gmNotes": "The 'Vegas' of the Belt. Site of the Protomolecule incident.",
+      "IsTemplate": false,
+      "icon_type": "square",
+      "icon_color": "#ff00ff",
+      "crew": {
+        "current": 150000,
+        "max": 1500000
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          22000,
+          7000,
+          7000
+        ],
+        "massKg": 6000000000000000,
+        "cargoCapacity_tonnes": 5000000,
+        "rotation_period_hours": 200,
+        "spinRadiusM": 3000,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [
+        {
+          "engine_id": "engine-rcs-hydrazine",
+          "quantity": 500
+        }
+      ],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-hydrazine",
+          "capacity_units": 50000,
+          "current_units": 50000
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Old Fission Core",
+            "output_MW": 2000
+          }
+        ],
+        "modules": [
+          "Casino Strip",
+          "Blue Falcon Hotel",
+          "Docking Ring"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 5000000,
+          "consumables_current_person_days": 4000000
+        }
+      },
+      "current_cargo_tonnes": 10000,
+      "cargoDescription": "Contraband",
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132700000000000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 1.45,
+          "e": 0.22,
+          "i_deg": 10.8,
+          "omega_deg": 178,
+          "Omega_deg": 304,
+          "M0_rad": 0.5
+        }
+      },
+      "placement": "High Orbit"
+    },
+    {
+      "id": "construct-expanse-tycho",
+      "parentId": "solar-system-sun",
+      "name": "Tycho Station",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Expanse/Station/Industrial",
+      "description": "The largest mobile construction platform in the system. Features a massive central sphere and two counter-rotating habitat rings.",
+      "gmNotes": "OPA HQ (Fred Johnson). Currently building the Nauvoo. Can move its orbit.",
+      "IsTemplate": false,
+      "icon_type": "hexagon",
+      "icon_color": "#ffcc00",
+      "crew": {
+        "current": 15000,
+        "max": 20000
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          2000,
+          2000,
+          1000
+        ],
+        "massKg": 45000000000,
+        "cargoCapacity_tonnes": 10000000,
+        "rotation_period_hours": 100,
+        "spinRadiusM": 800,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [
+        {
+          "engine_id": "engine-fusion-epstein",
+          "quantity": 24
+        },
+        {
+          "engine_id": "engine-rcs-hydrazine",
+          "quantity": 500
+        }
+      ],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-fusion-dt",
+          "capacity_units": 1000000,
+          "current_units": 384462
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Massive Fusion Grid",
+            "output_MW": 50000
+          }
+        ],
+        "modules": [
+          "Construction Gantries",
+          "Habitation Rings",
+          "Command Sphere"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 50000000,
+          "consumables_current_person_days": 50000000
+        }
+      },
+      "current_cargo_tonnes": 5000000,
+      "cargoDescription": "Ship Parts",
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132700000000000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 2.8,
+          "e": 0.08,
+          "i_deg": 5,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.2
+        }
+      },
+      "placement": "High Orbit"
+    },
+    {
+      "id": "construct-expanse-anderson",
+      "parentId": "solar-system-sun",
+      "name": "Anderson Station",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Expanse/Station/Industrial",
+      "description": "A lonely cylinder in the outer belt. A key resupply depot for miners.",
+      "gmNotes": "Site of a massacre. Poor ventilation. Gritty industrial aesthetic.",
+      "IsTemplate": false,
+      "icon_type": "hexagon",
+      "icon_color": "#885500",
+      "crew": {
+        "current": 10000,
+        "max": 12000
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          800,
+          200,
+          200
+        ],
+        "massKg": 5000000000,
+        "cargoCapacity_tonnes": 50000,
+        "rotation_period_hours": 30,
+        "spinRadiusM": 100,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [
+        {
+          "engine_id": "engine-rcs-hydrazine",
+          "quantity": 50
+        }
+      ],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-water",
+          "capacity_units": 50000,
+          "current_units": 20000
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Fission Reactor",
+            "output_MW": 500
+          }
+        ],
+        "modules": [
+          "Cargo Docks",
+          "Refinery",
+          "Market"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 500000,
+          "consumables_current_person_days": 200000
+        }
+      },
+      "current_cargo_tonnes": 10000,
+      "cargoDescription": "Ore & Supplies",
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132700000000000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 3,
+          "e": 0.1,
+          "i_deg": 2,
+          "omega_deg": 45,
+          "Omega_deg": 0,
+          "M0_rad": 3
+        }
+      },
+      "placement": "High Orbit"
+    },
+    {
+      "id": "construct-expanse-thoth",
+      "parentId": "solar-system-sun",
+      "name": "Thoth Station",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Expanse/Station/Research",
+      "description": "A stealth-composite station hidden in deep space. Hard to detect on sensors.",
+      "gmNotes": "Protogen secret lab. Heavily guarded. The source of the stealth ships.",
+      "IsTemplate": false,
+      "icon_type": "square",
+      "icon_color": "#bcb8b8",
+      "crew": {
+        "current": 50,
+        "max": 100
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          150,
+          80,
+          80
+        ],
+        "massKg": 2000000,
+        "cargoCapacity_tonnes": 500,
+        "rotation_period_hours": 15,
+        "spinRadiusM": 30,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [
+        {
+          "engine_id": "engine-rcs-hydrazine",
+          "quantity": 24
+        }
+      ],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-hydrazine",
+          "capacity_units": 2000,
+          "current_units": 2000
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Stealth Reactor",
+            "output_MW": 100
+          }
+        ],
+        "modules": [
+          "Secure Server Core",
+          "Labs",
+          "PDC Turrets"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 10000,
+          "consumables_current_person_days": 10000
+        }
+      },
+      "current_cargo_tonnes": 50,
+      "cargoDescription": "Research Data",
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132700000000000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 3.2,
+          "e": 0,
+          "i_deg": 15,
+          "omega_deg": 0,
+          "Omega_deg": 120,
+          "M0_rad": 4.5
+        }
+      },
+      "placement": "High Orbit"
+    },
+    {
+      "id": "construct-expanse-ganymede",
+      "parentId": "solar-system-ganymede",
+      "name": "Ganymede Ag Domes",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Expanse/Station/Colony",
+      "description": "Massive illuminated domes on the surface of Jupiter's largest moon. Mirrors focus sunlight to grow food.",
+      "gmNotes": "The breadbasket of the Belt. Critical strategic resource.",
+      "IsTemplate": false,
+      "icon_type": "square",
+      "icon_color": "#44ff44",
+      "crew": {
+        "current": 5000,
+        "max": 10000
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          5000,
+          5000,
+          200
+        ],
+        "massKg": 2000000000,
+        "cargoCapacity_tonnes": 500000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": true
+      },
+      "engines": [],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-water",
+          "capacity_units": 1000000,
+          "current_units": 1000000
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Magnetosphere Tap",
+            "output_MW": 10000
+          }
+        ],
+        "modules": [
+          "Orbital Mirrors",
+          "Hydroponic Bays",
+          "Maternity Ward"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 100000000,
+          "consumables_current_person_days": 100000000
+        }
+      },
+      "current_cargo_tonnes": 400000,
+      "cargoDescription": "Soybeans & Mushrooms",
+      "orbit": {
+        "hostId": "solar-system-ganymede",
+        "hostMu": 9800000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.000017607870938767313,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "placement": "Surface",
+      "ui_parentId": null
+    },
+    {
+      "id": "construct-expanse-phoebe",
+      "parentId": "solar-system-saturn",
+      "name": "Phoebe: Research Station",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Expanse/Station/Research",
+      "description": "A Protogen facility built into the retrograde moon Phoebe.",
+      "gmNotes": "Source of the Protomolecule. Dangerous. Burned by Mars.",
+      "IsTemplate": false,
+      "icon_type": "square",
+      "icon_color": "#4400aa",
+      "crew": {
+        "current": 0,
+        "max": 200
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          500,
+          500,
+          200
+        ],
+        "massKg": 100000000,
+        "cargoCapacity_tonnes": 2000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": true
+      },
+      "engines": [],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-hydrazine",
+          "capacity_units": 1000,
+          "current_units": 1000
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Fission Core",
+            "output_MW": 500
+          }
+        ],
+        "modules": [
+          "Ice Core Drill",
+          "Bio-Labs"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 20000,
+          "consumables_current_person_days": 20000
+        }
+      },
+      "current_cargo_tonnes": 0,
+      "cargoDescription": "Samples",
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 37900000000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.086,
+          "e": 0.156,
+          "i_deg": 173,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 2.5
+        }
+      },
+      "placement": "High Orbit"
+    },
+    {
+      "id": "construct-lunar-lovell",
+      "parentId": "solar-system-luna",
+      "name": "Lovell City",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Expanse/Station/Colony",
+      "description": "A massive subterranean city beneath the regolith. The seat of UN power off-Earth.",
+      "gmNotes": "Safe, bureaucratic, expensive. 0.16G natural gravity.",
+      "IsTemplate": false,
+      "icon_type": "square",
+      "icon_color": "#aaaaaa",
+      "crew": {
+        "current": 100000,
+        "max": 5000000
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          10000,
+          10000,
+          500
+        ],
+        "massKg": 50000000000,
+        "cargoCapacity_tonnes": 50000000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": true
+      },
+      "engines": [],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-helium3",
+          "capacity_units": 500000,
+          "current_units": 500000
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Helium-3 Fusion Grid",
+            "output_MW": 100000
+          }
+        ],
+        "modules": [
+          "Spaceport",
+          "UN High Command",
+          "Subsurface Rail"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 1000000000,
+          "consumables_current_person_days": 1000000000
+        }
+      },
+      "current_cargo_tonnes": 1000000,
+      "cargoDescription": "He3 & Regolith",
+      "orbit": {
+        "hostId": "solar-system-luna",
+        "hostMu": 4902.8,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.000011613801666229199,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "placement": "Surface",
+      "ui_parentId": null
+    },
+    {
+      "id": "ship-expanse-rocinante",
+      "parentId": "solar-system-sun",
+      "name": "Rocinante (Tachi)",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Expanse/Ship/Corvette",
+      "description": "Legitimate salvage. A Martian Corvette class. Fast, deadly, and versatile.",
+      "gmNotes": "Hero ship. Capable of atmospheric landing and 10G+ burns.",
+      "IsTemplate": false,
+      "icon_type": "triangle",
+      "icon_color": "#ff4400",
+      "crew": {
+        "current": 4,
+        "max": 15
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          46,
+          15,
+          15
+        ],
+        "massKg": 250000,
+        "cargoCapacity_tonnes": 100,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": true,
+        "has_landing_gear": true
+      },
+      "engines": [
+        {
+          "engine_id": "engine-fusion-epstein",
+          "quantity": 2
+        }
+      ],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-fusion-dt",
+          "capacity_units": 10000,
+          "current_units": 5207
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Epstein Drive Cone",
+            "output_MW": 800
+          }
+        ],
+        "modules": [
+          "PDC Grid (6x)",
+          "Torpedo Tubes (2x)",
+          "Coffee Machine"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 600,
+          "consumables_current_person_days": 550
+        }
+      },
+      "current_cargo_tonnes": 20,
+      "cargoDescription": "Ammo & Coffee",
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132751826999999990000,
+        "t0": 1763640079144,
+        "elements": {
+          "a_AU": 13.290204159724523,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.4402037081602392
+        }
+      },
+      "placement": "Saturn - Uranus",
+      "ui_parentId": null
+    },
+    {
+      "id": "ship-expanse-nauvoo",
+      "parentId": "solar-system-sun",
+      "name": "LDSS Nauvoo",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Expanse/Ship/Generation Ship",
+      "description": "The largest ship ever built. Intended for a century-long voyage. A self-contained world.",
+      "gmNotes": "Currently docked at Tycho. Future Medina Station.",
+      "IsTemplate": false,
+      "icon_type": "triangle",
+      "icon_color": "#ffffff",
+      "crew": {
+        "current": 500,
+        "max": 50000
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          2000,
+          500,
+          500
+        ],
+        "massKg": 2000000000,
+        "cargoCapacity_tonnes": 10000000,
+        "rotation_period_hours": 85.71428571428572,
+        "spinRadiusM": 1000,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [
+        {
+          "engine_id": "engine-fusion-epstein",
+          "quantity": 50
+        }
+      ],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-fusion-dt",
+          "capacity_units": 1000000,
+          "current_units": 1000000
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Dual Fusion Core",
+            "output_MW": 20000
+          }
+        ],
+        "modules": [
+          "Agricultural Drum",
+          "Command Deck",
+          "Mormon Temple"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 1000000000,
+          "consumables_current_person_days": 100000000
+        }
+      },
+      "current_cargo_tonnes": 5000,
+      "cargoDescription": "Soil & Machinery",
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132700000000000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 2.8,
+          "e": 0.08,
+          "i_deg": 5,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.201
+        }
+      },
+      "placement": "High Orbit"
+    },
+    {
+      "id": "ship-expanse-donnager",
+      "parentId": "solar-system-jupiter",
+      "name": "MCRN Donnager",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Expanse/Ship/Battleship",
+      "description": "The Martian flagship. A city in space. Carries two corvettes internally.",
+      "gmNotes": "Patrolling Jupiter. Massive railguns. Increased engines for combat Gs.",
+      "IsTemplate": false,
+      "icon_type": "triangle",
+      "icon_color": "#cc4400",
+      "crew": {
+        "current": 2000,
+        "max": 3000
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          500,
+          180,
+          100
+        ],
+        "massKg": 250000000,
+        "cargoCapacity_tonnes": 20000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [
+        {
+          "engine_id": "engine-fusion-epstein",
+          "quantity": 64
+        }
+      ],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-fusion-dt",
+          "capacity_units": 500000,
+          "current_units": 500000
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Main Fusion Core",
+            "output_MW": 15000
+          }
+        ],
+        "modules": [
+          "Railgun Spine",
+          "Hangar Bay (2x Corvette)",
+          "CIC",
+          "Marine Barracks"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 500000,
+          "consumables_current_person_days": 500000
+        }
+      },
+      "current_cargo_tonnes": 5000,
+      "cargoDescription": "War Munitions",
+      "orbit": {
+        "hostId": "solar-system-jupiter",
+        "hostMu": 126000000000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.002,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.5
+        }
+      },
+      "placement": "High Orbit"
+    },
+    {
+      "id": "ship-expanse-canterbury",
+      "parentId": "solar-system-sun",
+      "name": "The Canterbury",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Expanse/Ship/Transport",
+      "description": "A retrofitted colony ship hauling ice from Saturn to Ceres. Old and creaky.",
+      "gmNotes": "Remember the Cant. Low thrust, massive mass.",
+      "IsTemplate": false,
+      "icon_type": "triangle",
+      "icon_color": "#a3a3a3",
+      "crew": {
+        "current": 50,
+        "max": 100
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          1000,
+          200,
+          200
+        ],
+        "massKg": 15000000,
+        "cargoCapacity_tonnes": 1000000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [
+        {
+          "engine_id": "engine-fusion-epstein",
+          "quantity": 8
+        }
+      ],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-fusion-dt",
+          "capacity_units": 200000,
+          "current_units": 200000
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Auxiliary Reactor",
+            "output_MW": 2000
+          }
+        ],
+        "modules": [
+          "Ice Clamps",
+          "Processing Bay",
+          "Medical Bay"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 50000,
+          "consumables_current_person_days": 20000
+        }
+      },
+      "current_cargo_tonnes": 500000,
+      "cargoDescription": "Saturnian Ice",
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132700000000000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 6.5,
+          "e": 0.15,
+          "i_deg": 3,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 4
+        }
+      },
+      "placement": "High Orbit"
+    },
+    {
+      "id": "ship-expanse-razorback",
+      "parentId": "solar-system-sun",
+      "name": "The Razorback",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Expanse/Ship/Racer",
+      "description": "A modified pinnace. A fusion torch with seats. Incredible acceleration.",
+      "gmNotes": "Julie Mao's racer. Hard to catch.",
+      "IsTemplate": false,
+      "icon_type": "triangle",
+      "icon_color": "#00aaff",
+      "crew": {
+        "current": 1,
+        "max": 2
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          20,
+          8,
+          6
+        ],
+        "massKg": 15000,
+        "cargoCapacity_tonnes": 1,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": true,
+        "has_landing_gear": true
+      },
+      "engines": [
+        {
+          "engine_id": "engine-fusion-epstein",
+          "quantity": 1
+        }
+      ],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-fusion-dt",
+          "capacity_units": 800,
+          "current_units": 800
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Overclocked Drive",
+            "output_MW": 600
+          }
+        ],
+        "modules": [
+          "Crash Couches",
+          "High-G Tank"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 20,
+          "consumables_current_person_days": 20
+        }
+      },
+      "current_cargo_tonnes": 0,
+      "cargoDescription": "",
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132751826999999990000,
+        "t0": 1763639396397,
+        "elements": {
+          "a_AU": 1.1078021920907324,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 2.6425823797069072
+        }
+      },
+      "placement": "Earth - Mars",
+      "ui_parentId": null
+    },
+    {
+      "id": "ship-expanse-scirocco",
+      "parentId": "solar-system-mars",
+      "name": "MCRN Scirocco",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Expanse/Ship/Cruiser",
+      "description": "A heavy Martian patrol destroyer. Capable of deploying corvettes.",
+      "gmNotes": "Command ship. Heavy armor.",
+      "IsTemplate": false,
+      "icon_type": "triangle",
+      "icon_color": "#dd3300",
+      "crew": {
+        "current": 200,
+        "max": 500
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          200,
+          60,
+          60
+        ],
+        "massKg": 12000000,
+        "cargoCapacity_tonnes": 2000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": true,
+        "has_landing_gear": false
+      },
+      "engines": [
+        {
+          "engine_id": "engine-fusion-epstein",
+          "quantity": 6
+        }
+      ],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-fusion-dt",
+          "capacity_units": 50000,
+          "current_units": 50000
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "High-Output Fusion",
+            "output_MW": 4000
+          }
+        ],
+        "modules": [
+          "Internal Hangar (Corvette)",
+          "PDC Network",
+          "Torpedo Fabrication"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 50000,
+          "consumables_current_person_days": 50000
+        }
+      },
+      "current_cargo_tonnes": 500,
+      "cargoDescription": "Missiles",
+      "orbit": {
+        "hostId": "solar-system-mars",
+        "hostMu": 42800000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.0005,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3
+        }
+      },
+      "placement": "High Orbit"
+    },
+    {
+      "id": "ship-expanse-pella",
+      "parentId": "solar-system-sun",
+      "name": "The Pella",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Expanse/Ship/Frigate",
+      "description": "A heavy frigate with cruiser-level armament. Fast, aggressive, and packed with torpedoes.",
+      "gmNotes": "Free Navy Flagship. Marco Inaros. Hits way above its weight class.",
+      "IsTemplate": false,
+      "icon_type": "triangle",
+      "icon_color": "#aa0000",
+      "crew": {
+        "current": 30,
+        "max": 80
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          90,
+          25,
+          25
+        ],
+        "massKg": 600000,
+        "cargoCapacity_tonnes": 200,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [
+        {
+          "engine_id": "engine-fusion-epstein",
+          "quantity": 4
+        }
+      ],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-water",
+          "capacity_units": 15000,
+          "current_units": 15000
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Mil-Spec Fusion",
+            "output_MW": 1200
+          }
+        ],
+        "modules": [
+          "Rapid Fire Torpedoes",
+          "Heavy PDC Grid",
+          "CIC"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 1000,
+          "consumables_current_person_days": 1000
+        }
+      },
+      "current_cargo_tonnes": 50,
+      "cargoDescription": "Warheads",
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132700000000000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 2.5,
+          "e": 0.2,
+          "i_deg": 8,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.5
+        }
+      },
+      "placement": "High Orbit"
+    }
+  ],
+  "rulePackId": "starter-sf-pack",
+  "rulePackVersion": "0.1.3",
+  "tags": [],
+  "toytownFactor": 0,
+  "isManuallyEdited": true
+}

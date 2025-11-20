@@ -1,83 +1,127 @@
 {
   "id": "engine-definitions",
-  "name": "Propulsion Systems",
+  "name": "Propulsion Systems (Comprehensive)",
   "entries": [
     {
       "id": "engine-rcs-hydrazine",
-      "name": "RCS Thruster",
+      "name": "RCS Thruster Block",
       "type": "Chemical (Monopropellant)",
       "fuel_type_id": "fuel-hydrazine",
-      "thrust_kN": 1,
+      "thrust_kN": 5,
       "efficiency_isp": 230,
       "atmo_efficiency": 0.6,
       "powerDraw_MW": 0.01,
-      "description": "Standard, low-power thruster for station-keeping and maneuvering. Simple and reliable, but 'sips' fuel."
+      "description": "Standard attitude control thrusters. Reliable and responsive."
     },
     {
       "id": "engine-chemical-methalox",
-      "name": "Methalox Engine (Raptor-class)",
+      "name": "Methalox Main Drive",
       "type": "Chemical (Bipropellant)",
       "fuel_type_id": "fuel-methalox",
-      "thrust_kN": 2000,
-      "efficiency_isp": 380,
+      "thrust_kN": 2500,
+      "efficiency_isp": 370,
       "atmo_efficiency": 0.9,
-      "powerDraw_MW": 0.1,
-      "description": "High-thrust, high-performance chemical engine. Ideal for launch, landing, and combat burns. A 'brute force' engine."
+      "powerDraw_MW": 0.5,
+      "description": "Workhorse chemical engine for high-G maneuvers."
     },
     {
-      "id": "engine-ion-xenon",
-      "name": "Ion Drive (NEXIS-class)",
-      "type": "Electric (Ion)",
-      "fuel_type_id": "fuel-xenon",
-      "thrust_kN": 0.5,
-      "efficiency_isp": 10000,
-      "atmo_efficiency": 0.0,
-      "powerDraw_MW": 5.0,
-      "description": "Extremely low thrust, but incredible fuel efficiency. Useless in an atmosphere and requires a large power plant to run."
+      "id": "engine-chemical-metallic",
+      "name": "Metallic Hydrogen Drive",
+      "type": "Chemical (Exotic)",
+      "fuel_type_id": "fuel-metallic-hydrogen",
+      "thrust_kN": 6000,
+      "efficiency_isp": 1100,
+      "atmo_efficiency": 0.95,
+      "powerDraw_MW": 2.0,
+      "description": "Releases the stored energy of metastable hydrogen. Incredible performance for a chemical rocket, bordering on nuclear efficiency."
     },
     {
-      "id": "engine-ntr",
-      "name": "Nuclear Thermal (NTR)",
+      "id": "engine-ntr-solid",
+      "name": "NTR (Solid Core)",
       "type": "Nuclear Thermal",
       "fuel_type_id": "fuel-hydrogen",
-      "thrust_kN": 330,
+      "thrust_kN": 500,
       "efficiency_isp": 900,
       "atmo_efficiency": 0.7,
-      "powerDraw_MW": 10.0,
-      "description": "Uses a fission reactor to superheat hydrogen. The classic 'torch ship' drive. A great balance of thrust and efficiency."
+      "powerDraw_MW": 15.0,
+      "description": "Fission reactor heating propellant. The standard for interplanetary liners."
+    },
+    {
+      "id": "engine-ntr-gas",
+      "name": "NTR (Gas Core 'Lightbulb')",
+      "type": "Nuclear Thermal",
+      "fuel_type_id": "fuel-hydrogen",
+      "thrust_kN": 1500,
+      "efficiency_isp": 1800,
+      "atmo_efficiency": 0.8,
+      "powerDraw_MW": 50.0,
+      "description": "Advanced open-cycle design running at extreme temperatures for double the efficiency of solid cores."
+    },
+    {
+      "id": "engine-orion-pulse",
+      "name": "Orion Pulse Drive",
+      "type": "Nuclear Pulse",
+      "fuel_type_id": "fuel-pulse-units",
+      "thrust_kN": 10000,
+      "efficiency_isp": 4000,
+      "atmo_efficiency": 0.0,
+      "powerDraw_MW": 0.0,
+      "description": "Detonates nuclear charges behind a pusher plate. Brutal lifting power."
+    },
+    {
+      "id": "engine-ion-gridded",
+      "name": "Gridded Ion Thruster Array",
+      "type": "Electric (Ion)",
+      "fuel_type_id": "fuel-xenon",
+      "thrust_kN": 0.05,
+      "efficiency_isp": 12000,
+      "atmo_efficiency": 0.0,
+      "powerDraw_MW": 2.0,
+      "description": "Uses electrostatic fields to accelerate ions. Ultra-high efficiency but agonizingly low thrust."
+    },
+    {
+      "id": "engine-vasimr",
+      "name": "VASIMR Plasma Drive",
+      "type": "Electric (Plasma)",
+      "fuel_type_id": "fuel-argon",
+      "thrust_kN": 5,
+      "efficiency_isp": 4000,
+      "atmo_efficiency": 0.0,
+      "powerDraw_MW": 20.0,
+      "description": "Variable Specific Impulse Magnetoplasma Rocket. Can trade efficiency for thrust. Runs on cheaper Argon."
     },
     {
       "id": "engine-fusion-epstein",
-      "name": "Fusion Torch (Epstein-class)",
+      "name": "Epstein Fusion Drive",
       "type": "Fusion",
-      "fuel_type_id": "fuel-fusion-pellets",
-      "thrust_kN": 20000,
-      "efficiency_isp": 1200000,
-      "atmo_efficiency": 1.0,
-      "powerDraw_MW": 50.0,
-      "description": "The ultimate sci-fi 'workhorse' drive. Constant-thrust, high-G burns are possible. Can cross a solar system in days or weeks. Requires a fusion reactor."
+      "fuel_type_id": "fuel-fusion-dt",
+      "thrust_kN": 40000,
+      "efficiency_isp": 1100000,
+      "atmo_efficiency": 0.5,
+      "powerDraw_MW": 200.0,
+      "description": "High-energy magnetic coil acceleration. Allows continuous 1G burns."
     },
     {
-      "id": "engine-antimatter",
-      "name": "Antimatter Beam-Core",
+      "id": "engine-antimatter-beam",
+      "name": "Antimatter Beam Core",
       "type": "Annihilation",
       "fuel_type_id": "fuel-antimatter",
-      "thrust_kN": 500000,
-      "efficiency_isp": 5000000,
+      "thrust_kN": 200000,
+      "efficiency_isp": 10000000,
       "atmo_efficiency": 1.0,
-      "powerDraw_MW": 500.0,
-      "description": "Theoretical drive with performance that approaches the impossible. Requires a 'reaction mass' (like hydrogen) and massive power for containment."
+      "powerDraw_MW": 1000.0,
+      "description": "Direct 1:1 conversion of mass to energy. Relativistic exhaust."
     },
     {
       "id": "engine-warp-drive",
-      "name": "Alcubierre Warp Drive",
+      "name": "Alcubierre Warp Ring",
       "type": "Spacetime",
       "fuel_type_id": "fuel-exotic-matter",
       "thrust_kN": 0,
       "efficiency_isp": 0,
       "atmo_efficiency": 0.0,
-      "powerDraw_MW": 1000.0,
-      "description": "Does not provide 'thrust'. Consumes exotic matter to warp spacetime, enabling FTL travel. Requires a massive power plant and conventional drives for in-system maneuvering."
+      "powerDraw_MW": 5000.0,
+      "description": "Compresses space to allow FTL travel. Requires exotic matter."
     }
   ]
 }

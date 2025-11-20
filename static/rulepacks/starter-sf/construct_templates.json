@@ -3,38 +3,186 @@
   "name": "Default Construct Palette",
   "station": [
     {
-      "id": "template-station-trade-hub",
-      "parentId": null,
-      "name": "Orbital Trade Hub",
+      "id": "construct-iss",
+      "name": "International Space Station",
       "kind": "construct",
       "roleHint": "station",
-      "class": "station/trade-hub",
-      "description": "A bustling, rotating station in a key orbital position, serving as a primary market and refueling depot for system traffic. Spin gravity is ~0.8G.",
-      "gmNotes": "A central location for quests, trade, and faction interactions. A good 'home base' for a campaign.",
+      "class": "Current/Station/Research",
+      "description": "The premier research facility in LEO. A modular habitation of modules and trusses.",
+      "gmNotes": "Fragile. Zero-G. High value personnel.",
       "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#aaaaaa",
       "crew": {
-        "current": 0,
-        "max": 5000
-      },
-      "orbit": {
-        "hostId": null,
-        "elements": { "a_AU": 1.0 }
+        "current": 7,
+        "max": 11
       },
       "physical_parameters": {
-        "dimensionsM": [800, 800, 300],
-        "massKg": 4500000000,
-        "cargoCapacity_tonnes": 500000,
-        "rotation_period_hours": 0.0156,
-        "spinRadiusM": 400,
+        "dimensionsM": [109, 73, 51],
+        "massKg": 450000,
+        "cargoCapacity_tonnes": 10,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-rcs-hydrazine", "quantity": 16 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrazine", "capacity_units": 2000, "current_units": 1500 } ],
+      "systems": {
+        "power_plants": [ { "type": "Solar Arrays", "output_MW": 0.12 } ],
+        "modules": [ "Zvezda", "Destiny Lab", "Unity Node" ],
+        "life_support": { "consumables_max_person_days": 2000, "consumables_current_person_days": 1800 }
+      }
+    },
+    {
+      "id": "construct-tiangong",
+      "name": "Tiangong Station",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Current/Station/Research",
+      "description": "A T-shaped modular station. Modern, automated, and efficient.",
+      "gmNotes": "China's space station. Uses Gridded Ion Thrusters for station keeping.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#ff4444",
+      "crew": { "current": 3, "max": 6 },
+      "physical_parameters": {
+        "dimensionsM": [37, 37, 10],
+        "massKg": 100000,
+        "cargoCapacity_tonnes": 5,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-ion-gridded", "quantity": 4 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-xenon", "capacity_units": 500, "current_units": 500 } ],
+      "systems": {
+        "power_plants": [ { "type": "Flex Solar Wings", "output_MW": 1 } ],
+        "modules": [ "Tianhe Core", "Wentian Lab" ],
+        "life_support": { "consumables_max_person_days": 1000, "consumables_current_person_days": 900 }
+      }
+    },
+    {
+      "id": "construct-lunar-gateway",
+      "name": "Lunar Gateway",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Current/Station/Outpost",
+      "description": "A small station in a Near-Rectilinear Halo Orbit around the Moon. Staging point for surface landings.",
+      "gmNotes": "The bridge to the surface. High radiation environment outside.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#ffffff",
+      "crew": { "current": 0, "max": 4 },
+      "physical_parameters": {
+        "dimensionsM": [20, 10, 10],
+        "massKg": 40000,
+        "cargoCapacity_tonnes": 5,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-ion-gridded", "quantity": 2 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-xenon", "capacity_units": 1000, "current_units": 1000 } ],
+      "systems": {
+        "power_plants": [ { "type": "Solar Array", "output_MW": 0.06 } ],
+        "modules": [ "HALO Hab", "PPE Power Module" ],
+        "life_support": { "consumables_max_person_days": 120, "consumables_current_person_days": 120 }
+      }
+    },
+    {
+      "id": "template-mothership-prosperos-dream",
+      "name": "Prospero's Dream",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Mothership/Station/Port",
+      "description": "A sprawling, chaotic pirate haven and neutral port, Prospero's Dream is an artificial habitat with a diameter of 12.98 kilometers and a circumference of 40.77 kilometers. It features 23 decks in its outer ring, an average of 78 decks in its ring structures, and a towering 430-deck center spire. An artificial gravity generator provides simulated gravity.",
+      "gmNotes": "The primary hub for Mothership campaigns. A wretched hive of scum and villainy with an estimated city-level population of ~5.6 million, though at choke points, it can reach ~3.1 million. High crime, high opportunity. Run by rival pirate lords, where anything can be bought or sold.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#aa00aa",
+      "crew": {
+        "current": 8600000,
+        "max": 9000000
+      },
+      "physical_parameters": {
+        "dimensionsM": [12980, 12980, 12980],
+        "massKg": 10000000000000,
+        "cargoCapacity_tonnes": 20000000,
+        "rotation_period_hours": 200,
+        "spinRadiusM": 6000,
         "can_aerobrake": false,
         "has_landing_gear": false
       },
       "engines": [
-        { "engine_id": "engine-rcs-hydrazine", "quantity": 500 }
+        { "engine_id": "engine-rcs-hydrazine", "quantity": 200 }
       ],
       "fuel_tanks": [
-        { "fuel_type_id": "fuel-hydrazine", "capacity_units": 5000, "current_units": 0 }
+        { "fuel_type_id": "fuel-hydrazine", "capacity_units": 50000, "current_units": 20000 }
       ],
+      "systems": {
+        "power_plants": [ { "type": "Dirty Fission Core", "output_MW": 2000 } ],
+        "life_support": { "consumables_max_person_days": 1000000000, "consumables_current_person_days": 500000000 },
+        "modules": [ "Malvolio", "Spinal Crux District", "The Choke", "The Chop Shop", "Resort", "Observatory", "Drydock", "Cloudbank" ]
+      }
+    },
+    {
+      "id": "template-station-research-outpost",
+      "name": "Orbital Research Outpost",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Hard SciFi/Station/Research",
+      "description": "A small, rotating habitation module designed for long-term scientific observation of a planetary body. Includes sensor arrays and a small centrifuge for gravity.",
+      "gmNotes": "Ideal for monitoring a primitive species or studying a gas giant. Vulnerable and lightly armed.",
+      "IsTemplate": true,
+      "crew": {
+        "current": 0,
+        "max": 20
+      },
+      "physical_parameters": {
+        "dimensionsM": [40, 20, 20],
+        "massKg": 150000,
+        "cargoCapacity_tonnes": 50,
+        "rotation_period_hours": 10,
+        "spinRadiusM": 15,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [
+        { "engine_id": "engine-rcs-hydrazine", "quantity": 12 }
+      ],
+      "fuel_tanks": [
+        { "fuel_type_id": "fuel-hydrazine", "capacity_units": 100, "current_units": 0 }
+      ],
+      "systems": {
+        "power_plants": [ { "type": "Solar Array Wings", "output_MW": 0.5 } ],
+        "life_support": { "consumables_max_person_days": 10000, "consumables_current_person_days": 0 },
+        "modules": [ "Sensor Suite", "Centrifuge Hab", "Bio-Lab" ]
+      }
+    },
+    {
+      "id": "template-station-trade-hub",
+      "name": "Orbital Trade Hub",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Hard SciFi/Station/Trade Hub",
+      "description": "A bustling, rotating station in a key orbital position, serving as a primary market and refueling depot for system traffic. Spin gravity is ~0.8G.",
+      "gmNotes": "A central location for quests, trade, and faction interactions. A good 'home base' for a campaign.",
+      "IsTemplate": true,
+      "crew": { "current": 0, "max": 5000 },
+      "physical_parameters": {
+        "dimensionsM": [800, 800, 300],
+        "massKg": 4500000000,
+        "cargoCapacity_tonnes": 500000,
+        "rotation_period_hours": 60,
+        "spinRadiusM": 400,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-rcs-hydrazine", "quantity": 500 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrazine", "capacity_units": 5000, "current_units": 0 } ],
       "systems": {
         "power_plants": [ { "type": "Main Fusion Reactor", "output_MW": 5000 } ],
         "life_support": { "consumables_max_person_days": 1000000, "consumables_current_person_days": 0 },
@@ -42,181 +190,240 @@
       }
     },
     {
-      "id": "template-station-deep-space",
-      "name": "Deep Space Relay",
+      "id": "template-expanse-ceres",
+      "name": "Ceres Station",
       "kind": "construct",
       "roleHint": "station",
-      "class": "station/comms-relay",
-      "description": "An automated deep-space communications and sensor array. Uses high-efficiency ion thrusters for station-keeping and orbital plane changes.",
-      "gmNotes": "A remote, unmanned location. Could be a target for sabotage, a place to intercept signals, or require repairs.",
+      "class": "Expanse/Station/Colony",
+      "description": "The capital of the Belt. A dwarf planet hollowed out and spun up to provide 0.3G gravity at the outer tunnels.",
+      "gmNotes": "Home to 6 million Belters. The Docks, Medina District, Star Helix Police HQ. 'Down' is toward the surface.",
       "IsTemplate": true,
-      "crew": {
-        "current": 0,
-        "max": 0
-      },
-      "orbit": {
-        "hostId": null,
-        "elements": { "a_AU": 10.0 }
-      },
+      "icon_type": "square",
+      "icon_color": "#ffff00",
+      "crew": { "current": 6000000, "max": 10000000 },
       "physical_parameters": {
-        "dimensionsM": [120, 40, 40],
-        "massKg": 8000000,
-        "cargoCapacity_tonnes": 0,
-        "rotation_period_hours": 0,
-        "spinRadiusM": 0,
+        "dimensionsM": [940000, 940000, 940000],
+        "massKg": 900000000000000000000,
+        "cargoCapacity_tonnes": 5000000000,
+        "rotation_period_hours": 2500,
+        "spinRadiusM": 470000,
         "can_aerobrake": false,
         "has_landing_gear": false
       },
-      "engines": [
-        { "engine_id": "engine-ion-xenon", "quantity": 4 }
-      ],
-      "fuel_tanks": [
-        { "fuel_type_id": "fuel-xenon", "capacity_units": 20, "current_units": 0 }
-      ],
+      "engines": [],
+      "fuel_tanks": [],
       "systems": {
-        "power_plants": [ { "type": "Radioisotope Generator (RTG)", "output_MW": 10 } ],
-        "life_support": { "consumables_max_person_days": 0, "consumables_current_person_days": 0 },
-        "modules": [ "High-Gain Antenna Array", "System-Wide Sensor Package" ]
+        "power_plants": [ { "type": "Geothermal/Fusion Grid", "output_MW": 5000000 } ],
+        "modules": [ "The Docks", "Medina District", "Gov Sector", "Hydroponics" ],
+        "life_support": { "consumables_max_person_days": 10000000000, "consumables_current_person_days": 10000000000 }
       }
     },
     {
-      "id": "template-station-shipyard",
-      "name": "Orbital Shipyard",
+      "id": "template-expanse-eros",
+      "name": "Eros Station",
       "kind": "construct",
       "roleHint": "station",
-      "class": "station/shipyard",
-      "description": "A massive, non-rotating latticework of docks, cranes, and fabrication bays. Equipped with powerful chemical 'tug' engines to move large, unpowered hulls.",
-      "gmNotes": "The place to buy, sell, or upgrade ships. Can be blockaded, infiltrated for sabotage, or be the site of a major military build-up.",
+      "class": "Expanse/Station/Colony",
+      "description": "An elongated asteroid spun for gravity. A hub for gambling, vice, and illicit trade.",
+      "gmNotes": "The 'Vegas' of the Belt. Site of the Protomolecule incident.",
       "IsTemplate": true,
-      "crew": {
-        "current": 0,
-        "max": 2000
-      },
-      "orbit": {
-        "hostId": null,
-        "elements": { "a_AU": 1.0 }
-      },
+      "icon_type": "square",
+      "icon_color": "#ff00ff",
+      "crew": { "current": 150000, "max": 1500000 },
       "physical_parameters": {
-        "dimensionsM": [4000, 2000, 1000],
-        "massKg": 18000000000,
-        "cargoCapacity_tonnes": 100000,
-        "rotation_period_hours": 0,
-        "spinRadiusM": 0,
+        "dimensionsM": [22000, 7000, 7000],
+        "massKg": 6000000000000000,
+        "cargoCapacity_tonnes": 5000000,
+        "rotation_period_hours": 200,
+        "spinRadiusM": 3000,
         "can_aerobrake": false,
         "has_landing_gear": false
       },
-      "engines": [
-        { "engine_id": "engine-chemical-methalox", "quantity": 10 }
-      ],
-      "fuel_tanks": [
-        { "fuel_type_id": "fuel-methalox", "capacity_units": 10000, "current_units": 0 }
-      ],
+      "engines": [ { "engine_id": "engine-rcs-hydrazine", "quantity": 500 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrazine", "capacity_units": 50000, "current_units": 0 } ],
       "systems": {
-        "power_plants": [ { "type": "Large Fission Reactor", "output_MW": 2000 } ],
-        "life_support": { "consumables_max_person_days": 500000, "consumables_current_person_days": 0 },
-        "modules": [ "Construction Gantries", "Assembly Bays", "Ore Refinery", "Habitation Modules" ]
+        "power_plants": [ { "type": "Old Fission Core", "output_MW": 2000 } ],
+        "modules": [ "Casino Strip", "Blue Falcon Hotel", "Docking Ring" ],
+        "life_support": { "consumables_max_person_days": 5000000, "consumables_current_person_days": 0 }
       }
     },
     {
-      "id": "template-station-mining-rig",
-      "name": "Automated Mining Rig",
+      "id": "template-expanse-tycho",
+      "name": "Tycho Station",
       "kind": "construct",
       "roleHint": "station",
-      "class": "station/mining-rig",
-      "description": "A heavily automated platform designed to anchor to asteroids or small moons. It has no main drive, relying on RCS thrusters for maneuvering. Its powerful drills and onboard refinery can process raw ore, ejecting slag and storing the refined materials.",
-      "gmNotes": "A great 'side quest' location. It could be taken over by pirates, suffering a systems failure ('rescue the crew'), or have drilled into something it shouldn't have.",
+      "class": "Expanse/Station/Industrial",
+      "description": "The largest mobile construction platform in the system. Features a massive central sphere and two counter-rotating habitat rings.",
+      "gmNotes": "OPA HQ (Fred Johnson). Currently building the Nauvoo. Can move its orbit.",
       "IsTemplate": true,
-      "crew": {
-        "current": 0,
-        "max": 50
-      },
-      "orbit": {
-        "hostId": null,
-        "elements": { "a_AU": 2.8 }
-      },
+      "icon_type": "square",
+      "icon_color": "#ffcc00",
+      "crew": { "current": 15000, "max": 20000 },
       "physical_parameters": {
-        "dimensionsM": [400, 350, 600],
-        "massKg": 50000000,
-        "cargoCapacity_tonnes": 100000,
-        "rotation_period_hours": 0,
-        "spinRadiusM": 0,
+        "dimensionsM": [2000, 2000, 1000],
+        "massKg": 45000000000,
+        "cargoCapacity_tonnes": 10000000,
+        "rotation_period_hours": 100,
+        "spinRadiusM": 800,
         "can_aerobrake": false,
         "has_landing_gear": false
       },
       "engines": [
-        { "engine_id": "engine-rcs-hydrazine", "quantity": 32 }
+        { "engine_id": "engine-fusion-epstein", "quantity": 24 },
+        { "engine_id": "engine-rcs-hydrazine", "quantity": 500 }
       ],
-      "fuel_tanks": [
-        { "fuel_type_id": "fuel-hydrazine", "capacity_units": 500, "current_units": 0 }
-      ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-fusion-dt", "capacity_units": 1000000, "current_units": 0 } ],
       "systems": {
-        "power_plants": [ { "type": "Compact Fission Reactor", "output_MW": 150 } ],
-        "life_support": { "consumables_max_person_days": 18000, "consumables_current_person_days": 0 },
-        "modules": [ "Ore Processing Plant", "Compact Refinery", "Ore Cargo Bay (100k tonnes)", "Automated Drones x20", "Asteroid Anchor Drills" ]
+        "power_plants": [ { "type": "Massive Fusion Grid", "output_MW": 50000 } ],
+        "modules": [ "Construction Gantries", "Habitation Rings", "Command Sphere" ],
+        "life_support": { "consumables_max_person_days": 50000000, "consumables_current_person_days": 0 }
       }
     },
-	{
-  "id": "template-station-iss",
-  "parentId": "solar-system-earth",
-  "name": "International Space Station (ISS)",
-  "kind": "construct",
-  "roleHint": "station",
-  "class": "station/research-outpost",
-  "description": "A modular, multi-national research outpost in Low Earth Orbit. It is one of the largest artificial structures in space, serving as a laboratory for microgravity experiments and a hub for international cooperation.",
-  "gmNotes": "A high-traffic, high-security location. A great spot for a 'FedEx' quest, a medical emergency (using the medbay), or a political intrigue mission. Not a place for a firefight, as its hull is thin and unarmored.",
-  "IsTemplate": true,
-  "crew": {
-    "current": 0,
-    "max": 10
-  },
-  "orbit": {
-    "hostId": "solar-system-earth",
-    "hostMu": 398600441800000,
-    "t0": 1762339146908,
-    "elements": {
-      "a_AU": 0.0000453,
-      "e": 0.0001,
-      "i_deg": 51.6,
-      "omega_deg": 0,
-      "Omega_deg": 0,
-      "M0_rad": 0.0
+    {
+      "id": "template-expanse-anderson",
+      "name": "Anderson Station",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Expanse/Station/Industrial",
+      "description": "A lonely cylinder in the outer belt. A key resupply depot for miners.",
+      "gmNotes": "Site of a massacre. Poor ventilation. Gritty industrial aesthetic.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#885500",
+      "crew": { "current": 10000, "max": 12000 },
+      "physical_parameters": {
+        "dimensionsM": [800, 200, 200],
+        "massKg": 5000000000,
+        "cargoCapacity_tonnes": 50000,
+        "rotation_period_hours": 30,
+        "spinRadiusM": 100,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-rcs-hydrazine", "quantity": 50 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrazine", "capacity_units": 50000, "current_units": 0 } ],
+      "systems": {
+        "power_plants": [ { "type": "Fission Reactor", "output_MW": 500 } ],
+        "modules": [ "Cargo Docks", "Refinery", "Market" ],
+        "life_support": { "consumables_max_person_days": 500000, "consumables_current_person_days": 0 }
+      }
+    },
+    {
+      "id": "template-expanse-thoth",
+      "name": "Thoth Station",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Expanse/Station/Research",
+      "description": "A stealth-composite station hidden in deep space. Hard to detect on sensors.",
+      "gmNotes": "Protogen secret lab. Heavily guarded. The source of the stealth ships.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#bcb8b8",
+      "crew": { "current": 50, "max": 100 },
+      "physical_parameters": {
+        "dimensionsM": [150, 80, 80],
+        "massKg": 2000000,
+        "cargoCapacity_tonnes": 500,
+        "rotation_period_hours": 15,
+        "spinRadiusM": 30,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-rcs-hydrazine", "quantity": 24 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrazine", "capacity_units": 2000, "current_units": 0 } ],
+      "systems": {
+        "power_plants": [ { "type": "Stealth Reactor", "output_MW": 100 } ],
+        "modules": [ "Secure Server Core", "Labs", "PDC Turrets" ],
+        "life_support": { "consumables_max_person_days": 10000, "consumables_current_person_days": 0 }
+      }
+    },
+    {
+      "id": "template-expanse-ganymede",
+      "name": "Ganymede Ag Domes",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Expanse/Station/Colony",
+      "description": "Massive illuminated domes on the surface of Jupiter's largest moon. Mirrors focus sunlight to grow food.",
+      "gmNotes": "The breadbasket of the Belt. Critical strategic resource.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#44ff44",
+      "crew": { "current": 5000, "max": 10000 },
+      "physical_parameters": {
+        "dimensionsM": [5000, 5000, 200],
+        "massKg": 2000000000,
+        "cargoCapacity_tonnes": 500000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": true
+      },
+      "engines": [],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-water", "capacity_units": 1000000, "current_units": 0 } ],
+      "systems": {
+        "power_plants": [ { "type": "Magnetosphere Tap", "output_MW": 10000 } ],
+        "modules": [ "Orbital Mirrors", "Hydroponic Bays", "Maternity Ward" ],
+        "life_support": { "consumables_max_person_days": 100000000, "consumables_current_person_days": 0 }
+      }
+    },
+    {
+      "id": "template-expanse-phoebe",
+      "name": "Phoebe Research Station",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Expanse/Station/Research",
+      "description": "A Protogen facility built into the retrograde moon Phoebe.",
+      "gmNotes": "Source of the Protomolecule. Dangerous. Burned by Mars.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#4400aa",
+      "crew": { "current": 0, "max": 200 },
+      "physical_parameters": {
+        "dimensionsM": [500, 500, 200],
+        "massKg": 100000000,
+        "cargoCapacity_tonnes": 2000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": true
+      },
+      "engines": [],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrazine", "capacity_units": 1000, "current_units": 0 } ],
+      "systems": {
+        "power_plants": [ { "type": "Fission Core", "output_MW": 500 } ],
+        "modules": [ "Ice Core Drill", "Bio-Labs" ],
+        "life_support": { "consumables_max_person_days": 20000, "consumables_current_person_days": 0 }
+      }
+    },
+    {
+      "id": "template-lunar-lovell",
+      "name": "Lovell City",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Expanse/Station/Colony",
+      "description": "A massive subterranean city beneath the lunar regolith. The seat of UN power off-Earth.",
+      "gmNotes": "Safe, bureaucratic, expensive. 0.16G natural gravity.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#aaaaaa",
+      "crew": { "current": 100000, "max": 5000000 },
+      "physical_parameters": {
+        "dimensionsM": [10000, 10000, 500],
+        "massKg": 50000000000,
+        "cargoCapacity_tonnes": 50000000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": true
+      },
+      "engines": [],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-helium3", "capacity_units": 500000, "current_units": 0 } ],
+      "systems": {
+        "power_plants": [ { "type": "Helium-3 Fusion Grid", "output_MW": 100000 } ],
+        "modules": [ "Spaceport", "UN High Command", "Subsurface Rail" ],
+        "life_support": { "consumables_max_person_days": 1000000000, "consumables_current_person_days": 0 }
+      }
     }
-  },
-  "physical_parameters": {
-    "dimensionsM": [109, 73, 51],
-    "massKg": 450000,
-    "cargoCapacity_tonnes": 50,
-    "rotation_period_hours": 0,
-    "spinRadiusM": 0,
-    "can_aerobrake": false,
-    "has_landing_gear": false
-  },
-  "engines": [
-    { "engine_id": "engine-rcs-hydrazine", "quantity": 32 }
-  ],
-  "fuel_tanks": [
-    { "fuel_type_id": "fuel-hydrazine", "capacity_units": 8, "current_units": 0 }
-  ],
-  "systems": {
-    "power_plants": [
-      { "type": "Large Solar Array Wing", "output_MW": 0.12 }
-    ],
-    "life_support": {
-      "consumables_max_person_days": 1800,
-      "consumables_current_person_days": 0
-    },
-    "modules": [
-      "Zvezda Service Module",
-      "Zarya FGB",
-      "Destiny Laboratory (US)",
-      "Kibo Laboratory (JAXA)",
-      "Columbus Laboratory (ESA)",
-      "Cupola Observation Module",
-      "Canadarm2 (Robotic Arm)",
-      "Multiple Docking Ports"
-    ]
-  }
-}
   ],
   "habitat": [
     {
@@ -224,33 +431,22 @@
       "name": "O'Neill Cylinder",
       "kind": "construct",
       "roleHint": "habitat",
-      "class": "habitat/oneill-cylinder",
+      "class": "Hard SciFi/Habitat/O'Neill Cylinder",
       "description": "A massive, self-contained world. A pair of counter-rotating cylinders providing 1G of artificial gravity via spin. Has slow, powerful drives for orbital adjustments.",
       "gmNotes": "A 'city in space.' A major population center, likely with its own government and political intrigue. A target for attack or a safe haven.",
       "IsTemplate": true,
-      "crew": {
-        "current": 0,
-        "max": 1000000
-      },
-      "orbit": {
-        "hostId": null,
-        "elements": { "a_AU": 1.0 }
-      },
+      "crew": { "current": 0, "max": 1000000 },
       "physical_parameters": {
         "dimensionsM": [32000, 8000, 8000],
         "massKg": 5000000000000,
         "cargoCapacity_tonnes": 1000000,
-        "rotation_period_hours": 0.033,
+        "rotation_period_hours": 150,
         "spinRadiusM": 4000,
         "can_aerobrake": false,
         "has_landing_gear": false
       },
-      "engines": [
-        { "engine_id": "engine-ntr", "quantity": 20 }
-      ],
-      "fuel_tanks": [
-        { "fuel_type_id": "fuel-hydrogen", "capacity_units": 500000, "current_units": 0 }
-      ],
+      "engines": [ { "engine_id": "engine-ntr-solid", "quantity": 20 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrogen", "capacity_units": 20000000, "current_units": 0 } ],
       "systems": {
         "power_plants": [ { "type": "Main Fusion Reactor", "output_MW": 50000 } ],
         "life_support": { "consumables_max_person_days": 1e+9, "consumables_current_person_days": 0 },
@@ -262,23 +458,16 @@
       "name": "Asteroid Base (Ceres-style)",
       "kind": "construct",
       "roleHint": "habitat",
-      "class": "habitat/asteroid-base",
+      "class": "Hard SciFi/Habitat/Asteroid Base",
       "description": "A major habitat and station built *inside* a hollowed-out asteroid, using the asteroid's mass for radiation shielding and spinning it for gravity. No main propulsion.",
       "gmNotes": "A classic 'Belter' or fringe location. Densely populated, maze-like, and full of secrets. The asteroid's rock provides excellent protection from radiation and sensors.",
       "IsTemplate": true,
-      "crew": {
-        "current": 0,
-        "max": 100000
-      },
-      "orbit": {
-        "hostId": null,
-        "elements": { "a_AU": 2.7 }
-      },
+      "crew": { "current": 0, "max": 100000 },
       "physical_parameters": {
         "dimensionsM": [20000, 20000, 20000],
         "massKg": 1.2e+16,
         "cargoCapacity_tonnes": 500000,
-        "rotation_period_hours": 0.02,
+        "rotation_period_hours": 300,
         "spinRadiusM": 10000,
         "can_aerobrake": false,
         "has_landing_gear": false
@@ -298,18 +487,13 @@
       "name": "Jump Gate",
       "kind": "construct",
       "roleHint": "infrastructure",
-      "class": "infrastructure/jump-gate",
+      "class": "High SciFi/Infrastructure/Jump Gate",
       "description": "A massive, stationary device that generates a stable wormhole or warp corridor to another gate in a different system. No propulsion.",
       "gmNotes": "The primary strategic chokepoint in the system. Controlling it means controlling all interstellar trade and travel. A prime military target.",
       "IsTemplate": true,
-      "crew": {
-        "current": 0,
-        "max": 10
-      },
-      "orbit": {
-        "hostId": null,
-        "elements": { "a_AU": 50.0 }
-      },
+      "icon_type": "square",
+      "icon_color": "#ff00ff",
+      "crew": { "current": 0, "max": 10 },
       "physical_parameters": {
         "dimensionsM": [5000, 5000, 500],
         "massKg": 9e+15,
@@ -332,18 +516,11 @@
       "name": "Defense Platform",
       "kind": "construct",
       "roleHint": "infrastructure",
-      "class": "infrastructure/defense-platform",
+      "class": "Hard SciFi/Infrastructure/Defense Platform",
       "description": "A heavily armed, armored, and stealthed weapons platform. Equipped with high-thrust engines for rapid orbital relocation.",
       "gmNotes": "A 'stationary dreadnought.' These guard key locations like planets or jump gates. Players might need to sneak past, destroy, or capture one.",
       "IsTemplate": true,
-      "crew": {
-        "current": 0,
-        "max": 20
-      },
-      "orbit": {
-        "hostId": null,
-        "elements": { "a_AU": 1.0 }
-      },
+      "crew": { "current": 0, "max": 20 },
       "physical_parameters": {
         "dimensionsM": [150, 100, 100],
         "massKg": 30000000,
@@ -353,16 +530,41 @@
         "can_aerobrake": false,
         "has_landing_gear": false
       },
-      "engines": [
-        { "engine_id": "engine-chemical-methalox", "quantity": 2 }
-      ],
-      "fuel_tanks": [
-        { "fuel_type_id": "fuel-methalox", "capacity_units": 200, "current_units": 0 }
-      ],
+      "engines": [ { "engine_id": "engine-chemical-methalox", "quantity": 2 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-methalox", "capacity_units": 200, "current_units": 0 } ],
       "systems": {
         "power_plants": [ { "type": "Compact Fission Reactor", "output_MW": 200 } ],
         "life_support": { "consumables_max_person_days": 2000, "consumables_current_person_days": 0 },
         "modules": [ "Heavy Railgun Turret", "Torpedo Bay", "Advanced Sensor Suite", "Stealth System" ]
+      }
+    },
+    {
+      "id": "template-infrastructure-jump-point",
+      "name": "Jump Point",
+      "kind": "construct",
+      "roleHint": "infrastructure",
+      "class": "High SciFi/Infrastructure/Jump Point",
+      "description": "A theoretical stable point in space, allowing ships to enter or exit a warp network. Zero mass, no propulsion.",
+      "gmNotes": "A critical strategic location. Players will use these for FTL travel. Often guarded or hidden.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#ff00ff",
+      "crew": { "current": 0, "max": 0 },
+      "physical_parameters": {
+        "dimensionsM": [1, 1, 1],
+        "massKg": 0,
+        "cargoCapacity_tonnes": 0,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [ { "type": "None", "output_MW": 0 } ],
+        "life_support": { "consumables_max_person_days": 0, "consumables_current_person_days": 0 },
+        "modules": [ "FTL Beacon" ]
       }
     }
   ],
@@ -372,18 +574,11 @@
       "name": "Derelict Freighter",
       "kind": "construct",
       "roleHint": "ship",
-      "class": "anomaly/derelict-ship",
+      "class": "Hard SciFi/Anomaly/Derelict Ship",
       "description": "A cold, silent freighter tumbling on a slow, eccentric orbit. No transponder, no heat. Its main drive is offline and its fuel tanks are empty.",
       "gmNotes": "The classic 'haunted house' in space. What happened to the crew? What's in the cargo hold? Is it a trap?",
       "IsTemplate": true,
-      "crew": {
-        "current": 0,
-        "max": 10
-      },
-      "orbit": {
-        "hostId": null,
-        "elements": { "a_AU": 3.5 }
-      },
+      "crew": { "current": 0, "max": 10 },
       "physical_parameters": {
         "dimensionsM": [450, 120, 100],
         "massKg": 5000000,
@@ -393,12 +588,8 @@
         "can_aerobrake": false,
         "has_landing_gear": false
       },
-      "engines": [
-        { "engine_id": "engine-ntr", "quantity": 1 }
-      ],
-      "fuel_tanks": [
-        { "fuel_type_id": "fuel-hydrogen", "capacity_units": 1000, "current_units": 0 }
-      ],
+      "engines": [ { "engine_id": "engine-ntr-solid", "quantity": 1 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrogen", "capacity_units": 40000, "current_units": 0 } ],
       "systems": {
         "power_plants": [ { "type": "Fission Reactor (Cold)", "output_MW": 0 } ],
         "life_support": { "consumables_max_person_days": 1000, "consumables_current_person_days": 0 },
@@ -408,24 +599,139 @@
   ],
   "ship": [
     {
+      "id": "template-aliens-sulaco",
+      "name": "USS Sulaco",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Aliens/Ship/Military/Conestoga",
+      "description": "A Conestoga-class troop transport ship. Heavily armed and armored, designed to deploy Colonial Marines and dropships to trouble spots.",
+      "gmNotes": "Carries dropships, APCs, and cryo-sleep pods for marines. Nuclear capable.",
+      "IsTemplate": true,
+      "icon_type": "triangle",
+      "icon_color": "#8bc68b",
+      "crew": { "current": 0, "max": 90 },
+      "physical_parameters": {
+        "dimensionsM": [385, 50, 80],
+        "massKg": 78000000,
+        "cargoCapacity_tonnes": 20000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-fusion-epstein", "quantity": 4 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-fusion-dt", "capacity_units": 100000, "current_units": 0 } ],
+      "systems": {
+        "power_plants": [ { "type": "Westingland A-59 Fusion", "output_MW": 3600 } ],
+        "life_support": { "consumables_max_person_days": 10000, "consumables_current_person_days": 0 },
+        "modules": [ "Hangar Bay (Dropships)", "Cryo Deck", "Armory", "Pulse Rifles" ]
+      }
+    },
+    {
+      "id": "template-aliens-dropship",
+      "name": "UD-4L Cheyenne Dropship",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Aliens/Ship/Military/Dropship",
+      "description": "A tactical utility dropship. Capable of rapid atmospheric entry and VTOL combat operations.",
+      "gmNotes": "'In the pipe, five by five.' Can carry an APC. Vulnerable to crashes.",
+      "IsTemplate": true,
+      "icon_type": "triangle",
+      "icon_color": "#8bc68b",
+      "crew": { "current": 0, "max": 2 },
+      "physical_parameters": {
+        "dimensionsM": [25, 12, 6],
+        "massKg": 18000,
+        "cargoCapacity_tonnes": 60,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": true,
+        "has_landing_gear": true
+      },
+      "engines": [ { "engine_id": "engine-chemical-methalox", "quantity": 3 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-methalox", "capacity_units": 800, "current_units": 800 } ],
+      "systems": {
+        "power_plants": [ { "type": "Gas Turbine", "output_MW": 5 } ],
+        "life_support": { "consumables_max_person_days": 10, "consumables_current_person_days": 0 },
+        "modules": [ "APC Bay", "Missile Pods", "Gatling Cannon" ]
+      }
+    },
+    {
+      "id": "template-aliens-nostromo",
+      "name": "USCSS Nostromo",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Aliens/Ship/Industrial/Towing",
+      "description": "A Lockmart CM-88B Bison M-Class starfreighter. Essentially a massive tug designed to haul automated refineries across deep space.",
+      "gmNotes": "Dark, industrial, dripping water. The refinery it tows is massive (detached here).",
+      "IsTemplate": true,
+      "icon_type": "triangle",
+      "icon_color": "#8bc68b",
+      "crew": { "current": 0, "max": 7 },
+      "physical_parameters": {
+        "dimensionsM": [243, 164, 72],
+        "massKg": 60000000,
+        "cargoCapacity_tonnes": 20000000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": true
+      },
+      "engines": [ { "engine_id": "engine-fusion-epstein", "quantity": 8 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-fusion-dt", "capacity_units": 200000, "current_units": 0 } ],
+      "systems": {
+        "power_plants": [ { "type": "Fusion Reactor", "output_MW": 2000 } ],
+        "life_support": { "consumables_max_person_days": 5000, "consumables_current_person_days": 0 },
+        "modules": [ "Towing Clamps", "Mother (AI Core)", "Cryo Chamber", "Galley" ]
+      }
+    },
+    {
+      "id": "construct-ssto-heavy",
+      "name": "Ascension Heavy Lifter",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Current/Ship/Heavy Lifter",
+      "description": "A shimmering stainless steel tower. This reusable heavy lifter is capable of Single-Stage-To-Orbit with 100t of cargo. Uses 30 massive Methalox Raptors.",
+      "gmNotes": "The workhorse of the new era. Capable of landing on Mars or Earth.",
+      "IsTemplate": true,
+      "icon_type": "triangle",
+      "icon_color": "#ff7e38",
+      "crew": { "current": 6, "max": 20 },
+      "physical_parameters": {
+        "dimensionsM": [95, 14, 14],
+        "massKg": 180000,
+        "cargoCapacity_tonnes": 120,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": true,
+        "has_landing_gear": true
+      },
+      "engines": [
+        { "engine_id": "engine-chemical-methalox", "quantity": 30 },
+        { "engine_id": "engine-rcs-hydrazine", "quantity": 24 }
+      ],
+      "fuel_tanks": [
+        { "fuel_type_id": "fuel-methalox", "capacity_units": 8000, "current_units": 8000 },
+        { "fuel_type_id": "fuel-hydrazine", "capacity_units": 20, "current_units": 20 }
+      ],
+      "systems": {
+        "power_plants": [ { "type": "Fuel Cell", "output_MW": 16 } ],
+        "modules": [ "Cargo Bay (Large)", "Header Tanks", "Heat Tiles" ],
+        "life_support": { "consumables_max_person_days": 200, "consumables_current_person_days": 200 }
+      }
+    },
+    {
       "id": "template-ship-shuttle",
       "name": "Intra-system Shuttle",
       "kind": "construct",
       "roleHint": "ship",
-      "class": "ship/shuttle",
+      "class": "Hard SciFi/Ship/Shuttle",
       "description": "A small, versatile shuttle for moving personnel and light cargo between planets and stations. Capable of atmospheric flight.",
       "gmNotes": "A basic, unexciting 'space van.' Good for getting from A to B, but not for a fight.",
       "IsTemplate": true,
       "icon_type": "triangle",
       "icon_color": "#f0f0f0",
-      "crew": {
-        "current": 0,
-        "max": 6
-      },
-      "orbit": {
-        "hostId": null,
-        "elements": { "a_AU": 1.0 }
-      },
+      "crew": { "current": 0, "max": 6 },
       "physical_parameters": {
         "dimensionsM": [20, 10, 6],
         "massKg": 40000,
@@ -450,190 +756,17 @@
       }
     },
     {
-      "id": "template-ship-corvette",
-      "name": "Corvette (Rocinante-class)",
-      "kind": "construct",
-      "roleHint": "ship",
-      "class": "ship/corvette",
-      "description": "A small, high-performance warship. Fast, well-armed, and capable of sustained high-G burns with its fusion torch drive.",
-      "gmNotes": "A perfect 'player ship.' Fast, tough, and customizable. Its fusion drive makes it one of the fastest things in any system.",
-      "IsTemplate": true,
-      "icon_type": "triangle",
-      "icon_color": "#f0f0f0",
-      "crew": {
-        "current": 0,
-        "max": 10
-      },
-      "orbit": {
-        "hostId": null,
-        "elements": { "a_AU": 1.0 }
-      },
-      "physical_parameters": {
-        "dimensionsM": [46, 18, 16],
-        "massKg": 150000,
-        "cargoCapacity_tonnes": 50,
-        "rotation_period_hours": 0,
-        "spinRadiusM": 0,
-        "can_aerobrake": true,
-        "has_landing_gear": true
-      },
-      "engines": [
-        { "engine_id": "engine-fusion-epstein", "quantity": 1 },
-        { "engine_id": "engine-rcs-hydrazine", "quantity": 16 }
-      ],
-      "fuel_tanks": [
-        { "fuel_type_id": "fuel-fusion-pellets", "capacity_units": 100, "current_units": 0 },
-        { "fuel_type_id": "fuel-hydrazine", "capacity_units": 5, "current_units": 0 }
-      ],
-      "systems": {
-        "power_plants": [ { "type": "Micro-Fusion Reactor", "output_MW": 800 } ],
-        "life_support": { "consumables_max_person_days": 600, "consumables_current_person_days": 0 },
-        "modules": [ "Medbay", "PDC (Point Defense Cannon) x2", "Torpedo Launcher x4", "Galley" ]
-      }
-    },
-    {
-      "id": "template-ship-freighter",
-      "name": "Bulk Hauler (Canterbury-class)",
-      "kind": "construct",
-      "roleHint": "ship",
-      "class": "ship/freighter",
-      "description": "The workhorse of the system. A massive, slow-moving freighter designed for bulk cargo. Uses high-efficiency ion drives for long, slow, economical transfers. Cannot land.",
-      "gmNotes": "A 'space trucker.' Slow, vulnerable, and built to haul. A good target for pirates, or a mission for players to escort.",
-      "IsTemplate": true,
-      "icon_type": "triangle",
-      "icon_color": "#f0f0f0",
-      "crew": {
-        "current": 0,
-        "max": 30
-      },
-      "orbit": {
-        "hostId": null,
-        "elements": { "a_AU": 1.5 }
-      },
-      "physical_parameters": {
-        "dimensionsM": [1100, 300, 250],
-        "massKg": 25000000,
-        "cargoCapacity_tonnes": 500000,
-        "rotation_period_hours": 0,
-        "spinRadiusM": 0,
-        "can_aerobrake": false,
-        "has_landing_gear": false
-      },
-      "engines": [
-        { "engine_id": "engine-ion-xenon", "quantity": 20 },
-        { "engine_id": "engine-rcs-hydrazine", "quantity": 50 }
-      ],
-      "fuel_tanks": [
-        { "fuel_type_id": "fuel-xenon", "capacity_units": 8000, "current_units": 0 },
-        { "fuel_type_id": "fuel-hydrazine", "capacity_units": 100, "current_units": 0 }
-      ],
-      "systems": {
-        "power_plants": [ { "type": "Large Fission Reactor", "output_MW": 1000 } ],
-        "life_support": { "consumables_max_person_days": 10000, "consumables_current_person_days": 0 },
-        "modules": [ "Massive Cargo Bays", "Magnetic Cargo Clamps", "Minimal Crew Habitation" ]
-      }
-    },
-    {
-      "id": "template-ship-capital",
-      "name": "Dreadnought (Donnager-class)",
-      "kind": "construct",
-      "roleHint": "ship",
-      "class": "ship/capital",
-      "description": "A true capital warship, a 'city in space.' Bristling with weapons, carrying its own marine contingent and support craft. Enormously powerful fusion drives. Cannot land.",
-      "gmNotes": "The 'big stick' of a faction's navy. An encounter with one should be a major event. Players might be assigned to one, or have to flee from one.",
-      "IsTemplate": true,
-      "icon_type": "triangle",
-      "icon_color": "#f0f0f0",
-      "crew": {
-        "current": 0,
-        "max": 2000
-      },
-      "orbit": {
-        "hostId": null,
-        "elements": { "a_AU": 1.0 }
-      },
-      "physical_parameters": {
-        "dimensionsM": [500, 150, 120],
-        "massKg": 250000000,
-        "cargoCapacity_tonnes": 10000,
-        "rotation_period_hours": 0,
-        "spinRadiusM": 0,
-        "can_aerobrake": false,
-        "has_landing_gear": false
-      },
-      "engines": [
-        { "engine_id": "engine-fusion-epstein", "quantity": 4 },
-        { "engine_id": "engine-rcs-hydrazine", "quantity": 100 }
-      ],
-      "fuel_tanks": [
-        { "fuel_type_id": "fuel-fusion-pellets", "capacity_units": 10000, "current_units": 0 },
-        { "fuel_type_id": "fuel-hydrazine", "capacity_units": 200, "current_units": 0 }
-      ],
-      "systems": {
-        "power_plants": [ { "type": "Main Fusion Reactor", "output_MW": 10000 } ],
-        "life_support": { "consumables_max_person_days": 500000, "consumables_current_person_days": 0 },
-        "modules": [ "Heavy Railguns", "Torpedo Bays", "PDC Grid", "Marine Barracks", "Shuttle Bay" ]
-      }
-    },
-    {
-      "id": "template-ship-colony-ark",
-      "name": "Generation Ark (Nauvoo-class)",
-      "kind": "construct",
-      "roleHint": "ship",
-      "class": "ship/colony-ark",
-      "description": "A monumental vessel designed to carry tens of thousands of colonists on a one-way, centuries-long journey to another star. A self-contained, rotating habitat built for a single, long-duration, low-thrust burn.",
-      "gmNotes": "A one-of-a-kind 'world-ship.' A major plot device. Is it being built? Is it failing mid-journey? Has it been found derelict?",
-      "IsTemplate": true,
-      "icon_type": "triangle",
-      "icon_color": "#f0f0f0",
-      "crew": {
-        "current": 0,
-        "max": 50000
-      },
-      "orbit": {
-        "hostId": null,
-        "elements": { "a_AU": 1.2 }
-      },
-      "physical_parameters": {
-        "dimensionsM": [2000, 500, 500],
-        "massKg": 7.5e+11,
-        "cargoCapacity_tonnes": 1e+7,
-        "rotation_period_hours": 0.015,
-        "spinRadiusM": 250,
-        "can_aerobrake": false,
-        "has_landing_gear": false
-      },
-      "engines": [
-        { "engine_id": "engine-antimatter", "quantity": 1 }
-      ],
-      "fuel_tanks": [
-        { "fuel_type_id": "fuel-antimatter", "capacity_units": 1000, "current_units": 0 }
-      ],
-      "systems": {
-        "power_plants": [ { "type": "Matter/Antimatter Reactor", "output_MW": 1e+7 } ],
-        "life_support": { "consumables_max_person_days": 1e+10, "consumables_current_person_days": 0 },
-        "modules": [ "Full Ecosystem (Interior)", "Cryo-bays", "Fusion-Torch Shield" ]
-      }
-    },
-    {
       "id": "template-ship-warp",
       "name": "FTL Explorer (Enterprise-class)",
       "kind": "construct",
       "roleHint": "ship",
-      "class": "ship/explorer",
+      "class": "High SciFi/Ship/Explorer",
       "description": "A long-range exploratory vessel. Uses an efficient NTR for in-system maneuvering and a warp drive for FTL travel.",
       "gmNotes": "A high-tech ship for a 'planet of the week' campaign. Designed for self-sufficiency and exploration.",
       "IsTemplate": true,
       "icon_type": "triangle",
       "icon_color": "#f0f0f0",
-      "crew": {
-        "current": 0,
-        "max": 100
-      },
-      "orbit": {
-        "hostId": null,
-        "elements": { "a_AU": 1.0 }
-      },
+      "crew": { "current": 0, "max": 100 },
       "physical_parameters": {
         "dimensionsM": [300, 140, 70],
         "massKg": 1000000,
@@ -644,12 +777,12 @@
         "has_landing_gear": true
       },
       "engines": [
-        { "engine_id": "engine-ntr", "quantity": 1 },
+        { "engine_id": "engine-ntr-gas", "quantity": 1 },
         { "engine_id": "engine-warp-drive", "quantity": 1 },
         { "engine_id": "engine-rcs-hydrazine", "quantity": 20 }
       ],
       "fuel_tanks": [
-        { "fuel_type_id": "fuel-hydrogen", "capacity_units": 500, "current_units": 0 },
+        { "fuel_type_id": "fuel-hydrogen", "capacity_units": 20000, "current_units": 0 },
         { "fuel_type_id": "fuel-exotic-matter", "capacity_units": 10, "current_units": 0 },
         { "fuel_type_id": "fuel-hydrazine", "capacity_units": 10, "current_units": 0 }
       ],
@@ -657,6 +790,209 @@
         "power_plants": [ { "type": "Warp Core (Exotic)", "output_MW": 1500 } ],
         "life_support": { "consumables_max_person_days": 72000, "consumables_current_person_days": 0 },
         "modules": [ "Science Labs", "Sensor Suite", "Shuttle Bay", "Medbay" ]
+      }
+    },
+    {
+      "id": "template-expanse-rocinante",
+      "name": "Rocinante (Corvette)",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Expanse/Ship/Corvette",
+      "description": "Legitimate salvage. A Martian Corvette class. Fast, deadly, and versatile. Capable of atmospheric landing and 10G+ burns.",
+      "gmNotes": "Hero ship.",
+      "IsTemplate": true,
+      "icon_type": "triangle",
+      "icon_color": "#ff4400",
+      "crew": { "current": 4, "max": 15 },
+      "physical_parameters": {
+        "dimensionsM": [46, 15, 15],
+        "massKg": 250000,
+        "cargoCapacity_tonnes": 100,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": true,
+        "has_landing_gear": true
+      },
+      "engines": [ { "engine_id": "engine-fusion-epstein", "quantity": 2 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-fusion-dt", "capacity_units": 10000, "current_units": 0 } ],
+      "systems": {
+        "power_plants": [ { "type": "Epstein Drive Cone", "output_MW": 800 } ],
+        "modules": [ "PDC Grid (6x)", "Torpedo Tubes (2x)", "Coffee Machine" ],
+        "life_support": { "consumables_max_person_days": 600, "consumables_current_person_days": 0 }
+      }
+    },
+    {
+      "id": "template-expanse-nauvoo",
+      "name": "LDSS Nauvoo",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Expanse/Ship/Generation Ship",
+      "description": "The largest ship ever built. Intended for a century-long voyage. A self-contained world.",
+      "gmNotes": "Currently docked at Tycho. Future Medina Station.",
+      "IsTemplate": true,
+      "icon_type": "triangle",
+      "icon_color": "#ffffff",
+      "crew": { "current": 500, "max": 50000 },
+      "physical_parameters": {
+        "dimensionsM": [2000, 500, 500],
+        "massKg": 2000000000,
+        "cargoCapacity_tonnes": 10000000,
+        "rotation_period_hours": 85.7,
+        "spinRadiusM": 1000,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-fusion-epstein", "quantity": 50 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-fusion-dt", "capacity_units": 1000000, "current_units": 0 } ],
+      "systems": {
+        "power_plants": [ { "type": "Dual Fusion Core", "output_MW": 20000 } ],
+        "modules": [ "Agricultural Drum", "Command Deck", "Mormon Temple" ],
+        "life_support": { "consumables_max_person_days": 1000000000, "consumables_current_person_days": 0 }
+      }
+    },
+    {
+      "id": "template-expanse-donnager",
+      "name": "MCRN Donnager",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Expanse/Ship/Battleship",
+      "description": "The Martian flagship. A city in space. Carries two corvettes internally.",
+      "gmNotes": "Patrolling Jupiter. Massive railguns. Increased engines for combat Gs.",
+      "IsTemplate": true,
+      "icon_type": "triangle",
+      "icon_color": "#cc4400",
+      "crew": { "current": 2000, "max": 3000 },
+      "physical_parameters": {
+        "dimensionsM": [500, 180, 100],
+        "massKg": 250000000,
+        "cargoCapacity_tonnes": 20000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-fusion-epstein", "quantity": 64 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-fusion-dt", "capacity_units": 500000, "current_units": 0 } ],
+      "systems": {
+        "power_plants": [ { "type": "Main Fusion Core", "output_MW": 15000 } ],
+        "modules": [ "Railgun Spine", "Hangar Bay (2x Corvette)", "CIC", "Marine Barracks" ],
+        "life_support": { "consumables_max_person_days": 500000, "consumables_current_person_days": 0 }
+      }
+    },
+    {
+      "id": "template-expanse-canterbury",
+      "name": "The Canterbury",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Expanse/Ship/Transport",
+      "description": "A retrofitted colony ship hauling ice from Saturn to Ceres. Old and creaky.",
+      "gmNotes": "Remember the Cant. Low thrust, massive mass.",
+      "IsTemplate": true,
+      "icon_type": "triangle",
+      "icon_color": "#a3a3a3",
+      "crew": { "current": 50, "max": 100 },
+      "physical_parameters": {
+        "dimensionsM": [1000, 200, 200],
+        "massKg": 15000000,
+        "cargoCapacity_tonnes": 1000000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-fusion-epstein", "quantity": 8 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-fusion-dt", "capacity_units": 200000, "current_units": 0 } ],
+      "systems": {
+        "power_plants": [ { "type": "Auxiliary Reactor", "output_MW": 2000 } ],
+        "modules": [ "Ice Clamps", "Processing Bay", "Medical Bay" ],
+        "life_support": { "consumables_max_person_days": 50000, "consumables_current_person_days": 0 }
+      }
+    },
+    {
+      "id": "template-expanse-razorback",
+      "name": "The Razorback",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Expanse/Ship/Racer",
+      "description": "A modified pinnace. A fusion torch with seats. Incredible acceleration.",
+      "gmNotes": "Julie Mao's racer. Hard to catch.",
+      "IsTemplate": true,
+      "icon_type": "triangle",
+      "icon_color": "#00aaff",
+      "crew": { "current": 1, "max": 2 },
+      "physical_parameters": {
+        "dimensionsM": [20, 8, 6],
+        "massKg": 15000,
+        "cargoCapacity_tonnes": 1,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": true,
+        "has_landing_gear": true
+      },
+      "engines": [ { "engine_id": "engine-fusion-epstein", "quantity": 1 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-fusion-dt", "capacity_units": 800, "current_units": 0 } ],
+      "systems": {
+        "power_plants": [ { "type": "Overclocked Drive", "output_MW": 600 } ],
+        "modules": [ "Crash Couches", "High-G Tank" ],
+        "life_support": { "consumables_max_person_days": 20, "consumables_current_person_days": 0 }
+      }
+    },
+    {
+      "id": "template-expanse-scirocco",
+      "name": "MCRN Scirocco",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Expanse/Ship/Cruiser",
+      "description": "A heavy Martian patrol destroyer. Capable of deploying corvettes.",
+      "gmNotes": "Command ship. Heavy armor.",
+      "IsTemplate": true,
+      "icon_type": "triangle",
+      "icon_color": "#dd3300",
+      "crew": { "current": 200, "max": 500 },
+      "physical_parameters": {
+        "dimensionsM": [200, 60, 60],
+        "massKg": 12000000,
+        "cargoCapacity_tonnes": 2000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": true,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-fusion-epstein", "quantity": 6 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-fusion-dt", "capacity_units": 50000, "current_units": 0 } ],
+      "systems": {
+        "power_plants": [ { "type": "High-Output Fusion", "output_MW": 4000 } ],
+        "modules": [ "Internal Hangar (Corvette)", "PDC Network", "Torpedo Fabrication" ],
+        "life_support": { "consumables_max_person_days": 50000, "consumables_current_person_days": 0 }
+      }
+    },
+    {
+      "id": "template-expanse-pella",
+      "name": "The Pella",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Expanse/Ship/Frigate",
+      "description": "A heavy frigate with cruiser-level armament. Fast, aggressive, and packed with torpedoes.",
+      "gmNotes": "Free Navy Flagship. Marco Inaros. Hits way above its weight class.",
+      "IsTemplate": true,
+      "icon_type": "triangle",
+      "icon_color": "#aa0000",
+      "crew": { "current": 30, "max": 80 },
+      "physical_parameters": {
+        "dimensionsM": [90, 25, 25],
+        "massKg": 600000,
+        "cargoCapacity_tonnes": 200,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-fusion-epstein", "quantity": 4 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-fusion-dt", "capacity_units": 15000, "current_units": 0 } ],
+      "systems": {
+        "power_plants": [ { "type": "Mil-Spec Fusion", "output_MW": 1200 } ],
+        "modules": [ "Rapid Fire Torpedoes", "Heavy PDC Grid", "CIC" ],
+        "life_support": { "consumables_max_person_days": 1000, "consumables_current_person_days": 0 }
       }
     }
   ]
