@@ -1,50 +1,54 @@
 [
   {
-    "label": "Formal Science Survey",
-    "guideline": "Write as an objective, detached, and academic third-person report. Use precise technical and scientific jargon (e.g., 'telluric world,' 'spectrographic analysis,' 'chemo-synthetic'). Focus on data, classification, and neutral observation. The tone is formal and impersonal."
+    "label": "Technical Engineering Report",
+    "guideline": "Write as an objective, detached, and technical third-person structural analysis. Use precise engineering jargon (e.g., 'structural integrity field,' 'reactor harmonics,' 'tensile stress,' 'avionics package'). Focus on **hardware specifications, system efficiency, and hull composition**. The tone is formal and dry."
   },
   {
-    "label": "Corporate Survey",
-    "guideline": "Write as a professional business memorandum. The tone is cold, professional, and impersonal. All findings (lifeforms, minerals, land) are framed in terms of **profitability, assets, and operational cost**. Use corporate euphemisms (e.g., 'clearing indigenous flora,' 'non-sentient asset,' 'optimal-yield candidate')."
+    "label": "Corporate Asset Evaluation",
+    "guideline": "Write as a ruthless insurance adjuster or corporate liquidator. The tone is cold, professional, and money-focused. Frame the ship/construct entirely in terms of **salvage value, liability, and operational cost**. Use euphemisms like 'personnel reduction' (crew death) or 'fixer-upper' (destroyed hull)."
   },
   {
-    "label": "Miner's Log",
-    "guideline": "Write as a first-person personal work log. The tone is weary, practical, and informal. Uses sentence fragments and simple, direct language. Focuses on **immediate physical problems**, equipment status, resource finds, and personal discomforts. Slightly superstitious."
+    "label": "Void-Rigger's Maintenance Log",
+    "guideline": "Write as a weary, greasy ship's mechanic. The tone is informal, frustrated, and practical. Uses sentence fragments and slang. Focuses on **what's broken, the lack of spare parts, and the 'personality' of the machine** (e.g., 'She's kicking like a mule,' 'filters clogged again')."
   },
   {
-    "label": "Pirate's Scuttlebutt",
-    "guideline": "Write as a first-person, clandestine data-cache or secret message. The tone is cynical, opportunistic, and conspiratorial. Uses informal slang (e.g., 'corps,' 'loot,' 'easy score'). Focuses on **what others missed**, high-value targets, patrol weaknesses, and 'get-rich-quick' opportunities."
+    "label": "Pirate's / Salvager's Intel",
+    "guideline": "Write as a criminal casing a joint. The tone is cynical, opportunistic, and conspiratorial. Focuses on **weak points, entry vectors, blind spots, and high-value loot locations**. Highlights where the security grids are down and where the 'easy money' is stashed."
   },
   {
-    "label": "Military AAR",
-    "guideline": "Write as a formal, first-person-plural ('We') After-Action Report (AAR) from a military scout team. The tone is terse, formal, and analytical. Uses military jargon (e.g., 'LZ,' 'hostiles,' 'ROE,' 'tactical value'). Focuses on **threats, strategic value, defensive positions, and potential hostiles**."
+    "label": "Boarding Party AAR",
+    "guideline": "Write as a tactical leader of a marine boarding team. The tone is terse, tense, and hyper-alert. Uses CQB (Close Quarters Battle) terminology (e.g., 'breach point,' 'fatal funnel,' 'sector clear'). Focuses on **corridor layouts, defensive hardpoints, resistance encountered, and tactical control**."
   },
   {
-    "label": "Explorer's Field Notes",
-    "guideline": "Write as a first-person personal journal. The tone is curious, observational, and slightly awestruck, but professional. Focuses on the **discovery and description of new things** (flora, fauna, vistas) for their own sake. Less about profit, more about the experience of 'first contact' with the environment."
+    "label": "Derelict Diver's Journal",
+    "guideline": "Write as an urban explorer of space. The tone is atmospheric, suspenseful, and observational. Focuses on the **eerie silence, floating debris, frozen moments in time, and the sensory experience** of moving through a dead or sleeping giant. Less about tech, more about the 'ghosts' left behind."
   },
   {
-    "label": "Smuggler's Ledger",
-    "guideline": "Write as a secretive, coded ledger or route-guide. The tone is wary and all about efficiency. The report is sparse, using abbreviations or code words. Focuses entirely on **evading detection**: 'customs patrol routes,' 'sensor blind spots,' 'quiet drop-off points,' 'bribe-able officials,' and 'hidden cargo locations'."
+    "label": "Smuggler's Retrofit Specs",
+    "guideline": "Write as a paranoid runner modifying their ship. The tone is secretive and technical but non-standard. Focuses on **hiding spots, sensor baffling, illegal engine mods, and falsified transponders**. 'If customs scans this panel, they'll only see a water tank.'"
   },
   {
-    "label": "Colonist's Diary",
-    "guideline": "Write as a first-person, emotional, private diary entry. The tone is personal and often strained or hopeful. Focuses on **livability and daily hardship**: 'air filter quality,' 'food production,' 'struggles with local wildlife,' 'weather,' 'community morale,' and 'fears/hopes for the future'."
+    "label": "Crew Member's Personal Log",
+    "guideline": "Write as a claustrophobic or homesick crew member. The tone is intimate and emotional. Focuses on the **human experience of living in a tin can**: the noise of the ventilation, the smell of recycled air, the interpersonal drama, and the fear of the vacuum outside."
   },
   {
-    "label": "Ship's AI Log (Automated)",
-    "guideline": "Write as a purely automated, detached, and data-driven log from a ship's AI. The tone is robotic and literal. It reports **only objective facts and sensor readings** in a bulleted or timestamped format (e.g., '14:01: Atmosphere scan complete. 78% N, 19% Methane. Trace contaminants detected.'). Makes no assumptions or emotional observations."
+    "label": "Ship Spotter's Blog",
+    "guideline": "Write as an obsessive, hyper-enthusiastic hobbyist. The tone is geeky and overwhelmingly detailed about trivialities. Focuses on **model year variations, production batch numbers, aftermarket cowling modifications, and paint schemes**. Ignores the danger or purpose of the ship to fawn over 'rare' external components (e.g., 'That's the Mk. IV thruster assembly with the pre-war intake manifolds!')."
   },
   {
-    "label": "Tourist Brochure",
-    "guideline": "Write as an upbeat, persuasive, and exaggerated sales pitch for a tourist company. The tone is hyper-positive. It **highlights all positives and frames all negatives as exciting challenges** (e.g., 'vicious storms' become 'thrilling weather events!'). Uses exciting adjectives ('pristine,' 'breathtaking,' 'exclusive')."
+    "label": "System Diagnostics / Black Box",
+    "guideline": "Write as the ship's automated central computer. The tone is robotic, repetitive, and alarming. Reports **only error codes, system failures, and critical warnings** in a timestamped list (e.g., 'CRITICAL FAILURE: Deck 4 Decompression. Life Support: Offline.'). No emotion, just catastrophe data."
   },
   {
-    "label": "Zealot's Scripture",
-    "guideline": "Write as a first-person religious or dogmatic text. The tone is fanatical, preachy, and interpretive. It **views all findings through a rigid ideological lens**, interpreting natural phenomena as 'tests,' 'blessings,' 'abominations,' or 'signs' from a deity or power."
+    "label": "Starship Sales Brochure",
+    "guideline": "Write as a sleazy or high-end spaceship dealer. The tone is hyper-enthusiastic and manipulative. It **exaggerates luxury and performance while glossing over obvious flaws** (e.g., 'Cozy quarters!' for a cramped cell, 'Vintage charm!' for a rusted bucket). Focuses on speed, comfort, and style."
   },
   {
-    "label": "Archaeological Survey",
-    "guideline": "Write as an academic report, similar to the Science Survey, but with a different focus. The tone is scholarly and inquisitive. It **ignores biology and resources, focusing entirely on evidence of past civilization**: 'cultural artifacts,' 'architectural remains,' 'linguistic patterns,' and 'hypotheses on societal collapse'."
+    "label": "Tech-Cultist's Scripture",
+    "guideline": "Write as a worshipper of the 'Machine God.' The tone is esoteric, ritualistic, and reverent. Treats **maintenance as prayer and the ship as a divine entity**. Interprets malfunctions as 'anger' and smooth operation as 'blessings.' Uses religious terminology for mechanical parts."
+  },
+  {
+    "label": "Xeno-Archeology Dossier",
+    "guideline": "Write as a scholar investigating an alien craft. The tone is inquisitive and puzzled. Focuses on **incomprehensible design, strange materials, and the absence of recognizable controls**. 'The geometry here hurts the eyes,' 'No visible propulsion source.'"
   }
 ]

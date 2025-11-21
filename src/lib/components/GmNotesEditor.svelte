@@ -1,13 +1,20 @@
 <script lang="ts">
   import type { CelestialBody, System } from "$lib/types";
+  import { createEventDispatcher } from 'svelte';
 
   export let body: CelestialBody | System;
+  
+  const dispatch = createEventDispatcher();
+
+  function handleChange() {
+      dispatch('update', body);
+  }
 </script>
 
 <div class="gm-notes-editor">
   <h3>GM Quick Notes:</h3>
   
-  <textarea bind:value={body.gmNotes}></textarea>
+  <textarea bind:value={body.gmNotes} on:change={handleChange} placeholder="Enter secret GM-only notes here..."></textarea>
 </div>
 
 <style>

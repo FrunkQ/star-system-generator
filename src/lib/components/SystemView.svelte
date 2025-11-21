@@ -811,7 +811,7 @@ a.click();
             {/if}
             
             <BodyImage body={focusedBody} />
-            <GmNotesEditor body={focusedBody} on:change={() => { systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s); }} />
+            <GmNotesEditor body={focusedBody} on:update={handleBodyUpdate} />
 
             <footer class="attributions">
               <p>

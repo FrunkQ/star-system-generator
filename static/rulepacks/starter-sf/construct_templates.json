@@ -699,8 +699,8 @@
       "crew": { "current": 6, "max": 20 },
       "physical_parameters": {
         "dimensionsM": [95, 14, 14],
-        "massKg": 180000,
-        "cargoCapacity_tonnes": 120,
+        "massKg": 100000,
+        "cargoCapacity_tonnes": 100,
         "rotation_period_hours": 0,
         "spinRadiusM": 0,
         "can_aerobrake": true,

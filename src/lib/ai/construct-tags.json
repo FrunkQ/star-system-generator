@@ -1,37 +1,74 @@
 {
-  "Role": [
-    "Military",
-    "Civilian",
-    "Industrial",
-    "Scientific",
-    "Exploration",
-    "Colonization",
-    "Transport",
-    "Luxury"
+  "Primary Function": [
+    "Orbital Defense Platform",
+    "Deep Space Listening Post",
+    "Automated Refinery",
+    "Civilian Habitat",
+    "Luxury Resort Station",
+	"Cheap and Nasty Resort Station",
+    "Penal Facility",
+    "Corporate R&D Lab",
+    "Smuggler's Den / Shadowport",
+    "Generation Ship",
+    "Derelict Hulk",
+    "Ancient Precursor Beacon",
+    "Warp Gate / Transit Hub",
+    "Religious Temple / Monastery",
+    "Biological Preserve (Ark)",
+    "Military Shipyard",
+    "Waste Processing / Scrapyard"
   ],
-  "Design": [
-    "Sleek",
-    "Bulky",
-    "Utilitarian",
-    "Minimalist",
-    "Ornate",
-    "Asymmetrical",
-    "Modular"
+  "Architecture & Aesthetics": [
+    "Utilitarian / Brutalist (Function over form)",
+    "Sleek / High-Tech (Apple-store aesthetic)",
+    "Gothic / Industrial (Cathedral of pipes and smoke)",
+    "Organic / Grown (Bio-ship or grown crystal)",
+    "Scrappy / Modular (Bolted together junk)",
+    "Alien / Non-Euclidean (Disturbing geometry)",
+    "Retro-Futuristic (Cassette futurism)",
+    "Hollowed Asteroid (Rock on the outside)",
+    "Spire / Needle (Vertical orientation)",
+    "Ring / Torus (Centrifugal gravity)"
   ],
-  "Condition": [
-    "Brand New",
-    "Pristine",
-    "Used",
-    "Weathered",
-    "Damaged",
-    "Ancient",
-    "Derelict"
+  "Operational Status": [
+    "Brand New (Christening ceremony ongoing)",
+    "Peak Efficiency (Bustling and busy)",
+    "Overcrowded (Strained life-support)",
+    "Under Maintenance (Scaffolding everywhere)",
+    "Aging / Decaying (Rust and flickering lights)",
+    "Power Critical (Emergency lighting only)",
+    "Venting Atmosphere (Active breaches)",
+    "Quarantined (Biohazard warning)",
+    "Abandoned (Recently)",
+    "Ghost Ship (Abandoned for centuries)",
+    "Under Siege (Active combat)",
+    "Post-Disaster (Wreckage)"
   ],
-  "Origin": [
-    "Human",
-    "Alien",
-    "Corporate",
-    "Governmental",
-    "Mysterious"
+  "Inhabitants / Factions": [
+    "Skeleton Crew (Just keeping the lights on)",
+    "Military Garrison",
+    "Corporate Drones",
+    "Scientific Elite",
+    "Refugees / Squatters",
+    "Pirate Clan",
+    "Cultists",
+    "Mutineers",
+    "Rogue AI & Drones",
+    "Xenomorphic Infestation",
+    "Ghosts / Psionic Echoes",
+    "Completely Uninhabited"
+  ],
+  "Quirks & Hazards": [
+    "Unstable Gravity (Fluctuates randomly)",
+    "Radiation Leaks (Certain sectors unsafe)",
+    "Rogue AI (Manipulative or insane)",
+    "Fungal Overgrowth (Choking the vents)",
+    "Temporal Anomalies (Lost time)",
+    "Hull Creaking (Sound carries strangely)",
+    "Thermal Issues (Freezing or Boiling)",
+    "Magnetic Interference (Comms blackout)",
+    "Biometric Locks (DNA required for access)",
+    "Labyrinthine Layout (Easy to get lost)",
+    "Haunted Reputation (Morale is low)"
   ]
 }

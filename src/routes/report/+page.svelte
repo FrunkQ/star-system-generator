@@ -48,8 +48,6 @@
 
   function formatNumber(num: number | undefined, decimals = 0) {
     if (num === undefined || num === null) return '-';
-    // If number is very large (e.g. mass), use scientific or compact? 
-    // For massKg, scientific is better.
     if (num > 1e15) return num.toExponential(2);
     return num.toLocaleString(undefined, { maximumFractionDigits: decimals });
   }
@@ -113,7 +111,6 @@
       const p = body.atmosphere.pressure_bar ?? body.atmosphere.pressure_atm ?? 0;
       const pStr = p < 0.001 ? '<0.001' : p.toFixed(2);
       
-      // Top 2 gases
       const gases = Object.entries(body.atmosphere.composition || {})
           .sort((a,b) => b[1] - a[1])
           .slice(0, 2)
@@ -172,7 +169,7 @@
                         <th colspan="6" style="text-align:center; border-top: 1px dashed #ccc;">-- GM NOTES --</th>
                     </tr>
                     <tr>
-                        <td colspan="6" style="white-space: pre-wrap; font-family: monospace;">{(system as any).gmNotes || 'No notes.'}</td>
+                        <td colspan="6" class="pre-wrap-text">{(system as any).gmNotes || 'No notes.'}</td>
                     </tr>
                     {/if}
                 </tbody>
@@ -188,7 +185,7 @@
             <div class="star-block">
                 <div class="section-header">STAR: {star.name.toUpperCase()} ({star.class})</div>
                 <div class="data-box">
-                    <p>{star.description || 'No description available.'}</p>
+                    <p class="pre-wrap-text">{star.description || 'No description available.'}</p>
                     <table>
                         <tbody>
                             <tr>
@@ -209,10 +206,6 @@
                         </div>
                         
                         <div class="data-box" style="margin-top: 5px;">
-                             {#if child.description}
-                                <p style="margin: 5px 0 10px 0; font-style: italic;">{child.description}</p>
-                             {/if}
-                             
                              <!-- DENSE DATA GRID -->
                              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                                  <!-- Left Col: Physical & Orbital -->
@@ -246,8 +239,14 @@
                                  </table>
                              </div>
 
+                             {#if child.description}
+                                <div style="margin-top: 10px; border-top: 1px dotted #ccc; padding-top: 5px;">
+                                    <p class="pre-wrap-text" style="margin: 0; font-style: italic;">{child.description}</p>
+                                </div>
+                             {/if}
+
                              {#if mode === 'GM' && (child as any).gmNotes}
-                                <div style="margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px; background: #f0f0f0;">
+                                <div class="pre-wrap-text" style="margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px; background: #f0f0f0;">
                                     <strong>GM NOTE:</strong> {(child as any).gmNotes}
                                 </div>
                              {/if}
@@ -263,10 +262,6 @@
                                 </div>
                                 
                                 <div class="data-box" style="margin-top: 5px;">
-                                     {#if grandchild.description}
-                                        <p style="margin: 5px 0 10px 0; font-style: italic; font-size: 0.9em;">{grandchild.description}</p>
-                                     {/if}
-                                     
                                      <!-- DENSE DATA GRID FOR MOONS -->
                                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;">
                                          <!-- Left Col: Physical & Orbital -->
@@ -300,8 +295,14 @@
                                          </table>
                                      </div>
 
+                                     {#if grandchild.description}
+                                        <div style="margin-top: 10px; border-top: 1px dotted #ccc; padding-top: 5px;">
+                                            <p class="pre-wrap-text" style="margin: 0; font-style: italic;">{grandchild.description}</p>
+                                        </div>
+                                     {/if}
+
                                      {#if mode === 'GM' && (grandchild as any).gmNotes}
-                                        <div style="margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px; background: #f0f0f0;">
+                                        <div class="pre-wrap-text" style="margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px; background: #f0f0f0;">
                                             <strong>GM NOTE:</strong> {(grandchild as any).gmNotes}
                                         </div>
                                      {/if}
@@ -331,15 +332,20 @@
                     <span style="font-family: monospace; font-weight: bold;">{getLocationDescription(construct)}</span>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div>
-                        <p>{construct.description || 'No description.'}</p>
-                        {#if mode === 'GM' && (construct as any).gmNotes}
-                            <div style="margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px;">
-                                <strong>GM NOTE:</strong> {(construct as any).gmNotes}
-                            </div>
-                        {/if}
+                <!-- Description (full width) -->
+                {#if construct.description}
+                    <p class="pre-wrap-text" style="margin-top: 5px; margin-bottom: 10px; font-style: italic;">{construct.description}</p>
+                {/if}
+
+                <!-- GM Notes (full width) -->
+                {#if mode === 'GM' && (construct as any).gmNotes}
+                    <div class="pre-wrap-text" style="margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px; background: #f0f0f0;">
+                        <strong>GM NOTE:</strong> {(construct as any).gmNotes}
                     </div>
+                {/if}
+
+                <!-- Stats (2-column grid, separate) -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
                     <div>
                         <table>
                             <tbody>
@@ -434,4 +440,6 @@
     /* Properties Table (Left Column / Right Column) */
     th { font-weight: bold; color: #555; white-space: nowrap; width: 1%; padding-right: 10px; }
     td { word-break: break-word; }
+
+    .pre-wrap-text { white-space: pre-wrap; }
 </style>

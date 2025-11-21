@@ -164,8 +164,10 @@
               {landingAnalysis.roundTrip.possible ? 'Yes' : 'No'}
               {#if landingAnalysis.roundTrip.possible}
                 <span class="detail">({(availableFuel_tonnes - landingAnalysis.roundTrip.fuelNeeded).toFixed(1)}t fuel remaining)</span>
-              {:else if landingAnalysis.roundTrip.fuelNeeded > 0}
-                <span class="detail">({landingAnalysis.roundTrip.fuelNeeded.toFixed(1)}t required)</span>
+              {:else if landingAnalysis.roundTrip.additionalFuel > 0}
+                <span class="detail">({landingAnalysis.roundTrip.additionalFuel.toFixed(1)}t additional fuel required)</span>
+              {:else}
+                <span class="detail">({landingAnalysis.roundTrip.reason})</span>
               {/if}
             </span>
           </div>
@@ -193,8 +195,10 @@
               {landingAnalysis.roundTrip.possible ? 'Yes' : 'No'}
               {#if landingAnalysis.roundTrip.possible}
                 <span class="detail">({(availableFuel_tonnes - landingAnalysis.roundTrip.fuelNeeded).toFixed(1)}t fuel remaining)</span>
-              {:else if landingAnalysis.roundTrip.fuelNeeded > 0}
-                <span class="detail">({landingAnalysis.roundTrip.fuelNeeded.toFixed(1)}t required)</span>
+              {:else if landingAnalysis.roundTrip.additionalFuel > 0}
+                <span class="detail">({landingAnalysis.roundTrip.additionalFuel.toFixed(1)}t additional fuel required)</span>
+              {:else}
+                <span class="detail">({landingAnalysis.roundTrip.reason})</span>
               {/if}
             </span>
           </div>

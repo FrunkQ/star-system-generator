@@ -2155,8 +2155,8 @@
           14,
           14
         ],
-        "massKg": 180000,
-        "cargoCapacity_tonnes": 120,
+        "massKg": 100000,
+        "cargoCapacity_tonnes": 100,
         "rotation_period_hours": 0,
         "spinRadiusM": 0,
         "can_aerobrake": true,
@@ -2201,7 +2201,7 @@
           "consumables_current_person_days": 200
         }
       },
-      "current_cargo_tonnes": 120,
+      "current_cargo_tonnes": 100,
       "orbit": {
         "hostId": "solar-system-earth",
         "hostMu": 398600000000000,
