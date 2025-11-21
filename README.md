@@ -16,11 +16,13 @@ A procedural generator for creating scientifically-plausible star systems, compl
 
 ## What is it for?
 
-This tool was primarily designed to enhance Science Fiction Tabletop Role-Playing Games (TTRPGs). While not a perfectly accurate simulation, it aims to be 'close enough' for an RPG setting, appealing to those who, like me, marvel at the wonder and complexity of the real science behind astronomy and exoplanets. It should provide a wealth of interesting environments to serve as the backdrop for your narrative. This has been "vibe-coded" using Gemini CLI (Pro 2.5) over a few months.
+This tool was primarily designed to enhance Science Fiction Tabletop Role-Playing Games (TTRPGs). While not a perfectly accurate simulation, it aims to be 'close enough' for an RPG setting, appealing to those who, like me, marvel at the wonder and complexity of the real science behind astronomy and exoplanets. It should provide a wealth of interesting environments to serve as the backdrop for your narrative. This has been "vibe-coded" using Gemini CLI (Pro 2.5) over a few months. And more recently with Gemini 3-Pro-Preview... - OMG - what a game changer!
 
 A quick note on data: This application runs entirely in your browser. Your generated systems are not saved on a remote server; they reside solely within your local browser storage. If you wish to access your systems on a different browser or device, remember to download your files.
 
 ## Features
+
+![Star System Generator Showcase](static/screenshots/SSG.gif)
 
 *   **Procedural Generation**: Creates unique star systems based on a seed and a JSON-based rulepack.
 *   **Constructs & Infrastructure (NEW!)**:
@@ -60,7 +62,7 @@ A quick note on data: This application runs entirely in your browser. Your gener
 *   **AI-Powered Descriptions**: Integrates with OpenRouter to allow GMs to generate rich, narrative descriptions for any celestial body using customizable prompts, tags, and styles.
     ![LLM Report Generation](static/screenshots/LLM-Report-Generation.png)
 *   **Paper Reports (NEW!)**: Generate printable, themed PDF reports of your star system. Choose between a GM (full intel) or Player (redacted) version, with player reports respecting GM visibility settings for objects and descriptions. Select visual themes like "Retro Line Printer" or "Corporate". Reports include detailed celestial data and artificial construct traffic.
-    ![Printable Reports](static/screenshots/PrintableReports.png)
+    ![Printable Reports](static/screenshots/PrintableReports.png){width="50%"}
 *   **Save & Load**: 
     *   Download any system or the entire starmap as a JSON file to your computer.
     *   Upload a previously saved JSON file to continue your work. This can be at the starmap level or just a single star system to allow portability.
