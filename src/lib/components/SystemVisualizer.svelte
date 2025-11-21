@@ -20,6 +20,8 @@
   export let showZones: boolean = false;
   export let showLPoints: boolean = false;
   export let toytownFactor: number = 0;
+  export let fullScreen: boolean = false;
+  export let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
 
   const dispatch = createEventDispatcher<{ 
     focus: string | null,
@@ -62,7 +64,6 @@
   let isPanning = false;
   let lastPanX: number;
   let lastPanY: number;
-  let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
   let lastFocusedId: string | null = null;
   let isAnimatingFocus = false;
   let beltLabelClickAreas = new Map<string, { x1: number, y1: number, x2: number, y2: number }>();
@@ -373,11 +374,11 @@
     if (!parent) return;
     const resizeObserver = new ResizeObserver(() => {
         canvas.width = parent.clientWidth;
-        canvas.height = parent.clientWidth * (3 / 4);
+        canvas.height = fullScreen ? parent.clientHeight : parent.clientWidth * (3 / 4);
     });
     resizeObserver.observe(parent);
     canvas.width = parent.clientWidth;
-    canvas.height = parent.clientWidth * (3 / 4);
+    canvas.height = fullScreen ? parent.clientHeight : parent.clientWidth * (3 / 4);
     
     animationFrameId = requestAnimationFrame(render);
     return () => {
@@ -448,7 +449,7 @@
 
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       const focusedNode = nodesById.get(idToUse);
-      if (!focusedNode || focusedNode.kind !== 'body') {
+      if (!focusedNode || (focusedNode.kind !== 'body' && focusedNode.kind !== 'construct')) {
           lagrangePoints = null;
           return;
       }
@@ -561,7 +562,12 @@
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       const primaryStar = system.nodes.find(n => n.parentId === null);
       
-      const focusNode = nodesById.get(focusedBodyId || primaryStar?.id || '');
+      // Try to get the focused node. If it doesn't exist (e.g. hidden/filtered), fallback to primary star.
+      let focusNode = nodesById.get(focusedBodyId || '');
+      if (!focusNode) {
+          focusNode = primaryStar;
+      }
+      
       if (!focusNode) return visibleIds;
 
       // 1. Always add all ancestors of the focused body

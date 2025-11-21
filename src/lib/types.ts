@@ -4,6 +4,7 @@ import type { OrbitalBoundaries } from './physics/orbits';
 export type ID = string;
 
 export interface Visibility {
+  // Deprecated, use object_playerhidden instead
   visibleToPlayers: boolean;
   fields?: Record<string, boolean>;
 }
@@ -13,7 +14,11 @@ export interface Tag { key: string; value?: string; ns?: string; }
 export interface NodeBase {
   id: ID; name: string; parentId: ID | null; ui_parentId?: ID | null;
   placement?: string; // e.g., 'L4', 'L5', 'Surface'
-  tags: Tag[]; notes?: string; gmNotes?: string; visibility?: Visibility;
+  tags: Tag[]; notes?: string; gmNotes?: string; 
+  
+  // Player Visibility Flags
+  object_playerhidden?: boolean;
+  description_playerhidden?: boolean;
 }
 
 export interface Atmosphere { name: string; main?: string; pressure_bar?: number; composition: Record<string, number>; tags?: Tag[]; molarMassKg?: number; }

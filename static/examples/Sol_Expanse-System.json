@@ -2343,6 +2343,7 @@
         "hostId": "solar-system-ganymede",
         "hostMu": 9800000000000,
         "t0": 1762339146908,
+        "n_rad_per_s": 0.00001017,
         "elements": {
           "a_AU": 0.000017607870938767313,
           "e": 0,
@@ -2485,6 +2486,7 @@
         "hostId": "solar-system-luna",
         "hostMu": 4902.8,
         "t0": 1762339146908,
+        "n_rad_per_s": 0.0000026618,
         "elements": {
           "a_AU": 0.000011613801666229199,
           "e": 0,

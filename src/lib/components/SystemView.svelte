@@ -26,6 +26,8 @@
   import { generateId } from '$lib/utils';
   import { AU_KM } from '$lib/constants';
   import { propagate } from '$lib/api';
+  import { broadcastService } from '$lib/broadcast';
+  import { sanitizeSystem } from '$lib/system/utils';
 
   export let system: System;
   export let rulePack: RulePack;
@@ -46,6 +48,8 @@
   let showLPoints = false;
   let throttleTimeout: ReturnType<typeof setTimeout> | null = null;
   let lastToytownFactor: number | undefined = undefined;
+  let timeSyncInterval: ReturnType<typeof setInterval> | undefined;
+  let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
 
   // Context Menu State
   let showSummaryContextMenu = false;
@@ -73,6 +77,25 @@
   // Route Creation State
   let isLinking: boolean = false;
   let linkStartNode: CelestialBody | Barycenter | null = null;
+
+  // Broadcast View Settings
+  $: if (browser) {
+      broadcastService.sendMessage({ 
+          type: 'SYNC_VIEW_SETTINGS', 
+          payload: { showNames, showZones, showLPoints } 
+      });
+  }
+
+  // Broadcast System Updates
+  $: if (browser && $systemStore) {
+      const snapshot = computePlayerSnapshot($systemStore);
+      broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: snapshot });
+  }
+
+  // Broadcast Focus Updates
+  $: if (browser && focusedBodyId) {
+      broadcastService.sendMessage({ type: 'SYNC_FOCUS', payload: focusedBodyId });
+  }
 
   function handleShowContextMenu(event: CustomEvent<{ x: number, y: number, items: any[], type: string }>) {
     contextMenuItems = event.detail.items;
@@ -549,19 +572,10 @@ a.click();
   }
 
   async function handleShare() {
-      if (!$systemStore) return;
-      try {
-          const snapshot = computePlayerSnapshot($systemStore);
-          const json = JSON.stringify(snapshot);
-          const base64 = btoa(json);
-          const url = `${window.location.origin}/p/${base64}`;
-          await navigator.clipboard.writeText(url);
-          shareStatus = 'Link copied to clipboard!';
-      } catch (err) {
-          shareStatus = 'Failed to copy link.';
-          console.error(err);
+      window.open('/projector', 'StarSystemProjector', 'width=1280,height=720,menubar=no,toolbar=no,location=no');
+      if ($systemStore) {
+          broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: computePlayerSnapshot($systemStore) });
       }
-      setTimeout(() => shareStatus = '', 3000);
   }
 
   let unsubscribePanStore: () => void;
@@ -583,11 +597,34 @@ a.click();
     panStore.set(currentViewport.pan, { duration: 0 });
     zoomStore.set(currentViewport.zoom, { duration: 0 });
 
+    if (browser) {
+        broadcastService.initSender();
+        broadcastService.onRequestSync = () => {
+            if (get(systemStore)) {
+                const snapshot = computePlayerSnapshot(get(systemStore)!);
+                broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: snapshot });
+                broadcastService.sendMessage({ type: 'SYNC_FOCUS', payload: focusedBodyId });
+                broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' } });
+                broadcastService.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: { showNames, showZones, showLPoints } });
+                broadcastService.sendMessage({ type: 'SYNC_TIME', payload: { currentTime, isPlaying, timeScale } });
+            }
+        };
+
+        timeSyncInterval = setInterval(() => {
+             broadcastService.sendMessage({ 
+                 type: 'SYNC_TIME', 
+                 payload: { currentTime, isPlaying, timeScale } 
+             });
+        }, 1000);
+    }
+
     unsubscribePanStore = panStore.subscribe(panState => {
         viewportStore.update(v => ({ ...v, pan: panState }));
+        broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: panState, zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' } });
     });
     unsubscribeZoomStore = zoomStore.subscribe(zoomState => {
         viewportStore.update(v => ({ ...v, zoom: zoomState }));
+        broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: zoomState, isManual: cameraMode === 'MANUAL' } });
     });
 
     window.addEventListener('popstate', handlePopState);
@@ -597,6 +634,7 @@ a.click();
   onDestroy(() => {
     if (browser) {
       pause();
+      if (timeSyncInterval) clearInterval(timeSyncInterval);
     }
     if (unsubscribePanStore) {
         unsubscribePanStore();
@@ -690,7 +728,7 @@ a.click();
 
     <div class="system-view-grid">
         <div class="main-view">
-            <SystemVisualizer bind:this={visualizer} system={$systemStore} {rulePack} {currentTime} {focusedBodyId} {showNames} {showZones} {showLPoints} toytownFactor={$systemStore.toytownFactor} on:focus={handleFocus} on:showBodyContextMenu={handleShowBodyContextMenu} on:backgroundContextMenu={handleBackgroundContextMenu} />
+            <SystemVisualizer bind:this={visualizer} bind:cameraMode system={$systemStore} {rulePack} {currentTime} {focusedBodyId} {showNames} {showZones} {showLPoints} toytownFactor={$systemStore.toytownFactor} on:focus={handleFocus} on:showBodyContextMenu={handleShowBodyContextMenu} on:backgroundContextMenu={handleBackgroundContextMenu} />
 
             <BodyGmTools body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:addHabitablePlanet={handleAddHabitablePlanet} on:editConstruct={handleEditConstruct} />
             {#if focusedBody}
@@ -698,13 +736,38 @@ a.click();
             {/if}
         </div>
         <div class="details-view">
-            <input type="text" value={focusedBody.name} on:change={(e) => {
-              dispatch('renameNode', {nodeId: focusedBody.id, newName: e.target.value});
-              systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s);
-            }} class="name-input" title="Click to rename" />
+            {#if focusedBody}
+            <div class="name-row">
+                <button class="visibility-btn" on:click={() => {
+                    if (focusedBody && $systemStore) {
+                        systemStore.update(sys => {
+                            if (!sys) return null;
+                            const updatedNodes = sys.nodes.map(n => 
+                                n.id === focusedBody!.id 
+                                    ? { ...n, object_playerhidden: !n.object_playerhidden }
+                                    : n
+                            );
+                            return { ...sys, nodes: updatedNodes, isManuallyEdited: true };
+                        });
+                    }
+                }} title={focusedBody.object_playerhidden ? "Hidden from Players" : "Visible to Players"}>
+                    {#if focusedBody.object_playerhidden}
+                        <!-- Eye Closed -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    {:else}
+                        <!-- Eye Open -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#eee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    {/if}
+                </button>
+                <input type="text" value={focusedBody.name} on:change={(e) => {
+                  dispatch('renameNode', {nodeId: focusedBody.id, newName: e.target.value});
+                  systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s);
+                }} class="name-input" title="Click to rename" />
+            </div>
+            {/if}
             
             <div class="action-buttons">
-                {#if focusedBody.kind === 'construct'}
+                {#if focusedBody && focusedBody.kind === 'construct'}
                     <button class="edit-btn" on:click={() => handleEditConstruct({ detail: focusedBody })}>Edit Construct</button>
                 {/if}
                 {#if focusedBody.parentId}
@@ -776,6 +839,17 @@ a.click();
         <button on:click={() => showJson = !showJson}>
             {showJson ? 'Hide' : 'Show'} JSON
         </button>
+        <button on:click={() => {
+            if ($systemStore) {
+                const newSys = sanitizeSystem($systemStore);
+                if (newSys !== $systemStore) {
+                    systemStore.set(newSys);
+                    alert('System sanitized: Fixed orbit parameters for surface constructs.');
+                } else {
+                    alert('System is clean. No fixes needed.');
+                }
+            }
+        }}>Sanitize System</button>
     </div>
 
     {#if showJson}
@@ -951,5 +1025,31 @@ a.click();
 
   .action-buttons button.delete-btn:hover {
       background-color: #c00;
+  }
+  .name-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      width: 100%;
+      margin-bottom: 0.5em;
+  }
+  .visibility-btn {
+      background: none;
+      border: 1px solid #444;
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #222;
+  }
+  .visibility-btn:hover {
+      background-color: #333;
+      border-color: #666;
+  }
+  .name-input {
+      flex-grow: 1;
+      margin-bottom: 0 !important; /* Override previous margin if any */
   }
 </style>

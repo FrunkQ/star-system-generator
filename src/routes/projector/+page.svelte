@@ -1,0 +1,220 @@
+<script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
+  import { systemStore } from '$lib/stores';
+  import { panStore, zoomStore } from '$lib/cameraStore';
+  import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
+  import { broadcastService } from '$lib/broadcast';
+  import { browser } from '$app/environment';
+  import type { RulePack } from '$lib/types';
+  import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
+  
+  let rulePack: RulePack | null = null;
+  let currentTime = Date.now();
+  let focusedBodyId: string | null = null;
+  let animationFrameId: number;
+  let isFollowingGM = true;
+  let showMenu = false;
+  let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
+
+  // View Settings
+  let showNames = true;
+  let showZones = false;
+  let showLPoints = false;
+
+  // Time State
+  let isPlaying = false;
+  let timeScale = 0;
+
+  // Animation loop
+  function startLoop() {
+      if (!browser) return;
+      let lastTimestamp = performance.now();
+      function tick(timestamp: number) {
+          const delta = (timestamp - lastTimestamp) / 1000;
+          
+          if (isPlaying) {
+              currentTime += delta * timeScale * 1000; 
+          }
+          
+          lastTimestamp = timestamp;
+          animationFrameId = requestAnimationFrame(tick);
+      }
+      animationFrameId = requestAnimationFrame(tick);
+  }
+
+  onMount(async () => {
+      // Load RulePack (assuming standard)
+      try {
+        rulePack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json');
+      } catch (e) {
+          console.error("Failed to load rulepack for player view", e);
+      }
+      
+      // Init Receiver
+      broadcastService.initReceiver(
+          (sys) => systemStore.set(sys),
+          (id) => focusedBodyId = id,
+          (pan, zoom, isManual) => {
+              if (isFollowingGM) {
+                  if (isManual) {
+                      cameraMode = 'MANUAL';
+                      panStore.set(pan, { duration: 100 }); // Fast for manual drag
+                  } else {
+                      cameraMode = 'FOLLOW';
+                      panStore.set(pan, { duration: 500 }); // Smooth for follow
+                  }
+                  zoomStore.set(zoom, { duration: isManual ? 100 : 500 });
+              }
+          },
+          (settings) => {
+              showNames = settings.showNames;
+              showZones = settings.showZones;
+              showLPoints = settings.showLPoints;
+          },
+          (time) => {
+              isPlaying = time.isPlaying;
+              timeScale = time.timeScale;
+              // Snap to GM time if drift is significant (> 1s), otherwise let physics flow smoothly
+              if (Math.abs(currentTime - time.currentTime) > 1000) {
+                  currentTime = time.currentTime;
+              }
+          }
+      );
+
+      startLoop();
+  });
+  
+  onDestroy(() => {
+      broadcastService.close();
+      if (browser) {
+        cancelAnimationFrame(animationFrameId);
+      }
+  });
+
+</script>
+
+<main class="player-view">
+    {#if $systemStore && rulePack}
+        <SystemVisualizer 
+            system={$systemStore} 
+            {rulePack} 
+            {currentTime} 
+            {focusedBodyId}
+            {showNames} 
+            {showZones} 
+            {showLPoints}
+            toytownFactor={$systemStore.toytownFactor || 0}
+            fullScreen={true}
+            bind:cameraMode={cameraMode}
+        />
+        <div class="time-display">
+            {#if isPlaying}
+                Running: 1s = {
+                    timeScale === 1 ? '1s' : 
+                    timeScale === 3600 ? '1h' :
+                    timeScale === 86400 ? '1d' :
+                    timeScale === 2592000 ? '30d' :
+                    timeScale === 7776000 ? '90d' :
+                    timeScale === 31536000 ? '1y' :
+                    timeScale === 315360000 ? '10y' :
+                    timeScale + 'x'}
+            {:else}
+                Paused
+            {/if}
+        </div>
+        <div class="projector-menu">
+            <button class="hamburger" on:click={() => showMenu = !showMenu}>☰</button>
+            {#if showMenu}
+                <div class="menu-content">
+                    <label>
+                        <input type="checkbox" bind:checked={isFollowingGM}>
+                        Follow GM View
+                    </label>
+                </div>
+            {/if}
+        </div>
+    {:else}
+        <div class="loading">
+            <h1>Waiting for GM...</h1>
+            <p>Open a System in the main window.</p>
+            <button on:click={() => broadcastService.sendMessage({ type: 'REQUEST_SYNC', payload: null })}>
+                Retry Connection
+            </button>
+        </div>
+    {/if}
+</main>
+
+<style>
+    .player-view {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        background-color: #08090d;
+        margin: 0;
+        padding: 0;
+        position: relative;
+    }
+    .loading {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        color: #666;
+        font-family: sans-serif;
+    }
+    .time-display {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: rgba(255, 255, 255, 0.7);
+        font-family: monospace;
+        font-size: 14px;
+        pointer-events: none;
+        z-index: 999;
+    }
+    .projector-menu {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+    }
+    .hamburger {
+        background: rgba(0, 0, 0, 0.5);
+        color: #eee;
+        border: 1px solid #444;
+        font-size: 1.5em;
+        padding: 5px 10px;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+    .menu-content {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 10px;
+        border: 1px solid #444;
+        border-radius: 4px;
+        min-width: 150px;
+        margin-top: 5px;
+    }
+    .menu-content label {
+        display: block;
+        color: #eee;
+        font-family: sans-serif;
+        font-size: 14px;
+        cursor: pointer;
+    }
+    /* Hide canvas border/margin if any */
+    :global(canvas) {
+        border: none !important;
+        margin: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+    }
+    :global(body) {
+        margin: 0;
+        overflow: hidden;
+    }
+</style>

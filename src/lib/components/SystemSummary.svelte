@@ -236,24 +236,7 @@
 
 <div class="summary-panel">
     <div class="header">
-      <h3 class="focus-title">Star System View - Current Focus: {focusedBody?.name || 'System View'}</h3>
-      <div class="save-load-controls">
-          <div class="dropdown">
-              <button on:click={() => showDropdown = !showDropdown} class="hamburger-button">&#9776;</button>
-              {#if showDropdown}
-                  <div class="dropdown-content">
-                      <button on:click={handleDownloadJson} disabled={!system}>Download System</button>
-                      <button on:click={() => document.getElementById('upload-json-summary')?.click()}>Upload System</button>
-                      <button on:click={handleShare} class="todo-button">Share Player Link (Todo)</button>
-                      {#if system?.isManuallyEdited}
-                        <button on:click={() => dispatch('clearmanualedit')}>Show Regenerate Controls</button>
-                      {/if}
-                      <button on:click={() => alert('This is a star system generator.')}>About</button>
-                  </div>
-              {/if}
-          </div>
-          <input type="file" id="upload-json-summary" hidden accept=".json,application/json" on:change={handleUploadJson} />
-      </div>
+
     </div>
     <div class="summary-grid">
         <div class="summary-item" style="border: 2px solid #ffc107;" on:click={(e) => showContextMenu(e, 'star')}>
@@ -300,6 +283,23 @@
             <span class="value">{constructCount}</span>
             <span class="label">Constructs</span>
         </div>
+        <div class="save-load-controls" style="grid-column: span 1; justify-self: center; align-self: center;">
+          <div class="dropdown">
+              <button on:click={() => showDropdown = !showDropdown} class="hamburger-button">&#9776;</button>
+              {#if showDropdown}
+                  <div class="dropdown-content">
+                      <button on:click={handleDownloadJson} disabled={!system}>Download System</button>
+                      <button on:click={() => document.getElementById('upload-json-summary')?.click()}>Upload System</button>
+                      <button on:click={handleShare}>Open Projector View</button>
+                      {#if system?.isManuallyEdited}
+                        <button on:click={() => dispatch('clearmanualedit')}>Show Regenerate Controls</button>
+                      {/if}
+                      <button on:click={() => alert('This is a star system generator.')}>About</button>
+                  </div>
+              {/if}
+          </div>
+          <input type="file" id="upload-json-summary" hidden accept=".json,application/json" on:change={handleUploadJson} />
+      </div>
     </div>
 </div>
 

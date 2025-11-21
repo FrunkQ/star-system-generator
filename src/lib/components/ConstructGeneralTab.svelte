@@ -292,6 +292,28 @@
           case 'High Orbit': altitudeKm = ((boundaries?.meoHeoBoundaryKm || 0) + (boundaries?.heoUpperBoundaryKm || 0)) / 2; break;
         }
         construct.orbit.elements.a_AU = (hostRadiusKm + altitudeKm) / AU_KM;
+
+        // Handle Surface Lock vs Keplerian Orbit
+        if (selectedPlacement === 'Surface') {
+            let rotationHours = (parentBody as any).rotation_period_hours; 
+            if (rotationHours === undefined && (parentBody as any).physical_parameters) {
+                rotationHours = (parentBody as any).physical_parameters.rotation_period_hours;
+            }
+            // Fallback to calculated seconds
+            let periodSeconds = 0;
+            if (rotationHours) {
+                periodSeconds = rotationHours * 3600;
+            } else if ((parentBody as any).calculatedRotationPeriod_s) {
+                periodSeconds = (parentBody as any).calculatedRotationPeriod_s;
+            }
+
+            if (periodSeconds !== 0 && isFinite(periodSeconds)) {
+                construct.orbit.n_rad_per_s = (2 * Math.PI) / periodSeconds;
+            }
+        } else {
+            // Revert to Keplerian physics for non-surface orbits
+            delete construct.orbit.n_rad_per_s;
+        }
       }
     }
     

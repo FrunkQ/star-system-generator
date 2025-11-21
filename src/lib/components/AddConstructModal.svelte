@@ -109,6 +109,25 @@
         case 'Surface':
           altitudeKm = 0;
           newConstruct.orbit!.elements.a_AU = (hostRadiusKm + altitudeKm) / 149597870.7;
+          // Fix construct to surface rotation (lock to ground)
+          let rotationHours = (hostBody as any).rotation_period_hours; // Planet standard
+          
+          if (rotationHours === undefined && hostBody.physical_parameters) {
+               rotationHours = hostBody.physical_parameters.rotation_period_hours; // Construct standard
+          }
+
+          if (rotationHours) {
+              const periodSeconds = rotationHours * 3600;
+              // Handle potential 0 or infinite period
+              if (periodSeconds !== 0 && isFinite(periodSeconds)) {
+                  newConstruct.orbit!.n_rad_per_s = (2 * Math.PI) / periodSeconds;
+              }
+          } else if ((hostBody as any).calculatedRotationPeriod_s) {
+              const periodSeconds = (hostBody as any).calculatedRotationPeriod_s;
+              if (periodSeconds !== 0 && isFinite(periodSeconds)) {
+                  newConstruct.orbit!.n_rad_per_s = (2 * Math.PI) / periodSeconds;
+              }
+          }
           break;
         case 'Low Orbit':
           altitudeKm = ((orbitalBoundaries?.minLeoKm ?? 200) + (orbitalBoundaries?.leoMoeBoundaryKm ?? 2000)) / 2;
@@ -132,7 +151,6 @@
       }
     }
     
-    console.trace('Trace for createConstruct');
     systemStore.update((system) => {
       if (system) {
         system.nodes.push(newConstruct);
