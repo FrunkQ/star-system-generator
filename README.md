@@ -48,11 +48,16 @@ A quick note on data: This application runs entirely in your browser. Your gener
     *   **Rename**: Click on any body's name to rename it.
     *   **Add**: Add a new planet, moon, or construct to any star or planet.
     *   **Delete**: Remove any planet, moon, or construct.
+*   **Projector Mode (Player View) (NEW!)**:
+    *   **Dedicated Player View**: Access a clean, full screen, player-focused view of the star system by opening the Star System hamburger menu: "Open Projector View"
+    *   **GM Synchronization**: The player view automatically synchronizes with the GM's view, including camera pan/zoom, time controls (play/pause, speed), and selected focus.
+    *   **GM Visibility Controls**: As a GM, you can mark any celestial body or construct as hidden by clicking on the visibility icon next to its name. Hidden objects and their descendants will be completely invisible in the Player View, allowing for hidden secrets and dynamic reveals.
 *   **AI-Powered Descriptions**: Integrates with OpenRouter to allow GMs to generate rich, narrative descriptions for any celestial body using customizable prompts, tags, and styles.
+*   **Paper Reports (NEW!)**: Generate printable, themed PDF reports of your star system. Choose between a GM (full intel) or Player (redacted) version, with player reports respecting GM visibility settings for objects and descriptions. Select visual themes like "Retro Line Printer" or "Corporate". Reports include detailed celestial data and artificial construct traffic.
 *   **Save & Load**: 
     *   Download any system or the entire starmap as a JSON file to your computer.
     *   Upload a previously saved JSON file to continue your work. This can be at the starmap level or just a single star system to allow portability.
-
+    *   **Constructs (Ships/Stations)**: Individual constructs can be exported and imported as simple JSON text files, making it easy to share them.
 ## Usage
 
 ### Generating a System
@@ -144,7 +149,7 @@ You can preview the production build with `npm run preview`.
 
 ## Known Issues
 
-*   **"Player View"**: The player view functionality is currently hidden and marked as a future enhancement. It will be revisited for further development. 
+
 
 ## Attributions
 

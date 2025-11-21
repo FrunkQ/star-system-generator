@@ -1,0 +1,150 @@
+/* src/lib/reports/report-styles.css */
+
+/* =========================================
+   BASE PRINT STYLES
+   ========================================= */
+@media print {
+    @page {
+        margin: 0.5cm;
+        size: A4;
+    }
+    body {
+        margin: 0;
+        -webkit-print-color-adjust: exact; /* Ensure colors/backgrounds print */
+        print-color-adjust: exact;
+    }
+    .no-print {
+        display: none !important;
+    }
+}
+
+:root {
+    --font-body: sans-serif;
+    --font-header: serif;
+    --color-text: #000;
+    --color-bg: #fff;
+    --color-border: #000;
+    --border-style: solid;
+    --border-width: 1px;
+    --header-bg: #eee;
+}
+
+.report-container {
+    font-family: var(--font-body);
+    color: var(--color-text);
+    background: var(--color-bg);
+    max-width: 210mm; /* A4 width approx */
+    margin: 0 auto;
+    padding: 1cm;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+/* =========================================
+   THEME: RETRO LINE PRINTER
+   ========================================= */
+.theme-retro {
+    --font-body: "Courier New", Courier, monospace;
+    --font-header: "Courier New", Courier, monospace;
+    --color-text: #333;
+    --color-bg: #fff;
+    --color-border: #333;
+    --border-style: dashed;
+    --border-width: 1px;
+    --header-bg: transparent;
+}
+
+.theme-retro h1, .theme-retro h2, .theme-retro h3 {
+    text-transform: uppercase;
+    border-bottom: 2px dashed var(--color-border);
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+}
+
+.theme-retro .data-box {
+    border: 1px dashed var(--color-border);
+    padding: 10px;
+    margin-bottom: 15px;
+}
+
+.theme-retro .section-header {
+    background: #f0f0f0; /* Simulates gray bar */
+    font-weight: bold;
+    padding: 5px;
+    border: 1px dashed var(--color-border);
+    margin-bottom: -1px; /* Merge borders */
+}
+
+.theme-retro table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: "Courier New", monospace;
+}
+
+.theme-retro th {
+    text-align: left;
+    border-bottom: 1px dashed var(--color-border);
+    padding: 5px;
+}
+
+.theme-retro td {
+    padding: 5px;
+    border-bottom: 1px dotted #ccc;
+}
+
+/* =========================================
+   THEME: CORPORATE (WEYLAND STYLE)
+   ========================================= */
+.theme-corporate {
+    --font-body: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --font-header: "Arial Black", sans-serif;
+    --color-text: #222;
+    --color-bg: #fff;
+    --color-border: #000;
+    --border-style: solid;
+    --border-width: 2px;
+    --header-bg: #000;
+}
+
+.theme-corporate .report-header {
+    border-bottom: 4px solid #000;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.theme-corporate h1 {
+    font-size: 24pt;
+    margin: 0;
+    letter-spacing: -1px;
+}
+
+.theme-corporate .confidential-stamp {
+    border: 2px solid #d00;
+    color: #d00;
+    padding: 5px 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    transform: rotate(-5deg);
+    display: inline-block;
+}
+
+.theme-corporate .data-box {
+    border: 1px solid #ccc;
+    margin-bottom: 10px;
+    background: #f9f9f9;
+}
+
+.theme-corporate .data-header {
+    background: #000;
+    color: #fff;
+    padding: 5px 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.8em;
+}
+
+.theme-corporate .data-content {
+    padding: 10px;
+}

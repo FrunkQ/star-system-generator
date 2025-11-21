@@ -56,7 +56,21 @@
 </script>
 
 <div class="description-editor">
-  <h3>Detailed Information</h3>
+  <div class="header-row">
+      <button class="visibility-btn" on:click={() => {
+          body.description_playerhidden = !body.description_playerhidden;
+          dispatch('update', body);
+      }} title={body.description_playerhidden ? "Description Hidden from Players" : "Description Visible to Players"}>
+          {#if body.description_playerhidden}
+              <!-- Eye Closed -->
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          {:else}
+              <!-- Eye Open -->
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#eee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          {/if}
+      </button>
+      <h3>Detailed Information</h3>
+  </div>
   {#if isEditing}
     <textarea bind:value={descriptionText} rows="8"></textarea>
     <div class="actions">
@@ -97,8 +111,23 @@
     border-top: 1px solid #444;
     padding-top: 1em;
   }
+  .header-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 0.5em;
+  }
+  .visibility-btn {
+      background-color: #252525; /* Darker background */
+      border: none;
+      cursor: pointer;
+      padding: 5px; /* Add some padding */
+      border-radius: 4px; /* Slightly rounded corners */
+      display: flex;
+      align-items: center;
+  }
   h3 {
-      margin: 0 0 0.5em 0;
+      margin: 0;
       color: #ff3e00;
   }
   textarea {

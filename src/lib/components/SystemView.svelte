@@ -18,6 +18,7 @@
   import ConstructEditorModal from './ConstructEditorModal.svelte'; 
   import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
   import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
+  import ReportConfigModal from './ReportConfigModal.svelte';
 
   import { systemStore, viewportStore } from '$lib/stores';
   import { panStore, zoomStore } from '$lib/cameraStore';
@@ -354,6 +355,21 @@
     });
   }
 
+  let showReportConfigModal = false;
+
+  function handleGenerateReport(event: CustomEvent<{mode: 'GM' | 'Player', theme: string, includeConstructs: boolean}>) {
+      if (!$systemStore) return;
+      const reportData = {
+          system: $systemStore,
+          mode: event.detail.mode,
+          theme: event.detail.theme,
+          includeConstructs: event.detail.includeConstructs
+      };
+      sessionStorage.setItem('reportData', JSON.stringify(reportData));
+      window.open('/report', '_blank');
+      showReportConfigModal = false;
+  }
+
   function handleContextMenuSelect(event: CustomEvent<string>) {
     showSummaryContextMenu = false;
     handleFocus({ detail: event.detail } as CustomEvent<string | null>);
@@ -676,6 +692,7 @@ a.click();
       {handleUploadJson}
       {handleShare}
       on:showcontextmenu={handleShowContextMenu}
+      on:generatereport={() => showReportConfigModal = true}
       on:clearmanualedit={() => systemStore.update(s => s ? { ...s, isManuallyEdited: false } : s)}
     />
 
@@ -782,7 +799,7 @@ a.click();
             {#if showZoneKeyPanel}
                 <ZoneKey />
             {:else}
-                {#if focusedBody.kind !== 'construct'}
+                {#if focusedBody && focusedBody.kind !== 'construct'}
                     {@const parentBody = focusedBody.parentId ? $systemStore.nodes.find(n => n.id === (focusedBody.ui_parentId || focusedBody.parentId)) : null}
                     <BodyTechnicalDetails body={focusedBody} {rulePack} parentBody={parentBody} />
                 {/if}
@@ -795,6 +812,15 @@ a.click();
             
             <BodyImage body={focusedBody} />
             <GmNotesEditor body={focusedBody} on:change={() => { systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s); }} />
+
+            <footer class="attributions">
+              <p>
+                <strong>Image Attributions:</strong> Planet Images: Pablo Carlos Budassi (<a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>); Star Images: Beyond Universe Wiki (<a href="https://creativecommons.org/licenses/by-sa/3.0/us/" target="_blank" rel="noopener noreferrer">CC-BY-SA</a>); Magnetar/Background: ESO (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>); Black Hole: NASA SVS (Public Domain); Weyland-Yutani Logo: IllaZilla (<a href="https://commons.wikimedia.org/wiki/File:Weyland-Yutani_cryo-tube.jpg" target="_blank" rel="noopener noreferrer">CC BY-SA 3.0</a>).
+              </p> 
+              <p class="project-attribution">
+                <a href="https://github.com/FrunkQ/star-system-generator" target="_blank" rel="noopener noreferrer">Star System Generator</a> © 2025 FrunkQ. Licensed under <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank" rel="noopener noreferrer">GPL-3.0</a>.
+              </p>
+            </footer>
         </div>
 
     </div>
@@ -835,6 +861,10 @@ a.click();
       <ConstructEditorModal system={$systemStore} {rulePack} construct={constructToEdit} hostBody={constructHostBodyForEditor} on:close={() => showConstructEditorModal = false} on:update={handleConstructUpdate} />
     {/if}
 
+    {#if showReportConfigModal}
+        <ReportConfigModal on:generate={handleGenerateReport} on:close={() => showReportConfigModal = false} />
+    {/if}
+
     <div class="debug-controls">
         <button on:click={() => showJson = !showJson}>
             {showJson ? 'Hide' : 'Show'} JSON
@@ -855,7 +885,28 @@ a.click();
     {#if showJson}
         <pre>{JSON.stringify($systemStore, null, 2)}</pre>
     {/if}
-  {/if}
+
+                            <footer class="attributions">
+
+                              <p><strong>Image Attributions:</strong></p>
+
+                              <p>Planet Images: Courtesy of Pablo Carlos Budassi, used under a <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a> license. Source: <a href="https://pablocarlosbudassi.com/2021/02/planet-types.html" target="_blank" rel="noopener noreferrer">pablocarlosbudassi.com</a>.</p>
+
+                              <p>Star Images: Sourced from the <a href="https://beyond-universe.fandom.com/wiki/" target="_blank" rel="noopener noreferrer">Beyond Universe Wiki</a> on Fandom, used under a <a href="https://creativecommons.org/licenses/by-sa/3.0/us/" target="_blank" rel="noopener noreferrer">CC-BY-SA</a> license.</p>
+
+                              <p>Magnetar Image & Starmap Background: Courtesy of ESO/L. Calçada & S. Brunier, used under a <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> license. Sources: <a href="https://www.eso.org/public/images/eso1415a/" target="_blank" rel="noopener noreferrer">ESO Magnetar</a>, <a href="https://www.eso.org/public/images/eso0932a/" target="_blank" rel="noopener noreferrer">ESO Milky Way</a>.</p>
+
+                              <p>Black Hole Accretion Disk Image: Courtesy of NASA’s Goddard Space Flight Center/Jeremy Schnittman, used under a <a href="https://svs.gsfc.nasa.gov/13232" target="_blank" rel="noopener noreferrer">Public Domain</a> license. Source: <a href="https://svs.gsfc.nasa.gov/13232" target="_blank" rel="noopener noreferrer">NASA SVS</a>.</p>
+
+                              <p>Weyland-Yutani Logo: Sourced from <a href="https://commons.wikimedia.org/wiki/File:Weyland-Yutani_cryo-tube.jpg" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> by <a href="https://commons.wikimedia.org/wiki/User:IllaZilla" target="_blank" rel="noopener noreferrer">IllaZilla</a>, used under a <a href="https://creativecommons.org/licenses/by-sa/3.0/deed.en" target="_blank" rel="noopener noreferrer">Creative Commons Attribution-Share Alike 3.0 Unported</a> license. Changes made: Logo Extracted.</p>
+
+                              <p class="project-attribution">
+
+                                <a href="https://github.com/FrunkQ/star-system-generator" target="_blank" rel="noopener noreferrer">Star System Generator</a> © 2025 FrunkQ. Licensed under <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank" rel="noopener noreferrer">GPL-3.0</a>.
+
+                              </p>
+
+                            </footer>  {/if}
 </main>
 
 
@@ -1052,4 +1103,21 @@ a.click();
       flex-grow: 1;
       margin-bottom: 0 !important; /* Override previous margin if any */
   }
+    .details-section-header .visibility-btn {
+        margin-right: 10px;
+    }
+
+    .attributions {
+        margin-top: 1em; /* Add some top margin to separate from notes */
+        padding-top: 1em;
+        border-top: 1px solid #333;
+        color: #999;
+        font-size: 0.9em; /* Increased font size */
+        text-align: center;
+    }
+    .attributions a {
+        color: #88ccff;
+        text-decoration: none;
+    }
+
 </style>

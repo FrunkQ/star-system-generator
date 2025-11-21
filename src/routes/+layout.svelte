@@ -10,39 +10,13 @@
 
 {@render children?.()}
 
-<footer>
-  <p>
-    <strong>Image Attributions:</strong>
-  </p>
-  <p>
-    Planet Images: Courtesy of Pablo Carlos Budassi, used under a <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a> license. Source: <a href="https://pablocarlosbudassi.com/2021/02/planet-types.html" target="_blank" rel="noopener noreferrer">pablocarlosbudassi.com</a>
-  </p>
-  <p>
-    Star Images: Sourced from the Beyond Universe Wiki on Fandom, used under a <a href="https://creativecommons.org/licenses/by-sa/3.0/us/" target="_blank" rel="noopener noreferrer">CC-BY-SA</a> license.
-  </p>
-  <p>
-    Magnetar Image & Starmap Background: Courtesy of ESO/L. Calçada & S. Brunier, used under a <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> license. Sources: <a href="https://www.eso.org/public/images/eso1415a/" target="_blank" rel="noopener noreferrer">ESO Magnetar</a>, <a href="https://www.eso.org/public/images/eso0932a/" target="_blank" rel="noopener noreferrer">ESO Milky Way</a>
-  </p>
-  <p>
-    Black Hole Accretion Disk Image: Courtesy of NASA’s Goddard Space Flight Center/Jeremy Schnittman, used under a Public Domain license. Source: <a href="https://svs.gsfc.nasa.gov/13326" target="_blank" rel="noopener noreferrer">NASA SVS</a>
-  </p>
-  <p>
-    Weyland-Yutani Logo: Sourced from <a href="https://commons.wikimedia.org/wiki/File:Weyland-Yutani_cryo-tube.jpg" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> by <a href="https://commons.wikimedia.org/wiki/User:IllaZilla" target="_blank" rel="noopener noreferrer">IllaZilla</a>, used under a <a href="https://creativecommons.org/licenses/by-sa/3.0/deed.en" target="_blank" rel="noopener noreferrer">Creative Commons Attribution-Share Alike 3.0 Unported</a> license. Changes made: Logo Extracted.
-  </p>
-  <p>&nbsp;</p> 
-  <p>
-    <strong>Project Attribution:</strong>
-  </p>
-  <p class="project-attribution">
-    <a href="https://github.com/FrunkQ/star-system-generator" target="_blank" rel="noopener noreferrer">Star System Generator</a> © 2025 FrunkQ. Licensed under <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank" rel="noopener noreferrer">GPL-3.0</a>.
-  </p>
-</footer>
-
 <style>
   :global(body) {
     background-color: #333;
     color: #eee;
     font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
   }
 
   :global(button) {
@@ -91,20 +65,5 @@
   :global(.error) {
     color: #ff8888;
     font-weight: bold;
-  }
-
-  footer {
-    padding: 1rem;
-    text-align: center;
-    font-size: 0.8rem;
-    color: #aaa;
-  }
-
-  footer p {
-    margin: 0.2rem 0;
-  }
-
-  .project-attribution {
-    color: #ccc; /* Lighter text color */
   }
 </style>

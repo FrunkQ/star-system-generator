@@ -354,8 +354,29 @@
       <button on:click={() => showSettingsModal = true}>Settings</button>
 
       <button on:click={handleClearStarmap} class="delete-button">Clear Starmap</button>
-
     </div>
+
+        <footer class="starmap-footer">
+
+          <p><strong>Image Attributions:</strong></p>
+
+          <p>Planet Images: Courtesy of Pablo Carlos Budassi, used under a <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a> license. Source: <a href="https://pablocarlosbudassi.com/2021/02/planet-types.html" target="_blank" rel="noopener noreferrer">pablocarlosbudassi.com</a>.</p>
+
+          <p>Star Images: Sourced from the <a href="https://beyond-universe.fandom.com/wiki/" target="_blank" rel="noopener noreferrer">Beyond Universe Wiki</a> on Fandom, used under a <a href="https://creativecommons.org/licenses/by-sa/3.0/us/" target="_blank" rel="noopener noreferrer">CC-BY-SA</a> license.</p>
+
+          <p>Magnetar Image & Starmap Background: Courtesy of ESO/L. Calçada & S. Brunier, used under a <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> license. Sources: <a href="https://www.eso.org/public/images/eso1415a/" target="_blank" rel="noopener noreferrer">ESO Magnetar</a>, <a href="https://www.eso.org/public/images/eso0932a/" target="_blank" rel="noopener noreferrer">ESO Milky Way</a>.</p>
+
+          <p>Black Hole Accretion Disk Image: Courtesy of NASA’s Goddard Space Flight Center/Jeremy Schnittman, used under a <a href="https://svs.gsfc.nasa.gov/13232" target="_blank" rel="noopener noreferrer">Public Domain</a> license. Source: <a href="https://svs.gsfc.nasa.gov/13232" target="_blank" rel="noopener noreferrer">NASA SVS</a>.</p>
+
+          <p>Weyland-Yutani Logo: Sourced from <a href="https://commons.wikimedia.org/wiki/File:Weyland-Yutani_cryo-tube.jpg" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> by <a href="https://commons.wikimedia.org/wiki/User:IllaZilla" target="_blank" rel="noopener noreferrer">IllaZilla</a>, used under a <a href="https://creativecommons.org/licenses/by-sa/3.0/deed.en" target="_blank" rel="noopener noreferrer">Creative Commons Attribution-Share Alike 3.0 Unported</a> license. Changes made: Logo Extracted.</p>
+
+          <p class="project-attribution">
+
+            <a href="https://github.com/FrunkQ/star-system-generator" target="_blank" rel="noopener noreferrer">Star System Generator</a> © 2025 FrunkQ. Licensed under <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank" rel="noopener noreferrer">GPL-3.0</a>.
+
+          </p>
+
+        </footer>
   {:else if $starmapStore && currentSystemId && $systemStore}
     <SystemView system={$systemStore} rulePack={rulePacks[0]} {exampleSystems} on:back={handleBackToStarmap} on:renameNode={handleRenameNode} />
   {/if}
@@ -391,5 +412,21 @@
 
   .delete-button {
     color: red;
+  }
+
+  .starmap-footer {
+    margin-top: 2em; /* Ensure it's below other content */
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #ccc; /* Slightly lighter for readability */
+    padding: 10px 20px;
+    font-size: 0.8em; /* Increased font size */
+    text-align: center;
+    z-index: 100;
+    /* No fixed or absolute positioning here */
+  }
+  .starmap-footer a {
+    color: #88ccff;
+    text-decoration: none;
+    pointer-events: auto; /* Re-enable clicks on links */
   }
 </style>
