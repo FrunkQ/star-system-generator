@@ -1,83 +1,92 @@
 # Getting Started with the Star System Generator
 
-Welcome to the Star System Generator! This application is designed to help you create and visualize detailed star systems for your sci-fi stories, games, or world-building projects.
+Welcome to the Star System Generator! This application is a comprehensive toolkit designed to help Game Masters create, visualize, and manage scientifically-plausible star systems for sci-fi TTRPGs. Whether you run a hard-science campaign like *The Expanse*, a retro-future game like *Traveller* or *Mothership*, or space opera like *Star Wars*, this tool adapts to your needs.
 
-## 1. First Launch & Initial System
+## 1. The Starmap: Your Galactic Sector
 
-When you first open the application, you'll be presented with a screen asking for a name and units. You can change these later, so don't worry. Next, you'll be taken to your Starmap view with a randomly generated star system. This is your initial playground! Don't worry if it's not exactly what you envisioned; you can always regenerate it or create new ones.
+When you launch the app, you start at the **Starmap View**. This is your sector map, tracking the relationships between different star systems.
 
-## 2. Navigating the System View
+![Traveller Style Starmap](static/screenshots/TravellerStyle.PNG)
 
-Once in a system, you'll see the **System View**. This is where you can explore the star and its orbiting bodies. You can:
+*   **Navigation**: Click and drag to pan; scroll to zoom.
+*   **Adding Systems**: Right-click anywhere on the grid to generate a new star system. You can customize the seed or star type later.
+*   **Linking Systems**: Right-click a star and select "Link System", then click a second star to create a hyperspace lane or jump route between them.
+*   **Settings**: Use the controls in the top-right to toggle the background image or switch grid styles (Square, Hex, or None) to match your game system's aesthetic.
 
-* **Pan:** Click and drag on the background to move the view.
-* **Zoom:** Use your mouse wheel to zoom in and out.
-* **Focus:** Click on any celestial body (star, planet, moon, or construct) to focus on it. This will center the view on that body and update the details panel.
-* **Zoom Out:** If you're focused on a planet or moon, click the "Zoom Out" button to go back to its parent body or the main star system view.
+## 2. The System View: Orbital Mechanics
 
-## 3. Understanding the UI Controls
+Clicking on any star system zooms you into the **System Visualizer**. This is a real-time 2D orbital simulation.
 
-At the top of the System View, you'll find several controls:
+![Expanse Toytown View](static/screenshots/Expanse-Toytown.PNG)
 
-* **System Summary:** Provides an overview of the system's planets and moons, categorized by type (Terrestrial, Gas Giants, Human-Habitable, Earth-like, Biospheres). These categories are color-coded for quick identification.
-* **Regenerate Solar System:**
-    * **Select Star Type:** Choose a specific star type (e.g., Type G, Type K) or keep it "Random". (Our Sun is a Type G star.)
-    * **Generate System:** Creates a completely new, random system based on your selected star type.
-    * **Generate Empty System:** Creates a system with just the central star, allowing you to add planets manually.
+*   **Focus**: Click on any planet, moon, or station to "focus" the camera on it. The side panel will update with its specific data.
+*   **Time Control**: Use the play/pause buttons and time-scale slider to watch orbits evolve. You can fast-forward years in seconds to see alignment windows.
+*   **Toytown View**: Real space is empty and boring. Use the "Toytown View" slider to artificially scale up planets and moons so you can see them relative to each other—perfect for getting a sense of "local space" without realistic distances making everything invisible dots.
 
-    > **Note on Regenerate & Templates:** If the "Regenerate Solar System" options or certain template options for constructs are missing or disabled, it means you have manually edited the system. These options are automatically hidden to prevent accidental deletion of your work. You can re-enable them via the "Hamburger (☰)" menu on teh top right of the system page).
+## 3. Building Your World
 
-* **Play/Pause & Time Scales:** Control the simulation of planetary orbits. You can play/pause and adjust the time scale (e.g., 1s, 1h, 1d, 1y) to observe orbital mechanics.
-* **Toggle Names:** A checkbox (on by default) that shows or hides the names of celestial bodies in the orbital diagram.
-* **Hamburger Menu (☰):** Contains options like "Download System" (to save your system as a JSON file) and "Upload System" (to load a previously saved system).
-    > **Note:** The main Starmap view also has save/load options, which you should use for normal saving. This menu option is for saving a *single system* to move it to a new starmap.
+### Procedural Generation
+If you don't like a system, use the **Regenerate Controls** at the top. You can roll a random system, pick a specific star type (e.g., "Type M Red Dwarf"), or start with an empty star and build manually.
 
-## 4. Adding Planets & Constructs
+### Artificial Constructs (Ships & Stations)
+The generator isn't just for planets. You can populate your system with infrastructure.
+1.  **Right-click** any body (planet/star) and select **"Add Construct"**.
+2.  Choose from a library of templates inspired by *The Expanse*, *Aliens*, and *Hard Sci-Fi*.
+3.  **Customize**: Once placed, click the construct to open the **Construct Editor**.
 
-If you started with an empty system or want to expand an existing one, you have powerful tools to add new bodies.
+![Detailed Construct Editing](static/screenshots/DetailedConstructEditing-FlightDynamics.png)
 
-### Adding Planets
-1.  **Focus on the host body:** Click on the star or a planet to select it as the host for your new body.
-2.  **GM Tools:** Below the map, you'll see the body's "GM Tools".
-3.  **Add Planetary Body:** Select a "Planet Type" (e.g., Terrestrial, Gas Giant) and click "Add Planet".
-4.  **Adding Earth-like Planets:** For specific story needs, you can add a planet designed to be Earth-like. This option will attempt to generate a planet with parameters (mass, orbit, atmosphere, magnetosphere) that align with Earth-like conditions, making it suitable for your plot.
+*   **Flight Profile**: The editor calculates real Delta-V and TWR capabilities based on the installed engines and fuel. It will tell you if your ship can actually land on the planet it's orbiting!
+*   **Modules**: Refit ships with different modules (Cargo Bays, Weapons, Sensors) to suit your campaign.
 
-### Adding Ships & Stations (Constructs)
-Want to populate your system with space stations, shipyards, or fleets?
-1.  **Right-click** on any planet, moon, or star in the visualizer.
-2.  Select **"Add Construct"**.
-3.  A library of templates will appear. You can choose from:
-    *   **Hard Sci-Fi:** Realistic stations and platforms.
-    *   **The Expanse:** Iconic ships and stations from the series.
-    *   **Aliens:** Classic vessels like the *Sulaco* or *Nostromo*.
-    *   **Mothership:** The pirate haven *Prospero's Dream*.
-4.  Select a template, and it will automatically be placed in a stable mid-range orbit around your chosen body.
-5.  Templates are just starting points to your own creations... have fun! Welcome to the "Tyranny of the Rocket Equation"!
-6.  Everything is just JSON files - so you can export constructs to share with others or to manually tweak from the contructs editor.
+## 4. GM Tools & Narrative
 
-## 5. Detailed Information & GM Quick Notes
+This tool is built for Game Masters. We provide several ways to manage secrets and lore.
 
-When a celestial body is focused, the right-hand panel displays:
+### Visibility Controls
+You control what your players see.
+*   **Object Visibility**: Click the **Eye Icon** next to an object's name to hide it completely (e.g., a hidden pirate base or a rogue planet).
+*   **Description Visibility**: Inside the "Detailed Information" panel, click the eye icon next to the header to hide *just the text description* while keeping physical stats visible. Great for when players scan a planet (get the stats) but haven't visited it (don't know the lore).
 
-* **Technical Data:**
-    *   **Planets:** Mass, Radius, Gravity, Atmosphere, Temperature, and Delta-V budgets for landing.
-    *   **Constructs:** Crew counts, Cargo capacity, Power output, Fuel reserves, and Engine specs.
-*   **Detailed Information:** Your hand-created or AI-generated planetary description. You can edit this information using the edit/save/cancel buttons, and it supports Markdown rendering.
-    * I recommend trying to connect a free LLM from OpenRouter—sign up and get an API key (just an email is needed). I have found the free model: "DeepSeek: DeepSeek R1 0528 Qwen3 8B (free) (Free / Free)" to be very useful for this app during testing. It's slow but effective.
-    * These descriptions are not designed to replace the GM, but to provide a variety of ideas to build upon. Try the different styles and settings; it is designed to be experimented with.
-    * You can set up the LLM options from the **Settings** on the main StarMap page (top level).
-*   **GM Quick Notes:** A simple, auto-saving text area for you to jot down quick notes or plot hooks related to the selected body.
+### AI Descriptions
+Stuck for ideas? The app integrates with **OpenRouter** to generate descriptions for you.
+1.  Go to **Settings** on the main Starmap page and add your free OpenRouter API key.
+2.  Select a body and click **"✨ Expand with AI"**.
+3.  Choose a style (e.g., "Formal Survey", "Spacer Rumors") and let the AI write the lore for you.
 
-## 6. Back to the Starmap & Connecting Systems
+![LLM Report Generation](static/screenshots/LLM-Report-Generation.png)
 
-To return to the main starmap view:
+### GM Quick Notes
+Every object has a **GM Quick Notes** text area at the bottom of the sidebar. These notes are **always private**—they will never appear in Player Views or Player-facing reports.
 
-* Click the "Zoom Out" button until you are no longer focused on any individual system.
+## 5. At the Table: Digital Play (Projector Mode)
 
-From the Starmap View, you can:
+If you have a second screen or a projector at your gaming table, use the **Projector Mode**.
+1.  Open the Hamburger Menu (☰) in the System View.
+2.  Click **"Open Projector View"**.
+3.  Drag this new window to your player-facing screen and make it fullscreen.
 
-* **Create New Systems:** Right-click on an empty space to add a new star system.
-* **Connect Systems:** Right-click on a star system and choose the option to link it to another system, creating routes between them. You can tag these routes with distances.
-* **Save & Load to Browser:** Saves to the browser's storage. If you return to this browser or refresh the page, you can get back to your starmap.
-* **Save & Load to File:** Lets you download your creation for security or to move to a different PC, etc. **NB:** There is no server behind this app; it all runs on YOUR machine, so please back up your files!
-* **Settings:** Set up an LLM at OpenRouter or adjust the initial settings you selected when you created the starmap (name & units).
+**Features:**
+*   **Synced View**: It automatically follows your camera movements and focus.
+*   **Spoiler-Free**: Hidden objects and GM notes are stripped out.
+*   **CRT Mode**: Toggle the "Green-screen CRT Mode" in the menu for an immersive, retro-terminal aesthetic perfect for *Alien* or *Mothership* games.
+
+![Greenscreen Projection View](static/screenshots/Greenscreen-ProjectionView.png)
+
+## 6. At the Table: Analog Play (Paper Reports)
+
+Prefer a low-tech table? You can generate physical handouts.
+1.  Open the Hamburger Menu (☰).
+2.  Click **"Generate Report"**.
+3.  Choose your audience (**GM** for full intel, **Player** for redacted) and a visual theme (**Retro Line Printer** or **Corporate**).
+4.  Print the result or save it as a PDF.
+
+![Printable Reports](static/screenshots/PrintableReports.png)
+
+The **Player Version** automatically redacts hidden objects and descriptions marked as hidden, giving you a safe "sensor scan" handout to give to your crew.
+
+## 7. Saving & Sharing
+
+*   **Browser Storage**: Your work saves automatically to your browser.
+*   **Download Starmap**: Export your entire sector as a JSON file for backup.
+*   **Share Constructs**: You can export individual ship designs as small JSON files to share with other GMs or move between campaigns.

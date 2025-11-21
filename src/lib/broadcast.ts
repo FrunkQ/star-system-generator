@@ -21,6 +21,7 @@ export type BroadcastMessage =
   | { type: 'SYNC_CAMERA'; payload: { pan: PanState; zoom: number; isManual: boolean } }
   | { type: 'SYNC_VIEW_SETTINGS'; payload: ViewSettings }
   | { type: 'SYNC_TIME'; payload: TimeState }
+  | { type: 'SYNC_CRT_MODE'; payload: boolean }
   | { type: 'REQUEST_SYNC'; payload: null };
 
 const CHANNEL_NAME = 'star_system_generator_channel';
@@ -47,7 +48,8 @@ class BroadcastService {
       onFocusUpdate: (id: string | null) => void,
       onCameraUpdate: (pan: PanState, zoom: number, isManual: boolean) => void,
       onViewSettingsUpdate: (settings: ViewSettings) => void,
-      onTimeUpdate: (time: TimeState) => void
+      onTimeUpdate: (time: TimeState) => void,
+      onCrtModeUpdate: (isCrt: boolean) => void
   ) {
     this.isSender = false;
     this.onSystemUpdate = onSystemUpdate;
@@ -55,6 +57,7 @@ class BroadcastService {
     this.onCameraUpdate = onCameraUpdate;
     this.onViewSettingsUpdate = onViewSettingsUpdate;
     this.onTimeUpdate = onTimeUpdate;
+    this.onCrtModeUpdate = onCrtModeUpdate;
     
     // Request initial state
     this.sendMessage({ type: 'REQUEST_SYNC', payload: null });
@@ -69,6 +72,7 @@ class BroadcastService {
   private onCameraUpdate: ((pan: PanState, zoom: number, isManual: boolean) => void) | null = null;
   private onViewSettingsUpdate: ((settings: ViewSettings) => void) | null = null;
   private onTimeUpdate: ((time: TimeState) => void) | null = null;
+  private onCrtModeUpdate: ((isCrt: boolean) => void) | null = null;
 
   // Handlers for incoming messages
   public onRequestSync: (() => void) | null = null;
@@ -89,6 +93,9 @@ class BroadcastService {
               break;
           case 'SYNC_TIME':
               if (!this.isSender && this.onTimeUpdate) this.onTimeUpdate(msg.payload);
+              break;
+          case 'SYNC_CRT_MODE':
+              if (!this.isSender && this.onCrtModeUpdate) this.onCrtModeUpdate(msg.payload);
               break;
           case 'REQUEST_SYNC':
               if (this.isSender && this.onRequestSync) this.onRequestSync();

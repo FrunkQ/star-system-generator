@@ -39,8 +39,10 @@ A quick note on data: This application runs entirely in your browser. Your gener
     *   **Atmospheric Modeling**: Detailed atmospheric data including composition, pressure, and scale height, influencing aerobraking feasibility.
     *   **Habitability**: Complex habitability scoring based on temperature, atmosphere, and magnetosphere protection.
 *   **Interactive 2D Visualizer**: An orbital view of the generated system with playback controls, zoom, and focus abilities.
+    ![Expanse Toytown View](static/screenshots/Expanse-Toytown.PNG)
 *   **Starmap**: A pan and zoomable map of multiple star systems, with enhanced usability and persistent UI settings.
     *   **Dynamic Grid/Hex Overlay**: Toggle between a square grid, a hex grid (or as some might call it, the "Traveller hex view"), or no grid.
+        ![Traveller Style Starmap](static/screenshots/TravellerStyle.PNG)
     *   **Snap-to-Grid**: When adding new systems, coordinates snap to the center of the nearest grid or hex cell.
     *   **Toggleable Background**: Display a static, faded background image of the Milky Way.
     *   **State Persistence**: Grid type, background visibility, and mouse zoom settings are saved and loaded with your starmap data.
@@ -48,16 +50,22 @@ A quick note on data: This application runs entirely in your browser. Your gener
     *   **Rename**: Click on any body's name to rename it.
     *   **Add**: Add a new planet, moon, or construct to any star or planet.
     *   **Delete**: Remove any planet, moon, or construct.
+    *   **Visibility Controls**: Toggle the visibility of entire objects or just their descriptions in Player Views and Reports.
 *   **Projector Mode (Player View) (NEW!)**:
     *   **Dedicated Player View**: Access a clean, full screen, player-focused view of the star system by opening the Star System hamburger menu: "Open Projector View"
     *   **GM Synchronization**: The player view automatically synchronizes with the GM's view, including camera pan/zoom, time controls (play/pause, speed), and selected focus.
     *   **GM Visibility Controls**: As a GM, you can mark any celestial body or construct as hidden by clicking on the visibility icon next to its name. Hidden objects and their descendants will be completely invisible in the Player View, allowing for hidden secrets and dynamic reveals.
+    *   **CRT Green-screen Mode**: Toggle a retro, green-screen, scanlined CRT effect for an immersive aesthetic.
+    ![Greenscreen Projection View](static/screenshots/Greenscreen-ProjectionView.png)
 *   **AI-Powered Descriptions**: Integrates with OpenRouter to allow GMs to generate rich, narrative descriptions for any celestial body using customizable prompts, tags, and styles.
+    ![LLM Report Generation](static/screenshots/LLM-Report-Generation.png)
 *   **Paper Reports (NEW!)**: Generate printable, themed PDF reports of your star system. Choose between a GM (full intel) or Player (redacted) version, with player reports respecting GM visibility settings for objects and descriptions. Select visual themes like "Retro Line Printer" or "Corporate". Reports include detailed celestial data and artificial construct traffic.
+    ![Printable Reports](static/screenshots/PrintableReports.png)
 *   **Save & Load**: 
     *   Download any system or the entire starmap as a JSON file to your computer.
     *   Upload a previously saved JSON file to continue your work. This can be at the starmap level or just a single star system to allow portability.
     *   **Constructs (Ships/Stations)**: Individual constructs can be exported and imported as simple JSON text files, making it easy to share them.
+
 ## Usage
 
 ### Generating a System
@@ -81,6 +89,7 @@ A quick note on data: This application runs entirely in your browser. Your gener
     *   Choose from a library of pre-defined **Templates** (e.g., *Rocinante*, *Tycho Station*, *Prospero's Dream*).
     *   The construct will automatically be placed in a default mid-range orbit around the selected body.
 *   **Edit Construct Details**: Click on an existing construct to focus it. Its details will appear in the right-hand panel, allowing you to modify its name, description, crew, cargo, and other technical specifications.
+    ![Detailed Construct Editing](static/screenshots/DetailedConstructEditing-FlightDynamics.png)
 *   **Delete Construct**: Right-click on an existing construct and select "Delete Construct" to remove it and its associated data from the system.
 
 *   Click on any celestial body in the visualizer to focus on it and view its detailed stats in the panel below.

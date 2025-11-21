@@ -51,6 +51,12 @@
   let lastToytownFactor: number | undefined = undefined;
   let timeSyncInterval: ReturnType<typeof setInterval> | undefined;
   let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
+  let isCrtMode = false;
+
+  function handleToggleCrt() {
+      isCrtMode = !isCrtMode;
+      broadcastService.sendMessage({ type: 'SYNC_CRT_MODE', payload: isCrtMode });
+  }
 
   // Context Menu State
   let showSummaryContextMenu = false;
@@ -623,6 +629,7 @@ a.click();
                 broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' } });
                 broadcastService.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: { showNames, showZones, showLPoints } });
                 broadcastService.sendMessage({ type: 'SYNC_TIME', payload: { currentTime, isPlaying, timeScale } });
+                broadcastService.sendMessage({ type: 'SYNC_CRT_MODE', payload: isCrtMode });
             }
         };
 
@@ -693,6 +700,7 @@ a.click();
       {handleShare}
       on:showcontextmenu={handleShowContextMenu}
       on:generatereport={() => showReportConfigModal = true}
+      on:togglecrt={handleToggleCrt}
       on:clearmanualedit={() => systemStore.update(s => s ? { ...s, isManuallyEdited: false } : s)}
     />
 

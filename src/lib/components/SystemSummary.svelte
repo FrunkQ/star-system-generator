@@ -291,6 +291,7 @@
                       <button on:click={handleDownloadJson} disabled={!system}>Download System</button>
                       <button on:click={() => document.getElementById('upload-json-summary')?.click()}>Upload System</button>
                       <button on:click={handleShare}>Open Projector View</button>
+                      <button on:click={() => dispatch('togglecrt')}>Toggle Projector CRT Mode</button>
                       <button on:click={() => dispatch('generatereport')}>Generate Report</button>
                       {#if system?.isManuallyEdited}
                         <button on:click={() => dispatch('clearmanualedit')}>Show Regenerate Controls</button>

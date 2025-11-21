@@ -443,7 +443,15 @@
       <ul>
         {#if contextMenuSystemId}
             <li on:click={handleContextMenuZoom}>Zoom to System</li>
-            <li on:click={handleContextMenuLink}>Start Link</li>
+            <li on:click={handleContextMenuLink}>
+              {#if selectedSystemForLink === null}
+                Start Link
+              {:else if selectedSystemForLink === contextMenuSystemId}
+                Cancel Link
+              {:else}
+                Complete Link
+              {/if}
+            </li>
             <li on:click={handleContextMenuDelete}>Delete System</li>
         {:else}
           <li on:click={handleContextMenuAddSystem}>Add System Here</li>

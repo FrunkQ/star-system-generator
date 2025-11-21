@@ -3,6 +3,7 @@
   import { systemStore } from '$lib/stores';
   import { panStore, zoomStore } from '$lib/cameraStore';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
+  import CRTOverlay from '$lib/components/CRTOverlay.svelte';
   import { broadcastService } from '$lib/broadcast';
   import { browser } from '$app/environment';
   import type { RulePack } from '$lib/types';
@@ -15,6 +16,7 @@
   let isFollowingGM = true;
   let showMenu = false;
   let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
+  let isCrtMode = false;
 
   // View Settings
   let showNames = true;
@@ -78,6 +80,9 @@
               if (Math.abs(currentTime - time.currentTime) > 1000) {
                   currentTime = time.currentTime;
               }
+          },
+          (crtMode) => {
+              isCrtMode = crtMode;
           }
       );
 
@@ -93,7 +98,11 @@
 
 </script>
 
-<main class="player-view">
+<main class="player-view" class:crt-mode={isCrtMode}>
+    {#if isCrtMode}
+        <CRTOverlay />
+    {/if}
+
     {#if $systemStore && rulePack}
         <SystemVisualizer 
             system={$systemStore} 
@@ -153,6 +162,13 @@
         margin: 0;
         padding: 0;
         position: relative;
+    }
+    .player-view.crt-mode {
+        filter: sepia(1) hue-rotate(80deg) saturate(3) brightness(1.3) contrast(1.1) blur(0.5px);
+        /* Barrel Warp Simulation */
+        border-radius: 50px; 
+        box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+        transform: scale(0.98); /* Shrink slightly to show the "bezel" or background if any */
     }
     .loading {
         display: flex;
