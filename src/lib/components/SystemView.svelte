@@ -15,8 +15,8 @@
   import ZoneKey from './ZoneKey.svelte';
   import ContextMenu from './ContextMenu.svelte'; 
   import AddConstructModal from './AddConstructModal.svelte'; 
-  import ConstructEditorModal from './ConstructEditorModal.svelte'; 
   import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
+  import ConstructSidePanel from './ConstructSidePanel.svelte';
   import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
   import ReportConfigModal from './ReportConfigModal.svelte';
 
@@ -52,6 +52,7 @@
   let timeSyncInterval: ReturnType<typeof setInterval> | undefined;
   let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
   let isCrtMode = false;
+  let isEditingConstruct = false;
 
   function handleToggleCrt() {
       isCrtMode = !isCrtMode;
@@ -455,6 +456,7 @@
 
   function handleFocus(event: CustomEvent<string | null>) {
     focusedBodyId = event.detail;
+    isEditingConstruct = false;
     showZoneKeyPanel = false; // Hide the ZoneKey panel when focus changes
     history.pushState({ focusedBodyId }, '');
   }
@@ -755,10 +757,10 @@ a.click();
         <div class="main-view">
             <SystemVisualizer bind:this={visualizer} bind:cameraMode system={$systemStore} {rulePack} {currentTime} {focusedBodyId} {showNames} {showZones} {showLPoints} toytownFactor={$systemStore.toytownFactor} on:focus={handleFocus} on:showBodyContextMenu={handleShowBodyContextMenu} on:backgroundContextMenu={handleBackgroundContextMenu} />
 
-            <BodyGmTools body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:addHabitablePlanet={handleAddHabitablePlanet} on:editConstruct={handleEditConstruct} />
             {#if focusedBody}
-                <DescriptionEditor body={focusedBody} on:update={handleBodyUpdate} on:change={() => { systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s); }} />
+                <DescriptionEditor body={focusedBody} on:update={handleBodyUpdate} />
             {/if}
+            <BodyGmTools body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:addHabitablePlanet={handleAddHabitablePlanet} on:editConstruct={handleEditConstruct} />
         </div>
         <div class="details-view">
             {#if focusedBody}
@@ -788,14 +790,14 @@ a.click();
                   dispatch('renameNode', {nodeId: focusedBody.id, newName: e.target.value});
                   systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s);
                 }} class="name-input" title="Click to rename" />
+                {#if focusedBody.kind === 'construct' && !isEditingConstruct}
+                    <button class="edit-btn small" on:click={() => isEditingConstruct = true} style="margin-left: 5px;">Edit</button>
+                {/if}
             </div>
             {/if}
             
             <div class="action-buttons">
-                {#if focusedBody && focusedBody.kind === 'construct'}
-                    <button class="edit-btn" on:click={() => handleEditConstruct({ detail: focusedBody })}>Edit Construct</button>
-                {/if}
-                {#if focusedBody.parentId}
+                {#if focusedBody && focusedBody.parentId && focusedBody.kind !== 'construct'}
                     <button class="delete-btn" on:click={() => {
                       if (confirm(`Are you sure you want to delete ${focusedBody.name} and all its children? This cannot be undone.`)) {
                         handleDeleteNode({ detail: focusedBody.id });
@@ -814,7 +816,19 @@ a.click();
 
                 {#if focusedBody && focusedBody.kind === 'construct'}
                   {@const parentBody = focusedBody.parentId ? $systemStore.nodes.find(n => n.id === (focusedBody.ui_parentId || focusedBody.parentId)) : null}
-                  <ConstructDerivedSpecs construct={focusedBody} hostBody={parentBody} {rulePack} />
+                  {#if isEditingConstruct}
+                      <ConstructSidePanel 
+                        system={$systemStore} 
+                        construct={focusedBody} 
+                        hostBody={parentBody} 
+                        {rulePack} 
+                        on:update={handleConstructUpdate} 
+                        on:delete={handleDeleteNode}
+                        on:close={() => isEditingConstruct = false}
+                      />
+                  {:else}
+                      <ConstructDerivedSpecs construct={focusedBody} hostBody={parentBody} {rulePack} />
+                  {/if}
                 {/if}
             {/if}
             
@@ -863,10 +877,6 @@ a.click();
 
     {#if showCreateConstructModal}
         <LoadConstructTemplateModal {rulePack} mode="create" on:load={handleCreateConstructLoad} on:close={() => showCreateConstructModal = false} />
-    {/if}
-
-    {#if showConstructEditorModal && constructToEdit}
-      <ConstructEditorModal system={$systemStore} {rulePack} construct={constructToEdit} hostBody={constructHostBodyForEditor} on:close={() => showConstructEditorModal = false} on:update={handleConstructUpdate} />
     {/if}
 
     {#if showReportConfigModal}

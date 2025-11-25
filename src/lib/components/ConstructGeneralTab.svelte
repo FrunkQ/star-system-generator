@@ -11,9 +11,12 @@
   let availableParents: CelestialBody[] = [];
   let availablePlacements: string[] = [];
   
-  let selectedParentId: string | null = null;
+  let selectedParentId: string | undefined = undefined;
   let selectedPlacement: string | null = null;
   let auDistance: number = 0;
+  let anomalyDeg: number = 0;
+  let eccentricity = 0;
+  let eccentricityAngle = 0;
 
   // --- State for Planetary Orbital Slider ---
   type OrbitalZone = { name: string; startPos: number; endPos: number; color: string; };
@@ -40,11 +43,48 @@
 
   onMount(() => {
     availableParents = system.nodes.filter(n => (n.kind === 'body' && (n.roleHint === 'planet' || n.roleHint === 'moon' || n.roleHint === 'star')) || n.kind === 'barycenter');
-    selectedParentId = construct.ui_parentId || construct.parentId;
+    selectedParentId = construct.ui_parentId || construct.parentId || undefined; // Initialize with undefined if null
     selectedPlacement = construct.placement;
-    if (construct.orbit) auDistance = construct.orbit.elements.a_AU;
+    if (construct.orbit) {
+        auDistance = construct.orbit.elements.a_AU;
+        let trueDeg = (construct.orbit.elements.M0_rad || 0) * (180 / Math.PI);
+        anomalyDeg = ((trueDeg + 90) % 360 + 360) % 360;
+        eccentricity = construct.orbit.elements.e || 0;
+        eccentricityAngle = construct.orbit.elements.omega_deg || 0;
+    }
     updateUIFromState();
   });
+
+  $: if (construct.id && construct.orbit) {
+    if (!isDragging) {
+        let trueDeg = (construct.orbit.elements.M0_rad || 0) * (180 / Math.PI);
+        anomalyDeg = ((trueDeg + 90) % 360 + 360) % 360;
+        eccentricity = construct.orbit.elements.e || 0; 
+        eccentricityAngle = construct.orbit.elements.omega_deg || 0;
+    }
+  }
+
+  function handleAnomalyChange() {
+      if (construct.orbit) {
+          let trueDeg = anomalyDeg - 90;
+          construct.orbit.elements.M0_rad = trueDeg * (Math.PI / 180);
+          dispatch('update');
+      }
+  }
+
+  function handleEccentricityChange() {
+      if (construct.orbit) {
+          construct.orbit.elements.e = parseFloat(eccentricity.toFixed(3)); 
+          dispatch('update');
+      }
+  }
+
+  function handleEccentricityAngleChange() {
+      if (construct.orbit) {
+          construct.orbit.elements.omega_deg = eccentricityAngle;
+          dispatch('update');
+      }
+  }
 
   function getPlanetColorForSlider(node: CelestialBody): string {
     if (node.roleHint === 'star') return '#fff'; // White
@@ -245,6 +285,7 @@
         const adjustment = selectedPlacement === 'L4' ? Math.PI / 3 : -Math.PI / 3;
         construct.orbit.elements.M0_rad = (baseAnomaly + adjustment + 2 * Math.PI) % (2 * Math.PI);
       }
+      construct.orbit.elements.e = parentBody.orbit?.elements.e || 0; // Inherit eccentricity for L-points
     } else {
       construct.parentId = parentBody.id;
       construct.ui_parentId = null;
@@ -275,7 +316,7 @@
           t0: Date.now(),
           elements: {
             a_AU: new_a_AU,
-            e: 0, // Perfect circle
+            e: 0, // Default to circular for these placements initially
             i_deg: 0, // On the ecliptic plane
             omega_deg: 0, // Not relevant for circular orbit
             Omega_deg: 0, // Not relevant for non-inclined orbit
@@ -292,6 +333,7 @@
           case 'High Orbit': altitudeKm = ((boundaries?.meoHeoBoundaryKm || 0) + (boundaries?.heoUpperBoundaryKm || 0)) / 2; break;
         }
         construct.orbit.elements.a_AU = (hostRadiusKm + altitudeKm) / AU_KM;
+        construct.orbit.elements.e = selectedPlacement === 'Surface' ? 0 : construct.orbit.elements.e || 0; // Force 0 for surface
 
         // Handle Surface Lock vs Keplerian Orbit
         if (selectedPlacement === 'Surface') {
@@ -327,7 +369,7 @@
       <div class="form-group">
         <label for="parent-body">Current Orbit</label>
         <select id="parent-body" bind:value={selectedParentId} on:change={handleParentChange}>
-          <option value={null} disabled>Select a body</option>
+          <option value={undefined} disabled>Select a body</option>
           {#each availableParents as parent}
             <option value={parent.id}>{parent.name}</option>
           {/each}
@@ -336,7 +378,7 @@
       <div class="form-group">
         <label for="placement">Zone</label>
         <select id="placement" bind:value={selectedPlacement} on:change={handleUpdate} disabled={!selectedParentId}>
-          <option value={null} disabled>Select a placement</option>
+          <option value={undefined} disabled>Select a placement</option>
           {#each availablePlacements as placementOption}
             <option value={placementOption}>{placementOption}</option>
           {/each}
@@ -391,22 +433,45 @@
     </div>
   {/if}
 
-  <hr />
-  <div class="checkbox-group">
-    <label>
-      <input type="checkbox" bind:checked={construct.physical_parameters.can_aerobrake} on:change={handleUpdate} />
-      Can Aerobrake <span class="descriptor">(has heat shielding & control surfaces)</span>
-    </label>
-    <label>
-      <input type="checkbox" bind:checked={construct.physical_parameters.has_landing_gear} on:change={handleUpdate} />
-      Has Landing Gear
-    </label>
+  <div class="form-group">
+    <label for="anomaly">Orbital Position ({Math.round(anomalyDeg)}°)</label>
+    <input type="range" id="anomaly" min="0" max="360" step="1" bind:value={anomalyDeg} on:input={handleAnomalyChange} disabled={!selectedParentId} />
+  </div>
+
+  <div class="form-row-split">
+      <div class="form-group">
+        <label for="eccentricity">Eccentricity ({eccentricity.toFixed(3)})</label>
+        <input 
+            type="range" 
+            id="eccentricity" 
+            min="0" 
+            max="0.999" 
+            step="0.001" 
+            bind:value={eccentricity} 
+            on:input={handleEccentricityChange} 
+            disabled={!selectedParentId || selectedPlacement === 'Surface' || selectedPlacement === 'L4' || selectedPlacement === 'L5'} 
+        />
+      </div>
+      <div class="form-group">
+        <label for="eccentricityAngle">Argument of Periapsis ({Math.round(eccentricityAngle)}°)</label>
+        <input 
+            type="range" 
+            id="eccentricityAngle" 
+            min="0" 
+            max="360" 
+            step="1" 
+            bind:value={eccentricityAngle} 
+            on:input={handleEccentricityAngleChange} 
+            disabled={!selectedParentId || selectedPlacement === 'Surface' || selectedPlacement === 'L4' || selectedPlacement === 'L5' || eccentricity === 0} 
+        />
+      </div>
   </div>
 </div>
 
 <style>
   .tab-panel { padding: 10px; display: flex; flex-direction: column; gap: 15px; }
-  .form-group { display: flex; flex-direction: column; }
+  .form-group { display: flex; flex-direction: column; flex: 1; }
+  .form-row-split { display: flex; gap: 10px; }
   label { margin-bottom: 5px; color: #ccc; font-size: 0.9em; }
   input, select { padding: 8px; border-radius: 4px; border: 1px solid #555; background-color: #444; color: #eee; font-size: 1em; }
   input[type="color"] { height: 38px; padding: 2px; }

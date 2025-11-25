@@ -5,15 +5,21 @@
   import { createEventDispatcher } from 'svelte';
   import { get } from 'svelte/store';
   import { PROMPT_TEMPLATE } from '$lib/ai/prompt';
+  import { CONSTRUCT_PROMPT } from '$lib/ai/construct-prompt';
   import styles from '$lib/ai/styles.json';
   import tags from '$lib/ai/tags.json';
+  import constructStyles from '$lib/ai/construct-styles.json';
+  import constructTags from '$lib/ai/construct-tags.json';
 
   export let body: CelestialBody;
 
   let showAIModal = false;
   let isEditing = false;
   let descriptionText = '';
-  let promptData = {};
+  let currentPromptTemplate = PROMPT_TEMPLATE; 
+  let currentPromptData = {};
+  let currentStyles = styles;
+  let currentTags = tags;
   const dispatch = createEventDispatcher();
 
   function startEditing() {
@@ -34,16 +40,23 @@
   function handleAIDescription(event: CustomEvent<string>) {
     body.description = event.detail;
     showAIModal = false;
-    dispatch('update', body); // Immediately save the change to the store
+    dispatch('update', body); 
   }
 
   function openAIModal() {
-    const system = get(systemStore);
-    const host = system?.nodes.find((n: any) => n.id === body.orbit?.hostId);
-    promptData = {
-      HOST_STAR: host,
-      BODY: body
-    };
+    if (body.kind === 'construct') {
+      currentPromptTemplate = CONSTRUCT_PROMPT;
+      currentPromptData = { CONSTRUCT: body };
+      currentStyles = constructStyles;
+      currentTags = constructTags;
+    } else {
+      const system = get(systemStore);
+      const host = system?.nodes.find((n: any) => n.id === body.orbit?.hostId);
+      currentPromptTemplate = PROMPT_TEMPLATE;
+      currentPromptData = { HOST_STAR: host, BODY: body };
+      currentStyles = styles;
+      currentTags = tags;
+    }
     showAIModal = true;
   }
 
@@ -95,10 +108,10 @@
 {#if showAIModal}
   <AIExpansionModal
     bind:showModal={showAIModal}
-    promptTemplate={PROMPT_TEMPLATE}
-    promptData={{ BODY: body }}
-    availableStyles={styles}
-    availableTags={tags}
+    promptTemplate={currentPromptTemplate}
+    promptData={currentPromptData}
+    availableStyles={currentStyles}
+    availableTags={currentTags}
     initialText={body.description || ''}
     on:close={() => showAIModal = false}
     on:generate={handleAIDescription}
