@@ -17,6 +17,7 @@
   import AddConstructModal from './AddConstructModal.svelte'; 
   import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
   import ConstructSidePanel from './ConstructSidePanel.svelte';
+  import BodySidePanel from './BodySidePanel.svelte';
   import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
   import ReportConfigModal from './ReportConfigModal.svelte';
 
@@ -52,7 +53,8 @@
   let timeSyncInterval: ReturnType<typeof setInterval> | undefined;
   let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
   let isCrtMode = false;
-  let isEditingConstruct = false;
+  let isEditing = false;
+  let activeEditTab = 'Basics';
 
   function handleToggleCrt() {
       isCrtMode = !isCrtMode;
@@ -456,21 +458,39 @@
 
   function handleFocus(event: CustomEvent<string | null>) {
     focusedBodyId = event.detail;
-    isEditingConstruct = false;
-    showZoneKeyPanel = false; // Hide the ZoneKey panel when focus changes
-    history.pushState({ focusedBodyId }, '');
-  }
-
-  function handlePopState(event: PopStateEvent) {
-    if (focusedBody?.parentId) {
-        focusedBodyId = focusedBody.parentId;
+    isEditing = false;
+    // Use focusId to distinguish body focus from system selection
+    // We maintain systemId in the state so the app knows we are still in this system context
+    if (focusedBodyId) {
+      history.pushState({ systemId: system.id, focusId: focusedBodyId }, '');
     } else {
-        dispatch('back');
+      history.pushState({ systemId: system.id }, '');
     }
   }
 
   function zoomOut() {
-    history.back();
+    if (focusedBody && focusedBody.parentId) {
+      handleFocus({ detail: focusedBody.parentId } as CustomEvent<string | null>);
+    } else {
+      dispatch('back');
+    }
+  }
+
+  function handlePopState(event: PopStateEvent) {
+    if (event.state && event.state.focusId) {
+       // Specific body focused
+       focusedBodyId = event.state.focusId;
+    } else if (event.state && event.state.systemId) {
+       // System root (no specific focus)
+       focusedBodyId = null;
+       
+       // If the systemId doesn't match current system (unlikely in this architecture but possible),
+       // we might need to let +page handle it, but +page relies on local state.
+       // If systemId is missing, we go back to Starmap.
+    } else {
+      // No system state, assume back to starmap
+      dispatch('back');
+    }
   }
 
   function handleDeleteNode(event: CustomEvent<string>) {
@@ -718,9 +738,9 @@ a.click();
     {/if}
 
     <div class="controls">
-        {#if focusedBody}
-            <button on:click={zoomOut}>Zoom Out</button>
-        {/if}
+        <button on:click={zoomOut}>
+            {focusedBody && focusedBody.parentId ? 'Zoom Out' : 'To Starmap'}
+        </button>
         <button on:click={() => visualizer?.resetView()}>Reset View</button>
         <label>
             <input type="checkbox" bind:checked={showNames} />
@@ -755,7 +775,22 @@ a.click();
 
     <div class="system-view-grid">
         <div class="main-view">
-            <SystemVisualizer bind:this={visualizer} bind:cameraMode system={$systemStore} {rulePack} {currentTime} {focusedBodyId} {showNames} {showZones} {showLPoints} toytownFactor={$systemStore.toytownFactor} on:focus={handleFocus} on:showBodyContextMenu={handleShowBodyContextMenu} on:backgroundContextMenu={handleBackgroundContextMenu} />
+            <SystemVisualizer 
+                bind:this={visualizer} 
+                bind:cameraMode 
+                system={$systemStore} 
+                {rulePack} 
+                {currentTime} 
+                {focusedBodyId} 
+                {showNames} 
+                {showZones} 
+                {showLPoints} 
+                toytownFactor={$systemStore.toytownFactor} 
+                forceOrbitView={isEditing && activeEditTab === 'Orbit'}
+                on:focus={handleFocus} 
+                on:showBodyContextMenu={handleShowBodyContextMenu} 
+                on:backgroundContextMenu={handleBackgroundContextMenu} 
+            />
 
             {#if focusedBody}
                 <DescriptionEditor body={focusedBody} on:update={handleBodyUpdate} />
@@ -790,41 +825,44 @@ a.click();
                   dispatch('renameNode', {nodeId: focusedBody.id, newName: e.target.value});
                   systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s);
                 }} class="name-input" title="Click to rename" />
-                {#if focusedBody.kind === 'construct' && !isEditingConstruct}
-                    <button class="edit-btn small" on:click={() => isEditingConstruct = true} style="margin-left: 5px;">Edit</button>
+                {#if !isEditing}
+                    <button class="edit-btn small" on:click={() => { isEditing = true; visualizer?.resetView(); }} style="margin-left: 5px;">Edit</button>
                 {/if}
             </div>
             {/if}
             
-            <div class="action-buttons">
-                {#if focusedBody && focusedBody.parentId && focusedBody.kind !== 'construct'}
-                    <button class="delete-btn" on:click={() => {
-                      if (confirm(`Are you sure you want to delete ${focusedBody.name} and all its children? This cannot be undone.`)) {
-                        handleDeleteNode({ detail: focusedBody.id });
-                      }
-                    }}>Delete</button>
-                {/if}
-            </div>
-
             {#if showZoneKeyPanel}
                 <ZoneKey />
             {:else}
                 {#if focusedBody && focusedBody.kind !== 'construct'}
                     {@const parentBody = focusedBody.parentId ? $systemStore.nodes.find(n => n.id === (focusedBody.ui_parentId || focusedBody.parentId)) : null}
-                    <BodyTechnicalDetails body={focusedBody} {rulePack} parentBody={parentBody} />
+                    {#if isEditing}
+                        <BodySidePanel 
+                            body={focusedBody} 
+                            {rulePack}
+                            parentBody={parentBody}
+                            on:update={handleBodyUpdate} 
+                            on:delete={handleDeleteNode} 
+                            on:close={() => isEditing = false}
+                            on:tabchange={(e) => activeEditTab = e.detail} 
+                        />
+                    {:else}
+                        <BodyTechnicalDetails body={focusedBody} {rulePack} parentBody={parentBody} />
+                    {/if}
                 {/if}
 
                 {#if focusedBody && focusedBody.kind === 'construct'}
                   {@const parentBody = focusedBody.parentId ? $systemStore.nodes.find(n => n.id === (focusedBody.ui_parentId || focusedBody.parentId)) : null}
-                  {#if isEditingConstruct}
+                  {#if isEditing}
                       <ConstructSidePanel 
                         system={$systemStore} 
                         construct={focusedBody} 
                         hostBody={parentBody} 
                         {rulePack} 
                         on:update={handleConstructUpdate} 
-                        on:delete={handleDeleteNode}
-                        on:close={() => isEditingConstruct = false}
+                        on:delete={handleDeleteNode} 
+                        on:close={() => isEditing = false}
+                        on:tabchange={(e) => activeEditTab = e.detail}
                       />
                   {:else}
                       <ConstructDerivedSpecs construct={focusedBody} hostBody={parentBody} {rulePack} />
@@ -832,8 +870,10 @@ a.click();
                 {/if}
             {/if}
             
-            <BodyImage body={focusedBody} />
-            <GmNotesEditor body={focusedBody} on:update={handleBodyUpdate} />
+            {#if focusedBody}
+                <BodyImage body={focusedBody} />
+                <GmNotesEditor body={focusedBody} on:update={handleBodyUpdate} />
+            {/if}
 
             <footer class="attributions">
               <p>

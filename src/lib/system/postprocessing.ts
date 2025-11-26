@@ -3,7 +3,7 @@ import type { System, RulePack, CelestialBody, Atmosphere } from '../types';
 import { calculateOrbitalBoundaries, type PlanetData } from '../physics/orbits';
 import { G, AU_KM } from '../constants';
 
-function calculateMolarMass(atmosphere: Atmosphere, pack: RulePack): number {
+export function calculateMolarMass(atmosphere: Atmosphere, pack: RulePack): number {
   let totalMolarMass = 0;
   if (pack.gasMolarMassesKg) {
     for (const gas in atmosphere.composition) {
@@ -18,7 +18,7 @@ function calculateMolarMass(atmosphere: Atmosphere, pack: RulePack): number {
 /**
  * Calculates the delta-v budgets for a celestial body.
  */
-function _calculateDeltaVBudgets(body: CelestialBody) {
+export function calculateDeltaVBudgets(body: CelestialBody) {
   // Only calculate surface budgets for planets and moons
   if (body.roleHint !== 'planet' && body.roleHint !== 'moon') {
     body.loDeltaVBudget_ms = -1;
@@ -123,7 +123,7 @@ export function processSystemData(system: System, rulePack: RulePack): System {
             }
 
             // --- Calculate Delta-V Budgets ---
-            _calculateDeltaVBudgets(body);
+            calculateDeltaVBudgets(body);
         }
     }
     return system;

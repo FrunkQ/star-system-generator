@@ -22,6 +22,7 @@
   export let toytownFactor: number = 0;
   export let fullScreen: boolean = false;
   export let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
+  export let forceOrbitView: boolean = false;
 
   const dispatch = createEventDispatcher<{ 
     focus: string | null,
@@ -59,6 +60,7 @@
   
   // This is the pan value used for the current frame's render, to avoid store updates every frame
   let renderPan: PanState = { x: 0, y: 0 };
+  let lastAutoZoomTarget: number = 0;
 
   // --- Interaction State ---
   let isPanning = false;
@@ -75,6 +77,10 @@
   $: if (system && system.id !== lastSystemId) {
     needsReset = true;
     lastSystemId = system.id;
+  }
+  $: if (forceOrbitView !== undefined) {
+      // Trigger re-calculation of frame
+      if (focusedBodyId) handleFocusChange(focusedBodyId);
   }
   $: if (system && rulePack) {
     calculateAndStoreStellarZones();
@@ -213,7 +219,7 @@
 
       const children = system.nodes.filter(n => n.parentId === nodeId);
 
-      if (children.length > 0) {
+      if (children.length > 0 && !forceOrbitView) {
           // Rule 1: Has children. Frame focus center and fit its whole local system.
           let maxDistance = children.reduce((max, node) => {
               const childPos = targetPositions.get(node.id);
@@ -298,22 +304,26 @@
   }
 
   // --- Reactive Logic for Triggering Animation ---
-  $: if (focusedBodyId && focusedBodyId !== lastFocusedId && system && canvas && worldPositions.size > 0) {
+  $: if (focusedBodyId !== lastFocusedId && system && canvas && worldPositions.size > 0) {
       handleFocusChange(focusedBodyId);
   }
 
-  function handleFocusChange(newFocusId: string) {
+  function handleFocusChange(newFocusId: string | null) {
       lastFocusedId = newFocusId;
 
-      const nodesById = new Map(system.nodes.map(n => [n.id, n]));
-      const targetNode = nodesById.get(newFocusId);
+      // If no ID provided, default to root node (Star)
+      const targetId = newFocusId || system!.nodes.find(n => n.parentId === null)?.id;
+      if (!targetId) return;
+
+      const nodesById = new Map(system!.nodes.map(n => [n.id, n]));
+      const targetNode = nodesById.get(targetId);
 
       // Do not animate camera for belts, just accept the focus change
       if (targetNode && targetNode.kind === 'body' && targetNode.roleHint === 'belt') {
           return;
       }
       
-      startFocusAnimation(newFocusId);
+      startFocusAnimation(targetId);
   }
 
   function startFocusAnimation(targetId: string) {
@@ -425,9 +435,19 @@
             const targetPosition = toytownFactor > 0 ? scaledWorldPositions.get(focusedBodyId) : worldPositions.get(focusedBodyId);
             if (targetPosition) {
                 renderPan = targetPosition;
+
+                // Auto-adjust zoom if orbit changes significantly (e.g. while editing)
+                const idealFrame = calculateFrameForNode(focusedBodyId);
+                
+                // Only update if the TARGET zoom has changed significantly
+                if (lastAutoZoomTarget === 0 || Math.abs(idealFrame.zoom - lastAutoZoomTarget) / lastAutoZoomTarget > 0.02) {
+                    zoomStore.set(idealFrame.zoom, { duration: 300 }); // Slightly smoother
+                    lastAutoZoomTarget = idealFrame.zoom;
+                }
             }
         } else {
             renderPan = panState; // When not following, use the state from the store
+            lastAutoZoomTarget = 0; // Reset when not following
         }
 
         drawSystem(ctx);

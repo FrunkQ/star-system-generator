@@ -27,6 +27,11 @@
     const hostId = construct.ui_parentId || construct.parentId;
     hostBody = system.nodes.find(n => n.id === hostId) as CelestialBody || null;
   }
+  
+  function setTab(tab: string) {
+      selectedTab = tab;
+      dispatch('tabchange', tab);
+  }
 
   function handleUpdate() {
     construct = construct; 
@@ -132,14 +137,14 @@
 
 <div class="construct-side-panel">
   <div class="tabs">
-    <button class:active={selectedTab === 'Basics'} on:click={() => selectedTab = 'Basics'}>Basics</button>
-    <button class:active={selectedTab === 'Orbit'} on:click={() => selectedTab = 'Orbit'}>Orbit</button>
-    <button class:active={selectedTab === 'Engines'} on:click={() => selectedTab = 'Engines'}>Engines</button>
-    <button class:active={selectedTab === 'Fuel'} on:click={() => selectedTab = 'Fuel'}>Fuel</button>
-    <button class:active={selectedTab === 'Cargo'} on:click={() => selectedTab = 'Cargo'}>Cargo</button>
-    <button class:active={selectedTab === 'Crew'} on:click={() => selectedTab = 'Crew'}>Crew</button>
-    <button class:active={selectedTab === 'Power'} on:click={() => selectedTab = 'Power'}>Power</button>
-    <button class:active={selectedTab === 'Modules'} on:click={() => selectedTab = 'Modules'}>Modules</button>
+    <button class:active={selectedTab === 'Basics'} on:click={() => setTab('Basics')}>Basics</button>
+    <button class:active={selectedTab === 'Orbit'} on:click={() => setTab('Orbit')}>Orbit</button>
+    <button class:active={selectedTab === 'Engines'} on:click={() => setTab('Engines')}>Engines</button>
+    <button class:active={selectedTab === 'Fuel'} on:click={() => setTab('Fuel')}>Fuel</button>
+    <button class:active={selectedTab === 'Cargo'} on:click={() => setTab('Cargo')}>Cargo</button>
+    <button class:active={selectedTab === 'Crew'} on:click={() => setTab('Crew')}>Crew</button>
+    <button class:active={selectedTab === 'Power'} on:click={() => setTab('Power')}>Power</button>
+    <button class:active={selectedTab === 'Modules'} on:click={() => setTab('Modules')}>Modules</button>
   </div>
 
   <div class="tab-content">
@@ -169,10 +174,6 @@
     </div>
   {/if}
 
-  <div class="specs-section">
-      <ConstructDerivedSpecs {construct} {rulePack} {hostBody} />
-  </div>
-
   <div class="actions-row">
     <button on:click={handleExport}>Export</button>
     <button on:click={() => fileInput.click()}>Import</button>
@@ -184,6 +185,10 @@
     }}>Delete</button>
     <button class="primary" on:click={() => dispatch('close')}>Done</button>
     <input type="file" bind:this={fileInput} on:change={handleImport} accept=".json" style="display: none;" />
+  </div>
+
+  <div class="specs-section">
+      <ConstructDerivedSpecs {construct} {rulePack} {hostBody} />
   </div>
 </div>
 

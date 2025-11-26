@@ -2,6 +2,7 @@
   import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
   import { calculateOrbitalBoundaries, type OrbitalBoundaries, type PlanetData } from "$lib/physics/orbits";
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
+  import { calculateDeltaVBudgets } from '$lib/system/postprocessing';
 
   export let body: CelestialBody | Barycenter | null;
   export let rulePack: RulePack;
@@ -24,6 +25,7 @@
   let surfaceRadiationText: string | null = null;
   let surfaceRadiationTooltip: string | null = null;
   let stellarRadiationTooltip: string | null = null;
+  let calculatedPeriodDays: number | null = null;
   
   $: isGasGiant = body.classes?.some(c => c.includes('gas-giant')) ?? false;
   
@@ -41,8 +43,32 @@
     tempTooltip = '';
     surfaceRadiationText = null;
     surfaceRadiationTooltip = null;
+    calculatedPeriodDays = null;
 
     if (body && body.kind === 'body') {
+        // --- Live Recalculation for Editing ---
+        if (body.massKg && body.radiusKm) {
+             body.calculatedGravity_ms2 = (G * body.massKg) / Math.pow(body.radiusKm * 1000, 2);
+        }
+        if (body.rotation_period_hours) {
+             body.calculatedRotationPeriod_s = body.rotation_period_hours * 3600;
+        }
+        if (parentBody && body.calculatedGravity_ms2) {
+             const hostMass = (parentBody.massKg || (parentBody as any).effectiveMassKg || 0);
+             const planetData: PlanetData = {
+                 gravity: body.calculatedGravity_ms2,
+                 surfaceTempKelvin: body.temperatureK || 0,
+                 massKg: body.massKg || 0,
+                 rotationPeriodSeconds: body.calculatedRotationPeriod_s || 0,
+                 molarMassKg: body.atmosphere?.molarMassKg ?? 0.028,
+                 surfacePressurePa: (body.atmosphere?.pressure_bar ?? 0) * 100000,
+                 distanceToHost_km: (body.orbit?.elements.a_AU || 0) * AU_KM,
+                 hostMass_kg: hostMass,
+             };
+             body.orbitalBoundaries = calculateOrbitalBoundaries(planetData, rulePack);
+             calculateDeltaVBudgets(body);
+        }
+
         if (body.surfaceRadiation !== undefined) {
             const desc = getSurfaceRadiationDescription(body.surfaceRadiation);
             surfaceRadiationText = desc.text;
@@ -54,6 +80,16 @@
                 orbitalDistanceDisplay = `${(body.orbit.elements.a_AU * AU_KM).toLocaleString(undefined, {maximumFractionDigits: 0})} km`;
             } else {
                 orbitalDistanceDisplay = `${body.orbit.elements.a_AU.toFixed(3)} AU`;
+            }
+
+            // Calculate Orbital Period
+            if (parentBody) {
+                const parentMass = (parentBody.massKg || (parentBody as Barycenter).effectiveMassKg || 0);
+                if (parentMass > 0) {
+                    const a_m = body.orbit.elements.a_AU * AU_KM * 1000;
+                    const periodSeconds = 2 * Math.PI * Math.sqrt(Math.pow(a_m, 3) / (G * parentMass));
+                    calculatedPeriodDays = periodSeconds / 86400;
+                }
             }
         }
 
@@ -273,10 +309,10 @@
           </div>
       {/if}
 
-      {#if body.kind === 'body' && body.orbital_period_days}
+      {#if body.kind === 'body' && (calculatedPeriodDays || body.orbital_period_days)}
           <div class="detail-item">
               <span class="label">Orbital Period</span>
-              <span class="value">{body.orbital_period_days.toFixed(1)} days</span>
+              <span class="value">{(calculatedPeriodDays || body.orbital_period_days).toFixed(1)} days</span>
           </div>
       {/if}
 
