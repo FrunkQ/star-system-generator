@@ -8,55 +8,82 @@
 
   const dispatch = createEventDispatcher();
 
-  let useSolarUnits = body.roleHint === 'star';
+  $: useSolarUnits = body.roleHint === 'star';
 
   // UI Helpers
-  let massValue = 0;   // In Earths or Suns
-  let radiusValue = 0; // In Earths or Suns
-  let densityValue = 0; // g/cm^3
+  let massValueInternal = 0;   // In Earths (for planets/moons), or Suns (for stars)
+  let radiusValueInternal = 0; // In KM (for planets/moons), or Suns Radii (for stars)
+  let densityValue = 0;        // g/cm^3
 
   // --- Mass Slider Config ---
-  let massMin = 0.01;
-  let massMax = 4130; // ~13 Jupiter masses
-  if (useSolarUnits) {
-      massMin = 0.01;
-      massMax = 100;
-  }
-  let massLogMin = Math.log(massMin);
-  let massLogMax = Math.log(massMax);
+  const massMinEarths = 0.000000001; // Very small for tonnes
+  const massMaxEarths = 4130; // ~13 Jupiter masses in Earths (approx 4130 Earth Masses)
+  const massMinSuns = 0.01;
+  const massMaxSuns = 100;
+
+  $: currentMassMin = useSolarUnits ? massMinSuns : massMinEarths;
+  $: currentMassMax = useSolarUnits ? massMaxSuns : massMaxEarths;
+  
+  $: massLogMin = Math.log(currentMassMin);
+  $: massLogMax = Math.log(currentMassMax);
   let massSliderPos = 0.5;
 
   // --- Radius Slider Config ---
-  // Min 100km, Max 22 Earth Radii (~140,000 km)
-  let radiusMinKm = 100;
-  let radiusMaxKm = 22 * EARTH_RADIUS_KM; 
-  if (useSolarUnits) {
-      radiusMinKm = 0.1 * SOLAR_RADIUS_KM;
-      radiusMaxKm = 50 * SOLAR_RADIUS_KM;
-  }
+  const radiusMinKm = 100; // Smallest practical body radius in km
+  const radiusMaxEarths = 22 * EARTH_RADIUS_KM; // Max for planets in km
+  const radiusMinSuns = 0.1 * SOLAR_RADIUS_KM;
+  const radiusMaxSuns = 50 * SOLAR_RADIUS_KM;
   
-  // Convert to display units (Earths/Suns) for the slider logic bounds
-  let radiusDisplayMin = useSolarUnits ? radiusMinKm / SOLAR_RADIUS_KM : radiusMinKm / EARTH_RADIUS_KM;
-  let radiusDisplayMax = useSolarUnits ? radiusMaxKm / SOLAR_RADIUS_KM : radiusMaxKm / EARTH_RADIUS_KM;
+  $: currentRadiusMin = useSolarUnits ? radiusMinSuns : radiusMinKm;
+  $: currentRadiusMax = useSolarUnits ? radiusMaxSuns : radiusMaxEarths;
 
-  let radiusLogMin = Math.log(radiusDisplayMin);
-  let radiusLogMax = Math.log(radiusDisplayMax);
+  $: radiusLogMin = Math.log(currentRadiusMin);
+  $: radiusLogMax = Math.log(currentRadiusMax);
   let radiusSliderPos = 0.5;
 
   // Visual Types
   $: visualTypes = rulePack?.classifier?.planetImages ? Object.keys(rulePack.classifier.planetImages) : [];
 
-  // --- Reactivity: Body -> UI ---
+  // --- Reactivity: Body -> UI (Update internal values from body prop) ---
   $: if (body.massKg !== undefined) {
-      massValue = useSolarUnits ? body.massKg / SOLAR_MASS_KG : body.massKg / EARTH_MASS_KG;
-      const safeVal = Math.max(massMin, Math.min(massMax, massValue));
+      massValueInternal = useSolarUnits ? body.massKg / SOLAR_MASS_KG : body.massKg / EARTH_MASS_KG;
+      // Ensure slider position is updated when body.massKg changes externally
+      const safeVal = Math.max(currentMassMin, Math.min(currentMassMax, massValueInternal));
       massSliderPos = (Math.log(safeVal) - massLogMin) / (massLogMax - massLogMin);
   }
 
   $: if (body.radiusKm !== undefined) {
-      radiusValue = useSolarUnits ? body.radiusKm / SOLAR_RADIUS_KM : body.radiusKm / EARTH_RADIUS_KM;
-      const safeVal = Math.max(radiusDisplayMin, Math.min(radiusDisplayMax, radiusValue));
+      radiusValueInternal = useSolarUnits ? body.radiusKm / SOLAR_RADIUS_KM : body.radiusKm; // Convert to Suns for stars
+      const safeVal = Math.max(currentRadiusMin, Math.min(currentRadiusMax, radiusValueInternal));
       radiusSliderPos = (Math.log(safeVal) - radiusLogMin) / (radiusLogMax - radiusLogMin);
+  }
+
+  // --- Mass Display Logic ---
+  const massThresholdEarths = 0.001; // Below this, switch to tonnes
+
+  $: displayMassUnit = useSolarUnits ? 'Suns' : ((massValueInternal < massThresholdEarths) ? 'Tonnes' : 'Earths');
+  $: displayMassValue = (displayMassUnit === 'Tonnes') 
+      ? (body.massKg || 0) / 1000 // kg to tonnes
+      : (displayMassUnit === 'Suns' ? massValueInternal : massValueInternal); // MassValueInternal is already in Earths or Suns
+
+  let massInputStep = 0.0001; 
+  $: if (displayMassUnit === 'Tonnes') {
+      if (displayMassValue < 10) massInputStep = 0.001;
+      else if (displayMassValue < 1000) massInputStep = 1;
+      else massInputStep = 1000;
+  } else {
+      massInputStep = 0.0001; // Default for Earth/Sun masses
+  }
+
+  // --- Radius Display Logic ---
+  $: displayRadiusUnit = useSolarUnits ? 'Suns' : 'km';
+  $: displayRadiusValue = useSolarUnits ? radiusValueInternal : radiusValueInternal; // value is in KM or Solar Radii
+  let radiusInputStep = 1;
+  $: if (useSolarUnits) { radiusInputStep = 0.001; }
+  else {
+      if (displayRadiusValue < 1000) radiusInputStep = 1;
+      else if (displayRadiusValue < 10000) radiusInputStep = 10;
+      else radiusInputStep = 100;
   }
 
   // --- Density Calculation ---
@@ -83,11 +110,7 @@
       let newColor = "";
 
       if (rKm < 200) {
-          // Moonlet / Asteroid
-          // Don't force class change for tiny objects as they might be specific?
-          // But if we must:
-          // newClass = "belt/asteroid"; 
-          // newColor = "#95a5a6";
+          // Moonlet / Asteroid - don't force class change by default
       } else if (rKm < 800) {
           newClass = "planet/dwarf-planet";
           newColor = "#bdc3c7"; // Grey
@@ -103,20 +126,16 @@
       }
 
       if (newClass) {
-          // Update Main Class
           if (!body.classes) body.classes = [];
           body.classes[0] = newClass;
 
-          // Update Tags: Remove conflicting size tags, add new one
           if (!body.tags) body.tags = [];
           const sizeTags = ["planet/dwarf-planet", "planet/terrestrial", "planet/ice-giant", "planet/gas-giant"];
           body.tags = body.tags.filter(t => !sizeTags.includes(t.key));
           body.tags.push({ key: newClass });
 
-          // Update Color
           body.color = newColor;
 
-          // Update Image if available
           if (rulePack?.classifier?.planetImages && rulePack.classifier.planetImages[newClass]) {
               if (!body.image) body.image = { url: '' };
               body.image.url = rulePack.classifier.planetImages[newClass];
@@ -125,27 +144,56 @@
   }
 
   // --- Updates ---
-  function updateMass() {
-      body.massKg = massValue * (useSolarUnits ? SOLAR_MASS_KG : EARTH_MASS_KG);
+  function updateMassFromInput(event: Event) {
+      const val = parseFloat((event.target as HTMLInputElement).value);
+      if (isNaN(val)) return;
+
+      if (displayMassUnit === 'Tonnes') {
+          body.massKg = val * 1000; // Tonnes to kg
+      } else if (displayMassUnit === 'Suns') {
+          body.massKg = val * SOLAR_MASS_KG;
+      } else { // Earths
+          body.massKg = val * EARTH_MASS_KG;
+      }
+      // Update internal mass value for slider to react
+      massValueInternal = useSolarUnits ? body.massKg / SOLAR_MASS_KG : body.massKg / EARTH_MASS_KG;
       dispatch('update');
   }
 
   function updateMassFromSlider() {
       const val = Math.exp(massLogMin + (massLogMax - massLogMin) * massSliderPos);
-      massValue = parseFloat(val.toPrecision(4));
-      updateMass();
+      massValueInternal = parseFloat(val.toPrecision(4));
+      body.massKg = massValueInternal * (useSolarUnits ? SOLAR_MASS_KG : EARTH_MASS_KG);
+      dispatch('update');
   }
 
-  function updateRadius() {
-      body.radiusKm = radiusValue * (useSolarUnits ? SOLAR_RADIUS_KM : EARTH_RADIUS_KM);
-      updateClassFromSize(); // Trigger class update on manual radius change
+  function updateRadiusFromInput(event: Event) {
+      const val = parseFloat((event.target as HTMLInputElement).value);
+      if (isNaN(val)) return;
+
+      if (useSolarUnits) {
+          body.radiusKm = val * SOLAR_RADIUS_KM; // Suns Radii to KM
+          radiusValueInternal = val; // Store input in Suns Radii
+      } else {
+          body.radiusKm = val; // KM
+          radiusValueInternal = val; // Store input in KM
+      }
+      updateClassFromSize();
       dispatch('update');
   }
 
   function updateRadiusFromSlider() {
       const val = Math.exp(radiusLogMin + (radiusLogMax - radiusLogMin) * radiusSliderPos);
-      radiusValue = parseFloat(val.toPrecision(4));
-      updateRadius(); // This calls updateClassFromSize inside
+      
+      if (useSolarUnits) {
+          radiusValueInternal = parseFloat(val.toPrecision(4)); // Store in Suns Radii
+          body.radiusKm = radiusValueInternal * SOLAR_RADIUS_KM; // Suns Radii to KM
+      } else {
+          radiusValueInternal = parseFloat(val.toFixed(0)); // Store in KM
+          body.radiusKm = radiusValueInternal; // KM
+      }
+      updateClassFromSize();
+      dispatch('update');
   }
 
   function updateVisualType(e: Event) {
@@ -169,8 +217,8 @@
     <!-- MASS SECTION -->
     <div class="form-group">
         <div class="label-row">
-            <label for="mass">Mass ({useSolarUnits ? 'Suns' : 'Earths'})</label>
-            <input type="number" id="mass" step="0.0001" bind:value={massValue} on:input={updateMass} />
+            <label for="mass">Mass ({displayMassUnit})</label>
+            <input type="number" id="mass" step={massInputStep} bind:value={displayMassValue} on:input={updateMassFromInput} />
         </div>
         <input 
             type="range" min="0" max="1" step="0.001" 
@@ -180,11 +228,11 @@
             list="mass-ticks"
         />
         <datalist id="mass-ticks">
-            <option value="0" label="{massMin}"></option>
+            <option value="0" label="{currentMassMin.toPrecision(1)}"></option>
             <option value="0.25"></option>
-            <option value="0.5" label="1"></option>
+            <option value="0.5" label="{useSolarUnits ? '1' : '1'}"></option>
             <option value="0.75"></option>
-            <option value="1" label="{massMax}"></option>
+            <option value="1" label="{currentMassMax}"></option>
         </datalist>
         <div class="sub-label">
             <span>{(body.massKg || 0).toExponential(2)} kg</span>
@@ -196,8 +244,8 @@
     <!-- RADIUS SECTION -->
     <div class="form-group">
         <div class="label-row">
-            <label for="radius">Radius ({useSolarUnits ? 'Suns' : 'Earths'})</label>
-            <input type="number" id="radius" step="0.0001" bind:value={radiusValue} on:input={updateRadius} />
+            <label for="radius">Radius ({displayRadiusUnit})</label>
+            <input type="number" id="radius" step={radiusInputStep} bind:value={displayRadiusValue} on:input={updateRadiusFromInput} />
         </div>
         <input 
             type="range" min="0" max="1" step="0.001" 
@@ -207,10 +255,10 @@
             list="radius-ticks"
         />
         <datalist id="radius-ticks">
-            <option value="0"></option>
+            <option value="0" label="{Math.round(currentRadiusMin)}"></option>
             <option value="0.33"></option>
             <option value="0.66"></option>
-            <option value="1"></option>
+            <option value="1" label="{Math.round(currentRadiusMax)}"></option>
         </datalist>
         <div class="sub-label row-spaced">
             <span>{Math.round(body.radiusKm || 0).toLocaleString()} km</span>

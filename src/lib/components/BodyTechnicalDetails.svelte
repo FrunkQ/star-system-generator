@@ -124,10 +124,16 @@
             radiationLevel = `${desc.text} (${body.radiationOutput?.toFixed(2)})`;
             stellarRadiationTooltip = desc.tooltip;
 
-        } else if (body.massKg) {            const massInEarths = body.massKg / EARTH_MASS_KG;
-            massDisplay = massInEarths < 1000000 
-                ? `${massInEarths.toLocaleString(undefined, {maximumFractionDigits: 2})} Earth Masses` 
-                : `${massInEarths.toExponential(2)} Earth Masses`;
+        } else if (body.massKg) {
+            const massInEarths = body.massKg / EARTH_MASS_KG;
+            // Use toLocaleString for larger values, toExponential for very small for precision
+            if (massInEarths === 0) {
+                massDisplay = `0 Earth Masses`;
+            } else if (Math.abs(massInEarths) < 0.000001) { // Threshold for scientific notation
+                massDisplay = `${massInEarths.toExponential(3)} Earth Masses`;
+            } else {
+                massDisplay = `${massInEarths.toLocaleString(undefined, {maximumFractionDigits: 6})} Earth Masses`;
+            }
         }
 
         if (body.temperatureK) {

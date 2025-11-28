@@ -27,11 +27,12 @@
   import { panStore, zoomStore } from '$lib/cameraStore';
   import { get } from 'svelte/store';
   import { processSystemData } from '$lib/system/postprocessing';
-  import { generateId } from '$lib/utils';
-  import { AU_KM } from '$lib/constants';
+  import { generateId, toRoman } from '$lib/utils';
+  import { AU_KM, EARTH_MASS_KG, G } from '$lib/constants';
   import { propagate } from '$lib/api';
   import { broadcastService } from '$lib/broadcast';
   import { sanitizeSystem } from '$lib/system/utils';
+  import { calculateAllStellarZones } from '$lib/physics/zones';
 
   export let system: System;
   export let rulePack: RulePack;
@@ -158,6 +159,155 @@
       contextMenuY = event.detail.screenY;
       showBackgroundContextMenu = true;
       showSummaryContextMenu = false;
+  }
+
+  function handleCreatePlanetFromBackground() {
+      showBackgroundContextMenu = false;
+      const host = backgroundClickHost;
+      if (!host || !$systemStore) return;
+
+      // 1. Calculate Distance (a_AU) & Angle
+      let distAU = 0;
+      let startAngle = 0;
+      
+      let hostPos = { x: 0, y: 0 };
+      if (host.parentId) {
+         const getAbsolutePosition = (nodeId: string): { x: number, y: number } => {
+             const node = $systemStore.nodes.find(n => n.id === nodeId);
+             if (!node || !node.parentId) return { x: 0, y: 0 };
+             const parentPos = getAbsolutePosition(node.parentId);
+             let relativePos = { x: 0, y: 0 };
+             if ((node.kind === 'body' || node.kind === 'construct') && node.orbit) {
+                 const p = propagate(node, currentTime);
+                 if (p) relativePos = p;
+             }
+             return { x: parentPos.x + relativePos.x, y: parentPos.y + relativePos.y };
+         };
+         hostPos = getAbsolutePosition(host.id);
+      }
+
+      const dx = backgroundClickPosition.x - hostPos.x;
+      const dy = backgroundClickPosition.y - hostPos.y;
+      distAU = Math.sqrt(dx*dx + dy*dy);
+      startAngle = Math.atan2(dy, dx);
+
+      // 2. Determine Naming
+      const siblings = $systemStore.nodes.filter(n => n.parentId === host.id);
+      // Basic naming convention: Parent Name + Roman Numeral (based on count)
+      // This doesn't sort by distance, just by creation order effectively. 
+      // A robust system would resort names, but for "Add Planet Here" simple append is fine.
+      const name = `${host.name} ${toRoman(siblings.length + 1)}`;
+
+      // 3. Determine Defaults
+      const newPlanet: CelestialBody = {
+          id: generateId(),
+          name: name,
+          kind: 'body',
+          parentId: host.id,
+          tags: [],
+          atmosphere: { name: 'None', composition: {}, pressure_bar: 0 },
+          hydrosphere: { coverage: 0, composition: 'water' }, // No liquids default
+          biosphere: null,
+          classes: [],
+          roleHint: 'planet'
+      };
+
+      const hostMass = (host as CelestialBody).massKg || (host as Barycenter).effectiveMassKg || 0;
+
+      if (host.roleHint === 'star') {
+          newPlanet.roleHint = 'planet';
+          const zones = calculateAllStellarZones(host as CelestialBody, rulePack);
+          const frostLine = (zones && zones.frostLine) ? zones.frostLine : 2.7;
+          const co2Line = (zones && zones.co2IceLine) ? zones.co2IceLine : (frostLine * 3); 
+
+          if (distAU < frostLine) {
+              newPlanet.classes = ['planet/terrestrial'];
+              newPlanet.massKg = EARTH_MASS_KG * (0.5 + Math.random());
+              newPlanet.radiusKm = 6371 * Math.pow(newPlanet.massKg / EARTH_MASS_KG, 1/3);
+              newPlanet.name = 'New Terrestrial';
+              newPlanet.rotation_period_hours = 20 + Math.random() * 10;
+              newPlanet.axial_tilt_deg = 23.5 + (Math.random() * 20 - 10);
+              
+              // Atmosphere for terrestrial
+              if (distAU > 0.5) {
+                  // Trace CO2/N2
+                  newPlanet.atmosphere = {
+                      name: 'Thin CO2',
+                      composition: { 'CO2': 0.95, 'N2': 0.05 },
+                      pressure_bar: 0.1
+                  };
+              }
+          } else if (distAU < co2Line) {
+              newPlanet.classes = ['planet/ice-giant'];
+              newPlanet.massKg = EARTH_MASS_KG * (10 + Math.random() * 10);
+              newPlanet.radiusKm = 25000;
+              newPlanet.name = 'New Ice Giant';
+              newPlanet.rotation_period_hours = 10 + Math.random() * 6;
+              newPlanet.axial_tilt_deg = 25 + (Math.random() * 10 - 5);
+              
+              // Atmosphere for Ice Giant
+              newPlanet.atmosphere = {
+                  name: 'H2/He/CH4',
+                  composition: { 'H2': 0.80, 'He': 0.15, 'CH4': 0.05 },
+                  pressure_bar: 100
+              };
+          } else {
+              newPlanet.classes = ['planet/gas-giant'];
+              newPlanet.massKg = EARTH_MASS_KG * (50 + Math.random() * 250);
+              newPlanet.radiusKm = 70000;
+              newPlanet.name = 'New Gas Giant';
+              newPlanet.rotation_period_hours = 9 + Math.random() * 5;
+              newPlanet.axial_tilt_deg = 3 + Math.random() * 27;
+              
+              // Atmosphere for Gas Giant
+              newPlanet.atmosphere = {
+                  name: 'Hydrogen/Helium',
+                  composition: { 'H2': 0.75, 'He': 0.24 },
+                  pressure_bar: 1000
+              };
+          }
+      } else {
+          newPlanet.roleHint = 'moon';
+          newPlanet.classes = ['planet/barren'];
+          newPlanet.name = 'New Moon';
+          newPlanet.tidallyLocked = true;
+          newPlanet.axial_tilt_deg = Math.random() * 5;
+          newPlanet.rotation_period_hours = 0; // Will be calc'd if locked
+          
+          const pClasses = (host as CelestialBody).classes || [];
+          const isGiant = pClasses.some(c => c.includes('gas-giant') || c.includes('ice-giant'));
+          
+          if (isGiant) {
+              newPlanet.massKg = hostMass / 10000;
+          } else {
+              newPlanet.massKg = hostMass / (100 + Math.random() * 900);
+          }
+          newPlanet.radiusKm = 6371 * Math.pow((newPlanet.massKg || 0) / EARTH_MASS_KG, 1/3) * 0.8;
+          // Moons default to no atmosphere
+      }
+
+      // 4. Orbit
+      newPlanet.orbit = {
+          hostId: host.id,
+          hostMu: hostMass * G,
+          t0: currentTime,
+          elements: {
+              a_AU: Math.max(distAU, 0.000001),
+              e: 0.01,
+              i_deg: 0,
+              omega_deg: Math.random() * 360,
+              Omega_deg: Math.random() * 360,
+              M0_rad: startAngle
+          }
+      };
+
+      // 5. Commit & Focus
+      systemStore.update(s => {
+          if (!s) return s;
+          return { ...s, nodes: [...s.nodes, newPlanet], isManuallyEdited: true };
+      });
+      updateFocus(newPlanet.id);
+      isEditing = true;
   }
 
   function handleCreateConstructFromBackground() {
@@ -905,6 +1055,7 @@ a.click();
         <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px;" on:click|stopPropagation>
             <ul>
                 <li on:click={handleCreateConstructFromBackground}>Add Construct Here</li>
+                <li on:click={handleCreatePlanetFromBackground}>Add Planet Here</li>
             </ul>
         </div>
     {/if}
