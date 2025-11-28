@@ -39,7 +39,7 @@
     {#if selectedTab === 'Basics'}
       <BodyBasicsTab {body} on:update={handleUpdate} />
     {:else if selectedTab === 'Orbit'}
-      <BodyOrbitTab {body} on:update={handleUpdate} />
+      <BodyOrbitTab {body} {parentBody} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Atmosphere'}
       <BodyAtmosphereTab {body} on:update={handleUpdate} />
     {:else if selectedTab === 'Class'}

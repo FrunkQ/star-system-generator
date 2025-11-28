@@ -1,27 +1,33 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody } from '$lib/types';
-  import { EARTH_MASS_KG, EARTH_RADIUS_KM } from '$lib/constants';
+  import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '$lib/constants';
 
   export let body: CelestialBody;
 
   const dispatch = createEventDispatcher();
 
+  let useSolarUnits = body.roleHint === 'star';
+
   // UI Helpers
-  let massEarths = (body.massKg || 0) / EARTH_MASS_KG;
-  let radiusEarths = (body.radiusKm || 0) / EARTH_RADIUS_KM;
+  let massValue = useSolarUnits ? (body.massKg || 0) / SOLAR_MASS_KG : (body.massKg || 0) / EARTH_MASS_KG;
+  let radiusValue = useSolarUnits ? (body.radiusKm || 0) / SOLAR_RADIUS_KM : (body.radiusKm || 0) / EARTH_RADIUS_KM;
 
   // Reactivity
-  $: if (body.massKg) massEarths = body.massKg / EARTH_MASS_KG;
-  $: if (body.radiusKm) radiusEarths = body.radiusKm / EARTH_RADIUS_KM;
+  $: if (body.massKg) {
+      massValue = useSolarUnits ? body.massKg / SOLAR_MASS_KG : body.massKg / EARTH_MASS_KG;
+  }
+  $: if (body.radiusKm) {
+      radiusValue = useSolarUnits ? body.radiusKm / SOLAR_RADIUS_KM : body.radiusKm / EARTH_RADIUS_KM;
+  }
 
   function updateMass() {
-      body.massKg = massEarths * EARTH_MASS_KG;
+      body.massKg = massValue * (useSolarUnits ? SOLAR_MASS_KG : EARTH_MASS_KG);
       dispatch('update');
   }
 
   function updateRadius() {
-      body.radiusKm = radiusEarths * EARTH_RADIUS_KM;
+      body.radiusKm = radiusValue * (useSolarUnits ? SOLAR_RADIUS_KM : EARTH_RADIUS_KM);
       dispatch('update');
   }
 
@@ -38,13 +44,13 @@
 
     <div class="row">
         <div class="form-group">
-            <label for="mass">Mass (Earths)</label>
-            <input type="number" id="mass" step="0.01" bind:value={massEarths} on:input={updateMass} />
+            <label for="mass">Mass ({useSolarUnits ? 'Suns' : 'Earths'})</label>
+            <input type="number" id="mass" step="0.01" bind:value={massValue} on:input={updateMass} />
             <span class="sub-label">{(body.massKg || 0).toExponential(2)} kg</span>
         </div>
         <div class="form-group">
-            <label for="radius">Radius (Earths)</label>
-            <input type="number" id="radius" step="0.01" bind:value={radiusEarths} on:input={updateRadius} />
+            <label for="radius">Radius ({useSolarUnits ? 'Suns' : 'Earths'})</label>
+            <input type="number" id="radius" step="0.01" bind:value={radiusValue} on:input={updateRadius} />
             <span class="sub-label">{Math.round(body.radiusKm || 0).toLocaleString()} km</span>
         </div>
     </div>
