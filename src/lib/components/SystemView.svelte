@@ -2,6 +2,7 @@
   import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
   import { browser } from '$app/environment';
   import { pushState, replaceState } from '$app/navigation';
+  import { page } from '$app/stores';
   import type { RulePack, System, CelestialBody } from '$lib/types';
   import { deleteNode, addPlanetaryBody, renameNode, addHabitablePlanet, generateSystem, computePlayerSnapshot } from '$lib/api';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
@@ -404,7 +405,6 @@
   let timeScale = 3600 * 24 * 30;
   let animationFrameId: number;
 
-  let focusedBodyId: string | null = null;
   let focusedBody: CelestialBody | null = null;
 
   $: if ($systemStore) {
@@ -454,44 +454,38 @@
     const newSystem = generateSystem(seed, rulePack, {}, selectedGenerationOption, empty, $systemStore?.toytownFactor || 0);
     systemStore.set(newSystem);
     currentTime = newSystem.epochT0;
-    focusedBodyId = null;
+    updateFocus(null, true); // Reset focus
+  }
+
+  function updateFocus(id: string | null, replace: boolean = false) {
+      isEditing = false;
+      const state = id ? { systemId: system.id, focusId: id } : { systemId: system.id };
+      
+      if (replace) {
+          replaceState('', state);
+      } else {
+          pushState('', state);
+      }
   }
 
   function handleFocus(event: CustomEvent<string | null>) {
-    focusedBodyId = event.detail;
-    isEditing = false;
-    // Use focusId to distinguish body focus from system selection
-    // We maintain systemId in the state so the app knows we are still in this system context
-    if (focusedBodyId) {
-      history.pushState({ systemId: system.id, focusId: focusedBodyId }, '');
-    } else {
-      history.pushState({ systemId: system.id }, '');
-    }
+    updateFocus(event.detail);
   }
 
   function zoomOut() {
     if (focusedBody && focusedBody.parentId) {
-      handleFocus({ detail: focusedBody.parentId } as CustomEvent<string | null>);
+      updateFocus(focusedBody.parentId, true);
     } else {
       dispatch('back');
     }
   }
 
-  function handlePopState(event: PopStateEvent) {
-    if (event.state && event.state.focusId) {
-       // Specific body focused
-       focusedBodyId = event.state.focusId;
-    } else if (event.state && event.state.systemId) {
-       // System root (no specific focus)
-       focusedBodyId = null;
-       
-       // If the systemId doesn't match current system (unlikely in this architecture but possible),
-       // we might need to let +page handle it, but +page relies on local state.
-       // If systemId is missing, we go back to Starmap.
-    } else {
-      // No system state, assume back to starmap
+  // Reactive Focus Handling via SvelteKit Router State
+  $: focusedBodyId = $page.state.focusId ?? null;
+
+  // Handle Back to Starmap if systemId is lost from state
+  $: if (browser && !$page.state.systemId) {
       dispatch('back');
-    }
   }
 
   function handleDeleteNode(event: CustomEvent<string>) {
@@ -627,8 +621,11 @@ a.click();
   let unsubscribeZoomStore: () => void;
 
   onMount(() => {
-    systemStore.set(processSystemData(system, rulePack));
-    currentTime = system.epochT0;
+    if (system) {
+        systemStore.set(processSystemData(system, rulePack));
+        currentTime = system.epochT0;
+    }
+    
     const starTypes = rulePack.distributions['star_types'].entries.map(st => st.value);
     const options: string[] = ['Random'];
     starTypes.forEach(st => {
@@ -673,7 +670,6 @@ a.click();
         broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: zoomState, isManual: cameraMode === 'MANUAL' } });
     });
 
-    window.addEventListener('popstate', handlePopState);
     document.addEventListener('click', handleClickOutside);
   });
 
@@ -688,7 +684,6 @@ a.click();
     if (unsubscribeZoomStore) {
         unsubscribeZoomStore();
     }
-    window.removeEventListener('popstate', handlePopState);
     document.removeEventListener('click', handleClickOutside);
   });
 

@@ -3,6 +3,7 @@
   const { exampleSystems } = data;
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
+  import { pushState } from '$app/navigation';
   import { get } from 'svelte/store';
   import type { RulePack, System, Starmap as StarmapType, StarSystemNode, Route } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
@@ -107,7 +108,7 @@
         viewportStore.set({ pan: { x: 0, y: 0 }, zoom: 1 });
       }
       systemStore.set(JSON.parse(JSON.stringify(systemNode.system)));
-      history.pushState({ systemId: currentSystemId }, '');
+      pushState('', { systemId: currentSystemId });
     }
   }
 

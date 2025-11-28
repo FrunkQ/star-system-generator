@@ -60,20 +60,6 @@
 
         {#if zones}
             <!-- Zones (Bands) -->
-            <!-- Kill Zone (0 to killZone) -->
-            <rect x="0" y="22" width="{getPercent(zones.killZone)}%" height="6" fill="rgba(255, 0, 0, 0.5)" />
-            
-            <!-- Danger Zone (killZone to dangerZone) -->
-            {#if zones.dangerZone > zones.killZone}
-                <rect 
-                    x="{getPercent(zones.killZone)}%" 
-                    y="22" 
-                    width="{getPercent(zones.dangerZone) - getPercent(zones.killZone)}%" 
-                    height="6" 
-                    fill="rgba(255, 165, 0, 0.4)" 
-                />
-            {/if}
-
             <!-- Goldilocks (Habitable) -->
             {#if zones.goldilocks}
                 <rect 
@@ -82,6 +68,20 @@
                     width="{getPercent(zones.goldilocks.outer) - getPercent(zones.goldilocks.inner)}%" 
                     height="10" 
                     fill="rgba(0, 255, 0, 0.4)" 
+                />
+            {/if}
+
+            <!-- Kill Zone (0 to killZone) -->
+            <rect x="0" y="20" width="{getPercent(zones.killZone)}%" height="10" fill="rgba(255, 0, 0, 0.8)" />
+            
+            <!-- Danger Zone (killZone to dangerZone) -->
+            {#if zones.dangerZone > zones.killZone}
+                <rect 
+                    x="{getPercent(zones.killZone)}%" 
+                    y="20" 
+                    width="{getPercent(zones.dangerZone) - getPercent(zones.killZone)}%" 
+                    height="10" 
+                    fill="rgba(255, 165, 0, 0.6)" 
                 />
             {/if}
 
