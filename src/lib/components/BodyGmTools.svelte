@@ -15,21 +15,8 @@
 </script>
 
 <div class="gm-tools">
-    <h3>Manual Editing Tools (Additions are buggy)</h3>
-    <div class="tools-container">
-        {#if body && body.kind !== 'construct'}
-            <button on:click={() => dispatch('addNode', { hostId: body.id, planetType: 'planet/terrestrial' })}>Add Terrestrial</button>
-        {/if}
-        {#if body && (body.roleHint === 'star' || body.kind === 'barycenter') && body.kind !== 'construct'}
-            <button on:click={() => dispatch('addNode', { hostId: body.id, planetType: 'planet/any-giant' })}>Add Giant</button>
-        {/if}
-
-        {#if body && body.kind === 'body' && (body.roleHint === 'star' || body.roleHint === 'planet')}
-            <button on:click={() => dispatch('addHabitablePlanet', { hostId: body.id, habitabilityType: 'earth-like' })}>Add Earth-like</button>
-            <button on:click={() => dispatch('addHabitablePlanet', { hostId: body.id, habitabilityType: 'human-habitable' })}>Add Human-Habitable</button>
-            <button on:click={() => dispatch('addHabitablePlanet', { hostId: body.id, habitabilityType: 'alien-habitable' })}>Add Alien-Habitable</button>
-        {/if}
-    </div>
+    <!-- Only delete button remains -->
+    <button on:click={handleDelete} class="delete-button">Delete Body</button>
 </div>
 
 <style>
@@ -37,6 +24,8 @@
       margin-top: 1.5em;
       padding-top: 1em;
       border-top: 1px solid #444;
+      display: flex; /* Adjust layout for single button */
+      justify-content: center;
   }
   .gm-tools h3 {
       margin: 0 0 0.5em 0;
@@ -51,5 +40,11 @@
       background-color: #800;
       color: white;
       border: 1px solid #c00;
+      padding: 0.5em 1em;
+      border-radius: 4px;
+      cursor: pointer;
+  }
+  .delete-button:hover {
+      background-color: #a00;
   }
 </style>

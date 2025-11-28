@@ -4,14 +4,14 @@
   import { pushState, replaceState } from '$app/navigation';
   import { page } from '$app/stores';
   import type { RulePack, System, CelestialBody } from '$lib/types';
-  import { deleteNode, addPlanetaryBody, renameNode, addHabitablePlanet, generateSystem, computePlayerSnapshot } from '$lib/api';
+  import { deleteNode, renameNode, generateSystem, computePlayerSnapshot } from '$lib/api';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import SystemSummary from './SystemSummary.svelte';
   import SystemGenerationControls from './SystemGenerationControls.svelte';
   import SystemSummaryContextMenu from './SystemSummaryContextMenu.svelte'; 
   import BodyTechnicalDetails from './BodyTechnicalDetails.svelte';
   import BodyImage from './BodyImage.svelte';
-  import BodyGmTools from './BodyGmTools.svelte';
+  // import BodyGmTools from './BodyGmTools.svelte'; // REMOVED
   import DescriptionEditor from './DescriptionEditor.svelte';
   import GmNotesEditor from './GmNotesEditor.svelte';
   import ZoneKey from './ZoneKey.svelte';
@@ -555,8 +555,6 @@
   let timeScale = 3600 * 24 * 30;
   let animationFrameId: number;
 
-  let focusedBody: CelestialBody | null = null;
-
   $: if ($systemStore) {
     if (focusedBodyId) {
         const foundBody = $systemStore.nodes.find(n => n.id === focusedBodyId);
@@ -609,6 +607,16 @@
 
   function updateFocus(id: string | null, replace: boolean = false) {
       isEditing = false;
+      showZoneKeyPanel = false; // Close Zone Key on navigation
+      
+      // Canonicalize: If targeting Root, treat as null (System View default)
+      if (rootStar && id === rootStar.id) {
+          id = null;
+      }
+
+      const currentFocus = $page.state.focusId || null;
+      if (id === currentFocus) return; // Prevent duplicate state entries
+
       const state = id ? { systemId: system.id, focusId: id } : { systemId: system.id };
       
       if (replace) {
@@ -624,14 +632,17 @@
 
   function zoomOut() {
     if (focusedBody && focusedBody.parentId) {
-      updateFocus(focusedBody.parentId, true);
+      updateFocus(focusedBody.parentId, false);
     } else {
       dispatch('back');
     }
   }
 
   // Reactive Focus Handling via SvelteKit Router State
-  $: focusedBodyId = $page.state.focusId ?? null;
+  $: focusedBodyId = $page.state.focusId ?? ($systemStore?.nodes.find(n => !n.parentId)?.id || null);
+  $: focusedBody = $systemStore?.nodes.find(n => n.id === focusedBodyId) as CelestialBody || null;
+  $: parentBody = focusedBody && focusedBody.parentId ? $systemStore?.nodes.find(n => n.id === focusedBody.parentId) as CelestialBody : null;
+  $: rootStar = $systemStore?.nodes.find(n => !n.parentId && (n.roleHint === 'star' || n.kind === 'barycenter')) as CelestialBody || null;
 
   // Handle Back to Starmap if systemId is lost from state
   $: if (browser && !$page.state.systemId) {
@@ -661,42 +672,7 @@
     }
   }
 
-  function handleAddNode(event: CustomEvent<{hostId: string, planetType: string}>) {
-      if (!$systemStore) return;
-      const { hostId, planetType } = event.detail;
-      try {
-        const oldNodes = $systemStore.nodes; // Capture state before update
-        const newSys = addPlanetaryBody($systemStore, hostId, planetType, rulePack);
-        systemStore.set({ ...processSystemData(newSys, rulePack), isManuallyEdited: true });
-        if (visualizer) {
-          visualizer.resetView();
-        }
-        // Find the new planet by comparing node lists
-        const newPlanet = newSys.nodes.find(node => !oldNodes.some(oldNode => oldNode.id === node.id));
-        if (newPlanet) {
-            handleFocus({ detail: newPlanet.id } as CustomEvent<string | null>);
-        }
-      } catch (e: any) {
-        alert(e.message);
-      }
-  }
 
-  function handleAddHabitablePlanet(event: CustomEvent<{hostId: string, habitabilityType: 'earth-like' | 'human-habitable' | 'alien-habitable'}>) {
-      if (!$systemStore) return;
-      const { hostId, habitabilityType } = event.detail;
-      try {
-        const oldNodes = $systemStore.nodes; // Capture state before update
-        const newSys = addHabitablePlanet($systemStore, hostId, habitabilityType, rulePack);
-        systemStore.set({ ...processSystemData(newSys, rulePack), isManuallyEdited: true });
-        // Find the new planet by comparing node lists
-        const newPlanet = newSys.nodes.find(node => !oldNodes.some(oldNode => oldNode.id === node.id));
-        if (newPlanet) {
-            handleFocus({ detail: newPlanet.id } as CustomEvent<string | null>);
-        }
-      } catch (e: any) {
-        alert(e.message);
-      }
-  }
 
   async function handleLoadExample(event: CustomEvent<string>) {
     const fileName = event.detail;
@@ -941,7 +917,16 @@ a.click();
             {#if focusedBody}
                 <DescriptionEditor body={focusedBody} on:update={handleBodyUpdate} />
             {/if}
-            <BodyGmTools body={focusedBody} on:deleteNode={handleDeleteNode} on:addNode={handleAddNode} on:addHabitablePlanet={handleAddHabitablePlanet} on:editConstruct={handleEditConstruct} />
+            {#if focusedBody && isEditing}
+                <BodySidePanel 
+                  body={focusedBody} 
+                  {rulePack} 
+                  {parentBody} 
+                  {rootStar} 
+                  on:update={handleBodyUpdate} 
+                  on:tabchange={(e) => activeEditTab = e.detail}
+                />
+            {/if}
         </div>
         <div class="details-view">
             {#if focusedBody}
@@ -971,8 +956,8 @@ a.click();
                   dispatch('renameNode', {nodeId: focusedBody.id, newName: e.target.value});
                   systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s);
                 }} class="name-input" title="Click to rename" />
-                {#if !isEditing}
-                    <button class="edit-btn small" on:click={() => { isEditing = true; visualizer?.resetView(); }} style="margin-left: 5px;">Edit</button>
+                {#if !isEditing && focusedBody.roleHint !== 'star'}
+                    <button class="edit-btn small" on:click={() => { isEditing = true; showZoneKeyPanel = false; visualizer?.resetView(); }} style="margin-left: 5px;">Edit</button>
                 {/if}
             </div>
             {/if}

@@ -120,27 +120,51 @@
     }
   }
 
-  function handleBackToStarmap() {
-    if (currentSystemId) {
-        const currentViewport = get(viewportStore);
-        const currentSystem = get(systemStore);
+    function handleBackToStarmap() {
 
-        starmapStore.update(starmap => {
-            if (starmap && currentSystem) {
-                const systemNode = starmap.systems.find(s => s.id === currentSystemId);
-                if (systemNode) {
-                    systemNode.viewport = currentViewport;
-                    systemNode.system = currentSystem;
-                    systemNode.name = currentSystem.name; // Also update the name at the node level
-                }
-            }
-            return starmap;
-        });
+      // Save current system state before leaving
+
+      if (currentSystemId) {
+
+          const currentViewport = get(viewportStore);
+
+          const currentSystem = get(systemStore);
+
+  
+
+          starmapStore.update(starmap => {
+
+              if (starmap && currentSystem) {
+
+                  const systemNode = starmap.systems.find(s => s.id === currentSystemId);
+
+                  if (systemNode) {
+
+                      systemNode.viewport = currentViewport;
+
+                      systemNode.system = currentSystem;
+
+                      systemNode.name = currentSystem.name; // Also update the name at the node level
+
+                  }
+
+              }
+
+              return starmap;
+
+          });
+
+      }
+
+      // Clear current system and explicitly set browser state to represent starmap view
+
+      currentSystemId = null;
+
+      systemStore.set(null);
+
+      replaceState('', {}); // Replace current history entry with an empty state
+
     }
-
-    currentSystemId = null;
-    systemStore.set(null);
-  }
 
   function handleLoadStarmap() {
     const savedStarmap = localStorage.getItem('stargen_saved_starmap');
