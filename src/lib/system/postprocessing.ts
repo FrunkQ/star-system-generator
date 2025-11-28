@@ -1,79 +1,12 @@
 // src/lib/system/postprocessing.ts
-import type { System, RulePack, CelestialBody, Atmosphere } from '../types';
-import { calculateOrbitalBoundaries, type PlanetData } from '../physics/orbits';
-import { G, AU_KM } from '../constants';
+import type { System, RulePack, CelestialBody } from '../types';
+import { AU_KM, G } from '../constants';
+import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
+import { calculateMolarMass, calculateGreenhouseEffect } from '../physics/atmosphere';
+import { calculateHabitabilityScore } from '../physics/habitability';
 
-export function calculateMolarMass(atmosphere: Atmosphere, pack: RulePack): number {
-  let totalMolarMass = 0;
-  if (pack.gasMolarMassesKg) {
-    for (const gas in atmosphere.composition) {
-      const percentage = atmosphere.composition[gas];
-      const molarMass = pack.gasMolarMassesKg[gas] || pack.gasMolarMassesKg['Other Trace'] || 0.028;
-      totalMolarMass += percentage * molarMass;
-    }
-  }
-  return totalMolarMass;
-}
-
-/**
- * Calculates the delta-v budgets for a celestial body.
- */
-export function calculateDeltaVBudgets(body: CelestialBody) {
-  // Only calculate surface budgets for planets and moons
-  if (body.roleHint !== 'planet' && body.roleHint !== 'moon') {
-    body.loDeltaVBudget_ms = -1;
-    body.propulsiveLandBudget_ms = -1;
-    body.aerobrakeLandBudget_ms = -1;
-    return;
-  }
-
-  if (!body.calculatedGravity_ms2 || !body.radiusKm) return;
-
-  const g = body.calculatedGravity_ms2;
-  const r_meters = body.radiusKm * 1000;
-  const pressure_bar = body.atmosphere?.pressure_bar || 0.0;
-
-  // Base Orbital Velocity
-  const v_orbit = Math.sqrt(g * r_meters);
-
-  // --- FIXED ASCENT LOGIC ---
-  
-  // 1. Gravity Loss: 
-  // On thick worlds (Venus), you spend more time fighting gravity because you can't speed up.
-  // We add a multiplier based on pressure to simulate this efficiency loss.
-  const pressure_penalty = pressure_bar > 1 ? Math.log10(pressure_bar) * 0.1 : 0;
-  const v_grav_loss = v_orbit * (0.15 + pressure_penalty);
-
-  // 2. Drag/Atmospheric Loss: 
-  // detailed simulations show Venus ascent is ~27km/s total.
-  // Using Math.pow(pressure, 0.6) curves the difficulty appropriately.
-  // Earth (1 bar) ~= 1300 m/s
-  // Venus (93 bar) ~= 19,700 m/s
-  const v_drag_loss = pressure_bar > 0.001 
-    ? 1300 * Math.pow(pressure_bar, 0.6) 
-    : 0;
-
-  body.loDeltaVBudget_ms = v_orbit + v_grav_loss + v_drag_loss;
-
-  // --- LANDING LOGIC ---
-
-  // Propulsive (Vacuum) Landing
-  // Note: This assumes a vacuum-style retro burn. 
-  body.propulsiveLandBudget_ms = v_orbit + v_grav_loss;
-
-  // Aerobraking Landing
-  if (pressure_bar < 0.001) {
-    body.aerobrakeLandBudget_ms = -1;
-  } else {
-    const v_deorbit = 150;
-    // This logic was actually fine! 
-    // At 90 bar, exp is 0, so cost is just final touchdown burn.
-    const v_final_burn = (1000 * Math.exp(-0.5 * pressure_bar)) + 50;
-    body.aerobrakeLandBudget_ms = v_deorbit + v_final_burn;
-  }
-}
-
-// ... (imports)
+// Re-export for consumers (e.g. BodyTechnicalDetails)
+export { calculateMolarMass, calculateGreenhouseEffect, calculateHabitabilityScore, calculateDeltaVBudgets };
 
 /**
  * Recalculates the equilibrium and total surface temperature for a body.
@@ -160,6 +93,9 @@ export function processSystemData(system: System, rulePack: RulePack): System {
 
             // --- Calculate Delta-V Budgets ---
             calculateDeltaVBudgets(body);
+
+            // --- Calculate Habitability Score & Tags ---
+            calculateHabitabilityScore(body);
         }
     }
     return system;

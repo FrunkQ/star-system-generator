@@ -69,6 +69,27 @@ export async function fetchAndLoadRulePack(url: string): Promise<RulePack> {
         console.warn(`Failed to load fuel definitions from ${new URL('fuel-definitions.json', baseUrl).href}: ${fuelDefinitionsResponse.statusText}`);
     }
 
+    // Fetch liquid definitions
+    const liquidsResponse = await fetch(new URL('liquids.json', baseUrl).href);
+    if (liquidsResponse.ok) {
+        mainPack.liquids = await liquidsResponse.json();
+    } else {
+        console.warn(`Failed to load liquid definitions from ${new URL('liquids.json', baseUrl).href}: ${liquidsResponse.statusText}`);
+    }
+
+    // Fetch classification definitions (including tagVocab, planetImages etc.)
+    const classificationResponse = await fetch(new URL('classification.json', baseUrl).href);
+    if (classificationResponse.ok) {
+        const classificationData = await classificationResponse.json();
+        console.log('Loaded Classification Data:', Object.keys(classificationData));
+        
+        // Deep merge to combine distributions if any, but ensure planetImages sticks
+        mainPack = deepMerge(mainPack, classificationData);
+
+    } else {
+        console.warn(`Failed to load classification definitions from ${new URL('classification.json', baseUrl).href}: ${classificationResponse.statusText}`);
+    }
+
     if (mainPack.imports) {
         // Use the absolute URL of the main pack as the base for imports
         const importPromises = mainPack.imports.map(async (importPath: string) => {

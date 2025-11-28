@@ -1,11 +1,12 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { CelestialBody } from '$lib/types';
+  import type { CelestialBody, RulePack } from '$lib/types';
   import BodyBasicsTab from './BodyBasicsTab.svelte';
   import BodyOrbitTab from './BodyOrbitTab.svelte';
   import BodyAtmosphereTab from './BodyAtmosphereTab.svelte';
   import BodyTemperatureTab from './BodyTemperatureTab.svelte';
-  import BodyClassificationTab from './BodyClassificationTab.svelte';
+  import BodyHydrosphereTab from './BodyHydrosphereTab.svelte';
+  import BodyBiosphereTab from './BodyBiosphereTab.svelte';
   import BodyTagsTab from './BodyTagsTab.svelte';
   import BodyTechnicalDetails from './BodyTechnicalDetails.svelte';
 
@@ -34,23 +35,26 @@
     <button class:active={selectedTab === 'Orbit'} on:click={() => setTab('Orbit')}>Orbit</button>
     <button class:active={selectedTab === 'Temp'} on:click={() => setTab('Temp')}>Temp</button>
     <button class:active={selectedTab === 'Atmosphere'} on:click={() => setTab('Atmosphere')}>Atmosphere</button>
-    <button class:active={selectedTab === 'Class'} on:click={() => setTab('Class')}>Class</button>
+    <button class:active={selectedTab === 'Hydro'} on:click={() => setTab('Hydro')}>Liquid</button>
+    <button class:active={selectedTab === 'Bio'} on:click={() => setTab('Bio')}>Bio</button>
     <button class:active={selectedTab === 'Tags'} on:click={() => setTab('Tags')}>Tags</button>
   </div>
 
   <div class="tab-content">
     {#if selectedTab === 'Basics'}
-      <BodyBasicsTab {body} on:update={handleUpdate} />
+      <BodyBasicsTab {body} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Orbit'}
       <BodyOrbitTab {body} {parentBody} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Temp'}
       <BodyTemperatureTab {body} {rootStar} {parentBody} on:update={handleUpdate} />
     {:else if selectedTab === 'Atmosphere'}
-      <BodyAtmosphereTab {body} on:update={handleUpdate} />
-    {:else if selectedTab === 'Class'}
-      <BodyClassificationTab {body} on:update={handleUpdate} />
+      <BodyAtmosphereTab {body} {rulePack} on:update={handleUpdate} />
+    {:else if selectedTab === 'Hydro'}
+      <BodyHydrosphereTab {body} on:update={handleUpdate} />
+    {:else if selectedTab === 'Bio'}
+      <BodyBiosphereTab {body} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Tags'}
-      <BodyTagsTab {body} on:update={handleUpdate} />
+      <BodyTagsTab {body} {rulePack} on:update={handleUpdate} />
     {/if}
   </div>
 
@@ -111,12 +115,6 @@
       margin-top: 10px;
       padding-top: 10px;
       border-top: 1px solid #444;
-  }
-  .live-stats h4 {
-      margin: 0 0 5px 0;
-      color: #888;
-      font-size: 0.9em;
-      text-transform: uppercase;
   }
 
   .actions-row {

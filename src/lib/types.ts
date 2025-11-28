@@ -137,13 +137,20 @@ export type Feature =
 export type Expr = { all?: Expr[]; any?: Expr[]; not?: Expr }
   | { gt: [Feature, number] } | { lt: [Feature, number] } | { between: [Feature, number, number] }
   | { eq: [Feature, string] } | { hasTag: string };
-export interface ClassifierSpec { rules: ClassifierRule[]; maxClasses: number; minScore: number; }
+export interface ClassifierSpec { rules: ClassifierRule[]; maxClasses: number; minScore: number; planetImages?: Record<string, string>; starImages?: Record<string, string>; }
 
 export interface PromptSpec { systemPreamble: string; fewShots?: Array<{input: Record<string, unknown>; output: string;}>; perEntityPrompts?: Record<string,string>; }
 export interface ViewPresetSpec { defaultPlayerVisibility: { discoveredBasics: boolean; showTags: string[]; hiddenFields: string[]; }; overrides?: Array<{ match: { role?: string; class?: string; tag?: string }, visibleFields: string[], hiddenFields: string[] }>; }
 
 export interface TableSpec { name: string; entries: Array<{ weight: number; value: unknown }>; }
 export interface MetricDef { key: string; label: string; min: number; max: number; default?: number; }
+
+export interface LiquidDef {
+    name: string;
+    label: string;
+    meltK: number;
+    boilK: number;
+}
 
 export interface FuelDefinition {
   id: string;
@@ -169,6 +176,7 @@ export interface RulePack {
   id: string; version: string; name: string;
   distributions: Record<string, TableSpec>;
   gasMolarMassesKg?: Record<string, number>;
+  liquids?: LiquidDef[];
   orbitalConstants?: Record<string, number>;
   constructTemplates?: Record<string, CelestialBody[]>; // Templates are CelestialBody objects
   engineDefinitions?: {
@@ -181,9 +189,11 @@ export interface RulePack {
     name: string;
     entries: FuelDefinition[];
   };
-  tagVocab: string[]; // taxonomy IDs
-  prompts: PromptSpec;
+  tagVocab?: string[]; // taxonomy IDs
+  prompts?: PromptSpec;
   viewPresets?: ViewPresetSpec;
+  metrics?: Record<string, MetricDef>;
+  classifier?: ClassifierSpec;
 }
 
 export type ViableOrbitResult = {

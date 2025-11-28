@@ -1,9 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { CelestialBody } from '$lib/types';
+  import type { CelestialBody, RulePack } from '$lib/types';
   import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '$lib/constants';
 
   export let body: CelestialBody;
+  export let rulePack: RulePack | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -12,6 +13,9 @@
   // UI Helpers
   let massValue = useSolarUnits ? (body.massKg || 0) / SOLAR_MASS_KG : (body.massKg || 0) / EARTH_MASS_KG;
   let radiusValue = useSolarUnits ? (body.radiusKm || 0) / SOLAR_RADIUS_KM : (body.radiusKm || 0) / EARTH_RADIUS_KM;
+
+  // Visual Types from RulePack - No Hardcoding
+  $: visualTypes = rulePack?.classifier?.planetImages ? Object.keys(rulePack.classifier.planetImages) : [];
 
   // Reactivity
   $: if (body.massKg) {
@@ -31,6 +35,20 @@
       dispatch('update');
   }
 
+  function updateVisualType(e: Event) {
+      const val = (e.target as HTMLSelectElement).value;
+      if (!body.classes) body.classes = [];
+      body.classes[0] = val;
+
+      // Update Image URL from RulePack
+      if (rulePack?.classifier?.planetImages && rulePack.classifier.planetImages[val]) {
+          if (!body.image) body.image = { url: '' };
+          body.image.url = rulePack.classifier.planetImages[val];
+      }
+
+      dispatch('update');
+  }
+
   function handleUpdate() {
       dispatch('update');
   }
@@ -40,6 +58,19 @@
     <div class="form-group">
         <label for="name">Name</label>
         <input type="text" id="name" bind:value={body.name} on:input={handleUpdate} />
+    </div>
+
+    <div class="form-group">
+        <label>Visual Type</label>
+        <select value={body.classes?.[0] || 'planet/terrestrial'} on:change={updateVisualType}>
+            {#each visualTypes as type}
+                <option value={type}>{type.replace('planet/', '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
+            {/each}
+            {#if visualTypes.length === 0}
+                <option disabled>No types loaded (Check RulePack)</option>
+            {/if}
+        </select>
+        <span class="sub-label">Updates planet image only. Does not alter physical stats.</span>
     </div>
 
     <div class="row">
@@ -79,7 +110,7 @@
   .row { display: flex; gap: 10px; }
   .form-group { display: flex; flex-direction: column; flex: 1; }
   label { margin-bottom: 5px; color: #ccc; font-size: 0.9em; }
-  input { padding: 8px; border-radius: 4px; border: 1px solid #555; background-color: #444; color: #eee; font-size: 1em; width: 100%; box-sizing: border-box; }
+  input, select { padding: 8px; border-radius: 4px; border: 1px solid #555; background-color: #444; color: #eee; font-size: 1em; width: 100%; box-sizing: border-box; }
   .sub-label { font-size: 0.8em; color: #888; margin-top: 2px; text-align: right; }
   input[type="checkbox"] { width: auto; margin-right: 5px; }
 </style>

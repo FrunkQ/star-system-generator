@@ -1,0 +1,17 @@
+[
+    { "name": "water", "label": "Water (H₂O)", "meltK": 273, "boilK": 373 },
+    { "name": "water-ice", "label": "Water Ice (Glacial)", "meltK": 0, "boilK": 273 },
+    { "name": "methane", "label": "Hydrocarbons (Methane)", "meltK": 90, "boilK": 112 },
+    { "name": "ammonia", "label": "Ammonia", "meltK": 195, "boilK": 240 },
+    { "name": "water-ammonia", "label": "Water-Ammonia (Cryo)", "meltK": 173, "boilK": 270 },
+    { "name": "nitrogen", "label": "Nitrogen", "meltK": 63, "boilK": 77 },
+    { "name": "sulfuric-acid", "label": "Sulfuric Acid", "meltK": 283, "boilK": 610 },
+    { "name": "magma", "label": "Magma / Lava", "meltK": 1000, "boilK": 5000 },
+    { "name": "ethane", "label": "Hydrocarbons (Ethane)", "meltK": 90, "boilK": 184 },
+    { "name": "hydrogen-cyanide", "label": "Hydrogen Cyanide", "meltK": 260, "boilK": 299 },
+    { "name": "hydrogen-sulfide", "label": "Hydrogen Sulfide", "meltK": 187, "boilK": 213 },
+    { "name": "carbon-dioxide", "label": "Liquid CO2 (High Pressure)", "meltK": 217, "boilK": 304 },
+    { "name": "sulfur-dioxide", "label": "Sulfur Dioxide", "meltK": 201, "boilK": 263 },
+    { "name": "molten-iron", "label": "Molten Iron", "meltK": 1811, "boilK": 3134 },
+    { "name": "molten-glass", "label": "Molten Glass / Silicate Rain", "meltK": 1973, "boilK": 2500 }
+]

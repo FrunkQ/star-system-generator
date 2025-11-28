@@ -1,115 +1,135 @@
-// src/lib/physics/habitability.ts
-import type { CelestialBody, Orbit, System, ViableOrbitResult } from "../types";
-import { G, AU_KM } from '../constants';
+import type { CelestialBody, System, RulePack, Orbit } from '../types';
+import { G } from '../constants';
 import { calculateAllStellarZones } from './zones';
 
-const L_SUN = 3.828e26; // Watts
-
-
-
-// Helper to get a random value from a range
-function randomFromRange(min: number, max: number): number {
-    return Math.random() * (max - min) + min;
-}
-
-export function findViableHabitableOrbit(host: CelestialBody, system: System, habitabilityTier: 'earth-like' | 'human-habitable' | 'alien-habitable', pack: RulePack): ViableOrbitResult {
-    let targetParams: {
-        tempRangeK: [number, number];
-        maxRadiation: number;
-        gravityRangeG: [number, number];
-    };
-
-    switch (habitabilityTier) {
-        case 'earth-like':
-            targetParams = {
-                tempRangeK: [278, 318], // 5 to 45 C (accounts for +10K radiogenic)
-                maxRadiation: 5,
-                gravityRangeG: [0.8, 1.2]
-            };
-            break;
-        case 'human-habitable':
-            targetParams = {
-                tempRangeK: [265, 325], // -8 to 52 C (accounts for +10K radiogenic)
-                maxRadiation: 10,
-                gravityRangeG: [0.5, 1.5]
-            };
-            break;
-        case 'alien-habitable':
-            targetParams = {
-                tempRangeK: [150, 400],
-                maxRadiation: 25,
-                gravityRangeG: [0.2, 3.0]
-            };
-            break;
+export function findViableHabitableOrbit(host: CelestialBody, system: System, type: 'earth-like' | 'human-habitable' | 'alien-habitable', pack: RulePack): { success: true, orbit: Orbit } | { success: false, reason: string } {
+    if (host.roleHint !== 'star') {
+         // TODO: Handle moons (orbiting planet in HZ)
+         return { success: false, reason: 'Habitable generation currently only supports stars as hosts.' };
     }
 
-    const allZones = calculateAllStellarZones(host, pack);
-    if (allZones.killZone > allZones.goldilocks.outer) {
-        return { success: false, reason: 'The star\'s radiation is too high, and its \'Kill Zone\' completely overlaps the habitable zone.' };
-    }
-    if (allZones.dangerZone > allZones.goldilocks.outer) {
-        return { success: false, reason: 'No viable orbit for complex life. The entire habitable zone is within the \'Danger Zone\'.' };
-    }
+    const zones = calculateAllStellarZones(host, pack);
+    let minAU = zones.goldilocks.inner;
+    let maxAU = zones.goldilocks.outer;
 
-    // Use the calculated Goldilocks zone as the search area
-    const tempSearchInner_AU = allZones.goldilocks.inner;
-    const tempSearchOuter_AU = allZones.goldilocks.outer;
-
-    if (tempSearchInner_AU <= 0 || tempSearchOuter_AU <= 0 || tempSearchInner_AU >= tempSearchOuter_AU) {
-        return { success: false, reason: 'The host star is too cool to support a habitable planet.' };
+    // Adjust target based on type
+    if (type === 'human-habitable') {
+        // Slightly wider?
+    } else if (type === 'alien-habitable') {
+        // Could be outside standard HZ if tidal/greenhouse heavy?
+        // For now keep to HZ.
     }
 
-    const children = system.nodes.filter(n => n.parentId === host.id && n.kind === 'body') as CelestialBody[];
-    const stepSize = (tempSearchOuter_AU - tempSearchInner_AU) / 50; // 50 steps
-    let collisionFailures = 0;
-    let allOrbitsInCollision = true;
-    let allOrbitsTooRadiated = true;
-
-    // Systematic search from outer to inner
-    for (let i = 0; i < 50; i++) {
-        const searchRadiusAU = tempSearchOuter_AU - (i * stepSize);
-        if (searchRadiusAU <= 0) continue;
-
-        // 1. Check for collisions
-        let collision = false;
-        for (const child of children) {
-            const childApoapsis = (child.orbit?.elements.a_AU || 0) * (1 + (child.orbit?.elements.e || 0));
-            const childPeriapsis = (child.orbit?.elements.a_AU || 0) * (1 - (child.orbit?.elements.e || 0));
-            if (searchRadiusAU > childPeriapsis * 0.95 && searchRadiusAU < childApoapsis * 1.05) { // Reduced buffer
-                collision = true;
-                break;
-            }
-        }
-        if (collision) {
-            collisionFailures++;
-            continue; // Try next orbit
-        }
-        allOrbitsInCollision = false;
-
-        // If we are here, the orbit is not in collision and is in the habitable zone.
-        // Radiation is handled by the Danger Zone check, so this orbit is viable.
-        return {
-            success: true,
-            orbit: {
-                hostId: host.id,
-                hostMu: G * (host.massKg || 0),
-                t0: Date.now(),
-                elements: { 
-                    a_AU: searchRadiusAU, 
-                    e: 0.01, // Assume near-circular
-                    i_deg: 0, 
-                    omega_deg: 0, 
-                    Omega_deg: 0, 
-                    M0_rad: Math.random() * 2 * Math.PI
+    // Simple collision check
+    // Try 10 random spots in HZ
+    for (let i = 0; i < 10; i++) {
+        const targetAU = minAU + Math.random() * (maxAU - minAU);
+        
+        let conflict = false;
+        for (const node of system.nodes) {
+            if (node.parentId === host.id && node.orbit) {
+                const dist = Math.abs(node.orbit.elements.a_AU - targetAU);
+                // Hill Sphere approx check or simple spacing (0.1 AU?)
+                if (dist < 0.1) { 
+                    conflict = true; 
+                    break; 
                 }
             }
-        };
+        }
+
+        if (!conflict) {
+            return {
+                success: true,
+                orbit: {
+                    hostId: host.id,
+                    hostMu: G * (host.massKg || 0),
+                    t0: 0,
+                    elements: {
+                        a_AU: targetAU,
+                        e: 0.02, // Low eccentricity for habitable
+                        i_deg: Math.random() * 5, // Low inclination
+                        omega_deg: Math.random() * 360,
+                        Omega_deg: Math.random() * 360,
+                        M0_rad: Math.random() * 2 * Math.PI
+                    }
+                }
+            };
+        }
     }
 
-    // If we finish the loop without finding a spot
-    if (allOrbitsInCollision) {
-        return { success: false, reason: 'The habitable zone is too crowded. A GM may need to delete a planet to make room.' };
-    }
+    return { success: false, reason: 'Habitable Zone is crowded.' };
+}
 
-    return { success: false, reason: 'No stable orbit found in the habitable zone.' };
+export function calculateHabitabilityScore(planet: CelestialBody) {
+    if (planet.roleHint !== 'planet' && planet.roleHint !== 'moon') return;
+
+    const scoreFromRange = (value: number, optimal: number, range: number) => {
+        const diff = Math.abs(value - optimal);
+        return Math.max(0, 1 - (diff / range));
+    };
+
+    let score = 0;
+    let factors = {
+        temp: 0,
+        pressure: 0,
+        solvent: 0,
+        radiation: 0,
+        gravity: 0
+    };
+
+    // Temperature Score (Max 30 points)
+    if (planet.temperatureK) {
+        if (planet.hydrosphere?.composition === 'water' || !planet.hydrosphere) {
+            factors.temp = scoreFromRange(planet.temperatureK, 288, 50); // Optimal 15C, range +/- 50C
+        } else if (planet.hydrosphere?.composition === 'methane') {
+            factors.temp = scoreFromRange(planet.temperatureK, 111, 30); // Optimal -162C, range +/- 30C
+        } else if (planet.hydrosphere?.composition === 'ammonia') {
+            factors.temp = scoreFromRange(planet.temperatureK, 218, 30); // Optimal -55C, range +/- 30C
+        }
+    }
+    score += factors.temp * 30;
+
+    // Pressure Score (Max 20 points)
+    if (planet.atmosphere?.pressure_bar) {
+        factors.pressure = scoreFromRange(planet.atmosphere.pressure_bar, 1, 2);
+    }
+    score += factors.pressure * 20;
+
+    // Solvent Score (Max 20 points)
+    if ((planet.hydrosphere?.coverage || 0) > 0.1) {
+        factors.solvent = 1;
+        if (planet.hydrosphere?.composition === 'water') {
+            score += 5; // Bonus for water
+        }
+    }
+    score += factors.solvent * 15;
+
+    // Radiation Score (Max 15 points)
+    factors.radiation = scoreFromRange(planet.surfaceRadiation || 0, 0, 10);
+    score += factors.radiation * 15;
+
+    // Gravity Score (Max 15 points)
+    const surfaceGravityG = (planet.massKg && planet.radiusKm) ? (G * planet.massKg / ((planet.radiusKm*1000) * (planet.radiusKm*1000))) / 9.81 : 0;
+    if (surfaceGravityG > 0) {
+        factors.gravity = scoreFromRange(surfaceGravityG, 1, 1.5);
+    }
+    score += factors.gravity * 15;
+    
+    planet.habitabilityScore = Math.max(0, Math.min(100, score));
+
+    // Update Tags
+    if (!planet.tags) planet.tags = [];
+    planet.tags = planet.tags.filter(t => !t.key.startsWith('habitability/'));
+    
+    const isEarthLike = factors.temp > 0.9 && factors.pressure > 0.8 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.9 && factors.gravity > 0.8 && (planet.atmosphere?.composition?.['O2'] || 0) > 0.1;
+    const isHumanHabitable = factors.temp > 0.7 && factors.pressure > 0.6 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.7 && factors.gravity > 0.6;
+    const isAlienHabitable = score > 40;
+
+    let tier: string;
+    if (isEarthLike) tier = 'habitability/earth-like';
+    else if (isHumanHabitable) tier = 'habitability/human';
+    else if (isAlienHabitable) tier = 'habitability/alien';
+    else tier = 'habitability/none';
+    
+    planet.tags.push({ key: tier });
 }

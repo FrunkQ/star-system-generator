@@ -2,7 +2,7 @@
   import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
   import { calculateOrbitalBoundaries, type OrbitalBoundaries, type PlanetData } from "$lib/physics/orbits";
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
-  import { calculateDeltaVBudgets, calculateSurfaceTemperature } from '$lib/system/postprocessing';
+  import { calculateDeltaVBudgets, calculateSurfaceTemperature, calculateGreenhouseEffect, calculateHabitabilityScore } from '$lib/system/postprocessing';
 
   export let body: CelestialBody | Barycenter | null;
   export let rulePack: RulePack;
@@ -68,9 +68,12 @@
              };
              body.orbitalBoundaries = calculateOrbitalBoundaries(planetData, rulePack);
              calculateDeltaVBudgets(body);
+             calculateGreenhouseEffect(body, rulePack);
              if (rootStar) {
                  calculateSurfaceTemperature(body, rootStar, parentBody);
              }
+             // Recalculate Habitability Score
+             calculateHabitabilityScore(body);
         }
 
         if (body.surfaceRadiation !== undefined) {
