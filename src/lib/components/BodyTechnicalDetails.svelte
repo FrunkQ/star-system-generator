@@ -2,11 +2,12 @@
   import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
   import { calculateOrbitalBoundaries, type OrbitalBoundaries, type PlanetData } from "$lib/physics/orbits";
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
-  import { calculateDeltaVBudgets } from '$lib/system/postprocessing';
+  import { calculateDeltaVBudgets, calculateSurfaceTemperature } from '$lib/system/postprocessing';
 
   export let body: CelestialBody | Barycenter | null;
   export let rulePack: RulePack;
   export let parentBody: CelestialBody | null = null;
+  export let rootStar: CelestialBody | null = null;
 
   // Derived Reactive Properties for Constructs
   let constructSpecs: ConstructSpecs | null = null;
@@ -67,6 +68,9 @@
              };
              body.orbitalBoundaries = calculateOrbitalBoundaries(planetData, rulePack);
              calculateDeltaVBudgets(body);
+             if (rootStar) {
+                 calculateSurfaceTemperature(body, rootStar, parentBody);
+             }
         }
 
         if (body.surfaceRadiation !== undefined) {

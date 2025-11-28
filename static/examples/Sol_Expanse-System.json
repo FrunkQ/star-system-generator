@@ -69,7 +69,10 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 440,
+      "equilibriumTempK": 435.5,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 4.0,
+      "radiogenicHeatK": 0.5,
       "temperatureK": 440,
       "atmosphere": {
         "name": "Sodium–Potassium Exosphere",
@@ -147,6 +150,9 @@
       ],
       "areas": [],
       "equilibriumTempK": 232,
+      "greenhouseTempK": 502,
+      "tidalHeatK": 0.5,
+      "radiogenicHeatK": 0.5,
       "temperatureK": 735,
       "atmosphere": {
         "name": "Carbon Dioxide (Venus-like)",
@@ -219,6 +225,9 @@
         "strengthGauss": 0.5
       },
       "equilibriumTempK": 255,
+      "greenhouseTempK": 33,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
       "temperatureK": 288,
       "atmosphere": {
         "name": "Nitrogen–Oxygen (Earth-like)",
@@ -305,6 +314,9 @@
       ],
       "areas": [],
       "equilibriumTempK": 250,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
       "temperatureK": 250,
       "orbital_period_days": 27.32,
       "axial_tilt_deg": 6.68,
@@ -364,6 +376,9 @@
       ],
       "areas": [],
       "equilibriumTempK": 210,
+      "greenhouseTempK": 5,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
       "temperatureK": 215,
       "atmosphere": {
         "name": "Carbon Dioxide (Mars-like)",
@@ -434,6 +449,9 @@
       ],
       "areas": [],
       "equilibriumTempK": 230,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
       "temperatureK": 230,
       "orbital_period_days": 0.319,
       "axial_tilt_deg": 0,
@@ -493,6 +511,9 @@
       ],
       "areas": [],
       "equilibriumTempK": 230,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
       "temperatureK": 230,
       "orbital_period_days": 1.26,
       "axial_tilt_deg": 0,
@@ -584,7 +605,10 @@
       "magneticField": {
         "strengthGauss": 4.28
       },
-      "equilibriumTempK": 110,
+      "equilibriumTempK": 105,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 5,
       "temperatureK": 110,
       "atmosphere": {
         "name": "Hydrogen–Helium (Jupiter-like)",
@@ -675,7 +699,10 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 110,
+      "equilibriumTempK": 105,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 5,
+      "radiogenicHeatK": 0,
       "temperatureK": 110,
       "atmosphere": {
         "name": "Sulfur Dioxide (Io-like)",
@@ -750,7 +777,10 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 102,
+      "equilibriumTempK": 100,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 2,
+      "radiogenicHeatK": 0,
       "temperatureK": 102,
       "atmosphere": {
         "name": "Tenuous Oxygen (Europa-like)",
@@ -827,7 +857,10 @@
       "magneticField": {
         "strengthGauss": 0.007
       },
-      "equilibriumTempK": 110,
+      "equilibriumTempK": 109,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 1,
+      "radiogenicHeatK": 0,
       "temperatureK": 110,
       "orbital_period_days": 7.15,
       "axial_tilt_deg": 0,
@@ -890,6 +923,9 @@
       ],
       "areas": [],
       "equilibriumTempK": 134,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
       "temperatureK": 134,
       "orbital_period_days": 16.69,
       "axial_tilt_deg": 0,
@@ -952,7 +988,10 @@
       "magneticField": {
         "strengthGauss": 0.21
       },
-      "equilibriumTempK": 81,
+      "equilibriumTempK": 78,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 3,
       "temperatureK": 81,
       "atmosphere": {
         "name": "Hydrogen–Helium (Jupiter-like)",
@@ -1043,7 +1082,10 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 93.7,
+      "equilibriumTempK": 82,
+      "greenhouseTempK": 11,
+      "tidalHeatK": 0.7,
+      "radiogenicHeatK": 0,
       "temperatureK": 93.7,
       "atmosphere": {
         "name": "Methane Haze (Titan-like)",
@@ -1115,7 +1157,10 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 75,
+      "equilibriumTempK": 70,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 5,
+      "radiogenicHeatK": 0,
       "temperatureK": 75,
       "atmosphere": {
         "name": "Water Vapor Plume (Enceladus-like)",
@@ -1187,6 +1232,9 @@
       ],
       "areas": [],
       "equilibriumTempK": 64,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
       "temperatureK": 64,
       "orbital_period_days": 0.94,
       "axial_tilt_deg": 0,
@@ -1245,6 +1293,9 @@
       ],
       "areas": [],
       "equilibriumTempK": 77,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
       "temperatureK": 77,
       "orbital_period_days": 4.51,
       "axial_tilt_deg": 0,
@@ -1304,6 +1355,9 @@
       ],
       "areas": [],
       "equilibriumTempK": 90,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
       "temperatureK": 90,
       "orbital_period_days": 79.32,
       "axial_tilt_deg": 0,
@@ -1364,7 +1418,10 @@
       "magneticField": {
         "strengthGauss": 0.23
       },
-      "equilibriumTempK": 59,
+      "equilibriumTempK": 58,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 1,
       "temperatureK": 59,
       "atmosphere": {
         "name": "Ice Giant (Uranus-like)",
@@ -1450,6 +1507,9 @@
       ],
       "areas": [],
       "equilibriumTempK": 60,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
       "temperatureK": 60,
       "orbital_period_days": 8.7,
       "axial_tilt_deg": 0,
@@ -1509,6 +1569,9 @@
       ],
       "areas": [],
       "equilibriumTempK": 60,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
       "temperatureK": 60,
       "orbital_period_days": 13.46,
       "axial_tilt_deg": 0,
@@ -1567,6 +1630,9 @@
       ],
       "areas": [],
       "equilibriumTempK": 58,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
       "temperatureK": 58,
       "orbital_period_days": 2.52,
       "axial_tilt_deg": 0,
@@ -1627,7 +1693,10 @@
       "magneticField": {
         "strengthGauss": 0.14
       },
-      "equilibriumTempK": 47,
+      "equilibriumTempK": 44,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 3,
       "temperatureK": 47,
       "atmosphere": {
         "name": "Ice Giant (Uranus-like)",
@@ -1719,7 +1788,10 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 38,
+      "equilibriumTempK": 36,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 2,
+      "radiogenicHeatK": 0,
       "temperatureK": 38,
       "atmosphere": {
         "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
@@ -1816,7 +1888,10 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 44,
+      "equilibriumTempK": 40.5,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 3.5,
+      "radiogenicHeatK": 0,
       "temperatureK": 44,
       "atmosphere": {
         "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
@@ -1885,7 +1960,10 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 44,
+      "equilibriumTempK": 40.5,
+      "greenhouseTempK": 0,
+      "tidalHeatK": 3.5,
+      "radiogenicHeatK": 0,
       "temperatureK": 44,
       "orbital_period_days": 6.38,
       "axial_tilt_deg": 0,

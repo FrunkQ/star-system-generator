@@ -4,6 +4,7 @@
   import BodyBasicsTab from './BodyBasicsTab.svelte';
   import BodyOrbitTab from './BodyOrbitTab.svelte';
   import BodyAtmosphereTab from './BodyAtmosphereTab.svelte';
+  import BodyTemperatureTab from './BodyTemperatureTab.svelte';
   import BodyClassificationTab from './BodyClassificationTab.svelte';
   import BodyTagsTab from './BodyTagsTab.svelte';
   import BodyTechnicalDetails from './BodyTechnicalDetails.svelte';
@@ -11,6 +12,7 @@
   export let body: CelestialBody;
   export let rulePack: RulePack;
   export let parentBody: CelestialBody | null = null;
+  export let rootStar: CelestialBody | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -30,6 +32,7 @@
   <div class="tabs">
     <button class:active={selectedTab === 'Basics'} on:click={() => setTab('Basics')}>Basics</button>
     <button class:active={selectedTab === 'Orbit'} on:click={() => setTab('Orbit')}>Orbit</button>
+    <button class:active={selectedTab === 'Temp'} on:click={() => setTab('Temp')}>Temp</button>
     <button class:active={selectedTab === 'Atmosphere'} on:click={() => setTab('Atmosphere')}>Atmosphere</button>
     <button class:active={selectedTab === 'Class'} on:click={() => setTab('Class')}>Class</button>
     <button class:active={selectedTab === 'Tags'} on:click={() => setTab('Tags')}>Tags</button>
@@ -40,6 +43,8 @@
       <BodyBasicsTab {body} on:update={handleUpdate} />
     {:else if selectedTab === 'Orbit'}
       <BodyOrbitTab {body} {parentBody} {rulePack} on:update={handleUpdate} />
+    {:else if selectedTab === 'Temp'}
+      <BodyTemperatureTab {body} {rootStar} {parentBody} on:update={handleUpdate} />
     {:else if selectedTab === 'Atmosphere'}
       <BodyAtmosphereTab {body} on:update={handleUpdate} />
     {:else if selectedTab === 'Class'}
@@ -59,7 +64,7 @@
   </div>
 
   <div class="live-stats">
-      <BodyTechnicalDetails {body} {rulePack} {parentBody} />
+      <BodyTechnicalDetails {body} {rulePack} {parentBody} {rootStar} />
   </div>
 </div>
 

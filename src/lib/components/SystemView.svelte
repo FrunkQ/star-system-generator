@@ -836,18 +836,20 @@ a.click();
             {:else}
                 {#if focusedBody && focusedBody.kind !== 'construct'}
                     {@const parentBody = focusedBody.parentId ? $systemStore.nodes.find(n => n.id === (focusedBody.ui_parentId || focusedBody.parentId)) : null}
+                    {@const rootStar = $systemStore.nodes.find(n => n.parentId === null)}
                     {#if isEditing}
                         <BodySidePanel 
                             body={focusedBody} 
                             {rulePack}
                             parentBody={parentBody}
+                            rootStar={rootStar}
                             on:update={handleBodyUpdate} 
                             on:delete={handleDeleteNode} 
-                            on:close={() => isEditing = false}
+                            on:close={() => isEditing = false} 
                             on:tabchange={(e) => activeEditTab = e.detail} 
                         />
                     {:else}
-                        <BodyTechnicalDetails body={focusedBody} {rulePack} parentBody={parentBody} />
+                        <BodyTechnicalDetails body={focusedBody} {rulePack} parentBody={parentBody} rootStar={rootStar} />
                     {/if}
                 {/if}
 
