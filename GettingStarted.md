@@ -23,16 +23,20 @@ Clicking on any star system zooms you into the **System Visualizer**. This is a 
 *   **Time Control**: Use the play/pause buttons and time-scale slider to watch orbits evolve. You can fast-forward years in seconds to see alignment windows.
 *   **Toytown View**: Real space is empty and boring. Use the "Toytown View" slider to artificially scale up planets and moons so you can see them relative to each other—perfect for getting a sense of "local space" without realistic distances making everything invisible dots.
 
-## 3. Building Your World
+## 3. Building Your Worlds
 
 ### Procedural Generation
-If you don't like a system, use the **Regenerate Controls** at the top. You can roll a random system, pick a specific star type (e.g., "Type M Red Dwarf"), or start with an empty star and build manually.
+If you don't like a system, use the **Regenerate Controls** at the top. You can roll a random system, pick a specific star type (e.g., "Type M Red Dwarf"), or start with an empty star and build from it manually. 
 
+### Edit the Star System
+1.  **Right-click** on any body (planet/moon) or clear space and select **"Add Planet Here"**.
+2.  A planet will be created and you will be in Edit mode - adjust any planetary parameters and it will update physical & flight information correctly. You can fine tune position from here.
+3.  **Customize or delete**: Once placed, click the construct and click **"Edit"** to open the **Construct Editor**.
 ### Artificial Constructs (Ships & Stations)
 The generator isn't just for planets. You can populate your system with infrastructure.
-1.  **Right-click** any body (planet/star) and select **"Add Construct"**.
+1.  **Right-click** on any body (planet/moon) or clear space and select **"Add Construct Here"**.
 2.  Choose from a library of templates inspired by *The Expanse*, *Aliens*, and *Hard Sci-Fi*.
-3.  **Customize**: Once placed, click the construct to open the **Construct Editor**.
+3.  **Customize**: Once placed, click the construct and click **"Edit"** to open the **Construct Editor**. You can fine tune position from here.
 
 ![Detailed Construct Editing](static/screenshots/DetailedConstructEditing-FlightDynamics.png)
 

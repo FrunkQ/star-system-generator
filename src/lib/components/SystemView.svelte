@@ -313,6 +313,7 @@
   function handleCreateConstructFromBackground() {
       showCreateConstructModal = true;
       showBackgroundContextMenu = false;
+      constructHostBody = null;
   }
 
   async function handleCreateConstructLoad(event: CustomEvent<CelestialBody>) {
@@ -455,6 +456,8 @@
     constructHostBody = event.detail;
     showCreateConstructModal = true;
     showSummaryContextMenu = false;
+    backgroundClickHost = null;
+    backgroundClickPosition = null;
   }
 
   async function handleAddConstructCreated(event: CustomEvent<CelestialBody>) {
@@ -1008,14 +1011,8 @@ a.click();
                 <GmNotesEditor body={focusedBody} on:update={handleBodyUpdate} />
             {/if}
 
-            <footer class="attributions">
-              <p>
-                <strong>Image Attributions:</strong> Planet Images: Pablo Carlos Budassi (<a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>); Star Images: Beyond Universe Wiki (<a href="https://creativecommons.org/licenses/by-sa/3.0/us/" target="_blank" rel="noopener noreferrer">CC-BY-SA</a>); Magnetar/Background: ESO (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>); Black Hole: NASA SVS (Public Domain); Weyland-Yutani Logo: IllaZilla (<a href="https://commons.wikimedia.org/wiki/File:Weyland-Yutani_cryo-tube.jpg" target="_blank" rel="noopener noreferrer">CC BY-SA 3.0</a>).
-              </p> 
-              <p class="project-attribution">
-                <a href="https://github.com/FrunkQ/star-system-generator" target="_blank" rel="noopener noreferrer">Star System Generator</a> © 2025 FrunkQ. Licensed under <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank" rel="noopener noreferrer">GPL-3.0</a>.
-              </p>
-            </footer>
+
+            
         </div>
 
     </div>
@@ -1092,11 +1089,13 @@ a.click();
 
                               <p>Weyland-Yutani Logo: Sourced from <a href="https://commons.wikimedia.org/wiki/File:Weyland-Yutani_cryo-tube.jpg" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> by <a href="https://commons.wikimedia.org/wiki/User:IllaZilla" target="_blank" rel="noopener noreferrer">IllaZilla</a>, used under a <a href="https://creativecommons.org/licenses/by-sa/3.0/deed.en" target="_blank" rel="noopener noreferrer">Creative Commons Attribution-Share Alike 3.0 Unported</a> license. Changes made: Logo Extracted.</p>
 
+                              <hr class="attribution-separator">
+
                               <p class="project-attribution">
 
-                                <a href="https://github.com/FrunkQ/star-system-generator" target="_blank" rel="noopener noreferrer">Star System Generator</a> © 2025 FrunkQ. Licensed under <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank" rel="noopener noreferrer">GPL-3.0</a>.
+                                                              <a href="https://github.com/FrunkQ/star-system-generator" target="_blank" rel="noopener noreferrer">Star System Generator</a> © 2025 FrunkQ. Licensed under <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank" rel="noopener noreferrer">GPL-3.0</a>. Join us on <a href="https://discord.gg/prvKpZMgNY" target="_blank" rel="noopener noreferrer">Discord!</a>
 
-                              </p>
+                                                            </p>
 
                             </footer>  {/if}
 </main>
@@ -1310,6 +1309,25 @@ a.click();
     .attributions a {
         color: #88ccff;
         text-decoration: none;
+    }
+    .attributions p {
+        margin: 0; /* Zero out default browser margins for paragraphs inside attributions */
+        padding: 0;
+    }
+    .attributions p + p { /* Apply top margin to paragraphs that immediately follow another paragraph */
+        margin-top: 0.2em; /* Tighten spacing between paragraphs (e.g. image attributions) */
+    }
+    .attributions p:first-child {
+        margin-bottom: 0.5em; /* Space *after* the "Image Attributions:" title. This is fine. */
+    }
+    .attribution-separator {
+        border: 0;
+        border-top: 1px solid #555;
+        margin: 1.5em 0; /* Blank space above and below the separator */
+    }
+    .project-attribution {
+        font-size: 1.1em; /* Slightly larger for the last line */
+        font-weight: bold;
     }
 
 </style>

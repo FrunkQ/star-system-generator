@@ -2,6 +2,8 @@
 
 A procedural generator for creating scientifically-plausible star systems, complete with a real-time orbital visualizer and starmap.
 
+For discussion, feedback, bugs and suggestions go to [Our Discord](https://discord.gg/prvKpZMgNY)
+
 ## Table of Contents
 
 *   [What is it for?](#what-is-it-for)
@@ -25,7 +27,10 @@ A quick note on data: This application runs entirely in your browser. Your gener
 ![Star System Generator Showcase](static/screenshots/SSG.gif)
 
 *   **Procedural Generation**: Creates unique star systems based on a seed and a JSON-based rulepack.
-*   **Constructs & Infrastructure (NEW!)**:
+*   **Hand Create Systems**:
+    *   **Open Placement**: You can now create planets anywhere in the system - they will bind to the main gravitational influence under your mouse.
+    *   **Fully Edit Planets**: Lots of new editing tools to hand craft any aspect of the star system. Just start with the right star setup. 
+*   **Constructs & Infrastructure**:
     *   **Ships & Stations**: Place artificial constructs anywhere in the system—from low orbit to deep space or even on planetary surfaces.
     *   **Detailed Specs**: Every construct has tracked stats for Mass, Crew (Current/Max), Power, Fuel, Engines, and Cargo.
     *   **Template System**: Includes a rich library of pre-built templates to get you started, featuring:
@@ -48,12 +53,10 @@ A quick note on data: This application runs entirely in your browser. Your gener
     *   **Snap-to-Grid**: When adding new systems, coordinates snap to the center of the nearest grid or hex cell.
     *   **Toggleable Background**: Display a static, faded background image of the Milky Way.
     *   **State Persistence**: Grid type, background visibility, and mouse zoom settings are saved and loaded with your starmap data.
-*   **GM Editing Tools**:
-    *   **Rename**: Click on any body's name to rename it.
-    *   **Add**: Add a new planet, moon, or construct to any star or planet.
-    *   **Delete**: Remove any planet, moon, or construct.
+*   **GM Tools**:
     *   **Visibility Controls**: Toggle the visibility of entire objects or just their descriptions in Player Views and Reports.
-*   **Projector Mode (Player View) (NEW!)**:
+    *   **GM Notes**: Quick areas of text that can be edited any time - autosaved. These are never shown to the players.
+*   **Projector Mode (Player View)**:
     *   **Dedicated Player View**: Access a clean, full screen, player-focused view of the star system by opening the Star System hamburger menu: "Open Projector View"
     *   **GM Synchronization**: The player view automatically synchronizes with the GM's view, including camera pan/zoom, time controls (play/pause, speed), and selected focus.
     *   **GM Visibility Controls**: As a GM, you can mark any celestial body or construct as hidden by clicking on the visibility icon next to its name. Hidden objects and their descendants will be completely invisible in the Player View, allowing for hidden secrets and dynamic reveals.
@@ -61,8 +64,8 @@ A quick note on data: This application runs entirely in your browser. Your gener
     ![Greenscreen Projection View](static/screenshots/Greenscreen-ProjectionView.png)
 *   **AI-Powered Descriptions**: Integrates with OpenRouter to allow GMs to generate rich, narrative descriptions for any celestial body using customizable prompts, tags, and styles.
     ![LLM Report Generation](static/screenshots/LLM-Report-Generation.png)
-*   **Paper Reports (NEW!)**: Generate printable, themed PDF reports of your star system. Choose between a GM (full intel) or Player (redacted) version, with player reports respecting GM visibility settings for objects and descriptions. Select visual themes like "Retro Line Printer" or "Corporate". Reports include detailed celestial data and artificial construct traffic.
-    ![Printable Reports](static/screenshots/PrintableReports.png){width="50%"}
+*   **Paper Reports**: Generate printable, themed PDF reports of your star system. Choose between a GM (full intel) or Player (redacted) version, with player reports respecting GM visibility settings for objects and descriptions. Select visual themes like "Retro Line Printer" or "Corporate". Reports include detailed celestial data and artificial construct traffic.
+    ![Printable Reports](static/screenshots/PrintableReports.png)
 *   **Save & Load**: 
     *   Download any system or the entire starmap as a JSON file to your computer.
     *   Upload a previously saved JSON file to continue your work. This can be at the starmap level or just a single star system to allow portability.
@@ -86,7 +89,7 @@ A quick note on data: This application runs entirely in your browser. Your gener
 
 ### Exploring the System
 
-### Adding & Editing Constructs
+### Adding & Editing Constructs & Planets
 *   **Add New Construct**: Right-click on any celestial body (star, planet, or moon) in the visualizer and select "Add Construct". A modal will appear allowing you to:
     *   Choose from a library of pre-defined **Templates** (e.g., *Rocinante*, *Tycho Station*, *Prospero's Dream*).
     *   The construct will automatically be placed in a default mid-range orbit around the selected body.
@@ -94,7 +97,7 @@ A quick note on data: This application runs entirely in your browser. Your gener
     ![Detailed Construct Editing](static/screenshots/DetailedConstructEditing-FlightDynamics.png)
 *   **Delete Construct**: Right-click on an existing construct and select "Delete Construct" to remove it and its associated data from the system.
 
-*   Click on any celestial body in the visualizer to focus on it and view its detailed stats in the panel below.
+*   Click on any celestial body in the visualizer to focus on it and view its detailed stats in the panel below. Choose to edit.
 *   Use the time controls to play, pause, and fast-forward the simulation.
 *   Click "Zoom Out" to return to the parent body's view.
 
@@ -154,9 +157,7 @@ You can preview the production build with `npm run preview`.
 
 ## Planned Features
 
-*   **Transfer Window Planner**: Tools to calculate optimal launch windows between planets based on orbital phasing.
-*   **Protoplanetary Disks**: For very young systems, generate a dense disk instead of a full set of planets.
-*   **Expanded Classifications**: Add more detailed and specific planet classifications.
+*   Go to [Our Discord](https://discord.gg/prvKpZMgNY) for more details and input into ongoing development
 
 ## Known Issues
 

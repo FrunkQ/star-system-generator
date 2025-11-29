@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { CelestialBody, Barycenter, System } from "$lib/types";
   import { createEventDispatcher } from "svelte";
+  import MarkdownModal from './MarkdownModal.svelte';
 
   export let system: System | null;
   export let focusedBody: CelestialBody | Barycenter | null;
@@ -10,6 +11,29 @@
   export let handleShare: () => void;
 
   const dispatch = createEventDispatcher();
+
+  let showAboutModal = false;
+  const aboutContent = `
+<h1>Star System Generator</h1>
+
+<p><strong>Version:</strong> 1.1<br>
+<strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+
+<p>A tool for creating and exploring scientifically-plausible star systems.</p>
+
+<hr>
+
+<p><strong>Community & Support:</strong><br>
+<a href="https://discord.gg/prvKpZMgNY" target="_blank">Join us on Discord!</a></p>
+
+<p><strong>Inspiration:</strong></p>
+<ul>
+<li><a href="https://www.youtube.com/@whatdamath" target="_blank">Anton Petrov</a></li>
+<li><a href="https://www.youtube.com/@DrBecky" target="_blank">Dr. Becky</a></li>
+<li><a href="https://www.youtube.com/@SabineHossenfelder" target="_blank">Sabine Hossenfelder</a></li>
+<li><a href="https://www.youtube.com/@scottmanley" target="_blank">Scott Manley</a></li>
+</ul>
+`;
 
   let gasGiants = 0;
   let iceGiants = 0;
@@ -296,13 +320,16 @@
                       {#if system?.isManuallyEdited}
                         <button on:click={() => dispatch('clearmanualedit')}>Show Regenerate Controls</button>
                       {/if}
-                      <button on:click={() => alert('This is a star system generator.')}>About</button>
+                      <button on:click={() => showAboutModal = true}>About</button>
                   </div>
               {/if}
           </div>
           <input type="file" id="upload-json-summary" hidden accept=".json,application/json" on:change={handleUploadJson} />
       </div>
     </div>
+    {#if showAboutModal}
+        <MarkdownModal htmlContent={aboutContent} on:close={() => showAboutModal = false} />
+    {/if}
 </div>
 
 <style>

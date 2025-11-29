@@ -25,6 +25,7 @@
 <div class="modal-background">
   <div class="modal">
     <h2>Welcome to the Star System Generator!</h2>
+    <p class="discord-link"><a href="https://discord.gg/prvKpZMgNY" target="_blank">Join us on Discord!</a></p>
     <p>This tool allows you to create and explore scientifically-plausible star systems. Get started by creating a new starmap, or load a previous creation. For more information, see the <a href="https://github.com/FrunkQ/star-system-generator/blob/main/GettingStarted.md" target="_blank" rel="noopener noreferrer">Getting Started Guide</a>.</p>
     
     <img src="/images/ui/Weyland-Yutani.png" alt="Weyland-Yutani Corp" class="logo" />
@@ -170,5 +171,20 @@
   .buttons {
     display: flex;
     justify-content: flex-end;
+  }
+
+  .discord-link {
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-bottom: 5px; /* Adjust spacing as needed */
+  }
+
+  .discord-link a {
+    color: #7289DA; /* Discord's brand color */
+    text-decoration: none;
+  }
+
+  .discord-link a:hover {
+    text-decoration: underline;
   }
 </style>

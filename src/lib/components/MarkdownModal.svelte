@@ -1,16 +1,13 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import { marked } from 'marked';
 
-  export let markdownContent: string;
+  export let htmlContent: string;
 
   const dispatch = createEventDispatcher();
 
   function closeModal() {
     dispatch('close');
   }
-
-  $: htmlContent = marked(markdownContent);
 </script>
 
 <div class="modal-overlay" on:click={closeModal}>
