@@ -920,16 +920,6 @@ a.click();
             {#if focusedBody}
                 <DescriptionEditor body={focusedBody} on:update={handleBodyUpdate} />
             {/if}
-            {#if focusedBody && isEditing}
-                <BodySidePanel 
-                  body={focusedBody} 
-                  {rulePack} 
-                  {parentBody} 
-                  {rootStar} 
-                  on:update={handleBodyUpdate} 
-                  on:tabchange={(e) => activeEditTab = e.detail}
-                />
-            {/if}
         </div>
         <div class="details-view">
             {#if focusedBody}
