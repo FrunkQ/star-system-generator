@@ -176,6 +176,7 @@ export interface RulePack {
   id: string; version: string; name: string;
   distributions: Record<string, TableSpec>;
   gasMolarMassesKg?: Record<string, number>;
+  gasShielding?: Record<string, number>;
   liquids?: LiquidDef[];
   orbitalConstants?: Record<string, number>;
   constructTemplates?: Record<string, CelestialBody[]>; // Templates are CelestialBody objects

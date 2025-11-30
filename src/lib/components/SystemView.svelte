@@ -224,7 +224,6 @@
               newPlanet.classes = ['planet/terrestrial'];
               newPlanet.massKg = EARTH_MASS_KG * (0.5 + Math.random());
               newPlanet.radiusKm = 6371 * Math.pow(newPlanet.massKg / EARTH_MASS_KG, 1/3);
-              newPlanet.name = 'New Terrestrial';
               newPlanet.rotation_period_hours = 20 + Math.random() * 10;
               newPlanet.axial_tilt_deg = 23.5 + (Math.random() * 20 - 10);
               
@@ -237,11 +236,11 @@
                       pressure_bar: 0.1
                   };
               }
+              newPlanet.magneticField = { strengthGauss: 0.1 + Math.random() * 1.9 };
           } else if (distAU < co2Line) {
               newPlanet.classes = ['planet/ice-giant'];
               newPlanet.massKg = EARTH_MASS_KG * (10 + Math.random() * 10);
               newPlanet.radiusKm = 25000;
-              newPlanet.name = 'New Ice Giant';
               newPlanet.rotation_period_hours = 10 + Math.random() * 6;
               newPlanet.axial_tilt_deg = 25 + (Math.random() * 10 - 5);
               
@@ -251,11 +250,11 @@
                   composition: { 'H2': 0.80, 'He': 0.15, 'CH4': 0.05 },
                   pressure_bar: 100
               };
+              newPlanet.magneticField = { strengthGauss: 0.1 + Math.random() * 0.9 };
           } else {
               newPlanet.classes = ['planet/gas-giant'];
               newPlanet.massKg = EARTH_MASS_KG * (50 + Math.random() * 250);
               newPlanet.radiusKm = 70000;
-              newPlanet.name = 'New Gas Giant';
               newPlanet.rotation_period_hours = 9 + Math.random() * 5;
               newPlanet.axial_tilt_deg = 3 + Math.random() * 27;
               
@@ -265,11 +264,11 @@
                   composition: { 'H2': 0.75, 'He': 0.24 },
                   pressure_bar: 1000
               };
+              newPlanet.magneticField = { strengthGauss: 4 + Math.random() * 96 };
           }
       } else {
           newPlanet.roleHint = 'moon';
           newPlanet.classes = ['planet/barren'];
-          newPlanet.name = 'New Moon';
           newPlanet.tidallyLocked = true;
           newPlanet.axial_tilt_deg = Math.random() * 5;
           newPlanet.rotation_period_hours = 0; // Will be calc'd if locked

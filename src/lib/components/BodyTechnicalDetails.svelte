@@ -3,6 +3,9 @@
   import { calculateOrbitalBoundaries, type OrbitalBoundaries, type PlanetData } from "$lib/physics/orbits";
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { calculateDeltaVBudgets, calculateSurfaceTemperature, calculateGreenhouseEffect, calculateHabitabilityScore } from '$lib/system/postprocessing';
+  import { systemStore } from '$lib/stores';
+  import { get } from 'svelte/store';
+  import { calculateSurfaceRadiation } from '$lib/physics/radiation';
 
   export let body: CelestialBody | Barycenter | null;
   export let rulePack: RulePack;
@@ -25,6 +28,7 @@
   let tempTooltip: string = '';
   let surfaceRadiationText: string | null = null;
   let surfaceRadiationTooltip: string | null = null;
+  let displayedSurfaceRadiation: number | null = null;
   let stellarRadiationTooltip: string | null = null;
   let calculatedPeriodDays: number | null = null;
   
@@ -44,6 +48,7 @@
     tempTooltip = '';
     surfaceRadiationText = null;
     surfaceRadiationTooltip = null;
+    displayedSurfaceRadiation = null;
     calculatedPeriodDays = null;
 
     if (body && body.kind === 'body') {
@@ -76,8 +81,17 @@
              calculateHabitabilityScore(body);
         }
 
-        if (body.surfaceRadiation !== undefined) {
-            const desc = getSurfaceRadiationDescription(body.surfaceRadiation);
+        let currentSurfaceRadiation = body.surfaceRadiation;
+        if (currentSurfaceRadiation === undefined) {
+             const sys = get(systemStore);
+             if (sys) {
+                 currentSurfaceRadiation = calculateSurfaceRadiation(body, sys.nodes, rulePack);
+             }
+        }
+
+        if (currentSurfaceRadiation !== undefined) {
+            displayedSurfaceRadiation = currentSurfaceRadiation;
+            const desc = getSurfaceRadiationDescription(currentSurfaceRadiation);
             surfaceRadiationText = desc.text;
             surfaceRadiationTooltip = desc.tooltip;
         }
@@ -366,10 +380,10 @@
           </div>
       {/if}
 
-      {#if surfaceRadiationText}
+      {#if surfaceRadiationText && body.roleHint !== 'star'}
           <div class="detail-item" title={surfaceRadiationTooltip}>
               <span class="label">Surface Radiation</span>
-              <span class="value">{surfaceRadiationText} ({body.surfaceRadiation?.toFixed(2)})</span>
+              <span class="value">{surfaceRadiationText} ({displayedSurfaceRadiation?.toFixed(2)})</span>
           </div>
       {/if}
 

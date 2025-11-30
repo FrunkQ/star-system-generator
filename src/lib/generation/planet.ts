@@ -4,6 +4,7 @@ import { SeededRNG } from '../rng';
 import { weightedChoice, randomFromRange, toRoman } from '../utils';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
 import { classifyBody } from '../system/classification';
+import { calculateSurfaceRadiation } from '../physics/radiation';
 
 function calculateTidalHeating(planet: CelestialBody, host: CelestialBody): number {
     let tidalHeatingK = 0;
@@ -218,16 +219,10 @@ export function _generatePlanetaryBody(
         planet.hydrosphere = undefined;
     }
 
-    let surfaceRadiation = totalStellarRadiation;
-    if (planet.atmosphere) {
-        const atmDef = pack.distributions.atmosphere_composition.entries.find(e => e.value.name === planet.atmosphere.name)?.value;
-        if (atmDef && atmDef.radiation_blocking_factor) {
-            const blockingFactor = Math.min(1.0, atmDef.radiation_blocking_factor * planet.atmosphere.pressure_bar);
-            surfaceRadiation = totalStellarRadiation * (1 - blockingFactor);
-        }
-    }
-
-    planet.surfaceRadiation = Math.max(0, surfaceRadiation);
+    // Calculate final surface radiation, factoring in stellar radiation, atmospheric blocking,
+    // and magnetosphere shielding.
+    // See `src/lib/physics/radiation.ts` for detailed calculation logic.
+    planet.surfaceRadiation = calculateSurfaceRadiation(planet, allNodes, pack);
     features['radiation_flux'] = planet.surfaceRadiation;
 
     const escapeVelocity = Math.sqrt(2 * G * (planet.massKg || 0) / ((planet.radiusKm || 1) * 1000)) / 1000; // in km/s

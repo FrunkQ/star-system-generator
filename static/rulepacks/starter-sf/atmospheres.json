@@ -21,6 +21,20 @@
         "Noble Gases": 0.039948,
         "Other Trace": 0.028014
     },
+    "gasShielding": {
+        "N2": 4.5,
+        "O2": 4.3,
+        "CO2": 5.0,
+        "H2O": 5.5,
+        "CH4": 3.5,
+        "H2": 0.5,
+        "He": 0.5,
+        "NH3": 3.5,
+        "SO2": 6.0,
+        "Ar": 4.5,
+        "Noble Gases": 4.5,
+        "Other Trace": 2.0
+    },
     "distributions": {
         "atmosphere_pressure_bar": {
             "name": "Atmosphere Pressure (bar)",
