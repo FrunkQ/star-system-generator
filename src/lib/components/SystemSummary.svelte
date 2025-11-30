@@ -16,8 +16,8 @@
   const aboutContent = `
 <h1>Star System Generator</h1>
 
-<p><strong>Version:</strong> 1.1<br>
-<strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+<p><strong>Version:</strong> 1.1.1<br>
+<strong>Date:</strong> 30-Nov-25</p>
 
 <p>A tool for creating and exploring scientifically-plausible star systems.</p>
 
