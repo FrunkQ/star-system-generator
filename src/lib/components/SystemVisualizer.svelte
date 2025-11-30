@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { System, CelestialBody, Barycenter, RulePack, SystemNode } from '$lib/types';
+  import type { TransitPlan } from '$lib/transit/types';
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import { propagate } from "$lib/api";
   import { AU_KM } from '../constants';
@@ -23,6 +24,7 @@
   export let fullScreen: boolean = false;
   export let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
   export let forceOrbitView: boolean = false;
+  export let transitPlan: TransitPlan | null = null;
 
   const dispatch = createEventDispatcher<{ 
     focus: string | null,
@@ -1030,6 +1032,11 @@
               ctx.fill();
           }
       }
+
+      if (transitPlan) {
+          drawTransitPlan(ctx);
+      }
+
       ctx.restore(); // Restores to pre-camera-transform state
 
       // --- UI / Overlay Drawing (after restoring context, uses screen coordinates) ---
@@ -1295,6 +1302,116 @@
 
       // Draw text
       ctx.fillText(`${displayValue} ${unit}`, x + actualBarLengthPx / 2, y - 8);
+  }
+  function drawTransitPlan(ctx: CanvasRenderingContext2D) {
+      if (!transitPlan) return;
+
+      // Debug types if needed
+      // console.log("Drawing Plan:", transitPlan.segments.map(s => s.type));
+
+      for (const segment of transitPlan.segments) {
+          ctx.beginPath();
+          if (segment.type === 'Coast') {
+              ctx.setLineDash([5, 5]);
+              ctx.strokeStyle = '#ffff00'; // Yellow for Coast
+          } else if (segment.type === 'Brake') {
+              ctx.setLineDash([]);
+              ctx.strokeStyle = '#ff3333'; // Red for Brake
+          } else {
+              // Accel
+              ctx.setLineDash([]);
+              ctx.strokeStyle = '#00ff00'; // Green for Accel
+          }
+          ctx.lineWidth = 3 / zoom;
+
+          for (let i = 0; i < segment.pathPoints.length; i++) {
+              let p = segment.pathPoints[i];
+              let r = Math.sqrt(p.x*p.x + p.y*p.y);
+              if (toytownFactor > 0) {
+                 const minDistance = 0.01; const x0_distance = minDistance * 0.1;
+                 const r_new = scaleBoxCox(r, toytownFactor, x0_distance);
+                 const angle = Math.atan2(p.y, p.x);
+                 const x_new = r_new * Math.cos(angle);
+                 const y_new = r_new * Math.sin(angle);
+                 p = { x: x_new, y: y_new };
+              }
+
+              if (i === 0) {
+                  ctx.moveTo(p.x, p.y);
+                  // Draw start dot
+                  const startX = p.x;
+                  const startY = p.y;
+                  // We need to stroke first to finish the previous path if any? No, beginPath is per segment.
+                  // Actually we are in a moveTo. 
+              }
+              else ctx.lineTo(p.x, p.y);
+          }
+          ctx.stroke();
+          
+          // Draw dots at vertices
+          if (segment.pathPoints.length > 0) {
+              const p0 = segment.pathPoints[0];
+              let x = p0.x; let y = p0.y;
+              // Apply Toytown logic again for dot
+              let r = Math.sqrt(x*x + y*y);
+              if (toytownFactor > 0) {
+                 const minDistance = 0.01; const x0_distance = minDistance * 0.1;
+                 const r_new = scaleBoxCox(r, toytownFactor, x0_distance);
+                 const angle = Math.atan2(y, x);
+                 x = r_new * Math.cos(angle);
+                 y = r_new * Math.sin(angle);
+              }
+              
+              ctx.beginPath();
+              ctx.arc(x, y, 4 / zoom, 0, 2 * Math.PI);
+              ctx.fillStyle = ctx.strokeStyle; // Match line color
+              ctx.fill();
+          }
+      }
+      ctx.setLineDash([]);
+  }
+  export function fitToNodes(nodeIds: string[]) {
+      if (!canvas || !system || nodeIds.length === 0) return;
+      
+      // Force an update to ensure positions are current (especially if delayed)
+      calculateScaledPositions();
+      
+      const positions: {x: number, y: number}[] = [];
+      
+      for (const id of nodeIds) {
+          const pos = toytownFactor > 0 ? scaledWorldPositions.get(id) : worldPositions.get(id);
+          if (pos) positions.push(pos);
+      }
+      
+      if (positions.length === 0) return;
+      
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const p of positions) {
+          if (p.x < minX) minX = p.x;
+          if (p.x > maxX) maxX = p.x;
+          if (p.y < minY) minY = p.y;
+          if (p.y > maxY) maxY = p.y;
+      }
+      
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+      
+      const width = maxX - minX;
+      const height = maxY - minY;
+      
+      const padding = 1.8; // 80% padding (zoom out more)
+      const targetWidth = Math.max(width, 0.1); // Minimum size 0.1 AU
+      const targetHeight = Math.max(height, 0.1);
+      
+      const zoomX = canvas.width / (targetWidth * padding);
+      const zoomY = canvas.height / (targetHeight * padding);
+      const targetZoom = Math.min(zoomX, zoomY, 500); // Cap zoom at 500 px/AU
+      
+      // Disable follow mode temporarily
+      cameraMode = 'MANUAL';
+      
+      panStore.set({ x: centerX, y: centerY }, { duration: 500 });
+      zoomStore.set(targetZoom, { duration: 500 });
   }
 </script>
 <canvas 

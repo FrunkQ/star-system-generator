@@ -22,6 +22,8 @@
   import BodySidePanel from './BodySidePanel.svelte';
   import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
   import ReportConfigModal from './ReportConfigModal.svelte';
+  import TransitPlannerPanel from './TransitPlannerPanel.svelte';
+  import type { TransitPlan } from '$lib/transit/types';
 
   import { systemStore, viewportStore } from '$lib/stores';
   import { panStore, zoomStore } from '$lib/cameraStore';
@@ -57,7 +59,12 @@
   let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
   let isCrtMode = false;
   let isEditing = false;
+  let isPlanning = false;
+  let plannerOriginId: ID = '';
+  let transitDelayDays: number = 0;
   let activeEditTab = 'Basics';
+  
+  let currentTransitPlan: TransitPlan | null = null;
 
   function handleToggleCrt() {
       isCrtMode = !isCrtMode;
@@ -904,13 +911,14 @@ a.click();
                 bind:cameraMode 
                 system={$systemStore} 
                 {rulePack} 
-                {currentTime} 
+                currentTime={currentTime + (isPlanning ? transitDelayDays * 86400 * 1000 : 0)} 
                 {focusedBodyId} 
                 {showNames} 
                 {showZones} 
                 {showLPoints} 
                 toytownFactor={$systemStore.toytownFactor} 
                 forceOrbitView={isEditing && activeEditTab === 'Orbit'}
+                transitPlan={currentTransitPlan}
                 on:focus={handleFocus} 
                 on:showBodyContextMenu={handleShowBodyContextMenu} 
                 on:backgroundContextMenu={handleBackgroundContextMenu} 
@@ -948,11 +956,36 @@ a.click();
                   dispatch('renameNode', {nodeId: focusedBody.id, newName: e.target.value});
                   systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s);
                 }} class="name-input" title="Click to rename" />
-                {#if !isEditing && focusedBody.roleHint !== 'star'}
-                    <button class="edit-btn small" on:click={() => { isEditing = true; showZoneKeyPanel = false; visualizer?.resetView(); }} style="margin-left: 5px;">Edit</button>
-                {/if}
+                  {#if !isEditing}
+                      <button class="edit-btn small" on:click={() => { isEditing = true; showZoneKeyPanel = false; visualizer?.resetView(); }} style="margin-left: 5px;">Edit</button>
+                      {#if focusedBody.kind === 'construct' && focusedBody.engines && focusedBody.engines.length > 0}
+                          <button class="edit-btn small" on:click={() => { 
+                              isPlanning = true; 
+                              isEditing = false; 
+                              showZoneKeyPanel = false; 
+                              visualizer?.resetView(); 
+                              plannerOriginId = focusedBody.id;
+                          }} style="margin-left: 5px;">Plan Transit</button>
+                      {/if}
+                  {/if}
             </div>
             {/if}
+
+            {#if isPlanning}
+                <TransitPlannerPanel 
+                    system={$systemStore} 
+                    {rulePack}
+                    {currentTime}
+                    originId={plannerOriginId}
+                    bind:departureDelayDays={transitDelayDays}
+                    on:planUpdate={(e) => currentTransitPlan = e.detail}
+                    on:targetSelected={(e) => {
+                        const { origin, target } = e.detail;
+                        visualizer?.fitToNodes([origin, target]);
+                    }}
+                    on:close={() => { isPlanning = false; currentTransitPlan = null; transitDelayDays = 0; }} 
+                />
+            {:else if focusedBody}
             
             {#if showZoneKeyPanel}
                 <ZoneKey />
@@ -995,9 +1028,8 @@ a.click();
                 {/if}
             {/if}
             
-            {#if focusedBody}
-                <BodyImage body={focusedBody} />
-                <GmNotesEditor body={focusedBody} on:update={handleBodyUpdate} />
+            <BodyImage body={focusedBody} />
+            <GmNotesEditor body={focusedBody} on:update={handleBodyUpdate} />
             {/if}
 
 
