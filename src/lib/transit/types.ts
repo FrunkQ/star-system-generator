@@ -51,6 +51,11 @@ export interface TransitPlan {
   
   // User Parameters
   maxG: number;
-  burnCoastRatio: number; // 0.0 (All Coast) to 1.0 (All Burn)
+  accelRatio: number; 
+  brakeRatio: number;
   interceptSpeed_ms: number; // 0 for dock
+  arrivalPlacement?: string; // 'l4', 'l5', 'lo', 'mo', 'ho', 'geo', 'surface'
+  tags?: string[];
+  planType?: 'Efficiency' | 'Speed' | 'Assist';
+  name?: string;
 }

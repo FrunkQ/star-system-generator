@@ -62,9 +62,15 @@
   let isPlanning = false;
   let plannerOriginId: ID = '';
   let transitDelayDays: number = 0;
+  let transitJourneyOffset: number = 0;
+  let transitPreviewPos: { x: number, y: number } | null = null;
   let activeEditTab = 'Basics';
   
   let currentTransitPlan: TransitPlan | null = null;
+  let completedTransitPlans: TransitPlan[] = [];
+  let transitAlternatives: TransitPlan[] = [];
+  let transitChainTime: number = 0;
+  let transitChainState: any = undefined; // StateVector imported later
 
   function handleToggleCrt() {
       isCrtMode = !isCrtMode;
@@ -911,7 +917,7 @@ a.click();
                 bind:cameraMode 
                 system={$systemStore} 
                 {rulePack} 
-                currentTime={currentTime + (isPlanning ? transitDelayDays * 86400 * 1000 : 0)} 
+                currentTime={isPlanning ? (transitChainTime + (transitDelayDays * 86400 * 1000) + transitJourneyOffset) : currentTime} 
                 {focusedBodyId} 
                 {showNames} 
                 {showZones} 
@@ -919,6 +925,8 @@ a.click();
                 toytownFactor={$systemStore.toytownFactor} 
                 forceOrbitView={isEditing && activeEditTab === 'Orbit'}
                 transitPlan={currentTransitPlan}
+                completedPlans={completedTransitPlans}
+                transitPreviewPos={transitPreviewPos}
                 on:focus={handleFocus} 
                 on:showBodyContextMenu={handleShowBodyContextMenu} 
                 on:backgroundContextMenu={handleBackgroundContextMenu} 
@@ -965,6 +973,10 @@ a.click();
                               showZoneKeyPanel = false; 
                               visualizer?.resetView(); 
                               plannerOriginId = focusedBody.id;
+                              transitChainTime = currentTime;
+                              completedTransitPlans = [];
+                              transitChainState = undefined;
+                              transitDelayDays = 0;
                           }} style="margin-left: 5px;">Plan Transit</button>
                       {/if}
                   {/if}
@@ -975,15 +987,146 @@ a.click();
                 <TransitPlannerPanel 
                     system={$systemStore} 
                     {rulePack}
-                    {currentTime}
+                    currentTime={transitChainTime}
                     originId={plannerOriginId}
+                    completedPlans={completedTransitPlans}
+                    initialState={transitChainState}
                     bind:departureDelayDays={transitDelayDays}
                     on:planUpdate={(e) => currentTransitPlan = e.detail}
+                    on:alternativesUpdate={(e) => transitAlternatives = e.detail}
+                    on:previewUpdate={(e) => {
+                        transitJourneyOffset = e.detail.offset;
+                        transitPreviewPos = e.detail.position;
+                    }}
                     on:targetSelected={(e) => {
                         const { origin, target } = e.detail;
                         visualizer?.fitToNodes([origin, target]);
                     }}
-                    on:close={() => { isPlanning = false; currentTransitPlan = null; transitDelayDays = 0; }} 
+                    on:addNextLeg={(e) => {
+                         const plan = e.detail;
+                         completedTransitPlans = [...completedTransitPlans, plan];
+                         const durationMs = plan.totalTime_days * 86400 * 1000;
+                         const delayMs = transitDelayDays * 86400 * 1000;
+                         transitChainTime += durationMs + delayMs;
+                         
+                         plannerOriginId = plan.targetId;
+                         transitDelayDays = 0;
+                         currentTransitPlan = null;
+                         transitAlternatives = [];
+                         transitPreviewPos = null;
+                         transitJourneyOffset = 0;
+                         
+                         // Store arrival state for next leg chaining
+                         if (plan.segments.length > 0) {
+                             const endState = plan.segments[plan.segments.length - 1].endState;
+                             transitChainState = { r: { ...endState.r }, v: { ...endState.v } };
+                             // console.log('Chaining State:', transitChainState, 'Time:', transitChainTime);
+                         }
+                    }}
+                    on:executePlan={(e) => {
+                         const finalPlan = e.detail;
+                         // Calculate Totals
+                         let totalFuelKg = completedTransitPlans.reduce((acc, p) => acc + p.totalFuel_kg, 0);
+                         totalFuelKg += finalPlan.totalFuel_kg;
+                         
+                         const finalTime = transitChainTime + (finalPlan.totalTime_days * 86400 * 1000) + (transitDelayDays * 86400 * 1000);
+                         
+                         // Update System
+                         systemStore.update(sys => {
+                             if (!sys) return null;
+                             
+                             // Find Target Node to determine L4/L5 context
+                             const targetNode = sys.nodes.find(n => n.id === finalPlan.targetId);
+                             
+                             const newNodes = sys.nodes.map(node => {
+                                 if (node.id === focusedBodyId) {
+                                     // Deduct Fuel
+                                     let remainingFuelToDeductKg = totalFuelKg;
+                                     
+                                     if (node.fuel_tanks && node.fuel_tanks.length > 0 && rulePack.fuelDefinitions?.entries) {
+                                         for (const tank of node.fuel_tanks) {
+                                             if (remainingFuelToDeductKg <= 0.1) break; // Float tolerance
+                                             
+                                             const fuelDef = rulePack.fuelDefinitions.entries.find(f => f.id === tank.fuel_type_id);
+                                             if (fuelDef && fuelDef.density_kg_per_m3 > 0) {
+                                                 const tankMassKg = tank.current_units * fuelDef.density_kg_per_m3;
+                                                 
+                                                 if (tankMassKg >= remainingFuelToDeductKg) {
+                                                     const unitsToDeduct = remainingFuelToDeductKg / fuelDef.density_kg_per_m3;
+                                                     tank.current_units = Math.max(0, tank.current_units - unitsToDeduct);
+                                                     remainingFuelToDeductKg = 0;
+                                                 } else {
+                                                     remainingFuelToDeductKg -= tankMassKg;
+                                                     tank.current_units = 0;
+                                                 }
+                                             }
+                                         }
+                                     }
+                                     
+                                     // Move Ship
+                                     const isLagrange = finalPlan.arrivalPlacement === 'l4' || finalPlan.arrivalPlacement === 'l5';
+                                     
+                                     if (isLagrange && targetNode && targetNode.parentId) {
+                                         // Special L4/L5 Logic
+                                         const parentNode = sys.nodes.find(n => n.id === targetNode.parentId);
+                                         // Copy target orbit
+                                         let newOrbit = JSON.parse(JSON.stringify(targetNode.orbit));
+                                         // Adjust anomaly
+                                         const offset = finalPlan.arrivalPlacement === 'l4' ? Math.PI/3 : -Math.PI/3;
+                                         newOrbit.elements.M0_rad = (newOrbit.elements.M0_rad + offset + 2*Math.PI) % (2*Math.PI);
+                                         
+                                         return {
+                                             ...node,
+                                             parentId: targetNode.parentId,
+                                             ui_parentId: targetNode.id,
+                                             orbit: newOrbit,
+                                             placement: finalPlan.arrivalPlacement.toUpperCase()
+                                         };
+                                     } else {
+                                         // Standard Capture Logic
+                                         let placementString = 'Parking Orbit';
+                                         if (finalPlan.arrivalPlacement === 'lo') placementString = 'Low Orbit';
+                                         if (finalPlan.arrivalPlacement === 'mo') placementString = 'Medium Orbit';
+                                         if (finalPlan.arrivalPlacement === 'ho') placementString = 'High Orbit';
+                                         if (finalPlan.arrivalPlacement === 'geo') placementString = 'Geostationary Orbit';
+                                         
+                                         return {
+                                             ...node,
+                                             parentId: finalPlan.targetId,
+                                             ui_parentId: null, // Clear UI parent if standard
+                                             orbit: {
+                                                 hostId: finalPlan.targetId,
+                                                 elements: { a_AU: 0.0001, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 }, // Placeholder radius
+                                                 t0: finalTime,
+                                                 hostMu: 1 
+                                             },
+                                             placement: placementString
+                                         };
+                                     }
+                                 }
+                                 return node;
+                             });
+                             
+                             return { ...sys, nodes: newNodes, epochT0: finalTime, isManuallyEdited: true };
+                         });
+                         
+                         // Reset UI
+                         currentTime = finalTime;
+                         isPlanning = false;
+                         currentTransitPlan = null;
+                         completedTransitPlans = [];
+                         transitAlternatives = [];
+                         transitChainTime = 0;
+                    }}
+                    on:close={() => { 
+                        isPlanning = false; 
+                        currentTransitPlan = null; 
+                        transitDelayDays = 0; 
+                        transitJourneyOffset = 0; 
+                        transitPreviewPos = null; 
+                        completedTransitPlans = [];
+                        transitAlternatives = [];
+                    }} 
                 />
             {:else if focusedBody}
             
@@ -1114,7 +1257,7 @@ a.click();
 
                               <p class="project-attribution">
 
-                                                              <a href="https://github.com/FrunkQ/star-system-generator" target="_blank" rel="noopener noreferrer">Star System Generator</a> © 2025 FrunkQ. Licensed under <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank" rel="noopener noreferrer">GPL-3.0</a>. Join us on <a href="https://discord.gg/prvKpZMgNY" target="_blank" rel="noopener noreferrer">Discord!</a>
+                                                              <a href="https://github.com/FrunkQ/star-system-generator" target="_blank" rel="noopener noreferrer">Star System Generator</a> © 2025 FrunkQ. Licensed under <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank" rel="noopener noreferrer">GPL-3.0</a>. Join us on <a href="https://discord.gg/h2kt5Xm2xC" target="_blank" rel="noopener noreferrer">Discord!</a>
 
                                                             </p>
 

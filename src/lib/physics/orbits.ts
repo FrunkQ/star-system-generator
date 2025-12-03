@@ -208,6 +208,55 @@ export function calculateOrbitalBoundaries(planet: PlanetData, pack: RulePack): 
   };
 }
 
+export function getOrbitOptions(body: CelestialBody, rulePack: RulePack): { id: string, name: string, radiusKm: number }[] {
+    // Only for planets/moons/stars?
+    // Determine physical properties
+    const massKg = body.massKg || 0;
+    const radiusKm = body.radiusKm || 1000;
+    
+    // Mock PlanetData for calculation
+    const pData: PlanetData = {
+        gravity: 9.81, // Dummy if not used for boundaries structure, but wait, calcOrbitalBoundaries needs pressure etc.
+        surfaceTempKelvin: body.surfaceTempKelvin || 273,
+        molarMassKg: 0.029,
+        surfacePressurePa: (body.atmosphere?.pressure_bar || 0) * 100000,
+        massKg: massKg,
+        rotationPeriodSeconds: (body.physical_parameters?.rotation_period_hours || 24) * 3600,
+        distanceToHost_km: body.orbit?.elements.a_AU ? body.orbit.elements.a_AU * AU_KM : 1.5e8,
+        hostMass_kg: 2e30, // Dummy Solar mass if unknown, or finding parent? 
+        // For simple zones, parent mass matters for SOI.
+        radiusKm: radiusKm
+    };
+    
+    // Ideally we should look up real parent mass, but for UI options, approx is okay?
+    // Better: pass the System or Parent Node?
+    // Or just use stored properties if available.
+    
+    const boundaries = calculateOrbitalBoundaries(pData, rulePack);
+    
+    const options = [
+        { id: 'lo', name: 'Low Orbit', radiusKm: radiusKm + boundaries.minLeoKm }
+    ];
+    
+    if (boundaries.geoStationaryKm) {
+        options.push({ id: 'geo', name: 'Geostationary', radiusKm: radiusKm + boundaries.geoStationaryKm });
+    }
+    
+    const moAlt = (boundaries.leoMoeBoundaryKm + boundaries.meoHeoBoundaryKm) / 2;
+    options.push({ id: 'mo', name: 'Medium Orbit', radiusKm: radiusKm + moAlt });
+    
+    const hoAlt = (boundaries.meoHeoBoundaryKm + boundaries.heoUpperBoundaryKm) / 2;
+    options.push({ id: 'ho', name: 'High Orbit', radiusKm: radiusKm + hoAlt });
+
+    // Lagrange Points (Approximate radii for capture cost)
+    // L4 and L5 are distinct targets
+    const dist = pData.distanceToHost_km;
+    options.push({ id: 'l4', name: 'L4 (Leading Trojan)', radiusKm: dist });
+    options.push({ id: 'l5', name: 'L5 (Trailing Trojan)', radiusKm: dist });
+    
+    return options;
+}
+
 /**
  * Calculates the delta-v budgets for a celestial body.
  */

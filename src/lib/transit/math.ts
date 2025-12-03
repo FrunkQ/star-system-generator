@@ -134,10 +134,14 @@ export function solveLambert(r1: Vector2, r2: Vector2, dt_sec: number, mu: numbe
     let theta2 = Math.atan2(r2.y, r2.x);
     let dTheta = theta2 - theta1;
     
-    // Normalize to 0..2PI for Prograde
-    while (dTheta < 0) dTheta += 2 * Math.PI;
-    while (dTheta >= 2 * Math.PI) dTheta -= 2 * Math.PI;
+    // Normalize to -PI..PI (Short Way)
+    // This ensures we solve for the direct chord (transfer angle < 180), 
+    // avoiding "Long Way" sundivers for co-orbital transfers (like L4 -> Earth).
+    while (dTheta > Math.PI) dTheta -= 2 * Math.PI;
+    while (dTheta <= -Math.PI) dTheta += 2 * Math.PI;
     
+    // console.log("Lambert dTheta:", dTheta * 180 / Math.PI, "dt:", dt_sec);
+
     // Universal Variable Setup
     const A = Math.sin(dTheta) * Math.sqrt(r1mag * r2mag / (1 - Math.cos(dTheta)));
     
@@ -155,16 +159,15 @@ export function solveLambert(r1: Vector2, r2: Vector2, dt_sec: number, mu: numbe
 
     // Robust Bisection Method
     // Range of z:
-    // Lower bound: -4*pi^2 (Hyperbolic limit roughly?)
-    // Upper bound: 4*pi^2 (Elliptic limit)
-    // We need to find z such that t(z) = dt_sec.
+    // Lower bound: Expanded to support high-energy hyperbolic transfers (Torchships)
+    // Upper bound: 4*pi^2 (Elliptic limit for multi-rev checks usually, but single rev fits here)
     
-    let lower = -4 * Math.PI * Math.PI;
+    let lower = -10000.0;
     let upper = 4 * Math.PI * Math.PI;
     let z = 0;
     let loops = 0;
     
-    while (loops < 100) {
+    while (loops < 200) {
         z = (lower + upper) / 2;
         const Sz = S(z);
         const Cz = C(z);

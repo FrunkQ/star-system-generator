@@ -2,7 +2,7 @@
 
 A procedural generator for creating scientifically-plausible star systems, complete with a real-time orbital visualizer and starmap.
 
-For discussion, feedback, bugs and suggestions go to [Our Discord](https://discord.gg/prvKpZMgNY)
+For discussion, feedback, bugs and suggestions go to [Our Discord](https://discord.gg/h2kt5Xm2xC)
 
 ## Table of Contents
 

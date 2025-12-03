@@ -25,6 +25,9 @@
   export let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
   export let forceOrbitView: boolean = false;
   export let transitPlan: TransitPlan | null = null;
+  export let completedPlans: TransitPlan[] = [];
+  export let alternativePlans: TransitPlan[] = [];
+  export let transitPreviewPos: { x: number, y: number } | null = null;
 
   const dispatch = createEventDispatcher<{ 
     focus: string | null,
@@ -1033,8 +1036,26 @@
           }
       }
 
+      if (completedPlans && completedPlans.length > 0) {
+          ctx.save();
+          ctx.fillStyle = 'white';
+          ctx.font = '20px Arial';
+          // ctx.fillText(`Completed Legs: ${completedPlans.length}`, -width/2 + 20, -height/2 + 40); // Debug overlay
+          ctx.restore();
+
+          for (const plan of completedPlans) {
+              drawTransitPlan(ctx, plan, true);
+          }
+      }
+      
+      if (alternativePlans && alternativePlans.length > 0) {
+          for (const plan of alternativePlans) {
+              drawTransitPlan(ctx, plan, false, 0.4); // Visible ghost
+          }
+      }
+
       if (transitPlan) {
-          drawTransitPlan(ctx);
+          drawTransitPlan(ctx, transitPlan, false);
       }
 
       ctx.restore(); // Restores to pre-camera-transform state
@@ -1303,26 +1324,36 @@
       // Draw text
       ctx.fillText(`${displayValue} ${unit}`, x + actualBarLengthPx / 2, y - 8);
   }
-  function drawTransitPlan(ctx: CanvasRenderingContext2D) {
-      if (!transitPlan) return;
+  function drawTransitPlan(ctx: CanvasRenderingContext2D, plan: TransitPlan, isCompleted: boolean = false, alphaOverride?: number) {
+      if (!plan) return;
 
-      // Debug types if needed
-      // console.log("Drawing Plan:", transitPlan.segments.map(s => s.type));
+      // Debug
+      // console.log(`Drawing Plan ${plan.id} (Completed: ${isCompleted}): ${plan.segments.length} segments`);
+      // if (plan.segments.length > 0 && plan.segments[0].pathPoints.length > 0) {
+      //    const p0 = plan.segments[0].pathPoints[0];
+      //    console.log(`  Start Point: ${p0.x.toFixed(3)}, ${p0.y.toFixed(3)}`);
+      // }
 
-      for (const segment of transitPlan.segments) {
+      const alpha = alphaOverride !== undefined ? alphaOverride : (isCompleted ? 0.6 : 1.0);
+      const isGhost = alphaOverride !== undefined;
+
+      for (const segment of plan.segments) {
           ctx.beginPath();
-          if (segment.type === 'Coast') {
+          if (isGhost) {
               ctx.setLineDash([5, 5]);
-              ctx.strokeStyle = '#ffff00'; // Yellow for Coast
+              ctx.strokeStyle = `rgba(200, 200, 255, ${alpha})`; // Ghost Blue-White
+          } else if (segment.type === 'Coast') {
+              ctx.setLineDash([]); // Make Coast solid
+              ctx.strokeStyle = `rgba(255, 255, 0, ${alpha})`; // Yellow
           } else if (segment.type === 'Brake') {
               ctx.setLineDash([]);
-              ctx.strokeStyle = '#ff3333'; // Red for Brake
+              ctx.strokeStyle = `rgba(255, 51, 51, ${alpha})`; // Red
           } else {
               // Accel
               ctx.setLineDash([]);
-              ctx.strokeStyle = '#00ff00'; // Green for Accel
+              ctx.strokeStyle = `rgba(0, 255, 0, ${alpha})`; // Green
           }
-          ctx.lineWidth = 3 / zoom;
+          ctx.lineWidth = (isCompleted || isGhost ? 2 : 3) / zoom;
 
           for (let i = 0; i < segment.pathPoints.length; i++) {
               let p = segment.pathPoints[i];
@@ -1338,11 +1369,6 @@
 
               if (i === 0) {
                   ctx.moveTo(p.x, p.y);
-                  // Draw start dot
-                  const startX = p.x;
-                  const startY = p.y;
-                  // We need to stroke first to finish the previous path if any? No, beginPath is per segment.
-                  // Actually we are in a moveTo. 
               }
               else ctx.lineTo(p.x, p.y);
           }
@@ -1369,6 +1395,30 @@
           }
       }
       ctx.setLineDash([]);
+      
+      // Only draw ship marker for active plan
+      if (!isCompleted && transitPreviewPos) {
+          let x = transitPreviewPos.x;
+          let y = transitPreviewPos.y;
+          
+          if (toytownFactor > 0) {
+             const minDistance = 0.01; const x0_distance = minDistance * 0.1;
+             let r = Math.sqrt(x*x + y*y);
+             const r_new = scaleBoxCox(r, toytownFactor, x0_distance);
+             const angle = Math.atan2(y, x);
+             x = r_new * Math.cos(angle);
+             y = r_new * Math.sin(angle);
+          }
+          
+          // Draw Ship Marker
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(x, y, 6 / zoom, 0, 2 * Math.PI);
+          ctx.fill();
+          ctx.strokeStyle = '#00ffff';
+          ctx.lineWidth = 2 / zoom;
+          ctx.stroke();
+      }
   }
   export function fitToNodes(nodeIds: string[]) {
       if (!canvas || !system || nodeIds.length === 0) return;
