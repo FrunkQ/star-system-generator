@@ -6,6 +6,33 @@ import { AU_KM, G } from '../constants';
 const AU_M = AU_KM * 1000;
 const DAY_S = 86400;
 
+function getGlobalState(sys: System, node: CelestialBody | Barycenter | { id: string, parentId: string | null, orbit?: any }, tMs: number): StateVector {
+    let current: any = node;
+    let r = { x: 0, y: 0 };
+    let v = { x: 0, y: 0 };
+    
+    // Iterate up the hierarchy
+    let loops = 0;
+    while (current && loops < 10) {
+        // Calculate local state (relative to parent)
+        const local = propagateState(current, tMs);
+        
+        r.x += local.r.x;
+        r.y += local.r.y;
+        v.x += local.v.x;
+        v.y += local.v.y;
+        
+        // Move to parent
+        if (current.parentId) {
+            current = sys.nodes.find(n => n.id === current.parentId);
+        } else {
+            current = null;
+        }
+        loops++;
+    }
+    return { r, v };
+}
+
 export function calculateTransitPlan(
   sys: System,
   originId: string,
@@ -43,7 +70,7 @@ export function calculateTransitPlan(
   if (params.initialState) {
       startState = params.initialState;
   } else if (origin) {
-      startState = propagateState(origin, startTime);
+      startState = getGlobalState(sys, origin, startTime);
   } else {
       return [];
   }
@@ -60,16 +87,41 @@ export function calculateTransitPlan(
   const r2_m = r2 * AU_M;
   const t_hohmann_sec = Math.PI * Math.sqrt(Math.pow(r1_m + r2_m, 3) / (8 * mu));
   
-  const targetStartPos = propagateState(effectiveTarget, startTime).r;
+  const targetStartPos = getGlobalState(sys, effectiveTarget, startTime).r;
   const dist_m = distanceAU(startPos, targetStartPos) * AU_M;
   const accel = (params.maxG || 0.1) * 9.81;
   const t_fast_sec = Math.sqrt(2 * dist_m / accel);
+  
+  // Pre-Check: Local / Short Range Transfer
+  // If the target is very close (< 0.1 AU, e.g. Earth->Moon), the Heliocentric Lambert solver
+  // will likely fail or produce "Solar Spiral" artifacts because it tries to orbit the Sun.
+  // For these local hops, we strictly use the Kinematic (Direct) solver.
+  const dist_start_au = distanceAU(startState.r, targetStartPos);
+  
+  if (dist_start_au < 0.1) {
+      // console.log(`Short Range Transfer (${dist_start_au.toFixed(4)} AU) - Using Kinematic Solver Only`);
+      
+      const directParams = { 
+          ...params, 
+          maxG: Math.max(0.1, params.maxG), 
+          initialState: startState
+      };
+      
+      const directPlan = calculateFastPlan(sys, origin, effectiveTarget, root, startTime, startState, directParams);
+      
+      if (directPlan) {
+          directPlan.planType = 'Speed'; // Keep as Speed so sliders work standardly
+          directPlan.name = 'Direct (Local)';
+          return [directPlan];
+      }
+      return [];
+  }
 
   // --- Helper Solver ---
   function solveVariant(name: string, type: 'Efficiency' | 'Speed', constraints: { t_min: number, t_max: number, fixedAccelRatio?: number }): TransitPlan | null {
       // Helper for target state at T
       function targetState(t: number) {
-          return propagateState(effectiveTarget, startTime + t * 1000);
+          return getGlobalState(sys, effectiveTarget, startTime + t * 1000);
       }
 
       let t_min = constraints.t_min;
@@ -99,16 +151,6 @@ export function calculateTransitPlan(
           const dv1_req_ms = magnitude(subtract(result.v1, startState.v)) * AU_M;
           // Available dV based on THIS variant's accel ratio
           const dV_avail_accel_ms = accel * (t_curr * localAccelRatio); 
-          
-          /*
-          if (name === 'Direct') {
-             console.log(`Direct Solver: T=${(t_curr/86400).toFixed(2)}d`,
-                 `dV_req=${(dv1_req_ms/1000).toFixed(1)}`,
-                 `dV_avail=${(dV_avail_accel_ms/1000).toFixed(1)}`,
-                 `MaxG=${(accel/9.81).toFixed(2)}`
-             );
-          }
-          */
           
           if (params.brakeAtArrival) {
               const dv2_req_ms = magnitude(subtract(targetState(t_curr).v, result.v2)) * AU_M;
@@ -154,7 +196,7 @@ export function calculateTransitPlan(
           extraTags: planTags
       };
       
-      const plan = calculateLambertPlan(origin, effectiveTarget, root, startTime, startState, bestT, mu, variantParams);
+      const plan = calculateLambertPlan(sys, origin, effectiveTarget, root, startTime, startState, bestT, mu, variantParams);
       if (plan) {
           plan.planType = type;
           plan.name = name;
@@ -162,9 +204,7 @@ export function calculateTransitPlan(
       return plan;
   }
 
-  // --- Generate Profiles ---
-
-  // 1. Efficiency (Drift)
+  // 1. Efficiency (Hohmann-like) - Ballistic Solver
   // Low Accel (5%), Search around Hohmann
   const driftPlan = solveVariant('Efficiency', 'Efficiency', {
       t_min: t_hohmann_sec * 0.8,
@@ -201,7 +241,7 @@ export function calculateTransitPlan(
       initialState: startState
   };
   
-  const directPlan = calculateFastPlan(origin, effectiveTarget, root, startTime, startState, directParams);
+  const directPlan = calculateFastPlan(sys, origin, effectiveTarget, root, startTime, startState, directParams);
   
   if (directPlan) {
       directPlan.planType = 'Speed';
@@ -218,6 +258,7 @@ export function calculateTransitPlan(
 }
 
 function calculateLambertPlan(
+    sys: System,
     origin: CelestialBody | Barycenter | undefined,
     target: CelestialBody | Barycenter,
     root: CelestialBody | Barycenter,
@@ -228,7 +269,7 @@ function calculateLambertPlan(
     params: { shipMass_kg?: number; shipIsp?: number; brakeAtArrival?: boolean; interceptSpeed_ms: number; accelRatio: number; brakeRatio: number; maxG: number; initialState?: StateVector; parkingOrbitRadius_au?: number; arrivalPlacement?: string; extraTags?: string[] }
 ): TransitPlan | null {
     const arrivalTime = startTime + durationSec * 1000;
-    const targetState = propagateState(target, arrivalTime);
+    const targetState = getGlobalState(sys, target, arrivalTime);
     // console.log("Target State @ Arrival:", targetState.r);
     const mu_au = mu / Math.pow(AU_M, 3);
     
@@ -599,6 +640,7 @@ function calculateLambertPlan(
 }
 
 function calculateFastPlan(
+    sys: System,
     origin: CelestialBody | Barycenter | undefined, 
     target: CelestialBody | Barycenter, 
     root: CelestialBody | Barycenter, 
@@ -612,7 +654,7 @@ function calculateFastPlan(
     if (accel <= 0) return null;
 
     // 1. Initial Geometry
-    const targetStartPos = propagateState(target, startTime).r;
+    const targetStartPos = getGlobalState(sys, target, startTime).r;
     const initialDist_m = distanceAU(startState.r, targetStartPos) * AU_M;
     
     // 2. Determine Ratios
@@ -639,7 +681,7 @@ function calculateFastPlan(
     // Iterative refinement for moving target
     let loops = 0;
     while(loops < 10) {
-        const targetPos = propagateState(target, startTime + t_est * 1000).r;
+        const targetPos = getGlobalState(sys, target, startTime + t_est * 1000).r;
         const dist_m = distanceAU(startState.r, targetPos) * AU_M;
         t_est = Math.sqrt(dist_m / (accel * K));
         loops++;
@@ -655,7 +697,7 @@ function calculateFastPlan(
     const brakeStartTime = startTime + (accelTime + coastTime) * 1000;
     const endTime = startTime + totalTime * 1000;
     
-    const targetEndState = propagateState(target, endTime);
+    const targetEndState = getGlobalState(sys, target, endTime);
     
     // Debug Logging for Fast Plan endpoints
     /*

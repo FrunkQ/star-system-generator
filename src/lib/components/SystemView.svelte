@@ -925,6 +925,7 @@ a.click();
                 toytownFactor={$systemStore.toytownFactor} 
                 forceOrbitView={isEditing && activeEditTab === 'Orbit'}
                 transitPlan={currentTransitPlan}
+                alternativePlans={transitAlternatives}
                 completedPlans={completedTransitPlans}
                 transitPreviewPos={transitPreviewPos}
                 on:focus={handleFocus} 
