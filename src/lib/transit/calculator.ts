@@ -1,37 +1,11 @@
 import type { System, CelestialBody, Barycenter } from '../types';
 import type { TransitPlan, TransitSegment, TransitMode, Vector2, StateVector, BurnPoint } from './types';
 import { propagateState, solveLambert, distanceAU, subtract, magnitude, cross, dot } from './math';
+import { getGlobalState, calculateFuelMass, calculateDeltaV } from './physics';
 import { AU_KM, G } from '../constants';
 
 const AU_M = AU_KM * 1000;
 const DAY_S = 86400;
-
-function getGlobalState(sys: System, node: CelestialBody | Barycenter | { id: string, parentId: string | null, orbit?: any }, tMs: number): StateVector {
-    let current: any = node;
-    let r = { x: 0, y: 0 };
-    let v = { x: 0, y: 0 };
-    
-    // Iterate up the hierarchy
-    let loops = 0;
-    while (current && loops < 10) {
-        // Calculate local state (relative to parent)
-        const local = propagateState(current, tMs);
-        
-        r.x += local.r.x;
-        r.y += local.r.y;
-        v.x += local.v.x;
-        v.y += local.v.y;
-        
-        // Move to parent
-        if (current.parentId) {
-            current = sys.nodes.find(n => n.id === current.parentId);
-        } else {
-            current = null;
-        }
-        loops++;
-    }
-    return { r, v };
-}
 
 export function calculateTransitPlan(
   sys: System,
@@ -49,6 +23,33 @@ export function calculateTransitPlan(
   const root = sys.nodes.find(n => n.parentId === null);
   
   if (!target || !root) return [];
+
+  // SANITIZATION: Check for "Impossible Orbit" (Sun Gravity around a Planet)
+  // This happens if a ship is dragged/parented to a planet but keeps the Star's hostMu/hostId
+  let effectiveOrigin = origin;
+  if (origin && origin.parentId && origin.orbit) {
+      const parent = sys.nodes.find(n => n.id === origin.parentId);
+      if (parent && (parent.kind === 'body' || parent.kind === 'barycenter')) {
+          const parentMass = (parent as CelestialBody).massKg || (parent as Barycenter).effectiveMassKg || 0;
+          const parentMu = parentMass * G;
+          
+          // If mismatched ID or Drastically mismatched Mu (factor of 100 difference)
+          if (origin.orbit.hostId !== parent.id || (parentMu > 0 && Math.abs(origin.orbit.hostMu - parentMu) > parentMu * 100)) {
+              console.warn(`[TransitPlanner] Detected corrupted orbit for ${origin.name}. Fixing locally.`);
+              // Create a corrected copy for calculation
+              effectiveOrigin = {
+                  ...origin,
+                  orbit: {
+                      ...origin.orbit,
+                      hostId: parent.id,
+                      hostMu: parentMu,
+                      // We must also clear 'n' (mean motion) so propagateState recalculates it correctly with the new Mu
+                      n_rad_per_s: undefined 
+                  }
+              };
+          }
+      }
+  }
 
   // Handle Virtual Targets (L4/L5)
   let effectiveTarget = target;
@@ -69,8 +70,8 @@ export function calculateTransitPlan(
   let startState: StateVector;
   if (params.initialState) {
       startState = params.initialState;
-  } else if (origin) {
-      startState = getGlobalState(sys, origin, startTime);
+  } else if (effectiveOrigin) {
+      startState = getGlobalState(sys, effectiveOrigin, startTime);
   } else {
       return [];
   }
@@ -107,7 +108,7 @@ export function calculateTransitPlan(
           initialState: startState
       };
       
-      const directPlan = calculateFastPlan(sys, origin, effectiveTarget, root, startTime, startState, directParams);
+      const directPlan = calculateFastPlan(sys, effectiveOrigin, effectiveTarget, root, startTime, startState, directParams);
       
       if (directPlan) {
           directPlan.planType = 'Speed'; // Keep as Speed so sliders work standardly
@@ -154,6 +155,17 @@ export function calculateTransitPlan(
           
           if (params.brakeAtArrival) {
               const dv2_req_ms = magnitude(subtract(targetState(t_curr).v, result.v2)) * AU_M;
+              
+              // DEBUG LOGGING
+              if (loops === 0) {
+                 console.log(`[TransitDebug] Variant: ${name}`);
+                 console.log(`  t_curr (days): ${(t_curr/86400).toFixed(1)}`);
+                 console.log(`  Hohmann (days): ${(t_hohmann_sec/86400).toFixed(1)}`);
+                 console.log(`  dV1 Req (km/s): ${(dv1_req_ms/1000).toFixed(1)}`);
+                 console.log(`  dV2 Req (km/s): ${(dv2_req_ms/1000).toFixed(1)}`);
+                 console.log(`  dV Avail (km/s): ${(dV_avail_accel_ms/1000).toFixed(1)}`);
+              }
+
               const brakeTimeReq = dv2_req_ms / accel;
               const accelTimeReq = dv1_req_ms / accel;
               
@@ -196,7 +208,7 @@ export function calculateTransitPlan(
           extraTags: planTags
       };
       
-      const plan = calculateLambertPlan(sys, origin, effectiveTarget, root, startTime, startState, bestT, mu, variantParams);
+      const plan = calculateLambertPlan(sys, effectiveOrigin, effectiveTarget, root, startTime, startState, bestT, mu, variantParams);
       if (plan) {
           plan.planType = type;
           plan.name = name;
@@ -241,7 +253,7 @@ export function calculateTransitPlan(
       initialState: startState
   };
   
-  const directPlan = calculateFastPlan(sys, origin, effectiveTarget, root, startTime, startState, directParams);
+  const directPlan = calculateFastPlan(sys, effectiveOrigin, effectiveTarget, root, startTime, startState, directParams);
   
   if (directPlan) {
       directPlan.planType = 'Speed';
@@ -302,6 +314,15 @@ function calculateLambertPlan(
             // Capture Burn
             const dv_capture_mps = Math.abs(V_p - V_c);
             dv2_req_au_s = dv_capture_mps / AU_M;
+
+            console.log(`[TransitDebug] Capture Burn:`);
+            console.log(`  Target: ${target.name}, Mass: ${targetMassKg.toExponential(2)} kg`);
+            console.log(`  V_inf: ${(V_inf_mps/1000).toFixed(2)} km/s`);
+            console.log(`  Rp: ${(Rp_m/1000).toFixed(0)} km`);
+            console.log(`  V_p: ${(V_p/1000).toFixed(2)} km/s`);
+            console.log(`  V_c: ${(V_c/1000).toFixed(2)} km/s`);
+            console.log(`  dV_capture: ${(dv_capture_mps/1000).toFixed(2)} km/s`);
+
         } else {
             // Fallback if mass unknown
             dv2_req_au_s = magnitude(subtract(targetState.v, result.v2));
@@ -340,11 +361,10 @@ function calculateLambertPlan(
     
     // Physics Constants & Initial Mass
     const g0 = 9.81;
-    const accel_mps2_start = (params.maxG || 0.1) * g0;
+    const accel_mps2 = (params.maxG || 0.1) * g0;
     
     let m0 = 0; 
     let Ve = 0;
-    let m_dot = 0;
     let useRocketEq = false;
 
     if (params.shipMass_kg && params.shipIsp && params.shipIsp > 0) {
@@ -352,21 +372,18 @@ function calculateLambertPlan(
         m0 = params.shipMass_kg;
         const isp = params.shipIsp;
         Ve = isp * g0;
-        const thrust_N = m0 * accel_mps2_start;
-        m_dot = thrust_N / Ve;
     }
 
     // Departure Burn (Burn 1)
-    let accelTime_sec = 0;
+    const accelTime_sec = dv1_applied_mps / accel_mps2; // Constant Acceleration assumption
+    
     let m1 = m0;
     let fuel1 = 0;
 
     if (useRocketEq) {
-        m1 = m0 / Math.exp(dv1_applied_mps / Ve);
-        fuel1 = m0 - m1;
-        accelTime_sec = fuel1 / m_dot;
+        fuel1 = calculateFuelMass(m0, dv1_applied_mps, params.shipIsp!);
+        m1 = m0 - fuel1;
     } else {
-        accelTime_sec = dv1_applied_mps / accel_mps2_start;
         fuel1 = dv1_applied_mps * 0.01;
     }
 
@@ -378,34 +395,20 @@ function calculateLambertPlan(
     } else {
         // Manual Control: Determine dV from Time Allocation
         const brakeTimeTarget = durationSec * params.brakeRatio;
-        
-        if (useRocketEq) {
-            // Inverse Rocket Eq: dv = Ve * ln(m_initial / m_final)
-            // m_final = m_initial - m_dot * t
-            const maxBurnTime = m1 / m_dot; 
-            const actualTime = Math.min(brakeTimeTarget, maxBurnTime * 0.99); 
-            const m2_target = m1 - m_dot * actualTime;
-            const dv_possible_mps = Ve * Math.log(m1 / m2_target);
-            dv2_applied_au_s = dv_possible_mps / AU_M;
-        } else {
-            dv2_applied_au_s = (accel_mps2_start * brakeTimeTarget) / AU_M;
-        }
-        
+        dv2_applied_au_s = (accel_mps2 * brakeTimeTarget) / AU_M;
         if (dv2_applied_au_s > dv2_req_au_s) dv2_applied_au_s = dv2_req_au_s;
     }
 
     const dv2_applied_mps = dv2_applied_au_s * AU_M;
+    const brakeTime_sec = dv2_applied_mps / accel_mps2;
     
-    let brakeTime_sec = 0;
     let m2 = m1;
     let fuel2 = 0;
 
     if (useRocketEq) {
-        m2 = m1 / Math.exp(dv2_applied_mps / Ve);
-        fuel2 = m1 - m2;
-        brakeTime_sec = fuel2 / m_dot;
+        fuel2 = calculateFuelMass(m1, dv2_applied_mps, params.shipIsp!);
+        m2 = m1 - fuel2;
     } else {
-        brakeTime_sec = dv2_applied_mps / accel_mps2_start;
         fuel2 = dv2_applied_mps * 0.01;
     }
 
@@ -732,24 +735,14 @@ function calculateFastPlan(
     let fuel2 = 0;
     
     if (params.shipMass_kg && params.shipIsp && params.shipIsp > 0) {
-        const g0 = 9.81;
-        const Ve = params.shipIsp * g0;
         const m0 = params.shipMass_kg;
-        const thrust = m0 * accel; // Thrust based on initial mass? Or constant thrust?
-        // If constant thrust, F = ma. m drops. a rises.
-        // Tsiolkovsky assumes constant Ve.
-        // To maintain constant 'accel' (G) as requested by UI slider, we must throttle down.
-        // dV = a * t.
-        // Fuel = m0 * (1 - exp(-dV/Ve)).
-        // This is exact for constant G.
         
         // Burn 1
-        const m1 = m0 / Math.exp(dv1 / Ve);
-        fuel1 = m0 - m1;
+        fuel1 = calculateFuelMass(m0, dv1, params.shipIsp);
+        const m1 = m0 - fuel1;
         
         // Burn 2
-        const m2 = m1 / Math.exp(dv2 / Ve);
-        fuel2 = m1 - m2;
+        fuel2 = calculateFuelMass(m1, dv2, params.shipIsp);
         
         fuelEst = fuel1 + fuel2;
     } else {

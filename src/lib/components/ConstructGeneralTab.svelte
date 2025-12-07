@@ -290,6 +290,13 @@
       construct.parentId = parentBody.id;
       construct.ui_parentId = null;
       
+      // Ensure host physics are updated when reparenting
+      if (construct.orbit) {
+          construct.orbit.hostId = parentBody.id;
+          const mass = (parentBody.kind === 'barycenter' ? (parentBody as any).effectiveMassKg : parentBody.massKg) || 0;
+          construct.orbit.hostMu = mass * 6.67430e-11;
+      }
+      
       const boundaries = parentBody.orbitalBoundaries;
       const hostRadiusKm = parentBody.radiusKm || 0;
       let altitudeKm = 0;

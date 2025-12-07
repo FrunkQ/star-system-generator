@@ -4,12 +4,14 @@
   export let leftValue: number = 0; // 0..100
   export let rightValue: number = 100; // 0..100
   export let rightLocked: boolean = false;
+  export let disabled: boolean = false;
 
   const dispatch = createEventDispatcher();
   
   let container: HTMLDivElement;
 
   function handleMouseDown(event: MouseEvent, handle: 'left' | 'right') {
+    if (disabled) return;
     if (handle === 'right' && rightLocked) return;
     
     const startX = event.clientX;
@@ -49,7 +51,7 @@
   }
 </script>
 
-<div class="dual-slider" bind:this={container}>
+<div class="dual-slider" bind:this={container} class:disabled={disabled}>
   <!-- Track Background (Yellow/Coast) -->
   <div class="track coast"></div>
   
@@ -75,6 +77,11 @@
     border-radius: 10px;
     margin: 10px 0;
     user-select: none;
+    transition: opacity 0.3s;
+  }
+  .dual-slider.disabled {
+      opacity: 0.5;
+      pointer-events: none; /* Disable all mouse events */
   }
   .track {
     position: absolute;
@@ -89,8 +96,6 @@
       #555 5px,
       #555 10px
     );
-    /* Yellow tint for coast context? Or just keep it mechanical. 
-       Visualizer uses Yellow. Let's use a faint yellow strip. */
     border: 1px solid #554400;
   }
   .bar {
@@ -119,13 +124,19 @@
     transform: translateX(-50%);
     cursor: ew-resize;
     z-index: 10;
+    transition: background 0.2s, transform 0.2s;
   }
   .handle.locked {
     background: #888;
     cursor: not-allowed;
     border-color: #444;
   }
-  .handle:hover:not(.locked) {
+  .dual-slider.disabled .handle {
+      cursor: not-allowed;
+      background: #777;
+      border-color: #555;
+  }
+  .handle:hover:not(.locked):not(.disabled) {
     background: #ddd;
     transform: translateX(-50%) scale(1.1);
   }

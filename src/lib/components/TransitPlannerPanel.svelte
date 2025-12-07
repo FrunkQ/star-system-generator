@@ -37,6 +37,7 @@
   let selectedPlanIndex: number = 0;
   let plan: TransitPlan | null = null;
   let error: string | null = null;
+  let lastCalcParams: any = null;
   
   let currentConstructSpecs: ConstructSpecs | null = null;
   let debounceTimeout: any;
@@ -197,19 +198,15 @@
       };
 
       if (currentConstructSpecs) {
-         const m_wet = currentConstructSpecs.totalMass_tonnes;
-         const m_dry_real = m_wet - currentConstructSpecs.fuelMass_tonnes;
-         
-         if (currentConstructSpecs.totalVacuumDeltaV_ms > 0 && m_dry_real > 0 && m_wet > m_dry_real) {
-             const g0 = 9.81;
-             const lnRatio = Math.log(m_wet / m_dry_real);
-             params.shipIsp = currentConstructSpecs.totalVacuumDeltaV_ms / (g0 * lnRatio);
+         if (currentConstructSpecs.avgVacIsp > 0) {
+             params.shipIsp = currentConstructSpecs.avgVacIsp;
          }
       }
+      
+      lastCalcParams = params;
 
       // console.log("Calculating with:", params); // Debug
 
-      // @ts-ignore - calculateTransitPlan returns array now
       const effectiveStartTime = currentTime + (departureDelayDays * 86400 * 1000);
       const plans = calculateTransitPlan(system, originId, targetId, effectiveStartTime, mode, params);
       
@@ -379,6 +376,7 @@
                 bind:rightValue={brakeStartPercent} 
                 rightLocked={brakeAtArrival}
                 on:input={debouncedCalculate}
+                disabled={plan?.planType !== 'Speed'}
             />
             <div class="range-labels">
                 <span>Accel</span>
@@ -465,9 +463,68 @@
             <button class="close-btn" on:click={() => dispatch('close')}>Close Planner</button>
         </div>
     {/if}
+
+    <div class="debug-section">
+       <details>
+           <summary>Debug: Calculation Parameters</summary>
+           <div class="debug-content">
+               {#if lastCalcParams}
+               <strong>Input Params:</strong>
+               <pre>{JSON.stringify(lastCalcParams, null, 2)}</pre>
+               {/if}
+               {#if currentConstructSpecs}
+                   <strong>Ship Specs:</strong>
+                   <pre>{JSON.stringify({
+                       mass: currentConstructSpecs.totalMass_tonnes,
+                       fuel: currentConstructSpecs.fuelMass_tonnes,
+                       isp: lastCalcParams?.shipIsp,
+                       maxVacuumG: currentConstructSpecs.maxVacuumG
+                   }, null, 2)}</pre>
+               {/if}
+               {#if availablePlans.length > 0}
+                   <strong>Available Plans ({availablePlans.length}):</strong>
+                   {#each availablePlans as p, i}
+                       <div style="margin-top: 5px; padding-left: 5px; border-left: 3px solid {i === selectedPlanIndex ? '#007bff' : '#444'}; opacity: {i === selectedPlanIndex ? 1 : 0.7};">
+                           <div style="color: {i === selectedPlanIndex ? '#fff' : '#aaa'}">
+                               <strong>#{i} {p.name}</strong> ({p.planType}) 
+                               {#if i === selectedPlanIndex}<span style="color: #007bff; font-weight: bold;">[SELECTED]</span>{/if}
+                           </div>
+                           <pre style="margin-top: 2px;">{JSON.stringify({
+                               totalTime_days: p.totalTime_days,
+                               accelRatio: p.accelRatio,
+                               brakeRatio: p.brakeRatio,
+                               totalDeltaV_kms: (p.totalDeltaV_ms/1000).toFixed(3),
+                               totalFuel_t: (p.totalFuel_kg/1000).toFixed(1),
+                               maxG: p.maxG?.toFixed(2)
+                           }, null, 2)}</pre>
+                       </div>
+                   {/each}
+               {/if}
+           </div>
+       </details>
+   </div>
 </div>
 
 <style>
+    .debug-section {
+        margin-top: 1em;
+        padding-top: 1em;
+        border-top: 1px dotted #444;
+        font-size: 0.8em;
+        color: #888;
+    }
+    .debug-content {
+        background: #111;
+        padding: 0.5em;
+        margin-top: 0.5em;
+        border-radius: 3px;
+        overflow-x: auto;
+    }
+    .debug-content pre {
+        margin: 0;
+        white-space: pre-wrap;
+        color: #aaa;
+    }
     .planner-panel {
         padding: 1em;
         background: #222;

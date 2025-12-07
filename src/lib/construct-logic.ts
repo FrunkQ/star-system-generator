@@ -23,6 +23,8 @@ export interface ConstructSpecs {
   maxVacuumG: number; // Max acceleration in vacuum
   totalVacuumDeltaV_ms: number;
   totalAtmoDeltaV_ms: number;
+  avgVacIsp: number; // Weighted average Vacuum ISP
+  avgAtmoIsp: number; // Weighted average Atmosphere ISP
   orbit_string: string;
   surfaceTWR: number;
   takeoffFuel_tonnes: number;
@@ -204,20 +206,25 @@ export function calculateFullConstructSpecs(
   }
 
   // Total Delta-V (Vacuum)
+  let avgVacISP = 0;
   if (totalVacThrust_N > 0 && mass_wet > 0 && mass_dry_of_fuel > 0) {
-    const avgVacISP = weightedVacISP_Sum / totalVacThrust_N;
+    avgVacISP = weightedVacISP_Sum / totalVacThrust_N;
     specs.totalVacuumDeltaV_ms = avgVacISP * g0 * Math.log(mass_wet / mass_dry_of_fuel);
   } else {
     specs.totalVacuumDeltaV_ms = 0;
   }
   
   // Total Delta-V (Atmosphere - for takeoff calcs)
+  let avgAtmoISP = 0;
   if (totalAtmoThrust_N > 0 && mass_wet > 0 && mass_dry_of_fuel > 0) {
-    const avgAtmoISP = weightedAtmoISP_Sum / totalAtmoThrust_N;
+    avgAtmoISP = weightedAtmoISP_Sum / totalAtmoThrust_N;
     specs.totalAtmoDeltaV_ms = avgAtmoISP * g0 * Math.log(mass_wet / mass_dry_of_fuel);
   } else {
     specs.totalAtmoDeltaV_ms = 0;
   }
+  
+  specs.avgVacIsp = avgVacISP;
+  specs.avgAtmoIsp = avgAtmoISP;
 
   // Surface TWR
   const hostGravity = hostBody?.calculatedGravity_ms2 || 0;
@@ -237,19 +244,17 @@ export function calculateFullConstructSpecs(
 
   // Takeoff Fuel
   const takeoffBudget_ms = (hostBody as any)?.loDeltaVBudget_ms || 0;
-  const avgAtmoISP = totalAtmoThrust_N > 0 ? weightedAtmoISP_Sum / totalAtmoThrust_N : 0;
-  const fuelForTakeoff_kg = calculateFuelForDeltaV(mass_wet, avgAtmoISP, takeoffBudget_ms);
+  const fuelForTakeoff_kg = calculateFuelForDeltaV(mass_wet, specs.avgAtmoIsp || 0, takeoffBudget_ms);
   specs.takeoffFuel_tonnes = fuelForTakeoff_kg / 1000;
 
   // Propulsive Landing Fuel
   const propulsiveBudget_ms = (hostBody as any)?.propulsiveLandBudget_ms || 0;
-  const avgVacISP = totalVacThrust_N > 0 ? weightedVacISP_Sum / totalVacThrust_N : 0;
-  const fuelForPropulsiveLanding_kg = calculateFuelForDeltaV(mass_wet, avgVacISP, propulsiveBudget_ms);
+  const fuelForPropulsiveLanding_kg = calculateFuelForDeltaV(mass_wet, specs.avgVacIsp || 0, propulsiveBudget_ms);
   specs.propulsiveLandFuel_tonnes = fuelForPropulsiveLanding_kg / 1000;
 
   // Aerobraked Landing Fuel
   const aerobrakeBudget_ms = (hostBody as any)?.aerobrakeLandBudget_ms || 0;
-  const fuelForAerobrakeLanding_kg = calculateFuelForDeltaV(mass_wet, avgVacISP, aerobrakeBudget_ms);
+  const fuelForAerobrakeLanding_kg = calculateFuelForDeltaV(mass_wet, specs.avgVacIsp || 0, aerobrakeBudget_ms);
   specs.aerobrakeLandFuel_tonnes = fuelForAerobrakeLanding_kg / 1000;
 
   // Round Trip Fuel (Takeoff + Landing with reduced mass)
@@ -268,7 +273,7 @@ export function calculateFullConstructSpecs(
     returnLandingBudget_ms = (hostBody as any).aerobrakeLandBudget_ms;
   }
 
-  const fuelForReturnLanding_kg = calculateFuelForDeltaV(mass_after_takeoff_kg, avgVacISP, returnLandingBudget_ms);
+  const fuelForReturnLanding_kg = calculateFuelForDeltaV(mass_after_takeoff_kg, specs.avgVacIsp || 0, returnLandingBudget_ms);
   specs.roundTripFuel_tonnes = (fuelForTakeoff_kg + fuelForReturnLanding_kg) / 1000;
 
   // Expose component mass properties
