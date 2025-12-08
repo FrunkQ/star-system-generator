@@ -494,6 +494,10 @@ function calculateLambertPlan(
     // Check for Torchship Sundiver artifact
     const isTorchshipSundiver = params.accelRatio > 0.1 && rp < 0.3;
     
+    // Dynamic Point Count: 1 point per 2 days, min 300, max 5000
+    // This fixes jagged lines on long-duration transfers (e.g. Uranus/Neptune)
+    const totalPoints = Math.min(5000, Math.max(300, Math.ceil(durationSec / (86400 * 2))));
+    
     let accelPoints: Vector2[] = [];
     let coastPoints: Vector2[] = [];
     let brakePoints: Vector2[] = [];
@@ -502,7 +506,6 @@ function calculateLambertPlan(
         // Linear Interpolation for Visuals (unchanged for kinematic override cases)
         const rStart = startState.r;
         const rEnd = targetState.r;
-        const totalPoints = 300;
         const dt_step = durationSec / totalPoints;
         
         let currR = rStart;
@@ -531,7 +534,7 @@ function calculateLambertPlan(
         // Standard Ballistic Integrator (Refactored to use shared math)
         // We integrate the full path, then split it by time
         // FIX: Add drift correction to ensure we hit the target exactly
-        const fullPath = integrateBallisticPath(startState.r, result.v1, durationSec, mu_au, 300, targetState.r);
+        const fullPath = integrateBallisticPath(startState.r, result.v1, durationSec, mu_au, totalPoints, targetState.r);
         
         // Splitting Logic
         const dt_step = durationSec / fullPath.length;

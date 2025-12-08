@@ -305,7 +305,7 @@ export function calculateOrbitalBoundaries(planet: PlanetData, pack: RulePack): 
 
 // ... existing code ...
 
-export function getOrbitOptions(body: CelestialBody, rulePack: RulePack, system?: System): { id: string, name: string, radiusKm: number, color: string }[] {
+export function getOrbitOptions(body: CelestialBody, rulePack: RulePack, system?: System): { id: string, name: string, radiusKm: number, color: string, isLagrange?: boolean }[] {
     // Only for planets/moons/stars?
     // Determine physical properties
     const massKg = body.massKg || 0;
@@ -326,7 +326,7 @@ export function getOrbitOptions(body: CelestialBody, rulePack: RulePack, system?
     
     const boundaries = calculateOrbitalBoundaries(pData, rulePack);
     
-    const options: { id: string, name: string, radiusKm: number, sortOrder: number, color: string }[] = [];
+    const options: { id: string, name: string, radiusKm: number, sortOrder: number, color: string, isLagrange?: boolean }[] = [];
     
     // Standard Zones
     options.push({ id: 'lo', name: 'Low Orbit', radiusKm: radiusKm + boundaries.minLeoKm, sortOrder: 10, color: '#ffffff' });
@@ -341,10 +341,9 @@ export function getOrbitOptions(body: CelestialBody, rulePack: RulePack, system?
     const hoAlt = (boundaries.meoHeoBoundaryKm + boundaries.heoUpperBoundaryKm) / 2;
     options.push({ id: 'ho', name: 'High Orbit', radiusKm: radiusKm + hoAlt, sortOrder: 40, color: '#ffffff' });
 
-    // Lagrange Points (Approximate radii for capture cost)
-    const dist = pData.distanceToHost_km;
-    options.push({ id: 'l4', name: 'L4 (Leading Trojan)', radiusKm: radiusKm + 100000, sortOrder: 90, color: '#ffffff' }); 
-    options.push({ id: 'l5', name: 'L5 (Trailing Trojan)', radiusKm: radiusKm + 100000, sortOrder: 91, color: '#ffffff' });
+    // Lagrange Points - Forced to end (Sort Order 90+)
+    options.push({ id: 'l4', name: 'L4 (Leading Trojan)', radiusKm: radiusKm + 100000, sortOrder: 90, color: '#ffffff', isLagrange: true }); 
+    options.push({ id: 'l5', name: 'L5 (Trailing Trojan)', radiusKm: radiusKm + 100000, sortOrder: 91, color: '#ffffff', isLagrange: true });
     
     // Children (Moons / Stations)
     if (system) {
@@ -381,8 +380,13 @@ export function getOrbitOptions(body: CelestialBody, rulePack: RulePack, system?
         findChildrenRecursive(body.id, 0);
     }
     
-    // Sort by Radius
+    // Sort: Lagrange points last, then by actual orbital radius
     return options.sort((a, b) => {
+        if (a.isLagrange && !b.isLagrange) return 1; // a is L-point, b is not -> a comes after b
+        if (!a.isLagrange && b.isLagrange) return -1; // b is L-point, a is not -> a comes before b
+        
+        // If both are L-points or neither are, sort by sortOrder then radius
+        if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
         return a.radiusKm - b.radiusKm;
     }).map(o => ({ id: o.id, name: o.name, radiusKm: o.radiusKm, color: o.color }));
 }
