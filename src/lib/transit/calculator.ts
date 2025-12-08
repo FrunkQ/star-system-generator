@@ -1,7 +1,8 @@
 import type { System, CelestialBody, Barycenter } from '../types';
 import type { TransitPlan, TransitSegment, TransitMode, Vector2, StateVector, BurnPoint } from './types';
-import { propagateState, solveLambert, distanceAU, subtract, magnitude, cross, dot } from './math';
+import { propagateState, solveLambert, distanceAU, subtract, magnitude, cross, dot, integrateBallisticPath } from './math';
 import { getGlobalState, calculateFuelMass, calculateDeltaV } from './physics';
+import { calculateAssistPlan } from './assist';
 import { AU_KM, G } from '../constants';
 
 const AU_M = AU_KM * 1000;
@@ -232,19 +233,18 @@ export function calculateTransitPlan(
       t_max: t_hohmann_sec * 1.2,
       fixedAccelRatio: params.accelRatio
   });
-  if (balancedPlan) {
-      // Check if it's a Sundiver
-      if (balancedPlan.tags && balancedPlan.tags.includes('SUNDIVER')) {
-          balancedPlan.planType = 'Assist'; // Explicitly mark as Assist
-          balancedPlan.name = 'Sundiver';
-      } else {
-          balancedPlan.name = 'Balanced';
-      }
-      plans.push(balancedPlan);
-  }
-
-  // 3. Direct (Intercept) - Kinematic Solver
-  // Use pure constant acceleration physics (Brachistochrone) instead of Lambert.
+        if (balancedPlan) {
+            // Check if it's a Sundiver
+            if (balancedPlan.tags && balancedPlan.tags.includes('SUNDIVER')) {
+                balancedPlan.planType = 'Assist'; // Explicitly mark as Assist
+                balancedPlan.name = 'Sundiver';
+            } else {
+                balancedPlan.name = 'Efficient Alt'; // Renamed from Balanced
+            }
+            plans.push(balancedPlan);
+        }
+  
+        // 3. Direct (Intercept) - Kinematic Solver  // Use pure constant acceleration physics (Brachistochrone) instead of Lambert.
   // This avoids "Sundiver" artifacts because it assumes a powered straight-line trajectory
   // which overpowers gravity.
   const directParams = { 
@@ -255,18 +255,62 @@ export function calculateTransitPlan(
   
   const directPlan = calculateFastPlan(sys, effectiveOrigin, effectiveTarget, root, startTime, startState, directParams);
   
-  if (directPlan) {
-      directPlan.planType = 'Speed';
-      directPlan.name = 'Direct';
-      
-      // Deduplicate if similar to Balanced
-      const isDuplicate = balancedPlan && Math.abs(directPlan.totalTime_days - balancedPlan.totalTime_days) < 0.1;
-      if (!isDuplicate) {
-          plans.push(directPlan);
-      }
-  }
+            if (directPlan) {
   
-  return plans;
+                directPlan.planType = 'Speed';
+  
+                directPlan.name = 'Direct Burn';
+  
+                
+  
+                // Deduplicate if similar to Balanced
+  
+                const isDuplicate = balancedPlan && Math.abs(directPlan.totalTime_days - balancedPlan.totalTime_days) < 0.1;
+  
+                if (!isDuplicate) {
+  
+                    plans.push(directPlan);
+  
+                }
+  
+            }
+  
+        
+  
+        // 4. Gravity Assist (Deep Space) - V2 Feature
+  
+        // Only attempt if it's an interplanetary trip (not local)
+  
+        if (dist_start_au > 0.5) {
+  
+            const assistPlan = calculateAssistPlan(sys, effectiveOrigin, effectiveTarget, root, startTime, startState, {
+  
+                maxG: params.maxG,
+  
+                shipMass_kg: params.shipMass_kg,
+  
+                shipIsp: params.shipIsp
+  
+            });
+  
+            
+  
+            if (assistPlan) {
+  
+                assistPlan.planType = 'Complex';
+  
+                // Name is set inside calculateAssistPlan now
+  
+                plans.push(assistPlan);
+  
+            }
+  
+        }
+  
+      
+  
+    // Sort plans by Fuel Efficiency (Fuel Used ASC)
+    return plans.sort((a, b) => a.totalFuel_kg - b.totalFuel_kg);
 }
 
 function calculateLambertPlan(
@@ -375,7 +419,7 @@ function calculateLambertPlan(
     }
 
     // Departure Burn (Burn 1)
-    const accelTime_sec = dv1_applied_mps / accel_mps2; // Constant Acceleration assumption
+    let accelTime_sec = dv1_applied_mps / accel_mps2; // Constant Acceleration assumption
     
     let m1 = m0;
     let fuel1 = 0;
@@ -400,7 +444,7 @@ function calculateLambertPlan(
     }
 
     const dv2_applied_mps = dv2_applied_au_s * AU_M;
-    const brakeTime_sec = dv2_applied_mps / accel_mps2;
+    let brakeTime_sec = dv2_applied_mps / accel_mps2;
     
     let m2 = m1;
     let fuel2 = 0;
@@ -450,28 +494,22 @@ function calculateLambertPlan(
     // Check for Torchship Sundiver artifact
     const isTorchshipSundiver = params.accelRatio > 0.1 && rp < 0.3;
     
-    const totalPoints = 300;
-    const dt_step = durationSec / totalPoints;
-    
-    const accelPoints: Vector2[] = [];
-    const coastPoints: Vector2[] = [];
-    const brakePoints: Vector2[] = [];
-    
-    let currR = startState.r;
-    let currV = result.v1;
-    
-    accelPoints.push(currR);
+    let accelPoints: Vector2[] = [];
+    let coastPoints: Vector2[] = [];
+    let brakePoints: Vector2[] = [];
     
     if (isTorchshipSundiver) {
-        // Linear Interpolation for Visuals
+        // Linear Interpolation for Visuals (unchanged for kinematic override cases)
         const rStart = startState.r;
         const rEnd = targetState.r;
+        const totalPoints = 300;
+        const dt_step = durationSec / totalPoints;
+        
+        let currR = rStart;
         
         for(let i=0; i<totalPoints; i++) {
              const f = (i + 1) / totalPoints;
              const absTime = startTime + (i + 1) * dt_step * 1000;
-             
-             // Simple Lerp
              const x = rStart.x + (rEnd.x - rStart.x) * f;
              const y = rStart.y + (rEnd.y - rStart.y) * f;
              currR = { x, y };
@@ -490,54 +528,34 @@ function calculateLambertPlan(
              }
         }
     } else {
-        // Standard Ballistic Integrator
-        for(let i=0; i<totalPoints; i++) {
-             const t_start = i * dt_step;
-             
-             // Adaptive Integration for Periapsis Accuracy
-             // If we are close to the star (< 0.2 AU), use finer steps to avoid numerical slingshot
-             const rDist = Math.sqrt(currR.x*currR.x + currR.y*currR.y);
-             const subSteps = rDist < 0.3 ? 100 : (rDist < 0.8 ? 10 : 1);
-             const dt = dt_step / subSteps;
-             
-             for (let s=0; s<subSteps; s++) {
-                 const rMag = Math.sqrt(currR.x*currR.x + currR.y*currR.y);
-                 const rMag3 = rMag*rMag*rMag;
-                 const ax = -mu_au * currR.x / rMag3;
-                 const ay = -mu_au * currR.y / rMag3;
-                 
-                 const vx_new = currV.x + ax * dt;
-                 const vy_new = currV.y + ay * dt;
-                 const rx_new = currR.x + vx_new * dt;
-                 const ry_new = currR.y + vy_new * dt;
-                 
-                 currR = { x: rx_new, y: ry_new };
-                 currV = { x: vx_new, y: vy_new };
-             }
-             
-             const absTime = startTime + (t_start + dt_step) * 1000;
+        // Standard Ballistic Integrator (Refactored to use shared math)
+        // We integrate the full path, then split it by time
+        // FIX: Add drift correction to ensure we hit the target exactly
+        const fullPath = integrateBallisticPath(startState.r, result.v1, durationSec, mu_au, 300, targetState.r);
+        
+        // Splitting Logic
+        const dt_step = durationSec / fullPath.length;
+        
+        for(let i=0; i<fullPath.length; i++) {
+             const absTime = startTime + i * dt_step * 1000;
+             const pt = fullPath[i];
              
              if (absTime < accelEndTime) {
-                 accelPoints.push(currR);
+                 accelPoints.push(pt);
              } else if (absTime < brakeStartTime) {
                  if (coastPoints.length === 0 && accelPoints.length > 0) coastPoints.push(accelPoints[accelPoints.length-1]);
-                 coastPoints.push(currR);
+                 coastPoints.push(pt);
              } else {
                  if (brakePoints.length === 0) {
                      if (coastPoints.length > 0) brakePoints.push(coastPoints[coastPoints.length-1]);
                      else if (accelPoints.length > 0) brakePoints.push(accelPoints[accelPoints.length-1]);
                  }
-                 brakePoints.push(currR);
+                 brakePoints.push(pt);
              }
         }
     }
     
-    // Debug Path Accuracy
-    /*
-    const lastP = brakePoints.length > 0 ? brakePoints[brakePoints.length-1] : (coastPoints.length > 0 ? coastPoints[coastPoints.length-1] : accelPoints[accelPoints.length-1]);
-    const err = distanceAU(lastP, targetState.r);
-    console.log("Path Gen Error:", err);
-    */
+    // Calculate Distance (Arc Length)
     
     // Calculate Distance (Arc Length)
     let distance_au = 0;

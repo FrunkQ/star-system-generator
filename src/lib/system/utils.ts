@@ -1,6 +1,30 @@
 // src/lib/system/utils.ts
-import type { System, ID, CelestialBody, Barycenter, BurnPlan, Orbit, RulePack } from '../types';
+import type { System, ID, CelestialBody, Barycenter, BurnPlan, Orbit, RulePack, SystemNode } from '../types';
 import { G, AU_KM } from '../constants';
+import { propagateState } from '../physics/orbits';
+
+/**
+ * Recursively calculates a node's average orbital distance (semi-major axis) from the root star in AU.
+ * This is used for consistent sorting in dropdowns, independent of current time.
+ */
+export function getAbsoluteOrbitalDistanceAU(node: SystemNode, system: System): number {
+    let distance = 0;
+    let current: SystemNode | undefined = node;
+    let loops = 0;
+
+    while (current && loops < 10) { // Max 10 levels deep to prevent infinite loops
+        if (current.orbit && current.orbit.elements.a_AU !== undefined) {
+            distance += current.orbit.elements.a_AU;
+        }
+        if (current.parentId) {
+            current = system.nodes.find(n => n.id === current.parentId);
+        } else {
+            current = undefined; // Reached the root
+        }
+        loops++;
+    }
+    return distance;
+}
 
 export function rerollNode(__sys: System, __nodeId: ID, __pack: RulePack): System {
   // TODO M0: respect lock flags (future), re-generate subtree deterministically
@@ -64,65 +88,8 @@ export function computePlayerSnapshot(sys: System, _scopeRootId?: ID): System {
 }
 
 export function propagate(node: CelestialBody | Barycenter, tMs: number): {x: number, y: number} | null {
-  if ((node.kind !== 'body' && node.kind !== 'construct') || !node.orbit) {
-    return { x: 0, y: 0 }; // Barycenters or root nodes are at the origin of their frame
-  }
-
-  const { elements, hostMu, t0 } = node.orbit;
-  const { a_AU, e, M0_rad } = elements;
-
-  if (hostMu === 0) return { x: 0, y: 0 };
-
-  const a_m = a_AU * AU_KM * 1000; // semi-major axis in meters
-
-  // 1. Mean motion (n)
-  // Use pre-calculated mean motion for binary stars, otherwise calculate it.
-  let n = node.orbit.n_rad_per_s ?? Math.sqrt(hostMu / Math.pow(a_m, 3));
-  if (node.orbit.isRetrogradeOrbit) {
-    n = -n;
-  }
-
-  // 2. Mean anomaly (M) at time t
-  const M = M0_rad + n * ((tMs - t0) / 1000);
-
-  // 3. Solve Kepler's Equation for Eccentric Anomaly (E)
-  let E: number;
-  if (e === 0) {
-    E = M; // For a circle, Eccentric Anomaly is the same as Mean Anomaly
-  } else {
-    E = M; // Initial guess for Newton-Raphson
-    for (let i = 0; i < 10; i++) { // Iterate a few times for precision
-      const dE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
-      E -= dE;
-      if (Math.abs(dE) < 1e-6) break;
-    }
-  }
-
-  // 4. True Anomaly (f)
-  let f: number;
-  if (e === 0) {
-    f = M; // For a circle, True Anomaly is the same as Mean Anomaly
-  } else {
-    f = 2 * Math.atan2(
-        Math.sqrt(1 + e) * Math.sin(E / 2),
-        Math.sqrt(1 - e) * Math.cos(E / 2)
-    );
-  }
-
-  // 5. Distance to central body (r)
-  const r = a_m * (1 - e * Math.cos(E));
-
-  // 6. Position in orbital frame (z=0 for 2D projection)
-  const x_perifocal = r * Math.cos(f) / AU_KM / 1000; // convert back to AU for visualization scale
-  const y_perifocal = r * Math.sin(f) / AU_KM / 1000;
-
-  // Apply 2D rotation based on Argument of Periapsis (omega) to match visualizer
-  const omega_rad = (node.orbit.elements.omega_deg || 0) * (Math.PI / 180);
-  
-  const x = x_perifocal * Math.cos(omega_rad) - y_perifocal * Math.sin(omega_rad);
-  const y = x_perifocal * Math.sin(omega_rad) + y_perifocal * Math.cos(omega_rad);
-
-  return { x, y };
+  const state = propagateState(node as any, tMs);
+  return state.r;
 }
 
 export function applyImpulsiveBurn(__body: CelestialBody, __burn: BurnPlan, __sys: System): CelestialBody {

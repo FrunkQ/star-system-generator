@@ -73,6 +73,98 @@ export interface PlanetData {
   radiusKm?: number; 
 }
 
+export interface Vector2 {
+  x: number;
+  y: number;
+}
+
+export interface StateVector {
+  r: Vector2; // Position in AU
+  v: Vector2; // Velocity in AU/s
+}
+
+/**
+ * Propagates an orbit to a specific time and returns the full State Vector (Position and Velocity).
+ * Position is in AU.
+ * Velocity is in AU/s.
+ */
+export function propagateState(node: CelestialBody | Barycenter | { orbit: any }, tMs: number): StateVector {
+  if (!('orbit' in node) || !node.orbit) {
+    return { r: { x: 0, y: 0 }, v: { x: 0, y: 0 } };
+  }
+
+  const { elements, hostMu, t0 } = node.orbit;
+  const { a_AU, e, M0_rad } = elements;
+
+  // Handle trivial case (Star/Root)
+  if (hostMu === 0 || !a_AU) return { r: { x: 0, y: 0 }, v: { x: 0, y: 0 } };
+
+  const a_m = a_AU * AU_KM * 1000; // semi-major axis in meters
+
+  // 1. Mean motion (n)
+  let n = node.orbit.n_rad_per_s ?? Math.sqrt(hostMu / Math.pow(a_m, 3));
+  const isRetrograde = !!node.orbit.isRetrogradeOrbit;
+  if (isRetrograde) {
+    n = -n;
+  }
+
+  // 2. Mean anomaly (M) at time t
+  // tMs is current time in ms, t0 is epoch in ms
+  const dt_sec = (tMs - t0) / 1000;
+  const M = M0_rad + n * dt_sec;
+
+  // 3. Solve Kepler's Equation for Eccentric Anomaly (E)
+  let E: number;
+  if (e < 1e-6) {
+    E = M; 
+  } else {
+    E = M;
+    for (let i = 0; i < 10; i++) {
+      const dE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+      E -= dE;
+      if (Math.abs(dE) < 1e-7) break;
+    }
+  }
+
+  // 4. True Anomaly (f)
+  const sqrt1plusE = Math.sqrt(1 + e);
+  const sqrt1minusE = Math.sqrt(1 - e);
+  const f = 2 * Math.atan2(
+      sqrt1plusE * Math.sin(E / 2),
+      sqrt1minusE * Math.cos(E / 2)
+  );
+
+  // 5. Position in Perifocal Frame
+  const r_dist_m = a_m * (1 - e * Math.cos(E));
+  const x_p_m = r_dist_m * Math.cos(f);
+  const y_p_m = r_dist_m * Math.sin(f);
+
+  // 6. Velocity in Perifocal Frame
+  const term = 1 - e * e;
+  const p = a_m * (term > 1e-9 ? term : 1e-9); 
+  const h = Math.sqrt(hostMu * p);
+  const mu_h = hostMu / h;
+
+  let vx_p_mps = -mu_h * Math.sin(f);
+  let vy_p_mps = mu_h * (e + Math.cos(f));
+  
+  // 7. Rotate to System Frame (Arg of Periapsis)
+  const omega_rad = (node.orbit.elements.omega_deg || 0) * (Math.PI / 180);
+  const cos_o = Math.cos(omega_rad);
+  const sin_o = Math.sin(omega_rad);
+
+  const x_au = (x_p_m * cos_o - y_p_m * sin_o) / (AU_KM * 1000);
+  const y_au = (x_p_m * sin_o + y_p_m * cos_o) / (AU_KM * 1000);
+
+  const vx_mps = vx_p_mps * cos_o - vy_p_mps * sin_o;
+  const vy_mps = vx_p_mps * sin_o + vy_p_mps * cos_o;
+
+  return {
+    r: { x: x_au, y: y_au },
+    v: { x: vx_mps / (AU_KM * 1000), y: vy_mps / (AU_KM * 1000) } // Convert m/s to AU/s
+  };
+}
+
 export interface OrbitalBoundaries {
   minLeoKm: number;
   leoMoeBoundaryKm: number;
@@ -208,7 +300,9 @@ export function calculateOrbitalBoundaries(planet: PlanetData, pack: RulePack): 
   };
 }
 
-export function getOrbitOptions(body: CelestialBody, rulePack: RulePack): { id: string, name: string, radiusKm: number }[] {
+// ... existing code ...
+
+export function getOrbitOptions(body: CelestialBody, rulePack: RulePack, system?: System): { id: string, name: string, radiusKm: number }[] {
     // Only for planets/moons/stars?
     // Determine physical properties
     const massKg = body.massKg || 0;
@@ -216,45 +310,78 @@ export function getOrbitOptions(body: CelestialBody, rulePack: RulePack): { id: 
     
     // Mock PlanetData for calculation
     const pData: PlanetData = {
-        gravity: 9.81, // Dummy if not used for boundaries structure, but wait, calcOrbitalBoundaries needs pressure etc.
+        gravity: 9.81, 
         surfaceTempKelvin: body.surfaceTempKelvin || 273,
         molarMassKg: 0.029,
         surfacePressurePa: (body.atmosphere?.pressure_bar || 0) * 100000,
         massKg: massKg,
         rotationPeriodSeconds: (body.physical_parameters?.rotation_period_hours || 24) * 3600,
         distanceToHost_km: body.orbit?.elements.a_AU ? body.orbit.elements.a_AU * AU_KM : 1.5e8,
-        hostMass_kg: 2e30, // Dummy Solar mass if unknown, or finding parent? 
-        // For simple zones, parent mass matters for SOI.
+        hostMass_kg: 2e30, 
         radiusKm: radiusKm
     };
     
-    // Ideally we should look up real parent mass, but for UI options, approx is okay?
-    // Better: pass the System or Parent Node?
-    // Or just use stored properties if available.
-    
     const boundaries = calculateOrbitalBoundaries(pData, rulePack);
     
-    const options = [
-        { id: 'lo', name: 'Low Orbit', radiusKm: radiusKm + boundaries.minLeoKm }
-    ];
+    const options: { id: string, name: string, radiusKm: number, sortOrder: number }[] = [];
+    
+    // Standard Zones
+    options.push({ id: 'lo', name: 'Low Orbit', radiusKm: radiusKm + boundaries.minLeoKm, sortOrder: 10 });
     
     if (boundaries.geoStationaryKm) {
-        options.push({ id: 'geo', name: 'Geostationary', radiusKm: radiusKm + boundaries.geoStationaryKm });
+        options.push({ id: 'geo', name: 'Geostationary', radiusKm: radiusKm + boundaries.geoStationaryKm, sortOrder: 30 });
     }
     
     const moAlt = (boundaries.leoMoeBoundaryKm + boundaries.meoHeoBoundaryKm) / 2;
-    options.push({ id: 'mo', name: 'Medium Orbit', radiusKm: radiusKm + moAlt });
+    options.push({ id: 'mo', name: 'Medium Orbit', radiusKm: radiusKm + moAlt, sortOrder: 20 });
     
     const hoAlt = (boundaries.meoHeoBoundaryKm + boundaries.heoUpperBoundaryKm) / 2;
-    options.push({ id: 'ho', name: 'High Orbit', radiusKm: radiusKm + hoAlt });
+    options.push({ id: 'ho', name: 'High Orbit', radiusKm: radiusKm + hoAlt, sortOrder: 40 });
 
     // Lagrange Points (Approximate radii for capture cost)
-    // L4 and L5 are distinct targets
     const dist = pData.distanceToHost_km;
-    options.push({ id: 'l4', name: 'L4 (Leading Trojan)', radiusKm: dist });
-    options.push({ id: 'l5', name: 'L5 (Trailing Trojan)', radiusKm: dist });
+    options.push({ id: 'l4', name: 'L4 (Leading Trojan)', radiusKm: radiusKm + 100000, sortOrder: 90 }); 
+    options.push({ id: 'l5', name: 'L5 (Trailing Trojan)', radiusKm: radiusKm + 100000, sortOrder: 91 });
     
-    return options;
+    // Children (Moons / Stations)
+    if (system) {
+        const findChildrenRecursive = (parentId: string, parentOffsetKm: number) => {
+            const children = system.nodes.filter(n => n.parentId === parentId);
+            for (const child of children) {
+                // Skip Surface constructs
+                if (child.placement === 'Surface') continue;
+
+                if (child.orbit) {
+                    const localDistKm = child.orbit.elements.a_AU * AU_KM;
+                    const totalDistKm = parentOffsetKm + localDistKm;
+                    
+                    let name = child.name;
+                    if (child.kind === 'construct') name += ' (Station)';
+                    else if (child.roleHint === 'moon') name += ' (Moon)';
+                    
+                    // Add indentation for grandchildren
+                    if (parentOffsetKm > 0) name = `  ↳ ${name}`;
+
+                    options.push({
+                        id: child.id,
+                        name: name,
+                        radiusKm: totalDistKm,
+                        sortOrder: 50
+                    });
+                    
+                    // Recurse (e.g. Station orbiting Moon)
+                    findChildrenRecursive(child.id, totalDistKm);
+                }
+            }
+        };
+        
+        findChildrenRecursive(body.id, 0);
+    }
+    
+    // Sort by Radius
+    return options.sort((a, b) => {
+        return a.radiusKm - b.radiusKm;
+    }).map(o => ({ id: o.id, name: o.name, radiusKm: o.radiusKm }));
 }
 
 /**

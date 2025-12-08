@@ -8,6 +8,8 @@
   import { AU_KM } from '$lib/constants';
   import type { RulePack } from '$lib/types';
   import { get } from 'svelte/store';
+  import { getNodeColor } from '$lib/rendering/colors';
+  import { getAbsoluteOrbitalDistanceAU } from '$lib/system/utils';
 
   import DualRangeSlider from './DualRangeSlider.svelte';
 
@@ -55,8 +57,37 @@
       previousOriginId = originId;
   }
 
+  function getOptionColor(node: any): string {
+      return getNodeColor(node);
+  }
+
   // Filter constructs/bodies for dropdowns
-  $: bodies = system.nodes.filter(n => n.kind === 'body' || n.kind === 'construct');
+  // Rule: Only show "Major" targets (Stars, Planets, Barycenters, Independent Constructs)
+  // Hide Moons and things orbiting planets (users should target the planet first)
+  $: bodies = system.nodes.filter(n => {
+      // Always show stars
+      if (n.roleHint === 'star') return true;
+      // Always show barycenters
+      if (n.kind === 'barycenter') return true;
+      
+      // For bodies/constructs, check parent
+      if (n.parentId) {
+          const parent = system.nodes.find(p => p.id === n.parentId);
+          // Show if parent is a Star or Barycenter
+          if (parent && (parent.roleHint === 'star' || parent.kind === 'barycenter')) return true;
+          return false; // Hide if parent is a Planet/Moon
+      }
+      
+      // Show if no parent (Root)
+      return true;
+  }).sort((a, b) => {
+      // Sort by Distance from Parent (approx a_AU) then Name
+      const distA = a.orbit?.elements.a_AU || 0;
+      const distB = b.orbit?.elements.a_AU || 0;
+      if (Math.abs(distA - distB) > 0.001) return distA - distB;
+      return a.name.localeCompare(b.name);
+  });
+
   $: totalUsedFuel = completedPlans.reduce((acc, p) => acc + p.totalFuel_kg, 0);
   
   $: canAfford = !plan || (currentConstructSpecs && (currentConstructSpecs.fuelMass_tonnes * 1000 - totalUsedFuel - plan.totalFuel_kg) >= -100); // 100kg tolerance
@@ -109,7 +140,7 @@
       if (targetId) {
           const body = system.nodes.find(n => n.id === targetId);
           if (body && body.kind === 'body') {
-              orbitOptions = getOrbitOptions(body, rulePack);
+              orbitOptions = getOrbitOptions(body, rulePack, system);
               if (orbitOptions.length > 0) {
                   selectedOrbitId = orbitOptions[0].id;
               } else {
@@ -315,7 +346,7 @@
         <select bind:value={targetId} on:change={handleTargetChange}>
             <option value="">Select Target...</option>
             {#each bodies as body}
-                <option value={body.id}>{body.name}</option>
+                <option value={body.id} style="color: {getOptionColor(body)}">{body.name}</option>
             {/each}
         </select>
         
@@ -341,7 +372,7 @@
                     class:selected={i === selectedPlanIndex}
                     on:click={() => selectPlan(i)}
                 >
-                    <div class="plan-type">{p.planType}</div>
+                    <div class="plan-type">{p.name}</div>
                     <div class="plan-time">{formatDuration(p.totalTime_days)}</div>
                     <div class="plan-fuel" style="font-size: 0.9em; color: #aaa;">{(p.totalFuel_kg/1000).toFixed(1)}t</div>
                     <div class="plan-g">{(p.maxG || 0).toFixed(2)} G</div>

@@ -1,96 +1,99 @@
 import type { CelestialBody, Barycenter, Orbit } from '../types';
 import { AU_KM, G } from '../constants';
 import type { StateVector, Vector2 } from './types';
+import { propagateState as propagateStatePhysics } from '../physics/orbits';
 
 const AU_M = AU_KM * 1000;
 
 /**
  * Propagates an orbit to a specific time and returns the full State Vector (Position and Velocity).
- * Position is in AU.
- * Velocity is in AU/s.
+ * @deprecated Use src/lib/physics/orbits.ts instead
  */
 export function propagateState(node: CelestialBody | Barycenter | { orbit: Orbit }, tMs: number): StateVector {
-  if (!('orbit' in node) || !node.orbit) {
-    return { r: { x: 0, y: 0 }, v: { x: 0, y: 0 } };
-  }
-
-  const { elements, hostMu, t0 } = node.orbit;
-  const { a_AU, e, M0_rad } = elements;
-
-  // Handle trivial case (Star/Root)
-  if (hostMu === 0 || !a_AU) return { r: { x: 0, y: 0 }, v: { x: 0, y: 0 } };
-
-  const a_m = a_AU * AU_M; // semi-major axis in meters
-
-  // 1. Mean motion (n)
-  let n = node.orbit.n_rad_per_s ?? Math.sqrt(hostMu / Math.pow(a_m, 3));
-  const isRetrograde = !!node.orbit.isRetrogradeOrbit;
-  if (isRetrograde) {
-    n = -n;
-  }
-
-  // 2. Mean anomaly (M) at time t
-  // tMs is current time in ms, t0 is epoch in ms
-  const dt_sec = (tMs - t0) / 1000;
-  const M = M0_rad + n * dt_sec;
-
-  // 3. Solve Kepler's Equation for Eccentric Anomaly (E)
-  let E: number;
-  if (e < 1e-6) {
-    E = M; 
-  } else {
-    E = M;
-    for (let i = 0; i < 10; i++) {
-      const dE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
-      E -= dE;
-      if (Math.abs(dE) < 1e-7) break;
-    }
-  }
-
-  // 4. True Anomaly (f)
-  const sqrt1plusE = Math.sqrt(1 + e);
-  const sqrt1minusE = Math.sqrt(1 - e);
-  const f = 2 * Math.atan2(
-      sqrt1plusE * Math.sin(E / 2),
-      sqrt1minusE * Math.cos(E / 2)
-  );
-
-  // 5. Position in Perifocal Frame
-  const r_dist_m = a_m * (1 - e * Math.cos(E));
-  const x_p_m = r_dist_m * Math.cos(f);
-  const y_p_m = r_dist_m * Math.sin(f);
-
-  // 6. Velocity in Perifocal Frame
-  
-  const term = 1 - e * e;
-  const p = a_m * (term > 1e-9 ? term : 1e-9); 
-  const h = Math.sqrt(hostMu * p);
-  const mu_h = hostMu / h;
-
-  let vx_p_mps = -mu_h * Math.sin(f);
-  let vy_p_mps = mu_h * (e + Math.cos(f));
-  
-  // 7. Rotate to System Frame (Arg of Periapsis)
-  const omega_rad = (node.orbit.elements.omega_deg || 0) * (Math.PI / 180);
-  const cos_o = Math.cos(omega_rad);
-  const sin_o = Math.sin(omega_rad);
-
-  const x_au = (x_p_m * cos_o - y_p_m * sin_o) / AU_M;
-  const y_au = (x_p_m * sin_o + y_p_m * cos_o) / AU_M;
-
-  const vx_mps = vx_p_mps * cos_o - vy_p_mps * sin_o;
-  const vy_mps = vx_p_mps * sin_o + vy_p_mps * cos_o;
-
-  return {
-    r: { x: x_au, y: y_au },
-    v: { x: vx_mps / AU_M, y: vy_mps / AU_M } // Convert m/s to AU/s
-  };
+    return propagateStatePhysics(node as any, tMs);
 }
 
 export function distanceAU(v1: Vector2, v2: Vector2): number {
     const dx = v1.x - v2.x;
     const dy = v1.y - v2.y;
     return Math.sqrt(dx*dx + dy*dy);
+}
+
+export function integrateBallisticPath(
+    startPos: Vector2, 
+    startVel: Vector2, 
+    durationSec: number, 
+    mu_au: number, 
+    steps: number = 100,
+    targetEndPos?: Vector2 // OPTIONAL: Force path to end here (Drift Correction)
+): Vector2[] {
+    const points: Vector2[] = [startPos];
+    const dt = durationSec / steps;
+    
+    let r = startPos;
+    let v = startVel;
+    
+    // RK4 Helper
+    type State = { r: Vector2, v: Vector2 };
+    
+    const getDeriv = (s: State): State => {
+        const rMag = Math.sqrt(s.r.x*s.r.x + s.r.y*s.r.y);
+        const rMag3 = rMag*rMag*rMag;
+        const ax = -mu_au * s.r.x / rMag3;
+        const ay = -mu_au * s.r.y / rMag3;
+        return { r: s.v, v: { x: ax, y: ay } };
+    };
+
+    for (let i = 0; i < steps; i++) {
+        // RK4 Integration Step
+        const k1 = getDeriv({ r, v });
+        
+        const s2 = {
+            r: { x: r.x + k1.r.x * dt * 0.5, y: r.y + k1.r.y * dt * 0.5 },
+            v: { x: v.x + k1.v.x * dt * 0.5, y: v.y + k1.v.y * dt * 0.5 }
+        };
+        const k2 = getDeriv(s2);
+        
+        const s3 = {
+            r: { x: r.x + k2.r.x * dt * 0.5, y: r.y + k2.r.y * dt * 0.5 },
+            v: { x: v.x + k2.v.x * dt * 0.5, y: v.y + k2.v.y * dt * 0.5 }
+        };
+        const k3 = getDeriv(s3);
+        
+        const s4 = {
+            r: { x: r.x + k3.r.x * dt, y: r.y + k3.r.y * dt },
+            v: { x: v.x + k3.v.x * dt, y: v.y + k3.v.y * dt }
+        };
+        const k4 = getDeriv(s4);
+        
+        r = {
+            x: r.x + (dt/6) * (k1.r.x + 2*k2.r.x + 2*k3.r.x + k4.r.x),
+            y: r.y + (dt/6) * (k1.r.y + 2*k2.r.y + 2*k3.r.y + k4.r.y)
+        };
+        v = {
+            x: v.x + (dt/6) * (k1.v.x + 2*k2.v.x + 2*k3.v.x + k4.v.x),
+            y: v.y + (dt/6) * (k1.v.y + 2*k2.v.y + 2*k3.v.y + k4.v.y)
+        };
+        
+        points.push(r);
+    }
+
+    // Drift Correction (Linear Lerp)
+    if (targetEndPos) {
+        const finalPoint = points[points.length - 1];
+        const driftX = targetEndPos.x - finalPoint.x;
+        const driftY = targetEndPos.y - finalPoint.y;
+        
+        // Distribute error linearly over time (t/T)
+        // i=0 (Start) gets 0 correction. i=steps (End) gets full correction.
+        for (let i = 1; i < points.length; i++) {
+            const progress = i / steps;
+            points[i].x += driftX * progress;
+            points[i].y += driftY * progress;
+        }
+    }
+
+    return points;
 }
 
 export function subtract(v1: Vector2, v2: Vector2): Vector2 {

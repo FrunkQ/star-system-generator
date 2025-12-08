@@ -10,8 +10,9 @@
   import { panStore, zoomStore } from '$lib/cameraStore';
   import type { PanState } from '$lib/cameraStore';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
-  import { scaleBoxCox } from '$lib/physics/scaling';
+  import { scaleBoxCox } from '../physics/scaling';
   import { findDominantGravitationalBody } from '$lib/physics/orbits';
+  import { getNodeColor, STAR_COLOR_MAP } from '$lib/rendering/colors';
 
   export let system: System | null;
   export let rulePack: RulePack;
@@ -34,17 +35,6 @@
     showBodyContextMenu: { node: CelestialBody, x: number, y: number },
     backgroundContextMenu: { x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number }
   }>();
-
-  function getPlanetColor(node: CelestialBody): string {
-    if (node.roleHint === 'star') return '#fff'; // White
-    if (node.tags?.some(t => t.key === 'habitability/earth-like' || t.key === 'habitability/human')) return '#007bff'; // Blue
-    if (node.biosphere) return '#00ff00'; // Green
-    const isIceGiant = node.classes?.some(c => c.includes('ice-giant'));
-    if (isIceGiant) return '#add8e6'; // Light Blue
-    const isGasGiant = node.classes?.some(c => c.includes('gas-giant'));
-    if (isGasGiant) return '#cc0000'; // Darker Red for Gas Giants
-    return '#cc6600'; // Darker Orange/Brown for Terrestrial Bodies
-  }
 
   // --- Configurable Visuals ---
   const CLICK_AREA = { base_px: 10, buffer_px: 5 };
@@ -803,7 +793,6 @@
   }
 
   // --- Drawing Logic ---
-  const STAR_COLOR_MAP: Record<string, string> = { "O": "#9bb0ff", "B": "#aabfff", "A": "#cad8ff", "F": "#f8f7ff", "G": "#fff4ea", "K": "#ffd2a1", "M": "#ffc46f", "WD": "#f0f0f0", "NS": "#c0c0ff", "magnetar": "#800080", "BH": "#000000", "default": "#ffffff" };
 
   function drawSystem(ctx: CanvasRenderingContext2D) {
       if (!system || !zoom) return;
@@ -1022,12 +1011,7 @@
               // Apply quadrature floor for display radius
               const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
               
-              let color = getPlanetColor(node);
-              if (node.roleHint === 'star') {
-                  const starClassKey = node.classes[0] || 'default';
-                  const spectralType = starClassKey.split('/')[1];
-                  color = STAR_COLOR_MAP[spectralType] || STAR_COLOR_MAP['default'];
-              }
+              let color = getNodeColor(node);
               
               ctx.beginPath();
               ctx.arc(pos.x, pos.y, finalRadius, 0, 2 * Math.PI);
@@ -1117,7 +1101,7 @@
                   } else if (node.roleHint === 'moon') radiusPx = 1;
 
                   ctx.textAlign = 'left';
-                  ctx.fillStyle = getPlanetColor(node);
+                  ctx.fillStyle = getNodeColor(node);
                   ctx.fillText(node.name, screenPos.x + radiusPx + 5, screenPos.y);
               }
           }
@@ -1340,7 +1324,7 @@
       for (const segment of plan.segments) {
           ctx.beginPath();
           if (isGhost) {
-              ctx.setLineDash([5, 5]);
+              // ctx.setLineDash([5, 5]); // Removed to make ghost lines solid
               ctx.strokeStyle = `rgba(200, 200, 255, ${alpha})`; // Ghost Blue-White
           } else if (segment.type === 'Coast') {
               ctx.setLineDash([]); // Make Coast solid

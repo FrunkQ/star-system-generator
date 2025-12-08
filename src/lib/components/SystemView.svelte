@@ -1067,8 +1067,53 @@ a.click();
                                      // Move Ship
                                      const isLagrange = finalPlan.arrivalPlacement === 'l4' || finalPlan.arrivalPlacement === 'l5';
                                      
-                                     if (isLagrange && targetNode && targetNode.parentId) {
-                                         // Special L4/L5 Logic
+                                     // Check if arrivalPlacement is actually a Child Node ID (e.g. Moon/Station)
+                                     const specificTargetNode = sys.nodes.find(n => n.id === finalPlan.arrivalPlacement);
+                                     
+                                     if (specificTargetNode) {
+                                         if (specificTargetNode.kind === 'construct') {
+                                             // Rendezvous Logic: Match the target's orbit
+                                             // We orbit what the target orbits
+                                             const parentId = specificTargetNode.parentId;
+                                             if (!parentId) return node; // Should not happen for valid targets
+                                             
+                                             const targetOrbit = specificTargetNode.orbit;
+                                             
+                                             return {
+                                                 ...node,
+                                                 parentId: parentId,
+                                                 ui_parentId: specificTargetNode.ui_parentId, // Preserve UI hierarchy if any
+                                                 orbit: targetOrbit ? JSON.parse(JSON.stringify(targetOrbit)) : node.orbit,
+                                                 placement: specificTargetNode.placement // e.g. "Low Orbit" or "Titan Station"
+                                             };
+                                         } else {
+                                             // Body Logic (Planet/Moon): Orbit around IT
+                                             // We place the ship in Low Orbit around THIS target.
+                                             
+                                             // Determine Low Orbit Radius
+                                             let radiusKm = (specificTargetNode.radiusKm || 1000) + 200; // Default: Surface + 200km
+                                             if (specificTargetNode.orbitalBoundaries) {
+                                                 radiusKm = (specificTargetNode.radiusKm || 0) + specificTargetNode.orbitalBoundaries.minLeoKm;
+                                             } else {
+                                                 // Fallback calculation if boundaries missing
+                                                 radiusKm = (specificTargetNode.radiusKm || 1000) * 1.1; 
+                                             }
+                                             
+                                             return {
+                                                 ...node,
+                                                 parentId: specificTargetNode.id,
+                                                 ui_parentId: null,
+                                                 orbit: {
+                                                     hostId: specificTargetNode.id,
+                                                     elements: { a_AU: radiusKm / AU_KM, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 }, 
+                                                     t0: finalTime,
+                                                     hostMu: (specificTargetNode.kind === 'body' ? (specificTargetNode as CelestialBody).massKg : 0) * G
+                                                 },
+                                                 placement: 'Low Orbit'
+                                             };
+                                         }
+                                     } else if (isLagrange && targetNode && targetNode.parentId) {
+                                         // Special L4/L5 Logic (Unchanged)
                                          const parentNode = sys.nodes.find(n => n.id === targetNode.parentId);
                                          // Copy target orbit
                                          let newOrbit = JSON.parse(JSON.stringify(targetNode.orbit));
@@ -1084,12 +1129,20 @@ a.click();
                                              placement: finalPlan.arrivalPlacement.toUpperCase()
                                          };
                                      } else {
-                                         // Standard Capture Logic
+                                         // Standard Capture Logic (Planet/Star Orbit)
                                          let placementString = 'Parking Orbit';
                                          if (finalPlan.arrivalPlacement === 'lo') placementString = 'Low Orbit';
                                          if (finalPlan.arrivalPlacement === 'mo') placementString = 'Medium Orbit';
                                          if (finalPlan.arrivalPlacement === 'ho') placementString = 'High Orbit';
                                          if (finalPlan.arrivalPlacement === 'geo') placementString = 'Geostationary Orbit';
+                                         
+                                         // Calculate radius based on placement if possible, or default
+                                         let radiusAU = 0.0001;
+                                         // In a real app, we'd recalculate the exact radius for 'lo', 'mo' etc.
+                                         // For now, we accept the default or what was used in planning?
+                                         // The plan used 'parkingOrbitRadius_au' for calculation. We should use that?
+                                         // But the plan object doesn't explicitly store the radius used, only the ID.
+                                         // We can just set a safe default and let the user edit.
                                          
                                          return {
                                              ...node,
@@ -1097,9 +1150,9 @@ a.click();
                                              ui_parentId: null, // Clear UI parent if standard
                                              orbit: {
                                                  hostId: finalPlan.targetId,
-                                                 elements: { a_AU: 0.0001, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 }, // Placeholder radius
+                                                 elements: { a_AU: radiusAU, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 }, 
                                                  t0: finalTime,
-                                                 hostMu: 1 
+                                                 hostMu: (targetNode?.kind === 'body' ? (targetNode as CelestialBody).massKg : 0) * G 
                                              },
                                              placement: placementString
                                          };
