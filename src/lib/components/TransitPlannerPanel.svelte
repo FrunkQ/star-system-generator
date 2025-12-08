@@ -353,7 +353,7 @@
         {#if orbitOptions.length > 0}
             <select bind:value={selectedOrbitId} on:change={handleCalculate} style="margin-top: 5px; font-size: 0.9em; padding: 0.3em;">
                 {#each orbitOptions as opt}
-                    <option value={opt.id}>
+                    <option value={opt.id} style="color: {opt.color}">
                         {opt.name} 
                         {#if !opt.id.startsWith('l')}
                             ({(opt.radiusKm - (system.nodes.find(n=>n.id===targetId)?.radiusKm || 0)).toFixed(0)}km)

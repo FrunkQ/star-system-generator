@@ -1,6 +1,7 @@
 // ======== FILE: orbits.ts ========
 import type { RulePack, CelestialBody, Barycenter } from '../types';
 import { G, AU_KM } from '../constants';
+import { getNodeColor } from '../rendering/colors';
 
 // --- 1. DEFINE UNIVERSAL CONSTANTS ---
 const UNIVERSAL_GAS_CONSTANT = 8.314;       // J/(mol·K)
@@ -302,7 +303,9 @@ export function calculateOrbitalBoundaries(planet: PlanetData, pack: RulePack): 
 
 // ... existing code ...
 
-export function getOrbitOptions(body: CelestialBody, rulePack: RulePack, system?: System): { id: string, name: string, radiusKm: number }[] {
+// ... existing code ...
+
+export function getOrbitOptions(body: CelestialBody, rulePack: RulePack, system?: System): { id: string, name: string, radiusKm: number, color: string }[] {
     // Only for planets/moons/stars?
     // Determine physical properties
     const massKg = body.massKg || 0;
@@ -323,25 +326,25 @@ export function getOrbitOptions(body: CelestialBody, rulePack: RulePack, system?
     
     const boundaries = calculateOrbitalBoundaries(pData, rulePack);
     
-    const options: { id: string, name: string, radiusKm: number, sortOrder: number }[] = [];
+    const options: { id: string, name: string, radiusKm: number, sortOrder: number, color: string }[] = [];
     
     // Standard Zones
-    options.push({ id: 'lo', name: 'Low Orbit', radiusKm: radiusKm + boundaries.minLeoKm, sortOrder: 10 });
+    options.push({ id: 'lo', name: 'Low Orbit', radiusKm: radiusKm + boundaries.minLeoKm, sortOrder: 10, color: '#ffffff' });
     
     if (boundaries.geoStationaryKm) {
-        options.push({ id: 'geo', name: 'Geostationary', radiusKm: radiusKm + boundaries.geoStationaryKm, sortOrder: 30 });
+        options.push({ id: 'geo', name: 'Geostationary', radiusKm: radiusKm + boundaries.geoStationaryKm, sortOrder: 30, color: '#ffffff' });
     }
     
     const moAlt = (boundaries.leoMoeBoundaryKm + boundaries.meoHeoBoundaryKm) / 2;
-    options.push({ id: 'mo', name: 'Medium Orbit', radiusKm: radiusKm + moAlt, sortOrder: 20 });
+    options.push({ id: 'mo', name: 'Medium Orbit', radiusKm: radiusKm + moAlt, sortOrder: 20, color: '#ffffff' });
     
     const hoAlt = (boundaries.meoHeoBoundaryKm + boundaries.heoUpperBoundaryKm) / 2;
-    options.push({ id: 'ho', name: 'High Orbit', radiusKm: radiusKm + hoAlt, sortOrder: 40 });
+    options.push({ id: 'ho', name: 'High Orbit', radiusKm: radiusKm + hoAlt, sortOrder: 40, color: '#ffffff' });
 
     // Lagrange Points (Approximate radii for capture cost)
     const dist = pData.distanceToHost_km;
-    options.push({ id: 'l4', name: 'L4 (Leading Trojan)', radiusKm: radiusKm + 100000, sortOrder: 90 }); 
-    options.push({ id: 'l5', name: 'L5 (Trailing Trojan)', radiusKm: radiusKm + 100000, sortOrder: 91 });
+    options.push({ id: 'l4', name: 'L4 (Leading Trojan)', radiusKm: radiusKm + 100000, sortOrder: 90, color: '#ffffff' }); 
+    options.push({ id: 'l5', name: 'L5 (Trailing Trojan)', radiusKm: radiusKm + 100000, sortOrder: 91, color: '#ffffff' });
     
     // Children (Moons / Stations)
     if (system) {
@@ -366,7 +369,8 @@ export function getOrbitOptions(body: CelestialBody, rulePack: RulePack, system?
                         id: child.id,
                         name: name,
                         radiusKm: totalDistKm,
-                        sortOrder: 50
+                        sortOrder: 50,
+                        color: getNodeColor(child)
                     });
                     
                     // Recurse (e.g. Station orbiting Moon)
@@ -374,14 +378,13 @@ export function getOrbitOptions(body: CelestialBody, rulePack: RulePack, system?
                 }
             }
         };
-        
         findChildrenRecursive(body.id, 0);
     }
     
     // Sort by Radius
     return options.sort((a, b) => {
         return a.radiusKm - b.radiusKm;
-    }).map(o => ({ id: o.id, name: o.name, radiusKm: o.radiusKm }));
+    }).map(o => ({ id: o.id, name: o.name, radiusKm: o.radiusKm, color: o.color }));
 }
 
 /**
