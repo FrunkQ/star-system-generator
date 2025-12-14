@@ -22,3 +22,13 @@ export const LIQUIDS: LiquidDef[] = [
     { name: 'magma', label: 'Magma / Lava', meltK: 1000, boilK: 5000 },
     { name: 'water-ammonia', label: 'Water-Ammonia (Cryo)', meltK: 173, boilK: 270 }
 ];
+
+export const THERMAL_LIMITS: Record<string, number> = {
+    'none': 3.0,        // Minimal drag pass, structural limit
+    'ceramic': 12.0,    // Space Shuttle / Starship style
+    'ablative': 20.0,   // Apollo / Stardust style (High speed return)
+    'magnetic': 50.0,   // Active plasma shielding
+    'forcefield': 500.0 // Sci-fi shielding
+};
+
+export const DEFAULT_AEROBRAKE_LIMIT_KM_S = THERMAL_LIMITS['none'];

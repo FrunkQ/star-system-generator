@@ -14,7 +14,21 @@ export function calculateTransitPlan(
   targetId: string,
   startTime: number, // ms
   mode: TransitMode,
-  params: { maxG: number; accelRatio: number; brakeRatio: number; interceptSpeed_ms: number; shipMass_kg?: number; shipIsp?: number; brakeAtArrival?: boolean; brakingRatio?: number; initialState?: StateVector; parkingOrbitRadius_au?: number; targetOffsetAnomaly?: number; arrivalPlacement?: string }
+  params: { 
+      maxG: number; 
+      accelRatio: number; 
+      brakeRatio: number; 
+      interceptSpeed_ms: number; 
+      shipMass_kg?: number; 
+      shipIsp?: number; 
+      brakeAtArrival?: boolean; 
+      brakingRatio?: number; 
+      initialState?: StateVector; 
+      parkingOrbitRadius_au?: number; 
+      targetOffsetAnomaly?: number; 
+      arrivalPlacement?: string;
+      aerobrake?: { allowed: boolean; limit_kms: number; }; // NEW
+  }
 ): TransitPlan[] {
   const plans: TransitPlan[] = [];
 
@@ -310,6 +324,14 @@ export function calculateTransitPlan(
       
   
     // Sort plans by Fuel Efficiency (Fuel Used ASC)
+    plans.forEach(p => {
+        // Mark "Efficiency" / "Assist" plans that require absurd dV (e.g. > 100 km/s) as hidden
+        // because the impulsive approximation breaks down visually and practically.
+        if (p.planType !== 'Speed' && p.totalDeltaV_ms > 100000) {
+            p.hiddenReason = "Impractical Delta-V (>100 km/s)";
+        }
+    });
+
     return plans.sort((a, b) => a.totalFuel_kg - b.totalFuel_kg);
 }
 
@@ -322,7 +344,20 @@ function calculateLambertPlan(
     startState: StateVector,
     durationSec: number,
     mu: number,
-    params: { shipMass_kg?: number; shipIsp?: number; brakeAtArrival?: boolean; interceptSpeed_ms: number; accelRatio: number; brakeRatio: number; maxG: number; initialState?: StateVector; parkingOrbitRadius_au?: number; arrivalPlacement?: string; extraTags?: string[] }
+    params: { 
+        shipMass_kg?: number; 
+        shipIsp?: number; 
+        brakeAtArrival?: boolean; 
+        interceptSpeed_ms: number; 
+        accelRatio: number; 
+        brakeRatio: number; 
+        maxG: number; 
+        initialState?: StateVector; 
+        parkingOrbitRadius_au?: number; 
+        arrivalPlacement?: string; 
+        extraTags?: string[];
+        aerobrake?: { allowed: boolean; limit_kms: number; }; 
+    }
 ): TransitPlan | null {
     const arrivalTime = startTime + durationSec * 1000;
     const targetState = getGlobalState(sys, target, arrivalTime);
@@ -341,6 +376,7 @@ function calculateLambertPlan(
     
     // Arrival dV: Capture vs Match
     let dv2_req_au_s = 0;
+    let aerobraking_dv_ms = 0;
     
     if (params.parkingOrbitRadius_au && params.parkingOrbitRadius_au > 0) {
         // Oberth Capture Logic
@@ -350,22 +386,69 @@ function calculateLambertPlan(
             const V_inf_mps = magnitude(subtract(targetState.v, result.v2)) * AU_M;
             const Rp_m = params.parkingOrbitRadius_au * AU_M;
             
-            // Vis-Viva Equation at Periapsis of Hyperbola
+            // Vis-Viva Equation at Periapsis of Hyperbola (Arrival Velocity at Interface)
             const V_p = Math.sqrt(V_inf_mps * V_inf_mps + 2 * mu_target / Rp_m);
-            // Circular Orbit Velocity at Rp
+            // Circular Orbit Velocity at Rp (Target Velocity)
             const V_c = Math.sqrt(mu_target / Rp_m);
             
-            // Capture Burn
-            const dv_capture_mps = Math.abs(V_p - V_c);
+            // Standard Propulsive Capture Burn (Stop at Rp)
+            let dv_capture_mps = Math.abs(V_p - V_c);
+
+            // --- AEROBRAKING LOGIC ---
+            const targetBody = target as CelestialBody;
+            const hasAtmosphere = targetBody.atmosphere && targetBody.atmosphere.pressure_bar && targetBody.atmosphere.pressure_bar > 0.001;
+            
+            if (hasAtmosphere && params.aerobrake && params.aerobrake.allowed) {
+                const limit_mps = params.aerobrake.limit_kms * 1000;
+                
+                if (V_p <= limit_mps) {
+                    // Safe for full aerocapture!
+                    // Engine burn = 0 (Drag does all the work V_p -> V_c -> Stop)
+                    // Technically we might need a small circularization burn at apoapsis, but ignore for V1.
+                    aerobraking_dv_ms = dv_capture_mps;
+                    dv_capture_mps = 0;
+                    params.extraTags = params.extraTags || [];
+                    params.extraTags.push('AEROCAPTURE');
+                } else {
+                    // Too fast! Must burn engines to slow down to Limit.
+                    // Engine Burn = V_p - Limit
+                    // Aerobraking = Limit - V_c (The rest)
+                    const reduction = V_p - limit_mps;
+                    
+                    // We pay 'reduction' with engines.
+                    // The original requirement was (V_p - V_c).
+                    // New requirement is (reduction). 
+                    // Wait, this assumes Limit > V_c. 
+                    // If Limit < V_c (Limit is 3km/s, OrbVel is 8km/s), we can't even orbit safely? 
+                    // That implies we burn to V_c, then burn to Limit? No, dragging slows us down.
+                    // If V_p (Arrival) = 20, Limit = 12.
+                    // We burn 8 km/s. Now V = 12.
+                    // Atmos drags 12 -> 8 (Capture) -> 0.
+                    // So engine cost is just (V_p - Limit).
+                    
+                    if (reduction < dv_capture_mps) {
+                        aerobraking_dv_ms = dv_capture_mps - reduction;
+                        dv_capture_mps = reduction;
+                        params.extraTags = params.extraTags || [];
+                        params.extraTags.push('PARTIAL-AERO');
+                    } else {
+                        // Limit is tighter than circular velocity? (Unlikely for planets, maybe asteroids)
+                        // In this case, standard capture is cheaper/safer.
+                        // Or maybe we still burn to V_c?
+                    }
+                }
+            }
+
             dv2_req_au_s = dv_capture_mps / AU_M;
 
+            // Debug Logging (Optional, disabled for brevity)
+            /*
             console.log(`[TransitDebug] Capture Burn:`);
-            console.log(`  Target: ${target.name}, Mass: ${targetMassKg.toExponential(2)} kg`);
-            console.log(`  V_inf: ${(V_inf_mps/1000).toFixed(2)} km/s`);
-            console.log(`  Rp: ${(Rp_m/1000).toFixed(0)} km`);
-            console.log(`  V_p: ${(V_p/1000).toFixed(2)} km/s`);
-            console.log(`  V_c: ${(V_c/1000).toFixed(2)} km/s`);
-            console.log(`  dV_capture: ${(dv_capture_mps/1000).toFixed(2)} km/s`);
+            console.log(`  Target: ${target.name}, V_p: ${(V_p/1000).toFixed(2)} km/s`);
+            console.log(`  Aerobrake Allowed: ${params.aerobrake?.allowed}, Limit: ${params.aerobrake?.limit_kms}`);
+            console.log(`  dV_Propulsive: ${(dv_capture_mps/1000).toFixed(2)} km/s`);
+            console.log(`  dV_Aerobraked: ${(aerobraking_dv_ms/1000).toFixed(2)} km/s`);
+            */
 
         } else {
             // Fallback if mass unknown
@@ -722,33 +805,44 @@ function calculateFastPlan(
     const endTime = startTime + totalTime * 1000;
     
     const targetEndState = getGlobalState(sys, target, endTime);
-    
-    // Debug Logging for Fast Plan endpoints
-    /*
-    console.log(`FAST PLAN: ${origin ? origin.name : 'Unknown'} to ${target.name}`);
-    console.log(`  Start State R: (${startState.r.x.toFixed(3)}, ${startState.r.y.toFixed(3)}) AU`);
-    console.log(`  Target End State R: (${targetEndState.r.x.toFixed(3)}, ${targetEndState.r.y.toFixed(3)}) AU`);
-    console.log(`  Calculated Straight Line Distance: ${distanceAU(startState.r, targetEndState.r).toFixed(3)} AU`);
-    */
 
+    const segments: TransitSegment[] = [];
+    const rStart = startState.r;
+    const rEnd = targetEndState.r;
+    
     // 5. Delta V & Fuel
     // Physical dV = a * (t_accel + t_brake)
     const dv1 = accel * accelTime;
-    const dv2 = accel * brakeTime;
-    const totalDeltaV_ms = dv1 + dv2;
+    let dv2 = accel * brakeTime;
+    
+    // Aerobraking for Direct Burn
+    if (params.brakeAtArrival && params.aerobrake && params.aerobrake.allowed) {
+        const targetBody = target as CelestialBody;
+        if (targetBody.atmosphere && targetBody.atmosphere.pressure_bar && targetBody.atmosphere.pressure_bar > 0.001) {
+            const limit_mps = params.aerobrake.limit_kms * 1000;
+            // dv2 represents the arrival velocity we intend to kill with engines.
+            // If we can kill 'limit_mps' with air, we reduce engine load.
+            // Note: This ignores V_escape addition, but for high-speed torchships, V_inf dominates.
+            const arrivalV = dv2; // Approx
+            
+            if (arrivalV <= limit_mps) {
+                dv2 = 0; // Full Aerocapture
+            } else {
+                dv2 = arrivalV - limit_mps; // Partial
+            }
+        }
+    }
+
+    // Add cost to cancel initial velocity vector (Simplification: Assume we must kill initial V to start fresh)
+    // This prevents underestimating fuel for U-turns (e.g. flyby Earth at 7000km/s -> return to Uranus)
+    // Real physics would vector add, but "Stop then Go" is a safe conservative estimate for a "Direct" plan.
+    const v_init_ms = magnitude(startState.v) * AU_M;
+    // Only add if significant (> 100 m/s)
+    const dv_initial_cancel = v_init_ms > 100 ? v_init_ms : 0;
+
+    const totalDeltaV_ms = dv1 + dv2 + dv_initial_cancel;
     
     // Arrival Velocity Remainder
-    // If flyby, v_final = v_max - v_brake
-    // v_max = a * accelTime
-    // v_brake = a * brakeTime
-    // v_net = a * (accelTime - brakeTime)
-    // Plus the relative velocity of the bodies?
-    // Kinematic solver moves from A to B. The "Speed" is relative to the frame.
-    // If we stop (br=ar), v_net = 0 (relative to start frame?).
-    // We should compare to Target Velocity?
-    // This simple solver assumes Target is "Stationary" for the intercept calc approx?
-    // Refinement: Add vector addition of target velocity?
-    // For M0, let's assume v_arrival = v_net.
     const arrivalVelocity_ms = Math.abs(accel * (accelTime - brakeTime));
 
     let fuelEst = 0;
@@ -758,27 +852,51 @@ function calculateFastPlan(
     if (params.shipMass_kg && params.shipIsp && params.shipIsp > 0) {
         const m0 = params.shipMass_kg;
         
-        // Burn 1
-        fuel1 = calculateFuelMass(m0, dv1, params.shipIsp);
-        const m1 = m0 - fuel1;
+        // Burn 0 (Cancel Initial V) - Conceptually part of Departure
+        const f0 = calculateFuelMass(m0, dv_initial_cancel, params.shipIsp);
+        let m_curr = m0 - f0;
+
+        // Burn 1 (Accel)
+        fuel1 = calculateFuelMass(m_curr, dv1, params.shipIsp);
+        m_curr -= fuel1;
         
-        // Burn 2
-        fuel2 = calculateFuelMass(m1, dv2, params.shipIsp);
+        // Burn 2 (Brake)
+        fuel2 = calculateFuelMass(m_curr, dv2, params.shipIsp);
         
-        fuelEst = fuel1 + fuel2;
+        fuelEst = f0 + fuel1 + fuel2;
+        // Attribute cancellation fuel to fuel1 for display simplicity
+        fuel1 += f0;
     } else {
         fuelEst = totalDeltaV_ms * 0.01;
-        fuel1 = fuelEst * (dv1 / (dv1+dv2));
-        fuel2 = fuelEst * (dv2 / (dv1+dv2));
+        fuel1 = fuelEst * ((dv1 + dv_initial_cancel) / totalDeltaV_ms);
+        fuel2 = fuelEst * (dv2 / totalDeltaV_ms);
     }
 
-    // 6. Generate Segments (Straight Line Interpolation)
-    // Direct plan = Straight line visual
-    const segments: TransitSegment[] = [];
-    const rStart = startState.r;
-    const rEnd = targetEndState.r;
+    // Calculate Final Velocity Vector for Chaining
+    let finalVelocity = targetEndState.v; // Default to matching target (Brake)
     
-    // Helper to generate points on the line
+    if (!params.brakeAtArrival) {
+        // Flyby: Add residual velocity vector
+        // Direction: From Start to End
+        const dx = rEnd.x - rStart.x;
+        const dy = rEnd.y - rStart.y;
+        const mag = Math.sqrt(dx*dx + dy*dy);
+        
+        if (mag > 0) {
+            const dirX = dx / mag;
+            const dirY = dy / mag;
+            
+            // arrivalVelocity_ms is scalar. Convert to AU/s.
+            const v_resid_au_s = arrivalVelocity_ms / AU_M;
+            
+            finalVelocity = {
+                x: targetEndState.v.x + dirX * v_resid_au_s,
+                y: targetEndState.v.y + dirY * v_resid_au_s
+            };
+        }
+    }
+
+    // Helper to generate points on the line (Linear Interpolation)
     function makePoints(t0: number, t1: number): Vector2[] {
         const pts: Vector2[] = [];
         const count = 50;
@@ -823,7 +941,7 @@ function calculateFastPlan(
             fuelUsed_kg: 0
         });
     }
-    
+
     if (brakeTime > 0) {
         segments.push({
             id: 'seg-brake',
@@ -831,14 +949,15 @@ function calculateFastPlan(
             startTime: brakeStartTime,
             endTime: endTime,
             startState: { r: {x:0,y:0}, v: {x:0,y:0} },
-            endState: targetEndState,
+            endState: { r: targetEndState.r, v: finalVelocity }, // Use calculated final velocity
             hostId: root.id,
             pathPoints: makePoints(brakeStartTime, endTime),
             warnings: ['High G'],
             fuelUsed_kg: fuel2
         });
     } else if (segments.length > 0) {
-        segments[segments.length-1].endState = targetEndState;
+        // If no brake segment, update the last segment (Coast or Accel)
+        segments[segments.length-1].endState = { r: targetEndState.r, v: finalVelocity };
     }
 
     return {
@@ -859,6 +978,7 @@ function calculateFastPlan(
         interceptSpeed_ms: params.interceptSpeed_ms,
         arrivalVelocity_ms: arrivalVelocity_ms,
         distance_au: distanceAU(startState.r, targetEndState.r),
-        arrivalPlacement: (params as any).arrivalPlacement // Pass through if available
+        arrivalPlacement: (params as any).arrivalPlacement, // Pass through if available
+        isKinematic: true // Mark this plan as kinematic for visualizer
     };
 }

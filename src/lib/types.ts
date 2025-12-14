@@ -86,6 +86,11 @@ export interface PhysicalParameters {
   spinRadiusM?: number;
   cargoCapacity_tonnes?: number; // Maximum cargo capacity in tonnes
   rotation_period_hours?: number;
+  
+  // Aerobraking Capabilities
+  can_aerobrake?: boolean;
+  thermal_protection_type?: 'none' | 'ceramic' | 'ablative' | 'magnetic' | 'forcefield';
+  aerobrake_limit_kms?: number; // Custom override
 }
 
 export interface PowerPlant {

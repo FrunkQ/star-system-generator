@@ -1,5 +1,5 @@
 import type { CelestialBody, EngineDefinition, FuelDefinition, PhysicalParameters, Systems } from './types';
-import { AU_KM } from './constants';
+import { AU_KM, THERMAL_LIMITS } from './constants';
 
 // Define constants
 const g0 = 9.81; // Standard gravity for ISP and G-force calcs
@@ -36,6 +36,10 @@ export interface ConstructSpecs {
   fuelCapacity_tonnes: number; // Added for UI display
   fuelVolume_units: number; // Total current fuel volume in units
   fuelCapacity_units: number; // Total max fuel volume in units
+  
+  // Aerobraking Specs
+  canAerobrake: boolean;
+  aerobrakeLimit_kms: number;
 }
 
 export function calculateFullConstructSpecs(
@@ -123,6 +127,20 @@ export function calculateFullConstructSpecs(
   // --- 2. DYNAMIC SPECS (Calculated from mass and sliders) ---
   // ========================================================================
   
+  // --- Aerobraking Capability ---
+  const canAerobrake = !!physical_parameters.can_aerobrake;
+  let thermalType = physical_parameters.thermal_protection_type;
+  
+  // Infer default thermal type if not specified
+  if (!thermalType) {
+      thermalType = canAerobrake ? 'ceramic' : 'none';
+  }
+  
+  const defaultLimit = THERMAL_LIMITS[thermalType] || THERMAL_LIMITS['none'];
+  
+  specs.aerobrakeLimit_kms = physical_parameters.aerobrake_limit_kms || defaultLimit;
+  specs.canAerobrake = canAerobrake;
+
   // --- Calculate Current Mass ---
   const dryMass_kg = physical_parameters.massKg || 0;
   const cargoMass_kg = (construct.current_cargo_tonnes || 0) * 1000; // Use from construct
@@ -261,15 +279,15 @@ export function calculateFullConstructSpecs(
   const mass_after_takeoff_kg = mass_wet - fuelForTakeoff_kg;
   
   // Determine the cheaper and *possible* landing method for the return trip
-  const canAerobrake = (construct as any).physical_parameters?.can_aerobrake && (hostBody as any)?.aerobrakeLandBudget_ms > 0;
+  const canAerobrakeLanding = (construct as any).physical_parameters?.can_aerobrake && (hostBody as any)?.aerobrakeLandBudget_ms > 0;
   const canPropulsivelyLand = (hostBody as any)?.propulsiveLandBudget_ms > 0;
   let returnLandingBudget_ms = 0;
 
-  if (canAerobrake && canPropulsivelyLand) {
+  if (canAerobrakeLanding && canPropulsivelyLand) {
     returnLandingBudget_ms = Math.min((hostBody as any).aerobrakeLandBudget_ms, (hostBody as any).propulsiveLandBudget_ms);
   } else if (canPropulsivelyLand) {
     returnLandingBudget_ms = (hostBody as any).propulsiveLandBudget_ms;
-  } else if (canAerobrake) { // This case is less likely but included for completeness
+  } else if (canAerobrakeLanding) { // This case is less likely but included for completeness
     returnLandingBudget_ms = (hostBody as any).aerobrakeLandBudget_ms;
   }
 

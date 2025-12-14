@@ -31,6 +31,7 @@
   let accelPercent: number = 10; 
   let brakeStartPercent: number = 90;
   let brakeAtArrival: boolean = true;
+  let useAerobrake: boolean = true;
   let maxG: number = 1.0;
   let sliderMaxG: number = 10.0;
   let interceptSpeed: number = 0;
@@ -40,11 +41,25 @@
   let plan: TransitPlan | null = null;
   let error: string | null = null;
   let lastCalcParams: any = null;
+  let hiddenPlanCount = 0;
   
   let currentConstructSpecs: ConstructSpecs | null = null;
   let debounceTimeout: any;
 
   let previousOriginId: ID = '';
+
+  $: targetHasAtmosphere = false;
+  $: canAerobrakeConstruct = currentConstructSpecs?.canAerobrake || false;
+  $: canAerobrakeEffective = targetHasAtmosphere && canAerobrakeConstruct;
+
+  $: if (targetId) {
+      const body = system.nodes.find(n => n.id === targetId);
+      if (body && body.kind === 'body' && body.atmosphere && body.atmosphere.pressure_bar > 0.001) {
+          targetHasAtmosphere = true;
+      } else {
+          targetHasAtmosphere = false;
+      }
+  }
 
   $: if (originId !== previousOriginId) {
       targetId = '';
@@ -225,7 +240,11 @@
           initialState: safeInitialState,
           parkingOrbitRadius_au: targetOrbitRadiusKm > 0 ? targetOrbitRadiusKm / AU_KM : undefined,
           targetOffsetAnomaly: targetOffsetAnomaly,
-          arrivalPlacement: selectedOrbitId
+          arrivalPlacement: selectedOrbitId,
+          aerobrake: {
+              allowed: useAerobrake && canAerobrakeEffective,
+              limit_kms: currentConstructSpecs?.aerobrakeLimit_kms || 0
+          }
       };
 
       if (currentConstructSpecs) {
@@ -239,15 +258,22 @@
       // console.log("Calculating with:", params); // Debug
 
       const effectiveStartTime = currentTime + (departureDelayDays * 86400 * 1000);
-      const plans = calculateTransitPlan(system, originId, targetId, effectiveStartTime, mode, params);
+      const allPlans = calculateTransitPlan(system, originId, targetId, effectiveStartTime, mode, params);
       
-      if (!plans || plans.length === 0) {
-          error = "Could not calculate a valid transfer for this window.";
+      const visiblePlans = allPlans.filter(p => !p.hiddenReason);
+      hiddenPlanCount = allPlans.length - visiblePlans.length;
+      
+      if (!visiblePlans || visiblePlans.length === 0) {
+          if (hiddenPlanCount > 0) {
+              error = "All efficient plans are impractical due to high initial velocity (Delta-V > 100 km/s). Use Direct Burn if possible.";
+          } else {
+              error = "Could not calculate a valid transfer for this window.";
+          }
           availablePlans = [];
           plan = null;
       } else {
           error = null;
-          availablePlans = plans;
+          availablePlans = visiblePlans;
           
           // Preserve selection index if possible, else 0
           if (selectedPlanIndex >= availablePlans.length) selectedPlanIndex = 0;
@@ -364,6 +390,12 @@
         {/if}
     </div>
 
+    {#if hiddenPlanCount > 0}
+        <div class="warning-box">
+            <span>⚠️ {hiddenPlanCount} plan{hiddenPlanCount > 1 ? 's' : ''} hidden: Impractical Delta-V (>100 km/s).</span>
+        </div>
+    {/if}
+
     {#if availablePlans.length > 0}
         <div class="plan-selector">
             {#each availablePlans as p, i}
@@ -420,6 +452,13 @@
             <label>
                 <input type="checkbox" bind:checked={brakeAtArrival} on:change={handleCalculate} />
                 Brake at Arrival (Match Velocity)
+            </label>
+            <label class:disabled={!canAerobrakeEffective} title={!canAerobrakeEffective ? "Requires atmosphere and heatshield" : "Use atmosphere to reduce braking cost"}>
+                <input type="checkbox" bind:checked={useAerobrake} disabled={!canAerobrakeEffective} on:change={handleCalculate} />
+                Aerobrake 
+                {#if canAerobrakeEffective}
+                    <span style="font-size: 0.8em; color: #ff9900;">(Max {currentConstructSpecs.aerobrakeLimit_kms} km/s)</span>
+                {/if}
             </label>
         </div>
 
@@ -740,5 +779,15 @@
         border: 0;
         border-top: 1px solid #444;
         margin: 0.5em 0;
+    }
+    .warning-box {
+        background-color: #332b00;
+        border: 1px solid #665500;
+        color: #ffcc00;
+        padding: 0.5em;
+        border-radius: 4px;
+        font-size: 0.9em;
+        margin-bottom: 0.5em;
+        text-align: center;
     }
 </style>

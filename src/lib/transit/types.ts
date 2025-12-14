@@ -58,4 +58,6 @@ export interface TransitPlan {
   tags?: string[];
   planType?: 'Efficiency' | 'Speed' | 'Assist';
   name?: string;
+  hiddenReason?: string;
+  isKinematic?: boolean; // True if path points are pre-scaled for kinematic, bypasses visualizer scaling
 }

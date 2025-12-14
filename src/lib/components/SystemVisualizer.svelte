@@ -1341,9 +1341,10 @@
 
           for (let i = 0; i < segment.pathPoints.length; i++) {
               let p = segment.pathPoints[i];
-              let r = Math.sqrt(p.x*p.x + p.y*p.y);
-              if (toytownFactor > 0) {
+              // Only apply toytownFactor scaling if this is NOT a kinematic plan
+              if (toytownFactor > 0 && !plan.isKinematic) { 
                  const minDistance = 0.01; const x0_distance = minDistance * 0.1;
+                 const r = Math.sqrt(p.x*p.x + p.y*p.y);
                  const r_new = scaleBoxCox(r, toytownFactor, x0_distance);
                  const angle = Math.atan2(p.y, p.x);
                  const x_new = r_new * Math.cos(angle);
