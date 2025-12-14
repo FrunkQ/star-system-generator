@@ -742,7 +742,8 @@ function calculateLambertPlan(
         interceptSpeed_ms: params.interceptSpeed_ms,
         arrivalVelocity_ms: arrivalVelocity_ms,
         arrivalPlacement: params.arrivalPlacement,
-        tags: tags
+        tags: tags,
+        aerobrakingDeltaV_ms: aerobraking_dv_ms
     };
 }
 
@@ -796,12 +797,21 @@ function calculateFastPlan(
     
     // 4. Calculate Timings & Velocities
     const totalTime = t_est;
-    const accelTime = totalTime * ar;
-    const brakeTime = totalTime * br;
-    const coastTime = totalTime - accelTime - brakeTime;
+    let accelTime = totalTime * ar;
+    let brakeTime = totalTime * br;
+    let coastTime = totalTime - accelTime - brakeTime;
     
     const accelEndTime = startTime + accelTime * 1000;
-    const brakeStartTime = startTime + (accelTime + coastTime) * 1000;
+    // brakeStartTime is recalculated later if needed, but initial calc:
+    // const brakeStartTime = ... (remove this const if we re-calc it later)
+    // Actually, I re-calculate it as a const later in the code I inserted.
+    // But the ORIGINAL const brakeStartTime is still there and might cause conflict?
+    // Let's check the original code.
+    // "const brakeStartTime = startTime + (accelTime + coastTime) * 1000;"
+    // I need to change this to 'let' or remove it if I shadowed it.
+    
+    // Simplest: change them to 'let'.
+    let brakeStartTime = startTime + (accelTime + coastTime) * 1000;
     const endTime = startTime + totalTime * 1000;
     
     const targetEndState = getGlobalState(sys, target, endTime);
@@ -813,25 +823,61 @@ function calculateFastPlan(
     // 5. Delta V & Fuel
     // Physical dV = a * (t_accel + t_brake)
     const dv1 = accel * accelTime;
-    let dv2 = accel * brakeTime;
+    let dv2 = accel * brakeTime; // Theoretical braking dV based on input slider
     
+    let aerobraking_dv_ms = 0;
+
     // Aerobraking for Direct Burn
     if (params.brakeAtArrival && params.aerobrake && params.aerobrake.allowed) {
         const targetBody = target as CelestialBody;
         if (targetBody.atmosphere && targetBody.atmosphere.pressure_bar && targetBody.atmosphere.pressure_bar > 0.001) {
             const limit_mps = params.aerobrake.limit_kms * 1000;
-            // dv2 represents the arrival velocity we intend to kill with engines.
-            // If we can kill 'limit_mps' with air, we reduce engine load.
-            // Note: This ignores V_escape addition, but for high-speed torchships, V_inf dominates.
-            const arrivalV = dv2; // Approx
+            const arrivalV = dv2; // Approx arrival velocity based on kinematic braking
             
             if (arrivalV <= limit_mps) {
+                aerobraking_dv_ms = dv2;
                 dv2 = 0; // Full Aerocapture
             } else {
+                aerobraking_dv_ms = limit_mps;
                 dv2 = arrivalV - limit_mps; // Partial
             }
+            
+            // CRITICAL FIX: Update brakeTime to reflect reduced engine usage
+            // T = V / a
+            const newBrakeTime = dv2 / accel;
+            const timeSaved = brakeTime - newBrakeTime;
+            
+            brakeTime = newBrakeTime;
+            coastTime += timeSaved; // Convert saved braking time to coasting
+            
+            // Update brake ratio for UI slider
+            br = brakeTime / totalTime;
+            
+            // Recalculate visual timings
+            // Note: accelEndTime is unchanged
+            // brakeStartTime needs update
+            // brakeStartTime was: startTime + (accelTime + OLD_coastTime) * 1000
+            // now: startTime + (accelTime + NEW_coastTime) * 1000
+            // Since coastTime increased, brakeStartTime moves later. Correct.
         }
+    } else if (params.brakeAtArrival) {
+        // Standard Propulsive Braking
+        // We trust the slider input 'br' (brakeRatio). 
+        // brakeTime is already set. dv2 is already set.
+    } else {
+        // Flyby (No braking)
+        // dv2 was calculated as accel * brakeTime, but if brakeAtArrival is false, 
+        // usually brakeRatio is passed as 0 or ignored?
+        // In calculateFastPlan, we use 'br' which comes from params.brakeRatio OR 0 if not braking?
+        // Wait, logic at top: 
+        // let br = params.brakeAtArrival ? ar : params.brakeRatio;
+        // If brakeAtArrival is false, br = params.brakeRatio.
+        // If user set brakeRatio to 0 for flyby, then dv2 is 0. Correct.
     }
+    
+    // Re-calculate intermediate timestamps for visualizer
+    // (We must update these local variables because they are used in makePoints calls below)
+    brakeStartTime = startTime + (accelTime + coastTime) * 1000; 
 
     // Add cost to cancel initial velocity vector (Simplification: Assume we must kill initial V to start fresh)
     // This prevents underestimating fuel for U-turns (e.g. flyby Earth at 7000km/s -> return to Uranus)
@@ -979,6 +1025,7 @@ function calculateFastPlan(
         arrivalVelocity_ms: arrivalVelocity_ms,
         distance_au: distanceAU(startState.r, targetEndState.r),
         arrivalPlacement: (params as any).arrivalPlacement, // Pass through if available
-        isKinematic: true // Mark this plan as kinematic for visualizer
+        isKinematic: true, // Mark this plan as kinematic for visualizer
+        aerobrakingDeltaV_ms: aerobraking_dv_ms
     };
 }

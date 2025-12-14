@@ -18,8 +18,28 @@ interface AssistCandidate {
 function findAssistCandidates(sys: System, origin: CelestialBody | Barycenter, target: CelestialBody | Barycenter): AssistCandidate[] {
     const candidates: AssistCandidate[] = [];
     
-    // console.log(`[AssistDebug] Finding candidates for ${origin.name} -> ${target.name}`);
+    // Determine Common Parent (Context)
+    // If both orbit the same thing (e.g. Earth/Mars orbit Sun), that's the context.
+    // If one is a moon (Moon) and one is a planet (Mars), context is Sun?
+    // No, Moon -> Mars implies Escape Earth -> Heliocentric -> Mars.
+    // The assist candidates should be Heliocentric bodies.
+    // Heuristic: The "Transit Space" is defined by the highest-level common container?
+    // Actually, usually we just want "Major Bodies in the System".
+    // If we are doing Interplanetary, we want Planets.
+    // If we are doing Jovian Tour, we want Moons.
     
+    // Simple robust check:
+    // If Origin and Target are both Moons of same planet -> Context is Planet.
+    // Else -> Context is Star (Root).
+    
+    let contextParentId: string | null = null;
+    if (origin.parentId === target.parentId && origin.parentId) {
+        contextParentId = origin.parentId;
+    } else {
+        const root = sys.nodes.find(n => n.parentId === null);
+        contextParentId = root ? root.id : null;
+    }
+
     const originA = origin.orbit?.elements.a_AU || 1;
     const targetA = target.orbit?.elements.a_AU || 1;
     const minA = Math.min(originA, targetA);
@@ -29,16 +49,19 @@ function findAssistCandidates(sys: System, origin: CelestialBody | Barycenter, t
         // Skip self, origin, target
         if (node.id === origin.id || node.id === target.id) continue;
         if (node.kind !== 'body' && node.kind !== 'barycenter') continue;
-        if (!node.orbit) continue; // Must be orbiting (usually the star)
+        if (!node.orbit) continue; 
         
-        // Skip things orbiting the origin or target (e.g. Moon if going Earth->Mars)
-        if (node.parentId === origin.id || node.parentId === target.id) continue;
+        // PARENT FILTER: Candidate must orbit the Context Parent.
+        // This prevents Ganymede (orbiting Jupiter) from being a candidate for Earth->Venus (Context Sun).
+        if (node.parentId !== contextParentId) continue;
         
-        // Skip low mass bodies (useless for assist)
+        // Skip low mass bodies
+        // 3e23 filters small moons/asteroids but keeps Mercury (3.3e23) and Mars (6.4e23).
         const mass = (node.kind === 'body' ? (node as CelestialBody).massKg : (node as Barycenter).effectiveMassKg) || 0;
-        if (mass < 1e23) continue; // Skip anything smaller than Mercury/Ganymede-ish
+        if (mass < 3e23) continue; 
 
         // Heuristic: Is it accessible?
+        // ... (rest of scoring logic)
         // For now, just grab the big ones.
         // Bonus if it's "between" the orbits (e.g. Earth -> Jupiter -> Saturn)
         // or if it's an Outer Planet for a Sundiver.

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody } from '$lib/types';
+  import { THERMAL_LIMITS, DEFAULT_AEROBRAKE_LIMIT_KM_S } from '$lib/constants';
 
   export let construct: CelestialBody;
 
@@ -22,15 +23,70 @@
     construct.icon_color = '#f0f0f0';
   }
 
-  // UI variable for mass in tonnes
-  let massTonnes: number = construct.physical_parameters.massKg / 1000;
+  // Aerobraking UI states
+  let _canAerobrake: boolean = construct.physical_parameters.can_aerobrake ?? false;
+  let _thermalProtectionType: string = construct.physical_parameters.thermal_protection_type || 'none';
+  let _aerobrakeLimitKms: number = construct.physical_parameters.aerobrake_limit_kms ?? (THERMAL_LIMITS[_thermalProtectionType] || DEFAULT_AEROBRAKE_LIMIT_KM_S);
 
-  // Reactive statements to sync UI (tonnes) with data (kg)
+  // UI variable for mass in tonnes
+  let massTonnes: number = (construct.physical_parameters.massKg || 0) / 1000;
+
+  // Sync UI (tonnes) from data (kg) when data changes externally
   $: if (construct.physical_parameters) {
-    massTonnes = (construct.physical_parameters.massKg || 0) / 1000;
+    const kg = construct.physical_parameters.massKg || 0;
+    const t = kg / 1000;
+    if (Math.abs(t - massTonnes) > 0.0001) {
+        massTonnes = t;
+    }
   }
-  $: if (construct.physical_parameters && massTonnes !== undefined) {
-    construct.physical_parameters.massKg = massTonnes * 1000;
+
+  // Update data (kg) when UI (tonnes) changes
+  function updateMass() {
+    if (construct.physical_parameters) {
+        construct.physical_parameters.massKg = massTonnes * 1000;
+        handleUpdate();
+    }
+  }
+
+  // Reactive statements for aerobraking
+  // We use a guard to prevent infinite loops: only write if actually changed
+  $: if (construct.physical_parameters) {
+      let changed = false;
+      
+      // LOGIC: If user unchecks "Can Aerobrake", force type to 'none'.
+      // If user checks "Can Aerobrake" and it was 'none', default to 'ceramic'.
+      if (_canAerobrake && _thermalProtectionType === 'none') {
+          _thermalProtectionType = 'ceramic';
+          _aerobrakeLimitKms = THERMAL_LIMITS['ceramic'];
+      } else if (!_canAerobrake && _thermalProtectionType !== 'none') {
+          _thermalProtectionType = 'none';
+          _aerobrakeLimitKms = THERMAL_LIMITS['none'];
+      }
+
+      if (construct.physical_parameters.can_aerobrake !== _canAerobrake) {
+          construct.physical_parameters.can_aerobrake = _canAerobrake;
+          changed = true;
+      }
+      
+      if (construct.physical_parameters.thermal_protection_type !== _thermalProtectionType) {
+          construct.physical_parameters.thermal_protection_type = _thermalProtectionType;
+          changed = true;
+      }
+
+      if (construct.physical_parameters.aerobrake_limit_kms !== _aerobrakeLimitKms) {
+          construct.physical_parameters.aerobrake_limit_kms = _aerobrakeLimitKms;
+          changed = true;
+      }
+      
+      if (changed) handleUpdate();
+  }
+
+  // Helper to apply preset values when dropdown changes
+  function applyThermalPreset() {
+      if (_thermalProtectionType && THERMAL_LIMITS[_thermalProtectionType]) {
+          _aerobrakeLimitKms = THERMAL_LIMITS[_thermalProtectionType];
+          handleUpdate();
+      }
   }
 
   function handleUpdate() {
@@ -64,7 +120,7 @@
     <div class="row">
       <div class="form-group">
         <label for="dry-mass">Dry Mass (tonnes):</label>
-        <input type="number" id="dry-mass" bind:value={massTonnes} on:input={handleUpdate} />
+        <input type="number" id="dry-mass" bind:value={massTonnes} on:input={updateMass} />
       </div>
     </div>
 
@@ -81,9 +137,25 @@
 
     <div class="checkbox-group">
         <label>
-          <input type="checkbox" bind:checked={construct.physical_parameters.can_aerobrake} on:change={handleUpdate} />
+          <input type="checkbox" bind:checked={_canAerobrake} on:change={handleUpdate} />
           Can Aerobrake <span class="descriptor">(has heat shielding & control surfaces)</span>
         </label>
+        
+        <div class="row">
+            <div class="form-group" style="flex: 1;">
+                <label for="thermal-type" class:disabled={!_canAerobrake}>Thermal Protection:</label>
+                <select id="thermal-type" bind:value={_thermalProtectionType} disabled={!_canAerobrake} on:change={applyThermalPreset}>
+                    {#each Object.keys(THERMAL_LIMITS) as type}
+                        <option value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
+                    {/each}
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label for="aerobrake-limit" class:disabled={!_canAerobrake}>Max Entry Speed (km/s):</label>
+                <input type="number" id="aerobrake-limit" bind:value={_aerobrakeLimitKms} disabled={!_canAerobrake} on:input={handleUpdate} />
+            </div>
+        </div>
+
         <label>
           <input type="checkbox" bind:checked={construct.physical_parameters.has_landing_gear} on:change={handleUpdate} />
           Has Landing Gear
@@ -104,7 +176,9 @@
   .row { display: flex; gap: 15px; }
   .form-group { display: flex; flex-direction: column; flex: 1; }
   label { margin-bottom: 5px; color: #ccc; font-size: 0.9em; }
+  label.disabled { color: #666; }
   input, select { padding: 8px; border-radius: 4px; border: 1px solid #555; background-color: #444; color: #eee; font-size: 1em; width: 100%; box-sizing: border-box; }
+  input:disabled, select:disabled { background-color: #333; color: #888; border-color: #444; }
   input[type="color"] { height: 38px; padding: 2px; }
   .separator { height: 1px; background-color: #555; width: 100%; margin: 0.5em 0; border: none; }
   

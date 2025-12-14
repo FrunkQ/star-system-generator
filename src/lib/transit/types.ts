@@ -44,6 +44,7 @@ export interface TransitPlan {
   totalDeltaV_ms: number;
   totalTime_days: number;
   totalFuel_kg: number;
+  aerobrakingDeltaV_ms?: number; // Delta-V saved by aerobraking
   arrivalVelocity_ms: number; // Relative velocity at arrival (0 if braked)
   distance_au: number;
   isValid: boolean;

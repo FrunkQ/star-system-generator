@@ -255,7 +255,8 @@
       
       lastCalcParams = params;
 
-      // console.log("Calculating with:", params); // Debug
+      // Capture currently selected plan type to restore selection after sort
+      const currentSelectedType = availablePlans[selectedPlanIndex]?.planType;
 
       const effectiveStartTime = currentTime + (departureDelayDays * 86400 * 1000);
       const allPlans = calculateTransitPlan(system, originId, targetId, effectiveStartTime, mode, params);
@@ -264,6 +265,7 @@
       hiddenPlanCount = allPlans.length - visiblePlans.length;
       
       if (!visiblePlans || visiblePlans.length === 0) {
+          // ... error handling ...
           if (hiddenPlanCount > 0) {
               error = "All efficient plans are impractical due to high initial velocity (Delta-V > 100 km/s). Use Direct Burn if possible.";
           } else {
@@ -275,13 +277,22 @@
           error = null;
           availablePlans = visiblePlans;
           
-          // Preserve selection index if possible, else 0
-          if (selectedPlanIndex >= availablePlans.length) selectedPlanIndex = 0;
+          // Restore selection based on Plan Type
+          let newIndex = 0;
+          if (currentSelectedType) {
+              const foundIndex = availablePlans.findIndex(p => p.planType === currentSelectedType);
+              if (foundIndex !== -1) {
+                  newIndex = foundIndex;
+              }
+          }
+          selectedPlanIndex = newIndex;
           
           plan = availablePlans[selectedPlanIndex];
           
-          // Sync Brake Slider if locked (Only for Speed plan or if active?)
-          if (plan.planType === 'Speed' && brakeAtArrival && plan.brakeRatio !== undefined) {
+          // Sync Sliders to Plan (Visual Feedback)
+          // Always sync to show the actual burn profile calculated by the solver
+          if (plan.accelRatio !== undefined && plan.brakeRatio !== undefined) {
+               accelPercent = plan.accelRatio * 100;
                brakeStartPercent = 100 - (plan.brakeRatio * 100);
           }
           
@@ -294,6 +305,31 @@
       
       journeyProgress = 0;
       updatePreview();
+  }
+
+  function calculateFuelSaved(p: TransitPlan): string {
+      if (!p || !p.aerobrakingDeltaV_ms || !currentConstructSpecs || !lastCalcParams?.shipIsp) return '';
+      
+      const isp = lastCalcParams.shipIsp;
+      const g0 = 9.81;
+      const Ve = isp * g0;
+      
+      // M_final is mass after all burns.
+      // Current plan.totalFuel_kg accounts for the burns we ARE doing.
+      // So M_final = M_wet - Fuel_used.
+      const m_final = (currentConstructSpecs.totalMass_tonnes * 1000) - p.totalFuel_kg;
+      
+      // Fuel required WITHOUT aerobraking:
+      // dV_total_virtual = p.totalDeltaV_ms + p.aerobrakingDeltaV_ms
+      const dv_virtual = p.totalDeltaV_ms + p.aerobrakingDeltaV_ms;
+      
+      const m_start_virtual = m_final * Math.exp(dv_virtual / Ve);
+      const fuel_virtual = m_start_virtual - m_final;
+      
+      const fuel_saved_kg = fuel_virtual - p.totalFuel_kg;
+      
+      if (fuel_saved_kg < 100) return '';
+      return ` (Saved ${(fuel_saved_kg/1000).toFixed(1)}t fuel)`;
   }
 
   function formatDuration(days: number) {
@@ -457,7 +493,7 @@
                 <input type="checkbox" bind:checked={useAerobrake} disabled={!canAerobrakeEffective} on:change={handleCalculate} />
                 Aerobrake 
                 {#if canAerobrakeEffective}
-                    <span style="font-size: 0.8em; color: #ff9900;">(Max {currentConstructSpecs.aerobrakeLimit_kms} km/s)</span>
+                    <span style="font-size: 0.8em; color: #ff9900;">(Max {currentConstructSpecs.aerobrakeLimit_kms} km/s){plan ? calculateFuelSaved(plan) : ''}</span>
                 {/if}
             </label>
         </div>
