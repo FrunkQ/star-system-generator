@@ -10,8 +10,10 @@
   import { get } from 'svelte/store';
   import { getNodeColor } from '$lib/rendering/colors';
   import { getAbsoluteOrbitalDistanceAU } from '$lib/system/utils';
+  import { calculateFlightTelemetry, type TelemetryPoint } from '$lib/transit/telemetry';
 
   import DualRangeSlider from './DualRangeSlider.svelte';
+  import TransitStressGraph from './TransitStressGraph.svelte';
 
   export let system: System;
   export let rulePack: RulePack;
@@ -45,8 +47,21 @@
   
   let currentConstructSpecs: ConstructSpecs | null = null;
   let debounceTimeout: any;
+  let telemetryData: TelemetryPoint[] = [];
 
   let previousOriginId: ID = '';
+
+  $: if (system && (plan || completedPlans.length > 0)) {
+      const plansToAnalyze = [...completedPlans];
+      if (plan) plansToAnalyze.push(plan);
+      if (plansToAnalyze.length > 0) {
+          telemetryData = calculateFlightTelemetry(system, plansToAnalyze, rulePack);
+      } else {
+          telemetryData = [];
+      }
+  } else {
+      telemetryData = [];
+  }
 
   $: targetHasAtmosphere = false;
   $: canAerobrakeConstruct = currentConstructSpecs?.canAerobrake || false;
@@ -338,40 +353,53 @@
   }
   
   let previewStatusString = "";
+  let currentHazards: { level: string; message: string }[] = [];
+  
+  let legTicks: number[] = [];
+  let legLabels: {pct: number, text: string}[] = [];
 
-  function getLegLabels() {
+  $: {
+      // Calculate Ticks and Labels reactively
+      const ticks: number[] = [];
       const labels: {pct: number, text: string}[] = [];
-      if (completedPlans.length === 0 && !plan) return [];
       
-      const missionStart = completedPlans.length > 0 ? completedPlans[0].startTime : currentTime;
-      let missionEnd = missionStart;
-      if (plan) {
-          missionEnd = plan.startTime + (plan.totalTime_days * 86400 * 1000);
-      } else if (completedPlans.length > 0) {
-          const last = completedPlans[completedPlans.length - 1];
-          missionEnd = last.startTime + (last.totalTime_days * 86400 * 1000);
-      }
-      const totalDuration = missionEnd - missionStart;
-      if (totalDuration <= 0) return [];
-
-      const allPlans = [...completedPlans];
-      if (plan) allPlans.push(plan);
+      const hasPlan = !!plan;
+      const hasCompleted = completedPlans.length > 0;
       
-      for(let i=0; i<allPlans.length; i++) {
-          const p = allPlans[i];
-          const start = p.startTime;
-          const end = p.startTime + p.totalTime_days * 86400 * 1000;
+      if (hasCompleted || hasPlan) {
+          const missionStart = hasCompleted ? completedPlans[0].startTime : currentTime;
+          let missionEnd = missionStart;
+          if (plan) {
+              missionEnd = plan.startTime + (plan.totalTime_days * 86400 * 1000);
+          } else if (hasCompleted) {
+              const last = completedPlans[completedPlans.length - 1];
+              missionEnd = last.startTime + (last.totalTime_days * 86400 * 1000);
+          }
           
-          const startPct = ((start - missionStart) / totalDuration) * 100;
-          const endPct = ((end - missionStart) / totalDuration) * 100;
-          const centerPct = (startPct + endPct) / 2;
+          const totalDuration = missionEnd - missionStart;
           
-          // Only show label if segment is wide enough (>10%)
-          if (endPct - startPct > 10) {
-              labels.push({ pct: centerPct, text: `Leg ${i+1}` });
+          if (totalDuration > 0) {
+              const allPlans = [...completedPlans];
+              if (plan) allPlans.push(plan);
+              
+              for(let i=0; i<allPlans.length; i++) {
+                  const p = allPlans[i];
+                  const end = p.startTime + p.totalTime_days * 86400 * 1000;
+                  const pct = ((end - missionStart) / totalDuration) * 100;
+                  ticks.push(pct);
+                  
+                  const startPct = ((p.startTime - missionStart) / totalDuration) * 100;
+                  const centerPct = (startPct + pct) / 2;
+                  
+                  // Only show label if segment is wide enough (>10%)
+                  if (pct - startPct > 10) {
+                      labels.push({ pct: centerPct, text: `Leg ${i+1}` });
+                  }
+              }
           }
       }
-      return labels;
+      legTicks = ticks;
+      legLabels = labels;
   }
 
   function updatePreview() {
@@ -379,6 +407,7 @@
       if (!plan && completedPlans.length === 0) {
           dispatch('previewUpdate', { offset: 0, position: null });
           previewStatusString = "";
+          currentHazards = [];
           return;
       }
 
@@ -403,6 +432,15 @@
       const absTime = missionStart + currentOffsetMs;
       const tPlusDays = (absTime - missionStart) / (86400 * 1000);
       
+      // Update Hazards from Telemetry
+      if (telemetryData && telemetryData.length > 0) {
+          const tIndex = Math.min(Math.floor((journeyProgress / 100) * (telemetryData.length - 1)), telemetryData.length - 1);
+          const point = telemetryData[tIndex];
+          currentHazards = point ? point.hazards : [];
+      } else {
+          currentHazards = [];
+      }
+
       // Find active segment/leg
       let activeLegObj: TransitPlan | undefined = completedPlans.find(p => {
           const end = p.startTime + p.totalTime_days * 86400 * 1000;
@@ -453,31 +491,6 @@
           dispatch('previewUpdate', { offset: 0, position: null });
           previewStatusString = `T+ ${tPlusDays.toFixed(1)}d | Waiting...`;
       }
-  }
-  
-  // Helper for ticks
-  function getLegTicks() {
-      if (completedPlans.length === 0 && !plan) return [];
-      
-      const missionStart = completedPlans.length > 0 ? completedPlans[0].startTime : currentTime;
-      let missionEnd = missionStart;
-      if (plan) {
-          missionEnd = plan.startTime + (plan.totalTime_days * 86400 * 1000);
-      } else if (completedPlans.length > 0) {
-          const last = completedPlans[completedPlans.length - 1];
-          missionEnd = last.startTime + (last.totalTime_days * 86400 * 1000);
-      }
-      
-      const totalDuration = missionEnd - missionStart;
-      if (totalDuration <= 0) return [];
-      
-      const ticks = [];
-      for(const p of completedPlans) {
-          const end = p.startTime + p.totalTime_days * 86400 * 1000;
-          const pct = ((end - missionStart) / totalDuration) * 100;
-          ticks.push(pct);
-      }
-      return ticks;
   }
 </script>
 
@@ -667,22 +680,29 @@
         </div>
         {/if}
         
+        <TransitStressGraph telemetry={telemetryData} progress={journeyProgress} />
+
         <div class="form-group preview-slider" style="position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                 <label>Mission Timeline Preview</label>
-                <span style="font-size: 0.85em; color: #88ccff;">{previewStatusString}</span>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span style="font-size: 0.85em; color: #88ccff;">{previewStatusString}</span>
+                    {#each currentHazards as h}
+                        <span class="hazard-pill {h.level.toLowerCase()}">{h.message}</span>
+                    {/each}
+                </div>
             </div>
             
             <div style="position: relative; width: 100%; margin-top: 15px; margin-bottom: 5px;">
                 <input type="range" min="0" max="100" step="0.1" bind:value={journeyProgress} on:input={updatePreview} style="width: 100%; z-index: 2; position: relative; background: transparent;" />
                 
                 <!-- Tick Marks -->
-                {#each getLegTicks() as tick}
+                {#each legTicks as tick}
                     <div style="position: absolute; left: {tick}%; top: 50%; transform: translate(-50%, -50%); width: 2px; height: 16px; background: #00ffff; z-index: 3; pointer-events: none; border: 1px solid #000;"></div>
                 {/each}
                 
                 <!-- Leg Labels -->
-                {#each getLegLabels() as label}
+                {#each legLabels as label}
                     <div style="position: absolute; left: {label.pct}%; top: -18px; transform: translateX(-50%); color: #aaa; font-size: 0.7em; pointer-events: none; white-space: nowrap;">{label.text}</div>
                 {/each}
             </div>
@@ -970,4 +990,15 @@
         display: flex; /* Flex to push button to right */
         align-items: center;
     }
+    .hazard-pill {
+        font-size: 0.75em;
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: #fff;
+        font-weight: bold;
+    }
+    .hazard-pill.info { background-color: #2563eb; }
+    .hazard-pill.warning { background-color: #d97706; color: black; }
+    .hazard-pill.danger { background-color: #ea580c; }
+    .hazard-pill.critical { background-color: #dc2626; }
 </style>

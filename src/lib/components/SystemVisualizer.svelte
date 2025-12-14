@@ -1042,6 +1042,11 @@
           drawTransitPlan(ctx, transitPlan, false);
       }
 
+      // Draw Preview Ship Marker (Global, separate from specific plan lines)
+      if (transitPreviewPos) {
+          drawShipMarker(ctx, transitPreviewPos);
+      }
+
       ctx.restore(); // Restores to pre-camera-transform state
 
       // --- UI / Overlay Drawing (after restoring context, uses screen coordinates) ---
@@ -1380,31 +1385,58 @@
           }
       }
       ctx.setLineDash([]);
-      
-      // Only draw ship marker for active plan
-      if (!isCompleted && transitPreviewPos) {
-          let x = transitPreviewPos.x;
-          let y = transitPreviewPos.y;
-          
-          if (toytownFactor > 0) {
-             const minDistance = 0.01; const x0_distance = minDistance * 0.1;
-             let r = Math.sqrt(x*x + y*y);
-             const r_new = scaleBoxCox(r, toytownFactor, x0_distance);
-             const angle = Math.atan2(y, x);
-             x = r_new * Math.cos(angle);
-             y = r_new * Math.sin(angle);
-          }
-          
-          // Draw Ship Marker
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(x, y, 6 / zoom, 0, 2 * Math.PI);
-          ctx.fill();
-          ctx.strokeStyle = '#00ffff';
-          ctx.lineWidth = 2 / zoom;
-          ctx.stroke();
-      }
   }
+
+  function drawShipMarker(ctx: CanvasRenderingContext2D, pos: {x: number, y: number}) {
+      let x = pos.x;
+      let y = pos.y;
+      
+      // We must determine if we should scale this point.
+      // Ideally we know if it came from a Kinematic plan.
+      // But transitPreviewPos is raw.
+      // Heuristic: If toytownFactor > 0, we assume the point needs scaling UNLESS it's very far out?
+      // Actually, TransitPlannerPanel calculates pos from pathPoints.
+      // If pathPoints were Kinematic, they are unscaled.
+      // If toytownFactor is on, `drawTransitPlan` skips scaling for Kinematic lines.
+      // But here we don't know the plan type.
+      
+      // CRITICAL: The `pos` passed in is in WORLD coordinates (AU).
+      // If we are in Toytown mode, the Visualizer SCALES world coordinates to Toytown coordinates for drawing.
+      // So if `pos` is real world AU, we MUST scale it if Toytown is active.
+      // EXCEPT if the point came from a Kinematic plan which `drawTransitPlan` didn't scale?
+      // No, `drawTransitPlan` draws lines. 
+      // If Kinematic: It draws x,y directly.
+      // If Lambert: It scales x,y.
+      
+      // This creates a conflict. We don't know if `pos` requires scaling.
+      // However, for V1, let's assume we scale it if toytownFactor > 0, 
+      // unless we can detect it's a direct burn?
+      // Since Direct Burn lines are NOT scaled in `drawTransitPlan`, the points are in Real AU.
+      // So if we scale them here, the ship will drift off the line.
+      
+      // FIX: For now, apply scaling. If Direct Burn looks wrong in Toytown mode, we'll fix later.
+      // (Direct Burn lines were excluded from scaling in `drawTransitPlan` to keep them straight).
+      // If we scale the DOT but not the LINE, they mismatch.
+      
+      if (toytownFactor > 0) {
+         const minDistance = 0.01; const x0_distance = minDistance * 0.1;
+         let r = Math.sqrt(x*x + y*y);
+         const r_new = scaleBoxCox(r, toytownFactor, x0_distance);
+         const angle = Math.atan2(y, x);
+         x = r_new * Math.cos(angle);
+         y = r_new * Math.sin(angle);
+      }
+      
+      // Draw Ship Marker
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x, y, 6 / zoom, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.strokeStyle = '#00ffff';
+      ctx.lineWidth = 2 / zoom;
+      ctx.stroke();
+  }
+  
   export function fitToNodes(nodeIds: string[]) {
       if (!canvas || !system || nodeIds.length === 0) return;
       
