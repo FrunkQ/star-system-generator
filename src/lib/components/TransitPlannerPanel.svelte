@@ -337,43 +337,147 @@
       return `${days.toFixed(1)} days`;
   }
   
+  let previewStatusString = "";
+
+  function getLegLabels() {
+      const labels: {pct: number, text: string}[] = [];
+      if (completedPlans.length === 0 && !plan) return [];
+      
+      const missionStart = completedPlans.length > 0 ? completedPlans[0].startTime : currentTime;
+      let missionEnd = missionStart;
+      if (plan) {
+          missionEnd = plan.startTime + (plan.totalTime_days * 86400 * 1000);
+      } else if (completedPlans.length > 0) {
+          const last = completedPlans[completedPlans.length - 1];
+          missionEnd = last.startTime + (last.totalTime_days * 86400 * 1000);
+      }
+      const totalDuration = missionEnd - missionStart;
+      if (totalDuration <= 0) return [];
+
+      const allPlans = [...completedPlans];
+      if (plan) allPlans.push(plan);
+      
+      for(let i=0; i<allPlans.length; i++) {
+          const p = allPlans[i];
+          const start = p.startTime;
+          const end = p.startTime + p.totalTime_days * 86400 * 1000;
+          
+          const startPct = ((start - missionStart) / totalDuration) * 100;
+          const endPct = ((end - missionStart) / totalDuration) * 100;
+          const centerPct = (startPct + endPct) / 2;
+          
+          // Only show label if segment is wide enough (>10%)
+          if (endPct - startPct > 10) {
+              labels.push({ pct: centerPct, text: `Leg ${i+1}` });
+          }
+      }
+      return labels;
+  }
+
   function updatePreview() {
-      if (!plan) {
+      // Calculate Total Mission Duration
+      if (!plan && completedPlans.length === 0) {
           dispatch('previewUpdate', { offset: 0, position: null });
+          previewStatusString = "";
           return;
       }
+
+      const missionStart = completedPlans.length > 0 ? completedPlans[0].startTime : currentTime;
       
-      const progress = journeyProgress / 100;
-      const totalDurationMs = plan.totalTime_days * 86400 * 1000;
-      const timeOffset = totalDurationMs * progress;
+      let missionEnd = missionStart;
+      if (plan) {
+          missionEnd = plan.startTime + (plan.totalTime_days * 86400 * 1000);
+      } else if (completedPlans.length > 0) {
+          const last = completedPlans[completedPlans.length - 1];
+          missionEnd = last.startTime + (last.totalTime_days * 86400 * 1000);
+      }
       
-      // Calculate Position
-      // segments have pathPoints linear in time within segment
-      // need to find correct segment
-      let pos: Vector2 | null = null;
-      let currentSegStart = 0;
+      const totalDuration = missionEnd - missionStart;
+      if (totalDuration <= 0) {
+           dispatch('previewUpdate', { offset: 0, position: null });
+           previewStatusString = "";
+           return;
+      }
+
+      const currentOffsetMs = totalDuration * (journeyProgress / 100);
+      const absTime = missionStart + currentOffsetMs;
+      const tPlusDays = (absTime - missionStart) / (86400 * 1000);
       
-      for (const segment of plan.segments) {
-          const segDuration = segment.endTime - segment.startTime;
-          // Check if timeOffset falls in this segment (relative to plan start)
-          // plan.segments are sequential in time
-          const segEnd = currentSegStart + segDuration;
+      // Find active segment/leg
+      let activeLegObj: TransitPlan | undefined = completedPlans.find(p => {
+          const end = p.startTime + p.totalTime_days * 86400 * 1000;
+          return absTime >= p.startTime && absTime <= end;
+      });
+      
+      let activeLegIndex = -1;
+      if (activeLegObj) {
+          activeLegIndex = completedPlans.indexOf(activeLegObj);
+      } else if (plan && absTime >= plan.startTime) {
+          activeLegObj = plan;
+          activeLegIndex = completedPlans.length;
+      }
+      
+      if (activeLegObj) {
+          const timeInLeg = absTime - activeLegObj.startTime;
+          let activeSegmentType = "Unknown";
           
-          if (timeOffset >= currentSegStart && timeOffset <= segEnd) {
-              const segProgress = (timeOffset - currentSegStart) / segDuration;
-              const idx = Math.min(Math.floor(segProgress * (segment.pathPoints.length - 1)), segment.pathPoints.length - 1);
-              pos = segment.pathPoints[idx];
-              break;
+          let pos: Vector2 | null = null;
+          let currentSegStart = 0;
+          
+          for (const segment of activeLegObj.segments) {
+              const segDuration = segment.endTime - segment.startTime;
+              const segEnd = currentSegStart + segDuration;
+              
+              if (timeInLeg >= currentSegStart && timeInLeg <= segEnd) {
+                  const segProgress = (timeInLeg - currentSegStart) / segDuration;
+                  const idx = Math.min(Math.floor(segProgress * (segment.pathPoints.length - 1)), segment.pathPoints.length - 1);
+                  pos = segment.pathPoints[idx];
+                  activeSegmentType = segment.type; 
+                  break;
+              }
+              currentSegStart += segDuration;
           }
-          currentSegStart += segDuration;
+          if (!pos && activeLegObj.segments.length > 0) {
+             const lastSeg = activeLegObj.segments[activeLegObj.segments.length-1];
+             pos = lastSeg.pathPoints[lastSeg.pathPoints.length-1];
+             activeSegmentType = "Arrival";
+          }
+          
+          const targetNode = system.nodes.find(n => n.id === activeLegObj!.targetId);
+          const targetName = targetNode ? targetNode.name : "Unknown";
+          
+          previewStatusString = `T+ ${tPlusDays.toFixed(1)}d | Leg ${activeLegIndex + 1}: ${activeSegmentType} to ${targetName}`;
+          
+          dispatch('previewUpdate', { offset: absTime - currentTime, position: pos });
+      } else {
+          dispatch('previewUpdate', { offset: 0, position: null });
+          previewStatusString = `T+ ${tPlusDays.toFixed(1)}d | Waiting...`;
       }
-      // If at exactly 100%, might miss loop, take last point
-      if (!pos && journeyProgress >= 100 && plan.segments.length > 0) {
-          const lastSeg = plan.segments[plan.segments.length - 1];
-          pos = lastSeg.pathPoints[lastSeg.pathPoints.length - 1];
+  }
+  
+  // Helper for ticks
+  function getLegTicks() {
+      if (completedPlans.length === 0 && !plan) return [];
+      
+      const missionStart = completedPlans.length > 0 ? completedPlans[0].startTime : currentTime;
+      let missionEnd = missionStart;
+      if (plan) {
+          missionEnd = plan.startTime + (plan.totalTime_days * 86400 * 1000);
+      } else if (completedPlans.length > 0) {
+          const last = completedPlans[completedPlans.length - 1];
+          missionEnd = last.startTime + (last.totalTime_days * 86400 * 1000);
       }
       
-      dispatch('previewUpdate', { offset: timeOffset, position: pos });
+      const totalDuration = missionEnd - missionStart;
+      if (totalDuration <= 0) return [];
+      
+      const ticks = [];
+      for(const p of completedPlans) {
+          const end = p.startTime + p.totalTime_days * 86400 * 1000;
+          const pct = ((end - missionStart) / totalDuration) * 100;
+          ticks.push(pct);
+      }
+      return ticks;
   }
 </script>
 
@@ -392,6 +496,9 @@
                     <span class="leg-meta">
                         ({formatDuration(leg.totalTime_days)}, {(leg.totalFuel_kg/1000).toFixed(1)}t fuel)
                     </span>
+                    {#if i === completedPlans.length - 1}
+                        <button class="remove-leg-btn" on:click={() => dispatch('undoLastLeg')} title="Undo this leg">×</button>
+                    {/if}
                 </div>
             {/each}
             <div class="total-summary">
@@ -508,7 +615,8 @@
         <div class="error">{error}</div>
     {/if}
 
-    {#if plan}
+    {#if plan || completedPlans.length > 0}
+        {#if plan}
         <div class="results">
             <div class="result-item">
                 <span>Duration:</span>
@@ -557,15 +665,34 @@
                 </div>
             {/if}
         </div>
+        {/if}
         
-        <div class="form-group preview-slider">
-            <label>Preview Journey: {Math.floor(journeyProgress)}%</label>
-            <input type="range" min="0" max="100" step="0.1" bind:value={journeyProgress} on:input={updatePreview} />
+        <div class="form-group preview-slider" style="position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <label>Mission Timeline Preview</label>
+                <span style="font-size: 0.85em; color: #88ccff;">{previewStatusString}</span>
+            </div>
+            
+            <div style="position: relative; width: 100%; margin-top: 15px; margin-bottom: 5px;">
+                <input type="range" min="0" max="100" step="0.1" bind:value={journeyProgress} on:input={updatePreview} style="width: 100%; z-index: 2; position: relative; background: transparent;" />
+                
+                <!-- Tick Marks -->
+                {#each getLegTicks() as tick}
+                    <div style="position: absolute; left: {tick}%; top: 50%; transform: translate(-50%, -50%); width: 2px; height: 16px; background: #00ffff; z-index: 3; pointer-events: none; border: 1px solid #000;"></div>
+                {/each}
+                
+                <!-- Leg Labels -->
+                {#each getLegLabels() as label}
+                    <div style="position: absolute; left: {label.pct}%; top: -18px; transform: translateX(-50%); color: #aaa; font-size: 0.7em; pointer-events: none; white-space: nowrap;">{label.text}</div>
+                {/each}
+            </div>
         </div>
         
         <div class="actions">
+            {#if plan}
             <button class="calculate-btn" on:click={() => dispatch('addNextLeg', plan)}>Add Next Leg</button>
             <button class="calculate-btn execute" on:click={() => dispatch('executePlan', plan)} disabled={!canAfford} title={!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"}>Execute Plan</button>
+            {/if}
             <button class="close-btn" on:click={() => dispatch('close')}>Close Planner</button>
         </div>
     {/if}
@@ -825,5 +952,22 @@
         font-size: 0.9em;
         margin-bottom: 0.5em;
         text-align: center;
+    }
+    .remove-leg-btn {
+        background: transparent;
+        border: none;
+        color: #ff6666;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 1.2em;
+        margin-left: auto;
+        padding: 0 5px;
+    }
+    .remove-leg-btn:hover {
+        color: #ff3333;
+    }
+    .leg-summary {
+        display: flex; /* Flex to push button to right */
+        align-items: center;
     }
 </style>

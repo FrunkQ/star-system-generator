@@ -1024,6 +1024,62 @@ a.click();
                              // console.log('Chaining State:', transitChainState, 'Time:', transitChainTime);
                          }
                     }}
+                    on:undoLastLeg={() => {
+                        if (completedTransitPlans.length === 0) return;
+                        
+                        // Remove last plan
+                        completedTransitPlans = completedTransitPlans.slice(0, -1);
+                        
+                        if (completedTransitPlans.length > 0) {
+                            // Revert to state at end of the NEW last leg
+                            const lastPlan = completedTransitPlans[completedTransitPlans.length - 1];
+                            
+                            // We need to reconstruct the chain time.
+                            // Ideally, we'd store the 'end time' in the plan object or a parallel array.
+                            // But transitChainTime tracks cumulative time.
+                            // Approximate Reversion: startTime of removed plan? 
+                            // Wait, plan.startTime IS the start of that leg.
+                            // So if we remove the last leg, the chain time should revert to that leg's startTime?
+                            // Yes! transitChainTime is essentially the "Current Time" cursor.
+                            // The removed plan started at 'startTime'.
+                            // So we just set transitChainTime = removedPlan.startTime.
+                            // But wait, there might have been a delay *before* that leg started.
+                            // The 'startTime' in TransitPlan includes the delay relative to the previous leg's end?
+                            // In 'calculateTransitPlan', effectiveStartTime = currentTime + delay.
+                            // Yes! plan.startTime IS the correct time cursor for the start of that leg (after delay).
+                            
+                            // Actually, we want the cursor to be at the END of the previous leg, ready for a new delay?
+                            // Or do we want it at the start of the undone leg?
+                            // If we undo, we probably want to re-plan that leg.
+                            // So we want to be at the END of the previous leg (or Start of mission).
+                            
+                            // Let's use the END of the previous leg.
+                            // prevLeg.startTime + prevLeg.duration.
+                            const prevLeg = completedTransitPlans[completedTransitPlans.length - 1];
+                            // Note: This ignores the delay that happened *before* prevLeg.
+                            // But prevLeg.startTime is absolute.
+                            transitChainTime = prevLeg.startTime + (prevLeg.totalTime_days * 86400 * 1000);
+                            
+                            plannerOriginId = prevLeg.targetId;
+                            
+                            if (prevLeg.segments.length > 0) {
+                                const endState = prevLeg.segments[prevLeg.segments.length - 1].endState;
+                                transitChainState = { r: { ...endState.r }, v: { ...endState.v } };
+                            }
+                        } else {
+                            // Reset to initial
+                            transitChainTime = currentTime;
+                            plannerOriginId = focusedBody ? focusedBody.id : '';
+                            transitChainState = undefined;
+                        }
+                        
+                        // Clear previews
+                        currentTransitPlan = null;
+                        transitAlternatives = [];
+                        transitPreviewPos = null;
+                        transitJourneyOffset = 0;
+                        transitDelayDays = 0;
+                    }}
                     on:executePlan={(e) => {
                          const finalPlan = e.detail;
                          // Calculate Totals
