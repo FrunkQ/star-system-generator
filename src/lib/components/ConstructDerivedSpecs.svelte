@@ -6,6 +6,7 @@
   export let construct: CelestialBody;
   export let rulePack: RulePack;
   export let hostBody: CelestialBody | null;
+  export let isEditingConstruct: boolean = false; // New prop
 
   const dispatch = createEventDispatcher();
 
@@ -258,27 +259,29 @@
     {/if}
 
     <div class="actions-row">
-        <!-- Plan Transit (Always available if engine/fuel present) -->
-        <button class="action-btn transit" on:click={() => dispatch('planTransit')}>
-            Plan Transit
-        </button>
+        {#if !isEditingConstruct}
+            <!-- Plan Transit (Always available if engine/fuel present) -->
+            <button class="action-btn transit" on:click={() => dispatch('planTransit')}>
+                Plan Transit
+            </button>
 
-        {#if landingAnalysis}
-            {#if construct.placement === 'Surface'}
-                <!-- Takeoff -->
-                {#if landingAnalysis.takeoff.possible}
-                    <button class="action-btn transit" on:click={() => dispatch('takeoff', { fuel: landingAnalysis.takeoff.fuel })}>
-                        Takeoff
-                        <span class="btn-detail">({landingAnalysis.takeoff.fuel.toFixed(1)}t)</span>
-                    </button>
-                {/if}
-            {:else}
-                <!-- Landing -->
-                {#if landingAnalysis.consolidatedLanding.possible}
-                    <button class="action-btn transit" on:click={() => dispatch('land', { method: landingAnalysis.consolidatedLanding.method, fuel: landingAnalysis.consolidatedLanding.fuel })}>
-                        Land on {hostBody?.name || 'Surface'}
-                        <span class="btn-detail">({landingAnalysis.consolidatedLanding.fuel.toFixed(1)}t)</span>
-                    </button>
+            {#if landingAnalysis}
+                {#if construct.placement === 'Surface'}
+                    <!-- Takeoff -->
+                    {#if landingAnalysis.takeoff.possible}
+                        <button class="action-btn transit" on:click={() => dispatch('takeoff', { fuel: landingAnalysis.takeoff.fuel })}>
+                            Takeoff
+                            <span class="btn-detail">({landingAnalysis.takeoff.fuel.toFixed(1)}t)</span>
+                        </button>
+                    {/if}
+                {:else}
+                    <!-- Landing -->
+                    {#if landingAnalysis.consolidatedLanding.possible}
+                        <button class="action-btn transit" on:click={() => dispatch('land', { method: landingAnalysis.consolidatedLanding.method, fuel: landingAnalysis.consolidatedLanding.fuel })}>
+                            Land on {hostBody?.name || 'Surface'}
+                            <span class="btn-detail">({landingAnalysis.consolidatedLanding.fuel.toFixed(1)}t)</span>
+                        </button>
+                    {/if}
                 {/if}
             {/if}
         {/if}

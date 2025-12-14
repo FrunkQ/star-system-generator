@@ -20,7 +20,8 @@
   export let currentTime: number;
   export let originId: ID = '';
   export let constructId: ID = ''; 
-  export let departureDelayDays: number = 0;
+  export let departureDelayDays: number = 0; // The actual days value
+  let sliderDepartureDelayRaw: number = 0; // Linear slider value (0-100)
   export let journeyProgress: number = 0; // 0..100
   export let completedPlans: TransitPlan[] = [];
   export let initialState: StateVector | undefined = undefined;
@@ -49,6 +50,9 @@
   let currentConstructSpecs: ConstructSpecs | null = null;
   let debounceTimeout: any;
   let telemetryData: TelemetryPoint[] = [];
+  
+  let maxPotentialDeltaV_ms = 0;
+  let maxFuelMass_kg = 0;
 
   let previousOriginId: ID = '';
 
@@ -162,6 +166,28 @@
              
              // @ts-ignore
              currentConstructSpecs = calculateFullConstructSpecs(shipNode, engineDefs, fuelDefs, host);
+             
+             // Calculate Max Potential Fuel Mass & Delta-V
+             let totalMaxFuelKg = 0;
+             if (shipNode.fuel_tanks && rulePack.fuelDefinitions) {
+                 for(const tank of shipNode.fuel_tanks) {
+                     const def = rulePack.fuelDefinitions.entries.find(f => f.id === tank.fuel_type_id);
+                     const density = def ? def.density_kg_per_m3 : 1000;
+                     totalMaxFuelKg += tank.capacity_units * density;
+                 }
+             }
+             maxFuelMass_kg = totalMaxFuelKg;
+             
+             const dryMassKg = currentConstructSpecs.dryMass_tonnes * 1000;
+             const wetMassFullKg = dryMassKg + maxFuelMass_kg;
+             const isp = currentConstructSpecs.avgVacIsp;
+             const g0 = 9.81;
+             
+             if (isp > 0 && dryMassKg > 0) {
+                 maxPotentialDeltaV_ms = isp * g0 * Math.log(wetMassFullKg / dryMassKg);
+             } else {
+                 maxPotentialDeltaV_ms = 0;
+             }
              
              // Calculate Dynamic Max G based on fuel used so far
              const currentMassKg = (currentConstructSpecs.totalMass_tonnes * 1000) - totalUsedFuel;
@@ -344,6 +370,19 @@
       updatePreview();
   }
 
+  function updateDepartureDelay() {
+      const minLog = Math.log(1);
+      const maxLog = Math.log(1001); // Maps slider max (100) to 1000 days (1000 + 1 for log base)
+      
+      if (sliderDepartureDelayRaw === 0) {
+          departureDelayDays = 0;
+      } else {
+          const logScaledValue = minLog + (sliderDepartureDelayRaw / 100) * (maxLog - minLog);
+          departureDelayDays = Math.round(Math.exp(logScaledValue) - 1);
+      }
+      debouncedCalculate();
+  }
+
   function calculateFuelSaved(p: TransitPlan): string {
       if (!p || !p.aerobrakingDeltaV_ms || !currentConstructSpecs || !lastCalcParams?.shipIsp) return '';
       
@@ -423,6 +462,9 @@
       legTicks = ticks;
       legLabels = labels;
   }
+
+  $: isImpossible = currentConstructSpecs && plan && plan.totalDeltaV_ms > maxPotentialDeltaV_ms;
+  $: isInsufficientFuel = !isImpossible && currentConstructSpecs && plan && plan.totalDeltaV_ms > currentConstructSpecs.totalVacuumDeltaV_ms;
 
   function updatePreview() {
       // Calculate Total Mission Duration
@@ -583,6 +625,22 @@
         </div>
     {/if}
 
+    {#if isImpossible && currentConstructSpecs && plan}
+        <div class="warning-box impossible" style="background-color: #330000; border-color: #660000; color: #ff6666; text-align: left; padding: 0.8em; margin-bottom: 1em;">
+             <strong>🚫 Engine Capability Exceeded (Insufficient Isp)</strong><br/>
+             Plan requires <span style="color: white;">{(plan.totalDeltaV_ms/1000).toFixed(1)} km/s</span>. 
+             Ship max (fully fueled) is <span style="color: white;">{(maxPotentialDeltaV_ms/1000).toFixed(1)} km/s</span>.
+             <div style="font-size: 0.9em; color: #aaa; margin-top: 0.3em;">To achieve this range, you need higher efficiency engines (e.g. Nuclear/Fusion), not just more fuel.</div>
+        </div>
+    {:else if isInsufficientFuel && currentConstructSpecs && plan}
+        <div class="warning-box insufficient-fuel" style="background-color: #332b00; border-color: #665500; color: #ffcc00; text-align: left; padding: 0.8em; margin-bottom: 1em;">
+             <strong>⛽ Insufficient Fuel</strong><br/>
+             Plan requires <span style="color: white;">{(plan.totalDeltaV_ms/1000).toFixed(1)} km/s</span>.
+             Current fuel provides <span style="color: white;">{(currentConstructSpecs.totalVacuumDeltaV_ms/1000).toFixed(1)} km/s</span>.
+             <div style="font-size: 0.9em; color: #aaa; margin-top: 0.3em;">Refuel your ship to reach the required range.</div>
+        </div>
+    {/if}
+
     {#if availablePlans.length > 0}
         <div class="plan-selector">
             {#each availablePlans as p, i}
@@ -603,10 +661,17 @@
     {#if completedPlans.length === 0}
     <div class="form-group">
         <label>Departure Delay: {departureDelayDays} days</label>
-        <input type="range" min="0" max="100" step="1" bind:value={departureDelayDays} on:input={handleCalculate} />
+        <input 
+            type="range" 
+            min="0" 
+            max="100" 
+            step="1" 
+            bind:value={sliderDepartureDelayRaw} 
+            on:input={updateDepartureDelay} 
+        />
         <div class="range-labels">
             <span>Now</span>
-            <span>+100d</span>
+            <span>+1000d</span>
         </div>
     </div>
     {/if}
@@ -741,8 +806,8 @@
         
         <div class="actions">
             {#if plan}
-            <button class="calculate-btn" on:click={() => dispatch('addNextLeg', plan)}>Add Next Leg</button>
-            <button class="calculate-btn execute" on:click={() => dispatch('executePlan', plan)} disabled={!canAfford} title={!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"}>Execute Plan</button>
+            <button class="calculate-btn" on:click={() => dispatch('addNextLeg', plan)} disabled={isImpossible || isInsufficientFuel} title={isImpossible ? "Plan Impossible" : (isInsufficientFuel ? "Insufficient Fuel" : "Add to Flight Plan")}>Add Next Leg</button>
+            <button class="calculate-btn execute" on:click={() => dispatch('executePlan', plan)} disabled={!canAfford || isImpossible || isInsufficientFuel} title={isImpossible ? "Plan Impossible (See warning above)" : (isInsufficientFuel ? "Insufficient Fuel (See warning above)" : (!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"))}>Execute Plan</button>
             {/if}
             <button class="close-btn" on:click={() => dispatch('close')}>Close Planner</button>
         </div>

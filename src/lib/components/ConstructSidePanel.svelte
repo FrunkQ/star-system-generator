@@ -188,7 +188,7 @@
   </div>
 
   <div class="specs-section">
-      <ConstructDerivedSpecs {construct} {rulePack} {hostBody} />
+      <ConstructDerivedSpecs {construct} {rulePack} {hostBody} isEditingConstruct={true} />
   </div>
 </div>
 
