@@ -61,7 +61,6 @@ function findAssistCandidates(sys: System, origin: CelestialBody | Barycenter, t
         if (mass < 3e23) continue; 
 
         // Heuristic: Is it accessible?
-        // ... (rest of scoring logic)
         // For now, just grab the big ones.
         // Bonus if it's "between" the orbits (e.g. Earth -> Jupiter -> Saturn)
         // or if it's an Outer Planet for a Sundiver.

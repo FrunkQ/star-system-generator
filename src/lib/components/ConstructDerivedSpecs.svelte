@@ -1,10 +1,13 @@
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
 
   export let construct: CelestialBody;
   export let rulePack: RulePack;
   export let hostBody: CelestialBody | null;
+
+  const dispatch = createEventDispatcher();
 
   let specs: ConstructSpecs | null = null;
   let availableFuel_tonnes: number = 0;
@@ -253,10 +256,70 @@
         {/if}
       </div>
     {/if}
+
+    <div class="actions-row">
+        <!-- Plan Transit (Always available if engine/fuel present) -->
+        <button class="action-btn transit" on:click={() => dispatch('planTransit')}>
+            Plan Transit
+        </button>
+
+        {#if landingAnalysis}
+            {#if construct.placement === 'Surface'}
+                <!-- Takeoff -->
+                {#if landingAnalysis.takeoff.possible}
+                    <button class="action-btn transit" on:click={() => dispatch('takeoff', { fuel: landingAnalysis.takeoff.fuel })}>
+                        Takeoff
+                        <span class="btn-detail">({landingAnalysis.takeoff.fuel.toFixed(1)}t)</span>
+                    </button>
+                {/if}
+            {:else}
+                <!-- Landing -->
+                {#if landingAnalysis.consolidatedLanding.possible}
+                    <button class="action-btn transit" on:click={() => dispatch('land', { method: landingAnalysis.consolidatedLanding.method, fuel: landingAnalysis.consolidatedLanding.fuel })}>
+                        Land on {hostBody?.name || 'Surface'}
+                        <span class="btn-detail">({landingAnalysis.consolidatedLanding.fuel.toFixed(1)}t)</span>
+                    </button>
+                {/if}
+            {/if}
+        {/if}
+    </div>
   </div>
 {/if}
 
 <style>
+  .actions-row {
+      display: flex;
+      flex-direction: row; /* Side by side */
+      gap: 10px;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px dashed #444;
+  }
+  .action-btn {
+      flex: 1; /* Equal width */
+      padding: 10px;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column; /* Stack text and detail */
+      justify-content: center;
+      align-items: center;
+      gap: 2px;
+      font-size: 0.95em;
+      transition: opacity 0.2s;
+      background-color: #007bff; /* Uniform Blue */
+  }
+  .action-btn:hover { opacity: 0.9; }
+  
+  .btn-detail {
+      font-weight: normal;
+      font-size: 0.8em;
+      opacity: 0.8;
+  }
+
   .derived-specs {
     margin-top: 1em;
     padding-top: 1em;

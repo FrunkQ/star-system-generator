@@ -324,11 +324,18 @@ export function calculateTransitPlan(
       
   
     // Sort plans by Fuel Efficiency (Fuel Used ASC)
+    const baselinePlan = plans.find(p => p.planType === 'Efficiency');
+    const baselineTime = baselinePlan ? baselinePlan.totalTime_days : 0;
+
     plans.forEach(p => {
         // Mark "Efficiency" / "Assist" plans that require absurd dV (e.g. > 100 km/s) as hidden
         // because the impulsive approximation breaks down visually and practically.
         if (p.planType !== 'Speed' && p.totalDeltaV_ms > 100000) {
             p.hiddenReason = "Impractical Delta-V (>100 km/s)";
+        }
+        // Mark plans that are absurdly slow (e.g. > 5x Hohmann)
+        else if (baselineTime > 0 && p.totalTime_days > baselineTime * 5) {
+            p.hiddenReason = "Impractical Duration (>5x optimal)";
         }
     });
 

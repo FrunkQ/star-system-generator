@@ -61,6 +61,7 @@
   let isEditing = false;
   let isPlanning = false;
   let plannerOriginId: ID = '';
+  let planningConstructId: ID = '';
   let transitDelayDays: number = 0;
   let transitJourneyOffset: number = 0;
   let transitPreviewPos: { x: number, y: number } | null = null;
@@ -843,6 +844,111 @@ a.click();
     }
   }
 
+  function handleStartPlanning() {
+      if (!focusedBody) return;
+      isPlanning = true; 
+      isEditing = false; 
+      showZoneKeyPanel = false; 
+      visualizer?.resetView(); 
+      plannerOriginId = focusedBody.id;
+      planningConstructId = focusedBody.id;
+      transitChainTime = currentTime;
+      completedTransitPlans = [];
+      transitChainState = undefined;
+      transitDelayDays = 0;
+  }
+
+  function handleTakeoff(event: CustomEvent<{fuel: number}>) {
+      if (!$systemStore || !focusedBody || !parentBody) return;
+      
+      const fuelCostKg = event.detail.fuel * 1000;
+      
+      systemStore.update(sys => {
+          if (!sys) return null;
+          const newNodes = sys.nodes.map(n => {
+              if (n.id === focusedBody!.id) {
+                  // Deduct Fuel
+                  let remainingFuel = fuelCostKg;
+                  if (n.fuel_tanks && rulePack.fuelDefinitions) {
+                      for (const tank of n.fuel_tanks) {
+                          const def = rulePack.fuelDefinitions.entries.find(f => f.id === tank.fuel_type_id);
+                          if (def && remainingFuel > 0) {
+                              const mass = tank.current_units * def.density_kg_per_m3;
+                              if (mass >= remainingFuel) {
+                                  tank.current_units -= remainingFuel / def.density_kg_per_m3;
+                                  remainingFuel = 0;
+                              } else {
+                                  remainingFuel -= mass;
+                                  tank.current_units = 0;
+                              }
+                          }
+                      }
+                  }
+                  
+                  // Update Position to Low Orbit (Standard Parking: Min + 400km)
+                  const minAlt = parentBody!.orbitalBoundaries?.minLeoKm || 100;
+                  const radiusKm = (parentBody!.radiusKm || 1000) + minAlt + 400;
+                  
+                  return {
+                      ...n,
+                      placement: 'Low Orbit',
+                      orbit: {
+                          ...n.orbit!,
+                          elements: { ...n.orbit!.elements, a_AU: radiusKm / AU_KM }
+                      }
+                  };
+              }
+              return n;
+          });
+          return { ...sys, nodes: newNodes, isManuallyEdited: true };
+      });
+  }
+
+  function handleLand(event: CustomEvent<{fuel: number}>) {
+      if (!$systemStore || !focusedBody || !parentBody) return;
+      
+      const fuelCostKg = event.detail.fuel * 1000;
+      
+      systemStore.update(sys => {
+          if (!sys) return null;
+          const newNodes = sys.nodes.map(n => {
+              if (n.id === focusedBody!.id) {
+                  // Deduct Fuel (Same logic, should extract helper really)
+                  let remainingFuel = fuelCostKg;
+                  if (n.fuel_tanks && rulePack.fuelDefinitions) {
+                      for (const tank of n.fuel_tanks) {
+                          const def = rulePack.fuelDefinitions.entries.find(f => f.id === tank.fuel_type_id);
+                          if (def && remainingFuel > 0) {
+                              const mass = tank.current_units * def.density_kg_per_m3;
+                              if (mass >= remainingFuel) {
+                                  tank.current_units -= remainingFuel / def.density_kg_per_m3;
+                                  remainingFuel = 0;
+                              } else {
+                                  remainingFuel -= mass;
+                                  tank.current_units = 0;
+                              }
+                          }
+                      }
+                  }
+                  
+                  // Update Position to Surface
+                  const radiusKm = parentBody!.radiusKm || 1000;
+                  
+                  return {
+                      ...n,
+                      placement: 'Surface',
+                      orbit: {
+                          ...n.orbit!,
+                          elements: { ...n.orbit!.elements, a_AU: radiusKm / AU_KM }
+                      }
+                  };
+              }
+              return n;
+          });
+          return { ...sys, nodes: newNodes, isManuallyEdited: true };
+      });
+  }
+
 </script>
 <main>
     <div class="top-bar">
@@ -967,19 +1073,6 @@ a.click();
                 }} class="name-input" title="Click to rename" />
                   {#if !isEditing}
                       <button class="edit-btn small" on:click={() => { isEditing = true; showZoneKeyPanel = false; visualizer?.resetView(); }} style="margin-left: 5px;">Edit</button>
-                      {#if focusedBody.kind === 'construct' && focusedBody.engines && focusedBody.engines.length > 0}
-                          <button class="edit-btn small" on:click={() => { 
-                              isPlanning = true; 
-                              isEditing = false; 
-                              showZoneKeyPanel = false; 
-                              visualizer?.resetView(); 
-                              plannerOriginId = focusedBody.id;
-                              transitChainTime = currentTime;
-                              completedTransitPlans = [];
-                              transitChainState = undefined;
-                              transitDelayDays = 0;
-                          }} style="margin-left: 5px;">Plan Transit</button>
-                      {/if}
                   {/if}
             </div>
             {/if}
@@ -990,6 +1083,7 @@ a.click();
                     {rulePack}
                     currentTime={transitChainTime}
                     originId={plannerOriginId}
+                    constructId={planningConstructId}
                     completedPlans={completedTransitPlans}
                     initialState={transitChainState}
                     bind:departureDelayDays={transitDelayDays}
@@ -1238,6 +1332,18 @@ a.click();
                         transitAlternatives = [];
                     }} 
                 />
+
+// ...
+                {#if focusedBody}
+                    <ConstructDerivedSpecs 
+                        construct={focusedBody} 
+                        hostBody={parentBody} 
+                        {rulePack} 
+                        on:planTransit={handleStartPlanning}
+                        on:takeoff={handleTakeoff}
+                        on:land={handleLand}
+                    />
+                {/if}
             {:else if focusedBody}
             
             {#if showZoneKeyPanel}
@@ -1276,7 +1382,14 @@ a.click();
                         on:tabchange={(e) => activeEditTab = e.detail}
                       />
                   {:else}
-                      <ConstructDerivedSpecs construct={focusedBody} hostBody={parentBody} {rulePack} />
+                      <ConstructDerivedSpecs 
+                          construct={focusedBody} 
+                          hostBody={parentBody} 
+                          {rulePack} 
+                          on:planTransit={handleStartPlanning}
+                          on:takeoff={handleTakeoff}
+                          on:land={handleLand}
+                      />
                   {/if}
                 {/if}
             {/if}

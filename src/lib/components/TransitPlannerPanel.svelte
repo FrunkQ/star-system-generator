@@ -19,6 +19,7 @@
   export let rulePack: RulePack;
   export let currentTime: number;
   export let originId: ID = '';
+  export let constructId: ID = ''; 
   export let departureDelayDays: number = 0;
   export let journeyProgress: number = 0; // 0..100
   export let completedPlans: TransitPlan[] = [];
@@ -81,11 +82,25 @@
       selectedOrbitId = 'lo';
       orbitOptions = [];
       availablePlans = [];
+      hiddenPlanCount = 0;
       selectedPlanIndex = 0;
       plan = null;
       error = null;
       previousOriginId = originId;
   }
+
+  $: originString = (() => {
+      const originNode = system.nodes.find(n => n.id === originId);
+      if (!originNode) return 'Unknown Location';
+      
+      // If we are planning for a specific construct and it IS the origin (Leg 1), use its detailed orbit string
+      if (constructId && originId === constructId && currentConstructSpecs) {
+          return currentConstructSpecs.orbit_string;
+      }
+      
+      // Otherwise (Leg 2+), we are orbiting the previous target
+      return `Orbiting ${originNode.name}`;
+  })();
 
   function getOptionColor(node: any): string {
       return getNodeColor(node);
@@ -136,23 +151,30 @@
   }
 
   $: {
-      if (originId) {
-          const originNode = system.nodes.find(n => n.id === originId);
-          if (originNode && originNode.kind === 'construct') {
+      const shipId = constructId || originId;
+      
+      if (shipId) {
+          const shipNode = system.nodes.find(n => n.id === shipId);
+          if (shipNode && shipNode.kind === 'construct') {
              const engineDefs = rulePack.engineDefinitions?.entries || [];
              const fuelDefs = rulePack.fuelDefinitions?.entries || [];
-             const host = originNode.parentId ? system.nodes.find(n => n.id === originNode.parentId) : null;
+             const host = shipNode.parentId ? system.nodes.find(n => n.id === shipNode.parentId) : null;
              
              // @ts-ignore
-             currentConstructSpecs = calculateFullConstructSpecs(originNode, engineDefs, fuelDefs, host);
+             currentConstructSpecs = calculateFullConstructSpecs(shipNode, engineDefs, fuelDefs, host);
              
-             if (currentConstructSpecs.maxVacuumG > 0) {
-                 sliderMaxG = currentConstructSpecs.maxVacuumG;
+             // Calculate Dynamic Max G based on fuel used so far
+             const currentMassKg = (currentConstructSpecs.totalMass_tonnes * 1000) - totalUsedFuel;
+             const thrustN = (currentConstructSpecs.maxVacuumG * 9.81) * (currentConstructSpecs.totalMass_tonnes * 1000);
+             
+             if (currentMassKg > 0 && thrustN > 0) {
+                 const newMaxG = (thrustN / currentMassKg) / 9.81;
+                 sliderMaxG = newMaxG;
                  if (maxG > sliderMaxG) maxG = sliderMaxG;
              } else {
                  sliderMaxG = 0.1;
              }
-          } else {
+          } else if (!constructId) {
              currentConstructSpecs = null;
              sliderMaxG = 10.0;
           }
@@ -249,7 +271,7 @@
           accelRatio: accelPercent / 100,
           brakeRatio: (100 - brakeStartPercent) / 100,
           interceptSpeed_ms: interceptSpeed,
-          shipMass_kg: currentConstructSpecs ? currentConstructSpecs.totalMass_tonnes * 1000 : undefined,
+          shipMass_kg: currentConstructSpecs ? (currentConstructSpecs.totalMass_tonnes * 1000 - totalUsedFuel) : undefined,
           shipIsp: undefined as number | undefined,
           brakeAtArrival: brakeAtArrival,
           initialState: safeInitialState,
@@ -496,6 +518,9 @@
 
 <div class="planner-panel">
     <h3>Transit Planner</h3>
+    <div class="origin-display" style="margin-bottom: 1em; color: #aaa; font-size: 0.9em;">
+        <strong>Current Position:</strong> <span style="color: #eee;">{originString}</span>
+    </div>
     
     {#if completedPlans.length > 0}
         <div class="completed-legs">
@@ -518,6 +543,12 @@
                 <strong>Total:</strong> 
                 {formatDuration(completedPlans.reduce((a,b) => a + b.totalTime_days, 0))} / 
                 {(totalUsedFuel/1000).toFixed(1)}t fuel
+                {#if currentConstructSpecs}
+                    {@const remaining = currentConstructSpecs.fuelMass_tonnes - (totalUsedFuel / 1000)}
+                    <span style="color: {remaining < 0 ? '#ff3333' : '#88ccff'}">
+                        ({remaining.toFixed(1)}t remaining)
+                    </span>
+                {/if}
             </div>
             <hr/>
         </div>
