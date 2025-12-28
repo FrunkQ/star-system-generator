@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
   import BodyBasicsTab from './BodyBasicsTab.svelte';
+  import BodyDetailsTab from './BodyDetailsTab.svelte';
   import BodyOrbitTab from './BodyOrbitTab.svelte';
   import BodyAtmosphereTab from './BodyAtmosphereTab.svelte';
   import BodyTemperatureTab from './BodyTemperatureTab.svelte';
@@ -18,6 +19,12 @@
   const dispatch = createEventDispatcher();
 
   let selectedTab: string = 'Basics';
+  $: isBeltOrRing = body.roleHint === 'belt' || body.roleHint === 'ring';
+  
+  // Auto-switch to Details if opening a belt/ring
+  $: if (isBeltOrRing && (selectedTab === 'Basics' || selectedTab === 'Orbit')) {
+      selectedTab = 'Details';
+  }
 
   function setTab(tab: string) {
       selectedTab = tab;
@@ -31,17 +38,27 @@
 
 <div class="body-side-panel">
   <div class="tabs">
-    <button class:active={selectedTab === 'Basics'} on:click={() => setTab('Basics')}>Basics</button>
-    <button class:active={selectedTab === 'Orbit'} on:click={() => setTab('Orbit')}>Orbit</button>
-    <button class:active={selectedTab === 'Temp'} on:click={() => setTab('Temp')}>Temp</button>
-    <button class:active={selectedTab === 'Atmosphere'} on:click={() => setTab('Atmosphere')}>Atmosphere</button>
-    <button class:active={selectedTab === 'Hydro'} on:click={() => setTab('Hydro')}>Liquid</button>
-    <button class:active={selectedTab === 'Bio'} on:click={() => setTab('Bio')}>Bio</button>
+    {#if !isBeltOrRing}
+        <button class:active={selectedTab === 'Basics'} on:click={() => setTab('Basics')}>Basics</button>
+        <button class:active={selectedTab === 'Orbit'} on:click={() => setTab('Orbit')}>Orbit</button>
+    {:else}
+        <button class:active={selectedTab === 'Details'} on:click={() => setTab('Details')}>Details</button>
+    {/if}
+    
+    {#if !isBeltOrRing}
+        <button class:active={selectedTab === 'Temp'} on:click={() => setTab('Temp')}>Temp</button>
+        <button class:active={selectedTab === 'Atmosphere'} on:click={() => setTab('Atmosphere')}>Atmosphere</button>
+        <button class:active={selectedTab === 'Hydro'} on:click={() => setTab('Hydro')}>Liquid</button>
+        <button class:active={selectedTab === 'Bio'} on:click={() => setTab('Bio')}>Bio</button>
+    {/if}
+    
     <button class:active={selectedTab === 'Tags'} on:click={() => setTab('Tags')}>Tags</button>
   </div>
 
   <div class="tab-content">
-    {#if selectedTab === 'Basics'}
+    {#if selectedTab === 'Details'}
+      <BodyDetailsTab {body} on:update={handleUpdate} />
+    {:else if selectedTab === 'Basics'}
       <BodyBasicsTab {body} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Orbit'}
       <BodyOrbitTab {body} {parentBody} {rulePack} on:update={handleUpdate} />

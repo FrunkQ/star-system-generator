@@ -96,75 +96,16 @@
   let backgroundClickHost: CelestialBody | Barycenter | null = null;
   let backgroundClickPosition: { x: number, y: number } | null = null;
   let showBackgroundContextMenu = false;
+  let contextMenuActionLabel = 'Add Planet Here';
+  let showAddBeltOption = false;
+  let showAddRingOption = false;
 
   // Edit Construct Modal State
   let showConstructEditorModal = false;
   let constructToEdit: CelestialBody | null = null;
   let constructHostBodyForEditor: CelestialBody | null = null;
 
-  // Route Creation State
-  let isLinking: boolean = false;
-  let linkStartNode: CelestialBody | Barycenter | null = null;
-
-  // Broadcast View Settings
-  $: if (browser) {
-      broadcastService.sendMessage({ 
-          type: 'SYNC_VIEW_SETTINGS', 
-          payload: { showNames, showZones, showLPoints } 
-      });
-  }
-
-  // Broadcast System Updates
-  $: if (browser && $systemStore) {
-      const snapshot = computePlayerSnapshot($systemStore);
-      broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: snapshot });
-  }
-
-  // Broadcast Focus Updates
-  $: if (browser && focusedBodyId) {
-      broadcastService.sendMessage({ type: 'SYNC_FOCUS', payload: focusedBodyId });
-  }
-
-  function handleShowContextMenu(event: CustomEvent<{ x: number, y: number, items: any[], type: string }>) {
-    contextMenuItems = event.detail.items;
-    contextMenuX = event.detail.x;
-    contextMenuY = event.detail.y;
-    contextMenuType = event.detail.type;
-    showSummaryContextMenu = true;
-  }
-
-  function handleLinkStartOrFinish(event: CustomEvent<CelestialBody | Barycenter>) {
-    const clickedNode = event.detail;
-    showSummaryContextMenu = false;
-
-    if (!isLinking) {
-      // Start a new link
-      isLinking = true;
-      linkStartNode = clickedNode;
-      // Future: Update cursor or provide visual feedback that linking is active
-      alert(`Linking started from ${linkStartNode.name}. Click another system to finish.`);
-    } else if (linkStartNode && clickedNode.id === linkStartNode.id) {
-      // Clicked the same node again, cancel linking
-      isLinking = false;
-      linkStartNode = null;
-      alert('Linking cancelled.');
-    } else if (linkStartNode && clickedNode.id !== linkStartNode.id) {
-      // Finish the link
-      // TODO: Implement actual route creation logic here
-      alert(`Link created from ${linkStartNode.name} to ${clickedNode.name}!`);
-      isLinking = false;
-      linkStartNode = null;
-    }
-  }
-
-  function handleShowBodyContextMenu(event: CustomEvent<{ node: CelestialBody, x: number, y: number }>) {
-    contextMenuNode = event.detail.node;
-    contextMenuX = event.detail.x;
-    contextMenuY = event.detail.y;
-    showSummaryContextMenu = true; 
-    contextMenuType = 'generic';
-    showBackgroundContextMenu = false;
-  }
+  // ...
 
   function handleBackgroundContextMenu(event: CustomEvent<{ x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number }>) {
       console.log('Background Context Menu Triggered:', event.detail);
@@ -172,11 +113,34 @@
       backgroundClickPosition = { x: event.detail.x, y: event.detail.y };
       contextMenuX = event.detail.screenX;
       contextMenuY = event.detail.screenY;
+      
+      showAddBeltOption = false;
+      showAddRingOption = false;
+
+      // Determine label and extra options
+      if (backgroundClickHost && backgroundClickHost.kind === 'body') {
+          const body = backgroundClickHost as CelestialBody;
+          if (body.roleHint === 'planet' || body.roleHint === 'moon') {
+              contextMenuActionLabel = 'Add Moon Here';
+              if (body.roleHint === 'planet') showAddRingOption = true;
+          } else {
+              contextMenuActionLabel = 'Add Planet Here';
+              if (body.roleHint === 'star') showAddBeltOption = true;
+          }
+      } else {
+          contextMenuActionLabel = 'Add Planet Here';
+          // If no dominant body (deep space?), default to Star if it exists?
+          // Usually backgroundClickHost is the Star if nothing else is close.
+          if (backgroundClickHost?.kind === 'barycenter' || (backgroundClickHost && backgroundClickHost.roleHint === 'star')) {
+              showAddBeltOption = true;
+          }
+      }
+      
       showBackgroundContextMenu = true;
       showSummaryContextMenu = false;
   }
 
-  function handleCreatePlanetFromBackground() {
+  function handleCreateBodyFromBackground(forceRole?: string) {
       showBackgroundContextMenu = false;
       const host = backgroundClickHost;
       if (!host || !$systemStore) return;
@@ -186,6 +150,7 @@
       let startAngle = 0;
       
       let hostPos = { x: 0, y: 0 };
+      // ... (existing calc logic) ...
       if (host.parentId) {
          const getAbsolutePosition = (nodeId: string): { x: number, y: number } => {
              const node = $systemStore.nodes.find(n => n.id === nodeId);
@@ -201,17 +166,16 @@
          hostPos = getAbsolutePosition(host.id);
       }
 
-      const dx = backgroundClickPosition.x - hostPos.x;
-      const dy = backgroundClickPosition.y - hostPos.y;
+      const dx = backgroundClickPosition!.x - hostPos.x;
+      const dy = backgroundClickPosition!.y - hostPos.y;
       distAU = Math.sqrt(dx*dx + dy*dy);
       startAngle = Math.atan2(dy, dx);
 
       // 2. Determine Naming
       const siblings = $systemStore.nodes.filter(n => n.parentId === host.id);
-      // Basic naming convention: Parent Name + Roman Numeral (based on count)
-      // This doesn't sort by distance, just by creation order effectively. 
-      // A robust system would resort names, but for "Add Planet Here" simple append is fine.
-      const name = `${host.name} ${toRoman(siblings.length + 1)}`;
+      let name = `${host.name} ${toRoman(siblings.length + 1)}`;
+      if (forceRole === 'belt') name = `${host.name} Belt ${toRoman(siblings.filter(n => n.roleHint === 'belt').length + 1)}`;
+      if (forceRole === 'ring') name = `${host.name} Ring ${String.fromCharCode(65 + siblings.filter(n => n.roleHint === 'ring').length)}`;
 
       // 3. Determine Defaults
       const newPlanet: CelestialBody = {
@@ -221,93 +185,91 @@
           parentId: host.id,
           tags: [],
           atmosphere: { name: 'None', composition: {}, pressure_bar: 0 },
-          hydrosphere: { coverage: 0, composition: 'water' }, // No liquids default
+          hydrosphere: { coverage: 0, composition: 'water' }, 
           biosphere: null,
           classes: [],
-          roleHint: 'planet'
+          roleHint: 'planet' // Default, updated below
       };
 
-      const hostMass = (host as CelestialBody).massKg || (host as Barycenter).effectiveMassKg || 0;
-
-      if (host.roleHint === 'star') {
-          newPlanet.roleHint = 'planet';
-          const zones = calculateAllStellarZones(host as CelestialBody, rulePack);
-          const frostLine = (zones && zones.frostLine) ? zones.frostLine : 2.7;
-          const co2Line = (zones && zones.co2IceLine) ? zones.co2IceLine : (frostLine * 3); 
-
-          if (distAU < frostLine) {
-              newPlanet.classes = ['planet/terrestrial'];
-              newPlanet.massKg = EARTH_MASS_KG * (0.5 + Math.random());
-              newPlanet.radiusKm = 6371 * Math.pow(newPlanet.massKg / EARTH_MASS_KG, 1/3);
-              newPlanet.rotation_period_hours = 20 + Math.random() * 10;
-              newPlanet.axial_tilt_deg = 23.5 + (Math.random() * 20 - 10);
-              
-              // Atmosphere for terrestrial
-              if (distAU > 0.5) {
-                  // Trace CO2/N2
-                  newPlanet.atmosphere = {
-                      name: 'Thin CO2',
-                      composition: { 'CO2': 0.95, 'N2': 0.05 },
-                      pressure_bar: 0.1
-                  };
-              }
-              newPlanet.magneticField = { strengthGauss: 0.1 + Math.random() * 1.9 };
-          } else if (distAU < co2Line) {
-              newPlanet.classes = ['planet/ice-giant'];
-              newPlanet.massKg = EARTH_MASS_KG * (10 + Math.random() * 10);
-              newPlanet.radiusKm = 25000;
-              newPlanet.rotation_period_hours = 10 + Math.random() * 6;
-              newPlanet.axial_tilt_deg = 25 + (Math.random() * 10 - 5);
-              
-              // Atmosphere for Ice Giant
-              newPlanet.atmosphere = {
-                  name: 'H2/He/CH4',
-                  composition: { 'H2': 0.80, 'He': 0.15, 'CH4': 0.05 },
-                  pressure_bar: 100
-              };
-              newPlanet.magneticField = { strengthGauss: 0.1 + Math.random() * 0.9 };
-          } else {
-              newPlanet.classes = ['planet/gas-giant'];
-              newPlanet.massKg = EARTH_MASS_KG * (50 + Math.random() * 250);
-              newPlanet.radiusKm = 70000;
-              newPlanet.rotation_period_hours = 9 + Math.random() * 5;
-              newPlanet.axial_tilt_deg = 3 + Math.random() * 27;
-              
-              // Atmosphere for Gas Giant
-              newPlanet.atmosphere = {
-                  name: 'Hydrogen/Helium',
-                  composition: { 'H2': 0.75, 'He': 0.24 },
-                  pressure_bar: 1000
-              };
-              newPlanet.magneticField = { strengthGauss: 4 + Math.random() * 96 };
+      if (forceRole) {
+          newPlanet.roleHint = forceRole as any;
+          if (forceRole === 'belt') {
+              newPlanet.radiusInnerKm = (distAU * AU_KM) * 0.95;
+              newPlanet.radiusOuterKm = (distAU * AU_KM) * 1.05;
+              newPlanet.classes = ['belt/rocky'];
+          } else if (forceRole === 'ring') {
+              newPlanet.radiusInnerKm = (distAU * AU_KM) * 0.98;
+              newPlanet.radiusOuterKm = (distAU * AU_KM) * 1.02;
+              newPlanet.classes = ['ring/ice'];
           }
       } else {
-          newPlanet.roleHint = 'moon';
-          newPlanet.classes = ['planet/barren'];
-          newPlanet.tidallyLocked = true;
-          newPlanet.axial_tilt_deg = Math.random() * 5;
-          newPlanet.rotation_period_hours = 0; // Will be calc'd if locked
-          
-          const pClasses = (host as CelestialBody).classes || [];
-          const isGiant = pClasses.some(c => c.includes('gas-giant') || c.includes('ice-giant'));
-          
-          if (isGiant) {
-              newPlanet.massKg = hostMass / 10000;
+          // Existing Planet/Moon Logic
+          const hostMass = (host as CelestialBody).massKg || (host as Barycenter).effectiveMassKg || 0;
+
+          if (host.roleHint === 'star') {
+              newPlanet.roleHint = 'planet';
+              const zones = calculateAllStellarZones(host as CelestialBody, rulePack);
+              const frostLine = (zones && zones.frostLine) ? zones.frostLine : 2.7;
+              const co2Line = (zones && zones.co2IceLine) ? zones.co2IceLine : (frostLine * 3); 
+
+              if (distAU < frostLine) {
+                  newPlanet.classes = ['planet/terrestrial'];
+                  newPlanet.massKg = EARTH_MASS_KG * (0.5 + Math.random());
+                  newPlanet.radiusKm = 6371 * Math.pow(newPlanet.massKg / EARTH_MASS_KG, 1/3);
+                  newPlanet.rotation_period_hours = 20 + Math.random() * 10;
+                  newPlanet.axial_tilt_deg = 23.5 + (Math.random() * 20 - 10);
+                  
+                  if (distAU > 0.5) {
+                      newPlanet.atmosphere = { name: 'Thin CO2', composition: { 'CO2': 0.95, 'N2': 0.05 }, pressure_bar: 0.1 };
+                  }
+                  newPlanet.magneticField = { strengthGauss: 0.1 + Math.random() * 1.9 };
+              } else if (distAU < co2Line) {
+                  newPlanet.classes = ['planet/ice-giant'];
+                  newPlanet.massKg = EARTH_MASS_KG * (10 + Math.random() * 10);
+                  newPlanet.radiusKm = 25000;
+                  newPlanet.rotation_period_hours = 10 + Math.random() * 6;
+                  newPlanet.axial_tilt_deg = 25 + (Math.random() * 10 - 5);
+                  newPlanet.atmosphere = { name: 'H2/He/CH4', composition: { 'H2': 0.80, 'He': 0.15, 'CH4': 0.05 }, pressure_bar: 100 };
+                  newPlanet.magneticField = { strengthGauss: 0.1 + Math.random() * 0.9 };
+              } else {
+                  newPlanet.classes = ['planet/gas-giant'];
+                  newPlanet.massKg = EARTH_MASS_KG * (50 + Math.random() * 250);
+                  newPlanet.radiusKm = 70000;
+                  newPlanet.rotation_period_hours = 9 + Math.random() * 5;
+                  newPlanet.axial_tilt_deg = 3 + Math.random() * 27;
+                  newPlanet.atmosphere = { name: 'Hydrogen/Helium', composition: { 'H2': 0.75, 'He': 0.24 }, pressure_bar: 1000 };
+                  newPlanet.magneticField = { strengthGauss: 4 + Math.random() * 96 };
+              }
           } else {
-              newPlanet.massKg = hostMass / (100 + Math.random() * 900);
+              newPlanet.roleHint = 'moon';
+              newPlanet.classes = ['planet/barren'];
+              newPlanet.tidallyLocked = true;
+              newPlanet.axial_tilt_deg = Math.random() * 5;
+              newPlanet.rotation_period_hours = 0; 
+              
+              const pClasses = (host as CelestialBody).classes || [];
+              const isGiant = pClasses.some(c => c.includes('gas-giant') || c.includes('ice-giant'));
+              
+              if (isGiant) {
+                  newPlanet.massKg = hostMass / 10000;
+              } else {
+                  newPlanet.massKg = hostMass / (100 + Math.random() * 900);
+              }
+              newPlanet.radiusKm = 6371 * Math.pow((newPlanet.massKg || 0) / EARTH_MASS_KG, 1/3) * 0.8;
           }
-          newPlanet.radiusKm = 6371 * Math.pow((newPlanet.massKg || 0) / EARTH_MASS_KG, 1/3) * 0.8;
-          // Moons default to no atmosphere
       }
 
-      // 4. Orbit
+      // 4. Orbit (Common)
+      // For belts, we might not strictly need an orbit object if visuals use inner/outer radius, 
+      // but 'orbit' defines the 'center' distance for sorting and logic.
+      const hostMass = (host as CelestialBody).massKg || (host as Barycenter).effectiveMassKg || 0;
       newPlanet.orbit = {
           hostId: host.id,
           hostMu: hostMass * G,
           t0: currentTime,
           elements: {
               a_AU: Math.max(distAU, 0.000001),
-              e: 0.01,
+              e: forceRole ? 0 : 0.01, // Circular for belts/rings by default
               i_deg: 0,
               omega_deg: Math.random() * 360,
               Omega_deg: Math.random() * 360,
@@ -1522,7 +1484,13 @@ a.click();
         <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px;" on:click|stopPropagation>
             <ul>
                 <li on:click={handleCreateConstructFromBackground}>Add Construct Here</li>
-                <li on:click={handleCreatePlanetFromBackground}>Add Planet Here</li>
+                <li on:click={() => handleCreateBodyFromBackground()}>{contextMenuActionLabel}</li>
+                {#if showAddBeltOption}
+                    <li on:click={() => handleCreateBodyFromBackground('belt')}>Add Belt Here</li>
+                {/if}
+                {#if showAddRingOption}
+                    <li on:click={() => handleCreateBodyFromBackground('ring')}>Add Ring Here</li>
+                {/if}
             </ul>
         </div>
     {/if}

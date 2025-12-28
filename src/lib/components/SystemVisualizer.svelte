@@ -894,7 +894,13 @@
                       const e = node.orbit.elements.e;
                       const b = a * Math.sqrt(1 - e * e);
                       const c = a * e;
-                      ctx.ellipse(parentPos.x - c, parentPos.y, a, b, 0, 0, 2 * Math.PI);
+                      const omega_rad = (node.orbit.elements.omega_deg || 0) * (Math.PI / 180);
+
+                      ctx.save();
+                      ctx.translate(parentPos.x, parentPos.y);
+                      ctx.rotate(omega_rad);
+                      ctx.ellipse(-c, 0, a, b, 0, 0, 2 * Math.PI);
+                      ctx.restore();
                   } else {
                       ctx.arc(parentPos.x, parentPos.y, avgRadius, 0, 2 * Math.PI);
                   }

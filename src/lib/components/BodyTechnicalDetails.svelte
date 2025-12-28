@@ -33,6 +33,7 @@
   let calculatedPeriodDays: number | null = null;
   
   $: isGasGiant = body.classes?.some(c => c.includes('gas-giant')) ?? false;
+  $: isBeltOrRing = body && body.kind === 'body' && (body.roleHint === 'belt' || body.roleHint === 'ring');
   
   // Perform all other display calculations when the body changes
   $: {
@@ -193,6 +194,23 @@
       return { text: 'Extreme', tooltip: 'Extreme stellar radiation output. Comparable to a massive O-type star or active stellar remnant.' };
   }
 
+  function getBeltDensityDescription(massKg: number): { text: string, color: string } {
+      const massEarths = massKg / EARTH_MASS_KG;
+      const minLog = Math.log(0.00001);
+      const maxLog = Math.log(1.0);
+      let val = 0;
+      if (massEarths > 0) {
+          val = (Math.log(massEarths) - minLog) / (maxLog - minLog);
+      }
+      val = Math.max(0, Math.min(1, val));
+
+      if (val < 0.2) return { text: "Sparse (Navigation Trivial)", color: "#00ff00" }; // Green
+      if (val < 0.4) return { text: "Light (Standard)", color: "#88ff00" }; // Light Green
+      if (val < 0.6) return { text: "Moderate (Minor Hazards)", color: "#ffff00" }; // Yellow
+      if (val < 0.8) return { text: "Dense (Navigation Hazard)", color: "#ff8800" }; // Orange
+      return { text: "Ultra-Dense (Deadly)", color: "#ff0000" }; // Red
+  }
+
   // --- Constants ---
   const G = 6.67430e-11;
   const EARTH_GRAVITY = 9.80665; // m/s^2
@@ -273,61 +291,85 @@
             <span class="label">Classification</span>
             <span class="value">{body.classes.join(', ')}</span>
         </div>
-                        {#if STAR_TYPE_DESC[body.classes[0]] || STAR_TYPE_DESC[body.classes[0]?.split('/')[1]?.[0]]}
-                            <div class="detail-item description">
-                                <span class="value">{STAR_TYPE_DESC[body.classes[0]] || STAR_TYPE_DESC[body.classes[0].split('/')[1][0]]}</span>
-                            </div>
-                        {/if}            
+        {#if !isBeltOrRing}
+            {#if STAR_TYPE_DESC[body.classes[0]] || STAR_TYPE_DESC[body.classes[0]?.split('/')[1]?.[0]]}
+                <div class="detail-item description">
+                    <span class="value">{STAR_TYPE_DESC[body.classes[0]] || STAR_TYPE_DESC[body.classes[0].split('/')[1][0]]}</span>
+                </div>
+            {/if}
+        {/if}
     {/if}
 
-    {#if massDisplay}
-          <div class="detail-item">
-              <span class="label">Mass</span>
-              <span class="value">{massDisplay}</span>
-          </div>
-      {/if}
+    {#if isBeltOrRing}
+        {#if body.radiusInnerKm && body.radiusOuterKm}
+            <div class="detail-item">
+                <span class="label">Dimensions (AU)</span>
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                    <span><strong>Inner:</strong> {(body.radiusInnerKm / AU_KM).toFixed(2)} AU</span>
+                    <span><strong>Outer:</strong> {(body.radiusOuterKm / AU_KM).toFixed(2)} AU</span>
+                    <span><strong>Width:</strong> {((body.radiusOuterKm - body.radiusInnerKm) / AU_KM).toFixed(3)} AU</span>
+                </div>
+            </div>
+        {/if}
+        {#if body.massKg}
+            {@const densityInfo = getBeltDensityDescription(body.massKg)}
+            <div class="detail-item">
+                <span class="label">Density / Hazard</span>
+                <span class="value" style="color: {densityInfo.color}; font-weight: bold;">{densityInfo.text}</span>
+            </div>
+        {/if}
+    {/if}
 
-      {#if body.kind === 'body' && body.radiusKm}
-          <div class="detail-item">
-              <span class="label">Radius</span>
-              <span class="value">{body.radiusKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
-          </div>
-      {/if}
+    {#if !isBeltOrRing}
+        {#if massDisplay}
+              <div class="detail-item">
+                  <span class="label">Mass</span>
+                  <span class="value">{massDisplay}</span>
+              </div>
+          {/if}
 
-      {#if circumferenceKm}
-          <div class="detail-item">
-              <span class="label">Circumference</span>
-              <span class="value">{circumferenceKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
-          </div>
-      {/if}
+          {#if body.kind === 'body' && body.radiusKm}
+              <div class="detail-item">
+                  <span class="label">Radius</span>
+                  <span class="value">{body.radiusKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+              </div>
+          {/if}
 
-      {#if surfaceGravityG !== null}
-          <div class="detail-item">
-              <span class="label">Surface Gravity</span>
-              <span class="value">{surfaceGravityG.toFixed(2)} G</span>
-          </div>
-      {/if}
+          {#if circumferenceKm}
+              <div class="detail-item">
+                  <span class="label">Circumference</span>
+                  <span class="value">{circumferenceKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+              </div>
+          {/if}
 
-      {#if densityRelative !== null}
-          <div class="detail-item">
-              <span class="label">Density (rel. to Earth)</span>
-              <span class="value">{densityRelative.toFixed(2)}</span>
-          </div>
-      {/if}
+          {#if surfaceGravityG !== null}
+              <div class="detail-item">
+                  <span class="label">Surface Gravity</span>
+                  <span class="value">{surfaceGravityG.toFixed(2)} G</span>
+              </div>
+          {/if}
 
-      {#if body.kind === 'body' && body.axial_tilt_deg}
-          <div class="detail-item">
-              <span class="label">Axial Tilt</span>
-              <span class="value">{body.axial_tilt_deg.toFixed(1)}°</span>
-          </div>
-      {/if}
+          {#if densityRelative !== null}
+              <div class="detail-item">
+                  <span class="label">Density (rel. to Earth)</span>
+                  <span class="value">{densityRelative.toFixed(2)}</span>
+              </div>
+          {/if}
 
-      {#if body.kind === 'body' && body.rotation_period_hours}
-          <div class="detail-item">
-              <span class="label">Day Length</span>
-              <span class="value">{body.rotation_period_hours.toFixed(1)} hours</span>
-          </div>
-      {/if}
+          {#if body.kind === 'body' && body.axial_tilt_deg}
+              <div class="detail-item">
+                  <span class="label">Axial Tilt</span>
+                  <span class="value">{body.axial_tilt_deg.toFixed(1)}°</span>
+              </div>
+          {/if}
+
+          {#if body.kind === 'body' && body.rotation_period_hours}
+              <div class="detail-item">
+                  <span class="label">Day Length</span>
+                  <span class="value">{body.rotation_period_hours.toFixed(1)} hours</span>
+              </div>
+          {/if}
+    {/if}
 
       {#if orbitalDistanceDisplay}
           <div class="detail-item">
@@ -336,7 +378,7 @@
           </div>
       {/if}
 
-      {#if body.kind === 'body' && (calculatedPeriodDays || body.orbital_period_days)}
+      {#if body.kind === 'body' && (calculatedPeriodDays || body.orbital_period_days) && !isBeltOrRing}
           <div class="detail-item">
               <span class="label">Orbital Period</span>
               <span class="value">{(calculatedPeriodDays || body.orbital_period_days).toFixed(1)} days</span>
