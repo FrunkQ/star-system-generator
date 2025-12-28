@@ -1360,6 +1360,8 @@ a.click();
                          currentTransitPlan = null;
                          completedTransitPlans = [];
                          transitAlternatives = [];
+                         transitPreviewPos = null;
+                         transitJourneyOffset = 0;
                          transitChainTime = 0;
                     }}
                     on:close={() => { 

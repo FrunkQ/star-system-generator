@@ -215,7 +215,13 @@ export function calculateFlightTelemetry(system: System, plans: TransitPlan[], r
             if (!belt.radiusInnerKm || !belt.radiusOuterKm || !belt.parentId) continue;
             const d = distanceAU(shipPos, { x:0, y:0 }) * AU_KM; // Approx heliocentric
             if (d >= belt.radiusInnerKm && d <= belt.radiusOuterKm) {
-                hazards.push({ type: 'Debris', level: 'Warning', sourceName: belt.name, message: 'Crossing Asteroid Belt' });
+                const hazard = getDebrisHazard(belt);
+                hazards.push({ 
+                    type: 'Debris', 
+                    level: hazard.level, 
+                    sourceName: belt.name, 
+                    message: hazard.message 
+                });
             }
         }
 
@@ -229,7 +235,13 @@ export function calculateFlightTelemetry(system: System, plans: TransitPlan[], r
                 const planetState = getGlobalState(system, planet, t);
                 const d = distanceAU(shipPos, planetState.r) * AU_KM;
                 if (d >= ring.radiusInnerKm && d <= ring.radiusOuterKm) {
-                    hazards.push({ type: 'Debris', level: 'Danger', sourceName: ring.name, message: 'Crossing Planetary Ring' });
+                    const hazard = getDebrisHazard(ring);
+                    hazards.push({ 
+                        type: 'Debris', 
+                        level: hazard.level, 
+                        sourceName: ring.name, 
+                        message: hazard.message 
+                    });
                 }
             }
         }
@@ -238,4 +250,23 @@ export function calculateFlightTelemetry(system: System, plans: TransitPlan[], r
     }
 
     return points;
+}
+
+function getDebrisHazard(body: CelestialBody): { level: 'Info' | 'Warning' | 'Danger' | 'Critical', message: string } {
+    const EARTH_MASS_KG = 5.972e24;
+    const massEarths = (body.massKg || 0) / EARTH_MASS_KG;
+    const minLog = Math.log(0.00001);
+    const maxLog = Math.log(1.0);
+    
+    let val = 0;
+    if (massEarths > 0) {
+        val = (Math.log(massEarths) - minLog) / (maxLog - minLog);
+    }
+    val = Math.max(0, Math.min(1, val));
+
+    if (val < 0.2) return { level: 'Info', message: 'Sparse Debris' };
+    if (val < 0.4) return { level: 'Info', message: 'Light Debris' };
+    if (val < 0.6) return { level: 'Warning', message: 'Moderate Debris' };
+    if (val < 0.8) return { level: 'Danger', message: 'Dense Debris' };
+    return { level: 'Critical', message: 'Ultra-Dense Debris' };
 }
