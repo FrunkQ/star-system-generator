@@ -82,6 +82,9 @@ export interface CelestialBody extends NodeBase {
   vector_velocity_ms?: { x: number; y: number; z?: number };
   flight_state?: 'Orbiting' | 'Transit' | 'Deep Space' | 'Landed' | 'Docked';
   
+  // Transit Planning Persistence
+  draft_transit_plan?: any[]; // Holds TransitPlan[] for resuming sessions
+  
   // ... existing properties ...
 }
 

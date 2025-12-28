@@ -856,9 +856,15 @@
         
         <div class="actions">
             {#if plan}
-                <button class="calculate-btn" on:click={() => dispatch('addNextLeg', plan)} disabled={isImpossible || isInsufficientFuel} title={isImpossible ? "Plan Impossible" : (isInsufficientFuel ? "Insufficient Fuel" : "Add to Flight Plan")}>Add Next Leg</button>
+                <div class="action-group">
+                    <button class="calculate-btn" on:click={() => dispatch('addNextLeg', plan)} disabled={isImpossible || isInsufficientFuel} title={isImpossible ? "Plan Impossible" : (isInsufficientFuel ? "Insufficient Fuel" : "Add to Flight Plan")}>Add Next Leg</button>
+                    {#if completedPlans.length > 0}
+                         <button class="cancel-btn" on:click={() => dispatch('undoLastLeg')}>Cancel Previous Leg</button>
+                    {/if}
+                </div>
                 <button class="calculate-btn execute" on:click={() => dispatch('executePlan', plan)} disabled={!canAfford || isImpossible || isInsufficientFuel} title={isImpossible ? "Plan Impossible (See warning above)" : (isInsufficientFuel ? "Insufficient Fuel (See warning above)" : (!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"))}>Execute Journey</button>
             {:else if completedPlans.length > 0}
+                <button class="cancel-btn" on:click={() => dispatch('undoLastLeg')}>Cancel Last Leg</button>
                 <button class="calculate-btn execute" on:click={() => dispatch('executePlan', null)} disabled={!canAfford} title={!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"}>Execute Journey</button>
             {/if}
             <button class="close-btn" on:click={() => dispatch('close')}>Close Planner</button>
@@ -963,12 +969,20 @@
         color: #88ccff;
         font-weight: bold;
     }
+    .action-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        flex: 1;
+    }
     .actions {
         display: flex;
         justify-content: center;
+        gap: 10px;
+        align-items: stretch;
     }
     .calculate-btn {
-        width: 100%;
+        flex: 1;
         background: #444;
         color: white;
         padding: 0.5em;
@@ -976,42 +990,36 @@
         border-radius: 3px;
         cursor: pointer;
     }
+    .cancel-btn {
+        background: #552222;
+        color: #ffaaaa;
+        padding: 0.5em;
+        border: 1px solid #773333;
+        border-radius: 3px;
+        cursor: pointer;
+        flex: 1;
+    }
+    .cancel-btn:hover { background: #773333; }
+    
     .calculate-btn:hover { background: #555; }
     
     .calculate-btn.execute {
         background-color: #28a745;
+        flex: 1.5; /* Larger execute button */
+        font-weight: bold;
+        font-size: 1.1em;
     }
     .calculate-btn.execute:hover {
         background-color: #218838;
     }
-    .total-summary {
-        margin-top: 0.5em;
-        font-weight: bold;
-        color: #eee;
-        border-top: 1px dashed #444;
-        padding-top: 0.5em;
-    }
-    .results {
-        background: #1a1a1a;
-        padding: 1em;
-        border-radius: 3px;
-        font-family: monospace;
-    }
-    .result-item {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 0.5em;
-    }
-    .error {
-        color: #ff6666;
-    }
     .close-btn {
-        margin-top: 1em;
+        margin-top: 0; /* Align with row */
         background: #333;
         border: 1px solid #444;
         color: #aaa;
         cursor: pointer;
         padding: 0.5em;
+        width: auto;
     }
     .preview-slider {
         border-top: 1px solid #444;

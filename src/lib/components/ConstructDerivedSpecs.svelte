@@ -6,7 +6,8 @@
   export let construct: CelestialBody;
   export let rulePack: RulePack;
   export let hostBody: CelestialBody | null;
-  export let isEditingConstruct: boolean = false; // New prop
+  export let isEditingConstruct: boolean = false; 
+  export let hideActions: boolean = false; // New prop
 
   const dispatch = createEventDispatcher();
 
@@ -41,7 +42,7 @@
   // Reactive Landing Analysis
   let landingAnalysis: { takeoff: any; consolidatedLanding: any; roundTrip: any; } | null = null;
   $: {
-    if (specs && hostBody && hostBody.kind === 'body' && !hostBody.class?.includes('star')) {
+    if (specs && hostBody && hostBody.kind === 'body' && hostBody.roleHint !== 'star' && !hostBody.class?.includes('star')) {
       const formatFuel = (t: number) => t.toLocaleString(undefined, { maximumFractionDigits: 1 });
       
       const takeoff = { possible: false, reason: 'N/A', twr: specs.surfaceTWR, fuel: specs.takeoffFuel_tonnes };
@@ -259,11 +260,13 @@
     {/if}
 
     <div class="actions-row">
-        {#if !isEditingConstruct}
-            <!-- Plan Transit (Always available if engine/fuel present) -->
-            <button class="action-btn transit" on:click={() => dispatch('planTransit')}>
-                Plan Transit
-            </button>
+        {#if !isEditingConstruct && !hideActions}
+            <!-- Plan Transit (Only available if NOT on surface) -->
+            {#if construct.placement !== 'Surface'}
+                <button class="action-btn transit" on:click={() => dispatch('planTransit')}>
+                    Plan Transit
+                </button>
+            {/if}
 
             {#if landingAnalysis}
                 {#if construct.placement === 'Surface'}

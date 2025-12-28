@@ -852,6 +852,31 @@ a.click();
       visualizer?.resetView(); 
       plannerOriginId = focusedBody.id;
       planningConstructId = focusedBody.id;
+      
+      // Attempt to restore draft plan
+      if (focusedBody.draft_transit_plan && focusedBody.draft_transit_plan.length > 0) {
+          const draft = focusedBody.draft_transit_plan as TransitPlan[];
+          const firstLegStart = draft[0].startTime;
+          
+          // Only restore if the plan starts in the future relative to current time
+          // (Allowing for small epsilon or if we assume simulation time stops while planning)
+          if (firstLegStart >= currentTime - 1000) {
+              completedTransitPlans = draft;
+              
+              // Reconstruct chain state from last leg
+              const lastLeg = draft[draft.length - 1];
+              transitChainTime = lastLeg.startTime + (lastLeg.totalTime_days * 86400 * 1000);
+              plannerOriginId = lastLeg.targetId;
+              
+              if (lastLeg.segments.length > 0) {
+                  const endState = lastLeg.segments[lastLeg.segments.length - 1].endState;
+                  transitChainState = { r: { ...endState.r }, v: { ...endState.v } };
+              }
+              return;
+          }
+      }
+      
+      // Default: Start fresh
       transitChainTime = currentTime;
       completedTransitPlans = [];
       transitChainState = undefined;
@@ -1375,8 +1400,20 @@ a.click();
                          completedTransitPlans = [];
                          transitAlternatives = [];
                          transitChainTime = 0;
+                         
+                         // Clear Draft
+                         if (focusedBody) {
+                             focusedBody.draft_transit_plan = undefined;
+                             handleBodyUpdate({ detail: focusedBody } as CustomEvent);
+                         }
                     }}
                     on:close={() => { 
+                        // Save Draft Plan
+                        if (focusedBody && completedTransitPlans.length > 0) {
+                            focusedBody.draft_transit_plan = completedTransitPlans;
+                            handleBodyUpdate({ detail: focusedBody } as CustomEvent);
+                        }
+                        
                         isPlanning = false; 
                         currentTransitPlan = null; 
                         transitDelayDays = 0; 
@@ -1393,6 +1430,7 @@ a.click();
                         construct={focusedBody} 
                         hostBody={parentBody} 
                         {rulePack} 
+                        hideActions={true}
                         on:planTransit={handleStartPlanning}
                         on:takeoff={handleTakeoff}
                         on:land={handleLand}
@@ -1430,6 +1468,7 @@ a.click();
                         construct={focusedBody} 
                         hostBody={parentBody} 
                         {rulePack} 
+                        hideActions={isPlanning}
                         on:update={handleConstructUpdate} 
                         on:delete={handleDeleteNode} 
                         on:close={() => isEditing = false}
@@ -1441,6 +1480,7 @@ a.click();
                           hostBody={parentBody} 
                           {rulePack} 
                           isEditingConstruct={isEditing}
+                          hideActions={isPlanning}
                           on:planTransit={handleStartPlanning}
                           on:takeoff={handleTakeoff}
                           on:land={handleLand}

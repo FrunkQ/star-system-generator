@@ -16,6 +16,7 @@
   export let construct: CelestialBody;
   export let rulePack: RulePack;
   export let hostBody: CelestialBody | null;
+  export let hideActions: boolean = false; // New prop
 
   const dispatch = createEventDispatcher();
 
@@ -188,7 +189,7 @@
   </div>
 
   <div class="specs-section">
-      <ConstructDerivedSpecs {construct} {rulePack} {hostBody} isEditingConstruct={true} />
+      <ConstructDerivedSpecs {construct} {rulePack} {hostBody} isEditingConstruct={true} {hideActions} />
   </div>
 </div>
 
