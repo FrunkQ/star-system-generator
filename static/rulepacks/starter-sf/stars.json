@@ -12,6 +12,7 @@
         "star/NS": { "mass_solar": [1.4, 2.2], "radius_solar": [0.000014, 0.000028], "temp_k": [100000, 1000000], "mag_gauss": [100000000, 100000000000], "radiation_output": [1000, 10000] },
         "star/magnetar": { "mass_solar": [1.4, 2.2], "radius_solar": [0.000014, 0.000028], "temp_k": [100000, 1000000], "mag_gauss": [100000000000, 1000000000000000], "radiation_output": [100000, 1000000] },
         "star/BH": { "mass_solar": [3, 100], "radius_solar": [0.0000126, 0.000423], "temp_k": [0, 0], "mag_gauss": [0, 0], "radiation_output": [0.01, 0.1] },
-        "star/BH_active": { "mass_solar": [3, 100], "radius_solar": [0.0000126, 0.000423], "temp_k": [0, 0], "mag_gauss": [100000, 100000000], "radiation_output": [10000, 100000] }
+        "star/BH_active": { "mass_solar": [3, 100], "radius_solar": [0.0000126, 0.000423], "temp_k": [0, 0], "mag_gauss": [100000, 100000000], "radiation_output": [10000, 100000] },
+        "star/red-giant": { "mass_solar": [0.8, 5], "radius_solar": [20, 100], "temp_k": [3000, 4500], "mag_gauss": [0.1, 10], "radiation_output": [10, 50] }
     }
 }

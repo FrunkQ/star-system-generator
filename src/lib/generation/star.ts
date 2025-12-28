@@ -38,7 +38,7 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
 
     if (['O', 'B'].includes(spectralType)) {
         starCategory = 'massive_star';
-    } else if (['A', 'F', 'G', 'K'].includes(spectralType)) {
+    } else if (['A', 'F', 'G', 'K', 'red-giant'].includes(spectralType)) {
         starCategory = 'main_sequence_star';
     } else if (['M'].includes(spectralType)) {
         starCategory = 'low_mass_star';

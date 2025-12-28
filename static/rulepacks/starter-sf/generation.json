@@ -19,6 +19,7 @@
                 { "weight": 80, "value": "star/K" },
                 { "weight": 700, "value": "star/M" },
                 { "weight": 15, "value": "star/WD" },
+                { "weight": 5, "value": "star/red-giant" },
                 { "weight": 4, "value": "star/NS" },
                 { "weight": 1, "value": "star/magnetar" },
                 { "weight": 1, "value": "star/BH" },

@@ -12,6 +12,7 @@ export const STAR_COLOR_MAP: Record<string, string> = {
     "NS": "#c0c0ff", // Neutron Star
     "magnetar": "#800080", // Magnetar (Purple)
     "BH": "#000000", // Black Hole (Black, but maybe a glow?)
+    "red-giant": "#8b0000", // Red Giant (Deep Red)
     "default": "#ffffff" 
 };
 

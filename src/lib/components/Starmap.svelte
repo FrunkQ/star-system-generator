@@ -134,6 +134,7 @@
     if (star && star.classes && star.classes.length > 0) {
         if (star.classes.includes('star/magnetar')) return '#800080'; // Purple for Magnetar
         if (star.classes.includes('BH') || star.classes.includes('star/BH')) return '#000000'; // Black for Black Hole
+        if (star.classes.includes('star/red-giant')) return '#8b0000'; // Deep Red for Red Giant
         const starClass = star.classes[0].split('/')[1]; // e.g., "star/G2V" -> "G2V"
         const spectralType = starClass[0]; // e.g., "G2V" -> "G"
         switch (spectralType) {

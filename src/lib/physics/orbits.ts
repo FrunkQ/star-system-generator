@@ -166,6 +166,92 @@ export function propagateState(node: CelestialBody | Barycenter | { orbit: any }
   };
 }
 
+/**
+ * Converts State Vector (Position r, Velocity v) to Keplerian Orbital Elements.
+ * Used for recovering orbital parameters from kinematic/deep-space states.
+ * r in AU, v in AU/s. hostMu in m^3/s^2.
+ */
+export function rv2coe(r_au: Vector2, v_au_s: Vector2, hostMu: number): any {
+    const AU_M = AU_KM * 1000;
+    const r_vec = { x: r_au.x * AU_M, y: r_au.y * AU_M, z: 0 };
+    const v_vec = { x: v_au_s.x * AU_M, y: v_au_s.y * AU_M, z: 0 };
+    
+    const r = Math.sqrt(r_vec.x**2 + r_vec.y**2);
+    const v = Math.sqrt(v_vec.x**2 + v_vec.y**2);
+    
+    // Angular Momentum h = r x v
+    const h_vec = {
+        x: 0, 
+        y: 0, 
+        z: r_vec.x * v_vec.y - r_vec.y * v_vec.x
+    };
+    const h = Math.abs(h_vec.z);
+    
+    // Eccentricity Vector e = ( (v^2 - mu/r)*r - (r.v)*v ) / mu
+    const r_dot_v = r_vec.x * v_vec.x + r_vec.y * v_vec.y;
+    const term1 = (v**2 - hostMu / r);
+    
+    const e_vec = {
+        x: (term1 * r_vec.x - r_dot_v * v_vec.x) / hostMu,
+        y: (term1 * r_vec.y - r_dot_v * v_vec.y) / hostMu,
+        z: 0
+    };
+    
+    const e = Math.sqrt(e_vec.x**2 + e_vec.y**2);
+    
+    // Semi-major Axis a
+    // Mechanical Energy E = v^2/2 - mu/r = -mu / 2a
+    const energy = (v**2) / 2 - hostMu / r;
+    
+    let a = -hostMu / (2 * energy);
+    
+    // Inclination (2D assumed 0)
+    const i = 0;
+    
+    // Longitude of Ascending Node (2D assumed 0)
+    const Omega = 0;
+    
+    // Argument of Periapsis (omega)
+    // Angle of e_vec
+    let omega = Math.atan2(e_vec.y, e_vec.x);
+    if (omega < 0) omega += 2 * Math.PI;
+    
+    // True Anomaly f
+    // Angle between e_vec and r_vec
+    // cos(f) = (e . r) / (e * r)
+    // BUT we need signed angle.
+    // In 2D, true longitude = omega + f = atan2(r.y, r.x)
+    const theta = Math.atan2(r_vec.y, r_vec.x);
+    let f = theta - omega;
+    if (f < 0) f += 2 * Math.PI;
+    
+    // Convert to Mean Anomaly M
+    let M = 0;
+    if (e < 1.0) {
+        // Elliptical
+        const E_anom = 2 * Math.atan(Math.sqrt((1 - e)/(1 + e)) * Math.tan(f/2));
+        M = E_anom - e * Math.sin(E_anom);
+    } else {
+        // Hyperbolic
+        const F = 2 * Math.atanh(Math.sqrt((e - 1)/(e + 1)) * Math.tan(f/2));
+        M = e * Math.sinh(F) - F;
+    }
+    
+    // Normalize M
+    if (M < 0) M += 2 * Math.PI;
+    M = M % (2 * Math.PI);
+
+    return {
+        a_AU: a / AU_M,
+        e: e,
+        i_deg: 0,
+        Omega_deg: 0,
+        omega_deg: omega * (180 / Math.PI),
+        M0_rad: M // This is M at the current time t.
+        // We usually store M0 (at epoch t0). If we set t0 = current time, then M0 = M.
+    };
+}
+
 export interface OrbitalBoundaries {
   minLeoKm: number;
   leoMoeBoundaryKm: number;
