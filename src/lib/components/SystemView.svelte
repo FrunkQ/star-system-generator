@@ -72,6 +72,7 @@
   let transitAlternatives: TransitPlan[] = [];
   let transitChainTime: number = 0;
   let transitChainState: any = undefined; // StateVector imported later
+  let isTransitExecuting: boolean = false;
 
   function handleToggleCrt() {
       isCrtMode = !isCrtMode;
@@ -1059,6 +1060,7 @@ a.click();
                 alternativePlans={transitAlternatives}
                 completedPlans={completedTransitPlans}
                 transitPreviewPos={transitPreviewPos}
+                isExecuting={isTransitExecuting}
                 on:focus={handleFocus} 
                 on:showBodyContextMenu={handleShowBodyContextMenu} 
                 on:backgroundContextMenu={handleBackgroundContextMenu} 
@@ -1114,6 +1116,7 @@ a.click();
                     bind:departureDelayDays={transitDelayDays}
                     on:planUpdate={(e) => currentTransitPlan = e.detail}
                     on:alternativesUpdate={(e) => transitAlternatives = e.detail}
+                    on:executionStateChange={(e) => isTransitExecuting = e.detail}
                     on:previewUpdate={(e) => {
                         transitJourneyOffset = e.detail.offset;
                         transitPreviewPos = e.detail.position;

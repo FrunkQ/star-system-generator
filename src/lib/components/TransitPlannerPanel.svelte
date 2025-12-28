@@ -51,9 +51,44 @@
   let debounceTimeout: any;
   let telemetryData: TelemetryPoint[] = [];
   let showAdvanced = false;
+  let isExecuting = false; // Animation state
   
   let maxPotentialDeltaV_ms = 0;
   let maxFuelMass_kg = 0;
+
+  function triggerExecute(finalPlan: TransitPlan | null) {
+      if (isExecuting) return;
+      isExecuting = true;
+      dispatch('executionStateChange', true);
+      journeyProgress = 0;
+      updatePreview();
+
+      const duration = 10000; // 10 seconds
+      const startTimeAnim = performance.now();
+
+      function frame(now: number) {
+          const elapsed = now - startTimeAnim;
+          const pct = Math.min(1, elapsed / duration);
+          
+          // Use ease-in-out for a smoother cinematic feel
+          const ease = pct < 0.5 ? 2 * pct * pct : 1 - Math.pow(-2 * pct + 2, 2) / 2;
+          
+          journeyProgress = ease * 100;
+          updatePreview();
+
+          if (pct < 1) {
+              requestAnimationFrame(frame);
+          } else {
+              // Finish
+              setTimeout(() => {
+                  isExecuting = false;
+                  dispatch('executionStateChange', false);
+                  dispatch('executePlan', finalPlan);
+              }, 500); // Tiny pause at end for impact
+          }
+      }
+      requestAnimationFrame(frame);
+  }
 
   let previousOriginId: ID = '';
 
@@ -854,20 +889,24 @@
             </div>
         </div>
         
-        <div class="actions">
+        <div class="actions" class:executing={isExecuting}>
             {#if plan}
                 <div class="action-group">
-                    <button class="calculate-btn" on:click={() => dispatch('addNextLeg', plan)} disabled={isImpossible || isInsufficientFuel} title={isImpossible ? "Plan Impossible" : (isInsufficientFuel ? "Insufficient Fuel" : "Add to Flight Plan")}>Add Next Leg</button>
+                    <button class="calculate-btn" on:click={() => dispatch('addNextLeg', plan)} disabled={isImpossible || isInsufficientFuel || isExecuting} title={isImpossible ? "Plan Impossible" : (isInsufficientFuel ? "Insufficient Fuel" : "Add to Flight Plan")}>Add Next Leg</button>
                     {#if completedPlans.length > 0}
-                         <button class="cancel-btn" on:click={() => dispatch('undoLastLeg')}>Cancel Previous Leg</button>
+                         <button class="cancel-btn" on:click={() => dispatch('undoLastLeg')} disabled={isExecuting}>Cancel Previous Leg</button>
                     {/if}
                 </div>
-                <button class="calculate-btn execute" on:click={() => dispatch('executePlan', plan)} disabled={!canAfford || isImpossible || isInsufficientFuel} title={isImpossible ? "Plan Impossible (See warning above)" : (isInsufficientFuel ? "Insufficient Fuel (See warning above)" : (!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"))}>Execute Journey</button>
+                <button class="calculate-btn execute" on:click={() => triggerExecute(plan)} disabled={!canAfford || isImpossible || isInsufficientFuel || isExecuting} title={isImpossible ? "Plan Impossible (See warning above)" : (isInsufficientFuel ? "Insufficient Fuel (See warning above)" : (!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"))}>
+                    {isExecuting ? 'Simulating Transit...' : 'Execute Journey'}
+                </button>
             {:else if completedPlans.length > 0}
-                <button class="cancel-btn" on:click={() => dispatch('undoLastLeg')}>Cancel Last Leg</button>
-                <button class="calculate-btn execute" on:click={() => dispatch('executePlan', null)} disabled={!canAfford} title={!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"}>Execute Journey</button>
+                <button class="cancel-btn" on:click={() => dispatch('undoLastLeg')} disabled={isExecuting}>Cancel Last Leg</button>
+                <button class="calculate-btn execute" on:click={() => triggerExecute(null)} disabled={!canAfford || isExecuting} title={!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"}>
+                    {isExecuting ? 'Simulating Transit...' : 'Execute Journey'}
+                </button>
             {/if}
-            <button class="close-btn" on:click={() => dispatch('close')}>Close Planner</button>
+            <button class="close-btn" on:click={() => dispatch('close')} disabled={isExecuting}>Close Planner</button>
         </div>
     {/if}
 
@@ -1011,6 +1050,23 @@
     }
     .calculate-btn.execute:hover {
         background-color: #218838;
+    }
+    .calculate-btn.execute:disabled {
+        opacity: 0.7;
+        cursor: wait;
+    }
+    .actions.executing {
+        filter: grayscale(0.5);
+    }
+    .actions.executing .execute {
+        animation: pulse 2s infinite;
+        filter: none;
+        opacity: 1;
+    }
+    @keyframes pulse {
+        0% { background-color: #28a745; }
+        50% { background-color: #34ce57; }
+        100% { background-color: #28a745; }
     }
     .close-btn {
         margin-top: 0; /* Align with row */

@@ -29,6 +29,7 @@
   export let completedPlans: TransitPlan[] = [];
   export let alternativePlans: TransitPlan[] = [];
   export let transitPreviewPos: { x: number, y: number } | null = null;
+  export let isExecuting: boolean = false;
 
   const dispatch = createEventDispatcher<{ 
     focus: string | null,
@@ -1037,18 +1038,18 @@
           ctx.restore();
 
           for (const plan of completedPlans) {
-              drawTransitPlan(ctx, plan, true);
+              drawTransitPlan(ctx, plan, true, isExecuting ? 0.2 : undefined, isExecuting);
           }
       }
       
-      if (alternativePlans && alternativePlans.length > 0) {
+      if (!isExecuting && alternativePlans && alternativePlans.length > 0) {
           for (const plan of alternativePlans) {
               drawTransitPlan(ctx, plan, false, 0.4); // Visible ghost
           }
       }
 
       if (transitPlan) {
-          drawTransitPlan(ctx, transitPlan, false);
+          drawTransitPlan(ctx, transitPlan, false, isExecuting ? 0.3 : undefined, isExecuting);
       }
 
       // Draw Preview Ship Marker (Global, separate from specific plan lines)
@@ -1322,7 +1323,7 @@
       // Draw text
       ctx.fillText(`${displayValue} ${unit}`, x + actualBarLengthPx / 2, y - 8);
   }
-  function drawTransitPlan(ctx: CanvasRenderingContext2D, plan: TransitPlan, isCompleted: boolean = false, alphaOverride?: number) {
+  function drawTransitPlan(ctx: CanvasRenderingContext2D, plan: TransitPlan, isCompleted: boolean = false, alphaOverride?: number, forceGrey: boolean = false) {
       if (!plan) return;
 
       // Debug
@@ -1333,11 +1334,14 @@
       // }
 
       const alpha = alphaOverride !== undefined ? alphaOverride : (isCompleted ? 0.6 : 1.0);
-      const isGhost = alphaOverride !== undefined;
+      const isGhost = alphaOverride !== undefined && !forceGrey;
 
       for (const segment of plan.segments) {
           ctx.beginPath();
-          if (isGhost) {
+          if (forceGrey) {
+              ctx.setLineDash([]);
+              ctx.strokeStyle = `rgba(100, 100, 100, ${alpha})`;
+          } else if (isGhost) {
               // ctx.setLineDash([5, 5]); // Removed to make ghost lines solid
               ctx.strokeStyle = `rgba(200, 200, 255, ${alpha})`; // Ghost Blue-White
           } else if (segment.type === 'Coast') {
@@ -1351,7 +1355,7 @@
               ctx.setLineDash([]);
               ctx.strokeStyle = `rgba(0, 255, 0, ${alpha})`; // Green
           }
-          ctx.lineWidth = (isCompleted || isGhost ? 2 : 3) / zoom;
+          ctx.lineWidth = (isCompleted || isGhost || forceGrey ? 2 : 3) / zoom;
 
           for (let i = 0; i < segment.pathPoints.length; i++) {
               let p = segment.pathPoints[i];

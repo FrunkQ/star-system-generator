@@ -40,6 +40,12 @@ A quick note on data: This application runs entirely in your browser. Your gener
         *   **Mothership RPG**: The massive pirate haven *Prospero's Dream*.
     *   **Customization**: Load any template, tweak its stats, refit its modules, and save it as a unique object in your system.
     *   **Visual Distinction**: Distinct visual icons for Ships (Triangles), Stations (Squares), and natural bodies (Circles).
+*   **Transit Planner**:
+    *   **Multi-Leg Mission Planning**: Chain multiple maneuvers together to plan complex interplanetary journeys (e.g. Earth -> Mars -> Jupiter). 
+    *   **Persistence**: Draft plans are saved to the vessel. You can close the planner and resume your planning later as long as the simulation time hasn't passed your departure date.
+    *   **Aerobraking Support**: Utilize planetary atmospheres to reduce fuel consumption during arrival. The planner automatically calculates the fuel saved based on your vessel's thermal protection.
+    *   **Mission Timeline & Hazards**: A detailed stress graph visualizes G-forces and alerts you to mission hazards like Radiation Zones, Asteroid Belts, and Planetary Rings along your path.
+    *   **Docking & Rendezvous**: Perform precise docking maneuvers at orbital stations. Ships correctly co-orbit with their host station upon arrival.
 *   **Orbital Mechanics & Planetology**:
     *   **Delta-V Calculations**: Automatically calculates the Delta-V budget required to land on or ascend from any planet, broken down by Propulsive vs. Aerobraking methods.
     *   **Orbital Boundaries**: Visualizes and calculates key zones like Low Orbit (LEO), Geostationary Orbit (GEO), and the Hill Sphere.
