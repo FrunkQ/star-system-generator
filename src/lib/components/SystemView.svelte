@@ -1176,18 +1176,26 @@ a.click();
                     }}
                     on:executePlan={(e) => {
                          const finalPlan = e.detail;
+                         
+                         // Determine which plan to use for the final state (move ship to)
+                         const targetPlan = finalPlan || (completedTransitPlans.length > 0 ? completedTransitPlans[completedTransitPlans.length - 1] : null);
+                         if (!targetPlan) return;
+
                          // Calculate Totals
                          let totalFuelKg = completedTransitPlans.reduce((acc, p) => acc + p.totalFuel_kg, 0);
-                         totalFuelKg += finalPlan.totalFuel_kg;
-                         
-                         const finalTime = transitChainTime + (finalPlan.totalTime_days * 86400 * 1000) + (transitDelayDays * 86400 * 1000);
+                         let finalTime = transitChainTime;
+
+                         if (finalPlan) {
+                             totalFuelKg += finalPlan.totalFuel_kg;
+                             finalTime += (finalPlan.totalTime_days * 86400 * 1000) + (transitDelayDays * 86400 * 1000);
+                         }
                          
                          // Update System
                          systemStore.update(sys => {
                              if (!sys) return null;
                              
                              // Find Target Node to determine L4/L5 context
-                             const targetNode = sys.nodes.find(n => n.id === finalPlan.targetId);
+                             const targetNode = sys.nodes.find(n => n.id === targetPlan.targetId);
                              
                              const newNodes = sys.nodes.map(node => {
                                  if (node.id === focusedBodyId) {
@@ -1215,10 +1223,10 @@ a.click();
                                      }
                                      
                                      // Move Ship
-                                     const isLagrange = finalPlan.arrivalPlacement === 'l4' || finalPlan.arrivalPlacement === 'l5';
+                                     const isLagrange = targetPlan.arrivalPlacement === 'l4' || targetPlan.arrivalPlacement === 'l5';
                                      
                                      // Check if arrivalPlacement is actually a Child Node ID (e.g. Moon/Station)
-                                     const specificTargetNode = sys.nodes.find(n => n.id === finalPlan.arrivalPlacement);
+                                     const specificTargetNode = sys.nodes.find(n => n.id === targetPlan.arrivalPlacement);
                                      
                                      if (specificTargetNode) {
                                          if (specificTargetNode.kind === 'construct') {
@@ -1268,7 +1276,7 @@ a.click();
                                          // Copy target orbit
                                          let newOrbit = JSON.parse(JSON.stringify(targetNode.orbit));
                                          // Adjust anomaly
-                                         const offset = finalPlan.arrivalPlacement === 'l4' ? Math.PI/3 : -Math.PI/3;
+                                         const offset = targetPlan.arrivalPlacement === 'l4' ? Math.PI/3 : -Math.PI/3;
                                          newOrbit.elements.M0_rad = (newOrbit.elements.M0_rad + offset + 2*Math.PI) % (2*Math.PI);
                                          
                                          return {
@@ -1276,15 +1284,15 @@ a.click();
                                              parentId: targetNode.parentId,
                                              ui_parentId: targetNode.id,
                                              orbit: newOrbit,
-                                             placement: finalPlan.arrivalPlacement.toUpperCase()
+                                             placement: targetPlan.arrivalPlacement.toUpperCase()
                                          };
                                      } else {
                                          // Standard Capture Logic (Planet/Star Orbit)
                                          let placementString = 'Parking Orbit';
-                                         if (finalPlan.arrivalPlacement === 'lo') placementString = 'Low Orbit';
-                                         if (finalPlan.arrivalPlacement === 'mo') placementString = 'Medium Orbit';
-                                         if (finalPlan.arrivalPlacement === 'ho') placementString = 'High Orbit';
-                                         if (finalPlan.arrivalPlacement === 'geo') placementString = 'Geostationary Orbit';
+                                         if (targetPlan.arrivalPlacement === 'lo') placementString = 'Low Orbit';
+                                         if (targetPlan.arrivalPlacement === 'mo') placementString = 'Medium Orbit';
+                                         if (targetPlan.arrivalPlacement === 'ho') placementString = 'High Orbit';
+                                         if (targetPlan.arrivalPlacement === 'geo') placementString = 'Geostationary Orbit';
                                          
                                          // Calculate radius based on placement if possible, or default
                                          let radiusAU = 0.0001;
@@ -1296,10 +1304,10 @@ a.click();
                                          
                                          return {
                                              ...node,
-                                             parentId: finalPlan.targetId,
+                                             parentId: targetPlan.targetId,
                                              ui_parentId: null, // Clear UI parent if standard
                                              orbit: {
-                                                 hostId: finalPlan.targetId,
+                                                 hostId: targetPlan.targetId,
                                                  elements: { a_AU: radiusAU, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 }, 
                                                  t0: finalTime,
                                                  hostMu: (targetNode?.kind === 'body' ? (targetNode as CelestialBody).massKg : 0) * G 

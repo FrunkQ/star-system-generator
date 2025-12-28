@@ -50,11 +50,15 @@
   let currentConstructSpecs: ConstructSpecs | null = null;
   let debounceTimeout: any;
   let telemetryData: TelemetryPoint[] = [];
+  let showAdvanced = false;
   
   let maxPotentialDeltaV_ms = 0;
   let maxFuelMass_kg = 0;
 
   let previousOriginId: ID = '';
+
+  $: lastLegWasFlypast = completedPlans.length > 0 && 
+      completedPlans[completedPlans.length - 1].arrivalVelocity_ms > 50; // Threshold for "parked"
 
   $: if (system && (plan || completedPlans.length > 0)) {
       const plansToAnalyze = [...completedPlans];
@@ -114,6 +118,9 @@
   // Rule: Only show "Major" targets (Stars, Planets, Barycenters, Independent Constructs)
   // Hide Moons and things orbiting planets (users should target the planet first)
   $: bodies = system.nodes.filter(n => {
+      // Exclude self
+      if (n.id === originId) return false;
+
       // Always show stars
       if (n.roleHint === 'star') return true;
       // Always show barycenters
@@ -585,14 +592,49 @@
                 <strong>Total:</strong> 
                 {formatDuration(completedPlans.reduce((a,b) => a + b.totalTime_days, 0))} / 
                 {(totalUsedFuel/1000).toFixed(1)}t fuel
-                {#if currentConstructSpecs}
-                    {@const remaining = currentConstructSpecs.fuelMass_tonnes - (totalUsedFuel / 1000)}
-                    <span style="color: {remaining < 0 ? '#ff3333' : '#88ccff'}">
-                        ({remaining.toFixed(1)}t remaining)
-                    </span>
-                {/if}
             </div>
             <hr/>
+        </div>
+    {/if}
+
+    {#if currentConstructSpecs}
+        {@const startFuel = currentConstructSpecs.fuelMass_tonnes * 1000}
+        {@const remainingAfterLegs = startFuel - totalUsedFuel}
+        {@const planCost = plan ? plan.totalFuel_kg : 0}
+        {@const remainingFinal = remainingAfterLegs - planCost}
+        
+        <div class="fuel-gauge-container">
+            <div class="fuel-labels">
+                <span>Fuel</span>
+                <span>
+                    <span style="color: #88ccff">{(remainingAfterLegs/1000).toFixed(1)}t</span> 
+                    {#if planCost > 0}
+                        <span style="color: #ff3333"> ➔ {(remainingFinal/1000).toFixed(1)}t</span>
+                    {/if}
+                    <span style="color: #666"> / {(maxFuelMass_kg/1000).toFixed(1)}t</span>
+                </span>
+            </div>
+            <div class="fuel-bar-bg" title="Total Fuel Capacity">
+                <!-- 1. Base: Current Ship Fuel (Light Blue) -->
+                <!-- Note: maxFuelMass_kg is capacity. startFuel is current level. -->
+                <div class="fuel-bar-base" style="width: {(startFuel / maxFuelMass_kg) * 100}%"></div>
+                
+                <!-- 2. Overlay: Used by Completed Legs (Dark Blue/Gray) -->
+                <!-- Positioned from Right of Current Fuel? No, usually we eat from the top. -->
+                <!-- Let's show: [ Remaining Final (Light Blue) ] [ Current Plan (Red) ] [ Used So Far (Dark) ] -->
+                <!-- Widths relative to capacity -->
+                
+                <!-- Used So Far (Dark) -->
+                <!-- Left: (remainingAfterLegs / max) * 100 -->
+                <div class="fuel-bar-used-past" style="left: {(remainingAfterLegs / maxFuelMass_kg) * 100}%; width: {(totalUsedFuel / maxFuelMass_kg) * 100}%"></div>
+                
+                <!-- Current Plan Cost (Red) -->
+                <!-- Left: (remainingFinal / max) * 100 -->
+                <!-- Width: (planCost / max) * 100 -->
+                {#if planCost > 0}
+                    <div class="fuel-bar-cost" style="left: {(remainingFinal / maxFuelMass_kg) * 100}%; width: {(planCost / maxFuelMass_kg) * 100}%"></div>
+                {/if}
+            </div>
         </div>
     {/if}
     
@@ -658,9 +700,13 @@
         </div>
     {/if}
 
-    {#if completedPlans.length === 0}
-    <div class="form-group">
-        <label>Departure Delay: {departureDelayDays} days</label>
+    <div class="form-group" title={lastLegWasFlypast ? "Cannot delay departure from a fly-past intercept. You must enter orbit to wait." : ""}>
+        <label style="opacity: {lastLegWasFlypast ? 0.5 : 1}">
+            Departure Delay: {departureDelayDays} days
+            {#if lastLegWasFlypast}
+                <span style="color: #ff6666; font-size: 0.8em; margin-left: 5px;">(Orbit Required)</span>
+            {/if}
+        </label>
         <input 
             type="range" 
             min="0" 
@@ -668,15 +714,18 @@
             step="1" 
             bind:value={sliderDepartureDelayRaw} 
             on:input={updateDepartureDelay} 
+            disabled={lastLegWasFlypast}
+            style="opacity: {lastLegWasFlypast ? 0.3 : 1}"
         />
         <div class="range-labels">
             <span>Now</span>
             <span>+1000d</span>
         </div>
     </div>
-    {/if}
 
+    {#if plan && plan.planType === 'Speed'}
     <div class="controls-section">
+        <h4 style="margin: 0.5em 0; color: #aaa; font-size: 0.9em; text-transform: uppercase;">Direct Burn Controls</h4>
         <div class="form-group">
             <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                 <label>Burn Profile</label>
@@ -719,6 +768,7 @@
             <input type="range" min="0.01" max={sliderMaxG} step="0.01" bind:value={maxG} on:input={debouncedCalculate} />
         </div>
     </div>
+    {/if}
 
     {#if error}
         <div class="error">{error}</div>
@@ -750,7 +800,7 @@
                 <strong>
                     {(plan.totalFuel_kg / 1000).toFixed(1)}t
                     {#if originId}
-                        {@const construct = system.nodes.find(n => n.id === originId)}
+                        {@const construct = system.nodes.find(n => n.id === (constructId || originId))}
                         {#if construct && construct.fuel_tanks && construct.fuel_tanks.length > 0}
                             {@const mainTank = construct.fuel_tanks.reduce((prev, current) => (prev.capacity_units > current.capacity_units) ? prev : current)}
                             {@const fuelDef = rulePack.fuelDefinitions?.entries.find(f => f.id === mainTank.fuel_type_id)}
@@ -806,8 +856,10 @@
         
         <div class="actions">
             {#if plan}
-            <button class="calculate-btn" on:click={() => dispatch('addNextLeg', plan)} disabled={isImpossible || isInsufficientFuel} title={isImpossible ? "Plan Impossible" : (isInsufficientFuel ? "Insufficient Fuel" : "Add to Flight Plan")}>Add Next Leg</button>
-            <button class="calculate-btn execute" on:click={() => dispatch('executePlan', plan)} disabled={!canAfford || isImpossible || isInsufficientFuel} title={isImpossible ? "Plan Impossible (See warning above)" : (isInsufficientFuel ? "Insufficient Fuel (See warning above)" : (!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"))}>Execute Plan</button>
+                <button class="calculate-btn" on:click={() => dispatch('addNextLeg', plan)} disabled={isImpossible || isInsufficientFuel} title={isImpossible ? "Plan Impossible" : (isInsufficientFuel ? "Insufficient Fuel" : "Add to Flight Plan")}>Add Next Leg</button>
+                <button class="calculate-btn execute" on:click={() => dispatch('executePlan', plan)} disabled={!canAfford || isImpossible || isInsufficientFuel} title={isImpossible ? "Plan Impossible (See warning above)" : (isInsufficientFuel ? "Insufficient Fuel (See warning above)" : (!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"))}>Execute Journey</button>
+            {:else if completedPlans.length > 0}
+                <button class="calculate-btn execute" on:click={() => dispatch('executePlan', null)} disabled={!canAfford} title={!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"}>Execute Journey</button>
             {/if}
             <button class="close-btn" on:click={() => dispatch('close')}>Close Planner</button>
         </div>
@@ -1097,4 +1149,63 @@
     .hazard-pill.warning { background-color: #d97706; color: black; }
     .hazard-pill.danger { background-color: #ea580c; }
     .hazard-pill.critical { background-color: #dc2626; }
+
+    .fuel-gauge-container {
+        background: #111;
+        padding: 0.8em;
+        border-radius: 4px;
+        border: 1px solid #333;
+        margin-bottom: 0.5em;
+    }
+    .fuel-labels {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8em;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        color: #888;
+    }
+    .fuel-bar-bg {
+        height: 10px;
+        background: #222;
+        border-radius: 5px;
+        position: relative;
+        overflow: hidden;
+    }
+    .fuel-bar-base {
+        height: 100%;
+        background: #007bff; /* Light Blue (Current Level) */
+        position: absolute;
+        left: 0;
+    }
+    .fuel-bar-used-past {
+        height: 100%;
+        background: #004085; /* Dark Blue (Used by previous legs) */
+        position: absolute;
+        /* opacity: 0.7; */
+    }
+    .fuel-bar-cost {
+        height: 100%;
+        background: #ff3333; /* Red (Current Plan) */
+        position: absolute;
+        transition: width 0.3s, left 0.3s;
+    }
+    .advanced-toggle {
+        font-size: 0.85em;
+        color: #aaa;
+        cursor: pointer;
+        padding: 5px;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .advanced-toggle:hover {
+        color: #fff;
+    }
+    .warning-text {
+        color: #ff6666;
+        font-size: 0.8em;
+        margin-left: 5px;
+    }
 </style>

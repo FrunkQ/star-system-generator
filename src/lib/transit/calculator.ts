@@ -28,6 +28,7 @@ export function calculateTransitPlan(
       targetOffsetAnomaly?: number; 
       arrivalPlacement?: string;
       aerobrake?: { allowed: boolean; limit_kms: number; }; // NEW
+      initialDelay_days?: number;
   }
 ): TransitPlan[] {
   const plans: TransitPlan[] = [];
@@ -750,7 +751,8 @@ function calculateLambertPlan(
         arrivalVelocity_ms: arrivalVelocity_ms,
         arrivalPlacement: params.arrivalPlacement,
         tags: tags,
-        aerobrakingDeltaV_ms: aerobraking_dv_ms
+        aerobrakingDeltaV_ms: aerobraking_dv_ms,
+        initialDelay_days: (params as any).initialDelay_days
     };
 }
 
@@ -896,7 +898,10 @@ function calculateFastPlan(
     const totalDeltaV_ms = dv1 + dv2 + dv_initial_cancel;
     
     // Arrival Velocity Remainder
-    const arrivalVelocity_ms = Math.abs(accel * (accelTime - brakeTime));
+    // If brakeAtArrival is set, we assume we stop (either by engine or atmosphere), unless it was impossible?
+    // The solver assumes valid T, so we do stop.
+    // The previous kinematic check (accelTime - brakeTime) fails if brakeTime is reduced by aerobraking.
+    const arrivalVelocity_ms = params.brakeAtArrival ? 0 : Math.abs(accel * (accelTime - brakeTime));
 
     let fuelEst = 0;
     let fuel1 = 0;
@@ -1033,6 +1038,7 @@ function calculateFastPlan(
         distance_au: distanceAU(startState.r, targetEndState.r),
         arrivalPlacement: (params as any).arrivalPlacement, // Pass through if available
         isKinematic: true, // Mark this plan as kinematic for visualizer
-        aerobrakingDeltaV_ms: aerobraking_dv_ms
+        aerobrakingDeltaV_ms: aerobraking_dv_ms,
+        initialDelay_days: (params as any).initialDelay_days
     };
 }

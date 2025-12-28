@@ -47,7 +47,9 @@
       maxG = Math.ceil(maxG * 1.1); // 10% buffer
       if (maxG > 15) maxG = 15;
 
-      const xScale = width / (telemetry.length - 1);
+      const startTime = telemetry[0].time;
+      const endTime = telemetry[telemetry.length - 1].time;
+      const duration = Math.max(1, endTime - startTime);
       const yScale = height / maxG;
 
       // Draw Grid Lines (Thresholds)
@@ -78,7 +80,7 @@
       ctx.lineJoin = 'round';
 
       telemetry.forEach((p, i) => {
-          const x = i * xScale;
+          const x = ((p.time - startTime) / duration) * width;
           // Clamp y to 0 (top of chart) if gForce > maxG
           let y = height - (p.gForce * yScale);
           if (y < 0) y = 0;
@@ -171,9 +173,16 @@
       // Simple heuristic: Map Type to Row
       const typeRows: Record<string, number> = { 'G-Force': 0, 'Gravity': 0, 'Aerobrake': 0, 'Radiation': 1, 'Debris': 2 };
       
+      const startTime = telemetry[0].time;
+      const endTime = telemetry[telemetry.length - 1].time;
+      const duration = Math.max(1, endTime - startTime);
+
       hazardZones = completedZones.map(z => {
-          const startPct = (z.startIdx / (telemetry.length - 1)) * 100;
-          const endPct = (z.endIdx / (telemetry.length - 1)) * 100;
+          const startT = telemetry[z.startIdx].time;
+          const endT = telemetry[z.endIdx].time;
+          
+          const startPct = ((startT - startTime) / duration) * 100;
+          const endPct = ((endT - startTime) / duration) * 100;
           const width = Math.max(0.5, endPct - startPct);
           const center = startPct + width / 2;
           

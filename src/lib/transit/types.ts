@@ -61,4 +61,5 @@ export interface TransitPlan {
   name?: string;
   hiddenReason?: string;
   isKinematic?: boolean; // True if path points are pre-scaled for kinematic, bypasses visualizer scaling
+  initialDelay_days?: number; // Delay before this leg starts
 }
