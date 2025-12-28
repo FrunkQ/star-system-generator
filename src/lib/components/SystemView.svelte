@@ -87,6 +87,47 @@
   let contextMenuType = '';
   let contextMenuNode: CelestialBody | Barycenter | null = null; 
 
+  function handleShowContextMenu(event: CustomEvent<{ x: number, y: number, items: any[], type: string }>) {
+    contextMenuItems = event.detail.items;
+    contextMenuX = event.detail.x;
+    contextMenuY = event.detail.y;
+    contextMenuType = event.detail.type;
+    showSummaryContextMenu = true;
+  }
+
+  function handleLinkStartOrFinish(event: CustomEvent<CelestialBody | Barycenter>) {
+    const clickedNode = event.detail;
+    showSummaryContextMenu = false;
+
+    if (!isLinking) {
+      // Start a new link
+      isLinking = true;
+      linkStartNode = clickedNode;
+      // Future: Update cursor or provide visual feedback that linking is active
+      alert(`Linking started from ${linkStartNode.name}. Click another system to finish.`);
+    } else if (linkStartNode && clickedNode.id === linkStartNode.id) {
+      // Clicked the same node again, cancel linking
+      isLinking = false;
+      linkStartNode = null;
+      alert('Linking cancelled.');
+    } else if (linkStartNode && clickedNode.id !== linkStartNode.id) {
+      // Finish the link
+      // TODO: Implement actual route creation logic here
+      alert(`Link created from ${linkStartNode.name} to ${clickedNode.name}!`);
+      isLinking = false;
+      linkStartNode = null;
+    }
+  }
+
+  function handleShowBodyContextMenu(event: CustomEvent<{ node: CelestialBody, x: number, y: number }>) {
+    contextMenuNode = event.detail.node;
+    contextMenuX = event.detail.x;
+    contextMenuY = event.detail.y;
+    showSummaryContextMenu = true; 
+    contextMenuType = 'generic';
+    showBackgroundContextMenu = false;
+  }
+
   // Add Construct Modal State
   let showAddConstructModal = false;
   let constructHostBody: CelestialBody | null = null;
@@ -1184,25 +1225,21 @@ a.click();
                          systemStore.update(sys => {
                              if (!sys) return null;
                              
-                             // Find Target Node to determine L4/L5 context
                              const targetNode = sys.nodes.find(n => n.id === targetPlan.targetId);
-                             
+                             if (!targetNode) return sys;
+
                              const newNodes = sys.nodes.map(node => {
                                  if (node.id === focusedBodyId) {
-                                     // Deduct Fuel
+                                     // 1. Deduct Fuel
                                      let remainingFuelToDeductKg = totalFuelKg;
-                                     
                                      if (node.fuel_tanks && node.fuel_tanks.length > 0 && rulePack.fuelDefinitions?.entries) {
                                          for (const tank of node.fuel_tanks) {
-                                             if (remainingFuelToDeductKg <= 0.1) break; // Float tolerance
-                                             
+                                             if (remainingFuelToDeductKg <= 0.1) break;
                                              const fuelDef = rulePack.fuelDefinitions.entries.find(f => f.id === tank.fuel_type_id);
                                              if (fuelDef && fuelDef.density_kg_per_m3 > 0) {
                                                  const tankMassKg = tank.current_units * fuelDef.density_kg_per_m3;
-                                                 
                                                  if (tankMassKg >= remainingFuelToDeductKg) {
-                                                     const unitsToDeduct = remainingFuelToDeductKg / fuelDef.density_kg_per_m3;
-                                                     tank.current_units = Math.max(0, tank.current_units - unitsToDeduct);
+                                                     tank.current_units = Math.max(0, tank.current_units - (remainingFuelToDeductKg / fuelDef.density_kg_per_m3));
                                                      remainingFuelToDeductKg = 0;
                                                  } else {
                                                      remainingFuelToDeductKg -= tankMassKg;
@@ -1212,8 +1249,8 @@ a.click();
                                          }
                                      }
                                      
-                                     // Flight Dynamics Tracking
-                                     let flightState: 'Orbiting' | 'Transit' | 'Deep Space' | 'Landed' = 'Orbiting';
+                                     // 2. Flight Dynamics Tracking
+                                     let flightState: 'Orbiting' | 'Transit' | 'Deep Space' | 'Landed' | 'Docked' = 'Orbiting';
                                      let finalVel = { x: 0, y: 0 };
                                      
                                      if (targetPlan.arrivalPlacement === 'surface') {
@@ -1224,133 +1261,92 @@ a.click();
                                      
                                      if (targetPlan.segments.length > 0) {
                                          const lastSeg = targetPlan.segments[targetPlan.segments.length - 1];
-                                         // Convert AU/s to m/s if necessary, calculator endState.v is usually AU/s
                                          finalVel = { 
                                              x: lastSeg.endState.v.x * AU_KM * 1000, 
                                              y: lastSeg.endState.v.y * AU_KM * 1000 
                                          };
                                      }
 
-                                     // Move Ship
+                                     // 3. Move Ship Logic
                                      const isLagrange = targetPlan.arrivalPlacement === 'l4' || targetPlan.arrivalPlacement === 'l5';
-                                     
-                                     // Check if arrivalPlacement is actually a Child Node ID (e.g. Moon/Station)
                                      const specificTargetNode = sys.nodes.find(n => n.id === targetPlan.arrivalPlacement);
                                      
-                                     // LOGIC: If Target ITSELF is a construct (e.g. Eros), we dock/co-orbit with it.
-                                     // This overrides generic 'lo' placement.
-                                     if (targetNode && targetNode.kind === 'construct') {
-                                         // Rendezvous Logic: Co-orbital Docking
-                                         const parentId = targetNode.parentId;
-                                         // If target has no parent (rogue?), we can't really co-orbit efficiently, 
-                                         // but usually it orbits a Star/Planet.
-                                         
-                                         if (parentId) {
-                                             const targetOrbit = targetNode.orbit;
-                                             
-                                             return {
-                                                 ...node,
-                                                 parentId: parentId, // Share physical parent
-                                                 ui_parentId: targetNode.id, // Visually grouped
-                                                 orbit: targetOrbit ? JSON.parse(JSON.stringify(targetOrbit)) : node.orbit,
-                                                 placement: `Docked at ${targetNode.name}`,
-                                                 flight_state: 'Docked',
-                                                 vector_velocity_ms: { x:0, y:0 }
-                                             };
-                                         }
-                                         // If no parent, fall through to standard orbit (orbiting the construct itself)
-                                     }
+                                     let updatedNode = { 
+                                         ...node, 
+                                         flight_state: flightState, 
+                                         vector_velocity_ms: finalVel,
+                                         draft_transit_plan: undefined // Clear draft on execution
+                                     };
 
-                                     if (specificTargetNode) {
+                                     if (targetNode.kind === 'construct') {
+                                         // Case: Docking with Station
+                                         updatedNode.parentId = targetNode.parentId;
+                                         updatedNode.ui_parentId = targetNode.id;
+                                         updatedNode.orbit = targetNode.orbit ? JSON.parse(JSON.stringify(targetNode.orbit)) : node.orbit;
+                                         updatedNode.placement = `Docked at ${targetNode.name}`;
+                                         updatedNode.flight_state = 'Docked';
+                                     } else if (specificTargetNode) {
+                                         // Case: Targeted Moon or Specific Station via dropdown
                                          if (specificTargetNode.kind === 'construct') {
-                                             // Rendezvous Logic: Co-orbital Docking
-                                             // We inherit the target's orbit and parent
-                                             const parentId = specificTargetNode.parentId;
-                                             if (!parentId) return node; 
-                                             
-                                             const targetOrbit = specificTargetNode.orbit;
-                                             
-                                             return {
-                                                 ...node,
-                                                 parentId: parentId, // Share physical parent (e.g. Sun)
-                                                 ui_parentId: specificTargetNode.id, // Visually grouped under Target (Eros)
-                                                 orbit: targetOrbit ? JSON.parse(JSON.stringify(targetOrbit)) : node.orbit,
-                                                 placement: `Docked at ${specificTargetNode.name}`,
-                                                 flight_state: 'Docked',
-                                                 vector_velocity_ms: { x:0, y:0 } // Relative velocity zero
-                                             };
+                                             updatedNode.parentId = specificTargetNode.parentId;
+                                             updatedNode.ui_parentId = specificTargetNode.id;
+                                             updatedNode.orbit = specificTargetNode.orbit ? JSON.parse(JSON.stringify(specificTargetNode.orbit)) : node.orbit;
+                                             updatedNode.placement = `Docked at ${specificTargetNode.name}`;
+                                             updatedNode.flight_state = 'Docked';
                                          } else {
-                                             // Body Logic (Planet/Moon): Orbit around IT
-                                             // We place the ship in Low Orbit around THIS target.
-                                             
-                                             // Determine Low Orbit Radius
-                                             let radiusKm = (specificTargetNode.radiusKm || 1000) + 200; // Default: Surface + 200km
-                                             if (specificTargetNode.orbitalBoundaries) {
-                                                 radiusKm = (specificTargetNode.radiusKm || 0) + specificTargetNode.orbitalBoundaries.minLeoKm;
-                                             } else {
-                                                 // Fallback calculation if boundaries missing
-                                                 radiusKm = (specificTargetNode.radiusKm || 1000) * 1.1; 
-                                             }
-                                             
-                                             return {
-                                                 ...node,
-                                                 parentId: specificTargetNode.id,
-                                                 ui_parentId: null,
-                                                 orbit: {
-                                                     hostId: specificTargetNode.id,
-                                                     elements: { a_AU: radiusKm / AU_KM, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 }, 
-                                                     t0: finalTime,
-                                                     hostMu: (specificTargetNode.kind === 'body' ? (specificTargetNode as CelestialBody).massKg : 0) * G
-                                                 },
-                                                 placement: 'Low Orbit',
-                                                 flight_state: flightState,
-                                                 vector_velocity_ms: finalVel
+                                             const radiusKm = (specificTargetNode.radiusKm || 1000) + (specificTargetNode.orbitalBoundaries?.minLeoKm || 200);
+                                             updatedNode.parentId = specificTargetNode.id;
+                                             updatedNode.ui_parentId = null;
+                                             updatedNode.placement = 'Low Orbit';
+                                             updatedNode.orbit = {
+                                                 hostId: specificTargetNode.id,
+                                                 elements: { a_AU: radiusKm / AU_KM, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 },
+                                                 t0: finalTime,
+                                                 hostMu: (specificTargetNode.massKg || 0) * G
                                              };
                                          }
-                                     } else if (isLagrange && targetNode && targetNode.parentId) {
-                                         // Special L4/L5 Logic (Unchanged)
-                                         const parentNode = sys.nodes.find(n => n.id === targetNode.parentId);
-                                         // Copy target orbit
-                                         let newOrbit = JSON.parse(JSON.stringify(targetNode.orbit));
-                                         // Adjust anomaly
+                                     } else if (isLagrange && targetNode.parentId) {
+                                         // Case: Lagrange Points
                                          const offset = targetPlan.arrivalPlacement === 'l4' ? Math.PI/3 : -Math.PI/3;
+                                         let newOrbit = JSON.parse(JSON.stringify(targetNode.orbit));
                                          newOrbit.elements.M0_rad = (newOrbit.elements.M0_rad + offset + 2*Math.PI) % (2*Math.PI);
-                                         
-                                         return {
-                                             ...node,
-                                             parentId: targetNode.parentId,
-                                             ui_parentId: targetNode.id,
-                                             orbit: newOrbit,
-                                             placement: targetPlan.arrivalPlacement.toUpperCase(),
-                                             flight_state: flightState,
-                                             vector_velocity_ms: finalVel
-                                         };
+                                         updatedNode.parentId = targetNode.parentId;
+                                         updatedNode.ui_parentId = targetNode.id;
+                                         updatedNode.orbit = newOrbit;
+                                         updatedNode.placement = targetPlan.arrivalPlacement.toUpperCase();
                                      } else {
-                                         // Standard Capture Logic (Planet/Star Orbit)
+                                         // Case: Standard Capture (Planet/Star/Barycenter)
                                          let placementString = 'Parking Orbit';
-                                         if (targetPlan.arrivalPlacement === 'lo') placementString = 'Low Orbit';
-                                         if (targetPlan.arrivalPlacement === 'mo') placementString = 'Medium Orbit';
-                                         if (targetPlan.arrivalPlacement === 'ho') placementString = 'High Orbit';
-                                         if (targetPlan.arrivalPlacement === 'geo') placementString = 'Geostationary Orbit';
+                                         let radiusKm = (targetNode.radiusKm || 1000) * 1.2; 
+                                         const b = targetNode.orbitalBoundaries;
                                          
-                                         // Calculate radius based on placement if possible, or default
-                                         let radiusAU = 0.0001;
+                                         if (targetPlan.arrivalPlacement === 'lo') {
+                                             placementString = 'Low Orbit';
+                                             radiusKm = (targetNode.radiusKm || 0) + (b?.minLeoKm || 200);
+                                         } else if (targetPlan.arrivalPlacement === 'mo') {
+                                             placementString = 'Medium Orbit';
+                                             radiusKm = (targetNode.radiusKm || 0) + ((b?.leoMoeBoundaryKm || 2000) + (b?.meoHeoBoundaryKm || 10000)) / 2;
+                                         } else if (targetPlan.arrivalPlacement === 'ho') {
+                                             placementString = 'High Orbit';
+                                             radiusKm = (targetNode.radiusKm || 0) + ((b?.meoHeoBoundaryKm || 10000) + (b?.heoUpperBoundaryKm || 50000)) / 2;
+                                         } else if (targetPlan.arrivalPlacement === 'geo' && b?.geoStationaryKm) {
+                                             placementString = 'Geostationary Orbit';
+                                             radiusKm = (targetNode.radiusKm || 0) + b.geoStationaryKm;
+                                         }
+
+                                         const mass = (targetNode.kind === 'body' ? (targetNode as CelestialBody).massKg : (targetNode as Barycenter).effectiveMassKg) || 0;
                                          
-                                         return {
-                                             ...node,
-                                             parentId: targetPlan.targetId,
-                                             ui_parentId: null, // Clear UI parent if standard
-                                             orbit: {
-                                                 hostId: targetPlan.targetId,
-                                                 elements: { a_AU: radiusAU, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 }, 
-                                                 t0: finalTime,
-                                                 hostMu: (targetNode?.kind === 'body' ? (targetNode as CelestialBody).massKg : 0) * G 
-                                             },
-                                             placement: placementString,
-                                             flight_state: flightState,
-                                             vector_velocity_ms: finalVel
+                                         updatedNode.parentId = targetNode.id;
+                                         updatedNode.ui_parentId = null;
+                                         updatedNode.placement = placementString;
+                                         updatedNode.orbit = {
+                                             hostId: targetNode.id,
+                                             elements: { a_AU: radiusKm / AU_KM, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 },
+                                             t0: finalTime,
+                                             hostMu: mass * G
                                          };
                                      }
+                                     return updatedNode;
                                  }
                                  return node;
                              });
@@ -1365,12 +1361,6 @@ a.click();
                          completedTransitPlans = [];
                          transitAlternatives = [];
                          transitChainTime = 0;
-                         
-                         // Clear Draft
-                         if (focusedBody) {
-                             focusedBody.draft_transit_plan = undefined;
-                             handleBodyUpdate({ detail: focusedBody } as CustomEvent);
-                         }
                     }}
                     on:close={() => { 
                         // Save Draft Plan

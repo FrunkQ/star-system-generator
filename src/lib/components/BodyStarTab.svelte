@@ -37,9 +37,36 @@
   const tempLogMax = Math.log(tempMax);
   let tempSliderPos = $state(0.5);
 
+  // --- Radiation Slider Config ---
+  const radMin = 0.01;
+  const radMax = 50000;
+  const radLogMin = Math.log(radMin);
+  const radLogMax = Math.log(radMax);
+  let radSliderPos = $state(0.25);
+
+  const radZones = [
+      { name: 'Neg', start: 0.01, end: 0.1, color: '#4ade80' },
+      { name: 'Low', start: 0.1, end: 2, color: '#84cc16' },
+      { name: 'Mod', start: 2, end: 10, color: '#eab308' },
+      { name: 'High', start: 10, end: 100, color: '#f97316' },
+      { name: 'V.High', start: 100, end: 1000, color: '#ef4444' },
+      { name: 'Ext', start: 1000, end: 50000, color: '#7f1d1d' }
+  ];
+
+  const tempZones = [
+      { name: 'M', start: 2000, end: 3700, color: '#ffc46f' },
+      { name: 'K', start: 3700, end: 5200, color: '#ffd2a1' },
+      { name: 'G', start: 5200, end: 6000, color: '#fff4ea' },
+      { name: 'F', start: 6000, end: 7500, color: '#f8f7ff' },
+      { name: 'A', start: 7500, end: 10000, color: '#cad8ff' },
+      { name: 'B', start: 10000, end: 30000, color: '#aabfff' },
+      { name: 'O', start: 30000, end: 50000, color: '#9bb0ff' }
+  ];
+
   // --- Initialization & Sync ---
   $effect(() => {
       if (body) {
+          // ... (mass/radius sync remains) ...
           if (body.massKg) {
               const m = body.massKg / SOLAR_MASS_KG;
               if (Math.abs(m - massSuns) > 0.001) {
@@ -61,10 +88,19 @@
               }
           }
           if (body.radiationOutput !== undefined) {
-              radiation = body.radiationOutput;
+              if (Math.abs(body.radiationOutput - radiation) > 0.01) {
+                  radiation = body.radiationOutput;
+                  radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, radiation))) - radLogMin) / (radLogMax - radLogMin);
+              }
           }
           rotationHours = body.rotation_period_hours || 0;
           magGauss = body.magneticField?.strengthGauss || 0;
+
+          // Sync Image based on current class
+          const currentClass = body.classes?.[0];
+          if (currentClass) {
+              updateImage(currentClass);
+          }
       }
   });
 
@@ -81,16 +117,6 @@
       radiusSuns = parseFloat(val.toPrecision(3));
       body.radiusKm = radiusSuns * SOLAR_RADIUS_KM;
       dispatch('update');
-  }
-
-  function updateImage(starClass: string) {
-      let lookupClass = starClass;
-      if (starClass === 'star/red-giant') lookupClass = 'star/M';
-
-      if (rulePack?.classifier?.starImages?.[lookupClass]) {
-          if (!body.image) body.image = { url: '' };
-          body.image.url = rulePack.classifier.starImages[lookupClass];
-      }
   }
 
   function updateTemp() {
@@ -119,7 +145,15 @@
   }
 
   function updateRadiation() {
+      const val = Math.exp(radLogMin + (radLogMax - radLogMin) * radSliderPos);
+      radiation = parseFloat(val.toPrecision(3));
       body.radiationOutput = radiation;
+      dispatch('update');
+  }
+
+  function handleRadiationInput() {
+      body.radiationOutput = radiation;
+      radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, radiation))) - radLogMin) / (radLogMax - radLogMin);
       dispatch('update');
   }
 
@@ -131,6 +165,16 @@
   function updateMagField() {
       body.magneticField = { strengthGauss: magGauss };
       dispatch('update');
+  }
+
+  function updateImage(starClass: string) {
+      let lookupClass = starClass;
+      if (starClass === 'star/red-giant') lookupClass = 'star/M';
+
+      if (rulePack?.classifier?.starImages?.[lookupClass]) {
+          if (!body.image) body.image = { url: '' };
+          body.image.url = rulePack.classifier.starImages[lookupClass];
+      }
   }
 
   // --- Derived ---
@@ -149,6 +193,14 @@
   }
 
   let luminosity = $derived((radiusSuns ** 2) * ((tempK / 5778) ** 4));
+
+  function getLogPos(val: number) {
+      return (Math.log(Math.max(radMin, val)) - radLogMin) / (radLogMax - radLogMin) * 100;
+  }
+
+  function getTempLogPos(val: number) {
+      return (Math.log(Math.max(tempMin, val)) - tempLogMin) / (tempLogMax - tempLogMin) * 100;
+  }
 
   const spectralTypes = ['star/O', 'star/B', 'star/A', 'star/F', 'star/G', 'star/K', 'star/M', 'star/red-giant', 'star/WD', 'star/NS', 'star/BH'];
 
@@ -202,18 +254,70 @@
     <!-- TEMPERATURE -->
     <div class="form-group">
         <div class="label-row">
-            <label>Temperature (Kelvin)</label>
+            <label for="temp">Effective Temperature ({tempK} K)</label>
             <input type="number" step="100" bind:value={tempK} on:change={() => { body.temperatureK = tempK; dispatch('update'); }} />
         </div>
-        <input type="range" min="0" max="1" step="0.001" bind:value={tempSliderPos} on:input={updateTemp} class="full-width-slider" />
+        
+        <div class="slider-container">
+            <svg class="slider-svg" width="100%" height="30">
+                {#each tempZones as zone}
+                    <rect 
+                        x="{getTempLogPos(zone.start)}%" 
+                        y="5" 
+                        width="{getTempLogPos(zone.end) - getTempLogPos(zone.start)}%" 
+                        height="8" 
+                        fill={zone.color} 
+                        opacity="0.4"
+                    />
+                {/each}
+                {#each tempZones as zone}
+                    {@const x = getTempLogPos(zone.start)}
+                    <line x1="{x}%" y1="5" x2="{x}%" y2="18" stroke="#666" stroke-width="1" />
+                    <text x="{x + 1}%" y="28" class="rad-label">{zone.name}</text>
+                {/each}
+                <line x1="100%" y1="5" x2="100%" y2="18" stroke="#666" stroke-width="1" />
+            </svg>
+            <input type="range" min="0" max="1" step="0.001" bind:value={tempSliderPos} on:input={updateTemp} class="full-width-slider overlay" />
+        </div>
     </div>
 
     <!-- RADIATION / LUMINOSITY -->
     <div class="form-group">
         <div class="label-row">
-            <label>Radiation Multiplier</label>
-            <input type="number" step="0.1" bind:value={radiation} on:input={updateRadiation} />
+            <label>Ionising Radiation Level ({radiation.toFixed(2)})</label>
+            <input type="number" step="0.1" bind:value={radiation} on:change={handleRadiationInput} />
         </div>
+        
+        <div class="slider-container">
+            <svg class="slider-svg" width="100%" height="30">
+                <!-- Zone Backgrounds -->
+                {#each radZones as zone}
+                    <rect 
+                        x="{getLogPos(zone.start)}%" 
+                        y="5" 
+                        width="{getLogPos(zone.end) - getLogPos(zone.start)}%" 
+                        height="8" 
+                        fill={zone.color} 
+                        opacity="0.4"
+                    />
+                {/each}
+                
+                <!-- Tick Marks & Labels -->
+                {#each radZones as zone}
+                    {@const x = getLogPos(zone.start)}
+                    <line x1="{x}%" y1="5" x2="{x}%" y2="18" stroke="#666" stroke-width="1" />
+                    <text x="{x + 1}%" y="28" class="rad-label">{zone.name}</text>
+                {/each}
+                <!-- Final Tick -->
+                <line x1="100%" y1="5" x2="100%" y2="18" stroke="#666" stroke-width="1" />
+
+                <!-- The Sun Reference (1.0) -->
+                <line x1="{getLogPos(1)}%" y1="2" x2="{getLogPos(1)}%" y2="20" stroke="#fff" stroke-width="2" />
+                <text x="{getLogPos(1)}%" y="38" class="rad-label ref">SUN</text>
+            </svg>
+            <input type="range" min="0" max="1" step="0.001" bind:value={radSliderPos} on:input={updateRadiation} class="full-width-slider overlay" />
+        </div>
+        
         <div class="sub-label">Est. Luminosity: {luminosity.toExponential(2)} L☉</div>
     </div>
 
@@ -258,5 +362,34 @@
       border-radius: 50%;
       border: 1px solid #fff;
       flex-shrink: 0;
+  }
+
+  .slider-container {
+      position: relative;
+      height: 45px;
+      margin-top: 5px;
+  }
+  .slider-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+  }
+  .rad-label {
+      font-size: 8px;
+      fill: #aaa;
+      text-transform: uppercase;
+  }
+  .rad-label.ref {
+      fill: #fff;
+      font-weight: bold;
+  }
+  input[type="range"].overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: transparent;
+      height: 20px;
+      z-index: 2;
   }
 </style>

@@ -62,7 +62,7 @@
       {#if isStar}
           <BodyStarTab {body} {rulePack} on:update={handleUpdate} />
       {:else}
-          <BodyDetailsTab {body} on:update={handleUpdate} />
+          <BodyDetailsTab {body} {parentBody} on:update={handleUpdate} />
       {/if}
     {:else if selectedTab === 'Basics'}
       <BodyBasicsTab {body} {rulePack} on:update={handleUpdate} />

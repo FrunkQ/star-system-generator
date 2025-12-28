@@ -1,57 +1,157 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { untrack, createEventDispatcher } from 'svelte';
   import type { CelestialBody } from '$lib/types';
   import { AU_KM, EARTH_MASS_KG } from '$lib/constants';
 
-  let { body } = $props();
+  let { body, parentBody } = $props();
 
   const dispatch = createEventDispatcher();
 
   // --- State ---
   let beltInnerAu = $state(0);
   let beltOuterAu = $state(0);
+  let ringInnerKm = $state(0);
+  let ringOuterKm = $state(0);
   let eccentricity = $state(0);
   let eccentricityAngle = $state(0);
   let densitySlider = $state(0);
 
-  // --- Dimensions ---
+  // Raw slider positions (0-1)
+  let innerSliderPos = $state(0);
+  let outerSliderPos = $state(0);
+
+  let isRing = $derived(body.roleHint === 'ring');
+  
+  // Log Configs
+  const auMin = 0.001;
+  const auMax = 500;
+  const auLogMin = Math.log(auMin);
+  const auLogMax = Math.log(auMax);
+
+  const kmMin = 100;
+  // Calculate Parent SOI (Sphere of Influence) in KM
+  let parentSoiKm = $derived.by(() => {
+      if (!parentBody || !parentBody.orbit) return 1000000;
+      const a = parentBody.orbit.elements.a_AU * AU_KM;
+      const m = parentBody.massKg || 0;
+      const hostMass = 1.989e30; 
+      return a * Math.pow(m / (3 * hostMass), 1/3);
+  });
+
+  let kmLogMin = Math.log(kmMin);
+  let kmLogMax = $derived(Math.log(Math.max(1000, parentSoiKm)));
+
+  // --- Sync: Body -> UI (Only on body change) ---
   $effect(() => {
-      if (body) {
+      const _id = body.id; 
+      
+      untrack(() => {
           if (body.radiusInnerKm) {
-              const inAu = body.radiusInnerKm / AU_KM;
-              if (Math.abs(inAu - beltInnerAu) > 0.001) beltInnerAu = inAu;
+              beltInnerAu = body.radiusInnerKm / AU_KM;
+              ringInnerKm = body.radiusInnerKm;
+              
+              // Initial Slider Positions
+              if (isRing) {
+                  innerSliderPos = (Math.log(Math.max(kmMin, ringInnerKm)) - kmLogMin) / (kmLogMax - kmLogMin);
+              } else {
+                  innerSliderPos = (Math.log(Math.max(auMin, beltInnerAu)) - auLogMin) / (auLogMax - auLogMin);
+              }
           }
           if (body.radiusOuterKm) {
-              const outAu = body.radiusOuterKm / AU_KM;
-              if (Math.abs(outAu - beltOuterAu) > 0.001) beltOuterAu = outAu;
+              beltOuterAu = body.radiusOuterKm / AU_KM;
+              ringOuterKm = body.radiusOuterKm;
+
+              if (isRing) {
+                  outerSliderPos = (Math.log(Math.max(kmMin, ringOuterKm)) - kmLogMin) / (kmLogMax - kmLogMin);
+              } else {
+                  outerSliderPos = (Math.log(Math.max(auMin, beltOuterAu)) - auLogMin) / (auLogMax - auLogMin);
+              }
           }
           if (body.orbit) {
               eccentricity = body.orbit.elements.e || 0;
               eccentricityAngle = body.orbit.elements.omega_deg || 0;
           }
           
-          // Sync Density
           const massEarths = body.massKg ? body.massKg / EARTH_MASS_KG : 0;
           const minMass = 0.00001;
           const maxMass = 1.0;
           const minLog = Math.log(minMass);
           const maxLog = Math.log(maxMass);
           if (massEarths > 0) {
-              const val = (Math.log(Math.max(minMass, Math.min(maxMass, massEarths))) - minLog) / (maxLog - minLog);
-              if (Math.abs(val - densitySlider) > 0.01) densitySlider = val;
+              densitySlider = (Math.log(Math.max(minMass, Math.min(maxMass, massEarths))) - minLog) / (maxLog - minLog);
+          } else {
+              densitySlider = 0;
           }
-      }
+      });
   });
   
   function updateBeltDimensions() {
-      if (beltInnerAu > beltOuterAu) {
-          beltInnerAu = beltOuterAu - 0.01;
+      // Linear number inputs still work and update log sliders
+      beltInnerAu = Math.max(auMin, beltInnerAu);
+      beltOuterAu = Math.max(auMin, beltOuterAu);
+      
+      if (beltInnerAu >= beltOuterAu) {
+          beltOuterAu = beltInnerAu + 0.01;
       }
+      
+      innerSliderPos = (Math.log(beltInnerAu) - auLogMin) / (auLogMax - auLogMin);
+      outerSliderPos = (Math.log(beltOuterAu) - auLogMin) / (auLogMax - auLogMin);
+
+      applyBeltToData();
+  }
+
+  function handleBeltSlider() {
+      beltInnerAu = Math.exp(auLogMin + (auLogMax - auLogMin) * innerSliderPos);
+      beltOuterAu = Math.exp(auLogMin + (auLogMax - auLogMin) * outerSliderPos);
+      
+      if (beltInnerAu >= beltOuterAu) {
+          beltOuterAu = beltInnerAu + 0.01;
+          outerSliderPos = (Math.log(beltOuterAu) - auLogMin) / (auLogMax - auLogMin);
+      }
+      
+      applyBeltToData();
+  }
+
+  function applyBeltToData() {
       body.radiusInnerKm = beltInnerAu * AU_KM;
       body.radiusOuterKm = beltOuterAu * AU_KM;
-      
       if (body.orbit) {
           body.orbit.elements.a_AU = (beltInnerAu + beltOuterAu) / 2;
+      }
+      dispatch('update');
+  }
+
+  function updateRingDimensions() {
+      ringInnerKm = Math.max(kmMin, ringInnerKm);
+      ringOuterKm = Math.max(kmMin, ringOuterKm);
+
+      if (ringInnerKm >= ringOuterKm) {
+          ringOuterKm = ringInnerKm + 100;
+      }
+
+      innerSliderPos = (Math.log(ringInnerKm) - kmLogMin) / (kmLogMax - kmLogMin);
+      outerSliderPos = (Math.log(ringOuterKm) - kmLogMin) / (kmLogMax - kmLogMin);
+
+      applyRingToData();
+  }
+
+  function handleRingSlider() {
+      ringInnerKm = Math.exp(kmLogMin + (kmLogMax - kmLogMin) * innerSliderPos);
+      ringOuterKm = Math.exp(kmLogMin + (kmLogMax - kmLogMin) * outerSliderPos);
+
+      if (ringInnerKm >= ringOuterKm) {
+          ringOuterKm = ringInnerKm + 100;
+          outerSliderPos = (Math.log(ringOuterKm) - kmLogMin) / (kmLogMax - kmLogMin);
+      }
+
+      applyRingToData();
+  }
+
+  function applyRingToData() {
+      body.radiusInnerKm = Math.round(ringInnerKm);
+      body.radiusOuterKm = Math.round(ringOuterKm);
+      if (body.orbit) {
+          body.orbit.elements.a_AU = (body.radiusInnerKm + body.radiusOuterKm) / 2 / AU_KM;
       }
       dispatch('update');
   }
@@ -101,21 +201,42 @@
     <!-- DIMENSIONS -->
     <div class="section-header">Dimensions</div>
     
-    <div class="form-group">
-        <div class="label-row">
-            <label>Inner Radius (AU)</label>
-            <input type="number" step="0.01" bind:value={beltInnerAu} on:input={updateBeltDimensions} />
+    {#if !isRing}
+        <!-- BELT (AU) -->
+        <div class="form-group">
+            <div class="label-row">
+                <label>Inner Radius (AU)</label>
+                <input type="number" step="0.01" bind:value={beltInnerAu} on:input={updateBeltDimensions} />
+            </div>
+            <input type="range" min="0" max="1" step="0.001" bind:value={innerSliderPos} on:input={handleBeltSlider} class="full-width-slider" />
         </div>
-        <input type="range" min="0.01" max="50" step="0.01" bind:value={beltInnerAu} on:input={updateBeltDimensions} class="full-width-slider" />
-    </div>
-    
-    <div class="form-group">
-        <div class="label-row">
-            <label>Outer Radius (AU)</label>
-            <input type="number" step="0.01" bind:value={beltOuterAu} on:input={updateBeltDimensions} />
+        
+        <div class="form-group">
+            <div class="label-row">
+                <label>Outer Radius (AU)</label>
+                <input type="number" step="0.01" bind:value={beltOuterAu} on:input={updateBeltDimensions} />
+            </div>
+            <input type="range" min="0" max="1" step="0.001" bind:value={outerSliderPos} on:input={handleBeltSlider} class="full-width-slider" />
         </div>
-        <input type="range" min="0.01" max="50" step="0.01" bind:value={beltOuterAu} on:input={updateBeltDimensions} class="full-width-slider" />
-    </div>
+    {:else}
+        <!-- RING (KM) -->
+        <div class="form-group">
+            <div class="label-row">
+                <label>Inner Radius (km)</label>
+                <input type="number" step="100" bind:value={ringInnerKm} on:input={updateRingDimensions} />
+            </div>
+            <input type="range" min="0" max="1" step="0.001" bind:value={innerSliderPos} on:input={handleRingSlider} class="full-width-slider" />
+        </div>
+        
+        <div class="form-group">
+            <div class="label-row">
+                <label>Outer Radius (km)</label>
+                <input type="number" step="100" bind:value={ringOuterKm} on:input={updateRingDimensions} />
+            </div>
+            <input type="range" min="0" max="1" step="0.001" bind:value={outerSliderPos} on:input={handleRingSlider} class="full-width-slider" />
+            <div class="sub-label">Parent Hill Sphere: {Math.round(parentSoiKm).toLocaleString()} km</div>
+        </div>
+    {/if}
 
     <!-- ORBITAL SHAPE -->
     <div class="section-header">Shape</div>
