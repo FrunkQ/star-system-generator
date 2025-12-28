@@ -3,6 +3,7 @@
   import type { CelestialBody, RulePack } from '$lib/types';
   import BodyBasicsTab from './BodyBasicsTab.svelte';
   import BodyDetailsTab from './BodyDetailsTab.svelte';
+  import BodyStarTab from './BodyStarTab.svelte';
   import BodyOrbitTab from './BodyOrbitTab.svelte';
   import BodyAtmosphereTab from './BodyAtmosphereTab.svelte';
   import BodyTemperatureTab from './BodyTemperatureTab.svelte';
@@ -20,9 +21,10 @@
 
   let selectedTab: string = 'Basics';
   $: isBeltOrRing = body.roleHint === 'belt' || body.roleHint === 'ring';
+  $: isStar = body.roleHint === 'star';
   
-  // Auto-switch to Details if opening a belt/ring
-  $: if (isBeltOrRing && (selectedTab === 'Basics' || selectedTab === 'Orbit')) {
+  // Auto-switch to Details if opening a special object (Belt/Ring/Star)
+  $: if ((isBeltOrRing || isStar) && (selectedTab === 'Basics' || selectedTab === 'Orbit')) {
       selectedTab = 'Details';
   }
 
@@ -38,14 +40,14 @@
 
 <div class="body-side-panel">
   <div class="tabs">
-    {#if !isBeltOrRing}
+    {#if !isBeltOrRing && !isStar}
         <button class:active={selectedTab === 'Basics'} on:click={() => setTab('Basics')}>Basics</button>
         <button class:active={selectedTab === 'Orbit'} on:click={() => setTab('Orbit')}>Orbit</button>
     {:else}
         <button class:active={selectedTab === 'Details'} on:click={() => setTab('Details')}>Details</button>
     {/if}
     
-    {#if !isBeltOrRing}
+    {#if !isBeltOrRing && !isStar}
         <button class:active={selectedTab === 'Temp'} on:click={() => setTab('Temp')}>Temp</button>
         <button class:active={selectedTab === 'Atmosphere'} on:click={() => setTab('Atmosphere')}>Atmosphere</button>
         <button class:active={selectedTab === 'Hydro'} on:click={() => setTab('Hydro')}>Liquid</button>
@@ -57,7 +59,11 @@
 
   <div class="tab-content">
     {#if selectedTab === 'Details'}
-      <BodyDetailsTab {body} on:update={handleUpdate} />
+      {#if isStar}
+          <BodyStarTab {body} {rulePack} on:update={handleUpdate} />
+      {:else}
+          <BodyDetailsTab {body} on:update={handleUpdate} />
+      {/if}
     {:else if selectedTab === 'Basics'}
       <BodyBasicsTab {body} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Orbit'}

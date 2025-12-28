@@ -3,18 +3,45 @@
   import type { CelestialBody } from '$lib/types';
   import { AU_KM, EARTH_MASS_KG } from '$lib/constants';
 
-  export let body: CelestialBody;
+  let { body } = $props();
 
   const dispatch = createEventDispatcher();
 
+  // --- State ---
+  let beltInnerAu = $state(0);
+  let beltOuterAu = $state(0);
+  let eccentricity = $state(0);
+  let eccentricityAngle = $state(0);
+  let densitySlider = $state(0);
+
   // --- Dimensions ---
-  let beltInnerAu = 0;
-  let beltOuterAu = 0;
-  
-  $: if (body) {
-      if (body.radiusInnerKm) beltInnerAu = body.radiusInnerKm / AU_KM;
-      if (body.radiusOuterKm) beltOuterAu = body.radiusOuterKm / AU_KM;
-  }
+  $effect(() => {
+      if (body) {
+          if (body.radiusInnerKm) {
+              const inAu = body.radiusInnerKm / AU_KM;
+              if (Math.abs(inAu - beltInnerAu) > 0.001) beltInnerAu = inAu;
+          }
+          if (body.radiusOuterKm) {
+              const outAu = body.radiusOuterKm / AU_KM;
+              if (Math.abs(outAu - beltOuterAu) > 0.001) beltOuterAu = outAu;
+          }
+          if (body.orbit) {
+              eccentricity = body.orbit.elements.e || 0;
+              eccentricityAngle = body.orbit.elements.omega_deg || 0;
+          }
+          
+          // Sync Density
+          const massEarths = body.massKg ? body.massKg / EARTH_MASS_KG : 0;
+          const minMass = 0.00001;
+          const maxMass = 1.0;
+          const minLog = Math.log(minMass);
+          const maxLog = Math.log(maxMass);
+          if (massEarths > 0) {
+              const val = (Math.log(Math.max(minMass, Math.min(maxMass, massEarths))) - minLog) / (maxLog - minLog);
+              if (Math.abs(val - densitySlider) > 0.01) densitySlider = val;
+          }
+      }
+  });
   
   function updateBeltDimensions() {
       if (beltInnerAu > beltOuterAu) {
@@ -23,20 +50,10 @@
       body.radiusInnerKm = beltInnerAu * AU_KM;
       body.radiusOuterKm = beltOuterAu * AU_KM;
       
-      // Update Orbit Center for sorting/positioning
       if (body.orbit) {
           body.orbit.elements.a_AU = (beltInnerAu + beltOuterAu) / 2;
       }
       dispatch('update');
-  }
-
-  // --- Eccentricity ---
-  let eccentricity = 0;
-  let eccentricityAngle = 0; // Argument of Periapsis
-
-  $: if (body.orbit) {
-      eccentricity = body.orbit.elements.e || 0;
-      eccentricityAngle = body.orbit.elements.omega_deg || 0;
   }
 
   function updateEccentricity() {
@@ -53,45 +70,30 @@
       }
   }
 
-  // --- Density (Mapped to Mass) ---
-  // We'll use a conceptual scale where 
-  // 0.0001 Earths = Sparse
-  // 1.0 Earths = Ultra Dense (for a belt/ring)
-  const minMass = 0.00001 * EARTH_MASS_KG;
-  const maxMass = 1.0 * EARTH_MASS_KG;
-  const minLog = Math.log(minMass);
-  const maxLog = Math.log(maxMass);
-  
-  let densitySlider = 0; // 0 to 1
-
-  $: if (body.massKg) {
-      const safeMass = Math.max(minMass, Math.min(maxMass, body.massKg));
-      densitySlider = (Math.log(safeMass) - minLog) / (maxLog - minLog);
-  }
-
   function updateDensity() {
+      const minMass = 0.00001 * EARTH_MASS_KG;
+      const maxMass = 1.0 * EARTH_MASS_KG;
+      const minLog = Math.log(minMass);
+      const maxLog = Math.log(maxMass);
       const newMass = Math.exp(minLog + (maxLog - minLog) * densitySlider);
       body.massKg = newMass;
       dispatch('update');
   }
 
-  // Visual helper for density description
-  $: densityLabel = getDensityLabel(densitySlider);
-  $: densityColor = getDensityColor(densitySlider);
-
-  function getDensityLabel(val: number): string {
+  // --- Derived ---
+  let densityLabel = $derived.by(() => {
+      const val = densitySlider;
       if (val < 0.2) return "Sparse (Navigation Trivial)";
       if (val < 0.4) return "Light (Standard)";
       if (val < 0.6) return "Moderate (Minor Hazards)";
       if (val < 0.8) return "Dense (Navigation Hazard)";
       return "Ultra-Dense (Deadly)";
-  }
+  });
 
-  function getDensityColor(val: number): string {
-      // Green (120) -> Yellow (60) -> Red (0)
-      const hue = 120 - (val * 120);
+  let densityColor = $derived.by(() => {
+      const hue = 120 - (densitySlider * 120);
       return `hsl(${hue}, 80%, 45%)`;
-  }
+  });
 
 </script>
 

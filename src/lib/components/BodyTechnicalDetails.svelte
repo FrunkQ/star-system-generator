@@ -31,9 +31,11 @@
   let displayedSurfaceRadiation: number | null = null;
   let stellarRadiationTooltip: string | null = null;
   let calculatedPeriodDays: number | null = null;
+  let luminosity: number | null = null;
   
   $: isGasGiant = body.classes?.some(c => c.includes('gas-giant')) ?? false;
   $: isBeltOrRing = body && body.kind === 'body' && (body.roleHint === 'belt' || body.roleHint === 'ring');
+  $: isStar = body && body.kind === 'body' && body.roleHint === 'star';
   
   // Perform all other display calculations when the body changes
   $: {
@@ -51,6 +53,7 @@
     surfaceRadiationTooltip = null;
     displayedSurfaceRadiation = null;
     calculatedPeriodDays = null;
+    luminosity = null;
 
     if (body && body.kind === 'body') {
         // --- Live Recalculation for Editing ---
@@ -138,6 +141,12 @@
             const desc = getStellarRadiationDescription(body.radiationOutput || 0);
             radiationLevel = `${desc.text} (${body.radiationOutput?.toFixed(2)})`;
             stellarRadiationTooltip = desc.tooltip;
+            
+            if (body.radiusKm && body.temperatureK) {
+                const r_sol = body.radiusKm / SOLAR_RADIUS_KM;
+                const t_ratio = body.temperatureK / 5778;
+                luminosity = Math.pow(r_sol, 2) * Math.pow(t_ratio, 4);
+            }
 
         } else if (body.massKg) {
             const massInEarths = body.massKg / EARTH_MASS_KG;
@@ -216,6 +225,7 @@
   const EARTH_GRAVITY = 9.80665; // m/s^2
   const EARTH_DENSITY = 5514; // kg/m^3
   const SOLAR_MASS_KG = 1.989e30;
+  const SOLAR_RADIUS_KM = 695700;
   const EARTH_MASS_KG = 5.972e24;
   const AU_KM = 149597870.7;
 
@@ -322,40 +332,43 @@
 
     {#if !isBeltOrRing}
         {#if massDisplay}
-              <div class="detail-item">
-                  <span class="label">Mass</span>
-                  <span class="value">{massDisplay}</span>
-              </div>
-          {/if}
-
-          {#if body.kind === 'body' && body.radiusKm}
-              <div class="detail-item">
+                        <div class="detail-item">
+                            <span class="label">Mass</span>
+                            <span class="value">{massDisplay}</span>
+                        </div>
+                    {/if}
+                    
+                    {#if luminosity !== null}
+                        <div class="detail-item">
+                            <span class="label">Luminosity</span>
+                            <span class="value">{luminosity.toExponential(2)} L☉</span>
+                        </div>
+                    {/if}
+              
+                    {#if body.kind === 'body' && body.radiusKm}              <div class="detail-item">
                   <span class="label">Radius</span>
                   <span class="value">{body.radiusKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
               </div>
           {/if}
 
-          {#if circumferenceKm}
-              <div class="detail-item">
-                  <span class="label">Circumference</span>
-                  <span class="value">{circumferenceKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
-              </div>
-          {/if}
-
-          {#if surfaceGravityG !== null}
-              <div class="detail-item">
-                  <span class="label">Surface Gravity</span>
-                  <span class="value">{surfaceGravityG.toFixed(2)} G</span>
-              </div>
-          {/if}
-
-          {#if densityRelative !== null}
-              <div class="detail-item">
-                  <span class="label">Density (rel. to Earth)</span>
-                  <span class="value">{densityRelative.toFixed(2)}</span>
-              </div>
-          {/if}
-
+                {#if circumferenceKm && !isStar}
+                    <div class="detail-item">
+                        <span class="label">Circumference</span>
+                        <span class="value">{circumferenceKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+                    </div>
+                {/if}
+                {#if surfaceGravityG !== null && !isStar}
+                    <div class="detail-item">
+                        <span class="label">Surface Gravity</span>
+                        <span class="value">{surfaceGravityG.toFixed(2)} G</span>
+                    </div>
+                {/if}
+                {#if densityRelative !== null && !isStar}
+                    <div class="detail-item">
+                        <span class="label">Density (rel. to Earth)</span>
+                        <span class="value">{densityRelative.toFixed(2)}</span>
+                    </div>
+                {/if}
           {#if body.kind === 'body' && body.axial_tilt_deg}
               <div class="detail-item">
                   <span class="label">Axial Tilt</span>
