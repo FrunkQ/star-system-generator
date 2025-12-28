@@ -77,6 +77,11 @@ export interface CelestialBody extends NodeBase {
   current_cargo_tonnes?: number; // Current cargo mass in tonnes
   current_crew_count?: number; // Current number of crew members
   cargoDescription?: string; // User-editable description of the cargo
+  
+  // Flight Dynamics (V2)
+  vector_velocity_ms?: { x: number; y: number; z?: number };
+  flight_state?: 'Orbiting' | 'Transit' | 'Deep Space' | 'Landed' | 'Docked';
+  
   // ... existing properties ...
 }
 

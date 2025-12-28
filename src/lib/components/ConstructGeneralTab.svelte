@@ -43,7 +43,7 @@
 
   onMount(() => {
     availableParents = system.nodes.filter(n => (n.kind === 'body' && (n.roleHint === 'planet' || n.roleHint === 'moon' || n.roleHint === 'star')) || n.kind === 'barycenter');
-    selectedParentId = construct.ui_parentId || construct.parentId || undefined; // Initialize with undefined if null
+    selectedParentId = construct.parentId || undefined; // Use physical parent for editor
     selectedPlacement = construct.placement;
     if (construct.orbit) {
         auDistance = construct.orbit.elements.a_AU;

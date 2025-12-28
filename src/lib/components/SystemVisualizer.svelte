@@ -205,7 +205,16 @@
       if (!system || !canvas) return { pan: currentPan, zoom: currentZoom };
 
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
-      const targetNode = nodesById.get(nodeId);
+      let targetNode = nodesById.get(nodeId);
+      
+      // FIX: If Docked (has ui_parentId), focus on the PARENT instead
+      if (targetNode && targetNode.ui_parentId) {
+          const parentNode = nodesById.get(targetNode.ui_parentId);
+          if (parentNode) {
+              targetNode = parentNode;
+              nodeId = parentNode.id;
+          }
+      }
       
       const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
       const targetPosition = targetPositions.get(nodeId);

@@ -93,33 +93,41 @@ export function calculateFullConstructSpecs(
     // --- Determine Orbit String ---
     const hostName = hostBody?.name || 'Unknown';
     let placementDescription = construct.placement || 'Orbit';
+    
+    if (construct.flight_state === 'Deep Space' || construct.flight_state === 'Transit') {
+        const vel = construct.vector_velocity_ms;
+        const speed = vel ? Math.sqrt(vel.x**2 + (vel.y||0)**2 + (vel.z||0)**2) / 1000 : 0;
+        specs.orbit_string = `Deep Space (v=${speed.toFixed(1)} km/s)`;
+    } else if (construct.placement && construct.placement.startsWith('Docked')) {
+        specs.orbit_string = construct.placement;
+    } else {
+        if ((hostBody?.roleHint === 'star' || hostBody?.kind === 'barycenter') && construct.orbit?.elements.a_AU !== undefined) {
+            placementDescription = `${construct.orbit.elements.a_AU.toFixed(2)} AU`;
+        } else if (construct.placement && construct.placement.endsWith(' Orbit')) {
+            placementDescription = construct.placement;
+        } else if (construct.placement === 'Surface') {
+            placementDescription = 'Surface';  
+        } else if (construct.placement === 'L4' || construct.placement === 'L5') {
+          placementDescription = construct.placement;
+        } else if (hostBody && construct.orbit) {
+          // Fallback logic to determine zone from altitude if placement is generic 'Orbit'
+          if (hostBody.orbitalBoundaries) {
+              const altitudeKm = (construct.orbit.elements.a_AU * AU_KM) - (hostBody.radiusKm || 0);
+              const boundaries = hostBody.orbitalBoundaries;
+              if (boundaries.hasSurface && boundaries.surface && altitudeKm <= boundaries.surface.max) placementDescription = 'Surface';
+              else if (boundaries.lowOrbit && altitudeKm <= boundaries.lowOrbit.max) placementDescription = 'Low Orbit';
+              else if (boundaries.mediumOrbit && altitudeKm <= boundaries.mediumOrbit.max) placementDescription = 'Medium Orbit';
+              else if (boundaries.geosynchronousOrbit && altitudeKm <= boundaries.geosynchronousOrbit.max) placementDescription = 'Geosynchronous';
+              else if (boundaries.highOrbit && altitudeKm <= boundaries.highOrbit.max) placementDescription = 'High Orbit';
+              else placementDescription = 'Far Orbit';
+          } else {
+              placementDescription = 'Orbit';
+          }
+        }
+        specs.orbit_string = `${hostName}: ${placementDescription}`;
+    }
   
-    if ((hostBody?.roleHint === 'star' || hostBody?.kind === 'barycenter') && construct.orbit?.elements.a_AU !== undefined) {
-        placementDescription = `${construct.orbit.elements.a_AU.toFixed(2)} AU`;
-    } else if (construct.placement && construct.placement.endsWith(' Orbit')) {
-        placementDescription = construct.placement;
-    } else if (construct.placement === 'Surface') {
-        placementDescription = 'Surface';  } else if (construct.placement === 'L4' || construct.placement === 'L5') {
-      placementDescription = construct.placement;
-  } else if (hostBody && construct.orbit) {
-      // Fallback logic to determine zone from altitude if placement is generic 'Orbit'
-      if (hostBody.orbitalBoundaries) {
-          const altitudeKm = (construct.orbit.elements.a_AU * AU_KM) - (hostBody.radiusKm || 0);
-          const boundaries = hostBody.orbitalBoundaries;
-          if (boundaries.hasSurface && boundaries.surface && altitudeKm <= boundaries.surface.max) placementDescription = 'Surface';
-          else if (boundaries.lowOrbit && altitudeKm <= boundaries.lowOrbit.max) placementDescription = 'Low Orbit';
-          else if (boundaries.mediumOrbit && altitudeKm <= boundaries.mediumOrbit.max) placementDescription = 'Medium Orbit';
-          else if (boundaries.geosynchronousOrbit && altitudeKm <= boundaries.geosynchronousOrbit.max) placementDescription = 'Geosynchronous';
-          else if (boundaries.highOrbit && altitudeKm <= boundaries.highOrbit.max) placementDescription = 'High Orbit';
-          else placementDescription = 'Far Orbit';
-      } else {
-          placementDescription = 'Orbit';
-      }
-  }
-
-  specs.orbit_string = `${hostName}: ${placementDescription}`;
-  
-  if (!hostBody) {
+  if (!hostBody && construct.flight_state !== 'Deep Space') {
     specs.orbit_string = 'N/A';
   }
 

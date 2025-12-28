@@ -1222,27 +1222,72 @@ a.click();
                                          }
                                      }
                                      
+                                     // Flight Dynamics Tracking
+                                     let flightState: 'Orbiting' | 'Transit' | 'Deep Space' | 'Landed' = 'Orbiting';
+                                     let finalVel = { x: 0, y: 0 };
+                                     
+                                     if (targetPlan.arrivalPlacement === 'surface') {
+                                         flightState = 'Landed';
+                                     } else if (targetPlan.arrivalVelocity_ms > 50) {
+                                         flightState = 'Deep Space';
+                                     }
+                                     
+                                     if (targetPlan.segments.length > 0) {
+                                         const lastSeg = targetPlan.segments[targetPlan.segments.length - 1];
+                                         // Convert AU/s to m/s if necessary, calculator endState.v is usually AU/s
+                                         finalVel = { 
+                                             x: lastSeg.endState.v.x * AU_KM * 1000, 
+                                             y: lastSeg.endState.v.y * AU_KM * 1000 
+                                         };
+                                     }
+
                                      // Move Ship
                                      const isLagrange = targetPlan.arrivalPlacement === 'l4' || targetPlan.arrivalPlacement === 'l5';
                                      
                                      // Check if arrivalPlacement is actually a Child Node ID (e.g. Moon/Station)
                                      const specificTargetNode = sys.nodes.find(n => n.id === targetPlan.arrivalPlacement);
                                      
+                                     // LOGIC: If Target ITSELF is a construct (e.g. Eros), we dock/co-orbit with it.
+                                     // This overrides generic 'lo' placement.
+                                     if (targetNode && targetNode.kind === 'construct') {
+                                         // Rendezvous Logic: Co-orbital Docking
+                                         const parentId = targetNode.parentId;
+                                         // If target has no parent (rogue?), we can't really co-orbit efficiently, 
+                                         // but usually it orbits a Star/Planet.
+                                         
+                                         if (parentId) {
+                                             const targetOrbit = targetNode.orbit;
+                                             
+                                             return {
+                                                 ...node,
+                                                 parentId: parentId, // Share physical parent
+                                                 ui_parentId: targetNode.id, // Visually grouped
+                                                 orbit: targetOrbit ? JSON.parse(JSON.stringify(targetOrbit)) : node.orbit,
+                                                 placement: `Docked at ${targetNode.name}`,
+                                                 flight_state: 'Docked',
+                                                 vector_velocity_ms: { x:0, y:0 }
+                                             };
+                                         }
+                                         // If no parent, fall through to standard orbit (orbiting the construct itself)
+                                     }
+
                                      if (specificTargetNode) {
                                          if (specificTargetNode.kind === 'construct') {
-                                             // Rendezvous Logic: Match the target's orbit
-                                             // We orbit what the target orbits
+                                             // Rendezvous Logic: Co-orbital Docking
+                                             // We inherit the target's orbit and parent
                                              const parentId = specificTargetNode.parentId;
-                                             if (!parentId) return node; // Should not happen for valid targets
+                                             if (!parentId) return node; 
                                              
                                              const targetOrbit = specificTargetNode.orbit;
                                              
                                              return {
                                                  ...node,
-                                                 parentId: parentId,
-                                                 ui_parentId: specificTargetNode.ui_parentId, // Preserve UI hierarchy if any
+                                                 parentId: parentId, // Share physical parent (e.g. Sun)
+                                                 ui_parentId: specificTargetNode.id, // Visually grouped under Target (Eros)
                                                  orbit: targetOrbit ? JSON.parse(JSON.stringify(targetOrbit)) : node.orbit,
-                                                 placement: specificTargetNode.placement // e.g. "Low Orbit" or "Titan Station"
+                                                 placement: `Docked at ${specificTargetNode.name}`,
+                                                 flight_state: 'Docked',
+                                                 vector_velocity_ms: { x:0, y:0 } // Relative velocity zero
                                              };
                                          } else {
                                              // Body Logic (Planet/Moon): Orbit around IT
@@ -1267,7 +1312,9 @@ a.click();
                                                      t0: finalTime,
                                                      hostMu: (specificTargetNode.kind === 'body' ? (specificTargetNode as CelestialBody).massKg : 0) * G
                                                  },
-                                                 placement: 'Low Orbit'
+                                                 placement: 'Low Orbit',
+                                                 flight_state: flightState,
+                                                 vector_velocity_ms: finalVel
                                              };
                                          }
                                      } else if (isLagrange && targetNode && targetNode.parentId) {
@@ -1284,7 +1331,9 @@ a.click();
                                              parentId: targetNode.parentId,
                                              ui_parentId: targetNode.id,
                                              orbit: newOrbit,
-                                             placement: targetPlan.arrivalPlacement.toUpperCase()
+                                             placement: targetPlan.arrivalPlacement.toUpperCase(),
+                                             flight_state: flightState,
+                                             vector_velocity_ms: finalVel
                                          };
                                      } else {
                                          // Standard Capture Logic (Planet/Star Orbit)
@@ -1296,11 +1345,6 @@ a.click();
                                          
                                          // Calculate radius based on placement if possible, or default
                                          let radiusAU = 0.0001;
-                                         // In a real app, we'd recalculate the exact radius for 'lo', 'mo' etc.
-                                         // For now, we accept the default or what was used in planning?
-                                         // The plan used 'parkingOrbitRadius_au' for calculation. We should use that?
-                                         // But the plan object doesn't explicitly store the radius used, only the ID.
-                                         // We can just set a safe default and let the user edit.
                                          
                                          return {
                                              ...node,
@@ -1312,7 +1356,9 @@ a.click();
                                                  t0: finalTime,
                                                  hostMu: (targetNode?.kind === 'body' ? (targetNode as CelestialBody).massKg : 0) * G 
                                              },
-                                             placement: placementString
+                                             placement: placementString,
+                                             flight_state: flightState,
+                                             vector_velocity_ms: finalVel
                                          };
                                      }
                                  }

@@ -59,7 +59,7 @@
   }
 
   function groupItemsByHost(items: CelestialBody[], allNodes: (CelestialBody | Barycenter)[]) {
-    const hosts = allNodes.filter(n => (n.kind === 'body' && (n.roleHint === 'star' || n.roleHint === 'planet' || n.roleHint === 'moon')) || n.kind === 'barycenter');
+    const hosts = allNodes.filter(n => (n.kind === 'body' && (n.roleHint === 'star' || n.roleHint === 'planet' || n.roleHint === 'moon')) || n.kind === 'barycenter' || n.kind === 'construct');
     const hostMap = new Map<string, (CelestialBody | Barycenter)>();
     hosts.forEach(h => hostMap.set(h.id, h));
 
