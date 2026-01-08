@@ -28,7 +28,7 @@
   import { systemStore, viewportStore } from '$lib/stores';
   import { panStore, zoomStore } from '$lib/cameraStore';
   import { get } from 'svelte/store';
-  import { processSystemData, calculateSurfaceTemperature } from '$lib/system/postprocessing';
+  import { processSystemData, calculateSurfaceTemperature, recalculateSystemPhysics } from '$lib/system/postprocessing';
   import { generateId, toRoman } from '$lib/utils';
   import { AU_KM, EARTH_MASS_KG, G } from '$lib/constants';
   import { propagate } from '$lib/api';
@@ -550,13 +550,9 @@
         system.nodes[nodeIndex] = updatedBody;
       }
 
-      // If a Star or Barycenter was updated, recalculate temperatures for all planets
+      // If a Star or Barycenter was updated, recalculate physics for the entire system
       if (updatedBody.roleHint === 'star' || updatedBody.kind === 'barycenter') {
-          system.nodes.forEach(node => {
-              if (node.kind === 'body' && (node.roleHint === 'planet' || node.roleHint === 'moon')) {
-                  calculateSurfaceTemperature(node, system.nodes);
-              }
-          });
+          recalculateSystemPhysics({ ...system, nodes: system.nodes }, rulePack);
       }
 
       return { ...system, isManuallyEdited: true };
