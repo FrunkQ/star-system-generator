@@ -1,42 +1,23 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { CelestialBody } from '$lib/types';
+  import type { CelestialBody, Barycenter } from '$lib/types';
   import { AU_KM } from '$lib/constants';
+  import { calculateEquilibriumTemperature } from '$lib/physics/temperature';
 
   export let body: CelestialBody;
   export let rootStar: CelestialBody | null = null;
   export let parentBody: CelestialBody | null = null;
+  export let nodes: (CelestialBody | Barycenter)[] = [];
 
   const dispatch = createEventDispatcher();
 
   function calculateEquilibrium() {
-      if (!rootStar || !rootStar.temperatureK || !rootStar.radiusKm) return body.equilibriumTempK || 0;
-      
-      let distAU = 0;
-      // If orbiting the star directly
-      if (body.orbit && parentBody && parentBody.id === rootStar.id) {
-          distAU = body.orbit.elements.a_AU;
-      } 
-      // If orbiting a planet (moon), use planet's distance to star
-      else if (parentBody && parentBody.orbit) {
-          distAU = parentBody.orbit.elements.a_AU;
-      }
-      // If it is the star?
-      else if (body.id === rootStar.id) {
-          return body.temperatureK || 5778; 
-      }
-
-      if (distAU <= 0) return 0;
-
-      const distM = distAU * AU_KM * 1000;
-      const starRadiusM = rootStar.radiusKm * 1000;
-      
-      const albedo = body.albedo !== undefined ? body.albedo : 0.3;
-      const albedoFactor = Math.pow(1 - albedo, 0.25);
-      const distFactor = Math.sqrt(starRadiusM / (2 * distM));
-      
-      const tEq = rootStar.temperatureK * albedoFactor * distFactor;
-      return tEq;
+      // Use shared helper for robust calculation (handles Binaries, Moons, etc.)
+      // Note: The helper assumes body.orbit is up to date, which it should be due to binding in BodyOrbitTab.
+      // However, if we are editing 'body' locally here, we rely on the object reference being updated elsewhere?
+      // No, BodyOrbitTab updates 'body' directly. 'body' is passed by reference.
+      // But we need to ensure we pass the correct albedo.
+      return calculateEquilibriumTemperature(body, nodes, body.albedo !== undefined ? body.albedo : 0.3);
   }
 
   function updateTotal() {

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { CelestialBody, RulePack } from '$lib/types';
+  import type { CelestialBody, RulePack, System } from '$lib/types';
   import BodyBasicsTab from './BodyBasicsTab.svelte';
   import BodyDetailsTab from './BodyDetailsTab.svelte';
   import BodyStarTab from './BodyStarTab.svelte';
@@ -14,6 +14,7 @@
 
   export let body: CelestialBody;
   export let rulePack: RulePack;
+  export let system: System;
   export let parentBody: CelestialBody | null = null;
   export let rootStar: CelestialBody | null = null;
 
@@ -69,7 +70,7 @@
     {:else if selectedTab === 'Orbit'}
       <BodyOrbitTab {body} {parentBody} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Temp'}
-      <BodyTemperatureTab {body} {rootStar} {parentBody} on:update={handleUpdate} />
+      <BodyTemperatureTab {body} {rootStar} {parentBody} nodes={system.nodes} on:update={handleUpdate} />
     {:else if selectedTab === 'Atmosphere'}
       <BodyAtmosphereTab {body} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Hydro'}

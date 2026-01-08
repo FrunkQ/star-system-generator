@@ -42,7 +42,7 @@
   // Reactive Landing Analysis
   let landingAnalysis: { takeoff: any; consolidatedLanding: any; roundTrip: any; } | null = null;
   $: {
-    if (specs && hostBody && hostBody.kind === 'body' && hostBody.roleHint !== 'star' && !hostBody.class?.includes('star')) {
+    if (specs && hostBody && hostBody.kind === 'body' && hostBody.roleHint !== 'star' && hostBody.roleHint !== 'belt' && hostBody.roleHint !== 'ring' && !hostBody.class?.includes('star')) {
       const formatFuel = (t: number) => t.toLocaleString(undefined, { maximumFractionDigits: 1 });
       
       const takeoff = { possible: false, reason: 'N/A', twr: specs.surfaceTWR, fuel: specs.takeoffFuel_tonnes };

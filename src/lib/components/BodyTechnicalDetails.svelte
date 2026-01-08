@@ -78,9 +78,13 @@
              body.orbitalBoundaries = calculateOrbitalBoundaries(planetData, rulePack);
              calculateDeltaVBudgets(body);
              calculateGreenhouseEffect(body, rulePack);
-             if (rootStar) {
-                 calculateSurfaceTemperature(body, rootStar, parentBody);
+             
+             // Dynamic Surface Temperature Recalculation
+             const sys = get(systemStore);
+             if (sys) {
+                 calculateSurfaceTemperature(body, sys.nodes);
              }
+
              // Recalculate Habitability Score
              calculateHabitabilityScore(body);
         }

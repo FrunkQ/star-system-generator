@@ -28,13 +28,14 @@
   import { systemStore, viewportStore } from '$lib/stores';
   import { panStore, zoomStore } from '$lib/cameraStore';
   import { get } from 'svelte/store';
-  import { processSystemData } from '$lib/system/postprocessing';
+  import { processSystemData, calculateSurfaceTemperature } from '$lib/system/postprocessing';
   import { generateId, toRoman } from '$lib/utils';
   import { AU_KM, EARTH_MASS_KG, G } from '$lib/constants';
   import { propagate } from '$lib/api';
   import { broadcastService } from '$lib/broadcast';
   import { sanitizeSystem } from '$lib/system/utils';
   import { calculateAllStellarZones } from '$lib/physics/zones';
+  import { calculateEquilibriumTemperature } from '$lib/physics/temperature';
 
   export let system: System;
   export let rulePack: RulePack;
@@ -86,6 +87,10 @@
   let contextMenuItems: CelestialBody[] = [];
   let contextMenuType = '';
   let contextMenuNode: CelestialBody | Barycenter | null = null; 
+
+  // Linking State
+  let isLinking = false;
+  let linkStartNode: CelestialBody | Barycenter | null = null;
 
   function handleShowContextMenu(event: CustomEvent<{ x: number, y: number, items: any[], type: string }>) {
     contextMenuItems = event.detail.items;
@@ -318,6 +323,18 @@
           }
       };
 
+      // 4.5 Calculate Temperature (Fix for 0K issue)
+      // We need to pass the new planet as if it were in the system to check relationships
+      // But the function takes 'body' and 'allNodes'.
+      // If we pass 'newPlanet', it has parentId.
+      // We just need to make sure allNodes contains the stars/barycenters.
+      // It doesn't strictly need newPlanet to be IN the array, unless we traverse UP from it?
+      // No, the function uses 'allNodes.find(n => n.id === body.parentId)'.
+      // So as long as the parent is in allNodes, we are good.
+      const tempK = calculateEquilibriumTemperature(newPlanet, $systemStore.nodes);
+      newPlanet.equilibriumTempK = tempK;
+      newPlanet.temperatureK = tempK + (newPlanet.greenhouseTempK || 0) + (newPlanet.tidalHeatK || 0) + (newPlanet.radiogenicHeatK || 0);
+
       // 5. Commit & Focus
       systemStore.update(s => {
           if (!s) return s;
@@ -532,6 +549,16 @@
       if (nodeIndex !== -1) {
         system.nodes[nodeIndex] = updatedBody;
       }
+
+      // If a Star or Barycenter was updated, recalculate temperatures for all planets
+      if (updatedBody.roleHint === 'star' || updatedBody.kind === 'barycenter') {
+          system.nodes.forEach(node => {
+              if (node.kind === 'body' && (node.roleHint === 'planet' || node.roleHint === 'moon')) {
+                  calculateSurfaceTemperature(node, system.nodes);
+              }
+          });
+      }
+
       return { ...system, isManuallyEdited: true };
     });
   }
@@ -1405,9 +1432,10 @@ a.click();
                         <BodySidePanel 
                             body={focusedBody} 
                             {rulePack}
+                            system={$systemStore}
                             parentBody={parentBody}
                             rootStar={rootStar}
-                            on:update={handleBodyUpdate} 
+                            on:update={handleBodyUpdate}  
                             on:delete={handleDeleteNode} 
                             on:close={() => isEditing = false} 
                             on:tabchange={(e) => activeEditTab = e.detail} 

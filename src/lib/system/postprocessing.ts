@@ -1,9 +1,10 @@
 // src/lib/system/postprocessing.ts
-import type { System, RulePack, CelestialBody } from '../types';
+import type { System, RulePack, CelestialBody, Barycenter } from '../types';
 import { AU_KM, G } from '../constants';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, calculateGreenhouseEffect } from '../physics/atmosphere';
 import { calculateHabitabilityScore } from '../physics/habitability';
+import { calculateEquilibriumTemperature } from '../physics/temperature';
 
 // Re-export for consumers (e.g. BodyTechnicalDetails)
 export { calculateMolarMass, calculateGreenhouseEffect, calculateHabitabilityScore, calculateDeltaVBudgets };
@@ -12,35 +13,14 @@ export { calculateMolarMass, calculateGreenhouseEffect, calculateHabitabilitySco
  * Recalculates the equilibrium and total surface temperature for a body.
  * Mutates the body object.
  */
-export function calculateSurfaceTemperature(body: CelestialBody, rootStar: CelestialBody, parentBody: CelestialBody | null) {
-    if (!rootStar.temperatureK || !rootStar.radiusKm || !body.orbit) return;
-
-    let distAU = 0;
-    // 1. Determine distance to star
-    if (parentBody && parentBody.id === rootStar.id) {
-        // Orbiting star directly
-        distAU = body.orbit.elements.a_AU;
-    } else if (parentBody && parentBody.orbit) {
-        // Orbiting a planet (moon) - use planet's distance
-        distAU = parentBody.orbit.elements.a_AU;
-    } else if (body.id === rootStar.id) {
-        return; // Star temp is intrinsic
-    }
-
-    if (distAU <= 0) return;
-
-    const distM = distAU * AU_KM * 1000;
-    const starRadiusM = rootStar.radiusKm * 1000;
+export function calculateSurfaceTemperature(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[]) {
     const albedo = body.albedo !== undefined ? body.albedo : 0.3;
-
-    // Stefan-Boltzmann Law: T_eq = T_star * (1 - A)^0.25 * sqrt(R_star / 2D)
-    const albedoFactor = Math.pow(1 - albedo, 0.25);
-    const distFactor = Math.sqrt(starRadiusM / (2 * distM));
+    const equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedo);
     
-    const equilibriumTempK = rootStar.temperatureK * albedoFactor * distFactor;
-    
-    body.equilibriumTempK = equilibriumTempK;
-    body.temperatureK = equilibriumTempK + (body.greenhouseTempK || 0) + (body.tidalHeatK || 0) + (body.radiogenicHeatK || 0);
+    if (equilibriumTempK > 0) {
+        body.equilibriumTempK = equilibriumTempK;
+        body.temperatureK = equilibriumTempK + (body.greenhouseTempK || 0) + (body.tidalHeatK || 0) + (body.radiogenicHeatK || 0);
+    }
 }
 
 /**

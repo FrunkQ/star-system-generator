@@ -1,0 +1,175 @@
+{
+  "id": "starmap-local-50",
+  "name": "Local Neighborhood (Top 50)",
+  "description": "The definitive map of the 50 closest star systems to Earth, including all confirmed exoplanets.",
+  "distanceUnit": "LY",
+  "unitIsPrefix": false,
+  "systems": [
+    {
+      "id": "sys-sol", "name": "Sol", "position": { "x": 400, "y": 300 },
+      "system": {
+        "id": "solar-system", "name": "Sol", "seed": "sol", "epochT0": 1767000000000, "age_Gyr": 4.6, "rulePackId": "starter-sf", "rulePackVersion": "1.0.0", "tags": [],
+        "nodes": [
+          { "id": "sun", "parentId": null, "name": "Sol", "kind": "body", "roleHint": "star", "classes": ["star/G"], "massKg": 1.989e30, "radiusKm": 695700, "temperatureK": 5778, "magneticField": {"strengthGauss": 1}, "radiationOutput": 1, "description": "G2V yellow dwarf.", "image": {"url": "/images/star_types/G.webp"} },
+          { "id": "mercury", "parentId": "sun", "name": "Mercury", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 3.28e23, "radiusKm": 2439, "orbit": { "hostId": "sun", "hostMu": 1.327e20, "t0": 1767000000000, "elements": { "a_AU": 0.387, "e": 0.205, "i_deg": 7, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "venus", "parentId": "sun", "name": "Venus", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 4.86e24, "radiusKm": 6051, "orbit": { "hostId": "sun", "hostMu": 1.327e20, "t0": 1767000000000, "elements": { "a_AU": 0.723, "e": 0.006, "i_deg": 3.4, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "earth", "parentId": "sun", "name": "Earth", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial", "planet/earth-like"], "massKg": 5.97e24, "radiusKm": 6371, "orbit": { "hostId": "sun", "hostMu": 1.327e20, "t0": 1767000000000, "elements": { "a_AU": 1.0, "e": 0.016, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "mars", "parentId": "sun", "name": "Mars", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 6.39e23, "radiusKm": 3389, "orbit": { "hostId": "sun", "hostMu": 1.327e20, "t0": 1767000000000, "elements": { "a_AU": 1.524, "e": 0.093, "i_deg": 1.8, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "jupiter", "parentId": "sun", "name": "Jupiter", "kind": "body", "roleHint": "planet", "classes": ["planet/gas-giant"], "massKg": 1.89e27, "radiusKm": 69911, "orbit": { "hostId": "sun", "hostMu": 1.327e20, "t0": 1767000000000, "elements": { "a_AU": 5.204, "e": 0.048, "i_deg": 1.3, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "saturn", "parentId": "sun", "name": "Saturn", "kind": "body", "roleHint": "planet", "classes": ["planet/gas-giant"], "massKg": 5.68e26, "radiusKm": 58232, "orbit": { "hostId": "sun", "hostMu": 1.327e20, "t0": 1767000000000, "elements": { "a_AU": 9.582, "e": 0.056, "i_deg": 2.5, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "uranus", "parentId": "sun", "name": "Uranus", "kind": "body", "roleHint": "planet", "classes": ["planet/ice-giant"], "massKg": 8.68e25, "radiusKm": 25362, "orbit": { "hostId": "sun", "hostMu": 1.327e20, "t0": 1767000000000, "elements": { "a_AU": 19.218, "e": 0.046, "i_deg": 0.8, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "neptune", "parentId": "sun", "name": "Neptune", "kind": "body", "roleHint": "planet", "classes": ["planet/ice-giant"], "massKg": 1.02e26, "radiusKm": 24622, "orbit": { "hostId": "sun", "hostMu": 1.327e20, "t0": 1767000000000, "elements": { "a_AU": 30.07, "e": 0.011, "i_deg": 1.8, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } }
+        ]
+      }
+    },
+    {
+      "id": "sys-proxima", "name": "Proxima Centauri", "position": { "x": 320, "y": 340 },
+      "system": {
+        "id": "proxima-system", "name": "Proxima Centauri", "seed": "proxima", "epochT0": 1767000000000, "age_Gyr": 4.8, "rulePackId": "starter-sf", "rulePackVersion": "1.0.0", "tags": [],
+        "nodes": [
+          { "id": "proxima-star", "parentId": null, "name": "Proxima Centauri", "kind": "body", "roleHint": "star", "classes": ["star/M"], "massKg": 2.43e29, "radiusKm": 107000, "temperatureK": 3042, "magneticField": {"strengthGauss": 600}, "radiationOutput": 0.005, "image": {"url": "/images/star_types/M.webp"} },
+          { "id": "proxima-b", "parentId": "proxima-star", "name": "Proxima b", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 6.9e24, "radiusKm": 7000, "orbit": { "hostId": "proxima-star", "hostMu": 1.62e19, "t0": 1767000000000, "elements": { "a_AU": 0.048, "e": 0.02, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "proxima-c", "parentId": "proxima-star", "name": "Proxima c", "kind": "body", "roleHint": "planet", "classes": ["planet/ice-giant"], "massKg": 4.2e25, "radiusKm": 16000, "orbit": { "hostId": "proxima-star", "hostMu": 1.62e19, "t0": 1767000000000, "elements": { "a_AU": 1.48, "e": 0.04, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "proxima-d", "parentId": "proxima-star", "name": "Proxima d", "kind": "body", "roleHint": "planet", "classes": ["planet/sub-earth"], "massKg": 1.5e24, "radiusKm": 4500, "orbit": { "hostId": "proxima-star", "hostMu": 1.62e19, "t0": 1767000000000, "elements": { "a_AU": 0.029, "e": 0.0, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } }
+        ]
+      }
+    },
+    {
+      "id": "sys-alphacen", "name": "Alpha Centauri A/B", "position": { "x": 315, "y": 335 },
+      "system": {
+        "id": "alphacen-system", "name": "Alpha Centauri", "seed": "alphacen", "epochT0": 1767000000000, "age_Gyr": 5.5, "rulePackId": "starter-sf", "rulePackVersion": "1.0.0", "tags": [],
+        "nodes": [
+          { "id": "alphacen-a", "parentId": null, "name": "Alpha Centauri A", "kind": "body", "roleHint": "star", "classes": ["star/G"], "massKg": 2.18e30, "radiusKm": 848000, "temperatureK": 5790, "magneticField": {"strengthGauss": 1.2}, "radiationOutput": 1.5, "image": {"url": "/images/star_types/G.webp"} },
+          { "id": "alphacen-b", "parentId": "alphacen-a", "name": "Alpha Centauri B", "kind": "body", "roleHint": "star", "classes": ["star/K"], "massKg": 1.8e30, "radiusKm": 600000, "temperatureK": 5260, "magneticField": {"strengthGauss": 2.0}, "radiationOutput": 0.5, "image": {"url": "/images/star_types/K.ebp.webp"}, "orbit": { "hostId": "alphacen-a", "hostMu": 1.45e20, "t0": 1767000000000, "elements": { "a_AU": 23.5, "e": 0.51, "i_deg": 79, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } }
+        ]
+      }
+    },
+    {
+      "id": "sys-barnard", "name": "Barnard's Star", "position": { "x": 480, "y": 240 },
+      "system": {
+        "id": "barnard-system", "name": "Barnard's Star", "seed": "barnard", "epochT0": 1767000000000, "age_Gyr": 10.0, "rulePackId": "starter-sf", "rulePackVersion": "1.0.0", "tags": [],
+        "nodes": [
+          { "id": "barnard-star", "parentId": null, "name": "Barnard's Star", "kind": "body", "roleHint": "star", "classes": ["star/M"], "massKg": 2.86e29, "radiusKm": 136000, "temperatureK": 3134, "magneticField": {"strengthGauss": 10}, "radiationOutput": 0.01, "image": {"url": "/images/star_types/M.webp"} },
+          { "id": "barnard-b", "parentId": "barnard-star", "name": "Barnard b", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 1.9e25, "radiusKm": 8900, "orbit": { "hostId": "barnard-star", "hostMu": 1.91e19, "t0": 1767000000000, "elements": { "a_AU": 0.404, "e": 0.32, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } }
+        ]
+      }
+    },
+    {
+      "id": "sys-wolf359", "name": "Wolf 359", "position": { "x": 280, "y": 420 },
+      "system": {
+        "id": "wolf359-system", "name": "Wolf 359", "seed": "wolf359", "epochT0": 1767000000000, "age_Gyr": 0.3, "rulePackId": "starter-sf", "rulePackVersion": "1.0.0", "tags": [],
+        "nodes": [
+          { "id": "wolf359-star", "parentId": null, "name": "Wolf 359", "kind": "body", "roleHint": "star", "classes": ["star/M"], "massKg": 1.79e29, "radiusKm": 111000, "temperatureK": 2800, "magneticField": {"strengthGauss": 1000}, "radiationOutput": 0.001, "image": {"url": "/images/star_types/M.webp"} }
+        ]
+      }
+    },
+    {
+      "id": "sys-lalande", "name": "Lalande 21185", "position": { "x": 520, "y": 380 },
+      "system": {
+        "id": "lalande-system", "name": "Lalande 21185", "seed": "lalande", "epochT0": 1767000000000, "age_Gyr": 8.0, "rulePackId": "starter-sf", "rulePackVersion": "1.0.0", "tags": [],
+        "nodes": [
+          { "id": "lalande-star", "parentId": null, "name": "Lalande 21185", "kind": "body", "roleHint": "star", "classes": ["star/M"], "massKg": 9.15e29, "radiusKm": 273000, "temperatureK": 3384, "image": {"url": "/images/star_types/M.webp"} },
+          { "id": "lalande-b", "parentId": "lalande-star", "name": "Lalande 21185 b", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 1.6e25, "radiusKm": 8500, "orbit": { "hostId": "lalande-star", "hostMu": 6.1e19, "t0": 1767000000000, "elements": { "a_AU": 0.078, "e": 0.12, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } }
+        ]
+      }
+    },
+    {
+      "id": "sys-sirius", "name": "Sirius", "position": { "x": 240, "y": 200 },
+      "system": {
+        "id": "sirius-system", "name": "Sirius", "seed": "sirius", "epochT0": 1767000000000, "age_Gyr": 0.24, "rulePackId": "starter-sf", "rulePackVersion": "1.0.0", "tags": [],
+        "nodes": [
+          { "id": "sirius-a", "parentId": null, "name": "Sirius A", "kind": "body", "roleHint": "star", "classes": ["star/A"], "massKg": 4.1e30, "radiusKm": 1190000, "temperatureK": 9940, "image": {"url": "/images/star_types/A.webp"} },
+          { "id": "sirius-b", "parentId": "sirius-a", "name": "Sirius B", "kind": "body", "roleHint": "star", "classes": ["star/WD"], "massKg": 2.0e30, "radiusKm": 5800, "temperatureK": 25200, "orbit": { "hostId": "sirius-a", "hostMu": 2.7e20, "t0": 1767000000000, "elements": { "a_AU": 20, "e": 0.59, "i_deg": 136, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } }
+        ]
+      }
+    },
+    {
+      "id": "sys-ross154", "name": "Ross 154", "position": { "x": 580, "y": 450 },
+      "system": {
+        "id": "ross154-system", "name": "Ross 154", "seed": "ross154", "epochT0": 1767000000000, "age_Gyr": 1.0, "rulePackId": "starter-sf", "rulePackVersion": "1.0.0", "tags": [],
+        "nodes": [
+          { "id": "ross154-star", "parentId": null, "name": "Ross 154", "kind": "body", "roleHint": "star", "classes": ["star/M"], "massKg": 3.38e29, "radiusKm": 167000, "temperatureK": 3340, "image": {"url": "/images/star_types/M.webp"} }
+        ]
+      }
+    },
+    {
+      "id": "sys-ross248", "name": "Ross 248", "position": { "x": 620, "y": 250 },
+      "system": {
+        "id": "ross248-system", "name": "Ross 248", "seed": "ross248", "epochT0": 1767000000000, "age_Gyr": 2.0, "rulePackId": "starter-sf", "rulePackVersion": "1.0.0", "tags": [],
+        "nodes": [
+          { "id": "ross248-star", "parentId": null, "name": "Ross 248", "kind": "body", "roleHint": "star", "classes": ["star/M"], "massKg": 2.38e29, "radiusKm": 111000, "temperatureK": 3100, "image": {"url": "/images/star_types/M.webp"} }
+        ]
+      }
+    },
+    {
+      "id": "sys-epseri", "name": "Epsilon Eridani", "position": { "x": 650, "y": 550 },
+      "system": {
+        "id": "epseri-system", "name": "Epsilon Eridani", "seed": "epseri", "epochT0": 1767000000000, "age_Gyr": 0.8, "rulePackId": "starter-sf", "rulePackVersion": "1.0.0", "tags": [],
+        "nodes": [
+          { "id": "epseri-star", "parentId": null, "name": "Epsilon Eridani", "kind": "body", "roleHint": "star", "classes": ["star/K"], "massKg": 1.63e30, "radiusKm": 511000, "temperatureK": 5084, "image": {"url": "/images/star_types/K.ebp.webp"} },
+          { "id": "epseri-aegir", "parentId": "epseri-star", "name": "AEgir", "kind": "body", "roleHint": "planet", "classes": ["planet/gas-giant"], "massKg": 2.9e27, "radiusKm": 83000, "orbit": { "hostId": "epseri-star", "hostMu": 1.09e20, "t0": 1767000000000, "elements": { "a_AU": 3.39, "e": 0.07, "i_deg": 30, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } }
+        ]
+      }
+    },
+    {
+      "id": "sys-ross128", "name": "Ross 128", "position": { "x": 450, "y": 600 },
+      "system": {
+        "id": "ross128-system", "name": "Ross 128", "seed": "ross128", "epochT0": 1767000000000, "age_Gyr": 5.0, "rulePackId": "starter-sf", "rulePackVersion": "1.0.0", "tags": [],
+        "nodes": [
+          { "id": "ross128-star", "parentId": null, "name": "Ross 128", "kind": "body", "roleHint": "star", "classes": ["star/M"], "massKg": 3.34e29, "radiusKm": 146000, "temperatureK": 3192, "image": {"url": "/images/star_types/M.webp"} },
+          { "id": "ross128-b", "parentId": "ross128-star", "name": "Ross 128 b", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 8.0e24, "radiusKm": 7000, "orbit": { "hostId": "ross128-star", "hostMu": 2.23e19, "t0": 1767000000000, "elements": { "a_AU": 0.049, "e": 0.03, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } }
+        ]
+      }
+    },
+    {
+      "id": "sys-teegarden", "name": "Teegarden's Star", "position": { "x": 150, "y": 450 },
+      "system": {
+        "id": "teegarden-system", "name": "Teegarden's Star", "seed": "teegarden", "epochT0": 1767000000000, "age_Gyr": 8.0, "rulePackId": "starter-sf", "rulePackVersion": "1.0.0", "tags": [],
+        "nodes": [
+          { "id": "teegarden-star", "parentId": null, "name": "Teegarden's Star", "kind": "body", "roleHint": "star", "classes": ["star/M"], "massKg": 1.77e29, "radiusKm": 74000, "temperatureK": 2637, "image": {"url": "/images/star_types/M.webp"} },
+          { "id": "teegarden-b", "parentId": "teegarden-star", "name": "Teegarden b", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 6.3e24, "radiusKm": 6500, "orbit": { "hostId": "teegarden-star", "hostMu": 1.18e19, "t0": 1767000000000, "elements": { "a_AU": 0.025, "e": 0.0, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "teegarden-c", "parentId": "teegarden-star", "name": "Teegarden c", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 6.6e24, "radiusKm": 6600, "orbit": { "hostId": "teegarden-star", "hostMu": 1.18e19, "t0": 1767000000000, "elements": { "a_AU": 0.044, "e": 0.0, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } }
+        ]
+      }
+    },
+    {
+      "id": "sys-luyten", "name": "Luyten's Star", "position": { "x": 750, "y": 150 },
+      "system": {
+        "id": "luyten-system", "name": "Luyten's Star", "seed": "luyten", "epochT0": 1767000000000, "age_Gyr": 5.0, "rulePackId": "starter-sf", "rulePackVersion": "1.0.0", "tags": [],
+        "nodes": [
+          { "id": "luyten-star", "parentId": null, "name": "Luyten's Star", "kind": "body", "roleHint": "star", "classes": ["star/M"], "massKg": 5.17e29, "radiusKm": 243000, "temperatureK": 3150, "image": {"url": "/images/star_types/M.webp"} },
+          { "id": "luyten-b", "parentId": "luyten-star", "name": "Luyten b", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 1.7e25, "radiusKm": 9000, "orbit": { "hostId": "luyten-star", "hostMu": 3.45e19, "t0": 1767000000000, "elements": { "a_AU": 0.091, "e": 0.1, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "luyten-c", "parentId": "luyten-star", "name": "Luyten c", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 7.0e24, "radiusKm": 6800, "orbit": { "hostId": "luyten-star", "hostMu": 3.45e19, "t0": 1767000000000, "elements": { "a_AU": 0.036, "e": 0.17, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } }
+        ]
+      }
+    },
+    {
+      "id": "sys-tauceti", "name": "Tau Ceti", "position": { "x": 100, "y": 100 },
+      "system": {
+        "id": "tauceti-system", "name": "Tau Ceti", "seed": "tauceti", "epochT0": 1767000000000, "age_Gyr": 5.8, "rulePackId": "starter-sf", "rulePackVersion": "1.0.0", "tags": [],
+        "nodes": [
+          { "id": "tauceti-star", "parentId": null, "name": "Tau Ceti", "kind": "body", "roleHint": "star", "classes": ["star/G"], "massKg": 1.56e30, "radiusKm": 551000, "temperatureK": 5344, "image": {"url": "/images/star_types/G.webp"} },
+          { "id": "tauceti-e", "parentId": "tauceti-star", "name": "Tau Ceti e", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 2.3e25, "radiusKm": 11400, "orbit": { "hostId": "tauceti-star", "hostMu": 1.04e20, "t0": 1767000000000, "elements": { "a_AU": 0.55, "e": 0.05, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "tauceti-f", "parentId": "tauceti-star", "name": "Tau Ceti f", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 2.3e25, "radiusKm": 11400, "orbit": { "hostId": "tauceti-star", "hostMu": 1.04e20, "t0": 1767000000000, "elements": { "a_AU": 1.33, "e": 0.03, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } }
+        ]
+      }
+    },
+    {
+      "id": "sys-trappist", "name": "TRAPPIST-1", "position": { "x": 700, "y": 450 },
+      "system": {
+        "id": "trappist-system", "name": "TRAPPIST-1", "seed": "trappist", "epochT0": 1767000000000, "age_Gyr": 7.6, "rulePackId": "starter-sf", "rulePackVersion": "1.0.0", "tags": [],
+        "nodes": [
+          { "id": "trappist-star", "parentId": null, "name": "TRAPPIST-1", "kind": "body", "roleHint": "star", "classes": ["star/M"], "massKg": 1.78e29, "radiusKm": 82900, "temperatureK": 2566, "image": {"url": "/images/star_types/M.webp"} },
+          { "id": "trappist-b", "parentId": "trappist-star", "name": "TRAPPIST-1 b", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 8.2e24, "radiusKm": 7100, "orbit": { "hostId": "trappist-star", "hostMu": 1.19e19, "t0": 1767000000000, "elements": { "a_AU": 0.011, "e": 0.0, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "trappist-c", "parentId": "trappist-star", "name": "TRAPPIST-1 c", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 7.8e24, "radiusKm": 6900, "orbit": { "hostId": "trappist-star", "hostMu": 1.19e19, "t0": 1767000000000, "elements": { "a_AU": 0.015, "e": 0.0, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "trappist-d", "parentId": "trappist-star", "name": "TRAPPIST-1 d", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 2.3e24, "radiusKm": 4900, "orbit": { "hostId": "trappist-star", "hostMu": 1.19e19, "t0": 1767000000000, "elements": { "a_AU": 0.022, "e": 0.0, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "trappist-e", "parentId": "trappist-star", "name": "TRAPPIST-1 e", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 4.1e24, "radiusKm": 5800, "orbit": { "hostId": "trappist-star", "hostMu": 1.19e19, "t0": 1767000000000, "elements": { "a_AU": 0.029, "e": 0.0, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "trappist-f", "parentId": "trappist-star", "name": "TRAPPIST-1 f", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 6.2e24, "radiusKm": 6600, "orbit": { "hostId": "trappist-star", "hostMu": 1.19e19, "t0": 1767000000000, "elements": { "a_AU": 0.038, "e": 0.0, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "trappist-g", "parentId": "trappist-star", "name": "TRAPPIST-1 g", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 7.8e24, "radiusKm": 7100, "orbit": { "hostId": "trappist-star", "hostMu": 1.19e19, "t0": 1767000000000, "elements": { "a_AU": 0.046, "e": 0.0, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } },
+          { "id": "trappist-h", "parentId": "trappist-star", "name": "TRAPPIST-1 h", "kind": "body", "roleHint": "planet", "classes": ["planet/terrestrial"], "massKg": 1.9e24, "radiusKm": 4800, "orbit": { "hostId": "trappist-star", "hostMu": 1.19e19, "t0": 1767000000000, "elements": { "a_AU": 0.061, "e": 0.0, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0 } } }
+        ]
+      }
+    }
+  ],
+  "routes": []
+}

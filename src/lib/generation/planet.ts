@@ -6,6 +6,8 @@ import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_K
 import { classifyBody } from '../system/classification';
 import { calculateSurfaceRadiation } from '../physics/radiation';
 
+import { calculateEquilibriumTemperature, calculateDistanceToStar } from '../physics/temperature';
+
 function calculateTidalHeating(planet: CelestialBody, host: CelestialBody): number {
     let tidalHeatingK = 0;
     if (planet.roleHint === 'moon' && host.kind === 'body') {
@@ -153,60 +155,14 @@ export function _generatePlanetaryBody(
     let totalStellarRadiation = 0;
     let equilibriumTempK = propertyOverrides?.equilibriumTempK || 0;
     if (!propertyOverrides?.equilibriumTempK) {
-
         if (allStars.length > 0) {
-            const albedo = 0.3; // Placeholder albedo
-            let totalLuminosityTimesArea = 0;
+            equilibriumTempK = calculateEquilibriumTemperature(planet, allNodes, 0.3);
 
             for (const star of allStars) {
-                const starTemp = star.temperatureK || 5778;
-                const starRadius_m = (star.radiusKm || SOLAR_RADIUS_KM) * 1000;
-                const starLuminosity = 4 * Math.PI * Math.pow(starRadius_m, 2) * 5.67e-8 * Math.pow(starTemp, 4);
-
-                // Find distance from this star to the planet
-                let currentBody: CelestialBody | Barycenter = planet;
-                let distance_m = 0;
-                let path = [];
-
-                // This is a simplified distance calculation that does not account for the true 3D position of bodies in different orbital planes.
-                // It sums semi-major axes up and down the tree.
-                const findPath = (startNode: CelestialBody | Barycenter, targetId: ID): (CelestialBody | Barycenter)[] => {
-                    let p = [];
-                    let curr = startNode;
-                    while(curr) {
-                        p.unshift(curr);
-                        if (curr.id === targetId) return p;
-                        curr = allNodes.find(n => n.id === curr.parentId)!;
-                    }
-                    return [];
-                }
-
-                const pathToStar = findPath(star, allNodes.find(n => n.parentId === null)!.id);
-                const pathToPlanet = findPath(planet, allNodes.find(n => n.parentId === null)!.id);
-
-                let lcaIndex = 0;
-                while(lcaIndex < pathToStar.length && lcaIndex < pathToPlanet.length && pathToStar[lcaIndex].id === pathToPlanet[lcaIndex].id) {
-                    lcaIndex++;
-                }
-                lcaIndex--; // step back to the common ancestor
-
-                let dist_au = 0;
-                for (let i = lcaIndex + 1; i < pathToPlanet.length; i++) {
-                    dist_au += (pathToPlanet[i] as CelestialBody).orbit?.elements.a_AU || 0;
-                }
-                for (let i = lcaIndex + 1; i < pathToStar.length; i++) {
-                    dist_au += (pathToStar[i] as CelestialBody).orbit?.elements.a_AU || 0;
-                }
-
+                const dist_au = calculateDistanceToStar(planet, star, allNodes);
                 if (dist_au > 0) {
-                    const dist_m = dist_au * AU_KM * 1000;
-                    totalLuminosityTimesArea += starLuminosity / (4 * Math.PI * Math.pow(dist_m, 2));
                     totalStellarRadiation += (star.radiationOutput || 1) / (dist_au * dist_au);
                 }
-            }
-
-            if (totalLuminosityTimesArea > 0) {
-                equilibriumTempK = Math.pow(totalLuminosityTimesArea * (1 - albedo) / (4 * 5.67e-8), 0.25);
             }
         }
     }
