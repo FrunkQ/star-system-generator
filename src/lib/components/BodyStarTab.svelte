@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, untrack } from 'svelte';
   import type { CelestialBody } from '$lib/types';
   import { SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '$lib/constants';
   import { STAR_COLOR_MAP } from '$lib/rendering/colors';
@@ -66,33 +66,44 @@
   // --- Initialization & Sync ---
   $effect(() => {
       if (body) {
-          // ... (mass/radius sync remains) ...
+          // Sync local state variables from body props ONLY if body changed externally.
+          // We use untrack() to prevent this effect from running when the local variables themselves change.
+          
           if (body.massKg) {
               const m = body.massKg / SOLAR_MASS_KG;
-              if (Math.abs(m - massSuns) > 0.001) {
+              const currentMassSuns = untrack(() => massSuns);
+              if (Math.abs(m - currentMassSuns) > 0.001) {
                   massSuns = m;
-                  massSliderPos = (Math.log(Math.max(massMin, Math.min(massMax, massSuns))) - massLogMin) / (massLogMax - massLogMin);
               }
+              // Always ensure slider matches the canonical body value
+              massSliderPos = (Math.log(Math.max(massMin, Math.min(massMax, m))) - massLogMin) / (massLogMax - massLogMin);
           }
+          
           if (body.radiusKm) {
               const r = body.radiusKm / SOLAR_RADIUS_KM;
-              if (Math.abs(r - radiusSuns) > 0.001) {
+              const currentRadiusSuns = untrack(() => radiusSuns);
+              if (Math.abs(r - currentRadiusSuns) > 0.001) {
                   radiusSuns = r;
-                  radiusSliderPos = (Math.log(Math.max(radiusMin, Math.min(radiusMax, radiusSuns))) - radiusLogMin) / (radiusLogMax - radiusLogMin);
               }
+              radiusSliderPos = (Math.log(Math.max(radiusMin, Math.min(radiusMax, r))) - radiusLogMin) / (radiusLogMax - radiusLogMin);
           }
+          
           if (body.temperatureK) {
-              if (Math.abs(body.temperatureK - tempK) > 1) {
+              const currentTempK = untrack(() => tempK);
+              if (Math.abs(body.temperatureK - currentTempK) > 1) {
                   tempK = body.temperatureK;
-                  tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, tempK))) - tempLogMin) / (tempLogMax - tempLogMin);
               }
+              tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, body.temperatureK))) - tempLogMin) / (tempLogMax - tempLogMin);
           }
+          
           if (body.radiationOutput !== undefined) {
-              if (Math.abs(body.radiationOutput - radiation) > 0.01) {
+              const currentRadiation = untrack(() => radiation);
+              if (Math.abs(body.radiationOutput - currentRadiation) > 0.01) {
                   radiation = body.radiationOutput;
-                  radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, radiation))) - radLogMin) / (radLogMax - radLogMin);
               }
+              radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, body.radiationOutput))) - radLogMin) / (radLogMax - radLogMin);
           }
+          
           rotationHours = body.rotation_period_hours || 0;
           magGauss = body.magneticField?.strengthGauss || 0;
 
