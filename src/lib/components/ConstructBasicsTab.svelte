@@ -30,20 +30,25 @@
 
   // UI variable for mass in tonnes
   let massTonnes: number = (construct.physical_parameters.massKg || 0) / 1000;
+  let oldKg = construct.physical_parameters.massKg || 0;
 
-  // Sync UI (tonnes) from data (kg) when data changes externally
+  // Sync UI (tonnes) from data (kg) ONLY when data changes externally
   $: if (construct.physical_parameters) {
     const kg = construct.physical_parameters.massKg || 0;
-    const t = kg / 1000;
-    if (Math.abs(t - massTonnes) > 0.0001) {
-        massTonnes = t;
+    // Only update UI if the underlying data actually changed from what we last saw
+    // This prevents the UI variable update (from typing) triggering a revert
+    if (kg !== oldKg) {
+        massTonnes = kg / 1000;
+        oldKg = kg;
     }
   }
 
   // Update data (kg) when UI (tonnes) changes
   function updateMass() {
     if (construct.physical_parameters) {
-        construct.physical_parameters.massKg = massTonnes * 1000;
+        const newKg = massTonnes * 1000;
+        construct.physical_parameters.massKg = newKg;
+        oldKg = newKg; // Update tracker so we don't sync back
         handleUpdate();
     }
   }
@@ -120,7 +125,7 @@
     <div class="row">
       <div class="form-group">
         <label for="dry-mass">Dry Mass (tonnes):</label>
-        <input type="number" id="dry-mass" bind:value={massTonnes} on:input={updateMass} />
+        <input type="number" id="dry-mass" bind:value={massTonnes} on:change={updateMass} />
       </div>
     </div>
 
