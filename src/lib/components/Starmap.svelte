@@ -4,6 +4,7 @@
   import GmNotesEditor from './GmNotesEditor.svelte';
   import Grid from './Grid.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
+  import MarkdownModal from './MarkdownModal.svelte';
 
   export let starmap: Starmap;
   export let linkingMode: boolean = false;
@@ -20,6 +21,23 @@
   let contextMenuY = 0;
   let contextMenuSystemId: string | null = null;
   let isStarContextMenu = false;
+
+  // Header State
+  let showDropdown = false;
+  let showAboutModal = false;
+  const aboutContent = `
+<h1>Star System Generator</h1>
+
+<p><strong>Version:</strong> 1.2.1<br>
+<strong>Date:</strong> 08-Jan-26</p>
+
+<p>A tool for creating and exploring scientifically-plausible star systems.</p>
+
+<hr>
+
+<p><strong>Community & Support:</strong><br>
+<a href="https://discord.gg/prvKpZMgNY" target="_blank">Join us on Discord!</a></p>
+`;
 
   let panX = 0;
   let panY = 0;
@@ -286,7 +304,7 @@
 <div class="starmap-container" style="touch-action: none;" bind:this={starmapContainer}>
   <div class="starmap-header">
     <h1>{starmap.name}</h1>
-    <div class="reset-view-controls">
+    <div class="header-controls">
       <label>
         <input type="checkbox" bind:checked={$starmapUiStore.mouseZoomDisabled} />
         Disable Mouse Zoom
@@ -295,12 +313,30 @@
         <input type="checkbox" bind:checked={$starmapUiStore.showBackgroundImage} />
         Show Background
       </label>
-      <select bind:value={$starmapUiStore.gridType}>
-        <option value="none">No Grid</option>
-        <option value="grid">Grid</option>
-        <option value="hex">Hex</option>
-      </select>
+      <label>
+        Snap Grid:
+        <select bind:value={$starmapUiStore.gridType} class="grid-select inline">
+          <option value="none">No Grid</option>
+          <option value="grid">Grid</option>
+          <option value="hex">Hex</option>
+        </select>
+      </label>
       <button on:click={resetView}>Reset View</button>
+      
+      <div class="dropdown">
+          <button on:click={() => showDropdown = !showDropdown} class="hamburger-button">&#9776;</button>
+          {#if showDropdown}
+              <div class="dropdown-content">
+                  <button on:click={() => dispatch('download')}>Download Starmap</button>
+                  <button on:click={() => dispatch('upload')}>Upload Starmap</button>
+                  <hr />
+                  <button on:click={() => dispatch('clear')} class="danger">Clear Starmap</button>
+                  <button on:click={() => dispatch('settings')}>Global Settings</button>
+                  <hr />
+                  <button on:click={() => showAboutModal = true}>About</button>
+              </div>
+          {/if}
+      </div>
     </div>
   </div>
   <svg
@@ -460,6 +496,10 @@
       </ul>
     </div>
   {/if}
+  
+  {#if showAboutModal}
+      <MarkdownModal htmlContent={aboutContent} on:close={() => showAboutModal = false} />
+  {/if}
 </div>
 
 <style>
@@ -497,7 +537,8 @@
     align-items: center;
     padding: 0.5rem 0;
     flex-shrink: 0; /* Prevent header from shrinking */
-    margin-top: 40px; /* Add margin to clear the parent header */
+    margin-top: 10px;
+    margin-bottom: 10px;
   }
 
   .starmap-header h1 {
@@ -505,12 +546,77 @@
     font-size: 1.5rem;
   }
 
-  .reset-view-controls {
+  .header-controls {
     display: flex;
-    gap: 1rem;
     align-items: center;
-    margin-left: auto; /* Push controls to the right */
+    gap: 15px;
   }
+  
+  .header-controls label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.9em;
+      color: #ccc;
+      cursor: pointer;
+      white-space: nowrap;
+  }
+
+  .dropdown {
+    position: relative;
+    display: inline-block;
+  }
+
+  .dropdown-content {
+    display: block;
+    position: absolute;
+    background-color: #333;
+    min-width: 200px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
+    z-index: 1000;
+    right: 0;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 5px 0;
+  }
+
+  .dropdown-content button {
+    color: #eee;
+    padding: 10px 16px;
+    text-decoration: none;
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+
+  .dropdown-content button:hover {background-color: #444;}
+  .dropdown-content button.danger { color: #ff4444; }
+  .dropdown-content button.danger:hover { background-color: #442222; }
+
+  .grid-select {
+      padding: 4px;
+      background: #222;
+      color: #eee;
+      border: 1px solid #555;
+      border-radius: 3px;
+  }
+  .grid-select.inline {
+      width: auto;
+  }
+
+  .hamburger-button {
+    font-size: 1.5em;
+    background: none;
+    border: none;
+    color: #eee;
+    cursor: pointer;
+    padding: 0 10px;
+  }
+  
+  hr { border: 0; border-top: 1px solid #555; margin: 5px 0; }
 
   .starmap {
     width: 100%;

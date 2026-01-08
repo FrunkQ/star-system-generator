@@ -371,15 +371,12 @@
       on:selectsystemforlink={handleSelectSystemForLink}
       on:editroute={handleEditRoute}
       on:deletesystem={handleDeleteSystem}
+      on:download={handleDownloadStarmap}
+      on:upload={handleUploadStarmap}
+      on:clear={handleClearStarmap}
+      on:settings={() => showSettingsModal = true}
       {selectedSystemForLink}
     />
-    <div class="starmap-controls">
-      <button on:click={handleDownloadStarmap}>Download Starmap</button>
-      <button on:click={handleUploadStarmap}>Upload Starmap</button>
-      <button on:click={() => showSettingsModal = true}>Settings</button>
-
-      <button on:click={handleClearStarmap} class="delete-button">Clear Starmap</button>
-    </div>
 
         <footer class="starmap-footer">
 
@@ -426,17 +423,6 @@
       border-top: 1px solid #333;
       color: #999;
       font-size: 0.9em;
-  }
-  .starmap-controls {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    display: flex;
-    gap: 10px;
-  }
-
-  .delete-button {
-    color: red;
   }
 
   .starmap-footer {
