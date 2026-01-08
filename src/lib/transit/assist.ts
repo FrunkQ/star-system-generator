@@ -51,6 +51,12 @@ function findAssistCandidates(sys: System, origin: CelestialBody | Barycenter, t
         if (node.kind !== 'body' && node.kind !== 'barycenter') continue;
         if (!node.orbit) continue; 
         
+        // Filter out Rings and Belts (they are not point masses suitable for assist)
+        if (node.kind === 'body') {
+            const role = (node as CelestialBody).roleHint;
+            if (role === 'ring' || role === 'belt') continue;
+        }
+        
         // PARENT FILTER: Candidate must orbit the Context Parent.
         // This prevents Ganymede (orbiting Jupiter) from being a candidate for Earth->Venus (Context Sun).
         if (node.parentId !== contextParentId) continue;

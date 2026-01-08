@@ -2,6 +2,7 @@
 import type { System, ID, CelestialBody, Barycenter, BurnPlan, Orbit, RulePack, SystemNode } from '../types';
 import { G, AU_KM } from '../constants';
 import { propagateState } from '../physics/orbits';
+import { recalculateSystemPhysics } from './postprocessing';
 
 /**
  * Recursively calculates a node's average orbital distance (semi-major axis) from the root star in AU.
@@ -97,22 +98,27 @@ export function applyImpulsiveBurn(__body: CelestialBody, __burn: BurnPlan, __sy
   throw new Error("TODO: implement applyImpulsiveBurn (M6)");
 }
 
-export function sanitizeSystem(system: System): System {
+export function sanitizeSystem(system: System, rulePack: RulePack): System {
     const nodesById = new Map(system.nodes.map(n => [n.id, n]));
     let changed = false;
     
+    // 1. Structural Fixes (Constructs, Legacy Rings)
     const newNodes = system.nodes.map(node => {
-        if (node.kind === 'construct' && node.placement === 'Surface' && node.parentId && node.orbit) {
-            const parent = nodesById.get(node.parentId);
+        let currentNode = { ...node }; // Clone for potential modification
+        let modified = false;
+
+        // --- Fix 1: Surface Constructs ---
+        if (currentNode.kind === 'construct' && currentNode.placement === 'Surface' && currentNode.parentId && currentNode.orbit) {
+            const parent = nodesById.get(currentNode.parentId);
             if (parent && (parent.kind === 'body' || parent.kind === 'barycenter')) {
-                let modified = false;
-                const newOrbit = { ...node.orbit };
+                const newOrbit = { ...currentNode.orbit };
+                let orbitModified = false;
                 
                 // 1. Fix Host ID if mismatch
                 if (newOrbit.hostId !== parent.id) {
-                    console.warn(`Fixing hostId for ${node.name}: ${newOrbit.hostId} -> ${parent.id}`);
+                    console.warn(`Fixing hostId for ${currentNode.name}: ${newOrbit.hostId} -> ${parent.id}`);
                     newOrbit.hostId = parent.id;
-                    modified = true;
+                    orbitModified = true;
                 }
                 
                 // 2. Fix Host Mu (Gravity) if it doesn't match parent mass
@@ -120,37 +126,73 @@ export function sanitizeSystem(system: System): System {
                 const expectedMu = mass * 6.67430e-11;
                 // Allow small floating point diffs
                 if (expectedMu > 0 && Math.abs(newOrbit.hostMu - expectedMu) > expectedMu * 0.01) {
-                     console.warn(`Fixing hostMu for ${node.name}: ${newOrbit.hostMu} -> ${expectedMu}`);
+                     console.warn(`Fixing hostMu for ${currentNode.name}: ${newOrbit.hostMu} -> ${expectedMu}`);
                      newOrbit.hostMu = expectedMu;
-                     modified = true;
+                     orbitModified = true;
                 }
                 
                 // 3. Fix Surface Lock Speed (n_rad_per_s)
-                // Only fix if missing or drastically wrong
                 const rotationHours = (parent as any).rotation_period_hours || (parent as any).physical_parameters?.rotation_period_hours;
                 if (rotationHours) {
                     const periodSeconds = rotationHours * 3600;
                     if (periodSeconds !== 0 && isFinite(periodSeconds)) {
                         const expectedN = (2 * Math.PI) / periodSeconds;
                         if (!newOrbit.n_rad_per_s || Math.abs(newOrbit.n_rad_per_s - expectedN) > 0.000001) {
-                             console.warn(`Fixing surface lock for ${node.name}`);
+                             console.warn(`Fixing surface lock for ${currentNode.name}`);
                              newOrbit.n_rad_per_s = expectedN;
-                             modified = true;
+                             orbitModified = true;
                         }
                     }
                 }
                 
-                if (modified) {
-                    changed = true;
-                    return { ...node, orbit: newOrbit };
+                if (orbitModified) {
+                    currentNode.orbit = newOrbit;
+                    modified = true;
                 }
             }
+        }
+
+        // --- Fix 2: Legacy Rings (Upgrade to Orbit) ---
+        if (currentNode.kind === 'body' && currentNode.roleHint === 'ring' && !currentNode.orbit && currentNode.radiusInnerKm && currentNode.parentId) {
+            const parent = nodesById.get(currentNode.parentId);
+            if (parent && (parent.kind === 'body' || parent.kind === 'barycenter')) {
+                console.warn(`Upgrading Legacy Ring: ${currentNode.name}`);
+                const mass = (parent as CelestialBody).massKg || (parent as Barycenter).effectiveMassKg || 0;
+                const avgRadiusKm = (currentNode.radiusInnerKm + (currentNode.radiusOuterKm || currentNode.radiusInnerKm)) / 2;
+                const a_AU = avgRadiusKm / AU_KM;
+
+                currentNode.orbit = {
+                    hostId: parent.id,
+                    hostMu: mass * G,
+                    t0: Date.now(), // or system.epochT0
+                    elements: {
+                        a_AU: a_AU,
+                        e: 0, // Circular
+                        i_deg: 0,
+                        omega_deg: 0,
+                        Omega_deg: 0,
+                        M0_rad: Math.random() * 2 * Math.PI
+                    }
+                };
+                modified = true;
+            }
+        }
+
+        if (modified) {
+            changed = true;
+            return currentNode;
         }
         return node;
     });
     
-    if (changed) {
-        return { ...system, nodes: newNodes, isManuallyEdited: true };
-    }
-    return system;
+    // 2. Physics Recalculation (Temperature, Radiation, Zones)
+    // We run this unconditionally to ensure all loaded saves are consistent with latest logic
+    const systemWithStructure = changed ? { ...system, nodes: newNodes, isManuallyEdited: true } : system;
+    const fullyUpdatedSystem = recalculateSystemPhysics(systemWithStructure, rulePack);
+
+    // If structure changed OR physics changed something (which recalculateSystemPhysics might not report as 'changed' boolean, but it mutates)
+    // Actually recalculateSystemPhysics mutates in place if we pass the object.
+    // So we should return the result.
+    
+    return fullyUpdatedSystem;
 }

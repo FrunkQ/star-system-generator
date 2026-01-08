@@ -1,6 +1,124 @@
 {
   "id": "constructs-palette",
   "name": "Default Construct Palette",
+  "small_body": [
+    {
+      "id": "template-asteroid-c-type",
+      "name": "Asteroid (C-Type)",
+      "kind": "construct",
+      "roleHint": "small_body",
+      "class": "Natural/Asteroid/Carbonaceous",
+      "description": "A dark, carbon-rich asteroid. Primitive and volatile-rich. Low density.",
+      "gmNotes": "Source of water, carbon, and organic compounds. Very common.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#555555",
+      "crew": { "current": 0, "max": 0 },
+      "physical_parameters": {
+        "dimensionsM": [5000, 4000, 3000],
+        "massKg": 1.5e+14,
+        "cargoCapacity_tonnes": 0,
+        "rotation_period_hours": 8,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [],
+        "life_support": { "consumables_max_person_days": 0, "consumables_current_person_days": 0 },
+        "modules": [ "Surface Deposits (Ice)", "Surface Deposits (Carbon)" ]
+      }
+    },
+    {
+      "id": "template-asteroid-m-type",
+      "name": "Asteroid (M-Type)",
+      "kind": "construct",
+      "roleHint": "small_body",
+      "class": "Natural/Asteroid/Metallic",
+      "description": "A dense, metallic asteroid composed largely of nickel-iron. Likely the core of a shattered protoplanet.",
+      "gmNotes": "High value mining target. Iron, Nickel, Platinum group metals. Magnetic.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#a08060",
+      "crew": { "current": 0, "max": 0 },
+      "physical_parameters": {
+        "dimensionsM": [2000, 1500, 1500],
+        "massKg": 3e+14,
+        "cargoCapacity_tonnes": 0,
+        "rotation_period_hours": 5,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [],
+        "life_support": { "consumables_max_person_days": 0, "consumables_current_person_days": 0 },
+        "modules": [ "Ore Veins (Iron/Nickel)", "Ore Veins (Platinum)" ]
+      }
+    },
+    {
+      "id": "template-comet-active",
+      "name": "Comet (Active)",
+      "kind": "construct",
+      "roleHint": "small_body",
+      "class": "Natural/Comet/Active",
+      "description": "A dirty snowball venting gas and dust as it approaches the sun. Surrounded by a coma.",
+      "gmNotes": "Dynamic environment. Jets of gas can be hazardous. Low gravity.",
+      "IsTemplate": true,
+      "icon_type": "triangle",
+      "icon_color": "#aaddff",
+      "crew": { "current": 0, "max": 0 },
+      "physical_parameters": {
+        "dimensionsM": [8000, 6000, 6000],
+        "massKg": 1e+13,
+        "cargoCapacity_tonnes": 0,
+        "rotation_period_hours": 12,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [],
+        "life_support": { "consumables_max_person_days": 0, "consumables_current_person_days": 0 },
+        "modules": [ "Volatiles (Water/CO2)", "Dust Hazard" ]
+      }
+    },
+    {
+      "id": "template-captured-rock",
+      "name": "Captured Rock (Moonlet)",
+      "kind": "construct",
+      "roleHint": "small_body",
+      "class": "Natural/Moonlet/Captured",
+      "description": "A small, irregular rock captured into orbit. Likely a wayward asteroid.",
+      "gmNotes": "Good location for a pirate base or hidden cache. Hard to spot.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#777777",
+      "crew": { "current": 0, "max": 0 },
+      "physical_parameters": {
+        "dimensionsM": [500, 300, 200],
+        "massKg": 5e+11,
+        "cargoCapacity_tonnes": 0,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [],
+        "life_support": { "consumables_max_person_days": 0, "consumables_current_person_days": 0 },
+        "modules": [ "Surface Deposits (Silicates)" ]
+      }
+    }
+  ],
   "station": [
     {
       "id": "construct-iss",

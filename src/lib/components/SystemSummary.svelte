@@ -16,8 +16,8 @@
   const aboutContent = `
 <h1>Star System Generator</h1>
 
-<p><strong>Version:</strong> 1.2<br>
-<strong>Date:</strong> 28-Dec-25</p>
+<p><strong>Version:</strong> 1.2.1<br>
+<strong>Date:</strong> 08-Jan-26</p>
 
 <p>A tool for creating and exploring scientifically-plausible star systems.</p>
 
@@ -44,6 +44,7 @@
   let totalPlanets = 0;
   let totalMoons = 0;
   let belts = 0;
+  let rings = 0;
   let starCount = 0;
   let constructCount = 0;
 
@@ -139,6 +140,9 @@
       case 'belt':
         items = system.nodes.filter(n => n.kind === 'body' && n.roleHint === 'belt') as CelestialBody[];
         break;
+      case 'ring':
+        items = system.nodes.filter(n => n.kind === 'body' && n.roleHint === 'ring') as CelestialBody[];
+        break;
       case 'terrestrial':
         const terrestrialBodies = system.nodes.filter(n => n.kind === 'body' && (n.roleHint === 'planet' || n.roleHint === 'moon') && !n.classes?.some(c => c.includes('gas-giant') || c.includes('ice-giant'))) as CelestialBody[];
         const groupedTerrestrials = groupItemsByHost(terrestrialBodies, system.nodes);
@@ -208,6 +212,7 @@
     totalPlanets = 0;
     totalMoons = 0;
     belts = 0;
+    rings = 0;
     starCount = 0;
     constructCount = 0;
 
@@ -226,6 +231,8 @@
                 totalMoons++;
             } else if (node.roleHint === 'belt') {
                 belts++;
+            } else if (node.roleHint === 'ring') {
+                rings++;
             } else if (node.roleHint === 'star') {
                 starCount++;
             }
@@ -278,6 +285,10 @@
         <div class="summary-item" on:click={(e) => showContextMenu(e, 'belt')}>
             <span class="value">{belts}</span>
             <span class="label">Belts</span>
+        </div>
+        <div class="summary-item" on:click={(e) => showContextMenu(e, 'ring')}>
+            <span class="value">{rings}</span>
+            <span class="label">Rings</span>
         </div>
         <div class="summary-item" style="border: 2px solid #cc6600" on:click={(e) => showContextMenu(e, 'terrestrial')}>
             <span class="value">{terrestrials}</span>

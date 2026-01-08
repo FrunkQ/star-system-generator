@@ -168,7 +168,7 @@
           const body = backgroundClickHost as CelestialBody;
           if (body.roleHint === 'planet' || body.roleHint === 'moon') {
               contextMenuActionLabel = 'Add Moon Here';
-              if (body.roleHint === 'planet') showAddRingOption = true;
+              if (body.roleHint === 'planet' || body.roleHint === 'moon') showAddRingOption = true;
           } else {
               contextMenuActionLabel = 'Add Planet Here';
               if (body.roleHint === 'star') showAddBeltOption = true;
@@ -1529,15 +1529,12 @@ a.click();
         </button>
         <button on:click={() => {
             if ($systemStore) {
-                const newSys = sanitizeSystem($systemStore);
-                if (newSys !== $systemStore) {
-                    systemStore.set(newSys);
-                    alert('System sanitized: Fixed orbit parameters for surface constructs.');
-                } else {
-                    alert('System is clean. No fixes needed.');
-                }
+                const newSys = sanitizeSystem($systemStore, rulePack);
+                // Always update because we run full physics recalculation now
+                systemStore.set(newSys);
+                alert('System updated: Fixed legacy constructs/rings and recalculated all physics (Temp/Radiation).');
             }
-        }}>Sanitize System</button>
+        }}>Update & Repair System</button>
     </div>
 
     {#if showJson}

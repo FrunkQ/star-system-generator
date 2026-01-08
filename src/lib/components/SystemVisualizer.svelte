@@ -220,6 +220,27 @@
       const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
       const targetPosition = targetPositions.get(nodeId);
 
+      // FIX: If Ring, frame the ring system comfortably (Outer Radius + Padding)
+      if (targetNode && targetNode.roleHint === 'ring') {
+          if (targetPosition) {
+              let outerRadiusAU = (targetNode.radiusOuterKm || 100000) / AU_KM;
+              
+              if (toytownFactor > 0) {
+                  outerRadiusAU = scaleBoxCox(outerRadiusAU, toytownFactor, x0_distance);
+              }
+              
+              const paddingFactor = 3.0; 
+              const targetWorldRadius = outerRadiusAU * paddingFactor;
+              
+              let newZoom = currentZoom;
+              if (targetWorldRadius > 0) {
+                  const minDimension = Math.min(canvas.width, canvas.height);
+                  newZoom = (minDimension / 2) / targetWorldRadius;
+              }
+              return { pan: targetPosition, zoom: newZoom };
+          }
+      }
+
       if (!targetNode || !targetPosition) return { pan: currentPan, zoom: currentZoom };
 
       const children = system.nodes.filter(n => n.parentId === nodeId);
