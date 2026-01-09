@@ -144,19 +144,19 @@
       </div>
       <div class="spec-item fixed" title="Dry mass of the vessel, excluding fuel and cargo">
         <span class="label">Dry Mass</span>
-        <span class="value">{specs.dryMass_tonnes.toLocaleString(undefined, {maximumFractionDigits: 0})} t</span>
+        <span class="value">{Math.round(specs.dryMass_tonnes).toLocaleString()} t</span>
       </div>
       <div class="spec-item fixed" title="Current mass of cargo onboard">
         <span class="label">Cargo Mass</span>
-        <span class="value">{(construct.current_cargo_tonnes || 0).toLocaleString(undefined, {maximumFractionDigits: 0})} t</span>
+        <span class="value">{Math.round(construct.current_cargo_tonnes || 0).toLocaleString()} t</span>
       </div>
       <div class="spec-item fixed" title="Current mass of fuel onboard">
         <span class="label">Fuel Mass</span>
-        <span class="value">{specs.fuelMass_tonnes.toLocaleString(undefined, {maximumFractionDigits: 0})} t</span>
+        <span class="value">{Math.round(specs.fuelMass_tonnes).toLocaleString()} t</span>
       </div>
       <div class="spec-item derived" title="Current total mass including fuel and cargo">
         <span class="label">Total Mass</span>
-        <span class="value">{specs.totalMass_tonnes.toLocaleString(undefined, {maximumFractionDigits: 0})} t</span>
+        <span class="value">{Math.round(specs.totalMass_tonnes).toLocaleString()} t</span>
       </div>
       <div class="spec-item fixed" title="Physical dimensions of the vessel">
         <span class="label">Dimensions</span>
@@ -164,7 +164,7 @@
       </div>
       <div class="spec-item fixed" title="Current fuel volume / Maximum fuel volume">
         <span class="label">Fuel Volume</span>
-        <span class="value">{specs.fuelVolume_units.toLocaleString(undefined, {maximumFractionDigits: 0})} m³ <span class="detail">(Max: {specs.fuelCapacity_units.toLocaleString(undefined, {maximumFractionDigits: 0})} m³)</span></span>
+        <span class="value">{Math.round(specs.fuelVolume_units).toLocaleString()} m³ <span class="detail">(Max: {Math.round(specs.fuelCapacity_units).toLocaleString()} m³)</span></span>
       </div>
       <div class="spec-item derived" title="Remaining power after all systems are active">
         <span class="label">Power Surplus</span>
@@ -172,7 +172,7 @@
       </div>
       <div class="spec-item derived" title="Estimated endurance based on current crew and supplies">
         <span class="label">Supplies Remaining</span>
-        <span class="value">{typeof specs.endurance_days === 'number' ? specs.endurance_days.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' days' : specs.endurance_days}</span>
+        <span class="value">{typeof specs.endurance_days === 'number' ? specs.endurance_days.toLocaleString() + ' days' : specs.endurance_days}</span>
       </div>
 
       <div class="spec-item derived" title="Maximum acceleration in vacuum">

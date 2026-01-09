@@ -52,20 +52,25 @@
           console.error("Failed to load rulepack for player view", e);
       }
       
-      // Init Receiver
+  // Init Receiver
       broadcastService.initReceiver(
           (sys) => systemStore.set(sys),
-          (id) => focusedBodyId = id,
+          (pack) => rulePack = pack,
+          (id) => {
+              if (isFollowingGM) focusedBodyId = id;
+          },
           (pan, zoom, isManual) => {
               if (isFollowingGM) {
-                  if (isManual) {
-                      cameraMode = 'MANUAL';
-                      panStore.set(pan, { duration: 100 }); // Fast for manual drag
-                  } else {
-                      cameraMode = 'FOLLOW';
-                      panStore.set(pan, { duration: 500 }); // Smooth for follow
-                  }
-                  zoomStore.set(zoom, { duration: isManual ? 100 : 500 });
+                  // Always use MANUAL mode in the visualizer when following GM coordinates.
+                  // This ensures the visualizer respects the exact pan coordinates sent by the GM,
+                  // rather than trying to re-calculate the target position locally (which can drift).
+                  cameraMode = 'MANUAL';
+                  
+                  // Use fast transition if GM is dragging, smooth if snapping
+                  const duration = isManual ? 100 : 500;
+                  
+                  panStore.set(pan, { duration }); 
+                  zoomStore.set(zoom, { duration });
               }
           },
           (settings) => {
@@ -76,7 +81,6 @@
           (time) => {
               isPlaying = time.isPlaying;
               timeScale = time.timeScale;
-              // Snap to GM time if drift is significant (> 1s), otherwise let physics flow smoothly
               if (Math.abs(currentTime - time.currentTime) > 1000) {
                   currentTime = time.currentTime;
               }
@@ -89,6 +93,13 @@
       startLoop();
   });
   
+  function handleInteraction() {
+      // If player interacts, stop following GM automatically
+      if (isFollowingGM) {
+          isFollowingGM = false;
+      }
+  }
+  
   onDestroy(() => {
       broadcastService.close();
       if (browser) {
@@ -98,7 +109,10 @@
 
 </script>
 
-<main class="player-view" class:crt-mode={isCrtMode}>
+<main class="player-view" class:crt-mode={isCrtMode} 
+    on:mousedown={handleInteraction} 
+    on:wheel={handleInteraction}
+    on:touchstart={handleInteraction}>
     {#if isCrtMode}
         <CRTOverlay />
     {/if}

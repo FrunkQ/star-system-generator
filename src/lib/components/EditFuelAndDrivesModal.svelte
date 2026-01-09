@@ -169,6 +169,7 @@
                             <div class="field">
                                 <label>Density (kg/m³)</label>
                                 <input type="number" bind:value={fuel.density_kg_per_m3} />
+                                <span class="format-hint">{(fuel.density_kg_per_m3 || 0).toLocaleString()} kg/m³</span>
                             </div>
                             <div class="field full">
                                 <label>Description</label>
@@ -203,10 +204,12 @@
                             <div class="field">
                                 <label>Thrust (kN)</label>
                                 <input type="number" bind:value={engine.thrust_kN} />
+                                <span class="format-hint">{(engine.thrust_kN || 0).toLocaleString()} kN</span>
                             </div>
                             <div class="field">
                                 <label>ISP (s)</label>
                                 <input type="number" bind:value={engine.efficiency_isp} />
+                                <span class="format-hint">{(engine.efficiency_isp || 0).toLocaleString()} s</span>
                             </div>
                             <div class="field">
                                 <label>Atmo Eff. (0-1)</label>
@@ -215,6 +218,7 @@
                             <div class="field">
                                 <label>Power (MW)</label>
                                 <input type="number" bind:value={engine.powerDraw_MW} />
+                                <span class="format-hint">{(engine.powerDraw_MW || 0).toLocaleString()} MW</span>
                             </div>
                             <div class="field full">
                                 <label>Description</label>
@@ -313,6 +317,10 @@
   label { font-size: 0.8em; color: #888; }
   input, select {
       background: #333; border: 1px solid #444; color: #eee; padding: 4px; border-radius: 3px;
+  }
+  
+  .format-hint {
+      font-size: 0.75em; color: #666; margin-top: 2px; text-align: right;
   }
 
   .add-btn {

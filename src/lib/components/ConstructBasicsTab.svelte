@@ -44,9 +44,12 @@
   }
 
   // Update data (kg) when UI (tonnes) changes
-  function updateMass() {
-    if (construct.physical_parameters) {
-        const newKg = massTonnes * 1000;
+  function updateMass(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const val = parseFloat(input.value);
+    if (!isNaN(val) && construct.physical_parameters) {
+        massTonnes = val; // Update local state
+        const newKg = val * 1000;
         construct.physical_parameters.massKg = newKg;
         oldKg = newKg; // Update tracker so we don't sync back
         handleUpdate();
@@ -125,7 +128,7 @@
     <div class="row">
       <div class="form-group">
         <label for="dry-mass">Dry Mass (tonnes):</label>
-        <input type="number" id="dry-mass" bind:value={massTonnes} on:change={updateMass} />
+        <input type="number" id="dry-mass" value={massTonnes} on:change={updateMass} />
       </div>
     </div>
 

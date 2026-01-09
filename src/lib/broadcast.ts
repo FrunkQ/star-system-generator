@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import type { System } from '$lib/types';
+import type { System, RulePack } from '$lib/types';
 import type { PanState } from '$lib/cameraStore';
 
 export type ViewSettings = {
@@ -17,6 +17,7 @@ export type TimeState = {
 // Message Types
 export type BroadcastMessage = 
   | { type: 'SYNC_SYSTEM'; payload: System }
+  | { type: 'SYNC_RULEPACK'; payload: RulePack }
   | { type: 'SYNC_FOCUS'; payload: string | null }
   | { type: 'SYNC_CAMERA'; payload: { pan: PanState; zoom: number; isManual: boolean } }
   | { type: 'SYNC_VIEW_SETTINGS'; payload: ViewSettings }
@@ -45,6 +46,7 @@ class BroadcastService {
   // Setup for Player Mode (Receiver)
   public initReceiver(
       onSystemUpdate: (sys: System) => void,
+      onRulePackUpdate: (pack: RulePack) => void,
       onFocusUpdate: (id: string | null) => void,
       onCameraUpdate: (pan: PanState, zoom: number, isManual: boolean) => void,
       onViewSettingsUpdate: (settings: ViewSettings) => void,
@@ -53,6 +55,7 @@ class BroadcastService {
   ) {
     this.isSender = false;
     this.onSystemUpdate = onSystemUpdate;
+    this.onRulePackUpdate = onRulePackUpdate;
     this.onFocusUpdate = onFocusUpdate;
     this.onCameraUpdate = onCameraUpdate;
     this.onViewSettingsUpdate = onViewSettingsUpdate;
@@ -68,6 +71,7 @@ class BroadcastService {
   }
 
   private onSystemUpdate: ((sys: System) => void) | null = null;
+  private onRulePackUpdate: ((pack: RulePack) => void) | null = null;
   private onFocusUpdate: ((id: string | null) => void) | null = null;
   private onCameraUpdate: ((pan: PanState, zoom: number, isManual: boolean) => void) | null = null;
   private onViewSettingsUpdate: ((settings: ViewSettings) => void) | null = null;
@@ -81,6 +85,9 @@ class BroadcastService {
       switch (msg.type) {
           case 'SYNC_SYSTEM':
               if (!this.isSender && this.onSystemUpdate) this.onSystemUpdate(msg.payload);
+              break;
+          case 'SYNC_RULEPACK':
+              if (!this.isSender && this.onRulePackUpdate) this.onRulePackUpdate(msg.payload);
               break;
           case 'SYNC_FOCUS':
               if (!this.isSender && this.onFocusUpdate) this.onFocusUpdate(msg.payload);

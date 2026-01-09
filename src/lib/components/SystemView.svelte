@@ -814,6 +814,7 @@ a.click();
             if (get(systemStore)) {
                 const snapshot = computePlayerSnapshot(get(systemStore)!);
                 broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: snapshot });
+                broadcastService.sendMessage({ type: 'SYNC_RULEPACK', payload: rulePack });
                 broadcastService.sendMessage({ type: 'SYNC_FOCUS', payload: focusedBodyId });
                 broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' } });
                 broadcastService.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: { showNames, showZones, showLPoints } });
