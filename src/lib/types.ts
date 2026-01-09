@@ -223,7 +223,7 @@ export interface StarSystemNode {
   name: string;
   position: { x: number; y: number };
   system: System;
-  viewport?: { panX: number; panY: number; zoom: number; };
+  viewport?: { pan: { x: number; y: number }; zoom: number; }; // Fixed panX/panY to pan object
 }
 
 export interface Route {
@@ -235,14 +235,18 @@ export interface Route {
   lineStyle: 'solid' | 'dashed';
 }
 
+export interface RulePackOverrides {
+  fuelDefinitions?: FuelDefinition[];
+  engineDefinitions?: EngineDefinition[];
+}
+
 export interface Starmap {
   id: string;
   name: string;
-  description: string;
-  systems: StarmapSystem[];
-  routes: StarmapRoute[];
+  description?: string;
+  systems: StarSystemNode[];
+  routes: Route[];
   distanceUnit: string;
   unitIsPrefix: boolean;
-  gridType?: 'grid' | 'hex' | 'none';
-  mouseZoomDisabled?: boolean;
+  rulePackOverrides?: RulePackOverrides;
 }

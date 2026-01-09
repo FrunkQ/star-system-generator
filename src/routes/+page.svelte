@@ -33,6 +33,33 @@
   let starmapComponent: Starmap;
   let hasSavedStarmap = false;
 
+  $: effectiveRulePack = (() => {
+      if (!selectedRulepack) return undefined;
+      // Deep clone to avoid mutating the original rulepack which might be cached
+      const pack = JSON.parse(JSON.stringify(selectedRulepack));
+      
+      if ($starmapStore?.rulePackOverrides) {
+          const overrides = $starmapStore.rulePackOverrides;
+          
+          if (overrides.fuelDefinitions && pack.fuelDefinitions) {
+              overrides.fuelDefinitions.forEach((f: any) => {
+                  const idx = pack.fuelDefinitions.entries.findIndex((d: any) => d.id === f.id);
+                  if (idx !== -1) pack.fuelDefinitions.entries[idx] = f;
+                  else pack.fuelDefinitions.entries.push(f);
+              });
+          }
+          
+          if (overrides.engineDefinitions && pack.engineDefinitions) {
+              overrides.engineDefinitions.forEach((e: any) => {
+                  const idx = pack.engineDefinitions.entries.findIndex((d: any) => d.id === e.id);
+                  if (idx !== -1) pack.engineDefinitions.entries[idx] = e;
+                  else pack.engineDefinitions.entries.push(e);
+              });
+          }
+      }
+      return pack;
+  })();
+
   onMount(async () => {
     try {
       const starterRulepack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json');
@@ -365,6 +392,7 @@
     <Starmap
       bind:this={starmapComponent}
       starmap={$starmapStore}
+      rulePack={selectedRulepack}
       on:systemclick={handleSystemClick}
       on:systemzoom={handleSystemZoom}
       on:addsystemat={handleAddSystemAt}
@@ -375,6 +403,7 @@
       on:upload={handleUploadStarmap}
       on:clear={handleClearStarmap}
       on:settings={() => showSettingsModal = true}
+      on:updatestarmap={(e) => starmapStore.set(e.detail)}
       {selectedSystemForLink}
     />
 
@@ -399,8 +428,8 @@
           </p>
 
         </footer>
-  {:else if $starmapStore && currentSystemId && $systemStore}
-    <SystemView system={$systemStore} rulePack={rulePacks[0]} {exampleSystems} on:back={handleBackToStarmap} on:renameNode={handleRenameNode} />
+  {:else if $starmapStore && currentSystemId && $systemStore && effectiveRulePack}
+    <SystemView system={$systemStore} rulePack={effectiveRulePack} {exampleSystems} on:back={handleBackToStarmap} on:renameNode={handleRenameNode} />
   {/if}
 
   {#if showRouteEditorModal && routeToEdit && $starmapStore}

@@ -5,8 +5,10 @@
   import Grid from './Grid.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import MarkdownModal from './MarkdownModal.svelte';
+  import EditFuelAndDrivesModal from './EditFuelAndDrivesModal.svelte';
 
   export let starmap: Starmap;
+  export let rulePack: RulePack; // We need this prop to show defaults!
   export let linkingMode: boolean = false;
   export let selectedSystemForLink: string | null = null;
 
@@ -25,6 +27,8 @@
   // Header State
   let showDropdown = false;
   let showAboutModal = false;
+  let showFuelModal = false;
+  
   const aboutContent = `
 <h1>Star System Generator</h1>
 
@@ -48,6 +52,12 @@
   let lastMouseY = 0;
 
   let gridSize = 50;
+
+  function handleSaveFuelOverrides(event: CustomEvent<any>) {
+      const overrides = event.detail;
+      const newStarmap = { ...starmap, rulePackOverrides: overrides };
+      dispatch('updatestarmap', newStarmap);
+  }
 
   function handleWheel(event: WheelEvent) {
     if ($starmapUiStore.mouseZoomDisabled) return;
@@ -331,6 +341,8 @@
                   <button on:click={() => dispatch('upload')}>Upload Starmap</button>
                   <hr />
                   <button on:click={() => dispatch('clear')} class="danger">Clear Starmap</button>
+                  <hr />
+                  <button on:click={() => showFuelModal = true}>Edit Fuel & Drives</button>
                   <button on:click={() => dispatch('settings')}>Global Settings</button>
                   <hr />
                   <button on:click={() => showAboutModal = true}>About</button>
@@ -499,6 +511,16 @@
   
   {#if showAboutModal}
       <MarkdownModal htmlContent={aboutContent} on:close={() => showAboutModal = false} />
+  {/if}
+
+  {#if showFuelModal}
+      <EditFuelAndDrivesModal 
+          showModal={showFuelModal} 
+          {rulePack} 
+          {starmap} 
+          on:save={handleSaveFuelOverrides} 
+          on:close={() => showFuelModal = false} 
+      />
   {/if}
 </div>
 
