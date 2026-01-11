@@ -1,6 +1,6 @@
 import type { System, CelestialBody, Barycenter } from '../types';
 import type { StateVector } from './types';
-import { propagateState } from './math';
+import { propagateState, subtract } from './math';
 import { G } from '../constants';
 
 const G0 = 9.81;
@@ -34,6 +34,25 @@ export function getGlobalState(sys: System, node: CelestialBody | Barycenter | {
         loops++;
     }
     return { r, v };
+}
+
+/**
+ * Calculates state vector relative to a specific parent body.
+ * Useful for local maneuvers (Planet->Moon) to remove Solar motion.
+ */
+export function getLocalState(sys: System, node: CelestialBody | Barycenter, parentId: string, tMs: number): StateVector {
+    const globalState = getGlobalState(sys, node, tMs);
+    const parentNode = sys.nodes.find(n => n.id === parentId);
+    
+    if (!parentNode) return globalState; // Fallback
+    
+    const parentGlobal = getGlobalState(sys, parentNode, tMs);
+    
+    // Relative State = Object - Parent
+    return {
+        r: subtract(globalState.r, parentGlobal.r),
+        v: subtract(globalState.v, parentGlobal.v)
+    };
 }
 
 /**

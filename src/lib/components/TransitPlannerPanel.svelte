@@ -156,17 +156,24 @@
       // Exclude self
       if (n.id === originId) return false;
 
-      // Always show stars
-      if (n.roleHint === 'star') return true;
-      // Always show barycenters
-      if (n.kind === 'barycenter') return true;
+      // Always show stars & barycenters
+      if (n.roleHint === 'star' || n.kind === 'barycenter') return true;
       
-      // For bodies/constructs, check parent
+      const originNode = system.nodes.find(o => o.id === originId);
+      
+      // Check Parent
       if (n.parentId) {
+          // Allow if Sibling (same parent as origin)
+          if (originNode && originNode.parentId === n.parentId) return true;
+          
+          // Allow if Child (orbits origin)
+          if (n.parentId === originId) return true;
+
           const parent = system.nodes.find(p => p.id === n.parentId);
-          // Show if parent is a Star or Barycenter
+          // Show if parent is a Star or Barycenter (Standard Planets)
           if (parent && (parent.roleHint === 'star' || parent.kind === 'barycenter')) return true;
-          return false; // Hide if parent is a Planet/Moon
+          
+          return false; 
       }
       
       // Show if no parent (Root)

@@ -100,6 +100,10 @@ export function subtract(v1: Vector2, v2: Vector2): Vector2 {
     return { x: v1.x - v2.x, y: v1.y - v2.y };
 }
 
+export function add(v1: Vector2, v2: Vector2): Vector2 {
+    return { x: v1.x + v2.x, y: v1.y + v2.y };
+}
+
 export function magnitude(v: Vector2): number {
     return Math.sqrt(v.x*v.x + v.y*v.y);
 }

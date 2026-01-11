@@ -68,6 +68,7 @@
   let x0_distance = 0.01; // Default pivot for distance scaling
 
   let lastSystemId: string | null = null;
+  let lastFramedPlanId: string | null = null;
 
   // --- Reactive Calculations ---
   $: if (system && system.id !== lastSystemId) {
@@ -77,6 +78,10 @@
   $: if (forceOrbitView !== undefined) {
       // Trigger re-calculation of frame
       if (focusedBodyId) handleFocusChange(focusedBodyId);
+  }
+  $: if (transitPlan && transitPlan.id !== lastFramedPlanId) {
+      fitToPlan(transitPlan);
+      lastFramedPlanId = transitPlan.id;
   }
   $: if (system && rulePack) {
     calculateAndStoreStellarZones();
@@ -105,6 +110,70 @@
       .filter(d => d > 0);
     const minDistance = distances.length > 0 ? Math.min(...distances) : 0.01;
     x0_distance = minDistance * 0.1;
+  }
+
+  function fitToPlan(plan: TransitPlan) {
+      if (!canvas || !plan || plan.segments.length === 0) return;
+      
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      
+      // Include Origin and Target Nodes
+      const nodeIds = [plan.originId, plan.targetId];
+      for (const id of nodeIds) {
+          const pos = toytownFactor > 0 ? scaledWorldPositions.get(id) : worldPositions.get(id);
+          if (pos) {
+              if (pos.x < minX) minX = pos.x;
+              if (pos.x > maxX) maxX = pos.x;
+              if (pos.y < minY) minY = pos.y;
+              if (pos.y > maxY) maxY = pos.y;
+          }
+      }
+
+      // Include Path Points
+      for (const seg of plan.segments) {
+          for (const pt of seg.pathPoints) {
+              let x = pt.x;
+              let y = pt.y;
+              
+              // Apply Toytown scaling if needed (must match drawTransitPlan logic)
+              if (toytownFactor > 0 && !plan.isKinematic) {
+                 const minDistance = 0.01; 
+                 const x0 = minDistance * 0.1; // Re-calculate or use module scope if available? 
+                 // We use module scope x0_distance
+                 const r = Math.sqrt(x*x + y*y);
+                 const r_new = scaleBoxCox(r, toytownFactor, x0_distance);
+                 const angle = Math.atan2(y, x);
+                 x = r_new * Math.cos(angle);
+                 y = r_new * Math.sin(angle);
+              }
+              
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+          }
+      }
+      
+      if (minX === Infinity) return;
+
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+      
+      const width = maxX - minX;
+      const height = maxY - minY;
+      
+      const padding = 1.5; // 50% padding
+      const targetWidth = Math.max(width, 0.0001); 
+      const targetHeight = Math.max(height, 0.0001);
+      
+      const zoomX = canvas.width / (targetWidth * padding);
+      const zoomY = canvas.height / (targetHeight * padding);
+      const targetZoom = Math.min(zoomX, zoomY, 500000); // Higher cap for local
+      
+      cameraMode = 'MANUAL';
+      
+      panStore.set({ x: centerX, y: centerY }, { duration: 500 });
+      zoomStore.set(targetZoom, { duration: 500 });
   }
 
   function calculateAndStoreStellarZones() {

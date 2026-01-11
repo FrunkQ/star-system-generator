@@ -32,7 +32,7 @@
   const aboutContent = `
 <h1>Star System Explorer</h1>
 
-<p><strong>Version:</strong> 1.2.2<br>
+<p><strong>Version:</strong> 1.2.3<br>
 <strong>Date:</strong> 11-Jan-26</p>
 
 <p>A tool for creating and exploring scientifically-plausible star systems.</p>
