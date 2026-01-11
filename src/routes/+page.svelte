@@ -207,7 +207,7 @@
 
   async function handleLoadExampleStarmap() {
       try {
-          const response = await fetch('/examples/Local_Neighbourhood-Starmap.json');
+          const response = await fetch('/example-starmaps/Local_Neighbourhood-Starmap.json');
           if (!response.ok) throw new Error('Failed to load example starmap.');
           const data = await response.json();
           starmapStore.set(data);

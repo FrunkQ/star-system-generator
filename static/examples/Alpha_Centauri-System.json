@@ -16,7 +16,8 @@
       ],
       "tags": [],
       "effectiveMassKg": 3.421e+30,
-      "description": "The common center of mass for the Alpha Centauri A/B binary pair. These two Sun-like stars orbit each other in a close, 80-year dance."
+      "description": "The common center of mass for the Alpha Centauri A/B binary pair. These two Sun-like stars orbit each other in a close, 80-year dance.",
+      "tidallyLocked": false
     },
     {
       "id": "alpha-centauri-a",
@@ -30,7 +31,7 @@
       ],
       "massKg": 2.189e+30,
       "radiusKm": 854400,
-      "temperatureK": 5790,
+      "temperatureK": 94.85202984968355,
       "magneticField": {
         "strengthGauss": 1
       },
@@ -48,7 +49,7 @@
         "hostId": "alpha-centauri-barycenter",
         "hostMu": 228300000000000000000,
         "t0": 1762339146908,
-        "n_rad_per_s": 2.493e-09,
+        "n_rad_per_s": 2.493e-9,
         "elements": {
           "a_AU": 10.3,
           "e": 0.5179,
@@ -59,7 +60,21 @@
         }
       },
       "description": "The primary star, a G-type star almost identical to our Sun (just slightly larger and brighter). From its perspective, Alpha Centauri B would be a dazzlingly bright 'second sun' that swings close and far every 80 years.",
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 200.1377466961067,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 919778408.2785057,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1,
+      "greenhouseTempK": 0,
+      "equilibriumTempK": 94.85202984968355
     },
     {
       "id": "alpha-centauri-b",
@@ -87,7 +102,7 @@
         "hostId": "alpha-centauri-barycenter",
         "hostMu": 228300000000000000000,
         "t0": 1762339146908,
-        "n_rad_per_s": 2.493e-09,
+        "n_rad_per_s": 2.493e-9,
         "elements": {
           "a_AU": 18.3,
           "e": 0.5179,
@@ -125,7 +140,7 @@
       },
       "massKg": 2.447e+29,
       "radiusKm": 107280,
-      "temperatureK": 3042,
+      "temperatureK": 1.893400217511615,
       "magneticField": {
         "strengthGauss": 600
       },
@@ -140,7 +155,21 @@
       ],
       "areas": [],
       "description": "The third star of the system and our Sun's closest neighbor. Proxima is a tiny, dim M-type red dwarf in a vast, 550,000-year orbit around the central A-B pair. It is a violent 'flare star,' frequently lashing its inner planets with radiation.",
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 1419.0645903643535,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 559742858423.6149,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1,
+      "greenhouseTempK": 0,
+      "equilibriumTempK": 1.893400217511615
     },
     {
       "id": "proxima-centauri-d",
@@ -178,11 +207,14 @@
         },
         {
           "key": "Airless Rock"
+        },
+        {
+          "key": "habitability/alien"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 360,
-      "temperatureK": 360,
+      "equilibriumTempK": 310.20049759680666,
+      "temperatureK": 310.20049759680666,
       "orbital_period_days": 5.12,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 122.8,
@@ -190,7 +222,22 @@
       "image": {
         "url": "/images/planet_types/web20hot20eyeball20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 4.434484694949183,
+      "calculatedRotationPeriod_s": 442080,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 50538.58025094818,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 5322.222000613045,
+      "propulsiveLandBudget_ms": 5322.222000613045,
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 41.20007320027399,
+      "greenhouseTempK": 0
     },
     {
       "id": "proxima-centauri-b",
@@ -229,6 +276,9 @@
         },
         {
           "key": "habitable-zone"
+        },
+        {
+          "key": "habitability/alien"
         }
       ],
       "areas": [],
@@ -241,7 +291,8 @@
           "N2": 0.05
         },
         "main": "CO2",
-        "pressure_bar": 0.5
+        "pressure_bar": 0.5,
+        "molarMassKg": 0.0432102
       },
       "orbital_period_days": 11.18,
       "axial_tilt_deg": 0,
@@ -250,7 +301,21 @@
       "image": {
         "url": "/images/planet_types/web20cold20eyeball20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 10.215688618266395,
+      "calculatedRotationPeriod_s": 965880,
+      "orbitalBoundaries": {
+        "minLeoKm": 88.27860796299612,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 147178.29216225803,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 10409.366175304553,
+      "propulsiveLandBudget_ms": 9551.686033302172,
+      "aerobrakeLandBudget_ms": 978.8007830714049,
+      "habitabilityScore": 44.58645400788339
     },
     {
       "id": "proxima-centauri-c",
@@ -259,7 +324,7 @@
       "kind": "body",
       "roleHint": "planet",
       "classes": [
-        "planet/mini-neptune",
+        "planet/ice-giant",
         "planet/super-earth",
         "planet/ice"
       ],
@@ -277,7 +342,7 @@
         }
       },
       "massKg": 4.18e+25,
-      "radiusKm": 16560,
+      "radiusKm": 19112,
       "tags": [
         {
           "key": "cold"
@@ -287,11 +352,17 @@
         },
         {
           "key": "primordial"
+        },
+        {
+          "key": "planet/ice-giant"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 39,
-      "temperatureK": 39,
+      "equilibriumTempK": 43.17870690534853,
+      "temperatureK": 44.15909906221127,
       "atmosphere": {
         "name": "Primordial Envelope (Super-Earth)",
         "composition": {
@@ -299,16 +370,34 @@
           "He": 0.1
         },
         "main": "H2",
-        "pressure_bar": 10
+        "pressure_bar": 10,
+        "molarMassKg": 0.00221448
       },
       "orbital_period_days": 1928,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 46272,
       "description": "A 'Mini-Neptune' or 'Super-Earth' orbiting far from its star, about 1.5 AU out. It takes over 5 years to complete one orbit. It is a frigid world, well beyond the system's frost line, and has likely retained a thick, primordial atmosphere of hydrogen and helium.",
       "image": {
-        "url": "/images/planet_types/web20mini-neptune.jpg"
+        "url": "/images/planet_types/web20ice20giant.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 7.637825500791,
+      "calculatedRotationPeriod_s": 166579200,
+      "orbitalBoundaries": {
+        "minLeoKm": 499.80939905430506,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 8550486.251128798,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 20277.862022571993,
+      "propulsiveLandBudget_ms": 15102.468805376531,
+      "aerobrakeLandBudget_ms": 206.73794699908547,
+      "habitabilityScore": 27.78575484280428,
+      "greenhouseTempK": 0.9803921568627451,
+      "tidallyLocked": false,
+      "color": "#81ecec"
     }
   ],
   "rulePackId": "starter-sf-pack",
@@ -318,5 +407,7 @@
       "key": "Triple Star System"
     }
   ],
-  "visualScalingMultiplier": 0.01
+  "visualScalingMultiplier": 0.01,
+  "toytownFactor": 0,
+  "isManuallyEdited": true
 }

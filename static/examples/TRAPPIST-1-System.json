@@ -28,7 +28,8 @@
       "tags": [],
       "areas": [],
       "description": "An ultra-cool M-type red dwarf, TRAPPIST-1 is barely larger than the planet Jupiter. It is extremely old (7.6 Gyr) and has a very low temperature. Despite its small size, it hosts a remarkable, compact system of seven Earth-sized terrestrial planets.",
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 1733.3859389744264
     },
     {
       "id": "trappist-1-b",
@@ -65,11 +66,14 @@
         },
         {
           "key": "hot"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 397.6,
-      "temperatureK": 397.6,
+      "equilibriumTempK": 363.74625527514263,
+      "temperatureK": 363.74625527514263,
       "orbital_period_days": 1.51,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 36.24,
@@ -77,7 +81,22 @@
       "image": {
         "url": "/images/planet_types/web20hot20eyeball20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 10.835549878244423,
+      "calculatedRotationPeriod_s": 130464,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 35763.78202126211,
+        "heoUpperBoundaryKm": 35763.78202126211,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 10093.879562209237,
+      "propulsiveLandBudget_ms": 10093.879562209237,
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 23.32275586857489,
+      "surfaceRadiation": 3.754554274334768
     },
     {
       "id": "trappist-1-c",
@@ -114,11 +133,14 @@
         },
         {
           "key": "Runaway Greenhouse Effect"
+        },
+        {
+          "key": "habitability/alien"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 339.7,
-      "temperatureK": 600,
+      "equilibriumTempK": 310.86576157156316,
+      "temperatureK": 310.86576157156316,
       "atmosphere": {
         "name": "Carbon Dioxide (Venus-like)",
         "composition": {
@@ -126,7 +148,8 @@
           "N2": 0.04
         },
         "main": "CO2",
-        "pressure_bar": 10
+        "pressure_bar": 10,
+        "molarMassKg": 0.04337016
       },
       "orbital_period_days": 2.42,
       "axial_tilt_deg": 0,
@@ -135,7 +158,22 @@
       "image": {
         "url": "/images/planet_types/web20hot20eyeball20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 10.674262466000114,
+      "calculatedRotationPeriod_s": 209088,
+      "orbitalBoundaries": {
+        "minLeoKm": 128.54929498516344,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 50754.39849870946,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 15971.979799803039,
+      "propulsiveLandBudget_ms": 10796.586582607575,
+      "aerobrakeLandBudget_ms": 206.73794699908547,
+      "habitabilityScore": 45.39954156266851,
+      "surfaceRadiation": 4.718355199695849e-22
     },
     {
       "id": "trappist-1-d",
@@ -168,15 +206,18 @@
           "key": "Tidally Locked"
         },
         {
-          "key":"m-dwarf-world"
+          "key": "m-dwarf-world"
         },
         {
           "key": "eyeball-planet"
+        },
+        {
+          "key": "habitability/alien"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 286.2,
-      "temperatureK": 286.2,
+      "equilibriumTempK": 261.84321629706204,
+      "temperatureK": 261.84321629706204,
       "atmosphere": {
         "name": "Collapsible CO₂ (Tidally Locked)",
         "composition": {
@@ -184,7 +225,8 @@
           "N2": 0.05
         },
         "main": "CO2",
-        "pressure_bar": 0.8
+        "pressure_bar": 0.8,
+        "molarMassKg": 0.0432102
       },
       "orbital_period_days": 4.05,
       "axial_tilt_deg": 0,
@@ -193,7 +235,22 @@
       "image": {
         "url": "/images/planet_types/web20cold20eyeball20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 6.425052337387649,
+      "calculatedRotationPeriod_s": 349920,
+      "orbitalBoundaries": {
+        "minLeoKm": 160.7477314183769,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 49371.52931596583,
+        "heoUpperBoundaryKm": 49371.52931596583,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 7593.638061425973,
+      "propulsiveLandBudget_ms": 6456.541504524964,
+      "aerobrakeLandBudget_ms": 870.3200460356393,
+      "habitabilityScore": 58.827165298640594,
+      "surfaceRadiation": 0.018838118839241358
     },
     {
       "id": "trappist-1-e",
@@ -216,7 +273,7 @@
           "i_deg": 89.793,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 2.1887326442071987
+          "M0_rad": 2.1887326442071986
         }
       },
       "massKg": 4.134e+24,
@@ -230,11 +287,14 @@
         },
         {
           "key": "eyeball-planet"
+        },
+        {
+          "key": "habitability/alien"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 249.7,
-      "temperatureK": 249.7,
+      "equilibriumTempK": 228.47490225824436,
+      "temperatureK": 228.47490225824436,
       "atmosphere": {
         "name": "Collapsible CO₂ (Tidally Locked)",
         "composition": {
@@ -242,7 +302,8 @@
           "N2": 0.08
         },
         "main": "CO2",
-        "pressure_bar": 1.5
+        "pressure_bar": 1.5,
+        "molarMassKg": 0.04273032
       },
       "orbital_period_days": 6.1,
       "axial_tilt_deg": 0,
@@ -251,7 +312,22 @@
       "image": {
         "url": "/images/planet_types/web20cold20eyeball20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 8.032167438335195,
+      "calculatedRotationPeriod_s": 527040,
+      "orbitalBoundaries": {
+        "minLeoKm": 116.93729266255811,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 80604.03802494648,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 9669.291399338133,
+      "propulsiveLandBudget_ms": 8011.239548524605,
+      "aerobrakeLandBudget_ms": 672.3665527410146,
+      "habitabilityScore": 43.187219568024844,
+      "surfaceRadiation": 0.00034321583609963637
     },
     {
       "id": "trappist-1-f",
@@ -288,11 +364,14 @@
         },
         {
           "key": "eyeball-planet"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 217.7,
-      "temperatureK": 217.7,
+      "equilibriumTempK": 199.1716310395728,
+      "temperatureK": 199.1716310395728,
       "atmosphere": {
         "name": "Collapsible CO₂ (Tidally Locked)",
         "composition": {
@@ -300,7 +379,8 @@
           "N2": 0.1
         },
         "main": "CO2",
-        "pressure_bar": 2.1
+        "pressure_bar": 2.1,
+        "molarMassKg": 0.0424104
       },
       "orbital_period_days": 9.21,
       "axial_tilt_deg": 0,
@@ -309,7 +389,22 @@
       "image": {
         "url": "/images/planet_types/web20cold20eyeball20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 9.342431621005172,
+      "calculatedRotationPeriod_s": 795744,
+      "orbitalBoundaries": {
+        "minLeoKm": 89.70986586223796,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 123614.58031702842,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 11352.9368062416,
+      "propulsiveLandBudget_ms": 9323.970060342828,
+      "aerobrakeLandBudget_ms": 549.9377491111553,
+      "habitabilityScore": 38.52336027676971,
+      "surfaceRadiation": 0.000010322456057386993
     },
     {
       "id": "trappist-1-g",
@@ -346,11 +441,14 @@
         },
         {
           "key": "reducing"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 198.6,
-      "temperatureK": 198.6,
+      "equilibriumTempK": 180.56740493358708,
+      "temperatureK": 180.56740493358708,
       "atmosphere": {
         "name": "Primordial Envelope (Super-Earth)",
         "composition": {
@@ -358,7 +456,8 @@
           "He": 0.1
         },
         "main": "H2",
-        "pressure_bar": 20
+        "pressure_bar": 20,
+        "molarMassKg": 0.00221448
       },
       "orbital_period_days": 12.35,
       "axial_tilt_deg": 0,
@@ -367,7 +466,22 @@
       "image": {
         "url": "/images/planet_types/web20mini-neptune.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 10.17954396168156,
+      "calculatedRotationPeriod_s": 1067040,
+      "orbitalBoundaries": {
+        "minLeoKm": 1579.594571684962,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 164515.52121693722,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 18797.450121277012,
+      "propulsiveLandBudget_ms": 10953.020883768299,
+      "aerobrakeLandBudget_ms": 200.04539992976248,
+      "habitabilityScore": 29.623283187576646,
+      "surfaceRadiation": 0.000010350870371035697
     },
     {
       "id": "trappist-1-h",
@@ -404,11 +518,14 @@
         },
         {
           "key": "cryogenic"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 168,
-      "temperatureK": 168,
+      "equilibriumTempK": 157.0692587045237,
+      "temperatureK": 157.0692587045237,
       "atmosphere": {
         "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
         "composition": {
@@ -416,7 +533,8 @@
           "CH4": 0.02
         },
         "main": "N2",
-        "pressure_bar": 1e-05
+        "pressure_bar": 0.00001,
+        "molarMassKg": 0.02777452
       },
       "orbital_period_days": 18.77,
       "axial_tilt_deg": 0,
@@ -425,11 +543,27 @@
       "image": {
         "url": "/images/planet_types/web20ice20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 5.6167038091986115,
+      "calculatedRotationPeriod_s": 1621728,
+      "orbitalBoundaries": {
+        "minLeoKm": 77.09901145168965,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 137532.1896040612,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 5977.38376621992,
+      "propulsiveLandBudget_ms": 5977.38376621992,
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 35.52979342335615,
+      "surfaceRadiation": 0.1305297729434048
     }
   ],
   "rulePackId": "starter-sf-pack",
   "rulePackVersion": "0.1.4",
   "tags": [],
-  "visualScalingMultiplier": 1
+  "visualScalingMultiplier": 1,
+  "toytownFactor": 0
 }

@@ -28,7 +28,8 @@
       "tags": [],
       "areas": [],
       "description": "The heart of our Solar System, Sol is a G-type main-sequence star (a yellow dwarf). It accounts for 99.8% of the system's total mass. Its energy, produced by nuclear fusion in its core, radiates outward, making life on Earth possible.",
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 274.2814900104337
     },
     {
       "id": "solar-system-mercury",
@@ -66,14 +67,17 @@
         },
         {
           "key": "hot"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 435.5,
+      "equilibriumTempK": 409.61408472832,
       "greenhouseTempK": 0,
-      "tidalHeatK": 4.0,
+      "tidalHeatK": 4,
       "radiogenicHeatK": 0.5,
-      "temperatureK": 440,
+      "temperatureK": 414.11408472832,
       "atmosphere": {
         "name": "Sodium–Potassium Exosphere",
         "composition": {
@@ -104,7 +108,9 @@
       },
       "loDeltaVBudget_ms": 3447.46746310225,
       "propulsiveLandBudget_ms": 3447.46746310225,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 23.74455418849091,
+      "surfaceRadiation": 6.673568845074803
     },
     {
       "id": "solar-system-venus",
@@ -146,14 +152,17 @@
         },
         {
           "key": "thick"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 232,
+      "equilibriumTempK": 299.6515345036713,
       "greenhouseTempK": 502,
       "tidalHeatK": 0.5,
       "radiogenicHeatK": 0.5,
-      "temperatureK": 735,
+      "temperatureK": 802.6515345036713,
       "atmosphere": {
         "name": "Carbon Dioxide (Venus-like)",
         "composition": {
@@ -175,7 +184,7 @@
       "calculatedGravity_ms2": 8.869475448060673,
       "calculatedRotationPeriod_s": -20997000,
       "orbitalBoundaries": {
-        "minLeoKm": 400.29904535665696,
+        "minLeoKm": 437.14373199438836,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 50000,
         "heoUpperBoundaryKm": 1004980.1034093457,
@@ -184,7 +193,9 @@
       },
       "loDeltaVBudget_ms": 29462.31754996301,
       "propulsiveLandBudget_ms": 9864.123715312962,
-      "aerobrakeLandBudget_ms": 200
+      "aerobrakeLandBudget_ms": 200,
+      "habitabilityScore": 29.041259376208636,
+      "surfaceRadiation": 1.6035299769668464e-199
     },
     {
       "id": "solar-system-earth",
@@ -217,18 +228,18 @@
           "key": "breathable-human"
         },
         {
-          "key": "habitability/human"
+          "key": "habitability/earth-like"
         }
       ],
       "areas": [],
       "magneticField": {
         "strengthGauss": 0.5
       },
-      "equilibriumTempK": 255,
+      "equilibriumTempK": 254.85041511888898,
       "greenhouseTempK": 33,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 288,
+      "temperatureK": 287.850415118889,
       "atmosphere": {
         "name": "Nitrogen–Oxygen (Earth-like)",
         "composition": {
@@ -267,7 +278,7 @@
       "calculatedGravity_ms2": 9.819973426224687,
       "calculatedRotationPeriod_s": 86162.40000000001,
       "orbitalBoundaries": {
-        "minLeoKm": 174.59343956330287,
+        "minLeoKm": 174.5027571365673,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 35792.2216003442,
         "heoUpperBoundaryKm": 1490025.4381473116,
@@ -276,7 +287,9 @@
       },
       "loDeltaVBudget_ms": 10410.683631702896,
       "propulsiveLandBudget_ms": 9100.569836997916,
-      "aerobrakeLandBudget_ms": 802.6009956683278
+      "aerobrakeLandBudget_ms": 802.6009956683278,
+      "habitabilityScore": 99.75777144487103,
+      "surfaceRadiation": 0.008207356666593918
     },
     {
       "id": "solar-system-luna",
@@ -310,14 +323,17 @@
         },
         {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 250,
+      "equilibriumTempK": 254.85041511888898,
       "greenhouseTempK": 0,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 250,
+      "temperatureK": 254.85041511888898,
       "orbital_period_days": 27.32,
       "axial_tilt_deg": 6.68,
       "rotation_period_hours": 655.7,
@@ -338,7 +354,9 @@
       },
       "loDeltaVBudget_ms": 1931.3366576460696,
       "propulsiveLandBudget_ms": 1931.3366576460696,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 30.272752121849486,
+      "surfaceRadiation": 0.9948797470190809
     },
     {
       "id": "solar-system-mars",
@@ -372,14 +390,17 @@
         },
         {
           "key": "thin"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 210,
+      "equilibriumTempK": 206.46120694615365,
       "greenhouseTempK": 5,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 215,
+      "temperatureK": 211.46120694615365,
       "atmosphere": {
         "name": "Carbon Dioxide (Mars-like)",
         "composition": {
@@ -402,7 +423,7 @@
       "calculatedGravity_ms2": 3.7122336687009745,
       "calculatedRotationPeriod_s": 88560,
       "orbitalBoundaries": {
-        "minLeoKm": 173.9424757768996,
+        "minLeoKm": 171.0794691487688,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 16996.90684070823,
         "heoUpperBoundaryKm": 1079042.9061374362,
@@ -411,7 +432,9 @@
       },
       "loDeltaVBudget_ms": 4139.6498809183695,
       "propulsiveLandBudget_ms": 4079.2780839913244,
-      "aerobrakeLandBudget_ms": 1197.0044955033732
+      "aerobrakeLandBudget_ms": 1197.0044955033732,
+      "habitabilityScore": 33.217040109138324,
+      "surfaceRadiation": 0.41806138065665965
     },
     {
       "id": "solar-system-phobos",
@@ -445,14 +468,17 @@
         },
         {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 230,
+      "equilibriumTempK": 206.46120694615365,
       "greenhouseTempK": 0,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 230,
+      "temperatureK": 206.46120694615365,
       "orbital_period_days": 0.319,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 7.66,
@@ -473,7 +499,9 @@
       },
       "loDeltaVBudget_ms": 9.139966910986526,
       "propulsiveLandBudget_ms": 9.139966910986526,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 19.359696348171035,
+      "surfaceRadiation": 0.43070189344680354
     },
     {
       "id": "solar-system-deimos",
@@ -507,14 +535,17 @@
         },
         {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 230,
+      "equilibriumTempK": 206.46120694615365,
       "greenhouseTempK": 0,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 230,
+      "temperatureK": 206.46120694615365,
       "orbital_period_days": 1.26,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 30.35,
@@ -535,7 +566,9 @@
       },
       "loDeltaVBudget_ms": 4.574709539959887,
       "propulsiveLandBudget_ms": 4.574709539959887,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 19.356628134634914,
+      "surfaceRadiation": 0.4306490973138594
     },
     {
       "id": "solar-system-asteroid-belt",
@@ -599,17 +632,20 @@
         },
         {
           "key": "planet/ringed"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
       "magneticField": {
         "strengthGauss": 4.28
       },
-      "equilibriumTempK": 105,
+      "equilibriumTempK": 111.71204735627745,
       "greenhouseTempK": 0,
       "tidalHeatK": 0,
       "radiogenicHeatK": 5,
-      "temperatureK": 110,
+      "temperatureK": 116.71204735627745,
       "atmosphere": {
         "name": "Hydrogen–Helium (Jupiter-like)",
         "composition": {
@@ -632,7 +668,7 @@
       "calculatedGravity_ms2": 25.918562037153677,
       "calculatedRotationPeriod_s": 35730,
       "orbitalBoundaries": {
-        "minLeoKm": 504.7319662665522,
+        "minLeoKm": 535.5300104466262,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 90094.92904786355,
         "heoUpperBoundaryKm": 53076768.64063506,
@@ -641,7 +677,9 @@
       },
       "loDeltaVBudget_ms": 2041949.331442323,
       "propulsiveLandBudget_ms": 71517.79497880623,
-      "aerobrakeLandBudget_ms": 200
+      "aerobrakeLandBudget_ms": 200,
+      "habitabilityScore": 15,
+      "surfaceRadiation": 0
     },
     {
       "id": "solar-system-jupiter-rings",
@@ -657,7 +695,20 @@
       "tags": [],
       "areas": [],
       "description": "A faint ring system composed of three main parts: an inner 'halo', a bright 'main' ring, and an outer 'gossamer' ring. Unlike Saturn's icy rings, Jupiter's are made of small, dark dust particles, likely kicked up from its small inner moons by meteoroid impacts.",
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "orbit": {
+        "hostId": "solar-system-jupiter",
+        "hostMu": 126678213999999980,
+        "t0": 1768150492547,
+        "elements": {
+          "a_AU": 0.001062849352440683,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.6047243767427481
+        }
+      }
     },
     {
       "id": "solar-system-io",
@@ -696,14 +747,17 @@
         },
         {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 105,
+      "equilibriumTempK": 111.71204735627745,
       "greenhouseTempK": 0,
       "tidalHeatK": 5,
       "radiogenicHeatK": 0,
-      "temperatureK": 110,
+      "temperatureK": 116.71204735627745,
       "atmosphere": {
         "name": "Sulfur Dioxide (Io-like)",
         "composition": {
@@ -734,7 +788,9 @@
       },
       "loDeltaVBudget_ms": 2080.1752404387335,
       "propulsiveLandBudget_ms": 2080.1752404387335,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 31.77565429772953,
+      "surfaceRadiation": 0.0368797631420911
     },
     {
       "id": "solar-system-europa",
@@ -774,14 +830,17 @@
         },
         {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 100,
+      "equilibriumTempK": 111.71204735627745,
       "greenhouseTempK": 0,
       "tidalHeatK": 2,
       "radiogenicHeatK": 0,
-      "temperatureK": 102,
+      "temperatureK": 113.71204735627745,
       "atmosphere": {
         "name": "Tenuous Oxygen (Europa-like)",
         "composition": {
@@ -811,7 +870,9 @@
       },
       "loDeltaVBudget_ms": 1647.5844813757253,
       "propulsiveLandBudget_ms": 1647.5844813757253,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 31.285266914446506,
+      "surfaceRadiation": 0.036856262725712706
     },
     {
       "id": "solar-system-ganymede",
@@ -851,17 +912,20 @@
         },
         {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
       "magneticField": {
         "strengthGauss": 0.007
       },
-      "equilibriumTempK": 109,
+      "equilibriumTempK": 111.71204735627745,
       "greenhouseTempK": 0,
       "tidalHeatK": 1,
       "radiogenicHeatK": 0,
-      "temperatureK": 110,
+      "temperatureK": 112.71204735627745,
       "orbital_period_days": 7.15,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 171.6,
@@ -882,7 +946,9 @@
       },
       "loDeltaVBudget_ms": 2226.9754565649328,
       "propulsiveLandBudget_ms": 2226.9754565649328,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 21.39618774104002,
+      "surfaceRadiation": 0.03668964295849596
     },
     {
       "id": "solar-system-callisto",
@@ -919,14 +985,17 @@
         },
         {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 134,
+      "equilibriumTempK": 111.71204735627745,
       "greenhouseTempK": 0,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 134,
+      "temperatureK": 111.71204735627745,
       "orbital_period_days": 16.69,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 400.5,
@@ -947,7 +1016,9 @@
       },
       "loDeltaVBudget_ms": 1979.5069944629295,
       "propulsiveLandBudget_ms": 1979.5069944629295,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 21.1979656843205,
+      "surfaceRadiation": 0.03674190385627942
     },
     {
       "id": "solar-system-saturn",
@@ -982,17 +1053,20 @@
         },
         {
           "key": "planet/ringed"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
       "magneticField": {
         "strengthGauss": 0.21
       },
-      "equilibriumTempK": 78,
+      "equilibriumTempK": 82.32726071205758,
       "greenhouseTempK": 0,
       "tidalHeatK": 0,
       "radiogenicHeatK": 3,
-      "temperatureK": 81,
+      "temperatureK": 85.32726071205758,
       "atmosphere": {
         "name": "Hydrogen–Helium (Jupiter-like)",
         "composition": {
@@ -1015,7 +1089,7 @@
       "calculatedGravity_ms2": 11.185617569939861,
       "calculatedRotationPeriod_s": 38361.6,
       "orbitalBoundaries": {
-        "minLeoKm": 912.2719756914298,
+        "minLeoKm": 961.0082556805739,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 54005.76829774813,
         "heoUpperBoundaryKm": 65407793.930461206,
@@ -1024,7 +1098,9 @@
       },
       "loDeltaVBudget_ms": 1342110.924973822,
       "propulsiveLandBudget_ms": 42110.92497382216,
-      "aerobrakeLandBudget_ms": 200
+      "aerobrakeLandBudget_ms": 200,
+      "habitabilityScore": 28.597739480183627,
+      "surfaceRadiation": 0
     },
     {
       "id": "solar-system-saturn-rings",
@@ -1040,7 +1116,20 @@
       "description": "The most extensive and complex ring system in the Solar System. The rings are not solid but are made of billions of particles of water ice, with some rock and dust, ranging in size from a grain of sand to a house. They are incredibly thin, perhaps only 10 meters thick.",
       "tags": [],
       "areas": [],
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 37930046900000000,
+        "t0": 1768150492547,
+        "elements": {
+          "a_AU": 0.0006921221506396749,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.32960368977622534
+        }
+      }
     },
     {
       "id": "solar-system-titan",
@@ -1079,14 +1168,17 @@
         },
         {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 82,
+      "equilibriumTempK": 82.32726071205758,
       "greenhouseTempK": 11,
       "tidalHeatK": 0.7,
       "radiogenicHeatK": 0,
-      "temperatureK": 93.7,
+      "temperatureK": 94.02726071205758,
       "atmosphere": {
         "name": "Methane Haze (Titan-like)",
         "composition": {
@@ -1108,7 +1200,7 @@
       "calculatedGravity_ms2": 1.3491407372632904,
       "calculatedRotationPeriod_s": 1377360,
       "orbitalBoundaries": {
-        "minLeoKm": 444.29903477693864,
+        "minLeoKm": 445.8508129891861,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 49715.16653476396,
         "heoUpperBoundaryKm": 49715.16653476396,
@@ -1117,7 +1209,9 @@
       },
       "loDeltaVBudget_ms": 3798.0751515648462,
       "propulsiveLandBudget_ms": 2173.408920646595,
-      "aerobrakeLandBudget_ms": 684.3245689553625
+      "aerobrakeLandBudget_ms": 684.3245689553625,
+      "habitabilityScore": 36.875245174179355,
+      "surfaceRadiation": 0.000017139920725081206
     },
     {
       "id": "solar-system-enceladus",
@@ -1154,14 +1248,17 @@
         },
         {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 70,
+      "equilibriumTempK": 82.32726071205758,
       "greenhouseTempK": 0,
       "tidalHeatK": 5,
       "radiogenicHeatK": 0,
-      "temperatureK": 75,
+      "temperatureK": 87.32726071205758,
       "atmosphere": {
         "name": "Water Vapor Plume (Enceladus-like)",
         "composition": {
@@ -1194,7 +1291,9 @@
       },
       "loDeltaVBudget_ms": 194.45815329673874,
       "propulsiveLandBudget_ms": 194.45815329673874,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 30.099285385384302,
+      "surfaceRadiation": 0.01088652234446526
     },
     {
       "id": "solar-system-mimas",
@@ -1228,14 +1327,17 @@
         },
         {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 64,
+      "equilibriumTempK": 82.32726071205758,
       "greenhouseTempK": 0,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 64,
+      "temperatureK": 82.32726071205758,
       "orbital_period_days": 0.94,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 22.56,
@@ -1256,7 +1358,9 @@
       },
       "loDeltaVBudget_ms": 129.2303471514097,
       "propulsiveLandBudget_ms": 129.2303471514097,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 20.048616261217383,
+      "surfaceRadiation": 0.010887317563149701
     },
     {
       "id": "solar-system-rhea",
@@ -1289,14 +1393,17 @@
         },
         {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 77,
+      "equilibriumTempK": 82.32726071205758,
       "greenhouseTempK": 0,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 77,
+      "temperatureK": 82.32726071205758,
       "orbital_period_days": 4.51,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 108.2,
@@ -1317,7 +1424,9 @@
       },
       "loDeltaVBudget_ms": 515.554750763003,
       "propulsiveLandBudget_ms": 515.554750763003,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 20.25190549085091,
+      "surfaceRadiation": 0.01088213921528119
     },
     {
       "id": "solar-system-iapetus",
@@ -1351,14 +1460,17 @@
         },
         {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 90,
+      "equilibriumTempK": 82.32726071205758,
       "greenhouseTempK": 0,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 90,
+      "temperatureK": 82.32726071205758,
       "orbital_period_days": 79.32,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 1903.6,
@@ -1379,7 +1491,9 @@
       },
       "loDeltaVBudget_ms": 465.0943403278924,
       "propulsiveLandBudget_ms": 465.0943403278924,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 20.21074551465231,
+      "surfaceRadiation": 0.010836241306595072
     },
     {
       "id": "solar-system-uranus",
@@ -1412,17 +1526,20 @@
         },
         {
           "key": "planet/ringed"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
       "magneticField": {
         "strengthGauss": 0.23
       },
-      "equilibriumTempK": 58,
+      "equilibriumTempK": 58.133534831018835,
       "greenhouseTempK": 0,
       "tidalHeatK": 0,
       "radiogenicHeatK": 1,
-      "temperatureK": 59,
+      "temperatureK": 59.133534831018835,
       "atmosphere": {
         "name": "Ice Giant (Uranus-like)",
         "composition": {
@@ -1445,7 +1562,7 @@
       "calculatedGravity_ms2": 9.007587373223858,
       "calculatedRotationPeriod_s": -62063.99999999999,
       "orbitalBoundaries": {
-        "minLeoKm": 664.3466777341742,
+        "minLeoKm": 665.8502950451768,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 57323.95674102323,
         "heoUpperBoundaryKm": 70160108.0952793,
@@ -1454,7 +1571,9 @@
       },
       "loDeltaVBudget_ms": 1324939.0516717813,
       "propulsiveLandBudget_ms": 24939.051671781603,
-      "aerobrakeLandBudget_ms": 200
+      "aerobrakeLandBudget_ms": 200,
+      "habitabilityScore": 29.182046252012086,
+      "surfaceRadiation": 0
     },
     {
       "id": "solar-system-uranus-rings",
@@ -1470,7 +1589,20 @@
       "description": "Uranus is surrounded by 13 known rings. Unlike Saturn's bright, icy rings, these are extremely dark and narrow, composed of particles as dark as coal, likely water ice mixed with radiation-processed organic compounds. They were the first to be discovered after Saturn's.",
       "tags": [],
       "areas": [],
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "orbit": {
+        "hostId": "solar-system-uranus",
+        "hostMu": 5793959830000000,
+        "t0": 1768150492547,
+        "elements": {
+          "a_AU": 0.00045455192431425435,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.09215787196716
+        }
+      }
     },
     {
       "id": "solar-system-titania",
@@ -1503,14 +1635,17 @@
         },
         {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 60,
+      "equilibriumTempK": 58.133534831018835,
       "greenhouseTempK": 0,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 60,
+      "temperatureK": 58.133534831018835,
       "orbital_period_days": 8.7,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 208.8,
@@ -1531,7 +1666,9 @@
       },
       "loDeltaVBudget_ms": 616.9739860128137,
       "propulsiveLandBudget_ms": 616.9739860128137,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 20.368093759147587,
+      "surfaceRadiation": 0.002706662050993407
     },
     {
       "id": "solar-system-oberon",
@@ -1565,14 +1702,17 @@
         },
         {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 60,
+      "equilibriumTempK": 58.133534831018835,
       "greenhouseTempK": 0,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 60,
+      "temperatureK": 58.133534831018835,
       "orbital_period_days": 13.46,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 323,
@@ -1593,7 +1733,9 @@
       },
       "loDeltaVBudget_ms": 589.732270531489,
       "propulsiveLandBudget_ms": 589.732270531489,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 20.348013023947825,
+      "surfaceRadiation": 0.0027063832574642957
     },
     {
       "id": "solar-system-ariel",
@@ -1626,14 +1768,17 @@
         },
         {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 58,
+      "equilibriumTempK": 58.133534831018835,
       "greenhouseTempK": 0,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 58,
+      "temperatureK": 58.133534831018835,
       "orbital_period_days": 2.52,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 60.48,
@@ -1654,7 +1799,9 @@
       },
       "loDeltaVBudget_ms": 443.500161738119,
       "propulsiveLandBudget_ms": 443.500161738119,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 20.257829562340557,
+      "surfaceRadiation": 0.0027071239855790395
     },
     {
       "id": "solar-system-neptune",
@@ -1687,17 +1834,20 @@
         },
         {
           "key": "planet/ringed"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
       "magneticField": {
         "strengthGauss": 0.14
       },
-      "equilibriumTempK": 44,
+      "equilibriumTempK": 46.44403755688691,
       "greenhouseTempK": 0,
       "tidalHeatK": 0,
       "radiogenicHeatK": 3,
-      "temperatureK": 47,
+      "temperatureK": 49.44403755688691,
       "atmosphere": {
         "name": "Ice Giant (Uranus-like)",
         "composition": {
@@ -1720,7 +1870,7 @@
       "calculatedGravity_ms2": 11.27350667591506,
       "calculatedRotationPeriod_s": 57996,
       "orbitalBoundaries": {
-        "minLeoKm": 427.4951469346782,
+        "minLeoKm": 449.7252361792579,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 58883.29385587132,
         "heoUpperBoundaryKm": 116160577.26195094,
@@ -1729,7 +1879,9 @@
       },
       "loDeltaVBudget_ms": 1327490.0241186097,
       "propulsiveLandBudget_ms": 27490.02411860985,
-      "aerobrakeLandBudget_ms": 200
+      "aerobrakeLandBudget_ms": 200,
+      "habitabilityScore": 28.508148138720635,
+      "surfaceRadiation": 0
     },
     {
       "id": "solar-system-neptune-rings",
@@ -1745,7 +1897,20 @@
       "description": "Neptune is encircled by five faint, dark rings. They are notable for containing unstable, bright clumps of dust called 'arcs,' which are thought to be held in place by the gravity of the small moon Galatea. These rings are dusty and relatively young.",
       "tags": [],
       "areas": [],
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "orbit": {
+        "hostId": "solar-system-neptune",
+        "hostMu": 6834483199999999,
+        "t0": 1768150492547,
+        "elements": {
+          "a_AU": 0.0003503726340137006,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 2.8497775394846014
+        }
+      }
     },
     {
       "id": "solar-system-triton",
@@ -1785,14 +1950,17 @@
         },
         {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 36,
+      "equilibriumTempK": 46.44403755688691,
       "greenhouseTempK": 0,
       "tidalHeatK": 2,
       "radiogenicHeatK": 0,
-      "temperatureK": 38,
+      "temperatureK": 48.44403755688691,
       "atmosphere": {
         "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
         "composition": {
@@ -1814,7 +1982,7 @@
       "calculatedGravity_ms2": 0.7797711313361076,
       "calculatedRotationPeriod_s": 506880.00000000006,
       "orbitalBoundaries": {
-        "minLeoKm": 138.1323522888948,
+        "minLeoKm": 176.0970753185356,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 13234.897524442571,
         "heoUpperBoundaryKm": 13234.897524442571,
@@ -1823,7 +1991,9 @@
       },
       "loDeltaVBudget_ms": 1181.393297975427,
       "propulsiveLandBudget_ms": 1181.393297975427,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 30.793359585527707,
+      "surfaceRadiation": 0.0011027644807508038
     },
     {
       "id": "solar-system-kuiper-belt",
@@ -1885,14 +2055,17 @@
         },
         {
           "key": "exosphere"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 40.5,
+      "equilibriumTempK": 40.55989045142206,
       "greenhouseTempK": 0,
       "tidalHeatK": 3.5,
       "radiogenicHeatK": 0,
-      "temperatureK": 44,
+      "temperatureK": 44.05989045142206,
       "atmosphere": {
         "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
         "composition": {
@@ -1915,7 +2088,7 @@
       "calculatedGravity_ms2": 0.615882615041098,
       "calculatedRotationPeriod_s": -551880,
       "orbitalBoundaries": {
-        "minLeoKm": 196.12195317528366,
+        "minLeoKm": 196.38890390958926,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 17672.49108839615,
         "heoUpperBoundaryKm": 7661221.032754107,
@@ -1924,7 +2097,9 @@
       },
       "loDeltaVBudget_ms": 983.8068938552108,
       "propulsiveLandBudget_ms": 983.8068938552108,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 30.626948708643482,
+      "surfaceRadiation": 0.0006415439088277487
     },
     {
       "id": "solar-system-charon",
@@ -1957,14 +2132,17 @@
         },
         {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 40.5,
+      "equilibriumTempK": 40.55989045142206,
       "greenhouseTempK": 0,
       "tidalHeatK": 3.5,
       "radiogenicHeatK": 0,
-      "temperatureK": 44,
+      "temperatureK": 44.05989045142206,
       "orbital_period_days": 6.38,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 153.3,
@@ -1985,7 +2163,9 @@
       },
       "loDeltaVBudget_ms": 479.7256429374493,
       "propulsiveLandBudget_ms": 479.7256429374493,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "habitabilityScore": 20.2917550583889,
+      "surfaceRadiation": 0.0006415682330398776
     },
     {
       "id": "construct-expanse-ceres",
@@ -2562,7 +2742,7 @@
       "cargoDescription": "He3 & Regolith",
       "orbit": {
         "hostId": "solar-system-luna",
-        "hostMu": 4902.8,
+        "hostMu": 4900271059999.999,
         "t0": 1762339146908,
         "n_rad_per_s": 0.0000026618,
         "elements": {
