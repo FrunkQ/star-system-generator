@@ -2,6 +2,7 @@
   import type { CelestialBody, Barycenter, System } from "$lib/types";
   import { createEventDispatcher } from "svelte";
   import MarkdownModal from './MarkdownModal.svelte';
+  import { APP_VERSION, APP_DATE } from '$lib/constants';
 
   export let system: System | null;
   export let focusedBody: CelestialBody | Barycenter | null;
@@ -16,8 +17,8 @@
   const aboutContent = `
 <h1>Star System Explorer</h1>
 
-<p><strong>Version:</strong> 1.2.3<br>
-<strong>Date:</strong> 11-Jan-26</p>
+<p><strong>Version:</strong> ${APP_VERSION}<br>
+<strong>Date:</strong> ${APP_DATE}</p>
 
 <p>A tool for creating and exploring scientifically-plausible star systems.</p>
 

@@ -223,7 +223,7 @@ export function calculateTransitPlan(
       }
       
       if (!found) {
-          console.warn(`[TransitPlanner] Failed to solve variant: ${name} (t_min=${t_min.toFixed(0)}, t_max=${t_max.toFixed(0)})`);
+          // console.warn(`[TransitPlanner] Failed to solve variant: ${name} (t_min=${t_min.toFixed(0)}, t_max=${t_max.toFixed(0)})`);
           return null;
       }
       
@@ -291,9 +291,9 @@ export function calculateTransitPlan(
   
   const solverRoot = frameParentId ? sys.nodes.find(n => n.id === frameParentId)! : root;
   
-  console.log(`[TransitPlanner] Direct Solver Setup:`);
-  console.log(`  FrameParent: ${frameParentId}, SolverRoot: ${solverRoot.name}`);
-  console.log(`  Origin: ${effectiveOrigin?.name}, Target: ${effectiveTarget.name}`);
+  // console.log(`[TransitPlanner] Direct Solver Setup:`);
+  // console.log(`  FrameParent: ${frameParentId}, SolverRoot: ${solverRoot.name}`);
+  // console.log(`  Origin: ${effectiveOrigin?.name}, Target: ${effectiveTarget.name}`);
   
   const directPlan = calculateFastPlan(sys, effectiveOrigin, effectiveTarget, solverRoot, startTime, directStart, directParams);
   
@@ -619,43 +619,43 @@ function calculateFastPlan(
 
 
 
-            // 1. Initial Geometry (Use Local State relative to 'root')
+                // 1. Initial Geometry (Use Local State relative to 'root')
 
 
 
-            const targetStartPos = getLocalState(sys, target, root.id, startTime).r;
+                const targetStartPos = getLocalState(sys, target, root.id, startTime).r;
 
 
 
-            const initialDist_m = distanceAU(startState.r, targetStartPos) * AU_M;
+                const initialDist_m = distanceAU(startState.r, targetStartPos) * AU_M;
 
 
 
-            
+                
 
 
 
-            console.log(`[FastPlan] Init:`);
+                // console.log(`[FastPlan] Init:`);
 
 
 
-            console.log(`  StartPos (AU): ${startState.r.x.toFixed(5)}, ${startState.r.y.toFixed(5)}`);
+                // console.log(`  StartPos (AU): ${startState.r.x.toFixed(5)}, ${startState.r.y.toFixed(5)}`);
 
 
 
-            console.log(`  TargetPos (AU): ${targetStartPos.x.toFixed(5)}, ${targetStartPos.y.toFixed(5)}`);
+                // console.log(`  TargetPos (AU): ${targetStartPos.x.toFixed(5)}, ${targetStartPos.y.toFixed(5)}`);
 
 
 
-            console.log(`  Dist (m): ${initialDist_m.toExponential(2)}`);
+                // console.log(`  Dist (m): ${initialDist_m.toExponential(2)}`);
 
 
 
-            
+                
 
 
 
-            // 2. Determine Ratios
+                // 2. Determine Ratios
 
     let ar = Math.max(0.001, params.accelRatio);
 

@@ -436,7 +436,7 @@
       const isLongZoom = zoomRatio > 100;
       const totalDuration = isLongZoom ? 1500 : 750;
 
-      console.log(`Animating transition. Long Zoom: ${isLongZoom}, Duration: ${totalDuration}ms, Zoom Ratio: ${zoomRatio.toFixed(2)}`, { before: beforeViewport, after: afterViewport });
+      // console.log(`Animating transition. Long Zoom: ${isLongZoom}, Duration: ${totalDuration}ms, Zoom Ratio: ${zoomRatio.toFixed(2)}`, { before: beforeViewport, after: afterViewport });
 
       if (isLongZoom) {
           const isZoomingOut = afterViewport.zoom < beforeViewport.zoom;
@@ -1594,10 +1594,10 @@
     bind:this={canvas} 
     on:click={handleClick} 
     on:contextmenu={handleContextMenu}
-    on:wheel={handleWheel}
+    on:wheel|preventDefault={handleWheel}
     on:mousedown={handleMouseDown}
     on:mouseup={handleMouseUp}
     on:mouseleave={handleMouseUp}
     on:mousemove={handleMouseMove}
-    style="border: 1px solid #333; margin-top: 1em; background-color: #08090d; cursor: grab; width: 100%;"
+    style="border: 1px solid #333; margin-top: 1em; background-color: #08090d; cursor: grab; width: 100%; touch-action: none;"
 ></canvas>

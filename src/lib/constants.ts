@@ -1,4 +1,7 @@
 // src/lib/constants.ts
+export const APP_VERSION = '1.2.4';
+export const APP_DATE = '11-Jan-26';
+
 export const G = 6.67430e-11; // Gravitational constant
 export const AU_KM = 149597870.7;
 export const SOLAR_MASS_KG = 1.989e30;

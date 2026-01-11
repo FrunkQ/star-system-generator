@@ -6,6 +6,7 @@
   import { starmapUiStore } from '$lib/starmapUiStore';
   import MarkdownModal from './MarkdownModal.svelte';
   import EditFuelAndDrivesModal from './EditFuelAndDrivesModal.svelte';
+  import { APP_VERSION, APP_DATE } from '$lib/constants';
 
   export let starmap: Starmap;
   export let rulePack: RulePack; // We need this prop to show defaults!
@@ -32,8 +33,8 @@
   const aboutContent = `
 <h1>Star System Explorer</h1>
 
-<p><strong>Version:</strong> 1.2.3<br>
-<strong>Date:</strong> 11-Jan-26</p>
+<p><strong>Version:</strong> ${APP_VERSION}<br>
+<strong>Date:</strong> ${APP_DATE}</p>
 
 <p>A tool for creating and exploring scientifically-plausible star systems.</p>
 
@@ -386,9 +387,10 @@
     on:mousedown={handleMouseDown}
     on:mousemove={handleMouseMove}
     on:mouseup={handleMouseUp}
-    on:wheel={handleWheel}
+    on:wheel|preventDefault={handleWheel}
     role="button"
     tabindex="0"
+    style="touch-action: none;"
   >
     <g bind:this={groupElement} transform={`translate(${panX}, ${panY}) scale(${zoom})`}>
       <Grid 

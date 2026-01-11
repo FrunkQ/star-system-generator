@@ -3,7 +3,8 @@
   const { exampleSystems } = data;
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
-  import { pushState } from '$app/navigation';
+  import { pushState, replaceState } from '$app/navigation';
+  import { page } from '$app/stores';
   import { get } from 'svelte/store';
   import type { RulePack, System, Starmap as StarmapType, StarSystemNode, Route } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
@@ -23,6 +24,7 @@
 
   let showNewStarmapModal = false;
   let currentSystemId: string | null = null;
+  let previousSystemId: string | null = null;
   let selectedSystemForLink: string | null = null;
 
   let showRouteEditorModal = false;
@@ -34,14 +36,46 @@
   let starmapComponent: Starmap;
   let hasSavedStarmap = false;
 
+  $: currentSystemId = $page.state.systemId || null;
+
+  // Robustly handle System -> Starmap transition (whether via Back button or UI)
+  $: if (currentSystemId !== previousSystemId) {
+      // console.log('System ID Change:', { from: previousSystemId, to: currentSystemId });
+      if (previousSystemId && !currentSystemId) {
+          // console.log('Exiting System View: Saving state and clearing store');
+          // Exiting System View: Save state
+          saveSystemState(previousSystemId);
+          // Clear system store to free memory/reset views
+          systemStore.set(null);
+      }
+      previousSystemId = currentSystemId;
+  }
+
+  function saveSystemState(sysId: string) {
+      const currentViewport = get(viewportStore);
+      const currentSystem = get(systemStore);
+
+      starmapStore.update(starmap => {
+          if (starmap && currentSystem) {
+              const systemNode = starmap.systems.find(s => s.id === sysId);
+              if (systemNode) {
+                  systemNode.viewport = currentViewport;
+                  systemNode.system = currentSystem;
+                  systemNode.name = currentSystem.name;
+              }
+          }
+          return starmap;
+      });
+  }
+
   $: effectiveRulePack = (() => {
       if (!selectedRulepack) return undefined;
       // Deep clone to avoid mutating the original rulepack which might be cached
       const pack = JSON.parse(JSON.stringify(selectedRulepack));
-      
+
       if ($starmapStore?.rulePackOverrides) {
           const overrides = $starmapStore.rulePackOverrides;
-          
+
           if (overrides.fuelDefinitions && pack.fuelDefinitions) {
               overrides.fuelDefinitions.forEach((f: any) => {
                   const idx = pack.fuelDefinitions.entries.findIndex((d: any) => d.id === f.id);
@@ -49,7 +83,7 @@
                   else pack.fuelDefinitions.entries.push(f);
               });
           }
-          
+
           if (overrides.engineDefinitions && pack.engineDefinitions) {
               overrides.engineDefinitions.forEach((e: any) => {
                   const idx = pack.engineDefinitions.entries.findIndex((d: any) => d.id === e.id);
@@ -127,8 +161,8 @@
   }
 
   function handleSystemClick(event: CustomEvent<string>) {
-    currentSystemId = event.detail;
-    const systemNode = get(starmapStore)?.systems.find(s => s.id === currentSystemId);
+    const sysId = event.detail; // Local var to ensure immediate availability
+    const systemNode = get(starmapStore)?.systems.find(s => s.id === sysId);
     if (systemNode) {
       if (systemNode.viewport) {
         viewportStore.set(systemNode.viewport);
@@ -136,69 +170,42 @@
         viewportStore.set({ pan: { x: 0, y: 0 }, zoom: 1 });
       }
       systemStore.set(JSON.parse(JSON.stringify(systemNode.system)));
-      pushState('', { systemId: currentSystemId });
+      // Push state to enter the system
+      pushState('', { systemId: sysId });
     }
   }
 
   function handleSystemZoom(event: CustomEvent<string>) {
-    currentSystemId = event.detail;
-    const systemNode = get(starmapStore)?.systems.find(s => s.id === currentSystemId);
+    const sysId = event.detail;
+    const systemNode = get(starmapStore)?.systems.find(s => s.id === sysId);
     if (systemNode) {
       systemStore.set(JSON.parse(JSON.stringify(systemNode.system)));
     }
   }
 
-    function handleBackToStarmap() {
-
-      // Save current system state before leaving
-
-      if (currentSystemId) {
-
-          const currentViewport = get(viewportStore);
-
-          const currentSystem = get(systemStore);
-
-  
-
-          starmapStore.update(starmap => {
-
-              if (starmap && currentSystem) {
-
-                  const systemNode = starmap.systems.find(s => s.id === currentSystemId);
-
-                  if (systemNode) {
-
-                      systemNode.viewport = currentViewport;
-
-                      systemNode.system = currentSystem;
-
-                      systemNode.name = currentSystem.name; // Also update the name at the node level
-
-                  }
-
-              }
-
-              return starmap;
-
-          });
-
-      }
-
-      // Clear current system and explicitly set browser state to represent starmap view
-
-      currentSystemId = null;
-
-      systemStore.set(null);
-
-      replaceState('', {}); // Replace current history entry with an empty state
-
-    }
-
+        function handleBackToStarmap(event: CustomEvent<{ force?: boolean }> | undefined) {
+          // Check if this was a forced exit (e.g. from SystemView intercepting a Back button)
+          const force = event?.detail?.force;
+    
+                if (force) {
+                    // console.log('Forced Exit to Starmap');
+                    currentSystemId = null;
+                    systemStore.set(null);              // We use replaceState to ensure we are effectively "on" the Starmap now, 
+              // replacing the sticky system entry we were stuck on.
+              replaceState('', {}); 
+          } else {
+              // Standard "To Starmap" button click. 
+              // We prefer history.back() to play nice with the stack, 
+              // BUT if the stack is messy, this might fail.
+              // For now, let's trust the button means "Back".
+              history.back();
+          }
+        }
   function handleLoadStarmap() {
     const savedStarmap = localStorage.getItem('stargen_saved_starmap');
     if (savedStarmap) {
       const loadedData = JSON.parse(savedStarmap);
-      console.log('Loaded starmap:', loadedData);
+      // console.log('Loaded starmap:', loadedData);
       starmapStore.set(loadedData);
     } else {
       alert('No starmap found in browser storage.');

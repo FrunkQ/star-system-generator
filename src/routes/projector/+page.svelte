@@ -111,7 +111,7 @@
 
 <main class="player-view" class:crt-mode={isCrtMode} 
     on:mousedown={handleInteraction} 
-    on:wheel={handleInteraction}
+    on:wheel|passive={handleInteraction}
     on:touchstart={handleInteraction}>
     {#if isCrtMode}
         <CRTOverlay />

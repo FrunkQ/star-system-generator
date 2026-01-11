@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
   import { browser } from '$app/environment';
-  import { pushState, replaceState } from '$app/navigation';
+  import { pushState, replaceState, beforeNavigate } from '$app/navigation';
   import { page } from '$app/stores';
   import type { RulePack, System, CelestialBody } from '$lib/types';
   import { deleteNode, renameNode, generateSystem, computePlayerSnapshot } from '$lib/api';
@@ -11,7 +11,6 @@
   import SystemSummaryContextMenu from './SystemSummaryContextMenu.svelte'; 
   import BodyTechnicalDetails from './BodyTechnicalDetails.svelte';
   import BodyImage from './BodyImage.svelte';
-  // import BodyGmTools from './BodyGmTools.svelte'; // REMOVED
   import DescriptionEditor from './DescriptionEditor.svelte';
   import GmNotesEditor from './GmNotesEditor.svelte';
   import ZoneKey from './ZoneKey.svelte';
@@ -42,6 +41,61 @@
   export let exampleSystems: string[];
 
   const dispatch = createEventDispatcher();
+
+  // Enforce hierarchical navigation on Back button
+  beforeNavigate(({ type, to, cancel }) => {
+      // console.log('SystemView beforeNavigate:', { type, to, focusedBodyId });
+      if (type === 'popstate' && focusedBody) {
+          // Identify intended parent ID (where we logically want to go)
+          const intendedParentId = focusedBody.parentId;
+          const rootId = $systemStore?.nodes.find(n => !n.parentId)?.id;
+
+          // Parse Target State
+          const targetState = to?.state as any;
+          const targetSystemId = targetState?.systemId;
+          const targetFocusId = targetState?.focusId || rootId; // Default to Root if focusId missing
+          
+          /*
+          console.log('SystemView Back Logic:', { 
+              intendedParentId, 
+              rootId, 
+              targetSystemId, 
+              targetFocusId,
+              isAtRoot: !intendedParentId
+          });
+          */
+
+          // Case 0: At Root (Star). Back button should ALWAYS exit to Starmap.
+          // If the history would keep us in the system (targetSystemId exists), cancel and force exit.
+          if (!intendedParentId) {
+              if (targetSystemId) {
+                  // console.log('At Root: Cancelling internal nav, forcing exit to Starmap');
+                  cancel();
+                  // Dispatch with force: true to tell parent to nuke the state
+                  dispatch('back', { force: true });
+              } else {
+                   // console.log('At Root: Allowing exit to Starmap (target has no systemId)');
+              }
+              return;
+          }
+
+          // Case 1: Leaving System entirely while deep in hierarchy (e.g. Moon -> Starmap)
+          if (!targetSystemId) {
+              // console.log('Deep Hierarchy: Cancelling exit, forcing one step up');
+              cancel();
+              updateFocus(intendedParentId, true);
+              return;
+          }
+
+          // Case 2: Navigating within system but skipping hierarchy (e.g. Moon -> Star, skipping Planet)
+          // We want strict one-step-up navigation.
+          if (targetFocusId !== intendedParentId) {
+              // console.log('Skipping Hierarchy: Cancelling jump, forcing one step up');
+              cancel();
+              updateFocus(intendedParentId, true);
+          }
+      }
+  });
 
   const generatedSystem = systemStore;
   let visualizer: SystemVisualizer;
@@ -675,9 +729,10 @@
 
   function zoomOut() {
     if (focusedBody && focusedBody.parentId) {
-      updateFocus(focusedBody.parentId, false);
+      updateFocus(focusedBody.parentId, true);
     } else {
-      dispatch('back');
+      // "To Starmap" button clicked. Force exit to ensure state is cleared.
+      dispatch('back', { force: true });
     }
   }
 
@@ -689,7 +744,7 @@
 
   // Handle Back to Starmap if systemId is lost from state
   $: if (browser && !$page.state.systemId) {
-      dispatch('back');
+      // dispatch('back'); // Handled by parent reactivity now
   }
 
   function handleDeleteNode(event: CustomEvent<string>) {

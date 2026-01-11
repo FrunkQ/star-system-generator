@@ -1,4 +1,4 @@
-# Star System Generator & Visualizer
+# Star System Explorer
 
 A procedural generator for creating scientifically-plausible star systems, complete with a real-time orbital visualizer and starmap.
 
@@ -24,12 +24,19 @@ A quick note on data: This application runs entirely in your browser. Your gener
 
 ## Features
 
-![Star System Generator Showcase](static/screenshots/SSG.gif)
+![Star System Explorer Showcase](static/screenshots/SSG.gif)
 
 *   **Procedural Generation**: Creates unique star systems based on a seed and a JSON-based rulepack.
 *   **Hand Create Systems**:
     *   **Open Placement**: You can now create planets anywhere in the system - they will bind to the main gravitational influence under your mouse.
     *   **Fully Edit Planets**: Lots of new editing tools to hand craft any aspect of the star system. Just start with the right star setup. 
+*   **Starmap**: A pan and zoomable map of multiple star systems, with enhanced usability and persistent UI settings.
+    *   **Local Neighbourhood**: Includes a comprehensive example map of the closest 50 star systems to Earth, including Alpha Centauri, Barnard's Star, and TRAPPIST-1.
+    *   **Binary & Trinary Stars**: Correctly visualizes multi-star systems with stable orbital configurations.
+    *   **Dynamic Grid/Hex Overlay**: Toggle between a square grid, a hex grid (or as some might call it, the "Traveller hex view"), or no grid.
+        ![Traveller Style Starmap](static/screenshots/TravellerStyle.PNG)
+    *   **Snap-to-Grid**: When adding new systems, coordinates snap to the center of the nearest grid or hex cell.
+    *   **Toggleable Background**: Display a static, faded background image of the Milky Way.
 *   **Constructs & Infrastructure**:
     *   **Ships & Stations**: Place artificial constructs anywhere in the system—from low orbit to deep space or even on planetary surfaces.
     *   **Detailed Specs**: Every construct has tracked stats for Mass, Crew (Current/Max), Power, Fuel, Engines, and Cargo.
@@ -39,73 +46,49 @@ A quick note on data: This application runs entirely in your browser. Your gener
         *   **Aliens**: Famous vessels like the *USS Sulaco*, *Nostromo*, and *Dropship*.
         *   **Mothership RPG**: The massive pirate haven *Prospero's Dream*.
     *   **Customization**: Load any template, tweak its stats, refit its modules, and save it as a unique object in your system.
-    *   **Visual Distinction**: Distinct visual icons for Ships (Triangles), Stations (Squares), and natural bodies (Circles).
 *   **Transit Planner**:
-    *   **Multi-Leg Mission Planning**: Chain multiple maneuvers together to plan complex interplanetary journeys (e.g. Earth -> Mars -> Jupiter). 
-    *   **Persistence**: Draft plans are saved to the vessel. You can close the planner and resume your planning later as long as the simulation time hasn't passed your departure date.
-    *   **Aerobraking Support**: Utilize planetary atmospheres to reduce fuel consumption during arrival. The planner automatically calculates the fuel saved based on your vessel's thermal protection.
-    *   **Mission Timeline & Hazards**: A detailed stress graph visualizes G-forces and alerts you to mission hazards like Radiation Zones, Asteroid Belts, and Planetary Rings along your path.
-    *   **Docking & Rendezvous**: Perform precise docking maneuvers at orbital stations. Ships correctly co-orbit with their host station upon arrival.
+    *   **Local & Interplanetary**: Plan transfers between moons of the same planet (e.g. Moon-to-Moon) or across the entire solar system.
+    *   **Precision Solver**: Uses a high-precision Lambert solver (switched to Metric units internally) to calculate efficient Hohmann transfers even for short, local hops.
+    *   **Multi-Leg Mission Planning**: Chain multiple maneuvers together to plan complex interplanetary journeys.
+    *   **Aerobraking Support**: Utilize planetary atmospheres to reduce fuel consumption.
+    *   **Mission Timeline & Hazards**: A detailed stress graph visualizes G-forces and alerts you to mission hazards like Radiation Zones.
+    *   **Docking & Rendezvous**: Perform precise docking maneuvers at orbital stations.
 *   **Orbital Mechanics & Planetology**:
-    *   **Delta-V Calculations**: Automatically calculates the Delta-V budget required to land on or ascend from any planet, broken down by Propulsive vs. Aerobraking methods.
+    *   **Delta-V Calculations**: Automatically calculates the Delta-V budget required to land on or ascend from any planet.
     *   **Orbital Boundaries**: Visualizes and calculates key zones like Low Orbit (LEO), Geostationary Orbit (GEO), and the Hill Sphere.
-    *   **Atmospheric Modeling**: Detailed atmospheric data including composition, pressure, and scale height, influencing aerobraking feasibility.
+    *   **Atmospheric Modeling**: Detailed atmospheric data including composition, pressure, and scale height.
     *   **Habitability**: Complex habitability scoring based on temperature, atmosphere, and magnetosphere protection.
 *   **Interactive 2D Visualizer**: An orbital view of the generated system with playback controls, zoom, and focus abilities.
     ![Expanse Toytown View](static/screenshots/Expanse-Toytown.PNG)
-*   **Starmap**: A pan and zoomable map of multiple star systems, with enhanced usability and persistent UI settings.
-    *   **Dynamic Grid/Hex Overlay**: Toggle between a square grid, a hex grid (or as some might call it, the "Traveller hex view"), or no grid.
-        ![Traveller Style Starmap](static/screenshots/TravellerStyle.PNG)
-    *   **Snap-to-Grid**: When adding new systems, coordinates snap to the center of the nearest grid or hex cell.
-    *   **Toggleable Background**: Display a static, faded background image of the Milky Way.
-    *   **State Persistence**: Grid type, background visibility, and mouse zoom settings are saved and loaded with your starmap data.
 *   **GM Tools**:
     *   **Visibility Controls**: Toggle the visibility of entire objects or just their descriptions in Player Views and Reports.
     *   **GM Notes**: Quick areas of text that can be edited any time - autosaved. These are never shown to the players.
 *   **Projector Mode (Player View)**:
     *   **Dedicated Player View**: Access a clean, full screen, player-focused view of the star system by opening the Star System hamburger menu: "Open Projector View"
     *   **GM Synchronization**: The player view automatically synchronizes with the GM's view, including camera pan/zoom, time controls (play/pause, speed), and selected focus.
-    *   **GM Visibility Controls**: As a GM, you can mark any celestial body or construct as hidden by clicking on the visibility icon next to its name. Hidden objects and their descendants will be completely invisible in the Player View, allowing for hidden secrets and dynamic reveals.
     *   **CRT Green-screen Mode**: Toggle a retro, green-screen, scanlined CRT effect for an immersive aesthetic.
     ![Greenscreen Projection View](static/screenshots/Greenscreen-ProjectionView.png)
-*   **AI-Powered Descriptions**: Integrates with OpenRouter to allow GMs to generate rich, narrative descriptions for any celestial body using customizable prompts, tags, and styles.
+*   **AI-Powered Descriptions**: Integrates with OpenRouter to allow GMs to generate rich, narrative descriptions for any celestial body.
     ![LLM Report Generation](static/screenshots/LLM-Report-Generation.png)
-*   **Paper Reports**: Generate printable, themed PDF reports of your star system. Choose between a GM (full intel) or Player (redacted) version, with player reports respecting GM visibility settings for objects and descriptions. Select visual themes like "Retro Line Printer" or "Corporate". Reports include detailed celestial data and artificial construct traffic.
+*   **Paper Reports**: Generate printable, themed PDF reports of your star system. Choose between a GM (full intel) or Player (redacted) version.
     ![Printable Reports](static/screenshots/PrintableReports.png)
 *   **Save & Load**: 
     *   Download any system or the entire starmap as a JSON file to your computer.
-    *   Upload a previously saved JSON file to continue your work. This can be at the starmap level or just a single star system to allow portability.
-    *   **Constructs (Ships/Stations)**: Individual constructs can be exported and imported as simple JSON text files, making it easy to share them.
+    *   Upload a previously saved JSON file to continue your work.
 
 ## Usage
 
 ### Generating a System
-1.  On first load, you will be prompted to create a new starmap.
+1.  On first load, you will be prompted to create a new starmap or load the "Local Neighbourhood" example.
 2.  Give your starmap a name and click "Create".
 
 ### Interacting with the Starmap
 *   **Pan and Zoom**: Use the mouse wheel to zoom (if enabled) and click and drag to pan the starmap.
 *   **Reset View**: Click the "Reset View" button to reset the pan and zoom to fit all systems.
-*   **Add System**: Right-click on any empty space on the starmap and select "Add System". If a grid is active, the new system will snap to the nearest grid/hex cell center.
+*   **Add System**: Right-click on any empty space on the starmap and select "Add System".
 *   **View System**: Click on a star system to view its details.
 *   **Link Systems**: Right-click on a star and select "Link System". Then right-click on another star to create a route between them.
-*   **Edit Route**: Click on a route line or its label to open the route editor.
-*   **Delete System**: Right-click on a star and select "Delete System".
-*   **UI Controls**: Use the dropdown to select 'No Grid', 'Grid', or 'Hex' view. Use the checkboxes to 'Disable Mouse Zoom' or 'Show Background'. These settings persist with your starmap.
-
-### Exploring the System
-
-### Adding & Editing Constructs & Planets
-*   **Add New Construct**: Right-click on any celestial body (star, planet, or moon) in the visualizer and select "Add Construct". A modal will appear allowing you to:
-    *   Choose from a library of pre-defined **Templates** (e.g., *Rocinante*, *Tycho Station*, *Prospero's Dream*).
-    *   The construct will automatically be placed in a default mid-range orbit around the selected body.
-*   **Edit Construct Details**: Click on an existing construct to focus it. Its details will appear in the right-hand panel, allowing you to modify its name, description, crew, cargo, and other technical specifications.
-    ![Detailed Construct Editing](static/screenshots/DetailedConstructEditing-FlightDynamics.png)
-*   **Delete Construct**: Right-click on an existing construct and select "Delete Construct" to remove it and its associated data from the system.
-
-*   Click on any celestial body in the visualizer to focus on it and view its detailed stats in the panel below. Choose to edit.
-*   Use the time controls to play, pause, and fast-forward the simulation.
-*   Click "Zoom Out" to return to the parent body's view.
+*   **UI Controls**: Use the dropdown to select 'No Grid', 'Grid', or 'Hex' view.
 
 ### Using the AI Description Generator
 This is not complex LLM use and you can probably enable these features without cost by using a free model off OpenRouter. Just sign up to OpenRouter - don't buy any credits (unless you want to use some of the more advanced models) and create an API key for yourself (save it somewhere secure!). 
@@ -166,6 +149,18 @@ You can preview the production build with `npm run preview`.
 *   Go to [Our Discord](https://discord.gg/prvKpZMgNY) for more details and input into ongoing development
 
 ## Known Issues
+
+### v1.2.4 Changelog
+*   **Navigation Fixes**:
+    *   Fixed a bug where the "Back" button would get stuck in a loop when at the root of a star system.
+    *   Unified the behavior of the "To Starmap" button and the browser Back button to ensure reliable exit from system views.
+    *   Implemented robust state clearing to prevent "ghost" system states from persisting after exit.
+*   **Performance**:
+    *   Commented out debug logs for smooth animations.
+*   **General**:
+    *   Updated version to 1.2.4.
+
+
 
 
 
