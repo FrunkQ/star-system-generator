@@ -3,6 +3,8 @@
   import type { CelestialBody } from '$lib/types';
   import { AU_KM, EARTH_MASS_KG } from '$lib/constants';
 
+  import { calculateAllStellarZones } from '$lib/physics/zones';
+
   let { body, parentBody } = $props();
 
   const dispatch = createEventDispatcher();
@@ -24,18 +26,40 @@
   
   // Log Configs
   const auMin = 0.001;
-  const auMax = 500;
+  let auMax = $derived.by(() => {
+      if (!parentBody) return 10000;
+      if (parentBody.roleHint === 'star') {
+          // Base it on the star's physical reach
+          const zones = calculateAllStellarZones(parentBody);
+          return Math.max(2000, Math.ceil(zones.systemLimitAu * 5)); 
+      }
+      if (parentBody.kind === 'barycenter') {
+          return 100000; // wide binaries
+      }
+      return 1000;
+  });
+
   const auLogMin = Math.log(auMin);
-  const auLogMax = Math.log(auMax);
+  let auLogMax = $derived(Math.log(auMax));
 
   const kmMin = 100;
-  // Calculate Parent SOI (Sphere of Influence) in KM
+  // Calculate Parent SOI (Sphere of Influence / Hill Sphere) in KM
   let parentSoiKm = $derived.by(() => {
-      if (!parentBody || !parentBody.orbit) return 1000000;
-      const a = parentBody.orbit.elements.a_AU * AU_KM;
-      const m = parentBody.massKg || 0;
-      const hostMass = 1.989e30; 
-      return a * Math.pow(m / (3 * hostMass), 1/3);
+      if (!parentBody) return 1000 * AU_KM;
+      
+      const m = (parentBody.kind === 'body' ? (parentBody as CelestialBody).massKg : (parentBody as any).effectiveMassKg) || 0;
+      if (m <= 0) return 1000 * AU_KM;
+
+      if (parentBody.orbit) {
+          const a = parentBody.orbit.elements.a_AU * AU_KM;
+          // Standard Hill Sphere: a * (m / 3M)^(1/3)
+          // We assume host is Sun-like for UI limits if not easily available
+          const hostMass = 1.989e30; 
+          return a * Math.pow(m / (3 * hostMass), 1/3);
+      } else {
+          // System root
+          return 1000 * AU_KM; 
+      }
   });
 
   let kmLogMin = Math.log(kmMin);

@@ -29,6 +29,11 @@
       selectedTab = 'Details';
   }
 
+  // Auto-switch BACK to Basics if opening a normal object but tab is stuck on Details
+  $: if (!isBeltOrRing && !isStar && selectedTab === 'Details') {
+      selectedTab = 'Basics';
+  }
+
   function setTab(tab: string) {
       selectedTab = tab;
       dispatch('tabchange', tab);

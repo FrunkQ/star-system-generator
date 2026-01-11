@@ -30,15 +30,25 @@
           minA = 0.00001;
           maxA = 0.05;
           stepA = 0.00001;
-      } else if (body.roleHint === 'star' || body.kind === 'barycenter') {
-          minA = 0.01;
-          maxA = 1000;
-          stepA = 0.01;
       } else {
-          // Planet/Belt
           minA = 0.01;
-          maxA = 150;
           stepA = 0.001;
+          
+          // Determine dynamic maxA
+          if (parentBody) {
+              if (parentBody.roleHint === 'star') {
+                  const sz = calculateAllStellarZones(parentBody);
+                  // Allow planets up to 2x system limit, belts up to 10x
+                  const multiplier = (body.roleHint === 'belt') ? 10 : 2;
+                  maxA = Math.max(500, Math.ceil(sz.systemLimitAu * multiplier));
+              } else if (parentBody.kind === 'barycenter') {
+                  maxA = 100000; // Wide binaries / systems
+              } else {
+                  maxA = 1000;
+              }
+          } else {
+              maxA = 1000;
+          }
       }
 
       if (body.orbit) {

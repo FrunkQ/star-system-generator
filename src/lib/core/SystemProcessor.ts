@@ -72,7 +72,9 @@ export class SystemProcessor implements ISystemProcessor {
     }
 
     private processEnvironment(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], pack: RulePack) {
-        // ... existing logic ...
+        // Skip Stars for environment processing as they generate their own physics (Temp, Radiation)
+        if (body.roleHint === 'star') return;
+
         // Radiation
         body.surfaceRadiation = calculateSurfaceRadiation(body, allNodes, pack);
 
@@ -131,6 +133,10 @@ export class SystemProcessor implements ISystemProcessor {
     }
 
     private processClassification(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], pack: RulePack, rng: SeededRNG) {
+        // Skip classification for Stars, Barycenters, etc. 
+        // Only Planets and Moons need dynamic classification based on physics.
+        if (body.roleHint !== 'planet' && body.roleHint !== 'moon') return;
+
         // Feature vector for classification
         const features: Record<string, number | string> = { 
             id: body.id,

@@ -446,7 +446,7 @@
           </div>
       {/if}
 
-      {#if body.kind === 'body' && body.atmosphere}
+      {#if body.kind === 'body' && body.atmosphere && !isStar}
           {@const pressure = body.atmosphere.pressure_bar || 0}
           <div class="detail-item atmosphere">
               <span class="label">Atmosphere ({pressure < 1e-3 ? pressure.toExponential(2) : pressure.toFixed(3)} bar)</span>
@@ -500,7 +500,7 @@
           </div>
       {/if}
 
-      {#if body.kind === 'body' && body.orbitalBoundaries}
+      {#if body.kind === 'body' && body.orbitalBoundaries && !isStar}
           <div class="detail-item orbital-zones">
               <span class="label">Orbital Zones</span>
               <div class="zone-details">
@@ -524,7 +524,7 @@
           </div>
       {/if}
 
-      {#if body.kind === 'body' && (body.loDeltaVBudget_ms !== undefined || body.propulsiveLandBudget_ms !== undefined || body.aerobrakeLandBudget_ms !== undefined)}
+      {#if body.kind === 'body' && (body.loDeltaVBudget_ms !== undefined || body.propulsiveLandBudget_ms !== undefined || body.aerobrakeLandBudget_ms !== undefined) && !isStar}
           <div class="detail-item orbital-zones">
               <span class="label">Delta-V Budgets</span>
               <div class="budget-details">

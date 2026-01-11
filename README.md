@@ -150,6 +150,20 @@ You can preview the production build with `npm run preview`.
 
 ## Known Issues
 
+### v1.3.0 Changelog (The Major Refactor)
+*   **Architectural Overhaul**:
+    *   **Modular Pipeline**: Separated structural generation from physical simulation.
+    *   **Centralized Body Factory**: All objects (Stars, Planets, Rings, Belts) are now instantiated through a single `BodyFactory` to ensure data consistency.
+    *   **Unified Physics Processor**: Implemented `SystemProcessor` to calculate all derived physics (Temperature, Radiation, Habitability, Classification) in a single, reusable service.
+    *   **Smart Editing**: Manual edits (moving a planet, changing a star's mass) now automatically trigger a full physics recalculation across the system.
+    *   **Modular Generation**: Broke the monolithic generator into specialized modules: `setupStars`, `generatePlanets`, and `placement-strategy`.
+*   **Bug Fixes**:
+    *   Fixed Star classification bug (Stars were being re-classified as planets).
+    *   Restored missing Habitable Zones in the UI.
+    *   Hidden irrelevant planetary stats (Atmosphere, Delta-V) for Star objects.
+    *   Fixed UI tab persistence bug when switching between belts and planets.
+*   **Documentation**: Created `ARCHITECTURE.md` to map the new modular structure.
+
 ### v1.2.4 Changelog
 *   **Navigation Fixes**:
     *   Fixed a bug where the "Back" button would get stuck in a loop when at the root of a star system.
