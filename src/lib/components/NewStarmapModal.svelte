@@ -32,6 +32,7 @@
 
     <div class="load-options">
         <button on:click={() => dispatch('upload')}>Upload Starmap</button>
+        <button on:click={() => dispatch('loadExampleStarmap')}>Load Example: Local Neighbourhood</button>
     </div>
 
     <div class="new-starmap-form">

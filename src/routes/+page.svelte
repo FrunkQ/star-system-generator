@@ -205,6 +205,18 @@
     }
   }
 
+  async function handleLoadExampleStarmap() {
+      try {
+          const response = await fetch('/examples/Local_Neighbourhood-Starmap.json');
+          if (!response.ok) throw new Error('Failed to load example starmap.');
+          const data = await response.json();
+          starmapStore.set(data);
+          showNewStarmapModal = false;
+      } catch (e) {
+          alert('Error loading example starmap: ' + (e as Error).message);
+      }
+  }
+
   function handleAddSystemAt(event: CustomEvent<{ x: number; y: number }>) {
     if (!$starmapStore || !selectedRulepack) return;
 
@@ -396,7 +408,14 @@
   {:else if error}
     <p style="color: red;">Error: {error}</p>
   {:else if showNewStarmapModal}
-    <NewStarmapModal rulepacks={rulePacks} {hasSavedStarmap} on:create={handleCreateStarmap} on:load={handleLoadStarmap} on:upload={handleUploadStarmap} />
+    <NewStarmapModal 
+        rulepacks={rulePacks} 
+        {hasSavedStarmap} 
+        on:create={handleCreateStarmap} 
+        on:load={handleLoadStarmap} 
+        on:upload={handleUploadStarmap} 
+        on:loadExampleStarmap={handleLoadExampleStarmap}
+    />
   {:else if $starmapStore && !currentSystemId}
     <Starmap
       bind:this={starmapComponent}

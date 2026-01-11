@@ -124,19 +124,28 @@
       maxY = Math.max(maxY, system.position.y);
     }
 
-    const padding = 50;
-    const bboxWidth = maxX - minX + padding * 2;
-    const bboxHeight = maxY - minY + padding * 2;
+    const paddingLeft = 75;
+    const paddingRight = 160; // Extra space for long system names
+    const paddingVertical = 50;
+
+    const bboxWidth = maxX - minX + paddingLeft + paddingRight;
+    const bboxHeight = maxY - minY + paddingVertical * 2;
 
     const viewBox = svgElement.viewBox.baseVal;
     const zoomX = viewBox.width / bboxWidth;
     const zoomY = viewBox.height / bboxHeight;
-    const newZoom = Math.min(zoomX, zoomY);
+    const newZoom = Math.min(zoomX, zoomY) * 1.2; // Zoom in 20% more than the tightest fit
 
     // Cap the newZoom at the default starting zoom of 1
     zoom = Math.min(newZoom, 1);
 
-    const centerX = minX + (maxX - minX) / 2;
+    // Center point calculation:
+    // We want the visual center of the viewBox to align with the center of the bounding box
+    // BUT shifted to account for the asymmetric padding.
+    // The "center" of the content is (minX + maxX) / 2.
+    // The "center" of the padded area is (minX - paddingLeft + maxX + paddingRight) / 2.
+    // This shifts the view so that more space is visible on the right.
+    const centerX = (minX - paddingLeft + maxX + paddingRight) / 2;
     const centerY = minY + (maxY - minY) / 2;
 
     panX = viewBox.width / 2 - centerX * zoom;
