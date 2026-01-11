@@ -3,30 +3,8 @@ import type { CelestialBody, Barycenter, RulePack, Orbit } from '../types';
 import { SeededRNG } from '../rng';
 import { weightedChoice, randomFromRange, toRoman } from '../utils';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
-import { classifyBody } from '../system/classification';
-import { calculateSurfaceRadiation } from '../physics/radiation';
-
+import { bodyFactory } from '../core/BodyFactory';
 import { calculateEquilibriumTemperature, calculateDistanceToStar } from '../physics/temperature';
-
-function calculateTidalHeating(planet: CelestialBody, host: CelestialBody): number {
-    let tidalHeatingK = 0;
-    if (planet.roleHint === 'moon' && host.kind === 'body') {
-        const parentMassKg = (host as CelestialBody).massKg || 0;
-        const eccentricity = planet.orbit?.elements.e || 0;
-        const moonRadiusKm = planet.radiusKm || 0;
-        const semiMajorAxisKm = (planet.orbit?.elements.a_AU || 0) * AU_KM;
-
-        if (parentMassKg > 0 && eccentricity > 0 && moonRadiusKm > 0 && semiMajorAxisKm > 0) {
-            const C = 4.06e-6; // Calibration constant
-            tidalHeatingK = C * 
-                (Math.pow(parentMassKg, 0.625)) * 
-                (Math.pow(moonRadiusKm, 0.75)) * 
-                (Math.pow(eccentricity, 0.5)) * 
-                (Math.pow(semiMajorAxisKm, -1.875));
-        }
-    }
-    return tidalHeatingK;
-}
 
 export function _generatePlanetaryBody(
     rng: SeededRNG,
@@ -47,7 +25,8 @@ export function _generatePlanetaryBody(
     const beltChanceTable = pack.distributions['belt_chance'];
     const isBelt = beltChanceTable ? weightedChoice<boolean>(rng, beltChanceTable) : false;
 
-    if (isBelt && !(host.kind === 'body' && host.roleHint === 'planet')) { // Belts don't form as moons
+    if (isBelt && !(host.kind === 'body' && host.roleHint === 'planet')) {
+        // ... Belt Generation (Refactored in Phase 1) ...
         const beltWidthRange = pack.distributions['belt_width_au_range']?.entries[0]?.value || [0.5, 1.5];
         const widthAU = randomFromRange(rng, beltWidthRange[0], beltWidthRange[1]);
         const centerAU = orbit.elements.a_AU;
@@ -55,37 +34,37 @@ export function _generatePlanetaryBody(
         const radiusInnerKm = (centerAU - widthAU / 2) * AU_KM;
         const radiusOuterKm = (centerAU + widthAU / 2) * AU_KM;
 
-        const belt: CelestialBody = {
-            id: `${seed}-belt-${i + 1}`,
-            parentId: host.id,
-            name: name.replace(/\d+$/, (m) => `Belt ${String.fromCharCode(65 + parseInt(m, 10))}`),
-            kind: 'body',
+        const beltName = name.replace(/\d+$/, (m) => `Belt ${String.fromCharCode(65 + parseInt(m, 10))}`);
+        
+        const belt = bodyFactory.createBody({
+            name: beltName,
             roleHint: 'belt',
-            classes: ['belt/asteroid'],
-            orbit: orbit,
-            radiusInnerKm: radiusInnerKm,
-            radiusOuterKm: radiusOuterKm,
-            tags: [],
-            areas: [],
-        };
+            parentId: host.id,
+            seed: `${seed}-belt-${i + 1}`
+        });
+
+        belt.id = `${seed}-belt-${i + 1}`;
+        belt.classes = ['belt/asteroid'];
+        belt.orbit = orbit;
+        belt.radiusInnerKm = radiusInnerKm;
+        belt.radiusOuterKm = radiusOuterKm;
+
         newNodes.push(belt);
         return newNodes;
     }
 
     const planetId = `${seed}-body-${i + 1}`;
-    let planet: CelestialBody = {
-        id: planetId,
-        parentId: host.id,
+    const roleHint = (host.kind === 'body' && (host.roleHint === 'planet' || host.roleHint === 'moon')) ? 'moon' : 'planet';
+    
+    let planet = bodyFactory.createBody({
         name: name,
-        kind: 'body',
-        roleHint: (host.kind === 'body' && (host.roleHint === 'planet' || host.roleHint === 'moon')) ? 'moon' : 'planet',
-        classes: [],
-        orbit: orbit,
-        massKg: 0, // placeholder
-        radiusKm: 0, // placeholder
-        tags: [],
-        areas: [],
-    };
+        roleHint: roleHint,
+        parentId: host.id,
+        seed: planetId
+    });
+
+    planet.id = planetId;
+    planet.orbit = orbit;
 
     const frostLineAU = (pack.generation_parameters?.frost_line_base_au || 2.7) * Math.sqrt((host.massKg || SOLAR_MASS_KG) / SOLAR_MASS_KG);
     const migrationChance = pack.generation_parameters?.planet_migration_chance || 0.1;
@@ -98,6 +77,9 @@ export function _generatePlanetaryBody(
             planetType = weightedChoice<string>(rng, { entries: [{ weight: 80, value: 'planet/terrestrial' }, { weight: 10, value: 'planet/gas-giant' }, { weight: 10, value: 'planet/ice-giant' }] });
         }
     }
+
+    // Temporary class assignment for atmosphere generation logic
+    planet.classes = [planetType];
 
     const planetTemplate = pack.statTemplates?.[planetType];
     if (planetTemplate) {
@@ -143,165 +125,55 @@ export function _generatePlanetaryBody(
         planet.tags.push({ key: 'Retrograde Orbit' });
     }
 
-    // --- Feature Calculation & Property Assignment ---
-    const features: Record<string, number | string> = { id: planetId };
-    if (planet.massKg) features['mass_Me'] = planet.massKg / EARTH_MASS_KG;
-    if (planet.radiusKm) features['radius_Re'] = planet.radiusKm / EARTH_RADIUS_KM;
-    if (planet.orbit) features['a_AU'] = planet.orbit.elements.a_AU;
+    // --- Prepare Features for Atmosphere Generation ---
+    // We calculate just enough to make a decision. The SystemProcessor will overwrite these with final values.
+    
+    // Quick Equillibrium Estimate
+    const equilibriumTempK = calculateEquilibriumTemperature(planet, allNodes, 0.3);
+    
+    const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
+    const isTidallyLocked = (planet.orbit.elements.a_AU) < 0.1 * Math.pow(hostMass / SOLAR_MASS_KG, 1/3);
 
-    // Find all stars in the system for radiation calculation
-    const allStars = allNodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
+    const features: Record<string, number | string> = { 
+        id: planetId,
+        mass_Me: planet.massKg / EARTH_MASS_KG,
+        radius_Re: planet.radiusKm / EARTH_RADIUS_KM,
+        a_AU: planet.orbit.elements.a_AU,
+        Teq_K: equilibriumTempK, // Estimate
+        tidallyLocked: isTidallyLocked ? 1 : 0
+    };
 
-    let totalStellarRadiation = 0;
-    let equilibriumTempK = propertyOverrides?.equilibriumTempK || 0;
-    if (!propertyOverrides?.equilibriumTempK) {
-        if (allStars.length > 0) {
-            equilibriumTempK = calculateEquilibriumTemperature(planet, allNodes, 0.3);
-
-            for (const star of allStars) {
-                const dist_au = calculateDistanceToStar(planet, star, allNodes);
-                if (dist_au > 0) {
-                    totalStellarRadiation += (star.radiationOutput || 1) / (dist_au * dist_au);
-                }
-            }
-        }
-    }
-    const magneticFieldStrength = planet.magneticField?.strengthGauss || 0;
-    const atmosphereRetentionFactor = pack.generation_parameters?.atmosphere_retention_factor || 100;
-    const retainsAtmosphere = magneticFieldStrength * atmosphereRetentionFactor > totalStellarRadiation;
-
-    if (!retainsAtmosphere) {
-        planet.atmosphere = undefined;
-        planet.hydrosphere = undefined;
-    }
-
-    // Calculate final surface radiation, factoring in stellar radiation, atmospheric blocking,
-    // and magnetosphere shielding.
-    // See `src/lib/physics/radiation.ts` for detailed calculation logic.
-    planet.surfaceRadiation = calculateSurfaceRadiation(planet, allNodes, pack);
-    features['radiation_flux'] = planet.surfaceRadiation;
-
-    const escapeVelocity = Math.sqrt(2 * G * (planet.massKg || 0) / ((planet.radiusKm || 1) * 1000)) / 1000; // in km/s
-    features['escapeVelocity_kms'] = escapeVelocity;
-
-
-
-    if (planet.hydrosphere) {
-        features['hydrosphere.coverage'] = planet.hydrosphere.coverage;
-        features['hydrosphere.composition'] = planet.hydrosphere.composition;
-    }
-
-    planet.equilibriumTempK = equilibriumTempK;
-
-    let greenhouseContributionK = propertyOverrides?.greenhouseTempK || 0;
-    const tidalHeatingK = calculateTidalHeating(planet, host as CelestialBody);
-    const radiogenicHeatK = (planetType === 'planet/terrestrial') ? 10 : 0;
-
-    if (propertyOverrides?.targetTemperatureK) {
-        greenhouseContributionK = propertyOverrides.targetTemperatureK - equilibriumTempK - tidalHeatingK - radiogenicHeatK;
-    } else if (!propertyOverrides?.greenhouseTempK && planet.atmosphere) {
-        const atmDef = pack.distributions.atmosphere_composition.entries.find(e => e.value.name === planet.atmosphere.name)?.value;
-        if (atmDef && atmDef.greenhouse_effect_K) {
-            const nominalPressure = atmDef.pressure_range_bar ? (atmDef.pressure_range_bar[0] + atmDef.pressure_range_bar[1]) / 2 : 1;
-            const pressureRatio = planet.atmosphere.pressure_bar / nominalPressure;
-            greenhouseContributionK = atmDef.greenhouse_effect_K * pressureRatio;
-        }
-    }
-    planet.greenhouseTempK = greenhouseContributionK;
-
-    // Add heat from internal sources
-    planet.tidalHeatK = tidalHeatingK;
-    planet.radiogenicHeatK = radiogenicHeatK;
-
-    features['tidalHeating'] = tidalHeatingK;
-    planet.temperatureK = equilibriumTempK + greenhouseContributionK + tidalHeatingK + radiogenicHeatK;
-    features['Teq_K'] = planet.temperatureK;
-
-
-
+    // --- Atmosphere Generation ---
     if (propertyOverrides?.atmosphere) {
-        features['atm.main'] = propertyOverrides.atmosphere.main;
-        features['atm.pressure_bar'] = propertyOverrides.atmosphere.pressure_bar;
-        for (const gas in propertyOverrides.atmosphere.composition) {
-            features[`atm.composition.${gas}`] = propertyOverrides.atmosphere.composition[gas];
-        }
+        // Already set via spread
     } else {
         _generateAtmosphere(rng, pack, planet, features, planetType);
     }
 
-    const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
-
-    const orbital_period_days = planet.orbit ? Math.sqrt(4 * Math.PI**2 * (planet.orbit.elements.a_AU * AU_KM * 1000)**3 / (G * hostMass)) / (60 * 60 * 24) : 0;
-    features['orbital_period_days'] = orbital_period_days;
-    planet.orbital_period_days = orbital_period_days;
-
-    features['age_Gyr'] = age_Gyr;
-
-    const isTidallyLocked = (features['a_AU'] as number) < 0.1 * Math.pow(hostMass / SOLAR_MASS_KG, 1/3);
-    features['tidallyLocked'] = isTidallyLocked ? 1 : 0;
-
-    planet.axial_tilt_deg = Math.pow(rng.nextFloat(), 3) * 90;
-    if (orbital_period_days < 10) {
-        // Heavy tidal forces from the close orbit reduce axial tilt over time
-        planet.axial_tilt_deg *= 0.1;
-    }
-
-    if (isTidallyLocked) {
-        planet.rotation_period_hours = orbital_period_days * 24;
-    } else {
-        planet.rotation_period_hours = randomFromRange(rng, 8, 48);
-    }
-    features['rotation_period_hours'] = planet.rotation_period_hours;
-
-    // Store calculated values for later use
-    if (planet.massKg && planet.radiusKm) {
-        planet.calculatedGravity_ms2 = (G * planet.massKg) / Math.pow(planet.radiusKm * 1000, 2);
-    }
-    planet.calculatedRotationPeriod_s = (planet.rotation_period_hours || 0) * 3600;
-
-    // Disrupted planet chance
-    let isDisrupted = false;
-    if (features['age_Gyr'] < 0.1 && rng.nextFloat() < 0.2) { // Higher chance for young systems
-        isDisrupted = true;
-    } else if (rng.nextFloat() < 0.01) { // Low base chance
-        isDisrupted = true;
-    }
-    if (isDisrupted) {
+    // --- Disrupted Chance ---
+    if (age_Gyr < 0.1 && rng.nextFloat() < 0.2) { 
+        planet.classes.push('planet/disrupted');
+    } else if (rng.nextFloat() < 0.01) {
         planet.classes.push('planet/disrupted');
     }
 
-    // --- Post-Generation Transformations (e.g., Atmospheric Stripping) ---
-    if (host.age_Gyr > 4.0 && (features['a_AU'] as number) < 0.5 && planet.classes.includes('planet/gas-giant')) {
-        // This hot gas giant has been stripped over billions of years
-        planet.classes = ['planet/chthonian'];
-        planet.radiusKm = (planet.radiusKm || 0) * 0.2; // Drastically reduce radius
-        planet.atmosphere = undefined;
-        planet.hydrosphere = undefined;
-    } else if (planet.temperatureK && planet.temperatureK > 1000 && planetType === 'planet/terrestrial') {
-        // Terrestrial planet is too hot and has had its atmosphere and hydrosphere boiled off
-        planet.atmosphere = undefined;
-        planet.hydrosphere = undefined;
-    }
-
-    // --- Habitability & Biosphere ---
-    calculateHabitabilityAndBiosphere(planet, rng);
-
-
-    planet.classes = classifyBody(planet, features, pack, allNodes);
-
-    const primaryClass = planet.classes[0];
-    if (primaryClass && pack.classifier?.planetImages?.[primaryClass]) {
-        planet.image = { url: pack.classifier.planetImages[primaryClass] };
+    // --- Image ---
+    // Note: Final classification happens in Processor, but we set a default image here if possible?
+    // Actually, we can defer image selection to the Processor too if we want, 
+    // or just leave it here as a "draft".
+    if (planetType && pack.classifier?.planetImages?.[planetType]) {
+        planet.image = { url: pack.classifier.planetImages[planetType] };
     }
 
     newNodes.push(planet);
 
     if (generateChildren && planet.roleHint === 'planet') {
-        const isGiant = planet.classes.includes('planet/gas-giant') || planet.classes.includes('planet/ice-giant');
+        const isGiant = planetType === 'planet/gas-giant' || planetType === 'planet/ice-giant';
         const ringChanceTable = pack.distributions[isGiant ? 'gas_giant_ring_chance' : 'terrestrial_ring_chance'];
         const hasRing = ringChanceTable ? weightedChoice<boolean>(rng, ringChanceTable) : false;
 
         if (hasRing) {
+            // ... Ring Generation (Refactored in Phase 1) ...
             const ringTemplate = pack.statTemplates?.['ring/planetary'];
             let ringInnerKm = (planet.radiusKm || 0) * 1.5;
             let ringOuterKm = (planet.radiusKm || 0) * 2.5;
@@ -309,18 +181,19 @@ export function _generatePlanetaryBody(
                 ringInnerKm = (planet.radiusKm || 0) * randomFromRange(rng, ringTemplate.radius_inner_multiple[0], ringTemplate.radius_inner_multiple[1]);
                 ringOuterKm = (planet.radiusKm || 0) * randomFromRange(rng, ringTemplate.radius_outer_multiple[0], ringTemplate.radius_outer_multiple[1]);
             }
-            const ring: CelestialBody = {
-                id: `${planetId}-ring-1`,
-                parentId: planet.id,
+            
+            const ring = bodyFactory.createBody({
                 name: `${planet.name} Ring`,
-                kind: 'body',
                 roleHint: 'ring',
-                classes: ['ring/planetary'],
-                radiusInnerKm: ringInnerKm,
-                radiusOuterKm: ringOuterKm,
-                tags: [],
-                areas: [],
-            };
+                parentId: planet.id,
+                seed: `${planetId}-ring-1`
+            });
+            
+            ring.id = `${planetId}-ring-1`;
+            ring.classes = ['ring/planetary'];
+            ring.radiusInnerKm = ringInnerKm;
+            ring.radiusOuterKm = ringOuterKm;
+
             newNodes.push(ring);
         }
 
@@ -329,16 +202,15 @@ export function _generatePlanetaryBody(
 
         if (isGiant) {
             const massInEarths = (planet.massKg || 0) / EARTH_MASS_KG;
-            const scalingFactor = Math.log10(Math.max(1, massInEarths)); // Use log10 for a gentler curve
+            const scalingFactor = Math.log10(Math.max(1, massInEarths)); 
             numMoons = Math.floor(numMoons * scalingFactor);
         }
 
-        // Calculate Roche Limit for a rigid body (simplification)
         const parentDensity = ((host as CelestialBody).massKg || 0) / (4/3 * Math.PI * Math.pow(((host as CelestialBody).radiusKm || 1) * 1000, 3));
-        const moonDensity = 3344; // Approximate density of Earth's moon in kg/m^3
+        const moonDensity = 3344;
         const rocheLimit_km = ((host as CelestialBody).radiusKm || 1) * Math.pow(2 * (parentDensity / moonDensity), 1/3);
         
-        let lastMoonApoapsisAU = rocheLimit_km / AU_KM * 1.5; // Start just outside the Roche limit
+        let lastMoonApoapsisAU = rocheLimit_km / AU_KM * 1.5; 
 
         for (let j = 0; j < numMoons; j++) {
             const moonMinGap = rocheLimit_km / AU_KM * 0.5;
@@ -363,108 +235,6 @@ export function _generatePlanetaryBody(
     }
 
     return newNodes;
-}
-
-function calculateHabitabilityAndBiosphere(planet: CelestialBody, rng: SeededRNG) {
-    if (planet.roleHint !== 'planet' && planet.roleHint !== 'moon') return;
-
-    const scoreFromRange = (value: number, optimal: number, range: number) => {
-        const diff = Math.abs(value - optimal);
-        return Math.max(0, 1 - (diff / range));
-    };
-
-    let score = 0;
-    let factors = {
-        temp: 0,
-        pressure: 0,
-        solvent: 0,
-        radiation: 0,
-        gravity: 0
-    };
-
-    // Temperature Score (Max 30 points)
-    if (planet.temperatureK) {
-        if (planet.hydrosphere?.composition === 'water' || !planet.hydrosphere) {
-            factors.temp = scoreFromRange(planet.temperatureK, 288, 50); // Optimal 15C, range +/- 50C
-        } else if (planet.hydrosphere?.composition === 'methane') {
-            factors.temp = scoreFromRange(planet.temperatureK, 111, 30); // Optimal -162C, range +/- 30C
-        } else if (planet.hydrosphere?.composition === 'ammonia') {
-            factors.temp = scoreFromRange(planet.temperatureK, 218, 30); // Optimal -55C, range +/- 30C
-        }
-    }
-    score += factors.temp * 30;
-
-    // Pressure Score (Max 20 points)
-    if (planet.atmosphere?.pressure_bar) {
-        factors.pressure = scoreFromRange(planet.atmosphere.pressure_bar, 1, 2);
-    }
-    score += factors.pressure * 20;
-
-    // Solvent Score (Max 20 points)
-    if ((planet.hydrosphere?.coverage || 0) > 0.1) {
-        factors.solvent = 1;
-        if (planet.hydrosphere?.composition === 'water') {
-            score += 5; // Bonus for water
-        }
-    }
-    score += factors.solvent * 15;
-
-    // Radiation Score (Max 15 points)
-    factors.radiation = scoreFromRange(planet.surfaceRadiation || 0, 0, 10);
-    score += factors.radiation * 15;
-
-    // Gravity Score (Max 15 points)
-    const surfaceGravityG = (planet.massKg && planet.radiusKm) ? (G * planet.massKg / ((planet.radiusKm*1000) * (planet.radiusKm*1000))) / 9.81 : 0;
-    if (surfaceGravityG > 0) {
-        factors.gravity = scoreFromRange(surfaceGravityG, 1, 1.5);
-    }
-    score += factors.gravity * 15;
-    
-    planet.habitabilityScore = Math.max(0, Math.min(100, score));
-
-    // Determine Tier and add Tag
-    const isEarthLike = factors.temp > 0.9 && factors.pressure > 0.8 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.9 && factors.gravity > 0.8 && planet.atmosphere?.composition?.['O2'] > 0.1;
-    const isHumanHabitable = factors.temp > 0.7 && factors.pressure > 0.6 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.7 && factors.gravity > 0.6;
-    const isAlienHabitable = score > 40;
-
-    let tier: string;
-    if (isEarthLike) tier = 'habitability/earth-like';
-    else if (isHumanHabitable) tier = 'habitability/human';
-    else if (isAlienHabitable) tier = 'habitability/alien';
-    else tier = 'habitability/none';
-    planet.tags.push({ key: tier });
-
-    // --- Biosphere Generation ---
-    if (rng.nextFloat() < (planet.habitabilityScore / 100)) {
-        const morphologies: ('microbial' | 'fungal' | 'flora' | 'fauna')[] = ['microbial'];
-        
-        if (planet.habitabilityScore > 60) {
-            morphologies.push('flora');
-            if (rng.nextFloat() < 0.5) {
-                morphologies.push('fungal');
-            }
-        }
-        if (planet.habitabilityScore > 85 && morphologies.includes('flora')) {
-            morphologies.push('fauna');
-        }
-
-        let biochemistry: 'water-carbon' | 'ammonia-silicon' | 'methane-carbon' = 'water-carbon';
-        if (planet.hydrosphere?.composition === 'methane') biochemistry = 'methane-carbon';
-        else if (planet.hydrosphere?.composition === 'ammonia') biochemistry = 'ammonia-silicon';
-
-        let energy_source: 'photosynthesis' | 'chemosynthesis' | 'thermosynthesis' = 'photosynthesis';
-        if ((planet.surfaceRadiation || 0) < 0.1) { // Very low light
-            energy_source = (planet.tidalHeatK || 0) > 50 ? 'thermosynthesis' : 'chemosynthesis';
-        }
-
-        planet.biosphere = {
-            complexity: (morphologies.includes('flora') || morphologies.includes('fauna')) ? 'complex' : 'simple',
-            coverage: rng.nextFloat() * (planet.hydrosphere?.coverage || 0.1),
-            biochemistry: biochemistry,
-            energy_source: energy_source,
-            morphologies: morphologies
-        };
-    }
 }
 
 function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBody, features: Record<string, number | string>, planetType: string) {
@@ -560,12 +330,6 @@ function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBo
             planet.tags.push(...atmChoice.tags.map((t: string) => ({ key: t })));
         }
 
-        features['atm.main'] = planet.atmosphere.main;
-        features['atm.pressure_bar'] = planet.atmosphere.pressure_bar;
-        for (const gas in planet.atmosphere.composition) {
-            features[`atm.composition.${gas}`] = planet.atmosphere.composition[gas];
-        }
-
     } else if (isGasGiant || isIceGiant) {
         // Default to Jupiter-like
         planet.atmosphere = {
@@ -575,8 +339,6 @@ function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBo
             pressure_bar: 100,
         };
         planet.tags.push({ key: 'reducing' });
-        features['atm.main'] = 'H2';
-        features['atm.pressure_bar'] = 100;
     } else {
         planet.atmosphere = undefined;
         planet.magneticField = undefined;

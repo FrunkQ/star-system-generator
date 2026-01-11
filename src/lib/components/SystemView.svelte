@@ -27,7 +27,8 @@
   import { systemStore, viewportStore } from '$lib/stores';
   import { panStore, zoomStore } from '$lib/cameraStore';
   import { get } from 'svelte/store';
-  import { processSystemData, calculateSurfaceTemperature, recalculateSystemPhysics } from '$lib/system/postprocessing';
+  import { calculateSurfaceTemperature } from '$lib/system/postprocessing';
+  import { systemProcessor } from '$lib/core/SystemProcessor';
   import { generateId, toRoman } from '$lib/utils';
   import { AU_KM, EARTH_MASS_KG, G } from '$lib/constants';
   import { propagate } from '$lib/api';
@@ -606,7 +607,7 @@
 
       // If a Star or Barycenter was updated, recalculate physics for the entire system
       if (updatedBody.roleHint === 'star' || updatedBody.kind === 'barycenter') {
-          recalculateSystemPhysics({ ...system, nodes: system.nodes }, rulePack);
+          return systemProcessor.process({ ...system, nodes: system.nodes }, rulePack);
       }
 
       return { ...system, isManuallyEdited: true };
@@ -758,12 +759,12 @@
             nextFocusId = nodeToDelete.parentId;
         } else {
             dispatch('back'); 
-            systemStore.set(processSystemData(deleteNode($systemStore, nodeId), rulePack));
+            systemStore.set(systemProcessor.process(deleteNode($systemStore, nodeId), rulePack));
             return; 
         }
     }
 
-    systemStore.set({ ...processSystemData(deleteNode($systemStore, nodeId), rulePack), isManuallyEdited: true });
+    systemStore.set({ ...systemProcessor.process(deleteNode($systemStore, nodeId), rulePack), isManuallyEdited: true });
 
     if (nextFocusId) {
         handleFocus({ detail: nextFocusId } as CustomEvent<string | null>);
@@ -783,7 +784,7 @@
       }
       let newSystem = await response.json();
       if (newSystem.id && newSystem.name && Array.isArray(newSystem.nodes) && newSystem.rulePackId) {
-        systemStore.set(processSystemData(newSystem, rulePack));
+        systemStore.set(systemProcessor.process(newSystem, rulePack));
         currentTime = newSystem?.epochT0 || Date.now();
         focusedBodyId = null;
       } else {
@@ -820,7 +821,7 @@ a.click();
         const json = e.target?.result as string;
         let newSystem = JSON.parse(json);
         if (newSystem.id && newSystem.name && Array.isArray(newSystem.nodes) && newSystem.rulePackId) {
-          systemStore.set(processSystemData(newSystem, rulePack));
+          systemStore.set(systemProcessor.process(newSystem, rulePack));
           currentTime = newSystem?.epochT0 || Date.now();
           focusedBodyId = null;
         } else {
@@ -846,7 +847,7 @@ a.click();
 
   onMount(() => {
     if (system) {
-        systemStore.set(processSystemData(system, rulePack));
+        systemStore.set(systemProcessor.process(system, rulePack));
         currentTime = system.epochT0;
     }
     

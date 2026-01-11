@@ -7,7 +7,7 @@ import { _generatePlanetaryBody } from './planet';
 import { G, AU_KM, SOLAR_MASS_KG } from '../constants';
 import type { GenOptions } from '../api';
 import { calculateAllStellarZones } from '../physics/zones';
-import { processSystemData } from '../system/postprocessing';
+import { systemProcessor } from '../core/SystemProcessor';
 
 export function generateSystem(seed: string, pack: RulePack, __opts: Partial<GenOptions> = {}, generationChoice?: string, empty: boolean = false, initialToytownFactor: number = 0): System {
   const rng = new SeededRNG(seed);
@@ -20,6 +20,7 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
   let baseName = `System ${seed}`;
 
   // --- Star Generation ---
+  // ... (Code remains the same) ...
   const baseNamePrefixTable = pack.distributions['star_name_prefix'];
   const baseNameDigitsTable = pack.distributions['star_name_number_digits'];
   if (baseNamePrefixTable && baseNameDigitsTable) {
@@ -61,18 +62,16 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
     rootRadiusKm = starA.radiusKm || 0;
 
     if (starA.classes.includes('star/BH_active')) {
-        const ring: CelestialBody = {
-            id: `${starA.id}-accretion-disk`,
-            parentId: starA.id,
+        const ring = bodyFactory.createBody({
             name: `${starA.name} Accretion Disk`,
-            kind: 'body',
             roleHint: 'ring',
-            classes: ['ring/accretion_disk'],
-            radiusInnerKm: (starA.radiusKm || 0) * 1.1,
-            radiusOuterKm: (starA.radiusKm || 0) * randomFromRange(rng, 5, 20),
-            tags: [],
-            areas: [],
-        };
+            parentId: starA.id,
+            seed: `${starA.id}-accretion-disk`
+        });
+        ring.id = `${starA.id}-accretion-disk`;
+        ring.classes = ['ring/accretion_disk'];
+        ring.radiusInnerKm = (starA.radiusKm || 0) * 1.1;
+        ring.radiusOuterKm = (starA.radiusKm || 0) * randomFromRange(rng, 5, 20);
         nodes.push(ring);
     }
   } else {
@@ -296,5 +295,7 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
       visualScalingMultiplier: 0.5,
       isManuallyEdited: false,
     };
-  return processSystemData(system, pack);
+  
+  // Use the new SystemProcessor instead of processSystemData
+  return systemProcessor.process(system, pack);
 }

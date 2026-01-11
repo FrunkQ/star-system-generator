@@ -1,8 +1,9 @@
 // src/lib/generation/star.ts
-import type { CelestialBody, RulePack, ID } from '../types';
+import type { CelestialBody, RulePack, ID, Tag } from '../types';
 import { SeededRNG } from '../rng';
 import { weightedChoice, randomFromRange } from '../utils';
 import { SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
+import { bodyFactory } from '../core/BodyFactory';
 
 // Generates a star object, but not its name, which is determined by the system context.
 export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: SeededRNG, starTypeOverride?: string): CelestialBody {
@@ -46,21 +47,23 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
         starCategory = 'star_remnant';
     }
 
-    return {
-        id: id,
-        parentId: parentId,
+    const star = bodyFactory.createBody({
         name: "", // Name is set by the caller
-        kind: 'body',
         roleHint: 'star',
-        starCategory: starCategory,
-        classes: [starClass],
+        parentId: parentId,
+        seed: id,
         massKg: starMassKg,
-        radiusKm: starRadiusKm,
-        temperatureK: starTemperatureK,
-        magneticField: starMagneticField,
-        radiationOutput: radiationOutput,
-        image: starImage ? { url: starImage } : undefined,
-        tags: tags,
-        areas: [],
-    };
+        radiusKm: starRadiusKm
+    });
+
+    star.id = id; // Override ID
+    star.starCategory = starCategory;
+    star.classes = [starClass];
+    star.temperatureK = starTemperatureK;
+    star.magneticField = starMagneticField;
+    star.radiationOutput = radiationOutput;
+    star.image = starImage ? { url: starImage } : undefined;
+    star.tags = tags;
+
+    return star;
 }

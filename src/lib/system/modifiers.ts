@@ -250,7 +250,7 @@ export function addHabitablePlanet(sys: System, hostId: ID, habitabilityType: 'e
 
 
 
-    
+        const atmEntries = pack.distributions.atmosphere_composition.entries;
 
 
 
@@ -258,23 +258,19 @@ export function addHabitablePlanet(sys: System, hostId: ID, habitabilityType: 'e
 
 
 
-    
+                    // Look for breathable atmosphere by tag first, fallback to name
 
+                    let earthLikeAtmDef = atmEntries.find(e => e.value.tags?.includes('breathable-human'))?.value;
 
+                    if (!earthLikeAtmDef) {
 
-                    const earthLikeAtmDef = pack.distributions.atmosphere_composition.entries.find(e => e.value.name === 'Nitrogen–Oxygen (Earth-like)').value;
+                        earthLikeAtmDef = atmEntries.find(e => e.value.name === 'Nitrogen–Oxygen (Earth-like)')?.value;
 
+                    }
 
+                    
 
-    
-
-
-
-        
-
-
-
-    
+                    if (!earthLikeAtmDef) throw new Error("No Earth-like atmosphere found in RulePack.");
 
 
 
@@ -282,15 +278,7 @@ export function addHabitablePlanet(sys: System, hostId: ID, habitabilityType: 'e
 
 
 
-    
-
-
-
                     const mainGas = Object.keys(finalComposition).reduce((a, b) => finalComposition[a] > finalComposition[b] ? a : b);
-
-
-
-    
 
 
 
@@ -302,19 +290,7 @@ export function addHabitablePlanet(sys: System, hostId: ID, habitabilityType: 'e
 
 
 
-        
-
-
-
-    
-
-
-
                     propertyOverrides.massKg = randomFromRange(rng, 0.5, 1.5) * EARTH_MASS_KG;
-
-
-
-    
 
 
 
@@ -322,15 +298,7 @@ export function addHabitablePlanet(sys: System, hostId: ID, habitabilityType: 'e
 
 
 
-    
-
-
-
                     propertyOverrides.atmosphere = { 
-
-
-
-    
 
 
 
@@ -338,15 +306,7 @@ export function addHabitablePlanet(sys: System, hostId: ID, habitabilityType: 'e
 
 
 
-    
-
-
-
                         main: mainGas, 
-
-
-
-    
 
 
 
@@ -354,15 +314,7 @@ export function addHabitablePlanet(sys: System, hostId: ID, habitabilityType: 'e
 
 
 
-    
-
-
-
                         pressure_bar: pressure
-
-
-
-    
 
 
 
@@ -370,23 +322,11 @@ export function addHabitablePlanet(sys: System, hostId: ID, habitabilityType: 'e
 
 
 
-    
-
-
-
                     propertyOverrides.hydrosphere = { composition: 'water', coverage: 0.7 };
 
 
 
-    
-
-
-
                     propertyOverrides.magneticField = { strengthGauss: 1.0 };
-
-
-
-    
 
 
 
@@ -407,31 +347,81 @@ export function addHabitablePlanet(sys: System, hostId: ID, habitabilityType: 'e
 
 
                 } else if (habitabilityType === 'human-habitable') {
-            const hypoxicAtmDef = pack.distributions.atmosphere_composition.entries.find(e => e.value.name === 'Low-O₂, Low-CO₂ (Hypoxic Inert)').value;
 
-            const finalComposition = generateAndNormalizeComposition(rng, hypoxicAtmDef.composition);
-            const mainGas = Object.keys(finalComposition).reduce((a, b) => finalComposition[a] > finalComposition[b] ? a : b);
-            const pressure = hypoxicAtmDef.pressure_range_bar ? randomFromRange(rng, hypoxicAtmDef.pressure_range_bar[0], hypoxicAtmDef.pressure_range_bar[1]) : randomFromRange(rng, 0.5, 1.5);
+            
 
-            propertyOverrides.massKg = randomFromRange(rng, 0.5, 1.5) * EARTH_MASS_KG;
-            propertyOverrides.radiusKm = randomFromRange(rng, 0.8, 1.2) * EARTH_RADIUS_KM;
-            propertyOverrides.atmosphere = { 
-                name: 'Human-Habitable (Hypoxic)',
-                main: mainGas, 
-                composition: finalComposition,
-                pressure_bar: pressure
-            };
-            propertyOverrides.hydrosphere = { composition: 'water', coverage: randomFromRange(rng, 0.2, 0.8) };
-            propertyOverrides.magneticField = { strengthGauss: 1.0 }; // Ensure it has a magnetic field
-            propertyOverrides.targetTemperatureK = 288; // Target 15C
+            // Look for hypoxic atmosphere by tag first
 
-            if (hypoxicAtmDef.tags) {
-                propertyOverrides.tags = hypoxicAtmDef.tags.map((t: string) => ({ key: t }));
+            let hypoxicAtmDef = atmEntries.find(e => e.value.tags?.includes('hypoxic'))?.value;
+
+            if (!hypoxicAtmDef) {
+
+                 hypoxicAtmDef = atmEntries.find(e => e.value.name === 'Low-O₂, Low-CO₂ (Hypoxic Inert)')?.value;
+
             }
 
+            
+
+            // Fallback to ANY breathable if hypoxic missing
+
+            if (!hypoxicAtmDef) {
+
+                hypoxicAtmDef = atmEntries.find(e => e.value.tags?.includes('breathable-human'))?.value;
+
+            }
+
+            
+
+            if (!hypoxicAtmDef) throw new Error("No Human-Habitable atmosphere found in RulePack.");
+
+
+
+            const finalComposition = generateAndNormalizeComposition(rng, hypoxicAtmDef.composition);
+
+            const mainGas = Object.keys(finalComposition).reduce((a, b) => finalComposition[a] > finalComposition[b] ? a : b);
+
+            const pressure = hypoxicAtmDef.pressure_range_bar ? randomFromRange(rng, hypoxicAtmDef.pressure_range_bar[0], hypoxicAtmDef.pressure_range_bar[1]) : randomFromRange(rng, 0.5, 1.5);
+
+
+
+            propertyOverrides.massKg = randomFromRange(rng, 0.5, 1.5) * EARTH_MASS_KG;
+
+            propertyOverrides.radiusKm = randomFromRange(rng, 0.8, 1.2) * EARTH_RADIUS_KM;
+
+            propertyOverrides.atmosphere = { 
+
+                name: hypoxicAtmDef.name || 'Human-Habitable (Hypoxic)',
+
+                main: mainGas, 
+
+                composition: finalComposition,
+
+                pressure_bar: pressure
+
+            };
+
+            propertyOverrides.hydrosphere = { composition: 'water', coverage: randomFromRange(rng, 0.2, 0.8) };
+
+            propertyOverrides.magneticField = { strengthGauss: 1.0 }; // Ensure it has a magnetic field
+
+            propertyOverrides.targetTemperatureK = 288; // Target 15C
+
+
+
+            if (hypoxicAtmDef.tags) {
+
+                propertyOverrides.tags = hypoxicAtmDef.tags.map((t: string) => ({ key: t }));
+
+            }
+
+
+
         } else { // alien-habitable
+
             propertyOverrides.massKg = randomFromRange(rng, 0.5, 3.0) * EARTH_MASS_KG;
+
             propertyOverrides.radiusKm = randomFromRange(rng, 0.8, 2.0) * EARTH_RADIUS_KM;
+
         }
 
 
