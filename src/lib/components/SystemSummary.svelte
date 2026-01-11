@@ -14,10 +14,10 @@
 
   let showAboutModal = false;
   const aboutContent = `
-<h1>Star System Generator</h1>
+<h1>Star System Explorer</h1>
 
-<p><strong>Version:</strong> 1.2.1<br>
-<strong>Date:</strong> 08-Jan-26</p>
+<p><strong>Version:</strong> 1.2.2<br>
+<strong>Date:</strong> 11-Jan-26</p>
 
 <p>A tool for creating and exploring scientifically-plausible star systems.</p>
 

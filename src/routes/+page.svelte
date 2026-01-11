@@ -8,6 +8,7 @@
   import type { RulePack, System, Starmap as StarmapType, StarSystemNode, Route } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import { generateSystem, renameNode } from '$lib/api';
+  import { validateStarmap } from '$lib/utils';
   import { starmapStore } from '$lib/starmapStore';
   import { systemStore, viewportStore } from '$lib/stores';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
@@ -345,15 +346,19 @@
     reader.onload = () => {
       try {
         const data = JSON.parse(reader.result as string);
-        // Basic validation
-        if (data.id && data.name && Array.isArray(data.systems) && Array.isArray(data.routes) && typeof data.distanceUnit === 'string' && typeof data.unitIsPrefix === 'boolean') {
-          starmapStore.set(data);
-          showNewStarmapModal = false;
-        } else {
-          alert('Invalid starmap file. Missing starmap-specific properties.');
+        
+        const errors = validateStarmap(data);
+        if (errors.length > 0) {
+            alert('Starmap Validation Failed:\n\n' + errors.slice(0, 10).join('\n') + (errors.length > 10 ? `\n...and ${errors.length - 10} more errors.` : ''));
+            console.error('Validation Errors:', errors);
+            return;
         }
+
+        starmapStore.set(data);
+        showNewStarmapModal = false;
       } catch (e) {
-        alert('Error reading starmap file.');
+        alert('Error parsing JSON file. Please check the file format.');
+        console.error(e);
       }
     };
 
@@ -376,6 +381,10 @@
 
 
 </script>
+
+<svelte:head>
+  <title>Star System Explorer</title>
+</svelte:head>
 
 <main>
 
@@ -423,7 +432,7 @@
 
           <p class="project-attribution">
 
-            <a href="https://github.com/FrunkQ/star-system-generator" target="_blank" rel="noopener noreferrer">Star System Generator</a> © 2025 FrunkQ. Licensed under <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank" rel="noopener noreferrer">GPL-3.0</a>.
+            <a href="https://github.com/FrunkQ/star-system-generator" target="_blank" rel="noopener noreferrer">Star System Explorer</a> © 2026 FrunkQ. Licensed under <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank" rel="noopener noreferrer">GPL-3.0</a>.
 
           </p>
 

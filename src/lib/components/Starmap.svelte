@@ -30,10 +30,10 @@
   let showFuelModal = false;
   
   const aboutContent = `
-<h1>Star System Generator</h1>
+<h1>Star System Explorer</h1>
 
-<p><strong>Version:</strong> 1.2.1<br>
-<strong>Date:</strong> 08-Jan-26</p>
+<p><strong>Version:</strong> 1.2.2<br>
+<strong>Date:</strong> 11-Jan-26</p>
 
 <p>A tool for creating and exploring scientifically-plausible star systems.</p>
 
@@ -177,6 +177,22 @@
         }
     }
     return '#cccccc'; // Default color
+  }
+
+  function getVisualNodes(system: System): CelestialBody[] {
+      const stars = system.nodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
+      if (stars.length > 0) {
+          // Sort by mass descending so primary is first
+          return stars.sort((a, b) => (b.massKg || 0) - (a.massKg || 0));
+      }
+      // No stars? Return root node if it's a body
+      const root = system.nodes.find(n => n.parentId === null);
+      if (root && root.kind === 'body') return [root as CelestialBody];
+      return [];
+  }
+
+  function isBlackHole(body: CelestialBody): boolean {
+      return body.classes.includes('BH') || body.classes.includes('star/BH');
   }
 
   function handleStarClick(event: MouseEvent, systemId: string) {
@@ -416,72 +432,88 @@
       {/each}
 
       {#each starmap.systems as systemNode}
-        {@const rootNode = systemNode.system.nodes.find(n => n.parentId === null)}
-        {#if rootNode && rootNode.kind === 'barycenter'}
-          {@const barycenter = rootNode as Barycenter}
-          {@const starA = systemNode.system.nodes.find(n => n.id === barycenter.memberIds[0]) as CelestialBody}
-          {@const starB = systemNode.system.nodes.find(n => n.id === barycenter.memberIds[1]) as CelestialBody}
-          <g
-            role="button"
-            tabindex="0"
-            on:click={(e) => handleStarClick(e, systemNode.id)}
-            on:dblclick={() => handleStarDblClick(systemNode.id)}
-            on:contextmenu={(e) => handleStarContextMenu(e, systemNode.id)}
-            on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStarClick(e, systemNode.id); }}
-          >
-            <circle
-              cx={systemNode.position.x - 5}
-              cy={systemNode.position.y}
-              r={5}
-              style="fill: {getStarColor(starA)};"
-              class="star"
-              class:selected={systemNode.id === selectedSystemForLink}
-              class:black-hole={starA.classes.includes('BH') || starA.classes.includes('star/BH')}
-            />
-            <circle
-              cx={systemNode.position.x + 5}
-              cy={systemNode.position.y}
-              r={5}
-              style="fill: {getStarColor(starB)};"
-              class="star"
-              class:selected={systemNode.id === selectedSystemForLink}
-              class:black-hole={starB.classes.includes('BH') || starB.classes.includes('star/BH')}
-            />
-          </g>
-          <text
-            x={systemNode.position.x + 15}
-            y={systemNode.position.y + 5}
-            class="star-label"
-          >
-            {systemNode.name}
-          </text>
-        {:else}
-          <g
-            role="button"
-            tabindex="0"
-            on:click={(e) => handleStarClick(e, systemNode.id)}
-            on:dblclick={() => handleStarDblClick(systemNode.id)}
-            on:contextmenu={(e) => handleStarContextMenu(e, systemNode.id)}
-            on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStarClick(e, systemNode.id); }}
-          >
-            <circle
-              cx={systemNode.position.x}
-              cy={systemNode.position.y}
-              r={5}
-              style="fill: {getStarColor(rootNode as CelestialBody)};"
-              class="star"
-              class:selected={systemNode.id === selectedSystemForLink}
-              class:black-hole={(rootNode as CelestialBody).classes.includes('BH') || (rootNode as CelestialBody).classes.includes('star/BH')}
-            />
-          </g>
-          <text
-            x={systemNode.position.x + 10}
-            y={systemNode.position.y + 5}
-            class="star-label"
-          >
-            {systemNode.name}
-          </text>
-        {/if}
+        {@const visualNodes = getVisualNodes(systemNode.system)}
+        <g
+          role="button"
+          tabindex="0"
+          on:click={(e) => handleStarClick(e, systemNode.id)}
+          on:dblclick={() => handleStarDblClick(systemNode.id)}
+          on:contextmenu={(e) => handleStarContextMenu(e, systemNode.id)}
+          on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStarClick(e, systemNode.id); }}
+        >
+          {#if visualNodes.length === 0}
+              <!-- Fallback for empty/invalid system -->
+              <circle cx={systemNode.position.x} cy={systemNode.position.y} r={3} fill="#555" />
+          {:else if visualNodes.length === 1}
+              <circle
+                cx={systemNode.position.x}
+                cy={systemNode.position.y}
+                r={5}
+                style="fill: {getStarColor(visualNodes[0])};"
+                class="star"
+                class:selected={systemNode.id === selectedSystemForLink}
+                class:black-hole={isBlackHole(visualNodes[0])}
+              />
+          {:else if visualNodes.length === 2}
+              <circle
+                cx={systemNode.position.x - 5}
+                cy={systemNode.position.y}
+                r={5}
+                style="fill: {getStarColor(visualNodes[0])};"
+                class="star"
+                class:selected={systemNode.id === selectedSystemForLink}
+                class:black-hole={isBlackHole(visualNodes[0])}
+              />
+              <circle
+                cx={systemNode.position.x + 5}
+                cy={systemNode.position.y}
+                r={5}
+                style="fill: {getStarColor(visualNodes[1])};"
+                class="star"
+                class:selected={systemNode.id === selectedSystemForLink}
+                class:black-hole={isBlackHole(visualNodes[1])}
+              />
+          {:else}
+              <!-- 3 or more stars: Pyramid layout (Primary Top, others below) -->
+              <!-- Primary (Top Center) -->
+              <circle
+                cx={systemNode.position.x}
+                cy={systemNode.position.y - 6}
+                r={5}
+                style="fill: {getStarColor(visualNodes[0])};"
+                class="star"
+                class:selected={systemNode.id === selectedSystemForLink}
+                class:black-hole={isBlackHole(visualNodes[0])}
+              />
+              <!-- Second (Bottom Left) -->
+              <circle
+                cx={systemNode.position.x - 6}
+                cy={systemNode.position.y + 5}
+                r={5}
+                style="fill: {getStarColor(visualNodes[1])};"
+                class="star"
+                class:selected={systemNode.id === selectedSystemForLink}
+                class:black-hole={isBlackHole(visualNodes[1])}
+              />
+              <!-- Third (Bottom Right) -->
+              <circle
+                cx={systemNode.position.x + 6}
+                cy={systemNode.position.y + 5}
+                r={5}
+                style="fill: {getStarColor(visualNodes[2])};"
+                class="star"
+                class:selected={systemNode.id === selectedSystemForLink}
+                class:black-hole={isBlackHole(visualNodes[2])}
+              />
+          {/if}
+        </g>
+        <text
+          x={systemNode.position.x + 15}
+          y={systemNode.position.y + 5}
+          class="star-label"
+        >
+          {systemNode.name}
+        </text>
       {/each}
     </g>
   </svg>
