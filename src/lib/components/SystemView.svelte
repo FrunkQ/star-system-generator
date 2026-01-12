@@ -1616,7 +1616,7 @@ a.click();
 
                               <p class="project-attribution">
 
-                                                              <a href="https://github.com/FrunkQ/star-system-generator" target="_blank" rel="noopener noreferrer">Star System Explorer</a> © 2026 FrunkQ. Licensed under <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank" rel="noopener noreferrer">GPL-3.0</a>. Join us on <a href="https://discord.gg/h2kt5Xm2xC" target="_blank" rel="noopener noreferrer">Discord!</a>
+                                                              <a href="https://github.com/FrunkQ/star-system-generator" target="_blank" rel="noopener noreferrer">Star System Explorer</a> © 2026 FrunkQ. Licensed under <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank" rel="noopener noreferrer">GPL-3.0</a>. Join us on <a href="https://discord.gg/UAEq4zzjD8" target="_blank" rel="noopener noreferrer">Discord!</a>
 
                                                             </p>
 

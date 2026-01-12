@@ -25,7 +25,7 @@
 <div class="modal-background">
   <div class="modal">
     <h2>Welcome to the Star System Explorer!</h2>
-    <p class="discord-link"><a href="https://discord.gg/prvKpZMgNY" target="_blank">Join us on Discord!</a></p>
+    <p class="discord-link"><a href="https://discord.gg/UAEq4zzjD8" target="_blank">Join us on Discord!</a></p>
     <p>This tool allows you to create and explore scientifically-plausible star systems. Get started by creating a new starmap, or load a previous creation. For more information, see the <a href="https://github.com/FrunkQ/star-system-generator/blob/main/GettingStarted.md" target="_blank" rel="noopener noreferrer">Getting Started Guide</a>.</p>
     
     <img src="/images/ui/Weyland-Yutani.png" alt="Weyland-Yutani Corp" class="logo" />

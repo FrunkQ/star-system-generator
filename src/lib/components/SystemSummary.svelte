@@ -25,7 +25,7 @@
 <hr>
 
 <p><strong>Community & Support:</strong><br>
-<a href="https://discord.gg/prvKpZMgNY" target="_blank">Join us on Discord!</a></p>
+<a href="https://discord.gg/UAEq4zzjD8" target="_blank">Join us on Discord!</a></p>
 
 <p><strong>Inspiration:</strong></p>
 <ul>

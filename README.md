@@ -1,8 +1,12 @@
+<p align="center">
+  <img src="static/images/ui/SSE-Logo.png" width="400" alt="Star System Explorer Logo">
+</p>
+
 # Star System Explorer
 
-A procedural generator for creating scientifically-plausible star systems, complete with a real-time orbital visualizer and starmap.
+A procedural generator for creating scientifically-plausible star systems, complete with a real-time orbital visualizer and starmap. Full astrodynamics simulation letting you easily model your own spacecraft and let them transit efficienctly or "hard burn" with fuel, time and hazard calculations.
 
-For discussion, feedback, bugs and suggestions go to [Our Discord](https://discord.gg/h2kt5Xm2xC)
+For discussion, feedback, bugs and suggestions go to [Our Discord](https://discord.gg/UAEq4zzjD8)
 
 ## Table of Contents
 
@@ -29,9 +33,10 @@ A quick note on data: This application runs entirely in your browser. Your gener
 *   **Procedural Generation**: Creates unique star systems based on a seed and a JSON-based rulepack.
 *   **Hand Create Systems**:
     *   **Open Placement**: You can now create planets anywhere in the system - they will bind to the main gravitational influence under your mouse.
-    *   **Fully Edit Planets**: Lots of new editing tools to hand craft any aspect of the star system. Just start with the right star setup. 
+    *   **Fully Edit Planets & Stars**: Lots of new editing tools to hand craft any aspect of the star system. 
 *   **Starmap**: A pan and zoomable map of multiple star systems, with enhanced usability and persistent UI settings.
-    *   **Local Neighbourhood**: Includes a comprehensive example map of the closest 50 star systems to Earth, including Alpha Centauri, Barnard's Star, and TRAPPIST-1.
+    *   **Local Neighbourhood**: Includes a comprehensive example map of the closest star systems to Earth (around 12 LY out), including Alpha Centauri, Barnard's Star, and TRAPPIST-1.
+        ![Local Neighbourhood Starmap](static/screenshots/LocalNeighbourhood.PNG)
     *   **Binary & Trinary Stars**: Correctly visualizes multi-star systems with stable orbital configurations.
     *   **Dynamic Grid/Hex Overlay**: Toggle between a square grid, a hex grid (or as some might call it, the "Traveller hex view"), or no grid.
         ![Traveller Style Starmap](static/screenshots/TravellerStyle.PNG)
@@ -47,6 +52,7 @@ A quick note on data: This application runs entirely in your browser. Your gener
         *   **Mothership RPG**: The massive pirate haven *Prospero's Dream*.
     *   **Customization**: Load any template, tweak its stats, refit its modules, and save it as a unique object in your system.
 *   **Transit Planner**:
+    ![Efficient Transit Planner](static/screenshots/ExpanseEfficientTransit.PNG)
     *   **Local & Interplanetary**: Plan transfers between moons of the same planet (e.g. Moon-to-Moon) or across the entire solar system.
     *   **Precision Solver**: Uses a high-precision Lambert solver (switched to Metric units internally) to calculate efficient Hohmann transfers even for short, local hops.
     *   **Multi-Leg Mission Planning**: Chain multiple maneuvers together to plan complex interplanetary journeys.
@@ -146,23 +152,9 @@ You can preview the production build with `npm run preview`.
 
 ## Planned Features
 
-*   Go to [Our Discord](https://discord.gg/prvKpZMgNY) for more details and input into ongoing development
+*   Go to [Our Discord](https://discord.gg/UAEq4zzjD8) for more details and input into ongoing development
 
 ## Known Issues
-
-### v1.3.0 Changelog (The Major Refactor)
-*   **Architectural Overhaul**:
-    *   **Modular Pipeline**: Separated structural generation from physical simulation.
-    *   **Centralized Body Factory**: All objects (Stars, Planets, Rings, Belts) are now instantiated through a single `BodyFactory` to ensure data consistency.
-    *   **Unified Physics Processor**: Implemented `SystemProcessor` to calculate all derived physics (Temperature, Radiation, Habitability, Classification) in a single, reusable service.
-    *   **Smart Editing**: Manual edits (moving a planet, changing a star's mass) now automatically trigger a full physics recalculation across the system.
-    *   **Modular Generation**: Broke the monolithic generator into specialized modules: `setupStars`, `generatePlanets`, and `placement-strategy`.
-*   **Bug Fixes**:
-    *   Fixed Star classification bug (Stars were being re-classified as planets).
-    *   Restored missing Habitable Zones in the UI.
-    *   Hidden irrelevant planetary stats (Atmosphere, Delta-V) for Star objects.
-    *   Fixed UI tab persistence bug when switching between belts and planets.
-*   **Documentation**: Created `ARCHITECTURE.md` to map the new modular structure.
 
 ### v1.2.4 Changelog
 *   **Navigation Fixes**:
