@@ -67,16 +67,24 @@
           },
           (pan, zoom, isManual) => {
               if (isFollowingGM) {
-                  // Always use MANUAL mode in the visualizer when following GM coordinates.
-                  // This ensures the visualizer respects the exact pan coordinates sent by the GM,
-                  // rather than trying to re-calculate the target position locally (which can drift).
-                  cameraMode = 'MANUAL';
-                  
-                  // Use fast transition if GM is dragging, smooth if snapping
-                  const duration = isManual ? 100 : 500;
-                  
-                  panStore.set(pan, { duration }); 
-                  zoomStore.set(zoom, { duration });
+                  if (isManual) {
+                      // GM is manually panning/dragging. We must mirror this exactly.
+                      cameraMode = 'MANUAL';
+                      
+                      // Use fast transition if dragging (updates are frequent), smooth if it was a discrete set
+                      const duration = 100; 
+                      
+                      panStore.set(pan, { duration }); 
+                      zoomStore.set(zoom, { duration });
+                  } else {
+                      // GM is in FOLLOW mode (tracking a body).
+                      // We switch to FOLLOW mode so our local Visualizer calculates the correct center 
+                      // based on the physics simulation (which is synced via time/system).
+                      cameraMode = 'FOLLOW';
+                      
+                      // We still sync zoom, as the GM might auto-zoom or manual zoom while following.
+                      zoomStore.set(zoom, { duration: 500 });
+                  }
               }
           },
           (settings) => {

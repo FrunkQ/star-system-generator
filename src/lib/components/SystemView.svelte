@@ -904,6 +904,26 @@ a.click();
     document.addEventListener('click', handleClickOutside);
   });
 
+  // Reactive Broadcasts for View Settings
+  $: if (browser && $systemStore) {
+      broadcastService.sendMessage({ 
+          type: 'SYNC_VIEW_SETTINGS', 
+          payload: { showNames, showZones, showLPoints } 
+      });
+  }
+
+  // Reactive Broadcast for Focus
+  $: if (browser && typeof focusedBodyId !== 'undefined') {
+      broadcastService.sendMessage({ type: 'SYNC_FOCUS', payload: focusedBodyId });
+  }
+
+  // Reactive Broadcast for System State (e.g. edits, generation)
+  $: if (browser && $systemStore) {
+      // We compute the snapshot to avoid sending GM secrets
+      const snapshot = computePlayerSnapshot($systemStore);
+      broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: snapshot });
+  }
+
   onDestroy(() => {
     if (browser) {
       pause();

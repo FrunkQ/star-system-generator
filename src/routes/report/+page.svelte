@@ -120,7 +120,38 @@
       return `${body.atmosphere.name || 'Unknown'} (${pStr} bar) ${gases ? '['+gases+']' : ''}`;
   }
 
-  $: stars = system ? system.nodes.filter(n => n.kind === 'body' && n.roleHint === 'star') : [];
+  function getPrimaryBodies() {
+      if (!system) return [];
+      const nodesById = new Map(system.nodes.map(n => [n.id, n]));
+      
+      return system.nodes.filter(n => {
+          if (n.kind !== 'body') return false;
+          
+          // Case 1: It is a Star
+          if (n.roleHint === 'star') return true;
+
+          // Case 2: It orbits a Barycenter (and is not a star, covered above)
+          if (n.parentId) {
+              const parent = nodesById.get(n.parentId);
+              if (parent && parent.kind === 'barycenter') return true;
+          }
+
+          // Case 3: It has no parent (Rogue Planet)
+          if (!n.parentId) return true;
+
+          return false;
+      }).sort((a, b) => {
+          // Sort: Stars first, then by semi-major axis
+          const isStarA = a.roleHint === 'star';
+          const isStarB = b.roleHint === 'star';
+          if (isStarA && !isStarB) return -1;
+          if (!isStarA && isStarB) return 1;
+          
+          const distA = a.orbit?.elements.a_AU || 0;
+          const distB = b.orbit?.elements.a_AU || 0;
+          return distA - distB;
+      });
+  }
 </script>
 
 <svelte:head>
@@ -160,7 +191,7 @@
             <table>
                 <tbody>
                     <tr>
-                        <th>Star Count</th><td>{stars.length}</td>
+                        <th>Star Count</th><td>{system.nodes.filter(n => n.roleHint === 'star').length}</td>
                         <th>Total Objects</th><td>{system.nodes.length}</td>
                         <th>Epoch</th><td>{new Date(system.epochT0).getFullYear()}</td>
                     </tr>
@@ -181,23 +212,27 @@
     <section class="body-details">
         <h2>02. CELESTIAL SURVEY</h2>
         
-        {#each stars as star}
+        {#each getPrimaryBodies() as primary}
             <div class="star-block">
-                <div class="section-header">STAR: {star.name.toUpperCase()} ({star.class})</div>
+                <div class="section-header">
+                    {primary.roleHint === 'star' ? 'STAR' : 'PRIMARY BODY'}: {primary.name.toUpperCase()} ({primary.class})
+                </div>
                 <div class="data-box">
-                    <p class="pre-wrap-text">{star.description || 'No description available.'}</p>
+                    <p class="pre-wrap-text">{primary.description || 'No description available.'}</p>
                     <table>
                         <tbody>
                             <tr>
-                                <th>Mass</th><td>{(star.massKg / 1.989e30).toFixed(3)} Solar Masses</td>
-                                <th>Radius</th><td>{formatNumber(star.radiusKm)} km</td>
-                                <th>Temp</th><td>{Math.round((star.temperatureK || 5700) - 273.15)}°C</td>
+                                <th>Mass</th><td>{(primary.massKg / 1.989e30).toFixed(3)} Solar Masses</td>
+                                <th>Radius</th><td>{formatNumber(primary.radiusKm)} km</td>
+                                {#if primary.temperatureK}
+                                <th>Temp</th><td>{Math.round((primary.temperatureK) - 273.15)}°C</td>
+                                {/if}
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
-                {#each getBodiesOnly(star.id) as child}
+                {#each getBodiesOnly(primary.id) as child}
                     {@const phys = getDerivedPhysics(child)}
                     <div class="child-block" style="margin-left: 15px; border-left: 2px solid #ccc; padding-left: 10px; margin-bottom: 15px;">
                         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; border-bottom: 1px solid #eee;">
