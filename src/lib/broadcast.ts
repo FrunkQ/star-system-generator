@@ -23,7 +23,7 @@ export type BroadcastMessage =
   | { type: 'SYNC_VIEW_SETTINGS'; payload: ViewSettings }
   | { type: 'SYNC_TIME'; payload: TimeState }
   | { type: 'SYNC_CRT_MODE'; payload: boolean }
-  | { type: 'REQUEST_SYNC'; payload: null };
+  | { type: 'REQUEST_SYNC'; payload: string | null };
 
 const CHANNEL_NAME = 'star_system_generator_channel';
 
@@ -51,7 +51,8 @@ class BroadcastService {
       onCameraUpdate: (pan: PanState, zoom: number, isManual: boolean) => void,
       onViewSettingsUpdate: (settings: ViewSettings) => void,
       onTimeUpdate: (time: TimeState) => void,
-      onCrtModeUpdate: (isCrt: boolean) => void
+      onCrtModeUpdate: (isCrt: boolean) => void,
+      targetId: string | null = null
   ) {
     this.isSender = false;
     this.onSystemUpdate = onSystemUpdate;
@@ -63,7 +64,7 @@ class BroadcastService {
     this.onCrtModeUpdate = onCrtModeUpdate;
     
     // Request initial state
-    this.sendMessage({ type: 'REQUEST_SYNC', payload: null });
+    this.sendMessage({ type: 'REQUEST_SYNC', payload: targetId });
   }
 
   public sendMessage(msg: BroadcastMessage) {
@@ -79,7 +80,7 @@ class BroadcastService {
   private onCrtModeUpdate: ((isCrt: boolean) => void) | null = null;
 
   // Handlers for incoming messages
-  public onRequestSync: (() => void) | null = null;
+  public onRequestSync: ((requestingId: string | null) => void) | null = null;
 
   private handleMessage(msg: BroadcastMessage) {
       switch (msg.type) {
@@ -105,7 +106,7 @@ class BroadcastService {
               if (!this.isSender && this.onCrtModeUpdate) this.onCrtModeUpdate(msg.payload);
               break;
           case 'REQUEST_SYNC':
-              if (this.isSender && this.onRequestSync) this.onRequestSync();
+              if (this.isSender && this.onRequestSync) this.onRequestSync(msg.payload);
               break;
       }
   }

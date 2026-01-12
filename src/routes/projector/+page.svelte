@@ -8,6 +8,7 @@
   import { browser } from '$app/environment';
   import type { RulePack } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
+  import { page } from '$app/stores';
   
   let rulePack: RulePack | null = null;
   let currentTime = Date.now();
@@ -17,6 +18,7 @@
   let showMenu = false;
   let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
   let isCrtMode = false;
+  let broadcastSessionId: string | null = null;
 
   // View Settings
   let showNames = true;
@@ -45,6 +47,10 @@
   }
 
   onMount(async () => {
+      // Get session ID from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      broadcastSessionId = urlParams.get('sid');
+  
       // Load RulePack (assuming standard)
       try {
         rulePack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json');
@@ -87,7 +93,8 @@
           },
           (crtMode) => {
               isCrtMode = crtMode;
-          }
+          },
+          broadcastSessionId
       );
 
       startLoop();
@@ -160,7 +167,7 @@
         <div class="loading">
             <h1>Waiting for GM...</h1>
             <p>Open a System in the main window.</p>
-            <button on:click={() => broadcastService.sendMessage({ type: 'REQUEST_SYNC', payload: null })}>
+            <button on:click={() => broadcastService.sendMessage({ type: 'REQUEST_SYNC', payload: broadcastSessionId })}>
                 Retry Connection
             </button>
         </div>

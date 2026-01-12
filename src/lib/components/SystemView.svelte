@@ -129,6 +129,8 @@
   let transitChainTime: number = 0;
   let transitChainState: any = undefined; // StateVector imported later
   let isTransitExecuting: boolean = false;
+  
+  let broadcastSessionId = generateId(); 
 
   function handleToggleCrt() {
       isCrtMode = !isCrtMode;
@@ -836,7 +838,7 @@ a.click();
   }
 
   async function handleShare() {
-      window.open('/projector', 'StarSystemProjector', 'width=1280,height=720,menubar=no,toolbar=no,location=no');
+      window.open(`/projector?sid=${broadcastSessionId}`, 'StarSystemProjector', 'width=1280,height=720,menubar=no,toolbar=no,location=no');
       if ($systemStore) {
           broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: computePlayerSnapshot($systemStore) });
       }
@@ -866,7 +868,10 @@ a.click();
 
     if (browser) {
         broadcastService.initSender();
-        broadcastService.onRequestSync = () => {
+        broadcastService.onRequestSync = (requestingId: string | null) => {
+            // Only respond if the request is for THIS session, or if it's a legacy/wildcard request (null)
+            if (requestingId && requestingId !== broadcastSessionId) return;
+
             if (get(systemStore)) {
                 const snapshot = computePlayerSnapshot(get(systemStore)!);
                 broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: snapshot });
