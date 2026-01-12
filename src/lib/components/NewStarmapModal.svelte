@@ -24,7 +24,7 @@
 
 <div class="modal-background">
   <div class="modal">
-    <h2>Welcome to the Star System Explorer!</h2>
+    <img src="/images/ui/SSE-Logo.png" alt="Star System Explorer" class="main-logo" />
     <p class="discord-link"><a href="https://discord.gg/UAEq4zzjD8" target="_blank">Join us on Discord!</a></p>
     <p>This tool allows you to create and explore scientifically-plausible star systems. Get started by creating a new starmap, or load a previous creation. For more information, see the <a href="https://github.com/FrunkQ/star-system-generator/blob/main/GettingStarted.md" target="_blank" rel="noopener noreferrer">Getting Started Guide</a>.</p>
     
@@ -95,6 +95,13 @@
   .logo {
     max-width: 300px;
     margin: 10px auto;
+  }
+
+  .main-logo {
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+    display: block;
   }
 
   .modal input[type="text"],
