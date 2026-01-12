@@ -25,11 +25,18 @@ export type BroadcastMessage =
   | { type: 'SYNC_CRT_MODE'; payload: boolean }
   | { type: 'REQUEST_SYNC'; payload: string | null };
 
+type BroadcastEnvelope = {
+  sessionId: string | null;
+  message: BroadcastMessage;
+};
+
 const CHANNEL_NAME = 'star_system_generator_channel';
 
 class BroadcastService {
   private channel: BroadcastChannel | null = null;
   private isSender: boolean = false;
+  private sessionId: string | null = null;
+  private targetSessionId: string | null = null;
 
   constructor() {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
@@ -39,8 +46,9 @@ class BroadcastService {
   }
 
   // Setup for GM Mode (Sender)
-  public initSender() {
+  public initSender(sessionId: string) {
     this.isSender = true;
+    this.sessionId = sessionId;
   }
 
   // Setup for Player Mode (Receiver)
@@ -55,6 +63,7 @@ class BroadcastService {
       targetId: string | null = null
   ) {
     this.isSender = false;
+    this.targetSessionId = targetId;
     this.onSystemUpdate = onSystemUpdate;
     this.onRulePackUpdate = onRulePackUpdate;
     this.onFocusUpdate = onFocusUpdate;
@@ -64,11 +73,18 @@ class BroadcastService {
     this.onCrtModeUpdate = onCrtModeUpdate;
     
     // Request initial state
+    // For REQUEST_SYNC, we send it "from" no one (or self?), but the payload targets the specific GM
     this.sendMessage({ type: 'REQUEST_SYNC', payload: targetId });
   }
 
   public sendMessage(msg: BroadcastMessage) {
-    if (this.channel) this.channel.postMessage(msg);
+    if (this.channel) {
+        const envelope: BroadcastEnvelope = {
+            sessionId: this.sessionId, // Will be null for Receiver (which is fine for REQUEST_SYNC)
+            message: msg
+        };
+        this.channel.postMessage(envelope);
+    }
   }
 
   private onSystemUpdate: ((sys: System) => void) | null = null;
@@ -82,7 +98,33 @@ class BroadcastService {
   // Handlers for incoming messages
   public onRequestSync: ((requestingId: string | null) => void) | null = null;
 
-  private handleMessage(msg: BroadcastMessage) {
+  private handleMessage(data: any) {
+      // Check if this is an envelope or legacy message
+      let msg: BroadcastMessage;
+      let senderId: string | null = null;
+
+      if (data && 'message' in data && 'type' in data.message) {
+          // New Envelope Format
+          const env = data as BroadcastEnvelope;
+          msg = env.message;
+          senderId = env.sessionId;
+      } else if (data && 'type' in data) {
+          // Legacy Format (handle gracefully during upgrade/mixed versions)
+          msg = data as BroadcastMessage;
+      } else {
+          return; // Unknown format
+      }
+
+      // Receiver Logic: Filtering
+      if (!this.isSender) {
+          // If we have a targetSessionId, we ONLY accept messages from that ID
+          // Exception: If senderId is null/undefined (Legacy), we might accept it if we didn't specify a target?
+          // BUT: If targetId IS set, we must strictly ignore mismatches.
+          if (this.targetSessionId && senderId !== this.targetSessionId) {
+              return; 
+          }
+      }
+
       switch (msg.type) {
           case 'SYNC_SYSTEM':
               if (!this.isSender && this.onSystemUpdate) this.onSystemUpdate(msg.payload);
@@ -106,7 +148,12 @@ class BroadcastService {
               if (!this.isSender && this.onCrtModeUpdate) this.onCrtModeUpdate(msg.payload);
               break;
           case 'REQUEST_SYNC':
-              if (this.isSender && this.onRequestSync) this.onRequestSync(msg.payload);
+              // Sender Logic: Only respond if payload matches OUR sessionId (or is null/legacy)
+              if (this.isSender && this.onRequestSync) {
+                   const targetId = msg.payload;
+                   if (targetId && targetId !== this.sessionId) return;
+                   this.onRequestSync(msg.payload);
+              }
               break;
       }
   }

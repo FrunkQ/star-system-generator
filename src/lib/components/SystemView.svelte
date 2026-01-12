@@ -867,7 +867,7 @@ a.click();
     zoomStore.set(currentViewport.zoom, { duration: 0 });
 
     if (browser) {
-        broadcastService.initSender();
+        broadcastService.initSender(broadcastSessionId);
         broadcastService.onRequestSync = (requestingId: string | null) => {
             // Only respond if the request is for THIS session, or if it's a legacy/wildcard request (null)
             if (requestingId && requestingId !== broadcastSessionId) return;
