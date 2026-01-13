@@ -41,7 +41,8 @@
 <hr>
 
 <p><strong>Community & Support:</strong><br>
-<a href="https://discord.gg/UAEq4zzjD8" target="_blank">Join us on Discord!</a></p>
+<a href="https://discord.gg/UAEq4zzjD8" target="_blank">Join us on Discord!</a><br>
+<a href="https://youtu.be/LrgNh2PVOlg" target="_blank">Watch the Tutorial Video</a></p>
 `;
 
   let panX = 0;

@@ -6,6 +6,8 @@
 
 A procedural generator for creating scientifically-plausible star systems, complete with a real-time orbital visualizer and starmap. Full astrodynamics simulation letting you easily model your own spacecraft and let them transit efficienctly or "hard burn" with fuel, time and hazard calculations.
 
+📺 **[Watch the Tutorial Video](https://youtu.be/LrgNh2PVOlg)**
+
 For discussion, feedback, bugs and suggestions go to [Our Discord](https://discord.gg/UAEq4zzjD8)
 
 ## Table of Contents
@@ -156,11 +158,14 @@ You can preview the production build with `npm run preview`.
 
 ## Known Issues
 
-### v1.2.4 Changelog
-*   **Navigation Fixes**:
-    *   Fixed a bug where the "Back" button would get stuck in a loop when at the root of a star system.
-    *   Unified the behavior of the "To Starmap" button and the browser Back button to ensure reliable exit from system views.
-    *   Implemented robust state clearing to prevent "ghost" system states from persisting after exit.
+### v1.3.3 Changelog
+*   **Documentation**:
+    *   Added tutorial video link to README, Getting Started, and About dialogs for better onboarding.
+*   **Bug Fixes**:
+    *   Fixed a critical issue where regenerating a system, selecting a preset, or uploading a JSON would lose the link to the starmap due to ID mismatch.
+*   **v1.3.1 - Sync Engine**:
+    *   Implemented real-time broadcast sync for Projection View.
+    *   Added intelligent camera synchronization between GM and Player views.
 *   **Performance**:
     *   Commented out debug logs for smooth animations.
 *   **General**:

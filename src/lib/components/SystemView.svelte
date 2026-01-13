@@ -699,7 +699,15 @@
 
   async function handleGenerate(empty: boolean = false) {
     const seed = `seed-${Date.now()}`;
+    // Keep the old ID to preserve starmap link
+    const oldId = $systemStore?.id;
+    
     const newSystem = generateSystem(seed, rulePack, {}, selectedGenerationOption, empty, $systemStore?.toytownFactor || 0);
+    
+    if (oldId) {
+        newSystem.id = oldId;
+    }
+
     systemStore.set(newSystem);
     currentTime = newSystem.epochT0;
     updateFocus(null, true); // Reset focus
@@ -786,6 +794,12 @@
       }
       let newSystem = await response.json();
       if (newSystem.id && newSystem.name && Array.isArray(newSystem.nodes) && newSystem.rulePackId) {
+        // Keep the old ID to preserve starmap link
+        const oldId = $systemStore?.id;
+        if (oldId) {
+            newSystem.id = oldId;
+        }
+
         systemStore.set(systemProcessor.process(newSystem, rulePack));
         currentTime = newSystem?.epochT0 || Date.now();
         focusedBodyId = null;
@@ -823,6 +837,12 @@ a.click();
         const json = e.target?.result as string;
         let newSystem = JSON.parse(json);
         if (newSystem.id && newSystem.name && Array.isArray(newSystem.nodes) && newSystem.rulePackId) {
+          // Keep the old ID to preserve starmap link
+          const oldId = $systemStore?.id;
+          if (oldId) {
+              newSystem.id = oldId;
+          }
+
           systemStore.set(systemProcessor.process(newSystem, rulePack));
           currentTime = newSystem?.epochT0 || Date.now();
           focusedBodyId = null;

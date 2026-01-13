@@ -31,6 +31,8 @@
         <p>A procedural generator for creating scientifically-plausible star systems, complete with a real-time orbital visualizer and starmap. Full astrodynamics simulation letting you easily model your own spacecraft and let them transit efficienctly or "hard burn" with fuel, time and hazard calculations.</p>
 
         <p>For discussion, feedback, bugs and suggestions go to <a href="https://discord.gg/UAEq4zzjD8" target="_blank">Our Discord</a>.</p>
+
+        <p>A <a href="https://youtu.be/LrgNh2PVOlg" target="_blank">video explainer on YouTube</a> to get you started.</p>
     </div>
 
     <div class="right-pane">

@@ -2,6 +2,8 @@
 
 Welcome to the Star System Generator! This application is a comprehensive toolkit designed to help Game Masters create, visualize, and manage scientifically-plausible star systems for sci-fi TTRPGs. Whether you run a hard-science campaign like *The Expanse*, a retro-future game like *Traveller* or *Mothership*, or space opera like *Star Wars*, this tool adapts to your needs.
 
+📺 **[Watch the Tutorial Video](https://youtu.be/LrgNh2PVOlg)** to see it in action!
+
 ## 1. The Starmap: Your Galactic Sector
 
 When you launch the app, you start at the **Starmap View**. This is your sector map, tracking the relationships between different star systems.
