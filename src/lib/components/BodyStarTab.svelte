@@ -17,7 +17,7 @@
   let magGauss = $state(0);
 
   // --- Mass Slider Config ---
-  const massMin = 0.05;
+  const massMin = 0.01; // ~10 Jupiter masses (Brown Dwarf range)
   const massMax = 300;
   const massLogMin = Math.log(massMin);
   const massLogMax = Math.log(massMax);
@@ -31,7 +31,7 @@
   let radiusSliderPos = $state(0.5);
 
   // --- Temp Slider Config ---
-  const tempMin = 2000;
+  const tempMin = 500; // Brown Dwarf / Y-dwarf range
   const tempMax = 50000;
   const tempLogMin = Math.log(tempMin);
   const tempLogMax = Math.log(tempMax);
@@ -54,6 +54,9 @@
   ];
 
   const tempZones = [
+      { name: 'Y', start: 500, end: 700, color: '#2a1a1a' },
+      { name: 'T', start: 700, end: 1300, color: '#4a2a2a' },
+      { name: 'L', start: 1300, end: 2000, color: '#8a4a4a' },
       { name: 'M', start: 2000, end: 3700, color: '#ffc46f' },
       { name: 'K', start: 3700, end: 5200, color: '#ffd2a1' },
       { name: 'G', start: 5200, end: 6000, color: '#fff4ea' },
@@ -136,13 +139,17 @@
       body.temperatureK = tempK;
       
       // Auto-update Class based on Temp
-      let newClass = 'star/M';
+      let newClass = 'star/Y';
       if (tempK >= 30000) newClass = 'star/O';
       else if (tempK >= 10000) newClass = 'star/B';
       else if (tempK >= 7500) newClass = 'star/A';
       else if (tempK >= 6000) newClass = 'star/F';
       else if (tempK >= 5200) newClass = 'star/G';
       else if (tempK >= 3700) newClass = 'star/K';
+      else if (tempK >= 2000) newClass = 'star/M';
+      else if (tempK >= 1300) newClass = 'star/L';
+      else if (tempK >= 700) newClass = 'star/T';
+      else newClass = 'star/Y';
       
       const currentClass = body.classes?.[0] || '';
       if (!['star/WD', 'star/NS', 'star/BH', 'star/BH_active', 'star/magnetar', 'star/red-giant'].includes(currentClass)) {
@@ -181,10 +188,15 @@
   function updateImage(starClass: string) {
       let lookupClass = starClass;
       if (starClass === 'star/red-giant') lookupClass = 'star/M';
+      // Map all brown dwarf types to the generic brown dwarf texture if specific ones don't exist
+      if (['star/L', 'star/T', 'star/Y'].includes(starClass)) {
+          // Fallback logic handled by checking for specific keys below
+      }
 
-      if (rulePack?.classifier?.starImages?.[lookupClass]) {
+      const images = rulePack?.classifier?.starImages || rulePack?.starImages;
+      if (images?.[lookupClass]) {
           if (!body.image) body.image = { url: '' };
-          body.image.url = rulePack.classifier.starImages[lookupClass];
+          body.image.url = images[lookupClass];
       }
   }
 
@@ -194,6 +206,9 @@
   });
 
   function getStarColorFromTemp(k: number) {
+      if (k < 1000) return "#2a1a1a"; // Y (Black/Dark Brown)
+      if (k < 1500) return "#4a2a2a"; // T (Dark Magenta/Brown)
+      if (k < 2000) return "#8a4a4a"; // L (Deep Red/Brown)
       if (k < 3700) return "#ffc46f"; // M (Orange-Red)
       if (k < 5200) return "#ffd2a1"; // K (Light Orange)
       if (k < 6000) return "#fff4ea"; // G (Yellow-White)
@@ -213,7 +228,7 @@
       return (Math.log(Math.max(tempMin, val)) - tempLogMin) / (tempLogMax - tempLogMin) * 100;
   }
 
-  const spectralTypes = ['star/O', 'star/B', 'star/A', 'star/F', 'star/G', 'star/K', 'star/M', 'star/red-giant', 'star/WD', 'star/NS', 'star/BH'];
+  const spectralTypes = ['star/O', 'star/B', 'star/A', 'star/F', 'star/G', 'star/K', 'star/M', 'star/L', 'star/T', 'star/Y', 'star/red-giant', 'star/WD', 'star/NS', 'star/BH'];
 
   function updateSpectralType(e: Event) {
       const val = (e.target as HTMLSelectElement).value;
@@ -287,6 +302,10 @@
                     <text x="{x + 1}%" y="28" class="rad-label">{zone.name}</text>
                 {/each}
                 <line x1="100%" y1="5" x2="100%" y2="18" stroke="#666" stroke-width="1" />
+                
+                <!-- Sub-Stellar Label -->
+                <line x1="{getTempLogPos(2000)}%" y1="2" x2="{getTempLogPos(2000)}%" y2="20" stroke="#fff" stroke-width="1" stroke-dasharray="2" />
+                <text x="{getTempLogPos(500)}%" y="38" class="rad-label ref" style="fill: #8a4a4a;">Sub-Stellar</text>
             </svg>
             <input type="range" min="0" max="1" step="0.001" bind:value={tempSliderPos} on:input={updateTemp} class="full-width-slider overlay" />
         </div>

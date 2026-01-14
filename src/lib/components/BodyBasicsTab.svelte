@@ -17,7 +17,7 @@
 
   // --- Mass Slider Config ---
   const massMinEarths = 0.000000001; // Very small for tonnes
-  const massMaxEarths = 4130; // ~13 Jupiter masses in Earths (approx 4130 Earth Masses)
+  const massMaxEarths = 26000; // ~80 Jupiter masses (Start of M-dwarf stars)
   const massMinSuns = 0.01;
   const massMaxSuns = 100;
 
@@ -95,22 +95,30 @@
   }
 
   // --- Size Category Helper ---
-  function getSizeCategory(rKm: number): string {
+  function getSizeCategory(rKm: number, mKg: number): string {
+      const mEarths = mKg / EARTH_MASS_KG;
+      if (mEarths > 4000) return "Brown Dwarf";
       if (rKm < 200) return "Moonlet / Asteroid";
       if (rKm < 800) return "Dwarf Planet";
       if (rKm < 2 * EARTH_RADIUS_KM) return "Terrestrial Planet";
       if (rKm < 6 * EARTH_RADIUS_KM) return "Ice Giant / Sub-Neptune";
       return "Gas Giant";
   }
-  $: sizeCategory = getSizeCategory(body.radiusKm || 0);
+  $: sizeCategory = getSizeCategory(body.radiusKm || 0, body.massKg || 0);
 
   function updateClassFromSize() {
       const rKm = body.radiusKm || 0;
+      const mKg = body.massKg || 0;
+      const mEarths = mKg / EARTH_MASS_KG;
+      
       let newClass = "";
       let newColor = "";
 
-      if (rKm < 200) {
-          // Moonlet / Asteroid - don't force class change by default
+      if (mEarths > 4000) {
+          newClass = "planet/brown-dwarf";
+          newColor = "#5d4037"; // Dark Brown
+      } else if (rKm < 200) {
+          // Moonlet / Asteroid
       } else if (rKm < 800) {
           newClass = "planet/dwarf-planet";
           newColor = "#bdc3c7"; // Grey
@@ -130,7 +138,7 @@
           body.classes[0] = newClass;
 
           if (!body.tags) body.tags = [];
-          const sizeTags = ["planet/dwarf-planet", "planet/terrestrial", "planet/ice-giant", "planet/gas-giant"];
+          const sizeTags = ["planet/dwarf-planet", "planet/terrestrial", "planet/ice-giant", "planet/gas-giant", "planet/brown-dwarf"];
           body.tags = body.tags.filter(t => !sizeTags.includes(t.key));
           body.tags.push({ key: newClass });
 
@@ -157,6 +165,7 @@
       }
       // Update internal mass value for slider to react
       massValueInternal = useSolarUnits ? body.massKg / SOLAR_MASS_KG : body.massKg / EARTH_MASS_KG;
+      updateClassFromSize();
       dispatch('update');
   }
 
@@ -164,6 +173,7 @@
       const val = Math.exp(massLogMin + (massLogMax - massLogMin) * massSliderPos);
       massValueInternal = parseFloat(val.toPrecision(4));
       body.massKg = massValueInternal * (useSolarUnits ? SOLAR_MASS_KG : EARTH_MASS_KG);
+      updateClassFromSize();
       dispatch('update');
   }
 

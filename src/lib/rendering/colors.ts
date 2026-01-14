@@ -8,6 +8,10 @@ export const STAR_COLOR_MAP: Record<string, string> = {
     "G": "#fff4ea", 
     "K": "#ffd2a1", 
     "M": "#ffc46f", 
+    "L": "#8a4a4a", // Brown Dwarf (L-type)
+    "T": "#4a2a2a", // Brown Dwarf (T-type)
+    "Y": "#2a1a1a", // Brown Dwarf (Y-type)
+    "brown-dwarf": "#5d4037", // Generic Brown Dwarf
     "WD": "#f0f0f0", // White Dwarf
     "NS": "#c0c0ff", // Neutron Star
     "magnetar": "#800080", // Magnetar (Purple)

@@ -169,27 +169,27 @@
     }
   }
 
-  function getStarColor(star: CelestialBody): string {
-    if (star && star.classes && star.classes.length > 0) {
-        if (star.classes.includes('star/magnetar')) return '#800080'; // Purple for Magnetar
-        if (star.classes.includes('BH') || star.classes.includes('star/BH')) return '#000000'; // Black for Black Hole
-        if (star.classes.includes('star/red-giant')) return '#8b0000'; // Deep Red for Red Giant
-        const starClass = star.classes[0].split('/')[1]; // e.g., "star/G2V" -> "G2V"
-        const spectralType = starClass[0]; // e.g., "G2V" -> "G"
-        switch (spectralType) {
-            case 'O': return '#9bb0ff'; // Blue
-            case 'B': return '#aabfff'; // Blue-white
-            case 'A': return '#cad7ff'; // White
-            case 'F': return '#f8f7ff'; // Yellow-white
-            case 'G': return '#fff8e8'; // Yellow (Sun-like)
-            case 'K': return '#ffddb4'; // Orange
-            case 'M': return '#ff8f5a'; // Red
-            default: return '#cccccc'; // Default for unknown
-        }
+      function getStarColor(star: CelestialBody): string {
+      if (star && star.classes && star.classes.length > 0) {
+          if (star.classes.includes('star/magnetar')) return '#800080'; // Purple for Magnetar
+          if (star.classes.includes('BH') || star.classes.includes('star/BH')) return '#000000'; // Black for Black Hole
+          if (star.classes.includes('star/red-giant')) return '#8b0000'; // Deep Red for Red Giant
+          if (star.classes.includes('star/brown-dwarf')) return '#5d4037'; // Dark Brown for Brown Dwarf
+          const starClass = star.classes[0].split('/')[1]; // e.g., "star/G2V" -> "G2V"
+          const spectralType = starClass[0]; // e.g., "G2V" -> "G"
+          switch (spectralType) {
+              case 'O': return '#9bb0ff'; // Blue
+              case 'B': return '#aabfff'; // Blue-white
+              case 'A': return '#cad7ff'; // White
+              case 'F': return '#f8f7ff'; // Yellow-white
+              case 'G': return '#fff8e8'; // Yellow (Sun-like)
+              case 'K': return '#ffddb4'; // Orange
+              case 'M': return '#ff8f5a'; // Red
+              default: return '#cccccc'; // Default for unknown
+          }
+      }
+      return '#cccccc'; // Default color
     }
-    return '#cccccc'; // Default color
-  }
-
   function getVisualNodes(system: System): CelestialBody[] {
       const stars = system.nodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
       if (stars.length > 0) {
