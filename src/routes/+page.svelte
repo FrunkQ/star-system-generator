@@ -119,7 +119,8 @@
     if (system) { // No need to check currentSystemId, the system knows its own ID
       starmapStore.update(starmap => {
         if (starmap) {
-          const systemNode = starmap.systems.find(s => s.id === system.id);
+          // Robustly find the node: check both node.id (if matched system.id previously) and node.system.id
+          const systemNode = starmap.systems.find(s => s.id === system.id || s.system.id === system.id);
           if (systemNode) {
             systemNode.system = system;
             systemNode.name = system.name;
