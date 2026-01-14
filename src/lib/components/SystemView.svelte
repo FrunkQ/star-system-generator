@@ -1153,7 +1153,10 @@ a.click();
         </label>
         <label>
             Toytown View:
-            <input type="range" min="0" max="1" step="0.01" bind:value={$systemStore.toytownFactor} on:change={handleSliderRelease} />
+            <input type="range" min="0" max="1" step="0.01" bind:value={$systemStore.toytownFactor} on:change={() => {
+                if ($systemStore.toytownFactor < 0.005) $systemStore.toytownFactor = 0;
+                handleSliderRelease();
+            }} />
         </label>
         <button on:click={() => isPlaying ? pause() : play()}>
             {isPlaying ? 'Pause' : 'Play'}

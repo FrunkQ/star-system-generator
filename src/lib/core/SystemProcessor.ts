@@ -14,6 +14,9 @@ export class SystemProcessor implements ISystemProcessor {
         const allNodes = processedSystem.nodes;
         const rng = new SeededRNG(system.seed); // Deterministic RNG for procedural aspects of processing
 
+        // 0. Pass 0: Orbital Dynamics & Barycenters (Ensure mass/orbits are correct first)
+        this.processBarycenters(processedSystem);
+
         // 1. First Pass: Physical Basics (Orbital Period, Gravity, etc.)
         for (const node of allNodes) {
             if (node.kind === 'body') {
@@ -46,6 +49,71 @@ export class SystemProcessor implements ISystemProcessor {
         }
 
         return processedSystem;
+    }
+
+    private processBarycenters(system: System) {
+        const barycenters = system.nodes.filter(n => n.kind === 'barycenter') as Barycenter[];
+        const nodesById = new Map(system.nodes.map(n => [n.id, n]));
+
+        for (const bary of barycenters) {
+            if (!bary.memberIds || bary.memberIds.length < 2) continue;
+
+            const members = bary.memberIds.map(id => nodesById.get(id)).filter(n => n !== undefined) as (CelestialBody | Barycenter)[];
+            if (members.length < 2) continue;
+
+            // 1. Calculate New Total Mass
+            let totalMass = 0;
+            for (const member of members) {
+                if (member.kind === 'body') {
+                    totalMass += (member as CelestialBody).massKg || 0;
+                } else if (member.kind === 'barycenter') {
+                    totalMass += (member as Barycenter).effectiveMassKg || 0;
+                }
+            }
+            bary.effectiveMassKg = totalMass;
+
+            // 2. Calculate Current Separation (a_total)
+            // We assume the user edited the mass but wants the physical distance to remain roughly similar,
+            // OR we derive it from current 'a' values.
+            let separationAU = 0;
+            for (const member of members) {
+                if (member.orbit) separationAU += member.orbit.elements.a_AU || 0;
+            }
+
+            // 3. Recalculate Orbits based on Mass Ratio
+            // n (mean motion) is common for the system: sqrt( G * M_tot / a_sep^3 )
+            const separationMeters = separationAU * AU_KM * 1000;
+            let n_rad_per_s = 0;
+            if (separationMeters > 0 && totalMass > 0) {
+                n_rad_per_s = Math.sqrt((G * totalMass) / Math.pow(separationMeters, 3));
+            }
+
+            for (const member of members) {
+                if (!member.orbit) continue;
+
+                const memberMass = member.kind === 'body' ? (member as CelestialBody).massKg : (member as Barycenter).effectiveMassKg;
+                if (memberMass === undefined) continue;
+
+                // Distance from barycenter: r1 = a * (m2 / (m1+m2))
+                // Generalized: r_i = a * ( (M_tot - m_i) / M_tot ) ?? No, specific for binary:
+                // r1 = a * m2 / M_tot
+                // For N-body it's complex, but for binary stored in memberIds:
+                
+                // If strictly binary:
+                if (members.length === 2) {
+                    const otherMember = members.find(m => m.id !== member.id)!;
+                    const otherMass = otherMember.kind === 'body' ? (otherMember as CelestialBody).massKg : (otherMember as Barycenter).effectiveMassKg;
+                    
+                    if (totalMass > 0) {
+                        member.orbit.elements.a_AU = separationAU * ((otherMass || 0) / totalMass);
+                    }
+                }
+
+                // Update Physics
+                member.orbit.hostMu = G * totalMass;
+                member.orbit.n_rad_per_s = n_rad_per_s;
+            }
+        }
     }
 
     private processPhysicalBasics(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], rulePack: RulePack) {
