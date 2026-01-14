@@ -1,0 +1,171 @@
+{
+  "id": "seed-algol-8849201",
+  "name": "Algol System",
+  "seed": "algol-beta-persei-data",
+  "epochT0": 1762339146908,
+  "age_Gyr": 0.57,
+  "nodes": [
+    {
+      "id": "algol-inner-barycenter",
+      "parentId": null,
+      "name": "Algol A/B Barycenter",
+      "kind": "barycenter",
+      "memberIds": [
+        "algol-a",
+        "algol-b"
+      ],
+      "tags": [],
+      "effectiveMassKg": 7.705e+30,
+      "description": "The center of mass for the eclipsing binary pair. The stars are so close that mass streams from Star B to Star A.",
+      "tidallyLocked": true
+    },
+    {
+      "id": "algol-a",
+      "parentId": "algol-inner-barycenter",
+      "name": "Algol A (Beta Persei Aa1)",
+      "kind": "body",
+      "roleHint": "star",
+      "classes": [
+        "star/B",
+        "star/B8V"
+      ],
+      "massKg": 6.303e+30,
+      "radiusKm": 1900000,
+      "temperatureK": 12500,
+      "magneticField": {
+        "strengthGauss": 100
+      },
+      "radiationOutput": 180,
+      "image": {
+        "url": "/images/star_types/B.webp"
+      },
+      "tags": [
+        {
+          "key": "Main Sequence"
+        }
+      ],
+      "areas": [],
+      "orbit": {
+        "hostId": "algol-inner-barycenter",
+        "hostMu": 514200000000000000000,
+        "t0": 1762339146908,
+        "n_rad_per_s": 2.533e-5,
+        "elements": {
+          "a_AU": 0.013,
+          "e": 0.0,
+          "i_deg": 82,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "description": "The primary star, a hot, blue-white B-type star. It is the recipient of stellar material stripped from its companion, making it spin rapidly.",
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 116.0,
+      "orbital_period_days": 2.867
+    },
+    {
+      "id": "algol-b",
+      "parentId": "algol-inner-barycenter",
+      "name": "Algol B (Beta Persei Aa2)",
+      "kind": "body",
+      "roleHint": "star",
+      "classes": [
+        "star/K",
+        "star/K0IV"
+      ],
+      "massKg": 1.392e+30,
+      "radiusKm": 2430000,
+      "temperatureK": 4500,
+      "magneticField": {
+        "strengthGauss": 2000
+      },
+      "radiationOutput": 3.5,
+      "image": {
+        "url": "/images/star_types/K_subgiant.webp"
+      },
+      "tags": [
+        {
+          "key": "Subgiant"
+        },
+        {
+          "key": "Roche Lobe Overflow"
+        }
+      ],
+      "areas": [],
+      "orbit": {
+        "hostId": "algol-inner-barycenter",
+        "hostMu": 514200000000000000000,
+        "t0": 1762339146908,
+        "n_rad_per_s": 2.533e-5,
+        "elements": {
+          "a_AU": 0.049,
+          "e": 0.0,
+          "i_deg": 82,
+          "omega_deg": 180,
+          "Omega_deg": 0,
+          "M0_rad": 3.14159
+        }
+      },
+      "description": "A distended orange subgiant star. It has expanded and filled its Roche lobe, distorting into a teardrop shape as it leaks gas onto Algol A.",
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 15.7,
+      "orbital_period_days": 2.867
+    },
+    {
+      "id": "algol-c",
+      "parentId": "algol-inner-barycenter",
+      "name": "Algol C (Beta Persei Ab)",
+      "kind": "body",
+      "roleHint": "star",
+      "classes": [
+        "star/A",
+        "star/Am"
+      ],
+      "orbit": {
+        "hostId": "algol-inner-barycenter",
+        "hostMu": 514200000000000000000,
+        "t0": 1762339146908,
+        "n_rad_per_s": 1.07e-7,
+        "elements": {
+          "a_AU": 2.69,
+          "e": 0.225,
+          "i_deg": 90,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.2
+        }
+      },
+      "massKg": 3.38e+30,
+      "radiusKm": 1180000,
+      "temperatureK": 7500,
+      "radiationOutput": 10,
+      "image": {
+        "url": "/images/star_types/A.webp"
+      },
+      "tags": [
+        {
+          "key": "Metallic Line Star"
+        }
+      ],
+      "areas": [],
+      "description": "A stable A-type star orbiting the chaotic inner pair every 1.86 years. It orbits in a plane nearly perpendicular to the inner binary.",
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 162.0,
+      "orbital_period_days": 680.5
+    }
+  ],
+  "rulePackId": "starter-sf-pack",
+  "rulePackVersion": "0.1.4",
+  "tags": [
+    {
+      "key": "Triple Star System"
+    },
+    {
+      "key": "Eclipsing Binary"
+    }
+  ],
+  "visualScalingMultiplier": 0.01,
+  "toytownFactor": 0,
+  "isManuallyEdited": true
+}

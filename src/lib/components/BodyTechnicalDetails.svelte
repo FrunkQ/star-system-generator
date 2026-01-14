@@ -63,7 +63,7 @@
         if (body.rotation_period_hours) {
              body.calculatedRotationPeriod_s = body.rotation_period_hours * 3600;
         }
-        if (parentBody && body.calculatedGravity_ms2) {
+        if (parentBody && body.calculatedGravity_ms2 && !isStar) {
              const hostMass = (parentBody.massKg || (parentBody as any).effectiveMassKg || 0);
              const planetData: PlanetData = {
                  gravity: body.calculatedGravity_ms2,

@@ -77,9 +77,9 @@
               const currentMassSuns = untrack(() => massSuns);
               if (Math.abs(m - currentMassSuns) > 0.001) {
                   massSuns = m;
+                  // Only update slider if the value actually changed externally
+                  massSliderPos = (Math.log(Math.max(massMin, Math.min(massMax, m))) - massLogMin) / (massLogMax - massLogMin);
               }
-              // Always ensure slider matches the canonical body value
-              massSliderPos = (Math.log(Math.max(massMin, Math.min(massMax, m))) - massLogMin) / (massLogMax - massLogMin);
           }
           
           if (body.radiusKm) {
@@ -87,24 +87,24 @@
               const currentRadiusSuns = untrack(() => radiusSuns);
               if (Math.abs(r - currentRadiusSuns) > 0.001) {
                   radiusSuns = r;
+                  radiusSliderPos = (Math.log(Math.max(radiusMin, Math.min(radiusMax, r))) - radiusLogMin) / (radiusLogMax - radiusLogMin);
               }
-              radiusSliderPos = (Math.log(Math.max(radiusMin, Math.min(radiusMax, r))) - radiusLogMin) / (radiusLogMax - radiusLogMin);
           }
           
           if (body.temperatureK) {
               const currentTempK = untrack(() => tempK);
               if (Math.abs(body.temperatureK - currentTempK) > 1) {
                   tempK = body.temperatureK;
+                  tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, body.temperatureK))) - tempLogMin) / (tempLogMax - tempLogMin);
               }
-              tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, body.temperatureK))) - tempLogMin) / (tempLogMax - tempLogMin);
           }
           
           if (body.radiationOutput !== undefined) {
               const currentRadiation = untrack(() => radiation);
               if (Math.abs(body.radiationOutput - currentRadiation) > 0.01) {
                   radiation = body.radiationOutput;
+                  radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, body.radiationOutput))) - radLogMin) / (radLogMax - radLogMin);
               }
-              radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, body.radiationOutput))) - radLogMin) / (radLogMax - radLogMin);
           }
           
           rotationHours = body.rotation_period_hours || 0;

@@ -1,0 +1,167 @@
+{
+  "id": "seed-polaris-9928374",
+  "name": "Polaris System",
+  "seed": "polaris-ursa-minor-data",
+  "epochT0": 1762339146908,
+  "age_Gyr": 0.07,
+  "nodes": [
+    {
+      "id": "polaris-inner-barycenter",
+      "parentId": null,
+      "name": "Polaris Aa/Ab Barycenter",
+      "kind": "barycenter",
+      "memberIds": [
+        "polaris-aa",
+        "polaris-ab"
+      ],
+      "tags": [],
+      "effectiveMassKg": 1.325e+31,
+      "description": "The center of mass for the Supergiant Aa and its close dwarf companion Ab.",
+      "tidallyLocked": false
+    },
+    {
+      "id": "polaris-aa",
+      "parentId": "polaris-inner-barycenter",
+      "name": "Polaris Aa (The North Star)",
+      "kind": "body",
+      "roleHint": "star",
+      "classes": [
+        "star/F",
+        "star/F7Ib"
+      ],
+      "massKg": 1.074e+31,
+      "radiusKm": 26000000,
+      "temperatureK": 6015,
+      "magneticField": {
+        "strengthGauss": 10
+      },
+      "radiationOutput": 1260,
+      "image": {
+        "url": "/images/star_types/F_supergiant.webp"
+      },
+      "tags": [
+        {
+          "key": "Supergiant"
+        },
+        {
+          "key": "Cepheid Variable"
+        }
+      ],
+      "areas": [],
+      "orbit": {
+        "hostId": "polaris-inner-barycenter",
+        "hostMu": 884600000000000000000,
+        "t0": 1762339146908,
+        "n_rad_per_s": 6.72e-9,
+        "elements": {
+          "a_AU": 1.17,
+          "e": 0.61,
+          "i_deg": 12,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "description": "A classic Cepheid variable Supergiant. It is 37 times wider than the Sun and 1,260 times brighter. It pulses with a regular beat.",
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 10.6,
+      "orbital_period_days": 10811
+    },
+    {
+      "id": "polaris-ab",
+      "parentId": "polaris-inner-barycenter",
+      "name": "Polaris Ab",
+      "kind": "body",
+      "roleHint": "star",
+      "classes": [
+        "star/F",
+        "star/F6V"
+      ],
+      "massKg": 2.51e+30,
+      "radiusKm": 900000,
+      "temperatureK": 6300,
+      "magneticField": {
+        "strengthGauss": 5
+      },
+      "radiationOutput": 3.0,
+      "image": {
+        "url": "/images/star_types/F.webp"
+      },
+      "tags": [],
+      "areas": [],
+      "orbit": {
+        "hostId": "polaris-inner-barycenter",
+        "hostMu": 884600000000000000000,
+        "t0": 1762339146908,
+        "n_rad_per_s": 6.72e-9,
+        "elements": {
+          "a_AU": 5.03,
+          "e": 0.61,
+          "i_deg": 12,
+          "omega_deg": 180,
+          "Omega_deg": 0,
+          "M0_rad": 3.14159
+        }
+      },
+      "description": "A main-sequence dwarf star trapped in a highly elliptical 30-year orbit around the Supergiant. At closest approach, it dives within 2 AU of the primary.",
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 206.0,
+      "orbital_period_days": 10811
+    },
+    {
+      "id": "polaris-b",
+      "parentId": "polaris-inner-barycenter",
+      "name": "Polaris B",
+      "kind": "body",
+      "roleHint": "star",
+      "classes": [
+        "star/F",
+        "star/F3V"
+      ],
+      "orbit": {
+        "hostId": "polaris-inner-barycenter",
+        "hostMu": 1070000000000000000000,
+        "t0": 1762339146908,
+        "n_rad_per_s": 4.5e-12,
+        "elements": {
+          "a_AU": 2400,
+          "e": 0.1,
+          "i_deg": 45,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.5
+        }
+      },
+      "massKg": 2.76e+30,
+      "radiusKm": 960000,
+      "temperatureK": 6800,
+      "radiationOutput": 3.8,
+      "image": {
+        "url": "/images/star_types/F.webp"
+      },
+      "tags": [
+        {
+          "key": "Wide Companion"
+        }
+      ],
+      "areas": [],
+      "description": "A distant companion star observable with small telescopes. It orbits the inner pair so slowly that it takes thousands of years to complete one revolution.",
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 200.0,
+      "orbital_period_days": 1500000
+    }
+  ],
+  "rulePackId": "starter-sf-pack",
+  "rulePackVersion": "0.1.4",
+  "tags": [
+    {
+      "key": "Triple Star System"
+    },
+    {
+      "key": "Supergiant Host"
+    }
+  ],
+  "visualScalingMultiplier": 0.01,
+  "toytownFactor": 0,
+  "isManuallyEdited": true
+}

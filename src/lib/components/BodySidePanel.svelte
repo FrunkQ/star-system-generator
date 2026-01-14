@@ -23,14 +23,20 @@
   let selectedTab: string = 'Basics';
   $: isBeltOrRing = body.roleHint === 'belt' || body.roleHint === 'ring';
   $: isStar = body.roleHint === 'star';
+  $: isBarycenter = body.kind === 'barycenter';
   
   // Auto-switch to Details if opening a special object (Belt/Ring/Star)
   $: if ((isBeltOrRing || isStar) && (selectedTab === 'Basics' || selectedTab === 'Orbit')) {
       selectedTab = 'Details';
   }
 
+  // Auto-switch for Barycenter
+  $: if (isBarycenter && !['Orbit', 'Tags'].includes(selectedTab)) {
+      selectedTab = 'Tags';
+  }
+
   // Auto-switch BACK to Basics if opening a normal object but tab is stuck on Details
-  $: if (!isBeltOrRing && !isStar && selectedTab === 'Details') {
+  $: if (!isBeltOrRing && !isStar && !isBarycenter && selectedTab === 'Details') {
       selectedTab = 'Basics';
   }
 
@@ -46,14 +52,18 @@
 
 <div class="body-side-panel">
   <div class="tabs">
-    {#if !isBeltOrRing && !isStar}
+    {#if !isBeltOrRing && !isStar && !isBarycenter}
         <button class:active={selectedTab === 'Basics'} on:click={() => setTab('Basics')}>Basics</button>
         <button class:active={selectedTab === 'Orbit'} on:click={() => setTab('Orbit')}>Orbit</button>
+    {:else if isBarycenter}
+        {#if body.parentId}
+            <button class:active={selectedTab === 'Orbit'} on:click={() => setTab('Orbit')}>Orbit</button>
+        {/if}
     {:else}
         <button class:active={selectedTab === 'Details'} on:click={() => setTab('Details')}>Details</button>
     {/if}
     
-    {#if !isBeltOrRing && !isStar}
+    {#if !isBeltOrRing && !isStar && !isBarycenter}
         <button class:active={selectedTab === 'Temp'} on:click={() => setTab('Temp')}>Temp</button>
         <button class:active={selectedTab === 'Atmosphere'} on:click={() => setTab('Atmosphere')}>Atmosphere</button>
         <button class:active={selectedTab === 'Hydro'} on:click={() => setTab('Hydro')}>Liquid</button>
