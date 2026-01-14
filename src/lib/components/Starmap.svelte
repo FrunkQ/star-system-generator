@@ -185,6 +185,9 @@
               case 'G': return '#fff8e8'; // Yellow (Sun-like)
               case 'K': return '#ffddb4'; // Orange
               case 'M': return '#ff8f5a'; // Red
+              case 'L': return '#8a4a4a'; // Brown Dwarf (L-type)
+              case 'T': return '#4a2a2a'; // Brown Dwarf (T-type)
+              case 'Y': return '#2a1a1a'; // Brown Dwarf (Y-type)
               default: return '#cccccc'; // Default for unknown
           }
       }
