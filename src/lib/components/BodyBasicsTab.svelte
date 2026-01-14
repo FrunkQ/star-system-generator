@@ -98,6 +98,7 @@
   function getSizeCategory(rKm: number, mKg: number): string {
       const mEarths = mKg / EARTH_MASS_KG;
       if (mEarths > 4000) return "Brown Dwarf";
+      if (mEarths > 1000) return "Super Jupiter / Sub-Brown Dwarf";
       if (rKm < 200) return "Moonlet / Asteroid";
       if (rKm < 800) return "Dwarf Planet";
       if (rKm < 2 * EARTH_RADIUS_KM) return "Terrestrial Planet";

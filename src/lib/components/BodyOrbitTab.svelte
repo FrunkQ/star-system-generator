@@ -163,6 +163,27 @@
         <hr />
 
         <div class="form-group checkbox-row">
+            <input type="checkbox" id="retrograde" 
+                checked={body.orbit.isRetrogradeOrbit} 
+                on:change={(e) => {
+                    const isRetro = e.currentTarget.checked;
+                    body.orbit.isRetrogradeOrbit = isRetro;
+                    
+                    if (!body.tags) body.tags = [];
+                    
+                    if (isRetro) {
+                        if (!body.tags.some(t => t.key === 'Retrograde Orbit')) body.tags.push({ key: 'Retrograde Orbit' });
+                        if (!body.tags.some(t => t.key === 'Captured Body')) body.tags.push({ key: 'Captured Body' });
+                    } else {
+                        body.tags = body.tags.filter(t => t.key !== 'Retrograde Orbit' && t.key !== 'Captured Body');
+                    }
+                    dispatch('update');
+                }} 
+            />
+            <label for="retrograde">Retrograde Orbit</label>
+        </div>
+
+        <div class="form-group checkbox-row">
             <input type="checkbox" id="showAdv" bind:checked={showAdvancedOrbit} />
             <label for="showAdv">Show Advanced Orbital Elements</label>
         </div>

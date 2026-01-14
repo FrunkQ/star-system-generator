@@ -31,6 +31,11 @@ export function getPlanetColor(node: CelestialBody): string {
     }
     if (node.tags?.some(t => t.key === 'habitability/earth-like' || t.key === 'habitability/human')) return '#007bff'; // Blue for Earth-like
     if (node.biosphere) return '#00ff00'; // Green for biosphere
+    
+    // Brown Dwarfs (Planet-like)
+    const isBrownDwarf = node.classes?.some(c => c.includes('brown-dwarf'));
+    if (isBrownDwarf) return '#5d4037'; // Dark Brown
+
     const isIceGiant = node.classes?.some(c => c.includes('ice-giant'));
     if (isIceGiant) return '#add8e6'; // Light Blue
     const isGasGiant = node.classes?.some(c => c.includes('gas-giant'));

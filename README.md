@@ -158,6 +158,27 @@ You can preview the production build with `npm run preview`.
 
 ## Known Issues
 
+### v1.3.4 Changelog
+*   **Brown Dwarfs**:
+    *   Unified support for sub-stellar objects across planet and star workflows.
+    *   Added specific L, T, and Y spectral types with unique textures and descriptions.
+    *   Extended mass/temp sliders to cover the 13-80 Jupiter mass gap.
+*   **Procedural Realism**:
+    *   Switched to **Logarithmic Orbital Spacing**, ensuring planets are distributed properly across the full system (solving the "Missing Ice Giant" problem).
+    *   Implemented **Logarithmic Mass Distribution** for gas giants, making standard Jupiters common and Super-Jupiters rare.
+    *   Fixed **Moon Over-generation**: Capped moons at 30 and enforced gravitational stability (Hill Sphere) limits.
+    *   Added **Intelligent Moon-Type logic**: Terrestrial planets can no longer have gas giant moons.
+    *   Fixed **Toroidal Bug**: Generated planets now have non-zero rotation periods.
+*   **Binary Physics**:
+    *   Editing a star's mass now dynamically recalculates the system barycenter, shifting orbits and adjusting mean motion ($n$) to maintain physical consistency.
+    *   Fixed "temperature fighting" where binary stars had their surface temperature overwritten by equilibrium math.
+*   **Orbital Mechanics**:
+    *   Added support for **Retrograde Orbits** via a new toggle in the Orbit tab.
+    *   Toggling retrograde status automatically adds the "Captured Body" tag.
+*   **UI/UX**:
+    *   Fixed "Toytown View" slider to snap cleanly to zero, restoring the scale bar correctly.
+    *   Restricted Barycenter editing tabs to only show relevant data (Tags/Orbit).
+
 ### v1.3.3 Changelog
 *   **Documentation**:
     *   Added tutorial video link to README, Getting Started, and About dialogs for better onboarding.

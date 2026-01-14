@@ -71,10 +71,34 @@ export function _generatePlanetaryBody(
 
     let planetType = planetTypeOverride;
     if (!planetType) {
-        if (orbit.elements.a_AU > frostLineAU) {
-            planetType = weightedChoice<string>(rng, { entries: [{ weight: 40, value: 'planet/gas-giant' }, { weight: 30, value: 'planet/ice-giant' }, { weight: 30, value: 'planet/terrestrial' }] });
+        if (roleHint === 'moon') {
+            const parentMassEarths = ((host as CelestialBody).massKg || 0) / EARTH_MASS_KG;
+            
+            if (parentMassEarths < 10) {
+                // Terrestrial Parent: Only rocky moons
+                planetType = 'planet/terrestrial';
+            } else {
+                // Giant Parent: Standard moons are rocky or icy
+                if (orbit.elements.a_AU > frostLineAU) {
+                    planetType = weightedChoice<string>(rng, { entries: [{ weight: 60, value: 'planet/ice-giant' }, { weight: 40, value: 'planet/terrestrial' }] });
+                } else {
+                    planetType = 'planet/terrestrial';
+                }
+                
+                // Allow "Gas Giant" moons only for Brown Dwarfs (> 1000 Earths)
+                if (parentMassEarths > 1000 && rng.nextFloat() < 0.1) {
+                     planetType = 'planet/gas-giant'; 
+                } else if (planetType === 'planet/ice-giant' && parentMassEarths < 200) {
+                     planetType = 'planet/terrestrial'; // Force rocky if parent is too small for an ice giant moon
+                }
+            }
         } else {
-            planetType = weightedChoice<string>(rng, { entries: [{ weight: 80, value: 'planet/terrestrial' }, { weight: 10, value: 'planet/gas-giant' }, { weight: 10, value: 'planet/ice-giant' }] });
+            // Planet Logic
+            if (orbit.elements.a_AU > frostLineAU) {
+                planetType = weightedChoice<string>(rng, { entries: [{ weight: 40, value: 'planet/gas-giant' }, { weight: 30, value: 'planet/ice-giant' }, { weight: 30, value: 'planet/terrestrial' }] });
+            } else {
+                planetType = weightedChoice<string>(rng, { entries: [{ weight: 80, value: 'planet/terrestrial' }, { weight: 10, value: 'planet/gas-giant' }, { weight: 10, value: 'planet/ice-giant' }] });
+            }
         }
     }
 
@@ -84,7 +108,29 @@ export function _generatePlanetaryBody(
     const planetTemplate = pack.statTemplates?.[planetType];
     if (planetTemplate) {
         if (!propertyOverrides?.massKg) {
-            planet.massKg = randomFromRange(rng, planetTemplate.mass_earth[0], planetTemplate.mass_earth[1]) * EARTH_MASS_KG;
+            if (planetType === 'planet/gas-giant') {
+                // Weighted distribution for Gas Giants: 99% Standard, 1% Brown Dwarf
+                if (rng.nextFloat() < 0.99) {
+                    // Logarithmic distribution for standard giants (10 - 4000 Earths)
+                    // This favors Jupiter-sized (300) over Super-Jupiters (3000)
+                    const minMass = 10;
+                    const maxMass = 4000;
+                    const logMin = Math.log(minMass);
+                    const logMax = Math.log(maxMass);
+                    const scale = randomFromRange(rng, logMin, logMax);
+                    planet.massKg = Math.exp(scale) * EARTH_MASS_KG;
+                } else {
+                    // Logarithmic distribution for Brown Dwarfs (4000 - 26000 Earths)
+                    const minMass = 4000;
+                    const maxMass = 26000;
+                    const logMin = Math.log(minMass);
+                    const logMax = Math.log(maxMass);
+                    const scale = randomFromRange(rng, logMin, logMax);
+                    planet.massKg = Math.exp(scale) * EARTH_MASS_KG;
+                }
+            } else {
+                planet.massKg = randomFromRange(rng, planetTemplate.mass_earth[0], planetTemplate.mass_earth[1]) * EARTH_MASS_KG;
+            }
         }
         if (!propertyOverrides?.radiusKm) {
             planet.radiusKm = randomFromRange(rng, planetTemplate.radius_earth[0], planetTemplate.radius_earth[1]) * EARTH_RADIUS_KM;
@@ -118,6 +164,15 @@ export function _generatePlanetaryBody(
         const overrideTags = propertyOverrides.tags || [];
         planet = { ...planet, ...propertyOverrides };
         planet.tags = [...existingTags, ...overrideTags];
+    }
+
+    // --- Rotation Generation ---
+    if (!planet.rotation_period_hours) {
+        if (planetType === 'planet/gas-giant' || planetType === 'planet/ice-giant' || planetType === 'planet/brown-dwarf' || planetType === 'planet/sub-brown-dwarf') {
+            planet.rotation_period_hours = randomFromRange(rng, 8, 15);
+        } else {
+            planet.rotation_period_hours = randomFromRange(rng, 10, 30);
+        }
     }
 
     if (planet.orbit?.isRetrogradeOrbit) {
@@ -205,17 +260,42 @@ export function _generatePlanetaryBody(
             const scalingFactor = Math.log10(Math.max(1, massInEarths)); 
             numMoons = Math.floor(numMoons * scalingFactor);
         }
+        
+        // Cap max moons to prevent performance/visual issues
+        numMoons = Math.min(numMoons, 30);
 
         const parentDensity = ((host as CelestialBody).massKg || 0) / (4/3 * Math.PI * Math.pow(((host as CelestialBody).radiusKm || 1) * 1000, 3));
         const moonDensity = 3344;
         const rocheLimit_km = ((host as CelestialBody).radiusKm || 1) * Math.pow(2 * (parentDensity / moonDensity), 1/3);
         
+        // Calculate Hill Sphere (SOI) - Stable region is roughly 1/2 Hill Sphere
+        let stableLimitAU = 0;
+        if (orbit && orbit.hostMu > 0) {
+            const starMass = orbit.hostMu / G;
+            const planetMass = planet.massKg || 0;
+            const a_planet = orbit.elements.a_AU;
+            const e_planet = orbit.elements.e;
+            const perihelion = a_planet * (1 - e_planet);
+            
+            const rHill = perihelion * Math.pow(planetMass / (3 * starMass), 1/3);
+            stableLimitAU = rHill * 0.5; // Conservative stability limit
+        }
+
         let lastMoonApoapsisAU = rocheLimit_km / AU_KM * 1.5; 
 
         for (let j = 0; j < numMoons; j++) {
             const moonMinGap = rocheLimit_km / AU_KM * 0.5;
-            const newMoonPeriapsis = lastMoonApoapsisAU + randomFromRange(rng, moonMinGap, moonMinGap * 3);            const newMoonEccentricity = randomFromRange(rng, 0, 0.05);
+            const newMoonPeriapsis = lastMoonApoapsisAU + randomFromRange(rng, moonMinGap, moonMinGap * 3);
+            
+            // Stop if we exceed the stable region
+            if (stableLimitAU > 0 && newMoonPeriapsis > stableLimitAU) break;
+            
+            const newMoonEccentricity = randomFromRange(rng, 0, 0.05);
             const newMoonA_AU = newMoonPeriapsis / (1 - newMoonEccentricity);
+            
+            // Double check apoapsis against stability
+            if (stableLimitAU > 0 && (newMoonA_AU * (1 + newMoonEccentricity)) > stableLimitAU) break;
+
             lastMoonApoapsisAU = newMoonA_AU * (1 + newMoonEccentricity);
 
             const moonOrbit: Orbit = {

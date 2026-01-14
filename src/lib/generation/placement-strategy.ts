@@ -29,15 +29,24 @@ export function calculateOrbitalSlots(
         });
         orbitalSlotsAU = orbitalSlotsAU.filter(au => au > minOrbitAU && au < systemLimitAu);
     } else {
-        // Fallback to random gaps if no T-B params
-        let lastApoapsisAU = minOrbitAU;
+        // Fallback to geometric spacing if no T-B params
+        // This ensures we reach the outer system (Ice Giants) even with few planets
+        let lastApoapsisAU = Math.max(minOrbitAU, 0.2); 
+        
         for (let i = 0; i < numBodies; i++) {
-            const minGap = 0.2;
-            const newPeriapsis = lastApoapsisAU + randomFromRange(rng, minGap, minGap * 5);
-            const newA_AU = newPeriapsis / (1 - randomFromRange(rng, 0.01, 0.15));
-            if (newA_AU > systemLimitAu) break; // Stop if we go beyond the limit
+            // Geometric progression: r_next = r_current * multiplier
+            // 1.4 to 2.2 gives nice spacing (like Mars 1.5 -> Asteroids 2.8 -> Jupiter 5.2)
+            const multiplier = randomFromRange(rng, 1.4, 2.2);
+            
+            // Calculate new distance based on previous apoapsis
+            const newA_AU = lastApoapsisAU * multiplier;
+            
+            if (newA_AU > systemLimitAu) break;
+            
             orbitalSlotsAU.push(newA_AU);
-            lastApoapsisAU = newA_AU * (1 + randomFromRange(rng, 0.01, 0.15));
+            
+            const ecc = randomFromRange(rng, 0.01, 0.15);
+            lastApoapsisAU = newA_AU * (1 + ecc);
         }
     }
 
