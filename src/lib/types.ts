@@ -21,7 +21,7 @@ export interface NodeBase {
   description_playerhidden?: boolean;
 }
 
-export interface Atmosphere { name: string; main?: string; pressure_bar?: number; composition: Record<string, number>; tags?: Tag[]; molarMassKg?: number; }
+export interface Atmosphere { name: string; main?: string; pressure_bar?: number; composition: Record<string, number>; tags?: Tag[]; molarMassKg?: number; scaleHeightKm?: number; }
 export interface Hydrosphere { coverage?: number; depth_m?: number; composition?: string; tags?: Tag[]; }
 export interface ImageRef { url: string; title?: string; credit?: string; license?: string; sourceUrl?: string; }
 
@@ -85,7 +85,14 @@ export interface CelestialBody extends NodeBase {
   // Transit Planning Persistence
   draft_transit_plan?: any[]; // Holds TransitPlan[] for resuming sessions
   
-  // ... existing properties ...
+  // Surface Stats
+  surfaceRadiation?: number;
+  stellarRadiation?: number; // Raw incoming flux
+  photonRadiation?: number;
+  particleRadiation?: number;
+  radiationShieldingAtmo?: number; // 0-1 effectiveness
+  radiationShieldingMag?: number;  // 0-1 effectiveness
+  equilibriumTempK?: number;
 }
 
 export interface PhysicalParameters {
@@ -185,11 +192,29 @@ export interface EngineDefinition {
   description: string;
 }
 
+export interface GasTag {
+  name: string;
+  trigger: string; // e.g. "pp > 0.05 AND O2_gas_present"
+}
+
+export interface GasPhysics {
+  molarMass: number;
+  shielding: number;
+  greenhouse: number;
+  specificHeat: number;
+  radiativeCooling: number;
+  colorHex: string | null;
+  meltK: number;
+  boilK: number;
+  tags?: GasTag[];
+}
+
 export interface RulePack {
   id: string; version: string; name: string;
   distributions: Record<string, TableSpec>;
-  gasMolarMassesKg?: Record<string, number>;
-  gasShielding?: Record<string, number>;
+  gasPhysics?: Record<string, GasPhysics>;
+  gasMolarMassesKg?: Record<string, number>; // Legacy support (optional)
+  gasShielding?: Record<string, number>; // Legacy support (optional)
   liquids?: LiquidDef[];
   orbitalConstants?: Record<string, number>;
   constructTemplates?: Record<string, CelestialBody[]>; // Templates are CelestialBody objects

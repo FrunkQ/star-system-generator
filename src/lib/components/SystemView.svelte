@@ -1533,7 +1533,7 @@ a.click();
                         <BodySidePanel 
                             body={focusedBody} 
                             {rulePack}
-                            system={$systemStore}
+                            system={$systemStore || system}
                             parentBody={parentBody}
                             rootStar={rootStar}
                             on:update={handleBodyUpdate}  

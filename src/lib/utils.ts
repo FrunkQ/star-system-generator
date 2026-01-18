@@ -88,3 +88,61 @@ export function validateStarmap(data: any): string[] {
 
     return errors;
 }
+
+/**
+ * Evaluates a trigger condition string against a context object.
+ * Supports:
+ * - Numeric comparisons: >, <, >=, <=, = (e.g., "pp > 0.5")
+ * - Boolean flags: (e.g., "O2_gas_present", "!moisture_present")
+ * - Logical AND: (e.g., "pp > 0.5 AND O2_gas_present")
+ * 
+ * @param trigger The condition string.
+ * @param context A dictionary of values to check against.
+ */
+export function evaluateTagTriggers(trigger: string, context: Record<string, number | boolean>): boolean {
+    if (trigger === 'always') return true;
+    if (!trigger) return false;
+
+    const conditions = trigger.split(/\s+AND\s+/i);
+
+    for (const condition of conditions) {
+        const trimmed = condition.trim();
+        
+        // Check for numeric comparison
+        const match = trimmed.match(/^([a-zA-Z0-9_]+)\s*(>=|<=|>|<|=)\s*(-?[\d.]+)$/);
+        
+        if (match) {
+            const [, key, op, valStr] = match;
+            const contextVal = context[key];
+            const targetVal = parseFloat(valStr);
+
+            if (typeof contextVal !== 'number') return false; // Key missing or not a number
+
+            switch (op) {
+                case '>': if (!(contextVal > targetVal)) return false; break;
+                case '<': if (!(contextVal < targetVal)) return false; break;
+                case '>=': if (!(contextVal >= targetVal)) return false; break;
+                case '<=': if (!(contextVal <= targetVal)) return false; break;
+                case '=': if (!(Math.abs(contextVal - targetVal) < 0.000001)) return false; break;
+                default: return false;
+            }
+        } else {
+            // Boolean check
+            let key = trimmed;
+            let expected = true;
+            
+            if (key.startsWith('!')) {
+                key = key.substring(1);
+                expected = false;
+            }
+
+            // Treat > 0 as true for numeric context values used as flags
+            const contextVal = context[key];
+            const boolVal = typeof contextVal === 'number' ? contextVal > 0 : !!contextVal;
+
+            if (boolVal !== expected) return false;
+        }
+    }
+
+    return true;
+}

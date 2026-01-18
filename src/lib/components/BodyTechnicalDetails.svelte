@@ -101,7 +101,22 @@
             displayedSurfaceRadiation = currentSurfaceRadiation;
             const desc = getSurfaceRadiationDescription(currentSurfaceRadiation);
             surfaceRadiationText = desc.text;
-            surfaceRadiationTooltip = desc.tooltip;
+            
+            // Build detailed tooltip
+            let shieldingInfo = '';
+            if (body.photonRadiation !== undefined && body.particleRadiation !== undefined) {
+                const totalFlux = (body.photonRadiation || 0) + (body.particleRadiation || 0);
+                const photonPct = totalFlux > 0 ? (body.photonRadiation! / totalFlux * 100).toFixed(0) : 0;
+                const particlePct = totalFlux > 0 ? (body.particleRadiation! / totalFlux * 100).toFixed(0) : 0;
+                
+                shieldingInfo = `\n\n🛡️ Shielding Breakdown:\n`;
+                shieldingInfo += `• Incoming Star Flux: ${body.stellarRadiation?.toFixed(2)} mSv/y\n`;
+                if (body.atmosphere) shieldingInfo += `• Atmosphere: ${((body.radiationShieldingAtmo || 0) * 100).toFixed(1)}% Photon Block\n`;
+                if (body.magneticField) shieldingInfo += `• Magnetosphere: ${((body.radiationShieldingMag || 0) * 100).toFixed(1)}% Particle Block\n`;
+                shieldingInfo += `\nFinal Mix: ${photonPct}% Photons / ${particlePct}% Particles`;
+            }
+            
+            surfaceRadiationTooltip = `${desc.tooltip}${shieldingInfo}`;
         }
 
         if (body.orbit) {

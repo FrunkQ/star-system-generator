@@ -90,61 +90,49 @@ export function calculateSurfaceRadiation(
     rulePack: RulePack
 ): number {
     const totalStellarRadiation = calculateTotalStellarRadiation(body, allNodes);
-    let finalRadiation = totalStellarRadiation;
+    body.stellarRadiation = totalStellarRadiation;
+    
+    // Split baseline radiation into components (approximate physical split)
+    // 90% is Photons (UV/Visible/IR), 10% is Particle (Solar Wind/Protons)
+    let photonFlux = totalStellarRadiation * 0.9;
+    let particleFlux = totalStellarRadiation * 0.1;
 
-    // Atmosphere Blocking
-    if (body.atmosphere && body.atmosphere.name !== 'None') {
-        let blockingFactor = 0;
-        let calculatedFromComposition = false;
+    body.radiationShieldingAtmo = 0;
+    body.radiationShieldingMag = 0;
 
-        // 1. Try Composition-based Normalization (Better for dynamic pressure changes)
-        // Shielding coefficients (Exponential Decay Constant 'k')
-        // 1 bar of Earth air (N2/O2) should reduce radiation by ~99% (e^-4.6 ~ 0.01).
-        const defaultGasShielding: Record<string, number> = {
-            "N2": 4.5, "O2": 4.3, "CO2": 5.0, "H2O": 5.5,
-            "CH4": 3.5, "H2": 0.5, "He": 0.5, "NH3": 3.5,
-            "SO2": 6.0, "Ar": 4.5
-        };
-        const gasShielding = rulePack.gasShielding || defaultGasShielding;
-
-        if (body.atmosphere.composition) {
-            let totalShielding = 0;
-            let totalGas = 0;
-            for (const [gas, amount] of Object.entries(body.atmosphere.composition)) {
-                const coeff = gasShielding[gas] !== undefined ? gasShielding[gas] : 0.5; // Default for unknown
-                totalShielding += coeff * amount;
-                totalGas += amount;
-            }
-            if (totalGas > 0) {
-                const shieldingScore = totalShielding / totalGas;
-                // Exponential Decay: Transmission = e^(-k * pressure)
-                const transmission = Math.exp(-shieldingScore * body.atmosphere.pressure_bar);
-                finalRadiation = totalStellarRadiation * transmission;
-                calculatedFromComposition = true;
-            }
+    // 1. Atmosphere Blocking (Shields Photons)
+    if (body.atmosphere && body.atmosphere.name !== 'None' && body.atmosphere.composition) {
+        let totalShielding = 0;
+        let totalGas = 0;
+        for (const [gas, amount] of Object.entries(body.atmosphere.composition)) {
+            let coeff = rulePack.gasPhysics?.[gas]?.shielding ?? rulePack.gasShielding?.[gas] ?? 0.5;
+            totalShielding += coeff * amount;
+            totalGas += amount;
         }
-
-        // 2. Fallback to Rulepack Factor (Linear Model) if composition calc failed
-        if (!calculatedFromComposition) {
-            const atmEntries = rulePack.distributions.atmosphere_composition?.entries;
-            if (atmEntries) {
-                const atmDef = atmEntries.find(e => e.value.name === body.atmosphere?.name)?.value;
-                if (atmDef && atmDef.radiation_blocking_factor) {
-                    blockingFactor = Math.min(1.0, atmDef.radiation_blocking_factor * body.atmosphere.pressure_bar);
-                }
-            }
-            finalRadiation = totalStellarRadiation * (1 - blockingFactor);
+        if (totalGas > 0) {
+            const shieldingScore = totalShielding / totalGas;
+            const transmission = Math.exp(-shieldingScore * body.atmosphere.pressure_bar);
+            body.radiationShieldingAtmo = 1 - transmission;
+            photonFlux = photonFlux * transmission;
         }
     }
     
-    // Magnetosphere Shielding (User Requested Addition)
+    // 2. Magnetosphere Shielding (Shields Particles)
     const magStrength = body.magneticField?.strengthGauss || 0;
     if (magStrength > 0) {
-        // Simple model: 0.5G (Earth) = significant reduction.
-        // 1 Gauss = 50% reduction.
-        const magShielding = Math.min(0.5, magStrength * 0.5); 
-        finalRadiation = finalRadiation * (1 - magShielding);
+        const deflection = Math.min(0.99, (Math.log10(magStrength + 0.01) + 2) / 3); 
+        body.radiationShieldingMag = deflection;
+        particleFlux = particleFlux * (1 - deflection);
+    } else if (body.atmosphere) {
+        // Atmosphere provides some minor particle protection via collision
+        const atmoDeflection = 1 - Math.exp(-0.5 * (body.atmosphere.pressure_bar || 0));
+        body.radiationShieldingMag = atmoDeflection;
+        particleFlux = particleFlux * (1 - atmoDeflection);
     }
 
-    return Math.max(0, finalRadiation);
+    body.photonRadiation = photonFlux;
+    body.particleRadiation = particleFlux;
+    body.surfaceRadiation = photonFlux + particleFlux;
+
+    return Math.max(0, body.surfaceRadiation);
 }

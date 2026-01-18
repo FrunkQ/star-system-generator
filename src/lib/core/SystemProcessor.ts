@@ -5,7 +5,7 @@ import { calculateEquilibriumTemperature, calculateDistanceToStar } from '../phy
 import { calculateSurfaceRadiation } from '../physics/radiation';
 import { classifyBody } from '../system/classification';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
-import { calculateMolarMass } from '../physics/atmosphere';
+import { calculateMolarMass, recalculateAtmosphereDerivedProperties } from '../physics/atmosphere';
 import { SeededRNG } from '../rng';
 
 export class SystemProcessor implements ISystemProcessor {
@@ -174,24 +174,11 @@ export class SystemProcessor implements ISystemProcessor {
         const radiogenicHeatK = (body.classes?.includes('planet/terrestrial') || body.roleHint === 'moon') ? 10 : 0;
         body.radiogenicHeatK = radiogenicHeatK;
 
-        // Greenhouse Effect
-        let greenhouseContributionK = 0;
-        if (body.atmosphere) {
-            const atmDef = pack.distributions['atmosphere_composition']?.entries.find((e: any) => e.value.name === body.atmosphere?.name)?.value;
-            if (atmDef && atmDef.greenhouse_effect_K) {
-                const nominalPressure = atmDef.pressure_range_bar ? (atmDef.pressure_range_bar[0] + atmDef.pressure_range_bar[1]) / 2 : 1;
-                const pressureRatio = body.atmosphere.pressure_bar / nominalPressure;
-                greenhouseContributionK = atmDef.greenhouse_effect_K * pressureRatio;
-            } else if (body.classes?.includes('planet/gas-giant') || body.classes?.includes('planet/ice-giant')) {
-                 // Intrinsic heat for giants? Or just deep atmosphere retention?
-                 // For now, let's assume giants trap heat efficiently.
-                 greenhouseContributionK = 20; 
-            }
-        }
-        body.greenhouseTempK = greenhouseContributionK;
+        // V1.4.0 Unified Atmospheric Physics
+        recalculateAtmosphereDerivedProperties(body, allNodes, pack);
 
-        // Total Temperature
-        body.temperatureK = equilibriumTempK + greenhouseContributionK + tidalHeatingK + radiogenicHeatK;
+        // Total Temperature (Derived from components)
+        body.temperatureK = equilibriumTempK + (body.greenhouseTempK || 0) + tidalHeatingK + radiogenicHeatK;
 
         // Atmosphere Retention Check (Physics-based stripping)
         const totalStellarRadiation = this.calculateTotalStellarFlux(body, allStars, allNodes);

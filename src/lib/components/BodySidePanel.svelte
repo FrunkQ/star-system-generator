@@ -87,7 +87,7 @@
     {:else if selectedTab === 'Temp'}
       <BodyTemperatureTab {body} {rootStar} {parentBody} nodes={system.nodes} on:update={handleUpdate} />
     {:else if selectedTab === 'Atmosphere'}
-      <BodyAtmosphereTab {body} {rulePack} on:update={handleUpdate} />
+      <BodyAtmosphereTab {body} {rulePack} {system} on:update={handleUpdate} />
     {:else if selectedTab === 'Hydro'}
       <BodyHydrosphereTab {body} on:update={handleUpdate} />
     {:else if selectedTab === 'Bio'}

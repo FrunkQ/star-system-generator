@@ -1,587 +1,942 @@
 {
-    "gasMolarMassesKg": {
-        "N2": 0.028014,
-        "O2": 0.031998,
-        "CO2": 0.04401,
-        "Ar": 0.039948,
-        "He": 0.0040026,
-        "H2": 0.0020158,
-        "CH4": 0.01604,
-        "H2O": 0.018015,
-        "NH3": 0.017031,
-        "SO2": 0.064066,
-        "H2S": 0.03408,
-        "CO": 0.02801,
-        "S": 0.03206,
-        "H": 0.0010079,
-        "Fe": 0.055845,
-        "SiO": 0.04408,
-        "K": 0.039098,
-        "Na": 0.022990,
-        "Noble Gases": 0.039948,
-        "Other Trace": 0.028014
+  "gasPhysics": {
+    "N2": {
+      "molarMass": 0.028,
+      "shielding": 4.5,
+      "greenhouse": 0.0,
+      "specificHeat": 1.04,
+      "radiativeCooling": 0.05,
+      "colorHex": null,
+      "meltK": 63.0,
+      "boilK": 77.0,
+      "tags": [
+        { "name": "inert", "trigger": "always" },
+        { "name": "buffer-gas", "trigger": "percent > 0.5" },
+        { "name": "asphyxiant", "trigger": "pp > 0.9 AND percent > 0.9" },
+        { "name": "nitrogen-narcosis", "trigger": "pp > 3.0" }
+      ]
     },
-    "gasShielding": {
-        "N2": 4.5,
-        "O2": 4.3,
-        "CO2": 5.0,
-        "H2O": 5.5,
-        "CH4": 3.5,
-        "H2": 0.5,
-        "He": 0.5,
-        "NH3": 3.5,
-        "SO2": 6.0,
-        "Ar": 4.5,
-        "Noble Gases": 4.5,
-        "Other Trace": 2.0
+    "O2": {
+      "molarMass": 0.032,
+      "shielding": 4.8,
+      "greenhouse": 0.0,
+      "specificHeat": 0.92,
+      "radiativeCooling": 0.05,
+      "colorHex": null,
+      "meltK": 54.0,
+      "boilK": 90.0,
+      "tags": [
+        { "name": "oxidizer", "trigger": "always" },
+        { "name": "breathable-human", "trigger": "pp >= 0.16 AND pp <= 0.5" },
+        { "name": "breathable-human-hypoxic", "trigger": "pp >= 0.10 AND pp < 0.16" },
+        { "name": "fire-hazard", "trigger": "pp > 0.25" },
+        { "name": "extreme-fire-hazard", "trigger": "pp > 0.4" },
+        { "name": "oxygen-toxicity", "trigger": "pp > 0.5" }
+      ]
     },
-    "distributions": {
-        "atmosphere_pressure_bar": {
-            "name": "Atmosphere Pressure (bar)",
-            "entries": [
-                { "weight": 20, "value": [0.01, 0.1] },
-                { "weight": 50, "value": [0.1, 2.0] },
-                { "weight": 20, "value": [2.0, 10.0] },
-                { "weight": 10, "value": [10.0, 100.0] }
-            ]
-        },
-        "atmosphere_composition": {
-            "name": "Atmosphere Composition",
-            "entries": [
-                {
-                    "weight": 20,
-                    "value": {
-                        "name": "Nitrogen–Oxygen (Earth-like)",
-                        "pressure_range_bar": [0.8, 1.2],
-                        "mass_range_earths": [0.5, 1.5],
-                        "temp_range_K": [273, 330],
-                        "composition": {
-                            "N2": [0.75, 0.81],
-                            "O2": [0.18, 0.24],
-                            "Noble Gases": [0.0, 0.02],
-                            "Other Trace": [0.0, 0.001]
-                        },
-                        "greenhouse_effect_K": 30,
-                        "radiation_blocking_factor": 0.995,
-                        "tags": ["breathable-human"],
-                        "occurs_on": "terrestrial",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 15,
-                    "value": {
-                        "name": "Carbon Dioxide (Venus-like)",
-                        "pressure_range_bar": [80, 100],
-                        "mass_range_earths": [0.7, 2.0],
-                        "temp_range_K": [700, 800],
-                        "composition": {
-                            "CO2": [0.95, 0.98],
-                            "N2": [0.02, 0.05]
-                        },
-                        "greenhouse_effect_K": 400,
-                        "radiation_blocking_factor": 0.9999,
-                        "tags": ["toxic-human", "corrosive", "Runaway Greenhouse Effect", "Geologically Active (Volcanism)", "thick"],
-                        "occurs_on": "terrestrial",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 15,
-                    "value": {
-                        "name": "Carbon Dioxide (Mars-like)",
-                        "pressure_range_bar": [0.005, 0.01],
-                        "mass_range_earths": [0.05, 0.4],
-                        "temp_range_K": [180, 270],
-                        "composition": {
-                            "CO2": [0.94, 0.96],
-                            "N2": [0.01, 0.03],
-                            "Noble Gases": [0.01, 0.02],
-                            "Other Trace": [0.0, 0.01]
-                        },
-                        "greenhouse_effect_K": 5,
-                        "radiation_blocking_factor": 0.1,
-                        "tags": ["toxic-human", "thin"],
-                        "occurs_on": "terrestrial",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 8,
-                    "value": {
-                        "name": "High-CO₂ (Inert Carrier)",
-                        "pressure_range_bar": [0.5, 3.0],
-                        "mass_range_earths": [0.5, 2.0],
-                        "temp_range_K": [250, 350],
-                        "composition": {
-                            "N2": [0.80, 0.90],
-                            "CO2": [0.10, 0.20]
-                        },
-                        "greenhouse_effect_K": 50,
-                        "radiation_blocking_factor": 0.997,
-                        "tags": ["toxic-human", "CO2-scrub-required", "Active Volcanism"],
-                        "occurs_on": "terrestrial",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 8,
-                    "value": {
-                        "name": "Low-O₂, Low-CO₂ (Hypoxic Inert)",
-                        "pressure_range_bar": [0.6, 1.5],
-                        "mass_range_earths": [0.5, 1.5],
-                        "temp_range_K": [260, 320],
-                        "composition": {
-                            "N2": [0.90, 0.95],
-                            "O2": [0.04, 0.08],
-                            "CO2": [0.0, 0.02]
-                        },
-                        "greenhouse_effect_K": 10,
-                        "radiation_blocking_factor": 0.99,
-                        "tags": ["breathable-human-with-assistance", "hypoxic"],
-                        "occurs_on": "terrestrial",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 10,
-                    "value": {
-                        "name": "Methane Haze (Titan-like)",
-                        "pressure_range_bar": [1.4, 1.6],
-                        "mass_range_earths": [0.02, 0.2],
-                        "temp_range_K": [90, 100],
-                        "composition": {
-                            "N2": [0.94, 0.97],
-                            "CH4": [0.03, 0.06]
-                        },
-                        "greenhouse_effect_K": 40,
-                        "radiation_blocking_factor": 0.998,
-                        "tags": ["toxic-human", "reducing", "haze", "Cryovolcanism"],
-                        "occurs_on": "terrestrial",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 5,
-                    "value": {
-                        "name": "Sulfur Dioxide (Io-like)",
-                        "pressure_range_bar": [1e-9, 1e-7],
-                        "mass_range_earths": [0.01, 0.1],
-                        "temp_range_K": [110, 2000],
-                        "composition": {
-                            "SO2": [0.8, 1.0],
-                            "S": [0.0, 0.2]
-                        },
-                        "greenhouse_effect_K": 2,
-                        "radiation_blocking_factor": 0.01,
-                        "tags": ["toxic-human", "corrosive", "Active Volcanism", "thin", "exosphere"],
-                        "occurs_on": "terrestrial",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 5,
-                    "value": {
-                        "name": "Tenuous Oxygen (Europa-like)",
-                        "pressure_range_bar": [1e-11, 1e-10],
-                        "mass_range_earths": [0.005, 0.05],
-                        "temp_range_K": [90, 120],
-                        "composition": {
-                            "O2": 1.0
-                        },
-                        "greenhouse_effect_K": 1,
-                        "radiation_blocking_factor": 0.001,
-                        "tags": ["exosphere", "thin"],
-                        "occurs_on": "terrestrial",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 5,
-                    "value": {
-                        "name": "Water Vapor Plume (Enceladus-like)",
-                        "pressure_range_bar": [1e-9, 1e-8],
-                        "mass_range_earths": [0.00001, 0.01],
-                        "temp_range_K": [70, 100],
-                        "composition": {
-                            "H2O": [0.8, 0.95],
-                            "H2": [0.0, 0.1],
-                            "CO2": [0.0, 0.05],
-                            "CH4": [0.0, 0.03],
-                            "NH3": [0.0, 0.03]
-                        },
-                        "greenhouse_effect_K": 5,
-                        "radiation_blocking_factor": 0.005,
-                        "tags": ["exosphere", "thin", "Subsurface Ocean", "Active Cryovolcanism (Plumes)"],
-                        "occurs_on": "terrestrial",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 8,
-                    "value": {
-                        "name": "Hydrogen–Helium (Jupiter-like)",
-                        "pressure_range_bar": [10, 100000],
-                        "mass_range_earths": [15, 5000],
-                        "temp_range_K": [100, 170],
-                        "composition": {
-                            "H2": [0.82, 0.88],
-                            "He": [0.12, 0.18],
-                            "CH4": [0.0, 0.01]
-                        },
-                        "greenhouse_effect_K": 10,
-                        "radiation_blocking_factor": 0.999,
-                        "tags": ["reducing"],
-                        "occurs_on": "gas giants",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 3,
-                    "value": {
-                        "name": "Helium-rich Escaping Envelope",
-                        "pressure_range_bar": [0.1, 10],
-                        "mass_range_earths": [10, 50],
-                        "temp_range_K": [900, 1500],
-                        "composition": {
-                            "He": [0.7, 0.9],
-                            "H2": [0.1, 0.3],
-                            "H": [0.0, 0.05]
-                        },
-                        "greenhouse_effect_K": 5,
-                        "radiation_blocking_factor": 0.8,
-                        "tags": ["escaping", "hot", "reducing", "thin-upper"],
-                        "occurs_on": "gas giants",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 4,
-                    "value": {
-                        "name": "Hycean (H₂-rich, Wet)",
-                        "pressure_range_bar": [10, 200],
-                        "mass_range_earths": [2, 10],
-                        "temp_range_K": [300, 500],
-                        "composition": {
-                            "H2": [0.85, 0.90],
-                            "H2O": [0.07, 0.12],
-                            "CH4": [0.01, 0.05]
-                        },
-                        "greenhouse_effect_K": 60,
-                        "radiation_blocking_factor": 0.99,
-                        "tags": ["reducing", "greenhouse", "Global Ocean"],
-                        "occurs_on": "gas giants",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 2,
-                    "value": {
-                        "name": "Hycean (Drier Variant)",
-                        "pressure_range_bar": [1, 50],
-                        "mass_range_earths": [2, 10],
-                        "temp_range_K": [300, 500],
-                        "composition": {
-                            "H2": [0.90, 0.95],
-                            "H2O": [0.03, 0.06],
-                            "CH4": [0.01, 0.05]
-                        },
-                        "greenhouse_effect_K": 40,
-                        "radiation_blocking_factor": 0.98,
-                        "tags": ["reducing", "greenhouse", "oceanic", "Global Ocean"],
-                        "occurs_on": "gas giants",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 2,
-                    "value": {
-                        "name": "Magma Ocean Outgassing",
-                        "pressure_range_bar": [1, 10],
-                        "mass_range_earths": [0.5, 3.0],
-                        "temp_range_K": [1500, 3000],
-                        "composition": {
-                            "CO": [0.4, 0.6],
-                            "CO2": [0.3, 0.5],
-                            "N2": [0.05, 0.15]
-                        },
-                        "greenhouse_effect_K": 200,
-                        "radiation_blocking_factor": 0.9,
-                        "tags": ["toxic-human", "reducing", "volcanic", "Magma Ocean Surface"],
-                        "occurs_on": "terrestrial",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 1,
-                    "value": {
-                        "name": "Carbon Monoxide Dominated (Lava World)",
-                        "pressure_range_bar": [0.1, 5],
-                        "mass_range_earths": [0.5, 3.0],
-                        "temp_range_K": [1500, 3000],
-                        "composition": {
-                            "CO": [0.5, 0.7],
-                            "CO2": [0.2, 0.3],
-                            "N2": [0.05, 0.15],
-                            "SO2": [0.0, 0.1]
-                        },
-                        "greenhouse_effect_K": 100,
-                        "radiation_blocking_factor": 0.85,
-                        "tags": ["toxic-human", "Magma Ocean Surface", "volcanic"],
-                        "occurs_on": "terrestrial",
-                        "tidally_locked": ["true"]
-                    }
-                },
-                {
-                    "weight": 1,
-                    "value": {
-                        "name": "Abiotic Oxygen (Desiccated)",
-                        "pressure_range_bar": [0.2, 5.0],
-                        "mass_range_earths": [0.7, 2.0],
-                        "temp_range_K": [400, 600],
-                        "composition": {
-                            "O2": [0.8, 1.0],
-                            "CO2": [0.0, 0.2]
-                        },
-                        "greenhouse_effect_K": 10,
-                        "radiation_blocking_factor": 0.95,
-                        "tags": ["oxidizing", "toxic-human", "Complete Water Loss (Photodissociation)"],
-                        "occurs_on": "terrestrial",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 2,
-                    "value": {
-                        "name": "Ultra-hot Metal Vapor (UHJ)",
-                        "pressure_range_bar": [0.01, 0.1],
-                        "mass_range_earths": [5, 500],
-                        "temp_range_K": [2200, 4000],
-                        "composition": {
-                            "Fe": [0.4, 0.6],
-                            "SiO": [0.2, 0.4],
-                            "K": [0.05, 0.15],
-                            "Na": [0.05, 0.15]
-                        },
-                        "greenhouse_effect_K": 20,
-                        "radiation_blocking_factor": 0.7,
-                        "tags": ["toxic-human", "corrosive", "extreme-heat"],
-                        "occurs_on": "both",
-                        "tidally_locked": ["true"]
-                    }
-                },
-                {
-                    "weight": 6,
-                    "value": {
-                        "name": "Steam Atmosphere (Runaway/Impact)",
-                        "pressure_range_bar": [10, 300],
-                        "mass_range_earths": [0.5, 2.0],
-                        "temp_range_K": [400, 700],
-                        "composition": {
-                            "H2O": [0.9, 1.0],
-                            "CO2": [0.0, 0.05],
-                            "N2": [0.0, 0.03]
-                        },
-                        "greenhouse_effect_K": 300,
-                        "radiation_blocking_factor": 0.999,
-                        "tags": ["toxic-human", "Runaway Greenhouse (Active)", "Evaporated Oceans"],
-                        "occurs_on": "terrestrial",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 6,
-                    "value": {
-                        "name": "Anoxic Nitrogen (Inert)",
-                        "pressure_range_bar": [0.5, 1.5],
-                        "mass_range_earths": [0.5, 1.5],
-                        "temp_range_K": [200, 300],
-                        "composition": {
-                            "N2": [0.98, 1.0],
-                            "CO2": [0.0, 0.01],
-                            "Noble Gases": [0.0, 0.01]
-                        },
-                        "greenhouse_effect_K": 2,
-                        "radiation_blocking_factor": 0.99,
-                        "tags": ["inert", "breathable-human-with-supplied-O2", "Geologically Active"],
-                        "occurs_on": "terrestrial",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 4,
-                    "value": {
-                        "name": "Ammonia-bearing Reducing",
-                        "pressure_range_bar": [10, 100000],
-                        "mass_range_earths": [15, 5000],
-                        "temp_range_K": [100, 200],
-                        "composition": {
-                            "H2": [0.6, 0.8],
-                            "He": [0.1, 0.3],
-                            "NH3": [0.05, 0.15]
-                        },
-                        "greenhouse_effect_K": 30,
-                        "radiation_blocking_factor": 0.999,
-                        "tags": ["toxic-human", "reducing", "clouds"],
-                        "occurs_on": "gas giants",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 4,
-                    "value": {
-                        "name": "Hydrogen Sulfide-bearing",
-                        "pressure_range_bar": [10, 100000],
-                        "mass_range_earths": [15, 5000],
-                        "temp_range_K": [100, 200],
-                        "composition": {
-                            "H2": [0.7, 0.8],
-                            "He": [0.15, 0.25],
-                            "H2S": [0.02, 0.08]
-                        },
-                        "greenhouse_effect_K": 20,
-                        "radiation_blocking_factor": 0.999,
-                        "tags": ["toxic-human", "reducing", "clouds"],
-                        "occurs_on": "gas giants",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 3,
-                    "value": {
-                        "name": "Sodium–Potassium Exosphere",
-                        "pressure_range_bar": [1e-12, 1e-10],
-                        "mass_range_earths": [0.01, 0.2],
-                        "temp_range_K": [400, 700],
-                        "composition": {
-                            "Na": [0.5, 0.7],
-                            "K": [0.3, 0.5]
-                        },
-                        "greenhouse_effect_K": 1,
-                        "radiation_blocking_factor": 0.001,
-                        "tags": ["exosphere", "thin", "hot", "escaping"],
-                        "occurs_on": "both",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 5,
-                    "value": {
-                        "name": "Hot Jupiter (H₂–He + CO/CO₂/H₂O)",
-                        "pressure_range_bar": [1, 100],
-                        "mass_range_earths": [100, 4000],
-                        "temp_range_K": [1000, 2000],
-                        "composition": {
-                            "H2": [0.75, 0.85],
-                            "He": [0.1, 0.2],
-                            "CO": [0.0, 0.05],
-                            "CO2": [0.0, 0.03],
-                            "H2O": [0.0, 0.02]
-                        },
-                        "greenhouse_effect_K": 50,
-                        "radiation_blocking_factor": 0.99,
-                        "tags": ["reducing", "hot", "Migrated Planet"],
-                        "occurs_on": "gas giants",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 3,
-                    "value": {
-                        "name": "Photochemical SO₂ (Irradiated)",
-                        "pressure_range_bar": [0.1, 10],
-                        "mass_range_earths": [2, 15],
-                        "temp_range_K": [500, 1000],
-                        "composition": {
-                            "H2": [0.7, 0.85],
-                            "He": [0.15, 0.25],
-                            "SO2": [0.01, 0.04]
-                        },
-                        "greenhouse_effect_K": 10,
-                        "radiation_blocking_factor": 0.9,
-                        "tags": ["toxic-human", "photochemistry", "hot"],
-                        "occurs_on": "both",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 6,
-                    "value": {
-                        "name": "Ice Giant (Uranus-like)",
-                        "pressure_range_bar": [10, 100000],
-                        "mass_range_earths": [10, 50],
-                        "temp_range_K": [45, 80],
-                        "composition": {
-                            "H2": [0.78, 0.85],
-                            "He": [0.14, 0.20],
-                            "CH4": [0.01, 0.03]
-                        },
-                        "greenhouse_effect_K": 5,
-                        "radiation_blocking_factor": 0.999,
-                        "tags": ["reducing", "toxic-human", "cold", "methane-clouds", "deep"],
-                        "occurs_on": "gas giants",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 5,
-                    "value": {
-                        "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
-                        "pressure_range_bar": [1e-6, 1e-4],
-                        "mass_range_earths": [0.001, 0.05],
-                        "temp_range_K": [30, 60],
-                        "composition": {
-                            "N2": [0.95, 1.0],
-                            "CH4": [0.0, 0.03],
-                            "CO": [0.0, 0.01]
-                        },
-                        "greenhouse_effect_K": 1,
-                        "radiation_blocking_factor": 0.01,
-                        "tags": ["exosphere", "thin", "toxic-human", "cryogenic", "Tidally Locked", "Captured Body"],
-                        "occurs_on": "terrestrial",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 8,
-                    "value": {
-                        "name": "Primordial Envelope (Super-Earth)",
-                        "pressure_range_bar": [10, 500],
-                        "mass_range_earths": [2, 15],
-                        "temp_range_K": [100, 400],
-                        "composition": {
-                            "H2": [0.80, 0.95],
-                            "He": [0.05, 0.20],
-                            "CH4": [0.0, 0.02],
-                            "H2O": [0.0, 0.01]
-                        },
-                        "greenhouse_effect_K": 25,
-                        "radiation_blocking_factor": 0.995,
-                        "tags": ["reducing", "primordial", "toxic-human", "super-earth", "mini-neptune", "deep"],
-                        "occurs_on": "terrestrial",
-                        "tidally_locked": ["false"]
-                    }
-                },
-                {
-                    "weight": 7,
-                    "value": {
-                        "name": "Collapsible CO₂ (Tidally Locked)",
-                        "pressure_range_bar": [0.1, 5.0],
-                        "mass_range_earths": [0.5, 2.0],
-                        "temp_range_K": [180, 270],
-                        "composition": {
-                            "CO2": [0.90, 0.98],
-                            "N2": [0.01, 0.08],
-                            "Noble Gases": [0.01, 0.02]
-                        },
-                        "greenhouse_effect_K": 30,
-                        "radiation_blocking_factor": 0.5,
-                        "tags": ["toxic-human", "thin-dayside", "frozen-nightside", "atmospheric-collapse", "cold-trap", "m-dwarf-world", "eyeball-planet"],
-                        "occurs_on": "terrestrial",
-                        "tidally_locked": ["true"]
-                    }
-                }
-            ]
-        }
+    "Ar": {
+      "molarMass": 0.040,
+      "shielding": 5.2,
+      "greenhouse": 0.0,
+      "specificHeat": 0.52,
+      "radiativeCooling": 0.0,
+      "colorHex": null,
+      "meltK": 83.0,
+      "boilK": 87.0,
+      "tags": [
+        { "name": "noble-gas", "trigger": "always" },
+        { "name": "inert", "trigger": "always" },
+        { "name": "heavy-gas", "trigger": "pp > 0.5" }
+      ]
+    },
+    "He": {
+      "molarMass": 0.004,
+      "shielding": 0.5,
+      "greenhouse": 0.0,
+      "specificHeat": 5.19,
+      "radiativeCooling": 0.0,
+      "colorHex": null,
+      "meltK": 1.0,
+      "boilK": 4.0,
+      "tags": [
+        { "name": "noble-gas", "trigger": "always" },
+        { "name": "lifting-gas", "trigger": "pp > 0.5" },
+        { "name": "voice-changer", "trigger": "pp > 0.2" },
+        { "name": "leak-prone", "trigger": "always" }
+      ]
+    },
+    "Ne": {
+      "molarMass": 0.020,
+      "shielding": 2.0,
+      "greenhouse": 0.0,
+      "specificHeat": 1.03,
+      "radiativeCooling": 0.0,
+      "colorHex": null,
+      "meltK": 24.0,
+      "boilK": 27.0,
+      "tags": [
+        { "name": "noble-gas", "trigger": "always" },
+        { "name": "inert", "trigger": "always" },
+        { "name": "lifting-gas", "trigger": "pp > 0.5 AND gravity > 1.0" }
+      ]
+    },
+    "Kr": {
+      "molarMass": 0.084,
+      "shielding": 8.0,
+      "greenhouse": 0.0,
+      "specificHeat": 0.25,
+      "radiativeCooling": 0.0,
+      "colorHex": null,
+      "meltK": 115.0,
+      "boilK": 120.0,
+      "tags": [
+        { "name": "noble-gas", "trigger": "always" },
+        { "name": "inert", "trigger": "always" },
+        { "name": "heavy-gas", "trigger": "pp > 0.2" },
+        { "name": "asphyxiant", "trigger": "pp > 0.9" }
+      ]
+    },
+    "CO2": {
+      "molarMass": 0.044,
+      "shielding": 5.0,
+      "greenhouse": 22.0,
+      "specificHeat": 0.84,
+      "radiativeCooling": 0.90,
+      "colorHex": null,
+      "meltK": 195.0,
+      "boilK": 195.0,
+      "tags": [
+        { "name": "greenhouse", "trigger": "percent > 0.01" },
+        { "name": "toxic-human", "trigger": "pp > 0.05" },
+        { "name": "acidic-rain", "trigger": "pp > 0.5 AND H2O_gas_present" },
+        { "name": "crushing-atmosphere", "trigger": "pp > 50.0" }
+      ]
+    },
+    "H2O": {
+      "molarMass": 0.018,
+      "shielding": 5.5,
+      "greenhouse": 3.0,
+      "specificHeat": 1.86,
+      "radiativeCooling": 0.60,
+      "colorHex": null,
+      "meltK": 273.0,
+      "boilK": 373.0,
+      "tags": [
+        { "name": "cloud-former", "trigger": "percent > 0.05" },
+        { "name": "greenhouse", "trigger": "percent > 0.01" },
+        { "name": "high-humidity", "trigger": "pp > 0.05" },
+        { "name": "steambath", "trigger": "pp > 1.0 AND temp > 350" }
+      ]
+    },
+    "CH4": {
+      "molarMass": 0.016,
+      "shielding": 3.0,
+      "greenhouse": 25.0,
+      "specificHeat": 2.22,
+      "radiativeCooling": 0.50,
+      "colorHex": "#008B8B",
+      "meltK": 90.0,
+      "boilK": 111.0,
+      "tags": [
+        { "name": "flammable", "trigger": "pp > 0.05 AND O2_gas_present" },
+        { "name": "reducing", "trigger": "percent > 0.1" },
+        { "name": "greenhouse", "trigger": "percent > 0.01" },
+        { "name": "haze-former", "trigger": "pp > 0.5" }
+      ]
+    },
+    "SO2": {
+      "molarMass": 0.064,
+      "shielding": 8.0,
+      "greenhouse": 15.0,
+      "specificHeat": 0.64,
+      "radiativeCooling": 0.55,
+      "colorHex": "#FFFFE0",
+      "meltK": 198.0,
+      "boilK": 263.0,
+      "tags": [
+        { "name": "volcanic", "trigger": "always" },
+        { "name": "cloud-former", "trigger": "temp < 263" },
+        { "name": "pungent", "trigger": "pp > 0.0001" },
+        { "name": "toxic-human", "trigger": "pp > 0.005" },
+        { "name": "acid-rain", "trigger": "pp > 0.1" },
+        { "name": "highly-corrosive", "trigger": "pp > 1.0" }
+      ]
+    },
+    "H2S": {
+      "molarMass": 0.034,
+      "shielding": 4.5,
+      "greenhouse": 12.0,
+      "specificHeat": 1.01,
+      "radiativeCooling": 0.40,
+      "colorHex": null,
+      "meltK": 187.0,
+      "boilK": 213.0,
+      "tags": [
+        { "name": "rotten-egg-smell", "trigger": "pp > 0.00001" },
+        { "name": "toxic-human", "trigger": "pp > 0.01" },
+        { "name": "flammable", "trigger": "pp > 0.04 AND O2_gas_present" },
+        { "name": "corrosive", "trigger": "pp > 0.5" }
+      ]
+    },
+    "NH3": {
+      "molarMass": 0.017,
+      "shielding": 3.5,
+      "greenhouse": 18.0,
+      "specificHeat": 2.17,
+      "radiativeCooling": 0.45,
+      "colorHex": null,
+      "meltK": 195.0,
+      "boilK": 240.0,
+      "tags": [
+        { "name": "pungent", "trigger": "always" },
+        { "name": "toxic-human", "trigger": "pp > 0.005" },
+        { "name": "corrosive", "trigger": "pp > 0.1" },
+        { "name": "cloud-former", "trigger": "pp > 0.5" }
+      ]
+    },
+    "Cl2": {
+      "molarMass": 0.071,
+      "shielding": 8.0,
+      "greenhouse": 5.0,
+      "specificHeat": 0.48,
+      "radiativeCooling": 0.20,
+      "colorHex": "#98FB98",
+      "meltK": 172.0,
+      "boilK": 239.0,
+      "tags": [
+        { "name": "oxidizer", "trigger": "always" },
+        { "name": "irritant", "trigger": "pp > 0.0001" },
+        { "name": "toxic-human", "trigger": "pp > 0.001" },
+        { "name": "highly-corrosive", "trigger": "pp > 0.1" },
+        { "name": "visible-gas", "trigger": "pp > 0.5" },
+        { "name": "heavy-gas", "trigger": "pp > 0.2" }
+      ]
+    },
+    "F2": {
+      "molarMass": 0.038,
+      "shielding": 9.0,
+      "greenhouse": 0.0,
+      "specificHeat": 0.82,
+      "radiativeCooling": 0.20,
+      "colorHex": "#FFFFE0",
+      "meltK": 53.0,
+      "boilK": 85.0,
+      "tags": [
+        { "name": "highly-corrosive", "trigger": "always" },
+        { "name": "hypergolic", "trigger": "pp > 0.1" },
+        { "name": "toxic-human", "trigger": "pp > 0.0001" }
+      ]
+    },
+    "H2": {
+      "molarMass": 0.002,
+      "shielding": 0.2,
+      "greenhouse": 0.0,
+      "specificHeat": 14.30,
+      "radiativeCooling": 0.01,
+      "colorHex": null,
+      "meltK": 14.0,
+      "boilK": 20.0,
+      "tags": [
+        { "name": "lifting-gas", "trigger": "always" },
+        { "name": "reducing", "trigger": "always" },
+        { "name": "flammable", "trigger": "pp > 0.04 AND O2_gas_present" },
+        { "name": "metal-embrittlement", "trigger": "pp > 10.0" }
+      ]
+    },
+    "CO": {
+      "molarMass": 0.028,
+      "shielding": 4.5,
+      "greenhouse": 5.0,
+      "specificHeat": 1.04,
+      "radiativeCooling": 0.70,
+      "colorHex": null,
+      "meltK": 68.0,
+      "boilK": 81.0,
+      "tags": [
+        { "name": "toxic-human", "trigger": "pp > 0.001" },
+        { "name": "flammable", "trigger": "pp > 0.1 AND O2_gas_present" },
+        { "name": "reducing", "trigger": "always" }
+      ]
+    },
+    "HCN": {
+      "molarMass": 0.028,
+      "shielding": 3.5,
+      "greenhouse": 15.0,
+      "specificHeat": 1.32,
+      "radiativeCooling": 0.50,
+      "colorHex": null,
+      "meltK": 259.0,
+      "boilK": 299.0,
+      "tags": [
+        { "name": "highly-toxic", "trigger": "pp > 0.0001" },
+        { "name": "almond-smell", "trigger": "pp > 0.0001" },
+        { "name": "flammable", "trigger": "pp > 0.05 AND O2_gas_present" },
+        { "name": "prebiotic-precursor", "trigger": "always" }
+      ]
+    },
+    "C2H6": {
+      "molarMass": 0.030,
+      "shielding": 3.5,
+      "greenhouse": 20.0,
+      "specificHeat": 1.75,
+      "radiativeCooling": 0.60,
+      "colorHex": null,
+      "meltK": 90.0,
+      "boilK": 184.0,
+      "tags": [
+        { "name": "flammable", "trigger": "pp > 0.03 AND O2_gas_present" },
+        { "name": "greenhouse", "trigger": "percent > 0.01" },
+        { "name": "condensible-fuel", "trigger": "always" },
+        { "name": "asphyxiant", "trigger": "pp > 0.3" }
+      ]
+    },
+    "CFC": {
+      "molarMass": 0.121,
+      "shielding": 12.0,
+      "greenhouse": 150.0,
+      "specificHeat": 0.60,
+      "radiativeCooling": 0.85,
+      "colorHex": null,
+      "meltK": 115.0,
+      "boilK": 243.0,
+      "tags": [
+        { "name": "technosignature", "trigger": "always" },
+        { "name": "ozone-depleter", "trigger": "always" },
+        { "name": "super-greenhouse", "trigger": "percent > 0.0001" }
+      ]
+    },
+    "Na": {
+      "molarMass": 0.023,
+      "shielding": 10.0,
+      "greenhouse": 5.0,
+      "specificHeat": 0.90,
+      "radiativeCooling": 0.30,
+      "colorHex": "#FFD700",
+      "meltK": 371.0,
+      "boilK": 1156.0,
+      "tags": [
+        { "name": "visible-gas", "trigger": "always" },
+        { "name": "condensible-metal", "trigger": "always" },
+        { "name": "cloud-former", "trigger": "temp < 1156" },
+        { "name": "reactive", "trigger": "pp > 0.1" }
+      ]
+    },
+    "K": {
+      "molarMass": 0.039,
+      "shielding": 12.0,
+      "greenhouse": 5.0,
+      "specificHeat": 0.53,
+      "radiativeCooling": 0.30,
+      "colorHex": "#EE82EE",
+      "meltK": 336.0,
+      "boilK": 1032.0,
+      "tags": [
+        { "name": "visible-gas", "trigger": "always" },
+        { "name": "condensible-metal", "trigger": "always" },
+        { "name": "cloud-former", "trigger": "temp < 1032" }
+      ]
+    },
+    "Fe": {
+      "molarMass": 0.056,
+      "shielding": 50.0,
+      "greenhouse": 15.0,
+      "specificHeat": 0.37,
+      "radiativeCooling": 0.40,
+      "colorHex": "#808080",
+      "meltK": 1811.0,
+      "boilK": 3134.0,
+      "tags": [
+        { "name": "opaque", "trigger": "pp > 0.1" },
+        { "name": "conductive-atmosphere", "trigger": "pp > 0.5" },
+        { "name": "condensible-metal", "trigger": "always" },
+        { "name": "cloud-former", "trigger": "temp < 3134" },
+        { "name": "abrasive-wind", "trigger": "pp > 0.01" }
+      ]
+    },
+    "SiO": {
+      "molarMass": 0.044,
+      "shielding": 30.0,
+      "greenhouse": 20.0,
+      "specificHeat": 0.70,
+      "radiativeCooling": 0.50,
+      "colorHex": "#A9A9A9",
+      "meltK": 1975.0,
+      "boilK": 2150.0,
+      "tags": [
+        { "name": "condensible-rock", "trigger": "always" },
+        { "name": "glass-haze", "trigger": "pp > 0.1" },
+        { "name": "cloud-former", "trigger": "temp < 2150" },
+        { "name": "refractory", "trigger": "always" }
+      ]
+    },
+    "HF": {
+      "molarMass": 0.020,
+      "shielding": 2.0,
+      "greenhouse": 10.0,
+      "specificHeat": 1.45,
+      "radiativeCooling": 0.30,
+      "colorHex": null,
+      "meltK": 189.0,
+      "boilK": 293.0,
+      "tags": [
+        { "name": "highly-corrosive", "trigger": "always" },
+        { "name": "toxic-human", "trigger": "pp > 0.00001" },
+        { "name": "contact-hazard", "trigger": "pp > 0.01" },
+        { "name": "cloud-former", "trigger": "temp < 293" },
+        { "name": "acid-rain", "trigger": "pp > 0.1" }
+      ]
+    },
+    "HCl": {
+      "molarMass": 0.036,
+      "shielding": 6.0,
+      "greenhouse": 5.0,
+      "specificHeat": 0.80,
+      "radiativeCooling": 0.30,
+      "colorHex": null,
+      "meltK": 159.0,
+      "boilK": 188.0,
+      "tags": [
+        { "name": "corrosive", "trigger": "always" },
+        { "name": "toxic-human", "trigger": "pp > 0.001" },
+        { "name": "irritant", "trigger": "pp > 0.0001" },
+        { "name": "cloud-former", "trigger": "temp < 188" },
+        { "name": "visible-fumes", "trigger": "pp > 0.05 AND H2O_gas_present" }
+      ]
+    },
+    "H2SO4": {
+      "molarMass": 0.098,
+      "shielding": 12.0,
+      "greenhouse": 40.0,
+      "specificHeat": 0.70,
+      "radiativeCooling": 0.60,
+      "colorHex": "#FFFFE0",
+      "meltK": 283.0,
+      "boilK": 610.0,
+      "tags": [
+        { "name": "highly-corrosive", "trigger": "always" },
+        { "name": "cloud-former", "trigger": "temp < 610" },
+        { "name": "heavy-gas", "trigger": "pp > 0.5" },
+        { "name": "toxic-human", "trigger": "always" }
+      ]
+    },
+    "CH2O2": {
+      "molarMass": 0.046,
+      "shielding": 5.0,
+      "greenhouse": 12.0,
+      "specificHeat": 1.20,
+      "radiativeCooling": 0.50,
+      "colorHex": null,
+      "meltK": 281.0,
+      "boilK": 373.0,
+      "tags": [
+        { "name": "corrosive", "trigger": "pp > 0.1" },
+        { "name": "irritant", "trigger": "pp > 0.001" },
+        { "name": "cloud-former", "trigger": "temp < 373" },
+        { "name": "organic-solvent", "trigger": "pp > 1.0" }
+      ]
+    },
+    "CH3NO": {
+      "molarMass": 0.045,
+      "shielding": 5.0,
+      "greenhouse": 25.0,
+      "specificHeat": 1.50,
+      "radiativeCooling": 0.55,
+      "colorHex": null,
+      "meltK": 275.0,
+      "boilK": 483.0,
+      "tags": [
+        { "name": "solvent-hazard", "trigger": "pp > 0.5" },
+        { "name": "cloud-former", "trigger": "temp < 483" },
+        { "name": "toxic-human", "trigger": "pp > 0.01" }
+      ]
+    },
+    "S": {
+      "molarMass": 0.032,
+      "shielding": 2.0,
+      "greenhouse": 0.0,
+      "specificHeat": 0.71,
+      "radiativeCooling": 0.30,
+      "colorHex": "#FFFF00",
+      "meltK": 388.0,
+      "boilK": 717.0,
+      "tags": []
+    },
+    "H": {
+      "molarMass": 0.001,
+      "shielding": 0.1,
+      "greenhouse": 0.0,
+      "specificHeat": 14.30,
+      "radiativeCooling": 0.01,
+      "colorHex": null,
+      "meltK": 1.0,
+      "boilK": 10.0,
+      "tags": []
     }
+  },
+  "distributions": {
+    "atmosphere_pressure_bar": {
+      "name": "Atmosphere Pressure (bar)",
+      "entries": [
+        { "weight": 20, "value": [0.01, 0.1] },
+        { "weight": 50, "value": [0.1, 2.0] },
+        { "weight": 20, "value": [2.0, 10.0] },
+        { "weight": 10, "value": [10.0, 100.0] }
+      ]
+    },
+    "atmosphere_composition": {
+      "name": "Atmosphere Composition",
+      "entries": [
+        {
+          "weight": 20,
+          "value": {
+            "name": "Nitrogen–Oxygen (Earth-like)",
+            "pressure_range_bar": [0.8, 1.2],
+            "mass_range_earths": [0.5, 1.5],
+            "temp_range_K": [273, 330],
+            "composition": {
+              "N2": [0.74, 0.80],
+              "O2": [0.18, 0.24],
+              "Ar": [0.009, 0.01],
+              "H2O": [0.005, 0.015],
+              "CO2": [0.0004, 0.0005]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 15,
+          "value": {
+            "name": "Carbon Dioxide (Venus-like)",
+            "pressure_range_bar": [80, 100],
+            "mass_range_earths": [0.7, 2.0],
+            "temp_range_K": [700, 800],
+            "composition": {
+              "CO2": [0.95, 0.98],
+              "N2": [0.02, 0.05],
+              "SO2": [0.0001, 0.0002]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 15,
+          "value": {
+            "name": "Carbon Dioxide (Mars-like)",
+            "pressure_range_bar": [0.005, 0.01],
+            "mass_range_earths": [0.05, 0.4],
+            "temp_range_K": [180, 270],
+            "composition": {
+              "CO2": [0.94, 0.96],
+              "N2": [0.01, 0.03],
+              "Ar": [0.01, 0.02]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 8,
+          "value": {
+            "name": "High-CO₂ (Inert Carrier)",
+            "pressure_range_bar": [0.5, 3.0],
+            "mass_range_earths": [0.5, 2.0],
+            "temp_range_K": [250, 350],
+            "composition": {
+              "N2": [0.80, 0.90],
+              "CO2": [0.10, 0.20]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 8,
+          "value": {
+            "name": "Low-O₂, Low-CO₂ (Hypoxic Inert)",
+            "pressure_range_bar": [0.6, 1.5],
+            "mass_range_earths": [0.5, 1.5],
+            "temp_range_K": [260, 320],
+            "composition": {
+              "N2": [0.90, 0.95],
+              "O2": [0.04, 0.08],
+              "CO2": [0.0, 0.02]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 10,
+          "value": {
+            "name": "Methane Haze (Titan-like)",
+            "pressure_range_bar": [1.4, 1.6],
+            "mass_range_earths": [0.02, 0.2],
+            "temp_range_K": [90, 100],
+            "composition": {
+              "N2": [0.94, 0.97],
+              "CH4": [0.03, 0.06]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 5,
+          "value": {
+            "name": "Sulfur Dioxide (Io-like)",
+            "pressure_range_bar": [1e-9, 1e-7],
+            "mass_range_earths": [0.01, 0.1],
+            "temp_range_K": [110, 2000],
+            "composition": {
+              "SO2": [0.8, 1.0],
+              "S": [0.0, 0.2]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 5,
+          "value": {
+            "name": "Tenuous Oxygen (Europa-like)",
+            "pressure_range_bar": [1e-11, 1e-10],
+            "mass_range_earths": [0.005, 0.05],
+            "temp_range_K": [90, 120],
+            "composition": {
+              "O2": 1.0
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 5,
+          "value": {
+            "name": "Water Vapor Plume (Enceladus-like)",
+            "pressure_range_bar": [1e-9, 1e-8],
+            "mass_range_earths": [0.00001, 0.01],
+            "temp_range_K": [70, 100],
+            "composition": {
+              "H2O": [0.8, 0.95],
+              "H2": [0.0, 0.1],
+              "CO2": [0.0, 0.05],
+              "CH4": [0.0, 0.03],
+              "NH3": [0.0, 0.03]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 8,
+          "value": {
+            "name": "Hydrogen–Helium (Jupiter-like)",
+            "pressure_range_bar": [10, 100000],
+            "mass_range_earths": [15, 5000],
+            "temp_range_K": [100, 170],
+            "composition": {
+              "H2": [0.82, 0.88],
+              "He": [0.12, 0.18],
+              "CH4": [0.0, 0.01]
+            },
+            "occurs_on": "gas giants",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 3,
+          "value": {
+            "name": "Helium-rich Escaping Envelope",
+            "pressure_range_bar": [0.1, 10],
+            "mass_range_earths": [10, 50],
+            "temp_range_K": [900, 1500],
+            "composition": {
+              "He": [0.7, 0.9],
+              "H2": [0.1, 0.3],
+              "H": [0.0, 0.05]
+            },
+            "occurs_on": "gas giants",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 4,
+          "value": {
+            "name": "Hycean (H₂-rich, Wet)",
+            "pressure_range_bar": [10, 200],
+            "mass_range_earths": [2, 10],
+            "temp_range_K": [300, 500],
+            "composition": {
+              "H2": [0.85, 0.90],
+              "H2O": [0.07, 0.12],
+              "CH4": [0.01, 0.05]
+            },
+            "occurs_on": "gas giants",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 2,
+          "value": {
+            "name": "Hycean (Drier Variant)",
+            "pressure_range_bar": [1, 50],
+            "mass_range_earths": [2, 10],
+            "temp_range_K": [300, 500],
+            "composition": {
+              "H2": [0.90, 0.95],
+              "H2O": [0.03, 0.06],
+              "CH4": [0.01, 0.05]
+            },
+            "occurs_on": "gas giants",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 2,
+          "value": {
+            "name": "Magma Ocean Outgassing",
+            "pressure_range_bar": [1, 10],
+            "mass_range_earths": [0.5, 3.0],
+            "temp_range_K": [1500, 3000],
+            "composition": {
+              "CO": [0.4, 0.6],
+              "CO2": [0.3, 0.5],
+              "N2": [0.05, 0.15]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 1,
+          "value": {
+            "name": "Carbon Monoxide Dominated (Lava World)",
+            "pressure_range_bar": [0.1, 5],
+            "mass_range_earths": [0.5, 3.0],
+            "temp_range_K": [1500, 3000],
+            "composition": {
+              "CO": [0.5, 0.7],
+              "CO2": [0.2, 0.3],
+              "N2": [0.05, 0.15],
+              "SO2": [0.0, 0.1]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["true"]
+          }
+        },
+        {
+          "weight": 1,
+          "value": {
+            "name": "Abiotic Oxygen (Desiccated)",
+            "pressure_range_bar": [0.2, 5.0],
+            "mass_range_earths": [0.7, 2.0],
+            "temp_range_K": [400, 600],
+            "composition": {
+              "O2": [0.8, 1.0],
+              "CO2": [0.0, 0.2]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 2,
+          "value": {
+            "name": "Ultra-hot Metal Vapor (UHJ)",
+            "pressure_range_bar": [0.01, 0.1],
+            "mass_range_earths": [5, 500],
+            "temp_range_K": [2200, 4000],
+            "composition": {
+              "Fe": [0.4, 0.6],
+              "SiO": [0.2, 0.4],
+              "K": [0.05, 0.15],
+              "Na": [0.05, 0.15]
+            },
+            "occurs_on": "both",
+            "tidally_locked": ["true"]
+          }
+        },
+        {
+          "weight": 6,
+          "value": {
+            "name": "Steam Atmosphere (Runaway/Impact)",
+            "pressure_range_bar": [10, 300],
+            "mass_range_earths": [0.5, 2.0],
+            "temp_range_K": [400, 700],
+            "composition": {
+              "H2O": [0.9, 1.0],
+              "CO2": [0.0, 0.05],
+              "N2": [0.0, 0.03]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 6,
+          "value": {
+            "name": "Anoxic Nitrogen (Inert)",
+            "pressure_range_bar": [0.5, 1.5],
+            "mass_range_earths": [0.5, 1.5],
+            "temp_range_K": [200, 300],
+            "composition": {
+              "N2": [0.98, 1.0],
+              "CO2": [0.0, 0.01],
+              "Ar": [0.0, 0.01]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 4,
+          "value": {
+            "name": "Ammonia-bearing Reducing",
+            "pressure_range_bar": [10, 100000],
+            "mass_range_earths": [15, 5000],
+            "temp_range_K": [100, 200],
+            "composition": {
+              "H2": [0.6, 0.8],
+              "He": [0.1, 0.3],
+              "NH3": [0.05, 0.15]
+            },
+            "occurs_on": "gas giants",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 4,
+          "value": {
+            "name": "Hydrogen Sulfide-bearing",
+            "pressure_range_bar": [10, 100000],
+            "mass_range_earths": [15, 5000],
+            "temp_range_K": [100, 200],
+            "composition": {
+              "H2": [0.7, 0.8],
+              "He": [0.15, 0.25],
+              "H2S": [0.02, 0.08]
+            },
+            "occurs_on": "gas giants",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 3,
+          "value": {
+            "name": "Sodium–Potassium Exosphere",
+            "pressure_range_bar": [1e-12, 1e-10],
+            "mass_range_earths": [0.01, 0.2],
+            "temp_range_K": [400, 700],
+            "composition": {
+              "Na": [0.5, 0.7],
+              "K": [0.3, 0.5]
+            },
+            "occurs_on": "both",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 5,
+          "value": {
+            "name": "Hot Jupiter (H₂–He + CO/CO₂/H₂O)",
+            "pressure_range_bar": [1, 100],
+            "mass_range_earths": [100, 4000],
+            "temp_range_K": [1000, 2000],
+            "composition": {
+              "H2": [0.75, 0.85],
+              "He": [0.1, 0.2],
+              "CO": [0.0, 0.05],
+              "CO2": [0.0, 0.03],
+              "H2O": [0.0, 0.02]
+            },
+            "occurs_on": "gas giants",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 3,
+          "value": {
+            "name": "Photochemical SO₂ (Irradiated)",
+            "pressure_range_bar": [0.1, 10],
+            "mass_range_earths": [2, 15],
+            "temp_range_K": [500, 1000],
+            "composition": {
+              "H2": [0.7, 0.85],
+              "He": [0.15, 0.25],
+              "SO2": [0.01, 0.04]
+            },
+            "occurs_on": "both",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 6,
+          "value": {
+            "name": "Ice Giant (Uranus-like)",
+            "pressure_range_bar": [10, 100000],
+            "mass_range_earths": [10, 50],
+            "temp_range_K": [45, 80],
+            "composition": {
+              "H2": [0.78, 0.85],
+              "He": [0.14, 0.20],
+              "CH4": [0.01, 0.03]
+            },
+            "occurs_on": "gas giants",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 5,
+          "value": {
+            "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
+            "pressure_range_bar": [1e-6, 1e-4],
+            "mass_range_earths": [0.001, 0.05],
+            "temp_range_K": [30, 60],
+            "composition": {
+              "N2": [0.95, 1.0],
+              "CH4": [0.0, 0.03],
+              "CO": [0.0, 0.01]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 8,
+          "value": {
+            "name": "Primordial Envelope (Super-Earth)",
+            "pressure_range_bar": [10, 500],
+            "mass_range_earths": [2, 15],
+            "temp_range_K": [100, 400],
+            "composition": {
+              "H2": [0.80, 0.95],
+              "He": [0.05, 0.20],
+              "CH4": [0.0, 0.02],
+              "H2O": [0.0, 0.01]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 7,
+          "value": {
+            "name": "Collapsible CO₂ (Tidally Locked)",
+            "pressure_range_bar": [0.1, 5.0],
+            "mass_range_earths": [0.5, 2.0],
+            "temp_range_K": [180, 270],
+            "composition": {
+              "CO2": [0.90, 0.98],
+              "N2": [0.01, 0.08],
+              "Ar": [0.01, 0.02]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["true"]
+          }
+        }
+      ]
+    }
+  }
 }

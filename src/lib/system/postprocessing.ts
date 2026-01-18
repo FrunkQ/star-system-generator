@@ -2,13 +2,13 @@
 import type { System, RulePack, CelestialBody, Barycenter } from '../types';
 import { AU_KM, G } from '../constants';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
-import { calculateMolarMass, calculateGreenhouseEffect } from '../physics/atmosphere';
+import { calculateMolarMass, calculateGreenhouseEffect, recalculateAtmosphereDerivedProperties } from '../physics/atmosphere';
 import { calculateHabitabilityScore } from '../physics/habitability';
 import { calculateEquilibriumTemperature } from '../physics/temperature';
 import { calculateSurfaceRadiation } from '../physics/radiation';
 
 // Re-export for consumers (e.g. BodyTechnicalDetails)
-export { calculateMolarMass, calculateGreenhouseEffect, calculateHabitabilityScore, calculateDeltaVBudgets };
+export { calculateMolarMass, calculateGreenhouseEffect, calculateHabitabilityScore, calculateDeltaVBudgets, recalculateAtmosphereDerivedProperties };
 
 /**
  * Recalculates the equilibrium and total surface temperature for a body.
@@ -20,6 +20,7 @@ export function calculateSurfaceTemperature(body: CelestialBody, allNodes: (Cele
     
     if (equilibriumTempK > 0) {
         body.equilibriumTempK = equilibriumTempK;
+        // Total Temp will be finalized after greenhouse is calculated in recalculateAtmosphereDerivedProperties
         body.temperatureK = equilibriumTempK + (body.greenhouseTempK || 0) + (body.tidalHeatK || 0) + (body.radiogenicHeatK || 0);
     }
 }
@@ -31,10 +32,19 @@ export function calculateSurfaceTemperature(body: CelestialBody, allNodes: (Cele
 export function recalculateSystemPhysics(system: System, rulePack: RulePack): System {
     const nodesById = new Map(system.nodes.map(n => [n.id, n]));
 
-    // Pass 1: Temperature and Radiation (Dependencies for Zones/Habitability)
+    // Pass 1: Physical Basics & Environment
     for (const body of system.nodes) {
         if (body.kind === 'body' && (body.roleHint === 'planet' || body.roleHint === 'moon')) {
+            // 1. Calc Base Temperature (Equilibrium)
             calculateSurfaceTemperature(body, system.nodes);
+            
+            // 2. Calc Atmospheric Effects (Greenhouse, Shielding, Tags, Molar Mass)
+            recalculateAtmosphereDerivedProperties(body, system.nodes, rulePack);
+
+            // 3. Finalize Surface Temp (now that Greenhouse is updated)
+            body.temperatureK = (body.equilibriumTempK || 0) + (body.greenhouseTempK || 0) + (body.tidalHeatK || 0) + (body.radiogenicHeatK || 0);
+
+            // 4. Finalize Surface Radiation (now that Shielding is updated)
             body.surfaceRadiation = calculateSurfaceRadiation(body, system.nodes, rulePack);
         }
     }
@@ -46,7 +56,6 @@ export function recalculateSystemPhysics(system: System, rulePack: RulePack): Sy
             if (body.massKg && body.radiusKm) {
                 body.calculatedGravity_ms2 = (G * body.massKg) / Math.pow(body.radiusKm * 1000, 2);
             }
-            // (Rotation period usually intrinsic unless tidally locked logic changes, but let's leave it)
 
             // Force Re-calculate Orbital Boundaries
             let immediateHost: CelestialBody | Barycenter | null = null;
@@ -100,9 +109,14 @@ export function processSystemData(system: System, rulePack: RulePack): System {
             if (body.calculatedRotationPeriod_s === undefined && body.rotation_period_hours !== undefined) {
                 body.calculatedRotationPeriod_s = body.rotation_period_hours * 3600;
             }
-            if (body.atmosphere && body.atmosphere.molarMassKg === undefined) {
-                body.atmosphere.molarMassKg = calculateMolarMass(body.atmosphere, rulePack);
-            }
+
+            // --- Recalculate Atmosphere (V1.4.0) ---
+            recalculateAtmosphereDerivedProperties(body, system.nodes, rulePack);
+            
+            // Finalize Temperature
+            body.temperatureK = (body.equilibriumTempK || 0) + (body.greenhouseTempK || 0) + (body.tidalHeatK || 0) + (body.radiogenicHeatK || 0);
+            // Finalize Radiation
+            body.surfaceRadiation = calculateSurfaceRadiation(body, system.nodes, rulePack);
 
             // --- Calculate Orbital Boundaries ---
             if (body.orbitalBoundaries === undefined) {

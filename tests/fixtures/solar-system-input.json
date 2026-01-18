@@ -183,10 +183,11 @@
       "atmosphere": {
         "name": "Nitrogen–Oxygen (Earth-like)",
         "composition": {
-          "N2": 0.7808,
+          "N2": 0.7708,
           "O2": 0.2095,
-          "Noble Gases": 0.0093,
-          "Other Trace": 0.0004
+          "Ar": 0.0093,
+          "H2O": 0.01,
+          "CO2": 0.0004
         },
         "main": "N2",
         "pressure_bar": 1.013
