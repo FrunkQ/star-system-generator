@@ -69,6 +69,7 @@ The application is built on a modular "Factory-Generator-Processor" pipeline, de
 *   `src/lib/components/`: Svelte UI components.
     *   `SystemView.svelte`: Main controller for the system view.
     *   `SystemVisualizer.svelte`: Canvas/SVG renderer for the orbital view.
+        *   **Rendering Strategy**: Employs a **Floating Origin (Relative Camera)** pattern. All drawing coordinates are calculated in 64-bit JavaScript relative to the current camera focus before being passed to the Canvas API. This prevents floating-point precision loss (jitter) that occurs when using large absolute AU coordinates in the browser's 32-bit rendering matrix.
 *   `static/rulepacks/`: JSON configuration files.
 
 ## Future Extensibility
