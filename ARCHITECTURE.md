@@ -76,3 +76,13 @@ The application is built on a modular "Factory-Generator-Processor" pipeline, de
 
 *   **New Generators**: To add a "Hard Sci-Fi" generator, implement `ISystemGenerator` and swap it in the UI. The `SystemProcessor` ensures physics remain consistent.
 *   **Placement Strategies**: Orbital spacing logic can be extracted from `system.ts` into "Strategy" classes (e.g., `TitiusBodeStrategy`, `RandomSpacingStrategy`).
+
+## Physics Simplifications & Assumptions
+
+To maintain real-time performance and gameplay relevance, the engine employs several physical simplifications:
+
+*   **Gas Giant "Surface" Temperature**: 
+    *   **The Problem**: Gas Giants (Jupiter, Neptune) have no solid surface and atmospheric pressures exceeding 100,000 bar. A naive radiative greenhouse model would calculate temperatures in the thousands of degrees due to logarithmic pressure scaling.
+    *   **The Simplification**: For bodies with pressure > 1000 bar, the radiative greenhouse effect is calculated using an **effective pressure of 1 bar**.
+    *   **Justification**: This simulates the temperature at the **visible cloud tops** (the 1-bar level), which is the standard reference for "surface temperature" in planetary science. It accounts for radiative balance with the star while ignoring deep adiabatic heating (which is physically real but irrelevant for surface-level gameplay and habitability stats).
+*   **Logarithmic Radiation Shielding**: Employs a simplified exponential decay model ($T = e^{-kP}$) which accurately captures the rapid initial drop in radiation with pressure but assumes a uniform shielding coefficient across all wavelengths.

@@ -126,6 +126,10 @@ describe('Solar System Physics Baseline', () => {
         const venus = processedSystem.nodes.find(n => n.name === 'Venus') as CelestialBody;
         const mars = processedSystem.nodes.find(n => n.name === 'Mars') as CelestialBody;
         const io = processedSystem.nodes.find(n => n.name === 'Io') as CelestialBody;
+        const jupiter = processedSystem.nodes.find(n => n.name === 'Jupiter') as CelestialBody;
+        const saturn = processedSystem.nodes.find(n => n.name === 'Saturn') as CelestialBody;
+        const uranus = processedSystem.nodes.find(n => n.name === 'Uranus') as CelestialBody;
+        const neptune = processedSystem.nodes.find(n => n.name === 'Neptune') as CelestialBody;
 
         expect(earth).toBeDefined();
 
@@ -156,6 +160,18 @@ describe('Solar System Physics Baseline', () => {
         expect(mars.atmosphere?.pressure_bar).toBeLessThan(0.01);
         // Temp < 250K
         expect(mars.temperatureK).toBeLessThan(250);
+
+        // --- Gas Giants (1 bar / Cloud Top Temp) ---
+        // Jupiter: ~165K at 1 bar.
+        // Our model previously returned > 400K due to runaway greenhouse.
+        // With the 200 bar cap, it should be lower, but we need to tune it.
+        // Expect < 250K for now to allow some margin.
+        expect(jupiter.temperatureK).toBeLessThan(250); 
+
+        // Neptune: ~72K at 1 bar.
+        // With Greenhouse cap, it should definitely not be +500C (790K).
+        // Expect < 150K.
+        expect(neptune.temperatureK).toBeLessThan(150);
 
         // --- Tidal Physics ---
         // Io: Extreme Tidal Heating

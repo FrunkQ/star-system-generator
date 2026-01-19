@@ -36,14 +36,42 @@ export function classifyBody(planet: CelestialBody, features: Record<string, num
         .filter(([, score]) => score >= (pack.classifier?.minScore || 10))
         .sort((a, b) => b[1] - a[1]);
 
-    // Start with the most likely class, but also add generic fallbacks.
-    const primaryClass = sortedClasses.slice(0, pack.classifier?.maxClasses || 2).map(([className]) => className);
-    if (primaryClass.length === 0) {
-        if ((features['mass_Me'] as number) > 10) {
-            primaryClass.push('planet/gas-giant');
+    // Mutually exclusive base archetypes
+    // We prioritize the highest scoring one and discard the rest.
+    const baseArchetypes = new Set([
+        'planet/terrestrial', 'planet/gas-giant', 'planet/ice-giant', 
+        'planet/dwarf-planet', 'planet/super-earth', 'planet/mini-neptune',
+        'planet/hot-jupiter', 'planet/cold-jupiter', 'planet/warm-jupiter',
+        'planet/cloudless-gas-giant', 'planet/ammonia-clouds-gas-giant', 'planet/water-clouds-gas-giant',
+        'planet/silicate-clouds-gas-giant', 'planet/alkali-metal-clouds-gas-giant',
+        'planet/protoplanet', 'planet/brown-dwarf', 'planet/rogue'
+    ]);
+
+    const finalClasses: string[] = [];
+    let hasBase = false;
+
+    for (const [cls, score] of sortedClasses) {
+        if (baseArchetypes.has(cls)) {
+            if (!hasBase) {
+                finalClasses.push(cls);
+                hasBase = true;
+            }
+            // Else: Skip other base types (e.g. if we are Ice Giant, skip Gas Giant)
         } else {
-            primaryClass.push('planet/terrestrial');
+            // Always include modifiers (ringed, eyeball, etc.)
+            finalClasses.push(cls);
+        }
+        
+        if (finalClasses.length >= (pack.classifier?.maxClasses || 3)) break;
+    }
+
+    // Start with the most likely class, but also add generic fallbacks.
+    if (finalClasses.length === 0) {
+        if ((features['mass_Me'] as number) > 10) {
+            finalClasses.push('planet/gas-giant');
+        } else {
+            finalClasses.push('planet/terrestrial');
         }
     }
-    return primaryClass;
+    return finalClasses;
 }

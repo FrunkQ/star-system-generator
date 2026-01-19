@@ -200,9 +200,10 @@ export class SystemProcessor implements ISystemProcessor {
             a_AU: body.orbit?.elements.a_AU || 0,
             radiation_flux: body.surfaceRadiation || 0,
             tidalHeating: body.tidalHeatK || 0,
-            Teq_K: body.temperatureK || 0,
+            Teq_K: body.equilibriumTempK || 0,
+            SurfaceTemp_K: body.temperatureK || 0,
             orbital_period_days: body.orbital_period_days || 0,
-            rotation_period_hours: body.rotation_period_hours || 0,
+            rotation_period_hours: Math.abs(body.rotation_period_hours || 0),
             tidallyLocked: body.tidallyLocked ? 1 : 0
         };
 

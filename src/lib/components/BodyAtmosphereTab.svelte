@@ -20,6 +20,11 @@
   // Reactive Gas Physics Data
   $: gasPhysics = rulePack.gasPhysics || {};
 
+  // Ensure magnetic field object exists for binding
+  $: if (body && !body.magneticField) {
+      body.magneticField = { strengthGauss: 0 };
+  }
+
   // Only sync the dropdown when we switch to a different body
   let currentBodyId = '';
   $: if (body.id !== currentBodyId) {
@@ -273,7 +278,12 @@
       const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
       const minLog = Math.log(minMag);
       const maxLog = Math.log(maxMag);
-      if (!body.magneticField) body.magneticField = { strengthGauss: 0 };
+      
+      // Initialize if missing
+      if (!body.magneticField) {
+          body.magneticField = { strengthGauss: 0 };
+      }
+      
       body.magneticField.strengthGauss = Math.exp(minLog + (maxLog - minLog) * pct);
       applyChanges();
   }
@@ -288,6 +298,40 @@
 />
 
 <div class="atmosphere-tab">
+  <!-- MAGNETOSPHERE -->
+  <div class="form-group">
+      <div class="label-row">
+           <label>Magnetosphere (Gauss)</label>
+           <input type="number" step="0.01" bind:value={body.magneticField.strengthGauss} on:input={applyChanges} />
+      </div>
+      <div class="orbital-slider-container" style="height: 80px;">
+          <svg 
+              bind:this={svgMagSlider}
+              class="orbital-slider" 
+              on:mousedown={handleMagMouseDown}
+              preserveAspectRatio="none"
+          >
+              <rect x="0" y="20" width="100%" height="10" fill="#333" rx="5" />
+              <!-- Zone Indicators -->
+              <rect x="0" y="35" width="{getMagPercent(2)}%" height="4" fill="orange" rx="1" />
+              <text x="0%" y="50" fill="orange" font-size="10">Terrestrial</text>
+              
+              <rect x="{getMagPercent(0.1)}%" y="35" width="{getMagPercent(1) - getMagPercent(0.1)}%" height="4" fill="#add8e6" rx="1" />
+              <text x="{getMagPercent(0.1)}%" y="50" fill="#add8e6" font-size="10">Ice</text>
+
+              <rect x="{getMagPercent(4)}%" y="32" width="{getMagPercent(100) - getMagPercent(4)}%" height="4" fill="#cc0000" rx="1" />
+              <text x="{getMagPercent(4)}%" y="50" fill="#cc0000" font-size="10">Gas</text>
+
+              {#each magMarks as mark}
+                  {@const pct = getMagPercent(mark.val)}
+                  <line x1="{pct}%" y1="15" x2="{pct}%" y2="35" stroke="#888" stroke-width="1" />
+                  <text x="{pct}%" y="65" fill="#888" font-size="9" text-anchor="middle">{mark.label}</text>
+              {/each}
+              <circle cx="{getMagPercent(body.magneticField?.strengthGauss || minMag)}%" cy="25" r="6" fill="#fff" stroke="#000" stroke-width="2" />
+          </svg>
+      </div>
+  </div>
+
   <div class="form-group">
     <label for="atmosphere-preset">Atmosphere Preset</label>
     <select id="atmosphere-preset" bind:value={selectedAtmosphereName} on:change={handleAtmosphereChange}>
@@ -303,40 +347,6 @@
     <div class="form-group">
       <label for="atm-name">Name Override</label>
       <input type="text" id="atm-name" bind:value={body.atmosphere.name} on:change={applyChanges} />
-    </div>
-
-    <!-- MAGNETOSPHERE -->
-    <div class="form-group">
-        <div class="label-row">
-             <label>Magnetosphere (Gauss)</label>
-             <input type="number" step="0.01" bind:value={body.magneticField.strengthGauss} on:input={applyChanges} />
-        </div>
-        <div class="orbital-slider-container" style="height: 80px;">
-            <svg 
-                bind:this={svgMagSlider}
-                class="orbital-slider" 
-                on:mousedown={handleMagMouseDown}
-                preserveAspectRatio="none"
-            >
-                <rect x="0" y="20" width="100%" height="10" fill="#333" rx="5" />
-                <!-- Zone Indicators -->
-                <rect x="0" y="35" width="{getMagPercent(2)}%" height="4" fill="orange" rx="1" />
-                <text x="0%" y="50" fill="orange" font-size="10">Terrestrial</text>
-                
-                <rect x="{getMagPercent(0.1)}%" y="35" width="{getMagPercent(1) - getMagPercent(0.1)}%" height="4" fill="#add8e6" rx="1" />
-                <text x="{getMagPercent(0.1)}%" y="50" fill="#add8e6" font-size="10">Ice</text>
-
-                <rect x="{getMagPercent(4)}%" y="32" width="{getMagPercent(100) - getMagPercent(4)}%" height="4" fill="#cc0000" rx="1" />
-                <text x="{getMagPercent(4)}%" y="50" fill="#cc0000" font-size="10">Gas</text>
-
-                {#each magMarks as mark}
-                    {@const pct = getMagPercent(mark.val)}
-                    <line x1="{pct}%" y1="15" x2="{pct}%" y2="35" stroke="#888" stroke-width="1" />
-                    <text x="{pct}%" y="65" fill="#888" font-size="9" text-anchor="middle">{mark.label}</text>
-                {/each}
-                <circle cx="{getMagPercent(body.magneticField?.strengthGauss || minMag)}%" cy="25" r="6" fill="#fff" stroke="#000" stroke-width="2" />
-            </svg>
-        </div>
     </div>
 
     <!-- PRESSURE -->

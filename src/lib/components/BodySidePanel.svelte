@@ -65,7 +65,7 @@
     
     {#if !isBeltOrRing && !isStar && !isBarycenter}
         <button class:active={selectedTab === 'Temp'} on:click={() => setTab('Temp')}>Temp</button>
-        <button class:active={selectedTab === 'Atmosphere'} on:click={() => setTab('Atmosphere')}>Atmosphere</button>
+        <button class:active={selectedTab === 'Atmosphere'} on:click={() => setTab('Atmosphere')}>Atmo/Mag</button>
         <button class:active={selectedTab === 'Hydro'} on:click={() => setTab('Hydro')}>Liquid</button>
         <button class:active={selectedTab === 'Bio'} on:click={() => setTab('Bio')}>Bio</button>
     {/if}

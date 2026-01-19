@@ -87,18 +87,29 @@ export function calculateGreenhouseEffect(body: CelestialBody, rulePack: RulePac
 
     const atm = body.atmosphere;
     const pressure = atm.pressure_bar || 0;
+    
+    // Cap effective pressure for greenhouse calc to prevent runaway heating on Gas Giants
+    // For Gas Giants (huge pressure), we care about the cloud-top (1-10 bar) temperature for "surface" stats.
+    // Deep layers are adiabatically heated but don't count as the radiative surface.
+    let effectivePressure = pressure;
+    if (pressure > 1000) {
+        effectivePressure = 1; // Use 1-bar level as the "Surface" for radiative balance
+    } else {
+        effectivePressure = Math.min(pressure, 200); // Allow Venus (90 bar) but cap runaways
+    }
+    
     let totalDeltaT = 0;
 
     // V1.4.0 Hybrid Square-Root-Log Greenhouse Model
     // DeltaT = Multiplier * Sum( GasPot * ln(1 + sqrt(100 * partialPressure)) )
     // We also apply "Pressure Broadening" (sqrt(P_total)) to account for line narrowing in thin atmospheres.
     const multiplier = 5.0; 
-    const broadening = Math.min(1.0, Math.sqrt(pressure));
+    const broadening = Math.min(1.0, Math.sqrt(effectivePressure));
 
     for (const [gas, fraction] of Object.entries(atm.composition)) {
         const physics = rulePack.gasPhysics[gas];
         if (physics && physics.greenhouse > 0) {
-            const pp = pressure * fraction;
+            const pp = effectivePressure * fraction;
             const gasContribution = physics.greenhouse * Math.log(1 + Math.sqrt(100 * pp));
             totalDeltaT += gasContribution;
         }

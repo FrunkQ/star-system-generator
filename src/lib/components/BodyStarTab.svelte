@@ -233,8 +233,40 @@
   function updateSpectralType(e: Event) {
       const val = (e.target as HTMLSelectElement).value;
       if (!body.classes) body.classes = [];
-      body.classes[0] = val;
+      
+      // Clean up existing spectral classes to avoid duplicates (e.g. "star/T", "star/brown-dwarf")
+      const spectralPrefixes = ['star/O', 'star/B', 'star/A', 'star/F', 'star/G', 'star/K', 'star/M', 'star/L', 'star/T', 'star/Y', 'star/brown-dwarf', 'star/red-giant', 'star/WD', 'star/NS', 'star/BH', 'star/magnetar'];
+      
+      // Keep only non-spectral classes (like 'binary-partner')
+      const otherClasses = body.classes.filter(c => !spectralPrefixes.includes(c));
+      
+      // Set new class as primary
+      body.classes = [val, ...otherClasses];
+      
       updateImage(val);
+
+      // Lookup typical temp for this class
+      const classKey = val.split('/')[1]; // 'G', 'M', etc
+      const zone = tempZones.find(z => z.name === classKey);
+      
+      if (zone) {
+          const midTemp = (zone.start + zone.end) / 2;
+          tempK = Math.round(midTemp);
+          body.temperatureK = tempK;
+          // Sync Slider
+          tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, tempK))) - tempLogMin) / (tempLogMax - tempLogMin);
+      } else if (val === 'star/WD') {
+          // White Dwarf typical
+          tempK = 10000;
+          body.temperatureK = tempK;
+          tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, tempK))) - tempLogMin) / (tempLogMax - tempLogMin);
+      } else if (val === 'star/NS' || val.includes('BH')) {
+          // Neutron Star / Black Hole (very hot accretion)
+          tempK = 50000;
+          body.temperatureK = tempK;
+          tempSliderPos = 1.0;
+      }
+
       dispatch('update');
   }
 

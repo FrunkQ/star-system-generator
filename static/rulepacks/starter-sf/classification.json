@@ -165,7 +165,7 @@
 
             { "when": { "between": ["mass_Me", 4000, 8000] }, "addClass": "planet/brown-dwarf", "score": 120 },
             { "when": { "between": ["mass_Me", 1000, 4000] }, "addClass": "planet/sub-brown-dwarf", "score": 110 },
-            { "when": { "all": [ { "between": ["mass_Me", 10, 50] }, { "lt": ["Teq_K", 200] } ] }, "addClass": "planet/ice-giant", "score": 80 },
+            { "when": { "all": [ { "between": ["mass_Me", 10, 50] }, { "lt": ["Teq_K", 200] } ] }, "addClass": "planet/ice-giant", "score": 85 },
             { "when": { "all": [ { "gt": ["radius_Re", 6] }, { "lt": ["mass_Me", 2] } ] }, "addClass": "planet/super-puff", "score": 90 },
             { "when": { "eq": ["parentId", null] }, "addClass": "planet/rogue", "score": 200 }
         ],

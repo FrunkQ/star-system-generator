@@ -70,6 +70,13 @@
   let lastSystemId: string | null = null;
   let lastFramedPlanId: string | null = null;
 
+  // Force re-render when system data changes deep down
+  $: if (system) {
+      // This dependency ensures that if any part of the system object 
+      // is modified (even deep properties), Svelte acknowledges it.
+      system = system; 
+  }
+
   // --- Reactive Calculations ---
   $: if (system && system.id !== lastSystemId) {
     needsReset = true;
@@ -754,11 +761,39 @@
       if (transitPlan) drawTransitPlan(ctx, transitPlan, false, isExecuting ? 0.3 : undefined, isExecuting);
       if (transitPreviewPos) drawShipMarker(ctx, transitPreviewPos);
       ctx.restore();
+      
+      // Draw Constructs and Barycenters (Screen Space Overlay)
+      for (const node of system.nodes) {
+          const pos = scaledWorldPositions.get(node.id);
+          if (!pos) continue;
+          if (node.kind === 'barycenter' || node.kind === 'construct') {
+              const screenPos = worldToScreen(pos.x, pos.y);
+              if (screenPos.x < -20 || screenPos.x > width + 20 || screenPos.y < -20 || screenPos.y > height + 20) continue;
+              if (node.kind === 'barycenter') {
+                  ctx.strokeStyle = '#888'; ctx.lineWidth = 1;
+                  ctx.beginPath(); ctx.moveTo(screenPos.x - 5, screenPos.y); ctx.lineTo(screenPos.x + 5, screenPos.y);
+                  ctx.moveTo(screenPos.x, screenPos.y - 5); ctx.lineTo(screenPos.x, screenPos.y + 5);
+                  ctx.stroke();
+              } else if (node.kind === 'construct') {
+                  const size = 8;
+                  ctx.fillStyle = node.icon_color || '#f0f0f0';
+                  if (node.icon_type === 'triangle') {
+                      ctx.beginPath(); ctx.moveTo(screenPos.x, screenPos.y - size / 2); ctx.lineTo(screenPos.x + size / 2, screenPos.y + size / 2);
+                      ctx.lineTo(screenPos.x - size / 2, screenPos.y + size / 2); ctx.closePath(); ctx.fill();
+                  } else ctx.fillRect(screenPos.x - size / 2, screenPos.y - size / 2, size, size);
+              }
+          }
+      }
+
       if (toytownFactor === 0) drawScaleBar(ctx);
       if (showNames) {
           beltLabelClickAreas.clear();
           const visibleLabelIds = getVisibleNodeIds(system, focusedBodyId);
           ctx.font = `12px sans-serif`;
+          ctx.lineWidth = 4; // Bolder outline
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+          ctx.lineJoin = 'round';
+          
           for (const node of system.nodes) {
               if (!visibleLabelIds.has(node.id) || node.kind !== 'body') continue;
               if (node.roleHint === 'belt' && node.orbit && node.parentId) {
@@ -768,8 +803,12 @@
                   if (toytownFactor > 0) { const minDistance = 0.01; const x0_distance = minDistance * 0.1; a = scaleBoxCox(a, toytownFactor, x0_distance); }
                   const apoapsisX = parentPos.x - (a * (1 + e)); const apoapsisY = parentPos.y;
                   const screenPos = worldToScreen(apoapsisX, apoapsisY);
-                  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; ctx.textAlign = 'center';
+                  ctx.textAlign = 'center';
+                  
+                  ctx.strokeText(node.name, screenPos.x, screenPos.y - 10);
+                  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; 
                   ctx.fillText(node.name, screenPos.x, screenPos.y - 10);
+                  
                   const textMetrics = ctx.measureText(node.name); const padding = 5;
                   const x1 = screenPos.x - (textMetrics.width / 2) - padding;
                   const y1 = screenPos.y - 20 - padding;
@@ -784,7 +823,14 @@
                   if (node.roleHint === 'star') radiusPx = 4;
                   else if (node.roleHint === 'planet') { const isGasGiant = node.classes.some(c => c.includes('gas-giant') || c.includes('ice-giant')); radiusPx = isGasGiant ? 3 : 2; }
                   else if (node.roleHint === 'moon') radiusPx = 1;
-                  ctx.textAlign = 'left'; ctx.fillStyle = getNodeColor(node); ctx.fillText(node.name, screenPos.x + radiusPx + 5, screenPos.y);
+                  ctx.textAlign = 'left'; 
+                  
+                  const tx = screenPos.x + radiusPx + 5;
+                  const ty = screenPos.y;
+
+                  ctx.strokeText(node.name, tx, ty);
+                  ctx.fillStyle = getNodeColor(node); 
+                  ctx.fillText(node.name, tx, ty);
               }
           }
           for (const node of system.nodes) {
@@ -793,7 +839,14 @@
               if (!worldPos) continue;
               const screenPos = worldToScreen(worldPos.x, worldPos.y);
               const size = 8;
-              ctx.textAlign = 'left'; ctx.fillStyle = node.icon_color || '#f0f0f0'; ctx.fillText(node.name, screenPos.x + size / 2 + 5, screenPos.y);
+              ctx.textAlign = 'left'; 
+              
+              const tx = screenPos.x + size / 2 + 5;
+              const ty = screenPos.y;
+
+              ctx.strokeText(node.name, tx, ty);
+              ctx.fillStyle = node.icon_color || '#f0f0f0'; 
+              ctx.fillText(node.name, tx, ty);
           }
       }
       if (showZones && stellarZones.size > 0) {
@@ -827,7 +880,7 @@
           }
       }
       if (showLPoints && lagrangePoints) {
-          ctx.font = `12px sans-serif`;
+          const crossSize = 5 / zoom; ctx.lineWidth = 1.5 / zoom;
           for (const [key, pos] of lagrangePoints.entries()) {
               const name = key.split('-')[0]; const isStable = name === 'L4' || name === 'L5';
               if (toytownFactor > 0 && !isStable) continue;
