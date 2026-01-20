@@ -2,7 +2,7 @@
   "gasPhysics": {
     "N2": {
       "molarMass": 0.028,
-      "shielding": 4.5,
+      "shielding": 7.2,
       "greenhouse": 0.0,
       "specificHeat": 1.04,
       "radiativeCooling": 0.05,
@@ -18,7 +18,7 @@
     },
     "O2": {
       "molarMass": 0.032,
-      "shielding": 4.8,
+      "shielding": 7.5,
       "greenhouse": 0.0,
       "specificHeat": 0.92,
       "radiativeCooling": 0.05,
@@ -36,7 +36,7 @@
     },
     "Ar": {
       "molarMass": 0.040,
-      "shielding": 5.2,
+      "shielding": 8.5,
       "greenhouse": 0.0,
       "specificHeat": 0.52,
       "radiativeCooling": 0.0,
@@ -51,7 +51,7 @@
     },
     "He": {
       "molarMass": 0.004,
-      "shielding": 0.5,
+      "shielding": 1.0,
       "greenhouse": 0.0,
       "specificHeat": 5.19,
       "radiativeCooling": 0.0,
@@ -67,7 +67,7 @@
     },
     "Ne": {
       "molarMass": 0.020,
-      "shielding": 2.0,
+      "shielding": 3.0,
       "greenhouse": 0.0,
       "specificHeat": 1.03,
       "radiativeCooling": 0.0,
@@ -82,7 +82,7 @@
     },
     "Kr": {
       "molarMass": 0.084,
-      "shielding": 8.0,
+      "shielding": 12.0,
       "greenhouse": 0.0,
       "specificHeat": 0.25,
       "radiativeCooling": 0.0,
@@ -98,7 +98,7 @@
     },
     "CO2": {
       "molarMass": 0.044,
-      "shielding": 5.0,
+      "shielding": 8.0,
       "greenhouse": 22.0,
       "specificHeat": 0.84,
       "radiativeCooling": 0.90,
@@ -114,7 +114,7 @@
     },
     "H2O": {
       "molarMass": 0.018,
-      "shielding": 5.5,
+      "shielding": 8.5,
       "greenhouse": 3.0,
       "specificHeat": 1.86,
       "radiativeCooling": 0.60,
@@ -130,7 +130,7 @@
     },
     "CH4": {
       "molarMass": 0.016,
-      "shielding": 3.0,
+      "shielding": 5.0,
       "greenhouse": 25.0,
       "specificHeat": 2.22,
       "radiativeCooling": 0.50,
@@ -146,7 +146,7 @@
     },
     "SO2": {
       "molarMass": 0.064,
-      "shielding": 8.0,
+      "shielding": 12.0,
       "greenhouse": 15.0,
       "specificHeat": 0.64,
       "radiativeCooling": 0.55,
@@ -164,7 +164,7 @@
     },
     "H2S": {
       "molarMass": 0.034,
-      "shielding": 4.5,
+      "shielding": 7.5,
       "greenhouse": 12.0,
       "specificHeat": 1.01,
       "radiativeCooling": 0.40,
@@ -180,7 +180,7 @@
     },
     "NH3": {
       "molarMass": 0.017,
-      "shielding": 3.5,
+      "shielding": 5.0,
       "greenhouse": 18.0,
       "specificHeat": 2.17,
       "radiativeCooling": 0.45,
@@ -196,7 +196,7 @@
     },
     "Cl2": {
       "molarMass": 0.071,
-      "shielding": 8.0,
+      "shielding": 15.0,
       "greenhouse": 5.0,
       "specificHeat": 0.48,
       "radiativeCooling": 0.20,
@@ -214,7 +214,7 @@
     },
     "F2": {
       "molarMass": 0.038,
-      "shielding": 9.0,
+      "shielding": 15.0,
       "greenhouse": 0.0,
       "specificHeat": 0.82,
       "radiativeCooling": 0.20,
@@ -229,7 +229,7 @@
     },
     "H2": {
       "molarMass": 0.002,
-      "shielding": 0.2,
+      "shielding": 0.5,
       "greenhouse": 0.0,
       "specificHeat": 14.30,
       "radiativeCooling": 0.01,
@@ -245,7 +245,7 @@
     },
     "CO": {
       "molarMass": 0.028,
-      "shielding": 4.5,
+      "shielding": 7.2,
       "greenhouse": 5.0,
       "specificHeat": 1.04,
       "radiativeCooling": 0.70,
@@ -260,7 +260,7 @@
     },
     "HCN": {
       "molarMass": 0.028,
-      "shielding": 3.5,
+      "shielding": 5.0,
       "greenhouse": 15.0,
       "specificHeat": 1.32,
       "radiativeCooling": 0.50,
@@ -276,7 +276,7 @@
     },
     "C2H6": {
       "molarMass": 0.030,
-      "shielding": 3.5,
+      "shielding": 5.5,
       "greenhouse": 20.0,
       "specificHeat": 1.75,
       "radiativeCooling": 0.60,
@@ -292,7 +292,7 @@
     },
     "CFC": {
       "molarMass": 0.121,
-      "shielding": 12.0,
+      "shielding": 20.0,
       "greenhouse": 150.0,
       "specificHeat": 0.60,
       "radiativeCooling": 0.85,
@@ -307,7 +307,7 @@
     },
     "Na": {
       "molarMass": 0.023,
-      "shielding": 10.0,
+      "shielding": 15.0,
       "greenhouse": 5.0,
       "specificHeat": 0.90,
       "radiativeCooling": 0.30,
@@ -323,7 +323,7 @@
     },
     "K": {
       "molarMass": 0.039,
-      "shielding": 12.0,
+      "shielding": 18.0,
       "greenhouse": 5.0,
       "specificHeat": 0.53,
       "radiativeCooling": 0.30,
@@ -338,7 +338,7 @@
     },
     "Fe": {
       "molarMass": 0.056,
-      "shielding": 50.0,
+      "shielding": 80.0,
       "greenhouse": 15.0,
       "specificHeat": 0.37,
       "radiativeCooling": 0.40,
@@ -355,7 +355,7 @@
     },
     "SiO": {
       "molarMass": 0.044,
-      "shielding": 30.0,
+      "shielding": 50.0,
       "greenhouse": 20.0,
       "specificHeat": 0.70,
       "radiativeCooling": 0.50,
@@ -371,7 +371,7 @@
     },
     "HF": {
       "molarMass": 0.020,
-      "shielding": 2.0,
+      "shielding": 3.0,
       "greenhouse": 10.0,
       "specificHeat": 1.45,
       "radiativeCooling": 0.30,
@@ -388,7 +388,7 @@
     },
     "HCl": {
       "molarMass": 0.036,
-      "shielding": 6.0,
+      "shielding": 10.0,
       "greenhouse": 5.0,
       "specificHeat": 0.80,
       "radiativeCooling": 0.30,
@@ -405,7 +405,7 @@
     },
     "H2SO4": {
       "molarMass": 0.098,
-      "shielding": 12.0,
+      "shielding": 20.0,
       "greenhouse": 40.0,
       "specificHeat": 0.70,
       "radiativeCooling": 0.60,
@@ -421,7 +421,7 @@
     },
     "CH2O2": {
       "molarMass": 0.046,
-      "shielding": 5.0,
+      "shielding": 8.0,
       "greenhouse": 12.0,
       "specificHeat": 1.20,
       "radiativeCooling": 0.50,
@@ -437,7 +437,7 @@
     },
     "CH3NO": {
       "molarMass": 0.045,
-      "shielding": 5.0,
+      "shielding": 8.0,
       "greenhouse": 25.0,
       "specificHeat": 1.50,
       "radiativeCooling": 0.55,
@@ -452,7 +452,7 @@
     },
     "S": {
       "molarMass": 0.032,
-      "shielding": 2.0,
+      "shielding": 3.0,
       "greenhouse": 0.0,
       "specificHeat": 0.71,
       "radiativeCooling": 0.30,
@@ -463,7 +463,7 @@
     },
     "H": {
       "molarMass": 0.001,
-      "shielding": 0.1,
+      "shielding": 0.2,
       "greenhouse": 0.0,
       "specificHeat": 14.30,
       "radiativeCooling": 0.01,
@@ -494,10 +494,10 @@
             "mass_range_earths": [0.5, 1.5],
             "temp_range_K": [273, 330],
             "composition": {
-              "N2": [0.74, 0.80],
+              "N2": [0.75, 0.81],
               "O2": [0.18, 0.24],
               "Ar": [0.009, 0.01],
-              "H2O": [0.005, 0.015],
+              "H2O": [0.003, 0.005],
               "CO2": [0.0004, 0.0005]
             },
             "occurs_on": "terrestrial",

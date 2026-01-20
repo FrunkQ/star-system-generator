@@ -24,6 +24,7 @@
   let showNames = true;
   let showZones = false;
   let showLPoints = false;
+  let showTravellerZones = false;
 
   // Time State
   let isPlaying = false;
@@ -91,6 +92,7 @@
               showNames = settings.showNames;
               showZones = settings.showZones;
               showLPoints = settings.showLPoints;
+              showTravellerZones = settings.showTravellerZones;
           },
           (time) => {
               isPlaying = time.isPlaying;
@@ -141,6 +143,7 @@
             {showNames} 
             {showZones} 
             {showLPoints}
+            {showTravellerZones}
             toytownFactor={$systemStore.toytownFactor || 0}
             fullScreen={true}
             bind:cameraMode={cameraMode}

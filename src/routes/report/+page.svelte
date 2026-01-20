@@ -102,8 +102,23 @@
   }
 
   function getTemp(body: CelestialBody) {
-      if (!body.temperature_c) return '-';
-      return `${Math.round(body.temperature_c)}°C`;
+      if (body.temperatureK === undefined) return '-';
+      const c = Math.round(body.temperatureK - 273.15);
+      return `${c}°C`;
+  }
+
+  function getTempDetails(body: CelestialBody) {
+      const b = body as any;
+      if (body.temperatureK === undefined) return '';
+      
+      const parts = [];
+      if (b.equilibriumTempK) parts.push(`Eq: ${Math.round(b.equilibriumTempK)}K`);
+      if (b.greenhouseTempK) parts.push(`G.House: +${Math.round(b.greenhouseTempK)}K`);
+      if (b.tidalHeatK) parts.push(`Tidal: +${Math.round(b.tidalHeatK)}K`);
+      if (b.radiogenicHeatK) parts.push(`Core: +${Math.round(b.radiogenicHeatK)}K`);
+      
+      if (parts.length === 0) return '';
+      return `(${parts.join(', ')})`;
   }
 
   function getAtmosphereString(body: CelestialBody) {
@@ -113,11 +128,42 @@
       
       const gases = Object.entries(body.atmosphere.composition || {})
           .sort((a,b) => b[1] - a[1])
-          .slice(0, 2)
           .map(([g, pct]) => `${g} ${(pct*100).toFixed(0)}%`)
           .join(', ');
 
       return `${body.atmosphere.name || 'Unknown'} (${pStr} bar) ${gases ? '['+gases+']' : ''}`;
+  }
+
+  function getLuminosity(body: CelestialBody) {
+      if (body.roleHint !== 'star' || !body.radiusKm || !body.temperatureK) return '-';
+      const r = body.radiusKm / 696340; // Solar Radius
+      const t = body.temperatureK / 5778; // Solar Temp
+      const lum = Math.pow(r, 2) * Math.pow(t, 4);
+      return lum < 0.01 ? lum.toExponential(2) + ' L☉' : lum.toFixed(2) + ' L☉';
+  }
+
+  function getHydroString(body: CelestialBody) {
+      if (!body.hydrosphere || body.hydrosphere.coverage === undefined || body.hydrosphere.coverage === 0) return 'No surface liquid';
+      const cov = Math.round(body.hydrosphere.coverage * 100);
+      const comp = body.hydrosphere.composition ? ` (${body.hydrosphere.composition})` : '';
+      return `${cov}%${comp}`;
+  }
+
+  function getOrbitalMechanics(body: CelestialBody) {
+      const anyBody = body as any;
+      if (anyBody.loDeltaVBudget_ms) {
+          const ascent = (anyBody.loDeltaVBudget_ms / 1000).toFixed(1) + ' km/s';
+          const land = anyBody.aerobrakeLandBudget_ms > 0 
+              ? (anyBody.aerobrakeLandBudget_ms / 1000).toFixed(1) + ' km/s (Aero)' 
+              : (anyBody.propulsiveLandBudget_ms / 1000).toFixed(1) + ' km/s';
+          return `Ascent: ${ascent} | Land: ${land}`;
+      }
+      return '-';
+  }
+
+  function getTagsString(body: CelestialBody) {
+      if (!body.tags || body.tags.length === 0) return '-';
+      return body.tags.map(t => t.key.split('/').pop()?.replace(/_/g, ' ')).join(', ');
   }
 
   function getPrimaryBodies() {
@@ -227,6 +273,7 @@
                                 {#if primary.temperatureK}
                                 <th>Temp</th><td>{Math.round((primary.temperatureK) - 273.15)}°C</td>
                                 {/if}
+                                <th>Lum</th><td>{getLuminosity(primary)}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -250,20 +297,23 @@
                                         <tr><th>Orbit Period</th><td>{child.orbital_period_days ? child.orbital_period_days.toFixed(1) + ' d' : '-'}</td></tr>
                                         <tr><th>Eccentricity</th><td>{child.orbit?.elements.e.toFixed(3)}</td></tr>
                                         <tr><th>Day Length</th><td>{child.rotation_period_hours ? child.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
+                                        <tr><th>Axial Tilt</th><td>{(child as any).axial_tilt_deg ? (child as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
                                         <tr><th>Mass</th><td>{phys.massRel}</td></tr>
                                         <tr><th>Radius</th><td>{formatNumber(child.radiusKm)} km</td></tr>
                                         <tr><th>Gravity</th><td>{phys.gravity}</td></tr>
                                         <tr><th>Density</th><td>{phys.density}</td></tr>
+                                        <tr><th>Delta-V</th><td>{getOrbitalMechanics(child)}</td></tr>
                                     </tbody>
                                  </table>
 
                                  <!-- Right Col: Environmental -->
                                  <table>
                                      <tbody>
-                                         <tr><th>Temperature</th><td>{getTemp(child)}</td></tr>
+                                         <tr><th>Temperature</th><td>{getTemp(child)} <span style="font-size: 0.8em; color: #666;">{getTempDetails(child)}</span></td></tr>
                                          <tr><th>Atmosphere</th><td style="font-size: 0.9em;">{getAtmosphereString(child)}</td></tr>
+                                         <tr><th>Hydrography</th><td>{getHydroString(child)}</td></tr>
                                          <tr><th>Magnetosphere</th><td>{child.magneticField ? child.magneticField.strengthGauss.toFixed(2) + ' G' : 'None'}</td></tr>
-                                         <tr><th>Surface Rad</th><td>{child.surfaceRadiation ? child.surfaceRadiation.toFixed(1) + ' mSv/y' : '-'}</td></tr>
+                                         <tr><th>Surface Rad</th><td>{child.surfaceRadiation !== undefined ? child.surfaceRadiation.toFixed(1) + ' mSv/y' : '-'}</td></tr>
                                          {#if child.habitabilityScore}
                                             <tr><th>Habitability</th><td>{child.habitabilityScore.toFixed(1)}%</td></tr>
                                          {/if}
@@ -273,6 +323,12 @@
                                      </tbody>
                                  </table>
                              </div>
+
+                             {#if child.tags && child.tags.length > 0}
+                                <div style="margin-top: 5px; font-size: 0.9em; color: #555;">
+                                    <strong>Tags:</strong> {getTagsString(child)}
+                                </div>
+                             {/if}
 
                              {#if child.description}
                                 <div style="margin-top: 10px; border-top: 1px dotted #ccc; padding-top: 5px;">
@@ -306,20 +362,23 @@
                                                 <tr><th>Orbit Period</th><td>{grandchild.orbital_period_days ? grandchild.orbital_period_days.toFixed(1) + ' d' : '-'}</td></tr>
                                                 <tr><th>Eccentricity</th><td>{grandchild.orbit?.elements.e.toFixed(3)}</td></tr>
                                                 <tr><th>Day Length</th><td>{grandchild.rotation_period_hours ? grandchild.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
+                                                <tr><th>Axial Tilt</th><td>{(grandchild as any).axial_tilt_deg ? (grandchild as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
                                                 <tr><th>Mass</th><td>{gPhys.massRel}</td></tr>
                                                 <tr><th>Radius</th><td>{formatNumber(grandchild.radiusKm)} km</td></tr>
                                                 <tr><th>Gravity</th><td>{gPhys.gravity}</td></tr>
                                                 <tr><th>Density</th><td>{gPhys.density}</td></tr>
+                                                <tr><th>Delta-V</th><td>{getOrbitalMechanics(grandchild)}</td></tr>
                                             </tbody>
                                          </table>
 
                                          <!-- Right Col: Environmental -->
                                          <table>
                                              <tbody>
-                                                 <tr><th>Temperature</th><td>{getTemp(grandchild)}</td></tr>
+                                                 <tr><th>Temperature</th><td>{getTemp(grandchild)} <span style="font-size: 0.8em; color: #666;">{getTempDetails(grandchild)}</span></td></tr>
                                                  <tr><th>Atmosphere</th><td style="font-size: 0.9em;">{getAtmosphereString(grandchild)}</td></tr>
+                                                 <tr><th>Hydrography</th><td>{getHydroString(grandchild)}</td></tr>
                                                  <tr><th>Magnetosphere</th><td>{grandchild.magneticField ? grandchild.magneticField.strengthGauss.toFixed(2) + ' G' : 'None'}</td></tr>
-                                                 <tr><th>Surface Rad</th><td>{grandchild.surfaceRadiation ? grandchild.surfaceRadiation.toFixed(1) + ' mSv/y' : '-'}</td></tr>
+                                                 <tr><th>Surface Rad</th><td>{grandchild.surfaceRadiation !== undefined ? grandchild.surfaceRadiation.toFixed(1) + ' mSv/y' : '-'}</td></tr>
                                                  {#if grandchild.habitabilityScore}
                                                     <tr><th>Habitability</th><td>{grandchild.habitabilityScore.toFixed(1)}%</td></tr>
                                                  {/if}
@@ -329,6 +388,12 @@
                                              </tbody>
                                          </table>
                                      </div>
+
+                                     {#if grandchild.tags && grandchild.tags.length > 0}
+                                        <div style="margin-top: 5px; font-size: 0.9em; color: #555;">
+                                            <strong>Tags:</strong> {getTagsString(grandchild)}
+                                        </div>
+                                     {/if}
 
                                      {#if grandchild.description}
                                         <div style="margin-top: 10px; border-top: 1px dotted #ccc; padding-top: 5px;">

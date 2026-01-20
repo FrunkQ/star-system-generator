@@ -1,5 +1,5 @@
 {
-  "id": "solar-system",
+  "id": "seed-1768930602866",
   "name": "Sol",
   "seed": "solar-system-real-data",
   "epochT0": 1762339146908,
@@ -29,7 +29,10 @@
       "areas": [],
       "description": "The heart of our Solar System, Sol is a G-type main-sequence star (a yellow dwarf). It accounts for 99.8% of the system's total mass. Its energy, produced by nuclear fusion in its core, radiates outward, making life on Earth possible.",
       "isNameUserDefined": true,
-      "calculatedGravity_ms2": 274.2814900104337
+      "calculatedGravity_ms2": 274.2814900104337,
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-mercury",
@@ -38,10 +41,8 @@
       "kind": "body",
       "roleHint": "planet",
       "classes": [
-        "planet/terrestrial",
-        "planet/barren",
-        "planet/crater",
-        "planet/iron"
+        "planet/dwarf-planet",
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-sun",
@@ -69,15 +70,24 @@
           "key": "hot"
         },
         {
+          "key": "visible-gas"
+        },
+        {
+          "key": "condensible-metal"
+        },
+        {
+          "key": "cloud-former"
+        },
+        {
           "key": "habitability/none"
         }
       ],
       "areas": [],
       "equilibriumTempK": 409.61408472832,
-      "greenhouseTempK": 0,
-      "tidalHeatK": 4,
-      "radiogenicHeatK": 0.5,
-      "temperatureK": 414.11408472832,
+      "greenhouseTempK": 4.221109170359942e-9,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "temperatureK": 409.61408473254113,
       "atmosphere": {
         "name": "Sodium–Potassium Exosphere",
         "composition": {
@@ -86,9 +96,10 @@
         },
         "main": "Na",
         "pressure_bar": 1e-11,
-        "molarMassKg": 0.0294332
+        "molarMassKg": 0.029400000000000003,
+        "scaleHeightKm": 31.448023426519416
       },
-      "orbital_period_days": 87.97,
+      "orbital_period_days": 87.9559820091742,
       "axial_tilt_deg": 0.034,
       "rotation_period_hours": 1407.6,
       "description": "The smallest planet and closest to the Sun. Mercury is a world of extremes, with scorching daytime temperatures (430°C) and frigid nights (-180°C). It has no real atmosphere, only a thin exosphere, and its cratered surface resembles Earth's Moon.",
@@ -109,8 +120,13 @@
       "loDeltaVBudget_ms": 3447.46746310225,
       "propulsiveLandBudget_ms": 3447.46746310225,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 23.74455418849091,
-      "surfaceRadiation": 6.673568845074803
+      "habitabilityScore": 18.754907456103115,
+      "surfaceRadiation": 3338.7844220135266,
+      "stellarRadiation": 6.673568845108171,
+      "radiationShieldingAtmo": 1.6199996899501912e-10,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 3003.1059798121737,
+      "particleRadiation": 333.6784422013527
     },
     {
       "id": "solar-system-venus",
@@ -119,8 +135,7 @@
       "kind": "body",
       "roleHint": "planet",
       "classes": [
-        "planet/terrestrial",
-        "planet/silicate"
+        "planet/terrestrial"
       ],
       "orbit": {
         "hostId": "solar-system-sun",
@@ -139,12 +154,6 @@
       "radiusKm": 6051.8,
       "tags": [
         {
-          "key": "toxic-human"
-        },
-        {
-          "key": "corrosive"
-        },
-        {
           "key": "Runaway Greenhouse Effect"
         },
         {
@@ -154,15 +163,30 @@
           "key": "thick"
         },
         {
+          "key": "greenhouse"
+        },
+        {
+          "key": "toxic-human"
+        },
+        {
+          "key": "crushing-atmosphere"
+        },
+        {
+          "key": "inert"
+        },
+        {
+          "key": "nitrogen-narcosis"
+        },
+        {
           "key": "habitability/none"
         }
       ],
       "areas": [],
       "equilibriumTempK": 299.6515345036713,
-      "greenhouseTempK": 502,
-      "tidalHeatK": 0.5,
-      "radiogenicHeatK": 0.5,
-      "temperatureK": 802.6515345036713,
+      "greenhouseTempK": 601.421432472536,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "temperatureK": 901.0729669762073,
       "atmosphere": {
         "name": "Carbon Dioxide (Venus-like)",
         "composition": {
@@ -171,9 +195,10 @@
         },
         "main": "CO2",
         "pressure_bar": 92,
-        "molarMassKg": 0.04345014
+        "molarMassKg": 0.04344,
+        "scaleHeightKm": 19.444924288726124
       },
-      "orbital_period_days": 224.7,
+      "orbital_period_days": 224.6676322970732,
       "axial_tilt_deg": 177.36,
       "rotation_period_hours": -5832.5,
       "description": "Earth's 'sister planet' in size, but a hellish world. Venus suffers from a runaway greenhouse effect, trapping heat under a thick, toxic atmosphere of CO2 and sulfuric acid clouds. Its surface pressure is 92 times that of Earth, and it's the hottest planet in the system.",
@@ -184,7 +209,7 @@
       "calculatedGravity_ms2": 8.869475448060673,
       "calculatedRotationPeriod_s": -20997000,
       "orbitalBoundaries": {
-        "minLeoKm": 437.14373199438836,
+        "minLeoKm": 490.8610132091807,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 50000,
         "heoUpperBoundaryKm": 1004980.1034093457,
@@ -194,8 +219,13 @@
       "loDeltaVBudget_ms": 29462.31754996301,
       "propulsiveLandBudget_ms": 9864.123715312962,
       "aerobrakeLandBudget_ms": 200,
-      "habitabilityScore": 29.041259376208636,
-      "surfaceRadiation": 1.6035299769668464e-199
+      "habitabilityScore": 26.041259376208636,
+      "surfaceRadiation": 2,
+      "stellarRadiation": 1.9112814414863863,
+      "radiationShieldingAtmo": 1,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 2.58547023e-316,
+      "particleRadiation": 2.8727447e-317
     },
     {
       "id": "solar-system-earth",
@@ -204,9 +234,8 @@
       "kind": "body",
       "roleHint": "planet",
       "classes": [
-        "planet/terrestrial",
         "planet/earth-analogue",
-        "planet/ocean"
+        "planet/terrestrial"
       ],
       "orbit": {
         "hostId": "solar-system-sun",
@@ -225,10 +254,22 @@
       "radiusKm": 6371,
       "tags": [
         {
+          "key": "inert"
+        },
+        {
+          "key": "buffer-gas"
+        },
+        {
+          "key": "oxidizer"
+        },
+        {
           "key": "breathable-human"
         },
         {
-          "key": "habitability/earth-like"
+          "key": "noble-gas"
+        },
+        {
+          "key": "habitability/human"
         }
       ],
       "areas": [],
@@ -236,21 +277,23 @@
         "strengthGauss": 0.5
       },
       "equilibriumTempK": 254.85041511888898,
-      "greenhouseTempK": 33,
+      "greenhouseTempK": 34.15656942867718,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 287.850415118889,
+      "temperatureK": 289.00698454756616,
       "atmosphere": {
         "name": "Nitrogen–Oxygen (Earth-like)",
         "composition": {
-          "N2": 0.7808,
-          "O2": 0.2095,
-          "Noble Gases": 0.0093,
-          "Other Trace": 0.0004
+          "N2": 0.7769311220678322,
+          "O2": 0.20917376363364712,
+          "Ar": 0.00946262264056975,
+          "H2O": 0.003984262164450422,
+          "CO2": 0.00044822949350067237
         },
+        "pressure_bar": 1,
         "main": "N2",
-        "pressure_bar": 1.013,
-        "molarMassKg": 0.028959634200000004
+        "molarMassKg": 0.028917575576472936,
+        "scaleHeightKm": 8.46194493954407
       },
       "hydrosphere": {
         "composition": "water",
@@ -267,7 +310,7 @@
           "fauna"
         ]
       },
-      "orbital_period_days": 365.25,
+      "orbital_period_days": 365.202709145985,
       "axial_tilt_deg": 23.44,
       "rotation_period_hours": 23.934,
       "description": "The third planet from the Sun and the only known astronomical object to harbor life. It is an ocean world, with 71% of its surface covered in liquid water, protected by a strong magnetic field and a breathable nitrogen-oxygen atmosphere.",
@@ -278,18 +321,24 @@
       "calculatedGravity_ms2": 9.819973426224687,
       "calculatedRotationPeriod_s": 86162.40000000001,
       "orbitalBoundaries": {
-        "minLeoKm": 174.5027571365673,
+        "minLeoKm": 175.34943268292236,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 35792.2216003442,
         "heoUpperBoundaryKm": 1490025.4381473116,
         "geoStationaryKm": 35792.2216003442,
         "isGeoFallback": false
       },
-      "loDeltaVBudget_ms": 10410.683631702896,
-      "propulsiveLandBudget_ms": 9100.569836997916,
-      "aerobrakeLandBudget_ms": 802.6009956683278,
-      "habitabilityScore": 99.75777144487103,
-      "surfaceRadiation": 0.008207356666593918
+      "loDeltaVBudget_ms": 10396.132944759353,
+      "propulsiveLandBudget_ms": 9096.132944759353,
+      "aerobrakeLandBudget_ms": 806.5306597126335,
+      "habitabilityScore": 95.89846265673708,
+      "surfaceRadiation": 2.3247866821738423,
+      "stellarRadiation": 1,
+      "radiationShieldingAtmo": 0.999311222081252,
+      "radiationShieldingMag": 0.569190058699312,
+      "photonRadiation": 0.3099500634365909,
+      "particleRadiation": 0.014836618737251357,
+      "tidallyLocked": false
     },
     {
       "id": "solar-system-luna",
@@ -298,9 +347,8 @@
       "kind": "body",
       "roleHint": "moon",
       "classes": [
-        "planet/sub-earth",
-        "planet/barren",
-        "planet/crater"
+        "planet/dwarf-planet",
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-earth",
@@ -331,10 +379,10 @@
       "areas": [],
       "equilibriumTempK": 254.85041511888898,
       "greenhouseTempK": 0,
-      "tidalHeatK": 0,
+      "tidalHeatK": 26.405973874258848,
       "radiogenicHeatK": 0,
-      "temperatureK": 254.85041511888898,
-      "orbital_period_days": 27.32,
+      "temperatureK": 281.2563889931478,
+      "orbital_period_days": 27.45940784723342,
       "axial_tilt_deg": 6.68,
       "rotation_period_hours": 655.7,
       "description": "Earth's only natural satellite and the largest relative to its host planet in the Solar System. It is tidally locked, always showing the same face to Earth. Its cratered, airless surface is composed of dark volcanic 'maria' and bright, ancient highlands.",
@@ -355,8 +403,13 @@
       "loDeltaVBudget_ms": 1931.3366576460696,
       "propulsiveLandBudget_ms": 1931.3366576460696,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 30.272752121849486,
-      "surfaceRadiation": 0.9948797470190809
+      "habitabilityScore": 32.60865606693341,
+      "surfaceRadiation": 499.43987350954046,
+      "stellarRadiation": 0.9948797470190809,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 447.6958861585864,
+      "particleRadiation": 49.74398735095405
     },
     {
       "id": "solar-system-mars",
@@ -365,9 +418,8 @@
       "kind": "body",
       "roleHint": "planet",
       "classes": [
-        "planet/terrestrial",
-        "planet/desert",
-        "planet/ice"
+        "planet/sub-earth",
+        "planet/terrestrial"
       ],
       "orbit": {
         "hostId": "solar-system-sun",
@@ -386,10 +438,13 @@
       "radiusKm": 3389.5,
       "tags": [
         {
-          "key": "toxic-human"
+          "key": "thin"
         },
         {
-          "key": "thin"
+          "key": "greenhouse"
+        },
+        {
+          "key": "inert"
         },
         {
           "key": "habitability/none"
@@ -397,10 +452,10 @@
       ],
       "areas": [],
       "equilibriumTempK": 206.46120694615365,
-      "greenhouseTempK": 5,
+      "greenhouseTempK": 5.750965382291586,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 211.46120694615365,
+      "temperatureK": 212.21217232844523,
       "atmosphere": {
         "name": "Carbon Dioxide (Mars-like)",
         "composition": {
@@ -410,9 +465,10 @@
         },
         "main": "CO2",
         "pressure_bar": 0.006,
-        "molarMassKg": 0.043205046000000004
+        "molarMassKg": 0.043003999999999994,
+        "scaleHeightKm": 11.05249127845552
       },
-      "orbital_period_days": 687,
+      "orbital_period_days": 686.8701465472571,
       "axial_tilt_deg": 25.19,
       "rotation_period_hours": 24.6,
       "description": "The fourth planet, known as the 'Red Planet' due to iron oxide (rust) on its surface. It's a cold desert world with a very thin CO2 atmosphere, polar ice caps, and the largest volcano (Olympus Mons) and canyon (Valles Marineris) in the Solar System.",
@@ -423,7 +479,7 @@
       "calculatedGravity_ms2": 3.7122336687009745,
       "calculatedRotationPeriod_s": 88560,
       "orbitalBoundaries": {
-        "minLeoKm": 171.0794691487688,
+        "minLeoKm": 172.4896722850486,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 16996.90684070823,
         "heoUpperBoundaryKm": 1079042.9061374362,
@@ -433,8 +489,13 @@
       "loDeltaVBudget_ms": 4139.6498809183695,
       "propulsiveLandBudget_ms": 4079.2780839913244,
       "aerobrakeLandBudget_ms": 1197.0044955033732,
-      "habitabilityScore": 33.217040109138324,
-      "surfaceRadiation": 0.41806138065665965
+      "habitabilityScore": 18.844132180123317,
+      "surfaceRadiation": 207.45083603721702,
+      "stellarRadiation": 0.4307372847263266,
+      "radiationShieldingAtmo": 0.04605037305859283,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 184.9057524334953,
+      "particleRadiation": 20.545083603721697
     },
     {
       "id": "solar-system-phobos",
@@ -443,9 +504,8 @@
       "kind": "body",
       "roleHint": "moon",
       "classes": [
-        "planet/dwarf-planet",
-        "planet/barren",
-        "planet/crater"
+        "planet/ultra-short-period",
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-mars",
@@ -476,10 +536,10 @@
       "areas": [],
       "equilibriumTempK": 206.46120694615365,
       "greenhouseTempK": 0,
-      "tidalHeatK": 0,
+      "tidalHeatK": 82.56653099070857,
       "radiogenicHeatK": 0,
-      "temperatureK": 206.46120694615365,
-      "orbital_period_days": 0.319,
+      "temperatureK": 289.0277379368622,
+      "orbital_period_days": 0.3191261941040896,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 7.66,
       "description": "The larger and innermost of Mars's two moons. It is a small, lumpy, and heavily cratered body, thought to be a captured asteroid. Phobos orbits so close to Mars that it will either crash into the planet or be torn apart into a ring in about 50 million years.",
@@ -500,8 +560,13 @@
       "loDeltaVBudget_ms": 9.139966910986526,
       "propulsiveLandBudget_ms": 9.139966910986526,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 19.359696348171035,
-      "surfaceRadiation": 0.43070189344680354
+      "habitabilityScore": 34.389106426223925,
+      "surfaceRadiation": 217.3509467234018,
+      "stellarRadiation": 0.43070189344680354,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 193.8158520510616,
+      "particleRadiation": 21.53509467234018
     },
     {
       "id": "solar-system-deimos",
@@ -510,9 +575,7 @@
       "kind": "body",
       "roleHint": "moon",
       "classes": [
-        "planet/dwarf-planet",
-        "planet/barren",
-        "planet/crater"
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-mars",
@@ -543,10 +606,10 @@
       "areas": [],
       "equilibriumTempK": 206.46120694615365,
       "greenhouseTempK": 0,
-      "tidalHeatK": 0,
+      "tidalHeatK": 1.4139076279802683,
       "radiogenicHeatK": 0,
-      "temperatureK": 206.46120694615365,
-      "orbital_period_days": 1.26,
+      "temperatureK": 207.87511457413393,
+      "orbital_period_days": 1.2554165528007006,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 30.35,
       "description": "The smaller and outer of Mars's two moons. Like its sibling Phobos, Deimos is a small, dark, and irregularly shaped body, likely a captured C-type asteroid. Its surface is smoother than Phobos's, as many of its craters are filled with fine dust (regolith).",
@@ -567,8 +630,13 @@
       "loDeltaVBudget_ms": 4.574709539959887,
       "propulsiveLandBudget_ms": 4.574709539959887,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 19.356628134634914,
-      "surfaceRadiation": 0.4306490973138594
+      "habitabilityScore": 5.002601780605702,
+      "surfaceRadiation": 217.32454865692972,
+      "stellarRadiation": 0.4306490973138594,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 193.79209379123674,
+      "particleRadiation": 21.532454865692973
     },
     {
       "id": "solar-system-asteroid-belt",
@@ -597,7 +665,21 @@
       "tags": [],
       "areas": [],
       "description": "A torus-shaped region of space between Mars and Jupiter, occupied by millions of asteroids. This is leftover material from the early Solar System that was prevented from forming a planet by Jupiter's immense gravity. The largest object in the belt is the dwarf planet Ceres.",
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "orbital_period_days": 1620.2410710761592,
+      "stellarRadiation": 0.1371742112482853,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 61.728395061728385,
+      "particleRadiation": 6.858710562414265,
+      "equilibriumTempK": 155.09702350019015,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "greenhouseTempK": 0,
+      "temperatureK": 155.09702350019015,
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-jupiter",
@@ -606,10 +688,8 @@
       "kind": "body",
       "roleHint": "planet",
       "classes": [
-        "planet/gas-giant",
-        "planet/cold-jupiter",
-        "planet/ammonia-clouds-gas-giant",
-        "planet/ringed"
+        "planet/ringed",
+        "planet/ammonia-clouds-gas-giant"
       ],
       "orbit": {
         "hostId": "solar-system-sun",
@@ -628,10 +708,28 @@
       "radiusKm": 69911,
       "tags": [
         {
+          "key": "planet/ringed"
+        },
+        {
+          "key": "lifting-gas"
+        },
+        {
           "key": "reducing"
         },
         {
-          "key": "planet/ringed"
+          "key": "metal-embrittlement"
+        },
+        {
+          "key": "noble-gas"
+        },
+        {
+          "key": "voice-changer"
+        },
+        {
+          "key": "leak-prone"
+        },
+        {
+          "key": "haze-former"
         },
         {
           "key": "habitability/none"
@@ -642,10 +740,10 @@
         "strengthGauss": 4.28
       },
       "equilibriumTempK": 111.71204735627745,
-      "greenhouseTempK": 0,
+      "greenhouseTempK": 65.51767990300654,
       "tidalHeatK": 0,
-      "radiogenicHeatK": 5,
-      "temperatureK": 116.71204735627745,
+      "radiogenicHeatK": 0,
+      "temperatureK": 177.229727259284,
       "atmosphere": {
         "name": "Hydrogen–Helium (Jupiter-like)",
         "composition": {
@@ -655,9 +753,10 @@
         },
         "main": "H2",
         "pressure_bar": 200000,
-        "molarMassKg": 0.002302046
+        "molarMassKg": 0.0022879999999999997,
+        "scaleHeightKm": 24.84870121826436
       },
-      "orbital_period_days": 4332.6,
+      "orbital_period_days": 4336.00718171218,
       "axial_tilt_deg": 3.13,
       "rotation_period_hours": 9.925,
       "description": "The fifth planet and the largest in the Solar System. This gas giant is more than twice as massive as all other planets combined. It's known for its colorful cloud bands of ammonia ice and the Great Red Spot, a giant storm that has raged for centuries.",
@@ -668,7 +767,7 @@
       "calculatedGravity_ms2": 25.918562037153677,
       "calculatedRotationPeriod_s": 35730,
       "orbitalBoundaries": {
-        "minLeoKm": 535.5300104466262,
+        "minLeoKm": 818.2060232672735,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 90094.92904786355,
         "heoUpperBoundaryKm": 53076768.64063506,
@@ -678,8 +777,13 @@
       "loDeltaVBudget_ms": 2041949.331442323,
       "propulsiveLandBudget_ms": 71517.79497880623,
       "aerobrakeLandBudget_ms": 200,
-      "habitabilityScore": 15,
-      "surfaceRadiation": 0
+      "habitabilityScore": 12,
+      "surfaceRadiation": 2,
+      "stellarRadiation": 0.03691974252277894,
+      "radiationShieldingAtmo": 1,
+      "radiationShieldingMag": 0.8774857640615746,
+      "photonRadiation": 0,
+      "particleRadiation": 0
     },
     {
       "id": "solar-system-jupiter-rings",
@@ -708,7 +812,21 @@
           "Omega_deg": 0,
           "M0_rad": 1.6047243767427481
         }
-      }
+      },
+      "orbital_period_days": 0.40964800718269356,
+      "stellarRadiation": 0.03690466754499058,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 16.607100395245762,
+      "particleRadiation": 1.8452333772495293,
+      "equilibriumTempK": 111.71204735627745,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "greenhouseTempK": 0,
+      "temperatureK": 111.71204735627745,
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-io",
@@ -717,8 +835,8 @@
       "kind": "body",
       "roleHint": "moon",
       "classes": [
-        "planet/terrestrial",
-        "planet/lava"
+        "planet/dwarf-planet",
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-jupiter",
@@ -740,13 +858,10 @@
           "key": "Active Volcanism"
         },
         {
-          "key": "toxic-human"
-        },
-        {
-          "key": "corrosive"
-        },
-        {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "volcanic"
         },
         {
           "key": "habitability/none"
@@ -754,10 +869,10 @@
       ],
       "areas": [],
       "equilibriumTempK": 111.71204735627745,
-      "greenhouseTempK": 0,
-      "tidalHeatK": 5,
+      "greenhouseTempK": 0.000008534102242078597,
+      "tidalHeatK": 230.1392161255052,
       "radiogenicHeatK": 0,
-      "temperatureK": 116.71204735627745,
+      "temperatureK": 341.8512720158849,
       "atmosphere": {
         "name": "Sulfur Dioxide (Io-like)",
         "composition": {
@@ -766,9 +881,10 @@
         },
         "main": "SO2",
         "pressure_bar": 1e-8,
-        "molarMassKg": 0.0608654
+        "molarMassKg": 0.06080000000000001,
+        "scaleHeightKm": 26.02654513151384
       },
-      "orbital_period_days": 1.77,
+      "orbital_period_days": 1.770422582439642,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 42.48,
       "description": "The innermost Galilean moon, Io is the most volcanically active body in the Solar System. It is caught in a tidal 'tug-of-war' between Jupiter and the other moons, which flexes its interior and powers hundreds of volcanoes that erupt sulfur and lava.",
@@ -789,8 +905,13 @@
       "loDeltaVBudget_ms": 2080.1752404387335,
       "propulsiveLandBudget_ms": 2080.1752404387335,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 31.77565429772953,
-      "surfaceRadiation": 0.0368797631420911
+      "habitabilityScore": 16.830973942442668,
+      "surfaceRadiation": 20.43988052919227,
+      "stellarRadiation": 0.036879765152038245,
+      "radiationShieldingAtmo": 1.1099999386310344e-7,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 16.595892476273043,
+      "particleRadiation": 1.8439880529192272
     },
     {
       "id": "solar-system-europa",
@@ -799,9 +920,7 @@
       "kind": "body",
       "roleHint": "moon",
       "classes": [
-        "planet/terrestrial",
-        "planet/ice",
-        "planet/subsurface-ocean"
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-jupiter",
@@ -832,15 +951,18 @@
           "key": "Tidally Locked"
         },
         {
+          "key": "oxidizer"
+        },
+        {
           "key": "habitability/none"
         }
       ],
       "areas": [],
       "equilibriumTempK": 111.71204735627745,
       "greenhouseTempK": 0,
-      "tidalHeatK": 2,
+      "tidalHeatK": 127.4856893970769,
       "radiogenicHeatK": 0,
-      "temperatureK": 113.71204735627745,
+      "temperatureK": 239.19773675335435,
       "atmosphere": {
         "name": "Tenuous Oxygen (Europa-like)",
         "composition": {
@@ -848,9 +970,10 @@
         },
         "main": "O2",
         "pressure_bar": 1e-11,
-        "molarMassKg": 0.031998
+        "molarMassKg": 0.032,
+        "scaleHeightKm": 47.25945269748403
       },
-      "orbital_period_days": 3.55,
+      "orbital_period_days": 3.545033136909192,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 85.2,
       "description": "A smooth, ice-covered world with a young surface crisscrossed by cracks and streaks. It is a prime candidate for life, as evidence strongly suggests a deep, liquid saltwater ocean exists beneath its 15-25 km thick ice shell, kept warm by tidal heating.",
@@ -871,8 +994,13 @@
       "loDeltaVBudget_ms": 1647.5844813757253,
       "propulsiveLandBudget_ms": 1647.5844813757253,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 31.285266914446506,
-      "surfaceRadiation": 0.036856262725712706
+      "habitabilityScore": 17.059193360547688,
+      "surfaceRadiation": 20.428131362266654,
+      "stellarRadiation": 0.03685626272729753,
+      "radiationShieldingAtmo": 7.500000620552782e-11,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 16.58531822603999,
+      "particleRadiation": 1.8428131362266653
     },
     {
       "id": "solar-system-ganymede",
@@ -881,9 +1009,8 @@
       "kind": "body",
       "roleHint": "moon",
       "classes": [
-        "planet/terrestrial",
-        "planet/ice",
-        "planet/subsurface-ocean"
+        "planet/dwarf-planet",
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-jupiter",
@@ -923,10 +1050,10 @@
       },
       "equilibriumTempK": 111.71204735627745,
       "greenhouseTempK": 0,
-      "tidalHeatK": 1,
+      "tidalHeatK": 29.860567523566225,
       "radiogenicHeatK": 0,
-      "temperatureK": 112.71204735627745,
-      "orbital_period_days": 7.15,
+      "temperatureK": 141.57261487984368,
+      "orbital_period_days": 7.147634571900399,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 171.6,
       "description": "The largest moon in the Solar System, even larger than the planet Mercury. Ganymede is a differentiated icy world and is the only moon known to have its own magnetic field. Its surface has both dark, ancient, cratered regions and lighter, younger, grooved terrain.",
@@ -947,8 +1074,13 @@
       "loDeltaVBudget_ms": 2226.9754565649328,
       "propulsiveLandBudget_ms": 2226.9754565649328,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 21.39618774104002,
-      "surfaceRadiation": 0.03668964295849596
+      "habitabilityScore": 6.451222205477765,
+      "surfaceRadiation": 20.267840777878227,
+      "stellarRadiation": 0.03681850773557045,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0.07681630712609129,
+      "photonRadiation": 16.568328481006702,
+      "particleRadiation": 1.6995122968715253
     },
     {
       "id": "solar-system-callisto",
@@ -957,9 +1089,8 @@
       "kind": "body",
       "roleHint": "moon",
       "classes": [
-        "planet/terrestrial",
-        "planet/ice",
-        "planet/crater"
+        "planet/dwarf-planet",
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-jupiter",
@@ -993,10 +1124,10 @@
       "areas": [],
       "equilibriumTempK": 111.71204735627745,
       "greenhouseTempK": 0,
-      "tidalHeatK": 0,
+      "tidalHeatK": 23.107023147886963,
       "radiogenicHeatK": 0,
-      "temperatureK": 111.71204735627745,
-      "orbital_period_days": 16.69,
+      "temperatureK": 134.81907050416442,
+      "orbital_period_days": 16.68108286378568,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 400.5,
       "description": "The outermost Galilean moon, Callisto has the oldest and most heavily cratered surface in the Solar System, indicating a lack of geological activity. It is a geologically 'dead' world, composed of roughly equal parts rock and ice. It may also hide a subsurface ocean.",
@@ -1017,8 +1148,13 @@
       "loDeltaVBudget_ms": 1979.5069944629295,
       "propulsiveLandBudget_ms": 1979.5069944629295,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 21.1979656843205,
-      "surfaceRadiation": 0.03674190385627942
+      "habitabilityScore": 6.253078540104922,
+      "surfaceRadiation": 20.37095192813971,
+      "stellarRadiation": 0.03674190385627942,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 16.53385673532574,
+      "particleRadiation": 1.8370951928139712
     },
     {
       "id": "solar-system-saturn",
@@ -1027,10 +1163,8 @@
       "kind": "body",
       "roleHint": "planet",
       "classes": [
-        "planet/gas-giant",
-        "planet/cold-jupiter",
-        "planet/ammonia-clouds-gas-giant",
-        "planet/ringed"
+        "planet/ringed",
+        "planet/ammonia-clouds-gas-giant"
       ],
       "orbit": {
         "hostId": "solar-system-sun",
@@ -1049,10 +1183,28 @@
       "radiusKm": 58232,
       "tags": [
         {
+          "key": "planet/ringed"
+        },
+        {
+          "key": "lifting-gas"
+        },
+        {
           "key": "reducing"
         },
         {
-          "key": "planet/ringed"
+          "key": "metal-embrittlement"
+        },
+        {
+          "key": "noble-gas"
+        },
+        {
+          "key": "voice-changer"
+        },
+        {
+          "key": "leak-prone"
+        },
+        {
+          "key": "haze-former"
         },
         {
           "key": "habitability/none"
@@ -1063,10 +1215,10 @@
         "strengthGauss": 0.21
       },
       "equilibriumTempK": 82.32726071205758,
-      "greenhouseTempK": 0,
+      "greenhouseTempK": 76.99721388694061,
       "tidalHeatK": 0,
-      "radiogenicHeatK": 3,
-      "temperatureK": 85.32726071205758,
+      "radiogenicHeatK": 0,
+      "temperatureK": 159.3244745989982,
       "atmosphere": {
         "name": "Hydrogen–Helium (Jupiter-like)",
         "composition": {
@@ -1076,9 +1228,10 @@
         },
         "main": "H2",
         "pressure_bar": 100000,
-        "molarMassKg": 0.0021274259999999995
+        "molarMassKg": 0.002112,
+        "scaleHeightKm": 56.07414527769036
       },
-      "orbital_period_days": 10759.2,
+      "orbital_period_days": 10833.256613658901,
       "axial_tilt_deg": 26.73,
       "rotation_period_hours": 10.656,
       "description": "The sixth planet and the second-largest, Saturn is a gas giant famous for its spectacular ring system. It is the least dense planet—it would float in water. Its atmosphere is a pale yellow, striped with bands of ammonia ice clouds and powerful winds.",
@@ -1089,7 +1242,7 @@
       "calculatedGravity_ms2": 11.185617569939861,
       "calculatedRotationPeriod_s": 38361.6,
       "orbitalBoundaries": {
-        "minLeoKm": 961.0082556805739,
+        "minLeoKm": 1807.516867315899,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 54005.76829774813,
         "heoUpperBoundaryKm": 65407793.930461206,
@@ -1099,8 +1252,13 @@
       "loDeltaVBudget_ms": 1342110.924973822,
       "propulsiveLandBudget_ms": 42110.92497382216,
       "aerobrakeLandBudget_ms": 200,
-      "habitabilityScore": 28.597739480183627,
-      "surfaceRadiation": 0
+      "habitabilityScore": 25.597739480183627,
+      "surfaceRadiation": 2,
+      "stellarRadiation": 0.010890135409507506,
+      "radiationShieldingAtmo": 1,
+      "radiationShieldingMag": 0.4474742269407354,
+      "photonRadiation": 0,
+      "particleRadiation": 0
     },
     {
       "id": "solar-system-saturn-rings",
@@ -1129,7 +1287,21 @@
           "Omega_deg": 0,
           "M0_rad": 0.32960368977622534
         }
-      }
+      },
+      "orbital_period_days": 0.39340210282772653,
+      "stellarRadiation": 0.010888562456984373,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 4.899853105642968,
+      "particleRadiation": 0.5444281228492187,
+      "equilibriumTempK": 82.32726071205758,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "greenhouseTempK": 0,
+      "temperatureK": 82.32726071205758,
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-titan",
@@ -1138,8 +1310,8 @@
       "kind": "body",
       "roleHint": "moon",
       "classes": [
-        "planet/terrestrial",
-        "planet/methane"
+        "planet/dwarf-planet",
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-saturn",
@@ -1161,13 +1333,19 @@
           "key": "haze"
         },
         {
-          "key": "toxic-human"
-        },
-        {
-          "key": "reducing"
-        },
-        {
           "key": "Tidally Locked"
+        },
+        {
+          "key": "inert"
+        },
+        {
+          "key": "buffer-gas"
+        },
+        {
+          "key": "asphyxiant"
+        },
+        {
+          "key": "greenhouse"
         },
         {
           "key": "habitability/none"
@@ -1175,10 +1353,10 @@
       ],
       "areas": [],
       "equilibriumTempK": 82.32726071205758,
-      "greenhouseTempK": 11,
-      "tidalHeatK": 0.7,
+      "greenhouseTempK": 195.94890774673053,
+      "tidalHeatK": 50.75444603665071,
       "radiogenicHeatK": 0,
-      "temperatureK": 94.02726071205758,
+      "temperatureK": 329.03061449543884,
       "atmosphere": {
         "name": "Methane Haze (Titan-like)",
         "composition": {
@@ -1187,9 +1365,10 @@
         },
         "main": "N2",
         "pressure_bar": 1.45,
-        "molarMassKg": 0.0274153
+        "molarMassKg": 0.027399999999999997,
+        "scaleHeightKm": 74.0052513587357
       },
-      "orbital_period_days": 15.94,
+      "orbital_period_days": 15.925672928999916,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 382.6,
       "description": "Saturn's largest moon and the only moon with a thick, Earth-like atmosphere (though it's 95% nitrogen and toxic). Its surface is -179°C, cold enough for liquid methane and ethane to form rivers, lakes, and seas in a 'hydrological' cycle similar to Earth's water cycle.",
@@ -1200,7 +1379,7 @@
       "calculatedGravity_ms2": 1.3491407372632904,
       "calculatedRotationPeriod_s": 1377360,
       "orbitalBoundaries": {
-        "minLeoKm": 445.8508129891861,
+        "minLeoKm": 1561.0417817421671,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 49715.16653476396,
         "heoUpperBoundaryKm": 49715.16653476396,
@@ -1210,8 +1389,13 @@
       "loDeltaVBudget_ms": 3798.0751515648462,
       "propulsiveLandBudget_ms": 2173.408920646595,
       "aerobrakeLandBudget_ms": 684.3245689553625,
-      "habitabilityScore": 36.875245174179355,
-      "surfaceRadiation": 0.000017139920725081206
+      "habitabilityScore": 39.25662255226883,
+      "surfaceRadiation": 2.000186423018874,
+      "stellarRadiation": 0.01087161222645085,
+      "radiationShieldingAtmo": 0.9999657046231983,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 0.00016778071698654953,
+      "particleRadiation": 0.00001864230188739439
     },
     {
       "id": "solar-system-enceladus",
@@ -1220,9 +1404,7 @@
       "kind": "body",
       "roleHint": "moon",
       "classes": [
-        "planet/dwarf-planet",
-        "planet/ice",
-        "planet/subsurface-ocean"
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-saturn",
@@ -1250,15 +1432,27 @@
           "key": "Tidally Locked"
         },
         {
+          "key": "cloud-former"
+        },
+        {
+          "key": "greenhouse"
+        },
+        {
+          "key": "lifting-gas"
+        },
+        {
+          "key": "reducing"
+        },
+        {
           "key": "habitability/none"
         }
       ],
       "areas": [],
       "equilibriumTempK": 82.32726071205758,
-      "greenhouseTempK": 0,
-      "tidalHeatK": 5,
+      "greenhouseTempK": 5.49359458181464e-7,
+      "tidalHeatK": 77.04791241147112,
       "radiogenicHeatK": 0,
-      "temperatureK": 87.32726071205758,
+      "temperatureK": 159.37517367288814,
       "atmosphere": {
         "name": "Water Vapor Plume (Enceladus-like)",
         "composition": {
@@ -1269,9 +1463,10 @@
         },
         "main": "H2O",
         "pressure_bar": 1e-9,
-        "molarMassKg": 0.01779499
+        "molarMassKg": 0.017779999999999997,
+        "scaleHeightKm": 657.1116621122947
       },
-      "orbital_period_days": 1.37,
+      "orbital_period_days": 1.3698034023218526,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 32.88,
       "description": "A small, bright white icy moon that is one of the most compelling places to search for life. It ejects massive plumes of water, ice, and organic molecules from 'tiger stripes' near its south pole, revealing a global subsurface ocean of liquid saltwater.",
@@ -1292,8 +1487,13 @@
       "loDeltaVBudget_ms": 194.45815329673874,
       "propulsiveLandBudget_ms": 194.45815329673874,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 30.099285385384302,
-      "surfaceRadiation": 0.01088652234446526
+      "habitabilityScore": 18.950723433685912,
+      "surfaceRadiation": 7.443261156810057,
+      "stellarRadiation": 0.010886522401207133,
+      "radiationShieldingAtmo": 8.045454524818751e-9,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 4.898935041129051,
+      "particleRadiation": 0.5443261156810056
     },
     {
       "id": "solar-system-mimas",
@@ -1302,9 +1502,8 @@
       "kind": "body",
       "roleHint": "moon",
       "classes": [
-        "planet/dwarf-planet",
-        "planet/ice",
-        "planet/crater"
+        "planet/ultra-short-period",
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-saturn",
@@ -1335,10 +1534,10 @@
       "areas": [],
       "equilibriumTempK": 82.32726071205758,
       "greenhouseTempK": 0,
-      "tidalHeatK": 0,
+      "tidalHeatK": 209.3832972903249,
       "radiogenicHeatK": 0,
-      "temperatureK": 82.32726071205758,
-      "orbital_period_days": 0.94,
+      "temperatureK": 291.71055800238247,
+      "orbital_period_days": 0.9433982837654266,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 22.56,
       "description": "The smallest and innermost of Saturn's major moons, Mimas is nicknamed the 'Death Star' moon. It is dominated by the Herschel crater, a massive impact basin 139 km wide—nearly a third of the moon's own diameter—that almost shattered the icy body.",
@@ -1359,8 +1558,13 @@
       "loDeltaVBudget_ms": 129.2303471514097,
       "propulsiveLandBudget_ms": 129.2303471514097,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 20.048616261217383,
-      "surfaceRadiation": 0.010887317563149701
+      "habitabilityScore": 36.673124263770355,
+      "surfaceRadiation": 7.44365878157485,
+      "stellarRadiation": 0.010887317563149701,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 4.899292903417366,
+      "particleRadiation": 0.544365878157485
     },
     {
       "id": "solar-system-rhea",
@@ -1369,8 +1573,7 @@
       "kind": "body",
       "roleHint": "moon",
       "classes": [
-        "planet/terrestrial",
-        "planet/ice"
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-saturn",
@@ -1401,10 +1604,10 @@
       "areas": [],
       "equilibriumTempK": 82.32726071205758,
       "greenhouseTempK": 0,
-      "tidalHeatK": 0,
+      "tidalHeatK": 18.391585375406972,
       "radiogenicHeatK": 0,
-      "temperatureK": 82.32726071205758,
-      "orbital_period_days": 4.51,
+      "temperatureK": 100.71884608746456,
+      "orbital_period_days": 4.512077487311608,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 108.2,
       "description": "Saturn's second-largest moon, Rhea is a heavily cratered, airless body of ice and rock. Its surface is ancient, with one hemisphere being brighter and more cratered than the other. Its surface also features bright, 'wispy' streaks, which are exposed ice cliffs.",
@@ -1425,8 +1628,13 @@
       "loDeltaVBudget_ms": 515.554750763003,
       "propulsiveLandBudget_ms": 515.554750763003,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 20.25190549085091,
-      "surfaceRadiation": 0.01088213921528119
+      "habitabilityScore": 9.106624288212938,
+      "surfaceRadiation": 7.441069607640594,
+      "stellarRadiation": 0.01088213921528119,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 4.896962646876536,
+      "particleRadiation": 0.5441069607640595
     },
     {
       "id": "solar-system-iapetus",
@@ -1435,9 +1643,7 @@
       "kind": "body",
       "roleHint": "moon",
       "classes": [
-        "planet/terrestrial",
-        "planet/ice",
-        "planet/crater"
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-saturn",
@@ -1468,10 +1674,10 @@
       "areas": [],
       "equilibriumTempK": 82.32726071205758,
       "greenhouseTempK": 0,
-      "tidalHeatK": 0,
+      "tidalHeatK": 2.6391081896818864,
       "radiogenicHeatK": 0,
-      "temperatureK": 82.32726071205758,
-      "orbital_period_days": 79.32,
+      "temperatureK": 84.96636890173947,
+      "orbital_period_days": 79.32827117553222,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 1903.6,
       "description": "Saturn's 'yin-yang' moon, Iapetus is famous for its dramatic two-tone coloration. Its leading hemisphere is as dark as coal, while its trailing hemisphere is as bright as fresh snow. It also possesses a massive, 20-km-high equatorial ridge.",
@@ -1492,8 +1698,13 @@
       "loDeltaVBudget_ms": 465.0943403278924,
       "propulsiveLandBudget_ms": 465.0943403278924,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 20.21074551465231,
-      "surfaceRadiation": 0.010836241306595072
+      "habitabilityScore": 9.099818896665898,
+      "surfaceRadiation": 7.418120653297536,
+      "stellarRadiation": 0.010836241306595072,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 4.876308587967782,
+      "particleRadiation": 0.5418120653297537
     },
     {
       "id": "solar-system-uranus",
@@ -1502,8 +1713,8 @@
       "kind": "body",
       "roleHint": "planet",
       "classes": [
-        "planet/ice-giant",
-        "planet/ringed"
+        "planet/ringed",
+        "planet/ice-giant"
       ],
       "orbit": {
         "hostId": "solar-system-sun",
@@ -1522,10 +1733,31 @@
       "radiusKm": 25362,
       "tags": [
         {
+          "key": "planet/ringed"
+        },
+        {
+          "key": "lifting-gas"
+        },
+        {
           "key": "reducing"
         },
         {
-          "key": "planet/ringed"
+          "key": "metal-embrittlement"
+        },
+        {
+          "key": "noble-gas"
+        },
+        {
+          "key": "voice-changer"
+        },
+        {
+          "key": "leak-prone"
+        },
+        {
+          "key": "greenhouse"
+        },
+        {
+          "key": "haze-former"
         },
         {
           "key": "habitability/none"
@@ -1536,10 +1768,10 @@
         "strengthGauss": 0.23
       },
       "equilibriumTempK": 58.133534831018835,
-      "greenhouseTempK": 0,
+      "greenhouseTempK": 138.4348328067824,
       "tidalHeatK": 0,
-      "radiogenicHeatK": 1,
-      "temperatureK": 59.133534831018835,
+      "radiogenicHeatK": 0,
+      "temperatureK": 196.56836763780123,
       "atmosphere": {
         "name": "Ice Giant (Uranus-like)",
         "composition": {
@@ -1549,9 +1781,10 @@
         },
         "main": "H2",
         "pressure_bar": 100000,
-        "molarMassKg": 0.002642424
+        "molarMassKg": 0.0026279999999999997,
+        "scaleHeightKm": 69.0420749817922
       },
-      "orbital_period_days": 30688.5,
+      "orbital_period_days": 30768.7485731925,
       "axial_tilt_deg": 97.77,
       "rotation_period_hours": -17.24,
       "description": "The seventh planet, an ice giant tipped on its side. Uranus rotates at a 98-degree angle, likely from a past collision, causing extreme seasons where its poles face the Sun for 42 years at a time. Its blue-green color comes from methane in its H-He atmosphere.",
@@ -1562,8 +1795,8 @@
       "calculatedGravity_ms2": 9.007587373223858,
       "calculatedRotationPeriod_s": -62063.99999999999,
       "orbitalBoundaries": {
-        "minLeoKm": 665.8502950451768,
-        "leoMoeBoundaryKm": 2000,
+        "minLeoKm": 2225.5304020430467,
+        "leoMoeBoundaryKm": 4225.530402043047,
         "meoHeoBoundaryKm": 57323.95674102323,
         "heoUpperBoundaryKm": 70160108.0952793,
         "geoStationaryKm": 57323.95674102323,
@@ -1572,8 +1805,13 @@
       "loDeltaVBudget_ms": 1324939.0516717813,
       "propulsiveLandBudget_ms": 24939.051671781603,
       "aerobrakeLandBudget_ms": 200,
-      "habitabilityScore": 29.182046252012086,
-      "surfaceRadiation": 0
+      "habitabilityScore": 26.182046252012086,
+      "surfaceRadiation": 2,
+      "stellarRadiation": 0.002707481784465428,
+      "radiationShieldingAtmo": 1,
+      "radiationShieldingMag": 0.46007041390386866,
+      "photonRadiation": 0,
+      "particleRadiation": 0
     },
     {
       "id": "solar-system-uranus-rings",
@@ -1602,7 +1840,21 @@
           "Omega_deg": 0,
           "M0_rad": 3.09215787196716
         }
-      }
+      },
+      "orbital_period_days": 0.5357248044609155,
+      "stellarRadiation": 0.0027073537147619922,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 1.2183091716428966,
+      "particleRadiation": 0.13536768573809962,
+      "equilibriumTempK": 58.133534831018835,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "greenhouseTempK": 0,
+      "temperatureK": 58.133534831018835,
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-titania",
@@ -1611,8 +1863,7 @@
       "kind": "body",
       "roleHint": "moon",
       "classes": [
-        "planet/terrestrial",
-        "planet/ice"
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-uranus",
@@ -1643,10 +1894,10 @@
       "areas": [],
       "equilibriumTempK": 58.133534831018835,
       "greenhouseTempK": 0,
-      "tidalHeatK": 0,
+      "tidalHeatK": 8.721756017844283,
       "radiogenicHeatK": 0,
-      "temperatureK": 58.133534831018835,
-      "orbital_period_days": 8.7,
+      "temperatureK": 66.85529084886312,
+      "orbital_period_days": 8.677727086295931,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 208.8,
       "description": "The largest of Uranus's moons. This icy, rocky world shows signs of past geological activity. Its surface is cut by a system of enormous canyons and fault valleys, some stretching for 1,000 miles, indicating its interior expanded and cracked the crust long ago.",
@@ -1667,8 +1918,13 @@
       "loDeltaVBudget_ms": 616.9739860128137,
       "propulsiveLandBudget_ms": 616.9739860128137,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 20.368093759147587,
-      "surfaceRadiation": 0.002706662050993407
+      "habitabilityScore": 15.342157213979021,
+      "surfaceRadiation": 3.3533310254967037,
+      "stellarRadiation": 0.002706662050993407,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 1.2179979229470332,
+      "particleRadiation": 0.13533310254967035
     },
     {
       "id": "solar-system-oberon",
@@ -1677,9 +1933,7 @@
       "kind": "body",
       "roleHint": "moon",
       "classes": [
-        "planet/terrestrial",
-        "planet/ice",
-        "planet/crater"
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-uranus",
@@ -1710,10 +1964,10 @@
       "areas": [],
       "equilibriumTempK": 58.133534831018835,
       "greenhouseTempK": 0,
-      "tidalHeatK": 0,
+      "tidalHeatK": 5.535725130723802,
       "radiogenicHeatK": 0,
-      "temperatureK": 58.133534831018835,
-      "orbital_period_days": 13.46,
+      "temperatureK": 63.66925996174264,
+      "orbital_period_days": 13.463668641629502,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 323,
       "description": "The outermost and second-largest of the major Uranian moons. Oberon has the most ancient and heavily cratered surface of Uranus's moons, showing little sign of past geological activity. Its dark, reddish surface is covered in impact craters, some with bright rays of ice.",
@@ -1734,8 +1988,13 @@
       "loDeltaVBudget_ms": 589.732270531489,
       "propulsiveLandBudget_ms": 589.732270531489,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 20.348013023947825,
-      "surfaceRadiation": 0.0027063832574642957
+      "habitabilityScore": 15.322285155735802,
+      "surfaceRadiation": 3.353191628732148,
+      "stellarRadiation": 0.0027063832574642957,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 1.217872465858933,
+      "particleRadiation": 0.1353191628732148
     },
     {
       "id": "solar-system-ariel",
@@ -1744,8 +2003,7 @@
       "kind": "body",
       "roleHint": "moon",
       "classes": [
-        "planet/terrestrial",
-        "planet/ice"
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-uranus",
@@ -1776,10 +2034,10 @@
       "areas": [],
       "equilibriumTempK": 58.133534831018835,
       "greenhouseTempK": 0,
-      "tidalHeatK": 0,
+      "tidalHeatK": 34.202534688683585,
       "radiogenicHeatK": 0,
-      "temperatureK": 58.133534831018835,
-      "orbital_period_days": 2.52,
+      "temperatureK": 92.33606951970242,
+      "orbital_period_days": 2.5019123185718404,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 60.48,
       "description": "The brightest and youngest-surfaced of Uranus's moons. Ariel shows clear signs of geologic activity, with vast, interconnected canyons and fault valleys. Smooth plains suggest that 'cryovolcanism' (ice volcanoes) may have once resurfaced parts of the moon.",
@@ -1800,8 +2058,13 @@
       "loDeltaVBudget_ms": 443.500161738119,
       "propulsiveLandBudget_ms": 443.500161738119,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 20.257829562340557,
-      "surfaceRadiation": 0.0027071239855790395
+      "habitabilityScore": 15.231547259134643,
+      "surfaceRadiation": 3.35356199278952,
+      "stellarRadiation": 0.0027071239855790395,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 1.2182057935105677,
+      "particleRadiation": 0.13535619927895198
     },
     {
       "id": "solar-system-neptune",
@@ -1810,8 +2073,8 @@
       "kind": "body",
       "roleHint": "planet",
       "classes": [
-        "planet/ice-giant",
-        "planet/ringed"
+        "planet/ringed",
+        "planet/ice-giant"
       ],
       "orbit": {
         "hostId": "solar-system-sun",
@@ -1830,10 +2093,31 @@
       "radiusKm": 24622,
       "tags": [
         {
+          "key": "planet/ringed"
+        },
+        {
+          "key": "lifting-gas"
+        },
+        {
           "key": "reducing"
         },
         {
-          "key": "planet/ringed"
+          "key": "metal-embrittlement"
+        },
+        {
+          "key": "noble-gas"
+        },
+        {
+          "key": "voice-changer"
+        },
+        {
+          "key": "leak-prone"
+        },
+        {
+          "key": "greenhouse"
+        },
+        {
+          "key": "haze-former"
         },
         {
           "key": "habitability/none"
@@ -1844,10 +2128,10 @@
         "strengthGauss": 0.14
       },
       "equilibriumTempK": 46.44403755688691,
-      "greenhouseTempK": 0,
+      "greenhouseTempK": 119.94633667509243,
       "tidalHeatK": 0,
-      "radiogenicHeatK": 3,
-      "temperatureK": 49.44403755688691,
+      "radiogenicHeatK": 0,
+      "temperatureK": 166.39037423197934,
       "atmosphere": {
         "name": "Ice Giant (Uranus-like)",
         "composition": {
@@ -1857,9 +2141,10 @@
         },
         "main": "H2",
         "pressure_bar": 100000,
-        "molarMassKg": 0.002613734
+        "molarMassKg": 0.0026000000000000003,
+        "scaleHeightKm": 47.19868212695537
       },
-      "orbital_period_days": 60182,
+      "orbital_period_days": 60339.28002582727,
       "axial_tilt_deg": 28.32,
       "rotation_period_hours": 16.11,
       "description": "The eighth and most distant planet, Neptune is a dark, cold ice giant whipped by supersonic winds. It has a vivid blue color from methane in its atmosphere. It was the first planet found through mathematical prediction rather than direct observation.",
@@ -1870,7 +2155,7 @@
       "calculatedGravity_ms2": 11.27350667591506,
       "calculatedRotationPeriod_s": 57996,
       "orbitalBoundaries": {
-        "minLeoKm": 449.7252361792579,
+        "minLeoKm": 1521.4215684798967,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 58883.29385587132,
         "heoUpperBoundaryKm": 116160577.26195094,
@@ -1880,8 +2165,13 @@
       "loDeltaVBudget_ms": 1327490.0241186097,
       "propulsiveLandBudget_ms": 27490.02411860985,
       "aerobrakeLandBudget_ms": 200,
-      "habitabilityScore": 28.508148138720635,
-      "surfaceRadiation": 0
+      "habitabilityScore": 25.508148138720635,
+      "surfaceRadiation": 2,
+      "stellarRadiation": 0.0011030075596829118,
+      "radiationShieldingAtmo": 1,
+      "radiationShieldingMag": 0.3920304196852271,
+      "photonRadiation": 0,
+      "particleRadiation": 0
     },
     {
       "id": "solar-system-neptune-rings",
@@ -1910,7 +2200,21 @@
           "Omega_deg": 0,
           "M0_rad": 2.8497775394846014
         }
-      }
+      },
+      "orbital_period_days": 0.33380794636185507,
+      "stellarRadiation": 0.0011029818900104744,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 0.4963418505047135,
+      "particleRadiation": 0.05514909450052372,
+      "equilibriumTempK": 46.44403755688691,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "greenhouseTempK": 0,
+      "temperatureK": 46.44403755688691,
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-triton",
@@ -1919,8 +2223,7 @@
       "kind": "body",
       "roleHint": "moon",
       "classes": [
-        "planet/terrestrial",
-        "planet/ice"
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-neptune",
@@ -1952,15 +2255,21 @@
           "key": "Tidally Locked"
         },
         {
+          "key": "inert"
+        },
+        {
+          "key": "buffer-gas"
+        },
+        {
           "key": "habitability/none"
         }
       ],
       "areas": [],
       "equilibriumTempK": 46.44403755688691,
-      "greenhouseTempK": 0,
-      "tidalHeatK": 2,
+      "greenhouseTempK": 0.0006636857442381685,
+      "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 48.44403755688691,
+      "temperatureK": 46.44470124263115,
       "atmosphere": {
         "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
         "composition": {
@@ -1969,9 +2278,10 @@
         },
         "main": "N2",
         "pressure_bar": 0.000014,
-        "molarMassKg": 0.028002026
+        "molarMassKg": 0.027988,
+        "scaleHeightKm": 17.694211086372214
       },
-      "orbital_period_days": 5.87,
+      "orbital_period_days": 5.872512134112898,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 140.8,
       "description": "Neptune's largest moon and likely a captured Kuiper Belt Object. It is one of the coldest worlds known (-235°C), yet it is geologically active, with geysers of nitrogen gas erupting from its icy surface. It orbits Neptune 'backwards' in a retrograde orbit.",
@@ -1982,7 +2292,7 @@
       "calculatedGravity_ms2": 0.7797711313361076,
       "calculatedRotationPeriod_s": 506880.00000000006,
       "orbitalBoundaries": {
-        "minLeoKm": 176.0970753185356,
+        "minLeoKm": 168.91397176521926,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 13234.897524442571,
         "heoUpperBoundaryKm": 13234.897524442571,
@@ -1992,8 +2302,13 @@
       "loDeltaVBudget_ms": 1181.393297975427,
       "propulsiveLandBudget_ms": 1181.393297975427,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 30.793359585527707,
-      "surfaceRadiation": 0.0011027644807508038
+      "habitabilityScore": 26.967971620573582,
+      "surfaceRadiation": 2.5513614077835007,
+      "stellarRadiation": 0.0011028339416618979,
+      "radiationShieldingAtmo": 0.0001007641229546774,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 0.49622526700515074,
+      "particleRadiation": 0.055136140778350086
     },
     {
       "id": "solar-system-kuiper-belt",
@@ -2022,7 +2337,21 @@
       "tags": [],
       "areas": [],
       "description": "A vast, doughnut-shaped ring of icy bodies beyond the orbit of Neptune, from about 30 to 50 AU. It is a reservoir of comets and contains many dwarf planets, including Pluto. This is a cold, distant region containing remnants from the formation of the Solar System.",
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "orbital_period_days": 92389.78948522548,
+      "stellarRadiation": 0.000625,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 0.28125000000000006,
+      "particleRadiation": 0.03125,
+      "equilibriumTempK": 40.29538872075502,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "greenhouseTempK": 0,
+      "temperatureK": 40.29538872075502,
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1
     },
     {
       "id": "solar-system-pluto",
@@ -2031,8 +2360,7 @@
       "kind": "body",
       "roleHint": "planet",
       "classes": [
-        "planet/dwarf-planet",
-        "planet/ice"
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-sun",
@@ -2057,15 +2385,24 @@
           "key": "exosphere"
         },
         {
+          "key": "inert"
+        },
+        {
+          "key": "buffer-gas"
+        },
+        {
+          "key": "reducing"
+        },
+        {
           "key": "habitability/none"
         }
       ],
       "areas": [],
       "equilibriumTempK": 40.55989045142206,
-      "greenhouseTempK": 0,
-      "tidalHeatK": 3.5,
+      "greenhouseTempK": 0.0017971599359114597,
+      "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 44.05989045142206,
+      "temperatureK": 40.561687611357975,
       "atmosphere": {
         "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
         "composition": {
@@ -2075,9 +2412,10 @@
         },
         "main": "N2",
         "pressure_bar": 0.00001,
-        "molarMassKg": 0.02789422
+        "molarMassKg": 0.02788,
+        "scaleHeightKm": 19.640807979532433
       },
-      "orbital_period_days": 90560,
+      "orbital_period_days": 90594.05654169581,
       "axial_tilt_deg": 119.5,
       "rotation_period_hours": -153.3,
       "description": "A dwarf planet in the Kuiper Belt, formerly classified as the ninth planet. It is a complex world of ice mountains and frozen nitrogen plains. Its highly eccentric orbit sometimes brings it closer to the Sun than Neptune. It has five known moons.",
@@ -2088,7 +2426,7 @@
       "calculatedGravity_ms2": 0.615882615041098,
       "calculatedRotationPeriod_s": -551880,
       "orbitalBoundaries": {
-        "minLeoKm": 196.38890390958926,
+        "minLeoKm": 180.8885184067278,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 17672.49108839615,
         "heoUpperBoundaryKm": 7661221.032754107,
@@ -2098,8 +2436,13 @@
       "loDeltaVBudget_ms": 983.8068938552108,
       "propulsiveLandBudget_ms": 983.8068938552108,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 30.626948708643482,
-      "surfaceRadiation": 0.0006415439088277487
+      "habitabilityScore": 27.14676621869525,
+      "surfaceRadiation": 2.320763203874316,
+      "stellarRadiation": 0.0006415724581669096,
+      "radiationShieldingAtmo": 0.00007177742387742825,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 0.28868688348688426,
+      "particleRadiation": 0.03207632038743158
     },
     {
       "id": "solar-system-charon",
@@ -2108,8 +2451,7 @@
       "kind": "body",
       "roleHint": "moon",
       "classes": [
-        "planet/dwarf-planet",
-        "planet/ice"
+        "planet/sub-earth"
       ],
       "orbit": {
         "hostId": "solar-system-pluto",
@@ -2140,10 +2482,10 @@
       "areas": [],
       "equilibriumTempK": 40.55989045142206,
       "greenhouseTempK": 0,
-      "tidalHeatK": 3.5,
+      "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 44.05989045142206,
-      "orbital_period_days": 6.38,
+      "temperatureK": 40.55989045142206,
+      "orbital_period_days": 6.68796825041103,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 153.3,
       "description": "Pluto's largest moon, so large (half of Pluto's diameter) that the two are considered a binary dwarf planet system. They orbit a common barycenter located in the space between them. Charon is tidally locked to Pluto, so they both always show the same face to each other.",
@@ -2164,8 +2506,13 @@
       "loDeltaVBudget_ms": 479.7256429374493,
       "propulsiveLandBudget_ms": 479.7256429374493,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 20.2917550583889,
-      "surfaceRadiation": 0.0006415682330398776
+      "habitabilityScore": 16.811541235958554,
+      "surfaceRadiation": 2.3207841165199388,
+      "stellarRadiation": 0.0006415682330398776,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 0.28870570486794495,
+      "particleRadiation": 0.03207841165199388
     },
     {
       "id": "construct-expanse-ceres",

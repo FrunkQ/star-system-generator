@@ -1,5 +1,5 @@
 {
-  "id": "alpha-centauri-system",
+  "id": "seed-1768930602866",
   "name": "Alpha Centauri System",
   "seed": "alpha-centauri-real-data",
   "epochT0": 1762339146908,
@@ -31,7 +31,7 @@
       ],
       "massKg": 2.189e+30,
       "radiusKm": 854400,
-      "temperatureK": 94.85202984968355,
+      "temperatureK": 5790,
       "magneticField": {
         "strengthGauss": 1
       },
@@ -47,11 +47,11 @@
       "areas": [],
       "orbit": {
         "hostId": "alpha-centauri-barycenter",
-        "hostMu": 228300000000000000000,
+        "hostMu": 228327803000000000000,
         "t0": 1762339146908,
-        "n_rad_per_s": 2.493e-9,
+        "n_rad_per_s": 1.7074273396990902e-9,
         "elements": {
-          "a_AU": 10.3,
+          "a_AU": 10.29967845659164,
           "e": 0.5179,
           "i_deg": 0,
           "omega_deg": 0,
@@ -74,7 +74,14 @@
       "propulsiveLandBudget_ms": -1,
       "aerobrakeLandBudget_ms": -1,
       "greenhouseTempK": 0,
-      "equilibriumTempK": 94.85202984968355
+      "equilibriumTempK": 94.85202984968355,
+      "orbital_period_days": 9204.71497738488,
+      "stellarRadiation": 0.0006149445061066283,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0.6681071245942142,
+      "photonRadiation": 0.0005534500554959655,
+      "particleRadiation": 0.00002040957003467197,
+      "surfaceRadiation": 0.0005738596255306375
     },
     {
       "id": "alpha-centauri-b",
@@ -100,11 +107,11 @@
       "areas": [],
       "orbit": {
         "hostId": "alpha-centauri-barycenter",
-        "hostMu": 228300000000000000000,
+        "hostMu": 228327803000000000000,
         "t0": 1762339146908,
-        "n_rad_per_s": 2.493e-9,
+        "n_rad_per_s": 1.7074273396990902e-9,
         "elements": {
-          "a_AU": 18.3,
+          "a_AU": 18.300321543408362,
           "e": 0.5179,
           "i_deg": 0,
           "omega_deg": 0,
@@ -113,7 +120,18 @@
         }
       },
       "description": "The secondary star, a K-type orange dwarf. It is slightly smaller and cooler than our Sun. Its highly elliptical 80-year orbit brings it as close as Saturn and as far as Neptune from Star A.",
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "calculatedGravity_ms2": 227.42281130503616,
+      "orbital_period_days": 21800.32287486337,
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1,
+      "stellarRadiation": 0.0018570590349221028,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0.8999459086224153,
+      "photonRadiation": 0.0016713531314298926,
+      "particleRadiation": 0.00001858063543736653,
+      "surfaceRadiation": 0.0016899337668672592
     },
     {
       "id": "proxima-centauri-star",
@@ -122,7 +140,7 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-        "star/M",
+        "star/NS",
         "star/M5.5V"
       ],
       "orbit": {
@@ -140,13 +158,13 @@
       },
       "massKg": 2.447e+29,
       "radiusKm": 107280,
-      "temperatureK": 1.893400217511615,
+      "temperatureK": 3042,
       "magneticField": {
         "strengthGauss": 600
       },
       "radiationOutput": 0.0017,
       "image": {
-        "url": "/images/star_types/M.webp"
+        "url": "/images/star_types/NS.webp"
       },
       "tags": [
         {
@@ -169,7 +187,14 @@
       "propulsiveLandBudget_ms": -1,
       "aerobrakeLandBudget_ms": -1,
       "greenhouseTempK": 0,
-      "equilibriumTempK": 1.893400217511615
+      "equilibriumTempK": 1.893400217511615,
+      "orbital_period_days": 412752653.076972,
+      "stellarRadiation": 1.1941909604900027e-8,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0.99,
+      "photonRadiation": 1.0747718644410024e-8,
+      "particleRadiation": 1.194190960490004e-11,
+      "surfaceRadiation": 1.0759660554014925e-8
     },
     {
       "id": "proxima-centauri-d",
@@ -178,10 +203,8 @@
       "kind": "body",
       "roleHint": "planet",
       "classes": [
-        "planet/terrestrial",
-        "planet/hot-eyeball",
         "planet/sub-earth",
-        "planet/barren"
+        "planet/terrestrial"
       ],
       "orbit": {
         "hostId": "proxima-centauri-star",
@@ -215,7 +238,7 @@
       "areas": [],
       "equilibriumTempK": 310.20049759680666,
       "temperatureK": 310.20049759680666,
-      "orbital_period_days": 5.12,
+      "orbital_period_days": 5.102148839690896,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 122.8,
       "description": "The innermost planet of Proxima. This tiny 'Sub-Earth' orbits in just 5 days, placing it too close for liquid water. It is a small, scorched, and likely airless rocky world, tidally locked and blasted by the star's frequent, powerful flares.",
@@ -237,7 +260,14 @@
       "propulsiveLandBudget_ms": 5322.222000613045,
       "aerobrakeLandBudget_ms": -1,
       "habitabilityScore": 41.20007320027399,
-      "greenhouseTempK": 0
+      "greenhouseTempK": 0,
+      "stellarRadiation": 2.0424775371799706,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 1.8382297834619736,
+      "particleRadiation": 0.20424775371799708,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0
     },
     {
       "id": "proxima-centauri-b",
@@ -246,8 +276,8 @@
       "kind": "body",
       "roleHint": "planet",
       "classes": [
-        "planet/terrestrial",
-        "planet/cold-eyeball"
+        "planet/carbon",
+        "planet/terrestrial"
       ],
       "orbit": {
         "hostId": "proxima-centauri-star",
@@ -278,12 +308,21 @@
           "key": "habitable-zone"
         },
         {
+          "key": "greenhouse"
+        },
+        {
+          "key": "toxic-human"
+        },
+        {
+          "key": "inert"
+        },
+        {
           "key": "habitability/alien"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 234,
-      "temperatureK": 234,
+      "equilibriumTempK": 239.07344970631613,
+      "temperatureK": 399.759077747627,
       "atmosphere": {
         "name": "Collapsible CO₂ (Tidally Locked)",
         "composition": {
@@ -292,9 +331,10 @@
         },
         "main": "CO2",
         "pressure_bar": 0.5,
-        "molarMassKg": 0.0432102
+        "molarMassKg": 0.043199999999999995,
+        "scaleHeightKm": 77.06023527373951
       },
-      "orbital_period_days": 11.18,
+      "orbital_period_days": 11.145166288813062,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 268.3,
       "description": "An Earth-sized world orbiting within Proxima's habitable zone. It is tidally locked, so one side is in endless day and the other in endless night. It may be a 'cold eyeball' planet, with a region of liquid water in a 'terminator' ring between the two extremes.",
@@ -305,7 +345,7 @@
       "calculatedGravity_ms2": 10.215688618266395,
       "calculatedRotationPeriod_s": 965880,
       "orbitalBoundaries": {
-        "minLeoKm": 88.27860796299612,
+        "minLeoKm": 150.84832182281866,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 50000,
         "heoUpperBoundaryKm": 147178.29216225803,
@@ -315,7 +355,16 @@
       "loDeltaVBudget_ms": 10409.366175304553,
       "propulsiveLandBudget_ms": 9551.686033302172,
       "aerobrakeLandBudget_ms": 978.8007830714049,
-      "habitabilityScore": 44.58645400788339
+      "habitabilityScore": 44.42140887861339,
+      "stellarRadiation": 0.7206306366493026,
+      "radiationShieldingAtmo": 0.9168824991986975,
+      "radiationShieldingMag": 0.22119921692859512,
+      "photonRadiation": 0.05390731576722743,
+      "particleRadiation": 0.056122770412772194,
+      "surfaceRadiation": 0.11003008617999963,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "greenhouseTempK": 160.68562804131085
     },
     {
       "id": "proxima-centauri-c",
@@ -324,9 +373,7 @@
       "kind": "body",
       "roleHint": "planet",
       "classes": [
-        "planet/ice-giant",
-        "planet/super-earth",
-        "planet/ice"
+        "planet/mini-neptune"
       ],
       "orbit": {
         "hostId": "proxima-centauri-star",
@@ -348,21 +395,33 @@
           "key": "cold"
         },
         {
-          "key": "reducing"
-        },
-        {
           "key": "primordial"
         },
         {
           "key": "planet/ice-giant"
         },
         {
+          "key": "lifting-gas"
+        },
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "noble-gas"
+        },
+        {
+          "key": "voice-changer"
+        },
+        {
+          "key": "leak-prone"
+        },
+        {
           "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 43.17870690534853,
-      "temperatureK": 44.15909906221127,
+      "equilibriumTempK": 43.178706905352385,
+      "temperatureK": 43.178706905352385,
       "atmosphere": {
         "name": "Primordial Envelope (Super-Earth)",
         "composition": {
@@ -371,9 +430,10 @@
         },
         "main": "H2",
         "pressure_bar": 10,
-        "molarMassKg": 0.00221448
+        "molarMassKg": 0.0022,
+        "scaleHeightKm": 351.1724840137901
       },
-      "orbital_period_days": 1928,
+      "orbital_period_days": 1891.8053271700267,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 46272,
       "description": "A 'Mini-Neptune' or 'Super-Earth' orbiting far from its star, about 1.5 AU out. It takes over 5 years to complete one orbit. It is a frigid world, well beyond the system's frost line, and has likely retained a thick, primordial atmosphere of hydrogen and helium.",
@@ -384,7 +444,7 @@
       "calculatedGravity_ms2": 7.637825500791,
       "calculatedRotationPeriod_s": 166579200,
       "orbitalBoundaries": {
-        "minLeoKm": 499.80939905430506,
+        "minLeoKm": 491.9295692846915,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 50000,
         "heoUpperBoundaryKm": 8550486.251128798,
@@ -394,10 +454,18 @@
       "loDeltaVBudget_ms": 20277.862022571993,
       "propulsiveLandBudget_ms": 15102.468805376531,
       "aerobrakeLandBudget_ms": 206.73794699908547,
-      "habitabilityScore": 27.78575484280428,
-      "greenhouseTempK": 0.9803921568627451,
+      "habitabilityScore": 27.785650285663575,
+      "greenhouseTempK": 0,
       "tidallyLocked": false,
-      "color": "#81ecec"
+      "color": "#81ecec",
+      "stellarRadiation": 0.0007667720754077655,
+      "radiationShieldingAtmo": 0.8997411562771963,
+      "radiationShieldingMag": 0.9932620530009145,
+      "photonRadiation": 0.00006918811351138533,
+      "particleRadiation": 5.166469604476296e-7,
+      "surfaceRadiation": 0.00006970476047183295,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0
     }
   ],
   "rulePackId": "starter-sf-pack",

@@ -100,7 +100,17 @@ export function calculateSurfaceRadiation(
     body.radiationShieldingAtmo = 0;
     body.radiationShieldingMag = 0;
 
-    // 1. Atmosphere Blocking (Shields Photons)
+    // 1. Magnetosphere Shielding (Shields Particles - Pre-Atmosphere)
+    const magStrength = body.magneticField?.strengthGauss || 0;
+    let magDeflection = 0;
+    if (magStrength > 0) {
+        magDeflection = Math.min(0.99, (Math.log10(magStrength + 0.01) + 2) / 3); 
+    }
+    body.radiationShieldingMag = magDeflection;
+    particleFlux = particleFlux * (1 - magDeflection);
+
+    // 2. Atmosphere Blocking (Shields Photons & Surviving Particles)
+    let atmoTransmission = 1.0;
     if (body.atmosphere && body.atmosphere.name !== 'None' && body.atmosphere.composition) {
         let totalShielding = 0;
         let totalGas = 0;
@@ -111,28 +121,28 @@ export function calculateSurfaceRadiation(
         }
         if (totalGas > 0) {
             const shieldingScore = totalShielding / totalGas;
-            const transmission = Math.exp(-shieldingScore * body.atmosphere.pressure_bar);
-            body.radiationShieldingAtmo = 1 - transmission;
-            photonFlux = photonFlux * transmission;
+            // Boost N2/O2 shielding slightly to match Earth calibration (~7.0 score for 1 bar)
+            // Or just leave as is and accept ~7 mSv result. 
+            // Let's stick to the defined coefficients but apply them to particles too.
+            atmoTransmission = Math.exp(-shieldingScore * (body.atmosphere.pressure_bar || 0));
+            body.radiationShieldingAtmo = 1 - atmoTransmission;
         }
     }
     
-    // 2. Magnetosphere Shielding (Shields Particles)
-    const magStrength = body.magneticField?.strengthGauss || 0;
-    if (magStrength > 0) {
-        const deflection = Math.min(0.99, (Math.log10(magStrength + 0.01) + 2) / 3); 
-        body.radiationShieldingMag = deflection;
-        particleFlux = particleFlux * (1 - deflection);
-    } else if (body.atmosphere) {
-        // Atmosphere provides some minor particle protection via collision
-        const atmoDeflection = 1 - Math.exp(-0.5 * (body.atmosphere.pressure_bar || 0));
-        body.radiationShieldingMag = atmoDeflection;
-        particleFlux = particleFlux * (1 - atmoDeflection);
+    photonFlux = photonFlux * atmoTransmission;
+    particleFlux = particleFlux * atmoTransmission;
+
+    body.photonRadiation = photonFlux * 500;
+    body.particleRadiation = particleFlux * 500;
+    
+    // Base terrestrial background radiation (Radon, rocks) ~2.0 mSv/yr
+    // Only applies to rocky bodies (Planets/Moons), not Constructs/Stars
+    let terrestrialBackground = 0;
+    if (body.roleHint === 'planet' || body.roleHint === 'moon') {
+        terrestrialBackground = 2.0; 
     }
 
-    body.photonRadiation = photonFlux;
-    body.particleRadiation = particleFlux;
-    body.surfaceRadiation = photonFlux + particleFlux;
+    body.surfaceRadiation = (photonFlux + particleFlux) * 500 + terrestrialBackground;
 
     return Math.max(0, body.surfaceRadiation);
 }

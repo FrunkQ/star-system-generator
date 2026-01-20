@@ -186,5 +186,15 @@ describe('Solar System Physics Baseline', () => {
         // Earth LEO min boundary: ~160km - 200km (depends on atmosphere model)
         expect(earth.orbitalBoundaries?.minLeoKm).toBeGreaterThan(150);
         expect(earth.orbitalBoundaries?.minLeoKm).toBeLessThan(200);
+
+        // --- Radiation (Real World Baseline) ---
+        // Earth Surface: ~2.4 mSv/year (Global Average Background)
+        // Note: Our engine might only calculate Space Weather contribution (~0.3 mSv), but let's test for the total.
+        expect(earth.surfaceRadiation).toBeGreaterThan(2.0); 
+        expect(earth.surfaceRadiation).toBeLessThan(3.0);
+
+        // Luna Surface: ~500 mSv/year (Unshielded GCR + Solar)
+        expect(moon.surfaceRadiation).toBeGreaterThan(400);
+        expect(moon.surfaceRadiation).toBeLessThan(600);
     });
 });

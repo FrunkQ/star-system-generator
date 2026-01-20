@@ -109,6 +109,7 @@
   let showZones = false;
   let showZoneKeyPanel = false; // Controls display of ZoneKey in the right panel
   let showLPoints = false;
+  let showTravellerZones = false;
   let throttleTimeout: ReturnType<typeof setTimeout> | null = null;
   let lastToytownFactor: number | undefined = undefined;
   let timeSyncInterval: ReturnType<typeof setInterval> | undefined;
@@ -898,7 +899,7 @@ a.click();
                 broadcastService.sendMessage({ type: 'SYNC_RULEPACK', payload: rulePack });
                 broadcastService.sendMessage({ type: 'SYNC_FOCUS', payload: focusedBodyId });
                 broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' } });
-                broadcastService.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: { showNames, showZones, showLPoints } });
+                broadcastService.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: { showNames, showZones, showLPoints, showTravellerZones } });
                 broadcastService.sendMessage({ type: 'SYNC_TIME', payload: { currentTime, isPlaying, timeScale } });
                 broadcastService.sendMessage({ type: 'SYNC_CRT_MODE', payload: isCrtMode });
             }
@@ -928,7 +929,7 @@ a.click();
   $: if (browser && $systemStore) {
       broadcastService.sendMessage({ 
           type: 'SYNC_VIEW_SETTINGS', 
-          payload: { showNames, showZones, showLPoints } 
+          payload: { showNames, showZones, showLPoints, showTravellerZones } 
       });
   }
 
@@ -1152,6 +1153,10 @@ a.click();
             Show L-Points
         </label>
         <label>
+            <input type="checkbox" bind:checked={showTravellerZones} />
+            Show Traveller Zones
+        </label>
+        <label>
             Toytown View:
             <input type="range" min="0" max="1" step="0.01" bind:value={$systemStore.toytownFactor} on:change={() => {
                 if ($systemStore.toytownFactor < 0.005) $systemStore.toytownFactor = 0;
@@ -1185,6 +1190,7 @@ a.click();
                 {showNames} 
                 {showZones} 
                 {showLPoints} 
+                {showTravellerZones}
                 toytownFactor={$systemStore.toytownFactor} 
                 forceOrbitView={isEditing && activeEditTab === 'Orbit'}
                 transitPlan={currentTransitPlan}

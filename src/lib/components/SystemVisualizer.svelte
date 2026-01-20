@@ -21,6 +21,7 @@
   export let showNames: boolean = false;
   export let showZones: boolean = false;
   export let showLPoints: boolean = false;
+  export let showTravellerZones: boolean = false;
   export let toytownFactor: number = 0;
   export let fullScreen: boolean = false;
   export let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
@@ -642,6 +643,7 @@
       ctx.translate(width / 2, height / 2);
       ctx.scale(zoom, zoom);
       if (showZones) drawStellarZones(ctx);
+      if (showTravellerZones) drawTravellerZones(ctx);
       for (const node of system.nodes) {
           if (!node.orbit || !node.parentId || (node.kind === 'body' && node.roleHint === 'belt')) continue;
           const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(node.parentId) : worldPositions.get(node.parentId);
@@ -749,8 +751,27 @@
           else if (node.roleHint === 'moon') minRadiusPx = 1;
           const minRadiusInWorld = minRadiusPx / zoom;
           const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
-          ctx.beginPath(); ctx.arc(rx, ry, finalRadius, 0, 2 * Math.PI);
-          ctx.fillStyle = getNodeColor(node); ctx.fill();
+          
+          ctx.beginPath(); 
+          ctx.arc(rx, ry, finalRadius, 0, 2 * Math.PI);
+
+          // Custom Rendering for Black Holes
+          if (node.classes?.includes('star/BH_active')) {
+              ctx.fillStyle = '#000000';
+              ctx.fill();
+              ctx.lineWidth = Math.max(2 / zoom, finalRadius * 0.2); // Accretion disk
+              ctx.strokeStyle = '#ffaa00'; // Hot orange
+              ctx.stroke();
+          } else if (node.classes?.includes('star/BH')) {
+              ctx.fillStyle = '#000000';
+              ctx.fill();
+              ctx.lineWidth = 1 / zoom;
+              ctx.strokeStyle = '#444444'; // Subtle horizon visibility
+              ctx.stroke();
+          } else {
+              ctx.fillStyle = getNodeColor(node); 
+              ctx.fill();
+          }
       }
       if (completedPlans && completedPlans.length > 0) {
           for (const plan of completedPlans) drawTransitPlan(ctx, plan, true, isExecuting ? 0.2 : undefined, isExecuting);
@@ -829,7 +850,11 @@
                   const ty = screenPos.y;
 
                   ctx.strokeText(node.name, tx, ty);
-                  ctx.fillStyle = getNodeColor(node); 
+                  if (node.classes?.includes('star/BH') || node.classes?.includes('star/BH_active')) {
+                      ctx.fillStyle = '#ffffff';
+                  } else {
+                      ctx.fillStyle = getNodeColor(node);
+                  }
                   ctx.fillText(node.name, tx, ty);
               }
           }
@@ -888,6 +913,47 @@
               const screenPos = worldToScreen(pos.x, pos.y);
               ctx.fillText(name, screenPos.x + 8, screenPos.y);
           }
+      }
+  }
+
+  function drawTravellerZones(ctx: CanvasRenderingContext2D) {
+      if (!system || !zoom) return;
+      
+      for (const node of system.nodes) {
+          if (node.kind !== 'body' || !node.radiusKm) continue;
+          
+          const pos = toytownFactor > 0 ? scaledWorldPositions.get(node.id) : worldPositions.get(node.id);
+          if (!pos) continue;
+          
+          let radiusAU = node.radiusKm / AU_KM;
+          let jumpShadowRad = radiusAU * 200; // 100 Diameter = 200 Radius
+          let mDriveRad = radiusAU * 2000;    // 1000 Diameter = 2000 Radius
+          
+          if (toytownFactor > 0) {
+              jumpShadowRad = scaleBoxCox(jumpShadowRad, toytownFactor, x0_distance);
+              mDriveRad = scaleBoxCox(mDriveRad, toytownFactor, x0_distance);
+          }
+          
+          const rx = pos.x - renderPan.x;
+          const ry = pos.y - renderPan.y;
+          
+          // Draw M-Drive Zone (Larger)
+          ctx.beginPath();
+          ctx.arc(rx, ry, mDriveRad, 0, 2 * Math.PI);
+          ctx.fillStyle = 'rgba(0, 255, 255, 0.05)';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(0, 255, 255, 0.2)';
+          ctx.lineWidth = 1 / zoom;
+          ctx.stroke();
+          
+          // Draw Jump Shadow (Smaller)
+          ctx.beginPath();
+          ctx.arc(rx, ry, jumpShadowRad, 0, 2 * Math.PI);
+          ctx.fillStyle = 'rgba(255, 100, 100, 0.15)'; // Reddish shadow
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 100, 100, 0.4)';
+          ctx.lineWidth = 1 / zoom;
+          ctx.stroke();
       }
   }
 

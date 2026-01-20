@@ -172,7 +172,7 @@
       function getStarColor(star: CelestialBody): string {
       if (star && star.classes && star.classes.length > 0) {
           if (star.classes.includes('star/magnetar')) return '#800080'; // Purple for Magnetar
-          if (star.classes.includes('BH') || star.classes.includes('star/BH')) return '#000000'; // Black for Black Hole
+          if (star.classes.some(c => c.includes('BH'))) return '#000000'; // Black for all Black Holes (Active or Quiescent)
           if (star.classes.includes('star/red-giant')) return '#8b0000'; // Deep Red for Red Giant
           if (star.classes.includes('star/brown-dwarf')) return '#5d4037'; // Dark Brown for Brown Dwarf
           const starClass = star.classes[0].split('/')[1]; // e.g., "star/G2V" -> "G2V"
@@ -205,8 +205,10 @@
       return [];
   }
 
-  function isBlackHole(body: CelestialBody): boolean {
-      return body.classes.includes('BH') || body.classes.includes('star/BH');
+  function getBlackHoleType(body: CelestialBody): 'none' | 'BH' | 'BH_active' {
+      if (body.classes.includes('star/BH_active') || body.classes.includes('BH_active')) return 'BH_active';
+      if (body.classes.includes('star/BH') || body.classes.includes('BH')) return 'BH';
+      return 'none';
   }
 
   function handleStarClick(event: MouseEvent, systemId: string) {
@@ -467,7 +469,8 @@
                 style="fill: {getStarColor(visualNodes[0])};"
                 class="star"
                 class:selected={systemNode.id === selectedSystemForLink}
-                class:black-hole={isBlackHole(visualNodes[0])}
+                class:bh-active={getBlackHoleType(visualNodes[0]) === 'BH_active'}
+                class:bh-quiescent={getBlackHoleType(visualNodes[0]) === 'BH'}
               />
           {:else if visualNodes.length === 2}
               <circle
@@ -477,7 +480,8 @@
                 style="fill: {getStarColor(visualNodes[0])};"
                 class="star"
                 class:selected={systemNode.id === selectedSystemForLink}
-                class:black-hole={isBlackHole(visualNodes[0])}
+                class:bh-active={getBlackHoleType(visualNodes[0]) === 'BH_active'}
+                class:bh-quiescent={getBlackHoleType(visualNodes[0]) === 'BH'}
               />
               <circle
                 cx={systemNode.position.x + 5}
@@ -486,7 +490,8 @@
                 style="fill: {getStarColor(visualNodes[1])};"
                 class="star"
                 class:selected={systemNode.id === selectedSystemForLink}
-                class:black-hole={isBlackHole(visualNodes[1])}
+                class:bh-active={getBlackHoleType(visualNodes[1]) === 'BH_active'}
+                class:bh-quiescent={getBlackHoleType(visualNodes[1]) === 'BH'}
               />
           {:else}
               <!-- 3 or more stars: Pyramid layout (Primary Top, others below) -->
@@ -498,7 +503,8 @@
                 style="fill: {getStarColor(visualNodes[0])};"
                 class="star"
                 class:selected={systemNode.id === selectedSystemForLink}
-                class:black-hole={isBlackHole(visualNodes[0])}
+                class:bh-active={getBlackHoleType(visualNodes[0]) === 'BH_active'}
+                class:bh-quiescent={getBlackHoleType(visualNodes[0]) === 'BH'}
               />
               <!-- Second (Bottom Left) -->
               <circle
@@ -508,7 +514,8 @@
                 style="fill: {getStarColor(visualNodes[1])};"
                 class="star"
                 class:selected={systemNode.id === selectedSystemForLink}
-                class:black-hole={isBlackHole(visualNodes[1])}
+                class:bh-active={getBlackHoleType(visualNodes[1]) === 'BH_active'}
+                class:bh-quiescent={getBlackHoleType(visualNodes[1]) === 'BH'}
               />
               <!-- Third (Bottom Right) -->
               <circle
@@ -518,7 +525,8 @@
                 style="fill: {getStarColor(visualNodes[2])};"
                 class="star"
                 class:selected={systemNode.id === selectedSystemForLink}
-                class:black-hole={isBlackHole(visualNodes[2])}
+                class:bh-active={getBlackHoleType(visualNodes[2]) === 'BH_active'}
+                class:bh-quiescent={getBlackHoleType(visualNodes[2]) === 'BH'}
               />
           {/if}
         </g>
@@ -714,9 +722,14 @@
     stroke-width: 2;
   }
 
-  .star.black-hole {
-    stroke: #ffffff;
-    stroke-width: 1;
+  .star.bh-active {
+    stroke: #ffaa00;
+    stroke-width: 2px;
+  }
+
+  .star.bh-quiescent {
+    stroke: #444444;
+    stroke-width: 1px;
   }
 
   .star-label {

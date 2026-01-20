@@ -103,7 +103,7 @@ export function calculateGreenhouseEffect(body: CelestialBody, rulePack: RulePac
     // V1.4.0 Hybrid Square-Root-Log Greenhouse Model
     // DeltaT = Multiplier * Sum( GasPot * ln(1 + sqrt(100 * partialPressure)) )
     // We also apply "Pressure Broadening" (sqrt(P_total)) to account for line narrowing in thin atmospheres.
-    const multiplier = 5.0; 
+    const multiplier = 6.0; 
     const broadening = Math.min(1.0, Math.sqrt(effectivePressure));
 
     for (const [gas, fraction] of Object.entries(atm.composition)) {

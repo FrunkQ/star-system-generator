@@ -171,7 +171,8 @@ export class SystemProcessor implements ISystemProcessor {
         body.tidalHeatK = tidalHeatingK;
 
         // Radiogenic Heating (Simplified)
-        const radiogenicHeatK = (body.classes?.includes('planet/terrestrial') || body.roleHint === 'moon') ? 10 : 0;
+        // Internal heat is negligible for surface temp compared to solar/greenhouse for Earth-likes.
+        const radiogenicHeatK = 0; 
         body.radiogenicHeatK = radiogenicHeatK;
 
         // V1.4.0 Unified Atmospheric Physics
@@ -297,9 +298,16 @@ export class SystemProcessor implements ISystemProcessor {
     private calculateHabitabilityAndBiosphere(planet: CelestialBody, rng: SeededRNG) {
         if (planet.roleHint !== 'planet' && planet.roleHint !== 'moon') return;
     
+        // Plateau Scoring: Max score within [min, max], linear falloff outside
+        const scoreFromPlateau = (value: number, minOpt: number, maxOpt: number, falloff: number) => {
+            if (value >= minOpt && value <= maxOpt) return 1.0;
+            const diff = value < minOpt ? (minOpt - value) : (value - maxOpt);
+            return Math.max(0, 1 - (diff / falloff));
+        };
+
+        // Peak Scoring: Max score at optimal, linear falloff (Legacy wrapper)
         const scoreFromRange = (value: number, optimal: number, range: number) => {
-            const diff = Math.abs(value - optimal);
-            return Math.max(0, 1 - (diff / range));
+            return scoreFromPlateau(value, optimal, optimal, range);
         };
     
         let score = 0;
@@ -314,7 +322,8 @@ export class SystemProcessor implements ISystemProcessor {
         // Temperature Score (Max 30 points)
         if (planet.temperatureK) {
             if (planet.hydrosphere?.composition === 'water' || !planet.hydrosphere) {
-                factors.temp = scoreFromRange(planet.temperatureK, 288, 50); // Optimal 15C, range +/- 50C
+                // Optimal: 10C to 25C (283K - 298K). Falloff 40K.
+                factors.temp = scoreFromPlateau(planet.temperatureK, 283, 298, 40); 
             } else if (planet.hydrosphere?.composition === 'methane') {
                 factors.temp = scoreFromRange(planet.temperatureK, 111, 30); // Optimal -162C, range +/- 30C
             } else if (planet.hydrosphere?.composition === 'ammonia') {
@@ -325,7 +334,8 @@ export class SystemProcessor implements ISystemProcessor {
     
         // Pressure Score (Max 20 points)
         if (planet.atmosphere?.pressure_bar) {
-            factors.pressure = scoreFromRange(planet.atmosphere.pressure_bar, 1, 2);
+            // Optimal: 0.8 to 1.5 bar. Falloff 1.5 bar.
+            factors.pressure = scoreFromPlateau(planet.atmosphere.pressure_bar, 0.8, 1.5, 1.5);
         }
         score += factors.pressure * 20;
     
@@ -339,13 +349,15 @@ export class SystemProcessor implements ISystemProcessor {
         score += factors.solvent * 15;
     
         // Radiation Score (Max 15 points)
-        factors.radiation = scoreFromRange(planet.surfaceRadiation || 0, 0, 10);
+        // Optimal: 0 to 5 mSv/yr. Falloff 20 mSv.
+        factors.radiation = scoreFromPlateau(planet.surfaceRadiation || 0, 0, 5, 20);
         score += factors.radiation * 15;
     
         // Gravity Score (Max 15 points)
         const surfaceGravityG = (planet.massKg && planet.radiusKm) ? (G * planet.massKg / ((planet.radiusKm*1000) * (planet.radiusKm*1000))) / 9.81 : 0;
         if (surfaceGravityG > 0) {
-            factors.gravity = scoreFromRange(surfaceGravityG, 1, 1.5);
+            // Optimal: 0.8g to 1.2g. Falloff 0.5g.
+            factors.gravity = scoreFromPlateau(surfaceGravityG, 0.8, 1.2, 0.5);
         }
         score += factors.gravity * 15;
         

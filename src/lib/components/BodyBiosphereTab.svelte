@@ -34,9 +34,14 @@
   function calculateHabitabilityFactors(planet: CelestialBody) {
       if (planet.roleHint !== 'planet' && planet.roleHint !== 'moon') return;
 
+      const scoreFromPlateau = (value: number, minOpt: number, maxOpt: number, falloff: number) => {
+          if (value >= minOpt && value <= maxOpt) return 1.0;
+          const diff = value < minOpt ? (minOpt - value) : (value - maxOpt);
+          return Math.max(0, 1 - (diff / falloff));
+      };
+
       const scoreFromRange = (value: number, optimal: number, range: number) => {
-          const diff = Math.abs(value - optimal);
-          return Math.max(0, 1 - (diff / range));
+          return scoreFromPlateau(value, optimal, optimal, range);
       };
 
       // Reset
@@ -51,20 +56,24 @@
           const tC = Math.round(planet.temperatureK - 273.15);
           factors.temp.val = `${Math.round(planet.temperatureK)}K (${tC}°C)`;
           
-          let optimal = 288;
-          let range = 50;
-          if (planet.hydrosphere?.composition === 'methane') { optimal = 111; range = 30; }
-          else if (planet.hydrosphere?.composition === 'ammonia') { optimal = 218; range = 30; }
-          
-          factors.temp.ideal = `${optimal}K ±${range}`;
-          factors.temp.score = scoreFromRange(planet.temperatureK, optimal, range) * 30;
+          if (planet.hydrosphere?.composition === 'methane') {
+              factors.temp.ideal = '111K ±30';
+              factors.temp.score = scoreFromRange(planet.temperatureK, 111, 30) * 30;
+          } else if (planet.hydrosphere?.composition === 'ammonia') {
+              factors.temp.ideal = '218K ±30';
+              factors.temp.score = scoreFromRange(planet.temperatureK, 218, 30) * 30;
+          } else {
+              // Water / Standard
+              factors.temp.ideal = '10 - 25°C';
+              factors.temp.score = scoreFromPlateau(planet.temperatureK, 283, 298, 40) * 30;
+          }
       }
 
       // Pressure Score (Max 20 points)
       if (planet.atmosphere?.pressure_bar) {
           factors.pressure.val = `${planet.atmosphere.pressure_bar.toFixed(2)} bar`;
-          factors.pressure.ideal = '1 ± 2 bar';
-          factors.pressure.score = scoreFromRange(planet.atmosphere.pressure_bar, 1, 2) * 20;
+          factors.pressure.ideal = '0.8 - 1.5 bar';
+          factors.pressure.score = scoreFromPlateau(planet.atmosphere.pressure_bar, 0.8, 1.5, 1.5) * 20;
       } else {
           factors.pressure.val = '0 bar';
       }
@@ -84,21 +93,19 @@
       // Radiation Score (Max 15 points)
       const rad = planet.surfaceRadiation || 0;
       factors.radiation.val = `${rad.toFixed(2)} mSv`;
-      factors.radiation.ideal = '0 ± 10';
-      factors.radiation.score = scoreFromRange(rad, 0, 10) * 15;
+      factors.radiation.ideal = '< 5 mSv';
+      factors.radiation.score = scoreFromPlateau(rad, 0, 5, 20) * 15;
 
       // Gravity Score (Max 15 points)
       const surfaceGravityG = (planet.massKg && planet.radiusKm) ? (G * planet.massKg / ((planet.radiusKm*1000) * (planet.radiusKm*1000))) / 9.81 : 0;
       if (surfaceGravityG > 0) {
           factors.gravity.val = `${surfaceGravityG.toFixed(2)} G`;
-          factors.gravity.ideal = '1 ± 1.5 G';
-          factors.gravity.score = scoreFromRange(surfaceGravityG, 1, 1.5) * 15;
+          factors.gravity.ideal = '0.8 - 1.2 G';
+          factors.gravity.score = scoreFromPlateau(surfaceGravityG, 0.8, 1.2, 0.5) * 15;
       }
 
       const totalScore = factors.temp.score + factors.pressure.score + factors.solvent.score + factors.radiation.score + factors.gravity.score;
-      
-      // We rely on postprocessing.ts (tags) for the official tier classification to ensure consistency across the UI
-      // The score is a guide, but specific requirements (like O2) determine the tier.
+      planet.habitabilityScore = Math.min(100, Math.round(totalScore));
   }
 
   function getTierColor(tier: string) {
