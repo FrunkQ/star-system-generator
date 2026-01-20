@@ -21,6 +21,7 @@
   import BodySidePanel from './BodySidePanel.svelte';
   import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
   import ReportConfigModal from './ReportConfigModal.svelte';
+  import SaveSystemModal from './SaveSystemModal.svelte';
   import TransitPlannerPanel from './TransitPlannerPanel.svelte';
   import type { TransitPlan } from '$lib/transit/types';
 
@@ -197,6 +198,7 @@
 
   // Create Construct (Background) Modal State
   let showCreateConstructModal = false;
+  let showSaveModal = false;
   let backgroundClickHost: CelestialBody | Barycenter | null = null;
   let backgroundClickPosition: { x: number, y: number } | null = null;
   let showBackgroundContextMenu = false;
@@ -815,15 +817,37 @@
 
 
   function handleDownloadJson() {
+    showSaveModal = true;
+  }
+
+  function handleSaveSystem(event: CustomEvent<{mode: 'GM' | 'Player', includeConstructs: boolean}>) {
     if (!$systemStore) return;
-    const json = JSON.stringify($systemStore, null, 2);
+    
+    let systemToSave = $systemStore;
+    const { mode, includeConstructs } = event.detail;
+
+    // 1. Redact for Player if needed
+    if (mode === 'Player') {
+        systemToSave = computePlayerSnapshot($systemStore);
+    } else {
+        // Deep copy for GM mode to avoid mutating store if we filter constructs below
+        systemToSave = JSON.parse(JSON.stringify($systemStore));
+    }
+
+    // 2. Filter Constructs if requested
+    if (!includeConstructs) {
+        systemToSave.nodes = systemToSave.nodes.filter(n => n.kind !== 'construct');
+    }
+
+    // 3. Download
+    const json = JSON.stringify(systemToSave, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${$systemStore.name.replace(/\s+/g, '_') || 'system'}-System.json`;
+    a.download = `${systemToSave.name.replace(/\s+/g, '_') || 'system'}-System${mode === 'Player' ? '-Player' : ''}.json`;
     document.body.appendChild(a);
-a.click();
+    a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
@@ -1632,6 +1656,10 @@ a.click();
 
     {#if showReportConfigModal}
         <ReportConfigModal on:generate={handleGenerateReport} on:close={() => showReportConfigModal = false} />
+    {/if}
+
+    {#if showSaveModal}
+        <SaveSystemModal on:save={handleSaveSystem} on:close={() => showSaveModal = false} />
     {/if}
 
     <div class="debug-controls">

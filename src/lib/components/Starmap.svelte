@@ -6,6 +6,8 @@
   import { starmapUiStore } from '$lib/starmapUiStore';
   import MarkdownModal from './MarkdownModal.svelte';
   import EditFuelAndDrivesModal from './EditFuelAndDrivesModal.svelte';
+  import SaveSystemModal from './SaveSystemModal.svelte';
+  import { computePlayerSnapshot } from '$lib/system/utils';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
 
   export let starmap: Starmap;
@@ -29,6 +31,7 @@
   let showDropdown = false;
   let showAboutModal = false;
   let showFuelModal = false;
+  let showSaveModal = false;
   
   const aboutContent = `
 <h1>Star System Explorer</h1>
@@ -59,6 +62,39 @@
       const overrides = event.detail;
       const newStarmap = { ...starmap, rulePackOverrides: overrides };
       dispatch('updatestarmap', newStarmap);
+  }
+
+  function handleSaveStarmap(event: CustomEvent<{mode: 'GM' | 'Player', includeConstructs: boolean}>) {
+      const { mode, includeConstructs } = event.detail;
+      
+      // Deep copy first
+      const starmapToSave = JSON.parse(JSON.stringify(starmap));
+
+      // Process each system
+      starmapToSave.systems = starmapToSave.systems.map((node: any) => {
+          // If the system data is loaded in the node
+          if (node.system) {
+              if (mode === 'Player') {
+                  node.system = computePlayerSnapshot(node.system);
+              }
+              if (!includeConstructs) {
+                  node.system.nodes = node.system.nodes.filter((n: any) => n.kind !== 'construct');
+              }
+          }
+          return node;
+      });
+
+      // Download
+      const json = JSON.stringify(starmapToSave, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${starmap.name.replace(/\s+/g, '_') || 'starmap'}-Starmap${mode === 'Player' ? '-Player' : ''}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
   }
 
   function handleWheel(event: WheelEvent) {
@@ -369,7 +405,7 @@
           <button on:click={() => showDropdown = !showDropdown} class="hamburger-button">&#9776;</button>
           {#if showDropdown}
               <div class="dropdown-content">
-                  <button on:click={() => dispatch('download')}>Download Starmap</button>
+                  <button on:click={() => showSaveModal = true}>Download Starmap</button>
                   <button on:click={() => dispatch('upload')}>Upload Starmap</button>
                   <hr />
                   <button on:click={() => dispatch('clear')} class="danger">Clear Starmap</button>
@@ -566,6 +602,10 @@
   
   {#if showAboutModal}
       <MarkdownModal htmlContent={aboutContent} on:close={() => showAboutModal = false} />
+  {/if}
+
+  {#if showSaveModal}
+      <SaveSystemModal on:save={handleSaveStarmap} on:close={() => showSaveModal = false} />
   {/if}
 
   {#if showFuelModal}
