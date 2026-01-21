@@ -111,6 +111,7 @@
   let showZoneKeyPanel = false; // Controls display of ZoneKey in the right panel
   let showLPoints = false;
   let showTravellerZones = false;
+  let showSensors = false;
   let throttleTimeout: ReturnType<typeof setTimeout> | null = null;
   let lastToytownFactor: number | undefined = undefined;
   let timeSyncInterval: ReturnType<typeof setInterval> | undefined;
@@ -1215,6 +1216,7 @@
                 {showZones} 
                 {showLPoints} 
                 {showTravellerZones}
+                {showSensors}
                 toytownFactor={$systemStore.toytownFactor} 
                 forceOrbitView={isEditing && activeEditTab === 'Orbit'}
                 transitPlan={currentTransitPlan}
@@ -1234,6 +1236,36 @@
         <div class="details-view">
             {#if focusedBody}
             <div class="name-row">
+                {#if focusedBody.kind === 'construct'}
+                    {@const hasSensors = (focusedBody.sensors && focusedBody.sensors.length > 0)}
+                    <button class="visibility-btn" 
+                        class:active={showSensors} 
+                        disabled={!hasSensors}
+                        on:click={() => { if(hasSensors) showSensors = !showSensors; }} 
+                        title={hasSensors ? "Toggle Sensor Overlay" : "No Sensors Installed"}
+                        style="position: relative;"
+                    >
+                        <!-- Satellite Dish Base Icon -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" 
+                             stroke={hasSensors ? (showSensors ? "#4ade80" : "#888") : "#666"} 
+                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12.5a9 9 0 0 1-14.88 6.42" /> <!-- Dish Curve -->
+                            <path d="M2 20l5-5" /> <!-- Stand -->
+                            <path d="M12.5 7.5l-5 5" /> <!-- Feed Arm -->
+                            <circle cx="13" cy="7" r="1.5" /> <!-- Feed Node -->
+                        </svg>
+
+                        <!-- No Entry Overlay if no sensors -->
+                        {#if !hasSensors}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" 
+                                 style="position: absolute; bottom: -2px; right: -2px;"
+                                 fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                            </svg>
+                        {/if}
+                    </button>
+                {/if}
                 <button class="visibility-btn" on:click={() => {
                     if (focusedBody && $systemStore) {
                         systemStore.update(sys => {

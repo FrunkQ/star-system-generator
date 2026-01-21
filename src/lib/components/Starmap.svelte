@@ -6,6 +6,7 @@
   import { starmapUiStore } from '$lib/starmapUiStore';
   import MarkdownModal from './MarkdownModal.svelte';
   import EditFuelAndDrivesModal from './EditFuelAndDrivesModal.svelte';
+  import EditSensorsModal from './EditSensorsModal.svelte';
   import SaveSystemModal from './SaveSystemModal.svelte';
   import { computePlayerSnapshot } from '$lib/system/utils';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
@@ -31,6 +32,7 @@
   let showDropdown = false;
   let showAboutModal = false;
   let showFuelModal = false;
+  let showSensorsModal = false;
   let showSaveModal = false;
   
   const aboutContent = `
@@ -60,7 +62,13 @@
 
   function handleSaveFuelOverrides(event: CustomEvent<any>) {
       const overrides = event.detail;
-      const newStarmap = { ...starmap, rulePackOverrides: overrides };
+      const newStarmap = { ...starmap, rulePackOverrides: { ...starmap.rulePackOverrides, ...overrides } };
+      dispatch('updatestarmap', newStarmap);
+  }
+
+  function handleSaveSensorOverrides(event: CustomEvent<any>) {
+      const overrides = event.detail;
+      const newStarmap = { ...starmap, rulePackOverrides: { ...starmap.rulePackOverrides, ...overrides } };
       dispatch('updatestarmap', newStarmap);
   }
 
@@ -411,6 +419,7 @@
                   <button on:click={() => dispatch('clear')} class="danger">Clear Starmap</button>
                   <hr />
                   <button on:click={() => showFuelModal = true}>Edit Fuel & Drives</button>
+                  <button on:click={() => showSensorsModal = true}>Edit Sensors</button>
                   <button on:click={() => dispatch('settings')}>Global Settings</button>
                   <hr />
                   <button on:click={() => showAboutModal = true}>About</button>
@@ -615,6 +624,16 @@
           {starmap} 
           on:save={handleSaveFuelOverrides} 
           on:close={() => showFuelModal = false} 
+      />
+  {/if}
+
+  {#if showSensorsModal}
+      <EditSensorsModal
+          showModal={showSensorsModal}
+          {rulePack}
+          {starmap}
+          on:save={handleSaveSensorOverrides}
+          on:close={() => showSensorsModal = false}
       />
   {/if}
 </div>

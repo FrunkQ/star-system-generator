@@ -1,0 +1,155 @@
+{
+  "sensorDefinitions": {
+    "id": "standard-sensors",
+    "name": "Standard Sci-Fi Sensors",
+    "entries": [
+      {
+        "id": "sensor-wide-field-astrometer",
+        "name": "Wide-Field Astrometer",
+        "range_km": 7479893535,
+        "preferred_unit": "AU",
+        "description": "Range: 50 AU. Targets: Star, Gas Giant, Ice Giant. Reveals: Stellar Details, Planetary Basics"
+      },
+      {
+        "id": "sensor-deep-field-telescope-15au",
+        "name": "Deep-Field Telescope (15 AU)",
+        "range_km": 2243968060,
+        "preferred_unit": "AU",
+        "description": "Range: 15 AU. Targets: Terrestrial Planet, Belts. Reveals: Planetary Basics"
+      },
+      {
+        "id": "sensor-deep-field-telescope-2au",
+        "name": "Deep-Field Telescope (2 AU)",
+        "range_km": 299195741,
+        "preferred_unit": "AU",
+        "description": "Range: 2 AU. Targets: Dwarf Planet, Moon. Reveals: Planetary Basics"
+      },
+      {
+        "id": "sensor-spectral-analyzer-5au",
+        "name": "Spectral Analyzer (5 AU)",
+        "range_km": 747989353,
+        "preferred_unit": "AU",
+        "description": "Range: 5 AU. Targets: Gas Giant, Ice Giant. Reveals: Atmosphere Composition, Surface Liquids"
+      },
+      {
+        "id": "sensor-spectral-analyzer-1au",
+        "name": "Spectral Analyzer (1 AU)",
+        "range_km": 149597870,
+        "preferred_unit": "AU",
+        "description": "Range: 1 AU. Targets: Terrestrial Planet. Reveals: Atmosphere Composition, Surface Liquids"
+      },
+      {
+        "id": "sensor-passive-rf",
+        "name": "Passive RF Antenna",
+        "range_km": 14959787070,
+        "preferred_unit": "AU",
+        "description": "Range: 100 AU. Targets: Construct (Cooperative). Reveals: Responder Ping, Transponder ID"
+      },
+      {
+        "id": "sensor-active-search-radar",
+        "name": "Active Search Radar",
+        "range_km": 500000,
+        "preferred_unit": "km",
+        "description": "Range: 500,000 km. Targets: Construct (> 10,000,000kg). Reveals: Construct Basics, Hard Lock, Trajectory, Hull Integrity"
+      },
+      {
+        "id": "sensor-thermal-ir",
+        "name": "Thermal/IR Tracker",
+        "range_km": 50000,
+        "preferred_unit": "km",
+        "description": "Range: 50,000 km. Targets: Construct (ALL). Reveals: Drive Plumes, Heat Sinks, Power Output"
+      },
+      {
+        "id": "sensor-gravimetric",
+        "name": "Gravimetric Grid",
+        "range_km": 25000,
+        "preferred_unit": "km",
+        "description": "Range: 25,000 km. Targets: Construct (Stealth). Reveals: Construct Basics"
+      },
+      {
+        "id": "sensor-bio-scanner",
+        "name": "High-Res Bio-Scanner",
+        "range_km": 10000,
+        "preferred_unit": "km",
+        "description": "Range: 10,000 km. Targets: Planetary Surface. Reveals: Biosphere, Vegetation, Urban Structures"
+      },
+      {
+        "id": "sensor-visual-cam",
+        "name": "Visual Inspection Cam",
+        "range_km": 50,
+        "preferred_unit": "km",
+        "description": "Range: 50 km. Targets: Construct (Any). Reveals: Visual ID, Hull Markings, Battle Damage"
+      },
+      {
+        "id": "sensor-datalink",
+        "name": "Hardline Datalink",
+        "range_km": 0.5,
+        "preferred_unit": "km",
+        "description": "Range: 0.5 km. Targets: Construct (ALL). Reveals: ALL"
+      },
+      {
+        "id": "sensor-traveller-adjacent",
+        "name": "Traveller: Adjacent",
+        "range_km": 1,
+        "preferred_unit": "km",
+        "description": "Traveller Standard Range"
+      },
+      {
+        "id": "sensor-traveller-close",
+        "name": "Traveller: Close",
+        "range_km": 10,
+        "preferred_unit": "km",
+        "description": "Traveller Standard Range"
+      },
+      {
+        "id": "sensor-traveller-short",
+        "name": "Traveller: Short",
+        "range_km": 1250,
+        "preferred_unit": "km",
+        "description": "Traveller Standard Range"
+      },
+      {
+        "id": "sensor-traveller-medium",
+        "name": "Traveller: Medium",
+        "range_km": 10000,
+        "preferred_unit": "km",
+        "description": "Traveller Standard Range"
+      },
+      {
+        "id": "sensor-traveller-long",
+        "name": "Traveller: Long",
+        "range_km": 25000,
+        "preferred_unit": "km",
+        "description": "Traveller Standard Range"
+      },
+      {
+        "id": "sensor-traveller-very-long",
+        "name": "Traveller: Very Long",
+        "range_km": 50000,
+        "preferred_unit": "km",
+        "description": "Traveller Standard Range"
+      },
+      {
+        "id": "sensor-traveller-distant",
+        "name": "Traveller: Distant",
+        "range_km": 300000,
+        "preferred_unit": "km",
+        "description": "Traveller Standard Range"
+      },
+      {
+        "id": "sensor-traveller-very-distant",
+        "name": "Traveller: Very Distant",
+        "range_km": 5000000,
+        "preferred_unit": "km",
+        "description": "Traveller Standard Range"
+      },
+      {
+        "id": "sensor-traveller-far",
+        "name": "Traveller: Far",
+        "range_km": 150000000,
+        "preferred_unit": "AU",
+        "description": "Traveller Standard Range"
+      }
+    ]
+  }
+}

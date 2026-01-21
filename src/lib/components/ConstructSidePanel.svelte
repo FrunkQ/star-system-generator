@@ -8,6 +8,7 @@
   import ConstructCargoTab from './ConstructCargoTab.svelte';
   import ConstructCrewTab from './ConstructCrewTab.svelte';
   import ConstructPowerTab from './ConstructPowerTab.svelte';
+  import ConstructSensorsTab from './ConstructSensorsTab.svelte';
   import ConstructModulesTab from './ConstructModulesTab.svelte';
   import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
   import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
@@ -145,6 +146,7 @@
     <button class:active={selectedTab === 'Cargo'} on:click={() => setTab('Cargo')}>Cargo</button>
     <button class:active={selectedTab === 'Crew'} on:click={() => setTab('Crew')}>Crew</button>
     <button class:active={selectedTab === 'Power'} on:click={() => setTab('Power')}>Power</button>
+    <button class:active={selectedTab === 'Sensors'} on:click={() => setTab('Sensors')}>Sensors</button>
     <button class:active={selectedTab === 'Modules'} on:click={() => setTab('Modules')}>Modules</button>
   </div>
 
@@ -163,6 +165,8 @@
       <ConstructCrewTab {construct} on:update={handleUpdate} />
     {:else if selectedTab === 'Power'}
       <ConstructPowerTab {construct} {rulePack} on:update={handleUpdate} />
+    {:else if selectedTab === 'Sensors'}
+      <ConstructSensorsTab {construct} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Modules'}
       <ConstructModulesTab {construct} on:update={handleUpdate} />
     {/if}

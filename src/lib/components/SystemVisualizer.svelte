@@ -22,6 +22,7 @@
   export let showZones: boolean = false;
   export let showLPoints: boolean = false;
   export let showTravellerZones: boolean = false;
+  export let showSensors: boolean = false;
   export let toytownFactor: number = 0;
   export let fullScreen: boolean = false;
   export let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
@@ -644,6 +645,7 @@
       ctx.scale(zoom, zoom);
       if (showZones) drawStellarZones(ctx);
       if (showTravellerZones) drawTravellerZones(ctx);
+      if (showSensors) drawSensorOverlay(ctx);
       for (const node of system.nodes) {
           if (!node.orbit || !node.parentId || (node.kind === 'body' && node.roleHint === 'belt')) continue;
           const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(node.parentId) : worldPositions.get(node.parentId);
@@ -783,6 +785,38 @@
       if (transitPreviewPos) drawShipMarker(ctx, transitPreviewPos);
       ctx.restore();
       
+      // Draw Sensor Labels (Screen Space Overlay)
+      if (showSensors && focusedBodyId) {
+          const node = system.nodes.find(n => n.id === focusedBodyId);
+          if (node && node.kind === 'construct' && (node as CelestialBody).sensors) {
+              const pos = toytownFactor > 0 ? scaledWorldPositions.get(node.id) : worldPositions.get(node.id);
+              if (pos) {
+                  const screenPos = worldToScreen(pos.x, pos.y);
+                  ctx.font = `12px sans-serif`;
+                  ctx.textAlign = 'left';
+                  ctx.lineWidth = 4;
+                  ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+                  ctx.lineJoin = 'round';
+                  
+                  for (const sensor of (node as CelestialBody).sensors!) {
+                      let rangeAU = sensor.range_km / AU_KM;
+                      if (toytownFactor > 0) rangeAU = scaleBoxCox(rangeAU, toytownFactor, x0_distance);
+                      
+                      const screenRadius = rangeAU * zoom;
+                      const tx = screenPos.x + screenRadius + 5;
+                      const ty = screenPos.y;
+                      
+                      // Skip if label is way off screen
+                      if (tx < -200 || tx > canvas.width + 200) continue;
+
+                      ctx.strokeText(sensor.name, tx, ty);
+                      ctx.fillStyle = 'rgba(136, 204, 255, 1)';
+                      ctx.fillText(sensor.name, tx, ty);
+                  }
+              }
+          }
+      }
+      
       // Draw Constructs and Barycenters (Screen Space Overlay)
       for (const node of system.nodes) {
           const pos = scaledWorldPositions.get(node.id);
@@ -913,6 +947,35 @@
               const screenPos = worldToScreen(pos.x, pos.y);
               ctx.fillText(name, screenPos.x + 8, screenPos.y);
           }
+      }
+  }
+
+  function drawSensorOverlay(ctx: CanvasRenderingContext2D) {
+      if (!system || !zoom || !focusedBodyId) return;
+      
+      const node = system.nodes.find(n => n.id === focusedBodyId);
+      if (!node || node.kind !== 'construct' || !(node as CelestialBody).sensors) return;
+      
+      const pos = toytownFactor > 0 ? scaledWorldPositions.get(node.id) : worldPositions.get(node.id);
+      if (!pos) return;
+      
+      const sensors = (node as CelestialBody).sensors || [];
+      const rx = pos.x - renderPan.x;
+      const ry = pos.y - renderPan.y;
+
+      for (const sensor of sensors) {
+          let rangeAU = sensor.range_km / AU_KM;
+          if (toytownFactor > 0) {
+              rangeAU = scaleBoxCox(rangeAU, toytownFactor, x0_distance);
+          }
+          
+          ctx.beginPath();
+          ctx.arc(rx, ry, rangeAU, 0, 2 * Math.PI);
+          ctx.strokeStyle = 'rgba(136, 204, 255, 0.6)'; // Light blue
+          ctx.lineWidth = 1 / zoom;
+          ctx.setLineDash([5 / zoom, 5 / zoom]);
+          ctx.stroke();
+          ctx.setLineDash([]);
       }
   }
 

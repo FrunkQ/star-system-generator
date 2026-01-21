@@ -91,6 +91,14 @@
                   else pack.engineDefinitions.entries.push(e);
               });
           }
+
+          if (overrides.sensorDefinitions && pack.sensorDefinitions) {
+              overrides.sensorDefinitions.forEach((s: any) => {
+                  const idx = pack.sensorDefinitions.entries.findIndex((d: any) => d.id === s.id);
+                  if (idx !== -1) pack.sensorDefinitions.entries[idx] = s;
+                  else pack.sensorDefinitions.entries.push(s);
+              });
+          }
       }
       return pack;
   })();

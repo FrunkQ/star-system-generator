@@ -1,5 +1,5 @@
 {
-  "id": "seed-1768930602866",
+  "id": "alpha-centauri-system",
   "name": "Alpha Centauri System",
   "seed": "alpha-centauri-real-data",
   "epochT0": 1762339146908,
@@ -140,7 +140,7 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-        "star/NS",
+        "star/M",
         "star/M5.5V"
       ],
       "orbit": {
@@ -156,15 +156,15 @@
           "M0_rad": 0
         }
       },
-      "massKg": 2.447e+29,
-      "radiusKm": 107280,
+      "massKg": 2.4663599999999997e+29,
+      "radiusKm": 100969.29999999999,
       "temperatureK": 3042,
       "magneticField": {
         "strengthGauss": 600
       },
       "radiationOutput": 0.0017,
       "image": {
-        "url": "/images/star_types/NS.webp"
+        "url": "/images/star_types/M.webp"
       },
       "tags": [
         {
@@ -174,7 +174,7 @@
       "areas": [],
       "description": "The third star of the system and our Sun's closest neighbor. Proxima is a tiny, dim M-type red dwarf in a vast, 550,000-year orbit around the central A-B pair. It is a violent 'flare star,' frequently lashing its inner planets with radiation.",
       "isNameUserDefined": true,
-      "calculatedGravity_ms2": 1419.0645903643535,
+      "calculatedGravity_ms2": 1614.668977000746,
       "orbitalBoundaries": {
         "minLeoKm": 30,
         "leoMoeBoundaryKm": 2000,
@@ -236,9 +236,9 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 310.20049759680666,
-      "temperatureK": 310.20049759680666,
-      "orbital_period_days": 5.102148839690896,
+      "equilibriumTempK": 300.9385197809255,
+      "temperatureK": 300.9385197809255,
+      "orbital_period_days": 5.082084411170015,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 122.8,
       "description": "The innermost planet of Proxima. This tiny 'Sub-Earth' orbits in just 5 days, placing it too close for liquid water. It is a small, scorched, and likely airless rocky world, tidally locked and blasted by the star's frequent, powerful flares.",
@@ -252,20 +252,20 @@
         "minLeoKm": 30,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 50000,
-        "heoUpperBoundaryKm": 50538.58025094818,
+        "heoUpperBoundaryKm": 50393.32533092603,
         "geoStationaryKm": null,
         "isGeoFallback": true
       },
       "loDeltaVBudget_ms": 5322.222000613045,
       "propulsiveLandBudget_ms": 5322.222000613045,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 41.20007320027399,
+      "habitabilityScore": 47.357225439379825,
       "greenhouseTempK": 0,
       "stellarRadiation": 2.0424775371799706,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 1.8382297834619736,
-      "particleRadiation": 0.20424775371799708,
+      "photonRadiation": 919.1148917309869,
+      "particleRadiation": 102.12387685899854,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0
     },
@@ -321,8 +321,8 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 239.07344970631613,
-      "temperatureK": 399.759077747627,
+      "equilibriumTempK": 231.93518596584633,
+      "temperatureK": 424.75793961541933,
       "atmosphere": {
         "name": "Collapsible CO₂ (Tidally Locked)",
         "composition": {
@@ -332,9 +332,9 @@
         "main": "CO2",
         "pressure_bar": 0.5,
         "molarMassKg": 0.043199999999999995,
-        "scaleHeightKm": 77.06023527373951
+        "scaleHeightKm": 7.941779043727575
       },
-      "orbital_period_days": 11.145166288813062,
+      "orbital_period_days": 11.101337423881564,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 268.3,
       "description": "An Earth-sized world orbiting within Proxima's habitable zone. It is tidally locked, so one side is in endless day and the other in endless night. It may be a 'cold eyeball' planet, with a region of liquid water in a 'terminator' ring between the two extremes.",
@@ -345,26 +345,26 @@
       "calculatedGravity_ms2": 10.215688618266395,
       "calculatedRotationPeriod_s": 965880,
       "orbitalBoundaries": {
-        "minLeoKm": 150.84832182281866,
+        "minLeoKm": 160.2815944366244,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 50000,
-        "heoUpperBoundaryKm": 147178.29216225803,
+        "heoUpperBoundaryKm": 146774.46606755603,
         "geoStationaryKm": null,
         "isGeoFallback": true
       },
       "loDeltaVBudget_ms": 10409.366175304553,
       "propulsiveLandBudget_ms": 9551.686033302172,
       "aerobrakeLandBudget_ms": 978.8007830714049,
-      "habitabilityScore": 44.42140887861339,
+      "habitabilityScore": 43.20045843544389,
       "stellarRadiation": 0.7206306366493026,
-      "radiationShieldingAtmo": 0.9168824991986975,
-      "radiationShieldingMag": 0.22119921692859512,
-      "photonRadiation": 0.05390731576722743,
-      "particleRadiation": 0.056122770412772194,
-      "surfaceRadiation": 0.11003008617999963,
+      "radiationShieldingAtmo": 0.9813143606622672,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 6.059449877467331,
+      "particleRadiation": 0.673272208607481,
+      "surfaceRadiation": 8.732722086074812,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "greenhouseTempK": 160.68562804131085
+      "greenhouseTempK": 192.822753649573
     },
     {
       "id": "proxima-centauri-c",
@@ -420,8 +420,8 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 43.178706905352385,
-      "temperatureK": 43.178706905352385,
+      "equilibriumTempK": 41.889495165435946,
+      "temperatureK": 41.889495165435946,
       "atmosphere": {
         "name": "Primordial Envelope (Super-Earth)",
         "composition": {
@@ -431,9 +431,9 @@
         "main": "H2",
         "pressure_bar": 10,
         "molarMassKg": 0.0022,
-        "scaleHeightKm": 351.1724840137901
+        "scaleHeightKm": 20.439601296764554
       },
-      "orbital_period_days": 1891.8053271700267,
+      "orbital_period_days": 1884.3657181043054,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 46272,
       "description": "A 'Mini-Neptune' or 'Super-Earth' orbiting far from its star, about 1.5 AU out. It takes over 5 years to complete one orbit. It is a frigid world, well beyond the system's frost line, and has likely retained a thick, primordial atmosphere of hydrogen and helium.",
@@ -444,26 +444,26 @@
       "calculatedGravity_ms2": 7.637825500791,
       "calculatedRotationPeriod_s": 166579200,
       "orbitalBoundaries": {
-        "minLeoKm": 491.9295692846915,
+        "minLeoKm": 477.24174231191927,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 50000,
-        "heoUpperBoundaryKm": 8550486.251128798,
+        "heoUpperBoundaryKm": 8528004.614378354,
         "geoStationaryKm": null,
         "isGeoFallback": true
       },
       "loDeltaVBudget_ms": 20277.862022571993,
       "propulsiveLandBudget_ms": 15102.468805376531,
       "aerobrakeLandBudget_ms": 206.73794699908547,
-      "habitabilityScore": 27.785650285663575,
+      "habitabilityScore": 29.35726452841284,
       "greenhouseTempK": 0,
       "tidallyLocked": false,
       "color": "#81ecec",
       "stellarRadiation": 0.0007667720754077655,
-      "radiationShieldingAtmo": 0.8997411562771963,
-      "radiationShieldingMag": 0.9932620530009145,
-      "photonRadiation": 0.00006918811351138533,
-      "particleRadiation": 5.166469604476296e-7,
-      "surfaceRadiation": 0.00006970476047183295,
+      "radiationShieldingAtmo": 0.995913228561536,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 0.0014101299979147224,
+      "particleRadiation": 0.0001566811108794136,
+      "surfaceRadiation": 2.0015668111087943,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0
     }

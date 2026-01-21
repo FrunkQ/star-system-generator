@@ -70,10 +70,26 @@ export interface FuelTank {
   current_units: number;
 }
 
+export interface SensorDefinition {
+  id: string;
+  name: string;
+  range_km: number;
+  preferred_unit?: 'km' | 'AU';
+  description?: string; // target_category + data_revealed combined
+}
+
+export interface SensorInstance {
+  definition_id: string;
+  name: string;
+  range_km: number;
+  description?: string;
+}
+
 export interface CelestialBody extends NodeBase {
   kind: 'body' | 'construct';
   engines?: Engine[]; // Array of engines attached to the construct
   fuel_tanks?: FuelTank[]; // Array of fuel tanks attached to the construct
+  sensors?: SensorInstance[]; // Array of sensors attached to the construct
   current_cargo_tonnes?: number; // Current cargo mass in tonnes
   current_crew_count?: number; // Current number of crew members
   cargoDescription?: string; // User-editable description of the cargo
@@ -228,6 +244,11 @@ export interface RulePack {
     name: string;
     entries: FuelDefinition[];
   };
+  sensorDefinitions?: {
+    id: string;
+    name: string;
+    entries: SensorDefinition[];
+  };
   tagVocab?: string[]; // taxonomy IDs
   prompts?: PromptSpec;
   viewPresets?: ViewPresetSpec;
@@ -263,6 +284,7 @@ export interface Route {
 export interface RulePackOverrides {
   fuelDefinitions?: FuelDefinition[];
   engineDefinitions?: EngineDefinition[];
+  sensorDefinitions?: SensorDefinition[];
 }
 
 export interface Starmap {
