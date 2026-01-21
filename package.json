@@ -1,8 +1,7 @@
 {
-	"name": "star-system-generator",
-	"private": true,
-	  "version": "1.5.1",	"type": "module",
-	"scripts": {
+    "name": "star-system-generator",
+    "version": "1.6.0",
+    "scripts": {
 		"dev": "vite dev",
 		"build": "node scripts/generate-examples-list.cjs && vite build",
 		"preview": "vite preview",

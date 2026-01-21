@@ -50,9 +50,10 @@ A quick note on data: This application runs entirely in your browser. Your gener
     *   **Template System**: Includes a rich library of pre-built templates to get you started, featuring:
         *   **Hard Sci-Fi**: Realistic near-future stations and outposts.
         *   **The Expanse**: Accurate recreations of ships and stations like the *Rocinante*, *Tycho Station*, and *Ceres*.
-        *   **Aliens**: Famous vessels like the *USS Sulaco*, *Nostromo*, and *Dropship*.
+        *   **Aliens**: Famous vessels like the *Nostromo*, *Nostromo*, and *Dropship*.
         *   **Mothership RPG**: The massive pirate haven *Prospero's Dream*.
     *   **Customization**: Load any template, tweak its stats, refit its modules, and save it as a unique object in your system.
+    *   **Sensor Suites**: Install custom sensor packages (e.g., Radar, Astrometers, Spectral Analyzers) with configurable ranges (km/AU).
 *   **Transit Planner**:
     ![Efficient Transit Planner](static/screenshots/ExpanseEfficientTransit.PNG)
     *   **Local & Interplanetary**: Plan transfers between moons of the same planet (e.g. Moon-to-Moon) or across the entire solar system.
@@ -68,6 +69,7 @@ A quick note on data: This application runs entirely in your browser. Your gener
     *   **Habitability**: Complex habitability scoring based on temperature, atmosphere, and magnetosphere protection.
 *   **Interactive 2D Visualizer**: An orbital view of the generated system with playback controls, zoom, and focus abilities.
     ![Expanse Toytown View](static/screenshots/Expanse-Toytown.PNG)
+    *   **Sensor Overlays**: Toggle visualization of sensor ranges for constructs, displaying precise coverage zones and detection radii.
 *   **GM Tools**:
     *   **Visibility Controls**: Toggle the visibility of entire objects or just their descriptions in Player Views and Reports.
     *   **GM Notes**: Quick areas of text that can be edited any time - autosaved. These are never shown to the players.
@@ -81,7 +83,8 @@ A quick note on data: This application runs entirely in your browser. Your gener
 *   **Paper Reports**: Generate printable, themed PDF reports of your star system. Choose between a GM (full intel) or Player (redacted) version.
     ![Printable Reports](static/screenshots/PrintableReports.png)
 *   **Save & Load**: 
-    *   Download any system or the entire starmap as a JSON file to your computer.
+    *   **GM & Player Modes**: Export redacted "Player-Safe" versions of your systems that hide spoilers, GM notes, and hidden objects.
+    *   **Starmap & System Management**: Download any individual system or the entire starmap as a JSON file to your computer.
     *   Upload a previously saved JSON file to continue your work.
 
 ## Usage
@@ -158,6 +161,17 @@ You can preview the production build with `npm run preview`.
 
 ## Known Issues
 
+### v1.6.0 Changelog (21st Jan 2026)
+*   **Sensors & Detection**:
+    *   Implemented full Sensor Suite management for constructs.
+    *   Visualized sensor ranges with toggleable overlays in the System View.
+    *   Added standard sci-fi and Traveller RPG sensor range presets to the rulepack.
+*   **Data Security**:
+    *   Implemented "Save As" dialog with Player Redaction mode (hides notes, spoilers, and hidden objects).
+*   **Physics Calibration**:
+    *   Fine-tuned Earth greenhouse and radiogenic heat to land exactly at 15°C average surface temp.
+    *   Synced Habitability UI bars with backend "Plateau" scoring logic.
+
 ### v1.3.4 Changelog
 *   **Brown Dwarfs**:
     *   Unified support for sub-stellar objects across planet and star workflows.
@@ -191,10 +205,6 @@ You can preview the production build with `npm run preview`.
     *   Commented out debug logs for smooth animations.
 *   **General**:
     *   Updated version to 1.2.4.
-
-
-
-
 
 ## Attributions
 
