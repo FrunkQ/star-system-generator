@@ -9,7 +9,16 @@ import { bodyFactory } from '../core/BodyFactory';
 export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: SeededRNG, starTypeOverride?: string): CelestialBody {
     const starTypeTable = pack.distributions['star_types'];
     const starClass = starTypeOverride ?? (starTypeTable ? weightedChoice<string>(rng, starTypeTable) : 'star/G2V');
-    const starTemplate = pack.statTemplates?.[starClass] || pack.statTemplates?.['star/default'];
+    
+    let starTemplate = pack.statTemplates?.[starClass];
+    if (!starTemplate && starClass.startsWith('star/')) {
+         const spectral = starClass.split('/')[1];
+         if (spectral && spectral.length > 1) {
+             const baseClass = `star/${spectral[0]}`;
+             starTemplate = pack.statTemplates?.[baseClass];
+         }
+    }
+    starTemplate = starTemplate || pack.statTemplates?.['star/default'];
 
     let starMassKg = SOLAR_MASS_KG;
     let starRadiusKm = SOLAR_RADIUS_KM;
@@ -27,7 +36,15 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
 
     const radiationOutput = starTemplate?.radiation_output ? randomFromRange(rng, starTemplate.radiation_output[0], starTemplate.radiation_output[1]) : 1;
 
-    const starImage = pack.classifier?.starImages?.[starClass];
+    let starImage = pack.classifier?.starImages?.[starClass];
+    if (!starImage && starClass.startsWith('star/')) {
+        // Generalized fix: Truncate star/G5V -> star/G for image lookup
+        const spectral = starClass.split('/')[1];
+        if (spectral && spectral.length > 1) {
+             const baseClass = `star/${spectral[0]}`;
+             starImage = pack.classifier?.starImages?.[baseClass];
+        }
+    }
 
     const tags: Tag[] = [];
     if (radiationOutput > 100) {
@@ -58,7 +75,15 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
 
     star.id = id; // Override ID
     star.starCategory = starCategory;
-    star.classes = [starClass];
+    
+    // Ensure base spectral class is present (e.g., star/G5V -> ['star/G', 'star/G5V'])
+    const baseSpectral = `star/${spectralType[0]}`;
+    if (starClass !== baseSpectral && !['star/red-giant', 'star/brown-dwarf', 'star/sub-brown-dwarf', 'star/magnetar'].includes(starClass)) {
+        star.classes = [baseSpectral, starClass];
+    } else {
+        star.classes = [starClass];
+    }
+
     star.temperatureK = starTemperatureK;
     star.magneticField = starMagneticField;
     star.radiationOutput = radiationOutput;

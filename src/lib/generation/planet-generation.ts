@@ -91,8 +91,42 @@ export function generatePlanets(
         let lastApo_sA = getLimits(starA);
         let lastApo_sB = getLimits(starB);
     
+        const placementRules = (pack as any).generation_parameters?.binary_placement_rules;
+
         for (let i = 0; i < numBodies; i++) {
-            const placement = weightedChoice<string>(rng, pack.distributions['binary_planet_placement']);
+            let placement: string = 'around_primary'; // Default fallback
+
+            if (placementRules) {
+                // Find matching tier
+                const tier = placementRules.find((r: any) => starSeparationAU <= r.max_sep_au) || placementRules[placementRules.length - 1];
+                
+                // Weighted choice from tier.weights
+                const weights = tier.weights;
+                let totalWeight = 0;
+                for (const key in weights) totalWeight += weights[key];
+                
+                let random = rng.nextFloat() * totalWeight;
+                for (const key in weights) {
+                    if (random < weights[key]) {
+                        placement = key;
+                        break;
+                    }
+                    random -= weights[key];
+                }
+            } else {
+                // Legacy Hardcoded Logic
+                if (starSeparationAU < 0.5) {
+                    placement = rng.nextFloat() < 0.75 ? 'circumbinary' : (rng.nextFloat() < 0.7 ? 'around_primary' : 'around_secondary');
+                } else if (starSeparationAU < 10) {
+                    placement = rng.nextFloat() < 0.5 ? 'circumbinary' : (rng.nextFloat() < 0.7 ? 'around_primary' : 'around_secondary');
+                } else if (starSeparationAU < 50) {
+                    placement = 'none';
+                } else {
+                    placement = rng.nextFloat() < 0.7 ? 'around_primary' : 'around_secondary';
+                }
+            }
+
+            if (placement === 'none') continue;
     
             let host: CelestialBody | Barycenter;
             let lastApo: number;

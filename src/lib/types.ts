@@ -1,5 +1,6 @@
 // ===== types.ts =====
 import type { OrbitalBoundaries } from './physics/orbits';
+import type { TravellerWorldData } from './traveller/types';
 
 export type ID = string;
 
@@ -14,7 +15,7 @@ export interface Tag { key: string; value?: string; ns?: string; }
 export interface NodeBase {
   id: ID; name: string; parentId: ID | null; ui_parentId?: ID | null;
   placement?: string; // e.g., 'L4', 'L5', 'Surface'
-  tags: Tag[]; notes?: string; gmNotes?: string; 
+  tags: Tag[]; notes?: string; gmNotes?: string; description?: string;
   
   // Player Visibility Flags
   object_playerhidden?: boolean;
@@ -109,6 +110,9 @@ export interface CelestialBody extends NodeBase {
   radiationShieldingAtmo?: number; // 0-1 effectiveness
   radiationShieldingMag?: number;  // 0-1 effectiveness
   equilibriumTempK?: number;
+  
+  // Traveller Data
+  traveller?: TravellerWorldData;
 }
 
 export interface PhysicalParameters {
@@ -270,6 +274,7 @@ export interface StarSystemNode {
   position: { x: number; y: number };
   system: System;
   viewport?: { pan: { x: number; y: number }; zoom: number; }; // Fixed panX/panY to pan object
+  subsectorId?: string;
 }
 
 export interface Route {
@@ -296,4 +301,14 @@ export interface Starmap {
   distanceUnit: string;
   unitIsPrefix: boolean;
   rulePackOverrides?: RulePackOverrides;
+  travellerMetadata?: {
+    importedSubsectors: Array<{
+        id: string;
+        name: string;
+        sectorName: string;
+        subsectorCode: string;
+        originCol: number;
+        originRow: number;
+    }>;
+  };
 }

@@ -26,6 +26,7 @@
   import type { TransitPlan } from '$lib/transit/types';
 
   import { systemStore, viewportStore } from '$lib/stores';
+  import { starmapUiStore } from '$lib/starmapUiStore';
   import { panStore, zoomStore } from '$lib/cameraStore';
   import { get } from 'svelte/store';
   import { calculateSurfaceTemperature } from '$lib/system/postprocessing';
@@ -1177,10 +1178,12 @@
             <input type="checkbox" bind:checked={showLPoints} />
             Show L-Points
         </label>
-        <label>
-            <input type="checkbox" bind:checked={showTravellerZones} />
-            Show Traveller Zones
-        </label>
+        {#if $starmapUiStore.gridType === 'traveller-hex'}
+            <label>
+                <input type="checkbox" bind:checked={showTravellerZones} />
+                Show Traveller Zones
+            </label>
+        {/if}
         <label>
             Toytown View:
             <input type="range" min="0" max="1" step="0.01" bind:value={$systemStore.toytownFactor} on:change={() => {

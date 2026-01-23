@@ -6,6 +6,7 @@
   import { systemStore } from '$lib/stores';
   import { get } from 'svelte/store';
   import { calculateSurfaceRadiation } from '$lib/physics/radiation';
+  import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_GRAVITY, EARTH_DENSITY, RADIATION_UNSHIELDED_DOSE_MSV_YR } from '$lib/constants';
 
   export let body: CelestialBody | Barycenter | null;
   export let rulePack: RulePack;
@@ -110,9 +111,13 @@
                 const particlePct = totalFlux > 0 ? (body.particleRadiation! / totalFlux * 100).toFixed(0) : 0;
                 
                 shieldingInfo = `\n\n🛡️ Shielding Breakdown:\n`;
-                shieldingInfo += `• Incoming Star Flux: ${body.stellarRadiation?.toFixed(2)} mSv/y\n`;
+                shieldingInfo += `• Incoming Star Flux: ${body.stellarRadiation?.toFixed(2)} Sol-Flux\n`;
+                shieldingInfo += `• Unshielded Potential: ${(body.stellarRadiation! * RADIATION_UNSHIELDED_DOSE_MSV_YR).toFixed(0)} mSv/y\n`;
                 if (body.atmosphere) shieldingInfo += `• Atmosphere: ${((body.radiationShieldingAtmo || 0) * 100).toFixed(1)}% Photon Block\n`;
                 if (body.magneticField) shieldingInfo += `• Magnetosphere: ${((body.radiationShieldingMag || 0) * 100).toFixed(1)}% Particle Block\n`;
+                
+                shieldingInfo += `• Transmitted Dose: ${totalFlux.toFixed(2)} mSv/y\n`;
+                
                 shieldingInfo += `\nFinal Mix: ${photonPct}% Photons / ${particlePct}% Particles`;
             }
             
@@ -240,13 +245,7 @@
   }
 
   // --- Constants ---
-  const G = 6.67430e-11;
-  const EARTH_GRAVITY = 9.80665; // m/s^2
-  const EARTH_DENSITY = 5514; // kg/m^3
-  const SOLAR_MASS_KG = 1.989e30;
-  const SOLAR_RADIUS_KM = 695700;
-  const EARTH_MASS_KG = 5.972e24;
-  const AU_KM = 149597870.7;
+  // (Constants are now imported from $lib/constants)
 
   const STAR_TYPE_DESC: Record<string, string> = {
       'star/O': 'Extremely hot, luminous, and blue. Very rare and short-lived. High radiation.',
@@ -273,6 +272,34 @@
         <span class="label">Kind</span>
         <span class="value">{body.kind}{#if body.kind === 'body'} ({body.roleHint}){/if}</span>
     </div>
+
+    {#if body.kind === 'body' && body.traveller}
+        <div class="detail-item traveller-data">
+            <span class="label">Traveller UWP</span>
+            <span class="value" style="font-family: monospace; color: #ffa500;">{body.traveller.uwp}</span>
+            <div class="traveller-sub">
+                <span class="label">Class:</span> {body.traveller.starport}
+                <span class="label">Pop:</span> {body.traveller.pbg[0]}
+                <span class="label">Zone:</span> {body.traveller.travelZone}
+            </div>
+            {#if body.traveller.tradeCodes.length > 0}
+                <div class="traveller-codes">
+                    {#each body.traveller.tradeCodes as code}
+                        <span class="tag">{code}</span>
+                    {/each}
+                </div>
+            {/if}
+            {#if body.traveller.ix || body.traveller.ex}
+                 <div class="traveller-sub" style="margin-top: 4px; font-size: 0.8em;">
+                    {#if body.traveller.ix}<span>IX: {body.traveller.ix}</span>{/if}
+                    {#if body.traveller.ex}<span>EX: {body.traveller.ex}</span>{/if}
+                 </div>
+            {/if}
+            <div class="traveller-raw" title="Raw T5 Data">
+                {body.traveller.raw}
+            </div>
+        </div>
+    {/if}
     
     {#if body.kind === 'construct'}
       <div class="detail-item">
@@ -602,6 +629,33 @@
   .detail-item.description {
       grid-column: 1 / -1;
       border-left-color: #444;
+  }
+  .detail-item.traveller-data {
+      grid-column: 1 / -1;
+      border-left-color: #ffa500;
+  }
+  .traveller-sub {
+      display: flex;
+      gap: 1em;
+      font-size: 0.9em;
+      margin-top: 0.2em;
+      color: #ccc;
+  }
+  .traveller-codes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5em;
+      margin-top: 0.5em;
+  }
+  .traveller-raw {
+      margin-top: 0.5em;
+      font-family: monospace;
+      font-size: 0.75em;
+      color: #666;
+      white-space: pre-wrap;
+      word-break: break-all;
+      border-top: 1px solid #444;
+      padding-top: 4px;
   }
   .label {
       font-size: 0.8em;

@@ -18,12 +18,18 @@ export function _generatePlanetaryBody(
     age_Gyr: number,
     planetTypeOverride?: string,
     generateChildren: boolean = true,
-    propertyOverrides?: Partial<CelestialBody>
+    propertyOverrides?: Partial<CelestialBody>,
+    allowBelt: boolean = true
 ): CelestialBody[] {
     const newNodes: CelestialBody[] = [];
 
     const beltChanceTable = pack.distributions['belt_chance'];
-    const isBelt = beltChanceTable ? weightedChoice<boolean>(rng, beltChanceTable) : false;
+    let isBelt = allowBelt && beltChanceTable ? weightedChoice<boolean>(rng, beltChanceTable) : false;
+    
+    // Force Belt if override specifies it
+    if (planetTypeOverride === 'belt/asteroid') {
+        isBelt = true;
+    }
 
     if (isBelt && !(host.kind === 'body' && host.roleHint === 'planet')) {
         // ... Belt Generation (Refactored in Phase 1) ...
@@ -133,7 +139,11 @@ export function _generatePlanetaryBody(
             }
         }
         if (!propertyOverrides?.radiusKm) {
-            planet.radiusKm = randomFromRange(rng, planetTemplate.radius_earth[0], planetTemplate.radius_earth[1]) * EARTH_RADIUS_KM;
+            if (planetTemplate.radius_earth) {
+                planet.radiusKm = randomFromRange(rng, planetTemplate.radius_earth[0], planetTemplate.radius_earth[1]) * EARTH_RADIUS_KM;
+            } else if (planetTemplate.radius_km) {
+                planet.radiusKm = randomFromRange(rng, planetTemplate.radius_km[0], planetTemplate.radius_km[1]);
+            }
         }
         
         if (!propertyOverrides?.magneticField) {

@@ -1,5 +1,5 @@
 import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
-import { AU_KM, SOLAR_RADIUS_KM } from "$lib/constants";
+import { AU_KM, SOLAR_RADIUS_KM, RADIATION_UNSHIELDED_DOSE_MSV_YR } from "$lib/constants";
 
 export function calculateTotalStellarRadiation(
     body: CelestialBody,
@@ -132,8 +132,8 @@ export function calculateSurfaceRadiation(
     photonFlux = photonFlux * atmoTransmission;
     particleFlux = particleFlux * atmoTransmission;
 
-    body.photonRadiation = photonFlux * 500;
-    body.particleRadiation = particleFlux * 500;
+    body.photonRadiation = photonFlux * RADIATION_UNSHIELDED_DOSE_MSV_YR;
+    body.particleRadiation = particleFlux * RADIATION_UNSHIELDED_DOSE_MSV_YR;
     
     // Base terrestrial background radiation (Radon, rocks) ~2.0 mSv/yr
     // Only applies to rocky bodies (Planets/Moons), not Constructs/Stars
@@ -142,7 +142,7 @@ export function calculateSurfaceRadiation(
         terrestrialBackground = 2.0; 
     }
 
-    body.surfaceRadiation = (photonFlux + particleFlux) * 500 + terrestrialBackground;
+    body.surfaceRadiation = (photonFlux + particleFlux) * RADIATION_UNSHIELDED_DOSE_MSV_YR + terrestrialBackground;
 
     return Math.max(0, body.surfaceRadiation);
 }

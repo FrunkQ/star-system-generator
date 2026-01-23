@@ -6,7 +6,7 @@ const STARMAP_UI_STORE_KEY = 'starmap-ui-store';
 const getInitialState = () => {
   if (typeof window === 'undefined') {
     return {
-      gridType: 'none' as 'grid' | 'hex' | 'none',
+      gridType: 'none' as 'grid' | 'hex' | 'traveller-hex' | 'none',
       mouseZoomDisabled: true,
       showBackgroundImage: true
     };
@@ -14,11 +14,12 @@ const getInitialState = () => {
 
   const savedState = localStorage.getItem(STARMAP_UI_STORE_KEY);
   if (savedState) {
-    return JSON.parse(savedState);
+    const parsed = JSON.parse(savedState);
+    return parsed;
   }
 
   return {
-    gridType: 'none' as 'grid' | 'hex' | 'none',
+    gridType: 'none' as 'grid' | 'hex' | 'traveller-hex' | 'none',
     mouseZoomDisabled: true,
     showBackgroundImage: true
   };

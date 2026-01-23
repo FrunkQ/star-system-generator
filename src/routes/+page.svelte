@@ -159,7 +159,7 @@
         {
           id: newSystem.id,
           name: newSystem.name,
-          position: { x: 400, y: 300 },
+          position: { x: 0, y: 0 },
           system: newSystem,
         },
       ],

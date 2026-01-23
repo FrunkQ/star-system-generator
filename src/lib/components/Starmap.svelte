@@ -8,6 +8,8 @@
   import EditFuelAndDrivesModal from './EditFuelAndDrivesModal.svelte';
   import EditSensorsModal from './EditSensorsModal.svelte';
   import SaveSystemModal from './SaveSystemModal.svelte';
+  import ImportTravellerModal from './ImportTravellerModal.svelte';
+  import { TravellerImporter } from '$lib/traveller/importer';
   import { computePlayerSnapshot } from '$lib/system/utils';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
 
@@ -26,6 +28,7 @@
   let contextMenuX = 0;
   let contextMenuY = 0;
   let contextMenuSystemId: string | null = null;
+  let detectedSubsector: any = null;
   let isStarContextMenu = false;
 
   // Header State
@@ -34,6 +37,9 @@
   let showFuelModal = false;
   let showSensorsModal = false;
   let showSaveModal = false;
+  let showImportModal = false;
+  
+  let travellerImportCoords = { x: 0, y: 0 };
   
   const aboutContent = `
 <h1>Star System Explorer</h1>
@@ -59,6 +65,13 @@
   let lastMouseY = 0;
 
   let gridSize = 50;
+
+  $: if ($starmapUiStore.gridType === 'traveller-hex') {
+    if (starmap.distanceUnit !== 'Jump-' || !starmap.unitIsPrefix) {
+        const newStarmap = { ...starmap, distanceUnit: 'Jump-', unitIsPrefix: true };
+        dispatch('updatestarmap', newStarmap);
+    }
+  }
 
   function handleSaveFuelOverrides(event: CustomEvent<any>) {
       const overrides = event.detail;
@@ -152,8 +165,10 @@
 
   function resetView() {
     if (starmap.systems.length === 0) {
-      panX = 0;
-      panY = 0;
+      // Center on World (0,0)
+      const viewBox = svgElement.viewBox.baseVal;
+      panX = viewBox.width / 2;
+      panY = viewBox.height / 2;
       zoom = 1;
       return;
     }
@@ -310,35 +325,36 @@
       const cellIndexY = Math.floor((clickY - originY) / gridSize);
       clickX = (cellIndexX * gridSize) + (gridSize / 2) + originX;
       clickY = (cellIndexY * gridSize) + (gridSize / 2) + originY;
-    } else if ($starmapUiStore.gridType === 'hex') {
+    } else if ($starmapUiStore.gridType === 'hex' || $starmapUiStore.gridType === 'traveller-hex') {
       const hexSize = gridSize / 2;
-      const hexHeight = gridSize;
-      const hexWidth = Math.sqrt(3) * hexSize;
+      // Flat-topped geometry
+      const hexWidth = 2 * hexSize;
+      const hexHeight = Math.sqrt(3) * hexSize;
+      const horizDist = 1.5 * hexSize;
 
       const originX = firstSystemX;
       const originY = firstSystemY;
 
-      // Find the approximate row and column
-      const approxRow = (clickY - originY) / (hexHeight * 0.75);
-      const approxCol = (clickX - originX) / hexWidth - (approxRow % 2) * 0.5;
+      // Find the approximate col and row
+      // x = col * 1.5 * size -> col ~ x / (1.5*size)
+      const approxCol = (clickX - originX) / horizDist;
+      // y = row * h + offset -> row ~ y / h
+      const approxRow = (clickY - originY) / hexHeight - (Math.abs(Math.round(approxCol)) % 2) * 0.5;
 
-      const r = Math.round(approxRow);
       const c = Math.round(approxCol);
-
-      // Get the center of the nearest hex
-      const centerX = originX + c * hexWidth + (r % 2) * (hexWidth / 2);
-      const centerY = originY + r * hexHeight * 0.75;
+      const r = Math.round(approxRow);
 
       // Check neighbors to find the true closest hex
       let minDistSq = Infinity;
-      let closestCenter = { x: centerX, y: centerY };
+      let closestCenter = { x: 0, y: 0 };
 
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        for (let dr = -1; dr <= 1; dr++) {
           const nr = r + dr;
           const nc = c + dc;
-          const nx = originX + nc * hexWidth + (nr % 2) * (hexWidth / 2);
-          const ny = originY + nr * hexHeight * 0.75;
+          const nx = originX + nc * horizDist;
+          const ny = originY + nr * hexHeight + (Math.abs(nc) % 2) * (hexHeight / 2);
+          
           const dx = clickX - nx;
           const dy = clickY - ny;
           const distSq = dx * dx + dy * dy;
@@ -353,6 +369,26 @@
     }
 
     contextMenuClickCoords = { x: clickX, y: clickY };
+
+    // Subsector Detection
+    detectedSubsector = null;
+    if ($starmapUiStore.gridType === 'traveller-hex' && starmap.travellerMetadata) {
+        const size = gridSize / 2;
+        const hexWidth = 2 * size;
+        const hexHeight = Math.sqrt(3) * size;
+        const horizDist = 1.5 * size;
+
+        for (const sub of starmap.travellerMetadata.importedSubsectors) {
+            const dx = clickX - sub.originX;
+            const dy = clickY - sub.originY;
+            // Buffer checks to handle edge of hexes
+            if (dx >= -size && dx < (8 * horizDist) && 
+                dy >= -hexHeight/2 && dy < (10 * hexHeight)) {
+                detectedSubsector = sub;
+                break;
+            }
+        }
+    }
   }
 
   function closeContextMenu() {
@@ -385,6 +421,96 @@
     }
     closeContextMenu();
   }
+
+  function handleDeleteSubsector() {
+      if (!detectedSubsector || !starmap.travellerMetadata) return;
+      
+      const subId = detectedSubsector.id;
+      const subName = detectedSubsector.name;
+      
+      if (confirm(`Delete entire subsector ${subName} and all its systems?`)) {
+          const newSystems = starmap.systems.filter(s => s.subsectorId !== subId);
+          const newImported = starmap.travellerMetadata.importedSubsectors.filter(s => s.id !== subId);
+          
+          const newStarmap = {
+              ...starmap,
+              systems: newSystems,
+              travellerMetadata: {
+                  ...starmap.travellerMetadata,
+                  importedSubsectors: newImported
+              }
+          };
+          
+          dispatch('updatestarmap', newStarmap);
+      }
+      closeContextMenu();
+  }
+
+  function handleContextMenuTravellerImport() {
+      // Snap to nearest hex center if in hex mode
+      if ($starmapUiStore.gridType === 'hex' || $starmapUiStore.gridType === 'traveller-hex') {
+          // Re-calculate closest center using the logic from handleMapContextMenu
+          // We can't reuse local vars from that function, so we must recalc or store the snapped coord.
+          // contextMenuClickCoords is currently set to the snapped center in handleMapContextMenu!
+          // Let's verify...
+          // Yes: "contextMenuClickCoords = { x: clickX, y: clickY };" where clickX/Y are updated to closestCenter.
+          // So it is already snapped?
+          // Let's double check handleMapContextMenu logic.
+          
+          /* 
+             In handleMapContextMenu:
+             ...
+             clickX = closestCenter.x;
+             clickY = closestCenter.y;
+             ...
+             contextMenuClickCoords = { x: clickX, y: clickY };
+          */
+          
+          // It seems it IS already snapped. 
+          // However, the user mentioned "snapping to the centre and stra alignment".
+          // If I already snapped it, maybe the issue is that "Import Here" usually implies "This Hex becomes 0101".
+          // If the click was on 0202, we want 0101 to be at (0202_x - delta_x, 0202_y - delta_y).
+          // But the importer currently takes (originX, originY) and places 0101 AT that location.
+          // So if I click 0202, the importer puts "Cronor 0101" at 0202. 
+          // That is correct behavior for "Import Here" (Start the subsector at this hex).
+          
+          travellerImportCoords = { ...contextMenuClickCoords };
+      } else {
+          travellerImportCoords = { ...contextMenuClickCoords };
+      }
+      
+      showImportModal = true;
+      closeContextMenu();
+  }
+
+  function handleTravellerImport(event: CustomEvent<any>) {
+      const { sector, subsectorCode, rawData } = event.detail;
+      const importer = new TravellerImporter();
+      
+      const { systems, metadata } = importer.processSubsectorData(
+          sector,
+          subsectorCode,
+          rawData,
+          travellerImportCoords.x,
+          travellerImportCoords.y,
+          gridSize,
+          rulePack
+      );
+
+      const newMetadata = starmap.travellerMetadata || { importedSubsectors: [] };
+      if (metadata) {
+          newMetadata.importedSubsectors.push(metadata);
+      }
+
+      const newStarmap = {
+          ...starmap,
+          systems: [...starmap.systems, ...systems],
+          travellerMetadata: newMetadata
+      };
+
+      dispatch('updatestarmap', newStarmap);
+      showImportModal = false;
+  }
 </script>
 
 <div class="starmap-container" style="touch-action: none;" bind:this={starmapContainer}>
@@ -405,6 +531,7 @@
           <option value="none">No Grid</option>
           <option value="grid">Grid</option>
           <option value="hex">Hex</option>
+          <option value="traveller-hex">Traveller Hex</option>
         </select>
       </label>
       <button on:click={resetView}>Reset View</button>
@@ -452,14 +579,9 @@
         {zoom} 
         viewWidth={800} 
         viewHeight={600} 
-        originX={
-          $starmapUiStore.gridType === 'hex' 
-            ? (starmap.systems[0]?.position.x || 0) - (Math.sqrt(3) * gridSize / 4)
-            : (starmap.systems[0]?.position.x || 0) - gridSize / 2
-        } 
-        originY={
-          (starmap.systems[0]?.position.y || 0) - gridSize / 2
-        } 
+        originX={0} 
+        originY={0} 
+        travellerMetadata={starmap.travellerMetadata}
       />
       {#each starmap.routes as route}
         {@const sourceSystem = starmap.systems.find(s => s.id === route.sourceSystemId)}
@@ -603,18 +725,31 @@
             </li>
             <li on:click={handleContextMenuDelete}>Delete System</li>
         {:else}
-          <li on:click={handleContextMenuAddSystem}>Add System Here</li>
-        {/if}
-      </ul>
-    </div>
-  {/if}
-  
-  {#if showAboutModal}
+                    <li on:click={handleContextMenuAddSystem}>Add System Here</li>
+                    {#if $starmapUiStore.gridType === 'traveller-hex'}
+                        <li on:click={handleContextMenuTravellerImport}>Traveller Map SubSector</li>
+                        {#if detectedSubsector}
+                            <li on:click={handleDeleteSubsector} class="danger">Delete {detectedSubsector.name}</li>
+                        {/if}
+                    {/if}
+                  {/if}
+                </ul>
+              </div>
+          {/if}
+            {#if showAboutModal}
       <MarkdownModal htmlContent={aboutContent} on:close={() => showAboutModal = false} />
   {/if}
 
   {#if showSaveModal}
       <SaveSystemModal on:save={handleSaveStarmap} on:close={() => showSaveModal = false} />
+  {/if}
+  
+  {#if showImportModal}
+      <ImportTravellerModal 
+          showModal={showImportModal} 
+          on:import={handleTravellerImport} 
+          on:close={() => showImportModal = false} 
+      />
   {/if}
 
   {#if showFuelModal}

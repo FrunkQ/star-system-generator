@@ -935,6 +935,288 @@
             "occurs_on": "terrestrial",
             "tidally_locked": ["true"]
           }
+        },
+        {
+          "weight": 10,
+          "value": {
+            "name": "Traveller-0 (Vacuum/Trace)",
+            "pressure_range_bar": [0.0, 0.001],
+            "mass_range_earths": [0.01, 1.0],
+            "temp_range_K": [10, 1000],
+            "composition": {
+              "H": [0.0, 0.9],
+              "He": [0.0, 0.1],
+              "Na": [0.0, 0.1]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 10,
+          "value": {
+            "name": "Traveller-1 (Trace - Ancient Mars)",
+            "pressure_range_bar": [0.001, 0.09],
+            "mass_range_earths": [0.1, 0.5],
+            "temp_range_K": [150, 250],
+            "composition": {
+              "CO2": [0.95, 0.98],
+              "N2": [0.02, 0.03],
+              "Ar": [0.01, 0.02]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 8,
+          "value": {
+            "name": "Traveller-2a (Very Thin, Tainted - CO2)",
+            "pressure_range_bar": [0.10, 0.42],
+            "mass_range_earths": [0.3, 0.8],
+            "temp_range_K": [240, 290],
+            "composition": {
+              "N2": [0.70, 0.80],
+              "CO2": [0.15, 0.25], 
+              "O2": [0.05, 0.10]
+            },
+            "//note": "Taint: High CO2 (Hypercapnia) + Hypoxic",
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 8,
+          "value": {
+            "name": "Traveller-2b (Very Thin, Tainted - Sulfur)",
+            "pressure_range_bar": [0.10, 0.42],
+            "mass_range_earths": [0.3, 0.8],
+            "temp_range_K": [250, 310],
+            "composition": {
+              "N2": [0.80, 0.90],
+              "O2": [0.08, 0.15],
+              "SO2": [0.001, 0.005]
+            },
+            "//note": "Taint: SO2 exceeds safe PPM limits",
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 10,
+          "value": {
+            "name": "Traveller-3 (Very Thin - Alpine)",
+            "pressure_range_bar": [0.30, 0.42],
+            "mass_range_earths": [0.4, 0.9],
+            "temp_range_K": [250, 280],
+            "composition": {
+              "N2": [0.75, 0.85],
+              "O2": [0.15, 0.24],
+              "Ar": [0.01, 0.02]
+            },
+            "//note": "Breathable but requires compressor for most (Hypoxic)",
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 8,
+          "value": {
+            "name": "Traveller-4 (Thin, Tainted - Industrial/Smog)",
+            "pressure_range_bar": [0.43, 0.70],
+            "mass_range_earths": [0.5, 1.0],
+            "temp_range_K": [280, 320],
+            "composition": {
+              "N2": [0.70, 0.80],
+              "O2": [0.15, 0.20],
+              "CO": [0.002, 0.005],
+              "NO2": [0.001, 0.003]
+            },
+            "//note": "Taint: Industrial pollutants",
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 10,
+          "value": {
+            "name": "Traveller-5 (Thin - Plateau)",
+            "pressure_range_bar": [0.43, 0.70],
+            "mass_range_earths": [0.6, 1.2],
+            "temp_range_K": [260, 300],
+            "composition": {
+              "N2": [0.78, 0.82],
+              "O2": [0.18, 0.21],
+              "Ar": [0.01, 0.01]
+            },
+            "//note": "Safe, just thin air",
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 15,
+          "value": {
+            "name": "Traveller-6 (Standard - Earth-like)",
+            "pressure_range_bar": [0.95, 1.05],
+            "mass_range_earths": [0.8, 1.2],
+            "temp_range_K": [280, 310],
+            "composition": {
+              "N2": [0.78, 0.79],
+              "O2": [0.20, 0.21],
+              "Ar": [0.009, 0.01],
+              "CO2": [0.0004, 0.0006]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 8,
+          "value": {
+            "name": "Traveller-7 (Standard, Tainted - High Pollen/Bio)",
+            "pressure_range_bar": [0.90, 1.10],
+            "mass_range_earths": [0.8, 1.2],
+            "temp_range_K": [290, 320],
+            "composition": {
+              "N2": [0.75, 0.78],
+              "O2": [0.20, 0.23],
+              "H2O": [0.02, 0.05]
+            },
+            "//note": "Taint is biological (not gas based), but high humidity/spores implied",
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 8,
+          "value": {
+            "name": "Traveller-8 (Dense - Heavy N2)",
+            "pressure_range_bar": [1.50, 2.49],
+            "mass_range_earths": [1.0, 2.0],
+            "temp_range_K": [280, 330],
+            "composition": {
+              "N2": [0.70, 0.80],
+              "O2": [0.10, 0.15],
+              "He": [0.05, 0.10]
+            },
+            "//note": "Breathable, but high pressure N2 may cause mild narcosis if not acclimatized",
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 8,
+          "value": {
+            "name": "Traveller-9a (Dense, Tainted - Ammonia)",
+            "pressure_range_bar": [1.50, 2.49],
+            "mass_range_earths": [1.2, 2.5],
+            "temp_range_K": [250, 300],
+            "composition": {
+              "N2": [0.60, 0.70],
+              "O2": [0.15, 0.20],
+              "NH3": [0.005, 0.02] 
+            },
+            "//note": "Taint: Ammonia makes it irritating/toxic despite O2",
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 8,
+          "value": {
+            "name": "Traveller-9b (Dense, Tainted - High Oxygen)",
+            "pressure_range_bar": [2.0, 2.5],
+            "mass_range_earths": [1.2, 2.5],
+            "temp_range_K": [280, 310],
+            "composition": {
+              "N2": [0.50, 0.60],
+              "O2": [0.35, 0.45], 
+              "Ar": [0.05, 0.10]
+            },
+            "//note": "Taint: Oxygen Toxicity & Fire Hazard",
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 6,
+          "value": {
+            "name": "Traveller-A (Exotic - Ammonia World)",
+            "pressure_range_bar": [1.0, 5.0],
+            "mass_range_earths": [1.0, 3.0],
+            "temp_range_K": [190, 240],
+            "composition": {
+              "N2": [0.80, 0.90],
+              "NH3": [0.10, 0.20]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 6,
+          "value": {
+            "name": "Traveller-B (Corrosive - Venusian)",
+            "pressure_range_bar": [50.0, 90.0],
+            "mass_range_earths": [0.8, 1.5],
+            "temp_range_K": [700, 750],
+            "composition": {
+              "CO2": [0.95, 0.97],
+              "SO2": [0.01, 0.03],
+              "H2SO4": [0.01, 0.02]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 4,
+          "value": {
+            "name": "Traveller-C (Insidious - Fluorine/Chlorine)",
+            "pressure_range_bar": [1.0, 5.0],
+            "mass_range_earths": [1.0, 2.5],
+            "temp_range_K": [200, 400],
+            "composition": {
+              "N2": [0.80, 0.90],
+              "Cl2": [0.05, 0.10],
+              "F2": [0.01, 0.05]
+            },
+            "//note": "Insidious: Corrodes seals instantly",
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 4,
+          "value": {
+            "name": "Traveller-D (Dense, High - Greenhouse)",
+            "pressure_range_bar": [3.0, 10.0],
+            "mass_range_earths": [1.5, 4.0],
+            "temp_range_K": [350, 450],
+            "composition": {
+              "CO2": [0.80, 0.90],
+              "N2": [0.10, 0.20]
+            },
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
+        },
+        {
+          "weight": 4,
+          "value": {
+            "name": "Traveller-F (Thin, Low - Methane/Nitrogen)",
+            "pressure_range_bar": [0.1, 0.5],
+            "mass_range_earths": [0.2, 0.8],
+            "temp_range_K": [80, 120],
+            "composition": {
+              "N2": [0.90, 0.95],
+              "CH4": [0.05, 0.10]
+            },
+            "//note": "Titan-like but thinner",
+            "occurs_on": "terrestrial",
+            "tidally_locked": ["false"]
+          }
         }
       ]
     }

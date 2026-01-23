@@ -66,6 +66,10 @@ The application is built on a modular "Factory-Generator-Processor" pipeline, de
 *   `src/lib/generation/`: Procedural generation logic (Star placement, Planet composition).
 *   `src/lib/physics/`: Pure functions for physical calculations (Orbits, Radiation, Atmosphere). used by Processor.
 *   `src/lib/system/`: System-level utilities (Modifiers, Serialization).
+*   `src/lib/traveller/`: **Traveller Map Integration Module**.
+    *   **`importer.ts`**: Orchestrates the import of subsector data from the TravellerMap API. It maps UWP codes to physical parameters and uses the Core Pipeline to generate consistent, deterministic star systems.
+    *   **`decoder.ts`**: Handles the parsing of Universal World Profiles (UWP), trade codes, and system strings.
+    *   **`rng.ts`**: Provides a strictly deterministic seeded RNG based on world names/UWP to ensure consistent results across all users.
 *   `src/lib/components/`: Svelte UI components.
     *   `SystemView.svelte`: Main controller for the system view.
     *   `SystemVisualizer.svelte`: Canvas/SVG renderer for the orbital view.

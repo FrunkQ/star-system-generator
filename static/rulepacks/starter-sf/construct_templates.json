@@ -1113,5 +1113,397 @@
         "life_support": { "consumables_max_person_days": 1000, "consumables_current_person_days": 0 }
       }
     }
+  ],
+  "traveller": [
+    {
+      "id": "template-traveller-highport-class-a",
+      "name": "Class A Starport (Highport)",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Traveller/Starport/Class A",
+      "description": "A premier orbital facility serving as the primary interface for interstellar trade. Features a massive shipyard capable of constructing jump-capable starships.",
+      "gmNotes": "The commercial hub of the system. Refined fuel, high-end entertainment, and sovereign extraterritoriality.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#ffd700",
+      "crew": { "current": 5000, "max": 50000 },
+      "physical_parameters": {
+        "dimensionsM": [2000, 2000, 800],
+        "massKg": 5e+10,
+        "cargoCapacity_tonnes": 1000000,
+        "rotation_period_hours": 24,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-grav-station-keeping", "quantity": 8 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrogen", "capacity_units": 5000000, "current_units": 4000000 } ],
+      "systems": {
+        "power_plants": [ { "type": "Fusion Grid (TL15)", "output_MW": 10000 } ],
+        "modules": [ "Shipyard (Jump Capable)", "Refined Fuel Plant", "TAS Hostel", "Luxury Concourse", "Customs Inspection" ],
+        "life_support": { "consumables_max_person_days": 1e+8, "consumables_current_person_days": 1e+8 }
+      }
+    },
+    {
+      "id": "template-traveller-highport-class-b",
+      "name": "Class B Starport (Highport)",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Traveller/Starport/Class B",
+      "description": "A comprehensive orbital station capable of building non-jump spacecraft and repairing starships. Lacks the specialized manufacturing for jump drives.",
+      "gmNotes": "A solid, industrial station. Good for repairs and trade, but less luxurious than a Class A.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#c0c0c0",
+      "crew": { "current": 1000, "max": 10000 },
+      "physical_parameters": {
+        "dimensionsM": [1200, 1200, 400],
+        "massKg": 2e+10,
+        "cargoCapacity_tonnes": 500000,
+        "rotation_period_hours": 12,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-grav-station-keeping", "quantity": 4 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrogen", "capacity_units": 2000000, "current_units": 1500000 } ],
+      "systems": {
+        "power_plants": [ { "type": "Fusion Grid (TL12)", "output_MW": 5000 } ],
+        "modules": [ "Shipyard (Small Craft)", "Repair Deck", "Refined Fuel Plant", "Trade Concourse" ],
+        "life_support": { "consumables_max_person_days": 1e+7, "consumables_current_person_days": 1e+7 }
+      }
+    },
+    {
+      "id": "template-traveller-downport-basic",
+      "name": "Planetary Downport",
+      "kind": "construct",
+      "roleHint": "infrastructure",
+      "class": "Traveller/Starport/Downport",
+      "description": "A surface-side facility for landing starships. Ranges from extensive tarmac fields (Class C) to rough clearings with a beacon (Class E).",
+      "gmNotes": "The interface between the stars and the dirt. Local law level applies here.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#8b4513",
+      "crew": { "current": 50, "max": 500 },
+      "physical_parameters": {
+        "dimensionsM": [5000, 5000, 50],
+        "massKg": 1e+9,
+        "cargoCapacity_tonnes": 100000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": true
+      },
+      "engines": [],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrogen", "capacity_units": 500000, "current_units": 100000 } ],
+      "systems": {
+        "power_plants": [ { "type": "Local Grid/Fusion Backup", "output_MW": 500 } ],
+        "modules": [ "Landing Grid", "Control Tower", "Warehousing", "Extraterritorial Line" ],
+        "life_support": { "consumables_max_person_days": 50000, "consumables_current_person_days": 50000 }
+      }
+    },
+    {
+      "id": "template-traveller-naval-base",
+      "name": "Imperial Naval Base",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Traveller/Base/Naval",
+      "description": "A fortified orbital fortress designed to support the fleet. Heavily shielded and bristling with turret emplacements.",
+      "gmNotes": "Restricted airspace. High traffic of patrol cruisers. If the code includes 'D', this is a massive Depot.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#ff0000",
+      "crew": { "current": 20000, "max": 20000 },
+      "physical_parameters": {
+        "dimensionsM": [3000, 1000, 1000],
+        "massKg": 8e+10,
+        "cargoCapacity_tonnes": 2000000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-grav-maneuver", "quantity": 20 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrogen", "capacity_units": 10000000, "current_units": 10000000 } ],
+      "systems": {
+        "power_plants": [ { "type": "Mil-Spec Fusion Core", "output_MW": 50000 } ],
+        "modules": [ "Meson Gun Emplacements", "Fleet Docking Spines", "Marine Barracks", "Secure Brig" ],
+        "life_support": { "consumables_max_person_days": 1e+8, "consumables_current_person_days": 1e+8 }
+      }
+    },
+    {
+      "id": "template-traveller-scout-base",
+      "name": "IISS Scout Base",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Traveller/Base/Scout",
+      "description": "A compact, highly sensor-capable outpost for the Imperial Interstellar Scout Service. Often located on the surface or a small moon.",
+      "gmNotes": "A hub for couriers and explorers. Excellent maps and sensor data available here. 'S' code.",
+      "IsTemplate": true,
+      "icon_type": "triangle",
+      "icon_color": "#00ff00",
+      "crew": { "current": 200, "max": 500 },
+      "physical_parameters": {
+        "dimensionsM": [200, 200, 50],
+        "massKg": 500000,
+        "cargoCapacity_tonnes": 10000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": true
+      },
+      "engines": [],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrogen", "capacity_units": 50000, "current_units": 50000 } ],
+      "systems": {
+        "power_plants": [ { "type": "Fusion Generator", "output_MW": 200 } ],
+        "modules": [ "Long Range Sensors", "Xboat Link", "Survey Data Core", "Mess Hall" ],
+        "life_support": { "consumables_max_person_days": 100000, "consumables_current_person_days": 100000 }
+      }
+    },
+    {
+      "id": "template-traveller-way-station",
+      "name": "Way Station",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Traveller/Base/Way Station",
+      "description": "A dedicated refueling and repair depot located on the Xboat network. Essentially a massive gas station in space.",
+      "gmNotes": "Fast turnover. 'W' code. Primary function is maintenance of the express boat network.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#0000ff",
+      "crew": { "current": 500, "max": 1000 },
+      "physical_parameters": {
+        "dimensionsM": [800, 400, 400],
+        "massKg": 1e+9,
+        "cargoCapacity_tonnes": 5000000,
+        "rotation_period_hours": 6,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-grav-station-keeping", "quantity": 2 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrogen", "capacity_units": 10000000, "current_units": 8000000 } ],
+      "systems": {
+        "power_plants": [ { "type": "Fusion Reactor", "output_MW": 2000 } ],
+        "modules": [ "Xboat Tender Clamps", "Refined Fuel Reservoirs", "Crew Lounge" ],
+        "life_support": { "consumables_max_person_days": 1000000, "consumables_current_person_days": 1000000 }
+      }
+    },
+    {
+      "id": "template-traveller-research-station",
+      "name": "Research Station",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Traveller/Base/Research",
+      "description": "A specialized facility for scientific inquiry. Can range from medical labs to weapons testing or alien archaeology.",
+      "gmNotes": "Often secretive ('R' code or implicit). Good dungeon crawl location.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#ffffff",
+      "crew": { "current": 50, "max": 200 },
+      "physical_parameters": {
+        "dimensionsM": [150, 150, 150],
+        "massKg": 200000,
+        "cargoCapacity_tonnes": 1000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-grav-station-keeping", "quantity": 1 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrogen", "capacity_units": 1000, "current_units": 1000 } ],
+      "systems": {
+        "power_plants": [ { "type": "Dedicated Fusion", "output_MW": 500 } ],
+        "modules": [ "Containment Labs", "Sensor Array", "Isolation Ward" ],
+        "life_support": { "consumables_max_person_days": 50000, "consumables_current_person_days": 50000 }
+      }
+    },
+    {
+      "id": "template-traveller-base-military",
+      "name": "Planetary Military Base",
+      "kind": "construct",
+      "roleHint": "infrastructure",
+      "class": "Traveller/Base/Military",
+      "description": "A surface-side fortification housing planetary defense forces, army garrisons, and local militia. Heavily defended against orbital bombardment.",
+      "gmNotes": "Code 'M'. Not a starship facility, but a ground force hub. Tanks, mechs, and surface-to-orbit batteries.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#808000",
+      "crew": { "current": 5000, "max": 10000 },
+      "physical_parameters": {
+        "dimensionsM": [2000, 2000, 100],
+        "massKg": 5e+9,
+        "cargoCapacity_tonnes": 50000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": true
+      },
+      "engines": [],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrogen", "capacity_units": 10000, "current_units": 10000 } ],
+      "systems": {
+        "power_plants": [ { "type": "Geothermal/Fusion", "output_MW": 1000 } ],
+        "modules": [ "Planetary Defense Silos", "Barracks", "Vehicle Motor Pool", "Command Bunker" ],
+        "life_support": { "consumables_max_person_days": 1e+7, "consumables_current_person_days": 1e+7 }
+      }
+    },
+    {
+      "id": "template-traveller-naval-depot",
+      "name": "Imperial Naval Depot",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Traveller/Base/Depot",
+      "description": "A massive, sector-level strategic asset. A sprawling complex of shipyards, mothball fleets, and industrial fabricators. 'Death Star' scale importance.",
+      "gmNotes": "Code 'D' (Base). These are rare (one per sector). Heavily interdicted. Proceed with extreme caution.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#8b0000",
+      "crew": { "current": 100000, "max": 500000 },
+      "physical_parameters": {
+        "dimensionsM": [50000, 50000, 20000],
+        "massKg": 1e+14,
+        "cargoCapacity_tonnes": 100000000,
+        "rotation_period_hours": 48,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [ { "engine_id": "engine-grav-station-keeping", "quantity": 100 } ],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrogen", "capacity_units": 1000000000, "current_units": 1000000000 } ],
+      "systems": {
+        "power_plants": [ { "type": "Multiple Fusion Cores", "output_MW": 1000000 } ],
+        "modules": [ "Capital Ship Drydocks", "Mothball Fleet Anchorages", "Strategic Reserve Fuel", "Sector Command" ],
+        "life_support": { "consumables_max_person_days": 1e+10, "consumables_current_person_days": 1e+10 }
+      }
+    },
+    {
+      "id": "template-traveller-base-corsair",
+      "name": "Corsair Base",
+      "kind": "construct",
+      "roleHint": "station",
+      "class": "Traveller/Base/Pirate",
+      "description": "A hidden, illegal outpost used by raiders and pirates. Often a hollowed-out asteroid or a camouflage-netted moon base.",
+      "gmNotes": "Code 'C'. Hidden location. High tech weaponry but poor maintenance. 'Scum and villainy'.",
+      "IsTemplate": true,
+      "icon_type": "triangle",
+      "icon_color": "#ff00ff",
+      "crew": { "current": 100, "max": 300 },
+      "physical_parameters": {
+        "dimensionsM": [500, 500, 500],
+        "massKg": 1e+11,
+        "cargoCapacity_tonnes": 5000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrogen", "capacity_units": 5000, "current_units": 1000 } ],
+      "systems": {
+        "power_plants": [ { "type": "Stolen Generators", "output_MW": 100 } ],
+        "modules": [ "Hidden Hangar", "Loot Storage", "Gambling Den", "Slave Pens" ],
+        "life_support": { "consumables_max_person_days": 5000, "consumables_current_person_days": 2000 }
+      }
+    },
+    {
+      "id": "template-traveller-starport-class-d",
+      "name": "Class D Spaceport",
+      "kind": "construct",
+      "roleHint": "infrastructure",
+      "class": "Traveller/Starport/Class D",
+      "description": "A primitive surface landing site. Features a designated grid and perhaps unrefined fuel, but little else. No repair facilities.",
+      "gmNotes": "Code 'D' (Starport). Minimalist. Just flat ground and a fuel pump if you're lucky.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#cd853f",
+      "crew": { "current": 5, "max": 20 },
+      "physical_parameters": {
+        "dimensionsM": [1000, 1000, 10],
+        "massKg": 100000,
+        "cargoCapacity_tonnes": 1000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": true
+      },
+      "engines": [],
+      "fuel_tanks": [ { "fuel_type_id": "fuel-hydrogen", "capacity_units": 10000, "current_units": 5000 } ],
+      "systems": {
+        "power_plants": [ { "type": "Diesel/Solar Backup", "output_MW": 10 } ],
+        "modules": [ "Landing Pad", "Fuel Pump (Unrefined)", "Radio Shack" ],
+        "life_support": { "consumables_max_person_days": 100, "consumables_current_person_days": 100 }
+      }
+    },
+    {
+      "id": "template-traveller-starport-class-e",
+      "name": "Class E Beacon",
+      "kind": "construct",
+      "roleHint": "infrastructure",
+      "class": "Traveller/Starport/Class E",
+      "description": "A marked landing zone with no facilities whatsoever. A radio beacon indicates the safest approach.",
+      "gmNotes": "Code 'E'. 'Frontier' quality. You are on your own.",
+      "IsTemplate": true,
+      "icon_type": "square",
+      "icon_color": "#808080",
+      "crew": { "current": 0, "max": 0 },
+      "physical_parameters": {
+        "dimensionsM": [100, 100, 5],
+        "massKg": 500,
+        "cargoCapacity_tonnes": 0,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": true
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [ { "type": "RTG/Battery", "output_MW": 0.001 } ],
+        "modules": [ "Navigational Beacon", "Wind Sock" ],
+        "life_support": { "consumables_max_person_days": 0, "consumables_current_person_days": 0 }
+      }
+    },
+    {
+      "id": "template-traveller-city-domed-hardened",
+      "name": "Hardened Dome City",
+      "kind": "construct",
+      "roleHint": "infrastructure",
+      "class": "Traveller/Habitat/Radiation Shielded",
+      "description": "A settlement protected by massive polarized lead-glass domes and water-jacketed bulkheads.",
+      "gmNotes": "Required for M-Star worlds. When a flare hits, blast shutters close, plunging the city into darkness.",
+      "IsTemplate": true,
+      "crew": { "current": 10000, "max": 50000 },
+      "systems": {
+        "modules": [ "Radiation Shielding", "Flare Warning Grid", "Solar Storm Cellars" ]
+      }
+    },
+    {
+      "id": "template-traveller-city-subsurface",
+      "name": "Subsurface Arcology",
+      "kind": "construct",
+      "roleHint": "infrastructure",
+      "class": "Traveller/Habitat/Underground",
+      "description": "A city built entirely underground to escape surface radiation and temperature extremes.",
+      "gmNotes": "Common on Tidally Locked worlds. The surface is a wasteland; life is below.",
+      "IsTemplate": true,
+      "crew": { "current": 50000, "max": 200000 },
+      "systems": {
+        "modules": [ "Geothermal Tap", "Hydroponic Gardens", "Artificial Sun" ]
+      }
+    },
+    {
+      "id": "template-traveller-solar-farm-flare",
+      "name": "Hardened Solar Array",
+      "kind": "construct",
+      "roleHint": "infrastructure",
+      "class": "Traveller/Power/Solar",
+      "description": "Massive photovoltaic fields designed to harvest the intense output of a close-orbit star.",
+      "gmNotes": "High output, but vulnerable. Maintenance crews wear heavy rad-suits.",
+      "IsTemplate": true,
+      "systems": {
+        "power_plants": [ { "type": "High-Efficiency PV", "output_MW": 2000 } ],
+        "modules": [ "Surge Breakers", "Auto-Repair Drones" ]
+      }
+    }
   ]
 }

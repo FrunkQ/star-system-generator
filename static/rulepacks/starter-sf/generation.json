@@ -5,7 +5,13 @@
         "frost_line_base_au": 2.7,
         "planet_migration_chance": 0.1,
         "danger_zone_multiplier": 5,
-        "atmosphere_retention_factor": 100
+        "atmosphere_retention_factor": 100,
+        "binary_placement_rules": [
+            { "max_sep_au": 0.5, "weights": { "circumbinary": 75, "around_primary": 17, "around_secondary": 8 } },
+            { "max_sep_au": 10,  "weights": { "circumbinary": 50, "around_primary": 35, "around_secondary": 15 } },
+            { "max_sep_au": 50,  "weights": { "none": 100 } },
+            { "max_sep_au": 99999, "weights": { "around_primary": 70, "around_secondary": 30 } }
+        ]
     },
     "distributions": {
         "star_types": {
@@ -50,11 +56,11 @@
         "binary_star_separation_au": {
             "name": "Separation of binary stars in AU",
             "entries": [
-                { "weight": 20, "value": [0.05, 0.5] },
-                { "weight": 30, "value": [0.5, 5] },
-                { "weight": 30, "value": [5, 50] },
-                { "weight": 15, "value": [50, 500] },
-                { "weight": 5, "value": [500, 5000] }
+                { "weight": 10, "value": [0.05, 0.5] },
+                { "weight": 20, "value": [1, 10] },
+                { "weight": 10, "value": [10, 50] },
+                { "weight": 40, "value": [50, 1000] },
+                { "weight": 20, "value": [1000, 5000] }
             ]
         },
         "binary_planet_placement": {

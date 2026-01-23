@@ -1,6 +1,6 @@
 // src/lib/constants.ts
-export const APP_VERSION = '1.6.0';
-export const APP_DATE = '21-Jan-26';
+export const APP_VERSION = '1.7.0';
+export const APP_DATE = '22-Jan-26';
 
 export const G = 6.67430e-11; // Gravitational constant
 export const UNIVERSAL_GAS_CONSTANT = 8.31446; // J/(mol·K)
@@ -9,6 +9,12 @@ export const SOLAR_MASS_KG = 1.989e30;
 export const SOLAR_RADIUS_KM = 696340;
 export const EARTH_MASS_KG = 5.972e24;
 export const EARTH_RADIUS_KM = 6371;
+export const EARTH_GRAVITY = 9.80665; // m/s^2
+export const EARTH_DENSITY = 5514; // kg/m^3
+
+// Unshielded radiation dose at 1 AU from a Sun-like star (mSv/year)
+// Approx baseline for GCR + Solar Particle Events in free space.
+export const RADIATION_UNSHIELDED_DOSE_MSV_YR = 500;
 
 export interface LiquidDef {
     name: string;
