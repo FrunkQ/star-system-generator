@@ -102,7 +102,7 @@
                       // Approximate bounds check
                       if (dx >= -hexWidth && dx < 8 * horizDist && 
                           dy >= -hexHeight && dy < 10 * hexHeight) {
-                          title = `${sub.sectorName} - ${sub.subsectorCode} - Hex ${colStr}${rowStr}`;
+                          title = `${sub.sectorName} - ${sub.name} - Hex ${colStr}${rowStr}`;
                           break;
                       }
                   }

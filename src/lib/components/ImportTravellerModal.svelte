@@ -13,11 +13,15 @@
   let sectorSearch = '';
   
   let subsectorCode = 'A'; // Default to A
+  let subsectorOptions: { code: string, name: string }[] = [];
   let subsectorData: string | null = null;
   let isLoading = false;
   let status = '';
 
   onMount(async () => {
+      // Default A-P options until loaded
+      subsectorOptions = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P'].map(c => ({ code: c, name: c }));
+      
       isLoading = true;
       status = 'Loading sectors...';
       sectors = await api.getSectors();
@@ -38,10 +42,42 @@
       }
   }
 
-  function selectSector(sector: Sector) {
+  async function selectSector(sector: Sector) {
       selectedSector = sector;
       sectorSearch = sector.name;
       filteredSectors = []; // Hide list
+      
+      // Fetch Subsector Names
+      isLoading = true;
+      status = `Loading details for ${sector.name}...`;
+      const key = sector.name; // Use full name for /data/{name} endpoint usually works better than abbr
+      const raw = await api.getSectorData(key);
+      
+      if (raw) {
+          const lines = raw.split('\n');
+          const newOptions = [];
+          const regex = /#\s*Subsector\s+([A-P])\s*:\s*(.+)/i;
+          
+          for (const line of lines) {
+              const match = line.match(regex);
+              if (match) {
+                  newOptions.push({ code: match[1], name: `${match[1]} - ${match[2].trim()}` });
+              }
+          }
+          
+          if (newOptions.length > 0) {
+              subsectorOptions = newOptions;
+              subsectorCode = newOptions[0].code;
+          } else {
+              // Fallback
+              subsectorOptions = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P'].map(c => ({ code: c, name: c }));
+          }
+          status = '';
+      } else {
+          status = 'Could not load subsector names. Using defaults.';
+          subsectorOptions = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P'].map(c => ({ code: c, name: c }));
+      }
+      isLoading = false;
   }
 
   async function handleImport() {
@@ -98,8 +134,8 @@
       <div class="form-group">
           <label>Subsector Code (A-P)</label>
           <select bind:value={subsectorCode}>
-              {#each ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P'] as code}
-                  <option value={code}>{code}</option>
+              {#each subsectorOptions as opt}
+                  <option value={opt.code}>{opt.name}</option>
               {/each}
           </select>
           <p class="hint">A is top-left, P is bottom-right of the sector.</p>

@@ -275,12 +275,16 @@
 
     {#if body.kind === 'body' && body.traveller}
         <div class="detail-item traveller-data">
-            <span class="label">Traveller UWP</span>
-            <span class="value" style="font-family: monospace; color: #ffa500;">{body.traveller.uwp}</span>
+            <span class="label">Traveller UWP ({body.traveller.allegianceName || body.traveller.allegiance})</span>
+            <span class="value" style="font-family: monospace; color: #ffa500;">{body.traveller.uwp} (TL-{body.traveller.techLevel})</span>
             <div class="traveller-sub">
                 <span class="label">Class:</span> {body.traveller.starport}
                 <span class="label">Pop:</span> {body.traveller.pbg[0]}
                 <span class="label">Zone:</span> {body.traveller.travelZone}
+            </div>
+            <div class="traveller-sub" style="margin-top: 4px; font-size: 0.85em; opacity: 0.9;">
+                <span><strong>Gov:</strong> {body.traveller.govDesc || body.traveller.government}</span>
+                <span><strong>Law:</strong> {body.traveller.lawDesc || body.traveller.law}</span>
             </div>
             {#if body.traveller.tradeCodes.length > 0}
                 <div class="traveller-codes">

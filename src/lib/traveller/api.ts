@@ -63,4 +63,18 @@ export class TravellerAPI {
             return null;
         }
     }
+
+    async getSectorData(sectorName: string): Promise<string | null> {
+        const url = `${API_BASE}/${encodeURIComponent(sectorName)}`;
+        try {
+            const response = await fetch(url, {
+                headers: { 'User-Agent': 'StarSystemExplorer/1.7.0' }
+            });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return await response.text();
+        } catch (e) {
+            console.error(`Failed to fetch sector data for ${sectorName}`, e);
+            return null;
+        }
+    }
 }

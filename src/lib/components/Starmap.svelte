@@ -695,6 +695,95 @@
                 class:bh-active={getBlackHoleType(visualNodes[2]) === 'BH_active'}
                 class:bh-quiescent={getBlackHoleType(visualNodes[2]) === 'BH'}
               />
+          {:else if visualNodes.length === 3}
+              <!-- 3 Stars: Pyramid layout (Primary Top, others below) -->
+              <!-- Primary (Top Center) -->
+              <circle
+                cx={systemNode.position.x}
+                cy={systemNode.position.y - 6}
+                r={5}
+                style="fill: {getStarColor(visualNodes[0])};"
+                class="star"
+                class:selected={systemNode.id === selectedSystemForLink}
+                class:bh-active={getBlackHoleType(visualNodes[0]) === 'BH_active'}
+                class:bh-quiescent={getBlackHoleType(visualNodes[0]) === 'BH'}
+              />
+              <!-- Second (Bottom Left) -->
+              <circle
+                cx={systemNode.position.x - 6}
+                cy={systemNode.position.y + 5}
+                r={5}
+                style="fill: {getStarColor(visualNodes[1])};"
+                class="star"
+                class:selected={systemNode.id === selectedSystemForLink}
+                class:bh-active={getBlackHoleType(visualNodes[1]) === 'BH_active'}
+                class:bh-quiescent={getBlackHoleType(visualNodes[1]) === 'BH'}
+              />
+              <!-- Third (Bottom Right) -->
+              <circle
+                cx={systemNode.position.x + 6}
+                cy={systemNode.position.y + 5}
+                r={5}
+                style="fill: {getStarColor(visualNodes[2])};"
+                class="star"
+                class:selected={systemNode.id === selectedSystemForLink}
+                class:bh-active={getBlackHoleType(visualNodes[2]) === 'BH_active'}
+                class:bh-quiescent={getBlackHoleType(visualNodes[2]) === 'BH'}
+              />
+          {:else}
+              <!-- 4+ Stars: Diamond Layout -->
+              <!-- Primary (Top) -->
+              <circle
+                cx={systemNode.position.x}
+                cy={systemNode.position.y - 6}
+                r={5}
+                style="fill: {getStarColor(visualNodes[0])};"
+                class="star"
+                class:selected={systemNode.id === selectedSystemForLink}
+                class:bh-active={getBlackHoleType(visualNodes[0]) === 'BH_active'}
+                class:bh-quiescent={getBlackHoleType(visualNodes[0]) === 'BH'}
+              />
+              <!-- Second (Bottom) -->
+              <circle
+                cx={systemNode.position.x}
+                cy={systemNode.position.y + 6}
+                r={5}
+                style="fill: {getStarColor(visualNodes[1])};"
+                class="star"
+                class:selected={systemNode.id === selectedSystemForLink}
+                class:bh-active={getBlackHoleType(visualNodes[1]) === 'BH_active'}
+                class:bh-quiescent={getBlackHoleType(visualNodes[1]) === 'BH'}
+              />
+              <!-- Third (Left) -->
+              <circle
+                cx={systemNode.position.x - 7}
+                cy={systemNode.position.y}
+                r={5}
+                style="fill: {getStarColor(visualNodes[2])};"
+                class="star"
+                class:selected={systemNode.id === selectedSystemForLink}
+                class:bh-active={getBlackHoleType(visualNodes[2]) === 'BH_active'}
+                class:bh-quiescent={getBlackHoleType(visualNodes[2]) === 'BH'}
+              />
+              <!-- Fourth (Right) -->
+              <circle
+                cx={systemNode.position.x + 7}
+                cy={systemNode.position.y}
+                r={5}
+                style="fill: {getStarColor(visualNodes[3])};"
+                class="star"
+                class:selected={systemNode.id === selectedSystemForLink}
+                class:bh-active={getBlackHoleType(visualNodes[3]) === 'BH_active'}
+                class:bh-quiescent={getBlackHoleType(visualNodes[3]) === 'BH'}
+              />
+              {#if visualNodes.length > 4}
+                  <text
+                    x={systemNode.position.x}
+                    y={systemNode.position.y + 15}
+                    class="plus-indicator"
+                    text-anchor="middle"
+                  >+</text>
+              {/if}
           {/if}
         </g>
         <text
@@ -929,6 +1018,16 @@
   .star-label {
     fill: #fff;
     font-size: 12px;
+    paint-order: stroke;
+    stroke: #000;
+    stroke-width: 2px;
+  }
+
+  .plus-indicator {
+    fill: #fff;
+    font-size: 14px;
+    font-weight: bold;
+    pointer-events: none;
     paint-order: stroke;
     stroke: #000;
     stroke-width: 2px;

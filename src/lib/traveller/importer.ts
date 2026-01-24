@@ -50,11 +50,25 @@ export class TravellerImporter {
         const offsetRow = subRowIndex * 10;
 
         const subsectorId = generateId();
+        
+        // Extract real subsector name if present in comments (e.g. # Subsector C: Regina)
+        let subsectorDisplayName = "Subsector " + subsectorCode;
+        const nameMatch = rawData.match(new RegExp(`#\\s*Subsector\\s+${subsectorCode}\\s*:\\s*(.+)`, 'i'));
+        if (nameMatch) subsectorDisplayName = nameMatch[1].trim();
 
         for (let i = 2; i < lines.length; i++) {
             const line = lines[i];
             const worldData = this.decoder.parseWorldLine(line, headers);
             if (!worldData) continue;
+
+            // Enrich world data with decoded values for UI
+            const uwp = this.decoder.parseUWP(worldData.uwp);
+            (worldData as any).starportDesc = this.decoder.getStarportDescription(uwp.starport);
+            (worldData as any).atmoDesc = this.decoder.getAtmosphereDescription(uwp.atmosphere);
+            (worldData as any).govDesc = (this as any).decoder.governments[uwp.government] || `Code ${uwp.government}`;
+            (worldData as any).lawDesc = this.decoder.getLawDescription(uwp.law);
+            (worldData as any).techLevel = uwp.techLevel;
+            (worldData as any).allegianceName = this.decoder.getAllegianceName(worldData.allegiance);
 
             const hexCode = worldData.hex; 
             const col = parseInt(hexCode.substring(0, 2));
@@ -81,7 +95,7 @@ export class TravellerImporter {
             systems: newSystems, 
             metadata: {
                 id: subsectorId,
-                name: "Subsector " + subsectorCode,
+                name: subsectorDisplayName,
                 sectorName: sector.name,
                 subsectorCode,
                 originX,
@@ -127,27 +141,61 @@ ${data.raw}
         `.trim();
 
         // 1. Stars Generation
-        const starParts = (data.stars || "G2 V").split(' ');
+        // Robust Token Parser for Variable-Length Definitions
+        const rawStars = (data.stars || "G2 V").replace(/\s+/g, ' ').trim();
+        const tokens = rawStars.split(' ');
         const starEntries: string[] = [];
-        for (let i = 0; i < starParts.length; i += 2) {
-            if (starParts[i] && starParts[i+1]) starEntries.push(`star/${starParts[i]}${starParts[i+1]}`);
-            else if (starParts[i]) starEntries.push(`star/${starParts[i]}V`);
+        
+        let i = 0;
+        const luminosityRegex = /^(I|II|III|IV|V|VI|VII|D|Ia|Ib)$/;
+
+        while (i < tokens.length) {
+            const token = tokens[i];
+            
+            // 1. Standalone Types
+            if (token === 'BD') { starEntries.push('star/L'); i++; continue; }
+            if (token === 'D') { starEntries.push('star/WD'); i++; continue; } // Generic White Dwarf
+            if (token === 'NS' || token === 'PSR') { starEntries.push('star/NS'); i++; continue; }
+            if (token === 'BH') { starEntries.push('star/BH'); i++; continue; }
+            
+            // 2. Standard Spectral Type (e.g. F7, M0, G2)
+            const nextToken = tokens[i+1];
+            
+            if (nextToken && luminosityRegex.test(nextToken)) {
+                // Explicit Luminosity Class found (e.g. "F7" + "V")
+                // Handle special case where 'D' is luminosity class for White Dwarf (e.g. "A0 D")
+                if (nextToken === 'D') {
+                    starEntries.push('star/WD'); // Map to generic WD or keep spectral? 
+                    // Traveller often uses just "D" for the star, or "A0 D".
+                    // Our system uses 'star/WD'. Let's stick to that for simplicity.
+                } else {
+                    starEntries.push(`star/${token}${nextToken}`);
+                }
+                i += 2;
+            } else {
+                // No luminosity class found. 
+                // Implicit "V" (Main Sequence) or just a single token type?
+                // If it looks like a spectral type (Letter + Number), assume V.
+                if (/^[OBAFGKMLT][0-9]?$/.test(token)) {
+                    starEntries.push(`star/${token}V`);
+                } else {
+                    // Unknown token? Just push it as is, maybe it's a custom type.
+                    starEntries.push(`star/${token}`);
+                }
+                i++;
+            }
         }
 
         const nodes: (CelestialBody | Barycenter)[] = [];
         let systemRootId: string;
         let primaryStar: CelestialBody;
 
-        const isCloseBinary = data.tradeCodes.includes('Close Binary') || (data.raw && data.raw.includes('Close Binary'));
+        const isCloseBinary = (data.tradeCodes.includes('Close Binary') || (data.raw && data.raw.includes('Close Binary'))) && starEntries.length >= 2;
 
-        if (starEntries.length < 2) {
-            // Single Star
-            primaryStar = _generateStar(generateId(), null, rulePack, this.rng, starEntries[0]);
-            primaryStar.name = `Star ${data.name}`;
-            nodes.push(primaryStar);
-            systemRootId = primaryStar.id;
-        } else if (isCloseBinary) {
-            // P-Type
+        let nextStarIndex = 0;
+
+        if (isCloseBinary) {
+            // P-Type Root
             const barycenter: Barycenter = {
                 id: generateId(),
                 parentId: null,
@@ -178,23 +226,69 @@ ${data.raw}
 
             nodes.push(barycenter, starA, starB);
             primaryStar = starA;
+            nextStarIndex = 2;
         } else {
-            // S-Type
+            // Single Star Root
             primaryStar = _generateStar(generateId(), null, rulePack, this.rng, starEntries[0]);
-            primaryStar.name = `${data.name} A`;
+            primaryStar.name = starEntries.length > 1 ? `${data.name} A` : `Star ${data.name}`;
             systemRootId = primaryStar.id;
             nodes.push(primaryStar);
+            nextStarIndex = 1;
+        }
 
-            const starB = _generateStar(generateId(), primaryStar.id, rulePack, this.rng, starEntries[1]);
-            starB.name = `${data.name} B`;
-            const distAU = randomFromRange(this.rng as any, 1000, 5000);
-            starB.orbit = {
-                hostId: primaryStar.id,
-                hostMu: G * (primaryStar.massKg || 0),
+        // Handle Companions (C, D, E...)
+        // Track the previous star for potential hierarchy chaining
+        let previousStar: CelestialBody | null = null;
+        if (isCloseBinary) previousStar = nodes[2] as CelestialBody; // Star B
+        else previousStar = primaryStar;
+
+        for (let i = nextStarIndex; i < starEntries.length; i++) {
+            const letter = String.fromCharCode(65 + i); // C, D, E...
+            
+            // Hierarchy Logic:
+            // If we have at least 3 stars (e.g. A, B, C), and we are adding D (index 3),
+            // give it a chance to orbit C instead of the Root.
+            // "Pairs of Pairs" logic.
+            
+            let parentId = systemRootId;
+            let parentMass = 0;
+            let distAU = 0;
+            let isNested = false;
+
+            // 30% chance to nest if i >= 3 (Star D+)
+            if (i >= 3 && previousStar && this.rng.nextFloat() < 0.3) {
+                isNested = true;
+                parentId = previousStar.id;
+                parentMass = previousStar.massKg || 0;
+                // Close-ish orbit for nested binary (e.g., 20 - 100 AU)
+                distAU = randomFromRange(this.rng as any, 20, 100);
+            } else {
+                // Orbit System Root (Far Companion)
+                // Use index to push them further out: 1000, 2000, 4000...
+                const rootNode = nodes.find(n => n.id === systemRootId);
+                parentMass = (rootNode?.kind === 'barycenter' ? (rootNode as Barycenter).effectiveMassKg : (rootNode as CelestialBody).massKg) || 0;
+                distAU = 1000 * Math.pow(1.5, i - nextStarIndex) * randomFromRange(this.rng as any, 0.8, 1.2);
+            }
+
+            const newStar = _generateStar(generateId(), parentId, rulePack, this.rng, starEntries[i]);
+            newStar.name = `${data.name} ${letter}`;
+            
+            newStar.orbit = {
+                hostId: parentId,
+                hostMu: G * parentMass,
                 t0: Date.now(),
-                elements: { a_AU: distAU, e: randomFromRange(this.rng as any, 0.1, 0.5), i_deg: randomFromRange(this.rng as any, 0, 180), omega_deg: 0, Omega_deg: 0, M0_rad: this.rng.next() * Math.PI * 2 }
+                elements: { 
+                    a_AU: distAU, 
+                    e: randomFromRange(this.rng as any, 0.1, 0.6), 
+                    i_deg: randomFromRange(this.rng as any, 0, 180), 
+                    omega_deg: 0, 
+                    Omega_deg: 0, 
+                    M0_rad: this.rng.next() * Math.PI * 2 
+                }
             };
-            nodes.push(starB);
+
+            nodes.push(newStar);
+            previousStar = newStar;
         }
 
         primaryStar.description = description; 
