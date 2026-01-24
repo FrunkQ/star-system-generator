@@ -104,7 +104,7 @@ export class TravellerImporter {
         };
     }
 
-    private generateTravellerSystem(data: any, rulePack: RulePack): System {
+    public generateTravellerSystem(data: any, rulePack: RulePack): System {
         const seed = `${data.uwp}-${data.name}`;
         this.rng = new SeededRNG(seed);
         const systemId = generateId();
@@ -442,6 +442,9 @@ ${data.raw}
             let candidateSlots = calculateOrbitalSlots(primaryStar, rulePack, this.rng, (totalExtraBodies * 3) + 5);
             
             // 3. Filter Conflicts & Instability
+            // Maintain a list of reserved slots to prevent collisions (initially just Main World)
+            const reservedSlots: number[] = [orbitAU];
+
             candidateSlots = candidateSlots.filter(au => {
                 // Main World Proximity Check (15% exclusion)
                 const diff = Math.abs(au - orbitAU);
@@ -455,9 +458,16 @@ ${data.raw}
                 return true;
             });
             
+            // Add surviving candidate slots to reserved list so Emergency Fill respects them
+            reservedSlots.push(...candidateSlots);
+            
             // 3b. Emergency Fill: If stability/proximity culled too many, force random slots in the stable zone
             // to ensure we meet the Traveller 'W' count.
-            while (candidateSlots.length < totalExtraBodies) {
+            let emergencyAttempts = 0;
+            const MAX_EMERGENCY_ATTEMPTS = 100;
+
+            while (candidateSlots.length < totalExtraBodies && emergencyAttempts < MAX_EMERGENCY_ATTEMPTS) {
+                emergencyAttempts++;
                 // Pick a random spot in the stable zone
                 // If minStable is 0 (single star), use 0.2 as floor.
                 // If maxStable is 99999, use 50 as ceiling.
@@ -467,16 +477,32 @@ ${data.raw}
                 if (upper > lower) {
                     const randomAU = this.rng.range(lower, upper);
                     
-                    // Check Main World collision again
-                    const diff = Math.abs(randomAU - orbitAU);
-                    if (diff / orbitAU > 0.15) {
+                    // Check Collision with ALL reserved slots (Main World + Natural Slots + Previous Emergency Fills)
+                    let collision = false;
+                    for (const reserved of reservedSlots) {
+                        const diff = Math.abs(randomAU - reserved);
+                        if (diff / reserved <= 0.15) { // 15% clearance
+                            collision = true;
+                            break;
+                        }
+                    }
+
+                    if (!collision) {
                         candidateSlots.push(randomAU);
+                        reservedSlots.push(randomAU);
                     }
                 } else {
                     // Extremely unlikely case: No stable zone exists?
                     // Just push a "best effort" slot and let physics deal with it later
-                    candidateSlots.push(orbitAU * (this.rng.nextFloat() > 0.5 ? 1.5 : 0.7));
+                    // (Use ample offset from orbitAU)
+                    const fallback = orbitAU * (this.rng.nextFloat() > 0.5 ? 1.5 : 0.7);
+                    candidateSlots.push(fallback);
+                    reservedSlots.push(fallback);
                 }
+            }
+            
+            if (candidateSlots.length < totalExtraBodies) {
+                console.warn(`TravellerImporter: Could not find enough stable slots for ${data.name}. Wanted ${totalExtraBodies}, got ${candidateSlots.length}.`);
             }
 
             // Cap to needed amount

@@ -41,6 +41,9 @@
     border-radius: 5px;
     z-index: 100;
     color: #eee;
+    max-height: 400px;
+    overflow-y: auto;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
   }
   ul {
     list-style: none;

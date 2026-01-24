@@ -180,6 +180,12 @@
     items.sort((a, b) => {
       const aOrbit = a.orbit;
       const bOrbit = b.orbit;
+
+      // Primary bodies (no orbit) come first
+      if (!aOrbit && !bOrbit) return 0;
+      if (!aOrbit) return -1;
+      if (!bOrbit) return 1;
+
       if (aOrbit && bOrbit) {
         if (aOrbit.hostId === bOrbit.hostId) {
           return aOrbit.elements.a_AU - bOrbit.elements.a_AU;

@@ -9,6 +9,7 @@
   import EditSensorsModal from './EditSensorsModal.svelte';
   import SaveSystemModal from './SaveSystemModal.svelte';
   import ImportTravellerModal from './ImportTravellerModal.svelte';
+  import AddTravellerSystemModal from './AddTravellerSystemModal.svelte';
   import { TravellerImporter } from '$lib/traveller/importer';
   import { computePlayerSnapshot } from '$lib/system/utils';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
@@ -38,6 +39,7 @@
   let showSensorsModal = false;
   let showSaveModal = false;
   let showImportModal = false;
+  let showAddTravellerModal = false;
   
   let travellerImportCoords = { x: 0, y: 0 };
   
@@ -511,6 +513,37 @@
       dispatch('updatestarmap', newStarmap);
       showImportModal = false;
   }
+
+  function handleContextMenuAddTravellerSystem() {
+      // Use the same coordinates logic as Import
+      travellerImportCoords = { ...contextMenuClickCoords };
+      showAddTravellerModal = true;
+      closeContextMenu();
+  }
+
+  function handleAddTravellerSystem(event: CustomEvent<any>) {
+      const data = event.detail;
+      const importer = new TravellerImporter();
+      
+      // Generate System using the new public method
+      const system = importer.generateTravellerSystem(data, rulePack);
+      
+      const newSystemNode = {
+          id: system.id,
+          name: data.name,
+          position: { x: travellerImportCoords.x, y: travellerImportCoords.y },
+          system: system,
+          subsectorId: 'manual-add' // Optional marker
+      };
+
+      const newStarmap = {
+          ...starmap,
+          systems: [...starmap.systems, newSystemNode]
+      };
+
+      dispatch('updatestarmap', newStarmap);
+      showAddTravellerModal = false;
+  }
 </script>
 
 <div class="starmap-container" style="touch-action: none;" bind:this={starmapContainer}>
@@ -816,6 +849,7 @@
         {:else}
                     <li on:click={handleContextMenuAddSystem}>Add System Here</li>
                     {#if $starmapUiStore.gridType === 'traveller-hex'}
+                        <li on:click={handleContextMenuAddTravellerSystem}>Add Traveller UWP</li>
                         <li on:click={handleContextMenuTravellerImport}>Traveller Map SubSector</li>
                         {#if detectedSubsector}
                             <li on:click={handleDeleteSubsector} class="danger">Delete {detectedSubsector.name}</li>
@@ -838,6 +872,14 @@
           showModal={showImportModal} 
           on:import={handleTravellerImport} 
           on:close={() => showImportModal = false} 
+      />
+  {/if}
+
+  {#if showAddTravellerModal}
+      <AddTravellerSystemModal 
+          showModal={showAddTravellerModal} 
+          on:generate={handleAddTravellerSystem} 
+          on:close={() => showAddTravellerModal = false} 
       />
   {/if}
 
