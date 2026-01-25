@@ -6,6 +6,7 @@
   import { starmapUiStore } from '$lib/starmapUiStore';
   import MarkdownModal from './MarkdownModal.svelte';
   import EditFuelAndDrivesModal from './EditFuelAndDrivesModal.svelte';
+  import EditAtmospheresModal from './EditAtmospheresModal.svelte';
   import EditSensorsModal from './EditSensorsModal.svelte';
   import SaveSystemModal from './SaveSystemModal.svelte';
   import ImportTravellerModal from './ImportTravellerModal.svelte';
@@ -36,6 +37,7 @@
   let showDropdown = false;
   let showAboutModal = false;
   let showFuelModal = false;
+  let showAtmosphereModal = false;
   let showSensorsModal = false;
   let showSaveModal = false;
   let showImportModal = false;
@@ -579,6 +581,7 @@
                   <button on:click={() => dispatch('clear')} class="danger">Clear Starmap</button>
                   <hr />
                   <button on:click={() => showFuelModal = true}>Edit Fuel & Drives</button>
+                  <button on:click={() => showAtmosphereModal = true}>Edit Atmospheres & Mixes</button>
                   <button on:click={() => showSensorsModal = true}>Edit Sensors</button>
                   <button on:click={() => dispatch('settings')}>Global Settings</button>
                   <hr />
@@ -892,6 +895,16 @@
           {starmap} 
           on:save={handleSaveFuelOverrides} 
           on:close={() => showFuelModal = false} 
+      />
+  {/if}
+
+  {#if showAtmosphereModal}
+      <EditAtmospheresModal 
+          showModal={showAtmosphereModal} 
+          {rulePack} 
+          {starmap} 
+          on:save={handleSaveFuelOverrides} 
+          on:close={() => showAtmosphereModal = false} 
       />
   {/if}
 

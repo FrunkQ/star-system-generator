@@ -290,6 +290,8 @@ export interface RulePackOverrides {
   fuelDefinitions?: FuelDefinition[];
   engineDefinitions?: EngineDefinition[];
   sensorDefinitions?: SensorDefinition[];
+  gasPhysics?: Record<string, GasPhysics>;
+  atmosphereCompositions?: any[];
 }
 
 export interface Starmap {

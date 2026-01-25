@@ -99,6 +99,14 @@
                   else pack.sensorDefinitions.entries.push(s);
               });
           }
+
+          if (overrides.gasPhysics) {
+              pack.gasPhysics = { ...pack.gasPhysics, ...overrides.gasPhysics };
+          }
+
+          if (overrides.atmosphereCompositions && pack.distributions?.['atmosphere_composition']) {
+              pack.distributions['atmosphere_composition'].entries = overrides.atmosphereCompositions;
+          }
       }
       return pack;
   })();
