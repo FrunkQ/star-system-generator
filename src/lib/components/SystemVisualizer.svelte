@@ -737,7 +737,19 @@
               if (node.icon_type === 'triangle') {
                   ctx.beginPath(); ctx.moveTo(rx, ry - size / 2); ctx.lineTo(rx + size / 2, ry + size / 2);
                   ctx.lineTo(rx - size / 2, ry + size / 2); ctx.closePath(); ctx.fill();
-              } else ctx.fillRect(rx - size / 2, ry - size / 2, size, size);
+              } else if (node.icon_type === 'circle') {
+                  ctx.beginPath(); ctx.arc(rx, ry, size / 2, 0, 2 * Math.PI); ctx.fill();
+              } else if (node.icon_type === 'diamond') {
+                  ctx.beginPath(); ctx.moveTo(rx, ry - size / 2); ctx.lineTo(rx + size / 2, ry); 
+                  ctx.lineTo(rx, ry + size / 2); ctx.lineTo(rx - size / 2, ry); ctx.closePath(); ctx.fill();
+              } else if (node.icon_type === 'cross') {
+                  const thickness = size / 3;
+                  ctx.fillRect(rx - thickness / 2, ry - size / 2, thickness, size);
+                  ctx.fillRect(rx - size / 2, ry - thickness / 2, size, thickness);
+              } else {
+                  // Default Square
+                  ctx.fillRect(rx - size / 2, ry - size / 2, size, size);
+              }
           }
       }
       for (const node of system.nodes) {
@@ -835,7 +847,18 @@
                   if (node.icon_type === 'triangle') {
                       ctx.beginPath(); ctx.moveTo(screenPos.x, screenPos.y - size / 2); ctx.lineTo(screenPos.x + size / 2, screenPos.y + size / 2);
                       ctx.lineTo(screenPos.x - size / 2, screenPos.y + size / 2); ctx.closePath(); ctx.fill();
-                  } else ctx.fillRect(screenPos.x - size / 2, screenPos.y - size / 2, size, size);
+                  } else if (node.icon_type === 'circle') {
+                      ctx.beginPath(); ctx.arc(screenPos.x, screenPos.y, size / 2, 0, 2 * Math.PI); ctx.fill();
+                  } else if (node.icon_type === 'diamond') {
+                      ctx.beginPath(); ctx.moveTo(screenPos.x, screenPos.y - size / 2); ctx.lineTo(screenPos.x + size / 2, screenPos.y); 
+                      ctx.lineTo(screenPos.x, screenPos.y + size / 2); ctx.lineTo(screenPos.x - size / 2, screenPos.y); ctx.closePath(); ctx.fill();
+                  } else if (node.icon_type === 'cross') {
+                      const thickness = size / 3;
+                      ctx.fillRect(screenPos.x - thickness / 2, screenPos.y - size / 2, thickness, size);
+                      ctx.fillRect(screenPos.x - size / 2, screenPos.y - thickness / 2, size, thickness);
+                  } else {
+                      ctx.fillRect(screenPos.x - size / 2, screenPos.y - size / 2, size, size);
+                  }
               }
           }
       }

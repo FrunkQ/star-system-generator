@@ -117,6 +117,8 @@
           <option value="square">Square</option>
           <option value="triangle">Triangle</option>
           <option value="circle">Circle</option>
+          <option value="cross">Cross</option>
+          <option value="diamond">Diamond</option>
         </select>
       </div>
       <div class="form-group" style="flex: 1;">
