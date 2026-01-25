@@ -40,6 +40,7 @@ The application is built on a modular "Factory-Generator-Processor" pipeline, de
 
 *   **`systemStore`**: Holds the *currently active* Star System. All UI components react to this.
 *   **`starmapStore`**: Holds the Galaxy Map data (list of systems and routes).
+    *   **Rulepack Overrides**: Stores starmap-specific modifications to the global science rules (e.g. custom gas physics, atmosphere mixes). These are merged into the active `RulePack` before being passed to generators or processors.
 *   **`timeStore`**: Global mission clock (`currentTime`, `timeScale`, `isPaused`).
 *   **`viewportStore`**: Camera state (pan/zoom) for the System View.
 
@@ -67,8 +68,8 @@ The application is built on a modular "Factory-Generator-Processor" pipeline, de
 *   `src/lib/physics/`: Pure functions for physical calculations (Orbits, Radiation, Atmosphere). used by Processor.
 *   `src/lib/system/`: System-level utilities (Modifiers, Serialization).
 *   `src/lib/traveller/`: **Traveller Map Integration Module**.
-    *   **`importer.ts`**: Orchestrates the import of subsector data from the TravellerMap API. It maps UWP codes to physical parameters and uses the Core Pipeline to generate consistent, deterministic star systems.
-    *   **`decoder.ts`**: Handles the parsing of Universal World Profiles (UWP), trade codes, and system strings.
+    *   **`importer.ts`**: Orchestrates both bulk subsector imports and single manual UWP entries. It maps RPG codes to physical parameters and ensures consistency between manual and imported data.
+    *   **`decoder.ts`**: Handles the parsing and expansion of Universal World Profiles (UWP), trade codes, extensions (IX/EX/CX), and population strings.
     *   **`rng.ts`**: Provides a strictly deterministic seeded RNG based on world names/UWP to ensure consistent results across all users.
 *   `src/lib/components/`: Svelte UI components.
     *   `SystemView.svelte`: Main controller for the system view.

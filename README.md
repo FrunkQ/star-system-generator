@@ -44,6 +44,10 @@ A quick note on data: This application runs entirely in your browser. Your gener
         ![Traveller Style Starmap](static/screenshots/TravellerStyle.PNG)
     *   **Snap-to-Grid**: When adding new systems, coordinates snap to the center of the nearest grid or hex cell.
     *   **Toggleable Background**: Display a static, faded background image of the Milky Way.
+*   **Traveller Integration**:
+    *   **Subsector Importer**: Fetch and import entire subsectors directly from [travellermap.com](https://travellermap.com) API.
+    *   **Manual UWP Entry**: Manually create star systems by typing in standard Traveller Universal World Profile (UWP) codes.
+    *   **UWP UI Block**: A dedicated technical details block for Traveller-derived systems, showing population, starport class, political data, etc.
 *   **Constructs & Infrastructure**:
     *   **Ships & Stations**: Place artificial constructs anywhere in the system—from low orbit to deep space or even on planetary surfaces.
     *   **Detailed Specs**: Every construct has tracked stats for Mass, Crew (Current/Max), Power, Fuel, Engines, and Cargo.
@@ -86,6 +90,11 @@ A quick note on data: This application runs entirely in your browser. Your gener
     *   **GM & Player Modes**: Export redacted "Player-Safe" versions of your systems that hide spoilers, GM notes, and hidden objects.
     *   **Starmap & System Management**: Download any individual system or the entire starmap as a JSON file to your computer.
     *   Upload a previously saved JSON file to continue your work.
+*   **Global Customization**:
+    *   **Edit Rulepacks**: Modify the underlying science rules for your specific starmap.
+    *   **Atmospheres & Mixes**: Edit global gas physics (greenhouse factors, molar mass) and spawning distributions for atmospheric compositions.
+    *   **Fuel & Drives**: Define custom fuels and engine types globally.
+    *   **Sensors**: Configure global sensor types and their range bands.
 
 ## Usage
 
@@ -100,6 +109,17 @@ A quick note on data: This application runs entirely in your browser. Your gener
 *   **View System**: Click on a star system to view its details.
 *   **Link Systems**: Right-click on a star and select "Link System". Then right-click on another star to create a route between them.
 *   **UI Controls**: Use the dropdown to select 'No Grid', 'Grid', or 'Hex' view.
+
+### Using Traveller Tools
+1.  **Enable Traveller Mode**: In the Starmap header, change "Snap Grid" to **Traveller Hex**.
+2.  **Bulk Import**:
+    *   Right-click on the map background and select **"Add Traveller Map SubSector Here"**.
+    *   Search for a sector (e.g., "Spinward Marches") and choose a subsector (A-P).
+    *   The tool will fetch real data and generate the entire 8x10 hex grid of systems - moons will be added (Don't count towards Worlds #).
+3.  **Manual UWP Entry**:
+    *   Right-click on a specific hex and select **"Add Traveller UWP Here"**.
+    *   Enter the UWP string (e.g., `A788899-C`) and other T5 codes.
+    *   The generator will build a system matching those exact physical and political constraints.
 
 ### Using the AI Description Generator
 This is not complex LLM use and you can probably enable these features without cost by using a free model off OpenRouter. Just sign up to OpenRouter - don't buy any credits (unless you want to use some of the more advanced models) and create an API key for yourself (save it somewhere secure!). 
@@ -160,6 +180,22 @@ You can preview the production build with `npm run preview`.
 *   Go to [Our Discord](https://discord.gg/UAEq4zzjD8) for more details and input into ongoing development
 
 ## Known Issues
+
+### v1.7.0 Changelog (24th Jan 2026)
+*   **Traveller RPG Integration**:
+    *   Added `TravellerImporter` to fetch subsector data from `travellermap.com`.
+    *   Implemented "Add Traveller UWP Here" for manual entry of standard RPG codes.
+    *   Expanded technical details to decode T5 Extensions: Importance {Ix}, Economics (Ex), and Cultural [Cx].
+    *   Populated systems using Bode's Law and Traveller PBG codes (Pop/Belt/Giant).
+*   **Atmosphere & Physics**:
+    *   Added a global **"Edit Atmospheres & Mixes"** editor to the starmap menu.
+    *   Enforced orbital separation buffers (15%) to prevent asteroid belts from overlapping planets.
+    *   Implemented surface temperature range calculations (Min/Max) based on eccentricity and latitude.
+*   **UI Polish**:
+    *   Improved starmap context menu with clearer actions and sector-specific delete options.
+    *   Added new construct icons: Circle, Cross, and Diamond.
+    *   Enhanced star technical details to show Kelvin (K) primarily with Celsius (°C) on hover.
+    *   Fixed scrolling and sorting in the System Summary context menus.
 
 ### v1.6.0 Changelog (21st Jan 2026)
 *   **Sensors & Detection**:
