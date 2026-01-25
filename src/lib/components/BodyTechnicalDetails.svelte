@@ -278,8 +278,8 @@
             <span class="label">Traveller UWP ({body.traveller.allegianceName || body.traveller.allegiance})</span>
             <span class="value" style="font-family: monospace; color: #ffa500;">{body.traveller.uwp} (TL-{body.traveller.techLevel})</span>
             <div class="traveller-sub">
-                <span class="label">Class:</span> {body.traveller.starport}
-                <span class="label">Pop:</span> {body.traveller.pbg[0]}
+                <span class="label">Starport Class:</span> {body.traveller.starport}
+                <span class="label">Pop:</span> {body.traveller.popDesc || body.traveller.pbg[0]}
                 <span class="label">Zone:</span> {body.traveller.travelZone}
             </div>
             <div class="traveller-sub" style="margin-top: 4px; font-size: 0.85em; opacity: 0.9;">
@@ -293,10 +293,11 @@
                     {/each}
                 </div>
             {/if}
-            {#if body.traveller.ix || body.traveller.ex}
-                 <div class="traveller-sub" style="margin-top: 4px; font-size: 0.8em;">
-                    {#if body.traveller.ix}<span>IX: {body.traveller.ix}</span>{/if}
-                    {#if body.traveller.ex}<span>EX: {body.traveller.ex}</span>{/if}
+            {#if body.traveller.ix || body.traveller.ex || body.traveller.cx}
+                 <div class="traveller-sub" style="margin-top: 4px; font-size: 0.8em; display: flex; flex-direction: column; gap: 2px;">
+                    {#if body.traveller.ix}<span><strong>Importance:</strong> {body.traveller.ixDesc || body.traveller.ix}</span>{/if}
+                    {#if body.traveller.ex}<span><strong>Economics:</strong> {body.traveller.exDesc || body.traveller.ex}</span>{/if}
+                    {#if body.traveller.cx}<span><strong>Culture:</strong> {body.traveller.cxDesc || body.traveller.cx}</span>{/if}
                  </div>
             {/if}
             <div class="traveller-raw" title="Raw T5 Data">

@@ -849,10 +849,12 @@
         {:else}
                     <li on:click={handleContextMenuAddSystem}>Add System Here</li>
                     {#if $starmapUiStore.gridType === 'traveller-hex'}
-                        <li on:click={handleContextMenuAddTravellerSystem}>Add Traveller UWP</li>
-                        <li on:click={handleContextMenuTravellerImport}>Traveller Map SubSector</li>
+                        <li on:click={handleContextMenuAddTravellerSystem}>Add Traveller UWP Here</li>
+                        <li on:click={handleContextMenuTravellerImport}>Add Traveller Map SubSector Here</li>
                         {#if detectedSubsector}
-                            <li on:click={handleDeleteSubsector} class="danger">Delete {detectedSubsector.name}</li>
+                            <li on:click={handleDeleteSubsector} class="danger">
+                                Delete {detectedSubsector.sectorName ? detectedSubsector.sectorName + ' ' : ''}Subsector {detectedSubsector.subsectorCode}{detectedSubsector.name !== 'Subsector ' + detectedSubsector.subsectorCode ? ' (' + detectedSubsector.name + ')' : ''}
+                            </li>
                         {/if}
                     {/if}
                   {/if}

@@ -109,36 +109,29 @@ export class TravellerImporter {
         this.rng = new SeededRNG(seed);
         const systemId = generateId();
         
+        // Ensure trade codes are expanded (handle manual entry vs import)
+        const expandedTradeCodes = data.tradeCodes.map((c: string) => this.decoder.tradeCodes[c] || c);
+        data.tradeCodes = expandedTradeCodes; // Update the data object itself for the UI
+        
         const uwp = this.decoder.parseUWP(data.uwp);
-        const description = `
-WORLD DATA: ${data.name.toUpperCase()}
------------------------
-Location:    ${this.decoder.getAllegianceName(data.allegiance)}
-Travel Zone: ${data.travelZone}
-System:      Stars: ${data.stars}
-             Gas/Ice Giants: ${data.pbg[2]} | Belts: ${data.pbg[1]} | Other: ${data.w}
-
-STATISTICS (UWP: ${data.uwp})
------------------------
-Starport:      [${uwp.starport}] ${this.decoder.getStarportDescription(uwp.starport)}
-Size:          [${uwp.size}] ${this.decoder.getSizeDescription(uwp.size)}
-Atmosphere:    [${uwp.atmosphere}] ${this.decoder.getAtmosphereDescription(uwp.atmosphere)}
-Hydrographics: [${uwp.hydrographics}] ${this.decoder.getHydroDescription(uwp.hydrographics)}
-Population:    [${uwp.population}] ${data.pbg[0]} x ${this.decoder.getPopDescription(uwp.population)}
-Government:    [${uwp.government}] (Code ${uwp.government})
-Law Level:     [${uwp.law}] ${this.decoder.getLawDescription(uwp.law)}
-Tech Level:    [${uwp.techLevel}] (TL-${uwp.techLevel})
-
-ECONOMICS & CULTURE
--------------------
-Trade Codes:   ${data.tradeCodes.join(', ')}
-Importance:    ${this.decoder.decodeImportance(data.ix)}
-Economics:     ${this.decoder.decodeEconomics(data.ex)}
-
-RAW DATA
---------
-${data.raw}
-        `.trim();
+        
+        // Enrich data for UI display (fix missing Starport/Class and unexpanded IX/EX)
+        data.starport = uwp.starport;
+        data.size = uwp.size;
+        data.atmosphere = uwp.atmosphere;
+        data.hydrographics = uwp.hydrographics;
+        data.population = uwp.population;
+        data.government = uwp.government;
+        data.law = uwp.law;
+        data.techLevel = uwp.techLevel;
+        
+        data.popDesc = this.decoder.formatPopulation(data.pbg ? data.pbg[0] : '1', uwp.population);
+        
+        if (data.ix) data.ixDesc = this.decoder.decodeImportance(data.ix);
+        if (data.ex) data.exDesc = this.decoder.decodeEconomics(data.ex);
+        if (data.cx) data.cxDesc = this.decoder.decodeCultural(data.cx);
+        
+        const description = "";
 
         // 1. Stars Generation
         // Robust Token Parser for Variable-Length Definitions
@@ -585,6 +578,14 @@ ${data.raw}
                 const typeOverride = assign.type === 'Gas Giant' ? 'planet/gas-giant' : (assign.type === 'Belt' ? 'belt/asteroid' : 'planet/terrestrial');
                 const allowBelt = assign.type === 'Belt'; 
                 
+                const overrides: Partial<CelestialBody> = {};
+                if (assign.type === 'Belt') {
+                    // Restrict belt width to 15% of orbit to ensure it fits in the 15% collision buffer
+                    const widthAU = slotOrbit.elements.a_AU * 0.15;
+                    overrides.radiusInnerKm = (slotOrbit.elements.a_AU - widthAU/2) * AU_KM;
+                    overrides.radiusOuterKm = (slotOrbit.elements.a_AU + widthAU/2) * AU_KM;
+                }
+                
                 // Naming: e.g. "Sol I", "Sol II"... but skip Main World's index if possible?
                 // Actually, just append Roman numerals sequentially based on distance is standard,
                 // but Traveller Main World already has a name.
@@ -614,7 +615,7 @@ ${data.raw}
                     2.0,
                     typeOverride,
                     true,
-                    undefined,
+                    overrides,
                     allowBelt
                 );
                 

@@ -24,7 +24,7 @@ export class TravellerDecoder {
     'F': 'Totalitarian Oligarchy'
   };
 
-  private tradeCodes: Record<string, string> = {
+  public tradeCodes: Record<string, string> = {
     'Ag': 'Agricultural', 'As': 'Asteroid', 'Ba': 'Barren', 'De': 'Desert',
     'Fl': 'Fluid Oceans', 'Ga': 'Garden', 'Hi': 'High Population', 'Ht': 'High Tech',
     'Ic': 'Ice-Capped', 'In': 'Industrial', 'Lo': 'Low Population', 'Lt': 'Low Tech',
@@ -95,6 +95,22 @@ export class TravellerDecoder {
     return `10^${val}`;
   }
 
+  formatPopulation(multiplierChar: string, exponentChar: string): string {
+      const m = parseInt(multiplierChar) || 1;
+      const e = this.hexVal(exponentChar);
+      
+      if (e === 0) return "None";
+      
+      const total = m * Math.pow(10, e);
+      
+      if (total >= 1e12) return `${(total / 1e12).toFixed(1)} Trillion`;
+      if (total >= 1e9) return `${(total / 1e9).toFixed(1)} Billion`;
+      if (total >= 1e6) return `${(total / 1e6).toFixed(1)} Million`;
+      if (total >= 1e3) return `${(total / 1e3).toFixed(1)} Thousand`;
+      
+      return total.toLocaleString();
+  }
+
   getLawDescription(char: string): string {
     const val = this.hexVal(char);
     if (val === 0) return "No Law";
@@ -114,20 +130,19 @@ export class TravellerDecoder {
   }
 
   decodeImportance(ixStr: string): string {
-    const clean = ixStr.replace('{', '').replace('}', '').trim();
+    const clean = ixStr.replace(/[\{\}]/g, '').trim();
     const val = parseInt(clean);
     if (!isNaN(val)) {
         let desc = "Ordinary";
         if (val >= 4) desc = "Important";
-        else if (val <= -1) desc = "Unimportant";
-        return `${clean} (${desc})`;
+        if (val <= -1) desc = "Unimportant";
+        return `${val} (${desc})`;
     }
     return ixStr;
   }
 
   decodeEconomics(exStr: string): string {
-    // (A72+1)
-    const clean = exStr.replace('(', '').replace(')', '').trim();
+    const clean = exStr.replace(/[\(\)]/g, '').trim();
     if (clean.length < 4) return exStr;
 
     const r = clean[0];
@@ -150,6 +165,50 @@ export class TravellerDecoder {
     else if (infVal <= 4) infDesc = "Limited";
 
     return `Resources: [${r}] ${resDesc}, Labor: [${l}] ${labDesc}, Infra: [${i}] ${infDesc}, Efficiency: ${e}`;
+  }
+
+  decodeCultural(cxStr: string): string {
+    const clean = cxStr.replace(/[\[\]]/g, '').trim();
+    if (clean.length < 4) return cxStr;
+
+    const hChar = clean[0];
+    const aChar = clean[1];
+    const sChar = clean[2];
+    const bChar = clean[3];
+
+    const h = this.hexVal(hChar);
+    const a = this.hexVal(aChar);
+    const s = this.hexVal(sChar);
+    const b = this.hexVal(bChar);
+
+    // Homogeneity
+    let hom = "Harmonious";
+    if (h <= 3) hom = "Monolithic";
+    else if (h >= 10) hom = "Discordant";
+    else if (h >= 7) hom = "Diverse";
+
+    // Acceptance
+    let acc = "Neutral";
+    if (a <= 3) acc = "Xenophobic";
+    else if (a >= 10) acc = "Very Xenophilic";
+    else if (a >= 7) acc = "Friendly";
+    else if (a <= 5) acc = "Aloof";
+
+    // Strangeness
+    let str = "Typical";
+    if (s <= 3) str = "Normal";
+    else if (s >= 10) str = "Exotic";
+    else if (s >= 7) str = "Confusing";
+    else if (s >= 5) str = "Distinctive";
+
+    // Symbols
+    let sym = "Typical";
+    if (b <= 3) sym = "Concrete";
+    else if (b >= 10) sym = "Extremely Abstract";
+    else if (b >= 7) sym = "Abstract";
+    else if (b >= 5) sym = "Symbolic";
+
+    return `Heterogeneity: [${hChar}] ${hom}, Acceptance: [${aChar}] ${acc}, Strangeness: [${sChar}] ${str}, Symbols: [${bChar}] ${sym}`;
   }
   
   // Method to interpret raw T5 tab-delimited data

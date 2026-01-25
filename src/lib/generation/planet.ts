@@ -37,8 +37,11 @@ export function _generatePlanetaryBody(
         const widthAU = randomFromRange(rng, beltWidthRange[0], beltWidthRange[1]);
         const centerAU = orbit.elements.a_AU;
 
-        const radiusInnerKm = (centerAU - widthAU / 2) * AU_KM;
-        const radiusOuterKm = (centerAU + widthAU / 2) * AU_KM;
+        let radiusInnerKm = (centerAU - widthAU / 2) * AU_KM;
+        let radiusOuterKm = (centerAU + widthAU / 2) * AU_KM;
+
+        if (propertyOverrides?.radiusInnerKm) radiusInnerKm = propertyOverrides.radiusInnerKm;
+        if (propertyOverrides?.radiusOuterKm) radiusOuterKm = propertyOverrides.radiusOuterKm;
 
         const beltName = name.replace(/\d+$/, (m) => `Belt ${String.fromCharCode(65 + parseInt(m, 10))}`);
         

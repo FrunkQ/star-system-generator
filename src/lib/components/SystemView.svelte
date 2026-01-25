@@ -612,12 +612,9 @@
         system.nodes[nodeIndex] = updatedBody;
       }
 
-      // If a Star or Barycenter was updated, recalculate physics for the entire system
-      if (updatedBody.roleHint === 'star' || updatedBody.kind === 'barycenter') {
-          return systemProcessor.process({ ...system, nodes: system.nodes }, rulePack);
-      }
-
-      return { ...system, isManuallyEdited: true };
+      // Always recalculate physics (Radiation, Temp, Period) when any body is updated
+      const processed = systemProcessor.process({ ...system, nodes: system.nodes }, rulePack);
+      return { ...processed, isManuallyEdited: true };
     });
   }
 
