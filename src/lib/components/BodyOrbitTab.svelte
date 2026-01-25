@@ -119,6 +119,12 @@
       body.orbit.elements.M0_rad = M0_deg * (Math.PI / 180);
       dispatch('update');
   }
+
+  $: peri = a_AU * (1 - e);
+  $: aph = a_AU * (1 + e);
+  $: rangeText = body.roleHint === 'moon' 
+      ? `Range: ${(peri * 149597870.7).toLocaleString(undefined, {maximumFractionDigits:0})} - ${(aph * 149597870.7).toLocaleString(undefined, {maximumFractionDigits:0})} km`
+      : `Range: ${peri.toFixed(3)} - ${aph.toFixed(3)} AU`;
 </script>
 
 <div class="tab-panel">
@@ -130,6 +136,7 @@
                 <label>Semi-Major Axis (AU)</label>
                 <input type="number" step={stepA} bind:value={a_AU} on:input={handleNumberInput} />
             </div>
+            <div class="info-row" style="font-size: 0.8em; color: #888; margin-bottom: 4px;">{rangeText}</div>
             <!-- Custom Orbital Slider -->
             <div class="full-width-slider">
                 <OrbitalSlider value={a_AU} min={minA} max={maxA} {zones} on:input={handleOrbitalSliderInput} />

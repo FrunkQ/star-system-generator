@@ -25,6 +25,7 @@
   let surfaceGravityG: number | null = null;
   let densityRelative: number | null = null;
   let orbitalDistanceDisplay: string | null = null;
+  let orbitalDistanceTooltip: string | null = null;
   let circumferenceKm: number | null = null;
   let tempTooltip: string = '';
   let surfaceRadiationText: string | null = null;
@@ -48,6 +49,7 @@
     massDisplay = null;
     radiationLevel = null;
     orbitalDistanceDisplay = null;
+    orbitalDistanceTooltip = null;
     circumferenceKm = null;
     tempTooltip = '';
     surfaceRadiationText = null;
@@ -127,8 +129,14 @@
         if (body.orbit) {
             if (body.roleHint === 'moon') {
                 orbitalDistanceDisplay = `${Math.round(body.orbit.elements.a_AU * AU_KM).toLocaleString()} km`;
+                const peri = body.orbit.elements.a_AU * (1 - body.orbit.elements.e);
+                const aph = body.orbit.elements.a_AU * (1 + body.orbit.elements.e);
+                orbitalDistanceTooltip = `Periapsis: ${Math.round(peri * AU_KM).toLocaleString()} km\nApoapsis: ${Math.round(aph * AU_KM).toLocaleString()} km`;
             } else {
                 orbitalDistanceDisplay = `${body.orbit.elements.a_AU.toFixed(3)} AU`;
+                const peri = body.orbit.elements.a_AU * (1 - body.orbit.elements.e);
+                const aph = body.orbit.elements.a_AU * (1 + body.orbit.elements.e);
+                orbitalDistanceTooltip = `Perihelion: ${peri.toFixed(3)} AU\nAphelion: ${aph.toFixed(3)} AU`;
             }
 
             // Calculate Orbital Period
@@ -440,7 +448,7 @@
     {/if}
 
       {#if orbitalDistanceDisplay}
-          <div class="detail-item">
+          <div class="detail-item" title={orbitalDistanceTooltip}>
               <span class="label">Orbit (from {parentBody?.kind === 'barycenter' ? 'Barycenter' : (parentBody?.roleHint || 'Unknown')})</span>
               <span class="value">{orbitalDistanceDisplay}</span>
           </div>
