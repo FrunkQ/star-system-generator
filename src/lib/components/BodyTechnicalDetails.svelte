@@ -18,6 +18,8 @@
 
   // Derived Reactive Properties
   let surfaceTempC: number | null = null;
+  let minTempC: number | null = null;
+  let maxTempC: number | null = null;
   let hotSideTempC: number | null = null;
   let coldSideTempC: number | null = null;
   let massDisplay: string | null = null;
@@ -196,8 +198,37 @@
             if (body.tidallyLocked) {
                 hotSideTempC = body.temperatureK * 1.41 - 273.15; // Simplified model for hot side
                 coldSideTempC = body.temperatureK * 0.5 - 273.15; // Simplified model for cold side
+                
+                // If atmosphere is thick, equalize
+                if (body.atmosphere && body.atmosphere.pressure_bar > 1) {
+                    const factor = 1 / (1 + body.atmosphere.pressure_bar);
+                    hotSideTempC = (body.temperatureK * (1 + 0.41 * factor)) - 273.15;
+                    coldSideTempC = (body.temperatureK * (1 - 0.5 * factor)) - 273.15;
+                }
             } else {
                 surfaceTempC = body.temperatureK - 273.15;
+                
+                // Calculate Min/Max based on Orbit (Eccentricity) and Latitude (Atmosphere Damping)
+                if (body.orbit && body.equilibriumTempK) {
+                    const e = body.orbit.elements.e;
+                    const pressure = body.atmosphere?.pressure_bar || 0;
+                    
+                    // Orbital Factors
+                    const orbitMax = Math.sqrt(1 / (1 - e));
+                    const orbitMin = Math.sqrt(1 / (1 + e));
+                    
+                    // Latitude/Day-Night Variability Factor
+                    const variability = 0.4 / (1 + pressure);
+                    
+                    const tEq = body.equilibriumTempK;
+                    const tAdd = (body.greenhouseTempK || 0) + (body.tidalHeatK || 0) + (body.radiogenicHeatK || 0);
+                    
+                    const tMaxK = (tEq * orbitMax * (1 + variability)) + tAdd;
+                    const tMinK = (tEq * orbitMin * (1 - variability)) + tAdd;
+                    
+                    maxTempC = tMaxK - 273.15;
+                    minTempC = tMinK - 273.15;
+                }
             }
             tempTooltip = `Equilibrium: ${Math.round((body.equilibriumTempK || 0) - 273.15)}°C | Greenhouse: +${Math.round(body.greenhouseTempK || 0)}°C | Tidal: +${Math.round(body.tidalHeatK || 0)}°C | Radiogenic: +${Math.round(body.radiogenicHeatK || 0)}°C`;
         }
@@ -477,10 +508,20 @@
               <span class="label">Night-side Temp.</span>
               <span class="value">{Math.round(coldSideTempC)} °C</span>
           </div>
+      {:else if isStar && body.temperatureK}
+          <div class="detail-item" title="{Math.round(body.temperatureK - 273.15)} °C">
+              <span class="label">Surface Temperature</span>
+              <span class="value">{Math.round(body.temperatureK).toLocaleString()} K</span>
+          </div>
       {:else if surfaceTempC !== null}
           <div class="detail-item" title={tempTooltip}>
               <span class="label">Avg. Surface Temp.</span>
               <span class="value">{Math.round(surfaceTempC)} °C</span>
+              {#if minTempC !== null && maxTempC !== null}
+                  <div style="font-size: 0.8em; color: #aaa; margin-top: 2px;">
+                      Range: {Math.round(minTempC)}°C to {Math.round(maxTempC)}°C
+                  </div>
+              {/if}
           </div>
       {/if}
 
