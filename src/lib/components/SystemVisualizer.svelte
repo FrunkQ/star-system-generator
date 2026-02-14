@@ -44,7 +44,7 @@
   const MIN_CAMERA_ZOOM = 0.05;
   // In AU render space, very close binaries/constructs (e.g. ~100 km separation)
   // require very high zoom to be visually distinguishable.
-  const MAX_CAMERA_ZOOM = 50000000;
+  const MAX_CAMERA_ZOOM = 500000000;
   const AUTO_ZOOM_MIN_UPDATE_MS = 180;
   const AUTO_ZOOM_MAX_STEP_RATIO = 1.2;
 

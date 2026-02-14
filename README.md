@@ -197,7 +197,7 @@ You can preview the production build with `npm run preview`.
     *   Wired in map scale bar rendering for scaled maps.
     *   Scale bar is now positioned **bottom-left** to match system-map consistency.
 
-### v1.8.2 Changelog (14th Feb 2026)
+### v1.8.3 Changelog (14th Feb 2026)
 *   **Barycenter + Binary Stability (Proper Model)**:
     *   Replaced false-positive sibling Hill-spacing behavior for primary barycenter binary members with dedicated binary stability analysis.
     *   Added binary fragility checks using binary separation versus external Hill sphere (`sep/Hill`) around the parent host.
