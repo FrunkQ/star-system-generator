@@ -16,6 +16,8 @@
   let starmapName = starmap.name;
   let distanceUnit = starmap.distanceUnit;
   let unitIsPrefix = starmap.unitIsPrefix;
+  let mapMode: 'diagrammatic' | 'scaled' = starmap.mapMode ?? 'diagrammatic';
+  let showScaleBar = starmap.scale?.showScaleBar ?? true;
 
   let testStatus = '';
 
@@ -100,6 +102,12 @@
         name: starmapName,
         distanceUnit,
         unitIsPrefix,
+        mapMode,
+        scale: {
+          unit: distanceUnit || 'LY',
+          pixelsPerUnit: starmap.scale?.pixelsPerUnit && starmap.scale.pixelsPerUnit > 0 ? starmap.scale.pixelsPerUnit : 25,
+          showScaleBar,
+        },
       },
       ai: $aiSettings,
     });
@@ -142,6 +150,19 @@
         <label>
           <input type="checkbox" bind:checked={unitIsPrefix} />
           Unit is a prefix
+        </label>
+      </div>
+      <div class="form-group">
+        <label for="mapMode">Map Mode</label>
+        <select id="mapMode" bind:value={mapMode}>
+          <option value="diagrammatic">Diagrammatic</option>
+          <option value="scaled">Scaled</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" bind:checked={showScaleBar} />
+          Show scale bar (scaled mode)
         </label>
       </div>
     </div>

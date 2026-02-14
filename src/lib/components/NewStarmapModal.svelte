@@ -12,6 +12,7 @@
   let selectedRulepack: RulePack | undefined = rulepacks && rulepacks.length > 0 ? rulepacks[0] : undefined;
   let distanceUnit = 'LY';
   let unitIsPrefix = false;
+  let mapMode: 'diagrammatic' | 'scaled' = 'diagrammatic';
 
   function createStarmap() {
     dispatch('create', {
@@ -19,6 +20,7 @@
       rulepack: selectedRulepack,
       distanceUnit,
       unitIsPrefix,
+      mapMode,
     });
   }
 </script>
@@ -59,6 +61,13 @@
                 <label>
                 Distance Unit:
                 <input type="text" bind:value={distanceUnit} />
+                </label>
+                <label>
+                Map Mode:
+                <select bind:value={mapMode}>
+                  <option value="diagrammatic">Diagrammatic</option>
+                  <option value="scaled">Scaled</option>
+                </select>
                 </label>
                 <label class="checkbox-label">
                 <input type="checkbox" bind:checked={unitIsPrefix} />

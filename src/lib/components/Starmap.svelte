@@ -11,6 +11,7 @@
   import SaveSystemModal from './SaveSystemModal.svelte';
   import ImportTravellerModal from './ImportTravellerModal.svelte';
   import AddTravellerSystemModal from './AddTravellerSystemModal.svelte';
+  import StarmapScaleBar from './StarmapScaleBar.svelte';
   import { TravellerImporter } from '$lib/traveller/importer';
   import { computePlayerSnapshot } from '$lib/system/utils';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
@@ -69,11 +70,161 @@
   let lastMouseY = 0;
 
   let gridSize = 50;
+  let svgScale = 1;
+  let draggedSystemId: string | null = null;
+  let dragMoved = false;
+  let dragSvgScale = { x: 1, y: 1 };
+  let dragRawPosition: { x: number; y: number } | null = null;
+  let mapMode: 'diagrammatic' | 'scaled' = 'diagrammatic';
+  let isScaled = false;
+  let activeScale = { unit: 'LY', pixelsPerUnit: 25, showScaleBar: true };
+  let scaleBarVisible = false;
+
+  $: mapMode = starmap.mapMode ?? 'diagrammatic';
+  $: isScaled = mapMode === 'scaled';
+  $: activeScale = starmap.scale ?? { unit: starmap.distanceUnit || 'LY', pixelsPerUnit: 25, showScaleBar: true };
+  $: scaleBarVisible = isScaled && (activeScale.showScaleBar ?? true);
+
+  function roundDistance(value: number): number {
+    return Math.round(value * 100) / 100;
+  }
+
+  function updateSvgScale() {
+    if (!svgElement) return;
+    const viewBox = svgElement.viewBox.baseVal;
+    if (!viewBox.width) return;
+    svgScale = svgElement.clientWidth / viewBox.width;
+  }
+
+  function getRouteDistance(sourceX: number, sourceY: number, targetX: number, targetY: number, pixelsPerUnit: number): number {
+    const dx = targetX - sourceX;
+    const dy = targetY - sourceY;
+    const pixelDistance = Math.sqrt(dx * dx + dy * dy);
+    if (pixelsPerUnit <= 0) return 0;
+    return roundDistance(pixelDistance / pixelsPerUnit);
+  }
+
+  function formatRouteDistance(distance: number): string {
+    return Number.isFinite(distance) ? distance.toFixed(2) : '0.00';
+  }
+
+  function recomputeScaledRoutes(updatedSystems: Starmap['systems'], force = false) {
+    if ((!force && !isScaled) || !activeScale || activeScale.pixelsPerUnit <= 0) return starmap.routes;
+    const byId = new Map(updatedSystems.map((s) => [s.id, s]));
+    return starmap.routes.map((route) => {
+      const source = byId.get(route.sourceSystemId);
+      const target = byId.get(route.targetSystemId);
+      if (!source || !target) return route;
+      return {
+        ...route,
+        distance: getRouteDistance(source.position.x, source.position.y, target.position.x, target.position.y, activeScale.pixelsPerUnit),
+        unit: starmap.distanceUnit
+      };
+    });
+  }
+
+  function handleScaleBarToggle(event: Event) {
+    const checked = (event.target as HTMLInputElement).checked;
+    const scale = starmap.scale ?? { unit: starmap.distanceUnit || 'LY', pixelsPerUnit: 25, showScaleBar: true };
+    dispatch('updatestarmap', { ...starmap, scale: { ...scale, showScaleBar: checked } });
+  }
+
+  function handleSystemMouseDown(event: MouseEvent, systemId: string) {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    draggedSystemId = systemId;
+    dragMoved = false;
+    lastMouseX = event.clientX;
+    lastMouseY = event.clientY;
+
+    const svgRect = svgElement.getBoundingClientRect();
+    const viewBox = svgElement.viewBox.baseVal;
+    dragSvgScale = {
+      x: viewBox.width / svgRect.width,
+      y: viewBox.height / svgRect.height
+    };
+
+    const draggedSystem = starmap.systems.find((s) => s.id === systemId);
+    dragRawPosition = draggedSystem ? { x: draggedSystem.position.x, y: draggedSystem.position.y } : null;
+  }
+
+  function snapPointToCurrentGrid(x: number, y: number): { x: number; y: number } {
+    if ($starmapUiStore.gridType === 'none') return { x, y };
+
+    const originX = 0;
+    const originY = 0;
+
+    if ($starmapUiStore.gridType === 'grid') {
+      const cellIndexX = Math.floor((x - originX) / gridSize);
+      const cellIndexY = Math.floor((y - originY) / gridSize);
+      return {
+        x: (cellIndexX * gridSize) + (gridSize / 2) + originX,
+        y: (cellIndexY * gridSize) + (gridSize / 2) + originY
+      };
+    }
+
+    if ($starmapUiStore.gridType === 'hex' || $starmapUiStore.gridType === 'traveller-hex') {
+      const hexSize = gridSize / 2;
+      const hexHeight = Math.sqrt(3) * hexSize;
+      const horizDist = 1.5 * hexSize;
+
+      const approxCol = (x - originX) / horizDist;
+      const approxRow = (y - originY) / hexHeight - (Math.abs(Math.round(approxCol)) % 2) * 0.5;
+
+      const c = Math.round(approxCol);
+      const r = Math.round(approxRow);
+
+      let minDistSq = Infinity;
+      let closestCenter = { x, y };
+
+      for (let dc = -1; dc <= 1; dc++) {
+        for (let dr = -1; dr <= 1; dr++) {
+          const nr = r + dr;
+          const nc = c + dc;
+          const nx = originX + nc * horizDist;
+          const ny = originY + nr * hexHeight + (Math.abs(nc) % 2) * (hexHeight / 2);
+
+          const dx = x - nx;
+          const dy = y - ny;
+          const distSq = dx * dx + dy * dy;
+          if (distSq < minDistSq) {
+            minDistSq = distSq;
+            closestCenter = { x: nx, y: ny };
+          }
+        }
+      }
+      return closestCenter;
+    }
+
+    return { x, y };
+  }
 
   $: if ($starmapUiStore.gridType === 'traveller-hex') {
-    if (starmap.distanceUnit !== 'Jump-' || !starmap.unitIsPrefix) {
-        const newStarmap = { ...starmap, distanceUnit: 'Jump-', unitIsPrefix: true };
-        dispatch('updatestarmap', newStarmap);
+    // Traveller convention: 1 hex center-to-center equals 1 parsec.
+    const hexSize = gridSize / 2;
+    const hexCenterToCenterPx = Math.sqrt(3) * hexSize;
+    const currentScale = starmap.scale ?? { unit: starmap.distanceUnit || 'LY', pixelsPerUnit: 25, showScaleBar: true };
+
+    const needsUnitUpdate = starmap.distanceUnit !== 'pc' || starmap.unitIsPrefix;
+    const needsModeUpdate = (starmap.mapMode ?? 'diagrammatic') !== 'scaled';
+    const needsScaleUpdate =
+      currentScale.unit !== 'pc' ||
+      Math.abs((currentScale.pixelsPerUnit || 0) - hexCenterToCenterPx) > 0.0001;
+
+    if (needsUnitUpdate || needsModeUpdate || needsScaleUpdate) {
+      const newStarmap = {
+        ...starmap,
+        distanceUnit: 'pc',
+        unitIsPrefix: false,
+        mapMode: 'scaled' as const,
+        scale: {
+          ...currentScale,
+          unit: 'pc',
+          pixelsPerUnit: hexCenterToCenterPx,
+          showScaleBar: currentScale.showScaleBar ?? true
+        }
+      };
+      dispatch('updatestarmap', newStarmap);
     }
   }
 
@@ -152,6 +303,48 @@
   }
 
   function handleMouseMove(event: MouseEvent) {
+    if (draggedSystemId) {
+      const deltaX = event.clientX - lastMouseX;
+      const deltaY = event.clientY - lastMouseY;
+      lastMouseX = event.clientX;
+      lastMouseY = event.clientY;
+
+      if (Math.abs(deltaX) > 0 || Math.abs(deltaY) > 0) {
+        dragMoved = true;
+      }
+
+      const worldDeltaX = (deltaX * dragSvgScale.x) / zoom;
+      const worldDeltaY = (deltaY * dragSvgScale.y) / zoom;
+      if (dragRawPosition) {
+        dragRawPosition = {
+          x: dragRawPosition.x + worldDeltaX,
+          y: dragRawPosition.y + worldDeltaY
+        };
+      }
+      const updatedSystems = starmap.systems.map((systemNode) => {
+        if (systemNode.id !== draggedSystemId) return systemNode;
+
+        const nextX = dragRawPosition ? dragRawPosition.x : systemNode.position.x + worldDeltaX;
+        const nextY = dragRawPosition ? dragRawPosition.y : systemNode.position.y + worldDeltaY;
+        const snapped = snapPointToCurrentGrid(nextX, nextY);
+        return {
+          ...systemNode,
+          position: {
+            x: snapped.x,
+            y: snapped.y
+          }
+        };
+      });
+
+      const updatedStarmap = {
+        ...starmap,
+        systems: updatedSystems,
+        routes: recomputeScaledRoutes(updatedSystems)
+      };
+      dispatch('updatestarmap', updatedStarmap);
+      return;
+    }
+
     if (!isPanning) return;
     const deltaX = event.clientX - lastMouseX;
     const deltaY = event.clientY - lastMouseY;
@@ -165,6 +358,8 @@
   function handleMouseUp(event: MouseEvent) {
     if (event.button !== 0) return;
     isPanning = false;
+    draggedSystemId = null;
+    dragRawPosition = null;
   }
 
   function resetView() {
@@ -219,11 +414,14 @@
 
   onMount(async () => {
     document.addEventListener('click', handleClickOutside);
+    window.addEventListener('resize', updateSvgScale);
     resetView();
+    updateSvgScale();
   });
 
   onDestroy(() => {
     document.removeEventListener('click', handleClickOutside);
+    window.removeEventListener('resize', updateSvgScale);
   });
 
   function handleClickOutside(event: MouseEvent) {
@@ -275,6 +473,10 @@
   }
 
   function handleStarClick(event: MouseEvent, systemId: string) {
+    if (dragMoved) {
+      dragMoved = false;
+      return;
+    }
     if (event.button === 0) { // Left click
       if (linkingMode) {
         dispatch('selectsystemforlink', systemId);
@@ -319,58 +521,9 @@
     let clickX = ((event.clientX - svgRect.left) * scaleX - panX) / zoom;
     let clickY = ((event.clientY - svgRect.top) * scaleY - panY) / zoom;
 
-    const firstSystemX = starmap.systems[0]?.position.x || 0;
-    const firstSystemY = starmap.systems[0]?.position.y || 0;
-
-    if ($starmapUiStore.gridType === 'grid') {
-      const originX = firstSystemX - gridSize / 2;
-      const originY = firstSystemY - gridSize / 2;
-      const cellIndexX = Math.floor((clickX - originX) / gridSize);
-      const cellIndexY = Math.floor((clickY - originY) / gridSize);
-      clickX = (cellIndexX * gridSize) + (gridSize / 2) + originX;
-      clickY = (cellIndexY * gridSize) + (gridSize / 2) + originY;
-    } else if ($starmapUiStore.gridType === 'hex' || $starmapUiStore.gridType === 'traveller-hex') {
-      const hexSize = gridSize / 2;
-      // Flat-topped geometry
-      const hexWidth = 2 * hexSize;
-      const hexHeight = Math.sqrt(3) * hexSize;
-      const horizDist = 1.5 * hexSize;
-
-      const originX = firstSystemX;
-      const originY = firstSystemY;
-
-      // Find the approximate col and row
-      // x = col * 1.5 * size -> col ~ x / (1.5*size)
-      const approxCol = (clickX - originX) / horizDist;
-      // y = row * h + offset -> row ~ y / h
-      const approxRow = (clickY - originY) / hexHeight - (Math.abs(Math.round(approxCol)) % 2) * 0.5;
-
-      const c = Math.round(approxCol);
-      const r = Math.round(approxRow);
-
-      // Check neighbors to find the true closest hex
-      let minDistSq = Infinity;
-      let closestCenter = { x: 0, y: 0 };
-
-      for (let dc = -1; dc <= 1; dc++) {
-        for (let dr = -1; dr <= 1; dr++) {
-          const nr = r + dr;
-          const nc = c + dc;
-          const nx = originX + nc * horizDist;
-          const ny = originY + nr * hexHeight + (Math.abs(nc) % 2) * (hexHeight / 2);
-          
-          const dx = clickX - nx;
-          const dy = clickY - ny;
-          const distSq = dx * dx + dy * dy;
-          if (distSq < minDistSq) {
-            minDistSq = distSq;
-            closestCenter = { x: nx, y: ny };
-          }
-        }
-      }
-      clickX = closestCenter.x;
-      clickY = closestCenter.y;
-    }
+    const snapped = snapPointToCurrentGrid(clickX, clickY);
+    clickX = snapped.x;
+    clickY = snapped.y;
 
     contextMenuClickCoords = { x: clickX, y: clickY };
 
@@ -560,6 +713,12 @@
         <input type="checkbox" bind:checked={$starmapUiStore.showBackgroundImage} />
         Show Background
       </label>
+      {#if isScaled}
+        <label>
+          <input type="checkbox" checked={scaleBarVisible} on:change={handleScaleBarToggle} />
+          Show Scale Bar
+        </label>
+      {/if}
       <label>
         Snap Grid:
         <select bind:value={$starmapUiStore.gridType} class="grid-select inline">
@@ -591,22 +750,23 @@
       </div>
     </div>
   </div>
-  <svg
-    bind:this={svgElement}
-    class="starmap"
-    class:with-background={$starmapUiStore.showBackgroundImage}
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 800 600"
-    on:contextmenu={handleMapContextMenu}
-    on:mousedown={handleMouseDown}
-    on:mousemove={handleMouseMove}
-    on:mouseup={handleMouseUp}
-    on:wheel|preventDefault={handleWheel}
-    role="button"
-    tabindex="0"
-    style="touch-action: none;"
-  >
-    <g bind:this={groupElement} transform={`translate(${panX}, ${panY}) scale(${zoom})`}>
+  <div class="starmap-canvas">
+    <svg
+      bind:this={svgElement}
+      class="starmap"
+      class:with-background={$starmapUiStore.showBackgroundImage}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 800 600"
+      on:contextmenu={handleMapContextMenu}
+      on:mousedown={handleMouseDown}
+      on:mousemove={handleMouseMove}
+      on:mouseup={handleMouseUp}
+      on:wheel|preventDefault={handleWheel}
+      role="button"
+      tabindex="0"
+      style="touch-action: none;"
+    >
+      <g bind:this={groupElement} transform={`translate(${panX}, ${panY}) scale(${zoom})`}>
       <Grid 
         gridType={$starmapUiStore.gridType} 
         {gridSize} 
@@ -646,7 +806,7 @@
             class="route-label"
             on:click={() => dispatch('editroute', route)}
           >
-            {starmap.unitIsPrefix ? starmap.distanceUnit : ''}{route.distance}{!starmap.unitIsPrefix ? ` ${starmap.distanceUnit}` : ''}
+            {starmap.unitIsPrefix ? starmap.distanceUnit : ''}{formatRouteDistance(route.distance)}{!starmap.unitIsPrefix ? ` ${starmap.distanceUnit}` : ''}
           </text>
         {/if}
       {/each}
@@ -656,6 +816,7 @@
         <g
           role="button"
           tabindex="0"
+          on:mousedown={(e) => handleSystemMouseDown(e, systemNode.id)}
           on:click={(e) => handleStarClick(e, systemNode.id)}
           on:dblclick={() => handleStarDblClick(systemNode.id)}
           on:contextmenu={(e) => handleStarContextMenu(e, systemNode.id)}
@@ -695,41 +856,6 @@
                 class:selected={systemNode.id === selectedSystemForLink}
                 class:bh-active={getBlackHoleType(visualNodes[1]) === 'BH_active'}
                 class:bh-quiescent={getBlackHoleType(visualNodes[1]) === 'BH'}
-              />
-          {:else}
-              <!-- 3 or more stars: Pyramid layout (Primary Top, others below) -->
-              <!-- Primary (Top Center) -->
-              <circle
-                cx={systemNode.position.x}
-                cy={systemNode.position.y - 6}
-                r={5}
-                style="fill: {getStarColor(visualNodes[0])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[0]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[0]) === 'BH'}
-              />
-              <!-- Second (Bottom Left) -->
-              <circle
-                cx={systemNode.position.x - 6}
-                cy={systemNode.position.y + 5}
-                r={5}
-                style="fill: {getStarColor(visualNodes[1])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[1]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[1]) === 'BH'}
-              />
-              <!-- Third (Bottom Right) -->
-              <circle
-                cx={systemNode.position.x + 6}
-                cy={systemNode.position.y + 5}
-                r={5}
-                style="fill: {getStarColor(visualNodes[2])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[2]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[2]) === 'BH'}
               />
           {:else if visualNodes.length === 3}
               <!-- 3 Stars: Pyramid layout (Primary Top, others below) -->
@@ -830,8 +956,17 @@
           {systemNode.name}
         </text>
       {/each}
-    </g>
-  </svg>
+      </g>
+    </svg>
+    <StarmapScaleBar
+      {zoom}
+      {svgScale}
+      calibration={{ pixelsPerUnit: activeScale.pixelsPerUnit }}
+      distanceUnit={starmap.distanceUnit}
+      unitIsPrefix={starmap.unitIsPrefix}
+      isScaled={scaleBarVisible}
+    />
+  </div>
   <GmNotesEditor body={starmap} />
 
   {#if showContextMenu}
@@ -942,10 +1077,17 @@
   }
 
   .starmap-container {
+    position: relative;
     width: 100%;
     height: 100%;
     display: flex;
     flex-direction: column;
+  }
+
+  .starmap-canvas {
+    position: relative;
+    flex: 1;
+    min-height: 0;
   }
 
   .starmap-header {
@@ -1037,7 +1179,7 @@
 
   .starmap {
     width: 100%;
-    flex: 1; /* Make the SVG take up remaining space */
+    height: 100%;
     border: 1px solid #ccc;
     background-color: #000; /* Default background */
   }

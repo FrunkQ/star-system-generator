@@ -16,6 +16,11 @@
     showModal = false;
   }
 
+  function rescaleToRoute() {
+    dispatch('rescale', { route, distance: editedDistance });
+    showModal = false;
+  }
+
   function cancel() {
     showModal = false;
   }
@@ -32,7 +37,7 @@
       <h2>Edit Route</h2>
       <label>
         Distance:
-        <input type="number" bind:value={editedDistance} />
+        <input type="number" step="0.01" bind:value={editedDistance} />
         {#if starmap.unitIsPrefix}
           <div>{starmap.distanceUnit}</div>
         {:else}
@@ -48,6 +53,9 @@
       </label>
       <div class="buttons">
         <button on:click={saveChanges}>Save</button>
+        {#if (starmap.mapMode ?? 'diagrammatic') === 'scaled'}
+          <button on:click={rescaleToRoute}>Rescale Map To This</button>
+        {/if}
         <button on:click={deleteRoute} class="delete-button">Delete</button>
         <button on:click={cancel}>Cancel</button>
       </div>

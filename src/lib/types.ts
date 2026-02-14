@@ -286,6 +286,12 @@ export interface Route {
   lineStyle: 'solid' | 'dashed';
 }
 
+export interface StarmapScaleConfig {
+  unit: string;
+  pixelsPerUnit: number;
+  showScaleBar: boolean;
+}
+
 export interface RulePackOverrides {
   fuelDefinitions?: FuelDefinition[];
   engineDefinitions?: EngineDefinition[];
@@ -300,6 +306,8 @@ export interface Starmap {
   description?: string;
   systems: StarSystemNode[];
   routes: Route[];
+  mapMode?: 'diagrammatic' | 'scaled';
+  scale?: StarmapScaleConfig;
   distanceUnit: string;
   unitIsPrefix: boolean;
   rulePackOverrides?: RulePackOverrides;

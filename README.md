@@ -181,6 +181,22 @@ You can preview the production build with `npm run preview`.
 
 ## Known Issues
 
+### v1.8.1 Changelog (14th Feb 2026)
+*   **Scaled Starmap Mode (New)**:
+    *   Added map-level mode selection: `Diagrammatic` or `Scaled`.
+    *   New starmaps default to **Diagrammatic**; mode is selectable during creation and in Settings.
+    *   Scaled mode uses **LY** calibration and displays route distances to **2 decimal places**.
+*   **Distance Calibration & Rescaling**:
+    *   Added **Rescale Map To This** action in route editing.
+    *   Calibrating from an edited route computes a new global `pixelsPerUnit` while preserving current layout.
+    *   In scaled mode, all route distances are recalculated from actual map coordinates.
+*   **Interactive Starmap Movement**:
+    *   Systems are now draggable on the starmap.
+    *   In scaled mode, dragging a system live-updates connected route distances automatically.
+*   **Scale Bar & UX Consistency**:
+    *   Wired in map scale bar rendering for scaled maps.
+    *   Scale bar is now positioned **bottom-left** to match system-map consistency.
+
 ### v1.8.0 Changelog (14th Feb 2026)
 *   **Orbital Stability Analysis (N-body Proxy)**
     *   Added post-processing stability assessment based on sibling orbit overlap and mutual Hill spacing.

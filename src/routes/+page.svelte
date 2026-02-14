@@ -155,6 +155,60 @@
     enqueueStarmapPersist($starmapStore);
   }
 
+  $: if ($starmapStore) {
+    const normalized = withStarmapDefaults($starmapStore);
+    if (normalized !== $starmapStore) {
+      starmapStore.set(normalized);
+    }
+  }
+
+  function roundDistance(value: number): number {
+    return Math.round(value * 100) / 100;
+  }
+
+  function withStarmapDefaults(starmap: StarmapType): StarmapType {
+    let changed = false;
+
+    const mapMode = starmap.mapMode ?? 'diagrammatic';
+    if (!starmap.mapMode) changed = true;
+
+    const defaultUnit = starmap.distanceUnit || 'LY';
+    const currentScale = starmap.scale;
+    const scale = currentScale && currentScale.pixelsPerUnit > 0
+      ? { ...currentScale, unit: currentScale.unit || defaultUnit }
+      : { unit: defaultUnit, pixelsPerUnit: 25, showScaleBar: true };
+    if (!currentScale || !currentScale.unit || !(currentScale.pixelsPerUnit > 0) || currentScale.showScaleBar === undefined) {
+      changed = true;
+    }
+
+    if (!changed) return starmap;
+    return { ...starmap, mapMode, scale };
+  }
+
+  function getSystemDistanceLy(starmap: StarmapType, sourceSystemId: string, targetSystemId: string): number {
+    const source = starmap.systems.find((s) => s.id === sourceSystemId);
+    const target = starmap.systems.find((s) => s.id === targetSystemId);
+    if (!source || !target) return 0;
+
+    const dx = target.position.x - source.position.x;
+    const dy = target.position.y - source.position.y;
+    const pixelDistance = Math.sqrt(dx * dx + dy * dy);
+    const pixelsPerUnit = starmap.scale?.pixelsPerUnit ?? 25;
+    if (pixelsPerUnit <= 0) return 0;
+    return roundDistance(pixelDistance / pixelsPerUnit);
+  }
+
+  function rebuildRouteDistancesFromGeometry(starmap: StarmapType): StarmapType {
+    return {
+      ...starmap,
+      routes: starmap.routes.map((route) => ({
+        ...route,
+        distance: getSystemDistanceLy(starmap, route.sourceSystemId, route.targetSystemId),
+        unit: starmap.distanceUnit
+      }))
+    };
+  }
+
   function enqueueStarmapPersist(starmap: StarmapType) {
     const snapshot = JSON.parse(JSON.stringify(starmap)) as StarmapType;
     persistQueue = persistQueue
@@ -167,8 +221,8 @@
     hasSavedStarmap = true;
   }
 
-  function handleCreateStarmap(event: CustomEvent<{ name: string; rulepack: RulePack; distanceUnit: string; unitIsPrefix: boolean }>) {
-    const { name, rulepack, distanceUnit, unitIsPrefix } = event.detail;
+  function handleCreateStarmap(event: CustomEvent<{ name: string; rulepack: RulePack; distanceUnit: string; unitIsPrefix: boolean; mapMode: 'diagrammatic' | 'scaled' }>) {
+    const { name, rulepack, distanceUnit, unitIsPrefix, mapMode } = event.detail;
     selectedRulepack = rulepack;
     const seed = `seed-${Date.now()}`;
     const newSystem = generateSystem(seed, rulepack, {}, 'Random', false);
@@ -177,6 +231,12 @@
       name,
       distanceUnit,
       unitIsPrefix,
+      mapMode,
+      scale: {
+        unit: distanceUnit || 'LY',
+        pixelsPerUnit: 25,
+        showScaleBar: true
+      },
       systems: [
         {
           id: newSystem.id,
@@ -289,7 +349,9 @@
         id: `route-${Date.now()}`,
         sourceSystemId: selectedSystemForLink,
         targetSystemId: systemId,
-        distance: Math.floor(Math.random() * 10) + 1, // Placeholder distance
+        distance: ($starmapStore.mapMode ?? 'diagrammatic') === 'scaled'
+          ? getSystemDistanceLy($starmapStore, selectedSystemForLink, systemId)
+          : roundDistance(Math.floor(Math.random() * 10) + 1),
         unit: $starmapStore.distanceUnit,
         lineStyle: 'solid',
       };
@@ -314,7 +376,7 @@
   }
 
   function handleSaveRoute(event: CustomEvent<Route>) {
-    const updatedRoute = event.detail;
+    const updatedRoute = { ...event.detail, distance: roundDistance(Number(event.detail.distance || 0)) };
     starmapStore.update(starmap => {
       if (starmap) {
         const index = starmap.routes.findIndex(r => r.id === updatedRoute.id);
@@ -324,6 +386,39 @@
       }
       return starmap;
     });
+    routeToEdit = null;
+    showRouteEditorModal = false;
+  }
+
+  function handleRescaleRoute(event: CustomEvent<{ route: Route; distance: number }>) {
+    const { route, distance } = event.detail;
+    const targetDistance = roundDistance(Number(distance || 0));
+    if (targetDistance <= 0) return;
+
+    starmapStore.update((starmap) => {
+      if (!starmap) return starmap;
+      const source = starmap.systems.find((s) => s.id === route.sourceSystemId);
+      const target = starmap.systems.find((s) => s.id === route.targetSystemId);
+      if (!source || !target) return starmap;
+
+      const dx = target.position.x - source.position.x;
+      const dy = target.position.y - source.position.y;
+      const pixelDistance = Math.sqrt(dx * dx + dy * dy);
+      if (pixelDistance <= 0) return starmap;
+
+      const pixelsPerUnit = pixelDistance / targetDistance;
+      const updated = {
+        ...starmap,
+        mapMode: 'scaled' as const,
+        scale: {
+          unit: starmap.distanceUnit || 'LY',
+          pixelsPerUnit,
+          showScaleBar: starmap.scale?.showScaleBar ?? true
+        }
+      };
+      return rebuildRouteDistancesFromGeometry(updated);
+    });
+
     routeToEdit = null;
     showRouteEditorModal = false;
   }
@@ -418,7 +513,11 @@
     const { starmap: starmapSettings, ai: aiSettings } = event.detail;
     starmapStore.update(starmap => {
       if (starmap) {
-        return { ...starmap, ...starmapSettings };
+        const merged = { ...starmap, ...starmapSettings };
+        if ((merged.mapMode ?? 'diagrammatic') === 'scaled') {
+          return rebuildRouteDistancesFromGeometry(withStarmapDefaults(merged));
+        }
+        return withStarmapDefaults(merged);
       }
       return starmap;
     });
@@ -497,7 +596,7 @@
   {/if}
 
   {#if showRouteEditorModal && routeToEdit && $starmapStore}
-    <RouteEditorModal bind:showModal={showRouteEditorModal} route={routeToEdit} starmap={$starmapStore} on:save={handleSaveRoute} on:delete={handleDeleteRoute} />
+    <RouteEditorModal bind:showModal={showRouteEditorModal} route={routeToEdit} starmap={$starmapStore} on:save={handleSaveRoute} on:rescale={handleRescaleRoute} on:delete={handleDeleteRoute} />
   {/if}
 
   {#if showSettingsModal && $starmapStore}

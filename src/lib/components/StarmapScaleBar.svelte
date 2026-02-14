@@ -69,7 +69,7 @@
 <style>
     .scale-bar-container {
         position: absolute;
-        top: 80px;
+        bottom: 16px;
         left: 20px; 
         display: flex;
         flex-direction: column;
