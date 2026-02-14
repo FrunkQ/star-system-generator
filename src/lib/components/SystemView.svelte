@@ -147,6 +147,7 @@
   let contextMenuY = 0;
   let contextMenuItems: CelestialBody[] = [];
   let contextMenuType = '';
+  let contextMenuOpenToken = 0;
   let contextMenuNode: CelestialBody | Barycenter | null = null; 
 
   // Linking State
@@ -158,6 +159,7 @@
     contextMenuX = event.detail.x;
     contextMenuY = event.detail.y;
     contextMenuType = event.detail.type;
+    contextMenuOpenToken += 1;
     showSummaryContextMenu = true;
   }
 
@@ -1665,7 +1667,7 @@
           {linkStartNode}
         />
       {:else}
-        <SystemSummaryContextMenu items={contextMenuItems} x={contextMenuX} y={contextMenuY} type={contextMenuType} on:select={handleContextMenuSelect} />
+        <SystemSummaryContextMenu items={contextMenuItems} x={contextMenuX} y={contextMenuY} type={contextMenuType} openToken={contextMenuOpenToken} on:select={handleContextMenuSelect} />
       {/if}
     {/if}
 
