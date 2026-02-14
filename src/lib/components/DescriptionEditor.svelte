@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import type { CelestialBody } from "$lib/types";
   import { aiSettings, systemStore } from '$lib/stores';
   import AIExpansionModal from './AIExpansionModal.svelte';
@@ -21,20 +22,38 @@
   let currentStyles = styles;
   let currentTags = tags;
   const dispatch = createEventDispatcher();
+  let editingBodyId: string | null = null;
+  let editingBodyRef: CelestialBody | null = null;
+
+  function autosaveIfEditing() {
+    if (!isEditing || !editingBodyRef || editingBodyId === null) return;
+    editingBodyRef.description = descriptionText;
+    dispatch('update', editingBodyRef);
+    isEditing = false;
+    editingBodyId = null;
+    editingBodyRef = null;
+  }
 
   function startEditing() {
     descriptionText = body.description || '';
     isEditing = true;
+    editingBodyId = body.id;
+    editingBodyRef = body;
   }
 
   function handleSave() {
-    body.description = descriptionText;
+    const target = editingBodyRef || body;
+    target.description = descriptionText;
     isEditing = false;
-    dispatch('update');
+    editingBodyId = null;
+    editingBodyRef = null;
+    dispatch('update', target);
   }
 
   function handleCancel() {
     isEditing = false;
+    editingBodyId = null;
+    editingBodyRef = null;
   }
 
   function handleAIDescription(event: CustomEvent<string>) {
@@ -66,6 +85,15 @@
   }
 
   $: hasApiKey = $aiSettings.apiKey && $aiSettings.apiKey.length > 0;
+
+  // If focus changes to another body while editing, persist draft automatically.
+  $: if (isEditing && editingBodyId && body.id !== editingBodyId) {
+    autosaveIfEditing();
+  }
+
+  onDestroy(() => {
+    autosaveIfEditing();
+  });
 </script>
 
 <div class="description-editor">
