@@ -181,6 +181,20 @@ You can preview the production build with `npm run preview`.
 
 ## Known Issues
 
+### v1.7.1 Changelog (14th Feb 2026)
+*   **Storage Reliability**:
+    *   Replaced large starmap persistence from `localStorage` with IndexedDB-backed async storage.
+    *   Added one-time migration from legacy `localStorage` saves to IndexedDB on load.
+    *   Added queued save writes to avoid stale overwrite races during rapid edits.
+*   **Orbital Camera & Propagation Stability**:
+    *   Stabilized follow-camera auto-zoom behavior for high-eccentricity periapsis passes.
+    *   Added camera zoom damping/clamping and high-e suppression near periapsis to prevent render thrash.
+    *   Hardened Kepler propagation at high eccentricity with normalized anomaly + robust fallback solve.
+*   **Editing & UX**:
+    *   Added dynamic eccentricity maximum in orbit editing with explanatory tooltip (host-safe periapsis bound).
+*   **Lagrange Point Rendering**:
+    *   Fixed L-point placement drift on eccentric orbits by correcting orbital-frame transforms (true anomaly + argument of periapsis).
+
 ### v1.7.0 Changelog (24th Jan 2026)
 *   **Traveller RPG Integration**:
     *   Added `TravellerImporter` to fetch subsector data from `travellermap.com`.

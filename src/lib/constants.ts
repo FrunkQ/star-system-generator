@@ -1,6 +1,6 @@
 // src/lib/constants.ts
-export const APP_VERSION = '1.7.0';
-export const APP_DATE = '22-Jan-26';
+export const APP_VERSION = '1.7.1';
+export const APP_DATE = '14-Feb-26';
 
 export const G = 6.67430e-11; // Gravitational constant
 export const UNIVERSAL_GAS_CONSTANT = 8.31446; // J/(mol·K)
