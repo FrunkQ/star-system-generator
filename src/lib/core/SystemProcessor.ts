@@ -1,13 +1,14 @@
 import type { ISystemProcessor } from './interfaces';
 import type { System, RulePack, CelestialBody, Barycenter } from '../types';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG } from '../constants';
-import { calculateEquilibriumTemperature, calculateDistanceToStar } from '../physics/temperature';
+import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange } from '../physics/temperature';
 import { calculateSurfaceRadiation } from '../physics/radiation';
 import { classifyBody } from '../system/classification';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties } from '../physics/atmosphere';
 import { SeededRNG } from '../rng';
 import { annotateGravitationalStability } from '../physics/stability';
+import { reconcileBarycenters } from '../physics/barycenterReconcile';
 
 export class SystemProcessor implements ISystemProcessor {
     process(system: System, rulePack: RulePack): System {
@@ -15,7 +16,10 @@ export class SystemProcessor implements ISystemProcessor {
         const allNodes = processedSystem.nodes;
         const rng = new SeededRNG(system.seed); // Deterministic RNG for procedural aspects of processing
 
-        // 0. Pass 0: Orbital Dynamics & Barycenters (Ensure mass/orbits are correct first)
+        // 0. Pass 0a: Auto reconcile barycenters from mass hierarchy changes.
+        reconcileBarycenters(processedSystem);
+
+        // 0. Pass 0b: Orbital Dynamics & existing barycenters (Ensure mass/orbits are correct first)
         this.processBarycenters(processedSystem);
 
         // 1. First Pass: Physical Basics (Orbital Period, Gravity, etc.)
@@ -61,6 +65,21 @@ export class SystemProcessor implements ISystemProcessor {
 
         for (const bary of barycenters) {
             if (!bary.memberIds || bary.memberIds.length < 2) continue;
+
+            // Keep barycenter parent-orbit dynamics consistent with current parent mass.
+            if (bary.orbit && bary.parentId) {
+                const parent = nodesById.get(bary.parentId) as CelestialBody | Barycenter | undefined;
+                const parentMass = parent?.kind === 'barycenter'
+                    ? (parent.effectiveMassKg || 0)
+                    : ((parent as CelestialBody | undefined)?.massKg || 0);
+                if (parentMass > 0) {
+                    bary.orbit.hostMu = G * parentMass;
+                    const aMeters = (bary.orbit.elements.a_AU || 0) * AU_KM * 1000;
+                    if (aMeters > 0) {
+                        bary.orbit.n_rad_per_s = Math.sqrt((G * parentMass) / Math.pow(aMeters, 3));
+                    }
+                }
+            }
 
             const members = bary.memberIds.map(id => nodesById.get(id)).filter(n => n !== undefined) as (CelestialBody | Barycenter)[];
             if (members.length < 2) continue;
@@ -117,7 +136,58 @@ export class SystemProcessor implements ISystemProcessor {
                 member.orbit.hostMu = G * totalMass;
                 member.orbit.n_rad_per_s = n_rad_per_s;
             }
+
+            // 4. Binary coupling: keep paired orbits physically reciprocal.
+            if (members.length === 2) {
+                const m0 = members[0];
+                const m1 = members[1];
+                if (m0.orbit && m1.orbit) {
+                    const mass0 = m0.kind === 'body' ? ((m0 as CelestialBody).massKg || 0) : ((m0 as Barycenter).effectiveMassKg || 0);
+                    const mass1 = m1.kind === 'body' ? ((m1 as CelestialBody).massKg || 0) : ((m1 as Barycenter).effectiveMassKg || 0);
+                    const denom = mass0 + mass1;
+
+                    const reference = mass0 >= mass1 ? m0.orbit : m1.orbit;
+                    const refM0 = this.normalizeAngle(reference.elements.M0_rad || 0);
+                    const coupledE = Math.max(0, Math.min(0.999, reference.elements.e || 0));
+                    const coupledI = reference.elements.i_deg || 0;
+                    const coupledOmega = reference.elements.Omega_deg || 0;
+                    const coupledArgPeri = reference.elements.omega_deg || 0;
+
+                    const separation = (m0.orbit.elements.a_AU || 0) + (m1.orbit.elements.a_AU || 0);
+                    const sepAU = Math.max(separation, 1e-9);
+
+                    const a0 = denom > 0 ? sepAU * (mass1 / denom) : (m0.orbit.elements.a_AU || 0);
+                    const a1 = denom > 0 ? sepAU * (mass0 / denom) : (m1.orbit.elements.a_AU || 0);
+
+                    m0.orbit.elements.a_AU = a0;
+                    m1.orbit.elements.a_AU = a1;
+
+                    m0.orbit.elements.e = coupledE;
+                    m1.orbit.elements.e = coupledE;
+                    m0.orbit.elements.i_deg = coupledI;
+                    m1.orbit.elements.i_deg = coupledI;
+                    m0.orbit.elements.Omega_deg = coupledOmega;
+                    m1.orbit.elements.Omega_deg = coupledOmega;
+                    m0.orbit.elements.omega_deg = coupledArgPeri;
+                    m1.orbit.elements.omega_deg = coupledArgPeri;
+
+                    m0.orbit.elements.M0_rad = refM0;
+                    m1.orbit.elements.M0_rad = this.normalizeAngle(refM0 + Math.PI);
+
+                    m0.orbit.hostMu = G * totalMass;
+                    m1.orbit.hostMu = G * totalMass;
+                    m0.orbit.n_rad_per_s = n_rad_per_s;
+                    m1.orbit.n_rad_per_s = n_rad_per_s;
+                }
+            }
         }
+    }
+
+    private normalizeAngle(rad: number): number {
+        const twoPi = Math.PI * 2;
+        let v = rad % twoPi;
+        if (v < 0) v += twoPi;
+        return v;
     }
 
     private processPhysicalBasics(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], rulePack: RulePack) {
@@ -161,6 +231,9 @@ export class SystemProcessor implements ISystemProcessor {
             // Default albedo 0.3 if not specified? calculateEquilibriumTemperature handles it?
             // Actually, we should probably store albedo on the body if it matters.
             equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, 0.3);
+            const eqRange = calculateEquilibriumTemperatureRange(body, allNodes, 0.3);
+            (body as any).equilibriumTempMinK = eqRange.minK;
+            (body as any).equilibriumTempMaxK = eqRange.maxK;
         }
         body.equilibriumTempK = equilibriumTempK;
 

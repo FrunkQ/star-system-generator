@@ -33,6 +33,8 @@
   let surfaceRadiationText: string | null = null;
   let surfaceRadiationTooltip: string | null = null;
   let displayedSurfaceRadiation: number | null = null;
+  let minSurfaceRadiation: number | null = null;
+  let maxSurfaceRadiation: number | null = null;
   let stellarRadiationTooltip: string | null = null;
   let calculatedPeriodDays: number | null = null;
   let luminosity: number | null = null;
@@ -59,6 +61,8 @@
     surfaceRadiationText = null;
     surfaceRadiationTooltip = null;
     displayedSurfaceRadiation = null;
+    minSurfaceRadiation = null;
+    maxSurfaceRadiation = null;
     calculatedPeriodDays = null;
     luminosity = null;
     orbitalStabilityLabel = null;
@@ -129,6 +133,8 @@
 
         if (currentSurfaceRadiation !== undefined) {
             displayedSurfaceRadiation = currentSurfaceRadiation;
+            minSurfaceRadiation = typeof (body as any).surfaceRadiationMin === 'number' ? (body as any).surfaceRadiationMin : null;
+            maxSurfaceRadiation = typeof (body as any).surfaceRadiationMax === 'number' ? (body as any).surfaceRadiationMax : null;
             const desc = getSurfaceRadiationDescription(currentSurfaceRadiation);
             surfaceRadiationText = desc.text;
             
@@ -148,6 +154,10 @@
                 shieldingInfo += `• Transmitted Dose: ${totalFlux.toFixed(2)} mSv/y\n`;
                 
                 shieldingInfo += `\nFinal Mix: ${photonPct}% Photons / ${particlePct}% Particles`;
+            }
+
+            if (minSurfaceRadiation !== null && maxSurfaceRadiation !== null) {
+                shieldingInfo += `\n\nRange: ${minSurfaceRadiation.toFixed(2)} - ${maxSurfaceRadiation.toFixed(2)} mSv/y`;
             }
             
             surfaceRadiationTooltip = `${desc.tooltip}${shieldingInfo}`;
@@ -233,24 +243,24 @@
             } else {
                 surfaceTempC = body.temperatureK - 273.15;
                 
-                // Calculate Min/Max based on Orbit (Eccentricity) and Latitude (Atmosphere Damping)
-                if (body.orbit && body.equilibriumTempK) {
+                // Prefer post-processed multi-star/barycenter-aware range when available.
+                const eqMinK = typeof (body as any).equilibriumTempMinK === 'number' ? (body as any).equilibriumTempMinK : null;
+                const eqMaxK = typeof (body as any).equilibriumTempMaxK === 'number' ? (body as any).equilibriumTempMaxK : null;
+                const additiveK = (body.greenhouseTempK || 0) + (body.tidalHeatK || 0) + (body.radiogenicHeatK || 0);
+
+                if (eqMinK !== null && eqMaxK !== null) {
+                    minTempC = (eqMinK + additiveK) - 273.15;
+                    maxTempC = (eqMaxK + additiveK) - 273.15;
+                } else if (body.orbit && body.equilibriumTempK) {
+                    // Fallback for legacy bodies that do not have precomputed ranges.
                     const e = body.orbit.elements.e;
                     const pressure = body.atmosphere?.pressure_bar || 0;
-                    
-                    // Orbital Factors
                     const orbitMax = Math.sqrt(1 / (1 - e));
                     const orbitMin = Math.sqrt(1 / (1 + e));
-                    
-                    // Latitude/Day-Night Variability Factor
                     const variability = 0.4 / (1 + pressure);
-                    
                     const tEq = body.equilibriumTempK;
-                    const tAdd = (body.greenhouseTempK || 0) + (body.tidalHeatK || 0) + (body.radiogenicHeatK || 0);
-                    
-                    const tMaxK = (tEq * orbitMax * (1 + variability)) + tAdd;
-                    const tMinK = (tEq * orbitMin * (1 - variability)) + tAdd;
-                    
+                    const tMaxK = (tEq * orbitMax * (1 + variability)) + additiveK;
+                    const tMinK = (tEq * orbitMin * (1 - variability)) + additiveK;
                     maxTempC = tMaxK - 273.15;
                     minTempC = tMinK - 273.15;
                 }
@@ -575,6 +585,11 @@
           <div class="detail-item" title={surfaceRadiationTooltip}>
               <span class="label">Surface Radiation</span>
               <span class="value">{surfaceRadiationText} ({displayedSurfaceRadiation?.toFixed(2)})</span>
+              {#if minSurfaceRadiation !== null && maxSurfaceRadiation !== null}
+                  <div style="font-size: 0.8em; color: #aaa; margin-top: 2px;">
+                      Range: {minSurfaceRadiation.toFixed(2)} to {maxSurfaceRadiation.toFixed(2)} mSv/y
+                  </div>
+              {/if}
           </div>
       {/if}
 

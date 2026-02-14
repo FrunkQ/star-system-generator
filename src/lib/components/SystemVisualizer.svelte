@@ -533,7 +533,7 @@
           if (node.parentId === null) { positions.set(nodeId, { x: 0, y: 0 }); return { x: 0, y: 0 }; }
           const parentPos = getPosition(node.parentId);
           let relativePos = { x: 0, y: 0 };
-          if ((node.kind === 'body' || node.kind === 'construct') && node.orbit) {
+          if ((node.kind === 'body' || node.kind === 'construct' || node.kind === 'barycenter') && node.orbit) {
               const isStationary = node.kind === 'construct' && (node.physical_parameters?.massKg || 0) === 0;
               const timeToPropagate = isStationary ? node.orbit.t0 : currentTime;
               const propagated = propagate(node, timeToPropagate);

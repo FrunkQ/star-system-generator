@@ -4,9 +4,10 @@ import { AU_KM, G } from '../constants';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, calculateGreenhouseEffect, recalculateAtmosphereDerivedProperties } from '../physics/atmosphere';
 import { calculateHabitabilityScore } from '../physics/habitability';
-import { calculateEquilibriumTemperature } from '../physics/temperature';
+import { calculateEquilibriumTemperature, calculateEquilibriumTemperatureRange } from '../physics/temperature';
 import { calculateSurfaceRadiation } from '../physics/radiation';
 import { annotateGravitationalStability } from '../physics/stability';
+import { reconcileBarycenters } from '../physics/barycenterReconcile';
 
 // Re-export for consumers (e.g. BodyTechnicalDetails)
 export { calculateMolarMass, calculateGreenhouseEffect, calculateHabitabilityScore, calculateDeltaVBudgets, recalculateAtmosphereDerivedProperties };
@@ -18,9 +19,12 @@ export { calculateMolarMass, calculateGreenhouseEffect, calculateHabitabilitySco
 export function calculateSurfaceTemperature(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[]) {
     const albedo = body.albedo !== undefined ? body.albedo : 0.3;
     const equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedo);
+    const range = calculateEquilibriumTemperatureRange(body, allNodes, albedo);
     
     if (equilibriumTempK > 0) {
         body.equilibriumTempK = equilibriumTempK;
+        (body as any).equilibriumTempMinK = range.minK;
+        (body as any).equilibriumTempMaxK = range.maxK;
         // Total Temp will be finalized after greenhouse is calculated in recalculateAtmosphereDerivedProperties
         body.temperatureK = equilibriumTempK + (body.greenhouseTempK || 0) + (body.tidalHeatK || 0) + (body.radiogenicHeatK || 0);
     }
@@ -31,6 +35,7 @@ export function calculateSurfaceTemperature(body: CelestialBody, allNodes: (Cele
  * Updates Temperature, Radiation, Orbital Boundaries, and Habitability for all bodies.
  */
 export function recalculateSystemPhysics(system: System, rulePack: RulePack): System {
+    reconcileBarycenters(system);
     const nodesById = new Map(system.nodes.map(n => [n.id, n]));
 
     // Pass 1: Physical Basics & Environment
@@ -101,6 +106,7 @@ export function recalculateSystemPhysics(system: System, rulePack: RulePack): Sy
  * Processes a star system's data to add derived values.
  */
 export function processSystemData(system: System, rulePack: RulePack): System {
+    reconcileBarycenters(system);
     const nodesById = new Map(system.nodes.map(n => [n.id, n]));
 
     for (const body of system.nodes) {

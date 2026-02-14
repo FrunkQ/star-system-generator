@@ -1,5 +1,6 @@
 import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
 import { AU_KM, SOLAR_RADIUS_KM, RADIATION_UNSHIELDED_DOSE_MSV_YR } from "$lib/constants";
+import { calculateDistanceRangeToStar, calculateDistanceToStar } from "./temperature";
 
 export function calculateTotalStellarRadiation(
     body: CelestialBody,
@@ -12,56 +13,32 @@ export function calculateTotalStellarRadiation(
 
     if (allStars.length > 0) {
         for (const star of allStars) {
-            // Find distance from this star to the planet
-            // This is a simplified distance calculation that sums semi-major axes up and down the tree.
-            
-            const findPath = (startNode: CelestialBody | Barycenter, targetId: string): (CelestialBody | Barycenter)[] => {
-                let p = [];
-                let curr: CelestialBody | Barycenter | undefined = startNode;
-                while(curr) {
-                    p.unshift(curr);
-                    if (curr.id === targetId) return p;
-                    const parentId = curr.parentId;
-                    if (!parentId) return []; // Reached root without finding target
-                    curr = allNodes.find(n => n.id === parentId);
-                }
-                return [];
-            }
-
-            const rootNode = allNodes.find(n => n.parentId === null);
-            if (!rootNode) continue;
-
-            const pathToStar = findPath(star, rootNode.id);
-            const pathToPlanet = findPath(body, rootNode.id);
-
-            if (pathToStar.length === 0 || pathToPlanet.length === 0) continue;
-
-            let lcaIndex = 0;
-            while(lcaIndex < pathToStar.length && lcaIndex < pathToPlanet.length && pathToStar[lcaIndex].id === pathToPlanet[lcaIndex].id) {
-                lcaIndex++;
-            }
-            lcaIndex--; // step back to the common ancestor
-
-            let dist_au = 0;
-            for (let i = lcaIndex + 1; i < pathToPlanet.length; i++) {
-                const node = pathToPlanet[i] as (CelestialBody | Barycenter);
-                if ('orbit' in node && node.orbit) {
-                    dist_au += node.orbit.elements.a_AU;
-                }
-            }
-            for (let i = lcaIndex + 1; i < pathToStar.length; i++) {
-                const node = pathToStar[i] as (CelestialBody | Barycenter);
-                if ('orbit' in node && node.orbit) {
-                    dist_au += node.orbit.elements.a_AU;
-                }
-            }
-
+            const dist_au = calculateDistanceToStar(body, star, allNodes);
             if (dist_au > 0) {
                 totalStellarRadiation += (star.radiationOutput || 1) / (dist_au * dist_au);
             }
         }
     }
     return totalStellarRadiation;
+}
+
+export function calculateTotalStellarRadiationRange(
+    body: CelestialBody,
+    allNodes: (CelestialBody | Barycenter)[]
+): { min: number; max: number } {
+    let min = 0;
+    let max = 0;
+    const allStars = allNodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
+    for (const star of allStars) {
+        const d = calculateDistanceRangeToStar(body, star, allNodes);
+        if (d.max > 0) {
+            min += (star.radiationOutput || 1) / (d.max * d.max);
+        }
+        if (d.min > 0) {
+            max += (star.radiationOutput || 1) / (d.min * d.min);
+        }
+    }
+    return { min, max };
 }
 
 export function checkAtmosphereRetention(
@@ -90,7 +67,10 @@ export function calculateSurfaceRadiation(
     rulePack: RulePack
 ): number {
     const totalStellarRadiation = calculateTotalStellarRadiation(body, allNodes);
+    const totalStellarRadiationRange = calculateTotalStellarRadiationRange(body, allNodes);
     body.stellarRadiation = totalStellarRadiation;
+    (body as any).stellarRadiationMin = totalStellarRadiationRange.min;
+    (body as any).stellarRadiationMax = totalStellarRadiationRange.max;
     
     // Split baseline radiation into components (approximate physical split)
     // 90% is Photons (UV/Visible/IR), 10% is Particle (Solar Wind/Protons)
@@ -143,6 +123,16 @@ export function calculateSurfaceRadiation(
     }
 
     body.surfaceRadiation = (photonFlux + particleFlux) * RADIATION_UNSHIELDED_DOSE_MSV_YR + terrestrialBackground;
+
+    // Keep min/max consistent with the same component model used above:
+    // photons (90%) are atmosphere-shielded; particles (10%) are magnetosphere + atmosphere-shielded.
+    const atmoTransmissionApplied = atmoTransmission;
+    const particleTransmissionApplied = (1 - magDeflection) * atmoTransmissionApplied;
+    const fluxToDose = (incomingFlux: number) =>
+        ((incomingFlux * 0.9 * atmoTransmissionApplied) + (incomingFlux * 0.1 * particleTransmissionApplied)) * RADIATION_UNSHIELDED_DOSE_MSV_YR + terrestrialBackground;
+
+    (body as any).surfaceRadiationMin = fluxToDose(totalStellarRadiationRange.min);
+    (body as any).surfaceRadiationMax = fluxToDose(totalStellarRadiationRange.max);
 
     return Math.max(0, body.surfaceRadiation);
 }

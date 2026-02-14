@@ -130,6 +130,119 @@ function assessPairStability(
   return out;
 }
 
+function isPrimaryBarycenterMemberPair(
+  host: CelestialBody | Barycenter | undefined,
+  a: CelestialBody,
+  b: CelestialBody
+): boolean {
+  if (!host || host.kind !== 'barycenter') return false;
+  const memberIds = host.memberIds || [];
+  return memberIds.includes(a.id) && memberIds.includes(b.id);
+}
+
+function assessBinaryPairStability(
+  memberA: CelestialBody,
+  memberB: CelestialBody,
+  bary: Barycenter,
+  system: System,
+  nodesById: Map<string, CelestialBody | Barycenter>
+): StabilityAssessment {
+  const out: StabilityAssessment = { severity: 0, reasons: [] };
+
+  const aA = memberA.orbit?.elements.a_AU || 0;
+  const aB = memberB.orbit?.elements.a_AU || 0;
+  const eA = Math.max(0, Math.min(0.999, memberA.orbit?.elements.e || 0));
+  const eB = Math.max(0, Math.min(0.999, memberB.orbit?.elements.e || 0));
+  const eBin = Math.max(eA, eB);
+
+  const sepMeanAU = aA + aB;
+  const sepMaxAU = sepMeanAU * (1 + eBin);
+  const mA = getNodeMassKg(memberA);
+  const mB = getNodeMassKg(memberB);
+  const mBin = (bary.effectiveMassKg || 0) || (mA + mB);
+
+  // 1) Internal binary tightness against external tide (Hill sphere around parent host).
+  if (bary.parentId && bary.orbit && mBin > 0) {
+    const parent = nodesById.get(bary.parentId);
+    const parentMassKg = getHostMassKg(parent);
+    if (parentMassKg > 0) {
+      const aExt = bary.orbit.elements.a_AU || 0;
+      const eExt = Math.max(0, Math.min(0.999, bary.orbit.elements.e || 0));
+      const hillAU = aExt * (1 - eExt) * Math.cbrt(mBin / (3 * parentMassKg));
+      if (hillAU > 0) {
+        const frac = sepMaxAU / hillAU;
+        if (frac >= 0.33) {
+          out.severity = 3;
+          out.reasons.push(`Binary wide vs Hill sphere (sep/Hill=${frac.toFixed(2)})`);
+        } else if (frac >= 0.20) {
+          out.severity = Math.max(out.severity, 2) as 0 | 1 | 2 | 3;
+          out.reasons.push(`Binary moderately wide vs Hill sphere (sep/Hill=${frac.toFixed(2)})`);
+        } else if (frac >= 0.10) {
+          out.severity = Math.max(out.severity, 1) as 0 | 1 | 2 | 3;
+          out.reasons.push(`Binary perturbation-sensitive (sep/Hill=${frac.toFixed(2)})`);
+        }
+      }
+
+      // 2) Neighboring sibling perturbations on the barycenter's parent orbit.
+      const hostSiblings = system.nodes.filter((n) => {
+        if (n.id === bary.id) return false;
+        if (n.kind !== 'body') return false;
+        if (!(n as CelestialBody).orbit) return false;
+        return n.parentId === bary.parentId;
+      }) as CelestialBody[];
+
+      const aBary = bary.orbit.elements.a_AU || 0;
+      const eBary = Math.max(0, Math.min(0.999, bary.orbit.elements.e || 0));
+      const baryBand = aBary > 0
+        ? { periAU: aBary * (1 - eBary), apoAU: aBary * (1 + eBary) }
+        : null;
+      for (const sib of hostSiblings) {
+        const sibBand = getOrbitSafetyBandAU(sib);
+        if (!baryBand || !sibBand) continue;
+
+        const overlap = baryBand.apoAU >= sibBand.periAU * 0.98 && sibBand.apoAU >= baryBand.periAU * 0.98;
+        const mSib = getNodeMassKg(sib);
+        const massRatio = mBin > 0 ? (mSib / mBin) : 0;
+
+        if (overlap) {
+          if (massRatio >= 0.1) {
+            out.severity = 3;
+          } else if (massRatio >= 0.01) {
+            out.severity = Math.max(out.severity, 2) as 0 | 1 | 2 | 3;
+          } else {
+            out.severity = Math.max(out.severity, 1) as 0 | 1 | 2 | 3;
+          }
+          out.reasons.push(`External orbit overlap with ${sib.name}`);
+          continue;
+        }
+
+        const a1 = bary.orbit.elements.a_AU || 0;
+        const a2 = sib.orbit?.elements.a_AU || 0;
+        const innerA = Math.min(a1, a2);
+        const outerA = Math.max(a1, a2);
+        if (outerA <= innerA) continue;
+        const aMean = 0.5 * (innerA + outerA);
+        const mutualHill = aMean * Math.cbrt((mBin + mSib) / (3 * parentMassKg));
+        if (mutualHill <= 0) continue;
+        const delta = (outerA - innerA) / mutualHill;
+
+        if (delta < 3.5) {
+          out.severity = 3;
+          out.reasons.push(`External critical Hill spacing with ${sib.name} (Delta=${delta.toFixed(2)})`);
+        } else if (delta < 5.5) {
+          out.severity = Math.max(out.severity, 2) as 0 | 1 | 2 | 3;
+          out.reasons.push(`External tight Hill spacing with ${sib.name} (Delta=${delta.toFixed(2)})`);
+        } else if (delta < 8.5) {
+          out.severity = Math.max(out.severity, 1) as 0 | 1 | 2 | 3;
+          out.reasons.push(`External marginal Hill spacing with ${sib.name} (Delta=${delta.toFixed(2)})`);
+        }
+      }
+    }
+  }
+
+  return out;
+}
+
 export function annotateGravitationalStability(system: System): System {
   const nodesById = new Map(system.nodes.map((n) => [n.id, n]));
 
@@ -167,7 +280,12 @@ export function annotateGravitationalStability(system: System): System {
     for (let i = 0; i < siblings.length - 1; i++) {
       const inner = siblings[i];
       const outer = siblings[i + 1];
-      const pairAssessment = assessPairStability(inner, outer, hostMassKg);
+      let pairAssessment: StabilityAssessment;
+      if (isPrimaryBarycenterMemberPair(host, inner, outer) && host && host.kind === 'barycenter') {
+        pairAssessment = assessBinaryPairStability(inner, outer, host, system, nodesById);
+      } else {
+        pairAssessment = assessPairStability(inner, outer, hostMassKg);
+      }
       if (pairAssessment.severity === 0) continue;
 
       mergeAssessment(assessments.get(inner.id)!, pairAssessment);

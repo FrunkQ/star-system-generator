@@ -24,7 +24,7 @@ For discussion, feedback, bugs and suggestions go to [Our Discord](https://disco
 
 ## What is it for?
 
-This tool was primarily designed to enhance Science Fiction Tabletop Role-Playing Games (TTRPGs). While not a perfectly accurate simulation, it aims to be 'close enough' for an RPG setting, appealing to those who, like me, marvel at the wonder and complexity of the real science behind astronomy and exoplanets. It should provide a wealth of interesting environments to serve as the backdrop for your narrative. This has been "vibe-coded" using Gemini CLI (Pro 2.5) over a few months. And more recently with Gemini 3-Pro-Preview... - OMG - what a game changer!
+This tool was primarily designed to enhance Science Fiction Tabletop Role-Playing Games (TTRPGs). While not a perfectly accurate simulation, it aims to be 'close enough' for an RPG setting, appealing to those who, like me, marvel at the wonder and complexity of the real science behind astronomy and exoplanets. It should provide a wealth of interesting environments to serve as the backdrop for your narrative. This has been "vibe-coded" using Gemini CLI (Pro 2.5 the 3-Pro) over a few months. And more recently with gpt-5.3-codex just using command line. Every new model is a game changer!
 
 A quick note on data: This application runs entirely in your browser. Your generated systems are not saved on a remote server; they reside solely within your local browser storage. If you wish to access your systems on a different browser or device, remember to download your files.
 
@@ -197,6 +197,18 @@ You can preview the production build with `npm run preview`.
     *   Wired in map scale bar rendering for scaled maps.
     *   Scale bar is now positioned **bottom-left** to match system-map consistency.
 
+### v1.8.2 Changelog (14th Feb 2026)
+*   **Barycenter + Binary Stability (Proper Model)**:
+    *   Replaced false-positive sibling Hill-spacing behavior for primary barycenter binary members with dedicated binary stability analysis.
+    *   Added binary fragility checks using binary separation versus external Hill sphere (`sep/Hill`) around the parent host.
+    *   Added external perturbation checks from neighboring bodies (overlap + Hill spacing), so close/massive neighbors can correctly destabilize binaries.
+*   **Post-Processing Derived Ranges (Multi-Star Aware)**:
+    *   Added generalized orbit-tree distance/range evaluation for temperature/radiation contributions in hierarchical systems.
+    *   Surfaced derived equilibrium temperature min/max values through processing for UI display.
+*   **Radiation Range Consistency Fix**:
+    *   Fixed surface radiation min/max calculations to use the same shielding component model as the live displayed value.
+    *   Radiation ranges now stay consistent with the current reported surface dose.
+
 ### v1.8.0 Changelog (14th Feb 2026)
 *   **Orbital Stability Analysis (N-body Proxy)**
     *   Added post-processing stability assessment based on sibling orbit overlap and mutual Hill spacing.
@@ -315,3 +327,5 @@ This project uses images from several sources under Creative Commons licenses. W
 ## License
 
 This project is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html).
+
+Codex and this version is awesome!
