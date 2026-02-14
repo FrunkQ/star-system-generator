@@ -12,6 +12,7 @@
   import { validateStarmap } from '$lib/utils';
   import { starmapStore } from '$lib/starmapStore';
   import { systemStore, viewportStore } from '$lib/stores';
+  import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap } from '$lib/starmapStorage';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
   import Starmap from '$lib/components/Starmap.svelte';
   import SystemView from '$lib/components/SystemView.svelte';
@@ -35,6 +36,7 @@
   let fileInput: HTMLInputElement;
   let starmapComponent: Starmap;
   let hasSavedStarmap = false;
+  let persistQueue: Promise<void> = Promise.resolve();
 
   $: currentSystemId = $page.state.systemId || null;
 
@@ -122,9 +124,10 @@
       isLoading = false;
     }
 
-    hasSavedStarmap = localStorage.getItem('stargen_saved_starmap') !== null;
+    await migrateLegacyStarmapToIndexedDb();
+    hasSavedStarmap = await hasPersistedStarmap();
     if (hasSavedStarmap) {
-      handleLoadStarmap();
+      await handleLoadStarmap();
     } else {
       showNewStarmapModal = true;
     }
@@ -147,9 +150,20 @@
     }
   });
 
-  // Auto-save the starmap to local storage whenever it changes
+  // Auto-save the starmap to browser storage whenever it changes
   $: if (browser && $starmapStore) {
-    localStorage.setItem('stargen_saved_starmap', JSON.stringify($starmapStore));
+    enqueueStarmapPersist($starmapStore);
+  }
+
+  function enqueueStarmapPersist(starmap: StarmapType) {
+    const snapshot = JSON.parse(JSON.stringify(starmap)) as StarmapType;
+    persistQueue = persistQueue
+      .then(() => persistStarmap(snapshot))
+      .catch((e) => console.error('Failed to persist starmap:', e));
+  }
+
+  async function persistStarmap(starmap: StarmapType) {
+    await saveStarmap(starmap);
     hasSavedStarmap = true;
   }
 
@@ -218,12 +232,10 @@
               history.back();
           }
         }
-  function handleLoadStarmap() {
-    const savedStarmap = localStorage.getItem('stargen_saved_starmap');
+  async function handleLoadStarmap() {
+    const savedStarmap = await loadSavedStarmap();
     if (savedStarmap) {
-      const loadedData = JSON.parse(savedStarmap);
-      // console.log('Loaded starmap:', loadedData);
-      starmapStore.set(loadedData);
+      starmapStore.set(savedStarmap);
     } else {
       alert('No starmap found in browser storage.');
     }
