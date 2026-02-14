@@ -1396,7 +1396,11 @@
                         transitDelayDays = 0;
                     }}
                     on:executePlan={(e) => {
-                         const finalPlan = e.detail;
+                         const payload = e.detail as { plan?: TransitPlan | null; force?: boolean } | TransitPlan | null;
+                         const finalPlan = (payload && typeof payload === 'object' && 'plan' in payload)
+                             ? (payload.plan ?? null)
+                             : (payload as TransitPlan | null);
+                         const forceExecute = !!(payload && typeof payload === 'object' && 'force' in payload && payload.force);
                          
                          // Determine which plan to use for the final state (move ship to)
                          const targetPlan = finalPlan || (completedTransitPlans.length > 0 ? completedTransitPlans[completedTransitPlans.length - 1] : null);
@@ -1421,19 +1425,21 @@
                              const newNodes = sys.nodes.map(node => {
                                  if (node.id === focusedBodyId) {
                                      // 1. Deduct Fuel
-                                     let remainingFuelToDeductKg = totalFuelKg;
-                                     if (node.fuel_tanks && node.fuel_tanks.length > 0 && rulePack.fuelDefinitions?.entries) {
-                                         for (const tank of node.fuel_tanks) {
-                                             if (remainingFuelToDeductKg <= 0.1) break;
-                                             const fuelDef = rulePack.fuelDefinitions.entries.find(f => f.id === tank.fuel_type_id);
-                                             if (fuelDef && fuelDef.density_kg_per_m3 > 0) {
-                                                 const tankMassKg = tank.current_units * fuelDef.density_kg_per_m3;
-                                                 if (tankMassKg >= remainingFuelToDeductKg) {
-                                                     tank.current_units = Math.max(0, tank.current_units - (remainingFuelToDeductKg / fuelDef.density_kg_per_m3));
-                                                     remainingFuelToDeductKg = 0;
-                                                 } else {
-                                                     remainingFuelToDeductKg -= tankMassKg;
-                                                     tank.current_units = 0;
+                                     if (!forceExecute) {
+                                         let remainingFuelToDeductKg = totalFuelKg;
+                                         if (node.fuel_tanks && node.fuel_tanks.length > 0 && rulePack.fuelDefinitions?.entries) {
+                                             for (const tank of node.fuel_tanks) {
+                                                 if (remainingFuelToDeductKg <= 0.1) break;
+                                                 const fuelDef = rulePack.fuelDefinitions.entries.find(f => f.id === tank.fuel_type_id);
+                                                 if (fuelDef && fuelDef.density_kg_per_m3 > 0) {
+                                                     const tankMassKg = tank.current_units * fuelDef.density_kg_per_m3;
+                                                     if (tankMassKg >= remainingFuelToDeductKg) {
+                                                         tank.current_units = Math.max(0, tank.current_units - (remainingFuelToDeductKg / fuelDef.density_kg_per_m3));
+                                                         remainingFuelToDeductKg = 0;
+                                                     } else {
+                                                         remainingFuelToDeductKg -= tankMassKg;
+                                                         tank.current_units = 0;
+                                                     }
                                                  }
                                              }
                                          }

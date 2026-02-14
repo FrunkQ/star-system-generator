@@ -52,11 +52,15 @@
   let telemetryData: TelemetryPoint[] = [];
   let showAdvanced = false;
   let isExecuting = false; // Animation state
+  let showExecuteBlockedDialog = false;
+  let blockedExecuteReasonTitle = '';
+  let blockedExecuteReasonDetail = '';
+  let blockedExecutePlan: TransitPlan | null = null;
   
   let maxPotentialDeltaV_ms = 0;
   let maxFuelMass_kg = 0;
 
-  function triggerExecute(finalPlan: TransitPlan | null) {
+  function triggerExecute(finalPlan: TransitPlan | null, forceOverride: boolean = false) {
       if (isExecuting) return;
       isExecuting = true;
       dispatch('executionStateChange', true);
@@ -83,11 +87,57 @@
               setTimeout(() => {
                   isExecuting = false;
                   dispatch('executionStateChange', false);
-                  dispatch('executePlan', finalPlan);
+                  dispatch('executePlan', { plan: finalPlan, force: forceOverride });
               }, 500); // Tiny pause at end for impact
           }
       }
       requestAnimationFrame(frame);
+  }
+
+  function getBlockedExecuteReason(finalPlan: TransitPlan | null): { title: string; detail: string } {
+      if (isImpossible && plan) {
+          return {
+              title: 'Journey Cannot Be Executed',
+              detail: `Required delta-V is ${(plan.totalDeltaV_ms / 1000).toFixed(1)} km/s, but ship capability is ${(maxPotentialDeltaV_ms / 1000).toFixed(1)} km/s (fully fueled).`
+          };
+      }
+
+      if (isInsufficientFuel && plan && currentConstructSpecs) {
+          return {
+              title: 'Journey Cannot Be Executed',
+              detail: `Required delta-V is ${(plan.totalDeltaV_ms / 1000).toFixed(1)} km/s, but current fuel supports ${(currentConstructSpecs.totalVacuumDeltaV_ms / 1000).toFixed(1)} km/s.`
+          };
+      }
+
+      if (!canAfford) {
+          let requiredKg = completedPlans.reduce((acc, p) => acc + p.totalFuel_kg, 0);
+          if (finalPlan) requiredKg += finalPlan.totalFuel_kg;
+          const availableKg = currentConstructSpecs ? currentConstructSpecs.fuelMass_tonnes * 1000 : 0;
+          return {
+              title: 'Journey Cannot Be Executed',
+              detail: `Insufficient fuel for planned legs. Needed ${(requiredKg / 1000).toFixed(1)} t, available ${(availableKg / 1000).toFixed(1)} t.`
+          };
+      }
+
+      return {
+          title: 'Journey Cannot Be Executed',
+          detail: 'This plan does not meet current execution requirements.'
+      };
+  }
+
+  function handleBlockedExecuteClick(finalPlan: TransitPlan | null) {
+      if (isExecuting) return;
+      const reason = getBlockedExecuteReason(finalPlan);
+      blockedExecuteReasonTitle = reason.title;
+      blockedExecuteReasonDetail = reason.detail;
+      blockedExecutePlan = finalPlan;
+      showExecuteBlockedDialog = true;
+  }
+
+  function handleForceExecute() {
+      showExecuteBlockedDialog = false;
+      triggerExecute(blockedExecutePlan, true);
+      blockedExecutePlan = null;
   }
 
   let previousOriginId: ID = '';
@@ -609,6 +659,21 @@
 
 <div class="planner-panel">
     <h3>Transit Planner</h3>
+
+    {#if showExecuteBlockedDialog}
+        <div class="dialog-backdrop" on:click={() => showExecuteBlockedDialog = false}>
+            <div class="dialog-card" on:click|stopPropagation>
+                <h4>{blockedExecuteReasonTitle}</h4>
+                <p>{blockedExecuteReasonDetail}</p>
+                <p class="dialog-note">You can force execution for GM repositioning. This ignores capability checks and does not consume fuel.</p>
+                <div class="dialog-actions">
+                    <button class="cancel-btn" on:click={() => showExecuteBlockedDialog = false}>Cancel</button>
+                    <button class="calculate-btn execute" on:click={handleForceExecute}>Force Journey</button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
     <div class="origin-display" style="margin-bottom: 1em; color: #aaa; font-size: 0.9em;">
         <strong>Current Position:</strong> <span style="color: #eee;">{originString}</span>
     </div>
@@ -904,14 +969,34 @@
                          <button class="cancel-btn" on:click={() => dispatch('undoLastLeg')} disabled={isExecuting}>Cancel Previous Leg</button>
                     {/if}
                 </div>
-                <button class="calculate-btn execute" on:click={() => triggerExecute(plan)} disabled={!canAfford || isImpossible || isInsufficientFuel || isExecuting} title={isImpossible ? "Plan Impossible (See warning above)" : (isInsufficientFuel ? "Insufficient Fuel (See warning above)" : (!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"))}>
-                    {isExecuting ? 'Simulating Transit...' : 'Execute Journey'}
-                </button>
+                <div class="execute-wrap">
+                    <button class="calculate-btn execute" on:click={() => triggerExecute(plan)} disabled={!canAfford || isImpossible || isInsufficientFuel || isExecuting} title={isImpossible ? "Plan Impossible (See warning above)" : (isInsufficientFuel ? "Insufficient Fuel (See warning above)" : (!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"))}>
+                        {isExecuting ? 'Simulating Transit...' : 'Execute Journey'}
+                    </button>
+                    {#if !isExecuting && (!canAfford || isImpossible || isInsufficientFuel)}
+                        <button
+                            class="disabled-capture"
+                            on:click={() => handleBlockedExecuteClick(plan)}
+                            title="Show why this journey cannot be executed"
+                            aria-label="Explain why execute journey is blocked"
+                        ></button>
+                    {/if}
+                </div>
             {:else if completedPlans.length > 0}
                 <button class="cancel-btn" on:click={() => dispatch('undoLastLeg')} disabled={isExecuting}>Cancel Last Leg</button>
-                <button class="calculate-btn execute" on:click={() => triggerExecute(null)} disabled={!canAfford || isExecuting} title={!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"}>
-                    {isExecuting ? 'Simulating Transit...' : 'Execute Journey'}
-                </button>
+                <div class="execute-wrap">
+                    <button class="calculate-btn execute" on:click={() => triggerExecute(null)} disabled={!canAfford || isExecuting} title={!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"}>
+                        {isExecuting ? 'Simulating Transit...' : 'Execute Journey'}
+                    </button>
+                    {#if !isExecuting && !canAfford}
+                        <button
+                            class="disabled-capture"
+                            on:click={() => handleBlockedExecuteClick(null)}
+                            title="Show why this journey cannot be executed"
+                            aria-label="Explain why execute journey is blocked"
+                        ></button>
+                    {/if}
+                </div>
             {/if}
             <button class="close-btn" on:click={() => dispatch('close')} disabled={isExecuting}>Close Planner</button>
         </div>
@@ -1027,6 +1112,11 @@
         gap: 10px;
         align-items: stretch;
     }
+    .execute-wrap {
+        position: relative;
+        flex: 1.5;
+        display: flex;
+    }
     .calculate-btn {
         flex: 1;
         background: #444;
@@ -1051,7 +1141,7 @@
     
     .calculate-btn.execute {
         background-color: #28a745;
-        flex: 1.5; /* Larger execute button */
+        flex: 1; /* Fill execute-wrap */
         font-weight: bold;
         font-size: 1.1em;
     }
@@ -1069,6 +1159,47 @@
         animation: pulse 2s infinite;
         filter: none;
         opacity: 1;
+    }
+    .disabled-capture {
+        position: absolute;
+        inset: 0;
+        background: transparent;
+        border: none;
+        cursor: not-allowed;
+        z-index: 4;
+    }
+    .dialog-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+    }
+    .dialog-card {
+        width: min(520px, calc(100vw - 24px));
+        background: #1f1f1f;
+        border: 1px solid #555;
+        border-radius: 8px;
+        padding: 14px;
+        color: #eee;
+    }
+    .dialog-card h4 {
+        margin: 0 0 8px 0;
+    }
+    .dialog-card p {
+        margin: 0 0 10px 0;
+        color: #ccc;
+    }
+    .dialog-note {
+        font-size: 0.9em;
+        color: #aaa;
+    }
+    .dialog-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
     }
     @keyframes pulse {
         0% { background-color: #28a745; }
