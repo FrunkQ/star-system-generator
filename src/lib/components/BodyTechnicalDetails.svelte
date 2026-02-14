@@ -2,7 +2,7 @@
   import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
   import { calculateOrbitalBoundaries, type OrbitalBoundaries, type PlanetData } from "$lib/physics/orbits";
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
-  import { calculateDeltaVBudgets, calculateSurfaceTemperature, calculateGreenhouseEffect, calculateHabitabilityScore } from '$lib/system/postprocessing';
+  import { calculateDeltaVBudgets, calculateSurfaceTemperature, calculateGreenhouseEffect } from '$lib/system/postprocessing';
   import { systemStore } from '$lib/stores';
   import { get } from 'svelte/store';
   import { calculateSurfaceRadiation } from '$lib/physics/radiation';
@@ -90,8 +90,6 @@
                  calculateSurfaceTemperature(body, sys.nodes);
              }
 
-             // Recalculate Habitability Score
-             calculateHabitabilityScore(body);
         }
 
         let currentSurfaceRadiation = body.surfaceRadiation;

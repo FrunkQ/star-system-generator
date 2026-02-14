@@ -104,8 +104,7 @@
           factors.gravity.score = scoreFromPlateau(surfaceGravityG, 0.8, 1.2, 0.5) * 15;
       }
 
-      const totalScore = factors.temp.score + factors.pressure.score + factors.solvent.score + factors.radiation.score + factors.gravity.score;
-      planet.habitabilityScore = Math.min(100, Math.round(totalScore));
+      // Display-only breakdown; canonical score/tag assignment is handled by system processing.
   }
 
   function getTierColor(tier: string) {
