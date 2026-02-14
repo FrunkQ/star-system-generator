@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
+  import { AU_KM } from '$lib/constants';
 
   export let construct: CelestialBody;
   export let rulePack: RulePack;
@@ -13,6 +14,7 @@
 
   let specs: ConstructSpecs | null = null;
   let availableFuel_tonnes: number = 0;
+  let orbitalPeriodDisplay: string = 'N/A';
 
   $: {
     if (construct && rulePack.engineDefinitions && rulePack.fuelDefinitions) {
@@ -36,6 +38,41 @@
       availableFuel_tonnes = fuelMass_kg / 1000;
     } else {
       specs = null;
+    }
+  }
+
+  function formatOrbitalPeriod(seconds: number): string {
+    if (!isFinite(seconds) || seconds <= 0) return 'N/A';
+    if (seconds < 60) return `${seconds.toFixed(1)} s`;
+
+    const minutes = seconds / 60;
+    if (minutes < 60) return `${minutes.toFixed(1)} min`;
+
+    const hours = minutes / 60;
+    if (hours < 48) return `${hours.toFixed(1)} h`;
+
+    const days = hours / 24;
+    if (days < 365.25) return `${days.toFixed(2)} d`;
+
+    const years = days / 365.25;
+    return `${years.toFixed(2)} y`;
+  }
+
+  $: {
+    const orbit = construct?.orbit;
+    if (!orbit || construct?.flight_state === 'Deep Space' || construct?.flight_state === 'Transit') {
+      orbitalPeriodDisplay = 'N/A';
+    } else {
+      let periodSeconds = 0;
+
+      if (orbit.n_rad_per_s && orbit.n_rad_per_s > 0) {
+        periodSeconds = (2 * Math.PI) / orbit.n_rad_per_s;
+      } else if (orbit.hostMu > 0 && orbit.elements?.a_AU > 0) {
+        const semiMajorAxisM = orbit.elements.a_AU * AU_KM * 1000;
+        periodSeconds = 2 * Math.PI * Math.sqrt((semiMajorAxisM ** 3) / orbit.hostMu);
+      }
+
+      orbitalPeriodDisplay = formatOrbitalPeriod(periodSeconds);
     }
   }
 
@@ -186,6 +223,10 @@
       <div class="spec-item derived" title="Orbital profile around the current host body">
         <span class="label">Orbit</span>
         <span class="value">{specs.orbit_string}</span>
+      </div>
+      <div class="spec-item derived" title="Current orbital period derived from mean motion or Keplerian elements">
+        <span class="label">Orbital Period</span>
+        <span class="value">{orbitalPeriodDisplay}</span>
       </div>
     </div>
 
