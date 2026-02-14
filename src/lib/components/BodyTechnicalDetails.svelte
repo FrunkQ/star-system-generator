@@ -36,6 +36,8 @@
   let stellarRadiationTooltip: string | null = null;
   let calculatedPeriodDays: number | null = null;
   let luminosity: number | null = null;
+  let orbitalStabilityLabel: string | null = null;
+  let orbitalStabilityDetails: string | null = null;
   
   $: isGasGiant = body.classes?.some(c => c.includes('gas-giant')) ?? false;
   $: isBeltOrRing = body && body.kind === 'body' && (body.roleHint === 'belt' || body.roleHint === 'ring');
@@ -59,8 +61,33 @@
     displayedSurfaceRadiation = null;
     calculatedPeriodDays = null;
     luminosity = null;
+    orbitalStabilityLabel = null;
+    orbitalStabilityDetails = null;
 
     if (body && body.kind === 'body') {
+        const stability = (body as any).orbitalStability;
+        const stabilityDetails = (body as any).orbitalStabilityDetails;
+        if (typeof stability === 'string' && stability.trim().length > 0) {
+            orbitalStabilityLabel = stability;
+            orbitalStabilityDetails = typeof stabilityDetails === 'string' ? stabilityDetails : null;
+        } else {
+            const stabilityTag = body.tags?.find((t) => t.key.startsWith('stability/'))?.key;
+            if (stabilityTag) {
+                const slug = stabilityTag.split('/')[1] || '';
+                if (slug) {
+                    orbitalStabilityLabel = slug
+                        .split('-')
+                        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+                        .join(' ');
+                    orbitalStabilityDetails = null;
+                }
+            }
+        }
+        if (!orbitalStabilityLabel && body.orbit) {
+            orbitalStabilityLabel = 'Stable';
+            orbitalStabilityDetails = 'No immediate sibling-instability flags detected by current N-body proxy checks.';
+        }
+
         // --- Live Recalculation for Editing ---
         if (body.massKg && body.radiusKm) {
              body.calculatedGravity_ms2 = (G * body.massKg) / Math.pow(body.radiusKm * 1000, 2);
@@ -494,6 +521,13 @@
           <div class="detail-item">
               <span class="label">Orbital Eccentricity</span>
               <span class="value">{body.orbit.elements.e.toFixed(3)}</span>
+          </div>
+      {/if}
+
+      {#if body.kind === 'body' && body.orbit && orbitalStabilityLabel}
+          <div class="detail-item" title={orbitalStabilityDetails || ''}>
+              <span class="label">Orbital Stability</span>
+              <span class="value">{orbitalStabilityLabel}</span>
           </div>
       {/if}
 

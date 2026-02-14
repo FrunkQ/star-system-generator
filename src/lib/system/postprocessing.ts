@@ -6,6 +6,7 @@ import { calculateMolarMass, calculateGreenhouseEffect, recalculateAtmosphereDer
 import { calculateHabitabilityScore } from '../physics/habitability';
 import { calculateEquilibriumTemperature } from '../physics/temperature';
 import { calculateSurfaceRadiation } from '../physics/radiation';
+import { annotateGravitationalStability } from '../physics/stability';
 
 // Re-export for consumers (e.g. BodyTechnicalDetails)
 export { calculateMolarMass, calculateGreenhouseEffect, calculateHabitabilityScore, calculateDeltaVBudgets, recalculateAtmosphereDerivedProperties };
@@ -90,6 +91,9 @@ export function recalculateSystemPhysics(system: System, rulePack: RulePack): Sy
             calculateHabitabilityScore(body);
         }
     }
+
+    // Pass 3: Stability tagging (N-body proxy heuristics on sibling orbital spacing/overlap).
+    annotateGravitationalStability(system);
     return system;
 }
 
@@ -153,5 +157,6 @@ export function processSystemData(system: System, rulePack: RulePack): System {
             calculateHabitabilityScore(body);
         }
     }
+    annotateGravitationalStability(system);
     return system;
 }

@@ -181,6 +181,21 @@ You can preview the production build with `npm run preview`.
 
 ## Known Issues
 
+### v1.8.0 Changelog (14th Feb 2026)
+*   **Orbital Stability Analysis (N-body Proxy)**
+    *   Added post-processing stability assessment based on sibling orbit overlap and mutual Hill spacing.
+    *   Excludes constructs from stability physics checks (body-only analysis).
+    *   Added calibrated stability tiers (`Very Unstable`, `Unstable`, `Marginal`) with improved long-timescale wording.
+    *   Refined overlap severity by mutual inclination + mass ratio so giant planets are not over-penalized by minor-body crossings.
+    *   Fixed host grouping to use hierarchy parent linkage first, improving consistency after orbital edits.
+*   **UI: Orbital Stability Data Block**
+    *   Added a dedicated **Orbital Stability** field in technical details.
+    *   Positioned directly after **Orbital Eccentricity** for orbiting bodies (including orbiting stars).
+    *   Added tooltip details with drivers/reasoning when unstable or marginal.
+    *   Displays `Stable` by default when an orbiting body has no instability flags.
+*   **Tags & Visibility**
+    *   Kept short machine-readable stability tags (e.g. `stability/marginal`) in the Tags area for filtering and quick scanning.
+
 ### v1.7.2 Changelog (14th Feb 2026)
 *   **Transit Planner (GM Override)**:
     *   Kept `Execute Journey` disabled behavior for impossible/insufficient-fuel plans.

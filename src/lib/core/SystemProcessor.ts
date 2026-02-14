@@ -7,6 +7,7 @@ import { classifyBody } from '../system/classification';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties } from '../physics/atmosphere';
 import { SeededRNG } from '../rng';
+import { annotateGravitationalStability } from '../physics/stability';
 
 export class SystemProcessor implements ISystemProcessor {
     process(system: System, rulePack: RulePack): System {
@@ -47,6 +48,9 @@ export class SystemProcessor implements ISystemProcessor {
                 this.processFlightDynamics(node as CelestialBody, allNodes, rulePack);
             }
         }
+
+        // 5. Stability pass: annotate objects at risk of N-body instability.
+        annotateGravitationalStability(processedSystem);
 
         return processedSystem;
     }
