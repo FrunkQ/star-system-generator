@@ -1068,13 +1068,22 @@
                   // Update Position to Low Orbit (Standard Parking: Min + 400km)
                   const minAlt = parentBody!.orbitalBoundaries?.minLeoKm || 100;
                   const radiusKm = (parentBody!.radiusKm || 1000) + minAlt + 400;
+                  const a_AU = radiusKm / AU_KM;
+                  const parentMassKg = (parentBody as any).massKg || (parentBody as any).effectiveMassKg || 0;
+                  const hostMu = parentMassKg * G;
+                  const aMeters = a_AU * AU_KM * 1000;
+                  const keplerN = hostMu > 0 && aMeters > 0 ? Math.sqrt(hostMu / Math.pow(aMeters, 3)) : undefined;
                   
                   return {
                       ...n,
                       placement: 'Low Orbit',
+                      flight_state: 'Orbiting',
+                      vector_velocity_ms: undefined,
                       orbit: {
                           ...n.orbit!,
-                          elements: { ...n.orbit!.elements, a_AU: radiusKm / AU_KM }
+                          hostMu: hostMu || n.orbit!.hostMu,
+                          n_rad_per_s: keplerN,
+                          elements: { ...n.orbit!.elements, a_AU, e: n.orbit!.elements.e || 0 }
                       }
                   };
               }
@@ -1113,13 +1122,23 @@
                   
                   // Update Position to Surface
                   const radiusKm = parentBody!.radiusKm || 1000;
+                  const a_AU = radiusKm / AU_KM;
+                  let rotationHours = (parentBody as any).rotation_period_hours;
+                  if (rotationHours === undefined && (parentBody as any).physical_parameters) {
+                      rotationHours = (parentBody as any).physical_parameters.rotation_period_hours;
+                  }
+                  const periodSeconds = rotationHours ? rotationHours * 3600 : ((parentBody as any).calculatedRotationPeriod_s || 0);
+                  const surfaceN = periodSeconds > 0 && isFinite(periodSeconds) ? (2 * Math.PI) / periodSeconds : undefined;
                   
                   return {
                       ...n,
                       placement: 'Surface',
+                      flight_state: 'Landed',
+                      vector_velocity_ms: undefined,
                       orbit: {
                           ...n.orbit!,
-                          elements: { ...n.orbit!.elements, a_AU: radiusKm / AU_KM }
+                          n_rad_per_s: surfaceN,
+                          elements: { ...n.orbit!.elements, a_AU, e: 0 }
                       }
                   };
               }
