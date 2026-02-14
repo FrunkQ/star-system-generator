@@ -3,6 +3,13 @@ import type { RulePack, CelestialBody, Barycenter } from '../types';
 import { G, AU_KM } from '../constants';
 import { getNodeColor } from '../rendering/colors';
 
+const TWO_PI = 2 * Math.PI;
+
+function normalizeAngle(angle: number): number {
+  const normalized = angle % TWO_PI;
+  return normalized < 0 ? normalized + TWO_PI : normalized;
+}
+
 // --- 1. DEFINE UNIVERSAL CONSTANTS ---
 const UNIVERSAL_GAS_CONSTANT = 8.314;       // J/(mol·K)
 
@@ -112,18 +119,39 @@ export function propagateState(node: CelestialBody | Barycenter | { orbit: any }
   // 2. Mean anomaly (M) at time t
   // tMs is current time in ms, t0 is epoch in ms
   const dt_sec = (tMs - t0) / 1000;
-  const M = M0_rad + n * dt_sec;
+  const M = normalizeAngle(M0_rad + n * dt_sec);
 
   // 3. Solve Kepler's Equation for Eccentric Anomaly (E)
   let E: number;
   if (e < 1e-6) {
-    E = M; 
-  } else {
     E = M;
-    for (let i = 0; i < 10; i++) {
-      const dE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+  } else {
+    E = e > 0.8 ? Math.PI : M;
+    let converged = false;
+
+    for (let i = 0; i < 30; i++) {
+      const fE = E - e * Math.sin(E) - M;
+      const fPrime = 1 - e * Math.cos(E);
+      if (Math.abs(fPrime) < 1e-12) break;
+      const dE = fE / fPrime;
       E -= dE;
-      if (Math.abs(dE) < 1e-7) break;
+      if (Math.abs(dE) < 1e-12) {
+        converged = true;
+        break;
+      }
+    }
+
+    // Fallback for extreme eccentricities near periapsis.
+    if (!converged) {
+      let lo = 0;
+      let hi = TWO_PI;
+      for (let i = 0; i < 50; i++) {
+        const mid = 0.5 * (lo + hi);
+        const fMid = mid - e * Math.sin(mid) - M;
+        if (fMid > 0) hi = mid;
+        else lo = mid;
+      }
+      E = 0.5 * (lo + hi);
     }
   }
 

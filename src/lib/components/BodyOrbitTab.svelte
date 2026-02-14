@@ -1,7 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { CelestialBody, RulePack, Barycenter } from '$lib/types';
+  import type { CelestialBody, RulePack } from '$lib/types';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
+  import { AU_KM } from '$lib/constants';
   import OrbitalSlider from './OrbitalSlider.svelte';
 
   export let body: CelestialBody;
@@ -24,6 +25,8 @@
 
   let showAdvancedOrbit = false; 
   let zones: any = null;
+  let minSafePeriapsisAU = 0;
+  let safeMaxE = 0.999;
 
   function init() {
       if (body.roleHint === 'moon') {
@@ -111,6 +114,10 @@
 
   function updateOrbit() {
       if (!body.orbit) return;
+      const boundedE = Math.max(0, Math.min(e, safeMaxE));
+      if (Math.abs(boundedE - e) > 1e-9) {
+          e = parseFloat(boundedE.toFixed(3));
+      }
       body.orbit.elements.a_AU = a_AU;
       body.orbit.elements.e = e;
       body.orbit.elements.i_deg = i_deg;
@@ -120,8 +127,20 @@
       dispatch('update');
   }
 
+  function calculateMinSafePeriapsisAU(): number {
+      if (!parentBody || !parentBody.radiusKm) return 0;
+      const baseSafeKm = parentBody.radiusKm + 50;
+      const leoSafeKm = parentBody.orbitalBoundaries?.minLeoKm
+          ? parentBody.radiusKm + parentBody.orbitalBoundaries.minLeoKm
+          : 0;
+      const safeKm = Math.max(baseSafeKm, leoSafeKm);
+      return safeKm / AU_KM;
+  }
+
   $: peri = a_AU * (1 - e);
   $: aph = a_AU * (1 + e);
+  $: minSafePeriapsisAU = calculateMinSafePeriapsisAU();
+  $: safeMaxE = a_AU > 0 ? Math.max(0, Math.min(0.999, 1 - (minSafePeriapsisAU / a_AU))) : 0.999;
   $: rangeText = body.roleHint === 'moon' 
       ? `Range: ${(peri * 149597870.7).toLocaleString(undefined, {maximumFractionDigits:0})} - ${(aph * 149597870.7).toLocaleString(undefined, {maximumFractionDigits:0})} km`
       : `Range: ${peri.toFixed(3)} - ${aph.toFixed(3)} AU`;
@@ -146,9 +165,15 @@
         <div class="form-group">
             <div class="label-row">
                 <label>Eccentricity</label>
-                <input type="number" step="0.001" min="0" max="0.999" bind:value={e} on:input={updateOrbit} />
+                <input type="number" step="0.001" min="0" max={safeMaxE.toFixed(3)} bind:value={e} on:input={updateOrbit} />
             </div>
-            <input type="range" min="0" max="0.99" step="0.001" bind:value={e} on:input={updateOrbit} class="full-width-slider" />
+            <input type="range" min="0" max={safeMaxE} step="0.001" bind:value={e} on:input={updateOrbit} class="full-width-slider" />
+            <div
+                class="info-row"
+                title="Max eccentricity is limited so periapsis stays above the host's safe altitude (radius + minimum low-orbit floor)."
+            >
+                Max allowed here: {safeMaxE.toFixed(3)}
+            </div>
         </div>
 
         <div class="form-group">
@@ -242,6 +267,11 @@
       margin: 0;
   }
   .full-width-slider input { width: 100%; }
+  .info-row {
+      font-size: 0.8em;
+      color: #888;
+      margin-top: 4px;
+  }
 
   .checkbox-row {
       flex-direction: row;

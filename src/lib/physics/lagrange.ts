@@ -19,6 +19,15 @@ function getPointOnEllipse(a: number, e: number, trueAnomaly: number): { x: numb
     return { x: r * Math.cos(trueAnomaly), y: r * Math.sin(trueAnomaly) };
 }
 
+function rotatePoint(point: { x: number, y: number }, angleRad: number): { x: number, y: number } {
+    const c = Math.cos(angleRad);
+    const s = Math.sin(angleRad);
+    return {
+        x: point.x * c - point.y * s,
+        y: point.x * s + point.y * c
+    };
+}
+
 /**
  * Calculates the positions of the 5 Lagrange points for a two-body system.
  * @param primary The primary body (e.g., a star).
@@ -44,15 +53,23 @@ export function calculateLagrangePoints(primary: CelestialBody, secondary: Celes
     // L2 is beyond M2
     const l2 = { name: 'L2', distance: R + r_L2, angle: 0 };
 
-    // --- L3, L4, L5 using the orbital ellipse ---
-    const secondaryTrueAnomaly = Math.atan2(secondaryPos.y, secondaryPos.x);
+    // --- L3, L4, L5 using the orbital ellipse in the correct orbital frame ---
+    const a = secondary.orbit.elements.a_AU || R;
+    const e = secondary.orbit.elements.e || 0;
+    const omegaRad = ((secondary.orbit.elements.omega_deg || 0) * Math.PI) / 180;
+    const thetaWorld = Math.atan2(secondaryPos.y, secondaryPos.x); // world-frame angle = omega + f
+    const secondaryTrueAnomaly = thetaWorld - omegaRad; // perifocal-frame true anomaly
 
     // L3 is on the opposite side of the primary from the secondary
-    const l3Point = getPointOnEllipse(secondary.orbit.elements.a_AU, secondary.orbit.elements.e, secondaryTrueAnomaly + Math.PI);
+    const l3Perifocal = getPointOnEllipse(a, e, secondaryTrueAnomaly + Math.PI);
 
     // L4 and L5 form equilateral triangles
-    const l4Point = getPointOnEllipse(secondary.orbit.elements.a_AU, secondary.orbit.elements.e, secondaryTrueAnomaly + Math.PI / 3);
-    const l5Point = getPointOnEllipse(secondary.orbit.elements.a_AU, secondary.orbit.elements.e, secondaryTrueAnomaly - Math.PI / 3);
+    const l4Perifocal = getPointOnEllipse(a, e, secondaryTrueAnomaly + Math.PI / 3);
+    const l5Perifocal = getPointOnEllipse(a, e, secondaryTrueAnomaly - Math.PI / 3);
+
+    const l3Point = rotatePoint(l3Perifocal, omegaRad);
+    const l4Point = rotatePoint(l4Perifocal, omegaRad);
+    const l5Point = rotatePoint(l5Perifocal, omegaRad);
 
     return [
         { name: 'L1', x: l1.distance, y: 0, isRotated: false },

@@ -41,6 +41,10 @@
 
   // --- Configurable Visuals ---
   const CLICK_AREA = { base_px: 10, buffer_px: 5 };
+  const MIN_CAMERA_ZOOM = 0.05;
+  const MAX_CAMERA_ZOOM = 500000;
+  const AUTO_ZOOM_MIN_UPDATE_MS = 180;
+  const AUTO_ZOOM_MAX_STEP_RATIO = 1.2;
 
   // --- Canvas and Rendering State ---
   let canvas: HTMLCanvasElement;
@@ -59,6 +63,7 @@
   // This is the pan value used for the current frame's render, to avoid store updates every frame
   let renderPan: PanState = { x: 0, y: 0 };
   let lastAutoZoomTarget: number = 0;
+  let lastAutoZoomUpdateMs = 0;
 
   // --- Interaction State ---
   let isPanning = false;
@@ -102,21 +107,47 @@
   }
 
   $: if (worldPositions.size > 0 && system) {
-    const nodesById = new Map(system.nodes.map(n => [n.id, n]));
-    const distances = Array.from(worldPositions.entries())
-      .map(([id, pos]) => {
-        const node = nodesById.get(id);
-        if (node && node.parentId && worldPositions.has(node.parentId)) {
-          const parentPos = worldPositions.get(node.parentId)!;
-          const dx = pos.x - parentPos.x;
-          const dy = pos.y - parentPos.y;
-          return Math.sqrt(dx * dx + dy * dy);
-        }
-        return 0;
-      })
-      .filter(d => d > 0);
-    const minDistance = distances.length > 0 ? Math.min(...distances) : 0.01;
-    x0_distance = minDistance * 0.1;
+    const orbitAs = system.nodes
+      .filter(n => (n.kind === 'body' || n.kind === 'construct') && n.orbit?.elements?.a_AU)
+      .map(n => n.orbit!.elements.a_AU)
+      .filter(v => Number.isFinite(v) && v > 0);
+    const minA = orbitAs.length > 0 ? Math.min(...orbitAs) : 0.01;
+    x0_distance = Math.max(minA * 0.1, 1e-8);
+  }
+
+  function clampZoom(value: number): number {
+    if (!Number.isFinite(value)) return MIN_CAMERA_ZOOM;
+    return Math.max(MIN_CAMERA_ZOOM, Math.min(MAX_CAMERA_ZOOM, value));
+  }
+
+  function dampedZoomStep(current: number, target: number): number {
+    const safeCurrent = Math.max(current, MIN_CAMERA_ZOOM);
+    const safeTarget = clampZoom(target);
+    const ratio = safeTarget / safeCurrent;
+    const clampedRatio = Math.max(1 / AUTO_ZOOM_MAX_STEP_RATIO, Math.min(AUTO_ZOOM_MAX_STEP_RATIO, ratio));
+    return clampZoom(safeCurrent * clampedRatio);
+  }
+
+  function shouldSuppressAutoZoomNearPeriapsis(nodeId: string): boolean {
+    if (!system) return false;
+    const node = system.nodes.find(n => n.id === nodeId);
+    if (!node || !node.orbit || !node.parentId) return false;
+
+    const e = node.orbit.elements.e || 0;
+    if (e < 0.8) return false;
+
+    const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
+    const nodePos = targetPositions.get(node.id);
+    const parentPos = targetPositions.get(node.parentId);
+    if (!nodePos || !parentPos) return false;
+
+    const dx = nodePos.x - parentPos.x;
+    const dy = nodePos.y - parentPos.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const periapsis = node.orbit.elements.a_AU * (1 - e);
+    if (periapsis <= 0) return false;
+
+    return distance < periapsis * 3;
   }
 
   function fitToPlan(plan: TransitPlan) {
@@ -159,7 +190,7 @@
       const targetHeight = Math.max(height, 0.0001);
       const zoomX = canvas.width / (targetWidth * padding);
       const zoomY = canvas.height / (targetHeight * padding);
-      const targetZoom = Math.min(zoomX, zoomY, 500000); 
+      const targetZoom = clampZoom(Math.min(zoomX, zoomY, 500000));
       cameraMode = 'MANUAL';
       panStore.set({ x: centerX, y: centerY }, { duration: 500 });
       zoomStore.set(targetZoom, { duration: 500 });
@@ -247,7 +278,7 @@
                   const minDimension = Math.min(canvas.width, canvas.height);
                   newZoom = (minDimension / 2) / targetWorldRadius;
               }
-              return { pan: targetPosition, zoom: newZoom };
+              return { pan: targetPosition, zoom: clampZoom(newZoom) };
           }
       }
       if (!targetNode || !targetPosition) return { pan: currentPan, zoom: currentZoom };
@@ -276,18 +307,24 @@
               const minDimension = Math.min(canvas.width, canvas.height);
               newZoom = (minDimension / 2) / targetWorldRadius;
           }
-          return { pan: targetPosition, zoom: newZoom };
+          return { pan: targetPosition, zoom: clampZoom(newZoom) };
       } else {
           if (targetNode.parentId) {
               const parentPos = targetPositions.get(targetNode.parentId);
               if (parentPos) {
                   const dx = targetPosition.x - parentPos.x;
                   const dy = targetPosition.y - parentPos.y;
-                  const distance = Math.sqrt(dx*dx + dy*dy);
+                  const rawDistance = Math.sqrt(dx * dx + dy * dy);
+                  let bodyRadiusAU = 0;
+                  if (targetNode.kind === 'body' && targetNode.radiusKm) {
+                      bodyRadiusAU = targetNode.radiusKm / AU_KM;
+                      if (toytownFactor > 0) bodyRadiusAU = scaleBoxCox(bodyRadiusAU, toytownFactor, x0_distance);
+                  }
+                  const distance = Math.max(rawDistance, bodyRadiusAU * 2, 1e-8);
                   const minDimension = Math.min(canvas.width, canvas.height);
                   const marginFactor = 0.9; 
                   const newZoom = (minDimension / 2 * marginFactor) / distance;
-                  return { pan: targetPosition, zoom: newZoom };
+                  return { pan: targetPosition, zoom: clampZoom(newZoom) };
               }
           }
           let bodyRadius = 0;
@@ -302,7 +339,7 @@
               const minDimension = Math.min(canvas.width, canvas.height);
               newZoom = minDimension / targetWorldSize;
           }
-          return { pan: targetPosition, zoom: newZoom };
+          return { pan: targetPosition, zoom: clampZoom(newZoom) };
       }
   }
 
@@ -313,7 +350,7 @@
       if (targetId) {
           const frame = calculateFrameForNode(targetId);
           panStore.set(frame.pan, { duration: 0 });
-          zoomStore.set(frame.zoom, { duration: 0 });
+          zoomStore.set(clampZoom(frame.zoom), { duration: 0 });
       }
   }
 
@@ -339,7 +376,8 @@
       cameraMode = 'FOLLOW';
       isAnimatingFocus = true;
       const beforeViewport = { pan: get(panStore), zoom: get(zoomStore) };
-      const afterViewport = calculateFrameForNode(targetId);
+      const rawAfterViewport = calculateFrameForNode(targetId);
+      const afterViewport = { ...rawAfterViewport, zoom: clampZoom(rawAfterViewport.zoom) };
       const zoomRatio = Math.max(beforeViewport.zoom, afterViewport.zoom) / Math.min(beforeViewport.zoom, afterViewport.zoom);
       const isLongZoom = zoomRatio > 100;
       const totalDuration = isLongZoom ? 1500 : 750;
@@ -412,9 +450,19 @@
           if (targetPosition) {
               renderPan = targetPosition;
               const idealFrame = calculateFrameForNode(focusedBodyId);
-              if (lastAutoZoomTarget === 0 || Math.abs(idealFrame.zoom - lastAutoZoomTarget) / lastAutoZoomTarget > 0.02) {
-                  zoomStore.set(idealFrame.zoom, { duration: 300 });
-                  lastAutoZoomTarget = idealFrame.zoom;
+              const idealZoom = clampZoom(idealFrame.zoom);
+              const now = performance.now();
+              const tooSoon = now - lastAutoZoomUpdateMs < AUTO_ZOOM_MIN_UPDATE_MS;
+              const suppressNearPeriapsis = shouldSuppressAutoZoomNearPeriapsis(focusedBodyId);
+              const currentZoom = get(zoomStore);
+              const baseZoom = lastAutoZoomTarget > 0 ? lastAutoZoomTarget : currentZoom;
+              const nextZoom = dampedZoomStep(baseZoom, idealZoom);
+              const deltaRatio = Math.abs(nextZoom - baseZoom) / Math.max(baseZoom, MIN_CAMERA_ZOOM);
+
+              if (!suppressNearPeriapsis && !tooSoon && deltaRatio > 0.02) {
+                  zoomStore.set(nextZoom, { duration: 200 });
+                  lastAutoZoomTarget = nextZoom;
+                  lastAutoZoomUpdateMs = now;
               }
           }
       } else {
@@ -561,7 +609,7 @@
           }
       }
       if (clickedNodeId) {
-        if (clickedNodeId === focusedBodyId) zoomStore.set(get(zoomStore) * 2);
+        if (clickedNodeId === focusedBodyId) zoomStore.set(clampZoom(get(zoomStore) * 2));
         else dispatch("focus", clickedNodeId);
       }
   }
@@ -610,7 +658,7 @@
       const mouseY = event.clientY - rect.top;
       const worldPosBeforeZoom = screenToWorld(mouseX, mouseY);
       const zoomFactor = event.deltaY < 0 ? 1.2 : 1 / 1.2;
-      const newZoom = get(zoomStore) * zoomFactor;
+      const newZoom = clampZoom(get(zoomStore) * zoomFactor);
       const newPanX = worldPosBeforeZoom.x - (mouseX - canvas.width / 2) / newZoom;
       const newPanY = worldPosBeforeZoom.y - (mouseY - canvas.height / 2) / newZoom;
       panStore.set({ x: newPanX, y: newPanY }, { duration: 0 });
@@ -878,7 +926,7 @@
                   const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(node.parentId) : worldPositions.get(node.parentId);
                   if (!parentPos) continue;
                   let a = node.orbit.elements.a_AU; const e = node.orbit.elements.e;
-                  if (toytownFactor > 0) { const minDistance = 0.01; const x0_distance = minDistance * 0.1; a = scaleBoxCox(a, toytownFactor, x0_distance); }
+                  if (toytownFactor > 0) a = scaleBoxCox(a, toytownFactor, x0_distance);
                   const apoapsisX = parentPos.x - (a * (1 + e)); const apoapsisY = parentPos.y;
                   const screenPos = worldToScreen(apoapsisX, apoapsisY);
                   ctx.textAlign = 'center';
@@ -1105,7 +1153,6 @@
           for (let i = 0; i < segment.pathPoints.length; i++) {
               let p = segment.pathPoints[i];
               if (toytownFactor > 0 && !plan.isKinematic) { 
-                 const minDistance = 0.01; const x0_distance = minDistance * 0.1;
                  const r = Math.sqrt(p.x*p.x + p.y*p.y); const r_new = scaleBoxCox(r, toytownFactor, x0_distance);
                  const angle = Math.atan2(p.y, p.x); const x_new = r_new * Math.cos(angle); const y_new = r_new * Math.sin(angle);
                  p = { x: x_new, y: y_new };
@@ -1117,7 +1164,6 @@
           if (segment.pathPoints.length > 0) {
               const p0 = segment.pathPoints[0]; let x = p0.x; let y = p0.y;
               if (toytownFactor > 0 && !plan.isKinematic) {
-                 const minDistance = 0.01; const x0_distance = minDistance * 0.1;
                  const r = Math.sqrt(x*x + y*y); const r_new = scaleBoxCox(r, toytownFactor, x0_distance);
                  const angle = Math.atan2(y, x); x = r_new * Math.cos(angle); y = r_new * Math.sin(angle);
               }
@@ -1129,7 +1175,6 @@
   function drawShipMarker(ctx: CanvasRenderingContext2D, pos: {x: number, y: number}) {
       let x = pos.x; let y = pos.y;
       if (toytownFactor > 0) {
-         const minDistance = 0.01; const x0_distance = minDistance * 0.1;
          let r = Math.sqrt(x*x + y*y); const r_new = scaleBoxCox(r, toytownFactor, x0_distance);
          const angle = Math.atan2(y, x); x = r_new * Math.cos(angle); y = r_new * Math.sin(angle);
       }
@@ -1154,7 +1199,7 @@
       const width = maxX - minX; const height = maxY - minY;
       const padding = 1.8; const targetWidth = Math.max(width, 0.1); const targetHeight = Math.max(height, 0.1);
       const zoomX = canvas.width / (targetWidth * padding); const zoomY = canvas.height / (targetHeight * padding);
-      const targetZoom = Math.min(zoomX, zoomY, 500); cameraMode = 'MANUAL';
+      const targetZoom = clampZoom(Math.min(zoomX, zoomY, 500)); cameraMode = 'MANUAL';
       panStore.set({ x: centerX, y: centerY }, { duration: 500 }); zoomStore.set(targetZoom, { duration: 500 });
   }
 </script>
