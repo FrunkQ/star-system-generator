@@ -11,7 +11,7 @@ export class TravellerAPI {
     async getSectors(): Promise<Sector[]> {
         try {
             const response = await fetch(API_BASE, {
-                headers: { 'User-Agent': 'StarSystemExplorer/1.7.1' }
+                headers: { 'User-Agent': 'StarSystemExplorer/1.7.2' }
             });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             
@@ -54,7 +54,7 @@ export class TravellerAPI {
         const url = `${API_BASE}/${encodeURIComponent(sectorAbbr)}/${subsectorIndex}/tab`;
         try {
             const response = await fetch(url, {
-                headers: { 'User-Agent': 'StarSystemExplorer/1.7.1' }
+                headers: { 'User-Agent': 'StarSystemExplorer/1.7.2' }
             });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return await response.text();
@@ -68,7 +68,7 @@ export class TravellerAPI {
         const url = `${API_BASE}/${encodeURIComponent(sectorName)}`;
         try {
             const response = await fetch(url, {
-                headers: { 'User-Agent': 'StarSystemExplorer/1.7.1' }
+                headers: { 'User-Agent': 'StarSystemExplorer/1.7.2' }
             });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return await response.text();
@@ -78,3 +78,4 @@ export class TravellerAPI {
         }
     }
 }
+

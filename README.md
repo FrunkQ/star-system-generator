@@ -181,6 +181,20 @@ You can preview the production build with `npm run preview`.
 
 ## Known Issues
 
+### v1.7.2 Changelog (14th Feb 2026)
+*   **Transit Planner (GM Override)**:
+    *   Kept `Execute Journey` disabled behavior for impossible/insufficient-fuel plans.
+    *   Added blocked-execution dialog on click with explicit failure reason.
+    *   Added **Force Journey** action for GM repositioning: executes transfer without capability gating and without fuel deduction.
+*   **System Summary Menu Filtering**:
+    *   Added name filter input at the top of System Summary context lists.
+    *   Supports case-insensitive substring matching (middle-of-name matches).
+    *   Filter now resets on each new menu open and after selection.
+*   **PWA / Offline Installability**:
+    *   Added installable web app manifest and service worker.
+    *   Added offline caching for app shell/runtime assets.
+    *   Added in-app update detection prompt when a new service worker version is available.
+
 ### v1.7.1 Changelog (14th Feb 2026)
 *   **Storage Reliability**:
     *   Replaced large starmap persistence from `localStorage` with IndexedDB-backed async storage.

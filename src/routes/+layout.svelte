@@ -1,11 +1,60 @@
 <script lang="ts">
+	import { onDestroy, onMount } from 'svelte';
 	import favicon from '$lib/assets/favicon.svg';
 
 	let { children } = $props();
+	let swUpdateInterval: ReturnType<typeof setInterval> | undefined;
+
+	onMount(() => {
+		if (!('serviceWorker' in navigator)) return;
+
+		let refreshing = false;
+		navigator.serviceWorker.addEventListener('controllerchange', () => {
+			if (refreshing) return;
+			refreshing = true;
+			window.location.reload();
+		});
+
+		navigator.serviceWorker
+			.register('/sw.js')
+			.then((registration) => {
+				registration.update();
+
+				registration.addEventListener('updatefound', () => {
+					const nextWorker = registration.installing;
+					if (!nextWorker) return;
+
+					nextWorker.addEventListener('statechange', () => {
+						if (nextWorker.state === 'installed' && navigator.serviceWorker.controller) {
+							const applyUpdate = window.confirm(
+								'A new version is available. Reload now to update?'
+							);
+							if (applyUpdate) {
+								nextWorker.postMessage({ type: 'SKIP_WAITING' });
+							}
+						}
+					});
+				});
+
+				// Poll for updates roughly hourly while app is open.
+				swUpdateInterval = setInterval(() => registration.update(), 60 * 60 * 1000);
+			})
+			.catch((err) => console.error('Service worker registration failed:', err));
+	});
+
+	onDestroy(() => {
+		if (swUpdateInterval) clearInterval(swUpdateInterval);
+	});
 </script>
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
+	<link rel="manifest" href="/manifest.webmanifest" />
+	<meta name="theme-color" content="#1a1a1a" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+	<meta name="apple-mobile-web-app-title" content="Star System Explorer" />
+	<link rel="apple-touch-icon" href="/images/ui/SSE-Image.png" />
 </svelte:head>
 
 {@render children?.()}
