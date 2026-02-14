@@ -42,7 +42,9 @@
   // --- Configurable Visuals ---
   const CLICK_AREA = { base_px: 10, buffer_px: 5 };
   const MIN_CAMERA_ZOOM = 0.05;
-  const MAX_CAMERA_ZOOM = 500000;
+  // In AU render space, very close binaries/constructs (e.g. ~100 km separation)
+  // require very high zoom to be visually distinguishable.
+  const MAX_CAMERA_ZOOM = 50000000;
   const AUTO_ZOOM_MIN_UPDATE_MS = 180;
   const AUTO_ZOOM_MAX_STEP_RATIO = 1.2;
 
@@ -190,7 +192,7 @@
       const targetHeight = Math.max(height, 0.0001);
       const zoomX = canvas.width / (targetWidth * padding);
       const zoomY = canvas.height / (targetHeight * padding);
-      const targetZoom = clampZoom(Math.min(zoomX, zoomY, 500000));
+      const targetZoom = clampZoom(Math.min(zoomX, zoomY, MAX_CAMERA_ZOOM));
       cameraMode = 'MANUAL';
       panStore.set({ x: centerX, y: centerY }, { duration: 500 });
       zoomStore.set(targetZoom, { duration: 500 });
