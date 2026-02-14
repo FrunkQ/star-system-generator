@@ -2739,7 +2739,7 @@
       "kind": "construct",
       "roleHint": "ship",
       "class": "Ship/Standard/Transport/SSTO",
-      "description": "A shimmering stainless steel tower. This reusable heavy lifter is capable of Single-Stage-To-Orbit with 100t of cargo. Uses 30 massive Methalox Raptors.",
+      "description": "A shimmering stainless steel tower. This reusable heavy lifter is capable of Single-Stage-To-Orbit with 100t of cargo. Uses 30 massive Methalox Engines.",
       "gmNotes": "The workhorse of the new era. Capable of landing on Mars or Earth.",
       "IsTemplate": false,
       "icon_type": "triangle",

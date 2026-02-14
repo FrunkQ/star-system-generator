@@ -1,10 +1,11 @@
-const STATIC_CACHE = 'sse-static-v1.7.1';
-const RUNTIME_CACHE = 'sse-runtime-v1.7.1';
+const STATIC_CACHE = 'sse-static-v1.8.3';
+const RUNTIME_CACHE = 'sse-runtime-v1.8.3';
 
 const PRECACHE_URLS = [
   '/',
   '/manifest.webmanifest',
   '/robots.txt',
+  '/images/ui/SSE-Icon480x480.png',
   '/pwa/icon-192.png',
   '/pwa/icon-512.png'
 ];
