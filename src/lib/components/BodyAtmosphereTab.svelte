@@ -139,6 +139,13 @@
       applyChanges();
   }
 
+  function updateGasFractionFromText(gas: string, rawValue: string) {
+      const parsed = parseFloat(rawValue);
+      if (!isFinite(parsed)) return;
+      const clamped = Math.max(0, Math.min(100, parsed));
+      updateGasFraction(gas, clamped);
+  }
+
   function addGas(gas: string) {
       if (!body.atmosphere) return;
       if (body.atmosphere.composition[gas]) return;
@@ -426,7 +433,17 @@
                             value={fraction * 100} 
                             on:input={(e) => updateGasFraction(gas, parseFloat(e.currentTarget.value))}
                         />
-                        <span class="gas-val">{(fraction * 100).toFixed(1)}%</span>
+                        <input
+                            class="gas-val-input"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.001"
+                            value={(fraction * 100).toFixed(3)}
+                            on:change={(e) => updateGasFractionFromText(gas, e.currentTarget.value)}
+                            on:blur={(e) => updateGasFractionFromText(gas, e.currentTarget.value)}
+                            title="Gas percentage (0-100), supports 3 decimal places"
+                        />
                         <button class="remove-btn" on:click={() => removeGas(gas)} title="Remove Gas">×</button>
                     </div>
                     {#if activeTags.length > 0}
@@ -583,11 +600,16 @@
       cursor: help;
   }
   .gas-row input[type="range"] { flex: 1; }
-  .gas-val {
-      width: 55px;
+  .gas-val-input {
+      width: 72px;
       text-align: right;
       font-family: monospace;
       font-size: 0.85em;
+      background: #1f1f1f;
+      border: 1px solid #555;
+      color: #eee;
+      padding: 2px 4px;
+      border-radius: 3px;
   }
   .remove-btn {
       background: none;
