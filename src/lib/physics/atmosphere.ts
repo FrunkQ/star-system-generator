@@ -2,6 +2,58 @@ import type { Atmosphere, RulePack, CelestialBody, Barycenter, Tag } from '../ty
 import { evaluateTagTriggers } from '../utils';
 import { G, UNIVERSAL_GAS_CONSTANT } from '../constants';
 
+function clamp(value: number, min: number, max: number): number {
+    return Math.max(min, Math.min(max, value));
+}
+
+type GreenhouseModelConfig = {
+    cryoNoPenaltyAboveK: number;
+    cryoBaseK: number;
+    cryoExponent: number;
+    cryoMinFactor: number;
+    responseScale: number;
+    responseK: number;
+    denseCo2BoostStartBar: number;
+    denseCo2BoostDenominator: number;
+    denseCo2BoostMax: number;
+};
+
+function getGreenhouseModelConfig(rulePack: RulePack): GreenhouseModelConfig {
+    const cfg = rulePack.climateModel?.greenhouse || {};
+    return {
+        cryoNoPenaltyAboveK: cfg.cryoNoPenaltyAboveK ?? 200,
+        cryoBaseK: cfg.cryoBaseK ?? 200,
+        cryoExponent: cfg.cryoExponent ?? 3,
+        cryoMinFactor: cfg.cryoMinFactor ?? 0.03,
+        responseScale: cfg.responseScale ?? 205,
+        responseK: cfg.responseK ?? 0.03,
+        denseCo2BoostStartBar: cfg.denseCo2BoostStartBar ?? 1,
+        denseCo2BoostDenominator: cfg.denseCo2BoostDenominator ?? 40,
+        denseCo2BoostMax: cfg.denseCo2BoostMax ?? 1.0
+    };
+}
+
+function getCryoOverlapFactor(emittingTempK: number, model: GreenhouseModelConfig): number {
+    // Keep non-cryo worlds (e.g. Venus/Earth) in full-overlap regime.
+    // Apply attenuation only in true cryogenic regimes.
+    if (emittingTempK >= model.cryoNoPenaltyAboveK) return 1.0;
+    return clamp(
+        Math.pow(emittingTempK / model.cryoBaseK, model.cryoExponent),
+        model.cryoMinFactor,
+        1.0
+    );
+}
+
+function getCiaStrength(pressureBar: number): number {
+    // Collision-induced absorption proxy (strongest in dense atmospheres, especially with H2).
+    return clamp(0.02 * pressureBar * pressureBar, 0, 1.5);
+}
+
+function getEffectiveGreenhousePressure(pressureBar: number): number {
+    if (pressureBar > 1000) return 1;
+    return Math.min(pressureBar, 200);
+}
+
 export function calculateMolarMass(atmosphere: Atmosphere, pack: RulePack): number {
   let totalMolarMass = 0;
   
@@ -87,35 +139,57 @@ export function calculateGreenhouseEffect(body: CelestialBody, rulePack: RulePac
 
     const atm = body.atmosphere;
     const pressure = atm.pressure_bar || 0;
+    const model = getGreenhouseModelConfig(rulePack);
     
     // Cap effective pressure for greenhouse calc to prevent runaway heating on Gas Giants
     // For Gas Giants (huge pressure), we care about the cloud-top (1-10 bar) temperature for "surface" stats.
     // Deep layers are adiabatically heated but don't count as the radiative surface.
-    let effectivePressure = pressure;
-    if (pressure > 1000) {
-        effectivePressure = 1; // Use 1-bar level as the "Surface" for radiative balance
-    } else {
-        effectivePressure = Math.min(pressure, 200); // Allow Venus (90 bar) but cap runaways
-    }
+    const effectivePressure = getEffectiveGreenhousePressure(pressure);
     
     let totalDeltaT = 0;
 
-    // V1.4.0 Hybrid Square-Root-Log Greenhouse Model
-    // DeltaT = Multiplier * Sum( GasPot * ln(1 + sqrt(100 * partialPressure)) )
-    // We also apply "Pressure Broadening" (sqrt(P_total)) to account for line narrowing in thin atmospheres.
-    const multiplier = 6.0; 
+    // Cryogenic spectral-overlap attenuation and CIA support.
+    const emittingTempK = body.equilibriumTempK || body.temperatureK || 288;
+    const cryoOverlap = getCryoOverlapFactor(emittingTempK, model);
+    const ciaStrength = getCiaStrength(effectivePressure);
+
+    // Hybrid square-root-log greenhouse forcing with cryo + CIA modifiers.
+    // Final forcing->temperature response is saturated to avoid runaway overestimation
+    // in very dense atmospheres (e.g., Venus-like CO2 envelopes).
     const broadening = Math.min(1.0, Math.sqrt(effectivePressure));
 
     for (const [gas, fraction] of Object.entries(atm.composition)) {
         const physics = rulePack.gasPhysics[gas];
         if (physics && physics.greenhouse > 0) {
             const pp = effectivePressure * fraction;
-            const gasContribution = physics.greenhouse * Math.log(1 + Math.sqrt(100 * pp));
+            const baseContribution = physics.greenhouse * Math.log(1 + Math.sqrt(100 * pp));
+            const ciaFactor = gas === 'H2'
+                ? (1 + (2.0 * ciaStrength))
+                : (1 + (0.5 * ciaStrength));
+            const gasContribution = baseContribution * cryoOverlap * ciaFactor;
             totalDeltaT += gasContribution;
         }
     }
 
-    return Math.max(0, totalDeltaT * multiplier * broadening);
+    const ppCo2 = effectivePressure * (atm.composition['CO2'] || 0);
+    const denseCo2Boost = 1 + clamp(
+        (ppCo2 - model.denseCo2BoostStartBar) / model.denseCo2BoostDenominator,
+        0,
+        model.denseCo2BoostMax
+    );
+    const forcing = totalDeltaT * broadening * denseCo2Boost;
+    return Math.max(0, model.responseScale * Math.log(1 + (model.responseK * forcing)));
+}
+
+export function isCryoImpactedGreenhouseGas(body: CelestialBody, gas: string, rulePack: RulePack): boolean {
+    if (!body.atmosphere || !rulePack.gasPhysics) return false;
+    const fraction = body.atmosphere.composition?.[gas] || 0;
+    if (fraction <= 0) return false;
+    const physics = rulePack.gasPhysics[gas];
+    if (!physics || physics.greenhouse <= 0) return false;
+    const emittingTempK = body.equilibriumTempK || body.temperatureK || 288;
+    const model = getGreenhouseModelConfig(rulePack);
+    return getCryoOverlapFactor(emittingTempK, model) < 0.95;
 }
 
 /**

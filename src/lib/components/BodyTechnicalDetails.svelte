@@ -3,6 +3,8 @@
   import { calculateOrbitalBoundaries, type OrbitalBoundaries, type PlanetData } from "$lib/physics/orbits";
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { calculateDeltaVBudgets, calculateSurfaceTemperature, calculateGreenhouseEffect } from '$lib/system/postprocessing';
+  import { isCryoImpactedGreenhouseGas } from '$lib/physics/atmosphere';
+  import { composeSurfaceTemperatureFromDeltaComponents } from '$lib/physics/temperature';
   import { systemStore } from '$lib/stores';
   import { get } from 'svelte/store';
   import { calculateSurfaceRadiation } from '$lib/physics/radiation';
@@ -20,8 +22,10 @@
   let surfaceTempC: number | null = null;
   let minTempC: number | null = null;
   let maxTempC: number | null = null;
-  let hotSideTempC: number | null = null;
-  let coldSideTempC: number | null = null;
+  let dayMinTempC: number | null = null;
+  let dayMaxTempC: number | null = null;
+  let nightMinTempC: number | null = null;
+  let nightMaxTempC: number | null = null;
   let massDisplay: string | null = null;
   let radiationLevel: string | null = null;
   let surfaceGravityG: number | null = null;
@@ -50,8 +54,10 @@
     surfaceGravityG = null;    
     densityRelative = null;
     surfaceTempC = null;
-    hotSideTempC = null;
-    coldSideTempC = null;
+    dayMinTempC = null;
+    dayMaxTempC = null;
+    nightMinTempC = null;
+    nightMaxTempC = null;
     massDisplay = null;
     radiationLevel = null;
     orbitalDistanceDisplay = null;
@@ -230,42 +236,85 @@
         }
 
         if (body.temperatureK) {
-            if (body.tidallyLocked) {
-                hotSideTempC = body.temperatureK * 1.41 - 273.15; // Simplified model for hot side
-                coldSideTempC = body.temperatureK * 0.5 - 273.15; // Simplified model for cold side
-                
-                // If atmosphere is thick, equalize
-                if (body.atmosphere && body.atmosphere.pressure_bar > 1) {
-                    const factor = 1 / (1 + body.atmosphere.pressure_bar);
-                    hotSideTempC = (body.temperatureK * (1 + 0.41 * factor)) - 273.15;
-                    coldSideTempC = (body.temperatureK * (1 - 0.5 * factor)) - 273.15;
-                }
-            } else {
-                surfaceTempC = body.temperatureK - 273.15;
-                
-                // Prefer post-processed multi-star/barycenter-aware range when available.
-                const eqMinK = typeof (body as any).equilibriumTempMinK === 'number' ? (body as any).equilibriumTempMinK : null;
-                const eqMaxK = typeof (body as any).equilibriumTempMaxK === 'number' ? (body as any).equilibriumTempMaxK : null;
-                const additiveK = (body.greenhouseTempK || 0) + (body.tidalHeatK || 0) + (body.radiogenicHeatK || 0);
+            surfaceTempC = body.temperatureK - 273.15;
+            
+            // Prefer post-processed multi-star/barycenter-aware range when available.
+            const eqMinK = typeof (body as any).equilibriumTempMinK === 'number' ? (body as any).equilibriumTempMinK : null;
+            const eqMaxK = typeof (body as any).equilibriumTempMaxK === 'number' ? (body as any).equilibriumTempMaxK : null;
+            const greenhouseK = body.greenhouseTempK || 0;
+            const tidalK = body.tidalHeatK || 0;
+            const radiogenicK = body.radiogenicHeatK || 0;
+            const internalK = body.internalHeatK || 0;
+            const pressureBar = body.atmosphere?.pressure_bar || 0;
 
-                if (eqMinK !== null && eqMaxK !== null) {
-                    minTempC = (eqMinK + additiveK) - 273.15;
-                    maxTempC = (eqMaxK + additiveK) - 273.15;
-                } else if (body.orbit && body.equilibriumTempK) {
-                    // Fallback for legacy bodies that do not have precomputed ranges.
-                    const e = body.orbit.elements.e;
-                    const pressure = body.atmosphere?.pressure_bar || 0;
-                    const orbitMax = Math.sqrt(1 / (1 - e));
-                    const orbitMin = Math.sqrt(1 / (1 + e));
-                    const variability = 0.4 / (1 + pressure);
-                    const tEq = body.equilibriumTempK;
-                    const tMaxK = (tEq * orbitMax * (1 + variability)) + additiveK;
-                    const tMinK = (tEq * orbitMin * (1 - variability)) + additiveK;
-                    maxTempC = tMaxK - 273.15;
-                    minTempC = tMinK - 273.15;
-                }
+            if (pressureBar < 0.01 && body.roleHint !== 'star') {
+                // Airless/near-airless worlds should expose large day/night surface swings.
+                const tEq = body.equilibriumTempK || 0;
+                const eqMinAirless = Math.max(3, tEq * 0.5);
+                const eqMaxAirless = tEq * 1.45;
+                minTempC = composeSurfaceTemperatureFromDeltaComponents(eqMinAirless, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
+                maxTempC = composeSurfaceTemperatureFromDeltaComponents(eqMaxAirless, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
+            } else if (eqMinK !== null && eqMaxK !== null) {
+                minTempC = composeSurfaceTemperatureFromDeltaComponents(eqMinK, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
+                maxTempC = composeSurfaceTemperatureFromDeltaComponents(eqMaxK, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
+            } else if (body.orbit && body.equilibriumTempK) {
+                // Fallback for legacy bodies that do not have precomputed ranges.
+                const e = body.orbit.elements.e;
+                const pressure = body.atmosphere?.pressure_bar || 0;
+                const orbitMax = Math.sqrt(1 / (1 - e));
+                const orbitMin = Math.sqrt(1 / (1 + e));
+                const variability = 0.4 / (1 + pressure);
+                const tEq = body.equilibriumTempK;
+                const tEqMaxK = tEq * orbitMax * (1 + variability);
+                const tEqMinK = tEq * orbitMin * (1 - variability);
+                const tMaxK = composeSurfaceTemperatureFromDeltaComponents(tEqMaxK, greenhouseK, tidalK, radiogenicK, internalK);
+                const tMinK = composeSurfaceTemperatureFromDeltaComponents(tEqMinK, greenhouseK, tidalK, radiogenicK, internalK);
+                maxTempC = tMaxK - 273.15;
+                minTempC = tMinK - 273.15;
             }
-            tempTooltip = `Equilibrium: ${Math.round((body.equilibriumTempK || 0) - 273.15)}°C | Greenhouse: +${Math.round(body.greenhouseTempK || 0)}°C | Tidal: +${Math.round(body.tidalHeatK || 0)}°C | Radiogenic: +${Math.round(body.radiogenicHeatK || 0)}°C`;
+
+            if (surfaceTempC !== null) {
+                const cMin = minTempC ?? surfaceTempC;
+                const cMax = maxTempC ?? surfaceTempC;
+                const orbitalHalfRange = Math.max(0, (cMax - cMin) * 0.5);
+                const pressureMix = Math.max(0, Math.min(1, pressureBar / (pressureBar + 0.5)));
+
+                if (pressureBar < 0.01 && body.roleHint !== 'star') {
+                    // Airless bodies: compute lit/dark hemispheres directly from equilibrium,
+                    // then layer greenhouse/tidal/internal components consistently.
+                    const tEq = body.equilibriumTempK || 0;
+                    const dayMinEq = Math.max(3, tEq * (body.tidallyLocked ? 0.78 : 0.70));
+                    const dayMaxEq = tEq * (body.tidallyLocked ? 1.45 : 1.35);
+                    const nightMinEq = Math.max(3, tEq * (body.tidallyLocked ? 0.33 : 0.40));
+                    const nightMaxEq = tEq * (body.tidallyLocked ? 0.72 : 0.85);
+
+                    dayMinTempC = composeSurfaceTemperatureFromDeltaComponents(dayMinEq, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
+                    dayMaxTempC = composeSurfaceTemperatureFromDeltaComponents(dayMaxEq, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
+                    nightMinTempC = composeSurfaceTemperatureFromDeltaComponents(nightMinEq, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
+                    nightMaxTempC = composeSurfaceTemperatureFromDeltaComponents(nightMaxEq, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
+                } else {
+                    // Atmosphere damps day/night swings.
+                    let dayNightSpanC = (1 - pressureMix) * 70 + 8;
+                    if (body.tidallyLocked) {
+                        dayNightSpanC *= 1.15;
+                    }
+                    const latitudinalSpanC = (1 - pressureMix) * 35 + 20;
+
+                    const dayCenter = surfaceTempC + dayNightSpanC * 0.35;
+                    const nightCenter = surfaceTempC - dayNightSpanC * 0.65;
+
+                    dayMinTempC = dayCenter - (orbitalHalfRange + latitudinalSpanC * 0.7);
+                    dayMaxTempC = dayCenter + (orbitalHalfRange + latitudinalSpanC * 0.5);
+                    nightMinTempC = nightCenter - (orbitalHalfRange + latitudinalSpanC * 0.8);
+                    nightMaxTempC = nightCenter + (orbitalHalfRange + latitudinalSpanC * 0.3);
+                }
+
+                dayMinTempC = Math.max(-273, dayMinTempC);
+                dayMaxTempC = Math.max(dayMinTempC, dayMaxTempC);
+                nightMinTempC = Math.max(-273, nightMinTempC);
+                nightMaxTempC = Math.max(nightMinTempC, nightMaxTempC);
+            }
+            tempTooltip = `Equilibrium: ${Math.round((body.equilibriumTempK || 0) - 273.15)}°C | Greenhouse: +${Math.round(body.greenhouseTempK || 0)}°C | Internal: +${Math.round(body.internalHeatK || 0)}°C | Tidal: +${Math.round(body.tidalHeatK || 0)}°C | Radiogenic: +${Math.round(body.radiogenicHeatK || 0)}°C`;
         }
     }
 
@@ -541,16 +590,7 @@
           </div>
       {/if}
 
-      {#if hotSideTempC !== null && coldSideTempC !== null}
-          <div class="detail-item" title={tempTooltip}>
-              <span class="label">Day-side Temp.</span>
-              <span class="value">{Math.round(hotSideTempC)} °C</span>
-          </div>
-          <div class="detail-item" title={tempTooltip}>
-              <span class="label">Night-side Temp.</span>
-              <span class="value">{Math.round(coldSideTempC)} °C</span>
-          </div>
-      {:else if isStar && body.temperatureK}
+      {#if isStar && body.temperatureK}
           <div class="detail-item" title="{Math.round(body.temperatureK - 273.15)} °C">
               <span class="label">Surface Temperature</span>
               <span class="value">{Math.round(body.temperatureK).toLocaleString()} K</span>
@@ -562,6 +602,21 @@
               {#if minTempC !== null && maxTempC !== null}
                   <div style="font-size: 0.8em; color: #aaa; margin-top: 2px;">
                       Range: {Math.round(minTempC)}°C to {Math.round(maxTempC)}°C
+                  </div>
+              {/if}
+              {#if dayMinTempC !== null && dayMaxTempC !== null}
+                  <div style="font-size: 0.8em; color: #ddd; margin-top: 2px;">
+                      Day-side: {Math.round(dayMinTempC)}°C to {Math.round(dayMaxTempC)}°C
+                  </div>
+              {/if}
+              {#if nightMinTempC !== null && nightMaxTempC !== null}
+                  <div style="font-size: 0.8em; color: #9ec7ff; margin-top: 2px;">
+                      Night-side: {Math.round(nightMinTempC)}°C to {Math.round(nightMaxTempC)}°C
+                  </div>
+              {/if}
+              {#if body.tags?.some(t => t.key === 'tidal/hotspots')}
+                  <div style="font-size: 0.8em; color: #ffb366; margin-top: 2px;">
+                      Tidal forces cause localized hotspots despite modest global average warming.
                   </div>
               {/if}
           </div>
@@ -607,7 +662,12 @@
                       {#each Object.entries(body.atmosphere.composition) as [gas, percent]}
                           {#if percent > 0.001}
                               <div class="gas">
-                                  <span class="gas-name">{gas}</span>
+                                  <span class="gas-name">
+                                      {gas}
+                                      {#if isCryoImpactedGreenhouseGas(body, gas, rulePack)}
+                                          <span class="cryo-icon" title="Cryo Temps - Greenhouse effects lower due to spectral shift">❄</span>
+                                      {/if}
+                                  </span>
                                   <span class="gas-percent">{(percent * 100).toFixed(1)}%</span>
                               </div>
                           {/if}
@@ -787,6 +847,11 @@
   .gas-name {
     font-weight: bold;
   }
+  .cryo-icon {
+    margin-left: 4px;
+    color: #88ccff;
+    cursor: help;
+  }
   .gas-percent {
     margin-left: 0.5em;
     color: #ccc;
@@ -845,3 +910,4 @@
     color: #eee;
   }
 </style>
+

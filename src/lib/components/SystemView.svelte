@@ -37,7 +37,7 @@
   import { broadcastService } from '$lib/broadcast';
   import { sanitizeSystem } from '$lib/system/utils';
   import { calculateAllStellarZones } from '$lib/physics/zones';
-  import { calculateEquilibriumTemperature } from '$lib/physics/temperature';
+  import { calculateEquilibriumTemperature, composeSurfaceTemperatureFromDeltaComponents, estimateBondAlbedo, estimateInternalHeatK } from '$lib/physics/temperature';
 
   export let system: System;
   export let rulePack: RulePack;
@@ -395,9 +395,16 @@
       // It doesn't strictly need newPlanet to be IN the array, unless we traverse UP from it?
       // No, the function uses 'allNodes.find(n => n.id === body.parentId)'.
       // So as long as the parent is in allNodes, we are good.
-      const tempK = calculateEquilibriumTemperature(newPlanet, $systemStore.nodes);
+      const tempK = calculateEquilibriumTemperature(newPlanet, $systemStore.nodes, estimateBondAlbedo(newPlanet));
       newPlanet.equilibriumTempK = tempK;
-      newPlanet.temperatureK = tempK + (newPlanet.greenhouseTempK || 0) + (newPlanet.tidalHeatK || 0) + (newPlanet.radiogenicHeatK || 0);
+      newPlanet.internalHeatK = estimateInternalHeatK(newPlanet, rulePack);
+      newPlanet.temperatureK = composeSurfaceTemperatureFromDeltaComponents(
+          tempK,
+          newPlanet.greenhouseTempK || 0,
+          newPlanet.tidalHeatK || 0,
+          newPlanet.radiogenicHeatK || 0,
+          newPlanet.internalHeatK || 0
+      );
 
       // 5. Commit & Focus
       systemStore.update(s => {
@@ -1727,10 +1734,10 @@
         </button>
         <button on:click={() => {
             if ($systemStore) {
-                const newSys = sanitizeSystem($systemStore, rulePack);
-                // Always update because we run full physics recalculation now
-                systemStore.set(newSys);
-                alert('System updated: Fixed legacy constructs/rings and recalculated all physics (Temp/Radiation).');
+                const repaired = sanitizeSystem($systemStore, rulePack);
+                const fullyReprocessed = systemProcessor.process({ ...repaired, nodes: repaired.nodes }, rulePack);
+                systemStore.set({ ...fullyReprocessed, isManuallyEdited: true });
+                alert('System updated: Fixed legacy constructs/rings and fully reprocessed system physics/classification.');
             }
         }}>Update & Repair System</button>
     </div>

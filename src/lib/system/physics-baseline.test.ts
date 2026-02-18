@@ -174,9 +174,10 @@ describe('Solar System Physics Baseline', () => {
         expect(neptune.temperatureK).toBeLessThan(150);
 
         // --- Tidal Physics ---
-        // Io: Extreme Tidal Heating
-        // Should be significant (> 100K contribution)
-        expect(io.tidalHeatK).toBeGreaterThan(100);
+        // Io: strong tidal activity should manifest as hotspots with modest global mean warming.
+        expect(io.tidalHeatK).toBeGreaterThan(4);
+        expect(io.tidalHeatK).toBeLessThanOrEqual(5);
+        expect(io.tags?.some(t => t.key === 'tidal/hotspots')).toBe(true);
 
         // --- Habitability ---
         expect(earth.habitabilityScore).toBeGreaterThan(90);

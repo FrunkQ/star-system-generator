@@ -4,7 +4,7 @@ import { AU_KM, G } from '../constants';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, calculateGreenhouseEffect, recalculateAtmosphereDerivedProperties } from '../physics/atmosphere';
 import { calculateHabitabilityScore } from '../physics/habitability';
-import { calculateEquilibriumTemperature, calculateEquilibriumTemperatureRange } from '../physics/temperature';
+import { calculateEquilibriumTemperature, calculateEquilibriumTemperatureRange, estimateBondAlbedo, composeSurfaceTemperatureFromDeltaComponents, estimateInternalHeatK } from '../physics/temperature';
 import { calculateSurfaceRadiation } from '../physics/radiation';
 import { annotateGravitationalStability } from '../physics/stability';
 import { reconcileBarycenters } from '../physics/barycenterReconcile';
@@ -17,7 +17,7 @@ export { calculateMolarMass, calculateGreenhouseEffect, calculateHabitabilitySco
  * Mutates the body object.
  */
 export function calculateSurfaceTemperature(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[]) {
-    const albedo = body.albedo !== undefined ? body.albedo : 0.3;
+    const albedo = estimateBondAlbedo(body);
     const equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedo);
     const range = calculateEquilibriumTemperatureRange(body, allNodes, albedo);
     
@@ -26,7 +26,13 @@ export function calculateSurfaceTemperature(body: CelestialBody, allNodes: (Cele
         (body as any).equilibriumTempMinK = range.minK;
         (body as any).equilibriumTempMaxK = range.maxK;
         // Total Temp will be finalized after greenhouse is calculated in recalculateAtmosphereDerivedProperties
-        body.temperatureK = equilibriumTempK + (body.greenhouseTempK || 0) + (body.tidalHeatK || 0) + (body.radiogenicHeatK || 0);
+        body.temperatureK = composeSurfaceTemperatureFromDeltaComponents(
+            equilibriumTempK,
+            body.greenhouseTempK || 0,
+            body.tidalHeatK || 0,
+            body.radiogenicHeatK || 0,
+            body.internalHeatK || 0
+        );
     }
 }
 
@@ -48,7 +54,14 @@ export function recalculateSystemPhysics(system: System, rulePack: RulePack): Sy
             recalculateAtmosphereDerivedProperties(body, system.nodes, rulePack);
 
             // 3. Finalize Surface Temp (now that Greenhouse is updated)
-            body.temperatureK = (body.equilibriumTempK || 0) + (body.greenhouseTempK || 0) + (body.tidalHeatK || 0) + (body.radiogenicHeatK || 0);
+            body.internalHeatK = estimateInternalHeatK(body, rulePack);
+            body.temperatureK = composeSurfaceTemperatureFromDeltaComponents(
+                body.equilibriumTempK || 0,
+                body.greenhouseTempK || 0,
+                body.tidalHeatK || 0,
+                body.radiogenicHeatK || 0,
+                body.internalHeatK || 0
+            );
 
             // 4. Finalize Surface Radiation (now that Shielding is updated)
             body.surfaceRadiation = calculateSurfaceRadiation(body, system.nodes, rulePack);
@@ -124,7 +137,14 @@ export function processSystemData(system: System, rulePack: RulePack): System {
             recalculateAtmosphereDerivedProperties(body, system.nodes, rulePack);
             
             // Finalize Temperature
-            body.temperatureK = (body.equilibriumTempK || 0) + (body.greenhouseTempK || 0) + (body.tidalHeatK || 0) + (body.radiogenicHeatK || 0);
+            body.internalHeatK = estimateInternalHeatK(body, rulePack);
+            body.temperatureK = composeSurfaceTemperatureFromDeltaComponents(
+                body.equilibriumTempK || 0,
+                body.greenhouseTempK || 0,
+                body.tidalHeatK || 0,
+                body.radiogenicHeatK || 0,
+                body.internalHeatK || 0
+            );
             // Finalize Radiation
             body.surfaceRadiation = calculateSurfaceRadiation(body, system.nodes, rulePack);
 

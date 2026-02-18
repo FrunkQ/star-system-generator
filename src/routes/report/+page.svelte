@@ -114,6 +114,7 @@
       const parts = [];
       if (b.equilibriumTempK) parts.push(`Eq: ${Math.round(b.equilibriumTempK)}K`);
       if (b.greenhouseTempK) parts.push(`G.House: +${Math.round(b.greenhouseTempK)}K`);
+      if (b.internalHeatK) parts.push(`Internal: +${Math.round(b.internalHeatK)}K`);
       if (b.tidalHeatK) parts.push(`Tidal: +${Math.round(b.tidalHeatK)}K`);
       if (b.radiogenicHeatK) parts.push(`Core: +${Math.round(b.radiogenicHeatK)}K`);
       

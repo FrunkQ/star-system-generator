@@ -473,6 +473,25 @@
       "tags": []
     }
   },
+  "climateModel": {
+    "greenhouse": {
+      "cryoNoPenaltyAboveK": 200,
+      "cryoBaseK": 200,
+      "cryoExponent": 3,
+      "cryoMinFactor": 0.03,
+      "responseScale": 205,
+      "responseK": 0.03,
+      "denseCo2BoostStartBar": 1,
+      "denseCo2BoostDenominator": 40,
+      "denseCo2BoostMax": 1.0
+    },
+    "internalHeat": {
+      "minPressureBarForGiants": 10,
+      "minHydrogenHeliumFraction": 0.6,
+      "gasGiantHeatK": 52,
+      "iceGiantHeatK": 24
+    }
+  },
   "distributions": {
     "atmosphere_pressure_bar": {
       "name": "Atmosphere Pressure (bar)",

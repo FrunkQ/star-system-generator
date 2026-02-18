@@ -1,10 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { CelestialBody, Barycenter } from '$lib/types';
-  import { AU_KM } from '$lib/constants';
-  import { calculateEquilibriumTemperature } from '$lib/physics/temperature';
+  import type { CelestialBody, Barycenter, RulePack } from '$lib/types';
+  import { calculateEquilibriumTemperature, estimateBondAlbedo, estimateInternalHeatK, composeSurfaceTemperatureFromDeltaComponents } from '$lib/physics/temperature';
 
   export let body: CelestialBody;
+  export let rulePack: RulePack;
   export let rootStar: CelestialBody | null = null;
   export let parentBody: CelestialBody | null = null;
   export let nodes: (CelestialBody | Barycenter)[] = [];
@@ -17,7 +17,7 @@
       // However, if we are editing 'body' locally here, we rely on the object reference being updated elsewhere?
       // No, BodyOrbitTab updates 'body' directly. 'body' is passed by reference.
       // But we need to ensure we pass the correct albedo.
-      return calculateEquilibriumTemperature(body, nodes, body.albedo !== undefined ? body.albedo : 0.3);
+      return calculateEquilibriumTemperature(body, nodes, estimateBondAlbedo(body));
   }
 
   function updateTotal() {
@@ -26,16 +26,22 @@
           return;
       }
 
-      // Ensure defaults are set if undefined, but only when updating (only albedo and radiogenic are editable)
-      if (body.albedo === undefined) body.albedo = 0.3;
+      // Ensure defaults are set if undefined, but only when updating (radiogenic is editable)
       if (body.radiogenicHeatK === undefined) body.radiogenicHeatK = 0;
 
       // Greenhouse and Tidal are derived, but we need to ensure the props exist for display.
       if (body.greenhouseTempK === undefined) body.greenhouseTempK = 0;
       if (body.tidalHeatK === undefined) body.tidalHeatK = 0;
+      body.internalHeatK = estimateInternalHeatK(body, rulePack);
 
       const eq = calculateEquilibrium();
-      const newTemp = eq + (body.greenhouseTempK || 0) + (body.tidalHeatK || 0) + (body.radiogenicHeatK || 0);
+      const newTemp = composeSurfaceTemperatureFromDeltaComponents(
+          eq,
+          body.greenhouseTempK || 0,
+          body.tidalHeatK || 0,
+          body.radiogenicHeatK || 0,
+          body.internalHeatK || 0
+      );
       
       // Only dispatch if values actually changed to avoid loops
       if (Math.abs(eq - (body.equilibriumTempK || 0)) > 0.1 || Math.abs(newTemp - (body.temperatureK || 0)) > 0.1) {
@@ -91,6 +97,11 @@
         <div class="read-only-row">
             <label>Tidal Heating (+K)</label>
             <span class="value">{Math.round(body.tidalHeatK || 0)} K</span>
+        </div>
+
+        <div class="read-only-row">
+            <label>Internal Heat (+K)</label>
+            <span class="value">{Math.round(body.internalHeatK || 0)} K</span>
         </div>
 
         <div class="form-group">

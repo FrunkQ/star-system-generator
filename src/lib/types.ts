@@ -110,6 +110,7 @@ export interface CelestialBody extends NodeBase {
   radiationShieldingAtmo?: number; // 0-1 effectiveness
   radiationShieldingMag?: number;  // 0-1 effectiveness
   equilibriumTempK?: number;
+  internalHeatK?: number;
   
   // Traveller Data
   traveller?: TravellerWorldData;
@@ -229,10 +230,35 @@ export interface GasPhysics {
   tags?: GasTag[];
 }
 
+export interface ClimateModelGreenhouseConfig {
+  cryoNoPenaltyAboveK?: number;
+  cryoBaseK?: number;
+  cryoExponent?: number;
+  cryoMinFactor?: number;
+  responseScale?: number;
+  responseK?: number;
+  denseCo2BoostStartBar?: number;
+  denseCo2BoostDenominator?: number;
+  denseCo2BoostMax?: number;
+}
+
+export interface ClimateModelInternalHeatConfig {
+  minPressureBarForGiants?: number;
+  minHydrogenHeliumFraction?: number;
+  gasGiantHeatK?: number;
+  iceGiantHeatK?: number;
+}
+
+export interface ClimateModelConfig {
+  greenhouse?: ClimateModelGreenhouseConfig;
+  internalHeat?: ClimateModelInternalHeatConfig;
+}
+
 export interface RulePack {
   id: string; version: string; name: string;
   distributions: Record<string, TableSpec>;
   gasPhysics?: Record<string, GasPhysics>;
+  climateModel?: ClimateModelConfig;
   gasMolarMassesKg?: Record<string, number>; // Legacy support (optional)
   gasShielding?: Record<string, number>; // Legacy support (optional)
   liquids?: LiquidDef[];

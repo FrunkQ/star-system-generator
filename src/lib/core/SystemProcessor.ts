@@ -1,7 +1,7 @@
 import type { ISystemProcessor } from './interfaces';
 import type { System, RulePack, CelestialBody, Barycenter } from '../types';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG } from '../constants';
-import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange } from '../physics/temperature';
+import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, estimateBondAlbedo, composeSurfaceTemperatureFromDeltaComponents, estimateInternalHeatK } from '../physics/temperature';
 import { calculateSurfaceRadiation } from '../physics/radiation';
 import { classifyBody } from '../system/classification';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
@@ -228,10 +228,9 @@ export class SystemProcessor implements ISystemProcessor {
         let equilibriumTempK = 0;
         
         if (allStars.length > 0) {
-            // Default albedo 0.3 if not specified? calculateEquilibriumTemperature handles it?
-            // Actually, we should probably store albedo on the body if it matters.
-            equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, 0.3);
-            const eqRange = calculateEquilibriumTemperatureRange(body, allNodes, 0.3);
+            const albedo = estimateBondAlbedo(body);
+            equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedo);
+            const eqRange = calculateEquilibriumTemperatureRange(body, allNodes, albedo);
             (body as any).equilibriumTempMinK = eqRange.minK;
             (body as any).equilibriumTempMaxK = eqRange.maxK;
         }
@@ -243,6 +242,12 @@ export class SystemProcessor implements ISystemProcessor {
             const host = allNodes.find(n => n.id === body.parentId);
             if (host && host.kind === 'body') {
                 tidalHeatingK = this.calculateTidalHeating(body, host as CelestialBody);
+                const hasHotspots = this.hasTidalHotspots(body, host as CelestialBody);
+                body.tags = body.tags || [];
+                body.tags = body.tags.filter(t => t.key !== 'tidal/hotspots');
+                if (hasHotspots) {
+                    body.tags.push({ key: 'tidal/hotspots' });
+                }
             }
         }
         body.tidalHeatK = tidalHeatingK;
@@ -251,12 +256,19 @@ export class SystemProcessor implements ISystemProcessor {
         // Internal heat is negligible for surface temp compared to solar/greenhouse for Earth-likes.
         const radiogenicHeatK = 0; 
         body.radiogenicHeatK = radiogenicHeatK;
+        body.internalHeatK = estimateInternalHeatK(body, pack);
 
         // V1.4.0 Unified Atmospheric Physics
         recalculateAtmosphereDerivedProperties(body, allNodes, pack);
 
-        // Total Temperature (Derived from components)
-        body.temperatureK = equilibriumTempK + (body.greenhouseTempK || 0) + tidalHeatingK + radiogenicHeatK;
+        // Total temperature from flux-space composition (avoids direct +K stacking artifacts).
+        body.temperatureK = composeSurfaceTemperatureFromDeltaComponents(
+            equilibriumTempK,
+            body.greenhouseTempK || 0,
+            tidalHeatingK,
+            radiogenicHeatK,
+            body.internalHeatK || 0
+        );
 
         // Atmosphere Retention Check (Physics-based stripping)
         const totalStellarRadiation = this.calculateTotalStellarFlux(body, allStars, allNodes);
@@ -344,7 +356,20 @@ export class SystemProcessor implements ISystemProcessor {
 
     // ... existing private methods ...
     private calculateTidalHeating(planet: CelestialBody, host: CelestialBody): number {
-        let tidalHeatingK = 0;
+        const rawTidalIndex = this.calculateRawTidalIndex(planet, host);
+        if (rawTidalIndex <= 0) return 0;
+
+        // Tidal dissipation produces localized hotspots more than uniform global warming.
+        // Apply an activity onset so moderate forcing does not overheat global means.
+        const meanCapK = 5.0;
+        const globalMeanOnset = 80.0;
+        if (rawTidalIndex <= globalMeanOnset) return 0;
+        const responseScale = 35.0;
+        return meanCapK * (1 - Math.exp(-(rawTidalIndex - globalMeanOnset) / responseScale));
+    }
+
+    private calculateRawTidalIndex(planet: CelestialBody, host: CelestialBody): number {
+        let raw = 0;
         const parentMassKg = host.massKg || 0;
         const eccentricity = planet.orbit?.elements.e || 0;
         const moonRadiusKm = planet.radiusKm || 0;
@@ -352,13 +377,18 @@ export class SystemProcessor implements ISystemProcessor {
 
         if (parentMassKg > 0 && eccentricity > 0 && moonRadiusKm > 0 && semiMajorAxisKm > 0) {
             const C = 4.06e-6; // Calibration constant
-            tidalHeatingK = C * 
+            raw = C * 
                 (Math.pow(parentMassKg, 0.625)) * 
                 (Math.pow(moonRadiusKm, 0.75)) * 
                 (Math.pow(eccentricity, 0.5)) * 
                 (Math.pow(semiMajorAxisKm, -1.875));
         }
-        return tidalHeatingK;
+        return raw;
+    }
+
+    private hasTidalHotspots(planet: CelestialBody, host: CelestialBody): boolean {
+        const raw = this.calculateRawTidalIndex(planet, host);
+        return raw >= 100;
     }
 
     private calculateTotalStellarFlux(planet: CelestialBody, stars: CelestialBody[], allNodes: (CelestialBody | Barycenter)[]): number {

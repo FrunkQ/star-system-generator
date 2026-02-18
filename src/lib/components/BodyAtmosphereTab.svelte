@@ -3,7 +3,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { recalculateSystemPhysics } from '$lib/system/postprocessing';
   import { systemStore } from '$lib/stores';
-  import { checkGasRetention } from '$lib/physics/atmosphere';
+  import { checkGasRetention, isCryoImpactedGreenhouseGas } from '$lib/physics/atmosphere';
   import { evaluateTagTriggers as evalTrigger } from '$lib/utils';
 
   const dispatch = createEventDispatcher();
@@ -414,6 +414,9 @@
                     <div class="gas-row" class:condensed={!isGas} class:escaping={retention !== 'stable'}>
                         <span class="gas-name" title={!isGas ? `${phaseLabel} at ${Math.round(currentTemp)}K (Melt: ${physics.meltK}K, Boil: ${physics.boilK}K)` : (retention !== 'stable' ? `Unstable: Gas is too light and will escape into space.` : '')}>
                             {gas}
+                            {#if isCryoImpactedGreenhouseGas(body, gas, rulePack)}
+                                <span class="cryo-icon" title="Cryo Temps - Greenhouse effects lower due to spectral shift">❄</span>
+                            {/if}
                             {#if !isGas}<span class="phase-warning">!</span>{/if}
                             {#if retention !== 'stable'}<span class="phase-warning escape">{retention === 'unstable' ? '△' : '🔥'}</span>{/if}
                         </span>
@@ -463,7 +466,12 @@
                     {@const isGas = (body.temperatureK || 288) >= (physics?.boilK || 0)}
                     {@const activeTags = getActiveTags(gas, fraction)}
                     <div class="summary-chip" style="background: {gasPhysics[gas]?.colorHex || '#444'}44" class:condensed={!isGas}>
-                        <span class="gas">{gas}</span>
+                        <span class="gas">
+                            {gas}
+                            {#if isCryoImpactedGreenhouseGas(body, gas, rulePack)}
+                                <span class="cryo-icon" title="Cryo Temps - Greenhouse effects lower due to spectral shift">❄</span>
+                            {/if}
+                        </span>
                         <span class="pct">{(fraction * 100).toFixed(1)}%</span>
                         {#if !isGas}<span class="phase-indicator">❄</span>{/if}
                         {#if activeTags.length > 0}
@@ -567,6 +575,12 @@
       width: 55px;
       font-weight: bold;
       font-size: 0.9em;
+  }
+  .cryo-icon {
+      margin-left: 4px;
+      color: #88ccff;
+      font-size: 0.9em;
+      cursor: help;
   }
   .gas-row input[type="range"] { flex: 1; }
   .gas-val {

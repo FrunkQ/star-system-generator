@@ -1,5 +1,5 @@
 {
-  "id": "seed-1768930602866",
+  "id": "solar-system",
   "name": "Sol",
   "seed": "solar-system-real-data",
   "epochT0": 1762339146908,
@@ -89,11 +89,11 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 409.61408472832,
-      "greenhouseTempK": 4.221109170359942e-9,
+      "equilibriumTempK": 439.7654525746886,
+      "greenhouseTempK": 4.326640157213818e-9,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 409.61408473254113,
+      "temperatureK": 439.76545257901523,
       "atmosphere": {
         "name": "Sodium–Potassium Exosphere",
         "composition": {
@@ -103,7 +103,7 @@
         "main": "Na",
         "pressure_bar": 1e-11,
         "molarMassKg": 0.029400000000000003,
-        "scaleHeightKm": 31.448023426519416
+        "scaleHeightKm": 33.7628874844696
       },
       "orbital_period_days": 87.9559820091742,
       "axial_tilt_deg": 0.034,
@@ -132,7 +132,19 @@
       "radiationShieldingAtmo": 1.6199996899501912e-10,
       "radiationShieldingMag": 0,
       "photonRadiation": 3003.1059798121737,
-      "particleRadiation": 333.6784422013527
+      "particleRadiation": 333.6784422013527,
+      "stellarRadiationMin": 4.591240606898174,
+      "stellarRadiationMax": 10.575781666985081,
+      "surfaceRadiationMin": 2297.6203030771967,
+      "surfaceRadiationMax": 5289.890832635902,
+      "equilibriumTempMinK": 400.51066545601077,
+      "equilibriumTempMaxK": 493.4119818789391,
+      "tidallyLocked": false,
+      "albedo": 0.07,
+      "magneticField": {
+        "strengthGauss": 0
+      },
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-venus",
@@ -188,11 +200,11 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 299.6515345036713,
-      "greenhouseTempK": 601.421432472536,
+      "equilibriumTempK": 231.64716965269596,
+      "greenhouseTempK": 501.1240884959156,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 901.0729669762073,
+      "temperatureK": 732.7712581486115,
       "atmosphere": {
         "name": "Carbon Dioxide (Venus-like)",
         "composition": {
@@ -202,7 +214,7 @@
         "main": "CO2",
         "pressure_bar": 92,
         "molarMassKg": 0.04344,
-        "scaleHeightKm": 19.444924288726124
+        "scaleHeightKm": 15.813016434695205
       },
       "orbital_period_days": 224.6676322970732,
       "axial_tilt_deg": 177.36,
@@ -215,7 +227,7 @@
       "calculatedGravity_ms2": 8.869475448060673,
       "calculatedRotationPeriod_s": -20997000,
       "orbitalBoundaries": {
-        "minLeoKm": 490.8610132091807,
+        "minLeoKm": 399.17837445776036,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 50000,
         "heoUpperBoundaryKm": 1004980.1034093457,
@@ -231,7 +243,16 @@
       "radiationShieldingAtmo": 1,
       "radiationShieldingMag": 0,
       "photonRadiation": 2.58547023e-316,
-      "particleRadiation": 2.8727447e-317
+      "particleRadiation": 2.8727447e-317,
+      "stellarRadiationMin": 1.885655645288871,
+      "stellarRadiationMax": 1.9374331859013274,
+      "surfaceRadiationMin": 2,
+      "surfaceRadiationMax": 2,
+      "equilibriumTempMinK": 230.86677373783644,
+      "equilibriumTempMaxK": 232.43553333561587,
+      "tidallyLocked": false,
+      "albedo": 0.75,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-earth",
@@ -275,7 +296,7 @@
           "key": "noble-gas"
         },
         {
-          "key": "habitability/human"
+          "key": "habitability/earth-like"
         }
       ],
       "areas": [],
@@ -283,10 +304,10 @@
         "strengthGauss": 0.5
       },
       "equilibriumTempK": 254.85041511888898,
-      "greenhouseTempK": 34.15656942867718,
+      "greenhouseTempK": 32.6217050915683,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 289.00698454756616,
+      "temperatureK": 287.47212021045726,
       "atmosphere": {
         "name": "Nitrogen–Oxygen (Earth-like)",
         "composition": {
@@ -299,7 +320,7 @@
         "pressure_bar": 1,
         "main": "N2",
         "molarMassKg": 0.028917575576472936,
-        "scaleHeightKm": 8.46194493954407
+        "scaleHeightKm": 8.417005065407057
       },
       "hydrosphere": {
         "composition": "water",
@@ -327,7 +348,7 @@
       "calculatedGravity_ms2": 9.819973426224687,
       "calculatedRotationPeriod_s": 86162.40000000001,
       "orbitalBoundaries": {
-        "minLeoKm": 175.34943268292236,
+        "minLeoKm": 174.41818324900777,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 35792.2216003442,
         "heoUpperBoundaryKm": 1490025.4381473116,
@@ -337,14 +358,21 @@
       "loDeltaVBudget_ms": 10396.132944759353,
       "propulsiveLandBudget_ms": 9096.132944759353,
       "aerobrakeLandBudget_ms": 806.5306597126335,
-      "habitabilityScore": 95.89846265673708,
+      "habitabilityScore": 100,
       "surfaceRadiation": 2.3247866821738423,
       "stellarRadiation": 1,
       "radiationShieldingAtmo": 0.999311222081252,
       "radiationShieldingMag": 0.569190058699312,
       "photonRadiation": 0.3099500634365909,
       "particleRadiation": 0.014836618737251357,
-      "tidallyLocked": false
+      "tidallyLocked": false,
+      "stellarRadiationMin": 0.9674020553293226,
+      "stellarRadiationMax": 1.0342737882589,
+      "surfaceRadiationMin": 2.314199303878566,
+      "surfaceRadiationMax": 2.335918352147979,
+      "equilibriumTempMinK": 252.74763281989237,
+      "equilibriumTempMaxK": 257.00656962375086,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-luna",
@@ -379,15 +407,15 @@
           "key": "Tidally Locked"
         },
         {
-          "key": "habitability/alien"
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 254.85041511888898,
+      "equilibriumTempK": 270.2719558566556,
       "greenhouseTempK": 0,
-      "tidalHeatK": 26.405973874258848,
+      "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 281.2563889931478,
+      "temperatureK": 270.2719558566556,
       "orbital_period_days": 27.45940784723342,
       "axial_tilt_deg": 6.68,
       "rotation_period_hours": 655.7,
@@ -409,12 +437,21 @@
       "loDeltaVBudget_ms": 1931.3366576460696,
       "propulsiveLandBudget_ms": 1931.3366576460696,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 43.69229174486087,
+      "habitabilityScore": 35.45396689249171,
       "stellarRadiation": 0.9948797470190809,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 447.6958861585864,
-      "particleRadiation": 49.74398735095405
+      "particleRadiation": 49.74398735095405,
+      "stellarRadiationMin": 0.9622633877725405,
+      "stellarRadiationMax": 1.0291829734827591,
+      "surfaceRadiationMin": 483.1316938862702,
+      "surfaceRadiationMax": 516.5914867413795,
+      "equilibriumTempMinK": 268.02902559330516,
+      "equilibriumTempMaxK": 272.57215336377726,
+      "tidallyLocked": false,
+      "albedo": 0.11,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-mars",
@@ -456,11 +493,11 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 206.46120694615365,
-      "greenhouseTempK": 5.750965382291586,
+      "equilibriumTempK": 210.05318337065697,
+      "greenhouseTempK": 5.811580890688286,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 212.21217232844523,
+      "temperatureK": 215.86476426134524,
       "atmosphere": {
         "name": "Carbon Dioxide (Mars-like)",
         "composition": {
@@ -471,7 +508,7 @@
         "main": "CO2",
         "pressure_bar": 0.006,
         "molarMassKg": 0.043003999999999994,
-        "scaleHeightKm": 11.05249127845552
+        "scaleHeightKm": 11.242726551197803
       },
       "orbital_period_days": 686.8701465472571,
       "axial_tilt_deg": 25.19,
@@ -484,7 +521,7 @@
       "calculatedGravity_ms2": 3.7122336687009745,
       "calculatedRotationPeriod_s": 88560,
       "orbitalBoundaries": {
-        "minLeoKm": 172.4896722850486,
+        "minLeoKm": 175.45856129166893,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 16996.90684070823,
         "heoUpperBoundaryKm": 1079042.9061374362,
@@ -500,7 +537,19 @@
       "radiationShieldingAtmo": 0.04605037305859283,
       "radiationShieldingMag": 0,
       "photonRadiation": 184.9057524334953,
-      "particleRadiation": 20.545083603721697
+      "particleRadiation": 20.545083603721697,
+      "stellarRadiationMin": 0.36029175763489485,
+      "stellarRadiationMax": 0.5240600290449476,
+      "surfaceRadiationMin": 173.85009389293592,
+      "surfaceRadiationMax": 251.9634346011654,
+      "equilibriumTempMinK": 200.8814029932705,
+      "equilibriumTempMaxK": 220.60807768564948,
+      "tidallyLocked": false,
+      "albedo": 0.25,
+      "magneticField": {
+        "strengthGauss": 0
+      },
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-phobos",
@@ -535,15 +584,15 @@
           "key": "Tidally Locked"
         },
         {
-          "key": "habitability/alien"
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 206.46120694615365,
+      "equilibriumTempK": 218.6128563192256,
       "greenhouseTempK": 0,
-      "tidalHeatK": 82.56653099070857,
+      "tidalHeatK": 0.3535269145806752,
       "radiogenicHeatK": 0,
-      "temperatureK": 289.0277379368622,
+      "temperatureK": 218.96638323380628,
       "orbital_period_days": 0.3191261941040896,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 7.66,
@@ -565,12 +614,20 @@
       "loDeltaVBudget_ms": 9.139966910986526,
       "propulsiveLandBudget_ms": 9.139966910986526,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 45,
+      "habitabilityScore": 15,
       "stellarRadiation": 0.43070189344680354,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 193.8158520510616,
-      "particleRadiation": 21.53509467234018
+      "particleRadiation": 21.53509467234018,
+      "stellarRadiationMin": 0.36026427427658797,
+      "stellarRadiationMax": 0.5240132513361365,
+      "surfaceRadiationMin": 182.132137138294,
+      "surfaceRadiationMax": 264.00662566806824,
+      "equilibriumTempMinK": 209.0676331820912,
+      "equilibriumTempMaxK": 229.59745553616693,
+      "internalHeatK": 0,
+      "surfaceRadiation": 217.3509467234018
     },
     {
       "id": "solar-system-deimos",
@@ -608,11 +665,11 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 206.46120694615365,
+      "equilibriumTempK": 218.60615653208805,
       "greenhouseTempK": 0,
-      "tidalHeatK": 1.4139076279802683,
+      "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 207.87511457413393,
+      "temperatureK": 218.60615653208805,
       "orbital_period_days": 1.2554165528007006,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 30.35,
@@ -639,7 +696,14 @@
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 193.79209379123674,
-      "particleRadiation": 21.532454865692973
+      "particleRadiation": 21.532454865692973,
+      "stellarRadiationMin": 0.3602242709086046,
+      "stellarRadiationMax": 0.5239417223644535,
+      "surfaceRadiationMin": 182.1121354543023,
+      "surfaceRadiationMax": 263.9708611822267,
+      "equilibriumTempMinK": 209.06182927761577,
+      "equilibriumTempMaxK": 229.58961999451796,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-asteroid-belt",
@@ -675,14 +739,21 @@
       "radiationShieldingMag": 0,
       "photonRadiation": 61.728395061728385,
       "particleRadiation": 6.858710562414265,
-      "equilibriumTempK": 155.09702350019015,
+      "equilibriumTempK": 164.2289141004925,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
-      "temperatureK": 155.09702350019015,
+      "temperatureK": 164.2289141004925,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "stellarRadiationMin": 0.11981326862458319,
+      "stellarRadiationMax": 0.15860123858051256,
+      "surfaceRadiationMin": 59.906634312291594,
+      "surfaceRadiationMax": 79.30061929025628,
+      "equilibriumTempMinK": 158.76608381729199,
+      "equilibriumTempMaxK": 170.29745080024315,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-jupiter",
@@ -736,17 +807,20 @@
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "stability/marginal"
         }
       ],
       "areas": [],
       "magneticField": {
         "strengthGauss": 4.28
       },
-      "equilibriumTempK": 111.71204735627745,
-      "greenhouseTempK": 65.51767990300654,
+      "equilibriumTempK": 110.08077668822297,
+      "greenhouseTempK": 11.00867480524928,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 177.229727259284,
+      "temperatureK": 165.94214969484403,
       "atmosphere": {
         "name": "Hydrogen–Helium (Jupiter-like)",
         "composition": {
@@ -757,7 +831,7 @@
         "main": "H2",
         "pressure_bar": 200000,
         "molarMassKg": 0.0022879999999999997,
-        "scaleHeightKm": 24.84870121826436
+        "scaleHeightKm": 23.266113202618353
       },
       "orbital_period_days": 4336.00718171218,
       "axial_tilt_deg": 3.13,
@@ -770,7 +844,7 @@
       "calculatedGravity_ms2": 25.918562037153677,
       "calculatedRotationPeriod_s": 35730,
       "orbitalBoundaries": {
-        "minLeoKm": 818.2060232672735,
+        "minLeoKm": 766.0953300210449,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 90094.92904786355,
         "heoUpperBoundaryKm": 53076768.64063506,
@@ -786,7 +860,18 @@
       "radiationShieldingAtmo": 1,
       "radiationShieldingMag": 0.8774857640615746,
       "photonRadiation": 0,
-      "particleRadiation": 0
+      "particleRadiation": 0,
+      "stellarRadiationMin": 0.03355756907272414,
+      "stellarRadiationMax": 0.04081373123532665,
+      "surfaceRadiationMin": 2,
+      "surfaceRadiationMax": 2,
+      "equilibriumTempMinK": 107.48415397706725,
+      "equilibriumTempMaxK": 112.875163989493,
+      "tidallyLocked": false,
+      "albedo": 0.34,
+      "internalHeatK": 52,
+      "orbitalStability": "Marginal",
+      "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=7.95)."
     },
     {
       "id": "solar-system-jupiter-rings",
@@ -822,14 +907,21 @@
       "radiationShieldingMag": 0,
       "photonRadiation": 16.607100395245762,
       "particleRadiation": 1.8452333772495293,
-      "equilibriumTempK": 111.71204735627745,
+      "equilibriumTempK": 118.27741593346411,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
-      "temperatureK": 111.71204735627745,
+      "temperatureK": 118.27741593346411,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "stellarRadiationMin": 0.0335445055403608,
+      "stellarRadiationMax": 0.040796209734740504,
+      "surfaceRadiationMin": 16.7722527701804,
+      "surfaceRadiationMax": 20.398104867370254,
+      "equilibriumTempMinK": 115.48799777578277,
+      "equilibriumTempMaxK": 121.27923736184006,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-io",
@@ -864,18 +956,24 @@
           "key": "Tidally Locked"
         },
         {
+          "key": "tidal/hotspots"
+        },
+        {
           "key": "volcanic"
+        },
+        {
+          "key": "cloud-former"
         },
         {
           "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 111.71204735627745,
-      "greenhouseTempK": 0.000008534102242078597,
-      "tidalHeatK": 230.1392161255052,
+      "equilibriumTempK": 118.25745818500486,
+      "greenhouseTempK": 0.000001808328556691768,
+      "tidalHeatK": 4.93145425708962,
       "radiogenicHeatK": 0,
-      "temperatureK": 341.8512720158849,
+      "temperatureK": 123.18891404182969,
       "atmosphere": {
         "name": "Sulfur Dioxide (Io-like)",
         "composition": {
@@ -885,7 +983,7 @@
         "main": "SO2",
         "pressure_bar": 1e-8,
         "molarMassKg": 0.06080000000000001,
-        "scaleHeightKm": 26.02654513151384
+        "scaleHeightKm": 9.378879335756507
       },
       "orbital_period_days": 1.770422582439642,
       "axial_tilt_deg": 0,
@@ -914,7 +1012,14 @@
       "radiationShieldingAtmo": 1.1099999386310344e-7,
       "radiationShieldingMag": 0,
       "photonRadiation": 16.595892476273043,
-      "particleRadiation": 1.8439880529192272
+      "particleRadiation": 1.8439880529192272,
+      "stellarRadiationMin": 0.03352278311172763,
+      "stellarRadiationMax": 0.0407674574743275,
+      "surfaceRadiationMin": 18.761389695349454,
+      "surfaceRadiationMax": 22.383726474569986,
+      "equilibriumTempMinK": 115.46929658176818,
+      "equilibriumTempMaxK": 121.25786298529958,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-europa",
@@ -954,6 +1059,9 @@
           "key": "Tidally Locked"
         },
         {
+          "key": "tidal/hotspots"
+        },
+        {
           "key": "oxidizer"
         },
         {
@@ -961,11 +1069,11 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 111.71204735627745,
+      "equilibriumTempK": 118.23861315275127,
       "greenhouseTempK": 0,
-      "tidalHeatK": 127.4856893970769,
+      "tidalHeatK": 3.712497970763573,
       "radiogenicHeatK": 0,
-      "temperatureK": 239.19773675335435,
+      "temperatureK": 121.95111112351485,
       "atmosphere": {
         "name": "Tenuous Oxygen (Europa-like)",
         "composition": {
@@ -974,7 +1082,7 @@
         "main": "O2",
         "pressure_bar": 1e-11,
         "molarMassKg": 0.032,
-        "scaleHeightKm": 47.25945269748403
+        "scaleHeightKm": 24.094470314701034
       },
       "orbital_period_days": 3.545033136909192,
       "axial_tilt_deg": 0,
@@ -1003,7 +1111,14 @@
       "radiationShieldingAtmo": 7.500000620552782e-11,
       "radiationShieldingMag": 0,
       "photonRadiation": 16.58531822603999,
-      "particleRadiation": 1.8428131362266653
+      "particleRadiation": 1.8428131362266653,
+      "stellarRadiationMin": 0.03350206233040654,
+      "stellarRadiationMax": 0.04074061612705691,
+      "surfaceRadiationMin": 18.75103116394694,
+      "surfaceRadiationMax": 22.370308062000678,
+      "equilibriumTempMinK": 115.4514492507216,
+      "equilibriumTempMaxK": 121.23789897164019,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-ganymede",
@@ -1051,11 +1166,11 @@
       "magneticField": {
         "strengthGauss": 0.007
       },
-      "equilibriumTempK": 111.71204735627745,
+      "equilibriumTempK": 118.20832105709388,
       "greenhouseTempK": 0,
-      "tidalHeatK": 29.860567523566225,
+      "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 141.57261487984368,
+      "temperatureK": 118.20832105709388,
       "orbital_period_days": 7.147634571900399,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 171.6,
@@ -1082,7 +1197,14 @@
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0.07681630712609129,
       "photonRadiation": 16.568328481006702,
-      "particleRadiation": 1.6995122968715253
+      "particleRadiation": 1.6995122968715253,
+      "stellarRadiationMin": 0.03346972099040811,
+      "stellarRadiationMax": 0.040696230235639334,
+      "surfaceRadiationMin": 18.606309476852864,
+      "surfaceRadiationMax": 22.19180841178692,
+      "equilibriumTempMinK": 115.42357628739295,
+      "equilibriumTempMaxK": 121.20486405061217,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-callisto",
@@ -1124,11 +1246,11 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 111.71204735627745,
+      "equilibriumTempK": 118.14678753671028,
       "greenhouseTempK": 0,
-      "tidalHeatK": 23.107023147886963,
+      "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 134.81907050416442,
+      "temperatureK": 118.14678753671028,
       "orbital_period_days": 16.68108286378568,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 400.5,
@@ -1155,7 +1277,14 @@
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 16.53385673532574,
-      "particleRadiation": 1.8370951928139712
+      "particleRadiation": 1.8370951928139712,
+      "stellarRadiationMin": 0.03340229890813751,
+      "stellarRadiationMax": 0.04060858979119901,
+      "surfaceRadiationMin": 18.701149454068755,
+      "surfaceRadiationMax": 22.304294895599508,
+      "equilibriumTempMinK": 115.36540442937387,
+      "equilibriumTempMaxK": 121.13955678944673,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-saturn",
@@ -1209,17 +1338,20 @@
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "stability/marginal"
         }
       ],
       "areas": [],
       "magneticField": {
         "strengthGauss": 0.21
       },
-      "equilibriumTempK": 82.32726071205758,
-      "greenhouseTempK": 76.99721388694061,
+      "equilibriumTempK": 81.12508020638174,
+      "greenhouseTempK": 5.25195080275789,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 159.3244745989982,
+      "temperatureK": 134.41520170851274,
       "atmosphere": {
         "name": "Hydrogen–Helium (Jupiter-like)",
         "composition": {
@@ -1230,7 +1362,7 @@
         "main": "H2",
         "pressure_bar": 100000,
         "molarMassKg": 0.002112,
-        "scaleHeightKm": 56.07414527769036
+        "scaleHeightKm": 47.30734287436708
       },
       "orbital_period_days": 10833.256613658901,
       "axial_tilt_deg": 26.73,
@@ -1243,7 +1375,7 @@
       "calculatedGravity_ms2": 11.185617569939861,
       "calculatedRotationPeriod_s": 38361.6,
       "orbitalBoundaries": {
-        "minLeoKm": 1807.516867315899,
+        "minLeoKm": 1524.924183326529,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 54005.76829774813,
         "heoUpperBoundaryKm": 65407793.930461206,
@@ -1259,7 +1391,18 @@
       "radiationShieldingAtmo": 1,
       "radiationShieldingMag": 0.4474742269407354,
       "photonRadiation": 0,
-      "particleRadiation": 0
+      "particleRadiation": 0,
+      "stellarRadiationMin": 0.009756505126699731,
+      "stellarRadiationMax": 0.012233464635877819,
+      "surfaceRadiationMin": 2,
+      "surfaceRadiationMax": 2,
+      "equilibriumTempMinK": 78.92605367308619,
+      "equilibriumTempMaxK": 83.51878868921848,
+      "tidallyLocked": false,
+      "albedo": 0.34,
+      "internalHeatK": 52,
+      "orbitalStability": "Marginal",
+      "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=7.95)."
     },
     {
       "id": "solar-system-saturn-rings",
@@ -1295,14 +1438,21 @@
       "radiationShieldingMag": 0,
       "photonRadiation": 4.899853105642968,
       "particleRadiation": 0.5444281228492187,
-      "equilibriumTempK": 82.32726071205758,
+      "equilibriumTempK": 87.17142389953825,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
-      "temperatureK": 82.32726071205758,
+      "temperatureK": 87.17142389953825,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "stellarRadiationMin": 0.009755171268612518,
+      "stellarRadiationMax": 0.012231591854494586,
+      "surfaceRadiationMin": 4.877585634306259,
+      "surfaceRadiationMax": 6.115795927247294,
+      "equilibriumTempMinK": 84.80866521817484,
+      "equilibriumTempMaxK": 89.74334410980197,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-titan",
@@ -1349,15 +1499,15 @@
           "key": "greenhouse"
         },
         {
-          "key": "habitability/alien"
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 82.32726071205758,
-      "greenhouseTempK": 195.94890774673053,
-      "tidalHeatK": 50.75444603665071,
+      "equilibriumTempK": 82.29223046412962,
+      "greenhouseTempK": 13.809554021171161,
+      "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 329.03061449543884,
+      "temperatureK": 96.10178448530078,
       "atmosphere": {
         "name": "Methane Haze (Titan-like)",
         "composition": {
@@ -1367,7 +1517,7 @@
         "main": "N2",
         "pressure_bar": 1.45,
         "molarMassKg": 0.027399999999999997,
-        "scaleHeightKm": 74.0052513587357
+        "scaleHeightKm": 21.615121522244614
       },
       "orbital_period_days": 15.925672928999916,
       "axial_tilt_deg": 0,
@@ -1380,7 +1530,7 @@
       "calculatedGravity_ms2": 1.3491407372632904,
       "calculatedRotationPeriod_s": 1377360,
       "orbitalBoundaries": {
-        "minLeoKm": 1561.0417817421671,
+        "minLeoKm": 455.94207430085606,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 49715.16653476396,
         "heoUpperBoundaryKm": 49715.16653476396,
@@ -1390,13 +1540,25 @@
       "loDeltaVBudget_ms": 3798.0751515648462,
       "propulsiveLandBudget_ms": 2173.408920646595,
       "aerobrakeLandBudget_ms": 684.3245689553625,
-      "habitabilityScore": 41.72703912842087,
+      "habitabilityScore": 35,
       "surfaceRadiation": 2.000186423018874,
       "stellarRadiation": 0.01087161222645085,
       "radiationShieldingAtmo": 0.9999657046231983,
       "radiationShieldingMag": 0,
       "photonRadiation": 0.00016778071698654953,
-      "particleRadiation": 0.00001864230188739439
+      "particleRadiation": 0.00001864230188739439,
+      "stellarRadiationMin": 0.009740344708318137,
+      "stellarRadiationMax": 0.012212046468452873,
+      "surfaceRadiationMin": 2.000167024395975,
+      "surfaceRadiationMax": 2.0002094083675774,
+      "equilibriumTempMinK": 80.06245942946718,
+      "equilibriumTempMaxK": 84.71931924571962,
+      "internalHeatK": 0,
+      "tidallyLocked": false,
+      "albedo": 0.3,
+      "magneticField": {
+        "strengthGauss": 0
+      }
     },
     {
       "id": "solar-system-enceladus",
@@ -1449,11 +1611,11 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 82.32726071205758,
-      "greenhouseTempK": 5.49359458181464e-7,
-      "tidalHeatK": 77.04791241147112,
+      "equilibriumTempK": 87.16734055374522,
+      "greenhouseTempK": 4.661779406414735e-8,
+      "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 159.37517367288814,
+      "temperatureK": 87.16734060036302,
       "atmosphere": {
         "name": "Water Vapor Plume (Enceladus-like)",
         "composition": {
@@ -1465,7 +1627,7 @@
         "main": "H2O",
         "pressure_bar": 1e-9,
         "molarMassKg": 0.017779999999999997,
-        "scaleHeightKm": 657.1116621122947
+        "scaleHeightKm": 359.39522288066956
       },
       "orbital_period_days": 1.3698034023218526,
       "axial_tilt_deg": 0,
@@ -1494,7 +1656,14 @@
       "radiationShieldingAtmo": 8.045454524818751e-9,
       "radiationShieldingMag": 0,
       "photonRadiation": 4.898935041129051,
-      "particleRadiation": 0.5443261156810056
+      "particleRadiation": 0.5443261156810056,
+      "stellarRadiationMin": 0.009753426888976511,
+      "stellarRadiationMax": 0.012229183181539444,
+      "surfaceRadiationMin": 6.87671340525288,
+      "surfaceRadiationMax": 8.114591541575054,
+      "equilibriumTempMinK": 84.80487367967481,
+      "equilibriumTempMaxK": 89.7389256675223,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-mimas",
@@ -1529,15 +1698,18 @@
           "key": "Tidally Locked"
         },
         {
-          "key": "habitability/alien"
+          "key": "tidal/hotspots"
+        },
+        {
+          "key": "habitability/none"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 82.32726071205758,
+      "equilibriumTempK": 87.16893220649908,
       "greenhouseTempK": 0,
-      "tidalHeatK": 209.3832972903249,
+      "tidalHeatK": 4.875969493618885,
       "radiogenicHeatK": 0,
-      "temperatureK": 291.71055800238247,
+      "temperatureK": 92.04490170011796,
       "orbital_period_days": 0.9433982837654266,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 22.56,
@@ -1559,12 +1731,20 @@
       "loDeltaVBudget_ms": 129.2303471514097,
       "propulsiveLandBudget_ms": 129.2303471514097,
       "aerobrakeLandBudget_ms": -1,
-      "habitabilityScore": 45,
+      "habitabilityScore": 15,
       "stellarRadiation": 0.010887317563149701,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 4.899292903417366,
-      "particleRadiation": 0.544365878157485
+      "particleRadiation": 0.544365878157485,
+      "stellarRadiationMin": 0.00975406876605236,
+      "stellarRadiationMax": 0.0122301754258745,
+      "surfaceRadiationMin": 6.87703438302618,
+      "surfaceRadiationMax": 8.11508771293725,
+      "equilibriumTempMinK": 84.80626890623537,
+      "equilibriumTempMaxK": 89.74074590829731,
+      "internalHeatK": 0,
+      "surfaceRadiation": 7.44365878157485
     },
     {
       "id": "solar-system-rhea",
@@ -1602,11 +1782,11 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 82.32726071205758,
+      "equilibriumTempK": 87.15856529139594,
       "greenhouseTempK": 0,
-      "tidalHeatK": 18.391585375406972,
+      "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 100.71884608746456,
+      "temperatureK": 87.15856529139594,
       "orbital_period_days": 4.512077487311608,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 108.2,
@@ -1633,7 +1813,14 @@
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 4.896962646876536,
-      "particleRadiation": 0.5441069607640595
+      "particleRadiation": 0.5441069607640595,
+      "stellarRadiationMin": 0.009749717444924057,
+      "stellarRadiationMax": 0.012223954011287933,
+      "surfaceRadiationMin": 6.874858722462029,
+      "surfaceRadiationMax": 8.111977005643967,
+      "equilibriumTempMinK": 84.79680923695827,
+      "equilibriumTempMaxK": 89.72933108999082,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-iapetus",
@@ -1671,11 +1858,11 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 82.32726071205758,
+      "equilibriumTempK": 87.06651678367676,
       "greenhouseTempK": 0,
-      "tidalHeatK": 2.6391081896818864,
+      "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 84.96636890173947,
+      "temperatureK": 87.06651678367676,
       "orbital_period_days": 79.32827117553222,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 1903.6,
@@ -1702,7 +1889,14 @@
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 4.876308587967782,
-      "particleRadiation": 0.5418120653297537
+      "particleRadiation": 0.5418120653297537,
+      "stellarRadiationMin": 0.009709505366468038,
+      "stellarRadiationMax": 0.012171119938745912,
+      "surfaceRadiationMin": 6.854752683234019,
+      "surfaceRadiationMax": 8.085559969372957,
+      "equilibriumTempMinK": 84.70923894098269,
+      "equilibriumTempMaxK": 89.6322170685639,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-uranus",
@@ -1766,10 +1960,10 @@
         "strengthGauss": 0.23
       },
       "equilibriumTempK": 58.133534831018835,
-      "greenhouseTempK": 138.4348328067824,
+      "greenhouseTempK": 4.254974642156193,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 196.56836763780123,
+      "temperatureK": 83.76678845424888,
       "atmosphere": {
         "name": "Ice Giant (Uranus-like)",
         "composition": {
@@ -1780,7 +1974,7 @@
         "main": "H2",
         "pressure_bar": 100000,
         "molarMassKg": 0.0026279999999999997,
-        "scaleHeightKm": 69.0420749817922
+        "scaleHeightKm": 29.421991742327467
       },
       "orbital_period_days": 30768.7485731925,
       "axial_tilt_deg": 97.77,
@@ -1793,8 +1987,8 @@
       "calculatedGravity_ms2": 9.007587373223858,
       "calculatedRotationPeriod_s": -62063.99999999999,
       "orbitalBoundaries": {
-        "minLeoKm": 2225.5304020430467,
-        "leoMoeBoundaryKm": 4225.530402043047,
+        "minLeoKm": 948.4004808441449,
+        "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 57323.95674102323,
         "heoUpperBoundaryKm": 70160108.0952793,
         "geoStationaryKm": 57323.95674102323,
@@ -1809,7 +2003,14 @@
       "radiationShieldingAtmo": 1,
       "radiationShieldingMag": 0.46007041390386866,
       "photonRadiation": 0,
-      "particleRadiation": 0
+      "particleRadiation": 0,
+      "stellarRadiationMin": 0.0024727821269171437,
+      "stellarRadiationMax": 0.00297725307593036,
+      "surfaceRadiationMin": 2,
+      "surfaceRadiationMax": 2,
+      "equilibriumTempMinK": 56.830543387748826,
+      "equilibriumTempMaxK": 59.53046617838738,
+      "internalHeatK": 24
     },
     {
       "id": "solar-system-uranus-rings",
@@ -1845,14 +2046,21 @@
       "radiationShieldingMag": 0,
       "photonRadiation": 1.2183091716428966,
       "particleRadiation": 0.13536768573809962,
-      "equilibriumTempK": 58.133534831018835,
+      "equilibriumTempK": 61.55562614813408,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
-      "temperatureK": 58.133534831018835,
+      "temperatureK": 61.55562614813408,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "stellarRadiationMin": 0.00247267034345635,
+      "stellarRadiationMax": 0.0029771053961736367,
+      "surfaceRadiationMin": 1.236335171728175,
+      "surfaceRadiationMax": 1.4885526980868187,
+      "equilibriumTempMinK": 60.17596429378085,
+      "equilibriumTempMaxK": 63.034753064743356,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-titania",
@@ -1890,11 +2098,11 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 58.133534831018835,
+      "equilibriumTempK": 61.551694275874034,
       "greenhouseTempK": 0,
-      "tidalHeatK": 8.721756017844283,
+      "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 66.85529084886312,
+      "temperatureK": 61.551694275874034,
       "orbital_period_days": 8.677727086295931,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 208.8,
@@ -1921,7 +2129,14 @@
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 1.2179979229470332,
-      "particleRadiation": 0.13533310254967035
+      "particleRadiation": 0.13533310254967035,
+      "stellarRadiationMin": 0.0024720658435566922,
+      "stellarRadiationMax": 0.0029763088730674334,
+      "surfaceRadiationMin": 3.236032921778346,
+      "surfaceRadiationMax": 3.4881544365337165,
+      "equilibriumTempMinK": 60.172286114456206,
+      "equilibriumTempMaxK": 63.0305364122487,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-oberon",
@@ -1959,11 +2174,11 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 58.133534831018835,
+      "equilibriumTempK": 61.550109216803385,
       "greenhouseTempK": 0,
-      "tidalHeatK": 5.535725130723802,
+      "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 63.66925996174264,
+      "temperatureK": 61.550109216803385,
       "orbital_period_days": 13.463668641629502,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 323,
@@ -1990,7 +2205,14 @@
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 1.217872465858933,
-      "particleRadiation": 0.1353191628732148
+      "particleRadiation": 0.1353191628732148,
+      "stellarRadiationMin": 0.0024718219429079465,
+      "stellarRadiationMax": 0.002975988131702879,
+      "surfaceRadiationMin": 3.2359109714539733,
+      "surfaceRadiationMax": 3.4879940658514395,
+      "equilibriumTempMinK": 60.17080186974225,
+      "equilibriumTempMaxK": 63.02883822515217,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-ariel",
@@ -2028,11 +2250,11 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 58.133534831018835,
+      "equilibriumTempK": 61.55432029976827,
       "greenhouseTempK": 0,
-      "tidalHeatK": 34.202534688683585,
+      "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 92.33606951970242,
+      "temperatureK": 61.55432029976827,
       "orbital_period_days": 2.5019123185718404,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 60.48,
@@ -2059,7 +2281,14 @@
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 1.2182057935105677,
-      "particleRadiation": 0.13535619927895198
+      "particleRadiation": 0.13535619927895198,
+      "stellarRadiationMin": 0.002472469452644328,
+      "stellarRadiationMax": 0.002976840987148015,
+      "surfaceRadiationMin": 3.236234726322164,
+      "surfaceRadiationMax": 3.4884204935740075,
+      "equilibriumTempMinK": 60.17474201533539,
+      "equilibriumTempMaxK": 63.03335342393904,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-neptune",
@@ -2122,11 +2351,11 @@
       "magneticField": {
         "strengthGauss": 0.14
       },
-      "equilibriumTempK": 46.44403755688691,
-      "greenhouseTempK": 119.94633667509243,
+      "equilibriumTempK": 46.60902785495624,
+      "greenhouseTempK": 3.6917906597062884,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 166.39037423197934,
+      "temperatureK": 71.77465805213387,
       "atmosphere": {
         "name": "Ice Giant (Uranus-like)",
         "composition": {
@@ -2137,7 +2366,7 @@
         "main": "H2",
         "pressure_bar": 100000,
         "molarMassKg": 0.0026000000000000003,
-        "scaleHeightKm": 47.19868212695537
+        "scaleHeightKm": 20.35976711880303
       },
       "orbital_period_days": 60339.28002582727,
       "axial_tilt_deg": 28.32,
@@ -2150,7 +2379,7 @@
       "calculatedGravity_ms2": 11.27350667591506,
       "calculatedRotationPeriod_s": 57996,
       "orbitalBoundaries": {
-        "minLeoKm": 1521.4215684798967,
+        "minLeoKm": 656.285036528262,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 58883.29385587132,
         "heoUpperBoundaryKm": 116160577.26195094,
@@ -2166,7 +2395,16 @@
       "radiationShieldingAtmo": 1,
       "radiationShieldingMag": 0.3920304196852271,
       "photonRadiation": 0,
-      "particleRadiation": 0
+      "particleRadiation": 0,
+      "stellarRadiationMin": 0.001078495840552544,
+      "stellarRadiationMax": 0.0011283645168996819,
+      "surfaceRadiationMin": 2,
+      "surfaceRadiationMax": 2,
+      "equilibriumTempMinK": 46.34789785206162,
+      "equilibriumTempMaxK": 46.87462190356624,
+      "tidallyLocked": false,
+      "albedo": 0.29,
+      "internalHeatK": 24
     },
     {
       "id": "solar-system-neptune-rings",
@@ -2202,14 +2440,21 @@
       "radiationShieldingMag": 0,
       "photonRadiation": 0.4963418505047135,
       "particleRadiation": 0.05514909450052372,
-      "equilibriumTempK": 46.44403755688691,
+      "equilibriumTempK": 49.178309838139235,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
-      "temperatureK": 46.44403755688691,
+      "temperatureK": 49.178309838139235,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "stellarRadiationMin": 0.0010784710217748058,
+      "stellarRadiationMax": 0.0011283379569873183,
+      "surfaceRadiationMin": 0.539235510887403,
+      "surfaceRadiationMax": 0.5641689784936591,
+      "equilibriumTempMinK": 48.902788450922024,
+      "equilibriumTempMaxK": 49.45854123806973,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-triton",
@@ -2260,11 +2505,11 @@
         }
       ],
       "areas": [],
-      "equilibriumTempK": 46.44403755688691,
-      "greenhouseTempK": 0.0006636857442381685,
+      "equilibriumTempK": 49.17666062345122,
+      "greenhouseTempK": 0.000020408335639210383,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 46.44470124263115,
+      "temperatureK": 49.176681031786856,
       "atmosphere": {
         "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
         "composition": {
@@ -2274,7 +2519,7 @@
         "main": "N2",
         "pressure_bar": 0.000014,
         "molarMassKg": 0.027988,
-        "scaleHeightKm": 17.694211086372214
+        "scaleHeightKm": 18.73502361782742
       },
       "orbital_period_days": 5.872512134112898,
       "axial_tilt_deg": 0,
@@ -2287,7 +2532,7 @@
       "calculatedGravity_ms2": 0.7797711313361076,
       "calculatedRotationPeriod_s": 506880.00000000006,
       "orbitalBoundaries": {
-        "minLeoKm": 168.91397176521926,
+        "minLeoKm": 178.84986422704912,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 13234.897524442571,
         "heoUpperBoundaryKm": 13234.897524442571,
@@ -2303,7 +2548,14 @@
       "radiationShieldingAtmo": 0.0001007641229546774,
       "radiationShieldingMag": 0,
       "photonRadiation": 0.49622526700515074,
-      "particleRadiation": 0.055136140778350086
+      "particleRadiation": 0.055136140778350086,
+      "stellarRadiationMin": 0.0010783279774086278,
+      "stellarRadiationMax": 0.0011281848779061553,
+      "surfaceRadiationMin": 2.5391096603178633,
+      "surfaceRadiationMax": 2.5640355986732013,
+      "equilibriumTempMinK": 48.90116679948243,
+      "equilibriumTempMaxK": 49.45686367036647,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-kuiper-belt",
@@ -2339,35 +2591,44 @@
       "radiationShieldingMag": 0,
       "photonRadiation": 0.28125000000000006,
       "particleRadiation": 0.03125,
-      "equilibriumTempK": 40.29538872075502,
+      "equilibriumTempK": 42.667923494087674,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
-      "temperatureK": 40.29538872075502,
+      "temperatureK": 42.667923494087674,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
-      "aerobrakeLandBudget_ms": -1
+      "aerobrakeLandBudget_ms": -1,
+      "stellarRadiationMin": 0.0005165289256198347,
+      "stellarRadiationMax": 0.0007716049382716049,
+      "surfaceRadiationMin": 0.2582644628099174,
+      "surfaceRadiationMax": 0.3858024691358025,
+      "equilibriumTempMinK": 40.682268812405674,
+      "equilibriumTempMaxK": 44.97594042370899,
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-pluto",
-      "parentId": "solar-system-sun",
+      "parentId": "bary-auto-id-1771448528579-8l0pwwf51",
       "name": "Pluto",
       "kind": "body",
       "roleHint": "planet",
       "classes": [
+        "planet/ultra-short-period",
         "planet/sub-earth"
       ],
       "orbit": {
-        "hostId": "solar-system-sun",
-        "hostMu": 132712440018000000000,
+        "hostId": "bary-auto-id-1771448528579-8l0pwwf51",
+        "hostMu": 975115229999.9999,
         "t0": 1762339146908,
+        "n_rad_per_s": 0.000011513962834212866,
         "elements": {
-          "a_AU": 39.48,
+          "a_AU": 0.00001405886379192334,
           "e": 0.2488,
           "i_deg": 17.16,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 1.4884242784532824
+          "M0_rad": 4.492323280371092
         }
       },
       "massKg": 1.303e+22,
@@ -2390,14 +2651,17 @@
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "stability/very-unstable"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 40.55989045142206,
-      "greenhouseTempK": 0.0017971599359114597,
+      "equilibriumTempK": 42.947991060905515,
+      "greenhouseTempK": 0.00005526266059632093,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 40.561687611357975,
+      "temperatureK": 42.94804632356611,
       "atmosphere": {
         "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
         "composition": {
@@ -2408,9 +2672,9 @@
         "main": "N2",
         "pressure_bar": 0.00001,
         "molarMassKg": 0.02788,
-        "scaleHeightKm": 19.640807979532433
+        "scaleHeightKm": 20.796332219200405
       },
-      "orbital_period_days": 90594.05654169581,
+      "orbital_period_days": 0.2246216479470047,
       "axial_tilt_deg": 119.5,
       "rotation_period_hours": -153.3,
       "description": "A dwarf planet in the Kuiper Belt, formerly classified as the ninth planet. It is a complex world of ice mountains and frozen nitrogen plains. Its highly eccentric orbit sometimes brings it closer to the Sun than Neptune. It has five known moons.",
@@ -2421,27 +2685,36 @@
       "calculatedGravity_ms2": 0.615882615041098,
       "calculatedRotationPeriod_s": -551880,
       "orbitalBoundaries": {
-        "minLeoKm": 180.8885184067278,
-        "leoMoeBoundaryKm": 2000,
-        "meoHeoBoundaryKm": 17672.49108839615,
-        "heoUpperBoundaryKm": 7661221.032754107,
-        "geoStationaryKm": 17672.49108839615,
-        "isGeoFallback": false
+        "minLeoKm": 191.5307011476018,
+        "leoMoeBoundaryKm": 215.37516817319738,
+        "meoHeoBoundaryKm": 215.37516817319738,
+        "heoUpperBoundaryKm": 215.37516817319738,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
       },
       "loDeltaVBudget_ms": 983.8068938552108,
       "propulsiveLandBudget_ms": 983.8068938552108,
       "aerobrakeLandBudget_ms": -1,
       "habitabilityScore": 24.333466666666666,
-      "surfaceRadiation": 2.320763203874316,
-      "stellarRadiation": 0.0006415724581669096,
+      "surfaceRadiation": 2.3207629754263026,
+      "stellarRadiation": 0.0006415720012380857,
       "radiationShieldingAtmo": 0.00007177742387742825,
       "radiationShieldingMag": 0,
-      "photonRadiation": 0.28868688348688426,
-      "particleRadiation": 0.03207632038743158
+      "photonRadiation": 0.2886866778836722,
+      "particleRadiation": 0.03207629754263024,
+      "stellarRadiationMin": 0.000411395581166046,
+      "stellarRadiationMax": 0.0011369313557627742,
+      "surfaceRadiationMin": 2.205683026125518,
+      "surfaceRadiationMax": 2.568424874879466,
+      "equilibriumTempMinK": 38.432302938633484,
+      "equilibriumTempMaxK": 49.55244229061117,
+      "internalHeatK": 0,
+      "orbitalStability": "Very Unstable",
+      "orbitalStabilityDetails": "Likely <1 kyr before major orbital disruption (collision/ejection/infall risk). Drivers: External orbit overlap with Neptune; External orbit overlap with Kuiper Belt."
     },
     {
       "id": "solar-system-charon",
-      "parentId": "solar-system-pluto",
+      "parentId": "bary-auto-id-1771448528579-8l0pwwf51",
       "name": "Charon",
       "kind": "body",
       "roleHint": "moon",
@@ -2449,16 +2722,17 @@
         "planet/sub-earth"
       ],
       "orbit": {
-        "hostId": "solar-system-pluto",
-        "hostMu": 869635800000,
+        "hostId": "bary-auto-id-1771448528579-8l0pwwf51",
+        "hostMu": 975115229999.9999,
         "t0": 1762339146908,
+        "n_rad_per_s": 0.000011513962834212866,
         "elements": {
-          "a_AU": 0.00013,
-          "e": 0,
-          "i_deg": 0.001,
+          "a_AU": 0.00011594113620807666,
+          "e": 0.2488,
+          "i_deg": 17.16,
           "omega_deg": 0,
           "Omega_deg": 0,
-          "M0_rad": 1.350730626781299
+          "M0_rad": 1.3507306267812993
         }
       },
       "massKg": 1.58e+21,
@@ -2472,15 +2746,18 @@
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "stability/very-unstable"
         }
       ],
       "areas": [],
-      "equilibriumTempK": 40.55989045142206,
+      "equilibriumTempK": 42.94793564513933,
       "greenhouseTempK": 0,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "temperatureK": 40.55989045142206,
-      "orbital_period_days": 6.68796825041103,
+      "temperatureK": 42.94793564513933,
+      "orbital_period_days": 5.319644401372534,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 153.3,
       "description": "Pluto's largest moon, so large (half of Pluto's diameter) that the two are considered a binary dwarf planet system. They orbit a common barycenter located in the space between them. Charon is tidally locked to Pluto, so they both always show the same face to each other.",
@@ -2493,8 +2770,8 @@
       "orbitalBoundaries": {
         "minLeoKm": 30,
         "leoMoeBoundaryKm": 2000,
-        "meoHeoBoundaryKm": 6068.200305580403,
-        "heoUpperBoundaryKm": 6068.200305580403,
+        "meoHeoBoundaryKm": 5123.607026051929,
+        "heoUpperBoundaryKm": 5123.607026051929,
         "geoStationaryKm": null,
         "isGeoFallback": true
       },
@@ -2502,11 +2779,20 @@
       "propulsiveLandBudget_ms": 479.7256429374493,
       "aerobrakeLandBudget_ms": -1,
       "habitabilityScore": 15,
-      "stellarRadiation": 0.0006415682330398776,
+      "stellarRadiation": 0.0006415686899646758,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 0.28870570486794495,
-      "particleRadiation": 0.03207841165199388
+      "photonRadiation": 0.2887059104841041,
+      "particleRadiation": 0.03207843449823379,
+      "stellarRadiationMin": 0.0004113934578763043,
+      "stellarRadiationMax": 0.0011369254878468428,
+      "surfaceRadiationMin": 2.205696728938152,
+      "surfaceRadiationMax": 2.5684627439234213,
+      "equilibriumTempMinK": 38.43225334945688,
+      "equilibriumTempMaxK": 49.55237835312566,
+      "internalHeatK": 0,
+      "orbitalStability": "Very Unstable",
+      "orbitalStabilityDetails": "Likely <1 kyr before major orbital disruption (collision/ejection/infall risk). Drivers: External orbit overlap with Neptune; External orbit overlap with Kuiper Belt."
     },
     {
       "id": "construct-iss",
@@ -2818,6 +3104,36 @@
       "placement": "Surface",
       "cargoDescription": "",
       "ui_parentId": null
+    },
+    {
+      "id": "bary-auto-id-1771448528579-8l0pwwf51",
+      "kind": "barycenter",
+      "name": "Pluto-Charon Barycenter",
+      "parentId": "solar-system-sun",
+      "memberIds": [
+        "solar-system-pluto",
+        "solar-system-charon"
+      ],
+      "effectiveMassKg": 1.461e+22,
+      "orbit": {
+        "hostId": "solar-system-sun",
+        "hostMu": 132751826999999990000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 39.48,
+          "e": 0.2488,
+          "i_deg": 17.16,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.4884242784532824
+        },
+        "n_rad_per_s": 8.027243170523019e-10
+      },
+      "tags": [
+        {
+          "key": "barycenter/auto"
+        }
+      ]
     }
   ],
   "rulePackId": "starter-sf-pack",
