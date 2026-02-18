@@ -333,6 +333,7 @@ export interface Starmap {
   systems: StarSystemNode[];
   routes: Route[];
   mapMode?: 'diagrammatic' | 'scaled';
+  invertDisplay?: boolean;
   scale?: StarmapScaleConfig;
   distanceUnit: string;
   unitIsPrefix: boolean;

@@ -171,6 +171,8 @@
 
     const mapMode = starmap.mapMode ?? 'diagrammatic';
     if (!starmap.mapMode) changed = true;
+    const invertDisplay = starmap.invertDisplay ?? false;
+    if (starmap.invertDisplay === undefined) changed = true;
 
     const defaultUnit = starmap.distanceUnit || 'LY';
     const currentScale = starmap.scale;
@@ -182,7 +184,7 @@
     }
 
     if (!changed) return starmap;
-    return { ...starmap, mapMode, scale };
+    return { ...starmap, mapMode, invertDisplay, scale };
   }
 
   function getSystemDistanceLy(starmap: StarmapType, sourceSystemId: string, targetSystemId: string): number {
@@ -232,6 +234,7 @@
       distanceUnit,
       unitIsPrefix,
       mapMode,
+      invertDisplay: false,
       scale: {
         unit: distanceUnit || 'LY',
         pixelsPerUnit: 25,

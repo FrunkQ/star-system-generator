@@ -77,13 +77,18 @@
   let dragRawPosition: { x: number; y: number } | null = null;
   let mapMode: 'diagrammatic' | 'scaled' = 'diagrammatic';
   let isScaled = false;
+  let invertDisplay = false;
   let activeScale = { unit: 'LY', pixelsPerUnit: 25, showScaleBar: true };
   let scaleBarVisible = false;
 
   $: mapMode = starmap.mapMode ?? 'diagrammatic';
   $: isScaled = mapMode === 'scaled';
+  $: invertDisplay = starmap.invertDisplay ?? false;
   $: activeScale = starmap.scale ?? { unit: starmap.distanceUnit || 'LY', pixelsPerUnit: 25, showScaleBar: true };
   $: scaleBarVisible = isScaled && (activeScale.showScaleBar ?? true);
+  $: if (invertDisplay && $starmapUiStore.showBackgroundImage) {
+    starmapUiStore.update((ui) => ({ ...ui, showBackgroundImage: false }));
+  }
 
   function roundDistance(value: number): number {
     return Math.round(value * 100) / 100;
@@ -127,6 +132,11 @@
     const checked = (event.target as HTMLInputElement).checked;
     const scale = starmap.scale ?? { unit: starmap.distanceUnit || 'LY', pixelsPerUnit: 25, showScaleBar: true };
     dispatch('updatestarmap', { ...starmap, scale: { ...scale, showScaleBar: checked } });
+  }
+
+  function handleInvertDisplayToggle(event: Event) {
+    const checked = (event.target as HTMLInputElement).checked;
+    dispatch('updatestarmap', { ...starmap, invertDisplay: checked });
   }
 
   function handleSystemMouseDown(event: MouseEvent, systemId: string) {
@@ -701,7 +711,7 @@
   }
 </script>
 
-<div class="starmap-container" style="touch-action: none;" bind:this={starmapContainer}>
+<div class="starmap-container" class:invert-display={invertDisplay} style="touch-action: none;" bind:this={starmapContainer}>
   <div class="starmap-header">
     <h1>{starmap.name}</h1>
     <div class="header-controls">
@@ -710,8 +720,12 @@
         Disable Mouse Zoom
       </label>
       <label>
-        <input type="checkbox" bind:checked={$starmapUiStore.showBackgroundImage} />
+        <input type="checkbox" bind:checked={$starmapUiStore.showBackgroundImage} disabled={invertDisplay} />
         Show Background
+      </label>
+      <label title="Print-friendly white background and dark labels. Background image is disabled while active.">
+        <input type="checkbox" checked={invertDisplay} on:change={handleInvertDisplayToggle} />
+        Invert Display
       </label>
       {#if isScaled}
         <label>
@@ -754,7 +768,7 @@
     <svg
       bind:this={svgElement}
       class="starmap"
-      class:with-background={$starmapUiStore.showBackgroundImage}
+      class:with-background={$starmapUiStore.showBackgroundImage && !invertDisplay}
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 800 600"
       on:contextmenu={handleMapContextMenu}
@@ -1193,6 +1207,22 @@
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
+  }
+
+  .starmap-container.invert-display .starmap {
+    background-color: #ffffff;
+    border-color: #333;
+  }
+
+  .starmap-container.invert-display .star-label,
+  .starmap-container.invert-display .plus-indicator,
+  .starmap-container.invert-display .route-label {
+    fill: #111;
+    stroke: #fff;
+  }
+
+  .starmap-container.invert-display .route {
+    stroke: #004a66;
   }
 
   .star {
