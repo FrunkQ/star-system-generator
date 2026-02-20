@@ -6,6 +6,19 @@
 
 	onMount(() => {
 		if (!('serviceWorker' in navigator)) return;
+		const isProd = import.meta.env.PROD;
+		const disableSw = window.location.search.includes('no-sw=1');
+
+		// Keep local/dev/testing sessions free of stale SW caches.
+		if (!isProd || disableSw) {
+			navigator.serviceWorker.getRegistrations().then((regs) => {
+				regs.forEach((r) => r.unregister());
+			});
+			if ('caches' in window) {
+				caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
+			}
+			return;
+		}
 
 		let refreshing = false;
 		navigator.serviceWorker.addEventListener('controllerchange', () => {

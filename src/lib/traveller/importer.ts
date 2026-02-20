@@ -647,6 +647,9 @@ export class TravellerImporter {
             }
         }
 
+        // Traveller trade code `Sa` = main world is a satellite of a larger world.
+        this.applySatelliteTradeCodeIfNeeded(nodes, mainWorld, data, systemRootId);
+
         const system: System = {
             id: systemId,
             name: data.name,
@@ -673,6 +676,69 @@ export class TravellerImporter {
         }
 
         return system;
+    }
+
+    private applySatelliteTradeCodeIfNeeded(
+        nodes: (CelestialBody | Barycenter)[],
+        mainWorld: CelestialBody,
+        data: any,
+        systemRootId: string
+    ) {
+        const hasSatelliteCode = (data.tradeCodes || []).includes('Satellite');
+        if (!hasSatelliteCode) return;
+
+        const bodies = nodes.filter((n): n is CelestialBody => n.kind === 'body');
+        const siblings = bodies.filter((b) => b.parentId === systemRootId && b.id !== mainWorld.id);
+        if (siblings.length === 0) return;
+
+        const giantCandidates = siblings.filter((b) =>
+            (b.roleHint === 'planet' || b.roleHint === 'dwarf-planet') &&
+            !!b.classes?.some((c) => c.includes('gas-giant') || c.includes('ice-giant'))
+        );
+        const fallbackCandidates = siblings.filter((b) =>
+            (b.roleHint === 'planet' || b.roleHint === 'dwarf-planet') &&
+            (b.massKg || 0) > (mainWorld.massKg || 0) * 3
+        );
+
+        const pool = (giantCandidates.length > 0 ? giantCandidates : fallbackCandidates)
+            .sort((a, b) => (b.massKg || 0) - (a.massKg || 0));
+        const host = pool[0];
+        if (!host) return;
+
+        // Place main world on a plausible moon orbit around the host.
+        const hostRadiusKm = Math.max(1000, host.radiusKm || 1000);
+        const aKm = hostRadiusKm * this.rng.range(20, 80);
+        const aAU = Math.max(1e-6, aKm / AU_KM);
+        const hostMassKg = Math.max(1e20, host.massKg || 0);
+
+        mainWorld.parentId = host.id;
+        mainWorld.tags = mainWorld.tags || [];
+        if (!mainWorld.tags.some((t) => t.key === 'traveller/satellite-main-world')) {
+            mainWorld.tags.push({ key: 'traveller/satellite-main-world' });
+        }
+
+        if (!mainWorld.orbit) {
+            mainWorld.orbit = {
+                hostId: host.id,
+                hostMu: G * hostMassKg,
+                t0: Date.now(),
+                elements: {
+                    a_AU: aAU,
+                    e: this.rng.range(0, 0.05),
+                    i_deg: this.rng.range(0, 3),
+                    Omega_deg: 0,
+                    omega_deg: 0,
+                    M0_rad: this.rng.next() * Math.PI * 2
+                }
+            };
+            return;
+        }
+
+        mainWorld.orbit.hostId = host.id;
+        mainWorld.orbit.hostMu = G * hostMassKg;
+        mainWorld.orbit.elements.a_AU = aAU;
+        mainWorld.orbit.elements.e = Math.min(0.05, Math.max(0, mainWorld.orbit.elements.e || 0));
+        mainWorld.orbit.elements.i_deg = Math.min(5, Math.max(0, mainWorld.orbit.elements.i_deg || 0));
     }
 
     private spawnConstructs(system: System, mainWorld: CelestialBody, data: any, rulePack: RulePack, starCode: string) {
@@ -771,11 +837,42 @@ export class TravellerImporter {
         }
 
         const popCode = this.decoder.hexVal(uwp.population);
-        const scale = Math.pow(10, Math.max(0, popCode - 5)); 
+        const scale = Math.pow(10, Math.max(0, popCode - 5));
+        const crewCap = 100000;
+        const clampCrew = (value: number | undefined): number => {
+            if (typeof value !== 'number' || Number.isNaN(value)) return 0;
+            return Math.max(0, Math.min(Math.floor(value), crewCap));
+        };
         
         if (construct.crew) {
-            construct.crew.max = Math.floor(construct.crew.max * scale);
-            construct.crew.current = Math.floor(construct.crew.max * 0.8);
+            const scaledMax = (construct.crew.max || 0) * scale;
+            construct.crew.max = clampCrew(scaledMax);
+            const existingCurrent = typeof construct.crew.current === 'number'
+                ? Math.floor(construct.crew.current * scale)
+                : Math.floor(construct.crew.max * 0.8);
+            construct.crew.current = Math.min(clampCrew(existingCurrent), construct.crew.max);
+        }
+        if (typeof construct.current_crew_count === 'number') {
+            const scaledCurrentCrewCount = Math.floor(construct.current_crew_count * scale);
+            construct.current_crew_count = clampCrew(scaledCurrentCrewCount);
+            if (construct.crew) {
+                construct.current_crew_count = Math.min(construct.current_crew_count, construct.crew.max || crewCap);
+            }
+        }
+        if (construct.systems?.life_support?.max_crew !== undefined) {
+            const scaledLifeSupportMax = (construct.systems.life_support.max_crew || 0) * scale;
+            construct.systems.life_support.max_crew = clampCrew(scaledLifeSupportMax);
+        }
+        if (construct.systems?.life_support?.max_crew !== undefined && construct.crew) {
+            const sharedMax = Math.min(construct.systems.life_support.max_crew || crewCap, construct.crew.max || crewCap);
+            construct.systems.life_support.max_crew = sharedMax;
+            construct.crew.max = sharedMax;
+            construct.crew.current = Math.min(construct.crew.current || 0, sharedMax);
+        }
+        if (construct.crew && typeof construct.current_crew_count === 'number') {
+            const sharedCurrent = Math.min(construct.crew.current || 0, construct.current_crew_count);
+            construct.crew.current = sharedCurrent;
+            construct.current_crew_count = sharedCurrent;
         }
         if (construct.physical_parameters?.cargoCapacity_tonnes) {
             construct.physical_parameters.cargoCapacity_tonnes *= scale;

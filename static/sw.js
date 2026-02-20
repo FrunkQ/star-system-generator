@@ -52,12 +52,10 @@ self.addEventListener('fetch', (event) => {
   // Only manage same-origin requests.
   if (url.origin !== self.location.origin) return;
 
+  // Network-first to avoid stale UI when online; cache remains offline fallback.
   event.respondWith(
     (async () => {
       const runtimeCache = await caches.open(RUNTIME_CACHE);
-      const cached = await runtimeCache.match(request);
-      if (cached) return cached;
-
       try {
         const response = await fetch(request);
         if (response.ok) {
@@ -65,6 +63,8 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       } catch (err) {
+        const cached = await runtimeCache.match(request);
+        if (cached) return cached;
         if (request.mode === 'navigate') {
           const shell = await caches.match('/');
           if (shell) return shell;
