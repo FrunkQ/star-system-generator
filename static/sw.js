@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'sse-static-v1.8.3';
-const RUNTIME_CACHE = 'sse-runtime-v1.8.3';
+const STATIC_CACHE = 'sse-static-v1.8.4';
+const RUNTIME_CACHE = 'sse-runtime-v1.8.4';
 
 const PRECACHE_URLS = [
   '/',

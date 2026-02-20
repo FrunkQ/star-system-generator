@@ -197,17 +197,19 @@ You can preview the production build with `npm run preview`.
     *   Wired in map scale bar rendering for scaled maps.
     *   Scale bar is now positioned **bottom-left** to match system-map consistency.
 
-### v1.8.3 Changelog (14th Feb 2026)
-*   **Barycenter + Binary Stability (Proper Model)**:
-    *   Replaced false-positive sibling Hill-spacing behavior for primary barycenter binary members with dedicated binary stability analysis.
-    *   Added binary fragility checks using binary separation versus external Hill sphere (`sep/Hill`) around the parent host.
-    *   Added external perturbation checks from neighboring bodies (overlap + Hill spacing), so close/massive neighbors can correctly destabilize binaries.
-*   **Post-Processing Derived Ranges (Multi-Star Aware)**:
-    *   Added generalized orbit-tree distance/range evaluation for temperature/radiation contributions in hierarchical systems.
-    *   Surfaced derived equilibrium temperature min/max values through processing for UI display.
-*   **Radiation Range Consistency Fix**:
-    *   Fixed surface radiation min/max calculations to use the same shielding component model as the live displayed value.
-    *   Radiation ranges now stay consistent with the current reported surface dose.
+### v1.8.4 Changelog (20th Feb 2026)
+*   **Temperature Model Refresh (more physical, less gamey):**
+    *   Reworked temperature composition logic and presentation to expose day/night and pole/equator-style ranges more clearly.
+    *   Added cryogenic greenhouse attenuation so greenhouse gases are less effective at very low temperatures (spectral-shift handling; fixes Titan-class behavior).
+    *   Re-tuned tidal heating to represent sane global-average warming (not local peak values), with explicit hotspot indicators for volcanically active bodies.
+*   **Printable Reports Overhaul:**
+    *   Brought reports in line with new environmental outputs (expanded temperature profile and related derived data).
+    *   Added a compact `System Diagram` to `01. SYSTEM OVERVIEW`.
+    *   Fixed multi-star hierarchy/reporting bugs that caused duplicated or misplaced information.
+*   **Misc Fixes & Quality-of-Life:**
+    *   Added starmap invert display mode for easier printing.
+    *   Added finer atmosphere composition editing (manual percentage entry for mix tuning).
+    *   Improved Traveller import edge cases: saner construct population scaling/caps and explicit handling of `Sa` (Satellite) trade code.
 
 ### v1.8.0 Changelog (14th Feb 2026)
 *   **Orbital Stability Analysis (N-body Proxy)**
