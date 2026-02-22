@@ -354,6 +354,7 @@ export interface BucketDrainCalendarDefinition {
   id: string;
   math_type: 'BUCKET_DRAIN';
   epoch_offset_t: string;
+  year_offset?: number;
   format: string;
   hierarchy: TemporalHierarchyUnit[];
   leap_logic?: TemporalLeapLogic;

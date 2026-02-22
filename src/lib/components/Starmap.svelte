@@ -8,6 +8,7 @@
   import EditFuelAndDrivesModal from './EditFuelAndDrivesModal.svelte';
   import EditAtmospheresModal from './EditAtmospheresModal.svelte';
   import EditSensorsModal from './EditSensorsModal.svelte';
+  import EditTemporalModal from './EditTemporalModal.svelte';
   import SaveSystemModal from './SaveSystemModal.svelte';
   import ImportTravellerModal from './ImportTravellerModal.svelte';
   import AddTravellerSystemModal from './AddTravellerSystemModal.svelte';
@@ -45,6 +46,7 @@
   let showSaveModal = false;
   let showImportModal = false;
   let showAddTravellerModal = false;
+  let showTemporalModal = false;
   
   let travellerImportCoords = { x: 0, y: 0 };
   
@@ -346,6 +348,12 @@
   function handleSaveSensorOverrides(event: CustomEvent<any>) {
       const overrides = event.detail;
       const newStarmap = { ...starmap, rulePackOverrides: { ...starmap.rulePackOverrides, ...overrides } };
+      dispatch('updatestarmap', newStarmap);
+  }
+
+  function handleSaveTemporal(event: CustomEvent<{ temporal: NonNullable<Starmap['temporal']> }>) {
+      const temporal = event.detail.temporal;
+      const newStarmap = { ...starmap, temporal };
       dispatch('updatestarmap', newStarmap);
   }
 
@@ -849,15 +857,18 @@
           <button on:click={() => showDropdown = !showDropdown} class="hamburger-button">&#9776;</button>
           {#if showDropdown}
               <div class="dropdown-content">
+                  <button on:click={() => dispatch('settings')}>Starmap Settings</button>
+                  <hr />
                   <button on:click={() => showSaveModal = true}>Download Starmap</button>
                   <button on:click={() => dispatch('upload')}>Upload Starmap</button>
                   <hr />
                   <button on:click={() => dispatch('clear')} class="danger">Clear Starmap</button>
                   <hr />
                   <button on:click={() => showFuelModal = true}>Edit Fuel & Drives</button>
-                  <button on:click={() => showAtmosphereModal = true}>Edit Atmospheres & Mixes</button>
+                  <button on:click={() => showAtmosphereModal = true}>Edit Atmospheres</button>
                   <button on:click={() => showSensorsModal = true}>Edit Sensors</button>
-                  <button on:click={() => dispatch('settings')}>Starmap Settings</button>
+                  <button on:click={() => showTemporalModal = true}>Edit Time & Calendars</button>
+                  <button on:click={() => dispatch('llmsettings')}>LLM Settings</button>
                   <hr />
                   <button on:click={() => showAboutModal = true}>About</button>
               </div>
@@ -1200,6 +1211,15 @@
           {starmap}
           on:save={handleSaveSensorOverrides}
           on:close={() => showSensorsModal = false}
+      />
+  {/if}
+
+  {#if showTemporalModal}
+      <EditTemporalModal
+          showModal={showTemporalModal}
+          {starmap}
+          on:save={handleSaveTemporal}
+          on:close={() => showTemporalModal = false}
       />
   {/if}
 </div>

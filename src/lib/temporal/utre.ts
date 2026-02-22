@@ -66,7 +66,7 @@ function resolveRatioLinear(masterSeconds: bigint, calendar: Extract<TemporalCal
 function resolveBucketDrain(masterSeconds: bigint, calendar: BucketDrainCalendarDefinition): ResolvedTemporal {
   const epochOffset = parseClockSeconds(calendar.epoch_offset_t, 0n);
   const localRaw = masterSeconds - epochOffset;
-  const local = localRaw >= 0n ? localRaw : 0n;
+  const local = localRaw;
 
   const hierarchy = [...calendar.hierarchy].sort((a, b) => b.multiplier - a.multiplier);
   const yearUnit = hierarchy.find((u) => u.unit === 'year');
@@ -79,15 +79,15 @@ function resolveBucketDrain(masterSeconds: bigint, calendar: BucketDrainCalendar
   let working = local;
 
   if (yearUnit && calendar.leap_logic) {
-    const rawYears = local / BigInt(yearUnit.multiplier);
+    const rawYears = floorDiv(local, BigInt(yearUnit.multiplier));
     const totalDrift = rawYears * BigInt(calendar.leap_logic.drift_per_year_t);
     working = local - totalDrift;
   }
 
   for (const unit of hierarchy) {
     const divisor = BigInt(unit.multiplier);
-    const value = working / divisor;
-    working %= divisor;
+    const value = floorDiv(working, divisor);
+    working = floorMod(working, divisor);
     fields[unit.unit] = Number(value);
   }
 
@@ -106,10 +106,13 @@ function resolveBucketDrain(masterSeconds: bigint, calendar: BucketDrainCalendar
   }
 
   const dayMultiplier = BigInt(dayUnit?.multiplier ?? 86400);
-  const weekdayIndex = Number((local / dayMultiplier) % 7n);
-  const weekday = calendar.lookup_tables?.weekdays?.[weekdayIndex] ?? '';
+  const weekdayList = calendar.lookup_tables?.weekdays ?? [];
+  const weekdayCycle = weekdayList.length > 0 ? BigInt(weekdayList.length) : 7n;
+  const weekdayIndex = Number(floorMod(floorDiv(local, dayMultiplier), weekdayCycle));
+  const weekday = weekdayList[weekdayIndex] ?? '';
 
-  const year = typeof fields.year === 'number' ? fields.year + 1 : 1;
+  const yearBase = Number.isFinite(calendar.year_offset) ? Number(calendar.year_offset) : 0;
+  const year = typeof fields.year === 'number' ? fields.year + 1 + yearBase : 1 + yearBase;
   const hour = typeof fields.hour === 'number' ? fields.hour : 0;
   const min = typeof fields.min === 'number' ? fields.min : 0;
   const sec = typeof fields.sec === 'number' ? fields.sec : 0;
@@ -156,4 +159,20 @@ function ordinalSuffix(value: number): string {
   if (mod10 === 2 && mod100 !== 12) return 'nd';
   if (mod10 === 3 && mod100 !== 13) return 'rd';
   return 'th';
+}
+
+function floorDiv(a: bigint, b: bigint): bigint {
+  if (b === 0n) return 0n;
+  const q = a / b;
+  const r = a % b;
+  if (r !== 0n && ((r > 0n) !== (b > 0n))) {
+    return q - 1n;
+  }
+  return q;
+}
+
+function floorMod(a: bigint, b: bigint): bigint {
+  if (b === 0n) return 0n;
+  const m = a % b;
+  return m < 0n ? m + (b < 0n ? -b : b) : m;
 }

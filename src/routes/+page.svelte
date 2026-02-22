@@ -18,7 +18,8 @@
   import SystemView from '$lib/components/SystemView.svelte';
   import RouteEditorModal from '$lib/components/RouteEditorModal.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
-  import { createDefaultTemporalState, ensureTemporalState, loadTemporalRegistryConfig } from '$lib/temporal/defaults';
+  import LlmSettingsModal from '$lib/components/LlmSettingsModal.svelte';
+  import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, STARTDATE_EPOCH_OFFSET_T } from '$lib/temporal/defaults';
   import { parseClockSeconds } from '$lib/temporal/utre';
 
   let rulePacks: RulePack[] = [];
@@ -33,6 +34,7 @@
   let showRouteEditorModal = false;
   let routeToEdit: Route | null = null;
   let showSettingsModal = false;
+  let showLlmSettingsModal = false;
 
   let selectedRulepack: RulePack | undefined;
   let fileInput: HTMLInputElement;
@@ -253,6 +255,7 @@
     selectedRulepack = rulepack;
     const seed = `seed-${Date.now()}`;
     const newSystem = generateSystem(seed, rulepack, {}, 'Random', false);
+    const anchoredTimeSec = STARTDATE_EPOCH_OFFSET_T.toString();
     const newStarmap: StarmapType = {
       id: `starmap-${Date.now()}`,
       name,
@@ -272,12 +275,12 @@
           position: { x: 0, y: 0 },
           system: newSystem,
           time: {
-            displayTimeSec: BigInt(Math.floor(newSystem.epochT0 / 1000)).toString()
+            displayTimeSec: anchoredTimeSec
           }
         },
       ],
       routes: [],
-      temporal: createDefaultTemporalState(newSystem.epochT0)
+      temporal: createAnchoredTemporalState()
     };
     starmapStore.set(newStarmap);
     showNewStarmapModal = false;
@@ -374,6 +377,7 @@
     const { x, y } = event.detail;
     const seed = `seed-${Date.now()}`;
     const newSystem = generateSystem(seed, selectedRulepack, {}, 'Random', false);
+    const displayTimeSec = parseClockSeconds($starmapStore.temporal?.displayTimeSec, STARTDATE_EPOCH_OFFSET_T).toString();
 
     const newSystemNode: StarSystemNode = {
       id: newSystem.id,
@@ -381,7 +385,7 @@
       position: { x, y },
       system: newSystem,
       time: {
-        displayTimeSec: BigInt(Math.floor(newSystem.epochT0 / 1000)).toString()
+        displayTimeSec
       }
     };
 
@@ -567,8 +571,8 @@
   }
 
 
-  function handleSaveSettings(event: CustomEvent<{ starmap: Partial<StarmapType>, ai: any }>) {
-    const { starmap: starmapSettings, ai: aiSettings } = event.detail;
+  function handleSaveSettings(event: CustomEvent<{ starmap: Partial<StarmapType> }>) {
+    const { starmap: starmapSettings } = event.detail;
     starmapStore.update(starmap => {
       if (starmap) {
         const merged = { ...starmap, ...starmapSettings };
@@ -579,9 +583,11 @@
       }
       return starmap;
     });
-    // Assuming aiSettings is the complete object to be saved
-    localStorage.setItem('stargen_ai_settings', JSON.stringify(aiSettings));
     showSettingsModal = false;
+  }
+
+  function handleSaveLlmSettings() {
+    showLlmSettingsModal = false;
   }
 
 
@@ -624,6 +630,7 @@
       on:upload={handleUploadStarmap}
       on:clear={handleClearStarmap}
       on:settings={() => showSettingsModal = true}
+      on:llmsettings={() => showLlmSettingsModal = true}
       on:updatestarmap={(e) => starmapStore.set(e.detail)}
       {selectedSystemForLink}
     />
@@ -659,6 +666,10 @@
 
   {#if showSettingsModal && $starmapStore}
     <SettingsModal bind:showModal={showSettingsModal} starmap={$starmapStore} on:save={handleSaveSettings} />
+  {/if}
+
+  {#if showLlmSettingsModal}
+    <LlmSettingsModal bind:showModal={showLlmSettingsModal} on:save={handleSaveLlmSettings} on:close={() => showLlmSettingsModal = false} />
   {/if}
 </main>
 

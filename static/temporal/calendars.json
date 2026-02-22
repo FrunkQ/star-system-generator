@@ -1,10 +1,10 @@
 {
-  "default_active_calendar_key": "gregorian_earth",
+  "default_active_calendar_key": "Earth Gregorian",
   "temporal_registry": {
-    "gregorian_earth": {
+    "Earth Gregorian": {
       "id": "EARTH_GREG",
       "math_type": "BUCKET_DRAIN",
-      "epoch_offset_t": "435084568128000000",
+      "epoch_offset_t": "435084559692049800",
       "format": "{hour:02}:{min:02}:{sec:02}, {weekday} {mday}{suffix} {month}, {year} AD",
       "hierarchy": [
         { "unit": "year", "multiplier": 31536000 },
@@ -44,15 +44,121 @@
         ]
       }
     },
-    "star_trek_stardate": {
+    "Star Trek Stardate": {
       "id": "TNG_SD",
       "math_type": "RATIO_LINEAR",
-      "epoch_offset_t": "435084632962339136",
+      "epoch_offset_t": "435084632967250575",
       "format": "Stardate {val}",
       "parameters": {
         "units_per_earth_year": 1000.0,
         "seconds_per_earth_year": 31557600,
         "precision_digits": 1
+      }
+    },
+    "Mayan Haab (Simplified)": {
+      "id": "MAYAN_HAAB_SIMPL",
+      "math_type": "BUCKET_DRAIN",
+      "epoch_offset_t": "435084461534290575",
+      "format": "{weekday} {mday}{suffix} {month}, Haab Year {year}",
+      "hierarchy": [
+        { "unit": "year", "multiplier": 31536000 },
+        { "unit": "day", "multiplier": 86400 },
+        { "unit": "hour", "multiplier": 3600 },
+        { "unit": "min", "multiplier": 60 },
+        { "unit": "sec", "multiplier": 1 }
+      ],
+      "leap_logic": {
+        "drift_per_year_t": 0,
+        "threshold_t": 86400,
+        "apply_to": "day"
+      },
+      "lookup_tables": {
+        "weekdays": [
+          "Imix",
+          "Ik",
+          "Akbal",
+          "K'an",
+          "Chikchan",
+          "Kimi",
+          "Manik",
+          "Lamat",
+          "Muluk",
+          "Ok",
+          "Chuwen",
+          "Eb",
+          "Ben",
+          "Ix",
+          "Men",
+          "Kib",
+          "Kaban",
+          "Etznab",
+          "Kawak",
+          "Ajaw"
+        ],
+        "months": [
+          { "name": "Pop", "days": 20 },
+          { "name": "Wo", "days": 20 },
+          { "name": "Sip", "days": 20 },
+          { "name": "Sotz", "days": 20 },
+          { "name": "Sek", "days": 20 },
+          { "name": "Xul", "days": 20 },
+          { "name": "Yaxkin", "days": 20 },
+          { "name": "Mol", "days": 20 },
+          { "name": "Chen", "days": 20 },
+          { "name": "Yax", "days": 20 },
+          { "name": "Sak", "days": 20 },
+          { "name": "Keh", "days": 20 },
+          { "name": "Mak", "days": 20 },
+          { "name": "Kankin", "days": 20 },
+          { "name": "Muwan", "days": 20 },
+          { "name": "Pax", "days": 20 },
+          { "name": "Kayab", "days": 20 },
+          { "name": "Kumku", "days": 20 },
+          { "name": "Wayeb", "days": 5 }
+        ]
+      }
+    },
+    "Chinese Lunisolar (Simplified)": {
+      "id": "CHINESE_LUNISOLAR_SIMPL",
+      "math_type": "BUCKET_DRAIN",
+      "epoch_offset_t": "435084488515324800",
+      "format": "{hour:02}:{min:02}:{sec:02}, {weekday} {mday}{suffix} {month}, Year {year}",
+      "hierarchy": [
+        { "unit": "year", "multiplier": 30585600 },
+        { "unit": "day", "multiplier": 86400 },
+        { "unit": "hour", "multiplier": 3600 },
+        { "unit": "min", "multiplier": 60 },
+        { "unit": "sec", "multiplier": 1 }
+      ],
+      "leap_logic": {
+        "drift_per_year_t": 0,
+        "threshold_t": 86400,
+        "apply_to": "day"
+      },
+      "lookup_tables": {
+        "weekdays": [
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+          "Sunday"
+        ],
+        "months": [
+          { "name": "First Moon", "days": 30 },
+          { "name": "Second Moon", "days": 29 },
+          { "name": "Third Moon", "days": 30 },
+          { "name": "Fourth Moon", "days": 29 },
+          { "name": "Fifth Moon", "days": 30 },
+          { "name": "Sixth Moon", "days": 29 },
+          { "name": "Seventh Moon", "days": 30 },
+          { "name": "Eighth Moon", "days": 29 },
+          { "name": "Ninth Moon", "days": 30 },
+          { "name": "Tenth Moon", "days": 29 },
+          { "name": "Eleventh Moon", "days": 30 },
+          { "name": "Twelfth Moon", "days": 29 }
+        ]
       }
     }
   }

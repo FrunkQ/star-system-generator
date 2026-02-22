@@ -1,67 +1,41 @@
 import type { Starmap, TemporalState } from '$lib/types';
-import { BIG_BANG_TO_UNIX_EPOCH_T, parseClockSeconds, unixMsToMasterSeconds } from '$lib/temporal/utre';
+import { parseClockSeconds, unixMsToMasterSeconds } from '$lib/temporal/utre';
 
-const YEAR_SECONDS = 31536000n;
-const DEFAULT_AD_YEAR_OFFSET = 2000n;
-const GREGORIAN_DEFAULT_EPOCH_OFFSET_T = BIG_BANG_TO_UNIX_EPOCH_T - (DEFAULT_AD_YEAR_OFFSET * YEAR_SECONDS);
+export const STARTDATE_EPOCH_OFFSET_T = 435084632967250575n;
 
-export const BUILTIN_TEMPORAL_REGISTRY: TemporalState['temporal_registry'] = {
-  gregorian_earth: {
-    id: 'EARTH_GREG',
-    math_type: 'BUCKET_DRAIN',
-    epoch_offset_t: GREGORIAN_DEFAULT_EPOCH_OFFSET_T.toString(),
-    format: '{hour:02}:{min:02}:{sec:02}, {weekday} {mday}{suffix} {month}, {year} AD',
-    hierarchy: [
-      { unit: 'year', multiplier: 31536000 },
-      { unit: 'day', multiplier: 86400 },
-      { unit: 'hour', multiplier: 3600 },
-      { unit: 'min', multiplier: 60 },
-      { unit: 'sec', multiplier: 1 }
-    ],
-    leap_logic: {
-      drift_per_year_t: 20925,
-      threshold_t: 86400,
-      apply_to: 'day'
-    },
-    lookup_tables: {
-      weekdays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-      months: [
-        { name: 'January', days: 31 }, { name: 'February', days: 28 },
-        { name: 'March', days: 31 }, { name: 'April', days: 30 },
-        { name: 'May', days: 31 }, { name: 'June', days: 30 },
-        { name: 'July', days: 31 }, { name: 'August', days: 31 },
-        { name: 'September', days: 30 }, { name: 'October', days: 31 },
-        { name: 'November', days: 30 }, { name: 'December', days: 31 }
-      ]
-    }
-  },
-  star_trek_stardate: {
-    id: 'TNG_SD',
+const FALLBACK_CALENDAR_KEY = 'Default Linear';
+const FALLBACK_TEMPORAL_REGISTRY: TemporalState['temporal_registry'] = {
+  [FALLBACK_CALENDAR_KEY]: {
+    id: 'DEFAULT_LINEAR',
     math_type: 'RATIO_LINEAR',
-    epoch_offset_t: BIG_BANG_TO_UNIX_EPOCH_T.toString(),
-    format: 'Stardate {val}',
+    epoch_offset_t: STARTDATE_EPOCH_OFFSET_T.toString(),
+    format: 't+{val}s',
     parameters: {
-      units_per_earth_year: 1000.0,
+      units_per_earth_year: 31557600,
       seconds_per_earth_year: 31557600,
-      precision_digits: 1
+      precision_digits: 0
     }
   }
 };
 
-let runtimeTemporalRegistry: TemporalState['temporal_registry'] = JSON.parse(JSON.stringify(BUILTIN_TEMPORAL_REGISTRY));
-let runtimeActiveCalendarKey = 'gregorian_earth';
+let runtimeTemporalRegistry: TemporalState['temporal_registry'] = JSON.parse(JSON.stringify(FALLBACK_TEMPORAL_REGISTRY));
+let runtimeActiveCalendarKey = FALLBACK_CALENDAR_KEY;
 
 type TemporalConfigPayload = {
   default_active_calendar_key?: string;
   temporal_registry?: TemporalState['temporal_registry'];
 };
 
+function cloneRegistry(registry: TemporalState['temporal_registry']): TemporalState['temporal_registry'] {
+  return JSON.parse(JSON.stringify(registry));
+}
+
 function getTemporalRegistryDefaults(): { registry: TemporalState['temporal_registry']; activeKey: string } {
-  const registry = JSON.parse(JSON.stringify(runtimeTemporalRegistry));
+  const registry = cloneRegistry(runtimeTemporalRegistry);
   const keys = Object.keys(registry);
   const activeKey = runtimeActiveCalendarKey && registry[runtimeActiveCalendarKey]
     ? runtimeActiveCalendarKey
-    : (keys[0] ?? 'gregorian_earth');
+    : (keys[0] ?? FALLBACK_CALENDAR_KEY);
   return { registry, activeKey };
 }
 
@@ -73,38 +47,94 @@ export async function loadTemporalRegistryConfig(url = '/temporal/calendars.json
       console.warn(`Temporal config not loaded from ${url}: ${response.status} ${response.statusText}`);
       return;
     }
+
     const payload = (await response.json()) as TemporalConfigPayload;
     if (!payload?.temporal_registry || Object.keys(payload.temporal_registry).length === 0) {
       return;
     }
-    runtimeTemporalRegistry = {
-      ...JSON.parse(JSON.stringify(BUILTIN_TEMPORAL_REGISTRY)),
-      ...payload.temporal_registry
-    };
+
+    runtimeTemporalRegistry = cloneRegistry(payload.temporal_registry);
+
     if (
       payload.default_active_calendar_key &&
       runtimeTemporalRegistry[payload.default_active_calendar_key]
     ) {
       runtimeActiveCalendarKey = payload.default_active_calendar_key;
-    } else if (!runtimeTemporalRegistry[runtimeActiveCalendarKey]) {
-      runtimeActiveCalendarKey = Object.keys(runtimeTemporalRegistry)[0] ?? 'gregorian_earth';
+    } else {
+      runtimeActiveCalendarKey = Object.keys(runtimeTemporalRegistry)[0] ?? FALLBACK_CALENDAR_KEY;
     }
   } catch (error) {
-    console.warn(`Failed to load temporal config from ${url}. Using built-in defaults.`, error);
+    console.warn(`Failed to load temporal config from ${url}. Using built-in fallback.`, error);
   }
 }
 
 export function createDefaultTemporalState(epochMs?: number): TemporalState {
-  const seedEpochMs = typeof epochMs === 'number' ? epochMs : Date.now();
-  const startMaster = unixMsToMasterSeconds(seedEpochMs);
-  const seed = startMaster.toString();
+  const seed = typeof epochMs === 'number'
+    ? unixMsToMasterSeconds(epochMs)
+    : STARTDATE_EPOCH_OFFSET_T;
   const defaults = getTemporalRegistryDefaults();
   return {
-    masterTimeSec: seed,
-    displayTimeSec: seed,
+    masterTimeSec: seed.toString(),
+    displayTimeSec: seed.toString(),
     activeCalendarKey: defaults.activeKey,
     temporal_registry: defaults.registry
   };
+}
+
+export function createAnchoredTemporalState(): TemporalState {
+  return createDefaultTemporalState();
+}
+
+function normalizeRegistryAliasesById(
+  registry: TemporalState['temporal_registry'],
+  defaults: TemporalState['temporal_registry']
+): { registry: TemporalState['temporal_registry']; changed: boolean } {
+  const byId = new Map<string, string>();
+  Object.entries(defaults).forEach(([key, calendar]) => {
+    if (calendar?.id) byId.set(calendar.id, key);
+  });
+
+  let changed = false;
+  let working = { ...registry };
+
+  Object.entries(registry).forEach(([key, calendar]) => {
+    const canonicalKey = calendar?.id ? byId.get(calendar.id) : undefined;
+    if (!canonicalKey || canonicalKey === key) return;
+    if (working[canonicalKey]) {
+      delete working[key];
+      changed = true;
+      return;
+    }
+    working = {
+      ...working,
+      [canonicalKey]: calendar
+    };
+    delete working[key];
+    changed = true;
+  });
+
+  return { registry: working, changed };
+}
+
+function resolveActiveCalendarKey(
+  existing: NonNullable<Starmap['temporal']>,
+  registry: TemporalState['temporal_registry'],
+  defaultKey: string
+): string {
+  if (existing.activeCalendarKey && registry[existing.activeCalendarKey]) {
+    return existing.activeCalendarKey;
+  }
+
+  const existingActive = existing.activeCalendarKey
+    ? existing.temporal_registry?.[existing.activeCalendarKey]
+    : undefined;
+  if (existingActive?.id) {
+    const match = Object.entries(registry).find(([, cal]) => cal.id === existingActive.id);
+    if (match) return match[0];
+  }
+
+  if (registry[defaultKey]) return defaultKey;
+  return Object.keys(registry)[0] ?? defaultKey;
 }
 
 export function ensureTemporalState(starmap: Starmap): Starmap {
@@ -113,7 +143,7 @@ export function ensureTemporalState(starmap: Starmap): Starmap {
   if (!existing) {
     return {
       ...starmap,
-      temporal: createDefaultTemporalState(firstEpochMs)
+      temporal: createAnchoredTemporalState()
     };
   }
 
@@ -122,6 +152,7 @@ export function ensureTemporalState(starmap: Starmap): Starmap {
   let registry = hasExistingRegistry
     ? (existing.temporal_registry as TemporalState['temporal_registry'])
     : defaults.registry;
+  let changed = false;
 
   if (hasExistingRegistry) {
     const missingDefaultKeys = Object.keys(defaults.registry).filter((key) => !registry[key]);
@@ -131,33 +162,23 @@ export function ensureTemporalState(starmap: Starmap): Starmap {
         merged[key] = defaults.registry[key];
       }
       registry = merged;
+      changed = true;
     }
   }
 
-  const gregorian = registry.gregorian_earth;
-  const runtimeGregorian = defaults.registry.gregorian_earth;
-  const runtimeGregorianEpochOffset = runtimeGregorian && runtimeGregorian.math_type === 'BUCKET_DRAIN'
-    ? runtimeGregorian.epoch_offset_t
-    : GREGORIAN_DEFAULT_EPOCH_OFFSET_T.toString();
-  const shouldMigrateGregorianEpoch =
-    gregorian &&
-    gregorian.math_type === 'BUCKET_DRAIN' &&
-    gregorian.epoch_offset_t === BIG_BANG_TO_UNIX_EPOCH_T.toString();
-  if (shouldMigrateGregorianEpoch) {
-    registry = {
-      ...registry,
-      gregorian_earth: {
-        ...gregorian,
-        epoch_offset_t: runtimeGregorianEpochOffset
-      }
-    };
+  const aliasNormalized = normalizeRegistryAliasesById(registry, defaults.registry);
+  if (aliasNormalized.changed) {
+    registry = aliasNormalized.registry;
+    changed = true;
   }
 
-  const master = parseClockSeconds(existing.masterTimeSec, unixMsToMasterSeconds(firstEpochMs));
+  const hasLegacyMissingTimeCodes = !existing.masterTimeSec || !existing.displayTimeSec;
+  const fallbackMaster = hasLegacyMissingTimeCodes
+    ? STARTDATE_EPOCH_OFFSET_T
+    : unixMsToMasterSeconds(firstEpochMs);
+  const master = parseClockSeconds(existing.masterTimeSec, fallbackMaster);
   const display = parseClockSeconds(existing.displayTimeSec, master);
-  const activeCalendarKey = existing.activeCalendarKey && registry[existing.activeCalendarKey]
-    ? existing.activeCalendarKey
-    : defaults.activeKey;
+  const activeCalendarKey = resolveActiveCalendarKey(existing, registry, defaults.activeKey);
 
   const normalized: TemporalState = {
     masterTimeSec: master.toString(),
@@ -167,6 +188,7 @@ export function ensureTemporalState(starmap: Starmap): Starmap {
   };
 
   if (
+    !changed &&
     normalized.masterTimeSec === existing.masterTimeSec &&
     normalized.displayTimeSec === existing.displayTimeSec &&
     normalized.activeCalendarKey === existing.activeCalendarKey &&
