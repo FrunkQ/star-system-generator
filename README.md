@@ -92,7 +92,7 @@ A quick note on data: This application runs entirely in your browser. Your gener
     *   Upload a previously saved JSON file to continue your work.
 *   **Global Customization**:
     *   **Edit Rulepacks**: Modify the underlying science rules for your specific starmap.
-    *   **Atmospheres & Mixes**: Edit global gas physics (greenhouse factors, molar mass) and spawning distributions for atmospheric compositions.
+    *   **Edit Atmospheres**: Edit global gas physics (greenhouse factors, molar mass) and spawning distributions for atmospheric compositions.
     *   **Fuel & Drives**: Define custom fuels and engine types globally.
     *   **Sensors**: Configure global sensor types and their range bands.
 
@@ -180,6 +180,26 @@ You can preview the production build with `npm run preview`.
 *   Go to [Our Discord](https://discord.gg/UAEq4zzjD8) for more details and input into ongoing development
 
 ## Known Issues
+
+### v1.9.0 Changelog (22nd Feb 2026, WIP - Not Complete)
+*   **Global Time & Calendar Foundation (UTRE-first pass):**
+    *   Added a data-driven temporal registry loaded at startup from calendar JSON (extensible with user-created calendars).
+    *   Added support for multiple calendar math modes (Bucket/Drain and Ratio/Linear) with negative-time handling.
+    *   Aligned calendar epoch handling around master time (`seconds since Big Bang`) and improved cross-calendar consistency.
+*   **Time UX Overhaul (StarMap + System View):**
+    *   Replaced old time-step buttons with a Display Time scrubber slider (center-snap behavior + scaled speed).
+    *   Added play/pause time advance controls (1 second per second) and unified Display/Actual time presentation.
+    *   Added boxed time panel with large clock icon + tooltip polish, and clearer action buttons (`Set Actual...`, `Reset to Actual Time`).
+*   **State Sync & Persistence:**
+    *   Actual/Display time and selected calendar are now persisted in starmap saves.
+    *   Playback state continuity improved when moving between StarMap and System View.
+    *   Added graceful migration/defaulting for older starmaps that did not include temporal fields.
+*   **Settings & Config Structure:**
+    *   Expanded StarMap Settings for time/date system selection and calendar editing.
+    *   Moved LLM/API settings to a separate local-only config path (not exported with starmap save files).
+*   **Known Incomplete for v1.9.0:**
+    *   Transit behavior still needs a larger follow-up pass against the new temporal model.
+    *   Additional calibration/validation is still pending for non-Gregorian presets.
 
 ### v1.8.1 Changelog (14th Feb 2026)
 *   **Scaled Starmap Mode (New)**:

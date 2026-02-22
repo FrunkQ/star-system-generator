@@ -86,11 +86,7 @@
     const temporal = normalized.temporal!;
     const masterSec = parseClockSeconds(temporal.masterTimeSec, getSystemEpochSeconds(node));
     const globalDisplaySec = parseClockSeconds(temporal.displayTimeSec, masterSec);
-    const systemSavedSec = parseClockSeconds(node.time?.displayTimeSec, getSystemEpochSeconds(node));
-    let effective = systemSavedSec;
-    if (globalDisplaySec > effective) effective = globalDisplaySec;
-    if (masterSec > effective) effective = masterSec;
-    return effective;
+    return globalDisplaySec;
   }
 
   $: effectiveRulePack = (() => {

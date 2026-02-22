@@ -382,6 +382,8 @@ export interface TemporalState {
   displayTimeSec: string;
   activeCalendarKey: string;
   temporal_registry: Record<string, TemporalCalendarDefinition>;
+  playbackRunning?: boolean;
+  playbackRateSecPerSec?: number;
 }
 
 export interface Starmap {

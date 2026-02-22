@@ -77,7 +77,9 @@ export function createDefaultTemporalState(epochMs?: number): TemporalState {
     masterTimeSec: seed.toString(),
     displayTimeSec: seed.toString(),
     activeCalendarKey: defaults.activeKey,
-    temporal_registry: defaults.registry
+    temporal_registry: defaults.registry,
+    playbackRunning: false,
+    playbackRateSecPerSec: 1
   };
 }
 
@@ -184,7 +186,9 @@ export function ensureTemporalState(starmap: Starmap): Starmap {
     masterTimeSec: master.toString(),
     displayTimeSec: display.toString(),
     activeCalendarKey,
-    temporal_registry: registry
+    temporal_registry: registry,
+    playbackRunning: existing.playbackRunning ?? false,
+    playbackRateSecPerSec: existing.playbackRateSecPerSec ?? 1
   };
 
   if (
@@ -192,6 +196,8 @@ export function ensureTemporalState(starmap: Starmap): Starmap {
     normalized.masterTimeSec === existing.masterTimeSec &&
     normalized.displayTimeSec === existing.displayTimeSec &&
     normalized.activeCalendarKey === existing.activeCalendarKey &&
+    normalized.playbackRunning === existing.playbackRunning &&
+    normalized.playbackRateSecPerSec === existing.playbackRateSecPerSec &&
     normalized.temporal_registry === existing.temporal_registry
   ) {
     return starmap;

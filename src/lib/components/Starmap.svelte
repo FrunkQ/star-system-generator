@@ -92,6 +92,10 @@
   let scrubRafId: number | null = null;
   let scrubLastTimestamp: number | null = null;
   let scrubCarrySeconds = 0;
+  let playbackRafId: number | null = null;
+  let playbackLastTimestamp: number | null = null;
+  let playbackCarrySeconds = 0;
+  let isPlaying = false;
 
   $: mapMode = starmap.mapMode ?? 'diagrammatic';
   $: isScaled = mapMode === 'scaled';
@@ -108,6 +112,10 @@
     masterClockSeconds = masterSeconds.toString();
     const calendar = temporal.temporal_registry[temporal.activeCalendarKey];
     masterCalendarLabel = calendar ? resolveCalendar(masterSeconds, calendar).formatted : masterClockSeconds;
+    const desiredPlayback = temporal.playbackRunning ?? false;
+    if (desiredPlayback !== isPlaying) {
+      setPlaying(desiredPlayback, false);
+    }
   }
   $: if (invertDisplay && $starmapUiStore.showBackgroundImage) {
     starmapUiStore.update((ui) => ({ ...ui, showBackgroundImage: false }));
@@ -124,10 +132,12 @@
   }
 
   function handleSetMasterToDisplay() {
+    setPlaying(false);
     applyTemporalUpdate((temporal) => setMasterToDisplay(temporal));
   }
 
   function handleResetDisplayToActual() {
+    setPlaying(false);
     applyTemporalUpdate((temporal) => ({
       ...temporal,
       displayTimeSec: temporal.masterTimeSec
@@ -180,6 +190,7 @@
   }
 
   function handleScrubInput(event: Event) {
+    if (isPlaying) setPlaying(false);
     scrubControlValue = Number((event.target as HTMLInputElement).value);
     if (Math.abs(scrubControlValue) > 0.0001) {
       ensureScrubLoopRunning();
@@ -189,6 +200,65 @@
   function handleScrubRelease() {
     scrubControlValue = 0;
     stopScrubLoop();
+  }
+
+  function tickPlayback(timestamp: number) {
+    if (!isPlaying) {
+      playbackRafId = null;
+      return;
+    }
+    if (playbackLastTimestamp === null) {
+      playbackLastTimestamp = timestamp;
+      playbackRafId = requestAnimationFrame(tickPlayback);
+      return;
+    }
+    const dt = (timestamp - playbackLastTimestamp) / 1000;
+    playbackLastTimestamp = timestamp;
+    playbackCarrySeconds += dt; // 1 second per second
+    const whole = Math.floor(playbackCarrySeconds);
+    if (whole > 0) {
+      scrubDisplay(BigInt(whole));
+      playbackCarrySeconds -= whole;
+    }
+    playbackRafId = requestAnimationFrame(tickPlayback);
+  }
+
+  function ensurePlaybackRunning() {
+    if (playbackRafId !== null) return;
+    playbackLastTimestamp = null;
+    playbackRafId = requestAnimationFrame(tickPlayback);
+  }
+
+  function stopPlayback() {
+    if (playbackRafId !== null) {
+      cancelAnimationFrame(playbackRafId);
+      playbackRafId = null;
+    }
+    playbackLastTimestamp = null;
+    playbackCarrySeconds = 0;
+  }
+
+  function setPlaying(next: boolean, persist = true) {
+    if (isPlaying === next) return;
+    isPlaying = next;
+    if (isPlaying) {
+      scrubControlValue = 0;
+      stopScrubLoop();
+      ensurePlaybackRunning();
+    } else {
+      stopPlayback();
+    }
+    if (persist) {
+      applyTemporalUpdate((temporal) => ({
+        ...temporal,
+        playbackRunning: next,
+        playbackRateSecPerSec: temporal.playbackRateSecPerSec ?? 1
+      }));
+    }
+  }
+
+  function togglePlayback() {
+    setPlaying(!isPlaying);
   }
 
   function roundDistance(value: number): number {
@@ -537,6 +607,9 @@
   });
 
   onDestroy(() => {
+    isPlaying = false;
+    stopPlayback();
+    stopScrubLoop();
     document.removeEventListener('click', handleClickOutside);
     window.removeEventListener('resize', updateSvgScale);
   });
@@ -881,26 +954,36 @@
     <div class="clock-line">
       <div class="scrub-control">
         <label class="scrub-label" for="starmap-time-scrub">Scrub Display Time</label>
-        <input
-          id="starmap-time-scrub"
-          class="scrub-slider"
-          type="range"
-          min="-1"
-          max="1"
-          step="0.01"
-          value={scrubControlValue}
-          on:input={handleScrubInput}
-          on:mouseup={handleScrubRelease}
-          on:touchend={handleScrubRelease}
-          on:pointerup={handleScrubRelease}
-          on:change={handleScrubRelease}
-        />
-        <div class="scrub-scale">
-          <span>-10y/s</span>
-          <span>slow</span>
-          <span>pause</span>
-          <span>slow</span>
-          <span>+10y/s</span>
+        <div class="scrub-slider-row">
+          <div class="scrub-slider-wrap">
+            <input
+              id="starmap-time-scrub"
+              class="scrub-slider"
+              type="range"
+              min="-1"
+              max="1"
+              step="0.01"
+              value={scrubControlValue}
+              on:input={handleScrubInput}
+              on:mouseup={handleScrubRelease}
+              on:touchend={handleScrubRelease}
+              on:pointerup={handleScrubRelease}
+              on:change={handleScrubRelease}
+            />
+            <div class="scrub-scale">
+              <span>-10y/s</span>
+              <span>slow</span>
+              <span>pause</span>
+              <span>slow</span>
+              <span>+10y/s</span>
+            </div>
+          </div>
+          <button
+            class="play-toggle"
+            on:click={togglePlayback}
+            title={isPlaying ? 'Pause real-time clock advance' : 'Play real-time clock advance (1s/s)'}
+            aria-label={isPlaying ? 'Pause time playback' : 'Start time playback'}
+          >{isPlaying ? '⏸' : '▶'}</button>
         </div>
       </div>
       <span class="display-time" title={"Display seconds from big bang: " + displayClockSeconds}>Display Time: <strong>{displayClockLabel}</strong></span>
@@ -1304,7 +1387,7 @@
   }
 
   .scrub-slider {
-    width: 260px;
+    width: 100%;
   }
 
   .scrub-control {
@@ -1313,6 +1396,34 @@
     gap: 3px;
     flex: 0 0 auto;
     min-width: 260px;
+  }
+  .scrub-slider-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .scrub-slider-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .play-toggle {
+    width: 30px;
+    min-width: 30px;
+    height: 24px;
+    padding: 0;
+    line-height: 1;
+    font-size: 0.9rem;
+    background: #1f1f1f;
+    border: 1px solid #555;
+    color: #eee;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .play-toggle:hover {
+    background: #2a2a2a;
   }
 
   .scrub-scale {
