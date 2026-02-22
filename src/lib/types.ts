@@ -300,6 +300,9 @@ export interface StarSystemNode {
   position: { x: number; y: number };
   system: System;
   viewport?: { pan: { x: number; y: number }; zoom: number; }; // Fixed panX/panY to pan object
+  time?: {
+    displayTimeSec?: string;
+  };
   subsectorId?: string;
 }
 
@@ -326,6 +329,60 @@ export interface RulePackOverrides {
   atmosphereCompositions?: any[];
 }
 
+export interface TemporalHierarchyUnit {
+  unit: string;
+  multiplier: number;
+}
+
+export interface TemporalLeapLogic {
+  drift_per_year_t: number;
+  threshold_t: number;
+  apply_to: string;
+}
+
+export interface TemporalMonthDefinition {
+  name: string;
+  days: number;
+}
+
+export interface TemporalLookupTables {
+  weekdays?: string[];
+  months?: TemporalMonthDefinition[];
+}
+
+export interface BucketDrainCalendarDefinition {
+  id: string;
+  math_type: 'BUCKET_DRAIN';
+  epoch_offset_t: string;
+  format: string;
+  hierarchy: TemporalHierarchyUnit[];
+  leap_logic?: TemporalLeapLogic;
+  lookup_tables?: TemporalLookupTables;
+}
+
+export interface RatioLinearCalendarDefinition {
+  id: string;
+  math_type: 'RATIO_LINEAR';
+  epoch_offset_t: string;
+  format: string;
+  parameters: {
+    units_per_earth_year: number;
+    seconds_per_earth_year: number;
+    precision_digits?: number;
+  };
+}
+
+export type TemporalCalendarDefinition =
+  | BucketDrainCalendarDefinition
+  | RatioLinearCalendarDefinition;
+
+export interface TemporalState {
+  masterTimeSec: string;
+  displayTimeSec: string;
+  activeCalendarKey: string;
+  temporal_registry: Record<string, TemporalCalendarDefinition>;
+}
+
 export interface Starmap {
   id: string;
   name: string;
@@ -337,6 +394,7 @@ export interface Starmap {
   scale?: StarmapScaleConfig;
   distanceUnit: string;
   unitIsPrefix: boolean;
+  temporal?: TemporalState;
   rulePackOverrides?: RulePackOverrides;
   travellerMetadata?: {
     importedSubsectors: Array<{

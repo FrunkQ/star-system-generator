@@ -18,6 +18,8 @@
   import SystemView from '$lib/components/SystemView.svelte';
   import RouteEditorModal from '$lib/components/RouteEditorModal.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
+  import { createDefaultTemporalState, ensureTemporalState, loadTemporalRegistryConfig } from '$lib/temporal/defaults';
+  import { parseClockSeconds } from '$lib/temporal/utre';
 
   let rulePacks: RulePack[] = [];
   let isLoading = true;
@@ -64,10 +66,29 @@
                   systemNode.viewport = currentViewport;
                   systemNode.system = currentSystem;
                   systemNode.name = currentSystem.name;
+                  const fallbackSec = BigInt(Math.floor((currentSystem.epochT0 || Date.now()) / 1000));
+                  const temporalDisplaySec = parseClockSeconds(starmap.temporal?.displayTimeSec, fallbackSec).toString();
+                  systemNode.time = { ...(systemNode.time || {}), displayTimeSec: temporalDisplaySec };
               }
           }
           return starmap;
       });
+  }
+
+  function getSystemEpochSeconds(node: StarSystemNode): bigint {
+    return BigInt(Math.floor((node.system?.epochT0 || Date.now()) / 1000));
+  }
+
+  function getEffectiveSystemDisplaySeconds(starmap: StarmapType, node: StarSystemNode): bigint {
+    const normalized = ensureTemporalState(starmap);
+    const temporal = normalized.temporal!;
+    const masterSec = parseClockSeconds(temporal.masterTimeSec, getSystemEpochSeconds(node));
+    const globalDisplaySec = parseClockSeconds(temporal.displayTimeSec, masterSec);
+    const systemSavedSec = parseClockSeconds(node.time?.displayTimeSec, getSystemEpochSeconds(node));
+    let effective = systemSavedSec;
+    if (globalDisplaySec > effective) effective = globalDisplaySec;
+    if (masterSec > effective) effective = masterSec;
+    return effective;
   }
 
   $: effectiveRulePack = (() => {
@@ -118,6 +139,7 @@
       const starterRulepack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json');
       rulePacks = [starterRulepack];
       selectedRulepack = starterRulepack;
+      await loadTemporalRegistryConfig('/temporal/calendars.json');
     } catch (e: any) {
       error = e.message;
     } finally {
@@ -183,8 +205,11 @@
       changed = true;
     }
 
+    const temporalNormalized = ensureTemporalState(starmap);
+    if (temporalNormalized !== starmap) changed = true;
+
     if (!changed) return starmap;
-    return { ...starmap, mapMode, invertDisplay, scale };
+    return { ...temporalNormalized, mapMode, invertDisplay, scale };
   }
 
   function getSystemDistanceLy(starmap: StarmapType, sourceSystemId: string, targetSystemId: string): number {
@@ -246,9 +271,13 @@
           name: newSystem.name,
           position: { x: 0, y: 0 },
           system: newSystem,
+          time: {
+            displayTimeSec: BigInt(Math.floor(newSystem.epochT0 / 1000)).toString()
+          }
         },
       ],
       routes: [],
+      temporal: createDefaultTemporalState(newSystem.epochT0)
     };
     starmapStore.set(newStarmap);
     showNewStarmapModal = false;
@@ -256,14 +285,37 @@
 
   function handleSystemClick(event: CustomEvent<string>) {
     const sysId = event.detail; // Local var to ensure immediate availability
-    const systemNode = get(starmapStore)?.systems.find(s => s.id === sysId);
+    const currentMap = get(starmapStore);
+    const systemNode = currentMap?.systems.find(s => s.id === sysId);
     if (systemNode) {
-      if (systemNode.viewport) {
-        viewportStore.set(systemNode.viewport);
+      if (currentMap) {
+        const effectiveDisplaySec = getEffectiveSystemDisplaySeconds(currentMap, systemNode).toString();
+        starmapStore.update((starmap) => {
+          if (!starmap) return starmap;
+          const normalized = ensureTemporalState(starmap);
+          const updatedSystems = normalized.systems.map((s) => (
+            s.id === sysId
+              ? { ...s, time: { ...(s.time || {}), displayTimeSec: effectiveDisplaySec } }
+              : s
+          ));
+          return {
+            ...normalized,
+            systems: updatedSystems,
+            temporal: {
+              ...normalized.temporal!,
+              displayTimeSec: effectiveDisplaySec
+            }
+          };
+        });
+      }
+
+      const refreshedNode = get(starmapStore)?.systems.find(s => s.id === sysId) || systemNode;
+      if (refreshedNode.viewport) {
+        viewportStore.set(refreshedNode.viewport);
       } else {
         viewportStore.set({ pan: { x: 0, y: 0 }, zoom: 1 });
       }
-      systemStore.set(JSON.parse(JSON.stringify(systemNode.system)));
+      systemStore.set(JSON.parse(JSON.stringify(refreshedNode.system)));
       // Push state to enter the system
       pushState('', { systemId: sysId });
     }
@@ -328,6 +380,9 @@
       name: newSystem.name,
       position: { x, y },
       system: newSystem,
+      time: {
+        displayTimeSec: BigInt(Math.floor(newSystem.epochT0 / 1000)).toString()
+      }
     };
 
     starmapStore.update(starmap => {

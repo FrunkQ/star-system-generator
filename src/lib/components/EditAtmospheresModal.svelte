@@ -17,6 +17,8 @@
   // Track original keys to know what is default vs custom
   let defaultGasKeys = new Set<string>();
   let defaultCompositions = new Set<string>();
+  const greenhouseFactorHelp = 'Relative warming potency for this gas. Higher values add more greenhouse heating at the same partial pressure. This is a model coefficient, not direct Kelvin.';
+  const shieldingFactorHelp = 'Radiation blocking strength per bar for this gas. Used in transmission = exp(-(factor x pressure_bar)). Higher values block more incoming radiation.';
 
   onMount(() => {
     // Load Defaults
@@ -180,11 +182,11 @@
                                 <input type="number" step="0.001" bind:value={gas.molarMass} />
                             </div>
                             <div class="field">
-                                <label>Greenhouse Factor</label>
+                                <label title={greenhouseFactorHelp}>Greenhouse Factor</label>
                                 <input type="number" step="0.1" bind:value={gas.greenhouse} />
                             </div>
                             <div class="field">
-                                <label>Shielding Factor</label>
+                                <label title={shieldingFactorHelp}>Shielding Factor</label>
                                 <input type="number" step="0.1" bind:value={gas.shielding} />
                             </div>
                             <div class="field">

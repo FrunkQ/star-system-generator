@@ -1,0 +1,59 @@
+{
+  "default_active_calendar_key": "gregorian_earth",
+  "temporal_registry": {
+    "gregorian_earth": {
+      "id": "EARTH_GREG",
+      "math_type": "BUCKET_DRAIN",
+      "epoch_offset_t": "435084568128000000",
+      "format": "{hour:02}:{min:02}:{sec:02}, {weekday} {mday}{suffix} {month}, {year} AD",
+      "hierarchy": [
+        { "unit": "year", "multiplier": 31536000 },
+        { "unit": "day", "multiplier": 86400 },
+        { "unit": "hour", "multiplier": 3600 },
+        { "unit": "min", "multiplier": 60 },
+        { "unit": "sec", "multiplier": 1 }
+      ],
+      "leap_logic": {
+        "drift_per_year_t": 20925,
+        "threshold_t": 86400,
+        "apply_to": "day"
+      },
+      "lookup_tables": {
+        "weekdays": [
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+          "Sunday"
+        ],
+        "months": [
+          { "name": "January", "days": 31 },
+          { "name": "February", "days": 28 },
+          { "name": "March", "days": 31 },
+          { "name": "April", "days": 30 },
+          { "name": "May", "days": 31 },
+          { "name": "June", "days": 30 },
+          { "name": "July", "days": 31 },
+          { "name": "August", "days": 31 },
+          { "name": "September", "days": 30 },
+          { "name": "October", "days": 31 },
+          { "name": "November", "days": 30 },
+          { "name": "December", "days": 31 }
+        ]
+      }
+    },
+    "star_trek_stardate": {
+      "id": "TNG_SD",
+      "math_type": "RATIO_LINEAR",
+      "epoch_offset_t": "435084632962339136",
+      "format": "Stardate {val}",
+      "parameters": {
+        "units_per_earth_year": 1000.0,
+        "seconds_per_earth_year": 31557600,
+        "precision_digits": 1
+      }
+    }
+  }
+}

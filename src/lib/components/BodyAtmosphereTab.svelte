@@ -382,7 +382,7 @@
 
     <div class="stats-panel">
         <div class="stat">
-            <span class="label">Greenhouse:</span>
+            <span class="label" title="Total modeled greenhouse warming added by the current atmosphere, shown as +K on top of equilibrium temperature.">Greenhouse:</span>
             <span class="value" class:hot={body.greenhouseTempK > 50}>+{Math.round(body.greenhouseTempK || 0)} K</span>
         </div>
         <div class="stat">
@@ -390,7 +390,7 @@
             <span class="value">{body.atmosphere.scaleHeightKm ? body.atmosphere.scaleHeightKm.toFixed(1) : '-'} km</span>
         </div>
         <div class="stat">
-            <span class="label">Radiation Block:</span>
+            <span class="label" title="Percent of incoming stellar radiation blocked by atmospheric composition and pressure.">Radiation Block:</span>
             <span class="value">
                 {#if body.atmosphere && body.atmosphere.pressure_bar > 0}
                     {@const transmission = Math.exp(-calculateShieldingScore(body.atmosphere, rulePack) * body.atmosphere.pressure_bar)}

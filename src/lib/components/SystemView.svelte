@@ -3,7 +3,7 @@
   import { browser } from '$app/environment';
   import { pushState, replaceState, beforeNavigate } from '$app/navigation';
   import { page } from '$app/stores';
-  import type { RulePack, System, CelestialBody } from '$lib/types';
+  import type { RulePack, System, CelestialBody, Starmap } from '$lib/types';
   import { deleteNode, renameNode, generateSystem, computePlayerSnapshot } from '$lib/api';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import SystemSummary from './SystemSummary.svelte';
@@ -26,6 +26,7 @@
   import type { TransitPlan } from '$lib/transit/types';
 
   import { systemStore, viewportStore } from '$lib/stores';
+  import { starmapStore } from '$lib/starmapStore';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { panStore, zoomStore } from '$lib/cameraStore';
   import { get } from 'svelte/store';
@@ -38,6 +39,8 @@
   import { sanitizeSystem } from '$lib/system/utils';
   import { calculateAllStellarZones } from '$lib/physics/zones';
   import { calculateEquilibriumTemperature, composeSurfaceTemperatureFromDeltaComponents, estimateBondAlbedo, estimateInternalHeatK } from '$lib/physics/temperature';
+  import { ensureTemporalState, setMasterToDisplay, updateDisplayBySeconds } from '$lib/temporal/defaults';
+  import { parseClockSeconds, resolveCalendar, resolveTemporalDisplay } from '$lib/temporal/utre';
 
   export let system: System;
   export let rulePack: RulePack;
@@ -663,8 +666,18 @@
 
   let currentTime = Date.now();
   let isPlaying = false;
-  let timeScale = 3600 * 24 * 30;
-  let animationFrameId: number;
+  let timeScale = 0;
+  let displayClockLabel = '';
+  let displayClockSeconds = '';
+  let masterClockSeconds = '';
+  let masterCalendarLabel = '';
+  let scrubControlValue = 0;
+  let scrubRafId: number | null = null;
+  let scrubLastTimestamp: number | null = null;
+  let scrubCarrySeconds = 0;
+  let alignRafId: number | null = null;
+  let isAligningTime = false;
+  let alignActualSecondsOverride: bigint | null = null;
 
   $: if ($systemStore) {
     if (focusedBodyId) {
@@ -684,28 +697,162 @@
     visualizer?.resetView();
   }
 
-  function play() {
-    if (!browser) return;
-    isPlaying = true;
-    let lastTimestamp: number | null = null;
-
-    function tick(timestamp: number) {
-      if (lastTimestamp) {
-        const delta = (timestamp - lastTimestamp) / 1000;
-        currentTime += delta * timeScale * 1000;
-      }
-      lastTimestamp = timestamp;
-      if (isPlaying) {
-        animationFrameId = requestAnimationFrame(tick);
-      }
-    }
-    animationFrameId = requestAnimationFrame(tick);
+  function updateTemporalDisplayState() {
+    const starmap = get(starmapStore);
+    if (!starmap?.temporal) return;
+    const temporal = starmap.temporal;
+    const resolved = resolveTemporalDisplay(temporal);
+    displayClockLabel = resolved.formatted;
+    displayClockSeconds = parseClockSeconds(temporal.displayTimeSec, 0n).toString();
+    const persistedMasterSeconds = parseClockSeconds(temporal.masterTimeSec, 0n);
+    const masterSeconds = (isAligningTime && alignActualSecondsOverride !== null)
+      ? alignActualSecondsOverride
+      : persistedMasterSeconds;
+    masterClockSeconds = masterSeconds.toString();
+    const calendar = temporal.temporal_registry[temporal.activeCalendarKey];
+    masterCalendarLabel = calendar ? resolveCalendar(masterSeconds, calendar).formatted : masterClockSeconds;
   }
 
-  function pause() {
-    if (!browser) return;
-    isPlaying = false;
-    cancelAnimationFrame(animationFrameId);
+  function applyTemporalUpdate(mutator: (temporal: NonNullable<Starmap['temporal']>) => NonNullable<Starmap['temporal']>) {
+    starmapStore.update((map) => {
+      if (!map) return map;
+      const normalized = ensureTemporalState(map);
+      const nextTemporal = mutator(normalized.temporal!);
+      return { ...normalized, temporal: nextTemporal };
+    });
+  }
+
+  function scrubDisplay(deltaSec: bigint) {
+    applyTemporalUpdate((temporal) => updateDisplayBySeconds(temporal, deltaSec));
+  }
+
+  function stopAlignAnimation() {
+    if (alignRafId !== null) {
+      cancelAnimationFrame(alignRafId);
+      alignRafId = null;
+    }
+    alignActualSecondsOverride = null;
+  }
+
+  function handleAlignActualToDisplayAnimated() {
+    const map = get(starmapStore);
+    const temporal = map?.temporal;
+    if (!temporal) return;
+
+    const actualSec = parseClockSeconds(temporal.masterTimeSec, 0n);
+    const targetDisplaySec = parseClockSeconds(temporal.displayTimeSec, actualSec);
+    const startMs = Number(actualSec * 1000n);
+    const targetMs = Number(targetDisplaySec * 1000n);
+
+    stopScrubLoop();
+    stopAlignAnimation();
+    isAligningTime = true;
+    alignActualSecondsOverride = actualSec;
+    updateTemporalDisplayState();
+
+    // Phase 1: snap simulation/orbits to current Actual Time.
+    currentTime = startMs;
+
+    // Phase 2: animate simulation time to the captured Display Time.
+    const durationMs = 5000;
+    const animStart = performance.now();
+    function animate(now: number) {
+      const t = Math.min(1, (now - animStart) / durationMs);
+      const eased = t < 0.5 ? (2 * t * t) : (1 - Math.pow(-2 * t + 2, 2) / 2);
+      currentTime = startMs + ((targetMs - startMs) * eased);
+      alignActualSecondsOverride = BigInt(Math.floor(currentTime / 1000));
+      updateTemporalDisplayState();
+      if (t < 1) {
+        alignRafId = requestAnimationFrame(animate);
+      } else {
+        alignRafId = null;
+        currentTime = targetMs;
+        applyTemporalUpdate((time) => ({
+          ...setMasterToDisplay({
+            ...time,
+            displayTimeSec: targetDisplaySec.toString()
+          }),
+          displayTimeSec: targetDisplaySec.toString()
+        }));
+        isAligningTime = false;
+        alignActualSecondsOverride = null;
+        updateTemporalDisplayState();
+      }
+    }
+    alignRafId = requestAnimationFrame(animate);
+  }
+
+  function handleResetDisplayToActual() {
+    stopScrubLoop();
+    stopAlignAnimation();
+    isAligningTime = false;
+    alignActualSecondsOverride = null;
+    const map = get(starmapStore);
+    const temporal = map?.temporal;
+    if (!temporal) return;
+    const actualSec = parseClockSeconds(temporal.masterTimeSec, 0n);
+    currentTime = Number(actualSec * 1000n);
+    applyTemporalUpdate((time) => ({
+      ...time,
+      displayTimeSec: actualSec.toString()
+    }));
+  }
+
+  function scrubRateFromControl(value: number): number {
+    const abs = Math.abs(value);
+    if (abs < 0.02) return 0;
+    const minRate = 60; // 1 minute per second
+    const maxRate = 315360000; // 10 years per second
+    const normalized = (abs - 0.02) / 0.98;
+    const rate = minRate * Math.pow(maxRate / minRate, normalized);
+    return Math.sign(value) * rate;
+  }
+
+  function tickScrub(timestamp: number) {
+    if (scrubLastTimestamp === null) {
+      scrubLastTimestamp = timestamp;
+      scrubRafId = requestAnimationFrame(tickScrub);
+      return;
+    }
+    const dt = (timestamp - scrubLastTimestamp) / 1000;
+    scrubLastTimestamp = timestamp;
+    const rate = scrubRateFromControl(scrubControlValue);
+    if (rate !== 0) {
+      scrubCarrySeconds += rate * dt;
+      const whole = scrubCarrySeconds > 0 ? Math.floor(scrubCarrySeconds) : Math.ceil(scrubCarrySeconds);
+      if (whole !== 0) {
+        scrubDisplay(BigInt(whole));
+        scrubCarrySeconds -= whole;
+      }
+    }
+    scrubRafId = requestAnimationFrame(tickScrub);
+  }
+
+  function ensureScrubLoopRunning() {
+    if (scrubRafId !== null) return;
+    scrubLastTimestamp = null;
+    scrubRafId = requestAnimationFrame(tickScrub);
+  }
+
+  function stopScrubLoop() {
+    if (scrubRafId !== null) {
+      cancelAnimationFrame(scrubRafId);
+      scrubRafId = null;
+    }
+    scrubLastTimestamp = null;
+    scrubCarrySeconds = 0;
+  }
+
+  function handleScrubInput(event: Event) {
+    scrubControlValue = Number((event.target as HTMLInputElement).value);
+    if (Math.abs(scrubControlValue) > 0.0001) {
+      ensureScrubLoopRunning();
+    }
+  }
+
+  function handleScrubRelease() {
+    scrubControlValue = 0;
+    stopScrubLoop();
   }
 
   async function handleGenerate(empty: boolean = false) {
@@ -903,7 +1050,14 @@
   onMount(() => {
     if (system) {
         systemStore.set(systemProcessor.process(system, rulePack));
-        currentTime = system.epochT0;
+        const map = get(starmapStore);
+        if (map) {
+          const normalized = ensureTemporalState(map);
+          starmapStore.set(normalized);
+          currentTime = Number(parseClockSeconds(normalized.temporal?.displayTimeSec, 0n) * 1000n);
+        } else {
+          currentTime = system.epochT0;
+        }
     }
     
     const starTypes = rulePack.distributions['star_types'].entries.map(st => st.value);
@@ -979,9 +1133,10 @@
 
   onDestroy(() => {
     if (browser) {
-      pause();
       if (timeSyncInterval) clearInterval(timeSyncInterval);
     }
+    stopScrubLoop();
+    stopAlignAnimation();
     if (unsubscribePanStore) {
         unsubscribePanStore();
     }
@@ -990,6 +1145,41 @@
     }
     document.removeEventListener('click', handleClickOutside);
   });
+
+  $: if ($starmapStore) {
+    const normalized = ensureTemporalState($starmapStore);
+    if (normalized !== $starmapStore) {
+      starmapStore.set(normalized);
+    } else if (normalized.temporal) {
+      if (!isAligningTime) {
+        const nextMs = Number(parseClockSeconds(normalized.temporal.displayTimeSec, 0n) * 1000n);
+        if (Math.abs(nextMs - currentTime) > 1) {
+          currentTime = nextMs;
+        }
+      }
+      updateTemporalDisplayState();
+    }
+  }
+
+  $: if ($starmapStore?.temporal) {
+    if (!isAligningTime) {
+      const displaySec = BigInt(Math.floor(currentTime / 1000));
+      if ($starmapStore.temporal.displayTimeSec !== displaySec.toString()) {
+        starmapStore.update((map) => {
+          if (!map) return map;
+          const normalized = ensureTemporalState(map);
+          if (normalized.temporal?.displayTimeSec === displaySec.toString()) return normalized;
+          return {
+            ...normalized,
+            temporal: {
+              ...normalized.temporal!,
+              displayTimeSec: displaySec.toString()
+            }
+          };
+        });
+      }
+    }
+  }
 
   function handleClickOutside(event: MouseEvent) {
     const menu = document.querySelector('.context-menu');
@@ -1157,10 +1347,6 @@
 
 </script>
 <main>
-    <div class="top-bar">
-        
-    </div>
-
   {#if $systemStore}
     <SystemSummary 
       system={$systemStore} 
@@ -1174,6 +1360,41 @@
       on:togglecrt={handleToggleCrt}
       on:clearmanualedit={() => systemStore.update(s => s ? { ...s, isManuallyEdited: false } : s)}
     />
+    <div class="time-panel">
+      <div class="time-title" title="Relativity mode is off. Time dilation sold separately.">🕒</div>
+      <div class="clock-line">
+        <div class="scrub-control">
+          <label class="scrub-label" for="system-time-scrub">Scrub Display Time</label>
+          <input
+            id="system-time-scrub"
+            class="scrub-slider"
+            type="range"
+            min="-1"
+            max="1"
+            step="0.01"
+            value={scrubControlValue}
+            on:input={handleScrubInput}
+            on:mouseup={handleScrubRelease}
+            on:touchend={handleScrubRelease}
+            on:pointerup={handleScrubRelease}
+            on:change={handleScrubRelease}
+          />
+          <div class="scrub-scale">
+            <span>-10y/s</span>
+            <span>slow</span>
+            <span>pause</span>
+            <span>slow</span>
+            <span>+10y/s</span>
+          </div>
+        </div>
+        <span class="display-time" title={"Display seconds from big bang: " + displayClockSeconds}>Display Time: <strong>{displayClockLabel}</strong></span>
+        <span class="actual-time" title={"Actual seconds from big bang: " + masterClockSeconds}><strong>Actual Time:</strong> [{masterCalendarLabel}]</span>
+        <div class="clock-actions">
+          <button class="clock-action btn-blue" on:click={handleResetDisplayToActual}>Reset to Actual Time</button>
+          <button class="clock-action btn-red" on:click={handleAlignActualToDisplayAnimated}>Set Actual Time to Display Time</button>
+        </div>
+      </div>
+    </div>
 
     {#if !$systemStore.isManuallyEdited}
       <SystemGenerationControls
@@ -1216,19 +1437,6 @@
                 handleSliderRelease();
             }} />
         </label>
-        <button on:click={() => isPlaying ? pause() : play()}>
-            {isPlaying ? 'Pause' : 'Play'}
-        </button>
-        <div class="time-scales">
-            <span>1s = </span>
-            <button on:click={() => timeScale = 1} class:active={timeScale === 1}>1s</button>
-            <button on:click={() => timeScale = 3600} class:active={timeScale === 3600}>1h</button>
-            <button on:click={() => timeScale = 3600 * 24} class:active={timeScale === 3600 * 24}>1d</button>
-            <button on:click={() => timeScale = 3600 * 24 * 30} class:active={timeScale === 3600 * 24 * 30}>30d</button>
-            <button on:click={() => timeScale = 3600 * 24 * 90} class:active={timeScale === 3600 * 24 * 90}>90d</button>
-            <button on:click={() => timeScale = 3600 * 24 * 365} class:active={timeScale === 3600 * 24 * 365}>1y</button>
-            <button on:click={() => timeScale = 3600 * 24 * 365 * 10} class:active={timeScale === 3600 * 24 * 365 * 10}>10y</button>
-        </div>
     </div>
 
     <div class="system-view-grid">
@@ -1779,14 +1987,100 @@
     font-size: 0.9em;
     position: relative; 
   }
-  .top-bar, .controls {
+  .controls {
     margin: 0.5em 0;
     display: flex;
     align-items: center;
     gap: 1em;
   }
-  .top-bar {
-      justify-content: space-between;
+  .clock-line {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    flex-wrap: wrap;
+    color: #ccc;
+    font-size: 0.85em;
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+  }
+  .actual-time {
+    color: #888;
+  }
+  .scrub-label {
+    color: #bbb;
+    font-size: 0.8rem;
+  }
+  .scrub-slider {
+    width: 260px;
+  }
+  .scrub-control {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 0 0 auto;
+    min-width: 260px;
+  }
+  .scrub-scale {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    font-size: 0.72rem;
+    color: #8f8f8f;
+  }
+  .scrub-scale span:nth-child(1) { text-align: left; }
+  .scrub-scale span:nth-child(2) { text-align: center; }
+  .scrub-scale span:nth-child(3) { text-align: center; }
+  .scrub-scale span:nth-child(4) { text-align: center; }
+  .scrub-scale span:nth-child(5) { text-align: right; }
+  .clock-line > span {
+    white-space: nowrap;
+  }
+  .clock-line .display-time {
+    font-size: 1rem;
+  }
+  .clock-line .clock-action.btn-blue {
+    background: #0a4d9b;
+    border: 1px solid #2a6fc0;
+    color: #fff;
+  }
+  .clock-line .clock-action.btn-blue:hover {
+    background: #1362bf;
+  }
+  .clock-line .clock-action.btn-red {
+    background: #8f1d1d;
+    border: 1px solid #b23a3a;
+    color: #fff;
+  }
+  .clock-line .clock-action.btn-red:hover {
+    background: #b32929;
+  }
+  .clock-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .time-panel {
+    border: 1px solid #3f3f3f;
+    border-radius: 6px;
+    background: rgba(18, 18, 18, 0.9);
+    padding: 8px 10px;
+    margin: 0.5em 0;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .time-title {
+    font-size: 3rem;
+    font-weight: 400;
+    color: #ddd;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
   }
   .focus-header h2 {
       margin: 0;
@@ -2002,3 +2296,5 @@
     }
 
 </style>
+
+

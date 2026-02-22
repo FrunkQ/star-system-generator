@@ -15,6 +15,8 @@
   import { TravellerImporter } from '$lib/traveller/importer';
   import { computePlayerSnapshot } from '$lib/system/utils';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
+  import { ensureTemporalState, setMasterToDisplay, updateDisplayBySeconds } from '$lib/temporal/defaults';
+  import { parseClockSeconds, resolveCalendar, resolveTemporalDisplay } from '$lib/temporal/utre';
 
   export let starmap: Starmap;
   export let rulePack: RulePack; // We need this prop to show defaults!
@@ -80,14 +82,111 @@
   let invertDisplay = false;
   let activeScale = { unit: 'LY', pixelsPerUnit: 25, showScaleBar: true };
   let scaleBarVisible = false;
+  let displayClockLabel = '';
+  let displayClockSeconds = '';
+  let masterClockSeconds = '';
+  let masterCalendarLabel = '';
+  let scrubControlValue = 0;
+  let scrubRafId: number | null = null;
+  let scrubLastTimestamp: number | null = null;
+  let scrubCarrySeconds = 0;
 
   $: mapMode = starmap.mapMode ?? 'diagrammatic';
   $: isScaled = mapMode === 'scaled';
   $: invertDisplay = starmap.invertDisplay ?? false;
   $: activeScale = starmap.scale ?? { unit: starmap.distanceUnit || 'LY', pixelsPerUnit: 25, showScaleBar: true };
   $: scaleBarVisible = isScaled && (activeScale.showScaleBar ?? true);
+  $: {
+    const normalized = ensureTemporalState(starmap);
+    const temporal = normalized.temporal!;
+    const displayResolved = resolveTemporalDisplay(temporal);
+    displayClockLabel = displayResolved.formatted;
+    displayClockSeconds = parseClockSeconds(temporal.displayTimeSec, 0n).toString();
+    const masterSeconds = parseClockSeconds(temporal.masterTimeSec, 0n);
+    masterClockSeconds = masterSeconds.toString();
+    const calendar = temporal.temporal_registry[temporal.activeCalendarKey];
+    masterCalendarLabel = calendar ? resolveCalendar(masterSeconds, calendar).formatted : masterClockSeconds;
+  }
   $: if (invertDisplay && $starmapUiStore.showBackgroundImage) {
     starmapUiStore.update((ui) => ({ ...ui, showBackgroundImage: false }));
+  }
+
+  function applyTemporalUpdate(mutator: (temporal: NonNullable<Starmap['temporal']>) => NonNullable<Starmap['temporal']>) {
+    const normalized = ensureTemporalState(starmap);
+    const nextTemporal = mutator(normalized.temporal!);
+    dispatch('updatestarmap', { ...normalized, temporal: nextTemporal });
+  }
+
+  function scrubDisplay(deltaSec: bigint) {
+    applyTemporalUpdate((temporal) => updateDisplayBySeconds(temporal, deltaSec));
+  }
+
+  function handleSetMasterToDisplay() {
+    applyTemporalUpdate((temporal) => setMasterToDisplay(temporal));
+  }
+
+  function handleResetDisplayToActual() {
+    applyTemporalUpdate((temporal) => ({
+      ...temporal,
+      displayTimeSec: temporal.masterTimeSec
+    }));
+  }
+
+  function scrubRateFromControl(value: number): number {
+    const abs = Math.abs(value);
+    if (abs < 0.02) return 0;
+    const minRate = 60; // 1 minute per second
+    const maxRate = 315360000; // 10 years per second
+    const normalized = (abs - 0.02) / 0.98;
+    const rate = minRate * Math.pow(maxRate / minRate, normalized);
+    return Math.sign(value) * rate;
+  }
+
+  function tickScrub(timestamp: number) {
+    if (scrubLastTimestamp === null) {
+      scrubLastTimestamp = timestamp;
+      scrubRafId = requestAnimationFrame(tickScrub);
+      return;
+    }
+    const dt = (timestamp - scrubLastTimestamp) / 1000;
+    scrubLastTimestamp = timestamp;
+    const rate = scrubRateFromControl(scrubControlValue);
+    if (rate !== 0) {
+      scrubCarrySeconds += rate * dt;
+      const whole = scrubCarrySeconds > 0 ? Math.floor(scrubCarrySeconds) : Math.ceil(scrubCarrySeconds);
+      if (whole !== 0) {
+        scrubDisplay(BigInt(whole));
+        scrubCarrySeconds -= whole;
+      }
+    }
+    scrubRafId = requestAnimationFrame(tickScrub);
+  }
+
+  function ensureScrubLoopRunning() {
+    if (scrubRafId !== null) return;
+    scrubLastTimestamp = null;
+    scrubRafId = requestAnimationFrame(tickScrub);
+  }
+
+  function stopScrubLoop() {
+    if (scrubRafId !== null) {
+      cancelAnimationFrame(scrubRafId);
+      scrubRafId = null;
+    }
+    scrubLastTimestamp = null;
+    scrubCarrySeconds = 0;
+  }
+
+  function handleScrubInput(event: Event) {
+    scrubControlValue = Number((event.target as HTMLInputElement).value);
+    if (Math.abs(scrubControlValue) > 0.0001) {
+      ensureScrubLoopRunning();
+    }
+  }
+
+  function handleScrubRelease() {
+    scrubControlValue = 0;
+    stopScrubLoop();
   }
 
   function roundDistance(value: number): number {
@@ -713,7 +812,9 @@
 
 <div class="starmap-container" class:invert-display={invertDisplay} style="touch-action: none;" bind:this={starmapContainer}>
   <div class="starmap-header">
-    <h1>{starmap.name}</h1>
+    <div class="starmap-heading">
+      <h1>{starmap.name}</h1>
+    </div>
     <div class="header-controls">
       <label>
         <input type="checkbox" bind:checked={$starmapUiStore.mouseZoomDisabled} />
@@ -756,11 +857,46 @@
                   <button on:click={() => showFuelModal = true}>Edit Fuel & Drives</button>
                   <button on:click={() => showAtmosphereModal = true}>Edit Atmospheres & Mixes</button>
                   <button on:click={() => showSensorsModal = true}>Edit Sensors</button>
-                  <button on:click={() => dispatch('settings')}>Global Settings</button>
+                  <button on:click={() => dispatch('settings')}>Starmap Settings</button>
                   <hr />
                   <button on:click={() => showAboutModal = true}>About</button>
               </div>
           {/if}
+      </div>
+    </div>
+  </div>
+  <div class="time-panel">
+    <div class="time-title" title="Relativity mode is off. Time dilation sold separately.">🕒</div>
+    <div class="clock-line">
+      <div class="scrub-control">
+        <label class="scrub-label" for="starmap-time-scrub">Scrub Display Time</label>
+        <input
+          id="starmap-time-scrub"
+          class="scrub-slider"
+          type="range"
+          min="-1"
+          max="1"
+          step="0.01"
+          value={scrubControlValue}
+          on:input={handleScrubInput}
+          on:mouseup={handleScrubRelease}
+          on:touchend={handleScrubRelease}
+          on:pointerup={handleScrubRelease}
+          on:change={handleScrubRelease}
+        />
+        <div class="scrub-scale">
+          <span>-10y/s</span>
+          <span>slow</span>
+          <span>pause</span>
+          <span>slow</span>
+          <span>+10y/s</span>
+        </div>
+      </div>
+      <span class="display-time" title={"Display seconds from big bang: " + displayClockSeconds}>Display Time: <strong>{displayClockLabel}</strong></span>
+      <span class="actual-time" title={"Actual seconds from big bang: " + masterClockSeconds}><strong>Actual Time:</strong> [{masterCalendarLabel}]</span>
+      <div class="clock-actions">
+        <button class="clock-action btn-blue" on:click={handleResetDisplayToActual} title="Reset display time to current actual time">Reset to Actual Time</button>
+        <button class="clock-action btn-red" on:click={handleSetMasterToDisplay} title="Set actual time to current display time">Set Actual Time to Display Time</button>
       </div>
     </div>
   </div>
@@ -1107,16 +1243,129 @@
   .starmap-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     padding: 0.5rem 0;
     flex-shrink: 0; /* Prevent header from shrinking */
     margin-top: 10px;
     margin-bottom: 10px;
+    gap: 10px;
   }
 
   .starmap-header h1 {
     margin: 0;
     font-size: 1.5rem;
+  }
+
+  .starmap-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .clock-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #ccc;
+    flex-wrap: wrap;
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .actual-time {
+    color: #888;
+  }
+
+  .scrub-label {
+    color: #bbb;
+    font-size: 0.8rem;
+  }
+
+  .scrub-slider {
+    width: 260px;
+  }
+
+  .scrub-control {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 0 0 auto;
+    min-width: 260px;
+  }
+
+  .scrub-scale {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    font-size: 0.72rem;
+    color: #8f8f8f;
+  }
+
+  .scrub-scale span:nth-child(1) { text-align: left; }
+  .scrub-scale span:nth-child(2) { text-align: center; }
+  .scrub-scale span:nth-child(3) { text-align: center; }
+  .scrub-scale span:nth-child(4) { text-align: center; }
+  .scrub-scale span:nth-child(5) { text-align: right; }
+
+  .clock-line > span {
+    white-space: nowrap;
+  }
+  .clock-line .display-time {
+    font-size: 1rem;
+  }
+
+  .clock-line button {
+    padding: 2px 6px;
+    background: #2a2a2a;
+    border: 1px solid #555;
+    color: #eee;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .clock-line .clock-action.btn-blue {
+    background: #0a4d9b;
+    border-color: #2a6fc0;
+    color: #fff;
+  }
+  .clock-line .clock-action.btn-blue:hover {
+    background: #1362bf;
+  }
+  .clock-line .clock-action.btn-red {
+    background: #8f1d1d;
+    border-color: #b23a3a;
+    color: #fff;
+  }
+  .clock-line .clock-action.btn-red:hover {
+    background: #b32929;
+  }
+  .clock-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .time-panel {
+    border: 1px solid #3f3f3f;
+    border-radius: 6px;
+    background: rgba(18, 18, 18, 0.9);
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .time-title {
+    font-size: 3rem;
+    font-weight: 400;
+    color: #ddd;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
   }
 
   .header-controls {
