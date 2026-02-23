@@ -32,7 +32,9 @@ export function calculateFlightTelemetry(system: System, plans: TransitPlan[], r
     // 1. Pre-calculate Static Zones (Star & Belts)
     
     const root = system.nodes.find(n => n.parentId === null);
-    const starZones = (root && root.roleHint === 'star') ? calculateAllStellarZones(root as CelestialBody, rulePack) : null; 
+    const starZones = (root && root.roleHint === 'star')
+        ? calculateAllStellarZones(root as CelestialBody, rulePack, system.nodes)
+        : null;
     
     const belts = system.nodes.filter(n => n.roleHint === 'belt');
     const rings = system.nodes.filter(n => n.roleHint === 'ring');

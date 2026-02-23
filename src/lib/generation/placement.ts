@@ -1,7 +1,7 @@
 // src/lib/generation/placement.ts
 import type { CelestialBody, Barycenter, RulePack, Orbit } from '../types';
 import { SOLAR_MASS_KG } from '../constants';
-import { calculateRocheLimit, calculateKillZone, calculateGoldilocksZone } from '../physics/zones';
+import { calculateRocheLimit, calculateKillZone, calculateGoldilocksZone, equivalentFluxDistanceAU } from '../physics/zones';
 
 export function getValidClassifications(orbit: Orbit, host: CelestialBody | Barycenter, pack: RulePack): string[] {
     const validClasses: string[] = [];
@@ -10,6 +10,7 @@ export function getValidClassifications(orbit: Orbit, host: CelestialBody | Bary
     const rocheLimitAU = host.kind === 'body' ? calculateRocheLimit(host) : 0;
     const killZoneAU = host.kind === 'body' ? calculateKillZone(host) : 0;
     const habitableZone = host.kind === 'body' ? calculateGoldilocksZone(host) : { inner: 0, outer: 0 };
+    const effectiveDistanceAU = equivalentFluxDistanceAU(orbit.elements.a_AU, orbit.elements.e);
 
     if (orbit.elements.a_AU < rocheLimitAU) {
         validClasses.push('planet/disrupted');
@@ -18,7 +19,7 @@ export function getValidClassifications(orbit: Orbit, host: CelestialBody | Bary
         // We can represent this by adding a specific tag or by filtering the list of classifications.
         // For now, we'll just add terrestrial planets and assume they won't have an atmosphere.
         validClasses.push('planet/terrestrial');
-    } else if (orbit.elements.a_AU >= habitableZone.inner && orbit.elements.a_AU <= habitableZone.outer) {
+    } else if (effectiveDistanceAU >= habitableZone.inner && effectiveDistanceAU <= habitableZone.outer) {
         validClasses.push('planet/terrestrial-habitable');
         validClasses.push('planet/terrestrial');
     } else if (orbit.elements.a_AU > frostLineAU) {

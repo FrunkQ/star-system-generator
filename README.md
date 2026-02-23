@@ -18,7 +18,7 @@ For discussion, feedback, bugs and suggestions go to [Our Discord](https://disco
 *   [Getting Started](#getting-started)
 *   [Building](#building)
 *   [Planned Features](#planned-features)
-*   [Known Issues](#known-issues)
+*   [Changelog](#changelog)
 *   [Attributions](#attributions)
 *   [License](#license)
 
@@ -179,162 +179,9 @@ You can preview the production build with `npm run preview`.
 
 *   Go to [Our Discord](https://discord.gg/UAEq4zzjD8) for more details and input into ongoing development
 
-## Known Issues
+## Changelog
 
-### v1.9.0 Changelog (22nd Feb 2026, WIP - Not Complete)
-*   **Global Time & Calendar Foundation (UTRE-first pass):**
-    *   Added a data-driven temporal registry loaded at startup from calendar JSON (extensible with user-created calendars).
-    *   Added support for multiple calendar math modes (Bucket/Drain and Ratio/Linear) with negative-time handling.
-    *   Aligned calendar epoch handling around master time (`seconds since Big Bang`) and improved cross-calendar consistency.
-*   **Time UX Overhaul (StarMap + System View):**
-    *   Replaced old time-step buttons with a Display Time scrubber slider (center-snap behavior + scaled speed).
-    *   Added play/pause time advance controls (1 second per second) and unified Display/Actual time presentation.
-    *   Added boxed time panel with large clock icon + tooltip polish, and clearer action buttons (`Set Actual...`, `Reset to Actual Time`).
-*   **State Sync & Persistence:**
-    *   Actual/Display time and selected calendar are now persisted in starmap saves.
-    *   Playback state continuity improved when moving between StarMap and System View.
-    *   Added graceful migration/defaulting for older starmaps that did not include temporal fields.
-*   **Settings & Config Structure:**
-    *   Expanded StarMap Settings for time/date system selection and calendar editing.
-    *   Moved LLM/API settings to a separate local-only config path (not exported with starmap save files).
-*   **Known Incomplete for v1.9.0:**
-    *   Transit behavior still needs a larger follow-up pass against the new temporal model.
-    *   Additional calibration/validation is still pending for non-Gregorian presets.
-
-### v1.8.1 Changelog (14th Feb 2026)
-*   **Scaled Starmap Mode (New)**:
-    *   Added map-level mode selection: `Diagrammatic` or `Scaled`.
-    *   New starmaps default to **Diagrammatic**; mode is selectable during creation and in Settings.
-    *   Scaled mode uses **LY** calibration and displays route distances to **2 decimal places**.
-*   **Distance Calibration & Rescaling**:
-    *   Added **Rescale Map To This** action in route editing.
-    *   Calibrating from an edited route computes a new global `pixelsPerUnit` while preserving current layout.
-    *   In scaled mode, all route distances are recalculated from actual map coordinates.
-*   **Interactive Starmap Movement**:
-    *   Systems are now draggable on the starmap.
-    *   In scaled mode, dragging a system live-updates connected route distances automatically.
-*   **Scale Bar & UX Consistency**:
-    *   Wired in map scale bar rendering for scaled maps.
-    *   Scale bar is now positioned **bottom-left** to match system-map consistency.
-
-### v1.8.4 Changelog (20th Feb 2026)
-*   **Temperature Model Refresh (more physical, less gamey):**
-    *   Reworked temperature composition logic and presentation to expose day/night and pole/equator-style ranges more clearly.
-    *   Added cryogenic greenhouse attenuation so greenhouse gases are less effective at very low temperatures (spectral-shift handling; fixes Titan-class behavior).
-    *   Re-tuned tidal heating to represent sane global-average warming (not local peak values), with explicit hotspot indicators for volcanically active bodies.
-*   **Printable Reports Overhaul:**
-    *   Brought reports in line with new environmental outputs (expanded temperature profile and related derived data).
-    *   Added a compact `System Diagram` to `01. SYSTEM OVERVIEW`.
-    *   Fixed multi-star hierarchy/reporting bugs that caused duplicated or misplaced information.
-*   **Misc Fixes & Quality-of-Life:**
-    *   Added starmap invert display mode for easier printing.
-    *   Added finer atmosphere composition editing (manual percentage entry for mix tuning).
-    *   Improved Traveller import edge cases: saner construct population scaling/caps and explicit handling of `Sa` (Satellite) trade code.
-
-### v1.8.0 Changelog (14th Feb 2026)
-*   **Orbital Stability Analysis (N-body Proxy)**
-    *   Added post-processing stability assessment based on sibling orbit overlap and mutual Hill spacing.
-    *   Excludes constructs from stability physics checks (body-only analysis).
-    *   Added calibrated stability tiers (`Very Unstable`, `Unstable`, `Marginal`) with improved long-timescale wording.
-    *   Refined overlap severity by mutual inclination + mass ratio so giant planets are not over-penalized by minor-body crossings.
-    *   Fixed host grouping to use hierarchy parent linkage first, improving consistency after orbital edits.
-*   **UI: Orbital Stability Data Block**
-    *   Added a dedicated **Orbital Stability** field in technical details.
-    *   Positioned directly after **Orbital Eccentricity** for orbiting bodies (including orbiting stars).
-    *   Added tooltip details with drivers/reasoning when unstable or marginal.
-    *   Displays `Stable` by default when an orbiting body has no instability flags.
-*   **Tags & Visibility**
-    *   Kept short machine-readable stability tags (e.g. `stability/marginal`) in the Tags area for filtering and quick scanning.
-
-### v1.7.2 Changelog (14th Feb 2026)
-*   **Transit Planner (GM Override)**:
-    *   Kept `Execute Journey` disabled behavior for impossible/insufficient-fuel plans.
-    *   Added blocked-execution dialog on click with explicit failure reason.
-    *   Added **Force Journey** action for GM repositioning: executes transfer without capability gating and without fuel deduction.
-*   **System Summary Menu Filtering**:
-    *   Added name filter input at the top of System Summary context lists.
-    *   Supports case-insensitive substring matching (middle-of-name matches).
-    *   Filter now resets on each new menu open and after selection.
-*   **PWA / Offline Installability**:
-    *   Added installable web app manifest and service worker.
-    *   Added offline caching for app shell/runtime assets.
-    *   Added in-app update detection prompt when a new service worker version is available.
-
-### v1.7.1 Changelog (14th Feb 2026)
-*   **Storage Reliability**:
-    *   Replaced large starmap persistence from `localStorage` with IndexedDB-backed async storage.
-    *   Added one-time migration from legacy `localStorage` saves to IndexedDB on load.
-    *   Added queued save writes to avoid stale overwrite races during rapid edits.
-*   **Orbital Camera & Propagation Stability**:
-    *   Stabilized follow-camera auto-zoom behavior for high-eccentricity periapsis passes.
-    *   Added camera zoom damping/clamping and high-e suppression near periapsis to prevent render thrash.
-    *   Hardened Kepler propagation at high eccentricity with normalized anomaly + robust fallback solve.
-*   **Editing & UX**:
-    *   Added dynamic eccentricity maximum in orbit editing with explanatory tooltip (host-safe periapsis bound).
-*   **Lagrange Point Rendering**:
-    *   Fixed L-point placement drift on eccentric orbits by correcting orbital-frame transforms (true anomaly + argument of periapsis).
-
-### v1.7.0 Changelog (24th Jan 2026)
-*   **Traveller RPG Integration**:
-    *   Added `TravellerImporter` to fetch subsector data from `travellermap.com`.
-    *   Implemented "Add Traveller UWP Here" for manual entry of standard RPG codes.
-    *   Expanded technical details to decode T5 Extensions: Importance {Ix}, Economics (Ex), and Cultural [Cx].
-    *   Populated systems using Bode's Law and Traveller PBG codes (Pop/Belt/Giant).
-*   **Atmosphere & Physics**:
-    *   Added a global **"Edit Atmospheres & Mixes"** editor to the starmap menu.
-    *   Enforced orbital separation buffers (15%) to prevent asteroid belts from overlapping planets.
-    *   Implemented surface temperature range calculations (Min/Max) based on eccentricity and latitude.
-*   **UI Polish**:
-    *   Improved starmap context menu with clearer actions and sector-specific delete options.
-    *   Added new construct icons: Circle, Cross, and Diamond.
-    *   Enhanced star technical details to show Kelvin (K) primarily with Celsius (°C) on hover.
-    *   Fixed scrolling and sorting in the System Summary context menus.
-
-### v1.6.0 Changelog (21st Jan 2026)
-*   **Sensors & Detection**:
-    *   Implemented full Sensor Suite management for constructs.
-    *   Visualized sensor ranges with toggleable overlays in the System View.
-    *   Added standard sci-fi and Traveller RPG sensor range presets to the rulepack.
-*   **Data Security**:
-    *   Implemented "Save As" dialog with Player Redaction mode (hides notes, spoilers, and hidden objects).
-*   **Physics Calibration**:
-    *   Fine-tuned Earth greenhouse and radiogenic heat to land exactly at 15°C average surface temp.
-    *   Synced Habitability UI bars with backend "Plateau" scoring logic.
-
-### v1.3.4 Changelog
-*   **Brown Dwarfs**:
-    *   Unified support for sub-stellar objects across planet and star workflows.
-    *   Added specific L, T, and Y spectral types with unique textures and descriptions.
-    *   Extended mass/temp sliders to cover the 13-80 Jupiter mass gap.
-*   **Procedural Realism**:
-    *   Switched to **Logarithmic Orbital Spacing**, ensuring planets are distributed properly across the full system (solving the "Missing Ice Giant" problem).
-    *   Implemented **Logarithmic Mass Distribution** for gas giants, making standard Jupiters common and Super-Jupiters rare.
-    *   Fixed **Moon Over-generation**: Capped moons at 30 and enforced gravitational stability (Hill Sphere) limits.
-    *   Added **Intelligent Moon-Type logic**: Terrestrial planets can no longer have gas giant moons.
-    *   Fixed **Toroidal Bug**: Generated planets now have non-zero rotation periods.
-*   **Binary Physics**:
-    *   Editing a star's mass now dynamically recalculates the system barycenter, shifting orbits and adjusting mean motion ($n$) to maintain physical consistency.
-    *   Fixed "temperature fighting" where binary stars had their surface temperature overwritten by equilibrium math.
-*   **Orbital Mechanics**:
-    *   Added support for **Retrograde Orbits** via a new toggle in the Orbit tab.
-    *   Toggling retrograde status automatically adds the "Captured Body" tag.
-*   **UI/UX**:
-    *   Fixed "Toytown View" slider to snap cleanly to zero, restoring the scale bar correctly.
-    *   Restricted Barycenter editing tabs to only show relevant data (Tags/Orbit).
-
-### v1.3.3 Changelog
-*   **Documentation**:
-    *   Added tutorial video link to README, Getting Started, and About dialogs for better onboarding.
-*   **Bug Fixes**:
-    *   Fixed a critical issue where regenerating a system, selecting a preset, or uploading a JSON would lose the link to the starmap due to ID mismatch.
-*   **v1.3.1 - Sync Engine**:
-    *   Implemented real-time broadcast sync for Projection View.
-    *   Added intelligent camera synchronization between GM and Player views.
-*   **Performance**:
-    *   Commented out debug logs for smooth animations.
-*   **General**:
-    *   Updated version to 1.2.4.
-
+For release notes and version history, see [changelog.md](./changelog.md).
 ## Attributions
 
 This project uses images from several sources under Creative Commons licenses. We are grateful for their work.
@@ -351,3 +198,4 @@ This project uses images from several sources under Creative Commons licenses. W
 This project is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html).
 
 Codex and this version is awesome!
+

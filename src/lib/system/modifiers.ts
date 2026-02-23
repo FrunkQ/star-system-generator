@@ -73,7 +73,7 @@ export function addPlanetaryBody(sys: System, hostId: ID, planetType: string, pa
     const children = (sys.nodes.filter(n => n.parentId === hostId && n.kind === 'body' && n.orbit) as CelestialBody[])
                       .sort((a, b) => a.orbit!.elements.a_AU - b.orbit!.elements.a_AU);
     
-    const stellarZones = calculateAllStellarZones(host, pack);
+    const stellarZones = calculateAllStellarZones(host, pack, sys.nodes);
     const hostRadiusAU = (host.radiusKm || 0) / AU_KM;
 
     const orbitalPoints: number[] = [];

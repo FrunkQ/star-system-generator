@@ -8,7 +8,7 @@ export function findViableHabitableOrbit(host: CelestialBody, system: System, ty
          return { success: false, reason: 'Habitable generation currently only supports stars as hosts.' };
     }
 
-    const zones = calculateAllStellarZones(host, pack);
+    const zones = calculateAllStellarZones(host, pack, system.nodes);
     let minAU = zones.goldilocks.inner;
     let maxAU = zones.goldilocks.outer;
 
@@ -23,7 +23,13 @@ export function findViableHabitableOrbit(host: CelestialBody, system: System, ty
     // Simple collision check
     // Try 10 random spots in HZ
     for (let i = 0; i < 10; i++) {
-        const targetAU = minAU + Math.random() * (maxAU - minAU);
+        const eccentricity = 0.02; // keep habitable insertions near-circular
+        const minAForPeriInZone = minAU / Math.max(1e-6, (1 - eccentricity));
+        const maxAForApoInZone = maxAU / Math.max(1e-6, (1 + eccentricity));
+        if (maxAForApoInZone <= minAForPeriInZone) {
+            continue;
+        }
+        const targetAU = minAForPeriInZone + Math.random() * (maxAForApoInZone - minAForPeriInZone);
         
         let conflict = false;
         for (const node of system.nodes) {
@@ -46,7 +52,7 @@ export function findViableHabitableOrbit(host: CelestialBody, system: System, ty
                     t0: 0,
                     elements: {
                         a_AU: targetAU,
-                        e: 0.02, // Low eccentricity for habitable
+                        e: eccentricity, // Low eccentricity for habitable
                         i_deg: Math.random() * 5, // Low inclination
                         omega_deg: Math.random() * 360,
                         Omega_deg: Math.random() * 360,

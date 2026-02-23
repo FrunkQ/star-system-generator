@@ -203,7 +203,7 @@
     if (!system) return;
     const stars = system.nodes.filter(n => n.kind === 'body' && n.roleHint === 'star');
     for (const star of stars) {
-        const zones = calculateAllStellarZones(star as CelestialBody, rulePack);
+        const zones = calculateAllStellarZones(star as CelestialBody, rulePack, system.nodes);
         stellarZones.set(star.id, zones);
     }
   }

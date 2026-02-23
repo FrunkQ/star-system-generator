@@ -1,4 +1,4 @@
-import type { CelestialBody } from '../types';
+import type { CelestialBody, Barycenter } from '../types';
 import { SOLAR_RADIUS_KM } from '../constants';
 
 const SOLAR_TEMP_K = 5778;
@@ -100,7 +100,10 @@ export function calculateSootLine(star: CelestialBody): number {
     return getDistanceForTemperature(star, 500);
 }
 
-export function calculateGoldilocksZone(star: CelestialBody): { inner: number; outer: number } {
+export function calculateGoldilocksZone(
+    star: CelestialBody,
+    allNodes?: (CelestialBody | Barycenter)[]
+): { inner: number; outer: number } {
     // Replace legacy blackbody 373K/273K band with a conservative
     // Kopparapu-style HZ: Runaway Greenhouse (inner) to Maximum Greenhouse (outer).
     // This keeps a single HZ band in the UI/generation while aligning to common literature.
@@ -133,13 +136,85 @@ export function calculateGoldilocksZone(star: CelestialBody): { inner: number; o
     const safeOuterSeff = Math.max(1e-6, maximumGreenhouse);
     const safeLuminosity = Math.max(1e-6, luminosity);
 
-    const inner = Math.sqrt(safeLuminosity / safeInnerSeff);
-    const outer = Math.sqrt(safeLuminosity / safeOuterSeff);
+    let inner = Math.sqrt(safeLuminosity / safeInnerSeff);
+    let outer = Math.sqrt(safeLuminosity / safeOuterSeff);
+
+    // Close binary adjustment: include flux from sibling stars sharing the same barycenter.
+    if (allNodes && allNodes.length > 0) {
+        const companions = getCompanionStars(star, allNodes);
+        if (companions.length > 0) {
+            let nearestCompanion = companions[0];
+            let nearestSeparationAu = estimateStarSeparationAu(star, nearestCompanion);
+            for (let i = 1; i < companions.length; i++) {
+                const sep = estimateStarSeparationAu(star, companions[i]);
+                if (sep < nearestSeparationAu) {
+                    nearestSeparationAu = sep;
+                    nearestCompanion = companions[i];
+                }
+            }
+            const companionLuminosity = getLuminosity(nearestCompanion);
+            inner = solveCompanionAdjustedDistanceAu(safeLuminosity, companionLuminosity, nearestSeparationAu, safeInnerSeff);
+            outer = solveCompanionAdjustedDistanceAu(safeLuminosity, companionLuminosity, nearestSeparationAu, safeOuterSeff);
+        }
+    }
 
     return {
         inner: Math.min(inner, outer),
         outer: Math.max(inner, outer)
     };
+}
+
+function getNodeById(allNodes: (CelestialBody | Barycenter)[], id: string | null | undefined): CelestialBody | Barycenter | undefined {
+    if (!id) return undefined;
+    return allNodes.find((n) => n.id === id);
+}
+
+function getCompanionStars(host: CelestialBody, allNodes: (CelestialBody | Barycenter)[]): CelestialBody[] {
+    const parent = getNodeById(allNodes, host.parentId);
+    if (!parent || parent.kind !== 'barycenter') return [];
+    return allNodes.filter((n) =>
+        n.kind === 'body' &&
+        n.roleHint === 'star' &&
+        n.id !== host.id &&
+        n.parentId === parent.id
+    ) as CelestialBody[];
+}
+
+function estimateStarSeparationAu(host: CelestialBody, companion: CelestialBody): number {
+    const hostA = host.orbit?.elements?.a_AU || 0;
+    const companionA = companion.orbit?.elements?.a_AU || 0;
+    const summed = hostA + companionA;
+    if (summed > 0) return summed;
+    return 1e6;
+}
+
+function solveCompanionAdjustedDistanceAu(
+    hostLuminosity: number,
+    companionLuminosity: number,
+    companionSeparationAu: number,
+    targetSeff: number
+): number {
+    const s = Math.max(1e-6, companionSeparationAu);
+    const seff = Math.max(1e-6, targetSeff);
+    const l1 = Math.max(1e-9, hostLuminosity);
+    const l2 = Math.max(0, companionLuminosity);
+
+    // Solve for x = r^2 from:
+    // seff = l1/x + l2/(x + s^2)
+    // -> seff*x^2 + (seff*s^2 - l1 - l2)*x - l1*s^2 = 0
+    const a = seff;
+    const b = (seff * s * s) - l1 - l2;
+    const c = -l1 * s * s;
+    const disc = Math.max(0, (b * b) - (4 * a * c));
+    const x = (-b + Math.sqrt(disc)) / (2 * a);
+    if (x <= 0) return Math.sqrt(l1 / seff);
+    return Math.sqrt(x);
+}
+
+export function equivalentFluxDistanceAU(a_AU: number, e: number): number {
+    const a = Math.max(0, a_AU || 0);
+    const ecc = Math.max(0, Math.min(0.99, e || 0));
+    return a * Math.pow(1 - (ecc * ecc), 0.25);
 }
 
 export function calculateFrostLine(star: CelestialBody): number {
@@ -154,7 +229,11 @@ export function calculateCOIceLine(star: CelestialBody): number {
     return getDistanceForTemperature(star, 30);
 }
 
-export function calculateAllStellarZones(star: CelestialBody, pack?: RulePack): Record<string, any> {
+export function calculateAllStellarZones(
+    star: CelestialBody,
+    pack?: RulePack,
+    allNodes?: (CelestialBody | Barycenter)[]
+): Record<string, any> {
     const killZone = calculateKillZone(star);
     const dangerZoneMultiplier = pack?.generation_parameters?.danger_zone_multiplier || 5;
     const dangerZone = killZone * dangerZoneMultiplier;
@@ -164,7 +243,7 @@ export function calculateAllStellarZones(star: CelestialBody, pack?: RulePack): 
     return {
         killZone: killZone,
         dangerZone: dangerZone,
-        goldilocks: calculateGoldilocksZone(star),
+        goldilocks: calculateGoldilocksZone(star, allNodes),
         silicateLine: calculateSilicateLine(star),
         sootLine: calculateSootLine(star),
         frostLine: calculateFrostLine(star),

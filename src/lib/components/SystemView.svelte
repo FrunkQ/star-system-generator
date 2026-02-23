@@ -321,7 +321,7 @@
 
           if (host.roleHint === 'star') {
               newPlanet.roleHint = 'planet';
-              const zones = calculateAllStellarZones(host as CelestialBody, rulePack);
+              const zones = calculateAllStellarZones(host as CelestialBody, rulePack, ($systemStore?.nodes || []) as any);
               const frostLine = (zones && zones.frostLine) ? zones.frostLine : 2.7;
               const co2Line = (zones && zones.co2IceLine) ? zones.co2IceLine : (frostLine * 3); 
 
