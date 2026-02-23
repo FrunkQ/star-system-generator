@@ -101,9 +101,45 @@ export function calculateSootLine(star: CelestialBody): number {
 }
 
 export function calculateGoldilocksZone(star: CelestialBody): { inner: number; outer: number } {
-    const inner = getDistanceForTemperature(star, 373); // 100 C
-    const outer = getDistanceForTemperature(star, 273); // 0 C
-    return { inner, outer };
+    // Replace legacy blackbody 373K/273K band with a conservative
+    // Kopparapu-style HZ: Runaway Greenhouse (inner) to Maximum Greenhouse (outer).
+    // This keeps a single HZ band in the UI/generation while aligning to common literature.
+    const teff = star.temperatureK || SOLAR_TEMP_K;
+    const luminosity = getLuminosity(star);
+
+    // Valid range in published fits; clamp for stability on exotic stars.
+    const tStar = Math.max(2600, Math.min(7200, teff)) - 5780;
+
+    const seff = (s: { seffSun: number; a: number; b: number; c: number; d: number }) =>
+        s.seffSun + (s.a * tStar) + (s.b * tStar ** 2) + (s.c * tStar ** 3) + (s.d * tStar ** 4);
+
+    // Kopparapu et al. parameterization (conservative HZ pair).
+    const runawayGreenhouse = seff({
+        seffSun: 1.107,
+        a: 1.332e-4,
+        b: 1.58e-8,
+        c: -8.308e-12,
+        d: -1.931e-15
+    });
+    const maximumGreenhouse = seff({
+        seffSun: 0.356,
+        a: 6.171e-5,
+        b: 1.698e-9,
+        c: -3.198e-12,
+        d: -5.575e-16
+    });
+
+    const safeInnerSeff = Math.max(1e-6, runawayGreenhouse);
+    const safeOuterSeff = Math.max(1e-6, maximumGreenhouse);
+    const safeLuminosity = Math.max(1e-6, luminosity);
+
+    const inner = Math.sqrt(safeLuminosity / safeInnerSeff);
+    const outer = Math.sqrt(safeLuminosity / safeOuterSeff);
+
+    return {
+        inner: Math.min(inner, outer),
+        outer: Math.max(inner, outer)
+    };
 }
 
 export function calculateFrostLine(star: CelestialBody): number {
