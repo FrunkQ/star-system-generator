@@ -92,12 +92,12 @@ export function calculateRocheLimit(primary: CelestialBody): number {
     return (radius_km * Math.pow(2 * (primaryDensity / satelliteDensity), 1/3)) / AU_KM;
 }
 
-export function calculateSilicateLine(star: CelestialBody): number {
-    return getDistanceForTemperature(star, 1400);
+export function calculateSilicateLine(star: CelestialBody, allNodes?: (CelestialBody | Barycenter)[]): number {
+    return getCompanionAdjustedTemperatureLineDistance(star, 1400, allNodes);
 }
 
-export function calculateSootLine(star: CelestialBody): number {
-    return getDistanceForTemperature(star, 500);
+export function calculateSootLine(star: CelestialBody, allNodes?: (CelestialBody | Barycenter)[]): number {
+    return getCompanionAdjustedTemperatureLineDistance(star, 500, allNodes);
 }
 
 export function calculateGoldilocksZone(
@@ -140,22 +140,10 @@ export function calculateGoldilocksZone(
     let outer = Math.sqrt(safeLuminosity / safeOuterSeff);
 
     // Close binary adjustment: include flux from sibling stars sharing the same barycenter.
-    if (allNodes && allNodes.length > 0) {
-        const companions = getCompanionStars(star, allNodes);
-        if (companions.length > 0) {
-            let nearestCompanion = companions[0];
-            let nearestSeparationAu = estimateStarSeparationAu(star, nearestCompanion);
-            for (let i = 1; i < companions.length; i++) {
-                const sep = estimateStarSeparationAu(star, companions[i]);
-                if (sep < nearestSeparationAu) {
-                    nearestSeparationAu = sep;
-                    nearestCompanion = companions[i];
-                }
-            }
-            const companionLuminosity = getLuminosity(nearestCompanion);
-            inner = solveCompanionAdjustedDistanceAu(safeLuminosity, companionLuminosity, nearestSeparationAu, safeInnerSeff);
-            outer = solveCompanionAdjustedDistanceAu(safeLuminosity, companionLuminosity, nearestSeparationAu, safeOuterSeff);
-        }
+    const context = getNearestCompanionFluxContext(star, allNodes);
+    if (context) {
+        inner = solveCompanionAdjustedDistanceAu(safeLuminosity, context.companionLuminosity, context.separationAu, safeInnerSeff);
+        outer = solveCompanionAdjustedDistanceAu(safeLuminosity, context.companionLuminosity, context.separationAu, safeOuterSeff);
     }
 
     return {
@@ -188,6 +176,30 @@ function estimateStarSeparationAu(host: CelestialBody, companion: CelestialBody)
     return 1e6;
 }
 
+function getNearestCompanionFluxContext(
+    star: CelestialBody,
+    allNodes?: (CelestialBody | Barycenter)[]
+): { companionLuminosity: number; separationAu: number } | null {
+    if (!allNodes || allNodes.length === 0) return null;
+    const companions = getCompanionStars(star, allNodes);
+    if (companions.length === 0) return null;
+
+    let nearestCompanion = companions[0];
+    let nearestSeparationAu = estimateStarSeparationAu(star, nearestCompanion);
+    for (let i = 1; i < companions.length; i++) {
+        const sep = estimateStarSeparationAu(star, companions[i]);
+        if (sep < nearestSeparationAu) {
+            nearestSeparationAu = sep;
+            nearestCompanion = companions[i];
+        }
+    }
+
+    return {
+        companionLuminosity: getLuminosity(nearestCompanion),
+        separationAu: nearestSeparationAu
+    };
+}
+
 function solveCompanionAdjustedDistanceAu(
     hostLuminosity: number,
     companionLuminosity: number,
@@ -217,16 +229,37 @@ export function equivalentFluxDistanceAU(a_AU: number, e: number): number {
     return a * Math.pow(1 - (ecc * ecc), 0.25);
 }
 
-export function calculateFrostLine(star: CelestialBody): number {
-    return getDistanceForTemperature(star, 170);
+function getCompanionAdjustedTemperatureLineDistance(
+    star: CelestialBody,
+    tempK: number,
+    allNodes?: (CelestialBody | Barycenter)[]
+): number {
+    const baseDistance = getDistanceForTemperature(star, tempK);
+    if (baseDistance <= 0) return 0;
+
+    const context = getNearestCompanionFluxContext(star, allNodes);
+    if (!context) return baseDistance;
+
+    const hostLuminosity = Math.max(1e-9, getLuminosity(star));
+    const targetSeff = hostLuminosity / Math.max(1e-12, baseDistance * baseDistance);
+    return solveCompanionAdjustedDistanceAu(
+        hostLuminosity,
+        context.companionLuminosity,
+        context.separationAu,
+        targetSeff
+    );
 }
 
-export function calculateCO2IceLine(star: CelestialBody): number {
-    return getDistanceForTemperature(star, 70);
+export function calculateFrostLine(star: CelestialBody, allNodes?: (CelestialBody | Barycenter)[]): number {
+    return getCompanionAdjustedTemperatureLineDistance(star, 170, allNodes);
 }
 
-export function calculateCOIceLine(star: CelestialBody): number {
-    return getDistanceForTemperature(star, 30);
+export function calculateCO2IceLine(star: CelestialBody, allNodes?: (CelestialBody | Barycenter)[]): number {
+    return getCompanionAdjustedTemperatureLineDistance(star, 70, allNodes);
+}
+
+export function calculateCOIceLine(star: CelestialBody, allNodes?: (CelestialBody | Barycenter)[]): number {
+    return getCompanionAdjustedTemperatureLineDistance(star, 30, allNodes);
 }
 
 export function calculateAllStellarZones(
@@ -237,17 +270,17 @@ export function calculateAllStellarZones(
     const killZone = calculateKillZone(star);
     const dangerZoneMultiplier = pack?.generation_parameters?.danger_zone_multiplier || 5;
     const dangerZone = killZone * dangerZoneMultiplier;
-    const coIceLine = calculateCOIceLine(star);
+    const coIceLine = calculateCOIceLine(star, allNodes);
     const systemLimitAu = coIceLine * 2;
 
     return {
         killZone: killZone,
         dangerZone: dangerZone,
         goldilocks: calculateGoldilocksZone(star, allNodes),
-        silicateLine: calculateSilicateLine(star),
-        sootLine: calculateSootLine(star),
-        frostLine: calculateFrostLine(star),
-        co2IceLine: calculateCO2IceLine(star),
+        silicateLine: calculateSilicateLine(star, allNodes),
+        sootLine: calculateSootLine(star, allNodes),
+        frostLine: calculateFrostLine(star, allNodes),
+        co2IceLine: calculateCO2IceLine(star, allNodes),
         coIceLine: coIceLine,
         systemLimitAu: systemLimitAu,
     };

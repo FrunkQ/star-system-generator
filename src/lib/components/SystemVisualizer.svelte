@@ -693,7 +693,7 @@
       ctx.fillRect(0, 0, width, height);
       ctx.translate(width / 2, height / 2);
       ctx.scale(zoom, zoom);
-      if (showZones) drawStellarZones(ctx);
+      // Zones are drawn in screen-space overlay after world-space pass for better dash/LOD performance.
       if (showTravellerZones) drawTravellerZones(ctx);
       if (showSensors) drawSensorOverlay(ctx);
       for (const node of system.nodes) {
@@ -846,6 +846,8 @@
       if (transitPlan) drawTransitPlan(ctx, transitPlan, false, isExecuting ? 0.3 : undefined, isExecuting);
       if (transitPreviewPos) drawShipMarker(ctx, transitPreviewPos);
       ctx.restore();
+
+      if (showZones) drawStellarZonesOverlay(ctx, width, height);
       
       // Draw Sensor Labels (Screen Space Overlay)
       if (showSensors && focusedBodyId) {
@@ -1005,6 +1007,7 @@
                           let scaledRadius = radius;
                           if (toytownFactor > 0) scaledRadius = scaleBoxCox(radius, toytownFactor, x0_distance);
                           const screenPos = worldToScreen(starPos.x, starPos.y - scaledRadius);
+                          if (screenPos.x < -80 || screenPos.x > width + 80 || screenPos.y < -40 || screenPos.y > height + 40) continue;
                           ctx.fillStyle = label.color; ctx.fillText(label.name, screenPos.x, screenPos.y - 5);
                       }
                   }
@@ -1093,31 +1096,72 @@
       }
   }
 
-  function drawStellarZones(ctx: CanvasRenderingContext2D) {
-    if (!system || stellarZones.size === 0) return;
+  function drawStellarZonesOverlay(ctx: CanvasRenderingContext2D, width: number, height: number) {
+    if (!system || !zoom || stellarZones.size === 0) return;
+
+    const margin = 24;
+    const hugeRadiusSolidThresholdPx = Math.max(width, height) * 1.25;
+    const isCircleVisible = (cx: number, cy: number, r: number) =>
+      cx + r >= -margin && cx - r <= width + margin && cy + r >= -margin && cy - r <= height + margin;
+
+    const toScreenRadius = (radiusAu: number): number => {
+      if (radiusAu <= 0) return 0;
+      let r = radiusAu;
+      if (toytownFactor > 0) r = scaleBoxCox(r, toytownFactor, x0_distance);
+      return r * zoom;
+    };
+
+    const drawZoneBand = (cx: number, cy: number, outerRadiusPx: number, innerRadiusPx: number, color: string) => {
+      if (outerRadiusPx <= 0 || outerRadiusPx <= innerRadiusPx) return;
+      if (!isCircleVisible(cx, cy, outerRadiusPx)) return;
+      ctx.beginPath();
+      ctx.arc(cx, cy, outerRadiusPx, 0, 2 * Math.PI);
+      if (innerRadiusPx > 0) {
+        ctx.arc(cx, cy, innerRadiusPx, 0, 2 * Math.PI, true);
+      }
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+    };
+
+    const drawZoneLine = (cx: number, cy: number, radiusPx: number, color: string) => {
+      if (radiusPx <= 0) return;
+      if (!isCircleVisible(cx, cy, radiusPx)) return;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radiusPx, 0, 2 * Math.PI);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      if (radiusPx > hugeRadiusSolidThresholdPx) {
+        ctx.setLineDash([]);
+      } else {
+        ctx.setLineDash([6, 6]);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    };
+
     for (const [starId, zones] of stellarZones) {
-        const starNode = system.nodes.find(n => n.id === starId) as CelestialBody;
-        const starPos = toytownFactor > 0 ? scaledWorldPositions.get(starId) : worldPositions.get(starId);
-        if (!starPos) continue;
-        const drawZoneBand = (radius: number, innerRadius: number, color: string) => {
-            if (toytownFactor > 0) { radius = scaleBoxCox(radius, toytownFactor, x0_distance); innerRadius = scaleBoxCox(innerRadius, toytownFactor, x0_distance); }
-            const widthAU = radius - innerRadius; if (widthAU <= 0) return;
-            ctx.lineWidth = widthAU; ctx.strokeStyle = color; ctx.beginPath(); ctx.arc(starPos.x - renderPan.x, starPos.y - renderPan.y, innerRadius + widthAU / 2, 0, 2 * Math.PI); ctx.stroke();
-        };
-        const drawZoneLine = (radius: number, color: string) => {
-            if (radius <= 0) return;
-            if (toytownFactor > 0) radius = scaleBoxCox(radius, toytownFactor, x0_distance);
-            ctx.strokeStyle = color; ctx.lineWidth = 1 / zoom; ctx.setLineDash([10 / zoom, 10 / zoom]); ctx.beginPath(); ctx.arc(starPos.x - renderPan.x, starPos.y - renderPan.y, radius, 0, 2 * Math.PI); ctx.stroke(); ctx.setLineDash([]);
-        };
-        drawZoneBand(zones.goldilocks.outer, zones.goldilocks.inner, 'rgba(0, 255, 0, 0.1)');
-        drawZoneBand(zones.dangerZone, zones.killZone, 'rgba(200, 100, 0, 0.2)');
-        drawZoneBand(zones.killZone, 0, 'rgba(180, 0, 0, 0.2)');
-        if (starNode) drawZoneLine(calculateRocheLimit(starNode), 'rgba(180, 0, 0, 0.5)');
-        drawZoneLine(zones.silicateLine, 'rgba(165, 42, 42, 0.5)');
-        drawZoneLine(zones.sootLine, 'rgba(105, 105, 105, 0.5)');
-        drawZoneLine(zones.frostLine, 'rgba(173, 216, 230, 0.5)');
-        drawZoneLine(zones.co2IceLine, 'rgba(255, 255, 255, 0.5)');
-        drawZoneLine(zones.coIceLine, 'rgba(0, 0, 255, 0.5)');
+      const starNode = system.nodes.find(n => n.id === starId) as CelestialBody | undefined;
+      const starPos = toytownFactor > 0 ? scaledWorldPositions.get(starId) : worldPositions.get(starId);
+      if (!starPos || !zones) continue;
+
+      const screenStar = worldToScreen(starPos.x, starPos.y);
+      const hzInner = toScreenRadius(zones.goldilocks?.inner || 0);
+      const hzOuter = toScreenRadius(zones.goldilocks?.outer || 0);
+      const kill = toScreenRadius(zones.killZone || 0);
+      const danger = toScreenRadius(zones.dangerZone || 0);
+
+      drawZoneBand(screenStar.x, screenStar.y, hzOuter, hzInner, 'rgba(0, 255, 0, 0.1)');
+      drawZoneBand(screenStar.x, screenStar.y, danger, kill, 'rgba(200, 100, 0, 0.2)');
+      drawZoneBand(screenStar.x, screenStar.y, kill, 0, 'rgba(180, 0, 0, 0.2)');
+
+      const rocheAu = starNode ? calculateRocheLimit(starNode) : 0;
+      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(rocheAu), 'rgba(180, 0, 0, 0.5)');
+      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.silicateLine || 0), 'rgba(165, 42, 42, 0.5)');
+      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.sootLine || 0), 'rgba(105, 105, 105, 0.5)');
+      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.frostLine || 0), 'rgba(173, 216, 230, 0.5)');
+      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.co2IceLine || 0), 'rgba(255, 255, 255, 0.5)');
+      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.coIceLine || 0), 'rgba(0, 0, 255, 0.5)');
     }
   }
 

@@ -10,6 +10,11 @@ All notable changes are listed here:
   - replaced legacy Goldilocks with conservative modern HZ edges (Kopparapu-style),
   - eccentricity-aware habitability checks,
   - close-binary companion-flux adjustment (far binaries remain effectively separate).
+- Zone rendering performance pass (System View):
+  - moved stellar zone rendering to screen-space overlay pass for fixed-pixel stroke behavior,
+  - added viewport culling for off-screen zone circles/bands,
+  - switched to fixed dash pattern with large-radius solid-line fallback,
+  - added off-screen culling for zone labels.
 - New StarMap Settings menu - most of the old "System Setting" in there alog with date stuff.
 - LLM settings moved to own system menu (NB: Not exported with map - just local). 
 - Incomplete: transit follow-up against the new temporal model is still pending.
