@@ -1,4 +1,4 @@
-import type { ID } from '../types';
+type ID = string;
 
 export interface Vector2 {
   x: number;
@@ -62,4 +62,19 @@ export interface TransitPlan {
   hiddenReason?: string;
   isKinematic?: boolean; // True if path points are pre-scaled for kinematic, bypasses visualizer scaling
   initialDelay_days?: number; // Delay before this leg starts
+}
+
+export type TransitLogStatus = 'scheduled' | 'active' | 'completed' | 'cancelled';
+
+export interface ScheduledJourneyLog {
+  id: ID;
+  createdAtSec: string;
+  plans: TransitPlan[];
+  status: TransitLogStatus;
+  forceExecute?: boolean;
+  cancelledAtSec?: string;
+  cancelState?: {
+    position_au: Vector2;
+    velocity_ms: { x: number; y: number };
+  };
 }

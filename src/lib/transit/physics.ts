@@ -2,14 +2,39 @@ import type { System, CelestialBody, Barycenter } from '../types';
 import type { StateVector } from './types';
 import { propagateState, subtract } from './math';
 import { G } from '../constants';
+import { AU_KM } from '../constants';
 
 const G0 = 9.81;
+const AU_M = AU_KM * 1000;
 
 /**
  * Recursively calculates the global (Heliocentric/System-Root) State Vector
  * for a given node at a specific time.
  */
 export function getGlobalState(sys: System, node: CelestialBody | Barycenter | { id: string, parentId: string | null, orbit?: any }, tMs: number): StateVector {
+    // Kinematic override for constructs in transit/deep-space.
+    // These are absolute system-frame vectors and should not be resolved via orbital hierarchy.
+    if ((node as any).kind === 'construct') {
+        const c = node as any;
+        if (
+            c.vector_position_au &&
+            c.vector_velocity_ms &&
+            (c.flight_state === 'Transit' || c.flight_state === 'Deep Space')
+        ) {
+            const epochMs = Number.isFinite(c.vector_epoch_ms) ? c.vector_epoch_ms : tMs;
+            const dtSec = (tMs - epochMs) / 1000;
+            const vxAuSec = c.vector_velocity_ms.x / AU_M;
+            const vyAuSec = c.vector_velocity_ms.y / AU_M;
+            return {
+                r: {
+                    x: c.vector_position_au.x + (vxAuSec * dtSec),
+                    y: c.vector_position_au.y + (vyAuSec * dtSec)
+                },
+                v: { x: vxAuSec, y: vyAuSec }
+            };
+        }
+    }
+
     let current: any = node;
     let r = { x: 0, y: 0 };
     let v = { x: 0, y: 0 };

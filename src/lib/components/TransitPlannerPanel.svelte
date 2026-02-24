@@ -37,6 +37,7 @@
   let brakeStartPercent: number = 90;
   let directProfileTouched = false;
   let directProfileDragging = false;
+  let arrivalMode: 'Rendezvous' | 'Flyby' = 'Rendezvous';
   let brakeAtArrival: boolean = true;
   let useAerobrake: boolean = true;
   let maxG: number = 1.0;
@@ -162,9 +163,10 @@
       telemetryData = [];
   }
 
+  $: brakeAtArrival = arrivalMode === 'Rendezvous';
   $: targetHasAtmosphere = false;
   $: canAerobrakeConstruct = currentConstructSpecs?.canAerobrake || false;
-  $: canAerobrakeEffective = targetHasAtmosphere && canAerobrakeConstruct;
+  $: canAerobrakeEffective = brakeAtArrival && targetHasAtmosphere && canAerobrakeConstruct;
 
   $: if (targetId) {
       const body = system.nodes.find(n => n.id === targetId);
@@ -173,6 +175,8 @@
       } else {
           targetHasAtmosphere = false;
       }
+  } else {
+      targetHasAtmosphere = false;
   }
 
   $: if (originId !== previousOriginId) {
@@ -189,6 +193,7 @@
       maxG = 1.0;
       maxGByPlanType = { Efficiency: 1.0, Assist: 1.0, Speed: 1.0, Complex: 1.0 };
       selectedPlanTypePreference = 'Efficiency';
+      arrivalMode = 'Rendezvous';
       directProfileTouched = false;
       directProfileDragging = false;
       previousOriginId = originId;
@@ -217,6 +222,9 @@
   $: bodies = system.nodes.filter(n => {
       // Exclude self
       if (n.id === originId) return false;
+
+      // Always allow constructs as explicit intercept targets (including in-transit / deep-space).
+      if (n.kind === 'construct') return true;
 
       // Always show stars & barycenters
       if (n.roleHint === 'star' || n.kind === 'barycenter') return true;
@@ -256,6 +264,21 @@
       // Reset target when origin changes (chaining)
       if (targetId === originId) {
           targetId = ''; 
+          selectedOrbitId = 'lo';
+          orbitOptions = [];
+          availablePlans = [];
+          selectedPlanIndex = 0;
+          plan = null;
+          error = null;
+      }
+  }
+
+  // Keep target/options in sync when list context changes across chained legs.
+  // If the previously selected target is no longer valid for the new origin, clear it.
+  $: {
+      const validTargetIds = new Set(bodies.map((b) => b.id));
+      if (targetId && !validTargetIds.has(targetId)) {
+          targetId = '';
           selectedOrbitId = 'lo';
           orbitOptions = [];
           availablePlans = [];
@@ -335,6 +358,10 @@
               } else {
                   selectedOrbitId = 'lo';
               }
+          } else if (body && body.kind === 'construct') {
+              // Construct intercept/rendezvous uses the construct id as explicit arrival placement.
+              orbitOptions = [];
+              selectedOrbitId = body.id;
           } else {
               orbitOptions = [];
               selectedOrbitId = 'lo';
@@ -386,6 +413,10 @@
                   return;
               }
           }
+          arrivalMode = (
+              plan.interceptSpeed_ms > 0 ||
+              plan.segments.some((s) => (s.warnings || []).includes('Flyby'))
+          ) ? 'Flyby' : 'Rendezvous';
           
           dispatch('planUpdate', plan);
           
@@ -416,6 +447,8 @@
           if (selectedOrbitId === 'l4') targetOffsetAnomaly = Math.PI / 3; // +60 deg
           if (selectedOrbitId === 'l5') targetOffsetAnomaly = -Math.PI / 3; // -60 deg
       }
+      const targetNode = system.nodes.find(n => n.id === targetId);
+      const isConstructTarget = !!(targetNode && targetNode.kind === 'construct');
 
       // Validate Initial State
       let safeInitialState = initialState;
@@ -442,9 +475,10 @@
           initialState: safeInitialState,
           parkingOrbitRadius_au: targetOrbitRadiusKm > 0 ? targetOrbitRadiusKm / AU_KM : undefined,
           targetOffsetAnomaly: targetOffsetAnomaly,
-          arrivalPlacement: selectedOrbitId,
+          // Construct rendezvous must explicitly target that construct id.
+          arrivalPlacement: (isConstructTarget && arrivalMode === 'Rendezvous') ? targetId : selectedOrbitId,
           aerobrake: {
-              allowed: useAerobrake && canAerobrakeEffective,
+              allowed: !!(useAerobrake && canAerobrakeEffective),
               limit_kms: currentConstructSpecs?.aerobrakeLimit_kms || 0
           }
       };
@@ -500,6 +534,10 @@
           } else if (plan.planType === 'Speed' && !directProfileDragging && brakeAtArrival && plan.brakeRatio !== undefined) {
                brakeStartPercent = 100 - (plan.brakeRatio * 100);
           }
+          arrivalMode = (
+              plan.interceptSpeed_ms > 0 ||
+              plan.segments.some((s) => (s.warnings || []).includes('Flyby'))
+          ) ? 'Flyby' : 'Rendezvous';
           
           dispatch('planUpdate', plan);
           
@@ -967,15 +1005,16 @@
         </div>
         
         <div class="form-group checkbox-row">
-            <label>
-                <input type="checkbox" bind:checked={brakeAtArrival} on:change={handleCalculate} />
-                Brake at Arrival (Match Velocity)
-            </label>
-            <label class:disabled={!canAerobrakeEffective} title={!canAerobrakeEffective ? "Requires atmosphere and heatshield" : "Use atmosphere to reduce braking cost"}>
+            <label for="arrival-mode">Arrival Mode</label>
+            <select id="arrival-mode" bind:value={arrivalMode} on:change={handleCalculate}>
+                <option value="Rendezvous">Brake Burn / Rendezvous</option>
+                <option value="Flyby">Flyby (No Match)</option>
+            </select>
+            <label class:disabled={!canAerobrakeEffective} title={!canAerobrakeEffective ? "Requires Rendezvous to a body with atmosphere and heatshield" : "Use atmosphere to reduce braking fuel"}>
                 <input type="checkbox" bind:checked={useAerobrake} disabled={!canAerobrakeEffective} on:change={handleCalculate} />
-                Aerobrake 
+                Aerobrake
                 {#if canAerobrakeEffective}
-                    <span style="font-size: 0.8em; color: #ff9900;">(Max {currentConstructSpecs.aerobrakeLimit_kms} km/s){plan ? calculateFuelSaved(plan) : ''}</span>
+                    <span style="font-size: 0.8em; color: #ff9900;">(Max {currentConstructSpecs?.aerobrakeLimit_kms || 0} km/s){plan ? calculateFuelSaved(plan) : ''}</span>
                 {/if}
             </label>
         </div>
@@ -1080,8 +1119,8 @@
                     {/if}
                 </div>
                 <div class="execute-wrap">
-                    <button class="calculate-btn execute" on:click={() => triggerExecute(plan)} disabled={!canAfford || isImpossible || isInsufficientFuel || isExecuting} title={isImpossible ? "Plan Impossible (See warning above)" : (isInsufficientFuel ? "Insufficient Fuel (See warning above)" : (!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"))}>
-                        {isExecuting ? 'Simulating Transit...' : 'Execute Journey'}
+                    <button class="calculate-btn execute" on:click={() => triggerExecute(plan)} disabled={!canAfford || isImpossible || isInsufficientFuel || isExecuting} title={isImpossible ? "Plan Impossible (See warning above)" : (isInsufficientFuel ? "Insufficient Fuel (See warning above)" : (!canAfford ? "Insufficient Fuel" : "Schedule Flight Plan"))}>
+                        {isExecuting ? 'Simulating Transit...' : 'Schedule Journey'}
                     </button>
                     {#if !isExecuting && (!canAfford || isImpossible || isInsufficientFuel)}
                         <button
@@ -1095,8 +1134,8 @@
             {:else if completedPlans.length > 0}
                 <button class="cancel-btn" on:click={() => dispatch('undoLastLeg')} disabled={isExecuting}>Cancel Last Leg</button>
                 <div class="execute-wrap">
-                    <button class="calculate-btn execute" on:click={() => triggerExecute(null)} disabled={!canAfford || isExecuting} title={!canAfford ? "Insufficient Fuel" : "Execute Flight Plan"}>
-                        {isExecuting ? 'Simulating Transit...' : 'Execute Journey'}
+                    <button class="calculate-btn execute" on:click={() => triggerExecute(null)} disabled={!canAfford || isExecuting} title={!canAfford ? "Insufficient Fuel" : "Schedule Flight Plan"}>
+                        {isExecuting ? 'Simulating Transit...' : 'Schedule Journey'}
                     </button>
                     {#if !isExecuting && !canAfford}
                         <button
@@ -1108,71 +1147,14 @@
                     {/if}
                 </div>
             {/if}
-            <button class="close-btn" on:click={() => dispatch('close')} disabled={isExecuting}>Close Planner</button>
         </div>
     {/if}
-
-    <div class="debug-section">
-       <details>
-           <summary>Debug: Calculation Parameters</summary>
-           <div class="debug-content">
-               {#if lastCalcParams}
-               <strong>Input Params:</strong>
-               <pre>{JSON.stringify(lastCalcParams, null, 2)}</pre>
-               {/if}
-               {#if currentConstructSpecs}
-                   <strong>Ship Specs:</strong>
-                   <pre>{JSON.stringify({
-                       mass: currentConstructSpecs.totalMass_tonnes,
-                       fuel: currentConstructSpecs.fuelMass_tonnes,
-                       isp: lastCalcParams?.shipIsp,
-                       maxVacuumG: currentConstructSpecs.maxVacuumG
-                   }, null, 2)}</pre>
-               {/if}
-               {#if availablePlans.length > 0}
-                   <strong>Available Plans ({availablePlans.length}):</strong>
-                   {#each availablePlans as p, i}
-                       <div style="margin-top: 5px; padding-left: 5px; border-left: 3px solid {i === selectedPlanIndex ? '#007bff' : '#444'}; opacity: {i === selectedPlanIndex ? 1 : 0.7};">
-                           <div style="color: {i === selectedPlanIndex ? '#fff' : '#aaa'}">
-                               <strong>#{i} {p.name}</strong> ({p.planType}) 
-                               {#if i === selectedPlanIndex}<span style="color: #007bff; font-weight: bold;">[SELECTED]</span>{/if}
-                           </div>
-                           <pre style="margin-top: 2px;">{JSON.stringify({
-                               totalTime_days: p.totalTime_days,
-                               accelRatio: p.accelRatio,
-                               brakeRatio: p.brakeRatio,
-                               totalDeltaV_kms: (p.totalDeltaV_ms/1000).toFixed(3),
-                               totalFuel_t: (p.totalFuel_kg/1000).toFixed(1),
-                               maxG: p.maxG?.toFixed(2)
-                           }, null, 2)}</pre>
-                       </div>
-                   {/each}
-               {/if}
-           </div>
-       </details>
-   </div>
+    <div class="return-row">
+        <button class="close-btn" on:click={() => dispatch('close')} disabled={isExecuting}>Cancel and Return</button>
+    </div>
 </div>
 
 <style>
-    .debug-section {
-        margin-top: 1em;
-        padding-top: 1em;
-        border-top: 1px dotted #444;
-        font-size: 0.8em;
-        color: #888;
-    }
-    .debug-content {
-        background: #111;
-        padding: 0.5em;
-        margin-top: 0.5em;
-        border-radius: 3px;
-        overflow-x: auto;
-    }
-    .debug-content pre {
-        margin: 0;
-        white-space: pre-wrap;
-        color: #aaa;
-    }
     .planner-panel {
         padding: 1em;
         background: #222;
@@ -1269,6 +1251,10 @@
         animation: pulse 2s infinite;
         filter: none;
         opacity: 1;
+    }
+    .return-row {
+        display: flex;
+        justify-content: flex-end;
     }
     .disabled-capture {
         position: absolute;

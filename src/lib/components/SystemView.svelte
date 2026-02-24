@@ -24,6 +24,7 @@
   import SaveSystemModal from './SaveSystemModal.svelte';
   import TransitPlannerPanel from './TransitPlannerPanel.svelte';
   import type { TransitPlan } from '$lib/transit/types';
+  import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney } from '$lib/transit/scheduler';
 
   import { systemStore, viewportStore } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
@@ -137,6 +138,8 @@
   let transitChainTime: number = 0;
   let transitChainState: any = undefined; // StateVector imported later
   let isTransitExecuting: boolean = false;
+  let focusedFutureJourneyCount: number = 0;
+  let isShipLogOpen: boolean = false;
   
   let broadcastSessionId = generateId(); 
 
@@ -954,6 +957,10 @@
   $: focusedBody = $systemStore?.nodes.find(n => n.id === focusedBodyId) as CelestialBody || null;
   $: parentBody = focusedBody && focusedBody.parentId ? $systemStore?.nodes.find(n => n.id === focusedBody.parentId) as CelestialBody : null;
   $: rootStar = $systemStore?.nodes.find(n => !n.parentId && (n.roleHint === 'star' || n.kind === 'barycenter')) as CelestialBody || null;
+  $: focusedFutureJourneyCount = (focusedBody && focusedBody.kind === 'construct')
+      ? countFutureJourneys(focusedBody, currentTime)
+      : 0;
+  $: if (!focusedBody || focusedBody.kind !== 'construct') isShipLogOpen = false;
 
   // Handle Back to Starmap if systemId is lost from state
   $: if (browser && !$page.state.systemId) {
@@ -1212,6 +1219,112 @@
     }
   }
 
+  function nearlyEqual(a: number, b: number, eps = 1e-9): boolean {
+    return Math.abs(a - b) <= eps;
+  }
+
+  function syncScheduledJourneysAtDisplayTime(timeMs: number) {
+    if (!Number.isFinite(timeMs)) return;
+    systemStore.update((sys) => {
+      if (!sys) return null;
+      let changed = false;
+
+      const nodes = sys.nodes.map((node) => {
+        if (node.kind !== 'construct') return node;
+        const logs = Array.isArray(node.scheduled_journeys) ? node.scheduled_journeys : [];
+        if (logs.length === 0) return node;
+
+        let nextNode = node;
+        let nodeChanged = false;
+
+        const updatedLogs = logs.map((log) => {
+          if (log.status === 'cancelled') return log;
+          const bounds = getJourneyBounds(log.plans);
+          if (!bounds) return log;
+
+          let nextStatus = log.status;
+          if (timeMs >= bounds.endMs) nextStatus = 'completed';
+          else if (timeMs >= bounds.startMs && log.status !== 'completed') nextStatus = 'active';
+          if (nextStatus !== log.status) {
+            nodeChanged = true;
+            return { ...log, status: nextStatus };
+          }
+          return log;
+        });
+        if (nodeChanged) {
+          nextNode = { ...nextNode, scheduled_journeys: updatedLogs };
+        }
+
+        const sampled = sampleJourneyKinematicsAtTime(sys, nextNode, timeMs);
+        if (sampled) {
+          const priorPos = nextNode.vector_position_au;
+          const priorVel = nextNode.vector_velocity_ms;
+          if (
+            !priorPos ||
+            !nearlyEqual(priorPos.x, sampled.position_au.x) ||
+            !nearlyEqual(priorPos.y, sampled.position_au.y) ||
+            !priorVel ||
+            !nearlyEqual(priorVel.x, sampled.velocity_ms.x, 1e-3) ||
+            !nearlyEqual(priorVel.y, sampled.velocity_ms.y, 1e-3) ||
+            nextNode.flight_state !== sampled.state
+          ) {
+            nextNode = {
+              ...nextNode,
+              vector_position_au: { x: sampled.position_au.x, y: sampled.position_au.y },
+              vector_velocity_ms: { x: sampled.velocity_ms.x, y: sampled.velocity_ms.y },
+              vector_epoch_ms: timeMs,
+              flight_state: sampled.state
+            };
+            nodeChanged = true;
+          }
+        } else if (nextNode.vector_position_au) {
+          // No active sampled journey at this display time.
+          // Keep deep-space constructs moving inertially instead of snapping back to legacy orbit.
+          if (
+            nextNode.flight_state === 'Deep Space' &&
+            nextNode.vector_velocity_ms &&
+            Number.isFinite(nextNode.vector_epoch_ms)
+          ) {
+            const dtSec = (timeMs - (nextNode.vector_epoch_ms || timeMs)) / 1000;
+            if (Math.abs(dtSec) > 1e-6) {
+              const auPerSecX = nextNode.vector_velocity_ms.x / (AU_KM * 1000);
+              const auPerSecY = nextNode.vector_velocity_ms.y / (AU_KM * 1000);
+              nextNode = {
+                ...nextNode,
+                vector_position_au: {
+                  x: nextNode.vector_position_au.x + (auPerSecX * dtSec),
+                  y: nextNode.vector_position_au.y + (auPerSecY * dtSec)
+                },
+                vector_epoch_ms: timeMs
+              };
+              nodeChanged = true;
+            }
+            if (nodeChanged) changed = true;
+            return nextNode;
+          }
+
+          nextNode = {
+            ...nextNode,
+            vector_position_au: undefined,
+            vector_epoch_ms: undefined,
+            flight_state: nextNode.flight_state === 'Deep Space' ? 'Deep Space' : 'Orbiting'
+          };
+          nodeChanged = true;
+        }
+
+        if (nodeChanged) changed = true;
+        return nextNode;
+      });
+
+      if (!changed) return sys;
+      return { ...sys, nodes };
+    });
+  }
+
+  $: if ($systemStore && !isPlanning) {
+    syncScheduledJourneysAtDisplayTime(currentTime);
+  }
+
   function handleClickOutside(event: MouseEvent) {
     const menu = document.querySelector('.context-menu');
     if (menu && !menu.contains(event.target as Node)) {
@@ -1229,6 +1342,7 @@
 
   function handleStartPlanning() {
       if (!focusedBody) return;
+      isShipLogOpen = false;
       isPlanning = true; 
       isEditing = false; 
       showZoneKeyPanel = false; 
@@ -1264,6 +1378,79 @@
       completedTransitPlans = [];
       transitChainState = undefined;
       transitDelayDays = 0;
+  }
+
+  function formatLogTime(ms: number): string {
+      if (!Number.isFinite(ms)) return 'n/a';
+      const sec = BigInt(Math.floor(ms / 1000));
+      const temporal = get(starmapStore)?.temporal;
+      if (temporal) {
+          const calendar = temporal.temporal_registry[temporal.activeCalendarKey];
+          if (calendar) return resolveCalendar(sec, calendar).formatted;
+      }
+      const d = new Date(ms);
+      if (Number.isFinite(d.getTime())) return d.toISOString();
+      return `${sec.toString()}s`;
+  }
+
+  function getActualTimeMs(): number {
+      const temporal = get(starmapStore)?.temporal;
+      if (!temporal) return currentTime;
+      return Number(parseClockSeconds(temporal.masterTimeSec, 0n) * 1000n);
+  }
+
+  function nodeName(nodeId: string): string {
+      const n = $systemStore?.nodes.find((x) => x.id === nodeId);
+      return n?.name || nodeId;
+  }
+
+  function activeJourneyCountForActualTime(body: CelestialBody): number {
+      const logs = body.scheduled_journeys || [];
+      const nowMs = getActualTimeMs();
+      return logs.filter((log) => {
+          const bounds = getJourneyBounds(log.plans);
+          if (!bounds) return false;
+          return log.status !== 'cancelled' && nowMs >= bounds.startMs && nowMs <= bounds.endMs;
+      }).length;
+  }
+
+  function handleOpenJourneyLog() {
+      if (!focusedBody || focusedBody.kind !== 'construct') return;
+      isEditing = false;
+      isPlanning = false;
+      isShipLogOpen = true;
+  }
+
+  function handleCloseJourneyLog() {
+      isShipLogOpen = false;
+  }
+
+  function handleClearFuturePlans() {
+      if (!focusedBody || focusedBody.kind !== 'construct') return;
+      const nowMs = getActualTimeMs();
+      systemStore.update((sys) => {
+          if (!sys) return null;
+          const nodes = sys.nodes.map((n) => {
+              if (n.id !== focusedBody.id || n.kind !== 'construct') return n;
+              return clearFutureJourneys(n as CelestialBody, nowMs);
+          });
+          return { ...sys, nodes, isManuallyEdited: true };
+      });
+  }
+
+  function handleCancelActivePlan() {
+      if (!focusedBody || focusedBody.kind !== 'construct') return;
+      const nowMs = getActualTimeMs();
+      systemStore.update((sys) => {
+          if (!sys) return null;
+          const nodes = sys.nodes.map((n) => {
+              if (n.id !== focusedBody.id || n.kind !== 'construct') return n;
+              const cancelled = cancelActiveJourney(sys, n as CelestialBody, nowMs);
+              // Cascading policy: cancelling active also clears all future plans.
+              return clearFutureJourneys(cancelled, nowMs);
+          });
+          return { ...sys, nodes, isManuallyEdited: true };
+      });
   }
 
   function handleTakeoff(event: CustomEvent<{fuel: number}>) {
@@ -1573,7 +1760,7 @@
                   dispatch('renameNode', {nodeId: focusedBody.id, newName: e.target.value});
                   systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s);
                 }} class="name-input" title="Click to rename" />
-                  {#if !isEditing && !isPlanning}
+                  {#if !isEditing && !isPlanning && !isShipLogOpen}
                       <button class="edit-btn small" on:click={() => { isEditing = true; showZoneKeyPanel = false; visualizer?.resetView(); }} style="margin-left: 5px;">Edit</button>
                   {/if}
             </div>
@@ -1681,157 +1868,44 @@
                              ? (payload.plan ?? null)
                              : (payload as TransitPlan | null);
                          const forceExecute = !!(payload && typeof payload === 'object' && 'force' in payload && payload.force);
-                         
-                         // Determine which plan to use for the final state (move ship to)
-                         const targetPlan = finalPlan || (completedTransitPlans.length > 0 ? completedTransitPlans[completedTransitPlans.length - 1] : null);
-                         if (!targetPlan) return;
 
-                         // Calculate Totals
-                         let totalFuelKg = completedTransitPlans.reduce((acc, p) => acc + p.totalFuel_kg, 0);
-                         let finalTime = transitChainTime;
+                         const plansToSchedule = [...completedTransitPlans, ...(finalPlan ? [finalPlan] : [])];
+                         if (plansToSchedule.length === 0 || !focusedBodyId) return;
+                         const lastScheduledPlan = plansToSchedule[plansToSchedule.length - 1];
+                         const finalScheduledTimeMs = lastScheduledPlan.startTime + (lastScheduledPlan.totalTime_days * 86400 * 1000);
 
-                         if (finalPlan) {
-                             totalFuelKg += finalPlan.totalFuel_kg;
-                             finalTime = finalPlan.startTime + (finalPlan.totalTime_days * 86400 * 1000);
-                         }
-                         
-                         // Update System
                          systemStore.update(sys => {
                              if (!sys) return null;
-                             
-                             const targetNode = sys.nodes.find(n => n.id === targetPlan.targetId);
-                             if (!targetNode) return sys;
-
                              const newNodes = sys.nodes.map(node => {
-                                 if (node.id === focusedBodyId) {
-                                     // 1. Deduct Fuel
-                                     if (!forceExecute) {
-                                         let remainingFuelToDeductKg = totalFuelKg;
-                                         if (node.fuel_tanks && node.fuel_tanks.length > 0 && rulePack.fuelDefinitions?.entries) {
-                                             for (const tank of node.fuel_tanks) {
-                                                 if (remainingFuelToDeductKg <= 0.1) break;
-                                                 const fuelDef = rulePack.fuelDefinitions.entries.find(f => f.id === tank.fuel_type_id);
-                                                 if (fuelDef && fuelDef.density_kg_per_m3 > 0) {
-                                                     const tankMassKg = tank.current_units * fuelDef.density_kg_per_m3;
-                                                     if (tankMassKg >= remainingFuelToDeductKg) {
-                                                         tank.current_units = Math.max(0, tank.current_units - (remainingFuelToDeductKg / fuelDef.density_kg_per_m3));
-                                                         remainingFuelToDeductKg = 0;
-                                                     } else {
-                                                         remainingFuelToDeductKg -= tankMassKg;
-                                                         tank.current_units = 0;
-                                                     }
-                                                 }
-                                             }
+                                 if (node.id !== focusedBodyId) return node;
+                                 const existing = Array.isArray(node.scheduled_journeys) ? node.scheduled_journeys : [];
+                                 return {
+                                     ...node,
+                                     scheduled_journeys: [
+                                         ...existing,
+                                         {
+                                             id: generateId(),
+                                             createdAtSec: BigInt(Math.floor(currentTime / 1000)).toString(),
+                                             plans: plansToSchedule.map((p) => JSON.parse(JSON.stringify(p))),
+                                             status: 'scheduled',
+                                             forceExecute
                                          }
-                                     }
-                                     
-                                     // 2. Flight Dynamics Tracking
-                                     let flightState: 'Orbiting' | 'Transit' | 'Deep Space' | 'Landed' | 'Docked' = 'Orbiting';
-                                     let finalVel = { x: 0, y: 0 };
-                                     
-                                     if (targetPlan.arrivalPlacement === 'surface') {
-                                         flightState = 'Landed';
-                                     } else if (targetPlan.arrivalVelocity_ms > 50) {
-                                         flightState = 'Deep Space';
-                                     }
-                                     
-                                     if (targetPlan.segments.length > 0) {
-                                         const lastSeg = targetPlan.segments[targetPlan.segments.length - 1];
-                                         finalVel = { 
-                                             x: lastSeg.endState.v.x * AU_KM * 1000, 
-                                             y: lastSeg.endState.v.y * AU_KM * 1000 
-                                         };
-                                     }
-
-                                     // 3. Move Ship Logic
-                                     const isLagrange = targetPlan.arrivalPlacement === 'l4' || targetPlan.arrivalPlacement === 'l5';
-                                     const specificTargetNode = sys.nodes.find(n => n.id === targetPlan.arrivalPlacement);
-                                     
-                                     let updatedNode = { 
-                                         ...node, 
-                                         flight_state: flightState, 
-                                         vector_velocity_ms: finalVel,
-                                         draft_transit_plan: undefined // Clear draft on execution
-                                     };
-
-                                     if (targetNode.kind === 'construct') {
-                                         // Case: Docking with Station
-                                         updatedNode.parentId = targetNode.parentId;
-                                         updatedNode.ui_parentId = targetNode.id;
-                                         updatedNode.orbit = targetNode.orbit ? JSON.parse(JSON.stringify(targetNode.orbit)) : node.orbit;
-                                         updatedNode.placement = `Docked at ${targetNode.name}`;
-                                         updatedNode.flight_state = 'Docked';
-                                     } else if (specificTargetNode) {
-                                         // Case: Targeted Moon or Specific Station via dropdown
-                                         if (specificTargetNode.kind === 'construct') {
-                                             updatedNode.parentId = specificTargetNode.parentId;
-                                             updatedNode.ui_parentId = specificTargetNode.id;
-                                             updatedNode.orbit = specificTargetNode.orbit ? JSON.parse(JSON.stringify(specificTargetNode.orbit)) : node.orbit;
-                                             updatedNode.placement = `Docked at ${specificTargetNode.name}`;
-                                             updatedNode.flight_state = 'Docked';
-                                         } else {
-                                             const radiusKm = (specificTargetNode.radiusKm || 1000) + (specificTargetNode.orbitalBoundaries?.minLeoKm || 200);
-                                             updatedNode.parentId = specificTargetNode.id;
-                                             updatedNode.ui_parentId = null;
-                                             updatedNode.placement = 'Low Orbit';
-                                             updatedNode.orbit = {
-                                                 hostId: specificTargetNode.id,
-                                                 elements: { a_AU: radiusKm / AU_KM, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 },
-                                                 t0: finalTime,
-                                                 hostMu: (specificTargetNode.massKg || 0) * G
-                                             };
-                                         }
-                                     } else if (isLagrange && targetNode.parentId) {
-                                         // Case: Lagrange Points
-                                         const offset = targetPlan.arrivalPlacement === 'l4' ? Math.PI/3 : -Math.PI/3;
-                                         let newOrbit = JSON.parse(JSON.stringify(targetNode.orbit));
-                                         newOrbit.elements.M0_rad = (newOrbit.elements.M0_rad + offset + 2*Math.PI) % (2*Math.PI);
-                                         updatedNode.parentId = targetNode.parentId;
-                                         updatedNode.ui_parentId = targetNode.id;
-                                         updatedNode.orbit = newOrbit;
-                                         updatedNode.placement = targetPlan.arrivalPlacement.toUpperCase();
-                                     } else {
-                                         // Case: Standard Capture (Planet/Star/Barycenter)
-                                         let placementString = 'Parking Orbit';
-                                         let radiusKm = (targetNode.radiusKm || 1000) * 1.2; 
-                                         const b = targetNode.orbitalBoundaries;
-                                         
-                                         if (targetPlan.arrivalPlacement === 'lo') {
-                                             placementString = 'Low Orbit';
-                                             radiusKm = (targetNode.radiusKm || 0) + (b?.minLeoKm || 200);
-                                         } else if (targetPlan.arrivalPlacement === 'mo') {
-                                             placementString = 'Medium Orbit';
-                                             radiusKm = (targetNode.radiusKm || 0) + ((b?.leoMoeBoundaryKm || 2000) + (b?.meoHeoBoundaryKm || 10000)) / 2;
-                                         } else if (targetPlan.arrivalPlacement === 'ho') {
-                                             placementString = 'High Orbit';
-                                             radiusKm = (targetNode.radiusKm || 0) + ((b?.meoHeoBoundaryKm || 10000) + (b?.heoUpperBoundaryKm || 50000)) / 2;
-                                         } else if (targetPlan.arrivalPlacement === 'geo' && b?.geoStationaryKm) {
-                                             placementString = 'Geostationary Orbit';
-                                             radiusKm = (targetNode.radiusKm || 0) + b.geoStationaryKm;
-                                         }
-
-                                         const mass = (targetNode.kind === 'body' ? (targetNode as CelestialBody).massKg : (targetNode as Barycenter).effectiveMassKg) || 0;
-                                         
-                                         updatedNode.parentId = targetNode.id;
-                                         updatedNode.ui_parentId = null;
-                                         updatedNode.placement = placementString;
-                                         updatedNode.orbit = {
-                                             hostId: targetNode.id,
-                                             elements: { a_AU: radiusKm / AU_KM, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 },
-                                             t0: finalTime,
-                                             hostMu: mass * G
-                                         };
-                                     }
-                                     return updatedNode;
-                                 }
-                                 return node;
+                                     ],
+                                     draft_transit_plan: undefined
+                                 };
                              });
-                             
-                             return { ...sys, nodes: newNodes, epochT0: finalTime, isManuallyEdited: true };
+                             return { ...sys, nodes: newNodes, isManuallyEdited: true };
                          });
-                         
-                         // Reset UI
-                         currentTime = finalTime;
+
+                         // Keep the user's preview context: move Display Time to the end of the scheduled journey.
+                         // Actual/master time remains unchanged until explicitly aligned.
+                         currentTime = finalScheduledTimeMs;
+                         applyTemporalUpdate((temporal) => ({
+                           ...temporal,
+                           displayTimeSec: BigInt(Math.floor(finalScheduledTimeMs / 1000)).toString()
+                         }));
+
+                         // Reset planner UI (journey is now scheduled, not immediately executed)
                          isPlanning = false;
                          currentTransitPlan = null;
                          completedTransitPlans = [];
@@ -1856,15 +1930,15 @@
                         transitAlternatives = [];
                     }} 
                 />
-
-// ...
                 {#if focusedBody}
                     <ConstructDerivedSpecs 
                         construct={focusedBody} 
                         hostBody={parentBody} 
                         {rulePack} 
+                        futureJourneyCount={focusedFutureJourneyCount}
                         hideActions={true}
                         on:planTransit={handleStartPlanning}
+                        on:openJourneyLog={handleOpenJourneyLog}
                         on:takeoff={handleTakeoff}
                         on:land={handleLand}
                     />
@@ -1896,7 +1970,48 @@
 
                 {#if focusedBody && focusedBody.kind === 'construct'}
                   {@const parentBody = focusedBody.parentId ? $systemStore.nodes.find(n => n.id === (focusedBody.ui_parentId || focusedBody.parentId)) : null}
-                  {#if isEditing}
+                  {#if isShipLogOpen}
+                      <div class="ship-log-panel">
+                        <div class="ship-log-header">
+                          <h4>Ship's Log</h4>
+                          <button class="ship-log-close" on:click={handleCloseJourneyLog}>Close Log</button>
+                        </div>
+                        <div class="ship-log-controls">
+                          <button class="ship-log-action" on:click={handleClearFuturePlans} disabled={countFutureJourneys(focusedBody, getActualTimeMs()) === 0} title="Remove all future scheduled journeys using Actual/Global time">
+                            Clear Future Plans ({countFutureJourneys(focusedBody, getActualTimeMs())})
+                          </button>
+                          <button class="ship-log-action warn" on:click={handleCancelActivePlan} disabled={activeJourneyCountForActualTime(focusedBody) === 0} title="Cancel currently active journey, keep current velocity vector, and clear all future plans">
+                            Cancel Active (+Future) ({activeJourneyCountForActualTime(focusedBody)})
+                          </button>
+                        </div>
+                        {#if (focusedBody.scheduled_journeys || []).length === 0}
+                          <div class="ship-log-empty">No journeys logged.</div>
+                        {:else}
+                          {#each (focusedBody.scheduled_journeys || []) as log, i}
+                            <div class="ship-log-entry">
+                              <div class="ship-log-title">
+                                <strong>Journey {i + 1}</strong>
+                                <span class="ship-log-status">{log.status.toUpperCase()}</span>
+                              </div>
+                              <div class="ship-log-meta">Created: {formatLogTime(Number(BigInt(log.createdAtSec || '0') * 1000n))}</div>
+                              {#if getJourneyBounds(log.plans)}
+                                {@const bounds = getJourneyBounds(log.plans)!}
+                                <div class="ship-log-meta">Window: {formatLogTime(bounds.startMs)} -> {formatLogTime(bounds.endMs)}</div>
+                              {/if}
+                              <div class="ship-log-legs">
+                                {#each log.plans as leg, legIndex}
+                                  <div class="ship-log-leg">
+                                    <div><strong>Leg {legIndex + 1}:</strong> {nodeName(leg.originId)} -> {nodeName(leg.targetId)}</div>
+                                    <div class="ship-log-meta">Depart: {formatLogTime(leg.startTime)}</div>
+                                    <div class="ship-log-meta">Arrive: {formatLogTime(leg.startTime + (leg.totalTime_days * 86400 * 1000))}</div>
+                                  </div>
+                                {/each}
+                              </div>
+                            </div>
+                          {/each}
+                        {/if}
+                      </div>
+                  {:else if isEditing}
                       <ConstructSidePanel 
                         system={$systemStore} 
                         construct={focusedBody} 
@@ -1913,9 +2028,11 @@
                           construct={focusedBody} 
                           hostBody={parentBody} 
                           {rulePack} 
+                          futureJourneyCount={focusedFutureJourneyCount}
                           isEditingConstruct={isEditing}
                           hideActions={isPlanning}
                           on:planTransit={handleStartPlanning}
+                          on:openJourneyLog={handleOpenJourneyLog}
                           on:takeoff={handleTakeoff}
                           on:land={handleLand}
                       />
@@ -2365,6 +2482,70 @@
     .project-attribution {
         font-size: 1.1em; /* Slightly larger for the last line */
         font-weight: bold;
+    }
+    .ship-log-panel {
+        background: #1f1f1f;
+        border: 1px solid #3b3b3b;
+        border-radius: 6px;
+        padding: 0.8em;
+        display: flex;
+        flex-direction: column;
+        gap: 0.7em;
+    }
+    .ship-log-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.8em;
+    }
+    .ship-log-header h4 {
+        margin: 0;
+        color: #ffb088;
+    }
+    .ship-log-close {
+        background: #444;
+        color: #eee;
+        border: 1px solid #666;
+        border-radius: 4px;
+        padding: 0.35em 0.7em;
+        cursor: pointer;
+    }
+    .ship-log-close:hover {
+        background: #555;
+    }
+    .ship-log-empty {
+        color: #aaa;
+    }
+    .ship-log-entry {
+        border: 1px solid #363636;
+        border-radius: 5px;
+        background: #181818;
+        padding: 0.6em;
+    }
+    .ship-log-title {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.6em;
+        color: #fff;
+    }
+    .ship-log-status {
+        color: #88ccff;
+        font-size: 0.85em;
+    }
+    .ship-log-meta {
+        color: #b8b8b8;
+        font-size: 0.85em;
+        margin-top: 0.2em;
+    }
+    .ship-log-legs {
+        margin-top: 0.45em;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4em;
+    }
+    .ship-log-leg {
+        border-left: 2px solid #2f5d76;
+        padding-left: 0.55em;
     }
 
 </style>

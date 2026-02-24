@@ -1,6 +1,7 @@
 // ===== types.ts =====
 import type { OrbitalBoundaries } from './physics/orbits';
 import type { TravellerWorldData } from './traveller/types';
+import type { ScheduledJourneyLog } from './transit/types';
 
 export type ID = string;
 
@@ -97,10 +98,13 @@ export interface CelestialBody extends NodeBase {
   
   // Flight Dynamics (V2)
   vector_velocity_ms?: { x: number; y: number; z?: number };
+  vector_position_au?: { x: number; y: number; z?: number };
+  vector_epoch_ms?: number;
   flight_state?: 'Orbiting' | 'Transit' | 'Deep Space' | 'Landed' | 'Docked';
   
   // Transit Planning Persistence
   draft_transit_plan?: any[]; // Holds TransitPlan[] for resuming sessions
+  scheduled_journeys?: ScheduledJourneyLog[];
   
   // Surface Stats
   surfaceRadiation?: number;

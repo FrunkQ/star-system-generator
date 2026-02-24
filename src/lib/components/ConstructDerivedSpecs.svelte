@@ -9,6 +9,7 @@
   export let hostBody: CelestialBody | null;
   export let isEditingConstruct: boolean = false; 
   export let hideActions: boolean = false; // New prop
+  export let futureJourneyCount: number = 0;
 
   const dispatch = createEventDispatcher();
 
@@ -306,6 +307,9 @@
             {#if construct.placement !== 'Surface'}
                 <button class="action-btn transit" on:click={() => dispatch('planTransit')}>
                     Plan Transit
+                </button>
+                <button class="action-btn transit" on:click={() => dispatch('openJourneyLog')} title="Open ship log (future scheduled journeys)">
+                    Ship's Log ({futureJourneyCount})
                 </button>
             {/if}
 

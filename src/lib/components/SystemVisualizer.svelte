@@ -539,6 +539,11 @@
           if (positions.has(nodeId)) return positions.get(nodeId)!;
           const node = nodesById.get(nodeId);
           if (!node) return { x: 0, y: 0 };
+          if (node.kind === 'construct' && node.vector_position_au) {
+              const absolute = { x: node.vector_position_au.x, y: node.vector_position_au.y };
+              positions.set(nodeId, absolute);
+              return absolute;
+          }
           if (node.parentId === null) { positions.set(nodeId, { x: 0, y: 0 }); return { x: 0, y: 0 }; }
           const parentPos = getPosition(node.parentId);
           let relativePos = { x: 0, y: 0 };
