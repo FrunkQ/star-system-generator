@@ -3,7 +3,7 @@
 All notable changes are listed here:
 
 
-## v1.9.0 - WIP (22nd Feb 2026)
+## v1.9.0 - 24th Feb 2026
 - New time system foundations are in place:
   - Display Time and Actual Time are now separate and can be aligned/reset.
   - Time scrub/play controls now drive system visuals and orbit updates.
@@ -28,8 +28,17 @@ All notable changes are listed here:
 - StarMap settings and LLM settings reorganized:
   - StarMap settings consolidated,
   - LLM/API settings moved to separate local-only config (not exported).
-- Remaining work for v1.9.0:
-  - additional transit scheduling and multi-construct timeline work.
+- Time-driven transit scheduling shipped:
+  - `Schedule Journey` now writes planned routes into each construct's own ship log data,
+  - planned routes persist with constructs in saved systems/starmaps,
+  - multiple constructs can move concurrently from scheduled plans.
+- Ship's Log shipped in System View:
+  - shows journey windows and per-leg departure/destination entries,
+  - includes controls to clear future plans and cancel active (+future) plans.
+- Transit intercept and stability improvements:
+  - moving construct targets are available in planner target lists,
+  - intercept solving now uses live kinematic target state (position + velocity),
+  - direct-burn sanity filters reduce unstable/crazy solutions for moving targets - these WILL happen
 
 ## v1.8.4 - 20th Feb 2026
 - Temperature model refresh (cryo greenhouse behavior, improved range presentation, tidal hotspot handling).

@@ -569,6 +569,8 @@ export function calculateTransitPlan(
   // Sort & Clean
   const baselinePlan = plans.find(p => p.name === 'Most Efficient') || plans.find(p => p.planType === 'Efficiency');
   const baselineTime = baselinePlan ? baselinePlan.totalTime_days : 0;
+  const baselineDeltaV = baselinePlan ? baselinePlan.totalDeltaV_ms : 0;
+  const isConstructTarget = effectiveTarget.kind === 'construct';
 
   plans.forEach(p => {
       if (p.planType !== 'Speed' && p.totalDeltaV_ms > 100000) {
@@ -576,6 +578,34 @@ export function calculateTransitPlan(
       }
       else if (baselineTime > 0 && p.totalTime_days > baselineTime * 5) {
           p.hiddenReason = "Impractical Duration (>5x optimal)";
+      }
+      else if (isConstructTarget && p.planType === 'Speed') {
+          // 1) Duration cap for moving construct intercepts.
+          // Direct-burn should not be an ultra-long meander for ship intercepts.
+          const dynamicDurationCapDays = Math.min(
+              365,
+              Math.max(7, (baselineTime > 0 ? baselineTime * 2.5 : 180))
+          );
+          if (p.totalTime_days > dynamicDurationCapDays) {
+              p.hiddenReason = `Unstable Direct Burn (duration > ${dynamicDurationCapDays.toFixed(0)}d for moving target)`;
+              return;
+          }
+
+          // 3) Sanity gates for direct-burn against moving targets.
+          const deltaVCapMs = baselineDeltaV > 0
+              ? Math.max(80000, baselineDeltaV * 3.0)
+              : 120000;
+          if (p.totalDeltaV_ms > deltaVCapMs) {
+              p.hiddenReason = "Unstable Direct Burn (excessive Delta-V for moving target)";
+              return;
+          }
+
+          // If rendezvous intent (interceptSpeed == 0), very high residual relative speed is non-physical.
+          const rendezvousIntent = (p.interceptSpeed_ms || 0) <= 0;
+          if (rendezvousIntent && p.arrivalVelocity_ms > 20000) {
+              p.hiddenReason = "Unstable Direct Burn (high residual arrival speed for rendezvous)";
+              return;
+          }
       }
   });
 

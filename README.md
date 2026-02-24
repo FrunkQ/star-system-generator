@@ -44,6 +44,8 @@ A quick note on data: This application runs entirely in your browser. Your gener
         ![Traveller Style Starmap](static/screenshots/TravellerStyle.PNG)
     *   **Snap-to-Grid**: When adding new systems, coordinates snap to the center of the nearest grid or hex cell.
     *   **Toggleable Background**: Display a static, faded background image of the Milky Way.
+    *   **Global Time Controls**: Display Time and Actual Time are now independent with scrub/play/alignment controls shared across all system views.
+    *   **Extensible Calendars**: Calendar/time systems are data-driven, editable, and saved with each starmap.
 *   **Traveller Integration**:
     *   **Subsector Importer**: Fetch and import entire subsectors directly from [travellermap.com](https://travellermap.com) API.
     *   **Manual UWP Entry**: Manually create star systems by typing in standard Traveller Universal World Profile (UWP) codes.
@@ -63,6 +65,9 @@ A quick note on data: This application runs entirely in your browser. Your gener
     *   **Local & Interplanetary**: Plan transfers between moons of the same planet (e.g. Moon-to-Moon) or across the entire solar system.
     *   **Precision Solver**: Uses a high-precision Lambert solver (switched to Metric units internally) to calculate efficient Hohmann transfers even for short, local hops.
     *   **Multi-Leg Mission Planning**: Chain multiple maneuvers together to plan complex interplanetary journeys.
+    *   **Scheduled Journeys**: Journeys are scheduled against Display Time and executed by advancing time, rather than instant repositioning.
+    *   **Ship Logs**: Each construct stores its own persistent route log with controls to clear future plans or cancel active plans.
+    *   **Moving-Target Intercepts**: Intercepts now target live in-transit construct position/velocity, including rendezvous or flyby modes.
     *   **Aerobraking Support**: Utilize planetary atmospheres to reduce fuel consumption.
     *   **Mission Timeline & Hazards**: A detailed stress graph visualizes G-forces and alerts you to mission hazards like Radiation Zones.
     *   **Docking & Rendezvous**: Perform precise docking maneuvers at orbital stations.

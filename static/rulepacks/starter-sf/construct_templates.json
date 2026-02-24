@@ -860,15 +860,13 @@
         "has_landing_gear": true
       },
       "engines": [
-        { "engine_id": "engine-chemical-methalox", "quantity": 1 },
-        { "engine_id": "engine-rcs-hydrazine", "quantity": 12 }
+        { "engine_id": "engine-fusion-epstein", "quantity": 1 }
       ],
       "fuel_tanks": [
-        { "fuel_type_id": "fuel-methalox", "capacity_units": 20, "current_units": 0 },
-        { "fuel_type_id": "fuel-hydrazine", "capacity_units": 1, "current_units": 0 }
+        { "fuel_type_id": "fuel-fusion-dt", "capacity_units": 2500, "current_units": 2500 }
       ],
       "systems": {
-        "power_plants": [ { "type": "Fuel Cell", "output_MW": 2 } ],
+        "power_plants": [ { "type": "Fusion Reactor", "output_MW": 250 } ],
         "life_support": { "consumables_max_person_days": 42, "consumables_current_person_days": 0 },
         "modules": [ "Passenger Cabin", "Small Cargo Hold" ]
       }
