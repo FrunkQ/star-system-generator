@@ -120,7 +120,13 @@ export function cross(v1: Vector2, v2: Vector2): number {
  * Solves Lambert's problem using a standard Universal Variable method.
  * Adapted from standard astrodynamics (e.g., Vallado).
  */
-export function solveLambert(r1: Vector2, r2: Vector2, dt_sec: number, mu: number): { v1: Vector2, v2: Vector2 } | null {
+export function solveLambert(
+    r1: Vector2,
+    r2: Vector2,
+    dt_sec: number,
+    mu: number,
+    options?: { longWay?: boolean }
+): { v1: Vector2, v2: Vector2 } | null {
     const r1mag = magnitude(r1);
     const r2mag = magnitude(r2);
     
@@ -141,16 +147,21 @@ export function solveLambert(r1: Vector2, r2: Vector2, dt_sec: number, mu: numbe
     let theta2 = Math.atan2(r2.y, r2.x);
     let dTheta = theta2 - theta1;
     
-    // Normalize to -PI..PI (Short Way)
-    // This ensures we solve for the direct chord (transfer angle < 180), 
-    // avoiding "Long Way" sundivers for co-orbital transfers (like L4 -> Earth).
+    // Normalize to -PI..PI first, then optionally request the long-way branch.
     while (dTheta > Math.PI) dTheta -= 2 * Math.PI;
     while (dTheta <= -Math.PI) dTheta += 2 * Math.PI;
+
+    if (options?.longWay) {
+        dTheta = dTheta > 0 ? dTheta - 2 * Math.PI : dTheta + 2 * Math.PI;
+    }
     
     // console.log("Lambert dTheta:", dTheta * 180 / Math.PI, "dt:", dt_sec);
 
     // Universal Variable Setup
-    const A = Math.sin(dTheta) * Math.sqrt(r1mag * r2mag / (1 - Math.cos(dTheta)));
+    const denom = 1 - Math.cos(dTheta);
+    if (Math.abs(denom) < 1e-12) return null;
+    const A = Math.sin(dTheta) * Math.sqrt(r1mag * r2mag / denom);
+    if (!Number.isFinite(A) || Math.abs(A) < 1e-12) return null;
     
     // Stumpff functions
     const C = (z: number) => {
@@ -178,6 +189,12 @@ export function solveLambert(r1: Vector2, r2: Vector2, dt_sec: number, mu: numbe
         z = (lower + upper) / 2;
         const Sz = S(z);
         const Cz = C(z);
+        if (Cz <= 0 || !Number.isFinite(Cz)) {
+            lower = z;
+            loops++;
+            continue;
+        }
+
         const y = r1mag + r2mag + A * (z * Sz - 1) / Math.sqrt(Cz);
         
         if (y < 0 || isNaN(y)) {
@@ -209,17 +226,20 @@ export function solveLambert(r1: Vector2, r2: Vector2, dt_sec: number, mu: numbe
     
     // Failed to converge? Fallback to a simpler approx?
     // Let's try assuming Hohmann-ish transfer to get "something".
-    if (loops >= 100) {
+    if (loops >= 200) {
         // console.warn("Lambert failed to converge");
         return null;
     }
 
     const Sz = S(z);
     const Cz = C(z);
+    if (Cz <= 0 || !Number.isFinite(Cz)) return null;
     const y = r1mag + r2mag + A * (z * Sz - 1) / Math.sqrt(Cz); // Recalculate y for final z
+    if (y <= 0 || !Number.isFinite(y)) return null;
 
     const f = 1 - y / r1mag;
     const g = A * Math.sqrt(y / mu);
+    if (!Number.isFinite(g) || Math.abs(g) < 1e-12) return null;
     const g_dot = 1 - y / r2mag;
     
     const v1x = (r2.x - f * r1.x) / g;

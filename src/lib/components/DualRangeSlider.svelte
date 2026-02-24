@@ -19,24 +19,26 @@
     const startRight = rightValue;
     const width = container.clientWidth;
 
+    dispatch('dragstart', { handle });
+
     function onMouseMove(e: MouseEvent) {
       const deltaPx = e.clientX - startX;
       const deltaPercent = (deltaPx / width) * 100;
       
       if (handle === 'left') {
         let newVal = Math.max(0, Math.min(startLeft + deltaPercent, 100));
-        // Cannot cross right value
-        if (newVal > rightValue - 1) newVal = rightValue - 1; 
+        // Green can move up to (but not beyond) the brake handle.
+        // When right is locked, use drag-start right to avoid mid-drag feedback fights.
+        const leftMax = rightLocked ? (startRight - 1) : (rightValue - 1);
+        if (newVal > leftMax) newVal = leftMax;
         leftValue = newVal;
         dispatch('input', { left: leftValue, right: rightValue });
-        dispatch('change', { left: leftValue, right: rightValue });
       } else {
         let newVal = Math.max(0, Math.min(startRight + deltaPercent, 100));
         // Cannot cross left value
         if (newVal < leftValue + 1) newVal = leftValue + 1;
         rightValue = newVal;
         dispatch('input', { left: leftValue, right: rightValue });
-        dispatch('change', { left: leftValue, right: rightValue });
       }
     }
 
@@ -44,6 +46,8 @@
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       dispatch('input', { left: leftValue, right: rightValue }); // Final commit
+      dispatch('change', { left: leftValue, right: rightValue });
+      dispatch('dragend', { handle });
     }
 
     window.addEventListener('mousemove', onMouseMove);

@@ -57,7 +57,7 @@ export interface TransitPlan {
   interceptSpeed_ms: number; // 0 for dock
   arrivalPlacement?: string; // 'l4', 'l5', 'lo', 'mo', 'ho', 'geo', 'surface'
   tags?: string[];
-  planType?: 'Efficiency' | 'Speed' | 'Assist';
+  planType?: 'Efficiency' | 'Speed' | 'Assist' | 'Complex';
   name?: string;
   hiddenReason?: string;
   isKinematic?: boolean; // True if path points are pre-scaled for kinematic, bypasses visualizer scaling

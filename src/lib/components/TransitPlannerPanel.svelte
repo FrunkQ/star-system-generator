@@ -11,6 +11,7 @@
   import { getNodeColor } from '$lib/rendering/colors';
   import { getAbsoluteOrbitalDistanceAU } from '$lib/system/utils';
   import { calculateFlightTelemetry, type TelemetryPoint } from '$lib/transit/telemetry';
+  import { getGlobalState } from '$lib/transit/physics';
 
   import DualRangeSlider from './DualRangeSlider.svelte';
   import TransitStressGraph from './TransitStressGraph.svelte';
@@ -34,9 +35,13 @@
   
   let accelPercent: number = 10; 
   let brakeStartPercent: number = 90;
+  let directProfileTouched = false;
+  let directProfileDragging = false;
   let brakeAtArrival: boolean = true;
   let useAerobrake: boolean = true;
   let maxG: number = 1.0;
+  let maxGByPlanType: Record<string, number> = { Efficiency: 1.0, Assist: 1.0, Speed: 1.0, Complex: 1.0 };
+  let selectedPlanTypePreference: string = 'Efficiency';
   let sliderMaxG: number = 10.0;
   let interceptSpeed: number = 0;
   
@@ -179,6 +184,13 @@
       selectedPlanIndex = 0;
       plan = null;
       error = null;
+      accelPercent = 10;
+      brakeStartPercent = 90;
+      maxG = 1.0;
+      maxGByPlanType = { Efficiency: 1.0, Assist: 1.0, Speed: 1.0, Complex: 1.0 };
+      selectedPlanTypePreference = 'Efficiency';
+      directProfileTouched = false;
+      directProfileDragging = false;
       previousOriginId = originId;
   }
 
@@ -333,6 +345,11 @@
       }
       
       selectedPlanIndex = 0; // Reset selection
+      accelPercent = 10;
+      brakeStartPercent = 90;
+      maxG = maxGByPlanType[selectedPlanTypePreference] ?? 1.0;
+      directProfileTouched = false;
+      directProfileDragging = false;
       handleCalculate();
       if (originId && targetId) {
           dispatch('targetSelected', { origin: originId, target: targetId });
@@ -343,11 +360,31 @@
       if (index >= 0 && index < availablePlans.length) {
           selectedPlanIndex = index;
           plan = availablePlans[index];
+          selectedPlanTypePreference = plan.planType || 'Efficiency';
+          const preferredMaxG = Math.max(0.01, Math.min(sliderMaxG, maxGByPlanType[selectedPlanTypePreference] ?? maxG));
+          if (!(selectedPlanTypePreference in maxGByPlanType)) {
+              maxGByPlanType[selectedPlanTypePreference] = preferredMaxG;
+          }
+          if (Math.abs(maxG - preferredMaxG) > 1e-6) {
+              maxG = preferredMaxG;
+              handleCalculate();
+              return;
+          }
           
-          // Sync sliders to this plan's parameters
-          if (plan.accelRatio !== undefined && plan.brakeRatio !== undefined) {
+          // Keep Direct Burn accel slider user-driven.
+          // If brake is locked-to-arrival, reflect solver brake ratio so user sees current capture profile.
+          if (plan.planType !== 'Speed' && plan.accelRatio !== undefined && plan.brakeRatio !== undefined) {
               accelPercent = plan.accelRatio * 100;
               brakeStartPercent = 100 - (plan.brakeRatio * 100);
+          } else if (plan.planType === 'Speed' && !directProfileDragging && brakeAtArrival && plan.brakeRatio !== undefined) {
+              if (!directProfileTouched) {
+                  accelPercent = 10;
+              }
+              brakeStartPercent = 100 - (plan.brakeRatio * 100);
+              if (!directProfileTouched) {
+                  handleCalculate();
+                  return;
+              }
           }
           
           dispatch('planUpdate', plan);
@@ -390,9 +427,12 @@
       }
 
       let mode: TransitMode = 'Economy'; // Always Economy/Variable now
+      const activeType = selectedPlanTypePreference || availablePlans[selectedPlanIndex]?.planType || 'Efficiency';
+      const effectiveMaxG = Math.max(0.01, Math.min(sliderMaxG, maxGByPlanType[activeType] ?? maxG));
+      maxG = effectiveMaxG;
       
       const params = {
-          maxG,
+          maxG: effectiveMaxG,
           accelRatio: accelPercent / 100,
           brakeRatio: (100 - brakeStartPercent) / 100,
           interceptSpeed_ms: interceptSpeed,
@@ -450,11 +490,14 @@
           selectedPlanIndex = newIndex;
           
           plan = availablePlans[selectedPlanIndex];
+          selectedPlanTypePreference = plan.planType || selectedPlanTypePreference;
           
-          // Sync Sliders to Plan (Visual Feedback)
-          // Always sync to show the actual burn profile calculated by the solver
-          if (plan.accelRatio !== undefined && plan.brakeRatio !== undefined) {
+          // Keep Direct Burn accel slider user-driven.
+          // If brake is locked-to-arrival, reflect solver brake ratio so user sees current capture profile.
+          if (plan.planType !== 'Speed' && plan.accelRatio !== undefined && plan.brakeRatio !== undefined) {
                accelPercent = plan.accelRatio * 100;
+               brakeStartPercent = 100 - (plan.brakeRatio * 100);
+          } else if (plan.planType === 'Speed' && !directProfileDragging && brakeAtArrival && plan.brakeRatio !== undefined) {
                brakeStartPercent = 100 - (plan.brakeRatio * 100);
           }
           
@@ -467,6 +510,17 @@
       
       journeyProgress = 0;
       updatePreview();
+  }
+
+  function handleDirectProfileInput() {
+      directProfileTouched = true;
+      // Keep drag interaction smooth; commit solver recalculation on drag end.
+  }
+
+  function handleMaxGInput() {
+      const activeType = selectedPlanTypePreference || plan?.planType || 'Efficiency';
+      maxGByPlanType[activeType] = Math.max(0.01, Math.min(sliderMaxG, maxG));
+      debouncedCalculate();
   }
 
   function updateDepartureDelay() {
@@ -510,6 +564,34 @@
   function formatDuration(days: number) {
       if (days < 1) return `${(days * 24).toFixed(1)} hours`;
       return `${days.toFixed(1)} days`;
+  }
+
+  function getInternalDelayDays(p: TransitPlan | null): number {
+      if (!p) return 0;
+      return Math.max(0, p.initialDelay_days || 0);
+  }
+
+  function delayDaysToSliderRaw(days: number): number {
+      const clamped = Math.max(0, Math.min(1000, days));
+      if (clamped === 0) return 0;
+      const minLog = Math.log(1);
+      const maxLog = Math.log(1001);
+      const raw = ((Math.log(clamped + 1) - minLog) / (maxLog - minLog)) * 100;
+      return Math.max(0, Math.min(100, raw));
+  }
+
+  $: mostEfficientDelayLock = !!(
+      plan &&
+      plan.name === 'Most Efficient' &&
+      getInternalDelayDays(plan) > 0
+  );
+
+  $: {
+      if (mostEfficientDelayLock && plan) {
+          sliderDepartureDelayRaw = delayDaysToSliderRaw(getInternalDelayDays(plan));
+      } else {
+          sliderDepartureDelayRaw = delayDaysToSliderRaw(departureDelayDays);
+      }
   }
   
   let previewStatusString = "";
@@ -623,20 +705,16 @@
           let activeSegmentType = "Unknown";
           
           let pos: Vector2 | null = null;
-          let currentSegStart = 0;
           
           for (const segment of activeLegObj.segments) {
               const segDuration = segment.endTime - segment.startTime;
-              const segEnd = currentSegStart + segDuration;
-              
-              if (timeInLeg >= currentSegStart && timeInLeg <= segEnd) {
-                  const segProgress = (timeInLeg - currentSegStart) / segDuration;
+              if (absTime >= segment.startTime && absTime <= segment.endTime && segDuration > 0) {
+                  const segProgress = (absTime - segment.startTime) / segDuration;
                   const idx = Math.min(Math.floor(segProgress * (segment.pathPoints.length - 1)), segment.pathPoints.length - 1);
                   pos = segment.pathPoints[idx];
                   activeSegmentType = segment.type; 
                   break;
               }
-              currentSegStart += segDuration;
           }
           if (!pos && activeLegObj.segments.length > 0) {
              const lastSeg = activeLegObj.segments[activeLegObj.segments.length-1];
@@ -651,8 +729,28 @@
           
           dispatch('previewUpdate', { offset: absTime - currentTime, position: pos });
       } else {
-          dispatch('previewUpdate', { offset: 0, position: null });
-          previewStatusString = `T+ ${tPlusDays.toFixed(1)}d | Waiting...`;
+          const allPlans = [...completedPlans, ...(plan ? [plan] : [])].sort((a, b) => a.startTime - b.startTime);
+          let parkedHostId: string | null = null;
+          if (allPlans.length > 0) {
+              if (absTime < allPlans[0].startTime) {
+                  parkedHostId = allPlans[0].originId;
+              } else {
+                  const prev = [...allPlans].reverse().find((p) => (p.startTime + p.totalTime_days * 86400 * 1000) <= absTime);
+                  parkedHostId = prev ? prev.targetId : allPlans[0].originId;
+              }
+          }
+
+          let parkedPos: Vector2 | null = null;
+          if (parkedHostId) {
+              const host = system.nodes.find((n) => n.id === parkedHostId);
+              if (host) {
+                  const hostState = getGlobalState(system, host as any, absTime);
+                  parkedPos = hostState.r;
+              }
+          }
+
+          dispatch('previewUpdate', { offset: absTime - currentTime, position: parkedPos });
+          previewStatusString = `T+ ${tPlusDays.toFixed(1)}d | Waiting for departure window...`;
       }
   }
 </script>
@@ -800,6 +898,9 @@
                 >
                     <div class="plan-type">{p.name}</div>
                     <div class="plan-time">{formatDuration(p.totalTime_days)}</div>
+                    {#if (p.initialDelay_days || 0) > 0}
+                        <div class="plan-fuel" style="font-size: 0.8em; color: #88ccff;">wait {(p.initialDelay_days || 0)}d</div>
+                    {/if}
                     <div class="plan-fuel" style="font-size: 0.9em; color: #aaa;">{(p.totalFuel_kg/1000).toFixed(1)}t</div>
                     <div class="plan-g">{(p.maxG || 0).toFixed(2)} G</div>
                 </div>
@@ -807,11 +908,13 @@
         </div>
     {/if}
 
-    <div class="form-group" title={lastLegWasFlypast ? "Cannot delay departure from a fly-past intercept. You must enter orbit to wait." : ""}>
-        <label style="opacity: {lastLegWasFlypast ? 0.5 : 1}">
-            Departure Delay: {departureDelayDays} days
+    <div class="form-group" title={mostEfficientDelayLock ? "Most Efficient includes an auto-selected launch window delay. Manual delay is disabled for this route." : (lastLegWasFlypast ? "Cannot delay departure from a fly-past intercept. You must enter orbit to wait." : "")}>
+        <label style="opacity: {(lastLegWasFlypast || mostEfficientDelayLock) ? 0.5 : 1}">
+            Departure Delay: {mostEfficientDelayLock && plan ? getInternalDelayDays(plan) : departureDelayDays} days
             {#if lastLegWasFlypast}
                 <span style="color: #ff6666; font-size: 0.8em; margin-left: 5px;">(Orbit Required)</span>
+            {:else if mostEfficientDelayLock}
+                <span style="color: #88ccff; font-size: 0.8em; margin-left: 5px;">(Auto Window Locked)</span>
             {/if}
         </label>
         <input 
@@ -821,13 +924,18 @@
             step="1" 
             bind:value={sliderDepartureDelayRaw} 
             on:input={updateDepartureDelay} 
-            disabled={lastLegWasFlypast}
-            style="opacity: {lastLegWasFlypast ? 0.3 : 1}"
+            disabled={lastLegWasFlypast || mostEfficientDelayLock}
+            style="opacity: {(lastLegWasFlypast || mostEfficientDelayLock) ? 0.3 : 1}"
         />
         <div class="range-labels">
             <span>Now</span>
             <span>+1000d</span>
         </div>
+    </div>
+
+    <div class="form-group">
+        <label>Max Transit Acceleration (Selected Route): {maxG.toFixed(2)} G (Max: {sliderMaxG.toFixed(2)})</label>
+        <input type="range" min="0.01" max={sliderMaxG} step="0.01" bind:value={maxG} on:input={handleMaxGInput} />
     </div>
 
     {#if plan && plan.planType === 'Speed'}
@@ -846,7 +954,9 @@
                 bind:leftValue={accelPercent} 
                 bind:rightValue={brakeStartPercent} 
                 rightLocked={brakeAtArrival}
-                on:input={debouncedCalculate}
+                on:input={handleDirectProfileInput}
+                on:dragstart={() => { directProfileDragging = true; }}
+                on:dragend={() => { directProfileDragging = false; handleCalculate(); }}
                 disabled={plan?.planType !== 'Speed'}
             />
             <div class="range-labels">
@@ -870,10 +980,6 @@
             </label>
         </div>
 
-        <div class="form-group">
-            <label>Max Acceleration: {maxG.toFixed(2)} G (Max: {sliderMaxG.toFixed(2)})</label>
-            <input type="range" min="0.01" max={sliderMaxG} step="0.01" bind:value={maxG} on:input={debouncedCalculate} />
-        </div>
     </div>
     {/if}
 
@@ -887,7 +993,11 @@
             <div class="result-item">
                 <span>Duration:</span>
                 <strong>
-                    {departureDelayDays}d + {formatDuration(plan.totalTime_days)} = {formatDuration(departureDelayDays + plan.totalTime_days)}
+                    {departureDelayDays}d
+                    {#if getInternalDelayDays(plan) > 0}
+                        + {getInternalDelayDays(plan)}d window wait
+                    {/if}
+                    + {formatDuration(plan.totalTime_days)} = {formatDuration(departureDelayDays + getInternalDelayDays(plan) + plan.totalTime_days)}
                 </strong>
             </div>
             <div class="result-item">

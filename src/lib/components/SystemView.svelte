@@ -1597,9 +1597,7 @@
                     on:addNextLeg={(e) => {
                          const plan = e.detail;
                          completedTransitPlans = [...completedTransitPlans, plan];
-                         const durationMs = plan.totalTime_days * 86400 * 1000;
-                         const delayMs = transitDelayDays * 86400 * 1000;
-                         transitChainTime += durationMs + delayMs;
+                         transitChainTime = plan.startTime + (plan.totalTime_days * 86400 * 1000);
                          
                          plannerOriginId = plan.targetId;
                          transitDelayDays = 0;
@@ -1688,7 +1686,7 @@
 
                          if (finalPlan) {
                              totalFuelKg += finalPlan.totalFuel_kg;
-                             finalTime += (finalPlan.totalTime_days * 86400 * 1000) + (transitDelayDays * 86400 * 1000);
+                             finalTime = finalPlan.startTime + (finalPlan.totalTime_days * 86400 * 1000);
                          }
                          
                          // Update System
