@@ -116,6 +116,7 @@
   let showLPoints = false;
   let showTravellerZones = false;
   let showSensors = false;
+  let showVectors = false;
   let throttleTimeout: ReturnType<typeof setTimeout> | null = null;
   let lastToytownFactor: number | undefined = undefined;
   let timeSyncInterval: ReturnType<typeof setInterval> | undefined;
@@ -1471,6 +1472,10 @@
             </label>
         {/if}
         <label>
+            <input type="checkbox" bind:checked={showVectors} />
+            Show Vectors
+        </label>
+        <label>
             Toytown View:
             <input type="range" min="0" max="1" step="0.01" bind:value={$systemStore.toytownFactor} on:change={() => {
                 if ($systemStore.toytownFactor < 0.005) $systemStore.toytownFactor = 0;
@@ -1493,6 +1498,7 @@
                 {showLPoints} 
                 {showTravellerZones}
                 {showSensors}
+                {showVectors}
                 toytownFactor={$systemStore.toytownFactor} 
                 forceOrbitView={isEditing && activeEditTab === 'Orbit'}
                 transitPlan={currentTransitPlan}

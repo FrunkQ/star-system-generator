@@ -1,23 +1,35 @@
-# Changelog
+﻿# Changelog
 
 All notable changes are listed here:
 
 
 ## v1.9.0 - WIP (22nd Feb 2026)
-- Global time/calendar foundation (UTRE-first pass), display/actual time model, and scrub/play controls.
-- Data-driven calendar registry + save/migration support.
-- HZ refresh:
-  - replaced legacy Goldilocks with conservative modern HZ edges (Kopparapu-style),
-  - eccentricity-aware habitability checks,
-  - close-binary companion-flux adjustment (far binaries remain effectively separate).
-- Zone rendering performance pass (System View):
-  - moved stellar zone rendering to screen-space overlay pass for fixed-pixel stroke behavior,
-  - added viewport culling for off-screen zone circles/bands,
-  - switched to fixed dash pattern with large-radius solid-line fallback,
-  - added off-screen culling for zone labels.
-- New StarMap Settings menu - most of the old "System Setting" in there alog with date stuff.
-- LLM settings moved to own system menu (NB: Not exported with map - just local). 
-- Incomplete: transit follow-up against the new temporal model is still pending.
+- New time system foundations are in place:
+  - Display Time and Actual Time are now separate and can be aligned/reset.
+  - Time scrub/play controls now drive system visuals and orbit updates.
+  - Calendar/time settings are saved with each starmap.
+- Calendar system is now data-driven and extensible:
+  - calendars are loaded from data,
+  - new calendars can be added/edited,
+  - legacy saves are migrated safely.
+- Transit planner reliability pass:
+  - short/local transfers (planet/moon) now use correct local reference frames,
+  - Direct Burn now solves for a feasible duration instead of producing impossible spike values,
+  - orbit targeting now respects selected arrival orbit level (LO/MO/HO),
+  - Brake-at-arrival now targets orbital tangential velocity instead of assuming stationary capture,
+  - flypast velocity now carries correctly into the next leg for all route types,
+  - local launch-window search no longer suggests absurd long waits for moon transfers,
+  - route label updated: `Efficient Alt` -> `Efficient Now`.
+- Transit visuals improved:
+  - during preview/execution, the focused construct moves along the route,
+  - optional vector overlay added (single `Show Vectors` toggle) for velocity/acceleration.
+- Habitable Zone model refreshed and old Goldilocks logic replaced with conservative modern HZ edges.
+- Zone rendering performance improved (screen-space draw path, culling, and cheaper dash behavior).
+- StarMap settings and LLM settings reorganized:
+  - StarMap settings consolidated,
+  - LLM/API settings moved to separate local-only config (not exported).
+- Remaining work for v1.9.0:
+  - additional transit scheduling and multi-construct timeline work.
 
 ## v1.8.4 - 20th Feb 2026
 - Temperature model refresh (cryo greenhouse behavior, improved range presentation, tidal hotspot handling).

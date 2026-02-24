@@ -75,6 +75,68 @@ describe('Transit Calculator Grounded Cases', () => {
     }
   });
 
+  it('Earth -> Luna accepts global chained state and still solves local-frame direct transfer', () => {
+    const system = loadSolSystem();
+    const earthId = nodeIdByName(system, 'Earth');
+    const moonId = nodeIdByName(system, 'Luna');
+    const startTime = Date.UTC(2030, 0, 1, 0, 0, 0);
+    const earth = system.nodes.find((n) => n.id === earthId) as any;
+    const earthGlobal = getGlobalState(system, earth, startTime);
+    const rOrbitAu = 7000 / AU_KM;
+    const vOrbitAuS = Math.sqrt((earth.massKg * G) / (7000 * 1000)) / (AU_KM * 1000);
+
+    const plans = calculateTransitPlan(system, earthId, moonId, startTime, 'Economy', {
+      maxG: 2.0,
+      accelRatio: 0.2,
+      brakeRatio: 0.2,
+      interceptSpeed_ms: 0,
+      brakeAtArrival: true,
+      shipMass_kg: 2_000_000,
+      shipIsp: 380,
+      initialStateFrame: 'global',
+      initialState: {
+        r: { x: earthGlobal.r.x + rOrbitAu, y: earthGlobal.r.y },
+        v: { x: earthGlobal.v.x, y: earthGlobal.v.y + vOrbitAuS }
+      },
+      aerobrake: { allowed: false, limit_kms: 0 }
+    });
+
+    expect(plans.length).toBeGreaterThan(0);
+    const direct = plans.find((p) => p.planType === 'Speed');
+    expect(direct).toBeDefined();
+    expect(Number.isFinite(direct!.totalDeltaV_ms)).toBe(true);
+    expect(direct!.segments.length).toBeGreaterThan(0);
+    for (const seg of direct!.segments) {
+      for (const pt of seg.pathPoints) {
+        expect(Number.isFinite(pt.x)).toBe(true);
+        expect(Number.isFinite(pt.y)).toBe(true);
+      }
+    }
+  });
+
+  it('Earth -> Luna Most Efficient window stays within local-orbit-scale delays', () => {
+    const system = loadSolSystem();
+    const earthId = nodeIdByName(system, 'Earth');
+    const moonId = nodeIdByName(system, 'Luna');
+    const startTime = Date.UTC(2030, 0, 1, 0, 0, 0);
+
+    const plans = calculateTransitPlan(system, earthId, moonId, startTime, 'Economy', {
+      maxG: 1.0,
+      accelRatio: 0.1,
+      brakeRatio: 0.1,
+      interceptSpeed_ms: 0,
+      brakeAtArrival: true,
+      shipMass_kg: 2_000_000,
+      shipIsp: 380,
+      aerobrake: { allowed: false, limit_kms: 0 }
+    });
+
+    const efficientPlans = plans.filter((p) => p.name === 'Most Efficient' || p.name === 'Efficient Now' || p.planType === 'Efficiency');
+    for (const p of efficientPlans) {
+      expect((p.initialDelay_days || 0)).toBeLessThan(60);
+    }
+  });
+
   it('Earth -> Saturn supports non-zero flyby arrival speed when requested', () => {
     const system = loadSolSystem();
     const earthId = nodeIdByName(system, 'Earth');

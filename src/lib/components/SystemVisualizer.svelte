@@ -23,6 +23,7 @@
   export let showLPoints: boolean = false;
   export let showTravellerZones: boolean = false;
   export let showSensors: boolean = false;
+  export let showVectors: boolean = false;
   export let toytownFactor: number = 0;
   export let fullScreen: boolean = false;
   export let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
@@ -47,6 +48,8 @@
   const MAX_CAMERA_ZOOM = 500000000;
   const AUTO_ZOOM_MIN_UPDATE_MS = 180;
   const AUTO_ZOOM_MAX_STEP_RATIO = 1.2;
+  const VELOCITY_VECTOR_COLOR = 'rgba(0, 212, 255, 0.95)';
+  const ACCEL_VECTOR_COLOR = 'rgba(255, 155, 47, 0.95)';
 
   // --- Canvas and Rendering State ---
   let canvas: HTMLCanvasElement;
@@ -78,6 +81,7 @@
 
   let lastSystemId: string | null = null;
   let lastFramedPlanId: string | null = null;
+  let lastPreviewSample: { tMs: number; pos: { x: number; y: number }; vel: { x: number; y: number } | null } | null = null;
 
   // Force re-render when system data changes deep down
   $: if (system) {
@@ -103,6 +107,9 @@
   }
 
   $: worldPositions = calculateWorldPositions(system, currentTime);
+  $: if (!transitPreviewPos) {
+      lastPreviewSample = null;
+  }
 
   $: if (showLPoints) {
     calculateLagrangePointPositions();
@@ -774,7 +781,7 @@
           }
       }
       for (const node of system.nodes) {
-          const pos = scaledWorldPositions.get(node.id);
+          const pos = getConstructDisplayPosition(node) || scaledWorldPositions.get(node.id);
           if (!pos) continue;
           const rx = pos.x - renderPan.x; const ry = pos.y - renderPan.y;
           if (node.kind === 'barycenter') {
@@ -883,7 +890,7 @@
       
       // Draw Constructs and Barycenters (Screen Space Overlay)
       for (const node of system.nodes) {
-          const pos = scaledWorldPositions.get(node.id);
+          const pos = getConstructDisplayPosition(node) || scaledWorldPositions.get(node.id);
           if (!pos) continue;
           if (node.kind === 'barycenter' || node.kind === 'construct') {
               const screenPos = worldToScreen(pos.x, pos.y);
@@ -913,6 +920,9 @@
                   }
               }
           }
+      }
+      if (showVectors) {
+          drawConstructKinematicVectors(ctx);
       }
 
       if (toytownFactor === 0) drawScaleBar(ctx);
@@ -1184,6 +1194,146 @@
       ctx.beginPath(); ctx.moveTo(x, y - 5); ctx.lineTo(x, y + 5); ctx.moveTo(x + actualBarLengthPx, y - 5); ctx.lineTo(x + actualBarLengthPx, y + 5); ctx.stroke();
       ctx.fillText(`${displayValue} ${unit}`, x + actualBarLengthPx / 2, y - 8);
   }
+
+  function drawArrowScreen(
+      ctx: CanvasRenderingContext2D,
+      startX: number,
+      startY: number,
+      dirX: number,
+      dirY: number,
+      lengthPx: number,
+      color: string
+  ) {
+      const mag = Math.hypot(dirX, dirY);
+      if (!Number.isFinite(mag) || mag < 1e-9 || lengthPx <= 0) return;
+      const ux = dirX / mag;
+      const uy = dirY / mag;
+      const endX = startX + ux * lengthPx;
+      const endY = startY + uy * lengthPx;
+
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+
+      const headLen = Math.max(5, Math.min(10, lengthPx * 0.25));
+      const leftX = endX - ux * headLen - uy * (headLen * 0.5);
+      const leftY = endY - uy * headLen + ux * (headLen * 0.5);
+      const rightX = endX - ux * headLen + uy * (headLen * 0.5);
+      const rightY = endY - uy * headLen - ux * (headLen * 0.5);
+      ctx.beginPath();
+      ctx.moveTo(endX, endY);
+      ctx.lineTo(leftX, leftY);
+      ctx.lineTo(rightX, rightY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+  }
+
+  function worldToDisplayPosition(worldPos: { x: number; y: number }): { x: number; y: number } {
+      if (toytownFactor <= 0) return worldPos;
+      const r = Math.hypot(worldPos.x, worldPos.y);
+      const rNew = scaleBoxCox(r, toytownFactor, x0_distance);
+      const a = Math.atan2(worldPos.y, worldPos.x);
+      return { x: rNew * Math.cos(a), y: rNew * Math.sin(a) };
+  }
+
+  function getConstructDisplayPosition(node: SystemNode): { x: number; y: number } | null {
+      if (node.kind !== 'construct') return null;
+      if (!transitPreviewPos || node.id !== focusedBodyId) return null;
+      return worldToDisplayPosition(transitPreviewPos);
+  }
+
+  function getPreviewVelocityEstimateMs(): { x: number; y: number } | null {
+      if (!transitPreviewPos) return null;
+      if (!lastPreviewSample) {
+          lastPreviewSample = { tMs: currentTime, pos: { ...transitPreviewPos }, vel: null };
+          return null;
+      }
+      const dt = (currentTime - lastPreviewSample.tMs) / 1000;
+      const dxAu = transitPreviewPos.x - lastPreviewSample.pos.x;
+      const dyAu = transitPreviewPos.y - lastPreviewSample.pos.y;
+      if (dt > 0.05) {
+          const vel = {
+              x: (dxAu * AU_KM * 1000) / dt,
+              y: (dyAu * AU_KM * 1000) / dt
+          };
+          lastPreviewSample = { tMs: currentTime, pos: { ...transitPreviewPos }, vel };
+          return vel;
+      }
+      return lastPreviewSample.vel;
+  }
+
+  function computeNetGravityAccelerationMs2(
+      positionAu: { x: number; y: number },
+      selfId: string
+  ): { x: number; y: number } {
+      if (!system) return { x: 0, y: 0 };
+      let ax = 0;
+      let ay = 0;
+      for (const node of system.nodes) {
+          if (node.id === selfId) continue;
+          if (node.kind !== 'body' && node.kind !== 'barycenter') continue;
+          const massKg = node.kind === 'body'
+              ? ((node as CelestialBody).massKg || 0)
+              : ((node as Barycenter).effectiveMassKg || 0);
+          if (massKg <= 0) continue;
+          const sourcePos = worldPositions.get(node.id);
+          if (!sourcePos) continue;
+          const dxAu = sourcePos.x - positionAu.x;
+          const dyAu = sourcePos.y - positionAu.y;
+          const dxM = dxAu * AU_KM * 1000;
+          const dyM = dyAu * AU_KM * 1000;
+          const r2 = dxM * dxM + dyM * dyM;
+          if (r2 < 1) continue;
+          const r = Math.sqrt(r2);
+          const a = (6.67430e-11 * massKg) / r2;
+          ax += a * (dxM / r);
+          ay += a * (dyM / r);
+      }
+      return { x: ax, y: ay };
+  }
+
+  function drawConstructKinematicVectors(ctx: CanvasRenderingContext2D) {
+      if (!system) return;
+      const previewVelMs = getPreviewVelocityEstimateMs();
+      for (const node of system.nodes) {
+          if (node.kind !== 'construct') continue;
+          const isPreviewConstruct = !!(transitPreviewPos && node.id === focusedBodyId);
+          if (!isPreviewConstruct && node.flight_state !== 'Transit' && node.flight_state !== 'Deep Space') continue;
+
+          const overrideDisplay = getConstructDisplayPosition(node);
+          const displayPos = overrideDisplay || (toytownFactor > 0 ? scaledWorldPositions.get(node.id) : worldPositions.get(node.id));
+          const physicalPos = (transitPreviewPos && node.id === focusedBodyId) ? transitPreviewPos : worldPositions.get(node.id);
+          if (!displayPos || !physicalPos) continue;
+          const screenPos = worldToScreen(displayPos.x, displayPos.y);
+          if (!Number.isFinite(screenPos.x) || !Number.isFinite(screenPos.y)) continue;
+
+          const vel = (transitPreviewPos && node.id === focusedBodyId && previewVelMs)
+              ? previewVelMs
+              : node.vector_velocity_ms;
+          if (showVectors && vel && Number.isFinite(vel.x) && Number.isFinite(vel.y)) {
+              const vMs = Math.hypot(vel.x, vel.y);
+              const vLen = Math.max(14, Math.min(96, 10 + Math.log10(vMs + 1) * 14));
+              drawArrowScreen(ctx, screenPos.x, screenPos.y, vel.x, vel.y, vLen, VELOCITY_VECTOR_COLOR);
+          }
+
+          if (showVectors) {
+              const acc = computeNetGravityAccelerationMs2(physicalPos, node.id);
+              const aMs2 = Math.hypot(acc.x, acc.y);
+              if (aMs2 > 1e-6 && Number.isFinite(aMs2)) {
+                  const aLen = Math.max(10, Math.min(72, 8 + Math.log10(aMs2 * 100 + 1) * 18));
+                  drawArrowScreen(ctx, screenPos.x, screenPos.y, acc.x, acc.y, aLen, ACCEL_VECTOR_COLOR);
+              }
+          }
+      }
+  }
+
   function drawTransitPlan(ctx: CanvasRenderingContext2D, plan: TransitPlan, isCompleted: boolean = false, alphaOverride?: number, forceGrey: boolean = false) {
       if (!plan) return;
       const alpha = alphaOverride !== undefined ? alphaOverride : (isCompleted ? 0.6 : 1.0);
