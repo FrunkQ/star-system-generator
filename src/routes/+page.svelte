@@ -21,6 +21,7 @@
   import LlmSettingsModal from '$lib/components/LlmSettingsModal.svelte';
   import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, STARTDATE_EPOCH_OFFSET_T } from '$lib/temporal/defaults';
   import { parseClockSeconds } from '$lib/temporal/utre';
+  import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
 
   let rulePacks: RulePack[] = [];
   let isLoading = true;
@@ -188,14 +189,16 @@
 
   function withStarmapDefaults(starmap: StarmapType): StarmapType {
     let changed = false;
+    const sanitized = sanitizeStarmapForRuntime(starmap);
+    if (sanitized !== starmap) changed = true;
 
-    const mapMode = starmap.mapMode ?? 'diagrammatic';
-    if (!starmap.mapMode) changed = true;
-    const invertDisplay = starmap.invertDisplay ?? false;
-    if (starmap.invertDisplay === undefined) changed = true;
+    const mapMode = sanitized.mapMode ?? 'diagrammatic';
+    if (!sanitized.mapMode) changed = true;
+    const invertDisplay = sanitized.invertDisplay ?? false;
+    if (sanitized.invertDisplay === undefined) changed = true;
 
-    const defaultUnit = starmap.distanceUnit || 'LY';
-    const currentScale = starmap.scale;
+    const defaultUnit = sanitized.distanceUnit || 'LY';
+    const currentScale = sanitized.scale;
     const scale = currentScale && currentScale.pixelsPerUnit > 0
       ? { ...currentScale, unit: currentScale.unit || defaultUnit }
       : { unit: defaultUnit, pixelsPerUnit: 25, showScaleBar: true };
@@ -203,10 +206,10 @@
       changed = true;
     }
 
-    const temporalNormalized = ensureTemporalState(starmap);
-    if (temporalNormalized !== starmap) changed = true;
+    const temporalNormalized = ensureTemporalState(sanitized);
+    if (temporalNormalized !== sanitized) changed = true;
 
-    if (!changed) return starmap;
+    if (!changed) return sanitized;
     return { ...temporalNormalized, mapMode, invertDisplay, scale };
   }
 
@@ -547,15 +550,16 @@
     reader.onload = () => {
       try {
         const data = JSON.parse(reader.result as string);
+        const sanitized = sanitizeStarmapForRuntime(data as StarmapType);
         
-        const errors = validateStarmap(data);
+        const errors = validateStarmap(sanitized);
         if (errors.length > 0) {
             alert('Starmap Validation Failed:\n\n' + errors.slice(0, 10).join('\n') + (errors.length > 10 ? `\n...and ${errors.length - 10} more errors.` : ''));
             console.error('Validation Errors:', errors);
             return;
         }
 
-        starmapStore.set(data);
+        starmapStore.set(sanitized);
         showNewStarmapModal = false;
       } catch (e) {
         alert('Error parsing JSON file. Please check the file format.');

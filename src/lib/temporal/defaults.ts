@@ -26,6 +26,49 @@ type TemporalConfigPayload = {
   temporal_registry?: TemporalState['temporal_registry'];
 };
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isValidCalendarDefinition(calendar: unknown): calendar is TemporalState['temporal_registry'][string] {
+  if (!calendar || typeof calendar !== 'object') return false;
+  const c = calendar as any;
+  if (typeof c.id !== 'string' || !c.id) return false;
+  if (typeof c.epoch_offset_t !== 'string') return false;
+  if (typeof c.format !== 'string') return false;
+  if (c.math_type === 'RATIO_LINEAR') {
+    return !!(
+      c.parameters &&
+      isFiniteNumber(c.parameters.units_per_earth_year) &&
+      isFiniteNumber(c.parameters.seconds_per_earth_year)
+    );
+  }
+  if (c.math_type === 'BUCKET_DRAIN') {
+    return Array.isArray(c.hierarchy) && c.hierarchy.length > 0;
+  }
+  return false;
+}
+
+function sanitizeTemporalRegistry(
+  registry: TemporalState['temporal_registry'],
+  defaults: TemporalState['temporal_registry']
+): TemporalState['temporal_registry'] {
+  const cleaned: TemporalState['temporal_registry'] = {};
+  Object.entries(registry || {}).forEach(([key, value]) => {
+    if (isValidCalendarDefinition(value)) cleaned[key] = value;
+  });
+  if (Object.keys(cleaned).length === 0) return defaults;
+  const originalKeys = Object.keys(registry || {});
+  const cleanedKeys = Object.keys(cleaned);
+  if (
+    originalKeys.length === cleanedKeys.length &&
+    cleanedKeys.every((key) => (registry as any)?.[key] === cleaned[key])
+  ) {
+    return registry;
+  }
+  return cleaned;
+}
+
 function cloneRegistry(registry: TemporalState['temporal_registry']): TemporalState['temporal_registry'] {
   return JSON.parse(JSON.stringify(registry));
 }
@@ -155,6 +198,11 @@ export function ensureTemporalState(starmap: Starmap): Starmap {
     ? (existing.temporal_registry as TemporalState['temporal_registry'])
     : defaults.registry;
   let changed = false;
+  const sanitizedRegistry = sanitizeTemporalRegistry(registry, defaults.registry);
+  if (sanitizedRegistry !== registry) {
+    registry = sanitizedRegistry;
+    changed = true;
+  }
 
   if (hasExistingRegistry) {
     const missingDefaultKeys = Object.keys(defaults.registry).filter((key) => !registry[key]);

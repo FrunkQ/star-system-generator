@@ -1399,6 +1399,15 @@
       return Number(parseClockSeconds(temporal.masterTimeSec, 0n) * 1000n);
   }
 
+  function safeClockSecStringToMs(value: string | undefined): number {
+      try {
+          if (!value) return 0;
+          return Number(BigInt(value) * 1000n);
+      } catch {
+          return 0;
+      }
+  }
+
   function nodeName(nodeId: string): string {
       const n = $systemStore?.nodes.find((x) => x.id === nodeId);
       return n?.name || nodeId;
@@ -1993,7 +2002,7 @@
                                 <strong>Journey {i + 1}</strong>
                                 <span class="ship-log-status">{log.status.toUpperCase()}</span>
                               </div>
-                              <div class="ship-log-meta">Created: {formatLogTime(Number(BigInt(log.createdAtSec || '0') * 1000n))}</div>
+                              <div class="ship-log-meta">Created: {formatLogTime(safeClockSecStringToMs(log.createdAtSec))}</div>
                               {#if getJourneyBounds(log.plans)}
                                 {@const bounds = getJourneyBounds(log.plans)!}
                                 <div class="ship-log-meta">Window: {formatLogTime(bounds.startMs)} -> {formatLogTime(bounds.endMs)}</div>
