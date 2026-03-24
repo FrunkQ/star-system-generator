@@ -3,7 +3,7 @@
   import { computePlayerSnapshot } from '$lib/system/utils';
   import '$lib/reports/report-styles.css';
   import type { System, CelestialBody, Barycenter } from '$lib/types';
-  import { AU_KM } from '$lib/constants';
+  import { AU_KM, G } from '$lib/constants';
   import { composeSurfaceTemperatureFromDeltaComponents } from '$lib/physics/temperature';
 
   let system: System | null = null;
@@ -13,21 +13,21 @@
   let loading = true;
   let error = '';
   let overviewMainHostId: string | null = null;
-  let overviewBodies: CelestialBody[] = [];
+  let overviewBodies: Array<CelestialBody | Barycenter> = [];
   let rootStars: CelestialBody[] = [];
   let overviewHostLabel = 'Host';
-  let overviewDiagramEntries: Array<{ body: CelestialBody; idx: number; orbitRadius: number; aAU: number }> = [];
+  let overviewDiagramEntries: Array<{ body: CelestialBody | Barycenter; idx: number; orbitRadius: number; aAU: number }> = [];
   let overviewMoonLines: string[] = [];
   let additionalStarSets: Array<{
       star: CelestialBody;
-      entries: Array<{ body: CelestialBody; idx: number; orbitRadius: number; aAU: number }>;
+      entries: Array<{ body: CelestialBody | Barycenter; idx: number; orbitRadius: number; aAU: number }>;
       moonLines: string[];
       maxMoonDepth: number;
       rowHeight: number;
   }> = [];
 
   // Constants for Physics
-  const G_CONST = 6.67430e-11;
+  const G_CONST = G;
   const EARTH_GRAVITY = 9.80665;
   const EARTH_DENSITY = 5514;
   const EARTH_MASS_KG = 5.972e24;
@@ -114,9 +114,9 @@
   function getDirectBodiesOnly(parentId: string) {
       if (!system) return [];
       return system.nodes
-          .filter((n): n is CelestialBody =>
+          .filter((n): n is CelestialBody | Barycenter =>
               n.kind !== 'construct' &&
-              n.kind === 'body' &&
+              (n.kind === 'body' || n.kind === 'barycenter') &&
               (n.parentId === parentId || n.orbit?.hostId === parentId)
           )
           .sort((a, b) => (a.orbit?.elements.a_AU || 0) - (b.orbit?.elements.a_AU || 0));
@@ -146,35 +146,40 @@
   }
 
   // --- Physics Helpers ---
-  function getDerivedPhysics(body: CelestialBody) {
+  function getDerivedPhysics(body: CelestialBody | Barycenter) {
       let gravity = '-';
       let density = '-';
       let massRel = '-';
 
-      if (body.massKg && body.radiusKm) {
-          const radiusM = body.radiusKm * 1000;
-          const g = (G_CONST * body.massKg / (radiusM * radiusM)) / EARTH_GRAVITY;
-          gravity = `${g.toFixed(2)} g`;
-          
-          const vol = (4/3) * Math.PI * Math.pow(radiusM, 3);
-          const d = (body.massKg / vol) / EARTH_DENSITY;
-          density = `${d.toFixed(2)} Earths`;
+      const massKg = body.kind === 'body' ? body.massKg : (body as Barycenter).effectiveMassKg;
+      const radiusKm = body.kind === 'body' ? body.radiusKm : undefined;
 
-          const mRel = body.massKg / EARTH_MASS_KG;
+      if (massKg) {
+          const mRel = massKg / EARTH_MASS_KG;
           massRel = mRel < 1000 ? `${mRel.toFixed(3)} M⊕` : `${mRel.toExponential(2)} M⊕`;
+
+          if (radiusKm) {
+              const radiusM = radiusKm * 1000;
+              const g = (G_CONST * massKg / (radiusM * radiusM)) / EARTH_GRAVITY;
+              gravity = `${g.toFixed(2)} g`;
+              
+              const vol = (4/3) * Math.PI * Math.pow(radiusM, 3);
+              const d = (massKg / vol) / EARTH_DENSITY;
+              density = `${d.toFixed(2)} Earths`;
+          }
       }
       return { gravity, density, massRel };
   }
 
-  function getTemp(body: CelestialBody) {
-      if (body.temperatureK === undefined) return '-';
+  function getTemp(body: CelestialBody | Barycenter) {
+      if (body.kind === 'barycenter' || body.temperatureK === undefined) return '-';
       const c = Math.round(body.temperatureK - 273.15);
       return `${c}°C`;
   }
 
-  function getTempDetails(body: CelestialBody) {
+  function getTempDetails(body: CelestialBody | Barycenter) {
+      if (body.kind === 'barycenter' || body.temperatureK === undefined) return '';
       const b = body as any;
-      if (body.temperatureK === undefined) return '';
       
       const parts = [];
       if (b.equilibriumTempK) parts.push(`Eq: ${Math.round(b.equilibriumTempK)}K`);
@@ -187,7 +192,7 @@
       return `(${parts.join(', ')})`;
   }
 
-  function getOrbitStability(body: CelestialBody) {
+  function getOrbitStability(body: CelestialBody | Barycenter) {
       const explicit = (body as any).orbitalStability;
       if (typeof explicit === 'string' && explicit.trim().length > 0) return explicit;
       const tag = body.tags?.find((t) => t.key.startsWith('stability/'))?.key;
@@ -199,22 +204,24 @@
           .join(' ');
   }
 
-  function getRadiationRange(body: CelestialBody) {
+  function getRadiationRange(body: CelestialBody | Barycenter) {
+      if (body.kind === 'barycenter') return '-';
       const min = (body as any).surfaceRadiationMin;
       const max = (body as any).surfaceRadiationMax;
       if (typeof min !== 'number' || typeof max !== 'number') return '-';
       return `${min.toFixed(2)} - ${max.toFixed(2)} mSv/y`;
   }
 
-  function getEquilibriumRange(body: CelestialBody) {
+  function getEquilibriumRange(body: CelestialBody | Barycenter) {
+      if (body.kind === 'barycenter') return '-';
       const min = (body as any).equilibriumTempMinK;
       const max = (body as any).equilibriumTempMaxK;
       if (typeof min !== 'number' || typeof max !== 'number') return '-';
       return `${Math.round(min - 273.15)}°C to ${Math.round(max - 273.15)}°C`;
   }
 
-  function getTempProfile(body: CelestialBody) {
-      if (body.temperatureK === undefined) return '-';
+  function getTempProfile(body: CelestialBody | Barycenter) {
+      if (body.kind === 'barycenter' || body.temperatureK === undefined) return '-';
       const surfaceC = body.temperatureK - 273.15;
 
       const eqMinK = typeof (body as any).equilibriumTempMinK === 'number' ? (body as any).equilibriumTempMinK : null;
@@ -227,7 +234,7 @@
 
       let minTempC = surfaceC;
       let maxTempC = surfaceC;
-      if (pressureBar < 0.01 && body.roleHint !== 'star') {
+      if (pressureBar < 0.01 && (body as CelestialBody).roleHint !== 'star') {
           const tEq = body.equilibriumTempK || 0;
           minTempC = composeSurfaceTemperatureFromDeltaComponents(Math.max(3, tEq * 0.5), greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
           maxTempC = composeSurfaceTemperatureFromDeltaComponents(tEq * 1.45, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
@@ -241,7 +248,7 @@
       let nightMinTempC: number;
       let nightMaxTempC: number;
 
-      if (pressureBar < 0.01 && body.roleHint !== 'star') {
+      if (pressureBar < 0.01 && (body as CelestialBody).roleHint !== 'star') {
           const tEq = body.equilibriumTempK || 0;
           dayMinTempC = composeSurfaceTemperatureFromDeltaComponents(Math.max(3, tEq * (body.tidallyLocked ? 0.78 : 0.70)), greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
           dayMaxTempC = composeSurfaceTemperatureFromDeltaComponents(tEq * (body.tidallyLocked ? 1.45 : 1.35), greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
@@ -272,8 +279,8 @@
       return `Range: ${range} | Day: ${day} | Night: ${night}${hotspotNote}`;
   }
 
-  function getAtmosphereString(body: CelestialBody) {
-      if (!body.atmosphere) return 'None';
+  function getAtmosphereString(body: CelestialBody | Barycenter) {
+      if (body.kind === 'barycenter' || !body.atmosphere) return 'None';
       const p = body.atmosphere.pressure_bar ?? body.atmosphere.pressure_atm ?? 0;
       const pStr = p < 0.001 ? '<0.001' : p.toFixed(2);
       
@@ -293,20 +300,28 @@
       return lum < 0.01 ? lum.toExponential(2) + ' L☉' : lum.toFixed(2) + ' L☉';
   }
 
-  function getHydroString(body: CelestialBody) {
-      if (!body.hydrosphere || body.hydrosphere.coverage === undefined || body.hydrosphere.coverage === 0) return 'No surface liquid';
+  function getHydroString(body: CelestialBody | Barycenter) {
+      if (body.kind === 'barycenter' || !body.hydrosphere || body.hydrosphere.coverage === undefined || body.hydrosphere.coverage === 0) return 'No surface liquid';
       const cov = Math.round(body.hydrosphere.coverage * 100);
       const comp = body.hydrosphere.composition ? ` (${body.hydrosphere.composition})` : '';
       return `${cov}%${comp}`;
   }
 
-  function getOrbitDistanceAuLabel(body: CelestialBody) {
+  function getOrbitDistanceAuLabel(body: CelestialBody | Barycenter) {
       const a = body.orbit?.elements?.a_AU;
       if (typeof a !== 'number' || !Number.isFinite(a) || a <= 0) return '';
-      return `${a.toFixed(1)} AU`;
+      return formatOrbitDist(a);
   }
 
-  function isPlanetaryBarycenterBody(body: CelestialBody) {
+  function formatOrbitDist(a_au: number | undefined | null) {
+      if (a_au === undefined || a_au === null) return '-';
+      if (a_au < 0.05) { 
+          return formatNumber(a_au * AU_KM, 0) + ' km';
+      }
+      return a_au.toFixed(3) + ' AU';
+  }
+
+  function isPlanetaryBarycenterBody(body: CelestialBody | Barycenter) {
       const anyBody = body as any;
       const isBary = anyBody.kind === 'barycenter' || body.roleHint === 'barycenter' || /barycenter/i.test(body.name || '');
       if (!isBary) return false;
@@ -317,7 +332,16 @@
       return members.some((m: any) => !isStarNode(m));
   }
 
-  function getBarycenterPrimaryMemberName(body: CelestialBody) {
+  function getBarycenterMembersSorted(body: CelestialBody | Barycenter) {
+      if (body.kind !== 'barycenter') return [body as CelestialBody];
+      if (!system) return [];
+      return (body as Barycenter).memberIds
+          .map(id => system?.nodes.find(n => n.id === id))
+          .filter((n): n is CelestialBody => !!n && n.kind === 'body')
+          .sort((a, b) => (b.massKg || 0) - (a.massKg || 0));
+  }
+
+  function getBarycenterPrimaryMemberName(body: CelestialBody | Barycenter) {
       const anyBody = body as any;
       if (!system || !Array.isArray(anyBody.memberIds)) return '';
       const members = anyBody.memberIds
@@ -327,37 +351,34 @@
       return members[0]?.name || '';
   }
 
-  function getDiagramBodyLabel(body: CelestialBody) {
+  function getDiagramBodyLabel(body: CelestialBody | Barycenter) {
       if (!isPlanetaryBarycenterBody(body)) return body.name;
-      const primary = getBarycenterPrimaryMemberName(body);
-      if (primary) return `${primary} (Bary center)`;
-      const base = (body.name || '').replace(/\s*Barycenter\s*/i, '').trim();
-      return `${base || body.name} (Bary center)`;
+      return getBarycenterPrimaryMemberName(body) || body.name;
   }
 
   function shouldSuppressDiagramBodyLabel(
-      entry: { body: CelestialBody; aAU: number },
-      entries: Array<{ body: CelestialBody; aAU: number }>
+      entry: { body: CelestialBody | Barycenter; aAU: number },
+      entries: Array<{ body: CelestialBody | Barycenter; aAU: number }>
   ) {
       if (isPlanetaryBarycenterBody(entry.body)) return false;
       const clashBary = entries.find((other) =>
           isPlanetaryBarycenterBody(other.body) &&
           Math.abs((other.aAU || 0) - (entry.aAU || 0)) < 1e-9
       );
-      if (!clashBary) return false;
-      const primary = getBarycenterPrimaryMemberName(clashBary.body);
-      if (!primary) return false;
-      return primary.toLowerCase() === (entry.body.name || '').toLowerCase();
+      return !!clashBary;
   }
 
-  function shouldShowOrbitAuLabel(body: CelestialBody) {
-      if (body.roleHint === 'planet' || body.roleHint === 'dwarf-planet') return true;
-      if (body.roleHint === 'barycenter') return true;
-      if (/barycenter/i.test(body.name || '')) return true;
+  function shouldShowOrbitAuLabel(body: CelestialBody | Barycenter) {
+      if (body.kind === 'barycenter') return true;
+      const b = body as CelestialBody;
+      if (b.roleHint === 'planet' || b.roleHint === 'dwarf-planet') return true;
+      if (b.roleHint === 'barycenter') return true;
+      if (/barycenter/i.test(b.name || '')) return true;
       return false;
   }
 
-  function getOrbitalMechanics(body: CelestialBody) {
+  function getOrbitalMechanics(body: CelestialBody | Barycenter) {
+      if (body.kind === 'barycenter') return '-';
       const anyBody = body as any;
       if (anyBody.loDeltaVBudget_ms) {
           const ascent = (anyBody.loDeltaVBudget_ms / 1000).toFixed(1) + ' km/s';
@@ -369,7 +390,7 @@
       return '-';
   }
 
-  function getTagsString(body: CelestialBody) {
+  function getTagsString(body: CelestialBody | Barycenter) {
       if (!body.tags || body.tags.length === 0) return '-';
       return body.tags.map(t => t.key.split('/').pop()?.replace(/_/g, ' ')).join(', ');
   }
@@ -385,15 +406,15 @@
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       
       return system.nodes.filter(n => {
-          if (n.kind !== 'body') return false;
+          if (n.kind !== 'body' && n.kind !== 'barycenter') return false;
           
           // Case 1: It is a Star
-          if (n.roleHint === 'star') return true;
+          if (isStarNode(n)) return true;
 
           // Case 2: It orbits a Barycenter (and is not a star, covered above)
           if (n.parentId) {
               const parent = nodesById.get(n.parentId);
-              if (parent && parent.kind === 'barycenter') return true;
+              if (parent && parent.kind === 'barycenter' && isStarNode(parent)) return true;
           }
 
           // Case 3: It has no parent (Rogue Planet)
@@ -402,8 +423,8 @@
           return false;
       }).sort((a, b) => {
           // Sort: Stars first, then by semi-major axis
-          const isStarA = a.roleHint === 'star';
-          const isStarB = b.roleHint === 'star';
+          const isStarA = isStarNode(a);
+          const isStarB = isStarNode(b);
           if (isStarA && !isStarB) return -1;
           if (!isStarA && isStarB) return 1;
           
@@ -432,10 +453,10 @@
               const starMembers = (bary.memberIds || [])
                   .map((id) => byId.get(id))
                   .filter((n): n is CelestialBody => !!n && n.kind === 'body' && isStarNode(n));
-              const orbiters = getDirectBodiesOnly(bary.id).filter((b) => !isStarNode(b));
+              const orbiters = getCompactOrbitBodies(bary.id).filter((b) => !isStarNode(b));
               return { bary, starMembers, orbiters };
           })
-          .filter((set) => set.starMembers.length > 0 || set.orbiters.length > 0);
+          .filter((set) => set.starMembers.length > 0);
   }
 
   function getBarycenters() {
@@ -443,20 +464,7 @@
       return system.nodes.filter((n): n is Barycenter => n.kind === 'barycenter');
   }
 
-  function getOverviewMainHostId() {
-      const stars = getRootStars();
-      if (stars.length === 0) {
-          const firstPrimary = getPrimaryBodies().find((b) => b.kind === 'body');
-          return firstPrimary?.id || null;
-      }
-      const topStar = stars[0];
-      if (!topStar.parentId) return topStar.id;
-      const parent = system?.nodes.find((n) => n.id === topStar.parentId);
-      if (parent?.kind === 'barycenter') return parent.id;
-      return topStar.id;
-  }
-
-  function getOverviewAnchor(): { hostId: string | null; label: string; bodies: CelestialBody[] } {
+  function getOverviewAnchor(): { hostId: string | null; label: string; bodies: Array<CelestialBody | Barycenter> } {
       if (!system) return { hostId: null, label: 'Host', bodies: [] };
 
       const stars = getRootStars();
@@ -467,8 +475,6 @@
       let label = 'Host';
 
       if (primaryStar) {
-          // In multi-star systems, the primary row must stay star-scoped.
-          // Circumbinary objects are rendered in their own dedicated section.
           hostId = primaryStar.id;
           label = primaryStar.name || 'Host';
       } else if (fallbackPrimary) {
@@ -477,7 +483,7 @@
       }
 
       const bodies = hostId
-          ? getDirectBodiesOnly(hostId).filter((n) => !isStarNode(n))
+          ? getCompactOrbitBodies(hostId)
           : [];
 
       return { hostId, label, bodies };
@@ -486,7 +492,7 @@
   function getCompactOrbitBodies(hostId: string | null) {
       if (!system || !hostId) return [];
       return system.nodes
-          .filter((n): n is CelestialBody =>
+          .filter((n): n is CelestialBody | Barycenter =>
               n.kind !== 'construct' &&
               (n.parentId === hostId || n.orbit?.hostId === hostId) &&
               !isStarNode(n)
@@ -513,22 +519,6 @@
       return ids;
   }
 
-  function getOverviewBodies(hostId: string | null) {
-      const primary = getCompactOrbitBodies(hostId);
-      if (primary.length > 0 || !system) return primary;
-
-      // Fallback for legacy/mixed linkage snapshots: gather all non-star stellar orbiters.
-      const starHosts = getStarHostIds();
-      return system.nodes
-          .filter((n): n is CelestialBody =>
-              n.kind !== 'construct' &&
-              !isStarNode(n) &&
-              !!n.orbit &&
-              starHosts.has(n.parentId || n.orbit?.hostId || '')
-          )
-          .sort((a, b) => (a.orbit?.elements.a_AU || 0) - (b.orbit?.elements.a_AU || 0));
-  }
-
   function getCompactBodyGlyph(body: CelestialBody) {
       if (body.roleHint === 'ring') return '◌';
       if (body.roleHint === 'belt') return '•';
@@ -536,140 +526,85 @@
       return '●';
   }
 
-  function isPlanetLike(body: CelestialBody) {
+  function isPlanetLike(body: CelestialBody | Barycenter) {
       return body.roleHint === 'planet' || body.roleHint === 'dwarf-planet' || body.roleHint === 'moon';
   }
 
-  function hasRingSystem(body: CelestialBody) {
+  function hasRingSystem(body: CelestialBody | Barycenter) {
       const children = getBodiesOnly(body.id);
       return children.some((c) => c.roleHint === 'ring');
   }
 
   function getMoonNames(body: CelestialBody, max = 6) {
-      const moons = getBodiesOnly(body.id).filter((c) => c.roleHint === 'moon').map((m) => m.name);
+      const moons = getBodiesOnly(body.id).filter((c) => (c as any).roleHint === 'moon').map((m) => m.name);
       if (moons.length === 0) return '';
       if (moons.length <= max) return moons.join(', ');
       return `${moons.slice(0, max).join(', ')} +${moons.length - max} more`;
   }
 
-  function getMoonBodies(body: CelestialBody) {
+  function getMoonBodies(body: CelestialBody | Barycenter) {
       return getBodiesOnly(body.id)
-          .filter((c) => c.roleHint === 'moon')
-          .sort((a, b) => (a.orbit?.elements.a_AU || 0) - (b.orbit?.elements.a_AU || 0));
+          .filter((c) => (c as any).roleHint === 'moon')
+          .sort((a, b) => (a.orbit?.elements.a_AU || 0) - (b.orbit?.elements.a_AU || 0)) as CelestialBody[];
   }
 
-  function getOverviewHostLabel(hostId: string | null) {
-      if (!system || !hostId) return getRootStars()[0]?.name || 'Host';
-      const host = system.nodes.find((n) => n.id === hostId);
-      if (!host) return getRootStars()[0]?.name || 'Host';
-      if (host.kind === 'barycenter') {
-          const starNames = (host.memberIds || [])
-              .map((id) => system?.nodes.find((n) => n.id === id))
-              .filter((n): n is CelestialBody => !!n && n.kind === 'body' && n.roleHint === 'star')
-              .map((s) => s.name);
-          if (starNames.length > 0) return starNames.join(' + ');
-      }
-      return host.name || 'Host';
-  }
-
-  function getCircumbinarySets() {
-      if (!system) return [];
-      const byId = new Map(system.nodes.map((n) => [n.id, n]));
-      return getBarycenters()
-          .map((bary) => {
-              const starMembers = (bary.memberIds || [])
-                  .map((id) => byId.get(id))
-                  .filter((n): n is CelestialBody => !!n && n.kind === 'body' && n.roleHint === 'star');
-              const orbiters = getCompactOrbitBodies(bary.id).filter((b) => b.roleHint !== 'star');
-              const orbitEntries = buildOverviewDiagramEntries(orbiters);
-              const maxMoonDepth = orbitEntries.reduce((max, entry) => Math.max(max, getMoonBodies(entry.body).length), 0);
-              const rowHeight = Math.max(126, 78 + maxMoonDepth * 14);
-              return { bary, starMembers, orbiters, orbitEntries, rowHeight };
-          })
-          .filter((set) => set.starMembers.length >= 2 && set.orbiters.length > 0);
-  }
-
-  function getAdditionalStarSets() {
-      const stars = rootStars.slice(1);
-      return stars
-          .map((star) => {
-              const bodies = getCompactOrbitBodies(star.id).filter((b) => b.roleHint !== 'star');
-              const entries = buildOverviewDiagramEntries(bodies);
-              const moonLines = entries
-                  .map((entry) => {
-                      const moons = getMoonNames(entry.body);
-                      return moons ? `${entry.body.name}: ${moons}` : '';
-                  })
-                  .filter((line) => line.length > 0);
-              const maxMoonDepth = entries.reduce((max, entry) => Math.max(max, getMoonBodies(entry.body).length), 0);
-              const rowHeight = Math.max(126, 84 + moonLines.length * 12 + maxMoonDepth * 14);
-              return {
-                  star,
-                  entries,
-                  moonLines,
-                  maxMoonDepth,
-                  rowHeight
-              };
-          });
-  }
-
-  function getAdditionalStarDiagramHeight(
-      sets: Array<{ rowHeight: number }>
-  ) {
-      return Math.max(124, sets.reduce((sum, set) => sum + set.rowHeight, 26));
-  }
-
-  function getAdditionalStarRowY(
-      sets: Array<{ rowHeight: number }>,
-      row: number
-  ) {
-      let y = 48;
-      for (let i = 0; i < row; i += 1) y += sets[i].rowHeight;
-      return y;
-  }
-
-  function getOverviewRowHeight(entries: Array<{ body: CelestialBody }>) {
-      return Math.max(124, 82 + getOverviewMaxMoonDepth(entries) * 14);
-  }
-
-  function getUnifiedSystemDiagramHeight(
-      entries: Array<{ body: CelestialBody }>,
-      sets: Array<{ rowHeight: number }>
-  ) {
-      return Math.max(150, getOverviewRowHeight(entries) + sets.reduce((sum, set) => sum + set.rowHeight, 0) + 32);
-  }
-
-  function getAdditionalRowYAfterOverview(
-      entries: Array<{ body: CelestialBody }>,
-      sets: Array<{ rowHeight: number }>,
-      row: number
-  ) {
-      let y = 68 + getOverviewRowHeight(entries) + 10;
-      for (let i = 0; i < row; i += 1) y += sets[i].rowHeight;
-      return y;
-  }
-
-  function getOverviewMoonLines(entries: Array<{ body: CelestialBody }>) {
+  function getOverviewMoonLines(entries: Array<{ body: CelestialBody | Barycenter }>) {
       return entries
           .map((entry) => {
-              const moons = getMoonNames(entry.body);
+              if (isPlanetaryBarycenterBody(entry.body)) {
+                  const members = getBarycenterMembersSorted(entry.body);
+                  return members.map(m => {
+                      const moons = getMoonNames(m);
+                      return moons ? `${m.name}: ${moons}` : '';
+                  }).filter(l => l.length > 0).join(' | ');
+              }
+              const moons = getMoonNames(entry.body as CelestialBody);
               return moons ? `${entry.body.name}: ${moons}` : '';
           })
           .filter((line) => line.length > 0);
   }
 
-  function getOverviewMaxMoonDepth(entries: Array<{ body: CelestialBody }>) {
-      return entries.reduce((max, entry) => Math.max(max, getMoonBodies(entry.body).length), 0);
+  interface StackItem {
+      type: 'body' | 'moon' | 'divider';
+      body?: CelestialBody;
+      label?: string;
   }
 
-  function getScaledMarkerRadius(body: CelestialBody) {
+  function getBodyStackItems(body: CelestialBody | Barycenter): StackItem[] {
+      if (body.kind !== 'barycenter' || !isPlanetaryBarycenterBody(body)) {
+          const items: StackItem[] = [{ type: 'body', body: body as CelestialBody }];
+          getMoonBodies(body).forEach(moon => {
+              items.push({ type: 'moon', body: moon });
+          });
+          return items;
+      }
+
+      const members = getBarycenterMembersSorted(body);
+      const items: StackItem[] = [];
+      members.forEach((member, i) => {
+          if (i > 0) {
+              items.push({ type: 'divider', label: '---' });
+          }
+          items.push({ type: 'body', body: member });
+          getMoonBodies(member).forEach(moon => {
+              items.push({ type: 'moon', body: moon });
+          });
+      });
+      return items;
+  }
+
+  function getOverviewMaxMoonDepth(entries: Array<{ body: CelestialBody | Barycenter }>) {
+      return entries.reduce((max, entry) => Math.max(max, getBodyStackItems(entry.body).length - 1), 0);
+  }
+
+  function getScaledMarkerRadius(body: CelestialBody | Barycenter) {
       if (body.roleHint === 'belt' || body.roleHint === 'ring') return 2.2;
-      const km = Math.max(180, body.radiusKm || 1000);
+      const km = Math.max(180, (body as any).radiusKm || 1000);
       const scaled = 3 + (Math.log10(km) - 2.2) * 3.1;
       return Math.max(3, Math.min(12, scaled));
   }
 
-  function getBeltDisplaySize(body: CelestialBody, fallbackRadius: number) {
+  function getBeltDisplaySize(body: CelestialBody | Barycenter, fallbackRadius: number) {
       const anyBody = body as any;
       const innerKm = typeof anyBody.radiusInnerKm === 'number' ? anyBody.radiusInnerKm : null;
       const outerKm = typeof anyBody.radiusOuterKm === 'number' ? anyBody.radiusOuterKm : null;
@@ -677,7 +612,6 @@
           const widthAu = (outerKm - innerKm) / AU_KM;
           const meanAu = (outerKm + innerKm) * 0.5 / AU_KM;
           const relativeWidth = meanAu > 0 ? widthAu / meanAu : 0;
-          // Keep belts diffuse but avoid over-wide blobs in compact row diagrams.
           const rx = Math.max(5, Math.min(28, 5 + widthAu * 9 + relativeWidth * 26));
           const ry = Math.max(3, Math.min(10, 2.1 + widthAu * 2.1));
           return { rx, ry };
@@ -688,7 +622,7 @@
       };
   }
 
-  function buildOverviewDiagramEntries(bodies: CelestialBody[]) {
+  function buildOverviewDiagramEntries(bodies: Array<CelestialBody | Barycenter>) {
       const withDistance = bodies
           .map((body) => ({ body, aAU: body.orbit?.elements.a_AU || 0 }))
           .filter((v) => v.aAU > 0)
@@ -715,6 +649,49 @@
       });
   }
 
+  function getAdditionalStarSets() {
+      const stars = rootStars.slice(1);
+      return stars
+          .map((star) => {
+              const bodies = getCompactOrbitBodies(star.id).filter((b) => !isStarNode(b));
+              const entries = buildOverviewDiagramEntries(bodies);
+              const moonLines = getOverviewMoonLines(entries);
+              const maxMoonDepth = getOverviewMaxMoonDepth(entries);
+              const rowHeight = Math.max(126, 84 + moonLines.length * 12 + maxMoonDepth * 14);
+              return {
+                  star,
+                  entries,
+                  moonLines,
+                  maxMoonDepth,
+                  rowHeight
+              };
+          });
+  }
+
+  function getAdditionalStarDiagramHeight(sets: Array<{ rowHeight: number }>) {
+      return Math.max(124, sets.reduce((sum, set) => sum + set.rowHeight, 26));
+  }
+
+  function getOverviewRowHeight(entries: Array<{ body: CelestialBody | Barycenter }>) {
+      return Math.max(124, 82 + getOverviewMaxMoonDepth(entries) * 14);
+  }
+
+  function getUnifiedSystemDiagramHeight(entries: Array<{ body: CelestialBody | Barycenter }>, sets: Array<{ rowHeight: number }>) {
+      return Math.max(150, getOverviewRowHeight(entries) + sets.reduce((sum, set) => sum + set.rowHeight, 0) + 32);
+  }
+
+  function getAdditionalRowYAfterOverview(entries: Array<{ body: CelestialBody | Barycenter }>, sets: Array<{ rowHeight: number }>, row: number) {
+      let y = 68 + getOverviewRowHeight(entries) + 10;
+      for (let i = 0; i < row; i += 1) y += sets[i].rowHeight;
+      return y;
+  }
+
+  function getAdditionalStarRowY(sets: Array<{ rowHeight: number }>, row: number) {
+      let y = 48;
+      for (let i = 0; i < row; i += 1) y += sets[i].rowHeight;
+      return y;
+  }
+
   function getOrbitMarkerX(entry: { idx: number; orbitRadius: number }) {
       const angleDeg = -75 + ((entry.idx * 31) % 140);
       const angle = angleDeg * Math.PI / 180;
@@ -725,6 +702,23 @@
       const angleDeg = -75 + ((entry.idx * 31) % 140);
       const angle = angleDeg * Math.PI / 180;
       return 200 + Math.sin(angle) * entry.orbitRadius;
+  }
+
+  function getCircumbinarySets() {
+      if (!system) return [];
+      const byId = new Map(system.nodes.map((n) => [n.id, n]));
+      return getBarycenters()
+          .map((bary) => {
+              const starMembers = (bary.memberIds || [])
+                  .map((id) => byId.get(id))
+                  .filter((n): n is CelestialBody => !!n && n.kind === 'body' && isStarNode(n));
+              const orbiters = getCompactOrbitBodies(bary.id).filter((b) => !isStarNode(b));
+              const orbitEntries = buildOverviewDiagramEntries(orbiters);
+              const maxMoonDepth = getOverviewMaxMoonDepth(orbitEntries);
+              const rowHeight = Math.max(126, 78 + maxMoonDepth * 14);
+              return { bary, starMembers, orbiters, orbitEntries, rowHeight };
+          })
+          .filter((set) => set.starMembers.length > 0);
   }
 </script>
 
@@ -765,7 +759,7 @@
             <table>
                 <tbody>
                     <tr>
-                        <th>Star Count</th><td>{system.nodes.filter(n => n.roleHint === 'star').length}</td>
+                        <th>Star Count</th><td>{system.nodes.filter(n => isStarNode(n)).length}</td>
                         <th>Total Objects</th><td>{system.nodes.length}</td>
                         <th>Epoch</th><td>{new Date(system.epochT0).getFullYear()}</td>
                     </tr>
@@ -792,45 +786,50 @@
                 <text x="28" y="80" class="label">{overviewHostLabel}</text>
                 {#each overviewDiagramEntries as entry}
                     {@const markerX = 118 + ((entry.orbitRadius - 28) / (185 - 28)) * 550}
-                    {@const bodyRadius = getScaledMarkerRadius(entry.body)}
-                    {#if entry.body.roleHint === 'belt'}
-                        {@const beltSize = getBeltDisplaySize(entry.body, bodyRadius)}
-                        <ellipse cx={markerX} cy="76" rx={beltSize.rx} ry={beltSize.ry} fill="#9a9a9a" fill-opacity="0.30" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9" />
-                    {:else}
-                        <circle cx={markerX} cy="76" r={bodyRadius} fill="#111" />
-                    {/if}
-                    {#if isPlanetLike(entry.body) && hasRingSystem(entry.body)}
-                        <ellipse cx={markerX} cy="74" rx={bodyRadius * 1.55} ry={Math.max(1.5, bodyRadius * 0.55)} fill="none" stroke="#666" stroke-width="1" />
-                    {/if}
-                    {#if !shouldSuppressDiagramBodyLabel(entry, overviewDiagramEntries)}
-                        <text
-                            x={markerX + bodyRadius + 2}
-                            y={74 - bodyRadius}
-                            class="orbit-label"
-                            transform={`rotate(-45 ${markerX + bodyRadius + 2} ${74 - bodyRadius})`}
-                        >
-                            {getDiagramBodyLabel(entry.body)}
-                        </text>
-                    {/if}
-                    {#if shouldShowOrbitAuLabel(entry.body)}
-                        {@const auLabel = getOrbitDistanceAuLabel(entry.body)}
-                        {#if auLabel}
-                            <text x={markerX} y={74 - bodyRadius - 2} text-anchor="end" class="au-label">{auLabel}</text>
+                    {#each getBodyStackItems(entry.body) as item, stackIdx}
+                        {@const itemY = 76 + stackIdx * 14}
+                        {#if item.type === 'divider'}
+                            <line x1={markerX - 8} y1={itemY - 4} x2={markerX + 8} y2={itemY - 4} stroke="#ccc" stroke-width="0.5" stroke-dasharray="2,1" />
+                        {:else if item.type === 'body' || item.type === 'moon'}
+                            {@const body = item.body!}
+                            {@const bodyRadius = item.type === 'moon' ? Math.max(2.2, getScaledMarkerRadius(body) * 0.55) : getScaledMarkerRadius(body)}
+                            {#if body.roleHint === 'belt'}
+                                {@const beltSize = getBeltDisplaySize(body, bodyRadius)}
+                                <ellipse cx={markerX} cy={itemY} rx={beltSize.rx} ry={beltSize.ry} fill="#9a9a9a" fill-opacity="0.30" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9" />
+                            {:else}
+                                <circle cx={markerX} cy={itemY} r={bodyRadius} fill={item.type === 'moon' ? "#333" : "#111"} />
+                            {/if}
+                            {#if isPlanetLike(body) && hasRingSystem(body)}
+                                <ellipse cx={markerX} cy={itemY - 2} rx={bodyRadius * 1.55} ry={Math.max(1.5, bodyRadius * 0.55)} fill="none" stroke="#666" stroke-width="1" />
+                            {/if}
+                            {#if item.type === 'body' && stackIdx === 0}
+                                {#if !shouldSuppressDiagramBodyLabel(entry, overviewDiagramEntries)}
+                                    <text
+                                        x={markerX + bodyRadius + 2}
+                                        y={itemY - bodyRadius}
+                                        class="orbit-label"
+                                        transform={`rotate(-45 ${markerX + bodyRadius + 2} ${itemY - bodyRadius})`}
+                                    >
+                                        {getDiagramBodyLabel(entry.body)}
+                                    </text>
+                                {/if}
+                                {#if shouldShowOrbitAuLabel(entry.body)}
+                                    {@const auLabel = getOrbitDistanceAuLabel(entry.body as any)}
+                                    {#if auLabel}
+                                        <text x={markerX} y={itemY - bodyRadius - 2} text-anchor="end" class="au-label">{auLabel}</text>
+                                    {/if}
+                                {/if}
+                            {:else}
+                                <text
+                                    x={markerX + bodyRadius + 2}
+                                    y={itemY - bodyRadius}
+                                    class="orbit-label"
+                                    transform={`rotate(-45 ${markerX + bodyRadius + 2} ${itemY - bodyRadius})`}
+                                >
+                                    {body.name}
+                                </text>
+                            {/if}
                         {/if}
-                    {/if}
-                    {@const moons = getMoonBodies(entry.body)}
-                    {#each moons as moon, moonIdx}
-                        {@const moonY = 96 + moonIdx * 14}
-                        {@const moonRadius = Math.max(2.2, getScaledMarkerRadius(moon) * 0.55)}
-                        <circle cx={markerX} cy={moonY} r={moonRadius} fill="#333" />
-                        <text
-                            x={markerX + moonRadius + 2}
-                            y={moonY - moonRadius}
-                            class="orbit-label"
-                            transform={`rotate(-45 ${markerX + moonRadius + 2} ${moonY - moonRadius})`}
-                        >
-                            {moon.name}
-                        </text>
                     {/each}
                 {/each}
                 {#each additionalStarSets as set, row}
@@ -839,45 +838,50 @@
                     <text x="28" y={rowY + 4} class="label">{set.star.name}</text>
                     {#each set.entries as entry}
                         {@const markerX = 118 + ((entry.orbitRadius - 28) / (185 - 28)) * 550}
-                        {@const bodyRadius = getScaledMarkerRadius(entry.body)}
-                        {#if entry.body.roleHint === 'belt'}
-                            {@const beltSize = getBeltDisplaySize(entry.body, bodyRadius)}
-                            <ellipse cx={markerX} cy={rowY} rx={beltSize.rx} ry={beltSize.ry} fill="#9a9a9a" fill-opacity="0.30" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9" />
-                        {:else}
-                            <circle cx={markerX} cy={rowY} r={bodyRadius} fill="#111" />
-                        {/if}
-                        {#if isPlanetLike(entry.body) && hasRingSystem(entry.body)}
-                            <ellipse cx={markerX} cy={rowY - 2} rx={bodyRadius * 1.55} ry={Math.max(1.5, bodyRadius * 0.55)} fill="none" stroke="#666" stroke-width="1" />
-                        {/if}
-                        {#if !shouldSuppressDiagramBodyLabel(entry, set.entries)}
-                            <text
-                                x={markerX + bodyRadius + 2}
-                                y={rowY - bodyRadius - 2}
-                                class="orbit-label"
-                                transform={`rotate(-45 ${markerX + bodyRadius + 2} ${rowY - bodyRadius - 2})`}
-                            >
-                                {getDiagramBodyLabel(entry.body)}
-                            </text>
-                        {/if}
-                        {#if shouldShowOrbitAuLabel(entry.body)}
-                            {@const auLabel = getOrbitDistanceAuLabel(entry.body)}
-                            {#if auLabel}
-                                <text x={markerX} y={rowY - bodyRadius - 4} text-anchor="end" class="au-label">{auLabel}</text>
+                        {#each getBodyStackItems(entry.body) as item, stackIdx}
+                            {@const itemY = rowY + stackIdx * 14}
+                            {#if item.type === 'divider'}
+                                <line x1={markerX - 8} y1={itemY - 4} x2={markerX + 8} y2={itemY - 4} stroke="#ccc" stroke-width="0.5" stroke-dasharray="2,1" />
+                            {:else if item.type === 'body' || item.type === 'moon'}
+                                {@const body = item.body!}
+                                {@const bodyRadius = item.type === 'moon' ? Math.max(2.2, getScaledMarkerRadius(body) * 0.55) : getScaledMarkerRadius(body)}
+                                {#if body.roleHint === 'belt'}
+                                    {@const beltSize = getBeltDisplaySize(body, bodyRadius)}
+                                    <ellipse cx={markerX} cy={itemY} rx={beltSize.rx} ry={beltSize.ry} fill="#9a9a9a" fill-opacity="0.30" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9" />
+                                {:else}
+                                    <circle cx={markerX} cy={itemY} r={bodyRadius} fill={item.type === 'moon' ? "#333" : "#111"} />
+                                {/if}
+                                {#if isPlanetLike(body) && hasRingSystem(body)}
+                                    <ellipse cx={markerX} cy={itemY - 2} rx={bodyRadius * 1.55} ry={Math.max(1.5, bodyRadius * 0.55)} fill="none" stroke="#666" stroke-width="1" />
+                                {/if}
+                                {#if item.type === 'body' && stackIdx === 0}
+                                    {#if !shouldSuppressDiagramBodyLabel(entry, set.entries)}
+                                        <text
+                                            x={markerX + bodyRadius + 2}
+                                            y={itemY - bodyRadius - 2}
+                                            class="orbit-label"
+                                            transform={`rotate(-45 ${markerX + bodyRadius + 2} ${itemY - bodyRadius - 2})`}
+                                        >
+                                            {getDiagramBodyLabel(entry.body)}
+                                        </text>
+                                    {/if}
+                                    {#if shouldShowOrbitAuLabel(entry.body)}
+                                        {@const auLabel = getOrbitDistanceAuLabel(entry.body as any)}
+                                        {#if auLabel}
+                                            <text x={markerX} y={itemY - bodyRadius - 4} text-anchor="end" class="au-label">{auLabel}</text>
+                                        {/if}
+                                    {/if}
+                                {:else}
+                                    <text
+                                        x={markerX + bodyRadius + 2}
+                                        y={itemY - bodyRadius}
+                                        class="orbit-label"
+                                        transform={`rotate(-45 ${markerX + bodyRadius + 2} ${itemY - bodyRadius})`}
+                                    >
+                                        {body.name}
+                                    </text>
+                                {/if}
                             {/if}
-                        {/if}
-                        {@const moons = getMoonBodies(entry.body)}
-                        {#each moons as moon, moonIdx}
-                            {@const moonY = rowY + 20 + moonIdx * 14}
-                            {@const moonRadius = Math.max(2.2, getScaledMarkerRadius(moon) * 0.55)}
-                            <circle cx={markerX} cy={moonY} r={moonRadius} fill="#333" />
-                            <text
-                                x={markerX + moonRadius + 2}
-                                y={moonY - moonRadius}
-                                class="orbit-label"
-                                transform={`rotate(-45 ${markerX + moonRadius + 2} ${moonY - moonRadius})`}
-                            >
-                                {moon.name}
-                            </text>
                         {/each}
                     {/each}
                 {/each}
@@ -903,45 +907,50 @@
                     <text x="74" y="92" text-anchor="middle" class="label">Barycenter</text>
                     {#each set.orbitEntries as entry}
                         {@const markerX = 152 + ((entry.orbitRadius - 28) / (185 - 28)) * 500}
-                        {@const bodyRadius = getScaledMarkerRadius(entry.body)}
-                        {#if entry.body.roleHint === 'belt'}
-                            {@const beltSize = getBeltDisplaySize(entry.body, bodyRadius)}
-                            <ellipse cx={markerX} cy="68" rx={beltSize.rx} ry={beltSize.ry} fill="#9a9a9a" fill-opacity="0.30" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9" />
-                        {:else}
-                            <circle cx={markerX} cy="68" r={bodyRadius} fill="#111" />
-                        {/if}
-                        {#if isPlanetLike(entry.body) && hasRingSystem(entry.body)}
-                            <ellipse cx={markerX} cy="66" rx={bodyRadius * 1.55} ry={Math.max(1.5, bodyRadius * 0.55)} fill="none" stroke="#666" stroke-width="1" />
-                        {/if}
-                        {#if !shouldSuppressDiagramBodyLabel(entry, set.orbitEntries)}
-                            <text
-                                x={markerX + bodyRadius + 2}
-                                y={66 - bodyRadius}
-                                class="orbit-label"
-                                transform={`rotate(-45 ${markerX + bodyRadius + 2} ${66 - bodyRadius})`}
-                            >
-                                {getDiagramBodyLabel(entry.body)}
-                            </text>
-                        {/if}
-                        {#if shouldShowOrbitAuLabel(entry.body)}
-                            {@const auLabel = getOrbitDistanceAuLabel(entry.body)}
-                            {#if auLabel}
-                                <text x={markerX} y={66 - bodyRadius - 2} text-anchor="end" class="au-label">{auLabel}</text>
+                        {#each getBodyStackItems(entry.body) as item, stackIdx}
+                            {@const itemY = 68 + stackIdx * 14}
+                            {#if item.type === 'divider'}
+                                <line x1={markerX - 8} y1={itemY - 4} x2={markerX + 8} y2={itemY - 4} stroke="#ccc" stroke-width="0.5" stroke-dasharray="2,1" />
+                            {:else if item.type === 'body' || item.type === 'moon'}
+                                {@const body = item.body!}
+                                {@const bodyRadius = item.type === 'moon' ? Math.max(2.2, getScaledMarkerRadius(body) * 0.55) : getScaledMarkerRadius(body)}
+                                {#if body.roleHint === 'belt'}
+                                    {@const beltSize = getBeltDisplaySize(body, bodyRadius)}
+                                    <ellipse cx={markerX} cy={itemY} rx={beltSize.rx} ry={beltSize.ry} fill="#9a9a9a" fill-opacity="0.30" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9" />
+                                {:else}
+                                    <circle cx={markerX} cy={itemY} r={bodyRadius} fill={item.type === 'moon' ? "#333" : "#111"} />
+                                {/if}
+                                {#if isPlanetLike(body) && hasRingSystem(body)}
+                                    <ellipse cx={markerX} cy={itemY - 2} rx={bodyRadius * 1.55} ry={Math.max(1.5, bodyRadius * 0.55)} fill="none" stroke="#666" stroke-width="1" />
+                                {/if}
+                                {#if item.type === 'body' && stackIdx === 0}
+                                    {#if !shouldSuppressDiagramBodyLabel(entry, set.orbitEntries)}
+                                        <text
+                                            x={markerX + bodyRadius + 2}
+                                            y={itemY - bodyRadius}
+                                            class="orbit-label"
+                                            transform={`rotate(-45 ${markerX + bodyRadius + 2} ${itemY - bodyRadius})`}
+                                        >
+                                            {getDiagramBodyLabel(entry.body)}
+                                        </text>
+                                    {/if}
+                                    {#if shouldShowOrbitAuLabel(entry.body)}
+                                        {@const auLabel = getOrbitDistanceAuLabel(entry.body as any)}
+                                        {#if auLabel}
+                                            <text x={markerX} y={itemY - bodyRadius - 2} text-anchor="end" class="au-label">{auLabel}</text>
+                                        {/if}
+                                    {/if}
+                                {:else}
+                                    <text
+                                        x={markerX + bodyRadius + 2}
+                                        y={itemY - bodyRadius}
+                                        class="orbit-label"
+                                        transform={`rotate(-45 ${markerX + bodyRadius + 2} ${itemY - bodyRadius})`}
+                                    >
+                                        {body.name}
+                                    </text>
+                                {/if}
                             {/if}
-                        {/if}
-                        {@const moons = getMoonBodies(entry.body)}
-                        {#each moons as moon, moonIdx}
-                            {@const moonY = 88 + moonIdx * 14}
-                            {@const moonRadius = Math.max(2.2, getScaledMarkerRadius(moon) * 0.55)}
-                            <circle cx={markerX} cy={moonY} r={moonRadius} fill="#333" />
-                            <text
-                                x={markerX + moonRadius + 2}
-                                y={moonY - moonRadius}
-                                class="orbit-label"
-                                transform={`rotate(-45 ${markerX + moonRadius + 2} ${moonY - moonRadius})`}
-                            >
-                                {moon.name}
-                            </text>
                         {/each}
                     {/each}
                 </svg>
@@ -974,145 +983,303 @@
                     </table>
                 </div>
 
-                {#each getDirectBodiesOnly(primary.id) as child (child.id)}
-                    {@const phys = getDerivedPhysics(child)}
-                    <div class="child-block" style="margin-left: 15px; border-left: 2px solid #ccc; padding-left: 10px; margin-bottom: 15px;">
-                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; border-bottom: 1px solid #eee;">
-                            <h3 style="margin: 0; font-size: 1.1em;">{child.name.toUpperCase()}</h3>
-                            <span style="font-size: 0.9em; color: #666;">{child.roleHint ? child.roleHint.toUpperCase() : 'BODY'} | {child.class}</span>
-                        </div>
-                        
-                        <div class="data-box" style="margin-top: 5px;">
-                             <!-- DENSE DATA GRID -->
-                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                                 <!-- Left Col: Physical & Orbital -->
-                                 <table>
-                                    <tbody>
-                                        <tr><th>Orbit Dist</th><td>{child.orbit?.elements.a_AU.toFixed(3)} AU</td></tr>
-                                        <tr><th>Orbit Period</th><td>{child.orbital_period_days ? child.orbital_period_days.toFixed(1) + ' d' : '-'}</td></tr>
-                                        <tr><th>Eccentricity</th><td>{child.orbit?.elements.e.toFixed(3)}</td></tr>
-                                        <tr><th>Day Length</th><td>{child.rotation_period_hours ? child.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
-                                        <tr><th>Axial Tilt</th><td>{(child as any).axial_tilt_deg ? (child as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
-                                        <tr><th>Mass</th><td>{phys.massRel}</td></tr>
-                                        <tr><th>Radius</th><td>{formatNumber(child.radiusKm)} km</td></tr>
-                                        <tr><th>Gravity</th><td>{phys.gravity}</td></tr>
-                                        <tr><th>Density</th><td>{phys.density}</td></tr>
-                                        <tr><th>Delta-V</th><td>{getOrbitalMechanics(child)}</td></tr>
-                                    </tbody>
-                                 </table>
+                {#each getDirectBodiesOnly(primary.id) as topChild (topChild.id)}
+                    {#if isPlanetaryBarycenterBody(topChild)}
+                        <div class="barycenter-report-group" style="margin-top: 25px; margin-bottom: 30px; border: 1px solid #ccc; padding: 10px; background: #fcfcfc; break-inside: avoid;">
+                            <div style="background: #eee; padding: 8px; margin: -10px -10px 10px -10px; border-bottom: 1px solid #ccc; display: flex; justify-content: space-between; align-items: center;">
+                                <strong style="font-size: 1.1em;">BARYCENTER: {topChild.name.toUpperCase()}</strong>
+                                <span style="font-size: 0.9em; color: #444;">
+                                    Orbit: <strong>{formatOrbitDist(topChild.orbit?.elements.a_AU)}</strong> from host | 
+                                    Period: <strong>{topChild.orbital_period_days ? topChild.orbital_period_days.toFixed(1) + ' d' : '-'}</strong>
+                                </span>
+                            </div>
+                            
+                            {#each getBarycenterMembersSorted(topChild) as child, memberIdx (child.id)}
+                                {#if memberIdx > 0}
+                                    <div class="binary-divider" style="margin: 15px 0; border-top: 1px dashed #bbb; text-align: center; font-weight: bold; color: #777; font-size: 0.85em; padding-top: 5px;">
+                                        --- BINARY COMPANION ---
+                                    </div>
+                                {/if}
+                                {@const phys = getDerivedPhysics(child)}
+                                <div class="child-block" style="margin-left: 10px; border-left: 3px solid #ddd; padding-left: 12px; margin-bottom: 10px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #eee;">
+                                        <h3 style="margin: 0; font-size: 1.05em;">{child.name.toUpperCase()}</h3>
+                                        <span style="font-size: 0.85em; color: #666;">{child.roleHint ? child.roleHint.toUpperCase() : 'BODY'} | {child.class}</span>
+                                    </div>
+                                    
+                                    <div class="data-box" style="margin-top: 5px;">
+                                         <!-- DENSE DATA GRID -->
+                                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                             <!-- Left Col: Physical & Orbital -->
+                                             <table>
+                                                <tbody>
+                                                    <tr><th>Orbit Dist</th><td>{formatOrbitDist(child.orbit?.elements.a_AU)} <span style="font-size: 0.8em; color: #888;">(rel. to barycenter)</span></td></tr>
+                                                    <tr><th>Orbit Period</th><td>{child.orbital_period_days ? child.orbital_period_days.toFixed(1) + ' d' : '-'}</td></tr>
+                                                    <tr><th>Eccentricity</th><td>{child.orbit?.elements.e.toFixed(3)}</td></tr>
+                                                    <tr><th>Day Length</th><td>{child.rotation_period_hours ? child.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
+                                                    <tr><th>Axial Tilt</th><td>{(child as any).axial_tilt_deg ? (child as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
+                                                    <tr><th>Mass</th><td>{phys.massRel}</td></tr>
+                                                    <tr><th>Radius</th><td>{formatNumber(child.radiusKm)} km</td></tr>
+                                                    <tr><th>Gravity</th><td>{phys.gravity}</td></tr>
+                                                    <tr><th>Density</th><td>{phys.density}</td></tr>
+                                                    <tr><th>Delta-V</th><td>{getOrbitalMechanics(child)}</td></tr>
+                                                </tbody>
+                                             </table>
 
-                                 <!-- Right Col: Environmental -->
-                                 <table>
-                                     <tbody>
-                                         <tr><th>Temperature</th><td>{getTemp(child)} <span style="font-size: 0.8em; color: #666;">{getTempDetails(child)}</span></td></tr>
-                                         <tr><th>Temp Profile</th><td>{getTempProfile(child)}</td></tr>
-                                         <tr><th>Eq. Temp Range</th><td>{getEquilibriumRange(child)}</td></tr>
-                                         <tr><th>Atmosphere</th><td style="font-size: 0.9em;">{getAtmosphereString(child)}</td></tr>
-                                         <tr><th>Hydrography</th><td>{getHydroString(child)}</td></tr>
-                                         <tr><th>Magnetosphere</th><td>{child.magneticField ? child.magneticField.strengthGauss.toFixed(2) + ' G' : 'None'}</td></tr>
-                                         <tr><th>Surface Rad</th><td>{child.surfaceRadiation !== undefined ? child.surfaceRadiation.toFixed(1) + ' mSv/y' : '-'}</td></tr>
-                                         <tr><th>Rad Range</th><td>{getRadiationRange(child)}</td></tr>
-                                         <tr><th>Stability</th><td>{getOrbitStability(child)}</td></tr>
-                                         {#if child.habitabilityScore}
-                                            <tr><th>Habitability</th><td>{child.habitabilityScore.toFixed(1)}%</td></tr>
+                                             <!-- Right Col: Environmental -->
+                                             <table>
+                                                 <tbody>
+                                                     <tr><th>Temperature</th><td>{getTemp(child)} <span style="font-size: 0.8em; color: #666;">{getTempDetails(child)}</span></td></tr>
+                                                     <tr><th>Temp Profile</th><td>{getTempProfile(child)}</td></tr>
+                                                     <tr><th>Eq. Temp Range</th><td>{getEquilibriumRange(child)}</td></tr>
+                                                     <tr><th>Atmosphere</th><td style="font-size: 0.9em;">{getAtmosphereString(child)}</td></tr>
+                                                     <tr><th>Hydrography</th><td>{getHydroString(child)}</td></tr>
+                                                     <tr><th>Magnetosphere</th><td>{child.magneticField ? child.magneticField.strengthGauss.toFixed(2) + ' G' : 'None'}</td></tr>
+                                                     <tr><th>Surface Rad</th><td>{child.surfaceRadiation !== undefined ? child.surfaceRadiation.toFixed(1) + ' mSv/y' : '-'}</td></tr>
+                                                     <tr><th>Rad Range</th><td>{getRadiationRange(child)}</td></tr>
+                                                     <tr><th>Stability</th><td>{getOrbitStability(child)}</td></tr>
+                                                     {#if child.habitabilityScore}
+                                                        <tr><th>Habitability</th><td>{child.habitabilityScore.toFixed(1)}%</td></tr>
+                                                     {/if}
+                                                     {#if child.biosphere}
+                                                        <tr><th>Biosphere</th><td>Present (Cov: {(child.biosphere.coverage*100).toFixed(0)}%)</td></tr>
+                                                     {/if}
+                                                 </tbody>
+                                             </table>
+                                         </div>
+
+                                         {#if child.tags && child.tags.length > 0}
+                                            <div style="margin-top: 5px; font-size: 0.9em; color: #555;">
+                                                <strong>Tags:</strong> {getTagsString(child)}
+                                            </div>
                                          {/if}
-                                         {#if child.biosphere}
-                                            <tr><th>Biosphere</th><td>Present (Cov: {(child.biosphere.coverage*100).toFixed(0)}%)</td></tr>
+
+                                         {#if child.description}
+                                            <div style="margin-top: 10px; border-top: 1px dotted #ccc; padding-top: 5px;">
+                                                <p class="pre-wrap-text" style="margin: 0; font-style: italic;">{child.description}</p>
+                                            </div>
                                          {/if}
-                                     </tbody>
-                                 </table>
-                             </div>
 
-                             {#if child.tags && child.tags.length > 0}
-                                <div style="margin-top: 5px; font-size: 0.9em; color: #555;">
-                                    <strong>Tags:</strong> {getTagsString(child)}
-                                </div>
-                             {/if}
+                                         {#if mode === 'GM' && (child as any).gmNotes}
+                                            <div class="pre-wrap-text" style="margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px; background: #f0f0f0;">
+                                                <strong>GM NOTE:</strong> {(child as any).gmNotes}
+                                            </div>
+                                         {/if}
+                                    </div>
+                                    
+                                    <!-- Recursively show Moons (Bodies Only) -->
+                                    {#each getDirectBodiesOnly(child.id) as grandchild (grandchild.id)}
+                                         {@const gPhys = getDerivedPhysics(grandchild)}
+                                         <div class="grandchild-block" style="margin-left: 15px; border-left: 2px solid #ccc; padding-left: 10px; margin-bottom: 15px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; border-bottom: 1px solid #eee;">
+                                                <h3 style="margin: 0; font-size: 1.0em;">{grandchild.name.toUpperCase()}</h3>
+                                                <span style="font-size: 0.8em; color: #666;">{grandchild.roleHint ? grandchild.roleHint.toUpperCase() : 'BODY'} | {grandchild.class}</span>
+                                            </div>
+                                            
+                                            <div class="data-box" style="margin-top: 5px;">
+                                                 <!-- DENSE DATA GRID FOR MOONS -->
+                                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;">
+                                                     <!-- Left Col: Physical & Orbital -->
+                                                     <table>
+                                                        <tbody>
+                                                            <tr><th>Orbit Dist</th><td>{formatOrbitDist(grandchild.orbit?.elements.a_AU)}</td></tr>
+                                                            <tr><th>Orbit Period</th><td>{grandchild.orbital_period_days ? grandchild.orbital_period_days.toFixed(1) + ' d' : '-'}</td></tr>
+                                                            <tr><th>Eccentricity</th><td>{grandchild.orbit?.elements.e.toFixed(3)}</td></tr>
+                                                            <tr><th>Day Length</th><td>{grandchild.rotation_period_hours ? grandchild.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
+                                                            <tr><th>Axial Tilt</th><td>{(grandchild as any).axial_tilt_deg ? (grandchild as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
+                                                            <tr><th>Mass</th><td>{gPhys.massRel}</td></tr>
+                                                            <tr><th>Radius</th><td>{formatNumber(grandchild.radiusKm)} km</td></tr>
+                                                            <tr><th>Gravity</th><td>{gPhys.gravity}</td></tr>
+                                                            <tr><th>Density</th><td>{gPhys.density}</td></tr>
+                                                            <tr><th>Delta-V</th><td>{getOrbitalMechanics(grandchild)}</td></tr>
+                                                        </tbody>
+                                                     </table>
 
-                             {#if child.description}
-                                <div style="margin-top: 10px; border-top: 1px dotted #ccc; padding-top: 5px;">
-                                    <p class="pre-wrap-text" style="margin: 0; font-style: italic;">{child.description}</p>
-                                </div>
-                             {/if}
+                                                     <!-- Right Col: Environmental -->
+                                                     <table>
+                                                         <tbody>
+                                                             <tr><th>Temperature</th><td>{getTemp(grandchild)} <span style="font-size: 0.8em; color: #666;">{getTempDetails(grandchild)}</span></td></tr>
+                                                             <tr><th>Temp Profile</th><td>{getTempProfile(grandchild)}</td></tr>
+                                                             <tr><th>Eq. Temp Range</th><td>{getEquilibriumRange(grandchild)}</td></tr>
+                                                             <tr><th>Atmosphere</th><td style="font-size: 0.9em;">{getAtmosphereString(grandchild)}</td></tr>
+                                                             <tr><th>Hydrography</th><td>{getHydroString(grandchild)}</td></tr>
+                                                             <tr><th>Magnetosphere</th><td>{grandchild.magneticField ? grandchild.magneticField.strengthGauss.toFixed(2) + ' G' : 'None'}</td></tr>
+                                                             <tr><th>Surface Rad</th><td>{grandchild.surfaceRadiation !== undefined ? grandchild.surfaceRadiation.toFixed(1) + ' mSv/y' : '-'}</td></tr>
+                                                             <tr><th>Rad Range</th><td>{getRadiationRange(grandchild)}</td></tr>
+                                                             <tr><th>Stability</th><td>{getOrbitStability(grandchild)}</td></tr>
+                                                             {#if grandchild.habitabilityScore}
+                                                                <tr><th>Habitability</th><td>{grandchild.habitabilityScore.toFixed(1)}%</td></tr>
+                                                             {/if}
+                                                             {#if grandchild.biosphere}
+                                                                <tr><th>Biosphere</th><td>Present (Cov: {(grandchild.biosphere.coverage*100).toFixed(0)}%)</td></tr>
+                                                             {/if}
+                                                         </tbody>
+                                                     </table>
+                                                 </div>
 
-                             {#if mode === 'GM' && (child as any).gmNotes}
-                                <div class="pre-wrap-text" style="margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px; background: #f0f0f0;">
-                                    <strong>GM NOTE:</strong> {(child as any).gmNotes}
+                                                 {#if grandchild.tags && grandchild.tags.length > 0}
+                                                    <div style="margin-top: 5px; font-size: 0.9em; color: #555;">
+                                                        <strong>Tags:</strong> {getTagsString(grandchild)}
+                                                    </div>
+                                                 {/if}
+
+                                                 {#if grandchild.description}
+                                                    <div style="margin-top: 10px; border-top: 1px dotted #ccc; padding-top: 5px;">
+                                                        <p class="pre-wrap-text" style="margin: 0; font-style: italic;">{grandchild.description}</p>
+                                                    </div>
+                                                 {/if}
+
+                                                 {#if mode === 'GM' && (grandchild as any).gmNotes}
+                                                    <div class="pre-wrap-text" style="margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px; background: #f0f0f0;">
+                                                        <strong>GM NOTE:</strong> {(grandchild as any).gmNotes}
+                                                    </div>
+                                                 {/if}
+                                            </div>
+                                         </div>
+                                    {/each}
                                 </div>
-                             {/if}
+                            {/each}
                         </div>
-                        
-                        <!-- Recursively show Moons (Bodies Only) -->
-                        {#each getDirectBodiesOnly(child.id) as grandchild (grandchild.id)}
-                             {@const gPhys = getDerivedPhysics(grandchild)}
-                             <div class="grandchild-block" style="margin-left: 15px; border-left: 2px solid #ccc; padding-left: 10px; margin-bottom: 15px;">
-                                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; border-bottom: 1px solid #eee;">
-                                    <h3 style="margin: 0; font-size: 1.0em;">{grandchild.name.toUpperCase()}</h3>
-                                    <span style="font-size: 0.8em; color: #666;">{grandchild.roleHint ? grandchild.roleHint.toUpperCase() : 'BODY'} | {grandchild.class}</span>
-                                </div>
-                                
-                                <div class="data-box" style="margin-top: 5px;">
-                                     <!-- DENSE DATA GRID FOR MOONS -->
-                                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;">
-                                         <!-- Left Col: Physical & Orbital -->
-                                         <table>
-                                            <tbody>
-                                                <tr><th>Orbit Dist</th><td>{grandchild.orbit?.elements.a_AU.toFixed(3)} AU</td></tr>
-                                                <tr><th>Orbit Period</th><td>{grandchild.orbital_period_days ? grandchild.orbital_period_days.toFixed(1) + ' d' : '-'}</td></tr>
-                                                <tr><th>Eccentricity</th><td>{grandchild.orbit?.elements.e.toFixed(3)}</td></tr>
-                                                <tr><th>Day Length</th><td>{grandchild.rotation_period_hours ? grandchild.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
-                                                <tr><th>Axial Tilt</th><td>{(grandchild as any).axial_tilt_deg ? (grandchild as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
-                                                <tr><th>Mass</th><td>{gPhys.massRel}</td></tr>
-                                                <tr><th>Radius</th><td>{formatNumber(grandchild.radiusKm)} km</td></tr>
-                                                <tr><th>Gravity</th><td>{gPhys.gravity}</td></tr>
-                                                <tr><th>Density</th><td>{gPhys.density}</td></tr>
-                                                <tr><th>Delta-V</th><td>{getOrbitalMechanics(grandchild)}</td></tr>
-                                            </tbody>
-                                         </table>
+                    {:else}
+                        {@const phys = getDerivedPhysics(topChild as CelestialBody)}
+                        <div class="child-block" style="margin-left: 15px; border-left: 2px solid #ccc; padding-left: 10px; margin-bottom: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; border-bottom: 1px solid #eee;">
+                                <h3 style="margin: 0; font-size: 1.1em;">{(topChild as CelestialBody).name.toUpperCase()}</h3>
+                                <span style="font-size: 0.9em; color: #666;">{(topChild as CelestialBody).roleHint ? (topChild as CelestialBody).roleHint.toUpperCase() : 'BODY'} | {(topChild as CelestialBody).class}</span>
+                            </div>
+                            
+                            <div class="data-box" style="margin-top: 5px;">
+                                 <!-- DENSE DATA GRID -->
+                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                     <!-- Left Col: Physical & Orbital -->
+                                     <table>
+                                        <tbody>
+                                            <tr><th>Orbit Dist</th><td>{formatOrbitDist((topChild as CelestialBody).orbit?.elements.a_AU)}</td></tr>
+                                            <tr><th>Orbit Period</th><td>{(topChild as CelestialBody).orbital_period_days ? (topChild as CelestialBody).orbital_period_days.toFixed(1) + ' d' : '-'}</td></tr>
+                                            <tr><th>Eccentricity</th><td>{(topChild as CelestialBody).orbit?.elements.e.toFixed(3)}</td></tr>
+                                            <tr><th>Day Length</th><td>{(topChild as CelestialBody).rotation_period_hours ? (topChild as CelestialBody).rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
+                                            <tr><th>Axial Tilt</th><td>{(topChild as any).axial_tilt_deg ? (topChild as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
+                                            <tr><th>Mass</th><td>{phys.massRel}</td></tr>
+                                            <tr><th>Radius</th><td>{formatNumber((topChild as CelestialBody).radiusKm)} km</td></tr>
+                                            <tr><th>Gravity</th><td>{phys.gravity}</td></tr>
+                                            <tr><th>Density</th><td>{phys.density}</td></tr>
+                                            <tr><th>Delta-V</th><td>{getOrbitalMechanics(topChild as CelestialBody)}</td></tr>
+                                        </tbody>
+                                     </table>
 
-                                         <!-- Right Col: Environmental -->
-                                         <table>
-                                             <tbody>
-                                                 <tr><th>Temperature</th><td>{getTemp(grandchild)} <span style="font-size: 0.8em; color: #666;">{getTempDetails(grandchild)}</span></td></tr>
-                                                 <tr><th>Temp Profile</th><td>{getTempProfile(grandchild)}</td></tr>
-                                                 <tr><th>Eq. Temp Range</th><td>{getEquilibriumRange(grandchild)}</td></tr>
-                                                 <tr><th>Atmosphere</th><td style="font-size: 0.9em;">{getAtmosphereString(grandchild)}</td></tr>
-                                                 <tr><th>Hydrography</th><td>{getHydroString(grandchild)}</td></tr>
-                                                 <tr><th>Magnetosphere</th><td>{grandchild.magneticField ? grandchild.magneticField.strengthGauss.toFixed(2) + ' G' : 'None'}</td></tr>
-                                                 <tr><th>Surface Rad</th><td>{grandchild.surfaceRadiation !== undefined ? grandchild.surfaceRadiation.toFixed(1) + ' mSv/y' : '-'}</td></tr>
-                                                 <tr><th>Rad Range</th><td>{getRadiationRange(grandchild)}</td></tr>
-                                                 <tr><th>Stability</th><td>{getOrbitStability(grandchild)}</td></tr>
-                                                 {#if grandchild.habitabilityScore}
-                                                    <tr><th>Habitability</th><td>{grandchild.habitabilityScore.toFixed(1)}%</td></tr>
-                                                 {/if}
-                                                 {#if grandchild.biosphere}
-                                                    <tr><th>Biosphere</th><td>Present (Cov: {(grandchild.biosphere.coverage*100).toFixed(0)}%)</td></tr>
-                                                 {/if}
-                                             </tbody>
-                                         </table>
-                                     </div>
+                                     <!-- Right Col: Environmental -->
+                                     <table>
+                                         <tbody>
+                                             <tr><th>Temperature</th><td>{getTemp(topChild as CelestialBody)} <span style="font-size: 0.8em; color: #666;">{getTempDetails(topChild as CelestialBody)}</span></td></tr>
+                                             <tr><th>Temp Profile</th><td>{getTempProfile(topChild as CelestialBody)}</td></tr>
+                                             <tr><th>Eq. Temp Range</th><td>{getEquilibriumRange(topChild as CelestialBody)}</td></tr>
+                                             <tr><th>Atmosphere</th><td style="font-size: 0.9em;">{getAtmosphereString(topChild as CelestialBody)}</td></tr>
+                                             <tr><th>Hydrography</th><td>{getHydroString(topChild as CelestialBody)}</td></tr>
+                                             <tr><th>Magnetosphere</th><td>{(topChild as CelestialBody).magneticField ? (topChild as CelestialBody).magneticField.strengthGauss.toFixed(2) + ' G' : 'None'}</td></tr>
+                                             <tr><th>Surface Rad</th><td>{(topChild as CelestialBody).surfaceRadiation !== undefined ? (topChild as CelestialBody).surfaceRadiation.toFixed(1) + ' mSv/y' : '-'}</td></tr>
+                                             <tr><th>Rad Range</th><td>{getRadiationRange(topChild as CelestialBody)}</td></tr>
+                                             <tr><th>Stability</th><td>{getOrbitStability(topChild as CelestialBody)}</td></tr>
+                                             {#if (topChild as CelestialBody).habitabilityScore}
+                                                <tr><th>Habitability</th><td>{(topChild as CelestialBody).habitabilityScore.toFixed(1)}%</td></tr>
+                                             {/if}
+                                             {#if (topChild as CelestialBody).biosphere}
+                                                <tr><th>Biosphere</th><td>Present (Cov: {((topChild as CelestialBody).biosphere.coverage*100).toFixed(0)}%)</td></tr>
+                                             {/if}
+                                         </tbody>
+                                     </table>
+                                 </div>
 
-                                     {#if grandchild.tags && grandchild.tags.length > 0}
-                                        <div style="margin-top: 5px; font-size: 0.9em; color: #555;">
-                                            <strong>Tags:</strong> {getTagsString(grandchild)}
-                                        </div>
-                                     {/if}
+                                 {#if (topChild as CelestialBody).tags && (topChild as CelestialBody).tags.length > 0}
+                                    <div style="margin-top: 5px; font-size: 0.9em; color: #555;">
+                                        <strong>Tags:</strong> {getTagsString(topChild as CelestialBody)}
+                                    </div>
+                                 {/if}
 
-                                     {#if grandchild.description}
-                                        <div style="margin-top: 10px; border-top: 1px dotted #ccc; padding-top: 5px;">
-                                            <p class="pre-wrap-text" style="margin: 0; font-style: italic;">{grandchild.description}</p>
-                                        </div>
-                                     {/if}
+                                 {#if (topChild as CelestialBody).description}
+                                    <div style="margin-top: 10px; border-top: 1px dotted #ccc; padding-top: 5px;">
+                                        <p class="pre-wrap-text" style="margin: 0; font-style: italic;">{(topChild as CelestialBody).description}</p>
+                                    </div>
+                                 {/if}
 
-                                     {#if mode === 'GM' && (grandchild as any).gmNotes}
-                                        <div class="pre-wrap-text" style="margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px; background: #f0f0f0;">
-                                            <strong>GM NOTE:</strong> {(grandchild as any).gmNotes}
-                                        </div>
-                                     {/if}
-                                </div>
-                             </div>
-                        {/each}
-                    </div>
+                                 {#if mode === 'GM' && (topChild as any).gmNotes}
+                                    <div class="pre-wrap-text" style="margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px; background: #f0f0f0;">
+                                        <strong>GM NOTE:</strong> {(topChild as any).gmNotes}
+                                    </div>
+                                 {/if}
+                            </div>
+                            
+                            <!-- Recursively show Moons (Bodies Only) -->
+                            {#each getDirectBodiesOnly((topChild as CelestialBody).id) as grandchild (grandchild.id)}
+                                 {@const gPhys = getDerivedPhysics(grandchild)}
+                                 <div class="grandchild-block" style="margin-left: 15px; border-left: 2px solid #ccc; padding-left: 10px; margin-bottom: 15px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; border-bottom: 1px solid #eee;">
+                                        <h3 style="margin: 0; font-size: 1.0em;">{grandchild.name.toUpperCase()}</h3>
+                                        <span style="font-size: 0.8em; color: #666;">{grandchild.roleHint ? grandchild.roleHint.toUpperCase() : 'BODY'} | {grandchild.class}</span>
+                                    </div>
+                                    
+                                    <div class="data-box" style="margin-top: 5px;">
+                                         <!-- DENSE DATA GRID FOR MOONS -->
+                                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;">
+                                             <!-- Left Col: Physical & Orbital -->
+                                             <table>
+                                                <tbody>
+                                                    <tr><th>Orbit Dist</th><td>{formatOrbitDist(grandchild.orbit?.elements.a_AU)}</td></tr>
+                                                    <tr><th>Orbit Period</th><td>{grandchild.orbital_period_days ? grandchild.orbital_period_days.toFixed(1) + ' d' : '-'}</td></tr>
+                                                    <tr><th>Eccentricity</th><td>{grandchild.orbit?.elements.e.toFixed(3)}</td></tr>
+                                                    <tr><th>Day Length</th><td>{grandchild.rotation_period_hours ? grandchild.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
+                                                    <tr><th>Axial Tilt</th><td>{(grandchild as any).axial_tilt_deg ? (grandchild as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
+                                                    <tr><th>Mass</th><td>{gPhys.massRel}</td></tr>
+                                                    <tr><th>Radius</th><td>{formatNumber(grandchild.radiusKm)} km</td></tr>
+                                                    <tr><th>Gravity</th><td>{gPhys.gravity}</td></tr>
+                                                    <tr><th>Density</th><td>{gPhys.density}</td></tr>
+                                                    <tr><th>Delta-V</th><td>{getOrbitalMechanics(grandchild)}</td></tr>
+                                                </tbody>
+                                             </table>
+
+                                             <!-- Right Col: Environmental -->
+                                             <table>
+                                                 <tbody>
+                                                     <tr><th>Temperature</th><td>{getTemp(grandchild)} <span style="font-size: 0.8em; color: #666;">{getTempDetails(grandchild)}</span></td></tr>
+                                                     <tr><th>Temp Profile</th><td>{getTempProfile(grandchild)}</td></tr>
+                                                     <tr><th>Eq. Temp Range</th><td>{getEquilibriumRange(grandchild)}</td></tr>
+                                                     <tr><th>Atmosphere</th><td style="font-size: 0.9em;">{getAtmosphereString(grandchild)}</td></tr>
+                                                     <tr><th>Hydrography</th><td>{getHydroString(grandchild)}</td></tr>
+                                                     <tr><th>Magnetosphere</th><td>{grandchild.magneticField ? grandchild.magneticField.strengthGauss.toFixed(2) + ' G' : 'None'}</td></tr>
+                                                     <tr><th>Surface Rad</th><td>{grandchild.surfaceRadiation !== undefined ? grandchild.surfaceRadiation.toFixed(1) + ' mSv/y' : '-'}</td></tr>
+                                                     <tr><th>Rad Range</th><td>{getRadiationRange(grandchild)}</td></tr>
+                                                     <tr><th>Stability</th><td>{getOrbitStability(grandchild)}</td></tr>
+                                                     {#if grandchild.habitabilityScore}
+                                                        <tr><th>Habitability</th><td>{grandchild.habitabilityScore.toFixed(1)}%</td></tr>
+                                                     {/if}
+                                                     {#if grandchild.biosphere}
+                                                        <tr><th>Biosphere</th><td>Present (Cov: {(grandchild.biosphere.coverage*100).toFixed(0)}%)</td></tr>
+                                                     {/if}
+                                                 </tbody>
+                                             </table>
+                                         </div>
+
+                                         {#if grandchild.tags && grandchild.tags.length > 0}
+                                            <div style="margin-top: 5px; font-size: 0.9em; color: #555;">
+                                                <strong>Tags:</strong> {getTagsString(grandchild)}
+                                            </div>
+                                         {/if}
+
+                                         {#if grandchild.description}
+                                            <div style="margin-top: 10px; border-top: 1px dotted #ccc; padding-top: 5px;">
+                                                <p class="pre-wrap-text" style="margin: 0; font-style: italic;">{grandchild.description}</p>
+                                            </div>
+                                         {/if}
+
+                                         {#if mode === 'GM' && (grandchild as any).gmNotes}
+                                            <div class="pre-wrap-text" style="margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px; background: #f0f0f0;">
+                                                <strong>GM NOTE:</strong> {(grandchild as any).gmNotes}
+                                            </div>
+                                         {/if}
+                                    </div>
+                                 </div>
+                            {/each}
+                        </div>
+                    {/if}
                 {/each}
             </div>
         {/each}
@@ -1132,38 +1299,243 @@
                         </tbody>
                     </table>
                 </div>
-                {#each set.orbiters as body (body.id)}
-                    <div class="child-block" style="margin-left: 15px; border-left: 2px solid #ccc; padding-left: 10px; margin-bottom: 15px;">
-                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; border-bottom: 1px solid #eee;">
-                            <h3 style="margin: 0; font-size: 1.1em;">{body.name.toUpperCase()}</h3>
-                            <span style="font-size: 0.9em; color: #666;">{body.roleHint ? body.roleHint.toUpperCase() : 'BODY'} | {body.class}</span>
-                        </div>
-                        <div class="data-box" style="margin-top: 5px;">
-                            <table>
-                                <tbody>
-                                    <tr><th>Orbit Dist</th><td>{body.orbit?.elements.a_AU?.toFixed(3) || '-'} AU</td></tr>
-                                    <tr><th>Temperature</th><td>{getTemp(body)}</td></tr>
-                                    <tr><th>Atmosphere</th><td>{getAtmosphereString(body)}</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        {#each getDirectBodiesOnly(body.id) as moon (moon.id)}
-                            <div class="grandchild-block" style="margin-left: 15px; border-left: 2px solid #ccc; padding-left: 10px; margin-bottom: 15px;">
-                                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; border-bottom: 1px solid #eee;">
-                                    <h3 style="margin: 0; font-size: 1.0em;">{moon.name.toUpperCase()}</h3>
-                                    <span style="font-size: 0.8em; color: #666;">{moon.roleHint ? moon.roleHint.toUpperCase() : 'BODY'} | {moon.class}</span>
-                                </div>
-                                <div class="data-box" style="margin-top: 5px;">
-                                    <table>
-                                        <tbody>
-                                            <tr><th>Orbit Dist</th><td>{moon.orbit?.elements.a_AU?.toFixed(3) || '-'} AU</td></tr>
-                                            <tr><th>Temperature</th><td>{getTemp(moon)}</td></tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                {#each set.orbiters as topBody (topBody.id)}
+                    {#if isPlanetaryBarycenterBody(topBody)}
+                        <div class="barycenter-report-group" style="margin-top: 25px; margin-bottom: 30px; border: 1px solid #ccc; padding: 10px; background: #fcfcfc; break-inside: avoid;">
+                            <div style="background: #eee; padding: 8px; margin: -10px -10px 10px -10px; border-bottom: 1px solid #ccc; display: flex; justify-content: space-between; align-items: center;">
+                                <strong style="font-size: 1.1em;">BARYCENTER: {topBody.name.toUpperCase()}</strong>
+                                <span style="font-size: 0.9em; color: #444;">
+                                    Orbit: <strong>{formatOrbitDist(topBody.orbit?.elements.a_AU)}</strong> from host | 
+                                    Period: <strong>{topBody.orbital_period_days ? topBody.orbital_period_days.toFixed(1) + ' d' : '-'}</strong>
+                                </span>
                             </div>
-                        {/each}
-                    </div>
+                            
+                            {#each getBarycenterMembersSorted(topBody) as child, memberIdx (child.id)}
+                                {#if memberIdx > 0}
+                                    <div class="binary-divider" style="margin: 15px 0; border-top: 1px dashed #bbb; text-align: center; font-weight: bold; color: #777; font-size: 0.85em; padding-top: 5px;">
+                                        --- BINARY COMPANION ---
+                                    </div>
+                                {/if}
+                                {@const phys = getDerivedPhysics(child)}
+                                <div class="child-block" style="margin-left: 10px; border-left: 3px solid #ddd; padding-left: 12px; margin-bottom: 10px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #eee;">
+                                        <h3 style="margin: 0; font-size: 1.05em;">{child.name.toUpperCase()}</h3>
+                                        <span style="font-size: 0.85em; color: #666;">{child.roleHint ? child.roleHint.toUpperCase() : 'BODY'} | {child.class}</span>
+                                    </div>
+                                    <div class="data-box" style="margin-top: 5px;">
+                                        <!-- DENSE DATA GRID FOR BARYCENTER COMPANIONS -->
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                            <!-- Left Col: Physical & Orbital -->
+                                            <table>
+                                                <tbody>
+                                                    <tr><th>Orbit Dist</th><td>{formatOrbitDist(child.orbit?.elements.a_AU)} <span style="font-size: 0.8em; color: #888;">(rel. to barycenter)</span></td></tr>
+                                                    <tr><th>Orbit Period</th><td>{child.orbital_period_days ? child.orbital_period_days.toFixed(1) + ' d' : '-'}</td></tr>
+                                                    <tr><th>Eccentricity</th><td>{child.orbit?.elements.e.toFixed(3)}</td></tr>
+                                                    <tr><th>Day Length</th><td>{child.rotation_period_hours ? child.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
+                                                    <tr><th>Mass</th><td>{phys.massRel}</td></tr>
+                                                    <tr><th>Radius</th><td>{formatNumber(child.radiusKm)} km</td></tr>
+                                                    <tr><th>Gravity</th><td>{phys.gravity}</td></tr>
+                                                </tbody>
+                                            </table>
+                                            <!-- Right Col: Environmental -->
+                                            <table>
+                                                <tbody>
+                                                    <tr><th>Temperature</th><td>{getTemp(child)}</td></tr>
+                                                    <tr><th>Atmosphere</th><td style="font-size: 0.9em;">{getAtmosphereString(child)}</td></tr>
+                                                    <tr><th>Hydrography</th><td>{getHydroString(child)}</td></tr>
+                                                    <tr><th>Stability</th><td>{getOrbitStability(child)}</td></tr>
+                                                    {#if child.habitabilityScore}
+                                                        <tr><th>Habitability</th><td>{child.habitabilityScore.toFixed(1)}%</td></tr>
+                                                    {/if}
+                                                    {#if child.tags && child.tags.length > 0}
+                                                        <tr><th>Tags</th><td style="font-size: 0.85em;">{getTagsString(child)}</td></tr>
+                                                    {/if}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    {#each getDirectBodiesOnly(child.id) as grandchild (grandchild.id)}
+                                         {@const gPhys = getDerivedPhysics(grandchild)}
+                                         <div class="grandchild-block" style="margin-left: 15px; border-left: 2px solid #ccc; padding-left: 10px; margin-top: 5px; font-size: 0.9em;">
+                                            <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #eee;">
+                                                <h3 style="margin: 0; font-size: 1.0em;">{grandchild.name.toUpperCase()}</h3>
+                                                <span style="font-size: 0.8em; color: #666;">{grandchild.roleHint ? grandchild.roleHint.toUpperCase() : 'BODY'} | {grandchild.class}</span>
+                                            </div>
+                                            
+                                            <div class="data-box" style="margin-top: 5px;">
+                                                 <!-- DENSE DATA GRID FOR MOONS -->
+                                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;">
+                                                     <!-- Left Col: Physical & Orbital -->
+                                                     <table>
+                                                        <tbody>
+                                                            <tr><th>Orbit Dist</th><td>{formatOrbitDist(grandchild.orbit?.elements.a_AU)}</td></tr>
+                                                            <tr><th>Orbit Period</th><td>{grandchild.orbital_period_days ? grandchild.orbital_period_days.toFixed(1) + ' d' : '-'}</td></tr>
+                                                            <tr><th>Eccentricity</th><td>{grandchild.orbit?.elements.e.toFixed(3)}</td></tr>
+                                                            <tr><th>Day Length</th><td>{grandchild.rotation_period_hours ? grandchild.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
+                                                            <tr><th>Mass</th><td>{gPhys.massRel}</td></tr>
+                                                            <tr><th>Radius</th><td>{formatNumber(grandchild.radiusKm)} km</td></tr>
+                                                            <tr><th>Gravity</th><td>{gPhys.gravity}</td></tr>
+                                                        </tbody>
+                                                     </table>
+
+                                                     <!-- Right Col: Environmental -->
+                                                     <table>
+                                                         <tbody>
+                                                             <tr><th>Temperature</th><td>{getTemp(grandchild)}</td></tr>
+                                                             <tr><th>Atmosphere</th><td style="font-size: 0.9em;">{getAtmosphereString(grandchild)}</td></tr>
+                                                             <tr><th>Stability</th><td>{getOrbitStability(grandchild)}</td></tr>
+                                                             {#if grandchild.habitabilityScore}
+                                                                <tr><th>Habitability</th><td>{grandchild.habitabilityScore.toFixed(1)}%</td></tr>
+                                                             {/if}
+                                                         </tbody>
+                                                     </table>
+                                                 </div>
+                                            </div>
+                                         </div>
+                                    {/each}
+                                </div>
+                            {/each}
+                        </div>
+                    {:else}
+                        {@const phys = getDerivedPhysics(topBody as CelestialBody)}
+                        <div class="child-block" style="margin-left: 15px; border-left: 2px solid #ccc; padding-left: 10px; margin-bottom: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; border-bottom: 1px solid #eee;">
+                                <h3 style="margin: 0; font-size: 1.1em;">{topBody.name.toUpperCase()}</h3>
+                                <span style="font-size: 0.9em; color: #666;">{topBody.roleHint ? topBody.roleHint.toUpperCase() : 'BODY'} | {topBody.class}</span>
+                            </div>
+                            
+                            <div class="data-box" style="margin-top: 5px;">
+                                 <!-- DENSE DATA GRID -->
+                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                     <!-- Left Col: Physical & Orbital -->
+                                     <table>
+                                        <tbody>
+                                            <tr><th>Orbit Dist</th><td>{formatOrbitDist((topBody as CelestialBody).orbit?.elements.a_AU)}</td></tr>
+                                            <tr><th>Orbit Period</th><td>{(topBody as CelestialBody).orbital_period_days ? (topBody as CelestialBody).orbital_period_days.toFixed(1) + ' d' : '-'}</td></tr>
+                                            <tr><th>Eccentricity</th><td>{(topBody as CelestialBody).orbit?.elements.e.toFixed(3)}</td></tr>
+                                            <tr><th>Day Length</th><td>{(topBody as CelestialBody).rotation_period_hours ? (topBody as CelestialBody).rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
+                                            <tr><th>Axial Tilt</th><td>{(topBody as any).axial_tilt_deg ? (topBody as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
+                                            <tr><th>Mass</th><td>{phys.massRel}</td></tr>
+                                            <tr><th>Radius</th><td>{formatNumber((topBody as CelestialBody).radiusKm)} km</td></tr>
+                                            <tr><th>Gravity</th><td>{phys.gravity}</td></tr>
+                                            <tr><th>Density</th><td>{phys.density}</td></tr>
+                                            <tr><th>Delta-V</th><td>{getOrbitalMechanics(topBody as CelestialBody)}</td></tr>
+                                        </tbody>
+                                     </table>
+
+                                     <!-- Right Col: Environmental -->
+                                     <table>
+                                         <tbody>
+                                             <tr><th>Temperature</th><td>{getTemp(topBody as CelestialBody)} <span style="font-size: 0.8em; color: #666;">{getTempDetails(topBody as CelestialBody)}</span></td></tr>
+                                             <tr><th>Temp Profile</th><td>{getTempProfile(topBody as CelestialBody)}</td></tr>
+                                             <tr><th>Eq. Temp Range</th><td>{getEquilibriumRange(topBody as CelestialBody)}</td></tr>
+                                             <tr><th>Atmosphere</th><td style="font-size: 0.9em;">{getAtmosphereString(topBody as CelestialBody)}</td></tr>
+                                             <tr><th>Hydrography</th><td>{getHydroString(topBody as CelestialBody)}</td></tr>
+                                             <tr><th>Magnetosphere</th><td>{(topBody as CelestialBody).magneticField ? (topBody as CelestialBody).magneticField.strengthGauss.toFixed(2) + ' G' : 'None'}</td></tr>
+                                             <tr><th>Surface Rad</th><td>{(topBody as CelestialBody).surfaceRadiation !== undefined ? (topBody as CelestialBody).surfaceRadiation.toFixed(1) + ' mSv/y' : '-'}</td></tr>
+                                             <tr><th>Rad Range</th><td>{getRadiationRange(topBody as CelestialBody)}</td></tr>
+                                             <tr><th>Stability</th><td>{getOrbitStability(topBody as CelestialBody)}</td></tr>
+                                             {#if (topBody as CelestialBody).habitabilityScore}
+                                                <tr><th>Habitability</th><td>{(topBody as CelestialBody).habitabilityScore.toFixed(1)}%</td></tr>
+                                             {/if}
+                                             {#if (topBody as CelestialBody).biosphere}
+                                                <tr><th>Biosphere</th><td>Present (Cov: {((topBody as CelestialBody).biosphere.coverage*100).toFixed(0)}%)</td></tr>
+                                             {/if}
+                                         </tbody>
+                                     </table>
+                                 </div>
+
+                                 {#if (topBody as CelestialBody).tags && (topBody as CelestialBody).tags.length > 0}
+                                    <div style="margin-top: 5px; font-size: 0.9em; color: #555;">
+                                        <strong>Tags:</strong> {getTagsString(topBody as CelestialBody)}
+                                    </div>
+                                 {/if}
+
+                                 {#if (topBody as CelestialBody).description}
+                                    <div style="margin-top: 10px; border-top: 1px dotted #ccc; padding-top: 5px;">
+                                        <p class="pre-wrap-text" style="margin: 0; font-style: italic;">{(topBody as CelestialBody).description}</p>
+                                    </div>
+                                 {/if}
+
+                                 {#if mode === 'GM' && (topBody as any).gmNotes}
+                                    <div class="pre-wrap-text" style="margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px; background: #f0f0f0;">
+                                        <strong>GM NOTE:</strong> {(topBody as any).gmNotes}
+                                    </div>
+                                 {/if}
+                            </div>
+                            
+                            <!-- Recursively show Moons (Bodies Only) -->
+                            {#each getDirectBodiesOnly((topBody as CelestialBody).id) as moon (moon.id)}
+                                 {@const gPhys = getDerivedPhysics(moon)}
+                                 <div class="grandchild-block" style="margin-left: 15px; border-left: 2px solid #ccc; padding-left: 10px; margin-bottom: 15px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; border-bottom: 1px solid #eee;">
+                                        <h3 style="margin: 0; font-size: 1.0em;">{moon.name.toUpperCase()}</h3>
+                                        <span style="font-size: 0.8em; color: #666;">{moon.roleHint ? moon.roleHint.toUpperCase() : 'BODY'} | {moon.class}</span>
+                                    </div>
+                                    
+                                    <div class="data-box" style="margin-top: 5px;">
+                                         <!-- DENSE DATA GRID FOR MOONS -->
+                                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;">
+                                             <!-- Left Col: Physical & Orbital -->
+                                             <table>
+                                                <tbody>
+                                                    <tr><th>Orbit Dist</th><td>{formatOrbitDist(moon.orbit?.elements.a_AU)}</td></tr>
+                                                    <tr><th>Orbit Period</th><td>{moon.orbital_period_days ? moon.orbital_period_days.toFixed(1) + ' d' : '-'}</td></tr>
+                                                    <tr><th>Eccentricity</th><td>{moon.orbit?.elements.e.toFixed(3)}</td></tr>
+                                                    <tr><th>Day Length</th><td>{moon.rotation_period_hours ? moon.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
+                                                    <tr><th>Axial Tilt</th><td>{(moon as any).axial_tilt_deg ? (moon as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
+                                                    <tr><th>Mass</th><td>{gPhys.massRel}</td></tr>
+                                                    <tr><th>Radius</th><td>{formatNumber(moon.radiusKm)} km</td></tr>
+                                                    <tr><th>Gravity</th><td>{gPhys.gravity}</td></tr>
+                                                    <tr><th>Density</th><td>{gPhys.density}</td></tr>
+                                                    <tr><th>Delta-V</th><td>{getOrbitalMechanics(moon)}</td></tr>
+                                                </tbody>
+                                             </table>
+
+                                             <!-- Right Col: Environmental -->
+                                             <table>
+                                                 <tbody>
+                                                     <tr><th>Temperature</th><td>{getTemp(moon)} <span style="font-size: 0.8em; color: #666;">{getTempDetails(moon)}</span></td></tr>
+                                                     <tr><th>Temp Profile</th><td>{getTempProfile(moon)}</td></tr>
+                                                     <tr><th>Eq. Temp Range</th><td>{getEquilibriumRange(moon)}</td></tr>
+                                                     <tr><th>Atmosphere</th><td style="font-size: 0.9em;">{getAtmosphereString(moon)}</td></tr>
+                                                     <tr><th>Hydrography</th><td>{getHydroString(moon)}</td></tr>
+                                                     <tr><th>Magnetosphere</th><td>{moon.magneticField ? moon.magneticField.strengthGauss.toFixed(2) + ' G' : 'None'}</td></tr>
+                                                     <tr><th>Surface Rad</th><td>{moon.surfaceRadiation !== undefined ? moon.surfaceRadiation.toFixed(1) + ' mSv/y' : '-'}</td></tr>
+                                                     <tr><th>Rad Range</th><td>{getRadiationRange(moon)}</td></tr>
+                                                     <tr><th>Stability</th><td>{getOrbitStability(moon)}</td></tr>
+                                                     {#if moon.habitabilityScore}
+                                                        <tr><th>Habitability</th><td>{moon.habitabilityScore.toFixed(1)}%</td></tr>
+                                                     {/if}
+                                                     {#if moon.biosphere}
+                                                        <tr><th>Biosphere</th><td>Present (Cov: {(moon.biosphere.coverage*100).toFixed(0)}%)</td></tr>
+                                                     {/if}
+                                                 </tbody>
+                                             </table>
+                                         </div>
+
+                                         {#if moon.tags && moon.tags.length > 0}
+                                            <div style="margin-top: 5px; font-size: 0.9em; color: #555;">
+                                                <strong>Tags:</strong> {getTagsString(moon)}
+                                            </div>
+                                         {/if}
+
+                                         {#if moon.description}
+                                            <div style="margin-top: 10px; border-top: 1px dotted #ccc; padding-top: 5px;">
+                                                <p class="pre-wrap-text" style="margin: 0; font-style: italic;">{moon.description}</p>
+                                            </div>
+                                         {/if}
+
+                                         {#if mode === 'GM' && (moon as any).gmNotes}
+                                            <div class="pre-wrap-text" style="margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px; background: #f0f0f0;">
+                                                <strong>GM NOTE:</strong> {(moon as any).gmNotes}
+                                            </div>
+                                         {/if}
+                                    </div>
+                                 </div>
+                            {/each}
+                        </div>
+                    {/if}
                 {/each}
             </div>
         {/each}
