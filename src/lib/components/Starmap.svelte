@@ -90,6 +90,7 @@
   let masterClockSeconds = '';
   let masterCalendarLabel = '';
   let scrubControlValue = 0;
+  let autoResetTimeScrub = true;
   let scrubRafId: number | null = null;
   let scrubLastTimestamp: number | null = null;
   let scrubCarrySeconds = 0;
@@ -97,6 +98,39 @@
   let playbackLastTimestamp: number | null = null;
   let playbackCarrySeconds = 0;
   let isPlaying = false;
+  let timeScale = 0;
+
+  function formatTimeRate(secondsPerSec: number): string {
+    const abs = Math.abs(secondsPerSec);
+    if (abs === 0) return '0s/s';
+    const sign = secondsPerSec >= 0 ? '+' : '-';
+    
+    if (abs < 1) return sign + abs.toFixed(2) + 's/s';
+    if (abs < 60) return sign + Math.round(abs) + 's/s';
+    
+    const minutes = abs / 60;
+    if (minutes < 60) return sign + Math.round(minutes) + 'm/s';
+    
+    const hours = abs / 3600;
+    if (hours < 24) return sign + Math.round(hours) + 'h/s';
+    
+    const days = abs / 86400;
+    if (days < 365.25) return sign + Math.round(days) + 'd/s';
+    
+    const years = abs / 31536000;
+    return sign + Math.round(years) + 'y/s';
+  }
+
+  $: currentRate = scrubControlValue !== 0 
+    ? scrubRateFromControl(scrubControlValue) 
+    : (isPlaying ? 1 : 0);
+  $: formattedScrubRate = formatTimeRate(currentRate);
+
+  $: if (!autoResetTimeScrub) {
+      // When unchecking, stop any active scrub and reset slider to 0
+      scrubControlValue = 0;
+      stopScrubLoop();
+  }
 
   $: mapMode = starmap.mapMode ?? 'diagrammatic';
   $: isScaled = mapMode === 'scaled';
@@ -191,16 +225,18 @@
   }
 
   function handleScrubInput(event: Event) {
-    if (isPlaying) setPlaying(false);
+    if (autoResetTimeScrub && isPlaying) setPlaying(false);
     scrubControlValue = Number((event.target as HTMLInputElement).value);
-    if (Math.abs(scrubControlValue) > 0.0001) {
+    if (autoResetTimeScrub && Math.abs(scrubControlValue) > 0.0001) {
       ensureScrubLoopRunning();
     }
   }
 
   function handleScrubRelease() {
-    scrubControlValue = 0;
-    stopScrubLoop();
+    if (autoResetTimeScrub) {
+        scrubControlValue = 0;
+        stopScrubLoop();
+    }
   }
 
   function tickPlayback(timestamp: number) {
@@ -215,9 +251,13 @@
     }
     const dt = (timestamp - playbackLastTimestamp) / 1000;
     playbackLastTimestamp = timestamp;
-    playbackCarrySeconds += dt; // 1 second per second
-    const whole = Math.floor(playbackCarrySeconds);
-    if (whole > 0) {
+    
+    const rate = autoResetTimeScrub ? 1 : scrubRateFromControl(scrubControlValue);
+    timeScale = rate;
+    playbackCarrySeconds += rate * dt;
+    
+    const whole = playbackCarrySeconds > 0 ? Math.floor(playbackCarrySeconds) : Math.ceil(playbackCarrySeconds);
+    if (whole !== 0) {
       scrubDisplay(BigInt(whole));
       playbackCarrySeconds -= whole;
     }
@@ -237,14 +277,18 @@
     }
     playbackLastTimestamp = null;
     playbackCarrySeconds = 0;
+    timeScale = 0;
   }
 
   function setPlaying(next: boolean, persist = true) {
     if (isPlaying === next) return;
     isPlaying = next;
+    // Parity with SystemView for broadcast/sync
     if (isPlaying) {
-      scrubControlValue = 0;
-      stopScrubLoop();
+      if (autoResetTimeScrub) {
+          scrubControlValue = 0;
+          stopScrubLoop();
+      }
       ensurePlaybackRunning();
     } else {
       stopPlayback();
@@ -954,7 +998,18 @@
     <div class="time-title" title="Relativity mode is off. Time dilation sold separately.">🕒</div>
     <div class="clock-line">
       <div class="scrub-control">
-        <label class="scrub-label" for="starmap-time-scrub">Scrub Display Time</label>
+        <div class="scrub-label-row">
+          <label class="scrub-label" for="starmap-time-scrub">
+            Scrub Display Time 
+            {#if currentRate !== 0}
+              <span class="scrub-rate">({formattedScrubRate})</span>
+            {/if}
+          </label>
+          <label class="checkbox-label" title="When checked, releasing the slider resets speed to zero and stops time. When unchecked, speed is maintained and only advances when Play is clicked.">
+            <input type="checkbox" bind:checked={autoResetTimeScrub} />
+            Auto-reset speed
+          </label>
+        </div>
         <div class="scrub-slider-row">
           <div class="scrub-slider-wrap">
             <input
@@ -984,11 +1039,13 @@
             on:click={togglePlayback}
             title={isPlaying ? 'Pause real-time clock advance' : 'Play real-time clock advance (1s/s)'}
             aria-label={isPlaying ? 'Pause time playback' : 'Start time playback'}
-          >{isPlaying ? '⏸' : '▶'}</button>
+            >{isPlaying ? '⏸' : '▶'}</button>
         </div>
       </div>
-      <span class="display-time" title={"Display seconds from big bang: " + displayClockSeconds}>Display Time: <strong>{displayClockLabel}</strong></span>
-      <span class="actual-time" title={"Actual seconds from big bang: " + masterClockSeconds}><strong>Actual Time:</strong> [{masterCalendarLabel}]</span>
+      <div class="time-readouts">
+        <span class="display-time" title={"Display seconds from big bang: " + displayClockSeconds}>Display Time: <strong>{displayClockLabel}</strong></span>
+        <span class="actual-time" title={"Actual seconds from big bang: " + masterClockSeconds}><strong>Actual Time:</strong> [{masterCalendarLabel}]</span>
+      </div>
       <div class="clock-actions">
         <button class="clock-action btn-blue" on:click={handleResetDisplayToActual} title="Reset display time to current actual time">Reset to Actual Time</button>
         <button class="clock-action btn-red" on:click={handleSetMasterToDisplay} title="Set actual time to current display time">Set Actual Time to Display Time</button>
@@ -1369,17 +1426,47 @@
   .clock-line {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.85rem;
+    gap: 1.2em;
     color: #ccc;
-    flex-wrap: wrap;
+    font-size: 0.85em;
     flex: 1 1 auto;
     width: 100%;
     min-width: 0;
   }
 
+  .time-readouts {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    justify-content: center;
+  }
+
   .actual-time {
     color: #888;
+    font-size: 0.9em;
+  }
+
+  .scrub-rate {
+    color: #00ffff;
+    font-weight: bold;
+    margin-left: 4px;
+  }
+
+  .scrub-options {
+    margin-top: 2px;
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    color: #888;
+    cursor: pointer;
+  }
+  .checkbox-label input {
+    margin: 0;
+    cursor: pointer;
   }
 
   .scrub-label {
@@ -1390,18 +1477,44 @@
   .scrub-slider {
     width: 100%;
   }
+.scrub-control {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 0 0 auto;
+  min-width: 390px;
+}
 
-  .scrub-control {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    flex: 0 0 auto;
-    min-width: 260px;
-  }
+.scrub-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: #888;
+  cursor: pointer;
+}
+.checkbox-label input {
+  margin: 0;
+  cursor: pointer;
+}
+
   .scrub-slider-row {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 6px;
+  }
+  .time-readouts {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    justify-content: center;
   }
   .scrub-slider-wrap {
     display: flex;
