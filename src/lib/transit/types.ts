@@ -17,12 +17,12 @@ export interface BurnPoint {
   time: number; // Unix timestamp
   position: Vector2; // In System Coordinates (AU)
   deltaV_ms: number; // Magnitude of burn in m/s
-  type: 'Departure' | 'Arrival' | 'MidCourse' | 'Brake';
+  type: 'Departure' | 'Arrival' | 'MidCourse' | 'Brake' | 'Correction';
 }
 
 export interface TransitSegment {
   id: ID;
-  type: 'Coast' | 'Accel' | 'Brake';
+  type: 'Coast' | 'Accel' | 'Brake' | 'Correction';
   startTime: number;
   endTime: number;
   startState: StateVector; // Relative to system center (Star) usually

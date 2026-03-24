@@ -1371,6 +1371,25 @@
               ctx.beginPath(); ctx.arc(x - renderPan.x, y - renderPan.y, 4 / zoom, 0, 2 * Math.PI); ctx.fillStyle = ctx.strokeStyle; ctx.fill();
           }
       }
+
+      // Draw Burn Symbols (Corrections, etc)
+      if (plan.burns && !forceGrey) {
+          for (const burn of plan.burns) {
+              if (burn.type === 'Correction') {
+                  const x = burn.position.x - renderPan.x;
+                  const y = burn.position.y - renderPan.y;
+                  const size = 3 / zoom;
+                  
+                  ctx.strokeStyle = '#ffffff';
+                  ctx.lineWidth = 1 / zoom;
+                  ctx.beginPath();
+                  ctx.moveTo(x - size, y - size); ctx.lineTo(x + size, y + size);
+                  ctx.moveTo(x + size, y - size); ctx.lineTo(x - size, y + size);
+                  ctx.stroke();
+              }
+          }
+      }
+
       ctx.setLineDash([]);
   }
   function drawShipMarker(ctx: CanvasRenderingContext2D, pos: {x: number, y: number}) {

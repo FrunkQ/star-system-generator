@@ -25,8 +25,9 @@ export function integrateBallisticPath(
     durationSec: number, 
     mu_au: number, 
     steps: number = 100,
-    targetEndPos?: Vector2 // OPTIONAL: Force path to end here (Drift Correction)
-): Vector2[] {
+    targetEndPos?: Vector2, // OPTIONAL: Force path to end here (Drift Correction)
+    nBodyNodes?: { mu: number, pos: Vector2 }[] // OPTIONAL: Extra gravity sources
+): { points: Vector2[], drift_au: number } {
     const points: Vector2[] = [startPos];
     const dt = durationSec / steps;
     
@@ -37,15 +38,29 @@ export function integrateBallisticPath(
     type State = { r: Vector2, v: Vector2 };
     
     const getDeriv = (s: State): State => {
+        // Primary Body
         const rMag = Math.sqrt(s.r.x*s.r.x + s.r.y*s.r.y);
-        const rMag3 = rMag*rMag*rMag;
-        const ax = -mu_au * s.r.x / rMag3;
-        const ay = -mu_au * s.r.y / rMag3;
+        const rMag3 = Math.max(1e-18, rMag*rMag*rMag);
+        let ax = -mu_au * s.r.x / rMag3;
+        let ay = -mu_au * s.r.y / rMag3;
+
+        // N-Body summation
+        if (nBodyNodes) {
+            for (const node of nBodyNodes) {
+                const dx = s.r.x - node.pos.x;
+                const dy = s.r.y - node.pos.y;
+                const dist2 = dx*dx + dy*dy;
+                const dist = Math.sqrt(dist2);
+                const dist3 = Math.max(1e-18, dist*dist2);
+                ax -= node.mu * dx / dist3;
+                ay -= node.mu * dy / dist3;
+            }
+        }
+
         return { r: s.v, v: { x: ax, y: ay } };
     };
 
     for (let i = 0; i < steps; i++) {
-        // RK4 Integration Step
         const k1 = getDeriv({ r, v });
         
         const s2 = {
@@ -75,25 +90,26 @@ export function integrateBallisticPath(
             y: v.y + (dt/6) * (k1.v.y + 2*k2.v.y + 2*k3.v.y + k4.v.y)
         };
         
-        points.push(r);
+        points.push({ ...r });
     }
+
+    let drift_au = 0;
+    const finalPointBeforeCorrection = { ...points[points.length - 1] };
 
     // Drift Correction (Linear Lerp)
     if (targetEndPos) {
-        const finalPoint = points[points.length - 1];
-        const driftX = targetEndPos.x - finalPoint.x;
-        const driftY = targetEndPos.y - finalPoint.y;
+        const dx = targetEndPos.x - finalPointBeforeCorrection.x;
+        const dy = targetEndPos.y - finalPointBeforeCorrection.y;
+        drift_au = Math.sqrt(dx*dx + dy*dy);
         
-        // Distribute error linearly over time (t/T)
-        // i=0 (Start) gets 0 correction. i=steps (End) gets full correction.
         for (let i = 1; i < points.length; i++) {
-            const progress = i / steps;
-            points[i].x += driftX * progress;
-            points[i].y += driftY * progress;
+            const progress = i / (points.length - 1);
+            points[i].x += dx * progress;
+            points[i].y += dy * progress;
         }
     }
 
-    return points;
+    return { points, drift_au };
 }
 
 export function subtract(v1: Vector2, v2: Vector2): Vector2 {

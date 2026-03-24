@@ -1,9 +1,11 @@
 <script lang="ts">
   import { onMount, afterUpdate } from 'svelte';
   import type { TelemetryPoint } from '$lib/transit/telemetry';
+  import type { BurnPoint } from '$lib/transit/types';
 
   export let telemetry: TelemetryPoint[];
   export let progress: number; // 0 to 100
+  export let burns: BurnPoint[] = [];
 
   let canvas: HTMLCanvasElement;
   let container: HTMLDivElement;
@@ -99,6 +101,26 @@
       ctx.lineTo(cursorX, height);
       ctx.stroke();
       
+      // Draw Burn Markers (Corrections)
+      if (burns && burns.length > 0 && telemetry.length > 1) {
+          const startTime = telemetry[0].time;
+          const endTime = telemetry[telemetry.length - 1].time;
+          const totalT = Math.max(1, endTime - startTime);
+          
+          for (const b of burns) {
+              if (b.type === 'Correction') {
+                  const x = ((b.time - startTime) / totalT) * width;
+                  const size = 2.5;
+                  ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+                  ctx.lineWidth = 1;
+                  ctx.beginPath();
+                  ctx.moveTo(x - size, 5); ctx.lineTo(x + size, 10);
+                  ctx.moveTo(x + size, 5); ctx.lineTo(x - size, 10);
+                  ctx.stroke();
+              }
+          }
+      }
+
       // Highlight current G value
       // Find closest point
       const idx = Math.floor((progress / 100) * (telemetry.length - 1));
@@ -217,9 +239,9 @@
       if (type === 'Gravity') return 'ROCHE';
       if (type === 'G-Force') return 'HIGH-G';
       if (type === 'Aerobrake') return 'AERO';
+      if (type === 'Navigation') return 'TCM';
       return type;
-  }
-  
+  }  
   function getBadgeColorForLevel(level: string) {
       switch(level) {
           case 'Critical': return '#dc2626'; // Red

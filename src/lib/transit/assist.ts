@@ -300,7 +300,7 @@ function buildAssistTransitPlan(
     const flybyCenterState = getGlobalState(sys, flybyBody, t2);
     
     // Integrate fully to T2 with correction
-    const leg1FullPoints = integrateBallisticPath(
+    const integration1 = integrateBallisticPath(
         s1.r, 
         leg1.v1, 
         (t2 - t1) / 1000, 
@@ -308,6 +308,7 @@ function buildAssistTransitPlan(
         steps1 + 10, // Add a few steps buffer
         flybyCenterState.r // Force hit Jupiter center
     );
+    const leg1FullPoints = integration1.points;
     
     // Find the slice point for T1_end
     // t1_end is 'flybyDtSec' before t2
@@ -318,7 +319,8 @@ function buildAssistTransitPlan(
     const v1 = leg1.v2; 
 
     // Bezier Calculations...
-    const gapPoints = integrateBallisticPath(getGlobalState(sys, flybyBody, t2).r, leg2.v1, flybyDtSec, mu_au, 10);
+    const integrationGap = integrateBallisticPath(getGlobalState(sys, flybyBody, t2).r, leg2.v1, flybyDtSec, mu_au, 10);
+    const gapPoints = integrationGap.points;
     const p2 = gapPoints[gapPoints.length - 1];
     
     // ... Bezier Loop ... (Unchanged)
@@ -341,7 +343,7 @@ function buildAssistTransitPlan(
     
     // Note: We integrate from P2 (Bezier End) to T3.
     // We enforce that it ends at finalTargetPos.
-    const leg2Points = integrateBallisticPath(
+    const integration2 = integrateBallisticPath(
         p2, 
         leg2.v1, 
         (t3 - t2_start) / 1000, 
@@ -349,6 +351,42 @@ function buildAssistTransitPlan(
         steps2, 
         finalTargetPos // <--- Drift Correction Enabled
     ); 
+    const leg2Points = integration2.points;
+
+    // --- CORRECTION LOGIC & FUEL ---
+    const burns: BurnPoint[] = [];
+    let correctionDV = 0;
+    let correctionFuel = 0;
+    const tags = ['GRAVITY-ASSIST'];
+
+    const checkDriftAndAddBurns = (driftAu: number, path: Vector2[], startT: number, durationMs: number, prefix: string) => {
+        const driftM = driftAu * AU_M;
+        if (driftM > 100000) {
+            const tcmLabel = params.maxG > 2.0 ? 'HIGH-G TRAJECTORY CORRECTION MANEUVER (TCM)' : 'TRAJECTORY CORRECTION MANEUVER (TCM)';
+            if (!tags.includes(tcmLabel)) tags.push(tcmLabel);
+            const num = 2;
+            for (let i = 1; i <= num; i++) {
+                const frac = i / (num + 1);
+                const idx = Math.floor(frac * (path.length - 1));
+                const burnTime = startT + durationMs * frac;
+                
+                const dv_ms = 10;
+                burns.push({
+                    id: `correction-${prefix}-${Date.now()}-${i}`,
+                    time: burnTime,
+                    position: path[idx],
+                    deltaV_ms: dv_ms,
+                    type: 'Correction'
+                });
+                correctionDV += dv_ms;
+                // Simple fuel approx for corrections
+                correctionFuel += params.shipMass_kg ? calculateFuelMass(params.shipMass_kg * 0.8, dv_ms, params.shipIsp || 3000) : dv_ms * 0.01;
+            }
+        }
+    };
+
+    checkDriftAndAddBurns(integration1.drift_au, leg1Points, t1, t1_end - t1, 'leg1');
+    checkDriftAndAddBurns(integration2.drift_au, leg2Points, t2_start, t3 - t2_start, 'leg2');
     
     const segments: TransitSegment[] = [];
 
@@ -403,10 +441,10 @@ function buildAssistTransitPlan(
         planType: 'Complex',
         name: `Flyby Assist (${flybyBody.name})`,
         segments,
-        burns: [],
-        totalDeltaV_ms: totalDV,
+        burns,
+        totalDeltaV_ms: totalDV + correctionDV,
         totalTime_days: totalTimeDays,
-        totalFuel_kg: fuelEst,
+        totalFuel_kg: fuelEst + correctionFuel,
         isValid: true,
         maxG: params.maxG,
         accelRatio: 0.01,
@@ -414,6 +452,6 @@ function buildAssistTransitPlan(
         interceptSpeed_ms: 0,
         arrivalVelocity_ms: 0,
         distance_au: distanceAU(s1.r, getGlobalState(sys, target, t3).r), // Approx
-        tags: ['GRAVITY-ASSIST']
+        tags: tags
     };
 }

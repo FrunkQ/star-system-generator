@@ -1,5 +1,5 @@
 import type { System, CelestialBody, Barycenter } from '../types';
-import type { TransitPlan, TransitSegment, TransitMode, Vector2, StateVector } from './types';
+import type { TransitPlan, TransitSegment, TransitMode, Vector2, StateVector, BurnPoint } from './types';
 import { solveLambert, distanceAU, subtract, magnitude, integrateBallisticPath, add } from './math';
 import { getGlobalState, getLocalState, calculateFuelMass } from './physics';
 import { calculateAssistPlan } from './assist';
@@ -7,6 +7,25 @@ import { AU_KM, G } from '../constants';
 
 const AU_M = AU_KM * 1000;
 const DAY_S = 86400;
+const SOLAR_MASS_KG = 1.989e30;
+
+function getNodeMass(sys: System, node: any): number {
+    if (!node) return 0;
+    if (node.massKg) return node.massKg;
+    if (node.massSol) return node.massSol * SOLAR_MASS_KG;
+    if (node.kind === 'barycenter') {
+        if (node.effectiveMassKg) return node.effectiveMassKg;
+        if (node.memberIds) {
+            return node.memberIds.reduce((sum: number, id: string) => {
+                const m = sys.nodes.find(n => n.id === id);
+                const mMass = m ? ((m as any).massKg || (m as any).massSol * SOLAR_MASS_KG || 0) : 0;
+                return sum + mMass;
+            }, 0);
+        }
+    }
+    if (node.roleHint === 'star') return SOLAR_MASS_KG;
+    return 0;
+}
 
 function estimateOrbitalPeriodDays(
   node: CelestialBody | Barycenter,
@@ -162,6 +181,8 @@ export function calculateTransitPlan(
       arrivalPlacement?: string;
       aerobrake?: { allowed: boolean; limit_kms: number; }; // NEW
       initialDelay_days?: number;
+      directAccelRatio?: number; // NEW
+      directBrakeRatio?: number; // NEW
   }
 ): TransitPlan[] {
   const plans: TransitPlan[] = [];
@@ -172,33 +193,6 @@ export function calculateTransitPlan(
   const root = sys.nodes.find(n => n.parentId === null);
   
   if (!target || !root) return [];
-
-  const getNodeMass = (node: any): number => {
-      if (!node) return 0;
-      
-      // 1. Check for massKg
-      if (node.massKg) return node.massKg;
-      
-      // 2. Check for massSol (Star template property)
-      if (node.massSol) return node.massSol * SOLAR_MASS_KG;
-
-      // 3. Barycenter logic
-      if (node.kind === 'barycenter') {
-          if (node.effectiveMassKg) return node.effectiveMassKg;
-          if (node.memberIds) {
-              return node.memberIds.reduce((sum: number, id: string) => {
-                  const m = sys.nodes.find(n => n.id === id);
-                  const mMass = m ? ((m as any).massKg || (m as any).massSol * SOLAR_MASS_KG || 0) : 0;
-                  return sum + mMass;
-              }, 0);
-          }
-      }
-      
-      // 4. Star role fallback
-      if (node.roleHint === 'star') return SOLAR_MASS_KG;
-
-      return 0;
-  };
 
   // 2. Determine Reference Frame (Lowest Common Ancestor)
   function getAncestors(id: string): string[] {
@@ -228,7 +222,7 @@ export function calculateTransitPlan(
   }
 
   let frameParentId: string | null = null;
-  let frameMu = getNodeMass(root) * G;
+  let frameMu = getNodeMass(sys, root) * G;
 
   // Frame Logic:
   // 1. If LCA is a Planet/Moon (e.g. Earth for Earth->Moon or Moon->Moon), use it.
@@ -244,19 +238,19 @@ export function calculateTransitPlan(
   if (frameParentId) {
       const parentNode = sys.nodes.find(n => n.id === frameParentId);
       if (parentNode) {
-          const m = getNodeMass(parentNode);
+          const m = getNodeMass(sys, parentNode);
           if (m > 0) frameMu = m * G;
       }
   }
 
-  console.log(`[TransitPlanner] Debug: Root mass=${getNodeMass(root)}, Frame=${frameParentId || 'Global'}, FrameMu=${frameMu}`);
+  console.log(`[TransitPlanner] Debug: Root mass=${getNodeMass(sys, root)}, Frame=${frameParentId || 'Global'}, FrameMu=${frameMu}`);
 
   // SANITIZATION: Check for "Impossible Orbit" (Sun Gravity around a Planet)
   let effectiveOrigin = origin;
   if (origin && origin.parentId && origin.orbit) {
       const parent = sys.nodes.find(n => n.id === origin.parentId);
       if (parent) {
-          const parentMass = getNodeMass(parent);
+          const parentMass = getNodeMass(sys, parent);
           const parentMu = parentMass * G;
           
           if (origin.orbit.hostId !== parent.id || (parentMu > 0 && Math.abs(origin.orbit.hostMu - parentMu) > parentMu * 100)) {
@@ -459,9 +453,7 @@ export function calculateTransitPlan(
 
       const dv1_req_ms = magnitude(subtract(result.v1, variantStartState.v)) * AU_M;
       const arrivalRelVec = subtract(result.v2, targetAtT.v);
-      const targetMassKg = (effectiveTarget.kind === 'body'
-          ? (effectiveTarget as CelestialBody).massKg
-          : (effectiveTarget as Barycenter).effectiveMassKg) || 0;
+      const targetMassKg = getNodeMass(sys, effectiveTarget);
       const desiredArrival = resolveDesiredArrivalRelative(
           arrivalRelVec,
           targetAtT.r,
@@ -646,7 +638,12 @@ export function calculateTransitPlan(
   
   // 3. Direct Burn (Profile-first kinematic solver)
   const solverRoot = frameParentId ? sys.nodes.find(n => n.id === frameParentId)! : root;
-  const directParams = { ...finalParams, initialState: startState };
+  const directParams = { 
+      ...finalParams, 
+      initialState: startState,
+      accelRatio: params.directAccelRatio !== undefined ? params.directAccelRatio : finalParams.accelRatio,
+      brakeRatio: params.directBrakeRatio !== undefined ? params.directBrakeRatio : finalParams.brakeRatio
+  };
   const directPlan = calculateFastPlan(sys, effectiveOrigin, effectiveTarget, solverRoot, startTime, startState, directParams);
   if (directPlan) {
       directPlan.planType = 'Speed';
@@ -759,7 +756,7 @@ function calculateLambertPlan(
     let dv2_req_au_s = 0;
     let aerobraking_dv_ms = 0;
     const arrivalRelVec_au_s = subtract(result.v2, targetState.v);
-    const targetMassKg = (target.kind === 'body' ? (target as CelestialBody).massKg : (target as Barycenter).effectiveMassKg) || 0;
+    const targetMassKg = getNodeMass(sys, target);
     const desiredArrival = resolveDesiredArrivalRelative(
         arrivalRelVec_au_s,
         targetState.r,
@@ -856,11 +853,63 @@ function calculateLambertPlan(
     const brakeStartTime = arrivalTime - displayBrakeTimeSec * 1000;
     const totalPoints = Math.min(5000, Math.max(300, Math.ceil(durationSec / (86400 * 2))));
     
-    // Integrate in Local Frame
-    const localPath = integrateBallisticPath(startState.r, result.v1, durationSec, mu_au, totalPoints, targetAimPos);
+    // 5. N-Body & Path Integration
+    const massNodes = sys.nodes.filter(n => n.id !== (frameParentId || root.id) && (n.kind === 'body' || n.kind === 'barycenter'));
+    const nBodySources = massNodes.map(n => {
+        const state = getGlobalState(sys, n as any, startTime);
+        const parentState = frameParentId ? getGlobalState(sys, sys.nodes.find(fn => fn.id === frameParentId)!, startTime) : null;
+        return {
+            mu: getNodeMass(sys, n) * G / Math.pow(AU_M, 3),
+            pos: parentState ? subtract(state.r, parentState.r) : state.r
+        };
+    });
+
+    const integration = integrateBallisticPath(startState.r, result.v1, durationSec, mu_au, totalPoints, targetAimPos, nBodySources);
+    const localPath = integration.points;
+    const totalDriftM = integration.drift_au * AU_M;
+
+    const burns: BurnPoint[] = [];
+    let correctionFuel_kg = 0;
+    let correctionDV_ms = 0;
+
+    // Correction Logic: If drift > 100km, we show it as a series of correction burns.
+    if (totalDriftM > 100000) {
+        const tcmLabel = params.maxG > 2.0 ? 'HIGH-G TRAJECTORY CORRECTION MANEUVER (TCM)' : 'TRAJECTORY CORRECTION MANEUVER (TCM)';
+        tags.push(tcmLabel);
+        
+        const numCorrections = 3;
+        for (let i = 1; i <= numCorrections; i++) {
+            const fraction = i / (numCorrections + 1);
+            const tOffset = durationSec * fraction;
+            const burnTime = startTime + tOffset * 1000;
+            
+            const idx = Math.floor(fraction * (localPath.length - 1));
+            const localPos = localPath[idx];
+            const parentNode = frameParentId ? sys.nodes.find(fn => fn.id === frameParentId) : null;
+            const parentState = parentNode ? getGlobalState(sys, parentNode, burnTime) : null;
+            const globalPos = parentState ? add(localPos, parentState.r) : localPos;
+
+            const dv_ms = 10;
+            burns.push({
+                id: `correction-${Date.now()}-${i}`,
+                time: burnTime,
+                position: globalPos,
+                deltaV_ms: dv_ms, 
+                type: 'Correction'
+            });
+
+            correctionDV_ms += dv_ms;
+            if (useRocketEq && m1 > 1) {
+                // Approximate mass at this point as half-way between m1 and m_final
+                const m_mid = (m1 + (m1 - fuel2)) / 2;
+                correctionFuel_kg += calculateFuelMass(m_mid, dv_ms, params.shipIsp!);
+            } else {
+                correctionFuel_kg += dv_ms * 0.01;
+            }
+        }
+    }
     
     // Reconstruct Global Path if Local Frame Used
-    // We need to fetch parent position at each timestep and add it
     let fullPath = localPath;
     if (frameParentId) {
         const parentNode = sys.nodes.find(n => n.id === frameParentId);
@@ -961,10 +1010,10 @@ function calculateLambertPlan(
         startTime: startTime,
         mode: 'Economy',
         segments,
-        burns: [], 
-        totalDeltaV_ms: totalDeltaV_ms,
+        burns, 
+        totalDeltaV_ms: totalDeltaV_ms + correctionDV_ms,
         totalTime_days: durationSec / DAY_S,
-        totalFuel_kg: fuel1 + fuel2,
+        totalFuel_kg: fuel1 + fuel2 + correctionFuel_kg,
         distance_au: distance_au,
         isValid: true,
         maxG: params.maxG,
@@ -1036,9 +1085,7 @@ function calculateFastPlan(
     const targetEndState = getLocalState(sys, target, frameNode.id, endTime);
     const rStart = startState.r;
 
-    const muLocal = (((frameNode.kind === 'body')
-        ? (frameNode as CelestialBody).massKg
-        : (frameNode as Barycenter).effectiveMassKg) || 0) * G;
+    const muLocal = getNodeMass(sys, frameNode) * G;
     if (muLocal <= 0) return null;
     const muLocalAu = muLocal / Math.pow(AU_M, 3);
 
@@ -1098,9 +1145,7 @@ function calculateFastPlan(
         m1 = Math.max(1, params.shipMass_kg! - fuel1);
     }
 
-    const targetMassKg = (target.kind === 'body'
-        ? (target as CelestialBody).massKg
-        : (target as Barycenter).effectiveMassKg) || 0;
+    const targetMassKg = getNodeMass(sys, target);
     const desiredArrival = resolveDesiredArrivalRelative(
         subtract(v2, targetEndState.v),
         targetEndState.r,
@@ -1163,7 +1208,59 @@ function calculateFastPlan(
 
     const segments: TransitSegment[] = [];
     const sampleCount = Math.min(3000, Math.max(240, Math.ceil(totalTime / (3600 * 2))));
-    const rawLocalPath = integrateBallisticPath(rStart, v1, totalTime, muLocalAu, sampleCount, rEnd);
+    
+    // N-Body summation sources
+    const massNodes = sys.nodes.filter(n => n.id !== frameNode.id && (n.kind === 'body' || n.kind === 'barycenter'));
+    const nBodySources = massNodes.map(n => {
+        const state = getGlobalState(sys, n as any, startTime);
+        const parentState = getGlobalState(sys, frameNode, startTime);
+        return {
+            mu: getNodeMass(sys, n) * G / Math.pow(AU_M, 3),
+            pos: subtract(state.r, parentState.r)
+        };
+    });
+
+    const integration = integrateBallisticPath(rStart, v1, totalTime, muLocalAu, sampleCount, rEnd, nBodySources);
+    const rawLocalPath = integration.points;
+    const totalDriftM = integration.drift_au * AU_M;
+
+    const tags: string[] = [];
+    const burns: BurnPoint[] = [];
+    let correctionFuel_kg = 0;
+    let correctionDV_ms = 0;
+
+    if (totalDriftM > 100000) {
+        tags.push('TRAJECTORY CORRECTION MANEUVER (TCM)');
+        
+        const numCorrections = 3;
+        for (let i = 1; i <= numCorrections; i++) {
+            const fraction = i / (numCorrections + 1);
+            const tOffset = totalTime * fraction;
+            const burnTime = startTime + tOffset * 1000;
+            
+            const idx = Math.floor(fraction * (rawLocalPath.length - 1));
+            const localPos = rawLocalPath[idx];
+            const parentState = getGlobalState(sys, frameNode, burnTime);
+            const globalPos = add(localPos, parentState.r);
+
+            const dv_ms = 10;
+            burns.push({
+                id: `correction-fast-${Date.now()}-${i}`,
+                time: burnTime,
+                position: globalPos,
+                deltaV_ms: dv_ms, 
+                type: 'Correction'
+            });
+
+            correctionDV_ms += dv_ms;
+            if (useRocketEq && m1 > 1) {
+                correctionFuel_kg += calculateFuelMass(m1, dv_ms, params.shipIsp!);
+            } else {
+                correctionFuel_kg += dv_ms * 0.01;
+            }
+        }
+    }
+
     const localPath: Vector2[] = [];
     let lastFinite: Vector2 = { ...rStart };
     for (const pt of rawLocalPath) {
@@ -1274,10 +1371,10 @@ function calculateFastPlan(
         startTime,
         mode: 'Fast',
         segments,
-        burns: [],
-        totalDeltaV_ms,
+        burns,
+        totalDeltaV_ms: totalDeltaV_ms + correctionDV_ms,
         totalTime_days: totalTime / DAY_S,
-        totalFuel_kg: fuelEst,
+        totalFuel_kg: fuelEst + correctionFuel_kg,
         isValid: true,
         maxG: params.maxG,
         accelRatio: ar,

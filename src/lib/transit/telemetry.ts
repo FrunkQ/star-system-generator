@@ -1,6 +1,7 @@
 import type { System, CelestialBody, Barycenter } from '../types';
 import type { TransitPlan, TransitSegment, Vector2 } from './types';
 import { calculateAllStellarZones, calculateRocheLimit } from '../physics/zones';
+import { computeNetGravityMs2 } from '../physics/gravity';
 import { magnitude, distanceAU } from './math';
 import { getGlobalState } from './physics';
 import { AU_KM } from '../constants';
@@ -67,6 +68,11 @@ export function calculateFlightTelemetry(system: System, plans: TransitPlan[], r
             timesToCheck.add(s.startTime);
             timesToCheck.add(s.endTime);
         });
+
+        // Correction Burns
+        (p.burns || []).forEach(b => {
+            timesToCheck.add(b.time);
+        });
     });
     
     const sortedTimes = Array.from(timesToCheck).sort((a, b) => a - b);
@@ -77,11 +83,38 @@ export function calculateFlightTelemetry(system: System, plans: TransitPlan[], r
         let posFound = false;
         let activePlan = plans.find(p => t >= p.startTime && t <= (p.startTime + p.totalTime_days * 86400 * 1000));
         let bodiesToCheck = new Set<string>(); // For rings/local hazards
+        const hazards: HazardEvent[] = [];
+        let isTcmEvent = false;
 
         if (activePlan) {
             // --- IN TRANSIT ---
             bodiesToCheck.add(activePlan.originId);
             bodiesToCheck.add(activePlan.targetId);
+
+            // Add discrete burn events to hazards
+            (activePlan.burns || []).forEach(b => {
+                const dt = Math.abs(b.time - t);
+                if (dt < 2000) { // 2 second window around burn
+                    if (b.type === 'Correction') {
+                        isTcmEvent = true;
+                        // TCMs use the full maneuver capability configured for this transit
+                        const kickG = activePlan.maxG;
+                        gForce = Math.max(gForce, kickG); 
+
+                        let level: 'Info' | 'Warning' | 'Danger' | 'Critical' = 'Info';
+                        if (kickG > 10.0) level = 'Critical';
+                        else if (kickG > 5.0) level = 'Danger';
+                        else if (kickG > 2.0) level = 'Warning';
+
+                        hazards.push({
+                            type: 'Navigation',
+                            level: level,
+                            sourceName: 'Astrogation',
+                            message: 'TCM'
+                        });
+                    }
+                }
+            });
 
             const relTime = t - activePlan.startTime;
             let activeSegment = activePlan.segments.find(s => {
@@ -97,6 +130,21 @@ export function calculateFlightTelemetry(system: System, plans: TransitPlan[], r
                     gForce = activePlan.maxG;
                 }
                 if (activeSegment.hostId !== root?.id) bodiesToCheck.add(activeSegment.hostId);
+            }
+
+            // Local Gravity Check: Can the ship overcome local gravity?
+            // If local gravity > ship's maxG, the ship is "losing" the fight.
+            const relevantNodes = system.nodes.filter(n => bodiesToCheck.has(n.id) && (n.kind === 'body' || n.kind === 'barycenter'));
+            const localGravAccVec = computeNetGravityMs2(system, shipPos, relevantNodes as any, t, getGlobalState);
+            const localGravAcc = magnitude(localGravAccVec);
+            const localG = localGravAcc / 9.81;
+            if (localG > activePlan.maxG * 0.9) {
+                hazards.push({
+                    type: 'G-Force',
+                    level: localG > activePlan.maxG ? 'Critical' : 'Warning',
+                    sourceName: 'Gravity Well',
+                    message: localG > activePlan.maxG ? 'Gravity Overpower' : 'High Gravity Stress'
+                });
             }
             
             // Aerobraking Spike
@@ -178,10 +226,9 @@ export function calculateFlightTelemetry(system: System, plans: TransitPlan[], r
         if (!posFound && shipPos.x === 0 && shipPos.y === 0) continue;
 
         // --- HAZARD DETECTION --- (Unchanged logic, just using local vars)
-        const hazards: HazardEvent[] = [];
         
         // 1. G-Force Check
-        if (gForce > 2.0) {
+        if (gForce > 2.0 && !isTcmEvent) {
             // Check if aerobraking context
             let isAerobraking = activePlan?.aerobrakingDeltaV_ms && (activePlan.startTime + activePlan.totalTime_days*86400*1000 - t < 600000);
             

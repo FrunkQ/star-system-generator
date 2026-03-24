@@ -66,3 +66,39 @@ export function calculateRPMFromG(targetG: number, radiusM: number): number {
   const rpm = omega * 60 / (2 * Math.PI); // Convert rad/s to RPM
   return rpm;
 }
+
+/**
+ * Calculates net gravitational acceleration in m/s^2 at a given position.
+ */
+export function computeNetGravityMs2(
+    sys: System,
+    positionAu: { x: number; y: number },
+    nodes: (CelestialBody | Barycenter)[],
+    timeMs: number,
+    getGlobalState: (sys: System, node: any, t: number) => { r: { x: number, y: number } }
+): { x: number, y: number } {
+    const AU_M = 149597870700;
+    let ax = 0;
+    let ay = 0;
+
+    for (const node of nodes) {
+        const massKg = node.kind === 'body' 
+            ? ((node as CelestialBody).massKg || 0) 
+            : ((node as Barycenter).effectiveMassKg || 0);
+        if (massKg <= 0) continue;
+
+        const state = getGlobalState(sys, node, timeMs);
+        const dx = positionAu.x - state.r.x;
+        const dy = positionAu.y - state.r.y;
+        const distAu = Math.sqrt(dx * dx + dy * dy);
+        if (distAu < 1e-12) continue;
+
+        const distM = distAu * AU_M;
+        const accel = (G * massKg) / (distM * distM);
+
+        ax -= accel * (dx / distAu);
+        ay -= accel * (dy / distAu);
+    }
+
+    return { x: ax, y: ay };
+}

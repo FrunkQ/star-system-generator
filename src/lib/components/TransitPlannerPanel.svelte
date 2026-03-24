@@ -16,6 +16,13 @@
   import DualRangeSlider from './DualRangeSlider.svelte';
   import TransitStressGraph from './TransitStressGraph.svelte';
 
+  function getTcmClass(g: number): string {
+      if (g > 10.0) return 'tcm-critical';
+      if (g > 5.0) return 'tcm-danger';
+      if (g > 2.0) return 'tcm-warning';
+      return 'tcm-info';
+  }
+
   export let system: System;
   export let rulePack: RulePack;
   export let currentTime: number;
@@ -35,6 +42,8 @@
   
   let accelPercent: number = 10; 
   let brakeStartPercent: number = 90;
+  let directBurnAccelPercent: number = 10;
+  let directBurnBrakeStartPercent: number = 90;
   let directProfileTouched = false;
   let directProfileDragging = false;
   let arrivalMode: 'Rendezvous' | 'Flyby' = 'Rendezvous';
@@ -150,6 +159,8 @@
 
   $: lastLegWasFlypast = completedPlans.length > 0 && 
       completedPlans[completedPlans.length - 1].arrivalVelocity_ms > 50; // Threshold for "parked"
+
+  $: allBurns = [...completedPlans.flatMap(p => p.burns || []), ...(plan ? (plan.burns || []) : [])];
 
   $: if (system && (plan || completedPlans.length > 0)) {
       const plansToAnalyze = [...completedPlans];
@@ -386,6 +397,8 @@
       selectedPlanIndex = 0; // Reset selection
       accelPercent = 10;
       brakeStartPercent = 90;
+      directBurnAccelPercent = 10;
+      directBurnBrakeStartPercent = 90;
       maxG = maxGByPlanType[selectedPlanTypePreference] ?? 1.0;
       directProfileTouched = false;
       directProfileDragging = false;
@@ -415,14 +428,14 @@
           if (plan.planType !== 'Speed' && plan.accelRatio !== undefined && plan.brakeRatio !== undefined) {
               accelPercent = plan.accelRatio * 100;
               brakeStartPercent = 100 - (plan.brakeRatio * 100);
-          } else if (plan.planType === 'Speed' && !directProfileDragging && brakeAtArrival && plan.brakeRatio !== undefined) {
-              if (!directProfileTouched) {
-                  accelPercent = 10;
-              }
-              brakeStartPercent = 100 - (plan.brakeRatio * 100);
-              if (!directProfileTouched) {
-                  handleCalculate();
-                  return;
+          } else if (plan.planType === 'Speed' && !directProfileDragging && plan.brakeRatio !== undefined) {
+              // Restore Direct Burn user state
+              accelPercent = directBurnAccelPercent;
+              brakeStartPercent = directBurnBrakeStartPercent;
+
+              if (brakeAtArrival) {
+                  brakeStartPercent = 100 - (plan.brakeRatio * 100);
+                  directBurnBrakeStartPercent = brakeStartPercent;
               }
           }
           arrivalMode = (
@@ -484,10 +497,15 @@
       const effectiveMaxG = Math.max(0.01, Math.min(sliderMaxG, maxGByPlanType[activeType] ?? maxG));
       maxG = effectiveMaxG;
       
+      const calcAccelPct = activeType === 'Speed' ? directBurnAccelPercent : accelPercent;
+      const calcBrakeStartPct = activeType === 'Speed' ? directBurnBrakeStartPercent : brakeStartPercent;
+
       const params = {
           maxG: effectiveMaxG,
-          accelRatio: accelPercent / 100,
-          brakeRatio: (100 - brakeStartPercent) / 100,
+          accelRatio: calcAccelPct / 100,
+          brakeRatio: (100 - calcBrakeStartPct) / 100,
+          directAccelRatio: directBurnAccelPercent / 100,
+          directBrakeRatio: (100 - directBurnBrakeStartPercent) / 100,
           interceptSpeed_ms: interceptSpeed,
           shipMass_kg: currentConstructSpecs ? (currentConstructSpecs.totalMass_tonnes * 1000 - totalUsedFuel) : undefined,
           shipDryMass_kg: currentConstructSpecs ? (currentConstructSpecs.dryMass_tonnes * 1000) : undefined,
@@ -564,7 +582,7 @@
                accelPercent = plan.accelRatio * 100;
                brakeStartPercent = 100 - (plan.brakeRatio * 100);
           } else if (plan.planType === 'Speed' && !directProfileDragging && brakeAtArrival && plan.brakeRatio !== undefined) {
-               brakeStartPercent = 100 - (plan.brakeRatio * 100);
+               directBurnBrakeStartPercent = 100 - (plan.brakeRatio * 100);
           }
           arrivalMode = (
               plan.interceptSpeed_ms > 0 ||
@@ -1026,16 +1044,15 @@
                     Brake: {plan ? formatDuration(plan.totalTime_days * plan.brakeRatio) : '0h'}
                 </span>
             </div>
-            <DualRangeSlider 
-                bind:leftValue={accelPercent} 
-                bind:rightValue={brakeStartPercent} 
+            <DualRangeSlider
+                bind:leftValue={directBurnAccelPercent}
+                bind:rightValue={directBurnBrakeStartPercent}
                 rightLocked={brakeAtArrival}
                 on:input={handleDirectProfileInput}
                 on:dragstart={() => { directProfileDragging = true; }}
                 on:dragend={() => { directProfileDragging = false; handleCalculate(); }}
                 disabled={plan?.planType !== 'Speed'}
-            />
-            <div class="range-labels">
+            />            <div class="range-labels">
                 <span>Accel</span>
                 <span>Coast</span>
                 <span>Brake</span>
@@ -1113,14 +1130,18 @@
             {#if plan.tags && plan.tags.length > 0}
                 <div class="tags-row">
                     {#each plan.tags as tag}
-                        <span class="tag {tag.toLowerCase()}">{tag}</span>
+                        <span class="tag {tag.toLowerCase()} {tag.includes('TCM') ? getTcmClass(plan.maxG) : ''}">{tag}</span>
                     {/each}
                 </div>
             {/if}
         </div>
         {/if}
         
-        <TransitStressGraph telemetry={telemetryData} progress={journeyProgress} />
+        <TransitStressGraph 
+            telemetry={telemetryData} 
+            progress={journeyProgress} 
+            burns={allBurns}
+        />
 
         <div class="form-group preview-slider" style="position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
@@ -1381,6 +1402,22 @@
     .tag.high-g {
         background-color: #ffc107;
         color: black;
+    }
+    .tag.tcm-info {
+        background-color: #2563eb;
+        color: white;
+    }
+    .tag.tcm-warning {
+        background-color: #d97706;
+        color: black;
+    }
+    .tag.tcm-danger {
+        background-color: #ea580c;
+        color: white;
+    }
+    .tag.tcm-critical {
+        background-color: #dc2626;
+        color: white;
     }
     .completed-legs h4 {
         margin: 0 0 0.5em 0;
