@@ -226,8 +226,10 @@ export function ensureTemporalState(starmap: Starmap): Starmap {
   const fallbackMaster = hasLegacyMissingTimeCodes
     ? STARTDATE_EPOCH_OFFSET_T
     : unixMsToMasterSeconds(firstEpochMs);
-  const master = parseClockSeconds(existing.masterTimeSec, fallbackMaster);
-  const display = parseClockSeconds(existing.displayTimeSec, master);
+  
+  let master = parseClockSeconds(existing.masterTimeSec, fallbackMaster);
+  let display = parseClockSeconds(existing.displayTimeSec, master);
+
   const activeCalendarKey = resolveActiveCalendarKey(existing, registry, defaults.activeKey);
 
   const normalized: TemporalState = {

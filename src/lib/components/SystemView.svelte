@@ -41,7 +41,7 @@
   import { calculateAllStellarZones } from '$lib/physics/zones';
   import { calculateEquilibriumTemperature, composeSurfaceTemperatureFromDeltaComponents, estimateBondAlbedo, estimateInternalHeatK } from '$lib/physics/temperature';
   import { ensureTemporalState, setMasterToDisplay, updateDisplayBySeconds } from '$lib/temporal/defaults';
-  import { parseClockSeconds, resolveCalendar, resolveTemporalDisplay } from '$lib/temporal/utre';
+  import { parseClockSeconds, resolveCalendar, resolveTemporalDisplay, BIG_BANG_TO_UNIX_EPOCH_T, unixMsToMasterSeconds } from '$lib/temporal/utre';
 
   export let system: System;
   export let rulePack: RulePack;
@@ -798,7 +798,9 @@
     const temporal = map?.temporal;
     if (!temporal) return;
     const actualSec = parseClockSeconds(temporal.masterTimeSec, 0n);
+    
     currentTime = Number(actualSec * 1000n);
+    
     applyTemporalUpdate((time) => ({
       ...time,
       displayTimeSec: actualSec.toString()
@@ -1210,7 +1212,7 @@
         setPlaying(desiredPlayback, false);
       }
       if (!isAligningTime) {
-        const nextMs = Number(parseClockSeconds(normalized.temporal.displayTimeSec, 0n) * 1000n);
+        const nextMs = Number(parseClockSeconds(normalized.temporal.displayTimeSec, 0n) - BIG_BANG_TO_UNIX_EPOCH_T) * 1000;
         if (Math.abs(nextMs - currentTime) > 1) {
           currentTime = nextMs;
         }
@@ -1402,7 +1404,9 @@
   function safeClockSecStringToMs(value: string | undefined): number {
       try {
           if (!value) return 0;
-          return Number(BigInt(value) * 1000n);
+          const sec = BigInt(value);
+          const unixSec = sec - BIG_BANG_TO_UNIX_EPOCH_T;
+          return Number(unixSec) * 1000;
       } catch {
           return 0;
       }
@@ -1909,9 +1913,10 @@
                          // Keep the user's preview context: move Display Time to the end of the scheduled journey.
                          // Actual/master time remains unchanged until explicitly aligned.
                          currentTime = finalScheduledTimeMs;
+                         const bigBangSec = unixMsToMasterSeconds(finalScheduledTimeMs);
                          applyTemporalUpdate((temporal) => ({
                            ...temporal,
-                           displayTimeSec: BigInt(Math.floor(finalScheduledTimeMs / 1000)).toString()
+                           displayTimeSec: bigBangSec.toString()
                          }));
 
                          // Reset planner UI (journey is now scheduled, not immediately executed)

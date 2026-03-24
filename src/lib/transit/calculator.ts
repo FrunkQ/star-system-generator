@@ -102,7 +102,8 @@ function solveBestLambert(
   dt_sec: number,
   mu: number,
   startVel_au_s?: Vector2,
-  targetVel_au_s?: Vector2
+  targetVel_au_s?: Vector2,
+  options?: { shortWayOnly?: boolean }
 ): { v1: Vector2; v2: Vector2 } | null {
   const isFiniteSolution = (s: { v1: Vector2; v2: Vector2 } | null): s is { v1: Vector2; v2: Vector2 } => {
     if (!s) return false;
@@ -112,8 +113,12 @@ function solveBestLambert(
 
   const short = solveLambert(r1_m, r2_m, dt_sec, mu, { longWay: false });
   if (isFiniteSolution(short)) candidates.push(short);
-  const long = solveLambert(r1_m, r2_m, dt_sec, mu, { longWay: true });
-  if (isFiniteSolution(long)) candidates.push(long);
+  
+  if (!options?.shortWayOnly) {
+      const long = solveLambert(r1_m, r2_m, dt_sec, mu, { longWay: true });
+      if (isFiniteSolution(long)) candidates.push(long);
+  }
+  
   if (candidates.length === 0) return null;
   if (!startVel_au_s || !targetVel_au_s) return candidates[0];
 
@@ -146,6 +151,7 @@ export function calculateTransitPlan(
       brakeRatio: number; 
       interceptSpeed_ms: number; 
       shipMass_kg?: number; 
+      shipDryMass_kg?: number;
       shipIsp?: number; 
       brakeAtArrival?: boolean; 
       brakingRatio?: number; 
@@ -167,12 +173,90 @@ export function calculateTransitPlan(
   
   if (!target || !root) return [];
 
+  const getNodeMass = (node: any): number => {
+      if (!node) return 0;
+      
+      // 1. Check for massKg
+      if (node.massKg) return node.massKg;
+      
+      // 2. Check for massSol (Star template property)
+      if (node.massSol) return node.massSol * SOLAR_MASS_KG;
+
+      // 3. Barycenter logic
+      if (node.kind === 'barycenter') {
+          if (node.effectiveMassKg) return node.effectiveMassKg;
+          if (node.memberIds) {
+              return node.memberIds.reduce((sum: number, id: string) => {
+                  const m = sys.nodes.find(n => n.id === id);
+                  const mMass = m ? ((m as any).massKg || (m as any).massSol * SOLAR_MASS_KG || 0) : 0;
+                  return sum + mMass;
+              }, 0);
+          }
+      }
+      
+      // 4. Star role fallback
+      if (node.roleHint === 'star') return SOLAR_MASS_KG;
+
+      return 0;
+  };
+
+  // 2. Determine Reference Frame (Lowest Common Ancestor)
+  function getAncestors(id: string): string[] {
+      const list: string[] = [];
+      let curr = sys.nodes.find(n => n.id === id);
+      while (curr && curr.parentId) {
+          list.push(curr.parentId);
+          curr = sys.nodes.find(n => n.id === curr.parentId);
+      }
+      return list;
+  }
+
+  // originAncestors includes origin itself to support parent-child transfers
+  const originAncestors = origin ? [origin.id, ...getAncestors(origin.id)] : [];
+  const targetAncestors = [target.id, ...getAncestors(target.id)];
+  
+  let lcaId: string | null = null;
+  for (const id of originAncestors) {
+      if (targetAncestors.includes(id)) {
+          const node = sys.nodes.find(n => n.id === id);
+          // Frame must be a physical body or barycenter with mass
+          if (node && (node.kind === 'body' || node.kind === 'barycenter')) {
+              lcaId = id;
+              break;
+          }
+      }
+  }
+
+  let frameParentId: string | null = null;
+  let frameMu = getNodeMass(root) * G;
+
+  // Frame Logic:
+  // 1. If LCA is a Planet/Moon (e.g. Earth for Earth->Moon or Moon->Moon), use it.
+  // 2. If LCA is root (Sun), stay in global frame.
+  // 3. Exception: If we are targeting a child of our current node (e.g. Earth -> Station), 
+  //    use our current node as the frame.
+  if (lcaId && lcaId !== root.id) {
+      frameParentId = lcaId;
+  } else if (origin && target.parentId === origin.id) {
+      frameParentId = origin.id;
+  }
+
+  if (frameParentId) {
+      const parentNode = sys.nodes.find(n => n.id === frameParentId);
+      if (parentNode) {
+          const m = getNodeMass(parentNode);
+          if (m > 0) frameMu = m * G;
+      }
+  }
+
+  console.log(`[TransitPlanner] Debug: Root mass=${getNodeMass(root)}, Frame=${frameParentId || 'Global'}, FrameMu=${frameMu}`);
+
   // SANITIZATION: Check for "Impossible Orbit" (Sun Gravity around a Planet)
   let effectiveOrigin = origin;
   if (origin && origin.parentId && origin.orbit) {
       const parent = sys.nodes.find(n => n.id === origin.parentId);
-      if (parent && (parent.kind === 'body' || parent.kind === 'barycenter')) {
-          const parentMass = (parent as CelestialBody).massKg || (parent as Barycenter).effectiveMassKg || 0;
+      if (parent) {
+          const parentMass = getNodeMass(parent);
           const parentMu = parentMass * G;
           
           if (origin.orbit.hostId !== parent.id || (parentMu > 0 && Math.abs(origin.orbit.hostMu - parentMu) > parentMu * 100)) {
@@ -192,56 +276,60 @@ export function calculateTransitPlan(
 
   // Handle Virtual Targets (L4/L5) or Explicit Node Targets (Moon/Station)
   let effectiveTarget = target;
+  let forcedParkingRadiusAu: number | undefined = params.parkingOrbitRadius_au;
   
   if (params.arrivalPlacement) {
       const placementNode = sys.nodes.find(n => n.id === params.arrivalPlacement);
-      if (placementNode) {
-          // If the user selected a specific node (Moon/Station) as placement, 
-          // we treat THAT as the true intercept target.
-          effectiveTarget = placementNode;
-      } else if (target.orbit) {
-          // Virtual Offset (L4/L5)
-          if (params.targetOffsetAnomaly) {
+      const isLagrange = ['l1', 'l2', 'l3', 'l4', 'l5'].includes(params.arrivalPlacement);
+
+      if (placementNode || isLagrange) {
+          // For explicit nodes (Moons/Stations)
+          if (placementNode) {
+              const placementParent = placementNode.parentId ? sys.nodes.find(p => p.id === placementNode.parentId) : null;
+              
+              // SMART REDIRECT: Only redirect if the target's parent is NOT the current frame.
+              // If we are already solving in the parent's frame (LCA == Parent), 
+              // then the gravity well is already correct and we can target the node directly.
+              const needsRedirect = placementParent && lcaId !== placementParent.id;
+              
+              if (needsRedirect && placementParent) {
+                  effectiveTarget = placementParent as CelestialBody; 
+                  forcedParkingRadiusAu = placementNode.orbit?.elements.a_AU || params.parkingOrbitRadius_au;
+              } else {
+                  effectiveTarget = placementNode;
+              }
+          } 
+          
+          // For Virtual Lagrange Points
+          if (isLagrange && target.orbit) {
+              const lagrangeId = params.arrivalPlacement;
+              
+              // Lagrange points are co-orbital with the 'target' (host planet) 
+              // around its parent (usually the Star).
               effectiveTarget = {
                   ...target,
                   orbit: {
                       ...target.orbit,
                       elements: {
                           ...target.orbit.elements,
-                          M0_rad: target.orbit.elements.M0_rad + params.targetOffsetAnomaly
+                          // L3-L5 use Anomaly offsets (180, +60, -60)
+                          M0_rad: target.orbit.elements.M0_rad + (params.targetOffsetAnomaly || 0),
+                          // L1-L2 use Radius offsets (Radial inner/outer)
+                          a_AU: params.parkingOrbitRadius_au || target.orbit.elements.a_AU
                       }
-                  }
+                  },
+                  // Since L-points have no mass, we force the solver into "Rendezvous" mode
+                  kind: 'construct' as any, 
+                  massKg: 0
               };
+              // Clear parking radius from params so solver doesn't try to "orbit" the mass-less L-point.
+              forcedParkingRadiusAu = undefined; 
           }
       }
   }
 
-  // 2. Determine Reference Frame (Global vs Local)
-  let frameParentId: string | null = null;
-  let frameMu = (root.kind === 'body' ? (root as CelestialBody).massKg : (root as Barycenter).effectiveMassKg || 0) * G;
-
-  if (effectiveOrigin && effectiveOrigin.parentId && effectiveTarget.parentId === effectiveOrigin.parentId) {
-      // Sibling Transfer (e.g. Moon -> Moon around Earth)
-      frameParentId = effectiveOrigin.parentId;
-  } else if (effectiveOrigin && effectiveTarget.id === effectiveOrigin.parentId) {
-      // Child -> Parent (Moon -> Earth)
-      frameParentId = effectiveTarget.id;
-  } else if (effectiveOrigin && effectiveOrigin.id === effectiveTarget.parentId) {
-      // Parent -> Child (Earth -> Moon)
-      frameParentId = effectiveOrigin.id;
-  }
-
-  // Get Physics Data for Frame
-  if (frameParentId) {
-      const parentNode = sys.nodes.find(n => n.id === frameParentId);
-      if (parentNode) {
-          const m = (parentNode.kind === 'body' ? (parentNode as CelestialBody).massKg : (parentNode as Barycenter).effectiveMassKg) || 0;
-          if (m > 0) frameMu = m * G;
-          // console.log(`[TransitPlanner] Using Local Frame: ${parentNode.name}`);
-      } else {
-          frameParentId = null; // Fallback to Global
-      }
-  }
+  // Update params with potentially forced radius
+  const finalParams = { ...params, parkingOrbitRadius_au: forcedParkingRadiusAu };
 
   function normalizeInitialStateToFrame(
       initial: StateVector | undefined,
@@ -293,17 +381,35 @@ export function calculateTransitPlan(
   }
   
   const startPos = startState.r;
+
+  // --- HELPER FOR TARGET RESOLUTION ---
+  // We need to resolve the target's position/velocity at any time T.
+  function resolveTargetState(tAbs: number): StateVector {
+      return frameParentId 
+          ? getLocalState(sys, effectiveTarget as any, frameParentId, tAbs)
+          : getGlobalState(sys, effectiveTarget as any, tAbs);
+  }
   
   // 4. Baselines
   const r1 = magnitude(startPos);
-  const r2 = (frameParentId && effectiveTarget.parentId === frameParentId && effectiveTarget.orbit) 
-      ? effectiveTarget.orbit.elements.a_AU 
-      : r1; // Approx
+  let r2 = r1;
+  
+  const isLagrange = ['l1', 'l2', 'l3', 'l4', 'l5'].includes(params.arrivalPlacement || '');
+  if (isLagrange && effectiveTarget.orbit) {
+      r2 = params.parkingOrbitRadius_au || effectiveTarget.orbit.elements.a_AU;
+  } else if (effectiveTarget.orbit && effectiveTarget.orbit.elements) {
+      r2 = effectiveTarget.orbit.elements.a_AU;
+  } else {
+      const globalTargetEnd = getGlobalState(sys, effectiveTarget, startTime + 1000000);
+      r2 = magnitude(globalTargetEnd.r);
+  }
       
   const r1_m = r1 * AU_M;
   const r2_m = r2 * AU_M;
   const t_hohmann_sec = Math.PI * Math.sqrt(Math.pow(r1_m + r2_m, 3) / (8 * frameMu));
   
+  console.log(`[TransitPlanner] Debug: startPos=${startPos.x.toFixed(4)},${startPos.y.toFixed(4)} | r1=${r1.toFixed(2)} AU | r2=${r2.toFixed(2)} AU | t_hohmann=${(t_hohmann_sec/86400).toFixed(1)}d`);
+
   const accel = (params.maxG || 0.1) * 9.81;
 
   // --- Helper Solver ---
@@ -317,10 +423,7 @@ export function calculateTransitPlan(
       // Helper for target state at T (Local or Global)
       function targetState(t: number) {
           const tAbs = variantStartTime + t * 1000;
-          if (frameParentId) {
-              return getLocalState(sys, effectiveTarget, frameParentId, tAbs);
-          }
-          return getGlobalState(sys, effectiveTarget, tAbs);
+          return resolveTargetState(tAbs);
       }
 
       let t_min = constraints.t_min;
@@ -337,38 +440,39 @@ export function calculateTransitPlan(
       let found = false;
 
       const evaluateAt = (t_curr: number) => {
-          const targetAtT = targetState(t_curr);
-          const targetAimAtT = resolveAimPositionAtRadius(
-              variantStartState.r,
-              targetAtT.r,
-              targetAtT.v,
-              params.parkingOrbitRadius_au
-          );
-          const r1_m = { x: variantStartState.r.x * AU_M, y: variantStartState.r.y * AU_M };
-          const r2_m = { x: targetAimAtT.x * AU_M, y: targetAimAtT.y * AU_M };
-          const result_m = solveBestLambert(r1_m, r2_m, t_curr, frameMu, variantStartState.v, targetAtT.v);
-          if (!result_m) return null;
+      const targetAtT = targetState(t_curr);
+      const targetAimAtT = resolveAimPositionAtRadius(
+          variantStartState.r,
+          targetAtT.r,
+          targetAtT.v,
+          finalParams.parkingOrbitRadius_au
+      );
+      const r1_m = { x: variantStartState.r.x * AU_M, y: variantStartState.r.y * AU_M };
+      const r2_m = { x: targetAimAtT.x * AU_M, y: targetAimAtT.y * AU_M };
+      const result_m = solveBestLambert(r1_m, r2_m, t_curr, frameMu, variantStartState.v, targetAtT.v);
+      if (!result_m) return null;
 
-          const result = {
-              v1: { x: result_m.v1.x / AU_M, y: result_m.v1.y / AU_M },
-              v2: { x: result_m.v2.x / AU_M, y: result_m.v2.y / AU_M }
-          };
+      const result = {
+          v1: { x: result_m.v1.x / AU_M, y: result_m.v1.y / AU_M },
+          v2: { x: result_m.v2.x / AU_M, y: result_m.v2.y / AU_M }
+      };
 
-          const dv1_req_ms = magnitude(subtract(result.v1, variantStartState.v)) * AU_M;
-          const arrivalRelVec = subtract(result.v2, targetAtT.v);
-          const targetMassKg = (effectiveTarget.kind === 'body'
-              ? (effectiveTarget as CelestialBody).massKg
-              : (effectiveTarget as Barycenter).effectiveMassKg) || 0;
-          const desiredArrival = resolveDesiredArrivalRelative(
-              arrivalRelVec,
-              targetAtT.r,
-              targetAtT.v,
-              targetAimAtT,
-              targetMassKg,
-              params.parkingOrbitRadius_au,
-              params.brakeAtArrival,
-              params.interceptSpeed_ms
-          );
+      const dv1_req_ms = magnitude(subtract(result.v1, variantStartState.v)) * AU_M;
+      const arrivalRelVec = subtract(result.v2, targetAtT.v);
+      const targetMassKg = (effectiveTarget.kind === 'body'
+          ? (effectiveTarget as CelestialBody).massKg
+          : (effectiveTarget as Barycenter).effectiveMassKg) || 0;
+      const desiredArrival = resolveDesiredArrivalRelative(
+          arrivalRelVec,
+          targetAtT.r,
+          targetAtT.v,
+          targetAimAtT,
+          targetMassKg,
+          finalParams.parkingOrbitRadius_au,
+          params.brakeAtArrival,
+          params.interceptSpeed_ms
+      );
+
           const dv2_req_ms = desiredArrival.dv2Required_ms;
 
           const accelTimeReq = dv1_req_ms / accel;
@@ -429,7 +533,7 @@ export function calculateTransitPlan(
       }
 
       const variantParams = { 
-          ...params, 
+          ...finalParams, 
           accelRatio: localAccelRatio, 
           brakeRatio: bestBrakeRatio, 
           extraTags: planTags
@@ -525,26 +629,24 @@ export function calculateTransitPlan(
   }
   if (mostEfficientPlan) plans.push(mostEfficientPlan);
 
-  // 2. Balanced Alternative
-  const balancedPlan = solveVariant('Balanced', 'Assist', {
+  // 2. Balanced Alternative (Efficient Now)
+  const balancedPlan = solveVariant('Efficient Now', 'Efficiency', {
       t_min: t_hohmann_sec * 0.5,
-      t_max: t_hohmann_sec * 1.2,
-      fixedAccelRatio: params.accelRatio,
-      fixedBrakeRatio: params.brakeRatio
+      t_max: t_hohmann_sec * 1.5,
+      fixedAccelRatio: finalParams.accelRatio,
+      fixedBrakeRatio: finalParams.brakeRatio
   });
   if (balancedPlan) {
       if (balancedPlan.tags && balancedPlan.tags.includes('SUNDIVER')) {
           balancedPlan.planType = 'Assist'; 
           balancedPlan.name = 'Sundiver';
-      } else {
-          balancedPlan.name = 'Efficient Now'; 
       }
       plans.push(balancedPlan);
   }
   
   // 3. Direct Burn (Profile-first kinematic solver)
   const solverRoot = frameParentId ? sys.nodes.find(n => n.id === frameParentId)! : root;
-  const directParams = { ...params, initialState: startState };
+  const directParams = { ...finalParams, initialState: startState };
   const directPlan = calculateFastPlan(sys, effectiveOrigin, effectiveTarget, solverRoot, startTime, startState, directParams);
   if (directPlan) {
       directPlan.planType = 'Speed';
@@ -556,9 +658,9 @@ export function calculateTransitPlan(
   const dist_start_au = distanceAU(getGlobalState(sys, effectiveOrigin!, startTime).r, getGlobalState(sys, effectiveTarget, startTime).r);
   if (dist_start_au > 0.5 && !frameParentId) { // Only for interplanetary
       const assistPlan = calculateAssistPlan(sys, effectiveOrigin, effectiveTarget, root, startTime, getGlobalState(sys, effectiveOrigin!, startTime), {
-          maxG: params.maxG,
-          shipMass_kg: params.shipMass_kg,
-          shipIsp: params.shipIsp
+          maxG: finalParams.maxG,
+          shipMass_kg: finalParams.shipMass_kg,
+          shipIsp: finalParams.shipIsp
       });
       if (assistPlan) {
           assistPlan.planType = 'Complex';
@@ -573,39 +675,20 @@ export function calculateTransitPlan(
   const isConstructTarget = effectiveTarget.kind === 'construct';
 
   plans.forEach(p => {
-      if (p.planType !== 'Speed' && p.totalDeltaV_ms > 100000) {
-          p.hiddenReason = "Impractical Delta-V (>100 km/s)";
-      }
-      else if (baselineTime > 0 && p.totalTime_days > baselineTime * 5) {
-          p.hiddenReason = "Impractical Duration (>5x optimal)";
-      }
-      else if (isConstructTarget && p.planType === 'Speed') {
-          // 1) Duration cap for moving construct intercepts.
-          // Direct-burn should not be an ultra-long meander for ship intercepts.
-          const dynamicDurationCapDays = Math.min(
-              365,
-              Math.max(7, (baselineTime > 0 ? baselineTime * 2.5 : 180))
-          );
-          if (p.totalTime_days > dynamicDurationCapDays) {
-              p.hiddenReason = `Unstable Direct Burn (duration > ${dynamicDurationCapDays.toFixed(0)}d for moving target)`;
-              return;
-          }
+      // DYNAMIC FILTERING:
+      // High-G ships can easily exceed 100km/s. 
+      // We only hide plans that are clearly numerical artifacts or beyond ship physics.
+      const hardDVCapMs = 10000000; // 10,000 km/s (Insanity check for divergent solutions)
 
-          // 3) Sanity gates for direct-burn against moving targets.
-          const deltaVCapMs = baselineDeltaV > 0
-              ? Math.max(80000, baselineDeltaV * 3.0)
-              : 120000;
-          if (p.totalDeltaV_ms > deltaVCapMs) {
-              p.hiddenReason = "Unstable Direct Burn (excessive Delta-V for moving target)";
-              return;
-          }
-
-          // If rendezvous intent (interceptSpeed == 0), very high residual relative speed is non-physical.
-          const rendezvousIntent = (p.interceptSpeed_ms || 0) <= 0;
-          if (rendezvousIntent && p.arrivalVelocity_ms > 20000) {
-              p.hiddenReason = "Unstable Direct Burn (high residual arrival speed for rendezvous)";
-              return;
-          }
+      if (p.totalDeltaV_ms > hardDVCapMs && p.planType !== 'Speed') {
+          p.hiddenReason = `Numerical Divergence (> 10,000 km/s)`;
+      }
+      else if (baselineTime > 0 && p.totalTime_days > baselineTime * 10 && p.planType !== 'Speed') {
+          p.hiddenReason = "Impractical Duration (>10x optimal)";
+      }
+      
+      if (p.hiddenReason) {
+          console.log(`[TransitPlanner] Debug: Plan '${p.name}' hidden because: ${p.hiddenReason} (DV: ${p.totalDeltaV_ms.toFixed(0)}m/s, Time: ${p.totalTime_days.toFixed(1)}d)`);
       }
   });
 
@@ -643,12 +726,18 @@ function calculateLambertPlan(
     const targetState = frameParentId 
         ? getLocalState(sys, target, frameParentId, arrivalTime)
         : getGlobalState(sys, target, arrivalTime);
-    const targetAimPos = resolveAimPositionAtRadius(
-        startState.r,
-        targetState.r,
-        targetState.v,
-        params.parkingOrbitRadius_au
-    );
+
+    // FIX: Only shift the aim position if we are targeting a generic orbit (lo/mo/ho).
+    // If targeting a specific node (id), we MUST hit that node's actual position.
+    const isGenericOrbit = params.arrivalPlacement === 'lo' || params.arrivalPlacement === 'mo' || params.arrivalPlacement === 'ho';
+    const targetAimPos = isGenericOrbit 
+        ? resolveAimPositionAtRadius(
+            startState.r,
+            targetState.r,
+            targetState.v,
+            params.parkingOrbitRadius_au
+          )
+        : targetState.r;
 
     // SOLVE IN METERS
     const r1_m = { x: startState.r.x * AU_M, y: startState.r.y * AU_M };
@@ -927,31 +1016,24 @@ function calculateFastPlan(
     }
 
     const useRocketEq = !!(params.shipMass_kg && params.shipIsp && params.shipIsp > 0);
-    let massBrakeFactor = 1;
-    if (params.brakeAtArrival && useRocketEq) {
-        const dvProbe = accel * 1000;
-        const fuelProbe = calculateFuelMass(params.shipMass_kg!, dvProbe, params.shipIsp!);
-        const m1Probe = Math.max(1, params.shipMass_kg! - fuelProbe);
-        massBrakeFactor = params.shipMass_kg! / m1Probe;
-    }
-    if (params.brakeAtArrival && massBrakeFactor > 1.0001) {
-        br = ar / massBrakeFactor;
-    }
-
-    const K = ar - 0.5 * ar * ar - 0.5 * massBrakeFactor * br * br;
+    
+    // For pure kinematic geometry, we assume constant acceleration to establish the baseline time.
+    // We will calculate the actual fuel penalty later. This ensures time smoothly tracks the sliders.
+    const K = ar - 0.5 * ar * ar - 0.5 * br * br;
     if (K <= 0) return null;
 
+    // Iteratively find intercept time based on moving target
     let t_est = Math.sqrt(initialDist_m / (accel * K));
-    for (let loops = 0; loops < 10; loops++) {
+    for (let loops = 0; loops < 15; loops++) {
         const targetPos = getLocalState(sys, target, frameNode.id, startTime + t_est * 1000).r;
         const dist_m = distanceAU(startState.r, targetPos) * AU_M;
         const next = Math.sqrt(Math.max(1, dist_m) / (accel * K));
         t_est = 0.5 * t_est + 0.5 * next;
     }
 
-    let totalTime = t_est;
-    let endTime = startTime + totalTime * 1000;
-    let targetEndState = getLocalState(sys, target, frameNode.id, endTime);
+    const totalTime = t_est;
+    const endTime = startTime + totalTime * 1000;
+    const targetEndState = getLocalState(sys, target, frameNode.id, endTime);
     const rStart = startState.r;
 
     const muLocal = (((frameNode.kind === 'body')
@@ -960,174 +1042,67 @@ function calculateFastPlan(
     if (muLocal <= 0) return null;
     const muLocalAu = muLocal / Math.pow(AU_M, 3);
 
-    // Solve earliest feasible direct duration under accel/brake profile.
-    // This prevents absurd delta-V spikes from forcing impossible short-time Lambert solutions.
-    type Eval = {
-        endTime: number;
-        targetEndState: StateVector;
-        transferV1: Vector2;
-        transferV2: Vector2;
-        dv1_req_ms: number;
-        dv2_req_ms: number;
-        brakeAccel_mps2: number;
-        overload: number;
-    };
-    const maxTimeSec = 25 * 365 * DAY_S;
-
-    const evalAt = (candidateTimeSec: number): Eval | null => {
-        const end = startTime + candidateTimeSec * 1000;
-        const targetAtEnd = getLocalState(sys, target, frameNode.id, end);
-        const targetAimPos = resolveAimPositionAtRadius(
+    const isGenericOrbit = params.arrivalPlacement === 'lo' || params.arrivalPlacement === 'mo' || params.arrivalPlacement === 'ho';
+    const rEnd = isGenericOrbit 
+        ? resolveAimPositionAtRadius(
             startState.r,
-            targetAtEnd.r,
-            targetAtEnd.v,
+            targetEndState.r,
+            targetEndState.v,
             params.parkingOrbitRadius_au
-        );
-        const lambert = solveBestLambert(
-            { x: rStart.x * AU_M, y: rStart.y * AU_M },
-            { x: targetAimPos.x * AU_M, y: targetAimPos.y * AU_M },
-            candidateTimeSec,
-            muLocal,
-            startState.v,
-            targetAtEnd.v
-        );
+          )
+        : targetEndState.r;
 
-        let v1: Vector2;
-        let v2: Vector2;
-        if (lambert) {
-            v1 = { x: lambert.v1.x / AU_M, y: lambert.v1.y / AU_M };
-            v2 = { x: lambert.v2.x / AU_M, y: lambert.v2.y / AU_M };
-        } else {
-            // Fallback for near-collinear local geometry where Lambert can fail numerically.
-            const dx = targetAimPos.x - rStart.x;
-            const dy = targetAimPos.y - rStart.y;
-            const dMag = Math.hypot(dx, dy) || 1;
-            const dvGuessAuS = (accel * candidateTimeSec * ar) / AU_M;
-            v1 = {
-                x: startState.v.x + (dx / dMag) * dvGuessAuS,
-                y: startState.v.y + (dy / dMag) * dvGuessAuS
-            };
-            const probePath = integrateBallisticPath(rStart, v1, candidateTimeSec, muLocalAu, 600, targetAimPos);
-            const probeDt = candidateTimeSec / Math.max(1, (probePath.length - 1));
-            const pA = probePath[Math.max(0, probePath.length - 2)];
-            const pB = probePath[probePath.length - 1];
-            v2 = {
-                x: (pB.x - pA.x) / Math.max(1e-9, probeDt),
-                y: (pB.y - pA.y) / Math.max(1e-9, probeDt)
-            };
-        }
-
-        if (!Number.isFinite(v1.x) || !Number.isFinite(v1.y)) return null;
-        if (!Number.isFinite(v2.x) || !Number.isFinite(v2.y)) v2 = { ...targetAtEnd.v };
-
-        const dv1Req = magnitude(subtract(v1, startState.v)) * AU_M;
-        let brakeAccel = accel;
-        if (useRocketEq && params.shipMass_kg && params.shipIsp && params.shipIsp > 0) {
-            const fuel1Req = calculateFuelMass(params.shipMass_kg, dv1Req, params.shipIsp);
-            const m1Req = Math.max(1, params.shipMass_kg - fuel1Req);
-            brakeAccel = accel * (params.shipMass_kg / m1Req);
-        }
-
-        const targetMassKg = (target.kind === 'body'
-            ? (target as CelestialBody).massKg
-            : (target as Barycenter).effectiveMassKg) || 0;
-        const desiredArrival = resolveDesiredArrivalRelative(
-            subtract(v2, targetAtEnd.v),
-            targetAtEnd.r,
-            targetAtEnd.v,
-            targetAimPos,
-            targetMassKg,
-            params.parkingOrbitRadius_au,
-            params.brakeAtArrival,
-            params.interceptSpeed_ms
-        );
-        const dv2Req = desiredArrival.dv2Required_ms;
-
-        const accelBudget = accel * candidateTimeSec * ar;
-        const brakeBudget = Math.max(1, brakeAccel * candidateTimeSec * br);
-        const depRatio = dv1Req / Math.max(1, accelBudget);
-        const arrRatio = params.brakeAtArrival ? (dv2Req / brakeBudget) : 0;
-        const overload = Math.max(depRatio, arrRatio);
-
-        return {
-            endTime: end,
-            targetEndState: targetAtEnd,
-            transferV1: v1,
-            transferV2: v2,
-            dv1_req_ms: dv1Req,
-            dv2_req_ms: dv2Req,
-            brakeAccel_mps2: brakeAccel,
-            overload
-        };
+    // For torch-ships, we assume a direct kinematic path.
+    // We abandon the Lambert solver here as high-thrust transfers effectively ignore 
+    // Keplerian orbits, and the solver can produce divergent artifacts (e.g. 2000c) 
+    // when forced into a ballistic box.
+    const dx = rEnd.x - rStart.x;
+    const dy = rEnd.y - rStart.y;
+    const dMag = Math.hypot(dx, dy) || 1;
+    const dvGuessAuS = (accel * totalTime * ar) / AU_M;
+    
+    // Initial Burn (v1) adds the required velocity boost in the direction of the target.
+    let v1 = {
+        x: startState.v.x + (dx / dMag) * dvGuessAuS,
+        y: startState.v.y + (dy / dMag) * dvGuessAuS
+    };
+    
+    // Arrival Velocity (v2) before braking. 
+    // In a pure kinematic straight-line model, this is the same as v1.
+    let v2 = {
+        x: v1.x,
+        y: v1.y
     };
 
-    let bestEval: Eval | null = null;
-    for (let attempt = 0; attempt < 60 && totalTime < maxTimeSec; attempt++) {
-        const e = evalAt(totalTime);
-        if (e) {
-            if (!bestEval || e.overload < bestEval.overload) bestEval = e;
-            if (e.overload <= 1.02) {
-                bestEval = e;
-                break;
-            }
-        }
-        totalTime *= 1.25;
-    }
-    if (!bestEval) return null;
-
-    // Refine to earliest feasible time around best candidate.
-    if (bestEval.overload <= 1.02) {
-        let low = Math.max(1, totalTime / 1.25);
-        let high = totalTime;
-        for (let i = 0; i < 20; i++) {
-            const mid = (low + high) / 2;
-            const e = evalAt(mid);
-            if (!e) {
-                low = mid;
-                continue;
-            }
-            if (e.overload <= 1.02) {
-                bestEval = e;
-                high = mid;
-            } else {
-                low = mid;
-            }
-        }
+    if (!Number.isFinite(v1.x) || !Number.isFinite(v1.y)) return null;
+    
+    // Speed of Light cap
+    const v1_mag_ms = magnitude(v1) * AU_M;
+    if (v1_mag_ms > 150000000) {
+        const scale = 150000000 / v1_mag_ms;
+        v1.x *= scale;
+        v1.y *= scale;
     }
 
-    totalTime = (bestEval.endTime - startTime) / 1000;
-    endTime = bestEval.endTime;
-    targetEndState = bestEval.targetEndState;
-    const transferV1 = bestEval.transferV1;
-    const transferV2 = bestEval.transferV2;
+    if (!Number.isFinite(v2.x) || !Number.isFinite(v2.y)) v2 = { ...targetEndState.v };
 
     let accelTime = totalTime * ar;
     let brakeTime = totalTime * br;
     let coastTime = Math.max(0, totalTime - accelTime - brakeTime);
-    const rEnd = resolveAimPositionAtRadius(
-        rStart,
-        targetEndState.r,
-        targetEndState.v,
-        params.parkingOrbitRadius_au
-    );
-    if (!Number.isFinite(transferV1.x) || !Number.isFinite(transferV1.y)) return null;
-    if (!Number.isFinite(transferV2.x) || !Number.isFinite(transferV2.y)) return null;
 
-    const dv1 = bestEval.dv1_req_ms;
-    let brakeAccel = accel;
+    const dv1 = magnitude(subtract(v1, startState.v)) * AU_M;
     let fuel1 = 0;
     let m1 = params.shipMass_kg || 0;
     if (useRocketEq) {
         fuel1 = calculateFuelMass(params.shipMass_kg!, dv1, params.shipIsp!);
         m1 = Math.max(1, params.shipMass_kg! - fuel1);
-        brakeAccel = accel * ((params.shipMass_kg || 1) / m1);
     }
 
     const targetMassKg = (target.kind === 'body'
         ? (target as CelestialBody).massKg
         : (target as Barycenter).effectiveMassKg) || 0;
     const desiredArrival = resolveDesiredArrivalRelative(
-        subtract(transferV2, targetEndState.v),
+        subtract(v2, targetEndState.v),
         targetEndState.r,
         targetEndState.v,
         rEnd,
@@ -1136,10 +1111,14 @@ function calculateFastPlan(
         params.brakeAtArrival,
         params.interceptSpeed_ms
     );
+    
     const desiredArrivalRelVec_au_s = desiredArrival.desiredRelVec_au_s;
-    const arrivalRelBeforeBrake_mps = magnitude(subtract(transferV2, targetEndState.v)) * AU_M;
-    const dv2Required_mps = bestEval.dv2_req_ms;
-    let dv2 = Math.min(dv2Required_mps, brakeAccel * brakeTime);
+    const dv2Required_mps = desiredArrival.dv2Required_ms;
+    
+    // We apply the FULL required braking DV so the UI accurately displays the cost of the trip,
+    // even if it exceeds fuel constraints. Svelte handles the "Insufficient Fuel" warning natively.
+    let dv2 = dv2Required_mps;
+    
     let aerobraking_dv_ms = 0;
     if (params.brakeAtArrival && params.aerobrake?.allowed) {
         const targetBody = target as CelestialBody;
@@ -1153,14 +1132,11 @@ function calculateFastPlan(
                 aerobraking_dv_ms = limit_mps;
                 dv2 -= limit_mps;
             }
-            brakeTime = dv2 / Math.max(1e-6, brakeAccel);
-            coastTime = Math.max(0, totalTime - accelTime - brakeTime);
-            br = brakeTime / totalTime;
         }
     }
 
     const totalDeltaV_ms = dv1 + dv2;
-
+    
     let fuel2 = 0;
     let fuelEst = 0;
     if (useRocketEq) {
@@ -1172,7 +1148,7 @@ function calculateFastPlan(
         fuel2 = fuelEst * (dv2 / Math.max(1, totalDeltaV_ms));
     }
 
-    const arrivalRelBeforeBrakeAu = subtract(transferV2, targetEndState.v);
+    const arrivalRelBeforeBrakeAu = subtract(v2, targetEndState.v);
     const needVecAu = subtract(desiredArrivalRelVec_au_s, arrivalRelBeforeBrakeAu);
     const needMs = magnitude(needVecAu) * AU_M;
     const applyFrac = needMs > 1e-9 ? Math.max(0, Math.min(1, dv2 / needMs)) : 1;
@@ -1187,7 +1163,7 @@ function calculateFastPlan(
 
     const segments: TransitSegment[] = [];
     const sampleCount = Math.min(3000, Math.max(240, Math.ceil(totalTime / (3600 * 2))));
-    const rawLocalPath = integrateBallisticPath(rStart, transferV1, totalTime, muLocalAu, sampleCount, rEnd);
+    const rawLocalPath = integrateBallisticPath(rStart, v1, totalTime, muLocalAu, sampleCount, rEnd);
     const localPath: Vector2[] = [];
     let lastFinite: Vector2 = { ...rStart };
     for (const pt of rawLocalPath) {
@@ -1259,7 +1235,7 @@ function calculateFastPlan(
 
     const globalTarget = getGlobalState(sys, target, endTime);
     const parentAtEnd = getGlobalState(sys, frameNode, endTime);
-    const arrivalGlobalPreBrake = add(transferV2, parentAtEnd.v);
+    const arrivalGlobalPreBrake = add(v2, parentAtEnd.v);
     const relArrivalBeforeBrake = subtract(arrivalGlobalPreBrake, globalTarget.v);
     const needVecGlobal = subtract(desiredArrivalRelVec_au_s, relArrivalBeforeBrake);
     const needGlobalMs = magnitude(needVecGlobal) * AU_M;

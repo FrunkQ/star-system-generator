@@ -34,6 +34,18 @@
       isDragging = false;
   }
 
+  function handleKeyDown(e: KeyboardEvent) {
+      const step = (maxLog - minLog) / 100;
+      let currLog = Math.log(value);
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+          value = Math.exp(Math.min(maxLog, currLog + step));
+          dispatch('input', value);
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+          value = Math.exp(Math.max(minLog, currLog - step));
+          dispatch('input', value);
+      }
+  }
+
   function updateValue(e: MouseEvent) {
       const rect = svgEl.getBoundingClientRect();
       let x = e.clientX - rect.left;
@@ -53,7 +65,13 @@
         bind:this={svgEl}
         class="orbital-slider" 
         on:mousedown={handleMouseDown}
+        on:keydown={handleKeyDown}
         preserveAspectRatio="none"
+        role="slider"
+        aria-valuenow={value}
+        aria-valuemin={min}
+        aria-valuemax={max}
+        tabindex="0"
     >
         <!-- Background Track -->
         <rect x="0" y="20" width="100%" height="10" fill="#333" rx="5" />

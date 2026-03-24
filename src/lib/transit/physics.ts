@@ -12,19 +12,21 @@ const AU_M = AU_KM * 1000;
  * for a given node at a specific time.
  */
 export function getGlobalState(sys: System, node: CelestialBody | Barycenter | { id: string, parentId: string | null, orbit?: any }, tMs: number): StateVector {
-    // Kinematic override for constructs in transit/deep-space.
-    // These are absolute system-frame vectors and should not be resolved via orbital hierarchy.
+    // 1. Kinematic / Construct Override
     if ((node as any).kind === 'construct') {
         const c = node as any;
-        if (
-            c.vector_position_au &&
-            c.vector_velocity_ms &&
-            (c.flight_state === 'Transit' || c.flight_state === 'Deep Space')
-        ) {
+        
+        // A. Explicit Kinematic Vector
+        // Only use if actively in transit/deep space, OR if it has no orbit definition to fall back on.
+        const isActivelyMoving = c.flight_state === 'Transit' || c.flight_state === 'Deep Space';
+        const hasVector = c.vector_position_au && c.vector_velocity_ms;
+        
+        if (hasVector && (isActivelyMoving || !c.orbit)) {
             const epochMs = Number.isFinite(c.vector_epoch_ms) ? c.vector_epoch_ms : tMs;
             const dtSec = (tMs - epochMs) / 1000;
             const vxAuSec = c.vector_velocity_ms.x / AU_M;
             const vyAuSec = c.vector_velocity_ms.y / AU_M;
+            
             return {
                 r: {
                     x: c.vector_position_au.x + (vxAuSec * dtSec),
@@ -32,6 +34,28 @@ export function getGlobalState(sys: System, node: CelestialBody | Barycenter | {
                 },
                 v: { x: vxAuSec, y: vyAuSec }
             };
+        }
+
+        // B. If it has an Orbit (Station / Parked Ship), we MUST use the standard propagator loop.
+        if (c.orbit) {
+            // fall through to loop below
+        } 
+        // C. Last Resort Fallback: Stationary / Docked without orbit or vector
+        // Try to inherit from parent, but offset if possible
+        else if (c.parentId) {
+            const parent = sys.nodes.find(n => n.id === c.parentId);
+            if (parent) {
+                const parentGlobal = getGlobalState(sys, parent, tMs);
+                // If it's a station, it might have a stored 'altitude' or radius we can use to avoid (0,0)
+                const radiusAu = (c as any).parking_orbit_radius_au || (c as any).altitude_km / AU_KM || 0;
+                if (radiusAu > 0) {
+                    return {
+                        r: { x: parentGlobal.r.x + radiusAu, y: parentGlobal.r.y }, // Simplified offset
+                        v: parentGlobal.v
+                    };
+                }
+                return parentGlobal;
+            }
         }
     }
 

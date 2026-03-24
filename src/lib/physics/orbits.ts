@@ -456,8 +456,13 @@ export function getOrbitOptions(body: CelestialBody, rulePack: RulePack, system?
     options.push({ id: 'ho', name: 'High Orbit', radiusKm: radiusKm + hoAlt, sortOrder: 40, color: '#ffffff' });
 
     // Lagrange Points - Forced to end (Sort Order 90+)
-    options.push({ id: 'l4', name: 'L4 (Leading Trojan)', radiusKm: radiusKm + 100000, sortOrder: 90, color: '#ffffff', isLagrange: true }); 
-    options.push({ id: 'l5', name: 'L5 (Trailing Trojan)', radiusKm: radiusKm + 100000, sortOrder: 91, color: '#ffffff', isLagrange: true });
+    const soiRadiusKm = boundaries.heoUpperBoundaryKm;
+    
+    options.push({ id: 'l1', name: 'L1 (Collinear Inner)', radiusKm: radiusKm + (boundaries.minLeoKm + soiRadiusKm * 0.8), sortOrder: 90, color: '#ffffff', isLagrange: true });
+    options.push({ id: 'l2', name: 'L2 (Collinear Outer)', radiusKm: radiusKm + (soiRadiusKm * 1.2), sortOrder: 91, color: '#ffffff', isLagrange: true });
+    options.push({ id: 'l3', name: 'L3 (Hidden Co-orbital)', radiusKm: pData.distanceToHost_km, sortOrder: 92, color: '#ffffff', isLagrange: true });
+    options.push({ id: 'l4', name: 'L4 (Leading Trojan)', radiusKm: pData.distanceToHost_km, sortOrder: 93, color: '#ffffff', isLagrange: true }); 
+    options.push({ id: 'l5', name: 'L5 (Trailing Trojan)', radiusKm: pData.distanceToHost_km, sortOrder: 94, color: '#ffffff', isLagrange: true });
     
     // Children (Moons / Stations)
     if (system) {

@@ -3,6 +3,26 @@
 All notable changes are listed here:
 
 
+## v1.9.1 - 15th Mar 2026
+- Lowest Common Ancestor (LCA) frame selection for transits:
+  - ensures transfers in multi-star systems use the correct gravitational host,
+  - fixes "40 AU loop" bug where binary star transits default to system barycenter.
+- Smart Target Redirection:
+  - Interplanetary moon transfers now automatically target the parent planet's gravity well while maintaining moon-radius capture.
+  - Fixes "dive into the star" bug for local stellar constructs.
+- Expanded Lagrange point support (L1-L5):
+  - added L1, L2 (radial offsets) and L3 (hidden co-orbital),
+  - co-orbital framing ensures L-points are tracked in the host's parent frame.
+- Transit intercept accuracy and stability:
+  - Fixed "missed intercept" bug: solvers now target actual $(x, y)$ node coordinates at arrival rather than just orbital radius.
+  - Stability filter overhaul: removed hard 100km/s cap, increased to 10,000 km/s insanity check to support high-G ship jumps.
+  - Forced direct-path (short-way only) for Speed/Direct Burn plans to prevent unrealistic looping arcs.
+  - Improved station/construct state resolution: orbiting constructs correctly resolve positions even without explicit orbit objects.
+- UI/UX refinements:
+  - New "Major Target -> Sub-Target" dropdown workflow in Transit Planner.
+  - Improved hidden-plan reason messages in the UI.
+  - Added internal transit debug logging to developer console.
+
 ## v1.9.0 - 24th Feb 2026
 - New time system foundations are in place:
   - Display Time and Actual Time are now separate and can be aligned/reset.

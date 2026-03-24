@@ -217,14 +217,11 @@
   }
 
   // Filter constructs/bodies for dropdowns
-  // Rule: Only show "Major" targets (Stars, Planets, Barycenters, Independent Constructs)
+  // Rule: Only show "Major" targets (Stars, Planets, Barycenters, and Independent Constructs)
   // Hide Moons and things orbiting planets (users should target the planet first)
   $: bodies = system.nodes.filter(n => {
       // Exclude self
       if (n.id === originId) return false;
-
-      // Always allow constructs as explicit intercept targets (including in-transit / deep-space).
-      if (n.kind === 'construct') return true;
 
       // Always show stars & barycenters
       if (n.roleHint === 'star' || n.kind === 'barycenter') return true;
@@ -233,16 +230,17 @@
       
       // Check Parent
       if (n.parentId) {
-          // Allow if Sibling (same parent as origin)
-          if (originNode && originNode.parentId === n.parentId) return true;
-          
-          // Allow if Child (orbits origin)
-          if (n.parentId === originId) return true;
-
           const parent = system.nodes.find(p => p.id === n.parentId);
-          // Show if parent is a Star or Barycenter (Standard Planets)
+          
+          // Allow if parent is a Star or Barycenter (Standard Planets/Major Bodies)
           if (parent && (parent.roleHint === 'star' || parent.kind === 'barycenter')) return true;
           
+          // Allow if Sibling (same parent as origin) - e.g. Moon to Moon
+          if (originNode && originNode.parentId === n.parentId) return true;
+          
+          // Allow if Child (orbits origin) - e.g. Earth to ISS
+          if (n.parentId === originId) return true;
+
           return false; 
       }
       
@@ -351,16 +349,30 @@
   function handleTargetChange() {
       if (targetId) {
           const body = system.nodes.find(n => n.id === targetId);
-          if (body && body.kind === 'body') {
-              orbitOptions = getOrbitOptions(body, rulePack, system);
+          if (body && (body.kind === 'body' || body.kind === 'barycenter')) {
+              // Populate Orbit Options + any Moons or Constructs orbiting THIS body
+              const standardOrbits = getOrbitOptions(body, rulePack, system);
+              
+              const localOrbiters = system.nodes
+                .filter(n => n.parentId === body.id && n.id !== constructId)
+                .map(n => ({
+                    id: n.id,
+                    name: n.name,
+                    radiusKm: n.orbit?.elements.a_AU ? n.orbit.elements.a_AU * AU_KM : 0,
+                    color: getNodeColor(n)
+                }))
+                .sort((a, b) => a.radiusKm - b.radiusKm);
+
+              orbitOptions = [...standardOrbits, ...localOrbiters];
+
               if (orbitOptions.length > 0) {
                   selectedOrbitId = orbitOptions[0].id;
               } else {
                   selectedOrbitId = 'lo';
               }
           } else if (body && body.kind === 'construct') {
-              // Construct intercept/rendezvous uses the construct id as explicit arrival placement.
-              orbitOptions = [];
+              // For independent constructs, we target them directly (Rendezvous)
+              orbitOptions = [{ id: body.id, name: 'Rendezvous', radiusKm: 0, color: '#88ccff' }];
               selectedOrbitId = body.id;
           } else {
               orbitOptions = [];
@@ -440,12 +452,20 @@
       // Resolve Orbit Option
       let targetOrbitRadiusKm = 0;
       let targetOffsetAnomaly = 0;
+      let forcedParkingRadiusAu: number | undefined = undefined;
       
       const selectedOpt = orbitOptions.find(o => o.id === selectedOrbitId);
       if (selectedOpt) {
           targetOrbitRadiusKm = selectedOpt.radiusKm;
+          // Lagrange offsets (relative to host planet in parent frame)
+          if (selectedOrbitId === 'l3') targetOffsetAnomaly = Math.PI; // 180 deg
           if (selectedOrbitId === 'l4') targetOffsetAnomaly = Math.PI / 3; // +60 deg
           if (selectedOrbitId === 'l5') targetOffsetAnomaly = -Math.PI / 3; // -60 deg
+          
+          // L1 and L2 are collinear, handled via radial offsets in the solver
+          if (selectedOrbitId === 'l1' || selectedOrbitId === 'l2') {
+              forcedParkingRadiusAu = targetOrbitRadiusKm / AU_KM;
+          }
       }
       const targetNode = system.nodes.find(n => n.id === targetId);
       const isConstructTarget = !!(targetNode && targetNode.kind === 'construct');
@@ -470,10 +490,11 @@
           brakeRatio: (100 - brakeStartPercent) / 100,
           interceptSpeed_ms: interceptSpeed,
           shipMass_kg: currentConstructSpecs ? (currentConstructSpecs.totalMass_tonnes * 1000 - totalUsedFuel) : undefined,
+          shipDryMass_kg: currentConstructSpecs ? (currentConstructSpecs.dryMass_tonnes * 1000) : undefined,
           shipIsp: undefined as number | undefined,
           brakeAtArrival: brakeAtArrival,
           initialState: safeInitialState,
-          parkingOrbitRadius_au: targetOrbitRadiusKm > 0 ? targetOrbitRadiusKm / AU_KM : undefined,
+          parkingOrbitRadius_au: forcedParkingRadiusAu || (targetOrbitRadiusKm > 0 ? targetOrbitRadiusKm / AU_KM : undefined),
           targetOffsetAnomaly: targetOffsetAnomaly,
           // Construct rendezvous must explicitly target that construct id.
           arrivalPlacement: (isConstructTarget && arrivalMode === 'Rendezvous') ? targetId : selectedOrbitId,
@@ -495,15 +516,26 @@
       const currentSelectedType = availablePlans[selectedPlanIndex]?.planType;
 
       const effectiveStartTime = currentTime + (departureDelayDays * 86400 * 1000);
+
+      const debugOrigin = system.nodes.find(n => n.id === originId);
+      const debugTarget = system.nodes.find(n => n.id === targetId);
+      console.log(`[TransitUI] Calculating from ${debugOrigin?.name} to ${debugTarget?.name} at T=${effectiveStartTime}`);
+      console.log(`[TransitUI] Origin Orbit:`, debugOrigin?.orbit);
+      console.log(`[TransitUI] Origin Vectors: Pos=${debugOrigin?.vector_position_au ? 'Yes' : 'No'}, Vel=${debugOrigin?.vector_velocity_ms ? 'Yes' : 'No'}, State=${debugOrigin?.flight_state}`);
+      console.log(`[TransitUI] Params:`, params);
+
       const allPlans = calculateTransitPlan(system, originId, targetId, effectiveStartTime, mode, params);
-      
-      const visiblePlans = allPlans.filter(p => !p.hiddenReason);
-      hiddenPlanCount = allPlans.length - visiblePlans.length;
-      
-      if (!visiblePlans || visiblePlans.length === 0) {
-          // ... error handling ...
+      console.log(`[TransitUI] Received ${allPlans.length} plans from solver:`);
+      allPlans.forEach(p => console.log(`  - ${p.name}: DV=${p.totalDeltaV_ms.toFixed(0)}, Fuel=${p.totalFuel_kg.toFixed(0)}, Hidden=${p.hiddenReason || 'No'}`));
+
+      // ALWAYS show 'Speed' (Direct Burn) plans even if they fail validation, so the user can still tweak sliders.
+      const visiblePlans = allPlans.filter(p => !p.hiddenReason || p.planType === 'Speed');      
+      hiddenPlanCount = allPlans.filter(p => p.hiddenReason && p.planType !== 'Speed').length;
+
+      if (!visiblePlans || visiblePlans.length === 0) {          // ... error handling ...
           if (hiddenPlanCount > 0) {
-              error = "All efficient plans are impractical due to high initial velocity (Delta-V > 100 km/s). Use Direct Burn if possible.";
+              const bestHidden = allPlans[0];
+              error = `All plans hidden: ${bestHidden.hiddenReason}. Try increasing ship capability or using a different departure window.`;
           } else {
               error = "Could not calculate a valid transfer for this window.";
           }
@@ -906,7 +938,7 @@
 
     {#if hiddenPlanCount > 0}
         <div class="warning-box">
-            <span>⚠️ {hiddenPlanCount} plan{hiddenPlanCount > 1 ? 's' : ''} hidden: Impractical Delta-V (>100 km/s).</span>
+            <span>⚠️ {hiddenPlanCount} plan{hiddenPlanCount > 1 ? 's' : ''} hidden due to stability or divergence checks.</span>
         </div>
     {/if}
 
@@ -932,15 +964,21 @@
                 <div 
                     class="plan-card" 
                     class:selected={i === selectedPlanIndex}
+                    style={p.hiddenReason ? 'border-color: #882222; background: rgba(136, 34, 34, 0.2);' : ''}
                     on:click={() => selectPlan(i)}
                 >
-                    <div class="plan-type">{p.name}</div>
+                    <div class="plan-type" style={p.hiddenReason ? 'color: #ff6666;' : ''}>{p.name}</div>
                     <div class="plan-time">{formatDuration(p.totalTime_days)}</div>
                     {#if (p.initialDelay_days || 0) > 0}
                         <div class="plan-fuel" style="font-size: 0.8em; color: #88ccff;">wait {(p.initialDelay_days || 0)}d</div>
                     {/if}
                     <div class="plan-fuel" style="font-size: 0.9em; color: #aaa;">{(p.totalFuel_kg/1000).toFixed(1)}t</div>
-                    <div class="plan-g">{(p.maxG || 0).toFixed(2)} G</div>
+                    <div class="plan-g">{(p.maxG || 0).toFixed(2)} G / {(((p.accelRatio || 0) + (p.brakeRatio || 0)) * 100).toFixed(0)}%</div>
+                    {#if p.hiddenReason}
+                        <div style="font-size: 0.7em; color: #ff6666; margin-top: 4px; text-transform: uppercase;">
+                            {p.hiddenReason.replace('Unstable Direct Burn ', '').replace(/[()]/g, '')}
+                        </div>
+                    {/if}
                 </div>
             {/each}
         </div>
