@@ -3,13 +3,27 @@
 All notable changes are listed here:
 
 
+## v1.9.3 - 24th Mar 2026
+- Terminology Unification (G vs g):
+  - Standardized acceleration units to lowercase **"g"** (9.81 m/s²) across all mission cards, tech details, and graphs.
+  - Preserved uppercase **"G"** for Gravitational Constant and Spectral Type G stars.
+  - Renamed "G-Force" hazard type to **"g-force"** for scientific consistency.
+- UI Polish & Maintenance:
+  - Unified "About" dialogs across Starmap and System views into a single reusable `AboutModal` component.
+  - Halved the size of TCM markers on both trajectory and timeline for a cleaner visual look.
+  - Reverted all-caps tag text to **"HIGH-G"** for consistent badge styling while maintaining numeric "g" units.
+- Bug Fixes:
+  - Fixed "Arrival Mode" dropdown issues where Flyby was incorrectly labeled "(No Match)".
+  - Improved flyby solver logic to correctly calculate zero Delta-V arrivals for unpowered intercepts.
+  - Resolved UI slider snap-back issues during Direct Burn planning.
+
 ## v1.9.2 - 24th Mar 2026
 - N-Body Gravitational Summation:
   - Transit solvers now sum gravitational forces from all massive bodies (Stars, Planets, Barycenters) for realistic ballistic drift.
   - Replaces single-body Keplerian assumptions with full integrated pathing for all mission types.
-- Trajectory Correction Maneuvers (TCM):
+- Trajectory Correction Manoeuvres (TCM):
   - Automatic drift tracking injects discrete TCM burn points if n-body perturbations exceed 100km.
-  - Compact, color-coded timeline labels and trajectory markers signal maneuver intensity (Blue/Orange/Red) based on Max-G.
+  - Compact, color-coded timeline labels and trajectory markers signal manoeuvre intensity (Blue/Orange/Red) based on Max-G.
   - TCMs now correctly consume fuel and contribute to total mission delta-V.
 - Planner UI & Stability:
   - "Transit Tags" summary box added to mission stats for better awareness of aerobraking, TCMs, and high-G status.
@@ -19,7 +33,7 @@ All notable changes are listed here:
 ## v1.9.1 - 15th Mar 2026
 - Torch-Ship Kinematic Simplification:
   - Bypassed Lambert solver artifacts for high-thrust "Direct Burn" plans.
-  - Eliminates "2000c" speed-of-light errors in favor of robust kinematic straight-line profiling.
+  - Eliminates "2000c" speed-of-light errors in favour of robust kinematic straight-line profiling.
 - Lowest Common Ancestor (LCA) frame selection for transits:
   - ensures transfers in multi-star systems use the correct gravitational host,
   - fixes "40 AU loop" bug where binary star transits default to system barycenter.

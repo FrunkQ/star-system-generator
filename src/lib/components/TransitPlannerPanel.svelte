@@ -332,7 +332,7 @@
                  maxPotentialDeltaV_ms = 0;
              }
              
-             // Calculate Dynamic Max G based on fuel used so far
+             // Calculate Dynamic Max g based on fuel used so far
              const currentMassKg = (currentConstructSpecs.totalMass_tonnes * 1000) - totalUsedFuel;
              const thrustN = (currentConstructSpecs.maxVacuumG * 9.81) * (currentConstructSpecs.totalMass_tonnes * 1000);
              
@@ -1007,8 +1007,7 @@
                         <div class="plan-fuel" style="font-size: 0.8em; color: #88ccff;">wait {(p.initialDelay_days || 0)}d</div>
                     {/if}
                     <div class="plan-fuel" style="font-size: 0.9em; color: #aaa;">{(p.totalFuel_kg/1000).toFixed(1)}t</div>
-                    <div class="plan-g">{(p.maxG || 0).toFixed(2)} G / {(((p.accelRatio || 0) + (p.brakeRatio || 0)) * 100).toFixed(0)}%</div>
-                    {#if p.hiddenReason}
+                    <div class="plan-g">{(p.maxG || 0).toFixed(2)} g / {(((p.accelRatio || 0) + (p.brakeRatio || 0)) * 100).toFixed(0)}%</div>                    {#if p.hiddenReason}
                         <div style="font-size: 0.7em; color: #ff6666; margin-top: 4px; text-transform: uppercase;">
                             {p.hiddenReason.replace('Unstable Direct Burn ', '').replace(/[()]/g, '')}
                         </div>
@@ -1044,7 +1043,7 @@
     </div>
 
     <div class="form-group">
-        <label>Max Transit Acceleration (Selected Route): {maxG.toFixed(2)} G (Max: {sliderMaxG.toFixed(2)})</label>
+        <label>Max Transit Acceleration (Selected Route): {maxG.toFixed(2)} g (Max: {sliderMaxG.toFixed(2)})</label>
         <input type="range" min="0.01" max={sliderMaxG} step="0.01" bind:value={maxG} on:input={handleMaxGInput} />
     </div>
 

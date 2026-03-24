@@ -116,7 +116,7 @@
 
   <div class="separator"></div>
 
-  <h4>Artificial Gravity (Current: {currentArtificialG.toFixed(2)} G)</h4>
+  <h4>Artificial Gravity (Current: {currentArtificialG.toFixed(2)} g)</h4>
   
   <div class="row">
     <div class="form-group">

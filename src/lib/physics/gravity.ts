@@ -52,8 +52,8 @@ export function calculateArtificialGravity(radiusM: number, rpm: number): number
 }
 
 /**
- * Calculates the required RPM to achieve a target G-force at a given radius.
- * @param targetG - The desired G-force.
+ * Calculates the required RPM to achieve a target g-force at a given radius.
+ * @param targetG - The desired g-force.
  * @param radiusM - The radius of the spinning section in meters.
  * @returns The required rotation speed in RPM.
  */

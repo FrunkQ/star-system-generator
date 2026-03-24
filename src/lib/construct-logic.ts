@@ -2,7 +2,7 @@ import type { CelestialBody, EngineDefinition, FuelDefinition, PhysicalParameter
 import { AU_KM, THERMAL_LIMITS } from './constants';
 
 // Define constants
-const g0 = 9.81; // Standard gravity for ISP and G-force calcs
+const g0 = 9.81; // Standard gravity for ISP and g-force calcs
 
 // Helper function to find an engine definition by ID
 function findEngine(engineDefinitions: EngineDefinition[], engineId: string): EngineDefinition | undefined {
@@ -215,7 +215,7 @@ export function calculateFullConstructSpecs(
   // Power Surplus
   specs.powerSurplus_MW = totalPowerOutput_MW - totalPowerDraw_MW;
 
-  // TWR (Max Takeoff G) - This is the key "guidance" parameter
+  // TWR (Max Takeoff g) - This is the key "guidance" parameter
   if (mass_wet > 0 && totalAtmoThrust_N > 0) {
     const atmo_accel_ms2 = totalAtmoThrust_N / mass_wet;
     specs.maxTakeoffG = atmo_accel_ms2 / g0;

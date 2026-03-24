@@ -99,11 +99,10 @@
       // Gravity Score (Max 15 points)
       const surfaceGravityG = (planet.massKg && planet.radiusKm) ? (G * planet.massKg / ((planet.radiusKm*1000) * (planet.radiusKm*1000))) / 9.81 : 0;
       if (surfaceGravityG > 0) {
-          factors.gravity.val = `${surfaceGravityG.toFixed(2)} G`;
-          factors.gravity.ideal = '0.8 - 1.2 G';
+          factors.gravity.val = `${surfaceGravityG.toFixed(2)} g`;
+          factors.gravity.ideal = '0.8 - 1.2 g';
           factors.gravity.score = scoreFromPlateau(surfaceGravityG, 0.8, 1.2, 0.5) * 15;
       }
-
       // Display-only breakdown; canonical score/tag assignment is handled by system processing.
   }
 

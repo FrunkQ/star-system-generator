@@ -1,5 +1,5 @@
 // src/lib/constants.ts
-export const APP_VERSION = '1.9.2';
+export const APP_VERSION = '1.9.3';
 export const APP_DATE = '24-Mar-26';
 
 export const G = 6.67430e-11; // Gravitational constant

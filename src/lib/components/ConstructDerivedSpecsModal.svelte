@@ -130,7 +130,7 @@
     <h4>Derived Specifications</h4>
     <div class="specs-grid">
       <div class="spec-item derived"><span class="label">Total Mass</span><span class="value">{specs.totalMass_tonnes.toLocaleString(undefined, {maximumFractionDigits: 0})} t</span></div>
-      <div class="spec-item derived"><span class="label">Max Vacuum Accel.</span><span class="value">{specs.maxVacuumG.toFixed(2)} G</span></div>
+      <div class="spec-item derived"><span class="label">Max Vacuum Accel.</span><span class="value">{specs.maxVacuumG.toFixed(2)} g</span></div>
       <div class="spec-item derived"><span class="label">Total Vacuum Δv</span><span class="value">{(specs.totalVacuumDeltaV_ms / 1000).toLocaleString(undefined, {maximumFractionDigits: 1})} km/s</span></div>
       <div class="spec-item derived"><span class="label">Power Surplus</span><span class="value">{specs.powerSurplus_MW.toLocaleString(undefined, {maximumFractionDigits: 1})} MW</span></div>
       <div class="spec-item derived"><span class="label">Supplies Remaining</span><span class="value">{typeof specs.endurance_days === 'number' ? specs.endurance_days.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' days' : specs.endurance_days}</span></div>

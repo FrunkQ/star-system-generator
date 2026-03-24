@@ -215,7 +215,7 @@
 
       <div class="spec-item derived" title="Maximum acceleration in vacuum">
         <span class="label">Max Vacuum Accel.</span>
-        <span class="value">{specs.maxVacuumG.toFixed(2)} G</span>
+        <span class="value">{specs.maxVacuumG.toFixed(2)} g</span>
       </div>
       <div class="spec-item derived" title="Total delta-V available in vacuum">
         <span class="label">Total Vacuum Δv</span>

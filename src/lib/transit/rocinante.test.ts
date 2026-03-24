@@ -29,7 +29,7 @@ describe('Transit Planner Rocinante Tests', () => {
       "roleHint": "ship",
       "class": "Expanse/Ship/Corvette",
       "description": "Legitimate salvage. A Martian Corvette class. Fast, deadly, and versatile.",
-      "gmNotes": "Hero ship. Capable of atmospheric landing and 10G+ burns.",
+      "gmNotes": "Hero ship. Capable of atmospheric landing and 10g+ burns.",
       "IsTemplate": false,
       "icon_type": "triangle",
       "icon_color": "#ff4400",

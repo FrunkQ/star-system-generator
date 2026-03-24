@@ -41,9 +41,9 @@
       ctx.clearRect(0, 0, width, height);
 
       // X: Time (linear from 0 to length)
-      // Y: G-Force (0 to Max observed + buffer, or fixed 12G?)
-      // Let's allow Y to scale, but clamp min to 2G so small burns show up.
-      // Clamp max visual G to 15G (spikes go off chart)
+      // Y: g-force (0 to Max observed + buffer, or fixed 12g?)
+      // Let's allow Y to scale, but clamp min to 2g so small burns show up.
+      // Clamp max visual g to 15g (spikes go off chart)
       let maxG = 2;
       telemetry.forEach(p => { if (p.gForce > maxG) maxG = p.gForce; });
       maxG = Math.ceil(maxG * 1.1); // 10% buffer
@@ -74,7 +74,7 @@
       drawThreshold(2, '#d97706', [4, 4]); // Orange warning
       drawThreshold(10, '#dc2626', [4, 4]); // Red danger (Extreme)
       
-      // Draw G-Force Line
+      // Draw g-force Line
       ctx.beginPath();
       ctx.strokeStyle = '#00ffff';
       ctx.lineWidth = 2;
@@ -121,7 +121,7 @@
           }
       }
 
-      // Highlight current G value
+      // Highlight current g value
       // Find closest point
       const idx = Math.floor((progress / 100) * (telemetry.length - 1));
       const currentPoint = telemetry[idx];
@@ -137,7 +137,7 @@
           ctx.fillStyle = '#fff';
           ctx.textAlign = 'left';
           // If off-chart, indicate it
-          const text = currentPoint.gForce > 15 ? `>15G (${currentPoint.gForce.toFixed(1)})` : `${currentPoint.gForce.toFixed(1)}G`;
+          const text = currentPoint.gForce > 15 ? `>15g (${currentPoint.gForce.toFixed(1)})` : `${currentPoint.gForce.toFixed(1)}g`;
           ctx.fillText(text, cursorX + 5, Math.min(cy + 15, height - 5));
       }
   }
@@ -193,7 +193,7 @@
           
       // Calculate stacking rows to avoid overlap
       // Simple heuristic: Map Type to Row
-      const typeRows: Record<string, number> = { 'G-Force': 0, 'Gravity': 0, 'Aerobrake': 0, 'Radiation': 1, 'Debris': 2 };
+      const typeRows: Record<string, number> = { 'g-force': 0, 'Gravity': 0, 'Aerobrake': 0, 'Radiation': 1, 'Debris': 2 };
       
       const startTime = telemetry[0].time;
       const endTime = telemetry[telemetry.length - 1].time;
@@ -237,9 +237,7 @@
       if (type === 'Radiation') return 'RAD';
       if (type === 'Debris') return 'BELT';
       if (type === 'Gravity') return 'ROCHE';
-      if (type === 'G-Force') return 'HIGH-G';
-      if (type === 'Aerobrake') return 'AERO';
-      if (type === 'Navigation') return 'TCM';
+      if (type === 'g-force') return 'HIGH-G';      if (type === 'Aerobrake') return 'AERO';      if (type === 'Navigation') return 'TCM';
       return type;
   }  
   function getBadgeColorForLevel(level: string) {

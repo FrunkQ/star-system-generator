@@ -461,8 +461,7 @@
         </div>
         <div class="detail-item">
           <span class="label">Max Vacuum Accel.</span>
-          <span class="value">{constructSpecs.maxVacuumG.toFixed(2)} G</span>
-        </div>
+          <span class="value">{constructSpecs.maxVacuumG.toFixed(2)} g</span>        </div>
         <div class="detail-item">
           <span class="label">Total Vacuum Δv</span>
           <span class="value">{(constructSpecs.totalVacuumDeltaV_ms / 1000).toLocaleString(undefined, {maximumFractionDigits: 1})} km/s</span>
@@ -538,8 +537,7 @@
                 {#if surfaceGravityG !== null && !isStar}
                     <div class="detail-item">
                         <span class="label">Surface Gravity</span>
-                        <span class="value">{surfaceGravityG.toFixed(2)} G</span>
-                    </div>
+                        <span class="value">{surfaceGravityG.toFixed(2)} g</span>                    </div>
                 {/if}
                 {#if densityRelative !== null && !isStar}
                     <div class="detail-item">

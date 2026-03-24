@@ -15,7 +15,7 @@ export interface TelemetryPoint {
 }
 
 export interface HazardEvent {
-    type: 'Radiation' | 'Debris' | 'Gravity' | 'Aerobrake' | 'G-Force';
+    type: 'Radiation' | 'Debris' | 'Gravity' | 'Aerobrake' | 'g-force' | 'Navigation';
     level: 'Info' | 'Warning' | 'Danger' | 'Critical';
     sourceName: string;
     message: string;
@@ -124,7 +124,7 @@ export function calculateFlightTelemetry(system: System, plans: TransitPlan[], r
                 return relTime >= (start - 1) && relTime <= (end + 1);
             });
             
-            // G-Force
+            // g-force
             if (activeSegment) {
                 if (activeSegment.type === 'Accel' || activeSegment.type === 'Brake') {
                     gForce = activePlan.maxG;
@@ -140,7 +140,7 @@ export function calculateFlightTelemetry(system: System, plans: TransitPlan[], r
             const localG = localGravAcc / 9.81;
             if (localG > activePlan.maxG * 0.9) {
                 hazards.push({
-                    type: 'G-Force',
+                    type: 'g-force',
                     level: localG > activePlan.maxG ? 'Critical' : 'Warning',
                     sourceName: 'Gravity Well',
                     message: localG > activePlan.maxG ? 'Gravity Overpower' : 'High Gravity Stress'
@@ -218,7 +218,7 @@ export function calculateFlightTelemetry(system: System, plans: TransitPlan[], r
                     const state = getGlobalState(system, hostBody, t);
                     shipPos = state.r;
                     posFound = true;
-                    // G-Force is 0
+                    // g-force is 0
                 }
             }
         }
@@ -227,24 +227,24 @@ export function calculateFlightTelemetry(system: System, plans: TransitPlan[], r
 
         // --- HAZARD DETECTION --- (Unchanged logic, just using local vars)
         
-        // 1. G-Force Check
+        // 1. g-force Check
         if (gForce > 2.0 && !isTcmEvent) {
             // Check if aerobraking context
             let isAerobraking = activePlan?.aerobrakingDeltaV_ms && (activePlan.startTime + activePlan.totalTime_days*86400*1000 - t < 600000);
             
             if (gForce > 10.0) {
                 hazards.push({ 
-                    type: 'G-Force', 
+                    type: 'g-force', 
                     level: 'Critical', 
                     sourceName: isAerobraking ? 'Atmosphere' : 'Engines', 
-                    message: `Extreme G (${gForce.toFixed(1)}G)` 
+                    message: `Extreme g (${gForce.toFixed(1)}g)` 
                 });
             } else {
                 hazards.push({ 
-                    type: 'G-Force', 
+                    type: 'g-force', 
                     level: 'Warning', 
                     sourceName: isAerobraking ? 'Atmosphere' : 'Engines', 
-                    message: `High G (${gForce.toFixed(1)}G)` 
+                    message: `High g (${gForce.toFixed(1)}g)` 
                 });
             }
         }
