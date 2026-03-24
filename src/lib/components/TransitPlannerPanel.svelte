@@ -438,10 +438,18 @@
                   directBurnBrakeStartPercent = brakeStartPercent;
               }
           }
-          arrivalMode = (
-              plan.interceptSpeed_ms > 0 ||
-              plan.segments.some((s) => (s.warnings || []).includes('Flyby'))
-          ) ? 'Flyby' : 'Rendezvous';
+          if (plan.planType === 'Speed') {
+              // For Speed plans, only switch to Flyby if the plan explicitly has an intercept speed or flyby warning.
+              // Otherwise, we respect the user's manual dropdown selection.
+              const planIsFlyby = plan.interceptSpeed_ms > 0 || plan.segments.some((s) => (s.warnings || []).includes('Flyby'));
+              if (planIsFlyby) arrivalMode = 'Flyby';
+          } else {
+              // For Efficiency/Assist plans, we sync to the solver's result.
+              arrivalMode = (
+                  plan.interceptSpeed_ms > 0 ||
+                  plan.segments.some((s) => (s.warnings || []).includes('Flyby'))
+              ) ? 'Flyby' : 'Rendezvous';
+          }
           
           dispatch('planUpdate', plan);
           
@@ -584,10 +592,18 @@
           } else if (plan.planType === 'Speed' && !directProfileDragging && brakeAtArrival && plan.brakeRatio !== undefined) {
                directBurnBrakeStartPercent = 100 - (plan.brakeRatio * 100);
           }
-          arrivalMode = (
-              plan.interceptSpeed_ms > 0 ||
-              plan.segments.some((s) => (s.warnings || []).includes('Flyby'))
-          ) ? 'Flyby' : 'Rendezvous';
+          if (plan.planType === 'Speed') {
+              // For Speed plans, only switch to Flyby if the plan explicitly has an intercept speed or flyby warning.
+              // Otherwise, we respect the user's manual dropdown selection.
+              const planIsFlyby = plan.interceptSpeed_ms > 0 || plan.segments.some((s) => (s.warnings || []).includes('Flyby'));
+              if (planIsFlyby) arrivalMode = 'Flyby';
+          } else {
+              // For Efficiency/Assist plans, we sync to the solver's result.
+              arrivalMode = (
+                  plan.interceptSpeed_ms > 0 ||
+                  plan.segments.some((s) => (s.warnings || []).includes('Flyby'))
+              ) ? 'Flyby' : 'Rendezvous';
+          }
           
           dispatch('planUpdate', plan);
           
@@ -1063,7 +1079,7 @@
             <label for="arrival-mode">Arrival Mode</label>
             <select id="arrival-mode" bind:value={arrivalMode} on:change={handleCalculate}>
                 <option value="Rendezvous">Brake Burn / Rendezvous</option>
-                <option value="Flyby">Flyby (No Match)</option>
+                <option value="Flyby">Flyby</option>
             </select>
             <label class:disabled={!canAerobrakeEffective} title={!canAerobrakeEffective ? "Requires Rendezvous to a body with atmosphere and heatshield" : "Use atmosphere to reduce braking fuel"}>
                 <input type="checkbox" bind:checked={useAerobrake} disabled={!canAerobrakeEffective} on:change={handleCalculate} />
@@ -1128,10 +1144,13 @@
             </div>
             
             {#if plan.tags && plan.tags.length > 0}
-                <div class="tags-row">
-                    {#each plan.tags as tag}
-                        <span class="tag {tag.toLowerCase()} {tag.includes('TCM') ? getTcmClass(plan.maxG) : ''}">{tag}</span>
-                    {/each}
+                <div class="tags-container-box">
+                    <div class="tags-label">Transit Tags:</div>
+                    <div class="tags-row">
+                        {#each plan.tags as tag}
+                            <span class="tag {tag.toLowerCase().replace(/ /g, '-')} {tag.includes('TCM') ? getTcmClass(plan.maxG) : ''}">{tag}</span>
+                        {/each}
+                    </div>
                 </div>
             {/if}
         </div>
@@ -1382,10 +1401,23 @@
         margin-bottom: 1em;
         border-left: 3px solid #007bff;
     }
+    .tags-container-box {
+        background: #1a1a1a;
+        padding: 0.6em;
+        border-radius: 4px;
+        margin-top: 0.8em;
+        border: 1px solid #333;
+    }
+    .tags-label {
+        font-size: 0.7em;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 4px;
+    }
     .tags-row {
         display: flex;
         gap: 0.5em;
-        margin-top: 0.5em;
         flex-wrap: wrap;
     }
     .tag {
@@ -1394,6 +1426,8 @@
         font-size: 0.8em;
         font-weight: bold;
         text-transform: uppercase;
+        background-color: #444;
+        color: #eee;
     }
     .tag.sundiver {
         background-color: #dc3545;

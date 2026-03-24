@@ -5,6 +5,7 @@
   import Grid from './Grid.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import MarkdownModal from './MarkdownModal.svelte';
+  import AboutModal from './AboutModal.svelte';
   import EditFuelAndDrivesModal from './EditFuelAndDrivesModal.svelte';
   import EditAtmospheresModal from './EditAtmospheresModal.svelte';
   import EditSensorsModal from './EditSensorsModal.svelte';
@@ -1244,7 +1245,7 @@
               </div>
           {/if}
             {#if showAboutModal}
-      <MarkdownModal htmlContent={aboutContent} on:close={() => showAboutModal = false} />
+      <AboutModal on:close={() => showAboutModal = false} />
   {/if}
 
   {#if showSaveModal}

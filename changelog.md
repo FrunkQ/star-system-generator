@@ -3,7 +3,23 @@
 All notable changes are listed here:
 
 
+## v1.9.2 - 24th Mar 2026
+- N-Body Gravitational Summation:
+  - Transit solvers now sum gravitational forces from all massive bodies (Stars, Planets, Barycenters) for realistic ballistic drift.
+  - Replaces single-body Keplerian assumptions with full integrated pathing for all mission types.
+- Trajectory Correction Maneuvers (TCM):
+  - Automatic drift tracking injects discrete TCM burn points if n-body perturbations exceed 100km.
+  - Compact, color-coded timeline labels and trajectory markers signal maneuver intensity (Blue/Orange/Red) based on Max-G.
+  - TCMs now correctly consume fuel and contribute to total mission delta-V.
+- Planner UI & Stability:
+  - "Transit Tags" summary box added to mission stats for better awareness of aerobraking, TCMs, and high-G status.
+  - Direct Burn profile state (Accel/Coast/Brake) is now persistent and decoupled from ballistic plan states.
+  - Fixed various "ReferenceError" and "Shadowing" bugs in the transit calculation engine.
+
 ## v1.9.1 - 15th Mar 2026
+- Torch-Ship Kinematic Simplification:
+  - Bypassed Lambert solver artifacts for high-thrust "Direct Burn" plans.
+  - Eliminates "2000c" speed-of-light errors in favor of robust kinematic straight-line profiling.
 - Lowest Common Ancestor (LCA) frame selection for transits:
   - ensures transfers in multi-star systems use the correct gravitational host,
   - fixes "40 AU loop" bug where binary star transits default to system barycenter.

@@ -83,13 +83,17 @@ function resolveDesiredArrivalRelative(
 
   if (!brakeAtArrival) {
     const desiredMs = intercept;
-    if (desiredMs <= 0 || relMag <= 1e-12) return { desiredRelVec_au_s: { x: 0, y: 0 }, dv2Required_ms: relMag * AU_M };
+    // If desired intercept speed is 0 and we are NOT braking to rendezvous, 
+    // it means a free flyby (no arrival burn).
+    if (desiredMs <= 0) return { desiredRelVec_au_s: arrivalRelVec_au_s, dv2Required_ms: 0 };
+    
+    if (relMag <= 1e-12) return { desiredRelVec_au_s: { x: 0, y: 0 }, dv2Required_ms: desiredMs };
     const desiredAuS = desiredMs / AU_M;
     const desired = {
       x: (arrivalRelVec_au_s.x / relMag) * desiredAuS,
       y: (arrivalRelVec_au_s.y / relMag) * desiredAuS
     };
-    return { desiredRelVec_au_s: desired, dv2Required_ms: Math.max(0, (relMag - desiredAuS) * AU_M) };
+    return { desiredRelVec_au_s: desired, dv2Required_ms: Math.abs(relMag - desiredAuS) * AU_M };
   }
 
   if (!parkingOrbitRadius_au || parkingOrbitRadius_au <= 0 || targetMassKg <= 0) {
@@ -718,6 +722,7 @@ function calculateLambertPlan(
     frameParentId: string | null // NEW: Context for path reconstruction
 ): TransitPlan | null {
     const arrivalTime = startTime + durationSec * 1000;
+    const tags: string[] = params.extraTags || []; 
     
     // Target State (Local or Global based on context)
     const targetState = frameParentId 
@@ -778,8 +783,7 @@ function calculateLambertPlan(
             aerobraking_dv_ms = aeroApplied;
             dv2Req_ms = Math.max(0, dv2Req_ms - aeroApplied);
             if (aeroApplied > 0) {
-                params.extraTags = params.extraTags || [];
-                params.extraTags.push(dv2Req_ms <= 1 ? 'AEROCAPTURE' : 'PARTIAL-AERO');
+                tags.push(dv2Req_ms <= 1 ? 'AEROCAPTURE' : 'PARTIAL-AERO');
             }
         }
     }
@@ -843,8 +847,7 @@ function calculateLambertPlan(
     }
 
     const totalDeltaV_ms = dv1_applied_mps + dv2_applied_mps;
-    const tags: string[] = params.extraTags || []; 
-    if (params.maxG > 2.0) tags.push('HIGH-G');
+    if (params.maxG > 2.0 && !tags.includes('HIGH-G')) tags.push('HIGH-G');
 
     // Visual Path Generation
     const displayAccelTimeSec = accelTime_sec;
@@ -1048,10 +1051,14 @@ function calculateFastPlan(
         parkingOrbitRadius_au?: number;
         aerobrake?: { allowed: boolean; limit_kms: number; };
         initialDelay_days?: number;
+        extraTags?: string[];
     }
 ): TransitPlan | null {
     const accel = params.maxG * 9.81;
     if (accel <= 0) return null;
+
+    const tags: string[] = params.extraTags || [];
+    if (params.maxG > 2.0) tags.push('HIGH-G');
 
     const targetStartPos = getLocalState(sys, target, frameNode.id, startTime).r;
     const initialDist_m = distanceAU(startState.r, targetStartPos) * AU_M;
@@ -1177,6 +1184,9 @@ function calculateFastPlan(
                 aerobraking_dv_ms = limit_mps;
                 dv2 -= limit_mps;
             }
+            if (aerobraking_dv_ms > 0) {
+                tags.push(dv2 <= 1 ? 'AEROCAPTURE' : 'PARTIAL-AERO');
+            }
         }
     }
 
@@ -1224,7 +1234,6 @@ function calculateFastPlan(
     const rawLocalPath = integration.points;
     const totalDriftM = integration.drift_au * AU_M;
 
-    const tags: string[] = [];
     const burns: BurnPoint[] = [];
     let correctionFuel_kg = 0;
     let correctionDV_ms = 0;
@@ -1357,11 +1366,18 @@ function calculateFastPlan(
             endState: { r: globalAim, v: finalVelocity },
             hostId: frameNode.id,
             pathPoints: makePoints(brakeStartTime, endTime),
-            warnings: params.maxG > 2 ? ['High G'] : [],
+            warnings: [
+                ...(params.maxG > 2 ? ['High G'] : []),
+                ...(!params.brakeAtArrival ? ['Flyby'] : [])
+            ],
             fuelUsed_kg: fuel2
         });
     } else if (segments.length > 0) {
-        segments[segments.length - 1].endState = { r: globalAim, v: finalVelocity };
+        const lastSeg = segments[segments.length - 1];
+        lastSeg.endState = { r: globalAim, v: finalVelocity };
+        if (!params.brakeAtArrival) {
+            lastSeg.warnings = [...(lastSeg.warnings || []), 'Flyby'];
+        }
     }
 
     return {
@@ -1383,6 +1399,7 @@ function calculateFastPlan(
         arrivalVelocity_ms,
         distance_au: distanceAU(fullPath[0], fullPath[fullPath.length - 1]),
         arrivalPlacement: params.arrivalPlacement,
+        tags: [...tags],
         aerobrakingDeltaV_ms: aerobraking_dv_ms,
         initialDelay_days: params.initialDelay_days
     };
