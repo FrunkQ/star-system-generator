@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, untrack } from 'svelte';
   import type { CelestialBody } from '$lib/types';
-  import { SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '$lib/constants';
+  import { SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG } from '$lib/constants';
   import { STAR_COLOR_MAP } from '$lib/rendering/colors';
 
   let { body, rulePack } = $props();
@@ -241,6 +241,15 @@
       dispatch('update');
   }
 
+  function douseStar() {
+      body.roleHint = 'planet';
+      if (!body.classes) body.classes = [];
+      body.classes[0] = 'planet/brown-dwarf';
+      body.massKg = Math.min(body.massKg || 0, 26000 * EARTH_MASS_KG);
+      body.temperatureK = 1000;
+      dispatch('update');
+  }
+
   function handleTempInput() {
       body.temperatureK = tempK;
       tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, tempK))) - tempLogMin) / (tempLogMax - tempLogMin);
@@ -374,6 +383,9 @@
             </svg>
             <input type="range" min="0" max="1" step="0.001" bind:value={massSliderPos} on:input={updateMass} class="full-width-slider overlay" />
         </div>
+        {#if massSuns <= 0.015}
+            <button class="action-btn douse-btn" on:click={douseStar}>❄️ Douse into Planet</button>
+        {/if}
     </div>
 
     <!-- RADIUS -->
@@ -520,4 +532,19 @@
       height: 20px;
       z-index: 2;
   }
+
+  .action-btn {
+      width: 100%;
+      padding: 8px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+  }
+  .douse-btn {
+      background-color: #2980b9;
+      color: white;
+  }
+  .douse-btn:hover { background-color: #3498db; }
 </style>

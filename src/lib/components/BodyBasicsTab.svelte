@@ -221,6 +221,15 @@
   function handleUpdate() {
       dispatch('update');
   }
+
+  function igniteStar() {
+      body.roleHint = 'star';
+      if (!body.classes) body.classes = [];
+      body.classes[0] = 'star/M';
+      body.massKg = Math.max(body.massKg || 0, 0.08 * SOLAR_MASS_KG);
+      body.temperatureK = 2800;
+      dispatch('update');
+  }
 </script>
 
 <div class="tab-panel">
@@ -248,6 +257,9 @@
         <div class="sub-label">
             <span>{(body.massKg || 0).toExponential(2)} kg</span>
         </div>
+        {#if !useSolarUnits && massValueInternal >= 25000}
+            <button class="action-btn ignite-btn" on:click={igniteStar}>🔥 Ignite into Star</button>
+        {/if}
     </div>
 
     <hr/>
@@ -396,4 +408,19 @@
       height: 100%;
       transition: width 0.3s, background-color 0.3s;
   }
+
+  .action-btn {
+      width: 100%;
+      padding: 8px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+  }
+  .ignite-btn {
+      background-color: #d35400;
+      color: white;
+  }
+  .ignite-btn:hover { background-color: #e67e22; }
 </style>
