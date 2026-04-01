@@ -1874,7 +1874,7 @@
                   dispatch('renameNode', {nodeId: focusedBody.id, newName: e.target.value});
                   systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s);
                 }} class="name-input" title="Click to rename" />
-                  {#if !isEditing && !isPlanning && !isShipLogOpen}
+                  {#if !isEditing && !isPlanning && !isShipLogOpen && (focusedBody.kind !== 'barycenter' || focusedBody.parentId)}
                       <button class="edit-btn small" on:click={() => { isEditing = true; showZoneKeyPanel = false; visualizer?.resetView(); }} style="margin-left: 5px;">Edit</button>
                   {/if}
             </div>

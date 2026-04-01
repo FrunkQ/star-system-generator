@@ -256,40 +256,37 @@ function samplePostJourneyState(
     if (lastPlan.arrivalPlacement) {
       const isLagrange = ['l1', 'l2', 'l3', 'l4', 'l5'].includes(lastPlan.arrivalPlacement);
       if (isLagrange && (targetNode as any).orbit && targetNode.parentId) {
-        // Lagrange points: mathematically rotate with the host planet.
-        const parentNode = system.nodes.find(n => n.id === targetNode.parentId);
-        if (parentNode && (parentNode as any).orbit) {
-          let rotAngleDeg = 0;
-          let scale = 1;
-          
-          if (lastPlan.arrivalPlacement === 'l1') scale = 0.99;
-          if (lastPlan.arrivalPlacement === 'l2') scale = 1.01;
-          if (lastPlan.arrivalPlacement === 'l3') rotAngleDeg = 180;
-          if (lastPlan.arrivalPlacement === 'l4') rotAngleDeg = 60;
-          if (lastPlan.arrivalPlacement === 'l5') rotAngleDeg = -60;
+        // Lagrange points: mathematically rotate the planet's orbit around the sun.
+        let rotAngleDeg = 0;
+        let scale = 1;
+        
+        if (lastPlan.arrivalPlacement === 'l1') scale = 0.99;
+        if (lastPlan.arrivalPlacement === 'l2') scale = 1.01;
+        if (lastPlan.arrivalPlacement === 'l3') rotAngleDeg = 180;
+        if (lastPlan.arrivalPlacement === 'l4') rotAngleDeg = 60;
+        if (lastPlan.arrivalPlacement === 'l5') rotAngleDeg = -60;
 
-          // Create a synthetic node mathematically identical to the parent planet, 
-          // but rotated around the sun to preserve perfectly eccentric Keplarian motion
-          const synthOrbit = JSON.parse(JSON.stringify((parentNode as any).orbit));
-          synthOrbit.elements.a_AU *= scale;
-          synthOrbit.elements.omega_deg = (synthOrbit.elements.omega_deg || 0) + rotAngleDeg;
-          
-          const synthNode = {
-            id: 'synth-lpoint',
-            kind: 'body',
-            parentId: parentNode.parentId,
-            orbit: synthOrbit
-          };
+        // Create a synthetic node mathematically identical to the target planet, 
+        // but rotated around the sun to preserve perfectly eccentric Keplarian motion
+        const synthOrbit = JSON.parse(JSON.stringify((targetNode as any).orbit));
+        synthOrbit.elements.a_AU *= scale;
+        synthOrbit.elements.omega_deg = (synthOrbit.elements.omega_deg || 0) + rotAngleDeg;
+        
+        const synthNode = {
+          id: 'synth-lpoint',
+          kind: 'body',
+          parentId: targetNode.parentId,
+          orbit: synthOrbit
+        };
 
-          const lPointGlobal = getGlobalState(system, synthNode as any, timeMs);
+        const lPointGlobal = getGlobalState(system, synthNode as any, timeMs);
 
-          return {
-            journeyId: log.id,
-            state: 'Orbiting',
-            position_au: lPointGlobal.r,
-            velocity_ms: { x: lPointGlobal.v.x * AU_M, y: lPointGlobal.v.y * AU_M }
-          };
-        }
+        return {
+          journeyId: log.id,
+          state: 'Orbiting',
+          position_au: lPointGlobal.r,
+          velocity_ms: { x: lPointGlobal.v.x * AU_M, y: lPointGlobal.v.y * AU_M }
+        };
       }
     }
 

@@ -41,6 +41,7 @@ export interface Orbit {
   n_rad_per_s?: number; // Optional pre-calculated mean motion (rad/s)
   isRetrogradeOrbit?: boolean;
   resonance?: { numerator: number; denominator: number } | null;
+  lastEditedT0?: number; // Timestamp of last manual edit
 }
 
 export interface DeltaVCapability {

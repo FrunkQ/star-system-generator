@@ -146,7 +146,20 @@ export class SystemProcessor implements ISystemProcessor {
                     const mass1 = m1.kind === 'body' ? ((m1 as CelestialBody).massKg || 0) : ((m1 as Barycenter).effectiveMassKg || 0);
                     const denom = mass0 + mass1;
 
-                    const reference = mass0 >= mass1 ? m0.orbit : m1.orbit;
+                    // Prioritize the member that was most recently edited by the user.
+                    // If neither or both have the same timestamp, fallback to heavier mass.
+                    const t0 = m0.orbit.lastEditedT0 || 0;
+                    const t1 = m1.orbit.lastEditedT0 || 0;
+                    
+                    let reference: Orbit;
+                    if (t0 > t1) {
+                        reference = m0.orbit;
+                    } else if (t1 > t0) {
+                        reference = m1.orbit;
+                    } else {
+                        reference = mass0 >= mass1 ? m0.orbit : m1.orbit;
+                    }
+
                     const refM0 = this.normalizeAngle(reference.elements.M0_rad || 0);
                     const coupledE = Math.max(0, Math.min(0.999, reference.elements.e || 0));
                     const coupledI = reference.elements.i_deg || 0;

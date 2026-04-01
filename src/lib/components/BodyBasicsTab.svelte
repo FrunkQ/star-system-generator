@@ -238,7 +238,7 @@
     <div class="form-group">
         <div class="label-row">
             <label for="mass">Mass ({displayMassUnit})</label>
-            <input type="number" id="mass" step={massInputStep} bind:value={displayMassValue} on:input={updateMassFromInput} />
+            <input type="number" id="mass" step="any" bind:value={displayMassValue} on:input={updateMassFromInput} />
         </div>
         <input 
             type="range" min="0" max="1" step="0.001" 
@@ -268,7 +268,7 @@
     <div class="form-group">
         <div class="label-row">
             <label for="radius">Radius ({displayRadiusUnit})</label>
-            <input type="number" id="radius" step={radiusInputStep} bind:value={displayRadiusValue} on:input={updateRadiusFromInput} />
+            <input type="number" id="radius" step="any" bind:value={displayRadiusValue} on:input={updateRadiusFromInput} />
         </div>
         <input 
             type="range" min="0" max="1" step="0.001" 

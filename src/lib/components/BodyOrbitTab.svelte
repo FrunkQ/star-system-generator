@@ -111,19 +111,33 @@
       updateSliderFromReal();
       updateOrbit();
   }
+function updateOrbit() {
+    if (!body.orbit) return;
+    const boundedE = Math.max(0, Math.min(e, safeMaxE));
+    if (Math.abs(boundedE - e) > 1e-9) {
+        e = parseFloat(boundedE.toFixed(6));
+    }
+    body.orbit.elements.a_AU = a_AU;
+    body.orbit.elements.e = e;
+    body.orbit.elements.i_deg = i_deg;
+    body.orbit.elements.omega_deg = omega_deg;
+    body.orbit.elements.Omega_deg = Omega_deg;
+    body.orbit.elements.M0_rad = M0_deg * (Math.PI / 180);
+    body.orbit.lastEditedT0 = Date.now();
 
-  function updateOrbit() {
-      if (!body.orbit) return;
-      const boundedE = Math.max(0, Math.min(e, safeMaxE));
-      if (Math.abs(boundedE - e) > 1e-9) {
-          e = parseFloat(boundedE.toFixed(3));
+    // Binary Coupling: If we are in a binary system (child of a barycenter with exactly 2 members)
+      // we need to keep the partner's orbit reciprocal.
+      if (parentBody && parentBody.kind === 'barycenter' && parentBody.memberIds?.length === 2) {
+          // Note: In a fully reactive system, the SystemProcessor or a dedicated modifier 
+          // should handle this. However, to provide immediate UI feedback and ensure 
+          // the 'systemStore' stays consistent before the next process() pass, we 
+          // can look for the sibling here if we have access to the full system nodes.
+          // Since we don't have 'system.nodes' here directly (only body and parentBody),
+          // we rely on the dispatch('update') for the processor to fix the reciprocal state.
+          // However, the user wants to "edit" it, so we should ensure the processor's
+          // binary reciprocal logic (Pass 0 in SystemProcessor.ts) isn't FIGHTING the user.
       }
-      body.orbit.elements.a_AU = a_AU;
-      body.orbit.elements.e = e;
-      body.orbit.elements.i_deg = i_deg;
-      body.orbit.elements.omega_deg = omega_deg;
-      body.orbit.elements.Omega_deg = Omega_deg;
-      body.orbit.elements.M0_rad = M0_deg * (Math.PI / 180);
+
       dispatch('update');
   }
 
@@ -153,7 +167,7 @@
         <div class="form-group">
             <div class="label-row">
                 <label>Semi-Major Axis (AU)</label>
-                <input type="number" step={stepA} bind:value={a_AU} on:input={handleNumberInput} />
+                <input type="number" step="any" bind:value={a_AU} on:input={handleNumberInput} />
             </div>
             <div class="info-row" style="font-size: 0.8em; color: #888; margin-bottom: 4px;">{rangeText}</div>
             <!-- Custom Orbital Slider -->
@@ -165,7 +179,7 @@
         <div class="form-group">
             <div class="label-row">
                 <label>Eccentricity</label>
-                <input type="number" step="0.001" min="0" max={safeMaxE.toFixed(3)} bind:value={e} on:input={updateOrbit} />
+                <input type="number" step="any" min="0" max={safeMaxE} bind:value={e} on:input={updateOrbit} />
             </div>
             <input type="range" min="0" max={safeMaxE} step="0.001" bind:value={e} on:input={updateOrbit} class="full-width-slider" />
             <div
@@ -179,17 +193,17 @@
         <div class="form-group">
             <div class="label-row">
                 <label>Argument of Periapsis (°)</label>
-                <input type="number" step="1" min="0" max="360" bind:value={omega_deg} on:input={updateOrbit} />
+                <input type="number" step="any" min="0" max="360" bind:value={omega_deg} on:input={updateOrbit} />
             </div>
-            <input type="range" min="0" max="360" step="1" bind:value={omega_deg} on:input={updateOrbit} class="full-width-slider" />
+            <input type="range" min="0" max="360" step="0.01" bind:value={omega_deg} on:input={updateOrbit} class="full-width-slider" />
         </div>
 
         <div class="form-group">
             <div class="label-row">
                 <label>Mean Anomaly (°)</label>
-                <input type="number" step="1" min="0" max="360" bind:value={M0_deg} on:input={updateOrbit} />
+                <input type="number" step="any" min="0" max="360" bind:value={M0_deg} on:input={updateOrbit} />
             </div>
-            <input type="range" min="0" max="360" step="1" bind:value={M0_deg} on:input={updateOrbit} class="full-width-slider" />
+            <input type="range" min="0" max="360" step="0.01" bind:value={M0_deg} on:input={updateOrbit} class="full-width-slider" />
         </div>
 
         <hr />
@@ -224,17 +238,17 @@
             <div class="form-group">
                 <div class="label-row">
                     <label>Inclination (°)</label>
-                    <input type="number" step="0.1" min="0" max="180" bind:value={i_deg} on:input={updateOrbit} />
+                    <input type="number" step="any" min="0" max="180" bind:value={i_deg} on:input={updateOrbit} />
                 </div>
-                <input type="range" min="0" max="180" step="0.1" bind:value={i_deg} on:input={updateOrbit} class="full-width-slider" />
+                <input type="range" min="0" max="180" step="0.01" bind:value={i_deg} on:input={updateOrbit} class="full-width-slider" />
             </div>
 
             <div class="form-group">
                 <div class="label-row">
                     <label>Long. of Asc. Node (°)</label>
-                    <input type="number" step="1" min="0" max="360" bind:value={Omega_deg} on:input={updateOrbit} />
+                    <input type="number" step="any" min="0" max="360" bind:value={Omega_deg} on:input={updateOrbit} />
                 </div>
-                <input type="range" min="0" max="360" step="1" bind:value={Omega_deg} on:input={updateOrbit} class="full-width-slider" />
+                <input type="range" min="0" max="360" step="0.01" bind:value={Omega_deg} on:input={updateOrbit} class="full-width-slider" />
             </div>
         {/if}
     {/if}

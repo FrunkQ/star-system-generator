@@ -375,7 +375,7 @@
     <div class="form-group">
         <div class="label-row">
             <label>Mass (Solar Masses)</label>
-            <input type="number" step="0.01" bind:value={massSuns} on:change={() => { body.massKg = massSuns * SOLAR_MASS_KG; dispatch('update'); }} />
+            <input type="number" step="any" bind:value={massSuns} on:change={() => { body.massKg = massSuns * SOLAR_MASS_KG; dispatch('update'); }} />
         </div>
         <div class="slider-container">
             <svg class="slider-svg" width="100%" height="30">
@@ -392,7 +392,7 @@
     <div class="form-group">
         <div class="label-row">
             <label>Radius (Solar Radii)</label>
-            <input type="number" step="0.01" bind:value={radiusSuns} on:change={() => { body.radiusKm = radiusSuns * SOLAR_RADIUS_KM; dispatch('update'); }} />
+            <input type="number" step="any" bind:value={radiusSuns} on:change={() => { body.radiusKm = radiusSuns * SOLAR_RADIUS_KM; dispatch('update'); }} />
         </div>
         <div class="slider-container">
             <svg class="slider-svg" width="100%" height="30">
@@ -409,7 +409,7 @@
     <div class="form-group">
         <div class="label-row">
             <label for="temp">Effective Temperature ({tempK} K)</label>
-            <input type="number" step="100" bind:value={tempK} on:change={handleTempInput} />
+            <input type="number" step="any" bind:value={tempK} on:change={handleTempInput} />
         </div>
         <div class="slider-container">
             <svg class="slider-svg" width="100%" height="30">
@@ -428,7 +428,7 @@
     <div class="form-group">
         <div class="label-row">
             <label>Ionising Radiation Level ({radiation.toFixed(2)})</label>
-            <input type="number" step="0.1" bind:value={radiation} on:change={handleRadiationInput} />
+            <input type="number" step="any" bind:value={radiation} on:change={handleRadiationInput} />
         </div>
         <div class="slider-container">
             <svg class="slider-svg" width="100%" height="30">
@@ -450,7 +450,7 @@
     <div class="form-group">
         <div class="label-row">
             <label>Rotation Period (Hours)</label>
-            <input type="number" step="0.1" bind:value={rotationHours} on:input={updateRotation} />
+            <input type="number" step="any" bind:value={rotationHours} on:input={updateRotation} />
         </div>
         <div class="slider-container">
             <svg class="slider-svg" width="100%" height="30">
@@ -464,7 +464,7 @@
     <div class="form-group">
         <div class="label-row">
             <label>Magnetic Field (Gauss)</label>
-            <input type="number" step="0.1" bind:value={magGauss} on:input={handleMagInput} />
+            <input type="number" step="any" bind:value={magGauss} on:input={handleMagInput} />
         </div>
         <div class="slider-container">
             <svg class="slider-svg" width="100%" height="30">

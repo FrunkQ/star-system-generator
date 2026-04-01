@@ -395,9 +395,18 @@
 
   {#if showOrbitalSlider}
     <div class="form-group slider-group">
+        <div class="label-row">
+            <label>Altitude (km)</label>
+            <input type="number" step="any" min="0" value={Math.round(((construct.orbit?.elements.a_AU || 0) * AU_KM) - parentRadiusKm)} on:input={(e) => {
+                const alt = parseFloat(e.currentTarget.value);
+                if (isNaN(alt)) return;
+                if (construct.orbit) construct.orbit.elements.a_AU = (alt + parentRadiusKm) / AU_KM;
+                updateSliderState();
+                dispatch('update');
+            }} />
+        </div>
         <div class="altitude-display">
-            <label>Altitude from Surface: {Math.max(0, ((construct.orbit?.elements.a_AU || 0) * AU_KM) - parentRadiusKm).toLocaleString(undefined, {maximumFractionDigits: 0})} km</label>
-            <span class="radius-info">(Planetary Radius: {parentRadiusKm.toLocaleString()} km)</span>
+            <span class="radius-info">Radius: {parentRadiusKm.toLocaleString()} km</span>
         </div>
         <svg bind:this={sliderEl} class="slider-svg" 
              on:mousedown={() => isDragging = true} on:mouseup={() => isDragging = false} on:mouseleave={() => isDragging = false}
@@ -421,7 +430,16 @@
 
   {#if showInterplanetarySlider}
     <div class="form-group slider-group">
-        <label>Orbital Distance: {(construct.orbit?.elements.a_AU || 0).toFixed(3)} AU</label>
+        <div class="label-row">
+            <label>Distance (AU)</label>
+            <input type="number" step="any" min="0" value={construct.orbit?.elements.a_AU || 0} on:input={(e) => {
+                const au = parseFloat(e.currentTarget.value);
+                if (isNaN(au)) return;
+                if (construct.orbit) construct.orbit.elements.a_AU = au;
+                updateSliderState();
+                dispatch('update');
+            }} />
+        </div>
         <svg bind:this={sliderEl} class="slider-svg"
              on:mousedown={() => isDragging = true} on:mouseup={() => isDragging = false} on:mouseleave={() => isDragging = false}
              on:mousemove={(e) => isDragging && handleSliderInteraction(e, 'interplanetary')}
@@ -441,13 +459,19 @@
   {/if}
 
   <div class="form-group">
-    <label for="anomaly">Orbital Position ({Math.round(anomalyDeg)}°)</label>
-    <input type="range" id="anomaly" min="0" max="360" step="1" bind:value={anomalyDeg} on:input={handleAnomalyChange} disabled={!selectedParentId} />
+    <div class="label-row">
+        <label for="anomaly">Orbital Position (°)</label>
+        <input type="number" step="any" min="0" max="360" bind:value={anomalyDeg} on:input={handleAnomalyChange} disabled={!selectedParentId} />
+    </div>
+    <input type="range" id="anomaly" min="0" max="360" step="0.01" bind:value={anomalyDeg} on:input={handleAnomalyChange} disabled={!selectedParentId} class="full-width-slider" />
   </div>
 
   <div class="form-row-split">
       <div class="form-group">
-        <label for="eccentricity">Eccentricity ({eccentricity.toFixed(3)})</label>
+        <div class="label-row">
+            <label for="eccentricity">Eccentricity</label>
+            <input type="number" step="any" min="0" max="0.999" bind:value={eccentricity} on:input={handleEccentricityChange} disabled={!selectedParentId || selectedPlacement === 'Surface' || selectedPlacement === 'L4' || selectedPlacement === 'L5'} />
+        </div>
         <input 
             type="range" 
             id="eccentricity" 
@@ -457,19 +481,24 @@
             bind:value={eccentricity} 
             on:input={handleEccentricityChange} 
             disabled={!selectedParentId || selectedPlacement === 'Surface' || selectedPlacement === 'L4' || selectedPlacement === 'L5'} 
+            class="full-width-slider"
         />
       </div>
       <div class="form-group">
-        <label for="eccentricityAngle">Argument of Periapsis ({Math.round(eccentricityAngle)}°)</label>
+        <div class="label-row">
+            <label for="eccentricityAngle">Arg. Periapsis (°)</label>
+            <input type="number" step="any" min="0" max="360" bind:value={eccentricityAngle} on:input={handleEccentricityAngleChange} disabled={!selectedParentId || selectedPlacement === 'Surface' || selectedPlacement === 'L4' || selectedPlacement === 'L5' || eccentricity === 0} />
+        </div>
         <input 
             type="range" 
             id="eccentricityAngle" 
             min="0" 
             max="360" 
-            step="1" 
+            step="0.01" 
             bind:value={eccentricityAngle} 
             on:input={handleEccentricityAngleChange} 
             disabled={!selectedParentId || selectedPlacement === 'Surface' || selectedPlacement === 'L4' || selectedPlacement === 'L5' || eccentricity === 0} 
+            class="full-width-slider"
         />
       </div>
   </div>
@@ -477,10 +506,28 @@
 
 <style>
   .tab-panel { padding: 10px; display: flex; flex-direction: column; gap: 15px; }
-  .form-group { display: flex; flex-direction: column; flex: 1; }
+  .form-group { display: flex; flex-direction: column; flex: 1; gap: 5px; }
   .form-row-split { display: flex; gap: 10px; }
-  label { margin-bottom: 5px; color: #ccc; font-size: 0.9em; }
+  .label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2px;
+  }
+  label { margin-bottom: 0; color: #ccc; font-size: 0.9em; }
   input, select { padding: 8px; border-radius: 4px; border: 1px solid #555; background-color: #444; color: #eee; font-size: 1em; }
+  
+  input[type="number"], select { 
+      padding: 4px; 
+      background: #444; 
+      border: 1px solid #555; 
+      color: #eee; 
+      border-radius: 3px; 
+      width: 100px;
+      text-align: right;
+  }
+  
+  .full-width-slider { width: 100%; margin: 5px 0; }
   input[type="color"] { height: 38px; padding: 2px; }
   hr { border: 1px solid #555; margin: 0.5em 0; }
   .icon-controls, .placement-controls { display: flex; gap: 15px; align-items: flex-end; }

@@ -26,7 +26,8 @@
   $: isBarycenter = body.kind === 'barycenter';
   
   // Auto-switch to Details if opening a special object (Belt/Ring/Star)
-  $: if ((isBeltOrRing || isStar) && (selectedTab === 'Basics' || selectedTab === 'Orbit')) {
+  // EXCEPT if it's a star with a parent (binary member), in which case Orbit is allowed.
+  $: if ((isBeltOrRing || isStar) && (selectedTab === 'Basics' || (selectedTab === 'Orbit' && !body.parentId))) {
       selectedTab = 'Details';
   }
 
@@ -61,6 +62,9 @@
         {/if}
     {:else}
         <button class:active={selectedTab === 'Details'} on:click={() => setTab('Details')}>Details</button>
+        {#if isStar && body.parentId}
+            <button class:active={selectedTab === 'Orbit'} on:click={() => setTab('Orbit')}>Orbit</button>
+        {/if}
     {/if}
     
     {#if !isBeltOrRing && !isStar && !isBarycenter}

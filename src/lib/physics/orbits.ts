@@ -1,5 +1,4 @@
 // ======== FILE: orbits.ts ========
-import type { RulePack, CelestialBody, Barycenter } from '../types';
 import { G, AU_KM } from '../constants';
 import { getNodeColor } from '../rendering/colors';
 
@@ -111,8 +110,11 @@ export function propagateState(node: CelestialBody | Barycenter | { orbit: any }
 
   // 1. Mean motion (n)
   let n = node.orbit.n_rad_per_s ?? Math.sqrt(hostMu / Math.pow(a_m, 3));
-  const isRetrograde = !!node.orbit.isRetrogradeOrbit;
-  if (isRetrograde) {
+  
+  // Retrograde handling: 
+  // If n_rad_per_s is provided, it should ALREADY have the correct sign.
+  // Otherwise, we check the flag.
+  if (node.orbit.n_rad_per_s === undefined && !!node.orbit.isRetrogradeOrbit) {
     n = -n;
   }
 

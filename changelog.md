@@ -29,6 +29,13 @@ All notable changes are listed here:
   - Implemented hierarchical **stacked rendering** for binary planets in the System Overview diagram.
   - Enclosed binary pairs within a detailed **Barycenter Info Block** in the Celestial Survey for better organization.
   - Added dynamic unit scaling: small orbital distances now automatically switch from **AU** to **km** for readability.
+- Precision Orbital Editing:
+  - Added "Mean Anomaly" slider and manual numeric entry to all bodies and constructs for fine-tuned positioning.
+  - Set all orbital parameters (SMA, Eccentricity, etc.) to use high-precision "any" step for manual entry.
+  - Construct editor now supports direct manual entry for Altitude (km) and Orbital Distance (AU).
+- Binary Star Orbit Control:
+  - Enabled Orbit editing tab for stars within binary systems.
+  - Implemented smart reciprocal coupling: editing one star's position now automatically updates its partner to maintain a stable barycenter.
 - Bug Fixes & UI Polish:
   - Improved flyby math to correctly calculate zero Delta-V intercepts for unpowered flypasts.
   - Unified "About" dialogs into a single, maintainable component.
