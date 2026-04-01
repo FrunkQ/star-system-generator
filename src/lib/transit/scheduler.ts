@@ -2,6 +2,7 @@ import type { CelestialBody, System } from '$lib/types';
 import type { TransitPlan, Vector2 } from '$lib/transit/types';
 import { AU_KM } from '$lib/constants';
 import { getGlobalState } from '$lib/transit/physics';
+import { getOrbitOptions } from '$lib/physics/orbits';
 
 const AU_M = AU_KM * 1000;
 
@@ -241,47 +242,74 @@ function samplePostJourneyState(
   // Captured arrivals: follow the destination body/construct global motion.
   const targetNode = system.nodes.find((n) => n.id === lastPlan.targetId);
   if (targetNode) {
-    // Intercepting a construct should not implicitly "dock to its eventual destination".
-    // Only explicit construct docking should bind to target frame after completion.
     if (targetNode.kind === 'construct' && !isExplicitDockToConstruct && finalPos) {
-      let velMs = { x: 0, y: 0 };
-      if (lastPts.length >= 2) {
-        const p0 = lastPts[lastPts.length - 2];
-        const p1 = lastPts[lastPts.length - 1];
-        const segDurationSec = Math.max(1e-6, (lastSeg.endTime - lastSeg.startTime) / 1000);
-        const sampleDt = segDurationSec / Math.max(1, lastPts.length - 1);
-        velMs = {
-          x: ((p1.x - p0.x) * AU_M) / sampleDt,
-          y: ((p1.y - p0.y) * AU_M) / sampleDt
-        };
-      }
-      const dtSec = Math.max(0, (timeMs - completedAtMs) / 1000);
+      // It's a Rendezvous/Brake Burn with a Construct, but not a hard Dock.
+      // We should perfectly match its state (formation flying).
+      const s = getGlobalState(system, targetNode as any, timeMs);
       return {
         journeyId: log.id,
-        state: 'Deep Space',
-        position_au: {
-          x: finalPos.x + ((velMs.x / AU_M) * dtSec),
-          y: finalPos.y + ((velMs.y / AU_M) * dtSec)
-        },
-        velocity_ms: velMs
+        state: 'Deep Space', // Matches Construct Rendezvous behavior
+        position_au: s.r,
+        velocity_ms: { x: s.v.x * AU_M, y: s.v.y * AU_M }
       };
     }
 
+    if (lastPlan.arrivalPlacement) {
+      const isLagrange = ['l1', 'l2', 'l3', 'l4', 'l5'].includes(lastPlan.arrivalPlacement);
+      if (isLagrange && (targetNode as any).orbit && targetNode.parentId) {
+        // Lagrange points: mathematically rotate with the host planet.
+        const parentNode = system.nodes.find(n => n.id === targetNode.parentId);
+        if (parentNode) {
+          const parentGlobal = getGlobalState(system, parentNode as any, timeMs);
+          const targetGlobal = getGlobalState(system, targetNode as any, timeMs);
+          
+          // Vector from parent (e.g. Star) to target (e.g. Planet)
+          const dx = targetGlobal.r.x - parentGlobal.r.x;
+          const dy = targetGlobal.r.y - parentGlobal.r.y;
+          const dist = Math.hypot(dx, dy);
+          const angle = Math.atan2(dy, dx);
+          
+          let lAngle = angle;
+          let lDist = dist;
+          
+          // Simplified L-point geometry
+          if (lastPlan.arrivalPlacement === 'l1') lDist = dist * 0.99; // Approximations for visual 
+          if (lastPlan.arrivalPlacement === 'l2') lDist = dist * 1.01;
+          if (lastPlan.arrivalPlacement === 'l3') { lAngle = angle + Math.PI; lDist = dist; }
+          if (lastPlan.arrivalPlacement === 'l4') { lAngle = angle + (Math.PI / 3); lDist = dist; }
+          if (lastPlan.arrivalPlacement === 'l5') { lAngle = angle - (Math.PI / 3); lDist = dist; }
+          
+          const lx = parentGlobal.r.x + (Math.cos(lAngle) * lDist);
+          const ly = parentGlobal.r.y + (Math.sin(lAngle) * lDist);
+          
+          // Tangent velocity matching the orbit (circular approx)
+          const vMag = Math.hypot(targetGlobal.v.x, targetGlobal.v.y);
+          const vx = -Math.sin(lAngle) * vMag * AU_M;
+          const vy = Math.cos(lAngle) * vMag * AU_M;
+
+          return {
+            journeyId: log.id,
+            state: 'Orbiting',
+            position_au: { x: lx, y: ly },
+            velocity_ms: { x: vx, y: vy }
+          };
+        }
+      }
+    }
+
+    // Generic Orbit (lo/mo/ho) or Surface
+    // The ship should orbit the planet, not just have a static offset.
+    // However, without a true Keplarian propagator for the ship, the cleanest 
+    // post-transit approximation for UI scrubbing is to lock it to the planet's center 
+    // (with a tiny visual scatter if desired) or snap-to-zero.
     const s = getGlobalState(system, targetNode as any, timeMs);
-    const sComplete = getGlobalState(system, targetNode as any, completedAtMs);
-    const relOffset = finalPos
-      ? { x: finalPos.x - sComplete.r.x, y: finalPos.y - sComplete.r.y }
-      : { x: 0, y: 0 };
-    const state =
-      lastPlan.arrivalPlacement === 'surface'
-        ? 'Landed'
-        : targetNode.kind === 'construct'
-          ? 'Docked'
-          : 'Orbiting';
+    const state = lastPlan.arrivalPlacement === 'surface' ? 'Landed' : (targetNode.kind === 'construct' ? 'Docked' : 'Orbiting');
+    
+    // Snap to target center. The visualizer handles drawing "orbiting" ships as icons next to the planet.
     return {
       journeyId: log.id,
       state,
-      position_au: { x: s.r.x + relOffset.x, y: s.r.y + relOffset.y },
+      position_au: s.r,
       velocity_ms: { x: s.v.x * AU_M, y: s.v.y * AU_M }
     };
   }

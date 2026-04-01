@@ -3,12 +3,22 @@
 All notable changes are listed here:
 
 
-## v1.9.3 - 24th Mar 2026
+## v1.10.0 - 1st Apr 2026
 - Data Unification & Editor Features:
   - Unified Star and Planet data structures into a single cohesive `CelestialBody` type, simplifying physics processing and resolving TS errors.
   - High mass planets (Brown Dwarfs) can now be "Ignited" into stars directly within the UI.
   - Low mass stars can be "Doused" back into planets directly within the UI.
   - Added "Rebuild Hierarchy" button to System View. When mass edits fundamentally shift the system's center of mass (e.g. creating a massive star), this button flattens and fully rebuilds the orbital parent-child chains relative to the new heaviest body.
+- Transit & Flight Dynamics Improvements:
+  - Overhauled post-transit kinematic states (`samplePostJourneyState`) to accurately simulate orbital aftermaths during time-scrubbing.
+  - Ships arriving in generic orbits (`lo`, `mo`, `ho`) or landed on the surface now correctly lock to their target's global state, eliminating the "glued to the sky" static offset bug.
+  - Ships intercepting a construct (rendezvous) now automatically enter `Deep Space` formation flying, perfectly matching the station's trajectory instead of continuing inertial drift.
+  - Ships arriving at Lagrange points (L1-L5) now mathematically track the parent planet's orbital rotation rather than remaining at a static Cartesian offset.
+- Improved Stability Assessment:
+  - Added full system hierarchy scan to catch "Massive Inversions" (orbiting body is heavier than its host) and "Stolen Children" (orbit exceeds host's stable Hill sphere).
+  - Added "Consumed/Collided" checks if an orbit drops below the physical radius of its host.
+  - Added "Roche Limit Violation" checks for bodies orbiting too close to their host.
+  - New bright red `⚠️ Rebuild Hierarchy` UI warnings added to the Technical Details panel when mass inversions occur.
 - Terminology & Unit Standardization:
   - Standardized acceleration units to lowercase **"g"** (9.81 m/s²) across tech details, and hazard messages.
 - Time Control System Enhancements:
