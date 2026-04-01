@@ -39,6 +39,15 @@ All notable changes are listed here:
 - Bug Fixes & UI Polish:
   - Improved flyby math to correctly calculate zero Delta-V intercepts for unpowered flypasts.
   - Unified "About" dialogs into a single, maintainable component.
+- Stellar Physics & Evolution:
+  - Implemented **Dual Frost Lines**: distinction between **Formation Frost Line** (170K, historical boundary for gas giant growth) and **Current Frost Line** (125K, modern vacuum ice stability).
+  - Added **Spectral-Class Dependent Brightening**: stars now evolve in luminosity based on their type (O/B massive stars brighten rapidly, M-dwarfs remain stable), correctly back-calculating historical formation zones.
+  - Fixed **Radiogenic Heating** persistence: manual thermal overrides are now preserved during system processing and correctly account for surface temperature even on rogue/starless bodies.
+- Orbital Mechanics & Generation:
+  - Fixed **"0 AU Moon" Bug**: correctly resolved host gravitational parameters for planets orbiting barycenters, ensuring stable moon placements in binary systems.
+  - UI refinement for root stellar barycenters: hidden the redundant "Edit" button to prioritize direct name/visibility editing.
+- Easter Egg:
+  - Added "Go Go Artemis II!" alert for ship takeoffs.
 
 ## v1.9.2 - 24th Mar 2026
 - N-Body Gravitational Summation:

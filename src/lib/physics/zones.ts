@@ -251,6 +251,10 @@ function getCompanionAdjustedTemperatureLineDistance(
 }
 
 export function calculateFrostLine(star: CelestialBody, allNodes?: (CelestialBody | Barycenter)[]): number {
+    return getCompanionAdjustedTemperatureLineDistance(star, 125, allNodes);
+}
+
+export function calculateFormationFrostLine(star: CelestialBody, allNodes?: (CelestialBody | Barycenter)[]): number {
     return getCompanionAdjustedTemperatureLineDistance(star, 170, allNodes);
 }
 
@@ -262,14 +266,49 @@ export function calculateCOIceLine(star: CelestialBody, allNodes?: (CelestialBod
     return getCompanionAdjustedTemperatureLineDistance(star, 30, allNodes);
 }
 
+function getSpectralAlpha(star: CelestialBody): number {
+    if (!star.classes || star.classes.length === 0) return 0.09; // Default G-like
+    const spectralType = star.classes[0].split('/')[1]?.[0] || 'G';
+    
+    switch (spectralType) {
+        case 'O': return 1.5;   // Extremely fast
+        case 'B': return 0.8; 
+        case 'A': return 0.3;
+        case 'F': return 0.15;
+        case 'G': return 0.09;  // Sun-like (~70% ZAMS luminosity vs current at 4.6 Gyr)
+        case 'K': return 0.03;
+        case 'M': return 0.005; // Nearly static
+        default: return 0.09;
+    }
+}
+
 export function calculateAllStellarZones(
     star: CelestialBody,
     pack?: RulePack,
-    allNodes?: (CelestialBody | Barycenter)[]
+    allNodes?: (CelestialBody | Barycenter)[],
+    age_Gyr: number = 4.6
 ): Record<string, any> {
     const killZone = calculateKillZone(star);
     const dangerZoneMultiplier = pack?.generation_parameters?.danger_zone_multiplier || 5;
     const dangerZone = killZone * dangerZoneMultiplier;
+    
+    // Luminosity context for frost lines
+    const alpha = getSpectralAlpha(star);
+    const currentLuminosity = getLuminosity(star);
+    
+    // Back-calculate luminosity at age 0 (ZAMS)
+    // L_now = L_zams * (1 + alpha * age)
+    const zamsFactor = 1 / (1 + (alpha * age_Gyr));
+    
+    // Create a temporary proxy star for the formation calculation (Lower L)
+    const formationStar = { ...star, temperatureK: (star.temperatureK || SOLAR_TEMP_K) * Math.pow(zamsFactor, 0.25) };
+    
+    // Current Frost Line: Vacuum ice stability today (~125K)
+    const currentFrostLine = calculateFrostLine(star, allNodes);
+    
+    // Formation Frost Line: Disk ice stability during birth (~170K)
+    const formationFrostLine = calculateFormationFrostLine(formationStar, allNodes);
+
     const coIceLine = calculateCOIceLine(star, allNodes);
     const systemLimitAu = coIceLine * 2;
 
@@ -279,7 +318,9 @@ export function calculateAllStellarZones(
         goldilocks: calculateGoldilocksZone(star, allNodes),
         silicateLine: calculateSilicateLine(star, allNodes),
         sootLine: calculateSootLine(star, allNodes),
-        frostLine: calculateFrostLine(star, allNodes),
+        frostLine: currentFrostLine, // Backward compatibility
+        currentFrostLine: currentFrostLine,
+        formationFrostLine: formationFrostLine,
         co2IceLine: calculateCO2IceLine(star, allNodes),
         coIceLine: coIceLine,
         systemLimitAu: systemLimitAu,

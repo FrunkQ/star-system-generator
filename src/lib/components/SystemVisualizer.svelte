@@ -522,12 +522,22 @@
       if (focusedNode.parentId) {
           const parent = nodesById.get(focusedNode.parentId);
           if (parent && parent.kind === 'body') {
-              const siblings = system.nodes.filter(n => n.parentId === parent.id && n.kind === 'body');
-              calculateAndStorePoints(parent, siblings);
+              const siblings = system.nodes.filter(n => 
+                  n.parentId === parent.id && 
+                  n.kind === 'body' && 
+                  (n as CelestialBody).roleHint !== 'belt' && 
+                  (n as CelestialBody).roleHint !== 'ring'
+              ) as CelestialBody[];
+              calculateAndStorePoints(parent as CelestialBody, siblings);
           }
       }
-      const children = system.nodes.filter(n => n.parentId === focusedNode.id && n.kind === 'body');
-      if (children.length > 0) calculateAndStorePoints(focusedNode, children);
+      const children = system.nodes.filter(n => 
+          n.parentId === focusedNode.id && 
+          n.kind === 'body' && 
+          (n as CelestialBody).roleHint !== 'belt' && 
+          (n as CelestialBody).roleHint !== 'ring'
+      ) as CelestialBody[];
+      if (children.length > 0) calculateAndStorePoints(focusedNode as CelestialBody, children);
       lagrangePoints = allPoints.size > 0 ? allPoints : null;
   }
 
@@ -1004,7 +1014,8 @@
               { key: 'silicateLine', name: 'Rock Line', color: 'rgba(165, 42, 42, 0.8)' },
               { key: 'sootLine', name: 'Soot Line', color: 'rgba(105, 105, 105, 0.8)' },
               { key: 'goldilocksInner', name: 'Habitable Zone', color: 'rgba(0, 255, 0, 0.8)' },
-              { key: 'frostLine', name: 'Frost Line', color: 'rgba(173, 216, 230, 0.8)' },
+              { key: 'formationFrostLine', name: 'Frost Line (Form.)', color: 'rgba(173, 216, 230, 0.8)' },
+              { key: 'currentFrostLine', name: 'Frost Line (Curr.)', color: 'rgba(173, 216, 230, 0.8)' },
               { key: 'co2IceLine', name: 'CO2 Ice Line', color: 'rgba(255, 255, 255, 0.8)' },
               { key: 'coIceLine', name: 'CO Ice Line', color: 'rgba(0, 0, 255, 0.8)' }
           ];
@@ -1174,7 +1185,24 @@
       drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(rocheAu), 'rgba(180, 0, 0, 0.5)');
       drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.silicateLine || 0), 'rgba(165, 42, 42, 0.5)');
       drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.sootLine || 0), 'rgba(105, 105, 105, 0.5)');
-      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.frostLine || 0), 'rgba(173, 216, 230, 0.5)');
+      
+      // Dual Frost Lines
+      const formationFrost = toScreenRadius(zones.formationFrostLine || 0);
+      const currentFrost = toScreenRadius(zones.currentFrostLine || 0);
+      
+      // Draw Formation Frost Line (Dashed)
+      if (formationFrost > 0) {
+          ctx.beginPath();
+          ctx.arc(screenStar.x, screenStar.y, formationFrost, 0, 2 * Math.PI);
+          ctx.strokeStyle = 'rgba(173, 216, 230, 0.5)';
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+      }
+
+      // Draw Current Frost Line (Solid/Standard dash)
+      drawZoneLine(screenStar.x, screenStar.y, currentFrost, 'rgba(173, 216, 230, 0.5)');
+
       drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.co2IceLine || 0), 'rgba(255, 255, 255, 0.5)');
       drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.coIceLine || 0), 'rgba(0, 0, 255, 0.5)');
     }

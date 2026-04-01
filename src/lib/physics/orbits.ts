@@ -422,7 +422,10 @@ export function calculateOrbitalBoundaries(planet: PlanetData, pack: RulePack): 
 // ... existing code ...
 
 export function getOrbitOptions(body: CelestialBody, rulePack: RulePack, system?: System): { id: string, name: string, radiusKm: number, color: string, isLagrange?: boolean }[] {
-    // Only for planets/moons/stars?
+    // Only for planets/moons/stars? 
+    // Belts and Rings should NOT have simulated Lagrange points as they are distributed masses.
+    const isDistributed = body.roleHint === 'belt' || body.roleHint === 'ring';
+    
     // Determine physical properties
     const massKg = body.massKg || 0;
     const radiusKm = body.radiusKm || 1000;
@@ -458,13 +461,16 @@ export function getOrbitOptions(body: CelestialBody, rulePack: RulePack, system?
     options.push({ id: 'ho', name: 'High Orbit', radiusKm: radiusKm + hoAlt, sortOrder: 40, color: '#ffffff' });
 
     // Lagrange Points - Forced to end (Sort Order 90+)
-    const soiRadiusKm = boundaries.heoUpperBoundaryKm;
-    
-    options.push({ id: 'l1', name: 'L1 (Collinear Inner)', radiusKm: radiusKm + (boundaries.minLeoKm + soiRadiusKm * 0.8), sortOrder: 90, color: '#ffffff', isLagrange: true });
-    options.push({ id: 'l2', name: 'L2 (Collinear Outer)', radiusKm: radiusKm + (soiRadiusKm * 1.2), sortOrder: 91, color: '#ffffff', isLagrange: true });
-    options.push({ id: 'l3', name: 'L3 (Hidden Co-orbital)', radiusKm: pData.distanceToHost_km, sortOrder: 92, color: '#ffffff', isLagrange: true });
-    options.push({ id: 'l4', name: 'L4 (Leading Trojan)', radiusKm: pData.distanceToHost_km, sortOrder: 93, color: '#ffffff', isLagrange: true }); 
-    options.push({ id: 'l5', name: 'L5 (Trailing Trojan)', radiusKm: pData.distanceToHost_km, sortOrder: 94, color: '#ffffff', isLagrange: true });
+    // ONLY for point-mass bodies, not belts/rings
+    if (!isDistributed) {
+        const soiRadiusKm = boundaries.heoUpperBoundaryKm;
+        
+        options.push({ id: 'l1', name: 'L1 (Collinear Inner)', radiusKm: radiusKm + (boundaries.minLeoKm + soiRadiusKm * 0.8), sortOrder: 90, color: '#ffffff', isLagrange: true });
+        options.push({ id: 'l2', name: 'L2 (Collinear Outer)', radiusKm: radiusKm + (soiRadiusKm * 1.2), sortOrder: 91, color: '#ffffff', isLagrange: true });
+        options.push({ id: 'l3', name: 'L3 (Hidden Co-orbital)', radiusKm: pData.distanceToHost_km, sortOrder: 92, color: '#ffffff', isLagrange: true });
+        options.push({ id: 'l4', name: 'L4 (Leading Trojan)', radiusKm: pData.distanceToHost_km, sortOrder: 93, color: '#ffffff', isLagrange: true }); 
+        options.push({ id: 'l5', name: 'L5 (Trailing Trojan)', radiusKm: pData.distanceToHost_km, sortOrder: 94, color: '#ffffff', isLagrange: true });
+    }
     
     // Children (Moons / Stations)
     if (system) {

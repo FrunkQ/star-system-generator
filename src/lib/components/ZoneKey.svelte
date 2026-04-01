@@ -84,15 +84,29 @@
 
 		<li>
 			<p>
-				<span class="color-box lightblue"></span>
-				<strong>Frost Line (Light Blue):</strong> This is the most important line in the
-				outer system. It's the point where it's finally cold enough for water to freeze into
-				solid ice.
+				<span class="color-box lightblue dashed"></span>
+				<strong>Frost Line (Formation) (Dashed):</strong> The point where water ice was stable 
+				during the system's birth. This boundary determined where rocky planets ended and 
+				gas giants could begin to grow.
 			</p>
 			<p class="in-game-note">
-				<strong>In-Game: 'The Ice Rink.'</strong> This is the birthplace of all Gas Giants.
-				Beyond this line, every asteroid and moon is a mountain of water ice. This is the
-				system's "gas station" for reaction mass and life support.
+				<strong>In-Game: 'The Fossil Line.'</strong> This is the ancient boundary of the 
+				outer system. It explains why your inner planets are dry rocks and your outer ones 
+				are massive gas giants. It's a historical marker of the system's evolution.
+			</p>
+		</li>
+
+		<li>
+			<p>
+				<span class="color-box lightblue"></span>
+				<strong>Frost Line (Current) (Solid):</strong> The point where it's <em>currently</em> 
+				cold enough for water to freeze into solid ice. As stars age and brighten, this 
+				line recedes further into the system.
+			</p>
+			<p class="in-game-note">
+				<strong>In-Game: 'The Modern Ice Line.'</strong> Everything beyond this line is a 
+				mountain of water ice today. This is where you go for reaction mass and life support. 
+				Planets between the Formation and Current lines may be "thawing" out.
 			</p>
 		</li>
 
@@ -177,6 +191,9 @@
 		margin-right: 0.5em;
 		border: 1px solid #555;
 		vertical-align: middle; /* Aligns box with text */
+	}
+	.color-box.dashed {
+		border: 1px dashed #fff;
 	}
 
 	.in-game-note {
