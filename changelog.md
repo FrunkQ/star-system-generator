@@ -4,18 +4,19 @@ All notable changes are listed here:
 
 
 ## v1.9.3 - 24th Mar 2026
-- Terminology Unification (G vs g):
-  - Standardized acceleration units to lowercase **"g"** (9.81 m/s²) across all mission cards, tech details, and graphs.
-  - Preserved uppercase **"G"** for Gravitational Constant and Spectral Type G stars.
-  - Renamed "G-Force" hazard type to **"g-force"** for scientific consistency.
-- UI Polish & Maintenance:
-  - Unified "About" dialogs across Starmap and System views into a single reusable `AboutModal` component.
-  - Halved the size of TCM markers on both trajectory and timeline for a cleaner visual look.
-  - Reverted all-caps tag text to **"HIGH-G"** for consistent badge styling while maintaining numeric "g" units.
-- Bug Fixes:
-  - Fixed "Arrival Mode" dropdown issues where Flyby was incorrectly labeled "(No Match)".
-  - Improved flyby solver logic to correctly calculate zero Delta-V arrivals for unpowered intercepts.
-  - Resolved UI slider snap-back issues during Direct Burn planning.
+- Terminology & Unit Standardization:
+  - Standardized acceleration units to lowercase **"g"** (9.81 m/s²) across tech details, and hazard messages.
+- Time Control System Enhancements:
+  - Added **"Manual Speed"** mode (speed dial) allowing for persistent integration rates and reversible playback. Like OLD system.
+  - New live **Speed Indicator** (e.g., +1s/s to +10y/s) providing real-time feedback during scrubbing.
+  - Increased scrubber precision with a 50% wider slider and unified logic across System and Starmap views.
+- Printed Report Improvements (Binary Systems):
+  - Implemented hierarchical **stacked rendering** for binary planets in the System Overview diagram.
+  - Enclosed binary pairs within a detailed **Barycenter Info Block** in the Celestial Survey for better organization.
+  - Added dynamic unit scaling: small orbital distances now automatically switch from **AU** to **km** for readability.
+- Bug Fixes & UI Polish:
+  - Improved flyby math to correctly calculate zero Delta-V intercepts for unpowered flypasts.
+  - Unified "About" dialogs into a single, maintainable component.
 
 ## v1.9.2 - 24th Mar 2026
 - N-Body Gravitational Summation:

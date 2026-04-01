@@ -87,8 +87,33 @@ export interface SensorInstance {
   description?: string;
 }
 
-export interface CelestialBody extends NodeBase {
+export interface CelestialBody extends NodeBase, PhysicalParameters {
   kind: 'body' | 'construct';
+  roleHint: 'star' | 'planet' | 'moon' | 'barycenter' | 'construct' | 'belt' | 'ring' | 'ship';
+  classes?: string[];
+  orbit?: Orbit;
+
+  // Physical parameters
+  radiusKm?: number;
+  radiusInnerKm?: number; // For belts/rings
+  radiusOuterKm?: number; // For belts/rings
+  temperatureK?: number;
+  calculatedGravity_ms2?: number;
+  distanceToHost_km?: number;
+  orbitalBoundaries?: OrbitalBoundaries;
+
+  // Environment
+  atmosphere?: Atmosphere;
+  hydrosphere?: Hydrosphere;
+  biosphere?: Biosphere;
+  magnetic_field?: MagneticField;
+
+  // Legacy/Construct specifics
+  physical_parameters?: PhysicalParameters;
+  systems?: Systems;
+  crew?: { current?: number; max?: number };
+  IsTemplate?: boolean;
+
   engines?: Engine[]; // Array of engines attached to the construct
   fuel_tanks?: FuelTank[]; // Array of fuel tanks attached to the construct
   sensors?: SensorInstance[]; // Array of sensors attached to the construct
