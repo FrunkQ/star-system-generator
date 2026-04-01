@@ -32,13 +32,12 @@ function promoteMassiveCompanion(system: System): boolean {
   for (const node of system.nodes) {
     if (node.kind !== 'body') continue;
     const secondary = node as CelestialBody;
-    if (!secondary.orbit || !secondary.parentId) continue;
+    if (!secondary.orbit || secondary.parentId === undefined) continue;
 
-    const primary = nodesById.get(secondary.parentId);
+    const primary = nodesById.get(secondary.parentId as string);
     if (!primary || primary.kind !== 'body') continue;
 
     const primaryBody = primary as CelestialBody;
-    if (!primaryBody.parentId || !primaryBody.orbit) continue;
     if (primaryBody.parentId === secondary.id) continue;
 
     const mPrimary = getMass(primaryBody);
@@ -49,8 +48,8 @@ function promoteMassiveCompanion(system: System): boolean {
     if (ratio < PROMOTE_RATIO) continue;
 
     const originalHostId = primaryBody.parentId;
-    const originalHost = nodesById.get(originalHostId);
-    if (!originalHost) continue;
+    const originalHost = originalHostId ? nodesById.get(originalHostId) : null;
+    if (originalHostId && !originalHost) continue;
 
     const pairMass = mPrimary + mSecondary;
     const separationAU = Math.max(secondary.orbit.elements.a_AU || 0, 1e-9);
@@ -62,7 +61,7 @@ function promoteMassiveCompanion(system: System): boolean {
     const mLight = getMass(light);
 
     // Preserve the original host-track orbit (around star/parent), not the local pair orbit.
-    const hostTrackOrbit = cloneOrbit(primaryBody.orbit);
+    const hostTrackOrbit = primaryBody.orbit ? cloneOrbit(primaryBody.orbit) : undefined;
     const phaseBase = normalizeAngle(light.orbit?.elements.M0_rad ?? 0);
 
     const baryId = `bary-auto-${generateId()}`;
@@ -73,11 +72,11 @@ function promoteMassiveCompanion(system: System): boolean {
       parentId: originalHostId,
       memberIds: [heavy.id, light.id],
       effectiveMassKg: pairMass,
-      orbit: {
+      orbit: (hostTrackOrbit && originalHostId && originalHost) ? {
         ...cloneOrbit(hostTrackOrbit),
         hostId: originalHostId,
         hostMu: G * getMass(originalHost as CelestialBody | Barycenter)
-      },
+      } : undefined,
       tags: [{ key: 'barycenter/auto' }]
     };
 
@@ -91,10 +90,10 @@ function promoteMassiveCompanion(system: System): boolean {
     heavy.orbit = {
       hostId: baryId,
       hostMu: pairMu,
-      t0: hostTrackOrbit.t0,
-      n_rad_per_s: hostTrackOrbit.n_rad_per_s,
+      t0: hostTrackOrbit ? hostTrackOrbit.t0 : (light.orbit?.t0 ?? 0),
+      n_rad_per_s: hostTrackOrbit?.n_rad_per_s,
       elements: {
-        ...hostTrackOrbit.elements,
+        ...(hostTrackOrbit ? hostTrackOrbit.elements : { e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0 }),
         a_AU: aHeavy,
         M0_rad: normalizeAngle(phaseBase + Math.PI)
       }
@@ -103,10 +102,10 @@ function promoteMassiveCompanion(system: System): boolean {
     light.orbit = {
       hostId: baryId,
       hostMu: pairMu,
-      t0: light.orbit?.t0 ?? hostTrackOrbit.t0,
+      t0: light.orbit?.t0 ?? (hostTrackOrbit?.t0 ?? 0),
       n_rad_per_s: light.orbit?.n_rad_per_s,
       elements: {
-        ...(light.orbit?.elements || hostTrackOrbit.elements),
+        ...(light.orbit?.elements || (hostTrackOrbit ? hostTrackOrbit.elements : { e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0 })),
         a_AU: aLight,
         M0_rad: phaseBase
       }
@@ -127,7 +126,6 @@ function demoteWeakBinary(system: System): boolean {
     const bary = node as Barycenter;
     if (!isAutoBarycenter(bary)) continue;
     if (!bary.memberIds || bary.memberIds.length !== 2) continue;
-    if (!bary.parentId || !bary.orbit) continue;
 
     const m0 = nodesById.get(bary.memberIds[0]);
     const m1 = nodesById.get(bary.memberIds[1]);
@@ -153,7 +151,7 @@ function demoteWeakBinary(system: System): boolean {
     const fallbackSeparation = separationAU > 0 ? separationAU : Math.max(secondary.orbit.elements.a_AU || 0, 1e-9);
 
     primary.parentId = bary.parentId;
-    primary.orbit = cloneOrbit(bary.orbit);
+    primary.orbit = bary.orbit ? cloneOrbit(bary.orbit) : undefined;
 
     secondary.parentId = primary.id;
     secondary.orbit = {

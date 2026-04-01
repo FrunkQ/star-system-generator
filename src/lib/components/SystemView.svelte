@@ -38,6 +38,7 @@
   import { propagate } from '$lib/api';
   import { broadcastService } from '$lib/broadcast';
   import { sanitizeSystem } from '$lib/system/utils';
+  import { rebuildSystemHierarchy } from '$lib/physics/hierarchyRebuild';
   import { calculateAllStellarZones } from '$lib/physics/zones';
   import { calculateEquilibriumTemperature, composeSurfaceTemperatureFromDeltaComponents, estimateBondAlbedo, estimateInternalHeatK } from '$lib/physics/temperature';
   import { ensureTemporalState, setMasterToDisplay, updateDisplayBySeconds } from '$lib/temporal/defaults';
@@ -2197,6 +2198,14 @@
         <button on:click={() => showJson = !showJson}>
             {showJson ? 'Hide' : 'Show'} JSON
         </button>
+        <button on:click={() => {
+            if ($systemStore) {
+                const rebuilt = rebuildSystemHierarchy($systemStore);
+                const fullyReprocessed = systemProcessor.process({ ...rebuilt, nodes: rebuilt.nodes }, rulePack);
+                systemStore.set({ ...fullyReprocessed, isManuallyEdited: true });
+                alert('Hierarchy rebuilt: The most massive body is now the system root, and stability has been recalculated.');
+            }
+        }}>Rebuild Hierarchy</button>
         <button on:click={() => {
             if ($systemStore) {
                 const repaired = sanitizeSystem($systemStore, rulePack);

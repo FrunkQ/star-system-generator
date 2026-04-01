@@ -4,6 +4,11 @@ All notable changes are listed here:
 
 
 ## v1.9.3 - 24th Mar 2026
+- Data Unification & Editor Features:
+  - Unified Star and Planet data structures into a single cohesive `CelestialBody` type, simplifying physics processing and resolving TS errors.
+  - High mass planets (Brown Dwarfs) can now be "Ignited" into stars directly within the UI.
+  - Low mass stars can be "Doused" back into planets directly within the UI.
+  - Added "Rebuild Hierarchy" button to System View. When mass edits fundamentally shift the system's center of mass (e.g. creating a massive star), this button flattens and fully rebuilds the orbital parent-child chains relative to the new heaviest body.
 - Terminology & Unit Standardization:
   - Standardized acceleration units to lowercase **"g"** (9.81 m/s²) across tech details, and hazard messages.
 - Time Control System Enhancements:

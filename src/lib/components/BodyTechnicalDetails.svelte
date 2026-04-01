@@ -907,5 +907,23 @@
     font-size: 0.8em;
     color: #eee;
   }
+
+  .detail-item.unstable {
+    border-left-color: #ef4444;
+    background-color: rgba(239, 68, 68, 0.05);
+  }
+  .detail-item.unstable .value {
+    color: #ef4444;
+    font-weight: bold;
+  }
+  .rebuild-warning {
+    margin-left: 0.5em;
+    font-size: 0.8em;
+    background-color: #ef4444;
+    color: white;
+    padding: 0.1em 0.4em;
+    border-radius: 3px;
+    cursor: help;
+  }
 </style>
 

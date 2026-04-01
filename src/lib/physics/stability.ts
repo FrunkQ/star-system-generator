@@ -243,6 +243,78 @@ function assessBinaryPairStability(
   return out;
 }
 
+function assessHostBindingStability(
+  node: CelestialBody,
+  host: CelestialBody | Barycenter,
+  grandparent: CelestialBody | Barycenter | undefined,
+  hostMassKg: number
+): StabilityAssessment {
+  const out: StabilityAssessment = { severity: 0, reasons: [] };
+  
+  if (host.kind === 'barycenter' && host.memberIds?.includes(node.id)) {
+    return out; // Handled by assessBinaryPairStability
+  }
+
+  const nodeMass = getNodeMassKg(node);
+
+  // 1. Mass Inversion Check
+  if (nodeMass > hostMassKg * 1.05) {
+    out.severity = 3;
+    out.reasons.push(`Massive inversion: orbiting body is heavier than its host. (Recommendation: Click "Rebuild Hierarchy" below)`);
+  }
+
+  const aNode = node.orbit?.elements.a_AU || 0;
+  const eNode = Math.max(0, Math.min(0.999, node.orbit?.elements.e || 0));
+  const periNodeAU = aNode * (1 - eNode);
+
+  // 2. Collision & Roche Limit Checks
+  if (host.kind === 'body') {
+    const hostRadiusAU = ((host as CelestialBody).radiusKm || 0) / 149597870.7;
+    if (periNodeAU > 0 && periNodeAU <= hostRadiusAU) {
+      out.severity = 3;
+      out.reasons.push(`Orbit intersects host radius (Consumed/Collided).`);
+    } else if (periNodeAU > 0) {
+      // Simplified rigid Roche limit: D = R * (2 * rho_p / rho_s)^(1/3)
+      const hostRadiusKm = (host as CelestialBody).radiusKm || 1;
+      const hostDensity = hostMassKg / ((4/3) * Math.PI * Math.pow(hostRadiusKm * 1000, 3));
+      const satelliteDensity = 3000; // rough rock density
+      const rocheLimitAU = (hostRadiusKm * Math.pow(2 * (hostDensity / satelliteDensity), 1/3)) / 149597870.7;
+      
+      if (periNodeAU <= rocheLimitAU) {
+        out.severity = 3;
+        out.reasons.push(`Orbit is within host's Roche Limit (Tidally disrupted/Ring formation).`);
+      }
+    }
+  }
+
+  // 3. Host Hill Sphere Violation
+  const hostOrbit = (host as any).orbit;
+  if (grandparent && hostOrbit) {
+    const grandparentMass = getHostMassKg(grandparent);
+    if (grandparentMass > 0) {
+      const aHost = hostOrbit.elements.a_AU || 0;
+      const eHost = Math.max(0, Math.min(0.999, hostOrbit.elements.e || 0));
+      const periHost = aHost * (1 - eHost);
+      
+      const hillAU = periHost * Math.cbrt(hostMassKg / (3 * grandparentMass));
+      const apoNode = aNode * (1 + eNode);
+
+      if (hillAU > 0) {
+        const frac = apoNode / hillAU;
+        if (frac >= 0.5) {
+          out.severity = 3;
+          out.reasons.push(`Orbit exceeds host's stable Hill sphere (stolen by external tide).`);
+        } else if (frac >= 0.33) {
+          out.severity = Math.max(out.severity, 2) as 0 | 1 | 2 | 3;
+          out.reasons.push(`Orbit loosely bound to host (vulnerable to external perturbation).`);
+        }
+      }
+    }
+  }
+
+  return out;
+}
+
 export function annotateGravitationalStability(system: System): System {
   const nodesById = new Map(system.nodes.map((n) => [n.id, n]));
 
@@ -268,28 +340,39 @@ export function annotateGravitationalStability(system: System): System {
   }
 
   for (const [hostId, siblings] of byHost.entries()) {
-    if (siblings.length < 2) continue;
     const host = nodesById.get(hostId) as CelestialBody | Barycenter | undefined;
     const hostMassKg = getHostMassKg(host);
+    const grandparent = host?.parentId ? (nodesById.get(host.parentId) as CelestialBody | Barycenter | undefined) : undefined;
 
     siblings.sort((a, b) => (a.orbit?.elements.a_AU || 0) - (b.orbit?.elements.a_AU || 0));
     const assessments = new Map<string, StabilityAssessment>();
     for (const n of siblings) assessments.set(n.id, { severity: 0, reasons: [] });
 
-    // Adjacent-pair scan is a pragmatic approximation for packed-system instability.
-    for (let i = 0; i < siblings.length - 1; i++) {
-      const inner = siblings[i];
-      const outer = siblings[i + 1];
-      let pairAssessment: StabilityAssessment;
-      if (isPrimaryBarycenterMemberPair(host, inner, outer) && host && host.kind === 'barycenter') {
-        pairAssessment = assessBinaryPairStability(inner, outer, host, system, nodesById);
-      } else {
-        pairAssessment = assessPairStability(inner, outer, hostMassKg);
+    if (host) {
+      for (const node of siblings) {
+        const bindingAssessment = assessHostBindingStability(node, host, grandparent, hostMassKg);
+        if (bindingAssessment.severity > 0) {
+          mergeAssessment(assessments.get(node.id)!, bindingAssessment);
+        }
       }
-      if (pairAssessment.severity === 0) continue;
+    }
 
-      mergeAssessment(assessments.get(inner.id)!, pairAssessment);
-      mergeAssessment(assessments.get(outer.id)!, pairAssessment);
+    if (siblings.length >= 2) {
+      // Adjacent-pair scan is a pragmatic approximation for packed-system instability.
+      for (let i = 0; i < siblings.length - 1; i++) {
+        const inner = siblings[i];
+        const outer = siblings[i + 1];
+        let pairAssessment: StabilityAssessment;
+        if (isPrimaryBarycenterMemberPair(host, inner, outer) && host && host.kind === 'barycenter') {
+          pairAssessment = assessBinaryPairStability(inner, outer, host, system, nodesById);
+        } else {
+          pairAssessment = assessPairStability(inner, outer, hostMassKg);
+        }
+        if (pairAssessment.severity === 0) continue;
+
+        mergeAssessment(assessments.get(inner.id)!, pairAssessment);
+        mergeAssessment(assessments.get(outer.id)!, pairAssessment);
+      }
     }
 
     for (const node of siblings) {
