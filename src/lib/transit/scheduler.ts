@@ -2,7 +2,6 @@ import type { CelestialBody, System } from '$lib/types';
 import type { TransitPlan, Vector2 } from '$lib/transit/types';
 import { AU_KM } from '$lib/constants';
 import { getGlobalState } from '$lib/transit/physics';
-import { getOrbitOptions } from '$lib/physics/orbits';
 
 const AU_M = AU_KM * 1000;
 
@@ -259,39 +258,36 @@ function samplePostJourneyState(
       if (isLagrange && (targetNode as any).orbit && targetNode.parentId) {
         // Lagrange points: mathematically rotate with the host planet.
         const parentNode = system.nodes.find(n => n.id === targetNode.parentId);
-        if (parentNode) {
-          const parentGlobal = getGlobalState(system, parentNode as any, timeMs);
-          const targetGlobal = getGlobalState(system, targetNode as any, timeMs);
+        if (parentNode && (parentNode as any).orbit) {
+          let rotAngleDeg = 0;
+          let scale = 1;
           
-          // Vector from parent (e.g. Star) to target (e.g. Planet)
-          const dx = targetGlobal.r.x - parentGlobal.r.x;
-          const dy = targetGlobal.r.y - parentGlobal.r.y;
-          const dist = Math.hypot(dx, dy);
-          const angle = Math.atan2(dy, dx);
+          if (lastPlan.arrivalPlacement === 'l1') scale = 0.99;
+          if (lastPlan.arrivalPlacement === 'l2') scale = 1.01;
+          if (lastPlan.arrivalPlacement === 'l3') rotAngleDeg = 180;
+          if (lastPlan.arrivalPlacement === 'l4') rotAngleDeg = 60;
+          if (lastPlan.arrivalPlacement === 'l5') rotAngleDeg = -60;
+
+          // Create a synthetic node mathematically identical to the parent planet, 
+          // but rotated around the sun to preserve perfectly eccentric Keplarian motion
+          const synthOrbit = JSON.parse(JSON.stringify((parentNode as any).orbit));
+          synthOrbit.elements.a_AU *= scale;
+          synthOrbit.elements.omega_deg = (synthOrbit.elements.omega_deg || 0) + rotAngleDeg;
           
-          let lAngle = angle;
-          let lDist = dist;
-          
-          // Simplified L-point geometry
-          if (lastPlan.arrivalPlacement === 'l1') lDist = dist * 0.99; // Approximations for visual 
-          if (lastPlan.arrivalPlacement === 'l2') lDist = dist * 1.01;
-          if (lastPlan.arrivalPlacement === 'l3') { lAngle = angle + Math.PI; lDist = dist; }
-          if (lastPlan.arrivalPlacement === 'l4') { lAngle = angle + (Math.PI / 3); lDist = dist; }
-          if (lastPlan.arrivalPlacement === 'l5') { lAngle = angle - (Math.PI / 3); lDist = dist; }
-          
-          const lx = parentGlobal.r.x + (Math.cos(lAngle) * lDist);
-          const ly = parentGlobal.r.y + (Math.sin(lAngle) * lDist);
-          
-          // Tangent velocity matching the orbit (circular approx)
-          const vMag = Math.hypot(targetGlobal.v.x, targetGlobal.v.y);
-          const vx = -Math.sin(lAngle) * vMag * AU_M;
-          const vy = Math.cos(lAngle) * vMag * AU_M;
+          const synthNode = {
+            id: 'synth-lpoint',
+            kind: 'body',
+            parentId: parentNode.parentId,
+            orbit: synthOrbit
+          };
+
+          const lPointGlobal = getGlobalState(system, synthNode as any, timeMs);
 
           return {
             journeyId: log.id,
             state: 'Orbiting',
-            position_au: { x: lx, y: ly },
-            velocity_ms: { x: vx, y: vy }
+            position_au: lPointGlobal.r,
+            velocity_ms: { x: lPointGlobal.v.x * AU_M, y: lPointGlobal.v.y * AU_M }
           };
         }
       }

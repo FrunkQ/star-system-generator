@@ -1317,9 +1317,27 @@
           let nextStatus = log.status;
           if (timeMs >= bounds.endMs) nextStatus = 'completed';
           else if (timeMs >= bounds.startMs && log.status !== 'completed') nextStatus = 'active';
+          
           if (nextStatus !== log.status) {
             nodeChanged = true;
-            return { ...log, status: nextStatus };
+            
+            // Memory optimization: Once a journey is completed, we don't need its full HD trajectory.
+            // We just need the start point, and the last 2 points (to calculate final velocity tangents).
+            let processedPlans = log.plans;
+            if (nextStatus === 'completed') {
+                processedPlans = log.plans.map(p => ({
+                    ...p,
+                    segments: p.segments.map(s => {
+                        let pts = s.pathPoints || [];
+                        if (pts.length > 3) {
+                            pts = [pts[0], pts[pts.length - 2], pts[pts.length - 1]];
+                        }
+                        return { ...s, pathPoints: pts };
+                    })
+                }));
+            }
+
+            return { ...log, status: nextStatus, plans: processedPlans };
           }
           return log;
         });
