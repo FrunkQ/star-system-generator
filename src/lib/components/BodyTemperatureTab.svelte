@@ -107,8 +107,8 @@
         <div class="form-group">
             <label>Radiogenic Heating (+K)</label>
             <div class="input-row">
-                <input type="range" min="0" max="40" step="1" bind:value={body.radiogenicHeatK} on:input={updateTotal} />
-                <input type="number" step="1" bind:value={body.radiogenicHeatK} on:input={updateTotal} style="width: 60px;" />
+                <input type="range" min="0" max="40" step="1" bind:value={body.radiogenicHeatK} on:input={updateTotal} on:change={() => dispatch('update')} />
+                <input type="number" step="1" bind:value={body.radiogenicHeatK} on:input={updateTotal} on:change={() => dispatch('update')} style="width: 60px;" />
             </div>
         </div>
         

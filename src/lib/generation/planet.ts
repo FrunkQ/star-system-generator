@@ -283,15 +283,21 @@ export function _generatePlanetaryBody(
         
         // Calculate Hill Sphere (SOI) - Stable region is roughly 1/2 Hill Sphere
         let stableLimitAU = 0;
-        if (orbit && orbit.hostMu > 0) {
-            const starMass = orbit.hostMu / G;
+        if (orbit && (orbit.hostMu > 0 || host.kind === 'barycenter')) {
+            let starMass = orbit.hostMu / G;
+            if (starMass <= 0 && host.kind === 'barycenter') {
+                starMass = (host as Barycenter).effectiveMassKg || 0;
+            }
+
             const planetMass = planet.massKg || 0;
             const a_planet = orbit.elements.a_AU;
             const e_planet = orbit.elements.e;
             const perihelion = a_planet * (1 - e_planet);
             
-            const rHill = perihelion * Math.pow(planetMass / (3 * starMass), 1/3);
-            stableLimitAU = rHill * 0.5; // Conservative stability limit
+            if (starMass > 0) {
+                const rHill = perihelion * Math.pow(planetMass / (3 * starMass), 1/3);
+                stableLimitAU = rHill * 0.5; // Conservative stability limit
+            }
         }
 
         let lastMoonApoapsisAU = rocheLimit_km / AU_KM * 1.5; 

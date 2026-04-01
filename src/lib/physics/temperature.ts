@@ -144,6 +144,12 @@ export function composeSurfaceTemperatureFromDeltaComponents(
     const deltaToFlux = (deltaK: number): number => {
         const d = Math.max(0, deltaK || 0);
         if (d <= 0) return 0;
+        
+        // If teq is 0, the delta IS the temperature component.
+        // Flux = sigma * T^4
+        if (teq <= 0) return STEFAN_BOLTZMANN_CONSTANT * Math.pow(d, 4);
+        
+        // If teq > 0, we calculate the flux required to RAISE the temp by deltaK.
         return STEFAN_BOLTZMANN_CONSTANT * (Math.pow(teq + d, 4) - Math.pow(teq, 4));
     };
 

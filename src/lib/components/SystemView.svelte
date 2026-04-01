@@ -1557,6 +1557,9 @@
   function handleTakeoff(event: CustomEvent<{fuel: number}>) {
       if (!$systemStore || !focusedBody || !parentBody) return;
       
+      // Easter Egg: Go Go Artemis II!
+      if (focusedBody.name.includes('Artemis II')) alert("Go Go Artemis II! 🚀");
+
       const fuelCostKg = event.detail.fuel * 1000;
       
       systemStore.update(sys => {

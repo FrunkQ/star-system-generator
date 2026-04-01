@@ -267,7 +267,7 @@ export class SystemProcessor implements ISystemProcessor {
 
         // Radiogenic Heating (Simplified)
         // Internal heat is negligible for surface temp compared to solar/greenhouse for Earth-likes.
-        const radiogenicHeatK = 0; 
+        const radiogenicHeatK = body.radiogenicHeatK || 0; 
         body.radiogenicHeatK = radiogenicHeatK;
         body.internalHeatK = estimateInternalHeatK(body, pack);
 
