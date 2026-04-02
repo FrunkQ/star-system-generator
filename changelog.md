@@ -8,22 +8,22 @@ All notable changes are listed here:
   - Unified Star and Planet data structures into a single cohesive `CelestialBody` type, simplifying physics processing and resolving TS errors.
   - High mass planets (Brown Dwarfs) can now be "Ignited" into stars directly within the UI.
   - Low mass stars can be "Doused" back into planets directly within the UI.
-  - Added "Rebuild Hierarchy" button to System View. When mass edits fundamentally shift the system's center of mass (e.g. creating a massive star), this button flattens and fully rebuilds the orbital parent-child chains relative to the new heaviest body.
+  - Added "Rebuild Hierarchy" button to System View. When mass edits fundamentally shift the system's center of mass (e.g. creating a massive star), this button flattens and fully rebuilds the orbital parent-child chains relative to the new heaviest body. It can be destructive so not automated.
 - Transit & Flight Dynamics Improvements:
-  - Overhauled post-transit kinematic states (`samplePostJourneyState`) to accurately simulate orbital aftermaths during time-scrubbing.
+  - Overhauled post-transit kinematic states to accurately simulate orbital aftermaths during time-scrubbing.
   - Ships arriving in generic orbits (`lo`, `mo`, `ho`) or landed on the surface now correctly lock to their target's global state, eliminating the "glued to the sky" static offset bug.
-  - Ships intercepting a construct (rendezvous) now automatically enter `Deep Space` formation flying, perfectly matching the station's trajectory instead of continuing inertial drift.
-  - Ships arriving at Lagrange points (L1-L5) now mathematically track the parent planet's orbital rotation rather than remaining at a static Cartesian offset.
+  - Ships intercepting a construct (rendezvous) now automatically enter `Deep Space` formation flying, matching the station's trajectory instead of continuing inertial drift.
+  - Ships arriving at Lagrange points (L1-L5) now mathematically track the parent planet's orbital rotation rather than remaining at a static offset.
 - Improved Stability Assessment:
   - Added full system hierarchy scan to catch "Massive Inversions" (orbiting body is heavier than its host) and "Stolen Children" (orbit exceeds host's stable Hill sphere).
   - Added "Consumed/Collided" checks if an orbit drops below the physical radius of its host.
   - Added "Roche Limit Violation" checks for bodies orbiting too close to their host.
-  - New bright red `⚠️ Rebuild Hierarchy` UI warnings added to the Technical Details panel when mass inversions occur.
+  - Rebuild Hierarchy` UI warnings added to the Technical Details panel when mass inversions occur.
 - Terminology & Unit Standardization:
   - Standardized acceleration units to lowercase **"g"** (9.81 m/s²) across tech details, and hazard messages.
 - Time Control System Enhancements:
-  - Added **"Manual Speed"** mode (speed dial) allowing for persistent integration rates and reversible playback. Like OLD system.
-  - New live **Speed Indicator** (e.g., +1s/s to +10y/s) providing real-time feedback during scrubbing.
+  - Added **"Manual Speed"** mode (speed dial) allowing for persistent integration rates and reversible playback. Works like OLD system.
+  - Added **Speed Indicator** (e.g., +1s/s to +10y/s) providing real-time feedback during scrubbing.
   - Increased scrubber precision with a 50% wider slider and unified logic across System and Starmap views.
 - Printed Report Improvements (Binary Systems):
   - Implemented hierarchical **stacked rendering** for binary planets in the System Overview diagram.
@@ -35,10 +35,7 @@ All notable changes are listed here:
   - Construct editor now supports direct manual entry for Altitude (km) and Orbital Distance (AU).
 - Binary Star Orbit Control:
   - Enabled Orbit editing tab for stars within binary systems.
-  - Implemented smart reciprocal coupling: editing one star's position now automatically updates its partner to maintain a stable barycenter.
-- Bug Fixes & UI Polish:
-  - Improved flyby math to correctly calculate zero Delta-V intercepts for unpowered flypasts.
-  - Unified "About" dialogs into a single, maintainable component.
+  - Implemented reciprocal coupling: editing one star's position now automatically updates its partner to maintain its stable barycenter.
 - Stellar Physics & Evolution:
   - Implemented **Dual Frost Lines**: distinction between **Formation Frost Line** (170K, historical boundary for gas giant growth) and **Current Frost Line** (125K, modern vacuum ice stability).
   - Added **Spectral-Class Dependent Brightening**: stars now evolve in luminosity based on their type (O/B massive stars brighten rapidly, M-dwarfs remain stable), correctly back-calculating historical formation zones.
@@ -46,8 +43,12 @@ All notable changes are listed here:
 - Orbital Mechanics & Generation:
   - Fixed **"0 AU Moon" Bug**: correctly resolved host gravitational parameters for planets orbiting barycenters, ensuring stable moon placements in binary systems.
   - UI refinement for root stellar barycenters: hidden the redundant "Edit" button to prioritize direct name/visibility editing.
-- Easter Egg:
-  - Added "Go Go Artemis II!" alert for ship takeoffs.
+- Bug Fixes & UI Polish:
+  - Fixed **Time Epoch Desynchronization** (13.8 billion year jump): ensured all initialization paths correctly offset Big Bang display time into Unix-relative physics time, preventing orbital scrambling on reload.
+  - Improved flyby math to correctly calculate zero Delta-V intercepts for unpowered flypasts.
+  - Unified "About" dialogs into a single, maintainable component.
+  - Easter Egg :)
+
 
 ## v1.9.2 - 24th Mar 2026
 - N-Body Gravitational Summation:

@@ -986,7 +986,13 @@
     }
 
     systemStore.set(newSystem);
-    currentTime = newSystem.epochT0;
+    const map = get(starmapStore);
+    if (map?.temporal) {
+        const universeSec = parseClockSeconds(map.temporal.displayTimeSec, 0n);
+        currentTime = Number(universeSec - BIG_BANG_TO_UNIX_EPOCH_T) * 1000;
+    } else {
+        currentTime = newSystem.epochT0;
+    }
     updateFocus(null, true); // Reset focus
   }
 
@@ -1177,7 +1183,8 @@
         if (map) {
           const normalized = ensureTemporalState(map);
           starmapStore.set(normalized);
-          currentTime = Number(parseClockSeconds(normalized.temporal?.displayTimeSec, 0n) * 1000n);
+          const universeSec = parseClockSeconds(normalized.temporal?.displayTimeSec, 0n);
+          currentTime = Number(universeSec - BIG_BANG_TO_UNIX_EPOCH_T) * 1000;
         } else {
           currentTime = system.epochT0;
         }
