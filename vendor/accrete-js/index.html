@@ -1,0 +1,1517 @@
+<!doctype html>
+<html>
+  <head>
+    <title>ACCRETE - 3D Star System Viewer</title>
+    <meta charset="utf-8" />
+    <style>
+      html,
+      body {
+        position: absolute;
+        top: 0;
+        left: 0;
+        padding: 0;
+        margin: 0;
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+        font-family: monospace;
+        background: #000;
+      }
+
+      #canvas-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+      }
+
+      aside {
+        display: flex;
+        border-right: 2px solid #333;
+        border-bottom: 2px solid #333;
+        flex-direction: column;
+        padding: 10px;
+        position: fixed;
+        left: 0;
+        top: 0;
+        max-width: 200px;
+        z-index: 2;
+        background: rgba(0, 0, 0, 0.85);
+        color: #fff;
+        backdrop-filter: blur(10px);
+      }
+
+      aside h3 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        color: #8cf;
+      }
+
+      #planetInfo {
+        position: fixed;
+        right: 10px;
+        top: 10px;
+        max-width: 400px;
+        max-height: 90vh;
+        overflow-y: auto;
+        background: rgba(0, 0, 0, 0.9);
+        border: 2px solid #8cf;
+        padding: 15px;
+        z-index: 3;
+        font-family: monospace;
+        font-size: 12px;
+        color: #fff;
+        display: none;
+        backdrop-filter: blur(10px);
+      }
+
+      #planetInfo.visible {
+        display: block;
+      }
+
+      #planetInfo h3 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        border-bottom: 1px solid #8cf;
+        padding-bottom: 5px;
+        color: #8cf;
+      }
+
+      #planetInfo .property {
+        display: flex;
+        justify-content: space-between;
+        margin: 3px 0;
+      }
+
+      #planetInfo .property-label {
+        font-weight: bold;
+        margin-right: 10px;
+        color: #aaa;
+      }
+
+      #planetInfo .property-value {
+        text-align: right;
+        color: #fff;
+      }
+
+      #planetInfo .section {
+        margin-top: 15px;
+        padding-top: 10px;
+        border-top: 1px solid #333;
+      }
+
+      #planetInfo .section-title {
+        font-weight: bold;
+        margin-bottom: 5px;
+        color: #8cf;
+      }
+
+      aside > div {
+        display: flex;
+        align-items: center;
+        margin: 5px 0;
+      }
+
+      aside > div > label {
+        flex: 0 0 30px;
+        color: #8cf;
+      }
+
+      aside input[type="range"] {
+        flex: 1;
+        margin-left: 5px;
+      }
+
+      aside input[type="checkbox"] {
+        margin-left: 5px;
+      }
+
+      button {
+        margin-top: 10px;
+        padding: 8px;
+        background: #8cf;
+        border: none;
+        color: #000;
+        font-weight: bold;
+        cursor: pointer;
+        font-family: monospace;
+        transition: background 0.2s;
+      }
+
+      button:hover {
+        background: #acf;
+      }
+
+      button:disabled {
+        background: #555;
+        color: #888;
+        cursor: not-allowed;
+      }
+
+      #loading {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #8cf;
+        font-size: 24px;
+        z-index: 1;
+        display: none;
+      }
+
+      #loading.visible {
+        display: block;
+      }
+    </style>
+  </head>
+
+  <body>
+    <aside>
+      <h3>Star System Generator</h3>
+      <div>
+        <label>A</label>
+        <input
+          name="A"
+          type="range"
+          min="0.001"
+          max="0.01"
+          step="0.0005"
+          value="0.0015"
+        />
+      </div>
+      <div>
+        <label>B</label>
+        <input
+          name="B"
+          type="range"
+          min="0.000005"
+          max="0.000012"
+          step="0.000001"
+          value="0.000012"
+        />
+      </div>
+      <div>
+        <label>K</label>
+        <input name="K" type="range" min="25" max="200" step="5" value="50" />
+      </div>
+      <div style="display: none">
+        <label>N</label>
+        <input name="N" type="range" min="3" max="3" step="0.001" value="3" />
+      </div>
+      <div style="display: none">
+        <label>Q</label>
+        <input
+          name="Q"
+          type="range"
+          min="0.077"
+          max="0.077"
+          step="0.001"
+          value="0.077"
+        />
+      </div>
+      <div>
+        <label>W</label>
+        <input
+          name="W"
+          type="range"
+          min="0.05"
+          max="0.75"
+          step="0.05"
+          value="0.2"
+        />
+      </div>
+      <div style="display: none">
+        <label>α</label>
+        <input name="ALPHA" type="range" min="5" max="10" step="1" value="5" />
+      </div>
+      <div>
+        <label>Mass</label>
+        <input
+          name="stellarMass"
+          type="range"
+          min="0.1"
+          max="2.0"
+          step="0.05"
+          value="1.0"
+        />
+      </div>
+      <div>
+        <label>Lum</label>
+        <input
+          name="stellarLuminosity"
+          type="range"
+          min="0.01"
+          max="10.0"
+          step="0.1"
+          value="1.0"
+        />
+      </div>
+      <div>
+        <label>Defaults</label>
+        <input type="checkbox" name="default" />
+      </div>
+      <button id="generateBtn">Generate Star System</button>
+    </aside>
+    <div id="planetInfo"></div>
+    <div id="loading">Generating...</div>
+    <div id="canvas-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+      // Worker setup
+      var accrete = new Worker("dist/accrete.worker.js");
+
+      // Three.js setup
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        60,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        10000,
+      );
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x000000);
+      document
+        .getElementById("canvas-container")
+        .appendChild(renderer.domElement);
+
+      // Camera position
+      camera.position.set(0, 150, 200);
+      camera.lookAt(0, 0, 0);
+
+      // Lighting
+      const ambientLight = new THREE.AmbientLight(0x333333);
+      scene.add(ambientLight);
+
+      const sunLight = new THREE.PointLight(0xffff88, 2, 1000);
+      sunLight.position.set(0, 0, 0);
+      scene.add(sunLight);
+
+      // Stars background
+      const starsGeometry = new THREE.BufferGeometry();
+      const starsMaterial = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.5,
+      });
+      const starsVertices = [];
+      for (let i = 0; i < 10000; i++) {
+        const x = (Math.random() - 0.5) * 2000;
+        const y = (Math.random() - 0.5) * 2000;
+        const z = (Math.random() - 0.5) * 2000;
+        starsVertices.push(x, y, z);
+      }
+      starsGeometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(starsVertices, 3),
+      );
+      const stars = new THREE.Points(starsGeometry, starsMaterial);
+      scene.add(stars);
+
+      // Sun
+      const sunGeometry = new THREE.SphereGeometry(5, 32, 32);
+      const sunMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffff44,
+        emissive: 0xffff44,
+        emissiveIntensity: 1,
+      });
+      const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+      scene.add(sun);
+
+      // Add sun glow
+      const glowGeometry = new THREE.SphereGeometry(7, 32, 32);
+      const glowMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffaa00,
+        transparent: true,
+        opacity: 0.3,
+      });
+      const sunGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+      scene.add(sunGlow);
+
+      // Planet system
+      let planets = [];
+      let planetMeshes = [];
+      let orbitLines = [];
+      let selectedPlanet = null;
+      let cameraFollowTarget = null;
+
+      // Raycaster for click detection
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+
+      // UI elements
+      const btn = document.getElementById("generateBtn");
+      const loadingDiv = document.getElementById("loading");
+
+      function getConstValues() {
+        if (document.querySelector('aside input[type="checkbox"]').checked)
+          return {};
+        return Array.from(document.querySelectorAll("aside input")).reduce(
+          (config, el) => {
+            if (
+              el.type === "checkbox" ||
+              el.name === "" ||
+              el.name === "stellarMass" ||
+              el.name === "stellarLuminosity"
+            )
+              return config;
+            return Object.assign(config, { [el.name]: parseFloat(el.value) });
+          },
+          {},
+        );
+      }
+
+      // Get stellar mass and luminosity from sliders
+      function getStellarProperties() {
+        const massInput = document.querySelector('input[name="stellarMass"]');
+        const lumInput = document.querySelector(
+          'input[name="stellarLuminosity"]',
+        );
+        return {
+          stellarMass: massInput ? parseFloat(massInput.value) : 1.0,
+          stellarLuminosity: lumInput ? parseFloat(lumInput.value) : 1.0,
+        };
+      }
+
+      // Update star visual based on mass and luminosity
+      function updateStarVisual(mass, luminosity) {
+        // Validate inputs
+        if (!mass || !luminosity || isNaN(mass) || isNaN(luminosity)) {
+          console.error("Invalid mass or luminosity:", mass, luminosity);
+          return;
+        }
+
+        // Star radius scales with mass (R ∝ M^0.8)
+        const radius = 5 * Math.pow(mass, 0.8);
+
+        // Dispose old geometry and create new one
+        if (sun.geometry) sun.geometry.dispose();
+        sun.geometry = new THREE.SphereGeometry(radius, 32, 32);
+
+        // Glow radius should be proportionally larger
+        const glowRadius = radius * 1.4;
+        if (sunGlow.geometry) sunGlow.geometry.dispose();
+        sunGlow.geometry = new THREE.SphereGeometry(glowRadius, 32, 32);
+
+        // Star color based on mass (mass-temperature relationship)
+        // Low mass stars (~0.1-0.5 M☉) are red/orange
+        // Solar mass stars (~0.8-1.2 M☉) are yellow/white
+        // High mass stars (>1.5 M☉) are blue/white
+        let starColor, glowColor;
+        if (mass < 0.5) {
+          // Red dwarf
+          starColor = new THREE.Color(0xff6633);
+          glowColor = new THREE.Color(0xff4400);
+        } else if (mass < 0.8) {
+          // Orange dwarf
+          starColor = new THREE.Color(0xffaa44);
+          glowColor = new THREE.Color(0xff8800);
+        } else if (mass < 1.2) {
+          // Yellow star (like our Sun)
+          starColor = new THREE.Color(0xffff44);
+          glowColor = new THREE.Color(0xffaa00);
+        } else if (mass < 1.5) {
+          // Yellow-white
+          starColor = new THREE.Color(0xffffaa);
+          glowColor = new THREE.Color(0xffdd88);
+        } else {
+          // Blue-white (hot, massive star)
+          starColor = new THREE.Color(0xaaccff);
+          glowColor = new THREE.Color(0x88aaff);
+        }
+
+        sun.material.color.copy(starColor);
+        sun.material.emissive.copy(starColor);
+        sunGlow.material.color.copy(glowColor);
+
+        // Update light intensity based on luminosity
+        sunLight.intensity = 2 * Math.sqrt(luminosity);
+        sunLight.distance = 1000 * Math.sqrt(luminosity);
+      }
+
+      function createSystem() {
+        const config = getConstValues();
+        const stellarProps = getStellarProperties();
+
+        // Merge stellar properties into config
+        Object.assign(config, stellarProps);
+
+        accrete.postMessage(config);
+
+        // Update star visual immediately
+        updateStarVisual(
+          stellarProps.stellarMass,
+          stellarProps.stellarLuminosity,
+        );
+
+        Array.from(document.querySelectorAll("aside input")).forEach(
+          (el) => (el.disabled = true),
+        );
+        btn.disabled = true;
+        loadingDiv.className = "visible";
+
+        let i = 0;
+        const loadingInterval = setInterval(function () {
+          i += 1;
+          loadingDiv.innerText = "Generating" + ".".repeat(i % 4);
+        }, 500);
+        btn.loadingInterval = loadingInterval;
+      }
+
+      btn.onclick = createSystem;
+
+      document.body.addEventListener(
+        "input",
+        function (e) {
+          if (e.target.tagName !== "INPUT" || e.target.type === "checkbox")
+            return;
+
+          // Don't auto-regenerate for stellar mass/luminosity changes
+          // These will be applied on manual button click
+          if (
+            e.target.name === "stellarMass" ||
+            e.target.name === "stellarLuminosity"
+          ) {
+            // Just update the visual without regenerating the system
+            const stellarProps = getStellarProperties();
+            updateStarVisual(
+              stellarProps.stellarMass,
+              stellarProps.stellarLuminosity,
+            );
+            return;
+          }
+
+          createSystem();
+        },
+        true,
+      );
+
+      // Logarithmic scale for distance
+      function logScale(au) {
+        // Scale factor to spread out planets nicely
+        const scale = 40;
+        return Math.log10(au + 1) * scale;
+      }
+
+      function getPlanetColor(planet) {
+        if (planet.isGasGiant) {
+          // Gas giants: blues, purples, tans
+          if (planet.surfaceTempCelsius < -100) return 0x6699ff; // Cold - blue
+          if (planet.surfaceTempCelsius < 0) return 0xccaa77; // Medium - tan
+          return 0xff9944; // Hot - orange
+        } else {
+          // Rocky planets
+          if (planet.iceCover > 0.5) return 0xeeffff; // Ice world
+          if (planet.hydrosphere > 0.5) return 0x4477ff; // Water world
+          if (planet.surfacePressure < 1) {
+            // Airless
+            if (planet.surfaceTempCelsius > 200) return 0x886644; // Hot rock
+            return 0x997766; // Cold rock
+          }
+          // Has atmosphere
+          if (
+            planet.hydrosphere > 0.2 &&
+            planet.surfaceTempCelsius > -20 &&
+            planet.surfaceTempCelsius < 50
+          ) {
+            return 0x2266cc; // Earth-like
+          }
+          if (planet.surfaceTempCelsius > 100) return 0xdd8844; // Hot with atmosphere
+          return 0xaa8866; // Cold with atmosphere
+        }
+      }
+
+      // Create procedural texture for a planet with LOD support
+      function createPlanetTexture(planet, size, lod = 0) {
+        // LOD 0: Low detail (512x512) - far view
+        // LOD 1: Medium detail (1024x1024) - medium view
+        // LOD 2: High detail (2048x2048) - close view
+        const resolutions = [512, 1024, 2048];
+        const resolution = resolutions[lod] || 512;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = resolution;
+        canvas.height = resolution;
+        const ctx = canvas.getContext("2d");
+
+        if (planet.isGasGiant) {
+          // Gas giant with bands
+          createGasGiantTexture(ctx, planet, lod);
+        } else if (planet.hydrosphere > 0.3) {
+          // Terrestrial planet with oceans
+          createTerrestrialTexture(ctx, planet, lod);
+        } else {
+          // Rocky/barren planet
+          createRockyTexture(ctx, planet, lod);
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        return texture;
+      }
+
+      function createGasGiantTexture(ctx, planet, lod = 0) {
+        const width = ctx.canvas.width;
+        const height = ctx.canvas.height;
+
+        // Determine gas giant color based on temperature and composition
+        // Temperature affects which compounds can exist in the upper atmosphere
+        let baseR, baseG, baseB;
+        const tempC = planet.surfaceTempCelsius || -100;
+
+        if (tempC > 200) {
+          // Hot Jupiter - dominated by metallic clouds, silicates
+          baseR = 200;
+          baseG = 150;
+          baseB = 100; // Tan/brown
+        } else if (tempC > 50) {
+          // Warm gas giant - ammonia breaks down, more varied chemistry
+          baseR = 220;
+          baseG = 180;
+          baseB = 130; // Pale yellow/tan
+        } else if (tempC > -50) {
+          // Temperate - ammonia ice clouds (Jupiter-like)
+          const variation = Math.random();
+          if (variation < 0.4) {
+            baseR = 200;
+            baseG = 170;
+            baseB = 140; // Tan/beige
+          } else if (variation < 0.7) {
+            baseR = 180;
+            baseG = 150;
+            baseB = 120; // Brown
+          } else {
+            baseR = 220;
+            baseG = 190;
+            baseB = 160; // Cream
+          }
+        } else if (tempC > -150) {
+          // Cold - methane absorption (Uranus/Neptune-like)
+          const variation = Math.random();
+          if (variation < 0.5) {
+            baseR = 100;
+            baseG = 150;
+            baseB = 200; // Cyan/blue
+          } else {
+            baseR = 120;
+            baseG = 180;
+            baseB = 220; // Light blue
+          }
+        } else {
+          // Very cold - deep blue from methane
+          baseR = 80;
+          baseG = 120;
+          baseB = 180; // Dark blue
+        }
+
+        // Add some random variation for uniqueness
+        baseR += (Math.random() - 0.5) * 40;
+        baseG += (Math.random() - 0.5) * 40;
+        baseB += (Math.random() - 0.5) * 40;
+        baseR = Math.max(50, Math.min(255, baseR));
+        baseG = Math.max(50, Math.min(255, baseG));
+        baseB = Math.max(50, Math.min(255, baseB));
+
+        // Create horizontal bands with varying colors
+        const numBands = 6 + Math.floor(Math.random() * 6);
+        for (let y = 0; y < height; y++) {
+          const bandPattern = Math.sin((y / height) * Math.PI * numBands);
+          const brightness =
+            0.7 + bandPattern * 0.25 + (Math.random() - 0.5) * 0.1;
+
+          // Slight color variation in bands
+          const colorShift =
+            Math.sin((y / height) * Math.PI * numBands * 2) * 20;
+          const r = Math.max(0, Math.min(255, baseR * brightness + colorShift));
+          const g = Math.max(
+            0,
+            Math.min(255, baseG * brightness + colorShift * 0.7),
+          );
+          const b = Math.max(
+            0,
+            Math.min(255, baseB * brightness + colorShift * 0.5),
+          );
+
+          ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+          ctx.fillRect(0, y, width, 1);
+
+          // Add storms (Great Red Spot-like features)
+          if (Math.random() > 0.98) {
+            const stormR = r * 1.2;
+            const stormG = g * 0.8;
+            const stormB = b * 0.7;
+            ctx.fillStyle = `rgba(${stormR}, ${stormG}, ${stormB}, ${0.6 + Math.random() * 0.4})`;
+            ctx.beginPath();
+            ctx.ellipse(
+              Math.random() * width,
+              y,
+              15 + Math.random() * 30,
+              8 + Math.random() * 15,
+              0,
+              0,
+              Math.PI * 2,
+            );
+            ctx.fill();
+          }
+        }
+      }
+
+      // Simple noise function for terrain generation
+      function noise2D(x, y, seed = 0) {
+        const X = Math.floor(x) & 255;
+        const Y = Math.floor(y) & 255;
+        const hash =
+          (X * 374761393 + Y * 668265263 + seed * 1013904223) & 0xffffffff;
+        return (hash / 0xffffffff) * 2 - 1;
+      }
+
+      // Multi-octave noise for natural-looking terrain
+      function fractalNoise(x, y, octaves = 4, persistence = 0.5, seed = 0) {
+        let total = 0;
+        let frequency = 1;
+        let amplitude = 1;
+        let maxValue = 0;
+
+        for (let i = 0; i < octaves; i++) {
+          total += noise2D(x * frequency, y * frequency, seed + i) * amplitude;
+          maxValue += amplitude;
+          amplitude *= persistence;
+          frequency *= 2;
+        }
+
+        return total / maxValue;
+      }
+
+      function createTerrestrialTexture(ctx, planet, lod = 0) {
+        const width = ctx.canvas.width;
+        const height = ctx.canvas.height;
+        const detailMultiplier = lod + 1;
+
+        // Generate a unique seed for this planet based on its properties
+        const seed = Math.floor(
+          (planet.axis * 10000 +
+            planet.eccentricity * 1000 +
+            planet.earthMass) *
+            1000,
+        );
+
+        const tempC = planet.surfaceTempCelsius || 15;
+        const waterLevel = planet.hydrosphere; // 0-1 value
+
+        // Create heightmap and render pixel by pixel
+        const imageData = ctx.createImageData(width, height);
+        const data = imageData.data;
+
+        // Noise parameters based on LOD
+        const octaves = lod === 0 ? 4 : lod === 1 ? 6 : 8;
+        const scale = lod === 0 ? 0.01 : lod === 1 ? 0.008 : 0.006;
+
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const idx = (y * width + x) * 4;
+
+            // Generate height value using fractal noise
+            const heightValue = fractalNoise(
+              x * scale,
+              y * scale,
+              octaves,
+              0.5,
+              seed,
+            );
+
+            // Normalize to 0-1
+            const normalizedHeight = (heightValue + 1) / 2;
+
+            let r, g, b;
+
+            // Water vs Land determination
+            if (normalizedHeight < waterLevel) {
+              // OCEAN
+              const depth = (waterLevel - normalizedHeight) / waterLevel;
+              const deepBlue = { r: 15, g: 50, b: 90 };
+              const shallowBlue = { r: 40, g: 100, b: 160 };
+
+              r = Math.floor(
+                deepBlue.r + (shallowBlue.r - deepBlue.r) * (1 - depth),
+              );
+              g = Math.floor(
+                deepBlue.g + (shallowBlue.g - deepBlue.g) * (1 - depth),
+              );
+              b = Math.floor(
+                deepBlue.b + (shallowBlue.b - deepBlue.b) * (1 - depth),
+              );
+            } else {
+              // LAND - biome based on height and temperature
+              const landHeight =
+                (normalizedHeight - waterLevel) / (1 - waterLevel);
+
+              // Determine biome
+              if (tempC < -10) {
+                // COLD/TUNDRA
+                if (landHeight > 0.7) {
+                  // Mountains - gray/white
+                  r = 180 + landHeight * 60;
+                  g = 180 + landHeight * 60;
+                  b = 190 + landHeight * 50;
+                } else {
+                  // Tundra - brown/gray
+                  r = 120 + landHeight * 40;
+                  g = 110 + landHeight * 35;
+                  b = 90 + landHeight * 30;
+                }
+              } else if (tempC < 10) {
+                // TEMPERATE
+                if (landHeight > 0.8) {
+                  // High mountains - rocky gray with snow
+                  r = 160 + landHeight * 70;
+                  g = 160 + landHeight * 70;
+                  b = 170 + landHeight * 65;
+                } else if (landHeight > 0.6) {
+                  // Mid mountains - darker rocky
+                  r = 100 + landHeight * 40;
+                  g = 90 + landHeight * 35;
+                  b = 70 + landHeight * 30;
+                } else if (landHeight > 0.3) {
+                  // FORESTS - GREEN!
+                  const forestNoise = fractalNoise(
+                    x * scale * 3,
+                    y * scale * 3,
+                    2,
+                    0.5,
+                    seed + 100,
+                  );
+                  r = 45 + forestNoise * 30;
+                  g = 80 + forestNoise * 40;
+                  b = 35 + forestNoise * 20;
+                } else {
+                  // Lowlands - grasslands (lighter green)
+                  r = 80 + landHeight * 50;
+                  g = 110 + landHeight * 40;
+                  b = 50 + landHeight * 30;
+                }
+              } else if (tempC < 30) {
+                // WARM TEMPERATE
+                if (landHeight > 0.7) {
+                  // Mountains
+                  r = 140 + landHeight * 60;
+                  g = 130 + landHeight * 55;
+                  b = 110 + landHeight * 50;
+                } else {
+                  // Mix of grassland and some green
+                  r = 100 + landHeight * 60;
+                  g = 120 + landHeight * 50;
+                  b = 60 + landHeight * 35;
+                }
+              } else {
+                // HOT/DESERT
+                if (landHeight > 0.7) {
+                  // Rocky mountains
+                  r = 150 + landHeight * 60;
+                  g = 120 + landHeight * 50;
+                  b = 80 + landHeight * 40;
+                } else {
+                  // Sandy desert
+                  r = 180 + landHeight * 40;
+                  g = 150 + landHeight * 35;
+                  b = 100 + landHeight * 30;
+                }
+              }
+
+              // Add detail noise for texture
+              if (lod >= 1) {
+                const detailNoise = fractalNoise(
+                  x * scale * 5,
+                  y * scale * 5,
+                  3,
+                  0.4,
+                  seed + 500,
+                );
+                const detailAmount = 15;
+                r += detailNoise * detailAmount;
+                g += detailNoise * detailAmount;
+                b += detailNoise * detailAmount;
+              }
+            }
+
+            // Clamp values
+            data[idx] = Math.max(0, Math.min(255, r));
+            data[idx + 1] = Math.max(0, Math.min(255, g));
+            data[idx + 2] = Math.max(0, Math.min(255, b));
+            data[idx + 3] = 255; // Alpha
+          }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+
+        // Add polar ice caps over the heightmap
+        if (planet.iceCover > 0.1) {
+          const iceHeight = height * planet.iceCover * 0.5;
+          const gradient1 = ctx.createLinearGradient(0, 0, 0, iceHeight);
+          gradient1.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+          gradient1.addColorStop(1, "rgba(255, 255, 255, 0)");
+          ctx.fillStyle = gradient1;
+          ctx.fillRect(0, 0, width, iceHeight);
+
+          const gradient2 = ctx.createLinearGradient(
+            0,
+            height,
+            0,
+            height - iceHeight,
+          );
+          gradient2.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+          gradient2.addColorStop(1, "rgba(255, 255, 255, 0)");
+          ctx.fillStyle = gradient2;
+          ctx.fillRect(0, height - iceHeight, width, iceHeight);
+        }
+      }
+
+      function createRockyTexture(ctx, planet, lod = 0) {
+        const width = ctx.canvas.width;
+        const height = ctx.canvas.height;
+
+        // Base color from planet properties
+        const baseColor = getPlanetColor(planet);
+        const r = (baseColor >> 16) & 0xff;
+        const g = (baseColor >> 8) & 0xff;
+        const b = baseColor & 0xff;
+
+        // Fill base
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.fillRect(0, 0, width, height);
+
+        // Add craters and rocky detail
+        const numCraters = 20 + Math.random() * 30;
+        for (let i = 0; i < numCraters; i++) {
+          const cx = Math.random() * width;
+          const cy = Math.random() * height;
+          const radius = 5 + Math.random() * 30;
+          const darkness = 0.3 + Math.random() * 0.4;
+
+          ctx.fillStyle = `rgba(0, 0, 0, ${darkness})`;
+          ctx.beginPath();
+          ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Crater rim highlight
+          ctx.strokeStyle = `rgba(255, 255, 255, ${darkness * 0.3})`;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      }
+
+      function createCloudTexture(planet) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext("2d");
+        const width = canvas.width;
+        const height = canvas.height;
+
+        // Transparent background
+        ctx.clearRect(0, 0, width, height);
+
+        // Generate cloud patterns
+        const numClouds = 30 + Math.random() * 50;
+        for (let i = 0; i < numClouds; i++) {
+          const cx = Math.random() * width;
+          const cy = Math.random() * height;
+          const cloudWidth = 30 + Math.random() * 80;
+          const cloudHeight = 20 + Math.random() * 40;
+
+          // Create gradient for puffy clouds
+          const gradient = ctx.createRadialGradient(
+            cx,
+            cy,
+            0,
+            cx,
+            cy,
+            cloudWidth,
+          );
+          gradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+          gradient.addColorStop(0.5, "rgba(255, 255, 255, 0.5)");
+          gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+
+          ctx.fillStyle = gradient;
+          ctx.fillRect(
+            cx - cloudWidth,
+            cy - cloudHeight,
+            cloudWidth * 2,
+            cloudHeight * 2,
+          );
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        return texture;
+      }
+
+      function createPlanetMaterial(planet) {
+        const color = getPlanetColor(planet);
+        const material = new THREE.MeshPhongMaterial({
+          color: color,
+          shininess: planet.hydrosphere > 0.3 ? 30 : 5,
+          emissive: 0x000000,
+        });
+
+        // Add some roughness for gas giants
+        if (planet.isGasGiant) {
+          material.shininess = 10;
+        }
+
+        return material;
+      }
+
+      function createPlanet(planet, index, fastestPeriod) {
+        // Size based on radius (logarithmic scale)
+        const size = Math.max(0.5, Math.log10(planet.radius / 1000 + 1) * 1.5);
+
+        const geometry = new THREE.SphereGeometry(size, 32, 32);
+
+        // Create material with procedural texture
+        const texture = createPlanetTexture(planet, size);
+        const material = new THREE.MeshPhongMaterial({
+          map: texture,
+          shininess: planet.hydrosphere > 0.3 ? 30 : 5,
+          emissive: 0x000000,
+        });
+
+        const mesh = new THREE.Mesh(geometry, material);
+
+        // Add cloud layer for planets with significant atmosphere
+        if (planet.cloudCover > 0.2 && !planet.isGasGiant) {
+          const cloudGeometry = new THREE.SphereGeometry(size * 1.02, 32, 32);
+          const cloudTexture = createCloudTexture(planet);
+          const cloudMaterial = new THREE.MeshPhongMaterial({
+            map: cloudTexture,
+            transparent: true,
+            opacity: planet.cloudCover * 0.8,
+            depthWrite: false,
+          });
+          const cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
+          mesh.add(cloudMesh);
+          mesh.userData.clouds = cloudMesh;
+        }
+
+        // Store planet data
+        mesh.userData.planet = planet;
+        mesh.userData.index = index;
+        mesh.userData.size = size;
+        mesh.userData.angle = Math.random() * Math.PI * 2; // Random starting position
+        mesh.userData.currentLOD = 0; // Track current LOD level
+        mesh.userData.textures = {}; // Cache textures for each LOD level
+        mesh.userData.textures[0] = texture; // Store initial texture
+
+        // Scale orbital speeds logarithmically (like distance) so outer planets are still visible
+        // Use log scale to compress the range of speeds
+        const logPeriodThis = Math.log10(planet.orbitalPeriod);
+        const logPeriodFastest = Math.log10(fastestPeriod);
+        const logRatio = logPeriodFastest / logPeriodThis;
+
+        const baseSpeed = 0.002; // Base speed for fastest planet
+        mesh.userData.speed = baseSpeed * logRatio;
+
+        // Create orbit line
+        const orbitRadius = logScale(planet.axis);
+        const orbitGeometry = new THREE.BufferGeometry();
+        const orbitPoints = [];
+        const segments = 128;
+
+        for (let i = 0; i <= segments; i++) {
+          const angle = (i / segments) * Math.PI * 2;
+          // Apply eccentricity
+          const r =
+            (orbitRadius * (1 - planet.eccentricity * planet.eccentricity)) /
+            (1 + planet.eccentricity * Math.cos(angle));
+          orbitPoints.push(r * Math.cos(angle), 0, r * Math.sin(angle));
+        }
+
+        orbitGeometry.setAttribute(
+          "position",
+          new THREE.Float32BufferAttribute(orbitPoints, 3),
+        );
+
+        const orbitMaterial = new THREE.LineBasicMaterial({
+          color: 0x666666,
+          transparent: true,
+          opacity: 0.5,
+        });
+        const orbitLine = new THREE.Line(orbitGeometry, orbitMaterial);
+        orbitLine.renderOrder = -1; // Render orbit lines before other objects
+        scene.add(orbitLine);
+        orbitLines.push(orbitLine);
+
+        scene.add(mesh);
+        planetMeshes.push(mesh);
+
+        return mesh;
+      }
+
+      function updatePlanetLOD(mesh, cameraPosition) {
+        // Calculate distance from camera to planet
+        const distance = cameraPosition.distanceTo(mesh.position);
+
+        // Determine appropriate LOD level based on distance
+        // Close: LOD 2 (high detail)
+        // Medium: LOD 1 (medium detail)
+        // Far: LOD 0 (low detail)
+        let newLOD;
+        if (distance < 30) {
+          newLOD = 2; // Very close - high detail
+        } else if (distance < 80) {
+          newLOD = 1; // Medium distance - medium detail
+        } else {
+          newLOD = 0; // Far - low detail
+        }
+
+        // Only update if LOD has changed
+        if (newLOD !== mesh.userData.currentLOD) {
+          // Check if we already have this LOD texture cached
+          if (!mesh.userData.textures[newLOD]) {
+            // Generate new texture at this LOD level
+            mesh.userData.textures[newLOD] = createPlanetTexture(
+              mesh.userData.planet,
+              mesh.userData.size,
+              newLOD,
+            );
+          }
+
+          // Update material with new texture
+          mesh.material.map = mesh.userData.textures[newLOD];
+          mesh.material.needsUpdate = true;
+          mesh.userData.currentLOD = newLOD;
+
+          // console.log(`Planet ${mesh.userData.index} LOD updated to ${newLOD} at distance ${distance.toFixed(1)}`);
+        }
+      }
+
+      function clearPlanets() {
+        planetMeshes.forEach((mesh) => {
+          scene.remove(mesh);
+          mesh.geometry.dispose();
+          mesh.material.dispose();
+          // Dispose all cached textures
+          if (mesh.userData.textures) {
+            Object.values(mesh.userData.textures).forEach((tex) => {
+              if (tex) tex.dispose();
+            });
+          }
+        });
+        planetMeshes = [];
+
+        orbitLines.forEach((line) => {
+          scene.remove(line);
+          line.geometry.dispose();
+          line.material.dispose();
+        });
+        orbitLines = [];
+
+        selectedPlanet = null;
+        cameraFollowTarget = null;
+        cameraDistance = 200; // Reset camera distance
+        document.getElementById("planetInfo").className = "";
+      }
+
+      function showPlanetInfo(planet, planetNum) {
+        const infoDiv = document.getElementById("planetInfo");
+
+        function fmt(val, decimals = 2) {
+          if (typeof val === "boolean") return val ? "Yes" : "No";
+          if (typeof val === "number") return val.toFixed(decimals);
+          return val;
+        }
+
+        let habitabilityNotes = [];
+        if (
+          planet.surfaceTempCelsius >= -20 &&
+          planet.surfaceTempCelsius <= 50
+        ) {
+          habitabilityNotes.push("Temperature in habitable range");
+        }
+        if (planet.surfacePressure > 100 && planet.surfacePressure < 2000) {
+          habitabilityNotes.push("Atmospheric pressure moderate");
+        }
+        if (planet.hydrosphere > 0.3 && planet.hydrosphere < 0.9) {
+          habitabilityNotes.push("Significant surface water");
+        }
+
+        const html = `
+          <h3>Planet ${planetNum} - ${planet.planetType}</h3>
+
+          <div class="section">
+            <div class="section-title">Orbital Properties</div>
+            <div class="property">
+              <span class="property-label">Semi-major Axis:</span>
+              <span class="property-value">${fmt(planet.axis, 3)} AU</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Eccentricity:</span>
+              <span class="property-value">${fmt(planet.eccentricity, 3)}</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Perihelion:</span>
+              <span class="property-value">${fmt(planet.perihelion, 3)} AU</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Aphelion:</span>
+              <span class="property-value">${fmt(planet.aphelion, 3)} AU</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Orbital Period:</span>
+              <span class="property-value">${fmt(planet.orbitalPeriod, 1)} days</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Orbital Zone:</span>
+              <span class="property-value">${
+                planet.orbitalZone === 1
+                  ? "Inner"
+                  : planet.orbitalZone === 2
+                    ? "Habitable"
+                    : "Outer"
+              }</span>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Physical Properties</div>
+            <div class="property">
+              <span class="property-label">Mass:</span>
+              <span class="property-value">${fmt(planet.earthMass, 2)} M⊕</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Radius:</span>
+              <span class="property-value">${fmt(planet.radius, 0)} km</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Density:</span>
+              <span class="property-value">${fmt(planet.density, 2)} g/cm³</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Surface Gravity:</span>
+              <span class="property-value">${fmt(planet.surfaceGravity, 2)} g</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Escape Velocity:</span>
+              <span class="property-value">${fmt(
+                planet.escapeVelocity / 100000,
+                1,
+              )} km/s</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Axial Tilt:</span>
+              <span class="property-value">${fmt(planet.axialTilt, 1)}°</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Day Length:</span>
+              <span class="property-value">${fmt(planet.dayLength, 1)} hours</span>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Atmospheric Properties</div>
+            <div class="property">
+              <span class="property-label">Surface Pressure:</span>
+              <span class="property-value">${fmt(planet.surfacePressure, 1)} mb</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Surface Temp:</span>
+              <span class="property-value">${fmt(planet.surfaceTempCelsius, 1)}°C</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Temp Range:</span>
+              <span class="property-value">${fmt(planet.lowTempCelsius, 1)}°C to ${fmt(planet.highTempCelsius, 1)}°C</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Seasonal Range:</span>
+              <span class="property-value">${fmt(planet.minTempCelsius, 1)}°C to ${fmt(planet.maxTempCelsius, 1)}°C</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Greenhouse Effect:</span>
+              <span class="property-value">${fmt(planet.greenhouseEffect)}</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Breathability:</span>
+              <span class="property-value">${planet.breathability || "Unknown"}</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Min Mol. Weight:</span>
+              <span class="property-value">${fmt(
+                planet.molecularWeightRetained,
+                1,
+              )}</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Water Boiling Pt:</span>
+              <span class="property-value">${fmt(
+                planet.boilingPoint - 273.15,
+                1,
+              )}°C</span>
+            </div>
+          </div>
+
+          ${
+            planet.atmosphere && planet.atmosphere.length > 0
+              ? `
+          <div class="section">
+            <div class="section-title">Atmospheric Composition</div>
+            ${planet.atmosphere
+              .map(
+                (gas) => `
+            <div class="property">
+              <span class="property-label">${gas.name}:</span>
+              <span class="property-value">${gas.percentByVolume}% (${gas.partialPressureMb} mb)</span>
+            </div>
+            `,
+              )
+              .join("")}
+          </div>
+          `
+              : ""
+          }
+
+          <div class="section">
+            <div class="section-title">Surface Properties</div>
+            <div class="property">
+              <span class="property-label">Albedo:</span>
+              <span class="property-value">${fmt(planet.albedo, 2)}</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Hydrosphere:</span>
+              <span class="property-value">${fmt(planet.hydrosphere * 100, 1)}%</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Cloud Cover:</span>
+              <span class="property-value">${fmt(planet.cloudCover * 100, 1)}%</span>
+            </div>
+            <div class="property">
+              <span class="property-label">Ice Cover:</span>
+              <span class="property-value">${fmt(planet.iceCover * 100, 1)}%</span>
+            </div>
+          </div>
+
+          ${
+            habitabilityNotes.length > 0
+              ? `
+          <div class="section">
+            <div class="section-title">Habitability Notes</div>
+            ${habitabilityNotes
+              .map((note) => `<div style="margin: 3px 0;">• ${note}</div>`)
+              .join("")}
+          </div>
+          `
+              : ""
+          }
+        `;
+
+        infoDiv.innerHTML = html;
+        infoDiv.className = "visible";
+      }
+
+      // Handle window resize
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      // Mouse click handling
+      renderer.domElement.addEventListener("click", (event) => {
+        // Don't trigger click if we were dragging
+        const dragDistance = Math.sqrt(
+          Math.pow(event.clientX - previousMousePosition.x, 2) +
+            Math.pow(event.clientY - previousMousePosition.y, 2),
+        );
+        if (dragDistance > 5) return; // Was a drag, not a click
+
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(planetMeshes);
+
+        if (intersects.length > 0) {
+          const clickedMesh = intersects[0].object;
+
+          // Deselect previous
+          if (selectedPlanet) {
+            selectedPlanet.material.emissive.setHex(0x000000);
+          }
+
+          // Select new planet
+          selectedPlanet = clickedMesh;
+          selectedPlanet.material.emissive.setHex(0x444444);
+
+          // Set camera to follow this planet
+          cameraFollowTarget = clickedMesh;
+          cameraDistance = 30; // Zoom in closer to the planet
+
+          showPlanetInfo(
+            clickedMesh.userData.planet,
+            clickedMesh.userData.index + 1,
+          );
+        } else {
+          // Clicked empty space
+          if (selectedPlanet) {
+            selectedPlanet.material.emissive.setHex(0x000000);
+            selectedPlanet = null;
+          }
+          cameraFollowTarget = null;
+          cameraDistance = 200; // Zoom back out
+          document.getElementById("planetInfo").className = "";
+        }
+      });
+
+      // Simple camera controls with mouse
+      let isDragging = false;
+      let previousMousePosition = { x: 0, y: 0 };
+      let cameraRotation = { x: 0, y: 0 };
+      let cameraDistance = 200;
+
+      renderer.domElement.addEventListener("mousedown", (e) => {
+        // Allow dragging with left click (button 0), right click (button 2), or middle mouse (button 1)
+        isDragging = true;
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+      });
+
+      renderer.domElement.addEventListener("mousemove", (e) => {
+        if (isDragging) {
+          const deltaX = e.clientX - previousMousePosition.x;
+          const deltaY = e.clientY - previousMousePosition.y;
+
+          cameraRotation.y += deltaX * 0.005;
+          cameraRotation.x += deltaY * 0.005;
+
+          // Clamp vertical rotation
+          cameraRotation.x = Math.max(
+            -Math.PI / 2,
+            Math.min(Math.PI / 2, cameraRotation.x),
+          );
+
+          previousMousePosition = { x: e.clientX, y: e.clientY };
+        }
+      });
+
+      renderer.domElement.addEventListener("mouseup", () => {
+        isDragging = false;
+      });
+
+      renderer.domElement.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        cameraDistance += e.deltaY * 0.1;
+        cameraDistance = Math.max(20, Math.min(1000, cameraDistance));
+      });
+
+      // Prevent context menu on right click
+      renderer.domElement.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+      });
+
+      // Animation loop
+      function animate() {
+        requestAnimationFrame(animate);
+
+        // Determine camera target (follow planet or center on star)
+        let cameraTarget = new THREE.Vector3(0, 0, 0);
+        if (cameraFollowTarget && cameraFollowTarget.position) {
+          cameraTarget = cameraFollowTarget.position.clone();
+        }
+
+        // Update camera position relative to target
+        camera.position.x =
+          cameraTarget.x +
+          cameraDistance *
+            Math.sin(cameraRotation.y) *
+            Math.cos(cameraRotation.x);
+        camera.position.y =
+          cameraTarget.y + cameraDistance * Math.sin(cameraRotation.x);
+        camera.position.z =
+          cameraTarget.z +
+          cameraDistance *
+            Math.cos(cameraRotation.y) *
+            Math.cos(cameraRotation.x);
+        camera.lookAt(cameraTarget);
+
+        // Animate planets
+        planetMeshes.forEach((mesh) => {
+          const planet = mesh.userData.planet;
+          mesh.userData.angle += mesh.userData.speed;
+
+          const orbitRadius = logScale(planet.axis);
+          const angle = mesh.userData.angle;
+
+          // Apply eccentricity to orbit
+          const r =
+            (orbitRadius * (1 - planet.eccentricity * planet.eccentricity)) /
+            (1 + planet.eccentricity * Math.cos(angle));
+
+          mesh.position.x = r * Math.cos(angle);
+          mesh.position.z = r * Math.sin(angle);
+
+          // Rotate planet on its axis
+          mesh.rotation.y += 0.01;
+
+          // Rotate clouds independently for dynamic effect
+          if (mesh.userData.clouds) {
+            mesh.userData.clouds.rotation.y += 0.005;
+          }
+
+          // Update LOD based on camera distance
+          updatePlanetLOD(mesh, camera.position);
+        });
+
+        // Rotate sun
+        sun.rotation.y += 0.001;
+        sunGlow.rotation.y -= 0.001;
+
+        // Pulsing glow effect - simulate stellar activity
+        const time = Date.now() * 0.001; // Convert to seconds
+        const pulse1 = Math.sin(time * 0.5) * 0.15; // Slow pulse
+        const pulse2 = Math.sin(time * 2.3) * 0.05; // Faster flicker
+        const pulse3 = Math.sin(time * 4.7) * 0.02; // Even faster variation
+        const pulseAmount = 1.0 + pulse1 + pulse2 + pulse3;
+
+        // Apply pulse to glow opacity and scale
+        sunGlow.material.opacity = 0.3 * pulseAmount;
+        const glowScale = 1.0 + (pulseAmount - 1.0) * 0.3;
+        sunGlow.scale.set(glowScale, glowScale, glowScale);
+
+        renderer.render(scene, camera);
+      }
+
+      animate();
+
+      // Handle worker response
+      accrete.onmessage = function (e) {
+        Array.from(document.querySelectorAll("aside input")).forEach(
+          (el) => (el.disabled = false),
+        );
+
+        btn.disabled = false;
+        loadingDiv.className = "";
+        clearInterval(btn.loadingInterval);
+
+        const receivedPlanets = e.data;
+        planets = receivedPlanets.sort((p1, p2) => p1.axis - p2.axis);
+
+        console.log("Generated planets:", planets);
+
+        // Clear previous planets
+        clearPlanets();
+
+        // Find the fastest orbital period (smallest number)
+        const fastestPeriod = Math.min(...planets.map((p) => p.orbitalPeriod));
+
+        // Create new planets
+        planets.forEach((planet, index) => {
+          createPlanet(planet, index, fastestPeriod);
+        });
+      };
+
+      // Initial camera setup
+      cameraRotation.x = Math.PI / 6; // 30 degrees down
+      cameraRotation.y = -Math.PI / 4; // 45 degrees around
+      cameraDistance = 200;
+    </script>
+  </body>
+</html>
