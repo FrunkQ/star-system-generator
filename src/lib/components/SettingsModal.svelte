@@ -14,6 +14,7 @@
   let starmapName = starmap.name;
   let distanceUnit = starmap.distanceUnit;
   let unitIsPrefix = starmap.unitIsPrefix;
+  let generationEngine = starmap.generationEngine ?? 'standard';
   let mapMode: 'diagrammatic' | 'scaled' = starmap.mapMode ?? 'diagrammatic';
   let showScaleBar = starmap.scale?.showScaleBar ?? true;
   let normalizedTemporal = ensureTemporalState(starmap).temporal!;
@@ -50,6 +51,7 @@
         distanceUnit,
         unitIsPrefix,
         mapMode,
+        generationEngine,
         scale: {
           unit: distanceUnit || 'LY',
           pixelsPerUnit: starmap.scale?.pixelsPerUnit && starmap.scale.pixelsPerUnit > 0 ? starmap.scale.pixelsPerUnit : 25,
@@ -146,6 +148,13 @@
           <option value="scaled">Scaled</option>
         </select>
       </div>
+      <div class="form-group highlight-row">
+        <label for="generationEngine">Generation Engine</label>
+        <select id="generationEngine" bind:value={generationEngine}>
+            <option value="standard">Standard (Stable)</option>
+            <option value="evolutionary">Evolutionary (Alpha Physics)</option>
+        </select>
+      </div>
       <div class="form-group">
         <label>
           <input type="checkbox" bind:checked={showScaleBar} />
@@ -218,6 +227,13 @@
   .form-group label input[type="checkbox"] {
     width: auto;
     margin-right: 0.5em;
+  }
+  .highlight-row {
+    background: #2d3748;
+    padding: 10px;
+    border-radius: 4px;
+    border-left: 4px solid #4299e1;
+    margin-bottom: 1em;
   }
   input,
   select {

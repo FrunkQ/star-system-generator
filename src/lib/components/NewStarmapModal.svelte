@@ -13,6 +13,7 @@
   let distanceUnit = 'LY';
   let unitIsPrefix = false;
   let mapMode: 'diagrammatic' | 'scaled' = 'diagrammatic';
+  let generationEngine: 'standard' | 'evolutionary' = 'standard';
 
   function createStarmap() {
     dispatch('create', {
@@ -21,6 +22,7 @@
       distanceUnit,
       unitIsPrefix,
       mapMode,
+      generationEngine,
     });
   }
 </script>
@@ -57,6 +59,15 @@
                 {/each}
             </select>
             </label>
+
+            <label class="form-row highlight-row">
+              <span>Generation Engine:</span>
+              <select bind:value={generationEngine}>
+                  <option value="standard">Standard (Stable)</option>
+                  <option value="evolutionary">Evolutionary (Alpha Physics)</option>
+              </select>
+            </label>
+
             <div class="form-row-group">
                 <label>
                 Distance Unit:
@@ -211,6 +222,13 @@
   .form-row input,
   .form-row select {
     flex-grow: 1;
+  }
+
+  .highlight-row {
+    background: #4a5568;
+    padding: 10px;
+    border-radius: 4px;
+    border-left: 4px solid #4299e1;
   }
 
   .form-row-group {

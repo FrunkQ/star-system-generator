@@ -19,6 +19,7 @@
   import RouteEditorModal from '$lib/components/RouteEditorModal.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import LlmSettingsModal from '$lib/components/LlmSettingsModal.svelte';
+  import EvolutionaryWizard from '$lib/components/EvolutionaryWizard.svelte';
   import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, STARTDATE_EPOCH_OFFSET_T } from '$lib/temporal/defaults';
   import { parseClockSeconds } from '$lib/temporal/utre';
   import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
@@ -28,6 +29,8 @@
   let error: string | null = null;
 
   let showNewStarmapModal = false;
+  let showEvolutionaryWizard = false;
+  let pendingStarmapData: any = null;
   let currentSystemId: string | null = null;
   let previousSystemId: string | null = null;
   let selectedSystemForLink: string | null = null;
@@ -249,9 +252,17 @@
     hasSavedStarmap = true;
   }
 
-  function handleCreateStarmap(event: CustomEvent<{ name: string; rulepack: RulePack; distanceUnit: string; unitIsPrefix: boolean; mapMode: 'diagrammatic' | 'scaled' }>) {
-    const { name, rulepack, distanceUnit, unitIsPrefix, mapMode } = event.detail;
+  function handleCreateStarmap(event: CustomEvent<{ name: string; rulepack: RulePack; distanceUnit: string; unitIsPrefix: boolean; mapMode: 'diagrammatic' | 'scaled', generationEngine: string }>) {
+    const { name, rulepack, distanceUnit, unitIsPrefix, mapMode, generationEngine } = event.detail;
     selectedRulepack = rulepack;
+    
+    if (generationEngine === 'evolutionary') {
+      pendingStarmapData = { name, rulepack, distanceUnit, unitIsPrefix, mapMode };
+      showEvolutionaryWizard = true;
+      showNewStarmapModal = false;
+      return;
+    }
+
     const seed = `seed-${Date.now()}`;
     const newSystem = generateSystem(seed, rulepack, {}, 'Random', false);
     const anchoredTimeSec = STARTDATE_EPOCH_OFFSET_T.toString();
@@ -283,6 +294,67 @@
     };
     starmapStore.set(newStarmap);
     showNewStarmapModal = false;
+  }
+
+  function handleEvolutionaryWizardComplete(event: CustomEvent<System>) {
+    const newSystem = event.detail;
+    if (!pendingStarmapData) return;
+
+    const { name, rulepack, distanceUnit, unitIsPrefix, mapMode, position } = pendingStarmapData;
+    const anchoredTimeSec = STARTDATE_EPOCH_OFFSET_T.toString();
+    
+    if (position) {
+      // Adding a system to an existing starmap
+      const newSystemNode: StarSystemNode = {
+        id: newSystem.id,
+        name: newSystem.name,
+        position: position,
+        system: newSystem,
+        time: {
+          displayTimeSec: anchoredTimeSec
+        }
+      };
+
+      starmapStore.update(starmap => {
+        if (starmap) {
+          starmap.systems = [...starmap.systems, newSystemNode];
+        }
+        return starmap;
+      });
+    } else {
+      // Creating a new starmap
+      const newStarmap: StarmapType = {
+        id: `starmap-${Date.now()}`,
+        name,
+        distanceUnit,
+        unitIsPrefix,
+        mapMode,
+        generationEngine: 'evolutionary',
+        invertDisplay: false,
+        scale: {
+          unit: distanceUnit || 'LY',
+          pixelsPerUnit: 25,
+          showScaleBar: true
+        },
+        systems: [
+          {
+            id: newSystem.id,
+            name: newSystem.name,
+            position: { x: 0, y: 0 },
+            system: newSystem,
+            time: {
+              displayTimeSec: anchoredTimeSec
+            }
+          },
+        ],
+        routes: [],
+        temporal: createAnchoredTemporalState()
+      };
+      starmapStore.set(newStarmap);
+    }
+    
+    showEvolutionaryWizard = false;
+    pendingStarmapData = null;
   }
 
   function handleSystemClick(event: CustomEvent<string>) {
@@ -374,6 +446,21 @@
     if (!$starmapStore || !selectedRulepack) return;
 
     const { x, y } = event.detail;
+    const generationEngine = $starmapStore.generationEngine || 'standard';
+
+    if (generationEngine === 'evolutionary') {
+      pendingStarmapData = { 
+        name: "New System", 
+        rulepack: selectedRulepack, 
+        distanceUnit: $starmapStore.distanceUnit, 
+        unitIsPrefix: $starmapStore.unitIsPrefix, 
+        mapMode: $starmapStore.mapMode,
+        position: { x, y }
+      };
+      showEvolutionaryWizard = true;
+      return;
+    }
+
     const seed = `seed-${Date.now()}`;
     const newSystem = generateSystem(seed, selectedRulepack, {}, 'Random', false);
     const displayTimeSec = parseClockSeconds($starmapStore.temporal?.displayTimeSec, STARTDATE_EPOCH_OFFSET_T).toString();
@@ -606,6 +693,8 @@
     <p>Loading rule pack...</p>
   {:else if error}
     <p style="color: red;">Error: {error}</p>
+  {:else if showEvolutionaryWizard && selectedRulepack}
+    <EvolutionaryWizard rulepack={selectedRulepack} on:complete={handleEvolutionaryWizardComplete} on:cancel={() => { showEvolutionaryWizard = false; showNewStarmapModal = true; }} />
   {:else if showNewStarmapModal}
     <NewStarmapModal 
         rulepacks={rulePacks} 

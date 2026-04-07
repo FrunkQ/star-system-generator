@@ -423,6 +423,7 @@ export interface Starmap {
   systems: StarSystemNode[];
   routes: Route[];
   mapMode?: 'diagrammatic' | 'scaled';
+  generationEngine?: 'standard' | 'evolutionary';
   invertDisplay?: boolean;
   scale?: StarmapScaleConfig;
   distanceUnit: string;
