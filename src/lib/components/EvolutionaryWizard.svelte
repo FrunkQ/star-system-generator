@@ -37,6 +37,11 @@
         placedStars = placedStars.filter(s => s.id !== starId);
     }
 
+    function clearAllStars() {
+        starsToPlace = [];
+        placedStars = [];
+    }
+
     function nextStep() {
         if (step === 1 && starsToPlace.length === 0 && placedStars.length === 0) {
             alert("Please pick at least one star properties to continue.");
@@ -86,8 +91,8 @@
             </div>
         </div>
         <div class="steps">
-            <span class="step" class:active={step === 1}>1. Star Selection</span>
-            <span class="step" class:active={step === 2}>2. Star Placement</span>
+            <span class="step" class:active={step === 1}>1. Stellar Birth</span>
+            <span class="step" class:active={step === 2}>2. Stellar Nursery</span>
             <span class="step" class:active={step === 3}>3. Stellar Dance</span>
             <span class="step" class:active={step === 4}>4. Evolution</span>
         </div>
@@ -104,50 +109,59 @@
                     />
                 </div>
                 <div class="right-pane details-panel">
-                    <h3>Star Properties</h3>
-                    {#if hoverStar}
-                        <div class="star-stats">
-                            <div class="stat-row">
-                                <span class="label">Category:</span>
-                                <span class="value" style="color: {hoverStar.category.includes('Invalid') ? '#e53e3e' : '#63b3ed'}">
-                                    {hoverStar.category}
-                                </span>
-                            </div>
-                            <div class="stat-row">
-                                <span class="label">Spectral Class:</span>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <div class="mini-star class-{hoverStar.spectralClass}"></div>
-                                    <span class="value">{hoverStar.spectralClass}</span>
-                                </div>
-                            </div>
-                            <div class="stat-row">
-                                <span class="label">Temperature:</span>
-                                <span class="value">{Math.round(hoverStar.temperatureK).toLocaleString()} K</span>
-                            </div>
-                            <div class="stat-row">
-                                <span class="label">Luminosity:</span>
-                                <span class="value">{hoverStar.luminositySolar.toExponential(2)} L⊙</span>
-                            </div>
-                            <div class="stat-row">
-                                <span class="label">Mass:</span>
-                                <span class="value">{(hoverStar.massKg / 1.989e30).toFixed(2)} M⊙</span>
-                            </div>
-                            <div class="stat-row">
-                                <span class="label">Radius:</span>
-                                <span class="value">{(hoverStar.radiusKm / 696340).toFixed(2)} R⊙</span>
+                    <h3>Stellar Birth</h3>
+                    
+                    <div class="star-stats">
+                        <div class="stat-row">
+                            <span class="label">Category:</span>
+                            <span class="value" style="color: {hoverStar?.category.includes('Invalid') ? '#e53e3e' : (hoverStar ? '#63b3ed' : '#a0aec0')}">
+                                {hoverStar?.category ?? '—'}
+                            </span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="label">Spectral Class:</span>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                {#if hoverStar}
+                                    <div class="mini-star-inline class-{hoverStar.spectralClass}"></div>
+                                    <span class="value">{hoverStar.spectralClass}{hoverStar.luminosityClass}</span>
+                                {:else}
+                                    <span class="value">—</span>
+                                {/if}
                             </div>
                         </div>
-                        <div class="error-zone">
-                            {#if hoverStar.category.includes('Invalid')}
-                                <p class="error-text">Impossible star configuration. Please select a point within the colored regions.</p>
-                            {/if}
+                        <div class="stat-row">
+                            <span class="label">Temperature:</span>
+                            <span class="value">{hoverStar ? Math.round(hoverStar.temperatureK).toLocaleString() + ' K' : '—'}</span>
                         </div>
-                    {:else}
-                        <p class="hint">Hover or click the diagram to see star details.</p>
-                    {/if}
+                        <div class="stat-row">
+                            <span class="label">Luminosity:</span>
+                            <span class="value">{hoverStar ? hoverStar.luminositySolar.toExponential(2) + ' L⊙' : '—'}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="label">Mass:</span>
+                            <span class="value">{hoverStar ? (hoverStar.massKg / 1.989e30).toFixed(2) + ' M⊙' : '—'}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="label">Radius:</span>
+                            <span class="value">{hoverStar ? (hoverStar.radiusKm / 696340).toFixed(2) + ' R⊙' : '—'}</span>
+                        </div>
+                    </div>
+
+                    <div class="error-zone">
+                        {#if hoverStar?.category.includes('Invalid')}
+                            <p class="error-text">Impossible star configuration. Please select a point within the colored regions.</p>
+                        {:else}
+                            <p class="hint">Hover the diagram to see star details.</p>
+                        {/if}
+                    </div>
 
                     <div class="queue-section">
-                        <h4>Stars to Place ({starsToPlace.length + placedStars.length}/50)</h4>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h4>Stars to Place ({starsToPlace.length + placedStars.length}/50)</h4>
+                            {#if starsToPlace.length > 0 || placedStars.length > 0}
+                                <button class="clear-all-btn" on:click={clearAllStars}>Clear All</button>
+                            {/if}
+                        </div>
                         <div class="stars-table">
                             {#each [...starsToPlace, ...placedStars] as star, i}
                                 <div class="star-row-item">
@@ -276,32 +290,33 @@
     .star-stats {
         display: flex;
         flex-direction: column;
-        gap: 1rem;
-        margin: 1.5rem 0;
+        gap: 0.8rem;
+        margin: 1rem 0;
+        min-height: 200px;
     }
 
     .stat-row {
         display: flex;
         justify-content: space-between;
         border-bottom: 1px solid #4a5568;
-        padding-bottom: 0.5rem;
+        padding-bottom: 0.4rem;
     }
 
     .stat-row .label {
         color: #a0aec0;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
     }
 
     .stat-row .value {
         font-weight: bold;
         font-family: monospace;
+        font-size: 0.9rem;
     }
 
-    .mini-stars-grid {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-top: 10px;
+    .mini-star-inline {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
     }
 
     .mini-star {
@@ -317,27 +332,28 @@
     }
 
     /* Spectral Class Colors */
-    .class-O { background: #9bb2ff; box-shadow: 0 0 10px #9bb2ff; color: #9bb2ff; }
-    .class-B { background: #cad7ff; box-shadow: 0 0 10px #cad7ff; color: #cad7ff; }
-    .class-A { background: #f8f7ff; box-shadow: 0 0 10px #f8f7ff; color: #f8f7ff; }
-    .class-F { background: #fff4ea; box-shadow: 0 0 10px #fff4ea; color: #fff4ea; }
-    .class-G { background: #fff2a1; box-shadow: 0 0 10px #fff2a1; color: #fff2a1; }
-    .class-K { background: #ffcc6f; box-shadow: 0 0 10px #ffcc6f; color: #ffcc6f; }
-    .class-M { background: #ff9833; box-shadow: 0 0 10px #ff9833; color: #ff9833; }
-
-    .mini-star.class-O, .mini-star.class-B, .mini-star.class-A, .mini-star.class-F, .mini-star.class-G, .mini-star.class-K, .mini-star.class-M {
-        color: black;
-    }
+    .class-O { background: #9bb2ff; box-shadow: 0 0 10px #9bb2ff; }
+    .class-B { background: #cad7ff; box-shadow: 0 0 10px #cad7ff; }
+    .class-A { background: #f8f7ff; box-shadow: 0 0 10px #f8f7ff; }
+    .class-F { background: #fff4ea; box-shadow: 0 0 10px #fff4ea; }
+    .class-G { background: #fff2a1; box-shadow: 0 0 10px #fff2a1; }
+    .class-K { background: #ffcc6f; box-shadow: 0 0 10px #ffcc6f; }
+    .class-M { background: #ff9833; box-shadow: 0 0 10px #ff9833; }
 
     .error-text {
         color: #e53e3e;
         font-size: 0.8rem;
-        margin-top: 0.5rem;
         font-style: italic;
     }
 
     .error-zone {
         min-height: 2.5rem;
+    }
+
+    .hint {
+        color: #718096;
+        font-size: 0.8rem;
+        font-style: italic;
     }
 
     .stars-table {
@@ -360,13 +376,13 @@
     }
 
     .star-id-badge {
-        width: 24px;
-        height: 24px;
+        width: 20px;
+        height: 20px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: bold;
         color: black;
         flex-shrink: 0;
@@ -380,7 +396,7 @@
     }
 
     .star-info .type {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: bold;
     }
 
@@ -402,6 +418,20 @@
         color: #fc8181;
     }
 
+    .clear-all-btn {
+        background: #e53e3e;
+        color: white;
+        border: none;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        cursor: pointer;
+    }
+
+    .clear-all-btn:hover {
+        background: #c53030;
+    }
+
     .empty-hint {
         font-size: 0.8rem;
         color: #718096;
@@ -409,7 +439,7 @@
     }
 
     .actions {
-        margin-top: 2rem;
+        margin-top: 1rem;
     }
 
     .primary-btn {
@@ -422,6 +452,12 @@
         cursor: pointer;
         font-weight: bold;
         width: 100%;
+    }
+
+    .primary-btn:disabled {
+        background-color: #4a5568;
+        cursor: not-allowed;
+        opacity: 0.7;
     }
 
     .back-btn {

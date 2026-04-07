@@ -694,7 +694,7 @@
   {:else if error}
     <p style="color: red;">Error: {error}</p>
   {:else if showEvolutionaryWizard && selectedRulepack}
-    <EvolutionaryWizard rulepack={selectedRulepack} on:complete={handleEvolutionaryWizardComplete} on:cancel={() => { showEvolutionaryWizard = false; showNewStarmapModal = true; }} />
+    <EvolutionaryWizard rulepack={selectedRulepack} on:complete={handleEvolutionaryWizardComplete} on:cancel={() => { showEvolutionaryWizard = false; if (!$starmapStore) showNewStarmapModal = true; }} />
   {:else if showNewStarmapModal}
     <NewStarmapModal 
         rulepacks={rulePacks} 

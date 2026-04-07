@@ -1,6 +1,6 @@
 <script lang="ts">
     import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-    import { type StarSeed, stepNBody, handleMergers } from '$lib/physics/stellar-evolution';
+    import { type StarSeed, stepNBody, handleMergers, shiftToBarycentricFrame, checkEjections } from '$lib/physics/stellar-evolution';
 
     const dispatch = createEventDispatcher();
     
@@ -8,77 +8,161 @@
     
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D;
+    let container: HTMLDivElement;
     let animationId: number;
     
     let isRunning = true;
-    let timeScale = 100000;
-    let autoZoom = 0.5;
-    let currentCenterX = 0;
-    let currentCenterY = 0;
-    
+    let systemTimeYears = 0;
+    let stableYears = 0;
+    const MAX_SIM_TIME_YEARS = 1000000; 
+    const STABILITY_THRESHOLD_YEARS = 100000;
+
+    // Simulation State
     let simStars: StarSeed[] = [];
     let history: { [id: string]: { x: number, y: number }[] } = {};
-    let systemTimeYears = 0;
-    const MAX_SIM_TIME_YEARS = 1000000; // 1 Million Years for settling
+    let orbitProfiles: { [id: string]: { x: number, y: number }[] } = {};
+    let adaptiveTimeScale = 1; 
+    let eventLog: string[] = [];
+    let eventCount = 0;
+    
+    // Logarithmic Time Warp
+    let timeWarpPower = 0; 
+    $: timeWarpMult = Math.pow(10, timeWarpPower);
+
+    // Physics Metrics
+    let minSepAU = 0;
+    let relVelKM = 0;
+    let yearsPerSec = 0;
+    let isSloMo = false;
+
+    // Camera State
+    let camX = 0; let camY = 0;
+    let pixelsPerMeter = 1e-10; 
+    const AU_TO_M = 149597870700;
+
+    function addEvent(msg: string) {
+        eventLog = [msg, ...eventLog].slice(0, 5);
+        eventCount++;
+    }
 
     function startSimulation() {
-        simStars = JSON.parse(JSON.stringify(stars)); 
+        if (animationId) cancelAnimationFrame(animationId);
+        simStars = shiftToBarycentricFrame(JSON.parse(JSON.stringify(stars))); 
+        history = {};
+        orbitProfiles = {};
         simStars.forEach(s => history[s.id] = []);
-        systemTimeYears = 0;
-        // Reset camera
-        currentCenterX = 0;
-        currentCenterY = 0;
-        autoZoom = 0.5;
+        systemTimeYears = 0; stableYears = 0; adaptiveTimeScale = 1; 
+        timeWarpPower = 0; eventLog = ["Simulation Started"]; eventCount = 0;
+        isRunning = true;
+        if (simStars.length <= 1) { 
+            isRunning = false; 
+            addEvent("Single star: Stable");
+            generateOrbitProfiles();
+            updateCamera(true);
+        } else {
+            updateCamera(true);
+        }
         loop();
     }
 
-    function updateCamera() {
-        const active = simStars.filter(s => !s.isMerged);
+    function generateOrbitProfiles() {
+        if (simStars.length <= 1) return;
+        const active = simStars.filter(s => !s.isMerged && !s.isEjected);
+        let projStars = JSON.parse(JSON.stringify(simStars));
+        const dt = 50000; 
+        orbitProfiles = {};
+        active.forEach(s => orbitProfiles[s.id] = []);
+        for (let i = 0; i < 2000; i++) {
+            projStars = stepNBody(projStars, dt);
+            active.forEach(s => {
+                const ps = projStars.find((p: any) => p.id === s.id);
+                if (ps) orbitProfiles[s.id].push({ x: ps.pos.x, y: ps.pos.y });
+            });
+        }
+    }
+
+    function updateCamera(instant = false) {
+        const active = simStars.filter(s => !s.isMerged && !s.isEjected && !s.isUnbound);
         if (active.length === 0) return;
-
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        let totalMass = 0; let baryX = 0, baryY = 0;
         active.forEach(s => {
-            const distAU = Math.sqrt(s.pos.x**2 + s.pos.y**2) / 149597870700;
-            // Only frame ejected stars if they are still relatively close (within 150 AU)
-            if (s.isEjected && distAU > 150) return; 
-
-            minX = Math.min(minX, s.pos.x);
-            maxX = Math.max(maxX, s.pos.x);
-            minY = Math.min(minY, s.pos.y);
-            maxY = Math.max(maxY, s.pos.y);
+            minX = Math.min(minX, s.pos.x); maxX = Math.max(maxX, s.pos.x);
+            minY = Math.min(minY, s.pos.y); maxY = Math.max(maxY, s.pos.y);
+            baryX += s.pos.x * s.massKg; baryY += s.pos.y * s.massKg;
+            totalMass += s.massKg;
         });
-
-        // Add small buffer to bounds
-        const targetX = (minX + maxX) / 2;
-        const targetY = (minY + maxY) / 2;
-        
-        // Smoothly pan camera
-        currentCenterX += (targetX - currentCenterX) * 0.1;
-        currentCenterY += (targetY - currentCenterY) * 0.1;
-
-        const spanX = Math.abs(maxX - minX);
-        const spanY = Math.abs(maxY - minY);
-        const AU_TO_M = 149597870700;
-        
-        // Calculate zoom level to fit the span
-        const targetSpanAU = Math.max(10, Math.max(spanX, spanY) / AU_TO_M) * 1.5;
-        const targetZoom = 10 / targetSpanAU; 
-        
-        // Smoothly zoom
-        autoZoom += (targetZoom - autoZoom) * 0.05;
+        const targetX = baryX / totalMass;
+        const targetY = baryY / totalMass;
+        const spanX = Math.max(25 * AU_TO_M, (maxX - minX) * 1.8);
+        const spanY = Math.max(25 * AU_TO_M, (maxY - minY) * 1.8);
+        const targetPPM = (Math.min(canvas.width, canvas.height) * 0.85) / Math.max(spanX, spanY);
+        if (instant) { camX = targetX; camY = targetY; pixelsPerMeter = targetPPM; }
+        else {
+            camX += (targetX - camX) * 0.1;
+            camY += (targetY - camY) * 0.1;
+            pixelsPerMeter += (targetPPM - pixelsPerMeter) * 0.1;
+        }
     }
 
     function loop() {
         if (isRunning && systemTimeYears < MAX_SIM_TIME_YEARS) {
-            const dt = timeScale;
-            for (let i = 0; i < 5; i++) {
-                simStars = stepNBody(simStars, dt);
-                const result = handleMergers(simStars);
-                simStars = result.stars;
-                systemTimeYears += dt / (365.25 * 24 * 3600);
+            const active = simStars.filter(s => !s.isMerged && !s.isEjected);
+            if (active.length <= 1 && systemTimeYears > 1000) { isRunning = false; updateCamera(true); generateOrbitProfiles(); return; }
+
+            let minDist = Infinity; let maxVel = 0; let relVel = 0;
+            for(let i=0; i<active.length; i++) {
+                const v = Math.sqrt(active[i].vel.x**2 + active[i].vel.y**2);
+                if (v > maxVel) maxVel = v;
+                for(let j=i+1; j<active.length; j++) {
+                    const d = Math.sqrt((active[j].pos.x - active[i].pos.x)**2 + (active[j].pos.y - active[i].pos.y)**2);
+                    if (d < minDist) { minDist = d; relVel = Math.sqrt((active[j].vel.x - active[i].vel.x)**2 + (active[j].vel.y - active[i].vel.y)**2); }
+                }
             }
-            draw();
+            minSepAU = minDist / AU_TO_M;
+            relVelKM = relVel / 1000;
+
+            isSloMo = maxVel > 80000; 
+            const interactionFactor = Math.max(0.01, Math.min(1, minDist / (20 * AU_TO_M)));
+            const velocityFactor = Math.max(1, relVel / 20000);
+            const targetTS = (1000000 * interactionFactor / velocityFactor) * timeWarpMult * (isSloMo ? 0.1 : 1.0);
+            adaptiveTimeScale += (targetTS - adaptiveTimeScale) * 0.05;
+            adaptiveTimeScale = Math.max(1, adaptiveTimeScale);
+
+            let structuralEvent = false;
+            const iterations = timeWarpPower > 2 ? 100 : (timeWarpPower > 1 ? 40 : 10);
+            const dt_per_substep = adaptiveTimeScale / iterations;
+            const startYears = systemTimeYears;
+            
+            for (let i = 0; i < iterations; i++) {
+                const preCount = simStars.filter(s => !s.isMerged && !s.isEjected).length;
+                simStars = stepNBody(simStars, dt_per_substep);
+                
+                const mergeRes = handleMergers(simStars);
+                simStars = mergeRes.stars;
+                if (mergeRes.mergedAny) { structuralEvent = true; addEvent("Star Merger Detected"); }
+                
+                const ejectRes = checkEjections(simStars);
+                simStars = ejectRes.stars;
+                if (ejectRes.ejectedAny) { structuralEvent = true; addEvent("Star Unbound (Escaping)"); }
+
+                if (simStars.filter(s => !s.isMerged && !s.isEjected).length !== preCount) structuralEvent = true;
+                
+                // DRIFT CORRECTION: If structural event happened, re-anchor bound stars
+                if (structuralEvent) {
+                    const bound = simStars.filter(s => !s.isMerged && !s.isEjected && !s.isUnbound);
+                    shiftToBarycentricFrame(bound);
+                }
+
+                const deltaYears = dt_per_substep / (365.25 * 24 * 3600);
+                systemTimeYears += deltaYears;
+                if (!structuralEvent) stableYears += deltaYears;
+                else stableYears = 0;
+            }
+            yearsPerSec = (systemTimeYears - startYears) * 60; 
+            if (stableYears > STABILITY_THRESHOLD_YEARS) { isRunning = false; generateOrbitProfiles(); updateCamera(true); }
         }
+        draw();
         animationId = requestAnimationFrame(loop);
     }
 
@@ -86,55 +170,42 @@
         if (!ctx || !canvas) return;
         updateCamera();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        const viewCenterX = canvas.width / 2;
-        const viewCenterY = canvas.height / 2;
-        const AU_TO_PX = (149597870700) / 100 * autoZoom;
+        const cx = canvas.width / 2; const cy = canvas.height / 2;
+        const toScreen = (x: number, y: number) => ({ x: cx + (x - camX) * pixelsPerMeter, y: cy + (y - camY) * pixelsPerMeter });
 
-        const toScreen = (worldX: number, worldY: number) => ({
-            x: viewCenterX + (worldX - currentCenterX) / AU_TO_PX,
-            y: viewCenterY + (worldY - currentCenterY) / AU_TO_PX
-        });
-
-        // Draw Trails
+        // Trails
         simStars.forEach(star => {
-            if (star.isMerged) return;
-            const h = history[star.id];
-            h.push({ x: star.pos.x, y: star.pos.y });
-            if (h.length > 100) h.shift();
-
-            ctx.strokeStyle = getStarColor(star.temperatureK) + '44';
+            if (star.isMerged || star.isEjected) return;
+            const h = isRunning ? history[star.id] : orbitProfiles[star.id];
+            if (!h) return;
+            if (isRunning) h.push({ x: star.pos.x, y: star.pos.y });
+            if (h.length > 1500) h.shift();
+            ctx.strokeStyle = getStarColor(star.temperatureK) + (isRunning ? (star.isUnbound ? '11' : '22') : '66');
+            ctx.lineWidth = isRunning ? 1 : 2;
             ctx.beginPath();
-            h.forEach((p, i) => {
-                const screen = toScreen(p.x, p.y);
-                if (i === 0) ctx.moveTo(screen.x, screen.y);
-                else ctx.lineTo(screen.x, screen.y);
-            });
+            h.forEach((p, i) => { const s = toScreen(p.x, p.y); if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y); });
+            if (!isRunning && h.length > 0) { const s = toScreen(h[0].x, h[0].y); ctx.lineTo(s.x, s.y); }
             ctx.stroke();
         });
 
-        // Draw Stars
+        // Stars
         simStars.forEach(star => {
-            if (star.isMerged) return;
-            const screen = toScreen(star.pos.x, star.pos.y);
-            
-            // Extreme ejection check
-            const distAU = Math.sqrt(star.pos.x**2 + star.pos.y**2) / 149597870700;
-            if (distAU > 2000) star.isEjected = true;
-
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = getStarColor(star.temperatureK);
+            if (star.isMerged || star.isEjected) return;
+            const s = toScreen(star.pos.x, star.pos.y);
+            if (star.isUnbound) {
+                if (s.x < -50 || s.x > canvas.width + 50 || s.y < -50 || s.y > canvas.height + 50) {
+                    star.isEjected = true; addEvent(`Star ${star.spectralClass} Ejected`); return;
+                }
+            }
+            if (s.x < -100 || s.x > canvas.width + 100 || s.y < -100 || s.y > canvas.height + 100) return;
+            const logRadius = Math.log10(star.radiusKm / 10000); 
+            const finalRadius = Math.max(6, Math.min(40, logRadius * 10));
+            ctx.shadowBlur = 20; ctx.shadowColor = getStarColor(star.temperatureK);
             ctx.fillStyle = getStarColor(star.temperatureK);
-            
-            ctx.beginPath();
-            const radius = Math.max(3, (star.radiusKm / 696340) * 5 * autoZoom);
-            ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = 'white';
-            ctx.font = '10px sans-serif';
-            ctx.fillText(star.spectralClass, screen.x + 8, screen.y + 4);
+            if (star.isUnbound) ctx.globalAlpha = 0.4;
+            ctx.beginPath(); ctx.arc(s.x, s.y, finalRadius, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 1.0; ctx.shadowBlur = 0; ctx.fillStyle = 'white'; ctx.font = 'bold 11px sans-serif';
+            ctx.fillText(`${star.spectralClass} (${(star.massKg / 1.989e30).toFixed(1)}M⊙)`, s.x + finalRadius + 6, s.y + 4);
         });
     }
 
@@ -148,152 +219,84 @@
         return '#ff9833';
     }
 
-    function finish() {
-        const settledStars = simStars.filter(s => !s.isEjected && !s.isMerged);
-        dispatch('settled', settledStars);
-    }
-
-    onMount(() => {
-        ctx = canvas.getContext('2d')!;
-        startSimulation();
-    });
-
-    onDestroy(() => {
-        if (animationId) cancelAnimationFrame(animationId);
-    });
+    onMount(() => { ctx = canvas.getContext('2d')!; setTimeout(() => { canvas.width = container.clientWidth; canvas.height = container.clientHeight; startSimulation(); }, 100); });
+    onDestroy(() => { if (animationId) cancelAnimationFrame(animationId); });
 </script>
 
 <div class="dance-container">
     <div class="dance-header">
         <h3>Step 3: The Stellar Dance</h3>
-        <p>Simulation Time: {Math.round(systemTimeYears).toLocaleString()} years</p>
+        <p class="status-msg" class:stable={!isRunning} class:slomo={isSloMo && isRunning}>
+            {#if !isRunning} System Stabilized
+            {:else if isSloMo} Slow-Mo Interaction...
+            {:else} Simulating Gravitational Settling...
+            {/if}
+        </p>
+        <div class="timer">{Math.round(systemTimeYears).toLocaleString()} years elapsed</div>
     </div>
 
-    <div class="canvas-container">
-        <canvas bind:this={canvas} width="800" height="500"></canvas>
-        
+    <div class="canvas-viewport" bind:this={container}>
+        <canvas bind:this={canvas}></canvas>
+        <div class="debug-panel">
+            <div class="debug-row"><span>Sim Speed:</span> <span>{Math.round(yearsPerSec).toLocaleString()} yr/s</span></div>
+            <div class="debug-row"><span>Min Sep:</span> <span>{minSepAU.toFixed(2)} AU</span></div>
+            <div class="debug-row"><span>Time Step:</span> <span style="color: {isSloMo ? '#ecc94b' : '#48bb78'}">{Math.round(adaptiveTimeScale / 3600)} h</span></div>
+            <div class="debug-row"><span>Stability:</span> <span>{Math.round(stableYears).toLocaleString()} yr</span></div>
+            <div class="event-log">
+                {#each eventLog as msg} <div>[Event] {msg}</div> {/each}
+            </div>
+        </div>
         <div class="controls">
             <div class="left-ctrl">
-                <button on:click={() => isRunning = !isRunning}>
-                    {isRunning ? 'Pause' : 'Resume'}
-                </button>
+                <button on:click={() => isRunning = !isRunning}>{isRunning ? 'Pause' : 'Resume'}</button>
                 <button on:click={startSimulation}>Reset</button>
             </div>
-
             <div class="center-ctrl">
-                <span>Simulation Progress:</span>
-                <progress value={systemTimeYears} max={MAX_SIM_TIME_YEARS}></progress>
+                <div class="warp-control">
+                    <span>Time Warp:</span>
+                    <input type="range" min="0" max="3" step="0.1" bind:value={timeWarpPower} />
+                    <span class="warp-val">{Math.round(timeWarpMult)}x</span>
+                </div>
+                <div class="progress-stack">
+                    <div class="progress-label">Simulation Progress</div>
+                    <progress value={systemTimeYears} max={MAX_SIM_TIME_YEARS}></progress>
+                    <div class="progress-label">Stability Lock</div>
+                    <progress class="stability-bar" value={stableYears} max={STABILITY_THRESHOLD_YEARS}></progress>
+                </div>
             </div>
-
-            <div class="right-ctrl">
-                <button class="finish-btn" on:click={finish}>Finalize Orbits</button>
-            </div>
+            <button class="finish-btn" on:click={() => dispatch('settled', simStars.filter(s => !s.isEjected && !s.isMerged))}>Finalize Orbits</button>
         </div>
     </div>
 
     <div class="status-panel">
-        <div class="stat">
-            <span class="label">Bound Stars:</span>
-            <span class="value">{simStars.filter(s => !s.isEjected && !s.isMerged).length}</span>
-        </div>
-        <div class="stat">
-            <span class="label">Merged:</span>
-            <span class="value">{simStars.filter(s => s.isMerged).length}</span>
-        </div>
-        <div class="stat">
-            <span class="label">Ejected:</span>
-            <span class="value">{simStars.filter(s => s.isEjected).length}</span>
-        </div>
+        <div class="stat"><span class="label">Bound:</span><span class="value">{simStars.filter(s => !s.isEjected && !s.isMerged).length}</span></div>
+        <div class="stat"><span class="label">Merged:</span><span class="value">{simStars.filter(s => s.isMerged).length}</span></div>
+        <div class="stat"><span class="label">Ejected:</span><span class="value">{simStars.filter(s => s.isEjected).length}</span></div>
     </div>
 </div>
 
 <style>
-    .dance-container {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        align-items: center;
-        width: 100%;
-    }
-
-    .canvas-container {
-        position: relative;
-        background: #000;
-        border: 1px solid #4a5568;
-        border-radius: 4px;
-    }
-
-    .controls {
-        position: absolute;
-        bottom: 10px;
-        left: 10px;
-        right: 10px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: rgba(0,0,0,0.6);
-        padding: 10px;
-        border-radius: 4px;
-    }
-
-    .center-ctrl {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: white;
-        font-size: 0.8rem;
-    }
-
-    progress {
-        width: 200px;
-    }
-
-    .status-panel {
-        display: flex;
-        gap: 2rem;
-        background: #2d3748;
-        padding: 1rem;
-        border-radius: 8px;
-    }
-
-    .stat {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .stat .label {
-        font-size: 0.7rem;
-        color: #a0aec0;
-        text-transform: uppercase;
-    }
-
-    .stat .value {
-        font-size: 1.2rem;
-        font-weight: bold;
-        color: #63b3ed;
-    }
-
-    .finish-btn {
-        background: #38a169;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-weight: bold;
-    }
-
-    .finish-btn:hover {
-        background: #2f855a;
-    }
-
-    button {
-        background: #4a5568;
-        color: white;
-        border: none;
-        padding: 5px 15px;
-        border-radius: 4px;
-        cursor: pointer;
-    }
+    .dance-container { display: flex; flex-direction: column; gap: 1rem; align-items: center; width: 100%; height: 100%; }
+    .status-msg { font-weight: bold; color: #63b3ed; }
+    .status-msg.stable { color: #48bb78; }
+    .status-msg.slomo { color: #ecc94b; }
+    .timer { font-family: monospace; font-size: 0.9rem; color: #a0aec0; }
+    .canvas-viewport { position: relative; width: 95vw; height: 60vh; background: #000; border: 1px solid #4a5568; border-radius: 8px; box-shadow: 0 0 50px rgba(0,0,0,0.9); overflow: hidden; }
+    canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+    .debug-panel { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); pointer-events: none; min-width: 180px; }
+    .debug-row { display: flex; justify-content: space-between; gap: 20px; font-family: monospace; font-size: 0.7rem; color: #48bb78; }
+    .event-log { margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px; font-family: monospace; font-size: 0.65rem; color: #a0aec0; }
+    .controls { position: absolute; bottom: 15px; left: 15px; right: 15px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.85); padding: 12px; border-radius: 6px; backdrop-filter: blur(8px); border: 1px solid #4a5568; }
+    .warp-control { display: flex; align-items: center; gap: 10px; color: #a0aec0; font-size: 0.75rem; }
+    .warp-val { color: #63b3ed; font-weight: bold; min-width: 40px; }
+    .progress-stack { display: flex; flex-direction: column; gap: 4px; width: 25%; }
+    .progress-label { font-size: 0.6rem; color: #718096; text-transform: uppercase; text-align: center; }
+    progress { width: 100%; height: 6px; border-radius: 3px; }
+    progress.stability-bar::-webkit-progress-value { background-color: #4299e1; }
+    .status-panel { display: flex; gap: 3rem; background: #2d3748; padding: 1rem 2rem; border-radius: 8px; border: 1px solid #4a5568; }
+    .stat { display: flex; flex-direction: column; align-items: center; }
+    .stat .label { font-size: 0.7rem; color: #a0aec0; text-transform: uppercase; }
+    .stat .value { font-size: 1.4rem; font-weight: bold; color: #63b3ed; }
+    .finish-btn { background: #38a169; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    button { background: #4a5568; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
 </style>
