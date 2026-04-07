@@ -1,5 +1,5 @@
-import * as C from "./constants";
-import { about } from "./utils";
+import * as C from "./constants.js";
+import { about } from "./utils.js";
 
 // NOTE: This file is not currently used, but the plan is in the works.
 // Currently, all contents that of StarGen's (http://eldacur.com/~brons/NerdCorner/StarGen/StarGen.html)

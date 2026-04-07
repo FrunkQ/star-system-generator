@@ -1,7 +1,7 @@
-import * as CONST from "./constants";
-import { rand } from "./utils";
-import DustCloud from "./DustCloud";
-import Planetismal from "./Planetismal";
+import * as CONST from "./constants.js";
+import { rand } from "./utils.js";
+import DustCloud from "./DustCloud.js";
+import Planetismal from "./Planetismal.js";
 
 export default class StarSystem {
   constructor(constants = {}) {

@@ -1,5 +1,5 @@
-import * as C from "./constants";
-import * as Astro from "./Astro";
+import * as C from "./constants.js";
+import * as Astro from "./Astro.js";
 
 export default class Planetismal {
   get rp() {

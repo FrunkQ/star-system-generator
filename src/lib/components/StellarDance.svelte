@@ -1,6 +1,6 @@
 <script lang="ts">
     import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-    import { type StarSeed, stepNBody, handleMergers, shiftToBarycentricFrame, checkEjections } from '$lib/physics/stellar-evolution';
+    import { type StarSeed, stepNBody, handleMergers, shiftToBarycentricFrame, checkEjections, deriveStarFromHR } from '$lib/physics/stellar-evolution';
 
     const dispatch = createEventDispatcher();
     
@@ -39,6 +39,7 @@
     let camX = 0; let camY = 0;
     let pixelsPerMeter = 1e-10; 
     const AU_TO_M = 149597870700;
+    const G = 6.67430e-11;
 
     function addEvent(msg: string) {
         eventLog = [msg, ...eventLog].slice(0, 5);
@@ -48,11 +49,10 @@
     function startSimulation() {
         if (animationId) cancelAnimationFrame(animationId);
         simStars = shiftToBarycentricFrame(JSON.parse(JSON.stringify(stars))); 
-        history = {};
-        orbitProfiles = {};
+        history = {}; orbitProfiles = {};
         simStars.forEach(s => history[s.id] = []);
-        systemTimeYears = 0; stableYears = 0; adaptiveTimeScale = 1; 
-        timeWarpPower = 0; eventLog = ["Simulation Started"]; eventCount = 0;
+        systemTimeYears = 0; stableYears = 0; timeWarpPower = 0; 
+        eventLog = ["Simulation Started"]; eventCount = 0;
         isRunning = true;
         if (simStars.length <= 1) { 
             isRunning = false; 
@@ -69,10 +69,10 @@
         if (simStars.length <= 1) return;
         const active = simStars.filter(s => !s.isMerged && !s.isEjected);
         let projStars = JSON.parse(JSON.stringify(simStars));
-        const dt = 50000; 
+        const dt = 100000; 
         orbitProfiles = {};
         active.forEach(s => orbitProfiles[s.id] = []);
-        for (let i = 0; i < 2000; i++) {
+        for (let i = 0; i < 1500; i++) {
             projStars = stepNBody(projStars, dt);
             active.forEach(s => {
                 const ps = projStars.find((p: any) => p.id === s.id);
@@ -96,7 +96,7 @@
         const targetY = baryY / totalMass;
         const spanX = Math.max(25 * AU_TO_M, (maxX - minX) * 1.8);
         const spanY = Math.max(25 * AU_TO_M, (maxY - minY) * 1.8);
-        const targetPPM = (Math.min(canvas.width, canvas.height) * 0.85) / Math.max(spanX, spanY);
+        const targetPPM = Math.min((canvas.width * 0.85) / spanX, (canvas.height * 0.85) / spanY);
         if (instant) { camX = targetX; camY = targetY; pixelsPerMeter = targetPPM; }
         else {
             camX += (targetX - camX) * 0.1;
@@ -108,12 +108,19 @@
     function loop() {
         if (isRunning && systemTimeYears < MAX_SIM_TIME_YEARS) {
             const active = simStars.filter(s => !s.isMerged && !s.isEjected);
-            if (active.length <= 1 && systemTimeYears > 1000) { isRunning = false; updateCamera(true); generateOrbitProfiles(); return; }
+            
+            // INSTANT STABILITY IF 1 STAR REMAINS
+            if (active.length <= 1 && systemTimeYears > 100) { 
+                isRunning = false; 
+                addEvent("System Stabilized: 1 Star");
+                generateOrbitProfiles(); 
+                updateCamera(true); 
+                return; 
+            }
 
-            let minDist = Infinity; let maxVel = 0; let relVel = 0;
+            let minDist = Infinity; let relVel = 0; let totalMass = 0;
+            active.forEach(s => totalMass += s.massKg);
             for(let i=0; i<active.length; i++) {
-                const v = Math.sqrt(active[i].vel.x**2 + active[i].vel.y**2);
-                if (v > maxVel) maxVel = v;
                 for(let j=i+1; j<active.length; j++) {
                     const d = Math.sqrt((active[j].pos.x - active[i].pos.x)**2 + (active[j].pos.y - active[i].pos.y)**2);
                     if (d < minDist) { minDist = d; relVel = Math.sqrt((active[j].vel.x - active[i].vel.x)**2 + (active[j].vel.y - active[i].vel.y)**2); }
@@ -122,10 +129,10 @@
             minSepAU = minDist / AU_TO_M;
             relVelKM = relVel / 1000;
 
-            isSloMo = maxVel > 80000; 
-            const interactionFactor = Math.max(0.01, Math.min(1, minDist / (20 * AU_TO_M)));
+            isSloMo = timeWarpPower < 0.1 && active.length > 1 && (minDist / AU_TO_M < 5 || relVel > 80000); 
+            const interactionFactor = Math.max(0.01, Math.min(1, (minDist || 1e15) / (20 * AU_TO_M)));
             const velocityFactor = Math.max(1, relVel / 20000);
-            const targetTS = (1000000 * interactionFactor / velocityFactor) * timeWarpMult * (isSloMo ? 0.1 : 1.0);
+            const targetTS = (5000000 * interactionFactor / velocityFactor) * timeWarpMult * (isSloMo ? 0.1 : 1.0);
             adaptiveTimeScale += (targetTS - adaptiveTimeScale) * 0.05;
             adaptiveTimeScale = Math.max(1, adaptiveTimeScale);
 
@@ -135,29 +142,40 @@
             const startYears = systemTimeYears;
             
             for (let i = 0; i < iterations; i++) {
-                const preCount = simStars.filter(s => !s.isMerged && !s.isEjected).length;
+                const preCount = active.length;
                 simStars = stepNBody(simStars, dt_per_substep);
                 
                 const mergeRes = handleMergers(simStars);
                 simStars = mergeRes.stars;
-                if (mergeRes.mergedAny) { structuralEvent = true; addEvent("Star Merger Detected"); }
+                if (mergeRes.mergedAny) { 
+                    structuralEvent = true; 
+                    simStars.forEach(s => {
+                        if (!s.isMerged && !s.isEjected) {
+                            const updated = deriveStarFromHR(s.temperatureK, Math.pow(s.massKg / 1.989e30, 3.5));
+                            s.spectralClass = updated.spectralClass;
+                            s.category = updated.category;
+                            s.luminosityClass = updated.luminosityClass;
+                        }
+                    });
+                    addEvent("Stars Merged: Properties Updated"); 
+                }
                 
                 const ejectRes = checkEjections(simStars);
                 simStars = ejectRes.stars;
                 if (ejectRes.ejectedAny) { structuralEvent = true; addEvent("Star Unbound (Escaping)"); }
 
-                if (simStars.filter(s => !s.isMerged && !s.isEjected).length !== preCount) structuralEvent = true;
+                const postActive = simStars.filter(s => !s.isMerged && !s.isEjected);
+                if (postActive.length !== preCount) structuralEvent = true;
                 
-                // DRIFT CORRECTION: If structural event happened, re-anchor bound stars
                 if (structuralEvent) {
                     const bound = simStars.filter(s => !s.isMerged && !s.isEjected && !s.isUnbound);
                     shiftToBarycentricFrame(bound);
+                    stableYears = 0;
                 }
 
                 const deltaYears = dt_per_substep / (365.25 * 24 * 3600);
                 systemTimeYears += deltaYears;
                 if (!structuralEvent) stableYears += deltaYears;
-                else stableYears = 0;
             }
             yearsPerSec = (systemTimeYears - startYears) * 60; 
             if (stableYears > STABILITY_THRESHOLD_YEARS) { isRunning = false; generateOrbitProfiles(); updateCamera(true); }
@@ -179,7 +197,7 @@
             const h = isRunning ? history[star.id] : orbitProfiles[star.id];
             if (!h) return;
             if (isRunning) h.push({ x: star.pos.x, y: star.pos.y });
-            if (h.length > 1500) h.shift();
+            if (isRunning && h.length > 1500) h.shift();
             ctx.strokeStyle = getStarColor(star.temperatureK) + (isRunning ? (star.isUnbound ? '11' : '22') : '66');
             ctx.lineWidth = isRunning ? 1 : 2;
             ctx.beginPath();
@@ -219,16 +237,15 @@
         return '#ff9833';
     }
 
-    onMount(() => { ctx = canvas.getContext('2d')!; setTimeout(() => { canvas.width = container.clientWidth; canvas.height = container.clientHeight; startSimulation(); }, 100); });
+    onMount(() => { ctx = canvas.getContext('2d')!; setTimeout(() => { if (container) { canvas.width = container.clientWidth; canvas.height = container.clientHeight; } startSimulation(); }, 100); });
     onDestroy(() => { if (animationId) cancelAnimationFrame(animationId); });
 </script>
 
 <div class="dance-container">
     <div class="dance-header">
         <h3>Step 3: The Stellar Dance</h3>
-        <p class="status-msg" class:stable={!isRunning} class:slomo={isSloMo && isRunning}>
+        <p class="status-msg" class:stable={!isRunning}>
             {#if !isRunning} System Stabilized
-            {:else if isSloMo} Slow-Mo Interaction...
             {:else} Simulating Gravitational Settling...
             {/if}
         </p>
@@ -240,7 +257,6 @@
         <div class="debug-panel">
             <div class="debug-row"><span>Sim Speed:</span> <span>{Math.round(yearsPerSec).toLocaleString()} yr/s</span></div>
             <div class="debug-row"><span>Min Sep:</span> <span>{minSepAU.toFixed(2)} AU</span></div>
-            <div class="debug-row"><span>Time Step:</span> <span style="color: {isSloMo ? '#ecc94b' : '#48bb78'}">{Math.round(adaptiveTimeScale / 3600)} h</span></div>
             <div class="debug-row"><span>Stability:</span> <span>{Math.round(stableYears).toLocaleString()} yr</span></div>
             <div class="event-log">
                 {#each eventLog as msg} <div>[Event] {msg}</div> {/each}
@@ -258,7 +274,6 @@
                     <span class="warp-val">{Math.round(timeWarpMult)}x</span>
                 </div>
                 <div class="progress-stack">
-                    <div class="progress-label">Simulation Progress</div>
                     <progress value={systemTimeYears} max={MAX_SIM_TIME_YEARS}></progress>
                     <div class="progress-label">Stability Lock</div>
                     <progress class="stability-bar" value={stableYears} max={STABILITY_THRESHOLD_YEARS}></progress>
@@ -279,7 +294,6 @@
     .dance-container { display: flex; flex-direction: column; gap: 1rem; align-items: center; width: 100%; height: 100%; }
     .status-msg { font-weight: bold; color: #63b3ed; }
     .status-msg.stable { color: #48bb78; }
-    .status-msg.slomo { color: #ecc94b; }
     .timer { font-family: monospace; font-size: 0.9rem; color: #a0aec0; }
     .canvas-viewport { position: relative; width: 95vw; height: 60vh; background: #000; border: 1px solid #4a5568; border-radius: 8px; box-shadow: 0 0 50px rgba(0,0,0,0.9); overflow: hidden; }
     canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
@@ -289,7 +303,7 @@
     .controls { position: absolute; bottom: 15px; left: 15px; right: 15px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.85); padding: 12px; border-radius: 6px; backdrop-filter: blur(8px); border: 1px solid #4a5568; }
     .warp-control { display: flex; align-items: center; gap: 10px; color: #a0aec0; font-size: 0.75rem; }
     .warp-val { color: #63b3ed; font-weight: bold; min-width: 40px; }
-    .progress-stack { display: flex; flex-direction: column; gap: 4px; width: 25%; }
+    .progress-stack { display: flex; flex-direction: column; gap: 4px; width: 30%; }
     .progress-label { font-size: 0.6rem; color: #718096; text-transform: uppercase; text-align: center; }
     progress { width: 100%; height: 6px; border-radius: 3px; }
     progress.stability-bar::-webkit-progress-value { background-color: #4299e1; }
