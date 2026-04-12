@@ -277,9 +277,48 @@ export function _generatePlanetaryBody(
         // Cap max moons to prevent performance/visual issues
         numMoons = Math.min(numMoons, 30);
 
-        const parentDensity = ((host as CelestialBody).massKg || 0) / (4/3 * Math.PI * Math.pow(((host as CelestialBody).radiusKm || 1) * 1000, 3));
+        // --- SATELLITE MASS BUDGET MODEL ---
+        let isDoublePlanet = false;
+        let totalMoonBudgetKg = 0;
+        
+        if (numMoons > 0) {
+            // 2% Chance for a "Double Planet" result (Giant Impact / High Mass Capture)
+            if (rng.nextFloat() < 0.02 && !isGiant) { 
+                isDoublePlanet = true;
+                numMoons = 1;
+                totalMoonBudgetKg = (planet.massKg || 0) * randomFromRange(rng, 0.01, 0.10);
+                planet.tags.push({ key: 'Double Planet' });
+            } else {
+                // Realistic budget: 0.01% - 0.025% for Giants (Jovian model), 0.001% - 0.005% for Terrestrials
+                const budgetFactor = isGiant ? randomFromRange(rng, 0.0001, 0.00025) : randomFromRange(rng, 0.00001, 0.00005);
+                totalMoonBudgetKg = (planet.massKg || 0) * budgetFactor;
+            }
+        }
+
+        // Distribute budget using a Power Law
+        const moonMasses: number[] = [];
+        let remainingBudget = totalMoonBudgetKg;
+        for (let j = 0; j < numMoons; j++) {
+            let m = 0;
+            if (isDoublePlanet) {
+                m = totalMoonBudgetKg;
+            } else if (j === 0) {
+                m = totalMoonBudgetKg * randomFromRange(rng, 0.5, 0.75);
+            } else if (j === 1) {
+                m = totalMoonBudgetKg * randomFromRange(rng, 0.15, 0.25);
+            } else {
+                // Zipf-like distribution for the rest
+                const weight = Math.pow(j + 1, -1.5);
+                m = totalMoonBudgetKg * 0.1 * weight;
+            }
+            m = Math.min(m, remainingBudget);
+            moonMasses.push(m);
+            remainingBudget -= m;
+        }
+
+        const parentDensity = (planet.massKg || 0) / (4/3 * Math.PI * Math.pow((planet.radiusKm || 1) * 1000, 3));
         const moonDensity = 3344;
-        const rocheLimit_km = ((host as CelestialBody).radiusKm || 1) * Math.pow(2 * (parentDensity / moonDensity), 1/3);
+        const rocheLimit_km = (planet.radiusKm || 1) * Math.pow(2 * (parentDensity / moonDensity), 1/3);
         
         // Calculate Hill Sphere (SOI) - Stable region is roughly 1/2 Hill Sphere
         let stableLimitAU = 0;
@@ -303,6 +342,17 @@ export function _generatePlanetaryBody(
         let lastMoonApoapsisAU = rocheLimit_km / AU_KM * 1.5; 
 
         for (let j = 0; j < numMoons; j++) {
+            const moonMass = moonMasses[j];
+            if (moonMass <= 0) continue;
+
+            // --- DERIVED RADIUS FROM DENSITY ---
+            // If beyond frost line, use Icy density (~1800), else Rocky (~3500)
+            const isIcy = orbit.elements.a_AU > frostLineAU;
+            const density = isIcy ? 1800 : 3500;
+            const volumeM3 = moonMass / density;
+            const radiusM = Math.pow((3 * volumeM3) / (4 * Math.PI), 1/3);
+            const radiusKm = radiusM / 1000;
+
             const moonMinGap = rocheLimit_km / AU_KM * 0.5;
             const newMoonPeriapsis = lastMoonApoapsisAU + randomFromRange(rng, moonMinGap, moonMinGap * 3);
             
@@ -328,7 +378,13 @@ export function _generatePlanetaryBody(
                 moonOrbit.isRetrogradeOrbit = true;
             }
             
-            const moonNodes = _generatePlanetaryBody(rng, pack, `${planet.id}-moon`, j, planet, moonOrbit, `${planet.name} ${toRoman(j + 1)}`, [...allNodes, ...newNodes], age_Gyr, undefined, true);
+            const moonOverrides: Partial<CelestialBody> = {
+                massKg: moonMass,
+                radiusKm: radiusKm,
+                tags: isDoublePlanet ? [{ key: 'Double Planet' }] : []
+            };
+
+            const moonNodes = _generatePlanetaryBody(rng, pack, `${planet.id}-moon`, j, planet, moonOrbit, `${planet.name} ${toRoman(j + 1)}`, [...allNodes, ...newNodes], age_Gyr, undefined, true, moonOverrides);
             newNodes.push(...moonNodes);
         }
     }

@@ -2879,7 +2879,7 @@
           {
             "id": "alpha-centauri-a",
             "parentId": "alpha-centauri-barycenter",
-            "name": "Alpha Centauri A (Rigil Kentaurus)",
+            "name": "Rigil Kentaurus",
             "kind": "body",
             "roleHint": "star",
             "classes": [
@@ -2892,7 +2892,7 @@
             "magneticField": {
               "strengthGauss": 1
             },
-            "radiationOutput": 1.519,
+            "radiationOutput": 1.7,
             "image": {
               "url": "/images/star_types/G.webp"
             },
@@ -2943,7 +2943,7 @@
           {
             "id": "alpha-centauri-b",
             "parentId": "alpha-centauri-barycenter",
-            "name": "Alpha Centauri B (Toliman)",
+            "name": "Toliman",
             "kind": "body",
             "roleHint": "star",
             "classes": [
@@ -2960,7 +2960,11 @@
             "image": {
               "url": "/images/star_types/K.ebp.webp"
             },
-            "tags": [],
+            "tags": [
+              {
+                "key": "stability/unstable"
+              }
+            ],
             "areas": [],
             "orbit": {
               "hostId": "alpha-centauri-barycenter",
@@ -2988,7 +2992,9 @@
             "radiationShieldingMag": 0.8999459086224153,
             "photonRadiation": 0.0016713531314298926,
             "particleRadiation": 0.00001858063543736653,
-            "surfaceRadiation": 0.0016899337668672592
+            "surfaceRadiation": 0.0016899337668672592,
+            "orbitalStability": "Unstable",
+            "orbitalStabilityDetails": "Likely 1-100 Myr before disruption under sustained perturbations. Drivers: Tight Hill spacing (Delta=3.80)."
           },
           {
             "id": "proxima-centauri-star",
@@ -3026,6 +3032,9 @@
             "tags": [
               {
                 "key": "Flare Star"
+              },
+              {
+                "key": "stability/unstable"
               }
             ],
             "areas": [],
@@ -3051,7 +3060,9 @@
             "radiationShieldingMag": 0.99,
             "photonRadiation": 1.0747718644410024e-8,
             "particleRadiation": 1.194190960490004e-11,
-            "surfaceRadiation": 1.0759660554014925e-8
+            "surfaceRadiation": 1.0759660554014925e-8,
+            "orbitalStability": "Unstable",
+            "orbitalStabilityDetails": "Likely 1-100 Myr before disruption under sustained perturbations. Drivers: Tight Hill spacing (Delta=3.80)."
           },
           {
             "id": "proxima-centauri-d",
@@ -3089,12 +3100,12 @@
                 "key": "Airless Rock"
               },
               {
-                "key": "habitability/alien"
+                "key": "habitability/none"
               }
             ],
             "areas": [],
-            "equilibriumTempK": 300.9385197809255,
-            "temperatureK": 300.9385197809255,
+            "equilibriumTempK": 318.6573487954142,
+            "temperatureK": 318.6573487954142,
             "orbital_period_days": 5.082084411170015,
             "axial_tilt_deg": 0,
             "rotation_period_hours": 122.8,
@@ -3116,15 +3127,22 @@
             "loDeltaVBudget_ms": 5322.222000613045,
             "propulsiveLandBudget_ms": 5322.222000613045,
             "aerobrakeLandBudget_ms": -1,
-            "habitabilityScore": 47.357225439379825,
+            "habitabilityScore": 34.06810367851332,
             "greenhouseTempK": 0,
-            "stellarRadiation": 2.0424775371799706,
+            "stellarRadiation": 2.0424775382492766,
             "radiationShieldingAtmo": 0,
             "radiationShieldingMag": 0,
-            "photonRadiation": 919.1148917309869,
-            "particleRadiation": 102.12387685899854,
+            "photonRadiation": 919.1148922121745,
+            "particleRadiation": 102.12387691246383,
             "tidalHeatK": 0,
-            "radiogenicHeatK": 0
+            "radiogenicHeatK": 0,
+            "stellarRadiationMin": 2.0424775310207326,
+            "stellarRadiationMax": 2.042477577286006,
+            "surfaceRadiationMin": 1023.2387655103663,
+            "surfaceRadiationMax": 1023.238788643003,
+            "equilibriumTempMinK": 318.6573485219833,
+            "equilibriumTempMaxK": 318.65735027204056,
+            "internalHeatK": 0
           },
           {
             "id": "proxima-centauri-b",
@@ -3178,8 +3196,8 @@
               }
             ],
             "areas": [],
-            "equilibriumTempK": 231.93518596584633,
-            "temperatureK": 424.75793961541933,
+            "equilibriumTempK": 231.93518596583874,
+            "temperatureK": 370.5700324903253,
             "atmosphere": {
               "name": "Collapsible CO₂ (Tidally Locked)",
               "composition": {
@@ -3189,7 +3207,7 @@
               "main": "CO2",
               "pressure_bar": 0.5,
               "molarMassKg": 0.043199999999999995,
-              "scaleHeightKm": 7.941779043727575
+              "scaleHeightKm": 6.981567644049181
             },
             "orbital_period_days": 11.101337423881564,
             "axial_tilt_deg": 0,
@@ -3202,7 +3220,7 @@
             "calculatedGravity_ms2": 10.215688618266395,
             "calculatedRotationPeriod_s": 965880,
             "orbitalBoundaries": {
-              "minLeoKm": 160.2815944366244,
+              "minLeoKm": 139.83389153775082,
               "leoMoeBoundaryKm": 2000,
               "meoHeoBoundaryKm": 50000,
               "heoUpperBoundaryKm": 146774.46606755603,
@@ -3212,16 +3230,23 @@
             "loDeltaVBudget_ms": 10409.366175304553,
             "propulsiveLandBudget_ms": 9551.686033302172,
             "aerobrakeLandBudget_ms": 978.8007830714049,
-            "habitabilityScore": 43.20045843544389,
-            "stellarRadiation": 0.7206306366493026,
+            "habitabilityScore": 43.20045842795116,
+            "stellarRadiation": 0.7206306377186055,
             "radiationShieldingAtmo": 0.9813143606622672,
             "radiationShieldingMag": 0,
-            "photonRadiation": 6.059449877467331,
-            "particleRadiation": 0.673272208607481,
-            "surfaceRadiation": 8.732722086074812,
+            "photonRadiation": 6.059449886458602,
+            "particleRadiation": 0.6732722096065115,
+            "surfaceRadiation": 8.732722096065114,
             "tidalHeatK": 0,
             "radiogenicHeatK": 0,
-            "greenhouseTempK": 192.822753649573
+            "greenhouseTempK": 138.63484652448653,
+            "stellarRadiationMin": 0.7206306304900895,
+            "stellarRadiationMax": 0.7206306767550591,
+            "surfaceRadiationMin": 8.732722028530393,
+            "surfaceRadiationMax": 8.732722460775662,
+            "equilibriumTempMinK": 231.93518540176856,
+            "equilibriumTempMaxK": 231.93518901201355,
+            "internalHeatK": 0
           },
           {
             "id": "proxima-centauri-c",
@@ -3277,8 +3302,8 @@
               }
             ],
             "areas": [],
-            "equilibriumTempK": 41.889495165435946,
-            "temperatureK": 41.889495165435946,
+            "equilibriumTempK": 41.88949512600093,
+            "temperatureK": 93.88949512600092,
             "atmosphere": {
               "name": "Primordial Envelope (Super-Earth)",
               "composition": {
@@ -3288,7 +3313,7 @@
               "main": "H2",
               "pressure_bar": 10,
               "molarMassKg": 0.0022,
-              "scaleHeightKm": 20.439601296764554
+              "scaleHeightKm": 46.45779991870031
             },
             "orbital_period_days": 1884.3657181043054,
             "axial_tilt_deg": 0,
@@ -3301,7 +3326,7 @@
             "calculatedGravity_ms2": 7.637825500791,
             "calculatedRotationPeriod_s": 166579200,
             "orbitalBoundaries": {
-              "minLeoKm": 477.24174231191927,
+              "minLeoKm": 1069.671192306259,
               "leoMoeBoundaryKm": 2000,
               "meoHeoBoundaryKm": 50000,
               "heoUpperBoundaryKm": 8528004.614378354,
@@ -3315,14 +3340,2333 @@
             "greenhouseTempK": 0,
             "tidallyLocked": false,
             "color": "#81ecec",
-            "stellarRadiation": 0.0007667720754077655,
+            "stellarRadiation": 0.0007667731444738994,
             "radiationShieldingAtmo": 0.995913228561536,
             "radiationShieldingMag": 0,
-            "photonRadiation": 0.0014101299979147224,
-            "particleRadiation": 0.0001566811108794136,
-            "surfaceRadiation": 2.0015668111087943,
+            "photonRadiation": 0.0014101319639777462,
+            "particleRadiation": 0.0001566813293308607,
+            "surfaceRadiation": 2.0015668132933087,
             "tidalHeatK": 0,
-            "radiogenicHeatK": 0
+            "radiogenicHeatK": 0,
+            "stellarRadiationMin": 0.0007089186295650485,
+            "stellarRadiationMax": 0.000832040020531853,
+            "surfaceRadiationMin": 2.001448594203751,
+            "surfaceRadiationMax": 2.0017001786957844,
+            "equilibriumTempMinK": 41.075941702270555,
+            "equilibriumTempMaxK": 42.753759246885956,
+            "internalHeatK": 52
+          },
+          {
+            "id": "id-1771729912994-wzp41g4jt",
+            "name": "Phanes/Coeus",
+            "kind": "body",
+            "parentId": "alpha-centauri-a",
+            "tags": [
+              {
+                "key": "planet/gas-giant"
+              },
+              {
+                "key": "lifting-gas"
+              },
+              {
+                "key": "reducing"
+              },
+              {
+                "key": "metal-embrittlement"
+              },
+              {
+                "key": "noble-gas"
+              },
+              {
+                "key": "voice-changer"
+              },
+              {
+                "key": "leak-prone"
+              },
+              {
+                "key": "haze-former"
+              },
+              {
+                "key": "habitability/none"
+              },
+              {
+                "key": "stability/very-unstable"
+              }
+            ],
+            "atmosphere": {
+              "name": "Hydrogen–Helium (Jupiter-like)",
+              "composition": {
+                "H2": 0.845771144278607,
+                "He": 0.1492537313432836,
+                "CH4": 0.0049751243781094535
+              },
+              "pressure_bar": 50005,
+              "main": "H2",
+              "molarMassKg": 0.0023681592039800996,
+              "scaleHeightKm": 64.60089937629638
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "planet/ringed",
+              "planet/water-clouds-gas-giant"
+            ],
+            "roleHint": "planet",
+            "massKg": 1.4930000000000002e+27,
+            "radiusKm": 76902,
+            "rotation_period_hours": 12.9,
+            "axial_tilt_deg": 23.8,
+            "magneticField": {
+              "strengthGauss": 11.801526950119989
+            },
+            "orbit": {
+              "hostId": "alpha-centauri-a",
+              "hostMu": 146100426999999990000,
+              "t0": 1762339146908,
+              "elements": {
+                "a_AU": 1.53836542541,
+                "e": 0.004,
+                "i_deg": 0,
+                "omega_deg": 238,
+                "Omega_deg": 208.97022007821568,
+                "M0_rad": 0.14725537214587978
+              }
+            },
+            "equilibriumTempK": 212.89530380918458,
+            "internalHeatK": 52,
+            "temperatureK": 310.03139417724265,
+            "tidallyLocked": false,
+            "calculatedGravity_ms2": 16.8496258609693,
+            "calculatedRotationPeriod_s": 46440,
+            "orbitalBoundaries": {
+              "minLeoKm": 2037.602741851091,
+              "leoMoeBoundaryKm": 4037.602741851091,
+              "meoHeoBoundaryKm": 99010.51549667199,
+              "heoUpperBoundaryKm": 13968985.527474005,
+              "geoStationaryKm": 99010.51549667199,
+              "isGeoFallback": false
+            },
+            "loDeltaVBudget_ms": 916042.8736001468,
+            "propulsiveLandBudget_ms": 58311.2718184138,
+            "aerobrakeLandBudget_ms": 200,
+            "equilibriumTempMinK": 212.44526688036007,
+            "equilibriumTempMaxK": 213.45521713225668,
+            "stellarRadiation": 0.7188935205236052,
+            "stellarRadiationMin": 0.7128762073342971,
+            "stellarRadiationMax": 0.7262641982277984,
+            "radiationShieldingAtmo": 1,
+            "radiationShieldingMag": 0.99,
+            "photonRadiation": 0,
+            "particleRadiation": 0,
+            "surfaceRadiation": 2,
+            "surfaceRadiationMin": 2,
+            "surfaceRadiationMax": 2,
+            "color": "#e74c3c",
+            "image": {
+              "url": "/images/planet_types/web20water20clouds20gas20giant.jpg"
+            },
+            "orbital_period_days": 664.2288997417447,
+            "tidalHeatK": 0,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 69.60973532617521,
+            "habitabilityScore": 35.976454367068015,
+            "albedo": 0.47,
+            "isNameUserDefined": true,
+            "description": "Phanes is the 2nd planet from Rigil, and the largest known. It hosts a plethora of moons, two of which are nearly the size of Earth. Despite it being a gas giant, it's actually a pale blue in color due to its proximity to Rigel Kentaurus, due to it being only 1.173 AU from its star. It is too hot for ammonia clouds to form. Instead, they are replaced by water ice, resulting in white or pale-blue bands. Although slightly less dense than water, it has a mass of 0.786 times Jupiter's Mass. Scientists are unsure how Pandora and Ptolemy formed around a gas giant with a mass like this; however, a Traumatic collision with another planet likely formed them. Or they are captured rocky planets.",
+            "orbitalStability": "Very Unstable",
+            "orbitalStabilityDetails": "Likely <1 kyr before major orbital disruption (collision/ejection/infall risk). Drivers: Orbit exceeds host's stable Hill sphere (stolen by external tide).; Marginal Hill spacing (Delta=7.33)."
+          },
+          {
+            "id": "id-1771730045641-k1kr9yi2w",
+            "name": "Phanes/Coeus Ring A",
+            "kind": "body",
+            "parentId": "id-1771729912994-wzp41g4jt",
+            "tags": [],
+            "atmosphere": {
+              "name": "None",
+              "composition": {},
+              "pressure_bar": 0,
+              "molarMassKg": 0.028
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "ring/ice"
+            ],
+            "roleHint": "ring",
+            "radiusInnerKm": 119307,
+            "radiusOuterKm": 150502,
+            "orbit": {
+              "hostId": "id-1771729912994-wzp41g4jt",
+              "hostMu": 99647299000000000,
+              "t0": 1762339146908,
+              "elements": {
+                "a_AU": 0.0009017808834360636,
+                "e": 0,
+                "i_deg": 0,
+                "omega_deg": 70.11188486734088,
+                "Omega_deg": 334.79711940997396,
+                "M0_rad": 0.027271314009844727
+              }
+            },
+            "equilibriumTempK": 241.59649820670654,
+            "internalHeatK": 0,
+            "temperatureK": 241.59649820670654,
+            "stellarRadiation": 0.7180520541372417,
+            "stellarRadiationMin": 0.7120447781474712,
+            "stellarRadiationMax": 0.7254123371984058,
+            "radiationShieldingAtmo": 0,
+            "radiationShieldingMag": 0,
+            "photonRadiation": 323.1234243617588,
+            "particleRadiation": 35.90260270686209,
+            "surfaceRadiationMin": 356.0223890737356,
+            "surfaceRadiationMax": 362.7061685992029,
+            "orbital_period_days": 0.36097158395503043,
+            "equilibriumTempMinK": 241.08603966649696,
+            "equilibriumTempMaxK": 242.2317671421041,
+            "tidalHeatK": 0,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 0,
+            "loDeltaVBudget_ms": -1,
+            "propulsiveLandBudget_ms": -1,
+            "aerobrakeLandBudget_ms": -1,
+            "massKg": 946498214537778700000
+          },
+          {
+            "id": "id-1771730420738-8pn5mytf1",
+            "name": "Galatea",
+            "kind": "body",
+            "parentId": "id-1771729912994-wzp41g4jt",
+            "tags": [
+              {
+                "key": "planet/dwarf-planet"
+              },
+              {
+                "key": "tidal/hotspots"
+              },
+              {
+                "key": "oxidizer"
+              },
+              {
+                "key": "habitability/none"
+              }
+            ],
+            "atmosphere": {
+              "name": "Tenuous Oxygen (Europa-like)",
+              "composition": {
+                "O2": 1
+              },
+              "pressure_bar": 5.5000000000000004e-11,
+              "main": "O2",
+              "molarMassKg": 0.032,
+              "scaleHeightKm": 77.0606842030357
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "planet/ultra-short-period",
+              "planet/sub-earth"
+            ],
+            "roleHint": "moon",
+            "tidallyLocked": true,
+            "axial_tilt_deg": 4.1392606497699305,
+            "rotation_period_hours": 11.7,
+            "massKg": 6.330320000000001e+21,
+            "radiusKm": 709,
+            "orbit": {
+              "hostId": "id-1771729912994-wzp41g4jt",
+              "hostMu": 99647299000000000,
+              "t0": 1762339146908,
+              "elements": {
+                "a_AU": 0.0011,
+                "e": 0.00208,
+                "i_deg": 0,
+                "omega_deg": 312,
+                "Omega_deg": 144.30521352353526,
+                "M0_rad": -0.4696662119460798
+              }
+            },
+            "equilibriumTempK": 244.2806044559883,
+            "internalHeatK": 0,
+            "temperatureK": 249.2801563074739,
+            "calculatedGravity_ms2": 0.8405023220690657,
+            "orbitalBoundaries": {
+              "minLeoKm": 30,
+              "leoMoeBoundaryKm": 1137.7139556054588,
+              "meoHeoBoundaryKm": 1137.7139556054588,
+              "heoUpperBoundaryKm": 1137.7139556054588,
+              "geoStationaryKm": null,
+              "isGeoFallback": true
+            },
+            "loDeltaVBudget_ms": 887.7494598950002,
+            "propulsiveLandBudget_ms": 887.7494598950002,
+            "aerobrakeLandBudget_ms": -1,
+            "equilibriumTempMinK": 243.7643498400178,
+            "equilibriumTempMaxK": 244.92308485834707,
+            "stellarRadiation": 0.7178672908672437,
+            "stellarRadiationMin": 0.7118601111586903,
+            "stellarRadiationMax": 0.7252274509094732,
+            "radiationShieldingAtmo": 4.1250003413040304e-10,
+            "radiationShieldingMag": 0,
+            "photonRadiation": 323.0402807570055,
+            "particleRadiation": 35.89336452855617,
+            "surfaceRadiation": 360.9336452855617,
+            "surfaceRadiationMin": 357.93005543252406,
+            "surfaceRadiationMax": 364.6137253051584,
+            "color": "#bdc3c7",
+            "image": {
+              "url": "/images/planet_types/web20carbon20planet.jpg"
+            },
+            "orbital_period_days": 0.48630698326970745,
+            "tidalHeatK": 4.9995518514855855,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 0,
+            "habitabilityScore": 14.043450564672096,
+            "isNameUserDefined": true,
+            "magneticField": {
+              "strengthGauss": 0
+            },
+            "albedo": 0.08,
+            "calculatedRotationPeriod_s": 42120,
+            "description": "Galatea is a small, rocky world orbiting extremely close to Phanes. Due to its proximity, it is slightly egg-shaped. It has a dark coloration, and Drilling Missions indicate that it is made of Basalt, formed when lava cools extremely fast. It's likely that, in Galatea's past, a giant resurfacing event occurred when a large asteroid collided with the small moon, liquefying its surface. This event likely happened during the moon's formation, as hundreds of craters are present on its surface. Galatea also has a minor effect on Phane's rings. causing wave patterns in its wake."
+          },
+          {
+            "id": "id-1771730814356-aaqdfygr3",
+            "name": "Hestia",
+            "kind": "body",
+            "parentId": "id-1771729912994-wzp41g4jt",
+            "tags": [
+              {
+                "key": "planet/terrestrial"
+              },
+              {
+                "key": "tidal/hotspots"
+              },
+              {
+                "key": "volcanic"
+              },
+              {
+                "key": "cloud-former"
+              },
+              {
+                "key": "habitability/none"
+              }
+            ],
+            "atmosphere": {
+              "name": "Sulfur Dioxide (Io-like)",
+              "composition": {
+                "SO2": 0.9,
+                "S": 0.1
+              },
+              "pressure_bar": 5.0499999999999996e-8,
+              "main": "SO2",
+              "molarMassKg": 0.06080000000000001,
+              "scaleHeightKm": 22.0607044048797
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "planet/ultra-short-period",
+              "planet/dwarf-planet"
+            ],
+            "roleHint": "moon",
+            "tidallyLocked": true,
+            "axial_tilt_deg": 3.0094901977574158,
+            "rotation_period_hours": 16.7,
+            "massKg": 6.1526954012e+22,
+            "radiusKm": 1704.29,
+            "orbit": {
+              "hostId": "id-1771729912994-wzp41g4jt",
+              "hostMu": 99647299000000000,
+              "t0": 1762339146908,
+              "elements": {
+                "a_AU": 0.00139,
+                "e": 0.002,
+                "i_deg": 0,
+                "omega_deg": 328.8827804197876,
+                "Omega_deg": 203.2502841450972,
+                "M0_rad": -0.19613744753726317
+              }
+            },
+            "equilibriumTempK": 223.0725619187265,
+            "internalHeatK": 0,
+            "temperatureK": 228.07256863598366,
+            "calculatedGravity_ms2": 1.4137875319015514,
+            "orbitalBoundaries": {
+              "minLeoKm": 30,
+              "leoMoeBoundaryKm": 2000,
+              "meoHeoBoundaryKm": 3275.77483171342,
+              "heoUpperBoundaryKm": 3275.77483171342,
+              "geoStationaryKm": null,
+              "isGeoFallback": true
+            },
+            "loDeltaVBudget_ms": 1785.0963496418324,
+            "propulsiveLandBudget_ms": 1785.0963496418324,
+            "aerobrakeLandBudget_ms": -1,
+            "equilibriumTempMinK": 222.6011663039022,
+            "equilibriumTempMaxK": 223.65926095142427,
+            "stellarRadiation": 0.7175971056888015,
+            "stellarRadiationMin": 0.7115926955715396,
+            "stellarRadiationMax": 0.7249543924222932,
+            "radiationShieldingAtmo": 5.605498428762345e-7,
+            "radiationShieldingMag": 0,
+            "photonRadiation": 322.9185165479355,
+            "particleRadiation": 35.87983517199284,
+            "surfaceRadiation": 360.79835171992835,
+            "surfaceRadiationMin": 357.796148344183,
+            "surfaceRadiationMax": 364.4769930246112,
+            "color": "#e67e22",
+            "image": {
+              "url": "/images/planet_types/web20terrestrial20planet.jpg"
+            },
+            "orbital_period_days": 0.6907862408137396,
+            "tidalHeatK": 4.999965409084264,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 0.00004414854908993668,
+            "habitabilityScore": 9.333334006666664,
+            "isNameUserDefined": true,
+            "magneticField": {
+              "strengthGauss": 0
+            },
+            "albedo": 0.36,
+            "calculatedRotationPeriod_s": 60120,
+            "description": "Hestia is the 2nd moon of Phanes and the 4th largest; its surface is extremely similar to Io's, with hundreds of active volcanoes dotting the small moon. This volcanic activity is fueled by the immense gravity of its parent planet, which tugs on the moon. Its nearby sibling moons also tug on Hestia; this heats the interior to immense levels, creating a giant molten subsurface ocean of magma. This magma wells up and creates, you guessed it! Volcanos. Hestia is one of the most volcanically active bodies in the Alpha Centauri system.",
+            "description_playerhidden": false
+          },
+          {
+            "id": "id-1771731933017-bsnoyuuow",
+            "name": "Appianus",
+            "kind": "body",
+            "parentId": "id-1771729912994-wzp41g4jt",
+            "tags": [
+              {
+                "key": "planet/terrestrial"
+              },
+              {
+                "key": "tidal/hotspots"
+              },
+              {
+                "key": "habitability/none"
+              },
+              {
+                "key": "stability/marginal"
+              }
+            ],
+            "atmosphere": {
+              "name": "None",
+              "composition": {},
+              "pressure_bar": 0,
+              "molarMassKg": 0.028
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "planet/dwarf-planet",
+              "planet/sub-earth"
+            ],
+            "roleHint": "moon",
+            "tidallyLocked": true,
+            "axial_tilt_deg": 2.596436309639953,
+            "rotation_period_hours": 28.8,
+            "massKg": 1.52286e+23,
+            "radiusKm": 2301,
+            "orbit": {
+              "hostId": "id-1771729912994-wzp41g4jt",
+              "hostMu": 99647299000000000,
+              "t0": 1762339146908,
+              "elements": {
+                "a_AU": 0.0019551314380939345,
+                "e": 0.01,
+                "i_deg": 0,
+                "omega_deg": 325.52319384588475,
+                "Omega_deg": 96.61167325401273,
+                "M0_rad": -0.3801173200119549
+              }
+            },
+            "equilibriumTempK": 241.5139449729795,
+            "internalHeatK": 0,
+            "temperatureK": 246.5139449329469,
+            "calculatedGravity_ms2": 1.919696025819509,
+            "orbitalBoundaries": {
+              "minLeoKm": 30,
+              "leoMoeBoundaryKm": 2000,
+              "meoHeoBoundaryKm": 7174.329985299526,
+              "heoUpperBoundaryKm": 7174.329985299526,
+              "geoStationaryKm": null,
+              "isGeoFallback": true
+            },
+            "loDeltaVBudget_ms": 2416.9762482346905,
+            "propulsiveLandBudget_ms": 2416.9762482346905,
+            "aerobrakeLandBudget_ms": -1,
+            "equilibriumTempMinK": 241.00242892552407,
+            "equilibriumTempMaxK": 242.15038576186438,
+            "stellarRadiation": 0.7170710263422339,
+            "stellarRadiationMin": 0.7110574718255509,
+            "stellarRadiationMax": 0.7244376130178526,
+            "radiationShieldingAtmo": 0,
+            "radiationShieldingMag": 0,
+            "photonRadiation": 322.68196185400524,
+            "particleRadiation": 35.853551317111695,
+            "surfaceRadiationMin": 357.5287359127755,
+            "surfaceRadiationMax": 364.2188065089264,
+            "color": "#e67e22",
+            "image": {
+              "url": "/images/planet_types/web20barren20planet.jpg"
+            },
+            "orbital_period_days": 1.152352682046615,
+            "tidalHeatK": 4.999999959967425,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 0,
+            "habitabilityScore": 17.635458699710185,
+            "isNameUserDefined": true,
+            "calculatedRotationPeriod_s": 103680,
+            "description": "The 3rd-largest moon of Phanes, Appianus, is a large, sparsely cratered moon with a mass roughly 2 times that of our moon. its surface features wide flats of regolith rock there are noticibly, a handfull of cracks and ridges along its surface, meaning Appianus Underwent a phase of high geologic activity before going dorment, which cleared the surface of past crater's, and this shut down of geologic activity must have happened very reccently, as if it was even a few hundred million years ago, crater's would've had time to be made by impacts. a truly odd world, and these ridges and canyons offer a dazzling view for anyone brave enough to land here, as the surface radiation here is extremely high due to Phane's radiation belts.",
+            "orbitalStability": "Marginal",
+            "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=6.42)."
+          },
+          {
+            "id": "id-1771947124914-3l0lafliw",
+            "name": "Pandora",
+            "kind": "body",
+            "parentId": "id-1771729912994-wzp41g4jt",
+            "tags": [
+              {
+                "key": "planet/terrestrial"
+              },
+              {
+                "key": "tidal/hotspots"
+              },
+              {
+                "key": "inert"
+              },
+              {
+                "key": "buffer-gas"
+              },
+              {
+                "key": "asphyxiant"
+              },
+              {
+                "key": "oxidizer"
+              },
+              {
+                "key": "noble-gas"
+              },
+              {
+                "key": "habitability/human"
+              },
+              {
+                "key": "stability/marginal"
+              }
+            ],
+            "atmosphere": {
+              "name": "Custom Mix",
+              "composition": {
+                "N2": 0.9681266441555559,
+                "O2": 0.018088222788687394,
+                "Ar": 0.010668429848385902,
+                "H2O": 0.00011670320737082431,
+                "CO2": 0.003
+              },
+              "pressure_bar": 1,
+              "main": "N2",
+              "molarMassKg": 0.028247207017261678,
+              "scaleHeightKm": 9.564643821691664
+            },
+            "hydrosphere": {
+              "coverage": 0.83,
+              "composition": "water"
+            },
+            "biosphere": {
+              "complexity": "complex",
+              "coverage": 0.93,
+              "biochemistry": "water-carbon",
+              "energy_source": "photosynthesis",
+              "morphologies": [
+                "flora",
+                "fauna",
+                "fungal"
+              ]
+            },
+            "classes": [
+              "planet/cold-eyeball",
+              "planet/terrestrial"
+            ],
+            "roleHint": "moon",
+            "tidallyLocked": true,
+            "axial_tilt_deg": 0.30701267400638166,
+            "rotation_period_hours": 41.8,
+            "massKg": 4.29984e+24,
+            "radiusKm": 5717,
+            "orbit": {
+              "hostId": "id-1771729912994-wzp41g4jt",
+              "hostMu": 99647299000000000,
+              "t0": 1762339146908,
+              "elements": {
+                "a_AU": 0.0038000000002674,
+                "e": 0.00958,
+                "i_deg": 0,
+                "omega_deg": 226.80569387874058,
+                "Omega_deg": 134.04422996060148,
+                "M0_rad": -0.8707146558618194
+              }
+            },
+            "equilibriumTempK": 228.75806958686593,
+            "internalHeatK": 0,
+            "temperatureK": 285.3197935783946,
+            "calculatedGravity_ms2": 8.780548269832455,
+            "orbital_period_days": 3.1224599254926106,
+            "stellarRadiation": 0.7153576668515814,
+            "stellarRadiationMin": 0.7093491457161422,
+            "stellarRadiationMax": 0.722718869871239,
+            "radiationShieldingAtmo": 0.9992695480748405,
+            "radiationShieldingMag": 0.6725766583726437,
+            "photonRadiation": 0.23514047321820855,
+            "particleRadiation": 0.008554497721438193,
+            "surfaceRadiationMin": 2.241648097814018,
+            "surfaceRadiationMax": 2.246202650998283,
+            "equilibriumTempMinK": 228.27281136748758,
+            "equilibriumTempMaxK": 229.36190202370048,
+            "tidalHeatK": 4.999575905660364,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 53.861198055196446,
+            "habitabilityScore": 100,
+            "loDeltaVBudget_ms": 9447.844909639665,
+            "propulsiveLandBudget_ms": 8147.844909639665,
+            "aerobrakeLandBudget_ms": 806.5306597126335,
+            "surfaceRadiation": 2.2436949709396465,
+            "orbitalBoundaries": {
+              "minLeoKm": 198.19969048843956,
+              "leoMoeBoundaryKm": 2000,
+              "meoHeoBoundaryKm": 49087.80235043667,
+              "heoUpperBoundaryKm": 50361.891406145376,
+              "geoStationaryKm": 49087.80235043667,
+              "isGeoFallback": false
+            },
+            "color": "#e67e22",
+            "image": {
+              "url": "/images/planet_types/web20habitable20planet.jpg"
+            },
+            "calculatedRotationPeriod_s": 150480,
+            "magneticField": {
+              "strengthGauss": 1.0316695644680387
+            },
+            "albedo": 0.29,
+            "isNameUserDefined": true,
+            "description": "The Main Jewel of Alpha Centauri, Pandora, is a Vibrant world, home to thousands of different species. a Highly Recommended Refuel and Tourist destination, though, do not anger the Natives, the R.D.A Learnt that lesson. Vast oceans cover Pandora, teaming with life. And the view of Phanes from here is truly beautiful, Tidally locked to Phanes, like its Sibling moons. A single Pandoran day is 41 hours. and in some times of the year, you can see both Alpha Centauri A And B in the sky, appearing as a Yellow and Smaller Orange star.",
+            "orbitalStability": "Marginal",
+            "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=6.42); Marginal Hill spacing (Delta=5.89)."
+          },
+          {
+            "id": "id-1772296184948-ngnhh2unp",
+            "name": "Ptolemy",
+            "kind": "body",
+            "parentId": "id-1771729912994-wzp41g4jt",
+            "tags": [
+              {
+                "key": "planet/terrestrial"
+              },
+              {
+                "key": "tidal/hotspots"
+              },
+              {
+                "key": "inert"
+              },
+              {
+                "key": "buffer-gas"
+              },
+              {
+                "key": "asphyxiant"
+              },
+              {
+                "key": "noble-gas"
+              },
+              {
+                "key": "oxidizer"
+              },
+              {
+                "key": "habitability/alien"
+              },
+              {
+                "key": "stability/marginal"
+              }
+            ],
+            "atmosphere": {
+              "name": "Custom Mix",
+              "composition": {
+                "CO2": 0.0031020601643002247,
+                "N2": 0.9712894127085782,
+                "Ar": 0.0141,
+                "O2": 0.011508527127121672
+              },
+              "pressure_bar": 0.98,
+              "main": "CO2",
+              "molarMassKg": 0.028264867071137293,
+              "scaleHeightKm": 14.235246722196644
+            },
+            "hydrosphere": {
+              "coverage": 0.6,
+              "composition": "water"
+            },
+            "classes": [
+              "planet/sub-earth",
+              "planet/terrestrial"
+            ],
+            "roleHint": "moon",
+            "tidallyLocked": false,
+            "axial_tilt_deg": 0.12618929366231713,
+            "rotation_period_hours": 72.7,
+            "massKg": 1.8572920000000002e+24,
+            "radiusKm": 4619,
+            "orbit": {
+              "hostId": "id-1771729912994-wzp41g4jt",
+              "hostMu": 99647299000000000,
+              "t0": 435084623663641200000,
+              "elements": {
+                "a_AU": 0.00749999999966577,
+                "e": 0.0185,
+                "i_deg": 0,
+                "omega_deg": 23.270960770276027,
+                "Omega_deg": 223.35812467283753,
+                "M0_rad": -0.49700291247319217
+              }
+            },
+            "equilibriumTempK": 226.85804455025306,
+            "internalHeatK": 0,
+            "temperatureK": 281.1692904402628,
+            "calculatedGravity_ms2": 5.810185353464171,
+            "orbitalBoundaries": {
+              "minLeoKm": 294.6969064584182,
+              "leoMoeBoundaryKm": 2000,
+              "meoHeoBoundaryKm": 55295.692227867854,
+              "heoUpperBoundaryKm": 79047.77914875998,
+              "geoStationaryKm": 55295.692227867854,
+              "isGeoFallback": false
+            },
+            "loDeltaVBudget_ms": 7241.874927328063,
+            "propulsiveLandBudget_ms": 5957.537916813326,
+            "aerobrakeLandBudget_ms": 812.6263941844161,
+            "equilibriumTempMinK": 226.37031616871852,
+            "equilibriumTempMaxK": 227.4639064653849,
+            "stellarRadiation": 0.7119398856899822,
+            "stellarRadiationMin": 0.7058791697144613,
+            "stellarRadiationMax": 0.7193541305747132,
+            "radiationShieldingAtmo": 0.9991580407336462,
+            "radiationShieldingMag": 0.6109237472251672,
+            "photonRadiation": 0.2697409727295951,
+            "particleRadiation": 0.011661089654385469,
+            "surfaceRadiation": 2.2814020623839806,
+            "surfaceRadiationMin": 2.2790064978014706,
+            "surfaceRadiationMax": 2.2843326241399935,
+            "color": "#e67e22",
+            "image": {
+              "url": "/images/planet_types/web20earth20analog20planet.jpg"
+            },
+            "orbital_period_days": 8.657916107401897,
+            "tidalHeatK": 3.9635770239259305,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 52.14940844669281,
+            "habitabilityScore": 92.39511875822208,
+            "albedo": 0.31,
+            "magneticField": {
+              "strengthGauss": 0.6704108677230853
+            },
+            "isNameUserDefined": true,
+            "calculatedRotationPeriod_s": 261720,
+            "description": "The Farthest moon of Phanes, Ptolemy, is a bit smaller than its twin, Pandora; however, they are very different. Ptolemy's only inhabitants on land are primitive plants. Ptolemy obviously hasn't had life for as long as Pandora has, even with the plants on land; oxygen levels are still low but have been increasing over time. However, the oceans are full of life, with multiple habitats, from the sun-soaked bays and reefs closer to land to the abyssal plains where little light reaches; a nice place to refuel before venturing off into the depths of space.",
+            "orbitalStability": "Marginal",
+            "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=5.89)."
+          },
+          {
+            "id": "id-1772514407069-e3vx6ck38",
+            "name": "Oceanus/Khione",
+            "kind": "body",
+            "parentId": "alpha-centauri-a",
+            "tags": [
+              {
+                "key": "planet/ice-giant"
+              },
+              {
+                "key": "lifting-gas"
+              },
+              {
+                "key": "reducing"
+              },
+              {
+                "key": "metal-embrittlement"
+              },
+              {
+                "key": "noble-gas"
+              },
+              {
+                "key": "voice-changer"
+              },
+              {
+                "key": "leak-prone"
+              },
+              {
+                "key": "greenhouse"
+              },
+              {
+                "key": "haze-former"
+              },
+              {
+                "key": "habitability/none"
+              },
+              {
+                "key": "stability/very-unstable"
+              }
+            ],
+            "atmosphere": {
+              "name": "Ice Giant (Uranus-like)",
+              "composition": {
+                "H2": 0.8109452736318409,
+                "He": 0.16915422885572143,
+                "CH4": 0.019900497512437814
+              },
+              "pressure_bar": 50005,
+              "main": "H2",
+              "molarMassKg": 0.0026169154228855725,
+              "scaleHeightKm": 65.50292779302639
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "planet/ringed",
+              "planet/ice-giant"
+            ],
+            "roleHint": "planet",
+            "massKg": 1.13468e+26,
+            "radiusKm": 26098,
+            "rotation_period_hours": 24.67188900941141,
+            "axial_tilt_deg": 25.457844347413506,
+            "magneticField": {
+              "strengthGauss": 7.5429051435631544
+            },
+            "orbit": {
+              "hostId": "alpha-centauri-a",
+              "hostMu": 146100426999999990000,
+              "t0": 435084631696555970000,
+              "elements": {
+                "a_AU": 2.45277844052,
+                "e": 0.023,
+                "i_deg": 0,
+                "omega_deg": 359.95411061286063,
+                "Omega_deg": 14.482360185900497,
+                "M0_rad": -0.9415267551325888
+              },
+              "n_rad_per_s": 7.255385395303015e-8
+            },
+            "equilibriumTempK": 159.1266516509112,
+            "internalHeatK": 24,
+            "temperatureK": 229.2350493260043,
+            "tidallyLocked": false,
+            "calculatedGravity_ms2": 11.11897285754824,
+            "calculatedRotationPeriod_s": 88818.80043388107,
+            "orbitalBoundaries": {
+              "minLeoKm": 2066.053980036655,
+              "leoMoeBoundaryKm": 4066.053980036655,
+              "meoHeoBoundaryKm": 88711.12258511406,
+              "heoUpperBoundaryKm": 9459961.843626497,
+              "geoStationaryKm": 88711.12258511406,
+              "isGeoFallback": false
+            },
+            "loDeltaVBudget_ms": 885326.2278872096,
+            "propulsiveLandBudget_ms": 27594.62610547648,
+            "aerobrakeLandBudget_ms": 200,
+            "equilibriumTempMinK": 157.28457372052276,
+            "equilibriumTempMaxK": 161.20088486495,
+            "stellarRadiation": 0.2830956885750185,
+            "stellarRadiationMin": 0.2702492540749339,
+            "stellarRadiationMax": 0.2979553829436732,
+            "radiationShieldingAtmo": 1,
+            "radiationShieldingMag": 0.9593713434852343,
+            "photonRadiation": 0,
+            "particleRadiation": 0,
+            "surfaceRadiation": 2,
+            "surfaceRadiationMin": 2,
+            "surfaceRadiationMax": 2,
+            "isNameUserDefined": true,
+            "color": "#81ecec",
+            "image": {
+              "url": "/images/planet_types/web20ice20giant.jpg"
+            },
+            "orbital_period_days": 1337.2603921205525,
+            "tidalHeatK": 0,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 59.339572576185944,
+            "habitabilityScore": 30,
+            "albedo": 0.58,
+            "description": "Khione, also known as Oceanus, is the Last Planet of Rigil Kentaurus, a Warm Ice giant with a handful of small moons, many of which are barely large enough to be spherical. This small number of moons is unusual for a Planet as big as Oceanus. It's possible that, due to its distance from Rigil Kentaurus, Toluman's influence on Rigil's Outer protoplanetary disk starved Oceanus of remaining material to form large moons.",
+            "orbitalStability": "Very Unstable",
+            "orbitalStabilityDetails": "Likely <1 kyr before major orbital disruption (collision/ejection/infall risk). Drivers: Orbit exceeds host's stable Hill sphere (stolen by external tide).; Marginal Hill spacing (Delta=7.33); Minor-body crossing in pair Oceanus/Khione/513532 Cameron."
+          },
+          {
+            "id": "id-1772514753523-m9ego7zxl",
+            "name": "Khione Ring A",
+            "kind": "body",
+            "parentId": "id-1772514407069-e3vx6ck38",
+            "tags": [],
+            "atmosphere": {
+              "name": "None",
+              "composition": {},
+              "pressure_bar": 0,
+              "molarMassKg": 0.028
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "ring/ice"
+            ],
+            "roleHint": "ring",
+            "radiusInnerKm": 42698,
+            "radiusOuterKm": 47806,
+            "orbit": {
+              "hostId": "id-1772514407069-e3vx6ck38",
+              "hostMu": 7573194724000000,
+              "t0": 435084631696555970000,
+              "elements": {
+                "a_AU": 0.0003024909364568917,
+                "e": 0,
+                "i_deg": 0,
+                "omega_deg": 168.03797304980662,
+                "Omega_deg": 334.39061248336765,
+                "M0_rad": -0.19294624556998355
+              }
+            },
+            "equilibriumTempK": 191.43641092229663,
+            "internalHeatK": 0,
+            "temperatureK": 191.43641092229663,
+            "stellarRadiation": 0.2830259939444128,
+            "stellarRadiationMin": 0.27018416143868645,
+            "stellarRadiationMax": 0.2978805888329609,
+            "radiationShieldingAtmo": 0,
+            "radiationShieldingMag": 0,
+            "photonRadiation": 127.36169727498576,
+            "particleRadiation": 14.151299697220642,
+            "surfaceRadiationMin": 135.09208071934322,
+            "surfaceRadiationMax": 148.94029441648047,
+            "orbital_period_days": 0.2543801574101603,
+            "equilibriumTempMinK": 189.22056014556705,
+            "equilibriumTempMaxK": 193.93157730572608,
+            "tidalHeatK": 0,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 0,
+            "loDeltaVBudget_ms": -1,
+            "propulsiveLandBudget_ms": -1,
+            "aerobrakeLandBudget_ms": -1,
+            "massKg": 2.377496022545481e+21,
+            "isNameUserDefined": true
+          },
+          {
+            "id": "id-1772514787263-dfvw2ak2i",
+            "name": "Kamaraseia",
+            "kind": "body",
+            "parentId": "id-1772514407069-e3vx6ck38",
+            "tags": [
+              {
+                "key": "planet/dwarf-planet"
+              },
+              {
+                "key": "habitability/none"
+              }
+            ],
+            "atmosphere": {
+              "name": "None",
+              "composition": {},
+              "pressure_bar": 0,
+              "molarMassKg": 0.028
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "planet/ultra-short-period",
+              "planet/sub-earth"
+            ],
+            "roleHint": "moon",
+            "tidallyLocked": true,
+            "axial_tilt_deg": 4.162248613500539,
+            "rotation_period_hours": 13.9,
+            "massKg": 4.861208e+21,
+            "radiusKm": 584,
+            "orbit": {
+              "hostId": "id-1772514407069-e3vx6ck38",
+              "hostMu": 7573194724000000,
+              "t0": 435084631696555970000,
+              "elements": {
+                "a_AU": 0.00052199941,
+                "e": 0,
+                "i_deg": 0,
+                "omega_deg": 310.4710267651435,
+                "Omega_deg": 9.87222556184129,
+                "M0_rad": -0.27517724494583934
+              }
+            },
+            "equilibriumTempK": 191.42786293924567,
+            "internalHeatK": 0,
+            "temperatureK": 191.42786293924567,
+            "calculatedGravity_ms2": 0.9513147563567274,
+            "orbitalBoundaries": {
+              "minLeoKm": 30,
+              "leoMoeBoundaryKm": 1310.5756035013444,
+              "meoHeoBoundaryKm": 1310.5756035013444,
+              "heoUpperBoundaryKm": 1310.5756035013444,
+              "geoStationaryKm": null,
+              "isGeoFallback": true
+            },
+            "loDeltaVBudget_ms": 857.1688508832754,
+            "propulsiveLandBudget_ms": 857.1688508832754,
+            "aerobrakeLandBudget_ms": -1,
+            "equilibriumTempMinK": 189.21229288948356,
+            "equilibriumTempMaxK": 193.92275246813716,
+            "stellarRadiation": 0.2829754348091646,
+            "stellarRadiationMin": 0.2701369404276491,
+            "stellarRadiationMax": 0.297826330736434,
+            "radiationShieldingAtmo": 0,
+            "radiationShieldingMag": 0,
+            "photonRadiation": 127.33894566412407,
+            "particleRadiation": 14.14877174045823,
+            "surfaceRadiationMin": 137.06847021382453,
+            "surfaceRadiationMax": 150.91316536821702,
+            "isNameUserDefined": true,
+            "color": "#bdc3c7",
+            "image": {
+              "url": "/images/planet_types/web20dwarf20planet.jpg"
+            },
+            "orbital_period_days": 0.5766598309439632,
+            "tidalHeatK": 0,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 0,
+            "habitabilityScore": 15,
+            "calculatedRotationPeriod_s": 50040,
+            "description": "Oceanus is the 1st Moon from Khione, and by far the smallest. It's so small, in fact, that it's slightly lumpy in shape and not a perfect sphere. Although nearly entirely rocky, it is still not very dense."
+          },
+          {
+            "id": "id-1772514924784-d0o6a5kp4",
+            "name": "Helline",
+            "kind": "body",
+            "parentId": "id-1772514407069-e3vx6ck38",
+            "tags": [
+              {
+                "key": "planet/dwarf-planet"
+              },
+              {
+                "key": "tidal/hotspots"
+              },
+              {
+                "key": "habitability/none"
+              }
+            ],
+            "atmosphere": {
+              "name": "None",
+              "composition": {},
+              "pressure_bar": 0,
+              "molarMassKg": 0.028
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "planet/sub-earth"
+            ],
+            "roleHint": "moon",
+            "tidallyLocked": true,
+            "axial_tilt_deg": 4.784909299146333,
+            "rotation_period_hours": 33.9,
+            "massKg": 3.6847240000000004e+21,
+            "radiusKm": 536,
+            "orbit": {
+              "hostId": "id-1772514407069-e3vx6ck38",
+              "hostMu": 7573194724000000,
+              "t0": 435084631696555970000,
+              "n_rad_per_s": 0.00007451816847828562,
+              "elements": {
+                "a_AU": 0.000949010834,
+                "e": 0.069,
+                "i_deg": 0,
+                "omega_deg": 359.95411061286063,
+                "Omega_deg": 14.482360185900497,
+                "M0_rad": 6.069615907882758
+              }
+            },
+            "equilibriumTempK": 191.41123777736405,
+            "internalHeatK": 0,
+            "temperatureK": 196.41120683470857,
+            "calculatedGravity_ms2": 0.8560144726414569,
+            "orbitalBoundaries": {
+              "minLeoKm": 30,
+              "leoMoeBoundaryKm": 2000,
+              "meoHeoBoundaryKm": 2604.5088281581766,
+              "heoUpperBoundaryKm": 2604.5088281581766,
+              "geoStationaryKm": null,
+              "isGeoFallback": true
+            },
+            "loDeltaVBudget_ms": 778.9701015293354,
+            "propulsiveLandBudget_ms": 778.9701015293354,
+            "aerobrakeLandBudget_ms": -1,
+            "equilibriumTempMinK": 189.19374827395387,
+            "equilibriumTempMaxK": 193.9082206457739,
+            "stellarRadiation": 0.28287712062079373,
+            "stellarRadiationMin": 0.27003103958584035,
+            "stellarRadiationMax": 0.29773700030471206,
+            "radiationShieldingAtmo": 0,
+            "radiationShieldingMag": 0,
+            "photonRadiation": 127.29470427935719,
+            "particleRadiation": 14.143856031039688,
+            "surfaceRadiationMin": 137.01551979292017,
+            "surfaceRadiationMax": 150.86850015235603,
+            "isNameUserDefined": true,
+            "color": "#bdc3c7",
+            "image": {
+              "url": "/images/planet_types/web20dwarf20planet.jpg"
+            },
+            "orbital_period_days": 1.4135834039124084,
+            "tidalHeatK": 4.999969057344517,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 0,
+            "habitabilityScore": 15,
+            "calculatedRotationPeriod_s": 122040,
+            "description": "Helline is the 2nd moon out from Khione, A small, densely cratered moon; it is the smallest of the 4. Its orbit is mostly influenced by its larger sibling moon, Thronike, which makes its orbit slightly wobbly. It is a relatively boring moon; its geological activity likely shut down billions of years ago."
+          },
+          {
+            "id": "id-1772515608414-lhrmmeuza",
+            "name": "Thronike",
+            "kind": "body",
+            "parentId": "id-1772514407069-e3vx6ck38",
+            "tags": [
+              {
+                "key": "planet/dwarf-planet"
+              },
+              {
+                "key": "tidal/hotspots"
+              },
+              {
+                "key": "noble-gas"
+              },
+              {
+                "key": "leak-prone"
+              },
+              {
+                "key": "visible-gas"
+              },
+              {
+                "key": "condensible-metal"
+              },
+              {
+                "key": "cloud-former"
+              },
+              {
+                "key": "habitability/none"
+              },
+              {
+                "key": "stability/marginal"
+              }
+            ],
+            "atmosphere": {
+              "name": "Traveller-0 (Vacuum/Trace)",
+              "composition": {
+                "H": 0.8181818181818181,
+                "He": 0.09090909090909091,
+                "Na": 0.09090909090909091
+              },
+              "pressure_bar": 0.0005,
+              "main": "H",
+              "molarMassKg": 0.0032727272727272726,
+              "scaleHeightKm": 548.6638561943116
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "planet/sub-earth"
+            ],
+            "roleHint": "moon",
+            "tidallyLocked": true,
+            "axial_tilt_deg": 1.591647083710217,
+            "rotation_period_hours": 54.5,
+            "massKg": 5.936168000000001e+21,
+            "radiusKm": 660,
+            "orbit": {
+              "hostId": "id-1772514407069-e3vx6ck38",
+              "hostMu": 7573194724000000,
+              "t0": 435084631696555970000,
+              "n_rad_per_s": 0.000113786511871557,
+              "elements": {
+                "a_AU": 0.0013,
+                "e": 0.069,
+                "i_deg": 0,
+                "omega_deg": 359.95411061286063,
+                "Omega_deg": 14.482360185900497,
+                "M0_rad": 2.200065898457204
+              }
+            },
+            "equilibriumTempK": 191.39757570270268,
+            "internalHeatK": 0,
+            "temperatureK": 196.42924838129377,
+            "calculatedGravity_ms2": 0.9095446759044995,
+            "orbitalBoundaries": {
+              "minLeoKm": 3944.8773780214938,
+              "leoMoeBoundaryKm": 4383.1970866905485,
+              "meoHeoBoundaryKm": 4383.1970866905485,
+              "heoUpperBoundaryKm": 4383.1970866905485,
+              "geoStationaryKm": null,
+              "isGeoFallback": true
+            },
+            "loDeltaVBudget_ms": 891.0084569538284,
+            "propulsiveLandBudget_ms": 891.0084569538284,
+            "aerobrakeLandBudget_ms": -1,
+            "equilibriumTempMinK": 189.17962366777905,
+            "equilibriumTempMaxK": 193.8950888056286,
+            "stellarRadiation": 0.2827963480533431,
+            "stellarRadiationMin": 0.26995040052958486,
+            "stellarRadiationMax": 0.2976562931602861,
+            "radiationShieldingAtmo": 0.0008087636832990741,
+            "radiationShieldingMag": 0,
+            "photonRadiation": 127.15543468677056,
+            "particleRadiation": 14.128381631863398,
+            "surfaceRadiation": 143.28381631863397,
+            "surfaceRadiationMin": 136.86603722467225,
+            "surfaceRadiationMax": 150.70777978013632,
+            "isNameUserDefined": true,
+            "color": "#bdc3c7",
+            "image": {
+              "url": "/images/planet_types/web20silicate20planet.jpg"
+            },
+            "orbital_period_days": 2.2663642481313384,
+            "tidalHeatK": 4.995281418939199,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 0.039314409454290475,
+            "habitabilityScore": 9.34,
+            "magneticField": {
+              "strengthGauss": 0
+            },
+            "calculatedRotationPeriod_s": 196200,
+            "description": "The second-largest and third-closest moon of Khione is a desolate, cratered world similar to its nearby sibling, Helline. Like Helline, it is likely to be geologically dead, though it has been so for a shorter period of time. Its orbit is heavily influenced by Otho, the largest and farthest moon of Khione, which causes it to wobble. Otho also has a significant impact on the other inner moons.",
+            "orbitalStability": "Marginal",
+            "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=7.62)."
+          },
+          {
+            "id": "id-1772515784242-amyb33c4m",
+            "name": "Otho",
+            "kind": "body",
+            "parentId": "id-1772514407069-e3vx6ck38",
+            "tags": [
+              {
+                "key": "planet/terrestrial"
+              },
+              {
+                "key": "tidal/hotspots"
+              },
+              {
+                "key": "habitability/none"
+              },
+              {
+                "key": "stability/marginal"
+              }
+            ],
+            "atmosphere": {
+              "name": "None",
+              "composition": {},
+              "pressure_bar": 0,
+              "molarMassKg": 0.028
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "planet/sub-earth"
+            ],
+            "roleHint": "moon",
+            "tidallyLocked": true,
+            "axial_tilt_deg": 1.6937093961752074,
+            "rotation_period_hours": 101,
+            "massKg": 4.693992000000001e+22,
+            "radiusKm": 1392,
+            "orbit": {
+              "hostId": "id-1772514407069-e3vx6ck38",
+              "hostMu": 7573194724000000,
+              "t0": 435084631696555970000,
+              "elements": {
+                "a_AU": 0.00197,
+                "e": 0.035,
+                "i_deg": 0,
+                "omega_deg": 224,
+                "Omega_deg": 283.23036351495506,
+                "M0_rad": -0.22266195435588867
+              },
+              "n_rad_per_s": 0.00002260257304527181
+            },
+            "equilibriumTempK": 191.37150444269471,
+            "internalHeatK": 0,
+            "temperatureK": 196.12348969033084,
+            "calculatedGravity_ms2": 1.6168495056728105,
+            "orbitalBoundaries": {
+              "minLeoKm": 30,
+              "leoMoeBoundaryKm": 2000,
+              "meoHeoBoundaryKm": 13833.59248497922,
+              "heoUpperBoundaryKm": 13833.59248497922,
+              "geoStationaryKm": null,
+              "isGeoFallback": true
+            },
+            "loDeltaVBudget_ms": 1725.250877983602,
+            "propulsiveLandBudget_ms": 1725.250877983602,
+            "aerobrakeLandBudget_ms": -1,
+            "equilibriumTempMinK": 189.15519026968317,
+            "equilibriumTempMaxK": 193.8673387245452,
+            "stellarRadiation": 0.2826422582106705,
+            "stellarRadiationMin": 0.26981094999522137,
+            "stellarRadiationMax": 0.2974857975254598,
+            "radiationShieldingAtmo": 0,
+            "radiationShieldingMag": 0,
+            "photonRadiation": 127.18901619480175,
+            "particleRadiation": 14.132112910533525,
+            "surfaceRadiationMin": 136.9054749976107,
+            "surfaceRadiationMax": 150.74289876272988,
+            "color": "#e67e22",
+            "image": {
+              "url": "/images/planet_types/web20terrestrial20planet.jpg"
+            },
+            "orbital_period_days": 4.2277959789194455,
+            "tidalHeatK": 4.7519852476361395,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 0,
+            "habitabilityScore": 15,
+            "isNameUserDefined": true,
+            "calculatedRotationPeriod_s": 363600,
+            "description": "Otho is the largest moon of Khione and is known for its immense, barren landscape. This desolate moon features vast plains and rugged terrain,  a stark contrast to Khione's bright, pastel blue swirling clouds. Despite its lifeless appearance, Otho is generally the safest place to land in the Khione system, living outside of Khione’s vast radiation belts.\n",
+            "orbitalStability": "Marginal",
+            "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=7.62)."
+          },
+          {
+            "id": "id-1772575372096-fw5wj5tku",
+            "name": "Perseus",
+            "kind": "body",
+            "parentId": "alpha-centauri-a",
+            "tags": [
+              {
+                "key": "planet/ice-giant"
+              },
+              {
+                "key": "lifting-gas"
+              },
+              {
+                "key": "reducing"
+              },
+              {
+                "key": "metal-embrittlement"
+              },
+              {
+                "key": "noble-gas"
+              },
+              {
+                "key": "voice-changer"
+              },
+              {
+                "key": "leak-prone"
+              },
+              {
+                "key": "toxic-human"
+              },
+              {
+                "key": "greenhouse"
+              },
+              {
+                "key": "acidic-rain"
+              },
+              {
+                "key": "high-humidity"
+              },
+              {
+                "key": "habitability/none"
+              }
+            ],
+            "atmosphere": {
+              "name": "Hot Jupiter (H₂–He + CO/CO₂/H₂O)",
+              "composition": {
+                "H2": 0.8,
+                "He": 0.15000000000000002,
+                "CO": 0.025,
+                "CO2": 0.015,
+                "H2O": 0.01
+              },
+              "pressure_bar": 50.5,
+              "main": "H2",
+              "molarMassKg": 0.0037400000000000003,
+              "scaleHeightKm": 168.97788668385334
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "planet/desert",
+              "planet/mini-neptune"
+            ],
+            "roleHint": "planet",
+            "massKg": 3.5945468e+25,
+            "radiusKm": 16897,
+            "rotation_period_hours": 47.867,
+            "axial_tilt_deg": 20.438309812898517,
+            "magneticField": {
+              "strengthGauss": 0.7360745345610754
+            },
+            "orbit": {
+              "hostId": "alpha-centauri-a",
+              "hostMu": 146100426999999990000,
+              "t0": 435084631696555970000,
+              "elements": {
+                "a_AU": 0.78531941297,
+                "e": 0.0999,
+                "i_deg": 0,
+                "omega_deg": 32.06639277237015,
+                "Omega_deg": 65.38291851114145,
+                "M0_rad": -2.1426164791640656
+              }
+            },
+            "equilibriumTempK": 317.0747790769859,
+            "internalHeatK": 52,
+            "temperatureK": 638.7017205881497,
+            "tidallyLocked": false,
+            "calculatedGravity_ms2": 8.402928300925595,
+            "calculatedRotationPeriod_s": 172321.19999999998,
+            "orbitalBoundaries": {
+              "minLeoKm": 4164.270030071283,
+              "leoMoeBoundaryKm": 6164.270030071283,
+              "meoHeoBoundaryKm": 104849.32201838876,
+              "heoUpperBoundaryKm": 2053550.0139201514,
+              "geoStationaryKm": 104849.32201838876,
+              "isGeoFallback": false
+            },
+            "loDeltaVBudget_ms": 29407.378279002838,
+            "propulsiveLandBudget_ms": 15732.6665732953,
+            "aerobrakeLandBudget_ms": 200.00000001081594,
+            "equilibriumTempMinK": 302.32417743651393,
+            "equilibriumTempMaxK": 334.2544769954217,
+            "stellarRadiation": 2.7570714585628804,
+            "stellarRadiationMin": 2.278760878937551,
+            "stellarRadiationMax": 3.404710722652357,
+            "radiationShieldingAtmo": 1,
+            "radiationShieldingMag": 0.6242607388857137,
+            "photonRadiation": 3.8668812644054916e-18,
+            "particleRadiation": 1.614376787893774e-19,
+            "surfaceRadiation": 2,
+            "surfaceRadiationMin": 2,
+            "surfaceRadiationMax": 2,
+            "color": "#81ecec",
+            "image": {
+              "url": "/images/planet_types/web20hot20neptune.jpg"
+            },
+            "orbital_period_days": 242.2690862138309,
+            "tidalHeatK": 0,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 313.36274445295726,
+            "habitabilityScore": 30,
+            "isNameUserDefined": true,
+            "description": "Perseus is the closest planet to Rigil Kentaurus and the smallest in the system. It is classified as a mini Neptune, with a mass six times that of Earth. Despite its Tranquil, Cerulean atmosphere, the reality is anything but peaceful. Daytime temperatures reach 492 °C. Even on the night side, temperatures are blazing. Wind speeds on Perseus surpass those of the fastest hurricanes on Earth. This planet is the closest thing to hell on Earth. Additionally, it has two minuscule moons orbiting close to Perseus."
+          },
+          {
+            "id": "id-1772577785733-xqzykeaog",
+            "name": "Seuthetri",
+            "kind": "body",
+            "parentId": "id-1772575372096-fw5wj5tku",
+            "tags": [
+              {
+                "key": "Retrograde Orbit"
+              },
+              {
+                "key": "Captured Body"
+              },
+              {
+                "key": "habitability/none"
+              }
+            ],
+            "atmosphere": {
+              "name": "None",
+              "composition": {},
+              "pressure_bar": 0,
+              "molarMassKg": 0.028
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "planet/desert",
+              "planet/ultra-short-period"
+            ],
+            "roleHint": "moon",
+            "tidallyLocked": true,
+            "axial_tilt_deg": 4.886053343465874,
+            "rotation_period_hours": 5.79,
+            "massKg": 100329600000000020,
+            "radiusKm": 19,
+            "orbit": {
+              "hostId": "id-1772575372096-fw5wj5tku",
+              "hostMu": 2399108370724000,
+              "t0": 435084631696555970000,
+              "elements": {
+                "a_AU": 0.00030767309,
+                "e": 0,
+                "i_deg": 157,
+                "omega_deg": 112,
+                "Omega_deg": 13.86219757549313,
+                "M0_rad": 4.363323129985824
+              },
+              "isRetrogradeOrbit": true
+            },
+            "equilibriumTempK": 338.1194087465476,
+            "internalHeatK": 0,
+            "temperatureK": 338.1194087465476,
+            "calculatedGravity_ms2": 0.018549303304155124,
+            "orbitalBoundaries": {
+              "minLeoKm": 5.1866842350765525,
+              "leoMoeBoundaryKm": 25.93342117538276,
+              "meoHeoBoundaryKm": 25.93342117538276,
+              "heoUpperBoundaryKm": 25.93342117538276,
+              "geoStationaryKm": null,
+              "isGeoFallback": true
+            },
+            "loDeltaVBudget_ms": 21.589294077740426,
+            "propulsiveLandBudget_ms": 21.589294077740426,
+            "aerobrakeLandBudget_ms": -1,
+            "equilibriumTempMinK": 322.3955184508868,
+            "equilibriumTempMaxK": 356.43164019979304,
+            "stellarRadiation": 2.7549128359586215,
+            "stellarRadiationMin": 2.277138550482231,
+            "stellarRadiationMax": 3.401750743991426,
+            "radiationShieldingAtmo": 0,
+            "radiationShieldingMag": 0,
+            "photonRadiation": 1239.7107761813797,
+            "particleRadiation": 137.74564179793109,
+            "surfaceRadiationMin": 1140.5692752411153,
+            "surfaceRadiationMax": 1702.875371995713,
+            "orbital_period_days": 0.46362151390264084,
+            "tidalHeatK": 0,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 0,
+            "habitabilityScore": 15,
+            "isNameUserDefined": true,
+            "calculatedRotationPeriod_s": 20844
+          },
+          {
+            "id": "id-1772577787559-m1y94ovuk",
+            "name": "Kametria",
+            "kind": "body",
+            "parentId": "id-1772575372096-fw5wj5tku",
+            "tags": [
+              {
+                "key": "habitability/none"
+              }
+            ],
+            "atmosphere": {
+              "name": "None",
+              "composition": {},
+              "pressure_bar": 0,
+              "molarMassKg": 0.028
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "planet/desert",
+              "planet/sub-earth"
+            ],
+            "roleHint": "moon",
+            "tidallyLocked": true,
+            "axial_tilt_deg": 3.439514127292689,
+            "rotation_period_hours": 15.6,
+            "massKg": 46521880000000000000,
+            "radiusKm": 153,
+            "orbit": {
+              "hostId": "id-1772575372096-fw5wj5tku",
+              "hostMu": 2399108370724000,
+              "t0": 435084631696555970000,
+              "elements": {
+                "a_AU": 0.000581,
+                "e": 0.00886,
+                "i_deg": 0,
+                "omega_deg": 104.24155508519398,
+                "Omega_deg": 324.8736241397625,
+                "M0_rad": 0.6957518153543674
+              }
+            },
+            "equilibriumTempK": 338.0606204588212,
+            "internalHeatK": 0,
+            "temperatureK": 338.79389800093486,
+            "calculatedGravity_ms2": 0.13264171202699815,
+            "orbitalBoundaries": {
+              "minLeoKm": 30,
+              "leoMoeBoundaryKm": 503.74810899932163,
+              "meoHeoBoundaryKm": 503.74810899932163,
+              "heoUpperBoundaryKm": 503.74810899932163,
+              "geoStationaryKm": null,
+              "isGeoFallback": true
+            },
+            "loDeltaVBudget_ms": 163.82629708268107,
+            "propulsiveLandBudget_ms": 163.82629708268107,
+            "aerobrakeLandBudget_ms": -1,
+            "equilibriumTempMinK": 322.3435869754406,
+            "equilibriumTempMaxK": 356.364126767534,
+            "stellarRadiation": 2.752997310959532,
+            "stellarRadiationMin": 2.27567167617371,
+            "stellarRadiationMax": 3.3991738665175597,
+            "radiationShieldingAtmo": 0,
+            "radiationShieldingMag": 0,
+            "photonRadiation": 1238.8487899317895,
+            "particleRadiation": 137.64986554797662,
+            "surfaceRadiationMin": 1139.8358380868551,
+            "surfaceRadiationMax": 1701.5869332587802,
+            "orbital_period_days": 1.203077236380887,
+            "tidalHeatK": 0.7332775421136939,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 0,
+            "habitabilityScore": 15,
+            "isNameUserDefined": true,
+            "image": {
+              "url": "/images/planet_types/web20protoplanet.jpg"
+            },
+            "calculatedRotationPeriod_s": 56160
+          },
+          {
+            "id": "id-1772682847353-l8nurhdtt",
+            "name": "Arethusa",
+            "kind": "body",
+            "parentId": "alpha-centauri-b",
+            "tags": [
+              {
+                "key": "planet/terrestrial"
+              },
+              {
+                "key": "noble-gas"
+              },
+              {
+                "key": "leak-prone"
+              },
+              {
+                "key": "visible-gas"
+              },
+              {
+                "key": "condensible-metal"
+              },
+              {
+                "key": "cloud-former"
+              },
+              {
+                "key": "habitability/none"
+              }
+            ],
+            "atmosphere": {
+              "name": "Traveller-0 (Vacuum/Trace)",
+              "composition": {
+                "H": 0.8181818181818181,
+                "He": 0.09090909090909091,
+                "Na": 0.09090909090909091
+              },
+              "pressure_bar": 0.0005,
+              "main": "H",
+              "molarMassKg": 0.0032727272727272726,
+              "scaleHeightKm": 322.72719040828423
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "planet/desert",
+              "planet/dwarf-planet"
+            ],
+            "roleHint": "planet",
+            "massKg": 1.098848e+23,
+            "radiusKm": 1691.3,
+            "rotation_period_hours": 1731.14,
+            "axial_tilt_deg": 25,
+            "magneticField": {
+              "strengthGauss": 1.1390052472449539
+            },
+            "orbit": {
+              "hostId": "alpha-centauri-b",
+              "hostMu": 82227375999999980000,
+              "t0": 435084631697036540000,
+              "elements": {
+                "a_AU": 0.49485880817,
+                "e": 0,
+                "i_deg": 0,
+                "omega_deg": 113,
+                "Omega_deg": 181.02160076559892,
+                "M0_rad": -0.526826851454218
+              }
+            },
+            "equilibriumTempK": 325.6518539843111,
+            "internalHeatK": 0,
+            "temperatureK": 325.6967106073113,
+            "tidallyLocked": true,
+            "calculatedGravity_ms2": 2.563905700693435,
+            "calculatedRotationPeriod_s": 6232104,
+            "orbitalBoundaries": {
+              "minLeoKm": 4234.709164785479,
+              "leoMoeBoundaryKm": 6234.709164785479,
+              "meoHeoBoundaryKm": 191543.0502117148,
+              "heoUpperBoundaryKm": 227646.3035447832,
+              "geoStationaryKm": 191543.0502117148,
+              "isGeoFallback": false
+            },
+            "loDeltaVBudget_ms": 2394.7445236534654,
+            "propulsiveLandBudget_ms": 2394.7445236534654,
+            "aerobrakeLandBudget_ms": -1,
+            "equilibriumTempMinK": 325.61272287497445,
+            "equilibriumTempMaxK": 325.87132090409904,
+            "stellarRadiation": 2.0560315893068224,
+            "stellarRadiationMin": 2.054905176622005,
+            "stellarRadiationMax": 2.0623566066791557,
+            "radiationShieldingAtmo": 0.0008087636832990741,
+            "radiationShieldingMag": 0.6867740040055598,
+            "photonRadiation": 924.465935531554,
+            "particleRadiation": 32.17408482442256,
+            "surfaceRadiation": 958.6400203559765,
+            "surfaceRadiationMin": 958.1159177792761,
+            "surfaceRadiationMax": 961.5829541023694,
+            "orbital_period_days": 161.53550192165324,
+            "tidalHeatK": 0,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 0.04485662300018035,
+            "habitabilityScore": 18.567467044516544,
+            "isNameUserDefined": true,
+            "color": "#e67e22",
+            "image": {
+              "url": "/images/planet_types/web20crater20planet.jpg"
+            },
+            "albedo": 0.11,
+            "description": "A small, Desolate world closest to teleman, its proximity to its star brings its temperature up to 53 Degrees Celsius, nearly up to the highest temperature ever recorded on earth, and on the night side, its the complete opposite, temperatures plumet to a Frigid -166 to -39 degrees Celsius. not a very ideal place to be. "
+          },
+          {
+            "id": "id-1773098960958-a4hui1n0t",
+            "name": "Persephone ",
+            "kind": "body",
+            "parentId": "alpha-centauri-b",
+            "tags": [
+              {
+                "key": "planet/terrestrial"
+              },
+              {
+                "key": "inert"
+              },
+              {
+                "key": "buffer-gas"
+              },
+              {
+                "key": "oxidizer"
+              },
+              {
+                "key": "noble-gas"
+              },
+              {
+                "key": "habitability/human"
+              }
+            ],
+            "atmosphere": {
+              "name": "Custom Mix",
+              "composition": {
+                "N2": 0.9651918045958626,
+                "O2": 0.0189411,
+                "Ar": 0.012767095404137382,
+                "CO2": 0.0031
+              },
+              "pressure_bar": 0.629,
+              "main": "CO2",
+              "molarMassKg": 0.028278569544849648,
+              "scaleHeightKm": 9.276125865275565
+            },
+            "hydrosphere": {
+              "coverage": 0.74,
+              "composition": "water"
+            },
+            "biosphere": {
+              "complexity": "simple",
+              "coverage": 0.6,
+              "biochemistry": "water-carbon",
+              "energy_source": "photosynthesis",
+              "morphologies": [
+                "microbial"
+              ]
+            },
+            "classes": [
+              "planet/terrestrial"
+            ],
+            "roleHint": "planet",
+            "massKg": 4.999832557516493e+24,
+            "radiusKm": 6007,
+            "rotation_period_hours": 25.54,
+            "axial_tilt_deg": 19,
+            "magneticField": {
+              "strengthGauss": 1.408995609194358
+            },
+            "orbit": {
+              "hostId": "alpha-centauri-b",
+              "hostMu": 82227375999999980000,
+              "t0": 435084630719034900000,
+              "elements": {
+                "a_AU": 0.712,
+                "e": 0.041,
+                "i_deg": 0,
+                "omega_deg": 134,
+                "Omega_deg": 0.12269410425822969,
+                "M0_rad": -1.7404834467273929
+              },
+              "n_rad_per_s": 2.929489702725215e-7
+            },
+            "equilibriumTempK": 255.72776363876957,
+            "internalHeatK": 0,
+            "temperatureK": 291.7668466512081,
+            "tidallyLocked": false,
+            "calculatedGravity_ms2": 9.247959517689472,
+            "calculatedRotationPeriod_s": 91944,
+            "orbitalBoundaries": {
+              "minLeoKm": 187.92059011983005,
+              "leoMoeBoundaryKm": 2000,
+              "meoHeoBoundaryKm": 35489.940509350396,
+              "heoUpperBoundaryKm": 1171996.4749815154,
+              "geoStationaryKm": 35489.940509350396,
+              "isGeoFallback": false
+            },
+            "loDeltaVBudget_ms": 9555.671813421493,
+            "propulsiveLandBudget_ms": 8571.35763797667,
+            "aerobrakeLandBudget_ms": 930.1538599450064,
+            "equilibriumTempMinK": 250.58406253815565,
+            "equilibriumTempMaxK": 261.45264701750773,
+            "stellarRadiation": 0.9941986480414545,
+            "stellarRadiationMin": 0.9164736101077252,
+            "stellarRadiationMax": 1.0869923402718458,
+            "radiationShieldingAtmo": 0.9893731744183547,
+            "radiationShieldingMag": 0.7173270172066113,
+            "photonRadiation": 4.754329031809823,
+            "particleRadiation": 0.1493244854003207,
+            "surfaceRadiation": 6.903653517210143,
+            "surfaceRadiationMin": 6.520292851421819,
+            "surfaceRadiationMax": 7.361336814383065,
+            "orbital_period_days": 278.78282758775407,
+            "tidalHeatK": 0,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 36.0390830124385,
+            "habitabilityScore": 96.2922598620924,
+            "isNameUserDefined": true,
+            "color": "#e67e22",
+            "image": {
+              "url": "/images/planet_types/web20habitable20planet.jpg"
+            },
+            "albedo": 0.3,
+            "description": " Bathed in the warm light of its star, Persephone is an Earth-like planet smaller than Earth, hosting a Primitive ecosystem. There is no life on land, the air is unbreathable due to excess carbon dioxide, and the only visible organisms in the water are vast mats of cyanobacteria covering coastal rocks. And it'll likely stay like that for the next 400 million years without human intervention. However, with a mask, you may last long enough on land to see its two moons in the sky, Panoptes and Melinoe. However, Persephone may be on the verge of entering an oxygenation event due to the abundance of cyanobacteria, which would turn its oceans blood red as the iron dissolved in them would be oxidized. thus, paving the way for complex life on Persephone."
+          },
+          {
+            "id": "id-1773677179942-th7qttx7z",
+            "name": "Panoptes",
+            "kind": "body",
+            "parentId": "id-1773098960958-a4hui1n0t",
+            "tags": [
+              {
+                "key": "planet/terrestrial"
+              },
+              {
+                "key": "habitability/none"
+              },
+              {
+                "key": "stability/marginal"
+              }
+            ],
+            "atmosphere": {
+              "name": "None",
+              "composition": {},
+              "pressure_bar": 0,
+              "molarMassKg": 0.028
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "planet/desert",
+              "planet/sub-earth"
+            ],
+            "roleHint": "moon",
+            "tidallyLocked": true,
+            "axial_tilt_deg": 1.1132364927853755,
+            "rotation_period_hours": 91.92,
+            "massKg": 2.3469960000000005e+22,
+            "radiusKm": 1205,
+            "orbit": {
+              "hostId": "id-1773098960958-a4hui1n0t",
+              "hostMu": 333703824386323.25,
+              "t0": 435084628090920500000,
+              "elements": {
+                "a_AU": 0.0007384154,
+                "e": 0.01,
+                "i_deg": 0,
+                "omega_deg": 107.19235124016323,
+                "Omega_deg": 99.96518668541134,
+                "M0_rad": 0.09210792842295033
+              }
+            },
+            "equilibriumTempK": 270.6445809817449,
+            "internalHeatK": 0,
+            "temperatureK": 270.6445809817449,
+            "calculatedGravity_ms2": 1.0788075551591745,
+            "orbitalBoundaries": {
+              "minLeoKm": 30,
+              "leoMoeBoundaryKm": 2000,
+              "meoHeoBoundaryKm": 11619.428947495186,
+              "heoUpperBoundaryKm": 11619.428947495186,
+              "geoStationaryKm": null,
+              "isGeoFallback": true
+            },
+            "loDeltaVBudget_ms": 1311.1831317539513,
+            "propulsiveLandBudget_ms": 1311.1831317539513,
+            "aerobrakeLandBudget_ms": -1,
+            "equilibriumTempMinK": 265.204809661601,
+            "equilibriumTempMaxK": 276.6994495848313,
+            "stellarRadiation": 0.9921436821818768,
+            "stellarRadiationMin": 0.9146337712907902,
+            "stellarRadiationMax": 1.0846850857279788,
+            "radiationShieldingAtmo": 0,
+            "radiationShieldingMag": 0,
+            "photonRadiation": 446.46465698184454,
+            "particleRadiation": 49.60718410909384,
+            "surfaceRadiationMin": 459.3168856453951,
+            "surfaceRadiationMax": 544.3425428639894,
+            "orbital_period_days": 4.62194496936801,
+            "tidalHeatK": 0,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 0,
+            "habitabilityScore": 35.73343573630869,
+            "isNameUserDefined": true,
+            "color": "#e67e22",
+            "image": {
+              "url": "/images/planet_types/web20silicate20planet.jpg"
+            },
+            "description": "Panoptes is the closest and largest moon of Persephone, only a bit smaller than our moon; its gravity generates tides on Persephone, and its cratered surface is similar to our moons'. Panoptes probably formed when a planet slightly larger than Mars smashed into Persephone, and the debris coalesced into the grand moon that looms in its sky.",
+            "calculatedRotationPeriod_s": 330912,
+            "orbitalStability": "Marginal",
+            "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=6.04)."
+          },
+          {
+            "id": "id-1773677181840-c97k016cl",
+            "name": "Melinoë",
+            "kind": "body",
+            "parentId": "id-1773098960958-a4hui1n0t",
+            "tags": [
+              {
+                "key": "planet/dwarf-planet"
+              },
+              {
+                "key": "habitability/none"
+              },
+              {
+                "key": "stability/marginal"
+              }
+            ],
+            "atmosphere": {
+              "name": "None",
+              "composition": {},
+              "pressure_bar": 0,
+              "molarMassKg": 0.028
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "planet/desert",
+              "planet/sub-earth"
+            ],
+            "roleHint": "moon",
+            "tidallyLocked": true,
+            "axial_tilt_deg": 3.6445669333174897,
+            "rotation_period_hours": 278.64,
+            "massKg": 31663544000000004,
+            "radiusKm": 12,
+            "orbit": {
+              "hostId": "id-1773098960958-a4hui1n0t",
+              "hostMu": 333703824386323.25,
+              "t0": 435084628090920500000,
+              "elements": {
+                "a_AU": 0.00153535324,
+                "e": 0.01,
+                "i_deg": 0,
+                "omega_deg": 203.85356209507472,
+                "Omega_deg": 355.2751946694056,
+                "M0_rad": 0.5122797351866573
+              }
+            },
+            "equilibriumTempK": 270.493657406103,
+            "internalHeatK": 0,
+            "temperatureK": 270.493657406103,
+            "calculatedGravity_ms2": 0.014675832758277777,
+            "orbitalBoundaries": {
+              "minLeoKm": 30,
+              "leoMoeBoundaryKm": 282.6420026325824,
+              "meoHeoBoundaryKm": 282.6420026325824,
+              "heoUpperBoundaryKm": 282.6420026325824,
+              "geoStationaryKm": null,
+              "isGeoFallback": true
+            },
+            "loDeltaVBudget_ms": 15.261240640061619,
+            "propulsiveLandBudget_ms": 15.261240640061619,
+            "aerobrakeLandBudget_ms": -1,
+            "equilibriumTempMinK": 265.0611883052675,
+            "equilibriumTempMaxK": 276.5408982912075,
+            "stellarRadiation": 0.9899330059768503,
+            "stellarRadiationMin": 0.9126543328442802,
+            "stellarRadiationMax": 1.0822032607520655,
+            "radiationShieldingAtmo": 0,
+            "radiationShieldingMag": 0,
+            "photonRadiation": 445.4698526895827,
+            "particleRadiation": 49.49665029884252,
+            "surfaceRadiationMin": 458.3271664221401,
+            "surfaceRadiationMax": 543.1016303760327,
+            "color": "#bdc3c7",
+            "image": {
+              "url": "/images/planet_types/web20protoplanet.jpg"
+            },
+            "orbital_period_days": 13.857539229333243,
+            "tidalHeatK": 0,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 0,
+            "habitabilityScore": 35.62024305457726,
+            "isNameUserDefined": true,
+            "calculatedRotationPeriod_s": 1003104,
+            "description": "Melinoë is a boring asteroid moon, not much to talk about, it was probably leftovers from the Persephone Impact.",
+            "orbitalStability": "Marginal",
+            "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=6.04)."
+          },
+          {
+            "id": "id-1773799573302-q429m5kyl",
+            "name": "Inner Cold Belt",
+            "kind": "body",
+            "parentId": "proxima-centauri-star",
+            "tags": [],
+            "atmosphere": {
+              "name": "None",
+              "composition": {},
+              "pressure_bar": 0,
+              "molarMassKg": 0.028
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "belt/rocky"
+            ],
+            "roleHint": "belt",
+            "radiusInnerKm": 251798286.17504284,
+            "radiusOuterKm": 598391482.8000001,
+            "orbit": {
+              "hostId": "proxima-centauri-star",
+              "hostMu": 16461226547999996000,
+              "t0": 435084628090920500000,
+              "elements": {
+                "a_AU": 2.8415837905874786,
+                "e": 0,
+                "i_deg": 0,
+                "omega_deg": 5.88921479682206,
+                "Omega_deg": 63.79046484461719,
+                "M0_rad": -0.7645056680714934
+              }
+            },
+            "equilibriumTempK": 32.10872921148517,
+            "internalHeatK": 0,
+            "temperatureK": 32.10872921148517,
+            "stellarRadiation": 0.0002105497910970669,
+            "stellarRadiationMin": 0.0002105425665102174,
+            "stellarRadiationMax": 0.00021058878847459806,
+            "radiationShieldingAtmo": 0,
+            "radiationShieldingMag": 0,
+            "photonRadiation": 0.09474740599368012,
+            "particleRadiation": 0.010527489554853345,
+            "surfaceRadiationMin": 0.1052712832551087,
+            "surfaceRadiationMax": 0.10529439423729903,
+            "orbital_period_days": 4967.797082367763,
+            "equilibriumTempMinK": 32.10846208458744,
+            "equilibriumTempMaxK": 32.11017101415484,
+            "tidalHeatK": 0,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 0,
+            "loDeltaVBudget_ms": -1,
+            "propulsiveLandBudget_ms": -1,
+            "aerobrakeLandBudget_ms": -1,
+            "massKg": 1.0619884636752436e+22,
+            "isNameUserDefined": true
+          },
+          {
+            "id": "id-1773799741785-9l2qw5lbi",
+            "name": "Warm belt",
+            "kind": "body",
+            "parentId": "proxima-centauri-star",
+            "tags": [],
+            "atmosphere": {
+              "name": "None",
+              "composition": {},
+              "pressure_bar": 0,
+              "molarMassKg": 0.028
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "belt/rocky"
+            ],
+            "roleHint": "belt",
+            "radiusInnerKm": 40469048.21145731,
+            "radiusOuterKm": 59839148.279999994,
+            "orbit": {
+              "hostId": "proxima-centauri-star",
+              "hostMu": 16461226547999996000,
+              "t0": 435084628090920500000,
+              "elements": {
+                "a_AU": 0.3352594392623842,
+                "e": 0,
+                "i_deg": 0,
+                "omega_deg": 160.76916672943085,
+                "Omega_deg": 315.1496388286021,
+                "M0_rad": 0.2363529713605157
+              }
+            },
+            "equilibriumTempK": 93.47735817768461,
+            "internalHeatK": 0,
+            "temperatureK": 93.47735817768461,
+            "stellarRadiation": 0.015124717316622223,
+            "stellarRadiationMin": 0.015124710088509621,
+            "stellarRadiationMax": 0.01512475634906235,
+            "radiationShieldingAtmo": 0,
+            "radiationShieldingMag": 0,
+            "photonRadiation": 6.80612279248,
+            "particleRadiation": 0.7562358658311112,
+            "surfaceRadiationMin": 7.5623550442548115,
+            "surfaceRadiationMax": 7.562378174531175,
+            "orbital_period_days": 201.3235915280403,
+            "equilibriumTempMinK": 93.47734734654313,
+            "equilibriumTempMaxK": 93.47741666679639,
+            "tidalHeatK": 0,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 0,
+            "loDeltaVBudget_ms": -1,
+            "propulsiveLandBudget_ms": -1,
+            "aerobrakeLandBudget_ms": -1,
+            "isNameUserDefined": true,
+            "massKg": 1.8885122186525496e+22
+          },
+          {
+            "id": "id-1773799808316-cy2j11zg9",
+            "name": "Outer Cold Belt",
+            "kind": "body",
+            "parentId": "proxima-centauri-star",
+            "tags": [],
+            "atmosphere": {
+              "name": "None",
+              "composition": {},
+              "pressure_bar": 0,
+              "molarMassKg": 0.028
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "belt/rocky"
+            ],
+            "roleHint": "belt",
+            "radiusInnerKm": 3380159073.341477,
+            "radiusOuterKm": 4487936121.000002,
+            "orbit": {
+              "hostId": "proxima-centauri-star",
+              "hostMu": 16461226547999996000,
+              "t0": 435084628090920500000,
+              "elements": {
+                "a_AU": 26.297483906438647,
+                "e": 0,
+                "i_deg": 0,
+                "omega_deg": 116.1692590096089,
+                "Omega_deg": 207.04132816268424,
+                "M0_rad": -0.20960919566202432
+              }
+            },
+            "equilibriumTempK": 10.568014896053505,
+            "internalHeatK": 0,
+            "temperatureK": 10.568014896053505,
+            "stellarRadiation": 0.0000024711775293950895,
+            "stellarRadiationMin": 0.000002463985826650811,
+            "stellarRadiationMax": 0.0000025098488602057395,
+            "radiationShieldingAtmo": 0,
+            "radiationShieldingMag": 0,
+            "photonRadiation": 0.0011120298882277904,
+            "particleRadiation": 0.00012355887646975448,
+            "surfaceRadiationMin": 0.0012319929133254054,
+            "surfaceRadiationMax": 0.0012549244301028697,
+            "orbital_period_days": 139860.29662276365,
+            "equilibriumTempMinK": 10.560549028376261,
+            "equilibriumTempMaxK": 10.607891723996826,
+            "tidalHeatK": 0,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 0,
+            "loDeltaVBudget_ms": -1,
+            "propulsiveLandBudget_ms": -1,
+            "aerobrakeLandBudget_ms": -1,
+            "isNameUserDefined": true
+          },
+          {
+            "id": "id-1773872908277-rji419qo1",
+            "name": "513532 Cameron",
+            "kind": "body",
+            "parentId": "alpha-centauri-a",
+            "tags": [
+              {
+                "key": "planet/dwarf-planet"
+              },
+              {
+                "key": "cloud-former"
+              },
+              {
+                "key": "greenhouse"
+              },
+              {
+                "key": "lifting-gas"
+              },
+              {
+                "key": "reducing"
+              },
+              {
+                "key": "pungent"
+              },
+              {
+                "key": "habitability/none"
+              },
+              {
+                "key": "stability/very-unstable"
+              }
+            ],
+            "atmosphere": {
+              "name": "Water Vapor Plume (Enceladus-like)",
+              "composition": {
+                "H2O": 0.8928571428571428,
+                "H2": 0.05102040816326531,
+                "CO2": 0.025510204081632654,
+                "CH4": 0.01530612244897959,
+                "NH3": 0.01530612244897959
+              },
+              "pressure_bar": 5.5000000000000004e-9,
+              "main": "H2O",
+              "molarMassKg": 0.017801020408163264,
+              "scaleHeightKm": 694.8136097276597
+            },
+            "hydrosphere": {
+              "coverage": 0,
+              "composition": "water"
+            },
+            "biosphere": null,
+            "classes": [
+              "planet/sub-earth"
+            ],
+            "roleHint": "planet",
+            "massKg": 3464357200000000000,
+            "radiusKm": 53,
+            "rotation_period_hours": 22.033724551039892,
+            "axial_tilt_deg": 32.514835333931536,
+            "magneticField": {
+              "strengthGauss": 0.12357844389255615
+            },
+            "orbit": {
+              "hostId": "alpha-centauri-a",
+              "hostMu": 146100426999999990000,
+              "t0": 435084629415617600000,
+              "elements": {
+                "a_AU": 6.02,
+                "e": 0.851,
+                "i_deg": 0,
+                "omega_deg": 315,
+                "Omega_deg": 310.7311310595528,
+                "M0_rad": -0.43115022325020896
+              }
+            },
+            "equilibriumTempK": 122.44916055717364,
+            "internalHeatK": 0,
+            "temperatureK": 122.44916146285144,
+            "tidallyLocked": false,
+            "calculatedGravity_ms2": 0.08231455770722676,
+            "calculatedRotationPeriod_s": 79321.40838374362,
+            "orbitalBoundaries": {
+              "minLeoKm": 30,
+              "leoMoeBoundaryKm": 2000,
+              "meoHeoBoundaryKm": 2000,
+              "heoUpperBoundaryKm": 72715.00235294766,
+              "geoStationaryKm": 279.7743380920112,
+              "isGeoFallback": false
+            },
+            "loDeltaVBudget_ms": 75.95810118804835,
+            "propulsiveLandBudget_ms": 75.95810118804835,
+            "aerobrakeLandBudget_ms": -1,
+            "equilibriumTempMinK": 90.08824655434228,
+            "equilibriumTempMaxK": 316.5172165128953,
+            "stellarRadiation": 0.04732865025799525,
+            "stellarRadiationMin": 0.013860255005763229,
+            "stellarRadiationMax": 2.115254172281776,
+            "radiationShieldingAtmo": 4.3845662323072077e-8,
+            "radiationShieldingMag": 0.3752454599640698,
+            "photonRadiation": 21.297891682277655,
+            "particleRadiation": 1.4784393912996046,
+            "surfaceRadiation": 24.77633107357726,
+            "surfaceRadiationMin": 8.670077322184797,
+            "surfaceRadiationMax": 1019.9400652676902,
+            "isNameUserDefined": true,
+            "orbital_period_days": 5141.895406444127,
+            "tidalHeatK": 0,
+            "radiogenicHeatK": 0,
+            "greenhouseTempK": 9.056777918714574e-7,
+            "habitabilityScore": 9.50108510148372,
+            "description": "A Tribute to James Cameron, one of the inspirations for this system! btw, this orbit would probably be VERY unstable irl XD",
+            "color": "#bdc3c7",
+            "image": {
+              "url": "/images/planet_types/web20dwarf20planet.jpg"
+            },
+            "orbitalStability": "Very Unstable",
+            "orbitalStabilityDetails": "Likely <1 kyr before major orbital disruption (collision/ejection/infall risk). Drivers: Orbit exceeds host's stable Hill sphere (stolen by external tide).; Minor-body crossing in pair Oceanus/Khione/513532 Cameron."
           }
         ],
         "rulePackId": "starter-sf-pack",
@@ -3342,6 +5686,9 @@
           "y": -834.8533540189119
         },
         "zoom": 0.05916083916083916
+      },
+      "time": {
+        "displayTimeSec": "435084632967250575"
       }
     },
     {
@@ -5281,5 +7628,355 @@
       }
     }
   ],
-  "routes": []
+  "routes": [],
+  "temporal": {
+    "masterTimeSec": "435084632967250575",
+    "displayTimeSec": "435084632967250575",
+    "activeCalendarKey": "Earth Gregorian",
+    "temporal_registry": {
+      "Earth Gregorian": {
+        "id": "EARTH_GREG",
+        "math_type": "BUCKET_DRAIN",
+        "epoch_offset_t": "435084559692049800",
+        "format": "{hour:02}:{min:02}:{sec:02}, {weekday} {mday}{suffix} {month}, {year} AD",
+        "hierarchy": [
+          {
+            "unit": "year",
+            "multiplier": 31536000
+          },
+          {
+            "unit": "day",
+            "multiplier": 86400
+          },
+          {
+            "unit": "hour",
+            "multiplier": 3600
+          },
+          {
+            "unit": "min",
+            "multiplier": 60
+          },
+          {
+            "unit": "sec",
+            "multiplier": 1
+          }
+        ],
+        "leap_logic": {
+          "drift_per_year_t": 20925,
+          "threshold_t": 86400,
+          "apply_to": "day"
+        },
+        "lookup_tables": {
+          "weekdays": [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday"
+          ],
+          "months": [
+            {
+              "name": "January",
+              "days": 31
+            },
+            {
+              "name": "February",
+              "days": 28
+            },
+            {
+              "name": "March",
+              "days": 31
+            },
+            {
+              "name": "April",
+              "days": 30
+            },
+            {
+              "name": "May",
+              "days": 31
+            },
+            {
+              "name": "June",
+              "days": 30
+            },
+            {
+              "name": "July",
+              "days": 31
+            },
+            {
+              "name": "August",
+              "days": 31
+            },
+            {
+              "name": "September",
+              "days": 30
+            },
+            {
+              "name": "October",
+              "days": 31
+            },
+            {
+              "name": "November",
+              "days": 30
+            },
+            {
+              "name": "December",
+              "days": 31
+            }
+          ]
+        }
+      },
+      "Star Trek Stardate": {
+        "id": "TNG_SD",
+        "math_type": "RATIO_LINEAR",
+        "epoch_offset_t": "435084632967250575",
+        "format": "Stardate {val}",
+        "parameters": {
+          "units_per_earth_year": 1000,
+          "seconds_per_earth_year": 31557600,
+          "precision_digits": 1
+        }
+      },
+      "Mayan Haab (Simplified)": {
+        "id": "MAYAN_HAAB_SIMPL",
+        "math_type": "BUCKET_DRAIN",
+        "epoch_offset_t": "435084461534290575",
+        "format": "{weekday} {mday}{suffix} {month}, Haab Year {year}",
+        "hierarchy": [
+          {
+            "unit": "year",
+            "multiplier": 31536000
+          },
+          {
+            "unit": "day",
+            "multiplier": 86400
+          },
+          {
+            "unit": "hour",
+            "multiplier": 3600
+          },
+          {
+            "unit": "min",
+            "multiplier": 60
+          },
+          {
+            "unit": "sec",
+            "multiplier": 1
+          }
+        ],
+        "leap_logic": {
+          "drift_per_year_t": 0,
+          "threshold_t": 86400,
+          "apply_to": "day"
+        },
+        "lookup_tables": {
+          "weekdays": [
+            "Imix",
+            "Ik",
+            "Akbal",
+            "K'an",
+            "Chikchan",
+            "Kimi",
+            "Manik",
+            "Lamat",
+            "Muluk",
+            "Ok",
+            "Chuwen",
+            "Eb",
+            "Ben",
+            "Ix",
+            "Men",
+            "Kib",
+            "Kaban",
+            "Etznab",
+            "Kawak",
+            "Ajaw"
+          ],
+          "months": [
+            {
+              "name": "Pop",
+              "days": 20
+            },
+            {
+              "name": "Wo",
+              "days": 20
+            },
+            {
+              "name": "Sip",
+              "days": 20
+            },
+            {
+              "name": "Sotz",
+              "days": 20
+            },
+            {
+              "name": "Sek",
+              "days": 20
+            },
+            {
+              "name": "Xul",
+              "days": 20
+            },
+            {
+              "name": "Yaxkin",
+              "days": 20
+            },
+            {
+              "name": "Mol",
+              "days": 20
+            },
+            {
+              "name": "Chen",
+              "days": 20
+            },
+            {
+              "name": "Yax",
+              "days": 20
+            },
+            {
+              "name": "Sak",
+              "days": 20
+            },
+            {
+              "name": "Keh",
+              "days": 20
+            },
+            {
+              "name": "Mak",
+              "days": 20
+            },
+            {
+              "name": "Kankin",
+              "days": 20
+            },
+            {
+              "name": "Muwan",
+              "days": 20
+            },
+            {
+              "name": "Pax",
+              "days": 20
+            },
+            {
+              "name": "Kayab",
+              "days": 20
+            },
+            {
+              "name": "Kumku",
+              "days": 20
+            },
+            {
+              "name": "Wayeb",
+              "days": 5
+            }
+          ]
+        }
+      },
+      "Chinese Lunisolar (Simplified)": {
+        "id": "CHINESE_LUNISOLAR_SIMPL",
+        "math_type": "BUCKET_DRAIN",
+        "epoch_offset_t": "435084488515324800",
+        "format": "{hour:02}:{min:02}:{sec:02}, {weekday} {mday}{suffix} {month}, Year {year}",
+        "hierarchy": [
+          {
+            "unit": "year",
+            "multiplier": 30585600
+          },
+          {
+            "unit": "day",
+            "multiplier": 86400
+          },
+          {
+            "unit": "hour",
+            "multiplier": 3600
+          },
+          {
+            "unit": "min",
+            "multiplier": 60
+          },
+          {
+            "unit": "sec",
+            "multiplier": 1
+          }
+        ],
+        "leap_logic": {
+          "drift_per_year_t": 0,
+          "threshold_t": 86400,
+          "apply_to": "day"
+        },
+        "lookup_tables": {
+          "weekdays": [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday"
+          ],
+          "months": [
+            {
+              "name": "First Moon",
+              "days": 30
+            },
+            {
+              "name": "Second Moon",
+              "days": 29
+            },
+            {
+              "name": "Third Moon",
+              "days": 30
+            },
+            {
+              "name": "Fourth Moon",
+              "days": 29
+            },
+            {
+              "name": "Fifth Moon",
+              "days": 30
+            },
+            {
+              "name": "Sixth Moon",
+              "days": 29
+            },
+            {
+              "name": "Seventh Moon",
+              "days": 30
+            },
+            {
+              "name": "Eighth Moon",
+              "days": 29
+            },
+            {
+              "name": "Ninth Moon",
+              "days": 30
+            },
+            {
+              "name": "Tenth Moon",
+              "days": 29
+            },
+            {
+              "name": "Eleventh Moon",
+              "days": 30
+            },
+            {
+              "name": "Twelfth Moon",
+              "days": 29
+            }
+          ]
+        }
+      }
+    },
+    "playbackRunning": false,
+    "playbackRateSecPerSec": 1
+  },
+  "mapMode": "diagrammatic",
+  "invertDisplay": false,
+  "scale": {
+    "unit": "LY",
+    "pixelsPerUnit": 25,
+    "showScaleBar": true
+  }
 }
