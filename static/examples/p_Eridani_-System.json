@@ -1,0 +1,182 @@
+{
+  "id": "seed-1771178443010",
+  "name": "p Eridani  ",
+  "seed": "seed-1771178687558",
+  "epochT0": 1771178687559,
+  "age_Gyr": 0.7665761347161606,
+  "nodes": [
+    {
+      "id": "seed-1771178687558-barycenter-0",
+      "parentId": null,
+      "name": "p Eridani  ",
+      "kind": "barycenter",
+      "memberIds": [
+        "seed-1771178687558-star-a",
+        "seed-1771178687558-star-b"
+      ],
+      "tags": [],
+      "effectiveMassKg": 3.4608599999999995e+30,
+      "isNameUserDefined": true
+    },
+    {
+      "id": "seed-1771178687558-star-a",
+      "name": "p Eridani A",
+      "kind": "body",
+      "parentId": "seed-1771178687558-barycenter-0",
+      "roleHint": "star",
+      "massKg": 1.7304299999999998e+30,
+      "radiusKm": 387123.2596,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 572,
+      "tags": [],
+      "classes": [
+        "star/K"
+      ],
+      "atmosphere": {
+        "name": "None",
+        "composition": {},
+        "pressure_bar": 0,
+        "molarMassKg": 0.028
+      },
+      "hydrosphere": {
+        "coverage": 0,
+        "composition": "water"
+      },
+      "biosphere": null,
+      "magneticField": {
+        "strengthGauss": 32.73685693042353
+      },
+      "orbit": {
+        "hostId": "seed-1771178687558-barycenter-0",
+        "hostMu": 230988178979999940000,
+        "t0": 1771178687559,
+        "n_rad_per_s": 1.9488289434067248e-12,
+        "elements": {
+          "a_AU": 1314.3933806568384,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "surfaceTempK": 5778,
+      "starCategory": "main_sequence_star",
+      "temperatureK": 5140,
+      "radiationOutput": 1.129663436440751,
+      "image": {
+        "url": "/images/star_types/K.ebp.webp"
+      },
+      "calculatedGravity_ms2": 770.6571775760383,
+      "orbital_period_days": 13193116.923539262,
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1,
+      "stellarRadiation": 0.0000525931569433425,
+      "stellarRadiationMin": 0.0000525931569433425,
+      "stellarRadiationMax": 0.0000525931569433425,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0.99,
+      "photonRadiation": 0.023666920624504123,
+      "particleRadiation": 0.000026296578471671274,
+      "surfaceRadiation": 0.023693217202975795,
+      "surfaceRadiationMin": 0.023693217202975795,
+      "surfaceRadiationMax": 0.023693217202975795,
+      "isNameUserDefined": true,
+      "calculatedRotationPeriod_s": 2059200,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 22761883.439132728,
+        "heoUpperBoundaryKm": 108209520234.60707,
+        "geoStationaryKm": 22761883.439132728,
+        "isGeoFallback": false
+      }
+    },
+    {
+      "id": "seed-1771178687558-star-b",
+      "name": "p Eridani  B",
+      "kind": "body",
+      "parentId": "seed-1771178687558-barycenter-0",
+      "roleHint": "star",
+      "massKg": 1.7304299999999998e+30,
+      "radiusKm": 587745.777,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 454,
+      "tags": [
+        {
+          "key": "High Radiation (Flaring)"
+        }
+      ],
+      "classes": [
+        "star/K"
+      ],
+      "atmosphere": {
+        "name": "None",
+        "composition": {},
+        "pressure_bar": 0,
+        "molarMassKg": 0.028
+      },
+      "hydrosphere": {
+        "coverage": 0,
+        "composition": "water"
+      },
+      "biosphere": null,
+      "magneticField": {
+        "strengthGauss": 1.39
+      },
+      "orbit": {
+        "hostId": "seed-1771178687558-barycenter-0",
+        "hostMu": 230988178979999940000,
+        "t0": 1771178687559,
+        "n_rad_per_s": 1.9488289434067248e-12,
+        "elements": {
+          "a_AU": 1314.3933806568384,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.141592653589793
+        }
+      },
+      "surfaceTempK": 5778,
+      "starCategory": "low_mass_star",
+      "temperatureK": 4350,
+      "radiationOutput": 0.387,
+      "image": {
+        "url": "/images/star_types/K.ebp.webp"
+      },
+      "calculatedGravity_ms2": 334.3341388578832,
+      "orbital_period_days": 13193116.923539262,
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1,
+      "stellarRadiation": 1.6347010979998198e-7,
+      "stellarRadiationMin": 1.6347010979998198e-7,
+      "stellarRadiationMax": 1.6347010979998198e-7,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0.99,
+      "photonRadiation": 0.0000735615494099919,
+      "particleRadiation": 8.173505489999106e-8,
+      "surfaceRadiation": 0.0000736432844648919,
+      "surfaceRadiationMin": 0.0000736432844648919,
+      "surfaceRadiationMax": 0.0000736432844648919,
+      "isNameUserDefined": true,
+      "calculatedRotationPeriod_s": 1634400,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 19256697.061983697,
+        "heoUpperBoundaryKm": 108209319612.08968,
+        "geoStationaryKm": 19256697.061983697,
+        "isGeoFallback": false
+      }
+    }
+  ],
+  "rulePackId": "starter-sf-pack",
+  "rulePackVersion": "0.1.5",
+  "tags": [],
+  "toytownFactor": 0,
+  "visualScalingMultiplier": 0.5,
+  "isManuallyEdited": true
+}

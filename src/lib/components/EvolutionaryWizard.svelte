@@ -65,9 +65,21 @@
     }
 
     function nextStep() {
-        if (step === 1 && starsToPlace.length === 0 && placedStars.length === 0) {
-            alert("Please pick at least one star properties to continue.");
-            return;
+        const totalStars = starsToPlace.length + placedStars.length;
+        if (step === 1) {
+            if (totalStars === 0) {
+                alert("Please pick at least one star properties to continue.");
+                return;
+            }
+            if (totalStars === 1) {
+                // If only 1 star, skip placement and dance
+                settledStars = [...starsToPlace, ...placedStars];
+                // Ensure star is centered
+                settledStars[0].pos = { x: 0, y: 0, z: 0 };
+                settledStars[0].vel = { x: 0, y: 0, z: 0 };
+                step = 4;
+                return;
+            }
         }
         if (step === 2 && placedStars.length === 0) {
             alert("Please place at least one star in space.");
@@ -77,6 +89,11 @@
     }
 
     function prevStep() {
+        const totalStars = starsToPlace.length + placedStars.length;
+        if (step === 4 && totalStars === 1) {
+            step = 1;
+            return;
+        }
         if (step > 1) {
             step -= 1;
         } else {

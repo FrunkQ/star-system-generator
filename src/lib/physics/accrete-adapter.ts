@@ -1,5 +1,5 @@
 import { StarSystem, Planetismal } from '../vendor/accrete-js/src/index.js';
-import type { StarSeed } from './stellar-evolution';
+import { type StarSeed, ageStar, getStarLifespanGyr } from './stellar-evolution';
 import type { CelestialBody, Orbit, Node, ID } from '../types';
 import { AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG } from '../constants';
 
@@ -7,6 +7,7 @@ export interface AccreteSnapshot {
     year: number;
     stars: StarSeed[];
     planets: any[]; // Accrete Planetismals (POJOs)
+    dustBands?: any[]; // Accrete DustCloud bands
 }
 
 /**
@@ -16,11 +17,16 @@ export function simulateAccretion(stars: StarSeed[], diskConfig?: any): AccreteS
     const snapshots: AccreteSnapshot[] = [];
     
     const primary = stars.reduce((prev, current) => (prev.massKg > current.massKg) ? prev : current);
+    const lifespanYears = getStarLifespanGyr(primary.massKg) * 1e9;
+    
+    // Accretion phase lasts 100 Myr, or 90% of the star's lifespan if very short-lived.
+    const maxAccretionTime = Math.min(100000000, lifespanYears * 0.9);
+    const timeStepPerIteration = maxAccretionTime / 100;
     
     const accreteSystem = new StarSystem({
         stellarMass: primary.massKg / SOLAR_MASS_KG,
         stellarLuminosity: primary.luminositySolar,
-        stellarAge: 100000, // 0.1 Myr starting
+        stellarAge: 100000, 
         // Inject user disk config
         A: diskConfig?.A ?? 0.0015,
         K: diskConfig?.K ?? 50,
@@ -34,28 +40,53 @@ export function simulateAccretion(stars: StarSeed[], diskConfig?: any): AccreteS
         accreteSystem.injectNucleus();
         accreteSystem.planets = accreteSystem.checkCollisions(accreteSystem.planets);
         
-        if (iterations % 10 === 0) {
-            // Update system age for current snapshot
-            accreteSystem.age = iterations * 100000;
-            // Map to POJOs immediately so they have all StarGen props calculated
-            const planetSnapshots = accreteSystem.planets.map(p => p.toJSON());
-            
-            snapshots.push({
-                year: accreteSystem.age,
-                stars: JSON.parse(JSON.stringify(stars)),
-                planets: planetSnapshots
-            });
-        }
+        // Update system age for current snapshot
+        accreteSystem.age = iterations * timeStepPerIteration;
+        
+        // Age the stars and apply to Accrete physics
+        const agedStars = stars.map(s => ageStar(s, accreteSystem.age));
+        const agedPrimary = agedStars.reduce((prev, curr) => (prev.massKg > curr.massKg) ? prev : curr);
+        accreteSystem.stellarLuminosity = agedPrimary.luminositySolar;
+        
+        // Map to POJOs and apply engulfment
+        const starRadiusAU = (agedPrimary.radiusKm || 696340) / AU_KM;
+        const planetSnapshots = accreteSystem.planets.map(p => {
+            const pojo = p.toJSON();
+            if ((pojo.axis || pojo.a) < starRadiusAU * 1.2) {
+                pojo.isEngulfed = true;
+            }
+            return pojo;
+        });
+        
+        snapshots.push({
+            year: accreteSystem.age,
+            stars: JSON.parse(JSON.stringify(agedStars)),
+            planets: planetSnapshots,
+            dustBands: JSON.parse(JSON.stringify(accreteSystem.matter.bands))
+        });
+        
         iterations++;
     }
 
-    // Final Stable Snapshot (100 Myr)
-    accreteSystem.age = 100000000;
-    const finalPlanets = accreteSystem.planets.map(p => p.toJSON());
+    // Final Stable Snapshot
+    accreteSystem.age = maxAccretionTime;
+    const finalAgedStars = stars.map(s => ageStar(s, accreteSystem.age));
+    const finalPrimary = finalAgedStars.reduce((prev, curr) => (prev.massKg > curr.massKg) ? prev : curr);
+    const starRadiusAU = (finalPrimary.radiusKm || 696340) / AU_KM;
+    
+    const finalPlanets = accreteSystem.planets.map(p => {
+        const pojo = p.toJSON();
+        if ((pojo.axis || pojo.a) < starRadiusAU * 1.2) {
+            pojo.isEngulfed = true;
+        }
+        return pojo;
+    });
+    
     snapshots.push({
         year: accreteSystem.age,
-        stars: JSON.parse(JSON.stringify(stars)),
-        planets: finalPlanets
+        stars: JSON.parse(JSON.stringify(finalAgedStars)),
+        planets: finalPlanets,
+        dustBands: JSON.parse(JSON.stringify(accreteSystem.matter.bands))
     });
 
     return snapshots;

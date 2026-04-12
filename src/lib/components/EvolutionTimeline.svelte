@@ -1,7 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from 'svelte';
     import { simulateAccretion, type AccreteSnapshot, mapAccreteToBody, recalculatePlanetAgedState } from '$lib/physics/accrete-adapter';
-    import { type StarSeed, deriveStarFromHR } from '$lib/physics/stellar-evolution';
+    import { type StarSeed, ageStar, getStarLifespanGyr } from '$lib/physics/stellar-evolution';
     import type { System, Node, ID, CelestialBody } from '$lib/types';
     import { getPlanetColor } from '$lib/rendering/colors';
 
@@ -20,6 +20,7 @@
     let sliderValue = 0; // 0 to 1.0
     let currentYear = 0; 
     let maxYear = 15000000000; // Default until recalculated
+    let maxAccretionTime = 100000000;
     
     let currentSnapshot: AccreteSnapshot | null = null;
     let isLoading = true;
@@ -63,12 +64,12 @@
         const ticks = [];
         // Fixed points for Birth
         ticks.push({ year: 0, label: '0' });
-        ticks.push({ year: 100000000, label: '100m' });
+        ticks.push({ year: maxAccretionTime, label: formatYear(maxAccretionTime) });
 
         // Dynamic Gyr/Myr ticks
         const step = max > 2000000000 ? 1000000000 : 100000000;
         for (let y = step; y < max; y += step) {
-            if (y <= 100000000) continue; 
+            if (Math.abs(y - maxAccretionTime) < step * 0.2) continue; 
             ticks.push({ 
                 year: y, 
                 label: y >= 1000000000 ? `${y/1000000000}G` : `${y/1000000}m` 
@@ -91,11 +92,13 @@
         
         // Calculate maxYear based on primary star lifespan
         const primary = stars.reduce((prev, curr) => (prev.massKg > curr.massKg) ? prev : curr);
-        const mSolar = primary.massKg / 1.989e30;
-        const lifespanGyr = 10 / Math.pow(mSolar, 2.5);
+        const lifespanGyr = getStarLifespanGyr(primary.massKg);
         
-        // Show 20% past death to see remnants
-        maxYear = Math.max(200000000, lifespanGyr * 1.2 * 1000000000);
+        // Dynamic accretion phase length
+        maxAccretionTime = Math.min(100000000, lifespanGyr * 1e9 * 0.9);
+
+        // Show 20% past death to see remnants, but enforce minimum scale
+        maxYear = Math.max(maxAccretionTime * 2, lifespanGyr * 1.2 * 1000000000);
 
         setTimeout(() => {
             snapshots = simulateAccretion(stars, diskConfig);
@@ -111,45 +114,15 @@
     function handleSliderInput() {
         currentYear = mapSliderToYear(sliderValue);
         
-        if (currentYear <= 100000000) {
-            const progress = currentYear / 100000000;
+        if (currentYear <= maxAccretionTime) {
+            const progress = currentYear / maxAccretionTime;
             const idx = Math.min(snapshots.length - 1, Math.floor(progress * snapshots.length));
             currentSnapshot = snapshots[idx];
         } else {
             const ageYears = currentYear;
-            const ageGyr = currentYear / 1000000000;
             const baseState = snapshots[snapshots.length - 1];
             
-            const agedStars = baseState.stars.map(s => {
-                const mSolar = s.massKg / 1.989e30;
-                const lifespanGyr = 10 / Math.pow(mSolar, 2.5);
-                
-                let agedLum = s.luminositySolar;
-                let agedTemp = s.temperatureK;
-                let isDead = false;
-
-                if (ageGyr > lifespanGyr) {
-                    const deathProgress = Math.min(1.0, (ageGyr - lifespanGyr) / (lifespanGyr * 0.2));
-                    if (deathProgress < 0.9) {
-                        agedLum = s.luminositySolar * (1 + deathProgress * 500); 
-                        agedTemp = s.temperatureK * (0.8 - deathProgress * 0.4);
-                    } else {
-                        isDead = true;
-                        if (mSolar > 8) {
-                            agedLum = 1e-6; agedTemp = 100000; 
-                        } else {
-                            agedLum = 1e-3; agedTemp = 25000; 
-                        }
-                    }
-                } else {
-                    const msProgress = ageGyr / lifespanGyr;
-                    agedLum = s.luminositySolar * (1 + msProgress * 0.8);
-                    agedTemp = s.temperatureK * (1 + msProgress * 0.05);
-                }
-
-                const props = deriveStarFromHR(Math.max(2000, agedTemp), agedLum);
-                return { ...s, ...props, isDead };
-            });
+            const agedStars = baseState.stars.map(s => ageStar(s, ageYears));
 
             const primaryStar = agedStars.reduce((prev, curr) => (prev.massKg > curr.massKg) ? prev : curr);
             const agedPlanets = baseState.planets.map(p => {
@@ -164,7 +137,8 @@
             currentSnapshot = {
                 year: currentYear,
                 stars: agedStars,
-                planets: agedPlanets
+                planets: agedPlanets,
+                dustBands: baseState.dustBands
             };
         }
         updateCamera();
@@ -175,31 +149,75 @@
         if (!currentSnapshot) return;
         const active = currentSnapshot.planets.filter(p => !p.isEngulfed);
         
-        let maxX = 10 * AU_TO_M;
+        let maxX = 5 * AU_TO_M; // Base minimum zoom of 5 AU
         if (active.length > 0) {
             active.forEach(p => {
-                maxX = Math.max(maxX, (p.axis || p.a) * AU_TO_M);
+                maxX = Math.max(maxX, (p.axis || p.a) * AU_TO_M * 1.1); // Focus on planets with 10% margin
+            });
+        }
+        
+        // Factor in dust bands for camera scaling
+        if (currentSnapshot.dustBands && currentSnapshot.dustBands.length > 0) {
+            currentSnapshot.dustBands.forEach(b => {
+                maxX = Math.max(maxX, b.upper * AU_TO_M * 1.05);
             });
         }
 
-        // We want the star on the left, so we view from 0 to maxX
-        const targetPPM = (canvas.width * 0.8) / maxX;
-        if (instant) pixelsPerMeter = targetPPM;
+        // We want the star on the left at offsetX, so we view from 0 to maxX
+        const logicalWidth = canvas ? (canvas.width / (window.devicePixelRatio || 1)) : 800;
+        const offsetX = 100;
+        const availableWidth = logicalWidth - offsetX - 40; // 40px right padding
+        const targetPPM = availableWidth / maxX;
+        
+        if (instant || pixelsPerMeter === 1e-10) pixelsPerMeter = targetPPM;
         else pixelsPerMeter += (targetPPM - pixelsPerMeter) * 0.1;
     }
 
     function draw() {
         if (!ctx || !canvas || !currentSnapshot) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const logicalWidth = canvas.width / (window.devicePixelRatio || 1);
+        const logicalHeight = canvas.height / (window.devicePixelRatio || 1);
+        
+        ctx.clearRect(0, 0, logicalWidth, logicalHeight);
         
         const offsetX = 100; // Left margin for the star
-        const cy = canvas.height / 2;
+        const cy = logicalHeight / 2;
         const ppm = pixelsPerMeter;
+
+        // Draw Dust and Gas Bands
+        if (currentSnapshot.dustBands) {
+            currentSnapshot.dustBands.forEach(band => {
+                if (band.dust || band.gas) {
+                    const innerRadius = band.lower * AU_TO_M * ppm;
+                    const outerRadius = band.upper * AU_TO_M * ppm;
+                    const midRadius = (innerRadius + outerRadius) / 2;
+                    const width = outerRadius - innerRadius;
+                    
+                    if (width > 0) {
+                        ctx.beginPath();
+                        ctx.arc(offsetX, cy, midRadius, 0, Math.PI * 2);
+                        ctx.lineWidth = width;
+                        
+                        // Color based on composition - dropped opacity as requested
+                        if (band.dust && band.gas) {
+                            ctx.strokeStyle = 'rgba(100, 110, 130, 0.2)'; // Dust + Gas (Protoplanetary Disk)
+                        } else if (band.dust) {
+                            ctx.strokeStyle = 'rgba(180, 110, 50, 0.3)';   // Dust only (Asteroid belts)
+                        } else if (band.gas) {
+                            ctx.strokeStyle = 'rgba(80, 180, 255, 0.15)';  // Gas only
+                        }
+                        
+                        ctx.stroke();
+                    }
+                }
+            });
+        }
 
         // Draw Orbits
         currentSnapshot.planets.forEach(p => {
             if (p.isEngulfed) return;
-            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.arc(offsetX, cy, (p.axis || p.a) * AU_TO_M * ppm, 0, Math.PI * 2);
@@ -233,18 +251,58 @@
         // Draw Stars
         currentSnapshot.stars.forEach((star, i) => {
             ctx.fillStyle = getStarColor(star.temperatureK);
-            ctx.shadowBlur = star.isDead ? 10 : 40; 
+            
+            // Actual physical radius scaled to the viewport
+            const actualRadiusPx = star.radiusKm * 1000 * ppm;
+            const visualRadius = Math.max(star.isDead ? 2 : 3, actualRadiusPx);
+            
+            // Dynamically scale shadow blur so the "glow" doesn't falsely swallow planets
+            // Cap it at 20px, or half the star's visual radius, so planets at 1.2x radius are clearly outside
+            ctx.shadowBlur = star.isDead ? 5 : Math.min(20, visualRadius * 0.2); 
             ctx.shadowColor = ctx.fillStyle;
-            const radius = 25 * (star.radiusKm / 696340);
-            ctx.beginPath(); ctx.arc(offsetX, cy, Math.max(star.isDead ? 5 : 10, radius), 0, Math.PI * 2); ctx.fill();
+            
+            ctx.beginPath(); ctx.arc(offsetX, cy, visualRadius, 0, Math.PI * 2); ctx.fill();
             ctx.shadowBlur = 0;
             
             // Reference Number (for multiple stars if they merged or just the first)
             ctx.fillStyle = 'white';
             ctx.font = 'bold 12px sans-serif';
-            ctx.fillText(i === 0 ? "S" : `S${i}`, offsetX, cy - radius - 15);
+            ctx.fillText(i === 0 ? "S" : `S${i}`, offsetX, cy - visualRadius - 15);
         });
         ctx.textAlign = 'start';
+        
+        drawScaleBar(logicalWidth, logicalHeight);
+    }
+
+    function drawScaleBar(logicalWidth: number, logicalHeight: number) {
+        if (!ctx) return;
+        const targetWidthPx = 100;
+        const mPerPx = 1 / pixelsPerMeter;
+        const targetMeters = targetWidthPx * mPerPx;
+        const targetAU = targetMeters / AU_TO_M;
+
+        // Find a nice round AU number (1, 5, 10, 50, 100...)
+        const magnitude = Math.pow(10, Math.floor(Math.log10(targetAU)));
+        const firstDigit = targetAU / magnitude;
+        let niceAU = magnitude;
+        if (firstDigit >= 5) niceAU = 5 * magnitude;
+        else if (firstDigit >= 2) niceAU = 2 * magnitude;
+
+        const barWidthPx = (niceAU * AU_TO_M) * pixelsPerMeter;
+        const bx = 30;
+        const by = logicalHeight - 30; 
+
+        ctx.strokeStyle = '#a0aec0';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(bx, by); ctx.lineTo(bx + barWidthPx, by);
+        ctx.moveTo(bx, by - 5); ctx.lineTo(bx, by + 5);
+        ctx.moveTo(bx + barWidthPx, by - 5); ctx.lineTo(bx + barWidthPx, by + 5);
+        ctx.stroke();
+
+        ctx.fillStyle = '#a0aec0';
+        ctx.font = '10px monospace';
+        ctx.fillText(`${niceAU.toLocaleString()} AU`, bx, by - 10);
     }
 
     function getStarColor(temp: number) {
@@ -311,7 +369,10 @@
 <div class="evolution-container">
     <div class="header">
         <div class="title-row">
-            <h3>Step 4: System Evolution</h3>
+            <div style="display: flex; align-items: baseline; gap: 1rem;">
+                <h3>Step 4: System Evolution</h3>
+                <span class="wip-disclaimer">(NB: Very Much W.I.P)</span>
+            </div>
             <div class="age-display">
                 <span class="value">{(currentYear / 1000000).toFixed(1)}</span>
                 <span class="unit">Million Years</span>
@@ -324,6 +385,14 @@
         {:else}
             <p class="era-label birth">Birth Phase (Accretion Snapshots)</p>
         {/if}
+
+        <div class="legend-key">
+            <div class="key-item"><div class="dot disk"></div> Disk</div>
+            <div class="key-item"><div class="dot belt"></div> Belt</div>
+            <div class="key-item"><div class="dot gas"></div> Gas</div>
+            <div class="key-item"><div class="dot planet"></div> Planet</div>
+            <div class="key-item"><div class="dot star"></div> Star</div>
+        </div>
     </div>
 
     <div class="canvas-viewport" bind:this={container}>
@@ -366,9 +435,17 @@
                     <div class="card-content">
                         <span class="name">{currentSnapshot.stars[0].category} ({currentSnapshot.stars[0].spectralClass})</span>
                         <span class="stats">
-                            {currentSnapshot.stars[0].luminositySolar.toFixed(2)} L☉ | 
+                            {#if currentSnapshot.stars[0].luminositySolar < 0.01}
+                                {currentSnapshot.stars[0].luminositySolar.toExponential(2)} L☉
+                            {:else}
+                                {currentSnapshot.stars[0].luminositySolar.toFixed(2)} L☉
+                            {/if} | 
                             {currentSnapshot.stars[0].temperatureK.toFixed(0)} K |
-                            {(currentSnapshot.stars[0].radiusKm / 696340).toFixed(2)} R☉
+                            {#if (currentSnapshot.stars[0].radiusKm / 696340) < 0.001}
+                                {(currentSnapshot.stars[0].radiusKm / 696340).toExponential(2)} R☉
+                            {:else}
+                                {(currentSnapshot.stars[0].radiusKm / 696340).toFixed(4)} R☉
+                            {/if}
                         </span>
                     </div>
                 </div>
@@ -378,50 +455,52 @@
                 <h4>Planetary Catalog</h4>
                 <div class="planet-list">
                     {#each currentSnapshot.planets as p, i}
-                        {#if !p.isEngulfed}
-                            <div class="planet-entry-container">
-                                <div class="body-card planet-entry">
-                                    <span class="ref">{i + 1}</span>
-                                    <div class="card-content full-stats">
-                                        <div class="top-summary">
-                                            <div class="name-row">
-                                                <span class="name">{p.planetType || (p.isGasGiant ? 'Gas Giant' : 'Terrestrial')}</span>
+                        <div class="planet-entry-container" style={p.isEngulfed ? 'opacity: 0.5; filter: grayscale(100%);' : ''}>
+                            <div class="body-card planet-entry">
+                                <span class="ref">{i + 1}</span>
+                                <div class="card-content full-stats">
+                                    <div class="top-summary">
+                                        <div class="name-row">
+                                            <span class="name">{p.planetType || (p.isGasGiant ? 'Gas Giant' : 'Terrestrial')}</span>
+                                            {#if p.isEngulfed}
+                                                <span class="warn-badge" style="background: #e53e3e;">Engulfed</span>
+                                            {:else}
                                                 {#if p.breathabilityCode === 1}<span class="hab-badge">Breathable</span>{/if}
                                                 {#if p.hydrosphere > 0.5}<span class="water-badge">Ocean</span>{/if}
                                                 {#if p.greenhouseEffect}<span class="warn-badge">Greenhouse</span>{/if}
-                                            </div>
-                                            <div class="main-stats-row">
-                                                <span class="stat">Dist: <b>{(p.axis || p.a).toFixed(2)}</b> AU</span>
-                                                <span class="stat">Temp: <b>{(p.surfaceTemp - 273.15).toFixed(0)}</b>°C</span>
-                                                <span class="stat">Mass: <b>{(p.earthMass || 0).toFixed(2)}</b> M⊕</span>
-                                                <span class="stat">Grav: <b>{(p.surfaceGravity || 0).toFixed(2)}</b> G</span>
-                                            </div>
+                                            {/if}
                                         </div>
-                                        
-                                        <div class="sub-details-row">
-                                            <div class="detail-group">
-                                                <span class="label">Physical:</span>
-                                                <span>Rad: <b>{(p.radius || 0).toLocaleString()}</b>km</span>
-                                                <span>Day: <b>{(p.dayLength || 0).toFixed(1)}</b>h</span>
-                                                <span>Tilt: <b>{(p.axialTilt || 0).toFixed(1)}</b>°</span>
-                                            </div>
-                                            <div class="detail-group">
-                                                <span class="label">Surface:</span>
-                                                <span>Water: <b>{(p.hydrosphere * 100).toFixed(0)}</b>%</span>
-                                                <span>Ice: <b>{(p.iceCover * 100).toFixed(0)}</b>%</span>
-                                                <span>Atmo: <b>{(p.surfacePressure || 0).toFixed(0)}</b>mb</span>
-                                            </div>
-                                            <div class="detail-group gases">
-                                                <span class="label">Gases:</span>
-                                                {#each (p.atmosphere || []).slice(0, 4) as gas}
-                                                    <span class="gas-pill" title={gas.name}>{gas.symbol}</span>
-                                                {/each}
-                                            </div>
+                                        <div class="main-stats-row">
+                                            <span class="stat">Dist: <b>{(p.axis || p.a).toFixed(2)}</b> AU</span>
+                                            <span class="stat">Temp: <b>{(p.surfaceTemp - 273.15).toFixed(0)}</b>°C</span>
+                                            <span class="stat">Mass: <b>{(p.earthMass || 0).toFixed(2)}</b> M⊕</span>
+                                            <span class="stat">Grav: <b>{(p.surfaceGravity || 0).toFixed(2)}</b> G</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="sub-details-row">
+                                        <div class="detail-group">
+                                            <span class="label">Physical:</span>
+                                            <span>Rad: <b>{(p.radius || 0).toLocaleString()}</b>km</span>
+                                            <span>Day: <b>{(p.dayLength || 0).toFixed(1)}</b>h</span>
+                                            <span>Tilt: <b>{(p.axialTilt || 0).toFixed(1)}</b>°</span>
+                                        </div>
+                                        <div class="detail-group">
+                                            <span class="label">Surface:</span>
+                                            <span>Water: <b>{(p.hydrosphere * 100).toFixed(0)}</b>%</span>
+                                            <span>Ice: <b>{(p.iceCover * 100).toFixed(0)}</b>%</span>
+                                            <span>Atmo: <b>{(p.surfacePressure || 0).toFixed(0)}</b>mb</span>
+                                        </div>
+                                        <div class="detail-group gases">
+                                            <span class="label">Gases:</span>
+                                            {#each (p.atmosphere || []).slice(0, 4) as gas}
+                                                <span class="gas-pill" title={gas.name}>{gas.symbol}</span>
+                                            {/each}
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        {/if}
+                        </div>
                     {/each}
                 </div>
             </div>
@@ -470,9 +549,9 @@
 </div>
 
 <style>
-    .evolution-container { display: flex; flex-direction: column; width: 100%; height: 100%; gap: 1rem; color: #e2e8f0; }
+    .evolution-container { display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; gap: 1rem; color: #e2e8f0; }
     
-    .header { display: flex; flex-direction: column; gap: 0.25rem; }
+    .header { display: flex; flex-direction: column; gap: 0.25rem; flex-shrink: 0; }
     .title-row { display: flex; justify-content: space-between; align-items: baseline; }
     .age-display { font-family: monospace; font-size: 1.2rem; background: #1a202c; padding: 0.25rem 0.75rem; border-radius: 4px; border: 1px solid #4a5568; }
     .age-display .unit { font-size: 0.8rem; color: #a0aec0; margin-left: 0.5rem; }
@@ -481,8 +560,18 @@
     .era-label.birth { color: #f6ad55; }
     .era-label.settlement { color: #63b3ed; }
     .era-label.stable { color: #48bb78; }
+    .wip-disclaimer { color: #f6ad55; font-size: 0.8rem; font-weight: bold; border: 1px solid #f6ad55; padding: 2px 8px; border-radius: 4px; }
 
-    .canvas-viewport { position: relative; width: 100%; height: 40vh; background: #08090d; border: 1px solid #2d3748; border-radius: 8px; overflow: hidden; }
+    .legend-key { display: flex; flex-wrap: wrap; gap: 1.2rem; margin-top: 0.75rem; padding: 0.75rem 0; border-top: 1px solid rgba(255,255,255,0.1); }
+    .key-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: #cbd5e0; font-weight: 500; }
+    .dot { width: 12px; height: 12px; border-radius: 3px; }
+    .dot.disk { background: rgba(100, 110, 130, 0.8); border: 1px solid rgba(255,255,255,0.2); }
+    .dot.belt { background: rgba(180, 110, 50, 0.9); border: 1px solid rgba(255,255,255,0.2); }
+    .dot.gas { background: rgba(80, 180, 255, 0.6); border: 1px solid rgba(255,255,255,0.2); }
+    .dot.planet { width: 8px; height: 8px; border-radius: 50%; background: #63b3ed; border: 1px solid white; }
+    .dot.star { width: 10px; height: 10px; border-radius: 50%; background: #fff2a1; box-shadow: 0 0 8px #fff2a1; }
+
+    .canvas-viewport { position: relative; width: 100%; height: 40vh; min-height: 300px; flex: 0 0 40vh; background: #08090d; border: 1px solid #2d3748; border-radius: 8px; overflow: hidden; }
     canvas { display: block; width: 100%; height: 100%; }
     
     .loader { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.8); color: #63b3ed; font-weight: bold; z-index: 10; }
@@ -501,7 +590,7 @@
     input[type="range"]::-webkit-slider-thumb {
  appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #63b3ed; cursor: pointer; border: 2px solid white; box-shadow: 0 0 10px rgba(99, 179, 237, 0.5); }
 
-    .details-list { display: flex; flex-direction: column; gap: 1.5rem; padding: 0.5rem; overflow-y: auto; flex-grow: 1; }
+    .details-list { display: flex; flex-direction: column; gap: 1.5rem; padding: 0.5rem; overflow-y: auto; flex-grow: 1; flex-shrink: 1; min-height: 0; }
     .section h4 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: #718096; margin-bottom: 0.75rem; border-bottom: 1px solid #2d3748; padding-bottom: 0.25rem; }
     
     .planet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; }

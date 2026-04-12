@@ -1,0 +1,891 @@
+{
+  "id": "seed-1770921336438",
+  "name": "e Eridani \"Four Horsemen\"",
+  "seed": "seed-1770921635537",
+  "epochT0": 1770921635537,
+  "age_Gyr": 5.197731504193507,
+  "nodes": [
+    {
+      "id": "seed-1770921635537-star-a",
+      "name": "e Eridani \"Four Horsemen\"",
+      "kind": "body",
+      "parentId": null,
+      "roleHint": "star",
+      "massKg": 1.57131e+30,
+      "radiusKm": 647596.2000000001,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 931.2,
+      "tags": [],
+      "classes": [
+        "star/G"
+      ],
+      "atmosphere": {
+        "name": "None",
+        "composition": {},
+        "pressure_bar": 0,
+        "molarMassKg": 0.028
+      },
+      "hydrosphere": {
+        "coverage": 0,
+        "composition": "water"
+      },
+      "biosphere": null,
+      "magneticField": {
+        "strengthGauss": 8.416976869106293
+      },
+      "surfaceTempK": 5778,
+      "starCategory": "main_sequence_star",
+      "temperatureK": 5368,
+      "radiationOutput": 1,
+      "image": {
+        "url": "/images/star_types/G.webp"
+      },
+      "calculatedGravity_ms2": 250.06851473355235,
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1,
+      "stellarRadiation": 0,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0.9752239339480641,
+      "photonRadiation": 0,
+      "particleRadiation": 0,
+      "surfaceRadiation": 0,
+      "isNameUserDefined": true,
+      "calculatedRotationPeriod_s": 3352320
+    },
+    {
+      "id": "id-1770921680778-g181270b6",
+      "name": "Dust Belt",
+      "kind": "body",
+      "parentId": "seed-1770921635537-star-a",
+      "tags": [],
+      "atmosphere": {
+        "name": "None",
+        "composition": {},
+        "pressure_bar": 0,
+        "molarMassKg": 0.028
+      },
+      "hydrosphere": {
+        "coverage": 0,
+        "composition": "water"
+      },
+      "biosphere": null,
+      "classes": [
+        "belt/rocky"
+      ],
+      "roleHint": "belt",
+      "radiusInnerKm": 14237994.8228235,
+      "radiusOuterKm": 16224006.08891257,
+      "orbit": {
+        "hostId": "seed-1770921635537-star-a",
+        "hostMu": 132519431925763740000,
+        "t0": 1770921635537,
+        "elements": {
+          "a_AU": 0.10181294950656031,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 308.0151252668451,
+          "Omega_deg": 318.56911674974884,
+          "M0_rad": 1.3230880242531433
+        }
+      },
+      "equilibriumTempK": 758.0644100435137,
+      "temperatureK": 758.0644100435137,
+      "stellarRadiation": 96.47037391756459,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 43411.668262904066,
+      "particleRadiation": 4823.51869587823,
+      "orbital_period_days": 13.348269718255054,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "greenhouseTempK": 0,
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1,
+      "isNameUserDefined": true,
+      "stellarRadiationMin": 96.47037391756459,
+      "stellarRadiationMax": 96.47037391756459,
+      "surfaceRadiationMin": 48235.186958782295,
+      "surfaceRadiationMax": 48235.186958782295,
+      "equilibriumTempMinK": 758.0644100435137,
+      "equilibriumTempMaxK": 758.0644100435137,
+      "internalHeatK": 0
+    },
+    {
+      "id": "id-1770922326031-nrnr9f2ay",
+      "name": "Fames (Black Horse)",
+      "kind": "body",
+      "parentId": "seed-1770921635537-star-a",
+      "tags": [
+        {
+          "key": "planet/ice-giant"
+        },
+        {
+          "key": "lifting-gas"
+        },
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "metal-embrittlement"
+        },
+        {
+          "key": "noble-gas"
+        },
+        {
+          "key": "voice-changer"
+        },
+        {
+          "key": "leak-prone"
+        },
+        {
+          "key": "haze-former"
+        },
+        {
+          "key": "habitability/none"
+        },
+        {
+          "key": "stability/very-unstable"
+        }
+      ],
+      "atmosphere": {
+        "name": "Hydrogen–Helium (Jupiter-like)",
+        "composition": {
+          "H2": 0.845771144278607,
+          "He": 0.1492537313432836,
+          "CH4": 0.0049751243781094535
+        },
+        "pressure_bar": 50005,
+        "main": "H2",
+        "molarMassKg": 0.0023681592039800996,
+        "scaleHeightKm": 139.91077849105216
+      },
+      "hydrosphere": {
+        "coverage": 0,
+        "composition": "water"
+      },
+      "biosphere": null,
+      "classes": [
+        "planet/desert"
+      ],
+      "roleHint": "planet",
+      "massKg": 2.6390268e+25,
+      "radiusKm": 12931,
+      "rotation_period_hours": 25.026863080381865,
+      "axial_tilt_deg": 29.113234533405887,
+      "magneticField": {
+        "strengthGauss": 12.423300695530191
+      },
+      "orbit": {
+        "hostId": "seed-1770921635537-star-a",
+        "hostMu": 104873943330000000000,
+        "t0": 1770921635537,
+        "elements": {
+          "a_AU": 0.509,
+          "e": 0.29,
+          "i_deg": 8.09,
+          "omega_deg": 258,
+          "Omega_deg": 9.48,
+          "M0_rad": 0
+        }
+      },
+      "equilibriumTempK": 317.8742043786758,
+      "temperatureK": 419.77185929201505,
+      "tidallyLocked": false,
+      "calculatedGravity_ms2": 10.533805639004298,
+      "calculatedRotationPeriod_s": 90096.70708937471,
+      "orbitalBoundaries": {
+        "minLeoKm": 4412.981686327607,
+        "leoMoeBoundaryKm": 6412.981686327607,
+        "meoHeoBoundaryKm": 58349.24899820043,
+        "heoUpperBoundaryKm": 1339131.449932964,
+        "geoStationaryKm": 58349.24899820043,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 876637.4980976019,
+      "propulsiveLandBudget_ms": 18905.896315868857,
+      "aerobrakeLandBudget_ms": 200,
+      "habitabilityScore": 30,
+      "stellarRadiation": 3.8597967431035083,
+      "radiationShieldingAtmo": 1,
+      "radiationShieldingMag": 0.99,
+      "photonRadiation": 0,
+      "particleRadiation": 0,
+      "surfaceRadiation": 2,
+      "color": "#81ecec",
+      "image": {
+        "url": "/images/planet_types/web20ice20giant.jpg"
+      },
+      "orbital_period_days": 149.20972103829703,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "greenhouseTempK": 69.60973532617521,
+      "isNameUserDefined": true,
+      "stellarRadiationMin": 2.3194499988603496,
+      "stellarRadiationMax": 7.656807663367405,
+      "surfaceRadiationMin": 2,
+      "surfaceRadiationMax": 2,
+      "equilibriumTempMinK": 279.8726313427417,
+      "equilibriumTempMaxK": 377.24727536957676,
+      "internalHeatK": 52,
+      "orbitalStability": "Very Unstable",
+      "orbitalStabilityDetails": "Likely <1 kyr before major orbital disruption (collision/ejection/infall risk). Drivers: Orbit overlap in pair Bellum (Red Horse)/Fames (Black Horse)."
+    },
+    {
+      "id": "id-1770923056560-pp9jhixr8",
+      "name": "Bellum (Red Horse)",
+      "kind": "body",
+      "parentId": "seed-1770921635537-star-a",
+      "tags": [
+        {
+          "key": "planet/ice-giant"
+        },
+        {
+          "key": "lifting-gas"
+        },
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "noble-gas"
+        },
+        {
+          "key": "leak-prone"
+        },
+        {
+          "key": "greenhouse"
+        },
+        {
+          "key": "habitability/none"
+        },
+        {
+          "key": "stability/very-unstable"
+        }
+      ],
+      "atmosphere": {
+        "name": "Custom Mix",
+        "composition": {
+          "H2": 0.9093733820696511,
+          "He": 0.06400000000000002,
+          "CH4": 0.026626617930348977
+        },
+        "pressure_bar": 1.1,
+        "main": "H2",
+        "molarMassKg": 0.002500772651024886,
+        "scaleHeightKm": 80.23875981838893
+      },
+      "hydrosphere": {
+        "coverage": 0,
+        "composition": "water"
+      },
+      "biosphere": null,
+      "classes": [
+        "planet/desert",
+        "planet/cloudless-gas-giant"
+      ],
+      "roleHint": "planet",
+      "massKg": 2.12370292e+26,
+      "radiusKm": 26289,
+      "rotation_period_hours": 9.05,
+      "axial_tilt_deg": 163.02,
+      "magneticField": {
+        "strengthGauss": 6.499616511856141
+      },
+      "orbit": {
+        "hostId": "seed-1770921635537-star-a",
+        "hostMu": 104873943330000000000,
+        "t0": 1770921635537,
+        "elements": {
+          "a_AU": 0.3625,
+          "e": 0.077,
+          "i_deg": 4.48,
+          "omega_deg": 252,
+          "Omega_deg": 9.15,
+          "M0_rad": -4.39822971502571
+        }
+      },
+      "equilibriumTempK": 379.4088471977245,
+      "temperatureK": 494.96640783221994,
+      "calculatedGravity_ms2": 20.50932442631932,
+      "calculatedRotationPeriod_s": 32580.000000000004,
+      "orbitalBoundaries": {
+        "minLeoKm": 1670.364302248483,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 46212.55205375678,
+        "heoUpperBoundaryKm": 1903324.377426381,
+        "geoStationaryKm": 46212.55205375678,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 28175.65308811724,
+      "propulsiveLandBudget_ms": 26799.14437931892,
+      "aerobrakeLandBudget_ms": 776.9498103804866,
+      "habitabilityScore": 20,
+      "stellarRadiation": 7.609988109393579,
+      "radiationShieldingAtmo": 0.5117861533443777,
+      "radiationShieldingMag": 0.9378518015303919,
+      "photonRadiation": 1671.8857055507638,
+      "particleRadiation": 11.54496496078551,
+      "surfaceRadiation": 1685.4306705115491,
+      "isNameUserDefined": true,
+      "color": "#81ecec",
+      "image": {
+        "url": "/images/planet_types/web20ice20giant.jpg"
+      },
+      "orbital_period_days": 89.67728703376584,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "greenhouseTempK": 115.55756063449539,
+      "object_playerhidden": false,
+      "tidallyLocked": false,
+      "albedo": 0.3,
+      "stellarRadiationMin": 6.560736139361615,
+      "stellarRadiationMax": 8.932655314461158,
+      "surfaceRadiationMin": 1453.322167573661,
+      "surfaceRadiationMax": 1978.0222630190422,
+      "equilibriumTempMinK": 365.5944566249082,
+      "equilibriumTempMaxK": 394.9177038012221,
+      "internalHeatK": 0,
+      "orbitalStability": "Very Unstable",
+      "orbitalStabilityDetails": "Likely <1 kyr before major orbital disruption (collision/ejection/infall risk). Drivers: Orbit overlap in pair Bellum (Red Horse)/Fames (Black Horse)."
+    },
+    {
+      "id": "id-1770925069943-uq6pog9hj",
+      "name": "Conquestor (White Horse)",
+      "kind": "body",
+      "parentId": "seed-1770921635537-star-a",
+      "tags": [
+        {
+          "key": "planet/ice-giant"
+        },
+        {
+          "key": "propane in atmosphere",
+          "value": ""
+        },
+        {
+          "key": "acetelyne in atmosphere",
+          "value": ""
+        },
+        {
+          "key": "noble-gas"
+        },
+        {
+          "key": "lifting-gas"
+        },
+        {
+          "key": "voice-changer"
+        },
+        {
+          "key": "leak-prone"
+        },
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "greenhouse"
+        },
+        {
+          "key": "condensible-fuel"
+        },
+        {
+          "key": "habitability/none"
+        }
+      ],
+      "atmosphere": {
+        "name": "Custom Mix",
+        "composition": {
+          "He": 0.625626925392486,
+          "CH4": 0.267,
+          "C2H6": 0.10737307460751398
+        },
+        "pressure_bar": 1.384,
+        "main": "H2",
+        "molarMassKg": 0.009995699939795363,
+        "scaleHeightKm": 59.36685374526844
+      },
+      "hydrosphere": {
+        "coverage": 0,
+        "composition": "water"
+      },
+      "biosphere": null,
+      "classes": [
+        "planet/cloudless-gas-giant",
+        "planet/mega-earth"
+      ],
+      "roleHint": "planet",
+      "massKg": 1.1116280800000002e+26,
+      "radiusKm": 24511,
+      "rotation_period_hours": 879,
+      "axial_tilt_deg": 0,
+      "magneticField": {
+        "strengthGauss": 21.389830709411626
+      },
+      "orbit": {
+        "hostId": "seed-1770921635537-star-a",
+        "hostMu": 104873943330000000000,
+        "t0": 1770921635537,
+        "elements": {
+          "a_AU": 0.127,
+          "e": 0.126,
+          "i_deg": 6.37,
+          "omega_deg": 26,
+          "Omega_deg": 12.05,
+          "M0_rad": -0.4537856055185257
+        }
+      },
+      "equilibriumTempK": 626.8015794824769,
+      "temperatureK": 881.3864466686714,
+      "calculatedGravity_ms2": 12.349323639540403,
+      "calculatedRotationPeriod_s": 3164400,
+      "orbitalBoundaries": {
+        "minLeoKm": 1249.498872259218,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 520310.94567210274,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 21833.261258006638,
+      "propulsiveLandBudget_ms": 20253.37796553757,
+      "aerobrakeLandBudget_ms": 700.5739194116277,
+      "habitabilityScore": 33.23448428275106,
+      "stellarRadiation": 62.000124000248,
+      "radiationShieldingAtmo": 0.9707194412961548,
+      "radiationShieldingMag": 0.99,
+      "photonRadiation": 816.9292216957238,
+      "particleRadiation": 0.9076991352174717,
+      "surfaceRadiation": 819.8369208309413,
+      "isNameUserDefined": true,
+      "color": "#81ecec",
+      "image": {
+        "url": "/images/planet_types/web20ammonia20clouds20gas20giant.jpg"
+      },
+      "orbital_period_days": 18.596277846643822,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "greenhouseTempK": 254.58486718619446,
+      "tidallyLocked": false,
+      "gmNotes": "Propane and Acetylene also present in atmosphere ",
+      "object_playerhidden": false,
+      "albedo": 0.36,
+      "stellarRadiationMin": 48.900778940722915,
+      "stellarRadiationMax": 81.1651681689803,
+      "surfaceRadiationMin": 647.0448788611357,
+      "surfaceRadiationMax": 1072.6409428113218,
+      "equilibriumTempMinK": 590.6917250724188,
+      "equilibriumTempMaxK": 670.4623051036544,
+      "internalHeatK": 0
+    },
+    {
+      "id": "id-1770925738754-2t8crgr3t",
+      "name": "Mors (Pale Horse)",
+      "kind": "body",
+      "parentId": "seed-1770921635537-star-a",
+      "tags": [
+        {
+          "key": "planet/ice-giant"
+        },
+        {
+          "key": "lifting-gas"
+        },
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "metal-embrittlement"
+        },
+        {
+          "key": "noble-gas"
+        },
+        {
+          "key": "voice-changer"
+        },
+        {
+          "key": "leak-prone"
+        },
+        {
+          "key": "greenhouse"
+        },
+        {
+          "key": "haze-former"
+        },
+        {
+          "key": "habitability/none"
+        }
+      ],
+      "atmosphere": {
+        "name": "Custom Mix",
+        "composition": {
+          "H2": 0.8854013074868768,
+          "He": 0.06899999999999999,
+          "CH4": 0.03261741868669524,
+          "C8H18": 0.004239352455420121,
+          "C3H8": 0.004371490181889701,
+          "C2H2": 0.004370431189117954
+        },
+        "pressure_bar": 217.21,
+        "main": "H2",
+        "molarMassKg": 0.0028819960707890026,
+        "scaleHeightKm": 80.24049622373485
+      },
+      "hydrosphere": {
+        "coverage": 0,
+        "composition": "water"
+      },
+      "biosphere": null,
+      "classes": [
+        "planet/ice-giant",
+        "planet/mega-earth"
+      ],
+      "roleHint": "planet",
+      "massKg": 2.8825052400000002e+26,
+      "radiusKm": 27842,
+      "rotation_period_hours": 7.67,
+      "axial_tilt_deg": 177.58,
+      "magneticField": {
+        "strengthGauss": 6.0423500405141946
+      },
+      "orbit": {
+        "hostId": "seed-1770921635537-star-a",
+        "hostMu": 104873943330000000000,
+        "t0": 1770921635537,
+        "elements": {
+          "a_AU": 1.3541,
+          "e": 0.45,
+          "i_deg": 6.93,
+          "omega_deg": 0,
+          "Omega_deg": 10.495,
+          "M0_rad": 0
+        }
+      },
+      "equilibriumTempK": 196.30713740502884,
+      "temperatureK": 690.284167923102,
+      "calculatedGravity_ms2": 24.81846806187084,
+      "calculatedRotationPeriod_s": 27612,
+      "orbitalBoundaries": {
+        "minLeoKm": 2094.4924971188793,
+        "leoMoeBoundaryKm": 4094.4924971188793,
+        "meoHeoBoundaryKm": 44048.35153715439,
+        "heoUpperBoundaryKm": 7952811.873717358,
+        "geoStationaryKm": 44048.35153715439,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 69187.63931235802,
+      "propulsiveLandBudget_ms": 36372.72748446554,
+      "aerobrakeLandBudget_ms": 200,
+      "habitabilityScore": 15,
+      "stellarRadiation": 0.5453791413344645,
+      "radiationShieldingAtmo": 1,
+      "radiationShieldingMag": 0.9273080125677865,
+      "photonRadiation": 1.0004804462043019e-69,
+      "particleRadiation": 8.080768002406497e-72,
+      "surfaceRadiation": 2,
+      "isNameUserDefined": true,
+      "color": "#81ecec",
+      "image": {
+        "url": "/images/planet_types/web20cloudless20gas20giant.jpg"
+      },
+      "orbital_period_days": 647.4355644227368,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "greenhouseTempK": 493.31434991542204,
+      "tidallyLocked": false,
+      "albedo": 0.3,
+      "stellarRadiationMin": 0.25939554879165966,
+      "stellarRadiationMax": 1.802906252345337,
+      "surfaceRadiationMin": 2,
+      "surfaceRadiationMax": 2,
+      "equilibriumTempMinK": 163.02420424514688,
+      "equilibriumTempMaxK": 264.7004900780464,
+      "internalHeatK": 24
+    },
+    {
+      "id": "id-1770927609358-cxuv2x1w8",
+      "name": "Outer Belt",
+      "kind": "body",
+      "parentId": "seed-1770921635537-star-a",
+      "tags": [],
+      "atmosphere": {
+        "name": "None",
+        "composition": {},
+        "pressure_bar": 0,
+        "molarMassKg": 0.028
+      },
+      "hydrosphere": {
+        "coverage": 0,
+        "composition": "water"
+      },
+      "biosphere": null,
+      "classes": [
+        "belt/rocky"
+      ],
+      "roleHint": "belt",
+      "radiusInnerKm": 3291153155.3999996,
+      "radiusOuterKm": 4039142508.8999996,
+      "orbit": {
+        "hostId": "seed-1770921635537-star-a",
+        "hostMu": 104873943330000000000,
+        "t0": 2421260918992.9946,
+        "elements": {
+          "a_AU": 24.5,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 126.79759493232234,
+          "M0_rad": 0.9045229692883264
+        }
+      },
+      "equilibriumTempK": 48.86800110412392,
+      "temperatureK": 48.86800110412392,
+      "stellarRadiation": 0.001665972511453561,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 0.7496876301541024,
+      "particleRadiation": 0.08329862557267806,
+      "isNameUserDefined": true,
+      "orbital_period_days": 49827.55434169849,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "greenhouseTempK": 0,
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1,
+      "stellarRadiationMin": 0.001665972511453561,
+      "stellarRadiationMax": 0.001665972511453561,
+      "surfaceRadiationMin": 0.8329862557267805,
+      "surfaceRadiationMax": 0.8329862557267805,
+      "equilibriumTempMinK": 48.86800110412392,
+      "equilibriumTempMaxK": 48.86800110412392,
+      "internalHeatK": 0
+    },
+    {
+      "id": "id-1770930730829-3fydju3m2",
+      "name": "Chazon",
+      "kind": "body",
+      "parentId": "id-1770925738754-2t8crgr3t",
+      "tags": [
+        {
+          "key": "planet/terrestrial"
+        },
+        {
+          "key": "inert"
+        },
+        {
+          "key": "buffer-gas"
+        },
+        {
+          "key": "oxidizer"
+        },
+        {
+          "key": "breathable-human"
+        },
+        {
+          "key": "cloud-former"
+        },
+        {
+          "key": "greenhouse"
+        },
+        {
+          "key": "noble-gas"
+        },
+        {
+          "key": "habitability/alien"
+        }
+      ],
+      "atmosphere": {
+        "name": "Custom Mix",
+        "composition": {
+          "N2": 0.6653473197988908,
+          "O2": 0.2695940636482659,
+          "H2O": 0.05400000000000002,
+          "Ar": 0.007037387168673775,
+          "Kr": 0.004021229384169544
+        },
+        "pressure_bar": 0.6,
+        "main": "N2",
+        "molarMassKg": 0.028848013746130646,
+        "scaleHeightKm": 11.063647925622467
+      },
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.38
+      },
+      "biosphere": null,
+      "classes": [
+        "planet/sub-earth",
+        "planet/terrestrial"
+      ],
+      "roleHint": "moon",
+      "tidallyLocked": false,
+      "axial_tilt_deg": 26.43,
+      "rotation_period_hours": 383.26,
+      "massKg": 9.686584000000001e+23,
+      "radiusKm": 3390,
+      "orbit": {
+        "hostId": "id-1770925738754-2t8crgr3t",
+        "hostMu": 19238704723332000,
+        "t0": 2613935365984.995,
+        "elements": {
+          "a_AU": 0.00863,
+          "e": 0.029,
+          "i_deg": 1.38,
+          "omega_deg": 173,
+          "Omega_deg": 44.02,
+          "M0_rad": 3.3510321638291134
+        }
+      },
+      "equilibriumTempK": 201.69206550478296,
+      "temperatureK": 215.951980398371,
+      "calculatedGravity_ms2": 5.625705275032414,
+      "orbitalBoundaries": {
+        "minLeoKm": 223.6109502087662,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 130689.57891034006,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 5978.937998362006,
+      "propulsiveLandBudget_ms": 5022.109498698823,
+      "aerobrakeLandBudget_ms": 940.8182206817179,
+      "habitabilityScore": 60.484884716848306,
+      "stellarRadiation": 0.5384933770771442,
+      "radiationShieldingAtmo": 0.9880582812692089,
+      "radiationShieldingMag": 0.4520551193344342,
+      "photonRadiation": 2.893741401352091,
+      "particleRadiation": 0.17617897631565316,
+      "surfaceRadiation": 5.069920377667744,
+      "isNameUserDefined": true,
+      "color": "#e67e22",
+      "image": {
+        "url": "/images/planet_types/web20sub-earth.jpg"
+      },
+      "orbital_period_days": 24.321061334075527,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "greenhouseTempK": 14.25991489358806,
+      "albedo": 0.21,
+      "magneticField": {
+        "strengthGauss": 0.21707292694621347
+      },
+      "calculatedRotationPeriod_s": 1379736,
+      "stellarRadiationMin": 0.2570649830804966,
+      "stellarRadiationMax": 1.7630094891143409,
+      "surfaceRadiationMin": 3.4655129729303513,
+      "surfaceRadiationMax": 12.050817683275522,
+      "equilibriumTempMinK": 167.65034537566348,
+      "equilibriumTempMaxK": 271.3047418732274,
+      "internalHeatK": 0
+    },
+    {
+      "name": "Angels Crest",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Transport",
+      "description": "A retrofitted colony ship hauling ice from Saturn to Ceres. Old and creaky.",
+      "gmNotes": "Remember the Cant. Low thrust, massive mass.",
+      "IsTemplate": false,
+      "icon_type": "diamond",
+      "icon_color": "#ffff00",
+      "crew": {
+        "current": 100,
+        "max": 100
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          500,
+          300,
+          300
+        ],
+        "massKg": 8632000,
+        "cargoCapacity_tonnes": 1500,
+        "rotation_period_hours": 30,
+        "spinRadiusM": 224,
+        "can_aerobrake": false,
+        "has_landing_gear": false,
+        "thermal_protection_type": "none",
+        "aerobrake_limit_kms": 3
+      },
+      "engines": [
+        {
+          "engine_id": "engine-custom-1772434704118",
+          "quantity": 2
+        }
+      ],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-metallic-hydrogen",
+          "capacity_units": 2700,
+          "current_units": 2700
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Inertial Confinement Fusion ",
+            "output_MW": 51100
+          }
+        ],
+        "modules": [
+          "Medical Bay"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 50000,
+          "consumables_current_person_days": 50000
+        }
+      },
+      "isNameUserDefined": true,
+      "cargoDescription": "",
+      "current_cargo_tonnes": 1500,
+      "sensors": [
+        {
+          "definition_id": "sensor-gravimetric",
+          "name": "Gravimetric Grid",
+          "range_km": 25000,
+          "description": "Range: 25,000 km. Targets: Construct (Stealth). Reveals: Construct Basics"
+        },
+        {
+          "definition_id": "sensor-active-search-radar",
+          "name": "Active Search Radar",
+          "range_km": 500000,
+          "description": "Range: 500,000 km. Targets: Construct (> 10,000,000kg). Reveals: Construct Basics, Hard Lock, Trajectory, Hull Integrity"
+        },
+        {
+          "definition_id": "sensor-passive-rf",
+          "name": "Passive RF Antenna",
+          "range_km": 14959787070,
+          "description": "Range: 100 AU. Targets: Construct (Cooperative). Reveals: Responder Ping, Transponder ID"
+        },
+        {
+          "definition_id": "sensor-deep-field-telescope-15au",
+          "name": "Deep-Field Telescope (15 AU)",
+          "range_km": 2243968060,
+          "description": "Range: 15 AU. Targets: Terrestrial Planet, Belts. Reveals: Planetary Basics"
+        }
+      ],
+      "id": "id-1772436342525-1ufbvjtji",
+      "parentId": "id-1770925738754-2t8crgr3t",
+      "ui_parentId": null,
+      "orbit": {
+        "hostId": "id-1770925738754-2t8crgr3t",
+        "hostMu": 19238704723332000,
+        "t0": 435084632976661500000,
+        "elements": {
+          "a_AU": 0.029597669548477923,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 2.9044184104139372
+        }
+      },
+      "placement": "High Orbit"
+    }
+  ],
+  "rulePackId": "starter-sf-pack",
+  "rulePackVersion": "0.1.5",
+  "tags": [],
+  "toytownFactor": 0,
+  "visualScalingMultiplier": 0.5,
+  "isManuallyEdited": true
+}

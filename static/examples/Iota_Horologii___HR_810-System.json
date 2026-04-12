@@ -1,0 +1,277 @@
+{
+  "id": "seed-1771085712873",
+  "name": "Iota Horologii / HR 810",
+  "seed": "seed-1771085836100",
+  "epochT0": 1771085836100,
+  "age_Gyr": 0.43694910255726427,
+  "nodes": [
+    {
+      "id": "seed-1771085836100-star-a",
+      "name": "Iota Horologii / HR 810",
+      "kind": "body",
+      "parentId": null,
+      "roleHint": "star",
+      "massKg": 2.66526e+30,
+      "radiusKm": 786864.2,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 331.896,
+      "tags": [],
+      "classes": [
+        "star/F"
+      ],
+      "atmosphere": {
+        "name": "None",
+        "composition": {},
+        "pressure_bar": 0,
+        "molarMassKg": 0.028
+      },
+      "hydrosphere": {
+        "coverage": 0,
+        "composition": "water"
+      },
+      "biosphere": null,
+      "magneticField": {
+        "strengthGauss": 29.3
+      },
+      "surfaceTempK": 5778,
+      "starCategory": "main_sequence_star",
+      "temperatureK": 6167,
+      "radiationOutput": 2.39,
+      "image": {
+        "url": "/images/star_types/F.webp"
+      },
+      "calculatedGravity_ms2": 287.3066854423801,
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1,
+      "stellarRadiation": 0,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0.8265630055635476,
+      "photonRadiation": 0,
+      "particleRadiation": 0,
+      "surfaceRadiation": 0,
+      "isNameUserDefined": true,
+      "calculatedRotationPeriod_s": 1194825.6
+    },
+    {
+      "id": "id-1771086014491-1x97wh5mg",
+      "name": "Iota Horologii / HR 810 b",
+      "kind": "body",
+      "parentId": "seed-1771085836100-star-a",
+      "tags": [
+        {
+          "key": "planet/gas-giant"
+        },
+        {
+          "key": "lifting-gas"
+        },
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "noble-gas"
+        },
+        {
+          "key": "voice-changer"
+        },
+        {
+          "key": "leak-prone"
+        },
+        {
+          "key": "habitability/none"
+        }
+      ],
+      "atmosphere": {
+        "name": "Custom Mix",
+        "composition": {
+          "H2": 0.933036696330367,
+          "He": 0.065,
+          "CH4": 0.001963303669633037
+        },
+        "pressure_bar": 8.61,
+        "molarMassKg": 0.0021574862513748625,
+        "scaleHeightKm": 13.50195599436892
+      },
+      "hydrosphere": {
+        "coverage": 0,
+        "composition": "water"
+      },
+      "biosphere": null,
+      "classes": [
+        "planet/sub-brown-dwarf",
+        "planet/desert"
+      ],
+      "roleHint": "planet",
+      "massKg": 1.1767826e+28,
+      "radiusKm": 77840,
+      "rotation_period_hours": 8.99,
+      "axial_tilt_deg": 55,
+      "magneticField": {
+        "strengthGauss": 5.225071997548119
+      },
+      "orbit": {
+        "hostId": "seed-1771085836100-star-a",
+        "hostMu": 177887448180000000000,
+        "t0": 1771085836100,
+        "elements": {
+          "a_AU": 0.91,
+          "e": 0.18,
+          "i_deg": 87,
+          "omega_deg": 79,
+          "Omega_deg": 3,
+          "M0_rad": 5.3930673886624785
+        }
+      },
+      "equilibriumTempK": 303.2494010317831,
+      "temperatureK": 454.15801614076224,
+      "tidallyLocked": false,
+      "calculatedGravity_ms2": 129.62724990434168,
+      "calculatedRotationPeriod_s": 32364,
+      "orbitalBoundaries": {
+        "minLeoKm": 308.85622428791663,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 197343.38173099305,
+        "heoUpperBoundaryKm": 15407185.981821602,
+        "geoStationaryKm": 197343.38173099305,
+        "isGeoFallback": false
+      },
+      "loDeltaVBudget_ms": 129640.4152254418,
+      "propulsiveLandBudget_ms": 124909.49915792528,
+      "aerobrakeLandBudget_ms": 213.50088554180226,
+      "habitabilityScore": 7.941355424313437,
+      "stellarRadiation": 2.886124864146842,
+      "radiationShieldingAtmo": 0.9905419892738604,
+      "radiationShieldingMag": 0.9063075529583343,
+      "photonRadiation": 12.28364996493563,
+      "particleRadiation": 0.12787613597978778,
+      "surfaceRadiation": 14.411526100915417,
+      "orbital_period_days": 273.86950690104123,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "greenhouseTempK": 150.90861510897915,
+      "color": "#e74c3c",
+      "image": {
+        "url": "/images/planet_types/web20gas20giant.jpg"
+      },
+      "albedo": 0.3,
+      "isNameUserDefined": true,
+      "stellarRadiationMin": 2.0727699397779675,
+      "stellarRadiationMax": 4.29227374203873,
+      "surfaceRadiationMin": 10.913764795256691,
+      "surfaceRadiationMax": 20.458545658708232,
+      "equilibriumTempMinK": 279.1637014827292,
+      "equilibriumTempMaxK": 334.8829413722296,
+      "internalHeatK": 0
+    },
+    {
+      "name": "Angels Crest",
+      "kind": "construct",
+      "roleHint": "ship",
+      "class": "Transport",
+      "description": "A retrofitted colony ship hauling ice from Saturn to Ceres. Old and creaky.",
+      "gmNotes": "Remember the Cant. Low thrust, massive mass.",
+      "IsTemplate": false,
+      "icon_type": "diamond",
+      "icon_color": "#ffff00",
+      "crew": {
+        "current": 100,
+        "max": 100
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          500,
+          300,
+          300
+        ],
+        "massKg": 8632000,
+        "cargoCapacity_tonnes": 1500,
+        "rotation_period_hours": 30,
+        "spinRadiusM": 224,
+        "can_aerobrake": false,
+        "has_landing_gear": false,
+        "thermal_protection_type": "none",
+        "aerobrake_limit_kms": 3
+      },
+      "engines": [
+        {
+          "engine_id": "engine-custom-1772434704118",
+          "quantity": 2
+        }
+      ],
+      "fuel_tanks": [
+        {
+          "fuel_type_id": "fuel-metallic-hydrogen",
+          "capacity_units": 2700,
+          "current_units": 2700
+        }
+      ],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Inertial Confinement Fusion ",
+            "output_MW": 51100
+          }
+        ],
+        "modules": [
+          "Medical Bay"
+        ],
+        "life_support": {
+          "consumables_max_person_days": 50000,
+          "consumables_current_person_days": 50000
+        }
+      },
+      "isNameUserDefined": true,
+      "cargoDescription": "",
+      "current_cargo_tonnes": 1500,
+      "sensors": [
+        {
+          "definition_id": "sensor-gravimetric",
+          "name": "Gravimetric Grid",
+          "range_km": 25000,
+          "description": "Range: 25,000 km. Targets: Construct (Stealth). Reveals: Construct Basics"
+        },
+        {
+          "definition_id": "sensor-active-search-radar",
+          "name": "Active Search Radar",
+          "range_km": 500000,
+          "description": "Range: 500,000 km. Targets: Construct (> 10,000,000kg). Reveals: Construct Basics, Hard Lock, Trajectory, Hull Integrity"
+        },
+        {
+          "definition_id": "sensor-passive-rf",
+          "name": "Passive RF Antenna",
+          "range_km": 14959787070,
+          "description": "Range: 100 AU. Targets: Construct (Cooperative). Reveals: Responder Ping, Transponder ID"
+        },
+        {
+          "definition_id": "sensor-deep-field-telescope-15au",
+          "name": "Deep-Field Telescope (15 AU)",
+          "range_km": 2243968060,
+          "description": "Range: 15 AU. Targets: Terrestrial Planet, Belts. Reveals: Planetary Basics"
+        }
+      ],
+      "id": "id-1772437133663-lu06nkr4p",
+      "parentId": "id-1771086014491-1x97wh5mg",
+      "ui_parentId": null,
+      "orbit": {
+        "hostId": "id-1771086014491-1x97wh5mg",
+        "hostMu": 785420010718000000,
+        "t0": 435084632977781400000,
+        "elements": {
+          "a_AU": 0.08489621341246559,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": -1.7030471938604042
+        }
+      },
+      "placement": "High Orbit"
+    }
+  ],
+  "rulePackId": "starter-sf-pack",
+  "rulePackVersion": "0.1.5",
+  "tags": [],
+  "toytownFactor": 0,
+  "visualScalingMultiplier": 0.5,
+  "isManuallyEdited": true
+}

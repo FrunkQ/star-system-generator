@@ -17,6 +17,45 @@ export interface StarSeed {
     isMerged?: boolean;
 }
 
+export function getStarLifespanGyr(massKg: number): number {
+    const mSolar = massKg / SOLAR_MASS_KG;
+    return 10 / Math.pow(mSolar, 2.5);
+}
+
+export function ageStar(star: StarSeed, ageYears: number): StarSeed & { isDead?: boolean } {
+    const ageGyr = ageYears / 1e9;
+    const mSolar = star.massKg / SOLAR_MASS_KG;
+    const lifespanGyr = getStarLifespanGyr(star.massKg);
+    
+    let agedLum = star.luminositySolar;
+    let agedTemp = star.temperatureK;
+    let isDead = false;
+
+    if (ageGyr > lifespanGyr) {
+        const deathProgress = Math.min(1.0, (ageGyr - lifespanGyr) / (lifespanGyr * 0.2));
+        if (deathProgress < 0.9) {
+            // Red Giant Phase: Massive expansion, luminosity spike
+            agedLum = star.luminositySolar * (1 + deathProgress * 500); 
+            agedTemp = star.temperatureK * (0.8 - deathProgress * 0.4);
+        } else {
+            // Remnant Phase: White Dwarf / Neutron Star / BH
+            isDead = true;
+            if (mSolar > 8) {
+                agedLum = 1e-6; agedTemp = 100000; 
+            } else {
+                agedLum = 1e-3; agedTemp = 25000; 
+            }
+        }
+    } else {
+        // Main Sequence: Gradual brightening
+        const msProgress = ageGyr / lifespanGyr;
+        agedLum = star.luminositySolar * (1 + msProgress * 0.8);
+        agedTemp = star.temperatureK * (1 + msProgress * 0.05);
+    }
+
+    const props = deriveStarFromHR(Math.max(2000, agedTemp), agedLum, isDead, star.massKg);
+    return { ...star, ...props, isDead };
+}
 export const SOLAR_TEMPERATURE_K = 5778;
 const G = 6.67430e-11;
 const SOLAR_LUM_WATT = 3.828e26;
@@ -37,8 +76,8 @@ export function classifyStar(params: {
     const logT = Math.log10(tempK);
 
     if (isRemnant) {
-        if (mSolar > 3.0) return { category: 'Black Hole', lumClass: 'X' };
-        if (mSolar > 1.44) return { category: 'Neutron Star', lumClass: 'X' };
+        if (mSolar > 25.0) return { category: 'Black Hole', lumClass: 'X' };
+        if (mSolar > 8.0) return { category: 'Neutron Star', lumClass: 'X' };
         if (tempK < 1000) return { category: 'Black Dwarf', lumClass: 'VII' };
         return { category: 'White Dwarf', lumClass: 'VII' };
     }
@@ -69,15 +108,40 @@ export function classifyStar(params: {
     return { category: 'Invalid / Exotic Unknown', lumClass: '?' };
 }
 
-export function deriveStarFromHR(temperatureK: number, luminositySolar: number): StarSeed {
-    let massSolar = Math.pow(luminositySolar, 0.28);
-    const { category, lumClass } = classifyStar({ tempK: temperatureK, lumSolar: luminositySolar, massKg: massSolar * SOLAR_MASS_KG, ageGyr: 0 });
-    if (category === 'White Dwarf') massSolar = 0.6;
-    const radiusSolar = Math.sqrt(luminositySolar) / Math.pow(temperatureK / SOLAR_TEMPERATURE_K, 2);
+export function deriveStarFromHR(temperatureK: number, luminositySolar: number, isRemnant: boolean = false, progenitorMassKg?: number): StarSeed {
+    const progenitorSolar = (progenitorMassKg ?? (Math.pow(luminositySolar, 0.28) * SOLAR_MASS_KG)) / SOLAR_MASS_KG;
+    
+    const { category, lumClass } = classifyStar({ 
+        tempK: temperatureK, 
+        lumSolar: luminositySolar, 
+        massKg: progenitorSolar * SOLAR_MASS_KG, 
+        ageGyr: 0,
+        isRemnant
+    });
+    
+    let finalMassSolar = Math.pow(luminositySolar, 0.28);
+    let radiusKm: number;
+
+    if (category === 'White Dwarf') {
+        // Linear Initial-to-Final Mass Relation (IFMR)
+        finalMassSolar = 0.45 + 0.1 * progenitorSolar;
+        radiusKm = 6371 * Math.pow(0.6 / finalMassSolar, 1/3); // Mass-radius relation for WD
+    } else if (category === 'Neutron Star') {
+        finalMassSolar = 1.4 + (progenitorSolar - 8) * 0.05; // Heuristic scaling
+        radiusKm = 12; 
+    } else if (category === 'Black Hole') {
+        finalMassSolar = progenitorSolar * 0.35; // Significant mass loss in SN
+        radiusKm = finalMassSolar * 2.953; // Schwarzschild radius
+    } else {
+        const radiusSolar = Math.sqrt(luminositySolar) / Math.pow(temperatureK / SOLAR_TEMPERATURE_K, 2);
+        radiusKm = radiusSolar * SOLAR_RADIUS_KM;
+        finalMassSolar = progenitorSolar;
+    }
+
     return {
         id: `star-${Math.random().toString(36).substr(2, 9)}`,
         temperatureK, luminositySolar,
-        massKg: massSolar * SOLAR_MASS_KG, radiusKm: radiusSolar * SOLAR_RADIUS_KM,
+        massKg: finalMassSolar * SOLAR_MASS_KG, radiusKm,
         spectralClass: determineSpectralClass(temperatureK), category, luminosityClass: lumClass,
         isRemnant: category.includes('Dwarf') || category.includes('Hole') || category.includes('Neutron'),
         pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 }

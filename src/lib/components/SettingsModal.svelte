@@ -23,6 +23,20 @@
   let epochYear = 1;
   let currentDisplayLabel = '';
   let epochFieldsDirty = false;
+  let showAlphaDisclaimer = false;
+
+  $: if (generationEngine === 'evolutionary' && !showAlphaDisclaimer && starmap.generationEngine !== 'evolutionary') {
+    showAlphaDisclaimer = true;
+  }
+
+  function cancelAlpha() {
+    generationEngine = starmap.generationEngine ?? 'standard';
+    showAlphaDisclaimer = false;
+  }
+
+  function proceedAlpha() {
+    showAlphaDisclaimer = false;
+  }
 
   $: if (showModal) {
     const normalized = ensureTemporalState(starmap);
@@ -184,12 +198,32 @@
       <button on:click={handleSave}>Save</button>
       <button on:click={handleClose}>Close</button>
     </div>
-  </div>
-</div>
-{/if}
+    </div>
 
-<style>
-  .modal-backdrop {
+    {#if showAlphaDisclaimer}
+    <div class="alpha-disclaimer-overlay">
+      <div class="alpha-modal">
+        <h2>DANGER --- DANGER</h2>
+        <h3>You are entering the Alphas Zone</h3>
+
+        <p>Over the next few months, I want to mess around with Generation V2 functionality.</p>
+        <p>You are very welcome to jump in, have a play, and share feedback on the Discord forum.</p>
+        <p><strong>Just bear in mind: this is not complete.</strong> For example, it does not generate full star systems yet.</p>
+        <p>Right now, it is basically a proof of concept — a place to try out a bunch of ideas, see what works, and figure out what people actually like.</p>
+        <p>The goal is to move away from the current simple procedural generation and head more toward physical simulation.</p>
+        <p>Have a poke around, break things, see what you find, and let me know what feels good, what feels weird, and what feels rubbish.</p>
+
+        <div class="alpha-buttons">
+          <button class="cancel-alpha" on:click={cancelAlpha}>Get me out of here...</button>
+          <button class="proceed-alpha" on:click={proceedAlpha}>Lemme see...</button>
+        </div>
+      </div>
+    </div>
+    {/if}
+    </div>
+
+    <style>
+    .modal-backdrop {
     position: fixed;
     top: 0;
     left: 0;
@@ -200,6 +234,89 @@
     justify-content: center;
     align-items: center;
     z-index: 1000;
+    }
+
+    /* Alpha Disclaimer Styles */
+    .alpha-disclaimer-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1100;
+    backdrop-filter: blur(4px);
+    }
+
+    .alpha-modal {
+    background: #1a202c;
+    border: 2px solid #e53e3e;
+    padding: 2.5rem;
+    border-radius: 12px;
+    max-width: 600px;
+    width: 90%;
+    box-shadow: 0 0 50px rgba(229, 62, 62, 0.3);
+    text-align: left;
+    }
+
+    .alpha-modal h2 {
+    color: #e53e3e;
+    margin-top: 0;
+    text-align: center;
+    letter-spacing: 2px;
+    font-family: monospace;
+    }
+
+    .alpha-modal h3 {
+    color: #f6ad55;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    }
+
+    .alpha-modal p {
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    color: #e2e8f0;
+    }
+
+    .alpha-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    }
+
+    .alpha-buttons button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    }
+
+    .cancel-alpha {
+    background: #4a5568;
+    color: white;
+    }
+
+    .cancel-alpha:hover {
+    background: #2d3748 !important;
+    }
+
+    .proceed-alpha {
+    background: #e53e3e;
+    color: white;
+    }
+
+    .proceed-alpha:hover {
+    background: #c53030 !important;
+    box-shadow: 0 0 15px rgba(229, 62, 62, 0.5);
+    }
+
   }
   .modal {
     background: #222;

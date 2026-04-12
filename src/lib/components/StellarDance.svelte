@@ -139,12 +139,17 @@
             const activeBound = simStars.filter(s => !s.isMerged && !s.isEjected && !s.isUnbound);
             
             // Stabilize immediately if 1 or 0 bound stars remain (ignore escaping stars)
-            if (activeBound.length <= 1 && systemTimeYears > 100) { 
-                isRunning = false; 
-                addEvent("System Stabilized");
-                generateOrbitProfiles(); 
-                updateCamera(true); 
-                return; 
+            if (activeBound.length <= 1) { 
+                // Double check if there are any unbound stars that are still technically on screen
+                // If they are off screen, we can end immediately. If on screen, wait.
+                const visibleUnbound = simStars.filter(s => s.isUnbound && !s.isEjected);
+                if (visibleUnbound.length === 0) {
+                    isRunning = false; 
+                    addEvent("System Stabilized");
+                    generateOrbitProfiles(); 
+                    updateCamera(true); 
+                    return; 
+                }
             }
 
             // Simple direct speed control

@@ -1,0 +1,289 @@
+{
+  "id": "seed-1771197038249",
+  "name": "GJ 86",
+  "seed": "seed-1771179697603",
+  "epochT0": 1771179697603,
+  "age_Gyr": 5.571462436346337,
+  "nodes": [
+    {
+      "id": "seed-1771179697603-barycenter-0",
+      "parentId": null,
+      "name": "GJ 86",
+      "kind": "barycenter",
+      "memberIds": [
+        "seed-1771179697603-star-a",
+        "seed-1771179697603-star-b"
+      ],
+      "tags": [],
+      "effectiveMassKg": 2.7299025e+30,
+      "isNameUserDefined": true
+    },
+    {
+      "id": "seed-1771179697603-star-a",
+      "name": "GJ 86  A",
+      "kind": "body",
+      "parentId": "seed-1771179697603-barycenter-0",
+      "roleHint": "star",
+      "massKg": 1.6508699999999997e+30,
+      "radiusKm": 550108.6,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 720,
+      "tags": [],
+      "classes": [
+        "star/K"
+      ],
+      "atmosphere": {
+        "name": "None",
+        "composition": {},
+        "pressure_bar": 0,
+        "molarMassKg": 0.028
+      },
+      "hydrosphere": {
+        "coverage": 0,
+        "composition": "water"
+      },
+      "biosphere": null,
+      "magneticField": {
+        "strengthGauss": 3.84
+      },
+      "orbit": {
+        "hostId": "seed-1771179697603-barycenter-0",
+        "hostMu": 182201882557499970000,
+        "t0": 1771179697603,
+        "n_rad_per_s": 2.0219284952729476e-9,
+        "elements": {
+          "a_AU": 9.367759562841531,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.141592653589793
+        }
+      },
+      "surfaceTempK": 5778,
+      "starCategory": "main_sequence_star",
+      "temperatureK": 5182,
+      "radiationOutput": 0.438,
+      "image": {
+        "url": "/images/star_types/K.ebp.webp"
+      },
+      "calculatedGravity_ms2": 364.1008814033596,
+      "orbital_period_days": 8937.81615179029,
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1,
+      "stellarRadiation": 5.230282090308311e-7,
+      "stellarRadiationMin": 5.230282090308311e-7,
+      "stellarRadiationMax": 5.230282090308311e-7,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0.99,
+      "photonRadiation": 0.000235362694063874,
+      "particleRadiation": 2.6151410451541576e-7,
+      "surfaceRadiation": 0.0002356242081683894,
+      "surfaceRadiationMin": 0.0002356242081683894,
+      "surfaceRadiationMax": 0.0002356242081683894,
+      "calculatedRotationPeriod_s": 2592000,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 26016918.103291936,
+        "heoUpperBoundaryKm": 821142364.9074472,
+        "geoStationaryKm": 26016918.103291936,
+        "isGeoFallback": false
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "seed-1771179697603-star-b",
+      "name": "GJ 86  B",
+      "kind": "body",
+      "parentId": "seed-1771179697603-barycenter-0",
+      "roleHint": "star",
+      "massKg": 1.0790324999999999e+30,
+      "radiusKm": 9748.76,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 3408.5,
+      "tags": [],
+      "classes": [
+        "star/WD"
+      ],
+      "atmosphere": {
+        "name": "None",
+        "composition": {},
+        "pressure_bar": 0,
+        "molarMassKg": 0.028
+      },
+      "hydrosphere": {
+        "coverage": 0,
+        "composition": "water"
+      },
+      "biosphere": null,
+      "magneticField": {
+        "strengthGauss": 189000
+      },
+      "orbit": {
+        "hostId": "seed-1771179697603-barycenter-0",
+        "hostMu": 182201882557499970000,
+        "t0": 1771179697603,
+        "n_rad_per_s": 2.0219284952729476e-9,
+        "elements": {
+          "a_AU": 14.332240437158472,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "surfaceTempK": 5778,
+      "starCategory": "main_sequence_star",
+      "temperatureK": 5250,
+      "radiationOutput": 15.7,
+      "image": {
+        "url": "/images/star_types/WD.webp"
+      },
+      "calculatedGravity_ms2": 757777.1259250151,
+      "orbital_period_days": 16914.10186868405,
+      "loDeltaVBudget_ms": -1,
+      "propulsiveLandBudget_ms": -1,
+      "aerobrakeLandBudget_ms": -1,
+      "stellarRadiation": 2.3996331822142045e-7,
+      "stellarRadiationMin": 2.3996331822142045e-7,
+      "stellarRadiationMax": 2.3996331822142045e-7,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0.9142346324823607,
+      "photonRadiation": 0.00010798349319963921,
+      "particleRadiation": 0.0000010290271089006178,
+      "surfaceRadiation": 0.00010901252030853982,
+      "surfaceRadiationMin": 0.00010901252030853982,
+      "surfaceRadiationMax": 0.00010901252030853982,
+      "isNameUserDefined": true,
+      "calculatedRotationPeriod_s": 12270600,
+      "orbitalBoundaries": {
+        "minLeoKm": 30,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 64993845.41066406,
+        "heoUpperBoundaryKm": 1090998938.8925612,
+        "geoStationaryKm": 64993845.41066406,
+        "isGeoFallback": false
+      }
+    },
+    {
+      "id": "id-1771180248009-6f9w6l9qd",
+      "name": "GJ 86  A I",
+      "kind": "body",
+      "parentId": "seed-1771179697603-star-a",
+      "tags": [
+        {
+          "key": "planet/gas-giant"
+        },
+        {
+          "key": "lifting-gas"
+        },
+        {
+          "key": "reducing"
+        },
+        {
+          "key": "noble-gas"
+        },
+        {
+          "key": "leak-prone"
+        },
+        {
+          "key": "greenhouse"
+        },
+        {
+          "key": "habitability/none"
+        }
+      ],
+      "atmosphere": {
+        "name": "Custom Mix",
+        "composition": {
+          "H2": 0.8835416996526603,
+          "He": 0.079,
+          "CH4": 0.02727208133580172,
+          "C2H2": 0.004072842045587973,
+          "C3H8": 0.00408105322209085,
+          "C8H18": 0.002032323743859168
+        },
+        "pressure_bar": 1.8859,
+        "molarMassKg": 0.0028103924043017224,
+        "scaleHeightKm": 27.34648676423197
+      },
+      "hydrosphere": {
+        "coverage": 0,
+        "composition": "water"
+      },
+      "biosphere": null,
+      "classes": [
+        "planet/sub-brown-dwarf",
+        "planet/hot-jupiter"
+      ],
+      "roleHint": "planet",
+      "massKg": 9.632836e+27,
+      "radiusKm": 78023,
+      "rotation_period_hours": 379,
+      "axial_tilt_deg": 0,
+      "magneticField": {
+        "strengthGauss": 12.29592675222513
+      },
+      "orbit": {
+        "hostId": "seed-1771179697603-star-a",
+        "hostMu": 123459199110000000000,
+        "t0": 1777832480322.9917,
+        "elements": {
+          "a_AU": 0.11,
+          "e": 0.04,
+          "i_deg": 62.3,
+          "omega_deg": 266,
+          "Omega_deg": 69,
+          "M0_rad": 4.642575810304916
+        }
+      },
+      "equilibriumTempK": 612.8047037883088,
+      "temperatureK": 829.7740171886595,
+      "tidallyLocked": true,
+      "calculatedGravity_ms2": 105.61232417158989,
+      "calculatedRotationPeriod_s": 1364400,
+      "orbitalBoundaries": {
+        "minLeoKm": 496.4118965334946,
+        "leoMoeBoundaryKm": 2000,
+        "meoHeoBoundaryKm": 50000,
+        "heoUpperBoundaryKm": 1976092.1038064288,
+        "geoStationaryKm": null,
+        "isGeoFallback": true
+      },
+      "loDeltaVBudget_ms": 108795.04559317118,
+      "propulsiveLandBudget_ms": 106892.85272693461,
+      "aerobrakeLandBudget_ms": 589.4771812934233,
+      "equilibriumTempMinK": 600.9044505934569,
+      "equilibriumTempMaxK": 625.4411816882855,
+      "stellarRadiation": 36.226040799679254,
+      "stellarRadiationMin": 33.49509017884875,
+      "stellarRadiationMax": 39.305424316138,
+      "radiationShieldingAtmo": 0.7419293211124016,
+      "radiationShieldingMag": 0.99,
+      "photonRadiation": 4206.9955241623775,
+      "particleRadiation": 4.674439471291535,
+      "surfaceRadiation": 4213.66996363367,
+      "surfaceRadiationMin": 3896.1673481665,
+      "surfaceRadiationMax": 4571.681680522498,
+      "orbital_period_days": 14.62459918015803,
+      "tidalHeatK": 0,
+      "radiogenicHeatK": 0,
+      "greenhouseTempK": 216.96931340035073,
+      "habitabilityScore": 14.85466666666667,
+      "color": "#e74c3c",
+      "image": {
+        "url": "/images/planet_types/web20gas20giant.jpg"
+      },
+      "internalHeatK": 0
+    }
+  ],
+  "rulePackId": "starter-sf-pack",
+  "rulePackVersion": "0.1.5",
+  "tags": [],
+  "toytownFactor": 0,
+  "visualScalingMultiplier": 0.5,
+  "isManuallyEdited": true
+}
