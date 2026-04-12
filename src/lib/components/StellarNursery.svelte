@@ -9,6 +9,8 @@
     
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D;
+    let logicalWidth = 800;
+    let logicalHeight = 600;
     
     let draggingStarIndex: number | null = null;
     let adjustingVectorIndex: number | null = null;
@@ -19,8 +21,8 @@
     const CANVAS_SIZE_AU = 40; 
 
     function getCanvasPos(star: StarSeed) {
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
+        const centerX = logicalWidth / 2;
+        const centerY = logicalHeight / 2;
         const x = centerX + (star.pos.x / 1000 / AU_KM) * PIXELS_PER_AU;
         const y = centerY + (star.pos.y / 1000 / AU_KM) * PIXELS_PER_AU;
         return { x, y };
@@ -28,10 +30,14 @@
 
     function drawNursery() {
         if (!ctx || !canvas) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+        
+        const centerX = logicalWidth / 2;
+        const centerY = logicalHeight / 2;
 
         // Draw Grid
         ctx.strokeStyle = '#2d3748'; ctx.lineWidth = 1;
@@ -44,12 +50,12 @@
         // Draw Dynamic Scale Bar (10 AU)
         ctx.strokeStyle = '#a0aec0'; ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(30, canvas.height - 40); ctx.lineTo(30 + 10 * PIXELS_PER_AU, canvas.height - 40);
-        ctx.moveTo(30, canvas.height - 45); ctx.lineTo(30, canvas.height - 35);
-        ctx.moveTo(30 + 10 * PIXELS_PER_AU, canvas.height - 45); ctx.lineTo(30 + 10 * PIXELS_PER_AU, canvas.height - 35);
+        ctx.moveTo(30, logicalHeight - 40); ctx.lineTo(30 + 10 * PIXELS_PER_AU, logicalHeight - 40);
+        ctx.moveTo(30, logicalHeight - 45); ctx.lineTo(30, logicalHeight - 35);
+        ctx.moveTo(30 + 10 * PIXELS_PER_AU, logicalHeight - 45); ctx.lineTo(30 + 10 * PIXELS_PER_AU, logicalHeight - 35);
         ctx.stroke();
         ctx.fillStyle = '#a0aec0'; ctx.font = '10px monospace';
-        ctx.fillText('10 AU Scale', 30, canvas.height - 50);
+        ctx.fillText('10 AU Scale', 30, logicalHeight - 50);
 
         // 1. Draw Star Bodies FIRST (so they are under handles)
         placedStars.forEach((star, i) => {
@@ -96,8 +102,9 @@
 
     function handleMouseDown(e: MouseEvent) {
         const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
+        // Adjust mouse coords to logical CSS scale
+        const mouseX = (e.clientX - rect.left);
+        const mouseY = (e.clientY - rect.top);
 
         // CHECK HANDLES FIRST (they are on top)
         for (let i = placedStars.length - 1; i >= 0; i--) {
@@ -121,8 +128,8 @@
 
         // PLACE NEW STAR
         if (draggingStarIndex === null && adjustingVectorIndex === null && starsToPlace.length > 0) {
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
+            const centerX = logicalWidth / 2;
+            const centerY = logicalHeight / 2;
             const star = starsToPlace.shift()!;
             star.pos = { x: ((mouseX - centerX) / PIXELS_PER_AU) * AU_KM * 1000, y: ((mouseY - centerY) / PIXELS_PER_AU) * AU_KM * 1000, z: 0 };
             // Default random small starting vector
@@ -136,10 +143,10 @@
 
     function handleMouseMove(e: MouseEvent) {
         const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
+        const mouseX = (e.clientX - rect.left);
+        const mouseY = (e.clientY - rect.top);
+        const centerX = logicalWidth / 2;
+        const centerY = logicalHeight / 2;
 
         // Hover detection for handles
         hoverHandleIndex = null;
@@ -175,10 +182,29 @@
         return '#ff9833';
     }
 
+    function handleResize() {
+        if (!container || !canvas) return;
+        const dpr = window.devicePixelRatio || 1;
+        const rect = container.getBoundingClientRect();
+        
+        logicalWidth = rect.width;
+        logicalHeight = rect.height;
+
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        drawNursery();
+    }
+
     onMount(() => { 
-        if (container) { canvas.width = container.clientWidth; canvas.height = container.clientHeight; }
         ctx = canvas.getContext('2d')!; 
-        drawNursery(); 
+        window.addEventListener('resize', handleResize);
+        handleResize();
+    });
+
+    import { onDestroy } from 'svelte';
+    onDestroy(() => {
+        window.removeEventListener('resize', handleResize);
     });
     
     let container: HTMLDivElement;

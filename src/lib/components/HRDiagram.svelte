@@ -6,6 +6,7 @@
     
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D;
+    let container: HTMLDivElement;
     
     export let selectedStars: StarSeed[] = [];
     const MAX_STARS = 50;
@@ -13,7 +14,10 @@
     const MAX_TEMP = 50000;
     const MIN_TEMP = 2000;
     const MIN_LUM = 0.00001;
-    const MAX_LUM = 1000000; // Calibrated grid top is 10^6
+    const MAX_LUM = 1000000; 
+
+    let logicalWidth = 800;
+    let logicalHeight = 600;
 
     // HARD-CODED CALIBRATION (Aligned to eso0728c.jpg grid lines)
     const PLOT_BOX = {
@@ -44,25 +48,18 @@
         const logMin = Math.log10(MIN_LUM);
         const logMax = Math.log10(MAX_LUM);
         const logCurrent = Math.log10(lum);
-        // Calculate relativeY where 0 is 10^6 and 1 is 10^-5
         const relativeY = (logMax - logCurrent) / (logMax - logMin);
         return (PLOT_BOX.top + relativeY * (PLOT_BOX.bottom - PLOT_BOX.top)) * height;
     }
 
     function getStarFromPixels(x: number, y: number): StarSeed | null {
-        const temp = xToTemp(x, canvas.width);
+        const temp = xToTemp(x, logicalWidth);
+        const relativeY = (y / logicalHeight - PLOT_BOX.top) / (PLOT_BOX.bottom - PLOT_BOX.top);
         
-        const relativeY = (y / canvas.height - PLOT_BOX.top) / (PLOT_BOX.bottom - PLOT_BOX.top);
-        
-        /**
-         * Headroom Logic: 
-         * Allow selection up to 2.0e+6 (approx -0.028 relative units above the top line)
-         */
         if (temp === -1 || relativeY < -0.028 || relativeY > 1) return null;
 
         const logMinL = Math.log10(MIN_LUM);
         const logMaxL = Math.log10(MAX_LUM);
-        // Map relativeY back to logL
         const logL = logMaxL - relativeY * (logMaxL - logMinL);
         const lum = Math.pow(10, logL);
 
@@ -75,12 +72,19 @@
 
     function drawDiagram() {
         if (!ctx || !canvas || !imageLoaded) return;
+        
+        // Clear the entire canvas (physical bounds for clear is safer)
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+        ctx.restore();
+
+        // Draw image at logical size
+        ctx.drawImage(bgImage, 0, 0, logicalWidth, logicalHeight);
 
         selectedStars.forEach((star, index) => {
-            const x = tempToX(star.temperatureK, canvas.width);
-            const y = lumToY(star.luminositySolar, canvas.height);
+            const x = tempToX(star.temperatureK, logicalWidth);
+            const y = lumToY(star.luminositySolar, logicalHeight);
             ctx.strokeStyle = 'white';
             ctx.lineWidth = 2;
             ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.stroke();
@@ -90,13 +94,13 @@
         });
 
         if (hoverStar) {
-            const x = tempToX(hoverStar.temperatureK, canvas.width);
-            const y = lumToY(hoverStar.luminositySolar, canvas.height);
+            const x = tempToX(hoverStar.temperatureK, logicalWidth);
+            const y = lumToY(hoverStar.luminositySolar, logicalHeight);
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
             ctx.setLineDash([5, 5]);
             ctx.beginPath();
-            ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
-            ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
+            ctx.moveTo(x, 0); ctx.lineTo(x, logicalHeight);
+            ctx.moveTo(0, y); ctx.lineTo(logicalWidth, y);
             ctx.stroke();
             ctx.setLineDash([]);
         }
@@ -118,20 +122,64 @@
         }
     }
 
+    let resizeObserver: ResizeObserver;
+
+    function handleResize() {
+        if (!canvas || !imageLoaded || !container) return;
+        
+        const dpr = window.devicePixelRatio || 1;
+        const aspect = bgImage.width / bgImage.height;
+        
+        // Use the container (hr-container) width
+        const availWidth = container.clientWidth;
+        const availHeight = Math.min(window.innerHeight * 0.8, 850);
+        
+        if (availWidth < 100) return; // Ignore tiny/uninitialized widths
+
+        let targetWidth = availWidth;
+        let targetHeight = targetWidth / aspect;
+        
+        if (targetHeight > availHeight) {
+            targetHeight = availHeight;
+            targetWidth = targetHeight * aspect;
+        }
+        
+        logicalWidth = targetWidth;
+        logicalHeight = targetHeight;
+
+        canvas.style.height = `${targetHeight}px`;
+        canvas.style.width = `${targetWidth}px`;
+        
+        canvas.width = targetWidth * dpr;
+        canvas.height = targetHeight * dpr;
+        
+        ctx.scale(dpr, dpr);
+        drawDiagram();
+    }
+
     onMount(() => {
         ctx = canvas.getContext('2d')!;
         bgImage = new Image();
         bgImage.src = '/images/ui/hr-diagram-eso.jpg';
         bgImage.onload = () => {
             imageLoaded = true;
-            canvas.height = 550;
-            canvas.width = canvas.height * (bgImage.width / bgImage.height);
-            drawDiagram();
+            handleResize();
         };
+
+        // ResizeObserver is much more reliable than window resize for layout shifts
+        resizeObserver = new ResizeObserver(() => {
+            handleResize();
+        });
+        resizeObserver.observe(container);
+    });
+
+    import { onDestroy } from 'svelte';
+    onDestroy(() => {
+        if (resizeObserver) resizeObserver.disconnect();
     });
 </script>
 
-<div class="hr-container">
+<div class="hr-container" bind:this={container}>
     <div class="canvas-wrapper">
         <canvas 
             bind:this={canvas} 
@@ -143,7 +191,7 @@
 </div>
 
 <style>
-    .hr-container { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
-    .canvas-wrapper { position: relative; background: #000; border: 1px solid #4a5568; line-height: 0; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
-    canvas { cursor: crosshair; }
+    .hr-container { display: flex; flex-direction: column; align-items: center; gap: 1rem; width: 100%; height: 100%; }
+    .canvas-wrapper { position: relative; background: #000; border: 1px solid #4a5568; line-height: 0; box-shadow: 0 0 30px rgba(0,0,0,0.5); display: flex; justify-content: center; width: 100%; }
+    canvas { cursor: crosshair; display: block; }
 </style>

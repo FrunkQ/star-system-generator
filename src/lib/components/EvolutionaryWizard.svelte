@@ -17,6 +17,27 @@
     
     let hoverStar: StarSeed | null = null;
 
+    // Protoplanetary Disk Configuration
+    let diskConfig = {
+        A: 0.0015,   // Dust Density
+        K: 50.0,     // Dust-to-Gas Ratio
+        W: 0.2,      // Cloud Eccentricity
+        B: 1.2e-5    // Critical Mass threshold
+    };
+
+    const diskPresets = [
+        { name: 'Standard', A: 0.0015, K: 50, W: 0.2, B: 1.2e-5, desc: 'Balanced system similar to Sol.' },
+        { name: 'Rocky', A: 0.0025, K: 100, W: 0.15, B: 2.0e-5, desc: 'Heavy dust; many terrestrial worlds.' },
+        { name: 'Jovian', A: 0.0010, K: 25, W: 0.25, B: 0.8e-5, desc: 'Gas rich; massive giants, few rocks.' },
+        { name: 'Chaos', A: 0.0030, K: 50, W: 0.5, B: 1.2e-5, desc: 'High eccentricity; violent collisions.' }
+    ];
+
+    function applyPreset(preset: any) {
+        diskConfig = { ...preset };
+        delete (diskConfig as any).name;
+        delete (diskConfig as any).desc;
+    }
+
     function handleStarSelected(event: CustomEvent<StarSeed>) {
         starsToPlace = [...starsToPlace, event.detail];
     }
@@ -88,7 +109,7 @@
     <div class="wizard-content">
         {#if step === 1}
             <div class="phase split-layout">
-                <div class="left-pane">
+                <div class="left-pane diagram-section">
                     <HRDiagram 
                         selectedStars={[...starsToPlace, ...placedStars]} 
                         on:select={handleStarSelected} 
@@ -140,7 +161,7 @@
             <div class="phase full-width"><StellarDance stars={placedStars} on:settled={handleStellarSettled} /></div>
         {:else if step === 4}
             <div class="phase full-width">
-                <EvolutionTimeline stars={settledStars} on:complete={handleEvolutionComplete} />
+                <EvolutionTimeline stars={settledStars} bind:diskConfig={diskConfig} {diskPresets} on:complete={handleEvolutionComplete} />
             </div>
         {/if}
     </div>
@@ -153,11 +174,17 @@
     .header-actions { display: flex; gap: 10px; align-items: center; }
     .steps { display: flex; gap: 1.5rem; font-size: 0.85rem; color: #a0aec0; }
     .step.active { color: #63b3ed; font-weight: bold; text-decoration: underline; }
-    .wizard-content { flex-grow: 1; display: flex; justify-content: center; align-items: center; min-height: 0; width: 100%; }
-    .phase.split-layout { display: flex; gap: 2rem; width: 100%; max-width: 1400px; align-items: flex-start; height: 100%; }
+    .wizard-content { flex-grow: 1; display: flex; justify-content: center; align-items: flex-start; min-height: 0; width: 100%; overflow-y: auto; }
+    .phase.split-layout { display: flex; gap: 2rem; width: 100%; max-width: 1600px; align-items: flex-start; height: 100%; }
+    .phase.vertical-layout { display: flex; flex-direction: column; width: 100%; max-width: 1200px; gap: 1.5rem; padding-bottom: 2rem; }
     .phase.full-width { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }
-    .left-pane { flex-shrink: 1; min-width: 0; }
-    .details-panel { background: #2d3748; padding: 1.5rem; border-radius: 8px; min-width: 320px; width: 320px; flex-shrink: 0; max-height: 100%; overflow-y: auto; }
+    
+    .diagram-section { width: 100%; display: flex; justify-content: center; background: #000; border-radius: 8px; border: 1px solid #4a5568; padding: 1rem; }
+    .details-section { width: 100%; box-sizing: border-box; }
+    .birth-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 1.5rem; }
+
+    .left-pane { flex-grow: 1; flex-shrink: 1; min-width: 0; }
+    .details-panel { background: #2d3748; padding: 1.5rem; border-radius: 8px; width: 380px; flex-shrink: 0; }
     .star-stats { display: flex; flex-direction: column; gap: 0.8rem; margin: 1rem 0; min-height: 200px; }
     .stat-row { display: flex; justify-content: space-between; border-bottom: 1px solid #4a5568; padding-bottom: 0.4rem; }
     .stat-row .label { color: #a0aec0; font-size: 0.85rem; }
@@ -184,6 +211,19 @@
     .actions { margin-top: 1rem; width: 100%; }
     .primary-btn { background-color: #3182ce; color: white; border: none; padding: 12px 24px; border-radius: 4px; font-size: 1.1rem; cursor: pointer; font-weight: bold; width: 100%; }
     .primary-btn:disabled { background-color: #4a5568; cursor: not-allowed; opacity: 0.7; }
+    
+    /* Disk Config Styles */
+    .preset-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 1rem 0; }
+    .preset-btn { background: #1a202c; border: 1px solid #4a5568; color: #a0aec0; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+    .preset-btn:hover { background: #2d3748; color: white; }
+    .config-sliders { display: flex; flex-direction: column; gap: 1.2rem; margin-top: 1rem; }
+    .slider-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .slider-group label { font-size: 0.75rem; font-weight: bold; color: #63b3ed; text-transform: uppercase; }
+    .slider-group input[type="range"] { width: 100%; }
+    .slider-info { display: flex; flex-direction: column; gap: 2px; }
+    .slider-info .val { font-family: monospace; font-size: 0.9rem; font-weight: bold; color: white; }
+    .slider-info .desc { font-size: 0.65rem; color: #718096; line-height: 1.2; }
+
     .back-btn, .cancel-btn { background: #4a5568; color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
     .cancel-btn { background: transparent; color: #a0aec0; border: 1px solid #4a5568; }
 </style>

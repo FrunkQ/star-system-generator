@@ -2,6 +2,32 @@
 
 All notable changes are listed here:
 
+## v2.0.0-alpha - 7th Apr 2026
+- **Evolutionary System Wizard (New Generation Engine)**:
+  - Introduced a multi-phase interactive wizard for physics-driven star system generation, selectable in New Starmap and Settings.
+- **Stellar Birth (Phase 1)**:
+  - Interactive property selection using a high-accuracy calibrated Hertzsprung-Russell diagram (based on ESO data).
+  - Real-time physical derivation of Mass ($M \propto L^{0.28}$) and Radius from diagram coordinates.
+  - Comprehensive **Stellar Classifier**: Identifies all stellar types (Main Sequence, Hypergiants, White Dwarfs, etc.) and remnants (Black Holes, Neutron Stars) with instability warnings (Eddington Limit).
+- **Stellar Nursery (Phase 2)**:
+  - Responsive 2D nursery for spatial star placement.
+  - **Neon Green Velocity Handles**: Drag-and-drop vectoring with real-time speed labels (km/s) and interaction priority.
+  - Orbital spacing indicators (Close Binary limits) and dynamic scale bar.
+- **Stellar Dance (Phase 3)**:
+  - Full **4th-order Runge-Kutta (RK4)** N-body physics engine.
+  - **Barycentric Drift Correction**: Automatically anchors the system's center of mass to prevent screen drift.
+  - **Adaptive Speed Engine**: Automatically slows down for "Slo-Mo" close interactions/ejections and warps through stable orbits.
+  - **Logarithmic Time Warp**: Manual multiplier slider ranging from 1x to 1000x speed.
+  - **Advanced Stability Detection**: Identifies settled systems based on structural events and orbital envelope consistency.
+  - Automatic hiding of ejected stars and instant lock for single-sun systems.
+- **Unified Evolution Timeline (Phase 4 - In Progress)**:
+  - Master timeline slider covering the system's entire lifecycle (0 to 15 Billion Years).
+  - Integrated **Accrete.js** kernel for iterative planetary accretion snapshots (Birth Phase).
+  - Physics-based stellar aging (Luminosity expansion and Temperature shifts).
+- **Architecture & Technical**:
+  - Vendored and ESM-patched `accrete-js` within `src/lib/vendor`.
+  - Implemented responsive viewport-aware canvas rendering with strict aspect-ratio locking (Anti-Squish).
+  - Added Physics Debug Dashboard for real-time simulation metrics.
 
 ## v1.10.0 - 1st Apr 2026
 - Data Unification & Editor Features:

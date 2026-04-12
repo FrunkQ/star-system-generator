@@ -169,46 +169,70 @@ export function checkEjections(stars: StarSeed[]): { stars: StarSeed[], ejectedA
     const active = stars.filter(s => !s.isEjected && !s.isMerged);
     if (active.length < 2) return { stars, ejectedAny: false };
 
-    let totalMass = 0; let baryX = 0, baryY = 0, baryZ = 0; let maxMass = -1; let anchorId = "";
+    let totalMass = 0; let baryX = 0, baryY = 0, baryZ = 0;
     active.forEach(s => {
         totalMass += s.massKg; baryX += s.pos.x * s.massKg; baryY += s.pos.y * s.massKg; baryZ += s.pos.z * s.massKg;
-        if (s.massKg > maxMass) { maxMass = s.massKg; anchorId = s.id; }
     });
     const cx = baryX / totalMass; const cy = baryY / totalMass; const cz = baryZ / totalMass;
 
     active.forEach(s => {
-        if (s.id === anchorId) return; 
-
         const dx = s.pos.x - cx; const dy = s.pos.y - cy; const dz = s.pos.z - cz;
         const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-        if (dist < 20 * 149597870700) return; // Don't unbound if within 20 AU
+        
+        // Trigger ejection at a closer distance (e.g. 150 AU) so it's still visible
+        // We use an energy check to ensure it's actually unbound
+        if (dist > 150 * 149597870700 && !s.isUnbound) {
+            const vMagSq = s.vel.x**2 + s.vel.y**2 + s.vel.z**2;
+            const kineticEnergyPerMass = 0.5 * vMagSq;
+            const potentialEnergyPerMass = -(6.67430e-11 * (totalMass - s.massKg)) / dist;
+            const totalEnergyPerMass = kineticEnergyPerMass + potentialEnergyPerMass;
 
-        // TOTAL ENERGY CALCULATION (K + U)
-        const vMagSq = s.vel.x**2 + s.vel.y**2 + s.vel.z**2;
-        const kineticEnergyPerMass = 0.5 * vMagSq;
-        const potentialEnergyPerMass = -(G * (totalMass - s.massKg)) / dist;
-        const totalEnergyPerMass = kineticEnergyPerMass + potentialEnergyPerMass;
+            const vRad = (s.vel.x * dx + s.vel.y * dy + s.vel.z * dz) / dist;
 
-        const vRad = (s.vel.x * dx + s.vel.y * dy + s.vel.z * dz) / dist;
-
-        // A star is only unbound if its Total Energy is positive (parabolic/hyperbolic)
-        if (totalEnergyPerMass > 0 && vRad > 0 && !s.isUnbound) {
-            s.isUnbound = true;
-            ejectedAny = true;
+            if (totalEnergyPerMass > 0 && vRad > 0) {
+                s.isUnbound = true;
+                ejectedAny = true;
+            }
         }
     });
     return { stars, ejectedAny };
 }
 
-export function handleMergers(stars: StarSeed[]): { stars: StarSeed[], mergedAny: boolean } {
+export function handleMergers(stars: StarSeed[], dt: number = 0): { stars: StarSeed[], mergedAny: boolean } {
     let mergedAny = false;
     const active = stars.filter(s => !s.isEjected && !s.isMerged);
     for (let i = 0; i < active.length; i++) {
         for (let j = i + 1; j < active.length; j++) {
             const s1 = active[i]; const s2 = active[j];
             const dx = s2.pos.x - s1.pos.x; const dy = s2.pos.y - s1.pos.y; const dz = s2.pos.z - s1.pos.z;
-            const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-            if (dist < (s1.radiusKm + s2.radiusKm) * 1000) {
+            const dvx = s2.vel.x - s1.vel.x; const dvy = s2.vel.y - s1.vel.y; const dvz = s2.vel.z - s1.vel.z;
+            
+            const distSq = dx*dx + dy*dy + dz*dz;
+            const collisionDist = (s1.radiusKm + s2.radiusKm) * 1000;
+            const collisionDistSq = collisionDist * collisionDist;
+
+            let isCollision = distSq < collisionDistSq;
+
+            // Swept-sphere collision detection to prevent high-speed tunneling
+            if (!isCollision && dt > 0) {
+                const a = dvx*dvx + dvy*dvy + dvz*dvz;
+                const b = 2 * (dx*dvx + dy*dvy + dz*dvz);
+                const c = distSq - collisionDistSq;
+                
+                if (a > 1e-6) {
+                    const discriminant = b*b - 4*a*c;
+                    if (discriminant >= 0) {
+                        const t1 = (-b - Math.sqrt(discriminant)) / (2*a);
+                        const t2 = (-b + Math.sqrt(discriminant)) / (2*a);
+                        // Check if intersection occurred during the past dt timestep
+                        if ((t1 <= 0 && t1 >= -dt) || (t2 <= 0 && t2 >= -dt)) {
+                            isCollision = true;
+                        }
+                    }
+                }
+            }
+
+            if (isCollision) {
                 const totalMass = s1.massKg + s2.massKg;
                 s1.vel.x = (s1.vel.x * s1.massKg + s2.vel.x * s2.massKg) / totalMass;
                 s1.vel.y = (s1.vel.y * s1.massKg + s2.vel.y * s2.massKg) / totalMass;
@@ -221,3 +245,4 @@ export function handleMergers(stars: StarSeed[]): { stars: StarSeed[], mergedAny
     }
     return { stars, mergedAny };
 }
+
