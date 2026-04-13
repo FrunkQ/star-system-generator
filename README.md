@@ -12,15 +12,15 @@ For discussion, feedback, bugs and suggestions go to [Our Discord](https://disco
 
 ## Table of Contents
 
-*   [What is it for?](#what-is-it-for)
-*   [Features](#features)
-*   [Usage](#usage)
-*   [Getting Started](#getting-started)
-*   [Building](#building)
-*   [Planned Features](#planned-features)
-*   [Changelog](#changelog)
-*   [Attributions](#attributions)
-*   [License](#license)
+* [What is it for?](#what-is-it-for)
+* [Features](#features)
+* [Usage](#usage)
+* [Getting Started](#getting-started)
+* [Building](#building)
+* [Planned Features](#planned-features)
+* [Changelog](#changelog)
+* [Attributions](#attributions)
+* [License](#license)
 
 ## What is it for?
 
@@ -32,143 +32,171 @@ A quick note on data: This application runs entirely in your browser. Your gener
 
 ![Star System Explorer Showcase](static/screenshots/SSG.gif)
 
-*   **Procedural Generation**: Creates unique star systems based on a seed and a JSON-based rulepack.
-*   **Hand Create Systems**:
-    *   **Open Placement**: You can now create planets anywhere in the system - they will bind to the main gravitational influence under your mouse.
-    *   **Fully Edit Planets & Stars**: Lots of new editing tools to hand craft any aspect of the star system. 
-*   **Starmap**: A pan and zoomable map of multiple star systems, with enhanced usability and persistent UI settings.
-    *   **Local Neighbourhood**: Includes a comprehensive example map of the closest star systems to Earth (around 12 LY out), including Alpha Centauri, Barnard's Star, and TRAPPIST-1.
-        ![Local Neighbourhood Starmap](static/screenshots/LocalNeighbourhood.PNG)
-    *   **Binary & Trinary Stars**: Correctly visualizes multi-star systems with stable orbital configurations.
-    *   **Dynamic Grid/Hex Overlay**: Toggle between a square grid, a hex grid (or as some might call it, the "Traveller hex view"), or no grid.
-        ![Traveller Style Starmap](static/screenshots/TravellerStyle.PNG)
-    *   **Snap-to-Grid**: When adding new systems, coordinates snap to the center of the nearest grid or hex cell.
-    *   **Toggleable Background**: Display a static, faded background image of the Milky Way.
-    *   **Global Time Controls**: Display Time and Actual Time are now independent with scrub/play/alignment controls shared across all system views.
-    *   **Extensible Calendars**: Calendar/time systems are data-driven, editable, and saved with each starmap.
-*   **Traveller Integration**:
-    *   **Subsector Importer**: Fetch and import entire subsectors directly from [travellermap.com](https://travellermap.com) API.
-    *   **Manual UWP Entry**: Manually create star systems by typing in standard Traveller Universal World Profile (UWP) codes.
-    *   **UWP UI Block**: A dedicated technical details block for Traveller-derived systems, showing population, starport class, political data, etc.
-*   **Constructs & Infrastructure**:
-    *   **Ships & Stations**: Place artificial constructs anywhere in the system—from low orbit to deep space or even on planetary surfaces.
-    *   **Detailed Specs**: Every construct has tracked stats for Mass, Crew (Current/Max), Power, Fuel, Engines, and Cargo.
-    *   **Template System**: Includes a rich library of pre-built templates to get you started, featuring:
-        *   **Hard Sci-Fi**: Realistic near-future stations and outposts.
-        *   **The Expanse**: Accurate recreations of ships and stations like the *Rocinante*, *Tycho Station*, and *Ceres*.
-        *   **Aliens**: Famous vessels like the *Nostromo*, *Nostromo*, and *Dropship*.
-        *   **Mothership RPG**: The massive pirate haven *Prospero's Dream*.
-    *   **Customization**: Load any template, tweak its stats, refit its modules, and save it as a unique object in your system.
-    *   **Sensor Suites**: Install custom sensor packages (e.g., Radar, Astrometers, Spectral Analyzers) with configurable ranges (km/AU).
-*   **Transit Planner**:
-    ![Efficient Transit Planner](static/screenshots/ExpanseEfficientTransit.PNG)
-    *   **Local & Interplanetary**: Plan transfers between moons of the same planet (e.g. Moon-to-Moon) or across the entire solar system.
-    *   **Precision Solver**: Uses a high-precision Lambert solver (switched to Metric units internally) to calculate efficient Hohmann transfers even for short, local hops.
-    *   **Multi-Leg Mission Planning**: Chain multiple maneuvers together to plan complex interplanetary journeys.
-    *   **Scheduled Journeys**: Journeys are scheduled against Display Time and executed by advancing time, rather than instant repositioning.
-    *   **Ship Logs**: Each construct stores its own persistent route log with controls to clear future plans or cancel active plans.
-    *   **Moving-Target Intercepts**: Intercepts now target live in-transit construct position/velocity, including rendezvous or flyby modes.
-    *   **Aerobraking Support**: Utilize planetary atmospheres to reduce fuel consumption.
-    *   **Mission Timeline & Hazards**: A detailed stress graph visualizes G-forces and alerts you to mission hazards like Radiation Zones.
-    *   **Docking & Rendezvous**: Perform precise docking maneuvers at orbital stations.
-*   **Orbital Mechanics & Planetology**:
-    *   **Delta-V Calculations**: Automatically calculates the Delta-V budget required to land on or ascend from any planet.
-    *   **Orbital Boundaries**: Visualizes and calculates key zones like Low Orbit (LEO), Geostationary Orbit (GEO), and the Hill Sphere.
-    *   **Atmospheric Modeling**: Detailed atmospheric data including composition, pressure, and scale height.
-    *   **Habitability**: Complex habitability scoring based on temperature, atmosphere, and magnetosphere protection.
-*   **Interactive 2D Visualizer**: An orbital view of the generated system with playback controls, zoom, and focus abilities.
-    ![Expanse Toytown View](static/screenshots/Expanse-Toytown.PNG)
-    *   **Sensor Overlays**: Toggle visualization of sensor ranges for constructs, displaying precise coverage zones and detection radii.
-*   **GM Tools**:
-    *   **Visibility Controls**: Toggle the visibility of entire objects or just their descriptions in Player Views and Reports.
-    *   **GM Notes**: Quick areas of text that can be edited any time - autosaved. These are never shown to the players.
-*   **Projector Mode (Player View)**:
-    *   **Dedicated Player View**: Access a clean, full screen, player-focused view of the star system by opening the Star System hamburger menu: "Open Projector View"
-    *   **GM Synchronization**: The player view automatically synchronizes with the GM's view, including camera pan/zoom, time controls (play/pause, speed), and selected focus.
-    *   **CRT Green-screen Mode**: Toggle a retro, green-screen, scanlined CRT effect for an immersive aesthetic.
+* **Procedural Generation**: Creates unique star systems based on a seed and a JSON-based rulepack.
+* **Hand Create Systems**:
+  * **Open Placement**: You can now create planets anywhere in the system - they will bind to the main gravitational influence under your mouse.
+  * **Fully Edit Planets & Stars**: Lots of new editing tools to hand craft any aspect of the star system. 
+
+* * **Open Placement**: You can now create planets anywhere in the system - they will bind to the main gravitational influence under your mouse.
+  * **Fully Edit Planets & Stars**: Lots of new editing tools to hand craft any aspect of the star system. 
+* **Starmap**: A pan and zoomable map of multiple star systems, with enhanced usability and persistent UI settings.
+  * **Local Neighbourhood**: Includes a comprehensive example map of the closest star systems to Earth (around 12 LY out), including Alpha Centauri, Barnard's Star, and TRAPPIST-1.
+    ![Local Neighbourhood Starmap](static/screenshots/LocalNeighbourhood.PNG)
+  * **Binary & Trinary Stars**: Correctly visualizes multi-star systems with stable orbital configurations.
+  * **Dynamic Grid/Hex Overlay**: Toggle between a square grid, a hex grid (or as some might call it, the "Traveller hex view"), or no grid.
+    ![Traveller Style Starmap](static/screenshots/TravellerStyle.PNG)
+  * **Snap-to-Grid**: When adding new systems, coordinates snap to the center of the nearest grid or hex cell.
+  * **Toggleable Background**: Display a static, faded background image of the Milky Way.
+  * **Global Time Controls**: Display Time and Actual Time are now independent with scrub/play/alignment controls shared across all system views.
+  * **Extensible Calendars**: Calendar/time systems are data-driven, editable, and saved with each starmap.
+* **Traveller Integration**:
+  * **Subsector Importer**: Fetch and import entire subsectors directly from [travellermap.com](https://travellermap.com) API.
+  * **Manual UWP Entry**: Manually create star systems by typing in standard Traveller Universal World Profile (UWP) codes.
+  * **UWP UI Block**: A dedicated technical details block for Traveller-derived systems, showing population, starport class, political data, etc.
+* **Constructs & Infrastructure**:
+  * **Ships & Stations**: Place artificial constructs anywhere in the system—from low orbit to deep space or even on planetary surfaces.
+  * **Detailed Specs**: Every construct has tracked stats for Mass, Crew (Current/Max), Power, Fuel, Engines, and Cargo.
+  * **Template System**: Includes a rich library of pre-built templates to get you started, featuring:
+    * **Hard Sci-Fi**: Realistic near-future stations and outposts.
+    * **The Expanse**: Accurate recreations of ships and stations like the *Rocinante*, *Tycho Station*, and *Ceres*.
+    * **Aliens**: Famous vessels like the *Nostromo*, *Nostromo*, and *Dropship*.
+    * **Mothership RPG**: The massive pirate haven *Prospero's Dream*.
+  * **Customization**: Load any template, tweak its stats, refit its modules, and save it as a unique object in your system.
+  * **Sensor Suites**: Install custom sensor packages (e.g., Radar, Astrometers, Spectral Analyzers) with configurable ranges (km/AU).
+* **Transit Planner**:
+  ![Efficient Transit Planner](static/screenshots/ExpanseEfficientTransit.PNG)
+  * **Local & Interplanetary**: Plan transfers between moons of the same planet (e.g. Moon-to-Moon) or across the entire solar system.
+  * **Precision Solver**: Uses a high-precision Lambert solver (switched to Metric units internally) to calculate efficient Hohmann transfers even for short, local hops.
+  * **Multi-Leg Mission Planning**: Chain multiple maneuvers together to plan complex interplanetary journeys.
+  * **Scheduled Journeys**: Journeys are scheduled against Display Time and executed by advancing time, rather than instant repositioning.
+  * **Ship Logs**: Each construct stores its own persistent route log with controls to clear future plans or cancel active plans.
+  * **Moving-Target Intercepts**: Intercepts now target live in-transit construct position/velocity, including rendezvous or flyby modes.
+  * **Aerobraking Support**: Utilize planetary atmospheres to reduce fuel consumption.
+  * **Mission Timeline & Hazards**: A detailed stress graph visualizes G-forces and alerts you to mission hazards like Radiation Zones.
+  * **Docking & Rendezvous**: Perform precise docking maneuvers at orbital stations.
+* **Orbital Mechanics & Planetology**:
+  * **Delta-V Calculations**: Automatically calculates the Delta-V budget required to land on or ascend from any planet.
+  * **Orbital Boundaries**: Visualizes and calculates key zones like Low Orbit (LEO), Geostationary Orbit (GEO), and the Hill Sphere.
+  * **Atmospheric Modeling**: Detailed atmospheric data including composition, pressure, and scale height.
+  * **Habitability**: Complex habitability scoring based on temperature, atmosphere, and magnetosphere protection.
+* **Interactive 2D Visualizer**: An orbital view of the generated system with playback controls, zoom, and focus abilities.
+  ![Expanse Toytown View](static/screenshots/Expanse-Toytown.PNG)
+  * **Sensor Overlays**: Toggle visualization of sensor ranges for constructs, displaying precise coverage zones and detection radii.
+* **GM Tools**:
+  * **Visibility Controls**: Toggle the visibility of entire objects or just their descriptions in Player Views and Reports.
+  * **GM Notes**: Quick areas of text that can be edited any time - autosaved. These are never shown to the players.
+* **Projector Mode (Player View)**:
+  * **Dedicated Player View**: Access a clean, full screen, player-focused view of the star system by opening the Star System hamburger menu: "Open Projector View"
+  * **GM Synchronization**: The player view automatically synchronizes with the GM's view, including camera pan/zoom, time controls (play/pause, speed), and selected focus.
+  * **CRT Green-screen Mode**: Toggle a retro, green-screen, scanlined CRT effect for an immersive aesthetic.
     ![Greenscreen Projection View](static/screenshots/Greenscreen-ProjectionView.png)
-*   **AI-Powered Descriptions**: Integrates with OpenRouter to allow GMs to generate rich, narrative descriptions for any celestial body.
-    ![LLM Report Generation](static/screenshots/LLM-Report-Generation.png)
-*   **Paper Reports**: Generate printable, themed PDF reports of your star system. Choose between a GM (full intel) or Player (redacted) version.
-    ![Printable Reports](static/screenshots/PrintableReports.png)
-*   **Save & Load**: 
-    *   **GM & Player Modes**: Export redacted "Player-Safe" versions of your systems that hide spoilers, GM notes, and hidden objects.
-    *   **Starmap & System Management**: Download any individual system or the entire starmap as a JSON file to your computer.
-    *   Upload a previously saved JSON file to continue your work.
-*   **Global Customization**:
-    *   **Edit Rulepacks**: Modify the underlying science rules for your specific starmap.
-    *   **Edit Atmospheres**: Edit global gas physics (greenhouse factors, molar mass) and spawning distributions for atmospheric compositions.
-    *   **Fuel & Drives**: Define custom fuels and engine types globally.
-    *   **Sensors**: Configure global sensor types and their range bands.
+* **AI-Powered Descriptions**: Integrates with OpenRouter to allow GMs to generate rich, narrative descriptions for any celestial body.
+  ![LLM Report Generation](static/screenshots/LLM-Report-Generation.png)
+* **Paper Reports**: Generate printable, themed PDF reports of your star system. Choose between a GM (full intel) or Player (redacted) version.
+  ![Printable Reports](static/screenshots/PrintableReports.png)
+* **Save & Load**: 
+  * **GM & Player Modes**: Export redacted "Player-Safe" versions of your systems that hide spoilers, GM notes, and hidden objects.
+  * **Starmap & System Management**: Download any individual system or the entire starmap as a JSON file to your computer.
+  * Upload a previously saved JSON file to continue your work.
+* **Global Customization**:
+  * **Edit Rulepacks**: Modify the underlying science rules for your specific starmap.
+  * **Edit Atmospheres**: Edit global gas physics (greenhouse factors, molar mass) and spawning distributions for atmospheric compositions.
+  * **Fuel & Drives**: Define custom fuels and engine types globally.
+  * **Sensors**: Configure global sensor types and their range bands.
+    
+    
+
+## Experimental: Generation Engine V2 (Alpha)
+
+To test out the new generation features select the new generation engine in the **Starmap Settings**. NB: It won't create systems, yet. But you can mess around with stuff like this...
+
+![Evolutionary Engine V2 Alpha](file://G:\My Drive\Development\star-system-generator\static\screenshots\V2Gen-alpha1.png?msec=1776086442372)
+
+Key V2 features currently in testing:
+
+- **Physics-Driven Generation**: A multi-phase interactive wizard that uses real physical simulations to grow a star system from scratch.
+  - **Calibrated Stellar Selection**: Choose star(s) using a Hertzsprung-Russell (HR) diagram.
+  - **N-Body "Stellar Dance"**: Run a Runge-Kutta (RK4) simulation to settle multi-star orbits and handle mergers/ejections. The battle arena! 
+  - **Planetary Accretion**: Watch planets "carve" their paths through a protoplanetary disk using an iterative accretion model.
+  - **Stellar Evolution Timeline**: Scrub through billions of years to see stars age, expand into red giants, and collapse into remnants like White Dwarfs or Black Holes.
+  
+  
 
 ## Usage
 
 ### Generating a System
-1.  On first load, you will be prompted to create a new starmap or load the "Local Neighbourhood" example.
-2.  Give your starmap a name and click "Create".
+
+1. On first load, you will be prompted to create a new starmap or load the "Local Neighbourhood" example.
+2. Give your starmap a name and click "Create".
 
 ### Interacting with the Starmap
-*   **Pan and Zoom**: Use the mouse wheel to zoom (if enabled) and click and drag to pan the starmap.
-*   **Reset View**: Click the "Reset View" button to reset the pan and zoom to fit all systems.
-*   **Add System**: Right-click on any empty space on the starmap and select "Add System".
-*   **View System**: Click on a star system to view its details.
-*   **Link Systems**: Right-click on a star and select "Link System". Then right-click on another star to create a route between them.
-*   **UI Controls**: Use the dropdown to select 'No Grid', 'Grid', or 'Hex' view.
+
+* **Pan and Zoom**: Use the mouse wheel to zoom (if enabled) and click and drag to pan the starmap.
+* **Reset View**: Click the "Reset View" button to reset the pan and zoom to fit all systems.
+* **Add System**: Right-click on any empty space on the starmap and select "Add System".
+* **View System**: Click on a star system to view its details.
+* **Link Systems**: Right-click on a star and select "Link System". Then right-click on another star to create a route between them.
+* **UI Controls**: Use the dropdown to select 'No Grid', 'Grid', or 'Hex' view.
 
 ### Using Traveller Tools
-1.  **Enable Traveller Mode**: In the Starmap header, change "Snap Grid" to **Traveller Hex**.
-2.  **Bulk Import**:
-    *   Right-click on the map background and select **"Add Traveller Map SubSector Here"**.
-    *   Search for a sector (e.g., "Spinward Marches") and choose a subsector (A-P).
-    *   The tool will fetch real data and generate the entire 8x10 hex grid of systems - moons will be added (Don't count towards Worlds #).
-3.  **Manual UWP Entry**:
-    *   Right-click on a specific hex and select **"Add Traveller UWP Here"**.
-    *   Enter the UWP string (e.g., `A788899-C`) and other T5 codes.
-    *   The generator will build a system matching those exact physical and political constraints.
+
+1. **Enable Traveller Mode**: In the Starmap header, change "Snap Grid" to **Traveller Hex**.
+2. **Bulk Import**:
+   * Right-click on the map background and select **"Add Traveller Map SubSector Here"**.
+   * Search for a sector (e.g., "Spinward Marches") and choose a subsector (A-P).
+   * The tool will fetch real data and generate the entire 8x10 hex grid of systems - moons will be added (Don't count towards Worlds #).
+3. **Manual UWP Entry**:
+   * Right-click on a specific hex and select **"Add Traveller UWP Here"**.
+   * Enter the UWP string (e.g., `A788899-C`) and other T5 codes.
+   * The generator will build a system matching those exact physical and political constraints.
 
 ### Using the AI Description Generator
+
 This is not complex LLM use and you can probably enable these features without cost by using a free model off OpenRouter. Just sign up to OpenRouter - don't buy any credits (unless you want to use some of the more advanced models) and create an API key for yourself (save it somewhere secure!). 
-1.  **Setup**:
-    *   Click the **"Settings"** button in the top-right.
-    *   Enter your [OpenRouter](https://openrouter.ai/) API Key.
-    *   Select a model from the dropdown. Free models are listed at the top.
-    *   Click **"Close"**.
-2.  **Generation**:
-    *   Select a planet or star.
-    *   In the "Description & Notes" section, click **"✨ Expand with AI"**.
-    *   In the modal window, you can:
-        *   Add your own notes or seed text.
-        *   Select a report style (e.g., "Formal Science Survey", "Pirate's Scuttlebutt").
-        *   Choose tags to guide the generation (e.g., "Alien Ruins", "Mining Outpost").
-        *   Select the desired length of the response.
-    *   Click **"Generate"**.
-    *   Once you are happy with the result, click **"Accept & Close"**.
+
+1. **Setup**:
+   * Click the **"Settings"** button in the top-right.
+   * Enter your [OpenRouter](https://openrouter.ai/) API Key.
+   * Select a model from the dropdown. Free models are listed at the top.
+   * Click **"Close"**.
+2. **Generation**:
+   * Select a planet or star.
+   * In the "Description & Notes" section, click **"✨ Expand with AI"**.
+   * In the modal window, you can:
+     * Add your own notes or seed text.
+     * Select a report style (e.g., "Formal Science Survey", "Pirate's Scuttlebutt").
+     * Choose tags to guide the generation (e.g., "Alien Ruins", "Mining Outpost").
+     * Select the desired length of the response.
+   * Click **"Generate"**.
+   * Once you are happy with the result, click **"Accept & Close"**.
 
 ### Saving and Loading
-*   Everything you do is automatically stored to the starmap (just zoom back after generating a new system to trigger)
-*   Use **"Download Starmap"** and **"Upload Starmap"** to save and load starmap files on the main page.
-*   Use the hamburger menu on the system view to Upload and Download individual Star Systems
+
+* Everything you do is automatically stored to the starmap (just zoom back after generating a new system to trigger)
+* Use **"Download Starmap"** and **"Upload Starmap"** to save and load starmap files on the main page.
+* Use the hamburger menu on the system view to Upload and Download individual Star Systems
 
 ## Getting Started
 
 ### For Users
+
 Just click here: https://star-system-generator.vercel.app/ This will be the latest working version; automatically built off the code here. NB: while in dev-mode there are no guarantees saves will be forward compatible.
 
 ### For Developers (who want to install it locally)
 
-1.  **Install Dependencies**
+1. **Install Dependencies**
+   
+   ```sh
+   npm install
+   ```
 
-    ```sh
-    npm install
-    ```
-
-2.  **Run the Development Server**
-
-    ```sh
-    npm run dev
-    ```
-
-    The application will be available at `http://localhost:5173` by default.
+2. **Run the Development Server**
+   
+   ```sh
+   npm run dev
+   ```
+   
+   The application will be available at `http://localhost:5173` by default.
 
 ## Building
 
@@ -182,25 +210,32 @@ You can preview the production build with `npm run preview`.
 
 ## Planned Features
 
-*   Go to [Our Discord](https://discord.gg/UAEq4zzjD8) for more details and input into ongoing development
+* Go to [Our Discord](https://discord.gg/UAEq4zzjD8) for more details and input into ongoing development
 
 ## Changelog
 
 For release notes and version history, see [changelog.md](./changelog.md).
+
 ## Attributions
 
-This project uses images from several sources under Creative Commons licenses. We are grateful for their work.
+This project is a collaborative effort of scientific research, community creativity, and open-source assets.
 
-*   **Planet Images**: Courtesy of **Pablo Carlos Budassi**, used under a [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) license. Source: [pablocarlosbudassi.com](https://pablocarlosbudassi.com/2021/02/planet-types.html)
-*   **Star Images**: Sourced from the [Beyond Universe Wiki](https://beyond-universe.fandom.com/wiki/) on Fandom, used under a [CC-BY-SA](https://creativecommons.org/licenses/by-sa/3.0/us/) license.
-*   **Magnetar Image & Starmap Background**: Courtesy of **ESO/L. Calçada & S. Brunier**, used under a [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license. Sources: [ESO Magnetar](https://www.eso.org/public/images/eso1415a/), [ESO Milky Way](https://www.eso.org/public/images/eso0932a/)
-*   **Black Hole Accretion Disk Image**: Courtesy of **NASA’s Goddard Space Flight Center/Jeremy Schnittman**, used under a [Public Domain](https://svs.gsfc.nasa.gov/13232) license. Source: [NASA SVS](https://svs.gsfc.nasa.gov/13232).
-*   **Weyland-Yutani Logo**: Sourced from [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Weyland-Yutani_cryo-tube.jpg) by [IllaZilla](https://commons.wikimedia.org/wiki/User:IllaZilla), used under a [Creative Commons Attribution-Share Alike 3.0 Unported](https://creativecommons.org/licenses/by-sa/3.0/deed.en) license. Changes made: Logo Extracted.
-*   **Sci-Fi Template Inspirations**: *The Expanse* (James S.A. Corey), *Aliens* (20th Century Studios), *Mothership RPG* (Tuesday Knight Games). Templates are included as homage/fan content.
+### Special Thanks & Community
+
+* **Community Systems**: Huge thanks to **@Athena**, **@Mafro** & **@malize** from the SSE Discord for contributing example star systems.
+* **Accrete.js**: A special thanks to **[Mitch Anderson](https://www.iammitch.com/)** for permission to use his **[Accrete.js](https://github.com/tmanderson/Accrete.js)** code in the new experimental evolutionary system generation.
+  * **Scientific Lineage**: The new evolutionary generation engine is built upon the foundational work of: Stephen H. Dole, Carl Sagan, Richard Isaacson, **[Martyn Fogg](https://www.academia.edu/4173808/Extra-Solar_Planetary_Systems_A_Microcomputer_Simulation)**, Matt Burdick, **[Jim Burrows](https://www.eldacur.com/~brons/NerdCorner/StarGen/StarGen.html)** & **[Ian Burrell](https://znark.com/create/accrete.html)**.
+
+### Visual & Media Credits
+
+* **Planet Images**: Courtesy of **Pablo Carlos Budassi**, used under a [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) license. Source: [pablocarlosbudassi.com](https://pablocarlosbudassi.com/2021/02/planet-types.html)
+* **Star Images**: Sourced from the [Beyond Universe Wiki](https://beyond-universe.fandom.com/wiki/) on Fandom, used under a [CC-BY-SA](https://creativecommons.org/licenses/by-sa/3.0/us/) license.
+* **Magnetar Image & Starmap Background**: Courtesy of **ESO/L. Calçada & S. Brunier**, used under a [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license. Sources: [ESO Magnetar](https://www.eso.org/public/images/eso1415a/), [ESO Milky Way](https://www.eso.org/public/images/eso0932a/)
+* **H-R Diagram Background**: Courtesy of **ESO**, used under a [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license. Source: [ESO HR Diagram](https://www.eso.org/public/images/eso0728c/).
+* **Black Hole Accretion Disk Image**: Courtesy of **NASA’s Goddard Space Flight Center/Jeremy Schnittman**, used under a [Public Domain](https://svs.gsfc.nasa.gov/13232) license. Source: [NASA SVS](https://svs.gsfc.nasa.gov/13232).
+* **Weyland-Yutani Logo**: Sourced from [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Weyland-Yutani_cryo-tube.jpg) by [IllaZilla](https://commons.wikimedia.org/wiki/User:IllaZilla), used under a [Creative Commons Attribution-Share Alike 3.0 Unported](https://creativecommons.org/licenses/by-sa/3.0/deed.en) license. Changes made: Logo Extracted.
+* **Sci-Fi Template Inspirations**: *The Expanse* (James S.A. Corey), *Aliens* (20th Century Studios), *Mothership RPG* (Tuesday Knight Games). Templates are included as homage/fan content.
 
 ## License
 
 This project is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html).
-
-Codex and this version is awesome!
-

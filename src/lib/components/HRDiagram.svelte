@@ -85,10 +85,10 @@
         selectedStars.forEach((star, index) => {
             const x = tempToX(star.temperatureK, logicalWidth);
             const y = lumToY(star.luminositySolar, logicalHeight);
-            ctx.strokeStyle = 'white';
+            ctx.strokeStyle = '#00ff00';
             ctx.lineWidth = 2;
             ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.stroke();
-            ctx.fillStyle = 'white';
+            ctx.fillStyle = '#00ff00';
             ctx.font = 'bold 12px sans-serif';
             ctx.fillText(`${index + 1}`, x + 10, y + 5);
         });

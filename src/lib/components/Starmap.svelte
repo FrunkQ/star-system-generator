@@ -1388,7 +1388,7 @@
     <div class="alpha-disclaimer-overlay" on:click|stopPropagation>
       <div class="alpha-modal" on:click|stopPropagation>
         <h2>DANGER --- DANGER</h2>
-        <h3>You are entering the Alphas Zone</h3>
+        <h3>You are entering the Alpha Zone</h3>
         
         <p>Over the next few months, I want to mess around with Generation V2 functionality.</p>
         <p>You are very welcome to jump in, have a play, and share feedback on the Discord forum.</p>
