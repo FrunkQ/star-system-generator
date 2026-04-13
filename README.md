@@ -110,7 +110,7 @@ A quick note on data: This application runs entirely in your browser. Your gener
 
 To test out the new generation features select the new generation engine in the **Starmap Settings**. NB: It won't create systems, yet. But you can mess around with stuff like this...
 
-![Evolutionary Engine V2 Alpha](file://G:\My Drive\Development\star-system-generator\static\screenshots\V2Gen-alpha1.png?msec=1776086442372)
+![Evolutionary Engine V2 Alpha](static/screenshots/V2Gen-alpha1.png)
 
 Key V2 features currently in testing:
 
