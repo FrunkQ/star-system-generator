@@ -1,6 +1,7 @@
 import type { System, CelestialBody, Barycenter } from '../types';
 import type { StateVector } from './types';
-import { propagateState, subtract } from './math';
+import { subtract } from './math';
+import { propagateState } from '../physics/orbits';
 import { G } from '../constants';
 import { AU_KM } from '../constants';
 

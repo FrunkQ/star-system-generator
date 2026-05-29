@@ -1,6 +1,6 @@
 import type { System, CelestialBody, Barycenter } from '../types';
 import type { TransitPlan, TransitSegment, StateVector, Vector2 } from './types';
-import { solveLambert, propagateState, magnitude, subtract, distanceAU, integrateBallisticPath, dot } from './math';
+import { solveLambert, magnitude, subtract, distanceAU, integrateBallisticPath, dot } from './math';
 import { getGlobalState, calculateFuelMass } from './physics';
 import { AU_KM, G } from '../constants';
 

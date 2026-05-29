@@ -1,17 +1,7 @@
-import type { CelestialBody, Barycenter, Orbit } from '../types';
 import { AU_KM, G } from '../constants';
 import type { StateVector, Vector2 } from './types';
-import { propagateState as propagateStatePhysics } from '../physics/orbits';
 
 const AU_M = AU_KM * 1000;
-
-/**
- * Propagates an orbit to a specific time and returns the full State Vector (Position and Velocity).
- * @deprecated Use src/lib/physics/orbits.ts instead
- */
-export function propagateState(node: CelestialBody | Barycenter | { orbit: Orbit }, tMs: number): StateVector {
-    return propagateStatePhysics(node as any, tMs);
-}
 
 export function distanceAU(v1: Vector2, v2: Vector2): number {
     const dx = v1.x - v2.x;
