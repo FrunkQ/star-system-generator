@@ -137,19 +137,6 @@
   })();
 
   onMount(async () => {
-    // --- BEGIN beta-preview hook ---
-    if (typeof window !== 'undefined'
-        && /(^|\.)beta\.starsystemx\.com$/i.test(window.location.hostname)
-        && !sessionStorage.getItem('useV1')) {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('v') === '1') {
-        sessionStorage.setItem('useV1', '1');
-      } else {
-        window.location.replace('/v2.html');
-        return;
-      }
-    }
-    // --- END beta-preview hook ---
     try {
       const starterRulepack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json');
       rulePacks = [starterRulepack];
