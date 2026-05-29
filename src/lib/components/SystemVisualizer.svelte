@@ -596,55 +596,39 @@
       return visibleIds;
   }
 
-  function handleClick(event: MouseEvent) {
-      if (!system) return;
-      const rect = canvas.getBoundingClientRect();
-      const clickX = event.clientX - rect.left;
-      const clickY = event.clientY - rect.top;
-      if (showNames) {
-          for (const [beltId, area] of beltLabelClickAreas.entries()) {
-              if (clickX >= area.x1 && clickX <= area.x2 && clickY >= area.y1 && clickY <= area.y2) {
-                  dispatch("focus", beltId); return;
-              }
-          }
-      }
-      const clickPos = screenToWorld(clickX, clickY);
-      let clickedNodeId: string | null = null;
-      let minDistanceSq = Infinity;
-      const clickableIds = getVisibleNodeIds(system, focusedBodyId);
-      const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
-      for (const node of system.nodes) {
-          if (!clickableIds.has(node.id) || (node.kind !== 'body' && node.kind !== 'construct')) continue;
-          const pos = targetPositions.get(node.id);
-          if (!pos) continue;
-          const dx = clickPos.x - pos.x; const dy = clickPos.y - pos.y;
-          const distanceSq = dx * dx + dy * dy;
-          let radiusInAU = (node.radiusKm || 0) / AU_KM;
-          if (toytownFactor > 0) radiusInAU = scaleBoxCox(radiusInAU, toytownFactor, x0_distance);
-          let minRadiusPx = 2;
-          if (node.kind === 'construct') minRadiusPx = 12;
-          else if (node.roleHint === 'star') minRadiusPx = 10;
-          else if (node.roleHint === 'planet') { const isGasGiant = node.classes.some(c => c.includes('gas-giant') || c.includes('ice-giant')); minRadiusPx = isGasGiant ? 15 : 12; }
-          else if (node.roleHint === 'moon') minRadiusPx = 8;
-          const minRadiusInWorld = minRadiusPx / zoom;
-          const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
-          if (distanceSq < finalRadius * finalRadius) {
-              if (distanceSq < minDistanceSq) { minDistanceSq = distanceSq; clickedNodeId = node.id; }
-          }
-      }
-      if (clickedNodeId) {
-        if (clickedNodeId === focusedBodyId) zoomStore.set(clampZoom(get(zoomStore) * 2));
-        else dispatch("focus", clickedNodeId);
+  // Draw a construct's icon glyph (triangle/circle/diamond/cross/square) centred
+  // at (x, y) with the given pixel size. Single source of truth for both the
+  // world-space pass (sizePx = 8 / zoom) and the screen-space overlay (sizePx = 8),
+  // which had drifted apart. Screen-space sizing (8px) is the canonical default.
+  function drawConstructGlyph(ctx: CanvasRenderingContext2D, node: CelestialBody, x: number, y: number, sizePx: number): void {
+      const size = sizePx;
+      const c = node as any;
+      ctx.fillStyle = c.icon_color || '#f0f0f0';
+      if (c.icon_type === 'triangle') {
+          ctx.beginPath(); ctx.moveTo(x, y - size / 2); ctx.lineTo(x + size / 2, y + size / 2);
+          ctx.lineTo(x - size / 2, y + size / 2); ctx.closePath(); ctx.fill();
+      } else if (c.icon_type === 'circle') {
+          ctx.beginPath(); ctx.arc(x, y, size / 2, 0, 2 * Math.PI); ctx.fill();
+      } else if (c.icon_type === 'diamond') {
+          ctx.beginPath(); ctx.moveTo(x, y - size / 2); ctx.lineTo(x + size / 2, y);
+          ctx.lineTo(x, y + size / 2); ctx.lineTo(x - size / 2, y); ctx.closePath(); ctx.fill();
+      } else if (c.icon_type === 'cross') {
+          const thickness = size / 3;
+          ctx.fillRect(x - thickness / 2, y - size / 2, thickness, size);
+          ctx.fillRect(x - size / 2, y - thickness / 2, size, thickness);
+      } else {
+          // Default Square
+          ctx.fillRect(x - size / 2, y - size / 2, size, size);
       }
   }
 
-  function handleContextMenu(event: MouseEvent) {
-      event.preventDefault();
-      if (!system) return;
-      const rect = canvas.getBoundingClientRect();
-      const clickX = event.clientX - rect.left;
-      const clickY = event.clientY - rect.top;
-      const clickPos = screenToWorld(clickX, clickY);
+  // Hit-test the canvas at screen coords (relative to the canvas element) and
+  // return the nearest selectable node within its picking radius, plus the
+  // click's world position. Shared by handleClick and handleContextMenu so the
+  // hit-testing stays identical; the wrappers only differ in what they dispatch.
+  function pickNodeAt(screenX: number, screenY: number): { node: CelestialBody; world: { x: number; y: number } } | null {
+      if (!system) return null;
+      const clickPos = screenToWorld(screenX, screenY);
       let clickedNode: CelestialBody | null = null;
       let minDistanceSq = Infinity;
       const clickableIds = getVisibleNodeIds(system, focusedBodyId);
@@ -665,11 +649,42 @@
           const minRadiusInWorld = minRadiusPx / zoom;
           const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
           if (distanceSq < finalRadius * finalRadius) {
-              if (distanceSq < minDistanceSq) { minDistanceSq = distanceSq; clickedNode = node; }
+              if (distanceSq < minDistanceSq) { minDistanceSq = distanceSq; clickedNode = node as CelestialBody; }
           }
       }
-      if (clickedNode) dispatch("showBodyContextMenu", { node: clickedNode, x: event.clientX, y: event.clientY });
+      return clickedNode ? { node: clickedNode, world: clickPos } : null;
+  }
+
+  function handleClick(event: MouseEvent) {
+      if (!system) return;
+      const rect = canvas.getBoundingClientRect();
+      const clickX = event.clientX - rect.left;
+      const clickY = event.clientY - rect.top;
+      if (showNames) {
+          for (const [beltId, area] of beltLabelClickAreas.entries()) {
+              if (clickX >= area.x1 && clickX <= area.x2 && clickY >= area.y1 && clickY <= area.y2) {
+                  dispatch("focus", beltId); return;
+              }
+          }
+      }
+      const picked = pickNodeAt(clickX, clickY);
+      if (picked) {
+        if (picked.node.id === focusedBodyId) zoomStore.set(clampZoom(get(zoomStore) * 2));
+        else dispatch("focus", picked.node.id);
+      }
+  }
+
+  function handleContextMenu(event: MouseEvent) {
+      event.preventDefault();
+      if (!system) return;
+      const rect = canvas.getBoundingClientRect();
+      const clickX = event.clientX - rect.left;
+      const clickY = event.clientY - rect.top;
+      const picked = pickNodeAt(clickX, clickY);
+      if (picked) dispatch("showBodyContextMenu", { node: picked.node, x: event.clientX, y: event.clientY });
       else {
+        const clickPos = screenToWorld(clickX, clickY);
+        const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
         const dominantBody = findContainingHost(clickPos.x, clickPos.y, system.nodes, targetPositions);
         dispatch("backgroundContextMenu", { x: clickPos.x, y: clickPos.y, dominantBody, screenX: event.clientX, screenY: event.clientY });
       }
@@ -805,23 +820,7 @@
               ctx.moveTo(rx, ry - 10 / zoom); ctx.lineTo(rx, ry + 10 / zoom);
               ctx.stroke();
           } else if (node.kind === 'construct') {
-              const size = 8 / zoom; ctx.fillStyle = node.icon_color || '#f0f0f0';
-              if (node.icon_type === 'triangle') {
-                  ctx.beginPath(); ctx.moveTo(rx, ry - size / 2); ctx.lineTo(rx + size / 2, ry + size / 2);
-                  ctx.lineTo(rx - size / 2, ry + size / 2); ctx.closePath(); ctx.fill();
-              } else if (node.icon_type === 'circle') {
-                  ctx.beginPath(); ctx.arc(rx, ry, size / 2, 0, 2 * Math.PI); ctx.fill();
-              } else if (node.icon_type === 'diamond') {
-                  ctx.beginPath(); ctx.moveTo(rx, ry - size / 2); ctx.lineTo(rx + size / 2, ry); 
-                  ctx.lineTo(rx, ry + size / 2); ctx.lineTo(rx - size / 2, ry); ctx.closePath(); ctx.fill();
-              } else if (node.icon_type === 'cross') {
-                  const thickness = size / 3;
-                  ctx.fillRect(rx - thickness / 2, ry - size / 2, thickness, size);
-                  ctx.fillRect(rx - size / 2, ry - thickness / 2, size, thickness);
-              } else {
-                  // Default Square
-                  ctx.fillRect(rx - size / 2, ry - size / 2, size, size);
-              }
+              drawConstructGlyph(ctx, node as CelestialBody, rx, ry, 8 / zoom);
           }
       }
       for (const node of system.nodes) {
@@ -916,23 +915,7 @@
                   ctx.moveTo(screenPos.x, screenPos.y - 5); ctx.lineTo(screenPos.x, screenPos.y + 5);
                   ctx.stroke();
               } else if (node.kind === 'construct') {
-                  const size = 8;
-                  ctx.fillStyle = node.icon_color || '#f0f0f0';
-                  if (node.icon_type === 'triangle') {
-                      ctx.beginPath(); ctx.moveTo(screenPos.x, screenPos.y - size / 2); ctx.lineTo(screenPos.x + size / 2, screenPos.y + size / 2);
-                      ctx.lineTo(screenPos.x - size / 2, screenPos.y + size / 2); ctx.closePath(); ctx.fill();
-                  } else if (node.icon_type === 'circle') {
-                      ctx.beginPath(); ctx.arc(screenPos.x, screenPos.y, size / 2, 0, 2 * Math.PI); ctx.fill();
-                  } else if (node.icon_type === 'diamond') {
-                      ctx.beginPath(); ctx.moveTo(screenPos.x, screenPos.y - size / 2); ctx.lineTo(screenPos.x + size / 2, screenPos.y); 
-                      ctx.lineTo(screenPos.x, screenPos.y + size / 2); ctx.lineTo(screenPos.x - size / 2, screenPos.y); ctx.closePath(); ctx.fill();
-                  } else if (node.icon_type === 'cross') {
-                      const thickness = size / 3;
-                      ctx.fillRect(screenPos.x - thickness / 2, screenPos.y - size / 2, thickness, size);
-                      ctx.fillRect(screenPos.x - size / 2, screenPos.y - thickness / 2, size, thickness);
-                  } else {
-                      ctx.fillRect(screenPos.x - size / 2, screenPos.y - size / 2, size, size);
-                  }
+                  drawConstructGlyph(ctx, node as CelestialBody, screenPos.x, screenPos.y, 8);
               }
           }
       }
