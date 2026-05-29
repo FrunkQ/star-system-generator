@@ -6,6 +6,7 @@
   import type { RulePack, System, CelestialBody, Starmap } from '$lib/types';
   import { deleteNode, renameNode, generateSystem, computePlayerSnapshot } from '$lib/api';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
+  import { drainFuelMassKg } from '$lib/construct-logic';
   import SystemSummary from './SystemSummary.svelte';
   import SystemGenerationControls from './SystemGenerationControls.svelte';
   import SystemSummaryContextMenu from './SystemSummaryContextMenu.svelte'; 
@@ -1574,23 +1575,8 @@
           const newNodes = sys.nodes.map(n => {
               if (n.id === focusedBody!.id) {
                   // Deduct Fuel
-                  let remainingFuel = fuelCostKg;
-                  if (n.fuel_tanks && rulePack.fuelDefinitions) {
-                      for (const tank of n.fuel_tanks) {
-                          const def = rulePack.fuelDefinitions.entries.find(f => f.id === tank.fuel_type_id);
-                          if (def && remainingFuel > 0) {
-                              const mass = tank.current_units * def.density_kg_per_m3;
-                              if (mass >= remainingFuel) {
-                                  tank.current_units -= remainingFuel / def.density_kg_per_m3;
-                                  remainingFuel = 0;
-                              } else {
-                                  remainingFuel -= mass;
-                                  tank.current_units = 0;
-                              }
-                          }
-                      }
-                  }
-                  
+                  const drained = drainFuelMassKg(n as CelestialBody, rulePack, fuelCostKg);
+
                   // Update Position to Low Orbit (Standard Parking: Min + 400km)
                   const minAlt = parentBody!.orbitalBoundaries?.minLeoKm || 100;
                   const radiusKm = (parentBody!.radiusKm || 1000) + minAlt + 400;
@@ -1599,9 +1585,9 @@
                   const hostMu = parentMassKg * G;
                   const aMeters = a_AU * AU_KM * 1000;
                   const keplerN = hostMu > 0 && aMeters > 0 ? Math.sqrt(hostMu / Math.pow(aMeters, 3)) : undefined;
-                  
+
                   return {
-                      ...n,
+                      ...drained,
                       placement: 'Low Orbit',
                       flight_state: 'Orbiting',
                       vector_velocity_ms: undefined,
@@ -1628,24 +1614,9 @@
           if (!sys) return null;
           const newNodes = sys.nodes.map(n => {
               if (n.id === focusedBody!.id) {
-                  // Deduct Fuel (Same logic, should extract helper really)
-                  let remainingFuel = fuelCostKg;
-                  if (n.fuel_tanks && rulePack.fuelDefinitions) {
-                      for (const tank of n.fuel_tanks) {
-                          const def = rulePack.fuelDefinitions.entries.find(f => f.id === tank.fuel_type_id);
-                          if (def && remainingFuel > 0) {
-                              const mass = tank.current_units * def.density_kg_per_m3;
-                              if (mass >= remainingFuel) {
-                                  tank.current_units -= remainingFuel / def.density_kg_per_m3;
-                                  remainingFuel = 0;
-                              } else {
-                                  remainingFuel -= mass;
-                                  tank.current_units = 0;
-                              }
-                          }
-                      }
-                  }
-                  
+                  // Deduct Fuel
+                  const drained = drainFuelMassKg(n as CelestialBody, rulePack, fuelCostKg);
+
                   // Update Position to Surface
                   const radiusKm = parentBody!.radiusKm || 1000;
                   const a_AU = radiusKm / AU_KM;
@@ -1657,7 +1628,7 @@
                   const surfaceN = periodSeconds > 0 && isFinite(periodSeconds) ? (2 * Math.PI) / periodSeconds : undefined;
                   
                   return {
-                      ...n,
+                      ...drained,
                       placement: 'Surface',
                       flight_state: 'Landed',
                       vector_velocity_ms: undefined,

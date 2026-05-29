@@ -1,4 +1,4 @@
-import type { CelestialBody, EngineDefinition, FuelDefinition, PhysicalParameters, Systems } from './types';
+import type { CelestialBody, EngineDefinition, FuelDefinition, PhysicalParameters, RulePack, Systems } from './types';
 import { AU_KM, THERMAL_LIMITS } from './constants';
 
 // Define constants
@@ -12,6 +12,37 @@ function findEngine(engineDefinitions: EngineDefinition[], engineId: string): En
 // Helper function to find a fuel definition by ID
 function findFuel(fuelDefinitions: FuelDefinition[], fuelTypeId: string): FuelDefinition | undefined {
   return fuelDefinitions.find(f => f.id === fuelTypeId);
+}
+
+/**
+ * Immutably drains `amountKg` of fuel *mass* from a construct's tanks, in tank
+ * order, converting mass to fuel units via each fuel's density. Returns a new
+ * construct with updated tanks; the original is not mutated. Tanks with no
+ * matching fuel definition — and all tanks once the requested mass is fully
+ * drained — are left as-is. Extracted from the duplicated takeoff/land
+ * fuel-deduction loops in SystemView (behaviour preserved exactly).
+ */
+export function drainFuelMassKg(construct: CelestialBody, rulePack: RulePack, amountKg: number): CelestialBody {
+  if (!construct.fuel_tanks || !rulePack.fuelDefinitions) return construct;
+
+  let remainingFuel = amountKg;
+  const newTanks = construct.fuel_tanks.map(tank => {
+    const def = rulePack.fuelDefinitions!.entries.find(f => f.id === tank.fuel_type_id);
+    if (def && remainingFuel > 0) {
+      const mass = tank.current_units * def.density_kg_per_m3;
+      if (mass >= remainingFuel) {
+        const current_units = tank.current_units - remainingFuel / def.density_kg_per_m3;
+        remainingFuel = 0;
+        return { ...tank, current_units };
+      } else {
+        remainingFuel -= mass;
+        return { ...tank, current_units: 0 };
+      }
+    }
+    return tank;
+  });
+
+  return { ...construct, fuel_tanks: newTanks };
 }
 
 export interface ConstructSpecs {
