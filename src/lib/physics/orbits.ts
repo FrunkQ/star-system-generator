@@ -12,11 +12,17 @@ function normalizeAngle(angle: number): number {
 // --- 1. DEFINE UNIVERSAL CONSTANTS ---
 const UNIVERSAL_GAS_CONSTANT = 8.314;       // J/(mol·K)
 
-// --- Helper Function: Find Dominant Gravity ---
-export function findDominantGravitationalBody(
-  x: number, 
-  y: number, 
-  nodes: (CelestialBody | Barycenter)[], 
+/**
+ * Returns the body/barycenter whose sphere of influence (Hill sphere / SOI)
+ * contains the given point — i.e. "whose Hill sphere am I in?". This is the
+ * physically-correct answer for placement and selection (which host a click
+ * belongs to). For force-direction queries ("which body's gravity dominates
+ * here?") use `findGravitationalDominant` in gravity.ts instead.
+ */
+export function findContainingHost(
+  x: number,
+  y: number,
+  nodes: (CelestialBody | Barycenter)[],
   worldPositions: Map<string, { x: number, y: number }>
 ): CelestialBody | Barycenter | null {
     let bestHost: CelestialBody | Barycenter | null = null;

@@ -2,7 +2,14 @@
 import type { CelestialBody, Barycenter } from '../types';
 import { G } from '../constants';
 
-export function findStrongestGravitationalHost(position: { x: number, y: number }, nodes: (CelestialBody | Barycenter)[], worldPositions: Map<string, { x: number, y: number }>): CelestialBody | Barycenter | null {
+/**
+ * Returns the body/barycenter whose gravity dominates (maximum GM/r²) at the
+ * given position — i.e. "which body's gravity is strongest here?". Use this for
+ * force-direction queries, NOT for containment/selection: for "whose Hill sphere
+ * am I in?" use `findContainingHost` in orbits.ts.
+ * (Currently has no callers; kept as a force-query helper for later phases.)
+ */
+export function findGravitationalDominant(position: { x: number, y: number }, nodes: (CelestialBody | Barycenter)[], worldPositions: Map<string, { x: number, y: number }>): CelestialBody | Barycenter | null {
     let strongestHost: CelestialBody | Barycenter | null = null;
     let maxInfluence = 0;
 

@@ -11,7 +11,7 @@
   import type { PanState } from '$lib/cameraStore';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
   import { scaleBoxCox } from '../physics/scaling';
-  import { findDominantGravitationalBody } from '$lib/physics/orbits';
+  import { findContainingHost } from '$lib/physics/orbits';
   import { getNodeColor, STAR_COLOR_MAP } from '$lib/rendering/colors';
 
   export let system: System | null;
@@ -670,7 +670,7 @@
       }
       if (clickedNode) dispatch("showBodyContextMenu", { node: clickedNode, x: event.clientX, y: event.clientY });
       else {
-        const dominantBody = findDominantGravitationalBody(clickPos.x, clickPos.y, system.nodes, targetPositions);
+        const dominantBody = findContainingHost(clickPos.x, clickPos.y, system.nodes, targetPositions);
         dispatch("backgroundContextMenu", { x: clickPos.x, y: clickPos.y, dominantBody, screenX: event.clientX, screenY: event.clientY });
       }
   }
