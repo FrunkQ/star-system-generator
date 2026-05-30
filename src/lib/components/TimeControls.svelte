@@ -14,6 +14,10 @@
   type Temporal = NonNullable<Starmap['temporal']>;
 
   export let temporal: Temporal;
+  // Optional: when the parent is animating the actual/master clock (e.g.
+  // SystemView's 5-sec align), it supplies the seconds to show so the read-out
+  // counts up. Null/omitted → derive from temporal.masterTimeSec as normal.
+  export let masterOverrideSec: bigint | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -26,8 +30,9 @@
   let playbackRafId: number | null = null;
   let playbackLastTimestamp: number | null = null;
   let playbackCarrySeconds = 0;
-  let isPlaying = false;
-  let timeScale = 0;
+  // Bindable so a parent (SystemView) can read live play state for broadcast/sync.
+  export let isPlaying = false;
+  export let timeScale = 0;
 
   // --- Derived display read-outs ---
   let displayClockLabel = '';
@@ -72,7 +77,7 @@
     const displayResolved = resolveTemporalDisplay(temporal);
     displayClockLabel = displayResolved.formatted;
     displayClockSeconds = parseClockSeconds(temporal.displayTimeSec, 0n).toString();
-    const masterSeconds = parseClockSeconds(temporal.masterTimeSec, 0n);
+    const masterSeconds = masterOverrideSec ?? parseClockSeconds(temporal.masterTimeSec, 0n);
     masterClockSeconds = masterSeconds.toString();
     const calendar = temporal.temporal_registry[temporal.activeCalendarKey];
     masterCalendarLabel = calendar ? resolveCalendar(masterSeconds, calendar).formatted : masterClockSeconds;

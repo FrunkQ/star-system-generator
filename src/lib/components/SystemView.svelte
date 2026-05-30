@@ -6,6 +6,7 @@
   import type { RulePack, System, CelestialBody, Starmap } from '$lib/types';
   import { deleteNode, renameNode, generateSystem, computePlayerSnapshot } from '$lib/api';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
+  import TimeControls from '$lib/components/TimeControls.svelte';
   import { drainFuelMassKg } from '$lib/construct-logic';
   import SystemSummary from './SystemSummary.svelte';
   import SystemGenerationControls from './SystemGenerationControls.svelte';
@@ -762,6 +763,17 @@
     });
   }
 
+  // --- Shared <TimeControls> wiring (Phase 01.1 part 2b) ---
+  // The component owns the scrub/play UI; we forward its temporal updates into
+  // the starmap. The reactive block below (currentTime derivation) keeps the
+  // orbit simulation in step, and masterOverrideSec lets the actual-time read-out
+  // keep counting up during the 5-sec align.
+  $: ensuredTemporal = $starmapStore ? ensureTemporalState($starmapStore).temporal! : null;
+
+  function handleTimeControlsUpdate(event: CustomEvent) {
+    applyTemporalUpdate(() => event.detail);
+  }
+
   function scrubDisplay(deltaSec: bigint) {
     applyTemporalUpdate((temporal) => updateDisplayBySeconds(temporal, deltaSec));
   }
@@ -1285,10 +1297,6 @@
     if (normalized !== $starmapStore) {
       starmapStore.set(normalized);
     } else if (normalized.temporal) {
-      const desiredPlayback = normalized.temporal.playbackRunning ?? false;
-      if (desiredPlayback !== isPlaying) {
-        setPlaying(desiredPlayback, false);
-      }
       if (!isAligningTime) {
         const nextMs = Number(parseClockSeconds(normalized.temporal.displayTimeSec, 0n) - BIG_BANG_TO_UNIX_EPOCH_T) * 1000;
         if (Math.abs(nextMs - currentTime) > 1) {
@@ -1660,64 +1668,17 @@
       on:togglecrt={handleToggleCrt}
       on:clearmanualedit={() => systemStore.update(s => s ? { ...s, isManuallyEdited: false } : s)}
     />
-    <div class="time-panel">
-      <div class="time-title" title="Relativity mode is off. Time dilation sold separately.">🕒</div>
-      <div class="clock-line">
-        <div class="scrub-control">
-          <div class="scrub-label-row">
-            <label class="scrub-label" for="system-time-scrub">
-              Scrub Display Time 
-              {#if currentRate !== 0}
-                <span class="scrub-rate">({formattedScrubRate})</span>
-              {/if}
-            </label>
-            <label class="checkbox-label" title="When checked, releasing the slider resets speed to zero and stops time. When unchecked, speed is maintained and only advances when Play is clicked.">
-              <input type="checkbox" bind:checked={autoResetTimeScrub} />
-              Auto-reset speed
-            </label>
-          </div>
-          <div class="scrub-slider-row">
-            <div class="scrub-slider-wrap">
-              <input
-                id="system-time-scrub"
-                class="scrub-slider"
-                type="range"
-                min="-1"
-                max="1"
-                step="0.01"
-                value={scrubControlValue}
-                on:input={handleScrubInput}
-                on:mouseup={handleScrubRelease}
-                on:touchend={handleScrubRelease}
-                on:pointerup={handleScrubRelease}
-                on:change={handleScrubRelease}
-              />
-              <div class="scrub-scale">
-                <span>-10y/s</span>
-                <span>slow</span>
-                <span>pause</span>
-                <span>slow</span>
-                <span>+10y/s</span>
-              </div>
-            </div>
-            <button
-              class="play-toggle"
-              on:click={togglePlayback}
-              title={isPlaying ? 'Pause real-time clock advance' : 'Play real-time clock advance (1s/s)'}
-              aria-label={isPlaying ? 'Pause time playback' : 'Start time playback'}
-            >{isPlaying ? '⏸' : '▶'}</button>
-          </div>
-        </div>
-        <div class="time-readouts">
-          <span class="display-time" title={"Display seconds from big bang: " + displayClockSeconds}>Display Time: <strong>{displayClockLabel}</strong></span>
-          <span class="actual-time" title={"Actual seconds from big bang: " + masterClockSeconds}><strong>Actual Time:</strong> [{masterCalendarLabel}]</span>
-        </div>
-        <div class="clock-actions">
-          <button class="clock-action btn-blue" on:click={handleResetDisplayToActual}>Reset to Actual Time</button>
-          <button class="clock-action btn-red" on:click={handleAlignActualToDisplayAnimated}>Set Actual Time to Display Time</button>
-        </div>
-      </div>
-    </div>
+    {#if ensuredTemporal}
+      <TimeControls
+        temporal={ensuredTemporal}
+        masterOverrideSec={isAligningTime ? alignActualSecondsOverride : null}
+        bind:isPlaying
+        bind:timeScale
+        on:updatetemporal={handleTimeControlsUpdate}
+        on:resetdisplay={handleResetDisplayToActual}
+        on:setactual={handleAlignActualToDisplayAnimated}
+      />
+    {/if}
 
     {#if !$systemStore.isManuallyEdited}
       <SystemGenerationControls
