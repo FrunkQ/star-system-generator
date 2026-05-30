@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { systemStore } from '$lib/stores';
-  import { panStore, zoomStore } from '$lib/cameraStore';
+  import { panStore, zoomStore } from '$lib/viewport/stores';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import CRTOverlay from '$lib/components/CRTOverlay.svelte';
   import { broadcastService } from '$lib/broadcast';

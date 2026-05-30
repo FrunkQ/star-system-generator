@@ -7,8 +7,8 @@
   import * as zones from "$lib/physics/zones";
   import { calculateLagrangePoints } from "$lib/physics/lagrange";
   import { get } from 'svelte/store';
-  import { panStore, zoomStore } from '$lib/cameraStore';
-  import type { PanState } from '$lib/cameraStore';
+  import { panStore, zoomStore } from '$lib/viewport/stores';
+  import type { PanState } from '$lib/viewport/stores';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
   import { scaleBoxCox } from '../physics/scaling';
   import { findContainingHost } from '$lib/physics/orbits';

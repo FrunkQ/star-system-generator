@@ -30,7 +30,7 @@
   import { systemStore, viewportStore } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
   import { starmapUiStore } from '$lib/starmapUiStore';
-  import { panStore, zoomStore } from '$lib/cameraStore';
+  import { panStore, zoomStore } from '$lib/viewport/stores';
   import { get } from 'svelte/store';
   import { calculateSurfaceTemperature } from '$lib/system/postprocessing';
   import { systemProcessor } from '$lib/core/SystemProcessor';

@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import type { System, RulePack } from '$lib/types';
-import type { PanState } from '$lib/cameraStore';
+import type { PanState } from '$lib/viewport/stores';
 
 export type ViewSettings = {
     showNames: boolean;

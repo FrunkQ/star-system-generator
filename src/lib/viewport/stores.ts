@@ -1,3 +1,8 @@
+// Camera viewport stores. Moved here from $lib/cameraStore as part of Phase 01.8
+// so the touch-input layer (Phase 2) has a viewport API surface that isn't buried
+// in a Svelte component. (Camera helper functions still live in SystemVisualizer
+// for now — relocating those to ./camera.ts as an arg-bag API is the remaining
+// 01.8 work.)
 import { tweened } from 'svelte/motion';
 import type { Tweened } from 'svelte/motion';
 import { linear, quadOut } from 'svelte/easing';
