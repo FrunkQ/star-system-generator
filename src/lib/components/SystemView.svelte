@@ -687,6 +687,9 @@
   let alignRafId: number | null = null;
   let isAligningTime = false;
   let alignActualSecondsOverride: bigint | null = null;
+  // Target (the new "now") shown on the Actual read-out during the align, while
+  // alignActualSecondsOverride animates the Display read-out up to it.
+  let alignTargetSec: bigint | null = null;
 
   function formatTimeRate(secondsPerSec: number): string {
     const abs = Math.abs(secondsPerSec);
@@ -784,6 +787,7 @@
       alignRafId = null;
     }
     alignActualSecondsOverride = null;
+    alignTargetSec = null;
   }
 
   function handleAlignActualToDisplayAnimated() {
@@ -801,6 +805,7 @@
     stopAlignAnimation();
     isAligningTime = true;
     alignActualSecondsOverride = actualSec;
+    alignTargetSec = targetDisplaySec;
     updateTemporalDisplayState();
 
     // Phase 1: snap simulation/orbits to current Actual Time.
@@ -829,6 +834,7 @@
         }));
         isAligningTime = false;
         alignActualSecondsOverride = null;
+        alignTargetSec = null;
         updateTemporalDisplayState();
       }
     }
@@ -1671,7 +1677,8 @@
     {#if ensuredTemporal}
       <TimeControls
         temporal={ensuredTemporal}
-        masterOverrideSec={isAligningTime ? alignActualSecondsOverride : null}
+        masterOverrideSec={isAligningTime ? alignTargetSec : null}
+        displayOverrideSec={isAligningTime ? alignActualSecondsOverride : null}
         bind:isPlaying
         bind:timeScale
         on:updatetemporal={handleTimeControlsUpdate}

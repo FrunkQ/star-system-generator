@@ -14,10 +14,12 @@
   type Temporal = NonNullable<Starmap['temporal']>;
 
   export let temporal: Temporal;
-  // Optional: when the parent is animating the actual/master clock (e.g.
-  // SystemView's 5-sec align), it supplies the seconds to show so the read-out
-  // counts up. Null/omitted → derive from temporal.masterTimeSec as normal.
+  // Optional read-out overrides for when the parent animates the clocks (e.g.
+  // SystemView's 5-sec align): masterOverrideSec drives the Actual read-out,
+  // displayOverrideSec drives the Display read-out. Null/omitted → derive from
+  // temporal as normal.
   export let masterOverrideSec: bigint | null = null;
+  export let displayOverrideSec: bigint | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -74,9 +76,12 @@
 
   // Derive read-outs + sync play state from the authoritative temporal prop.
   $: {
-    const displayResolved = resolveTemporalDisplay(temporal);
+    const displayTemporal = displayOverrideSec !== null
+      ? { ...temporal, displayTimeSec: displayOverrideSec.toString() }
+      : temporal;
+    const displayResolved = resolveTemporalDisplay(displayTemporal);
     displayClockLabel = displayResolved.formatted;
-    displayClockSeconds = parseClockSeconds(temporal.displayTimeSec, 0n).toString();
+    displayClockSeconds = (displayOverrideSec ?? parseClockSeconds(temporal.displayTimeSec, 0n)).toString();
     const masterSeconds = masterOverrideSec ?? parseClockSeconds(temporal.masterTimeSec, 0n);
     masterClockSeconds = masterSeconds.toString();
     const calendar = temporal.temporal_registry[temporal.activeCalendarKey];
