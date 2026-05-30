@@ -9,6 +9,7 @@
   import { get } from 'svelte/store';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import type { PanState } from '$lib/viewport/stores';
+  import { clampZoom, dampedZoomStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM } from '$lib/viewport/camera';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
   import { scaleBoxCox } from '../physics/scaling';
   import { findContainingHost } from '$lib/physics/orbits';
@@ -42,12 +43,7 @@
 
   // --- Configurable Visuals ---
   const CLICK_AREA = { base_px: 10, buffer_px: 5 };
-  const MIN_CAMERA_ZOOM = 0.05;
-  // In AU render space, very close binaries/constructs (e.g. ~100 km separation)
-  // require very high zoom to be visually distinguishable.
-  const MAX_CAMERA_ZOOM = 500000000;
   const AUTO_ZOOM_MIN_UPDATE_MS = 180;
-  const AUTO_ZOOM_MAX_STEP_RATIO = 1.2;
   const VELOCITY_VECTOR_COLOR = 'rgba(0, 212, 255, 0.95)';
   const ACCEL_VECTOR_COLOR = 'rgba(255, 155, 47, 0.95)';
 
@@ -124,18 +120,6 @@
     x0_distance = Math.max(minA * 0.1, 1e-8);
   }
 
-  function clampZoom(value: number): number {
-    if (!Number.isFinite(value)) return MIN_CAMERA_ZOOM;
-    return Math.max(MIN_CAMERA_ZOOM, Math.min(MAX_CAMERA_ZOOM, value));
-  }
-
-  function dampedZoomStep(current: number, target: number): number {
-    const safeCurrent = Math.max(current, MIN_CAMERA_ZOOM);
-    const safeTarget = clampZoom(target);
-    const ratio = safeTarget / safeCurrent;
-    const clampedRatio = Math.max(1 / AUTO_ZOOM_MAX_STEP_RATIO, Math.min(AUTO_ZOOM_MAX_STEP_RATIO, ratio));
-    return clampZoom(safeCurrent * clampedRatio);
-  }
 
   function shouldSuppressAutoZoomNearPeriapsis(nodeId: string): boolean {
     if (!system) return false;
