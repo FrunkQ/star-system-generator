@@ -9,7 +9,7 @@
   import { get } from 'svelte/store';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import type { PanState } from '$lib/viewport/stores';
-  import { clampZoom, dampedZoomStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM } from '$lib/viewport/camera';
+  import { clampZoom, dampedZoomStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM, frameForNode, suppressAutoZoomNearPeriapsis } from '$lib/viewport/camera';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
   import { scaleBoxCox } from '../physics/scaling';
   import { findContainingHost } from '$lib/physics/orbits';
@@ -122,25 +122,7 @@
 
 
   function shouldSuppressAutoZoomNearPeriapsis(nodeId: string): boolean {
-    if (!system) return false;
-    const node = system.nodes.find(n => n.id === nodeId);
-    if (!node || !node.orbit || !node.parentId) return false;
-
-    const e = node.orbit.elements.e || 0;
-    if (e < 0.8) return false;
-
-    const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
-    const nodePos = targetPositions.get(node.id);
-    const parentPos = targetPositions.get(node.parentId);
-    if (!nodePos || !parentPos) return false;
-
-    const dx = nodePos.x - parentPos.x;
-    const dy = nodePos.y - parentPos.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const periapsis = node.orbit.elements.a_AU * (1 - e);
-    if (periapsis <= 0) return false;
-
-    return distance < periapsis * 3;
+    return suppressAutoZoomNearPeriapsis({ nodeId, system, toytownFactor, scaledWorldPositions, worldPositions });
   }
 
   function fitToPlan(plan: TransitPlan) {
@@ -249,91 +231,11 @@
   }
 
   function calculateFrameForNode(nodeId: string): { pan: PanState, zoom: number } {
-      const currentPan = get(panStore);
-      const currentZoom = get(zoomStore);
-      if (!system || !canvas) return { pan: currentPan, zoom: currentZoom };
-      const nodesById = new Map(system.nodes.map(n => [n.id, n]));
-      let targetNode = nodesById.get(nodeId);
-      if (targetNode && targetNode.ui_parentId) {
-          const parentNode = nodesById.get(targetNode.ui_parentId);
-          if (parentNode) { targetNode = parentNode; nodeId = parentNode.id; }
-      }
-      const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
-      const targetPosition = targetPositions.get(nodeId);
-      if (targetNode && targetNode.roleHint === 'ring') {
-          if (targetPosition) {
-              let outerRadiusAU = (targetNode.radiusOuterKm || 100000) / AU_KM;
-              if (toytownFactor > 0) outerRadiusAU = scaleBoxCox(outerRadiusAU, toytownFactor, x0_distance);
-              const paddingFactor = 3.0; 
-              const targetWorldRadius = outerRadiusAU * paddingFactor;
-              let newZoom = currentZoom;
-              if (targetWorldRadius > 0) {
-                  const minDimension = Math.min(canvas.width, canvas.height);
-                  newZoom = (minDimension / 2) / targetWorldRadius;
-              }
-              return { pan: targetPosition, zoom: clampZoom(newZoom) };
-          }
-      }
-      if (!targetNode || !targetPosition) return { pan: currentPan, zoom: currentZoom };
-      const children = system.nodes.filter(n => n.parentId === nodeId);
-      if (children.length > 0 && !forceOrbitView) {
-          let maxDistance = children.reduce((max, node) => {
-              const childPos = targetPositions.get(node.id);
-              if (childPos) {
-                  const dx = childPos.x - targetPosition.x;
-                  const dy = childPos.y - targetPosition.y;
-                  return Math.max(max, Math.sqrt(dx*dx + dy*dy));
-              }
-              return max;
-          }, 0);
-          let minSize = 0.0001;
-          if (targetNode.kind === 'body' && targetNode.radiusKm) {
-              let radiusInAU = (targetNode.radiusKm || 0) / AU_KM;
-              if (toytownFactor > 0) radiusInAU = scaleBoxCox(radiusInAU, toytownFactor, x0_distance);
-              minSize = radiusInAU;
-          }
-          maxDistance = Math.max(maxDistance, minSize * 3);
-          const paddingFactor = 1.1; 
-          const targetWorldRadius = maxDistance * paddingFactor;
-          let newZoom = currentZoom;
-          if (targetWorldRadius > 0) {
-              const minDimension = Math.min(canvas.width, canvas.height);
-              newZoom = (minDimension / 2) / targetWorldRadius;
-          }
-          return { pan: targetPosition, zoom: clampZoom(newZoom) };
-      } else {
-          if (targetNode.parentId) {
-              const parentPos = targetPositions.get(targetNode.parentId);
-              if (parentPos) {
-                  const dx = targetPosition.x - parentPos.x;
-                  const dy = targetPosition.y - parentPos.y;
-                  const rawDistance = Math.sqrt(dx * dx + dy * dy);
-                  let bodyRadiusAU = 0;
-                  if (targetNode.kind === 'body' && targetNode.radiusKm) {
-                      bodyRadiusAU = targetNode.radiusKm / AU_KM;
-                      if (toytownFactor > 0) bodyRadiusAU = scaleBoxCox(bodyRadiusAU, toytownFactor, x0_distance);
-                  }
-                  const distance = Math.max(rawDistance, bodyRadiusAU * 2, 1e-8);
-                  const minDimension = Math.min(canvas.width, canvas.height);
-                  const marginFactor = 0.9; 
-                  const newZoom = (minDimension / 2 * marginFactor) / distance;
-                  return { pan: targetPosition, zoom: clampZoom(newZoom) };
-              }
-          }
-          let bodyRadius = 0;
-          if (targetNode.kind === 'body' && targetNode.radiusKm) {
-              bodyRadius = targetNode.radiusKm / AU_KM;
-              if (toytownFactor > 0) bodyRadius = scaleBoxCox(bodyRadius, toytownFactor, x0_distance);
-          }
-          const paddingFactor = 20; 
-          const targetWorldSize = (bodyRadius > 0 ? bodyRadius * 2 : 0.01) * paddingFactor;
-          let newZoom = currentZoom;
-          if (targetWorldSize > 0) {
-              const minDimension = Math.min(canvas.width, canvas.height);
-              newZoom = minDimension / targetWorldSize;
-          }
-          return { pan: targetPosition, zoom: clampZoom(newZoom) };
-      }
+      return frameForNode({
+          nodeId, system, canvas,
+          currentPan: get(panStore), currentZoom: get(zoomStore),
+          toytownFactor, scaledWorldPositions, worldPositions, x0_distance, forceOrbitView
+      });
   }
 
   export function resetView() {
