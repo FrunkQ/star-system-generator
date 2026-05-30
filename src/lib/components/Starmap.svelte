@@ -17,8 +17,8 @@
   import { TravellerImporter } from '$lib/traveller/importer';
   import { computePlayerSnapshot } from '$lib/system/utils';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
-  import { ensureTemporalState, setMasterToDisplay, updateDisplayBySeconds } from '$lib/temporal/defaults';
-  import { parseClockSeconds, resolveCalendar, resolveTemporalDisplay } from '$lib/temporal/utre';
+  import { ensureTemporalState } from '$lib/temporal/defaults';
+  import TimeControls from './TimeControls.svelte';
 
   export let starmap: Starmap;
   export let rulePack: RulePack; // We need this prop to show defaults!
@@ -85,20 +85,13 @@
   let invertDisplay = false;
   let activeScale = { unit: 'LY', pixelsPerUnit: 25, showScaleBar: true };
   let scaleBarVisible = false;
-  let displayClockLabel = '';
-  let displayClockSeconds = '';
-  let masterClockSeconds = '';
-  let masterCalendarLabel = '';
-  let scrubControlValue = 0;
-  let autoResetTimeScrub = true;
-  let scrubRafId: number | null = null;
-  let scrubLastTimestamp: number | null = null;
-  let scrubCarrySeconds = 0;
-  let playbackRafId: number | null = null;
-  let playbackLastTimestamp: number | null = null;
-  let playbackCarrySeconds = 0;
-  let isPlaying = false;
-  let timeScale = 0;
+  // Time-scrubber/playback state now lives in <TimeControls>; this view just
+  // passes `temporal` down and persists `updatetemporal` events.
+  $: ensuredTemporal = ensureTemporalState(starmap).temporal!;
+
+  function handleTemporalUpdate(event: CustomEvent) {
+    dispatch('updatestarmap', { ...ensureTemporalState(starmap), temporal: event.detail });
+  }
 
   let showAlphaDisclaimer = false;
   let alphaAcknowledged = false;
@@ -119,211 +112,15 @@
     }
   }
 
-  function formatTimeRate(secondsPerSec: number): string {
-    const abs = Math.abs(secondsPerSec);
-    if (abs === 0) return '0s/s';
-    const sign = secondsPerSec >= 0 ? '+' : '-';
-    
-    if (abs < 1) return sign + abs.toFixed(2) + 's/s';
-    if (abs < 60) return sign + Math.round(abs) + 's/s';
-    
-    const minutes = abs / 60;
-    if (minutes < 60) return sign + Math.round(minutes) + 'm/s';
-    
-    const hours = abs / 3600;
-    if (hours < 24) return sign + Math.round(hours) + 'h/s';
-    
-    const days = abs / 86400;
-    if (days < 365.25) return sign + Math.round(days) + 'd/s';
-    
-    const years = abs / 31536000;
-    return sign + Math.round(years) + 'y/s';
-  }
-
-  $: currentRate = scrubControlValue !== 0 
-    ? scrubRateFromControl(scrubControlValue) 
-    : (isPlaying ? 1 : 0);
-  $: formattedScrubRate = formatTimeRate(currentRate);
-
-  $: if (!autoResetTimeScrub) {
-      // When unchecking, stop any active scrub and reset slider to 0
-      scrubControlValue = 0;
-      stopScrubLoop();
-  }
-
   $: mapMode = starmap.mapMode ?? 'diagrammatic';
   $: isScaled = mapMode === 'scaled';
   $: invertDisplay = starmap.invertDisplay ?? false;
   $: activeScale = starmap.scale ?? { unit: starmap.distanceUnit || 'LY', pixelsPerUnit: 25, showScaleBar: true };
   $: scaleBarVisible = isScaled && (activeScale.showScaleBar ?? true);
-  $: {
-    const normalized = ensureTemporalState(starmap);
-    const temporal = normalized.temporal!;
-    const displayResolved = resolveTemporalDisplay(temporal);
-    displayClockLabel = displayResolved.formatted;
-    displayClockSeconds = parseClockSeconds(temporal.displayTimeSec, 0n).toString();
-    const masterSeconds = parseClockSeconds(temporal.masterTimeSec, 0n);
-    masterClockSeconds = masterSeconds.toString();
-    const calendar = temporal.temporal_registry[temporal.activeCalendarKey];
-    masterCalendarLabel = calendar ? resolveCalendar(masterSeconds, calendar).formatted : masterClockSeconds;
-    const desiredPlayback = temporal.playbackRunning ?? false;
-    if (desiredPlayback !== isPlaying) {
-      setPlaying(desiredPlayback, false);
-    }
-  }
   $: if (invertDisplay && $starmapUiStore.showBackgroundImage) {
     starmapUiStore.update((ui) => ({ ...ui, showBackgroundImage: false }));
   }
 
-  function applyTemporalUpdate(mutator: (temporal: NonNullable<Starmap['temporal']>) => NonNullable<Starmap['temporal']>) {
-    const normalized = ensureTemporalState(starmap);
-    const nextTemporal = mutator(normalized.temporal!);
-    dispatch('updatestarmap', { ...normalized, temporal: nextTemporal });
-  }
-
-  function scrubDisplay(deltaSec: bigint) {
-    applyTemporalUpdate((temporal) => updateDisplayBySeconds(temporal, deltaSec));
-  }
-
-  function handleSetMasterToDisplay() {
-    setPlaying(false);
-    applyTemporalUpdate((temporal) => setMasterToDisplay(temporal));
-  }
-
-  function handleResetDisplayToActual() {
-    setPlaying(false);
-    applyTemporalUpdate((temporal) => ({
-      ...temporal,
-      displayTimeSec: temporal.masterTimeSec
-    }));
-  }
-
-  function scrubRateFromControl(value: number): number {
-    const abs = Math.abs(value);
-    if (abs < 0.02) return 0;
-    const minRate = 60; // 1 minute per second
-    const maxRate = 315360000; // 10 years per second
-    const normalized = (abs - 0.02) / 0.98;
-    const rate = minRate * Math.pow(maxRate / minRate, normalized);
-    return Math.sign(value) * rate;
-  }
-
-  function tickScrub(timestamp: number) {
-    if (scrubLastTimestamp === null) {
-      scrubLastTimestamp = timestamp;
-      scrubRafId = requestAnimationFrame(tickScrub);
-      return;
-    }
-    const dt = (timestamp - scrubLastTimestamp) / 1000;
-    scrubLastTimestamp = timestamp;
-    const rate = scrubRateFromControl(scrubControlValue);
-    if (rate !== 0) {
-      scrubCarrySeconds += rate * dt;
-      const whole = scrubCarrySeconds > 0 ? Math.floor(scrubCarrySeconds) : Math.ceil(scrubCarrySeconds);
-      if (whole !== 0) {
-        scrubDisplay(BigInt(whole));
-        scrubCarrySeconds -= whole;
-      }
-    }
-    scrubRafId = requestAnimationFrame(tickScrub);
-  }
-
-  function ensureScrubLoopRunning() {
-    if (scrubRafId !== null) return;
-    scrubLastTimestamp = null;
-    scrubRafId = requestAnimationFrame(tickScrub);
-  }
-
-  function stopScrubLoop() {
-    if (scrubRafId !== null) {
-      cancelAnimationFrame(scrubRafId);
-      scrubRafId = null;
-    }
-    scrubLastTimestamp = null;
-    scrubCarrySeconds = 0;
-  }
-
-  function handleScrubInput(event: Event) {
-    if (autoResetTimeScrub && isPlaying) setPlaying(false);
-    scrubControlValue = Number((event.target as HTMLInputElement).value);
-    if (autoResetTimeScrub && Math.abs(scrubControlValue) > 0.0001) {
-      ensureScrubLoopRunning();
-    }
-  }
-
-  function handleScrubRelease() {
-    if (autoResetTimeScrub) {
-        scrubControlValue = 0;
-        stopScrubLoop();
-    }
-  }
-
-  function tickPlayback(timestamp: number) {
-    if (!isPlaying) {
-      playbackRafId = null;
-      return;
-    }
-    if (playbackLastTimestamp === null) {
-      playbackLastTimestamp = timestamp;
-      playbackRafId = requestAnimationFrame(tickPlayback);
-      return;
-    }
-    const dt = (timestamp - playbackLastTimestamp) / 1000;
-    playbackLastTimestamp = timestamp;
-    
-    const rate = autoResetTimeScrub ? 1 : scrubRateFromControl(scrubControlValue);
-    timeScale = rate;
-    playbackCarrySeconds += rate * dt;
-    
-    const whole = playbackCarrySeconds > 0 ? Math.floor(playbackCarrySeconds) : Math.ceil(playbackCarrySeconds);
-    if (whole !== 0) {
-      scrubDisplay(BigInt(whole));
-      playbackCarrySeconds -= whole;
-    }
-    playbackRafId = requestAnimationFrame(tickPlayback);
-  }
-
-  function ensurePlaybackRunning() {
-    if (playbackRafId !== null) return;
-    playbackLastTimestamp = null;
-    playbackRafId = requestAnimationFrame(tickPlayback);
-  }
-
-  function stopPlayback() {
-    if (playbackRafId !== null) {
-      cancelAnimationFrame(playbackRafId);
-      playbackRafId = null;
-    }
-    playbackLastTimestamp = null;
-    playbackCarrySeconds = 0;
-    timeScale = 0;
-  }
-
-  function setPlaying(next: boolean, persist = true) {
-    if (isPlaying === next) return;
-    isPlaying = next;
-    // Parity with SystemView for broadcast/sync
-    if (isPlaying) {
-      if (autoResetTimeScrub) {
-          scrubControlValue = 0;
-          stopScrubLoop();
-      }
-      ensurePlaybackRunning();
-    } else {
-      stopPlayback();
-    }
-    if (persist) {
-      applyTemporalUpdate((temporal) => ({
-        ...temporal,
-        playbackRunning: next,
-        playbackRateSecPerSec: temporal.playbackRateSecPerSec ?? 1
-      }));
-    }
-  }
-
-  function togglePlayback() {
-    setPlaying(!isPlaying);
-  }
 
   function roundDistance(value: number): number {
     return Math.round(value * 100) / 100;
@@ -671,9 +468,6 @@
   });
 
   onDestroy(() => {
-    isPlaying = false;
-    stopPlayback();
-    stopScrubLoop();
     document.removeEventListener('click', handleClickOutside);
     window.removeEventListener('resize', updateSvgScale);
   });
@@ -1013,64 +807,7 @@
       </div>
     </div>
   </div>
-  <div class="time-panel">
-    <div class="time-title" title="Relativity mode is off. Time dilation sold separately.">🕒</div>
-    <div class="clock-line">
-      <div class="scrub-control">
-        <div class="scrub-label-row">
-          <label class="scrub-label" for="starmap-time-scrub">
-            Scrub Display Time 
-            {#if currentRate !== 0}
-              <span class="scrub-rate">({formattedScrubRate})</span>
-            {/if}
-          </label>
-          <label class="checkbox-label" title="When checked, releasing the slider resets speed to zero and stops time. When unchecked, speed is maintained and only advances when Play is clicked.">
-            <input type="checkbox" bind:checked={autoResetTimeScrub} />
-            Auto-reset speed
-          </label>
-        </div>
-        <div class="scrub-slider-row">
-          <div class="scrub-slider-wrap">
-            <input
-              id="starmap-time-scrub"
-              class="scrub-slider"
-              type="range"
-              min="-1"
-              max="1"
-              step="0.01"
-              value={scrubControlValue}
-              on:input={handleScrubInput}
-              on:mouseup={handleScrubRelease}
-              on:touchend={handleScrubRelease}
-              on:pointerup={handleScrubRelease}
-              on:change={handleScrubRelease}
-            />
-            <div class="scrub-scale">
-              <span>-10y/s</span>
-              <span>slow</span>
-              <span>pause</span>
-              <span>slow</span>
-              <span>+10y/s</span>
-            </div>
-          </div>
-          <button
-            class="play-toggle"
-            on:click={togglePlayback}
-            title={isPlaying ? 'Pause real-time clock advance' : 'Play real-time clock advance (1s/s)'}
-            aria-label={isPlaying ? 'Pause time playback' : 'Start time playback'}
-            >{isPlaying ? '⏸' : '▶'}</button>
-        </div>
-      </div>
-      <div class="time-readouts">
-        <span class="display-time" title={"Display seconds from big bang: " + displayClockSeconds}>Display Time: <strong>{displayClockLabel}</strong></span>
-        <span class="actual-time" title={"Actual seconds from big bang: " + masterClockSeconds}><strong>Actual Time:</strong> [{masterCalendarLabel}]</span>
-      </div>
-      <div class="clock-actions">
-        <button class="clock-action btn-blue" on:click={handleResetDisplayToActual} title="Reset display time to current actual time">Reset to Actual Time</button>
-        <button class="clock-action btn-red" on:click={handleSetMasterToDisplay} title="Set actual time to current display time">Set Actual Time to Display Time</button>
-      </div>
-    </div>
-  </div>
+  <TimeControls temporal={ensuredTemporal} on:updatetemporal={handleTemporalUpdate} />
   <div class="starmap-canvas">
     <svg
       bind:this={svgElement}
