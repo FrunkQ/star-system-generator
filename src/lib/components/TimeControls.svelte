@@ -8,7 +8,7 @@
   // its orbit-simulation clock + alignment animation around this component.
   import { createEventDispatcher, onDestroy } from 'svelte';
   import type { Starmap } from '$lib/types';
-  import { setMasterToDisplay, updateDisplayBySeconds } from '$lib/temporal/defaults';
+  import { updateDisplayBySeconds } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar, resolveTemporalDisplay } from '$lib/temporal/utre';
 
   type Temporal = NonNullable<Starmap['temporal']>;
@@ -90,17 +90,17 @@
     applyTemporalUpdate((temporal) => updateDisplayBySeconds(temporal, deltaSec));
   }
 
-  function handleSetMasterToDisplay() {
+  // Clock actions are parent-handled so each screen can differ: Star Map does
+  // the instant version; SystemView does its animated align / orbit-clock
+  // version. We stop our own playback loop first, then dispatch.
+  function handleResetDisplay() {
     setPlaying(false);
-    applyTemporalUpdate((temporal) => setMasterToDisplay(temporal));
+    dispatch('resetdisplay');
   }
 
-  function handleResetDisplayToActual() {
+  function handleSetActual() {
     setPlaying(false);
-    applyTemporalUpdate((temporal) => ({
-      ...temporal,
-      displayTimeSec: temporal.masterTimeSec
-    }));
+    dispatch('setactual');
   }
 
   function scrubRateFromControl(value: number): number {
@@ -290,8 +290,8 @@
       <span class="actual-time" title={"Actual seconds from big bang: " + masterClockSeconds}><strong>Actual Time:</strong> [{masterCalendarLabel}]</span>
     </div>
     <div class="clock-actions">
-      <button class="clock-action btn-blue" on:click={handleResetDisplayToActual} title="Reset display time to current actual time">Reset to Actual Time</button>
-      <button class="clock-action btn-red" on:click={handleSetMasterToDisplay} title="Set actual time to current display time">Set Actual Time to Display Time</button>
+      <button class="clock-action btn-blue" on:click={handleResetDisplay} title="Reset display time to current actual time">Reset to Actual Time</button>
+      <button class="clock-action btn-red" on:click={handleSetActual} title="Set actual time to current display time">Set Actual Time to Display Time</button>
     </div>
   </div>
 </div>

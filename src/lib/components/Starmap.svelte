@@ -17,7 +17,7 @@
   import { TravellerImporter } from '$lib/traveller/importer';
   import { computePlayerSnapshot } from '$lib/system/utils';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
-  import { ensureTemporalState } from '$lib/temporal/defaults';
+  import { ensureTemporalState, setMasterToDisplay } from '$lib/temporal/defaults';
   import TimeControls from './TimeControls.svelte';
 
   export let starmap: Starmap;
@@ -91,6 +91,20 @@
 
   function handleTemporalUpdate(event: CustomEvent) {
     dispatch('updatestarmap', { ...ensureTemporalState(starmap), temporal: event.detail });
+  }
+
+  // Star Map clock actions are instant (no orbit animation here).
+  function handleResetDisplay() {
+    const normalized = ensureTemporalState(starmap);
+    dispatch('updatestarmap', {
+      ...normalized,
+      temporal: { ...normalized.temporal!, displayTimeSec: normalized.temporal!.masterTimeSec }
+    });
+  }
+
+  function handleSetActual() {
+    const normalized = ensureTemporalState(starmap);
+    dispatch('updatestarmap', { ...normalized, temporal: setMasterToDisplay(normalized.temporal!) });
   }
 
   let showAlphaDisclaimer = false;
@@ -807,7 +821,12 @@
       </div>
     </div>
   </div>
-  <TimeControls temporal={ensuredTemporal} on:updatetemporal={handleTemporalUpdate} />
+  <TimeControls
+    temporal={ensuredTemporal}
+    on:updatetemporal={handleTemporalUpdate}
+    on:resetdisplay={handleResetDisplay}
+    on:setactual={handleSetActual}
+  />
   <div class="starmap-canvas">
     <svg
       bind:this={svgElement}
