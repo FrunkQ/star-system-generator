@@ -678,12 +678,6 @@
   let displayClockSeconds = '';
   let masterClockSeconds = '';
   let masterCalendarLabel = '';
-  let scrubControlValue = 0;
-  let autoResetTimeScrub = true;
-  let scrubRafId: number | null = null;
-  let scrubLastTimestamp: number | null = null;
-  let scrubCarrySeconds = 0;
-  let playbackIntervalId: ReturnType<typeof setInterval> | null = null;
   let alignRafId: number | null = null;
   let isAligningTime = false;
   let alignActualSecondsOverride: bigint | null = null;
@@ -691,37 +685,6 @@
   // alignActualSecondsOverride animates the Display read-out up to it.
   let alignTargetSec: bigint | null = null;
 
-  function formatTimeRate(secondsPerSec: number): string {
-    const abs = Math.abs(secondsPerSec);
-    if (abs === 0) return '0s/s';
-    const sign = secondsPerSec >= 0 ? '+' : '-';
-    
-    if (abs < 1) return sign + abs.toFixed(2) + 's/s';
-    if (abs < 60) return sign + Math.round(abs) + 's/s';
-    
-    const minutes = abs / 60;
-    if (minutes < 60) return sign + Math.round(minutes) + 'm/s';
-    
-    const hours = abs / 3600;
-    if (hours < 24) return sign + Math.round(hours) + 'h/s';
-    
-    const days = abs / 86400;
-    if (days < 365.25) return sign + Math.round(days) + 'd/s';
-    
-    const years = abs / 31536000;
-    return sign + Math.round(years) + 'y/s';
-  }
-
-  $: currentRate = scrubControlValue !== 0 
-    ? scrubRateFromControl(scrubControlValue) 
-    : (isPlaying ? 1 : 0);
-  $: formattedScrubRate = formatTimeRate(currentRate);
-
-  $: if (!autoResetTimeScrub) {
-      // When unchecking, stop any active scrub and reset slider to 0
-      scrubControlValue = 0;
-      stopScrubLoop();
-  }
 
   $: if ($systemStore) {
     if (focusedBodyId) {
@@ -777,10 +740,6 @@
     applyTemporalUpdate(() => event.detail);
   }
 
-  function scrubDisplay(deltaSec: bigint) {
-    applyTemporalUpdate((temporal) => updateDisplayBySeconds(temporal, deltaSec));
-  }
-
   function stopAlignAnimation() {
     if (alignRafId !== null) {
       cancelAnimationFrame(alignRafId);
@@ -800,8 +759,7 @@
     const startMs = Number(actualSec * 1000n);
     const targetMs = Number(targetDisplaySec * 1000n);
 
-    setPlaying(false);
-    stopScrubLoop();
+    // (TimeControls already stops its own playback before dispatching setactual.)
     stopAlignAnimation();
     isAligningTime = true;
     alignActualSecondsOverride = actualSec;
@@ -842,8 +800,7 @@
   }
 
   function handleResetDisplayToActual() {
-    setPlaying(false);
-    stopScrubLoop();
+    // (TimeControls already stops its own playback before dispatching resetdisplay.)
     stopAlignAnimation();
     isAligningTime = false;
     alignActualSecondsOverride = null;
@@ -858,139 +815,6 @@
       ...time,
       displayTimeSec: actualSec.toString()
     }));
-  }
-
-  function scrubRateFromControl(value: number): number {
-    const abs = Math.abs(value);
-    if (abs < 0.02) return 0;
-    const minRate = 60; // 1 minute per second
-    const maxRate = 315360000; // 10 years per second
-    const normalized = (abs - 0.02) / 0.98;
-    const rate = minRate * Math.pow(maxRate / minRate, normalized);
-    return Math.sign(value) * rate;
-  }
-
-  function tickScrub(timestamp: number) {
-    if (scrubLastTimestamp === null) {
-      scrubLastTimestamp = timestamp;
-      scrubRafId = requestAnimationFrame(tickScrub);
-      return;
-    }
-    const dt = (timestamp - scrubLastTimestamp) / 1000;
-    scrubLastTimestamp = timestamp;
-    const rate = scrubRateFromControl(scrubControlValue);
-    if (rate !== 0) {
-      scrubCarrySeconds += rate * dt;
-      const whole = scrubCarrySeconds > 0 ? Math.floor(scrubCarrySeconds) : Math.ceil(scrubCarrySeconds);
-      if (whole !== 0) {
-        scrubDisplay(BigInt(whole));
-        scrubCarrySeconds -= whole;
-      }
-    }
-    scrubRafId = requestAnimationFrame(tickScrub);
-  }
-
-  function ensureScrubLoopRunning() {
-    if (scrubRafId !== null) return;
-    scrubLastTimestamp = null;
-    scrubRafId = requestAnimationFrame(tickScrub);
-  }
-
-  function stopScrubLoop() {
-    if (scrubRafId !== null) {
-      cancelAnimationFrame(scrubRafId);
-      scrubRafId = null;
-    }
-    scrubLastTimestamp = null;
-    scrubCarrySeconds = 0;
-  }
-
-  function handleScrubInput(event: Event) {
-    if (autoResetTimeScrub && isPlaying) setPlaying(false);
-    scrubControlValue = Number((event.target as HTMLInputElement).value);
-    
-    if (autoResetTimeScrub && Math.abs(scrubControlValue) > 0.0001) {
-      ensureScrubLoopRunning();
-    }
-  }
-
-  function handleScrubRelease() {
-    if (autoResetTimeScrub) {
-        scrubControlValue = 0;
-        stopScrubLoop();
-    }
-  }
-
-  function tickPlayback(timestamp: number) {
-    if (!isPlaying) {
-      playbackRafId = null;
-      return;
-    }
-    if (playbackLastTimestamp === null) {
-      playbackLastTimestamp = timestamp;
-      playbackRafId = requestAnimationFrame(tickPlayback);
-      return;
-    }
-    const dt = (timestamp - playbackLastTimestamp) / 1000;
-    playbackLastTimestamp = timestamp;
-    
-    const rate = autoResetTimeScrub ? 1 : scrubRateFromControl(scrubControlValue);
-    timeScale = rate; 
-    playbackCarrySeconds += rate * dt;
-    
-    const whole = playbackCarrySeconds > 0 ? Math.floor(playbackCarrySeconds) : Math.ceil(playbackCarrySeconds);
-    if (whole !== 0) {
-      scrubDisplay(BigInt(whole));
-      playbackCarrySeconds -= whole;
-    }
-    playbackRafId = requestAnimationFrame(tickPlayback);
-  }
-
-  function ensurePlaybackRunning() {
-    if (playbackRafId !== null) return;
-    playbackLastTimestamp = null;
-    playbackRafId = requestAnimationFrame(tickPlayback);
-  }
-
-  function stopPlayback() {
-    if (playbackRafId !== null) {
-      cancelAnimationFrame(playbackRafId);
-      playbackRafId = null;
-    }
-    playbackLastTimestamp = null;
-    playbackCarrySeconds = 0;
-    timeScale = 0;
-  }
-
-  let playbackRafId: number | null = null;
-  let playbackLastTimestamp: number | null = null;
-  let playbackCarrySeconds = 0;
-
-  function setPlaying(next: boolean, persist = true) {
-    if (isPlaying === next) return;
-    isPlaying = next;
-    
-    if (isPlaying) {
-      if (autoResetTimeScrub) {
-          scrubControlValue = 0;
-          stopScrubLoop();
-      }
-      ensurePlaybackRunning();
-    } else {
-      stopPlayback();
-    }
-    
-    if (persist) {
-      applyTemporalUpdate((temporal) => ({
-        ...temporal,
-        playbackRunning: next,
-        playbackRateSecPerSec: temporal.playbackRateSecPerSec ?? 1
-      }));
-    }
-  }
-
-  function togglePlayback() {
-    setPlaying(!isPlaying);
   }
 
   async function handleGenerate(empty: boolean = false) {
@@ -1284,10 +1108,6 @@
     if (browser) {
       if (timeSyncInterval) clearInterval(timeSyncInterval);
     }
-    isPlaying = false;
-    timeScale = 0;
-    stopPlayback();
-    stopScrubLoop();
     stopAlignAnimation();
     if (unsubscribePanStore) {
         unsubscribePanStore();
