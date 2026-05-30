@@ -4,6 +4,14 @@
 	let { children } = $props();
 	let swUpdateInterval: ReturnType<typeof setInterval> | undefined;
 
+	// TEMPORARY DEV BUILD STAMP — front-and-centre so a stale cached / PWA copy is
+	// obvious. commit + time are baked in at build time and change every build, so
+	// if you reload and they don't change you're on a cached copy.
+	// To hide later: remove the {#if !dismissed} badge block + styles below.
+	const build = __BUILD_INFO__;
+	const builtAt = new Date(build.time).toLocaleString();
+	let dismissed = $state(false);
+
 	onMount(() => {
 		if (!('serviceWorker' in navigator)) return;
 		const isProd = import.meta.env.PROD;
@@ -71,6 +79,16 @@
 
 {@render children?.()}
 
+{#if !dismissed}
+	<button
+		class="build-stamp"
+		title="Build stamp — click to dismiss. commit {build.commit}, built {build.time}"
+		onclick={() => (dismissed = true)}
+	>
+		BUILD v{build.version} · {build.commit} · {builtAt}
+	</button>
+{/if}
+
 <style>
   :global(body) {
     background-color: #333;
@@ -126,5 +144,27 @@
   :global(.error) {
     color: #ff8888;
     font-weight: bold;
+  }
+
+  /* TEMPORARY dev build stamp */
+  .build-stamp {
+    position: fixed;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 99999;
+    font: 600 12px/1 ui-monospace, 'Cascadia Code', monospace;
+    color: #1a1300;
+    background: #ffd24d;
+    border: 1px solid #b8860b;
+    border-radius: 999px;
+    padding: 6px 14px;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+  .build-stamp:hover {
+    background: #ffe085;
   }
 </style>

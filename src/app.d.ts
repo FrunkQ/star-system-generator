@@ -10,4 +10,7 @@ declare global {
 	}
 }
 
+// Injected at build time by vite.config.ts `define`.
+declare const __BUILD_INFO__: { version: string; commit: string; time: string };
+
 export {};
