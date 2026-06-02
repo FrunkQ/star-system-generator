@@ -290,15 +290,46 @@ function samplePostJourneyState(
       }
     }
 
-    // Generic Orbit (lo/mo/ho) or Surface
-    // The ship should orbit the planet, not just have a static offset.
-    // However, without a true Keplarian propagator for the ship, the cleanest 
-    // post-transit approximation for UI scrubbing is to lock it to the planet's center 
-    // (with a tiny visual scatter if desired) or snap-to-zero.
+    // Captured arrival. Surface/Dock snap to the target centre. For an orbital
+    // arrival, give the ship a real circular PARKING ORBIT that actually revolves
+    // over time (this sampler is re-evaluated every tick, so the ship goes round
+    // the planet and future-transit origins read its true orbiting state) rather
+    // than locking it to the planet's centre.
     const s = getGlobalState(system, targetNode as any, timeMs);
-    const state = lastPlan.arrivalPlacement === 'surface' ? 'Landed' : (targetNode.kind === 'construct' ? 'Docked' : 'Orbiting');
-    
-    // Snap to target center. The visualizer handles drawing "orbiting" ships as icons next to the planet.
+    const placement = lastPlan.arrivalPlacement;
+    const t: any = targetNode;
+    const state = placement === 'surface' ? 'Landed' : (targetNode.kind === 'construct' ? 'Docked' : 'Orbiting');
+
+    if (state === 'Orbiting') {
+      const targetRadiusKm = t.radiusKm || 1000;
+      const targetMassKg = t.massKg || t.effectiveMassKg || 0;
+      // Parking-orbit radius above the target surface, by arrival placement.
+      const altFactor = placement === 'ho' ? 3 : placement === 'geo' ? 5 : placement === 'mo' ? 1.2 : 0.3; // 'lo' default
+      const parkingRadiusKm = targetRadiusKm * (1 + altFactor);
+      const aAU = parkingRadiusKm / AU_KM;
+      const aM = parkingRadiusKm * 1000;
+      const G_CONST = 6.6743e-11;
+      const mu = G_CONST * targetMassKg;
+      const n = mu > 0 && aM > 0 ? Math.sqrt(mu / (aM * aM * aM)) : 0; // mean motion, rad/s
+      // Deterministic starting phase per journey so re-samples don't jump the ship.
+      let phase0 = 0;
+      for (let i = 0; i < log.id.length; i++) phase0 = (phase0 + log.id.charCodeAt(i) * 0.137) % (2 * Math.PI);
+      const theta = phase0 + n * ((timeMs - completedAtMs) / 1000);
+      const cos = Math.cos(theta);
+      const sin = Math.sin(theta);
+      const vTanAuSec = n * aAU; // tangential orbital speed, AU/s
+      return {
+        journeyId: log.id,
+        state: 'Orbiting',
+        position_au: { x: s.r.x + aAU * cos, y: s.r.y + aAU * sin },
+        velocity_ms: {
+          x: (s.v.x + (-vTanAuSec * sin)) * AU_M,
+          y: (s.v.y + (vTanAuSec * cos)) * AU_M
+        }
+      };
+    }
+
+    // Landed / Docked: snap to the target centre.
     return {
       journeyId: log.id,
       state,
