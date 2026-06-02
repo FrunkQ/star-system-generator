@@ -1,6 +1,14 @@
 // src/lib/constants.ts
-export const APP_VERSION = '2.0.0-alpha';
-export const APP_DATE = '12-Apr-26';
+// APP_VERSION / APP_DATE are derived from the build stamp injected by vite.config
+// (__BUILD_INFO__) so the About box never goes stale: version tracks package.json,
+// date is the build date. The typeof guard keeps it safe if the define is absent.
+const _buildInfo = typeof __BUILD_INFO__ !== 'undefined' ? __BUILD_INFO__ : null;
+export const APP_VERSION = _buildInfo?.version ?? '2.0.0-alpha';
+export const APP_DATE = _buildInfo?.time
+	? new Date(_buildInfo.time)
+			.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })
+			.replace(/ /g, '-')
+	: '12-Apr-26';
 
 export const G = 6.67430e-11; // Gravitational constant
 export const UNIVERSAL_GAS_CONSTANT = 8.31446; // J/(mol·K)
