@@ -241,18 +241,26 @@
       
       // Check Parent
       if (n.parentId) {
-          const parent = system.nodes.find(p => p.id === n.parentId);
-          
-          // Allow if parent is a Star or Barycenter (Standard Planets/Major Bodies)
-          if (parent && (parent.roleHint === 'star' || parent.kind === 'barycenter')) return true;
-          
           // Allow if Sibling (same parent as origin) - e.g. Moon to Moon
           if (originNode && originNode.parentId === n.parentId) return true;
-          
+
           // Allow if Child (orbits origin) - e.g. Earth to ISS
           if (n.parentId === originId) return true;
 
-          return false; 
+          // Otherwise show any object that is rooted in the system: walk the
+          // parent chain up to a star/barycenter. This exposes deeply-nested
+          // objects (e.g. a station orbiting a world) in the target list, not
+          // just direct children of stars (the previous one-level check dropped
+          // them entirely).
+          let cur = system.nodes.find(p => p.id === n.parentId);
+          let guard = 0;
+          while (cur && guard++ < 32) {
+              if (cur.roleHint === 'star' || cur.kind === 'barycenter') return true;
+              if (!cur.parentId) break;
+              cur = system.nodes.find(p => p.id === cur!.parentId);
+          }
+
+          return false;
       }
       
       // Show if no parent (Root)
