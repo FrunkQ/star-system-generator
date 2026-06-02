@@ -11,7 +11,7 @@
   import SystemSummary from './SystemSummary.svelte';
   import SystemGenerationControls from './SystemGenerationControls.svelte';
   import SystemSummaryContextMenu from './SystemSummaryContextMenu.svelte'; 
-  import BodyTechnicalDetails from './BodyTechnicalDetails.svelte';
+  import BodyDetailsPane from './BodyDetailsPane.svelte';
   import BodyImage from './BodyImage.svelte';
   import DescriptionEditor from './DescriptionEditor.svelte';
   import GmNotesEditor from './GmNotesEditor.svelte';
@@ -20,7 +20,6 @@
   import AddConstructModal from './AddConstructModal.svelte'; 
   import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
   import ConstructSidePanel from './ConstructSidePanel.svelte';
-  import BodySidePanel from './BodySidePanel.svelte';
   import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
   import ReportConfigModal from './ReportConfigModal.svelte';
   import SaveSystemModal from './SaveSystemModal.svelte';
@@ -1767,23 +1766,16 @@
                 <ZoneKey />
             {:else}
                 {#if focusedBody && focusedBody.kind !== 'construct'}
-                    {@const parentBody = focusedBody.parentId ? $systemStore.nodes.find(n => n.id === (focusedBody.ui_parentId || focusedBody.parentId)) : null}
-                    {@const rootStar = $systemStore.nodes.find(n => n.parentId === null)}
-                    {#if isEditing}
-                        <BodySidePanel 
-                            body={focusedBody} 
-                            {rulePack}
-                            system={$systemStore || system}
-                            parentBody={parentBody}
-                            rootStar={rootStar}
-                            on:update={handleBodyUpdate}  
-                            on:delete={handleDeleteNode} 
-                            on:close={() => isEditing = false} 
-                            on:tabchange={(e) => activeEditTab = e.detail} 
-                        />
-                    {:else}
-                        <BodyTechnicalDetails body={focusedBody} {rulePack} parentBody={parentBody} rootStar={rootStar} />
-                    {/if}
+                    <BodyDetailsPane
+                        focusedBody={focusedBody}
+                        system={$systemStore || system}
+                        {rulePack}
+                        {isEditing}
+                        on:update={handleBodyUpdate}
+                        on:delete={handleDeleteNode}
+                        on:close={() => isEditing = false}
+                        on:tabchange={(e) => activeEditTab = e.detail}
+                    />
                 {/if}
 
                 {#if focusedBody && focusedBody.kind === 'construct'}
