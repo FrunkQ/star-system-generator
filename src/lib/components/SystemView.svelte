@@ -40,6 +40,7 @@
   import { propagate } from '$lib/api';
   import { broadcastService } from '$lib/broadcast';
   import DebugFooter from './DebugFooter.svelte';
+  import ShipLogPane from './ShipLogPane.svelte';
   import { calculateAllStellarZones } from '$lib/physics/zones';
   import { calculateEquilibriumTemperature, composeSurfaceTemperatureFromDeltaComponents, estimateBondAlbedo, estimateInternalHeatK } from '$lib/physics/temperature';
   import { ensureTemporalState, setMasterToDisplay, updateDisplayBySeconds } from '$lib/temporal/defaults';
@@ -1310,40 +1311,12 @@
       transitDelayDays = 0;
   }
 
-  function formatLogTime(ms: number): string {
-      if (!Number.isFinite(ms)) return 'n/a';
-      const sec = BigInt(Math.floor(ms / 1000));
-      const temporal = get(starmapStore)?.temporal;
-      if (temporal) {
-          const calendar = temporal.temporal_registry[temporal.activeCalendarKey];
-          if (calendar) return resolveCalendar(sec, calendar).formatted;
-      }
-      const d = new Date(ms);
-      if (Number.isFinite(d.getTime())) return d.toISOString();
-      return `${sec.toString()}s`;
-  }
-
   function getActualTimeMs(): number {
       const temporal = get(starmapStore)?.temporal;
       if (!temporal) return currentTime;
       return Number(parseClockSeconds(temporal.masterTimeSec, 0n) * 1000n);
   }
 
-  function safeClockSecStringToMs(value: string | undefined): number {
-      try {
-          if (!value) return 0;
-          const sec = BigInt(value);
-          const unixSec = sec - BIG_BANG_TO_UNIX_EPOCH_T;
-          return Number(unixSec) * 1000;
-      } catch {
-          return 0;
-      }
-  }
-
-  function nodeName(nodeId: string): string {
-      const n = $systemStore?.nodes.find((x) => x.id === nodeId);
-      return n?.name || nodeId;
-  }
 
   function activeJourneyCountForActualTime(body: CelestialBody): number {
       const logs = body.scheduled_journeys || [];
@@ -1853,46 +1826,14 @@
                 {#if focusedBody && focusedBody.kind === 'construct'}
                   {@const parentBody = focusedBody.parentId ? $systemStore.nodes.find(n => n.id === (focusedBody.ui_parentId || focusedBody.parentId)) : null}
                   {#if isShipLogOpen}
-                      <div class="ship-log-panel">
-                        <div class="ship-log-header">
-                          <h4>Ship's Log</h4>
-                          <button class="ship-log-close" on:click={handleCloseJourneyLog}>Close Log</button>
-                        </div>
-                        <div class="ship-log-controls">
-                          <button class="ship-log-action" on:click={handleClearFuturePlans} disabled={countFutureJourneys(focusedBody, getActualTimeMs()) === 0} title="Remove all future scheduled journeys using Actual/Global time">
-                            Clear Future Plans ({countFutureJourneys(focusedBody, getActualTimeMs())})
-                          </button>
-                          <button class="ship-log-action warn" on:click={handleCancelActivePlan} disabled={activeJourneyCountForActualTime(focusedBody) === 0} title="Cancel currently active journey, keep current velocity vector, and clear all future plans">
-                            Cancel Active (+Future) ({activeJourneyCountForActualTime(focusedBody)})
-                          </button>
-                        </div>
-                        {#if (focusedBody.scheduled_journeys || []).length === 0}
-                          <div class="ship-log-empty">No journeys logged.</div>
-                        {:else}
-                          {#each (focusedBody.scheduled_journeys || []) as log, i}
-                            <div class="ship-log-entry">
-                              <div class="ship-log-title">
-                                <strong>Journey {i + 1}</strong>
-                                <span class="ship-log-status">{log.status.toUpperCase()}</span>
-                              </div>
-                              <div class="ship-log-meta">Created: {formatLogTime(safeClockSecStringToMs(log.createdAtSec))}</div>
-                              {#if getJourneyBounds(log.plans)}
-                                {@const bounds = getJourneyBounds(log.plans)!}
-                                <div class="ship-log-meta">Window: {formatLogTime(bounds.startMs)} -> {formatLogTime(bounds.endMs)}</div>
-                              {/if}
-                              <div class="ship-log-legs">
-                                {#each log.plans as leg, legIndex}
-                                  <div class="ship-log-leg">
-                                    <div><strong>Leg {legIndex + 1}:</strong> {nodeName(leg.originId)} -> {nodeName(leg.targetId)}</div>
-                                    <div class="ship-log-meta">Depart: {formatLogTime(leg.startTime)}</div>
-                                    <div class="ship-log-meta">Arrive: {formatLogTime(leg.startTime + (leg.totalTime_days * 86400 * 1000))}</div>
-                                  </div>
-                                {/each}
-                              </div>
-                            </div>
-                          {/each}
-                        {/if}
-                      </div>
+                      <ShipLogPane
+                        focusedBody={focusedBody}
+                        clearFutureCount={countFutureJourneys(focusedBody, getActualTimeMs())}
+                        activeCount={activeJourneyCountForActualTime(focusedBody)}
+                        on:close={handleCloseJourneyLog}
+                        on:clearfuture={handleClearFuturePlans}
+                        on:cancelactive={handleCancelActivePlan}
+                      />
                   {:else if isEditing}
                       <ConstructSidePanel 
                         system={$systemStore} 
@@ -2364,70 +2305,6 @@
     .project-attribution {
         font-size: 1.1em; /* Slightly larger for the last line */
         font-weight: bold;
-    }
-    .ship-log-panel {
-        background: #1f1f1f;
-        border: 1px solid #3b3b3b;
-        border-radius: 6px;
-        padding: 0.8em;
-        display: flex;
-        flex-direction: column;
-        gap: 0.7em;
-    }
-    .ship-log-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.8em;
-    }
-    .ship-log-header h4 {
-        margin: 0;
-        color: #ffb088;
-    }
-    .ship-log-close {
-        background: #444;
-        color: #eee;
-        border: 1px solid #666;
-        border-radius: 4px;
-        padding: 0.35em 0.7em;
-        cursor: pointer;
-    }
-    .ship-log-close:hover {
-        background: #555;
-    }
-    .ship-log-empty {
-        color: #aaa;
-    }
-    .ship-log-entry {
-        border: 1px solid #363636;
-        border-radius: 5px;
-        background: #181818;
-        padding: 0.6em;
-    }
-    .ship-log-title {
-        display: flex;
-        justify-content: space-between;
-        gap: 0.6em;
-        color: #fff;
-    }
-    .ship-log-status {
-        color: #88ccff;
-        font-size: 0.85em;
-    }
-    .ship-log-meta {
-        color: #b8b8b8;
-        font-size: 0.85em;
-        margin-top: 0.2em;
-    }
-    .ship-log-legs {
-        margin-top: 0.45em;
-        display: flex;
-        flex-direction: column;
-        gap: 0.4em;
-    }
-    .ship-log-leg {
-        border-left: 2px solid #2f5d76;
-        padding-left: 0.55em;
     }
 
 </style>
