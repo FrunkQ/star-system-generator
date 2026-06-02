@@ -3,6 +3,7 @@ import type { TransitPlan, TransitSegment, TransitMode, Vector2, StateVector, Bu
 import { solveLambert, distanceAU, subtract, magnitude, integrateBallisticPath, add } from './math';
 import { getGlobalState, getLocalState, calculateFuelMass } from './physics';
 import { calculateAssistPlan } from './assist';
+import { sampleJourneyKinematicsAtTime } from './scheduler';
 import { AU_KM, G } from '../constants';
 
 const AU_M = AU_KM * 1000;
@@ -369,10 +370,32 @@ export function calculateTransitPlan(
   if (params.initialState) {
       startState = normalizeInitialStateToFrame(params.initialState, params.initialStateFrame, frameParentId) || params.initialState;
   } else if (effectiveOrigin) {
+      // If the origin construct is mid/post-journey, its cached kinematic vector
+      // is a snapshot that getGlobalState/getLocalState would LINEARLY extrapolate
+      // -- wrong for a ship that's actually following a target body's curved orbit
+      // (the cause of "ship at its target but wrong in a future transit"). Re-sample
+      // its journeys at startTime and feed that in as a fresh vector: epoch = startTime
+      // means zero extrapolation, and dropping the (stale) orbit forces the fresh
+      // vector to be used. Bodies and journey-less constructs are unaffected.
+      let originForState: any = effectiveOrigin;
+      const oc: any = effectiveOrigin;
+      if (oc.kind === 'construct' && (oc.scheduled_journeys?.length || 0) > 0) {
+          const sampled = sampleJourneyKinematicsAtTime(sys, oc, startTime);
+          if (sampled) {
+              originForState = {
+                  ...oc,
+                  vector_position_au: { x: sampled.position_au.x, y: sampled.position_au.y },
+                  vector_velocity_ms: { x: sampled.velocity_ms.x, y: sampled.velocity_ms.y },
+                  vector_epoch_ms: startTime,
+                  flight_state: sampled.state,
+                  orbit: undefined
+              };
+          }
+      }
       if (frameParentId) {
-          startState = getLocalState(sys, effectiveOrigin, frameParentId, startTime);
+          startState = getLocalState(sys, originForState, frameParentId, startTime);
       } else {
-          startState = getGlobalState(sys, effectiveOrigin, startTime);
+          startState = getGlobalState(sys, originForState, startTime);
       }
   } else {
       return [];
