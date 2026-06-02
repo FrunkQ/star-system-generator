@@ -39,8 +39,7 @@
   import { AU_KM, EARTH_MASS_KG, G } from '$lib/constants';
   import { propagate } from '$lib/api';
   import { broadcastService } from '$lib/broadcast';
-  import { sanitizeSystem } from '$lib/system/utils';
-  import { rebuildSystemHierarchy } from '$lib/physics/hierarchyRebuild';
+  import DebugFooter from './DebugFooter.svelte';
   import { calculateAllStellarZones } from '$lib/physics/zones';
   import { calculateEquilibriumTemperature, composeSurfaceTemperatureFromDeltaComponents, estimateBondAlbedo, estimateInternalHeatK } from '$lib/physics/temperature';
   import { ensureTemporalState, setMasterToDisplay, updateDisplayBySeconds } from '$lib/temporal/defaults';
@@ -110,7 +109,6 @@
   const generatedSystem = systemStore;
   let visualizer: SystemVisualizer;
   let shareStatus = '';
-  let showJson = false;
   let generationOptions: string[] = ['Random'];
   let selectedGenerationOption = 'Random';
   let showDropdown = false;
@@ -1981,31 +1979,7 @@
         <SaveSystemModal on:save={handleSaveSystem} on:close={() => showSaveModal = false} />
     {/if}
 
-    <div class="debug-controls">
-        <button on:click={() => showJson = !showJson}>
-            {showJson ? 'Hide' : 'Show'} JSON
-        </button>
-        <button on:click={() => {
-            if ($systemStore) {
-                const rebuilt = rebuildSystemHierarchy($systemStore);
-                const fullyReprocessed = systemProcessor.process({ ...rebuilt, nodes: rebuilt.nodes }, rulePack);
-                systemStore.set({ ...fullyReprocessed, isManuallyEdited: true });
-                alert('Hierarchy rebuilt: The most massive body is now the system root, and stability has been recalculated.');
-            }
-        }}>Rebuild Hierarchy</button>
-        <button on:click={() => {
-            if ($systemStore) {
-                const repaired = sanitizeSystem($systemStore, rulePack);
-                const fullyReprocessed = systemProcessor.process({ ...repaired, nodes: repaired.nodes }, rulePack);
-                systemStore.set({ ...fullyReprocessed, isManuallyEdited: true });
-                alert('System updated: Fixed legacy constructs/rings and fully reprocessed system physics/classification.');
-            }
-        }}>Update & Repair System</button>
-    </div>
-
-    {#if showJson}
-        <pre>{JSON.stringify($systemStore, null, 2)}</pre>
-    {/if}
+    <DebugFooter {rulePack} />
 
                             <footer class="attributions">
 
@@ -2213,19 +2187,6 @@
       background-color: #007bff;
       color: white;
   }
-  .debug-controls {
-      margin-top: 1em;
-  }
-  pre {
-    background-color: #1a1a1a;
-    border: 1px solid #333;
-    padding: 1em;
-    border-radius: 5px;
-    white-space: pre-wrap;
-    color: #eee;
-    font-family: monospace;
-  }
-
   .dropdown {
     position: relative;
     display: inline-block;
