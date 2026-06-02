@@ -41,6 +41,7 @@
   import { broadcastService } from '$lib/broadcast';
   import DebugFooter from './DebugFooter.svelte';
   import ShipLogPane from './ShipLogPane.svelte';
+  import FocusHeader from './FocusHeader.svelte';
   import { calculateAllStellarZones } from '$lib/physics/zones';
   import { calculateEquilibriumTemperature, composeSurfaceTemperatureFromDeltaComponents, estimateBondAlbedo, estimateInternalHeatK } from '$lib/physics/temperature';
   import { ensureTemporalState, setMasterToDisplay, updateDisplayBySeconds } from '$lib/temporal/defaults';
@@ -737,6 +738,20 @@
 
   function handleTimeControlsUpdate(event: CustomEvent) {
     applyTemporalUpdate(() => event.detail);
+  }
+
+  function handleToggleVisibility() {
+    if (focusedBody && $systemStore) {
+      systemStore.update(sys => {
+        if (!sys) return null;
+        const updatedNodes = sys.nodes.map(n =>
+          n.id === focusedBody!.id
+            ? { ...n, object_playerhidden: !n.object_playerhidden }
+            : n
+        );
+        return { ...sys, nodes: updatedNodes, isManuallyEdited: true };
+      });
+    }
   }
 
   function stopAlignAnimation() {
@@ -1558,66 +1573,14 @@
         </div>
         <div class="details-view">
             {#if focusedBody}
-            <div class="name-row">
-                {#if focusedBody.kind === 'construct'}
-                    {@const hasSensors = (focusedBody.sensors && focusedBody.sensors.length > 0)}
-                    <button class="visibility-btn" 
-                        class:active={showSensors} 
-                        disabled={!hasSensors}
-                        on:click={() => { if(hasSensors) showSensors = !showSensors; }} 
-                        title={hasSensors ? "Toggle Sensor Overlay" : "No Sensors Installed"}
-                        style="position: relative;"
-                    >
-                        <!-- Satellite Dish Base Icon -->
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" 
-                             stroke={hasSensors ? (showSensors ? "#4ade80" : "#888") : "#666"} 
-                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 12.5a9 9 0 0 1-14.88 6.42" /> <!-- Dish Curve -->
-                            <path d="M2 20l5-5" /> <!-- Stand -->
-                            <path d="M12.5 7.5l-5 5" /> <!-- Feed Arm -->
-                            <circle cx="13" cy="7" r="1.5" /> <!-- Feed Node -->
-                        </svg>
-
-                        <!-- No Entry Overlay if no sensors -->
-                        {#if !hasSensors}
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" 
-                                 style="position: absolute; bottom: -2px; right: -2px;"
-                                 fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
-                            </svg>
-                        {/if}
-                    </button>
-                {/if}
-                <button class="visibility-btn" on:click={() => {
-                    if (focusedBody && $systemStore) {
-                        systemStore.update(sys => {
-                            if (!sys) return null;
-                            const updatedNodes = sys.nodes.map(n => 
-                                n.id === focusedBody!.id 
-                                    ? { ...n, object_playerhidden: !n.object_playerhidden }
-                                    : n
-                            );
-                            return { ...sys, nodes: updatedNodes, isManuallyEdited: true };
-                        });
-                    }
-                }} title={focusedBody.object_playerhidden ? "Hidden from Players" : "Visible to Players"}>
-                    {#if focusedBody.object_playerhidden}
-                        <!-- Eye Closed -->
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                    {:else}
-                        <!-- Eye Open -->
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#eee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    {/if}
-                </button>
-                <input type="text" value={focusedBody.name} on:change={(e) => {
-                  dispatch('renameNode', {nodeId: focusedBody.id, newName: e.target.value});
-                  systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s);
-                }} class="name-input" title="Click to rename" />
-                  {#if !isEditing && !isPlanning && !isShipLogOpen && (focusedBody.kind !== 'barycenter' || focusedBody.parentId)}
-                      <button class="edit-btn small" on:click={() => { isEditing = true; showZoneKeyPanel = false; visualizer?.resetView(); }} style="margin-left: 5px;">Edit</button>
-                  {/if}
-            </div>
+            <FocusHeader
+                focusedBody={focusedBody}
+                bind:showSensors
+                {isEditing} {isPlanning} {isShipLogOpen}
+                on:togglevisibility={handleToggleVisibility}
+                on:rename={(e) => { dispatch('renameNode', e.detail); systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s); }}
+                on:enteredit={() => { isEditing = true; showZoneKeyPanel = false; visualizer?.resetView(); }}
+            />
             {/if}
 
             {#if isPlanning}
