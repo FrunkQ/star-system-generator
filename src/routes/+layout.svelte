@@ -1,15 +1,20 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import { browser } from '$app/environment';
 
 	let { children } = $props();
 	let swUpdateInterval: ReturnType<typeof setInterval> | undefined;
 
-	// TEMPORARY DEV BUILD STAMP — front-and-centre so a stale cached / PWA copy is
-	// obvious. commit + time are baked in at build time and change every build, so
-	// if you reload and they don't change you're on a cached copy.
-	// To hide later: remove the {#if !dismissed} badge block + styles below.
+	// DEV BUILD STAMP — shown ONLY on beta (and local dev), never on production, so
+	// a stale cached / PWA copy is obvious during testing. commit + time are baked
+	// in at build time and change every build.
 	const build = __BUILD_INFO__;
 	const builtAt = new Date(build.time).toLocaleString();
+	const showBuildStamp =
+		browser &&
+		(/(^|\.)beta\.starsystemx\.com$/i.test(window.location.hostname) ||
+			window.location.hostname === 'localhost' ||
+			window.location.hostname === '127.0.0.1');
 	let dismissed = $state(false);
 
 	onMount(() => {
@@ -79,7 +84,7 @@
 
 {@render children?.()}
 
-{#if !dismissed}
+{#if showBuildStamp && !dismissed}
 	<button
 		class="build-stamp"
 		title="Build stamp — click to dismiss. commit {build.commit}, built {build.time}"
