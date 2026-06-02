@@ -19,7 +19,7 @@
   import ContextMenu from './ContextMenu.svelte'; 
   import AddConstructModal from './AddConstructModal.svelte'; 
   import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
-  import ConstructSidePanel from './ConstructSidePanel.svelte';
+  import ConstructDetailsPane from './ConstructDetailsPane.svelte';
   import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
   import ReportConfigModal from './ReportConfigModal.svelte';
   import SaveSystemModal from './SaveSystemModal.svelte';
@@ -39,7 +39,6 @@
   import { propagate } from '$lib/api';
   import { broadcastService } from '$lib/broadcast';
   import DebugFooter from './DebugFooter.svelte';
-  import ShipLogPane from './ShipLogPane.svelte';
   import FocusHeader from './FocusHeader.svelte';
   import { calculateAllStellarZones } from '$lib/physics/zones';
   import { calculateEquilibriumTemperature, composeSurfaceTemperatureFromDeltaComponents, estimateBondAlbedo, estimateInternalHeatK } from '$lib/physics/temperature';
@@ -1779,42 +1778,28 @@
                 {/if}
 
                 {#if focusedBody && focusedBody.kind === 'construct'}
-                  {@const parentBody = focusedBody.parentId ? $systemStore.nodes.find(n => n.id === (focusedBody.ui_parentId || focusedBody.parentId)) : null}
-                  {#if isShipLogOpen}
-                      <ShipLogPane
-                        focusedBody={focusedBody}
-                        clearFutureCount={countFutureJourneys(focusedBody, getActualTimeMs())}
-                        activeCount={activeJourneyCountForActualTime(focusedBody)}
-                        on:close={handleCloseJourneyLog}
-                        on:clearfuture={handleClearFuturePlans}
-                        on:cancelactive={handleCancelActivePlan}
-                      />
-                  {:else if isEditing}
-                      <ConstructSidePanel 
-                        system={$systemStore} 
-                        construct={focusedBody} 
-                        hostBody={parentBody} 
-                        {rulePack} 
-                        hideActions={isPlanning}
-                        on:update={handleConstructUpdate} 
-                        on:delete={handleDeleteNode} 
-                        on:close={() => isEditing = false}
-                        on:tabchange={(e) => activeEditTab = e.detail}
-                      />
-                  {:else}
-                      <ConstructDerivedSpecs 
-                          construct={focusedBody} 
-                          hostBody={parentBody} 
-                          {rulePack} 
-                          futureJourneyCount={focusedFutureJourneyCount}
-                          isEditingConstruct={isEditing}
-                          hideActions={isPlanning}
-                          on:planTransit={handleStartPlanning}
-                          on:openJourneyLog={handleOpenJourneyLog}
-                          on:takeoff={handleTakeoff}
-                          on:land={handleLand}
-                      />
-                  {/if}
+                  <ConstructDetailsPane
+                    focusedBody={focusedBody}
+                    system={$systemStore}
+                    {rulePack}
+                    {isShipLogOpen}
+                    {isEditing}
+                    {isPlanning}
+                    futureJourneyCount={focusedFutureJourneyCount}
+                    clearFutureCount={countFutureJourneys(focusedBody, getActualTimeMs())}
+                    activeCount={activeJourneyCountForActualTime(focusedBody)}
+                    on:closelog={handleCloseJourneyLog}
+                    on:clearfuture={handleClearFuturePlans}
+                    on:cancelactive={handleCancelActivePlan}
+                    on:update={handleConstructUpdate}
+                    on:delete={handleDeleteNode}
+                    on:closeedit={() => isEditing = false}
+                    on:tabchange={(e) => activeEditTab = e.detail}
+                    on:planTransit={handleStartPlanning}
+                    on:openJourneyLog={handleOpenJourneyLog}
+                    on:takeoff={handleTakeoff}
+                    on:land={handleLand}
+                  />
                 {/if}
             {/if}
             
