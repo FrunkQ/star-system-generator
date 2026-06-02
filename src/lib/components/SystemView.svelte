@@ -17,13 +17,12 @@
   import GmNotesEditor from './GmNotesEditor.svelte';
   import ZoneKey from './ZoneKey.svelte';
   import ContextMenu from './ContextMenu.svelte'; 
-  import AddConstructModal from './AddConstructModal.svelte'; 
-  import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
+  import AddConstructModal from './AddConstructModal.svelte';
   import ConstructDetailsPane from './ConstructDetailsPane.svelte';
   import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
   import ReportConfigModal from './ReportConfigModal.svelte';
   import SaveSystemModal from './SaveSystemModal.svelte';
-  import TransitPlannerPanel from './TransitPlannerPanel.svelte';
+  import PlannerPane from './PlannerPane.svelte';
   import type { TransitPlan } from '$lib/transit/types';
   import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney } from '$lib/transit/scheduler';
 
@@ -1324,6 +1323,140 @@
       transitDelayDays = 0;
   }
 
+  // --- Transit planner handlers (extracted from the markup in 01.7; PlannerPane
+  //     forwards TransitPlannerPanel's events, the chaining state machine stays here) ---
+  function handlePlannerPreviewUpdate(e: CustomEvent) {
+      transitJourneyOffset = e.detail.offset;
+      transitPreviewPos = e.detail.position;
+  }
+
+  function handlePlannerTargetSelected(e: CustomEvent) {
+      const { origin, target } = e.detail;
+      visualizer?.fitToNodes([origin, target]);
+  }
+
+  function handleAddNextLeg(e: CustomEvent) {
+      const plan = e.detail;
+      completedTransitPlans = [...completedTransitPlans, plan];
+      transitChainTime = plan.startTime + (plan.totalTime_days * 86400 * 1000);
+
+      plannerOriginId = plan.targetId;
+      transitDelayDays = 0;
+      currentTransitPlan = null;
+      transitAlternatives = [];
+      transitPreviewPos = null;
+      transitJourneyOffset = 0;
+
+      // Store arrival state for next leg chaining
+      if (plan.segments.length > 0) {
+          const endState = plan.segments[plan.segments.length - 1].endState;
+          transitChainState = { r: { ...endState.r }, v: { ...endState.v } };
+      }
+  }
+
+  function handleUndoLastLeg() {
+      if (completedTransitPlans.length === 0) return;
+
+      // Remove last plan
+      completedTransitPlans = completedTransitPlans.slice(0, -1);
+
+      if (completedTransitPlans.length > 0) {
+          // Revert the time cursor to the END of the new last leg, ready to re-plan.
+          // prevLeg.startTime is absolute (includes any pre-leg delay).
+          const prevLeg = completedTransitPlans[completedTransitPlans.length - 1];
+          transitChainTime = prevLeg.startTime + (prevLeg.totalTime_days * 86400 * 1000);
+
+          plannerOriginId = prevLeg.targetId;
+
+          if (prevLeg.segments.length > 0) {
+              const endState = prevLeg.segments[prevLeg.segments.length - 1].endState;
+              transitChainState = { r: { ...endState.r }, v: { ...endState.v } };
+          }
+      } else {
+          // Reset to initial
+          transitChainTime = currentTime;
+          plannerOriginId = focusedBody ? focusedBody.id : '';
+          transitChainState = undefined;
+      }
+
+      // Clear previews
+      currentTransitPlan = null;
+      transitAlternatives = [];
+      transitPreviewPos = null;
+      transitJourneyOffset = 0;
+      transitDelayDays = 0;
+  }
+
+  function handleExecutePlan(e: CustomEvent) {
+      const payload = e.detail as { plan?: TransitPlan | null; force?: boolean } | TransitPlan | null;
+      const finalPlan = (payload && typeof payload === 'object' && 'plan' in payload)
+          ? (payload.plan ?? null)
+          : (payload as TransitPlan | null);
+      const forceExecute = !!(payload && typeof payload === 'object' && 'force' in payload && payload.force);
+
+      const plansToSchedule = [...completedTransitPlans, ...(finalPlan ? [finalPlan] : [])];
+      if (plansToSchedule.length === 0 || !focusedBodyId) return;
+      const lastScheduledPlan = plansToSchedule[plansToSchedule.length - 1];
+      const finalScheduledTimeMs = lastScheduledPlan.startTime + (lastScheduledPlan.totalTime_days * 86400 * 1000);
+
+      systemStore.update(sys => {
+          if (!sys) return null;
+          const newNodes = sys.nodes.map(node => {
+              if (node.id !== focusedBodyId) return node;
+              const existing = Array.isArray(node.scheduled_journeys) ? node.scheduled_journeys : [];
+              return {
+                  ...node,
+                  scheduled_journeys: [
+                      ...existing,
+                      {
+                          id: generateId(),
+                          createdAtSec: BigInt(Math.floor(currentTime / 1000)).toString(),
+                          plans: plansToSchedule.map((p) => JSON.parse(JSON.stringify(p))),
+                          status: 'scheduled',
+                          forceExecute
+                      }
+                  ],
+                  draft_transit_plan: undefined
+              };
+          });
+          return { ...sys, nodes: newNodes, isManuallyEdited: true };
+      });
+
+      // Keep the user's preview context: move Display Time to the end of the scheduled journey.
+      // Actual/master time remains unchanged until explicitly aligned.
+      currentTime = finalScheduledTimeMs;
+      const bigBangSec = unixMsToMasterSeconds(finalScheduledTimeMs);
+      applyTemporalUpdate((temporal) => ({
+        ...temporal,
+        displayTimeSec: bigBangSec.toString()
+      }));
+
+      // Reset planner UI (journey is now scheduled, not immediately executed)
+      isPlanning = false;
+      currentTransitPlan = null;
+      completedTransitPlans = [];
+      transitAlternatives = [];
+      transitPreviewPos = null;
+      transitJourneyOffset = 0;
+      transitChainTime = 0;
+  }
+
+  function handleClosePlanner() {
+      // Save Draft Plan
+      if (focusedBody && completedTransitPlans.length > 0) {
+          focusedBody.draft_transit_plan = completedTransitPlans;
+          handleBodyUpdate({ detail: focusedBody } as CustomEvent);
+      }
+
+      isPlanning = false;
+      currentTransitPlan = null;
+      transitDelayDays = 0;
+      transitJourneyOffset = 0;
+      transitPreviewPos = null;
+      completedTransitPlans = [];
+      transitAlternatives = [];
+  }
+
   function getActualTimeMs(): number {
       const temporal = get(starmapStore)?.temporal;
       if (!temporal) return currentTime;
@@ -1582,8 +1715,8 @@
             {/if}
 
             {#if isPlanning}
-                <TransitPlannerPanel 
-                    system={$systemStore} 
+                <PlannerPane
+                    system={$systemStore}
                     {rulePack}
                     currentTime={transitChainTime}
                     originId={plannerOriginId}
@@ -1591,174 +1724,23 @@
                     completedPlans={completedTransitPlans}
                     initialState={transitChainState}
                     bind:departureDelayDays={transitDelayDays}
+                    focusedBody={focusedBody}
+                    hostBody={parentBody}
+                    futureJourneyCount={focusedFutureJourneyCount}
                     on:planUpdate={(e) => currentTransitPlan = e.detail}
                     on:alternativesUpdate={(e) => transitAlternatives = e.detail}
                     on:executionStateChange={(e) => isTransitExecuting = e.detail}
-                    on:previewUpdate={(e) => {
-                        transitJourneyOffset = e.detail.offset;
-                        transitPreviewPos = e.detail.position;
-                    }}
-                    on:targetSelected={(e) => {
-                        const { origin, target } = e.detail;
-                        visualizer?.fitToNodes([origin, target]);
-                    }}
-                    on:addNextLeg={(e) => {
-                         const plan = e.detail;
-                         completedTransitPlans = [...completedTransitPlans, plan];
-                         transitChainTime = plan.startTime + (plan.totalTime_days * 86400 * 1000);
-                         
-                         plannerOriginId = plan.targetId;
-                         transitDelayDays = 0;
-                         currentTransitPlan = null;
-                         transitAlternatives = [];
-                         transitPreviewPos = null;
-                         transitJourneyOffset = 0;
-                         
-                         // Store arrival state for next leg chaining
-                         if (plan.segments.length > 0) {
-                             const endState = plan.segments[plan.segments.length - 1].endState;
-                             transitChainState = { r: { ...endState.r }, v: { ...endState.v } };
-                             // console.log('Chaining State:', transitChainState, 'Time:', transitChainTime);
-                         }
-                    }}
-                    on:undoLastLeg={() => {
-                        if (completedTransitPlans.length === 0) return;
-                        
-                        // Remove last plan
-                        completedTransitPlans = completedTransitPlans.slice(0, -1);
-                        
-                        if (completedTransitPlans.length > 0) {
-                            // Revert to state at end of the NEW last leg
-                            const lastPlan = completedTransitPlans[completedTransitPlans.length - 1];
-                            
-                            // We need to reconstruct the chain time.
-                            // Ideally, we'd store the 'end time' in the plan object or a parallel array.
-                            // But transitChainTime tracks cumulative time.
-                            // Approximate Reversion: startTime of removed plan? 
-                            // Wait, plan.startTime IS the start of that leg.
-                            // So if we remove the last leg, the chain time should revert to that leg's startTime?
-                            // Yes! transitChainTime is essentially the "Current Time" cursor.
-                            // The removed plan started at 'startTime'.
-                            // So we just set transitChainTime = removedPlan.startTime.
-                            // But wait, there might have been a delay *before* that leg started.
-                            // The 'startTime' in TransitPlan includes the delay relative to the previous leg's end?
-                            // In 'calculateTransitPlan', effectiveStartTime = currentTime + delay.
-                            // Yes! plan.startTime IS the correct time cursor for the start of that leg (after delay).
-                            
-                            // Actually, we want the cursor to be at the END of the previous leg, ready for a new delay?
-                            // Or do we want it at the start of the undone leg?
-                            // If we undo, we probably want to re-plan that leg.
-                            // So we want to be at the END of the previous leg (or Start of mission).
-                            
-                            // Let's use the END of the previous leg.
-                            // prevLeg.startTime + prevLeg.duration.
-                            const prevLeg = completedTransitPlans[completedTransitPlans.length - 1];
-                            // Note: This ignores the delay that happened *before* prevLeg.
-                            // But prevLeg.startTime is absolute.
-                            transitChainTime = prevLeg.startTime + (prevLeg.totalTime_days * 86400 * 1000);
-                            
-                            plannerOriginId = prevLeg.targetId;
-                            
-                            if (prevLeg.segments.length > 0) {
-                                const endState = prevLeg.segments[prevLeg.segments.length - 1].endState;
-                                transitChainState = { r: { ...endState.r }, v: { ...endState.v } };
-                            }
-                        } else {
-                            // Reset to initial
-                            transitChainTime = currentTime;
-                            plannerOriginId = focusedBody ? focusedBody.id : '';
-                            transitChainState = undefined;
-                        }
-                        
-                        // Clear previews
-                        currentTransitPlan = null;
-                        transitAlternatives = [];
-                        transitPreviewPos = null;
-                        transitJourneyOffset = 0;
-                        transitDelayDays = 0;
-                    }}
-                    on:executePlan={(e) => {
-                         const payload = e.detail as { plan?: TransitPlan | null; force?: boolean } | TransitPlan | null;
-                         const finalPlan = (payload && typeof payload === 'object' && 'plan' in payload)
-                             ? (payload.plan ?? null)
-                             : (payload as TransitPlan | null);
-                         const forceExecute = !!(payload && typeof payload === 'object' && 'force' in payload && payload.force);
-
-                         const plansToSchedule = [...completedTransitPlans, ...(finalPlan ? [finalPlan] : [])];
-                         if (plansToSchedule.length === 0 || !focusedBodyId) return;
-                         const lastScheduledPlan = plansToSchedule[plansToSchedule.length - 1];
-                         const finalScheduledTimeMs = lastScheduledPlan.startTime + (lastScheduledPlan.totalTime_days * 86400 * 1000);
-
-                         systemStore.update(sys => {
-                             if (!sys) return null;
-                             const newNodes = sys.nodes.map(node => {
-                                 if (node.id !== focusedBodyId) return node;
-                                 const existing = Array.isArray(node.scheduled_journeys) ? node.scheduled_journeys : [];
-                                 return {
-                                     ...node,
-                                     scheduled_journeys: [
-                                         ...existing,
-                                         {
-                                             id: generateId(),
-                                             createdAtSec: BigInt(Math.floor(currentTime / 1000)).toString(),
-                                             plans: plansToSchedule.map((p) => JSON.parse(JSON.stringify(p))),
-                                             status: 'scheduled',
-                                             forceExecute
-                                         }
-                                     ],
-                                     draft_transit_plan: undefined
-                                 };
-                             });
-                             return { ...sys, nodes: newNodes, isManuallyEdited: true };
-                         });
-
-                         // Keep the user's preview context: move Display Time to the end of the scheduled journey.
-                         // Actual/master time remains unchanged until explicitly aligned.
-                         currentTime = finalScheduledTimeMs;
-                         const bigBangSec = unixMsToMasterSeconds(finalScheduledTimeMs);
-                         applyTemporalUpdate((temporal) => ({
-                           ...temporal,
-                           displayTimeSec: bigBangSec.toString()
-                         }));
-
-                         // Reset planner UI (journey is now scheduled, not immediately executed)
-                         isPlanning = false;
-                         currentTransitPlan = null;
-                         completedTransitPlans = [];
-                         transitAlternatives = [];
-                         transitPreviewPos = null;
-                         transitJourneyOffset = 0;
-                         transitChainTime = 0;
-                    }}
-                    on:close={() => { 
-                        // Save Draft Plan
-                        if (focusedBody && completedTransitPlans.length > 0) {
-                            focusedBody.draft_transit_plan = completedTransitPlans;
-                            handleBodyUpdate({ detail: focusedBody } as CustomEvent);
-                        }
-                        
-                        isPlanning = false; 
-                        currentTransitPlan = null; 
-                        transitDelayDays = 0; 
-                        transitJourneyOffset = 0; 
-                        transitPreviewPos = null; 
-                        completedTransitPlans = [];
-                        transitAlternatives = [];
-                    }} 
+                    on:previewUpdate={handlePlannerPreviewUpdate}
+                    on:targetSelected={handlePlannerTargetSelected}
+                    on:addNextLeg={handleAddNextLeg}
+                    on:undoLastLeg={handleUndoLastLeg}
+                    on:executePlan={handleExecutePlan}
+                    on:close={handleClosePlanner}
+                    on:planTransit={handleStartPlanning}
+                    on:openJourneyLog={handleOpenJourneyLog}
+                    on:takeoff={handleTakeoff}
+                    on:land={handleLand}
                 />
-                {#if focusedBody}
-                    <ConstructDerivedSpecs 
-                        construct={focusedBody} 
-                        hostBody={parentBody} 
-                        {rulePack} 
-                        futureJourneyCount={focusedFutureJourneyCount}
-                        hideActions={true}
-                        on:planTransit={handleStartPlanning}
-                        on:openJourneyLog={handleOpenJourneyLog}
-                        on:takeoff={handleTakeoff}
-                        on:land={handleLand}
-                    />
-                {/if}
             {:else if focusedBody}
             
             {#if showZoneKeyPanel}
