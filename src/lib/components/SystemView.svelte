@@ -24,7 +24,7 @@
   import SaveSystemModal from './SaveSystemModal.svelte';
   import PlannerPane from './PlannerPane.svelte';
   import type { TransitPlan } from '$lib/transit/types';
-  import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney, resolveConstructCurrentHostId } from '$lib/transit/scheduler';
+  import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney, resolveConstructCurrentHostId, reconcileConstructArrival } from '$lib/transit/scheduler';
 
   import { systemStore, viewportStore } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
@@ -1163,6 +1163,10 @@
       if (!sys) return null;
       let changed = false;
 
+      // Reconciliation is keyed to the AUTHORITATIVE (master/actual) clock, not the display
+      // time being previewed - so scrubbing the display never rewrites saved placement.
+      const actualMs = getActualTimeMs();
+
       const nodes = sys.nodes.map((node) => {
         if (node.kind !== 'construct') return node;
         const logs = Array.isArray(node.scheduled_journeys) ? node.scheduled_journeys : [];
@@ -1261,6 +1265,14 @@
             vector_epoch_ms: undefined,
             flight_state: nextNode.flight_state === 'Deep Space' ? 'Deep Space' : 'Orbiting'
           };
+          nodeChanged = true;
+        }
+
+        // Self-heal stale legacy placement: once master time is past a captured arrival,
+        // rewrite parentId/orbit/placement to the real host (idempotent no-op once healed).
+        const reconciled = reconcileConstructArrival(sys, nextNode, actualMs);
+        if (reconciled !== nextNode) {
+          nextNode = reconciled;
           nodeChanged = true;
         }
 

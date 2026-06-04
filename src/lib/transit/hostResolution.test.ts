@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { resolveConstructCurrentHostId } from './scheduler';
-import type { CelestialBody } from '../types';
+import { resolveConstructCurrentHostId, reconcileConstructArrival } from './scheduler';
+import type { CelestialBody, System } from '../types';
 
 // A construct's *current* host is derived from its journeys, not its authored parentId.
 // Regression for: ship transits to Earth (LEO) but the detail panel kept reading the
@@ -102,5 +102,56 @@ describe('resolveConstructCurrentHostId', () => {
     ]);
     const afterPass = 1000 + 8 * DAY_MS;
     expect(resolveConstructCurrentHostId(s, afterPass)).toBe('solar-system-sun');
+  });
+});
+
+function systemWith(construct: CelestialBody): System {
+  return {
+    nodes: [
+      { id: 'solar-system-sun', parentId: null, name: 'Sol', kind: 'body', roleHint: 'star', radiusKm: 696340, massKg: 1.989e30 },
+      { id: 'solar-system-earth', parentId: 'solar-system-sun', name: 'Earth', kind: 'body', radiusKm: 6371, massKg: 5.972e24 },
+      construct
+    ]
+  } as unknown as System;
+}
+
+describe('reconcileConstructArrival (self-healing stale placement)', () => {
+  it('rewrites parentId / orbit.hostId / placement to the real host after a captured arrival', () => {
+    const s = ship([journey({ startMs: 1000, durationDays: 7, targetId: 'solar-system-earth' })]);
+    s.orbit = { hostId: 'solar-system-sun', hostMu: 1.327e20, elements: { a_AU: 2.5, e: 0.2 } } as any;
+    const sys = systemWith(s);
+    const afterArrival = 1000 + 8 * DAY_MS;
+
+    const healed = reconcileConstructArrival(sys, s, afterArrival);
+    expect(healed).not.toBe(s); // changed
+    expect(healed.parentId).toBe('solar-system-earth');
+    expect(healed.orbit?.hostId).toBe('solar-system-earth');
+    expect(healed.placement).toBe('Low Orbit');
+    // Parking orbit sits just above Earth's surface, far smaller than the stale 2.5 AU.
+    expect(healed.orbit!.elements.a_AU).toBeLessThan(0.01);
+    expect(healed.orbit!.elements.e).toBe(0);
+  });
+
+  it('is a no-op before the arrival has happened in actual time', () => {
+    const s = ship([journey({ startMs: 1000, durationDays: 7, targetId: 'solar-system-earth' })]);
+    const sys = systemWith(s);
+    const midFlight = 1000 + 3 * DAY_MS;
+    expect(reconcileConstructArrival(sys, s, midFlight)).toBe(s);
+  });
+
+  it('is idempotent once healed', () => {
+    const s = ship([journey({ startMs: 1000, durationDays: 7, targetId: 'solar-system-earth' })]);
+    const sys = systemWith(s);
+    const afterArrival = 1000 + 8 * DAY_MS;
+    const healed = reconcileConstructArrival(sys, s, afterArrival);
+    const healed2 = reconcileConstructArrival(systemWith(healed), healed, afterArrival);
+    expect(healed2).toBe(healed); // same reference, no further mutation
+  });
+
+  it('leaves a flyby ship alone (no capture to heal)', () => {
+    const s = ship([journey({ startMs: 1000, durationDays: 7, targetId: 'solar-system-earth', flyby: true })]);
+    const sys = systemWith(s);
+    const afterPass = 1000 + 8 * DAY_MS;
+    expect(reconcileConstructArrival(sys, s, afterPass)).toBe(s);
   });
 });

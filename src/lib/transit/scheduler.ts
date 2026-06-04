@@ -1,9 +1,22 @@
 import type { CelestialBody, System } from '$lib/types';
 import type { TransitPlan, Vector2 } from '$lib/transit/types';
-import { AU_KM } from '$lib/constants';
+import { AU_KM, G } from '$lib/constants';
 import { getGlobalState } from '$lib/transit/physics';
 
 const AU_M = AU_KM * 1000;
+
+// arrivalPlacement code -> human label and parking-altitude factor (radii above surface),
+// matching samplePostJourneyState's visual parking orbit.
+const PLACEMENT_LABELS: Record<string, string> = {
+  lo: 'Low Orbit',
+  mo: 'Medium Orbit',
+  ho: 'High Orbit',
+  geo: 'Geostationary Orbit',
+  surface: 'Surface',
+  l4: 'L4',
+  l5: 'L5'
+};
+const PLACEMENT_ALT_FACTOR: Record<string, number> = { ho: 3, geo: 5, mo: 1.2, lo: 0.3 };
 
 export interface JourneyBounds {
   startMs: number;
@@ -63,6 +76,76 @@ export function resolveConstructCurrentHostId(
   }
   if (captured) return captured.targetId;
   return construct.parentId ?? null;
+}
+
+/**
+ * Self-heal a construct's stale persistent placement. After a ship transits to a body,
+ * its parentId/orbit/placement can still describe its *authored* home (e.g. a heliocentric
+ * orbit around the star) - which then blocks landing and corrupts future-transit origins.
+ * Once the AUTHORITATIVE (master/actual) clock has passed a captured (non-flyby) arrival,
+ * rewrite parentId + orbit (a circular parking orbit around the real host) + placement to
+ * match. Keyed to actual time (NOT display time) so previewing/scrubbing never mutates
+ * saved state, and idempotent so it's a no-op once healed. The journey log is left intact.
+ *
+ * Returns the same reference when there's nothing to heal (no captured arrival yet, or
+ * already reconciled) so callers can cheaply detect a change.
+ */
+export function reconcileConstructArrival(
+  system: System,
+  construct: CelestialBody,
+  actualTimeMs: number
+): CelestialBody {
+  if (construct.kind !== 'construct') return construct;
+  const logs = Array.isArray(construct.scheduled_journeys) ? construct.scheduled_journeys : [];
+
+  // Latest captured (non-flyby) arrival whose end has passed in actual time.
+  let best: { endMs: number; plan: TransitPlan } | null = null;
+  for (const log of logs) {
+    if (log.status === 'cancelled') continue;
+    const bounds = getJourneyBounds(log.plans);
+    if (!bounds || actualTimeMs < bounds.endMs) continue;
+    const lastPlan = log.plans[log.plans.length - 1];
+    if (!lastPlan) continue;
+    const isFlyby =
+      (lastPlan.interceptSpeed_ms || 0) > 0 ||
+      (lastPlan.segments || []).some((s) => (s.warnings || []).includes('Flyby'));
+    if (isFlyby) continue;
+    if (!best || bounds.endMs > best.endMs) best = { endMs: bounds.endMs, plan: lastPlan };
+  }
+  if (!best) return construct;
+
+  const hostId = best.plan.targetId;
+  const target = system.nodes.find((n) => n.id === hostId) as any;
+  if (!target) return construct;
+
+  // Already pointing at the right host -> nothing to do (idempotent).
+  if (construct.parentId === hostId && construct.orbit?.hostId === hostId) return construct;
+
+  const placementKey = best.plan.arrivalPlacement || 'lo';
+  const label = PLACEMENT_LABELS[placementKey] || construct.placement || 'Orbit';
+  const targetRadiusKm = target.radiusKm || 1000;
+  const targetMassKg = target.massKg || target.effectiveMassKg || 0;
+  const hostMu = G * targetMassKg;
+  const a_AU =
+    placementKey === 'surface'
+      ? targetRadiusKm / AU_KM
+      : (targetRadiusKm * (1 + (PLACEMENT_ALT_FACTOR[placementKey] ?? 0.3))) / AU_KM;
+  const aM = a_AU * AU_M;
+  const n_rad_per_s = hostMu > 0 && aM > 0 ? Math.sqrt(hostMu / (aM * aM * aM)) : undefined;
+
+  return {
+    ...construct,
+    parentId: hostId,
+    placement: label,
+    orbit: {
+      ...(construct.orbit || {}),
+      hostId,
+      hostMu: hostMu || construct.orbit?.hostMu,
+      n_rad_per_s,
+      t0: best.endMs,
+      elements: { ...(construct.orbit?.elements || {}), a_AU, e: 0 }
+    }
+  } as CelestialBody;
 }
 
 export function countFutureJourneys(construct: CelestialBody, timeMs: number): number {
