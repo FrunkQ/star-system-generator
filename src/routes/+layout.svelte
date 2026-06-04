@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { browser } from '$app/environment';
+	import '$lib/styles/touch-overrides.css';
 
 	let { children } = $props();
 	let swUpdateInterval: ReturnType<typeof setInterval> | undefined;

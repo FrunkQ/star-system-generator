@@ -1,0 +1,26 @@
+/* Phase 02.4 — coarse-pointer (touch) hit-target overrides.
+   Only applies on touch / pen devices (`pointer: coarse`); mouse/trackpad layouts on
+   desktop (`pointer: fine`) are untouched. iOS HIG asks for 44px, Material for 48dp;
+   the current header / bottom-bar controls are ~24-30px, too small to tap reliably. */
+
+@media (pointer: coarse) {
+	button,
+	.checkbox-label,
+	.scrub-slider,
+	.play-toggle,
+	input[type='range'],
+	select {
+		min-height: 44px;
+	}
+
+	.toggle-chip,
+	.nav-button,
+	.ctx-menu-item,
+	.context-menu li {
+		padding-block: 10px;
+	}
+
+	/* `title` tooltips lose their hover affordance on touch. Keep them as an
+	   accessibility hint, but Phase 02.5 migrates the informative ones to tap-popovers
+	   so touch users don't lose the information. */
+}
