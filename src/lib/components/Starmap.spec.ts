@@ -8,15 +8,6 @@ import { vi } from 'vitest';
 // instance `$on` API is gone; listen via @testing-library/svelte's `events`
 // mount option, which forwards to Svelte.mount({ events }).
 
-vi.mock('@panzoom/panzoom', () => ({
-  __esModule: true,
-  default: vi.fn(() => ({
-    destroy: vi.fn(),
-    getTransform: vi.fn(() => ({ x: 0, y: 0, scale: 1 })),
-    zoomWithWheel: vi.fn(),
-  })),
-}));
-
 const mockStarmap: StarmapType = {
   id: 'test-starmap',
   name: 'Test Starmap',

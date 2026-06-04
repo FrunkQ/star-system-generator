@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { gestures } from '$lib/input/gestures';
   import type { Starmap, System, CelestialBody, RulePack, Barycenter } from '$lib/types';
   import GmNotesEditor from './GmNotesEditor.svelte';
   import Grid from './Grid.svelte';
@@ -70,9 +71,14 @@
   let panY = 0;
   let zoom = 1;
 
-  let isPanning = false;
   let lastMouseX = 0;
   let lastMouseY = 0;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  // A node drag only "moves" (and so suppresses the follow-up select click) once it
+  // crosses this many screen px. Without it, finger jitter on a touch tap would mark
+  // a drag and you could never tap-to-select a system.
+  const NODE_DRAG_THRESHOLD_PX = 5;
 
   let gridSize = 50;
   let svgScale = 1;
@@ -185,13 +191,17 @@
     dispatch('updatestarmap', { ...starmap, invertDisplay: checked });
   }
 
-  function handleSystemMouseDown(event: MouseEvent, systemId: string) {
+  // Node drag (Phase 02): pointer-based. stopPropagation keeps the root gesture layer
+  // from ever registering this pointer (so it can't pan), and we track move/up on the
+  // window so a drag that leaves the node still works. No pointer-capture, so the node's
+  // own on:click (select) still fires for a tap.
+  function handleSystemPointerDown(event: PointerEvent, systemId: string) {
     if (event.button !== 0) return;
     event.stopPropagation();
     draggedSystemId = systemId;
     dragMoved = false;
-    lastMouseX = event.clientX;
-    lastMouseY = event.clientY;
+    lastMouseX = dragStartX = event.clientX;
+    lastMouseY = dragStartY = event.clientY;
 
     const svgRect = svgElement.getBoundingClientRect();
     const viewBox = svgElement.viewBox.baseVal;
@@ -202,6 +212,54 @@
 
     const draggedSystem = starmap.systems.find((s) => s.id === systemId);
     dragRawPosition = draggedSystem ? { x: draggedSystem.position.x, y: draggedSystem.position.y } : null;
+
+    window.addEventListener('pointermove', onSystemDragMove);
+    window.addEventListener('pointerup', onSystemDragEnd);
+    window.addEventListener('pointercancel', onSystemDragEnd);
+  }
+
+  function onSystemDragMove(event: PointerEvent) {
+    if (!draggedSystemId) return;
+    const deltaX = event.clientX - lastMouseX;
+    const deltaY = event.clientY - lastMouseY;
+    lastMouseX = event.clientX;
+    lastMouseY = event.clientY;
+
+    // Hold position until the press clearly becomes a drag, so a tap still selects.
+    if (!dragMoved) {
+      if (Math.hypot(event.clientX - dragStartX, event.clientY - dragStartY) < NODE_DRAG_THRESHOLD_PX) return;
+      dragMoved = true;
+    }
+
+    const worldDeltaX = (deltaX * dragSvgScale.x) / zoom;
+    const worldDeltaY = (deltaY * dragSvgScale.y) / zoom;
+    if (dragRawPosition) {
+      dragRawPosition = {
+        x: dragRawPosition.x + worldDeltaX,
+        y: dragRawPosition.y + worldDeltaY
+      };
+    }
+    const updatedSystems = starmap.systems.map((systemNode) => {
+      if (systemNode.id !== draggedSystemId) return systemNode;
+      const nextX = dragRawPosition ? dragRawPosition.x : systemNode.position.x + worldDeltaX;
+      const nextY = dragRawPosition ? dragRawPosition.y : systemNode.position.y + worldDeltaY;
+      const snapped = snapPointToCurrentGrid(nextX, nextY);
+      return { ...systemNode, position: { x: snapped.x, y: snapped.y } };
+    });
+    const updatedStarmap = {
+      ...starmap,
+      systems: updatedSystems,
+      routes: recomputeScaledRoutes(updatedSystems)
+    };
+    dispatch('updatestarmap', updatedStarmap);
+  }
+
+  function onSystemDragEnd() {
+    draggedSystemId = null;
+    dragRawPosition = null;
+    window.removeEventListener('pointermove', onSystemDragMove);
+    window.removeEventListener('pointerup', onSystemDragEnd);
+    window.removeEventListener('pointercancel', onSystemDragEnd);
   }
 
   function snapPointToCurrentGrid(x: number, y: number): { x: number; y: number } {
@@ -335,94 +393,42 @@
       URL.revokeObjectURL(url);
   }
 
-  function handleWheel(event: WheelEvent) {
+  // Zoom about a canvas-relative point (old handleWheel logic, generalised to a factor so
+  // wheel and pinch share it). Respects the "disable mouse zoom" setting for both.
+  function zoomAt(factor: number, localX: number, localY: number) {
     if ($starmapUiStore.mouseZoomDisabled) return;
-    event.preventDefault();
-    const scaleAmount = 0.1;
-    const scale = event.deltaY > 0 ? 1 - scaleAmount : 1 + scaleAmount;
-
     const svgRect = svgElement.getBoundingClientRect();
     const viewBox = svgElement.viewBox.baseVal;
     const scaleX = viewBox.width / svgRect.width;
     const scaleY = viewBox.height / svgRect.height;
-
-    const mouseX = (event.clientX - svgRect.left) * scaleX;
-    const mouseY = (event.clientY - svgRect.top) * scaleY;
-
-    const newZoom = zoom * scale;
-
-    panX = mouseX - (mouseX - panX) * scale;
-    panY = mouseY - (mouseY - panY) * scale;
-    zoom = newZoom;
+    const mouseX = localX * scaleX;
+    const mouseY = localY * scaleY;
+    panX = mouseX - (mouseX - panX) * factor;
+    panY = mouseY - (mouseY - panY) * factor;
+    zoom = zoom * factor;
   }
 
-  function handleMouseDown(event: MouseEvent) {
-    if (event.button !== 0) return; // Left mouse button
-    if (event.target !== svgElement) return; // Only pan on blank space
-    isPanning = true;
-    lastMouseX = event.clientX;
-    lastMouseY = event.clientY;
+  // Bridge the gesture long-press / right-click (canvas-relative point) to the existing
+  // map context menu, which expects a MouseEvent with screen coords.
+  function openMapContextMenuAt(localX: number, localY: number) {
+    const svgRect = svgElement.getBoundingClientRect();
+    handleMapContextMenu({
+      clientX: localX + svgRect.left,
+      clientY: localY + svgRect.top,
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    } as unknown as MouseEvent);
   }
 
-  function handleMouseMove(event: MouseEvent) {
-    if (draggedSystemId) {
-      const deltaX = event.clientX - lastMouseX;
-      const deltaY = event.clientY - lastMouseY;
-      lastMouseX = event.clientX;
-      lastMouseY = event.clientY;
-
-      if (Math.abs(deltaX) > 0 || Math.abs(deltaY) > 0) {
-        dragMoved = true;
-      }
-
-      const worldDeltaX = (deltaX * dragSvgScale.x) / zoom;
-      const worldDeltaY = (deltaY * dragSvgScale.y) / zoom;
-      if (dragRawPosition) {
-        dragRawPosition = {
-          x: dragRawPosition.x + worldDeltaX,
-          y: dragRawPosition.y + worldDeltaY
-        };
-      }
-      const updatedSystems = starmap.systems.map((systemNode) => {
-        if (systemNode.id !== draggedSystemId) return systemNode;
-
-        const nextX = dragRawPosition ? dragRawPosition.x : systemNode.position.x + worldDeltaX;
-        const nextY = dragRawPosition ? dragRawPosition.y : systemNode.position.y + worldDeltaY;
-        const snapped = snapPointToCurrentGrid(nextX, nextY);
-        return {
-          ...systemNode,
-          position: {
-            x: snapped.x,
-            y: snapped.y
-          }
-        };
-      });
-
-      const updatedStarmap = {
-        ...starmap,
-        systems: updatedSystems,
-        routes: recomputeScaledRoutes(updatedSystems)
-      };
-      dispatch('updatestarmap', updatedStarmap);
-      return;
-    }
-
-    if (!isPanning) return;
-    const deltaX = event.clientX - lastMouseX;
-    const deltaY = event.clientY - lastMouseY;
-    lastMouseX = event.clientX;
-    lastMouseY = event.clientY;
-
-    panX += deltaX;
-    panY += deltaY;
-  }
-
-  function handleMouseUp(event: MouseEvent) {
-    if (event.button !== 0) return;
-    isPanning = false;
-    draggedSystemId = null;
-    dragRawPosition = null;
-  }
+  // Unified pointer gestures on the SVG root: pan / pinch-zoom / long-press menu. Pointers
+  // that start on a system node are stopPropagation'd by handleSystemPointerDown, so they
+  // never reach here (no pan-while-dragging-a-node). Tap on blank does nothing (as before),
+  // so onTap is intentionally omitted. Starmap pan has no inertia (unchanged).
+  const starmapGestures = {
+    onPan: ({ dx, dy }: { dx: number; dy: number }) => { panX += dx; panY += dy; },
+    onZoom: ({ factor, x, y }: { factor: number; x: number; y: number }) => zoomAt(factor, x, y),
+    onLongPress: ({ x, y }: { x: number; y: number }) => openMapContextMenuAt(x, y)
+  };
 
   function resetView() {
     if (starmap.systems.length === 0) {
@@ -484,6 +490,7 @@
   onDestroy(() => {
     document.removeEventListener('click', handleClickOutside);
     window.removeEventListener('resize', updateSvgScale);
+    onSystemDragEnd(); // clear any in-flight node-drag window listeners
   });
 
   function handleClickOutside(event: MouseEvent) {
@@ -834,11 +841,7 @@
       class:with-background={$starmapUiStore.showBackgroundImage && !invertDisplay}
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 800 600"
-      on:contextmenu={handleMapContextMenu}
-      on:mousedown={handleMouseDown}
-      on:mousemove={handleMouseMove}
-      on:mouseup={handleMouseUp}
-      on:wheel|preventDefault={handleWheel}
+      use:gestures={starmapGestures}
       role="button"
       tabindex="0"
       style="touch-action: none;"
@@ -893,7 +896,7 @@
         <g
           role="button"
           tabindex="0"
-          on:mousedown={(e) => handleSystemMouseDown(e, systemNode.id)}
+          on:pointerdown={(e) => handleSystemPointerDown(e, systemNode.id)}
           on:click={(e) => handleStarClick(e, systemNode.id)}
           on:dblclick={() => handleStarDblClick(systemNode.id)}
           on:contextmenu={(e) => handleStarContextMenu(e, systemNode.id)}
