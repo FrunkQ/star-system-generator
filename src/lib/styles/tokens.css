@@ -1,0 +1,131 @@
+/* =============================================================================
+   SSE v2 — design tokens (PROPOSAL, not yet swept across the app).
+   Preview at /palette. Two independent layers:
+
+   1. CHROME  — backgrounds, borders, text, accent. THEMEABLE. This is what unifies
+                the three competing greys + two oranges into one look.
+   2. DOMAIN  — colour that ENCODES MEANING (body types, star spectral class, zone
+                bands, hazard ramps, status). PRESERVED verbatim from today's code so a
+                gas giant stays red and the goldilocks band stays green — and made
+                canonical so it's identical in the orrery, starmap, sliders and cards.
+
+   Seed values are the REAL hexes currently in the codebase (cited per section), so
+   approving these changes nothing visually for domain colour — it just centralises it.
+   ============================================================================= */
+
+:root {
+  /* ---------- CHROME: surfaces (from the Phase-03 shell) ---------- */
+  --bg-app: #08090d;
+  --bg-panel: #14161c;
+  --bg-control: #1b1e26;
+  --bg-control-hover: #232733;
+  --border: #2a2d36;
+  --border-soft: #1c1f27;
+
+  /* ---------- CHROME: text ---------- */
+  --text: #e8e8e8;
+  --text-muted: #8a8f9a;
+  --text-faint: #5a5f6a;
+
+  /* ---------- CHROME: accent ----------
+     CHOICE NEEDED: --accent is the new warm shell orange (#ff5a1f). The legacy brand
+     orange is #ff3e00 (Svelte orange, 17 components today). Flip --accent to #ff3e00 to
+     keep the established brand. Both shown side-by-side on /palette. */
+  --accent: #ff5a1f;
+  --accent-hover: #ff8a5c;
+  --accent-soft: #ffb27a;
+  --on-accent: #ffffff;
+  --accent-legacy: #ff3e00; /* alternative — the current brand orange */
+
+  /* ---------- CHROME: semantic ---------- */
+  --link: #88ccff;
+  --status-ok: #4caf50; /* possible / valid (ConstructDerivedSpecs .possible) */
+  --status-bad: #f44336; /* impossible / invalid (.impossible) */
+  --warning: #ffcc00; /* phase/escape warnings (atmosphere) */
+
+  /* ---------- CHROME: radius + spacing scale ---------- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+
+  /* ---------- CHROME: type ---------- */
+  --font-ui: system-ui, 'Segoe UI', Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+
+  /* =========================================================================
+     DOMAIN — colour as information. PRESERVED. Source: src/lib/rendering/colors.ts,
+     SystemVisualizer.svelte, BodyStarTab.svelte, ConstructGeneralTab.svelte.
+     ========================================================================= */
+
+  /* Body types (rendering/colors.ts getPlanetColor) */
+  --body-terrestrial: #cc6600; /* orange/brown */
+  --body-gas-giant: #cc0000; /* red */
+  --body-ice-giant: #add8e6; /* light blue */
+  --body-brown-dwarf: #5d4037;
+  --body-habitable: #007bff; /* earth-like / human (blue) */
+  --body-biosphere: #00ff00; /* has biosphere (green) */
+  --body-construct: #f0f0f0; /* default construct glyph */
+
+  /* Star spectral class (rendering/colors.ts STAR_COLOR_MAP) — varies by type */
+  --star-o: #9bb0ff;
+  --star-b: #aabfff;
+  --star-a: #cad8ff;
+  --star-f: #f8f7ff;
+  --star-g: #fff4ea;
+  --star-k: #ffd2a1;
+  --star-m: #ffc46f;
+  --star-l: #8a4a4a;
+  --star-t: #4a2a2a;
+  --star-y: #2a1a1a;
+  --star-wd: #f0f0f0; /* white dwarf */
+  --star-ns: #c0c0ff; /* neutron star */
+  --star-magnetar: #800080; /* purple */
+  --star-bh: #000000; /* black hole */
+  --star-red-giant: #8b0000;
+
+  /* Zone bands (SystemVisualizer orrery overlays) */
+  --zone-habitable: #00ff00; /* goldilocks / habitable zone (green) */
+  --zone-roche: #b40000;
+  --zone-rock-line: #a52a2a;
+  --zone-soot-line: #696969;
+  --zone-frost-line: #add8e6;
+  --zone-co2-ice: #ffffff;
+  --zone-co-ice: #0000ff;
+
+  /* Orbital placement identity (ConstructGeneralTab) */
+  --orbit-surface: #5a5a5a;
+  --orbit-low: #3b82f6;
+  --orbit-mid: #10b981;
+  --orbit-high: #a855f7;
+  --orbit-geo: #facc15;
+
+  /* Hazard ramp — radiation / belt density, safe -> deadly (BodyStarTab radZones) */
+  --hazard-0: #4ade80;
+  --hazard-1: #84cc16;
+  --hazard-2: #eab308;
+  --hazard-3: #f97316;
+  --hazard-4: #ef4444;
+  --hazard-5: #7f1d1d;
+
+  /* Temperature comfort band (BodyTemperatureTab getTempColor) */
+  --temp-cold: #60a5fa;
+  --temp-habitable: #4ade80;
+  --temp-warm: #fb923c;
+  --temp-hot: #ef4444;
+
+  /* Habitability tier (BodyBiosphereTab getTierColor) */
+  --tier-earthlike: #10b981;
+  --tier-human: #f59e0b;
+  --tier-alien: #8b5cf6;
+  --tier-none: #ef4444;
+
+  /* Data provenance legend (ConstructDerivedSpecs) */
+  --data-fixed: #ff3e00; /* you typed this */
+  --data-derived: #007bff; /* computed */
+}
