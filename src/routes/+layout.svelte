@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { browser } from '$app/environment';
+	import '$lib/styles/tokens.css';
+	import '$lib/styles/paletteStore'; // applies any saved palette overrides to :root app-wide
 	import '$lib/styles/touch-overrides.css';
 
 	let { children } = $props();
@@ -96,33 +98,36 @@
 {/if}
 
 <style>
+  /* Base styles retokenized onto the design tokens (src/lib/styles/tokens.css) so the
+     whole app shares one dark baseline + accent. Per-component styles still override
+     these and are being swept onto var(--token) wave by wave. */
   :global(body) {
-    background-color: #333;
-    color: #eee;
-    font-family: 'Arial', sans-serif;
+    background-color: var(--bg-app);
+    color: var(--text);
+    font-family: var(--font-ui);
     margin: 0;
     padding: 0;
   }
 
   :global(button) {
-    background-color: #555;
-    color: #eee;
+    background-color: var(--bg-control);
+    color: var(--text);
     padding: 8px 15px;
-    border: none;
-    border-radius: 4px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
     cursor: pointer;
     font-size: 1em;
     transition: background-color 0.2s ease;
   }
 
   :global(button:hover) {
-    background-color: #777;
+    background-color: var(--bg-control-hover);
   }
 
   :global(button:disabled) {
-    background-color: #444;
+    background-color: var(--bg-panel);
     cursor: not-allowed;
-    color: #888;
+    color: var(--text-faint);
   }
 
   :global(input[type="text"]),
@@ -131,15 +136,15 @@
   :global(select),
   :global(textarea) {
     padding: 8px;
-    border: 1px solid #555;
-    border-radius: 4px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
     font-size: 1em;
-    background-color: #444;
-    color: #eee;
+    background-color: var(--bg-control);
+    color: var(--text);
   }
 
   :global(a) {
-    color: #88ccff;
+    color: var(--link);
     text-decoration: none;
   }
 
@@ -148,8 +153,43 @@
   }
 
   :global(.error) {
-    color: #ff8888;
+    color: var(--status-bad);
     font-weight: bold;
+  }
+
+  /* Shared component utilities — components can adopt these and delete their own copies
+     during the sweep. */
+  :global(.btn-primary) {
+    background-color: var(--accent);
+    color: var(--on-accent);
+    border: none;
+  }
+  :global(.btn-primary:hover) {
+    background-color: var(--accent-hover);
+  }
+  :global(.btn-danger) {
+    background-color: var(--status-bad);
+    color: #fff;
+    border: none;
+  }
+  :global(.modal-overlay) {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  :global(.modal-card) {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    color: var(--text);
+    padding: var(--space-4);
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: auto;
   }
 
   /* TEMPORARY dev build stamp */
