@@ -26,6 +26,45 @@ export function getJourneyBounds(plans: TransitPlan[]): JourneyBounds | null {
   return { startMs, endMs };
 }
 
+/**
+ * The host a construct is *currently* at, derived from its scheduled journeys at a
+ * given display time - NOT its authored `parentId`. After a construct transits to and
+ * is captured by a target body, its persistent parentId/orbit still describe its
+ * authored placement (e.g. a heliocentric orbit around the star); the live location is
+ * derived from the journey. Returns the id of the body it should be treated as
+ * orbiting/landed at:
+ *   - mid-journey (in transit): null (not captured by any host)
+ *   - after a captured (non-flyby) arrival: that journey's target
+ *   - before any journey, or only flyby arrivals: the authored parentId
+ */
+export function resolveConstructCurrentHostId(
+  construct: CelestialBody,
+  displayTimeMs: number
+): string | null {
+  const logs = Array.isArray(construct.scheduled_journeys) ? construct.scheduled_journeys : [];
+  let captured: { endMs: number; targetId: string } | null = null;
+  for (const log of logs) {
+    if (log.status === 'cancelled') continue;
+    const bounds = getJourneyBounds(log.plans);
+    if (!bounds) continue;
+    // Currently flying this journey -> in transit, not captured by any host.
+    if (displayTimeMs >= bounds.startMs && displayTimeMs < bounds.endMs) return null;
+    if (displayTimeMs >= bounds.endMs) {
+      const lastPlan = log.plans[log.plans.length - 1];
+      if (!lastPlan) continue;
+      const isFlyby =
+        (lastPlan.interceptSpeed_ms || 0) > 0 ||
+        (lastPlan.segments || []).some((s) => (s.warnings || []).includes('Flyby'));
+      // Keep the latest captured arrival (chained journeys end at the final target).
+      if (!isFlyby && lastPlan.targetId && (!captured || bounds.endMs > captured.endMs)) {
+        captured = { endMs: bounds.endMs, targetId: lastPlan.targetId };
+      }
+    }
+  }
+  if (captured) return captured.targetId;
+  return construct.parentId ?? null;
+}
+
 export function countFutureJourneys(construct: CelestialBody, timeMs: number): number {
   const logs = construct.scheduled_journeys || [];
   let count = 0;

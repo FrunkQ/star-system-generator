@@ -24,7 +24,7 @@
   import SaveSystemModal from './SaveSystemModal.svelte';
   import PlannerPane from './PlannerPane.svelte';
   import type { TransitPlan } from '$lib/transit/types';
-  import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney } from '$lib/transit/scheduler';
+  import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney, resolveConstructCurrentHostId } from '$lib/transit/scheduler';
 
   import { systemStore, viewportStore } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
@@ -887,7 +887,16 @@
   // Reactive Focus Handling via SvelteKit Router State
   $: focusedBodyId = $page.state.focusId ?? ($systemStore?.nodes.find(n => !n.parentId)?.id || null);
   $: focusedBody = $systemStore?.nodes.find(n => n.id === focusedBodyId) as CelestialBody || null;
-  $: parentBody = focusedBody && focusedBody.parentId ? $systemStore?.nodes.find(n => n.id === focusedBody.parentId) as CelestialBody : null;
+  // For a construct, its *current* host is where its journeys have taken it (e.g. a
+  // planet it's parked at), not its authored parentId (often the star it was first
+  // placed around). Resolving this at the display time keeps land/takeoff + the specs
+  // panel pointed at the real body. Non-constructs just use parentId as before.
+  $: currentHostId = focusedBody
+      ? (focusedBody.kind === 'construct'
+          ? resolveConstructCurrentHostId(focusedBody, currentTime)
+          : (focusedBody.parentId ?? null))
+      : null;
+  $: parentBody = currentHostId ? ($systemStore?.nodes.find(n => n.id === currentHostId) as CelestialBody ?? null) : null;
   $: rootStar = $systemStore?.nodes.find(n => !n.parentId && (n.roleHint === 'star' || n.kind === 'barycenter')) as CelestialBody || null;
   $: focusedFutureJourneyCount = (focusedBody && focusedBody.kind === 'construct')
       ? countFutureJourneys(focusedBody, currentTime)
@@ -1763,6 +1772,7 @@
                   <ConstructDetailsPane
                     focusedBody={focusedBody}
                     system={$systemStore}
+                    hostBody={parentBody}
                     {rulePack}
                     {isShipLogOpen}
                     {isEditing}

@@ -2,7 +2,7 @@
   // Construct (ship) detail block, extracted from SystemView (Phase 01.7): the three
   // mutually-exclusive states for a focused construct - ship log (ShipLogPane), edit
   // (ConstructSidePanel), or derived specs (ConstructDerivedSpecs, with the
-  // takeoff/land/plan-transit/open-log actions). parentBody (host) is derived here;
+  // takeoff/land/plan-transit/open-log actions). hostBody (current host) is passed in;
   // currentTime-dependent counts come in as props. Actions dispatch back so SystemView
   // keeps the orchestration handlers and the isShipLogOpen/isEditing/isPlanning flags.
   //
@@ -17,6 +17,10 @@
   export let focusedBody: CelestialBody;
   export let system: StarSystem;
   export let rulePack: any;
+  // The construct's *current* host, resolved by SystemView from its journeys (where it
+  // has actually travelled to), not its authored parentId. Drives the orbit readout and
+  // landing analysis, so a ship parked at a planet shows that planet rather than the star.
+  export let hostBody: CelestialBody | null = null;
   export let isShipLogOpen: boolean = false;
   export let isEditing: boolean = false;
   export let isPlanning: boolean = false;
@@ -25,10 +29,6 @@
   export let activeCount: number = 0;
 
   const dispatch = createEventDispatcher();
-
-  $: parentBody = focusedBody.parentId
-    ? system?.nodes.find(n => n.id === (focusedBody.ui_parentId || focusedBody.parentId)) ?? null
-    : null;
 </script>
 
 {#if focusedBody.kind === 'construct'}
@@ -45,7 +45,7 @@
         <ConstructSidePanel
             {system}
             construct={focusedBody}
-            hostBody={parentBody}
+            hostBody={hostBody}
             {rulePack}
             hideActions={isPlanning}
             on:update
@@ -56,7 +56,7 @@
     {:else}
         <ConstructDerivedSpecs
             construct={focusedBody}
-            hostBody={parentBody}
+            hostBody={hostBody}
             {rulePack}
             futureJourneyCount={futureJourneyCount}
             isEditingConstruct={isEditing}
