@@ -10,6 +10,7 @@
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import type { PanState } from '$lib/viewport/stores';
   import { clampZoom, dampedZoomStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM, frameForNode, suppressAutoZoomNearPeriapsis } from '$lib/viewport/camera';
+  import { gestures } from '$lib/input/gestures';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
   import { scaleBoxCox } from '../physics/scaling';
   import { findContainingHost } from '$lib/physics/orbits';
@@ -68,8 +69,7 @@
 
   // --- Interaction State ---
   let isPanning = false;
-  let lastPanX: number;
-  let lastPanY: number;
+  let inertiaRaf: number | null = null;
   let lastFocusedId: string | null = null;
   let isAnimatingFocus = false;
   let beltLabelClickAreas = new Map<string, { x1: number, y1: number, x2: number, y2: number }>();
@@ -315,7 +315,7 @@
     };
   });
 
-  onDestroy(() => cancelAnimationFrame(animationFrameId));
+  onDestroy(() => { cancelAnimationFrame(animationFrameId); stopInertia(); });
 
   function screenToWorld(screenX: number, screenY: number): { x: number, y: number } {
       if (!canvas || !zoom) return { x: 0, y: 0 };
@@ -541,11 +541,13 @@
       return clickedNode ? { node: clickedNode, world: clickPos } : null;
   }
 
-  function handleClick(event: MouseEvent) {
+  // --- Unified pointer gestures (Phase 02). Coords arriving here are canvas-relative
+  //     (the gestures action subtracts getBoundingClientRect), matching the old
+  //     `clientX - rect.left`. Behaviour is otherwise the pre-Phase-02 mouse logic. ---
+
+  // Tap = the old handleClick body (focus, or zoom-in if already focused; belt labels first).
+  function handleTap(clickX: number, clickY: number) {
       if (!system) return;
-      const rect = canvas.getBoundingClientRect();
-      const clickX = event.clientX - rect.left;
-      const clickY = event.clientY - rect.top;
       if (showNames) {
           for (const [beltId, area] of beltLabelClickAreas.entries()) {
               if (clickX >= area.x1 && clickX <= area.x2 && clickY >= area.y1 && clickY <= area.y2) {
@@ -560,52 +562,69 @@
       }
   }
 
-  function handleContextMenu(event: MouseEvent) {
-      event.preventDefault();
+  // Long-press / right-click = the old handleContextMenu body. The menu is positioned in
+  // screen space, so convert the canvas-relative point back via the bounding rect.
+  function openContextMenu(clickX: number, clickY: number) {
       if (!system) return;
       const rect = canvas.getBoundingClientRect();
-      const clickX = event.clientX - rect.left;
-      const clickY = event.clientY - rect.top;
+      const screenX = clickX + rect.left;
+      const screenY = clickY + rect.top;
       const picked = pickNodeAt(clickX, clickY);
-      if (picked) dispatch("showBodyContextMenu", { node: picked.node, x: event.clientX, y: event.clientY });
+      if (picked) dispatch("showBodyContextMenu", { node: picked.node, x: screenX, y: screenY });
       else {
         const clickPos = screenToWorld(clickX, clickY);
         const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
         const dominantBody = findContainingHost(clickPos.x, clickPos.y, system.nodes, targetPositions);
-        dispatch("backgroundContextMenu", { x: clickPos.x, y: clickPos.y, dominantBody, screenX: event.clientX, screenY: event.clientY });
+        dispatch("backgroundContextMenu", { x: clickPos.x, y: clickPos.y, dominantBody, screenX, screenY });
       }
   }
 
-  function handleWheel(event: WheelEvent) {
-      event.preventDefault();
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = event.clientX - rect.left;
-      const mouseY = event.clientY - rect.top;
-      const worldPosBeforeZoom = screenToWorld(mouseX, mouseY);
-      const zoomFactor = event.deltaY < 0 ? 1.2 : 1 / 1.2;
-      const newZoom = clampZoom(get(zoomStore) * zoomFactor);
-      const newPanX = worldPosBeforeZoom.x - (mouseX - canvas.width / 2) / newZoom;
-      const newPanY = worldPosBeforeZoom.y - (mouseY - canvas.height / 2) / newZoom;
+  // Zoom about a canvas-relative point, keeping that point fixed (old handleWheel logic,
+  // generalised to take a factor so wheel and pinch share it).
+  function zoomAt(factor: number, screenX: number, screenY: number) {
+      const worldPosBeforeZoom = screenToWorld(screenX, screenY);
+      const newZoom = clampZoom(get(zoomStore) * factor);
+      const newPanX = worldPosBeforeZoom.x - (screenX - canvas.width / 2) / newZoom;
+      const newPanY = worldPosBeforeZoom.y - (screenY - canvas.height / 2) / newZoom;
       panStore.set({ x: newPanX, y: newPanY }, { duration: 0 });
       zoomStore.set(newZoom, { duration: 0 });
   }
 
-  function handleMouseDown(event: MouseEvent) {
-      isPanning = true; cameraMode = 'MANUAL';
-      lastPanX = event.clientX; lastPanY = event.clientY;
-      canvas.style.cursor = 'grabbing';
-  }
-
-  function handleMouseUp() { isPanning = false; canvas.style.cursor = 'grab'; }
-
-  function handleMouseMove(event: MouseEvent) {
-      if (!isPanning) return;
-      const dx = event.clientX - lastPanX; const dy = event.clientY - lastPanY;
-      const panDeltaX = dx / get(zoomStore); const panDeltaY = dy / get(zoomStore);
+  // Pan by a screen-pixel delta (old handleMouseMove logic).
+  function panBy(dx: number, dy: number) {
+      const z = get(zoomStore);
       const currentPan = get(panStore);
-      panStore.set({ x: currentPan.x - panDeltaX, y: currentPan.y - panDeltaY }, { duration: 0 });
-      lastPanX = event.clientX; lastPanY = event.clientY;
+      panStore.set({ x: currentPan.x - dx / z, y: currentPan.y - dy / z }, { duration: 0 });
   }
+
+  function stopInertia() {
+      if (inertiaRaf !== null) { cancelAnimationFrame(inertiaRaf); inertiaRaf = null; }
+  }
+
+  // Fling: decay the release velocity (px/s) by 0.92 per frame, stop below 2 px/s.
+  function startInertia(vx: number, vy: number) {
+      stopInertia();
+      if (Math.hypot(vx, vy) < 2) return;
+      let vX = vx, vY = vy, lastT = 0;
+      const step = (t: number) => {
+          if (!lastT) { lastT = t; inertiaRaf = requestAnimationFrame(step); return; }
+          const dt = (t - lastT) / 1000; lastT = t;
+          panBy(vX * dt, vY * dt);
+          vX *= 0.92; vY *= 0.92;
+          if (Math.hypot(vX, vY) < 2) { inertiaRaf = null; return; }
+          inertiaRaf = requestAnimationFrame(step);
+      };
+      inertiaRaf = requestAnimationFrame(step);
+  }
+
+  const canvasGestures = {
+      onPanStart: () => { isPanning = true; cameraMode = 'MANUAL'; stopInertia(); if (canvas) canvas.style.cursor = 'grabbing'; },
+      onPan: ({ dx, dy }: { dx: number; dy: number }) => panBy(dx, dy),
+      onPanEnd: ({ vx, vy }: { vx: number; vy: number }) => { isPanning = false; if (canvas) canvas.style.cursor = 'grab'; startInertia(vx, vy); },
+      onZoom: ({ factor, x, y }: { factor: number; x: number; y: number }) => zoomAt(factor, x, y),
+      onTap: ({ x, y }: { x: number; y: number }) => handleTap(x, y),
+      onLongPress: ({ x, y }: { x: number; y: number }) => openContextMenu(x, y)
+  };
 
   function drawSystem(ctx: CanvasRenderingContext2D) {
       if (!system || !zoom) return;
@@ -1320,14 +1339,8 @@
       panStore.set({ x: centerX, y: centerY }, { duration: 500 }); zoomStore.set(targetZoom, { duration: 500 });
   }
 </script>
-<canvas 
-    bind:this={canvas} 
-    on:click={handleClick} 
-    on:contextmenu={handleContextMenu}
-    on:wheel|preventDefault={handleWheel}
-    on:mousedown={handleMouseDown}
-    on:mouseup={handleMouseUp}
-    on:mouseleave={handleMouseUp}
-    on:mousemove={handleMouseMove}
+<canvas
+    bind:this={canvas}
+    use:gestures={canvasGestures}
     style="border: 1px solid #333; margin-top: 1em; background-color: #08090d; cursor: grab; width: 100%; touch-action: none;"
 ></canvas>
