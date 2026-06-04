@@ -396,7 +396,6 @@
   // Zoom about a canvas-relative point (old handleWheel logic, generalised to a factor so
   // wheel and pinch share it). Respects the "disable mouse zoom" setting for both.
   function zoomAt(factor: number, localX: number, localY: number) {
-    if ($starmapUiStore.mouseZoomDisabled) return;
     const svgRect = svgElement.getBoundingClientRect();
     const viewBox = svgElement.viewBox.baseVal;
     const scaleX = viewBox.width / svgRect.width;
@@ -776,10 +775,6 @@
       <h1>{starmap.name}</h1>
     </div>
     <div class="header-controls">
-      <label>
-        <input type="checkbox" bind:checked={$starmapUiStore.mouseZoomDisabled} />
-        Disable Mouse Zoom
-      </label>
       <label>
         <input type="checkbox" bind:checked={$starmapUiStore.showBackgroundImage} disabled={invertDisplay} />
         Show Background

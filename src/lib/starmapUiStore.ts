@@ -7,7 +7,6 @@ const getInitialState = () => {
   if (typeof window === 'undefined') {
     return {
       gridType: 'none' as 'grid' | 'hex' | 'traveller-hex' | 'none',
-      mouseZoomDisabled: true,
       showBackgroundImage: true
     };
   }
@@ -20,7 +19,6 @@ const getInitialState = () => {
 
   return {
     gridType: 'none' as 'grid' | 'hex' | 'traveller-hex' | 'none',
-    mouseZoomDisabled: true,
     showBackgroundImage: true
   };
 };
