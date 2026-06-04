@@ -55,7 +55,7 @@
   li {
     display: flex;
     align-items: center;
-    background-color: #444;
+    background-color: var(--bg-control);
     padding: 0.5rem;
     border-radius: 3px;
     gap: 10px;
@@ -66,7 +66,7 @@
   }
 
   .no-modules {
-    color: #999;
+    color: var(--text-muted);
     text-align: center;
     margin-top: 1em;
   }

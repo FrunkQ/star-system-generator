@@ -262,17 +262,17 @@
 <style>
   .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1100; }
   .modal { 
-    background: #2a2a2a; 
-    padding: 2em; 
-    border-radius: 8px; 
-    width: 90%; 
-    max-width: 1200px; 
-    border: 1px solid #444; 
+    background: var(--bg-panel);
+    padding: 2em;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 1200px;
+    border: 1px solid var(--border);
     max-height: 90vh; 
     display: flex; 
     flex-direction: column; 
   }
-  h2 { margin-top: 0; color: #ff3e00; flex-shrink: 0; }
+  h2 { margin-top: 0; color: var(--accent); flex-shrink: 0; }
   .columns { 
     display: flex; 
     gap: 2em; 
@@ -289,15 +289,15 @@
   .form-group { display: flex; flex-direction: column; width: 100%; }
   .form-group.fill-column { flex-grow: 1; min-height: 0; }
   .form-group.fixed-height { flex-shrink: 0; }
-  .form-group label { margin-bottom: 0.5em; color: #eee; }
-  .form-group textarea, .form-group select { width: 100%; padding: 0.5em; border-radius: 4px; border: 1px solid #555; background: #1a1a1a; color: #eee; }
+  .form-group label { margin-bottom: 0.5em; color: var(--text); }
+  .form-group textarea, .form-group select { width: 100%; padding: 0.5em; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--text); }
   .generated-text-display { 
-    flex-grow: 1; 
-    background: #1a1a1a; 
-    border: 1px solid #555; 
-    border-radius: 4px; 
-    padding: 1em; 
-    white-space: pre-wrap; 
+    flex-grow: 1;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1em;
+    white-space: pre-wrap;
     overflow-y: auto; 
     min-height: 100px; /* Prevent collapsing */
   }
@@ -317,44 +317,44 @@
     flex-shrink: 0;
   }
   .tag-jump-list a {
-    color: #88ccff;
+    color: var(--link);
     text-decoration: none;
-    background-color: #333;
+    background-color: var(--bg-panel);
     padding: 0.2em 0.5em;
     border-radius: 4px;
     font-size: 0.9em;
   }
   .tag-jump-list a:hover {
-    background-color: #444;
+    background-color: var(--bg-control);
     text-decoration: underline;
   }
   .tag-groups { 
-    flex-grow: 1; 
-    overflow-y: auto; 
-    background: #1a1a1a; 
-    padding: 1em; 
-    border-radius: 4px; 
-    border: 1px solid #555; 
+    flex-grow: 1;
+    overflow-y: auto;
+    background: var(--bg-panel);
+    padding: 1em;
+    border-radius: 4px;
+    border: 1px solid var(--border);
   }
   .tag-group { margin-bottom: 1em; }
   .tag-group strong { color: #ff9900; font-size: 1.1em; margin-bottom: 0.5em; display: block; }
   .tag-list { display: flex; flex-wrap: wrap; gap: 0.5em; }
-  .tag-label { background-color: #333; padding: 0.3em 0.6em; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
-  .tag-label:hover { background-color: #444; }
+  .tag-label { background-color: var(--bg-panel); padding: 0.3em 0.6em; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
+  .tag-label:hover { background-color: var(--bg-control); }
   .tag-label input { margin-right: 0.4em; }
   .sub-group { margin-left: 1em; margin-top: 0.5em; }
-  .sub-group em { color: #ccc; font-size: 1em; margin-bottom: 0.5em; display: block; }
-  .blinking-cursor { display: inline-block; width: 8px; height: 1em; background: #eee; animation: blink 1s step-end infinite; }
+  .sub-group em { color: var(--text-muted); font-size: 1em; margin-bottom: 0.5em; display: block; }
+  .blinking-cursor { display: inline-block; width: 8px; height: 1em; background: var(--text); animation: blink 1s step-end infinite; }
   @keyframes blink { 50% { opacity: 0; } }
   .prompt-editor-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(20, 20, 20, 0.95); padding: 2em; display: flex; flex-direction: column; }
-  .prompt-textarea { flex-grow: 1; width: 100%; min-height: 240px; background: #111; color: #eee; border: 1px solid #555; border-radius: 4px; margin-bottom: 1em; }
+  .prompt-textarea { flex-grow: 1; width: 100%; min-height: 240px; background: var(--bg-panel); color: var(--text); border: 1px solid var(--border); border-radius: 4px; margin-bottom: 1em; }
   .modal-actions { display: flex; justify-content: flex-end; gap: 1em; margin-top: 1em; flex-shrink: 0; }
   .modal-actions button { padding: 0.7em 1.5em; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
   .modal-actions button:hover { opacity: 0.9; }
   .modal-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .modal-actions button:first-child { background-color: #ff3e00; color: white; }
-  .modal-actions .cancel-button { background-color: #dc3545; color: white; }
-  .modal-actions button:nth-child(2) { background-color: #555; color: white; }
-  .modal-actions button:nth-child(3) { background-color: #007bff; color: white; }
+  .modal-actions button:first-child { background-color: var(--accent); color: white; }
+  .modal-actions .cancel-button { background-color: var(--status-bad); color: white; }
+  .modal-actions button:nth-child(2) { background-color: var(--bg-control); color: white; }
+  .modal-actions button:nth-child(3) { background-color: var(--accent); color: white; }
   .modal-actions button:last-child { background-color: #6c757d; color: white; }
 </style>

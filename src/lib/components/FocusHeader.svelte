@@ -74,23 +74,23 @@
   }
   .visibility-btn {
       background: none;
-      border: 1px solid #444;
+      border: 1px solid var(--border);
       border-radius: 4px;
       cursor: pointer;
       padding: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background-color: #222;
+      background-color: var(--bg-panel);
   }
   .visibility-btn:hover {
-      background-color: #333;
-      border-color: #666;
+      background-color: var(--bg-control);
+      border-color: var(--border);
   }
   .name-input {
     background-color: transparent;
     border: 1px solid transparent;
-    color: #ff3e00;
+    color: var(--accent);
     font-size: 1.8em;
     font-weight: bold;
     padding: 0.1em;
@@ -102,6 +102,6 @@
   }
   .name-input:hover, .name-input:focus {
       background-color: #252525;
-      border-color: #444;
+      border-color: var(--border);
   }
 </style>

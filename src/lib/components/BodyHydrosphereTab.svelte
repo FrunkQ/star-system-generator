@@ -147,8 +147,8 @@
       align-items: center;
   }
   
-  label { color: #ccc; font-size: 0.9em; }
-  input, select { padding: 8px; border-radius: 4px; border: 1px solid #555; background-color: #444; color: #eee; }
+  label { color: var(--text-muted); font-size: 0.9em; }
+  input, select { padding: 8px; border-radius: 4px; border: 1px solid var(--border); background-color: var(--bg-control); color: var(--text); }
   
   select.warning { border-color: #f59e0b; color: #f59e0b; }
   .warning-text { color: #f59e0b; font-size: 0.8em; margin-top: 2px; }
@@ -186,6 +186,6 @@
       display: flex;
       justify-content: space-between;
       font-size: 0.7em;
-      color: #888;
+      color: var(--text-faint);
   }
 </style>

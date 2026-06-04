@@ -318,7 +318,7 @@
               on:mousedown={handleMagMouseDown}
               preserveAspectRatio="none"
           >
-              <rect x="0" y="20" width="100%" height="10" fill="#333" rx="5" />
+              <rect x="0" y="20" width="100%" height="10" fill="var(--bg-panel)" rx="5" />
               <!-- Zone Indicators -->
               <rect x="0" y="35" width="{getMagPercent(2)}%" height="4" fill="orange" rx="1" />
               <text x="0%" y="50" fill="orange" font-size="10">Terrestrial</text>
@@ -331,8 +331,8 @@
 
               {#each magMarks as mark}
                   {@const pct = getMagPercent(mark.val)}
-                  <line x1="{pct}%" y1="15" x2="{pct}%" y2="35" stroke="#888" stroke-width="1" />
-                  <text x="{pct}%" y="65" fill="#888" font-size="9" text-anchor="middle">{mark.label}</text>
+                  <line x1="{pct}%" y1="15" x2="{pct}%" y2="35" stroke="var(--text-faint)" stroke-width="1" />
+                  <text x="{pct}%" y="65" fill="var(--text-faint)" font-size="9" text-anchor="middle">{mark.label}</text>
               {/each}
               <circle cx="{getMagPercent(body.magneticField?.strengthGauss || minMag)}%" cy="25" r="6" fill="#fff" stroke="#000" stroke-width="2" />
           </svg>
@@ -369,11 +369,11 @@
               on:mousedown={handlePressureMouseDown}
               preserveAspectRatio="none"
           >
-              <rect x="0" y="20" width="100%" height="10" fill="#333" rx="5" />
+              <rect x="0" y="20" width="100%" height="10" fill="var(--bg-panel)" rx="5" />
               {#each pressureMarks as mark}
                   {@const pct = getPressurePercent(mark.val)}
-                  <line x1="{pct}%" y1="15" x2="{pct}%" y2="35" stroke="#888" stroke-width="1" />
-                  <text x="{pct}%" y="45" fill="#888" font-size="9" text-anchor="middle">{mark.label}</text>
+                  <line x1="{pct}%" y1="15" x2="{pct}%" y2="35" stroke="var(--text-faint)" stroke-width="1" />
+                  <text x="{pct}%" y="45" fill="var(--text-faint)" font-size="9" text-anchor="middle">{mark.label}</text>
               {/each}
               <circle cx="{getPressurePercent(body.atmosphere.pressure_bar || minP)}%" cy="25" r="6" fill="#fff" stroke="#000" stroke-width="2" />
           </svg>
@@ -525,9 +525,9 @@
   .slider-row input[type="number"], .label-row input[type="number"] {
       width: 85px;
       padding: 4px;
-      background: #222;
-      border: 1px solid #444;
-      color: #fff;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      color: var(--text);
       text-align: right;
   }
   .orbital-slider-container {
@@ -545,14 +545,14 @@
   .advanced-toggle {
       cursor: pointer;
       font-weight: bold;
-      color: #88ccff;
+      color: var(--link);
       user-select: none;
       padding: 8px 0;
-      border-top: 1px solid #333;
+      border-top: 1px solid var(--border-soft);
       font-size: 0.9em;
   }
   .advanced-toggle:hover {
-      color: #fff;
+      color: var(--text);
   }
   
   .composition-editor {
@@ -574,13 +574,13 @@
       gap: 10px;
   }
   .gas-row.condensed .gas-name {
-      color: #88ccff;
+      color: var(--link);
   }
   .gas-row.escaping .gas-name {
       color: #ffaa88;
   }
   .phase-warning {
-      color: #ffcc00;
+      color: var(--warning);
       font-weight: bold;
       margin-left: 4px;
       font-size: 0.8em;
@@ -595,7 +595,7 @@
   }
   .cryo-icon {
       margin-left: 4px;
-      color: #88ccff;
+      color: var(--link);
       font-size: 0.9em;
       cursor: help;
   }
@@ -606,8 +606,8 @@
       font-family: monospace;
       font-size: 0.85em;
       background: #1f1f1f;
-      border: 1px solid #555;
-      color: #eee;
+      border: 1px solid var(--border);
+      color: var(--text);
       padding: 2px 4px;
       border-radius: 3px;
   }
@@ -630,20 +630,20 @@
   }
   .mini-tag {
       font-size: 0.7em;
-      background: #444;
-      color: #aaa;
+      background: var(--bg-control);
+      color: var(--text-muted);
       padding: 1px 6px;
       border-radius: 4px;
-      border: 1px solid #555;
+      border: 1px solid var(--border);
   }
 
   .add-gas-row select {
       width: 100%;
       margin-top: 5px;
       padding: 6px;
-      background: #333;
-      border: 1px dashed #555;
-      color: #aaa;
+      background: var(--bg-panel);
+      border: 1px dashed var(--border);
+      color: var(--text-muted);
   }
 
   .composition-summary {
@@ -652,21 +652,21 @@
       gap: 6px;
   }
   .summary-chip {
-      background: #333;
+      background: var(--bg-panel);
       padding: 3px 8px;
       border-radius: 12px;
       font-size: 0.8em;
-      border: 1px solid #444;
+      border: 1px solid var(--border);
       display: flex;
       align-items: center;
       position: relative;
   }
   .summary-chip.condensed {
       border-color: #5588aa;
-      color: #88ccff;
+      color: var(--link);
   }
   .summary-chip .gas { font-weight: bold; margin-right: 4px; }
-  .summary-chip .pct { color: #aaa; }
+  .summary-chip .pct { color: var(--text-muted); }
   .phase-indicator {
       margin-left: 5px;
       font-size: 0.9em;
@@ -695,10 +695,10 @@
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap: 8px;
-      background: #1a1a1a;
+      background: var(--bg-panel);
       padding: 12px;
       border-radius: 8px;
-      border: 1px solid #333;
+      border: 1px solid var(--border-soft);
   }
   .stat {
       display: flex;
@@ -707,7 +707,7 @@
       text-align: center;
   }
   .stat .label {
-      color: #666;
+      color: var(--text-faint);
       font-size: 0.7em;
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -716,7 +716,7 @@
   .stat .value {
       font-weight: bold;
       font-size: 0.95em;
-      color: #eee;
+      color: var(--text);
   }
   .stat .value.hot { color: #ffaa88; }
 </style>

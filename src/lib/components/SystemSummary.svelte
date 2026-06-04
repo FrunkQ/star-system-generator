@@ -332,8 +332,8 @@
 
 <style>
     .summary-panel {
-        border: 1px solid #444;
-        background-color: #1a1a1a;
+        border: 1px solid var(--border);
+        background-color: var(--bg-panel);
         padding: 0.5em;
         margin: 0.5em 0;
         border-radius: 5px;
@@ -346,7 +346,7 @@
     }
     h3.focus-title {
         margin: 0;
-        color: #eee; /* White color for the title */
+        color: var(--text); /* White color for the title */
         font-size: 1.5em;
     }
     .summary-grid {
@@ -367,11 +367,11 @@
     .value {
         font-size: 1.5em;
         font-weight: bold;
-        color: #eee;
+        color: var(--text);
     }
     .label {
         font-size: 0.8em;
-        color: #999;
+        color: var(--text-muted);
         text-transform: uppercase;
     }
     .dropdown {
@@ -382,7 +382,7 @@
     .dropdown-content {
       display: block;
       position: absolute;
-      background-color: #333;
+      background-color: var(--bg-panel);
       min-width: 160px;
       box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
       z-index: 1;
@@ -390,7 +390,7 @@
     }
 
     .dropdown-content button {
-      color: #eee;
+      color: var(--text);
       padding: 12px 16px;
       text-decoration: none;
       display: block;
@@ -400,16 +400,16 @@
       border: none;
     }
 
-    .dropdown-content button:hover {background-color: #555;}
+    .dropdown-content button:hover {background-color: var(--bg-control-hover);}
 
     .hamburger-button {
       font-size: 1.5em;
       background: none;
       border: none;
-      color: #eee;
+      color: var(--text);
     }
 
     .todo-button {
-      color: #888 !important;
+      color: var(--text-faint) !important;
     }
 </style>

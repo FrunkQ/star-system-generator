@@ -23,13 +23,13 @@
   .gm-tools {
       margin-top: 1.5em;
       padding-top: 1em;
-      border-top: 1px solid #444;
+      border-top: 1px solid var(--border);
       display: flex; /* Adjust layout for single button */
       justify-content: center;
   }
   .gm-tools h3 {
       margin: 0 0 0.5em 0;
-      color: #ff3e00;
+      color: var(--accent);
   }
   .tools-container {
       display: flex;

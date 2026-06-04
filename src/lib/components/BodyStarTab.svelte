@@ -415,7 +415,7 @@
             <svg class="slider-svg" width="100%" height="30">
                 {#each tempZones as zone}
                     {@const x = getTempLogPos(zone.start)}
-                    <line x1="{x}%" y1="5" x2="{x}%" y2="18" stroke="#666" stroke-width="1" />
+                    <line x1="{x}%" y1="5" x2="{x}%" y2="18" stroke="var(--text-faint)" stroke-width="1" />
                     <text x="{x + 1}%" y="28" class="rad-label">{zone.name}</text>
                 {/each}
                 <rect x="{getRangePct('temp', 'start')}%" y="0" width="{getRangePct('temp', 'width')}%" height="8" fill="#22aa44" />
@@ -434,7 +434,7 @@
             <svg class="slider-svg" width="100%" height="30">
                 {#each radZones as zone}
                     {@const x = getLogPos(zone.start)}
-                    <line x1="{x}%" y1="5" x2="{x}%" y2="18" stroke="#666" stroke-width="1" />
+                    <line x1="{x}%" y1="5" x2="{x}%" y2="18" stroke="var(--text-faint)" stroke-width="1" />
                     <text x="{x + 1}%" y="28" class="rad-label">{zone.name}</text>
                 {/each}
                 <rect x="{getRangePct('rad', 'start')}%" y="0" width="{getRangePct('rad', 'width')}%" height="8" fill="#22aa44" />
@@ -487,15 +487,15 @@
   .tab-panel { padding: 10px; display: flex; flex-direction: column; gap: 15px; }
   .form-group { display: flex; flex-direction: column; gap: 5px; }
   .label-row { display: flex; justify-content: space-between; align-items: center; }
-  label { color: #ccc; font-size: 0.9em; margin: 0; }
-  input[type="number"], select { 
-      padding: 4px; background: #444; border: 1px solid #555; 
-      color: #eee; border-radius: 3px; width: 100px; text-align: right; 
+  label { color: var(--text-muted); font-size: 0.9em; margin: 0; }
+  input[type="number"], select {
+      padding: 4px; background: var(--bg-control); border: 1px solid var(--border);
+      color: var(--text); border-radius: 3px; width: 100px; text-align: right;
   }
   select { width: 100%; text-align: left; }
   .full-width-slider { width: 100%; margin: 0; cursor: pointer; }
-  hr { border: 0; border-top: 1px solid #444; margin: 5px 0; width: 100%; }
-  .sub-label { font-size: 0.75em; color: #888; text-align: right; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 5px 0; width: 100%; }
+  .sub-label { font-size: 0.75em; color: var(--text-faint); text-align: right; }
   
   .color-preview {
       width: 30px; height: 30px;
@@ -517,7 +517,7 @@
   }
   .rad-label {
       font-size: 8px;
-      fill: #aaa;
+      fill: var(--text-muted);
       text-transform: uppercase;
   }
   .rad-label.ref {

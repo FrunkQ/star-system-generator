@@ -169,7 +169,7 @@ function updateOrbit() {
                 <label>Semi-Major Axis (AU)</label>
                 <input type="number" step="any" bind:value={a_AU} on:input={handleNumberInput} />
             </div>
-            <div class="info-row" style="font-size: 0.8em; color: #888; margin-bottom: 4px;">{rangeText}</div>
+            <div class="info-row" style="font-size: 0.8em; color: var(--text-faint); margin-bottom: 4px;">{rangeText}</div>
             <!-- Custom Orbital Slider -->
             <div class="full-width-slider">
                 <OrbitalSlider value={a_AU} min={minA} max={maxA} {zones} on:input={handleOrbitalSliderInput} />
@@ -264,14 +264,14 @@ function updateOrbit() {
       align-items: center;
   }
   
-  label { color: #ccc; font-size: 0.9em; }
-  
-  input[type="number"] { 
-      padding: 4px; 
-      background: #444; 
-      border: 1px solid #555; 
-      color: #eee; 
-      border-radius: 3px; 
+  label { color: var(--text-muted); font-size: 0.9em; }
+
+  input[type="number"] {
+      padding: 4px;
+      background: var(--bg-control);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 3px;
       width: 80px;
       text-align: right;
   }
@@ -283,7 +283,7 @@ function updateOrbit() {
   .full-width-slider input { width: 100%; }
   .info-row {
       font-size: 0.8em;
-      color: #888;
+      color: var(--text-faint);
       margin-top: 4px;
   }
 
@@ -293,6 +293,6 @@ function updateOrbit() {
       gap: 10px;
   }
   .checkbox-row label { margin: 0; }
-  
-  hr { border: 0; border-top: 1px solid #444; margin: 5px 0; width: 100%; }
+
+  hr { border: 0; border-top: 1px solid var(--border); margin: 5px 0; width: 100%; }
 </style>

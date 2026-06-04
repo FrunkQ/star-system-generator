@@ -20,19 +20,19 @@
 <style>
   .gm-notes-editor {
     margin-top: 1em;
-    border-top: 1px solid #444;
+    border-top: 1px solid var(--border);
     padding-top: 1em;
   }
   h3 {
       margin: 0 0 0.5em 0;
-      color: #ff3e00;
+      color: var(--accent);
   }
   textarea {
     width: 100%;
     min-height: 300px;
-    background: #1a1a1a;
-    border: 1px solid #555;
-    color: #eee;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    color: var(--text);
     border-radius: 4px;
   }
   .display {

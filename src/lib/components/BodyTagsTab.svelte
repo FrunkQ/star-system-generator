@@ -89,25 +89,25 @@
   
   .tags-section { display: flex; flex-direction: column; gap: 15px; }
   .tag-group { display: flex; align-items: flex-start; gap: 10px; }
-  .group-label { font-size: 0.8em; color: #888; width: 60px; margin-top: 5px; flex-shrink: 0; }
+  .group-label { font-size: 0.8em; color: var(--text-faint); width: 60px; margin-top: 5px; flex-shrink: 0; }
   .tags-list { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
   
   .tag-chip { border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.8em; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: background-color 0.2s; }
   .tag-chip.active { background-color: #3b82f6; color: white; }
   .tag-chip.active:hover { background-color: #2563eb; }
-  .tag-chip.suggested { background-color: #333; color: #88ccff; border: 1px dashed #444; }
-  .tag-chip.suggested:hover { background-color: #444; }
+  .tag-chip.suggested { background-color: var(--bg-panel); color: var(--link); border: 1px dashed var(--border); }
+  .tag-chip.suggested:hover { background-color: var(--bg-control); }
   .x, .plus { font-weight: bold; font-size: 1.1em; line-height: 0.5; }
-  
-  .no-tags { color: #555; font-style: italic; margin-top: 5px; }
+
+  .no-tags { color: var(--text-faint); font-style: italic; margin-top: 5px; }
 
   .add-tag-form { display: flex; flex-direction: column; gap: 10px; }
   .row { display: flex; gap: 5px; }
-  input { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #555; background-color: #444; color: #eee; }
-  .add-btn { width: 100%; padding: 8px; background-color: #333; color: #eee; border: 1px solid #555; border-radius: 4px; cursor: pointer; }
-  .add-btn:hover { background-color: #444; }
+  input { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid var(--border); background-color: var(--bg-control); color: var(--text); }
+  .add-btn { width: 100%; padding: 8px; background-color: var(--bg-panel); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+  .add-btn:hover { background-color: var(--bg-control); }
   .add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  
-  hr { border: 0; border-top: 1px solid #444; margin: 5px 0; width: 100%; }
-  h4 { margin: 0; color: #88ccff; font-size: 0.9em; text-transform: uppercase; }
+
+  hr { border: 0; border-top: 1px solid var(--border); margin: 5px 0; width: 100%; }
+  h4 { margin: 0; color: var(--link); font-size: 0.9em; text-transform: uppercase; }
 </style>

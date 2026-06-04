@@ -1242,8 +1242,8 @@
 <style>
     .planner-panel {
         padding: 1em;
-        background: #222;
-        border: 1px solid #444;
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
         border-radius: 5px;
         display: flex;
         flex-direction: column;
@@ -1264,17 +1264,17 @@
         display: flex;
         justify-content: space-between;
         font-size: 0.8em;
-        color: #888;
+        color: var(--text-faint);
     }
     select, input[type="text"], input[type="range"], .static-value {
-        background: #333;
-        color: #eee;
-        border: 1px solid #555;
+        background: var(--bg-panel);
+        color: var(--text);
+        border: 1px solid var(--border);
         padding: 0.5em;
         border-radius: 3px;
     }
     .static-value {
-        color: #88ccff;
+        color: var(--link);
         font-weight: bold;
     }
     .action-group {
@@ -1296,7 +1296,7 @@
     }
     .calculate-btn {
         flex: 1;
-        background: #444;
+        background: var(--bg-control);
         color: white;
         padding: 0.5em;
         border: none;
@@ -1314,7 +1314,7 @@
     }
     .cancel-btn:hover { background: #773333; }
     
-    .calculate-btn:hover { background: #555; }
+    .calculate-btn:hover { background: var(--bg-control-hover); }
     
     .calculate-btn.execute {
         background-color: #28a745;
@@ -1361,21 +1361,21 @@
     .dialog-card {
         width: min(520px, calc(100vw - 24px));
         background: #1f1f1f;
-        border: 1px solid #555;
+        border: 1px solid var(--border);
         border-radius: 8px;
         padding: 14px;
-        color: #eee;
+        color: var(--text);
     }
     .dialog-card h4 {
         margin: 0 0 8px 0;
     }
     .dialog-card p {
         margin: 0 0 10px 0;
-        color: #ccc;
+        color: var(--text-muted);
     }
     .dialog-note {
         font-size: 0.9em;
-        color: #aaa;
+        color: var(--text-muted);
     }
     .dialog-actions {
         display: flex;
@@ -1389,35 +1389,35 @@
     }
     .close-btn {
         margin-top: 0; /* Align with row */
-        background: #333;
-        border: 1px solid #444;
-        color: #aaa;
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        color: var(--text-muted);
         cursor: pointer;
         padding: 0.5em;
         width: auto;
     }
     .preview-slider {
-        border-top: 1px solid #444;
+        border-top: 1px solid var(--border);
         padding-top: 1em;
         margin-top: 0.5em;
     }
     .completed-legs {
-        background: #1a1a1a;
+        background: var(--bg-panel);
         padding: 0.5em;
         border-radius: 3px;
         margin-bottom: 1em;
         border-left: 3px solid #007bff;
     }
     .tags-container-box {
-        background: #1a1a1a;
+        background: var(--bg-panel);
         padding: 0.6em;
         border-radius: 4px;
         margin-top: 0.8em;
-        border: 1px solid #333;
+        border: 1px solid var(--border-soft);
     }
     .tags-label {
         font-size: 0.7em;
-        color: #888;
+        color: var(--text-faint);
         text-transform: uppercase;
         letter-spacing: 0.05em;
         margin-bottom: 4px;
@@ -1433,8 +1433,8 @@
         font-size: 0.8em;
         font-weight: bold;
         text-transform: uppercase;
-        background-color: #444;
-        color: #eee;
+        background-color: var(--bg-control);
+        color: var(--text);
     }
     .tag.sundiver {
         background-color: #dc3545;
@@ -1463,7 +1463,7 @@
     .completed-legs h4 {
         margin: 0 0 0.5em 0;
         font-size: 0.9em;
-        color: #aaa;
+        color: var(--text-muted);
         text-transform: uppercase;
     }
     .plan-selector {
@@ -1473,8 +1473,8 @@
     }
     .plan-card {
         flex: 1;
-        background: #333;
-        border: 1px solid #555;
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
         border-radius: 4px;
         padding: 8px;
         cursor: pointer;
@@ -1482,7 +1482,7 @@
         transition: all 0.2s;
     }
     .plan-card:hover {
-        background: #444;
+        background: var(--bg-control);
     }
     .plan-card.selected {
         background: #004085;
@@ -1493,16 +1493,16 @@
         font-weight: bold;
         text-transform: uppercase;
         font-size: 0.8em;
-        color: #fff;
+        color: var(--text);
         margin-bottom: 2px;
     }
     .plan-time {
         font-size: 1.1em;
-        color: #88ccff;
+        color: var(--link);
     }
     .plan-g {
         font-size: 0.8em;
-        color: #aaa;
+        color: var(--text-muted);
     }
     .controls-section {
         transition: opacity 0.3s;
@@ -1517,12 +1517,12 @@
         margin-bottom: 0.25em;
     }
     .leg-meta {
-        color: #888;
+        color: var(--text-faint);
         margin-left: 0.5em;
     }
     hr {
         border: 0;
-        border-top: 1px solid #444;
+        border-top: 1px solid var(--border);
         margin: 0.5em 0;
     }
     .warning-box {
@@ -1568,7 +1568,7 @@
         background: #111;
         padding: 0.8em;
         border-radius: 4px;
-        border: 1px solid #333;
+        border: 1px solid var(--border-soft);
         margin-bottom: 0.5em;
     }
     .fuel-labels {
@@ -1577,11 +1577,11 @@
         font-size: 0.8em;
         margin-bottom: 5px;
         text-transform: uppercase;
-        color: #888;
+        color: var(--text-faint);
     }
     .fuel-bar-bg {
         height: 10px;
-        background: #222;
+        background: var(--bg-panel);
         border-radius: 5px;
         position: relative;
         overflow: hidden;
@@ -1606,7 +1606,7 @@
     }
     .advanced-toggle {
         font-size: 0.85em;
-        color: #aaa;
+        color: var(--text-muted);
         cursor: pointer;
         padding: 5px;
         user-select: none;
@@ -1615,7 +1615,7 @@
         gap: 5px;
     }
     .advanced-toggle:hover {
-        color: #fff;
+        color: var(--text);
     }
     .warning-text {
         color: #ff6666;

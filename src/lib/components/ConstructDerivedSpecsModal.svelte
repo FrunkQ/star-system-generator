@@ -212,19 +212,19 @@
   .derived-specs-modal {
     margin-top: 1em;
     padding-top: 1em;
-    border-top: 1px solid #555;
+    border-top: 1px solid var(--border);
   }
   h4 {
     margin-top: 0;
     margin-bottom: 0.75em;
-    color: #ccc;
+    color: var(--text-muted);
     font-size: 1.1em;
   }
   .subheader {
     margin-top: 1em;
     margin-bottom: 0.5em;
     font-size: 1em;
-    color: #ccc;
+    color: var(--text-muted);
   }
   .specs-grid {
     display: grid;
@@ -234,7 +234,7 @@
   .spec-item {
     display: flex;
     flex-direction: column;
-    background-color: #252525;
+    background-color: var(--bg-panel);
     padding: 0.6em;
     border-radius: 4px;
     cursor: help;
@@ -244,23 +244,23 @@
   }
   .label {
     font-size: 0.8em;
-    color: #999;
+    color: var(--text-muted);
     text-transform: uppercase;
     margin-bottom: 0.2em;
   }
   .value {
     font-size: 1.1em;
-    color: #eee;
+    color: var(--text);
   }
   .value.possible {
-    color: #4CAF50;
+    color: var(--status-ok);
   }
   .value.impossible {
-    color: #F44336;
+    color: var(--status-bad);
   }
   .detail {
     font-size: 0.8em;
-    color: #aaa;
+    color: var(--text-muted);
     margin-left: 0.5em;
   }
 </style>

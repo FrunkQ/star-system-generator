@@ -241,17 +241,17 @@
     z-index: 1000;
   }
   .modal {
-    background: #222;
+    background: var(--bg-panel);
     padding: 2em;
     border-radius: 8px;
     width: 90%;
     max-width: 750px; /* Increased by 50% from 500px */
-    border: 1px solid #444;
-    color: #eee; /* Set default text color for the modal */
+    border: 1px solid var(--border);
+    color: var(--text); /* Set default text color for the modal */
   }
   h2 {
     margin-top: 0;
-    color: #ff3e00;
+    color: var(--accent);
   }
   .form-group {
     margin-bottom: 1em;
@@ -260,7 +260,7 @@
     display: flex;
     align-items: center;
     margin-bottom: 0.5em;
-    color: #ccc;
+    color: var(--text-muted);
   }
 
   .form-group label input[type="checkbox"] {
@@ -268,7 +268,7 @@
     margin-right: 0.5em;
   }
   .highlight-row {
-    background: #2d3748;
+    background: var(--bg-panel);
     padding: 10px;
     border-radius: 4px;
     border-left: 4px solid #4299e1;
@@ -278,9 +278,9 @@
   select {
     width: 100%;
     padding: 0.5em;
-    background: #111;
-    border: 1px solid #555;
-    color: #eee !important; /* Ensure text is light */
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    color: var(--text) !important; /* Ensure text is light */
     border-radius: 4px;
   }
 
@@ -292,13 +292,13 @@
     text-align: right;
   }
   .inline-time {
-    color: #ccc;
+    color: var(--text-muted);
   }
   .inline-time strong {
-    color: #eee;
+    color: var(--text);
   }
   small {
-    color: #999;
+    color: var(--text-muted);
   }
 
   /* Alpha Disclaimer Styles */
@@ -317,8 +317,8 @@
   }
 
   .alpha-modal {
-    background: #1a202c;
-    border: 2px solid #e53e3e;
+    background: var(--bg-panel);
+    border: 2px solid var(--status-bad);
     padding: 2.5rem;
     border-radius: 12px;
     max-width: 600px;
@@ -328,7 +328,7 @@
   }
 
   .alpha-modal h2 {
-    color: #e53e3e;
+    color: var(--status-bad);
     margin-top: 0;
     text-align: center;
     letter-spacing: 2px;
@@ -374,7 +374,7 @@
   }
 
   .proceed-alpha {
-    background: #e53e3e;
+    background: var(--status-bad);
     color: white;
   }
 

@@ -103,13 +103,13 @@
   }
 
   .modal {
-    background-color: #333;
+    background-color: var(--bg-panel);
     padding: 30px;
     border-radius: 8px;
     display: flex;
     flex-direction: row; /* Horizontal layout */
     gap: 30px;
-    color: #fff;
+    color: var(--text);
     max-width: 900px; /* Increased width to accommodate two panes */
     width: 90%;
     text-align: left;
@@ -121,7 +121,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    border-right: 1px solid #555;
+    border-right: 1px solid var(--border);
     padding-right: 30px;
   }
 
@@ -143,22 +143,22 @@
     margin-top: 20px; /* Reduced gap instead of auto */
     padding-top: 10px;
     font-size: 0.75em;
-    color: #888;
+    color: var(--text-faint);
     text-align: right;
   }
 
   .modal input[type="text"],
   .modal select {
-    background-color: #555;
-    color: #fff;
-    border: 1px solid #777;
+    background-color: var(--bg-control);
+    color: var(--text);
+    border: 1px solid var(--border);
     padding: 5px;
     border-radius: 3px;
   }
 
   .modal button {
-    background-color: #007bff;
-    color: #fff;
+    background-color: var(--accent);
+    color: var(--text);
     border: none;
     padding: 8px 15px;
     border-radius: 4px;
@@ -171,7 +171,7 @@
   }
 
   .modal button:disabled {
-    background-color: #555;
+    background-color: var(--bg-control);
     cursor: not-allowed;
   }
 
@@ -181,7 +181,7 @@
     justify-content: center;
     margin-bottom: 2em;
     padding-bottom: 2em;
-    border-bottom: 1px solid #555;
+    border-bottom: 1px solid var(--border);
   }
   
   .load-options button {
@@ -220,7 +220,7 @@
     flex-direction: column; /* Stacked for better fit in column */
     gap: 0.5rem;
     margin-bottom: 1rem;
-    background: #444;
+    background: var(--bg-control);
     padding: 10px;
     border-radius: 4px;
   }
@@ -264,7 +264,7 @@
       }
       .left-pane {
           border-right: none;
-          border-bottom: 1px solid #555;
+          border-bottom: 1px solid var(--border);
           padding-right: 0;
           padding-bottom: 15px;
       }

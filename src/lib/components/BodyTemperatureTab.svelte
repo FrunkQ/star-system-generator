@@ -127,20 +127,20 @@
   .tab-panel { padding: 10px; display: flex; flex-direction: column; gap: 15px; }
   .form-group { display: flex; flex-direction: column; }
   .input-row { display: flex; gap: 10px; }
-  label { margin-bottom: 5px; color: #ccc; font-size: 0.9em; }
-  input { padding: 8px; border-radius: 4px; border: 1px solid #555; background-color: #444; color: #eee; }
+  label { margin-bottom: 5px; color: var(--text-muted); font-size: 0.9em; }
+  input { padding: 8px; border-radius: 4px; border: 1px solid var(--border); background-color: var(--bg-control); color: var(--text); }
   input[type="range"] { flex-grow: 1; }
-  
-  .sub-label { font-size: 0.8em; color: #888; text-align: right; margin-top: 2px; }
-  
+
+  .sub-label { font-size: 0.8em; color: var(--text-faint); text-align: right; margin-top: 2px; }
+
   .read-only-row {
       display: flex; justify-content: space-between; align-items: center;
-      background: #333; padding: 10px; border-radius: 4px;
+      background: var(--bg-panel); padding: 10px; border-radius: 4px;
   }
-  .read-only-row.highlight { background: #444; border: 1px solid #666; }
-  .value { color: #fff; font-weight: bold; }
+  .read-only-row.highlight { background: var(--bg-control); border: 1px solid var(--border); }
+  .value { color: var(--text); font-weight: bold; }
   .value.large { font-size: 1.2em; }
-  
-  h4 { margin: 0; color: #88ccff; font-size: 0.9em; text-transform: uppercase; }
-  hr { border: 0; border-top: 1px solid #555; margin: 0; }
+
+  h4 { margin: 0; color: var(--link); font-size: 0.9em; text-transform: uppercase; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 0; }
 </style>

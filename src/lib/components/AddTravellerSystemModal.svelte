@@ -158,17 +158,17 @@
       z-index: 2000;
   }
   .modal-content {
-      background: #1e1e1e;
+      background: var(--bg-panel);
       padding: 25px;
       border-radius: 8px;
       width: 600px;
       max-width: 95vw;
-      color: #eee;
-      border: 1px solid #444;
+      color: var(--text);
+      border: 1px solid var(--border);
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   }
-  h2 { margin-top: 0; margin-bottom: 0.2em; color: #fff; }
-  .subtitle { margin-top: 0; color: #aaa; font-size: 0.9em; margin-bottom: 1.5em; }
+  h2 { margin-top: 0; margin-bottom: 0.2em; color: var(--text); }
+  .subtitle { margin-top: 0; color: var(--text-muted); font-size: 0.9em; margin-bottom: 1.5em; }
 
   .grid-form {
       display: grid;
@@ -191,24 +191,24 @@
       font-weight: bold;
   }
   
-  .required label::after { content: " *"; color: #ff4444; }
+  .required label::after { content: " *"; color: var(--status-bad); }
 
   input {
-      background: #2a2a2a;
-      border: 1px solid #444;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
       padding: 8px;
-      color: #fff;
+      color: var(--text);
       border-radius: 4px;
       font-family: monospace;
   }
-  input:focus { border-color: #007bff; outline: none; }
-  input.invalid { border-color: #ff4444; }
+  input:focus { border-color: var(--accent); outline: none; }
+  input.invalid { border-color: var(--status-bad); }
 
   .info {
       display: inline-block;
       width: 14px; height: 14px;
-      background: #444;
-      color: #fff;
+      background: var(--bg-control);
+      color: var(--text);
       border-radius: 50%;
       text-align: center;
       line-height: 14px;
@@ -217,7 +217,7 @@
       margin-left: 4px;
   }
 
-  .error { color: #ff4444; font-size: 0.9em; margin-top: 15px; }
+  .error { color: var(--status-bad); font-size: 0.9em; margin-top: 15px; }
 
   .actions {
       display: flex;
@@ -225,7 +225,7 @@
       gap: 10px;
       margin-top: 25px;
       padding-top: 15px;
-      border-top: 1px solid #333;
+      border-top: 1px solid var(--border-soft);
   }
 
   button {
@@ -236,10 +236,10 @@
       border: none;
   }
   
-  button.primary { background: #007bff; color: white; }
-  button.primary:disabled { background: #444; color: #888; cursor: not-allowed; }
+  button.primary { background: var(--accent); color: white; }
+  button.primary:disabled { background: var(--bg-control); color: var(--text-faint); cursor: not-allowed; }
   button.primary:hover:not(:disabled) { background: #0056b3; }
-  
-  button.secondary { background: transparent; color: #aaa; border: 1px solid #444; }
-  button.secondary:hover { background: #333; color: #fff; }
+
+  button.secondary { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  button.secondary:hover { background: var(--bg-panel); color: var(--text); }
 </style>

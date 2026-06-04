@@ -598,7 +598,7 @@
               <span class="label">Avg. Surface Temp.</span>
               <span class="value">{Math.round(surfaceTempC)} °C</span>
               {#if minTempC !== null && maxTempC !== null}
-                  <div style="font-size: 0.8em; color: #aaa; margin-top: 2px;">
+                  <div style="font-size: 0.8em; color: var(--text-muted); margin-top: 2px;">
                       Range: {Math.round(minTempC)}°C to {Math.round(maxTempC)}°C
                   </div>
               {/if}
@@ -639,7 +639,7 @@
               <span class="label">Surface Radiation</span>
               <span class="value">{surfaceRadiationText} ({displayedSurfaceRadiation?.toFixed(2)})</span>
               {#if minSurfaceRadiation !== null && maxSurfaceRadiation !== null}
-                  <div style="font-size: 0.8em; color: #aaa; margin-top: 2px;">
+                  <div style="font-size: 0.8em; color: var(--text-muted); margin-top: 2px;">
                       Range: {minSurfaceRadiation.toFixed(2)} to {maxSurfaceRadiation.toFixed(2)} mSv/y
                   </div>
               {/if}
@@ -782,12 +782,12 @@
       background-color: #252525;
       padding: 0.6em;
       border-radius: 4px;
-      border-left: 3px solid #ff3e00;
+      border-left: 3px solid var(--accent);
       cursor: default; /* So title attribute tooltips show up consistently */
   }
   .detail-item.description {
       grid-column: 1 / -1;
-      border-left-color: #444;
+      border-left-color: var(--border);
   }
   .detail-item.traveller-data {
       grid-column: 1 / -1;
@@ -798,7 +798,7 @@
       gap: 1em;
       font-size: 0.9em;
       margin-top: 0.2em;
-      color: #ccc;
+      color: var(--text-muted);
   }
   .traveller-codes {
       display: flex;
@@ -810,21 +810,21 @@
       margin-top: 0.5em;
       font-family: monospace;
       font-size: 0.75em;
-      color: #666;
+      color: var(--text-faint);
       white-space: pre-wrap;
       word-break: break-all;
-      border-top: 1px solid #444;
+      border-top: 1px solid var(--border);
       padding-top: 4px;
   }
   .label {
       font-size: 0.8em;
-      color: #999;
+      color: var(--text-muted);
       text-transform: uppercase;
       margin-bottom: 0.2em;
   }
   .value {
       font-size: 1.1em;
-      color: #eee;
+      color: var(--text);
   }
   .detail-item.atmosphere {
     grid-column: 1 / -1;
@@ -837,7 +837,7 @@
     gap: 0.5em;
   }
   .gas {
-    background-color: #333;
+    background-color: var(--bg-panel);
     padding: 0.2em 0.5em;
     border-radius: 3px;
     font-size: 0.9em;
@@ -847,16 +847,16 @@
   }
   .cryo-icon {
     margin-left: 4px;
-    color: #88ccff;
+    color: var(--link);
     cursor: help;
   }
   .gas-percent {
     margin-left: 0.5em;
-    color: #ccc;
+    color: var(--text-muted);
   }
   .composition-trace p {
     font-style: italic;
-    color: #999;
+    color: var(--text-muted);
     margin: 0.5em 0 0 0;
   }
 
@@ -901,11 +901,11 @@
   }
 
   .tag {
-    background-color: #444;
+    background-color: var(--bg-control);
     padding: 0.2em 0.5em;
     border-radius: 3px;
     font-size: 0.8em;
-    color: #eee;
+    color: var(--text);
   }
 
   .detail-item.unstable {

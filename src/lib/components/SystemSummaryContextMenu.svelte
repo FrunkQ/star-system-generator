@@ -92,33 +92,33 @@
 <style>
   .context-menu {
     position: absolute;
-    background-color: #333;
-    border: 1px solid #555;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border);
     border-radius: 5px;
     z-index: 100;
-    color: #eee;
+    color: var(--text);
     max-height: 400px;
     overflow-y: auto;
     box-shadow: 0 4px 8px rgba(0,0,0,0.3);
   }
   .filter-wrap {
     padding: 0.4em;
-    border-bottom: 1px solid #555;
+    border-bottom: 1px solid var(--border);
     background: #2b2b2b;
   }
   .name-filter {
     width: 100%;
     box-sizing: border-box;
     background: #1f1f1f;
-    border: 1px solid #666;
-    color: #eee;
+    border: 1px solid var(--border);
+    color: var(--text);
     border-radius: 4px;
     padding: 0.35em 0.45em;
     font-size: 0.9em;
   }
   .name-filter:focus {
     outline: none;
-    border-color: #888;
+    border-color: var(--text-faint);
   }
   ul {
     list-style: none;
@@ -130,17 +130,17 @@
     cursor: pointer;
   }
   li:hover {
-    background-color: #555;
+    background-color: var(--bg-control-hover);
   }
   .planet-header {
     font-weight: normal;
-    color: #888; /* Grey color */
+    color: var(--text-faint); /* Grey color */
     font-size: 0.8em; /* Smaller font size */
-    border-bottom: 1px solid #555;
+    border-bottom: 1px solid var(--border);
     padding-top: 1em;
     cursor: pointer;
   }
   .planet-header:hover {
-    background-color: #444;
+    background-color: var(--bg-control);
   }
 </style>

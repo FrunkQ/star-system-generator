@@ -143,17 +143,17 @@
     z-index: 2000;
   }
   .modal {
-    background: #222;
+    background: var(--bg-panel);
     padding: 1.5em;
     border-radius: 8px;
     width: 90%;
     max-width: 700px;
-    border: 1px solid #444;
-    color: #eee;
+    border: 1px solid var(--border);
+    color: var(--text);
   }
   h2 {
     margin-top: 0;
-    color: #ff3e00;
+    color: var(--accent);
   }
   .form-group {
     margin-bottom: 1em;
@@ -161,15 +161,15 @@
   label {
     display: block;
     margin-bottom: 0.4em;
-    color: #ccc;
+    color: var(--text-muted);
   }
   input,
   select {
     width: 100%;
     padding: 0.5em;
-    background: #111;
-    border: 1px solid #555;
-    color: #eee;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    color: var(--text);
     border-radius: 4px;
   }
   .model-selection {
@@ -187,7 +187,7 @@
     gap: 0.6em;
   }
   .primary {
-    background: #007bff;
+    background: var(--accent);
     color: white;
     border: none;
     padding: 0.5em 1em;

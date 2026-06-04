@@ -185,12 +185,12 @@
   }
   .row { display: flex; gap: 15px; }
   .form-group { display: flex; flex-direction: column; flex: 1; }
-  label { margin-bottom: 5px; color: #ccc; font-size: 0.9em; }
-  label.disabled { color: #666; }
-  input, select { padding: 8px; border-radius: 4px; border: 1px solid #555; background-color: #444; color: #eee; font-size: 1em; width: 100%; box-sizing: border-box; }
-  input:disabled, select:disabled { background-color: #333; color: #888; border-color: #444; }
+  label { margin-bottom: 5px; color: var(--text-muted); font-size: 0.9em; }
+  label.disabled { color: var(--text-faint); }
+  input, select { padding: 8px; border-radius: 4px; border: 1px solid var(--border); background-color: var(--bg-control); color: var(--text); font-size: 1em; width: 100%; box-sizing: border-box; }
+  input:disabled, select:disabled { background-color: var(--bg-panel); color: var(--text-faint); border-color: var(--border); }
   input[type="color"] { height: 38px; padding: 2px; }
-  .separator { height: 1px; background-color: #555; width: 100%; margin: 0.5em 0; border: none; }
+  .separator { height: 1px; background-color: var(--border); width: 100%; margin: 0.5em 0; border: none; }
   
   .dimensions-group .dimensions-inputs {
     display: flex;
@@ -201,8 +201,8 @@
   }
 
   .checkbox-group { display: flex; flex-direction: column; gap: 10px; }
-  .checkbox-group label { display: flex; align-items: center; gap: 10px; color: #eee; }
-  .descriptor { font-size: 0.9em; color: #999; }
+  .checkbox-group label { display: flex; align-items: center; gap: 10px; color: var(--text); }
+  .descriptor { font-size: 0.9em; color: var(--text-muted); }
   
   input[type="checkbox"] {
       width: auto;

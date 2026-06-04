@@ -153,7 +153,7 @@
 
 <style>
 	.zone-key-container {
-		border: 1px solid #444;
+		border: 1px solid var(--border);
 		border-radius: 8px;
 		padding: 1em;
 		background-color: #252525;
@@ -162,8 +162,8 @@
 	}
 	h4 {
 		margin-top: 0;
-		color: #ff3e00;
-		border-bottom: 1px solid #444;
+		color: var(--accent);
+		border-bottom: 1px solid var(--border);
 		padding-bottom: 0.5em;
 	}
 	ul {
@@ -172,7 +172,7 @@
 	}
 	li {
 		margin-bottom: 1em;
-		background-color: #333; /* Added card background */
+		background-color: var(--bg-panel); /* Added card background */
 		padding: 1em; /* Added padding to card */
 		border-radius: 5px; /* Rounded corners for card */
 	}
@@ -189,7 +189,7 @@
 		width: 1em;
 		height: 1em;
 		margin-right: 0.5em;
-		border: 1px solid #555;
+		border: 1px solid var(--border);
 		vertical-align: middle; /* Aligns box with text */
 	}
 	.color-box.dashed {
@@ -199,7 +199,7 @@
 	.in-game-note {
 		font-style: italic;
 		color: #ff9a00; /* Bright orange for in-game notes */
-		border-top: 1px dashed #555;
+		border-top: 1px dashed var(--border);
 		padding-top: 0.75em;
 		font-size: 1.1em;
 	}
@@ -235,8 +235,8 @@
 	.notes {
 		margin-top: 2em; /* More space above the notes */
 		font-size: 0.9em;
-		color: #aaa;
-		background-color: #333;
+		color: var(--text-muted);
+		background-color: var(--bg-panel);
 		padding: 1em;
 		border-radius: 5px;
 	}

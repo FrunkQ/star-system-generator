@@ -1177,19 +1177,19 @@
   }
 
   .alpha-modal {
-    background: #1a202c;
-    border: 2px solid #e53e3e;
+    background: var(--bg-panel);
+    border: 2px solid var(--status-bad);
     padding: 2.5rem;
     border-radius: 12px;
     max-width: 600px;
     width: 90%;
     box-shadow: 0 0 50px rgba(229, 62, 62, 0.3);
     text-align: left;
-    color: #fff;
+    color: var(--text);
   }
 
   .alpha-modal h2 {
-    color: #e53e3e;
+    color: var(--status-bad);
     margin-top: 0;
     text-align: center;
     letter-spacing: 2px;
@@ -1205,7 +1205,7 @@
   .alpha-modal p {
     line-height: 1.6;
     margin-bottom: 1rem;
-    color: #e2e8f0;
+    color: var(--text);
   }
 
   .alpha-buttons {
@@ -1235,7 +1235,7 @@
   }
 
   .proceed-alpha {
-    background: #e53e3e;
+    background: var(--status-bad);
     color: white;
   }
 
@@ -1246,11 +1246,11 @@
 
   .context-menu {
     position: absolute;
-    background-color: #333;
-    border: 1px solid #555;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border);
     border-radius: 5px;
     z-index: 100;
-    color: #eee;
+    color: var(--text);
   }
   .context-menu ul {
     list-style: none;
@@ -1262,7 +1262,7 @@
     cursor: pointer;
   }
   .context-menu li:hover {
-    background-color: #555;
+    background-color: var(--bg-control-hover);
   }
 
   .starmap-container {
@@ -1313,7 +1313,7 @@
       align-items: center;
       gap: 5px;
       font-size: 0.9em;
-      color: #ccc;
+      color: var(--text-muted);
       cursor: pointer;
       white-space: nowrap;
   }
@@ -1326,18 +1326,18 @@
   .dropdown-content {
     display: block;
     position: absolute;
-    background-color: #333;
+    background-color: var(--bg-panel);
     min-width: 200px;
     box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
     z-index: 1000;
     right: 0;
-    border: 1px solid #555;
+    border: 1px solid var(--border);
     border-radius: 4px;
     padding: 5px 0;
   }
 
   .dropdown-content button {
-    color: #eee;
+    color: var(--text);
     padding: 10px 16px;
     text-decoration: none;
     display: block;
@@ -1348,15 +1348,15 @@
     cursor: pointer;
   }
 
-  .dropdown-content button:hover {background-color: #444;}
-  .dropdown-content button.danger { color: #ff4444; }
+  .dropdown-content button:hover {background-color: var(--bg-control);}
+  .dropdown-content button.danger { color: var(--status-bad); }
   .dropdown-content button.danger:hover { background-color: #442222; }
 
   .grid-select {
       padding: 4px;
-      background: #222;
-      color: #eee;
-      border: 1px solid #555;
+      background: var(--bg-panel);
+      color: var(--text);
+      border: 1px solid var(--border);
       border-radius: 3px;
   }
   .grid-select.inline {
@@ -1367,12 +1367,12 @@
     font-size: 1.5em;
     background: none;
     border: none;
-    color: #eee;
+    color: var(--text);
     cursor: pointer;
     padding: 0 10px;
   }
-  
-  hr { border: 0; border-top: 1px solid #555; margin: 5px 0; }
+
+  hr { border: 0; border-top: 1px solid var(--border); margin: 5px 0; }
 
   .starmap {
     width: 100%;

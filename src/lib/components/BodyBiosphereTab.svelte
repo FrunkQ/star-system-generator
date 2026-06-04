@@ -263,9 +263,9 @@
       align-items: center;
   }
   
-  label { color: #ccc; font-size: 0.9em; }
-  input, select { padding: 8px; border-radius: 4px; border: 1px solid #555; background-color: #444; color: #eee; }
-  
+  label { color: var(--text-muted); font-size: 0.9em; }
+  input, select { padding: 8px; border-radius: 4px; border: 1px solid var(--border); background-color: var(--bg-control); color: var(--text); }
+
   .full-width-slider { width: 100%; margin: 0; }
 
   .checkbox-row {
@@ -275,11 +275,11 @@
   }
   .checkbox-row label { margin: 0; }
   
-  hr { border: 0; border-top: 1px solid #444; margin: 5px 0; width: 100%; }
-  h4 { margin: 0; color: #88ccff; font-size: 0.9em; text-transform: uppercase; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 5px 0; width: 100%; }
+  h4 { margin: 0; color: var(--link); font-size: 0.9em; text-transform: uppercase; }
 
   .habitability-section {
-      background-color: #222;
+      background-color: var(--bg-panel);
       border-radius: 4px;
   }
   
@@ -295,7 +295,7 @@
   
   .total-progress-bar-bg {
       height: 10px;
-      background-color: #333;
+      background-color: var(--bg-panel);
       border-radius: 5px;
       position: relative;
       margin-bottom: 15px;
@@ -328,12 +328,12 @@
       display: flex;
       justify-content: space-between;
       font-size: 0.8em;
-      color: #999;
+      color: var(--text-muted);
   }
-  
+
   .progress-bar-bg {
       height: 4px;
-      background-color: #444;
+      background-color: var(--bg-control);
       border-radius: 2px;
       overflow: hidden;
   }
@@ -352,7 +352,7 @@
       display: flex;
       align-items: center;
       gap: 5px;
-      color: #eee;
+      color: var(--text);
       font-size: 0.9em;
       cursor: pointer;
   }

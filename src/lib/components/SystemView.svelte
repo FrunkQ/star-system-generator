@@ -1909,7 +1909,7 @@
     display: flex;
     align-items: center;
     gap: 1.2em;
-    color: #ccc;
+    color: var(--text-muted);
     font-size: 0.85em;
     flex: 1 1 auto;
     width: 100%;
@@ -1922,7 +1922,7 @@
     justify-content: center;
   }
   .actual-time {
-    color: #888;
+    color: var(--text-faint);
     font-size: 0.9em;
   }
   .scrub-rate {
@@ -1931,7 +1931,7 @@
     margin-left: 4px;
   }
   .scrub-label {
-    color: #bbb;
+    color: var(--text-muted);
     font-size: 0.8rem;
   }
   .scrub-slider {
@@ -1955,7 +1955,7 @@
     align-items: center;
     gap: 4px;
     font-size: 0.72rem;
-    color: #888;
+    color: var(--text-faint);
     cursor: pointer;
   }
   .checkbox-label input {
@@ -1982,19 +1982,19 @@
     line-height: 1;
     font-size: 0.9rem;
     background: #1f1f1f;
-    border: 1px solid #555;
-    color: #eee;
+    border: 1px solid var(--border);
+    color: var(--text);
     border-radius: 4px;
     cursor: pointer;
   }
   .play-toggle:hover {
-    background: #2a2a2a;
+    background: var(--bg-control-hover);
   }
   .scrub-scale {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
     font-size: 0.72rem;
-    color: #8f8f8f;
+    color: var(--text-faint);
   }
   .scrub-scale span:nth-child(1) { text-align: left; }
   .scrub-scale span:nth-child(2) { text-align: center; }
@@ -2008,20 +2008,20 @@
     font-size: 1rem;
   }
   .clock-line .clock-action.btn-blue {
-    background: #0a4d9b;
-    border: 1px solid #2a6fc0;
-    color: #fff;
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    color: var(--on-accent);
   }
   .clock-line .clock-action.btn-blue:hover {
-    background: #1362bf;
+    background: var(--accent-hover);
   }
   .clock-line .clock-action.btn-red {
-    background: #8f1d1d;
-    border: 1px solid #b23a3a;
+    background: var(--status-bad);
+    border: 1px solid var(--status-bad);
     color: #fff;
   }
   .clock-line .clock-action.btn-red:hover {
-    background: #b32929;
+    filter: brightness(1.12);
   }
   .clock-actions {
     margin-left: auto;
@@ -2030,7 +2030,7 @@
     align-items: center;
   }
   .time-panel {
-    border: 1px solid #3f3f3f;
+    border: 1px solid var(--border);
     border-radius: 6px;
     background: rgba(18, 18, 18, 0.9);
     padding: 8px 10px;
@@ -2044,7 +2044,7 @@
   .time-title {
     font-size: 3rem;
     font-weight: 400;
-    color: #ddd;
+    color: var(--text);
     line-height: 1;
     display: flex;
     align-items: center;
@@ -2058,18 +2058,18 @@
     display: flex;
     align-items: center;
     gap: 0.5em;
-    background-color: #444;
+    background-color: var(--bg-control);
     padding: 0.25em;
     border-radius: 5px;
   }
   .time-scales button {
-      border: 1px solid #666;
-      background-color: #555;
-      color: #eee;
+      border: 1px solid var(--border);
+      background-color: var(--bg-control);
+      color: var(--text);
   }
   .time-scales button.active {
-      border-color: #88ccff;
-      background-color: #007bff;
+      border-color: var(--link);
+      background-color: var(--accent);
       color: white;
   }
   .dropdown {
@@ -2080,7 +2080,7 @@
   .dropdown-content {
     display: block;
     position: absolute;
-    background-color: #333;
+    background-color: var(--bg-panel);
     min-width: 160px;
     box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
     z-index: 1;
@@ -2088,7 +2088,7 @@
   }
 
   .dropdown-content button {
-    color: #eee;
+    color: var(--text);
     padding: 12px 16px;
     text-decoration: none;
     display: block;
@@ -2098,17 +2098,17 @@
     border: none;
   }
 
-  .dropdown-content button:hover {background-color: #555;}
+  .dropdown-content button:hover {background-color: var(--bg-control-hover);}
 
   .hamburger-button {
     font-size: 1.5em;
     background: none;
     border: none;
-    color: #eee;
+    color: var(--text);
   }
 
   .todo-button {
-    color: #888 !important;
+    color: var(--text-faint) !important;
   }
 
   .system-view-grid {
@@ -2128,7 +2128,7 @@
   .name-input {
     background-color: transparent;
     border: 1px solid transparent;
-    color: #ff3e00;
+    color: var(--accent);
     font-size: 1.8em;
     font-weight: bold;
     padding: 0.1em;
@@ -2138,16 +2138,16 @@
   }
   .name-input:hover, .name-input:focus {
       background-color: #252525;
-      border-color: #444;
+      border-color: var(--border);
   }
 
   .context-menu {
     position: fixed; /* Fixed positioning for clientX/clientY */
-    background-color: #333;
-    border: 1px solid #555;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border);
     border-radius: 5px;
     z-index: 1000;
-    color: #eee;
+    color: var(--text);
     min-width: 150px;
   }
   .context-menu ul {
@@ -2160,7 +2160,7 @@
     cursor: pointer;
   }
   .context-menu li:hover {
-    background-color: #555;
+    background-color: var(--bg-control-hover);
   }
 
   .action-buttons {
@@ -2177,13 +2177,13 @@
       border-radius: 3px;
       cursor: pointer;
       font-size: 0.9em;
-      color: #eee;
-      background-color: #444;
+      color: var(--text);
+      background-color: var(--bg-control);
       transition: background-color 0.2s;
   }
 
   .action-buttons button.edit-btn:hover {
-      background-color: #007bff;
+      background-color: var(--accent);
   }
 
   .action-buttons button.delete-btn:hover {
@@ -2198,18 +2198,18 @@
   }
   .visibility-btn {
       background: none;
-      border: 1px solid #444;
+      border: 1px solid var(--border);
       border-radius: 4px;
       cursor: pointer;
       padding: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background-color: #222;
+      background-color: var(--bg-panel);
   }
   .visibility-btn:hover {
-      background-color: #333;
-      border-color: #666;
+      background-color: var(--bg-control);
+      border-color: var(--border);
   }
   .name-input {
       flex-grow: 1;
@@ -2222,13 +2222,13 @@
     .attributions {
         margin-top: 1em; /* Add some top margin to separate from notes */
         padding-top: 1em;
-        border-top: 1px solid #333;
-        color: #999;
+        border-top: 1px solid var(--border-soft);
+        color: var(--text-muted);
         font-size: 0.9em; /* Increased font size */
         text-align: center;
     }
     .attributions a {
-        color: #88ccff;
+        color: var(--link);
         text-decoration: none;
     }
     .attributions p {
@@ -2243,7 +2243,7 @@
     }
     .attribution-separator {
         border: 0;
-        border-top: 1px solid #555;
+        border-top: 1px solid var(--border);
         margin: 1.5em 0; /* Blank space above and below the separator */
     }
     .project-attribution {

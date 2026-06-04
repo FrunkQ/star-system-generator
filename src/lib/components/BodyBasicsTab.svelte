@@ -354,14 +354,14 @@
       align-items: center;
   }
 
-  label { color: #ccc; font-size: 0.9em; margin: 0; }
-  
-  input[type="number"], select, .read-only-value { 
-      padding: 4px; 
-      background: #444; 
-      border: 1px solid #555; 
-      color: #eee; 
-      border-radius: 3px; 
+  label { color: var(--text-muted); font-size: 0.9em; margin: 0; }
+
+  input[type="number"], select, .read-only-value {
+      padding: 4px;
+      background: var(--bg-control);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 3px;
       width: 100px;
       text-align: right;
       font-size: 1em;
@@ -371,14 +371,14 @@
   select { width: 100%; text-align: left; }
   
   .read-only-value {
-      background: #333;
-      border: 1px solid #444;
-      color: #aaa;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
       cursor: default;
       font-family: monospace;
   }
 
-  .sub-label { font-size: 0.75em; color: #888; }
+  .sub-label { font-size: 0.75em; color: var(--text-faint); }
   .row-spaced { display: flex; justify-content: space-between; }
   
   .category-badge {
@@ -394,12 +394,12 @@
       cursor: pointer;
   }
   
-  hr { border: 0; border-top: 1px solid #444; margin: 5px 0; width: 100%; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 5px 0; width: 100%; }
 
   .density-bar {
       width: 100%;
       height: 6px;
-      background: #333;
+      background: var(--bg-panel);
       border-radius: 3px;
       overflow: hidden;
       margin-top: 2px;

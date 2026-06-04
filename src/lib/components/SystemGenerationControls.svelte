@@ -46,20 +46,20 @@
         gap: 0.5em;
         margin-top: 0.5em;
         padding-top: 0.5em;
-        border-top: 1px solid #333;
+        border-top: 1px solid var(--border-soft);
     }
     .regeneration-controls span {
-        color: #eee;
+        color: var(--text);
     }
     .regeneration-controls select, .regeneration-controls button {
         padding: 0.25em 0.5em;
         border-radius: 4px;
-        border: 1px solid #666;
-        background-color: #555;
-        color: #eee;
+        border: 1px solid var(--border);
+        background-color: var(--bg-control);
+        color: var(--text);
         cursor: pointer;
     }
     .regeneration-controls button:hover {
-        background-color: #666;
+        background-color: var(--bg-control-hover);
     }
 </style>

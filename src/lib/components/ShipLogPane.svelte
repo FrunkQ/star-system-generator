@@ -91,7 +91,7 @@
 <style>
   .ship-log-panel {
       background: #1f1f1f;
-      border: 1px solid #3b3b3b;
+      border: 1px solid var(--border);
       border-radius: 6px;
       padding: 0.8em;
       display: flex;
@@ -109,21 +109,21 @@
       color: #ffb088;
   }
   .ship-log-close {
-      background: #444;
-      color: #eee;
-      border: 1px solid #666;
+      background: var(--bg-control);
+      color: var(--text);
+      border: 1px solid var(--border);
       border-radius: 4px;
       padding: 0.35em 0.7em;
       cursor: pointer;
   }
   .ship-log-close:hover {
-      background: #555;
+      background: var(--bg-control-hover);
   }
   .ship-log-empty {
-      color: #aaa;
+      color: var(--text-muted);
   }
   .ship-log-entry {
-      border: 1px solid #363636;
+      border: 1px solid var(--border);
       border-radius: 5px;
       background: #181818;
       padding: 0.6em;
@@ -132,14 +132,14 @@
       display: flex;
       justify-content: space-between;
       gap: 0.6em;
-      color: #fff;
+      color: var(--text);
   }
   .ship-log-status {
-      color: #88ccff;
+      color: var(--link);
       font-size: 0.85em;
   }
   .ship-log-meta {
-      color: #b8b8b8;
+      color: var(--text-muted);
       font-size: 0.85em;
       margin-top: 0.2em;
   }

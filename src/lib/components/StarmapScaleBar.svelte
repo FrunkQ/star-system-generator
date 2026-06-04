@@ -98,7 +98,7 @@
     }
 
     .scale-label {
-        color: #fff;
+        color: var(--text);
         font-size: 12px;
         font-family: monospace;
         text-shadow: 1px 1px 2px black;

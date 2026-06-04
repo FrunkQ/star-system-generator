@@ -37,8 +37,8 @@
 <style>
     .context-menu {
         position: absolute;
-        background-color: #333;
-        border: 1px solid #555;
+        background-color: var(--bg-panel);
+        border: 1px solid var(--border);
         padding: 5px;
         z-index: 1000;
     }
@@ -52,6 +52,6 @@
         cursor: pointer;
     }
     li:hover {
-        background-color: #555;
+        background-color: var(--bg-control-hover);
     }
 </style>

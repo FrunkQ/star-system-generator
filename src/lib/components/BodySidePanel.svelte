@@ -130,9 +130,9 @@
   }
 
   .tabs button {
-    background-color: #333;
-    color: #aaa;
-    border: 1px solid #444;
+    background-color: var(--bg-panel);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
     padding: 4px 8px;
     border-radius: 3px;
     cursor: pointer;
@@ -141,14 +141,14 @@
   }
 
   .tabs button.active {
-    background-color: #ff3e00;
+    background-color: var(--accent);
     color: white;
-    border-color: #ff3e00;
+    border-color: var(--accent);
   }
 
   .tab-content {
-    background-color: #222;
-    border: 1px solid #444;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border);
     border-radius: 4px;
     padding: 5px;
     min-height: 300px;
@@ -157,7 +157,7 @@
   .live-stats {
       margin-top: 10px;
       padding-top: 10px;
-      border-top: 1px solid #444;
+      border-top: 1px solid var(--border);
   }
 
   .actions-row {
@@ -179,7 +179,7 @@
       color: white;
   }
   .actions-row button.primary {
-      background-color: #007bff;
+      background-color: var(--accent);
       color: white;
   }
 </style>

@@ -307,8 +307,8 @@
   .section-header {
       font-size: 0.8em;
       text-transform: uppercase;
-      color: #888;
-      border-bottom: 1px solid #444;
+      color: var(--text-faint);
+      border-bottom: 1px solid var(--border);
       padding-bottom: 2px;
       margin-top: 5px;
   }
@@ -321,14 +321,14 @@
       align-items: center;
   }
   
-  label { color: #ccc; font-size: 0.9em; margin: 0; }
-  
-  input[type="number"] { 
-      padding: 4px; 
-      background: #444; 
-      border: 1px solid #555; 
-      color: #eee; 
-      border-radius: 3px; 
+  label { color: var(--text-muted); font-size: 0.9em; margin: 0; }
+
+  input[type="number"] {
+      padding: 4px;
+      background: var(--bg-control);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 3px;
       width: 80px;
       text-align: right;
   }
@@ -342,10 +342,10 @@
   .density-bar {
       width: 100%;
       height: 8px;
-      background: #222;
+      background: var(--bg-panel);
       border-radius: 4px;
       overflow: hidden;
-      border: 1px solid #444;
+      border: 1px solid var(--border);
   }
   .density-fill {
       height: 100%;

@@ -71,19 +71,19 @@
 <style>
   .tab-panel { padding: 10px; display: flex; flex-direction: column; gap: 15px; }
   .form-group { display: flex; flex-direction: column; }
-  label { margin-bottom: 5px; color: #ccc; font-size: 0.9em; }
-  input[type="number"], textarea { 
-    padding: 8px; 
-    border-radius: 4px; 
-    border: 1px solid #555; 
-    background-color: #444; 
-    color: #eee; 
-    font-size: 1em; 
+  label { margin-bottom: 5px; color: var(--text-muted); font-size: 0.9em; }
+  input[type="number"], textarea {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background-color: var(--bg-control);
+    color: var(--text);
+    font-size: 1em;
     width: 100%;
     box-sizing: border-box;
   }
   .slider-group { display: flex; align-items: center; gap: 10px; }
   .slider-group input[type="range"] { flex-grow: 1; }
   .slider-group span { white-space: nowrap; }
-  .separator { height: 1px; background-color: #555; width: 100%; margin: 10px 0; }
+  .separator { height: 1px; background-color: var(--border); width: 100%; margin: 10px 0; }
 </style>

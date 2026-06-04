@@ -308,7 +308,7 @@
 
 <style>
   .time-panel {
-    border: 1px solid #3f3f3f;
+    border: 1px solid var(--border);
     border-radius: 6px;
     background: rgba(18, 18, 18, 0.9);
     padding: 8px 10px;
@@ -322,7 +322,7 @@
   .time-title {
     font-size: 3rem;
     font-weight: 400;
-    color: #ddd;
+    color: var(--text);
     line-height: 1;
     display: flex;
     align-items: center;
@@ -333,7 +333,7 @@
     display: flex;
     align-items: center;
     gap: 1.2em;
-    color: #ccc;
+    color: var(--text-muted);
     font-size: 0.85em;
     flex: 1 1 auto;
     width: 100%;
@@ -353,7 +353,7 @@
     width: 100%;
   }
   .scrub-label {
-    color: #bbb;
+    color: var(--text-muted);
     font-size: 0.8rem;
   }
   .scrub-rate {
@@ -366,7 +366,7 @@
     align-items: center;
     gap: 4px;
     font-size: 0.72rem;
-    color: #888;
+    color: var(--text-faint);
     cursor: pointer;
   }
   .checkbox-label input {
@@ -392,7 +392,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
     font-size: 0.72rem;
-    color: #8f8f8f;
+    color: var(--text-faint);
   }
   .scrub-scale span:nth-child(1) { text-align: left; }
   .scrub-scale span:nth-child(2) { text-align: center; }
@@ -407,13 +407,13 @@
     line-height: 1;
     font-size: 0.9rem;
     background: #1f1f1f;
-    border: 1px solid #555;
-    color: #eee;
+    border: 1px solid var(--border);
+    color: var(--text);
     border-radius: 4px;
     cursor: pointer;
   }
   .play-toggle:hover {
-    background: #2a2a2a;
+    background: var(--bg-control-hover);
   }
   .time-readouts {
     display: flex;
@@ -426,7 +426,7 @@
     white-space: nowrap;
   }
   .actual-time {
-    color: #888;
+    color: var(--text-faint);
     font-size: 0.9em;
     white-space: nowrap;
   }
@@ -438,26 +438,26 @@
   }
   .clock-action {
     padding: 2px 6px;
-    background: #2a2a2a;
-    border: 1px solid #555;
-    color: #eee;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    color: var(--text);
     border-radius: 3px;
     cursor: pointer;
   }
   .clock-action.btn-blue {
-    background: #0a4d9b;
-    border-color: #2a6fc0;
-    color: #fff;
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
   }
   .clock-action.btn-blue:hover {
-    background: #1362bf;
+    background: var(--accent-hover);
   }
   .clock-action.btn-red {
-    background: #8f1d1d;
-    border-color: #b23a3a;
+    background: var(--status-bad);
+    border-color: var(--status-bad);
     color: #fff;
   }
   .clock-action.btn-red:hover {
-    background: #b32929;
+    filter: brightness(1.12);
   }
 </style>
