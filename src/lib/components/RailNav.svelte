@@ -4,18 +4,14 @@
   // actions are always in the same place. Presentational: it just dispatches events; +page
   // wires them to its existing handlers/modals. (Starmap's niche bulk-editors — Edit Fuel/
   // Atmospheres/Sensors/Time — stay in the starmap menu for now; folded in a later step.)
+  // No "back to starmap" here: the global shell already keeps both views together, and
+  // SystemView's own "Zoom Out / To Starmap" handles exiting — so a rail button is redundant.
   import { createEventDispatcher } from 'svelte';
   const dispatch = createEventDispatcher();
-
-  export let inSystemView = false; // show a "back to starmap" affordance when in a system
 </script>
 
 <nav class="rail-nav" aria-label="App navigation">
   <div class="brand">SSE</div>
-
-  {#if inSystemView}
-    <button class="rail-btn back" on:click={() => dispatch('back')}>← Starmap</button>
-  {/if}
 
   <button class="rail-btn" on:click={() => dispatch('new')}>New System</button>
   <button class="rail-btn" on:click={() => dispatch('open')}>Open…</button>
@@ -59,10 +55,6 @@
   }
   .rail-btn:hover {
     background: var(--bg-control-hover);
-  }
-  .rail-btn.back {
-    border-color: var(--accent);
-    color: var(--accent);
   }
   .spacer {
     flex: 1 1 auto;

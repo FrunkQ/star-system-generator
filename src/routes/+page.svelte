@@ -713,13 +713,11 @@
     <AppShell bind:mode={shellMode}>
       <svelte:fragment slot="rail">
         <RailNav
-          inSystemView={!!currentSystemId}
           on:new={() => showNewStarmapModal = true}
           on:open={handleUploadStarmap}
           on:save={handleDownloadStarmap}
           on:settings={() => showSettingsModal = true}
           on:llmsettings={() => showLlmSettingsModal = true}
-          on:back={exitToStarmap}
         />
       </svelte:fragment>
       <svelte:fragment slot="canvas">

@@ -48,11 +48,11 @@
 
 <div class="app-shell" data-mode={mode}>
   {#if mode === 'desktop'}
-    <aside class="area rail"><slot name="rail" /></aside>
-    <div class="area strip"><slot name="strip" /></div>
+    {#if $$slots.rail}<aside class="area rail"><slot name="rail" /></aside>{/if}
+    {#if $$slots.strip}<div class="area strip"><slot name="strip" /></div>{/if}
     <main class="area canvas"><slot name="canvas" /></main>
-    <div class="area bar"><slot name="bar" /></div>
-    <aside class="area detail"><slot name="detail" /></aside>
+    {#if $$slots.bar}<div class="area bar"><slot name="bar" /></div>{/if}
+    {#if $$slots.detail}<aside class="area detail"><slot name="detail" /></aside>{/if}
   {:else}
     <main class="canvas-full"><slot name="canvas" /></main>
 
@@ -73,11 +73,15 @@
       </div>
     {/if}
 
-    <BottomSheet bind:snap={sheetSnap} title={sheetTitle}>
-      <slot name="detail" />
-    </BottomSheet>
+    {#if $$slots.detail}
+      <BottomSheet bind:snap={sheetSnap} title={sheetTitle}>
+        <slot name="detail" />
+      </BottomSheet>
+    {/if}
 
-    <div class="fab-layer"><slot name="fab" /></div>
+    {#if $$slots.fab}
+      <div class="fab-layer"><slot name="fab" /></div>
+    {/if}
   {/if}
 </div>
 
