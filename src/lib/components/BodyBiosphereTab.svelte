@@ -16,7 +16,7 @@
   let currentMorphologies: string[] = body.biosphere?.morphologies || [];
   
   let habitabilityTier = 'None';
-  let tierColor = '#ef4444';
+  let tierColor = 'var(--tier-none)';
 
   // Habitability Score Breakdown (Reactive)
   let factors = {
@@ -108,10 +108,10 @@
 
   function getTierColor(tier: string) {
       switch (tier) {
-          case 'earth-like': return '#10b981'; // Green
-          case 'human': return '#f59e0b'; // Orange
-          case 'alien': return '#8b5cf6'; // Purple
-          default: return '#ef4444'; // Red
+          case 'earth-like': return 'var(--tier-earthlike)';
+          case 'human': return 'var(--tier-human)';
+          case 'alien': return 'var(--tier-alien)';
+          default: return 'var(--tier-none)';
       }
   }
 
@@ -340,7 +340,7 @@
   
   .progress-bar-fill {
       height: 100%;
-      background-color: #10b981; /* Green */
+      background-color: var(--tier-earthlike);
   }
 
   .morphology-checkboxes {

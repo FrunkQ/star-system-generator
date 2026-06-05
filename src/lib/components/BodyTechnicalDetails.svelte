@@ -360,11 +360,12 @@
       }
       val = Math.max(0, Math.min(1, val));
 
-      if (val < 0.2) return { text: "Sparse (Navigation Trivial)", color: "#00ff00" }; // Green
-      if (val < 0.4) return { text: "Light (Standard)", color: "#88ff00" }; // Light Green
-      if (val < 0.6) return { text: "Moderate (Minor Hazards)", color: "#ffff00" }; // Yellow
-      if (val < 0.8) return { text: "Dense (Navigation Hazard)", color: "#ff8800" }; // Orange
-      return { text: "Ultra-Dense (Deadly)", color: "#ff0000" }; // Red
+      // Unified onto the shared safe -> deadly hazard ramp (same as star radiation).
+      if (val < 0.2) return { text: "Sparse (Navigation Trivial)", color: "var(--hazard-0)" };
+      if (val < 0.4) return { text: "Light (Standard)", color: "var(--hazard-1)" };
+      if (val < 0.6) return { text: "Moderate (Minor Hazards)", color: "var(--hazard-2)" };
+      if (val < 0.8) return { text: "Dense (Navigation Hazard)", color: "var(--hazard-3)" };
+      return { text: "Ultra-Dense (Deadly)", color: "var(--hazard-4)" };
   }
 
   // --- Constants ---

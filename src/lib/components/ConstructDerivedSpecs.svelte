@@ -389,11 +389,11 @@
     color: var(--text-muted);
   }
   .fixed-header {
-    border-left: 3px solid #ff3e00; /* Red for Fixed */
+    border-left: 3px solid var(--data-fixed); /* you typed this */
     padding-left: 0.5em;
   }
   .derived-header, .landing-header {
-    border-left: 3px solid #007bff; /* Blue for Derived */
+    border-left: 3px solid var(--data-derived); /* computed */
     padding-left: 0.5em;
   }
   .specs-grid {
@@ -404,16 +404,16 @@
   .spec-item {
     display: flex;
     flex-direction: column;
-    background-color: #252525;
+    background-color: var(--bg-control);
     padding: 0.6em;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     cursor: help;
   }
   .spec-item.fixed {
-    border-left: 3px solid #ff3e00; /* Red */
+    border-left: 3px solid var(--data-fixed);
   }
   .spec-item.derived {
-    border-left: 3px solid #007bff; /* Blue */
+    border-left: 3px solid var(--data-derived);
   }
   .label {
     font-size: 0.8em;

@@ -53,10 +53,10 @@
   
   function getTempColor(kelvin: number) {
       const celsius = kelvin - 273.15;
-      if (celsius >= -10 && celsius <= 40) return '#4ade80'; // Green
-      if (celsius >= -30 && celsius < -10) return '#60a5fa'; // Blue
-      if (celsius > 40 && celsius <= 89) return '#fb923c'; // Orange
-      return '#ef4444'; // Red
+      if (celsius >= -10 && celsius <= 40) return 'var(--temp-habitable)';
+      if (celsius >= -30 && celsius < -10) return 'var(--temp-cold)';
+      if (celsius > 40 && celsius <= 89) return 'var(--temp-warm)';
+      return 'var(--temp-hot)';
   }
 
   // Watch for external changes
