@@ -32,10 +32,17 @@
 
   onMount(() => {
     const mql = window.matchMedia('(min-width: 900px) and (pointer: fine)');
-    autoDesktop = mql.matches;
-    const onChange = (e: MediaQueryListEvent) => (autoDesktop = e.matches);
-    mql.addEventListener('change', onChange);
-    return () => mql.removeEventListener('change', onChange);
+    // Re-check on both the media-query change AND window resize. matchMedia 'change'
+    // doesn't always fire under device emulation / programmatic resizes, so resize is the
+    // belt-and-suspenders that keeps mode correct everywhere.
+    const recheck = () => (autoDesktop = mql.matches);
+    recheck();
+    mql.addEventListener('change', recheck);
+    window.addEventListener('resize', recheck);
+    return () => {
+      mql.removeEventListener('change', recheck);
+      window.removeEventListener('resize', recheck);
+    };
   });
 </script>
 

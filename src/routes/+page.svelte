@@ -16,6 +16,8 @@
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
   import Starmap from '$lib/components/Starmap.svelte';
   import SystemView from '$lib/components/SystemView.svelte';
+  import AppShell from '$lib/components/AppShell.svelte';
+  import RailNav from '$lib/components/RailNav.svelte';
   import RouteEditorModal from '$lib/components/RouteEditorModal.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import LlmSettingsModal from '$lib/components/LlmSettingsModal.svelte';
@@ -37,6 +39,7 @@
 
   let showRouteEditorModal = false;
   let routeToEdit: Route | null = null;
+  let shellMode: 'desktop' | 'phone' = 'desktop';
   let showSettingsModal = false;
   let showLlmSettingsModal = false;
 
@@ -704,7 +707,25 @@
         on:upload={handleUploadStarmap} 
         on:loadExampleStarmap={handleLoadExampleStarmap}
     />
-  {:else if $starmapStore && !currentSystemId}
+  {:else if $starmapStore}
+    <AppShell bind:mode={shellMode}>
+      <svelte:fragment slot="rail">
+        <RailNav
+          inSystemView={!!currentSystemId}
+          on:new={() => showNewStarmapModal = true}
+          on:open={handleUploadStarmap}
+          on:save={handleDownloadStarmap}
+          on:settings={() => showSettingsModal = true}
+          on:llmsettings={() => showLlmSettingsModal = true}
+          on:back={() => handleBackToStarmap(undefined)}
+        />
+      </svelte:fragment>
+      <svelte:fragment slot="canvas">
+        {#if currentSystemId}
+          {#if $systemStore && effectiveRulePack}
+            <SystemView system={$systemStore} rulePack={effectiveRulePack} {exampleSystems} on:back={handleBackToStarmap} on:renameNode={handleRenameNode} />
+          {/if}
+        {:else}
     <Starmap
       bind:this={starmapComponent}
       starmap={$starmapStore}
@@ -752,8 +773,9 @@
           </p>
 
         </footer>
-  {:else if $starmapStore && currentSystemId && $systemStore && effectiveRulePack}
-    <SystemView system={$systemStore} rulePack={effectiveRulePack} {exampleSystems} on:back={handleBackToStarmap} on:renameNode={handleRenameNode} />
+        {/if}
+      </svelte:fragment>
+    </AppShell>
   {/if}
 
   {#if showRouteEditorModal && routeToEdit && $starmapStore}
@@ -772,7 +794,9 @@
 <style>
   main {
     font-family: sans-serif;
-    padding: 0.5em;
+    /* padding removed: the AppShell fills the viewport (100vh); setup screens
+       (loading / new-starmap modal / wizard) provide their own spacing. */
+    padding: 0;
   }
   footer {
       margin-top: 2em;
