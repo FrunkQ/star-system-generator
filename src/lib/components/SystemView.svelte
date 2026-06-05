@@ -47,6 +47,9 @@
   export let system: System;
   export let rulePack: RulePack;
   export let exampleSystems: string[];
+  // Responsive mode from the AppShell (via +page). On 'phone' the detail panel moves into
+  // a bottom sheet; on 'desktop' it stays as the right-hand panel.
+  export let mode: 'desktop' | 'phone' = 'desktop';
 
   const dispatch = createEventDispatcher();
 
@@ -1692,7 +1695,7 @@
         </label>
     </div>
 
-    <div class="system-view-grid">
+    <div class="system-view-grid" class:phone={mode === 'phone'}>
         <div class="main-view">
             <SystemVisualizer 
                 bind:this={visualizer} 
@@ -1723,7 +1726,7 @@
                 <DescriptionEditor body={focusedBody} on:update={handleBodyUpdate} />
             {/if}
         </div>
-        <div class="details-view">
+        <div class="details-view" class:phone-drawer={mode === 'phone' && focusedBody}>
             {#if focusedBody}
             <FocusHeader
                 focusedBody={focusedBody}
@@ -2123,6 +2126,29 @@
 
   .details-view {
     grid-column: 2;
+  }
+
+  /* Phone (Phase 03): single-column canvas; the detail panel floats up as a bottom drawer
+     (only when a body is focused, so there's no empty bar). A drag-snap BottomSheet can
+     replace this later — for now it's a fixed scrollable drawer. */
+  .system-view-grid.phone {
+    grid-template-columns: 1fr;
+  }
+  .details-view.phone-drawer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    grid-column: 1;
+    max-height: 55vh;
+    overflow-y: auto;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.55);
+    padding: 10px 14px 16px;
+    z-index: 1200;
+    -webkit-overflow-scrolling: touch;
   }
 
   .name-input {

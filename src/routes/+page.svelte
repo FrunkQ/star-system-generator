@@ -723,7 +723,7 @@
       <svelte:fragment slot="canvas">
         {#if currentSystemId}
           {#if $systemStore && effectiveRulePack}
-            <SystemView system={$systemStore} rulePack={effectiveRulePack} {exampleSystems} on:back={handleBackToStarmap} on:renameNode={handleRenameNode} />
+            <SystemView system={$systemStore} rulePack={effectiveRulePack} {exampleSystems} mode={shellMode} on:back={handleBackToStarmap} on:renameNode={handleRenameNode} />
           {/if}
         {:else}
     <Starmap
