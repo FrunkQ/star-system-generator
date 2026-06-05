@@ -1,12 +1,17 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { browser } from '$app/environment';
+	import { injectAnalytics } from '@vercel/analytics/sveltekit';
 	import '$lib/styles/tokens.css';
 	import '$lib/styles/paletteStore'; // applies any saved palette overrides to :root app-wide
 	import '$lib/styles/touch-overrides.css';
 
 	let { children } = $props();
 	let swUpdateInterval: ReturnType<typeof setInterval> | undefined;
+
+	// Vercel Web Analytics — anonymous visitor counts (user community OK'd tracking #s).
+	// No-ops in dev / off Vercel. Requires Analytics enabled in the Vercel project too.
+	injectAnalytics();
 
 	// DEV BUILD STAMP — shown ONLY on beta (and local dev), never on production, so
 	// a stale cached / PWA copy is obvious during testing. commit + time are baked
