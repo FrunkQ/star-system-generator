@@ -406,21 +406,23 @@
     }
   }
 
+        // Direct, unconditional exit straight to the starmap — clears the focused system and
+        // replaces the (possibly multi-level focus) history entry so we land on the map, not
+        // somewhere up the focus hierarchy or back at the initial page load.
+        function exitToStarmap() {
+            currentSystemId = null;
+            systemStore.set(null);
+            replaceState('', {});
+        }
+
         function handleBackToStarmap(event: CustomEvent<{ force?: boolean }> | undefined) {
-          // Check if this was a forced exit (e.g. from SystemView intercepting a Back button)
+          // Forced exit (e.g. SystemView intercepting a Back button, or the persistent rail's
+          // "← Starmap") goes straight to the map. A plain back walks the history stack so the
+          // in-system "Zoom Out" hierarchy nav still works.
           const force = event?.detail?.force;
-    
-                if (force) {
-                    // console.log('Forced Exit to Starmap');
-                    currentSystemId = null;
-                    systemStore.set(null);              // We use replaceState to ensure we are effectively "on" the Starmap now, 
-              // replacing the sticky system entry we were stuck on.
-              replaceState('', {}); 
+          if (force) {
+              exitToStarmap();
           } else {
-              // Standard "To Starmap" button click. 
-              // We prefer history.back() to play nice with the stack, 
-              // BUT if the stack is messy, this might fail.
-              // For now, let's trust the button means "Back".
               history.back();
           }
         }
@@ -717,7 +719,7 @@
           on:save={handleDownloadStarmap}
           on:settings={() => showSettingsModal = true}
           on:llmsettings={() => showLlmSettingsModal = true}
-          on:back={() => handleBackToStarmap(undefined)}
+          on:back={exitToStarmap}
         />
       </svelte:fragment>
       <svelte:fragment slot="canvas">
