@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import type { CelestialBody, System } from '$lib/types';
   import { AU_KM } from '$lib/constants';
+  import { getPlanetColor } from '$lib/rendering/colors';
 
   export let system: System;
   export let construct: CelestialBody;
@@ -86,17 +87,9 @@
       }
   }
 
-  function getPlanetColorForSlider(node: CelestialBody): string {
-    if (node.roleHint === 'star') return '#fff'; // White
-    if (node.roleHint === 'belt') return '#888'; // Grey for belts
-    if (node.tags?.some(t => t.key === 'habitability/earth-like' || t.key === 'habitability/human')) return '#007bff'; // Blue
-    if (node.biosphere) return '#00ff00'; // Green
-    const isIceGiant = node.classes?.some(c => c.includes('ice-giant'));
-    if (isIceGiant) return '#add8e6'; // Light Blue
-    const isGasGiant = node.classes?.some(c => c.includes('gas-giant'));
-    if (isGasGiant) return '#cc0000'; // Darker Red for Gas Giants
-    return '#cc6600'; // Darker Orange/Brown for Terrestrial Bodies
-  }
+  // Planet-dot colour for the slider is the canonical getPlanetColor (token-driven),
+  // so it matches the orrery / starmap.
+  const getPlanetColorForSlider = getPlanetColor;
 
   function updateUIFromState() {
     updatePlacementsForParent();

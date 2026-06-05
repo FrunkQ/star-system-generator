@@ -37,8 +37,21 @@ const BODY_DEFS: Record<string, [string, string]> = {
   brownDwarf: ['--body-brown-dwarf', '#5d4037'],
   habitable: ['--body-habitable', '#007bff'],
   biosphere: ['--body-biosphere', '#00ff00'],
+  belt: ['--body-belt', '#888888'],
   construct: ['--body-construct', '#f0f0f0']
 };
+
+// Resolve a node's star colour key. Star classes come as either a single letter
+// ("star/G") or a full spectral class ("star/G2V") or a named remnant ("star/red-giant",
+// "star/WD", "star/BH"). Try an exact key, then the BH family, then the leading letter.
+function starKey(node: { classes?: string[] }): string {
+  const raw = (node.classes?.[0] || '').split('/')[1] || '';
+  if (!raw) return 'default';
+  if (STAR_DEFS[raw]) return raw;
+  if (raw.includes('BH')) return 'BH';
+  if (STAR_DEFS[raw[0]]) return raw[0];
+  return 'default';
+}
 
 // Static default map kept for back-compat with direct importers (BodyStarTab swatch,
 // SystemVisualizer). Not token-live; the live path is getPlanetColor/getNodeColor.
@@ -69,9 +82,9 @@ if (browser) paletteOverrides.subscribe(() => { _cache = null; });
 export function getPlanetColor(node: CelestialBody): string {
   const p = pal();
   if (node.roleHint === 'star') {
-    const spectralType = (node.classes[0] || 'default').split('/')[1];
-    return p.star[spectralType] || p.star['default'];
+    return p.star[starKey(node)] || p.star['default'];
   }
+  if (node.roleHint === 'belt') return p.body.belt;
   if (node.tags?.some(t => t.key === 'habitability/earth-like' || t.key === 'habitability/human')) return p.body.habitable;
   if (node.biosphere) return p.body.biosphere;
   if (node.classes?.some(c => c.includes('brown-dwarf'))) return p.body.brownDwarf;

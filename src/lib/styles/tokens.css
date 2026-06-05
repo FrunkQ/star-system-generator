@@ -70,6 +70,7 @@
   --body-brown-dwarf: #5d4037;
   --body-habitable: #007bff; /* earth-like / human (blue) */
   --body-biosphere: #00ff00; /* has biosphere (green) */
+  --body-belt: #888888; /* asteroid/debris belt (grey) */
   --body-construct: #f0f0f0; /* default construct glyph */
 
   /* Star spectral class (rendering/colors.ts STAR_COLOR_MAP) — varies by type */

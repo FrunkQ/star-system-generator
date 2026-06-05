@@ -29,17 +29,6 @@
   let starCount = 0;
   let constructCount = 0;
 
-  function getPlanetColor(node: CelestialBody): string {
-    if (node.roleHint === 'star') return '#fff'; // White
-    if (node.biosphere) return '#00ff00'; // Green
-    if (node.tags?.some(t => t.key === 'habitability/earth-like' || t.key === 'habitability/human')) return '#007bff'; // Blue
-    const isIceGiant = node.classes?.some(c => c.includes('ice-giant'));
-    if (isIceGiant) return '#add8e6'; // Light Blue
-    const isGasGiant = node.classes?.some(c => c.includes('gas-giant'));
-    if (isGasGiant) return '#cc0000'; // Darker Red for Gas Giants
-    return '#cc6600'; // Darker Orange/Brown for Terrestrial Bodies
-  }
-
   function groupItemsByHost(items: CelestialBody[], allNodes: (CelestialBody | Barycenter)[]) {
     const hosts = allNodes.filter(n => (n.kind === 'body' && (n.roleHint === 'star' || n.roleHint === 'planet' || n.roleHint === 'moon')) || n.kind === 'barycenter' || n.kind === 'construct');
     const hostMap = new Map<string, (CelestialBody | Barycenter)>();
