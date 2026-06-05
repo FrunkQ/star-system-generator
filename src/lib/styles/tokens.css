@@ -92,6 +92,8 @@
 
   /* Zone bands (SystemVisualizer orrery overlays) */
   --zone-habitable: #00ff00; /* goldilocks / habitable zone (green) */
+  --zone-kill: #b40000; /* lethal UV/radiation core band */
+  --zone-danger: #c86400; /* danger band (between kill + habitable) */
   --zone-roche: #b40000;
   --zone-rock-line: #a52a2a;
   --zone-soot-line: #696969;

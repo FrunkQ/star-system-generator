@@ -14,7 +14,7 @@
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
   import { scaleBoxCox } from '../physics/scaling';
   import { findContainingHost } from '$lib/physics/orbits';
-  import { getNodeColor, STAR_COLOR_MAP } from '$lib/rendering/colors';
+  import { getNodeColor, STAR_COLOR_MAP, tokenRgba } from '$lib/rendering/colors';
 
   export let system: System | null;
   export let rulePack: RulePack;
@@ -898,14 +898,14 @@
       }
       if (showZones && stellarZones.size > 0) {
           const zoneLabels = [
-              { key: 'rocheLimit', name: 'Roche Limit', color: 'rgba(180, 0, 0, 0.8)' },
-              { key: 'silicateLine', name: 'Rock Line', color: 'rgba(165, 42, 42, 0.8)' },
-              { key: 'sootLine', name: 'Soot Line', color: 'rgba(105, 105, 105, 0.8)' },
-              { key: 'goldilocksInner', name: 'Habitable Zone', color: 'rgba(0, 255, 0, 0.8)' },
-              { key: 'formationFrostLine', name: 'Frost Line (Form.)', color: 'rgba(173, 216, 230, 0.8)' },
-              { key: 'currentFrostLine', name: 'Frost Line (Curr.)', color: 'rgba(173, 216, 230, 0.8)' },
-              { key: 'co2IceLine', name: 'CO2 Ice Line', color: 'rgba(255, 255, 255, 0.8)' },
-              { key: 'coIceLine', name: 'CO Ice Line', color: 'rgba(0, 0, 255, 0.8)' }
+              { key: 'rocheLimit', name: 'Roche Limit', color: tokenRgba('--zone-roche', '#b40000', 0.8) },
+              { key: 'silicateLine', name: 'Rock Line', color: tokenRgba('--zone-rock-line', '#a52a2a', 0.8) },
+              { key: 'sootLine', name: 'Soot Line', color: tokenRgba('--zone-soot-line', '#696969', 0.8) },
+              { key: 'goldilocksInner', name: 'Habitable Zone', color: tokenRgba('--zone-habitable', '#00ff00', 0.8) },
+              { key: 'formationFrostLine', name: 'Frost Line (Form.)', color: tokenRgba('--zone-frost-line', '#add8e6', 0.8) },
+              { key: 'currentFrostLine', name: 'Frost Line (Curr.)', color: tokenRgba('--zone-frost-line', '#add8e6', 0.8) },
+              { key: 'co2IceLine', name: 'CO2 Ice Line', color: tokenRgba('--zone-co2-ice', '#ffffff', 0.8) },
+              { key: 'coIceLine', name: 'CO Ice Line', color: tokenRgba('--zone-co-ice', '#0000ff', 0.8) }
           ];
           ctx.font = `12px sans-serif`; ctx.textAlign = 'center';
           for (const [starId, zones] of stellarZones) {
@@ -1065,34 +1065,34 @@
       const kill = toScreenRadius(zones.killZone || 0);
       const danger = toScreenRadius(zones.dangerZone || 0);
 
-      drawZoneBand(screenStar.x, screenStar.y, hzOuter, hzInner, 'rgba(0, 255, 0, 0.1)');
-      drawZoneBand(screenStar.x, screenStar.y, danger, kill, 'rgba(200, 100, 0, 0.2)');
-      drawZoneBand(screenStar.x, screenStar.y, kill, 0, 'rgba(180, 0, 0, 0.2)');
+      drawZoneBand(screenStar.x, screenStar.y, hzOuter, hzInner, tokenRgba('--zone-habitable', '#00ff00', 0.1));
+      drawZoneBand(screenStar.x, screenStar.y, danger, kill, tokenRgba('--zone-danger', '#c86400', 0.2));
+      drawZoneBand(screenStar.x, screenStar.y, kill, 0, tokenRgba('--zone-kill', '#b40000', 0.2));
 
       const rocheAu = starNode ? calculateRocheLimit(starNode) : 0;
-      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(rocheAu), 'rgba(180, 0, 0, 0.5)');
-      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.silicateLine || 0), 'rgba(165, 42, 42, 0.5)');
-      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.sootLine || 0), 'rgba(105, 105, 105, 0.5)');
-      
+      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(rocheAu), tokenRgba('--zone-roche', '#b40000', 0.5));
+      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.silicateLine || 0), tokenRgba('--zone-rock-line', '#a52a2a', 0.5));
+      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.sootLine || 0), tokenRgba('--zone-soot-line', '#696969', 0.5));
+
       // Dual Frost Lines
       const formationFrost = toScreenRadius(zones.formationFrostLine || 0);
       const currentFrost = toScreenRadius(zones.currentFrostLine || 0);
-      
+
       // Draw Formation Frost Line (Dashed)
       if (formationFrost > 0) {
           ctx.beginPath();
           ctx.arc(screenStar.x, screenStar.y, formationFrost, 0, 2 * Math.PI);
-          ctx.strokeStyle = 'rgba(173, 216, 230, 0.5)';
+          ctx.strokeStyle = tokenRgba('--zone-frost-line', '#add8e6', 0.5);
           ctx.setLineDash([4, 4]);
           ctx.stroke();
           ctx.setLineDash([]);
       }
 
       // Draw Current Frost Line (Solid/Standard dash)
-      drawZoneLine(screenStar.x, screenStar.y, currentFrost, 'rgba(173, 216, 230, 0.5)');
+      drawZoneLine(screenStar.x, screenStar.y, currentFrost, tokenRgba('--zone-frost-line', '#add8e6', 0.5));
 
-      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.co2IceLine || 0), 'rgba(255, 255, 255, 0.5)');
-      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.coIceLine || 0), 'rgba(0, 0, 255, 0.5)');
+      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.co2IceLine || 0), tokenRgba('--zone-co2-ice', '#ffffff', 0.5));
+      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.coIceLine || 0), tokenRgba('--zone-co-ice', '#0000ff', 0.5));
     }
   }
 

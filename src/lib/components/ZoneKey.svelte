@@ -204,32 +204,33 @@
 		font-size: 1.1em;
 	}
 
+	/* Legend swatches use the solid --zone-* tokens (clearer key + reskins with /palette). */
 	.color-box.red {
-		background-color: rgba(180, 0, 0, 0.2);
+		background-color: var(--zone-kill);
 	}
 	.color-box.orange {
-		background-color: rgba(200, 100, 0, 0.2);
+		background-color: var(--zone-danger);
 	}
 	.color-box.green {
-		background-color: rgba(0, 255, 0, 0.1);
+		background-color: var(--zone-habitable);
 	}
 	.color-box.lightblue {
-		background-color: rgba(173, 216, 230, 0.5);
+		background-color: var(--zone-frost-line);
 	}
 	.color-box.grey {
-		background-color: rgba(105, 105, 105, 0.5);
+		background-color: var(--zone-soot-line);
 	}
 	.color-box.brown {
-		background-color: rgba(165, 42, 42, 0.5);
+		background-color: var(--zone-rock-line);
 	}
 	.color-box.white {
-		background-color: rgba(255, 255, 255, 0.5);
+		background-color: var(--zone-co2-ice);
 	}
 	.color-box.blue {
-		background-color: rgba(0, 0, 255, 0.5);
+		background-color: var(--zone-co-ice);
 	}
 	.color-box.red-line {
-		background-color: rgba(180, 0, 0, 0.5);
+		background-color: var(--zone-roche);
 	}
 
 	.notes {

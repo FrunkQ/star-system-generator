@@ -73,8 +73,31 @@ function pal() {
   }
   return _cache;
 }
+// General cached token resolver for canvas/SVG use (e.g. orrery zone bands), where CSS
+// var() can't be used. Cached so the render loop doesn't hit getComputedStyle per frame.
+const _tokenCache = new Map<string, string>();
+export function tokenColor(name: string, fallback: string): string {
+  let v = _tokenCache.get(name);
+  if (v === undefined) {
+    v = resolveToken(name, fallback);
+    _tokenCache.set(name, v);
+  }
+  return v;
+}
+function hexToRgb(hex: string): [number, number, number] {
+  let h = (hex || '').replace('#', '').trim();
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  const n = parseInt(h, 16);
+  return Number.isNaN(n) ? [255, 255, 255] : [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+/** Resolve a token to an rgba() string with the given alpha — for translucent canvas fills. */
+export function tokenRgba(name: string, fallback: string, alpha: number): string {
+  const [r, g, b] = hexToRgb(tokenColor(name, fallback));
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 // Re-resolve colours when the user edits the palette.
-if (browser) paletteOverrides.subscribe(() => { _cache = null; });
+if (browser) paletteOverrides.subscribe(() => { _cache = null; _tokenCache.clear(); });
 
 /**
  * Returns the primary visual color for a celestial body based on its type and tags.
