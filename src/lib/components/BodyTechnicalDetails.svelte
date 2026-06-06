@@ -774,8 +774,10 @@
 <style>
   .details-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 0.75em;
+      /* Lower min so the data flows into 2+ columns even in a ~360px panel,
+         instead of one long single column. Wider panels pack more columns. */
+      grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+      gap: 0.6em;
   }
   .detail-item {
       display: flex;

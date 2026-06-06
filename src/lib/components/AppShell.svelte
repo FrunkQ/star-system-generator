@@ -20,6 +20,37 @@
   // Height (px) of the phone time bar; the sheet + FAB are offset above it.
   const phoneBarH = 92;
 
+  // Desktop detail-panel width — user-resizable (§03.8), persisted. null = CSS default.
+  let detailWidth: number | null = null;
+  let resizing = false;
+  let resizeStartX = 0;
+  let resizeStartW = 0;
+
+  function startResize(e: PointerEvent) {
+    const aside = (e.currentTarget as HTMLElement).parentElement as HTMLElement;
+    resizing = true;
+    resizeStartX = e.clientX;
+    resizeStartW = aside.offsetWidth;
+    window.addEventListener('pointermove', onResize);
+    window.addEventListener('pointerup', endResize);
+    e.preventDefault();
+  }
+  function onResize(e: PointerEvent) {
+    // Handle is on the LEFT edge, so dragging left widens the panel.
+    const w = resizeStartW + (resizeStartX - e.clientX);
+    detailWidth = Math.max(300, Math.min(window.innerWidth * 0.6, w));
+  }
+  function endResize() {
+    resizing = false;
+    window.removeEventListener('pointermove', onResize);
+    window.removeEventListener('pointerup', endResize);
+    if (browser && detailWidth) localStorage.setItem('sse-detail-w', String(Math.round(detailWidth)));
+  }
+  function resetDetailWidth() {
+    detailWidth = null;
+    if (browser) localStorage.removeItem('sse-detail-w');
+  }
+
   let autoDesktop = true;
 
   function override(): 'auto' | 'desktop' | 'phone' {
@@ -38,6 +69,8 @@
     // Re-check on both the media-query change AND window resize. matchMedia 'change'
     // doesn't always fire under device emulation / programmatic resizes, so resize is the
     // belt-and-suspenders that keeps mode correct everywhere.
+    const saved = Number(localStorage.getItem('sse-detail-w'));
+    if (saved && saved >= 300) detailWidth = saved;
     const recheck = () => (autoDesktop = mql.matches);
     recheck();
     mql.addEventListener('change', recheck);
@@ -55,7 +88,17 @@
     {#if $$slots.strip}<div class="area strip"><slot name="strip" /></div>{/if}
     <main class="area canvas"><slot name="canvas" /></main>
     {#if $$slots.bar}<div class="area bar"><slot name="bar" /></div>{/if}
-    {#if $$slots.detail}<aside class="area detail"><slot name="detail" /></aside>{/if}
+    {#if $$slots.detail}<aside class="area detail" class:resizing style={detailWidth ? `width:${detailWidth}px` : ''}>
+      <div
+        class="detail-resize"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize detail panel (double-click to reset)"
+        on:pointerdown={startResize}
+        on:dblclick={resetDetailWidth}
+      ></div>
+      <slot name="detail" />
+    </aside>{/if}
   {:else}
     <main class="canvas-full"><slot name="canvas" /></main>
 
@@ -133,11 +176,39 @@
   }
   .area.detail {
     grid-area: detail;
-    /* Bounded so the detail content can't expand and starve the canvas/strip.
+    /* Wider default so the body-data grid flows into 2 columns (was a long single
+       column). User-resizable via .detail-resize; an inline width overrides this.
        Empty (gated) detail collapses the auto track to 0. */
-    width: clamp(280px, 26vw, 380px);
+    width: clamp(340px, 34vw, 560px);
+    position: relative;
     border-left: 1px solid #1c1f27;
     overflow-y: auto;
+  }
+  .area.detail.resizing {
+    user-select: none;
+  }
+  .detail-resize {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: col-resize;
+    z-index: 5;
+    touch-action: none;
+  }
+  .detail-resize::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: transparent;
+  }
+  .detail-resize:hover::after,
+  .area.detail.resizing .detail-resize::after {
+    background: var(--accent, #ff5a1f);
   }
 
   /* ---- Phone: full-bleed canvas + overlays ---- */
