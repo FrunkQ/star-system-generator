@@ -17,6 +17,10 @@
   <button class="rail-btn" on:click={() => dispatch('open')}>Open…</button>
   <button class="rail-btn" on:click={() => dispatch('save')}>Save</button>
 
+  <!-- Optional view-specific content (e.g. phone View toggles) sits below the app
+       nav and above the bottom group. Empty on desktop / starmap. -->
+  <slot />
+
   <div class="spacer"></div>
 
   <button class="rail-btn" on:click={() => dispatch('settings')}>Settings</button>

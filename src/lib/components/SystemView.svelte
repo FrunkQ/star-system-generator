@@ -1691,7 +1691,30 @@
         on:save={() => dispatch('save')}
         on:settings={() => dispatch('settings')}
         on:llmsettings={() => dispatch('llmsettings')}
-      />
+      >
+      {#if mode === 'phone'}
+        <!-- On phone the canvas toggle toolbar is hidden, so the view options live in
+             the slide-in rail (the "everything menu"). Same binds as the desktop toolbar. -->
+        <div class="rail-view-options">
+          <h3 class="rail-section-title">View</h3>
+          <label><input type="checkbox" bind:checked={showNames} /> Names</label>
+          <label><input type="checkbox" bind:checked={showZones} on:change={() => showZoneKeyPanel = showZones} /> Zones</label>
+          <label><input type="checkbox" bind:checked={showLPoints} /> Lagrange points</label>
+          {#if $starmapUiStore.gridType === 'traveller-hex'}
+            <label><input type="checkbox" bind:checked={showTravellerZones} /> Traveller zones</label>
+          {/if}
+          <label><input type="checkbox" bind:checked={showVectors} /> Vectors</label>
+          <label class="rail-slider">
+            <span>Toytown</span>
+            <input type="range" min="0" max="1" step="0.01" bind:value={$systemStore.toytownFactor} on:change={() => {
+              if ($systemStore.toytownFactor < 0.005) $systemStore.toytownFactor = 0;
+              handleSliderRelease();
+            }} />
+          </label>
+          <button class="rail-btn" on:click={() => visualizer?.resetView()}>Reset view</button>
+        </div>
+      {/if}
+      </RailNav>
     </svelte:fragment>
     <svelte:fragment slot="strip">
     {#if mode !== 'phone'}
@@ -2332,6 +2355,53 @@
     .project-attribution {
         font-size: 1.1em; /* Slightly larger for the last line */
         font-weight: bold;
+    }
+
+    /* Phone slide-in rail: per-system View options (toggles live here on phone,
+       since the desktop canvas toolbar is hidden in phone mode). */
+    .rail-view-options {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+    }
+    .rail-section-title {
+        margin: 0;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-faint);
+    }
+    .rail-view-options label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.95rem;
+        color: var(--text);
+        cursor: pointer;
+    }
+    .rail-view-options label.rail-slider {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+    }
+    .rail-view-options label.rail-slider input {
+        width: 100%;
+    }
+    .rail-btn {
+        margin-top: 4px;
+        padding: 10px 12px;
+        background: var(--bg-control, #1b1e26);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: left;
+    }
+    .rail-btn:hover {
+        background: var(--bg-control-hover, #232733);
     }
 
 </style>
