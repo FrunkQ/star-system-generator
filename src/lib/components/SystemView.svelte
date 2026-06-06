@@ -8,7 +8,7 @@
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import TimeControls from '$lib/components/TimeControls.svelte';
   import { drainFuelMassKg } from '$lib/construct-logic';
-  import SystemSummary from './SystemSummary.svelte';
+  import AboutModal from './AboutModal.svelte';
   import SystemGenerationControls from './SystemGenerationControls.svelte';
   import SystemSummaryContextMenu from './SystemSummaryContextMenu.svelte'; 
   import BodyDetailsPane from './BodyDetailsPane.svelte';
@@ -60,6 +60,7 @@
   let sheetSnap: 'peek' | 'half' | 'full' = 'peek';
   let railOpen = false; // phone slide-in rail; closed before opening a modal
   let railUploadInput: HTMLInputElement; // hidden file input for the rail's Upload JSON
+  let showAboutModal = false; // About, moved here from the retired SystemSummary
   const fabActions = [
     { id: 'add-planet', label: 'Add planet', icon: '+' },
     { id: 'add-construct', label: 'Add construct', icon: '◇' },
@@ -1716,32 +1717,23 @@
           </label>
           <button class="rail-btn" on:click={() => visualizer?.resetView()}>Reset view</button>
         </div>
-        <div class="rail-view-options">
-          <h3 class="rail-section-title">System</h3>
-          <button class="rail-btn" on:click={() => { railOpen = false; handleDownloadJson(); }}>Download JSON…</button>
-          <button class="rail-btn" on:click={() => { railOpen = false; railUploadInput?.click(); }}>Upload JSON…</button>
-          <input type="file" accept="application/json,.json" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
-          <button class="rail-btn" on:click={() => { railOpen = false; handleShare(); }}>Open projector</button>
-          <button class="rail-btn" on:click={() => { railOpen = false; showReportConfigModal = true; }}>Generate report…</button>
-        </div>
       {/if}
+      <!-- System actions (formerly the SystemSummary hamburger) — shown on desktop AND
+           phone now that the summary strip is retired in favour of the BodyPicker. -->
+      <div class="rail-view-options">
+        <h3 class="rail-section-title">System</h3>
+        <button class="rail-btn" on:click={() => { railOpen = false; handleDownloadJson(); }}>Download…</button>
+        <button class="rail-btn" on:click={() => { railOpen = false; railUploadInput?.click(); }}>Upload…</button>
+        <input type="file" accept="application/json,.json" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
+        <button class="rail-btn" on:click={() => { railOpen = false; handleShare(); }}>Open projector</button>
+        <button class="rail-btn" on:click={() => { railOpen = false; handleToggleCrt(); }}>Toggle projector CRT</button>
+        <button class="rail-btn" on:click={() => { railOpen = false; showReportConfigModal = true; }}>Generate report…</button>
+        {#if $systemStore.isManuallyEdited}
+          <button class="rail-btn" on:click={() => { railOpen = false; systemStore.update(s => s ? { ...s, isManuallyEdited: false } : s); }}>Show regenerate controls</button>
+        {/if}
+        <button class="rail-btn" on:click={() => { railOpen = false; showAboutModal = true; }}>About</button>
+      </div>
       </RailNav>
-    </svelte:fragment>
-    <svelte:fragment slot="strip">
-    {#if mode !== 'phone'}
-    <SystemSummary
-      system={$systemStore} 
-      {focusedBody}
-      bind:showDropdown
-      {handleDownloadJson}
-      {handleUploadJson}
-      {handleShare}
-      on:showcontextmenu={handleShowContextMenu}
-      on:generatereport={() => showReportConfigModal = true}
-      on:togglecrt={handleToggleCrt}
-      on:clearmanualedit={() => systemStore.update(s => s ? { ...s, isManuallyEdited: false } : s)}
-    />
-    {/if}
     </svelte:fragment>
     <svelte:fragment slot="bar">
     {#if ensuredTemporal}
@@ -1986,6 +1978,10 @@
 
     {#if showReportConfigModal}
         <ReportConfigModal on:generate={handleGenerateReport} on:close={() => showReportConfigModal = false} />
+    {/if}
+
+    {#if showAboutModal}
+        <AboutModal on:close={() => showAboutModal = false} />
     {/if}
 
     {#if showSaveModal}
