@@ -1649,6 +1649,7 @@
       />
     </svelte:fragment>
     <svelte:fragment slot="strip">
+    {#if mode !== 'phone'}
     <SystemSummary
       system={$systemStore} 
       {focusedBody}
@@ -1661,6 +1662,7 @@
       on:togglecrt={handleToggleCrt}
       on:clearmanualedit={() => systemStore.update(s => s ? { ...s, isManuallyEdited: false } : s)}
     />
+    {/if}
     </svelte:fragment>
     <svelte:fragment slot="bar">
     {#if ensuredTemporal}
@@ -1688,6 +1690,7 @@
       />
     {/if}
 
+    {#if mode !== 'phone'}
     <div class="controls">
         <button on:click={zoomOut}>
             {focusedBody && focusedBody.parentId ? 'Zoom Out' : 'To Starmap'}
@@ -1723,6 +1726,7 @@
             }} />
         </label>
     </div>
+    {/if}
 
         <div class="main-view">
             <SystemVisualizer 

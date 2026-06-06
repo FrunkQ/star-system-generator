@@ -1289,6 +1289,10 @@
     position: relative;
     flex: 1;
     min-height: 0;
+    /* Fill the AppShell canvas slot (desktop grid row / phone inset:0 wrapper),
+       which aren't flex containers — so flex:1 alone gives no height and the SVG
+       falls back to its 800x600 aspect ratio. height:100% makes it fill. */
+    height: 100%;
   }
 
   .starmap-header {
