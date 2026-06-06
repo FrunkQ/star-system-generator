@@ -16,8 +16,6 @@
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
   import Starmap from '$lib/components/Starmap.svelte';
   import SystemView from '$lib/components/SystemView.svelte';
-  import AppShell from '$lib/components/AppShell.svelte';
-  import RailNav from '$lib/components/RailNav.svelte';
   import RouteEditorModal from '$lib/components/RouteEditorModal.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import LlmSettingsModal from '$lib/components/LlmSettingsModal.svelte';
@@ -39,7 +37,6 @@
 
   let showRouteEditorModal = false;
   let routeToEdit: Route | null = null;
-  let shellMode: 'desktop' | 'phone' = 'desktop';
   let showSettingsModal = false;
   let showLlmSettingsModal = false;
 
@@ -724,21 +721,12 @@
       />
     {/if}
   {:else if $starmapStore}
-    <AppShell bind:mode={shellMode}>
-      <svelte:fragment slot="rail">
-        <RailNav
-          on:new={() => showNewStarmapModal = true}
-          on:open={handleUploadStarmap}
-          on:save={handleDownloadStarmap}
-          on:settings={() => showSettingsModal = true}
-          on:llmsettings={() => showLlmSettingsModal = true}
-        />
-      </svelte:fragment>
-      <svelte:fragment slot="canvas">
+    <!-- Starmap owns its own AppShell now; forward its rail's app-nav. -->
     <Starmap
       bind:this={starmapComponent}
       starmap={$starmapStore}
       rulePack={selectedRulepack}
+      on:new={() => showNewStarmapModal = true}
       on:systemclick={handleSystemClick}
       on:systemzoom={handleSystemZoom}
       on:addsystemat={handleAddSystemAt}
@@ -782,8 +770,6 @@
           </p>
 
         </footer>
-      </svelte:fragment>
-    </AppShell>
   {/if}
 
   {#if showRouteEditorModal && routeToEdit && $starmapStore}

@@ -2,6 +2,9 @@
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { gestures } from '$lib/input/gestures';
   import { getPlanetColor as getStarColor } from '$lib/rendering/colors';
+  import AppShell from './AppShell.svelte';
+  import RailNav from './RailNav.svelte';
+  import FabCluster from './FabCluster.svelte';
   import type { Starmap, System, CelestialBody, RulePack, Barycenter } from '$lib/types';
   import GmNotesEditor from './GmNotesEditor.svelte';
   import Grid from './Grid.svelte';
@@ -28,6 +31,14 @@
   export let selectedSystemForLink: string | null = null;
 
   const dispatch = createEventDispatcher();
+
+  // Phase 03: Starmap owns its own AppShell (same shared rail as SystemView). RailNav app
+  // nav forwards up to +page via dispatch; the niche bulk-editors stay in the header menu.
+  let mode: 'desktop' | 'phone' = 'desktop';
+  const starmapFabActions = [{ id: 'reset', label: 'Reset view', icon: '↺' }];
+  function handleStarmapFabAction(e: CustomEvent<string>) {
+    if (e.detail === 'reset') resetView();
+  }
 
   let svgElement: SVGSVGElement;
   let groupElement: SVGGElement;
@@ -749,6 +760,17 @@
 </script>
 
 <div class="starmap-container" class:invert-display={invertDisplay} style="touch-action: none;" bind:this={starmapContainer}>
+  <AppShell bind:mode>
+    <svelte:fragment slot="rail">
+      <RailNav
+        on:new={() => dispatch('new')}
+        on:open={() => dispatch('upload')}
+        on:save={() => dispatch('download')}
+        on:settings={() => dispatch('settings')}
+        on:llmsettings={() => dispatch('llmsettings')}
+      />
+    </svelte:fragment>
+    <svelte:fragment slot="strip">
   <div class="starmap-header">
     <div class="starmap-heading">
       <h1>{starmap.name}</h1>
@@ -802,12 +824,16 @@
       </div>
     </div>
   </div>
+    </svelte:fragment>
+    <svelte:fragment slot="bar">
   <TimeControls
     temporal={ensuredTemporal}
     on:updatetemporal={handleTemporalUpdate}
     on:resetdisplay={handleResetDisplay}
     on:setactual={handleSetActual}
   />
+    </svelte:fragment>
+    <svelte:fragment slot="canvas">
   <div class="starmap-canvas">
     <svg
       bind:this={svgElement}
@@ -1021,7 +1047,14 @@
       isScaled={scaleBarVisible}
     />
   </div>
+    </svelte:fragment>
+    <svelte:fragment slot="detail">
   <GmNotesEditor body={starmap} />
+    </svelte:fragment>
+    <svelte:fragment slot="fab">
+      {#if mode === 'phone'}<FabCluster actions={starmapFabActions} on:action={handleStarmapFabAction} />{/if}
+    </svelte:fragment>
+  </AppShell>
 
   {#if showContextMenu}
     <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px;">
