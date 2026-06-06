@@ -1696,28 +1696,28 @@
         on:settings={() => dispatch('settings')}
         on:llmsettings={() => dispatch('llmsettings')}
       >
-      {#if mode === 'phone'}
-        <!-- On phone the canvas toggle toolbar is hidden, so the view options live in
-             the slide-in rail (the "everything menu"). Same binds as the desktop toolbar. -->
-        <div class="rail-view-options">
-          <h3 class="rail-section-title">View</h3>
-          <label><input type="checkbox" bind:checked={showNames} /> Names</label>
-          <label><input type="checkbox" bind:checked={showZones} on:change={() => showZoneKeyPanel = showZones} /> Zones</label>
-          <label><input type="checkbox" bind:checked={showLPoints} /> Lagrange points</label>
-          {#if $starmapUiStore.gridType === 'traveller-hex'}
-            <label><input type="checkbox" bind:checked={showTravellerZones} /> Traveller zones</label>
-          {/if}
-          <label><input type="checkbox" bind:checked={showVectors} /> Vectors</label>
-          <label class="rail-slider">
-            <span>Toytown</span>
-            <input type="range" min="0" max="1" step="0.01" bind:value={$systemStore.toytownFactor} on:change={() => {
-              if ($systemStore.toytownFactor < 0.005) $systemStore.toytownFactor = 0;
-              handleSliderRelease();
-            }} />
-          </label>
-          <button class="rail-btn" on:click={() => visualizer?.resetView()}>Reset view</button>
-        </div>
-      {/if}
+      <!-- View options live in the rail on BOTH desktop and phone now (the old canvas
+           toggle toolbar is gone, keeping the orrery clean). On desktop the rail is the
+           persistent left column; on phone it's the slide-in menu. -->
+      <div class="rail-view-options">
+        <h3 class="rail-section-title">View</h3>
+        <button class="rail-btn" on:click={() => { railOpen = false; zoomOut(); }}>{focusedBody && focusedBody.parentId ? 'Zoom out' : 'To starmap'}</button>
+        <button class="rail-btn" on:click={() => visualizer?.resetView()}>Reset view</button>
+        <label><input type="checkbox" bind:checked={showNames} /> Names</label>
+        <label><input type="checkbox" bind:checked={showZones} on:change={() => showZoneKeyPanel = showZones} /> Zones</label>
+        <label><input type="checkbox" bind:checked={showLPoints} /> Lagrange points</label>
+        {#if $starmapUiStore.gridType === 'traveller-hex'}
+          <label><input type="checkbox" bind:checked={showTravellerZones} /> Traveller zones</label>
+        {/if}
+        <label><input type="checkbox" bind:checked={showVectors} /> Vectors</label>
+        <label class="rail-slider">
+          <span>Toytown</span>
+          <input type="range" min="0" max="1" step="0.01" bind:value={$systemStore.toytownFactor} on:change={() => {
+            if ($systemStore.toytownFactor < 0.005) $systemStore.toytownFactor = 0;
+            handleSliderRelease();
+          }} />
+        </label>
+      </div>
       <!-- System actions (formerly the SystemSummary hamburger) — shown on desktop AND
            phone now that the summary strip is retired in favour of the BodyPicker. -->
       <div class="rail-view-options">
@@ -1747,43 +1747,7 @@
       />
     {/if}
 
-    {#if mode !== 'phone'}
-    <div class="controls">
-        <button on:click={zoomOut}>
-            {focusedBody && focusedBody.parentId ? 'Zoom Out' : 'To Starmap'}
-        </button>
-        <button on:click={() => visualizer?.resetView()}>Reset View</button>
-        <label>
-            <input type="checkbox" bind:checked={showNames} />
-            Toggle Names
-        </label>
-        <label>
-            <input type="checkbox" bind:checked={showZones} on:change={() => showZoneKeyPanel = showZones} />
-            Show Zones
-        </label>
-        <label>
-            <input type="checkbox" bind:checked={showLPoints} />
-            Show L-Points
-        </label>
-        {#if $starmapUiStore.gridType === 'traveller-hex'}
-            <label>
-                <input type="checkbox" bind:checked={showTravellerZones} />
-                Show Traveller Zones
-            </label>
-        {/if}
-        <label>
-            <input type="checkbox" bind:checked={showVectors} />
-            Show Vectors
-        </label>
-        <label>
-            Toytown View:
-            <input type="range" min="0" max="1" step="0.01" bind:value={$systemStore.toytownFactor} on:change={() => {
-                if ($systemStore.toytownFactor < 0.005) $systemStore.toytownFactor = 0;
-                handleSliderRelease();
-            }} />
-        </label>
-    </div>
-    {/if}
+    <!-- The canvas toggle toolbar moved to the rail's View section (clean orrery). -->
 
         <div class="main-view">
             <BodyPicker
