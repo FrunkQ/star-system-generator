@@ -2252,7 +2252,10 @@
     width: min(560px, calc(100% - 24px));
   }
   .time-overlay.phone {
-    /* sit above the bottom-sheet peek (~86px); leave the bottom-right FAB room */
+    /* fixed to the viewport (the orrery .main-view is short on phone); sit above the
+       bottom-sheet peek (~86px) and leave the bottom-right FAB room */
+    position: fixed;
+    z-index: 1150;
     bottom: 98px;
     left: 8px;
     right: 84px;

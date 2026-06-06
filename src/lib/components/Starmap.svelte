@@ -1332,6 +1332,8 @@
     width: min(560px, calc(100% - 24px));
   }
   .time-overlay.phone {
+    position: fixed;
+    z-index: 1150;
     bottom: 98px;
     left: 8px;
     right: 84px;
