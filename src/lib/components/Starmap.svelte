@@ -776,6 +776,7 @@
       <h1>{starmap.name}</h1>
     </div>
     <div class="header-controls">
+      {#if mode !== 'phone'}
       <label>
         <input type="checkbox" bind:checked={$starmapUiStore.showBackgroundImage} disabled={invertDisplay} />
         Show Background
@@ -800,7 +801,8 @@
         </select>
       </label>
       <button on:click={resetView}>Reset View</button>
-      
+      {/if}
+
       <div class="dropdown">
           <button on:click={() => showDropdown = !showDropdown} class="hamburger-button">&#9776;</button>
           {#if showDropdown}
