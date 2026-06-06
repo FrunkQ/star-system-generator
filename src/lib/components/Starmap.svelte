@@ -526,7 +526,7 @@
   }
 
   // --- BodyPicker (starmap-scoped: pick a system by name) ---
-  const systemPickerCategorize = () => 'Systems';
+  const systemPickerCategorize = () => ['Systems'];
   function systemPickerColor(sysNode: any): string {
       const vis = getVisualNodes(sysNode.system);
       return vis.length ? getStarColor(vis[0]) : '#888';

@@ -9,6 +9,26 @@
   import { getNodeColor } from '$lib/rendering/colors';
   import { AU_KM } from '$lib/constants';
 
+  // Stars white, Constructs yellow (Alex), Biospheres green, etc. — category swatches so
+  // the established type colours read on the list. Declared before the props that default
+  // to it (const is in TDZ until this line).
+  const DEFAULT_CAT_COLORS: Record<string, string> = {
+    'Stars': '#f5f1ea',
+    'Planets': '#9aa7b4',
+    'Moons': '#c2c2c2',
+    'Belts': '#8a8f9a',
+    'Rings': '#d9c08a',
+    'Terrestrial': '#cc6600',
+    'Gas giants': '#cc0000',
+    'Ice giants': '#add8e6',
+    'Human-habitable': '#007bff',
+    'Earth-like': '#10b981',
+    'Biospheres': '#00ff00',
+    'Constructs': '#ffd24d',
+    'Systems': '#f5f1ea',
+    'Other': '#888888'
+  };
+
   export let nodes: SystemNode[] = [];
   export let focusedId: string | null = null;
   export let placeholder = 'Search bodies…';
@@ -17,18 +37,25 @@
   export let inline = false; // embed in a form (relative, full-width) vs float over a canvas
 
   // Injectable so the same picker drives the starmap (systems) as well as a system (bodies).
-  export let categorize: (n: any) => string = defaultCategorize;
+  // categorize returns ALL categories a node belongs to (overlapping, like the old summary
+  // strip: a terrestrial planet with a biosphere is in Planets + Terrestrial + Biospheres).
+  export let categorize: (n: any) => string[] = defaultCategorize;
   export let categoryOrder: string[] = [
     'Stars',
-    'Terrestrial planets',
-    'Gas giants',
-    'Ice giants',
+    'Planets',
     'Moons',
     'Belts',
     'Rings',
+    'Terrestrial',
+    'Gas giants',
+    'Ice giants',
+    'Human-habitable',
+    'Earth-like',
+    'Biospheres',
     'Constructs',
     'Other'
   ];
+  export let categoryColors: Record<string, string> = DEFAULT_CAT_COLORS;
   export let colorOf: (n: any) => string = getNodeColor;
   export let contextOf: (n: any) => string = defaultContext;
   export let roleOf: (n: any) => string = defaultRole;
@@ -41,18 +68,27 @@
   let drill: string | null = null; // active category when drilled in
   let root: HTMLElement;
 
-  function defaultCategorize(n: any): string {
-    if (n.kind === 'construct') return 'Constructs';
+  // Mirrors the old SystemSummary stat definitions so the picker's counts match 1:1
+  // (overlapping membership: Planets + Terrestrial + Biospheres etc.).
+  function defaultCategorize(n: any): string[] {
+    if (n.kind === 'construct') return ['Constructs'];
     const cls = (n.classes || []).join(' ');
     const rh = n.roleHint;
-    if (rh === 'star' || /(^|\/)star/.test(cls)) return 'Stars';
-    if (/gas-giant/.test(cls)) return 'Gas giants';
-    if (/ice-giant/.test(cls)) return 'Ice giants';
-    if (rh === 'moon') return 'Moons';
-    if (rh === 'belt') return 'Belts';
-    if (rh === 'ring') return 'Rings';
-    if (rh === 'planet') return 'Terrestrial planets';
-    return 'Other';
+    if (rh === 'star' || /(^|\/)star/.test(cls)) return ['Stars'];
+    if (rh === 'belt') return ['Belts'];
+    if (rh === 'ring') return ['Rings'];
+    const cats: string[] = [];
+    if (rh === 'planet') cats.push('Planets');
+    if (rh === 'moon') cats.push('Moons');
+    if (rh === 'planet' || rh === 'moon') {
+      if (/ice-giant/.test(cls)) cats.push('Ice giants');
+      else if (/gas-giant/.test(cls)) cats.push('Gas giants');
+      else cats.push('Terrestrial');
+      if (n.tags?.some((t: any) => t.key === 'habitability/human')) cats.push('Human-habitable');
+      if (n.tags?.some((t: any) => t.key === 'habitability/earth-like')) cats.push('Earth-like');
+      if (n.biosphere) cats.push('Biospheres');
+    }
+    return cats.length ? cats : ['Other'];
   }
   function defaultContext(n: any): string {
     const pid = n.orbit?.hostId || n.parentId;
@@ -73,9 +109,10 @@
   $: byCat = (() => {
     const m = new Map<string, any[]>();
     for (const n of selectable as any[]) {
-      const c = categorize(n);
-      if (!m.has(c)) m.set(c, []);
-      m.get(c)!.push(n);
+      for (const c of categorize(n)) {
+        if (!m.has(c)) m.set(c, []);
+        m.get(c)!.push(n);
+      }
     }
     for (const arr of m.values()) arr.sort((a, b) => a.name.localeCompare(b.name));
     return m;
@@ -104,7 +141,7 @@
   }
   function openToFocused() {
     open = true;
-    drill = focused ? categorize(focused) : null;
+    drill = focused ? (categorize(focused)[0] ?? null) : null;
     addOutside();
   }
   function clearSearch() {
@@ -216,7 +253,7 @@
         <ul>
           {#each categories as c (c.key)}
             <li><button class="row category" on:click={() => (drill = c.key)}>
-              <span class="dot" style="background:{colorOf(c.items[0])}"></span>
+              <span class="dot" style="background:{categoryColors[c.key] ?? colorOf(c.items[0])}"></span>
               <span class="row-name">{c.key}</span>
               <span class="row-ctx">{c.items.length}</span>
               <span class="chevron">›</span>
