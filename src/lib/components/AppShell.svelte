@@ -106,6 +106,7 @@
   }
   .area.rail {
     grid-area: rail;
+    max-width: 200px;
     border-right: 1px solid #1c1f27;
     overflow-y: auto;
   }
@@ -125,6 +126,9 @@
   }
   .area.detail {
     grid-area: detail;
+    /* Bounded so the detail content can't expand and starve the canvas/strip.
+       Empty (gated) detail collapses the auto track to 0. */
+    width: clamp(280px, 26vw, 380px);
     border-left: 1px solid #1c1f27;
     overflow-y: auto;
   }
