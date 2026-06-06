@@ -38,7 +38,7 @@ const BODY_DEFS: Record<string, [string, string]> = {
   habitable: ['--body-habitable', '#007bff'],
   biosphere: ['--body-biosphere', '#00ff00'],
   belt: ['--body-belt', '#888888'],
-  construct: ['--body-construct', '#f0f0f0']
+  construct: ['--body-construct', '#ffd24d']
 };
 
 // Resolve a node's star colour key. Star classes come as either a single letter

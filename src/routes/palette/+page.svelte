@@ -42,7 +42,7 @@
       { name: 'brown-dwarf', v: '--body-brown-dwarf', hex: '#5d4037' },
       { name: 'habitable', v: '--body-habitable', hex: '#007bff', note: 'earth-like' },
       { name: 'biosphere', v: '--body-biosphere', hex: '#00ff00', note: 'shares green w/ goldilocks (intended)' },
-      { name: 'construct', v: '--body-construct', hex: '#f0f0f0' }
+      { name: 'construct', v: '--body-construct', hex: '#ffd24d', note: 'default construct (yellow)' }
     ]},
     { title: 'Star spectral class', layer: 'domain', ramp: true, items: [
       { name: 'O', v: '--star-o', hex: '#9bb0ff' }, { name: 'B', v: '--star-b', hex: '#aabfff' },
