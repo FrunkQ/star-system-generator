@@ -14,6 +14,7 @@
   import BodyDetailsPane from './BodyDetailsPane.svelte';
   import BodyImage from './BodyImage.svelte';
   import DescriptionEditor from './DescriptionEditor.svelte';
+  import BodyPicker from './BodyPicker.svelte';
   import GmNotesEditor from './GmNotesEditor.svelte';
   import ZoneKey from './ZoneKey.svelte';
   import ContextMenu from './ContextMenu.svelte'; 
@@ -1808,9 +1809,15 @@
     {/if}
 
         <div class="main-view">
-            <SystemVisualizer 
-                bind:this={visualizer} 
-                bind:cameraMode 
+            <BodyPicker
+                nodes={$systemStore.nodes}
+                focusedId={focusedBodyId}
+                top={mode === 'phone' ? 62 : 8}
+                on:select={(e) => updateFocus(e.detail)}
+            />
+            <SystemVisualizer
+                bind:this={visualizer}
+                bind:cameraMode
                 system={$systemStore} 
                 {rulePack} 
                 currentTime={isPlanning ? (transitChainTime + (transitDelayDays * 86400 * 1000) + transitJourneyOffset) : currentTime} 
@@ -2236,6 +2243,7 @@
      slots. main-view (orrery wrapper) + details-view (panes) just flow inside their slots. */
   .main-view {
     width: 100%;
+    position: relative; /* anchor the BodyPicker overlay at top-centre */
   }
   .details-view {
     width: 100%;
