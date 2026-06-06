@@ -788,7 +788,27 @@
         on:save={() => dispatch('download')}
         on:settings={() => dispatch('settings')}
         on:llmsettings={() => dispatch('llmsettings')}
-      />
+      >
+        <!-- Starmap view options in the rail (desktop + phone), matching the system view. -->
+        <div class="rail-view-options">
+          <h3 class="rail-section-title">View</h3>
+          <button class="rail-btn" on:click={resetView}>Reset view</button>
+          <label><input type="checkbox" bind:checked={$starmapUiStore.showBackgroundImage} disabled={invertDisplay} /> Background</label>
+          <label title="Print-friendly white background + dark labels."><input type="checkbox" checked={invertDisplay} on:change={handleInvertDisplayToggle} /> Invert (print)</label>
+          {#if isScaled}
+            <label><input type="checkbox" checked={scaleBarVisible} on:change={handleScaleBarToggle} /> Scale bar</label>
+          {/if}
+          <label class="rail-slider">
+            <span>Snap grid</span>
+            <select bind:value={$starmapUiStore.gridType} class="grid-select inline">
+              <option value="none">No Grid</option>
+              <option value="grid">Grid</option>
+              <option value="hex">Hex</option>
+              <option value="traveller-hex">Traveller Hex</option>
+            </select>
+          </label>
+        </div>
+      </RailNav>
     </svelte:fragment>
     <svelte:fragment slot="strip">
   <div class="starmap-header">
@@ -796,33 +816,6 @@
       <h1>{starmap.name}</h1>
     </div>
     <div class="header-controls">
-      {#if mode !== 'phone'}
-      <label>
-        <input type="checkbox" bind:checked={$starmapUiStore.showBackgroundImage} disabled={invertDisplay} />
-        Show Background
-      </label>
-      <label title="Print-friendly white background and dark labels. Background image is disabled while active.">
-        <input type="checkbox" checked={invertDisplay} on:change={handleInvertDisplayToggle} />
-        Invert Display
-      </label>
-      {#if isScaled}
-        <label>
-          <input type="checkbox" checked={scaleBarVisible} on:change={handleScaleBarToggle} />
-          Show Scale Bar
-        </label>
-      {/if}
-      <label>
-        Snap Grid:
-        <select bind:value={$starmapUiStore.gridType} class="grid-select inline">
-          <option value="none">No Grid</option>
-          <option value="grid">Grid</option>
-          <option value="hex">Hex</option>
-          <option value="traveller-hex">Traveller Hex</option>
-        </select>
-      </label>
-      <button on:click={resetView}>Reset View</button>
-      {/if}
-
       <div class="dropdown">
           <button on:click={() => showDropdown = !showDropdown} class="hamburger-button">&#9776;</button>
           {#if showDropdown}
@@ -1323,6 +1316,50 @@
     flex-direction: column;
   }
 
+  .rail-view-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .rail-section-title {
+    margin: 0;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-faint);
+  }
+  .rail-view-options label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .rail-view-options label.rail-slider {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+  .rail-view-options label.rail-slider select {
+    width: 100%;
+  }
+  .rail-btn {
+    margin-top: 4px;
+    padding: 10px 12px;
+    background: var(--bg-control, #1b1e26);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+  }
+  .rail-btn:hover {
+    background: var(--bg-control-hover, #232733);
+  }
   .time-overlay {
     position: absolute;
     bottom: 14px;
