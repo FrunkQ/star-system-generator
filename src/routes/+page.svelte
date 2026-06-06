@@ -709,6 +709,20 @@
         on:upload={handleUploadStarmap} 
         on:loadExampleStarmap={handleLoadExampleStarmap}
     />
+  {:else if $starmapStore && currentSystemId}
+    <!-- SystemView owns its own AppShell (rail/strip/canvas/bar/detail/fab); forward app nav. -->
+    {#if $systemStore && effectiveRulePack}
+      <SystemView
+        system={$systemStore} rulePack={effectiveRulePack} {exampleSystems}
+        on:new={() => showNewStarmapModal = true}
+        on:open={handleUploadStarmap}
+        on:save={handleDownloadStarmap}
+        on:settings={() => showSettingsModal = true}
+        on:llmsettings={() => showLlmSettingsModal = true}
+        on:back={handleBackToStarmap}
+        on:renameNode={handleRenameNode}
+      />
+    {/if}
   {:else if $starmapStore}
     <AppShell bind:mode={shellMode}>
       <svelte:fragment slot="rail">
@@ -721,11 +735,6 @@
         />
       </svelte:fragment>
       <svelte:fragment slot="canvas">
-        {#if currentSystemId}
-          {#if $systemStore && effectiveRulePack}
-            <SystemView system={$systemStore} rulePack={effectiveRulePack} {exampleSystems} mode={shellMode} on:back={handleBackToStarmap} on:renameNode={handleRenameNode} />
-          {/if}
-        {:else}
     <Starmap
       bind:this={starmapComponent}
       starmap={$starmapStore}
@@ -773,7 +782,6 @@
           </p>
 
         </footer>
-        {/if}
       </svelte:fragment>
     </AppShell>
   {/if}

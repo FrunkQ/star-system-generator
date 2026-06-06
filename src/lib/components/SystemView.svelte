@@ -39,6 +39,9 @@
   import { broadcastService } from '$lib/broadcast';
   import DebugFooter from './DebugFooter.svelte';
   import FocusHeader from './FocusHeader.svelte';
+  import AppShell from './AppShell.svelte';
+  import RailNav from './RailNav.svelte';
+  import FabCluster from './FabCluster.svelte';
   import { calculateAllStellarZones } from '$lib/physics/zones';
   import { calculateEquilibriumTemperature, composeSurfaceTemperatureFromDeltaComponents, estimateBondAlbedo, estimateInternalHeatK } from '$lib/physics/temperature';
   import { ensureTemporalState, setMasterToDisplay, updateDisplayBySeconds } from '$lib/temporal/defaults';
@@ -47,9 +50,21 @@
   export let system: System;
   export let rulePack: RulePack;
   export let exampleSystems: string[];
-  // Responsive mode from the AppShell (via +page). On 'phone' the detail panel moves into
-  // a bottom sheet; on 'desktop' it stays as the right-hand panel.
-  export let mode: 'desktop' | 'phone' = 'desktop';
+
+  // Phase 03: SystemView owns its own AppShell. `mode` is driven by the shell (bound), and
+  // the detail panes live in the shell's detail slot (right panel on desktop, BottomSheet on
+  // phone). `dispatch('new'|'open'|'save'|'settings'|'llmsettings')` forwards the rail's app
+  // nav up to +page. Phone FAB actions:
+  let mode: 'desktop' | 'phone' = 'desktop';
+  let sheetSnap: 'peek' | 'half' | 'full' = 'peek';
+  const fabActions = [
+    { id: 'reset', label: 'Reset view', icon: '↺' },
+    { id: 'starmap', label: 'To Starmap', icon: 'S' }
+  ];
+  function handleFabAction(e: CustomEvent<string>) {
+    if (e.detail === 'reset') visualizer?.resetView();
+    else if (e.detail === 'starmap') zoomOut();
+  }
 
   const dispatch = createEventDispatcher();
 
@@ -1623,7 +1638,18 @@
 </script>
 <main>
   {#if $systemStore}
-    <SystemSummary 
+  <AppShell bind:mode sheetTitle={focusedBody?.name ?? 'Details'} bind:sheetSnap>
+    <svelte:fragment slot="rail">
+      <RailNav
+        on:new={() => dispatch('new')}
+        on:open={() => dispatch('open')}
+        on:save={() => dispatch('save')}
+        on:settings={() => dispatch('settings')}
+        on:llmsettings={() => dispatch('llmsettings')}
+      />
+    </svelte:fragment>
+    <svelte:fragment slot="strip">
+    <SystemSummary
       system={$systemStore} 
       {focusedBody}
       bind:showDropdown
@@ -1635,6 +1661,8 @@
       on:togglecrt={handleToggleCrt}
       on:clearmanualedit={() => systemStore.update(s => s ? { ...s, isManuallyEdited: false } : s)}
     />
+    </svelte:fragment>
+    <svelte:fragment slot="bar">
     {#if ensuredTemporal}
       <TimeControls
         temporal={ensuredTemporal}
@@ -1647,7 +1675,8 @@
         on:setactual={handleAlignActualToDisplayAnimated}
       />
     {/if}
-
+    </svelte:fragment>
+    <svelte:fragment slot="canvas">
     {#if !$systemStore.isManuallyEdited}
       <SystemGenerationControls
         system={$systemStore}
@@ -1695,7 +1724,6 @@
         </label>
     </div>
 
-    <div class="system-view-grid" class:phone={mode === 'phone'}>
         <div class="main-view">
             <SystemVisualizer 
                 bind:this={visualizer} 
@@ -1726,7 +1754,9 @@
                 <DescriptionEditor body={focusedBody} on:update={handleBodyUpdate} />
             {/if}
         </div>
-        <div class="details-view" class:phone-drawer={mode === 'phone' && focusedBody}>
+    </svelte:fragment>
+    <svelte:fragment slot="detail">
+        <div class="details-view">
             {#if focusedBody}
             <FocusHeader
                 focusedBody={focusedBody}
@@ -1817,8 +1847,13 @@
 
             
         </div>
-
-    </div>
+    </svelte:fragment>
+    <svelte:fragment slot="fab">
+      {#if mode === 'phone'}
+        <FabCluster actions={fabActions} on:action={handleFabAction} />
+      {/if}
+    </svelte:fragment>
+  </AppShell>
 
     {#if showSummaryContextMenu}
       {#if contextMenuType === 'generic'}
@@ -1898,9 +1933,9 @@
 <style>
   main {
     font-family: sans-serif;
-    padding: 0.5em;
+    padding: 0;
     font-size: 0.9em;
-    position: relative; 
+    position: relative;
   }
   .controls {
     margin: 0.5em 0;
@@ -2114,41 +2149,13 @@
     color: var(--text-faint) !important;
   }
 
-  .system-view-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 1em;
-  }
-
+  /* SystemView no longer owns the layout grid — AppShell places canvas/detail into its
+     slots. main-view (orrery wrapper) + details-view (panes) just flow inside their slots. */
   .main-view {
-    grid-column: 1;
+    width: 100%;
   }
-
   .details-view {
-    grid-column: 2;
-  }
-
-  /* Phone (Phase 03): single-column canvas; the detail panel floats up as a bottom drawer
-     (only when a body is focused, so there's no empty bar). A drag-snap BottomSheet can
-     replace this later — for now it's a fixed scrollable drawer. */
-  .system-view-grid.phone {
-    grid-template-columns: 1fr;
-  }
-  .details-view.phone-drawer {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    grid-column: 1;
-    max-height: 55vh;
-    overflow-y: auto;
-    background: var(--bg-panel);
-    border-top: 1px solid var(--border);
-    border-radius: 14px 14px 0 0;
-    box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.55);
-    padding: 10px 14px 16px;
-    z-index: 1200;
-    -webkit-overflow-scrolling: touch;
+    width: 100%;
   }
 
   .name-input {
