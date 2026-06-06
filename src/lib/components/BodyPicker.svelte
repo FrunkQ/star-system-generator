@@ -7,6 +7,7 @@
   import { createEventDispatcher, onDestroy } from 'svelte';
   import type { SystemNode } from '$lib/types';
   import { getNodeColor } from '$lib/rendering/colors';
+  import { AU_KM } from '$lib/constants';
 
   export let nodes: SystemNode[] = [];
   export let focusedId: string | null = null;
@@ -22,7 +23,8 @@
     'Gas giants',
     'Ice giants',
     'Moons',
-    'Belts & rings',
+    'Belts',
+    'Rings',
     'Constructs',
     'Other'
   ];
@@ -46,14 +48,20 @@
     if (/gas-giant/.test(cls)) return 'Gas giants';
     if (/ice-giant/.test(cls)) return 'Ice giants';
     if (rh === 'moon') return 'Moons';
-    if (rh === 'belt' || rh === 'ring') return 'Belts & rings';
+    if (rh === 'belt') return 'Belts';
+    if (rh === 'ring') return 'Rings';
     if (rh === 'planet') return 'Terrestrial planets';
     return 'Other';
   }
   function defaultContext(n: any): string {
     const pid = n.orbit?.hostId || n.parentId;
     const p = (nodes as any[]).find((x) => x.id === pid);
-    return p ? `orbits ${p.name}` : '';
+    if (!p) return '';
+    // A construct/object sitting on the surface has orbit radius ~= the host radius
+    // (altitude ~0), so say "on X" rather than "orbits X".
+    const a = n.orbit?.elements?.a_AU;
+    if (a != null && p.radiusKm && a * AU_KM <= p.radiusKm * 1.005) return `on ${p.name}`;
+    return `orbits ${p.name}`;
   }
   function defaultRole(n: any): string {
     if (n.kind === 'construct') return 'construct';
@@ -207,6 +215,7 @@
         <ul>
           {#each categories as c (c.key)}
             <li><button class="row category" on:click={() => (drill = c.key)}>
+              <span class="dot" style="background:{colorOf(c.items[0])}"></span>
               <span class="row-name">{c.key}</span>
               <span class="row-ctx">{c.items.length}</span>
               <span class="chevron">›</span>
