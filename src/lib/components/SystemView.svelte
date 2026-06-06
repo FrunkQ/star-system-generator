@@ -57,6 +57,8 @@
   // nav up to +page. Phone FAB actions:
   let mode: 'desktop' | 'phone' = 'desktop';
   let sheetSnap: 'peek' | 'half' | 'full' = 'peek';
+  let railOpen = false; // phone slide-in rail; closed before opening a modal
+  let railUploadInput: HTMLInputElement; // hidden file input for the rail's Upload JSON
   const fabActions = [
     { id: 'add-planet', label: 'Add planet', icon: '+' },
     { id: 'add-construct', label: 'Add construct', icon: '◇' },
@@ -1683,7 +1685,7 @@
 </script>
 <main>
   {#if $systemStore}
-  <AppShell bind:mode sheetTitle={focusedBody?.name ?? 'Details'} bind:sheetSnap>
+  <AppShell bind:mode bind:railOpen sheetTitle={focusedBody?.name ?? 'Details'} bind:sheetSnap>
     <svelte:fragment slot="rail">
       <RailNav
         on:new={() => dispatch('new')}
@@ -1712,6 +1714,14 @@
             }} />
           </label>
           <button class="rail-btn" on:click={() => visualizer?.resetView()}>Reset view</button>
+        </div>
+        <div class="rail-view-options">
+          <h3 class="rail-section-title">System</h3>
+          <button class="rail-btn" on:click={() => { railOpen = false; handleDownloadJson(); }}>Download JSON…</button>
+          <button class="rail-btn" on:click={() => { railOpen = false; railUploadInput?.click(); }}>Upload JSON…</button>
+          <input type="file" accept="application/json,.json" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
+          <button class="rail-btn" on:click={() => { railOpen = false; handleShare(); }}>Open projector</button>
+          <button class="rail-btn" on:click={() => { railOpen = false; showReportConfigModal = true; }}>Generate report…</button>
         </div>
       {/if}
       </RailNav>
