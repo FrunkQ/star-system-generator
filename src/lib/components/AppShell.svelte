@@ -130,7 +130,7 @@
     {/if}
 
     {#if $$slots.fab}
-      <div class="fab-layer" style={$$slots.bar ? `--fab-bottom: ${phoneBarH + 16}px;` : ''}><slot name="fab" /></div>
+      <div class="fab-layer" style={$$slots.detail ? '--fab-bottom: 98px;' : ($$slots.bar ? `--fab-bottom: ${phoneBarH + 16}px;` : '')}><slot name="fab" /></div>
     {/if}
   {/if}
 </div>

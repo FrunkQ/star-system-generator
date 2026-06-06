@@ -847,15 +847,6 @@
     </div>
   </div>
     </svelte:fragment>
-    <svelte:fragment slot="bar">
-  <TimeControls
-    compact={mode === 'phone'}
-    temporal={ensuredTemporal}
-    on:updatetemporal={handleTemporalUpdate}
-    on:resetdisplay={handleResetDisplay}
-    on:setactual={handleSetActual}
-  />
-    </svelte:fragment>
     <svelte:fragment slot="canvas">
   <div class="starmap-canvas">
     <BodyPicker
@@ -1082,6 +1073,17 @@
       unitIsPrefix={starmap.unitIsPrefix}
       isScaled={scaleBarVisible}
     />
+    {#if ensuredTemporal}
+      <div class="time-overlay" class:phone={mode === 'phone'}>
+        <TimeControls
+          compact={mode === 'phone'}
+          temporal={ensuredTemporal}
+          on:updatetemporal={handleTemporalUpdate}
+          on:resetdisplay={handleResetDisplay}
+          on:setactual={handleSetActual}
+        />
+      </div>
+    {/if}
   </div>
     </svelte:fragment>
     <svelte:fragment slot="detail">
@@ -1321,6 +1323,21 @@
     flex-direction: column;
   }
 
+  .time-overlay {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 55;
+    width: min(560px, calc(100% - 24px));
+  }
+  .time-overlay.phone {
+    bottom: 98px;
+    left: 8px;
+    right: 84px;
+    transform: none;
+    width: auto;
+  }
   .starmap-canvas {
     position: relative;
     flex: 1;

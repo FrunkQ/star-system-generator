@@ -1735,21 +1735,6 @@
       </div>
       </RailNav>
     </svelte:fragment>
-    <svelte:fragment slot="bar">
-    {#if ensuredTemporal}
-      <TimeControls
-        compact={mode === 'phone'}
-        temporal={ensuredTemporal}
-        masterOverrideSec={isAligningTime ? alignTargetSec : null}
-        displayOverrideSec={isAligningTime ? alignActualSecondsOverride : null}
-        bind:isPlaying
-        bind:timeScale
-        on:updatetemporal={handleTimeControlsUpdate}
-        on:resetdisplay={handleResetDisplayToActual}
-        on:setactual={handleAlignActualToDisplayAnimated}
-      />
-    {/if}
-    </svelte:fragment>
     <svelte:fragment slot="canvas">
     {#if !$systemStore.isManuallyEdited}
       <SystemGenerationControls
@@ -1831,6 +1816,22 @@
                 on:showBodyContextMenu={handleShowBodyContextMenu}
                 on:backgroundContextMenu={handleBackgroundContextMenu}
             />
+
+            {#if ensuredTemporal}
+              <div class="time-overlay" class:phone={mode === 'phone'}>
+                <TimeControls
+                  compact={mode === 'phone'}
+                  temporal={ensuredTemporal}
+                  masterOverrideSec={isAligningTime ? alignTargetSec : null}
+                  displayOverrideSec={isAligningTime ? alignActualSecondsOverride : null}
+                  bind:isPlaying
+                  bind:timeScale
+                  on:updatetemporal={handleTimeControlsUpdate}
+                  on:resetdisplay={handleResetDisplayToActual}
+                  on:setactual={handleAlignActualToDisplayAnimated}
+                />
+              </div>
+            {/if}
         </div>
     </svelte:fragment>
     <svelte:fragment slot="detail">
@@ -2239,7 +2240,24 @@
      slots. main-view (orrery wrapper) + details-view (panes) just flow inside their slots. */
   .main-view {
     width: 100%;
-    position: relative; /* anchor the BodyPicker overlay at top-centre */
+    position: relative; /* anchor the BodyPicker + time overlays */
+  }
+  /* Time transport floats over the bottom of the orrery (clean-orrery + overlay-buttons). */
+  .time-overlay {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 55;
+    width: min(560px, calc(100% - 24px));
+  }
+  .time-overlay.phone {
+    /* sit above the bottom-sheet peek (~86px); leave the bottom-right FAB room */
+    bottom: 98px;
+    left: 8px;
+    right: 84px;
+    transform: none;
+    width: auto;
   }
   .details-view {
     width: 100%;

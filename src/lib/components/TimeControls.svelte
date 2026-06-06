@@ -26,6 +26,9 @@
 
   const dispatch = createEventDispatcher();
 
+  // --- Transport UI state ---
+  let expanded = false; // the "⋯" secondary panel (actual time / set-actual / auto-reset)
+
   // --- Scrub / playback state (owned here) ---
   let scrubControlValue = 0;
   let autoResetTimeScrub = true;
@@ -250,252 +253,175 @@
   });
 </script>
 
-<div class="time-panel" class:compact>
-  <div class="time-title" title="Relativity mode is off. Time dilation sold separately.">🕒</div>
-  <div class="clock-line">
-    <div class="scrub-control">
-      <div class="scrub-label-row">
-        <label class="scrub-label" for="time-scrub">
-          Scrub Display Time
-          {#if currentRate !== 0}
-            <span class="scrub-rate">({formattedScrubRate})</span>
-          {/if}
-        </label>
-        <label class="checkbox-label" title="When checked, releasing the slider resets speed to zero and stops time. When unchecked, speed is maintained and only advances when Play is clicked.">
-          <input type="checkbox" bind:checked={autoResetTimeScrub} />
-          Auto-reset speed
-        </label>
-      </div>
-      <div class="scrub-slider-row">
-        <div class="scrub-slider-wrap">
-          <input
-            id="time-scrub"
-            class="scrub-slider"
-            type="range"
-            min="-1"
-            max="1"
-            step="0.01"
-            value={scrubControlValue}
-            on:input={handleScrubInput}
-            on:mouseup={handleScrubRelease}
-            on:touchend={handleScrubRelease}
-            on:pointerup={handleScrubRelease}
-            on:change={handleScrubRelease}
-          />
-          <div class="scrub-scale">
-            <span>-10y/s</span>
-            <span>slow</span>
-            <span>pause</span>
-            <span>slow</span>
-            <span>+10y/s</span>
-          </div>
-        </div>
-        <button
-          class="play-toggle"
-          on:click={togglePlayback}
-          title={isPlaying ? 'Pause real-time clock advance' : 'Play real-time clock advance (1s/s)'}
-          aria-label={isPlaying ? 'Pause time playback' : 'Start time playback'}
-          >{isPlaying ? '⏸' : '▶'}</button>
-      </div>
-    </div>
-    <div class="time-readouts">
-      <span class="display-time" title={"Display seconds from big bang: " + displayClockSeconds}>Display Time: <strong>{displayClockLabel}</strong></span>
-      <span class="actual-time" title={"Actual seconds from big bang: " + masterClockSeconds}><strong>Actual Time:</strong> [{masterCalendarLabel}]</span>
-    </div>
-    <div class="clock-actions">
-      <button class="clock-action btn-blue" on:click={handleResetDisplay} title="Reset display time to current actual time">Reset to Actual Time</button>
-      <button class="clock-action btn-red" on:click={handleSetActual} title="Set actual time to current display time">Set Actual Time to Display Time</button>
-    </div>
+<div class="time-transport" class:expanded class:compact>
+  <button class="tt-btn" on:click={handleResetDisplay} title="Jump display time to actual (now)" aria-label="Jump to now">⏮</button>
+  <button class="tt-btn tt-play" class:playing={isPlaying} on:click={togglePlayback} title={isPlaying ? 'Pause' : 'Play (real-time)'} aria-label={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '⏸' : '▶'}</button>
+
+  <div class="tt-shuttle" title="Scrub — drag to fast-forward / rewind. Release to {autoResetTimeScrub ? 'stop' : 'hold speed'}.">
+    <span class="tt-center" aria-hidden="true"></span>
+    <input
+      class="tt-slider"
+      type="range"
+      min="-1" max="1" step="0.01"
+      value={scrubControlValue}
+      on:input={handleScrubInput}
+      on:mouseup={handleScrubRelease}
+      on:touchend={handleScrubRelease}
+      on:pointerup={handleScrubRelease}
+      on:change={handleScrubRelease}
+      aria-label="Time scrub"
+    />
   </div>
+
+  <div class="tt-rate" class:active={currentRate !== 0}>{currentRate !== 0 ? formattedScrubRate : (isPlaying ? '1s/s' : 'paused')}</div>
+  <div class="tt-date" title={"Display time (seconds from big bang: " + displayClockSeconds + ")"}>{displayClockLabel}</div>
+
+  <button class="tt-btn tt-more" class:on={expanded} on:click={() => (expanded = !expanded)} title="More time controls" aria-label="More time controls">⋯</button>
+
+  {#if expanded}
+    <div class="tt-panel">
+      <div class="tt-prow"><span class="tt-k">Actual</span><span class="tt-v" title={"Actual seconds from big bang: " + masterClockSeconds}>{masterCalendarLabel}</span></div>
+      <label class="tt-check" title="When on, releasing the scrubber stops time. When off, the set speed is held until you press play.">
+        <input type="checkbox" bind:checked={autoResetTimeScrub} /> Auto-reset speed on release
+      </label>
+      <button class="tt-action" on:click={handleResetDisplay}>Reset display → actual</button>
+      <button class="tt-action danger" on:click={handleSetActual}>Set actual → display</button>
+    </div>
+  {/if}
 </div>
 
 <style>
-  .time-panel {
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: rgba(18, 18, 18, 0.9);
-    padding: 8px 10px;
-    margin-bottom: 10px;
+  /* Transport pill — a clean overlay over the orrery: jump-to-now, play/pause,
+     a spring-back shuttle scrub (the main interaction), the live date, and a
+     "..." that expands the secondary actions. */
+  .time-transport {
+    position: relative;
     display: flex;
-    gap: 12px;
     align-items: center;
-    width: 100%;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg-panel, #14161c) 86%, transparent);
+    border: 1px solid var(--border, #2a2d36);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(7px);
+    color: var(--text, #e8e8e8);
+    font-size: 0.85rem;
     box-sizing: border-box;
   }
-  .time-title {
-    font-size: 3rem;
-    font-weight: 400;
-    color: var(--text);
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    white-space: nowrap;
-  }
-  .clock-line {
-    display: flex;
-    align-items: center;
-    gap: 1.2em;
-    color: var(--text-muted);
-    font-size: 0.85em;
-    flex: 1 1 auto;
-    width: 100%;
-    min-width: 0;
-  }
-  .scrub-control {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
+  .tt-btn {
     flex: 0 0 auto;
-    min-width: 390px;
-  }
-  .scrub-label-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-  }
-  .scrub-label {
-    color: var(--text-muted);
-    font-size: 0.8rem;
-  }
-  .scrub-rate {
-    color: #00ffff;
-    font-weight: bold;
-    margin-left: 4px;
-  }
-  .checkbox-label {
+    width: 34px;
+    height: 34px;
     display: flex;
     align-items: center;
-    gap: 4px;
-    font-size: 0.72rem;
-    color: var(--text-faint);
-    cursor: pointer;
-  }
-  .checkbox-label input {
-    margin: 0;
-    cursor: pointer;
-  }
-  .scrub-slider-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .scrub-slider-wrap {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-  .scrub-slider {
-    width: 100%;
-  }
-  .scrub-scale {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
-    font-size: 0.72rem;
-    color: var(--text-faint);
-  }
-  .scrub-scale span:nth-child(1) { text-align: left; }
-  .scrub-scale span:nth-child(2) { text-align: center; }
-  .scrub-scale span:nth-child(3) { text-align: center; }
-  .scrub-scale span:nth-child(4) { text-align: center; }
-  .scrub-scale span:nth-child(5) { text-align: right; }
-  .play-toggle {
-    width: 30px;
-    min-width: 30px;
-    height: 24px;
-    padding: 0;
-    line-height: 1;
-    font-size: 0.9rem;
-    background: #1f1f1f;
-    border: 1px solid var(--border);
-    color: var(--text);
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  .play-toggle:hover {
-    background: var(--bg-control-hover);
-  }
-  .time-readouts {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
     justify-content: center;
-  }
-  .display-time {
-    font-size: 1rem;
-    white-space: nowrap;
-  }
-  .actual-time {
-    color: var(--text-faint);
-    font-size: 0.9em;
-    white-space: nowrap;
-  }
-  .clock-actions {
-    margin-left: auto;
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
-  .clock-action {
-    padding: 2px 6px;
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    color: var(--text);
-    border-radius: 3px;
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 8px;
+    background: var(--bg-control, #1b1e26);
+    color: var(--text, #e8e8e8);
+    font-size: 0.95rem;
+    line-height: 1;
     cursor: pointer;
   }
-  .clock-action.btn-blue {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--on-accent);
+  .tt-btn:hover { background: var(--bg-control-hover, #232733); }
+  .tt-play {
+    background: var(--accent, #ff5a1f);
+    border-color: var(--accent, #ff5a1f);
+    color: var(--on-accent, #fff);
   }
-  .clock-action.btn-blue:hover {
-    background: var(--accent-hover);
+  .tt-play:hover { background: var(--accent-hover, #ff7a45); }
+  .tt-play.playing { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #ff5a1f) 45%, transparent); }
+
+  .tt-shuttle {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 110px;
+    display: flex;
+    align-items: center;
   }
-  .clock-action.btn-red {
-    background: var(--status-bad);
-    border-color: var(--status-bad);
-    color: #fff;
+  .tt-center {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 2px;
+    height: 14px;
+    transform: translate(-50%, -50%);
+    background: var(--text-faint, #6b7280);
+    border-radius: 1px;
+    pointer-events: none;
   }
-  .clock-action.btn-red:hover {
-    filter: brightness(1.12);
+  .tt-slider {
+    width: 100%;
+    margin: 0;
+    accent-color: var(--accent, #ff5a1f);
+    cursor: ew-resize;
   }
 
-  /* ---- Compact (phone bottom bar) ---- */
-  .time-panel.compact {
-    margin-bottom: 0;
-    padding: 4px 6px;
-    gap: 8px;
-    border: none;
-    background: transparent;
-    height: 100%;
-  }
-  .time-panel.compact .time-title {
-    display: none; /* drop the 3rem clock glyph on phone */
-  }
-  .time-panel.compact .clock-line {
-    flex-wrap: nowrap;
-    gap: 10px;
-    align-items: center;
-  }
-  .time-panel.compact .scrub-control {
-    min-width: 240px;
-  }
-  .time-panel.compact .time-readouts {
+  .tt-rate {
     flex: 0 0 auto;
+    min-width: 52px;
+    text-align: center;
+    font-size: 0.74rem;
+    color: var(--text-faint, #8a8f9a);
+    font-variant-numeric: tabular-nums;
   }
-  .time-panel.compact .display-time {
-    font-size: 0.85rem;
-  }
-  .time-panel.compact .clock-actions {
-    margin-left: 0;
-    flex: 0 0 auto;
-  }
-  .time-panel.compact .clock-action {
+  .tt-rate.active { color: #00e5ff; font-weight: 700; }
+
+  .tt-date {
+    flex: 0 1 auto;
     white-space: nowrap;
-    font-size: 0.78rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 230px;
+    font-weight: 600;
   }
+  .tt-more.on { background: var(--bg-control-hover, #232733); }
+
+  .tt-panel {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    min-width: 240px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--bg-panel, #14161c);
+    border: 1px solid var(--border, #2a2d36);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+  }
+  .tt-prow { display: flex; justify-content: space-between; gap: 12px; font-size: 0.85rem; }
+  .tt-k { color: var(--text-faint, #8a8f9a); }
+  .tt-v { color: var(--text, #e8e8e8); }
+  .tt-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: var(--text-muted, #cfcfcf);
+    cursor: pointer;
+  }
+  .tt-action {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border, #2a2d36);
+    background: var(--bg-control, #1b1e26);
+    color: var(--text, #e8e8e8);
+    cursor: pointer;
+    text-align: left;
+  }
+  .tt-action:hover { background: var(--bg-control-hover, #232733); }
+  .tt-action.danger {
+    background: var(--status-bad, #b91c1c);
+    border-color: var(--status-bad, #b91c1c);
+    color: #fff;
+  }
+  .tt-action.danger:hover { filter: brightness(1.12); }
+
+  /* Phone: hide the inline date (it's in the expand panel / sheet); tighten. */
+  .time-transport.compact { gap: 6px; padding: 4px 6px; }
+  .time-transport.compact .tt-date { display: none; }
+  .time-transport.compact .tt-rate { min-width: 0; }
 </style>
