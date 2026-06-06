@@ -15,6 +15,7 @@
 
   import DualRangeSlider from './DualRangeSlider.svelte';
   import TransitStressGraph from './TransitStressGraph.svelte';
+  import BodyPicker from './BodyPicker.svelte';
 
   function getTcmClass(g: number): string {
       if (g > 10.0) return 'tcm-critical';
@@ -957,12 +958,15 @@
     
     <div class="form-group">
         <label>Target</label>
-        <select bind:value={targetId} on:change={handleTargetChange}>
-            <option value="">Select Target...</option>
-            {#each bodies as body}
-                <option value={body.id} style="color: {getOptionColor(body)}">{body.name}</option>
-            {/each}
-        </select>
+        <BodyPicker
+            inline
+            nodes={bodies}
+            focusedId={targetId}
+            emptyLabel="Select target…"
+            placeholder="Search destinations…"
+            colorOf={getOptionColor}
+            on:select={(e) => { targetId = e.detail; handleTargetChange(); }}
+        />
         
         {#if orbitOptions.length > 0}
             <select bind:value={selectedOrbitId} on:change={handleCalculate} style="margin-top: 5px; font-size: 0.9em; padding: 0.3em;">

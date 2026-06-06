@@ -14,6 +14,7 @@
   export let placeholder = 'Search bodies…';
   export let top = 8; // px from the top of the canvas; host raises it below the phone strip
   export let emptyLabel = 'System'; // chip text when nothing is focused
+  export let inline = false; // embed in a form (relative, full-width) vs float over a canvas
 
   // Injectable so the same picker drives the starmap (systems) as well as a system (bodies).
   export let categorize: (n: any) => string = defaultCategorize;
@@ -140,7 +141,7 @@
   $: if (focusedId !== lastFocus) { lastFocus = focusedId; if (open) { open = false; drill = null; removeOutside(); } }
 </script>
 
-<div class="body-picker" class:open bind:this={root} style="top:{top}px">
+<div class="body-picker" class:open class:inline bind:this={root} style={inline ? '' : `top:${top}px`}>
   <div class="strip">
     <button class="chip" on:click={openToFocused} title="Browse this body's siblings">
       {#if focused}
@@ -237,6 +238,13 @@
     width: min(420px, calc(100% - 24px));
     font-size: 0.9rem;
   }
+  .body-picker.inline {
+    position: relative;
+    left: auto;
+    transform: none;
+    width: 100%;
+    z-index: 40;
+  }
   .strip {
     display: flex;
     align-items: center;
@@ -308,7 +316,11 @@
   .icon-btn:hover { background: var(--bg-control-hover, #232733); }
 
   .dropdown {
-    margin-top: 6px;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 5;
     max-height: 52vh;
     overflow-y: auto;
     background: color-mix(in srgb, var(--bg-panel, #14161c) 96%, transparent);
