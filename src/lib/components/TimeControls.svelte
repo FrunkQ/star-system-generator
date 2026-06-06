@@ -14,6 +14,9 @@
   type Temporal = NonNullable<Starmap['temporal']>;
 
   export let temporal: Temporal;
+  // Compact layout for the phone bottom bar: hides the big clock glyph, drops the
+  // 390px min-width, and lets the panel wrap/scroll in a slim fixed-height bar.
+  export let compact = false;
   // Optional read-out overrides for when the parent animates the clocks (e.g.
   // SystemView's 5-sec align): masterOverrideSec drives the Actual read-out,
   // displayOverrideSec drives the Display read-out. Null/omitted → derive from
@@ -247,7 +250,7 @@
   });
 </script>
 
-<div class="time-panel">
+<div class="time-panel" class:compact>
   <div class="time-title" title="Relativity mode is off. Time dilation sold separately.">🕒</div>
   <div class="clock-line">
     <div class="scrub-control">
@@ -459,5 +462,40 @@
   }
   .clock-action.btn-red:hover {
     filter: brightness(1.12);
+  }
+
+  /* ---- Compact (phone bottom bar) ---- */
+  .time-panel.compact {
+    margin-bottom: 0;
+    padding: 4px 6px;
+    gap: 8px;
+    border: none;
+    background: transparent;
+    height: 100%;
+  }
+  .time-panel.compact .time-title {
+    display: none; /* drop the 3rem clock glyph on phone */
+  }
+  .time-panel.compact .clock-line {
+    flex-wrap: nowrap;
+    gap: 10px;
+    align-items: center;
+  }
+  .time-panel.compact .scrub-control {
+    min-width: 240px;
+  }
+  .time-panel.compact .time-readouts {
+    flex: 0 0 auto;
+  }
+  .time-panel.compact .display-time {
+    font-size: 0.85rem;
+  }
+  .time-panel.compact .clock-actions {
+    margin-left: 0;
+    flex: 0 0 auto;
+  }
+  .time-panel.compact .clock-action {
+    white-space: nowrap;
+    font-size: 0.78rem;
   }
 </style>

@@ -11,6 +11,9 @@
   export let snap: 'peek' | 'half' | 'full' = 'peek';
   export let title = '';
   export let peekPx = 86;
+  // px reserved at the bottom of the viewport (e.g. the phone time bar) — the sheet
+  // sits above it and its snap heights account for the reduced area.
+  export let bottomInset = 0;
 
   const dispatch = createEventDispatcher();
 
@@ -19,10 +22,11 @@
   let dragging = false;
 
   // Snap heights in px. peek is fixed; half/full scale with the viewport.
+  $: avail = Math.max(0, viewportH - bottomInset);
   $: snapHeights = {
     peek: peekPx,
-    half: Math.round(viewportH * 0.5),
-    full: Math.round(viewportH * 0.92)
+    half: Math.round(avail * 0.5),
+    full: Math.round(avail * 0.92)
   };
   $: baseHeight = snapHeights[snap];
   // During a drag the sheet follows the finger (clamped between peek and full).
@@ -68,7 +72,7 @@
 <section
   class="bottom-sheet"
   class:dragging
-  style="height: {liveHeight}px;"
+  style="height: {liveHeight}px; bottom: {bottomInset}px;"
   aria-label={title || 'Detail panel'}
 >
   <header class="sheet-header" use:gestures={grabberGestures}>

@@ -17,6 +17,9 @@
   export let sheetSnap: 'peek' | 'half' | 'full' = 'peek';
   export let railOpen = false;
 
+  // Height (px) of the phone time bar; the sheet + FAB are offset above it.
+  const phoneBarH = 92;
+
   let autoDesktop = true;
 
   function override(): 'auto' | 'desktop' | 'phone' {
@@ -73,14 +76,18 @@
       </div>
     {/if}
 
+    {#if $$slots.bar}
+      <div class="phone-bar"><slot name="bar" /></div>
+    {/if}
+
     {#if $$slots.detail}
-      <BottomSheet bind:snap={sheetSnap} title={sheetTitle}>
+      <BottomSheet bind:snap={sheetSnap} title={sheetTitle} bottomInset={$$slots.bar ? phoneBarH : 0}>
         <slot name="detail" />
       </BottomSheet>
     {/if}
 
     {#if $$slots.fab}
-      <div class="fab-layer"><slot name="fab" /></div>
+      <div class="fab-layer" style={$$slots.bar ? `--fab-bottom: ${phoneBarH + 16}px;` : ''}><slot name="fab" /></div>
     {/if}
   {/if}
 </div>
@@ -188,6 +195,22 @@
     border-right: 1px solid #2a2d36;
     overflow-y: auto;
     padding: 12px;
+  }
+  .phone-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1150; /* below the sheet (1200); the sheet is inset above it */
+    height: 92px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    background: #0b0d12;
+    border-top: 1px solid #2a2d36;
+    padding: 2px 8px;
   }
   .fab-layer {
     position: fixed;

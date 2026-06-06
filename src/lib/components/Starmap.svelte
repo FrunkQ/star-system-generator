@@ -829,6 +829,7 @@
     </svelte:fragment>
     <svelte:fragment slot="bar">
   <TimeControls
+    compact={mode === 'phone'}
     temporal={ensuredTemporal}
     on:updatetemporal={handleTemporalUpdate}
     on:resetdisplay={handleResetDisplay}

@@ -72,7 +72,8 @@
   .fab-cluster {
     position: fixed;
     right: 16px;
-    bottom: 16px;
+    /* host can raise the FAB above a phone bottom bar via --fab-bottom */
+    bottom: var(--fab-bottom, 16px);
     z-index: 1300;
     display: flex;
     flex-direction: column;

@@ -58,12 +58,57 @@
   let mode: 'desktop' | 'phone' = 'desktop';
   let sheetSnap: 'peek' | 'half' | 'full' = 'peek';
   const fabActions = [
+    { id: 'add-planet', label: 'Add planet', icon: '+' },
+    { id: 'add-construct', label: 'Add construct', icon: '◇' },
     { id: 'reset', label: 'Reset view', icon: '↺' },
     { id: 'starmap', label: 'To Starmap', icon: 'S' }
   ];
   function handleFabAction(e: CustomEvent<string>) {
     if (e.detail === 'reset') visualizer?.resetView();
     else if (e.detail === 'starmap') zoomOut();
+    else if (e.detail === 'add-planet') addBodyViaFab();
+    else if (e.detail === 'add-construct') addBodyViaFab('construct');
+  }
+
+  // Phone has no right-click background menu, so the FAB is the "add body" entry point.
+  // We synthesize the same inputs the background-context-menu path produces — a host and a
+  // world-space (AU) click position — then reuse the existing creation handlers verbatim.
+  // Host = the focused star/planet/moon if it can host, else the primary (root) star;
+  // a star host -> a planet, a planet/moon host -> a moon (handler auto-types by host).
+  // Position = just beyond the outermost existing child orbit (or a sensible default).
+  function pickAddHost() {
+    const nodes = $systemStore?.nodes ?? [];
+    const fb = focusedBody;
+    if (fb && (fb.roleHint === 'star' || fb.roleHint === 'planet' || fb.roleHint === 'moon')) return fb;
+    return nodes.find(n => n.parentId === null && n.roleHint === 'star')
+      ?? nodes.find(n => n.roleHint === 'star')
+      ?? nodes.find(n => n.parentId === null)
+      ?? null;
+  }
+  function addBodyViaFab(role?: string) {
+    if (!$systemStore) return;
+    const host = pickAddHost();
+    if (!host) return;
+    const nodes = $systemStore.nodes;
+    const absPos = (nodeId: string): { x: number, y: number } => {
+      const node = nodes.find(n => n.id === nodeId);
+      if (!node || !node.parentId) return { x: 0, y: 0 };
+      const pp = absPos(node.parentId);
+      let rel = { x: 0, y: 0 };
+      if ((node.kind === 'body' || node.kind === 'construct') && (node as any).orbit) {
+        const p = propagate(node as any, currentTime);
+        if (p) rel = p;
+      }
+      return { x: pp.x + rel.x, y: pp.y + rel.y };
+    };
+    const children = nodes.filter(n => n.parentId === host.id && (n as any).orbit?.elements?.a_AU);
+    const maxA = children.reduce((m, n) => Math.max(m, (n as any).orbit.elements.a_AU), 0);
+    const D = maxA > 0 ? maxA * 1.4 : (host.roleHint === 'star' ? 1.0 : 0.01);
+    const hp = absPos(host.id);
+    backgroundClickHost = host as any;
+    backgroundClickPosition = { x: hp.x + D, y: hp.y };
+    if (role === 'construct') handleCreateConstructFromBackground();
+    else handleCreateBodyFromBackground(role);
   }
 
   const dispatch = createEventDispatcher();
@@ -1667,6 +1712,7 @@
     <svelte:fragment slot="bar">
     {#if ensuredTemporal}
       <TimeControls
+        compact={mode === 'phone'}
         temporal={ensuredTemporal}
         masterOverrideSec={isAligningTime ? alignTargetSec : null}
         displayOverrideSec={isAligningTime ? alignActualSecondsOverride : null}
