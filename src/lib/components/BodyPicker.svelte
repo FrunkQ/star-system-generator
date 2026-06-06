@@ -12,15 +12,11 @@
   export let focusedId: string | null = null;
   export let placeholder = 'Search bodies…';
   export let top = 8; // px from the top of the canvas; host raises it below the phone strip
+  export let emptyLabel = 'System'; // chip text when nothing is focused
 
-  const dispatch = createEventDispatcher();
-
-  let open = false;
-  let query = '';
-  let drill: string | null = null; // active category when drilled in
-  let root: HTMLElement;
-
-  const CAT_ORDER = [
+  // Injectable so the same picker drives the starmap (systems) as well as a system (bodies).
+  export let categorize: (n: any) => string = defaultCategorize;
+  export let categoryOrder: string[] = [
     'Stars',
     'Terrestrial planets',
     'Gas giants',
@@ -30,8 +26,19 @@
     'Constructs',
     'Other'
   ];
+  export let colorOf: (n: any) => string = getNodeColor;
+  export let contextOf: (n: any) => string = defaultContext;
+  export let roleOf: (n: any) => string = defaultRole;
+  export let filterItems: (n: any) => boolean = (n: any) => n.kind === 'body' || n.kind === 'construct';
 
-  function categoryOf(n: any): string {
+  const dispatch = createEventDispatcher();
+
+  let open = false;
+  let query = '';
+  let drill: string | null = null; // active category when drilled in
+  let root: HTMLElement;
+
+  function defaultCategorize(n: any): string {
     if (n.kind === 'construct') return 'Constructs';
     const cls = (n.classes || []).join(' ');
     const rh = n.roleHint;
@@ -43,34 +50,36 @@
     if (rh === 'planet') return 'Terrestrial planets';
     return 'Other';
   }
+  function defaultContext(n: any): string {
+    const pid = n.orbit?.hostId || n.parentId;
+    const p = (nodes as any[]).find((x) => x.id === pid);
+    return p ? `orbits ${p.name}` : '';
+  }
+  function defaultRole(n: any): string {
+    if (n.kind === 'construct') return 'construct';
+    return n.roleHint || n.kind || '';
+  }
 
-  $: selectable = nodes.filter((n: any) => n.kind === 'body' || n.kind === 'construct');
+  $: selectable = nodes.filter((n: any) => filterItems(n));
   $: byCat = (() => {
     const m = new Map<string, any[]>();
     for (const n of selectable as any[]) {
-      const c = categoryOf(n);
+      const c = categorize(n);
       if (!m.has(c)) m.set(c, []);
       m.get(c)!.push(n);
     }
     for (const arr of m.values()) arr.sort((a, b) => a.name.localeCompare(b.name));
     return m;
   })();
-  $: categories = CAT_ORDER.filter((c) => byCat.has(c)).map((c) => ({ key: c, items: byCat.get(c)! }));
+  $: extraCats = Array.from(byCat.keys()).filter((c) => !categoryOrder.includes(c));
+  $: categories = [...categoryOrder, ...extraCats]
+      .filter((c) => byCat.has(c))
+      .map((c) => ({ key: c, items: byCat.get(c)! }));
 
   $: focused = (nodes as any[]).find((n) => n.id === focusedId) || null;
   $: q = query.trim().toLowerCase();
   $: searchResults = q ? (selectable as any[]).filter((n) => n.name.toLowerCase().includes(q)).slice(0, 100) : [];
   $: drillItems = drill ? byCat.get(drill) ?? [] : [];
-
-  function parentContext(n: any): string {
-    const pid = n.orbit?.hostId || n.parentId;
-    const p = (nodes as any[]).find((x) => x.id === pid);
-    return p ? `orbits ${p.name}` : '';
-  }
-  function roleLabel(n: any): string {
-    if (n.kind === 'construct') return 'construct';
-    return n.roleHint || n.kind || '';
-  }
 
   function pick(id: string) {
     dispatch('select', id);
@@ -86,7 +95,7 @@
   }
   function openToFocused() {
     open = true;
-    drill = focused ? categoryOf(focused) : null;
+    drill = focused ? categorize(focused) : null;
     addOutside();
   }
   function clearSearch() {
@@ -127,12 +136,12 @@
   <div class="strip">
     <button class="chip" on:click={openToFocused} title="Browse this body's siblings">
       {#if focused}
-        <span class="dot" style="background:{getNodeColor(focused)}"></span>
+        <span class="dot" style="background:{colorOf(focused)}"></span>
         <span class="chip-name">{focused.name}</span>
-        <span class="chip-role">{roleLabel(focused)}</span>
+        <span class="chip-role">{roleOf(focused)}</span>
       {:else}
         <span class="dot muted"></span>
-        <span class="chip-name muted">System</span>
+        <span class="chip-name muted">{emptyLabel}</span>
       {/if}
     </button>
 
@@ -162,9 +171,9 @@
           <ul>
             {#each searchResults as n (n.id)}
               <li><button class="row" class:active={n.id === focusedId} on:click={() => pick(n.id)}>
-                <span class="dot" style="background:{getNodeColor(n)}"></span>
+                <span class="dot" style="background:{colorOf(n)}"></span>
                 <span class="row-name">{n.name}</span>
-                <span class="row-ctx">{parentContext(n)}</span>
+                <span class="row-ctx">{contextOf(n)}</span>
               </button></li>
             {/each}
           </ul>
@@ -177,9 +186,20 @@
         <ul>
           {#each drillItems as n (n.id)}
             <li><button class="row" class:active={n.id === focusedId} on:click={() => pick(n.id)}>
-              <span class="dot" style="background:{getNodeColor(n)}"></span>
+              <span class="dot" style="background:{colorOf(n)}"></span>
               <span class="row-name">{n.name}</span>
-              <span class="row-ctx">{parentContext(n)}</span>
+              <span class="row-ctx">{contextOf(n)}</span>
+            </button></li>
+          {/each}
+        </ul>
+      {:else if categories.length === 1}
+        <!-- One category (e.g. starmap systems): list items directly, no drill step. -->
+        <ul>
+          {#each categories[0].items as n (n.id)}
+            <li><button class="row" class:active={n.id === focusedId} on:click={() => pick(n.id)}>
+              <span class="dot" style="background:{colorOf(n)}"></span>
+              <span class="row-name">{n.name}</span>
+              <span class="row-ctx">{contextOf(n)}</span>
             </button></li>
           {/each}
         </ul>

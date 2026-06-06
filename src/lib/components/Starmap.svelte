@@ -5,6 +5,7 @@
   import AppShell from './AppShell.svelte';
   import RailNav from './RailNav.svelte';
   import FabCluster from './FabCluster.svelte';
+  import BodyPicker from './BodyPicker.svelte';
   import type { Starmap, System, CelestialBody, RulePack, Barycenter } from '$lib/types';
   import GmNotesEditor from './GmNotesEditor.svelte';
   import Grid from './Grid.svelte';
@@ -524,6 +525,25 @@
       return [];
   }
 
+  // --- BodyPicker (starmap-scoped: pick a system by name) ---
+  const systemPickerCategorize = () => 'Systems';
+  function systemPickerColor(sysNode: any): string {
+      const vis = getVisualNodes(sysNode.system);
+      return vis.length ? getStarColor(vis[0]) : '#888';
+  }
+  function systemPickerContext(sysNode: any): string {
+      const n = sysNode.system?.nodes ?? [];
+      const planets = n.filter((x: any) => x.kind === 'body' && (x.roleHint === 'planet' || x.roleHint === 'moon')).length;
+      const stars = n.filter((x: any) => x.kind === 'body' && x.roleHint === 'star').length;
+      const bits = [] as string[];
+      if (stars) bits.push(`${stars} star${stars > 1 ? 's' : ''}`);
+      if (planets) bits.push(`${planets} bod${planets > 1 ? 'ies' : 'y'}`);
+      return bits.join(' · ');
+  }
+  function handlePickSystem(e: CustomEvent<string>) {
+      dispatch('systemclick', e.detail);
+  }
+
   function getBlackHoleType(body: CelestialBody): 'none' | 'BH' | 'BH_active' {
       if (body.classes.includes('star/BH_active') || body.classes.includes('BH_active')) return 'BH_active';
       if (body.classes.includes('star/BH') || body.classes.includes('BH')) return 'BH';
@@ -838,6 +858,19 @@
     </svelte:fragment>
     <svelte:fragment slot="canvas">
   <div class="starmap-canvas">
+    <BodyPicker
+      nodes={starmap.systems}
+      focusedId={null}
+      emptyLabel="Starmap"
+      placeholder="Search systems…"
+      top={mode === 'phone' ? 62 : 8}
+      categorize={systemPickerCategorize}
+      colorOf={systemPickerColor}
+      contextOf={systemPickerContext}
+      roleOf={() => 'system'}
+      filterItems={() => true}
+      on:select={handlePickSystem}
+    />
     <svg
       bind:this={svgElement}
       class="starmap"
