@@ -139,6 +139,11 @@
     if (open) addOutside();
     else { drill = null; removeOutside(); }
   }
+  // Primary affordance: always opens at the root category list.
+  function browseClick() {
+    if (open) { open = false; drill = null; removeOutside(); }
+    else { open = true; drill = null; addOutside(); }
+  }
   function openToFocused() {
     open = true;
     drill = focused ? (categorize(focused)[0] ?? null) : null;
@@ -180,15 +185,17 @@
 
 <div class="body-picker" class:open class:inline bind:this={root} style={inline ? '' : `top:${top}px`}>
   <div class="strip">
-    <button class="chip" on:click={openToFocused} title="Browse this body's siblings">
+    <button class="browse" on:click={browseClick} aria-expanded={open} title="Browse all">
+      <span class="browse-icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      </span>
       {#if focused}
         <span class="dot" style="background:{colorOf(focused)}"></span>
         <span class="chip-name">{focused.name}</span>
-        <span class="chip-role">{roleOf(focused)}</span>
       {:else}
-        <span class="dot muted"></span>
         <span class="chip-name muted">{emptyLabel}</span>
       {/if}
+      <span class="caret" class:flip={open} aria-hidden="true">▾</span>
     </button>
 
     <input
@@ -204,7 +211,6 @@
     {#if query}
       <button class="icon-btn" on:click={clearSearch} aria-label="Clear search" title="Clear">×</button>
     {/if}
-    <button class="icon-btn" on:click={toggleOpen} aria-label="Toggle list" aria-expanded={open} title="Browse all">▾</button>
   </div>
 
   {#if open}
@@ -294,30 +300,41 @@
     backdrop-filter: blur(6px);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   }
-  .chip {
+  /* Primary affordance: the browse button opens the full list. Larger + accent-tinted. */
+  .browse {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
     flex: 0 0 auto;
-    max-width: 45%;
-    height: 32px;
-    padding: 0 8px;
-    background: var(--bg-control, #1b1e26);
-    border: 1px solid var(--border, #2a2d36);
+    max-width: 52%;
+    height: 36px;
+    padding: 0 10px;
+    background: color-mix(in srgb, var(--accent, #ff5a1f) 16%, var(--bg-control, #1b1e26));
+    border: 1px solid color-mix(in srgb, var(--accent, #ff5a1f) 55%, var(--border, #2a2d36));
     border-radius: 8px;
     color: var(--text, #e8e8e8);
+    font-weight: 600;
     cursor: pointer;
   }
+  .browse:hover {
+    background: color-mix(in srgb, var(--accent, #ff5a1f) 26%, var(--bg-control, #1b1e26));
+  }
+  .browse-icon {
+    display: flex;
+    color: var(--accent, #ff5a1f);
+    flex: 0 0 auto;
+  }
+  .caret {
+    color: var(--text-faint, #cfcfcf);
+    flex: 0 0 auto;
+    transition: transform 0.15s ease;
+  }
+  .caret.flip { transform: rotate(180deg); }
   .chip-name {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 120px;
-  }
-  .chip-role {
-    color: var(--text-faint, #8a8f9a);
-    font-size: 0.78rem;
-    text-transform: capitalize;
+    max-width: 140px;
   }
   .dot {
     width: 10px;
