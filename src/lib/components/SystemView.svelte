@@ -1828,14 +1828,10 @@
                 completedPlans={completedTransitPlans}
                 transitPreviewPos={transitPreviewPos}
                 isExecuting={isTransitExecuting}
-                on:focus={handleFocus} 
-                on:showBodyContextMenu={handleShowBodyContextMenu} 
-                on:backgroundContextMenu={handleBackgroundContextMenu} 
+                on:focus={handleFocus}
+                on:showBodyContextMenu={handleShowBodyContextMenu}
+                on:backgroundContextMenu={handleBackgroundContextMenu}
             />
-
-            {#if focusedBody}
-                <DescriptionEditor body={focusedBody} on:update={handleBodyUpdate} />
-            {/if}
         </div>
     </svelte:fragment>
     <svelte:fragment slot="detail">
@@ -1849,6 +1845,10 @@
                 on:rename={(e) => { dispatch('renameNode', e.detail); systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s); }}
                 on:enteredit={() => { isEditing = true; showZoneKeyPanel = false; visualizer?.resetView(); }}
             />
+            {/if}
+
+            {#if focusedBody && !isPlanning}
+                <DescriptionEditor body={focusedBody} on:update={handleBodyUpdate} />
             {/if}
 
             {#if isPlanning}
