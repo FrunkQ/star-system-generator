@@ -1855,7 +1855,7 @@
             {/if}
 
             {#if focusedBody && !isPlanning}
-                <DescriptionEditor body={focusedBody} on:update={handleBodyUpdate} />
+                <DescriptionEditor body={focusedBody} editing={isEditing} on:update={handleBodyUpdate} />
             {/if}
 
             {#if isPlanning}
@@ -1931,7 +1931,7 @@
             {/if}
             
             <BodyImage body={focusedBody} />
-            <GmNotesEditor body={focusedBody} on:update={handleBodyUpdate} />
+            <GmNotesEditor body={focusedBody} editing={isEditing} on:update={handleBodyUpdate} />
             {/if}
 
 

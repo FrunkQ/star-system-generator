@@ -13,53 +13,42 @@
   import constructTags from '$lib/ai/construct-tags.json';
 
   export let body: CelestialBody;
+  // Editing is now driven by the body's edit mode (FocusHeader "Edit"), so the
+  // description is edited alongside the planetary data under a single Edit toggle —
+  // no separate Edit button here.
+  export let editing = false;
 
   let showAIModal = false;
-  let isEditing = false;
   let descriptionText = '';
-  let currentPromptTemplate = PROMPT_TEMPLATE; 
+  let currentPromptTemplate = PROMPT_TEMPLATE;
   let currentPromptData = {};
   let currentStyles = styles;
   let currentTags = tags;
   const dispatch = createEventDispatcher();
-  let editingBodyId: string | null = null;
-  let editingBodyRef: CelestialBody | null = null;
 
-  function autosaveIfEditing() {
-    if (!isEditing || !editingBodyRef || editingBodyId === null) return;
-    editingBodyRef.description = descriptionText;
-    dispatch('update', editingBodyRef);
-    isEditing = false;
-    editingBodyId = null;
-    editingBodyRef = null;
+  // Keep the textarea synced to the current body. While editing the textarea owns
+  // the value; switching body (or re-entering edit) reloads from the body.
+  let syncedKey = '';
+  $: {
+    const key = `${body?.id ?? ''}|${editing}`;
+    if (key !== syncedKey) {
+      syncedKey = key;
+      descriptionText = body?.description || '';
+    }
   }
 
-  function startEditing() {
-    descriptionText = body.description || '';
-    isEditing = true;
-    editingBodyId = body.id;
-    editingBodyRef = body;
-  }
-
-  function handleSave() {
-    const target = editingBodyRef || body;
-    target.description = descriptionText;
-    isEditing = false;
-    editingBodyId = null;
-    editingBodyRef = null;
-    dispatch('update', target);
-  }
-
-  function handleCancel() {
-    isEditing = false;
-    editingBodyId = null;
-    editingBodyRef = null;
+  function commit() {
+    if (!body) return;
+    if ((body.description || '') === descriptionText) return;
+    body.description = descriptionText;
+    dispatch('update', body);
   }
 
   function handleAIDescription(event: CustomEvent<string>) {
     body.description = event.detail;
+    descriptionText = event.detail;
     showAIModal = false;
-    dispatch('update', body); 
+    dispatch('update', body);
   }
 
   function openAIModal() {
@@ -86,13 +75,8 @@
 
   $: hasApiKey = $aiSettings.apiKey && $aiSettings.apiKey.length > 0;
 
-  // If focus changes to another body while editing, persist draft automatically.
-  $: if (isEditing && editingBodyId && body.id !== editingBodyId) {
-    autosaveIfEditing();
-  }
-
   onDestroy(() => {
-    autosaveIfEditing();
+    commit();
   });
 </script>
 
@@ -112,23 +96,18 @@
       </button>
       <h3>Detailed Information</h3>
   </div>
-  {#if isEditing}
-    <textarea bind:value={descriptionText} rows="8"></textarea>
-    <div class="actions">
-      <button type="button" on:click={handleSave}>Save</button>
-      <button type="button" on:click={handleCancel}>Cancel</button>
-    </div>
-  {:else}
-    <div class="display">
-      {@html renderMarkdown(body?.description || 'No description yet.')}
-    </div>
-    <div class="actions">
-      <button type="button" on:click={startEditing}>Edit</button>
-      {#if hasApiKey}
+  {#if editing}
+    <textarea bind:value={descriptionText} on:blur={commit} rows="6" placeholder="Describe this body…"></textarea>
+    {#if hasApiKey}
+      <div class="actions">
         <button type="button" class="ai-button" on:click={openAIModal}>
           ✨ Expand with AI
         </button>
-      {/if}
+      </div>
+    {/if}
+  {:else}
+    <div class="display">
+      {@html renderMarkdown(body?.description || 'No description yet.')}
     </div>
   {/if}
 </div>
