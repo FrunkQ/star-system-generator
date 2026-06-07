@@ -61,6 +61,23 @@
   let railOpen = false; // phone slide-in rail; closed before opening a modal
   let railUploadInput: HTMLInputElement; // hidden file input for the rail's Upload JSON
   let showAboutModal = false; // About, moved here from the retired SystemSummary
+
+  // Orbit scale: binary Toytown (compressed, fits one screen) vs Real (true AU). The
+  // continuous compression slider stays as the advanced control while in Toytown.
+  let toytownPref = 0.6; // remembered compression when toggled to Real
+  $: toytownOn = ($systemStore?.toytownFactor ?? 0) > 0;
+  function setScaleMode(toytown: boolean) {
+    if (!$systemStore) return;
+    systemStore.update(s => {
+      if (!s) return s;
+      if (toytown) return { ...s, toytownFactor: toytownPref || 0.6 };
+      if ((s.toytownFactor ?? 0) > 0) toytownPref = s.toytownFactor!;
+      return { ...s, toytownFactor: 0 };
+    });
+    handleSliderRelease();
+    // re-frame after the scaled positions recompute
+    setTimeout(() => visualizer?.resetView(), 80);
+  }
   const fabActions = [
     { id: 'add-planet', label: 'Add planet', icon: '+' },
     { id: 'add-construct', label: 'Add construct', icon: '◇' },
@@ -1710,13 +1727,20 @@
           <label><input type="checkbox" bind:checked={showTravellerZones} /> Traveller zones</label>
         {/if}
         <label><input type="checkbox" bind:checked={showVectors} /> Vectors</label>
-        <label class="rail-slider">
-          <span>Toytown</span>
-          <input type="range" min="0" max="1" step="0.01" bind:value={$systemStore.toytownFactor} on:change={() => {
-            if ($systemStore.toytownFactor < 0.005) $systemStore.toytownFactor = 0;
-            handleSliderRelease();
-          }} />
-        </label>
+        <div class="rail-seg" role="group" aria-label="Orbit scale">
+          <button class:active={toytownOn} on:click={() => setScaleMode(true)} title="Compressed spacing so the whole system fits one screen">Toytown</button>
+          <button class:active={!toytownOn} on:click={() => setScaleMode(false)} title="True linear AU spacing">Real</button>
+        </div>
+        {#if toytownOn}
+          <label class="rail-slider">
+            <span>Compression</span>
+            <input type="range" min="0.05" max="1" step="0.01" bind:value={$systemStore.toytownFactor} on:change={() => {
+              if ($systemStore.toytownFactor < 0.05) $systemStore.toytownFactor = 0.05;
+              toytownPref = $systemStore.toytownFactor;
+              handleSliderRelease();
+            }} />
+          </label>
+        {/if}
       </div>
       <!-- System actions (formerly the SystemSummary hamburger) — shown on desktop AND
            phone now that the summary strip is retired in favour of the BodyPicker. -->
@@ -2387,6 +2411,28 @@
         flex-direction: column;
         align-items: stretch;
         gap: 4px;
+    }
+    .rail-seg {
+        display: flex;
+        gap: 2px;
+        padding: 2px;
+        background: var(--bg-panel, #14161c);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+    }
+    .rail-seg button {
+        flex: 1 1 0;
+        padding: 7px 8px;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--text-muted, #cfcfcf);
+        font-size: 0.85rem;
+        cursor: pointer;
+    }
+    .rail-seg button.active {
+        background: var(--accent, #ff5a1f);
+        color: var(--on-accent, #fff);
     }
     .rail-view-options label.rail-slider input {
         width: 100%;
