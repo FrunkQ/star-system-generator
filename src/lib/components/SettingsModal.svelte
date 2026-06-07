@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Starmap } from '../types';
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { ensureTemporalState } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar } from '$lib/temporal/utre';
   import { starmapUiStore } from '$lib/starmapUiStore';
@@ -13,6 +13,33 @@
   // Sectioned settings (Starmap View / Tech / Planets / System). Orrery View was dropped (Q2).
   type Section = 'starmap' | 'technology' | 'planets' | 'system';
   let activeSection: Section = 'starmap';
+
+  // On narrow / touch the modal is a drill-in: a list of sections (drilled=false) →
+  // a section's content (drilled=true). "Back" goes UP a level rather than closing.
+  const SECTION_LABELS: Record<Section, string> = {
+    starmap: 'Starmap View', technology: 'Tech', planets: 'Planets', system: 'System'
+  };
+  let isNarrow = false;
+  let drilled = false;
+  let wasOpen = false;
+  $: headerTitle = isNarrow && drilled ? SECTION_LABELS[activeSection] : 'Settings';
+  // Reset to the section list each time the modal (re)opens.
+  $: if (showModal && !wasOpen) { wasOpen = true; drilled = false; }
+  $: if (!showModal && wasOpen) { wasOpen = false; }
+
+  onMount(() => {
+    const mql = window.matchMedia('(max-width: 700px), (pointer: coarse)');
+    const sync = () => (isNarrow = mql.matches);
+    sync();
+    mql.addEventListener('change', sync);
+    return () => mql.removeEventListener('change', sync);
+  });
+
+  function pickSection(s: Section) { activeSection = s; drilled = true; }
+  function handleBack() {
+    if (isNarrow && drilled) drilled = false;
+    else handleClose();
+  }
   let invertDisplay = starmap.invertDisplay ?? false;
   $: if (showModal) invertDisplay = starmap.invertDisplay ?? false;
 
@@ -144,20 +171,20 @@
 {#if showModal}
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 <div class="modal-backdrop" on:click={handleClose} role="button" tabindex="0" on:keydown={(e) => {if (e.key === 'Enter' || e.key === 'Space') handleClose()}}>
-  <div class="modal settings-modal" on:click|stopPropagation role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabindex="-1">
+  <div class="modal settings-modal" class:drilled on:click|stopPropagation role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabindex="-1">
     <div class="settings-head">
-      <button class="settings-back" on:click={handleClose} aria-label="Back" title="Back">
+      <button class="settings-back" on:click={handleBack} aria-label="Back" title="Back">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
       </button>
-      <h2 id="dialog-title">Settings</h2>
+      <h2 id="dialog-title">{headerTitle}</h2>
     </div>
 
     <div class="settings-layout">
       <nav class="settings-nav">
-        <button class:active={activeSection === 'starmap'} on:click={() => activeSection = 'starmap'}>Starmap View</button>
-        <button class:active={activeSection === 'technology'} on:click={() => activeSection = 'technology'}>Tech</button>
-        <button class:active={activeSection === 'planets'} on:click={() => activeSection = 'planets'}>Planets</button>
-        <button class:active={activeSection === 'system'} on:click={() => activeSection = 'system'}>System</button>
+        <button class:active={activeSection === 'starmap'} on:click={() => pickSection('starmap')}>Starmap View</button>
+        <button class:active={activeSection === 'technology'} on:click={() => pickSection('technology')}>Tech</button>
+        <button class:active={activeSection === 'planets'} on:click={() => pickSection('planets')}>Planets</button>
+        <button class:active={activeSection === 'system'} on:click={() => pickSection('system')}>System</button>
       </nav>
 
       <div class="settings-content">
@@ -251,7 +278,7 @@
     </div>
 
     <div class="modal-actions">
-      <button class="action-btn" on:click={handleClose} title="Back">
+      <button class="action-btn" on:click={handleBack} title="Back">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
         Back
       </button>
@@ -470,22 +497,30 @@
       flex-direction: column;
       gap: 10px;
     }
+    /* Drill-in: the nav is a vertical list of sections; tapping one shows its content
+       and Back returns here (not all the way out). */
     .settings-nav {
-      flex: 0 0 auto;
-      flex-direction: row;
-      overflow-x: auto;
+      flex: 1 1 auto;
+      flex-direction: column;
       border-right: none;
-      border-bottom: 1px solid var(--border);
       padding-right: 0;
-      padding-bottom: 8px;
       gap: 6px;
     }
     .settings-nav button {
-      flex: 0 0 auto;
-      width: auto;
-      white-space: nowrap;
-      min-height: 40px;
+      width: 100%;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
     }
+    .settings-modal:not(.drilled) .settings-nav button::after {
+      content: '›';
+      margin-left: auto;
+      color: var(--text-faint, #8a8f9a);
+      font-size: 1.2rem;
+    }
+    /* List level → show only the nav; drilled → show only the content. */
+    .settings-modal:not(.drilled) .settings-content { display: none; }
+    .settings-modal.drilled .settings-nav { display: none; }
     .settings-content {
       flex: 1 1 auto;
       max-height: none;
