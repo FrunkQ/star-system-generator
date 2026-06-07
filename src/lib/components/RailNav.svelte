@@ -12,6 +12,7 @@
   export let activeView: 'starmap' | 'system' = 'starmap';
 
   let collapsed = false;
+  let fileOpen = false; // File group (New / Open / Save) inline accordion
   onMount(() => { if (browser) collapsed = localStorage.getItem('sse-rail-collapsed') === '1'; });
   function toggleCollapsed() {
     collapsed = !collapsed;
@@ -20,6 +21,7 @@
 
   // Flat Lucide-style monochrome icons (inline SVG).
   const I = {
+    file: '<path d="M20 7h-7L9.5 4.5A1 1 0 0 0 8.8 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>',
     starmap: '<circle cx="12" cy="12" r="3"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><path d="M10.4 21.9a10 10 0 0 0 9.941-15.416"/><path d="M13.5 2.1a10 10 0 0 0-9.841 15.416"/>',
     projector: '<path d="M10 7.75a.75.75 0 0 1 1.142-.638l3.664 2.249a.75.75 0 0 1 0 1.278l-3.664 2.25a.75.75 0 0 1-1.142-.64z"/><path d="M12 17v4"/><path d="M8 21h8"/><rect x="2" y="3" width="20" height="14" rx="2"/>',
     report: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="8" y1="9" x2="10" y2="9"/>',
@@ -54,15 +56,21 @@
     <span class="ic">{@html svg(I.starmap)}</span><span class="rail-label">Starmap</span>
   </button>
 
-  <button class="rail-btn" title="New system" on:click={() => dispatch('new')}>
-    <span class="ic">{@html svg(I.new)}</span><span class="rail-label">New System</span>
+  <button class="rail-btn" class:active={fileOpen} title="File — new / open / save" on:click={() => (fileOpen = !fileOpen)}>
+    <span class="ic">{@html svg(I.file)}</span><span class="rail-label">File</span>
+    <span class="rail-label chev">{fileOpen ? '▾' : '▸'}</span>
   </button>
-  <button class="rail-btn" title="Open starmap" on:click={() => dispatch('open')}>
-    <span class="ic">{@html svg(I.open)}</span><span class="rail-label">Open…</span>
-  </button>
-  <button class="rail-btn" title="Save starmap" on:click={() => dispatch('save')}>
-    <span class="ic">{@html svg(I.save)}</span><span class="rail-label">Save</span>
-  </button>
+  {#if fileOpen}
+    <button class="rail-btn sub" title="New system" on:click={() => dispatch('new')}>
+      <span class="ic">{@html svg(I.new)}</span><span class="rail-label">New System</span>
+    </button>
+    <button class="rail-btn sub" title="Open starmap" on:click={() => dispatch('open')}>
+      <span class="ic">{@html svg(I.open)}</span><span class="rail-label">Open…</span>
+    </button>
+    <button class="rail-btn sub" title="Save starmap" on:click={() => dispatch('save')}>
+      <span class="ic">{@html svg(I.save)}</span><span class="rail-label">Save</span>
+    </button>
+  {/if}
   <button class="rail-btn" title="Find a body across all systems" on:click={() => dispatch('allbodies')}>
     <span class="ic">{@html svg(I.body)}</span><span class="rail-label">Find body…</span>
   </button>
@@ -158,6 +166,10 @@
   .rail-btn.active .ic { color: var(--accent); }
   .ic { display: flex; flex: 0 0 auto; color: var(--text-muted, #cfcfcf); }
   .ic.accent { color: var(--accent); }
+  .chev { margin-left: auto; color: var(--text-faint, #8a8f9a); font-size: 0.8rem; }
+  .rail-btn.sub { margin-left: 14px; background: transparent; }
+  .rail-btn.sub:hover { background: var(--bg-control-hover); }
+  .rail-nav.collapsed .rail-btn.sub { margin-left: 0; }
   .spacer { flex: 1 1 auto; }
 
   /* Collapsed (icon-only): hide labels + section titles everywhere in the rail (incl. the
