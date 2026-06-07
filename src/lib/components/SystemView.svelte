@@ -203,6 +203,12 @@
   let timeSyncInterval: ReturnType<typeof setInterval> | undefined;
   let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
   let isCrtMode = false;
+  // Projector window tracking: when it's open the rail's Projector entry becomes a
+  // greenscreen (chroma-key) toggle; we poll for the window closing to revert.
+  let projectorWindow: Window | null = null;
+  let projectorOpen = false;
+  let isGreenscreen = false;
+  let projectorPoll: ReturnType<typeof setInterval> | null = null;
   let isEditing = false;
   let isPlanning = false;
   let plannerOriginId: ID = '';
@@ -1110,10 +1116,26 @@
   }
 
   async function handleShare() {
-      window.open(`/projector?sid=${broadcastSessionId}`, 'StarSystemProjector', 'width=1280,height=720,menubar=no,toolbar=no,location=no');
+      projectorWindow = window.open(`/projector?sid=${broadcastSessionId}`, 'StarSystemProjector', 'width=1280,height=720,menubar=no,toolbar=no,location=no');
+      projectorOpen = !!projectorWindow;
       if ($systemStore) {
           broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: computePlayerSnapshot($systemStore) });
       }
+      // Watch for the user closing the projector window → revert the rail entry.
+      if (projectorPoll) clearInterval(projectorPoll);
+      projectorPoll = setInterval(() => {
+          if (!projectorWindow || projectorWindow.closed) {
+              projectorOpen = false;
+              isGreenscreen = false;
+              projectorWindow = null;
+              if (projectorPoll) { clearInterval(projectorPoll); projectorPoll = null; }
+          }
+      }, 800);
+  }
+
+  function toggleGreenscreen() {
+      isGreenscreen = !isGreenscreen;
+      broadcastService.sendMessage({ type: 'SYNC_GREENSCREEN', payload: isGreenscreen });
   }
 
   let unsubscribePanStore: () => void;
@@ -1161,6 +1183,7 @@
                 broadcastService.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: { showNames, showZones, showLPoints, showTravellerZones } });
                 broadcastService.sendMessage({ type: 'SYNC_TIME', payload: { currentTime, isPlaying, timeScale } });
                 broadcastService.sendMessage({ type: 'SYNC_CRT_MODE', payload: isCrtMode });
+                broadcastService.sendMessage({ type: 'SYNC_GREENSCREEN', payload: isGreenscreen });
             }
         };
 
@@ -1207,6 +1230,7 @@
   onDestroy(() => {
     if (browser) {
       if (timeSyncInterval) clearInterval(timeSyncInterval);
+      if (projectorPoll) clearInterval(projectorPoll);
     }
     stopAlignAnimation();
     if (unsubscribePanStore) {
@@ -1704,8 +1728,11 @@
     <svelte:fragment slot="rail">
       <RailNav
         activeView="system"
+        {projectorOpen}
+        greenscreenOn={isGreenscreen}
         on:starmap={() => { railOpen = false; dispatch('back', { force: true }); }}
         on:projector={() => { railOpen = false; handleShare(); }}
+        on:greenscreen={toggleGreenscreen}
         on:report={() => { railOpen = false; showReportConfigModal = true; }}
         on:downloadsystem={() => { railOpen = false; handleDownloadJson(); }}
         on:uploadsystem={() => { railOpen = false; railUploadInput?.click(); }}

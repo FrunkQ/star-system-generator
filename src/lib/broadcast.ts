@@ -23,6 +23,7 @@ export type BroadcastMessage =
   | { type: 'SYNC_VIEW_SETTINGS'; payload: ViewSettings }
   | { type: 'SYNC_TIME'; payload: TimeState }
   | { type: 'SYNC_CRT_MODE'; payload: boolean }
+  | { type: 'SYNC_GREENSCREEN'; payload: boolean }
   | { type: 'REQUEST_SYNC'; payload: string | null };
 
 type BroadcastEnvelope = {
@@ -60,6 +61,7 @@ class BroadcastService {
       onViewSettingsUpdate: (settings: ViewSettings) => void,
       onTimeUpdate: (time: TimeState) => void,
       onCrtModeUpdate: (isCrt: boolean) => void,
+      onGreenscreenUpdate: (isGreen: boolean) => void,
       targetId: string | null = null
   ) {
     this.isSender = false;
@@ -71,6 +73,7 @@ class BroadcastService {
     this.onViewSettingsUpdate = onViewSettingsUpdate;
     this.onTimeUpdate = onTimeUpdate;
     this.onCrtModeUpdate = onCrtModeUpdate;
+    this.onGreenscreenUpdate = onGreenscreenUpdate;
     
     // Request initial state
     // For REQUEST_SYNC, we send it "from" no one (or self?), but the payload targets the specific GM
@@ -94,6 +97,7 @@ class BroadcastService {
   private onViewSettingsUpdate: ((settings: ViewSettings) => void) | null = null;
   private onTimeUpdate: ((time: TimeState) => void) | null = null;
   private onCrtModeUpdate: ((isCrt: boolean) => void) | null = null;
+  private onGreenscreenUpdate: ((isGreen: boolean) => void) | null = null;
 
   // Handlers for incoming messages
   public onRequestSync: ((requestingId: string | null) => void) | null = null;
@@ -146,6 +150,9 @@ class BroadcastService {
               break;
           case 'SYNC_CRT_MODE':
               if (!this.isSender && this.onCrtModeUpdate) this.onCrtModeUpdate(msg.payload);
+              break;
+          case 'SYNC_GREENSCREEN':
+              if (!this.isSender && this.onGreenscreenUpdate) this.onGreenscreenUpdate(msg.payload);
               break;
           case 'REQUEST_SYNC':
               // Sender Logic: Only respond if payload matches OUR sessionId (or is null/legacy)

@@ -18,7 +18,9 @@
   let showMenu = false;
   let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
   let isCrtMode = false;
+  let isGreenscreen = false;
   let broadcastSessionId: string | null = null;
+  const GREENSCREEN_COLOR = '#00b140';
 
   // View Settings
   let showNames = true;
@@ -104,6 +106,9 @@
           (crtMode) => {
               isCrtMode = crtMode;
           },
+          (green) => {
+              isGreenscreen = green;
+          },
           broadcastSessionId
       );
 
@@ -126,11 +131,12 @@
 
 </script>
 
-<main class="player-view" class:crt-mode={isCrtMode} 
-    on:mousedown={handleInteraction} 
+<main class="player-view" class:crt-mode={isCrtMode && !isGreenscreen} class:greenscreen={isGreenscreen}
+    style:background-color={isGreenscreen ? GREENSCREEN_COLOR : '#08090d'}
+    on:mousedown={handleInteraction}
     on:wheel|passive={handleInteraction}
     on:touchstart={handleInteraction}>
-    {#if isCrtMode}
+    {#if isCrtMode && !isGreenscreen}
         <CRTOverlay />
     {/if}
 
@@ -146,8 +152,10 @@
             {showTravellerZones}
             toytownFactor={$systemStore.toytownFactor || 0}
             fullScreen={true}
+            backgroundColor={isGreenscreen ? GREENSCREEN_COLOR : '#08090d'}
             bind:cameraMode={cameraMode}
         />
+        {#if !isGreenscreen}
         <div class="time-display">
             {#if isPlaying}
                 Running: 1s = {
@@ -174,6 +182,7 @@
                 </div>
             {/if}
         </div>
+        {/if}
     {:else}
         <div class="loading">
             <h1>Waiting for GM...</h1>

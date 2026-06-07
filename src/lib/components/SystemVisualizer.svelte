@@ -28,6 +28,8 @@
   export let showVectors: boolean = false;
   export let toytownFactor: number = 0;
   export let fullScreen: boolean = false;
+  // Canvas backdrop — overridable so the projector can switch to a chroma-key green.
+  export let backgroundColor: string = '#08090d';
   export let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
   export let forceOrbitView: boolean = false;
   export let transitPlan: TransitPlan | null = null;
@@ -631,7 +633,7 @@
       const { width, height } = canvas;
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       ctx.save();
-      ctx.fillStyle = "#08090d";
+      ctx.fillStyle = backgroundColor;
       ctx.fillRect(0, 0, width, height);
       ctx.translate(width / 2, height / 2);
       ctx.scale(zoom, zoom);
@@ -1343,7 +1345,8 @@
     bind:this={canvas}
     use:gestures={canvasGestures}
     class:fullscreen={fullScreen}
-    style="background-color: #08090d; cursor: grab; width: 100%; touch-action: none;"
+    style:background-color={backgroundColor}
+    style="cursor: grab; width: 100%; touch-action: none;"
     style:border={fullScreen ? 'none' : '1px solid #333'}
     style:margin-top={fullScreen ? '0' : '1em'}
     style:display={fullScreen ? 'block' : 'inline-block'}
