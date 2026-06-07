@@ -1,6 +1,17 @@
 {
     "tagVocab": [
-        "star/O","star/B","star/A","star/F","star/G","star/K","star/M","star/G2V","star/WD","star/NS","star/BH","star/magnetar",
+        "star/O",
+        "star/B",
+        "star/A",
+        "star/F",
+        "star/G",
+        "star/K",
+        "star/M",
+        "star/G2V",
+        "star/WD",
+        "star/NS",
+        "star/BH",
+        "star/magnetar",
         "planet/alkali-metal-clouds-gas-giant",
         "planet/ammonia-clouds-gas-giant",
         "planet/ammonia-planet",
@@ -82,7 +93,16 @@
     "prompts": {
         "systemPreamble": "You are an assistant expanding sci-fi star system details. Keep output concise, game-usable, and consistent with provided JSON and tags. Avoid changing facts. Use flavor only as garnish.",
         "fewShots": [
-            { "input": { "entity": "Body", "tags": ["planet/super-earth"], "notes": "Rocky world with thin clouds." }, "output": "A high-gravity super-Earth with basaltic highlands and scattered rift valleys; settlements cluster in low-lying river basins sheltered from katabatic winds." }
+            {
+                "input": {
+                    "entity": "Body",
+                    "tags": [
+                        "planet/super-earth"
+                    ],
+                    "notes": "Rocky world with thin clouds."
+                },
+                "output": "A high-gravity super-Earth with basaltic highlands and scattered rift valleys; settlements cluster in low-lying river basins sheltered from katabatic winds."
+            }
         ],
         "perEntityPrompts": {
             "Body.description": "Describe the body's surface, hazards, and one adventure hook in 60-120 words, grounded in the JSON fields and tags."
@@ -91,156 +111,2136 @@
     "viewPresets": {
         "defaultPlayerVisibility": {
             "discoveredBasics": true,
-            "showTags": ["planet/habitable", "risk/*"],
-            "hiddenFields": ["gmNotes", "areas", "resources"]
+            "showTags": [
+                "planet/habitable",
+                "risk/*"
+            ],
+            "hiddenFields": [
+                "gmNotes",
+                "areas",
+                "resources"
+            ]
         },
         "overrides": [
-            { "match": { "class": "artifact/*" }, "visibleFields": ["notes"], "hiddenFields": ["gmNotes"] }
+            {
+                "match": {
+                    "class": "artifact/*"
+                },
+                "visibleFields": [
+                    "notes"
+                ],
+                "hiddenFields": [
+                    "gmNotes"
+                ]
+            }
         ]
     },
     "metrics": {
-        "habitability": { "key": "habitability", "label": "Habitability", "min": 0, "max": 100, "default": 40 },
-        "threat": { "key": "threat", "label": "Threat", "min": 0, "max": 100, "default": 20 },
-        "tech": { "key": "tech", "label": "Tech Level", "min": 0, "max": 10, "default": 3 }
+        "habitability": {
+            "key": "habitability",
+            "label": "Habitability",
+            "min": 0,
+            "max": 100,
+            "default": 40
+        },
+        "threat": {
+            "key": "threat",
+            "label": "Threat",
+            "min": 0,
+            "max": 100,
+            "default": 20
+        },
+        "tech": {
+            "key": "tech",
+            "label": "Tech Level",
+            "min": 0,
+            "max": 10,
+            "default": 3
+        }
     },
     "classifier": {
         "maxClasses": 4,
         "minScore": 10,
         "fingerprints": [
-            { "class": "planet/rogue", "kind": "base", "note": "Unbound — no parent star.", "match": { "parentId": "", "mass_Me": [0.05, 4000] } },
-            { "class": "planet/protoplanet", "kind": "base", "note": "Very young, still accreting.", "match": { "age_Gyr": [0, 0.05], "mass_Me": [0.001, 50] } },
-            { "class": "planet/planetesimal", "kind": "base", "note": "Tiny primitive body.", "match": { "mass_Me": [0, 0.005], "radius_Re": [0, 0.15] } },
-            { "class": "planet/dwarf-planet", "kind": "base", "note": "Sub-planetary, not cleared its orbit.", "match": { "mass_Me": [0.0005, 0.05], "radius_Re": [0.05, 0.25] } },
-
-            { "class": "planet/sub-earth", "kind": "base", "note": "Small rocky world (Mercury/Mars-class).", "match": { "mass_Me": [0.05, 0.5], "radius_Re": [0.4, 0.8], "density": [3, 8] } },
-            { "class": "planet/terrestrial", "kind": "base", "note": "Generic rocky world.", "match": { "radius_Re": [0.3, 1.8], "density": [3, 8.5] } },
-            { "class": "planet/super-earth", "kind": "base", "note": "Massive rocky world, thin/modest atmosphere.", "match": { "mass_Me": [2, 10], "radius_Re": [1.25, 1.9], "density": [3.5, 9] } },
-            { "class": "planet/mega-earth", "kind": "base", "note": "Very massive but still rocky/dense.", "match": { "mass_Me": [10, 50], "radius_Re": [1.6, 2.6], "density": [5, 12] } },
-            { "class": "planet/supermassive-terrestrial", "kind": "base", "note": "Extreme rocky world near the rock/gas limit.", "match": { "mass_Me": [30, 100], "radius_Re": [2, 3.2], "density": [6, 15] } },
-            { "class": "planet/iron", "kind": "base", "note": "Stripped iron core, very high density.", "match": { "density": [8, 25], "mass_Me": [0.3, 10], "radius_Re": [0.4, 1.6] } },
-            { "class": "planet/silicate", "kind": "base", "note": "Rock-dominated, dense.", "match": { "density": [4.5, 8], "mass_Me": [0.3, 8], "radius_Re": [0.5, 1.8] } },
-            { "class": "planet/coreless", "kind": "base", "note": "No iron core → low density rock.", "match": { "density": [1.5, 3.2], "mass_Me": [0.3, 8], "radius_Re": [0.7, 2.2] } },
-            { "class": "planet/carbon", "kind": "base", "note": "Carbon-rich (graphite/diamond mantle).", "match": { "density": [3, 6], "mass_Me": [0.5, 10], "atm.main": ["CO", "CH4", "CO2"] } },
-
-            { "class": "planet/lava", "kind": "base", "note": "Molten surface.", "match": { "Teq_K": [1200, 6000], "radius_Re": [0.3, 2.2], "density": [3, 9] } },
-            { "class": "planet/desert", "kind": "base", "note": "Hot, dry, little surface water.", "match": { "Teq_K": [260, 360], "hydrosphere.coverage": [0, 0.15], "radius_Re": [0.4, 1.8] } },
-            { "class": "planet/barren", "kind": "base", "note": "Airless, waterless rock.", "match": { "escapeVelocity_kms": [0, 4], "hydrosphere.coverage": [0, 0.02], "atm.pressure_bar": [0, 0.01], "atm.main": "None" } },
-            { "class": "planet/crater", "kind": "base", "note": "Ancient, heavily cratered, low gravity.", "weight": 0.8, "match": { "escapeVelocity_kms": [0, 2.5], "age_Gyr": [3, 14], "atm.pressure_bar": [0, 0.05] } },
-            { "class": "planet/ice", "kind": "base", "note": "Frozen surface.", "match": { "Teq_K": [0, 190], "hydrosphere.coverage": [0.1, 1], "radius_Re": [0.3, 2.2] } },
-            { "class": "planet/ocean", "kind": "base", "note": "Global liquid-water ocean.", "match": { "hydrosphere.coverage": [0.85, 1], "Teq_K": [255, 370], "hydrosphere.composition": "water" } },
-            { "class": "planet/subsurface-ocean", "kind": "base", "note": "Icy crust over tidally-warmed ocean.", "match": { "Teq_K": [0, 270], "tidalHeating": [40, 100000], "hydrosphere.coverage": [0.2, 1] } },
-            { "class": "planet/hycean", "kind": "base", "note": "Ocean under a thick H2 atmosphere.", "match": { "hydrosphere.coverage": [0.7, 1], "atm.main": "H2", "Teq_K": [250, 500] } },
-            { "class": "planet/methane", "kind": "base", "note": "Methane seas/cryosphere.", "match": { "hydrosphere.composition": "methane", "hydrosphere.coverage": [0.3, 1], "Teq_K": [0, 200] } },
-
-            { "class": "planet/ammonia-planet", "kind": "base", "note": "Ammonia-based hydrosphere/atmosphere.", "match": { "atm.main": "NH3", "Teq_K": [150, 280] } },
-            { "class": "planet/chlorine", "kind": "base", "note": "Chlorine-dominated atmosphere.", "match": { "atm.main": "Cl2", "radius_Re": [0.4, 2] } },
-            { "class": "planet/fluorine", "kind": "base", "note": "Fluorine-dominated chemistry.", "match": { "atm.main": "F2", "radius_Re": [0.4, 2] } },
-            { "class": "planet/sulfur", "kind": "base", "note": "Sulfur cycle dominates (Io-like / SO2).", "weight": 1.4, "match": { "atm.main": ["SO2", "S"], "radius_Re": [0.2, 2] } },
-            { "class": "planet/phosphorus", "kind": "base", "note": "Phosphorus-rich chemistry.", "match": { "atm.main": ["PH3"], "radius_Re": [0.4, 2] } },
-
-            { "class": "planet/earth-analogue", "kind": "base", "note": "True Earth twin.", "match": { "mass_Me": [0.8, 1.3], "radius_Re": [0.9, 1.15], "hydrosphere.coverage": [0.5, 0.85], "atm.composition.O2": [0.1, 0.35], "Teq_K": [255, 300] } },
-            { "class": "planet/earth-like", "kind": "base", "note": "Habitable Earth-like world.", "match": { "mass_Me": [0.5, 2.5], "hydrosphere.coverage": [0.3, 0.9], "atm.composition.O2": [0.05, 0.4], "Teq_K": [250, 315] } },
-            { "class": "planet/superhabitable", "kind": "base", "note": "Larger, warmer, wetter than Earth — even better for life.", "match": { "mass_Me": [1.5, 4], "hydrosphere.coverage": [0.5, 0.95], "atm.composition.O2": [0.1, 0.4], "Teq_K": [275, 320] } },
-
-            { "class": "planet/mini-neptune", "kind": "base", "note": "Small world with thick H/He envelope.", "match": { "mass_Me": [2, 10], "radius_Re": [1.7, 3.5], "atm.main": ["H2", "He"] } },
-            { "class": "planet/sub-neptune", "kind": "base", "note": "Between super-Earth and Neptune.", "match": { "mass_Me": [2, 12], "radius_Re": [1.8, 3.2], "density": [1.5, 4] } },
-            { "class": "planet/ice-giant", "kind": "base", "note": "Neptune/Uranus-class cold giant.", "match": { "mass_Me": [8, 50], "radius_Re": [2.5, 6], "Teq_K": [0, 200], "density": [1, 3.5] } },
-            { "class": "planet/super-neptune", "kind": "base", "note": "Larger than Neptune, still ice-giant-like.", "match": { "mass_Me": [20, 80], "radius_Re": [4, 8] } },
-            { "class": "planet/hot-neptune", "kind": "base", "note": "Neptune-mass world close to its star.", "match": { "mass_Me": [8, 50], "radius_Re": [2.5, 6], "Teq_K": [700, 1500] } },
-            { "class": "planet/ultra-hot-neptune", "kind": "base", "note": "Neptune-mass, extreme irradiation.", "match": { "mass_Me": [8, 50], "Teq_K": [1500, 5000] } },
-
-            { "class": "planet/gas-giant", "kind": "base", "note": "Generic Jupiter-class giant (fallback when no specific giant fits).", "weight": 0.9, "match": { "mass_Me": [50, 4000], "radius_Re": [3.5, 25] } },
-            { "class": "planet/mini-jupiter", "kind": "base", "note": "Small gas giant (Saturn-ish).", "match": { "mass_Me": [50, 150], "radius_Re": [3.5, 9] } },
-            { "class": "planet/super-jupiter", "kind": "base", "note": "Several Jupiter masses (disk-formed).", "match": { "mass_Me": [800, 2500], "radius_Re": [9, 20] } },
-            { "class": "planet/hot-jupiter", "kind": "base", "note": "Gas giant on a very short orbit.", "match": { "mass_Me": [95, 4000], "Teq_K": [1000, 2200], "a_AU": [0, 0.12] } },
-            { "class": "planet/ultra-hot-jupiter", "kind": "base", "note": "Gas giant with dayside >2000 K.", "match": { "mass_Me": [95, 4000], "Teq_K": [2000, 6000] } },
-            { "class": "planet/puffy", "kind": "base", "note": "Inflated, low-density giant.", "match": { "mass_Me": [30, 400], "radius_Re": [6, 16], "density": [0.1, 0.5] } },
-            { "class": "planet/super-puff", "kind": "base", "note": "Cotton-candy density.", "match": { "mass_Me": [1, 30], "radius_Re": [5, 14], "density": [0.01, 0.2] } },
-            { "class": "planet/cloudless-gas-giant", "kind": "base", "note": "Hot giant, cloud species evaporated.", "match": { "mass_Me": [95, 4000], "Teq_K": [350, 900] } },
-            { "class": "planet/water-clouds-gas-giant", "kind": "base", "note": "Giant cool enough for water clouds.", "match": { "mass_Me": [50, 4000], "Teq_K": [150, 280] } },
-            { "class": "planet/ammonia-clouds-gas-giant", "kind": "base", "note": "Jupiter-like ammonia cloud decks.", "match": { "mass_Me": [50, 4000], "Teq_K": [80, 160] } },
-            { "class": "planet/alkali-metal-clouds-gas-giant", "kind": "base", "note": "Hot giant with Na/K clouds.", "match": { "mass_Me": [95, 4000], "Teq_K": [900, 1400] } },
-            { "class": "planet/silicate-clouds-gas-giant", "kind": "base", "note": "Very hot giant with rock/silicate clouds.", "match": { "mass_Me": [95, 4000], "Teq_K": [1400, 2500] } },
-            { "class": "planet/helium", "kind": "base", "note": "Helium-dominated (evaporated-H) giant.", "match": { "mass_Me": [10, 4000], "atm.main": "He" } },
-
-            { "class": "planet/chthonian", "kind": "base", "note": "Gas giant stripped to its core.", "match": { "mass_Me": [3, 50], "Teq_K": [1200, 5000], "density": [4, 12] } },
-            { "class": "planet/sub-brown-dwarf", "kind": "base", "note": "Planetary-mass object formed like a star (near the deuterium limit).", "match": { "mass_Me": [2500, 4100], "radius_Re": [9, 14] } },
-            { "class": "planet/brown-dwarf", "kind": "base", "note": "Deuterium-burning, between planet and star.", "match": { "mass_Me": [4100, 25000], "radius_Re": [9, 14] } },
-            { "class": "planet/ultra-cool-dwarf", "kind": "base", "note": "Coolest brown/sub-stellar dwarfs.", "match": { "mass_Me": [4000, 25000], "Teq_K": [0, 1300] } },
-
-            { "class": "planet/eyeball", "kind": "base", "note": "Tidally locked, temperate — substellar oasis.", "match": { "tidallyLocked": [1, 1], "Teq_K": [255, 320], "hydrosphere.coverage": [0.1, 1] } },
-            { "class": "planet/hot-eyeball", "kind": "base", "note": "Tidally locked with a molten/dry dayside.", "match": { "tidallyLocked": [1, 1], "Teq_K": [320, 1200] } },
-            { "class": "planet/cold-eyeball", "kind": "base", "note": "Tidally locked, icy except the substellar point.", "match": { "tidallyLocked": [1, 1], "Teq_K": [120, 255] } },
-            { "class": "planet/mesoplanet", "kind": "base", "note": "Between Ceres and Mercury in size.", "match": { "radius_Re": [0.08, 0.4], "mass_Me": [0.002, 0.1] } },
-
-            { "class": "planet/ringed", "kind": "modifier", "note": "Has a ring child.", "match": { "has_ring_child": [1, 1] } },
-            { "class": "planet/ultra-short-period", "kind": "modifier", "note": "Orbital period under a day (around its star).", "match": { "orbital_period_days": [0, 1], "orbitsStar": [1, 1] } },
-            { "class": "planet/toroidal", "kind": "modifier", "note": "Spinning so fast it is donut-shaped.", "match": { "rotation_period_hours": [0, 2] } },
-            { "class": "planet/ellipsoid", "kind": "modifier", "note": "Rotationally flattened.", "match": { "rotation_period_hours": [2, 6] } },
-            { "class": "planet/disrupted", "kind": "modifier", "note": "Being tidally torn apart by its star.", "match": { "a_AU": [0, 0.015], "eccentricity": [0.2, 1], "orbitsStar": [1, 1] } }
+            {
+                "class": "planet/rogue",
+                "kind": "base",
+                "note": "Unbound — no parent star.",
+                "match": {
+                    "parentId": "",
+                    "mass_Me": [
+                        0.05,
+                        4000
+                    ]
+                }
+            },
+            {
+                "class": "planet/protoplanet",
+                "kind": "base",
+                "note": "Very young, still accreting.",
+                "match": {
+                    "age_Gyr": [
+                        0,
+                        0.05
+                    ],
+                    "mass_Me": [
+                        0.001,
+                        50
+                    ]
+                }
+            },
+            {
+                "class": "planet/planetesimal",
+                "kind": "base",
+                "note": "Tiny primitive body.",
+                "match": {
+                    "mass_Me": [
+                        0,
+                        0.005
+                    ],
+                    "radius_Re": [
+                        0,
+                        0.15
+                    ]
+                }
+            },
+            {
+                "class": "planet/dwarf-planet",
+                "kind": "base",
+                "note": "Sub-planetary, not cleared its orbit.",
+                "match": {
+                    "mass_Me": [
+                        0.0005,
+                        0.05
+                    ],
+                    "radius_Re": [
+                        0.05,
+                        0.25
+                    ]
+                }
+            },
+            {
+                "class": "planet/sub-earth",
+                "kind": "base",
+                "note": "Small rocky world (Mercury/Mars-class).",
+                "match": {
+                    "mass_Me": [
+                        0.05,
+                        0.5
+                    ],
+                    "radius_Re": [
+                        0.4,
+                        0.8
+                    ],
+                    "density": [
+                        3,
+                        8
+                    ]
+                }
+            },
+            {
+                "class": "planet/terrestrial",
+                "kind": "base",
+                "note": "Generic rocky world.",
+                "match": {
+                    "radius_Re": [
+                        0.3,
+                        1.8
+                    ],
+                    "density": [
+                        3,
+                        8.5
+                    ]
+                }
+            },
+            {
+                "class": "planet/super-earth",
+                "kind": "base",
+                "note": "Massive rocky world, thin/modest atmosphere.",
+                "match": {
+                    "mass_Me": [
+                        2,
+                        10
+                    ],
+                    "radius_Re": [
+                        1.25,
+                        1.9
+                    ],
+                    "density": [
+                        3.5,
+                        9
+                    ]
+                }
+            },
+            {
+                "class": "planet/mega-earth",
+                "kind": "base",
+                "note": "Very massive but still rocky/dense.",
+                "match": {
+                    "mass_Me": [
+                        10,
+                        50
+                    ],
+                    "radius_Re": [
+                        1.6,
+                        2.6
+                    ],
+                    "density": [
+                        5,
+                        12
+                    ]
+                }
+            },
+            {
+                "class": "planet/supermassive-terrestrial",
+                "kind": "base",
+                "note": "Extreme rocky world near the rock/gas limit.",
+                "match": {
+                    "mass_Me": [
+                        30,
+                        100
+                    ],
+                    "radius_Re": [
+                        2,
+                        3.2
+                    ],
+                    "density": [
+                        6,
+                        15
+                    ]
+                }
+            },
+            {
+                "class": "planet/iron",
+                "kind": "base",
+                "note": "Stripped iron core, very high density.",
+                "match": {
+                    "density": [
+                        8,
+                        25
+                    ],
+                    "mass_Me": [
+                        0.3,
+                        10
+                    ],
+                    "radius_Re": [
+                        0.4,
+                        1.6
+                    ]
+                }
+            },
+            {
+                "class": "planet/silicate",
+                "kind": "base",
+                "note": "Rock-dominated, dense.",
+                "match": {
+                    "density": [
+                        4.5,
+                        8
+                    ],
+                    "mass_Me": [
+                        0.3,
+                        8
+                    ],
+                    "radius_Re": [
+                        0.5,
+                        1.8
+                    ]
+                }
+            },
+            {
+                "class": "planet/coreless",
+                "kind": "base",
+                "note": "No iron core → low density rock.",
+                "match": {
+                    "density": [
+                        1.5,
+                        3.2
+                    ],
+                    "mass_Me": [
+                        0.3,
+                        8
+                    ],
+                    "radius_Re": [
+                        0.7,
+                        2.2
+                    ]
+                }
+            },
+            {
+                "class": "planet/carbon",
+                "kind": "base",
+                "note": "Carbon-rich (graphite/diamond mantle).",
+                "match": {
+                    "density": [
+                        3,
+                        6
+                    ],
+                    "mass_Me": [
+                        0.5,
+                        10
+                    ],
+                    "atm.main": [
+                        "CO",
+                        "CH4"
+                    ]
+                },
+                "weight": 1.2
+            },
+            {
+                "class": "planet/lava",
+                "kind": "base",
+                "note": "Molten surface.",
+                "match": {
+                    "Teq_K": [
+                        1200,
+                        6000
+                    ],
+                    "radius_Re": [
+                        0.3,
+                        2.2
+                    ],
+                    "density": [
+                        3,
+                        9
+                    ]
+                }
+            },
+            {
+                "class": "planet/desert",
+                "kind": "base",
+                "note": "Hot, dry, little surface water.",
+                "match": {
+                    "Teq_K": [
+                        260,
+                        360
+                    ],
+                    "hydrosphere.coverage": [
+                        0,
+                        0.15
+                    ],
+                    "radius_Re": [
+                        0.4,
+                        1.8
+                    ]
+                }
+            },
+            {
+                "class": "planet/barren",
+                "kind": "base",
+                "note": "Airless, waterless rock.",
+                "match": {
+                    "escapeVelocity_kms": [
+                        0,
+                        4
+                    ],
+                    "hydrosphere.coverage": [
+                        0,
+                        0.02
+                    ],
+                    "atm.pressure_bar": [
+                        0,
+                        0.01
+                    ],
+                    "atm.main": "None"
+                }
+            },
+            {
+                "class": "planet/crater",
+                "kind": "base",
+                "note": "Ancient, heavily cratered, low gravity.",
+                "weight": 0.8,
+                "match": {
+                    "escapeVelocity_kms": [
+                        0,
+                        2.5
+                    ],
+                    "age_Gyr": [
+                        3,
+                        14
+                    ],
+                    "atm.pressure_bar": [
+                        0,
+                        0.05
+                    ]
+                }
+            },
+            {
+                "class": "planet/ice",
+                "kind": "base",
+                "note": "Frozen surface.",
+                "match": {
+                    "Teq_K": [
+                        0,
+                        190
+                    ],
+                    "hydrosphere.coverage": [
+                        0.1,
+                        1
+                    ],
+                    "radius_Re": [
+                        0.3,
+                        2.2
+                    ]
+                }
+            },
+            {
+                "class": "planet/ocean",
+                "kind": "base",
+                "note": "Global liquid-water ocean.",
+                "match": {
+                    "hydrosphere.coverage": [
+                        0.85,
+                        1
+                    ],
+                    "Teq_K": [
+                        255,
+                        370
+                    ],
+                    "hydrosphere.composition": "water"
+                }
+            },
+            {
+                "class": "planet/subsurface-ocean",
+                "kind": "base",
+                "note": "Icy crust over tidally-warmed ocean.",
+                "match": {
+                    "Teq_K": [
+                        0,
+                        270
+                    ],
+                    "tidalHeating": [
+                        40,
+                        100000
+                    ],
+                    "hydrosphere.coverage": [
+                        0.2,
+                        1
+                    ]
+                }
+            },
+            {
+                "class": "planet/hycean",
+                "kind": "base",
+                "note": "Ocean under a thick H2 atmosphere.",
+                "match": {
+                    "hydrosphere.coverage": [
+                        0.7,
+                        1
+                    ],
+                    "atm.main": "H2",
+                    "Teq_K": [
+                        250,
+                        500
+                    ]
+                },
+                "weight": 1.3
+            },
+            {
+                "class": "planet/methane",
+                "kind": "base",
+                "note": "Methane seas/cryosphere.",
+                "match": {
+                    "hydrosphere.composition": "methane",
+                    "hydrosphere.coverage": [
+                        0.3,
+                        1
+                    ],
+                    "Teq_K": [
+                        0,
+                        200
+                    ]
+                },
+                "weight": 1.3
+            },
+            {
+                "class": "planet/ammonia-planet",
+                "kind": "base",
+                "note": "Ammonia-based hydrosphere/atmosphere.",
+                "match": {
+                    "atm.main": "NH3",
+                    "Teq_K": [
+                        150,
+                        280
+                    ]
+                },
+                "weight": 1.3
+            },
+            {
+                "class": "planet/chlorine",
+                "kind": "base",
+                "note": "Chlorine-dominated atmosphere.",
+                "match": {
+                    "atm.main": "Cl2",
+                    "radius_Re": [
+                        0.4,
+                        2
+                    ]
+                },
+                "weight": 1.3
+            },
+            {
+                "class": "planet/fluorine",
+                "kind": "base",
+                "note": "Fluorine-dominated chemistry.",
+                "match": {
+                    "atm.main": "F2",
+                    "radius_Re": [
+                        0.4,
+                        2
+                    ]
+                },
+                "weight": 1.3
+            },
+            {
+                "class": "planet/sulfur",
+                "kind": "base",
+                "note": "Sulfur cycle dominates (Io-like / SO2).",
+                "weight": 1.4,
+                "match": {
+                    "atm.main": [
+                        "SO2",
+                        "S"
+                    ],
+                    "radius_Re": [
+                        0.2,
+                        2
+                    ]
+                }
+            },
+            {
+                "class": "planet/phosphorus",
+                "kind": "base",
+                "note": "Phosphorus-rich chemistry.",
+                "match": {
+                    "atm.main": [
+                        "PH3"
+                    ],
+                    "radius_Re": [
+                        0.4,
+                        2
+                    ]
+                },
+                "weight": 1.3
+            },
+            {
+                "class": "planet/earth-analogue",
+                "kind": "base",
+                "note": "True Earth twin.",
+                "match": {
+                    "mass_Me": [
+                        0.8,
+                        1.3
+                    ],
+                    "radius_Re": [
+                        0.9,
+                        1.15
+                    ],
+                    "hydrosphere.coverage": [
+                        0.5,
+                        0.85
+                    ],
+                    "atm.composition.O2": [
+                        0.1,
+                        0.35
+                    ],
+                    "Teq_K": [
+                        255,
+                        300
+                    ]
+                }
+            },
+            {
+                "class": "planet/earth-like",
+                "kind": "base",
+                "note": "Habitable Earth-like world.",
+                "match": {
+                    "mass_Me": [
+                        0.5,
+                        2.5
+                    ],
+                    "hydrosphere.coverage": [
+                        0.3,
+                        0.9
+                    ],
+                    "atm.composition.O2": [
+                        0.05,
+                        0.4
+                    ],
+                    "Teq_K": [
+                        250,
+                        315
+                    ]
+                }
+            },
+            {
+                "class": "planet/superhabitable",
+                "kind": "base",
+                "note": "Larger, warmer, wetter than Earth — even better for life.",
+                "match": {
+                    "mass_Me": [
+                        1.5,
+                        4
+                    ],
+                    "hydrosphere.coverage": [
+                        0.5,
+                        0.95
+                    ],
+                    "atm.composition.O2": [
+                        0.1,
+                        0.4
+                    ],
+                    "Teq_K": [
+                        275,
+                        320
+                    ]
+                }
+            },
+            {
+                "class": "planet/mini-neptune",
+                "kind": "base",
+                "note": "Small world with thick H/He envelope.",
+                "match": {
+                    "mass_Me": [
+                        2,
+                        10
+                    ],
+                    "radius_Re": [
+                        1.7,
+                        3.5
+                    ],
+                    "atm.main": [
+                        "H2",
+                        "He"
+                    ]
+                }
+            },
+            {
+                "class": "planet/sub-neptune",
+                "kind": "base",
+                "note": "Between super-Earth and Neptune.",
+                "match": {
+                    "mass_Me": [
+                        2,
+                        12
+                    ],
+                    "radius_Re": [
+                        1.8,
+                        3.2
+                    ],
+                    "density": [
+                        1.5,
+                        4
+                    ]
+                }
+            },
+            {
+                "class": "planet/ice-giant",
+                "kind": "base",
+                "note": "Neptune/Uranus-class cold giant.",
+                "match": {
+                    "mass_Me": [
+                        8,
+                        50
+                    ],
+                    "radius_Re": [
+                        2.5,
+                        6
+                    ],
+                    "Teq_K": [
+                        0,
+                        200
+                    ],
+                    "density": [
+                        1,
+                        3.5
+                    ]
+                }
+            },
+            {
+                "class": "planet/super-neptune",
+                "kind": "base",
+                "note": "Larger than Neptune, still ice-giant-like.",
+                "match": {
+                    "mass_Me": [
+                        20,
+                        80
+                    ],
+                    "radius_Re": [
+                        4,
+                        8
+                    ]
+                }
+            },
+            {
+                "class": "planet/hot-neptune",
+                "kind": "base",
+                "note": "Neptune-mass world close to its star.",
+                "match": {
+                    "mass_Me": [
+                        8,
+                        50
+                    ],
+                    "radius_Re": [
+                        2.5,
+                        6
+                    ],
+                    "Teq_K": [
+                        700,
+                        1500
+                    ]
+                }
+            },
+            {
+                "class": "planet/ultra-hot-neptune",
+                "kind": "base",
+                "note": "Neptune-mass, extreme irradiation.",
+                "match": {
+                    "mass_Me": [
+                        8,
+                        50
+                    ],
+                    "Teq_K": [
+                        1500,
+                        5000
+                    ]
+                }
+            },
+            {
+                "class": "planet/gas-giant",
+                "kind": "base",
+                "note": "Generic Jupiter-class giant (fallback when no specific giant fits).",
+                "weight": 0.9,
+                "match": {
+                    "mass_Me": [
+                        50,
+                        4000
+                    ],
+                    "radius_Re": [
+                        3.5,
+                        25
+                    ]
+                }
+            },
+            {
+                "class": "planet/mini-jupiter",
+                "kind": "base",
+                "note": "Small gas giant (Saturn-ish).",
+                "match": {
+                    "mass_Me": [
+                        50,
+                        150
+                    ],
+                    "radius_Re": [
+                        3.5,
+                        9
+                    ]
+                }
+            },
+            {
+                "class": "planet/super-jupiter",
+                "kind": "base",
+                "note": "Several Jupiter masses (disk-formed).",
+                "match": {
+                    "mass_Me": [
+                        800,
+                        2500
+                    ],
+                    "radius_Re": [
+                        9,
+                        20
+                    ]
+                }
+            },
+            {
+                "class": "planet/hot-jupiter",
+                "kind": "base",
+                "note": "Gas giant on a very short orbit.",
+                "match": {
+                    "mass_Me": [
+                        95,
+                        4000
+                    ],
+                    "Teq_K": [
+                        1000,
+                        2200
+                    ],
+                    "a_AU": [
+                        0,
+                        0.12
+                    ]
+                }
+            },
+            {
+                "class": "planet/ultra-hot-jupiter",
+                "kind": "base",
+                "note": "Gas giant with dayside >2000 K.",
+                "match": {
+                    "mass_Me": [
+                        95,
+                        4000
+                    ],
+                    "Teq_K": [
+                        2000,
+                        6000
+                    ]
+                }
+            },
+            {
+                "class": "planet/puffy",
+                "kind": "base",
+                "note": "Inflated, low-density giant.",
+                "match": {
+                    "mass_Me": [
+                        30,
+                        400
+                    ],
+                    "radius_Re": [
+                        6,
+                        16
+                    ],
+                    "density": [
+                        0.1,
+                        0.5
+                    ]
+                }
+            },
+            {
+                "class": "planet/super-puff",
+                "kind": "base",
+                "note": "Cotton-candy density.",
+                "match": {
+                    "mass_Me": [
+                        1,
+                        30
+                    ],
+                    "radius_Re": [
+                        5,
+                        14
+                    ],
+                    "density": [
+                        0.01,
+                        0.2
+                    ]
+                }
+            },
+            {
+                "class": "planet/cloudless-gas-giant",
+                "kind": "base",
+                "note": "Hot giant, cloud species evaporated.",
+                "match": {
+                    "mass_Me": [
+                        95,
+                        4000
+                    ],
+                    "Teq_K": [
+                        350,
+                        900
+                    ]
+                }
+            },
+            {
+                "class": "planet/water-clouds-gas-giant",
+                "kind": "base",
+                "note": "Giant cool enough for water clouds.",
+                "match": {
+                    "mass_Me": [
+                        50,
+                        4000
+                    ],
+                    "Teq_K": [
+                        150,
+                        280
+                    ]
+                }
+            },
+            {
+                "class": "planet/ammonia-clouds-gas-giant",
+                "kind": "base",
+                "note": "Jupiter-like ammonia cloud decks.",
+                "match": {
+                    "mass_Me": [
+                        50,
+                        4000
+                    ],
+                    "Teq_K": [
+                        80,
+                        160
+                    ]
+                }
+            },
+            {
+                "class": "planet/alkali-metal-clouds-gas-giant",
+                "kind": "base",
+                "note": "Hot giant with Na/K clouds.",
+                "match": {
+                    "mass_Me": [
+                        95,
+                        4000
+                    ],
+                    "Teq_K": [
+                        900,
+                        1400
+                    ]
+                }
+            },
+            {
+                "class": "planet/silicate-clouds-gas-giant",
+                "kind": "base",
+                "note": "Very hot giant with rock/silicate clouds.",
+                "match": {
+                    "mass_Me": [
+                        95,
+                        4000
+                    ],
+                    "Teq_K": [
+                        1400,
+                        2500
+                    ]
+                }
+            },
+            {
+                "class": "planet/helium",
+                "kind": "base",
+                "note": "Helium-dominated (evaporated-H) giant.",
+                "match": {
+                    "mass_Me": [
+                        10,
+                        4000
+                    ],
+                    "atm.main": "He"
+                },
+                "weight": 1.3
+            },
+            {
+                "class": "planet/chthonian",
+                "kind": "base",
+                "note": "Gas giant stripped to its core.",
+                "match": {
+                    "mass_Me": [
+                        3,
+                        50
+                    ],
+                    "Teq_K": [
+                        1200,
+                        5000
+                    ],
+                    "density": [
+                        4,
+                        12
+                    ]
+                }
+            },
+            {
+                "class": "planet/sub-brown-dwarf",
+                "kind": "base",
+                "note": "Planetary-mass object formed like a star (near the deuterium limit).",
+                "match": {
+                    "mass_Me": [
+                        2500,
+                        4100
+                    ],
+                    "radius_Re": [
+                        9,
+                        14
+                    ]
+                },
+                "weight": 1.2
+            },
+            {
+                "class": "planet/brown-dwarf",
+                "kind": "base",
+                "note": "Deuterium-burning, between planet and star.",
+                "match": {
+                    "mass_Me": [
+                        4100,
+                        25000
+                    ],
+                    "radius_Re": [
+                        9,
+                        14
+                    ]
+                },
+                "weight": 1.2
+            },
+            {
+                "class": "planet/ultra-cool-dwarf",
+                "kind": "base",
+                "note": "Coolest brown/sub-stellar dwarfs.",
+                "match": {
+                    "mass_Me": [
+                        4000,
+                        25000
+                    ],
+                    "Teq_K": [
+                        0,
+                        600
+                    ]
+                },
+                "weight": 1.3
+            },
+            {
+                "class": "planet/eyeball",
+                "kind": "base",
+                "note": "Tidally locked, temperate — substellar oasis.",
+                "match": {
+                    "tidallyLocked": [
+                        1,
+                        1
+                    ],
+                    "Teq_K": [
+                        255,
+                        320
+                    ],
+                    "hydrosphere.coverage": [
+                        0.1,
+                        1
+                    ]
+                },
+                "weight": 1.3
+            },
+            {
+                "class": "planet/hot-eyeball",
+                "kind": "base",
+                "note": "Tidally locked with a molten/dry dayside.",
+                "match": {
+                    "tidallyLocked": [
+                        1,
+                        1
+                    ],
+                    "Teq_K": [
+                        320,
+                        1200
+                    ]
+                },
+                "weight": 1.3
+            },
+            {
+                "class": "planet/cold-eyeball",
+                "kind": "base",
+                "note": "Tidally locked, icy except the substellar point.",
+                "match": {
+                    "tidallyLocked": [
+                        1,
+                        1
+                    ],
+                    "Teq_K": [
+                        120,
+                        255
+                    ]
+                },
+                "weight": 1.5
+            },
+            {
+                "class": "planet/mesoplanet",
+                "kind": "base",
+                "note": "Between Ceres and Mercury in size.",
+                "match": {
+                    "radius_Re": [
+                        0.08,
+                        0.4
+                    ],
+                    "mass_Me": [
+                        0.002,
+                        0.1
+                    ]
+                }
+            },
+            {
+                "class": "planet/ringed",
+                "kind": "modifier",
+                "note": "Has a ring child.",
+                "match": {
+                    "has_ring_child": [
+                        1,
+                        1
+                    ]
+                }
+            },
+            {
+                "class": "planet/ultra-short-period",
+                "kind": "modifier",
+                "note": "Orbital period under a day (around its star).",
+                "match": {
+                    "orbital_period_days": [
+                        0,
+                        1
+                    ],
+                    "orbitsStar": [
+                        1,
+                        1
+                    ]
+                }
+            },
+            {
+                "class": "planet/toroidal",
+                "kind": "modifier",
+                "note": "Spinning so fast it is donut-shaped.",
+                "match": {
+                    "rotation_period_hours": [
+                        0,
+                        2
+                    ]
+                }
+            },
+            {
+                "class": "planet/ellipsoid",
+                "kind": "modifier",
+                "note": "Rotationally flattened.",
+                "match": {
+                    "rotation_period_hours": [
+                        2,
+                        6
+                    ]
+                }
+            },
+            {
+                "class": "planet/disrupted",
+                "kind": "modifier",
+                "note": "Being tidally torn apart by its star.",
+                "match": {
+                    "a_AU": [
+                        0,
+                        0.015
+                    ],
+                    "eccentricity": [
+                        0.2,
+                        1
+                    ],
+                    "orbitsStar": [
+                        1,
+                        1
+                    ]
+                }
+            }
         ],
         "rules": [
-            { "when": { "any": [ { "gt": ["Teq_K", 1400] }, { "gt": ["tidalHeating", 10000] } ] }, "addClass": "planet/lava", "score": 100 },
-            { "when": { "all": [ { "gt": ["hydrosphere.coverage", 0.8] }, { "between": ["Teq_K", 250, 370] } ] }, "addClass": "planet/ocean", "score": 100 },
-            { "when": { "all": [ { "lt": ["Teq_K", 180] }, { "gt": ["hydrosphere.coverage", 0.1] }, { "not": { "gt": ["atm.pressure_bar", 2.0] } } ] }, "addClass": "planet/ice", "score": 100 },
-            { "when": { "all": [ { "lt": ["hydrosphere.coverage", 0.1] }, { "between": ["Teq_K", 250, 400] } ] }, "addClass": "planet/desert", "score": 100 },
-            { "when": { "all": [ { "lt": ["escapeVelocity_kms", 3.0] }, { "lt": ["hydrosphere.coverage", 0.01] } ] }, "addClass": "planet/barren", "score": 100 },
-            { "when": { "all": [ { "gt": ["hydrosphere.coverage", 0.9] }, { "eq": ["atm.main", "H2"] } ] }, "addClass": "planet/hycean", "score": 110 },
-            { "when": { "all": [ { "gt": ["mass_Me", 0.5] }, { "lt": ["mass_Me", 1.5] }, { "gt": ["hydrosphere.coverage", 0.5] }, { "eq": ["hydrosphere.composition", "water"] }, { "gt": ["atm.composition.O2", 0.1] } ] }, "addClass": "planet/earth-analogue", "score": 120 },
-            { "when": { "all": [ { "gt": ["mass_Me", 1] }, { "eq": ["atm.main", "CO2"] } ] }, "addClass": "planet/carbon", "score": 105 },
-            { "when": { "all": [ { "lt": ["mass_Me", 10] }, { "gt": ["stellarIrradiation", 1000] } ] }, "addClass": "planet/chthonian", "score": 110 },
-            { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "lt": ["Teq_K", 150] } ] }, "addClass": "planet/ammonia-clouds-gas-giant", "score": 80 },
-            { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "between": ["Teq_K", 150, 250] } ] }, "addClass": "planet/water-clouds-gas-giant", "score": 80 },
-            { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "between": ["Teq_K", 350, 800] } ] }, "addClass": "planet/cloudless-gas-giant", "score": 80 },
-            { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "gt": ["Teq_K", 1400] } ] }, "addClass": "planet/silicate-clouds-gas-giant", "score": 80 },
-            { "when": { "all": [ { "lt": ["mass_Me", 10] }, { "gt": ["mass_Me", 1.5] }, { "lt": ["radius_Re", 1.2] } ] }, "addClass": "planet/iron", "score": 90 },
-            { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "any": [ { "between": ["a_AU", 0.0, 0.12] }, { "gt": ["Teq_K", 1000] } ] } ] }, "addClass": "planet/hot-jupiter", "score": 50 },
-            { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "between": ["Teq_K", 500, 1000] } ] }, "addClass": "planet/warm-jupiter", "score": 40 },
-            { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "lt": ["Teq_K", 250] } ] }, "addClass": "planet/cold-jupiter", "score": 30 },
-            { "when": { "all": [ { "between": ["mass_Me", 2, 10] }, { "between": ["radius_Re", 1.25, 1.9] }, { "any": [ { "lt": ["atm.pressure_bar", 5] }, { "eq": ["atm.main", "CO2"] } ] } ] }, "addClass": "planet/super-earth", "score": 40 },
-            { "when": { "all": [ { "between": ["mass_Me", 5, 20] }, { "between": ["radius_Re", 2.0, 4.0] }, { "any": [ { "gt": ["atm.pressure_bar", 5] }, { "any": [ { "eq": ["atm.main", "H2"] }, { "eq": ["atm.main", "He"] } ] } ] } ] }, "addClass": "planet/mini-neptune", "score": 40 },
-            { "when": { "all": [ { "eq": ["tidallyLocked", 1] }, { "between": ["Teq_K", 200, 300] }, { "any": [ { "eq": ["stellarType", "M"] }, { "lt": ["a_AU", 0.2] } ] } ] }, "addClass": "planet/cold-eyeball", "score": 35 },
-            { "when": { "all": [ { "eq": ["tidallyLocked", 1] }, { "gt": ["Teq_K", 300] } ] }, "addClass": "planet/hot-eyeball", "score": 35 },
-
-            { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "any": [ { "between": ["a_AU", 0.0, 0.12] }, { "gt": ["Teq_K", 1000] } ] } ] }, "addClass": "planet/hot-jupiter", "score": 50 },
-            { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "between": ["Teq_K", 500, 1000] } ] }, "addClass": "planet/warm-jupiter", "score": 40 },
-            { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "lt": ["Teq_K", 250] } ] }, "addClass": "planet/cold-jupiter", "score": 30 },
-
-            { "when": { "between": ["radius_Re", 0.4, 1.6] }, "addClass": "planet/terrestrial", "score": 15 },
-            { "when": { "all": [ { "gt": ["radius_Re", 3.5] }, { "gt": ["mass_Me", 10] } ] }, "addClass": "planet/gas-giant", "score": 15 },
-
-            { "when": { "all": [ { "lt": ["Teq_K", 273] }, { "gt": ["tidalHeating", 50] }, { "gt": ["hydrosphere.coverage", 0.1] } ] }, "addClass": "planet/subsurface-ocean", "score": 90 },
-            { "when": { "all": [ { "between": ["mass_Me", 10, 50] }, { "gt": ["Teq_K", 800] } ] }, "addClass": "planet/hot-neptune", "score": 60 },
-            { "when": { "gt": ["mass_Me", 1000] }, "addClass": "planet/super-jupiter", "score": 60 },
-
-            { "when": { "lt": ["age_Gyr", 0.1] }, "addClass": "planet/protoplanet", "score": 90 },
-            { "when": { "lt": ["orbital_period_days", 1.0] }, "addClass": "planet/ultra-short-period", "score": 90 },
-
-
-
-            { "when": { "all": [ { "lt": ["mass_Me", 0.1] }, { "gt": ["mass_Me", 0.01] } ] }, "addClass": "planet/dwarf-planet", "score": 50 },
-            { "when": { "all": [ { "lt": ["density", 0.5] }, { "gt": ["mass_Me", 1] } ] }, "addClass": "planet/coreless", "score": 60 },
-            { "when": { "gt": ["density", 1.5] }, "addClass": "planet/silicate", "score": 60 },
-
-            { "when": { "lt": ["mass_Me", 0.5] }, "addClass": "planet/sub-earth", "score": 50 },
-            { "when": { "all": [ { "gt": ["mass_Me", 10] }, { "lt": ["mass_Me", 50] } ] }, "addClass": "planet/mega-earth", "score": 50 },
-            { "when": { "all": [ { "gt": ["mass_Me", 50] }, { "lt": ["mass_Me", 500] } ] }, "addClass": "planet/super-jupiter", "score": 50 },
-            { "when": { "all": [ { "between": ["mass_Me", 10, 50] }, { "gt": ["Teq_K", 1000] } ] }, "addClass": "planet/hot-neptune", "score": 60 },
-            { "when": { "all": [ { "gt": ["mass_Me", 95] }, { "gt": ["Teq_K", 1500] } ] }, "addClass": "planet/ultra-hot-jupiter", "score": 60 },
-            { "when": { "all": [ { "between": ["mass_Me", 10, 50] }, { "gt": ["Teq_K", 1200] } ] }, "addClass": "planet/ultra-hot-neptune", "score": 60 },
-
-            { "when": { "lt": ["rotation_period_hours", 2] }, "addClass": "planet/toroidal", "score": 90 },
-            { "when": { "all": [ { "lt": ["rotation_period_hours", 6] }, { "gt": ["rotation_period_hours", 2] } ] }, "addClass": "planet/ellipsoid", "score": 80 },
-
-            { "when": { "eq": ["has_ring_child", 1] }, "addClass": "planet/ringed", "score": 100 },
-            { "when": { "all": [ { "eq": ["hydrosphere.composition", "methane"] }, { "gt": ["hydrosphere.coverage", 0.5] } ] }, "addClass": "planet/methane", "score": 90 },
-            { "when": { "all": [ { "lt": ["escapeVelocity_kms", 1.0] }, { "gt": ["age_Gyr", 4] } ] }, "addClass": "planet/crater", "score": 70 },
-
-            { "when": { "between": ["mass_Me", 4000, 8000] }, "addClass": "planet/brown-dwarf", "score": 120 },
-            { "when": { "between": ["mass_Me", 1000, 4000] }, "addClass": "planet/sub-brown-dwarf", "score": 110 },
-            { "when": { "all": [ { "between": ["mass_Me", 10, 50] }, { "lt": ["Teq_K", 200] } ] }, "addClass": "planet/ice-giant", "score": 85 },
-            { "when": { "all": [ { "gt": ["radius_Re", 6] }, { "lt": ["mass_Me", 2] } ] }, "addClass": "planet/super-puff", "score": 90 },
-            { "when": { "eq": ["parentId", null] }, "addClass": "planet/rogue", "score": 200 }
+            {
+                "when": {
+                    "any": [
+                        {
+                            "gt": [
+                                "Teq_K",
+                                1400
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "tidalHeating",
+                                10000
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/lava",
+                "score": 100
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "hydrosphere.coverage",
+                                0.8
+                            ]
+                        },
+                        {
+                            "between": [
+                                "Teq_K",
+                                250,
+                                370
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/ocean",
+                "score": 100
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "lt": [
+                                "Teq_K",
+                                180
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "hydrosphere.coverage",
+                                0.1
+                            ]
+                        },
+                        {
+                            "not": {
+                                "gt": [
+                                    "atm.pressure_bar",
+                                    2
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "addClass": "planet/ice",
+                "score": 100
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "lt": [
+                                "hydrosphere.coverage",
+                                0.1
+                            ]
+                        },
+                        {
+                            "between": [
+                                "Teq_K",
+                                250,
+                                400
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/desert",
+                "score": 100
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "lt": [
+                                "escapeVelocity_kms",
+                                3
+                            ]
+                        },
+                        {
+                            "lt": [
+                                "hydrosphere.coverage",
+                                0.01
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/barren",
+                "score": 100
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "hydrosphere.coverage",
+                                0.9
+                            ]
+                        },
+                        {
+                            "eq": [
+                                "atm.main",
+                                "H2"
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/hycean",
+                "score": 110
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "mass_Me",
+                                0.5
+                            ]
+                        },
+                        {
+                            "lt": [
+                                "mass_Me",
+                                1.5
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "hydrosphere.coverage",
+                                0.5
+                            ]
+                        },
+                        {
+                            "eq": [
+                                "hydrosphere.composition",
+                                "water"
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "atm.composition.O2",
+                                0.1
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/earth-analogue",
+                "score": 120
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "mass_Me",
+                                1
+                            ]
+                        },
+                        {
+                            "eq": [
+                                "atm.main",
+                                "CO2"
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/carbon",
+                "score": 105
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "lt": [
+                                "mass_Me",
+                                10
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "stellarIrradiation",
+                                1000
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/chthonian",
+                "score": 110
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "mass_Me",
+                                10
+                            ]
+                        },
+                        {
+                            "lt": [
+                                "Teq_K",
+                                150
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/ammonia-clouds-gas-giant",
+                "score": 80
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "mass_Me",
+                                10
+                            ]
+                        },
+                        {
+                            "between": [
+                                "Teq_K",
+                                150,
+                                250
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/water-clouds-gas-giant",
+                "score": 80
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "mass_Me",
+                                10
+                            ]
+                        },
+                        {
+                            "between": [
+                                "Teq_K",
+                                350,
+                                800
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/cloudless-gas-giant",
+                "score": 80
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "mass_Me",
+                                10
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "Teq_K",
+                                1400
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/silicate-clouds-gas-giant",
+                "score": 80
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "lt": [
+                                "mass_Me",
+                                10
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "mass_Me",
+                                1.5
+                            ]
+                        },
+                        {
+                            "lt": [
+                                "radius_Re",
+                                1.2
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/iron",
+                "score": 90
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "mass_Me",
+                                95
+                            ]
+                        },
+                        {
+                            "any": [
+                                {
+                                    "between": [
+                                        "a_AU",
+                                        0,
+                                        0.12
+                                    ]
+                                },
+                                {
+                                    "gt": [
+                                        "Teq_K",
+                                        1000
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/hot-jupiter",
+                "score": 50
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "mass_Me",
+                                95
+                            ]
+                        },
+                        {
+                            "between": [
+                                "Teq_K",
+                                500,
+                                1000
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/warm-jupiter",
+                "score": 40
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "mass_Me",
+                                95
+                            ]
+                        },
+                        {
+                            "lt": [
+                                "Teq_K",
+                                250
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/cold-jupiter",
+                "score": 30
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "between": [
+                                "mass_Me",
+                                2,
+                                10
+                            ]
+                        },
+                        {
+                            "between": [
+                                "radius_Re",
+                                1.25,
+                                1.9
+                            ]
+                        },
+                        {
+                            "any": [
+                                {
+                                    "lt": [
+                                        "atm.pressure_bar",
+                                        5
+                                    ]
+                                },
+                                {
+                                    "eq": [
+                                        "atm.main",
+                                        "CO2"
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/super-earth",
+                "score": 40
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "between": [
+                                "mass_Me",
+                                5,
+                                20
+                            ]
+                        },
+                        {
+                            "between": [
+                                "radius_Re",
+                                2,
+                                4
+                            ]
+                        },
+                        {
+                            "any": [
+                                {
+                                    "gt": [
+                                        "atm.pressure_bar",
+                                        5
+                                    ]
+                                },
+                                {
+                                    "any": [
+                                        {
+                                            "eq": [
+                                                "atm.main",
+                                                "H2"
+                                            ]
+                                        },
+                                        {
+                                            "eq": [
+                                                "atm.main",
+                                                "He"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/mini-neptune",
+                "score": 40
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "eq": [
+                                "tidallyLocked",
+                                1
+                            ]
+                        },
+                        {
+                            "between": [
+                                "Teq_K",
+                                200,
+                                300
+                            ]
+                        },
+                        {
+                            "any": [
+                                {
+                                    "eq": [
+                                        "stellarType",
+                                        "M"
+                                    ]
+                                },
+                                {
+                                    "lt": [
+                                        "a_AU",
+                                        0.2
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/cold-eyeball",
+                "score": 35
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "eq": [
+                                "tidallyLocked",
+                                1
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "Teq_K",
+                                300
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/hot-eyeball",
+                "score": 35
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "mass_Me",
+                                95
+                            ]
+                        },
+                        {
+                            "any": [
+                                {
+                                    "between": [
+                                        "a_AU",
+                                        0,
+                                        0.12
+                                    ]
+                                },
+                                {
+                                    "gt": [
+                                        "Teq_K",
+                                        1000
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/hot-jupiter",
+                "score": 50
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "mass_Me",
+                                95
+                            ]
+                        },
+                        {
+                            "between": [
+                                "Teq_K",
+                                500,
+                                1000
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/warm-jupiter",
+                "score": 40
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "mass_Me",
+                                95
+                            ]
+                        },
+                        {
+                            "lt": [
+                                "Teq_K",
+                                250
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/cold-jupiter",
+                "score": 30
+            },
+            {
+                "when": {
+                    "between": [
+                        "radius_Re",
+                        0.4,
+                        1.6
+                    ]
+                },
+                "addClass": "planet/terrestrial",
+                "score": 15
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "radius_Re",
+                                3.5
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "mass_Me",
+                                10
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/gas-giant",
+                "score": 15
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "lt": [
+                                "Teq_K",
+                                273
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "tidalHeating",
+                                50
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "hydrosphere.coverage",
+                                0.1
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/subsurface-ocean",
+                "score": 90
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "between": [
+                                "mass_Me",
+                                10,
+                                50
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "Teq_K",
+                                800
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/hot-neptune",
+                "score": 60
+            },
+            {
+                "when": {
+                    "gt": [
+                        "mass_Me",
+                        1000
+                    ]
+                },
+                "addClass": "planet/super-jupiter",
+                "score": 60
+            },
+            {
+                "when": {
+                    "lt": [
+                        "age_Gyr",
+                        0.1
+                    ]
+                },
+                "addClass": "planet/protoplanet",
+                "score": 90
+            },
+            {
+                "when": {
+                    "lt": [
+                        "orbital_period_days",
+                        1
+                    ]
+                },
+                "addClass": "planet/ultra-short-period",
+                "score": 90
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "lt": [
+                                "mass_Me",
+                                0.1
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "mass_Me",
+                                0.01
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/dwarf-planet",
+                "score": 50
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "lt": [
+                                "density",
+                                0.5
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "mass_Me",
+                                1
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/coreless",
+                "score": 60
+            },
+            {
+                "when": {
+                    "gt": [
+                        "density",
+                        1.5
+                    ]
+                },
+                "addClass": "planet/silicate",
+                "score": 60
+            },
+            {
+                "when": {
+                    "lt": [
+                        "mass_Me",
+                        0.5
+                    ]
+                },
+                "addClass": "planet/sub-earth",
+                "score": 50
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "mass_Me",
+                                10
+                            ]
+                        },
+                        {
+                            "lt": [
+                                "mass_Me",
+                                50
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/mega-earth",
+                "score": 50
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "mass_Me",
+                                50
+                            ]
+                        },
+                        {
+                            "lt": [
+                                "mass_Me",
+                                500
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/super-jupiter",
+                "score": 50
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "between": [
+                                "mass_Me",
+                                10,
+                                50
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "Teq_K",
+                                1000
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/hot-neptune",
+                "score": 60
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "mass_Me",
+                                95
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "Teq_K",
+                                1500
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/ultra-hot-jupiter",
+                "score": 60
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "between": [
+                                "mass_Me",
+                                10,
+                                50
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "Teq_K",
+                                1200
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/ultra-hot-neptune",
+                "score": 60
+            },
+            {
+                "when": {
+                    "lt": [
+                        "rotation_period_hours",
+                        2
+                    ]
+                },
+                "addClass": "planet/toroidal",
+                "score": 90
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "lt": [
+                                "rotation_period_hours",
+                                6
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "rotation_period_hours",
+                                2
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/ellipsoid",
+                "score": 80
+            },
+            {
+                "when": {
+                    "eq": [
+                        "has_ring_child",
+                        1
+                    ]
+                },
+                "addClass": "planet/ringed",
+                "score": 100
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "eq": [
+                                "hydrosphere.composition",
+                                "methane"
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "hydrosphere.coverage",
+                                0.5
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/methane",
+                "score": 90
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "lt": [
+                                "escapeVelocity_kms",
+                                1
+                            ]
+                        },
+                        {
+                            "gt": [
+                                "age_Gyr",
+                                4
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/crater",
+                "score": 70
+            },
+            {
+                "when": {
+                    "between": [
+                        "mass_Me",
+                        4000,
+                        8000
+                    ]
+                },
+                "addClass": "planet/brown-dwarf",
+                "score": 120
+            },
+            {
+                "when": {
+                    "between": [
+                        "mass_Me",
+                        1000,
+                        4000
+                    ]
+                },
+                "addClass": "planet/sub-brown-dwarf",
+                "score": 110
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "between": [
+                                "mass_Me",
+                                10,
+                                50
+                            ]
+                        },
+                        {
+                            "lt": [
+                                "Teq_K",
+                                200
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/ice-giant",
+                "score": 85
+            },
+            {
+                "when": {
+                    "all": [
+                        {
+                            "gt": [
+                                "radius_Re",
+                                6
+                            ]
+                        },
+                        {
+                            "lt": [
+                                "mass_Me",
+                                2
+                            ]
+                        }
+                    ]
+                },
+                "addClass": "planet/super-puff",
+                "score": 90
+            },
+            {
+                "when": {
+                    "eq": [
+                        "parentId",
+                        null
+                    ]
+                },
+                "addClass": "planet/rogue",
+                "score": 200
+            }
         ],
         "planetImages": {
             "planet/alkali-metal-clouds-gas-giant": "/images/planet_types/web20alkali20metal20clouds20gas20giant.jpg",
