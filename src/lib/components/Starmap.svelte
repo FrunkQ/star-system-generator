@@ -7,7 +7,7 @@
   import FabCluster from './FabCluster.svelte';
   import BodyPicker from './BodyPicker.svelte';
   import type { Starmap, System, CelestialBody, RulePack, Barycenter } from '$lib/types';
-  import GmNotesEditor from './GmNotesEditor.svelte';
+  import StarmapInfoPanel from './StarmapInfoPanel.svelte';
   import Grid from './Grid.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import MarkdownModal from './MarkdownModal.svelte';
@@ -843,13 +843,6 @@
         </div>
       </RailNav>
     </svelte:fragment>
-    <svelte:fragment slot="strip">
-  <div class="starmap-header">
-    <div class="starmap-heading">
-      <h1>{starmap.name}</h1>
-    </div>
-  </div>
-    </svelte:fragment>
     <svelte:fragment slot="canvas">
   <div class="starmap-canvas">
     <BodyPicker
@@ -866,6 +859,7 @@
       filterItems={() => true}
       on:select={handlePickSystem}
     />
+    <StarmapInfoPanel {starmap} on:update={(e) => dispatch('updatestarmap', e.detail)} />
     <svg
       bind:this={svgElement}
       class="starmap"
@@ -1089,9 +1083,6 @@
       </div>
     {/if}
   </div>
-    </svelte:fragment>
-    <svelte:fragment slot="detail">
-  <GmNotesEditor body={starmap} />
     </svelte:fragment>
   </AppShell>
 
@@ -1384,8 +1375,8 @@
     position: fixed;
     z-index: 1150;
     bottom: 98px;
-    left: 8px;
-    right: 84px;
+    left: 84px; /* clear the bottom-left menu FAB */
+    right: 8px;
     transform: none;
     width: auto;
   }

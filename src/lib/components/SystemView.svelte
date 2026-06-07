@@ -2250,8 +2250,8 @@
     position: fixed;
     z-index: 1150;
     bottom: 98px;
-    left: 8px;
-    right: 84px;
+    left: 84px; /* clear the bottom-left menu FAB */
+    right: 8px;
     transform: none;
     width: auto;
   }

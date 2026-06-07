@@ -292,7 +292,7 @@
   }
   .menu-fab {
     position: fixed;
-    right: 16px;
+    left: 16px; /* mirrors the PC rail (left side) */
     bottom: 16px;
     z-index: 1300;
     width: 56px;

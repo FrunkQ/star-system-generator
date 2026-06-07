@@ -420,6 +420,7 @@ export interface Starmap {
   id: string;
   name: string;
   description?: string;
+  gmNotes?: string;
   systems: StarSystemNode[];
   routes: Route[];
   mapMode?: 'diagrammatic' | 'scaled';
