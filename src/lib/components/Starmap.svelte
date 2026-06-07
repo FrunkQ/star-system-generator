@@ -1252,54 +1252,6 @@
     flex-direction: column;
   }
 
-  .rail-view-options {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 16px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
-  }
-  .rail-section-title {
-    margin: 0;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-faint);
-  }
-  .rail-view-options label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.95rem;
-    color: var(--text);
-    cursor: pointer;
-  }
-  .rail-view-options label.rail-slider {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 4px;
-  }
-  .rail-view-options label.rail-slider select {
-    width: 100%;
-  }
-  .rail-btn {
-    margin-top: 4px;
-    padding: 10px 12px;
-    background: var(--bg-control, #1b1e26);
-    border: 1px solid var(--border);
-    color: var(--text);
-    border-radius: 8px;
-    cursor: pointer;
-    text-align: left;
-  }
-  .rail-btn:hover {
-    background: var(--bg-control-hover, #232733);
-  }
-  .rail-btn.danger {
-    color: var(--status-bad, #ef4444);
-    border-color: color-mix(in srgb, var(--status-bad, #ef4444) 40%, var(--border));
-  }
   .starmap-detail-mobile {
     display: flex;
     flex-direction: column;

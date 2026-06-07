@@ -23,7 +23,7 @@
   const I = {
     file: '<path d="M20 7h-7L9.5 4.5A1 1 0 0 0 8.8 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>',
     trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
-    starmap: '<circle cx="12" cy="12" r="3"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><path d="M10.4 21.9a10 10 0 0 0 9.941-15.416"/><path d="M13.5 2.1a10 10 0 0 0-9.841 15.416"/>',
+    starmap: '<line x1="5" y1="5" x2="19" y2="7"/><line x1="5" y1="5" x2="6.5" y2="19"/><line x1="19" y1="7" x2="18" y2="18"/><line x1="6.5" y1="19" x2="18" y2="18"/><line x1="5" y1="5" x2="18" y2="18"/><circle cx="5" cy="5" r="2"/><circle cx="19" cy="7" r="2"/><circle cx="6.5" cy="19" r="2"/><circle cx="18" cy="18" r="2"/>',
     projector: '<path d="M10 7.75a.75.75 0 0 1 1.142-.638l3.664 2.249a.75.75 0 0 1 0 1.278l-3.664 2.25a.75.75 0 0 1-1.142-.64z"/><path d="M12 17v4"/><path d="M8 21h8"/><rect x="2" y="3" width="20" height="14" rx="2"/>',
     report: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="8" y1="9" x2="10" y2="9"/>',
     new: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>',
@@ -163,22 +163,26 @@
      long-standing "no icon" bug: an empty-looking square). */
   .rail-collapse svg { flex: 0 0 auto; width: 18px; height: 18px; }
   .brand {
-    font-weight: 700;
+    font-weight: 600;
     color: var(--accent);
-    letter-spacing: 0.06em;
-    font-size: 1.1rem;
+    letter-spacing: 0.08em;
+    font-size: 1.05rem;
   }
+  /* Lighter "wireframe" feel: rows are transparent (no per-button box) with a thin
+     hover highlight, and the labels use a light weight. */
   .rail-btn {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 11px;
     text-align: left;
-    background: var(--bg-control);
+    background: transparent;
     color: var(--text);
-    border: 1px solid var(--border);
+    border: 1px solid transparent;
     border-radius: var(--radius-md);
-    padding: 9px 10px;
-    font-size: 0.9rem;
+    padding: 8px 10px;
+    font-size: 0.86rem;
+    font-weight: 300;
+    letter-spacing: 0.01em;
     cursor: pointer;
     text-decoration: none;
     white-space: nowrap;
