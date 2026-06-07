@@ -35,6 +35,7 @@
   export let top = 8; // px from the top of the canvas; host raises it below the phone strip
   export let emptyLabel = 'System'; // chip text when nothing is focused
   export let inline = false; // embed in a form (relative, full-width) vs float over a canvas
+  export let summaryText = ''; // optional aggregate summary shown at the top of the dropdown
 
   // Injectable so the same picker drives the starmap (systems) as well as a system (bodies).
   // categorize returns ALL categories a node belongs to (overlapping, like the old summary
@@ -233,6 +234,9 @@
 
   {#if open}
     <div class="dropdown">
+      {#if summaryText && !q && !drill}
+        <div class="picker-summary">{summaryText}</div>
+      {/if}
       {#if q}
         <div class="panel-head"><span>Results for “{query}”</span></div>
         {#if searchResults.length === 0}
@@ -443,4 +447,11 @@
   .row.category .row-name { font-weight: 600; }
   .chevron { color: var(--text-faint, #8a8f9a); }
   .empty { padding: 14px; color: var(--text-faint, #8a8f9a); text-align: center; }
+  .picker-summary {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border, #2a2d36);
+    color: var(--text-muted, #cfcfcf);
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
 </style>

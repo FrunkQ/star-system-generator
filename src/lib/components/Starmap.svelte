@@ -531,15 +531,36 @@
       const vis = getVisualNodes(sysNode.system);
       return vis.length ? getStarColor(vis[0]) : '#888';
   }
+  function countNodes(n: any[]) {
+      let stars = 0, planets = 0, moons = 0, constructs = 0;
+      for (const x of n) {
+          if (x.kind === 'construct') constructs++;
+          else if (x.kind === 'body') {
+              if (x.roleHint === 'star') stars++;
+              else if (x.roleHint === 'planet') planets++;
+              else if (x.roleHint === 'moon') moons++;
+          }
+      }
+      return { stars, planets, moons, constructs };
+  }
   function systemPickerContext(sysNode: any): string {
-      const n = sysNode.system?.nodes ?? [];
-      const planets = n.filter((x: any) => x.kind === 'body' && (x.roleHint === 'planet' || x.roleHint === 'moon')).length;
-      const stars = n.filter((x: any) => x.kind === 'body' && x.roleHint === 'star').length;
+      const c = countNodes(sysNode.system?.nodes ?? []);
       const bits = [] as string[];
-      if (stars) bits.push(`${stars} star${stars > 1 ? 's' : ''}`);
-      if (planets) bits.push(`${planets} bod${planets > 1 ? 'ies' : 'y'}`);
+      if (c.stars) bits.push(`${c.stars}★`);
+      if (c.planets) bits.push(`${c.planets} plt`);
+      if (c.moons) bits.push(`${c.moons} mn`);
+      if (c.constructs) bits.push(`${c.constructs} con`);
       return bits.join(' · ');
   }
+  // Aggregate summary across the whole starmap, shown at the top of the picker dropdown.
+  $: starmapSummary = (() => {
+      let stars = 0, planets = 0, moons = 0, constructs = 0;
+      for (const sys of starmap.systems) {
+          const c = countNodes(sys.system?.nodes ?? []);
+          stars += c.stars; planets += c.planets; moons += c.moons; constructs += c.constructs;
+      }
+      return `${starmap.systems.length} systems · ${stars} stars · ${planets} planets · ${moons} moons · ${constructs} constructs`;
+  })();
   function handlePickSystem(e: CustomEvent<string>) {
       dispatch('systemclick', e.detail);
   }
@@ -851,6 +872,7 @@
       categorize={systemPickerCategorize}
       colorOf={systemPickerColor}
       contextOf={systemPickerContext}
+      summaryText={starmapSummary}
       roleOf={() => 'system'}
       filterItems={() => true}
       on:select={handlePickSystem}
