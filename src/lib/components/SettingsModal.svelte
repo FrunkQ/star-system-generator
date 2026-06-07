@@ -10,8 +10,8 @@
 
   const dispatch = createEventDispatcher();
 
-  // Sectioned settings (Starmap View / Technology / System). Orrery View was dropped (Q2).
-  type Section = 'starmap' | 'technology' | 'system';
+  // Sectioned settings (Starmap View / Tech / Planets / System). Orrery View was dropped (Q2).
+  type Section = 'starmap' | 'technology' | 'planets' | 'system';
   let activeSection: Section = 'starmap';
   let invertDisplay = starmap.invertDisplay ?? false;
   $: if (showModal) invertDisplay = starmap.invertDisplay ?? false;
@@ -156,6 +156,7 @@
       <nav class="settings-nav">
         <button class:active={activeSection === 'starmap'} on:click={() => activeSection = 'starmap'}>Starmap View</button>
         <button class:active={activeSection === 'technology'} on:click={() => activeSection = 'technology'}>Tech</button>
+        <button class:active={activeSection === 'planets'} on:click={() => activeSection = 'planets'}>Planets</button>
         <button class:active={activeSection === 'system'} on:click={() => activeSection = 'system'}>System</button>
       </nav>
 
@@ -233,11 +234,12 @@
           </div>
 
         {:else if activeSection === 'technology'}
-          <p class="section-hint">Rulepack overrides for this starmap.</p>
-          <h3>Tech</h3>
+          <p class="section-hint">Ship &amp; construct rulepack overrides.</p>
           <button class="section-btn" on:click={() => { dispatch('editfuel'); showModal = false; }}>Fuel &amp; Drives…</button>
           <button class="section-btn" on:click={() => { dispatch('editsensors'); showModal = false; }}>Sensors…</button>
-          <h3>Planets</h3>
+
+        {:else if activeSection === 'planets'}
+          <p class="section-hint">Planet rulepack overrides.</p>
           <button class="section-btn" on:click={() => { dispatch('editatmospheres'); showModal = false; }}>Atmospheres…</button>
 
         {:else}

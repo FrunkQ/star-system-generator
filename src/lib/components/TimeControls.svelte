@@ -27,11 +27,19 @@
   const dispatch = createEventDispatcher();
 
   // --- Transport UI state ---
-  let expanded = false; // the "⋯" secondary panel (actual time / set-actual / auto-reset)
+  let expanded = false; // the "⋯" secondary panel (actual time / reset / set-actual)
+
+  // Playback-speed ladder (sim seconds per real second). The +/- stepper walks this and
+  // Play runs at the selected rate, so time can keep advancing faster than 1s/s without
+  // any hidden "lock" toggle.
+  const RATE_STEPS = [1, 10, 60, 600, 3600, 21600, 86400, 604800, 2592000, 31536000, 315360000];
+  let rateIndex = 0;
+  $: playRate = RATE_STEPS[rateIndex];
+  function faster() { if (rateIndex < RATE_STEPS.length - 1) rateIndex++; }
+  function slower() { if (rateIndex > 0) rateIndex--; }
 
   // --- Scrub / playback state (owned here) ---
   let scrubControlValue = 0;
-  let autoResetTimeScrub = true;
   let scrubRafId: number | null = null;
   let scrubLastTimestamp: number | null = null;
   let scrubCarrySeconds = 0;
@@ -69,10 +77,9 @@
     return sign + Math.round(years) + 'y/s';
   }
 
-  $: currentRate = scrubControlValue !== 0
-    ? scrubRateFromControl(scrubControlValue)
-    : (isPlaying ? 1 : 0);
-  $: formattedScrubRate = formatTimeRate(currentRate);
+  // Rate shown on the pill: the live scrub rate while jogging, else the selected play rate.
+  $: shownRate = scrubControlValue !== 0 ? scrubRateFromControl(scrubControlValue) : playRate;
+  $: formattedRate = formatTimeRate(shownRate);
 
   // Jump-to-now direction: if the display clock is BEHIND actual ("now"), jumping moves
   // time FORWARD (⏭); if AHEAD, BACKWARD (⏮). At now → neutral/dimmed. Good at-a-glance
@@ -81,11 +88,6 @@
   $: jumpAhead = (() => { try { return BigInt(displayClockSeconds || '0') > BigInt(masterClockSeconds || '0'); } catch { return false; } })();
   $: atNow = !jumpBehind && !jumpAhead;
 
-  $: if (!autoResetTimeScrub) {
-      // When unchecking, stop any active scrub and reset slider to 0
-      scrubControlValue = 0;
-      stopScrubLoop();
-  }
 
   // Derive read-outs + sync play state from the authoritative temporal prop.
   $: {
@@ -172,18 +174,17 @@
   }
 
   function handleScrubInput(event: Event) {
-    if (autoResetTimeScrub && isPlaying) setPlaying(false);
+    if (isPlaying) setPlaying(false);
     scrubControlValue = Number((event.target as HTMLInputElement).value);
-    if (autoResetTimeScrub && Math.abs(scrubControlValue) > 0.0001) {
+    if (Math.abs(scrubControlValue) > 0.0001) {
       ensureScrubLoopRunning();
     }
   }
 
+  // The shuttle is a momentary jog — always springs back to 0 (stop) on release.
   function handleScrubRelease() {
-    if (autoResetTimeScrub) {
-        scrubControlValue = 0;
-        stopScrubLoop();
-    }
+    scrubControlValue = 0;
+    stopScrubLoop();
   }
 
   function tickPlayback(timestamp: number) {
@@ -199,7 +200,7 @@
     const dt = (timestamp - playbackLastTimestamp) / 1000;
     playbackLastTimestamp = timestamp;
 
-    const rate = autoResetTimeScrub ? 1 : scrubRateFromControl(scrubControlValue);
+    const rate = playRate;
     timeScale = rate;
     playbackCarrySeconds += rate * dt;
 
@@ -232,10 +233,8 @@
     isPlaying = next;
     // Parity with SystemView for broadcast/sync
     if (isPlaying) {
-      if (autoResetTimeScrub) {
-          scrubControlValue = 0;
-          stopScrubLoop();
-      }
+      scrubControlValue = 0;
+      stopScrubLoop();
       ensurePlaybackRunning();
     } else {
       stopPlayback();
@@ -244,7 +243,7 @@
       applyTemporalUpdate((temporal) => ({
         ...temporal,
         playbackRunning: next,
-        playbackRateSecPerSec: temporal.playbackRateSecPerSec ?? 1
+        playbackRateSecPerSec: playRate
       }));
     }
   }
@@ -270,7 +269,7 @@
   >{jumpBehind ? '⏭' : '⏮'}</button>
   <button class="tt-btn tt-play" class:playing={isPlaying} on:click={togglePlayback} title={isPlaying ? 'Pause' : 'Play (real-time)'} aria-label={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '⏸' : '▶'}</button>
 
-  <div class="tt-shuttle" title="Scrub — drag to fast-forward / rewind. Release to {autoResetTimeScrub ? 'stop' : 'hold speed'}.">
+  <div class="tt-shuttle" title="Scrub — drag to jog forward / back; release to stop">
     <span class="tt-center" aria-hidden="true"></span>
     <input
       class="tt-slider"
@@ -286,16 +285,17 @@
     />
   </div>
 
-  <div class="tt-rate" class:active={currentRate !== 0}>{currentRate !== 0 ? formattedScrubRate : (isPlaying ? '1s/s' : 'paused')}</div>
+  <div class="tt-speed">
+    <button class="tt-step" on:click={slower} disabled={rateIndex === 0} title="Slower" aria-label="Slower">−</button>
+    <div class="tt-rate" class:active={isPlaying || scrubControlValue !== 0} title="Playback speed — Play advances time at this rate">{formattedRate}</div>
+    <button class="tt-step" on:click={faster} disabled={rateIndex === RATE_STEPS.length - 1} title="Faster" aria-label="Faster">+</button>
+  </div>
 
   <button class="tt-btn tt-more" class:on={expanded} on:click={() => (expanded = !expanded)} title="More time controls" aria-label="More time controls">⋯</button>
 
   {#if expanded}
     <div class="tt-panel">
       <div class="tt-prow"><span class="tt-k">Actual</span><span class="tt-v" title={"Actual seconds from big bang: " + masterClockSeconds}>{masterCalendarLabel}</span></div>
-      <label class="tt-check" title="When on, releasing the scrubber stops time. When off, the set speed is held until you press play.">
-        <input type="checkbox" bind:checked={autoResetTimeScrub} /> Auto-reset speed on release
-      </label>
       <button class="tt-action" on:click={handleResetDisplay}>Reset display → actual</button>
       <button class="tt-action danger" on:click={handleSetActual}>Set actual → display</button>
     </div>
@@ -376,11 +376,34 @@
     cursor: ew-resize;
   }
 
+  .tt-speed {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .tt-step {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 7px;
+    background: var(--bg-control, #1b1e26);
+    color: var(--text, #e8e8e8);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .tt-step:hover { background: var(--bg-control-hover, #232733); }
+  .tt-step:disabled { opacity: 0.35; cursor: default; }
   .tt-rate {
     flex: 0 0 auto;
-    min-width: 52px;
+    min-width: 56px;
     text-align: center;
-    font-size: 0.74rem;
+    font-size: 0.76rem;
     color: var(--text-faint, #8a8f9a);
     font-variant-numeric: tabular-nums;
   }
@@ -405,14 +428,6 @@
   .tt-prow { display: flex; justify-content: space-between; gap: 12px; font-size: 0.85rem; }
   .tt-k { color: var(--text-faint, #8a8f9a); }
   .tt-v { color: var(--text, #e8e8e8); }
-  .tt-check {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.82rem;
-    color: var(--text-muted, #cfcfcf);
-    cursor: pointer;
-  }
   .tt-action {
     padding: 8px 10px;
     border-radius: 8px;
