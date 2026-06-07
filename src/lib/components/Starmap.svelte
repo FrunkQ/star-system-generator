@@ -809,6 +809,7 @@
         on:save={() => dispatch('download')}
         on:settings={() => dispatch('settings')}
         on:llmsettings={() => dispatch('llmsettings')}
+        on:about={() => showAboutModal = true}
       >
         <!-- Starmap view options in the rail (desktop + phone), matching the system view. -->
         <div class="rail-view-options">

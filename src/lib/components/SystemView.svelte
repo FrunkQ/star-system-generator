@@ -1712,6 +1712,7 @@
         on:save={() => dispatch('save')}
         on:settings={() => dispatch('settings')}
         on:llmsettings={() => dispatch('llmsettings')}
+        on:about={() => showAboutModal = true}
       >
       <!-- View options live in the rail on BOTH desktop and phone now (the old canvas
            toggle toolbar is gone, keeping the orrery clean). On desktop the rail is the
@@ -1755,7 +1756,6 @@
         {#if $systemStore.isManuallyEdited}
           <button class="rail-btn" on:click={() => { railOpen = false; systemStore.update(s => s ? { ...s, isManuallyEdited: false } : s); }}>Show regenerate controls</button>
         {/if}
-        <button class="rail-btn" on:click={() => { railOpen = false; showAboutModal = true; }}>About</button>
       </div>
       </RailNav>
     </svelte:fragment>
