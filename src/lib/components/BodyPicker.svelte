@@ -4,7 +4,7 @@
   // category (Stars / Terrestrial / Gas giants / Moons / Constructs / …). Selecting a row
   // emits `select` with the node id; the host focuses it (camera tweens). Makes 100+ body
   // systems navigable without hunting on the canvas. Reference: v2 prototype's picker.
-  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import type { SystemNode } from '$lib/types';
   import { getNodeColor } from '$lib/rendering/colors';
   import { AU_KM } from '$lib/constants';
@@ -36,6 +36,7 @@
   export let emptyLabel = 'System'; // chip text when nothing is focused
   export let inline = false; // embed in a form (relative, full-width) vs float over a canvas
   export let summaryText = ''; // optional aggregate summary shown at the top of the dropdown
+  export let startOpen = false; // open the dropdown immediately (e.g. in a dedicated modal)
 
   // Injectable so the same picker drives the starmap (systems) as well as a system (bodies).
   // categorize returns ALL categories a node belongs to (overlapping, like the old summary
@@ -196,13 +197,16 @@
     if (typeof window !== 'undefined') window.removeEventListener('pointerdown', onOutside, true);
   }
   onDestroy(removeOutside);
+  // In a modal we want the list visible immediately and NOT closing on clicks inside the
+  // modal, so open without the outside-click listener (the modal owns dismissal).
+  onMount(() => { if (startOpen) { open = true; drill = null; } });
 
   // If the host changes the focused body (e.g. canvas tap), collapse the dropdown.
   let lastFocus: string | null = null;
   $: if (focusedId !== lastFocus) { lastFocus = focusedId; if (open) { open = false; drill = null; removeOutside(); } }
 </script>
 
-<div class="body-picker" class:open class:inline bind:this={root} style={inline ? '' : `top:${top}px`}>
+<div class="body-picker" class:open class:inline class:flow={startOpen} bind:this={root} style={inline ? '' : `top:${top}px`}>
   <div class="strip">
     <button class="browse" on:click={browseClick} aria-expanded={open} title="Browse all">
       <span class="browse-icon" aria-hidden="true">
@@ -309,6 +313,19 @@
     transform: none;
     width: 100%;
     z-index: 40;
+  }
+  /* In a modal: dropdown in normal flow + fills available height (not an overlay). */
+  .body-picker.flow {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+  }
+  .body-picker.flow .dropdown {
+    position: static;
+    margin-top: 8px;
+    max-height: none;
+    flex: 1 1 auto;
   }
   .strip {
     display: flex;

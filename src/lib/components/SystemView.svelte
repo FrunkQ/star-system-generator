@@ -1713,6 +1713,7 @@
         on:settings={() => dispatch('settings')}
         on:llmsettings={() => dispatch('llmsettings')}
         on:about={() => showAboutModal = true}
+        on:allbodies={() => { railOpen = false; dispatch('allbodies'); }}
       >
       <!-- View options live in the rail on BOTH desktop and phone now (the old canvas
            toggle toolbar is gone, keeping the orrery clean). On desktop the rail is the

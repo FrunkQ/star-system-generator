@@ -16,6 +16,7 @@
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
   import Starmap from '$lib/components/Starmap.svelte';
   import SystemView from '$lib/components/SystemView.svelte';
+  import BodyPicker from '$lib/components/BodyPicker.svelte';
   import RouteEditorModal from '$lib/components/RouteEditorModal.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import LlmSettingsModal from '$lib/components/LlmSettingsModal.svelte';
@@ -39,6 +40,42 @@
   let routeToEdit: Route | null = null;
   let showSettingsModal = false;
   let showLlmSettingsModal = false;
+
+  // --- All-Bodies picker (cross-starmap directory): find any body/construct across every
+  // system and jump straight to it. Lives in the rail (PC side panel) / + menu (mobile). ---
+  let showAllBodies = false;
+  $: allBodies = (() => {
+    const map = $starmapStore;
+    if (!map) return [] as any[];
+    const out: any[] = [];
+    for (const sys of map.systems) {
+      const sysName = sys.name;
+      for (const n of (sys.system?.nodes ?? [])) {
+        if (n.kind === 'body' || n.kind === 'construct') {
+          out.push({ ...n, __systemId: sys.id, __systemName: sysName });
+        }
+      }
+    }
+    return out;
+  })();
+  function allBodiesContext(n: any): string {
+    const parent = allBodies.find((x) => x.id === (n.orbit?.hostId || n.parentId) && x.__systemId === n.__systemId);
+    const where = parent ? `orbits ${parent.name}` : '';
+    return [n.__systemName, where].filter(Boolean).join(' · ');
+  }
+  function enterSystemAndFocus(sysId: string, focusId: string | null) {
+    const currentMap = get(starmapStore);
+    const systemNode = currentMap?.systems.find((s) => s.id === sysId);
+    if (!systemNode) return;
+    viewportStore.set(systemNode.viewport ?? { pan: { x: 0, y: 0 }, zoom: 1 });
+    systemStore.set(JSON.parse(JSON.stringify(systemNode.system)));
+    pushState('', focusId ? { systemId: sysId, focusId } : { systemId: sysId });
+  }
+  function handleAllBodiesSelect(e: CustomEvent<string>) {
+    const node = allBodies.find((n) => n.id === e.detail);
+    showAllBodies = false;
+    if (node) enterSystemAndFocus(node.__systemId, node.id);
+  }
 
   let selectedRulepack: RulePack | undefined;
   let fileInput: HTMLInputElement;
@@ -716,6 +753,7 @@
         on:save={handleDownloadStarmap}
         on:settings={() => showSettingsModal = true}
         on:llmsettings={() => showLlmSettingsModal = true}
+        on:allbodies={() => showAllBodies = true}
         on:back={handleBackToStarmap}
         on:renameNode={handleRenameNode}
       />
@@ -738,6 +776,7 @@
       on:clear={handleClearStarmap}
       on:settings={() => showSettingsModal = true}
       on:llmsettings={() => showLlmSettingsModal = true}
+      on:allbodies={() => showAllBodies = true}
       on:updatestarmap={(e) => starmapStore.set(e.detail)}
       {selectedSystemForLink}
     />
@@ -783,6 +822,27 @@
   {#if showLlmSettingsModal}
     <LlmSettingsModal bind:showModal={showLlmSettingsModal} on:save={handleSaveLlmSettings} on:close={() => showLlmSettingsModal = false} />
   {/if}
+
+  {#if showAllBodies}
+    <div class="allbodies-overlay" role="presentation" on:click={() => (showAllBodies = false)}>
+      <div class="allbodies-card" role="dialog" aria-label="Find a body" on:click|stopPropagation>
+        <header class="allbodies-head">
+          <span>All bodies &amp; constructs</span>
+          <button class="allbodies-close" aria-label="Close" on:click={() => (showAllBodies = false)}>×</button>
+        </header>
+        <BodyPicker
+          inline
+          startOpen
+          nodes={allBodies}
+          focusedId={null}
+          placeholder="Search every system…"
+          emptyLabel="All bodies"
+          contextOf={allBodiesContext}
+          on:select={handleAllBodiesSelect}
+        />
+      </div>
+    </div>
+  {/if}
 </main>
 
 <style>
@@ -791,6 +851,47 @@
     /* padding removed: the AppShell fills the viewport (100vh); setup screens
        (loading / new-starmap modal / wizard) provide their own spacing. */
     padding: 0;
+  }
+  .allbodies-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1500;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .allbodies-card {
+    display: flex;
+    flex-direction: column;
+    width: min(520px, 100%);
+    height: min(70vh, 640px);
+    background: var(--bg-panel, #14161c);
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 12px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+    padding: 12px;
+    box-sizing: border-box;
+  }
+  .allbodies-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 4px 10px;
+    font-weight: 600;
+    color: var(--text, #e8e8e8);
+  }
+  .allbodies-close {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 8px;
+    background: var(--bg-control, #1b1e26);
+    color: var(--text, #e8e8e8);
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
   }
   footer {
       margin-top: 2em;
