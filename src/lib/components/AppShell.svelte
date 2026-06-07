@@ -102,10 +102,11 @@
   {:else}
     <main class="canvas-full"><slot name="canvas" /></main>
 
-    <div class="phone-strip">
-      <button class="rail-toggle" aria-label="Menu" on:click={() => (railOpen = !railOpen)}>☰</button>
-      <div class="phone-strip-inner"><slot name="strip" /></div>
-    </div>
+    {#if $$slots.strip}
+      <div class="phone-strip">
+        <div class="phone-strip-inner"><slot name="strip" /></div>
+      </div>
+    {/if}
 
     {#if railOpen}
       <div
@@ -127,6 +128,12 @@
       <BottomSheet bind:snap={sheetSnap} title={sheetTitle} bottomInset={$$slots.bar ? phoneBarH : 0}>
         <slot name="detail" />
       </BottomSheet>
+    {/if}
+
+    <!-- The + IS the mobile menu: opens the slide-in rail (nav, view, create, system,
+         editors, settings). Replaces the old two hamburgers. -->
+    {#if $$slots.rail && !railOpen}
+      <button class="menu-fab" aria-label="Open menu" style={$$slots.detail ? 'bottom: 98px;' : ''} on:click={() => (railOpen = true)}>+</button>
     {/if}
 
     {#if $$slots.fab}
@@ -282,6 +289,22 @@
     background: #0b0d12;
     border-top: 1px solid #2a2d36;
     padding: 2px 8px;
+  }
+  .menu-fab {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 1300;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent, #ff5a1f);
+    color: var(--on-accent, #fff);
+    font-size: 2rem;
+    line-height: 1;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
   }
   .fab-layer {
     position: fixed;

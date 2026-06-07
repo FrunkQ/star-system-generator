@@ -21,12 +21,15 @@ describe('AppShell', () => {
     expect(container.querySelector('.bottom-sheet')).toBeNull();
   });
 
-  it('renders the phone layout (full-bleed canvas + hamburger) when forced to phone', () => {
+  it('renders the phone layout (full-bleed canvas) when forced to phone', () => {
     const { container } = render(AppShell, { props: { forceMode: 'phone' } });
     const shell = container.querySelector('.app-shell')!;
     expect(shell.getAttribute('data-mode')).toBe('phone');
     expect(container.querySelector('.canvas-full')).toBeTruthy();
-    expect(container.querySelector('.rail-toggle')).toBeTruthy(); // hamburger always present
+    // The old rail-toggle hamburger is gone; the + menu-fab opens the rail but is gated
+    // on a rail slot (none provided here), so neither is present.
+    expect(container.querySelector('.rail-toggle')).toBeNull();
+    expect(container.querySelector('.menu-fab')).toBeNull();
     // Sheet is gated on the detail slot (none provided here).
     expect(container.querySelector('.bottom-sheet')).toBeNull();
     // No desktop grid areas.

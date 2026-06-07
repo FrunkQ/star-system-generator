@@ -1743,6 +1743,13 @@
           </label>
         {/if}
       </div>
+      <!-- Create: phone has no right-click background menu, so add-body lives here too
+           (and it's handy on desktop). -->
+      <div class="rail-view-options">
+        <h3 class="rail-section-title">Create</h3>
+        <button class="rail-btn" on:click={() => { railOpen = false; addBodyViaFab(); }}>Add planet</button>
+        <button class="rail-btn" on:click={() => { railOpen = false; addBodyViaFab('construct'); }}>Add construct</button>
+      </div>
       <!-- System actions (formerly the SystemSummary hamburger) — shown on desktop AND
            phone now that the summary strip is retired in favour of the BodyPicker. -->
       <div class="rail-view-options">
@@ -1919,11 +1926,6 @@
 
             
         </div>
-    </svelte:fragment>
-    <svelte:fragment slot="fab">
-      {#if mode === 'phone'}
-        <FabCluster actions={fabActions} on:action={handleFabAction} />
-      {/if}
     </svelte:fragment>
   </AppShell>
 

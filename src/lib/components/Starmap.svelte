@@ -36,6 +36,7 @@
   // Phase 03: Starmap owns its own AppShell (same shared rail as SystemView). RailNav app
   // nav forwards up to +page via dispatch; the niche bulk-editors stay in the header menu.
   let mode: 'desktop' | 'phone' = 'desktop';
+  let railOpen = false; // phone slide-in rail (opened by the + menu FAB)
   const starmapFabActions = [{ id: 'reset', label: 'Reset view', icon: '↺' }];
   function handleStarmapFabAction(e: CustomEvent<string>) {
     if (e.detail === 'reset') resetView();
@@ -801,7 +802,7 @@
 </script>
 
 <div class="starmap-container" class:invert-display={invertDisplay} style="touch-action: none;" bind:this={starmapContainer}>
-  <AppShell bind:mode>
+  <AppShell bind:mode bind:railOpen>
     <svelte:fragment slot="rail">
       <RailNav
         on:new={() => dispatch('new')}
@@ -830,35 +831,21 @@
             </select>
           </label>
         </div>
+        <!-- Niche bulk editors folded in from the old strip hamburger (now removed). -->
+        <div class="rail-view-options">
+          <h3 class="rail-section-title">Edit</h3>
+          <button class="rail-btn" on:click={() => { railOpen = false; showFuelModal = true; }}>Fuel & drives…</button>
+          <button class="rail-btn" on:click={() => { railOpen = false; showAtmosphereModal = true; }}>Atmospheres…</button>
+          <button class="rail-btn" on:click={() => { railOpen = false; showSensorsModal = true; }}>Sensors…</button>
+          <button class="rail-btn" on:click={() => { railOpen = false; showTemporalModal = true; }}>Time & calendars…</button>
+          <button class="rail-btn danger" on:click={() => { railOpen = false; dispatch('clear'); }}>Clear starmap</button>
+        </div>
       </RailNav>
     </svelte:fragment>
     <svelte:fragment slot="strip">
   <div class="starmap-header">
     <div class="starmap-heading">
       <h1>{starmap.name}</h1>
-    </div>
-    <div class="header-controls">
-      <div class="dropdown">
-          <button on:click={() => showDropdown = !showDropdown} class="hamburger-button">&#9776;</button>
-          {#if showDropdown}
-              <div class="dropdown-content">
-                  <button on:click={() => dispatch('settings')}>Starmap Settings</button>
-                  <hr />
-                  <button on:click={() => showSaveModal = true}>Download Starmap</button>
-                  <button on:click={() => dispatch('upload')}>Upload Starmap</button>
-                  <hr />
-                  <button on:click={() => dispatch('clear')} class="danger">Clear Starmap</button>
-                  <hr />
-                  <button on:click={() => showFuelModal = true}>Edit Fuel & Drives</button>
-                  <button on:click={() => showAtmosphereModal = true}>Edit Atmospheres</button>
-                  <button on:click={() => showSensorsModal = true}>Edit Sensors</button>
-                  <button on:click={() => showTemporalModal = true}>Edit Time & Calendars</button>
-                  <button on:click={() => dispatch('llmsettings')}>LLM Settings</button>
-                  <hr />
-                  <button on:click={() => showAboutModal = true}>About</button>
-              </div>
-          {/if}
-      </div>
     </div>
   </div>
     </svelte:fragment>
@@ -1104,9 +1091,6 @@
     </svelte:fragment>
     <svelte:fragment slot="detail">
   <GmNotesEditor body={starmap} />
-    </svelte:fragment>
-    <svelte:fragment slot="fab">
-      {#if mode === 'phone'}<FabCluster actions={starmapFabActions} on:action={handleStarmapFabAction} />{/if}
     </svelte:fragment>
   </AppShell>
 
@@ -1382,6 +1366,10 @@
   }
   .rail-btn:hover {
     background: var(--bg-control-hover, #232733);
+  }
+  .rail-btn.danger {
+    color: var(--status-bad, #ef4444);
+    border-color: color-mix(in srgb, var(--status-bad, #ef4444) 40%, var(--border));
   }
   .time-overlay {
     position: absolute;
