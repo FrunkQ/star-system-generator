@@ -61,26 +61,26 @@
     <span class="ic">{@html svg(I.starmap)}</span><span class="rail-label">Starmap</span>
   </button>
 
-  <button class="rail-btn" class:active={fileOpen} title="File — new / open / save" on:click={() => (fileOpen = !fileOpen)}>
+  <button class="rail-btn" class:active={fileOpen} title="File — new / load / save" on:click={() => (fileOpen = !fileOpen)}>
     <span class="ic">{@html svg(I.file)}</span><span class="rail-label">File</span>
     <span class="rail-label chev">{fileOpen ? '▾' : '▸'}</span>
   </button>
   {#if fileOpen}
-    <button class="rail-btn sub" title="New system" on:click={() => go('new')}>
-      <span class="ic">{@html svg(I.new)}</span><span class="rail-label">New System</span>
+    <button class="rail-btn sub" title="New starmap" on:click={() => go('new')}>
+      <span class="ic">{@html svg(I.new)}</span><span class="rail-label">New Starmap</span>
     </button>
-    <button class="rail-btn sub" title="Open starmap" on:click={() => go('open')}>
-      <span class="ic">{@html svg(I.open)}</span><span class="rail-label">Open…</span>
+    <button class="rail-btn sub" title="Load a starmap from a file" on:click={() => go('open')}>
+      <span class="ic">{@html svg(I.open)}</span><span class="rail-label">Starmap Load</span>
     </button>
-    <button class="rail-btn sub" title="Save starmap" on:click={() => go('save')}>
-      <span class="ic">{@html svg(I.save)}</span><span class="rail-label">Save</span>
+    <button class="rail-btn sub" title="Save this starmap to a file" on:click={() => go('save')}>
+      <span class="ic">{@html svg(I.save)}</span><span class="rail-label">Starmap Save</span>
     </button>
     {#if activeView === 'system'}
-      <button class="rail-btn sub" title="Download this system as JSON" on:click={() => go('downloadsystem')}>
-        <span class="ic">{@html svg(I.save)}</span><span class="rail-label">Download System…</span>
+      <button class="rail-btn sub" title="Load a system from a file" on:click={() => go('uploadsystem')}>
+        <span class="ic">{@html svg(I.open)}</span><span class="rail-label">System Load</span>
       </button>
-      <button class="rail-btn sub" title="Upload a system JSON" on:click={() => go('uploadsystem')}>
-        <span class="ic">{@html svg(I.open)}</span><span class="rail-label">Upload System…</span>
+      <button class="rail-btn sub" title="Save this system to a file" on:click={() => go('downloadsystem')}>
+        <span class="ic">{@html svg(I.save)}</span><span class="rail-label">System Save</span>
       </button>
     {:else}
       <button class="rail-btn sub danger" title="Clear the whole starmap" on:click={() => go('clear')}>
