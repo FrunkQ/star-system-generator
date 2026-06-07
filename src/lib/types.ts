@@ -208,7 +208,25 @@ export type Feature =
 export type Expr = { all?: Expr[]; any?: Expr[]; not?: Expr }
   | { gt: [Feature, number] } | { lt: [Feature, number] } | { between: [Feature, number, number] }
   | { eq: [Feature, string] } | { hasTag: string };
-export interface ClassifierSpec { rules: ClassifierRule[]; maxClasses: number; minScore: number; planetImages?: Record<string, string>; starImages?: Record<string, string>; }
+// --- Fingerprint classifier (Phase 04 rewrite) ---
+// Each planet type is described by a fingerprint: the parameter bands that define it.
+// A numeric band is [min, max]; a categorical band is a string or list of accepted strings.
+export type FingerprintBand = [number, number] | string | string[];
+export interface Fingerprint {
+  class: string;                         // e.g. "planet/ocean"
+  kind: 'base' | 'modifier';             // base archetypes are mutually exclusive; modifiers stack
+  match: Record<string, FingerprintBand>;// feature → defining band
+  weight?: number;                       // optional score multiplier (default 1)
+  note?: string;                         // human note on the type's defining traits
+}
+export interface ClassifierSpec {
+  rules: ClassifierRule[];               // legacy additive rules (fallback when no fingerprints)
+  fingerprints?: Fingerprint[];          // new per-type fingerprints (preferred when present)
+  maxClasses: number;
+  minScore: number;
+  planetImages?: Record<string, string>;
+  starImages?: Record<string, string>;
+}
 
 export interface PromptSpec { systemPreamble: string; fewShots?: Array<{input: Record<string, unknown>; output: string;}>; perEntityPrompts?: Record<string,string>; }
 export interface ViewPresetSpec { defaultPlayerVisibility: { discoveredBasics: boolean; showTags: string[]; hiddenFields: string[]; }; overrides?: Array<{ match: { role?: string; class?: string; tag?: string }, visibleFields: string[], hiddenFields: string[] }>; }

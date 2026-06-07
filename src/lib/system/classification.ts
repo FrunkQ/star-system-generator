@@ -1,5 +1,71 @@
 // src/lib/system/classification.ts
-import type { CelestialBody, Barycenter, RulePack, Expr, Feature } from "../types";
+import type { CelestialBody, Barycenter, RulePack, Expr, Feature, Fingerprint, FingerprintBand } from "../types";
+
+// --- Fingerprint classifier (Phase 04) ---------------------------------------------------
+// Each planet type is a fingerprint: the parameter bands that define it. A body's fit to a
+// band is 1.0 inside the band, decaying linearly outside it over one band-width of margin,
+// and 0 beyond that (which disqualifies the whole fingerprint — a body fully outside a
+// defining parameter is not that type). A fingerprint's score is the SUM of its band fits,
+// so more-specific types (more matched bands) outrank generic ones. The best-scoring BASE
+// archetype is chosen (mutually exclusive); MODIFIERS (ringed, eyeball, …) stack on top.
+
+function bandFit(value: number | string | undefined, band: FingerprintBand): number {
+  // Categorical band: a string or list of accepted strings → exact (hard) match.
+  if (typeof band === 'string') return value === band ? 1 : 0;
+  if (Array.isArray(band) && (typeof band[0] === 'string' || typeof band[1] === 'string')) {
+    return (band as string[]).includes(value as string) ? 1 : 0;
+  }
+  // Numeric band [lo, hi].
+  const [lo, hi] = band as [number, number];
+  if (typeof value !== 'number' || Number.isNaN(value)) return 0;
+  if (value >= lo && value <= hi) return 1;
+  // Soft edge measured RELATIVE to the boundary it crossed (tol = 15%). Mass/radius/temp
+  // span orders of magnitude, so an absolute (band-width) margin is wrong — a 0.02-Me moon
+  // must NOT half-match a 50–4000 Me gas-giant band. Relative distance fixes that.
+  const TOL = 0.15;
+  if (value < lo) {
+    const ref = lo !== 0 ? Math.abs(lo) : (hi !== 0 ? Math.abs(hi) : 1);
+    return Math.max(0, 1 - ((lo - value) / ref) / TOL);
+  }
+  const refHi = hi !== 0 ? Math.abs(hi) : 1;
+  return Math.max(0, 1 - ((value - hi) / refHi) / TOL);
+}
+
+function fingerprintScore(features: Record<string, number | string>, fp: Fingerprint): number {
+  let sum = 0;
+  for (const [feat, band] of Object.entries(fp.match)) {
+    const fit = bandFit(features[feat], band);
+    if (fit <= 0) return 0; // fully outside a defining band → not this type
+    sum += fit;
+  }
+  return sum * (fp.weight ?? 1);
+}
+
+export function classifyByFingerprint(
+  features: Record<string, number | string>,
+  fingerprints: Fingerprint[],
+  maxClasses: number
+): string[] {
+  const scored = fingerprints
+    .map((fp) => ({ fp, score: fingerprintScore(features, fp) }))
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  const out: string[] = [];
+  // Best base archetype first (mutually exclusive).
+  const base = scored.find((s) => s.fp.kind === 'base');
+  if (base) out.push(base.fp.class);
+  // Then stack modifiers that are a real match (not a margin sliver).
+  for (const s of scored) {
+    if (s.fp.kind === 'modifier' && s.score >= 0.6 && !out.includes(s.fp.class)) out.push(s.fp.class);
+    if (out.length >= maxClasses) break;
+  }
+
+  if (out.length === 0) {
+    out.push((features['mass_Me'] as number) > 10 ? 'planet/gas-giant' : 'planet/terrestrial');
+  }
+  return out;
+}
 
 // Helper function to recursively evaluate classifier expressions
 function evaluateExpr(features: Record<string, number | string>, expr: Expr, tags: {key: string, value?: any}[]): boolean {
@@ -23,6 +89,11 @@ export function classifyBody(planet: CelestialBody, features: Record<string, num
     const planetId = features['id'] as string;
     const hasRing = allNodes.some(n => n.parentId === planetId && n.kind === 'body' && (n as CelestialBody).roleHint === 'ring');
     features['has_ring_child'] = hasRing ? 1 : 0;
+
+    // Phase 04: prefer the per-type fingerprint engine when the rulepack provides one.
+    if (pack.classifier.fingerprints && pack.classifier.fingerprints.length > 0) {
+        return classifyByFingerprint(features, pack.classifier.fingerprints, pack.classifier.maxClasses || 4);
+    }
 
     const scores: Record<string, number> = {};
 

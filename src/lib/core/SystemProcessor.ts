@@ -11,9 +11,12 @@ import { annotateGravitationalStability } from '../physics/stability';
 import { reconcileBarycenters } from '../physics/barycenterReconcile';
 
 export class SystemProcessor implements ISystemProcessor {
+    private systemAgeGyr = 4.6;
+
     process(system: System, rulePack: RulePack): System {
         const processedSystem = { ...system }; // Shallow copy
         const allNodes = processedSystem.nodes;
+        this.systemAgeGyr = system.age_Gyr ?? 4.6;
         const rng = new SeededRNG(system.seed); // Deterministic RNG for procedural aspects of processing
 
         // 0. Pass 0a: Auto reconcile barycenters from mass hierarchy changes.
@@ -295,12 +298,38 @@ export class SystemProcessor implements ISystemProcessor {
         // Only Planets and Moons need dynamic classification based on physics.
         if (body.roleHint !== 'planet' && body.roleHint !== 'moon') return;
 
+        // --- Derived inputs the fingerprints/rules need (several were previously missing,
+        // which silently dead-lettered rules for rogue/coreless/silicate/barren/crater/…). ---
+        const massKg = body.massKg || 0;
+        const radiusKm = body.radiusKm || 0;
+        const radiusM = radiusKm * 1000;
+        // Bulk density in g/cm³ (Earth ≈ 5.51, water ≈ 1.0, Jupiter ≈ 1.33, Saturn ≈ 0.69).
+        const volumeM3 = radiusM > 0 ? (4 / 3) * Math.PI * radiusM ** 3 : 0;
+        const density_gcc = volumeM3 > 0 ? (massKg / volumeM3) / 1000 : 0;
+        const escapeVelocity_kms = radiusM > 0 ? Math.sqrt((2 * G * massKg) / radiusM) / 1000 : 0;
+        // Dominant (most-massive) star's spectral letter, for star-class-dependent types.
+        const stars = allNodes.filter((n) => n.kind === 'body' && (n as CelestialBody).roleHint === 'star') as CelestialBody[];
+        const primary = stars.sort((a, b) => (b.massKg || 0) - (a.massKg || 0))[0];
+        const stellarType = primary?.classes?.find((c) => c.startsWith('star/'))?.split('/')[1]?.[0] || '';
+        // Does this body orbit a star directly? (a_AU/period/eccentricity are otherwise
+        // relative to a planet/barycenter, so star-relative modifiers must not use them.)
+        const parentNode = allNodes.find((n) => n.id === body.parentId);
+        const orbitsStar = parentNode?.kind === 'body' && (parentNode as CelestialBody).roleHint === 'star' ? 1 : 0;
+
         // Feature vector for classification
-        const features: Record<string, number | string> = { 
+        const features: Record<string, number | string> = {
             id: body.id,
-            mass_Me: (body.massKg || 0) / EARTH_MASS_KG,
-            radius_Re: (body.radiusKm || 0) / EARTH_RADIUS_KM,
+            parentId: (body.parentId ?? '') as string,
+            mass_Me: massKg / EARTH_MASS_KG,
+            radius_Re: radiusKm / EARTH_RADIUS_KM,
+            density: density_gcc,
+            escapeVelocity_kms,
             a_AU: body.orbit?.elements.a_AU || 0,
+            eccentricity: body.orbit?.elements.e || 0,
+            orbitsStar,
+            age_Gyr: this.systemAgeGyr,
+            stellarType,
+            stellarIrradiation: body.stellarRadiation || 0, // incident flux, ~1 at Earth
             radiation_flux: body.surfaceRadiation || 0,
             tidalHeating: body.tidalHeatK || 0,
             Teq_K: body.equilibriumTempK || 0,
@@ -310,18 +339,17 @@ export class SystemProcessor implements ISystemProcessor {
             tidallyLocked: body.tidallyLocked ? 1 : 0
         };
 
-        if (body.atmosphere) {
-            features['atm.main'] = body.atmosphere.main;
-            features['atm.pressure_bar'] = body.atmosphere.pressure_bar;
+        // Default the environment features so airless/dry bodies match (undefined would
+        // disqualify e.g. "barren" which requires pressure≈0 / coverage≈0).
+        features['atm.main'] = body.atmosphere?.name && body.atmosphere.name !== 'None' ? (body.atmosphere.main ?? 'None') : 'None';
+        features['atm.pressure_bar'] = body.atmosphere?.pressure_bar ?? 0;
+        if (body.atmosphere?.composition) {
             for (const gas in body.atmosphere.composition) {
                 features[`atm.composition.${gas}`] = body.atmosphere.composition[gas];
             }
         }
-
-        if (body.hydrosphere) {
-            features['hydrosphere.coverage'] = body.hydrosphere.coverage;
-            features['hydrosphere.composition'] = body.hydrosphere.composition;
-        }
+        features['hydrosphere.coverage'] = body.hydrosphere?.coverage ?? 0;
+        features['hydrosphere.composition'] = body.hydrosphere?.composition ?? 'none';
 
         // Re-run Classification
         // Note: This might override manual class changes if not careful.
