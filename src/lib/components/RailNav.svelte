@@ -33,15 +33,12 @@
 </script>
 
 <nav class="rail-nav" class:collapsed aria-label="App navigation">
-  <button class="rail-collapse" on:click={toggleCollapsed} title={collapsed ? 'Expand menu' : 'Collapse menu'} aria-label="Toggle menu width">
-    {#if collapsed}
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 17 5-5-5-5"/><path d="m6 17 5-5-5-5"/></svg>
-    {:else}
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg>
-    {/if}
-  </button>
-
-  <div class="brand"><span class="rail-label">SSE</span></div>
+  <div class="rail-header">
+    <span class="brand rail-label">SSE</span>
+    <button class="rail-collapse" on:click={toggleCollapsed} title={collapsed ? 'Expand menu' : 'Collapse menu'} aria-label="Toggle menu width">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+    </button>
+  </div>
 
   <button
     class="rail-btn"
@@ -83,8 +80,8 @@
   <button class="rail-btn" title="Find a body across all systems" on:click={() => dispatch('allbodies')}>
     <span class="ic">{@html svg(I.body)}</span><span class="rail-label">Find body…</span>
   </button>
-  <button class="rail-btn" title="Find a ship/construct across all systems" on:click={() => dispatch('allships')}>
-    <span class="ic">{@html svg(I.ship)}</span><span class="rail-label">Find ship…</span>
+  <button class="rail-btn" title="Find a construct across all systems" on:click={() => dispatch('allships')}>
+    <span class="ic">{@html svg(I.ship)}</span><span class="rail-label">Find construct…</span>
   </button>
   <button class="rail-btn" title="Routes & journeys" on:click={() => dispatch('routes')}>
     <span class="ic">{@html svg(I.routes)}</span><span class="rail-label">Routes…</span>
@@ -126,8 +123,16 @@
     box-sizing: border-box;
   }
   .rail-nav.collapsed { min-width: 0; }
+  .rail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 2px 4px 6px;
+  }
+  .rail-nav.collapsed .rail-header { justify-content: center; }
   .rail-collapse {
-    align-self: flex-end;
+    flex: 0 0 auto;
     width: 30px;
     height: 30px;
     display: flex;
@@ -139,15 +144,12 @@
     color: var(--text-muted, #cfcfcf);
     cursor: pointer;
   }
-  .rail-nav.collapsed .rail-collapse { align-self: center; }
   .rail-collapse:hover { background: var(--bg-control-hover); }
   .brand {
     font-weight: 700;
     color: var(--accent);
     letter-spacing: 0.06em;
-    padding: 4px 8px 8px;
     font-size: 1.1rem;
-    min-height: 1.2em;
   }
   .rail-btn {
     display: flex;
@@ -186,7 +188,6 @@
   /* Collapsed (icon-only): hide labels + section titles everywhere in the rail (incl. the
      slotted view content), centre the icons. :global so it reaches slotted buttons. */
   .rail-nav.collapsed .rail-btn { justify-content: center; padding: 9px; }
-  .rail-nav.collapsed .brand { text-align: center; padding: 4px 0 8px; }
   :global(.rail-nav.collapsed .rail-label) { display: none; }
   :global(.rail-nav.collapsed .rail-section-title) { display: none; }
   /* In icon-only mode, hide the verbose view-specific sections (System actions, Clear,

@@ -60,7 +60,9 @@
         on:change={(e) => dispatch('rename', { nodeId: focusedBody.id, newName: (e.currentTarget as HTMLInputElement).value })}
         class="name-input" title="Click to rename" />
     {#if !isEditing && !isPlanning && !isShipLogOpen && (focusedBody.kind !== 'barycenter' || focusedBody.parentId)}
-        <button class="edit-btn small" on:click={() => dispatch('enteredit')} style="margin-left: 5px;">Edit</button>
+        <button class="edit-btn" on:click={() => dispatch('enteredit')} title="Edit body" aria-label="Edit body">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
     {/if}
 </div>
 
@@ -103,5 +105,23 @@
   .name-input:hover, .name-input:focus {
       background-color: #252525;
       border-color: var(--border);
+  }
+  .edit-btn {
+      flex: 0 0 auto;
+      margin-left: 5px;
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-muted, #cfcfcf);
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+  }
+  .edit-btn:hover {
+      background-color: var(--bg-control);
+      color: var(--accent);
+      border-color: var(--accent);
   }
 </style>

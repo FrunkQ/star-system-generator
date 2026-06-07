@@ -929,9 +929,9 @@
 
   {#if showAllShips}
     <div class="allbodies-overlay" role="presentation" on:click={() => (showAllShips = false)}>
-      <div class="allbodies-card" role="dialog" aria-label="Find a ship" on:click|stopPropagation>
+      <div class="allbodies-card" role="dialog" aria-label="Find a construct" on:click|stopPropagation>
         <header class="allbodies-head">
-          <span>Ships &amp; constructs</span>
+          <span>Constructs</span>
           <button class="allbodies-close" aria-label="Close" on:click={() => (showAllShips = false)}>×</button>
         </header>
         <BodyPicker
@@ -940,7 +940,7 @@
           nodes={allShips}
           focusedId={null}
           placeholder="Search every system…"
-          emptyLabel="All ships"
+          emptyLabel="All constructs"
           contextOf={allBodiesContext}
           on:select={(e) => { showAllShips = false; handleAllBodiesSelect(e); }}
         />

@@ -367,14 +367,6 @@
   }
   .tt-rate.active { color: #00e5ff; font-weight: 700; }
 
-  .tt-date {
-    flex: 0 1 auto;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 230px;
-    font-weight: 600;
-  }
   .tt-more.on { background: var(--bg-control-hover, #232733); }
 
   .tt-panel {
@@ -419,8 +411,7 @@
   }
   .tt-action.danger:hover { filter: brightness(1.12); }
 
-  /* Phone: hide the inline date (it's in the expand panel / sheet); tighten. */
+  /* Phone: tighten the transport pill. */
   .time-transport.compact { gap: 6px; padding: 4px 6px; }
-  .time-transport.compact .tt-date { display: none; }
   .time-transport.compact .tt-rate { min-width: 0; }
 </style>

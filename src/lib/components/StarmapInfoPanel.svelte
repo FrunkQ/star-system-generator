@@ -9,25 +9,33 @@
   export let starmap: Starmap;
 
   const dispatch = createEventDispatcher();
-  const POS_KEY = 'sse-starmap-info-pos';
+  // -v2: reset stale saved positions so the new bottom-left default takes effect.
+  const POS_KEY = 'sse-starmap-info-pos-v2';
   const COLLAPSE_KEY = 'sse-starmap-info-collapsed';
 
-  let pos = { x: 12, y: 12 }; // default top-left
+  let pos = { x: 12, y: 12 };
   let collapsed = false;
+  let el: HTMLElement;
 
   onMount(() => {
     if (!browser) return;
-    try {
-      const saved = JSON.parse(localStorage.getItem(POS_KEY) || 'null');
-      if (saved && typeof saved.x === 'number' && typeof saved.y === 'number') pos = saved;
-    } catch {}
-    // Clamp into view — the position is shared across devices, so a desktop drag
-    // shouldn't strand the panel off a phone screen.
-    pos = {
-      x: Math.max(0, Math.min(pos.x, window.innerWidth - 80)),
-      y: Math.max(0, Math.min(pos.y, window.innerHeight - 80))
-    };
     collapsed = localStorage.getItem(COLLAPSE_KEY) === '1';
+    let saved: any = null;
+    try { saved = JSON.parse(localStorage.getItem(POS_KEY) || 'null'); } catch {}
+    if (saved && typeof saved.x === 'number' && typeof saved.y === 'number') {
+      // Clamp into view — the position is shared across devices, so a desktop drag
+      // shouldn't strand the panel off a phone screen.
+      pos = {
+        x: Math.max(0, Math.min(saved.x, window.innerWidth - 80)),
+        y: Math.max(0, Math.min(saved.y, window.innerHeight - 80))
+      };
+    } else {
+      // Default to the BOTTOM-LEFT of the canvas (the top-left is the time overlay).
+      const parent = el?.offsetParent as HTMLElement | null;
+      const parentH = parent?.clientHeight ?? window.innerHeight;
+      const ph = el?.offsetHeight ?? 220;
+      pos = { x: 12, y: Math.max(12, parentH - ph - 12) };
+    }
   });
 
   function persistPos() {
@@ -66,7 +74,7 @@
   }
 </script>
 
-<section class="info-panel" class:dragging style="left:{pos.x}px; top:{pos.y}px;">
+<section class="info-panel" class:dragging bind:this={el} style="left:{pos.x}px; top:{pos.y}px;">
   <header class="info-header" on:pointerdown={onHeaderDown}>
     <span class="info-title">{starmap.name}</span>
     <button

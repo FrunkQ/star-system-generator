@@ -806,7 +806,7 @@
       focusedId={null}
       emptyLabel="Starmap"
       placeholder="Search systems…"
-      top={mode === 'phone' ? 48 : 48}
+      top={mode === 'phone' ? 64 : 56}
       categorize={systemPickerCategorize}
       colorOf={systemPickerColor}
       contextOf={systemPickerContext}
@@ -1330,8 +1330,7 @@
   .time-display-overlay {
     position: absolute;
     top: 8px;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 8px;
     z-index: 57;
   }
   .ov-reset {

@@ -1,0 +1,1009 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.17 [39m[90mC:/Development/star-system-explorer-v2/star-system-generator[39m
+
+ [32m✓[39m src/lib/input/gestures.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m src/lib/traveller/decoder.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m src/lib/construct-logic.spec.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 2[2mms[22m[39m
+ [32m✓[39m src/lib/transit/hostResolution.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/lib/starmapStore.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+18:26:10 [vite-plugin-svelte] src/lib/components/AppShell.svelte:249:2 Unused CSS selector ".rail-toggle"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:868:10 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:868:10 `<text>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1071:12 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1071:12 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1072:12 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1072:12 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1081:12 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1081:12 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1083:20 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1083:20 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1085:24 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1085:24 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1086:24 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1086:24 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1088:28 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1088:28 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1257:2 Unused CSS selector ".rail-view-options"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1265:2 Unused CSS selector ".rail-section-title"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1272:2 Unused CSS selector ".rail-view-options label"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1280:2 Unused CSS selector ".rail-view-options label.rail-slider"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1285:2 Unused CSS selector ".rail-view-options label.rail-slider select"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1288:2 Unused CSS selector ".rail-btn"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1298:2 Unused CSS selector ".rail-btn:hover"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1301:2 Unused CSS selector ".rail-btn.danger"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1384:2 Unused CSS selector ".starmap-header"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1395:2 Unused CSS selector ".starmap-header h1"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1400:2 Unused CSS selector ".starmap-heading"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1407:2 Unused CSS selector ".header-controls"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1413:2 Unused CSS selector ".header-controls label"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1423:2 Unused CSS selector ".dropdown"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1428:2 Unused CSS selector ".dropdown-content"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1441:2 Unused CSS selector ".dropdown-content button"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1453:2 Unused CSS selector ".dropdown-content button:hover"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1454:2 Unused CSS selector ".dropdown-content button.danger"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1455:2 Unused CSS selector ".dropdown-content button.danger:hover"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1457:2 Unused CSS selector ".grid-select"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1464:2 Unused CSS selector ".grid-select.inline"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1468:2 Unused CSS selector ".hamburger-button"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/Starmap.svelte:1477:2 Unused CSS selector "hr"
+https://svelte.dev/e/css_unused_selector
+[90mstdout[2m | src/lib/transit/calculator.test.ts[2m > [22m[2mTransit Calculator Grounded Cases[2m > [22m[2mEarth -> Luna returns physically valid plans and no legacy kinematic direct path
+[22m[39m[TransitPlanner] Debug: Root mass=1.989e+30, Frame=solar-system-earth, FrameMu=398589196000000
+[TransitPlanner] Debug: startPos=0.0000,0.0000 | r1=0.00 AU | r2=0.00 AU | t_hohmann=5.0d
+
+[90mstdout[2m | src/lib/transit/calculator.regression.test.ts[2m > [22m[2mTransit Calculator Grounded Cases[2m > [22m[2mEarth -> Luna returns physically valid plans and no legacy kinematic direct path
+[22m[39m[TransitPlanner] Debug: Root mass=1.989e+30, Frame=solar-system-earth, FrameMu=398589196000000
+[TransitPlanner] Debug: startPos=0.0000,0.0000 | r1=0.00 AU | r2=0.00 AU | t_hohmann=5.0d
+
+[90mstdout[2m | src/lib/transit/rocinante.test.ts[2m > [22m[2mTransit Planner Rocinante Tests[2m > [22m[2mRocinante -> Mars transfer has sane Delta-V
+[22m[39m[TransitPlanner] Debug: Root mass=1.989e+30, Frame=Global, FrameMu=132751826999999990000
+[TransitPlanner] Debug: startPos=-12.6426,-4.0979 | r1=13.29 AU | r2=1.52 AU | t_hohmann=3681.0d
+[AssistDebug] Selected Candidates: Jupiter, Saturn, Uranus
+[AssistDebug] FOUND PLAN! Rocinante (Tachi) -> Jupiter -> Mars
+Plans found: 4
+Plan: Most Efficient, Type: Efficiency, DV: 5.0 km/s, Time: 2944.8d, Hidden: No
+Plan: Efficient Now, Type: Efficiency, DV: 21.1 km/s, Time: 1840.5d, Hidden: No
+Plan: Flyby Assist (Jupiter), Type: Complex, DV: 32.0 km/s, Time: 4439.3d, Hidden: No
+Plan: Direct Burn, Type: Speed, DV: 3050.1 km/s, Time: 18.0d, Hidden: No
+
+[90mstdout[2m | src/lib/transit/calculator.test.ts[2m > [22m[2mTransit Calculator Grounded Cases[2m > [22m[2mEarth -> Luna accepts global chained state and still solves local-frame direct transfer
+[22m[39m[TransitPlanner] Debug: Root mass=1.989e+30, Frame=solar-system-earth, FrameMu=398589196000000
+[TransitPlanner] Debug: startPos=0.0000,0.0000 | r1=0.00 AU | r2=0.00 AU | t_hohmann=5.0d
+
+[90mstdout[2m | src/lib/transit/calculator.regression.test.ts[2m > [22m[2mTransit Calculator Grounded Cases[2m > [22m[2mEarth -> Luna accepts global chained state and still solves local-frame direct transfer
+[22m[39m[TransitPlanner] Debug: Root mass=1.989e+30, Frame=solar-system-earth, FrameMu=398589196000000
+[TransitPlanner] Debug: startPos=0.0000,0.0000 | r1=0.00 AU | r2=0.00 AU | t_hohmann=5.0d
+
+18:26:10 [vite-plugin-svelte] src/routes/+page.svelte:875:6 Elements with the 'dialog' interactive role must have a tabindex value
+https://svelte.dev/e/a11y_interactive_supports_focus
+18:26:10 [vite-plugin-svelte] src/routes/+page.svelte:875:6 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/routes/+page.svelte:896:6 Elements with the 'dialog' interactive role must have a tabindex value
+https://svelte.dev/e/a11y_interactive_supports_focus
+18:26:10 [vite-plugin-svelte] src/routes/+page.svelte:896:6 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/routes/+page.svelte:932:6 Elements with the 'dialog' interactive role must have a tabindex value
+https://svelte.dev/e/a11y_interactive_supports_focus
+18:26:10 [vite-plugin-svelte] src/routes/+page.svelte:932:6 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/routes/+page.svelte:1037:2 Unused CSS selector "footer"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/routes/+page.svelte:1055:2 Unused CSS selector ".starmap-footer a"
+https://svelte.dev/e/css_unused_selector
+[90mstdout[2m | src/lib/transit/calculator.test.ts[2m > [22m[2mTransit Calculator Grounded Cases[2m > [22m[2mEarth -> Luna Most Efficient window stays within local-orbit-scale delays
+[22m[39m[TransitPlanner] Debug: Root mass=1.989e+30, Frame=solar-system-earth, FrameMu=398589196000000
+[TransitPlanner] Debug: startPos=0.0000,0.0000 | r1=0.00 AU | r2=0.00 AU | t_hohmann=4.9d
+
+[90mstdout[2m | src/lib/transit/calculator.regression.test.ts[2m > [22m[2mTransit Calculator Grounded Cases[2m > [22m[2mEarth -> Luna Most Efficient window stays within local-orbit-scale delays
+[22m[39m[TransitPlanner] Debug: Root mass=1.989e+30, Frame=solar-system-earth, FrameMu=398589196000000
+[TransitPlanner] Debug: startPos=0.0000,0.0000 | r1=0.00 AU | r2=0.00 AU | t_hohmann=4.9d
+
+[90mstdout[2m | src/lib/transit/calculator.test.ts[2m > [22m[2mTransit Calculator Grounded Cases[2m > [22m[2mEarth -> Saturn supports non-zero flyby arrival speed when requested
+[22m[39m[TransitPlanner] Debug: Root mass=1.989e+30, Frame=Global, FrameMu=132751826999999990000
+[TransitPlanner] Debug: startPos=0.1589,-0.9843 | r1=1.00 AU | r2=9.58 AU | t_hohmann=2221.6d
+[AssistDebug] Selected Candidates: Jupiter, Venus, Mars
+[AssistDebug] FOUND PLAN! Earth -> Jupiter -> Saturn
+
+[90mstdout[2m | src/lib/transit/calculator.regression.test.ts[2m > [22m[2mTransit Calculator Grounded Cases[2m > [22m[2mEarth -> Saturn supports non-zero flyby arrival speed when requested
+[22m[39m[TransitPlanner] Debug: Root mass=1.989e+30, Frame=Global, FrameMu=132751826999999990000
+[TransitPlanner] Debug: startPos=0.1589,-0.9843 | r1=1.00 AU | r2=9.58 AU | t_hohmann=2221.6d
+[AssistDebug] Selected Candidates: Jupiter, Venus, Mars
+[AssistDebug] FOUND PLAN! Earth -> Jupiter -> Saturn
+
+ [32m✓[39m src/lib/transit/rocinante.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 186[2mms[22m[39m
+[90mstdout[2m | src/lib/transit/calculator.test.ts[2m > [22m[2mTransit Calculator Grounded Cases[2m > [22m[2mEarth -> Saturn aerobraking reduces capture effort when enabled
+[22m[39m[TransitPlanner] Debug: Root mass=1.989e+30, Frame=Global, FrameMu=132751826999999990000
+[TransitPlanner] Debug: startPos=0.1589,-0.9843 | r1=1.00 AU | r2=9.58 AU | t_hohmann=2221.6d
+[AssistDebug] Selected Candidates: Jupiter, Venus, Mars
+[AssistDebug] FOUND PLAN! Earth -> Jupiter -> Saturn
+[TransitPlanner] Debug: Root mass=1.989e+30, Frame=Global, FrameMu=132751826999999990000
+[TransitPlanner] Debug: startPos=0.1589,-0.9843 | r1=1.00 AU | r2=9.58 AU | t_hohmann=2221.6d
+[AssistDebug] Selected Candidates: Jupiter, Venus, Mars
+[AssistDebug] FOUND PLAN! Earth -> Jupiter -> Saturn
+
+[90mstdout[2m | src/lib/transit/calculator.regression.test.ts[2m > [22m[2mTransit Calculator Grounded Cases[2m > [22m[2mEarth -> Saturn aerobraking reduces capture effort when enabled
+[22m[39m[TransitPlanner] Debug: Root mass=1.989e+30, Frame=Global, FrameMu=132751826999999990000
+[TransitPlanner] Debug: startPos=0.1589,-0.9843 | r1=1.00 AU | r2=9.58 AU | t_hohmann=2221.6d
+[AssistDebug] Selected Candidates: Jupiter, Venus, Mars
+[AssistDebug] FOUND PLAN! Earth -> Jupiter -> Saturn
+[TransitPlanner] Debug: Root mass=1.989e+30, Frame=Global, FrameMu=132751826999999990000
+[TransitPlanner] Debug: startPos=0.1589,-0.9843 | r1=1.00 AU | r2=9.58 AU | t_hohmann=2221.6d
+[AssistDebug] Selected Candidates: Jupiter, Venus, Mars
+[AssistDebug] FOUND PLAN! Earth -> Jupiter -> Saturn
+
+[90mstdout[2m | src/lib/transit/calculator.test.ts[2m > [22m[2mTransit Calculator Grounded Cases[2m > [22m[2mEarth -> Jupiter with near-opposite solar alignment still returns sane routes
+[22m[39m[TransitPlanner] Debug: Root mass=1.989e+30, Frame=Global, FrameMu=132751826999999990000
+[TransitPlanner] Debug: startPos=-0.1878,-0.9851 | r1=1.00 AU | r2=5.20 AU | t_hohmann=998.4d
+[AssistDebug] Selected Candidates: Venus, Mars, Saturn
+[AssistDebug] FOUND PLAN! Earth -> Saturn -> Jupiter
+
+[90mstdout[2m | src/lib/transit/calculator.regression.test.ts[2m > [22m[2mTransit Calculator Grounded Cases[2m > [22m[2mEarth -> Jupiter with near-opposite solar alignment still returns sane routes
+[22m[39m[TransitPlanner] Debug: Root mass=1.989e+30, Frame=Global, FrameMu=132751826999999990000
+[TransitPlanner] Debug: startPos=-0.1878,-0.9851 | r1=1.00 AU | r2=5.20 AU | t_hohmann=998.4d
+[AssistDebug] Selected Candidates: Venus, Mars, Saturn
+[AssistDebug] FOUND PLAN! Earth -> Saturn -> Jupiter
+
+[90mstdout[2m | src/lib/transit/calculator.regression.test.ts[2m > [22m[2mTransit Planner Regression Tests[2m > [22m[2mJupiter -> Mars transfer has sane Delta-V (< 100 km/s)
+[22m[39m[TransitPlanner] Debug: Root mass=1.989e+30, Frame=Global, FrameMu=132751826999999990000
+[TransitPlanner] Debug: startPos=2.7191,4.2661 | r1=5.06 AU | r2=1.52 AU | t_hohmann=1090.3d
+[AssistDebug] Selected Candidates: Earth, Saturn, Neptune
+[AssistDebug] FOUND PLAN! Jupiter -> Saturn -> Mars
+Plans found: 4
+Plan: Most Efficient, Type: Efficiency, DV: 12.2 km/s, Time: 872.3d, Hidden: No
+Plan: Flyby Assist (Saturn), Type: Complex, DV: 14.7 km/s, Time: 4587.7d, Hidden: No
+Plan: Efficient Now, Type: Efficiency, DV: 46.6 km/s, Time: 545.2d, Hidden: No
+Plan: Direct Burn, Type: Speed, DV: 3722.0 km/s, Time: 4.4d, Hidden: No
+
+ [32m✓[39m src/lib/transit/calculator.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 392[2mms[22m[39m
+ [32m✓[39m src/lib/transit/calculator.regression.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 458[2mms[22m[39m
+[90mstdout[2m | src/lib/transit/fast_plan.test.ts[2m > [22m[2mFast Plan Parameter Test[2m > [22m[2mShould output different times for different G limits
+[22m[39m[TransitPlanner] Debug: Root mass=1.989e+30, Frame=Global, FrameMu=132751826999999990000
+[TransitPlanner] Debug: startPos=-12.6426,-4.0979 | r1=13.29 AU | r2=1.52 AU | t_hohmann=3681.0d
+[AssistDebug] Selected Candidates: Jupiter, Saturn, Uranus
+[AssistDebug] FOUND PLAN! Rocinante (Tachi) -> Jupiter -> Mars
+MaxG: 1.0 -> Time: 18.0 days | DV: 3050.1 km/s | AccelRatio: 0.100 | BrakeRatio: 0.100
+[TransitPlanner] Debug: Root mass=1.989e+30, Frame=Global, FrameMu=132751826999999990000
+[TransitPlanner] Debug: startPos=-12.6426,-4.0979 | r1=13.29 AU | r2=1.52 AU | t_hohmann=3681.0d
+[AssistDebug] Selected Candidates: Jupiter, Saturn, Uranus
+[AssistDebug] FOUND PLAN! Rocinante (Tachi) -> Jupiter -> Mars
+MaxG: 3.0 -> Time: 10.4 days | DV: 5291.7 km/s | AccelRatio: 0.100 | BrakeRatio: 0.100
+[TransitPlanner] Debug: Root mass=1.989e+30, Frame=Global, FrameMu=132751826999999990000
+[TransitPlanner] Debug: startPos=-12.6426,-4.0979 | r1=13.29 AU | r2=1.52 AU | t_hohmann=3681.0d
+[AssistDebug] Selected Candidates: Jupiter, Saturn, Uranus
+[AssistDebug] FOUND PLAN! Rocinante (Tachi) -> Jupiter -> Mars
+MaxG: 5.6 -> Time: 7.6 days | DV: 7234.6 km/s | AccelRatio: 0.100 | BrakeRatio: 0.100
+[TransitPlanner] Debug: Root mass=1.989e+30, Frame=Global, FrameMu=132751826999999990000
+[TransitPlanner] Debug: startPos=-12.6426,-4.0979 | r1=13.29 AU | r2=1.52 AU | t_hohmann=3681.0d
+[AssistDebug] Selected Candidates: Jupiter, Saturn, Uranus
+[AssistDebug] FOUND PLAN! Rocinante (Tachi) -> Jupiter -> Mars
+MaxG: 10.0 -> Time: 5.7 days | DV: 9672.0 km/s | AccelRatio: 0.100 | BrakeRatio: 0.100
+
+ [32m✓[39m src/lib/transit/fast_plan.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 530[2mms[22m[39m
+     [33m[2m✓[22m[39m Should output different times for different G limits [33m 528[2mms[22m[39m
+[90mstdout[2m | src/lib/system/physics-baseline.test.ts[2m > [22m[2mSolar System Physics Baseline[2m > [22m[2mshould reproduce Solar System physics values
+[22m[39mSaved stripped fixture to C:\Development\star-system-explorer-v2\star-system-generator\tests\fixtures\solar-system-input.json
+Saved processed output to C:\Development\star-system-explorer-v2\star-system-generator\tests\output\solar-system-derived.json
+
+ [32m✓[39m src/lib/system/physics-baseline.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m src/lib/components/FabCluster.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32m✓[39m src/lib/components/BottomSheet.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m src/lib/components/AppShell.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+18:26:10 [vite-plugin-svelte] src/lib/components/BodyPicker.svelte:63:13 Component has unused export property 'roleOf'. If it is for external reference only, please consider using `export const roleOf`
+https://svelte.dev/e/export_let_unused
+18:26:10 [vite-plugin-svelte] src/lib/components/BodyPicker.svelte:385:2 Unused CSS selector ".dot.muted"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/MarkdownModal.svelte:13:0 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/lib/components/MarkdownModal.svelte:13:0 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:10 [vite-plugin-svelte] src/lib/components/MarkdownModal.svelte:14:2 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/lib/components/MarkdownModal.svelte:14:2 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:10 [vite-plugin-svelte] src/lib/components/MarkdownModal.svelte:62:2 Unused CSS selector ".markdown-body h1"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/MarkdownModal.svelte:62:21 Unused CSS selector ".markdown-body h2"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/MarkdownModal.svelte:62:40 Unused CSS selector ".markdown-body h3"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/MarkdownModal.svelte:69:2 Unused CSS selector ".markdown-body a"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/MarkdownModal.svelte:74:2 Unused CSS selector ".markdown-body a:hover"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/MarkdownModal.svelte:78:2 Unused CSS selector ".markdown-body code"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/MarkdownModal.svelte:84:2 Unused CSS selector ".markdown-body pre"
+https://svelte.dev/e/css_unused_selector
+18:26:10 [vite-plugin-svelte] src/lib/components/SaveSystemModal.svelte:18:0 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/lib/components/SaveSystemModal.svelte:18:0 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:10 [vite-plugin-svelte] src/lib/components/SaveSystemModal.svelte:19:2 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/lib/components/SaveSystemModal.svelte:19:2 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:10 [vite-plugin-svelte] src/lib/components/SaveSystemModal.svelte:23:6 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:10 [vite-plugin-svelte] src/lib/components/SaveSystemModal.svelte:39:6 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:10 [vite-plugin-svelte] src/lib/components/ImportTravellerModal.svelte:111:0 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/lib/components/ImportTravellerModal.svelte:111:0 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:10 [vite-plugin-svelte] src/lib/components/ImportTravellerModal.svelte:112:2 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/lib/components/ImportTravellerModal.svelte:112:2 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:10 [vite-plugin-svelte] src/lib/components/ImportTravellerModal.svelte:116:10 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:10 [vite-plugin-svelte] src/lib/components/ImportTravellerModal.svelte:126:22 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:10 [vite-plugin-svelte] src/lib/components/ImportTravellerModal.svelte:126:22 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:10 [vite-plugin-svelte] src/lib/components/ImportTravellerModal.svelte:135:10 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:64:0 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:64:0 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:65:2 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:65:2 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:72:14 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:73:77 Avoid using autofocus
+https://svelte.dev/e/a11y_autofocus
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:77:14 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:83:14 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:88:14 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:93:14 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:99:14 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:104:14 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:109:14 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:114:14 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:120:14 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:125:14 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:130:14 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:135:14 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/AddTravellerSystemModal.svelte:185:2 Unused CSS selector ".form-group.span-3"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/NewStarmapModal.svelte:7:13 Component has unused export property 'hasSavedStarmap'. If it is for external reference only, please consider using `export const hasSavedStarmap`
+https://svelte.dev/e/export_let_unused
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:1964:8 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:1964:8 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:1966:16 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:1966:16 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:1967:16 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:1967:16 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:1969:20 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:1969:20 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:1972:20 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:1972:20 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:1997:8 Elements with the 'dialog' interactive role must have a tabindex value
+https://svelte.dev/e/a11y_interactive_supports_focus
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:1997:8 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2017:2 Unused CSS selector ".controls"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2023:2 Unused CSS selector ".clock-line"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2033:2 Unused CSS selector ".time-readouts"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2039:2 Unused CSS selector ".actual-time"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2043:2 Unused CSS selector ".scrub-rate"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2048:2 Unused CSS selector ".scrub-label"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2052:2 Unused CSS selector ".scrub-slider"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2055:2 Unused CSS selector ".scrub-control"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2062:2 Unused CSS selector ".scrub-label-row"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2068:2 Unused CSS selector ".checkbox-label"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2076:2 Unused CSS selector ".checkbox-label input"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2080:2 Unused CSS selector ".scrub-slider-row"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2085:2 Unused CSS selector ".scrub-slider-wrap"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2092:2 Unused CSS selector ".play-toggle"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2105:2 Unused CSS selector ".play-toggle:hover"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2108:2 Unused CSS selector ".scrub-scale"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2114:2 Unused CSS selector ".scrub-scale span:nth-child(1)"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2115:2 Unused CSS selector ".scrub-scale span:nth-child(2)"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2116:2 Unused CSS selector ".scrub-scale span:nth-child(3)"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2117:2 Unused CSS selector ".scrub-scale span:nth-child(4)"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2118:2 Unused CSS selector ".scrub-scale span:nth-child(5)"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2119:2 Unused CSS selector ".clock-line > span"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2122:2 Unused CSS selector ".clock-line .display-time"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2125:2 Unused CSS selector ".clock-line .clock-action.btn-blue"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2130:2 Unused CSS selector ".clock-line .clock-action.btn-blue:hover"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2133:2 Unused CSS selector ".clock-line .clock-action.btn-red"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2138:2 Unused CSS selector ".clock-line .clock-action.btn-red:hover"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2141:2 Unused CSS selector ".clock-actions"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2147:2 Unused CSS selector ".time-panel"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2159:2 Unused CSS selector ".time-title"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2169:2 Unused CSS selector ".focus-header h2"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2172:2 Unused CSS selector ".time-scales"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2180:2 Unused CSS selector ".time-scales button"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2185:2 Unused CSS selector ".time-scales button.active"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2190:2 Unused CSS selector ".dropdown"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2195:2 Unused CSS selector ".dropdown-content"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2205:2 Unused CSS selector ".dropdown-content button"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2216:2 Unused CSS selector ".dropdown-content button:hover"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2218:2 Unused CSS selector ".hamburger-button"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2225:2 Unused CSS selector ".todo-button"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2338:2 Unused CSS selector ".name-input"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2349:2 Unused CSS selector ".name-input:hover"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2349:21 Unused CSS selector ".name-input:focus"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2376:2 Unused CSS selector ".action-buttons"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2383:2 Unused CSS selector ".action-buttons button"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2395:2 Unused CSS selector ".action-buttons button.edit-btn:hover"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2399:2 Unused CSS selector ".action-buttons button.delete-btn:hover"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2402:2 Unused CSS selector ".name-row"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2409:2 Unused CSS selector ".visibility-btn"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2420:2 Unused CSS selector ".visibility-btn:hover"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2424:2 Unused CSS selector ".name-input"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2428:4 Unused CSS selector ".details-section-header .visibility-btn"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2432:4 Unused CSS selector ".attributions"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2440:4 Unused CSS selector ".attributions a"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2444:4 Unused CSS selector ".attributions p"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2448:4 Unused CSS selector ".attributions p + p"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2451:4 Unused CSS selector ".attributions p:first-child"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2454:4 Unused CSS selector ".attribution-separator"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2459:4 Unused CSS selector ".project-attribution"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2481:4 Unused CSS selector ".rail-view-options label"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2489:4 Unused CSS selector ".rail-view-options label.rail-slider"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2494:4 Unused CSS selector ".rail-seg"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2502:4 Unused CSS selector ".rail-seg button"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2512:4 Unused CSS selector ".rail-seg button.active"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemView.svelte:2516:4 Unused CSS selector ".rail-view-options label.rail-slider input"
+https://svelte.dev/e/css_unused_selector
+ [32m✓[39m src/lib/components/Starmap.spec.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 206[2mms[22m[39m
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemGenerationControls.svelte:5:13 Component has unused export property 'system'. If it is for external reference only, please consider using `export const system`
+https://svelte.dev/e/export_let_unused
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemSummaryContextMenu.svelte:78:10 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemSummaryContextMenu.svelte:78:10 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemSummaryContextMenu.svelte:81:10 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemSummaryContextMenu.svelte:81:10 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemSummaryContextMenu.svelte:86:8 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:11 [vite-plugin-svelte] src/lib/components/SystemSummaryContextMenu.svelte:86:8 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyTechnicalDetails.svelte:16:13 Component has unused export property 'rootStar'. If it is for external reference only, please consider using `export const rootStar`
+https://svelte.dev/e/export_let_unused
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyTechnicalDetails.svelte:914:2 Unused CSS selector ".detail-item.unstable"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyTechnicalDetails.svelte:918:2 Unused CSS selector ".detail-item.unstable .value"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyTechnicalDetails.svelte:922:2 Unused CSS selector ".rebuild-warning"
+https://svelte.dev/e/css_unused_selector
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyBasicsTab.svelte:295:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyBasicsTab.svelte:333:8 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:232:16 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:233:74 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:235:89 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:240:16 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:241:74 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:243:89 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:249:16 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:250:73 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:252:89 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:257:16 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:258:73 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:260:89 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:270:16 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:271:95 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:273:89 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:277:16 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:278:95 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:280:90 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:288:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:11 [vite-plugin-svelte] src/lib/components/BodyDetailsTab.svelte:294:12 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:361:8 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:363:58 Using `on:change` to listen to the change event is deprecated. Use the event attribute `onchange` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:377:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:378:66 Using `on:change` to listen to the change event is deprecated. Use the event attribute `onchange` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:384:88 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:387:49 Using `on:click` to listen to the click event is deprecated. Use the event attribute `onclick` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:394:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:395:68 Using `on:change` to listen to the change event is deprecated. Use the event attribute `onchange` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:401:90 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:412:63 Using `on:change` to listen to the change event is deprecated. Use the event attribute `onchange` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:423:88 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:430:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:431:67 Using `on:change` to listen to the change event is deprecated. Use the event attribute `onchange` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:442:87 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:452:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:453:71 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:459:92 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:466:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:467:66 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:473:87 Using `on:input` to listen to the input event is deprecated. Use the event attribute `oninput` instead
+https://svelte.dev/e/event_directive_deprecated
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyStarTab.svelte:523:2 Unused CSS selector ".rad-label.ref"
+https://svelte.dev/e/css_unused_selector
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyOrbitTab.svelte:169:16 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyOrbitTab.svelte:181:16 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyOrbitTab.svelte:195:16 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyOrbitTab.svelte:203:16 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyOrbitTab.svelte:240:20 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyOrbitTab.svelte:248:20 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyOrbitTab.svelte:283:2 Unused CSS selector ".full-width-slider input"
+https://svelte.dev/e/css_unused_selector
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyAtmosphereTab.svelte:311:11 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyAtmosphereTab.svelte:315:10 `<svg>` with a mousedown handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyAtmosphereTab.svelte:366:10 `<svg>` with a mousedown handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyAtmosphereTab.svelte:405:4 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyAtmosphereTab.svelte:405:4 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyAtmosphereTab.svelte:525:2 Unused CSS selector ".slider-row input[type="number"]"
+https://svelte.dev/e/css_unused_selector
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyTemperatureTab.svelte:71:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyTemperatureTab.svelte:77:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyTemperatureTab.svelte:82:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyTemperatureTab.svelte:93:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyTemperatureTab.svelte:98:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyTemperatureTab.svelte:103:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyTemperatureTab.svelte:108:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyTemperatureTab.svelte:118:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyTemperatureTab.svelte:8:13 Component has unused export property 'rootStar'. If it is for external reference only, please consider using `export const rootStar`
+https://svelte.dev/e/export_let_unused
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyHydrosphereTab.svelte:86:8 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyHydrosphereTab.svelte:115:16 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyHydrosphereTab.svelte:123:16 `<svg>` with a mousedown handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyBiosphereTab.svelte:200:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyBiosphereTab.svelte:209:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyBiosphereTab.svelte:218:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyBiosphereTab.svelte:228:16 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyBiosphereTab.svelte:243:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyBiosphereTab.svelte:7:13 Component has unused export property 'rulePack'. If it is for external reference only, please consider using `export const rulePack`
+https://svelte.dev/e/export_let_unused
+18:26:12 [vite-plugin-svelte] src/lib/components/BodyTagsTab.svelte:6:13 Component has unused export property 'rulePack'. If it is for external reference only, please consider using `export const rulePack`
+https://svelte.dev/e/export_let_unused
+18:26:12 [vite-plugin-svelte] src/lib/components/AIExpansionModal.svelte:167:0 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/AIExpansionModal.svelte:167:0 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/AIExpansionModal.svelte:168:2 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/AIExpansionModal.svelte:168:2 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/AIExpansionModal.svelte:6:13 Component has unused export property 'showModal'. If it is for external reference only, please consider using `export const showModal`
+https://svelte.dev/e/export_let_unused
+18:26:12 [vite-plugin-svelte] src/lib/components/AIExpansionModal.svelte:291:2 Unused CSS selector ".form-group.fixed-height"
+https://svelte.dev/e/css_unused_selector
+18:26:12 [vite-plugin-svelte] src/lib/components/GmNotesEditor.svelte:58:2 Unused CSS selector ".actions"
+https://svelte.dev/e/css_unused_selector
+18:26:12 [vite-plugin-svelte] src/lib/components/ContextMenu.svelte:24:8 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/ContextMenu.svelte:24:8 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/ContextMenu.svelte:26:10 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/ContextMenu.svelte:26:10 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/ContextMenu.svelte:28:10 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/ContextMenu.svelte:28:10 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/ContextMenu.svelte:30:10 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/ContextMenu.svelte:30:10 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/ContextMenu.svelte:32:8 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/ContextMenu.svelte:32:8 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/ContextMenu.svelte:33:8 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/ContextMenu.svelte:33:8 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/ContextMenu.svelte:35:8 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/ContextMenu.svelte:35:8 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/ContextMenu.svelte:40:6 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/ContextMenu.svelte:40:6 Non-interactive element `<li>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructBasicsTab.svelte:138:8 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructGeneralTab.svelte:392:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructGeneralTab.svelte:404:8 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructGeneralTab.svelte:404:8 `<svg>` with a mousedown, mouseup, mouseleave, mousemove or click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructGeneralTab.svelte:427:12 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructGeneralTab.svelte:436:8 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructGeneralTab.svelte:436:8 `<svg>` with a mousedown, mouseup, mouseleave, mousemove or click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructGeneralTab.svelte:524:2 Unused CSS selector "input[type="color"]"
+https://svelte.dev/e/css_unused_selector
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructGeneralTab.svelte:525:2 Unused CSS selector "hr"
+https://svelte.dev/e/css_unused_selector
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructGeneralTab.svelte:526:2 Unused CSS selector ".icon-controls"
+https://svelte.dev/e/css_unused_selector
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructGeneralTab.svelte:527:2 Unused CSS selector ".icon-controls .form-group"
+https://svelte.dev/e/css_unused_selector
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructGeneralTab.svelte:528:2 Unused CSS selector ".checkbox-group"
+https://svelte.dev/e/css_unused_selector
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructGeneralTab.svelte:529:2 Unused CSS selector ".checkbox-group label"
+https://svelte.dev/e/css_unused_selector
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructGeneralTab.svelte:530:2 Unused CSS selector ".descriptor"
+https://svelte.dev/e/css_unused_selector
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructCrewTab.svelte:146:24 Unused CSS selector "select"
+https://svelte.dev/e/css_unused_selector
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructCrewTab.svelte:146:32 Unused CSS selector "textarea"
+https://svelte.dev/e/css_unused_selector
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructPowerTab.svelte:6:13 Component has unused export property 'rulePack'. If it is for external reference only, please consider using `export const rulePack`
+https://svelte.dev/e/export_let_unused
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructSensorsTab.svelte:119:28 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructSensorsTab.svelte:119:28 `<span>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructDerivedSpecs.svelte:391:2 Unused CSS selector ".fixed-header"
+https://svelte.dev/e/css_unused_selector
+18:26:12 [vite-plugin-svelte] src/lib/components/ConstructDerivedSpecs.svelte:395:2 Unused CSS selector ".derived-header"
+https://svelte.dev/e/css_unused_selector
+18:26:12 [vite-plugin-svelte] src/lib/components/LoadConstructTemplateModal.svelte:146:0 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/LoadConstructTemplateModal.svelte:146:0 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/LoadConstructTemplateModal.svelte:147:2 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/LoadConstructTemplateModal.svelte:147:2 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/LoadConstructTemplateModal.svelte:155:8 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/LoadConstructTemplateModal.svelte:155:8 `<span>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/LoadConstructTemplateModal.svelte:164:13 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/LoadConstructTemplateModal.svelte:164:13 `<span>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/LoadConstructTemplateModal.svelte:181:16 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/LoadConstructTemplateModal.svelte:181:16 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/LoadConstructTemplateModal.svelte:187:16 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/LoadConstructTemplateModal.svelte:187:16 `<div>` with a click or dblclick handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/ReportConfigModal.svelte:20:0 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/ReportConfigModal.svelte:20:0 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/ReportConfigModal.svelte:21:2 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/ReportConfigModal.svelte:21:2 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/ReportConfigModal.svelte:25:6 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/ReportConfigModal.svelte:41:6 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/ReportConfigModal.svelte:49:6 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/TransitPlannerPanel.svelte:875:8 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/TransitPlannerPanel.svelte:875:8 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/TransitPlannerPanel.svelte:876:12 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/TransitPlannerPanel.svelte:876:12 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/TransitPlannerPanel.svelte:960:8 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/TransitPlannerPanel.svelte:1010:16 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:12 [vite-plugin-svelte] src/lib/components/TransitPlannerPanel.svelte:1010:16 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:12 [vite-plugin-svelte] src/lib/components/TransitPlannerPanel.svelte:1033:8 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/TransitPlannerPanel.svelte:1058:8 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/TransitPlannerPanel.svelte:1067:16 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/TransitPlannerPanel.svelte:1178:16 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:12 [vite-plugin-svelte] src/lib/components/TransitPlannerPanel.svelte:1273:12 Unused CSS selector "input[type="text"]"
+https://svelte.dev/e/css_unused_selector
+18:26:13 [vite-plugin-svelte] src/lib/components/DualRangeSlider.svelte:69:2 `<div>` with a mousedown handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:13 [vite-plugin-svelte] src/lib/components/DualRangeSlider.svelte:72:2 `<div>` with a mousedown handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:13 [vite-plugin-svelte] src/lib/components/RouteEditorModal.svelte:94:2 Unused CSS selector ".modal input[type="text"]"
+https://svelte.dev/e/css_unused_selector
+18:26:13 [vite-plugin-svelte] src/lib/components/SettingsModal.svelte:400:2 Unused CSS selector "small"
+https://svelte.dev/e/css_unused_selector
+18:26:13 [vite-plugin-svelte] src/lib/components/LlmSettingsModal.svelte:90:2 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:13 [vite-plugin-svelte] src/lib/components/LlmSettingsModal.svelte:90:2 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:13 [vite-plugin-svelte] src/lib/components/LlmSettingsModal.svelte:91:4 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:13 [vite-plugin-svelte] src/lib/components/LlmSettingsModal.svelte:91:4 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:13 [vite-plugin-svelte] src/lib/components/EditFuelAndDrivesModal.svelte:149:0 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:13 [vite-plugin-svelte] src/lib/components/EditFuelAndDrivesModal.svelte:149:0 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:13 [vite-plugin-svelte] src/lib/components/EditFuelAndDrivesModal.svelte:150:2 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:13 [vite-plugin-svelte] src/lib/components/EditFuelAndDrivesModal.svelte:150:2 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:13 [vite-plugin-svelte] src/lib/components/EditFuelAndDrivesModal.svelte:170:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditFuelAndDrivesModal.svelte:175:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditFuelAndDrivesModal.svelte:193:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditFuelAndDrivesModal.svelte:197:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditFuelAndDrivesModal.svelte:205:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditFuelAndDrivesModal.svelte:210:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditFuelAndDrivesModal.svelte:215:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditFuelAndDrivesModal.svelte:219:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditFuelAndDrivesModal.svelte:224:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditAtmospheresModal.svelte:156:0 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:13 [vite-plugin-svelte] src/lib/components/EditAtmospheresModal.svelte:156:0 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:13 [vite-plugin-svelte] src/lib/components/EditAtmospheresModal.svelte:157:2 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:13 [vite-plugin-svelte] src/lib/components/EditAtmospheresModal.svelte:157:2 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:13 [vite-plugin-svelte] src/lib/components/EditAtmospheresModal.svelte:181:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditAtmospheresModal.svelte:185:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditAtmospheresModal.svelte:189:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditAtmospheresModal.svelte:193:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditAtmospheresModal.svelte:216:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditAtmospheresModal.svelte:220:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditAtmospheresModal.svelte:224:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditAtmospheresModal.svelte:228:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditAtmospheresModal.svelte:236:32 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditSensorsModal.svelte:110:0 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:13 [vite-plugin-svelte] src/lib/components/EditSensorsModal.svelte:110:0 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:13 [vite-plugin-svelte] src/lib/components/EditSensorsModal.svelte:111:2 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:13 [vite-plugin-svelte] src/lib/components/EditSensorsModal.svelte:111:2 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:13 [vite-plugin-svelte] src/lib/components/EditSensorsModal.svelte:126:28 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditSensorsModal.svelte:140:28 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditTemporalModal.svelte:205:2 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:13 [vite-plugin-svelte] src/lib/components/EditTemporalModal.svelte:205:2 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:13 [vite-plugin-svelte] src/lib/components/EditTemporalModal.svelte:206:4 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+18:26:13 [vite-plugin-svelte] src/lib/components/EditTemporalModal.svelte:206:4 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+18:26:13 [vite-plugin-svelte] src/lib/components/EditTemporalModal.svelte:227:18 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditTemporalModal.svelte:234:18 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditTemporalModal.svelte:241:18 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditTemporalModal.svelte:248:18 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditTemporalModal.svelte:258:22 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditTemporalModal.svelte:266:20 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditTemporalModal.svelte:270:20 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditTemporalModal.svelte:274:20 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditTemporalModal.svelte:281:20 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditTemporalModal.svelte:312:20 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditTemporalModal.svelte:316:20 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditTemporalModal.svelte:320:20 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EditTemporalModal.svelte:454:2 Unused CSS selector ".row.compact select"
+https://svelte.dev/e/css_unused_selector
+18:26:13 [vite-plugin-svelte] src/lib/components/EvolutionaryWizard.svelte:10:15 Component has unused export property 'rulepack'. If it is for external reference only, please consider using `export const rulepack`
+https://svelte.dev/e/export_let_unused
+18:26:13 [vite-plugin-svelte] src/lib/components/EvolutionaryWizard.svelte:238:4 Unused CSS selector ".slider-group label"
+https://svelte.dev/e/css_unused_selector
+18:26:13 [vite-plugin-svelte] src/lib/components/EvolutionaryWizard.svelte:239:4 Unused CSS selector ".slider-group input[type="range"]"
+https://svelte.dev/e/css_unused_selector
+18:26:13 [vite-plugin-svelte] src/lib/components/EvolutionaryWizard.svelte:241:4 Unused CSS selector ".slider-info .val"
+https://svelte.dev/e/css_unused_selector
+18:26:13 [vite-plugin-svelte] src/lib/components/EvolutionaryWizard.svelte:242:4 Unused CSS selector ".slider-info .desc"
+https://svelte.dev/e/css_unused_selector
+18:26:13 [vite-plugin-svelte] src/lib/components/EvolutionTimeline.svelte:526:28 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EvolutionTimeline.svelte:530:28 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EvolutionTimeline.svelte:534:28 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EvolutionTimeline.svelte:538:28 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+18:26:13 [vite-plugin-svelte] src/lib/components/EvolutionTimeline.svelte:596:4 Unused CSS selector ".planet-grid"
+https://svelte.dev/e/css_unused_selector
+[90mstderr[2m | src/routes/page.spec.ts[2m > [22m[2m+page.svelte[2m > [22m[2mshows the new-starmap modal when no starmap is saved
+[22m[39mFailed to load temporal config from /temporal/calendars.json. Using built-in fallback. [TypeError: Failed to parse URL from /temporal/calendars.json] {
+  [cause]: TypeError: Invalid URL
+  [90m    at new URL (node:internal/url:819:25)[39m
+      at new URL$1 [90m(file:///C:/Development/star-system-explorer-v2/star-system-generator/[39mnode_modules/[4mvitest[24m/dist/chunks/index.CyBMJtT7.js:556:9[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:11063:25)[39m
+  [90m    at fetch (node:internal/deps/undici/undici:11988:25)[39m
+  [90m    at fetch (node:internal/deps/undici/undici:16555:10)[39m
+  [90m    at fetch (node:internal/bootstrap/web/exposed-window-or-worker:83:12)[39m
+      at loadTemporalRegistryConfig (C:/Development/star-system-explorer-v2/star-system-generator/src/lib/temporal/defaults.ts:88:28)
+      at C:/Development/star-system-explorer-v2/star-system-generator/src/routes/+page.svelte:226:39
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m {
+    code: [32m'ERR_INVALID_URL'[39m,
+    input: [32m'/temporal/calendars.json'[39m
+  }
+}
+
+[90mstderr[2m | src/routes/page.spec.ts[2m > [22m[2m+page.svelte[2m > [22m[2mcreates a new starmap when the form is submitted
+[22m[39mFailed to load temporal config from /temporal/calendars.json. Using built-in fallback. [TypeError: Failed to parse URL from /temporal/calendars.json] {
+  [cause]: TypeError: Invalid URL
+  [90m    at new URL (node:internal/url:819:25)[39m
+      at new URL$1 [90m(file:///C:/Development/star-system-explorer-v2/star-system-generator/[39mnode_modules/[4mvitest[24m/dist/chunks/index.CyBMJtT7.js:556:9[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:11063:25)[39m
+  [90m    at fetch (node:internal/deps/undici/undici:11988:25)[39m
+  [90m    at fetch (node:internal/deps/undici/undici:16555:10)[39m
+  [90m    at fetch (node:internal/bootstrap/web/exposed-window-or-worker:83:12)[39m
+      at loadTemporalRegistryConfig (C:/Development/star-system-explorer-v2/star-system-generator/src/lib/temporal/defaults.ts:88:28)
+      at C:/Development/star-system-explorer-v2/star-system-generator/src/routes/+page.svelte:226:39
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m {
+    code: [32m'ERR_INVALID_URL'[39m,
+    input: [32m'/temporal/calendars.json'[39m
+  }
+}
+
+[90mstderr[2m | src/routes/page.spec.ts[2m > [22m[2m+page.svelte[2m > [22m[2mloads and renders a saved starmap on mount
+[22m[39mFailed to load temporal config from /temporal/calendars.json. Using built-in fallback. [TypeError: Failed to parse URL from /temporal/calendars.json] {
+  [cause]: TypeError: Invalid URL
+  [90m    at new URL (node:internal/url:819:25)[39m
+      at new URL$1 [90m(file:///C:/Development/star-system-explorer-v2/star-system-generator/[39mnode_modules/[4mvitest[24m/dist/chunks/index.CyBMJtT7.js:556:9[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:11063:25)[39m
+  [90m    at fetch (node:internal/deps/undici/undici:11988:25)[39m
+  [90m    at fetch (node:internal/deps/undici/undici:16555:10)[39m
+  [90m    at fetch (node:internal/bootstrap/web/exposed-window-or-worker:83:12)[39m
+      at loadTemporalRegistryConfig (C:/Development/star-system-explorer-v2/star-system-generator/src/lib/temporal/defaults.ts:88:28)
+      at C:/Development/star-system-explorer-v2/star-system-generator/src/routes/+page.svelte:226:39
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m {
+    code: [32m'ERR_INVALID_URL'[39m,
+    input: [32m'/temporal/calendars.json'[39m
+  }
+}
+
+[90mstderr[2m | src/routes/page.spec.ts[2m > [22m[2m+page.svelte[2m > [22m[2mswitches to the system view when a star is clicked
+[22m[39mFailed to load temporal config from /temporal/calendars.json. Using built-in fallback. [TypeError: Failed to parse URL from /temporal/calendars.json] {
+  [cause]: TypeError: Invalid URL
+  [90m    at new URL (node:internal/url:819:25)[39m
+      at new URL$1 [90m(file:///C:/Development/star-system-explorer-v2/star-system-generator/[39mnode_modules/[4mvitest[24m/dist/chunks/index.CyBMJtT7.js:556:9[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:11063:25)[39m
+  [90m    at fetch (node:internal/deps/undici/undici:11988:25)[39m
+  [90m    at fetch (node:internal/deps/undici/undici:16555:10)[39m
+  [90m    at fetch (node:internal/bootstrap/web/exposed-window-or-worker:83:12)[39m
+      at loadTemporalRegistryConfig (C:/Development/star-system-explorer-v2/star-system-generator/src/lib/temporal/defaults.ts:88:28)
+      at C:/Development/star-system-explorer-v2/star-system-generator/src/routes/+page.svelte:226:39
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m {
+    code: [32m'ERR_INVALID_URL'[39m,
+    input: [32m'/temporal/calendars.json'[39m
+  }
+}
+
+ [32m✓[39m src/routes/page.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 171[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m15 passed[39m[22m[90m (15)[39m
+[2m      Tests [22m [1m[32m68 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (69)[39m
+[2m   Start at [22m 18:26:03
+[2m   Duration [22m 10.11s[2m (transform 14.22s, setup 7.12s, import 24.81s, tests 2.09s, environment 55.16s)[22m
+

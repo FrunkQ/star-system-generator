@@ -1752,13 +1752,17 @@
         <div class="main-view">
             {#if ensuredTemporal}
               <div class="time-display-overlay">
-                <TimeDisplay temporal={ensuredTemporal} displayOverrideSec={isAligningTime ? alignActualSecondsOverride : null} />
+                <TimeDisplay
+                  temporal={ensuredTemporal}
+                  displayOverrideSec={isAligningTime ? alignActualSecondsOverride : null}
+                  masterOverrideSec={isAligningTime ? alignTargetSec : null}
+                />
               </div>
             {/if}
             <BodyPicker
                 nodes={$systemStore.nodes}
                 focusedId={focusedBodyId}
-                top={mode === 'phone' ? 48 : 48}
+                top={mode === 'phone' ? 64 : 56}
                 on:select={(e) => updateFocus(e.detail)}
             />
 
@@ -2232,8 +2236,7 @@
   .time-display-overlay {
     position: absolute;
     top: 8px;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 8px;
     z-index: 57;
   }
   /* On-canvas orrery controls (top-right): faded Reset + a View popover. */
