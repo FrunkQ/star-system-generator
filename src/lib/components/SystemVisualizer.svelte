@@ -1342,5 +1342,10 @@
 <canvas
     bind:this={canvas}
     use:gestures={canvasGestures}
-    style="border: 1px solid #333; margin-top: 1em; background-color: #08090d; cursor: grab; width: 100%; touch-action: none;"
+    class:fullscreen={fullScreen}
+    style="background-color: #08090d; cursor: grab; width: 100%; touch-action: none;"
+    style:border={fullScreen ? 'none' : '1px solid #333'}
+    style:margin-top={fullScreen ? '0' : '1em'}
+    style:display={fullScreen ? 'block' : 'inline-block'}
+    style:height={fullScreen ? '100%' : 'auto'}
 ></canvas>

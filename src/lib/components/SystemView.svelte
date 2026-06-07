@@ -1759,7 +1759,8 @@
             <SystemVisualizer
                 bind:this={visualizer}
                 bind:cameraMode
-                system={$systemStore} 
+                fullScreen={true}
+                system={$systemStore}
                 {rulePack} 
                 currentTime={isPlanning ? (transitChainTime + (transitDelayDays * 86400 * 1000) + transitJourneyOffset) : currentTime} 
                 {focusedBodyId} 
@@ -2204,6 +2205,7 @@
      slots. main-view (orrery wrapper) + details-view (panes) just flow inside their slots. */
   .main-view {
     width: 100%;
+    height: 100%;
     position: relative; /* anchor the BodyPicker + time overlays */
   }
   /* Time transport floats over the bottom of the orrery (clean-orrery + overlay-buttons). */
