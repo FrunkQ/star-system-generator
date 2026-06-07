@@ -3,11 +3,18 @@
   import { createEventDispatcher } from 'svelte';
   import { ensureTemporalState } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar } from '$lib/temporal/utre';
+  import { starmapUiStore } from '$lib/starmapUiStore';
 
   export let showModal: boolean;
   export let starmap: Starmap;
 
   const dispatch = createEventDispatcher();
+
+  // Sectioned settings (Starmap View / Technology / System). Orrery View was dropped (Q2).
+  type Section = 'starmap' | 'technology' | 'system';
+  let activeSection: Section = 'starmap';
+  let invertDisplay = starmap.invertDisplay ?? false;
+  $: if (showModal) invertDisplay = starmap.invertDisplay ?? false;
 
 
   // Starmap settings
@@ -69,6 +76,7 @@
         unitIsPrefix,
         mapMode,
         generationEngine,
+        invertDisplay,
         scale: {
           unit: distanceUnit || 'LY',
           pixelsPerUnit: starmap.scale?.pixelsPerUnit && starmap.scale.pixelsPerUnit > 0 ? starmap.scale.pixelsPerUnit : 25,
@@ -136,65 +144,102 @@
 {#if showModal}
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 <div class="modal-backdrop" on:click={handleClose} role="button" tabindex="0" on:keydown={(e) => {if (e.key === 'Enter' || e.key === 'Space') handleClose()}}>
-  <div class="modal" on:click|stopPropagation role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabindex="-1">
-    <h2 id="dialog-title">Starmap Settings</h2>
+  <div class="modal settings-modal" on:click|stopPropagation role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabindex="-1">
+    <h2 id="dialog-title">Settings</h2>
 
-    <div class="settings-section">
-      <h3>Starmap Settings</h3>
-      <div class="form-group">
-        <label for="starmapName">Map Name</label>
-        <input type="text" id="starmapName" bind:value={starmapName}>
+    <div class="settings-layout">
+      <nav class="settings-nav">
+        <button class:active={activeSection === 'starmap'} on:click={() => activeSection = 'starmap'}>Starmap View</button>
+        <button class:active={activeSection === 'technology'} on:click={() => activeSection = 'technology'}>Technology</button>
+        <button class:active={activeSection === 'system'} on:click={() => activeSection = 'system'}>System</button>
+      </nav>
+
+      <div class="settings-content">
+        {#if activeSection === 'starmap'}
+          <div class="form-group">
+            <label for="starmapName">Map Name</label>
+            <input type="text" id="starmapName" bind:value={starmapName}>
+          </div>
+          <div class="form-group">
+            <label for="distanceUnit">Distance Unit</label>
+            <div style="display: flex; align-items: center; gap: 0.5em;">
+              <input type="text" id="distanceUnit" bind:value={distanceUnit}>
+              <span>(Example: {unitIsPrefix ? distanceUnit : ''}5{!unitIsPrefix ? distanceUnit : ''})</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><input type="checkbox" bind:checked={unitIsPrefix} /> Unit is a prefix</label>
+          </div>
+          <div class="form-group">
+            <label for="mapMode">Map Mode</label>
+            <select id="mapMode" bind:value={mapMode}>
+              <option value="diagrammatic">Diagrammatic</option>
+              <option value="scaled">Scaled</option>
+            </select>
+          </div>
+          <div class="form-group highlight-row">
+            <label for="generationEngine">Generation Engine</label>
+            <select id="generationEngine" bind:value={generationEngine}>
+              <option value="standard">Standard (Stable)</option>
+              <option value="evolutionary">Evolutionary (Alpha Physics)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label><input type="checkbox" bind:checked={showScaleBar} /> Show scale bar (scaled mode)</label>
+          </div>
+
+          <h3>Map display</h3>
+          <div class="form-group">
+            <label><input type="checkbox" bind:checked={$starmapUiStore.showBackgroundImage} disabled={invertDisplay} /> Show background image</label>
+          </div>
+          <div class="form-group">
+            <label title="Print-friendly white background + dark labels (disables the background image)."><input type="checkbox" bind:checked={invertDisplay} /> Invert display (print)</label>
+          </div>
+          <div class="form-group">
+            <label for="gridType">Snap grid</label>
+            <select id="gridType" bind:value={$starmapUiStore.gridType}>
+              <option value="none">No Grid</option>
+              <option value="grid">Grid</option>
+              <option value="hex">Hex</option>
+              <option value="traveller-hex">Traveller Hex</option>
+            </select>
+          </div>
+
+          <h3>Date &amp; time</h3>
+          <div class="form-group">
+            <label for="calendarSelect">Time/Date System</label>
+            <select id="calendarSelect" bind:value={activeCalendarKey} on:change={syncEpochEditorFromCurrentMaster}>
+              {#each calendarKeys as key}
+                <option value={key}>{key}</option>
+              {/each}
+            </select>
+          </div>
+          <div class="form-group">
+            <div class="inline-time">Display Date/Time: <strong>{currentDisplayLabel}</strong></div>
+          </div>
+          {#if normalizedTemporal.temporal_registry[activeCalendarKey]?.math_type === 'BUCKET_DRAIN'}
+            <div class="form-group">
+              <label for="calendarYearOverride">Calendar Year Override (current display year)</label>
+              <input id="calendarYearOverride" type="number" min="1" bind:value={epochYear} on:input={markEpochDirty} />
+            </div>
+          {/if}
+          <div class="form-group">
+            <button class="section-btn" on:click={() => { dispatch('edittemporal'); showModal = false; }}>Time &amp; Calendars…</button>
+          </div>
+
+        {:else if activeSection === 'technology'}
+          <p class="section-hint">Rulepack overrides for this starmap.</p>
+          <button class="section-btn" on:click={() => { dispatch('editfuel'); showModal = false; }}>Fuel &amp; Drives…</button>
+          <button class="section-btn" on:click={() => { dispatch('editatmospheres'); showModal = false; }}>Atmospheres…</button>
+          <button class="section-btn" on:click={() => { dispatch('editsensors'); showModal = false; }}>Sensors…</button>
+
+        {:else}
+          <p class="section-hint">App-wide preferences.</p>
+          <button class="section-btn" on:click={() => { dispatch('llm'); showModal = false; }}>LLM Settings…</button>
+          <a class="section-btn" href="/palette" on:click={() => showModal = false}>Appearance…</a>
+          <button class="section-btn" on:click={() => { dispatch('about'); showModal = false; }}>About</button>
+        {/if}
       </div>
-      <div class="form-group">
-        <label for="distanceUnit">Distance Unit</label>
-        <div style="display: flex; align-items: center; gap: 0.5em;">
-          <input type="text" id="distanceUnit" bind:value={distanceUnit}>
-          <span>(Example: {unitIsPrefix ? distanceUnit : ''}5{!unitIsPrefix ? distanceUnit : ''})</span>
-        </div>
-      </div>
-      <div class="form-group">
-        <label>
-          <input type="checkbox" bind:checked={unitIsPrefix} />
-          Unit is a prefix
-        </label>
-      </div>
-      <div class="form-group">
-        <label for="mapMode">Map Mode</label>
-        <select id="mapMode" bind:value={mapMode}>
-          <option value="diagrammatic">Diagrammatic</option>
-          <option value="scaled">Scaled</option>
-        </select>
-      </div>
-      <div class="form-group highlight-row">
-        <label for="generationEngine">Generation Engine</label>
-        <select id="generationEngine" bind:value={generationEngine}>
-            <option value="standard">Standard (Stable)</option>
-            <option value="evolutionary">Evolutionary (Alpha Physics)</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>
-          <input type="checkbox" bind:checked={showScaleBar} />
-          Show scale bar (scaled mode)
-        </label>
-      </div>
-      <div class="form-group">
-        <label for="calendarSelect">Time/Date System</label>
-        <select id="calendarSelect" bind:value={activeCalendarKey} on:change={syncEpochEditorFromCurrentMaster}>
-          {#each calendarKeys as key}
-            <option value={key}>{key}</option>
-          {/each}
-        </select>
-      </div>
-      <div class="form-group">
-        <div class="inline-time">Display Date/Time: <strong>{currentDisplayLabel}</strong></div>
-      </div>
-      {#if normalizedTemporal.temporal_registry[activeCalendarKey]?.math_type === 'BUCKET_DRAIN'}
-        <div class="form-group">
-          <label for="calendarYearOverride">Calendar Year Override (current display year)</label>
-          <input id="calendarYearOverride" type="number" min="1" bind:value={epochYear} on:input={markEpochDirty} />
-        </div>
-      {/if}
     </div>
 
     <div class="modal-actions">
@@ -249,6 +294,61 @@
     border: 1px solid var(--border);
     color: var(--text); /* Set default text color for the modal */
   }
+  .settings-layout {
+    display: flex;
+    gap: 16px;
+    min-height: 300px;
+  }
+  .settings-nav {
+    flex: 0 0 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-right: 1px solid var(--border);
+    padding-right: 12px;
+  }
+  .settings-nav button {
+    text-align: left;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted, #cfcfcf);
+    cursor: pointer;
+    width: 100%;
+  }
+  .settings-nav button:hover { background: var(--bg-control-hover, #232733); }
+  .settings-nav button.active { background: var(--accent); color: var(--on-accent, #fff); }
+  .settings-content {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-height: 56vh;
+    overflow-y: auto;
+  }
+  .settings-content h3 {
+    margin: 1.2em 0 0.6em;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-faint, #8a8f9a);
+  }
+  .settings-content h3:first-child { margin-top: 0; }
+  .section-hint { color: var(--text-faint, #8a8f9a); margin: 0 0 12px; }
+  .section-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 11px 12px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-control, #1b1e26);
+    color: var(--text);
+    cursor: pointer;
+    text-decoration: none;
+    box-sizing: border-box;
+  }
+  .section-btn:hover { background: var(--bg-control-hover, #232733); }
   h2 {
     margin-top: 0;
     color: var(--accent);

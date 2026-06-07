@@ -12,10 +12,6 @@
   import { starmapUiStore } from '$lib/starmapUiStore';
   import MarkdownModal from './MarkdownModal.svelte';
   import AboutModal from './AboutModal.svelte';
-  import EditFuelAndDrivesModal from './EditFuelAndDrivesModal.svelte';
-  import EditAtmospheresModal from './EditAtmospheresModal.svelte';
-  import EditSensorsModal from './EditSensorsModal.svelte';
-  import EditTemporalModal from './EditTemporalModal.svelte';
   import SaveSystemModal from './SaveSystemModal.svelte';
   import ImportTravellerModal from './ImportTravellerModal.svelte';
   import AddTravellerSystemModal from './AddTravellerSystemModal.svelte';
@@ -56,13 +52,9 @@
   // Header State
   let showDropdown = false;
   let showAboutModal = false;
-  let showFuelModal = false;
-  let showAtmosphereModal = false;
-  let showSensorsModal = false;
   let showSaveModal = false;
   let showImportModal = false;
   let showAddTravellerModal = false;
-  let showTemporalModal = false;
   
   let travellerImportCoords = { x: 0, y: 0 };
   
@@ -354,24 +346,6 @@
       };
       dispatch('updatestarmap', newStarmap);
     }
-  }
-
-  function handleSaveFuelOverrides(event: CustomEvent<any>) {
-      const overrides = event.detail;
-      const newStarmap = { ...starmap, rulePackOverrides: { ...starmap.rulePackOverrides, ...overrides } };
-      dispatch('updatestarmap', newStarmap);
-  }
-
-  function handleSaveSensorOverrides(event: CustomEvent<any>) {
-      const overrides = event.detail;
-      const newStarmap = { ...starmap, rulePackOverrides: { ...starmap.rulePackOverrides, ...overrides } };
-      dispatch('updatestarmap', newStarmap);
-  }
-
-  function handleSaveTemporal(event: CustomEvent<{ temporal: NonNullable<Starmap['temporal']> }>) {
-      const temporal = event.detail.temporal;
-      const newStarmap = { ...starmap, temporal };
-      dispatch('updatestarmap', newStarmap);
   }
 
   function handleSaveStarmap(event: CustomEvent<{mode: 'GM' | 'Player', includeConstructs: boolean}>) {
@@ -813,32 +787,9 @@
         on:about={() => showAboutModal = true}
         on:allbodies={() => { railOpen = false; dispatch('allbodies'); }}
       >
-        <!-- Starmap view options in the rail (desktop + phone), matching the system view. -->
+        <!-- Display settings (Background/Invert/Grid) + tech editors moved to the sectioned
+             Settings modal; Reset is now a faded on-canvas control. Only Clear stays here. -->
         <div class="rail-view-options">
-          <h3 class="rail-section-title">View</h3>
-          <button class="rail-btn" on:click={resetView}>Reset view</button>
-          <label><input type="checkbox" bind:checked={$starmapUiStore.showBackgroundImage} disabled={invertDisplay} /> Background</label>
-          <label title="Print-friendly white background + dark labels."><input type="checkbox" checked={invertDisplay} on:change={handleInvertDisplayToggle} /> Invert (print)</label>
-          {#if isScaled}
-            <label><input type="checkbox" checked={scaleBarVisible} on:change={handleScaleBarToggle} /> Scale bar</label>
-          {/if}
-          <label class="rail-slider">
-            <span>Snap grid</span>
-            <select bind:value={$starmapUiStore.gridType} class="grid-select inline">
-              <option value="none">No Grid</option>
-              <option value="grid">Grid</option>
-              <option value="hex">Hex</option>
-              <option value="traveller-hex">Traveller Hex</option>
-            </select>
-          </label>
-        </div>
-        <!-- Niche bulk editors folded in from the old strip hamburger (now removed). -->
-        <div class="rail-view-options">
-          <h3 class="rail-section-title">Edit</h3>
-          <button class="rail-btn" on:click={() => { railOpen = false; showFuelModal = true; }}>Fuel & drives…</button>
-          <button class="rail-btn" on:click={() => { railOpen = false; showAtmosphereModal = true; }}>Atmospheres…</button>
-          <button class="rail-btn" on:click={() => { railOpen = false; showSensorsModal = true; }}>Sensors…</button>
-          <button class="rail-btn" on:click={() => { railOpen = false; showTemporalModal = true; }}>Time & calendars…</button>
           <button class="rail-btn danger" on:click={() => { railOpen = false; dispatch('clear'); }}>Clear starmap</button>
         </div>
       </RailNav>
@@ -860,6 +811,7 @@
       on:select={handlePickSystem}
     />
     <StarmapInfoPanel {starmap} on:update={(e) => dispatch('updatestarmap', e.detail)} />
+    <button class="ov-reset" title="Reset view" aria-label="Reset view" on:click={resetView}>⟲</button>
     <svg
       bind:this={svgElement}
       class="starmap"
@@ -1140,45 +1092,6 @@
       />
   {/if}
 
-  {#if showFuelModal}
-      <EditFuelAndDrivesModal 
-          showModal={showFuelModal} 
-          {rulePack} 
-          {starmap} 
-          on:save={handleSaveFuelOverrides} 
-          on:close={() => showFuelModal = false} 
-      />
-  {/if}
-
-  {#if showAtmosphereModal}
-      <EditAtmospheresModal 
-          showModal={showAtmosphereModal} 
-          {rulePack} 
-          {starmap} 
-          on:save={handleSaveFuelOverrides} 
-          on:close={() => showAtmosphereModal = false} 
-      />
-  {/if}
-
-  {#if showSensorsModal}
-      <EditSensorsModal
-          showModal={showSensorsModal}
-          {rulePack}
-          {starmap}
-          on:save={handleSaveSensorOverrides}
-          on:close={() => showSensorsModal = false}
-      />
-  {/if}
-
-  {#if showTemporalModal}
-      <EditTemporalModal
-          showModal={showTemporalModal}
-          {starmap}
-          on:save={handleSaveTemporal}
-          on:close={() => showTemporalModal = false}
-      />
-  {/if}
-
   {#if showAlphaDisclaimer}
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
     <div class="alpha-disclaimer-overlay" on:click|stopPropagation>
@@ -1363,6 +1276,26 @@
     color: var(--status-bad, #ef4444);
     border-color: color-mix(in srgb, var(--status-bad, #ef4444) 40%, var(--border));
   }
+  .ov-reset {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 56;
+    width: 34px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-panel, #14161c) 86%, transparent);
+    color: var(--text, #e8e8e8);
+    font-size: 1rem;
+    cursor: pointer;
+    opacity: 0.55;
+    backdrop-filter: blur(6px);
+  }
+  .ov-reset:hover { opacity: 1; background: var(--bg-control-hover, #232733); }
   .time-overlay {
     position: absolute;
     bottom: 14px;

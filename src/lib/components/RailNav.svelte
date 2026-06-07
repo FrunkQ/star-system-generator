@@ -43,19 +43,9 @@
 
   <div class="spacer"></div>
 
-  <div class="settings-wrap" bind:this={settingsWrap}>
-    <button class="rail-btn settings-toggle" class:active={settingsOpen} on:click={toggleSettings} aria-expanded={settingsOpen}>
-      <span class="gear" aria-hidden="true">⚙</span> Settings
-    </button>
-    {#if settingsOpen}
-      <div class="settings-pop">
-        <button class="rail-btn" on:click={() => pick('settings')}>Settings…</button>
-        <button class="rail-btn" on:click={() => pick('llmsettings')}>LLM</button>
-        <a class="rail-btn" href="/palette" on:click={() => pick('')}>Appearance</a>
-        <button class="rail-btn" on:click={() => pick('about')}>About</button>
-      </div>
-    {/if}
-  </div>
+  <button class="rail-btn settings-toggle" on:click={() => dispatch('settings')}>
+    <span class="gear" aria-hidden="true">⚙</span> Settings
+  </button>
 </nav>
 
 <style>

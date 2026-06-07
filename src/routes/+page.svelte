@@ -20,6 +20,11 @@
   import RouteEditorModal from '$lib/components/RouteEditorModal.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import LlmSettingsModal from '$lib/components/LlmSettingsModal.svelte';
+  import EditFuelAndDrivesModal from '$lib/components/EditFuelAndDrivesModal.svelte';
+  import EditAtmospheresModal from '$lib/components/EditAtmospheresModal.svelte';
+  import EditSensorsModal from '$lib/components/EditSensorsModal.svelte';
+  import EditTemporalModal from '$lib/components/EditTemporalModal.svelte';
+  import AboutModal from '$lib/components/AboutModal.svelte';
   import EvolutionaryWizard from '$lib/components/EvolutionaryWizard.svelte';
   import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, STARTDATE_EPOCH_OFFSET_T } from '$lib/temporal/defaults';
   import { parseClockSeconds } from '$lib/temporal/utre';
@@ -40,6 +45,16 @@
   let routeToEdit: Route | null = null;
   let showSettingsModal = false;
   let showLlmSettingsModal = false;
+  // Technology editors (rulepack overrides) + About — moved up here from Starmap so the
+  // sectioned Settings modal can open them from either view.
+  let showFuelModal = false;
+  let showAtmosphereModal = false;
+  let showSensorsModal = false;
+  let showTemporalModal = false;
+  let showAbout = false;
+  function applyStarmapOverrides(overrides: any) {
+    starmapStore.update((s) => s ? { ...s, rulePackOverrides: { ...s.rulePackOverrides, ...overrides } } : s);
+  }
 
   // --- All-Bodies picker (cross-starmap directory): find any body/construct across every
   // system and jump straight to it. Lives in the rail (PC side panel) / + menu (mobile). ---
@@ -788,11 +803,37 @@
   {/if}
 
   {#if showSettingsModal && $starmapStore}
-    <SettingsModal bind:showModal={showSettingsModal} starmap={$starmapStore} on:save={handleSaveSettings} />
+    <SettingsModal
+      bind:showModal={showSettingsModal}
+      starmap={$starmapStore}
+      on:save={handleSaveSettings}
+      on:edittemporal={() => showTemporalModal = true}
+      on:editfuel={() => showFuelModal = true}
+      on:editatmospheres={() => showAtmosphereModal = true}
+      on:editsensors={() => showSensorsModal = true}
+      on:llm={() => showLlmSettingsModal = true}
+      on:about={() => showAbout = true}
+    />
   {/if}
 
   {#if showLlmSettingsModal}
     <LlmSettingsModal bind:showModal={showLlmSettingsModal} on:save={handleSaveLlmSettings} on:close={() => showLlmSettingsModal = false} />
+  {/if}
+
+  {#if showFuelModal && $starmapStore && selectedRulepack}
+    <EditFuelAndDrivesModal showModal={showFuelModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => showFuelModal = false} />
+  {/if}
+  {#if showAtmosphereModal && $starmapStore && selectedRulepack}
+    <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => showAtmosphereModal = false} />
+  {/if}
+  {#if showSensorsModal && $starmapStore && selectedRulepack}
+    <EditSensorsModal showModal={showSensorsModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => showSensorsModal = false} />
+  {/if}
+  {#if showTemporalModal && $starmapStore}
+    <EditTemporalModal showModal={showTemporalModal} starmap={$starmapStore} on:save={(e) => starmapStore.update((s) => s ? { ...s, temporal: e.detail.temporal } : s)} on:close={() => showTemporalModal = false} />
+  {/if}
+  {#if showAbout}
+    <AboutModal on:close={() => showAbout = false} />
   {/if}
 
   {#if showAllBodies}
