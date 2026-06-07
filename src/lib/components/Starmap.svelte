@@ -8,6 +8,7 @@
   import BodyPicker from './BodyPicker.svelte';
   import type { Starmap, System, CelestialBody, RulePack, Barycenter } from '$lib/types';
   import StarmapInfoPanel from './StarmapInfoPanel.svelte';
+  import BottomSheet from './BottomSheet.svelte';
   import Grid from './Grid.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import MarkdownModal from './MarkdownModal.svelte';
@@ -776,7 +777,7 @@
 </script>
 
 <div class="starmap-container" class:invert-display={invertDisplay} style="touch-action: none;" bind:this={starmapContainer}>
-  <AppShell bind:mode bind:railOpen>
+  <AppShell bind:mode bind:railOpen sheetTitle={starmap.name}>
     <svelte:fragment slot="rail">
       <RailNav
         activeView="starmap"
@@ -814,7 +815,10 @@
       filterItems={() => true}
       on:select={handlePickSystem}
     />
-    <StarmapInfoPanel {starmap} on:update={(e) => dispatch('updatestarmap', e.detail)} />
+    <!-- Desktop: a draggable floating info panel. Phone uses the bottom sheet instead. -->
+    {#if mode !== 'phone'}
+      <StarmapInfoPanel {starmap} on:update={(e) => dispatch('updatestarmap', e.detail)} />
+    {/if}
     <button class="ov-reset" title="Reset view" aria-label="Reset view" on:click={resetView}>⟲</button>
     <svg
       bind:this={svgElement}
@@ -1041,6 +1045,24 @@
   </div>
     </svelte:fragment>
   </AppShell>
+
+  <!-- Phone only: starmap Description + GM Notes in a bottom sheet (the draggable floating
+       panel is desktop-only). Rendered directly (not via the AppShell detail slot) so the
+       desktop right panel stays collapsed. -->
+  {#if mode === 'phone'}
+    <BottomSheet title={starmap.name}>
+      <div class="starmap-detail-mobile">
+        <label class="sdm-field">
+          <span class="sdm-label">Description</span>
+          <textarea bind:value={starmap.description} on:change={() => dispatch('updatestarmap', starmap)} placeholder="Describe this starmap…" rows="4"></textarea>
+        </label>
+        <label class="sdm-field">
+          <span class="sdm-label gm">GM Notes</span>
+          <textarea bind:value={starmap.gmNotes} on:change={() => dispatch('updatestarmap', starmap)} placeholder="Secret GM-only notes…" rows="5"></textarea>
+        </label>
+      </div>
+    </BottomSheet>
+  {/if}
 
   {#if showContextMenu}
     <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px;">
@@ -1279,6 +1301,31 @@
   .rail-btn.danger {
     color: var(--status-bad, #ef4444);
     border-color: color-mix(in srgb, var(--status-bad, #ef4444) 40%, var(--border));
+  }
+  .starmap-detail-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .sdm-field { display: flex; flex-direction: column; gap: 4px; }
+  .sdm-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-faint, #8a8f9a);
+  }
+  .sdm-label.gm { color: var(--accent, #ff5a1f); }
+  .starmap-detail-mobile textarea {
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+    background: var(--bg-panel, #14161c);
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 6px;
+    color: var(--text, #e8e8e8);
+    padding: 8px;
+    font: inherit;
+    font-size: 0.9rem;
   }
   .ov-reset {
     position: absolute;

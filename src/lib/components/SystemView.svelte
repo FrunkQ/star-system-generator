@@ -8,7 +8,6 @@
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import TimeControls from '$lib/components/TimeControls.svelte';
   import { drainFuelMassKg } from '$lib/construct-logic';
-  import AboutModal from './AboutModal.svelte';
   import SystemGenerationControls from './SystemGenerationControls.svelte';
   import SystemSummaryContextMenu from './SystemSummaryContextMenu.svelte'; 
   import BodyDetailsPane from './BodyDetailsPane.svelte';
@@ -42,7 +41,6 @@
   import FocusHeader from './FocusHeader.svelte';
   import AppShell from './AppShell.svelte';
   import RailNav from './RailNav.svelte';
-  import FabCluster from './FabCluster.svelte';
   import { calculateAllStellarZones } from '$lib/physics/zones';
   import { calculateEquilibriumTemperature, composeSurfaceTemperatureFromDeltaComponents, estimateBondAlbedo, estimateInternalHeatK } from '$lib/physics/temperature';
   import { ensureTemporalState, setMasterToDisplay, updateDisplayBySeconds } from '$lib/temporal/defaults';
@@ -60,7 +58,6 @@
   let sheetSnap: 'peek' | 'half' | 'full' = 'peek';
   let railOpen = false; // phone slide-in rail; closed before opening a modal
   let railUploadInput: HTMLInputElement; // hidden file input for the rail's Upload JSON
-  let showAboutModal = false; // About, moved here from the retired SystemSummary
   let showDebug = false; // dev tools (Show JSON / Rebuild Hierarchy / Update & Repair)
 
   // Orbit scale: binary Toytown (compressed, fits one screen) vs Real (true AU). The
@@ -89,19 +86,6 @@
     // re-frame after the scaled positions recompute
     setTimeout(() => visualizer?.resetView(), 80);
   }
-  const fabActions = [
-    { id: 'add-planet', label: 'Add planet', icon: '+' },
-    { id: 'add-construct', label: 'Add construct', icon: '◇' },
-    { id: 'reset', label: 'Reset view', icon: '↺' },
-    { id: 'starmap', label: 'To Starmap', icon: 'S' }
-  ];
-  function handleFabAction(e: CustomEvent<string>) {
-    if (e.detail === 'reset') visualizer?.resetView();
-    else if (e.detail === 'starmap') zoomOut();
-    else if (e.detail === 'add-planet') addBodyViaFab();
-    else if (e.detail === 'add-construct') addBodyViaFab('construct');
-  }
-
   // Phone has no right-click background menu, so the FAB is the "add body" entry point.
   // We synthesize the same inputs the background-context-menu path produces — a host and a
   // world-space (AU) click position — then reuse the existing creation handlers verbatim.
@@ -1727,7 +1711,6 @@
         on:save={() => dispatch('save')}
         on:settings={() => dispatch('settings')}
         on:llmsettings={() => dispatch('llmsettings')}
-        on:about={() => showAboutModal = true}
         on:allbodies={() => { railOpen = false; dispatch('allbodies'); }}
         on:allships={() => { railOpen = false; dispatch('allships'); }}
         on:routes={() => { railOpen = false; dispatch('routes'); }}
@@ -1937,7 +1920,9 @@
             {/if}
             
             <BodyImage body={focusedBody} />
-            <GmNotesEditor body={focusedBody} editing={isEditing} on:update={handleBodyUpdate} />
+            <!-- GM notes are ALWAYS editable (not gated on Edit) — Edit is only for body
+                 properties + the flavour description. -->
+            <GmNotesEditor body={focusedBody} on:update={handleBodyUpdate} />
             {/if}
 
 
@@ -1989,9 +1974,6 @@
         <ReportConfigModal on:generate={handleGenerateReport} on:close={() => showReportConfigModal = false} />
     {/if}
 
-    {#if showAboutModal}
-        <AboutModal on:close={() => showAboutModal = false} />
-    {/if}
 
     {#if showSaveModal}
         <SaveSystemModal on:save={handleSaveSystem} on:close={() => showSaveModal = false} />
