@@ -145,12 +145,17 @@
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 <div class="modal-backdrop" on:click={handleClose} role="button" tabindex="0" on:keydown={(e) => {if (e.key === 'Enter' || e.key === 'Space') handleClose()}}>
   <div class="modal settings-modal" on:click|stopPropagation role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabindex="-1">
-    <h2 id="dialog-title">Settings</h2>
+    <div class="settings-head">
+      <button class="settings-back" on:click={handleClose} aria-label="Back" title="Back">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <h2 id="dialog-title">Settings</h2>
+    </div>
 
     <div class="settings-layout">
       <nav class="settings-nav">
         <button class:active={activeSection === 'starmap'} on:click={() => activeSection = 'starmap'}>Starmap View</button>
-        <button class:active={activeSection === 'technology'} on:click={() => activeSection = 'technology'}>Technology</button>
+        <button class:active={activeSection === 'technology'} on:click={() => activeSection = 'technology'}>Tech</button>
         <button class:active={activeSection === 'system'} on:click={() => activeSection = 'system'}>System</button>
       </nav>
 
@@ -229,15 +234,16 @@
 
         {:else if activeSection === 'technology'}
           <p class="section-hint">Rulepack overrides for this starmap.</p>
+          <h3>Ships</h3>
           <button class="section-btn" on:click={() => { dispatch('editfuel'); showModal = false; }}>Fuel &amp; Drives…</button>
-          <button class="section-btn" on:click={() => { dispatch('editatmospheres'); showModal = false; }}>Atmospheres…</button>
           <button class="section-btn" on:click={() => { dispatch('editsensors'); showModal = false; }}>Sensors…</button>
+          <h3>Planets</h3>
+          <button class="section-btn" on:click={() => { dispatch('editatmospheres'); showModal = false; }}>Atmospheres…</button>
 
         {:else}
           <p class="section-hint">App-wide preferences.</p>
           <button class="section-btn" on:click={() => { dispatch('llm'); showModal = false; }}>LLM Settings…</button>
           <a class="section-btn" href="/palette" on:click={() => showModal = false}>Appearance…</a>
-          <button class="section-btn" on:click={() => { dispatch('about'); showModal = false; }}>About</button>
         {/if}
       </div>
     </div>
@@ -349,6 +355,27 @@
     box-sizing: border-box;
   }
   .section-btn:hover { background: var(--bg-control-hover, #232733); }
+  .settings-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .settings-head h2 { margin: 0; }
+  .settings-back {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-control);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .settings-back:hover { background: var(--bg-control-hover); }
   h2 {
     margin-top: 0;
     color: var(--accent);
@@ -411,7 +438,7 @@
       flex-direction: column;
       box-sizing: border-box;
     }
-    .settings-modal > h2 { flex: 0 0 auto; }
+    .settings-modal > .settings-head { flex: 0 0 auto; }
     .settings-layout {
       flex: 1 1 auto;
       min-height: 0;

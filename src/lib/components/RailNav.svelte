@@ -41,7 +41,13 @@
   <div class="rail-header">
     <span class="brand rail-label">SSE</span>
     <button class="rail-collapse" on:click={toggleCollapsed} title={collapsed ? 'Expand menu' : 'Collapse menu'} aria-label="Toggle menu width">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+      {#if collapsed}
+        <!-- panel-left-open: expand the rail -->
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></svg>
+      {:else}
+        <!-- panel-left-close: collapse the rail -->
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg>
+      {/if}
     </button>
   </div>
 
@@ -153,6 +159,9 @@
     cursor: pointer;
   }
   .rail-collapse:hover { background: var(--bg-control-hover); }
+  /* The SVG is a direct flex child — pin its size or it collapses to 0 width (the
+     long-standing "no icon" bug: an empty-looking square). */
+  .rail-collapse svg { flex: 0 0 auto; width: 18px; height: 18px; }
   .brand {
     font-weight: 700;
     color: var(--accent);
