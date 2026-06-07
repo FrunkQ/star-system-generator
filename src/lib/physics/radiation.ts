@@ -2,6 +2,44 @@ import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
 import { AU_KM, SOLAR_RADIUS_KM, RADIATION_UNSHIELDED_DOSE_MSV_YR } from "$lib/constants";
 import { calculateDistanceRangeToStar, calculateDistanceToStar } from "./temperature";
 
+// Photon (UV/visible/IR) vs particle (stellar wind / protons / flares) split by spectral
+// class. Cool dwarfs are wind/flare-dominated, so their particle fraction is much higher —
+// which matters because magnetospheres shield particles but not photons. (Phase 04.4)
+export function photonParticleSplit(star: CelestialBody): { ph: number; pa: number } {
+    const cls = star.classes?.[0]?.split('/')[1]?.[0] || 'G';
+    switch (cls) {
+        case 'O':
+        case 'B': return { ph: 0.95, pa: 0.05 };
+        case 'A':
+        case 'F': return { ph: 0.93, pa: 0.07 };
+        case 'G': return { ph: 0.90, pa: 0.10 };
+        case 'K': return { ph: 0.86, pa: 0.14 };
+        case 'M': return { ph: 0.78, pa: 0.22 };
+        default:  return { ph: 0.90, pa: 0.10 };
+    }
+}
+
+// Sum each star's flux into photon/particle components using its own spectral split.
+// total === photon + particle, so single-G-star systems match the old 90/10 behaviour.
+export function calculateStellarRadiationComponents(
+    body: CelestialBody,
+    allNodes: (CelestialBody | Barycenter)[]
+): { photon: number; particle: number; total: number } {
+    let photon = 0;
+    let particle = 0;
+    const allStars = allNodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
+    for (const star of allStars) {
+        const dist_au = calculateDistanceToStar(body, star, allNodes);
+        if (dist_au > 0) {
+            const flux = (star.radiationOutput || 1) / (dist_au * dist_au);
+            const s = photonParticleSplit(star);
+            photon += flux * s.ph;
+            particle += flux * s.pa;
+        }
+    }
+    return { photon, particle, total: photon + particle };
+}
+
 export function calculateTotalStellarRadiation(
     body: CelestialBody,
     allNodes: (CelestialBody | Barycenter)[]
@@ -66,16 +104,19 @@ export function calculateSurfaceRadiation(
     allNodes: (CelestialBody | Barycenter)[], 
     rulePack: RulePack
 ): number {
-    const totalStellarRadiation = calculateTotalStellarRadiation(body, allNodes);
+    const components = calculateStellarRadiationComponents(body, allNodes);
+    const totalStellarRadiation = components.total;
     const totalStellarRadiationRange = calculateTotalStellarRadiationRange(body, allNodes);
     body.stellarRadiation = totalStellarRadiation;
     (body as any).stellarRadiationMin = totalStellarRadiationRange.min;
     (body as any).stellarRadiationMax = totalStellarRadiationRange.max;
-    
-    // Split baseline radiation into components (approximate physical split)
-    // 90% is Photons (UV/Visible/IR), 10% is Particle (Solar Wind/Protons)
-    let photonFlux = totalStellarRadiation * 0.9;
-    let particleFlux = totalStellarRadiation * 0.1;
+
+    // Photon/particle components come from each star's spectral-class split (04.4). The raw
+    // fractions also drive the min/max range below so it stays consistent.
+    let photonFlux = components.photon;
+    let particleFlux = components.particle;
+    const rawPhotonFrac = totalStellarRadiation > 0 ? components.photon / totalStellarRadiation : 0.9;
+    const rawParticleFrac = 1 - rawPhotonFrac;
 
     body.radiationShieldingAtmo = 0;
     body.radiationShieldingMag = 0;
@@ -129,7 +170,7 @@ export function calculateSurfaceRadiation(
     const atmoTransmissionApplied = atmoTransmission;
     const particleTransmissionApplied = (1 - magDeflection) * atmoTransmissionApplied;
     const fluxToDose = (incomingFlux: number) =>
-        ((incomingFlux * 0.9 * atmoTransmissionApplied) + (incomingFlux * 0.1 * particleTransmissionApplied)) * RADIATION_UNSHIELDED_DOSE_MSV_YR + terrestrialBackground;
+        ((incomingFlux * rawPhotonFrac * atmoTransmissionApplied) + (incomingFlux * rawParticleFrac * particleTransmissionApplied)) * RADIATION_UNSHIELDED_DOSE_MSV_YR + terrestrialBackground;
 
     (body as any).surfaceRadiationMin = fluxToDose(totalStellarRadiationRange.min);
     (body as any).surfaceRadiationMax = fluxToDose(totalStellarRadiationRange.max);
