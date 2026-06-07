@@ -1,5 +1,6 @@
 import type { CelestialBody, Barycenter, System, RulePack } from '../types';
 import { SOLAR_RADIUS_KM, AU_KM } from '../constants';
+import { equivalentFluxDistanceAU } from './zones';
 
 const STEFAN_BOLTZMANN_CONSTANT = 5.670374419e-8;
 
@@ -84,7 +85,13 @@ export function calculateDistanceToStar(
     allNodes: (CelestialBody | Barycenter)[]
 ): number {
     const range = distanceRangeBetweenNodes(body, star, allNodes);
-    return range.mean;
+    if (range.mean <= 0) return range.mean;
+    // 04.1: eccentric orbits receive a higher time-averaged flux, so the flux-equivalent
+    // distance is a·(1−e²)^¼ (< a), not the mean a. Derive the dominant eccentricity from
+    // the perihelion/aphelion spread — exact for a body directly orbiting the star; for
+    // moons the planet's orbit dominates the spread, which is what we want.
+    const ecc = range.max + range.min > 0 ? (range.max - range.min) / (range.max + range.min) : 0;
+    return equivalentFluxDistanceAU(range.mean, ecc);
 }
 
 export function calculateDistanceRangeToStar(
