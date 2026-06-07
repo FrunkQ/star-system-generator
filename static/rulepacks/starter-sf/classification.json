@@ -141,9 +141,6 @@
             { "class": "planet/earth-analogue", "kind": "base", "note": "True Earth twin.", "match": { "mass_Me": [0.8, 1.3], "radius_Re": [0.9, 1.15], "hydrosphere.coverage": [0.5, 0.85], "atm.composition.O2": [0.1, 0.35], "Teq_K": [255, 300] } },
             { "class": "planet/earth-like", "kind": "base", "note": "Habitable Earth-like world.", "match": { "mass_Me": [0.5, 2.5], "hydrosphere.coverage": [0.3, 0.9], "atm.composition.O2": [0.05, 0.4], "Teq_K": [250, 315] } },
             { "class": "planet/superhabitable", "kind": "base", "note": "Larger, warmer, wetter than Earth — even better for life.", "match": { "mass_Me": [1.5, 4], "hydrosphere.coverage": [0.5, 0.95], "atm.composition.O2": [0.1, 0.4], "Teq_K": [275, 320] } },
-            { "class": "planet/jungle", "kind": "base", "note": "Hot, humid, biosphere-dominated.", "match": { "Teq_K": [295, 330], "hydrosphere.coverage": [0.4, 0.8], "atm.composition.O2": [0.1, 0.4] } },
-            { "class": "planet/forest", "kind": "base", "note": "Temperate vegetated world.", "match": { "Teq_K": [270, 300], "hydrosphere.coverage": [0.3, 0.7], "atm.composition.O2": [0.1, 0.4] } },
-            { "class": "planet/swamp", "kind": "base", "note": "Warm, waterlogged, marshy.", "match": { "Teq_K": [285, 315], "hydrosphere.coverage": [0.55, 0.85], "atm.pressure_bar": [1, 5] } },
 
             { "class": "planet/mini-neptune", "kind": "base", "note": "Small world with thick H/He envelope.", "match": { "mass_Me": [2, 10], "radius_Re": [1.7, 3.5], "atm.main": ["H2", "He"] } },
             { "class": "planet/sub-neptune", "kind": "base", "note": "Between super-Earth and Neptune.", "match": { "mass_Me": [2, 12], "radius_Re": [1.8, 3.2], "density": [1.5, 4] } },
@@ -152,9 +149,9 @@
             { "class": "planet/hot-neptune", "kind": "base", "note": "Neptune-mass world close to its star.", "match": { "mass_Me": [8, 50], "radius_Re": [2.5, 6], "Teq_K": [700, 1500] } },
             { "class": "planet/ultra-hot-neptune", "kind": "base", "note": "Neptune-mass, extreme irradiation.", "match": { "mass_Me": [8, 50], "Teq_K": [1500, 5000] } },
 
-            { "class": "planet/gas-giant", "kind": "base", "note": "Generic Jupiter-class giant.", "match": { "mass_Me": [50, 4000], "radius_Re": [3.5, 25] } },
+            { "class": "planet/gas-giant", "kind": "base", "note": "Generic Jupiter-class giant (fallback when no specific giant fits).", "weight": 0.9, "match": { "mass_Me": [50, 4000], "radius_Re": [3.5, 25] } },
             { "class": "planet/mini-jupiter", "kind": "base", "note": "Small gas giant (Saturn-ish).", "match": { "mass_Me": [50, 150], "radius_Re": [3.5, 9] } },
-            { "class": "planet/super-jupiter", "kind": "base", "note": "Several Jupiter masses.", "match": { "mass_Me": [800, 4000], "radius_Re": [9, 20] } },
+            { "class": "planet/super-jupiter", "kind": "base", "note": "Several Jupiter masses (disk-formed).", "match": { "mass_Me": [800, 2500], "radius_Re": [9, 20] } },
             { "class": "planet/hot-jupiter", "kind": "base", "note": "Gas giant on a very short orbit.", "match": { "mass_Me": [95, 4000], "Teq_K": [1000, 2200], "a_AU": [0, 0.12] } },
             { "class": "planet/ultra-hot-jupiter", "kind": "base", "note": "Gas giant with dayside >2000 K.", "match": { "mass_Me": [95, 4000], "Teq_K": [2000, 6000] } },
             { "class": "planet/puffy", "kind": "base", "note": "Inflated, low-density giant.", "match": { "mass_Me": [30, 400], "radius_Re": [6, 16], "density": [0.1, 0.5] } },
@@ -167,7 +164,7 @@
             { "class": "planet/helium", "kind": "base", "note": "Helium-dominated (evaporated-H) giant.", "match": { "mass_Me": [10, 4000], "atm.main": "He" } },
 
             { "class": "planet/chthonian", "kind": "base", "note": "Gas giant stripped to its core.", "match": { "mass_Me": [3, 50], "Teq_K": [1200, 5000], "density": [4, 12] } },
-            { "class": "planet/sub-brown-dwarf", "kind": "base", "note": "Planetary-mass object formed like a star.", "match": { "mass_Me": [1000, 4100], "radius_Re": [9, 14] } },
+            { "class": "planet/sub-brown-dwarf", "kind": "base", "note": "Planetary-mass object formed like a star (near the deuterium limit).", "match": { "mass_Me": [2500, 4100], "radius_Re": [9, 14] } },
             { "class": "planet/brown-dwarf", "kind": "base", "note": "Deuterium-burning, between planet and star.", "match": { "mass_Me": [4100, 25000], "radius_Re": [9, 14] } },
             { "class": "planet/ultra-cool-dwarf", "kind": "base", "note": "Coolest brown/sub-stellar dwarfs.", "match": { "mass_Me": [4000, 25000], "Teq_K": [0, 1300] } },
 
@@ -175,7 +172,6 @@
             { "class": "planet/hot-eyeball", "kind": "base", "note": "Tidally locked with a molten/dry dayside.", "match": { "tidallyLocked": [1, 1], "Teq_K": [320, 1200] } },
             { "class": "planet/cold-eyeball", "kind": "base", "note": "Tidally locked, icy except the substellar point.", "match": { "tidallyLocked": [1, 1], "Teq_K": [120, 255] } },
             { "class": "planet/mesoplanet", "kind": "base", "note": "Between Ceres and Mercury in size.", "match": { "radius_Re": [0.08, 0.4], "mass_Me": [0.002, 0.1] } },
-            { "class": "planet/ecumenopolis", "kind": "base", "note": "City-covered world (artificial).", "match": { "hydrosphere.coverage": [0, 0.3], "atm.composition.O2": [0.1, 0.35], "Teq_K": [270, 310] }, "weight": 0.4 },
 
             { "class": "planet/ringed", "kind": "modifier", "note": "Has a ring child.", "match": { "has_ring_child": [1, 1] } },
             { "class": "planet/ultra-short-period", "kind": "modifier", "note": "Orbital period under a day (around its star).", "match": { "orbital_period_days": [0, 1], "orbitsStar": [1, 1] } },

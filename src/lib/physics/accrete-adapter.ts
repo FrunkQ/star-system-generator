@@ -144,11 +144,10 @@ export function mapAccreteToBody(p: any, id: ID, parentId: ID): Node {
         surface_pressure_bar: (p.surfacePressure || 0) / 1000, // Convert mb to bar
     };
 
-    // Add specific tags based on Accrete/StarGen results
-    if (p.greenhouseEffect) body.tags.push({ key: 'Runaway Greenhouse' });
-    if (p.hydrosphere > 0.5) body.tags.push({ key: 'Ocean World' });
-    if (p.iceCover > 0.5) body.tags.push({ key: 'Ice World' });
-    if (p.breathabilityCode === 1) body.tags.push({ key: 'Breathable' });
+    // Condition tags (orthogonal to the planet TYPE, which the classifier now owns — so the
+    // old 'Ocean World' / 'Ice World' tags are dropped: planet/ocean & planet/ice cover them).
+    if (p.greenhouseEffect) body.tags.push({ key: 'climate/runaway-greenhouse' });
+    if (p.breathabilityCode === 1) body.tags.push({ key: 'atmosphere/breathable' });
 
     const orbit: Orbit = {
         parentId,

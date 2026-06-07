@@ -169,7 +169,7 @@ export function _generatePlanetaryBody(
     if (rng.nextFloat() < migrationChance && planetType === 'planet/gas-giant') {
         const newA_AU = randomFromRange(rng, 0.1, 0.5);
         planet.orbit.elements.a_AU = newA_AU;
-        planet.tags.push({ key: 'Migrated Planet' });
+        planet.tags.push({ key: 'origin/migrated' });
     }
 
     if (propertyOverrides) {
@@ -189,8 +189,8 @@ export function _generatePlanetaryBody(
     }
 
     if (planet.orbit?.isRetrogradeOrbit) {
-        planet.tags.push({ key: 'Captured Body' });
-        planet.tags.push({ key: 'Retrograde Orbit' });
+        planet.tags.push({ key: 'origin/captured' });
+        planet.tags.push({ key: 'orbit/retrograde' });
     }
 
     // --- Prepare Features for Atmosphere Generation ---
@@ -287,7 +287,7 @@ export function _generatePlanetaryBody(
                 isDoublePlanet = true;
                 numMoons = 1;
                 totalMoonBudgetKg = (planet.massKg || 0) * randomFromRange(rng, 0.01, 0.10);
-                planet.tags.push({ key: 'Double Planet' });
+                planet.tags.push({ key: 'orbit/double' });
             } else {
                 // Realistic budget: 0.01% - 0.025% for Giants (Jovian model), 0.001% - 0.005% for Terrestrials
                 const budgetFactor = isGiant ? randomFromRange(rng, 0.0001, 0.00025) : randomFromRange(rng, 0.00001, 0.00005);
@@ -381,7 +381,7 @@ export function _generatePlanetaryBody(
             const moonOverrides: Partial<CelestialBody> = {
                 massKg: moonMass,
                 radiusKm: radiusKm,
-                tags: isDoublePlanet ? [{ key: 'Double Planet' }] : []
+                tags: isDoublePlanet ? [{ key: 'orbit/double' }] : []
             };
 
             const moonNodes = _generatePlanetaryBody(rng, pack, `${planet.id}-moon`, j, planet, moonOrbit, `${planet.name} ${toRoman(j + 1)}`, [...allNodes, ...newNodes], age_Gyr, undefined, true, moonOverrides);
@@ -405,7 +405,7 @@ function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBo
 
         if (massEarths < minMass || !hasAtmosphere) {
             planet.atmosphere = undefined;
-            planet.tags.push({ key: 'Airless Rock' });
+            
             return;
         }
     }
@@ -493,10 +493,10 @@ function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBo
             main: 'H2',
             pressure_bar: 100,
         };
-        planet.tags.push({ key: 'reducing' });
+        planet.tags.push({ key: 'atmosphere/reducing' });
     } else {
         planet.atmosphere = undefined;
         planet.magneticField = undefined;
-        planet.tags.push({ key: 'Airless Rock' });
+        
     }
 }

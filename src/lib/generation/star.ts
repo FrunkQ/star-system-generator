@@ -48,7 +48,7 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
 
     const tags: Tag[] = [];
     if (radiationOutput > 100) {
-        tags.push({ key: 'High Radiation (Flaring)' });
+        tags.push({ key: 'hazard/flaring' });
     }
 
     const spectralType = starClass.split('/')[1];

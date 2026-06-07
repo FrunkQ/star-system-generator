@@ -311,10 +311,21 @@ export class SystemProcessor implements ISystemProcessor {
         const stars = allNodes.filter((n) => n.kind === 'body' && (n as CelestialBody).roleHint === 'star') as CelestialBody[];
         const primary = stars.sort((a, b) => (b.massKg || 0) - (a.massKg || 0))[0];
         const stellarType = primary?.classes?.find((c) => c.startsWith('star/'))?.split('/')[1]?.[0] || '';
-        // Does this body orbit a star directly? (a_AU/period/eccentricity are otherwise
-        // relative to a planet/barycenter, so star-relative modifiers must not use them.)
+        // Does this body orbit a star (or a star-pair barycentre)? a_AU/period/eccentricity
+        // are otherwise relative to a planet/moon barycentre, so star-relative modifiers
+        // (ultra-short-period, disrupted) must not use them. Circumbinary planets count.
         const parentNode = allNodes.find((n) => n.id === body.parentId);
-        const orbitsStar = parentNode?.kind === 'body' && (parentNode as CelestialBody).roleHint === 'star' ? 1 : 0;
+        let orbitsStar = 0;
+        if (parentNode?.kind === 'body' && (parentNode as CelestialBody).roleHint === 'star') {
+            orbitsStar = 1;
+        } else if (parentNode?.kind === 'barycenter') {
+            const memberIds = (parentNode as Barycenter).memberIds || [];
+            const membersAreStars = memberIds.some((mid) => {
+                const m = allNodes.find((n) => n.id === mid);
+                return m?.kind === 'body' && (m as CelestialBody).roleHint === 'star';
+            });
+            if (membersAreStars) orbitsStar = 1;
+        }
 
         // Feature vector for classification
         const features: Record<string, number | string> = {
