@@ -59,6 +59,8 @@
   // --- All-Bodies picker (cross-starmap directory): find any body/construct across every
   // system and jump straight to it. Lives in the rail (PC side panel) / + menu (mobile). ---
   let showAllBodies = false;
+  let showAllShips = false; // constructs-only directory ("Ships")
+  $: allShips = allBodies.filter((n: any) => n.kind === 'construct');
   $: allBodies = (() => {
     const map = $starmapStore;
     if (!map) return [] as any[];
@@ -769,6 +771,7 @@
         on:settings={() => showSettingsModal = true}
         on:llmsettings={() => showLlmSettingsModal = true}
         on:allbodies={() => showAllBodies = true}
+        on:allships={() => showAllShips = true}
         on:back={handleBackToStarmap}
         on:renameNode={handleRenameNode}
       />
@@ -792,6 +795,7 @@
       on:settings={() => showSettingsModal = true}
       on:llmsettings={() => showLlmSettingsModal = true}
       on:allbodies={() => showAllBodies = true}
+      on:allships={() => showAllShips = true}
       on:updatestarmap={(e) => starmapStore.set(e.detail)}
       {selectedSystemForLink}
     />
@@ -852,6 +856,27 @@
           emptyLabel="All bodies"
           contextOf={allBodiesContext}
           on:select={handleAllBodiesSelect}
+        />
+      </div>
+    </div>
+  {/if}
+
+  {#if showAllShips}
+    <div class="allbodies-overlay" role="presentation" on:click={() => (showAllShips = false)}>
+      <div class="allbodies-card" role="dialog" aria-label="Find a ship" on:click|stopPropagation>
+        <header class="allbodies-head">
+          <span>Ships &amp; constructs</span>
+          <button class="allbodies-close" aria-label="Close" on:click={() => (showAllShips = false)}>×</button>
+        </header>
+        <BodyPicker
+          inline
+          startOpen
+          nodes={allShips}
+          focusedId={null}
+          placeholder="Search every system…"
+          emptyLabel="All ships"
+          contextOf={allBodiesContext}
+          on:select={(e) => { showAllShips = false; handleAllBodiesSelect(e); }}
         />
       </div>
     </div>

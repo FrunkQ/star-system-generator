@@ -1725,6 +1725,7 @@
         on:llmsettings={() => dispatch('llmsettings')}
         on:about={() => showAboutModal = true}
         on:allbodies={() => { railOpen = false; dispatch('allbodies'); }}
+        on:allships={() => { railOpen = false; dispatch('allships'); }}
       >
       <!-- Orrery display toggles + scale moved to the on-canvas "View" overlay; add-body
            is now right-click / long-press on the orrery. Only the Starmap/System nav stays. -->
