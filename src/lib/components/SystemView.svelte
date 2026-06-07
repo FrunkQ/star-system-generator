@@ -65,6 +65,16 @@
   // Orbit scale: binary Toytown (compressed, fits one screen) vs Real (true AU). The
   // continuous compression slider stays as the advanced control while in Toytown.
   let toytownPref = 0.6; // remembered compression when toggled to Real
+  let viewOpen = false; // on-canvas "View" toggles popover
+  function closeViewOnOutside(e: Event) {
+    const t = e.target as HTMLElement;
+    if (!t.closest?.('.ov-view')) { viewOpen = false; window.removeEventListener('pointerdown', closeViewOnOutside, true); }
+  }
+  function toggleViewPopover() {
+    viewOpen = !viewOpen;
+    if (viewOpen) window.addEventListener('pointerdown', closeViewOnOutside, true);
+    else window.removeEventListener('pointerdown', closeViewOnOutside, true);
+  }
   $: toytownOn = ($systemStore?.toytownFactor ?? 0) > 0;
   function setScaleMode(toytown: boolean) {
     if (!$systemStore) return;
@@ -1715,41 +1725,10 @@
         on:about={() => showAboutModal = true}
         on:allbodies={() => { railOpen = false; dispatch('allbodies'); }}
       >
-      <!-- View options live in the rail on BOTH desktop and phone now (the old canvas
-           toggle toolbar is gone, keeping the orrery clean). On desktop the rail is the
-           persistent left column; on phone it's the slide-in menu. -->
+      <!-- Orrery display toggles + scale moved to the on-canvas "View" overlay; add-body
+           is now right-click / long-press on the orrery. Only the Starmap/System nav stays. -->
       <div class="rail-view-options">
-        <h3 class="rail-section-title">View</h3>
         <button class="rail-btn" on:click={() => { railOpen = false; zoomOut(); }}>{focusedBody && focusedBody.parentId ? 'Zoom out' : 'To starmap'}</button>
-        <button class="rail-btn" on:click={() => visualizer?.resetView()}>Reset view</button>
-        <label><input type="checkbox" bind:checked={showNames} /> Names</label>
-        <label><input type="checkbox" bind:checked={showZones} on:change={() => showZoneKeyPanel = showZones} /> Zones</label>
-        <label><input type="checkbox" bind:checked={showLPoints} /> Lagrange points</label>
-        {#if $starmapUiStore.gridType === 'traveller-hex'}
-          <label><input type="checkbox" bind:checked={showTravellerZones} /> Traveller zones</label>
-        {/if}
-        <label><input type="checkbox" bind:checked={showVectors} /> Vectors</label>
-        <div class="rail-seg" role="group" aria-label="Orbit scale">
-          <button class:active={toytownOn} on:click={() => setScaleMode(true)} title="Compressed spacing so the whole system fits one screen">Toytown</button>
-          <button class:active={!toytownOn} on:click={() => setScaleMode(false)} title="True linear AU spacing">Real</button>
-        </div>
-        {#if toytownOn}
-          <label class="rail-slider">
-            <span>Compression</span>
-            <input type="range" min="0.05" max="1" step="0.01" bind:value={$systemStore.toytownFactor} on:change={() => {
-              if ($systemStore.toytownFactor < 0.05) $systemStore.toytownFactor = 0.05;
-              toytownPref = $systemStore.toytownFactor;
-              handleSliderRelease();
-            }} />
-          </label>
-        {/if}
-      </div>
-      <!-- Create: phone has no right-click background menu, so add-body lives here too
-           (and it's handy on desktop). -->
-      <div class="rail-view-options">
-        <h3 class="rail-section-title">Create</h3>
-        <button class="rail-btn" on:click={() => { railOpen = false; addBodyViaFab(); }}>Add planet</button>
-        <button class="rail-btn" on:click={() => { railOpen = false; addBodyViaFab('construct'); }}>Add construct</button>
       </div>
       <!-- System actions (formerly the SystemSummary hamburger) — shown on desktop AND
            phone now that the summary strip is retired in favour of the BodyPicker. -->
@@ -1788,6 +1767,41 @@
                 top={mode === 'phone' ? 62 : 8}
                 on:select={(e) => updateFocus(e.detail)}
             />
+
+            <!-- On-canvas orrery controls: faded Reset + a "View" popover of the
+                 frequently-used display toggles (per the wireframe). -->
+            <div class="orrery-controls" class:phone={mode === 'phone'}>
+              <button class="ov-btn faded" title="Reset view" aria-label="Reset view" on:click={() => visualizer?.resetView()}>⟲</button>
+              <div class="ov-view">
+                <button class="ov-btn" class:active={viewOpen} on:click={toggleViewPopover}>View ▾</button>
+                {#if viewOpen}
+                  <div class="ov-popover">
+                    <label><input type="checkbox" bind:checked={showNames} /> Names</label>
+                    <label><input type="checkbox" bind:checked={showZones} on:change={() => showZoneKeyPanel = showZones} /> Zones</label>
+                    <label><input type="checkbox" bind:checked={showLPoints} /> Lagrange points</label>
+                    {#if $starmapUiStore.gridType === 'traveller-hex'}
+                      <label><input type="checkbox" bind:checked={showTravellerZones} /> Traveller zones</label>
+                    {/if}
+                    <label><input type="checkbox" bind:checked={showVectors} /> Vectors</label>
+                    <div class="ov-seg" role="group" aria-label="Orbit scale">
+                      <button class:active={toytownOn} on:click={() => setScaleMode(true)} title="Compressed spacing so the whole system fits one screen">Toytown</button>
+                      <button class:active={!toytownOn} on:click={() => setScaleMode(false)} title="True linear AU spacing">Real</button>
+                    </div>
+                    {#if toytownOn}
+                      <label class="ov-slider">
+                        <span>Compression</span>
+                        <input type="range" min="0.05" max="1" step="0.01" bind:value={$systemStore.toytownFactor} on:change={() => {
+                          if ($systemStore.toytownFactor < 0.05) $systemStore.toytownFactor = 0.05;
+                          toytownPref = $systemStore.toytownFactor;
+                          handleSliderRelease();
+                        }} />
+                      </label>
+                    {/if}
+                  </div>
+                {/if}
+              </div>
+            </div>
+
             <SystemVisualizer
                 bind:this={visualizer}
                 bind:cameraMode
@@ -2235,6 +2249,78 @@
     height: 100%;
     position: relative; /* anchor the BodyPicker + time overlays */
   }
+  /* On-canvas orrery controls (top-right): faded Reset + a View popover. */
+  .orrery-controls {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 56;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .orrery-controls.phone { top: 62px; }
+  .ov-btn {
+    height: 32px;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-panel, #14161c) 86%, transparent);
+    color: var(--text, #e8e8e8);
+    font-size: 0.85rem;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+  }
+  .ov-btn:hover { background: var(--bg-control-hover, #232733); }
+  .ov-btn.faded { opacity: 0.55; font-size: 1rem; }
+  .ov-btn.faded:hover { opacity: 1; }
+  .ov-btn.active { border-color: var(--accent, #ff5a1f); }
+  .ov-view { position: relative; }
+  .ov-popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 190px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    background: var(--bg-panel, #14161c);
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  }
+  .ov-popover label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .ov-popover label.ov-slider { flex-direction: column; align-items: stretch; gap: 4px; }
+  .ov-popover label.ov-slider input { width: 100%; }
+  .ov-seg {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    background: var(--bg-control, #1b1e26);
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 8px;
+  }
+  .ov-seg button {
+    flex: 1 1 0;
+    padding: 6px 8px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted, #cfcfcf);
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+  .ov-seg button.active { background: var(--accent, #ff5a1f); color: var(--on-accent, #fff); }
   /* Time transport floats over the bottom of the orrery (clean-orrery + overlay-buttons). */
   .time-overlay {
     position: absolute;
