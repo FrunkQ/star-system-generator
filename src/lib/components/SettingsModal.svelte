@@ -391,6 +391,65 @@
     margin-top: 2em;
     text-align: right;
   }
+
+  /* ---- Mobile / narrow: full-screen sheet, nav becomes a top tab strip ---- */
+  @media (max-width: 700px), (pointer: coarse) {
+    .modal-backdrop {
+      align-items: stretch;
+      justify-content: stretch;
+      /* Above the phone overlays (transport 1150, sheet 1200, FAB 1300, scrim 1400). */
+      z-index: 1500;
+    }
+    .modal.settings-modal {
+      width: 100%;
+      max-width: none;
+      height: 100%;
+      border: none;
+      border-radius: 0;
+      padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+    }
+    .settings-modal > h2 { flex: 0 0 auto; }
+    .settings-layout {
+      flex: 1 1 auto;
+      min-height: 0;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .settings-nav {
+      flex: 0 0 auto;
+      flex-direction: row;
+      overflow-x: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      padding-right: 0;
+      padding-bottom: 8px;
+      gap: 6px;
+    }
+    .settings-nav button {
+      flex: 0 0 auto;
+      width: auto;
+      white-space: nowrap;
+      min-height: 40px;
+    }
+    .settings-content {
+      flex: 1 1 auto;
+      max-height: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .modal-actions {
+      flex: 0 0 auto;
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+    }
+    .modal-actions button {
+      flex: 1 1 0;
+      min-height: 46px;
+    }
+  }
   .inline-time {
     color: var(--text-muted);
   }

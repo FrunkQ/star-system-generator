@@ -74,6 +74,13 @@
     : (isPlaying ? 1 : 0);
   $: formattedScrubRate = formatTimeRate(currentRate);
 
+  // Jump-to-now direction: if the display clock is BEHIND actual ("now"), jumping moves
+  // time FORWARD (⏭); if AHEAD, BACKWARD (⏮). At now → neutral/dimmed. Good at-a-glance
+  // cue for whether you're off the current time and which way the jump goes.
+  $: jumpBehind = (() => { try { return BigInt(displayClockSeconds || '0') < BigInt(masterClockSeconds || '0'); } catch { return false; } })();
+  $: jumpAhead = (() => { try { return BigInt(displayClockSeconds || '0') > BigInt(masterClockSeconds || '0'); } catch { return false; } })();
+  $: atNow = !jumpBehind && !jumpAhead;
+
   $: if (!autoResetTimeScrub) {
       // When unchecking, stop any active scrub and reset slider to 0
       scrubControlValue = 0;
@@ -254,7 +261,13 @@
 </script>
 
 <div class="time-transport" class:expanded class:compact>
-  <button class="tt-btn" on:click={handleResetDisplay} title="Jump display time to actual (now)" aria-label="Jump to now">⏮</button>
+  <button
+    class="tt-btn tt-jump"
+    class:at-now={atNow}
+    on:click={handleResetDisplay}
+    title={atNow ? 'Display is at the current time' : (jumpBehind ? 'Jump forward to now' : 'Jump back to now')}
+    aria-label="Jump to now"
+  >{jumpBehind ? '⏭' : '⏮'}</button>
   <button class="tt-btn tt-play" class:playing={isPlaying} on:click={togglePlayback} title={isPlaying ? 'Pause' : 'Play (real-time)'} aria-label={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '⏸' : '▶'}</button>
 
   <div class="tt-shuttle" title="Scrub — drag to fast-forward / rewind. Release to {autoResetTimeScrub ? 'stop' : 'hold speed'}.">
@@ -324,6 +337,12 @@
     cursor: pointer;
   }
   .tt-btn:hover { background: var(--bg-control-hover, #232733); }
+  /* Jump-to-now stands out when the display is off "now"; dims when already at now. */
+  .tt-jump:not(.at-now) {
+    border-color: var(--accent, #ff5a1f);
+    color: var(--accent, #ff5a1f);
+  }
+  .tt-jump.at-now { opacity: 0.4; }
   .tt-play {
     background: var(--accent, #ff5a1f);
     border-color: var(--accent, #ff5a1f);
