@@ -688,7 +688,7 @@
   }
 
   function handleClearStarmap() {
-    if (confirm('ARE YOU SURE? This will clear the current starmap from the screen. Your saved starmap in browser storage will remain.')) {
+    if (confirm('Clear the current starmap and start a new one?\n\nDownload it first if you want to keep a copy.')) {
       starmapStore.set(null);
       showNewStarmapModal = true;
     }

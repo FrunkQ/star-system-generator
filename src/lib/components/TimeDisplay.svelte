@@ -34,8 +34,6 @@
     }
   })();
 
-  // Only show the Actual row when it differs from Display (otherwise it's redundant noise).
-  $: showActual = actualLabel && actualLabel !== displayLabel;
 </script>
 
 <div class="time-display" aria-hidden="true">
@@ -43,7 +41,7 @@
     <span class="td-k">Display</span>
     <span class="td-v">{displayLabel}</span>
   </div>
-  {#if showActual}
+  {#if actualLabel}
     <div class="td-row td-actual">
       <span class="td-k">Actual</span>
       <span class="td-v">{actualLabel}</span>
@@ -83,5 +81,8 @@
     color: var(--text-faint, #8a8f9a);
   }
   .td-v { font-weight: 600; font-variant-numeric: tabular-nums; }
+  /* Actual ("now") is secondary — smaller + dimmer, sitting under the Display line. */
+  .td-actual .td-k,
+  .td-actual .td-v { font-size: 0.72rem; }
   .td-actual .td-v { font-weight: 500; color: var(--text-muted, #cfcfcf); }
 </style>
