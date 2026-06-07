@@ -200,9 +200,9 @@
   /* TEMPORARY dev build stamp */
   .build-stamp {
     position: fixed;
-    top: 8px;
-    left: 50%;
-    transform: translateX(-50%);
+    /* bottom-right corner — top-centre is now the live time readout overlay */
+    bottom: 8px;
+    right: 8px;
     z-index: 99999;
     font: 600 12px/1 ui-monospace, 'Cascadia Code', monospace;
     color: #1a1300;
