@@ -20,6 +20,8 @@
 
 <p>A tool for creating and exploring scientifically-plausible star systems.</p>
 
+<p>➤ <a href="/physics" target="_blank" rel="noopener noreferrer"><strong>Physics &amp; classification reference</strong></a> — every constant, derivation, fudge, and how a world's type &amp; tags are decided.</p>
+
 <hr>
 
 <p><strong>Community Credits:</strong><br>
