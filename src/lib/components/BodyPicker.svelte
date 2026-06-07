@@ -110,11 +110,11 @@
   function dotClip(n: any): string {
     if (n?.kind !== 'construct') return '';
     switch (n.icon_type) {
-      case 'triangle': return 'polygon(50% 0%, 100% 100%, 0% 100%)';
       case 'diamond': return 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)';
       case 'cross': return 'polygon(38% 0,62% 0,62% 38%,100% 38%,100% 62%,62% 62%,62% 100%,38% 100%,38% 62%,0 62%,0 38%,38% 38%)';
       case 'circle': return '';
-      default: return 'inset(0)'; // square
+      case 'square': return 'inset(0)';
+      default: return 'polygon(50% 0%, 100% 100%, 0% 100%)'; // triangle (general construct default)
     }
   }
   // Inline style for a node's swatch: construct -> its colour + clipped shape; else dot.
@@ -281,7 +281,7 @@
         <ul>
           {#each categories as c (c.key)}
             <li><button class="row category" on:click={() => (drill = c.key)}>
-              <span class="dot" style="background:{categoryColors[c.key] ?? colorOf(c.items[0])}"></span>
+              <span class="dot" style="background:{categoryColors[c.key] ?? colorOf(c.items[0])}; {c.key === 'Constructs' ? 'clip-path:polygon(50% 0%, 100% 100%, 0% 100%); border-radius:0;' : ''}"></span>
               <span class="row-name">{c.key}</span>
               <span class="row-ctx">{c.items.length}</span>
               <span class="chevron">›</span>

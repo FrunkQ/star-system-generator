@@ -188,8 +188,8 @@
                      on:click={() => selectTemplate(child)}
                      on:dblclick={handleLoad}>
                     <div class="icon-wrapper">
-                        <div class="construct-icon {child.template?.icon_type || 'circle'}" 
-                             style="background-color: {child.template?.icon_color || '#888'}">
+                        <div class="construct-icon {child.template?.icon_type || 'triangle'}"
+                             style="background-color: {child.template?.icon_color || '#ffd24d'}">
                         </div>
                     </div>
                     <div class="file-info">

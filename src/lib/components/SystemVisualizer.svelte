@@ -489,11 +489,8 @@
   function drawConstructGlyph(ctx: CanvasRenderingContext2D, node: CelestialBody, x: number, y: number, sizePx: number): void {
       const size = sizePx;
       const c = node as any;
-      ctx.fillStyle = c.icon_color || '#f0f0f0';
-      if (c.icon_type === 'triangle') {
-          ctx.beginPath(); ctx.moveTo(x, y - size / 2); ctx.lineTo(x + size / 2, y + size / 2);
-          ctx.lineTo(x - size / 2, y + size / 2); ctx.closePath(); ctx.fill();
-      } else if (c.icon_type === 'circle') {
+      ctx.fillStyle = c.icon_color || '#ffd24d';
+      if (c.icon_type === 'circle') {
           ctx.beginPath(); ctx.arc(x, y, size / 2, 0, 2 * Math.PI); ctx.fill();
       } else if (c.icon_type === 'diamond') {
           ctx.beginPath(); ctx.moveTo(x, y - size / 2); ctx.lineTo(x + size / 2, y);
@@ -502,9 +499,12 @@
           const thickness = size / 3;
           ctx.fillRect(x - thickness / 2, y - size / 2, thickness, size);
           ctx.fillRect(x - size / 2, y - thickness / 2, size, thickness);
-      } else {
-          // Default Square
+      } else if (c.icon_type === 'square') {
           ctx.fillRect(x - size / 2, y - size / 2, size, size);
+      } else {
+          // Default: triangle (bodies are circles/spheres, so constructs read as triangles)
+          ctx.beginPath(); ctx.moveTo(x, y - size / 2); ctx.lineTo(x + size / 2, y + size / 2);
+          ctx.lineTo(x - size / 2, y + size / 2); ctx.closePath(); ctx.fill();
       }
   }
 
