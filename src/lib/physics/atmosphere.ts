@@ -81,7 +81,11 @@ export function calculateMolarMass(atmosphere: Atmosphere, pack: RulePack): numb
 export function recalculateAtmosphereDerivedProperties(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], rulePack: RulePack) {
     if (!body.atmosphere || body.atmosphere.name === 'None') {
         body.greenhouseTempK = 0;
-        body.surfaceRadiation = undefined;
+        // NOTE: do NOT clear surfaceRadiation here. An airless body has NO atmospheric
+        // shielding, so it receives the FULL unshielded dose — it's the most-irradiated
+        // case, not zero. processEnvironment/calculateSurfaceRadiation already computed it
+        // (e.g. Luna ≈ 500 mSv/yr); wiping it to undefined was the Phase-04 "airless moon
+        // radiation" bug.
         return;
     }
 
