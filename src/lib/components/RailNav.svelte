@@ -70,6 +70,14 @@
     <button class="rail-btn sub" title="Save starmap" on:click={() => dispatch('save')}>
       <span class="ic">{@html svg(I.save)}</span><span class="rail-label">Save</span>
     </button>
+    {#if activeView === 'system'}
+      <button class="rail-btn sub" title="Download this system as JSON" on:click={() => dispatch('downloadsystem')}>
+        <span class="ic">{@html svg(I.save)}</span><span class="rail-label">Download System…</span>
+      </button>
+      <button class="rail-btn sub" title="Upload a system JSON" on:click={() => dispatch('uploadsystem')}>
+        <span class="ic">{@html svg(I.open)}</span><span class="rail-label">Upload System…</span>
+      </button>
+    {/if}
   {/if}
   <button class="rail-btn" title="Find a body across all systems" on:click={() => dispatch('allbodies')}>
     <span class="ic">{@html svg(I.body)}</span><span class="rail-label">Find body…</span>

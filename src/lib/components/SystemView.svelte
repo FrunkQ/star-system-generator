@@ -1706,6 +1706,8 @@
         on:starmap={() => { railOpen = false; dispatch('back', { force: true }); }}
         on:projector={() => { railOpen = false; handleShare(); }}
         on:report={() => { railOpen = false; showReportConfigModal = true; }}
+        on:downloadsystem={() => { railOpen = false; handleDownloadJson(); }}
+        on:uploadsystem={() => { railOpen = false; railUploadInput?.click(); }}
         on:new={() => dispatch('new')}
         on:open={() => dispatch('open')}
         on:save={() => dispatch('save')}
@@ -1718,11 +1720,11 @@
       <!-- System actions (formerly the SystemSummary hamburger) — shown on desktop AND
            phone now that the summary strip is retired in favour of the BodyPicker. The
            Starmap nav, Projector and Report moved up into the icon rail proper. -->
+      <!-- System-JSON download/upload moved into the File group. Hidden input kept here
+           for the File group's Upload action. -->
+      <input type="file" accept="application/json,.json" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
       <div class="rail-view-options">
         <h3 class="rail-section-title">System</h3>
-        <button class="rail-btn" on:click={() => { railOpen = false; handleDownloadJson(); }}>Download…</button>
-        <button class="rail-btn" on:click={() => { railOpen = false; railUploadInput?.click(); }}>Upload…</button>
-        <input type="file" accept="application/json,.json" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
         <button class="rail-btn" on:click={() => { railOpen = false; handleToggleCrt(); }}>Toggle projector CRT</button>
         {#if $systemStore.isManuallyEdited}
           <button class="rail-btn" on:click={() => { railOpen = false; systemStore.update(s => s ? { ...s, isManuallyEdited: false } : s); }}>Show regenerate controls</button>
