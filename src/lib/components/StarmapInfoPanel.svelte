@@ -21,6 +21,12 @@
       const saved = JSON.parse(localStorage.getItem(POS_KEY) || 'null');
       if (saved && typeof saved.x === 'number' && typeof saved.y === 'number') pos = saved;
     } catch {}
+    // Clamp into view — the position is shared across devices, so a desktop drag
+    // shouldn't strand the panel off a phone screen.
+    pos = {
+      x: Math.max(0, Math.min(pos.x, window.innerWidth - 80)),
+      y: Math.max(0, Math.min(pos.y, window.innerHeight - 80))
+    };
     collapsed = localStorage.getItem(COLLAPSE_KEY) === '1';
   });
 
