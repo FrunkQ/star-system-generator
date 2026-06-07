@@ -801,6 +801,7 @@
         on:allbodies={() => showAllBodies = true}
         on:allships={() => showAllShips = true}
         on:routes={() => showRoutes = true}
+        on:about={() => showAbout = true}
         on:back={handleBackToStarmap}
         on:renameNode={handleRenameNode}
       />
@@ -826,6 +827,7 @@
       on:allbodies={() => showAllBodies = true}
       on:allships={() => showAllShips = true}
       on:routes={() => showRoutes = true}
+      on:about={() => showAbout = true}
       on:updatestarmap={(e) => starmapStore.set(e.detail)}
       {selectedSystemForLink}
     />
@@ -867,7 +869,7 @@
     <EditTemporalModal showModal={showTemporalModal} starmap={$starmapStore} on:save={(e) => starmapStore.update((s) => s ? { ...s, temporal: e.detail.temporal } : s)} on:close={() => showTemporalModal = false} />
   {/if}
   {#if showAbout}
-    <AboutModal on:close={() => showAbout = false} />
+    <AboutModal rulePack={$systemStore ? effectiveRulePack : null} on:close={() => showAbout = false} />
   {/if}
 
   {#if showAllBodies}

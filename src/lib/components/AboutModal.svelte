@@ -1,12 +1,19 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
-  import MarkdownModal from './MarkdownModal.svelte';
+  import DebugFooter from './DebugFooter.svelte';
+  import type { RulePack } from '$lib/types';
 
   const dispatch = createEventDispatcher();
 
+  // When a system is open, the parent passes its rulePack so the Debug tools
+  // (Show JSON / Rebuild Hierarchy / Update & Repair) appear here. null → hidden.
+  export let rulePack: RulePack | null = null;
+
+  let showDebug = false;
+
   const aboutContent = `
-<h1>Star System Explorer</h1>
+<h2>Star System Explorer</h2>
 
 <p><strong>Version:</strong> ${APP_VERSION}<br>
 <strong>Date:</strong> ${APP_DATE}</p>
@@ -52,4 +59,77 @@ Thanks to @Athena, @Mafro & @malize from the creative community on our <a href="
   }
 </script>
 
-<MarkdownModal htmlContent={aboutContent} on:close={close} />
+<div class="modal-overlay" role="presentation" on:click={close}>
+  <div class="modal-card about-card" role="dialog" aria-label="About" on:click|stopPropagation>
+    <header class="about-head">
+      <span>About</span>
+      <button class="about-close" aria-label="Close" on:click={close}>×</button>
+    </header>
+
+    <div class="about-body">{@html aboutContent}</div>
+
+    {#if rulePack}
+      <hr />
+      <section class="about-debug">
+        <button class="debug-toggle" on:click={() => (showDebug = !showDebug)}>
+          {showDebug ? '▾' : '▸'} Debug tools
+        </button>
+        {#if showDebug}
+          <DebugFooter {rulePack} />
+        {/if}
+      </section>
+    {/if}
+  </div>
+</div>
+
+<style>
+  .about-card {
+    width: min(680px, 92vw);
+    max-height: 86vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+  }
+  .about-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 700;
+    color: var(--accent);
+    flex: 0 0 auto;
+  }
+  .about-close {
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-control);
+    color: var(--text);
+    cursor: pointer;
+    line-height: 1;
+  }
+  .about-body {
+    overflow-y: auto;
+    padding: 4px 18px;
+  }
+  .about-body :global(a) { color: var(--link); }
+  .about-body :global(h2) { color: var(--accent); }
+  .about-body :global(hr) { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+  .about-debug {
+    flex: 0 0 auto;
+    padding: 0 18px 16px;
+  }
+  .debug-toggle {
+    background: var(--bg-control);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted, #cfcfcf);
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .debug-toggle:hover { background: var(--bg-control-hover); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 0; }
+</style>

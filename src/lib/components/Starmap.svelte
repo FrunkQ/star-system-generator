@@ -4,8 +4,8 @@
   import { getPlanetColor as getStarColor } from '$lib/rendering/colors';
   import AppShell from './AppShell.svelte';
   import RailNav from './RailNav.svelte';
-  import FabCluster from './FabCluster.svelte';
   import BodyPicker from './BodyPicker.svelte';
+  import FullscreenButton from './FullscreenButton.svelte';
   import type { Starmap, System, CelestialBody, RulePack, Barycenter } from '$lib/types';
   import StarmapInfoPanel from './StarmapInfoPanel.svelte';
   import BottomSheet from './BottomSheet.svelte';
@@ -13,8 +13,6 @@
   import { railCollapsed } from '$lib/railStore';
   import Grid from './Grid.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
-  import MarkdownModal from './MarkdownModal.svelte';
-  import AboutModal from './AboutModal.svelte';
   import SaveSystemModal from './SaveSystemModal.svelte';
   import ImportTravellerModal from './ImportTravellerModal.svelte';
   import AddTravellerSystemModal from './AddTravellerSystemModal.svelte';
@@ -54,7 +52,6 @@
 
   // Header State
   let showDropdown = false;
-  let showAboutModal = false;
   let showSaveModal = false;
   let showImportModal = false;
   let showAddTravellerModal = false;
@@ -789,7 +786,8 @@
         on:save={() => dispatch('download')}
         on:settings={() => dispatch('settings')}
         on:llmsettings={() => dispatch('llmsettings')}
-        on:about={() => showAboutModal = true}
+        on:about={() => dispatch('about')}
+        on:navigate={() => (railOpen = false)}
         on:allbodies={() => { railOpen = false; dispatch('allbodies'); }}
         on:allships={() => { railOpen = false; dispatch('allships'); }}
         on:routes={() => { railOpen = false; dispatch('routes'); }}
@@ -819,7 +817,10 @@
     {#if mode !== 'phone'}
       <StarmapInfoPanel {starmap} on:update={(e) => dispatch('updatestarmap', e.detail)} />
     {/if}
-    <button class="ov-reset" title="Reset view" aria-label="Reset view" on:click={resetView}>⟲{#if !$railCollapsed} Reset View{/if}</button>
+    <div class="ov-topright">
+      {#if mode === 'phone'}<FullscreenButton />{/if}
+      <button class="ov-reset" title="Reset view" aria-label="Reset view" on:click={resetView}>⟲{#if !$railCollapsed} Reset View{/if}</button>
+    </div>
     <svg
       bind:this={svgElement}
       class="starmap"
@@ -1094,9 +1095,6 @@
                 </ul>
               </div>
           {/if}
-            {#if showAboutModal}
-      <AboutModal on:close={() => showAboutModal = false} />
-  {/if}
 
   {#if showSaveModal}
       <SaveSystemModal on:save={handleSaveStarmap} on:close={() => showSaveModal = false} />
@@ -1333,11 +1331,16 @@
     left: 8px;
     z-index: 57;
   }
-  .ov-reset {
+  .ov-topright {
     position: absolute;
     top: 8px;
     right: 8px;
     z-index: 56;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .ov-reset {
     height: 32px;
     padding: 0 10px;
     display: flex;
@@ -1357,10 +1360,9 @@
   .time-overlay {
     position: absolute;
     bottom: 14px;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 14px;
     z-index: 55;
-    width: min(560px, calc(100% - 24px));
+    max-width: min(460px, calc(100% - 28px));
   }
   .time-overlay.phone {
     position: fixed;

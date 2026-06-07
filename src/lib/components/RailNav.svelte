@@ -15,6 +15,10 @@
   $: collapsed = $railCollapsed;
   function toggleCollapsed() { railCollapsed.update((v) => !v); }
 
+  // Terminal actions (open a modal / change view): also emit `navigate` so the host can
+  // close the phone slide-in rail — otherwise the result is hidden behind the open menu.
+  function go(name: string) { dispatch(name); dispatch('navigate'); }
+
   // Flat Lucide-style monochrome icons (inline SVG).
   const I = {
     file: '<path d="M20 7h-7L9.5 4.5A1 1 0 0 0 8.8 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>',
@@ -28,7 +32,8 @@
     body: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
     ship: '<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>',
     routes: '<circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/>',
-    settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'
+    settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+    about: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'
   };
 </script>
 
@@ -45,7 +50,7 @@
     class:active={activeView === 'starmap'}
     aria-current={activeView === 'starmap' ? 'page' : undefined}
     title={activeView === 'starmap' ? 'Starmap (current view)' : 'Back to the starmap'}
-    on:click={() => dispatch('starmap')}
+    on:click={() => go('starmap')}
   >
     <span class="ic">{@html svg(I.starmap)}</span><span class="rail-label">Starmap</span>
   </button>
@@ -55,43 +60,43 @@
     <span class="rail-label chev">{fileOpen ? '▾' : '▸'}</span>
   </button>
   {#if fileOpen}
-    <button class="rail-btn sub" title="New system" on:click={() => dispatch('new')}>
+    <button class="rail-btn sub" title="New system" on:click={() => go('new')}>
       <span class="ic">{@html svg(I.new)}</span><span class="rail-label">New System</span>
     </button>
-    <button class="rail-btn sub" title="Open starmap" on:click={() => dispatch('open')}>
+    <button class="rail-btn sub" title="Open starmap" on:click={() => go('open')}>
       <span class="ic">{@html svg(I.open)}</span><span class="rail-label">Open…</span>
     </button>
-    <button class="rail-btn sub" title="Save starmap" on:click={() => dispatch('save')}>
+    <button class="rail-btn sub" title="Save starmap" on:click={() => go('save')}>
       <span class="ic">{@html svg(I.save)}</span><span class="rail-label">Save</span>
     </button>
     {#if activeView === 'system'}
-      <button class="rail-btn sub" title="Download this system as JSON" on:click={() => dispatch('downloadsystem')}>
+      <button class="rail-btn sub" title="Download this system as JSON" on:click={() => go('downloadsystem')}>
         <span class="ic">{@html svg(I.save)}</span><span class="rail-label">Download System…</span>
       </button>
-      <button class="rail-btn sub" title="Upload a system JSON" on:click={() => dispatch('uploadsystem')}>
+      <button class="rail-btn sub" title="Upload a system JSON" on:click={() => go('uploadsystem')}>
         <span class="ic">{@html svg(I.open)}</span><span class="rail-label">Upload System…</span>
       </button>
     {:else}
-      <button class="rail-btn sub danger" title="Clear the whole starmap" on:click={() => dispatch('clear')}>
+      <button class="rail-btn sub danger" title="Clear the whole starmap" on:click={() => go('clear')}>
         <span class="ic">{@html svg(I.trash)}</span><span class="rail-label">Clear Starmap…</span>
       </button>
     {/if}
   {/if}
-  <button class="rail-btn" title="Find a body across all systems" on:click={() => dispatch('allbodies')}>
+  <button class="rail-btn" title="Find a body across all systems" on:click={() => go('allbodies')}>
     <span class="ic">{@html svg(I.body)}</span><span class="rail-label">Find body…</span>
   </button>
-  <button class="rail-btn" title="Find a construct across all systems" on:click={() => dispatch('allships')}>
+  <button class="rail-btn" title="Find a construct across all systems" on:click={() => go('allships')}>
     <span class="ic">{@html svg(I.ship)}</span><span class="rail-label">Find construct…</span>
   </button>
-  <button class="rail-btn" title="Routes & journeys" on:click={() => dispatch('routes')}>
+  <button class="rail-btn" title="Routes & journeys" on:click={() => go('routes')}>
     <span class="ic">{@html svg(I.routes)}</span><span class="rail-label">Routes…</span>
   </button>
 
   {#if activeView === 'system'}
-    <button class="rail-btn" title="Open the projector window" on:click={() => dispatch('projector')}>
+    <button class="rail-btn" title="Open the projector window" on:click={() => go('projector')}>
       <span class="ic">{@html svg(I.projector)}</span><span class="rail-label">Projector</span>
     </button>
-    <button class="rail-btn" title="Generate a report" on:click={() => dispatch('report')}>
+    <button class="rail-btn" title="Generate a report" on:click={() => go('report')}>
       <span class="ic">{@html svg(I.report)}</span><span class="rail-label">Report…</span>
     </button>
   {/if}
@@ -100,8 +105,11 @@
 
   <div class="spacer"></div>
 
-  <button class="rail-btn" title="Settings" on:click={() => dispatch('settings')}>
+  <button class="rail-btn" title="Settings" on:click={() => go('settings')}>
     <span class="ic accent">{@html svg(I.settings)}</span><span class="rail-label">Settings</span>
+  </button>
+  <button class="rail-btn" title="About, attributions & debug tools" on:click={() => go('about')}>
+    <span class="ic">{@html svg(I.about)}</span><span class="rail-label">About</span>
   </button>
 </nav>
 

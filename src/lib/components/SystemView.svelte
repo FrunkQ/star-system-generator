@@ -15,6 +15,7 @@
   import DescriptionEditor from './DescriptionEditor.svelte';
   import BodyPicker from './BodyPicker.svelte';
   import TimeDisplay from './TimeDisplay.svelte';
+  import FullscreenButton from './FullscreenButton.svelte';
   import { railCollapsed } from '$lib/railStore';
   import GmNotesEditor from './GmNotesEditor.svelte';
   import ZoneKey from './ZoneKey.svelte';
@@ -39,7 +40,6 @@
   import { AU_KM, EARTH_MASS_KG, G } from '$lib/constants';
   import { propagate } from '$lib/api';
   import { broadcastService } from '$lib/broadcast';
-  import DebugFooter from './DebugFooter.svelte';
   import FocusHeader from './FocusHeader.svelte';
   import AppShell from './AppShell.svelte';
   import RailNav from './RailNav.svelte';
@@ -60,7 +60,6 @@
   let sheetSnap: 'peek' | 'half' | 'full' = 'peek';
   let railOpen = false; // phone slide-in rail; closed before opening a modal
   let railUploadInput: HTMLInputElement; // hidden file input for the rail's Upload JSON
-  let showDebug = false; // dev tools (Show JSON / Rebuild Hierarchy / Update & Repair)
 
   // Orbit scale: binary Toytown (compressed, fits one screen) vs Real (true AU). The
   // continuous compression slider stays as the advanced control while in Toytown.
@@ -1715,6 +1714,8 @@
         on:save={() => dispatch('save')}
         on:settings={() => dispatch('settings')}
         on:llmsettings={() => dispatch('llmsettings')}
+        on:about={() => dispatch('about')}
+        on:navigate={() => (railOpen = false)}
         on:allbodies={() => { railOpen = false; dispatch('allbodies'); }}
         on:allships={() => { railOpen = false; dispatch('allships'); }}
         on:routes={() => { railOpen = false; dispatch('routes'); }}
@@ -1731,7 +1732,6 @@
         {#if $systemStore.isManuallyEdited}
           <button class="rail-btn" on:click={() => { railOpen = false; systemStore.update(s => s ? { ...s, isManuallyEdited: false } : s); }}>Show regenerate controls</button>
         {/if}
-        <button class="rail-btn" on:click={() => { railOpen = false; showDebug = true; }}>Debug…</button>
       </div>
       </RailNav>
     </svelte:fragment>
@@ -1769,6 +1769,7 @@
             <!-- On-canvas orrery controls: faded Reset + a "View" popover of the
                  frequently-used display toggles (per the wireframe). -->
             <div class="orrery-controls" class:phone={mode === 'phone'}>
+              {#if mode === 'phone'}<FullscreenButton />{/if}
               <button class="ov-btn faded" title="Reset view" aria-label="Reset view" on:click={() => visualizer?.resetView()}>⟲{#if !$railCollapsed} Reset View{/if}</button>
               <div class="ov-view">
                 <button class="ov-btn" class:active={viewOpen} on:click={toggleViewPopover}>View ▾</button>
@@ -1992,17 +1993,6 @@
         <SaveSystemModal on:save={handleSaveSystem} on:close={() => showSaveModal = false} />
     {/if}
 
-    {#if showDebug}
-      <div class="debug-overlay" role="presentation" on:click={() => showDebug = false}>
-        <div class="debug-card" role="dialog" aria-label="Debug tools" on:click|stopPropagation>
-          <header class="debug-head">
-            <span>Debug tools</span>
-            <button class="debug-close" aria-label="Close" on:click={() => showDebug = false}>×</button>
-          </header>
-          <DebugFooter {rulePack} />
-        </div>
-      </div>
-    {/if}
     {/if}
 </main>
 
@@ -2311,14 +2301,14 @@
     cursor: pointer;
   }
   .ov-seg button.active { background: var(--accent, #ff5a1f); color: var(--on-accent, #fff); }
-  /* Time transport floats over the bottom of the orrery (clean-orrery + overlay-buttons). */
+  /* Time transport floats over the bottom-LEFT of the orrery — under the top-left time
+     read-out, so all the time controls live on the left. */
   .time-overlay {
     position: absolute;
     bottom: 14px;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 14px;
     z-index: 55;
-    width: min(560px, calc(100% - 24px));
+    max-width: min(460px, calc(100% - 28px));
   }
   .time-overlay.phone {
     /* fixed to the viewport (the orrery .main-view is short on phone); sit above the
@@ -2530,45 +2520,6 @@
         background: var(--bg-control-hover, #232733);
     }
 
-    .debug-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 1500;
-        background: rgba(0, 0, 0, 0.55);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 16px;
-    }
-    .debug-card {
-        width: min(720px, 100%);
-        max-height: 80vh;
-        overflow: auto;
-        background: var(--bg-panel, #14161c);
-        border: 1px solid var(--border, #2a2d36);
-        border-radius: 12px;
-        padding: 14px 16px;
-        box-sizing: border-box;
-    }
-    .debug-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        font-weight: 600;
-        color: var(--text, #e8e8e8);
-        margin-bottom: 8px;
-    }
-    .debug-close {
-        width: 32px;
-        height: 32px;
-        border: 1px solid var(--border, #2a2d36);
-        border-radius: 8px;
-        background: var(--bg-control, #1b1e26);
-        color: var(--text, #e8e8e8);
-        font-size: 1.2rem;
-        line-height: 1;
-        cursor: pointer;
-    }
 </style>
 
 

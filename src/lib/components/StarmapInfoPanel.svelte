@@ -30,11 +30,14 @@
         y: Math.max(0, Math.min(saved.y, window.innerHeight - 80))
       };
     } else {
-      // Default to the BOTTOM-LEFT of the canvas (the top-left is the time overlay).
+      // Default to the BOTTOM-RIGHT of the canvas (top-left = time read-out, bottom-left =
+      // time transport).
       const parent = el?.offsetParent as HTMLElement | null;
       const parentH = parent?.clientHeight ?? window.innerHeight;
+      const parentW = parent?.clientWidth ?? window.innerWidth;
       const ph = el?.offsetHeight ?? 220;
-      pos = { x: 12, y: Math.max(12, parentH - ph - 12) };
+      const pw = el?.offsetWidth ?? 320;
+      pos = { x: Math.max(12, parentW - pw - 12), y: Math.max(12, parentH - ph - 12) };
     }
   });
 

@@ -10,6 +10,7 @@
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import BottomSheet from './BottomSheet.svelte';
+  import { railCollapsed } from '$lib/railStore';
 
   export let forceMode: 'auto' | 'desktop' | 'phone' = 'auto';
   export let mode: 'desktop' | 'phone' = 'desktop';
@@ -114,7 +115,7 @@
         role="presentation"
         on:click={() => (railOpen = false)}
       >
-        <aside class="phone-rail" on:click|stopPropagation role="presentation">
+        <aside class="phone-rail" class:collapsed={$railCollapsed} on:click|stopPropagation role="presentation">
           <slot name="rail" />
         </aside>
       </div>
@@ -273,6 +274,11 @@
     border-right: 1px solid #2a2d36;
     overflow-y: auto;
     padding: 12px;
+  }
+  /* Iconised rail → the slide-in hugs the icons instead of opening full-width. */
+  .phone-rail.collapsed {
+    width: auto;
+    padding: 12px 6px;
   }
   .phone-bar {
     position: fixed;
