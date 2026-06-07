@@ -61,6 +61,7 @@
   let railOpen = false; // phone slide-in rail; closed before opening a modal
   let railUploadInput: HTMLInputElement; // hidden file input for the rail's Upload JSON
   let showAboutModal = false; // About, moved here from the retired SystemSummary
+  let showDebug = false; // dev tools (Show JSON / Rebuild Hierarchy / Update & Repair)
 
   // Orbit scale: binary Toytown (compressed, fits one screen) vs Real (true AU). The
   // continuous compression slider stays as the advanced control while in Toytown.
@@ -1743,6 +1744,7 @@
         {#if $systemStore.isManuallyEdited}
           <button class="rail-btn" on:click={() => { railOpen = false; systemStore.update(s => s ? { ...s, isManuallyEdited: false } : s); }}>Show regenerate controls</button>
         {/if}
+        <button class="rail-btn" on:click={() => { railOpen = false; showDebug = true; }}>Debug…</button>
       </div>
       </RailNav>
     </svelte:fragment>
@@ -1995,31 +1997,18 @@
         <SaveSystemModal on:save={handleSaveSystem} on:close={() => showSaveModal = false} />
     {/if}
 
-    <DebugFooter {rulePack} />
-
-                            <footer class="attributions">
-
-                              <p><strong>Image Attributions:</strong></p>
-
-                              <p>Planet Images: Courtesy of Pablo Carlos Budassi, used under a <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a> license. Source: <a href="https://pablocarlosbudassi.com/2021/02/planet-types.html" target="_blank" rel="noopener noreferrer">pablocarlosbudassi.com</a>.</p>
-
-                              <p>Star Images: Sourced from the <a href="https://beyond-universe.fandom.com/wiki/" target="_blank" rel="noopener noreferrer">Beyond Universe Wiki</a> on Fandom, used under a <a href="https://creativecommons.org/licenses/by-sa/3.0/us/" target="_blank" rel="noopener noreferrer">CC-BY-SA</a> license.</p>
-
-                              <p>Magnetar Image & Starmap Background: Courtesy of ESO/L. Calçada & S. Brunier, used under a <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> license. Sources: <a href="https://www.eso.org/public/images/eso1415a/" target="_blank" rel="noopener noreferrer">ESO Magnetar</a>, <a href="https://www.eso.org/public/images/eso0932a/" target="_blank" rel="noopener noreferrer">ESO Milky Way</a>.</p>
-
-                              <p>Black Hole Accretion Disk Image: Courtesy of NASA’s Goddard Space Flight Center/Jeremy Schnittman, used under a <a href="https://svs.gsfc.nasa.gov/13232" target="_blank" rel="noopener noreferrer">Public Domain</a> license. Source: <a href="https://svs.gsfc.nasa.gov/13232" target="_blank" rel="noopener noreferrer">NASA SVS</a>.</p>
-
-                              <p>Weyland-Yutani Logo: Sourced from <a href="https://commons.wikimedia.org/wiki/File:Weyland-Yutani_cryo-tube.jpg" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> by <a href="https://commons.wikimedia.org/wiki/User:IllaZilla" target="_blank" rel="noopener noreferrer">IllaZilla</a>, used under a <a href="https://creativecommons.org/licenses/by-sa/3.0/deed.en" target="_blank" rel="noopener noreferrer">Creative Commons Attribution-Share Alike 3.0 Unported</a> license. Changes made: Logo Extracted.</p>
-
-                              <hr class="attribution-separator">
-
-                              <p class="project-attribution">
-
-                                                              <a href="https://github.com/FrunkQ/star-system-generator" target="_blank" rel="noopener noreferrer">Star System Explorer</a> © 2026 FrunkQ. Licensed under <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank" rel="noopener noreferrer">GPL-3.0</a>. Join us on <a href="https://discord.gg/UAEq4zzjD8" target="_blank" rel="noopener noreferrer">Discord!</a>
-
-                                                            </p>
-
-                            </footer>  {/if}
+    {#if showDebug}
+      <div class="debug-overlay" role="presentation" on:click={() => showDebug = false}>
+        <div class="debug-card" role="dialog" aria-label="Debug tools" on:click|stopPropagation>
+          <header class="debug-head">
+            <span>Debug tools</span>
+            <button class="debug-close" aria-label="Close" on:click={() => showDebug = false}>×</button>
+          </header>
+          <DebugFooter {rulePack} />
+        </div>
+      </div>
+    {/if}
+    {/if}
 </main>
 
 
@@ -2540,6 +2529,45 @@
         background: var(--bg-control-hover, #232733);
     }
 
+    .debug-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1500;
+        background: rgba(0, 0, 0, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+    }
+    .debug-card {
+        width: min(720px, 100%);
+        max-height: 80vh;
+        overflow: auto;
+        background: var(--bg-panel, #14161c);
+        border: 1px solid var(--border, #2a2d36);
+        border-radius: 12px;
+        padding: 14px 16px;
+        box-sizing: border-box;
+    }
+    .debug-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-weight: 600;
+        color: var(--text, #e8e8e8);
+        margin-bottom: 8px;
+    }
+    .debug-close {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--border, #2a2d36);
+        border-radius: 8px;
+        background: var(--bg-control, #1b1e26);
+        color: var(--text, #e8e8e8);
+        font-size: 1.2rem;
+        line-height: 1;
+        cursor: pointer;
+    }
 </style>
 
 
