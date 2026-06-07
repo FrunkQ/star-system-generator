@@ -234,7 +234,7 @@
 
         {:else if activeSection === 'technology'}
           <p class="section-hint">Rulepack overrides for this starmap.</p>
-          <h3>Ships</h3>
+          <h3>Tech</h3>
           <button class="section-btn" on:click={() => { dispatch('editfuel'); showModal = false; }}>Fuel &amp; Drives…</button>
           <button class="section-btn" on:click={() => { dispatch('editsensors'); showModal = false; }}>Sensors…</button>
           <h3>Planets</h3>
@@ -249,8 +249,14 @@
     </div>
 
     <div class="modal-actions">
-      <button on:click={handleSave}>Save</button>
-      <button on:click={handleClose}>Close</button>
+      <button class="action-btn" on:click={handleClose} title="Back">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Back
+      </button>
+      <button class="action-btn primary" on:click={handleSave} title="Save">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save
+      </button>
     </div>
   </div>
 
@@ -416,8 +422,25 @@
   }
   .modal-actions {
     margin-top: 2em;
-    text-align: right;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
   }
+  .action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .action-btn.primary {
+    background: var(--accent);
+    color: var(--on-accent, #fff);
+    border-color: var(--accent);
+  }
+  .action-btn.primary:hover { background: var(--accent-hover, #ff7a45); }
+  /* Pin inline-SVG size — a direct flex child otherwise collapses to 0 width. */
+  .action-btn svg,
+  .settings-back svg { flex: 0 0 auto; }
 
   /* ---- Mobile / narrow: full-screen sheet, nav becomes a top tab strip ---- */
   @media (max-width: 700px), (pointer: coarse) {
