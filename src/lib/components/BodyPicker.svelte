@@ -104,6 +104,24 @@
     if (n.kind === 'construct') return 'construct';
     return n.roleHint || n.kind || '';
   }
+  // Constructs carry a basic glyph shape (icon_type). Mirror it in the list with a
+  // clip-path on the swatch so a ship/station/gate reads differently from a planet dot.
+  function dotClip(n: any): string {
+    if (n?.kind !== 'construct') return '';
+    switch (n.icon_type) {
+      case 'triangle': return 'polygon(50% 0%, 100% 100%, 0% 100%)';
+      case 'diamond': return 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)';
+      case 'cross': return 'polygon(38% 0,62% 0,62% 38%,100% 38%,100% 62%,62% 62%,62% 100%,38% 100%,38% 62%,0 62%,0 38%,38% 38%)';
+      case 'circle': return '';
+      default: return 'inset(0)'; // square
+    }
+  }
+  // Inline style for a node's swatch: construct -> its colour + clipped shape; else dot.
+  function swatchStyle(n: any): string {
+    const clip = dotClip(n);
+    const bg = `background:${colorOf(n)};`;
+    return clip ? `${bg} clip-path:${clip}; border-radius:0;` : bg;
+  }
 
   $: selectable = nodes.filter((n: any) => filterItems(n));
   $: byCat = (() => {
@@ -190,7 +208,7 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
       </span>
       {#if focused}
-        <span class="dot" style="background:{colorOf(focused)}"></span>
+        <span class="dot" style={swatchStyle(focused)}></span>
         <span class="chip-name">{focused.name}</span>
       {:else}
         <span class="chip-name muted">{emptyLabel}</span>
@@ -223,7 +241,7 @@
           <ul>
             {#each searchResults as n (n.id)}
               <li><button class="row" class:active={n.id === focusedId} on:click={() => pick(n.id)}>
-                <span class="dot" style="background:{colorOf(n)}"></span>
+                <span class="dot" style={swatchStyle(n)}></span>
                 <span class="row-name">{n.name}</span>
                 <span class="row-ctx">{contextOf(n)}</span>
               </button></li>
@@ -238,7 +256,7 @@
         <ul>
           {#each drillItems as n (n.id)}
             <li><button class="row" class:active={n.id === focusedId} on:click={() => pick(n.id)}>
-              <span class="dot" style="background:{colorOf(n)}"></span>
+              <span class="dot" style={swatchStyle(n)}></span>
               <span class="row-name">{n.name}</span>
               <span class="row-ctx">{contextOf(n)}</span>
             </button></li>
@@ -249,7 +267,7 @@
         <ul>
           {#each categories[0].items as n (n.id)}
             <li><button class="row" class:active={n.id === focusedId} on:click={() => pick(n.id)}>
-              <span class="dot" style="background:{colorOf(n)}"></span>
+              <span class="dot" style={swatchStyle(n)}></span>
               <span class="row-name">{n.name}</span>
               <span class="row-ctx">{contextOf(n)}</span>
             </button></li>
