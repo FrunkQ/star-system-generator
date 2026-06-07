@@ -1718,6 +1718,10 @@
   <AppShell bind:mode bind:railOpen sheetTitle={focusedBody?.name ?? 'Details'} bind:sheetSnap>
     <svelte:fragment slot="rail">
       <RailNav
+        activeView="system"
+        on:starmap={() => { railOpen = false; dispatch('back', { force: true }); }}
+        on:projector={() => { railOpen = false; handleShare(); }}
+        on:report={() => { railOpen = false; showReportConfigModal = true; }}
         on:new={() => dispatch('new')}
         on:open={() => dispatch('open')}
         on:save={() => dispatch('save')}
@@ -1728,21 +1732,15 @@
         on:allships={() => { railOpen = false; dispatch('allships'); }}
         on:routes={() => { railOpen = false; dispatch('routes'); }}
       >
-      <!-- Orrery display toggles + scale moved to the on-canvas "View" overlay; add-body
-           is now right-click / long-press on the orrery. Only the Starmap/System nav stays. -->
-      <div class="rail-view-options">
-        <button class="rail-btn" on:click={() => { railOpen = false; zoomOut(); }}>{focusedBody && focusedBody.parentId ? 'Zoom out' : 'To starmap'}</button>
-      </div>
       <!-- System actions (formerly the SystemSummary hamburger) — shown on desktop AND
-           phone now that the summary strip is retired in favour of the BodyPicker. -->
+           phone now that the summary strip is retired in favour of the BodyPicker. The
+           Starmap nav, Projector and Report moved up into the icon rail proper. -->
       <div class="rail-view-options">
         <h3 class="rail-section-title">System</h3>
         <button class="rail-btn" on:click={() => { railOpen = false; handleDownloadJson(); }}>Download…</button>
         <button class="rail-btn" on:click={() => { railOpen = false; railUploadInput?.click(); }}>Upload…</button>
         <input type="file" accept="application/json,.json" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
-        <button class="rail-btn" on:click={() => { railOpen = false; handleShare(); }}>Open projector</button>
         <button class="rail-btn" on:click={() => { railOpen = false; handleToggleCrt(); }}>Toggle projector CRT</button>
-        <button class="rail-btn" on:click={() => { railOpen = false; showReportConfigModal = true; }}>Generate report…</button>
         {#if $systemStore.isManuallyEdited}
           <button class="rail-btn" on:click={() => { railOpen = false; systemStore.update(s => s ? { ...s, isManuallyEdited: false } : s); }}>Show regenerate controls</button>
         {/if}

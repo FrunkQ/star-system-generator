@@ -6,6 +6,11 @@
   import { browser } from '$app/environment';
   const dispatch = createEventDispatcher();
 
+  // Which top-level view is showing. The Starmap entry is a live indicator when 'starmap'
+  // (highlighted, non-navigating) and a one-click "back to the map" button when 'system'.
+  // Projector/Report are system-only actions, so they only appear in the system view.
+  export let activeView: 'starmap' | 'system' = 'starmap';
+
   let collapsed = false;
   onMount(() => { if (browser) collapsed = localStorage.getItem('sse-rail-collapsed') === '1'; });
   function toggleCollapsed() {
@@ -15,6 +20,9 @@
 
   // Flat Lucide-style monochrome icons (inline SVG).
   const I = {
+    starmap: '<circle cx="12" cy="12" r="3"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><path d="M10.4 21.9a10 10 0 0 0 9.941-15.416"/><path d="M13.5 2.1a10 10 0 0 0-9.841 15.416"/>',
+    projector: '<path d="M10 7.75a.75.75 0 0 1 1.142-.638l3.664 2.249a.75.75 0 0 1 0 1.278l-3.664 2.25a.75.75 0 0 1-1.142-.64z"/><path d="M12 17v4"/><path d="M8 21h8"/><rect x="2" y="3" width="20" height="14" rx="2"/>',
+    report: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="8" y1="9" x2="10" y2="9"/>',
     new: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>',
     open: '<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>',
     save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
@@ -36,6 +44,16 @@
 
   <div class="brand"><span class="rail-label">SSE</span></div>
 
+  <button
+    class="rail-btn"
+    class:active={activeView === 'starmap'}
+    aria-current={activeView === 'starmap' ? 'page' : undefined}
+    title={activeView === 'starmap' ? 'Starmap (current view)' : 'Back to the starmap'}
+    on:click={() => dispatch('starmap')}
+  >
+    <span class="ic">{@html svg(I.starmap)}</span><span class="rail-label">Starmap</span>
+  </button>
+
   <button class="rail-btn" title="New system" on:click={() => dispatch('new')}>
     <span class="ic">{@html svg(I.new)}</span><span class="rail-label">New System</span>
   </button>
@@ -54,6 +72,15 @@
   <button class="rail-btn" title="Routes & journeys" on:click={() => dispatch('routes')}>
     <span class="ic">{@html svg(I.routes)}</span><span class="rail-label">Routes…</span>
   </button>
+
+  {#if activeView === 'system'}
+    <button class="rail-btn" title="Open the projector window" on:click={() => dispatch('projector')}>
+      <span class="ic">{@html svg(I.projector)}</span><span class="rail-label">Projector</span>
+    </button>
+    <button class="rail-btn" title="Generate a report" on:click={() => dispatch('report')}>
+      <span class="ic">{@html svg(I.report)}</span><span class="rail-label">Report…</span>
+    </button>
+  {/if}
 
   <slot />
 
@@ -121,6 +148,14 @@
     white-space: nowrap;
   }
   .rail-btn:hover { background: var(--bg-control-hover); }
+  /* Active = the view you're already in (currently only the Starmap entry). Pure indicator. */
+  .rail-btn.active {
+    background: var(--bg-control-hover);
+    border-color: var(--accent);
+    color: var(--accent);
+    cursor: default;
+  }
+  .rail-btn.active .ic { color: var(--accent); }
   .ic { display: flex; flex: 0 0 auto; color: var(--text-muted, #cfcfcf); }
   .ic.accent { color: var(--accent); }
   .spacer { flex: 1 1 auto; }

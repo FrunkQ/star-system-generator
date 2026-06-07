@@ -779,6 +779,8 @@
   <AppShell bind:mode bind:railOpen>
     <svelte:fragment slot="rail">
       <RailNav
+        activeView="starmap"
+        on:starmap={() => { railOpen = false; }}
         on:new={() => dispatch('new')}
         on:open={() => dispatch('upload')}
         on:save={() => dispatch('download')}
