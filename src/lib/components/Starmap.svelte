@@ -787,6 +787,7 @@
         on:about={() => showAboutModal = true}
         on:allbodies={() => { railOpen = false; dispatch('allbodies'); }}
         on:allships={() => { railOpen = false; dispatch('allships'); }}
+        on:routes={() => { railOpen = false; dispatch('routes'); }}
       >
         <!-- Display settings (Background/Invert/Grid) + tech editors moved to the sectioned
              Settings modal; Reset is now a faded on-canvas control. Only Clear stays here. -->

@@ -60,6 +60,34 @@
   // system and jump straight to it. Lives in the rail (PC side panel) / + menu (mobile). ---
   let showAllBodies = false;
   let showAllShips = false; // constructs-only directory ("Ships")
+  let showRoutes = false; // routes & journeys list (in-system underway/planned + interstellar)
+  $: routesData = (() => {
+    const map = $starmapStore;
+    if (!map) return { interstellar: [] as any[], journeys: [] as any[] };
+    const sysName = (id: string) => map.systems.find((s) => s.id === id)?.name ?? id;
+    const interstellar = (map.routes ?? []).map((r) => ({
+      id: r.id, source: sysName(r.sourceSystemId), target: sysName(r.targetSystemId), distance: r.distance, unit: r.unit
+    }));
+    const journeys: any[] = [];
+    for (const sys of map.systems) {
+      const nodes = sys.system?.nodes ?? [];
+      const nodeName = (id: string) => (nodes as any[]).find((n) => n.id === id)?.name ?? id;
+      for (const n of nodes as any[]) {
+        if (n.kind !== 'construct') continue;
+        for (const j of (n.scheduled_journeys ?? [])) {
+          if (j.status !== 'scheduled' && j.status !== 'active') continue;
+          const plans = j.plans ?? [];
+          if (!plans.length) continue;
+          journeys.push({
+            id: j.id, constructId: n.id, constructName: n.name, systemId: sys.id, systemName: sys.name,
+            origin: nodeName(plans[0].originId), target: nodeName(plans[plans.length - 1].targetId),
+            status: j.status, legs: plans.length
+          });
+        }
+      }
+    }
+    return { interstellar, journeys };
+  })();
   $: allShips = allBodies.filter((n: any) => n.kind === 'construct');
   $: allBodies = (() => {
     const map = $starmapStore;
@@ -772,6 +800,7 @@
         on:llmsettings={() => showLlmSettingsModal = true}
         on:allbodies={() => showAllBodies = true}
         on:allships={() => showAllShips = true}
+        on:routes={() => showRoutes = true}
         on:back={handleBackToStarmap}
         on:renameNode={handleRenameNode}
       />
@@ -796,6 +825,7 @@
       on:llmsettings={() => showLlmSettingsModal = true}
       on:allbodies={() => showAllBodies = true}
       on:allships={() => showAllShips = true}
+      on:routes={() => showRoutes = true}
       on:updatestarmap={(e) => starmapStore.set(e.detail)}
       {selectedSystemForLink}
     />
@@ -857,6 +887,42 @@
           contextOf={allBodiesContext}
           on:select={handleAllBodiesSelect}
         />
+      </div>
+    </div>
+  {/if}
+
+  {#if showRoutes}
+    <div class="allbodies-overlay" role="presentation" on:click={() => (showRoutes = false)}>
+      <div class="allbodies-card" role="dialog" aria-label="Routes and journeys" on:click|stopPropagation>
+        <header class="allbodies-head">
+          <span>Routes &amp; journeys</span>
+          <button class="allbodies-close" aria-label="Close" on:click={() => (showRoutes = false)}>×</button>
+        </header>
+        <div class="routes-body">
+          <h4>Journeys underway &amp; planned ({routesData.journeys.length})</h4>
+          {#if routesData.journeys.length === 0}
+            <p class="routes-empty">No active or planned journeys.</p>
+          {:else}
+            {#each routesData.journeys as j (j.id)}
+              <button class="route-row" on:click={() => { showRoutes = false; enterSystemAndFocus(j.systemId, j.constructId); }}>
+                <span class="route-status {j.status}">{j.status}</span>
+                <span class="route-main"><strong>{j.constructName}</strong> · {j.origin} → {j.target}{j.legs > 1 ? ` (${j.legs} legs)` : ''}</span>
+                <span class="route-sys">{j.systemName}</span>
+              </button>
+            {/each}
+          {/if}
+          <h4>Interstellar routes ({routesData.interstellar.length})</h4>
+          {#if routesData.interstellar.length === 0}
+            <p class="routes-empty">No interstellar routes.</p>
+          {:else}
+            {#each routesData.interstellar as r (r.id)}
+              <div class="route-row static">
+                <span class="route-main"><strong>{r.source}</strong> → <strong>{r.target}</strong></span>
+                <span class="route-sys">{r.distance} {r.unit}</span>
+              </div>
+            {/each}
+          {/if}
+        </div>
       </div>
     </div>
   {/if}
@@ -931,6 +997,43 @@
     line-height: 1;
     cursor: pointer;
   }
+  .routes-body { overflow-y: auto; padding: 4px 2px; }
+  .routes-body h4 {
+    margin: 12px 0 6px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-faint, #8a8f9a);
+  }
+  .routes-body h4:first-child { margin-top: 0; }
+  .routes-empty { color: var(--text-faint, #8a8f9a); margin: 4px 0 8px; font-size: 0.9rem; }
+  .route-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    padding: 9px 10px;
+    margin-bottom: 4px;
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 8px;
+    background: var(--bg-control, #1b1e26);
+    color: var(--text, #e8e8e8);
+    cursor: pointer;
+  }
+  .route-row.static { cursor: default; }
+  .route-row:not(.static):hover { background: var(--bg-control-hover, #232733); }
+  .route-status {
+    flex: 0 0 auto;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 999px;
+  }
+  .route-status.active { background: color-mix(in srgb, var(--accent, #ff5a1f) 30%, transparent); color: var(--accent, #ff5a1f); }
+  .route-status.scheduled { background: var(--bg-panel, #14161c); color: var(--text-muted, #cfcfcf); }
+  .route-main { flex: 1 1 auto; min-width: 0; font-size: 0.9rem; }
+  .route-sys { flex: 0 0 auto; color: var(--text-faint, #8a8f9a); font-size: 0.8rem; }
   footer {
       margin-top: 2em;
       padding-top: 1em;

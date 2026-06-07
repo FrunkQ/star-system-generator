@@ -37,6 +37,7 @@
   <button class="rail-btn" on:click={() => dispatch('save')}>Save</button>
   <button class="rail-btn find-body" on:click={() => dispatch('allbodies')}>🔍 Find body…</button>
   <button class="rail-btn find-body" on:click={() => dispatch('allships')}>◇ Find ship…</button>
+  <button class="rail-btn find-body" on:click={() => dispatch('routes')}>⇄ Routes…</button>
 
   <!-- Optional view-specific content (e.g. phone View toggles) sits below the app
        nav and above the bottom group. Empty on desktop / starmap. -->
