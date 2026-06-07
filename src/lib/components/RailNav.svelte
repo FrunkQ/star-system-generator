@@ -2,8 +2,8 @@
   // Phase 03 — persistent app-nav rail. Lives in AppShell's `rail` slot (left on desktop,
   // slide-in on phone). Presentational: dispatches events; +page wires them. Two widths:
   // icon-only (minimal) ⇄ icon+text, toggled by the control at the top and remembered.
-  import { createEventDispatcher, onMount } from 'svelte';
-  import { browser } from '$app/environment';
+  import { createEventDispatcher } from 'svelte';
+  import { railCollapsed } from '$lib/railStore';
   const dispatch = createEventDispatcher();
 
   // Which top-level view is showing. The Starmap entry is a live indicator when 'starmap'
@@ -11,17 +11,14 @@
   // Projector/Report are system-only actions, so they only appear in the system view.
   export let activeView: 'starmap' | 'system' = 'starmap';
 
-  let collapsed = false;
   let fileOpen = false; // File group (New / Open / Save) inline accordion
-  onMount(() => { if (browser) collapsed = localStorage.getItem('sse-rail-collapsed') === '1'; });
-  function toggleCollapsed() {
-    collapsed = !collapsed;
-    if (browser) localStorage.setItem('sse-rail-collapsed', collapsed ? '1' : '0');
-  }
+  $: collapsed = $railCollapsed;
+  function toggleCollapsed() { railCollapsed.update((v) => !v); }
 
   // Flat Lucide-style monochrome icons (inline SVG).
   const I = {
     file: '<path d="M20 7h-7L9.5 4.5A1 1 0 0 0 8.8 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>',
+    trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
     starmap: '<circle cx="12" cy="12" r="3"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><path d="M10.4 21.9a10 10 0 0 0 9.941-15.416"/><path d="M13.5 2.1a10 10 0 0 0-9.841 15.416"/>',
     projector: '<path d="M10 7.75a.75.75 0 0 1 1.142-.638l3.664 2.249a.75.75 0 0 1 0 1.278l-3.664 2.25a.75.75 0 0 1-1.142-.64z"/><path d="M12 17v4"/><path d="M8 21h8"/><rect x="2" y="3" width="20" height="14" rx="2"/>',
     report: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="8" y1="9" x2="10" y2="9"/>',
@@ -76,6 +73,10 @@
       </button>
       <button class="rail-btn sub" title="Upload a system JSON" on:click={() => dispatch('uploadsystem')}>
         <span class="ic">{@html svg(I.open)}</span><span class="rail-label">Upload System…</span>
+      </button>
+    {:else}
+      <button class="rail-btn sub danger" title="Clear the whole starmap" on:click={() => dispatch('clear')}>
+        <span class="ic">{@html svg(I.trash)}</span><span class="rail-label">Clear Starmap…</span>
       </button>
     {/if}
   {/if}
@@ -178,6 +179,8 @@
   .rail-btn.sub { margin-left: 14px; background: transparent; }
   .rail-btn.sub:hover { background: var(--bg-control-hover); }
   .rail-nav.collapsed .rail-btn.sub { margin-left: 0; }
+  .rail-btn.danger { color: var(--status-bad, #ef4444); }
+  .rail-btn.danger .ic { color: var(--status-bad, #ef4444); }
   .spacer { flex: 1 1 auto; }
 
   /* Collapsed (icon-only): hide labels + section titles everywhere in the rail (incl. the

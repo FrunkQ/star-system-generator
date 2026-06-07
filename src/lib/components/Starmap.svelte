@@ -9,6 +9,8 @@
   import type { Starmap, System, CelestialBody, RulePack, Barycenter } from '$lib/types';
   import StarmapInfoPanel from './StarmapInfoPanel.svelte';
   import BottomSheet from './BottomSheet.svelte';
+  import TimeDisplay from './TimeDisplay.svelte';
+  import { railCollapsed } from '$lib/railStore';
   import Grid from './Grid.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import MarkdownModal from './MarkdownModal.svelte';
@@ -791,22 +793,20 @@
         on:allbodies={() => { railOpen = false; dispatch('allbodies'); }}
         on:allships={() => { railOpen = false; dispatch('allships'); }}
         on:routes={() => { railOpen = false; dispatch('routes'); }}
-      >
-        <!-- Display settings (Background/Invert/Grid) + tech editors moved to the sectioned
-             Settings modal; Reset is now a faded on-canvas control. Only Clear stays here. -->
-        <div class="rail-view-options">
-          <button class="rail-btn danger" on:click={() => { railOpen = false; dispatch('clear'); }}>Clear starmap</button>
-        </div>
-      </RailNav>
+        on:clear={() => { railOpen = false; dispatch('clear'); }}
+      />
     </svelte:fragment>
     <svelte:fragment slot="canvas">
   <div class="starmap-canvas">
+    {#if ensuredTemporal}
+      <div class="time-display-overlay"><TimeDisplay temporal={ensuredTemporal} /></div>
+    {/if}
     <BodyPicker
       nodes={starmap.systems}
       focusedId={null}
       emptyLabel="Starmap"
       placeholder="Search systems…"
-      top={mode === 'phone' ? 62 : 8}
+      top={mode === 'phone' ? 48 : 48}
       categorize={systemPickerCategorize}
       colorOf={systemPickerColor}
       contextOf={systemPickerContext}
@@ -819,7 +819,7 @@
     {#if mode !== 'phone'}
       <StarmapInfoPanel {starmap} on:update={(e) => dispatch('updatestarmap', e.detail)} />
     {/if}
-    <button class="ov-reset" title="Reset view" aria-label="Reset view" on:click={resetView}>⟲</button>
+    <button class="ov-reset" title="Reset view" aria-label="Reset view" on:click={resetView}>⟲{#if !$railCollapsed} Reset View{/if}</button>
     <svg
       bind:this={svgElement}
       class="starmap"
@@ -1327,24 +1327,32 @@
     font: inherit;
     font-size: 0.9rem;
   }
+  .time-display-overlay {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 57;
+  }
   .ov-reset {
     position: absolute;
     top: 8px;
     right: 8px;
     z-index: 56;
-    width: 34px;
     height: 32px;
+    padding: 0 10px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 5px;
     border: 1px solid var(--border, #2a2d36);
     border-radius: 8px;
     background: color-mix(in srgb, var(--bg-panel, #14161c) 86%, transparent);
     color: var(--text, #e8e8e8);
-    font-size: 1rem;
+    font-size: 0.9rem;
     cursor: pointer;
     opacity: 0.55;
     backdrop-filter: blur(6px);
+    white-space: nowrap;
   }
   .ov-reset:hover { opacity: 1; background: var(--bg-control-hover, #232733); }
   .time-overlay {

@@ -14,6 +14,8 @@
   import BodyImage from './BodyImage.svelte';
   import DescriptionEditor from './DescriptionEditor.svelte';
   import BodyPicker from './BodyPicker.svelte';
+  import TimeDisplay from './TimeDisplay.svelte';
+  import { railCollapsed } from '$lib/railStore';
   import GmNotesEditor from './GmNotesEditor.svelte';
   import ZoneKey from './ZoneKey.svelte';
   import ContextMenu from './ContextMenu.svelte'; 
@@ -1748,17 +1750,22 @@
     <!-- The canvas toggle toolbar moved to the rail's View section (clean orrery). -->
 
         <div class="main-view">
+            {#if ensuredTemporal}
+              <div class="time-display-overlay">
+                <TimeDisplay temporal={ensuredTemporal} displayOverrideSec={isAligningTime ? alignActualSecondsOverride : null} />
+              </div>
+            {/if}
             <BodyPicker
                 nodes={$systemStore.nodes}
                 focusedId={focusedBodyId}
-                top={mode === 'phone' ? 62 : 8}
+                top={mode === 'phone' ? 48 : 48}
                 on:select={(e) => updateFocus(e.detail)}
             />
 
             <!-- On-canvas orrery controls: faded Reset + a "View" popover of the
                  frequently-used display toggles (per the wireframe). -->
             <div class="orrery-controls" class:phone={mode === 'phone'}>
-              <button class="ov-btn faded" title="Reset view" aria-label="Reset view" on:click={() => visualizer?.resetView()}>⟲</button>
+              <button class="ov-btn faded" title="Reset view" aria-label="Reset view" on:click={() => visualizer?.resetView()}>⟲{#if !$railCollapsed} Reset View{/if}</button>
               <div class="ov-view">
                 <button class="ov-btn" class:active={viewOpen} on:click={toggleViewPopover}>View ▾</button>
                 {#if viewOpen}
@@ -2221,6 +2228,13 @@
     width: 100%;
     height: 100%;
     position: relative; /* anchor the BodyPicker + time overlays */
+  }
+  .time-display-overlay {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 57;
   }
   /* On-canvas orrery controls (top-right): faded Reset + a View popover. */
   .orrery-controls {

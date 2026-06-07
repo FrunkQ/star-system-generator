@@ -274,7 +274,6 @@
   </div>
 
   <div class="tt-rate" class:active={currentRate !== 0}>{currentRate !== 0 ? formattedScrubRate : (isPlaying ? '1s/s' : 'paused')}</div>
-  <div class="tt-date" title={"Display time (seconds from big bang: " + displayClockSeconds + ")"}>{displayClockLabel}</div>
 
   <button class="tt-btn tt-more" class:on={expanded} on:click={() => (expanded = !expanded)} title="More time controls" aria-label="More time controls">⋯</button>
 
