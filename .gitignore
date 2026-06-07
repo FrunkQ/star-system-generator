@@ -27,3 +27,9 @@ pnpm-debug.log*
 gemini.md
 
 DEV_NOTES.md
+
+# local dev logs / tooling
+build.log
+test.log
+.claude/launch.json
+.claude/watch_session.py
