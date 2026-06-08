@@ -6,6 +6,9 @@
   export let showModal: boolean;
   export let promptTemplate: string;
   export let promptData: Record<string, any>;
+  // The real body/construct to read & persist aiContext (remembered tags/style/length) on. promptData
+  // now carries CURATED summaries for the prompt, so aiContext must target the live object instead.
+  export let aiContextTarget: any = null;
   export let availableStyles: any[];
   export let availableTags: any;
   export let initialText: string;
@@ -32,7 +35,7 @@
   let selectedLength: any;
 
   onMount(() => {
-    const contextObject = promptData.CONSTRUCT || promptData.BODY;
+    const contextObject = aiContextTarget || promptData.CONSTRUCT || promptData.BODY;
     const aiContext = contextObject?.aiContext;
 
     if (aiContext) {
@@ -137,7 +140,7 @@
   }
 
   function handleClose() {
-    const contextObject = promptData.CONSTRUCT || promptData.BODY;
+    const contextObject = aiContextTarget || promptData.CONSTRUCT || promptData.BODY;
     if (contextObject) {
       contextObject.aiContext = {
         tags: Array.from(selectedTags),

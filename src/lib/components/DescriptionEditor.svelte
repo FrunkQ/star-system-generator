@@ -7,6 +7,7 @@
   import { get } from 'svelte/store';
   import { PROMPT_TEMPLATE } from '$lib/ai/prompt';
   import { CONSTRUCT_PROMPT } from '$lib/ai/construct-prompt';
+  import { summarizeBodyForLLM, summarizeStarForLLM } from '$lib/ai/curate';
   import styles from '$lib/ai/styles.json';
   import tags from '$lib/ai/tags.json';
   import constructStyles from '$lib/ai/construct-styles.json';
@@ -54,14 +55,17 @@
   function openAIModal() {
     if (body.kind === 'construct') {
       currentPromptTemplate = CONSTRUCT_PROMPT;
-      currentPromptData = { CONSTRUCT: body };
+      // Curated summary, not the raw construct JSON — keeps the prompt focused on story.
+      currentPromptData = { CONSTRUCT: summarizeBodyForLLM(body) };
       currentStyles = constructStyles;
       currentTags = constructTags;
     } else {
       const system = get(systemStore);
       const host = system?.nodes.find((n: any) => n.id === body.orbit?.hostId);
       currentPromptTemplate = PROMPT_TEMPLATE;
-      currentPromptData = { HOST_STAR: host, BODY: body };
+      // Feed curated, evocative summaries (constraint-grade physics + feature hints) rather than
+      // the full physics dump, so the seed text + tags steer imaginative descriptions.
+      currentPromptData = { HOST_STAR: summarizeStarForLLM(host as any), BODY: summarizeBodyForLLM(body) };
       currentStyles = styles;
       currentTags = tags;
     }
@@ -117,6 +121,7 @@
     bind:showModal={showAIModal}
     promptTemplate={currentPromptTemplate}
     promptData={currentPromptData}
+    aiContextTarget={body}
     availableStyles={currentStyles}
     availableTags={currentTags}
     initialText={body.description || ''}
