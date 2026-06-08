@@ -125,7 +125,8 @@
       align-items: center;
       justify-content: center;
   }
-  .apple-btn { color: var(--accent, #ff5a1f); }
+  /* Green apple = "the working is safe to peek at" (and a friendly nod to Newton's orchard). */
+  .apple-btn { color: var(--ok, #46c46a); }
   .edit-btn:hover {
       background-color: var(--bg-control);
       color: var(--accent);
