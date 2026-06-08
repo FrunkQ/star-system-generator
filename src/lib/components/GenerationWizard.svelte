@@ -6,7 +6,7 @@
   import type { RulePack, System } from '$lib/types';
   import HRDiagram from './HRDiagram.svelte';
   import { ageStar, isEngulfedAt, getStarLifespanGyr, type StarSeed } from '$lib/physics/stellar-evolution';
-  import { generateSystemFromConfig, type GenerationKnobs } from '$lib/generation/generateFromConfig';
+  import { generateSystemFromConfig, planStarHierarchy, type GenerationKnobs, type StarPlanNode } from '$lib/generation/generateFromConfig';
   import { fixUpImportedSystem } from '$lib/system/importFixup';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { SOLAR_MASS_KG } from '$lib/constants';
@@ -47,6 +47,30 @@
   let hovered: StarSeed | null = null;  // live readout of the point under the cursor on the HR diagram
   // Order by mass (heaviest = primary) so the hierarchy reads primary → companions.
   $: ordered = [...selectedStars].sort((a, b) => b.massKg - a.massKg);
+
+  // The planned hierarchy (the EXACT pairing the generator will build) → a flattened, depth-indented
+  // preview + a compact diagram, so you feel the close/wide binary structure before generating.
+  const LETTERS = 'ABCDEFGHIJKLMNOP';
+  function flattenPlan(node: StarPlanNode | null, depth: number, rows: any[]): any[] {
+    if (!node) return rows;
+    if (node.kind === 'pair') {
+      rows.push({ type: 'pair', depth, sepAU: node.sepAU });
+      flattenPlan(node.a, depth + 1, rows);
+      flattenPlan(node.b, depth + 1, rows);
+    } else {
+      rows.push({ type: 'star', depth, seed: node.seed, index: node.index });
+    }
+    return rows;
+  }
+  function planString(node: StarPlanNode | null): string {
+    if (!node) return '';
+    return node.kind === 'star' ? (LETTERS[node.index] ?? '?') : `(${planString(node.a)} · ${planString(node.b)})`;
+  }
+  const sepLabel = (au: number) =>
+    au < 0.3 ? `very close · ${fmt(au, 2)} AU` : au < 2 ? `close · ${fmt(au, 1)} AU`
+    : au < 20 ? `wide · ${fmt(au, 0)} AU` : `very wide · ${fmt(au, 0)} AU`;
+  $: plan = selectedStars.length ? planStarHierarchy(selectedStars) : null;
+  $: planRows = plan ? flattenPlan(plan, 0, []) : [];
 
   // LOG age axis: the slider runs from 1 Myr to the LONGEST-LIVED star's death, so a massive star can
   // collapse to a remnant long before an M dwarf even matures. Death ≈ 1.3× the main-sequence life.
@@ -149,15 +173,22 @@
           </div>
 
           <div class="hierarchy">
-            <div class="hier-title">System hierarchy <span class="muted">— click the diagram to add stars</span></div>
+            <div class="hier-title">System hierarchy <span class="muted">— tight pairs nest deepest; click the diagram to add stars</span></div>
             {#if selectedStars.length}
-              {#each ordered as s, i}
-                <div class="hier-row" style="padding-left: {i === 0 ? 0 : 14}px">
-                  <span class="star-dot" style="background:{starColor(s)}"></span>
-                  <span class="role">{i === 0 ? 'Primary' : `Companion ${i}`}</span>
-                  <span class="star-meta">{s.spectralClass}-type{s.category?.includes('Dwarf') && s.spectralClass === 'M' ? ' (red dwarf)' : ''} · {fmt(s.temperatureK, 0)} K · {fmt(s.luminositySolar, s.luminositySolar < 10 ? 3 : 0)} L☉ · {fmt(massSolar(s), 2)} M☉</span>
-                  <button class="x" title="Remove" on:click={() => (selectedStars = selectedStars.filter((x) => x.id !== s.id))}>×</button>
-                </div>
+              {#if plan && plan.kind === 'pair'}<div class="diagram">{planString(plan)}</div>{/if}
+              {#each planRows as row}
+                {#if row.type === 'pair'}
+                  <div class="pair-row" style="padding-left:{row.depth * 16}px">
+                    <span class="pair-bracket">⌐</span><span class="pair-label">binary — {sepLabel(row.sepAU)}</span>
+                  </div>
+                {:else}
+                  <div class="hier-row" style="padding-left:{row.depth * 16}px">
+                    <span class="star-dot" style="background:{starColor(row.seed)}"></span>
+                    <span class="role">{LETTERS[row.index] ?? '?'}</span>
+                    <span class="star-meta">{row.seed.spectralClass}-type{row.seed.category?.includes('Dwarf') && row.seed.spectralClass === 'M' ? ' (red dwarf)' : ''} · {fmt(row.seed.temperatureK, 0)} K · {fmt(row.seed.luminositySolar, row.seed.luminositySolar < 10 ? 3 : 0)} L☉ · {fmt(massSolar(row.seed), 2)} M☉</span>
+                    <button class="x" title="Remove" on:click={() => (selectedStars = selectedStars.filter((x) => x.id !== row.seed.id))}>×</button>
+                  </div>
+                {/if}
               {/each}
             {:else}
               <div class="hier-empty">No stars yet — click a point on the diagram above.</div>
@@ -250,6 +281,9 @@
   .hierarchy { margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--bg-panel, #14161c); }
   .hier-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted, #cfcfcf); margin-bottom: 6px; }
   .hier-empty { font-size: 0.82em; color: var(--text-faint, #8a8a8a); font-style: italic; }
+  .diagram { font-family: ui-monospace, monospace; font-size: 0.86em; color: var(--accent, #ff5a1f); margin-bottom: 6px; letter-spacing: 0.02em; }
+  .pair-row { display: flex; align-items: center; gap: 6px; padding: 1px 0; font-size: 0.74em; color: var(--text-faint, #8a8a8a); text-transform: uppercase; letter-spacing: 0.04em; }
+  .pair-bracket { color: var(--link); font-weight: 700; }
   .hier-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
   .star-dot { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 6px rgba(255,255,255,0.25); }
   .role { font-size: 0.78em; font-weight: 700; color: var(--link); min-width: 84px; }

@@ -117,70 +117,79 @@ function orbitAround(child: CelestialBody | Barycenter, parentId: string, parent
     elements: { a_AU: aAU, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: M0 } };
 }
 
-// Assemble star seeds into a single star, or a HIERARCHY of nested barycentres for 2+ stars (pairwise,
-// bottom-up, separations widening by level). Returns the leaf stars (S-type hosts) and barycentres
-// (P-type circumbinary hosts) with their stable orbital bounds, for the planet placer to fill.
+// A PLANNED star hierarchy node (pure — no bodies). Shared by the generator and the wizard preview so
+// the preview shows the EXACT structure that will be built. A 'pair' is a binary of two children
+// (each a star or a tighter pair) at separation sepAU.
+export type StarPlanNode =
+  | { kind: 'star'; seed: StarSeed; massKg: number; index: number }
+  | { kind: 'pair'; a: StarPlanNode; b: StarPlanNode; sepAU: number; level: number; massKg: number };
+
+// Pair stars into a nested hierarchy: sort by mass, pair adjacent (so the TIGHT pairs are similar-mass
+// "twins" — the real close-binary preference), nesting bottom-up with each level's separation widening
+// ~7× (hierarchical stability). Pairs by FORMATION mass, so a star going remnant doesn't un-pair its
+// binary. Gives the classic forms automatically: (A·B), ((A·B)·C), ((A·B)·(C·D)).
+export function planStarHierarchy(seeds: StarSeed[]): StarPlanNode | null {
+  if (!seeds.length) return null;
+  let comps: StarPlanNode[] = [...seeds]
+    .sort((a, b) => b.massKg - a.massKg)
+    .map((seed, index) => ({ kind: 'star', seed, massKg: seed.massKg, index } as StarPlanNode));
+  let level = 0;
+  while (comps.length > 1) {
+    const next: StarPlanNode[] = [];
+    for (let i = 0; i < comps.length; i += 2) {
+      if (i + 1 >= comps.length) { next.push(comps[i]); continue; } // odd one out → pairs at a wider level
+      const a = comps[i], b = comps[i + 1], total = a.massKg + b.massKg;
+      next.push({ kind: 'pair', a, b, sepAU: closeSepAU(total) * Math.pow(HIER_STEP, level), level, massKg: total });
+    }
+    comps = next; level++;
+  }
+  return comps[0];
+}
+
+// Walk a planned hierarchy into actual star bodies + nested barycentres, collecting the S-type and
+// P-type host bounds for the planet placer. (The processor reconciles barycentre dynamics afterwards.)
 function setupStarsFromSeeds(seeds: StarSeed[], pack: RulePack, ageGyr: number | undefined, baseName: string) {
-  const evolved = seeds.map((s) => (ageGyr ? ageStar(s, ageGyr * 1e9) : s) as StarSeed);
-  evolved.sort((a, b) => b.massKg - a.massKg); // most massive first
   const nodes: (CelestialBody | Barycenter)[] = [];
   const LETTERS = 'ABCDEFGHIJKLMNOP';
+  const massOf = (n: CelestialBody | Barycenter) => n.kind === 'barycenter' ? (n.effectiveMassKg || 0) : ((n as CelestialBody).massKg || 0);
 
-  if (evolved.length === 1) {
-    const star = starSeedToBody(evolved[0], pack, `${baseName}-star-a`, null);
+  if (seeds.length === 1) {
+    const star = starSeedToBody(ageGyr ? ageStar(seeds[0], ageGyr * 1e9) : seeds[0], pack, `${baseName}-star-a`, null);
     star.name = baseName;
     nodes.push(star);
     return { nodes, systemRoot: star, systemName: star.name, isBinary: false, hierarchical: false,
       starA: star, starB: undefined as CelestialBody | undefined, starHosts: [] as StarHost[], baryHosts: [] as BaryHost[] };
   }
 
-  // --- Build the nested-barycentre hierarchy ---
-  type Comp = { node: CelestialBody | Barycenter; massKg: number; isStar: boolean };
-  let comps: Comp[] = evolved.map((seed, i) => {
-    const body = starSeedToBody(seed, pack, `${baseName}-star-${i}`, null);
-    body.name = `${baseName} ${LETTERS[i] ?? i + 1}`;
-    nodes.push(body);
-    return { node: body, massKg: body.massKg || 0, isStar: true };
-  });
-
-  const starHosts: StarHost[] = comps.map((c) => ({ star: c.node as CelestialBody, outerAU: Infinity }));
+  const plan = planStarHierarchy(seeds)!;
+  const starHosts: StarHost[] = [];
   const baryHosts: BaryHost[] = [];
-  const baryHostByNode = new Map<string, BaryHost>();
-  let baryN = 0, level = 0;
+  let baryN = 0;
 
-  while (comps.length > 1) {
-    const next: Comp[] = [];
-    for (let i = 0; i < comps.length; i += 2) {
-      if (i + 1 >= comps.length) { next.push(comps[i]); continue; } // odd one out → pairs at a wider level
-      const a = comps[i], b = comps[i + 1];
-      const total = a.massKg + b.massKg;
-      const sep = closeSepAU(total) * Math.pow(HIER_STEP, level);
-      const baryId = `${baseName}-bary-${baryN++}`;
-      orbitAround(a.node, baryId, total, sep * (b.massKg / total), 0);
-      orbitAround(b.node, baryId, total, sep * (a.massKg / total), Math.PI);
-      const bary: Barycenter = { id: baryId, parentId: null, name: `${baseName} Barycentre ${baryN}`,
-        kind: 'barycenter', memberIds: [a.node.id, b.node.id], effectiveMassKg: total, tags: [] };
-      nodes.push(bary);
-
-      // This pairing fixes the OUTER stability bound of both children: a star's S-type zone and a
-      // sub-barycentre's circumbinary zone both end at ~0.37× this separation.
-      for (const child of [a, b]) {
-        if (child.isStar) {
-          const h = starHosts.find((x) => x.star.id === child.node.id);
-          if (h) h.outerAU = S_TYPE_FRAC * sep;
-        } else {
-          const bh = baryHostByNode.get(child.node.id);
-          if (bh) bh.outerAU = S_TYPE_FRAC * sep;
-        }
-      }
-      const bh: BaryHost = { bary, innerAU: P_TYPE_FRAC * sep, outerAU: Infinity };
-      baryHosts.push(bh); baryHostByNode.set(baryId, bh);
-      next.push({ node: bary, massKg: total, isStar: false });
+  // Build a plan node; parentSepAU is the separation of the pair this node sits inside (∞ at the root),
+  // which sets the node's OUTER stability bound (~0.37× the parent separation).
+  const build = (node: StarPlanNode, parentIdForStar: string | null, parentSepAU: number): CelestialBody | Barycenter => {
+    if (node.kind === 'star') {
+      const body = starSeedToBody(ageGyr ? ageStar(node.seed, ageGyr * 1e9) : node.seed, pack, `${baseName}-star-${node.index}`, parentIdForStar);
+      body.name = `${baseName} ${LETTERS[node.index] ?? node.index + 1}`;
+      nodes.push(body);
+      starHosts.push({ star: body, outerAU: parentSepAU === Infinity ? Infinity : S_TYPE_FRAC * parentSepAU });
+      return body;
     }
-    comps = next; level++;
-  }
+    const baryId = `${baseName}-bary-${baryN++}`;
+    const childA = build(node.a, baryId, node.sepAU);
+    const childB = build(node.b, baryId, node.sepAU);
+    const mA = massOf(childA), mB = massOf(childB), total = mA + mB;
+    orbitAround(childA, baryId, total, node.sepAU * (mB / total), 0);
+    orbitAround(childB, baryId, total, node.sepAU * (mA / total), Math.PI);
+    const bary: Barycenter = { id: baryId, parentId: null, name: `${baseName} Barycentre ${baryN}`,
+      kind: 'barycenter', memberIds: [childA.id, childB.id], effectiveMassKg: total, tags: [] };
+    nodes.push(bary);
+    baryHosts.push({ bary, innerAU: P_TYPE_FRAC * node.sepAU, outerAU: parentSepAU === Infinity ? Infinity : S_TYPE_FRAC * parentSepAU });
+    return bary;
+  };
 
-  const root = comps[0].node;
+  const root = build(plan, null, Infinity);
   return { nodes, systemRoot: root, systemName: `${baseName} System`, isBinary: true, hierarchical: true,
     starA: starHosts[0].star, starB: starHosts[1]?.star, starHosts, baryHosts };
 }
