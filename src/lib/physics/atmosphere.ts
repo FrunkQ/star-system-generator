@@ -188,6 +188,24 @@ export function calculateGreenhouseEffect(body: CelestialBody, rulePack: RulePac
         }
     }
 
+    // Cloud / ocean coupling: a liquid water ocean evaporates, adding water-vapour greenhouse the
+    // listed composition may omit. This is the warming counterpart to the cloud ALBEDO (cooling)
+    // now derived elsewhere. Gated OFF when H2O is already in the atmosphere, so calibrated worlds
+    // (Earth lists 0.4% H2O) are untouched — no double-count.
+    const h2oFrac = atm.composition['H2O'] || 0;
+    const hasWaterOcean = body.hydrosphere?.composition === 'water' && (body.hydrosphere?.coverage || 0) > 0.1;
+    const surfTForVapour = body.temperatureK || body.equilibriumTempK || 0;
+    if (hasWaterOcean && h2oFrac < 0.001 && surfTForVapour > 273 && surfTForVapour < 373) {
+        // Near-surface water-vapour fraction is small even over a warm ocean (Earth ≈ 0.4%); it rises
+        // gently with temperature. Kept Earth-realistic so it adds a few K, not a runaway.
+        const impliedH2O = clamp(0.004 + (surfTForVapour - 273) / 2500, 0, 0.025);
+        const pp = effectivePressure * impliedH2O;
+        const h2oPhysics = rulePack.gasPhysics['H2O'];
+        if (h2oPhysics && h2oPhysics.greenhouse > 0) {
+            totalDeltaT += h2oPhysics.greenhouse * Math.log(1 + Math.sqrt(100 * pp)) * cryoOverlap;
+        }
+    }
+
     const ppCo2 = effectivePressure * (atm.composition['CO2'] || 0);
     const denseCo2Boost = 1 + clamp(
         (ppCo2 - model.denseCo2BoostStartBar) / model.denseCo2BoostDenominator,

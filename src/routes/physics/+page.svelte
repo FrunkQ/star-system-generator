@@ -132,6 +132,12 @@
         (from atmospheric composition + pressure, capped to avoid runaway blow-ups), tidal heating, radiogenic
         heat, and giant internal heat. The greenhouse model and its cryo/CIA parameters live in the rulepack
         (<code>climateModel.greenhouse</code>) so they're tunable, not hard-coded.</p>
+      <p><strong>Clouds are coupled to temperature in BOTH directions</strong>, but not by a single term that
+        would double-count: their <em>cooling</em> (reflectivity) is the derived <a href="#temperature">albedo</a>
+        above, while their <em>warming</em> is the greenhouse of the gas they condensed from (Venus's clouds are
+        its CO₂; Earth's water vapour is in its air at 0.4%). The one gap we fill explicitly: a liquid-water ocean
+        whose atmosphere <em>omits</em> water vapour gets an Earth-realistic implied vapour greenhouse — gated off
+        when H₂O is already listed, so calibrated worlds are untouched.</p>
     </section>
 
     <section id="temp-range">
