@@ -7,7 +7,7 @@
 // So on import we STRIP everything the processor will re-derive, keeping only the authored INPUTS
 // (mass, radius, orbit, atmosphere/hydrosphere composition, makeup, biosphere, rotation, names,
 // descriptions, GM notes, and any genuinely-authored namespaced tags). Then the caller re-processes.
-import type { System, CelestialBody, Tag } from '$lib/types';
+import type { System, CelestialBody, Tag, RulePack } from '$lib/types';
 
 // Derived fields the processor recomputes — never trust them from an old file.
 const DERIVED_FIELDS = [
@@ -40,17 +40,35 @@ const DERIVED_FLAT_TAGS = new Set([
   'thin', 'thick', 'exosphere', 'haze', 'hot'
 ]);
 
-// A tag is "interfering" (strip it) if it's a derived namespace, a known managed/retired flat tag, or a
-// legacy DISPLAY-NAME tag (the old format used spaces / capitals; the new format is lowercase-hyphen-
-// namespaced). Genuinely-authored tags (faction/x, plot/y, lore/z) are lowercase-namespaced and kept.
-export function isInterferingTag(key: string): boolean {
+// Classification namespaces — a type is a CLASS (lives in body.classes), never a tag. Old saves
+// sometimes stored the class as a tag ("ice-giant", "planet/ice-giant"); those must go.
+const CLASS_PREFIXES = ['planet/', 'star/', 'belt/', 'ring/'];
+
+// A tag is "interfering" (strip it) if it's a derived namespace, a known managed/retired flat tag, a
+// classification (a class-as-tag — bare type name or namespaced class), or a legacy DISPLAY-NAME tag
+// (old format used spaces/capitals; the new format is lowercase-hyphen-namespaced). Genuinely-authored
+// tags (faction/x, plot/y, lore/z) are lowercase-namespaced and kept.
+export function isInterferingTag(key: string, classNames?: Set<string>): boolean {
   if (DERIVED_TAG_PREFIXES.some((p) => key.startsWith(p))) return true;
+  if (CLASS_PREFIXES.some((p) => key.startsWith(p))) return true;      // class duplicated as a tag
+  if (classNames && classNames.has(key)) return true;                  // bare type name (e.g. "ice-giant")
   if (DERIVED_FLAT_TAGS.has(key)) return true;
-  if (/[A-Z]/.test(key) || key.includes(' ')) return true; // legacy display-name tag
+  if (/[A-Z]/.test(key) || key.includes(' ')) return true;            // legacy display-name tag
   return false;
 }
 
-function stripBody(body: CelestialBody): void {
+// Bare type names from the rulepack's classifier (so "ice-giant", "puffy", … are recognised as
+// classifications, not tags).
+function classNamesFromPack(pack?: RulePack): Set<string> {
+  const out = new Set<string>();
+  const add = (cls: string) => { const bare = cls.split('/').pop(); if (bare) out.add(bare); };
+  for (const k of Object.keys(pack?.classifier?.planetImages ?? {})) add(k);
+  for (const k of Object.keys((pack?.classifier as any)?.starImages ?? {})) add(k);
+  for (const fp of pack?.classifier?.fingerprints ?? []) add(fp.class);
+  return out;
+}
+
+function stripBody(body: CelestialBody, classNames: Set<string>): void {
   for (const f of DERIVED_FIELDS) delete (body as any)[f];
   // Classification is re-derived from physics.
   body.classes = [];
@@ -58,13 +76,14 @@ function stripBody(body: CelestialBody): void {
   if (body.hydrosphere) delete (body.hydrosphere as any).layers;
   if (body.atmosphere) { delete (body.atmosphere as any).molarMassKg; delete (body.atmosphere as any).scaleHeightKm; }
   // Tags: keep only authored ones.
-  if (Array.isArray(body.tags)) body.tags = body.tags.filter((t: Tag) => !isInterferingTag(t.key));
+  if (Array.isArray(body.tags)) body.tags = body.tags.filter((t: Tag) => !isInterferingTag(t.key, classNames));
 }
 
 // Fix up a single system in place (and return it). Caller should re-run systemProcessor.process().
-export function fixUpImportedSystem(system: System): System {
+export function fixUpImportedSystem(system: System, pack?: RulePack): System {
+  const classNames = classNamesFromPack(pack);
   for (const node of system.nodes) {
-    if (node.kind === 'body') stripBody(node as CelestialBody);
+    if (node.kind === 'body') stripBody(node as CelestialBody, classNames);
     // Auto-generated barycentres are reconciled by the processor; drop them so they don't duplicate.
     if (node.kind === 'barycenter' && (node as any).tags?.some?.((t: Tag) => t.key === 'barycenter/auto')) {
       (node as any).__autoBary = true;

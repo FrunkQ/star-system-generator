@@ -61,7 +61,7 @@
     try {
       const res = await fetch(`/examples/${name}`);
       const raw = await res.json() as System;
-      const system = systemProcessor.process(fixUpImportedSystem(raw), rulePack);
+      const system = systemProcessor.process(fixUpImportedSystem(raw, rulePack), rulePack);
       dispatch('generate', { system });
     } catch (e) {
       console.error('Failed to load example', e); alert('Could not load that example.');

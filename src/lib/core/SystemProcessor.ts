@@ -517,6 +517,18 @@ export class SystemProcessor implements ISystemProcessor {
         // Preserve any "manual" or "special" classes that strictly aren't output by the classifier?
         // The classifier is usually comprehensive.
         body.classes = newClasses;
+
+        // Re-derive the type IMAGE from the (re)classification so the picture ALWAYS matches the
+        // type — editing makeup that reclassifies a world (ice-giant → puffy) now updates its image,
+        // and an imported body's stale generation-time image is corrected. (Stars use a different
+        // image map and are untouched here.)
+        const primaryClass = body.classes?.[0];
+        if (body.roleHint !== 'star' && primaryClass && pack.classifier?.planetImages) {
+            const img = pack.classifier.planetImages[primaryClass]
+                ?? pack.classifier.planetImages[`planet/${primaryClass.split('/')[1]}`];
+            if (img) body.image = { url: img };
+        }
+
         // Record WHY (the winning fingerprint + matched bands + runner-up) for the Newton panel.
         const fps = pack.classifier?.fingerprints;
         body.classification = fps && fps.length ? explainClassification(features, fps) : undefined;

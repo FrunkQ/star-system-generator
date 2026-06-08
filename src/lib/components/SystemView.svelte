@@ -1163,7 +1163,7 @@
 
           // One-way fix-up: strip baked-in derived data / legacy tags so the new engine re-derives
           // cleanly (v1 imports otherwise carry stale physics that shadows the model).
-          newSystem = fixUpImportedSystem(newSystem);
+          newSystem = fixUpImportedSystem(newSystem, rulePack);
           systemStore.set(systemProcessor.process(newSystem, rulePack));
           currentTime = newSystem?.epochT0 || Date.now();
           focusedBodyId = null;

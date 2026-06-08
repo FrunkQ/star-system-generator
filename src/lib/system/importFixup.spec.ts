@@ -15,6 +15,15 @@ describe('isInterferingTag', () => {
       expect(isInterferingTag(k)).toBe(false);
     }
   });
+
+  it('strips classification class-tags (a type is a class, never a tag)', () => {
+    const classes = new Set(['ice-giant', 'puffy', 'terrestrial']);
+    expect(isInterferingTag('planet/ice-giant')).toBe(true);   // namespaced class
+    expect(isInterferingTag('star/G')).toBe(true);
+    expect(isInterferingTag('ice-giant', classes)).toBe(true); // bare type name (with pack class list)
+    expect(isInterferingTag('puffy', classes)).toBe(true);
+    expect(isInterferingTag('ice-giant')).toBe(false);         // without the class list it's just kept
+  });
 });
 
 describe('fixUpImportedSystem', () => {

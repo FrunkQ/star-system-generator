@@ -711,7 +711,7 @@
         if (selectedRulepack && Array.isArray(sanitized.systems)) {
           for (const node of sanitized.systems) {
             if (node?.system?.nodes) {
-              try { node.system = systemProcessor.process(fixUpImportedSystem(node.system), selectedRulepack); }
+              try { node.system = systemProcessor.process(fixUpImportedSystem(node.system, selectedRulepack), selectedRulepack); }
               catch (e) { console.warn('Fix-up failed for system', node.name, e); }
             }
           }
