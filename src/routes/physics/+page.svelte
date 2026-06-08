@@ -243,7 +243,11 @@
           <code>habitability/subsurface</code> tier — sub-ice life is a separate axis from the surface Goldilocks zone.</li>
       </ul>
       <p>Tiers now require geological <em>stability</em>: Earth-like needs water, O₂, ~1 g, low radiation <em>and</em>
-        plate tectonics; human-habitable excludes stagnant-lid/tidal-volcanic; alien-habitable is score &gt; 40.</p>
+        plate tectonics; human-habitable excludes stagnant-lid/tidal-volcanic; alien-habitable is score &gt; 40.
+        <strong>Earth is the 100 anchor</strong> — plate tectonics and a magnetosphere are the expected baseline (no
+        bonus, only penalties for lacking them). <strong>Super-habitable</strong> worlds can break 100 (capped 130):
+        a larger biosphere on a durable-tectonics super-Earth (1.3–3.5 M⊕), a mature stable system (5–9 Gyr) and a
+        warm, wet optimum — the Heller &amp; Armstrong idea that Earth is <em>not</em> the most habitable a world can be.</p>
       <p class="caveat"><strong>Honest about the guesswork:</strong> the habitability weights — and the geology/magnetism
         modifiers especially — are <em>heuristic, not first-principles</em>. They're tuned to be <em>plausible</em>
         (Earth scores ~100 with plate tectonics; Venus collapses on its stagnant lid; Europa earns a sub-ice niche),

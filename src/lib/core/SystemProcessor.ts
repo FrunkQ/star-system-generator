@@ -627,20 +627,35 @@ export class SystemProcessor implements ISystemProcessor {
 
         // --- Long-term habitability: geology + magnetism (HEURISTIC — admitted guesswork, see the
         //     /physics "biosphere" note). These don't change instantaneous surface conditions; they
-        //     decide whether a world STAYS habitable: climate regulation, atmosphere retention and
-        //     nutrient recycling. Weights are deliberately modest so the surface model still leads. ---
+        //     decide whether a world STAYS habitable. Earth is the 100 ANCHOR, so plate tectonics +
+        //     an intrinsic magnetosphere are the expected baseline (no bonus) — only DEFICIENCIES
+        //     penalise. Super-habitability (below) is what pushes a world above Earth. ---
         let geoMod = 0;
         const regime = planet.geoActivity?.regime;
-        if (regime === 'plate-tectonics') geoMod += 8;        // carbonate–silicate climate regulation
-        else if (regime === 'stagnant-lid') geoMod -= 25;     // runaway-greenhouse risk (Venus)
+        if (regime === 'stagnant-lid') geoMod -= 25;          // runaway-greenhouse risk (Venus)
         else if (regime === 'tidal-volcanic') geoMod -= 20;   // resurfaced too fast for surface life
         else if (regime === 'inactive') geoMod -= 10;         // no outgassing / nutrient recycling
-        if (planet.magnetism) {
-            if (planet.magnetism.intrinsic) geoMod += 5;                  // shielded from stellar wind
-            else if (planet.magnetism.source === 'none') geoMod -= 8;     // unshielded → atmosphere stripping
+        if (planet.magnetism && !planet.magnetism.intrinsic && planet.magnetism.source === 'none') {
+            geoMod -= 8;                                       // unshielded → atmosphere stripping
         }
         score = Math.max(0, score + geoMod);
-        planet.habitabilityScore = Math.max(0, Math.min(100, score));
+
+        // --- Super-habitability (Heller & Armstrong): conditions that EXCEED Earth — a larger
+        //     biosphere on a durable-tectonics super-Earth, a mature/stable system, and a warm, wet
+        //     optimum. Earth itself scores 0 here (it is the 100 anchor); only genuinely better
+        //     worlds break 100. Gated to an already good surface. (HEURISTIC.) ---
+        const surfaceGood = factors.temp > 0.7 && factors.pressure > 0.6 && factors.solvent === 1 &&
+            factors.gravity > 0.6 && planet.hydrosphere?.composition === 'water';
+        if (surfaceGood && regime === 'plate-tectonics') {
+            const massMe = (planet.massKg ?? 0) / EARTH_MASS_KG;
+            if (massMe >= 1.3 && massMe <= 3.5) score += 6;   // more land area + longer-lived tectonics
+            if (this.systemAgeGyr >= 5 && this.systemAgeGyr <= 9) score += 4; // mature, stable, time for biodiversity
+            const t = planet.temperatureK ?? 0;
+            if (t >= 290 && t <= 298 && (planet.hydrosphere?.coverage ?? 0) > 0.5) score += 4; // warm, wet optimum
+        }
+
+        // Earth anchors at 100; super-habitable worlds may exceed it (capped at 130).
+        planet.habitabilityScore = Math.max(0, Math.min(130, score));
 
         // --- Subsurface-ocean niche: not surface-habitable, but a genuine sub-ice habitability axis
         //     (liquid water + tidal/radiogenic energy + rock chemistry — Europa/Enceladus). Bounded
@@ -659,12 +674,14 @@ export class SystemProcessor implements ISystemProcessor {
         const isEarthLike = factors.temp > 0.9 && factors.pressure > 0.8 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.9 && factors.gravity > 0.8 && planet.atmosphere?.composition?.['O2'] > 0.1 && regime === 'plate-tectonics';
         const isHumanHabitable = factors.temp > 0.7 && factors.pressure > 0.6 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.7 && factors.gravity > 0.6 && regime !== 'stagnant-lid' && regime !== 'tidal-volcanic';
         const isAlienHabitable = planet.habitabilityScore > 40;
+        const isSuperHabitable = planet.habitabilityScore > 100; // better-than-Earth (only super-habitable worlds)
 
         // Clear old habitability tags before adding new ones
         planet.tags = planet.tags?.filter(t => !t.key.startsWith('habitability/')) || [];
 
         let tier: string;
-        if (isEarthLike) tier = 'habitability/earth-like';
+        if (isSuperHabitable) tier = 'habitability/super';
+        else if (isEarthLike) tier = 'habitability/earth-like';
         else if (isHumanHabitable) tier = 'habitability/human';
         else if (subsurfaceHabitable) tier = 'habitability/subsurface';
         else if (isAlienHabitable) tier = 'habitability/alien';
