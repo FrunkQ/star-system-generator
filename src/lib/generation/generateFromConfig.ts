@@ -8,11 +8,11 @@ import { bodyFactory } from '../core/BodyFactory';
 import { systemProcessor } from '../core/SystemProcessor';
 import { _generatePlanetaryBody } from './planet';
 import { generateBodyOfType, viableTypesAt } from './generateBodyOfType';
-import { drawTypeForSlot } from './typeDraw';
+import { drawTypeForSlot, rarityOf, rarityTier } from './typeDraw';
 import { calculateOrbitalSlots } from './placement-strategy';
 import { randomFromRange, weightedChoice } from '../utils';
 import { calculateEquilibriumTemperature } from '../physics/temperature';
-import { makeSystemName, makeWorldName, namesHabitableWorlds, type NamingStrategy } from './naming';
+import { makeSystemName, makeWorldName, namesWorlds, planetNameChance, type NamingStrategy } from './naming';
 import { ageStar, determineSpectralClass, type StarSeed, type StarPhase } from '../physics/stellar-evolution';
 import { G, AU_KM } from '../constants';
 
@@ -126,23 +126,43 @@ export type StarPlanNode =
   | { kind: 'star'; seed: StarSeed; massKg: number; index: number }
   | { kind: 'pair'; a: StarPlanNode; b: StarPlanNode; sepAU: number; level: number; massKg: number };
 
-// Pair stars into a nested hierarchy: sort by mass, pair adjacent (so the TIGHT pairs are similar-mass
-// "twins" — the real close-binary preference), nesting bottom-up with each level's separation widening
-// ~7× (hierarchical stability). Pairs by FORMATION mass, so a star going remnant doesn't un-pair its
-// binary. Gives the classic forms automatically: (A·B), ((A·B)·C), ((A·B)·(C·D)).
+// Pair stars into a nested hierarchy. The baseline is sort-by-mass + pair-adjacent, so TIGHT pairs are
+// similar-mass "twins" (the real close-binary preference), nesting bottom-up with each level's
+// separation widening ~7× (hierarchical stability). On top of that we add controlled SCATTER so it's
+// not always perfectly uniform: a mild chance to swap adjacent partners (an unequal-mass pair), and a
+// chance to leave a star SINGLE so it pairs at a wider level — giving single-orbited-by-a-binary forms
+// ((A·B)·C) and the occasional "missed" star, like real multiples. The randomness is seeded from the
+// STAR SET (masses/temps), so it's deterministic — the wizard preview matches the generated system.
+// Pairs by FORMATION mass, so a star going remnant doesn't un-pair its binary.
 export function planStarHierarchy(seeds: StarSeed[]): StarPlanNode | null {
   if (!seeds.length) return null;
+  const rng = new SeededRNG('hier|' + seeds.map((s) => Math.round(s.massKg) + ':' + Math.round(s.temperatureK)).join('|'));
   let comps: StarPlanNode[] = [...seeds]
     .sort((a, b) => b.massKg - a.massKg)
     .map((seed, index) => ({ kind: 'star', seed, massKg: seed.massKg, index } as StarPlanNode));
   let level = 0;
   while (comps.length > 1) {
+    // Mild mass-scatter so pairs aren't strictly twins (real binaries have a spread).
+    for (let k = 0; k < comps.length - 1; k++) if (rng.nextFloat() < 0.18) { const t = comps[k]; comps[k] = comps[k + 1]; comps[k + 1] = t; }
+
     const next: StarPlanNode[] = [];
-    for (let i = 0; i < comps.length; i += 2) {
-      if (i + 1 >= comps.length) { next.push(comps[i]); continue; } // odd one out → pairs at a wider level
+    let i = 0;
+    while (i < comps.length) {
+      const remaining = comps.length - i;
+      // Leave a single (it pairs at a wider level → single + binary forms) when it's the odd one out,
+      // or by chance when ≥3 remain — but never strand the whole round (guard below ensures a pair).
+      if (remaining === 1 || (remaining >= 3 && rng.nextFloat() < 0.22)) { next.push(comps[i]); i += 1; continue; }
       const a = comps[i], b = comps[i + 1], total = a.massKg + b.massKg;
       next.push({ kind: 'pair', a, b, sepAU: closeSepAU(total) * Math.pow(HIER_STEP, level), level, massKg: total });
+      i += 2;
     }
+    // Progress guard: if scatter/singling formed no pair, force-pair the two heaviest so we converge.
+    if (next.length === comps.length) {
+      const a = comps[0], b = comps[1], total = a.massKg + b.massKg;
+      next.length = 0;
+      next.push({ kind: 'pair', a, b, sepAU: closeSepAU(total) * Math.pow(HIER_STEP, level), level, massKg: total }, ...comps.slice(2));
+    }
+    next.sort((x, y) => y.massKg - x.massKg);   // heavier components stay inner, singles drift outward
     comps = next; level++;
   }
   return comps[0];
@@ -331,15 +351,18 @@ export function generateSystemFromConfig(seed: string, pack: RulePack, config: G
   };
   const processed = systemProcessor.process(system, pack);
 
-  // Habitable worlds are charted & settled, so they earn a proper name (scientific & named strategies;
-  // catalogue stays cold). Done AFTER processing, which is what determines habitability.
-  if (namesHabitableWorlds(naming)) {
+  // Worlds earn a PROPER name by chance scaled to their rarity (legendary almost always, common rarely)
+  // — and a habitable world almost always, since it'd be charted & settled. Some named, some not, which
+  // reads more real than naming everything. (Catalogue stays cold — no proper names.) Done AFTER
+  // processing, which is what fixes both habitability and the final classified type.
+  if (namesWorlds(naming)) {
     const used = new Set<string>();
     for (const n of processed.nodes) {
       const b = n as CelestialBody;
-      if (b.kind === 'body' && b.roleHint === 'planet' && (b.habitabilityScore ?? 0) >= 40) {
-        b.name = makeWorldName(rng, used);
-      }
+      if (b.kind !== 'body' || b.roleHint !== 'planet') continue;
+      const habitable = (b.habitabilityScore ?? 0) >= 40;
+      const tier = rarityTier(rarityOf(b.classes?.[0] ?? '', pack)).key;
+      if (rng.nextFloat() < planetNameChance(tier, habitable)) b.name = makeWorldName(rng, used);
     }
   }
   return processed;
