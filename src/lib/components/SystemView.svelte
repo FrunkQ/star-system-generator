@@ -43,6 +43,8 @@
   import { broadcastService } from '$lib/broadcast';
   import FocusHeader from './FocusHeader.svelte';
   import PhysicsTraceModal from './PhysicsTraceModal.svelte';
+  import AddBodyTypeModal from './AddBodyTypeModal.svelte';
+  import { generateBodyOfType } from '$lib/generation/generateBodyOfType';
   import AppShell from './AppShell.svelte';
   import RailNav from './RailNav.svelte';
   import { calculateAllStellarZones } from '$lib/physics/zones';
@@ -298,6 +300,10 @@
   // Physics "working" (Newton/Apple) panel
   let showPhysicsModal = false;
 
+  // §4c add-by-viable-type picker
+  let showAddTypeModal = false;
+  let pendingAdd: { distAU: number; startAngle: number; hostId: string; hostMassKg: number; role: 'planet' | 'moon'; teqK: number } | null = null;
+
   // Create Construct (Background) Modal State
   let showCreateConstructModal = false;
   let showSaveModal = false;
@@ -378,6 +384,19 @@
       const dy = backgroundClickPosition!.y - hostPos.y;
       distAU = Math.sqrt(dx*dx + dy*dy);
       startAngle = Math.atan2(dy, dx);
+
+      // §4c: for a planet/moon (not a belt/ring), offer the TYPES viable at this orbit instead of
+      // auto-assigning one. Compute the equilibrium temperature here, then open the picker.
+      if (forceRole !== 'belt' && forceRole !== 'ring') {
+          const role: 'planet' | 'moon' = host.roleHint === 'star' ? 'planet' : 'moon';
+          const hostMassKg = (host as CelestialBody).massKg || (host as Barycenter).effectiveMassKg || 0;
+          const probe = { id: 'probe', kind: 'body', roleHint: 'planet', parentId: host.id,
+              orbit: { hostId: host.id, elements: { a_AU: Math.max(distAU, 1e-6), e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } } as unknown as CelestialBody;
+          const teqK = calculateEquilibriumTemperature(probe, $systemStore.nodes, 0.3);
+          pendingAdd = { distAU, startAngle, hostId: host.id, hostMassKg, role, teqK };
+          showAddTypeModal = true;
+          return;
+      }
 
       // 2. Determine Naming
       const siblings = $systemStore.nodes.filter(n => n.parentId === host.id);
@@ -510,6 +529,41 @@
           return { ...s, nodes: [...s.nodes, newPlanet], isManuallyEdited: true };
       });
       updateFocus(newPlanet.id);
+      isEditing = true;
+  }
+
+  // §4c: the GM picked a type from the location-aware picker — generate a matching body, drop it at
+  // the clicked orbit, and let the full processor derive the rest.
+  function placeBodyOfType(event: CustomEvent<{ fp: any }>) {
+      showAddTypeModal = false;
+      const ctx = pendingAdd; pendingAdd = null;
+      if (!ctx || !$systemStore) return;
+      const host = $systemStore.nodes.find(n => n.id === ctx.hostId);
+      if (!host) return;
+      const siblings = $systemStore.nodes.filter(n => n.parentId === ctx.hostId);
+      const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role });
+      const newBody: CelestialBody = {
+          id: generateId(),
+          name: `${host.name} ${toRoman(siblings.length + 1)}`,
+          kind: 'body',
+          parentId: ctx.hostId,
+          roleHint: ctx.role,
+          atmosphere: { name: 'None', composition: {}, pressure_bar: 0 },
+          hydrosphere: { coverage: 0, composition: 'water' },
+          biosphere: null,
+          tags: [],
+          classes: [],
+          ...gen,
+          orbit: {
+              hostId: ctx.hostId,
+              hostMu: ctx.hostMassKg * G,
+              t0: currentTime,
+              elements: { a_AU: Math.max(ctx.distAU, 1e-6), e: 0.01 + Math.random() * 0.04, i_deg: 0,
+                  omega_deg: Math.random() * 360, Omega_deg: Math.random() * 360, M0_rad: ctx.startAngle }
+          }
+      } as CelestialBody;
+      systemStore.set({ ...systemProcessor.process({ ...$systemStore, nodes: [...$systemStore.nodes, newBody] }, rulePack), isManuallyEdited: true });
+      updateFocus(newBody.id);
       isEditing = true;
   }
 
@@ -2029,6 +2083,11 @@
 
     {#if showPhysicsModal && focusedBody && focusedBody.kind === 'body'}
         <PhysicsTraceModal body={focusedBody} system={$systemStore} on:close={() => showPhysicsModal = false} />
+    {/if}
+
+    {#if showAddTypeModal && pendingAdd}
+        <AddBodyTypeModal {rulePack} teqK={pendingAdd.teqK} role={pendingAdd.role}
+            on:select={placeBodyOfType} on:close={() => { showAddTypeModal = false; pendingAdd = null; }} />
     {/if}
 
     {/if}
