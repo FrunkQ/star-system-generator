@@ -1,5 +1,6 @@
 // ===== types.ts =====
 import type { OrbitalBoundaries } from './physics/orbits';
+import type { GeoActivity } from './physics/geoActivity';
 import type { TravellerWorldData } from './traveller/types';
 import type { ScheduledJourneyLog } from './transit/types';
 
@@ -145,6 +146,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   biosphere?: Biosphere;
   magnetic_field?: MagneticField;
   magnetism?: Magnetism;       // derived dynamo profile (descriptive; see deriveMagnetism)
+  geoActivity?: GeoActivity;   // derived tectonics/volcanism by mechanism (see deriveGeoActivity)
 
   // Legacy/Construct specifics
   physical_parameters?: PhysicalParameters;

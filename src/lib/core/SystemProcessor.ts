@@ -8,6 +8,7 @@ import { makeupFractions } from '../physics/makeup';
 import { surfaceTempRange } from '../physics/tidalThermal';
 import { deriveFluidLayers } from '../physics/fluidLayers';
 import { deriveMagnetism } from '../physics/magnetism';
+import { deriveGeoActivity } from '../physics/geoActivity';
 import { deriveApparentColorParts } from '../rendering/apparentColor';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties } from '../physics/atmosphere';
@@ -419,6 +420,41 @@ export class SystemProcessor implements ISystemProcessor {
                 : body.magnetism.source === 'salty-ocean-induced' ? 'magnetic/induced'
                 : 'magnetic/unshielded'
         });
+
+        // Geological activity (tectonics + volcanism by MECHANISM) — the biosphere keystone. Uses
+        // makeup (radiogenic budget + iron core), mass/radius (cooling rate), system AGE (radiogenic
+        // decay), surface water (mobile vs stagnant lid) and tidal tags (Io/Europa). Adds a
+        // geology/* tag and feeds habitability (carbonate–silicate climate regulation).
+        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('geology/'));
+        // Gas/ice giants have no solid surface → no tectonic regime; skip them.
+        if (mk.gas <= 0.5 && (body.roleHint === 'planet' || body.roleHint === 'moon')) {
+            const hasLiquidSurfaceWater = fluidLayers.some(
+                (l) => l.location === 'surface' && /water/.test(l.liquid)
+            );
+            const hydroComp = body.hydrosphere?.composition;
+            const surfT = body.temperatureK ?? body.equilibriumTempK ?? 0;
+            const waterHydro = hydroComp === 'water' || hydroComp === 'water-ammonia';
+            const icyShell = mk.ice > 0.3 || (waterHydro && surfT < 273); // frozen water exterior
+            const tidalKeys = (body.tags || []).map((t) => t.key);
+            body.geoActivity = deriveGeoActivity({
+                makeup: mk,
+                massMe: (body.massKg ?? 0) / EARTH_MASS_KG,
+                radiusRe: (body.radiusKm ?? 0) / EARTH_RADIUS_KM,
+                ageGyr: this.systemAgeGyr,
+                hasSurfaceWater: hasLiquidSurfaceWater,
+                hasSubsurfaceOcean: features['hasSubsurfaceOcean'] === 1,
+                icyShell,
+                tidalHotspots: tidalKeys.includes('tidal/hotspots') || tidalKeys.includes('tidal/volcanism'),
+                tidalLavaFlows: tidalKeys.includes('tidal/lava-flows')
+            });
+            for (const key of body.geoActivity.tags) body.tags.push({ key });
+            features['geoActive'] = body.geoActivity.active ? 1 : 0;
+            features['plateTectonics'] = body.geoActivity.regime === 'plate-tectonics' ? 1 : 0;
+        } else {
+            body.geoActivity = undefined;
+            features['geoActive'] = 0;
+            features['plateTectonics'] = 0;
+        }
 
         // Re-run Classification
         // Note: This might override manual class changes if not careful.
