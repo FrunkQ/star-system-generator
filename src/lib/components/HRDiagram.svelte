@@ -11,6 +11,10 @@
     export let selectedStars: StarSeed[] = [];
     const MAX_STARS = 50;
 
+    // Redraw the numbered markers whenever the selection changes (e.g. the parent appended a star on
+    // click) — without this the new circle wouldn't appear until the next hover/resize.
+    $: { selectedStars; if (imageLoaded) drawDiagram(); }
+
     const MAX_TEMP = 50000;
     const MIN_TEMP = 2000;
     const MIN_LUM = 0.00001;

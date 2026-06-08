@@ -5,10 +5,11 @@
   import { createEventDispatcher } from 'svelte';
   import type { RulePack, System } from '$lib/types';
   import HRDiagram from './HRDiagram.svelte';
-  import { deriveStarFromHR, ageStar, stellarRadiusAU, isEngulfedAt, type StarSeed } from '$lib/physics/stellar-evolution';
+  import { ageStar, isEngulfedAt, getStarLifespanGyr, type StarSeed } from '$lib/physics/stellar-evolution';
   import { generateSystemFromConfig, type GenerationKnobs } from '$lib/generation/generateFromConfig';
   import { fixUpImportedSystem } from '$lib/system/importFixup';
   import { systemProcessor } from '$lib/core/SystemProcessor';
+  import { SOLAR_MASS_KG } from '$lib/constants';
 
   export let rulePack: RulePack;
   export let exampleSystems: string[] = [];
@@ -23,27 +24,38 @@
   let busy = false;
   let chosenExample = '';
 
-  // Presets — just saved (representative star + knobs + age). One click for people who don't want to
-  // think about metallicity. The user can still tweak afterwards.
-  const PRESETS: Array<{ name: string; star: [number, number]; age: number; k: GenerationKnobs; note: string }> = [
-    { name: 'Sol-like', star: [5778, 1], age: 4.6, k: { metallicity: 0.55, diskMass: 0.5, dynamicalHistory: 0.2, weirdness: 0.2 }, note: 'A calm, mature Sun-like system.' },
-    { name: 'Hot-Jupiter Chaos', star: [6200, 1.8], age: 2, k: { metallicity: 0.7, diskMass: 0.7, dynamicalHistory: 0.95, weirdness: 0.6 }, note: 'Violent migration — giants flung inward.' },
-    { name: 'Ancient & Dead', star: [5400, 0.7], age: 12, k: { metallicity: 0.4, diskMass: 0.4, dynamicalHistory: 0.3, weirdness: 0.3 }, note: 'An old, settled, fading system.' },
-    { name: 'Young & Fiery', star: [9000, 30], age: 0.3, k: { metallicity: 0.6, diskMass: 0.8, dynamicalHistory: 0.7, weirdness: 0.5 }, note: 'Hot, fresh, primordial.' },
-    { name: 'Exotic Menagerie', star: [5778, 1], age: 4, k: { metallicity: 0.6, diskMass: 0.7, dynamicalHistory: 0.6, weirdness: 1 }, note: 'Maximise the weird.' },
-    { name: 'Metal-poor Dwarf', star: [3500, 0.04], age: 8, k: { metallicity: 0.1, diskMass: 0.3, dynamicalHistory: 0.3, weirdness: 0.3 }, note: 'A frugal red-dwarf system.' }
+  // CHARACTER presets — these only nudge the STEP-2 sliders (age + physical knobs); they do NOT pick a
+  // star (that's step 1, already done by the time you see these). Star-bound flavours like "Sol-like"
+  // or "red-dwarf system" were dropped — the star is your choice on the HR diagram, not a preset's.
+  const PRESETS: Array<{ name: string; age: number; k: GenerationKnobs; note: string }> = [
+    { name: 'Calm & mature', age: 4.6, k: { metallicity: 0.55, diskMass: 0.5, dynamicalHistory: 0.2, weirdness: 0.2 }, note: 'Settled, circular orbits — a Solar-System temperament.' },
+    { name: 'Violent migration', age: 2, k: { metallicity: 0.7, diskMass: 0.7, dynamicalHistory: 0.95, weirdness: 0.6 }, note: 'Giants flung inward — hot-Jupiter chaos.' },
+    { name: 'Ancient & fading', age: 12, k: { metallicity: 0.4, diskMass: 0.4, dynamicalHistory: 0.3, weirdness: 0.3 }, note: 'Old and settled — radiogenic heat long spent.' },
+    { name: 'Young & fiery', age: 0.4, k: { metallicity: 0.6, diskMass: 0.8, dynamicalHistory: 0.7, weirdness: 0.5 }, note: 'Fresh, primordial, still violent.' },
+    { name: 'Maximise weird', age: 4, k: { metallicity: 0.6, diskMass: 0.7, dynamicalHistory: 0.6, weirdness: 1 }, note: 'Push the exotic dial to the wall.' }
   ];
-  function applyPreset(p: typeof PRESETS[number]) {
-    selectedStars = [deriveStarFromHR(p.star[0], p.star[1])];
+  function applyCharacter(p: typeof PRESETS[number]) {
     ageGyr = p.age;
     knobs = { ...p.k };
-    step = 2;
   }
 
-  // Live preview of the primary star aged to the chosen age.
-  $: primary = selectedStars[0];
-  $: aged = primary ? ageStar(primary, ageGyr * 1e9) : null;
-  $: agedRadiusAU = aged ? stellarRadiusAU(aged) : 0;
+  // --- Star helpers for the hierarchy preview + age feedback ---
+  const SOL = SOLAR_MASS_KG;
+  const SPECTRAL_COLOR: Record<string, string> = { O: '#9bb0ff', B: '#aabfff', A: '#cad7ff', F: '#f8f7ff', G: '#fff4ea', K: '#ffd2a1', M: '#ffb56b' };
+  const starColor = (s: { spectralClass: string }) => SPECTRAL_COLOR[s.spectralClass] ?? '#ffd2a1';
+  const massSolar = (s: { massKg: number }) => s.massKg / SOL;
+  // Order by mass (heaviest = primary) so the hierarchy reads primary → companions.
+  $: ordered = [...selectedStars].sort((a, b) => b.massKg - a.massKg);
+  // Each star aged to the chosen age + its main-sequence lifetime, so you can see who has aged out
+  // (a heavy star → white dwarf) while an M dwarf sits on the main sequence forever (WD/M binaries).
+  $: agedStars = ordered.map((s) => ({ seed: s, aged: ageStar(s, ageGyr * 1e9), tMS: getStarLifespanGyr(s.massKg) }));
+
+  // The primary (heaviest) star — gates generation.
+  $: primary = ordered[0];
+  const lifespanLabel = (tMS: number) =>
+    tMS > 13.8 ? 'outlives the universe'
+    : tMS < 0.1 ? `ages out at ~${fmt(tMS * 1000, 0)} Myr`
+    : `ages out at ~${fmt(tMS)} Gyr`;
 
   function newSystem(emptyPlanets: boolean) {
     if (!primary) return;
@@ -96,46 +108,49 @@
         </section>
 
         <section class="block">
-          <h3>Or a preset (sets the sliders for you)</h3>
-          <div class="presets">
-            {#each PRESETS as p}
-              <button class="preset" title={p.note} on:click={() => applyPreset(p)}>{p.name}</button>
-            {/each}
-          </div>
-        </section>
+          <h3>Or build your own — click the HR diagram to add star(s)</h3>
+          <div class="hr-wrap"><HRDiagram bind:selectedStars on:select={(e) => { if (selectedStars.length < 50) selectedStars = [...selectedStars, e.detail]; }} /></div>
 
-        <section class="block">
-          <h3>Or build your own — click the HR diagram to pick star(s)</h3>
-          <div class="hr-wrap"><HRDiagram bind:selectedStars on:select={() => (selectedStars = selectedStars)} /></div>
-          {#if selectedStars.length}
-            <div class="chips">
-              {#each selectedStars as s, i}
-                <span class="chip">{s.spectralClass} · {fmt(s.temperatureK, 0)} K
-                  <button class="x" on:click={() => (selectedStars = selectedStars.filter((_, j) => j !== i))}>×</button>
-                </span>
+          <div class="hierarchy">
+            <div class="hier-title">System hierarchy <span class="muted">— click the diagram to add stars</span></div>
+            {#if selectedStars.length}
+              {#each ordered as s, i}
+                <div class="hier-row" style="padding-left: {i === 0 ? 0 : 14}px">
+                  <span class="star-dot" style="background:{starColor(s)}"></span>
+                  <span class="role">{i === 0 ? 'Primary' : `Companion ${i}`}</span>
+                  <span class="star-meta">{s.spectralClass}-type {s.category?.includes('Dwarf') && s.spectralClass === 'M' ? '(red dwarf)' : ''} · {fmt(s.temperatureK, 0)} K · {fmt(massSolar(s), 2)} M☉</span>
+                  <button class="x" title="Remove" on:click={() => (selectedStars = selectedStars.filter((x) => x.id !== s.id))}>×</button>
+                </div>
               {/each}
-            </div>
-          {/if}
+            {:else}
+              <div class="hier-empty">No stars yet — click a point on the diagram above.</div>
+            {/if}
+          </div>
         </section>
       {:else}
         <section class="block">
-          <h3>Presets</h3>
+          <h3>Character presets <span class="muted">— nudge the sliders below</span></h3>
           <div class="presets">
-            {#each PRESETS as p}<button class="preset" title={p.note} on:click={() => { ageGyr = p.age; knobs = { ...p.k }; }}>{p.name}</button>{/each}
+            {#each PRESETS as p}<button class="preset" title={p.note} on:click={() => applyCharacter(p)}>{p.name}</button>{/each}
           </div>
         </section>
 
         <section class="block">
           <h3>System age: {fmt(ageGyr)} Gyr</h3>
           <input type="range" min="0.1" max="13.5" step="0.1" bind:value={ageGyr} class="slider" />
-          {#if aged}
-            <div class="preview">
-              <span class="ph">{aged.phase?.replace(/-/g, ' ')}</span>
-              <span>{fmt(aged.temperatureK, 0)} K · {fmt(aged.luminositySolar, aged.luminositySolar < 10 ? 2 : 0)} L☉ · {fmt(agedRadiusAU, 3)} AU radius</span>
-              {#if isEngulfedAt(aged, 1)}<span class="warn">⚠ swollen past 1 AU — inner planets engulfed</span>{/if}
-              {#if aged.isDead}<span class="warn">stellar remnant — inner system cleared</span>{/if}
-            </div>
-          {/if}
+          <!-- Per-star life feedback: who is still burning, who has aged out. Slide forward and watch a
+               heavy star swell and die to a white dwarf while an M dwarf burns on — the WD/M binary. -->
+          <div class="star-ages">
+            {#each agedStars as a}
+              <div class="star-age" class:dead={a.aged.isDead}>
+                <span class="star-dot" style="background:{a.aged.isDead ? '#cfe8ff' : starColor(a.seed)}"></span>
+                <span class="sa-cls">{a.seed.spectralClass}-type</span>
+                <span class="sa-phase">{a.aged.isDead ? a.aged.category : (a.aged.phase ?? 'main-sequence').replace(/-/g, ' ')}</span>
+                <span class="sa-life">{lifespanLabel(a.tMS)}</span>
+                {#if isEngulfedAt(a.aged, 1)}<span class="warn">⚠ swollen past 1 AU</span>{/if}
+              </div>
+            {/each}
+          </div>
         </section>
 
         <section class="block">
@@ -184,13 +199,29 @@
   .preset { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--link); cursor: pointer; font-size: 0.85em; }
   .preset:hover { background: var(--bg-control); border-color: var(--accent); }
   .hr-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; min-height: 240px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-  .chip { background: var(--bg-control); border-radius: 4px; padding: 3px 8px; font-size: 0.8em; display: flex; align-items: center; gap: 6px; }
-  .chip .x { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1em; line-height: 0.5; }
+  .muted { color: var(--text-faint, #8a8a8a); font-weight: 400; font-size: 0.85em; }
   .slider { width: 100%; }
-  .preview { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; margin-top: 6px; font-size: 0.85em; color: var(--text-muted); }
-  .preview .ph { text-transform: capitalize; color: var(--accent); font-weight: 600; }
-  .preview .warn { color: var(--warning, #e08a4a); }
+
+  /* System hierarchy preview (built live as you click the HR diagram) */
+  .hierarchy { margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--bg-panel, #14161c); }
+  .hier-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted, #cfcfcf); margin-bottom: 6px; }
+  .hier-empty { font-size: 0.82em; color: var(--text-faint, #8a8a8a); font-style: italic; }
+  .hier-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+  .star-dot { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 6px rgba(255,255,255,0.25); }
+  .role { font-size: 0.78em; font-weight: 700; color: var(--link); min-width: 84px; }
+  .star-meta { font-size: 0.82em; color: var(--text-muted, #cfcfcf); flex: 1; }
+  .hier-row .x { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1em; line-height: 0.5; }
+  .hier-row .x:hover { color: var(--accent, #ff5a1f); }
+
+  /* Per-star age feedback on step 2 */
+  .star-ages { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+  .star-age { display: flex; align-items: center; gap: 8px; font-size: 0.82em; flex-wrap: wrap; }
+  .star-age.dead { opacity: 0.85; }
+  .sa-cls { font-weight: 700; color: var(--text, #fff); min-width: 56px; }
+  .sa-phase { text-transform: capitalize; color: var(--accent); font-weight: 600; }
+  .star-age.dead .sa-phase { color: #8fc7ff; }
+  .sa-life { color: var(--text-faint, #8a8a8a); }
+  .warn { color: var(--warning, #e08a4a); }
   .knob { margin-bottom: 10px; }
   .knob-head { display: flex; justify-content: space-between; font-size: 0.85em; }
   .knob-val { color: var(--link); font-variant-numeric: tabular-nums; }
