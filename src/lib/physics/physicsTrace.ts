@@ -33,6 +33,11 @@ const NS_LAYER: Record<string, string> = {
   climate: 'Climate', hazard: 'Radiation / hazards', orbit: 'Orbit', origin: 'Generation',
   stability: 'Orbital stability', barycenter: 'Barycentres'
 };
+// Flat (non-namespaced) legacy tag keys → their producing layer.
+const FLAT_LAYER: Record<string, string> = {
+  inert: 'Atmosphere', 'buffer-gas': 'Atmosphere', oxidizer: 'Atmosphere', 'breathable-human': 'Atmosphere',
+  'noble-gas': 'Atmosphere', reducing: 'Atmosphere', toxic: 'Atmosphere', corrosive: 'Atmosphere'
+};
 
 export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): PhysicsTrace {
   const layers: TraceLayer[] = [];
@@ -181,7 +186,8 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
   const tags: TagProvenance[] = (body.tags ?? []).map((t) => {
     const info = describeTag(t.key);
     const ns = t.key.split('/')[0];
-    return { key: t.key, label: info.label, description: info.description, layer: NS_LAYER[ns] ?? 'Other', color: info.color };
+    const layer = t.key.includes('/') ? (NS_LAYER[ns] ?? 'Other') : (FLAT_LAYER[t.key] ?? 'Other');
+    return { key: t.key, label: info.label, description: info.description, layer, color: info.color };
   });
 
   return { layers, tags };

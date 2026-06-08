@@ -66,6 +66,16 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'structure/subsurface-ocean': { label: 'Subsurface ocean', description: 'A liquid ocean beneath an ice crust, kept liquid by tidal and/or radiogenic interior heat.' },
   'structure/cloud-deck':       { label: 'Cloud deck',       description: 'A condensed cloud layer in the atmosphere — affects albedo, apparent colour and greenhouse warming.' },
 
+  // --- Atmosphere gas roles (flat legacy keys, from the atmosphere composition) ---
+  'inert':            { label: 'Inert atmosphere',  description: 'The atmosphere is dominated by chemically unreactive gases (e.g. N₂, noble gases).' },
+  'buffer-gas':       { label: 'Buffer gas',        description: 'A non-reactive gas that dilutes the reactive components (like N₂ in Earth\'s air).' },
+  'oxidizer':         { label: 'Oxidizing',         description: 'Free oxidizer (e.g. O₂) is present — a strong sign of an active biosphere or photochemistry.' },
+  'breathable-human': { label: 'Breathable',        description: 'Composition and partial pressures fall within the human-breathable envelope.' },
+  'noble-gas':        { label: 'Noble gas',         description: 'A significant fraction of noble (chemically inert) gases.' },
+  'reducing':         { label: 'Reducing',          description: 'A reducing atmosphere (no free oxygen) — hydrogen/methane/ammonia chemistry.' },
+  'toxic':            { label: 'Toxic',             description: 'Contains gases toxic to humans at the modelled partial pressures.' },
+  'corrosive':        { label: 'Corrosive',         description: 'Contains corrosive species (e.g. sulfuric acid, halogens).' },
+
   // --- Habitability tiers ---
   'habitability/super':      { label: 'Super-habitable',  description: 'Better than Earth for life — a larger biosphere on durable plate tectonics, a mature stable system, a warm wet optimum. Scores above 100.' },
   'habitability/earth-like': { label: 'Earth-like',       description: 'Surface conditions and an oxygen-bearing atmosphere closely match Earth.' },
