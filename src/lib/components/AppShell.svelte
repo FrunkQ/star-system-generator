@@ -176,7 +176,9 @@
     grid-area: canvas;
     min-width: 0;
     min-height: 0;
-    overflow: auto;
+    /* hidden, not auto: a full-bleed orrery that overshoots its cell by a sub-pixel must be
+       clipped, not allowed to spill over the detail drag-bar or push the time pill off-screen. */
+    overflow: hidden;
   }
   .area.bar {
     grid-area: bar;

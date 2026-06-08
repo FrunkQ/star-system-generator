@@ -2326,6 +2326,9 @@
     width: 100%;
     height: 100%;
     position: relative; /* anchor the BodyPicker + time overlays */
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden; /* the orrery fills this exactly; clip any sub-pixel overshoot */
   }
   .time-display-overlay {
     position: absolute;
