@@ -1,3 +1,7 @@
+// ⚠️ PRESERVE — do NOT delete in the Phase-A cleanup. The Accrete procedural disk-accretion engine
+// (this adapter + src/lib/vendor/accrete-js) is being KEPT for v3 generation, even though its only
+// current caller (EvolutionTimeline) is being removed. After the cleanup it stays as a standalone,
+// caller-less module to harvest in v3.
 import { StarSystem, Planetismal } from '../vendor/accrete-js/src/index.js';
 import { type StarSeed, ageStar, getStarLifespanGyr } from './stellar-evolution';
 import type { CelestialBody, Orbit, Node, ID } from '../types';
