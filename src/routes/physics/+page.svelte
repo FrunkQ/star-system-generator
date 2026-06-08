@@ -396,6 +396,9 @@
         <li>Magnetism reports a grounded <em>range</em>, not a computed field strength; the dynamo scaling is order-of-magnitude.</li>
         <li>Geological vigor is a relative, Earth-calibrated proxy (radiogenic decay + a cooling-retention term), and the regime thresholds are tuned.</li>
         <li>The habitability geology/magnetism modifiers and the subsurface-niche floor are <strong>heuristic guesswork</strong> — plausible and bounded, but judgement calls open to balancing.</li>
+        <li>Flare dose is a time-averaged particle enhancement weighted by a calibrated activity model (spectral class + age), not an episodic-event simulation.</li>
+        <li>Atmospheric escape is a calibrated heuristic (Jeans thermal + an XUV/stellar-wind erosion term), gated above ~9 km/s escape velocity so the Solar-System baseline is preserved — it only thins or strips, never invents.</li>
+        <li>The pre-main-sequence over-luminosity and its Kelvin-Helmholtz timescale (∝ 1/mass) are a calibrated shape for a believable young-star preview, not a stellar-structure solve.</li>
       </ul>
     </section>
 
