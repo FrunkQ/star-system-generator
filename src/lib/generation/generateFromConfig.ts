@@ -58,7 +58,14 @@ function applyKnobBias(nodes: (CelestialBody | Barycenter)[], rng: SeededRNG, kn
     if (b.orbit?.elements) {
       const eMax = 0.02 + dyn * dyn * 0.45;
       b.orbit.elements.e = Math.min(0.6, 0.01 + rng.nextFloat() * eMax);
-      if (dyn > 0.7 && rng.nextFloat() < (dyn - 0.7) * 0.6) b.orbit.isRetrogradeOrbit = true;
+      // Chaotic systems flip / capture bodies into RETROGRADE orbits — increasingly common with dyn.
+      // A retrograde orbit is the signature of a captured body, so tag it origin/captured too.
+      if (rng.nextFloat() < dyn * dyn * 0.4) {
+        b.orbit.isRetrogradeOrbit = true;
+        b.tags = b.tags || [];
+        if (!b.tags.some((t) => t.key === 'orbit/retrograde')) b.tags.push({ key: 'orbit/retrograde' });
+        if (!b.tags.some((t) => t.key === 'origin/captured')) b.tags.push({ key: 'origin/captured' });
+      }
     }
   }
 }

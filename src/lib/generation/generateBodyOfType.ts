@@ -63,6 +63,9 @@ export function viableTypesAt(teqK: number, role: 'planet' | 'moon', fingerprint
   const SLACK = 0.12; // 12% — matches the classifier's soft edge
   return fingerprints.filter((fp) => {
     if (fp.kind !== 'base') return false;
+    // A rogue planet is by definition UNBOUND — placing one in an orbit makes it not-rogue, so it's
+    // never offered/drawn for a bound slot (the classifier still uses it for genuinely unbound bodies).
+    if (/rogue/.test(fp.class)) return false;
     if (role === 'moon' && /gas-giant|neptune|jupiter|dwarf|brown/.test(fp.class)) return false;
     const band = fp.match['Teq_K'];
     if (!Array.isArray(band) || typeof band[0] !== 'number') return true; // no temp constraint
