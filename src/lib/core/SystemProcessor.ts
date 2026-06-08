@@ -624,20 +624,49 @@ export class SystemProcessor implements ISystemProcessor {
             factors.gravity = scoreFromPlateau(surfaceGravityG, 0.8, 1.2, 0.5);
         }
         score += factors.gravity * 15;
-        
+
+        // --- Long-term habitability: geology + magnetism (HEURISTIC — admitted guesswork, see the
+        //     /physics "biosphere" note). These don't change instantaneous surface conditions; they
+        //     decide whether a world STAYS habitable: climate regulation, atmosphere retention and
+        //     nutrient recycling. Weights are deliberately modest so the surface model still leads. ---
+        let geoMod = 0;
+        const regime = planet.geoActivity?.regime;
+        if (regime === 'plate-tectonics') geoMod += 8;        // carbonate–silicate climate regulation
+        else if (regime === 'stagnant-lid') geoMod -= 25;     // runaway-greenhouse risk (Venus)
+        else if (regime === 'tidal-volcanic') geoMod -= 20;   // resurfaced too fast for surface life
+        else if (regime === 'inactive') geoMod -= 10;         // no outgassing / nutrient recycling
+        if (planet.magnetism) {
+            if (planet.magnetism.intrinsic) geoMod += 5;                  // shielded from stellar wind
+            else if (planet.magnetism.source === 'none') geoMod -= 8;     // unshielded → atmosphere stripping
+        }
+        score = Math.max(0, score + geoMod);
         planet.habitabilityScore = Math.max(0, Math.min(100, score));
-    
-        // Determine Tier and add Tag
-        const isEarthLike = factors.temp > 0.9 && factors.pressure > 0.8 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.9 && factors.gravity > 0.8 && planet.atmosphere?.composition?.['O2'] > 0.1;
-        const isHumanHabitable = factors.temp > 0.7 && factors.pressure > 0.6 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.7 && factors.gravity > 0.6;
-        const isAlienHabitable = score > 40;
-    
+
+        // --- Subsurface-ocean niche: not surface-habitable, but a genuine sub-ice habitability axis
+        //     (liquid water + tidal/radiogenic energy + rock chemistry — Europa/Enceladus). Bounded
+        //     guesswork floor, independent of the surface Goldilocks zone. ---
+        const hasSubsurfaceNiche =
+            (planet.tags || []).some(t => t.key === 'structure/subsurface-ocean') || regime === 'cryovolcanic';
+        const SUBSURFACE_NICHE_SCORE = 35;
+        let subsurfaceHabitable = false;
+        if (hasSubsurfaceNiche && planet.habitabilityScore < SUBSURFACE_NICHE_SCORE) {
+            planet.habitabilityScore = SUBSURFACE_NICHE_SCORE;
+            subsurfaceHabitable = true;
+        }
+
+        // Determine Tier and add Tag. The top tiers now require a geologically STABLE world —
+        // plate tectonics for Earth-like; not stagnant-lid/tidal-volcanic for human-habitable.
+        const isEarthLike = factors.temp > 0.9 && factors.pressure > 0.8 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.9 && factors.gravity > 0.8 && planet.atmosphere?.composition?.['O2'] > 0.1 && regime === 'plate-tectonics';
+        const isHumanHabitable = factors.temp > 0.7 && factors.pressure > 0.6 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.7 && factors.gravity > 0.6 && regime !== 'stagnant-lid' && regime !== 'tidal-volcanic';
+        const isAlienHabitable = planet.habitabilityScore > 40;
+
         // Clear old habitability tags before adding new ones
         planet.tags = planet.tags?.filter(t => !t.key.startsWith('habitability/')) || [];
 
         let tier: string;
         if (isEarthLike) tier = 'habitability/earth-like';
         else if (isHumanHabitable) tier = 'habitability/human';
+        else if (subsurfaceHabitable) tier = 'habitability/subsurface';
         else if (isAlienHabitable) tier = 'habitability/alien';
         else tier = 'habitability/none';
         planet.tags.push({ key: tier });

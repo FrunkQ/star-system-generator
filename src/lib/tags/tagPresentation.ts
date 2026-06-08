@@ -70,6 +70,7 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'habitability/earth-like': { label: 'Earth-like',       description: 'Surface conditions and an oxygen-bearing atmosphere closely match Earth.' },
   'habitability/human':      { label: 'Human-habitable',  description: 'Liveable for unprotected humans with little or no life support.' },
   'habitability/alien':      { label: 'Alien-habitable',  description: 'Hostile to humans but viable for some biochemistry.' },
+  'habitability/subsurface': { label: 'Subsurface niche',  description: 'No surface biosphere, but a liquid subsurface ocean with an energy source could host sub-ice life (Europa/Enceladus).' },
   'habitability/none':       { label: 'Uninhabitable',    description: 'No plausible biosphere under the current model.' }
 };
 
