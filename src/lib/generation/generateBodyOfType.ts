@@ -22,9 +22,25 @@ function pickStr(band: FingerprintBand | undefined): string | undefined {
   return undefined;
 }
 
+// Greenhouse COLD-EDGE slack (Kelvin). The fingerprint T_eq bands are the BARE equilibrium
+// temperature (no atmosphere) — but we KNOW these particular types carry a greenhouse-warming
+// atmosphere by definition (Earth's own T_eq is 255 K / −18 °C; its 1-bar greenhouse lifts the
+// surface to 288 K). So when offering them in the picker we extend the COLD edge downward by the
+// greenhouse warming that type can plausibly muster, so an Earth-like/ocean world is still offered
+// at an orbit whose bare T_eq looks "too cold". (Cold edge only — the warm edge is the real
+// runaway-greenhouse limit and is NOT extended.) The generator then gives the body that atmosphere.
+const GREENHOUSE_COLD_SLACK_K: { test: RegExp; k: number }[] = [
+  { test: /hycean/, k: 80 },                                                  // H2 envelope — very strong greenhouse
+  { test: /ocean|earth-analogue|earth-like|superhabitable|forest|jungle|eyeball/, k: 40 }, // Earth-class N2/CO2/H2O
+  { test: /desert|ammonia/, k: 20 },                                          // thinner / alternative greenhouse
+];
+function greenhouseColdSlackK(cls: string): number {
+  return GREENHOUSE_COLD_SLACK_K.find((g) => g.test.test(cls))?.k ?? 0;
+}
+
 // Which base types could exist at a given equilibrium temperature (and role). A type is viable when
 // the orbit's T_eq falls inside its T_eq band (with a little slack); types without a T_eq band are
-// always offered. Moons exclude giants/stars.
+// always offered. Greenhouse types get extra COLD-edge slack (see above). Moons exclude giants/stars.
 export function viableTypesAt(teqK: number, role: 'planet' | 'moon', fingerprints: Fingerprint[]): Fingerprint[] {
   const SLACK = 0.12; // 12% — matches the classifier's soft edge
   return fingerprints.filter((fp) => {
@@ -34,7 +50,7 @@ export function viableTypesAt(teqK: number, role: 'planet' | 'moon', fingerprint
     if (!Array.isArray(band) || typeof band[0] !== 'number') return true; // no temp constraint
     const [lo, hi] = band as [number, number];
     const pad = (hi - lo) * SLACK;
-    return teqK >= lo - pad && teqK <= hi + pad;
+    return teqK >= lo - pad - greenhouseColdSlackK(fp.class) && teqK <= hi + pad;
   });
 }
 
@@ -42,7 +58,7 @@ export function viableTypesAt(teqK: number, role: 'planet' | 'moon', fingerprint
 // temperature/geology/colour/etc. are left for the processor to derive.
 export function generateBodyOfType(
   fp: Fingerprint,
-  ctx: { distAU: number; hostMassKg: number; role: 'planet' | 'moon'; rng?: RNG }
+  ctx: { distAU: number; hostMassKg: number; role: 'planet' | 'moon'; rng?: RNG; teqK?: number }
 ): Partial<CelestialBody> {
   const rng = ctx.rng ?? Math.random;
   const m = fp.match;
@@ -96,6 +112,40 @@ export function generateBodyOfType(
     } else {
       out.atmosphere = { name: mainGas, main: mainGas, composition, pressure_bar: pressure } as any;
     }
+  }
+
+  // A liquid-water world placed in (or near) the habitable zone is DEFINED by having an atmosphere
+  // that keeps its water liquid — without one, surface temp = bare T_eq (≈ −18 °C at Earth's orbit)
+  // and the "ocean" freezes solid (0 % habitability). So if the type didn't specify an atmosphere
+  // but carries a real surface ocean, synthesise a greenhouse-warming one SIZED TO THIS ORBIT: the
+  // colder the orbit, the more CO2 (a thick-CO2 cold-edge world), targeting a comfortably-liquid
+  // surface. The greenhouse model is steep in CO2 — MEASURED at ~1 bar: 0.04 % CO2 → +23 K,
+  // 0.1 % → +35 K, 0.4 % → +58 K (see _ghprobe calibration) — so we invert that table. Warm orbits
+  // get only an Earth-like trace (or none); life-bearing worlds keep their O2. Giants excluded.
+  const wantsLiquidWater = !isGiant
+    && (out.hydrosphere?.composition === 'water')
+    && ((out.hydrosphere?.coverage ?? 0) >= 0.25 || !!m['hasBiosphere']);
+  if (wantsLiquidWater && (!out.atmosphere || out.atmosphere.name === 'None')) {
+    const TARGET_K = 283;                          // ~10 K above water's freezing point
+    const teq = ctx.teqK ?? 255;
+    const needed = TARGET_K - teq;                 // greenhouse warming required to reach target
+    // [CO2 fraction, +K] measured against the processor's greenhouse at ~1 bar:
+    const GH: [number, number][] = [[0.0004, 23.5], [0.001, 34.5], [0.002, 45.2], [0.004, 58], [0.008, 72.7], [0.015, 87.6], [0.03, 105]];
+    const co2ForDelta = (d: number): number => {
+      if (d <= GH[0][1]) return GH[0][0];
+      for (let i = 1; i < GH.length; i++) {
+        if (d <= GH[i][1]) { const [f0, d0] = GH[i - 1], [f1, d1] = GH[i]; return f0 + (f1 - f0) * ((d - d0) / (d1 - d0)); }
+      }
+      return GH[GH.length - 1][0];
+    };
+    // At/above freezing the ocean's own water-vapour greenhouse (added by the processor) is enough —
+    // skip CO2 so warm worlds aren't double-warmed; below it, size CO2 to clear freezing.
+    const fCO2 = teq >= 273 ? 0 : co2ForDelta(needed);
+    const composition: Record<string, number> = {};
+    if (m['hasBiosphere']) composition.O2 = 0.21;
+    if (fCO2 > 0) composition.CO2 = +fCO2.toFixed(4);
+    composition.N2 = +(1 - (composition.O2 ?? 0) - (composition.CO2 ?? 0)).toFixed(4);
+    out.atmosphere = { name: 'N2', main: 'N2', composition, pressure_bar: +(0.95 + rng() * 0.2).toFixed(2) } as any;
   }
 
   // --- Biosphere: a biome/life type DEMANDS one (the GM placing the type places the life). ---

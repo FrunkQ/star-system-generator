@@ -542,7 +542,7 @@
       const host = $systemStore.nodes.find(n => n.id === ctx.hostId);
       if (!host) return;
       const siblings = $systemStore.nodes.filter(n => n.parentId === ctx.hostId);
-      const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role });
+      const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role, teqK: ctx.teqK });
       const newBody: CelestialBody = {
           id: generateId(),
           name: `${host.name} ${toRoman(siblings.length + 1)}`,

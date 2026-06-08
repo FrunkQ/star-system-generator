@@ -331,6 +331,44 @@
       margin-top: 1px;
   }
 
+  /* Subtotal / modifiers / final — were rendering run-together (no CSS). */
+  .score-row { padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .subtotal-row, .final-row, .mod-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+  }
+  .subtotal-row {
+      margin-top: 10px;
+      padding-top: 8px;
+      font-size: 0.85em;
+      color: var(--text-muted, #cfcfcf);
+  }
+  .subtotal-row span:last-child { font-variant-numeric: tabular-nums; }
+  .modifiers { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .mod-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-faint, #8a8a8a);
+      margin-bottom: 2px;
+  }
+  .mod-row { font-size: 0.82em; color: var(--text-muted, #cfcfcf); }
+  .mod-delta { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .mod-row.neg .mod-delta { color: #e74c3c; }
+  .mod-row.pos .mod-delta { color: var(--tier-earthlike, #2ecc71); }
+  .final-row {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border, #2a2d36);
+      font-weight: 700;
+      font-size: 0.95em;
+      color: var(--text, #fff);
+  }
+  .final-row span:last-child { font-variant-numeric: tabular-nums; }
+  .no-bd { color: var(--text-faint, #8a8a8a); font-size: 0.85em; font-style: italic; }
+
   .morphology-checkboxes {
       display: flex;
       flex-wrap: wrap;
