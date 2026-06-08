@@ -1,7 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
-  import { G } from '../constants'; 
 
   export let body: CelestialBody;
   export let rulePack: RulePack;
@@ -18,93 +17,8 @@
   let habitabilityTier = 'None';
   let tierColor = 'var(--tier-none)';
 
-  // Habitability Score Breakdown (Reactive)
-  let factors = {
-      temp: { score: 0, max: 30, label: 'Temperature', val: '', ideal: '' },
-      pressure: { score: 0, max: 20, label: 'Pressure', val: '', ideal: '' },
-      solvent: { score: 0, max: 20, label: 'Liquid Solvent', val: '', ideal: '' },
-      radiation: { score: 0, max: 15, label: 'Radiation', val: '', ideal: '' },
-      gravity: { score: 0, max: 15, label: 'Gravity', val: '', ideal: '' }
-  };
-
-  $: if (body) {
-      calculateHabitabilityFactors(body);
-  }
-
-  function calculateHabitabilityFactors(planet: CelestialBody) {
-      if (planet.roleHint !== 'planet' && planet.roleHint !== 'moon') return;
-
-      const scoreFromPlateau = (value: number, minOpt: number, maxOpt: number, falloff: number) => {
-          if (value >= minOpt && value <= maxOpt) return 1.0;
-          const diff = value < minOpt ? (minOpt - value) : (value - maxOpt);
-          return Math.max(0, 1 - (diff / falloff));
-      };
-
-      const scoreFromRange = (value: number, optimal: number, range: number) => {
-          return scoreFromPlateau(value, optimal, optimal, range);
-      };
-
-      // Reset
-      factors.temp.score = 0; factors.temp.val = 'N/A';
-      factors.pressure.score = 0; factors.pressure.val = 'N/A';
-      factors.solvent.score = 0; factors.solvent.val = 'None';
-      factors.radiation.score = 0; factors.radiation.val = 'N/A';
-      factors.gravity.score = 0; factors.gravity.val = 'N/A';
-
-      // Temperature Score (Max 30 points)
-      if (planet.temperatureK) {
-          const tC = Math.round(planet.temperatureK - 273.15);
-          factors.temp.val = `${Math.round(planet.temperatureK)}K (${tC}°C)`;
-          
-          if (planet.hydrosphere?.composition === 'methane') {
-              factors.temp.ideal = '111K ±30';
-              factors.temp.score = scoreFromRange(planet.temperatureK, 111, 30) * 30;
-          } else if (planet.hydrosphere?.composition === 'ammonia') {
-              factors.temp.ideal = '218K ±30';
-              factors.temp.score = scoreFromRange(planet.temperatureK, 218, 30) * 30;
-          } else {
-              // Water / Standard
-              factors.temp.ideal = '10 - 25°C';
-              factors.temp.score = scoreFromPlateau(planet.temperatureK, 283, 298, 40) * 30;
-          }
-      }
-
-      // Pressure Score (Max 20 points)
-      if (planet.atmosphere?.pressure_bar) {
-          factors.pressure.val = `${planet.atmosphere.pressure_bar.toFixed(2)} bar`;
-          factors.pressure.ideal = '0.8 - 1.5 bar';
-          factors.pressure.score = scoreFromPlateau(planet.atmosphere.pressure_bar, 0.8, 1.5, 1.5) * 20;
-      } else {
-          factors.pressure.val = '0 bar';
-      }
-
-      // Solvent Score (Max 20 points)
-      if (planet.hydrosphere) {
-          factors.solvent.val = `${(planet.hydrosphere.coverage * 100).toFixed(0)}% ${planet.hydrosphere.composition}`;
-          factors.solvent.ideal = '>10%';
-          if (planet.hydrosphere.coverage > 0.1) {
-              factors.solvent.score = 15;
-              if (planet.hydrosphere.composition === 'water') {
-                  factors.solvent.score += 5;
-              }
-          }
-      }
-
-      // Radiation Score (Max 15 points)
-      const rad = planet.surfaceRadiation || 0;
-      factors.radiation.val = `${rad.toFixed(2)} mSv`;
-      factors.radiation.ideal = '< 5 mSv';
-      factors.radiation.score = scoreFromPlateau(rad, 0, 5, 20) * 15;
-
-      // Gravity Score (Max 15 points)
-      const surfaceGravityG = (planet.massKg && planet.radiusKm) ? (G * planet.massKg / ((planet.radiusKm*1000) * (planet.radiusKm*1000))) / 9.81 : 0;
-      if (surfaceGravityG > 0) {
-          factors.gravity.val = `${surfaceGravityG.toFixed(2)} g`;
-          factors.gravity.ideal = '0.8 - 1.2 g';
-          factors.gravity.score = scoreFromPlateau(surfaceGravityG, 0.8, 1.2, 0.5) * 15;
-      }
-      // Display-only breakdown; canonical score/tag assignment is handled by system processing.
-  }
+  // Habitability is computed authoritatively by the processor and read from body.habitabilityBreakdown
+  // (see the reactive `bd` below) — no local recompute, so the bars, modifiers and headline agree.
 
   function getTierColor(tier: string) {
       switch (tier) {
@@ -118,6 +32,8 @@
   $: tierTag = body.tags?.find(t => t.key.startsWith('habitability/'))?.key.split('/')[1] || 'none';
   $: habitabilityTier = tierTag.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); // Title Case
   $: tierColor = getTierColor(tierTag);
+  // The AUTHORITATIVE breakdown from the processor (one calc — not the old local recompute).
+  $: bd = body.habitabilityBreakdown;
 
   function toggleBiosphere() {
       if (!body.biosphere || body.biosphere.complexity === 'none') {
@@ -165,23 +81,37 @@
         </div>
 
         <div class="score-breakdown">
-            {#each Object.values(factors) as factor}
-                <div class="score-row">
-                    <div class="score-header">
-                        <span class="label">{factor.label}</span>
-                        <span class="score-val">{factor.score.toFixed(0)}/{factor.max}</span>
+            {#if bd}
+                {#each bd.factors as factor}
+                    <div class="score-row">
+                        <div class="score-header">
+                            <span class="label">{factor.label}</span>
+                            <span class="score-val">{factor.points}/{factor.max}</span>
+                        </div>
+                        <div class="score-details">
+                            <span class="current">{factor.value}</span>
+                            {#if factor.ideal}<span class="ideal">(Target: {factor.ideal})</span>{/if}
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width: {Math.min(100, (factor.points / factor.max) * 100)}%"></div>
+                        </div>
                     </div>
-                    <div class="score-details">
-                        <span class="current">{factor.val}</span>
-                        {#if factor.ideal}
-                            <span class="ideal">(Target: {factor.ideal})</span>
-                        {/if}
+                {/each}
+                <div class="subtotal-row"><span>Surface subtotal</span><span>{bd.surfaceScore} / 100</span></div>
+                {#if bd.modifiers.length}
+                    <div class="modifiers">
+                        <div class="mod-title">Long-term modifiers — geology &amp; magnetism</div>
+                        {#each bd.modifiers as m}
+                            <div class="mod-row" class:neg={m.delta < 0} class:pos={m.delta > 0}>
+                                <span>{m.label}</span><span class="mod-delta">{m.delta > 0 ? '+' : ''}{m.delta}</span>
+                            </div>
+                        {/each}
                     </div>
-                    <div class="progress-bar-bg">
-                        <div class="progress-bar-fill" style="width: {(factor.score / factor.max) * 100}%"></div>
-                    </div>
-                </div>
-            {/each}
+                {/if}
+                <div class="final-row"><span>Final habitability</span><span>{bd.finalScore}%</span></div>
+            {:else}
+                <p class="no-bd">No habitability breakdown (re-process the system to compute it).</p>
+            {/if}
         </div>
     </div>
 

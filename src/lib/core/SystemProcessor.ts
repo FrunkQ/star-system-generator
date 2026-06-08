@@ -683,6 +683,7 @@ export class SystemProcessor implements ISystemProcessor {
             factors.gravity = scoreFromPlateau(surfaceGravityG, 0.5, 1.5, 0.6);
         }
         score += factors.gravity * 15;
+        const surfaceScore = score; // the instantaneous surface habitability, before long-term modifiers
 
         // --- Long-term habitability: geology + magnetism (HEURISTIC — admitted guesswork, see the
         //     /physics "biosphere" note). These don't change instantaneous surface conditions; they
@@ -705,13 +706,15 @@ export class SystemProcessor implements ISystemProcessor {
         //     worlds break 100. Gated to an already good surface. (HEURISTIC.) ---
         const surfaceGood = factors.temp > 0.7 && factors.pressure > 0.6 && factors.solvent === 1 &&
             factors.gravity > 0.6 && planet.hydrosphere?.composition === 'water';
+        let superBonus = 0;
         if (surfaceGood && regime === 'plate-tectonics') {
             const massMe = (planet.massKg ?? 0) / EARTH_MASS_KG;
-            if (massMe >= 1.3 && massMe <= 3.5) score += 6;   // more land area + longer-lived tectonics
-            if (this.systemAgeGyr >= 5 && this.systemAgeGyr <= 9) score += 4; // mature, stable, time for biodiversity
+            if (massMe >= 1.3 && massMe <= 3.5) superBonus += 6;   // more land area + longer-lived tectonics
+            if (this.systemAgeGyr >= 5 && this.systemAgeGyr <= 9) superBonus += 4; // mature, stable, time for biodiversity
             const t = planet.temperatureK ?? 0;
-            if (t >= 290 && t <= 298 && (planet.hydrosphere?.coverage ?? 0) > 0.5) score += 4; // warm, wet optimum
+            if (t >= 290 && t <= 298 && (planet.hydrosphere?.coverage ?? 0) > 0.5) superBonus += 4; // warm, wet optimum
         }
+        score += superBonus;
 
         // Earth anchors at 100; super-habitable worlds may exceed it (capped at 130).
         planet.habitabilityScore = Math.max(0, Math.min(130, score));
@@ -746,7 +749,34 @@ export class SystemProcessor implements ISystemProcessor {
         else if (isAlienHabitable) tier = 'habitability/alien';
         else tier = 'habitability/none';
         planet.tags.push({ key: tier });
-    
+
+        // Store the AUTHORITATIVE breakdown so the Bio tab shows exactly this (one calc, not three):
+        // the rebalanced surface factors AND the long-term geology/magnetism modifiers that the old
+        // tab never saw — which is why a "good surface" can still score low.
+        const tC = Math.round((planet.temperatureK ?? 0) - 273.15);
+        const tempIdeal = planet.hydrosphere?.composition === 'methane' ? '−162 °C ±30'
+            : planet.hydrosphere?.composition === 'ammonia' ? '−55 °C ±30' : '10–25 °C';
+        const modifiers: { label: string; delta: number }[] = [];
+        if (regime === 'stagnant-lid') modifiers.push({ label: 'Stagnant lid (runaway-greenhouse risk)', delta: -25 });
+        else if (regime === 'tidal-volcanic') modifiers.push({ label: 'Tidal volcanism (resurfaced)', delta: -20 });
+        else if (regime === 'inactive') modifiers.push({ label: 'Geologically inactive (no recycling)', delta: -10 });
+        if (planet.magnetism && !planet.magnetism.intrinsic && planet.magnetism.source === 'none') modifiers.push({ label: 'No magnetosphere (atmosphere stripping)', delta: -8 });
+        if (superBonus > 0) modifiers.push({ label: 'Super-habitable bonus', delta: superBonus });
+        if (subsurfaceHabitable) modifiers.push({ label: 'Subsurface-ocean niche (floor)', delta: SUBSURFACE_NICHE_SCORE - Math.round(surfaceScore + geoMod) });
+        planet.habitabilityBreakdown = {
+            factors: [
+                { label: 'Temperature', points: +(factors.temp * 25).toFixed(1), max: 25, value: `${Math.round(planet.temperatureK ?? 0)} K (${tC} °C)`, ideal: tempIdeal },
+                { label: 'Liquid solvent', points: +(factors.solvent * 25).toFixed(1), max: 25, value: hasSurfaceLiquid ? `${Math.round((planet.hydrosphere?.coverage ?? 0) * 100)}% ${planet.hydrosphere?.composition}` : 'no surface liquid (frozen?)', ideal: 'liquid water best' },
+                { label: 'Pressure', points: +(factors.pressure * 18).toFixed(1), max: 18, value: `${(planet.atmosphere?.pressure_bar ?? 0).toFixed(2)} bar`, ideal: '0.5–2 bar' },
+                { label: 'Radiation', points: +(factors.radiation * 17).toFixed(1), max: 17, value: `${(planet.surfaceRadiation ?? 0).toFixed(2)} mSv`, ideal: '< 5 mSv' },
+                { label: 'Gravity', points: +(factors.gravity * 15).toFixed(1), max: 15, value: `${surfaceGravityG.toFixed(2)} g`, ideal: '0.5–1.5 g' }
+            ],
+            surfaceScore: Math.round(surfaceScore),
+            modifiers,
+            finalScore: Math.round(planet.habitabilityScore),
+            tier
+        };
+
         // --- Biosphere Generation ---
         if (planet.habitabilityScore > 10 && !planet.biosphere) {
              // Future logic: Conditional procedural spawning

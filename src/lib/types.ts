@@ -159,6 +159,13 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   magnetic_field?: MagneticField;
   magnetism?: Magnetism;       // derived dynamo profile (descriptive; see deriveMagnetism)
   geoActivity?: GeoActivity;   // derived tectonics/volcanism by mechanism (see deriveGeoActivity)
+  habitabilityBreakdown?: {    // the AUTHORITATIVE habitability breakdown the Bio tab renders
+    factors: { label: string; points: number; max: number; value: string; ideal: string }[];
+    surfaceScore: number;      // sum of the surface factors (before long-term modifiers)
+    modifiers: { label: string; delta: number }[]; // geology/magnetism/super/subsurface adjustments
+    finalScore: number;
+    tier: string;
+  };
   classification?: ClassExplanation;  // why this type was chosen (winning fingerprint + bands)
 
   // Legacy/Construct specifics
