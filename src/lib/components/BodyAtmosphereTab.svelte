@@ -337,6 +337,19 @@
               <circle cx="{getMagPercent(body.magneticField?.strengthGauss || minMag)}%" cy="25" r="6" fill="#fff" stroke="#000" stroke-width="2" />
           </svg>
       </div>
+      {#if body.magnetism}
+          {@const m = body.magnetism}
+          <div class="mag-derived">
+              <div class="mag-derived-head">
+                  <span class="mag-source">{m.source.replace(/-/g, ' ')}</span>
+                  {#if m.source !== 'none'}
+                      <span class="mag-geom">{m.geometry.replace(/-/g, ' ')}{m.intrinsic ? ' · intrinsic' : ' · induced'}</span>
+                      <span class="mag-range">implies ~{m.estimatedRangeGauss.min}–{m.estimatedRangeGauss.max} G</span>
+                  {/if}
+              </div>
+              {#if m.notes.length}<p class="mag-note">{m.notes[0]}</p>{/if}
+          </div>
+      {/if}
   </div>
 
   <div class="form-group">
@@ -512,6 +525,15 @@
     gap: 1.2rem;
     padding: 10px;
   }
+  .mag-derived {
+    margin-top: 4px; padding: 6px 8px; border-radius: 4px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+  }
+  .mag-derived-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+  .mag-source { font-weight: 600; text-transform: capitalize; color: var(--text); }
+  .mag-geom { font-size: 0.8em; color: var(--text-muted); text-transform: capitalize; }
+  .mag-range { font-size: 0.8em; color: var(--link); margin-left: auto; }
+  .mag-note { margin: 4px 0 0; font-size: 0.78em; color: var(--text-faint); line-height: 1.4; }
   .form-group {
     display: flex;
     flex-direction: column;

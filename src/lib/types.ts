@@ -66,6 +66,25 @@ export interface MagneticField {
   strengthGauss: number;
 }
 
+// Derived magnetism profile (§2d) — a DESCRIPTIVE, baseline-safe read of the dynamo from the
+// interior makeup + rotation + conductive fluid layers. Does NOT override MagneticField.strengthGauss
+// (the editable input); it explains what field the physics implies and its geometry.
+export type DynamoSource =
+  | 'none'                  // no convecting conductor → unshielded
+  | 'iron-core'             // molten metal core (Earth, Mercury)
+  | 'metallic-hydrogen'     // gas-giant deep envelope (Jupiter, Saturn)
+  | 'superionic-water'      // ice-giant mantle (Uranus, Neptune — tilted/offset)
+  | 'salty-ocean-induced'   // conductive subsurface ocean, induced by a host field (Europa)
+  | 'suppressed';           // a dynamo damped by a non-convecting layer (polymeric C–N–H, slow spin)
+export type MagnetGeometry = 'none' | 'dipolar' | 'tilted' | 'off-centre' | 'multipolar' | 'induced';
+export interface Magnetism {
+  source: DynamoSource;
+  geometry: MagnetGeometry;
+  intrinsic: boolean;                              // self-generated (vs induced by a host field)
+  estimatedRangeGauss: { min: number; max: number };
+  notes: string[];
+}
+
 export interface Biosphere {
   complexity: 'simple' | 'complex';
   coverage: number;
@@ -125,6 +144,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   makeup?: Makeup;            // bulk interior composition (drives density/radius)
   biosphere?: Biosphere;
   magnetic_field?: MagneticField;
+  magnetism?: Magnetism;       // derived dynamo profile (descriptive; see deriveMagnetism)
 
   // Legacy/Construct specifics
   physical_parameters?: PhysicalParameters;

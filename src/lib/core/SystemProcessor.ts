@@ -7,6 +7,7 @@ import { classifyBody } from '../system/classification';
 import { makeupFractions } from '../physics/makeup';
 import { surfaceTempRange } from '../physics/tidalThermal';
 import { deriveFluidLayers } from '../physics/fluidLayers';
+import { deriveMagnetism } from '../physics/magnetism';
 import { deriveApparentColorParts } from '../rendering/apparentColor';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties } from '../physics/atmosphere';
@@ -398,6 +399,26 @@ export class SystemProcessor implements ISystemProcessor {
             body.hydrosphere = { ...(body.hydrosphere || {}), layers: fluidLayers };
         }
         features['hasSubsurfaceOcean'] = fluidLayers.some((l) => l.location === 'subsurface') ? 1 : 0;
+
+        // Magnetism profile (§2d) — descriptive read of the dynamo from interior conductive layers
+        // + rotation; does NOT override the editable field strength. A salty subsurface ocean only
+        // induces a field when the moon sits inside a giant host's magnetosphere.
+        let insideHostMagnetosphere = false;
+        if (body.roleHint === 'moon' && body.parentId) {
+            const host = allNodes.find(n => n.id === body.parentId) as CelestialBody | undefined;
+            if (host && host.kind === 'body') {
+                const hostMassMe = (host.massKg ?? 0) / EARTH_MASS_KG;
+                insideHostMagnetosphere =
+                    hostMassMe > 50 || makeupFractions(host).gas > 0.5 || (host.magneticField?.strengthGauss ?? 0) >= 1;
+            }
+        }
+        body.magnetism = deriveMagnetism(body, { insideHostMagnetosphere });
+        body.tags = (body.tags || []).filter(t => !t.key.startsWith('magnetic/'));
+        body.tags.push({
+            key: body.magnetism.intrinsic ? 'magnetic/dynamo'
+                : body.magnetism.source === 'salty-ocean-induced' ? 'magnetic/induced'
+                : 'magnetic/unshielded'
+        });
 
         // Re-run Classification
         // Note: This might override manual class changes if not careful.
