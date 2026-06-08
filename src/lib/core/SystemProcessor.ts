@@ -1,7 +1,8 @@
 import type { ISystemProcessor } from './interfaces';
 import type { System, RulePack, CelestialBody, Barycenter } from '../types';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG } from '../constants';
-import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, estimateBondAlbedo, composeSurfaceTemperatureFromDeltaComponents, estimateInternalHeatK } from '../physics/temperature';
+import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeSurfaceTemperatureFromDeltaComponents, estimateInternalHeatK } from '../physics/temperature';
+import { deriveAlbedo } from '../physics/albedo';
 import { calculateSurfaceRadiation } from '../physics/radiation';
 import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions } from '../physics/makeup';
@@ -251,9 +252,16 @@ export class SystemProcessor implements ISystemProcessor {
         let equilibriumTempK = 0;
         
         if (allStars.length > 0) {
-            const albedo = estimateBondAlbedo(body);
-            equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedo);
-            const eqRange = calculateEquilibriumTemperatureRange(body, allNodes, albedo);
+            // Albedo is DERIVED from surface makeup + cloud decks (which depend on temperature), so
+            // solve the albedo ⇄ equilibrium-temp coupling as a quick fixed point: a first-guess temp
+            // picks the clouds, the clouds set the albedo, the albedo sets the temp. Two iterations
+            // converge (albedo is bounded). A manually-pinned body.albedo short-circuits this.
+            let albedoInfo = deriveAlbedo(body, calculateEquilibriumTemperature(body, allNodes, 0.3), pack);
+            equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedoInfo.albedo);
+            albedoInfo = deriveAlbedo(body, equilibriumTempK, pack);
+            equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedoInfo.albedo);
+            body.albedoBreakdown = albedoInfo;
+            const eqRange = calculateEquilibriumTemperatureRange(body, allNodes, albedoInfo.albedo);
             (body as any).equilibriumTempMinK = eqRange.minK;
             (body as any).equilibriumTempMaxK = eqRange.maxK;
         }

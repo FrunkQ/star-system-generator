@@ -146,6 +146,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   temperatureProfile?: SurfaceTempProfile;  // the range DECOMPOSED by cause (seasonal/diurnal/…)
   tidallyLocked?: boolean;      // one face permanently toward its primary (no day/night cycle)
   obliquity_deg?: number;       // axial tilt — drives seasonal variation
+  albedoBreakdown?: { albedo: number; surfaceAlbedo: number; cloudAlbedo: number; cloudCover: number; cloudSpecies?: string; note: string };
   calculatedGravity_ms2?: number;
   distanceToHost_km?: number;
   orbitalBoundaries?: OrbitalBoundaries;

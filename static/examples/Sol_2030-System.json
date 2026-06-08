@@ -118,7 +118,6 @@
       "equilibriumTempMinK": 400.51066545601077,
       "equilibriumTempMaxK": 493.4119818789391,
       "tidallyLocked": false,
-      "albedo": 0.07,
       "magneticField": {
         "strengthGauss": 0
       },
@@ -201,7 +200,6 @@
       "equilibriumTempMinK": 230.86677373783644,
       "equilibriumTempMaxK": 232.43553333561587,
       "tidallyLocked": false,
-      "albedo": 0.75,
       "internalHeatK": 0
     },
     {
@@ -371,7 +369,6 @@
       "equilibriumTempMinK": 268.02902559330516,
       "equilibriumTempMaxK": 272.57215336377726,
       "tidallyLocked": false,
-      "albedo": 0.11,
       "internalHeatK": 0
     },
     {
@@ -453,7 +450,6 @@
       "equilibriumTempMinK": 200.8814029932705,
       "equilibriumTempMaxK": 220.60807768564948,
       "tidallyLocked": false,
-      "albedo": 0.25,
       "magneticField": {
         "strengthGauss": 0
       },
@@ -725,7 +721,6 @@
       "equilibriumTempMinK": 107.48415397706725,
       "equilibriumTempMaxK": 112.875163989493,
       "tidallyLocked": false,
-      "albedo": 0.34,
       "internalHeatK": 52,
       "orbitalStability": "Marginal",
       "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=7.95)."
@@ -1167,7 +1162,6 @@
       "equilibriumTempMinK": 78.92605367308619,
       "equilibriumTempMaxK": 83.51878868921848,
       "tidallyLocked": false,
-      "albedo": 0.34,
       "internalHeatK": 52,
       "orbitalStability": "Marginal",
       "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=7.95)."
@@ -1301,7 +1295,6 @@
       "equilibriumTempMaxK": 84.71931924571962,
       "internalHeatK": 0,
       "tidallyLocked": false,
-      "albedo": 0.3,
       "magneticField": {
         "strengthGauss": 0
       },
@@ -2007,7 +2000,6 @@
       "equilibriumTempMinK": 46.34789785206162,
       "equilibriumTempMaxK": 46.87462190356624,
       "tidallyLocked": false,
-      "albedo": 0.29,
       "internalHeatK": 24
     },
     {

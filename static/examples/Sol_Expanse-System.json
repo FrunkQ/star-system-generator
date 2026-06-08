@@ -125,8 +125,7 @@
       "tidallyLocked": false,
       "magneticField": {
         "strengthGauss": 0
-      },
-      "albedo": 0.07
+      }
     },
     {
       "id": "solar-system-venus",
@@ -205,8 +204,7 @@
       "equilibriumTempMinK": 230.86677373783644,
       "equilibriumTempMaxK": 232.43553333561587,
       "internalHeatK": 0,
-      "tidallyLocked": false,
-      "albedo": 0.75
+      "tidallyLocked": false
     },
     {
       "id": "solar-system-earth",
@@ -307,8 +305,7 @@
       "surfaceRadiationMax": 2.335918352147979,
       "equilibriumTempMinK": 252.74763281989237,
       "equilibriumTempMaxK": 257.00656962375086,
-      "internalHeatK": 0,
-      "albedo": 0.3
+      "internalHeatK": 0
     },
     {
       "id": "solar-system-luna",
@@ -379,8 +376,7 @@
       "tidallyLocked": false,
       "magneticField": {
         "strengthGauss": 0
-      },
-      "albedo": 0.11
+      }
     },
     {
       "id": "solar-system-mars",
@@ -464,8 +460,7 @@
       "tidallyLocked": false,
       "magneticField": {
         "strengthGauss": 0
-      },
-      "albedo": 0.25
+      }
     },
     {
       "id": "solar-system-phobos",
@@ -733,7 +728,6 @@
       "equilibriumTempMaxK": 112.875163989493,
       "internalHeatK": 52,
       "tidallyLocked": false,
-      "albedo": 0.34,
       "orbitalStability": "Marginal",
       "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=7.95)."
     },
@@ -1175,7 +1169,6 @@
       "equilibriumTempMaxK": 83.51878868921848,
       "internalHeatK": 52,
       "tidallyLocked": false,
-      "albedo": 0.34,
       "orbitalStability": "Marginal",
       "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=7.95)."
     },
@@ -1308,7 +1301,6 @@
       "equilibriumTempMaxK": 84.71931924571962,
       "internalHeatK": 0,
       "tidallyLocked": false,
-      "albedo": 0.3,
       "hydrosphere": {
         "composition": "methane",
         "coverage": 0.05
@@ -1680,8 +1672,7 @@
       "equilibriumTempMinK": 56.830543387748826,
       "equilibriumTempMaxK": 59.53046617838738,
       "internalHeatK": 24,
-      "tidallyLocked": false,
-      "albedo": 0.3
+      "tidallyLocked": false
     },
     {
       "id": "solar-system-uranus-rings",
@@ -2013,8 +2004,7 @@
       "equilibriumTempMinK": 46.34789785206162,
       "equilibriumTempMaxK": 46.87462190356624,
       "internalHeatK": 24,
-      "tidallyLocked": false,
-      "albedo": 0.29
+      "tidallyLocked": false
     },
     {
       "id": "solar-system-neptune-rings",

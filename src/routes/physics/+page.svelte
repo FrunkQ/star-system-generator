@@ -109,7 +109,13 @@
       <h2>Equilibrium temperature</h2>
       <p>For each star, luminosity <code>L = 4π·R★²·σ·T★⁴</code> (Stefan–Boltzmann). The blackbody equilibrium
         temperature at distance <code>d</code> is <code>T_eq = [ L·(1−A) / (16·π·σ·d²) ]^¼</code>, summed over
-        all stars in the system (binaries add their fluxes). <code>A</code> is the estimated Bond albedo.</p>
+        all stars in the system (binaries add their fluxes).</p>
+      <p><code>A</code>, the Bond albedo, is now <strong>derived</strong>, not dialled in: a surface reflectivity
+        from the makeup (dark ocean ~0.06, rock ~0.15, bright ice ~0.62) plus the <strong>cloud decks</strong> that
+        condense at the world's temperature (water ~0.5, CO₂ ~0.7, sulfuric ~0.75, methane haze ~0.3). A liquid
+        ocean makes its own water clouds — that's where Earth's 0.30 comes from. Because clouds depend on
+        temperature and temperature depends on albedo, it's solved as a quick fixed point. A manually-pinned
+        albedo still wins, but is no longer needed — tweak the makeup/atmosphere and the albedo follows.</p>
     </section>
 
     <section id="eccentric-flux">

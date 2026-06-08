@@ -120,7 +120,11 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     inputs: [
       { label: 'Semi-major axis', value: n(body.orbit?.elements.a_AU, 3, 'AU') },
       { label: 'Eccentricity', value: n(body.orbit?.elements.e, 3) },
-      { label: 'Star', value: ctx.star?.name ?? '—' }
+      { label: 'Star', value: ctx.star?.name ?? '—' },
+      ...(body.albedoBreakdown ? [{
+        label: 'Albedo (derived)',
+        value: `${body.albedoBreakdown.albedo} — ${body.albedoBreakdown.note}`
+      }] : [])
     ],
     outputs: tempOut,
     notes: body.temperatureRangeK && body.temperatureRangeK.max - body.temperatureRangeK.min > 5
