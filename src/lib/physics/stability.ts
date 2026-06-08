@@ -326,8 +326,16 @@ export function annotateGravitationalStability(system: System): System {
     delete (node as any).orbitalStabilityDetails;
   }
 
+  // Belts/rings are DISTRIBUTED mass (their massKg is a debris-density proxy, not a point
+  // mass), so they must not act as gravitational siblings — otherwise a belt's "mass" feeds
+  // the mutual-Hill-spacing check and spuriously flags a neighbouring planet as unstable.
+  // (Gravity-assist already skips them; orbits.ts flags them isDistributed.)
   const orbitalNodes = system.nodes.filter(
-    (n) => n.kind === 'body' && (n as CelestialBody).orbit
+    (n) =>
+      n.kind === 'body' &&
+      (n as CelestialBody).orbit &&
+      (n as CelestialBody).roleHint !== 'belt' &&
+      (n as CelestialBody).roleHint !== 'ring'
   ) as OrbitalNode[];
 
   const byHost = new Map<string, OrbitalNode[]>();

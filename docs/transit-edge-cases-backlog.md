@@ -5,6 +5,15 @@ together so destination types + the perturber model are designed coherently. Fin
 the current code; locations are approximate.
 
 ## 1. Belts/rings are distributed mass — must NOT be point-mass perturbers
+> Note: a belt's `massKg` is abstracted to **debris density** (a navigation hazard surfaced via
+> `transit/telemetry.ts` Debris events + `getBeltDensityDescription`), NOT gravitational mass.
+>
+> **FIXED (the main manifestation):** the stability annotator (`stability.ts`) was treating belts/
+> rings as gravitational *siblings*, so a belt's debris-proxy mass fed the mutual-Hill-spacing check
+> and spuriously flagged neighbouring planets unstable. Belts/rings are now excluded from the
+> stability `orbitalNodes` (regression test in `stability.spec.ts`). **STILL BANKED:** the transit
+> n-body perturber below.
+
 **Finding.** Belts/rings are `kind:'body'`, `roleHint:'belt'|'ring'`. In the examples they have
 **no `massKg`** (→ `getNodeMass` returns 0), so today they don't perturb. **But** the n-body
 perturber list does *not* exclude them: `calculator.ts:~883`
