@@ -92,9 +92,8 @@
             ctx.strokeStyle = '#00ff00';
             ctx.lineWidth = 2;
             ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.stroke();
-            ctx.fillStyle = '#00ff00';
-            ctx.font = 'bold 12px sans-serif';
-            ctx.fillText(`${index + 1}`, x + 10, y + 5);
+            // Marker value label (works on touch — no hover needed) so click→value alignment is testable.
+            drawLabel(x, y, `${index + 1}: ${fmtT(star.temperatureK)} · ${fmtL(star.luminositySolar)}`, '#bfffbf');
         });
 
         if (hoverStar) {
@@ -107,7 +106,23 @@
             ctx.moveTo(0, y); ctx.lineTo(logicalWidth, y);
             ctx.stroke();
             ctx.setLineDash([]);
+            drawLabel(x, y, `${fmtT(hoverStar.temperatureK)} · ${fmtL(hoverStar.luminositySolar)}`, '#ffffff');
         }
+    }
+
+    // Compact value formatters + a readable label (dark pill, light text) for on-canvas readouts.
+    const fmtT = (t: number) => `${Math.round(t).toLocaleString()} K`;
+    const fmtL = (l: number) => l >= 100 || l < 0.01 ? `${l.toExponential(0)} L☉` : l >= 1 ? `${l.toFixed(1)} L☉` : `${l.toPrecision(2)} L☉`;
+    function drawLabel(x: number, y: number, text: string, color: string) {
+        ctx.font = '11px sans-serif';
+        const w = ctx.measureText(text).width;
+        let lx = x + 12, ly = y - 12;
+        if (lx + w + 6 > logicalWidth) lx = x - 12 - w;   // flip left near the right edge
+        if (ly < 14) ly = y + 22;                          // drop below near the top edge
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillRect(lx - 3, ly - 11, w + 6, 15);
+        ctx.fillStyle = color;
+        ctx.fillText(text, lx, ly);
     }
 
     function handleMouseMove(e: MouseEvent) {
