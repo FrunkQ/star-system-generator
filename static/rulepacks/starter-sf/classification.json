@@ -313,79 +313,74 @@
             {
                 "class": "planet/iron",
                 "kind": "base",
-                "note": "Stripped iron core, very high density.",
+                "note": "Iron-rich (stripped/metal core).",
                 "match": {
-                    "density": [
-                        8,
-                        25
+                    "makeup.metal": [
+                        0.45,
+                        1
                     ],
                     "mass_Me": [
                         0.3,
                         10
-                    ],
-                    "radius_Re": [
-                        0.4,
-                        1.6
                     ]
-                }
+                },
+                "weight": 1.1
             },
             {
                 "class": "planet/silicate",
                 "kind": "base",
-                "note": "Rock-dominated, dense.",
+                "note": "Rock/silicate world (has a metal core).",
                 "match": {
-                    "density": [
-                        4.5,
-                        8
+                    "makeup.rock": [
+                        0.6,
+                        1
+                    ],
+                    "makeup.metal": [
+                        0.1,
+                        0.4
                     ],
                     "mass_Me": [
                         0.3,
                         8
-                    ],
-                    "radius_Re": [
-                        0.5,
-                        1.8
                     ]
-                }
+                },
+                "weight": 0.85
             },
             {
                 "class": "planet/coreless",
                 "kind": "base",
-                "note": "No iron core → low density rock.",
+                "note": "No metal core → rock+ice.",
                 "match": {
-                    "density": [
-                        1.5,
-                        3.2
+                    "makeup.metal": [
+                        0,
+                        0.1
+                    ],
+                    "makeup.rock": [
+                        0.25,
+                        0.85
                     ],
                     "mass_Me": [
                         0.3,
                         8
-                    ],
-                    "radius_Re": [
-                        0.7,
-                        2.2
                     ]
-                }
+                },
+                "weight": 0.85
             },
             {
                 "class": "planet/carbon",
                 "kind": "base",
-                "note": "Carbon-rich (graphite/diamond mantle).",
+                "note": "Carbon-rich interior (graphite/diamond).",
                 "match": {
-                    "density": [
-                        3,
-                        6
+                    "makeup.carbon": [
+                        0.3,
+                        1
                     ],
                     "mass_Me": [
                         0.5,
                         10
-                    ],
-                    "atm.main": [
-                        "CO",
-                        "CH4"
                     ]
                 },
-                "weight": 1.2
+                "weight": 1.4
             },
             {
                 "class": "planet/lava",

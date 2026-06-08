@@ -4,6 +4,10 @@ const fs = require('fs');
 const EM = 5.972e24, ER = 6371; // Earth mass kg, radius km
 // radius (Re) from mass (Me) + bulk density (g/cc): density = 5.513 * Me / Re^3
 const reFromDensity = (Me, d) => Math.cbrt(5.513 * Me / d);
+// Interior makeup → bulk density → radius (mirrors lib/physics/makeup.ts).
+const GRAIN = { metal: 7.9, rock: 3.3, carbon: 2.3, ice: 0.95, gas: 0.12 };
+const densFromMakeup = (m) => { let inv = 0, sum = 0; for (const k in m) sum += m[k]; for (const k in m) inv += (m[k] / sum) / GRAIN[k]; return 1 / inv; };
+const reFromMakeup = (Me, m) => Math.cbrt((Me / densFromMakeup(m)) * 5.513);
 // a_AU for a target equilibrium temp. Testion is luminous (~30 L☉), so Teq ≈ 651 / sqrt(a):
 // hot zones spread to larger orbits, separating the cloud-type giants from each other.
 const aFromTeq = (Teq, K = 651) => +( (K / Teq) ** 2 ).toFixed(4);
@@ -20,8 +24,8 @@ const star = {
 nodes.push(star);
 
 function body(spec) {
-  const { target, Me, d, Re, Teq, a, e = 0.02, atmMain, atmP = 0, comp, hydroComp, hydroCov = 0, rotH, mag = 0.3, locked = false, name, parent = 'testion', role = 'planet' } = spec;
-  const radius_Re = Re != null ? Re : reFromDensity(Me, d);
+  const { target, Me, d, Re, makeup, Teq, a, e = 0.02, atmMain, atmP = 0, comp, hydroComp, hydroCov = 0, rotH, mag = 0.3, locked = false, name, parent = 'testion', role = 'planet' } = spec;
+  const radius_Re = Re != null ? Re : (makeup ? reFromMakeup(Me, makeup) : reFromDensity(Me, d));
   const id = `t-${++idn}-${target.replace('planet/', '')}`;
   const aAU = a != null ? a : aFromTeq(Teq);
   const n = {
@@ -32,6 +36,7 @@ function body(spec) {
     magneticField: { strengthGauss: mag }, tags: [],
   };
   if (rotH != null) n.rotation_period_hours = rotH;
+  if (makeup) n.makeup = makeup;
   if (locked) n.tidallyLocked = true;
   if (atmMain) n.atmosphere = { name: atmMain, main: atmMain, pressure_bar: atmP, composition: comp || { [atmMain]: 1 } };
   if (hydroCov > 0) n.hydrosphere = { composition: hydroComp || 'water', coverage: hydroCov };
@@ -49,11 +54,12 @@ const NEU = 3.75;
 
 // ---- Rocky size / composition series ----
 body({ target: 'planet/sub-earth', Me: 0.25, d: 5.0, Teq: 280, atmMain: 'CO2', atmP: 0.01 });
-body({ target: 'planet/terrestrial', Me: 0.8, d: NEU, Teq: 200, atmMain: 'N2', atmP: 0.5, comp: { N2: 0.9, Ar: 0.1 } });
-body({ target: 'planet/iron', Me: 3, d: 14, Teq: 300, atmMain: 'CO2', atmP: 0.02 });
-body({ target: 'planet/silicate', Me: 1.2, d: 6.5, Teq: 200 });
-body({ target: 'planet/coreless', Me: 1, d: 2.4, Teq: 240, atmMain: 'CO2', atmP: 0.1 });
-body({ target: 'planet/carbon', Me: 1.5, d: NEU, Teq: 200, atmMain: 'CO', atmP: 2, comp: { CO: 0.7, CH4: 0.3 } });
+body({ target: 'planet/terrestrial', Me: 0.8, makeup: { rock: 1.0 }, Teq: 200, atmMain: 'N2', atmP: 0.5, comp: { N2: 0.9, Ar: 0.1 } });
+// Composition types are now defined by interior MAKEUP (density/radius derive from it).
+body({ target: 'planet/iron', Me: 1.5, makeup: { metal: 0.7, rock: 0.3 }, Teq: 200, atmMain: 'CO2', atmP: 0.02 });
+body({ target: 'planet/silicate', Me: 1.2, makeup: { rock: 0.85, metal: 0.15 }, Teq: 200 });
+body({ target: 'planet/coreless', Me: 1, makeup: { rock: 0.55, ice: 0.45 }, Teq: 240, atmMain: 'CO2', atmP: 0.1 });
+body({ target: 'planet/carbon', Me: 1.5, makeup: { carbon: 0.6, rock: 0.4 }, Teq: 200, atmMain: 'CO', atmP: 2, comp: { CO: 0.7, CH4: 0.3 } });
 body({ target: 'planet/super-earth', Me: 5, d: 6.5, Teq: 270, atmMain: 'N2', atmP: 3, comp: { N2: 0.8, CO2: 0.2 } });
 body({ target: 'planet/mega-earth', Me: 18, d: 10.5, Teq: 260, atmMain: 'N2', atmP: 4, comp: { N2: 0.9, CO2: 0.1 } });
 body({ target: 'planet/supermassive-terrestrial', Me: 55, d: 12, Teq: 250, atmMain: 'N2', atmP: 5, comp: { N2: 0.9, CO2: 0.1 } });
@@ -122,9 +128,9 @@ body({ target: 'planet/sub-brown-dwarf', Me: 3500, Re: 11, Teq: 200 });
 body({ target: 'planet/brown-dwarf', Me: 6000, Re: 12, Teq: 1100 });
 body({ target: 'planet/ultra-cool-dwarf', Me: 9000, Re: 13, Teq: 400 });
 
-// ---- Rotation modifiers (each on a terrestrial base) ----
-body({ target: 'planet/terrestrial', name: 'Toroid', Me: 1, d: NEU, Teq: 200, rotH: 1.5 });
-body({ target: 'planet/terrestrial', name: 'Ellipsoid', Me: 1, d: NEU, Teq: 200, rotH: 4 });
+// ---- Rotation modifiers on a rocky (silicate) base — the toroidal/ellipsoid MODIFIER is the demo ----
+body({ target: 'planet/silicate', name: 'Toroid', Me: 1, makeup: { rock: 0.85, metal: 0.15 }, Teq: 200, rotH: 1.5 });
+body({ target: 'planet/silicate', name: 'Ellipsoid', Me: 1, makeup: { rock: 0.85, metal: 0.15 }, Teq: 200, rotH: 4 });
 
 const system = {
   id: 'testion-system', name: 'Testion', seed: 'testion-demo', epochT0: 0, age_Gyr: 4.6,

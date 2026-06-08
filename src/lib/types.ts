@@ -25,6 +25,8 @@ export interface NodeBase {
 
 export interface Atmosphere { name: string; main?: string; pressure_bar?: number; composition: Record<string, number>; tags?: Tag[]; molarMassKg?: number; scaleHeightKm?: number; }
 export interface Hydrosphere { coverage?: number; depth_m?: number; composition?: string; tags?: Tag[]; }
+// Bulk interior makeup (mass fractions, normalised). Density + radius derive from it (§2a).
+export interface Makeup { metal?: number; rock?: number; carbon?: number; ice?: number; gas?: number; }
 export interface ImageRef { url: string; title?: string; credit?: string; license?: string; sourceUrl?: string; }
 
 export interface Area {
@@ -106,6 +108,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   // Environment
   atmosphere?: Atmosphere;
   hydrosphere?: Hydrosphere;
+  makeup?: Makeup;            // bulk interior composition (drives density/radius)
   biosphere?: Biosphere;
   magnetic_field?: MagneticField;
 

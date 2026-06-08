@@ -4,6 +4,7 @@ import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG } from '../cons
 import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, estimateBondAlbedo, composeSurfaceTemperatureFromDeltaComponents, estimateInternalHeatK } from '../physics/temperature';
 import { calculateSurfaceRadiation } from '../physics/radiation';
 import { classifyBody } from '../system/classification';
+import { makeupFractions } from '../physics/makeup';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties } from '../physics/atmosphere';
 import { SeededRNG } from '../rng';
@@ -361,6 +362,16 @@ export class SystemProcessor implements ISystemProcessor {
         }
         features['hydrosphere.coverage'] = body.hydrosphere?.coverage ?? 0;
         features['hydrosphere.composition'] = body.hydrosphere?.composition ?? 'none';
+
+        // Interior makeup fractions (explicit body.makeup, else inferred from density) — so the
+        // composition types (iron/silicate/coreless/carbon) classify on COMPOSITION, not a
+        // fragile density band. (§2a)
+        const mk = makeupFractions(body);
+        features['makeup.metal'] = mk.metal;
+        features['makeup.rock'] = mk.rock;
+        features['makeup.carbon'] = mk.carbon;
+        features['makeup.ice'] = mk.ice;
+        features['makeup.gas'] = mk.gas;
 
         // Re-run Classification
         // Note: This might override manual class changes if not careful.

@@ -80,11 +80,14 @@
         }
       },
       "massKg": 4.7776000000000004e+24,
-      "radiusKm": 6724.96211874292,
+      "radiusKm": 7017.713245093729,
       "magneticField": {
         "strengthGauss": 0.3
       },
       "tags": [],
+      "makeup": {
+        "rock": 1
+      },
       "atmosphere": {
         "name": "N2",
         "main": "N2",
@@ -105,7 +108,7 @@
       "orbit": {
         "hostId": "testion",
         "elements": {
-          "a_AU": 4.7089,
+          "a_AU": 10.595,
           "e": 0.02,
           "i_deg": 0,
           "omega_deg": 0,
@@ -113,12 +116,16 @@
           "M0_rad": 0
         }
       },
-      "massKg": 1.7916e+25,
-      "radiusKm": 6734.95464773237,
+      "massKg": 8.958e+24,
+      "radiusKm": 7267.788764709121,
       "magneticField": {
         "strengthGauss": 0.3
       },
       "tags": [],
+      "makeup": {
+        "metal": 0.7,
+        "rock": 0.3
+      },
       "atmosphere": {
         "name": "CO2",
         "main": "CO2",
@@ -147,11 +154,15 @@
         }
       },
       "massKg": 7.1664e+24,
-      "radiusKm": 6408.546881210882,
+      "radiusKm": 7792.235971657743,
       "magneticField": {
         "strengthGauss": 0.3
       },
-      "tags": []
+      "tags": [],
+      "makeup": {
+        "rock": 0.85,
+        "metal": 0.15
+      }
     },
     {
       "id": "t-5-coreless",
@@ -172,11 +183,15 @@
         }
       },
       "massKg": 5.972e+24,
-      "radiusKm": 8406.20264842865,
+      "radiusKm": 9700.845893812471,
       "magneticField": {
         "strengthGauss": 0.3
       },
       "tags": [],
+      "makeup": {
+        "rock": 0.55,
+        "ice": 0.45
+      },
       "atmosphere": {
         "name": "CO2",
         "main": "CO2",
@@ -205,11 +220,15 @@
         }
       },
       "massKg": 8.958e+24,
-      "radiusKm": 8292.591388329405,
+      "radiusKm": 9348.733138399151,
       "magneticField": {
         "strengthGauss": 0.3
       },
       "tags": [],
+      "makeup": {
+        "carbon": 0.6,
+        "rock": 0.4
+      },
       "atmosphere": {
         "name": "CO",
         "main": "CO",
@@ -1685,12 +1704,12 @@
       "tags": []
     },
     {
-      "id": "t-54-terrestrial",
+      "id": "t-54-silicate",
       "parentId": "testion",
       "name": "Toroid",
       "kind": "body",
       "roleHint": "planet",
-      "__target": "planet/terrestrial",
+      "__target": "planet/silicate",
       "orbit": {
         "hostId": "testion",
         "elements": {
@@ -1703,20 +1722,24 @@
         }
       },
       "massKg": 5.972e+24,
-      "radiusKm": 7244.245838885031,
+      "radiusKm": 7332.774794872706,
       "magneticField": {
         "strengthGauss": 0.3
       },
       "tags": [],
-      "rotation_period_hours": 1.5
+      "rotation_period_hours": 1.5,
+      "makeup": {
+        "rock": 0.85,
+        "metal": 0.15
+      }
     },
     {
-      "id": "t-55-terrestrial",
+      "id": "t-55-silicate",
       "parentId": "testion",
       "name": "Ellipsoid",
       "kind": "body",
       "roleHint": "planet",
-      "__target": "planet/terrestrial",
+      "__target": "planet/silicate",
       "orbit": {
         "hostId": "testion",
         "elements": {
@@ -1729,12 +1752,16 @@
         }
       },
       "massKg": 5.972e+24,
-      "radiusKm": 7244.245838885031,
+      "radiusKm": 7332.774794872706,
       "magneticField": {
         "strengthGauss": 0.3
       },
       "tags": [],
-      "rotation_period_hours": 4
+      "rotation_period_hours": 4,
+      "makeup": {
+        "rock": 0.85,
+        "metal": 0.15
+      }
     }
   ],
   "rulePackId": "starter-sf",
