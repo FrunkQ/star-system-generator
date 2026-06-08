@@ -587,45 +587,49 @@ export class SystemProcessor implements ISystemProcessor {
             gravity: 0
         };
     
-        // Temperature Score (Max 30 points)
+        // REBALANCED weights (toward current astrobiology thinking): a liquid SOLVENT is the master
+        // variable for life, with temperature gating it; atmosphere/radiation are retention/shielding
+        // terms; GRAVITY is a weak direct constraint (life is robust across a wide range), so its
+        // tolerance is widened and its weight trimmed. Weights still sum to 100 and Earth = 100.
+
+        // Temperature (Max 25) — within the solvent's liquid range.
         if (planet.temperatureK) {
             if (planet.hydrosphere?.composition === 'water' || !planet.hydrosphere) {
-                // Optimal: 10C to 25C (283K - 298K). Falloff 40K.
-                factors.temp = scoreFromPlateau(planet.temperatureK, 283, 298, 40); 
+                factors.temp = scoreFromPlateau(planet.temperatureK, 283, 298, 40); // 10–25 °C, falloff 40 K
             } else if (planet.hydrosphere?.composition === 'methane') {
-                factors.temp = scoreFromRange(planet.temperatureK, 111, 30); // Optimal -162C, range +/- 30C
+                factors.temp = scoreFromRange(planet.temperatureK, 111, 30); // methane seas (Titan-like)
             } else if (planet.hydrosphere?.composition === 'ammonia') {
-                factors.temp = scoreFromRange(planet.temperatureK, 218, 30); // Optimal -55C, range +/- 30C
+                factors.temp = scoreFromRange(planet.temperatureK, 218, 30); // ammonia solvent
             }
         }
-        score += factors.temp * 30;
-    
-        // Pressure Score (Max 20 points)
-        if (planet.atmosphere?.pressure_bar) {
-            // Optimal: 0.8 to 1.5 bar. Falloff 1.5 bar.
-            factors.pressure = scoreFromPlateau(planet.atmosphere.pressure_bar, 0.8, 1.5, 1.5);
-        }
-        score += factors.pressure * 20;
-    
-        // Solvent Score (Max 20 points)
-        if ((planet.hydrosphere?.coverage || 0) > 0.1) {
+        score += factors.temp * 25;
+
+        // Solvent (Max 25) — a standing LIQUID is the prerequisite; water scores highest. Uses the
+        // fluid-layer model: a frozen ice cap is NOT a surface solvent (its life potential, if any,
+        // is the subsurface ocean handled below), so a frozen world scores 0 here.
+        const hasSurfaceLiquid = (planet.hydrosphere?.layers || []).some(l => l.location === 'surface')
+            || ((planet.hydrosphere?.coverage || 0) > 0.1 && (planet.temperatureK || 0) >= 260
+                && (planet.hydrosphere?.composition === 'water' || !planet.hydrosphere?.composition));
+        if (hasSurfaceLiquid) {
             factors.solvent = 1;
-            if (planet.hydrosphere?.composition === 'water') {
-                score += 5; // Bonus for water
-            }
+            if (planet.hydrosphere?.composition === 'water') score += 5; // water bonus → 25 max
         }
-        score += factors.solvent * 15;
-    
-        // Radiation Score (Max 15 points)
-        // Optimal: 0 to 5 mSv/yr. Falloff 20 mSv.
+        score += factors.solvent * 20;
+
+        // Atmosphere pressure (Max 18) — enough to keep a solvent stable + shield; wide tolerance.
+        if (planet.atmosphere?.pressure_bar) {
+            factors.pressure = scoreFromPlateau(planet.atmosphere.pressure_bar, 0.5, 2.0, 2.0);
+        }
+        score += factors.pressure * 18;
+
+        // Radiation (Max 17) — surface dose; DNA damage / sterilization.
         factors.radiation = scoreFromPlateau(planet.surfaceRadiation || 0, 0, 5, 20);
-        score += factors.radiation * 15;
-    
-        // Gravity Score (Max 15 points)
+        score += factors.radiation * 17;
+
+        // Gravity (Max 15) — a WEAK direct constraint; widen the tolerable band to 0.5–1.5 g.
         const surfaceGravityG = (planet.massKg && planet.radiusKm) ? (G * planet.massKg / ((planet.radiusKm*1000) * (planet.radiusKm*1000))) / 9.81 : 0;
         if (surfaceGravityG > 0) {
-            // Optimal: 0.8g to 1.2g. Falloff 0.5g.
-            factors.gravity = scoreFromPlateau(surfaceGravityG, 0.8, 1.2, 0.5);
+            factors.gravity = scoreFromPlateau(surfaceGravityG, 0.5, 1.5, 0.6);
         }
         score += factors.gravity * 15;
 
@@ -677,7 +681,7 @@ export class SystemProcessor implements ISystemProcessor {
         // plate tectonics for Earth-like; not stagnant-lid/tidal-volcanic for human-habitable.
         const isEarthLike = factors.temp > 0.9 && factors.pressure > 0.8 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.9 && factors.gravity > 0.8 && planet.atmosphere?.composition?.['O2'] > 0.1 && regime === 'plate-tectonics';
         const isHumanHabitable = factors.temp > 0.7 && factors.pressure > 0.6 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.7 && factors.gravity > 0.6 && regime !== 'stagnant-lid' && regime !== 'tidal-volcanic';
-        const isAlienHabitable = planet.habitabilityScore > 40;
+        const isAlienHabitable = planet.habitabilityScore > 40 && factors.solvent === 1; // needs a liquid solvent
         const isSuperHabitable = planet.habitabilityScore > 100; // better-than-Earth (only super-habitable worlds)
 
         // Clear old habitability tags before adding new ones

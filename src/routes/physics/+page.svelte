@@ -231,8 +231,11 @@
 
     <section id="habitability">
       <h2>Habitability score</h2>
-      <p>A 0–100 weighted score: temperature vs the solvent's liquid range (30), pressure (20), a liquid solvent
-        (15, +5 for water), radiation (15), and surface gravity (15) — the instantaneous <em>surface</em> conditions.
+      <p>A 0–100 weighted score, rebalanced toward current astrobiology thinking — a liquid <strong>solvent</strong>
+        is the master variable: solvent (20, +5 for water = 25), temperature vs that solvent's liquid range (25),
+        atmospheric pressure (18), radiation (17), and surface gravity (15, a weak constraint with a wide 0.5–1.5 g
+        tolerance) — the instantaneous <em>surface</em> conditions. The solvent must be genuinely <em>liquid</em>
+        (a frozen ice cap scores 0 — its life potential is the subsurface ocean below).
         On top of that the model folds in <strong>long-term</strong> factors from the geology and magnetism above:</p>
       <ul>
         <li><strong>Plate tectonics</strong> +8 (carbonate–silicate climate regulation); <strong>stagnant-lid</strong>
