@@ -125,6 +125,31 @@
     return clip ? `${bg} clip-path:${clip}; border-radius:0;` : bg;
   }
 
+  // Distance from the star (AU), summed up the orbit chain. A moon's distance = its host planet's
+  // distance + the moon's own orbit radius, so a body's natural order is by how far from the star it
+  // sits — and moons clump right after their host planet ("planet, moon, moon, planet, moon") rather
+  // than scattering alphabetically. Memoised over `nodes`; ties (and bodies with no orbit) fall back
+  // to name.
+  $: distById = (() => {
+    const byId = new Map((nodes as any[]).map((n) => [n.id, n]));
+    const cache = new Map<string, number>();
+    const dist = (n: any, seen: Set<string>): number => {
+      if (!n || seen.has(n.id)) return 0;
+      if (cache.has(n.id)) return cache.get(n.id)!;
+      seen.add(n.id);
+      const a = n.orbit?.elements?.a_AU ?? 0;
+      const pid = n.orbit?.hostId ?? n.parentId;
+      const d = a + (pid ? dist(byId.get(pid), seen) : 0);
+      cache.set(n.id, d);
+      return d;
+    };
+    for (const n of nodes as any[]) dist(n, new Set());
+    return cache;
+  })();
+  function byStarDistance(a: any, b: any): number {
+    return ((distById.get(a.id) ?? 0) - (distById.get(b.id) ?? 0)) || a.name.localeCompare(b.name);
+  }
+
   $: selectable = nodes.filter((n: any) => filterItems(n));
   $: byCat = (() => {
     const m = new Map<string, any[]>();
@@ -134,7 +159,7 @@
         m.get(c)!.push(n);
       }
     }
-    for (const arr of m.values()) arr.sort((a, b) => a.name.localeCompare(b.name));
+    for (const arr of m.values()) arr.sort(byStarDistance);
     return m;
   })();
   $: extraCats = Array.from(byCat.keys()).filter((c) => !categoryOrder.includes(c));
@@ -144,7 +169,7 @@
 
   $: focused = (nodes as any[]).find((n) => n.id === focusedId) || null;
   $: q = query.trim().toLowerCase();
-  $: searchResults = q ? (selectable as any[]).filter((n) => n.name.toLowerCase().includes(q)).slice(0, 100) : [];
+  $: searchResults = q ? (selectable as any[]).filter((n) => n.name.toLowerCase().includes(q)).sort(byStarDistance).slice(0, 100) : [];
   $: drillItems = drill ? byCat.get(drill) ?? [] : [];
 
   function pick(id: string) {

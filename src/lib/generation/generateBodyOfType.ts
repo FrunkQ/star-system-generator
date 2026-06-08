@@ -31,11 +31,29 @@ function pickStr(band: FingerprintBand | undefined): string | undefined {
 // runaway-greenhouse limit and is NOT extended.) The generator then gives the body that atmosphere.
 const GREENHOUSE_COLD_SLACK_K: { test: RegExp; k: number }[] = [
   { test: /hycean/, k: 80 },                                                  // H2 envelope — very strong greenhouse
-  { test: /ocean|earth-analogue|earth-like|superhabitable|forest|jungle|eyeball/, k: 40 }, // Earth-class N2/CO2/H2O
+  { test: /ocean|earth-analogue|earth-like|superhabitable|forest|jungle|swamp|eyeball/, k: 40 }, // Earth-class N2/CO2/H2O
   { test: /desert|ammonia/, k: 20 },                                          // thinner / alternative greenhouse
 ];
 function greenhouseColdSlackK(cls: string): number {
   return GREENHOUSE_COLD_SLACK_K.find((g) => g.test.test(cls))?.k ?? 0;
+}
+
+// Types DESIGNED to hold a liquid-WATER ocean kept liquid by a greenhouse atmosphere — these get an
+// orbit-sized atmosphere in the generator. Deliberately EXCLUDES frozen worlds (ice) and dry worlds
+// (desert/barren) so they stay as designed. Earth-analogue/-like/superhabitable are here too: their
+// fingerprint gives only an O2 biosignature (greenhouse 0), so without this they freeze at T_eq.
+const LIQUID_WATER_TYPE = /ocean|earth-analogue|earth-like|superhabitable|forest|jungle|swamp|eyeball/;
+
+// Invert the processor's greenhouse model (MEASURED at ~1 bar: 0.04 % CO2 → +23.5 K, 0.1 % → +34.5 K,
+// 0.4 % → +58 K …) to the CO2 fraction whose warming is `d` K. Used to size a habitable atmosphere to
+// the orbit's coldness so the surface clears freezing.
+const GH_TABLE: [number, number][] = [[0.0004, 23.5], [0.001, 34.5], [0.002, 45.2], [0.004, 58], [0.008, 72.7], [0.015, 87.6], [0.03, 105]];
+function co2FractionForWarming(d: number): number {
+  if (d <= GH_TABLE[0][1]) return GH_TABLE[0][0];
+  for (let i = 1; i < GH_TABLE.length; i++) {
+    if (d <= GH_TABLE[i][1]) { const [f0, d0] = GH_TABLE[i - 1], [f1, d1] = GH_TABLE[i]; return f0 + (f1 - f0) * ((d - d0) / (d1 - d0)); }
+  }
+  return GH_TABLE[GH_TABLE.length - 1][0];
 }
 
 // Which base types could exist at a given equilibrium temperature (and role). A type is viable when
@@ -114,38 +132,30 @@ export function generateBodyOfType(
     }
   }
 
-  // A liquid-water world placed in (or near) the habitable zone is DEFINED by having an atmosphere
-  // that keeps its water liquid — without one, surface temp = bare T_eq (≈ −18 °C at Earth's orbit)
-  // and the "ocean" freezes solid (0 % habitability). So if the type didn't specify an atmosphere
-  // but carries a real surface ocean, synthesise a greenhouse-warming one SIZED TO THIS ORBIT: the
-  // colder the orbit, the more CO2 (a thick-CO2 cold-edge world), targeting a comfortably-liquid
-  // surface. The greenhouse model is steep in CO2 — MEASURED at ~1 bar: 0.04 % CO2 → +23 K,
-  // 0.1 % → +35 K, 0.4 % → +58 K (see _ghprobe calibration) — so we invert that table. Warm orbits
-  // get only an Earth-like trace (or none); life-bearing worlds keep their O2. Giants excluded.
-  const wantsLiquidWater = !isGiant
-    && (out.hydrosphere?.composition === 'water')
-    && ((out.hydrosphere?.coverage ?? 0) >= 0.25 || !!m['hasBiosphere']);
-  if (wantsLiquidWater && (!out.atmosphere || out.atmosphere.name === 'None')) {
-    const TARGET_K = 283;                          // ~10 K above water's freezing point
+  // A liquid-water world is DEFINED by the atmosphere that keeps its ocean liquid. Without one, the
+  // surface sits at the bare T_eq (≈ −18 °C at Earth's orbit) and the ocean freezes → 0 % habitable.
+  // The fingerprint often gives these types nothing, or only an O2 biosignature (greenhouse 0) — so
+  // for the whole liquid-water family we (re)build an Earth-class atmosphere SIZED TO THE ORBIT: keep
+  // any O2 the type called for, fill with N2, and add enough CO2 to clear freezing (more CO2 the
+  // colder the orbit; none when the orbit is already at/above freezing, where the ocean's own water
+  // vapour — added by the processor — suffices). Frozen (ice) and dry (desert) types are excluded.
+  if (!isGiant && LIQUID_WATER_TYPE.test(fp.class) && out.hydrosphere?.composition === 'water') {
     const teq = ctx.teqK ?? 255;
-    const needed = TARGET_K - teq;                 // greenhouse warming required to reach target
-    // [CO2 fraction, +K] measured against the processor's greenhouse at ~1 bar:
-    const GH: [number, number][] = [[0.0004, 23.5], [0.001, 34.5], [0.002, 45.2], [0.004, 58], [0.008, 72.7], [0.015, 87.6], [0.03, 105]];
-    const co2ForDelta = (d: number): number => {
-      if (d <= GH[0][1]) return GH[0][0];
-      for (let i = 1; i < GH.length; i++) {
-        if (d <= GH[i][1]) { const [f0, d0] = GH[i - 1], [f1, d1] = GH[i]; return f0 + (f1 - f0) * ((d - d0) / (d1 - d0)); }
-      }
-      return GH[GH.length - 1][0];
-    };
-    // At/above freezing the ocean's own water-vapour greenhouse (added by the processor) is enough —
-    // skip CO2 so warm worlds aren't double-warmed; below it, size CO2 to clear freezing.
-    const fCO2 = teq >= 273 ? 0 : co2ForDelta(needed);
+    const fCO2 = teq >= 273 ? 0 : co2FractionForWarming(283 - teq);
+    const o2 = (out.atmosphere?.composition as any)?.O2 ?? (m['hasBiosphere'] ? 0.21 : 0);
     const composition: Record<string, number> = {};
-    if (m['hasBiosphere']) composition.O2 = 0.21;
+    if (o2 > 0) composition.O2 = +o2.toFixed(4);
     if (fCO2 > 0) composition.CO2 = +fCO2.toFixed(4);
     composition.N2 = +(1 - (composition.O2 ?? 0) - (composition.CO2 ?? 0)).toFixed(4);
     out.atmosphere = { name: 'N2', main: 'N2', composition, pressure_bar: +(0.95 + rng() * 0.2).toFixed(2) } as any;
+  }
+
+  // A liquid-METHANE world (Titan) needs atmospheric PRESSURE to hold its methane seas, but must stay
+  // COLD. Give it a thick PURE-N2 atmosphere (Titan ≈ 1.5 bar N2): N2 has no greenhouse, so the world
+  // stays at its cold T_eq and the methane stays liquid (any CH4 would warm it past methane's boiling
+  // point at the band's warm edge). Only if the type didn't already specify an atmosphere.
+  if (!isGiant && out.hydrosphere?.composition === 'methane' && (!out.atmosphere || out.atmosphere.name === 'None')) {
+    out.atmosphere = { name: 'N2', main: 'N2', composition: { N2: 1 }, pressure_bar: +(1.2 + rng() * 0.6).toFixed(2) } as any;
   }
 
   // --- Biosphere: a biome/life type DEMANDS one (the GM placing the type places the life). ---

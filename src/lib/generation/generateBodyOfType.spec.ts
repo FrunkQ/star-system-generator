@@ -61,6 +61,25 @@ describe('generateBodyOfType — params land in the type bands', () => {
     expect(body.hydrosphere?.coverage).toBeGreaterThan(0.3);
   });
 
+  it('an O2-biosignature habitable type (earth-like) still gets a greenhouse atmosphere', () => {
+    // earth-like's fingerprint defines only an O2 band (greenhouse 0) — without sizing CO2 to the
+    // orbit it would freeze at its cold edge. Generated at a cold T_eq it must carry CO2 (and keep O2).
+    const fp = fingerprints().find((f) => f.class === 'planet/earth-like')!;
+    const body = generateBodyOfType(fp, { distAU: 1, hostMassKg: 2e30, role: 'planet', rng: mid, teqK: 250 });
+    const comp = (body.atmosphere as any)?.composition ?? {};
+    expect(comp.O2).toBeGreaterThan(0);   // biosignature kept
+    expect(comp.CO2).toBeGreaterThan(0);  // greenhouse added for the cold orbit
+  });
+
+  it('a frozen type (ice) is NOT given a warming atmosphere', () => {
+    // ice has a water hydrosphere too, but it must STAY frozen — the liquid-water atmosphere logic
+    // must exclude it (no atmosphere, or at least no CO2 to warm it).
+    const fp = fingerprints().find((f) => f.class === 'planet/ice')!;
+    const body = generateBodyOfType(fp, { distAU: 5, hostMassKg: 2e30, role: 'planet', rng: mid, teqK: 150 });
+    const comp = (body.atmosphere as any)?.composition ?? {};
+    expect(comp.CO2 ?? 0).toBe(0);
+  });
+
   it('an iron world gets a metal-rich makeup and derived radius', () => {
     const fp = fingerprints().find((f) => f.class === 'planet/iron')!;
     const body = generateBodyOfType(fp, { distAU: 0.5, hostMassKg: 2e30, role: 'planet', rng: mid });
