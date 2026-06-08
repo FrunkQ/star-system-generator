@@ -45,6 +45,24 @@ const RARITY: Record<string, TypeDrawInfo> = {
   'planet/ultra-hot-neptune': { rarity: 0.85 }, 'planet/ultra-hot-jupiter': { rarity: 0.85 },
 };
 
+// Loot-box-style rarity tiers — colour + label for the type picker, so the GM reads at a glance which
+// worlds are mundane (common) vs eccentric (legendary). Tiers map the same rarity the draw uses.
+export interface RarityTier { key: string; label: string; color: string; }
+const RARITY_TIERS: { max: number; tier: RarityTier }[] = [
+  { max: 0.2, tier: { key: 'common', label: 'Common', color: '#b8c0cc' } },      // white/grey
+  { max: 0.4, tier: { key: 'uncommon', label: 'Uncommon', color: '#4caf50' } },  // green
+  { max: 0.6, tier: { key: 'rare', label: 'Rare', color: '#3b82f6' } },          // blue
+  { max: 0.8, tier: { key: 'epic', label: 'Epic', color: '#a855f7' } },          // purple
+  { max: 1.01, tier: { key: 'legendary', label: 'Legendary', color: '#f5a623' } }, // orange/gold
+];
+export function rarityTier(rarity: number): RarityTier {
+  return (RARITY_TIERS.find((t) => rarity < t.max) ?? RARITY_TIERS[RARITY_TIERS.length - 1]).tier;
+}
+// The rarity (0..1) of a class, table-or-fallback — exported so the picker can colour by tier.
+export function rarityOf(cls: string, pack?: RulePack): number {
+  return infoFor(cls, pack).rarity;
+}
+
 // Fallback rarity for any type not in the table (keeps the draw robust if the fingerprint set grows).
 function infoFor(cls: string, pack?: RulePack): TypeDrawInfo {
   const override = (pack as any)?.type_draw?.[cls];
