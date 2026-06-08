@@ -502,6 +502,17 @@ export class SystemProcessor implements ISystemProcessor {
         body.apparentColor = apparent;
         body.apparentColorHex = apparent.hex;
 
+        // Expose the newly-derived subsystems as classifier FEATURES, so fingerprints can key on
+        // them (biome worlds on a biosphere + climate, glaciated on ice + albedo, volcanic on the
+        // geology regime, …). Still raw physics — no tag circularity.
+        features['hasBiosphere'] = body.biosphere ? 1 : 0;
+        features['geoRegime'] = body.geoActivity?.regime ?? 'none';
+        features['hasPolarIce'] = (body.tags || []).some(t => t.key === 'climate/polar-ice') ? 1 : 0;
+        features['hasIcyShell'] = (body.tags || []).some(t => t.key === 'structure/icy-shell') ? 1 : 0;
+        features['albedo'] = body.albedoBreakdown?.albedo ?? 0;
+        features['magnetismSource'] = body.magnetism?.source ?? 'none';
+        features['surfaceLiquid'] = body.hydrosphere?.layers?.find(l => l.location === 'surface')?.liquid ?? 'none';
+
         const newClasses = classifyBody(body, features, pack, allNodes);
         // Preserve any "manual" or "special" classes that strictly aren't output by the classifier?
         // The classifier is usually comprehensive.

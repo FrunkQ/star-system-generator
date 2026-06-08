@@ -860,7 +860,133 @@
       }
     },
     {
-      "id": "t-25-eyeball",
+      "id": "t-25-forest",
+      "parentId": "testion",
+      "name": "forest",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/forest",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 4.7723,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 5.972e+24,
+      "radiusKm": 6376.015626125337,
+      "magneticField": {
+        "strengthGauss": 0.5
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 1,
+        "composition": {
+          "N2": 0.78,
+          "O2": 0.21
+        }
+      },
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.4
+      },
+      "biosphere": {
+        "complexity": "complex",
+        "coverage": 0.8
+      }
+    },
+    {
+      "id": "t-26-jungle",
+      "parentId": "testion",
+      "name": "jungle",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/jungle",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 3.9877,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 7.1664e+24,
+      "radiusKm": 6775.527642344321,
+      "magneticField": {
+        "strengthGauss": 0.5
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 1.2,
+        "composition": {
+          "N2": 0.77,
+          "O2": 0.22
+        }
+      },
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.6
+      },
+      "biosphere": {
+        "complexity": "complex",
+        "coverage": 0.8
+      }
+    },
+    {
+      "id": "t-27-swamp",
+      "parentId": "testion",
+      "name": "swamp",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/swamp",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 4.41,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 5.972e+24,
+      "radiusKm": 6376.015626125337,
+      "magneticField": {
+        "strengthGauss": 0.5
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 1.1,
+        "composition": {
+          "N2": 0.78,
+          "O2": 0.21
+        }
+      },
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.8
+      },
+      "biosphere": {
+        "complexity": "complex",
+        "coverage": 0.8
+      }
+    },
+    {
+      "id": "t-28-eyeball",
       "parentId": "testion",
       "name": "eyeball",
       "kind": "body",
@@ -898,7 +1024,7 @@
       }
     },
     {
-      "id": "t-26-hot-eyeball",
+      "id": "t-29-hot-eyeball",
       "parentId": "testion",
       "name": "hot eyeball",
       "kind": "body",
@@ -932,7 +1058,7 @@
       }
     },
     {
-      "id": "t-27-cold-eyeball",
+      "id": "t-30-cold-eyeball",
       "parentId": "testion",
       "name": "cold eyeball",
       "kind": "body",
@@ -958,7 +1084,7 @@
       "tidallyLocked": true
     },
     {
-      "id": "t-28-mini-neptune",
+      "id": "t-31-mini-neptune",
       "parentId": "testion",
       "name": "mini neptune",
       "kind": "body",
@@ -992,7 +1118,7 @@
       }
     },
     {
-      "id": "t-29-sub-neptune",
+      "id": "t-32-sub-neptune",
       "parentId": "testion",
       "name": "sub neptune",
       "kind": "body",
@@ -1026,7 +1152,7 @@
       }
     },
     {
-      "id": "t-30-ice-giant",
+      "id": "t-33-ice-giant",
       "parentId": "testion",
       "name": "ice giant",
       "kind": "body",
@@ -1061,7 +1187,7 @@
       }
     },
     {
-      "id": "t-31-super-neptune",
+      "id": "t-34-super-neptune",
       "parentId": "testion",
       "name": "super neptune",
       "kind": "body",
@@ -1095,7 +1221,7 @@
       }
     },
     {
-      "id": "t-32-hot-neptune",
+      "id": "t-35-hot-neptune",
       "parentId": "testion",
       "name": "hot neptune",
       "kind": "body",
@@ -1129,7 +1255,7 @@
       }
     },
     {
-      "id": "t-33-ultra-hot-neptune",
+      "id": "t-36-ultra-hot-neptune",
       "parentId": "testion",
       "name": "ultra hot neptune",
       "kind": "body",
@@ -1163,7 +1289,7 @@
       }
     },
     {
-      "id": "t-34-ammonia-clouds-gas-giant",
+      "id": "t-37-ammonia-clouds-gas-giant",
       "parentId": "testion",
       "name": "ammonia clouds gas giant",
       "kind": "body",
@@ -1188,7 +1314,7 @@
       "tags": []
     },
     {
-      "id": "t-35-water-clouds-gas-giant",
+      "id": "t-38-water-clouds-gas-giant",
       "parentId": "testion",
       "name": "water clouds gas giant",
       "kind": "body",
@@ -1213,7 +1339,7 @@
       "tags": []
     },
     {
-      "id": "t-36-cloudless-gas-giant",
+      "id": "t-39-cloudless-gas-giant",
       "parentId": "testion",
       "name": "cloudless gas giant",
       "kind": "body",
@@ -1238,7 +1364,7 @@
       "tags": []
     },
     {
-      "id": "t-37-alkali-metal-clouds-gas-giant",
+      "id": "t-40-alkali-metal-clouds-gas-giant",
       "parentId": "testion",
       "name": "alkali metal clouds gas giant",
       "kind": "body",
@@ -1263,7 +1389,7 @@
       "tags": []
     },
     {
-      "id": "t-38-silicate-clouds-gas-giant",
+      "id": "t-41-silicate-clouds-gas-giant",
       "parentId": "testion",
       "name": "silicate clouds gas giant",
       "kind": "body",
@@ -1288,7 +1414,7 @@
       "tags": []
     },
     {
-      "id": "t-39-gas-giant",
+      "id": "t-42-gas-giant",
       "parentId": "testion",
       "name": "gas giant",
       "kind": "body",
@@ -1313,7 +1439,7 @@
       "tags": []
     },
     {
-      "id": "t-40-mini-jupiter",
+      "id": "t-43-mini-jupiter",
       "parentId": "testion",
       "name": "mini jupiter",
       "kind": "body",
@@ -1338,7 +1464,7 @@
       "tags": []
     },
     {
-      "id": "t-41-super-jupiter",
+      "id": "t-44-super-jupiter",
       "parentId": "testion",
       "name": "super jupiter",
       "kind": "body",
@@ -1364,7 +1490,7 @@
     },
     {
       "id": "t-ring",
-      "parentId": "t-41-super-jupiter",
+      "parentId": "t-44-super-jupiter",
       "name": "Ring",
       "kind": "body",
       "roleHint": "ring",
@@ -1372,7 +1498,7 @@
       "radiusOuterKm": 140000,
       "tags": [],
       "orbit": {
-        "hostId": "t-41-super-jupiter",
+        "hostId": "t-44-super-jupiter",
         "elements": {
           "a_AU": 0.0008,
           "e": 0,
@@ -1384,14 +1510,14 @@
       }
     },
     {
-      "id": "t-42-subsurface-ocean",
-      "parentId": "t-41-super-jupiter",
+      "id": "t-45-subsurface-ocean",
+      "parentId": "t-44-super-jupiter",
       "name": "Subsurface Ocean",
       "kind": "body",
       "roleHint": "moon",
       "__target": "planet/subsurface-ocean",
       "orbit": {
-        "hostId": "t-41-super-jupiter",
+        "hostId": "t-44-super-jupiter",
         "elements": {
           "a_AU": 0.003,
           "e": 0.04,
@@ -1417,14 +1543,14 @@
       }
     },
     {
-      "id": "t-43-sulfur",
-      "parentId": "t-41-super-jupiter",
+      "id": "t-46-sulfur",
+      "parentId": "t-44-super-jupiter",
       "name": "Sulfur Moon",
       "kind": "body",
       "roleHint": "moon",
       "__target": "planet/sulfur",
       "orbit": {
-        "hostId": "t-41-super-jupiter",
+        "hostId": "t-44-super-jupiter",
         "elements": {
           "a_AU": 0.0018,
           "e": 0.06,
@@ -1450,7 +1576,7 @@
       }
     },
     {
-      "id": "t-44-puffy",
+      "id": "t-47-puffy",
       "parentId": "testion",
       "name": "puffy",
       "kind": "body",
@@ -1475,7 +1601,7 @@
       "tags": []
     },
     {
-      "id": "t-45-super-puff",
+      "id": "t-48-super-puff",
       "parentId": "testion",
       "name": "super puff",
       "kind": "body",
@@ -1500,7 +1626,7 @@
       "tags": []
     },
     {
-      "id": "t-46-helium",
+      "id": "t-49-helium",
       "parentId": "testion",
       "name": "helium",
       "kind": "body",
@@ -1533,7 +1659,7 @@
       }
     },
     {
-      "id": "t-47-chthonian",
+      "id": "t-50-chthonian",
       "parentId": "testion",
       "name": "chthonian",
       "kind": "body",
@@ -1558,7 +1684,7 @@
       "tags": []
     },
     {
-      "id": "t-48-dwarf-planet",
+      "id": "t-51-dwarf-planet",
       "parentId": "testion",
       "name": "dwarf planet",
       "kind": "body",
@@ -1583,7 +1709,7 @@
       "tags": []
     },
     {
-      "id": "t-49-mesoplanet",
+      "id": "t-52-mesoplanet",
       "parentId": "testion",
       "name": "mesoplanet",
       "kind": "body",
@@ -1608,7 +1734,7 @@
       "tags": []
     },
     {
-      "id": "t-50-planetesimal",
+      "id": "t-53-planetesimal",
       "parentId": "testion",
       "name": "planetesimal",
       "kind": "body",
@@ -1633,7 +1759,7 @@
       "tags": []
     },
     {
-      "id": "t-51-sub-brown-dwarf",
+      "id": "t-54-sub-brown-dwarf",
       "parentId": "testion",
       "name": "sub brown dwarf",
       "kind": "body",
@@ -1658,7 +1784,7 @@
       "tags": []
     },
     {
-      "id": "t-52-brown-dwarf",
+      "id": "t-55-brown-dwarf",
       "parentId": "testion",
       "name": "brown dwarf",
       "kind": "body",
@@ -1683,7 +1809,7 @@
       "tags": []
     },
     {
-      "id": "t-53-ultra-cool-dwarf",
+      "id": "t-56-ultra-cool-dwarf",
       "parentId": "testion",
       "name": "ultra cool dwarf",
       "kind": "body",
@@ -1708,7 +1834,7 @@
       "tags": []
     },
     {
-      "id": "t-54-silicate",
+      "id": "t-57-silicate",
       "parentId": "testion",
       "name": "Toroid",
       "kind": "body",
@@ -1738,7 +1864,7 @@
       }
     },
     {
-      "id": "t-55-silicate",
+      "id": "t-58-silicate",
       "parentId": "testion",
       "name": "Ellipsoid",
       "kind": "body",

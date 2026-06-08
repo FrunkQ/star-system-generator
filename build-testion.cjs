@@ -24,7 +24,7 @@ const star = {
 nodes.push(star);
 
 function body(spec) {
-  const { target, Me, d, Re, makeup, Teq, a, e = 0.02, atmMain, atmP = 0, comp, hydroComp, hydroCov = 0, rotH, mag = 0.3, locked = false, name, parent = 'testion', role = 'planet' } = spec;
+  const { target, Me, d, Re, makeup, Teq, a, e = 0.02, atmMain, atmP = 0, comp, hydroComp, hydroCov = 0, rotH, mag = 0.3, locked = false, name, parent = 'testion', role = 'planet', bio = false } = spec;
   const radius_Re = Re != null ? Re : (makeup ? reFromMakeup(Me, makeup) : reFromDensity(Me, d));
   const id = `t-${++idn}-${target.replace('planet/', '')}`;
   const aAU = a != null ? a : aFromTeq(Teq);
@@ -40,6 +40,7 @@ function body(spec) {
   if (locked) n.tidallyLocked = true;
   if (atmMain) n.atmosphere = { name: atmMain, main: atmMain, pressure_bar: atmP, composition: comp || { [atmMain]: 1 } };
   if (hydroCov > 0) n.hydrosphere = { composition: hydroComp || 'water', coverage: hydroCov };
+  if (bio) n.biosphere = { complexity: 'complex', coverage: 0.8 };
   nodes.push(n);
   return n;
 }
@@ -84,6 +85,10 @@ body({ target: 'planet/ammonia-planet', Me: 0.9, d: NEU, Teq: 220, atmMain: 'NH3
 body({ target: 'planet/earth-analogue', Me: 1, d: 5.5, Teq: 288, hydroComp: 'water', hydroCov: 0.7, atmMain: 'N2', atmP: 1, comp: { N2: 0.78, O2: 0.21, Ar: 0.01 }, mag: 0.5 });
 body({ target: 'planet/earth-like', Me: 1.8, d: 5.5, Teq: 280, hydroComp: 'water', hydroCov: 0.4, atmMain: 'N2', atmP: 1.1, comp: { N2: 0.79, O2: 0.2, CO2: 0.01 }, mag: 0.5 });
 body({ target: 'planet/superhabitable', Me: 3, d: 5.5, Teq: 300, hydroComp: 'water', hydroCov: 0.8, atmMain: 'N2', atmP: 1.3, comp: { N2: 0.75, O2: 0.24, CO2: 0.01 }, mag: 0.6 });
+// Biome / life worlds (require a biosphere — the GM places life; we classify the habitat).
+body({ target: 'planet/forest', Me: 1, d: 5.5, Teq: 298, hydroComp: 'water', hydroCov: 0.4, atmMain: 'N2', atmP: 1, comp: { N2: 0.78, O2: 0.21 }, mag: 0.5, bio: true });
+body({ target: 'planet/jungle', Me: 1.2, d: 5.5, Teq: 326, hydroComp: 'water', hydroCov: 0.6, atmMain: 'N2', atmP: 1.2, comp: { N2: 0.77, O2: 0.22 }, mag: 0.5, bio: true });
+body({ target: 'planet/swamp', Me: 1, d: 5.5, Teq: 310, hydroComp: 'water', hydroCov: 0.8, atmMain: 'N2', atmP: 1.1, comp: { N2: 0.78, O2: 0.21 }, mag: 0.5, bio: true });
 
 // ---- Eyeball (tidally locked); neutral density + airless/CO2 (no carbon trigger) ----
 body({ target: 'planet/eyeball', Me: 1, d: NEU, Teq: 290, locked: true, hydroComp: 'water', hydroCov: 0.3, atmMain: 'N2', atmP: 1 });

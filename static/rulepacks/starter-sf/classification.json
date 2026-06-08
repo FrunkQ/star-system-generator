@@ -1204,6 +1204,69 @@
                         1
                     ]
                 }
+            },
+            {
+                "class": "planet/forest",
+                "kind": "base",
+                "weight": 1.5,
+                "note": "A living world with temperate forests (biosphere + temperate, moderately wet).",
+                "match": {
+                    "hasBiosphere": [
+                        1,
+                        1
+                    ],
+                    "Teq_K": [
+                        262,
+                        292
+                    ],
+                    "hydrosphere.coverage": [
+                        0.2,
+                        0.6
+                    ],
+                    "hydrosphere.composition": "water"
+                }
+            },
+            {
+                "class": "planet/jungle",
+                "kind": "base",
+                "weight": 1.5,
+                "note": "Hot, humid, life-covered world (biosphere + hot + wet).",
+                "match": {
+                    "hasBiosphere": [
+                        1,
+                        1
+                    ],
+                    "Teq_K": [
+                        290,
+                        318
+                    ],
+                    "hydrosphere.coverage": [
+                        0.35,
+                        0.85
+                    ],
+                    "hydrosphere.composition": "water"
+                }
+            },
+            {
+                "class": "planet/swamp",
+                "kind": "base",
+                "weight": 1.5,
+                "note": "Warm, waterlogged life-world (biosphere + warm + very wet).",
+                "match": {
+                    "hasBiosphere": [
+                        1,
+                        1
+                    ],
+                    "Teq_K": [
+                        278,
+                        300
+                    ],
+                    "hydrosphere.coverage": [
+                        0.6,
+                        0.95
+                    ],
+                    "hydrosphere.composition": "water"
+                }
             }
         ],
         "rules": [
