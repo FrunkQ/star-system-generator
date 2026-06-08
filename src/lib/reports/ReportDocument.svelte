@@ -112,7 +112,7 @@
   function getLocationDescription(construct: CelestialBody) {
       const parentName = getParentName(construct.parentId);
       const placement = construct.placement || 'Orbit';
-      const dist = construct.orbit?.elements.a_AU ? `${construct.orbit.elements.a_AU.toFixed(5)} AU` : '';
+      const dist = construct.orbit?.elements.a_AU ? formatOrbitDist(construct.orbit.elements.a_AU) : '';
       
       if (placement === 'Surface') return `Surface of ${parentName}`;
       return `${placement} around ${parentName} (${dist})`;
