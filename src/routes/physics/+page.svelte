@@ -129,15 +129,24 @@
     </section>
 
     <section id="temp-range">
-      <h2>Temperature range &amp; tidal heat</h2>
-      <p>Tidal heating is <strong>localized</strong>, not a uniform warming — so we report a global <em>mean</em>
-        surface temperature <em>and</em> a <strong>range</strong>. The mean keeps tidal heat capped (concentrated
-        flux barely moves the planet-wide average); the range carries the honest extremes: a cold night side
-        (airless/thin-atmosphere worlds, ≈0.82·T_eq) up to <strong>hotspot peaks</strong> that climb with tidal
-        forcing toward a <em>composition ceiling</em> — silicate melt (~1500 K, Io's lava lakes) for rocky bodies,
-        but only cryovolcanic temperatures (~320 K) for icy bodies, whose heat sinks into melting ice. So Io reads
-        a cold mean with lava hotspots; Europa stays frozen at the surface with an ocean beneath. Tags
-        <code>tidal/volcanism</code> and <code>tidal/lava-flows</code> mark the peak.</p>
+      <h2>Temperature range, decomposed</h2>
+      <p>A single mean — or even one min/max — hides what a GM needs. We keep the global <em>mean</em> and split
+        the variation into independent, named sources, each reported as the swing it ALONE would add:</p>
+      <ul>
+        <li><strong>Latitude</strong> — equator (hot) ↔ pole (cold), from the geometry of insolation.</li>
+        <li><strong>Seasonal</strong> — axial tilt + orbital eccentricity (the annual swing).</li>
+        <li><strong>Day ↔ night</strong> — rotation; huge when airless / slow (Mercury), tiny under a thick blanket.</li>
+        <li><strong>Locked faces</strong> — a tidally-locked world has permanent hot/cold faces instead of a cycle.</li>
+        <li><strong>Tidal hotspots</strong> — localized volcanic vents; the mean stays capped (concentrated flux
+          barely moves the planet-wide average) but the peak climbs with forcing toward a composition ceiling —
+          silicate melt (~1500 K, Io's lava) for rock, cryovolcanic (~320 K) for ice. Tags <code>tidal/volcanism</code>
+          / <code>tidal/lava-flows</code>.</li>
+      </ul>
+      <p>An <strong>atmosphere</strong> (and oceans) redistribute heat — the single biggest control — so a thick-air
+        world is far more uniform than an airless one. The <em>total</em> range is the combined extreme (pole +
+        winter + night ↔ equator + summer + day, or a tidal hotspot). So Io reads a cold −210 °C night surface
+        <em>and</em> ~970 °C lava vents in the same readout. Calibrated loosely to Earth / Mars / the Moon /
+        Mercury — heuristic, and axial tilt defaults to 25° when a body doesn't specify one.</p>
     </section>
 
     <section id="radiation">

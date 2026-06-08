@@ -28,6 +28,14 @@ export interface NodeBase {
 export interface Atmosphere { name: string; main?: string; pressure_bar?: number; composition: Record<string, number>; tags?: Tag[]; molarMassKg?: number; scaleHeightKm?: number; }
 // A fluid layer somewhere in/on a body. location: surface ocean | subsurface (under-ice) ocean |
 // atmospheric cloud deck | deep interior (conductive — drives the dynamo, §2d).
+// Surface temperature decomposed by CAUSE — far more useful at the table than one min/max. Each
+// component is the swing that source ALONE would produce around the mean; the totals are the
+// combined worst-case extremes (coldest = pole+winter+night; hottest = equator+day+summer or a
+// tidal hotspot).
+export type TempSource = 'latitude' | 'seasonal' | 'diurnal' | 'locked-day' | 'locked-night' | 'tidal-hotspot';
+export interface TempComponent { source: TempSource; label: string; lowK: number; highK: number; note?: string; }
+export interface SurfaceTempProfile { meanK: number; totalMinK: number; totalMaxK: number; components: TempComponent[]; }
+
 export type FluidLocation = 'surface' | 'subsurface' | 'cloud' | 'interior';
 export interface FluidLayer { liquid: string; location: FluidLocation; coverage?: number; conductive?: boolean; colorHex?: string; }
 export interface Hydrosphere { coverage?: number; depth_m?: number; composition?: string; tags?: Tag[]; layers?: FluidLayer[]; }
@@ -132,10 +140,12 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   radiusInnerKm?: number; // For belts/rings
   radiusOuterKm?: number; // For belts/rings
   temperatureK?: number;        // global MEAN surface temp (heat averaged over the whole body)
-  // Surface temperature RANGE: cold extreme (night-side/poles) → hot extreme (tidal-volcanic
-  // hotspots, sub-stellar point). Tidal heat is localized, so a moon like Io can read e.g.
-  // 90 K mean but 1500 K at its lava lakes — the mean alone hides that. (§ tidal honesty)
+  // Surface temperature RANGE: cold extreme (night-side/poles/winter) → hot extreme (equator/day/
+  // summer or tidal-volcanic hotspots). The mean alone hides this. (§ surface-temperature model)
   temperatureRangeK?: { min: number; max: number };
+  temperatureProfile?: SurfaceTempProfile;  // the range DECOMPOSED by cause (seasonal/diurnal/…)
+  tidallyLocked?: boolean;      // one face permanently toward its primary (no day/night cycle)
+  obliquity_deg?: number;       // axial tilt — drives seasonal variation
   calculatedGravity_ms2?: number;
   distanceToHost_km?: number;
   orbitalBoundaries?: OrbitalBoundaries;

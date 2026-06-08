@@ -5,7 +5,7 @@ import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEqui
 import { calculateSurfaceRadiation } from '../physics/radiation';
 import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions } from '../physics/makeup';
-import { surfaceTempRange } from '../physics/tidalThermal';
+import { surfaceTempProfile } from '../physics/surfaceTemperature';
 import { deriveFluidLayers, cloudColourName } from '../physics/fluidLayers';
 import { phaseAt, liquidDef, biosolventScore } from '../physics/liquids';
 import { deriveMagnetism } from '../physics/magnetism';
@@ -295,18 +295,27 @@ export class SystemProcessor implements ISystemProcessor {
             body.internalHeatK || 0
         );
 
-        // Surface temperature RANGE + tidal-volcanic context (the honest picture the mean hides).
+        // Surface temperature DECOMPOSED by cause (latitude / seasonal / day-night / locked faces /
+        // tidal hotspots) — the whole picture, not one opaque min/max.
         body.tags = body.tags || [];
         body.tags = body.tags.filter(t => t.key !== 'tidal/volcanism' && t.key !== 'tidal/lava-flows');
-        const range = surfaceTempRange({
+        const surfaceLiquidWater = (body.hydrosphere?.composition === 'water')
+            && (body.hydrosphere?.coverage ?? 0) > 0.2 && (body.temperatureK ?? 0) >= 273;
+        const { profile, tags: tempTags } = surfaceTempProfile({
             meanK: body.temperatureK ?? equilibriumTempK,
             equilibriumK: equilibriumTempK,
-            atmPressureBar: body.atmosphere?.pressure_bar ?? 0,
+            pressureBar: body.atmosphere?.pressure_bar ?? 0,
+            rotationHours: body.rotation_period_hours,
+            tidallyLocked: body.tidallyLocked,
+            eccentricity: body.orbit?.elements.e,
+            obliquityDeg: body.obliquity_deg,
+            hasLiquidOcean: surfaceLiquidWater,
             tidalRawIndex,
             iceFrac: makeupFractions(body).ice
         });
-        for (const key of range.tags) body.tags.push({ key });
-        body.temperatureRangeK = { min: range.min, max: range.max };
+        for (const key of tempTags) body.tags.push({ key });
+        body.temperatureProfile = profile;
+        body.temperatureRangeK = { min: profile.totalMinK, max: profile.totalMaxK };
 
         // Atmosphere Retention Check (Physics-based stripping)
         const totalStellarRadiation = this.calculateTotalStellarFlux(body, allStars, allNodes);

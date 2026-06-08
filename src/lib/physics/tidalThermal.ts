@@ -12,7 +12,8 @@
 const HOTSPOT_ONSET = 80;          // raw tidal index below which there are no distinct hotspots
 const SILICATE_MELT_K = 1500;      // ceiling for rocky/sulfur worlds (Io's lava lakes)
 const CRYO_CEIL_K = 320;           // ceiling for icy worlds (heat sinks into melting ice)
-const FORCING_SCALE = 1500;        // how fast peak climbs with raw tidal index
+const FORCING_SCALE = 90;          // how fast peak climbs with raw tidal index (tuned so a strongly
+                                   // flexed rocky moon like Io reaches silicate-melt hotspots)
 
 export function tidalHotspotPeakK(rawIndex: number, meanK: number, iceFrac: number): number {
   if (rawIndex <= HOTSPOT_ONSET) return meanK;
@@ -20,28 +21,5 @@ export function tidalHotspotPeakK(rawIndex: number, meanK: number, iceFrac: numb
   const peak = meanK + (SILICATE_MELT_K - meanK) * (1 - Math.exp(-(rawIndex - HOTSPOT_ONSET) / FORCING_SCALE));
   return Math.min(ceilK, Math.max(meanK, peak));
 }
-
-export interface SurfaceTempRange { min: number; max: number; tags: string[]; }
-
-export function surfaceTempRange(opts: {
-  meanK: number;
-  equilibriumK: number;
-  atmPressureBar: number;
-  tidalRawIndex: number;
-  iceFrac: number;
-}): SurfaceTempRange {
-  const { meanK, equilibriumK, atmPressureBar, tidalRawIndex, iceFrac } = opts;
-  let min = meanK, max = meanK;
-  const tags: string[] = [];
-
-  if (atmPressureBar < 0.1 && equilibriumK > 0) {
-    min = Math.min(min, equilibriumK * 0.82); // cold night side / poles
-  }
-  if (tidalRawIndex > HOTSPOT_ONSET) {
-    const peak = tidalHotspotPeakK(tidalRawIndex, meanK, iceFrac);
-    max = Math.max(max, peak);
-    if (peak >= 1300) tags.push('tidal/lava-flows');        // silicate melt → lava
-    else if (peak >= 1000) tags.push('tidal/volcanism');    // active volcanism
-  }
-  return { min: Math.round(min), max: Math.round(max), tags };
-}
+// NOTE: the surface temperature RANGE is now produced by surfaceTemperature.ts (decomposed by
+// cause); this module only owns the tidal hotspot PEAK it consumes.

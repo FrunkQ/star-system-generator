@@ -108,7 +108,11 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     { label: 'Internal heat Δ', value: n(body.internalHeatK, 1, 'K') },
     { label: 'Mean surface temp', value: n(body.temperatureK, 0, 'K') }
   ];
-  if (body.temperatureRangeK) {
+  if (body.temperatureProfile) {
+    const p = body.temperatureProfile;
+    tempOut.push({ label: 'Total range', value: `${p.totalMinK}–${p.totalMaxK} K` });
+    for (const c of p.components) tempOut.push({ label: c.label, value: `${c.lowK}–${c.highK} K` });
+  } else if (body.temperatureRangeK) {
     tempOut.push({ label: 'Surface range', value: `${body.temperatureRangeK.min}–${body.temperatureRangeK.max} K` });
   }
   layers.push({

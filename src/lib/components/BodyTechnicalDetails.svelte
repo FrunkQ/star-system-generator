@@ -599,25 +599,15 @@
           <div class="detail-item" title={tempTooltip}>
               <span class="label">Avg. Surface Temp.</span>
               <span class="value">{Math.round(surfaceTempC)} °C</span>
-              {#if minTempC !== null && maxTempC !== null}
-                  <div style="font-size: 0.8em; color: var(--text-muted); margin-top: 2px;">
-                      Range: {Math.round(minTempC)}°C to {Math.round(maxTempC)}°C
-                  </div>
-              {/if}
-              {#if dayMinTempC !== null && dayMaxTempC !== null}
-                  <div style="font-size: 0.8em; color: #ddd; margin-top: 2px;">
-                      Day-side: {Math.round(dayMinTempC)}°C to {Math.round(dayMaxTempC)}°C
-                  </div>
-              {/if}
-              {#if nightMinTempC !== null && nightMaxTempC !== null}
-                  <div style="font-size: 0.8em; color: #9ec7ff; margin-top: 2px;">
-                      Night-side: {Math.round(nightMinTempC)}°C to {Math.round(nightMaxTempC)}°C
-                  </div>
-              {/if}
-              {#if body.tags?.some(t => t.key === 'tidal/hotspots')}
-                  <div style="font-size: 0.8em; color: #ffb366; margin-top: 2px;">
-                      Tidal forces cause localized hotspots despite modest global average warming.
-                  </div>
+              {#if body.temperatureProfile && (body.temperatureProfile.totalMaxK - body.temperatureProfile.totalMinK) > 5}
+                  {@const p = body.temperatureProfile}
+                  <div class="temp-total">Total: {Math.round(p.totalMinK - 273.15)}°C to {Math.round(p.totalMaxK - 273.15)}°C</div>
+                  {#each p.components as c}
+                      <div class="temp-comp" class:volcanic={c.source === 'tidal-hotspot'}>
+                          <span class="tc-label">{c.label}</span>
+                          <span class="tc-range">{Math.round(c.lowK - 273.15)}°C to {Math.round(c.highK - 273.15)}°C</span>
+                      </div>
+                  {/each}
               {/if}
           </div>
       {/if}
@@ -790,6 +780,10 @@
       border-left: 3px solid var(--accent);
       cursor: default; /* So title attribute tooltips show up consistently */
   }
+  .temp-total { font-size: 0.82em; color: var(--text); margin-top: 4px; font-weight: 600; }
+  .temp-comp { display: flex; justify-content: space-between; gap: 8px; font-size: 0.78em; color: var(--text-muted); margin-top: 2px; }
+  .temp-comp .tc-range { color: #9ec7ff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .temp-comp.volcanic .tc-label, .temp-comp.volcanic .tc-range { color: #ffb366; }
   .detail-item.description {
       grid-column: 1 / -1;
       border-left-color: var(--border);
