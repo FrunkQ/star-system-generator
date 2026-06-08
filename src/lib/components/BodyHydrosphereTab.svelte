@@ -142,6 +142,22 @@
             </div>
         </div>
     {/if}
+
+    {#if body.hydrosphere?.layers && body.hydrosphere.layers.length}
+        <div class="form-group">
+            <label>Derived Fluid Layers <span class="derived-pill" title="Computed from the composition, temperature range and atmosphere: surface vs subsurface oceans, cloud decks, and the deep conductive layer that drives the magnetic dynamo.">derived</span></label>
+            <div class="layers">
+                {#each body.hydrosphere.layers as l}
+                    <div class="layer">
+                        <span class="l-dot" style="background-color: {l.colorHex || '#888'}"></span>
+                        <span class="l-loc">{l.location}</span>
+                        <span class="l-liq">{l.liquid.replace(/-/g, ' ')}</span>
+                        {#if l.conductive}<span class="l-flag" title="Electrically conductive — can drive a magnetic dynamo">conductive</span>{/if}
+                    </div>
+                {/each}
+            </div>
+        </div>
+    {/if}
 </div>
 
 <style>
@@ -159,6 +175,13 @@
   
   select.warning { border-color: #f59e0b; color: #f59e0b; }
   .warning-text { color: #f59e0b; font-size: 0.8em; margin-top: 2px; }
+  .derived-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }
+  .layers { display: flex; flex-direction: column; gap: 4px; }
+  .layer { display: flex; align-items: center; gap: 8px; font-size: 0.85em; }
+  .l-dot { width: 11px; height: 11px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); flex: 0 0 auto; }
+  .l-loc { color: var(--text-muted); text-transform: capitalize; width: 78px; flex: 0 0 auto; }
+  .l-liq { color: var(--text); text-transform: capitalize; }
+  .l-flag { font-size: 0.72em; color: #6aa0d8; border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-left: auto; }
 
   .viz-container {
       position: relative;
