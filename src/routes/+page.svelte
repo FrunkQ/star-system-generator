@@ -29,6 +29,8 @@
   import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, STARTDATE_EPOCH_OFFSET_T } from '$lib/temporal/defaults';
   import { parseClockSeconds } from '$lib/temporal/utre';
   import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
+  import { systemProcessor } from '$lib/core/SystemProcessor';
+  import { fixUpImportedSystem } from '$lib/system/importFixup';
 
   let rulePacks: RulePack[] = [];
   let isLoading = true;
@@ -722,7 +724,18 @@
       try {
         const data = JSON.parse(reader.result as string);
         const sanitized = sanitizeStarmapForRuntime(data as StarmapType);
-        
+
+        // One-way import fix-up: strip baked-in derived data / legacy tags from every embedded
+        // system so the new engine re-derives cleanly (v1 starmaps otherwise carry stale physics).
+        if (selectedRulepack && Array.isArray(sanitized.systems)) {
+          for (const node of sanitized.systems) {
+            if (node?.system?.nodes) {
+              try { node.system = systemProcessor.process(fixUpImportedSystem(node.system), selectedRulepack); }
+              catch (e) { console.warn('Fix-up failed for system', node.name, e); }
+            }
+          }
+        }
+
         const errors = validateStarmap(sanitized);
         if (errors.length > 0) {
             alert('Starmap Validation Failed:\n\n' + errors.slice(0, 10).join('\n') + (errors.length > 10 ? `\n...and ${errors.length - 10} more errors.` : ''));

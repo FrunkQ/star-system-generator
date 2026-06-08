@@ -37,6 +37,7 @@
   import { get } from 'svelte/store';
   import { calculateSurfaceTemperature } from '$lib/system/postprocessing';
   import { systemProcessor } from '$lib/core/SystemProcessor';
+  import { fixUpImportedSystem } from '$lib/system/importFixup';
   import { generateId, toRoman } from '$lib/utils';
   import { AU_KM, EARTH_MASS_KG, G } from '$lib/constants';
   import { propagate } from '$lib/api';
@@ -1160,6 +1161,9 @@
               newSystem.id = oldId;
           }
 
+          // One-way fix-up: strip baked-in derived data / legacy tags so the new engine re-derives
+          // cleanly (v1 imports otherwise carry stale physics that shadows the model).
+          newSystem = fixUpImportedSystem(newSystem);
           systemStore.set(systemProcessor.process(newSystem, rulePack));
           currentTime = newSystem?.epochT0 || Date.now();
           focusedBodyId = null;
