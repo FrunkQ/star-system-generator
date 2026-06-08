@@ -18,7 +18,8 @@ export function normalizeMakeup(m: Makeup | undefined): Required<Makeup> {
   return out;
 }
 
-// Volume-additive bulk density from mass fractions: 1/ρ = Σ fᵢ/ρᵢ.
+// Volume-additive bulk density from mass fractions: 1/ρ = Σ fᵢ/ρᵢ. This is the UNCOMPRESSED
+// (grain) density — what the interior would be without self-gravity squeezing it.
 export function bulkDensityFromMakeup(m: Makeup): number {
   const n = normalizeMakeup(m);
   let inv = 0;
@@ -26,10 +27,26 @@ export function bulkDensityFromMakeup(m: Makeup): number {
   return inv > 0 ? 1 / inv : 5.513;
 }
 
-// Radius (Earth radii) implied by a mass (Earth masses) + makeup (uncompressed; good enough
-// for procedural generation). Earth: mass 1, ρ 5.513 → radius 1.
+// Gravitational COMPRESSION factor: a larger interior is squeezed denser by its own gravity, so
+// bulk density climbs with mass. Calibrated so an Earth-mass rocky world (uncompressed ~3.7 g/cc)
+// reaches its real ~5.5 — and small bodies (Moon, Mercury, Mars) are barely compressed, while
+// super-Earths are markedly denser. Gas-dominated bodies follow a different (degeneracy) relation,
+// so they are left uncompressed here.
+export function compressionFactor(mass_Me: number, m: Makeup): number {
+  const n = normalizeMakeup(m);
+  if (n.gas > 0.5) return 1;
+  return 1 + 0.67 * (1 - Math.exp(-Math.max(0, mass_Me) / 0.8));
+}
+
+// Compressed bulk density (g/cc) — the realistic value, ≈ measured density. Earth ≈ 5.5.
+export function compressedDensityFromMakeup(mass_Me: number, m: Makeup): number {
+  return bulkDensityFromMakeup(m) * compressionFactor(mass_Me, m);
+}
+
+// Radius (Earth radii) implied by a mass (Earth masses) + makeup, INCLUDING compression. Earth:
+// mass 1, rock/metal mix → ρ ≈ 5.5 → radius ≈ 1.
 export function radiusReFromMassMakeup(mass_Me: number, m: Makeup): number {
-  const rho = bulkDensityFromMakeup(m);
+  const rho = compressedDensityFromMakeup(mass_Me, m);
   return Math.cbrt((Math.max(0, mass_Me) / rho) * 5.513);
 }
 

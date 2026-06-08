@@ -265,30 +265,44 @@
 
     <hr/>
 
-    <!-- RADIUS SECTION -->
-    <div class="form-group">
-        <div class="label-row">
-            <label for="radius">Radius ({displayRadiusUnit})</label>
-            <input type="number" id="radius" step="any" bind:value={displayRadiusValue} on:input={updateRadiusFromInput} />
+    {#if body.roleHint === 'planet' || body.roleHint === 'moon'}
+        <!-- RADIUS is derived from mass + makeup (set the cause, not the size). -->
+        <div class="form-group">
+            <div class="label-row">
+                <label>Radius <span class="derived-tag" title="Radius is computed from the mass and interior makeup (with gravitational compression). Edit the makeup below to change it.">derived</span></label>
+                <div class="read-only-value">{Math.round(body.radiusKm || 0).toLocaleString()} km</div>
+            </div>
+            <div class="sub-label row-spaced">
+                <span>{((body.radiusKm || 0) / EARTH_RADIUS_KM).toFixed(2)} R⊕</span>
+                <span class="category-badge">{sizeCategory}</span>
+            </div>
         </div>
-        <input 
-            type="range" min="0" max="1" step="0.001" 
-            bind:value={radiusSliderPos} 
-            on:input={updateRadiusFromSlider} 
-            class="full-width-slider"
-            list="radius-ticks"
-        />
-        <datalist id="radius-ticks">
-            <option value="0" label="{Math.round(currentRadiusMin)}"></option>
-            <option value="0.33"></option>
-            <option value="0.66"></option>
-            <option value="1" label="{Math.round(currentRadiusMax)}"></option>
-        </datalist>
-        <div class="sub-label row-spaced">
-            <span>{Math.round(body.radiusKm || 0).toLocaleString()} km</span>
-            <span class="category-badge">{sizeCategory}</span>
+    {:else}
+        <!-- RADIUS SECTION (editable for stars / belts / rings) -->
+        <div class="form-group">
+            <div class="label-row">
+                <label for="radius">Radius ({displayRadiusUnit})</label>
+                <input type="number" id="radius" step="any" bind:value={displayRadiusValue} on:input={updateRadiusFromInput} />
+            </div>
+            <input
+                type="range" min="0" max="1" step="0.001"
+                bind:value={radiusSliderPos}
+                on:input={updateRadiusFromSlider}
+                class="full-width-slider"
+                list="radius-ticks"
+            />
+            <datalist id="radius-ticks">
+                <option value="0" label="{Math.round(currentRadiusMin)}"></option>
+                <option value="0.33"></option>
+                <option value="0.66"></option>
+                <option value="1" label="{Math.round(currentRadiusMax)}"></option>
+            </datalist>
+            <div class="sub-label row-spaced">
+                <span>{Math.round(body.radiusKm || 0).toLocaleString()} km</span>
+                <span class="category-badge">{sizeCategory}</span>
+            </div>
         </div>
-    </div>
+    {/if}
 
     <!-- INTERIOR MAKEUP → derives density (and, for planets/moons, radius). -->
     {#if body.roleHint === 'planet' || body.roleHint === 'moon'}
@@ -391,6 +405,11 @@
   .category-badge {
       color: #4da6ff;
       font-weight: bold;
+  }
+  .derived-tag {
+      font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.04em;
+      color: var(--text-faint, #8a8a8a); border: 1px solid var(--border); border-radius: 3px;
+      padding: 0 4px; margin-left: 4px; cursor: help; font-weight: 400;
   }
 
   input[type="checkbox"] { width: auto; margin-right: 5px; }

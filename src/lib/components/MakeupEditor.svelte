@@ -5,7 +5,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, Makeup } from '$lib/types';
   import { EARTH_MASS_KG, EARTH_RADIUS_KM } from '$lib/constants';
-  import { normalizeMakeup, bulkDensityFromMakeup, radiusReFromMassMakeup, makeupFractions } from '$lib/physics/makeup';
+  import { normalizeMakeup, compressedDensityFromMakeup, radiusReFromMassMakeup, makeupFractions } from '$lib/physics/makeup';
 
   export let body: CelestialBody;
   const dispatch = createEventDispatcher();
@@ -34,25 +34,18 @@
   }
 
   $: norm = normalizeMakeup(Object.fromEntries(KEYS.map((k) => [k, pct[k] || 0])) as Makeup);
-  $: impliedDensity = bulkDensityFromMakeup(norm);
   $: massMe = (body.massKg ?? 0) / EARTH_MASS_KG;
-  $: impliedRadiusRe = radiusReFromMassMakeup(massMe, norm);
-  // The body's ACTUAL density (mass/radius). It can exceed the implied uncompressed value because
-  // gravity compresses a large interior (Earth: implied ~3.7, actual 5.5 g/cc).
-  $: actualDensity = body.massKg && body.radiusKm
-    ? (body.massKg / ((4 / 3) * Math.PI * Math.pow(body.radiusKm * 1000, 3))) / 1000 : 0;
-  $: actualRadiusRe = (body.radiusKm ?? 0) / EARTH_RADIUS_KM;
+  $: derivedDensity = compressedDensityFromMakeup(massMe, norm); // realistic (gravity-compressed)
+  $: derivedRadiusRe = radiusReFromMassMakeup(massMe, norm);
+  $: drivesSize = body.roleHint === 'planet' || body.roleHint === 'moon';
 
-  // Composition edits are always safe — they drive classification / geology / colour. They do NOT
-  // touch the size; "size follows makeup" is a deliberate opt-in (the uncompressed model is only a
-  // first approximation, so a known body keeps its measured radius unless you ask).
+  // The user is editing the CAUSE: makeup drives density, and (with mass) radius — both are now
+  // derived with gravitational compression, so an Earth mix lands at ~5.5 g/cc and 1.0 R⊕. Editing
+  // makeup therefore resizes the body to match. (Stars/belts keep their own sizing.)
   function apply() {
     body.makeup = { ...norm };
+    if (drivesSize) body.radiusKm = derivedRadiusRe * EARTH_RADIUS_KM;
     dispatch('update');
-  }
-  function applyImpliedRadius() {
-    body.radiusKm = impliedRadiusRe * EARTH_RADIUS_KM;
-    apply();
   }
   function setPreset(mk: Makeup) {
     const f = normalizeMakeup(mk);
@@ -84,14 +77,12 @@
   {/each}
 
   <div class="derived">
-    <div><span class="d-label">Density (actual)</span><span class="d-val">{actualDensity.toFixed(2)} g/cc</span></div>
-    <div><span class="d-label">Implied (uncompr.)</span><span class="d-val muted">{impliedDensity.toFixed(2)} g/cc · {impliedRadiusRe.toFixed(2)} R⊕</span></div>
+    <div><span class="d-label">Density</span><span class="d-val">{derivedDensity.toFixed(2)} g/cc</span></div>
+    {#if drivesSize}
+      <div><span class="d-label">Radius</span><span class="d-val">{derivedRadiusRe.toFixed(2)} R⊕</span></div>
+    {/if}
   </div>
-  {#if (body.roleHint === 'planet' || body.roleHint === 'moon') && Math.abs(impliedRadiusRe - actualRadiusRe) > 0.03}
-    <button class="apply-radius" on:click={applyImpliedRadius} title="Resize this body so its radius matches the makeup (uncompressed model — best for new/small bodies)">
-      ↻ Size from makeup → {impliedRadiusRe.toFixed(2)} R⊕
-    </button>
-  {/if}
+  <p class="compress-note">Density is gravity-compressed by mass — a bigger interior packs denser, so the same mix is heavier on a super-Earth than on a moon.</p>
 </div>
 
 <style>
@@ -111,7 +102,5 @@
   .derived > div { display: flex; flex-direction: column; }
   .d-label { font-size: 0.7em; color: var(--text-faint); text-transform: uppercase; }
   .d-val { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
-  .d-val.muted { color: var(--text-muted); font-weight: 400; }
-  .apply-radius { margin-top: 6px; font-size: 0.78em; padding: 4px 8px; border-radius: 4px; border: 1px dashed var(--border); background: var(--bg-panel); color: var(--link); cursor: pointer; align-self: flex-start; }
-  .apply-radius:hover { background: var(--bg-control); }
+  .compress-note { margin: 6px 0 0; font-size: 0.72em; color: var(--text-faint); line-height: 1.4; }
 </style>
