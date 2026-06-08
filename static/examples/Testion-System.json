@@ -611,40 +611,7 @@
       }
     },
     {
-      "id": "t-18-sulfur",
-      "parentId": "testion",
-      "name": "sulfur",
-      "kind": "body",
-      "roleHint": "planet",
-      "__target": "planet/sulfur",
-      "orbit": {
-        "hostId": "testion",
-        "elements": {
-          "a_AU": 8.7562,
-          "e": 0.02,
-          "i_deg": 0,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 0
-        }
-      },
-      "massKg": 2.986e+24,
-      "radiusKm": 5749.761732681175,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
-      "tags": [],
-      "atmosphere": {
-        "name": "SO2",
-        "main": "SO2",
-        "pressure_bar": 0.5,
-        "composition": {
-          "SO2": 1
-        }
-      }
-    },
-    {
-      "id": "t-19-chlorine",
+      "id": "t-18-chlorine",
       "parentId": "testion",
       "name": "chlorine",
       "kind": "body",
@@ -677,7 +644,7 @@
       }
     },
     {
-      "id": "t-20-fluorine",
+      "id": "t-19-fluorine",
       "parentId": "testion",
       "name": "fluorine",
       "kind": "body",
@@ -710,7 +677,7 @@
       }
     },
     {
-      "id": "t-21-phosphorus",
+      "id": "t-20-phosphorus",
       "parentId": "testion",
       "name": "phosphorus",
       "kind": "body",
@@ -743,7 +710,7 @@
       }
     },
     {
-      "id": "t-22-ammonia-planet",
+      "id": "t-21-ammonia-planet",
       "parentId": "testion",
       "name": "ammonia planet",
       "kind": "body",
@@ -776,7 +743,7 @@
       }
     },
     {
-      "id": "t-23-earth-analogue",
+      "id": "t-22-earth-analogue",
       "parentId": "testion",
       "name": "earth analogue",
       "kind": "body",
@@ -815,7 +782,7 @@
       }
     },
     {
-      "id": "t-24-earth-like",
+      "id": "t-23-earth-like",
       "parentId": "testion",
       "name": "earth like",
       "kind": "body",
@@ -854,7 +821,7 @@
       }
     },
     {
-      "id": "t-25-superhabitable",
+      "id": "t-24-superhabitable",
       "parentId": "testion",
       "name": "superhabitable",
       "kind": "body",
@@ -893,7 +860,7 @@
       }
     },
     {
-      "id": "t-26-eyeball",
+      "id": "t-25-eyeball",
       "parentId": "testion",
       "name": "eyeball",
       "kind": "body",
@@ -931,7 +898,7 @@
       }
     },
     {
-      "id": "t-27-hot-eyeball",
+      "id": "t-26-hot-eyeball",
       "parentId": "testion",
       "name": "hot eyeball",
       "kind": "body",
@@ -965,7 +932,7 @@
       }
     },
     {
-      "id": "t-28-cold-eyeball",
+      "id": "t-27-cold-eyeball",
       "parentId": "testion",
       "name": "cold eyeball",
       "kind": "body",
@@ -991,7 +958,7 @@
       "tidallyLocked": true
     },
     {
-      "id": "t-29-mini-neptune",
+      "id": "t-28-mini-neptune",
       "parentId": "testion",
       "name": "mini neptune",
       "kind": "body",
@@ -1025,7 +992,7 @@
       }
     },
     {
-      "id": "t-30-sub-neptune",
+      "id": "t-29-sub-neptune",
       "parentId": "testion",
       "name": "sub neptune",
       "kind": "body",
@@ -1059,7 +1026,7 @@
       }
     },
     {
-      "id": "t-31-ice-giant",
+      "id": "t-30-ice-giant",
       "parentId": "testion",
       "name": "ice giant",
       "kind": "body",
@@ -1094,7 +1061,7 @@
       }
     },
     {
-      "id": "t-32-super-neptune",
+      "id": "t-31-super-neptune",
       "parentId": "testion",
       "name": "super neptune",
       "kind": "body",
@@ -1128,7 +1095,7 @@
       }
     },
     {
-      "id": "t-33-hot-neptune",
+      "id": "t-32-hot-neptune",
       "parentId": "testion",
       "name": "hot neptune",
       "kind": "body",
@@ -1162,7 +1129,7 @@
       }
     },
     {
-      "id": "t-34-ultra-hot-neptune",
+      "id": "t-33-ultra-hot-neptune",
       "parentId": "testion",
       "name": "ultra hot neptune",
       "kind": "body",
@@ -1196,7 +1163,7 @@
       }
     },
     {
-      "id": "t-35-ammonia-clouds-gas-giant",
+      "id": "t-34-ammonia-clouds-gas-giant",
       "parentId": "testion",
       "name": "ammonia clouds gas giant",
       "kind": "body",
@@ -1221,7 +1188,7 @@
       "tags": []
     },
     {
-      "id": "t-36-water-clouds-gas-giant",
+      "id": "t-35-water-clouds-gas-giant",
       "parentId": "testion",
       "name": "water clouds gas giant",
       "kind": "body",
@@ -1246,7 +1213,7 @@
       "tags": []
     },
     {
-      "id": "t-37-cloudless-gas-giant",
+      "id": "t-36-cloudless-gas-giant",
       "parentId": "testion",
       "name": "cloudless gas giant",
       "kind": "body",
@@ -1271,7 +1238,7 @@
       "tags": []
     },
     {
-      "id": "t-38-alkali-metal-clouds-gas-giant",
+      "id": "t-37-alkali-metal-clouds-gas-giant",
       "parentId": "testion",
       "name": "alkali metal clouds gas giant",
       "kind": "body",
@@ -1296,7 +1263,7 @@
       "tags": []
     },
     {
-      "id": "t-39-silicate-clouds-gas-giant",
+      "id": "t-38-silicate-clouds-gas-giant",
       "parentId": "testion",
       "name": "silicate clouds gas giant",
       "kind": "body",
@@ -1321,7 +1288,7 @@
       "tags": []
     },
     {
-      "id": "t-40-gas-giant",
+      "id": "t-39-gas-giant",
       "parentId": "testion",
       "name": "gas giant",
       "kind": "body",
@@ -1346,7 +1313,7 @@
       "tags": []
     },
     {
-      "id": "t-41-mini-jupiter",
+      "id": "t-40-mini-jupiter",
       "parentId": "testion",
       "name": "mini jupiter",
       "kind": "body",
@@ -1371,7 +1338,7 @@
       "tags": []
     },
     {
-      "id": "t-42-super-jupiter",
+      "id": "t-41-super-jupiter",
       "parentId": "testion",
       "name": "super jupiter",
       "kind": "body",
@@ -1397,7 +1364,7 @@
     },
     {
       "id": "t-ring",
-      "parentId": "t-42-super-jupiter",
+      "parentId": "t-41-super-jupiter",
       "name": "Ring",
       "kind": "body",
       "roleHint": "ring",
@@ -1405,7 +1372,7 @@
       "radiusOuterKm": 140000,
       "tags": [],
       "orbit": {
-        "hostId": "t-42-super-jupiter",
+        "hostId": "t-41-super-jupiter",
         "elements": {
           "a_AU": 0.0008,
           "e": 0,
@@ -1417,14 +1384,14 @@
       }
     },
     {
-      "id": "t-43-subsurface-ocean",
-      "parentId": "t-42-super-jupiter",
+      "id": "t-42-subsurface-ocean",
+      "parentId": "t-41-super-jupiter",
       "name": "Subsurface Ocean",
       "kind": "body",
       "roleHint": "moon",
       "__target": "planet/subsurface-ocean",
       "orbit": {
-        "hostId": "t-42-super-jupiter",
+        "hostId": "t-41-super-jupiter",
         "elements": {
           "a_AU": 0.003,
           "e": 0.04,
@@ -1447,6 +1414,39 @@
       "hydrosphere": {
         "composition": "water",
         "coverage": 0.4
+      }
+    },
+    {
+      "id": "t-43-sulfur",
+      "parentId": "t-41-super-jupiter",
+      "name": "Sulfur Moon",
+      "kind": "body",
+      "roleHint": "moon",
+      "__target": "planet/sulfur",
+      "orbit": {
+        "hostId": "t-41-super-jupiter",
+        "elements": {
+          "a_AU": 0.0018,
+          "e": 0.06,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0
+        }
+      },
+      "massKg": 8.958e+22,
+      "radiusKm": 1783.88,
+      "magneticField": {
+        "strengthGauss": 0
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "SO2",
+        "main": "SO2",
+        "pressure_bar": 0.4,
+        "composition": {
+          "SO2": 1
+        }
       }
     },
     {

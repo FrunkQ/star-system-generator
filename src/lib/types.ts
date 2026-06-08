@@ -110,7 +110,11 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   radiusKm?: number;
   radiusInnerKm?: number; // For belts/rings
   radiusOuterKm?: number; // For belts/rings
-  temperatureK?: number;
+  temperatureK?: number;        // global MEAN surface temp (heat averaged over the whole body)
+  // Surface temperature RANGE: cold extreme (night-side/poles) → hot extreme (tidal-volcanic
+  // hotspots, sub-stellar point). Tidal heat is localized, so a moon like Io can read e.g.
+  // 90 K mean but 1500 K at its lava lakes — the mean alone hides that. (§ tidal honesty)
+  temperatureRangeK?: { min: number; max: number };
   calculatedGravity_ms2?: number;
   distanceToHost_km?: number;
   orbitalBoundaries?: OrbitalBoundaries;

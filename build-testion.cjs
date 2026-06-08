@@ -75,7 +75,6 @@ body({ target: 'planet/hycean', Me: 4, Re: 2.0, Teq: 350, hydroComp: 'water', hy
 body({ target: 'planet/methane', Me: 0.6, d: NEU, Teq: 110, hydroComp: 'methane', hydroCov: 0.6, atmMain: 'N2', atmP: 1.5 });
 
 // ---- Atmosphere-composition worlds (cool, so 'desert' doesn't grab them) ----
-body({ target: 'planet/sulfur', Me: 0.5, d: NEU, Teq: 220, atmMain: 'SO2', atmP: 0.5 });
 body({ target: 'planet/chlorine', Me: 0.9, d: NEU, Teq: 220, atmMain: 'Cl2', atmP: 1 });
 body({ target: 'planet/fluorine', Me: 0.9, d: NEU, Teq: 220, atmMain: 'F2', atmP: 1 });
 body({ target: 'planet/phosphorus', Me: 0.9, d: NEU, Teq: 220, atmMain: 'PH3', atmP: 1 });
@@ -115,6 +114,10 @@ nodes.push({ id: 't-ring', parentId: superJ.id, name: 'Ring', kind: 'body', role
 // an icy, tidally-flexed moon → subsurface-ocean
 body({ target: 'planet/subsurface-ocean', name: 'Subsurface Ocean', parent: superJ.id, Me: 0.02,
   makeup: { rock: 0.5, ice: 0.5 }, a: 0.003, e: 0.04, hydroComp: 'water', hydroCov: 0.4, mag: 0, role: 'moon' });
+// Io-like: a small sulfur moon in a tight eccentric orbit → intense tidal flexing. Cold MEAN
+// surface but silicate-melt volcanic hotspots (tests the temperature-range + tidal/lava-flows tag).
+body({ target: 'planet/sulfur', name: 'Sulfur Moon', parent: superJ.id, Me: 0.015, Re: 0.28,
+  a: 0.0018, e: 0.06, atmMain: 'SO2', atmP: 0.4, mag: 0, role: 'moon' });
 body({ target: 'planet/puffy', Me: 60, Re: 10, Teq: 900 });
 body({ target: 'planet/super-puff', Me: 8, Re: 8, Teq: 500 });
 body({ target: 'planet/helium', Me: 60, Re: 5, Teq: 400, atmMain: 'He' });

@@ -5,6 +5,7 @@ import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEqui
 import { calculateSurfaceRadiation } from '../physics/radiation';
 import { classifyBody } from '../system/classification';
 import { makeupFractions } from '../physics/makeup';
+import { surfaceTempRange } from '../physics/tidalThermal';
 import { deriveFluidLayers } from '../physics/fluidLayers';
 import { deriveApparentColorParts } from '../rendering/apparentColor';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
@@ -257,9 +258,11 @@ export class SystemProcessor implements ISystemProcessor {
 
         // Tidal Heating
         let tidalHeatingK = 0;
+        let tidalRawIndex = 0;
         if (body.roleHint === 'moon' && body.parentId) {
             const host = allNodes.find(n => n.id === body.parentId);
             if (host && host.kind === 'body') {
+                tidalRawIndex = this.calculateRawTidalIndex(body, host as CelestialBody);
                 tidalHeatingK = this.calculateTidalHeating(body, host as CelestialBody);
                 const hasHotspots = this.hasTidalHotspots(body, host as CelestialBody);
                 body.tags = body.tags || [];
@@ -288,6 +291,19 @@ export class SystemProcessor implements ISystemProcessor {
             radiogenicHeatK,
             body.internalHeatK || 0
         );
+
+        // Surface temperature RANGE + tidal-volcanic context (the honest picture the mean hides).
+        body.tags = body.tags || [];
+        body.tags = body.tags.filter(t => t.key !== 'tidal/volcanism' && t.key !== 'tidal/lava-flows');
+        const range = surfaceTempRange({
+            meanK: body.temperatureK ?? equilibriumTempK,
+            equilibriumK: equilibriumTempK,
+            atmPressureBar: body.atmosphere?.pressure_bar ?? 0,
+            tidalRawIndex,
+            iceFrac: makeupFractions(body).ice
+        });
+        for (const key of range.tags) body.tags.push({ key });
+        body.temperatureRangeK = { min: range.min, max: range.max };
 
         // Atmosphere Retention Check (Physics-based stripping)
         const totalStellarRadiation = this.calculateTotalStellarFlux(body, allStars, allNodes);
