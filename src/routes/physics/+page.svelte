@@ -360,8 +360,11 @@
       <h3>Star type &amp; age</h3>
       <p>Planet richness <strong>honours the star</strong>: massive O/B/A stars blow their disks away (few worlds),
         F/G/K/M keep rich disks, remnants rarely retain anything. <strong>Age</strong> threads through the whole
-        model — it evolves the stars (Sun → red giant → white dwarf), decays radiogenic heat (cooling → the tectonic
-        regime), grinds belts down (young = wide, old = narrow), sets flare activity, and drives atmospheric escape.</p>
+        model — it evolves the stars (a newborn is briefly large, cool and over-luminous on the <em>pre-main-sequence</em>,
+        contracting onto the main sequence over a time that's longer for lower mass, so a young M dwarf's habitable zone
+        starts far out and migrates inward; then the slow main-sequence brightening; eventually red giant → white dwarf),
+        decays radiogenic heat (cooling → the tectonic regime), grinds belts down (young = wide, old = narrow), sets
+        flare activity, and drives atmospheric escape.</p>
       <p><strong>Atmospheric escape</strong> (over the age, planets assumed to form a few Myr in): two age-integrated
         losses thin or strip an atmosphere <em>before</em> greenhouse &amp; radiation read it. <em>Thermal (Jeans)</em>
         — light gases (H₂/He) leave any non-giant; heavier gases need a high escape parameter
@@ -430,6 +433,7 @@
   .lede { color: var(--text-muted, #cfcfcf); font-size: 1.05rem; line-height: 1.6; max-width: 70ch; }
   section { margin: 30px 0; scroll-margin-top: 16px; }
   section h2 { color: var(--text, #fff); border-bottom: 1px solid var(--border, #2a2d36); padding-bottom: 6px; }
+  section h3 { color: var(--accent, #ff5a1f); font-size: 1rem; margin: 20px 0 6px; }
   .phase { font-size: 0.7rem; color: var(--on-accent, #fff); background: var(--accent, #ff5a1f); border-radius: 999px; padding: 2px 8px; vertical-align: middle; margin-left: 8px; }
   p, li { line-height: 1.65; color: var(--text, #e2e2e2); }
   ol.layering { line-height: 1.7; padding-left: 1.3em; }
