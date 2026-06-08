@@ -139,3 +139,64 @@ parameters` profile, so they're rulepack-overridable.
 4. **Generation knobs (§3)** — the headline UX win; builds on §1's exotic weights and §2's makeup.
 
 All four are independent enough to land one at a time, each verifiable against Sol + Testion.
+
+---
+
+## 4. Edit UI — makeup, liquids, and the "add by viable type" easy route
+
+How §2/§3 surface in the editor (Alex wants this clear before building). Status: §1 atmospheres
+**done**; this section is design for §2.
+
+### 4a. Makeup replaces the density control
+Today the "density slider" (`BodyDetailsTab`) actually drives **mass** with a density-style
+read-out — it conflates the two. We drop it and make **makeup** the composition control, with
+density purely derived. The crux is the mass–radius–makeup relationship; two options:
+
+- **Option A (recommended): user sets Mass + Makeup → Radius & Density derived.** A per-composition
+  mass–radius relation gives the radius (an iron world of mass X is small & dense; an ice world is
+  large & light). Makeup becomes *the* meaningful control and density falls out — exactly your
+  "density is derived". Existing bodies get a makeup inferred once from their current density.
+- **Option B: keep Mass + Radius sliders, density derived (as now), makeup a separate descriptor**
+  seeded from density but overridable (lets you say "iron" vs "ice" at the same density). Less
+  physical; keeps radius as a direct control.
+
+**Recommend A.** The editor then shows: **Mass** (slider) · **Makeup** (new control) · *Radius*
+(derived, shown) · *Density* (derived, shown).
+
+**Makeup control:** a compact two-tier widget —
+- *Primary makeup* dropdown for the easy path: **Iron · Silicate · Carbon · Icy · Ocean · Gas/Ice-giant** (sets sensible fractions).
+- *Fine fractions* (optional expand): metal / rock / carbon / ice / volatile / H-He sliders that normalise to 100%, with a little stacked bar + the derived density/radius updating live.
+- Classification reads makeup directly → iron/silicate/coreless/carbon become **makeup-driven**, killing the density-band fiddliness from Testion.
+
+### 4b. Liquids — a layer list
+The single hydrosphere control (`BodyHydrosphereTab`) becomes a small **layer list**; each row:
+**Location** (Surface · Subsurface · Cloud) · **Liquid** (water / ammonia / methane / water-ammonia
+/ sulfuric-acid / magma / nitrogen) · **Coverage / Depth** (+ ice-shell thickness for subsurface).
+- The engine **auto-suggests** a subsurface ocean when a surface liquid is frozen but interior heat
+  (tidal + radiogenic) melts it under an ice shell — the user can accept/edit. "Add layer" for the rest.
+- This is what makes subsurface-ocean / methane-lake / sulfuric-acid-cloud worlds real instead of
+  hand-set, and gives the body panel a truthful "what's wet, and where" read-out.
+
+### 4c. "Add by viable type" — the easy route ⭐
+The headline UX. When you **add a body at an orbit** (so its distance — hence T_eq, flux, zone — is
+known), instead of a blank body you get a dropdown of **types that could plausibly exist there**:
+
+1. Compute the orbit's environment from the host: **T_eq** (luminosity / distance), **radiation
+   level**, **zone** (goldilocks / frost-line / roche).
+2. **Filter the type list to the viable ones** by intersecting each fingerprint's orbit-determined
+   bands with this orbit: T_eq band must overlap (lava only close-in, ice only far out, earth-analogue
+   only in the goldilocks zone and only at low radiation), host context excludes nonsense (no
+   brown-dwarf as a moon; gas-giant orbits don't offer rocky-only types; etc.).
+3. Pick a viable type → **reverse-generate** a randomised body that classifies as it: read the
+   fingerprint's bands and roll mass / radius / **makeup** / atmosphere (from the §1 presets) /
+   liquids *within* those bands, holding the orbit-fixed T_eq. This is exactly `build-testion.cjs`'s
+   logic generalised into a reusable **`generateBodyOfType(class, orbitContext)`** — the classifier
+   fingerprints become the single source of truth for *both* recognising and synthesising a type.
+
+Result: "pick a world that **could** live here, get a plausible randomised one" — and because it's
+seeded from the same fingerprints, it always classifies back to what you picked. The same filter +
+generator also drives the §3 random-generation prevalence (a system roll = many `generateBodyOfType`
+calls weighted by the knobs).
+
+> Decision needed before building 4a: **Option A vs B** for mass–radius–makeup. Everything else
+> follows from it.
