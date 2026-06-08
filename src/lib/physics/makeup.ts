@@ -43,25 +43,46 @@ export function compressedDensityFromMakeup(mass_Me: number, m: Makeup): number 
   return bulkDensityFromMakeup(m) * compressionFactor(mass_Me, m);
 }
 
-// Radius (Earth radii) implied by a mass (Earth masses) + makeup, INCLUDING compression. Earth:
-// mass 1, rock/metal mix → ρ ≈ 5.5 → radius ≈ 1.
+const JUPITER_ME = 317.8;
+const JUPITER_RE = 11.2;
+// Gas giants don't follow the rocky compression — degeneracy pressure makes their radius roughly
+// CONSTANT (~1 Rjup) across a wide mass range: sub-Jovians are smaller, super-Jovians/brown dwarfs
+// slowly shrink as gravity wins. A measured giant usually has its radius set directly; this is for
+// derive-from-makeup. (Chen–Kipping-ish.)
+function gasGiantRadiusRe(mass_Me: number): number {
+  const Mj = Math.max(0.001, mass_Me / JUPITER_ME);
+  if (Mj < 0.4) return JUPITER_RE * Math.pow(Mj / 0.4, 0.45);  // sub-Saturn: grows with mass
+  return JUPITER_RE * Math.pow(Mj, -0.04);                      // Jovian → brown dwarf: gently shrinks
+}
+
+// Radius (Earth radii) implied by a mass (Earth masses) + makeup. Rocky/icy bodies use compression
+// (Earth: rock/metal mix → ρ ≈ 5.5 → radius ≈ 1); gas-dominated bodies use the giant mass–radius
+// relation (Jupiter mass → ~11.2 R⊕).
 export function radiusReFromMassMakeup(mass_Me: number, m: Makeup): number {
+  if (normalizeMakeup(m).gas > 0.5) return gasGiantRadiusRe(mass_Me);
   const rho = compressedDensityFromMakeup(mass_Me, m);
   return Math.cbrt((Math.max(0, mass_Me) / rho) * 5.513);
 }
 
-// Reverse: a representative makeup for a bulk density (g/cc) when none is set.
+// Reverse: a representative makeup for an UNCOMPRESSED grain density (g/cc), by inverting the
+// volume-additive blend between the two bracketing grain densities. Physically grounded — a density
+// of 5.4 lands at ~⅔ metal (Mercury), not a coarse "rocky" bucket.
 export function inferMakeupFromDensity(density_gcc: number): Makeup {
-  const d = density_gcc;
-  if (d >= 6.5) return { metal: 0.6, rock: 0.4 };          // iron-rich
-  if (d >= 3.0) return { rock: 0.8, metal: 0.2 };          // silicate / rocky (Earth, Venus, Mars)
-  if (d >= 1.3) return { rock: 0.4, ice: 0.6 };            // icy
-  if (d >= 0.5) return { ice: 0.3, gas: 0.7 };             // sub-neptune / puffy
-  return { gas: 0.95, ice: 0.05 };                         // gas giant
+  const d = Math.max(0.12, density_gcc);
+  const blend = (heavy: keyof Makeup, hDen: number, light: keyof Makeup, lDen: number): Makeup => {
+    // 1/d = f/hDen + (1−f)/lDen  →  solve the heavy fraction f
+    const f = Math.max(0, Math.min(1, ((1 / lDen) - (1 / d)) / ((1 / lDen) - (1 / hDen))));
+    return { [heavy]: f, [light]: 1 - f } as Makeup;
+  };
+  if (d >= GRAIN_GCC.metal) return { metal: 1 };
+  if (d >= GRAIN_GCC.rock) return blend('metal', GRAIN_GCC.metal, 'rock', GRAIN_GCC.rock);  // metal↔rock
+  if (d >= GRAIN_GCC.ice) return blend('rock', GRAIN_GCC.rock, 'ice', GRAIN_GCC.ice);        // rock↔ice
+  return blend('ice', GRAIN_GCC.ice, 'gas', GRAIN_GCC.gas);                                  // ice↔gas
 }
 
-// The normalised makeup fractions for a body: explicit if present, else inferred from its
-// bulk density (mass/radius). Used by the classifier feature vector + the body panel.
+// The normalised makeup fractions for a body: explicit if present, else inferred from its bulk
+// density. The measured density is gravity-COMPRESSED, so we decompress by mass first — a small,
+// dense body is iron (Mercury), not compressed rock. Used by the classifier + the body panel.
 export function makeupFractions(body: CelestialBody): Required<Makeup> {
   if (body.makeup) return normalizeMakeup(body.makeup);
   const massKg = body.massKg || 0;
@@ -69,8 +90,10 @@ export function makeupFractions(body: CelestialBody): Required<Makeup> {
   const volM3 = radiusM > 0 ? (4 / 3) * Math.PI * radiusM ** 3 : 0;
   const density_gcc = volM3 > 0 ? (massKg / volM3) / 1000 : 5.513;
   const massMe = massKg / EARTH_MASS_KG;
-  // A massive, low-density body is a gas/ice giant — its bulk density (≈1.3 for Jupiter)
-  // would otherwise read as "icy" and miss the gas envelope.
+  // A massive, low-density body is a gas/ice giant — its bulk density (≈1.3 for Jupiter) would
+  // otherwise read as "icy" and miss the gas envelope.
   if (massMe > 8 && density_gcc < 2.5) return normalizeMakeup({ gas: 0.8, ice: 0.2 });
-  return normalizeMakeup(inferMakeupFromDensity(density_gcc));
+  // Recover the uncompressed grain density (assume a rocky body for the compression factor).
+  const uncompressed = density_gcc / compressionFactor(massMe, { rock: 1 });
+  return normalizeMakeup(inferMakeupFromDensity(uncompressed));
 }
