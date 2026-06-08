@@ -84,7 +84,9 @@
   function handleFocus(e: CustomEvent<string | null>) {
     focusedBodyId = e.detail;
     const node = system?.nodes.find((n) => n.id === e.detail);
-    selectedBody = node && node.kind === 'body' ? (node as CelestialBody) : null;
+    // Surface natural bodies and artificial constructs alike (both are CelestialBody-shaped);
+    // barycenters have no player-facing file, so they just clear the inspector.
+    selectedBody = node && (node.kind === 'body' || node.kind === 'construct') ? (node as CelestialBody) : null;
   }
 
   // --- player-safe derived display helpers (snapshot is already redacted) ---
