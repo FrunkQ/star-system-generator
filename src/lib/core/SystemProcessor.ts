@@ -3,7 +3,7 @@ import type { System, RulePack, CelestialBody, Barycenter } from '../types';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG } from '../constants';
 import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, estimateBondAlbedo, composeSurfaceTemperatureFromDeltaComponents, estimateInternalHeatK } from '../physics/temperature';
 import { calculateSurfaceRadiation } from '../physics/radiation';
-import { classifyBody } from '../system/classification';
+import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions } from '../physics/makeup';
 import { surfaceTempRange } from '../physics/tidalThermal';
 import { deriveFluidLayers, cloudColourName } from '../physics/fluidLayers';
@@ -476,6 +476,9 @@ export class SystemProcessor implements ISystemProcessor {
         // Preserve any "manual" or "special" classes that strictly aren't output by the classifier?
         // The classifier is usually comprehensive.
         body.classes = newClasses;
+        // Record WHY (the winning fingerprint + matched bands + runner-up) for the Newton panel.
+        const fps = pack.classifier?.fingerprints;
+        body.classification = fps && fps.length ? explainClassification(features, fps) : undefined;
 
         // Habitability
         this.calculateHabitabilityAndBiosphere(body, rng);

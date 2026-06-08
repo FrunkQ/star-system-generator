@@ -53,6 +53,24 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
   const densityGcc = body.massKg && body.radiusKm
     ? (body.massKg / ((4 / 3) * Math.PI * Math.pow(body.radiusKm * 1000, 3))) / 1000 : 0;
 
+  // 0. Classification — WHY this type (headline). The winning fingerprint, the defining bands it
+  //    matched (with the body's value + fit), and the runner-up it beat.
+  if (body.classification) {
+    const c = body.classification;
+    const inputs: TraceField[] = c.fallback
+      ? [{ label: 'No fingerprint matched', value: 'mass-based fallback' }]
+      : c.bands.map((b) => ({ label: b.feature, value: `${b.value} ∈ [${b.band}] · fit ${b.fit}` }));
+    const outputs: TraceField[] = [
+      { label: 'Type', value: c.base.replace('planet/', '').replace(/-/g, ' ') },
+      { label: 'Score (Σ band fits × weight)', value: n(c.baseScore, 2) }
+    ];
+    if (c.modifiers.length) outputs.push({ label: 'Modifiers', value: c.modifiers.map((m) => m.class.replace('planet/', '')).join(', ') });
+    const notes: string[] = [];
+    if (c.runnerUp) notes.push(`Beat the runner-up ${c.runnerUp.class.replace('planet/', '')} (${c.runnerUp.score}) by matching more defining bands — a type's score is the sum of its band fits, so more-specific types win.`);
+    else if (!c.fallback) notes.push('The only type whose defining bands this body fell within.');
+    layers.push({ id: 'classification', title: 'Classification — why this type', link: '/physics#classification', inputs, outputs, notes });
+  }
+
   // 1. Interior makeup → density, radius
   layers.push({
     id: 'makeup', title: 'Interior makeup', link: '/physics#makeup',

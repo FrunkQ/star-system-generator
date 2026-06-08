@@ -41,6 +41,64 @@ function fingerprintScore(features: Record<string, number | string>, fp: Fingerp
   return sum * (fp.weight ?? 1);
 }
 
+// Human-readable form of a fingerprint band, for the "why this type" explanation.
+function bandToStr(band: FingerprintBand): string {
+  if (typeof band === 'string') return band;
+  if (Array.isArray(band) && typeof band[0] === 'string') return (band as string[]).join(' | ');
+  const [lo, hi] = band as [number, number];
+  return `${lo} – ${hi}`;
+}
+
+export interface ClassBandMatch { feature: string; value: number | string; band: string; fit: number }
+export interface ClassExplanation {
+  base: string;
+  baseScore: number;
+  bands: ClassBandMatch[];
+  runnerUp?: { class: string; score: number };
+  modifiers: { class: string; score: number }[];
+  fallback: boolean;
+}
+
+// Explain WHY a body classified as it did: the winning base type, the defining bands it matched
+// (with the body's value + fit), the runner-up it beat, and any stacked modifiers.
+export function explainClassification(
+  features: Record<string, number | string>,
+  fingerprints: Fingerprint[]
+): ClassExplanation {
+  const scored = fingerprints
+    .map((fp) => ({ fp, score: fingerprintScore(features, fp) }))
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score);
+  const bases = scored.filter((s) => s.fp.kind === 'base');
+  const base = bases[0];
+
+  if (!base) {
+    return {
+      base: (features['mass_Me'] as number) > 10 ? 'planet/gas-giant' : 'planet/terrestrial',
+      baseScore: 0, bands: [], modifiers: [], fallback: true
+    };
+  }
+
+  const bands: ClassBandMatch[] = Object.entries(base.fp.match).map(([feature, band]) => ({
+    feature,
+    value: features[feature] ?? '—',
+    band: bandToStr(band),
+    fit: +bandFit(features[feature], band).toFixed(2)
+  }));
+  const modifiers = scored
+    .filter((s) => s.fp.kind === 'modifier' && s.score >= 0.6)
+    .map((s) => ({ class: s.fp.class, score: +s.score.toFixed(2) }));
+
+  return {
+    base: base.fp.class,
+    baseScore: +base.score.toFixed(2),
+    bands,
+    runnerUp: bases[1] ? { class: bases[1].fp.class, score: +bases[1].score.toFixed(2) } : undefined,
+    modifiers,
+    fallback: false
+  };
+}
+
 export function classifyByFingerprint(
   features: Record<string, number | string>,
   fingerprints: Fingerprint[],
