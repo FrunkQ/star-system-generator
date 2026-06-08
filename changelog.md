@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.2-alpha - 8th Jun 2026
+
+* **Companion App (Players' Field Guide)**: new `/catalogue?sid=` live, redacted, in-universe companion to the system you're running. Open it from the system-view rail ("Field Guide..."). Same-machine for now (a mirrored tablet, a second window, your phone on the same browser). Skins: Green Screen / Amber Terminal (lo-fi CRT report), Survey Datapad (clean), Starship Console (live orbital map, tap a world for its file). Launcher has a link + QR. Report rendering extracted into a shared `ReportDocument` so the printed report and the live guide share one document.
+
 ## v2.0.0-alpha - 12th Apr 2026
 
 * **Evolutionary System Wizard (New Generation Engine)**:
