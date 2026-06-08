@@ -24,6 +24,7 @@
   import ConstructDetailsPane from './ConstructDetailsPane.svelte';
   import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
   import ReportConfigModal from './ReportConfigModal.svelte';
+  import CompanionModal from './CompanionModal.svelte';
   import SaveSystemModal from './SaveSystemModal.svelte';
   import PlannerPane from './PlannerPane.svelte';
   import type { TransitPlan } from '$lib/transit/types';
@@ -788,6 +789,7 @@
   }
 
   let showReportConfigModal = false;
+  let showCompanionModal = false;
 
   function handleGenerateReport(event: CustomEvent<{mode: 'GM' | 'Player', theme: string, includeConstructs: boolean}>) {
       if (!$systemStore) return;
@@ -1804,6 +1806,7 @@
         on:projector={() => { railOpen = false; handleShare(); }}
         on:greenscreen={toggleGreenscreen}
         on:report={() => { railOpen = false; showReportConfigModal = true; }}
+        on:catalogue={() => { railOpen = false; showCompanionModal = true; }}
         on:downloadsystem={() => { railOpen = false; handleDownloadJson(); }}
         on:uploadsystem={() => { railOpen = false; railUploadInput?.click(); }}
         on:new={() => dispatch('new')}
@@ -2074,6 +2077,10 @@
 
     {#if showReportConfigModal}
         <ReportConfigModal on:generate={handleGenerateReport} on:close={() => showReportConfigModal = false} />
+    {/if}
+
+    {#if showCompanionModal}
+        <CompanionModal sessionId={broadcastSessionId} on:close={() => showCompanionModal = false} />
     {/if}
 
 
