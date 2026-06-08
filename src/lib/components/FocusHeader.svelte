@@ -59,6 +59,12 @@
     <input type="text" value={focusedBody.name}
         on:change={(e) => dispatch('rename', { nodeId: focusedBody.id, newName: (e.currentTarget as HTMLInputElement).value })}
         class="name-input" title="Click to rename" />
+    {#if !isPlanning && !isShipLogOpen && focusedBody.kind === 'body' && focusedBody.roleHint !== 'star'}
+        <button class="edit-btn apple-btn" on:click={() => dispatch('showphysics')} title="Show the working (physics & tag provenance)" aria-label="Show the physics working">
+            <!-- Newton's apple -->
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7c-1-2-3-2-4-1-2 1.5-2 5 0 8 1.2 1.8 2.6 3 4 3s2.8-1.2 4-3c2-3 2-6.5 0-8-1-1-3-1-4 1Z"/><path d="M12 7c0-2 .6-3.5 2-4.5"/></svg>
+        </button>
+    {/if}
     {#if !isEditing && !isPlanning && !isShipLogOpen && (focusedBody.kind !== 'barycenter' || focusedBody.parentId)}
         <button class="edit-btn" on:click={() => dispatch('enteredit')} title="Edit body" aria-label="Edit body">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
@@ -119,6 +125,7 @@
       align-items: center;
       justify-content: center;
   }
+  .apple-btn { color: var(--accent, #ff5a1f); }
   .edit-btn:hover {
       background-color: var(--bg-control);
       color: var(--accent);

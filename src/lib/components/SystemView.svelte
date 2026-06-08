@@ -42,6 +42,7 @@
   import { propagate } from '$lib/api';
   import { broadcastService } from '$lib/broadcast';
   import FocusHeader from './FocusHeader.svelte';
+  import PhysicsTraceModal from './PhysicsTraceModal.svelte';
   import AppShell from './AppShell.svelte';
   import RailNav from './RailNav.svelte';
   import { calculateAllStellarZones } from '$lib/physics/zones';
@@ -293,6 +294,9 @@
   // Add Construct Modal State
   let showAddConstructModal = false;
   let constructHostBody: CelestialBody | null = null;
+
+  // Physics "working" (Newton/Apple) panel
+  let showPhysicsModal = false;
 
   // Create Construct (Background) Modal State
   let showCreateConstructModal = false;
@@ -1883,6 +1887,7 @@
                 on:togglevisibility={handleToggleVisibility}
                 on:rename={(e) => { dispatch('renameNode', e.detail); systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s); }}
                 on:enteredit={() => { isEditing = true; showZoneKeyPanel = false; visualizer?.resetView(); }}
+                on:showphysics={() => showPhysicsModal = true}
             />
             {/if}
 
@@ -2020,6 +2025,10 @@
 
     {#if showSaveModal}
         <SaveSystemModal on:save={handleSaveSystem} on:close={() => showSaveModal = false} />
+    {/if}
+
+    {#if showPhysicsModal && focusedBody && focusedBody.kind === 'body'}
+        <PhysicsTraceModal body={focusedBody} system={$systemStore} on:close={() => showPhysicsModal = false} />
     {/if}
 
     {/if}
