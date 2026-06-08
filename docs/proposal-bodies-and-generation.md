@@ -95,6 +95,49 @@ were the hard cases), and gives the body panel a richer, truthful "what's wet he
 > Scope note: 2a/2b touch the body schema + generation + the body panel UI. Suggest doing makeup
 > first (unblocks the composition-based types), then layered liquids (unblocks subsurface), each as
 > its own pass with the Testion harness as the check.
+>
+> **Status: §2a makeup DONE.** §2b/2c/2d below incorporate Alex's review (Option A confirmed).
+
+### 2c. Liquids live in the (expanded) Hydrosphere tab — including clouds & deep fluids
+The Hydrosphere tab is underused, so the **layer list lives there** (no new tab unless mixed
+*makeup* needs the room → then a small "Composition" tab; only if). Layer `location` grows to four:
+- **surface** — oceans/seas (today).
+- **subsurface** — under-ice oceans (tidal/radiogenic-melted).
+- **cloud** (atmospheric liquid/aerosol) — and these are **not cosmetic**: a cloud layer rolls into
+  **albedo** (↑ reflectivity → cooler T_eq), **apparent colour** (rendering), and **greenhouse**
+  (e.g. sulfuric-acid haze on Venus, water/ammonia decks on giants). So adding a cloud layer feeds
+  the temperature + colour pipeline, not just a label.
+- **interior (deep, conductive)** — the dynamo source for §2d.
+
+### 2d. Magnetosphere grounded in conductive fluids (replace the arbitrary slider)
+Today the magnetic field is a bare `strengthGauss` slider with no physical basis. Ground it: a field
+arises from a **convecting, electrically-conductive fluid layer + rotation**. The model gives a
+**plausible range** (for the slider default + the generator to roll within), not a hard value, so
+hand-set fields (Earth 0.5) still stand.
+
+`B ≈ f(conductive-layer present & convecting, its conductivity, rotation rate, core/layer size)`,
+with **induced** fields for moons moving through a host's magnetosphere. Conductive-fluid catalog
+(drawn from makeup + interior T/P; from Alex's notes):
+
+| Fluid | Where | Role in magnetism |
+|---|---|---|
+| Liquid iron (outer core) | Rocky cores (Earth, Mercury) | Classic deep dynamo → strong, dipolar, centred |
+| Metallic hydrogen | Gas-giant interiors (Jupiter/Saturn) | Huge conductive shell → very strong dipolar field |
+| **Superionic H₂O** (O lattice + free protons) | Uranus/Neptune mantles | High conductivity via proton transport → **shallow, off-centre/non-dipolar** dynamo |
+| Ionic/Metallic NH₃ | Ice-giant mantles | Adds to the conductive convecting layer |
+| **Polymeric C-N-H fluid** | Deep ice-giant interiors | Dense, stably-stratified, *non-convecting* → **suppresses** deep dynamo, confines it to the outer mantle (explains the ice giants' weird tilted fields) |
+| Salty liquid water | Icy-moon subsurface oceans (Europa, Callisto, Enceladus) | **Induced** field when moving through the host planet's rotating magnetosphere |
+
+So: makeup → which conductive layers exist; liquids/temperature → whether they're fluid &
+convecting; rotation → dynamo vigour; result → a grounded field magnitude **and geometry**
+(dipolar vs tilted/off-centre, intrinsic vs induced). The induced case ties an icy moon's field to
+its host — a nice emergent detail. Output also feeds the existing radiation-shielding maths, so the
+Sol baseline (Earth ≈ 0.5 G, ~2.3 mSv/yr) must be preserved when grounding it.
+
+**Build order (revised):** §2c layered liquids + clouds→albedo/colour/greenhouse → §2d magnetism
+from conductive fluids (range/suggestion, baseline-safe) → §4a makeup Edit control + the expanded
+Hydrosphere tab → §4c add-by-viable-type. Magnetism `magnetism.ts` is pure (makeup+rotation+layers
+→ B range), unit-tested, and only *suggests* — so it's safe to land before the UI consumes it.
 
 ---
 
