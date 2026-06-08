@@ -401,6 +401,16 @@ export class SystemProcessor implements ISystemProcessor {
         }
         features['hasSubsurfaceOcean'] = fluidLayers.some((l) => l.location === 'subsurface') ? 1 : 0;
 
+        // Structural tags (surfaced for GMs): a frozen icy shell, a subsurface ocean, a discrete
+        // cloud deck. These are derived facts about the body's layering.
+        const surfTForStruct = body.temperatureK ?? body.equilibriumTempK ?? 0;
+        const waterHydroForStruct = body.hydrosphere?.composition === 'water' || body.hydrosphere?.composition === 'water-ammonia';
+        const icyShell = mk.ice > 0.3 || (waterHydroForStruct && surfTForStruct < 273); // frozen water exterior
+        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('structure/'));
+        if (icyShell) body.tags.push({ key: 'structure/icy-shell' });
+        if (fluidLayers.some((l) => l.location === 'subsurface')) body.tags.push({ key: 'structure/subsurface-ocean' });
+        if (mk.gas <= 0.5 && fluidLayers.some((l) => l.location === 'cloud')) body.tags.push({ key: 'structure/cloud-deck' });
+
         // Magnetism profile (§2d) — descriptive read of the dynamo from interior conductive layers
         // + rotation; does NOT override the editable field strength. A salty subsurface ocean only
         // induces a field when the moon sits inside a giant host's magnetosphere.
@@ -431,10 +441,6 @@ export class SystemProcessor implements ISystemProcessor {
             const hasLiquidSurfaceWater = fluidLayers.some(
                 (l) => l.location === 'surface' && /water/.test(l.liquid)
             );
-            const hydroComp = body.hydrosphere?.composition;
-            const surfT = body.temperatureK ?? body.equilibriumTempK ?? 0;
-            const waterHydro = hydroComp === 'water' || hydroComp === 'water-ammonia';
-            const icyShell = mk.ice > 0.3 || (waterHydro && surfT < 273); // frozen water exterior
             const tidalKeys = (body.tags || []).map((t) => t.key);
             body.geoActivity = deriveGeoActivity({
                 makeup: mk,

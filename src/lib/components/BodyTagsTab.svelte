@@ -1,21 +1,17 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
+  import { describeTag, SUGGESTED_TAGS } from '$lib/tags/tagPresentation';
 
   export let body: CelestialBody;
   export let rulePack: RulePack | null = null;
 
   const dispatch = createEventDispatcher();
-  
+
   let newKey = '';
   let newValue = '';
 
-  const commonTags = [
-      'tidally-locked', 'geologically-active', 'subsurface-ocean', 'magnetic-field',
-      'rings', 'mineral-rich', 'rare-metals', 'high-gravity', 'low-gravity',
-      'habitability/human', 'habitability/alien-hardy', 'ruins', 'artifact',
-      'biodiversity/high', 'biodiversity/low'
-  ];
+  const commonTags = SUGGESTED_TAGS;
 
   function removeTag(index: number) {
       if (!body.tags) return;
@@ -48,8 +44,14 @@
             <div class="tags-list">
                 {#if body.tags && body.tags.length > 0}
                     {#each body.tags as tag, i}
-                        <button class="tag-chip active" on:click={() => removeTag(i)} title="Click to remove">
-                            {tag.key}{#if tag.value}: {tag.value}{/if} <span class="x">×</span>
+                        {@const info = describeTag(tag.key)}
+                        <button
+                            class="tag-chip active"
+                            style="background-color: {info.color};"
+                            on:click={() => removeTag(i)}
+                            title={info.description ? `${info.description}\n(click to remove)` : 'Click to remove'}
+                        >
+                            {info.label}{#if tag.value}: {tag.value}{/if} <span class="x">×</span>
                         </button>
                     {/each}
                 {:else}
@@ -63,8 +65,9 @@
             <div class="tags-list">
                 {#each commonTags as sTag}
                     {#if !body.tags?.some(t => t.key === sTag)}
-                        <button class="tag-chip suggested" on:click={() => addSuggestedTag(sTag)} title="Click to add">
-                            {sTag} <span class="plus">+</span>
+                        {@const sInfo = describeTag(sTag)}
+                        <button class="tag-chip suggested" on:click={() => addSuggestedTag(sTag)} title={sInfo.description || 'Click to add'}>
+                            {sInfo.label} <span class="plus">+</span>
                         </button>
                     {/if}
                 {/each}

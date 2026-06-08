@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
+  import { describeTag } from "$lib/tags/tagPresentation";
   import { calculateOrbitalBoundaries, type OrbitalBoundaries, type PlanetData } from "$lib/physics/orbits";
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { calculateDeltaVBudgets, calculateSurfaceTemperature, calculateGreenhouseEffect } from '$lib/system/postprocessing';
@@ -764,7 +765,8 @@
               <span class="label">Tags</span>
               <div class="tags-container">
                   {#each body.tags as tag}
-                      <span class="tag">{tag.key}{#if tag.value}: {tag.value}{/if}</span>
+                      {@const info = describeTag(tag.key)}
+                      <span class="tag" style="border-color: {info.color}; color: {info.color};" title={info.description}>{info.label}{#if tag.value}: {tag.value}{/if}</span>
                   {/each}
               </div>
           </div>
