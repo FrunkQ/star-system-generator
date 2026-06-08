@@ -124,6 +124,9 @@
   }
 
   function handleSetActual() {
+    // The only genuinely destructive time action: it moves the authoritative "now" anchor for
+    // the whole campaign to whatever you're currently viewing. Confirm before committing.
+    if (!confirm('Set the campaign’s current time ("now") to the time you are viewing?\n\nThis moves the authoritative clock for everyone and cannot be undone.')) return;
     setPlaying(false);
     dispatch('setactual');
   }
@@ -291,13 +294,12 @@
     <button class="tt-step" on:click={faster} disabled={rateIndex === RATE_STEPS.length - 1} title="Faster" aria-label="Faster">+</button>
   </div>
 
-  <button class="tt-btn tt-more" class:on={expanded} on:click={() => (expanded = !expanded)} title="More time controls" aria-label="More time controls">⋯</button>
+  <button class="tt-btn tt-more tt-warn" class:on={expanded} on:click={() => (expanded = !expanded)} title="Danger: rewrite the campaign's current time" aria-label="Set current time (danger)">⚠</button>
 
   {#if expanded}
     <div class="tt-panel">
-      <div class="tt-prow"><span class="tt-k">Actual</span><span class="tt-v" title={"Actual seconds from big bang: " + masterClockSeconds}>{masterCalendarLabel}</span></div>
-      <button class="tt-action" on:click={handleResetDisplay}>Reset display → actual</button>
-      <button class="tt-action danger" on:click={handleSetActual}>Set actual → display</button>
+      <button class="tt-action danger" on:click={handleSetActual}>Set current time to displayed time</button>
+      <p class="tt-warn-note">This is the only thing here that isn't on the bar already. It moves the authoritative "now" for the whole campaign to the time you're viewing.</p>
     </div>
   {/if}
 </div>
@@ -410,6 +412,10 @@
   .tt-rate.active { color: #00e5ff; font-weight: 700; }
 
   .tt-more.on { background: var(--bg-control-hover, #232733); }
+  /* The "more" trigger is a red warning: the sole action it hides is the destructive set-now. */
+  .tt-warn { color: var(--status-bad, #e0484d); border-color: color-mix(in srgb, var(--status-bad, #e0484d) 55%, var(--border, #2a2d36)); }
+  .tt-warn:hover { background: color-mix(in srgb, var(--status-bad, #e0484d) 18%, var(--bg-control, #1b1e26)); }
+  .tt-warn-note { margin: 0; font-size: 0.72rem; line-height: 1.4; color: var(--text-faint, #8a8f9a); }
 
   .tt-panel {
     position: absolute;
