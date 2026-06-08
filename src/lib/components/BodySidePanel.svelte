@@ -54,7 +54,7 @@
 <div class="body-side-panel">
   <div class="tabs">
     {#if !isBeltOrRing && !isStar && !isBarycenter}
-        <button class:active={selectedTab === 'Basics'} on:click={() => setTab('Basics')}>Basics</button>
+        <button class:active={selectedTab === 'Basics'} on:click={() => setTab('Basics')}>Composition</button>
         <button class:active={selectedTab === 'Orbit'} on:click={() => setTab('Orbit')}>Orbit</button>
     {:else if isBarycenter}
         {#if body.parentId}

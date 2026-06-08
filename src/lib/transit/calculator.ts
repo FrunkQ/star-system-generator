@@ -880,7 +880,10 @@ function calculateLambertPlan(
     const totalPoints = Math.min(5000, Math.max(300, Math.ceil(durationSec / (86400 * 2))));
     
     // 5. N-Body & Path Integration
-    const massNodes = sys.nodes.filter(n => n.id !== (frameParentId || root.id) && (n.kind === 'body' || n.kind === 'barycenter'));
+    // Belts/rings are DISTRIBUTED mass — their `massKg` is a debris-density proxy, not gravitational
+    // mass, with no single point to pull toward — so exclude them as point-mass perturbers (mirrors
+    // gravity-assist). Otherwise a belt would inject a bogus point-gravity tug toward a ring location.
+    const massNodes = sys.nodes.filter(n => n.id !== (frameParentId || root.id) && (n.kind === 'body' || n.kind === 'barycenter') && n.roleHint !== 'belt' && n.roleHint !== 'ring');
     const nBodySources = massNodes.map(n => {
         const state = getGlobalState(sys, n as any, startTime);
         const parentState = frameParentId ? getGlobalState(sys, sys.nodes.find(fn => fn.id === frameParentId)!, startTime) : null;
@@ -1242,8 +1245,8 @@ function calculateFastPlan(
     const segments: TransitSegment[] = [];
     const sampleCount = Math.min(3000, Math.max(240, Math.ceil(totalTime / (3600 * 2))));
     
-    // N-Body summation sources
-    const massNodes = sys.nodes.filter(n => n.id !== frameNode.id && (n.kind === 'body' || n.kind === 'barycenter'));
+    // N-Body summation sources (belts/rings excluded — distributed debris-density, not point masses)
+    const massNodes = sys.nodes.filter(n => n.id !== frameNode.id && (n.kind === 'body' || n.kind === 'barycenter') && n.roleHint !== 'belt' && n.roleHint !== 'ring');
     const nBodySources = massNodes.map(n => {
         const state = getGlobalState(sys, n as any, startTime);
         const parentState = getGlobalState(sys, frameNode, startTime);
