@@ -74,7 +74,10 @@
   }
   .td-k {
     flex: 0 0 auto;
-    width: 3.4em;
+    /* min-width (not a fixed width) keeps the two values aligned while letting the
+       "Display" / "Actual" labels size to their text — a fixed 3.4em clipped them so the
+       overflow sat under the value. */
+    min-width: 4em;
     font-size: 0.62rem;
     text-transform: uppercase;
     letter-spacing: 0.6px;
