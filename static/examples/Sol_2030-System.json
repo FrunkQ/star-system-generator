@@ -1118,7 +1118,11 @@
       "surfaceRadiationMax": 22.370308062000678,
       "equilibriumTempMinK": 115.4514492507216,
       "equilibriumTempMaxK": 121.23789897164019,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 1
+      }
     },
     {
       "id": "solar-system-ganymede",
@@ -1204,7 +1208,11 @@
       "surfaceRadiationMax": 22.19180841178692,
       "equilibriumTempMinK": 115.42357628739295,
       "equilibriumTempMaxK": 121.20486405061217,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 1
+      }
     },
     {
       "id": "solar-system-callisto",
@@ -1284,7 +1292,11 @@
       "surfaceRadiationMax": 22.304294895599508,
       "equilibriumTempMinK": 115.36540442937387,
       "equilibriumTempMaxK": 121.13955678944673,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 1
+      }
     },
     {
       "id": "solar-system-saturn",
@@ -1558,6 +1570,10 @@
       "albedo": 0.3,
       "magneticField": {
         "strengthGauss": 0
+      },
+      "hydrosphere": {
+        "composition": "methane",
+        "coverage": 0.05
       }
     },
     {
@@ -1663,7 +1679,11 @@
       "surfaceRadiationMax": 8.114591541575054,
       "equilibriumTempMinK": 84.80487367967481,
       "equilibriumTempMaxK": 89.7389256675223,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 1
+      }
     },
     {
       "id": "solar-system-mimas",
@@ -2555,7 +2575,11 @@
       "surfaceRadiationMax": 2.5640355986732013,
       "equilibriumTempMinK": 48.90116679948243,
       "equilibriumTempMaxK": 49.45686367036647,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 1
+      }
     },
     {
       "id": "solar-system-kuiper-belt",
