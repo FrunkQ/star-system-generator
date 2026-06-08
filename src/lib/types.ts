@@ -144,6 +144,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   radiationShieldingMag?: number;  // 0-1 effectiveness
   equilibriumTempK?: number;
   internalHeatK?: number;
+  apparentColorHex?: string;  // derived true colour (makeup + atmosphere/clouds + temperature)
   
   // Traveller Data
   traveller?: TravellerWorldData;

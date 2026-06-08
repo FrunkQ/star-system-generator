@@ -110,6 +110,9 @@ export function getPlanetColor(node: CelestialBody): string {
   if (node.roleHint === 'belt') return p.body.belt;
   if (node.tags?.some(t => t.key === 'habitability/earth-like' || t.key === 'habitability/human')) return p.body.habitable;
   if (node.biosphere) return p.body.biosphere;
+  // Prefer the derived true colour (makeup + atmosphere + temperature) when present, so each
+  // body shows its real hue instead of one swatch per class.
+  if (node.apparentColorHex) return node.apparentColorHex;
   if (node.classes?.some(c => c.includes('brown-dwarf'))) return p.body.brownDwarf;
   if (node.classes?.some(c => c.includes('ice-giant'))) return p.body.iceGiant;
   if (node.classes?.some(c => c.includes('gas-giant'))) return p.body.gasGiant;

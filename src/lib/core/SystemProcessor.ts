@@ -5,6 +5,7 @@ import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEqui
 import { calculateSurfaceRadiation } from '../physics/radiation';
 import { classifyBody } from '../system/classification';
 import { makeupFractions } from '../physics/makeup';
+import { deriveApparentColor } from '../rendering/apparentColor';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties } from '../physics/atmosphere';
 import { SeededRNG } from '../rng';
@@ -377,6 +378,9 @@ export class SystemProcessor implements ISystemProcessor {
         // Note: This might override manual class changes if not careful.
         // We should probably only classify if classes are empty or if we want to force update.
         // For now, we update to ensure consistency with physics.
+        // Derived apparent (true) colour from makeup + atmosphere + temperature.
+        body.apparentColorHex = deriveApparentColor(body, pack);
+
         const newClasses = classifyBody(body, features, pack, allNodes);
         // Preserve any "manual" or "special" classes that strictly aren't output by the classifier?
         // The classifier is usually comprehensive.

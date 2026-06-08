@@ -134,6 +134,16 @@ convecting; rotation → dynamo vigour; result → a grounded field magnitude **
 its host — a nice emergent detail. Output also feeds the existing radiation-shielding maths, so the
 Sol baseline (Earth ≈ 0.5 G, ~2.3 mSv/yr) must be preserved when grounding it.
 
+### 2e. Apparent (true) colour — DONE (first pass)
+We didn't track colour — `getPlanetColor` returned one swatch per *class*. Now a derived
+`apparentColorHex` is composed from **makeup** (surface), the **dominant coloured atmosphere gas**
+(the per-gas `colorHex` already in the rulepack), a **liquid-water blue** overlay, an **ice-giant
+methane-blue** rule, and **incandescence** when very hot — stored on the body and preferred by the
+renderer (habitability/biosphere signals still win). Verified: Earth blue, Mars rusty, Uranus blue,
+Io tan, sulfur→yellow, chlorine→green, lava→orange. Gas-giant *cloud* colours (Jupiter's tan bands,
+Venus's sulfuric haze) are approximate until §2c clouds feed in — clouds will also drive albedo &
+greenhouse, closing the loop.
+
 **Build order (revised):** §2c layered liquids + clouds→albedo/colour/greenhouse → §2d magnetism
 from conductive fluids (range/suggestion, baseline-safe) → §4a makeup Edit control + the expanded
 Hydrosphere tab → §4c add-by-viable-type. Magnetism `magnetism.ts` is pure (makeup+rotation+layers
