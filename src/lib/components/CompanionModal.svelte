@@ -14,6 +14,7 @@
   const SKINS = [
     { key: 'green',   label: 'Green Screen',     blurb: 'Salvaged CRT — small pages, bitmap charts' },
     { key: 'amber',   label: 'Amber Terminal',   blurb: 'Phosphor field unit, same lo-fi document' },
+    { key: 'guide',   label: 'The Guide',        blurb: 'Friendly illustrated travel companion' },
     { key: 'clean',   label: 'Survey Datapad',   blurb: 'Clean instrument feed, no costume' },
     { key: 'console', label: 'Starship Console', blurb: 'Live orbital plot, tap a world to inspect' }
   ];

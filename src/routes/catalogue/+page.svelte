@@ -15,7 +15,7 @@
   import { AU_KM, G } from '$lib/constants';
   import type { System, RulePack, CelestialBody } from '$lib/types';
 
-  type ThemeKey = 'green' | 'amber' | 'clean' | 'console';
+  type ThemeKey = 'green' | 'amber' | 'guide' | 'clean' | 'console';
   interface ThemeDef {
     label: string;
     blurb: string;
@@ -24,12 +24,13 @@
     tint: 'green' | 'amber' | 'none';
   }
   const THEMES: Record<ThemeKey, ThemeDef> = {
-    green:   { label: 'Green Screen',     blurb: 'Salvaged CRT terminal',  tier: 'static',      reportTheme: 'retro',    tint: 'green' },
-    amber:   { label: 'Amber Terminal',   blurb: 'Phosphor field unit',    tier: 'static',      reportTheme: 'retro',    tint: 'amber' },
-    clean:   { label: 'Survey Datapad',   blurb: 'Clean instrument feed',  tier: 'static',      reportTheme: 'standard', tint: 'none'  },
-    console: { label: 'Starship Console', blurb: 'Live orbital plot',      tier: 'interactive', reportTheme: 'standard', tint: 'none'  },
+    green:   { label: 'Green Screen',     blurb: 'Salvaged CRT terminal',     tier: 'static',      reportTheme: 'retro',    tint: 'green' },
+    amber:   { label: 'Amber Terminal',   blurb: 'Phosphor field unit',       tier: 'static',      reportTheme: 'retro',    tint: 'amber' },
+    guide:   { label: 'The Guide',        blurb: 'Friendly travel companion', tier: 'static',      reportTheme: 'standard', tint: 'none'  },
+    clean:   { label: 'Survey Datapad',   blurb: 'Clean instrument feed',     tier: 'static',      reportTheme: 'standard', tint: 'none'  },
+    console: { label: 'Starship Console', blurb: 'Live orbital plot',         tier: 'interactive', reportTheme: 'standard', tint: 'none'  },
   };
-  const THEME_ORDER: ThemeKey[] = ['green', 'amber', 'clean', 'console'];
+  const THEME_ORDER: ThemeKey[] = ['green', 'amber', 'guide', 'clean', 'console'];
 
   const EARTH_GRAVITY = 9.80665;
   const EARTH_MASS_KG = 5.972e24;
@@ -163,7 +164,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 </svelte:head>
 
-<main class="catalogue tint-{theme.tint}" class:interactive={theme.tier === 'interactive'}>
+<main class="catalogue tint-{theme.tint} skin-{themeKey}" class:interactive={theme.tier === 'interactive'}>
   <!-- Device status bar -->
   <header class="statusbar">
     <span class="sys-name">{system ? system.name.toUpperCase() : 'NO SIGNAL'}</span>
@@ -185,6 +186,10 @@
         </button>
       {/each}
     </div>
+  {/if}
+
+  {#if themeKey === 'guide' && system}
+    <div class="guide-banner">A traveller's guide to {system.name} — friendly, illustrated, and mostly accurate.</div>
   {/if}
 
   {#if !system}
@@ -364,6 +369,40 @@
   }
   .tint-green .doc-scroll, .tint-amber .doc-scroll { background: #000; }
   .tint-green .phosphor, .tint-amber .phosphor { text-shadow: 0 0 1px currentColor; }
+
+  /* --- The Guide: friendly illustrated travel companion (playful, not a CRT) --- */
+  .guide-banner {
+    flex: 0 0 auto;
+    text-align: center;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 13px;
+    color: #061a10;
+    background: linear-gradient(180deg, #7CFFB2, #34d27e);
+    padding: 7px 12px;
+    letter-spacing: 0.02em;
+  }
+  .skin-guide { background: #04140d; color: #d6ffe8; }
+  .skin-guide .statusbar { background: #07241a; border-bottom-color: rgba(124, 255, 178, 0.3); }
+  .skin-guide .status.live { color: #7CFFB2; }
+  .skin-guide .sys-name { color: #7CFFB2; }
+  .skin-guide .doc-scroll { background: #04140d; }
+  /* Recolour the light "standard" report into the Guide's warm green book, and make the
+     LLM flavour text (the actual "Guide entries") the hero — larger, friendlier type. */
+  .skin-guide .phosphor :global(.report-container) {
+    background: #04140d;
+    color: #d6ffe8;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+  .skin-guide .phosphor :global(.report-container h1),
+  .skin-guide .phosphor :global(.report-container h2),
+  .skin-guide .phosphor :global(.report-container h3) { color: #7CFFB2; }
+  .skin-guide .phosphor :global(.report-container .data-box) {
+    background: rgba(124, 255, 178, 0.05);
+    border-color: rgba(124, 255, 178, 0.25);
+  }
+  .skin-guide .phosphor :global(.report-container th) { color: #8fdcb4; }
+  .skin-guide .phosphor :global(.report-container .pre-wrap-text) { font-size: 1.08em; line-height: 1.6; }
 
   /* --- hi-tech console tier --- */
   .console-stage { flex: 1; position: relative; min-height: 0; }
