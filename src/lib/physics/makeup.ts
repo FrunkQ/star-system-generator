@@ -51,5 +51,9 @@ export function makeupFractions(body: CelestialBody): Required<Makeup> {
   const radiusM = (body.radiusKm || 0) * 1000;
   const volM3 = radiusM > 0 ? (4 / 3) * Math.PI * radiusM ** 3 : 0;
   const density_gcc = volM3 > 0 ? (massKg / volM3) / 1000 : 5.513;
+  const massMe = massKg / EARTH_MASS_KG;
+  // A massive, low-density body is a gas/ice giant — its bulk density (≈1.3 for Jupiter)
+  // would otherwise read as "icy" and miss the gas envelope.
+  if (massMe > 8 && density_gcc < 2.5) return normalizeMakeup({ gas: 0.8, ice: 0.2 });
   return normalizeMakeup(inferMakeupFromDensity(density_gcc));
 }

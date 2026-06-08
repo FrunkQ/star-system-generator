@@ -45,6 +45,17 @@ function dominantGas(comp: Record<string, number>): string {
   return Object.entries(comp).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
 }
 
+// Gas-giant cloud-deck colour by temperature (the same T bands the classifier uses for cloud
+// species) — the giants' colour comes from cloud chromophores, not the dominant H₂/He gas.
+function gasGiantCloudColor(teqK: number): RGB {
+  if (teqK < 150) return hexToRgb('#d8b48a');  // ammonia clouds — Jupiter/Saturn tan
+  if (teqK < 280) return hexToRgb('#e6ecf2');  // water clouds — pale
+  if (teqK < 360) return hexToRgb('#9fb6c8');  // clear/transition
+  if (teqK < 900) return hexToRgb('#3a5a8c');  // cloudless — deep Rayleigh blue
+  if (teqK < 1400) return hexToRgb('#d98a55'); // alkali-metal clouds — orange
+  return hexToRgb('#9a8478');                   // silicate clouds — dusky (then incandescence)
+}
+
 export function deriveApparentColor(body: CelestialBody, rulePack?: RulePack): string {
   const mk = makeupFractions(body);
   // 1. Surface base from makeup fractions.
@@ -73,11 +84,14 @@ export function deriveApparentColor(body: CelestialBody, rulePack?: RulePack): s
     }
   }
 
-  // 3b. Cold methane giants (ice giants ≲ Neptune mass) are famously blue — the colour comes
-  // from a little CH4 that the dominant H₂/He can't show, so handle it explicitly.
+  // 3b. Gas-rich worlds take their look from cloud decks (by temperature), not the surface.
   const massMe = (body.massKg ?? 0) / EARTH_MASS_KG;
-  if (mk.gas > 0.4 && teq < 250 && massMe < 50 && (atm?.composition?.['CH4'] ?? 0) > 0.01) {
-    col = mix(col, hexToRgb('#3b6fc4'), 0.55);
+  if (mk.gas > 0.5) {
+    col = mix(col, gasGiantCloudColor(teq), 0.8);
+    // Cold methane ice giants (≲ Neptune mass) are extra blue from their CH4.
+    if (teq < 250 && massMe < 50 && (atm?.composition?.['CH4'] ?? 0) > 0.01) {
+      col = mix(col, hexToRgb('#3b6fc4'), 0.5);
+    }
   }
 
   // 4. Incandescence when very hot.
