@@ -4,6 +4,7 @@
 import type { CelestialBody, RulePack, FluidLayer } from '$lib/types';
 import { EARTH_MASS_KG } from '$lib/constants';
 import { makeupFractions } from './makeup';
+import { isLiquidAt, liquidDef } from './liquids';
 
 // Which liquid a condensable gas forms as a cloud, and its representative colour.
 const GAS_CLOUD: Record<string, { liquid: string; colorHex: string }> = {
@@ -36,14 +37,15 @@ export function deriveFluidLayers(body: CelestialBody, pack?: RulePack): FluidLa
   const mk = makeupFractions(body);
   const massMe = (body.massKg ?? 0) / EARTH_MASS_KG;
 
-  // --- Surface liquid: hydrosphere coverage that is actually liquid (not a frozen ice cap).
-  //     Water-family liquids need surfT ≳ 260 K; otherwise the "coverage" is surface ice and
-  //     any liquid lives below it (handled as a subsurface ocean). ---
+  // --- Surface liquid: hydrosphere coverage that is actually LIQUID at the surface temperature
+  //     (per the solvent's own melt/boil points — water is not special). If it's frozen the
+  //     "coverage" is surface ice (handled as an icy shell / polar ice); if it's boiled away there
+  //     is no surface liquid. The liquid carries its own colour for the apparent-colour model. ---
   const hydroComp = body.hydrosphere?.composition;
-  const isWaterFamily = hydroComp === 'water' || hydroComp === 'water-ammonia' || hydroComp == null;
-  const surfaceLiquid = (body.hydrosphere?.coverage ?? 0) > 0.01 && (!isWaterFamily || surfT >= 260);
-  if (surfaceLiquid) {
-    layers.push({ liquid: hydroComp || 'water', location: 'surface', coverage: body.hydrosphere?.coverage });
+  const coverage = body.hydrosphere?.coverage ?? 0;
+  if (coverage > 0.01 && hydroComp && hydroComp !== 'none' && isLiquidAt(hydroComp, surfT, pack)) {
+    const def = liquidDef(hydroComp, pack);
+    layers.push({ liquid: hydroComp, location: 'surface', coverage, colorHex: def?.colorHex });
   }
 
   // --- Subsurface ocean: an icy/water world, frozen at the surface, but interior heat

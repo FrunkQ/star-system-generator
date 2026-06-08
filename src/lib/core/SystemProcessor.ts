@@ -7,6 +7,7 @@ import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions } from '../physics/makeup';
 import { surfaceTempRange } from '../physics/tidalThermal';
 import { deriveFluidLayers, cloudColourName } from '../physics/fluidLayers';
+import { phaseAt, liquidDef, biosolventScore } from '../physics/liquids';
 import { deriveMagnetism } from '../physics/magnetism';
 import { deriveGeoActivity } from '../physics/geoActivity';
 import { deriveApparentColorParts } from '../rendering/apparentColor';
@@ -401,14 +402,26 @@ export class SystemProcessor implements ISystemProcessor {
         }
         features['hasSubsurfaceOcean'] = fluidLayers.some((l) => l.location === 'subsurface') ? 1 : 0;
 
-        // Structural tags (surfaced for GMs): a frozen icy shell, a subsurface ocean, a discrete
-        // cloud deck. These are derived facts about the body's layering.
+        // Structural tags (surfaced for GMs): a frozen icy shell, polar ice, a subsurface ocean, a
+        // discrete cloud deck. The freeze point comes from the SOLVENT, not hard-coded water — so
+        // a nitrogen/methane/CO₂ surface freezes by its own melt point.
         const surfTForStruct = body.temperatureK ?? body.equilibriumTempK ?? 0;
-        const waterHydroForStruct = body.hydrosphere?.composition === 'water' || body.hydrosphere?.composition === 'water-ammonia';
-        const icyShell = mk.ice > 0.3 || (waterHydroForStruct && surfTForStruct < 273); // frozen water exterior
-        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('structure/'));
-        if (icyShell) body.tags.push({ key: 'structure/icy-shell' });
+        const hydroComp = body.hydrosphere?.composition;
+        const hydroCov = body.hydrosphere?.coverage ?? 0;
+        const surfaceDef = liquidDef(hydroComp, pack);
+        const surfacePhase = hydroComp && hydroComp !== 'none' ? phaseAt(hydroComp, surfTForStruct, pack) : undefined;
+        // A frozen surface is named for its volatile; an icy shell from makeup-ice is water ice.
+        const icyShell = mk.ice > 0.3 || (surfacePhase === 'solid' && hydroCov > 0.05);
+        const iceLabel = surfacePhase === 'solid' ? (hydroComp as string) : 'water';
+        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('structure/') && t.key !== 'climate/polar-ice');
+        if (icyShell) body.tags.push({ key: 'structure/icy-shell', value: iceLabel });
         if (fluidLayers.some((l) => l.location === 'subsurface')) body.tags.push({ key: 'structure/subsurface-ocean' });
+        // Polar ice: liquid at the MEAN, but the cold extreme (poles / night side) dips below the
+        // solvent's freezing point → partial frozen caps even on a temperate world (Earth, Mars).
+        const meltK = surfaceDef?.meltK ?? 273;
+        if (surfacePhase === 'liquid' && hydroCov > 0.1 && (body.temperatureRangeK?.min ?? surfTForStruct) < meltK) {
+            body.tags.push({ key: 'climate/polar-ice', value: hydroComp as string }); // the surface liquid, frozen at the poles
+        }
         const cloudLayer = mk.gas <= 0.5 ? fluidLayers.find((l) => l.location === 'cloud') : undefined;
         if (cloudLayer) body.tags.push({ key: 'structure/cloud-deck', value: cloudColourName(cloudLayer.liquid) });
 
@@ -481,7 +494,7 @@ export class SystemProcessor implements ISystemProcessor {
         body.classification = fps && fps.length ? explainClassification(features, fps) : undefined;
 
         // Habitability
-        this.calculateHabitabilityAndBiosphere(body, rng);
+        this.calculateHabitabilityAndBiosphere(body, rng, pack);
     }
     
     private processFlightDynamics(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], rulePack: RulePack) {
@@ -563,7 +576,7 @@ export class SystemProcessor implements ISystemProcessor {
         return total;
     }
 
-    private calculateHabitabilityAndBiosphere(planet: CelestialBody, rng: SeededRNG) {
+    private calculateHabitabilityAndBiosphere(planet: CelestialBody, rng: SeededRNG, pack: RulePack) {
         if (planet.roleHint !== 'planet' && planet.roleHint !== 'moon') return;
     
         // Plateau Scoring: Max score within [min, max], linear falloff outside
@@ -604,17 +617,15 @@ export class SystemProcessor implements ISystemProcessor {
         }
         score += factors.temp * 25;
 
-        // Solvent (Max 25) — a standing LIQUID is the prerequisite; water scores highest. Uses the
-        // fluid-layer model: a frozen ice cap is NOT a surface solvent (its life potential, if any,
-        // is the subsurface ocean handled below), so a frozen world scores 0 here.
-        const hasSurfaceLiquid = (planet.hydrosphere?.layers || []).some(l => l.location === 'surface')
-            || ((planet.hydrosphere?.coverage || 0) > 0.1 && (planet.temperatureK || 0) >= 260
-                && (planet.hydrosphere?.composition === 'water' || !planet.hydrosphere?.composition));
+        // Solvent (Max 25) — a standing LIQUID is the prerequisite, weighted by its BIO-SOLVENT
+        // quality: water is ideal (1.0), hydrocarbons/ammonia are plausible alternatives (0.6),
+        // everything else can't host life (0). Uses the fluid-layer model: a frozen ice cap is not
+        // a surface solvent (its life potential is the subsurface ocean), so it scores 0 here.
+        const hasSurfaceLiquid = (planet.hydrosphere?.layers || []).some(l => l.location === 'surface');
         if (hasSurfaceLiquid) {
-            factors.solvent = 1;
-            if (planet.hydrosphere?.composition === 'water') score += 5; // water bonus → 25 max
+            factors.solvent = biosolventScore(planet.hydrosphere?.composition, pack); // 1 / 0.6 / 0
         }
-        score += factors.solvent * 20;
+        score += factors.solvent * 25;
 
         // Atmosphere pressure (Max 18) — enough to keep a solvent stable + shield; wide tolerance.
         if (planet.atmosphere?.pressure_bar) {
@@ -681,7 +692,7 @@ export class SystemProcessor implements ISystemProcessor {
         // plate tectonics for Earth-like; not stagnant-lid/tidal-volcanic for human-habitable.
         const isEarthLike = factors.temp > 0.9 && factors.pressure > 0.8 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.9 && factors.gravity > 0.8 && planet.atmosphere?.composition?.['O2'] > 0.1 && regime === 'plate-tectonics';
         const isHumanHabitable = factors.temp > 0.7 && factors.pressure > 0.6 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.7 && factors.gravity > 0.6 && regime !== 'stagnant-lid' && regime !== 'tidal-volcanic';
-        const isAlienHabitable = planet.habitabilityScore > 40 && factors.solvent === 1; // needs a liquid solvent
+        const isAlienHabitable = planet.habitabilityScore > 40 && factors.solvent > 0; // needs SOME usable solvent
         const isSuperHabitable = planet.habitabilityScore > 100; // better-than-Earth (only super-habitable worlds)
 
         // Clear old habitability tags before adding new ones

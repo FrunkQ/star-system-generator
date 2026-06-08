@@ -277,11 +277,17 @@ export interface ViewPresetSpec { defaultPlayerVisibility: { discoveredBasics: b
 export interface TableSpec { name: string; entries: Array<{ weight: number; value: unknown }>; }
 export interface MetricDef { key: string; label: string; min: number; max: number; default?: number; }
 
+export type LiquidFamily = 'water' | 'hydrocarbon' | 'cryo' | 'acid' | 'molten' | 'exotic';
 export interface LiquidDef {
     name: string;
     label: string;
-    meltK: number;
-    boilK: number;
+    meltK: number;            // melting point (K) — below this it is solid (ice)
+    boilK: number;            // boiling point (K) — above this it is vapour
+    colorHex?: string;        // representative surface/ocean colour
+    density_gcc?: number;     // liquid density, for layering
+    conductive?: boolean;     // electrically conductive (acids, molten metal) → can drive a dynamo
+    biosolvent?: 'ideal' | 'alternative' | 'none';  // suitability as a solvent for life
+    family?: LiquidFamily;
 }
 
 export interface FuelDefinition {

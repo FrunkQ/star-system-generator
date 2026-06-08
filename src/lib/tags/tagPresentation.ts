@@ -62,7 +62,8 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'magnetic/unshielded': { label: 'No magnetosphere', description: 'No convecting conductor (or far too slow rotation) → the atmosphere is exposed to stellar-wind stripping.' },
 
   // --- Structure (derived layering) ---
-  'structure/icy-shell':        { label: 'Icy shell',        description: 'A frozen water/ice exterior over a rockier interior.' },
+  'structure/icy-shell':        { label: 'Icy shell',        description: 'A frozen exterior (the value names the ice — water, nitrogen, CO₂, methane…) over a rockier interior.' },
+  'climate/polar-ice':          { label: 'Polar ice',        description: 'Liquid at the mean temperature, but the cold poles / night side dip below the solvent\'s freezing point — partial frozen caps.' },
   'structure/subsurface-ocean': { label: 'Subsurface ocean', description: 'A liquid ocean beneath an ice crust, kept liquid by tidal and/or radiogenic interior heat.' },
   'structure/cloud-deck':       { label: 'Cloud deck',       description: 'A condensed cloud layer in the atmosphere — affects albedo, apparent colour and greenhouse warming.' },
 
