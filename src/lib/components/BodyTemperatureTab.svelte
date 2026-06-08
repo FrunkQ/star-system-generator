@@ -115,11 +115,32 @@
         <hr />
         
         <div class="read-only-row highlight">
-            <label>Total Surface Temperature</label>
+            <label>Mean Surface Temperature</label>
             <span class="value large" style="color: {getTempColor(body.temperatureK || 0)}">
                 {Math.round(body.temperatureK || 0)} K ({Math.round((body.temperatureK || 0) - 273.15)} °C)
             </span>
         </div>
+
+        {#if body.temperatureRangeK && (body.temperatureRangeK.max - body.temperatureRangeK.min) > 5}
+            <div class="read-only-row">
+                <label>Surface Range (cold → hot)</label>
+                <span class="value">
+                    <span style="color: {getTempColor(body.temperatureRangeK.min)}">{body.temperatureRangeK.min} K</span>
+                    &nbsp;–&nbsp;
+                    <span style="color: {getTempColor(body.temperatureRangeK.max)}">{body.temperatureRangeK.max} K</span>
+                </span>
+            </div>
+            <div class="range-note">
+                The mean averages heat over the whole body; localized hotspots (tidal-volcanic) and
+                cold night sides spread the real surface across this range.
+            </div>
+        {/if}
+
+        {#if (body.tags || []).some((t) => t.key === 'tidal/lava-flows')}
+            <div class="range-note volcanic">⛰ Tidal lava flows — silicate-melt volcanic hotspots.</div>
+        {:else if (body.tags || []).some((t) => t.key === 'tidal/volcanism')}
+            <div class="range-note volcanic">⛰ Active tidal volcanism.</div>
+        {/if}
     {/if}
 </div>
 
@@ -143,4 +164,6 @@
 
   h4 { margin: 0; color: var(--link); font-size: 0.9em; text-transform: uppercase; }
   hr { border: 0; border-top: 1px solid var(--border); margin: 0; }
+  .range-note { font-size: 0.8em; color: var(--text-faint); line-height: 1.4; margin-top: -6px; }
+  .range-note.volcanic { color: var(--warning, #e08a4a); font-weight: 600; margin-top: 0; }
 </style>
