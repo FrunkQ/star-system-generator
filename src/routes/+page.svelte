@@ -677,6 +677,15 @@
     }
   }
 
+  // File > New Starmap. Guard the destructive replace: only confirm when there's actually a
+  // populated starmap to lose (first run / empty map opens straight to the modal).
+  function handleRequestNewStarmap() {
+    const current = get(starmapStore);
+    const hasContent = !!current && Array.isArray(current.systems) && current.systems.length > 0;
+    if (hasContent && !confirm('Start a new starmap?\n\nThis clears the current one. Download it first if you want to keep a copy.')) return;
+    showNewStarmapModal = true;
+  }
+
   function handleDownloadStarmap() {
     if (!$starmapStore) return;
 
@@ -787,7 +796,7 @@
     {#if $systemStore && effectiveRulePack}
       <SystemView
         system={$systemStore} rulePack={effectiveRulePack} {exampleSystems}
-        on:new={() => showNewStarmapModal = true}
+        on:new={handleRequestNewStarmap}
         on:open={handleUploadStarmap}
         on:save={handleDownloadStarmap}
         on:settings={() => showSettingsModal = true}
@@ -806,7 +815,7 @@
       bind:this={starmapComponent}
       starmap={$starmapStore}
       rulePack={selectedRulepack}
-      on:new={() => showNewStarmapModal = true}
+      on:new={handleRequestNewStarmap}
       on:systemclick={handleSystemClick}
       on:systemzoom={handleSystemZoom}
       on:addsystemat={handleAddSystemAt}
