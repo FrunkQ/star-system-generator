@@ -89,7 +89,12 @@ export function generateBodyOfType(
   // tectonically active when old. So default it into that band unless the fingerprint pins a mass.
   const isSuperhab = /superhabitable/.test(fp.class);
   const massFallback = isGiant ? 50 + rng() * 250 : isSuperhab ? 1.3 + rng() * 2.2 : 0.5 + rng() * 1.5;
-  const massMe = pick(m['mass_Me'], rng, massFallback);
+  let massMe = pick(m['mass_Me'], rng, massFallback);
+  // A MOON must stay well below its host (else it's a double planet / barycentre, not a satellite).
+  // Cap at 20% of the host so a 0.6 M⊕ planet can't sprout a 16 M⊕ "moon".
+  if (ctx.role === 'moon' && ctx.hostMassKg > 0) {
+    massMe = Math.min(massMe, (ctx.hostMassKg / EARTH_MASS_KG) * 0.2);
+  }
   out.massKg = massMe * EARTH_MASS_KG;
 
   // --- Composition / size: makeup if the type defines it, else radius/density bands, else derive. ---

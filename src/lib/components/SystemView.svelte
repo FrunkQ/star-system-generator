@@ -542,6 +542,9 @@
       if (!host) return;
       const siblings = $systemStore.nodes.filter(n => n.parentId === ctx.hostId);
       const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role, teqK: ctx.teqK });
+      // Some moons are CAPTURED rogues (irregular satellites): eccentric, inclined, often retrograde —
+      // a Triton/irregular-moon flavour, distinct from the flat regular satellites that formed in place.
+      const captured = ctx.role === 'moon' && Math.random() < 0.18;
       const newBody: CelestialBody = {
           id: generateId(),
           name: `${host.name} ${toRoman(siblings.length + 1)}`,
@@ -551,15 +554,20 @@
           atmosphere: { name: 'None', composition: {}, pressure_bar: 0 },
           hydrosphere: { coverage: 0, composition: 'water' },
           biosphere: null,
-          tags: [],
           classes: [],
           ...gen,
+          tags: [...(gen.tags || []), ...(captured ? [{ key: 'origin/captured' }] : [])],
           orbit: {
               hostId: ctx.hostId,
               hostMu: ctx.hostMassKg * G,
               t0: currentTime,
-              elements: { a_AU: Math.max(ctx.distAU, 1e-6), e: 0.01 + Math.random() * 0.04, i_deg: 0,
-                  omega_deg: Math.random() * 360, Omega_deg: Math.random() * 360, M0_rad: ctx.startAngle }
+              isRetrogradeOrbit: captured && Math.random() < 0.6,
+              elements: {
+                  a_AU: Math.max(ctx.distAU, 1e-6),
+                  e: captured ? 0.1 + Math.random() * 0.35 : 0.01 + Math.random() * 0.04,
+                  i_deg: captured ? 20 + Math.random() * 140 : Math.random() * 5,
+                  omega_deg: Math.random() * 360, Omega_deg: Math.random() * 360, M0_rad: ctx.startAngle
+              }
           }
       } as CelestialBody;
       systemStore.set({ ...systemProcessor.process({ ...$systemStore, nodes: [...$systemStore.nodes, newBody] }, rulePack), isManuallyEdited: true });

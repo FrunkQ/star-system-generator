@@ -53,7 +53,6 @@
             <div class="noimg">{pretty(fp.class).slice(0, 2)}</div>
           {/if}
           <span class="name">{pretty(fp.class)}</span>
-          <span class="tier" style="color:{tier.color}">{tier.label}</span>
         </button>
       {/each}
       {#if viable.length === 0}
@@ -81,6 +80,5 @@
   .card img { width: 80px; height: 80px; object-fit: cover; border-radius: 50%; border: 2px solid var(--tier); box-shadow: 0 0 8px color-mix(in srgb, var(--tier) 45%, transparent); }
   .noimg { width: 80px; height: 80px; border-radius: 50%; background: var(--bg-control, #232733); border: 2px solid var(--tier); display: flex; align-items: center; justify-content: center; text-transform: uppercase; color: var(--text-faint, #8a8a8a); font-weight: 700; }
   .name { font-size: 0.78rem; text-transform: capitalize; text-align: center; color: var(--text, #e8e8e8); line-height: 1.2; }
-  .tier { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
   .empty { grid-column: 1 / -1; color: var(--text-faint, #8a8a8a); text-align: center; padding: 24px; }
 </style>

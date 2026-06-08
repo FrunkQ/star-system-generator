@@ -28,7 +28,7 @@ export function getStarLifespanGyr(massKg: number): number {
 const GIANT_PHASE_FRACTION = 0.3;
 const AU_KM_LOCAL = 149597870.7;
 
-export type StarPhase = 'main-sequence' | 'subgiant' | 'giant' | 'white-dwarf' | 'neutron-star' | 'black-hole';
+export type StarPhase = 'pre-main-sequence' | 'main-sequence' | 'subgiant' | 'giant' | 'white-dwarf' | 'neutron-star' | 'black-hole';
 
 // Evolve a star to an absolute age. Smooth MS brightening → red-giant swell (cool + luminous + huge)
 // → collapse to a remnant by progenitor mass. Calibrated for a believable preview, not a stellar code.
@@ -42,7 +42,17 @@ export function ageStar(star: StarSeed, ageYears: number): StarSeed & { isDead?:
     let isDead = false;
     let phase: StarPhase = 'main-sequence';
 
-    if (ageGyr <= tMS) {
+    // Pre-main-sequence contraction: a newborn star is large, COOL and far more LUMINOUS, shrinking
+    // onto the main sequence over a Kelvin-Helmholtz time that's LONGER for lower mass (~40 Myr for the
+    // Sun, several hundred Myr for an M dwarf). So a young M dwarf's habitable zone starts far out and
+    // migrates inward as it dims — the big age-dependence of low-mass-star zones.
+    const tPreMS = 0.04 / Math.max(0.08, mSolar); // Gyr
+    if (ageGyr <= tMS && ageGyr < tPreMS) {
+        const f = 1 - ageGyr / tPreMS;            // 1 at birth → 0 on reaching the main sequence
+        L = star.luminositySolar * (1 + 2.5 * f); // up to ~3.5× brighter at birth
+        T = star.temperatureK * (1 - 0.15 * f);   // cooler (puffy) when young
+        phase = 'pre-main-sequence';
+    } else if (ageGyr <= tMS) {
         // Main sequence: a slow brightening + slight warming (the Sun ends ~1.7× brighter).
         const p = ageGyr / tMS;
         L = star.luminositySolar * (1 + 0.7 * p);

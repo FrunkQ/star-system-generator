@@ -89,15 +89,17 @@
     ? (a.aged.category?.includes('Black') ? '#444a55' : a.aged.category?.includes('Neutron') ? '#dfe7ff' : '#cfe8ff')
     : (SPECTRAL_COLOR[a.aged.spectralClass] ?? '#ffd2a1');
   const nowLabelFor = (a: any) => a.aged.isDead ? a.aged.category
+    : a.aged.phase === 'pre-main-sequence' ? `${a.seed.spectralClass}-type (forming)`
     : a.aged.phase === 'giant' ? 'Red giant'
     : a.aged.phase === 'subgiant' ? 'Subgiant'
     : `${a.aged.spectralClass}-type main sequence`;
   $: agedStars = ordered.map((s) => {
     const aged = ageStar(s, ageGyr * 1e9);
     const tMS = getStarLifespanGyr(s.massKg);
-    const changed = aged.isDead || (!!aged.phase && aged.phase !== 'main-sequence') || aged.spectralClass !== s.spectralClass;
-    const flaring = !aged.isDead && (aged.phase ?? 'main-sequence') === 'main-sequence'
-      && (ageGyr < 0.3 || (['M', 'K'].includes(s.spectralClass) && ageGyr < 2) || s.luminositySolar > 1000);
+    const changed = aged.isDead || aged.phase === 'subgiant' || aged.phase === 'giant';
+    const onSequence = (aged.phase ?? 'main-sequence') === 'main-sequence' || aged.phase === 'pre-main-sequence';
+    const flaring = !aged.isDead && onSequence
+      && (aged.phase === 'pre-main-sequence' || ageGyr < 0.3 || (['M', 'K'].includes(s.spectralClass) && ageGyr < 2) || s.luminositySolar > 1000);
     return { seed: s, aged, tMS, changed, flaring };
   });
 
