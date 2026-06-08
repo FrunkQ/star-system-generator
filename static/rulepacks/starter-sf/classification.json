@@ -498,21 +498,18 @@
             {
                 "class": "planet/subsurface-ocean",
                 "kind": "base",
-                "note": "Icy crust over tidally-warmed ocean.",
+                "note": "Liquid ocean under an ice shell (derived fluid layer).",
                 "match": {
+                    "hasSubsurfaceOcean": [
+                        1,
+                        1
+                    ],
                     "Teq_K": [
                         0,
-                        270
-                    ],
-                    "tidalHeating": [
-                        40,
-                        100000
-                    ],
-                    "hydrosphere.coverage": [
-                        0.2,
-                        1
+                        273
                     ]
-                }
+                },
+                "weight": 1.8
             },
             {
                 "class": "planet/hycean",

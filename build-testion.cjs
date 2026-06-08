@@ -113,8 +113,8 @@ nodes.push({ id: 't-ring', parentId: superJ.id, name: 'Ring', kind: 'body', role
   radiusInnerKm: 90000, radiusOuterKm: 140000, tags: [],
   orbit: { hostId: superJ.id, elements: { a_AU: 0.0008, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } });
 // an icy, tidally-flexed moon → subsurface-ocean
-body({ target: 'planet/subsurface-ocean', name: 'Subsurface Ocean', parent: superJ.id, Me: 0.02, Re: 0.28,
-  a: 0.003, e: 0.04, hydroComp: 'water', hydroCov: 0.4, mag: 0 });
+body({ target: 'planet/subsurface-ocean', name: 'Subsurface Ocean', parent: superJ.id, Me: 0.02,
+  makeup: { rock: 0.5, ice: 0.5 }, a: 0.003, e: 0.04, hydroComp: 'water', hydroCov: 0.4, mag: 0, role: 'moon' });
 body({ target: 'planet/puffy', Me: 60, Re: 10, Teq: 900 });
 body({ target: 'planet/super-puff', Me: 8, Re: 8, Teq: 500 });
 body({ target: 'planet/helium', Me: 60, Re: 5, Teq: 400, atmMain: 'He' });

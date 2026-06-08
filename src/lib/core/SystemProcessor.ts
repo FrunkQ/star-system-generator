@@ -5,7 +5,8 @@ import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEqui
 import { calculateSurfaceRadiation } from '../physics/radiation';
 import { classifyBody } from '../system/classification';
 import { makeupFractions } from '../physics/makeup';
-import { deriveApparentColor } from '../rendering/apparentColor';
+import { deriveFluidLayers } from '../physics/fluidLayers';
+import { deriveApparentColorParts } from '../rendering/apparentColor';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties } from '../physics/atmosphere';
 import { SeededRNG } from '../rng';
@@ -374,12 +375,22 @@ export class SystemProcessor implements ISystemProcessor {
         features['makeup.ice'] = mk.ice;
         features['makeup.gas'] = mk.gas;
 
+        // Fluid layers (surface/subsurface oceans, cloud decks, interior conductive) — feed
+        // classification (subsurface-ocean), apparent colour (clouds) and §2d magnetism.
+        const fluidLayers = deriveFluidLayers(body, pack);
+        if (fluidLayers.length) {
+            body.hydrosphere = { ...(body.hydrosphere || {}), layers: fluidLayers };
+        }
+        features['hasSubsurfaceOcean'] = fluidLayers.some((l) => l.location === 'subsurface') ? 1 : 0;
+
         // Re-run Classification
         // Note: This might override manual class changes if not careful.
         // We should probably only classify if classes are empty or if we want to force update.
         // For now, we update to ensure consistency with physics.
-        // Derived apparent (true) colour from makeup + atmosphere + temperature.
-        body.apparentColorHex = deriveApparentColor(body, pack);
+        // Derived apparent (true) colour from makeup + atmosphere + cloud decks + temperature.
+        const apparent = deriveApparentColorParts(body, pack);
+        body.apparentColor = apparent;
+        body.apparentColorHex = apparent.hex;
 
         const newClasses = classifyBody(body, features, pack, allNodes);
         // Preserve any "manual" or "special" classes that strictly aren't output by the classifier?

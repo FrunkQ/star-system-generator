@@ -1,8 +1,13 @@
 // Derived apparent (true) colour of a body — so the orrery/picker show Mars red, a sulfur
 // world yellow, Neptune blue, a lava world orange, instead of one swatch per class. Composed
-// from: surface makeup → tinted by the dominant coloured atmosphere/cloud gas (the per-gas
-// colorHex already in the rulepack) → shifted toward incandescent when very hot. (proposal §2e)
-import type { CelestialBody, RulePack } from '$lib/types';
+// from: surface makeup → ocean → tinted by the dominant coloured atmosphere/cloud gas (the
+// per-gas colorHex already in the rulepack) + condensed cloud DECKS (hydrosphere.layers) →
+// shifted toward incandescent when very hot. (proposal §2e)
+//
+// We compute BOTH a flattened single hex (authoritative — sequential mix, the proven look) and
+// the un-mixed PALETTE of contributions, so a future sphere/shader renderer can draw Earth's
+// ocean/land/cloud mix or Jupiter's bands without re-deriving anything.
+import type { CelestialBody, RulePack, ApparentColor, ApparentColorStop } from '$lib/types';
 import { makeupFractions } from '$lib/physics/makeup';
 import { EARTH_MASS_KG } from '$lib/constants';
 
@@ -33,6 +38,13 @@ const SURF = {
 };
 const OCEAN = hexToRgb('#2b6cb0');
 
+// How heavily a condensed cloud deck of each liquid veils the surface below it. Water clouds are
+// patchy (Earth stays blue); sulfuric/sulfur/alkali/silicate decks are opaque and dominate.
+const CLOUD_VEIL: Record<string, number> = {
+  'sulfuric-acid': 0.6, 'sulfur-dioxide': 0.5, 'sodium': 0.45, 'potassium': 0.45,
+  'molten-iron': 0.4, 'molten-glass': 0.4, 'ammonia': 0.4, 'methane': 0.25, 'water': 0.15
+};
+
 // Blackbody-ish incandescence for very hot worlds (lava / hot giants).
 function incandescent(teqK: number): RGB {
   if (teqK >= 1800) return hexToRgb('#fff2d0'); // white-hot
@@ -56,19 +68,39 @@ function gasGiantCloudColor(teqK: number): RGB {
   return hexToRgb('#9a8478');                   // silicate clouds — dusky (then incandescence)
 }
 
-export function deriveApparentColor(body: CelestialBody, rulePack?: RulePack): string {
+// Banding: gas/ice giants and thick-atmosphere worlds organise their clouds into latitudinal
+// bands; faster rotation drives more, tighter bands (Jupiter ~10 h → many; slow → mottled).
+function bandCount(body: CelestialBody, gasFrac: number): number {
+  if (gasFrac < 0.3) return 0;
+  const rotH = body.rotation_period_hours;
+  if (!rotH || rotH <= 0) return 6;
+  const n = Math.round(60 / rotH);          // 10 h → 6 bands, 24 h → ~3
+  return Math.max(2, Math.min(18, n));
+}
+
+// Full derivation: flattened hex + un-mixed palette + banding.
+export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePack): ApparentColor {
   const mk = makeupFractions(body);
+  const palette: ApparentColorStop[] = [];
+  const push = (hex: string, role: ApparentColorStop['role'], weight: number, label?: string) => {
+    if (weight > 0.02) palette.push({ hex, role, weight: Math.min(1, weight), label });
+  };
+
   // 1. Surface base from makeup fractions.
   let col = mixWeighted([
     [SURF.metal, mk.metal], [SURF.rock, mk.rock], [SURF.carbon, mk.carbon],
     [SURF.ice, mk.ice], [SURF.gas, mk.gas]
   ]);
+  const surfDom = (['rock', 'metal', 'carbon', 'ice', 'gas'] as const).sort((a, b) => mk[b] - mk[a])[0];
+  push(rgbToHex(col), 'surface', 1, `${surfDom} surface`);
 
   // 2. Liquid water surface → blue, where temperate.
   const teq = body.equilibriumTempK ?? 0;
   const hydro = body.hydrosphere?.coverage ?? 0;
   if (hydro > 0.25 && body.hydrosphere?.composition === 'water' && teq > 250 && teq < 360) {
-    col = mix(col, OCEAN, Math.min(0.7, hydro));
+    const t = Math.min(0.7, hydro);
+    col = mix(col, OCEAN, t);
+    push('#2b6cb0', 'ocean', hydro, 'water ocean');
   }
 
   // 3. Atmosphere/cloud tint from the dominant coloured gas (thicker → more dominant). Gas
@@ -81,21 +113,51 @@ export function deriveApparentColor(body: CelestialBody, rulePack?: RulePack): s
       const thickness = Math.min(1, (atm.pressure_bar ?? 0) / 2);
       const opacity = mk.gas > 0.5 ? Math.max(0.6, thickness) : 0.2 + 0.6 * thickness;
       col = mix(col, hexToRgb(hex), opacity);
+      push(hex, 'atmosphere', opacity, `${g} haze`);
     }
   }
 
-  // 3b. Gas-rich worlds take their look from cloud decks (by temperature), not the surface.
+  // 3b. Condensed cloud DECKS (hydrosphere.layers, location 'cloud'). For rocky worlds a strong
+  //     chromophore deck (sulfuric/sulfur/alkali) opaquely veils the surface; water is patchy.
+  const cloudLayers = (body.hydrosphere?.layers ?? []).filter((l) => l.location === 'cloud');
+  if (cloudLayers.length && mk.gas <= 0.5) {
+    // strongest-veiling deck wins the surface look
+    const top = cloudLayers
+      .map((l) => ({ l, veil: CLOUD_VEIL[l.liquid] ?? 0.3 }))
+      .sort((a, b) => b.veil - a.veil)[0];
+    if (top?.l.colorHex) {
+      col = mix(col, hexToRgb(top.l.colorHex), top.veil);
+      push(top.l.colorHex, 'cloud', top.veil, `${top.l.liquid} clouds`);
+    }
+  }
+
+  // 3c. Gas-rich worlds take their look from cloud decks (by temperature), not the surface.
   const massMe = (body.massKg ?? 0) / EARTH_MASS_KG;
   if (mk.gas > 0.5) {
-    col = mix(col, gasGiantCloudColor(teq), 0.8);
+    const cloud = gasGiantCloudColor(teq);
+    col = mix(col, cloud, 0.8);
+    push(rgbToHex(cloud), 'cloud', 0.8, 'cloud deck');
+    // record any specific chromophore decks as banding colours for a future renderer
+    for (const l of cloudLayers) if (l.colorHex) push(l.colorHex, 'cloud', 0.4, `${l.liquid} band`);
     // Cold methane ice giants (≲ Neptune mass) are extra blue from their CH4.
     if (teq < 250 && massMe < 50 && (atm?.composition?.['CH4'] ?? 0) > 0.01) {
       col = mix(col, hexToRgb('#3b6fc4'), 0.5);
+      push('#3b6fc4', 'atmosphere', 0.5, 'methane blue');
     }
   }
 
   // 4. Incandescence when very hot.
-  if (teq > 800) col = mix(col, incandescent(teq), Math.min(0.85, (teq - 800) / 1400));
+  if (teq > 800) {
+    const t = Math.min(0.85, (teq - 800) / 1400);
+    const inc = incandescent(teq);
+    col = mix(col, inc, t);
+    push(rgbToHex(inc), 'incandescent', t, 'thermal glow');
+  }
 
-  return rgbToHex(col);
+  return { hex: rgbToHex(col), palette, banding: bandCount(body, mk.gas) };
+}
+
+// Back-compat: callers/tests that just want the swatch.
+export function deriveApparentColor(body: CelestialBody, rulePack?: RulePack): string {
+  return deriveApparentColorParts(body, rulePack).hex;
 }

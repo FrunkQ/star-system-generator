@@ -24,7 +24,17 @@ export interface NodeBase {
 }
 
 export interface Atmosphere { name: string; main?: string; pressure_bar?: number; composition: Record<string, number>; tags?: Tag[]; molarMassKg?: number; scaleHeightKm?: number; }
-export interface Hydrosphere { coverage?: number; depth_m?: number; composition?: string; tags?: Tag[]; }
+// A fluid layer somewhere in/on a body. location: surface ocean | subsurface (under-ice) ocean |
+// atmospheric cloud deck | deep interior (conductive — drives the dynamo, §2d).
+export type FluidLocation = 'surface' | 'subsurface' | 'cloud' | 'interior';
+export interface FluidLayer { liquid: string; location: FluidLocation; coverage?: number; conductive?: boolean; colorHex?: string; }
+export interface Hydrosphere { coverage?: number; depth_m?: number; composition?: string; tags?: Tag[]; layers?: FluidLayer[]; }
+// Derived apparent colour, kept BOTH as a flattened single swatch (hex — what the flat orrery
+// shows) AND as the un-mixed palette of contributions, so a future sphere/shader renderer can
+// draw Earth's ocean/land/cloud mix or Jupiter's bands from the same derivation (§2e).
+export type ApparentColorRole = 'surface' | 'ocean' | 'cloud' | 'ice-cap' | 'atmosphere' | 'incandescent';
+export interface ApparentColorStop { hex: string; role: ApparentColorRole; weight: number; label?: string; }
+export interface ApparentColor { hex: string; palette: ApparentColorStop[]; banding?: number; }
 // Bulk interior makeup (mass fractions, normalised). Density + radius derive from it (§2a).
 export interface Makeup { metal?: number; rock?: number; carbon?: number; ice?: number; gas?: number; }
 export interface ImageRef { url: string; title?: string; credit?: string; license?: string; sourceUrl?: string; }
@@ -145,6 +155,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   equilibriumTempK?: number;
   internalHeatK?: number;
   apparentColorHex?: string;  // derived true colour (makeup + atmosphere/clouds + temperature)
+  apparentColor?: ApparentColor;  // un-mixed palette behind apparentColorHex (for richer rendering)
   
   // Traveller Data
   traveller?: TravellerWorldData;

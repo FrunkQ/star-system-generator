@@ -1421,7 +1421,7 @@
       "parentId": "t-42-super-jupiter",
       "name": "Subsurface Ocean",
       "kind": "body",
-      "roleHint": "planet",
+      "roleHint": "moon",
       "__target": "planet/subsurface-ocean",
       "orbit": {
         "hostId": "t-42-super-jupiter",
@@ -1435,11 +1435,15 @@
         }
       },
       "massKg": 1.1944000000000001e+23,
-      "radiusKm": 1783.88,
+      "radiusKm": 2683.618214329636,
       "magneticField": {
         "strengthGauss": 0
       },
       "tags": [],
+      "makeup": {
+        "rock": 0.5,
+        "ice": 0.5
+      },
       "hydrosphere": {
         "composition": "water",
         "coverage": 0.4
