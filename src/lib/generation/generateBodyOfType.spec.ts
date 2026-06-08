@@ -71,6 +71,23 @@ describe('generateBodyOfType — params land in the type bands', () => {
     expect(comp.CO2).toBeGreaterThan(0);  // greenhouse added for the cold orbit
   });
 
+  it('a superhabitable world is a super-earth with an iron core (dynamo + tectonics)', () => {
+    // It must carry metal (for the molten-iron dynamo → magnetosphere) and land in the super-earth
+    // mass band (so it earns the super-habitable bonus and stays geologically active when old).
+    const fp = fingerprints().find((f) => f.class === 'planet/superhabitable')!;
+    const body = generateBodyOfType(fp, { distAU: 1, hostMassKg: 2e30, role: 'planet', rng: mid, teqK: 285 });
+    expect((body.makeup?.metal ?? 0)).toBeGreaterThan(0.1);
+    const massMe = (body.massKg ?? 0) / 5.972e24;
+    expect(massMe).toBeGreaterThanOrEqual(1.3);
+    expect(massMe).toBeLessThanOrEqual(3.5);
+  });
+
+  it('earth-like gets an iron-core makeup (so the processor derives a magnetosphere)', () => {
+    const fp = fingerprints().find((f) => f.class === 'planet/earth-like')!;
+    const body = generateBodyOfType(fp, { distAU: 1, hostMassKg: 2e30, role: 'planet', rng: mid, teqK: 280 });
+    expect((body.makeup?.metal ?? 0)).toBeGreaterThan(0.1);
+  });
+
   it('a frozen type (ice) is NOT given a warming atmosphere', () => {
     // ice has a water hydrosphere too, but it must STAY frozen — the liquid-water atmosphere logic
     // must exclude it (no atmosphere, or at least no CO2 to warm it).

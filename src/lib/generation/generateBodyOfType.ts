@@ -84,7 +84,12 @@ export function generateBodyOfType(
 
   // --- Mass ---
   const isGiant = /gas-giant|jupiter|neptune|brown|puff/.test(fp.class);
-  const massMe = pick(m['mass_Me'], rng, isGiant ? 50 + rng() * 250 : 0.5 + rng() * 1.5);
+  // A superhabitable world is, by thesis, a SUPER-EARTH (1.3–3.5 Me): more land + a bigger, longer-
+  // lived heat engine, which is also what earns the super-habitable mass bonus and keeps it
+  // tectonically active when old. So default it into that band unless the fingerprint pins a mass.
+  const isSuperhab = /superhabitable/.test(fp.class);
+  const massFallback = isGiant ? 50 + rng() * 250 : isSuperhab ? 1.3 + rng() * 2.2 : 0.5 + rng() * 1.5;
+  const massMe = pick(m['mass_Me'], rng, massFallback);
   out.massKg = massMe * EARTH_MASS_KG;
 
   // --- Composition / size: makeup if the type defines it, else radius/density bands, else derive. ---
@@ -93,6 +98,14 @@ export function generateBodyOfType(
   for (const k of ['metal', 'rock', 'carbon', 'ice', 'gas'] as const) {
     const band = m[`makeup.${k}`];
     if (band) { mk[k] = pick(band, rng, 0); hasMakeup = true; }
+  }
+  // A designed-habitable rocky world needs a differentiated IRON CORE: the processor reads makeup to
+  // build a molten-iron interior layer → a dynamo → a magnetosphere (no spurious "no magnetosphere"
+  // −8), and the rocky mass feeds geothermal vigor → plate tectonics (which the super-habitable bonus
+  // REQUIRES). Without a makeup these types relied on density inference, which left some without a
+  // core. Earth ≈ 32 % metal / 68 % rock.
+  if (!hasMakeup && LIQUID_WATER_TYPE.test(fp.class)) {
+    mk.metal = 0.32; mk.rock = 0.68; hasMakeup = true;
   }
   if (hasMakeup) {
     out.makeup = mk;
