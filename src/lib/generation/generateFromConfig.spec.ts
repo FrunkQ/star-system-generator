@@ -63,4 +63,28 @@ describe('generateSystemFromConfig', () => {
     expect(sys.nodes.some((n: any) => n.kind === 'barycenter')).toBe(true);
     expect(sys.nodes.filter((n: any) => n.roleHint === 'star').length).toBe(2);
   });
+
+  it('FOUR stars are all kept and nested into a barycentre hierarchy (no stars dropped)', () => {
+    const s = (id: string, m: number) => ({ ...sun(), id, massKg: m * SOLAR_MASS_KG, luminositySolar: m * m * m });
+    const sys = generateSystemFromConfig('t5', pack(), { seeds: [s('a', 1), s('b', 0.8), s('c', 0.5), s('d', 0.3)], ageGyr: 4.6, emptyPlanets: true });
+    const stars = sys.nodes.filter((n: any) => n.roleHint === 'star');
+    const barys = sys.nodes.filter((n: any) => n.kind === 'barycenter');
+    expect(stars.length).toBe(4);                         // none dropped (was the bug: 4 → 2)
+    expect(barys.length).toBe(3);                         // ((A·B)·(C·D)) → two pairs + a root
+    expect(barys.filter((b: any) => !b.parentId).length).toBe(1);   // exactly one root
+    expect(barys.filter((b: any) => b.parentId).length).toBe(2);    // two nested under it
+    // every star sits under a barycentre, with an orbit
+    expect(stars.every((st: any) => st.parentId && st.orbit?.elements?.a_AU > 0)).toBe(true);
+  });
+
+  it('a multi-star system gives each star its own planets AND circumbinary planets', () => {
+    const s = (id: string, m: number, t: number, l: number) => ({ ...sun(), id, massKg: m * SOLAR_MASS_KG, temperatureK: t, luminositySolar: l });
+    const sys = generateSystemFromConfig('t6', pack(), { seeds: [s('a', 1, 5778, 1), s('b', 0.8, 5000, 0.4), s('c', 0.5, 3800, 0.05), s('d', 0.3, 3200, 0.01)], ageGyr: 4.6, knobs: { diskMass: 1 } });
+    const byId = new Map(sys.nodes.map((n: any) => [n.id, n]));
+    const planets = sys.nodes.filter((n: any) => n.roleHint === 'planet');
+    const aroundStar = planets.filter((p: any) => byId.get(p.parentId)?.roleHint === 'star');
+    const circumbinary = planets.filter((p: any) => byId.get(p.parentId)?.kind === 'barycenter');
+    expect(aroundStar.length).toBeGreaterThan(0);     // S-type: a system per star
+    expect(circumbinary.length).toBeGreaterThan(0);   // P-type: distant orbits around a pair
+  });
 });

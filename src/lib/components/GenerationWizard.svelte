@@ -44,18 +44,42 @@
   const SPECTRAL_COLOR: Record<string, string> = { O: '#9bb0ff', B: '#aabfff', A: '#cad7ff', F: '#f8f7ff', G: '#fff4ea', K: '#ffd2a1', M: '#ffb56b' };
   const starColor = (s: { spectralClass: string }) => SPECTRAL_COLOR[s.spectralClass] ?? '#ffd2a1';
   const massSolar = (s: { massKg: number }) => s.massKg / SOL;
+  let hovered: StarSeed | null = null;  // live readout of the point under the cursor on the HR diagram
   // Order by mass (heaviest = primary) so the hierarchy reads primary → companions.
   $: ordered = [...selectedStars].sort((a, b) => b.massKg - a.massKg);
-  // Each star aged to the chosen age + its main-sequence lifetime, so you can see who has aged out
-  // (a heavy star → white dwarf) while an M dwarf sits on the main sequence forever (WD/M binaries).
-  $: agedStars = ordered.map((s) => ({ seed: s, aged: ageStar(s, ageGyr * 1e9), tMS: getStarLifespanGyr(s.massKg) }));
+
+  // LOG age axis: the slider runs from 1 Myr to the LONGEST-LIVED star's death, so a massive star can
+  // collapse to a remnant long before an M dwarf even matures. Death ≈ 1.3× the main-sequence life.
+  const AGE_MIN = 0.001; // Gyr (1 Myr)
+  $: deaths = selectedStars.map((s) => getStarLifespanGyr(s.massKg) * 1.3);
+  $: maxDeathGyr = Math.min(2000, Math.max(13.8, ...(deaths.length ? deaths : [13.8])));
+  $: longestLived = selectedStars.length
+    ? selectedStars.reduce((a, b) => (getStarLifespanGyr(a.massKg) > getStarLifespanGyr(b.massKg) ? a : b)) : null;
+  const ageFromPos = (pos: number) => +(AGE_MIN * Math.pow(maxDeathGyr / AGE_MIN, pos)).toFixed(3);
+  const posOfAge = (gyr: number) => Math.log(Math.max(AGE_MIN, gyr) / AGE_MIN) / Math.log(maxDeathGyr / AGE_MIN);
+
+  // Each star aged to the chosen age, with STATUS: has it changed (left the main sequence / died),
+  // is it flaring (young & active, or a low-mass flare star), and what it is NOW.
+  const dotColorFor = (a: any) => a.aged.isDead
+    ? (a.aged.category?.includes('Black') ? '#444a55' : a.aged.category?.includes('Neutron') ? '#dfe7ff' : '#cfe8ff')
+    : (SPECTRAL_COLOR[a.aged.spectralClass] ?? '#ffd2a1');
+  const nowLabelFor = (a: any) => a.aged.isDead ? a.aged.category
+    : a.aged.phase === 'giant' ? 'Red giant'
+    : a.aged.phase === 'subgiant' ? 'Subgiant'
+    : `${a.aged.spectralClass}-type main sequence`;
+  $: agedStars = ordered.map((s) => {
+    const aged = ageStar(s, ageGyr * 1e9);
+    const tMS = getStarLifespanGyr(s.massKg);
+    const changed = aged.isDead || (!!aged.phase && aged.phase !== 'main-sequence') || aged.spectralClass !== s.spectralClass;
+    const flaring = !aged.isDead && (aged.phase ?? 'main-sequence') === 'main-sequence'
+      && (ageGyr < 0.3 || (['M', 'K'].includes(s.spectralClass) && ageGyr < 2) || s.luminositySolar > 1000);
+    return { seed: s, aged, tMS, changed, flaring };
+  });
 
   // The primary (heaviest) star — gates generation.
   $: primary = ordered[0];
   const lifespanLabel = (tMS: number) =>
-    tMS > 13.8 ? 'outlives the universe'
-    : tMS < 0.1 ? `ages out at ~${fmt(tMS * 1000, 0)} Myr`
-    : `ages out at ~${fmt(tMS)} Gyr`;
+    tMS < 0.1 ? `MS life ~${fmt(tMS * 1000, 0)} Myr` : `MS life ~${fmt(tMS)} Gyr`;
 
   function newSystem(emptyPlanets: boolean) {
     if (!primary) return;
@@ -109,7 +133,20 @@
 
         <section class="block">
           <h3>Or build your own — click the HR diagram to add star(s)</h3>
-          <div class="hr-wrap"><HRDiagram bind:selectedStars on:select={(e) => { if (selectedStars.length < 50) selectedStars = [...selectedStars, e.detail]; }} /></div>
+          <div class="hr-wrap"><HRDiagram bind:selectedStars
+            on:select={(e) => { if (selectedStars.length < 50) selectedStars = [...selectedStars, e.detail]; }}
+            on:hover={(e) => (hovered = e.detail)} /></div>
+          <div class="hr-readout">
+            {#if hovered}
+              <span class="ro-cls" style="color:{starColor(hovered)}">{hovered.category} ({hovered.spectralClass})</span>
+              <span>{fmt(hovered.temperatureK, 0)} K</span>
+              <span>{fmt(hovered.luminositySolar, hovered.luminositySolar < 10 ? 3 : 0)} L☉</span>
+              <span>{fmt(massSolar(hovered), 2)} M☉</span>
+              <span class="muted">— click to add</span>
+            {:else}
+              <span class="muted">Hover the diagram to read a point's temperature · luminosity · mass before adding.</span>
+            {/if}
+          </div>
 
           <div class="hierarchy">
             <div class="hier-title">System hierarchy <span class="muted">— click the diagram to add stars</span></div>
@@ -118,7 +155,7 @@
                 <div class="hier-row" style="padding-left: {i === 0 ? 0 : 14}px">
                   <span class="star-dot" style="background:{starColor(s)}"></span>
                   <span class="role">{i === 0 ? 'Primary' : `Companion ${i}`}</span>
-                  <span class="star-meta">{s.spectralClass}-type {s.category?.includes('Dwarf') && s.spectralClass === 'M' ? '(red dwarf)' : ''} · {fmt(s.temperatureK, 0)} K · {fmt(massSolar(s), 2)} M☉</span>
+                  <span class="star-meta">{s.spectralClass}-type{s.category?.includes('Dwarf') && s.spectralClass === 'M' ? ' (red dwarf)' : ''} · {fmt(s.temperatureK, 0)} K · {fmt(s.luminositySolar, s.luminositySolar < 10 ? 3 : 0)} L☉ · {fmt(massSolar(s), 2)} M☉</span>
                   <button class="x" title="Remove" on:click={() => (selectedStars = selectedStars.filter((x) => x.id !== s.id))}>×</button>
                 </div>
               {/each}
@@ -136,16 +173,23 @@
         </section>
 
         <section class="block">
-          <h3>System age: {fmt(ageGyr)} Gyr</h3>
-          <input type="range" min="0.1" max="13.5" step="0.1" bind:value={ageGyr} class="slider" />
-          <!-- Per-star life feedback: who is still burning, who has aged out. Slide forward and watch a
-               heavy star swell and die to a white dwarf while an M dwarf burns on — the WD/M binary. -->
+          <h3>System age: {ageGyr < 1 ? `${fmt(ageGyr * 1000, 0)} Myr` : `${fmt(ageGyr)} Gyr`}</h3>
+          <!-- LOG age axis to the longest-lived star's death: a massive star can die before an M dwarf
+               matures. value/on:input keep ageGyr canonical while the thumb moves in log space. -->
+          <input type="range" min="0" max="1" step="0.001" class="slider"
+            value={posOfAge(ageGyr)} on:input={(e) => (ageGyr = ageFromPos(+e.currentTarget.value))} />
+          <div class="age-scale muted">
+            <span>1 Myr</span>
+            <span>runs to {maxDeathGyr < 1 ? `${fmt(maxDeathGyr * 1000, 0)} Myr` : `${fmt(maxDeathGyr, 0)} Gyr`}{longestLived ? ` — ${longestLived.spectralClass}-type's death` : ''}</span>
+          </div>
+          <!-- Per-star state at this age: what it is NOW, whether it has changed, flaring, lifespan. -->
           <div class="star-ages">
             {#each agedStars as a}
               <div class="star-age" class:dead={a.aged.isDead}>
-                <span class="star-dot" style="background:{a.aged.isDead ? '#cfe8ff' : starColor(a.seed)}"></span>
-                <span class="sa-cls">{a.seed.spectralClass}-type</span>
-                <span class="sa-phase">{a.aged.isDead ? a.aged.category : (a.aged.phase ?? 'main-sequence').replace(/-/g, ' ')}</span>
+                <span class="star-dot" style="background:{dotColorFor(a)}"></span>
+                <span class="sa-now">{nowLabelFor(a)}</span>
+                {#if a.changed}<span class="sa-from">(from {a.seed.spectralClass}-type)</span>{/if}
+                {#if a.flaring}<span class="sa-flag flare">⚡ flaring</span>{/if}
                 <span class="sa-life">{lifespanLabel(a.tMS)}</span>
                 {#if isEngulfedAt(a.aged, 1)}<span class="warn">⚠ swollen past 1 AU</span>{/if}
               </div>
@@ -213,13 +257,21 @@
   .hier-row .x { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1em; line-height: 0.5; }
   .hier-row .x:hover { color: var(--accent, #ff5a1f); }
 
+  /* HR hover readout */
+  .hr-readout { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; margin-top: 6px; font-size: 0.82em; color: var(--text-muted, #cfcfcf); font-variant-numeric: tabular-nums; min-height: 1.2em; }
+  .ro-cls { font-weight: 700; }
+
+  /* Age slider scale caption */
+  .age-scale { display: flex; justify-content: space-between; font-size: 0.72em; margin-top: 2px; }
+
   /* Per-star age feedback on step 2 */
   .star-ages { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
   .star-age { display: flex; align-items: center; gap: 8px; font-size: 0.82em; flex-wrap: wrap; }
   .star-age.dead { opacity: 0.85; }
-  .sa-cls { font-weight: 700; color: var(--text, #fff); min-width: 56px; }
-  .sa-phase { text-transform: capitalize; color: var(--accent); font-weight: 600; }
-  .star-age.dead .sa-phase { color: #8fc7ff; }
+  .sa-now { font-weight: 700; color: var(--accent); text-transform: capitalize; }
+  .star-age.dead .sa-now { color: #8fc7ff; }
+  .sa-from { color: var(--text-faint, #8a8a8a); font-style: italic; }
+  .sa-flag.flare { color: #ffd24d; font-weight: 600; }
   .sa-life { color: var(--text-faint, #8a8a8a); }
   .warn { color: var(--warning, #e08a4a); }
   .knob { margin-bottom: 10px; }

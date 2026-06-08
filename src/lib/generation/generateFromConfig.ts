@@ -7,6 +7,8 @@ import { SeededRNG } from '../rng';
 import { bodyFactory } from '../core/BodyFactory';
 import { systemProcessor } from '../core/SystemProcessor';
 import { generatePlanets } from './planet-generation';
+import { _generatePlanetaryBody } from './planet';
+import { randomFromRange, weightedChoice } from '../utils';
 import { ageStar, determineSpectralClass, type StarSeed, type StarPhase } from '../physics/stellar-evolution';
 import { G, AU_KM } from '../constants';
 
@@ -89,38 +91,160 @@ function starSeedToBody(seed: StarSeed, pack: RulePack, id: string, parentId: st
   return star;
 }
 
-// Assemble star bodies into a single star or a binary (barycentre + two stars). 3+ are placed with
-// the two most massive as the central binary; extra wide companions are a follow-up (logged).
+// A leaf star that can host its own little (S-type) system, bounded by its tightest pairing.
+interface StarHost { star: CelestialBody; outerAU: number; }
+// A barycentre that can host circumbinary (P-type) planets in a stable annulus.
+interface BaryHost { bary: Barycenter; innerAU: number; outerAU: number; }
+
+const SOLAR = 1.989e30;
+const HIER_STEP = 7;       // each level's separation ≥ ~7× the one below → hierarchical stability
+const S_TYPE_FRAC = 0.37;  // a star's planets are stable out to ~0.37× the distance to its companion
+const P_TYPE_FRAC = 2.3;   // circumbinary planets are stable beyond ~2.3× the pair separation
+
+// A tight-pair base separation (AU), scaled by combined mass; multiplied by HIER_STEP^level above.
+const closeSepAU = (totalMassKg: number) => 0.3 + Math.cbrt(totalMassKg / SOLAR) * 0.9;
+
+// Give a child (star or barycentre) an orbit around its parent barycentre. The processor reconciles
+// hostMu / n_rad_per_s / effectiveMass afterwards, so we only need parentId + a_AU + phase.
+function orbitAround(child: CelestialBody | Barycenter, parentId: string, parentMassKg: number, aAU: number, M0: number) {
+  child.parentId = parentId;
+  const aM = aAU * AU_KM * 1000;
+  child.orbit = { hostId: parentId, hostMu: G * parentMassKg, t0: Date.now(),
+    n_rad_per_s: aM > 0 ? Math.sqrt((G * parentMassKg) / Math.pow(aM, 3)) : 0,
+    elements: { a_AU: aAU, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: M0 } };
+}
+
+// Assemble star seeds into a single star, or a HIERARCHY of nested barycentres for 2+ stars (pairwise,
+// bottom-up, separations widening by level). Returns the leaf stars (S-type hosts) and barycentres
+// (P-type circumbinary hosts) with their stable orbital bounds, for the planet placer to fill.
 function setupStarsFromSeeds(seeds: StarSeed[], pack: RulePack, ageGyr: number | undefined, baseName: string) {
   const evolved = seeds.map((s) => (ageGyr ? ageStar(s, ageGyr * 1e9) : s) as StarSeed);
   evolved.sort((a, b) => b.massKg - a.massKg); // most massive first
   const nodes: (CelestialBody | Barycenter)[] = [];
+  const LETTERS = 'ABCDEFGHIJKLMNOP';
 
   if (evolved.length === 1) {
     const star = starSeedToBody(evolved[0], pack, `${baseName}-star-a`, null);
     star.name = baseName;
     nodes.push(star);
-    return { nodes, systemRoot: star, systemName: star.name, isBinary: false, starA: star, starB: undefined };
+    return { nodes, systemRoot: star, systemName: star.name, isBinary: false, hierarchical: false,
+      starA: star, starB: undefined as CelestialBody | undefined, starHosts: [] as StarHost[], baryHosts: [] as BaryHost[] };
   }
 
-  // Binary (use the two most massive; 3+ extras dropped for now).
-  if (evolved.length > 2) console.warn(`setupStarsFromSeeds: ${evolved.length} stars — using the 2 most massive as a binary (N>2 hierarchy is a follow-up).`);
-  const baryId = `${baseName}-barycenter-0`;
-  const starA = starSeedToBody(evolved[0], pack, `${baseName}-star-a`, baryId);
-  const starB = starSeedToBody(evolved[1], pack, `${baseName}-star-b`, baryId);
-  starA.name = `${baseName} A`; starB.name = `${baseName} B`;
-  const m1 = starA.massKg || 0, m2 = starB.massKg || 0, totalMass = m1 + m2;
-  // Separation: a few AU scaled by the combined mass (wider for heavier pairs).
-  const sepAU = 2 + Math.cbrt(totalMass / 2e30) * 8;
-  const n = Math.sqrt((G * totalMass) / Math.pow(sepAU * AU_KM * 1000, 3));
-  starA.orbit = { hostId: baryId, hostMu: G * totalMass, t0: Date.now(), n_rad_per_s: n,
-    elements: { a_AU: sepAU * (m2 / totalMass), e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } };
-  starB.orbit = { hostId: baryId, hostMu: G * totalMass, t0: Date.now(), n_rad_per_s: n,
-    elements: { a_AU: sepAU * (m1 / totalMass), e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: Math.PI } };
-  const bary: Barycenter = { id: baryId, parentId: null, name: `${baseName} Barycentre`, kind: 'barycenter',
-    memberIds: [starA.id, starB.id], effectiveMassKg: totalMass, tags: [] };
-  nodes.push(bary, starA, starB);
-  return { nodes, systemRoot: bary, systemName: `${baseName} System`, isBinary: true, starA, starB };
+  // --- Build the nested-barycentre hierarchy ---
+  type Comp = { node: CelestialBody | Barycenter; massKg: number; isStar: boolean };
+  let comps: Comp[] = evolved.map((seed, i) => {
+    const body = starSeedToBody(seed, pack, `${baseName}-star-${i}`, null);
+    body.name = `${baseName} ${LETTERS[i] ?? i + 1}`;
+    nodes.push(body);
+    return { node: body, massKg: body.massKg || 0, isStar: true };
+  });
+
+  const starHosts: StarHost[] = comps.map((c) => ({ star: c.node as CelestialBody, outerAU: Infinity }));
+  const baryHosts: BaryHost[] = [];
+  const baryHostByNode = new Map<string, BaryHost>();
+  let baryN = 0, level = 0;
+
+  while (comps.length > 1) {
+    const next: Comp[] = [];
+    for (let i = 0; i < comps.length; i += 2) {
+      if (i + 1 >= comps.length) { next.push(comps[i]); continue; } // odd one out → pairs at a wider level
+      const a = comps[i], b = comps[i + 1];
+      const total = a.massKg + b.massKg;
+      const sep = closeSepAU(total) * Math.pow(HIER_STEP, level);
+      const baryId = `${baseName}-bary-${baryN++}`;
+      orbitAround(a.node, baryId, total, sep * (b.massKg / total), 0);
+      orbitAround(b.node, baryId, total, sep * (a.massKg / total), Math.PI);
+      const bary: Barycenter = { id: baryId, parentId: null, name: `${baseName} Barycentre ${baryN}`,
+        kind: 'barycenter', memberIds: [a.node.id, b.node.id], effectiveMassKg: total, tags: [] };
+      nodes.push(bary);
+
+      // This pairing fixes the OUTER stability bound of both children: a star's S-type zone and a
+      // sub-barycentre's circumbinary zone both end at ~0.37× this separation.
+      for (const child of [a, b]) {
+        if (child.isStar) {
+          const h = starHosts.find((x) => x.star.id === child.node.id);
+          if (h) h.outerAU = S_TYPE_FRAC * sep;
+        } else {
+          const bh = baryHostByNode.get(child.node.id);
+          if (bh) bh.outerAU = S_TYPE_FRAC * sep;
+        }
+      }
+      const bh: BaryHost = { bary, innerAU: P_TYPE_FRAC * sep, outerAU: Infinity };
+      baryHosts.push(bh); baryHostByNode.set(baryId, bh);
+      next.push({ node: bary, massKg: total, isStar: false });
+    }
+    comps = next; level++;
+  }
+
+  const root = comps[0].node;
+  return { nodes, systemRoot: root, systemName: `${baseName} System`, isBinary: true, hierarchical: true,
+    starA: starHosts[0].star, starB: starHosts[1]?.star, starHosts, baryHosts };
+}
+
+// Honour star TYPE for planet richness: massive O/B/A stars blow their disks away (few worlds),
+// main-sequence F/G/K/M keep rich disks, remnants rarely retain anything. Same tables the single-
+// star path uses, so a multi-star system's per-star counts track each star's class.
+function planetCountForStar(star: CelestialBody, pack: RulePack, rng: SeededRNG): number {
+  const cls = star.classes?.[0]?.split('/')[1] ?? '';
+  const sp = cls[0];
+  let table;
+  if (['O', 'B', 'A'].includes(sp)) table = pack.distributions?.['planet_count_massive'];
+  else if (cls === 'red-giant' || ['F', 'G', 'K', 'M'].includes(sp)) table = pack.distributions?.['planet_count_main_sequence'];
+  else table = pack.distributions?.['planet_count_remnant'];
+  return table ? weightedChoice<number>(rng, table) : rng.nextInt(0, 5);
+}
+
+// Lay out up to `maxCount` geometrically-spaced orbital radii inside (innerAU, outerAU).
+function geomSlots(innerAU: number, outerAU: number, maxCount: number, rng: SeededRNG): number[] {
+  const slots: number[] = [];
+  if (!(outerAU > innerAU * 1.3) || maxCount <= 0) return slots;
+  let a = innerAU * randomFromRange(rng, 1.15, 1.6);
+  while (a < outerAU && slots.length < maxCount) {
+    slots.push(a);
+    a *= randomFromRange(rng, 1.5, 2.2);
+  }
+  return slots;
+}
+
+// Place planets across a star hierarchy: an S-type mini-system around each leaf star, plus P-type
+// circumbinary planets around each tight barycentre. Each host gets its own small, disk-scaled count.
+function placePlanetsHierarchical(
+  starHosts: StarHost[], baryHosts: BaryHost[], nodes: (CelestialBody | Barycenter)[],
+  pack: RulePack, rng: SeededRNG, ageGyr: number, countMultiplier: number
+) {
+  const minOrbitFor = (s: CelestialBody) => {
+    const roche = (s.radiusKm * 2.44) / AU_KM;
+    const soot = ((s.radiusKm / 2) * Math.pow((s.temperatureK || 5000) / 1800, 2)) / AU_KM;
+    return Math.max(roche, soot, 0.05) * 1.2;
+  };
+  let idx = 0;
+  const make = (host: CelestialBody | Barycenter, hostMassKg: number, aAU: number, namePrefix: string, n: number) => {
+    const orbit = { hostId: host.id, hostMu: G * hostMassKg, t0: Date.now(),
+      elements: { a_AU: aAU, e: randomFromRange(rng, 0.01, 0.12), i_deg: Math.pow(rng.nextFloat(), 3) * 12,
+        omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) } };
+    const built = _generatePlanetaryBody(rng, pack, host.id.split('-')[0], idx++, host, orbit,
+      `${namePrefix}${String.fromCharCode(98 + n)}`, nodes, ageGyr, undefined, true);
+    nodes.push(...built);
+  };
+
+  // S-type: a little system around each star — its richness set by the star's TYPE (massive stars
+  // get few, dwarfs many), then scaled by the disk-mass knob and bounded by the stable zone.
+  for (const h of starHosts) {
+    const inner = minOrbitFor(h.star);
+    const outer = Math.min(h.outerAU, 40); // never sprawl past a sane disk extent
+    const maxCount = Math.max(0, Math.min(8, Math.round(planetCountForStar(h.star, pack, rng) * countMultiplier)));
+    geomSlots(inner, outer, maxCount, rng).forEach((a, n) => make(h.star, h.star.massKg || SOLAR, a, `${h.star.name} `, n));
+  }
+
+  // P-type: circumbinary planets around each tight pair (a modest disk). Skip pairs too wide for a
+  // stable inner disk.
+  for (const h of baryHosts) {
+    if (h.innerAU > 50) continue; // a very wide pair has no close circumbinary disk
+    const outer = Math.min(h.outerAU, h.innerAU * 3.5);
+    const maxCount = Math.max(0, Math.min(4, Math.round(2 * countMultiplier)));
+    geomSlots(h.innerAU, outer, maxCount, rng).forEach((a, n) => make(h.bary, h.bary.effectiveMassKg || SOLAR, a, `${h.bary.name} `, n));
+  }
 }
 
 export function generateSystemFromConfig(seed: string, pack: RulePack, config: GenerationConfig): System {
@@ -129,12 +253,21 @@ export function generateSystemFromConfig(seed: string, pack: RulePack, config: G
   if (!config.seeds || config.seeds.length === 0) {
     throw new Error('generateSystemFromConfig requires at least one star seed (use generateSystem for fully random).');
   }
-  const { nodes, systemRoot, systemName, isBinary, starA, starB } = setupStarsFromSeeds(config.seeds, pack, config.ageGyr, baseName);
+  const setup = setupStarsFromSeeds(config.seeds, pack, config.ageGyr, baseName);
+  const { nodes, systemRoot, systemName, isBinary, starA, starB, hierarchical, starHosts, baryHosts } = setup;
 
   // Planets — unless the GM chose stars-only. Disk-mass knob scales the count.
   const diskMass = config.knobs?.diskMass ?? 0.5;
   const countMultiplier = 0.4 + diskMass * 1.6; // 0.4× (sparse) → 2× (massive)
-  generatePlanets(systemRoot, nodes, pack, rng, systemName, isBinary, starA, starB as any, !!config.emptyPlanets, { countMultiplier });
+  if (!config.emptyPlanets) {
+    if (hierarchical) {
+      // 2+ stars: an S-type system around each star + P-type circumbinary planets around tight pairs.
+      placePlanetsHierarchical(starHosts, baryHosts, nodes, pack, rng, config.ageGyr ?? 4.6, countMultiplier);
+    } else {
+      // Single star: the established slot-based placement.
+      generatePlanets(systemRoot, nodes, pack, rng, systemName, isBinary, starA, starB as any, false, { countMultiplier });
+    }
+  }
 
   // Metallicity + dynamical-history knobs reshape makeup + orbits before the processor re-derives.
   if (config.knobs && !config.emptyPlanets) applyKnobBias(nodes, rng, config.knobs);

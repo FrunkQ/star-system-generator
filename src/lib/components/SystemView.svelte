@@ -8,7 +8,6 @@
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import TimeControls from '$lib/components/TimeControls.svelte';
   import { drainFuelMassKg } from '$lib/construct-logic';
-  import SystemGenerationControls from './SystemGenerationControls.svelte';
   import SystemSummaryContextMenu from './SystemSummaryContextMenu.svelte'; 
   import BodyDetailsPane from './BodyDetailsPane.svelte';
   import BodyImage from './BodyImage.svelte';
@@ -1819,23 +1818,12 @@
       <div class="rail-view-options">
         <h3 class="rail-section-title">System</h3>
         <button class="rail-btn" on:click={() => { railOpen = false; handleToggleCrt(); }}>Toggle projector CRT</button>
-        {#if $systemStore.isManuallyEdited}
-          <button class="rail-btn" on:click={() => { railOpen = false; systemStore.update(s => s ? { ...s, isManuallyEdited: false } : s); }}>Show regenerate controls</button>
-        {/if}
       </div>
       </RailNav>
     </svelte:fragment>
     <svelte:fragment slot="canvas">
-    {#if !$systemStore.isManuallyEdited}
-      <SystemGenerationControls
-        system={$systemStore}
-        {generationOptions}
-        bind:selectedGenerationOption={selectedGenerationOption}
-        {exampleSystems}
-        {handleGenerate}
-        on:loadexample={handleLoadExample}
-      />
-    {/if}
+    <!-- Legacy in-canvas "Regenerate Solar System: Select Star Type" controls removed — the
+         generation wizard (Add System) now owns all star/system creation. -->
 
     <!-- The canvas toggle toolbar moved to the rail's View section (clean orrery). -->
 
