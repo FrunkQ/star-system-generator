@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
   import { LIQUIDS as FALLBACK_LIQUIDS } from '$lib/constants';
+  import { liquidsLiquidInRange } from '$lib/physics/liquids';
 
   export let body: CelestialBody;
   export let rulePack: RulePack | null = null;
@@ -12,11 +13,17 @@
 
   $: currentTemp = body.temperatureK || 0;
 
-  // Filter liquids based on current temperature (+/- 20K buffer)
-  // We list ALL liquids defined in liquids.json that are stable, ignoring the generation distribution list.
-  $: validLiquids = liquids.filter(l => 
-      currentTemp >= (l.meltK - 20) && currentTemp <= (l.boilK + 20)
-  );
+  // The surface INSOLATION range (poles↔equator, night↔day, winter↔summer) — excludes localized
+  // tidal-volcanic hotspots, which are vents, not where a standing liquid body sits.
+  $: profile = body.temperatureProfile;
+  $: surfaceMinK = profile ? profile.totalMinK : currentTemp;
+  $: surfaceMaxK = profile
+      ? Math.max(profile.meanK, ...profile.components.filter(c => c.source !== 'tidal-hotspot').map(c => c.highK))
+      : currentTemp;
+
+  // Offer every liquid that is LIQUID somewhere across that range (e.g. liquid at the equator even
+  // if the mean is below freezing) — the temperature model now informs which solvents are viable.
+  $: validLiquids = liquidsLiquidInRange(surfaceMinK, surfaceMaxK, rulePack);
   
   // Check if current selection is valid
   $: currentLiquidDef = body.hydrosphere ? liquids.find(l => l.name === body.hydrosphere!.composition) : null;

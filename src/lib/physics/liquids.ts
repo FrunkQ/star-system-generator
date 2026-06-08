@@ -41,3 +41,32 @@ export function biosolventScore(name: string | undefined, pack?: RulePack | null
   const q = liquidDef(name, pack)?.biosolvent;
   return q === 'ideal' ? 1 : q === 'alternative' ? 0.6 : 0;
 }
+
+// How a substance is distributed across a body's temperature RANGE (not just its mean). With the
+// decomposed profile we know a volatile can be frozen at the poles, liquid in the temperate band,
+// AND boiling off at the hotspots — all on the same world.
+export interface PhaseSpread {
+  atMean: Phase;
+  freezes: boolean;         // some region is below the melt point → ice (caps / shell)
+  liquidSomewhere: boolean; // the range overlaps [meltK, boilK] → standing liquid somewhere
+  vaporizes: boolean;       // some region is above the boil point → vapour / clouds
+}
+export function phaseSpread(
+  name: string | undefined, meanK: number, rangeMinK: number, rangeMaxK: number, pack?: RulePack | null
+): PhaseSpread {
+  const def = liquidDef(name, pack);
+  if (!def) return { atMean: 'liquid', freezes: false, liquidSomewhere: true, vaporizes: false };
+  const lo = Math.min(rangeMinK, meanK), hi = Math.max(rangeMaxK, meanK);
+  return {
+    atMean: phaseAt(name, meanK, pack),
+    freezes: lo < def.meltK,
+    liquidSomewhere: hi >= def.meltK && lo <= def.boilK,
+    vaporizes: hi > def.boilK
+  };
+}
+
+// Liquids that are LIQUID somewhere within a temperature range — what the selector should offer for
+// a body whose surface spans [minK, maxK] (e.g. liquid at the equator even if the mean is below freezing).
+export function liquidsLiquidInRange(minK: number, maxK: number, pack?: RulePack | null): LiquidDef[] {
+  return allLiquids(pack).filter((l) => maxK >= l.meltK && minK <= l.boilK);
+}

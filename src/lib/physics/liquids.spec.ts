@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { phaseAt, isLiquidAt, liquidsLiquidAt, biosolventScore, liquidDef } from './liquids';
+import { phaseAt, isLiquidAt, liquidsLiquidAt, biosolventScore, liquidDef, phaseSpread, liquidsLiquidInRange } from './liquids';
 
 describe('liquid phase (water is not special)', () => {
   it('water: ice / liquid / vapour by its own melt+boil points', () => {
@@ -37,6 +37,26 @@ describe('biosolvent quality', () => {
     expect(biosolventScore('methane')).toBeCloseTo(0.6);
     expect(biosolventScore('ammonia')).toBeCloseTo(0.6);
     expect(biosolventScore('sulfuric-acid')).toBe(0);
+  });
+});
+
+describe('phaseSpread — solid / liquid / gas across the temperature RANGE', () => {
+  it('water on a temperate world with cold poles: liquid, but freezes somewhere', () => {
+    const s = phaseSpread('water', 288, 242, 333);
+    expect(s.atMean).toBe('liquid');
+    expect(s.freezes).toBe(true);        // poles dip below 273
+    expect(s.liquidSomewhere).toBe(true);
+    expect(s.vaporizes).toBe(false);
+  });
+  it('water on a hot world: liquid mean but boils off at the hotspots', () => {
+    const s = phaseSpread('water', 350, 320, 420);
+    expect(s.vaporizes).toBe(true);      // hotspots exceed 373
+    expect(s.liquidSomewhere).toBe(true);
+  });
+  it('liquidsLiquidInRange offers a solvent liquid only at the warm end', () => {
+    const names = liquidsLiquidInRange(200, 290).map((l) => l.name);
+    expect(names).toContain('water');    // liquid near 290
+    expect(names).toContain('ammonia');  // liquid near 200–240
   });
 });
 
