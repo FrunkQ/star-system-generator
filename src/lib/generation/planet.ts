@@ -220,7 +220,7 @@ export function _generatePlanetaryBody(
     if (propertyOverrides?.atmosphere) {
         // Already set via spread (e.g. a typed draw built its own atmosphere to classify correctly).
     } else if (!skipRandomAtmosphere) {
-        // Legacy random atmosphere. Skipped for typed draws so the weirdness slider isn't bypassed by
+        // Legacy random atmosphere. Skipped for typed draws so the rarity slider isn't bypassed by
         // a random exotic (SO2/He…) atmosphere being slapped onto a deliberately-basic world.
         _generateAtmosphere(rng, pack, planet, features, planetType);
     }

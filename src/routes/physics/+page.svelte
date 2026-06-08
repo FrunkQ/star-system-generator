@@ -22,6 +22,7 @@
     ['habitability', 'Habitability score'],
     ['classification', 'Classification (fingerprints)'],
     ['tags', 'Tags'],
+    ['generation', 'Auto-generation'],
     ['baseline', 'Test fixtures (Sol & Testion)'],
     ['fudges', 'Known fudges']
   ];
@@ -318,6 +319,44 @@
         tag with a friendly label + a plain-language description of the physics behind it (see
         <code>tagPresentation.ts</code>). Tags that merely duplicated a class were removed (Ocean World →
         planet/ocean, etc.). The full layering is documented in <code>docs/classification-and-tags.md</code>.</p>
+    </section>
+
+    <section id="generation">
+      <h2>Auto-generation</h2>
+      <p>When you generate a system, the stars come from the HR diagram (aged to the chosen age), and the
+        planets are placed <strong>physics-first</strong>: every orbit slot is offered only the types that are
+        actually <em>viable</em> there (the fingerprint's T_eq band fits the orbit), and the chosen type is then
+        <em>built to match</em> (makeup, atmosphere, hydrosphere, iron core…) so the classifier confirms it.
+        Nothing the generator produces is physically impossible for its orbit and star.</p>
+
+      <h3>Star hierarchy</h3>
+      <p>Two or more stars are nested into a hierarchy of barycentres — paired bottom-up with each level's
+        separation widening ~7× for stability — giving the classic forms automatically: a binary
+        <code>(A·B)</code>, an Alpha-Cen-like <code>((A·B)·C)</code>, an Epsilon-Lyrae double-double
+        <code>((A·B)·(C·D))</code>. Planets are then placed <strong>per node</strong>: an S-type system around each
+        star (bounded by ~0.37× its tightest pairing) and P-type circumbinary planets around tight pairs (beyond
+        ~2.3× the separation). Tight pairs push their planets circumbinary; well-separated stars each keep their
+        own little system.</p>
+
+      <h3>The four knobs</h3>
+      <p>Three of the four sliders shape <strong>standard</strong> worlds (the makeup/orbits the engine then derives
+        from); only <strong>Rarity</strong> reaches for the strange. They apply to planets/moons before the
+        processor re-derives everything.</p>
+      <table class="mini">
+        <thead><tr><th>Slider</th><th>Controls</th><th>How it acts</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Rarity</strong></td><td>which type (eccentricity)</td><td>A gate on each type's rarity (0 mundane … 1 exotic): at 0 only basic rock survives; sliding up unlocks standard habitable, then uncommon, then the legendary exotica. These are the loot-box tiers (grey→gold) shown in the add-type picker. A mild boost favours the rare at the top. Star type nudges it (eyeballs around M dwarfs, life worlds around G/K).</td></tr>
+          <tr><td><strong>Disk mass</strong></td><td>how many worlds</td><td>Scales the per-star count drawn from the star-type tables by <code>0.4 + diskMass×1.6</code> — sparse (0.4×) to crowded (2×).</td></tr>
+          <tr><td><strong>Metallicity</strong></td><td>what they're made of</td><td>Biases interior makeup by ±0.3: high scales metal+rock up &amp; ice+gas down (low does the reverse). Because composition drives the classifier, a metal-rich slot tends to read iron/silicate/terrestrial, a metal-poor one ice/ocean/sub-neptune — always within the standard family.</td></tr>
+          <tr><td><strong>Dynamical history</strong></td><td>orbit shapes</td><td>Draws eccentricity up to <code>0.02 + dyn²×0.45</code> (calm near-circular → violent ~0.46), and past 0.7 starts flipping some worlds to retrograde — a quiet clockwork system vs an eccentric, migrated brawl.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Star type &amp; age</h3>
+      <p>Planet richness <strong>honours the star</strong>: massive O/B/A stars blow their disks away (few worlds),
+        F/G/K/M keep rich disks, remnants rarely retain anything. <strong>Age</strong> drives belts — a young system
+        keeps its primordial debris (wide belts), an old one has ground it down (narrow) — and evolves the stars
+        themselves (a Sun → red giant → white dwarf), so the worlds you get reflect the system's whole history.</p>
     </section>
 
     <section id="baseline">

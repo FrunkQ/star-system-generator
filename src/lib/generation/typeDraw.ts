@@ -1,11 +1,11 @@
-// Type-draw weighting — the "rarity filter" the GM's WEIRDNESS slider drives. Physics decides what's
+// Type-draw weighting — the rarity filter the GM's RARITY slider drives. Physics decides what's
 // VIABLE at an orbit (viableTypesAt); this decides which of those plausible types actually gets drawn.
 //
-//   weirdness 0  → only basic rock (airless terrestrial / barren / desert / ice)
-//   weirdness ↑  → standard habitable (ocean, earth-like), then uncommon (carbon, eyeball), then exotic
+//   rarity 0  → only basic rock (airless terrestrial / barren / desert / ice)
+//   rarity ↑  → standard habitable (ocean, earth-like), then uncommon (carbon, eyeball), then exotic
 //
 // The other knobs (metallicity / disk-mass / dynamical) keep shaping STANDARD worlds the old way — only
-// weirdness reaches for the strange. Star TYPE adds an affinity bonus (eyeballs around M dwarfs, etc.).
+// the rarity dial reaches for the strange. Star TYPE adds an affinity bonus (eyeballs around M dwarfs).
 import type { Fingerprint, RulePack } from '$lib/types';
 import { SeededRNG } from '../rng';
 
@@ -73,24 +73,24 @@ function infoFor(cls: string, pack?: RulePack): TypeDrawInfo {
   return { rarity: 0.5 };
 }
 
-// The weirdness gate: full weight (with a mild exotic BOOST at high weirdness) when a type's rarity is
-// at/below the slider; a steep Gaussian falloff for types rarer than the current setting.
-export function weirdnessGate(rarity: number, weirdness: number): number {
-  if (rarity <= weirdness) return 1 + 0.6 * weirdness * rarity;
-  const over = rarity - weirdness;
+// The rarity gate: full weight (with a mild exotic BOOST at the top of the dial) when a type's rarity
+// is at/below the slider; a steep Gaussian falloff for types rarer than the current setting.
+export function rarityGate(typeRarity: number, dial: number): number {
+  if (typeRarity <= dial) return 1 + 0.6 * dial * typeRarity;
+  const over = typeRarity - dial;
   return Math.exp(-(over * over) / (2 * 0.08 * 0.08)); // ~0 by +0.2 over the slider
 }
 
-// Pick one viable type, weighted by weirdness (rarity gate) × star-class affinity. Null if nothing
-// survives (caller falls back to the basic broad-type generator).
+// Pick one viable type, weighted by the rarity gate × star-class affinity. Null if nothing survives
+// (caller falls back to the basic broad-type generator).
 export function drawTypeForSlot(
-  viable: Fingerprint[], weirdness: number, starClass: string, rng: SeededRNG, pack?: RulePack
+  viable: Fingerprint[], dial: number, starClass: string, rng: SeededRNG, pack?: RulePack
 ): Fingerprint | null {
   const sp = (starClass || '').split('/')[1]?.[0] ?? '';
   const weighted = viable
     .map((fp) => {
       const info = infoFor(fp.class, pack);
-      const w = weirdnessGate(info.rarity, weirdness) * (info.stars?.[sp] ?? 1);
+      const w = rarityGate(info.rarity, dial) * (info.stars?.[sp] ?? 1);
       return { fp, w };
     })
     .filter((x) => x.w > 1e-4);

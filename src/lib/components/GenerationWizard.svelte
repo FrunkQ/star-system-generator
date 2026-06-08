@@ -20,7 +20,7 @@
   let step: 1 | 2 = 1;
   let selectedStars: StarSeed[] = [];
   let ageGyr = 4.6;
-  let knobs: GenerationKnobs = { metallicity: 0.5, diskMass: 0.5, dynamicalHistory: 0.5, weirdness: 0.5 };
+  let knobs: GenerationKnobs = { metallicity: 0.5, diskMass: 0.5, dynamicalHistory: 0.5, rarity:0.5 };
   let busy = false;
   let chosenExample = '';
 
@@ -28,11 +28,11 @@
   // star (that's step 1, already done by the time you see these). Star-bound flavours like "Sol-like"
   // or "red-dwarf system" were dropped — the star is your choice on the HR diagram, not a preset's.
   const PRESETS: Array<{ name: string; age: number; k: GenerationKnobs; note: string }> = [
-    { name: 'Calm & mature', age: 4.6, k: { metallicity: 0.55, diskMass: 0.5, dynamicalHistory: 0.2, weirdness: 0.2 }, note: 'Settled, circular orbits — a Solar-System temperament.' },
-    { name: 'Violent migration', age: 2, k: { metallicity: 0.7, diskMass: 0.7, dynamicalHistory: 0.95, weirdness: 0.6 }, note: 'Giants flung inward — hot-Jupiter chaos.' },
-    { name: 'Ancient & fading', age: 12, k: { metallicity: 0.4, diskMass: 0.4, dynamicalHistory: 0.3, weirdness: 0.3 }, note: 'Old and settled — radiogenic heat long spent.' },
-    { name: 'Young & fiery', age: 0.4, k: { metallicity: 0.6, diskMass: 0.8, dynamicalHistory: 0.7, weirdness: 0.5 }, note: 'Fresh, primordial, still violent.' },
-    { name: 'Maximise weird', age: 4, k: { metallicity: 0.6, diskMass: 0.7, dynamicalHistory: 0.6, weirdness: 1 }, note: 'Push the exotic dial to the wall.' }
+    { name: 'Calm & mature', age: 4.6, k: { metallicity: 0.55, diskMass: 0.5, dynamicalHistory: 0.2, rarity:0.2 }, note: 'Settled, circular orbits — a Solar-System temperament.' },
+    { name: 'Violent migration', age: 2, k: { metallicity: 0.7, diskMass: 0.7, dynamicalHistory: 0.95, rarity:0.6 }, note: 'Giants flung inward — hot-Jupiter chaos.' },
+    { name: 'Ancient & fading', age: 12, k: { metallicity: 0.4, diskMass: 0.4, dynamicalHistory: 0.3, rarity:0.3 }, note: 'Old and settled — radiogenic heat long spent.' },
+    { name: 'Young & fiery', age: 0.4, k: { metallicity: 0.6, diskMass: 0.8, dynamicalHistory: 0.7, rarity:0.5 }, note: 'Fresh, primordial, still violent.' },
+    { name: 'Exotic zoo', age: 4, k: { metallicity: 0.6, diskMass: 0.7, dynamicalHistory: 0.6, rarity: 1 }, note: 'Push the rarity dial to the wall — legendary worlds.' }
   ];
   function applyCharacter(p: typeof PRESETS[number]) {
     ageGyr = p.age;
@@ -199,14 +199,14 @@
 
         <section class="block">
           <h3>Physical character</h3>
-          {#each [['metallicity','Metallicity','metal-poor (icy/gassy)','metal-rich (rocky/iron)'],['diskMass','Disk mass','sparse','crowded'],['dynamicalHistory','Dynamical history','calm, circular','violent, eccentric'],['weirdness','Weirdness','mundane','exotic']] as [key, label, lo, hi]}
+          {#each [['metallicity','Metallicity','metal-poor (icy/gassy)','metal-rich (rocky/iron)'],['diskMass','Disk mass','sparse','crowded'],['dynamicalHistory','Dynamical history','calm, circular','violent, eccentric'],['rarity','Rarity','common worlds','legendary exotica']] as [key, label, lo, hi]}
             <div class="knob">
               <div class="knob-head"><span>{label}</span><span class="knob-val">{Math.round((knobs[key] ?? 0.5) * 100)}%</span></div>
               <input type="range" min="0" max="1" step="0.01" bind:value={knobs[key]} class="slider" />
               <div class="knob-ends"><span>{lo}</span><span>{hi}</span></div>
             </div>
           {/each}
-          <p class="note">Weirdness is reserved (exotic type-draw biasing is a follow-up); the rest shape the worlds now.</p>
+          <p class="note">Rarity picks how eccentric the worlds are (the loot-box tiers in the add-type picker); metallicity, disk mass &amp; dynamical history shape standard worlds. All stay physically plausible.</p>
         </section>
       {/if}
     </div>

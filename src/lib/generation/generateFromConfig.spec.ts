@@ -64,14 +64,14 @@ describe('generateSystemFromConfig', () => {
     expect(sys.nodes.filter((n: any) => n.roleHint === 'star').length).toBe(2);
   });
 
-  it('weirdness gates type rarity: w1 yields far more exotic worlds than w0', () => {
+  it('rarity dial gates type rarity: dial 1 yields far more exotic worlds than dial 0', () => {
     const EXOTIC = new Set(['planet/sulfur', 'planet/chlorine', 'planet/fluorine', 'planet/phosphorus',
       'planet/hycean', 'planet/super-puff', 'planet/chthonian', 'planet/ultra-hot-jupiter',
       'planet/silicate-clouds-gas-giant', 'planet/alkali-metal-clouds-gas-giant', 'planet/ultra-cool-dwarf']);
     const exoticCount = (w: number) => {
       let c = 0;
       for (let s = 0; s < 10; s++) {
-        const sys = generateSystemFromConfig(`w-${w}-${s}`, pack(), { seeds: [sun()], ageGyr: 4.6, knobs: { diskMass: 1, weirdness: w } });
+        const sys = generateSystemFromConfig(`w-${w}-${s}`, pack(), { seeds: [sun()], ageGyr: 4.6, knobs: { diskMass: 1, rarity: w } });
         for (const n of sys.nodes as any[]) if (n.roleHint === 'planet' && EXOTIC.has(n.classes?.[0])) c++;
       }
       return c;
