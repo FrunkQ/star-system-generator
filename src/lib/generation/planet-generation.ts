@@ -14,7 +14,8 @@ export function generatePlanets(
     isBinary: boolean,
     starA: CelestialBody,
     starB?: CelestialBody,
-    empty: boolean = false
+    empty: boolean = false,
+    bias?: { countMultiplier?: number }
 ): void {
     if (empty) return;
 
@@ -29,7 +30,11 @@ export function generatePlanets(
     } else {
         bodyCountTable = pack.distributions['planet_count_remnant'];
     }
-    const numBodies = bodyCountTable ? weightedChoice<number>(rng, bodyCountTable) : rng.nextInt(0, 8);
+    let numBodies = bodyCountTable ? weightedChoice<number>(rng, bodyCountTable) : rng.nextInt(0, 8);
+    // Disk-mass knob: scale the body count (sparse ↔ massive disk).
+    if (bias?.countMultiplier && bias.countMultiplier !== 1) {
+        numBodies = Math.max(0, Math.min(14, Math.round(numBodies * bias.countMultiplier)));
+    }
     const system_age_Gyr = randomFromRange(rng, 0.1, 10.0); // Should be passed in?
 
     // 2. Generation Loop

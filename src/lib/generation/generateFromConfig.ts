@@ -10,11 +10,50 @@ import { generatePlanets } from './planet-generation';
 import { ageStar, determineSpectralClass, type StarSeed, type StarPhase } from '../physics/stellar-evolution';
 import { G, AU_KM } from '../constants';
 
+// Physical "starting condition" knobs, each 0..1 (0.5 = neutral). Presets are just saved knob sets.
+export interface GenerationKnobs {
+  metallicity?: number;       // low → ice/gas worlds; high → rocky/iron/carbon worlds
+  diskMass?: number;          // sparse → few worlds; massive → many
+  dynamicalHistory?: number;  // calm → near-circular; violent → eccentric, migrated
+  weirdness?: number;         // mundane → exotic (reserved — type-draw biasing is a follow-up)
+}
 export interface GenerationConfig {
   seeds?: StarSeed[];          // explicit stars (HR / preset); omit for legacy random
   ageGyr?: number;             // system age — evolves the stars + drives planet physics
   emptyPlanets?: boolean;      // create the star(s) only (GM adds planets via §4c)
   name?: string;
+  knobs?: GenerationKnobs;
+}
+
+// Apply the metallicity + dynamical-history knobs to the freshly-generated bodies (before the
+// processor re-derives). Metallicity reshapes interior makeup; dynamical history stirs orbits.
+function applyKnobBias(nodes: (CelestialBody | Barycenter)[], rng: SeededRNG, knobs: GenerationKnobs): void {
+  const met = knobs.metallicity ?? 0.5;
+  const dyn = knobs.dynamicalHistory ?? 0.5;
+  for (const n of nodes) {
+    if (n.kind !== 'body' || (n.roleHint !== 'planet' && n.roleHint !== 'moon')) continue;
+    const b = n as CelestialBody;
+    // Metallicity → makeup: high metallicity favours metal+rock, low favours ice+gas. Skip giants.
+    if ((met < 0.45 || met > 0.55) && b.makeup) {
+      const shift = (met - 0.5) * 0.6; // ±0.3
+      const mk: any = { ...b.makeup };
+      const heavy = (mk.metal ?? 0) + (mk.rock ?? 0) + (mk.carbon ?? 0);
+      const light = (mk.ice ?? 0) + (mk.gas ?? 0);
+      if (heavy > 0.05 && light > 0.05) {
+        mk.metal = Math.max(0, (mk.metal ?? 0) * (1 + shift));
+        mk.rock = Math.max(0, (mk.rock ?? 0) * (1 + shift));
+        mk.ice = Math.max(0, (mk.ice ?? 0) * (1 - shift));
+        mk.gas = Math.max(0, (mk.gas ?? 0) * (1 - shift));
+        b.makeup = mk;
+      }
+    }
+    // Dynamical history → eccentricity (calm 0 → e≈0.02; violent 1 → e up to ~0.4) + retrograde.
+    if (b.orbit?.elements) {
+      const eMax = 0.02 + dyn * dyn * 0.45;
+      b.orbit.elements.e = Math.min(0.6, 0.01 + rng.nextFloat() * eMax);
+      if (dyn > 0.7 && rng.nextFloat() < (dyn - 0.7) * 0.6) b.orbit.isRetrogradeOrbit = true;
+    }
+  }
 }
 
 // Spectral classes for a (possibly evolved) star seed → the engine's class array.
@@ -92,8 +131,13 @@ export function generateSystemFromConfig(seed: string, pack: RulePack, config: G
   }
   const { nodes, systemRoot, systemName, isBinary, starA, starB } = setupStarsFromSeeds(config.seeds, pack, config.ageGyr, baseName);
 
-  // Planets — unless the GM chose stars-only.
-  generatePlanets(systemRoot, nodes, pack, rng, systemName, isBinary, starA, starB as any, !!config.emptyPlanets);
+  // Planets — unless the GM chose stars-only. Disk-mass knob scales the count.
+  const diskMass = config.knobs?.diskMass ?? 0.5;
+  const countMultiplier = 0.4 + diskMass * 1.6; // 0.4× (sparse) → 2× (massive)
+  generatePlanets(systemRoot, nodes, pack, rng, systemName, isBinary, starA, starB as any, !!config.emptyPlanets, { countMultiplier });
+
+  // Metallicity + dynamical-history knobs reshape makeup + orbits before the processor re-derives.
+  if (config.knobs && !config.emptyPlanets) applyKnobBias(nodes, rng, config.knobs);
 
   const system: System = {
     id: seed, name: systemName, seed, epochT0: Date.now(),

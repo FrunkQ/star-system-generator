@@ -14,6 +14,7 @@
   import { systemStore, viewportStore } from '$lib/stores';
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap } from '$lib/starmapStorage';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
+  import GenerationWizard from '$lib/components/GenerationWizard.svelte';
   import Starmap from '$lib/components/Starmap.svelte';
   import SystemView from '$lib/components/SystemView.svelte';
   import BodyPicker from '$lib/components/BodyPicker.svelte';
@@ -37,6 +38,8 @@
   let error: string | null = null;
 
   let showNewStarmapModal = false;
+  let showGenerationWizard = false;
+  let pendingWizardPosition: { x: number; y: number } | null = null;
   let showEvolutionaryWizard = false;
   let pendingStarmapData: any = null;
   let currentSystemId: string | null = null;
@@ -528,45 +531,23 @@
       }
   }
 
+  // "Add System" now opens the generation wizard (examples / presets / HR + age + knobs) instead of
+  // dropping a fully-random system. The clicked position is remembered for placement.
   function handleAddSystemAt(event: CustomEvent<{ x: number; y: number }>) {
     if (!$starmapStore || !selectedRulepack) return;
+    pendingWizardPosition = { x: event.detail.x, y: event.detail.y };
+    showGenerationWizard = true;
+  }
 
-    const { x, y } = event.detail;
-    const generationEngine = $starmapStore.generationEngine || 'standard';
-
-    if (generationEngine === 'evolutionary') {
-      pendingStarmapData = { 
-        name: "New System", 
-        rulepack: selectedRulepack, 
-        distanceUnit: $starmapStore.distanceUnit, 
-        unitIsPrefix: $starmapStore.unitIsPrefix, 
-        mapMode: $starmapStore.mapMode,
-        position: { x, y }
-      };
-      showEvolutionaryWizard = true;
-      return;
-    }
-
-    const seed = `seed-${Date.now()}`;
-    const newSystem = generateSystem(seed, selectedRulepack, {}, 'Random', false);
+  // The wizard produced a fully-processed system — drop it at the remembered position.
+  function placeGeneratedSystem(event: CustomEvent<{ system: System }>) {
+    showGenerationWizard = false;
+    const pos = pendingWizardPosition; pendingWizardPosition = null;
+    if (!$starmapStore || !pos) return;
+    const newSystem = event.detail.system;
     const displayTimeSec = parseClockSeconds($starmapStore.temporal?.displayTimeSec, STARTDATE_EPOCH_OFFSET_T).toString();
-
-    const newSystemNode: StarSystemNode = {
-      id: newSystem.id,
-      name: newSystem.name,
-      position: { x, y },
-      system: newSystem,
-      time: {
-        displayTimeSec
-      }
-    };
-
-    starmapStore.update(starmap => {
-      if (starmap) {
-        starmap.systems = [...starmap.systems, newSystemNode];
-      }
-      return starmap;
-    });
+    const newSystemNode: StarSystemNode = { id: newSystem.id, name: newSystem.name, position: pos, system: newSystem, time: { displayTimeSec } };
+    starmapStore.update(starmap => { if (starmap) starmap.systems = [...starmap.systems, newSystemNode]; return starmap; });
   }
 
 
@@ -849,6 +830,11 @@
 
   {#if showRouteEditorModal && routeToEdit && $starmapStore}
     <RouteEditorModal bind:showModal={showRouteEditorModal} route={routeToEdit} starmap={$starmapStore} on:save={handleSaveRoute} on:rescale={handleRescaleRoute} on:delete={handleDeleteRoute} />
+  {/if}
+
+  {#if showGenerationWizard && selectedRulepack}
+    <GenerationWizard rulePack={selectedRulepack} {exampleSystems}
+      on:generate={placeGeneratedSystem} on:close={() => { showGenerationWizard = false; pendingWizardPosition = null; }} />
   {/if}
 
   {#if showSettingsModal && $starmapStore}

@@ -43,6 +43,21 @@ describe('generateSystemFromConfig', () => {
     expect(star.classes[0]).toBe('star/WD');
   });
 
+  it('knobs bias the draw: high disk-mass → more worlds than sparse', () => {
+    const many = generateSystemFromConfig('k1', pack(), { seeds: [sun()], ageGyr: 4.6, knobs: { diskMass: 1 } });
+    const few = generateSystemFromConfig('k1', pack(), { seeds: [sun()], ageGyr: 4.6, knobs: { diskMass: 0 } });
+    const count = (s: any) => s.nodes.filter((n: any) => n.roleHint === 'planet').length;
+    expect(count(many)).toBeGreaterThanOrEqual(count(few));
+  });
+
+  it('violent dynamical history → eccentric orbits', () => {
+    const calm = generateSystemFromConfig('k2-planets', pack(), { seeds: [sun()], ageGyr: 4.6, knobs: { dynamicalHistory: 0, diskMass: 1 } });
+    const wild = generateSystemFromConfig('k2-planets', pack(), { seeds: [sun()], ageGyr: 4.6, knobs: { dynamicalHistory: 1, diskMass: 1 } });
+    const maxE = (s: any) => Math.max(0, ...s.nodes.filter((n: any) => n.roleHint === 'planet').map((n: any) => n.orbit?.elements?.e ?? 0));
+    expect(calm.nodes.filter((n: any) => n.roleHint === 'planet').length).toBeGreaterThan(0); // sanity
+    expect(maxE(wild)).toBeGreaterThan(maxE(calm));
+  });
+
   it('two stars produce a binary (barycentre + two stars)', () => {
     const sys = generateSystemFromConfig('t4', pack(), { seeds: [sun(), { ...sun(), id: 'b', massKg: 0.6 * SOLAR_MASS_KG, luminositySolar: 0.1, temperatureK: 4000 }], ageGyr: 4.6, emptyPlanets: true });
     expect(sys.nodes.some((n: any) => n.kind === 'barycenter')).toBe(true);
