@@ -5,13 +5,20 @@
   import { G, UNIVERSAL_GAS_CONSTANT, AU_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, EARTH_GRAVITY, EARTH_DENSITY, RADIATION_UNSHIELDED_DOSE_MSV_YR } from '$lib/constants';
 
   const toc = [
+    ['layering', 'How the model layers'],
     ['constants', 'Constants'],
     ['gravity', 'Gravity, size & density'],
+    ['makeup', 'Interior makeup'],
     ['temperature', 'Equilibrium temperature'],
     ['eccentric-flux', 'Eccentric flux distance'],
     ['greenhouse', 'Greenhouse & surface temp'],
+    ['temp-range', 'Temperature range & tidal heat'],
     ['radiation', 'Surface radiation'],
     ['radiation-split', 'Spectral photon/particle split'],
+    ['fluids', 'Fluid layers'],
+    ['magnetism', 'Magnetism'],
+    ['geology', 'Geological activity'],
+    ['colour', 'Apparent colour'],
     ['habitability', 'Habitability score'],
     ['classification', 'Classification (fingerprints)'],
     ['tags', 'Tags'],
@@ -51,6 +58,25 @@
         defensible. Values are read live from the code.</p>
     </header>
 
+    <section id="layering">
+      <h2>How the model layers</h2>
+      <p>Physics runs as a <strong>pipeline</strong>: each stage consumes the stages above it and writes
+        properties the stages below read. The order matters — a body's colour, magnetism, geology and
+        habitability are all <em>downstream</em> of its interior makeup and temperature.</p>
+      <ol class="layering">
+        <li><strong>Interior makeup</strong> (metal / rock / carbon / ice / gas fractions) → <strong>density</strong> and, with mass, <strong>radius</strong>.</li>
+        <li><strong>Orbit &amp; stars</strong> → equilibrium temperature → greenhouse, tidal &amp; internal heat → <strong>mean surface temperature</strong> and its <strong>range</strong> (cold night side ↔ tidal-volcanic hotspots).</li>
+        <li><strong>Fluid layers</strong> — surface ocean, subsurface (under-ice) ocean, cloud decks, deep conductive interior — derived from makeup + temperature + atmosphere.</li>
+        <li><strong>Magnetism</strong> — the dynamo implied by the conductive interior layers + rotation (intrinsic vs induced; dipolar vs tilted/off-centre).</li>
+        <li><strong>Geological activity</strong> — tectonic regime + volcanism by <em>mechanism</em>, using makeup, mass/radius, system <em>age</em>, surface water and tidal heat.</li>
+        <li><strong>Apparent colour</strong> — composed from makeup, ocean, cloud decks and temperature.</li>
+        <li><strong>Classification</strong> reads the raw physics features (never the tags) to pick a type.</li>
+        <li><strong>Tags</strong> &amp; <strong>habitability</strong> summarise the above; habitability folds geology + magnetism into the score (see below).</li>
+      </ol>
+      <p>Because classification reads <em>features</em> and the tags/habitability read the <em>derived
+        subsystems</em>, there's no circular dependency — every arrow points one way.</p>
+    </section>
+
     <section id="constants">
       <h2>Constants</h2>
       <table>
@@ -66,6 +92,17 @@
       <p>Surface gravity <code>g = G·M / r²</code>; escape velocity <code>v = √(2GM/r)</code>; bulk density
         <code>ρ = M / (4⁄3·π·r³)</code> (reported in g/cc — Earth ≈ 5.51, water = 1.0, Jupiter ≈ 1.33).
         Density, escape velocity and mass/radius (in Earth units) are core classification inputs.</p>
+    </section>
+
+    <section id="makeup">
+      <h2>Interior makeup <span class="phase">§2a</span></h2>
+      <p>A body's bulk composition is the first-class control: mass fractions of <strong>metal</strong> (ρ≈7.9),
+        <strong>rock</strong> (3.3), <strong>carbon</strong> (2.3), <strong>ice</strong> (0.95) and <strong>gas</strong>
+        (0.12 g/cc). Bulk density is volume-additive, <code>1⁄ρ = Σ fᵢ⁄ρᵢ</code>, and radius follows from mass +
+        density — so <em>density and radius are derived, not dialled in</em>. A body with no explicit makeup gets one
+        inferred from its density (mass-aware, so a low-density heavyweight reads as a gas giant, not "icy").</p>
+      <p>The composition classes (iron, silicate, coreless, carbon) key on these fractions, and makeup feeds the
+        fluid layers, magnetism and geology below.</p>
     </section>
 
     <section id="temperature">
@@ -89,6 +126,18 @@
         (from atmospheric composition + pressure, capped to avoid runaway blow-ups), tidal heating, radiogenic
         heat, and giant internal heat. The greenhouse model and its cryo/CIA parameters live in the rulepack
         (<code>climateModel.greenhouse</code>) so they're tunable, not hard-coded.</p>
+    </section>
+
+    <section id="temp-range">
+      <h2>Temperature range &amp; tidal heat</h2>
+      <p>Tidal heating is <strong>localized</strong>, not a uniform warming — so we report a global <em>mean</em>
+        surface temperature <em>and</em> a <strong>range</strong>. The mean keeps tidal heat capped (concentrated
+        flux barely moves the planet-wide average); the range carries the honest extremes: a cold night side
+        (airless/thin-atmosphere worlds, ≈0.82·T_eq) up to <strong>hotspot peaks</strong> that climb with tidal
+        forcing toward a <em>composition ceiling</em> — silicate melt (~1500 K, Io's lava lakes) for rocky bodies,
+        but only cryovolcanic temperatures (~320 K) for icy bodies, whose heat sinks into melting ice. So Io reads
+        a cold mean with lava hotspots; Europa stays frozen at the surface with an ocean beneath. Tags
+        <code>tidal/volcanism</code> and <code>tidal/lava-flows</code> mark the peak.</p>
     </section>
 
     <section id="radiation">
@@ -118,13 +167,88 @@
       </table>
     </section>
 
+    <section id="fluids">
+      <h2>Fluid layers <span class="phase">§2c</span></h2>
+      <p>Beyond a single "hydrosphere coverage", a body can carry several distinct <strong>fluid layers</strong>,
+        each derived from makeup + temperature + atmosphere:</p>
+      <ul>
+        <li><strong>Surface ocean</strong> — coverage that is actually liquid (a frozen cap doesn't count).</li>
+        <li><strong>Subsurface ocean</strong> — a cold, watery body kept liquid <em>under</em> its ice by active
+          tidal/radiogenic heat (Europa/Enceladus). Drives the subsurface-ocean type and the sub-ice habitability niche.</li>
+        <li><strong>Cloud decks</strong> — condensed cloud-forming gases (water, sulfuric acid, ammonia, alkali
+          metals…), which feed apparent colour.</li>
+        <li><strong>Deep conductive interior</strong> — metallic hydrogen (gas giants), superionic water (ice
+          giants) or molten iron (rocky cores) — the dynamo source for magnetism.</li>
+      </ul>
+    </section>
+
+    <section id="magnetism">
+      <h2>Magnetism <span class="phase">§2d</span></h2>
+      <p>A dynamo needs a convecting <em>conductive</em> layer plus <em>rotation</em>. From the interior fluid
+        layers + spin we report the implied field — <strong>descriptively, without overriding</strong> the editable
+        field-strength value:</p>
+      <ul>
+        <li><strong>Iron core</strong> + fast spin → Earth-like dipole; slow spin (Venus) or a carbon-rich
+          (polymeric C–N–H) layer suppresses it.</li>
+        <li><strong>Metallic hydrogen</strong> (gas giant) → strong dipole; <strong>superionic water</strong> (ice
+          giant) → tilted, off-centre, multipolar (Uranus/Neptune).</li>
+        <li><strong>Induced</strong> — a salty subsurface ocean inside a giant host's magnetosphere carries induced
+          currents (Europa); the same moon alone has no field.</li>
+      </ul>
+      <p>Intrinsic vs induced and the field geometry are explicit; the estimated range is a grounded plausibility
+        band, tagged <code>magnetic/dynamo</code>, <code>magnetic/induced</code> or <code>magnetic/unshielded</code>.</p>
+    </section>
+
+    <section id="geology">
+      <h2>Geological activity</h2>
+      <p>"Volcanic" is not one thing — Earth, Venus and Io are active for mechanically different reasons, with
+        opposite consequences for life. The model separates the drivers using makeup (radiogenic budget + iron
+        core), mass/radius (cooling rate), <strong>system age</strong> and surface water:</p>
+      <ul>
+        <li><strong>Plate tectonics</strong> — vigorous interior + surface water → mobile lid → the carbonate–silicate
+          cycle regulates climate (Earth).</li>
+        <li><strong>Stagnant lid</strong> — vigorous but <em>dry</em> → trapped heat, episodic resurfacing, runaway
+          greenhouse (Venus).</li>
+        <li><strong>Tidal-volcanic</strong> — tidal flux ≫ radiogenic, silicate lava (Io); <strong>cryovolcanic</strong>
+          — icy shell + subsurface ocean (Europa).</li>
+        <li><strong>Inactive</strong> — radiogenic heat has decayed below the convection threshold (Mars/Moon).</li>
+      </ul>
+      <p><strong>Age</strong> is the knob that turns Earth into Mars: radiogenic heat halves roughly every 2.8 Gyr
+        and small bodies cool fastest, so <code>geothermalVigor</code> is calibrated to Earth-now ≈ 1 and an
+        Earth-clone goes geologically dead by ~9 Gyr. Each body gets a unique <code>geology/*</code> tag.</p>
+    </section>
+
+    <section id="colour">
+      <h2>Apparent colour <span class="phase">§2e</span></h2>
+      <p>Instead of one swatch per class, a body's <strong>true colour</strong> is composed: a surface base from
+        makeup fractions, a blue ocean overlay, a tint from the dominant coloured atmospheric gas, condensed cloud
+        decks veiling the surface (sulfuric/sulfur/alkali opaque; water patchy, so Earth stays blue), gas-giant
+        cloud colours by temperature, methane-blue ice giants, and incandescence when very hot. The result is kept
+        both as a single flattened hex <em>and</em> as the un-mixed <strong>palette</strong> of contributions + a
+        band count — so a future sphere/shader renderer can draw Earth's ocean/land/cloud mix or Jupiter's bands
+        from the same derivation.</p>
+    </section>
+
     <section id="habitability">
       <h2>Habitability score</h2>
       <p>A 0–100 weighted score: temperature vs the solvent's liquid range (30), pressure (20), a liquid solvent
-        (15, +5 for water), radiation (15), and surface gravity (15). Tiers (<code>habitability/*</code> tags) are
-        set from the factor thresholds — Earth-like requires water, O₂, ~1 g and low radiation; human-habitable is
-        a looser envelope; alien-habitable is score &gt; 40. <em>It scores habitability; it does not model biomes</em>
-        (which is why forest/jungle/swamp/ecumenopolis are GM-assigned, not auto-classified).</p>
+        (15, +5 for water), radiation (15), and surface gravity (15) — the instantaneous <em>surface</em> conditions.
+        On top of that the model folds in <strong>long-term</strong> factors from the geology and magnetism above:</p>
+      <ul>
+        <li><strong>Plate tectonics</strong> +8 (carbonate–silicate climate regulation); <strong>stagnant-lid</strong>
+          −25 (runaway-greenhouse risk); <strong>tidal-volcanic</strong> −20 (resurfaced too fast); <strong>inactive</strong>
+          −10 (no outgassing / nutrient recycling).</li>
+        <li><strong>Intrinsic magnetosphere</strong> +5 (shielded); <strong>none</strong> −8 (atmosphere stripping).</li>
+        <li>A <strong>subsurface ocean</strong> (cryovolcanic or under-ice) floors the score at 35 with a
+          <code>habitability/subsurface</code> tier — sub-ice life is a separate axis from the surface Goldilocks zone.</li>
+      </ul>
+      <p>Tiers now require geological <em>stability</em>: Earth-like needs water, O₂, ~1 g, low radiation <em>and</em>
+        plate tectonics; human-habitable excludes stagnant-lid/tidal-volcanic; alien-habitable is score &gt; 40.</p>
+      <p class="caveat"><strong>Honest about the guesswork:</strong> the habitability weights — and the geology/magnetism
+        modifiers especially — are <em>heuristic, not first-principles</em>. They're tuned to be <em>plausible</em>
+        (Earth scores ~100 with plate tectonics; Venus collapses on its stagnant lid; Europa earns a sub-ice niche),
+        and the surface physics still leads, but the exact numbers are judgement calls open to balancing. It scores
+        habitability; it does not model biomes (forest/jungle/swamp/ecumenopolis stay GM-assigned).</p>
     </section>
 
     <section id="classification">
@@ -154,14 +278,18 @@
         <li><code>atmosphere/*</code> — atmosphere conditions (reducing, breathable)</li>
         <li><code>climate/*</code> — climate states (runaway-greenhouse)</li>
         <li><code>hazard/*</code> — hazards (flaring)</li>
-        <li><code>tidal/*</code> — tidal hotspots</li>
-        <li><code>habitability/*</code> — habitability tier</li>
+        <li><code>structure/*</code> — derived layering (icy-shell, subsurface-ocean, cloud-deck)</li>
+        <li><code>tidal/*</code> — tidal hotspots, volcanism, lava-flows</li>
+        <li><code>geology/*</code> — tectonic regime (plate-tectonics, stagnant-lid, cryovolcanic, …)</li>
+        <li><code>magnetic/*</code> — dynamo (intrinsic / induced / unshielded)</li>
+        <li><code>habitability/*</code> — habitability tier (incl. subsurface)</li>
         <li><code>stability/*</code> — n-body instability risk</li>
         <li><code>barycenter/auto</code> — auto-generated barycentre marker</li>
       </ul>
-      <p>Generation writes provenance; the processor derives the rest from physics on every run. Tags that merely
-        duplicated a class were removed (Ocean World → planet/ocean, etc.). The full layering is documented in
-        <code>docs/classification-and-tags.md</code>.</p>
+      <p>Generation writes provenance; the processor derives the rest from physics on every run. The UI renders each
+        tag with a friendly label + a plain-language description of the physics behind it (see
+        <code>tagPresentation.ts</code>). Tags that merely duplicated a class were removed (Ocean World →
+        planet/ocean, etc.). The full layering is documented in <code>docs/classification-and-tags.md</code>.</p>
     </section>
 
     <section id="baseline">
@@ -182,6 +310,10 @@
         <li>The photon/particle split and per-gas shielding coefficients are calibrated, not first-principles.</li>
         <li>Roche/ring limits assume a representative density.</li>
         <li>Classification soft-edge tolerance (15%) and the diagnostic-type weights are tuned, not derived — the audit guard keeps them honest.</li>
+        <li>Tidal hotspot peak, the cryo/silicate ceilings and the night-side cold factor are calibrated shapes, not a thermal solve.</li>
+        <li>Magnetism reports a grounded <em>range</em>, not a computed field strength; the dynamo scaling is order-of-magnitude.</li>
+        <li>Geological vigor is a relative, Earth-calibrated proxy (radiogenic decay + a cooling-retention term), and the regime thresholds are tuned.</li>
+        <li>The habitability geology/magnetism modifiers and the subsurface-niche floor are <strong>heuristic guesswork</strong> — plausible and bounded, but judgement calls open to balancing.</li>
       </ul>
     </section>
 
@@ -221,6 +353,9 @@
   section h2 { color: var(--text, #fff); border-bottom: 1px solid var(--border, #2a2d36); padding-bottom: 6px; }
   .phase { font-size: 0.7rem; color: var(--on-accent, #fff); background: var(--accent, #ff5a1f); border-radius: 999px; padding: 2px 8px; vertical-align: middle; margin-left: 8px; }
   p, li { line-height: 1.65; color: var(--text, #e2e2e2); }
+  ol.layering { line-height: 1.7; padding-left: 1.3em; }
+  ol.layering li { margin: 4px 0; }
+  .caveat { border-left: 3px solid var(--accent, #ff5a1f); background: var(--bg-panel, #14161c); padding: 10px 14px; border-radius: 0 6px 6px 0; }
   code { background: var(--bg-panel, #14161c); border: 1px solid var(--border, #2a2d36); border-radius: 4px; padding: 1px 5px; font-size: 0.9em; }
   table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 0.9rem; }
   table.mini { width: auto; }
