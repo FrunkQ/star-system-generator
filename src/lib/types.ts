@@ -160,7 +160,12 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   magnetism?: Magnetism;       // derived dynamo profile (descriptive; see deriveMagnetism)
   geoActivity?: GeoActivity;   // derived tectonics/volcanism by mechanism (see deriveGeoActivity)
   habitabilityBreakdown?: {    // the AUTHORITATIVE habitability breakdown the Bio tab renders
-    factors: { label: string; points: number; max: number; value: string; ideal: string }[];
+    factors: {
+      label: string; points: number; max: number; value: string; ideal: string;
+      // optional numeric range so the Bio tab can draw where this body sits on the habitable band:
+      // lo/hi are the score-zero edges, idealLo/idealHi the full-marks plateau, value the body's reading.
+      range?: { value: number; lo: number; idealLo: number; idealHi: number; hi: number; unit: string };
+    }[];
     surfaceScore: number;      // sum of the surface factors (before long-term modifiers)
     modifiers: { label: string; delta: number }[]; // geology/magnetism/super/subsurface adjustments
     finalScore: number;

@@ -5,6 +5,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { Fingerprint, RulePack } from '$lib/types';
   import { viableTypesAt } from '$lib/generation/generateBodyOfType';
+  import { thumbUrl } from '$lib/util/thumbs';
 
   export let rulePack: RulePack;
   export let teqK: number;
@@ -36,7 +37,7 @@
       {#each viable as fp}
         <button class="card" on:click={() => dispatch('select', { fp })} title={fp.note || ''}>
           {#if images[fp.class]}
-            <img src={images[fp.class]} alt={pretty(fp.class)} loading="lazy" />
+            <img src={thumbUrl(images[fp.class])} alt={pretty(fp.class)} loading="lazy" width="80" height="80" />
           {:else}
             <div class="noimg">{pretty(fp.class).slice(0, 2)}</div>
           {/if}

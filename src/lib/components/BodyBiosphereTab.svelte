@@ -90,11 +90,30 @@
                         </div>
                         <div class="score-details">
                             <span class="current">{factor.value}</span>
-                            {#if factor.ideal}<span class="ideal">(Target: {factor.ideal})</span>{/if}
+                            {#if factor.ideal}<span class="ideal">Habitable: {factor.ideal}</span>{/if}
                         </div>
-                        <div class="progress-bar-bg">
-                            <div class="progress-bar-fill" style="width: {Math.min(100, (factor.points / factor.max) * 100)}%"></div>
-                        </div>
+                        {#if factor.range}
+                            {@const r = factor.range}
+                            {@const span = (r.hi - r.lo) || 1}
+                            {@const pct = (x) => Math.max(0, Math.min(100, ((x - r.lo) / span) * 100))}
+                            {@const below = r.value < r.lo}
+                            {@const above = r.value > r.hi}
+                            <div class="range-bar" title="{r.lo}–{r.hi} {r.unit}; ideal {r.idealLo}{r.idealHi !== r.idealLo ? `–${r.idealHi}` : ''} {r.unit}">
+                                <!-- green ideal (full-marks) band -->
+                                <div class="ideal-band" style="left: {pct(r.idealLo)}%; width: {Math.max(2, pct(r.idealHi) - pct(r.idealLo))}%"></div>
+                                <!-- this body's reading -->
+                                <div class="marker" class:out={below || above}
+                                     style="left: {below ? 0 : above ? 100 : pct(r.value)}%"></div>
+                            </div>
+                            <div class="range-ends">
+                                <span>{r.lo} {r.unit}{below ? ' ◀' : ''}</span>
+                                <span>{r.hi} {r.unit}{above ? ' ▶' : ''}</span>
+                            </div>
+                        {:else}
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" style="width: {Math.min(100, (factor.points / factor.max) * 100)}%"></div>
+                            </div>
+                        {/if}
                     </div>
                 {/each}
                 <div class="subtotal-row"><span>Surface subtotal</span><span>{bd.surfaceScore} / 100</span></div>
@@ -271,6 +290,45 @@
   .progress-bar-fill {
       height: 100%;
       background-color: var(--tier-earthlike);
+  }
+
+  /* Range bar: where this body's reading sits within the habitable band. */
+  .range-bar {
+      position: relative;
+      height: 8px;
+      border-radius: 4px;
+      margin-top: 2px;
+      /* faded red toward the score-zero edges, neutral in the middle */
+      background: linear-gradient(90deg,
+          rgba(231,76,60,0.35) 0%, rgba(231,76,60,0.08) 18%,
+          rgba(231,76,60,0.08) 82%, rgba(231,76,60,0.35) 100%);
+      overflow: visible;
+  }
+  .ideal-band {
+      position: absolute;
+      top: 0; bottom: 0;
+      background: var(--tier-earthlike, #2ecc71);
+      opacity: 0.55;
+      border-radius: 4px;
+  }
+  .marker {
+      position: absolute;
+      top: -2px; bottom: -2px;
+      width: 2px;
+      background: #fff;
+      box-shadow: 0 0 3px rgba(0,0,0,0.8);
+      transform: translateX(-1px);
+  }
+  .marker.out {
+      width: 3px;
+      background: #e74c3c; /* reading is off the scored range — pinned at the edge */
+  }
+  .range-ends {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.68rem;
+      color: var(--text-faint, #8a8a8a);
+      margin-top: 1px;
   }
 
   .morphology-checkboxes {

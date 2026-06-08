@@ -626,11 +626,6 @@ export class SystemProcessor implements ISystemProcessor {
             return Math.max(0, 1 - (diff / falloff));
         };
 
-        // Peak Scoring: Max score at optimal, linear falloff (Legacy wrapper)
-        const scoreFromRange = (value: number, optimal: number, range: number) => {
-            return scoreFromPlateau(value, optimal, optimal, range);
-        };
-    
         let score = 0;
         let factors = {
             temp: 0,
@@ -645,15 +640,13 @@ export class SystemProcessor implements ISystemProcessor {
         // terms; GRAVITY is a weak direct constraint (life is robust across a wide range), so its
         // tolerance is widened and its weight trimmed. Weights still sum to 100 and Earth = 100.
 
-        // Temperature (Max 25) — within the solvent's liquid range.
+        // Temperature (Max 25) — within the solvent's liquid range. Capture the band so the Bio tab
+        // can show where this world sits (idealLo/idealHi = full marks, ±falloff = the score-zero edge).
+        let tempIdealLo = 283, tempIdealHi = 298, tempFall = 40; // water default (10–25 °C)
+        if (planet.hydrosphere?.composition === 'methane') { tempIdealLo = tempIdealHi = 111; tempFall = 30; }
+        else if (planet.hydrosphere?.composition === 'ammonia') { tempIdealLo = tempIdealHi = 218; tempFall = 30; }
         if (planet.temperatureK) {
-            if (planet.hydrosphere?.composition === 'water' || !planet.hydrosphere) {
-                factors.temp = scoreFromPlateau(planet.temperatureK, 283, 298, 40); // 10–25 °C, falloff 40 K
-            } else if (planet.hydrosphere?.composition === 'methane') {
-                factors.temp = scoreFromRange(planet.temperatureK, 111, 30); // methane seas (Titan-like)
-            } else if (planet.hydrosphere?.composition === 'ammonia') {
-                factors.temp = scoreFromRange(planet.temperatureK, 218, 30); // ammonia solvent
-            }
+            factors.temp = scoreFromPlateau(planet.temperatureK, tempIdealLo, tempIdealHi, tempFall);
         }
         score += factors.temp * 25;
 
@@ -765,11 +758,15 @@ export class SystemProcessor implements ISystemProcessor {
         if (subsurfaceHabitable) modifiers.push({ label: 'Subsurface-ocean niche (floor)', delta: SUBSURFACE_NICHE_SCORE - Math.round(surfaceScore + geoMod) });
         planet.habitabilityBreakdown = {
             factors: [
-                { label: 'Temperature', points: +(factors.temp * 25).toFixed(1), max: 25, value: `${Math.round(planet.temperatureK ?? 0)} K (${tC} °C)`, ideal: tempIdeal },
+                { label: 'Temperature', points: +(factors.temp * 25).toFixed(1), max: 25, value: `${Math.round(planet.temperatureK ?? 0)} K (${tC} °C)`, ideal: tempIdeal,
+                  range: { value: Math.round(planet.temperatureK ?? 0), lo: tempIdealLo - tempFall, idealLo: tempIdealLo, idealHi: tempIdealHi, hi: tempIdealHi + tempFall, unit: 'K' } },
                 { label: 'Liquid solvent', points: +(factors.solvent * 25).toFixed(1), max: 25, value: hasSurfaceLiquid ? `${Math.round((planet.hydrosphere?.coverage ?? 0) * 100)}% ${planet.hydrosphere?.composition}` : 'no surface liquid (frozen?)', ideal: 'liquid water best' },
-                { label: 'Pressure', points: +(factors.pressure * 18).toFixed(1), max: 18, value: `${(planet.atmosphere?.pressure_bar ?? 0).toFixed(2)} bar`, ideal: '0.5–2 bar' },
-                { label: 'Radiation', points: +(factors.radiation * 17).toFixed(1), max: 17, value: `${(planet.surfaceRadiation ?? 0).toFixed(2)} mSv`, ideal: '< 5 mSv' },
-                { label: 'Gravity', points: +(factors.gravity * 15).toFixed(1), max: 15, value: `${surfaceGravityG.toFixed(2)} g`, ideal: '0.5–1.5 g' }
+                { label: 'Pressure', points: +(factors.pressure * 18).toFixed(1), max: 18, value: `${(planet.atmosphere?.pressure_bar ?? 0).toFixed(2)} bar`, ideal: '0.5–2 bar',
+                  range: { value: +(planet.atmosphere?.pressure_bar ?? 0).toFixed(2), lo: 0, idealLo: 0.5, idealHi: 2.0, hi: 4.0, unit: 'bar' } },
+                { label: 'Radiation', points: +(factors.radiation * 17).toFixed(1), max: 17, value: `${(planet.surfaceRadiation ?? 0).toFixed(2)} mSv`, ideal: '< 5 mSv',
+                  range: { value: +(planet.surfaceRadiation ?? 0).toFixed(2), lo: 0, idealLo: 0, idealHi: 5, hi: 25, unit: 'mSv' } },
+                { label: 'Gravity', points: +(factors.gravity * 15).toFixed(1), max: 15, value: `${surfaceGravityG.toFixed(2)} g`, ideal: '0.5–1.5 g',
+                  range: { value: +surfaceGravityG.toFixed(2), lo: 0, idealLo: 0.5, idealHi: 1.5, hi: 2.1, unit: 'g' } }
             ],
             surfaceScore: Math.round(surfaceScore),
             modifiers,
