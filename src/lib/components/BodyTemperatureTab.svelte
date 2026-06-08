@@ -78,13 +78,25 @@
             <span class="value">{Math.round(body.equilibriumTempK || 0)} K ({Math.round((body.equilibriumTempK || 0) - 273.15)} °C)</span>
         </div>
         
-        <div class="form-group">
-            <label>Bond Albedo (Reflectivity 0-1)</label>
-            <div class="input-row">
-                <input type="range" min="0" max="1" step="0.01" bind:value={body.albedo} on:input={updateTotal} />
-                <input type="number" step="0.01" bind:value={body.albedo} on:input={updateTotal} style="width: 60px;" />
+        {#if body.albedoBreakdown}
+            {@const ab = body.albedoBreakdown}
+            <div class="read-only-row">
+                <label>Bond Albedo <span class="derived-pill" title="Reflectivity is derived from the surface makeup and the cloud decks that condense at this temperature — tweak the makeup / atmosphere / water and it follows.">derived</span></label>
+                <span class="value">{ab.albedo}</span>
             </div>
-        </div>
+            <div class="albedo-note">
+                {#if ab.cloudCover > 0}
+                    {Math.round(ab.cloudCover * 100)}% {ab.cloudSpecies || 'cloud'} cloud (albedo {ab.cloudAlbedo}) over a surface of {ab.surfaceAlbedo}.
+                {:else}
+                    Cloud-free surface, reflectivity {ab.surfaceAlbedo}.
+                {/if}
+            </div>
+        {:else}
+            <div class="read-only-row">
+                <label>Bond Albedo</label>
+                <span class="value">{(body.albedo ?? 0).toFixed(2)}</span>
+            </div>
+        {/if}
 
         <hr />
         <h4>Internal & Atmospheric Heat</h4>
@@ -172,4 +184,6 @@
   .comp-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 3px 10px; font-size: 0.85em; color: var(--text-muted); }
   .comp-row.volcanic .comp-label { color: var(--warning, #e08a4a); }
   .comp-range { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .albedo-note { font-size: 0.78em; color: var(--text-faint); line-height: 1.4; margin-top: -4px; }
+  .derived-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }
 </style>
