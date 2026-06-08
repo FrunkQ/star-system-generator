@@ -1867,7 +1867,7 @@
                     <label><input type="checkbox" bind:checked={showNames} /> Names</label>
                     <label><input type="checkbox" bind:checked={showZones} on:change={() => showZoneKeyPanel = showZones} /> Zones</label>
                     <label><input type="checkbox" bind:checked={showLPoints} /> Lagrange points</label>
-                    {#if $starmapUiStore.gridType === 'traveller-hex'}
+                    {#if $starmapUiStore.travellerMode}
                       <label><input type="checkbox" bind:checked={showTravellerZones} /> Traveller zones</label>
                     {/if}
                     <label><input type="checkbox" bind:checked={showVectors} /> Vectors</label>

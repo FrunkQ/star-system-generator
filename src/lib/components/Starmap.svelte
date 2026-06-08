@@ -268,13 +268,17 @@
     window.removeEventListener('pointercancel', onSystemDragEnd);
   }
 
+  // Traveller mode brings its own numbered hex (1 hex = 1 parsec); otherwise the snap-grid choice
+  // drives the shape. All the existing 'traveller-hex' rendering/snapping paths read this.
+  $: effectiveGridType = $starmapUiStore.travellerMode ? 'traveller-hex' : $starmapUiStore.gridType;
+
   function snapPointToCurrentGrid(x: number, y: number): { x: number; y: number } {
-    if ($starmapUiStore.gridType === 'none') return { x, y };
+    if (effectiveGridType === 'none') return { x, y };
 
     const originX = 0;
     const originY = 0;
 
-    if ($starmapUiStore.gridType === 'grid') {
+    if (effectiveGridType === 'grid') {
       const cellIndexX = Math.floor((x - originX) / gridSize);
       const cellIndexY = Math.floor((y - originY) / gridSize);
       return {
@@ -283,7 +287,7 @@
       };
     }
 
-    if ($starmapUiStore.gridType === 'hex' || $starmapUiStore.gridType === 'traveller-hex') {
+    if (effectiveGridType === 'hex' || effectiveGridType === 'traveller-hex') {
       const hexSize = gridSize / 2;
       const hexHeight = Math.sqrt(3) * hexSize;
       const horizDist = 1.5 * hexSize;
@@ -319,7 +323,7 @@
     return { x, y };
   }
 
-  $: if ($starmapUiStore.gridType === 'traveller-hex') {
+  $: if (effectiveGridType === 'traveller-hex') {
     // Traveller convention: 1 hex center-to-center equals 1 parsec.
     const hexSize = gridSize / 2;
     const hexCenterToCenterPx = Math.sqrt(3) * hexSize;
@@ -603,7 +607,7 @@
 
     // Subsector Detection
     detectedSubsector = null;
-    if ($starmapUiStore.gridType === 'traveller-hex' && starmap.travellerMetadata) {
+    if (effectiveGridType === 'traveller-hex' && starmap.travellerMetadata) {
         const size = gridSize / 2;
         const hexWidth = 2 * size;
         const hexHeight = Math.sqrt(3) * size;
@@ -679,7 +683,7 @@
 
   function handleContextMenuTravellerImport() {
       // Snap to nearest hex center if in hex mode
-      if ($starmapUiStore.gridType === 'hex' || $starmapUiStore.gridType === 'traveller-hex') {
+      if (effectiveGridType === 'hex' || effectiveGridType === 'traveller-hex') {
           // Re-calculate closest center using the logic from handleMapContextMenu
           // We can't reuse local vars from that function, so we must recalc or store the snapped coord.
           // contextMenuClickCoords is currently set to the snapped center in handleMapContextMenu!
@@ -833,8 +837,8 @@
       style="touch-action: none;"
     >
       <g bind:this={groupElement} transform={`translate(${panX}, ${panY}) scale(${zoom})`}>
-      <Grid 
-        gridType={$starmapUiStore.gridType} 
+      <Grid
+        gridType={effectiveGridType}
         {gridSize} 
         {panX} 
         {panY} 
@@ -1082,7 +1086,7 @@
             <li on:click={handleContextMenuDelete}>Delete System</li>
         {:else}
                     <li on:click={handleContextMenuAddSystem}>Add System Here</li>
-                    {#if $starmapUiStore.gridType === 'traveller-hex'}
+                    {#if $starmapUiStore.travellerMode}
                         <li on:click={handleContextMenuAddTravellerSystem}>Add Traveller UWP Here</li>
                         <li on:click={handleContextMenuTravellerImport}>Add Traveller Map SubSector Here</li>
                         {#if detectedSubsector}

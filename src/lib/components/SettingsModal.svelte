@@ -234,8 +234,12 @@
               <option value="none">No Grid</option>
               <option value="grid">Grid</option>
               <option value="hex">Hex</option>
-              <option value="traveller-hex">Traveller Hex</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label title="Traveller-style numbered hex map (1 hex = 1 parsec) plus Traveller import/UMP features. Independent of the snap grid above — when on, it brings its own hex.">
+              <input type="checkbox" bind:checked={$starmapUiStore.travellerMode} /> Traveller mode
+            </label>
           </div>
 
           <h3>Date &amp; time</h3>
