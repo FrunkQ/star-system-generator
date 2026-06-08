@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
   import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '$lib/constants';
+  import MakeupEditor from './MakeupEditor.svelte';
 
   export let body: CelestialBody;
   export let rulePack: RulePack | null = null;
@@ -289,22 +290,28 @@
         </div>
     </div>
 
-    <!-- DENSITY DISPLAY -->
-    <div class="form-group density-group">
-        <div class="label-row">
-            <label>Calculated Density</label>
-            <div class="read-only-value">{densityValue.toFixed(2)} g/cm³</div>
+    <!-- INTERIOR MAKEUP → derives density (and, for planets/moons, radius). -->
+    {#if body.roleHint === 'planet' || body.roleHint === 'moon'}
+        <div class="form-group">
+            <MakeupEditor {body} on:update={() => dispatch('update')} />
         </div>
-        <div class="density-bar">
-            <!-- Visual indicator of density: 0-15 scale -->
-            <div class="density-fill" style="width: {Math.min(100, (densityValue / 15) * 100)}%; background-color: hsl({120 - Math.min(120, (densityValue/8)*120)}, 70%, 50%);"></div>
+    {:else}
+        <!-- DENSITY DISPLAY (stars / belts / rings keep the read-only density) -->
+        <div class="form-group density-group">
+            <div class="label-row">
+                <label>Calculated Density</label>
+                <div class="read-only-value">{densityValue.toFixed(2)} g/cm³</div>
+            </div>
+            <div class="density-bar">
+                <div class="density-fill" style="width: {Math.min(100, (densityValue / 15) * 100)}%; background-color: hsl({120 - Math.min(120, (densityValue/8)*120)}, 70%, 50%);"></div>
+            </div>
+            <div class="sub-label row-spaced">
+                <span>Gas/Ice</span>
+                <span>Rock</span>
+                <span>Iron</span>
+            </div>
         </div>
-        <div class="sub-label row-spaced">
-            <span>Gas/Ice</span>
-            <span>Rock</span>
-            <span>Iron</span>
-        </div>
-    </div>
+    {/if}
 
     <hr/>
 
