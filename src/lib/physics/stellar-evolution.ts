@@ -74,6 +74,20 @@ export function ageStar(star: StarSeed, ageYears: number): StarSeed & { isDead?:
     return { ...star, ...props, isDead, phase };
 }
 
+// Magnetic flare activity 0..1. Flares are driven by rotation + a convective dynamo, so they're
+// strongest on LOW-mass dwarfs (deep convection — M dwarfs flare ferociously) and on YOUNG stars
+// (fast rotation), declining as the star spins down with age. This drives an episodic particle/UV dose
+// on close-in planets (shielded by a magnetosphere + atmosphere). NOT the steady luminosity.
+export function flareActivity(spectralClass: string | undefined, ageGyr: number): number {
+  const sp = (spectralClass || 'G').replace('star/', '')[0];
+  const base: Record<string, number> = { M: 0.85, K: 0.55, G: 0.35, F: 0.22, A: 0.16, B: 0.12, O: 0.12 };
+  const remnant = /[WNB]/.test(sp) && !'BAFGKM'.includes(sp); // WD/NS/BH letters → no flares
+  if (remnant) return 0;
+  const b = base[sp] ?? 0.3;
+  const ageFactor = Math.min(1, Math.pow(0.3 / Math.max(0.05, ageGyr), 0.7)); // young → ~1, old → small
+  return Math.max(0, Math.min(1, b * ageFactor));
+}
+
 // The star's radius in AU (for engulfment + zone work).
 export function stellarRadiusAU(star: { radiusKm: number }): number {
     return star.radiusKm / AU_KM_LOCAL;

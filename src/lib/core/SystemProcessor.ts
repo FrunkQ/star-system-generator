@@ -3,7 +3,7 @@ import type { System, RulePack, CelestialBody, Barycenter } from '../types';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG } from '../constants';
 import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeSurfaceTemperatureFromDeltaComponents, estimateInternalHeatK } from '../physics/temperature';
 import { deriveAlbedo } from '../physics/albedo';
-import { calculateSurfaceRadiation } from '../physics/radiation';
+import { calculateSurfaceRadiation, calculateTotalStellarRadiation } from '../physics/radiation';
 import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions } from '../physics/makeup';
 import { surfaceTempProfile } from '../physics/surfaceTemperature';
@@ -13,7 +13,12 @@ import { deriveMagnetism } from '../physics/magnetism';
 import { deriveGeoActivity } from '../physics/geoActivity';
 import { deriveApparentColorParts } from '../rendering/apparentColor';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
-import { calculateMolarMass, recalculateAtmosphereDerivedProperties } from '../physics/atmosphere';
+import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosphericEscape } from '../physics/atmosphere';
+import { flareActivity } from '../physics/stellar-evolution';
+
+// Planets are assumed to coalesce a few Myr into the system's life — the baseline for age-integrated
+// processes (atmospheric escape, etc.). Negligible vs Gyr ages but makes the assumption explicit.
+const FORMATION_DELAY_GYR = 0.005;
 import { SeededRNG } from '../rng';
 import { annotateGravitationalStability } from '../physics/stability';
 import { reconcileBarycenters } from '../physics/barycenterReconcile';
@@ -26,6 +31,17 @@ export class SystemProcessor implements ISystemProcessor {
         const allNodes = processedSystem.nodes;
         this.systemAgeGyr = system.age_Gyr ?? 4.6;
         const rng = new SeededRNG(system.seed); // Deterministic RNG for procedural aspects of processing
+
+        // Stellar flare activity (drives the flare particle dose on planets) — derived for every star
+        // from its class + the system age, so imported systems get it too. Re-targets the hazard/flaring
+        // tag to the physically-active stars (young / M-K dwarfs), not just luminous ones.
+        for (const node of allNodes) {
+            const s = node as CelestialBody;
+            if (s.kind !== 'body' || s.roleHint !== 'star') continue;
+            s.flareActivity = flareActivity(s.classes?.[0], this.systemAgeGyr);
+            s.tags = (s.tags || []).filter((t) => t.key !== 'hazard/flaring');
+            if (s.flareActivity > 0.4) s.tags.push({ key: 'hazard/flaring' });
+        }
 
         // 0. Pass 0a: Auto reconcile barycenters from mass hierarchy changes.
         reconcileBarycenters(processedSystem);
@@ -241,12 +257,9 @@ export class SystemProcessor implements ISystemProcessor {
         // Skip Stars for environment processing as they generate their own physics (Temp, Radiation)
         if (body.roleHint === 'star') return;
 
-        // Radiation
-        body.surfaceRadiation = calculateSurfaceRadiation(body, allNodes, pack);
-
         // Escape Velocity
         const escapeVelocity = Math.sqrt(2 * G * (body.massKg || 0) / ((body.radiusKm || 1) * 1000)) / 1000; // in km/s
-        
+
         // Temperature Components
         const allStars = allNodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
         let equilibriumTempK = 0;
@@ -266,6 +279,20 @@ export class SystemProcessor implements ISystemProcessor {
             (body as any).equilibriumTempMaxK = eqRange.maxK;
         }
         body.equilibriumTempK = equilibriumTempK;
+
+        // Atmospheric escape over the system's age — thins/strips the atmosphere BEFORE greenhouse &
+        // radiation read it (so a stripped world loses its greenhouse + shielding). Planets are assumed
+        // to form a few Myr into the system's life (FORMATION_DELAY_GYR), so they erode for ~that long.
+        if (body.roleHint === 'planet' || body.roleHint === 'moon') {
+            const magG = body.magneticField?.strengthGauss || 0;
+            const magShield = magG > 0 ? Math.min(0.99, (Math.log10(magG + 0.01) + 2) / 3) : 0;
+            const stellarFluxRel = calculateTotalStellarRadiation(body, allNodes);
+            const planetAgeGyr = Math.max(0, this.systemAgeGyr - FORMATION_DELAY_GYR);
+            applyAtmosphericEscape(body, equilibriumTempK, planetAgeGyr, stellarFluxRel, magShield, pack);
+        }
+
+        // Radiation (after escape, so shielding reflects any thinned/stripped atmosphere).
+        body.surfaceRadiation = calculateSurfaceRadiation(body, allNodes, pack);
 
         // Tidal Heating
         let tidalHeatingK = 0;

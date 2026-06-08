@@ -196,6 +196,9 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   draft_transit_plan?: any[]; // Holds TransitPlan[] for resuming sessions
   scheduled_journeys?: ScheduledJourneyLog[];
   
+  // Star-only: magnetic flare activity 0..1 (drives an episodic particle dose on close planets).
+  flareActivity?: number;
+
   // Surface Stats
   surfaceRadiation?: number;
   stellarRadiation?: number; // Raw incoming flux

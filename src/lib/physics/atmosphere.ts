@@ -1,6 +1,60 @@
 import type { Atmosphere, RulePack, CelestialBody, Barycenter, Tag } from '../types';
 import { evaluateTagTriggers } from '../utils';
-import { G, UNIVERSAL_GAS_CONSTANT } from '../constants';
+import { G, UNIVERSAL_GAS_CONSTANT, EARTH_MASS_KG } from '../constants';
+
+const BOLTZMANN = 1.380649e-23;     // J/K
+const AVOGADRO = 6.02214076e23;     // /mol
+const K_WIND = 1.5;                 // non-thermal (XUV/stellar-wind) erosion strength — calibrated to Sol
+
+// Atmospheric escape over the system's age (proposal: "atmospheres burn off over time unless shielded").
+// Two mechanisms, both age-integrated, applied to a body's atmosphere BEFORE greenhouse/radiation read
+// it — so a thinned atmosphere correctly gives less greenhouse and less shielding:
+//   • Thermal (Jeans): light gases (H2/He) escape any non-giant; heavy gases need a high escape
+//     parameter λ = G·M·m / (R·k·T_exo). Older worlds need a higher λ to have held on.
+//   • Non-thermal (XUV / stellar wind): strips small, hot, close-in, UNSHIELDED worlds — scaled by
+//     stellar flux, age and (1 − magnetosphere), and gated OFF above ~9 km/s escape velocity so
+//     Earth/Venus/super-Earths keep their air (and the Sol baseline is preserved).
+// Only thins or strips, never invents. Giants (≥10 M⊕) are exempt.
+export function applyAtmosphericEscape(
+  body: CelestialBody, equilibriumTempK: number, ageGyr: number, stellarFluxRel: number, magShield: number, pack: RulePack
+): void {
+  const atm = body.atmosphere;
+  if (!atm || atm.name === 'None' || !atm.composition || !body.massKg || !body.radiusKm) return;
+  if (body.massKg / EARTH_MASS_KG > 10) return;            // giants hold everything
+
+  const R = body.radiusKm * 1000;
+  const vEscKms = Math.sqrt((2 * G * body.massKg) / R) / 1000;
+  const Texo = Math.max(2 * (equilibriumTempK || 0), 800);  // XUV-heated thermosphere proxy
+  const lamCrit = 18 + 6 * Math.log(1 + Math.max(0, ageGyr));
+
+  // Non-thermal wind erosion: only bites below ~9 km/s (tapered), so high-gravity worlds are immune.
+  const windGate = Math.max(0, Math.min(1, (9 - vEscKms) / 4));
+  const windLoss = Math.min(1, K_WIND * Math.sqrt(Math.max(0, stellarFluxRel)) * (1 - magShield)
+    * Math.max(0, ageGyr) / Math.max(1, vEscKms * vEscKms) * windGate);
+
+  const molar = pack.gasMolarMassesKg || {};
+  const kept: Record<string, number> = {};
+  let totalKept = 0;
+  for (const [gas, frac] of Object.entries(atm.composition)) {
+    const m = (molar[gas] ?? 0.028) / AVOGADRO;           // per-molecule mass (kg)
+    const lambda = (G * body.massKg * m) / (R * BOLTZMANN * Texo);   // Jeans escape parameter
+    const thermal = Math.max(0, Math.min(1, (lambda - lamCrit * 0.6) / (lamCrit * 1.0)));
+    const keptFrac = Math.max(0, Math.min(1, thermal * (1 - windLoss)));
+    const a = frac * keptFrac;
+    if (a > 1e-6) { kept[gas] = a; totalKept += a; }
+  }
+
+  const newPressure = (atm.pressure_bar || 0) * totalKept;  // column shrinks by the retained fraction
+  if (totalKept <= 0 || newPressure < 0.001) {              // fully stripped → airless
+    body.atmosphere = { name: 'None', composition: {}, pressure_bar: 0 };
+    return;
+  }
+  for (const g in kept) kept[g] /= totalKept;               // renormalise the survivors
+  atm.composition = kept;
+  atm.pressure_bar = newPressure;
+  atm.main = Object.keys(kept).reduce((x, y) => (kept[x] > kept[y] ? x : y));
+  atm.molarMassKg = undefined;                              // force molar-mass recompute downstream
+}
 
 // Atmosphere tags that USED to exist (cosmetic flavour ditched for the RPG use case, duplicates,
 // or superseded by the apparent-colour / fluid-layer / geology models). Stripped on every run so

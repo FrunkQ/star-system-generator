@@ -170,6 +170,11 @@
         rulepack). The unshielded reference dose is <strong>{RADIATION_UNSHIELDED_DOSE_MSV_YR} mSv/yr</strong> at 1 AU.
         Rocky bodies add a ~2 mSv/yr terrestrial background. <em>An airless world has no shielding → the full
         dose</em> (Luna ≈ 500 mSv/yr) — it is the most-irradiated case, not zero.</p>
+      <p><strong>Flares</strong> add an episodic <em>particle</em> dose on top of the steady wind, scaled by each
+        star's flare activity — strongest for <strong>young</strong> stars and <strong>M/K dwarfs</strong> (deep
+        convection + fast rotation), declining as the star spins down with age. It rides the particle channel, so a
+        magnetosphere + atmosphere shield against it; an unshielded close-in world around a flare star bears the
+        brunt. (The old "flaring" tag keyed on luminosity is retired — it now tracks real activity.)</p>
     </section>
 
     <section id="radiation-split">
@@ -354,9 +359,16 @@
 
       <h3>Star type &amp; age</h3>
       <p>Planet richness <strong>honours the star</strong>: massive O/B/A stars blow their disks away (few worlds),
-        F/G/K/M keep rich disks, remnants rarely retain anything. <strong>Age</strong> drives belts — a young system
-        keeps its primordial debris (wide belts), an old one has ground it down (narrow) — and evolves the stars
-        themselves (a Sun → red giant → white dwarf), so the worlds you get reflect the system's whole history.</p>
+        F/G/K/M keep rich disks, remnants rarely retain anything. <strong>Age</strong> threads through the whole
+        model — it evolves the stars (Sun → red giant → white dwarf), decays radiogenic heat (cooling → the tectonic
+        regime), grinds belts down (young = wide, old = narrow), sets flare activity, and drives atmospheric escape.</p>
+      <p><strong>Atmospheric escape</strong> (over the age, planets assumed to form a few Myr in): two age-integrated
+        losses thin or strip an atmosphere <em>before</em> greenhouse &amp; radiation read it. <em>Thermal (Jeans)</em>
+        — light gases (H₂/He) leave any non-giant; heavier gases need a high escape parameter
+        <code>λ = G·M·m / (R·k·T)</code>. <em>Non-thermal (XUV / stellar wind)</em> — strips small, hot, close-in,
+        UNSHIELDED worlds, scaled by flux × age × (1 − magnetosphere), and gated off above ~9 km/s escape velocity
+        so Earth/Venus/super-Earths keep their air. It only thins or strips, never invents — so a tiny hot world goes
+        bare, a shielded super-Earth holds on, and giants keep everything.</p>
     </section>
 
     <section id="baseline">

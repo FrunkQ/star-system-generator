@@ -2,6 +2,8 @@ import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
 import { AU_KM, SOLAR_RADIUS_KM, RADIATION_UNSHIELDED_DOSE_MSV_YR } from "$lib/constants";
 import { calculateDistanceRangeToStar, calculateDistanceToStar } from "./temperature";
 
+const FLARE_PARTICLE_WEIGHT = 0.5;   // how much a star's flare activity adds to the particle dose
+
 // Photon (UV/visible/IR) vs particle (stellar wind / protons / flares) split by spectral
 // class. Cool dwarfs are wind/flare-dominated, so their particle fraction is much higher —
 // which matters because magnetospheres shield particles but not photons. (Phase 04.4)
@@ -34,7 +36,10 @@ export function calculateStellarRadiationComponents(
             const flux = (star.radiationOutput || 1) / (dist_au * dist_au);
             const s = photonParticleSplit(star);
             photon += flux * s.ph;
-            particle += flux * s.pa;
+            // Flares add an episodic PARTICLE/UV dose on top of the steady wind — strongest for active
+            // (young / M-K dwarf) stars. Goes in the particle channel so a magnetosphere + atmosphere
+            // shield against it (an unshielded close world bears the brunt).
+            particle += flux * (s.pa + (star.flareActivity || 0) * FLARE_PARTICLE_WEIGHT);
         }
     }
     return { photon, particle, total: photon + particle };
