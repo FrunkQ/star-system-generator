@@ -33,11 +33,17 @@ const NS_LAYER: Record<string, string> = {
   climate: 'Climate', hazard: 'Radiation / hazards', orbit: 'Orbit', origin: 'Generation',
   stability: 'Orbital stability', barycenter: 'Barycentres'
 };
-// Flat (non-namespaced) legacy tag keys → their producing layer.
-const FLAT_LAYER: Record<string, string> = {
-  inert: 'Atmosphere', 'buffer-gas': 'Atmosphere', oxidizer: 'Atmosphere', 'breathable-human': 'Atmosphere',
-  'noble-gas': 'Atmosphere', reducing: 'Atmosphere', toxic: 'Atmosphere', corrosive: 'Atmosphere'
-};
+// Flat (non-namespaced) tag keys → their producing layer. All the kept gas-role tags come from
+// the Atmosphere layer.
+const ATMOSPHERE_TAGS = [
+  'acid-rain', 'asphyxiant', 'breathable-human', 'breathable-human-hypoxic', 'contact-hazard',
+  'corrosive', 'crushing-atmosphere', 'extreme-fire-hazard', 'fire-hazard', 'flammable',
+  'greenhouse', 'haze-former', 'heavy-gas', 'high-humidity', 'highly-corrosive', 'highly-toxic',
+  'hypergolic', 'inert', 'irritant', 'lifting-gas', 'organic-solvent', 'oxidizer',
+  'oxygen-toxicity', 'ozone-depleter', 'prebiotic-precursor', 'reducing', 'solvent-hazard',
+  'super-greenhouse', 'technosignature', 'toxic-human'
+];
+const FLAT_LAYER: Record<string, string> = Object.fromEntries(ATMOSPHERE_TAGS.map((t) => [t, 'Atmosphere']));
 
 export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): PhysicsTrace {
   const layers: TraceLayer[] = [];

@@ -18,6 +18,17 @@ const GAS_CLOUD: Record<string, { liquid: string; colorHex: string }> = {
   SiO: { liquid: 'molten-glass', colorHex: '#a9a9a9' }
 };
 
+// Friendly visible colour of a cloud deck by its condensed liquid — for the "what colour is the
+// sky?" cloud-deck tag. Unknown liquids fall back to the liquid name.
+const CLOUD_COLOUR: Record<string, string> = {
+  water: 'white', 'sulfuric-acid': 'pale yellow', ammonia: 'tan', methane: 'blue',
+  'sulfur-dioxide': 'yellow', sodium: 'orange', potassium: 'violet', 'molten-iron': 'grey',
+  'molten-glass': 'grey'
+};
+export function cloudColourName(liquid: string): string {
+  return CLOUD_COLOUR[liquid] ?? liquid.replace(/-/g, ' ');
+}
+
 export function deriveFluidLayers(body: CelestialBody, pack?: RulePack): FluidLayer[] {
   const layers: FluidLayer[] = [];
   const surfT = body.temperatureK ?? body.equilibriumTempK ?? 0;
@@ -48,17 +59,19 @@ export function deriveFluidLayers(body: CelestialBody, pack?: RulePack): FluidLa
     layers.push({ liquid: 'salty-water', location: 'subsurface', conductive: true, colorHex: '#3a6ea5' });
   }
 
-  // --- Cloud decks: condensable cloud-forming gases present in the atmosphere ---
+  // --- Cloud decks: condensable cloud-forming gases present in the atmosphere. The set of
+  //     cloud-forming species (and their liquid + colour) is owned HERE by GAS_CLOUD — this model
+  //     supersedes the old rulepack "cloud-former" gas tag. ---
   const comp = body.atmosphere?.composition;
-  if (comp && pack?.gasPhysics) {
+  if (comp) {
     for (const [gas, frac] of Object.entries(comp)) {
       if ((frac as number) < 0.001) continue;
-      const phys = pack.gasPhysics[gas];
-      const isCloudFormer = phys?.tags?.some((t) => t.name === 'cloud-former');
-      // condenses if the surface (or upper atmosphere) is below ~1.5× its boiling point
-      if (isCloudFormer && phys && surfT < (phys.boilK ?? 999) * 1.6) {
-        const m = GAS_CLOUD[gas];
-        layers.push({ liquid: m?.liquid ?? gas.toLowerCase(), location: 'cloud', colorHex: m?.colorHex ?? phys.colorHex ?? undefined });
+      const m = GAS_CLOUD[gas];
+      if (!m) continue;
+      const phys = pack?.gasPhysics?.[gas];
+      // condenses if the surface (or upper atmosphere) is below ~1.6× its boiling point
+      if (surfT < (phys?.boilK ?? 999) * 1.6) {
+        layers.push({ liquid: m.liquid, location: 'cloud', colorHex: m.colorHex });
       }
     }
   }

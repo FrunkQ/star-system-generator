@@ -15,16 +15,8 @@
           "trigger": "always"
         },
         {
-          "name": "buffer-gas",
-          "trigger": "percent > 0.5"
-        },
-        {
           "name": "asphyxiant",
           "trigger": "pp > 0.9 AND percent > 0.9"
-        },
-        {
-          "name": "nitrogen-narcosis",
-          "trigger": "pp > 3.0"
         }
       ]
     },
@@ -75,10 +67,6 @@
       "boilK": 87,
       "tags": [
         {
-          "name": "noble-gas",
-          "trigger": "always"
-        },
-        {
           "name": "inert",
           "trigger": "always"
         },
@@ -99,20 +87,8 @@
       "boilK": 4,
       "tags": [
         {
-          "name": "noble-gas",
-          "trigger": "always"
-        },
-        {
           "name": "lifting-gas",
           "trigger": "pp > 0.5"
-        },
-        {
-          "name": "voice-changer",
-          "trigger": "pp > 0.2"
-        },
-        {
-          "name": "leak-prone",
-          "trigger": "always"
         }
       ]
     },
@@ -126,10 +102,6 @@
       "meltK": 24,
       "boilK": 27,
       "tags": [
-        {
-          "name": "noble-gas",
-          "trigger": "always"
-        },
         {
           "name": "inert",
           "trigger": "always"
@@ -150,10 +122,6 @@
       "meltK": 115,
       "boilK": 120,
       "tags": [
-        {
-          "name": "noble-gas",
-          "trigger": "always"
-        },
         {
           "name": "inert",
           "trigger": "always"
@@ -187,10 +155,6 @@
           "trigger": "pp > 0.05"
         },
         {
-          "name": "acidic-rain",
-          "trigger": "pp > 0.5 AND H2O_gas_present"
-        },
-        {
           "name": "crushing-atmosphere",
           "trigger": "pp > 50.0"
         }
@@ -207,20 +171,12 @@
       "boilK": 373,
       "tags": [
         {
-          "name": "cloud-former",
-          "trigger": "percent > 0.05"
-        },
-        {
           "name": "greenhouse",
           "trigger": "percent > 0.01"
         },
         {
           "name": "high-humidity",
           "trigger": "pp > 0.05"
-        },
-        {
-          "name": "steambath",
-          "trigger": "pp > 1.0 AND temp > 350"
         }
       ]
     },
@@ -263,18 +219,6 @@
       "boilK": 263,
       "tags": [
         {
-          "name": "volcanic",
-          "trigger": "always"
-        },
-        {
-          "name": "cloud-former",
-          "trigger": "temp < 263"
-        },
-        {
-          "name": "pungent",
-          "trigger": "pp > 0.0001"
-        },
-        {
           "name": "toxic-human",
           "trigger": "pp > 0.005"
         },
@@ -298,10 +242,6 @@
       "meltK": 187,
       "boilK": 213,
       "tags": [
-        {
-          "name": "rotten-egg-smell",
-          "trigger": "pp > 0.00001"
-        },
         {
           "name": "toxic-human",
           "trigger": "pp > 0.01"
@@ -327,20 +267,12 @@
       "boilK": 240,
       "tags": [
         {
-          "name": "pungent",
-          "trigger": "always"
-        },
-        {
           "name": "toxic-human",
           "trigger": "pp > 0.005"
         },
         {
           "name": "corrosive",
           "trigger": "pp > 0.1"
-        },
-        {
-          "name": "cloud-former",
-          "trigger": "pp > 0.5"
         }
       ]
     },
@@ -369,10 +301,6 @@
         {
           "name": "highly-corrosive",
           "trigger": "pp > 0.1"
-        },
-        {
-          "name": "visible-gas",
-          "trigger": "pp > 0.5"
         },
         {
           "name": "heavy-gas",
@@ -425,10 +353,6 @@
         {
           "name": "flammable",
           "trigger": "pp > 0.04 AND O2_gas_present"
-        },
-        {
-          "name": "metal-embrittlement",
-          "trigger": "pp > 10.0"
         }
       ]
     },
@@ -471,10 +395,6 @@
           "trigger": "pp > 0.0001"
         },
         {
-          "name": "almond-smell",
-          "trigger": "pp > 0.0001"
-        },
-        {
           "name": "flammable",
           "trigger": "pp > 0.05 AND O2_gas_present"
         },
@@ -501,10 +421,6 @@
         {
           "name": "greenhouse",
           "trigger": "percent > 0.01"
-        },
-        {
-          "name": "condensible-fuel",
-          "trigger": "always"
         },
         {
           "name": "asphyxiant",
@@ -545,24 +461,7 @@
       "colorHex": "#FFD700",
       "meltK": 371,
       "boilK": 1156,
-      "tags": [
-        {
-          "name": "visible-gas",
-          "trigger": "always"
-        },
-        {
-          "name": "condensible-metal",
-          "trigger": "always"
-        },
-        {
-          "name": "cloud-former",
-          "trigger": "temp < 1156"
-        },
-        {
-          "name": "reactive",
-          "trigger": "pp > 0.1"
-        }
-      ]
+      "tags": []
     },
     "K": {
       "molarMass": 0.039,
@@ -573,20 +472,7 @@
       "colorHex": "#EE82EE",
       "meltK": 336,
       "boilK": 1032,
-      "tags": [
-        {
-          "name": "visible-gas",
-          "trigger": "always"
-        },
-        {
-          "name": "condensible-metal",
-          "trigger": "always"
-        },
-        {
-          "name": "cloud-former",
-          "trigger": "temp < 1032"
-        }
-      ]
+      "tags": []
     },
     "Fe": {
       "molarMass": 0.056,
@@ -597,28 +483,7 @@
       "colorHex": "#808080",
       "meltK": 1811,
       "boilK": 3134,
-      "tags": [
-        {
-          "name": "opaque",
-          "trigger": "pp > 0.1"
-        },
-        {
-          "name": "conductive-atmosphere",
-          "trigger": "pp > 0.5"
-        },
-        {
-          "name": "condensible-metal",
-          "trigger": "always"
-        },
-        {
-          "name": "cloud-former",
-          "trigger": "temp < 3134"
-        },
-        {
-          "name": "abrasive-wind",
-          "trigger": "pp > 0.01"
-        }
-      ]
+      "tags": []
     },
     "SiO": {
       "molarMass": 0.044,
@@ -629,24 +494,7 @@
       "colorHex": "#A9A9A9",
       "meltK": 1975,
       "boilK": 2150,
-      "tags": [
-        {
-          "name": "condensible-rock",
-          "trigger": "always"
-        },
-        {
-          "name": "glass-haze",
-          "trigger": "pp > 0.1"
-        },
-        {
-          "name": "cloud-former",
-          "trigger": "temp < 2150"
-        },
-        {
-          "name": "refractory",
-          "trigger": "always"
-        }
-      ]
+      "tags": []
     },
     "HF": {
       "molarMass": 0.02,
@@ -669,10 +517,6 @@
         {
           "name": "contact-hazard",
           "trigger": "pp > 0.01"
-        },
-        {
-          "name": "cloud-former",
-          "trigger": "temp < 293"
         },
         {
           "name": "acid-rain",
@@ -701,14 +545,6 @@
         {
           "name": "irritant",
           "trigger": "pp > 0.0001"
-        },
-        {
-          "name": "cloud-former",
-          "trigger": "temp < 188"
-        },
-        {
-          "name": "visible-fumes",
-          "trigger": "pp > 0.05 AND H2O_gas_present"
         }
       ]
     },
@@ -725,10 +561,6 @@
         {
           "name": "highly-corrosive",
           "trigger": "always"
-        },
-        {
-          "name": "cloud-former",
-          "trigger": "temp < 610"
         },
         {
           "name": "heavy-gas",
@@ -759,10 +591,6 @@
           "trigger": "pp > 0.001"
         },
         {
-          "name": "cloud-former",
-          "trigger": "temp < 373"
-        },
-        {
           "name": "organic-solvent",
           "trigger": "pp > 1.0"
         }
@@ -781,10 +609,6 @@
         {
           "name": "solvent-hazard",
           "trigger": "pp > 0.5"
-        },
-        {
-          "name": "cloud-former",
-          "trigger": "temp < 483"
         },
         {
           "name": "toxic-human",

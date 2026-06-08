@@ -6,7 +6,7 @@ import { calculateSurfaceRadiation } from '../physics/radiation';
 import { classifyBody } from '../system/classification';
 import { makeupFractions } from '../physics/makeup';
 import { surfaceTempRange } from '../physics/tidalThermal';
-import { deriveFluidLayers } from '../physics/fluidLayers';
+import { deriveFluidLayers, cloudColourName } from '../physics/fluidLayers';
 import { deriveMagnetism } from '../physics/magnetism';
 import { deriveGeoActivity } from '../physics/geoActivity';
 import { deriveApparentColorParts } from '../rendering/apparentColor';
@@ -409,7 +409,8 @@ export class SystemProcessor implements ISystemProcessor {
         body.tags = (body.tags || []).filter((t) => !t.key.startsWith('structure/'));
         if (icyShell) body.tags.push({ key: 'structure/icy-shell' });
         if (fluidLayers.some((l) => l.location === 'subsurface')) body.tags.push({ key: 'structure/subsurface-ocean' });
-        if (mk.gas <= 0.5 && fluidLayers.some((l) => l.location === 'cloud')) body.tags.push({ key: 'structure/cloud-deck' });
+        const cloudLayer = mk.gas <= 0.5 ? fluidLayers.find((l) => l.location === 'cloud') : undefined;
+        if (cloudLayer) body.tags.push({ key: 'structure/cloud-deck', value: cloudColourName(cloudLayer.liquid) });
 
         // Magnetism profile (§2d) — descriptive read of the dynamo from interior conductive layers
         // + rotation; does NOT override the editable field strength. A salty subsurface ocean only

@@ -66,15 +66,28 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'structure/subsurface-ocean': { label: 'Subsurface ocean', description: 'A liquid ocean beneath an ice crust, kept liquid by tidal and/or radiogenic interior heat.' },
   'structure/cloud-deck':       { label: 'Cloud deck',       description: 'A condensed cloud layer in the atmosphere — affects albedo, apparent colour and greenhouse warming.' },
 
-  // --- Atmosphere gas roles (flat legacy keys, from the atmosphere composition) ---
-  'inert':            { label: 'Inert atmosphere',  description: 'The atmosphere is dominated by chemically unreactive gases (e.g. N₂, noble gases).' },
-  'buffer-gas':       { label: 'Buffer gas',        description: 'A non-reactive gas that dilutes the reactive components (like N₂ in Earth\'s air).' },
-  'oxidizer':         { label: 'Oxidizing',         description: 'Free oxidizer (e.g. O₂) is present — a strong sign of an active biosphere or photochemistry.' },
-  'breathable-human': { label: 'Breathable',        description: 'Composition and partial pressures fall within the human-breathable envelope.' },
-  'noble-gas':        { label: 'Noble gas',         description: 'A significant fraction of noble (chemically inert) gases.' },
-  'reducing':         { label: 'Reducing',          description: 'A reducing atmosphere (no free oxygen) — hydrogen/methane/ammonia chemistry.' },
-  'toxic':            { label: 'Toxic',             description: 'Contains gases toxic to humans at the modelled partial pressures.' },
-  'corrosive':        { label: 'Corrosive',         description: 'Contains corrosive species (e.g. sulfuric acid, halogens).' },
+  // --- Atmosphere gas roles (flat keys, from the atmosphere composition). RPG-relevant only:
+  //     survival, breathability, equipment hazards, world-building signals. ---
+  'inert':                     { label: 'Inert atmosphere', description: 'Dominated by chemically unreactive gases (N₂, noble gases) — no reactive chemistry.' },
+  'oxidizer':                  { label: 'Oxidizing',        description: 'Free oxidizer (e.g. O₂) present — a strong sign of an active biosphere or photochemistry.' },
+  'breathable-human':          { label: 'Breathable',       description: 'Composition and partial pressures fall within the human-breathable envelope.' },
+  'breathable-human-hypoxic':  { label: 'Thin but breathable', description: 'Breathable mix, but low partial pressure of O₂ — hypoxic, like high altitude.' },
+  'reducing':                  { label: 'Reducing',         description: 'No free oxygen — hydrogen/methane/ammonia chemistry (a young or abiotic world).' },
+  'corrosive':                 { label: 'Corrosive',        description: 'Corrosive species attack unprotected gear and suits over time.' },
+  'highly-corrosive':          { label: 'Highly corrosive', description: 'Aggressively corrosive (sulfuric acid, halogens) — rapid damage to gear and suits.' },
+  'toxic-human':               { label: 'Toxic',            description: 'Toxic to humans at the modelled partial pressures — a suit breach is dangerous.' },
+  'highly-toxic':              { label: 'Highly toxic',     description: 'Lethal in small doses (e.g. HCN) — even trace exposure is deadly.' },
+  'asphyxiant':                { label: 'Asphyxiant',       description: 'Displaces oxygen — suffocation risk without a sealed air supply.' },
+  'crushing-atmosphere':       { label: 'Crushing pressure',description: 'Surface pressure high enough to crush unrated equipment.' },
+  'acid-rain':                 { label: 'Acid rain',        description: 'Acidic precipitation — an environmental and equipment hazard.' },
+  'flammable':                 { label: 'Flammable',        description: 'Combustible gases present — ignition risk.' },
+  'oxygen-toxicity':           { label: 'Oxygen toxicity',  description: 'O₂ partial pressure high enough to be toxic over time.' },
+  'hypergolic':                { label: 'Hypergolic',       description: 'Spontaneously ignites on contact with common materials (e.g. F₂).' },
+  'lifting-gas':               { label: 'Lifting gas',      description: 'Low-density gas that supports airships / balloons.' },
+  'greenhouse':                { label: 'Greenhouse',       description: 'Contains greenhouse gases that warm the surface.' },
+  'super-greenhouse':          { label: 'Super-greenhouse', description: 'Extremely potent greenhouse forcing (e.g. CFCs).' },
+  'prebiotic-precursor':       { label: 'Prebiotic chemistry', description: 'Precursor molecules (e.g. HCN) relevant to the origin of life.' },
+  'technosignature':           { label: 'Technosignature',  description: 'Artificial gases (e.g. CFCs) — a sign of technology, not nature.' },
 
   // --- Habitability tiers ---
   'habitability/super':      { label: 'Super-habitable',  description: 'Better than Earth for life — a larger biosphere on durable plate tectonics, a mature stable system, a warm wet optimum. Scores above 100.' },

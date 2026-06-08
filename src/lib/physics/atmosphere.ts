@@ -2,6 +2,18 @@ import type { Atmosphere, RulePack, CelestialBody, Barycenter, Tag } from '../ty
 import { evaluateTagTriggers } from '../utils';
 import { G, UNIVERSAL_GAS_CONSTANT } from '../constants';
 
+// Atmosphere tags that USED to exist (cosmetic flavour ditched for the RPG use case, duplicates,
+// or superseded by the apparent-colour / fluid-layer / geology models). Stripped on every run so
+// legacy/saved data from the old atmosphere-preset era self-heals.
+const RETIRED_ATMOSPHERE_TAGS = [
+    'voice-changer', 'almond-smell', 'rotten-egg-smell', 'pungent', 'nitrogen-narcosis', 'leak-prone',
+    'abrasive-wind', 'steambath', 'buffer-gas', 'noble-gas', 'acidic-rain', 'visible-fumes', 'visible-gas',
+    'reactive', 'cloud-former', 'condensible-metal', 'condensible-rock', 'condensible-fuel', 'glass-haze',
+    'refractory', 'opaque', 'conductive-atmosphere', 'metal-embrittlement', 'volcanic',
+    // legacy thickness / preset descriptors
+    'thin', 'thick', 'exosphere', 'haze', 'hot'
+];
+
 function clamp(value: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, value));
 }
@@ -110,9 +122,10 @@ export function recalculateAtmosphereDerivedProperties(body: CelestialBody, allN
     // 5. Dynamic Tags
     const dynamicTags = calculateAtmosphereTags(body, pack);
     
-    // Merge tags: Keep existing non-atmosphere tags, replace atmosphere ones
-    // Atmosphere tags are those defined in gasPhysics.
-    const gasPhysicsTags = new Set<string>();
+    // Merge tags: keep existing non-atmosphere tags, replace the atmosphere ones. We strip both
+    // the CURRENT gasPhysics tags AND a RETIRED set — so removing a gas tag from the rulepack (or
+    // loading legacy/saved data from the old atmosphere-preset era) never strands an orphan tag.
+    const gasPhysicsTags = new Set<string>(RETIRED_ATMOSPHERE_TAGS);
     if (pack.gasPhysics) {
         Object.values(pack.gasPhysics).forEach(g => g.tags?.forEach(t => gasPhysicsTags.add(t.name)));
     }

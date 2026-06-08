@@ -65,29 +65,7 @@
       },
       "massKg": 3.285e+23,
       "radiusKm": 2439.7,
-      "tags": [
-        {
-          "key": "exosphere"
-        },
-        {
-          "key": "thin"
-        },
-        {
-          "key": "hot"
-        },
-        {
-          "key": "visible-gas"
-        },
-        {
-          "key": "condensible-metal"
-        },
-        {
-          "key": "cloud-former"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 439.7654525746886,
       "greenhouseTempK": 4.326640157213818e-9,
@@ -170,35 +148,7 @@
       },
       "massKg": 4.867e+24,
       "radiusKm": 6051.8,
-      "tags": [
-        {
-          "key": "Runaway Greenhouse Effect"
-        },
-        {
-          "key": "Geologically Active (Volcanism)"
-        },
-        {
-          "key": "thick"
-        },
-        {
-          "key": "greenhouse"
-        },
-        {
-          "key": "toxic-human"
-        },
-        {
-          "key": "crushing-atmosphere"
-        },
-        {
-          "key": "inert"
-        },
-        {
-          "key": "nitrogen-narcosis"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 231.64716965269596,
       "greenhouseTempK": 501.1240884959156,
@@ -279,26 +229,7 @@
       },
       "massKg": 5.972e+24,
       "radiusKm": 6371,
-      "tags": [
-        {
-          "key": "inert"
-        },
-        {
-          "key": "buffer-gas"
-        },
-        {
-          "key": "oxidizer"
-        },
-        {
-          "key": "breathable-human"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "habitability/earth-like"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "magneticField": {
         "strengthGauss": 0.5
@@ -399,17 +330,7 @@
       },
       "massKg": 7.342e+22,
       "radiusKm": 1737.4,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 270.2719558566556,
       "greenhouseTempK": 0,
@@ -478,20 +399,7 @@
       },
       "massKg": 6.39e+23,
       "radiusKm": 3389.5,
-      "tags": [
-        {
-          "key": "thin"
-        },
-        {
-          "key": "greenhouse"
-        },
-        {
-          "key": "inert"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 210.05318337065697,
       "greenhouseTempK": 5.811580890688286,
@@ -576,17 +484,7 @@
       },
       "massKg": 10600000000000000,
       "radiusKm": 11.2,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 218.6128563192256,
       "greenhouseTempK": 0,
@@ -653,17 +551,7 @@
       },
       "massKg": 1470000000000000,
       "radiusKm": 6.2,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 218.60615653208805,
       "greenhouseTempK": 0,
@@ -780,38 +668,7 @@
       },
       "massKg": 1.898e+27,
       "radiusKm": 69911,
-      "tags": [
-        {
-          "key": "planet/ringed"
-        },
-        {
-          "key": "lifting-gas"
-        },
-        {
-          "key": "reducing"
-        },
-        {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
-          "key": "haze-former"
-        },
-        {
-          "key": "habitability/none"
-        },
-        {
-          "key": "stability/marginal"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "magneticField": {
         "strengthGauss": 4.28
@@ -948,26 +805,7 @@
       },
       "massKg": 8.93e+22,
       "radiusKm": 1821.6,
-      "tags": [
-        {
-          "key": "Active Volcanism"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "tidal/hotspots"
-        },
-        {
-          "key": "volcanic"
-        },
-        {
-          "key": "cloud-former"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 118.25745818500486,
       "greenhouseTempK": 0.000001808328556691768,
@@ -1045,29 +883,7 @@
       },
       "massKg": 4.8e+22,
       "radiusKm": 1560.8,
-      "tags": [
-        {
-          "key": "exosphere"
-        },
-        {
-          "key": "thin"
-        },
-        {
-          "key": "Subsurface Ocean"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "tidal/hotspots"
-        },
-        {
-          "key": "oxidizer"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 118.23861315275127,
       "greenhouseTempK": 0,
@@ -1149,23 +965,7 @@
       },
       "massKg": 1.48e+23,
       "radiusKm": 2634.1,
-      "tags": [
-        {
-          "key": "exosphere"
-        },
-        {
-          "key": "thin"
-        },
-        {
-          "key": "Subsurface Ocean"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "magneticField": {
         "strengthGauss": 0.007
@@ -1239,20 +1039,7 @@
       },
       "massKg": 1.07e+23,
       "radiusKm": 2410.3,
-      "tags": [
-        {
-          "key": "exosphere"
-        },
-        {
-          "key": "thin"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 118.14678753671028,
       "greenhouseTempK": 0,
@@ -1323,38 +1110,7 @@
       },
       "massKg": 5.683e+26,
       "radiusKm": 58232,
-      "tags": [
-        {
-          "key": "planet/ringed"
-        },
-        {
-          "key": "lifting-gas"
-        },
-        {
-          "key": "reducing"
-        },
-        {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
-          "key": "haze-former"
-        },
-        {
-          "key": "habitability/none"
-        },
-        {
-          "key": "stability/marginal"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "magneticField": {
         "strengthGauss": 0.21
@@ -1491,29 +1247,7 @@
       },
       "massKg": 1.34e+23,
       "radiusKm": 2574.7,
-      "tags": [
-        {
-          "key": "haze"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "inert"
-        },
-        {
-          "key": "buffer-gas"
-        },
-        {
-          "key": "asphyxiant"
-        },
-        {
-          "key": "greenhouse"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 82.29223046412962,
       "greenhouseTempK": 13.809554021171161,
@@ -1600,32 +1334,7 @@
       },
       "massKg": 108000000000000000000,
       "radiusKm": 252.1,
-      "tags": [
-        {
-          "key": "Active Cryovolcanism (Plumes)"
-        },
-        {
-          "key": "Subsurface Ocean"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "cloud-former"
-        },
-        {
-          "key": "greenhouse"
-        },
-        {
-          "key": "lifting-gas"
-        },
-        {
-          "key": "reducing"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 87.16734055374522,
       "greenhouseTempK": 4.661779406414735e-8,
@@ -1710,20 +1419,7 @@
       },
       "massKg": 37500000000000000000,
       "radiusKm": 198.2,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "tidal/hotspots"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 87.16893220649908,
       "greenhouseTempK": 0,
@@ -1790,17 +1486,7 @@
       },
       "massKg": 2.3e+21,
       "radiusKm": 763.8,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 87.15856529139594,
       "greenhouseTempK": 0,
@@ -1866,17 +1552,7 @@
       },
       "massKg": 1.8e+21,
       "radiusKm": 734.5,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 87.06651678367676,
       "greenhouseTempK": 0,
@@ -1943,38 +1619,7 @@
       },
       "massKg": 8.681e+25,
       "radiusKm": 25362,
-      "tags": [
-        {
-          "key": "planet/ringed"
-        },
-        {
-          "key": "lifting-gas"
-        },
-        {
-          "key": "reducing"
-        },
-        {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
-          "key": "greenhouse"
-        },
-        {
-          "key": "haze-former"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "magneticField": {
         "strengthGauss": 0.23
@@ -2106,17 +1751,7 @@
       },
       "massKg": 3.4e+21,
       "radiusKm": 788.4,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 61.551694275874034,
       "greenhouseTempK": 0,
@@ -2182,17 +1817,7 @@
       },
       "massKg": 3e+21,
       "radiusKm": 761.4,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 61.550109216803385,
       "greenhouseTempK": 0,
@@ -2258,17 +1883,7 @@
       },
       "massKg": 1.29e+21,
       "radiusKm": 578.9,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 61.55432029976827,
       "greenhouseTempK": 0,
@@ -2335,38 +1950,7 @@
       },
       "massKg": 1.024e+26,
       "radiusKm": 24622,
-      "tags": [
-        {
-          "key": "planet/ringed"
-        },
-        {
-          "key": "lifting-gas"
-        },
-        {
-          "key": "reducing"
-        },
-        {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
-          "key": "greenhouse"
-        },
-        {
-          "key": "haze-former"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "magneticField": {
         "strengthGauss": 0.14
@@ -2501,29 +2085,7 @@
       },
       "massKg": 2.14e+22,
       "radiusKm": 1353.4,
-      "tags": [
-        {
-          "key": "Retrograde Orbit"
-        },
-        {
-          "key": "Captured Body"
-        },
-        {
-          "key": "Active Cryovolcanism (Plumes)"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "inert"
-        },
-        {
-          "key": "buffer-gas"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 49.17666062345122,
       "greenhouseTempK": 0.000020408335639210383,
@@ -2657,29 +2219,7 @@
       },
       "massKg": 1.303e+22,
       "radiusKm": 1188.3,
-      "tags": [
-        {
-          "key": "thin"
-        },
-        {
-          "key": "exosphere"
-        },
-        {
-          "key": "inert"
-        },
-        {
-          "key": "buffer-gas"
-        },
-        {
-          "key": "reducing"
-        },
-        {
-          "key": "habitability/none"
-        },
-        {
-          "key": "stability/very-unstable"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 42.947991060905515,
       "greenhouseTempK": 0.00005526266059632093,
@@ -2761,20 +2301,7 @@
       },
       "massKg": 1.58e+21,
       "radiusKm": 606,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "habitability/none"
-        },
-        {
-          "key": "stability/very-unstable"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "equilibriumTempK": 42.94793564513933,
       "greenhouseTempK": 0,
@@ -3153,11 +2680,7 @@
         },
         "n_rad_per_s": 8.027243170523019e-10
       },
-      "tags": [
-        {
-          "key": "barycenter/auto"
-        }
-      ]
+      "tags": []
     }
   ],
   "rulePackId": "starter-sf-pack",
