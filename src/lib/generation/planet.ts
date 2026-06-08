@@ -19,7 +19,8 @@ export function _generatePlanetaryBody(
     planetTypeOverride?: string,
     generateChildren: boolean = true,
     propertyOverrides?: Partial<CelestialBody>,
-    allowBelt: boolean = true
+    allowBelt: boolean = true,
+    skipRandomAtmosphere: boolean = false
 ): CelestialBody[] {
     const newNodes: CelestialBody[] = [];
 
@@ -34,7 +35,11 @@ export function _generatePlanetaryBody(
     if (isBelt && !(host.kind === 'body' && host.roleHint === 'planet')) {
         // ... Belt Generation (Refactored in Phase 1) ...
         const beltWidthRange = pack.distributions['belt_width_au_range']?.entries[0]?.value || [0.5, 1.5];
-        const widthAU = randomFromRange(rng, beltWidthRange[0], beltWidthRange[1]);
+        // Belts grind down with AGE: a young system still has its primordial debris (wide, massive
+        // belt); an old one has had it swept up or collisionally ground away (narrow). Factor ~1.7×
+        // at 0.1 Gyr → ~1× at 4.6 Gyr → ~0.45× past 10 Gyr.
+        const ageBeltFactor = Math.max(0.45, Math.min(1.7, 1.65 - 0.12 * age_Gyr));
+        const widthAU = randomFromRange(rng, beltWidthRange[0], beltWidthRange[1]) * ageBeltFactor;
         const centerAU = orbit.elements.a_AU;
 
         let radiusInnerKm = (centerAU - widthAU / 2) * AU_KM;
@@ -213,8 +218,10 @@ export function _generatePlanetaryBody(
 
     // --- Atmosphere Generation ---
     if (propertyOverrides?.atmosphere) {
-        // Already set via spread
-    } else {
+        // Already set via spread (e.g. a typed draw built its own atmosphere to classify correctly).
+    } else if (!skipRandomAtmosphere) {
+        // Legacy random atmosphere. Skipped for typed draws so the weirdness slider isn't bypassed by
+        // a random exotic (SO2/He…) atmosphere being slapped onto a deliberately-basic world.
         _generateAtmosphere(rng, pack, planet, features, planetType);
     }
 

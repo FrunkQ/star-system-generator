@@ -6,9 +6,12 @@ import type { CelestialBody, Barycenter, RulePack, System, Tag } from '$lib/type
 import { SeededRNG } from '../rng';
 import { bodyFactory } from '../core/BodyFactory';
 import { systemProcessor } from '../core/SystemProcessor';
-import { generatePlanets } from './planet-generation';
 import { _generatePlanetaryBody } from './planet';
+import { generateBodyOfType, viableTypesAt } from './generateBodyOfType';
+import { drawTypeForSlot } from './typeDraw';
+import { calculateOrbitalSlots } from './placement-strategy';
 import { randomFromRange, weightedChoice } from '../utils';
+import { calculateEquilibriumTemperature } from '../physics/temperature';
 import { ageStar, determineSpectralClass, type StarSeed, type StarPhase } from '../physics/stellar-evolution';
 import { G, AU_KM } from '../constants';
 
@@ -207,43 +210,77 @@ function geomSlots(innerAU: number, outerAU: number, maxCount: number, rng: Seed
   return slots;
 }
 
-// Place planets across a star hierarchy: an S-type mini-system around each leaf star, plus P-type
-// circumbinary planets around each tight barycentre. Each host gets its own small, disk-scaled count.
+const minOrbitFor = (s: CelestialBody) => {
+  const roche = (s.radiusKm * 2.44) / AU_KM;
+  const soot = ((s.radiusKm / 2) * Math.pow((s.temperatureK || 5000) / 1800, 2)) / AU_KM;
+  return Math.max(roche, soot, 0.05) * 1.2;
+};
+
+// A slot's equilibrium temperature (for the typed draw) via a probe orbit around the host.
+function teqAtSlot(host: CelestialBody | Barycenter, hostMassKg: number, aAU: number, nodes: (CelestialBody | Barycenter)[]): number {
+  const probe = { id: '__probe', kind: 'body', roleHint: 'planet', parentId: host.id,
+    orbit: { hostId: host.id, hostMu: G * hostMassKg, elements: { a_AU: Math.max(aAU, 1e-6), e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } } as any;
+  return calculateEquilibriumTemperature(probe, nodes, 0.3);
+}
+
+// Spawn ONE body at a slot: draw a fine type (physics-viable, then weirdness/star-weighted), BUILD it
+// to match that type (makeup/atmosphere/hydrosphere → the classifier lands on it), then run it through
+// _generatePlanetaryBody so moons/rings/belts still attach. Falls back to the basic broad-type
+// generator when no type survives the draw (e.g. weirdness 0 with nothing common viable there).
+function spawnTypedSlot(opts: {
+  host: CelestialBody | Barycenter; hostMassKg: number; aAU: number; name: string; idx: number;
+  nodes: (CelestialBody | Barycenter)[]; pack: RulePack; rng: SeededRNG; ageGyr: number;
+  weirdness: number; starClass: string; role: 'planet' | 'moon';
+}) {
+  const { host, hostMassKg, aAU, name, idx, nodes, pack, rng, ageGyr, weirdness, starClass, role } = opts;
+  const teq = teqAtSlot(host, hostMassKg, aAU, nodes);
+  const fps = pack.classifier?.fingerprints ?? [];
+  const fp = drawTypeForSlot(viableTypesAt(teq, role, fps), weirdness, starClass, rng, pack);
+  const orbit = { hostId: host.id, hostMu: G * hostMassKg, t0: Date.now(),
+    elements: { a_AU: aAU, e: randomFromRange(rng, 0.01, 0.12), i_deg: Math.pow(rng.nextFloat(), 3) * 12,
+      omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) } };
+  // generateBodyOfType wants a plain () => number RNG; adapt the SeededRNG instance.
+  const overrides = fp ? generateBodyOfType(fp, { distAU: aAU, hostMassKg, role, rng: () => rng.nextFloat(), teqK: teq }) : undefined;
+  // For a non-giant typed draw, the type's own recipe is authoritative — skip the legacy random
+  // atmosphere so weirdness isn't bypassed. Giants still need their H2/He envelope from it.
+  const isGiantType = fp ? /giant|jupiter|neptune|brown|puff/.test(fp.class) : false;
+  const built = _generatePlanetaryBody(rng, pack, host.id.split('-')[0], idx, host, orbit, name, nodes, ageGyr, fp?.class, true, overrides, true, !!fp && !isGiantType);
+  nodes.push(...built);
+}
+
+// Single star: an orbit-slot system around it, each slot a TYPED draw (weirdness/star-weighted).
+function placePlanetsSingleTyped(
+  star: CelestialBody, nodes: (CelestialBody | Barycenter)[], pack: RulePack, rng: SeededRNG,
+  ageGyr: number, countMultiplier: number, weirdness: number
+) {
+  const count = Math.max(0, Math.min(12, Math.round(planetCountForStar(star, pack, rng) * countMultiplier)));
+  const starClass = star.classes?.[0] ?? 'star/G';
+  calculateOrbitalSlots(star, pack, rng, count).forEach((a, i) =>
+    spawnTypedSlot({ host: star, hostMassKg: star.massKg || SOLAR, aAU: a, name: `${star.name} ${String.fromCharCode(98 + i)}`, idx: i, nodes, pack, rng, ageGyr, weirdness, starClass, role: 'planet' }));
+}
+
+// Multi-star: an S-type typed system around each leaf star (richness set by the star's TYPE), plus
+// P-type circumbinary typed planets around each tight barycentre.
 function placePlanetsHierarchical(
   starHosts: StarHost[], baryHosts: BaryHost[], nodes: (CelestialBody | Barycenter)[],
-  pack: RulePack, rng: SeededRNG, ageGyr: number, countMultiplier: number
+  pack: RulePack, rng: SeededRNG, ageGyr: number, countMultiplier: number, weirdness: number
 ) {
-  const minOrbitFor = (s: CelestialBody) => {
-    const roche = (s.radiusKm * 2.44) / AU_KM;
-    const soot = ((s.radiusKm / 2) * Math.pow((s.temperatureK || 5000) / 1800, 2)) / AU_KM;
-    return Math.max(roche, soot, 0.05) * 1.2;
-  };
+  const primaryClass = starHosts[0]?.star.classes?.[0] ?? 'star/G';
   let idx = 0;
-  const make = (host: CelestialBody | Barycenter, hostMassKg: number, aAU: number, namePrefix: string, n: number) => {
-    const orbit = { hostId: host.id, hostMu: G * hostMassKg, t0: Date.now(),
-      elements: { a_AU: aAU, e: randomFromRange(rng, 0.01, 0.12), i_deg: Math.pow(rng.nextFloat(), 3) * 12,
-        omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) } };
-    const built = _generatePlanetaryBody(rng, pack, host.id.split('-')[0], idx++, host, orbit,
-      `${namePrefix}${String.fromCharCode(98 + n)}`, nodes, ageGyr, undefined, true);
-    nodes.push(...built);
-  };
-
-  // S-type: a little system around each star — its richness set by the star's TYPE (massive stars
-  // get few, dwarfs many), then scaled by the disk-mass knob and bounded by the stable zone.
   for (const h of starHosts) {
     const inner = minOrbitFor(h.star);
     const outer = Math.min(h.outerAU, 40); // never sprawl past a sane disk extent
     const maxCount = Math.max(0, Math.min(8, Math.round(planetCountForStar(h.star, pack, rng) * countMultiplier)));
-    geomSlots(inner, outer, maxCount, rng).forEach((a, n) => make(h.star, h.star.massKg || SOLAR, a, `${h.star.name} `, n));
+    const starClass = h.star.classes?.[0] ?? 'star/G';
+    geomSlots(inner, outer, maxCount, rng).forEach((a, n) =>
+      spawnTypedSlot({ host: h.star, hostMassKg: h.star.massKg || SOLAR, aAU: a, name: `${h.star.name} ${String.fromCharCode(98 + n)}`, idx: idx++, nodes, pack, rng, ageGyr, weirdness, starClass, role: 'planet' }));
   }
-
-  // P-type: circumbinary planets around each tight pair (a modest disk). Skip pairs too wide for a
-  // stable inner disk.
   for (const h of baryHosts) {
     if (h.innerAU > 50) continue; // a very wide pair has no close circumbinary disk
     const outer = Math.min(h.outerAU, h.innerAU * 3.5);
     const maxCount = Math.max(0, Math.min(4, Math.round(2 * countMultiplier)));
-    geomSlots(h.innerAU, outer, maxCount, rng).forEach((a, n) => make(h.bary, h.bary.effectiveMassKg || SOLAR, a, `${h.bary.name} `, n));
+    geomSlots(h.innerAU, outer, maxCount, rng).forEach((a, n) =>
+      spawnTypedSlot({ host: h.bary, hostMassKg: h.bary.effectiveMassKg || SOLAR, aAU: a, name: `${h.bary.name} ${String.fromCharCode(98 + n)}`, idx: idx++, nodes, pack, rng, ageGyr, weirdness, starClass: primaryClass, role: 'planet' }));
   }
 }
 
@@ -260,12 +297,15 @@ export function generateSystemFromConfig(seed: string, pack: RulePack, config: G
   const diskMass = config.knobs?.diskMass ?? 0.5;
   const countMultiplier = 0.4 + diskMass * 1.6; // 0.4× (sparse) → 2× (massive)
   if (!config.emptyPlanets) {
+    // Weirdness drives the TYPE rarity (basic rock → exotic); the other knobs shape standard worlds.
+    const weirdness = config.knobs?.weirdness ?? 0.5;
+    const age = config.ageGyr ?? 4.6;
     if (hierarchical) {
-      // 2+ stars: an S-type system around each star + P-type circumbinary planets around tight pairs.
-      placePlanetsHierarchical(starHosts, baryHosts, nodes, pack, rng, config.ageGyr ?? 4.6, countMultiplier);
+      // 2+ stars: a typed S-type system around each star + P-type circumbinary typed planets.
+      placePlanetsHierarchical(starHosts, baryHosts, nodes, pack, rng, age, countMultiplier, weirdness);
     } else {
-      // Single star: the established slot-based placement.
-      generatePlanets(systemRoot, nodes, pack, rng, systemName, isBinary, starA, starB as any, false, { countMultiplier });
+      // Single star: typed slot-based placement.
+      placePlanetsSingleTyped(starA, nodes, pack, rng, age, countMultiplier, weirdness);
     }
   }
 
