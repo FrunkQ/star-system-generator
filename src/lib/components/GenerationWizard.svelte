@@ -21,6 +21,7 @@
   let selectedStars: StarSeed[] = [];
   let ageGyr = 4.6;
   let knobs: GenerationKnobs = { metallicity: 0.5, diskMass: 0.5, dynamicalHistory: 0.5, rarity:0.5 };
+  let naming: 'catalogue' | 'scientific' | 'named' = 'scientific';  // lead with a plausible Bayer style
   let busy = false;
   let chosenExample = '';
 
@@ -110,7 +111,7 @@
     busy = true;
     try {
       const seed = `gen-${Date.now()}-${Math.floor(Math.random() * 1e5)}`;
-      const system = generateSystemFromConfig(seed, rulePack, { seeds: selectedStars, ageGyr, emptyPlanets, knobs });
+      const system = generateSystemFromConfig(seed, rulePack, { seeds: selectedStars, ageGyr, emptyPlanets, knobs, naming });
       dispatch('generate', { system });
     } finally { busy = false; }
   }
@@ -204,6 +205,18 @@
         </section>
 
         <section class="block">
+          <h3>Naming <span class="muted">— charts the system; rename anything afterwards</span></h3>
+          <div class="seg">
+            {#each [['catalogue', 'Catalogue', 'HD 184738 · GJ 412'], ['scientific', 'Scientific', 'Epsilon Eridani'], ['named', 'Named', 'Hogan’s Star']] as [val, label, eg]}
+              <button class="seg-btn" class:on={naming === val} on:click={() => (naming = val)} title={`e.g. ${eg}`}>
+                <span class="seg-label">{label}</span><span class="seg-eg">{eg}</span>
+              </button>
+            {/each}
+          </div>
+          <p class="note">Planets are numbered by their star; habitable worlds get a proper name on Scientific &amp; Named.</p>
+        </section>
+
+        <section class="block">
           <h3>System age: {ageGyr < 1 ? `${fmt(ageGyr * 1000, 0)} Myr` : `${fmt(ageGyr)} Gyr`}</h3>
           <!-- LOG age axis to the longest-lived star's death: a massive star can die before an M dwarf
                matures. value/on:input keep ageGyr canonical while the thumb moves in log space. -->
@@ -258,7 +271,7 @@
 </div>
 
 <style>
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 3vh 2vw; }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 3vh 2vw; }
   .modal { background: var(--bg-app, #0b0d12); border: 1px solid var(--border, #2a2d36); border-radius: 10px; width: min(820px, 97vw); max-height: 92vh; display: flex; flex-direction: column; color: var(--text, #e8e8e8); box-shadow: 0 12px 48px rgba(0,0,0,0.5); }
   header { display: flex; align-items: flex-start; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border, #2a2d36); }
   h2 { margin: 0; font-size: 1.1rem; color: var(--accent, #ff5a1f); }
@@ -273,6 +286,12 @@
   .presets { display: flex; flex-wrap: wrap; gap: 6px; }
   .preset { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--link); cursor: pointer; font-size: 0.85em; }
   .preset:hover { background: var(--bg-control); border-color: var(--accent); }
+  .seg { display: flex; gap: 6px; flex-wrap: wrap; }
+  .seg-btn { flex: 1 1 0; min-width: 120px; display: flex; flex-direction: column; gap: 2px; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--text); cursor: pointer; text-align: left; }
+  .seg-btn:hover { border-color: var(--accent); }
+  .seg-btn.on { border-color: var(--accent, #ff5a1f); background: color-mix(in srgb, var(--accent, #ff5a1f) 16%, var(--bg-panel)); }
+  .seg-label { font-size: 0.85em; font-weight: 600; }
+  .seg-eg { font-size: 0.72em; color: var(--text-faint, #8a8a8a); font-family: ui-monospace, monospace; }
   .hr-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; min-height: 240px; }
   .muted { color: var(--text-faint, #8a8a8a); font-weight: 400; font-size: 0.85em; }
   .slider { width: 100%; }

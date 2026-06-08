@@ -12,6 +12,7 @@ import { drawTypeForSlot } from './typeDraw';
 import { calculateOrbitalSlots } from './placement-strategy';
 import { randomFromRange, weightedChoice } from '../utils';
 import { calculateEquilibriumTemperature } from '../physics/temperature';
+import { makeSystemName, makeWorldName, namesHabitableWorlds, type NamingStrategy } from './naming';
 import { ageStar, determineSpectralClass, type StarSeed, type StarPhase } from '../physics/stellar-evolution';
 import { G, AU_KM } from '../constants';
 
@@ -28,6 +29,7 @@ export interface GenerationConfig {
   emptyPlanets?: boolean;      // create the star(s) only (GM adds planets via §4c)
   name?: string;
   knobs?: GenerationKnobs;
+  naming?: NamingStrategy;      // how to name the system/stars/worlds (default 'scientific')
 }
 
 // Apply the metallicity + dynamical-history knobs to the freshly-generated bodies (before the
@@ -190,7 +192,7 @@ function setupStarsFromSeeds(seeds: StarSeed[], pack: RulePack, ageGyr: number |
   };
 
   const root = build(plan, null, Infinity);
-  return { nodes, systemRoot: root, systemName: `${baseName} System`, isBinary: true, hierarchical: true,
+  return { nodes, systemRoot: root, systemName: baseName, isBinary: true, hierarchical: true,
     starA: starHosts[0].star, starB: starHosts[1]?.star, starHosts, baryHosts };
 }
 
@@ -272,7 +274,7 @@ function placePlanetsSingleTyped(
 // P-type circumbinary typed planets around each tight barycentre.
 function placePlanetsHierarchical(
   starHosts: StarHost[], baryHosts: BaryHost[], nodes: (CelestialBody | Barycenter)[],
-  pack: RulePack, rng: SeededRNG, ageGyr: number, countMultiplier: number, rarity: number
+  pack: RulePack, rng: SeededRNG, ageGyr: number, countMultiplier: number, rarity: number, systemName: string
 ) {
   const primaryClass = starHosts[0]?.star.classes?.[0] ?? 'star/G';
   let idx = 0;
@@ -289,13 +291,14 @@ function placePlanetsHierarchical(
     const outer = Math.min(h.outerAU, h.innerAU * 3.5);
     const maxCount = Math.max(0, Math.min(4, Math.round(2 * countMultiplier)));
     geomSlots(h.innerAU, outer, maxCount, rng).forEach((a, n) =>
-      spawnTypedSlot({ host: h.bary, hostMassKg: h.bary.effectiveMassKg || SOLAR, aAU: a, name: `${h.bary.name} ${String.fromCharCode(98 + n)}`, idx: idx++, nodes, pack, rng, ageGyr, rarity, starClass: primaryClass, role: 'planet' }));
+      spawnTypedSlot({ host: h.bary, hostMassKg: h.bary.effectiveMassKg || SOLAR, aAU: a, name: `${systemName} ${String.fromCharCode(98 + n)}`, idx: idx++, nodes, pack, rng, ageGyr, rarity, starClass: primaryClass, role: 'planet' }));
   }
 }
 
 export function generateSystemFromConfig(seed: string, pack: RulePack, config: GenerationConfig): System {
   const rng = new SeededRNG(seed);
-  const baseName = config.name || `System ${seed.slice(-5)}`;
+  const naming = config.naming ?? 'scientific';
+  const baseName = config.name || makeSystemName(naming, rng);
   if (!config.seeds || config.seeds.length === 0) {
     throw new Error('generateSystemFromConfig requires at least one star seed (use generateSystem for fully random).');
   }
@@ -311,7 +314,7 @@ export function generateSystemFromConfig(seed: string, pack: RulePack, config: G
     const age = config.ageGyr ?? 4.6;
     if (hierarchical) {
       // 2+ stars: a typed S-type system around each star + P-type circumbinary typed planets.
-      placePlanetsHierarchical(starHosts, baryHosts, nodes, pack, rng, age, countMultiplier, rarity);
+      placePlanetsHierarchical(starHosts, baryHosts, nodes, pack, rng, age, countMultiplier, rarity, systemName);
     } else {
       // Single star: typed slot-based placement.
       placePlanetsSingleTyped(starA, nodes, pack, rng, age, countMultiplier, rarity);
@@ -326,5 +329,18 @@ export function generateSystemFromConfig(seed: string, pack: RulePack, config: G
     age_Gyr: config.ageGyr ?? 4.6, nodes, rulePackId: pack.id, rulePackVersion: pack.version,
     tags: [], toytownFactor: 0, visualScalingMultiplier: 0.5, isManuallyEdited: false
   };
-  return systemProcessor.process(system, pack);
+  const processed = systemProcessor.process(system, pack);
+
+  // Habitable worlds are charted & settled, so they earn a proper name (scientific & named strategies;
+  // catalogue stays cold). Done AFTER processing, which is what determines habitability.
+  if (namesHabitableWorlds(naming)) {
+    const used = new Set<string>();
+    for (const n of processed.nodes) {
+      const b = n as CelestialBody;
+      if (b.kind === 'body' && b.roleHint === 'planet' && (b.habitabilityScore ?? 0) >= 40) {
+        b.name = makeWorldName(rng, used);
+      }
+    }
+  }
+  return processed;
 }
