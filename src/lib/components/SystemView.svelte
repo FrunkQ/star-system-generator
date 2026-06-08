@@ -17,6 +17,7 @@
   import TimeDisplay from './TimeDisplay.svelte';
   import FullscreenButton from './FullscreenButton.svelte';
   import { railCollapsed } from '$lib/railStore';
+  import { trueColorMode } from '$lib/rendering/colorModeStore';
   import GmNotesEditor from './GmNotesEditor.svelte';
   import ZoneKey from './ZoneKey.svelte';
   import ContextMenu from './ContextMenu.svelte'; 
@@ -1809,6 +1810,7 @@
                       <label><input type="checkbox" bind:checked={showTravellerZones} /> Traveller zones</label>
                     {/if}
                     <label><input type="checkbox" bind:checked={showVectors} /> Vectors</label>
+                    <label title="Show each body's derived true colour vs broad per-class colours"><input type="checkbox" bind:checked={$trueColorMode} /> True colour</label>
                     <div class="ov-seg" role="group" aria-label="Orbit scale">
                       <button class:active={toytownOn} on:click={() => setScaleMode(true)} title="Compressed spacing so the whole system fits one screen">Toytown</button>
                       <button class:active={!toytownOn} on:click={() => setScaleMode(false)} title="True linear AU spacing">Real</button>

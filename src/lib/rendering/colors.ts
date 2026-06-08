@@ -1,6 +1,8 @@
 import type { CelestialBody, SystemNode } from "../types";
 import { browser } from "$app/environment";
+import { get } from "svelte/store";
 import { paletteOverrides, resolveToken } from "$lib/styles/paletteStore";
+import { trueColorMode } from "$lib/rendering/colorModeStore";
 
 // Canonical body/star colours. Each entry is [css-token, default-hex]. The default hexes
 // are the historical values, so nothing changes visually; reading them through the token
@@ -110,9 +112,9 @@ export function getPlanetColor(node: CelestialBody): string {
   if (node.roleHint === 'belt') return p.body.belt;
   if (node.tags?.some(t => t.key === 'habitability/earth-like' || t.key === 'habitability/human')) return p.body.habitable;
   if (node.biosphere) return p.body.biosphere;
-  // Prefer the derived true colour (makeup + atmosphere + temperature) when present, so each
-  // body shows its real hue instead of one swatch per class.
-  if (node.apparentColorHex) return node.apparentColorHex;
+  // Prefer the derived true colour (makeup + atmosphere + temperature) when present AND the
+  // orrery is in true-colour mode; otherwise fall through to the broad per-class swatch.
+  if (node.apparentColorHex && get(trueColorMode)) return node.apparentColorHex;
   if (node.classes?.some(c => c.includes('brown-dwarf'))) return p.body.brownDwarf;
   if (node.classes?.some(c => c.includes('ice-giant'))) return p.body.iceGiant;
   if (node.classes?.some(c => c.includes('gas-giant'))) return p.body.gasGiant;
