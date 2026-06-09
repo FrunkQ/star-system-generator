@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.9-alpha - 9th Jun 2026
+
+* Printed report: added a **Geology** (tectonic regime) row to every body/moon, matching the field guide's depth.
+
 ## v2.0.8-alpha - 9th Jun 2026
 
 * **Field Guide — full detail + branding**:
