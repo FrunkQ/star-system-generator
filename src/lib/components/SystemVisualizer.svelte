@@ -652,6 +652,17 @@
       onLongPress: ({ x, y }: { x: number; y: number }) => openContextMenu(x, y)
   };
 
+  // "#rrggbb" / "#rgb" / "rgb(...)" → "r,g,b" for building rgba() gradients.
+  function hexToRgbTriplet(c: string): string {
+      if (!c) return '255,255,255';
+      if (c.startsWith('rgb')) { const m = c.match(/\d+/g); return m ? m.slice(0, 3).join(',') : '255,255,255'; }
+      let h = c.replace('#', '');
+      if (h.length === 3) h = h.split('').map((x) => x + x).join('');
+      const n = parseInt(h, 16);
+      if (Number.isNaN(n)) return '255,255,255';
+      return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
+  }
+
   function drawSystem(ctx: CanvasRenderingContext2D) {
       if (!system || !zoom) return;
       const { width, height } = canvas;
@@ -754,6 +765,12 @@
               drawConstructGlyph(ctx, node as CelestialBody, rx, ry, 8 / zoom);
           }
       }
+      // Primary star (most massive) world position — drives the day/night terminator on bodies.
+      const primaryStarNode = system.nodes
+          .filter((n) => n.kind === 'body' && (n as any).roleHint === 'star')
+          .sort((a: any, b: any) => (b.massKg || 0) - (a.massKg || 0))[0];
+      const primaryStarPos = primaryStarNode ? scaledWorldPositions.get(primaryStarNode.id) : null;
+
       for (const node of system.nodes) {
           const pos = scaledWorldPositions.get(node.id);
           if (!pos || node.kind !== 'body') continue;
@@ -767,8 +784,22 @@
           else if (node.roleHint === 'moon') minRadiusPx = 1;
           const minRadiusInWorld = minRadiusPx / zoom;
           const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
-          
-          ctx.beginPath(); 
+
+          // #5 Star glow — a soft additive halo behind the disc (not for black holes).
+          if (node.roleHint === 'star' && !node.classes?.some((c) => c.includes('BH'))) {
+              const glowR = finalRadius * 3.4;
+              const col = hexToRgbTriplet(getNodeColor(node));
+              const grad = ctx.createRadialGradient(rx, ry, finalRadius * 0.5, rx, ry, glowR);
+              grad.addColorStop(0, `rgba(${col},0.5)`);
+              grad.addColorStop(0.35, `rgba(${col},0.16)`);
+              grad.addColorStop(1, `rgba(${col},0)`);
+              ctx.save();
+              ctx.globalCompositeOperation = 'lighter';
+              ctx.beginPath(); ctx.arc(rx, ry, glowR, 0, 2 * Math.PI); ctx.fillStyle = grad; ctx.fill();
+              ctx.restore();
+          }
+
+          ctx.beginPath();
           ctx.arc(rx, ry, finalRadius, 0, 2 * Math.PI);
 
           // Custom Rendering for Black Holes
@@ -785,8 +816,25 @@
               ctx.strokeStyle = '#444444'; // Subtle horizon visibility
               ctx.stroke();
           } else {
-              ctx.fillStyle = getNodeColor(node); 
+              ctx.fillStyle = getNodeColor(node);
               ctx.fill();
+          }
+
+          // #10 Night side — shade the hemisphere facing away from the primary star (skip stars/BH;
+          // only when the disc is big enough on screen to read).
+          if (node.roleHint !== 'star' && primaryStarPos && finalRadius * zoom > 3) {
+              const dx = primaryStarPos.x - pos.x, dy = primaryStarPos.y - pos.y;
+              const len = Math.hypot(dx, dy) || 1;
+              const ux = dx / len, uy = dy / len; // unit vector toward the star
+              ctx.save();
+              ctx.beginPath(); ctx.arc(rx, ry, finalRadius, 0, 2 * Math.PI); ctx.clip();
+              const g = ctx.createLinearGradient(rx + ux * finalRadius, ry + uy * finalRadius, rx - ux * finalRadius, ry - uy * finalRadius);
+              g.addColorStop(0, 'rgba(0,0,0,0)');
+              g.addColorStop(0.55, 'rgba(0,0,0,0.06)');
+              g.addColorStop(1, 'rgba(0,0,0,0.55)');
+              ctx.fillStyle = g;
+              ctx.beginPath(); ctx.arc(rx, ry, finalRadius, 0, 2 * Math.PI); ctx.fill();
+              ctx.restore();
           }
       }
       if (completedPlans && completedPlans.length > 0) {
