@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import type { System, RulePack } from '$lib/types';
+import type { System, RulePack, Starmap } from '$lib/types';
 import type { PanState } from '$lib/viewport/stores';
 
 export type ViewSettings = {
@@ -24,7 +24,11 @@ export type BroadcastMessage =
   | { type: 'SYNC_TIME'; payload: TimeState }
   | { type: 'SYNC_CRT_MODE'; payload: boolean }
   | { type: 'SYNC_GREENSCREEN'; payload: boolean }
-  | { type: 'REQUEST_SYNC'; payload: string | null };
+  | { type: 'REQUEST_SYNC'; payload: string | null }
+  // Companion App (whole campaign): the redacted starmap, requested + streamed independently of the
+  // projector's per-system SYNC_SYSTEM, so both can be served from the one session.
+  | { type: 'SYNC_STARMAP'; payload: Starmap }
+  | { type: 'REQUEST_STARMAP'; payload: string | null };
 
 type BroadcastEnvelope = {
   sessionId: string | null;
@@ -81,6 +85,7 @@ class BroadcastService {
         this.peerOut = conn;
         conn.on('open', () => {
           conn.send({ sessionId: null, message: { type: 'REQUEST_SYNC', payload: sessionId } });
+          conn.send({ sessionId: null, message: { type: 'REQUEST_STARMAP', payload: sessionId } });
         });
         conn.on('data', (data: any) => this.handleMessage(data));
         conn.on('error', () => { /* ignore; local channel may still serve */ });
@@ -170,6 +175,11 @@ class BroadcastService {
 
   // Handlers for incoming messages
   public onRequestSync: ((requestingId: string | null) => void) | null = null;
+  // Companion App: set by the catalogue (receiver) to get the whole redacted starmap, and by the
+  // host owner (+page) to answer a guide's REQUEST_STARMAP. Separate from onRequestSync so the
+  // projector (per-system) and the catalogue (whole map) can both be served by one session.
+  public onStarmapUpdate: ((map: Starmap) => void) | null = null;
+  public onRequestStarmap: ((requestingId: string | null) => void) | null = null;
 
   private handleMessage(data: any) {
       // Check if this is an envelope or legacy message
@@ -229,6 +239,16 @@ class BroadcastService {
                    const targetId = msg.payload;
                    if (targetId && targetId !== this.sessionId) return;
                    this.onRequestSync(msg.payload);
+              }
+              break;
+          case 'SYNC_STARMAP':
+              if (!this.isSender && this.onStarmapUpdate) this.onStarmapUpdate(msg.payload);
+              break;
+          case 'REQUEST_STARMAP':
+              if (this.isSender && this.onRequestStarmap) {
+                   const targetId = msg.payload;
+                   if (targetId && targetId !== this.sessionId) return;
+                   this.onRequestStarmap(msg.payload);
               }
               break;
       }

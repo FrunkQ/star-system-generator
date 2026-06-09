@@ -13,7 +13,7 @@
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import CRTOverlay from '$lib/components/CRTOverlay.svelte';
   import { AU_KM, G } from '$lib/constants';
-  import type { System, RulePack, CelestialBody } from '$lib/types';
+  import type { System, RulePack, CelestialBody, Starmap } from '$lib/types';
 
   type ThemeKey = 'green' | 'amber' | 'guide' | 'clean' | 'console';
   interface ThemeDef {
@@ -35,7 +35,11 @@
   const EARTH_GRAVITY = 9.80665;
   const EARTH_MASS_KG = 5.972e24;
 
-  let system: System | null = null;
+  // The guide is campaign-wide: the GM broadcasts the whole redacted starmap; the player browses
+  // systems and drills into one. (Systems whose main star is hidden never arrive — see
+  // computePlayerStarmapSnapshot.)
+  let starmap: Starmap | null = null;
+  let selectedSystemId: string | null = null;
   let rulePack: RulePack | null = null;
   let sessionId: string | null = null;
   let themeKey: ThemeKey = 'green';
@@ -46,15 +50,19 @@
   // the standard player redaction (mirrors the printed report's "include constructs" option).
   let includeConstructs = true;
 
-  // The system the guide actually shows: optionally with constructs stripped.
-  $: displaySystem = (!system || includeConstructs)
-    ? system
-    : { ...system, nodes: system.nodes.filter((n) => n.kind !== 'construct') };
+  $: selectedSystemNode = starmap?.systems.find((s) => s.id === selectedSystemId) || null;
+  // The system the guide actually shows: the selected one, optionally with constructs stripped.
+  $: displaySystem = (() => {
+    const sys = selectedSystemNode?.system ?? null;
+    if (!sys || includeConstructs) return sys;
+    return { ...sys, nodes: sys.nodes.filter((n) => n.kind !== 'construct') };
+  })();
 
-  // Live clock (mirrors the projector animation loop so the interactive tier ticks).
+  // Live clock for the interactive tier. Not synced to the GM at the starmap level — we just keep
+  // the orbital plot gently in motion so it feels alive.
   let currentTime = Date.now();
-  let isPlaying = false;
-  let timeScale = 0;
+  let isPlaying = true;
+  let timeScale = 86400; // ~1 day per second
   let rafId = 0;
 
   // Interactive-tier selection.
@@ -128,6 +136,25 @@
     return `${b.atmosphere.name || 'Unknown'} (${p < 0.001 ? '<0.001' : p.toFixed(2)} bar)`;
   }
 
+  // One-line contents summary for a system card on the starmap-level list.
+  function systemSummary(node: Starmap['systems'][number]): string {
+    const ns = node.system?.nodes ?? [];
+    const isStar = (n: any) => n.roleHint === 'star' || (Array.isArray(n.classes) && n.classes.some((c: string) => String(c).startsWith('star/')));
+    let stars = 0, planets = 0, moons = 0, constructs = 0;
+    for (const n of ns as any[]) {
+      if (n.kind === 'construct') { if (includeConstructs) constructs++; continue; }
+      if (isStar(n)) stars++;
+      else if (n.roleHint === 'moon') moons++;
+      else if (n.roleHint === 'planet' || n.roleHint === 'dwarf-planet') planets++;
+    }
+    const parts: string[] = [];
+    if (stars) parts.push(`${stars} star${stars > 1 ? 's' : ''}`);
+    if (planets) parts.push(`${planets} planet${planets > 1 ? 's' : ''}`);
+    if (moons) parts.push(`${moons} moon${moons > 1 ? 's' : ''}`);
+    if (constructs) parts.push(`${constructs} construct${constructs > 1 ? 's' : ''}`);
+    return parts.join(' · ') || 'uncharted';
+  }
+
   onMount(async () => {
     const params = new URLSearchParams(window.location.search);
     sessionId = params.get('sid');
@@ -144,21 +171,25 @@
       console.error('Catalogue: failed to load rulepack', e);
     }
 
+    // Receiver setup (filtering + cross-device peer dial). The per-system callbacks are unused at
+    // the starmap level; we take the whole map via onStarmapUpdate below.
     broadcastService.initReceiver(
-      (sys) => { system = sys; lastUpdate = Date.now(); connected = true; },
+      () => {},
       (pack) => { rulePack = pack; },
-      (id) => { focusedBodyId = id; },
-      () => { /* camera: catalogue is player-driven, ignore the GM camera */ },
-      () => { /* view settings: not used in catalogue */ },
-      (time) => {
-        isPlaying = time.isPlaying;
-        timeScale = time.timeScale;
-        if (Math.abs(currentTime - time.currentTime) > 1000) currentTime = time.currentTime;
-      },
-      () => { /* GM crt toggle: catalogue uses its own theme */ },
-      () => { /* greenscreen: n/a */ },
+      () => {},
+      () => {},
+      () => {},
+      () => {},
+      () => {},
+      () => {},
       sessionId
     );
+    broadcastService.onStarmapUpdate = (map) => {
+      starmap = map;
+      lastUpdate = Date.now();
+      connected = true;
+    };
+    broadcastService.sendMessage({ type: 'REQUEST_STARMAP', payload: sessionId });
     startClock();
   });
 
@@ -169,14 +200,17 @@
 </script>
 
 <svelte:head>
-  <title>{system ? system.name : 'Field Guide'} — Catalogue</title>
+  <title>{selectedSystemNode?.name ?? starmap?.name ?? 'Field Guide'} — Catalogue</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 </svelte:head>
 
 <main class="catalogue tint-{theme.tint} skin-{themeKey}" class:interactive={theme.tier === 'interactive'}>
   <!-- Device status bar -->
   <header class="statusbar">
-    <span class="sys-name">{system ? system.name.toUpperCase() : 'NO SIGNAL'}</span>
+    {#if selectedSystemId}
+      <button class="back-btn" on:click={() => { selectedSystemId = null; selectedBody = null; }} title="Back to all systems">‹ Systems</button>
+    {/if}
+    <span class="sys-name">{selectedSystemNode ? selectedSystemNode.name.toUpperCase() : (starmap ? (starmap.name || 'STARMAP').toUpperCase() : 'NO SIGNAL')}</span>
     <span class="status" class:live={connected} class:offline={!connected}>
       {#if connected}● LIVE{:else}○ GM OFFLINE — last {nowLabel}{/if}
     </span>
@@ -197,21 +231,42 @@
     </div>
   {/if}
 
-  {#if themeKey === 'guide' && system}
-    <div class="guide-banner">A traveller's guide to {system.name} — friendly, illustrated, and mostly accurate.</div>
+  {#if themeKey === 'guide' && (selectedSystemNode || starmap)}
+    <div class="guide-banner">A traveller's guide to {selectedSystemNode?.name ?? starmap?.name} — friendly, illustrated, and mostly accurate.</div>
   {/if}
 
-  {#if !system}
+  {#if !starmap}
     <!-- Waiting / offline -->
     <div class="waiting">
       <div class="waiting-inner">
         <h1>Reaching the host…</h1>
-        <p>Connecting to the game session. Make sure the host has the Field Guide open and a system
-          loaded, then this will fill in automatically.</p>
+        <p>Connecting to the game session. Make sure the host has the Field Guide open, then this
+          will fill in automatically.</p>
         {#if sessionId}<p class="sid">session {sessionId}</p>{/if}
-        <button on:click={() => broadcastService.sendMessage({ type: 'REQUEST_SYNC', payload: sessionId })}>
+        <button on:click={() => broadcastService.sendMessage({ type: 'REQUEST_STARMAP', payload: sessionId })}>
           Retry
         </button>
+      </div>
+    </div>
+  {:else if !selectedSystemId}
+    <!-- Starmap level: choose a system -->
+    <div class="doc-scroll">
+      <div class="cat-browser">
+        <header class="cat-head">
+          <h1>{starmap.name || 'Known Space'}</h1>
+          <p class="sub">{starmap.systems.length} system{starmap.systems.length === 1 ? '' : 's'} · tap one to explore</p>
+        </header>
+        <div class="sys-list">
+          {#each starmap.systems as s (s.id)}
+            <button class="sys-card" on:click={() => { selectedSystemId = s.id; selectedBody = null; }}>
+              <span class="sys-card-name">★ {s.name}</span>
+              <span class="sys-card-sub">{systemSummary(s)}</span>
+            </button>
+          {/each}
+          {#if starmap.systems.length === 0}
+            <p class="empty">No systems are visible in this guide yet.</p>
+          {/if}
+        </div>
       </div>
     </div>
   {:else if theme.tier === 'interactive'}
@@ -293,6 +348,26 @@
     z-index: 50;
   }
   .sys-name { font-weight: 700; }
+  .back-btn {
+    background: transparent; color: inherit; border: 1px solid currentColor;
+    border-radius: 4px; padding: 2px 9px; font: inherit; font-size: 11px; cursor: pointer; opacity: 0.85;
+  }
+  .back-btn:hover { opacity: 1; }
+
+  /* Starmap-level system list (page-scoped; CatalogueBrowser has its own .cat-* styles). */
+  .cat-browser { max-width: 760px; margin: 0 auto; padding: 16px 18px 40px; }
+  .cat-head h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.02em; }
+  .cat-head .sub { margin: 2px 0 14px; opacity: 0.6; font-size: 0.8rem; }
+  .sys-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .sys-card {
+    display: flex; flex-direction: column; gap: 4px; text-align: left;
+    background: transparent; color: inherit; border: 1px solid currentColor; border-radius: 8px;
+    padding: 12px 14px; cursor: pointer; opacity: 0.85; font: inherit;
+  }
+  .sys-card:hover { opacity: 1; background: color-mix(in srgb, currentColor 10%, transparent); }
+  .sys-card-name { font-weight: 700; font-size: 1rem; }
+  .sys-card-sub { font-size: 0.78rem; opacity: 0.7; }
+  .empty { opacity: 0.5; font-style: italic; }
   .status { margin-left: auto; opacity: 0.85; }
   .status.live { color: #6fffa0; }
   .status.offline { color: #ffb061; }

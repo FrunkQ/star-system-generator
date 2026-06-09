@@ -9,7 +9,10 @@
   import type { RulePack, System, Starmap as StarmapType, StarSystemNode, Route } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import { generateSystem, renameNode } from '$lib/api';
-  import { validateStarmap } from '$lib/utils';
+  import { validateStarmap, generateId } from '$lib/utils';
+  import { broadcastService } from '$lib/broadcast';
+  import { computePlayerStarmapSnapshot } from '$lib/system/utils';
+  import CompanionModal from '$lib/components/CompanionModal.svelte';
   import { starmapStore } from '$lib/starmapStore';
   import { systemStore, viewportStore } from '$lib/stores';
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap } from '$lib/starmapStorage';
@@ -36,6 +39,11 @@
   let rulePacks: RulePack[] = [];
   let isLoading = true;
   let error: string | null = null;
+
+  // Companion App broadcast lives here (root), not in SystemView, so the players' field guide works
+  // whether the GM is on the starmap or inside a system. We own the session id; SystemView reuses it.
+  let broadcastSessionId = generateId();
+  let showCompanionModal = false;
 
   let showNewStarmapModal = false;
   let showGenerationWizard = false;
@@ -243,6 +251,21 @@
       showNewStarmapModal = true;
     }
   });
+
+  // --- Companion App broadcast (whole redacted starmap) ---
+  onMount(() => {
+    if (!browser) return;
+    broadcastService.initSender(broadcastSessionId);
+    broadcastService.onRequestStarmap = (requestingId) => {
+      if (requestingId && requestingId !== broadcastSessionId) return;
+      const map = get(starmapStore);
+      if (map) broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: computePlayerStarmapSnapshot(map) });
+    };
+  });
+  // Re-broadcast the redacted starmap whenever it changes, so connected guides stay live.
+  $: if (browser && $starmapStore) {
+    broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: computePlayerStarmapSnapshot($starmapStore) });
+  }
 
   // Subscribe to systemStore and update starmapStore
   systemStore.subscribe(system => {
@@ -796,6 +819,7 @@
     {#if $systemStore && effectiveRulePack}
       <SystemView
         system={$systemStore} rulePack={effectiveRulePack} {exampleSystems}
+        {broadcastSessionId}
         on:new={handleRequestNewStarmap}
         on:open={handleUploadStarmap}
         on:save={handleDownloadStarmap}
@@ -805,6 +829,7 @@
         on:allships={() => showAllShips = true}
         on:routes={() => showRoutes = true}
         on:about={() => showAbout = true}
+        on:catalogue={() => showCompanionModal = true}
         on:back={handleBackToStarmap}
         on:renameNode={handleRenameNode}
       />
@@ -816,6 +841,7 @@
       starmap={$starmapStore}
       rulePack={selectedRulepack}
       on:new={handleRequestNewStarmap}
+      on:catalogue={() => showCompanionModal = true}
       on:systemclick={handleSystemClick}
       on:systemzoom={handleSystemZoom}
       on:addsystemat={handleAddSystemAt}
@@ -878,6 +904,10 @@
   {/if}
   {#if showAbout}
     <AboutModal rulePack={$systemStore ? effectiveRulePack : null} on:close={() => showAbout = false} />
+  {/if}
+
+  {#if showCompanionModal}
+    <CompanionModal sessionId={broadcastSessionId} on:close={() => showCompanionModal = false} />
   {/if}
 
   {#if showAllBodies}

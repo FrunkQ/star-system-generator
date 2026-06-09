@@ -106,6 +106,10 @@
   <button class="rail-btn" title="Routes & journeys" on:click={() => go('routes')}>
     <span class="ic">{@html svg(I.routes)}</span><span class="rail-label">Routes…</span>
   </button>
+  <!-- Field Guide is campaign-wide (whole starmap), so it's available from BOTH the starmap and a system. -->
+  <button class="rail-btn" title="Open the players' live field guide (Companion App)" on:click={() => go('catalogue')}>
+    <span class="ic">{@html svg(I.catalogue)}</span><span class="rail-label">Field Guide…</span>
+  </button>
 
   {#if activeView === 'system'}
     {#if projectorOpen}
@@ -119,9 +123,6 @@
     {/if}
     <button class="rail-btn" title="Generate a report" on:click={() => go('report')}>
       <span class="ic">{@html svg(I.report)}</span><span class="rail-label">Report…</span>
-    </button>
-    <button class="rail-btn" title="Open the players' live field guide (Companion App)" on:click={() => go('catalogue')}>
-      <span class="ic">{@html svg(I.catalogue)}</span><span class="rail-label">Field Guide…</span>
     </button>
     <button class="rail-btn" class:active={rulerOn} title="Measure: tap two bodies for the distance between them in AU" on:click={() => dispatch('ruler')}>
       <span class="ic" class:accent={rulerOn}>{@html svg(I.ruler)}</span><span class="rail-label">Measure</span>
