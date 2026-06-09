@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.0.6-alpha - 8th Jun 2026
+
+* **Companion App — now a proper app + works on players' own devices**:
+  * The lo-fi / datapad / Guide skins are now diagrammatic: a clickable star/planet layout up top, tap a body to read its player-safe file in a panel below (moons drill in) — instead of one long document.
+  * **Cross-device**: players can open the guide on their own phones/tablets over the internet (peer-to-peer), not just same-machine. Keep the app open while they're connected.
+  * GM **"include constructs"** switch in the launcher — show or hide stations/ships in the guide, over and above the standard player redaction.
+* Measuring tape moved from the orrery View menu to a dedicated left-rail **Measure** button.
+
 ## v2.0.5-alpha - 8th Jun 2026
 
 * **Measuring tape**: a "Measure (ruler)" toggle in the orrery View popover — tap two bodies for the straight-line distance between them in AU (km when short). Ported from the wireframe; works in Toytown scale.
