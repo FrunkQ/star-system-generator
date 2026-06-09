@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.5-alpha - 8th Jun 2026
+
+* **Measuring tape**: a "Measure (ruler)" toggle in the orrery View popover — tap two bodies for the straight-line distance between them in AU (km when short). Ported from the wireframe; works in Toytown scale.
+
 ## v2.0.4-alpha - 8th Jun 2026
 
 * **LLM**: connect a local OpenAI-compatible server (LM Studio / Ollama, no key) or OpenRouter — base-URL presets, optional key, and a Test &amp; list-models button. Descriptions now feed the model curated, evocative body/star summaries (constraint-grade physics + interesting tags) instead of a raw 40-field physics dump, for more imaginative results.
