@@ -52,7 +52,38 @@
   // the standard player redaction (mirrors the printed report's "include constructs" option).
   let includeConstructs = true;
 
+  let previewSystemId: string | null = null; // starmap-level: clicked-but-not-entered system
+  $: previewNode = starmap?.systems.find((s) => s.id === previewSystemId) || null;
   $: selectedSystemNode = starmap?.systems.find((s) => s.id === selectedSystemId) || null;
+
+  // Project the starmap's system positions into an SVG viewBox (with route lines) for the clickable
+  // starmap diagram. Stays on top; the selected system's preview shows below.
+  function computeStarmapView(map: Starmap | null) {
+    if (!map?.systems?.length) return { W: 600, H: 300, nodes: [] as any[], routes: [] as any[] };
+    const xs = map.systems.map((s) => s.position?.x ?? 0);
+    const ys = map.systems.map((s) => s.position?.y ?? 0);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const w = Math.max(1, maxX - minX), h = Math.max(1, maxY - minY);
+    const W = 600;
+    const H = Math.max(240, Math.min(560, Math.round(W * (h / w)) || 300));
+    const pad = 46;
+    const s = Math.min((W - 2 * pad) / w, (H - 2 * pad) / h);
+    const ox = pad + ((W - 2 * pad) - w * s) / 2 - minX * s;
+    const oy = pad + ((H - 2 * pad) - h * s) / 2 - minY * s;
+    const pos = new Map<string, { x: number; y: number }>();
+    const nodes = map.systems.map((node) => {
+      const x = (node.position?.x ?? 0) * s + ox;
+      const y = (node.position?.y ?? 0) * s + oy;
+      pos.set(node.id, { x, y });
+      return { node, x, y };
+    });
+    const routes = (map.routes || []).map((r: any) => {
+      const a = pos.get(r.sourceSystemId), b = pos.get(r.targetSystemId);
+      return a && b ? { x1: a.x, y1: a.y, x2: b.x, y2: b.y } : null;
+    }).filter(Boolean);
+    return { W, H, nodes, routes };
+  }
+  $: starmapView = computeStarmapView(starmap);
   // The system the guide actually shows: the selected one, optionally with constructs stripped.
   $: displaySystem = (() => {
     const sys = selectedSystemNode?.system ?? null;
@@ -261,17 +292,31 @@
           <h1>{starmap.name || 'Known Space'}</h1>
           <p class="sub">{starmap.systems.length} system{starmap.systems.length === 1 ? '' : 's'} · tap one to explore</p>
         </header>
-        <div class="sys-list">
-          {#each starmap.systems as s (s.id)}
-            <button class="sys-card" on:click={() => { selectedSystemId = s.id; selectedBody = null; }}>
-              <span class="sys-card-name">★ {s.name}</span>
-              <span class="sys-card-sub">{systemSummary(s)}</span>
-            </button>
-          {/each}
-          {#if starmap.systems.length === 0}
-            <p class="empty">No systems are visible in this guide yet.</p>
+        {#if starmap.systems.length === 0}
+          <p class="empty">No systems are visible in this guide yet.</p>
+        {:else}
+          <svg class="starmap-diagram" viewBox="0 0 {starmapView.W} {starmapView.H}" preserveAspectRatio="xMidYMid meet" role="group" aria-label="Star map">
+            {#each starmapView.routes as r}
+              <line class="sm-route" x1={r.x1} y1={r.y1} x2={r.x2} y2={r.y2} />
+            {/each}
+            {#each starmapView.nodes as p (p.node.id)}
+              <g class="sm-node" class:sel={previewSystemId === p.node.id} role="button" tabindex="0"
+                 on:click={() => (previewSystemId = p.node.id)} on:keydown={(e) => { if (e.key === 'Enter') previewSystemId = p.node.id; }}>
+                <circle class="sm-star" cx={p.x} cy={p.y} r="6" />
+                <text class="sm-label" x={p.x} y={p.y + 17} text-anchor="middle">{p.node.name}</text>
+              </g>
+            {/each}
+          </svg>
+          {#if previewNode}
+            <section class="sm-preview">
+              <h2>★ {previewNode.name}</h2>
+              <p class="sm-sum">{systemSummary(previewNode)}</p>
+              <button class="explore-btn" on:click={() => { selectedSystemId = previewNode.id; previewSystemId = null; selectedBody = null; }}>Explore system →</button>
+            </section>
+          {:else}
+            <p class="sm-hint">Tap a system to preview it, then explore.</p>
           {/if}
-        </div>
+        {/if}
       </div>
     </div>
   {:else if theme.tier === 'interactive'}
@@ -362,16 +407,24 @@
   .cat-browser { max-width: 760px; margin: 0 auto; padding: 16px 18px 40px; }
   .cat-head h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.02em; }
   .cat-head .sub { margin: 2px 0 14px; opacity: 0.6; font-size: 0.8rem; }
-  .sys-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
-  .sys-card {
-    display: flex; flex-direction: column; gap: 4px; text-align: left;
-    background: transparent; color: inherit; border: 1px solid currentColor; border-radius: 8px;
-    padding: 12px 14px; cursor: pointer; opacity: 0.85; font: inherit;
-  }
-  .sys-card:hover { opacity: 1; background: color-mix(in srgb, currentColor 10%, transparent); }
-  .sys-card-name { font-weight: 700; font-size: 1rem; }
-  .sys-card-sub { font-size: 0.78rem; opacity: 0.7; }
   .empty { opacity: 0.5; font-style: italic; }
+  /* Clickable star map (skin-tinted via currentColor). */
+  .starmap-diagram { width: 100%; height: auto; display: block; border: 1px solid currentColor; border-radius: 8px; }
+  .sm-route { stroke: currentColor; stroke-opacity: 0.25; stroke-width: 1; }
+  .sm-node { cursor: pointer; }
+  .sm-star { fill: currentColor; opacity: 0.7; }
+  .sm-node:hover .sm-star, .sm-node.sel .sm-star { opacity: 1; }
+  .sm-node.sel .sm-star { stroke: currentColor; stroke-width: 3; }
+  .sm-label { fill: currentColor; opacity: 0.85; font-size: 11px; }
+  .sm-preview { margin-top: 14px; border: 1px solid currentColor; border-radius: 8px; padding: 12px 14px; }
+  .sm-preview h2 { margin: 0 0 4px; font-size: 1.15rem; }
+  .sm-sum { margin: 0 0 10px; opacity: 0.7; font-size: 0.85rem; }
+  .explore-btn {
+    background: color-mix(in srgb, currentColor 16%, transparent); color: inherit;
+    border: 1px solid currentColor; border-radius: 6px; padding: 7px 14px; cursor: pointer; font: inherit;
+  }
+  .explore-btn:hover { background: color-mix(in srgb, currentColor 28%, transparent); }
+  .sm-hint { margin-top: 12px; opacity: 0.5; font-size: 0.82rem; font-style: italic; }
   .status { margin-left: auto; opacity: 0.85; }
   .status.live { color: #6fffa0; }
   .status.offline { color: #ffb061; }
