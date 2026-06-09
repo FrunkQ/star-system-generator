@@ -205,11 +205,12 @@
     <!-- Waiting / offline -->
     <div class="waiting">
       <div class="waiting-inner">
-        <h1>Awaiting carrier…</h1>
-        <p>Open a system in the host session to receive the field guide.</p>
+        <h1>Reaching the host…</h1>
+        <p>Connecting to the game session. Make sure the host has the Field Guide open and a system
+          loaded, then this will fill in automatically.</p>
         {#if sessionId}<p class="sid">session {sessionId}</p>{/if}
         <button on:click={() => broadcastService.sendMessage({ type: 'REQUEST_SYNC', payload: sessionId })}>
-          Re-acquire signal
+          Retry
         </button>
       </div>
     </div>

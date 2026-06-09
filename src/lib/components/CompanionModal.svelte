@@ -6,6 +6,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { browser } from '$app/environment';
   import QRCode from 'qrcode';
+  import { broadcastService } from '$lib/broadcast';
 
   export let sessionId: string;
 
@@ -24,7 +25,11 @@
   let qrDataUrl = '';
   let origin = '';
 
-  onMount(() => { if (browser) origin = window.location.origin; });
+  onMount(() => {
+    if (browser) origin = window.location.origin;
+    // Sharing intent: start hosting a cross-device endpoint so players can connect over the network.
+    broadcastService.enableRemote();
+  });
 
   $: url = `${origin}/catalogue?sid=${sessionId}&theme=${skin}&constructs=${includeConstructs ? 1 : 0}`;
   $: if (browser && url) {
@@ -48,9 +53,9 @@
 <div class="modal-background" on:click={() => dispatch('close')}>
   <div class="modal" on:click|stopPropagation>
     <h2>Players' Field Guide</h2>
-    <p class="lede">A live, redacted companion to the system you're running. Open it on a second
-      window or a mirrored tablet — it updates as you play. Hidden bodies and GM notes never leave
-      this machine.</p>
+    <p class="lede">A live, redacted companion to the system you're running. Players open it on their
+      own phones or tablets (scan the QR / share the link) and it updates as you play. Hidden bodies
+      and GM notes are never sent.</p>
 
     <div class="form-group">
       <label>Skin</label>
@@ -77,8 +82,8 @@
         <div class="link-actions">
           <button on:click={copy}>{copied ? 'Copied' : 'Copy link'}</button>
         </div>
-        <p class="hint">v1 is same-machine / LAN. Scan from a tablet sharing this screen, or open a
-          window here. Over-the-internet sharing comes later.</p>
+        <p class="hint">Works across devices over the internet (peer-to-peer) as well as same-machine.
+          Keep this app open while players are connected.</p>
       </div>
     </div>
 

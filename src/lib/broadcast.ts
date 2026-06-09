@@ -39,6 +39,66 @@ class BroadcastService {
   private sessionId: string | null = null;
   private targetSessionId: string | null = null;
 
+  // --- PeerJS cross-device transport (runs in PARALLEL to the same-machine BroadcastChannel).
+  //     Same envelope/message shapes, just a different pipe — so the host can reach players on
+  //     their own phones/tablets over the network, not only same-machine windows. Lazy-loaded so
+  //     PeerJS never bloats the main bundle and only connects when sharing/viewing. All failures
+  //     are non-fatal: if the broker is unreachable the local channel still works. ---
+  private peer: any = null;
+  private peerConns: any[] = [];   // host: open guest connections
+  private peerOut: any = null;     // guest: connection to the host
+
+  private async loadPeer(): Promise<any> {
+    const mod: any = await import('peerjs');
+    return mod.default ?? mod.Peer ?? mod;
+  }
+
+  private async initPeerHost(sessionId: string) {
+    if (typeof window === 'undefined') return;
+    try {
+      const Peer = await this.loadPeer();
+      // The host registers under the session id, so a guest dials that id directly.
+      this.peer = new Peer(sessionId);
+      this.peer.on('connection', (conn: any) => {
+        conn.on('open', () => { if (!this.peerConns.includes(conn)) this.peerConns.push(conn); });
+        conn.on('data', (data: any) => this.handleMessage(data));
+        conn.on('close', () => { this.peerConns = this.peerConns.filter((c) => c !== conn); });
+        conn.on('error', () => { /* per-connection; ignore */ });
+      });
+      this.peer.on('error', (e: any) => { console.warn('[peer host]', e?.type || e); });
+    } catch (e) {
+      console.warn('PeerJS host init failed (cross-device sharing unavailable)', e);
+    }
+  }
+
+  private async initPeerGuest(sessionId: string | null) {
+    if (typeof window === 'undefined' || !sessionId) return;
+    try {
+      const Peer = await this.loadPeer();
+      this.peer = new Peer();
+      this.peer.on('open', () => {
+        const conn = this.peer.connect(sessionId, { reliable: true });
+        this.peerOut = conn;
+        conn.on('open', () => {
+          conn.send({ sessionId: null, message: { type: 'REQUEST_SYNC', payload: sessionId } });
+        });
+        conn.on('data', (data: any) => this.handleMessage(data));
+        conn.on('error', () => { /* ignore; local channel may still serve */ });
+      });
+      this.peer.on('error', (e: any) => { console.warn('[peer guest]', e?.type || e); });
+    } catch (e) {
+      console.warn('PeerJS guest init failed (cross-device unavailable)', e);
+    }
+  }
+
+  private sendPeer(envelope: BroadcastEnvelope) {
+    if (this.isSender) {
+      for (const c of this.peerConns) { try { if (c.open) c.send(envelope); } catch { /* drop */ } }
+    } else if (this.peerOut) {
+      try { if (this.peerOut.open) this.peerOut.send(envelope); } catch { /* drop */ }
+    }
+  }
+
   constructor() {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       this.channel = new BroadcastChannel(CHANNEL_NAME);
@@ -50,6 +110,14 @@ class BroadcastService {
   public initSender(sessionId: string) {
     this.isSender = true;
     this.sessionId = sessionId;
+  }
+
+  // Opt-in cross-device hosting: called when the GM opens the Companion launcher (sharing intent),
+  // so we only announce an id to the public PeerJS broker when the GM actually wants remote players —
+  // not on every session. Idempotent.
+  public enableRemote() {
+    if (this.peer || !this.sessionId || !this.isSender) return;
+    this.initPeerHost(this.sessionId);
   }
 
   // Setup for Player Mode (Receiver)
@@ -78,16 +146,17 @@ class BroadcastService {
     // Request initial state
     // For REQUEST_SYNC, we send it "from" no one (or self?), but the payload targets the specific GM
     this.sendMessage({ type: 'REQUEST_SYNC', payload: targetId });
+    // Also try to reach the host over the network (cross-device); local channel handles same-machine.
+    this.initPeerGuest(targetId);
   }
 
   public sendMessage(msg: BroadcastMessage) {
-    if (this.channel) {
-        const envelope: BroadcastEnvelope = {
-            sessionId: this.sessionId, // Will be null for Receiver (which is fine for REQUEST_SYNC)
-            message: msg
-        };
-        this.channel.postMessage(envelope);
-    }
+    const envelope: BroadcastEnvelope = {
+        sessionId: this.sessionId, // Will be null for Receiver (which is fine for REQUEST_SYNC)
+        message: msg
+    };
+    if (this.channel) this.channel.postMessage(envelope);
+    this.sendPeer(envelope); // mirror over the cross-device pipe
   }
 
   private onSystemUpdate: ((sys: System) => void) | null = null;
@@ -167,6 +236,10 @@ class BroadcastService {
   
   public close() {
       if (this.channel) this.channel.close();
+      try { this.peer?.destroy(); } catch { /* already gone */ }
+      this.peer = null;
+      this.peerConns = [];
+      this.peerOut = null;
   }
 }
 
