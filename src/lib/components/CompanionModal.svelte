@@ -19,13 +19,14 @@
     { key: 'console', label: 'Starship Console', blurb: 'Live orbital plot, tap a world to inspect' }
   ];
   let skin = 'green';
+  let includeConstructs = true; // GM choice: include artificial constructs in the guide (like the report)
   let copied = false;
   let qrDataUrl = '';
   let origin = '';
 
   onMount(() => { if (browser) origin = window.location.origin; });
 
-  $: url = `${origin}/catalogue?sid=${sessionId}&theme=${skin}`;
+  $: url = `${origin}/catalogue?sid=${sessionId}&theme=${skin}&constructs=${includeConstructs ? 1 : 0}`;
   $: if (browser && url) {
     QRCode.toDataURL(url, { margin: 1, width: 240, color: { dark: '#0a0d14', light: '#ffffff' } })
       .then((d) => (qrDataUrl = d))
@@ -61,6 +62,10 @@
           </button>
         {/each}
       </div>
+    </div>
+
+    <div class="form-group">
+      <label class="check"><input type="checkbox" bind:checked={includeConstructs} /> Include artificial constructs (stations, ships) in the guide</label>
     </div>
 
     <div class="share">
@@ -101,6 +106,7 @@
   .lede { margin: 0; font-size: 0.85rem; color: var(--text-muted); line-height: 1.45; }
   .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
   .form-group > label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .form-group > label.check { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-size: 0.85rem; color: var(--text); }
   .skins { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
   .skin {
     display: flex; flex-direction: column; gap: 2px; text-align: left;

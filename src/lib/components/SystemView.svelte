@@ -1802,12 +1802,14 @@
       <RailNav
         activeView="system"
         {projectorOpen}
+        rulerOn={rulerActive}
         greenscreenOn={isGreenscreen}
         on:starmap={() => { railOpen = false; dispatch('back', { force: true }); }}
         on:projector={() => { railOpen = false; handleShare(); }}
         on:greenscreen={toggleGreenscreen}
         on:report={() => { railOpen = false; showReportConfigModal = true; }}
         on:catalogue={() => { railOpen = false; showCompanionModal = true; }}
+        on:ruler={() => { rulerActive = !rulerActive; }}
         on:downloadsystem={() => { railOpen = false; handleDownloadJson(); }}
         on:uploadsystem={() => { railOpen = false; railUploadInput?.click(); }}
         on:new={() => dispatch('new')}
@@ -1868,7 +1870,6 @@
                     <label><input type="checkbox" bind:checked={showNames} /> Names</label>
                     <label><input type="checkbox" bind:checked={showZones} on:change={() => showZoneKeyPanel = showZones} /> Zones</label>
                     <label><input type="checkbox" bind:checked={showLPoints} /> Lagrange points</label>
-                    <label title="Measure: tap two bodies for the straight-line distance between them in AU"><input type="checkbox" bind:checked={rulerActive} /> Measure (ruler)</label>
                     {#if $starmapUiStore.travellerMode}
                       <label><input type="checkbox" bind:checked={showTravellerZones} /> Traveller zones</label>
                     {/if}

@@ -9,7 +9,7 @@
   import { browser } from '$app/environment';
   import { broadcastService } from '$lib/broadcast';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
-  import ReportDocument from '$lib/reports/ReportDocument.svelte';
+  import CatalogueBrowser from '$lib/catalogue/CatalogueBrowser.svelte';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import CRTOverlay from '$lib/components/CRTOverlay.svelte';
   import { AU_KM, G } from '$lib/constants';
@@ -42,6 +42,14 @@
   let lastUpdate: number | null = null;
   let connected = false;
   let showThemePicker = false;
+  // GM choice (?constructs=0) — whether artificial constructs appear in the guide, over and above
+  // the standard player redaction (mirrors the printed report's "include constructs" option).
+  let includeConstructs = true;
+
+  // The system the guide actually shows: optionally with constructs stripped.
+  $: displaySystem = (!system || includeConstructs)
+    ? system
+    : { ...system, nodes: system.nodes.filter((n) => n.kind !== 'construct') };
 
   // Live clock (mirrors the projector animation loop so the interactive tier ticks).
   let currentTime = Date.now();
@@ -84,7 +92,7 @@
 
   function handleFocus(e: CustomEvent<string | null>) {
     focusedBodyId = e.detail;
-    const node = system?.nodes.find((n) => n.id === e.detail);
+    const node = displaySystem?.nodes.find((n) => n.id === e.detail);
     // Surface natural bodies and artificial constructs alike (both are CelestialBody-shaped);
     // barycenters have no player-facing file, so they just clear the inspector.
     selectedBody = node && (node.kind === 'body' || node.kind === 'construct') ? (node as CelestialBody) : null;
@@ -123,6 +131,7 @@
   onMount(async () => {
     const params = new URLSearchParams(window.location.search);
     sessionId = params.get('sid');
+    includeConstructs = params.get('constructs') !== '0';
     const urlTheme = params.get('theme') as ThemeKey | null;
     let stored: string | null = null;
     try { stored = localStorage.getItem('catalogue-theme'); } catch { /* ignore */ }
@@ -207,14 +216,14 @@
   {:else if theme.tier === 'interactive'}
     <!-- Hi-tech: live orbital map + tap-to-inspect -->
     <div class="console-stage">
-      {#if rulePack}
+      {#if rulePack && displaySystem}
         <SystemVisualizer
-          {system}
+          system={displaySystem}
           {rulePack}
           {currentTime}
           {focusedBodyId}
           showNames={true}
-          toytownFactor={system.toytownFactor || 0}
+          toytownFactor={displaySystem.toytownFactor || 0}
           fullScreen={true}
           backgroundColor="#05070c"
           on:focus={handleFocus}
@@ -245,11 +254,9 @@
       {/if}
     </div>
   {:else}
-    <!-- Lo-fi / clean: the printed-report document under the chosen skin -->
+    <!-- Lo-fi / datapad / Guide: diagrammatic browser — clickable layout + a body panel. -->
     <div class="doc-scroll">
-      <div class="phosphor">
-        <ReportDocument {system} mode="Player" theme={theme.reportTheme} includeConstructs={true} chrome="catalogue" />
-      </div>
+      <CatalogueBrowser system={displaySystem} {includeConstructs} />
     </div>
   {/if}
 
@@ -351,26 +358,25 @@
     cursor: pointer;
   }
 
-  /* --- lo-fi document tier --- */
+  /* --- diagrammatic browser tier --- */
   .doc-scroll {
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     background: #04060a;
   }
-  /* Phosphor look: invert the light "paper" report to a dark terminal, then tint. The
-     invert+hue-rotate trick turns the line-printer document into glowing CRT text cheaply
-     (the eventual upgrade is the Mappadux WebGL filter package — spec §5). */
-  .tint-green .phosphor {
-    filter: invert(1) sepia(1) saturate(3.2) hue-rotate(58deg) brightness(0.92) contrast(1.08);
-  }
-  .tint-amber .phosphor {
-    filter: invert(1) sepia(1) saturate(3.4) hue-rotate(-14deg) brightness(0.95) contrast(1.06);
-  }
-  .tint-green .doc-scroll, .tint-amber .doc-scroll { background: #000; }
-  .tint-green .phosphor, .tint-amber .phosphor { text-shadow: 0 0 1px currentColor; }
+  /* Each skin just sets the terminal colour + background; the browser is built from currentColor
+     and thin borders, so it adopts the hue. CRTOverlay (added for tint != none) supplies scanlines.
+     (A WebGL filter package — spec §5 — is the eventual upgrade over this CSS approach.) */
+  .tint-green { color: #74f7b0; }
+  .tint-green .doc-scroll { background: #020806; }
+  .tint-green .sys-name, .tint-green .status.live { color: #74f7b0; }
+  .tint-amber { color: #ffb766; }
+  .tint-amber .doc-scroll { background: #0a0600; }
+  .tint-amber .sys-name, .tint-amber .status.live { color: #ffb766; }
+  .tint-green .doc-scroll, .tint-amber .doc-scroll { text-shadow: 0 0 1px currentColor; }
 
-  /* --- The Guide: friendly illustrated travel companion (playful, not a CRT) --- */
+  /* --- The Guide: friendly illustrated travel companion (warm green book) --- */
   .guide-banner {
     flex: 0 0 auto;
     text-align: center;
@@ -382,27 +388,13 @@
     padding: 7px 12px;
     letter-spacing: 0.02em;
   }
-  .skin-guide { background: #04140d; color: #d6ffe8; }
+  .skin-guide { background: #04140d; color: #d6ffe8; font-family: Georgia, 'Times New Roman', serif; }
   .skin-guide .statusbar { background: #07241a; border-bottom-color: rgba(124, 255, 178, 0.3); }
   .skin-guide .status.live { color: #7CFFB2; }
   .skin-guide .sys-name { color: #7CFFB2; }
   .skin-guide .doc-scroll { background: #04140d; }
-  /* Recolour the light "standard" report into the Guide's warm green book, and make the
-     LLM flavour text (the actual "Guide entries") the hero — larger, friendlier type. */
-  .skin-guide .phosphor :global(.report-container) {
-    background: #04140d;
-    color: #d6ffe8;
-    font-family: Georgia, 'Times New Roman', serif;
-  }
-  .skin-guide .phosphor :global(.report-container h1),
-  .skin-guide .phosphor :global(.report-container h2),
-  .skin-guide .phosphor :global(.report-container h3) { color: #7CFFB2; }
-  .skin-guide .phosphor :global(.report-container .data-box) {
-    background: rgba(124, 255, 178, 0.05);
-    border-color: rgba(124, 255, 178, 0.25);
-  }
-  .skin-guide .phosphor :global(.report-container th) { color: #8fdcb4; }
-  .skin-guide .phosphor :global(.report-container .pre-wrap-text) { font-size: 1.08em; line-height: 1.6; }
+  .skin-clean { color: #dfe5ef; }
+  .skin-clean .doc-scroll { background: #0b0e14; }
 
   /* --- hi-tech console tier --- */
   .console-stage { flex: 1; position: relative; min-height: 0; }
