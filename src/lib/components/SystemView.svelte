@@ -203,6 +203,7 @@
   let showTravellerZones = false;
   let showSensors = false;
   let showVectors = false;
+  let rulerActive = false; // measuring-tape tool: tap two bodies for their AU separation
   let throttleTimeout: ReturnType<typeof setTimeout> | null = null;
   let lastToytownFactor: number | undefined = undefined;
   let timeSyncInterval: ReturnType<typeof setInterval> | undefined;
@@ -1867,6 +1868,7 @@
                     <label><input type="checkbox" bind:checked={showNames} /> Names</label>
                     <label><input type="checkbox" bind:checked={showZones} on:change={() => showZoneKeyPanel = showZones} /> Zones</label>
                     <label><input type="checkbox" bind:checked={showLPoints} /> Lagrange points</label>
+                    <label title="Measure: tap two bodies for the straight-line distance between them in AU"><input type="checkbox" bind:checked={rulerActive} /> Measure (ruler)</label>
                     {#if $starmapUiStore.travellerMode}
                       <label><input type="checkbox" bind:checked={showTravellerZones} /> Traveller zones</label>
                     {/if}
@@ -1905,7 +1907,8 @@
                 {showTravellerZones}
                 {showSensors}
                 {showVectors}
-                toytownFactor={$systemStore.toytownFactor} 
+                {rulerActive}
+                toytownFactor={$systemStore.toytownFactor}
                 forceOrbitView={isEditing && activeEditTab === 'Orbit'}
                 transitPlan={currentTransitPlan}
                 alternativePlans={transitAlternatives}

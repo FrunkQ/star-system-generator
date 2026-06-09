@@ -37,8 +37,24 @@
   export let alternativePlans: TransitPlan[] = [];
   export let transitPreviewPos: { x: number, y: number } | null = null;
   export let isExecuting: boolean = false;
+  // Measuring tape (ported from the wireframe): when on, taps pick two bodies and we draw a dashed
+  // line + the straight-line distance between them in AU. Distance uses the TRUE (uncompressed) AU
+  // positions, so it's correct even in Toytown scale.
+  export let rulerActive: boolean = false;
 
-  const dispatch = createEventDispatcher<{ 
+  let rulerA: { id: string; name: string } | null = null;
+  let rulerB: { id: string; name: string } | null = null;
+  // Clear the measurement whenever the tool is switched off.
+  $: if (!rulerActive) { rulerA = null; rulerB = null; }
+  $: rulerDistanceAU = (() => {
+    if (!rulerA || !rulerB) return null;
+    const a = worldPositions.get(rulerA.id);
+    const b = worldPositions.get(rulerB.id);
+    if (!a || !b) return null;
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  })();
+
+  const dispatch = createEventDispatcher<{
     focus: string | null,
     showBodyContextMenu: { node: CelestialBody, x: number, y: number },
     backgroundContextMenu: { x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number }
@@ -550,6 +566,14 @@
   // Tap = the old handleClick body (focus, or zoom-in if already focused; belt labels first).
   function handleTap(clickX: number, clickY: number) {
       if (!system) return;
+      // Measuring tape: tap picks endpoint A then B; a third tap restarts from that body as A.
+      if (rulerActive) {
+          const pick = pickNodeAt(clickX, clickY);
+          if (!pick) return;
+          if (!rulerA || (rulerA && rulerB)) { rulerA = { id: pick.node.id, name: pick.node.name }; rulerB = null; }
+          else if (pick.node.id !== rulerA.id) { rulerB = { id: pick.node.id, name: pick.node.name }; }
+          return;
+      }
       if (showNames) {
           for (const [beltId, area] of beltLabelClickAreas.entries()) {
               if (clickX >= area.x1 && clickX <= area.x2 && clickY >= area.y1 && clickY <= area.y2) {
@@ -831,6 +855,7 @@
       }
 
       if (toytownFactor === 0) drawScaleBar(ctx);
+      if (rulerActive) drawRuler(ctx);
       if (showNames) {
           beltLabelClickAreas.clear();
           const visibleLabelIds = getVisibleNodeIds(system, focusedBodyId);
@@ -1096,6 +1121,51 @@
       drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.co2IceLine || 0), tokenRgba('--zone-co2-ice', '#ffffff', 0.5));
       drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.coIceLine || 0), tokenRgba('--zone-co-ice', '#0000ff', 0.5));
     }
+  }
+
+  // Measuring tape overlay: dashed line + endpoint rings between the two picked bodies, with a
+  // distance readout (AU, plus km when short) at the midpoint. Endpoints follow the bodies live.
+  function drawRuler(ctx: CanvasRenderingContext2D) {
+      if (!rulerA) return;
+      const display = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
+      const accent = '#ff9b2f';
+      const ringAt = (id: string) => {
+          const w = display.get(id);
+          if (!w) return null;
+          const s = worldToScreen(w.x, w.y);
+          ctx.beginPath(); ctx.arc(s.x, s.y, 7, 0, Math.PI * 2);
+          ctx.strokeStyle = accent; ctx.lineWidth = 2; ctx.stroke();
+          return s;
+      };
+      const sa = ringAt(rulerA.id);
+      if (!sa) return;
+      if (!rulerB) return;
+      const sb = ringAt(rulerB.id);
+      if (!sb) return;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.setLineDash([6, 5]);
+      ctx.moveTo(sa.x, sa.y); ctx.lineTo(sb.x, sb.y);
+      ctx.strokeStyle = accent; ctx.lineWidth = 1.6; ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (rulerDistanceAU != null) {
+          const au = rulerDistanceAU;
+          const label = au < 0.01
+              ? `${Math.round(au * AU_KM).toLocaleString()} km`
+              : `${au.toFixed(au < 10 ? 3 : 2)} AU` + (au < 0.2 ? `  (${Math.round(au * AU_KM).toLocaleString()} km)` : '');
+          const mx = (sa.x + sb.x) / 2, my = (sa.y + sb.y) / 2;
+          ctx.font = '600 12px "IBM Plex Mono", ui-monospace, monospace';
+          const tw = ctx.measureText(label).width;
+          ctx.fillStyle = 'rgba(17, 20, 26, 0.9)';
+          ctx.fillRect(mx - tw / 2 - 6, my - 20, tw + 12, 18);
+          ctx.strokeStyle = accent; ctx.lineWidth = 1; ctx.strokeRect(mx - tw / 2 - 6, my - 20, tw + 12, 18);
+          ctx.fillStyle = accent; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(label, mx, my - 11);
+          ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
+      }
+      ctx.restore();
   }
 
   function drawScaleBar(ctx: CanvasRenderingContext2D) {
