@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.11-alpha - 9th Jun 2026
+
+* Hiding a whole system from the guide now keys on the system's **root** (the top barycenter in a multi-star system) — hiding an underlying star only hides that star. Hidden-system eye marker is smaller and sits closer to the star.
+* Projector: the standalone "Toggle projector CRT" is gone; the projector-open button now toggles it as **"Greenscreen CRT"** (the green-CRT look, which is what was wanted).
+
 ## v2.0.10-alpha - 9th Jun 2026
 
 * **Field Guide — diagrams + remote fix**:
