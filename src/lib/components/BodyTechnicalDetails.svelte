@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
   import { describeTag } from "$lib/tags/tagPresentation";
-  import InfoLink from './InfoLink.svelte';
   import { calculateOrbitalBoundaries, type OrbitalBoundaries, type PlanetData } from "$lib/physics/orbits";
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { calculateDeltaVBudgets, calculateSurfaceTemperature, calculateGreenhouseEffect } from '$lib/system/postprocessing';
@@ -478,7 +477,7 @@
 
     {#if body.kind === 'body'}
         <div class="detail-item">
-            <span class="label">Classification</span><InfoLink topic="classification" label="How the type is chosen (fingerprints)" />
+            <span class="label">Classification</span>
             <span class="value">{body.classes.join(', ')}</span>
         </div>
         {#if !isBeltOrRing}
@@ -539,12 +538,12 @@
                 {/if}
                 {#if surfaceGravityG !== null && !isStar}
                     <div class="detail-item">
-                        <span class="label">Surface Gravity</span><InfoLink topic="gravity" />
+                        <span class="label">Surface Gravity</span>
                         <span class="value">{surfaceGravityG.toFixed(2)} g</span>                    </div>
                 {/if}
                 {#if densityRelative !== null && !isStar}
                     <div class="detail-item">
-                        <span class="label">Density (rel. to Earth)</span><InfoLink topic="makeup" label="Density derives from interior makeup + gravity compression" />
+                        <span class="label">Density (rel. to Earth)</span>
                         <span class="value">{densityRelative.toFixed(2)}</span>
                     </div>
                 {/if}
@@ -598,7 +597,7 @@
           </div>
       {:else if surfaceTempC !== null}
           <div class="detail-item" title={tempTooltip}>
-              <span class="label">Avg. Surface Temp.</span><InfoLink topic="greenhouse" label="Equilibrium temp + greenhouse + tidal/internal heat" />
+              <span class="label">Avg. Surface Temp.</span>
               <span class="value">{Math.round(surfaceTempC)} °C</span>
               {#if body.temperatureProfile && (body.temperatureProfile.totalMaxK - body.temperatureProfile.totalMinK) > 5}
                   {@const p = body.temperatureProfile}
@@ -622,14 +621,14 @@
 
       {#if body.magneticField}
           <div class="detail-item" title="Magnetic field strength in Gauss. A value > 1 is strong enough to offer significant protection from stellar radiation.">
-              <span class="label">Magnetic Field</span><InfoLink topic="magnetism" />
+              <span class="label">Magnetic Field</span>
               <span class="value">{body.magneticField.strengthGauss.toFixed(2)} G</span>
           </div>
       {/if}
 
       {#if surfaceRadiationText && body.roleHint !== 'star'}
           <div class="detail-item" title={surfaceRadiationTooltip}>
-              <span class="label">Surface Radiation</span><InfoLink topic="radiation" label="Stellar flux, shielding + flares" />
+              <span class="label">Surface Radiation</span>
               <span class="value">{surfaceRadiationText} ({displayedSurfaceRadiation?.toFixed(2)})</span>
               {#if minSurfaceRadiation !== null && maxSurfaceRadiation !== null}
                   <div style="font-size: 0.8em; color: var(--text-muted); margin-top: 2px;">
@@ -642,7 +641,7 @@
       {#if body.kind === 'body' && body.atmosphere && !isStar}
           {@const pressure = body.atmosphere.pressure_bar || 0}
           <div class="detail-item atmosphere">
-              <span class="label">Atmosphere ({pressure < 1e-3 ? pressure.toExponential(2) : pressure.toFixed(3)} bar)</span><InfoLink topic="fluids" label="Atmosphere, escape & fluid layers" />
+              <span class="label">Atmosphere ({pressure < 1e-3 ? pressure.toExponential(2) : pressure.toFixed(3)} bar)</span>
               <span class="value">{body.atmosphere.name}</span>
               {#if pressure < 1e-5}
                   <div class="composition-trace">
@@ -677,7 +676,7 @@
 
       {#if body.kind === 'body' && body.habitabilityScore}
           <div class="detail-item habitability">
-              <span class="label">Habitability Score</span><InfoLink topic="habitability" />
+              <span class="label">Habitability Score</span>
               <span class="value">{body.habitabilityScore.toFixed(1)}%</span>
               {#if body.tags.find(t => t.key.startsWith('habitability/'))}
                   <span class="habitability-tier">{body.tags.find(t => t.key.startsWith('habitability/')).key.split('/')[1]}</span>

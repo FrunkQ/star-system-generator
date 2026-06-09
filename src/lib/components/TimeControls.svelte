@@ -451,7 +451,12 @@
   }
   .tt-action.danger:hover { filter: brightness(1.12); }
 
-  /* Phone: tighten the transport pill. */
-  .time-transport.compact { gap: 6px; padding: 4px 6px; }
-  .time-transport.compact .tt-rate { min-width: 0; }
+  /* Phone: tighten the transport pill — smaller buttons, a shorter/slimmer shuttle. */
+  .time-transport.compact { gap: 4px; padding: 3px 5px; font-size: 0.78rem; }
+  .time-transport.compact .tt-rate { min-width: 0; font-size: 0.68rem; }
+  .time-transport.compact .tt-btn { width: 28px; height: 28px; font-size: 0.85rem; }
+  .time-transport.compact .tt-step { width: 20px; height: 24px; }
+  .time-transport.compact .tt-shuttle { min-width: 64px; }
+  .time-transport.compact .tt-slider { height: 3px; }
+  .time-transport.compact .tt-center { height: 10px; }
 </style>

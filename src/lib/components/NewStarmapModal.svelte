@@ -112,6 +112,8 @@
     color: var(--text);
     max-width: 900px; /* Increased width to accommodate two panes */
     width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
     text-align: left;
     box-shadow: 0 4px 20px rgba(0,0,0,0.5);
   }
@@ -261,6 +263,8 @@
           flex-direction: column;
           padding: 15px;
           gap: 15px;
+          width: 96%;
+          max-height: 92vh;
       }
       .left-pane {
           border-right: none;

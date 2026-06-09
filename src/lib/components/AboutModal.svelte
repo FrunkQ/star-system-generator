@@ -103,15 +103,18 @@ Thanks to @Athena, @Mafro & @malize from the creative community on our <a href="
     flex: 0 0 auto;
   }
   .about-close {
-    width: 30px;
-    height: 30px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg-control);
-    color: var(--text);
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--status-bad, #e0484d);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--status-bad, #e0484d) 16%, var(--bg-control));
+    color: var(--status-bad, #e0484d);
     cursor: pointer;
     line-height: 1;
+    font-size: 1.6rem;
+    font-weight: 700;
   }
+  .about-close:hover { background: color-mix(in srgb, var(--status-bad, #e0484d) 30%, var(--bg-control)); }
   .about-body {
     overflow-y: auto;
     padding: 4px 18px;
