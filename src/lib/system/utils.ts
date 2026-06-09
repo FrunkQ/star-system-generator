@@ -98,11 +98,13 @@ export function computePlayerStarmapSnapshot(map: Starmap): Starmap {
   const clone: any = JSON.parse(JSON.stringify(map));
   delete clone.gmNotes;
 
-  const isStar = (n: any) => n?.roleHint === 'star' || (Array.isArray(n?.classes) && n.classes.some((c: string) => String(c).startsWith('star/')));
-  const mainStarHidden = (sysNode: any): boolean => {
-    const stars = (sysNode?.system?.nodes || []).filter(isStar).sort((a: any, b: any) => (b.massKg || 0) - (a.massKg || 0));
-    const primary = stars[0];
-    return !!primary && !!primary.object_playerhidden;
+  // A system is hidden when its ROOT node is player-hidden: the top barycenter for a multi-star
+  // system, or the lone star for a single. Hiding an underlying star just hides that star (handled
+  // by computePlayerSnapshot's subtree hiding), not the whole system.
+  const rootHidden = (sysNode: any): boolean => {
+    const ns = sysNode?.system?.nodes || [];
+    const root = ns.find((n: any) => n.kind === 'barycenter' && !n.parentId) || ns.find((n: any) => !n.parentId);
+    return !!root && !!root.object_playerhidden;
   };
 
   // Drop bulky fields the guide never shows — transit logs (with huge pathPoint arrays), classifier
@@ -116,7 +118,7 @@ export function computePlayerStarmapSnapshot(map: Starmap): Starmap {
   };
 
   clone.systems = (clone.systems || [])
-    .filter((sysNode: any) => !mainStarHidden(sysNode))
+    .filter((sysNode: any) => !rootHidden(sysNode))
     .map((sysNode: any) => {
       const snap: any = computePlayerSnapshot(sysNode.system);
       snap.nodes = (snap.nodes || []).map(slimNode);

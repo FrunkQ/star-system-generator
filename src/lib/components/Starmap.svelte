@@ -492,11 +492,14 @@
 
       // getStarColor is now the canonical getPlanetColor (aliased on import) so a star is
       // the SAME colour here, in the orrery, and on summary cards — all token-driven.
-  // A system is hidden from the players' field guide when its primary (main) star is player-hidden —
-  // the guide drops the whole system. We flag it on the GM map with a crossed-eye reminder.
+  // A system is hidden from the players' field guide when its ROOT node is player-hidden — for a
+  // multi-star system that's the top barycenter, for a single star it's the star itself. Hiding an
+  // underlying star only hides that star (not the whole system). Flagged on the GM map with a
+  // crossed-eye reminder.
   function isSystemHidden(node: Starmap['systems'][number]): boolean {
-      const vis = getVisualNodes(node.system);
-      return !!vis[0] && !!(vis[0] as any).object_playerhidden;
+      const ns = node.system?.nodes || [];
+      const root = ns.find((n) => n.kind === 'barycenter' && !n.parentId) || ns.find((n) => !n.parentId);
+      return !!root && !!(root as any).object_playerhidden;
   }
 
   function getVisualNodes(system: System): CelestialBody[] {
@@ -903,7 +906,7 @@
           {#if isSystemHidden(systemNode)}
             <!-- Crossed-eye reminder: this system's main star is player-hidden, so it won't appear
                  in the players' field guide. -->
-            <g class="hidden-eye" transform="translate({systemNode.position.x + 9}, {systemNode.position.y - 9})" pointer-events="none">
+            <g class="hidden-eye" transform="translate({systemNode.position.x + 6}, {systemNode.position.y - 6}) scale(0.7)" pointer-events="none">
               <title>Hidden from players (main star hidden) — not shown in the field guide</title>
               <path d="M-5 0 C -3 -3.2, 3 -3.2, 5 0 C 3 3.2, -3 3.2, -5 0 Z" fill="none" stroke="#ff6b6b" stroke-width="1" />
               <circle cx="0" cy="0" r="1.5" fill="#ff6b6b" />
