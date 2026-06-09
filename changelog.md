@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.10-alpha - 9th Jun 2026
+
+* **Field Guide — diagrams + remote fix**:
+  * Clickable **star map** (systems at their real positions, with route lines) → preview a system, then explore. Clickable **per-system orbital diagram** (planets by distance, moon pips) → tap a body for its full data. Map stays on top, details below.
+  * **Remote (cross-device) now delivers the whole map**: large peer messages are chunked (WebRTC drops >16KB frames), and the broadcast snapshot is slimmed (no transit logs / debug). Players on their own devices now get the full starmap, not just the branding.
+
 ## v2.0.9-alpha - 9th Jun 2026
 
 * Printed report: added a **Geology** (tectonic regime) row to every body/moon, matching the field guide's depth.
