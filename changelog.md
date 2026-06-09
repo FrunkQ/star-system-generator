@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.14-alpha - 9th Jun 2026
+
+* Black holes get a **Feeding** toggle (active accretion — changes the image, orrery accretion ring, and output). Pushing a neutron star's **magnetic field past ~10¹³ G** turns it into a (purple) **magnetar**, and dropping it back reverts.
+
 ## v2.0.13-alpha - 9th Jun 2026
 
 * Interstellar planning moved off the rail to a link in a ship's transit planner (below the destination picker); "Measure" moved to the bottom of the rail.
