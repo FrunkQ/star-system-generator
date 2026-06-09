@@ -28,7 +28,8 @@ export type BroadcastMessage =
   // Companion App (whole campaign): the redacted starmap, requested + streamed independently of the
   // projector's per-system SYNC_SYSTEM, so both can be served from the one session.
   | { type: 'SYNC_STARMAP'; payload: Starmap }
-  | { type: 'REQUEST_STARMAP'; payload: string | null };
+  | { type: 'REQUEST_STARMAP'; payload: string | null }
+  | { type: 'SYNC_BRANDING'; payload: { name: string; logo: string | null } };
 
 type BroadcastEnvelope = {
   sessionId: string | null;
@@ -180,6 +181,7 @@ class BroadcastService {
   // projector (per-system) and the catalogue (whole map) can both be served by one session.
   public onStarmapUpdate: ((map: Starmap) => void) | null = null;
   public onRequestStarmap: ((requestingId: string | null) => void) | null = null;
+  public onBrandingUpdate: ((b: { name: string; logo: string | null }) => void) | null = null;
 
   private handleMessage(data: any) {
       // Check if this is an envelope or legacy message
@@ -243,6 +245,9 @@ class BroadcastService {
               break;
           case 'SYNC_STARMAP':
               if (!this.isSender && this.onStarmapUpdate) this.onStarmapUpdate(msg.payload);
+              break;
+          case 'SYNC_BRANDING':
+              if (!this.isSender && this.onBrandingUpdate) this.onBrandingUpdate(msg.payload);
               break;
           case 'REQUEST_STARMAP':
               if (this.isSender && this.onRequestStarmap) {

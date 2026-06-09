@@ -13,6 +13,7 @@
   import { broadcastService } from '$lib/broadcast';
   import { computePlayerStarmapSnapshot } from '$lib/system/utils';
   import CompanionModal from '$lib/components/CompanionModal.svelte';
+  import { brandingStore } from '$lib/catalogue/branding';
   import { starmapStore } from '$lib/starmapStore';
   import { systemStore, viewportStore } from '$lib/stores';
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap } from '$lib/starmapStorage';
@@ -260,11 +261,16 @@
       if (requestingId && requestingId !== broadcastSessionId) return;
       const map = get(starmapStore);
       if (map) broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: computePlayerStarmapSnapshot(map) });
+      broadcastService.sendMessage({ type: 'SYNC_BRANDING', payload: get(brandingStore) });
     };
   });
   // Re-broadcast the redacted starmap whenever it changes, so connected guides stay live.
   $: if (browser && $starmapStore) {
     broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: computePlayerStarmapSnapshot($starmapStore) });
+  }
+  // Push branding (company name + logo) to guides whenever the GM edits it.
+  $: if (browser && $brandingStore) {
+    broadcastService.sendMessage({ type: 'SYNC_BRANDING', payload: $brandingStore });
   }
 
   // Subscribe to systemStore and update starmapStore

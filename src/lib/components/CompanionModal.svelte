@@ -7,10 +7,32 @@
   import { browser } from '$app/environment';
   import QRCode from 'qrcode';
   import { broadcastService } from '$lib/broadcast';
+  import { brandingStore } from '$lib/catalogue/branding';
 
   export let sessionId: string;
 
   const dispatch = createEventDispatcher();
+  let logoInput: HTMLInputElement;
+
+  // Downscale any uploaded logo to a small PNG data URL (max 160px) so it's tiny enough to broadcast
+  // every time and store locally. Keeps the "letterhead" feature cheap.
+  function onLogoPick(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file || !browser) return;
+    const img = new Image();
+    img.onload = () => {
+      const max = 160;
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.width * scale));
+      c.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = c.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      brandingStore.update((b) => ({ ...b, logo: c.toDataURL('image/png') }));
+    };
+    img.src = URL.createObjectURL(file);
+  }
 
   const SKINS = [
     { key: 'green',   label: 'Green Screen',     blurb: 'Salvaged CRT — small pages, bitmap charts' },
@@ -56,6 +78,21 @@
     <p class="lede">A live, redacted companion to the system you're running. Players open it on their
       own phones or tablets (scan the QR / share the link) and it updates as you play. Hidden bodies
       and GM notes are never sent.</p>
+
+    <div class="form-group">
+      <label>Branding (in-universe letterhead)</label>
+      <input type="text" class="org-name" placeholder="Company / faction name (e.g. a megacorp or survey authority)" bind:value={$brandingStore.name} />
+      <div class="logo-row">
+        {#if $brandingStore.logo}
+          <img class="logo-preview" src={$brandingStore.logo} alt="Logo preview" />
+          <button on:click={() => brandingStore.update((b) => ({ ...b, logo: null }))}>Remove logo</button>
+        {:else}
+          <button on:click={() => logoInput?.click()}>Upload logo…</button>
+          <span class="logo-hint">PNG/JPG; auto-shrunk. Use your own art (no trademarked logos).</span>
+        {/if}
+        <input type="file" accept="image/*" bind:this={logoInput} on:change={onLogoPick} style="display:none" />
+      </div>
+    </div>
 
     <div class="form-group">
       <label>Skin</label>
@@ -112,6 +149,11 @@
   .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
   .form-group > label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
   .form-group > label.check { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-size: 0.85rem; color: var(--text); }
+  .org-name { width: 100%; padding: 0.5em; background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
+  .logo-row { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.5rem; flex-wrap: wrap; }
+  .logo-row button { background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 10px; cursor: pointer; font: inherit; }
+  .logo-preview { height: 40px; width: auto; max-width: 120px; border-radius: 4px; background: #fff; padding: 3px; }
+  .logo-hint { font-size: 0.72rem; color: var(--text-muted); }
   .skins { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
   .skin {
     display: flex; flex-direction: column; gap: 2px; text-align: left;
