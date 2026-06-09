@@ -1583,6 +1583,20 @@
       transitDelayDays = 0;
   }
 
+  // One-button refuel: top up every tank of the ship being planned.
+  function handleRefuel() {
+      const id = planningConstructId || plannerOriginId;
+      if (!id) return;
+      systemStore.update(sys => {
+          if (!sys) return sys;
+          const nodes = sys.nodes.map(n => {
+              if (n.id !== id || !Array.isArray((n as any).fuel_tanks)) return n;
+              return { ...n, fuel_tanks: (n as any).fuel_tanks.map((t: any) => ({ ...t, current_units: t.capacity_units })) };
+          });
+          return { ...sys, nodes, isManuallyEdited: true };
+      });
+  }
+
   function handleExecutePlan(e: CustomEvent) {
       const payload = e.detail as { plan?: TransitPlan | null; force?: boolean } | TransitPlan | null;
       const finalPlan = (payload && typeof payload === 'object' && 'plan' in payload)
@@ -1858,7 +1872,9 @@
               {#if mode === 'phone'}<FullscreenButton />{/if}
               <button class="ov-btn faded" title="Reset view" aria-label="Reset view" on:click={() => visualizer?.resetView()}>⟲{#if !$railCollapsed} Reset View{/if}</button>
               <div class="ov-view">
-                <button class="ov-btn" class:active={viewOpen} on:click={toggleViewPopover}>View ▾</button>
+                <button class="ov-btn ov-eye" class:active={viewOpen} on:click={toggleViewPopover} title="View options" aria-label="View options">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
                 {#if viewOpen}
                   <div class="ov-popover">
                     <label><input type="checkbox" bind:checked={showNames} /> Names</label>
@@ -1972,6 +1988,7 @@
                     on:undoLastLeg={handleUndoLastLeg}
                     on:executePlan={handleExecutePlan}
                     on:interstellar={() => dispatch('interstellar', { shipId: planningConstructId || plannerOriginId })}
+                    on:refuel={handleRefuel}
                     on:close={handleClosePlanner}
                     on:planTransit={handleStartPlanning}
                     on:openJourneyLog={handleOpenJourneyLog}
@@ -2337,7 +2354,7 @@
     position: absolute;
     top: 8px;
     right: 8px;
-    z-index: 56;
+    z-index: 66; /* above the BodyPicker (60) so the eye is never hidden behind it */
     display: flex;
     gap: 8px;
     align-items: flex-start;
@@ -2361,6 +2378,17 @@
   .ov-btn.faded { opacity: 0.55; font-size: 1rem; }
   .ov-btn.faded:hover { opacity: 1; }
   .ov-btn.active { border-color: var(--accent, #ff5a1f); }
+  /* Semitransparent round eye that floats on the orrery and opens the View options (wireframe feel). */
+  .ov-eye {
+    width: 36px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--bg-panel, #14161c) 50%, transparent);
+    opacity: 0.85;
+  }
+  .ov-eye:hover { opacity: 1; }
+  .ov-eye.active { border-color: var(--accent, #ff5a1f); color: var(--accent, #ff5a1f); opacity: 1; }
   .ov-view { position: relative; }
   .ov-popover {
     position: absolute;

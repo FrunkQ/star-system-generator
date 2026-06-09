@@ -923,7 +923,10 @@
         
         <div class="fuel-gauge-container">
             <div class="fuel-labels">
-                <span>Fuel</span>
+                <span>Fuel
+                  <button type="button" title="Fill all tanks to capacity" on:click={() => dispatch('refuel')}
+                    style="margin-left:6px; background:transparent; border:1px solid var(--border); color:var(--accent); border-radius:4px; padding:1px 7px; cursor:pointer; font:inherit; font-size:0.85em;">⛽ Refuel</button>
+                </span>
                 <span>
                     <span style="color: #88ccff">{(remainingAfterLegs/1000).toFixed(1)}t</span> 
                     {#if planCost > 0}
