@@ -13,6 +13,7 @@
   import { broadcastService } from '$lib/broadcast';
   import { computePlayerStarmapSnapshot } from '$lib/system/utils';
   import CompanionModal from '$lib/components/CompanionModal.svelte';
+  import InterstellarTransitModal from '$lib/components/InterstellarTransitModal.svelte';
   import { brandingStore } from '$lib/catalogue/branding';
   import { starmapStore } from '$lib/starmapStore';
   import { systemStore, viewportStore } from '$lib/stores';
@@ -45,6 +46,7 @@
   // whether the GM is on the starmap or inside a system. We own the session id; SystemView reuses it.
   let broadcastSessionId = generateId();
   let showCompanionModal = false;
+  let showInterstellarModal = false;
 
   let showNewStarmapModal = false;
   let showGenerationWizard = false;
@@ -836,6 +838,7 @@
         on:routes={() => showRoutes = true}
         on:about={() => showAbout = true}
         on:catalogue={() => showCompanionModal = true}
+        on:interstellar={() => showInterstellarModal = true}
         on:back={handleBackToStarmap}
         on:renameNode={handleRenameNode}
       />
@@ -848,6 +851,7 @@
       rulePack={selectedRulepack}
       on:new={handleRequestNewStarmap}
       on:catalogue={() => showCompanionModal = true}
+      on:interstellar={() => showInterstellarModal = true}
       on:systemclick={handleSystemClick}
       on:systemzoom={handleSystemZoom}
       on:addsystemat={handleAddSystemAt}
@@ -914,6 +918,10 @@
 
   {#if showCompanionModal}
     <CompanionModal sessionId={broadcastSessionId} on:close={() => showCompanionModal = false} />
+  {/if}
+
+  {#if showInterstellarModal && $starmapStore}
+    <InterstellarTransitModal starmap={$starmapStore} rulePack={effectiveRulePack || selectedRulepack} on:close={() => showInterstellarModal = false} />
   {/if}
 
   {#if showAllBodies}

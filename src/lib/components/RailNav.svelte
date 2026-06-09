@@ -42,7 +42,8 @@
     about: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
     greenscreen: '<path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
     catalogue: '<rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="10" r="3"/><line x1="10.5" y1="18" x2="13.5" y2="18"/>',
-    ruler: '<rect x="2.5" y="7" width="19" height="10" rx="1" transform="rotate(0 12 12)"/><line x1="6.5" y1="7" x2="6.5" y2="10.5"/><line x1="10.5" y1="7" x2="10.5" y2="11.5"/><line x1="14.5" y1="7" x2="14.5" y2="10.5"/><line x1="18.5" y1="7" x2="18.5" y2="11.5"/>'
+    ruler: '<rect x="2.5" y="7" width="19" height="10" rx="1" transform="rotate(0 12 12)"/><line x1="6.5" y1="7" x2="6.5" y2="10.5"/><line x1="10.5" y1="7" x2="10.5" y2="11.5"/><line x1="14.5" y1="7" x2="14.5" y2="10.5"/><line x1="18.5" y1="7" x2="18.5" y2="11.5"/>',
+    interstellar: '<circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M6.6 16.4 17.4 7.6" stroke-dasharray="3 2.5"/>'
   };
 </script>
 
@@ -105,6 +106,9 @@
   </button>
   <button class="rail-btn" title="Routes & journeys" on:click={() => go('routes')}>
     <span class="ic">{@html svg(I.routes)}</span><span class="rail-label">Routes…</span>
+  </button>
+  <button class="rail-btn" title="Plan an interstellar journey for a ship" on:click={() => go('interstellar')}>
+    <span class="ic">{@html svg(I.interstellar)}</span><span class="rail-label">Interstellar…</span>
   </button>
   <!-- Field Guide is campaign-wide (whole starmap), so it's available from BOTH the starmap and a system. -->
   <button class="rail-btn" title="Open the players' live field guide (Companion App)" on:click={() => go('catalogue')}>

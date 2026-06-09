@@ -1807,6 +1807,7 @@
         on:projectorcrt={handleToggleCrt}
         on:report={() => { railOpen = false; showReportConfigModal = true; }}
         on:catalogue={() => { railOpen = false; dispatch('catalogue'); }}
+        on:interstellar={() => { railOpen = false; dispatch('interstellar'); }}
         on:ruler={() => { rulerActive = !rulerActive; }}
         on:downloadsystem={() => { railOpen = false; handleDownloadJson(); }}
         on:uploadsystem={() => { railOpen = false; railUploadInput?.click(); }}

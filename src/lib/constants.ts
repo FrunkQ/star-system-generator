@@ -13,6 +13,11 @@ export const APP_DATE = _buildInfo?.time
 export const G = 6.67430e-11; // Gravitational constant
 export const UNIVERSAL_GAS_CONSTANT = 8.31446; // J/(mol·K)
 export const AU_KM = 149597870.7;
+// Interstellar scales
+export const C_MS = 299792458;                  // speed of light, m/s
+export const LY_M = 9.4607304725808e15;         // light-year, m
+export const PC_M = 3.0856775814913673e16;      // parsec, m
+export const JULIAN_YEAR_S = 31557600;          // seconds in a Julian year (365.25 d)
 export const SOLAR_MASS_KG = 1.989e30;
 export const SOLAR_RADIUS_KM = 696340;
 export const EARTH_MASS_KG = 5.972e24;
