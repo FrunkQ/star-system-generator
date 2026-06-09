@@ -107,9 +107,6 @@
   <button class="rail-btn" title="Routes & journeys" on:click={() => go('routes')}>
     <span class="ic">{@html svg(I.routes)}</span><span class="rail-label">Routes…</span>
   </button>
-  <button class="rail-btn" title="Plan an interstellar journey for a ship" on:click={() => go('interstellar')}>
-    <span class="ic">{@html svg(I.interstellar)}</span><span class="rail-label">Interstellar…</span>
-  </button>
   <!-- Field Guide is campaign-wide (whole starmap), so it's available from BOTH the starmap and a system. -->
   <button class="rail-btn" title="Open the players' live field guide (Companion App)" on:click={() => go('catalogue')}>
     <span class="ic">{@html svg(I.catalogue)}</span><span class="rail-label">Field Guide…</span>
@@ -128,15 +125,17 @@
     <button class="rail-btn" title="Generate a report" on:click={() => go('report')}>
       <span class="ic">{@html svg(I.report)}</span><span class="rail-label">Report…</span>
     </button>
-    <button class="rail-btn" class:active={rulerOn} title="Measure: tap two bodies for the distance between them in AU" on:click={() => dispatch('ruler')}>
-      <span class="ic" class:accent={rulerOn}>{@html svg(I.ruler)}</span><span class="rail-label">Measure</span>
-    </button>
   {/if}
 
   <slot />
 
   <div class="spacer"></div>
 
+  {#if activeView === 'system'}
+    <button class="rail-btn" class:active={rulerOn} title="Measure: tap two bodies for the distance between them in AU" on:click={() => dispatch('ruler')}>
+      <span class="ic" class:accent={rulerOn}>{@html svg(I.ruler)}</span><span class="rail-label">Measure</span>
+    </button>
+  {/if}
   <button class="rail-btn" title="Settings" on:click={() => go('settings')}>
     <span class="ic accent">{@html svg(I.settings)}</span><span class="rail-label">Settings</span>
   </button>

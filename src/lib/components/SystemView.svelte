@@ -1807,8 +1807,7 @@
         on:projectorcrt={handleToggleCrt}
         on:report={() => { railOpen = false; showReportConfigModal = true; }}
         on:catalogue={() => { railOpen = false; dispatch('catalogue'); }}
-        on:interstellar={() => { railOpen = false; dispatch('interstellar'); }}
-        on:ruler={() => { rulerActive = !rulerActive; }}
+        on:ruler={() => { railOpen = false; rulerActive = !rulerActive; }}
         on:downloadsystem={() => { railOpen = false; handleDownloadJson(); }}
         on:uploadsystem={() => { railOpen = false; railUploadInput?.click(); }}
         on:new={() => dispatch('new')}
@@ -1972,6 +1971,7 @@
                     on:addNextLeg={handleAddNextLeg}
                     on:undoLastLeg={handleUndoLastLeg}
                     on:executePlan={handleExecutePlan}
+                    on:interstellar={() => dispatch('interstellar', { shipId: planningConstructId || plannerOriginId })}
                     on:close={handleClosePlanner}
                     on:planTransit={handleStartPlanning}
                     on:openJourneyLog={handleOpenJourneyLog}

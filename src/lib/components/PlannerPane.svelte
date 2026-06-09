@@ -39,6 +39,7 @@
     on:addNextLeg
     on:undoLastLeg
     on:executePlan
+    on:interstellar
     on:close
 />
 {#if focusedBody}

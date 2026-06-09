@@ -806,7 +806,6 @@
         on:allships={() => { railOpen = false; dispatch('allships'); }}
         on:routes={() => { railOpen = false; dispatch('routes'); }}
         on:catalogue={() => { railOpen = false; dispatch('catalogue'); }}
-        on:interstellar={() => { railOpen = false; dispatch('interstellar'); }}
         on:clear={() => { railOpen = false; dispatch('clear'); }}
       />
     </svelte:fragment>

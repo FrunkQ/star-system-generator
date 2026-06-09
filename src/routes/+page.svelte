@@ -47,6 +47,7 @@
   let broadcastSessionId = generateId();
   let showCompanionModal = false;
   let showInterstellarModal = false;
+  let interstellarShipId = '';
 
   let showNewStarmapModal = false;
   let showGenerationWizard = false;
@@ -838,7 +839,7 @@
         on:routes={() => showRoutes = true}
         on:about={() => showAbout = true}
         on:catalogue={() => showCompanionModal = true}
-        on:interstellar={() => showInterstellarModal = true}
+        on:interstellar={(e) => { interstellarShipId = e.detail?.shipId || ''; showInterstellarModal = true; }}
         on:back={handleBackToStarmap}
         on:renameNode={handleRenameNode}
       />
@@ -851,7 +852,6 @@
       rulePack={selectedRulepack}
       on:new={handleRequestNewStarmap}
       on:catalogue={() => showCompanionModal = true}
-      on:interstellar={() => showInterstellarModal = true}
       on:systemclick={handleSystemClick}
       on:systemzoom={handleSystemZoom}
       on:addsystemat={handleAddSystemAt}
@@ -921,7 +921,7 @@
   {/if}
 
   {#if showInterstellarModal && $starmapStore}
-    <InterstellarTransitModal starmap={$starmapStore} rulePack={effectiveRulePack || selectedRulepack} on:close={() => showInterstellarModal = false} />
+    <InterstellarTransitModal starmap={$starmapStore} rulePack={effectiveRulePack || selectedRulepack} initialShipId={interstellarShipId} on:close={() => showInterstellarModal = false} />
   {/if}
 
   {#if showAllBodies}

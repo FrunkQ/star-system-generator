@@ -980,6 +980,10 @@
                 {/each}
             </select>
         {/if}
+        <button type="button" on:click={() => dispatch('interstellar')}
+            style="margin-top:8px; width:100%; background:transparent; border:1px dashed var(--border); color:var(--accent); border-radius:4px; padding:7px; cursor:pointer; font:inherit; font-size:0.85em;">
+            ✦ …or plan an interstellar journey to another system
+        </button>
     </div>
 
     {#if hiddenPlanCount > 0}
