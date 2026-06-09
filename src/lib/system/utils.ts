@@ -1,5 +1,5 @@
 // src/lib/system/utils.ts
-import type { System, ID, CelestialBody, Barycenter, BurnPlan, Orbit, RulePack, SystemNode } from '../types';
+import type { System, ID, CelestialBody, Barycenter, BurnPlan, Orbit, RulePack, SystemNode, Starmap } from '../types';
 import { G, AU_KM } from '../constants';
 import { propagateState } from '../physics/orbits';
 import { recalculateSystemPhysics } from './postprocessing';
@@ -86,6 +86,32 @@ export function computePlayerSnapshot(sys: System, _scopeRootId?: ID): System {
   delete (playerSystem as any).gmNotes;
 
   return playerSystem;
+}
+
+/**
+ * Player-safe snapshot of a WHOLE starmap for the Companion App: every system the players may see,
+ * each redacted via computePlayerSnapshot. A system whose primary (main) star is player-hidden is
+ * dropped entirely — that's the GM's "hide this system" lever. GM notes (map-level) are stripped,
+ * and routes referencing a dropped system are removed.
+ */
+export function computePlayerStarmapSnapshot(map: Starmap): Starmap {
+  const clone: any = JSON.parse(JSON.stringify(map));
+  delete clone.gmNotes;
+
+  const isStar = (n: any) => n?.roleHint === 'star' || (Array.isArray(n?.classes) && n.classes.some((c: string) => String(c).startsWith('star/')));
+  const mainStarHidden = (sysNode: any): boolean => {
+    const stars = (sysNode?.system?.nodes || []).filter(isStar).sort((a: any, b: any) => (b.massKg || 0) - (a.massKg || 0));
+    const primary = stars[0];
+    return !!primary && !!primary.object_playerhidden;
+  };
+
+  clone.systems = (clone.systems || [])
+    .filter((sysNode: any) => !mainStarHidden(sysNode))
+    .map((sysNode: any) => ({ ...sysNode, system: computePlayerSnapshot(sysNode.system) }));
+
+  const visibleIds = new Set(clone.systems.map((s: any) => s.id));
+  clone.routes = (clone.routes || []).filter((r: any) => visibleIds.has(r.sourceSystemId) && visibleIds.has(r.targetSystemId));
+  return clone as Starmap;
 }
 
 export function propagate(node: CelestialBody | Barycenter, tMs: number): {x: number, y: number} | null {
