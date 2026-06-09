@@ -185,6 +185,12 @@
       return `${min.toFixed(2)} - ${max.toFixed(2)} mSv/y`;
   }
 
+  function getGeology(body: CelestialBody | Barycenter) {
+      const r = (body as any).geoActivity?.regime;
+      if (!r) return '-';
+      return String(r).replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
   function getEquilibriumRange(body: CelestialBody | Barycenter) {
       if (body.kind === 'barycenter') return '-';
       const min = (body as any).equilibriumTempMinK;
@@ -1006,6 +1012,7 @@
                                                      <tr><th>Atmosphere</th><td style="font-size: 0.9em;">{getAtmosphereString(child)}</td></tr>
                                                      <tr><th>Hydrography</th><td>{getHydroString(child)}</td></tr>
                                                      <tr><th>Magnetosphere</th><td>{child.magneticField ? child.magneticField.strengthGauss.toFixed(2) + ' G' : 'None'}</td></tr>
+                                                     <tr><th>Geology</th><td>{getGeology(child)}</td></tr>
                                                      <tr><th>Surface Rad</th><td>{child.surfaceRadiation !== undefined ? child.surfaceRadiation.toFixed(1) + ' mSv/y' : '-'}</td></tr>
                                                      <tr><th>Rad Range</th><td>{getRadiationRange(child)}</td></tr>
                                                      <tr><th>Stability</th><td>{getOrbitStability(child)}</td></tr>
@@ -1075,6 +1082,7 @@
                                                              <tr><th>Atmosphere</th><td style="font-size: 0.9em;">{getAtmosphereString(grandchild)}</td></tr>
                                                              <tr><th>Hydrography</th><td>{getHydroString(grandchild)}</td></tr>
                                                              <tr><th>Magnetosphere</th><td>{grandchild.magneticField ? grandchild.magneticField.strengthGauss.toFixed(2) + ' G' : 'None'}</td></tr>
+                                                             <tr><th>Geology</th><td>{getGeology(grandchild)}</td></tr>
                                                              <tr><th>Surface Rad</th><td>{grandchild.surfaceRadiation !== undefined ? grandchild.surfaceRadiation.toFixed(1) + ' mSv/y' : '-'}</td></tr>
                                                              <tr><th>Rad Range</th><td>{getRadiationRange(grandchild)}</td></tr>
                                                              <tr><th>Stability</th><td>{getOrbitStability(grandchild)}</td></tr>
@@ -1147,6 +1155,7 @@
                                              <tr><th>Atmosphere</th><td style="font-size: 0.9em;">{getAtmosphereString(topChild as CelestialBody)}</td></tr>
                                              <tr><th>Hydrography</th><td>{getHydroString(topChild as CelestialBody)}</td></tr>
                                              <tr><th>Magnetosphere</th><td>{(topChild as CelestialBody).magneticField ? (topChild as CelestialBody).magneticField.strengthGauss.toFixed(2) + ' G' : 'None'}</td></tr>
+                                             <tr><th>Geology</th><td>{getGeology(topChild)}</td></tr>
                                              <tr><th>Surface Rad</th><td>{(topChild as CelestialBody).surfaceRadiation !== undefined ? (topChild as CelestialBody).surfaceRadiation.toFixed(1) + ' mSv/y' : '-'}</td></tr>
                                              <tr><th>Rad Range</th><td>{getRadiationRange(topChild as CelestialBody)}</td></tr>
                                              <tr><th>Stability</th><td>{getOrbitStability(topChild as CelestialBody)}</td></tr>
@@ -1403,6 +1412,7 @@
                                              <tr><th>Atmosphere</th><td style="font-size: 0.9em;">{getAtmosphereString(topBody as CelestialBody)}</td></tr>
                                              <tr><th>Hydrography</th><td>{getHydroString(topBody as CelestialBody)}</td></tr>
                                              <tr><th>Magnetosphere</th><td>{(topBody as CelestialBody).magneticField ? (topBody as CelestialBody).magneticField.strengthGauss.toFixed(2) + ' G' : 'None'}</td></tr>
+                                             <tr><th>Geology</th><td>{getGeology(topBody)}</td></tr>
                                              <tr><th>Surface Rad</th><td>{(topBody as CelestialBody).surfaceRadiation !== undefined ? (topBody as CelestialBody).surfaceRadiation.toFixed(1) + ' mSv/y' : '-'}</td></tr>
                                              <tr><th>Rad Range</th><td>{getRadiationRange(topBody as CelestialBody)}</td></tr>
                                              <tr><th>Stability</th><td>{getOrbitStability(topBody as CelestialBody)}</td></tr>
@@ -1472,6 +1482,7 @@
                                                      <tr><th>Atmosphere</th><td style="font-size: 0.9em;">{getAtmosphereString(moon)}</td></tr>
                                                      <tr><th>Hydrography</th><td>{getHydroString(moon)}</td></tr>
                                                      <tr><th>Magnetosphere</th><td>{moon.magneticField ? moon.magneticField.strengthGauss.toFixed(2) + ' G' : 'None'}</td></tr>
+                                                     <tr><th>Geology</th><td>{getGeology(moon)}</td></tr>
                                                      <tr><th>Surface Rad</th><td>{moon.surfaceRadiation !== undefined ? moon.surfaceRadiation.toFixed(1) + ' mSv/y' : '-'}</td></tr>
                                                      <tr><th>Rad Range</th><td>{getRadiationRange(moon)}</td></tr>
                                                      <tr><th>Stability</th><td>{getOrbitStability(moon)}</td></tr>
