@@ -1801,10 +1801,10 @@
         activeView="system"
         {projectorOpen}
         rulerOn={rulerActive}
-        greenscreenOn={isGreenscreen}
+        crtOn={isCrtMode}
         on:starmap={() => { railOpen = false; dispatch('back', { force: true }); }}
         on:projector={() => { railOpen = false; handleShare(); }}
-        on:greenscreen={toggleGreenscreen}
+        on:projectorcrt={handleToggleCrt}
         on:report={() => { railOpen = false; showReportConfigModal = true; }}
         on:catalogue={() => { railOpen = false; dispatch('catalogue'); }}
         on:ruler={() => { rulerActive = !rulerActive; }}
@@ -1827,10 +1827,6 @@
       <!-- System-JSON download/upload moved into the File group. Hidden input kept here
            for the File group's Upload action. -->
       <input type="file" accept="application/json,.json" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
-      <div class="rail-view-options">
-        <h3 class="rail-section-title">System</h3>
-        <button class="rail-btn" on:click={() => { railOpen = false; handleToggleCrt(); }}>Toggle projector CRT</button>
-      </div>
       </RailNav>
     </svelte:fragment>
     <svelte:fragment slot="canvas">

@@ -15,7 +15,7 @@
   // (chroma-key) toggle; greenscreenOn highlights it.
   export let projectorOpen = false;
   export let rulerOn = false;
-  export let greenscreenOn = false;
+  export let crtOn = false; // projector "Greenscreen CRT" toggle is on
 
   let fileOpen = false; // File group (New / Open / Save) inline accordion
   $: collapsed = $railCollapsed;
@@ -113,8 +113,8 @@
 
   {#if activeView === 'system'}
     {#if projectorOpen}
-      <button class="rail-btn" class:gs-on={greenscreenOn} title="Toggle the projector greenscreen (chroma key)" on:click={() => dispatch('greenscreen')}>
-        <span class="ic">{@html svg(I.greenscreen)}</span><span class="rail-label">Greenscreen</span>
+      <button class="rail-btn" class:gs-on={crtOn} title="Toggle the projector's green-CRT look" on:click={() => dispatch('projectorcrt')}>
+        <span class="ic">{@html svg(I.greenscreen)}</span><span class="rail-label">Greenscreen CRT</span>
       </button>
     {:else}
       <button class="rail-btn" title="Open the projector window" on:click={() => go('projector')}>
