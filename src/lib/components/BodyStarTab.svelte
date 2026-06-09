@@ -300,16 +300,48 @@
       dispatch('update');
   }
 
+  // A neutron star tips into a (purple) magnetar once its field crosses ~1e13 G.
+  const MAGNETAR_MIN_GAUSS = 1e13;
+  function reclassifyForMagnetism() {
+      if (currentClass !== 'star/NS' && currentClass !== 'star/magnetar') return;
+      const target = magGauss >= MAGNETAR_MIN_GAUSS ? 'star/magnetar' : 'star/NS';
+      if (target === currentClass) return;
+      currentClass = target;
+      const prefixes = Object.keys(SPECTRAL_DATA);
+      const others = (body.classes || []).filter((c: string) => !prefixes.includes(c));
+      body.classes = [target, ...others];
+      updateImage(target);
+  }
+
   function updateMagSlider() {
       const val = Math.exp(magLogMin + (magLogMax - magLogMin) * magSliderPos);
       magGauss = parseFloat(val.toPrecision(3));
       body.magneticField = { strengthGauss: magGauss };
+      reclassifyForMagnetism();
       dispatch('update');
   }
 
   function handleMagInput() {
       body.magneticField = { strengthGauss: magGauss };
       magSliderPos = (Math.log(Math.max(magMin, Math.min(magMax, magGauss))) - magLogMin) / (magLogMax - magLogMin);
+      reclassifyForMagnetism();
+      dispatch('update');
+  }
+
+  // Black hole feeding toggle: swap quiescent ↔ active accretion (changes image + orrery look + flux).
+  function setBHFeeding(active: boolean) {
+      const target = active ? 'star/BH_active' : 'star/BH';
+      currentClass = target;
+      if (!body.classes) body.classes = [];
+      const prefixes = Object.keys(SPECTRAL_DATA);
+      const others = body.classes.filter((c: string) => !prefixes.includes(c));
+      body.classes = [target, ...others];
+      updateImage(target);
+      const data = SPECTRAL_DATA[target];
+      if (data) { // active BHs radiate; quiescent ones don't — nudge temp into the class band
+          body.temperatureK = Math.round((data.ranges.temp[0] + data.ranges.temp[1]) / 2);
+          tempK = body.temperatureK;
+      }
       dispatch('update');
   }
 
@@ -367,6 +399,17 @@
             </select>
             <div class="color-preview" style="{starStyle}"></div>
         </div>
+        {#if currentClass === 'star/BH' || currentClass === 'star/BH_active'}
+            <label class="bh-feeding" style="display:flex; align-items:center; gap:8px; margin-top:8px; font-size:0.9em;">
+                <input type="checkbox" checked={currentClass === 'star/BH_active'} on:change={(e) => setBHFeeding((e.target as HTMLInputElement).checked)} />
+                Feeding (accretion disk) — active black hole
+            </label>
+        {/if}
+        {#if currentClass === 'star/NS' || currentClass === 'star/magnetar'}
+            <p class="ns-hint" style="margin:6px 0 0; font-size:0.78em; opacity:0.7;">
+                Push the magnetic field past 10¹³ G to turn this neutron star into a {currentClass === 'star/magnetar' ? '(purple) magnetar — drop it below to revert' : 'purple magnetar'}.
+            </p>
+        {/if}
     </div>
 
     <hr/>
