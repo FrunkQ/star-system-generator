@@ -105,9 +105,23 @@ export function computePlayerStarmapSnapshot(map: Starmap): Starmap {
     return !!primary && !!primary.object_playerhidden;
   };
 
+  // Drop bulky fields the guide never shows — transit logs (with huge pathPoint arrays), classifier
+  // debug, drafts, AI context. Keeps the broadcast small enough to cross a WebRTC data channel.
+  const slimNode = (n: any) => {
+    delete n.scheduled_journeys;
+    delete n.draft_transit_plan;
+    delete n.classification;
+    delete n.aiContext;
+    return n;
+  };
+
   clone.systems = (clone.systems || [])
     .filter((sysNode: any) => !mainStarHidden(sysNode))
-    .map((sysNode: any) => ({ ...sysNode, system: computePlayerSnapshot(sysNode.system) }));
+    .map((sysNode: any) => {
+      const snap: any = computePlayerSnapshot(sysNode.system);
+      snap.nodes = (snap.nodes || []).map(slimNode);
+      return { id: sysNode.id, name: sysNode.name, position: sysNode.position, subsectorId: sysNode.subsectorId, system: snap };
+    });
 
   const visibleIds = new Set(clone.systems.map((s: any) => s.id));
   clone.routes = (clone.routes || []).filter((r: any) => visibleIds.has(r.sourceSystemId) && visibleIds.has(r.targetSystemId));

@@ -52,6 +52,11 @@ class BroadcastService {
   private peer: any = null;
   private peerConns: any[] = [];   // host: open guest connections
   private peerOut: any = null;     // guest: connection to the host
+  // WebRTC data channels drop/garble messages over ~16KB, so large payloads (the whole starmap)
+  // must be chunked — small ones (branding, focus) go in one frame. This is the Mappadux gotcha.
+  private static CHUNK_BYTES = 14000;
+  private chunkSeq = 0;
+  private chunkBuf = new Map<string, { n: number; parts: string[] }>();
 
   private async loadPeer(): Promise<any> {
     const mod: any = await import('peerjs');
@@ -66,7 +71,7 @@ class BroadcastService {
       this.peer = new Peer(sessionId);
       this.peer.on('connection', (conn: any) => {
         conn.on('open', () => { if (!this.peerConns.includes(conn)) this.peerConns.push(conn); });
-        conn.on('data', (data: any) => this.handleMessage(data));
+        conn.on('data', (data: any) => this.handlePeerData(data));
         conn.on('close', () => { this.peerConns = this.peerConns.filter((c) => c !== conn); });
         conn.on('error', () => { /* per-connection; ignore */ });
       });
@@ -88,7 +93,7 @@ class BroadcastService {
           conn.send({ sessionId: null, message: { type: 'REQUEST_SYNC', payload: sessionId } });
           conn.send({ sessionId: null, message: { type: 'REQUEST_STARMAP', payload: sessionId } });
         });
-        conn.on('data', (data: any) => this.handleMessage(data));
+        conn.on('data', (data: any) => this.handlePeerData(data));
         conn.on('error', () => { /* ignore; local channel may still serve */ });
       });
       this.peer.on('error', (e: any) => { console.warn('[peer guest]', e?.type || e); });
@@ -97,12 +102,44 @@ class BroadcastService {
     }
   }
 
+  private peerTargets(): any[] {
+    if (this.isSender) return this.peerConns;
+    return this.peerOut ? [this.peerOut] : [];
+  }
+
   private sendPeer(envelope: BroadcastEnvelope) {
-    if (this.isSender) {
-      for (const c of this.peerConns) { try { if (c.open) c.send(envelope); } catch { /* drop */ } }
-    } else if (this.peerOut) {
-      try { if (this.peerOut.open) this.peerOut.send(envelope); } catch { /* drop */ }
+    const targets = this.peerTargets();
+    if (targets.length === 0) return;
+    const json = JSON.stringify(envelope);
+    const safeSend = (c: any, payload: any) => { try { if (c.open) c.send(payload); } catch { /* drop */ } };
+
+    if (json.length <= BroadcastService.CHUNK_BYTES) {
+      for (const c of targets) safeSend(c, envelope);
+      return;
     }
+    // Too big for one WebRTC frame → split into ordered chunks, reassembled on the far side.
+    const id = `${this.sessionId || 'x'}-${++this.chunkSeq}`;
+    const n = Math.ceil(json.length / BroadcastService.CHUNK_BYTES);
+    for (let i = 0; i < n; i++) {
+      const part = { __chunk: { id, i, n, data: json.slice(i * BroadcastService.CHUNK_BYTES, (i + 1) * BroadcastService.CHUNK_BYTES) } };
+      for (const c of targets) safeSend(c, part);
+    }
+  }
+
+  // Incoming peer data: reassemble chunk frames, then route like any other message.
+  private handlePeerData(data: any) {
+    if (data && data.__chunk) {
+      const { id, i, n, data: part } = data.__chunk;
+      let entry = this.chunkBuf.get(id);
+      if (!entry) { entry = { n, parts: new Array(n) }; this.chunkBuf.set(id, entry); }
+      entry.parts[i] = part;
+      if (entry.parts.filter((p) => p !== undefined).length === entry.n) {
+        this.chunkBuf.delete(id);
+        try { this.handleMessage(JSON.parse(entry.parts.join(''))); } catch { /* malformed; drop */ }
+      }
+      return;
+    }
+    this.handleMessage(data);
   }
 
   constructor() {
