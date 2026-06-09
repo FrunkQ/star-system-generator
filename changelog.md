@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.7-alpha - 9th Jun 2026
+
+* **Field Guide is now campaign-wide**: it opens at the starmap level with every visible system, then drills into one (a wider cut than the old per-system report). Available from both the starmap and a system view. A system whose main star is hidden from players is dropped from the guide — and now shows a small crossed-eye on the GM's starmap as a reminder.
+
 ## v2.0.6-alpha - 8th Jun 2026
 
 * **Companion App — now a proper app + works on players' own devices**:
