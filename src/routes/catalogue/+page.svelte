@@ -10,6 +10,7 @@
   import { broadcastService } from '$lib/broadcast';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import CatalogueBrowser from '$lib/catalogue/CatalogueBrowser.svelte';
+  import { bodyFacts } from '$lib/catalogue/bodyFacts';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import CRTOverlay from '$lib/components/CRTOverlay.svelte';
   import { AU_KM, G } from '$lib/constants';
@@ -40,6 +41,7 @@
   // computePlayerStarmapSnapshot.)
   let starmap: Starmap | null = null;
   let selectedSystemId: string | null = null;
+  let branding: { name: string; logo: string | null } = { name: '', logo: null };
   let rulePack: RulePack | null = null;
   let sessionId: string | null = null;
   let themeKey: ThemeKey = 'green';
@@ -189,6 +191,7 @@
       lastUpdate = Date.now();
       connected = true;
     };
+    broadcastService.onBrandingUpdate = (b) => { branding = b || { name: '', logo: null }; };
     broadcastService.sendMessage({ type: 'REQUEST_STARMAP', payload: sessionId });
     startClock();
   });
@@ -210,6 +213,8 @@
     {#if selectedSystemId}
       <button class="back-btn" on:click={() => { selectedSystemId = null; selectedBody = null; }} title="Back to all systems">‹ Systems</button>
     {/if}
+    {#if branding.logo}<img class="brand-logo" src={branding.logo} alt="" />{/if}
+    {#if branding.name}<span class="brand-name">{branding.name}</span>{/if}
     <span class="sys-name">{selectedSystemNode ? selectedSystemNode.name.toUpperCase() : (starmap ? (starmap.name || 'STARMAP').toUpperCase() : 'NO SIGNAL')}</span>
     <span class="status" class:live={connected} class:offline={!connected}>
       {#if connected}● LIVE{:else}○ GM OFFLINE — last {nowLabel}{/if}
@@ -293,13 +298,9 @@
           </div>
           <div class="insp-sub">{(selectedBody.roleHint || 'body').toUpperCase()}{selectedBody.class ? ' · ' + selectedBody.class : ''}</div>
           <dl class="insp-grid">
-            <dt>Orbit</dt><dd>{orbitDist(selectedBody)}</dd>
-            <dt>Mass</dt><dd>{massRel(selectedBody)}</dd>
-            <dt>Gravity</dt><dd>{gravityG(selectedBody)}</dd>
-            <dt>Radius</dt><dd>{fmt(selectedBody.radiusKm)} km</dd>
-            <dt>Temp</dt><dd>{tempC(selectedBody)}</dd>
-            <dt>Atmosphere</dt><dd>{atmo(selectedBody)}</dd>
-            {#if selectedBody.habitabilityScore}<dt>Habitability</dt><dd>{selectedBody.habitabilityScore.toFixed(0)}%</dd>{/if}
+            {#each bodyFacts(selectedBody) as f}
+              <dt>{f.label}</dt><dd>{f.value}</dd>
+            {/each}
           </dl>
           {#if selectedBody.description}
             <p class="insp-desc">{selectedBody.description}</p>
@@ -348,6 +349,9 @@
     z-index: 50;
   }
   .sys-name { font-weight: 700; }
+  .brand-logo { height: 20px; width: auto; max-width: 90px; object-fit: contain; }
+  .brand-name { font-weight: 700; letter-spacing: 0.08em; opacity: 0.95; }
+  .brand-name + .sys-name::before { content: '· '; opacity: 0.4; }
   .back-btn {
     background: transparent; color: inherit; border: 1px solid currentColor;
     border-radius: 4px; padding: 2px 9px; font: inherit; font-size: 11px; cursor: pointer; opacity: 0.85;
