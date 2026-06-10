@@ -49,7 +49,7 @@
 
 <nav class="rail-nav" class:collapsed aria-label="App navigation">
   <div class="rail-header">
-    <span class="brand rail-label">SSE</span>
+    <span class="brand rail-label">SSE2</span>
     <button class="rail-collapse" on:click={toggleCollapsed} title={collapsed ? 'Expand menu' : 'Collapse menu'} aria-label="Toggle menu width">
       {#if collapsed}
         <!-- panel-left-open: expand the rail -->
