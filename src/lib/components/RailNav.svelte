@@ -71,33 +71,6 @@
     <span class="ic">{@html svg(I.starmap)}</span><span class="rail-label">Starmap</span>
   </button>
 
-  <button class="rail-btn" class:active={fileOpen} title="File — new / load / save" on:click={() => (fileOpen = !fileOpen)}>
-    <span class="ic">{@html svg(I.file)}</span><span class="rail-label">File</span>
-    <span class="rail-label chev">{fileOpen ? '▾' : '▸'}</span>
-  </button>
-  {#if fileOpen}
-    <button class="rail-btn sub" title="New starmap" on:click={() => go('new')}>
-      <span class="ic">{@html svg(I.new)}</span><span class="rail-label">New Starmap</span>
-    </button>
-    <button class="rail-btn sub" title="Load a starmap from a file" on:click={() => go('open')}>
-      <span class="ic">{@html svg(I.open)}</span><span class="rail-label">Load Starmap</span>
-    </button>
-    <button class="rail-btn sub" title="Save this starmap to a file" on:click={() => go('save')}>
-      <span class="ic">{@html svg(I.save)}</span><span class="rail-label">Save Starmap</span>
-    </button>
-    {#if activeView === 'system'}
-      <button class="rail-btn sub" title="Load a system from a file" on:click={() => go('uploadsystem')}>
-        <span class="ic">{@html svg(I.open)}</span><span class="rail-label">Load System</span>
-      </button>
-      <button class="rail-btn sub" title="Save this system to a file" on:click={() => go('downloadsystem')}>
-        <span class="ic">{@html svg(I.save)}</span><span class="rail-label">Save System</span>
-      </button>
-    {:else}
-      <button class="rail-btn sub danger" title="Clear the whole starmap" on:click={() => go('clear')}>
-        <span class="ic">{@html svg(I.trash)}</span><span class="rail-label">Clear Starmap…</span>
-      </button>
-    {/if}
-  {/if}
   <button class="rail-btn" title="Find a body across all systems" on:click={() => go('allbodies')}>
     <span class="ic">{@html svg(I.body)}</span><span class="rail-label">Find body…</span>
   </button>
@@ -136,8 +109,35 @@
       <span class="ic" class:accent={rulerOn}>{@html svg(I.ruler)}</span><span class="rail-label">Measure</span>
     </button>
   {/if}
+  <button class="rail-btn" class:active={fileOpen} title="File — new / load / save" on:click={() => (fileOpen = !fileOpen)}>
+    <span class="ic">{@html svg(I.file)}</span><span class="rail-label">File</span>
+    <span class="rail-label chev">{fileOpen ? '▾' : '▸'}</span>
+  </button>
+  {#if fileOpen}
+    <button class="rail-btn sub" title="New starmap" on:click={() => go('new')}>
+      <span class="ic">{@html svg(I.new)}</span><span class="rail-label">New Starmap</span>
+    </button>
+    <button class="rail-btn sub" title="Load a starmap from a file" on:click={() => go('open')}>
+      <span class="ic">{@html svg(I.open)}</span><span class="rail-label">Load Starmap</span>
+    </button>
+    <button class="rail-btn sub" title="Save this starmap to a file" on:click={() => go('save')}>
+      <span class="ic">{@html svg(I.save)}</span><span class="rail-label">Save Starmap</span>
+    </button>
+    {#if activeView === 'system'}
+      <button class="rail-btn sub" title="Load a system from a file" on:click={() => go('uploadsystem')}>
+        <span class="ic">{@html svg(I.open)}</span><span class="rail-label">Load System</span>
+      </button>
+      <button class="rail-btn sub" title="Save this system to a file" on:click={() => go('downloadsystem')}>
+        <span class="ic">{@html svg(I.save)}</span><span class="rail-label">Save System</span>
+      </button>
+    {:else}
+      <button class="rail-btn sub danger" title="Clear the whole starmap" on:click={() => go('clear')}>
+        <span class="ic">{@html svg(I.trash)}</span><span class="rail-label">Clear Starmap…</span>
+      </button>
+    {/if}
+  {/if}
   <button class="rail-btn" title="Settings" on:click={() => go('settings')}>
-    <span class="ic accent">{@html svg(I.settings)}</span><span class="rail-label">Settings</span>
+    <span class="ic">{@html svg(I.settings)}</span><span class="rail-label">Settings</span>
   </button>
   <button class="rail-btn" title="About, attributions & debug tools" on:click={() => go('about')}>
     <span class="ic">{@html svg(I.about)}</span><span class="rail-label">About</span>
