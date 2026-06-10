@@ -29,6 +29,52 @@
   // --- Transport UI state ---
   let expanded = false; // the "⋯" secondary panel (actual time / reset / set-actual)
 
+  // --- Drag + minimise (desktop & mobile). The pill can be dragged anywhere by its grip (or the
+  //     minimised clock itself) and collapsed to just the display clock; both persist. ---
+  let dragDx = 0, dragDy = 0;
+  let minimized = false;
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const v = JSON.parse(localStorage.getItem('time-pill-offset') || 'null');
+      if (v) { dragDx = v.dx || 0; dragDy = v.dy || 0; }
+    } catch { /* corrupt — ignore */ }
+    minimized = localStorage.getItem('time-pill-min') === '1';
+  }
+  let rootEl: HTMLDivElement;
+  let dragging = false, dragMoved = false;
+  let dragStartX = 0, dragStartY = 0, dragBaseX = 0, dragBaseY = 0;
+
+  function onGripDown(e: PointerEvent) {
+    dragging = true; dragMoved = false;
+    dragStartX = e.clientX; dragStartY = e.clientY;
+    dragBaseX = dragDx; dragBaseY = dragDy;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+  function onGripMove(e: PointerEvent) {
+    if (!dragging) return;
+    const mx = e.clientX - dragStartX, my = e.clientY - dragStartY;
+    if (Math.abs(mx) + Math.abs(my) > 4) dragMoved = true;
+    dragDx = dragBaseX + mx; dragDy = dragBaseY + my;
+    // keep the pill on screen
+    if (rootEl && typeof window !== 'undefined') {
+      const r = rootEl.getBoundingClientRect();
+      if (r.left < 4) dragDx += 4 - r.left;
+      if (r.top < 4) dragDy += 4 - r.top;
+      if (r.right > window.innerWidth - 4) dragDx -= r.right - (window.innerWidth - 4);
+      if (r.bottom > window.innerHeight - 4) dragDy -= r.bottom - (window.innerHeight - 4);
+    }
+  }
+  function onGripUp() {
+    if (!dragging) return;
+    dragging = false;
+    try { localStorage.setItem('time-pill-offset', JSON.stringify({ dx: dragDx, dy: dragDy })); } catch { /* private mode */ }
+  }
+  function setMinimized(v: boolean) {
+    minimized = v;
+    try { localStorage.setItem('time-pill-min', v ? '1' : '0'); } catch { /* private mode */ }
+  }
+  function onClockTap() { if (!dragMoved) setMinimized(false); }
+
   // Playback-speed ladder (sim seconds per real second). The +/- stepper walks this and
   // Play runs at the selected rate, so time can keep advancing faster than 1s/s without
   // any hidden "lock" toggle.
@@ -262,7 +308,18 @@
   });
 </script>
 
+<div class="tt-root" bind:this={rootEl} style="transform: translate({dragDx}px, {dragDy}px);">
+{#if minimized}
+  <button class="tt-clock" class:compact
+    on:pointerdown={onGripDown} on:pointermove={onGripMove} on:pointerup={onGripUp}
+    on:click={onClockTap}
+    title="Time — tap to expand the transport, drag to move">
+    ◷ {displayClockLabel}
+  </button>
+{:else}
 <div class="time-transport" class:expanded class:compact>
+  <span class="tt-grip" role="presentation" title="Drag to move"
+    on:pointerdown={onGripDown} on:pointermove={onGripMove} on:pointerup={onGripUp}>⠿</span>
   <button
     class="tt-btn tt-jump"
     class:at-now={atNow}
@@ -294,6 +351,7 @@
     <button class="tt-step" on:click={faster} disabled={rateIndex === RATE_STEPS.length - 1} title="Faster" aria-label="Faster">+</button>
   </div>
 
+  <button class="tt-btn tt-min" on:click={() => setMinimized(true)} title="Minimise to a clock" aria-label="Minimise time controls">▁</button>
   <button class="tt-btn tt-more tt-warn" class:on={expanded} on:click={() => (expanded = !expanded)} title="Danger: rewrite the campaign's current time" aria-label="Set current time (danger)">⚠</button>
 
   {#if expanded}
@@ -303,8 +361,46 @@
     </div>
   {/if}
 </div>
+{/if}
+</div>
 
 <style>
+  /* Draggable root: the parent overlay anchors it; the persisted translate moves it anywhere. */
+  .tt-root { display: inline-block; }
+  .tt-grip {
+    flex: 0 0 auto;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    color: var(--text-faint, #6b7280);
+    font-size: 0.95rem;
+    padding: 0 2px;
+    display: flex;
+    align-items: center;
+  }
+  .tt-grip:active { cursor: grabbing; }
+  /* Minimised: just the display clock — tap to expand, drag to move. */
+  .tt-clock {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 13px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg-panel, #14161c) 86%, transparent);
+    border: 1px solid var(--border, #2a2d36);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(7px);
+    color: var(--text, #e8e8e8);
+    font: inherit;
+    font-size: 0.88rem;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .tt-clock.compact { font-size: 0.78rem; padding: 5px 10px; }
+
   /* Transport pill — a clean overlay over the orrery: jump-to-now, play/pause,
      a spring-back shuttle scrub (the main interaction), the live date, and a
      "..." that expands the secondary actions. */
