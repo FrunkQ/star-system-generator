@@ -14,6 +14,7 @@
 
   export let starmap: Starmap;
   export let rulePack: RulePack;
+  export let initialShipId = ''; // preselect the ship when opened from a construct's transit planner
 
   const dispatch = createEventDispatcher();
   const AU_M = AU_KM * 1000;
@@ -26,7 +27,7 @@
   ];
 
   let mode: TransitMode = 'realistic';
-  let shipId = '';
+  let shipId = initialShipId;
   let destId = '';
   let fuelFraction = 0.6;     // realistic: share of fuel for the outbound burn
   let speedSv = 0.45;         // massless/relativistic: log-slider position
