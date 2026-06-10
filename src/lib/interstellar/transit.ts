@@ -6,10 +6,41 @@
 // Everything reports an outside-observer time AND a ship-frame (proper) time, with a red/yellow/green
 // feasibility status for the fuel-limited model. Approximations are deliberate (impulsive burns,
 // Newtonian escape) — this is a GM tool, not an ephemeris.
-import { C_MS, LY_M, PC_M, AU_KM, JULIAN_YEAR_S, G } from '../constants';
+import { C_MS, LY_M, PC_M, AU_KM, JULIAN_YEAR_S, G, EARTH_MASS_KG } from '../constants';
 
 const AU_M = AU_KM * 1000;
 const G0 = 9.80665;
+const JUPITER_MASS_KG = 1.898e27;
+const C2 = C_MS * C_MS;
+
+// Crew-survival banding for a sustained acceleration (Alex's 2G/10G thresholds). Non-blocking —
+// it just flags that the journey needs g-tolerance tech, it never forbids the burn.
+export type CrewLoad = { g: number; status: TransitStatus; note: string };
+export function crewLoad(accel_ms2: number): CrewLoad {
+  const g = accel_ms2 / G0;
+  if (g <= 2) return { g, status: 'green', note: 'Within sustained human tolerance.' };
+  if (g <= 10) return { g, status: 'yellow', note: 'Above ~2 g sustained — crew need g-tolerance tech (couches, fluid breathing).' };
+  return { g, status: 'red', note: 'Above ~10 g sustained — survivable only with advanced inertial-compensation tech.' };
+}
+
+// Relativistic kinetic energy to bring a mass to a fraction of c: (γ−1)·m·c².
+export function kineticEnergyJoules(massKg: number, fractionC: number): number {
+  const beta = clamp(fractionC, 0, 0.99999999);
+  const gamma = 1 / Math.sqrt(1 - beta * beta);
+  return (gamma - 1) * massKg * C2;
+}
+// Express an energy as the mass that would have to be fully converted (E = mc²) to supply it,
+// laddered through familiar masses so the number stays readable.
+export function massEnergyEquivalent(joules: number): string {
+  if (!Number.isFinite(joules) || joules <= 0) return '—';
+  const kg = joules / C2; // mass-energy equivalent
+  if (kg < 1e-3) return `${(kg * 1000).toPrecision(3)} g`;
+  if (kg < 1e3) return `${kg.toPrecision(3)} kg`;
+  if (kg < 1e9) return `${(kg / 1000).toPrecision(3)} tonnes`;
+  if (kg < 0.05 * EARTH_MASS_KG) return `${(kg / 1e9).toPrecision(3)} Gt`;
+  if (kg < 50 * EARTH_MASS_KG) return `${(kg / EARTH_MASS_KG).toPrecision(3)} × Earth's mass`;
+  return `${(kg / JUPITER_MASS_KG).toPrecision(3)} × Jupiter's mass`;
+}
 
 export type TransitStatus = 'green' | 'yellow' | 'red';
 export type TransitMode = 'realistic' | 'massless' | 'relativistic' | 'jump';
@@ -74,6 +105,7 @@ export interface RealisticInput {
   starMassKg: number;
   orbitRadius_m: number;
   distance_m: number;
+  accel_ms2?: number;       // optional sustained burn acceleration → adds finite burn time
 }
 export function realisticTransit(p: RealisticInput): TransitResult {
   const ve = (p.avgIsp_s || 0) * G0;
@@ -94,37 +126,46 @@ export function realisticTransit(p: RealisticInput): TransitResult {
   const cruise = dvOut - dvEscape;
   const dvBrake = ve > 0 && mAfter > 0 ? ve * Math.log(mAfter / p.dryMassKg) : 0;
   const t = relTimes(cruise, p.distance_m);
+  // A finite burn acceleration adds accel + brake time on top of the coast (impulsive burns are
+  // the default when no accel is given).
+  const burnExtra = p.accel_ms2 && p.accel_ms2 > 0 ? (cruise / p.accel_ms2) + (Math.min(dvBrake, cruise) / p.accel_ms2) : 0;
+  const observer = t.observer + burnExtra;
+  const ship = t.ship + burnExtra;
+  const burnNote = burnExtra > 0 ? ` Burns add ${formatDuration(burnExtra)} at ${(p.accel_ms2! / G0).toFixed(1)} g.` : '';
   if (dvBrake >= cruise) {
     return {
-      status: 'green', cruise_ms: cruise, fractionC: cruise / C_MS, observerSeconds: t.observer, shipSeconds: t.ship, gamma: t.gamma,
+      status: 'green', cruise_ms: cruise, fractionC: cruise / C_MS, observerSeconds: observer, shipSeconds: ship, gamma: t.gamma,
       headline: 'Full journey — arrives and stops',
-      detail: `Escapes the star, cruises at ${fmtKms(cruise)} (${pctC(cruise)}), and the ${fmtKms(dvBrake)} reserve brakes it to rest at the destination.`,
+      detail: `Escapes the star, cruises at ${fmtKms(cruise)} (${pctC(cruise)}), and the ${fmtKms(dvBrake)} reserve brakes it to rest at the destination.${burnNote}`,
     };
   }
   return {
-    status: 'yellow', cruise_ms: cruise, fractionC: cruise / C_MS, observerSeconds: t.observer, shipSeconds: t.ship, gamma: t.gamma,
+    status: 'yellow', cruise_ms: cruise, fractionC: cruise / C_MS, observerSeconds: observer, shipSeconds: ship, gamma: t.gamma,
     headline: 'Reaches interstellar space — but cannot stop',
-    detail: `Cruises at ${fmtKms(cruise)} (${pctC(cruise)}) but has only ${fmtKms(dvBrake)} of braking Δv (needs ${fmtKms(cruise)}). It arrives as an unstoppable fly-by — reserve more fuel for the burn.`,
+    detail: `Cruises at ${fmtKms(cruise)} (${pctC(cruise)}) but has only ${fmtKms(dvBrake)} of braking Δv (needs ${fmtKms(cruise)}). It arrives as an unstoppable fly-by — reserve more fuel for the burn.${burnNote}`,
   };
 }
 
-// 2 — MASSLESS FUEL: infinite/free fuel, so it always escapes and can always brake. The drive's
-// thrust still caps the comfortable acceleration; the GM picks the cruise speed.
-export function masslessTransit(maxAccel_ms2: number, cruiseFractionC: number, distance_m: number): TransitResult {
-  const v = clamp(cruiseFractionC, 0, 0.999) * C_MS;
-  const a = maxAccel_ms2 > 0 ? maxAccel_ms2 : G0;
-  const tAccel = v / a;                 // accel (and equally decel) duration
-  const dAccel = 0.5 * a * tAccel * tAccel;
-  const dCruise = Math.max(0, distance_m - 2 * dAccel);
-  const tCruise = v > 0 ? dCruise / v : Infinity;
-  const beta = clamp(v / C_MS, 0, 0.99999999);
-  const gamma = 1 / Math.sqrt(1 - beta * beta);
-  const observer = 2 * tAccel + tCruise;
-  const ship = 2 * tAccel + tCruise / gamma; // dilate the coast; accel phases ~undilated (approx)
+// 2 — MASSLESS FUEL: infinite/free fuel, so escape and braking are never in doubt. There is NO
+// cruise: the ship burns at a constant g all the way to the midpoint (peak speed there), flips, and
+// brakes at the same g to rest. Uses the relativistic constant-proper-acceleration (hyperbolic
+// motion) solution, so the peak speed never exceeds c and ship-frame time is properly dilated.
+export function masslessTransit(accel_ms2: number, distance_m: number): TransitResult {
+  const a = accel_ms2 > 0 ? accel_ms2 : G0;
+  const half = Math.max(0, distance_m) / 2;
+  // Hyperbolic motion from rest: x = (c²/a)(cosh(aτ/c) − 1). Solve for the proper time τ to cover
+  // the half-distance, then the coordinate (observer) time and the midpoint speed.
+  const coshArg = 1 + (a * half) / C2;          // = cosh(aτ_half/c)
+  const tauHalf = (C_MS / a) * Math.acosh(coshArg);
+  const tHalf = (C_MS / a) * Math.sinh((a * tauHalf) / C_MS);
+  const vPeak = C_MS * Math.tanh((a * tauHalf) / C_MS);
+  const gammaPeak = coshArg;                    // cosh(aτ/c) is exactly γ at the midpoint
+  const observer = 2 * tHalf;
+  const ship = 2 * tauHalf;
   return {
-    status: 'green', cruise_ms: v, fractionC: v / C_MS, observerSeconds: observer, shipSeconds: ship, gamma,
-    headline: 'Free fuel — full journey',
-    detail: `Burns at ${(a / G0).toFixed(1)} g to ${pctC(v)} and back to rest. Infinite propellant, so escape and braking are never in doubt.`,
+    status: 'green', cruise_ms: vPeak, fractionC: vPeak / C_MS, observerSeconds: observer, shipSeconds: ship, gamma: gammaPeak,
+    headline: 'Free fuel — constant-g flip-and-burn',
+    detail: `Accelerates at ${(a / G0).toFixed(1)} g to a midpoint peak of ${pctC(vPeak)}, then flips and brakes at the same g to rest. No cruise phase — it is speeding up or slowing down the whole way.`,
   };
 }
 

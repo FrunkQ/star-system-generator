@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   realisticTransit, masslessTransit, relativisticTransit, jumpTransit,
-  distanceToMeters,
+  distanceToMeters, crewLoad, kineticEnergyJoules, massEnergyEquivalent,
 } from './transit';
 import { LY_M, PC_M, C_MS, JULIAN_YEAR_S } from '../constants';
 
@@ -33,11 +33,29 @@ describe('interstellar/transit', () => {
     expect(r.gamma).toBe(1);
   });
 
-  it('massless: always green and faster than light-limited would forbid', () => {
-    const r = masslessTransit(9.80665, 0.2, FOUR_LY);
-    expect(r.status).toBe('green');
-    expect(r.fractionC).toBeCloseTo(0.2, 5);
-    expect(r.shipSeconds).toBeLessThanOrEqual(r.observerSeconds);
+  it('massless: constant-g flip-and-burn — no cruise, peak < c, ship time dilated, faster at higher g', () => {
+    const oneG = masslessTransit(9.80665, FOUR_LY);
+    expect(oneG.status).toBe('green');
+    expect(oneG.fractionC).toBeGreaterThan(0.5);   // ~0.95c peak at 1g over 4 ly
+    expect(oneG.fractionC).toBeLessThan(1);         // never reaches c
+    expect(oneG.shipSeconds).toBeLessThan(oneG.observerSeconds); // dilation
+    const tenG = masslessTransit(10 * 9.80665, FOUR_LY);
+    expect(tenG.observerSeconds).toBeLessThan(oneG.observerSeconds); // more g → quicker
+    expect(tenG.fractionC).toBeGreaterThan(oneG.fractionC);
+  });
+
+  it('crewLoad: 2 g green, 2–10 g yellow, >10 g red', () => {
+    expect(crewLoad(1 * 9.80665).status).toBe('green');
+    expect(crewLoad(5 * 9.80665).status).toBe('yellow');
+    expect(crewLoad(20 * 9.80665).status).toBe('red');
+  });
+
+  it('kinetic energy + mass-energy equivalent grow with speed', () => {
+    const slow = kineticEnergyJoules(1000, 0.1);
+    const fast = kineticEnergyJoules(1000, 0.99);
+    expect(fast).toBeGreaterThan(slow);
+    expect(massEnergyEquivalent(0)).toBe('—');
+    expect(typeof massEnergyEquivalent(fast)).toBe('string');
   });
 
   it('realistic: RED when the drive cannot escape the star', () => {
