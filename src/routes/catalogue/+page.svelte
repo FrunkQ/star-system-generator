@@ -588,9 +588,9 @@
     flex: 0 0 auto;
     text-align: center;
     font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', 'Trebuchet MS', cursive;
-    font-size: 12px;
-    line-height: 1.45;
-    padding: 6px 14px;
+    font-size: 15px;
+    line-height: 1.5;
+    padding: 9px 16px;
   }
   .guide-note.top { color: #06231a; background: linear-gradient(90deg, #8ed0ff, #b9a4ff); }
   .guide-note.bottom { color: #2a1606; background: linear-gradient(90deg, #ffd76e, #ff9c6e); border-top: 2px dashed rgba(0,0,0,0.35); }
