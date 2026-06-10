@@ -313,9 +313,9 @@
   <button class="tt-clock" class:compact
     on:pointerdown={onGripDown} on:pointermove={onGripMove} on:pointerup={onGripUp}
     on:click={onClockTap}
-    title="Time — tap to expand the transport, drag to move">
-    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
-    {displayClockLabel}
+    title={`${displayClockLabel} — tap to expand the transport, drag to move`}
+    aria-label="Time ({displayClockLabel}) — tap to expand">
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
   </button>
 {:else}
 <div class="time-transport" class:expanded class:compact>
@@ -382,28 +382,27 @@
     align-items: center;
   }
   .tt-grip:active { cursor: grabbing; }
-  /* Minimised: just the display clock — tap to expand, drag to move. */
+  /* Minimised: just a clock ICON — tap to expand, drag to move. */
   .tt-clock {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    padding: 7px 13px;
-    border-radius: 12px;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 10px;
     background: color-mix(in srgb, var(--bg-panel, #14161c) 86%, transparent);
     border: 1px solid var(--border, #2a2d36);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(7px);
     color: var(--text, #e8e8e8);
-    font: inherit;
-    font-size: 0.88rem;
-    font-variant-numeric: tabular-nums;
     cursor: pointer;
     touch-action: none;
     user-select: none;
-    white-space: nowrap;
   }
-  .tt-clock.compact { font-size: 0.78rem; padding: 5px 10px; }
-  .tt-clock svg { flex: 0 0 auto; opacity: 0.8; }
+  .tt-clock:hover { color: var(--accent, #ff5a1f); border-color: var(--accent, #ff5a1f); }
+  .tt-clock.compact { width: 28px; height: 28px; }
+  .tt-clock svg { flex: 0 0 auto; opacity: 0.85; }
 
   /* Far-right minimise: a slim vertical strip, not a full button. */
   .tt-min-strip {
@@ -440,6 +439,8 @@
     font-size: 0.85rem;
     box-sizing: border-box;
   }
+  /* ~15% smaller overall (desktop pill); the phone compact bar keeps its own tighter sizing. */
+  .time-transport:not(.compact) { transform: scale(0.85); transform-origin: left bottom; }
   .tt-btn {
     flex: 0 0 auto;
     width: 34px;
