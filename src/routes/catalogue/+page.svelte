@@ -343,7 +343,6 @@
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
     <div class="guide-cover" role="button" tabindex="0" on:click={dismissGuideCover} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') dismissGuideCover(); }}>
       <div class="cover-inner">
-        <p class="cover-pre">On the cover, in large friendly letters:</p>
         <div class="panic" aria-label="Don't panic">
           {#each PANIC_WORDS as word, wi}{#if wi > 0}{' '}{/if}<span class="panic-word">{#each word.letters as ch, i}<span style="--i:{word.offset + i}">{ch}</span>{/each}</span>{/each}
         </div>
@@ -610,13 +609,6 @@
     padding: 24px;
   }
   .cover-inner { max-width: 560px; }
-  .cover-pre {
-    font-family: 'Trebuchet MS', Verdana, sans-serif;
-    font-style: italic;
-    color: #9fe8c4;
-    opacity: 0.85;
-    margin: 0 0 18px;
-  }
   .panic {
     font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', 'Trebuchet MS', cursive;
     font-weight: 700;
