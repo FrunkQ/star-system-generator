@@ -9,7 +9,7 @@
 // ocean/land/cloud mix or Jupiter's bands without re-deriving anything.
 import type { CelestialBody, RulePack, ApparentColor, ApparentColorStop } from '$lib/types';
 import { makeupFractions } from '$lib/physics/makeup';
-import { EARTH_MASS_KG } from '$lib/constants';
+import { EARTH_MASS_KG, LIQUIDS } from '$lib/constants';
 
 type RGB = [number, number, number];
 
@@ -36,7 +36,38 @@ const SURF = {
   metal: hexToRgb('#6b5d52'), rock: hexToRgb('#9c7a5a'), carbon: hexToRgb('#2b2b30'),
   ice: hexToRgb('#d8ecff'), gas: hexToRgb('#c9b89a')
 };
-const OCEAN = hexToRgb('#2b6cb0');
+
+// Star colour from photosphere temperature (compact blackbody-ish bands; G≈white-yellow, M≈red).
+export function starColorFromTempK(tempK?: number): RGB {
+  const t = tempK ?? 5778;
+  if (t >= 30000) return hexToRgb('#9bb0ff');
+  if (t >= 10000) return hexToRgb('#aabfff');
+  if (t >= 7500) return hexToRgb('#cad7ff');
+  if (t >= 6000) return hexToRgb('#f8f7ff');
+  if (t >= 5200) return hexToRgb('#fff4ea');
+  if (t >= 3700) return hexToRgb('#ffd2a1');
+  if (t >= 2400) return hexToRgb('#ffb56c');
+  return hexToRgb('#ff8a4a');
+}
+
+// #8 — a liquid's APPARENT colour is starlight filtered by its intrinsic absorption (colorHex),
+// plus a specular share of raw starlight set by the refractive index (Fresnel R = ((n−1)/(n+1))²,
+// amplified for glancing geometry). Water under a red dwarf is murky amber-grey, not postcard blue;
+// molten iron is mostly a starlight mirror. One data point (n) covers every liquid.
+export function liquidApparentColor(liquidName: string, star: RGB): RGB {
+  const def = LIQUIDS.find((l) => l.name === liquidName);
+  const intrinsic = hexToRgb(def?.colorHex ?? '#8aa0b8');
+  // Diffuse: per-channel filter of the starlight through the liquid's absorption tint.
+  const diffuse: RGB = [
+    (star[0] / 255) * intrinsic[0],
+    (star[1] / 255) * intrinsic[1],
+    (star[2] / 255) * intrinsic[2]
+  ];
+  const n = def?.refractiveIndex ?? 1.33;
+  const fresnel = Math.pow((n - 1) / (n + 1), 2);          // ~0.02 for water … ~0.24 molten iron
+  const spec = Math.min(0.65, fresnel * 6);                 // glancing-angle boost, capped
+  return mix(diffuse, star, spec);
+}
 
 // How heavily a condensed cloud deck of each liquid veils the surface below it. Water clouds are
 // patchy (Earth stays blue); sulfuric/sulfur/alkali/silicate decks are opaque and dominate.
@@ -78,15 +109,17 @@ function bandCount(body: CelestialBody, gasFrac: number): number {
   return Math.max(2, Math.min(18, n));
 }
 
-// Full derivation: flattened hex + un-mixed palette + banding.
-export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePack): ApparentColor {
+// Full derivation: flattened hex + un-mixed palette + banding. opts.starTempK lets the host star's
+// light drive liquid colour (#8); omitted → Sun-like.
+export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePack, opts?: { starTempK?: number }): ApparentColor {
   const mk = makeupFractions(body);
   const palette: ApparentColorStop[] = [];
   const push = (hex: string, role: ApparentColorStop['role'], weight: number, label?: string) => {
     if (weight > 0.02) palette.push({ hex, role, weight: Math.min(1, weight), label });
   };
+  const star = starColorFromTempK(opts?.starTempK);
 
-  // 1. Surface base from makeup fractions.
+  // 1. Surface base ("land") from makeup fractions.
   let col = mixWeighted([
     [SURF.metal, mk.metal], [SURF.rock, mk.rock], [SURF.carbon, mk.carbon],
     [SURF.ice, mk.ice], [SURF.gas, mk.gas]
@@ -94,13 +127,19 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
   const surfDom = (['rock', 'metal', 'carbon', 'ice', 'gas'] as const).sort((a, b) => mk[b] - mk[a])[0];
   push(rgbToHex(col), 'surface', 1, `${surfDom} surface`);
 
-  // 2. Liquid water surface → blue, where temperate.
+  // 2. Surface liquid — ANY liquid, proportional to coverage (#9): the disc is land×(1−cover) +
+  //    liquid×cover, with the liquid's shade derived from starlight × refractive index (#8).
+  //    Molten surfaces are left to the incandescence step.
   const teq = body.equilibriumTempK ?? 0;
   const hydro = body.hydrosphere?.coverage ?? 0;
-  if (hydro > 0.25 && body.hydrosphere?.composition === 'water' && teq > 250 && teq < 360) {
-    const t = Math.min(0.7, hydro);
-    col = mix(col, OCEAN, t);
-    push('#2b6cb0', 'ocean', hydro, 'water ocean');
+  const surfaceLiquid = body.hydrosphere?.layers?.find((l) => l.location === 'surface')?.liquid
+    ?? body.hydrosphere?.composition;
+  const liquidFamily = LIQUIDS.find((l) => l.name === surfaceLiquid)?.family;
+  if (hydro > 0.05 && surfaceLiquid && liquidFamily !== 'molten') {
+    const lc = liquidApparentColor(surfaceLiquid, star);
+    const cover = Math.min(0.85, hydro);
+    col = mix(col, lc, cover);
+    push(rgbToHex(lc), 'ocean', hydro, `${surfaceLiquid} ocean`);
   }
 
   // 3. Atmosphere/cloud tint from the dominant coloured gas (thicker → more dominant). Gas
@@ -158,6 +197,6 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
 }
 
 // Back-compat: callers/tests that just want the swatch.
-export function deriveApparentColor(body: CelestialBody, rulePack?: RulePack): string {
-  return deriveApparentColorParts(body, rulePack).hex;
+export function deriveApparentColor(body: CelestialBody, rulePack?: RulePack, opts?: { starTempK?: number }): string {
+  return deriveApparentColorParts(body, rulePack, opts).hex;
 }

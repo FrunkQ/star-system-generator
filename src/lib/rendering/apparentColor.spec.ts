@@ -45,4 +45,28 @@ describe('deriveApparentColor', () => {
     const c = deriveApparentColor(body({ makeup: { rock: 0.8, metal: 0.2 }, atmosphere: { main: 'N2', composition: { N2: 0.8, CO2: 0.2 }, pressure_bar: 1 } as any }), PACK);
     expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
+
+  // #8 — liquid colour is starlight × refractive index, not a fixed swatch.
+  it('a water ocean is bluer under a sun-like star than under a red dwarf', () => {
+    const ocean = (tempK: number) => rgb(deriveApparentColor(
+      body({ makeup: { rock: 1 }, equilibriumTempK: 290, hydrosphere: { coverage: 0.7, composition: 'water' } as any }),
+      PACK, { starTempK: tempK }
+    ));
+    const sun = ocean(5778);
+    const redDwarf = ocean(3000);
+    // blue share of the disc drops under the red star…
+    expect(sun[2] / (sun[0] + 1)).toBeGreaterThan(redDwarf[2] / (redDwarf[0] + 1));
+    // …and the red-dwarf world reads warmer overall
+    expect(redDwarf[0] - redDwarf[2]).toBeGreaterThan(sun[0] - sun[2]);
+  });
+
+  // #9 — proportional mixing by coverage.
+  it('ocean coverage mixes proportionally (wetter world reads bluer)', () => {
+    const at = (coverage: number) => rgb(deriveApparentColor(
+      body({ makeup: { rock: 1 }, equilibriumTempK: 290, hydrosphere: { coverage, composition: 'water' } as any }),
+      PACK, { starTempK: 5778 }
+    ));
+    const dry = at(0.1), wet = at(0.8);
+    expect(wet[2] - wet[0]).toBeGreaterThan(dry[2] - dry[0]);
+  });
 });

@@ -525,7 +525,23 @@ export class SystemProcessor implements ISystemProcessor {
         // We should probably only classify if classes are empty or if we want to force update.
         // For now, we update to ensure consistency with physics.
         // Derived apparent (true) colour from makeup + atmosphere + cloud decks + temperature.
-        const apparent = deriveApparentColorParts(body, pack);
+        // The host star's photosphere temperature drives liquid shades (#8) — walk up the parent
+        // chain to the nearest star (fall back to the most massive star in the system).
+        let hostStarTempK: number | undefined;
+        {
+            let cur: any = body;
+            for (let hops = 0; cur?.parentId && hops < 10; hops++) {
+                cur = allNodes.find((n) => n.id === cur.parentId);
+                if (cur && (cur as any).roleHint === 'star') { hostStarTempK = (cur as any).temperatureK; break; }
+            }
+            if (hostStarTempK === undefined) {
+                const brightest = allNodes
+                    .filter((n: any) => n.kind === 'body' && n.roleHint === 'star')
+                    .sort((a: any, b: any) => (b.massKg || 0) - (a.massKg || 0))[0] as any;
+                hostStarTempK = brightest?.temperatureK;
+            }
+        }
+        const apparent = deriveApparentColorParts(body, pack, { starTempK: hostStarTempK });
         body.apparentColor = apparent;
         body.apparentColorHex = apparent.hex;
 

@@ -34,19 +34,20 @@ export interface LiquidDef {
     label: string;
     meltK: number;
     boilK: number;
+    refractiveIndex?: number; // n at visible wavelengths — drives the specular starlight share of the apparent colour
 }
 
 export const LIQUIDS: LiquidDef[] = [
-    { name: 'water', label: 'Water (H₂O)', meltK: 273, boilK: 373, colorHex: '#2b6cb0', density_gcc: 1.0, conductive: false, biosolvent: 'ideal', family: 'water' },
-    { name: 'water-ammonia', label: 'Water-Ammonia (Cryo)', meltK: 173, boilK: 270, colorHex: '#4f8fb0', density_gcc: 0.94, conductive: true, biosolvent: 'alternative', family: 'cryo' },
-    { name: 'ammonia', label: 'Ammonia', meltK: 195, boilK: 240, colorHex: '#c9b08a', density_gcc: 0.68, conductive: false, biosolvent: 'alternative', family: 'cryo' },
-    { name: 'methane', label: 'Hydrocarbons (Methane)', meltK: 90, boilK: 112, colorHex: '#6a8caf', density_gcc: 0.42, conductive: false, biosolvent: 'alternative', family: 'hydrocarbon' },
-    { name: 'ethane', label: 'Hydrocarbons (Ethane)', meltK: 90, boilK: 184, colorHex: '#7a9ab0', density_gcc: 0.55, conductive: false, biosolvent: 'alternative', family: 'hydrocarbon' },
-    { name: 'nitrogen', label: 'Nitrogen', meltK: 63, boilK: 77, colorHex: '#cfe0ff', density_gcc: 0.81, conductive: false, biosolvent: 'none', family: 'cryo' },
-    { name: 'sulfuric-acid', label: 'Sulfuric Acid', meltK: 283, boilK: 610, colorHex: '#efe6c0', density_gcc: 1.83, conductive: true, biosolvent: 'none', family: 'acid' },
-    { name: 'carbon-dioxide', label: 'Liquid CO₂ (High Pressure)', meltK: 217, boilK: 304, colorHex: '#e6e6e6', density_gcc: 1.1, conductive: false, biosolvent: 'none', family: 'exotic' },
-    { name: 'magma', label: 'Magma / Lava', meltK: 1000, boilK: 5000, colorHex: '#d9531e', density_gcc: 2.6, conductive: true, biosolvent: 'none', family: 'molten' },
-    { name: 'molten-iron', label: 'Molten Iron', meltK: 1811, boilK: 3134, colorHex: '#808080', density_gcc: 7.0, conductive: true, biosolvent: 'none', family: 'molten' }
+    { name: 'water', label: 'Water (H₂O)', meltK: 273, boilK: 373, colorHex: '#2b6cb0', density_gcc: 1.0, conductive: false, biosolvent: 'ideal', family: 'water', refractiveIndex: 1.333 },
+    { name: 'water-ammonia', label: 'Water-Ammonia (Cryo)', meltK: 173, boilK: 270, colorHex: '#4f8fb0', density_gcc: 0.94, conductive: true, biosolvent: 'alternative', family: 'cryo', refractiveIndex: 1.330 },
+    { name: 'ammonia', label: 'Ammonia', meltK: 195, boilK: 240, colorHex: '#c9b08a', density_gcc: 0.68, conductive: false, biosolvent: 'alternative', family: 'cryo', refractiveIndex: 1.325 },
+    { name: 'methane', label: 'Hydrocarbons (Methane)', meltK: 90, boilK: 112, colorHex: '#6a8caf', density_gcc: 0.42, conductive: false, biosolvent: 'alternative', family: 'hydrocarbon', refractiveIndex: 1.286 },
+    { name: 'ethane', label: 'Hydrocarbons (Ethane)', meltK: 90, boilK: 184, colorHex: '#7a9ab0', density_gcc: 0.55, conductive: false, biosolvent: 'alternative', family: 'hydrocarbon', refractiveIndex: 1.347 },
+    { name: 'nitrogen', label: 'Nitrogen', meltK: 63, boilK: 77, colorHex: '#cfe0ff', density_gcc: 0.81, conductive: false, biosolvent: 'none', family: 'cryo', refractiveIndex: 1.205 },
+    { name: 'sulfuric-acid', label: 'Sulfuric Acid', meltK: 283, boilK: 610, colorHex: '#efe6c0', density_gcc: 1.83, conductive: true, biosolvent: 'none', family: 'acid', refractiveIndex: 1.437 },
+    { name: 'carbon-dioxide', label: 'Liquid CO₂ (High Pressure)', meltK: 217, boilK: 304, colorHex: '#e6e6e6', density_gcc: 1.1, conductive: false, biosolvent: 'none', family: 'exotic', refractiveIndex: 1.195 },
+    { name: 'magma', label: 'Magma / Lava', meltK: 1000, boilK: 5000, colorHex: '#d9531e', density_gcc: 2.6, conductive: true, biosolvent: 'none', family: 'molten', refractiveIndex: 1.5 },
+    { name: 'molten-iron', label: 'Molten Iron', meltK: 1811, boilK: 3134, colorHex: '#808080', density_gcc: 7.0, conductive: true, biosolvent: 'none', family: 'molten', refractiveIndex: 2.9 }
 ];
 
 export const THERMAL_LIMITS: Record<string, number> = {

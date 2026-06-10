@@ -309,7 +309,8 @@ export interface LiquidDef {
     label: string;
     meltK: number;            // melting point (K) — below this it is solid (ice)
     boilK: number;            // boiling point (K) — above this it is vapour
-    colorHex?: string;        // representative surface/ocean colour
+    colorHex?: string;        // representative surface/ocean colour (intrinsic absorption tint)
+    refractiveIndex?: number; // n at visible wavelengths — sets the specular starlight share of the apparent colour
     density_gcc?: number;     // liquid density, for layering
     conductive?: boolean;     // electrically conductive (acids, molten metal) → can drive a dynamo
     biosolvent?: 'ideal' | 'alternative' | 'none';  // suitability as a solvent for life
