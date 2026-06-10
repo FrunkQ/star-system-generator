@@ -314,7 +314,8 @@
     on:pointerdown={onGripDown} on:pointermove={onGripMove} on:pointerup={onGripUp}
     on:click={onClockTap}
     title="Time — tap to expand the transport, drag to move">
-    ◷ {displayClockLabel}
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+    {displayClockLabel}
   </button>
 {:else}
 <div class="time-transport" class:expanded class:compact>
@@ -351,8 +352,10 @@
     <button class="tt-step" on:click={faster} disabled={rateIndex === RATE_STEPS.length - 1} title="Faster" aria-label="Faster">+</button>
   </div>
 
-  <button class="tt-btn tt-min" on:click={() => setMinimized(true)} title="Minimise to a clock" aria-label="Minimise time controls">▁</button>
   <button class="tt-btn tt-more tt-warn" class:on={expanded} on:click={() => (expanded = !expanded)} title="Danger: rewrite the campaign's current time" aria-label="Set current time (danger)">⚠</button>
+  <button class="tt-min-strip" on:click={() => setMinimized(true)} title="Minimise to a clock" aria-label="Minimise time controls">
+    <svg viewBox="0 0 6 24" width="6" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="4" x2="3" y2="20"/></svg>
+  </button>
 
   {#if expanded}
     <div class="tt-panel">
@@ -400,6 +403,24 @@
     white-space: nowrap;
   }
   .tt-clock.compact { font-size: 0.78rem; padding: 5px 10px; }
+  .tt-clock svg { flex: 0 0 auto; opacity: 0.8; }
+
+  /* Far-right minimise: a slim vertical strip, not a full button. */
+  .tt-min-strip {
+    flex: 0 0 auto;
+    width: 12px;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 6px;
+    background: var(--bg-control, #1b1e26);
+    color: var(--text-faint, #8a8f9a);
+    cursor: pointer;
+  }
+  .tt-min-strip:hover { color: var(--accent, #ff5a1f); border-color: var(--accent, #ff5a1f); }
 
   /* Transport pill — a clean overlay over the orrery: jump-to-now, play/pause,
      a spring-back shuttle scrub (the main interaction), the live date, and a
