@@ -254,7 +254,7 @@
             </select>
           </div>
           <div class="form-group">
-            <label title="Traveller-style numbered hex map (1 hex = 1 parsec) plus Traveller import/UMP features. Independent of the snap grid above — when on, it brings its own hex.">
+            <label title="Traveller import/UWP features + 1-hex-=-1-parsec scaling. The numbered hex is NOT forced — to show it, set the snap grid above to Hex.">
               <input type="checkbox" bind:checked={$starmapUiStore.travellerMode} /> Traveller mode
             </label>
           </div>

@@ -268,9 +268,15 @@
     window.removeEventListener('pointercancel', onSystemDragEnd);
   }
 
-  // Traveller mode brings its own numbered hex (1 hex = 1 parsec); otherwise the snap-grid choice
-  // drives the shape. All the existing 'traveller-hex' rendering/snapping paths read this.
+  // Traveller mode uses the 1-hex-=-1-parsec geometry for SNAPPING, parsec scaling, subsector
+  // detection and import placement — that logic stays on effectiveGridType.
   $: effectiveGridType = $starmapUiStore.travellerMode ? 'traveller-hex' : $starmapUiStore.gridType;
+  // …but the VISIBLE grid obeys the snap-grid switch in Settings: Traveller mode no longer FORCES
+  // the numbered hex overlay. Choose "Hex" to see it; "None"/"Grid" hides it while Traveller data,
+  // parsec scale and snapping keep working underneath.
+  $: displayGridType = $starmapUiStore.travellerMode
+    ? ($starmapUiStore.gridType === 'hex' ? 'traveller-hex' : $starmapUiStore.gridType)
+    : $starmapUiStore.gridType;
 
   function snapPointToCurrentGrid(x: number, y: number): { x: number; y: number } {
     if (effectiveGridType === 'none') return { x, y };
@@ -849,7 +855,7 @@
     >
       <g bind:this={groupElement} transform={`translate(${panX}, ${panY}) scale(${zoom})`}>
       <Grid
-        gridType={effectiveGridType}
+        gridType={displayGridType}
         {gridSize} 
         {panX} 
         {panY} 
