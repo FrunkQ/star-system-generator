@@ -29,17 +29,29 @@ export function kineticEnergyJoules(massKg: number, fractionC: number): number {
   const gamma = 1 / Math.sqrt(1 - beta * beta);
   return (gamma - 1) * massKg * C2;
 }
-// Express an energy as the mass that would have to be fully converted (E = mc²) to supply it,
-// laddered through familiar masses so the number stays readable.
+// Express an energy as the mass that would have to be fully converted (E = mc²) to supply it.
+// Ladders through familiar units so the number stays in a readable range and uses thousands
+// separators rather than scientific notation (e.g. "42.9 kilotonnes", not "4.29e+4 tonnes").
+const MASS_TIERS = [
+  { u: 'g', kg: 1e-3 },
+  { u: 'kg', kg: 1 },
+  { u: 'tonnes', kg: 1e3 },
+  { u: 'kilotonnes', kg: 1e6 },
+  { u: 'megatonnes', kg: 1e9 },
+  { u: 'gigatonnes', kg: 1e12 },
+  { u: 'teratonnes', kg: 1e15 },
+  { u: "× Earth's mass", kg: EARTH_MASS_KG },
+  { u: "× Jupiter's mass", kg: JUPITER_MASS_KG },
+];
 export function massEnergyEquivalent(joules: number): string {
   if (!Number.isFinite(joules) || joules <= 0) return '—';
   const kg = joules / C2; // mass-energy equivalent
-  if (kg < 1e-3) return `${(kg * 1000).toPrecision(3)} g`;
-  if (kg < 1e3) return `${kg.toPrecision(3)} kg`;
-  if (kg < 1e9) return `${(kg / 1000).toPrecision(3)} tonnes`;
-  if (kg < 0.05 * EARTH_MASS_KG) return `${(kg / 1e9).toPrecision(3)} Gt`;
-  if (kg < 50 * EARTH_MASS_KG) return `${(kg / EARTH_MASS_KG).toPrecision(3)} × Earth's mass`;
-  return `${(kg / JUPITER_MASS_KG).toPrecision(3)} × Jupiter's mass`;
+  let tier = MASS_TIERS[0];
+  for (const t of MASS_TIERS) if (kg >= t.kg) tier = t;
+  const value = kg / tier.kg;
+  const decimals = value >= 100 ? 0 : value >= 10 ? 1 : 2;
+  const num = value.toLocaleString(undefined, { maximumFractionDigits: decimals });
+  return `${num} ${tier.u}`;
 }
 
 export type TransitStatus = 'green' | 'yellow' | 'red';

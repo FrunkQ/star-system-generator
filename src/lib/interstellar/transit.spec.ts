@@ -65,7 +65,10 @@ describe('interstellar/transit', () => {
     const fast = kineticEnergyJoules(1000, 0.99);
     expect(fast).toBeGreaterThan(slow);
     expect(massEnergyEquivalent(0)).toBe('—');
-    expect(typeof massEnergyEquivalent(fast)).toBe('string');
+    // Human-readable: a named unit, and never scientific notation.
+    const label = massEnergyEquivalent(fast);
+    expect(label).not.toMatch(/e[+-]?\d/i);
+    expect(label).toMatch(/(g|kg|tonnes|kilotonnes|megatonnes|gigatonnes|teratonnes|Earth|Jupiter)/);
   });
 
   it('realistic: RED when the drive cannot escape the star', () => {
