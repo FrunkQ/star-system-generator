@@ -16,6 +16,7 @@
   import { AU_KM, G } from '$lib/constants';
   import { MONO_COLORS, normalizeGuideConfig } from '$lib/catalogue/guideConfig';
   import type { MonoColor } from '$lib/catalogue/guideConfig';
+  import { randomGuideNote } from '$lib/catalogue/guideNotes';
   import type { System, RulePack, CelestialBody, Starmap } from '$lib/types';
 
   // The view is GM-ENFORCED: the GM's Companion launcher broadcasts SYNC_GUIDECONFIG and the
@@ -104,6 +105,26 @@
   // Interactive-tier selection.
   let focusedBodyId: string | null = null;
   let selectedBody: CelestialBody | null = null;
+
+  // --- The Guide: DON'T PANIC front cover (once per session) + random margin-note banners. ---
+  let guideCoverDismissed = false;
+  if (browser) {
+    try { guideCoverDismissed = sessionStorage.getItem('sse-guide-cover-seen') === '1'; } catch { /* ignore */ }
+  }
+  function dismissGuideCover() {
+    guideCoverDismissed = true;
+    try { sessionStorage.setItem('sse-guide-cover-seen', '1'); } catch { /* ignore */ }
+  }
+  let topNote = '';
+  let bottomNote = '';
+  function rollNotes(_trigger: string | null) {
+    const t = randomGuideNote();
+    topNote = t;
+    bottomNote = randomGuideNote(t);
+  }
+  // Fresh notes every time the reader moves between systems (or back to the map).
+  $: rollNotes(selectedSystemId);
+  const PANIC = "DON'T PANIC!!!!".split('');
 
   $: theme = THEMES[themeKey];
   $: nowLabel = lastUpdate ? new Date(lastUpdate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
@@ -253,8 +274,23 @@
     </span>
   </header>
 
+  {#if themeKey === 'guide' && !guideCoverDismissed}
+    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+    <div class="guide-cover" role="button" tabindex="0" on:click={dismissGuideCover} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') dismissGuideCover(); }}>
+      <div class="cover-inner">
+        <p class="cover-pre">On the cover, in large friendly letters:</p>
+        <div class="panic" aria-label="Don't panic">
+          {#each PANIC as ch, i}<span style="--i:{i}">{ch === ' ' ? ' ' : ch}</span>{/each}
+        </div>
+        <p class="cover-sub">The Field Guide: the standard repository for all knowledge and wisdom. Abridged. Redacted. Mostly accurate.</p>
+        <p class="cover-hint">tap anywhere to open the Guide</p>
+      </div>
+    </div>
+  {/if}
+
   {#if themeKey === 'guide' && (selectedSystemNode || starmap)}
     <div class="guide-banner">A traveller's guide to {selectedSystemNode?.name ?? starmap?.name} — friendly, illustrated, and mostly accurate.</div>
+    {#if topNote}<div class="guide-note top">{topNote}</div>{/if}
   {/if}
 
   {#if !starmap}
@@ -344,8 +380,12 @@
   {:else}
     <!-- Lo-fi / datapad / Guide: diagrammatic browser — clickable layout + a body panel. -->
     <div class="doc-scroll">
-      <CatalogueBrowser system={displaySystem} {includeConstructs} />
+      <CatalogueBrowser system={displaySystem} {includeConstructs} colorful={themeKey === 'guide'} />
     </div>
+  {/if}
+
+  {#if themeKey === 'guide' && starmap && bottomNote}
+    <div class="guide-note bottom">{bottomNote}</div>
   {/if}
 
   {#if theme.tint !== 'none'}
@@ -444,23 +484,87 @@
   .tint-mono .doc-scroll { background: color-mix(in srgb, var(--mono, #74f7b0) 4%, #010204); text-shadow: 0 0 1px currentColor; }
   .tint-mono .sys-name, .tint-mono .status.live { color: var(--mono, #74f7b0); }
 
-  /* --- The Guide: friendly illustrated travel companion (warm green book) --- */
+  /* --- The Guide: friendly illustrated travel companion — hopelessly, joyfully colourful.
+     Several FRIENDLY fonts: rounded sans for body, comic/chalk for banners and the cover. --- */
   .guide-banner {
     flex: 0 0 auto;
     text-align: center;
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', 'Trebuchet MS', cursive;
     font-style: italic;
     font-size: 13px;
     color: #061a10;
-    background: linear-gradient(180deg, #7CFFB2, #34d27e);
+    background: linear-gradient(90deg, #7CFFB2, #ffd76e, #ff9ce8, #8ed0ff, #7CFFB2);
     padding: 7px 12px;
     letter-spacing: 0.02em;
   }
-  .skin-guide { background: #04140d; color: #d6ffe8; font-family: Georgia, 'Times New Roman', serif; }
-  .skin-guide .statusbar { background: #07241a; border-bottom-color: rgba(124, 255, 178, 0.3); }
+  .skin-guide { background: #04140d; color: #d6ffe8; font-family: 'Trebuchet MS', 'Segoe UI', Verdana, sans-serif; }
+  .skin-guide .statusbar { background: #07241a; border-bottom-color: rgba(124, 255, 178, 0.3); font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', cursive; }
   .skin-guide .status.live { color: #7CFFB2; }
-  .skin-guide .sys-name { color: #7CFFB2; }
+  .skin-guide .sys-name { color: #ffd76e; }
+  .skin-guide .brand-name { color: #ff9ce8; }
   .skin-guide .doc-scroll { background: #04140d; }
+  /* Random Guide margin notes, top and bottom. */
+  .guide-note {
+    flex: 0 0 auto;
+    text-align: center;
+    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', 'Trebuchet MS', cursive;
+    font-size: 12px;
+    line-height: 1.45;
+    padding: 6px 14px;
+  }
+  .guide-note.top { color: #06231a; background: linear-gradient(90deg, #8ed0ff, #b9a4ff); }
+  .guide-note.bottom { color: #2a1606; background: linear-gradient(90deg, #ffd76e, #ff9c6e); border-top: 2px dashed rgba(0,0,0,0.35); }
+  .guide-note.bottom::before { content: 'THE GUIDE SAYS: '; font-weight: 700; letter-spacing: 0.05em; }
+  .guide-note.top::before { content: 'TRAVELLER ADVISORY: '; font-weight: 700; letter-spacing: 0.05em; }
+  /* The front cover: big, friendly, colourful letters. Tap to pass. */
+  .guide-cover {
+    position: absolute;
+    inset: 0;
+    z-index: 300;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(ellipse at 50% 35%, #0a3322, #04140d 70%);
+    cursor: pointer;
+    text-align: center;
+    padding: 24px;
+  }
+  .cover-inner { max-width: 560px; }
+  .cover-pre {
+    font-family: 'Trebuchet MS', Verdana, sans-serif;
+    font-style: italic;
+    color: #9fe8c4;
+    opacity: 0.85;
+    margin: 0 0 18px;
+  }
+  .panic {
+    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', 'Trebuchet MS', cursive;
+    font-weight: 700;
+    font-size: clamp(38px, 11vw, 92px);
+    line-height: 1.05;
+    user-select: none;
+  }
+  .panic span {
+    display: inline-block;
+    color: hsl(calc(var(--i) * 26), 95%, 66%);
+    transform: rotate(calc((var(--i) - 7) * 1.6deg));
+    text-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+  }
+  .cover-sub {
+    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', cursive;
+    color: #d6ffe8;
+    margin: 22px 0 0;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .cover-hint {
+    font-family: 'Trebuchet MS', Verdana, sans-serif;
+    color: #7CFFB2;
+    opacity: 0.6;
+    font-size: 12px;
+    margin-top: 26px;
+    animation: cover-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes cover-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.85; } }
   .skin-clean { color: #dfe5ef; }
   .skin-clean .doc-scroll { background: #0b0e14; }
 
