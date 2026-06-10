@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.16-alpha - 10th Jun 2026
+
+* Black-hole editor: radius is now **Event Horizon Radius**, locked to mass (Schwarzschild); mass range to 300 solar masses. Quiescent holes have **zero magnetic field** (no-hair) with the slider disabled; toggling **Feeding** presets a hot disc, near-Eddington output and a ~10⁶ G disc field, with the likely range shown above the slider.
+
 ## v2.0.15-alpha - 10th Jun 2026
 
 * **Time controls**: the transport pill is now draggable (grip handle) and minimizable to just a clock — tap to expand; position and state persist. Scale bar moved to the bottom-right (it sat under the time pill).
