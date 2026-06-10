@@ -21,6 +21,7 @@ import { flareActivity } from '../physics/stellar-evolution';
 const FORMATION_DELAY_GYR = 0.005;
 import { SeededRNG } from '../rng';
 import { annotateGravitationalStability } from '../physics/stability';
+import { annotateResonances } from '../physics/resonance';
 import { reconcileBarycenters } from '../physics/barycenterReconcile';
 
 export class SystemProcessor implements ISystemProcessor {
@@ -80,7 +81,9 @@ export class SystemProcessor implements ISystemProcessor {
             }
         }
 
-        // 5. Stability pass: annotate objects at risk of N-body instability.
+        // 5. Resonances then stability: mean-motion resonances first, so the stability pass can let
+        //    protective resonances (Pluto's 3:2, the Galilean Laplace chain) spare crossing orbits.
+        annotateResonances(processedSystem);
         annotateGravitationalStability(processedSystem);
 
         return processedSystem;

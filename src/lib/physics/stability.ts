@@ -2,10 +2,19 @@ import type { CelestialBody, Barycenter, System } from '../types';
 
 type OrbitalNode = CelestialBody;
 
+type Fate = 'infall' | 'eject' | 'collision' | 'inversion';
 interface StabilityAssessment {
   severity: 0 | 1 | 2 | 3;
   reasons: string[];
+  fate?: Fate;
 }
+
+const FATE_TEXT: Record<Fate, string> = {
+  infall: 'Predicted outcome: spirals in — consumed by or tidally shredded against the host.',
+  eject: 'Predicted outcome: flung out — gravitationally scattered onto an escape trajectory.',
+  collision: 'Predicted outcome: collision — crossing orbits with a comparable-mass neighbour.',
+  inversion: 'Predicted outcome: hierarchy is unphysical — the orbiter outweighs its host.',
+};
 
 function getHostMassKg(host: CelestialBody | Barycenter | undefined): number {
   if (!host) return 0;
@@ -49,11 +58,19 @@ function severityDescription(severity: number): string | null {
 }
 
 function mergeAssessment(target: StabilityAssessment, incoming: StabilityAssessment) {
-  if (incoming.severity > target.severity) target.severity = incoming.severity as 0 | 1 | 2 | 3;
+  // The dominant (most-severe) driver owns the predicted fate.
+  if (incoming.severity > target.severity) {
+    target.severity = incoming.severity as 0 | 1 | 2 | 3;
+    if (incoming.fate) target.fate = incoming.fate;
+  } else if (!target.fate && incoming.fate) {
+    target.fate = incoming.fate;
+  }
   for (const reason of incoming.reasons) {
     if (!target.reasons.includes(reason)) target.reasons.push(reason);
   }
 }
+
+const isResonanceProtected = (n: CelestialBody) => !!(n as any).resonanceProtective;
 
 function assessPairStability(
   inner: CelestialBody,
@@ -91,14 +108,24 @@ function assessPairStability(
     if (massRatio >= 1e-3) overlapSeverity = 2;
     if (massRatio >= 1e-2) overlapSeverity = 3;
 
-    const adjustedSeverity = Math.max(1, Math.min(3, overlapSeverity + planePenalty)) as 1 | 2 | 3;
-    if (adjustedSeverity > out.severity) out.severity = adjustedSeverity;
+    let adjustedSeverity = Math.max(1, Math.min(3, overlapSeverity + planePenalty)) as 1 | 2 | 3;
 
-    if (massRatio < 1e-3) {
-      out.reasons.push(`Minor-body crossing in pair ${inner.name}/${outer.name}`);
+    // A protective mean-motion resonance (e.g. Pluto's 3:2 with Neptune) keeps conjunctions away
+    // from the crossing point, so the crossing is metastable rather than doomed.
+    const protectedPair = isResonanceProtected(inner) || isResonanceProtected(outer);
+    if (protectedPair) {
+      adjustedSeverity = 1;
+      out.reasons.push(`Orbit crossing of ${inner.name}/${outer.name} shepherded by mean-motion resonance`);
     } else {
-      out.reasons.push(`Orbit overlap in pair ${inner.name}/${outer.name}`);
+      if (massRatio < 1e-3) {
+        out.reasons.push(`Minor-body crossing in pair ${inner.name}/${outer.name}`);
+      } else {
+        out.reasons.push(`Orbit overlap in pair ${inner.name}/${outer.name}`);
+      }
+      // Comparable masses collide; a lightweight crosser is scattered out.
+      out.fate = massRatio >= 1e-2 ? 'collision' : 'eject';
     }
+    if (adjustedSeverity > out.severity) out.severity = adjustedSeverity;
   }
 
   // 2) Mutual Hill spacing heuristic (N-body stability proxy)
@@ -114,6 +141,9 @@ function assessPairStability(
 
     if (mutualHill > 0) {
       const delta = (a2 - a1) / mutualHill;
+      // Packed systems shed their lighter member by scattering it out (Hill-spacing instability →
+      // ejection), unless a resonance is holding the pair.
+      if (delta < 5.5 && !isResonanceProtected(inner) && !isResonanceProtected(outer)) out.fate = out.fate ?? 'eject';
       if (delta < 3.5) {
         if (out.severity < 3) out.severity = 3;
         out.reasons.push(`Critical Hill spacing (Delta=${delta.toFixed(2)})`);
@@ -260,6 +290,7 @@ function assessHostBindingStability(
   // 1. Mass Inversion Check
   if (nodeMass > hostMassKg * 1.05) {
     out.severity = 3;
+    out.fate = 'inversion';
     out.reasons.push(`Massive inversion: orbiting body is heavier than its host. (Recommendation: Click "Rebuild Hierarchy" below)`);
   }
 
@@ -272,6 +303,7 @@ function assessHostBindingStability(
     const hostRadiusAU = ((host as CelestialBody).radiusKm || 0) / 149597870.7;
     if (periNodeAU > 0 && periNodeAU <= hostRadiusAU) {
       out.severity = 3;
+      out.fate = 'infall';
       out.reasons.push(`Orbit intersects host radius (Consumed/Collided).`);
     } else if (periNodeAU > 0) {
       // Simplified rigid Roche limit: D = R * (2 * rho_p / rho_s)^(1/3)
@@ -282,6 +314,7 @@ function assessHostBindingStability(
       
       if (periNodeAU <= rocheLimitAU) {
         out.severity = 3;
+        out.fate = 'infall';
         out.reasons.push(`Orbit is within host's Roche Limit (Tidally disrupted/Ring formation).`);
       }
     }
@@ -303,6 +336,7 @@ function assessHostBindingStability(
         const frac = apoNode / hillAU;
         if (frac >= 0.5) {
           out.severity = 3;
+          out.fate = 'eject';
           out.reasons.push(`Orbit exceeds host's stable Hill sphere (stolen by external tide).`);
         } else if (frac >= 0.33) {
           out.severity = Math.max(out.severity, 2) as 0 | 1 | 2 | 3;
@@ -321,7 +355,7 @@ export function annotateGravitationalStability(system: System): System {
   // Clear existing stability tags/fields each pass.
   for (const node of system.nodes) {
     if (!('tags' in node)) continue;
-    node.tags = (node.tags || []).filter((t) => !t.key.startsWith('stability/'));
+    node.tags = (node.tags || []).filter((t) => !t.key.startsWith('stability/') && !t.key.startsWith('fate/'));
     delete (node as any).orbitalStability;
     delete (node as any).orbitalStabilityDetails;
   }
@@ -389,16 +423,18 @@ export function annotateGravitationalStability(system: System): System {
       const label = severityLabel(assessment.severity);
       const base = severityDescription(assessment.severity);
       if (!label || !base) continue;
+      const fateText = assessment.fate ? ` ${FATE_TEXT[assessment.fate]}` : '';
       (node as any).orbitalStability = label;
       (node as any).orbitalStabilityDetails =
-        assessment.reasons.length > 0
+        (assessment.reasons.length > 0
           ? `${base} Drivers: ${assessment.reasons.join('; ')}.`
-          : base;
+          : base) + fateText;
 
-      // Keep a short machine-readable tag for filtering and quick visibility in Tags UI.
+      // Keep short machine-readable tags for filtering and quick visibility in Tags UI.
       if (!node.tags) node.tags = [];
       const slug = label.toLowerCase().replace(/\s+/g, '-');
       node.tags.push({ key: `stability/${slug}` });
+      if (assessment.fate) node.tags.push({ key: `fate/${assessment.fate}` });
     }
   }
 

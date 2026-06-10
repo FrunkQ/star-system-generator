@@ -7,6 +7,7 @@ import { calculateHabitabilityScore } from '../physics/habitability';
 import { calculateEquilibriumTemperature, calculateEquilibriumTemperatureRange, estimateBondAlbedo, composeSurfaceTemperatureFromDeltaComponents, estimateInternalHeatK } from '../physics/temperature';
 import { calculateSurfaceRadiation } from '../physics/radiation';
 import { annotateGravitationalStability } from '../physics/stability';
+import { annotateResonances } from '../physics/resonance';
 import { reconcileBarycenters } from '../physics/barycenterReconcile';
 
 // Re-export for consumers (e.g. BodyTechnicalDetails)
@@ -110,7 +111,8 @@ export function recalculateSystemPhysics(system: System, rulePack: RulePack): Sy
         }
     }
 
-    // Pass 3: Stability tagging (N-body proxy heuristics on sibling orbital spacing/overlap).
+    // Pass 3: Resonances + stability tagging (N-body proxy heuristics on sibling orbital spacing).
+    annotateResonances(system); // mean-motion resonances first → stability consults them
     annotateGravitationalStability(system);
     return system;
 }
@@ -183,6 +185,7 @@ export function processSystemData(system: System, rulePack: RulePack): System {
             calculateHabitabilityScore(body);
         }
     }
+    annotateResonances(system);
     annotateGravitationalStability(system);
     return system;
 }
