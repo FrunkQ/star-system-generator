@@ -58,10 +58,20 @@ export interface TransitResult {
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 const fmtKms = (v: number) => `${(v / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} km/s`;
-const pctC = (v: number) => {
-  const f = v / C_MS;
-  return f >= 0.01 ? `${(f * 100).toFixed(1)}% c` : `${(f * 100).toPrecision(2)}% c`;
-};
+// Format a speed as a percentage of c that NEVER reads "100% c" — near the wall it floors and
+// adds just enough decimals to reveal the gap (e.g. 99.997% c), since c is only ever approached.
+export function fmtFractionC(fraction: number): string {
+  const f = clamp(fraction, 0, 0.999999999);
+  const p = f * 100;
+  if (p < 0.01) return `${p.toPrecision(2)}% c`;
+  if (p < 99.9) return `${p.toFixed(1)}% c`;
+  const gap = Math.max(1e-7, 100 - p);                       // percentage points short of c
+  const decimals = Math.min(6, Math.max(1, Math.ceil(-Math.log10(gap))));
+  const factor = Math.pow(10, decimals);
+  const floored = Math.floor(p * factor) / factor;           // floor → can't round up to 100
+  return `${floored.toFixed(decimals)}% c`;
+}
+const pctC = (v: number) => fmtFractionC(v / C_MS);
 
 export function distanceToMeters(value: number, unit: string): number {
   const u = (unit || 'LY').toLowerCase();

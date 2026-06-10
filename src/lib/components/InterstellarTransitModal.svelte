@@ -10,7 +10,7 @@
   import { AU_KM, C_MS } from '$lib/constants';
   import {
     realisticTransit, masslessTransit, relativisticTransit, jumpTransit,
-    distanceToMeters, formatDuration, crewLoad, kineticEnergyJoules, massEnergyEquivalent,
+    distanceToMeters, formatDuration, crewLoad, kineticEnergyJoules, massEnergyEquivalent, fmtFractionC,
     type TransitMode, type TransitResult,
   } from '$lib/interstellar/transit';
 
@@ -50,7 +50,7 @@
   $: speedFrac = speedSv <= 0.5
     ? F_LO * Math.pow(MID / F_LO, speedSv / 0.5)
     : 1 - MID * Math.pow(GAP_MIN / MID, (speedSv - 0.5) / 0.5);
-  const fmtPctC = (f: number) => f >= 0.0001 ? `${(f * 100).toFixed(f >= 0.99 ? 3 : 2)}% c` : `${(f * 100).toPrecision(2)}% c`;
+  const fmtPctC = fmtFractionC;
 
   function isStar(n: any) {
     return n?.roleHint === 'star' || (Array.isArray(n?.classes) && n.classes.some((c: string) => String(c).startsWith('star/')));
@@ -254,7 +254,7 @@
           <div class="times">
             <div><span class="k">Crew time</span><span class="v">{formatDuration(result.shipSeconds)}</span></div>
             <div><span class="k">Observer time</span><span class="v">{formatDuration(result.observerSeconds)}</span></div>
-            <div><span class="k">{mode === 'massless' ? 'Peak speed' : 'Cruise'}</span><span class="v">{result.cruise_ms > 0 ? (result.fractionC >= 0.01 ? (result.fractionC * 100).toFixed(1) + '% c' : (result.cruise_ms / 1000).toFixed(0) + ' km/s') : '—'}</span></div>
+            <div><span class="k">{mode === 'massless' ? 'Peak speed' : 'Cruise'}</span><span class="v">{result.cruise_ms > 0 ? (result.fractionC >= 0.01 ? fmtFractionC(result.fractionC) : (result.cruise_ms / 1000).toFixed(0) + ' km/s') : '—'}</span></div>
             {#if result.gamma > 1.01 && Number.isFinite(result.gamma)}<div><span class="k">Dilation</span><span class="v">×{result.gamma.toFixed(2)}</span></div>{/if}
           </div>
           <p class="detail">{result.detail}</p>

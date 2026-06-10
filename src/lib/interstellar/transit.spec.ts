@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   realisticTransit, masslessTransit, relativisticTransit, jumpTransit,
-  distanceToMeters, crewLoad, kineticEnergyJoules, massEnergyEquivalent,
+  distanceToMeters, crewLoad, kineticEnergyJoules, massEnergyEquivalent, fmtFractionC,
 } from './transit';
 import { LY_M, PC_M, C_MS, JULIAN_YEAR_S } from '../constants';
 
@@ -42,6 +42,16 @@ describe('interstellar/transit', () => {
     const tenG = masslessTransit(10 * 9.80665, FOUR_LY);
     expect(tenG.observerSeconds).toBeLessThan(oneG.observerSeconds); // more g → quicker
     expect(tenG.fractionC).toBeGreaterThan(oneG.fractionC);
+  });
+
+  it('fmtFractionC never reads 100% c and reveals the gap near light speed', () => {
+    expect(fmtFractionC(0.999951)).not.toContain('100');
+    expect(fmtFractionC(0.99999999)).not.toContain('100');
+    expect(fmtFractionC(0.5)).toBe('50.0% c');
+    // The massless peak at high g over interstellar distance must not display as 100% c.
+    const r = masslessTransit(10 * 9.80665, distanceToMeters(4, 'LY'));
+    expect(fmtFractionC(r.fractionC)).not.toContain('100');
+    expect(r.detail).not.toContain('100.0% c');
   });
 
   it('crewLoad: 2 g green, 2–10 g yellow, >10 g red', () => {
