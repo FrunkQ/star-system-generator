@@ -99,12 +99,73 @@
   // the orbital plot gently in motion so it feels alive.
   let currentTime = Date.now();
   let isPlaying = true;
-  let timeScale = 86400; // ~1 day per second
   let rafId = 0;
 
   // Interactive-tier selection.
   let focusedBodyId: string | null = null;
   let selectedBody: CelestialBody | null = null;
+
+  // --- Console navigation: a clickable star/planet list, with moons + constructs once a
+  //     planet is focused. Jumping also focuses the visualizer on that body. ---
+  function isStarNode(n: any): boolean {
+    return n?.roleHint === 'star' || (Array.isArray(n?.classes) && n.classes.some((c: string) => String(c).startsWith('star/')));
+  }
+  function isNavPlanet(n: any): boolean {
+    return n?.kind === 'body' && !isStarNode(n) && n.roleHint !== 'moon' && n.roleHint !== 'belt' && n.roleHint !== 'ring' && n.roleHint !== 'barycenter';
+  }
+  $: consoleStars = ((displaySystem?.nodes ?? []) as any[]).filter(isStarNode) as CelestialBody[];
+  function consolePlanetsOf(hostId: string): CelestialBody[] {
+    return ((displaySystem?.nodes ?? []) as any[])
+      .filter((n) => isNavPlanet(n) && (n.parentId === hostId || n.orbit?.hostId === hostId))
+      .sort((a, b) => (a.orbit?.elements?.a_AU || 0) - (b.orbit?.elements?.a_AU || 0)) as CelestialBody[];
+  }
+  function consoleChildrenOf(id: string | null): CelestialBody[] {
+    if (!id) return [];
+    return ((displaySystem?.nodes ?? []) as any[])
+      .filter((n) => (n.parentId === id || n.orbit?.hostId === id) && (n.roleHint === 'moon' || n.kind === 'construct'))
+      .sort((a, b) => (a.orbit?.elements?.a_AU || 0) - (b.orbit?.elements?.a_AU || 0)) as CelestialBody[];
+  }
+  // The planet whose moon/construct family is open in the nav (and governs the adaptive clock):
+  // the focused planet itself, or the focused child's parent planet.
+  $: expandedPlanetId = (() => {
+    const all = (displaySystem?.nodes ?? []) as any[];
+    const f = all.find((n) => n.id === focusedBodyId);
+    if (!f) return null;
+    if (isNavPlanet(f)) return f.id as string;
+    const pid = f.parentId || f.orbit?.hostId;
+    const p = all.find((n) => n.id === pid);
+    return p && isNavPlanet(p) ? (p.id as string) : null;
+  })();
+  $: expandedChildren = consoleChildrenOf(expandedPlanetId);
+  function jumpTo(id: string) {
+    focusedBodyId = id;
+    const node = displaySystem?.nodes.find((n) => n.id === id);
+    selectedBody = node && (node.kind === 'body' || node.kind === 'construct') ? (node as CelestialBody) : null;
+  }
+
+  // --- Adaptive time: slow the clock so the FASTEST orbiting object in view completes one
+  //     orbit every ~2 seconds (fast moons stay selectable). "In view" = the focused body's
+  //     children when it has any, else the system's planets. ---
+  function periodSec(b: any): number | null {
+    const d = b?.orbital_period_days;
+    return typeof d === 'number' && d > 0 ? d * 86400 : null;
+  }
+  $: timeScale = (() => {
+    const all = (displaySystem?.nodes ?? []) as any[];
+    let watched: any[] = expandedChildren.length ? expandedChildren : [];
+    if (!watched.length) watched = all.filter(isNavPlanet);
+    const periods = watched.map(periodSec).filter((p): p is number => p !== null);
+    if (!periods.length) return 86400; // fallback: ~a day per second
+    return Math.max(1, Math.min(...periods) / 2);
+  })();
+  function fmtTimeRate(sps: number): string {
+    const Y = 86400 * 365.25;
+    if (sps >= 2 * Y) return `${Math.round(sps / Y)} years`;
+    if (sps >= 2 * 86400) return `${Math.round(sps / 86400)} days`;
+    if (sps >= 2 * 3600) return `${Math.round(sps / 3600)} hours`;
+    if (sps >= 2 * 60) return `${Math.round(sps / 60)} minutes`;
+    return `${Math.round(sps)} seconds`;
+  }
 
   // --- The Guide: DON'T PANIC front cover (once per session) + random margin-note banners. ---
   let guideCoverDismissed = false;
@@ -357,6 +418,22 @@
           on:focus={handleFocus}
         />
       {/if}
+      <!-- Jump list: stars + planets; the focused planet unfolds its moons/constructs. -->
+      <nav class="console-nav" aria-label="System bodies">
+        {#each consoleStars as star (star.id)}
+          <button class="nav-item star" class:active={focusedBodyId === star.id} on:click={() => jumpTo(star.id)}>★ {star.name}</button>
+          {#each consolePlanetsOf(star.id) as p (p.id)}
+            <button class="nav-item" class:active={focusedBodyId === p.id} on:click={() => jumpTo(p.id)}>● {p.name}</button>
+            {#if expandedPlanetId === p.id}
+              {#each expandedChildren as c (c.id)}
+                <button class="nav-item sub" class:active={focusedBodyId === c.id} on:click={() => jumpTo(c.id)}>{c.kind === 'construct' ? '◆' : '○'} {c.name}</button>
+              {/each}
+            {/if}
+          {/each}
+        {/each}
+      </nav>
+      <!-- Adaptive clock read-out: the fastest body in view does ~1 orbit per 2 s. -->
+      <div class="time-rate">1 s ≈ {fmtTimeRate(timeScale)}</div>
       {#if selectedBody}
         <aside class="inspector">
           <div class="insp-head">
@@ -570,6 +647,58 @@
 
   /* --- hi-tech console tier --- */
   .console-stage { flex: 1; position: relative; min-height: 0; }
+  .console-nav {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: calc(100% - 70px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: rgba(8, 11, 18, 0.78);
+    border: 1px solid rgba(120, 180, 255, 0.3);
+    border-radius: 8px;
+    padding: 6px;
+    min-width: 130px;
+    max-width: 190px;
+    font-family: system-ui, sans-serif;
+  }
+  .nav-item {
+    text-align: left;
+    background: transparent;
+    color: #cfd6e4;
+    border: none;
+    border-radius: 5px;
+    padding: 4px 8px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .nav-item:hover { background: rgba(120, 180, 255, 0.14); }
+  .nav-item.active { background: rgba(120, 180, 255, 0.26); color: #fff; }
+  .nav-item.star { font-weight: 700; }
+  .nav-item.sub { padding-left: 22px; opacity: 0.9; font-size: 11.5px; }
+  .time-rate {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    z-index: 20;
+    font-family: system-ui, sans-serif;
+    font-size: 11.5px;
+    letter-spacing: 0.04em;
+    color: #9fb0c8;
+    background: rgba(8, 11, 18, 0.7);
+    border: 1px solid rgba(120, 180, 255, 0.25);
+    border-radius: 6px;
+    padding: 4px 9px;
+    pointer-events: none;
+  }
   .console-hint {
     position: absolute;
     bottom: 14px;
