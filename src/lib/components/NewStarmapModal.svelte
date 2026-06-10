@@ -9,18 +9,21 @@
   const dispatch = createEventDispatcher();
 
   let starmapName = 'My Starmap';
+  // Only one rule pack exists, so it is applied automatically rather than offered as a choice.
   let selectedRulepack: RulePack | undefined = rulepacks && rulepacks.length > 0 ? rulepacks[0] : undefined;
-  let distanceUnit = 'LY';
-  let unitIsPrefix = false;
-  let mapMode: 'diagrammatic' | 'scaled' = 'diagrammatic';
+  // The unit choice doubles as the scaling mode: ly/pc are scaled maps, diagrammatic is abstract.
+  let unitChoice: 'ly' | 'pc' | 'diagrammatic' = 'ly';
+  let abstractUnit = 'J';
+  let abstractOrder: 'prefix' | 'suffix' = 'prefix';
 
   function createStarmap() {
+    const diagrammatic = unitChoice === 'diagrammatic';
     dispatch('create', {
       name: starmapName,
       rulepack: selectedRulepack,
-      distanceUnit,
-      unitIsPrefix,
-      mapMode,
+      distanceUnit: diagrammatic ? (abstractUnit.trim() || 'J') : unitChoice,
+      unitIsPrefix: diagrammatic ? abstractOrder === 'prefix' : false,
+      mapMode: diagrammatic ? 'diagrammatic' : 'scaled',
       generationEngine: 'standard',
     });
   }
@@ -50,34 +53,32 @@
             <span>Starmap Name:</span>
             <input type="text" bind:value={starmapName} />
             </label>
-            <label class="form-row">
-            <span>Rulepack:</span>
-            <select bind:value={selectedRulepack}>
-                {#each rulepacks as rp}
-                <option value={rp}>{rp.name}</option>
-                {/each}
-            </select>
-            </label>
 
             <div class="form-row-group">
                 <label>
-                Distance Unit:
-                <input type="text" bind:value={distanceUnit} />
-                </label>
-                <label>
-                Map Mode:
-                <select bind:value={mapMode}>
-                  <option value="diagrammatic">Diagrammatic</option>
-                  <option value="scaled">Scaled</option>
+                Distance/Scaling units:
+                <select bind:value={unitChoice}>
+                  <option value="ly">Light Years (ly)</option>
+                  <option value="pc">Parsecs (pc)</option>
+                  <option value="diagrammatic">Diagrammatic (not scaled)</option>
                 </select>
                 </label>
-                <label class="checkbox-label">
-                <input type="checkbox" bind:checked={unitIsPrefix} />
-                Unit is a prefix (e.g., "J 1" instead of "50 LY")
-                </label>
+                {#if unitChoice === 'diagrammatic'}
+                  <label>
+                  Abstract unit:
+                  <input type="text" bind:value={abstractUnit} placeholder="e.g. J for Jump" maxlength="6" />
+                  </label>
+                  <label>
+                  Unit order:
+                  <select bind:value={abstractOrder}>
+                    <option value="prefix">Before the number ({abstractUnit.trim() || 'J'}8)</option>
+                    <option value="suffix">After the number (8 {abstractUnit.trim() || 'J'})</option>
+                  </select>
+                  </label>
+                {/if}
             </div>
             <div class="buttons">
-            <button on:click={createStarmap}>Create</button>
+            <button on:click={createStarmap}>Create Vast Nothingness</button>
             </div>
         </div>
 

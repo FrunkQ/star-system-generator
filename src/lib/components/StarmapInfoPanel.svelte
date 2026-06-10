@@ -9,8 +9,8 @@
   export let starmap: Starmap;
 
   const dispatch = createEventDispatcher();
-  // -v2: reset stale saved positions so the new bottom-left default takes effect.
-  const POS_KEY = 'sse-starmap-info-pos-v2';
+  // -v3: reset stale saved positions so the panel clears the new bottom-right scale bar.
+  const POS_KEY = 'sse-starmap-info-pos-v3';
   const COLLAPSE_KEY = 'sse-starmap-info-collapsed';
 
   let pos = { x: 12, y: 12 };
@@ -31,13 +31,14 @@
       };
     } else {
       // Default to the BOTTOM-RIGHT of the canvas (top-left = time read-out, bottom-left =
-      // time transport).
+      // time transport), raised enough to clear the scale bar that lives in the corner below.
+      const SCALE_BAR_CLEARANCE = 64;
       const parent = el?.offsetParent as HTMLElement | null;
       const parentH = parent?.clientHeight ?? window.innerHeight;
       const parentW = parent?.clientWidth ?? window.innerWidth;
       const ph = el?.offsetHeight ?? 220;
       const pw = el?.offsetWidth ?? 320;
-      pos = { x: Math.max(12, parentW - pw - 12), y: Math.max(12, parentH - ph - 12) };
+      pos = { x: Math.max(12, parentW - pw - 12), y: Math.max(12, parentH - ph - SCALE_BAR_CLEARANCE) };
     }
   });
 

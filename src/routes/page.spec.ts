@@ -98,7 +98,7 @@ describe('+page.svelte', () => {
   it('creates a new starmap when the form is submitted', async () => {
     const { findByText, getByText } = renderPage();
     await findByText('Create a New Starmap');
-    await fireEvent.click(getByText('Create'));
+    await fireEvent.click(getByText('Create Vast Nothingness'));
     // The new starmap (default name "My Starmap") renders its title.
     expect(await findByText('My Starmap')).toBeInTheDocument();
   });

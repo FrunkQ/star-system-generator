@@ -8,6 +8,8 @@
   import QRCode from 'qrcode';
   import { broadcastService } from '$lib/broadcast';
   import { brandingStore } from '$lib/catalogue/branding';
+  import { guideConfigStore, MONO_COLORS } from '$lib/catalogue/guideConfig';
+  import type { MonoColor } from '$lib/catalogue/guideConfig';
 
   export let sessionId: string;
 
@@ -34,15 +36,14 @@
     img.src = URL.createObjectURL(file);
   }
 
+  // The skin is GM-ENFORCED: broadcast to every connected guide; players have no picker.
   const SKINS = [
-    { key: 'green',   label: 'Green Screen',     blurb: 'Salvaged CRT — small pages, bitmap charts' },
-    { key: 'amber',   label: 'Amber Terminal',   blurb: 'Phosphor field unit, same lo-fi document' },
-    { key: 'guide',   label: 'The Guide',        blurb: 'Friendly illustrated travel companion' },
-    { key: 'clean',   label: 'Survey Datapad',   blurb: 'Clean instrument feed, no costume' },
-    { key: 'console', label: 'Starship Console', blurb: 'Live orbital plot, tap a world to inspect' }
-  ];
-  let skin = 'green';
-  let includeConstructs = true; // GM choice: include artificial constructs in the guide (like the report)
+    { key: 'mono',    label: 'Monochrome Terminal', blurb: 'Salvaged CRT — pick the phosphor colour' },
+    { key: 'guide',   label: 'The Guide',           blurb: 'Friendly illustrated travel companion' },
+    { key: 'clean',   label: 'Survey Datapad',      blurb: 'Clean instrument feed, no costume' },
+    { key: 'console', label: 'Starship Console',    blurb: 'Live orbital plot, tap a world to inspect' }
+  ] as const;
+  const MONO_KEYS = Object.keys(MONO_COLORS) as MonoColor[];
   let copied = false;
   let qrDataUrl = '';
   let origin = '';
@@ -53,7 +54,8 @@
     broadcastService.enableRemote();
   });
 
-  $: url = `${origin}/catalogue?sid=${sessionId}&theme=${skin}&constructs=${includeConstructs ? 1 : 0}`;
+  // Theme/colour ride the URL too so a freshly-opened guide paints right before the first broadcast.
+  $: url = `${origin}/catalogue?sid=${sessionId}&theme=${$guideConfigStore.theme}&color=${$guideConfigStore.monoColor}&constructs=${$guideConfigStore.includeConstructs ? 1 : 0}`;
   $: if (browser && url) {
     QRCode.toDataURL(url, { margin: 1, width: 240, color: { dark: '#0a0d14', light: '#ffffff' } })
       .then((d) => (qrDataUrl = d))
@@ -95,19 +97,31 @@
     </div>
 
     <div class="form-group">
-      <label>Skin</label>
+      <label>View (enforced on every player's guide)</label>
       <div class="skins">
         {#each SKINS as s}
-          <button class="skin" class:selected={skin === s.key} on:click={() => (skin = s.key)}>
+          <button class="skin" class:selected={$guideConfigStore.theme === s.key} on:click={() => guideConfigStore.update((c) => ({ ...c, theme: s.key }))}>
             <span class="skin-label">{s.label}</span>
             <span class="skin-blurb">{s.blurb}</span>
           </button>
         {/each}
       </div>
+      {#if $guideConfigStore.theme === 'mono'}
+        <div class="mono-colors">
+          <span class="mono-label">Terminal colour:</span>
+          {#each MONO_KEYS as k}
+            <button class="mono-swatch" class:selected={$guideConfigStore.monoColor === k}
+              style="--swatch:{MONO_COLORS[k].hex}" title={MONO_COLORS[k].label}
+              on:click={() => guideConfigStore.update((c) => ({ ...c, monoColor: k }))}>
+              <span class="dot"></span>{MONO_COLORS[k].label}
+            </button>
+          {/each}
+        </div>
+      {/if}
     </div>
 
     <div class="form-group">
-      <label class="check"><input type="checkbox" bind:checked={includeConstructs} /> Include artificial constructs (stations, ships) in the guide</label>
+      <label class="check"><input type="checkbox" checked={$guideConfigStore.includeConstructs} on:change={(e) => guideConfigStore.update((c) => ({ ...c, includeConstructs: (e.currentTarget as HTMLInputElement).checked }))} /> Include artificial constructs (stations, ships) in the guide</label>
     </div>
 
     <div class="share">
@@ -126,7 +140,7 @@
 
     <div class="buttons">
       <button on:click={() => dispatch('close')}>Close</button>
-      <button class="primary" on:click={open}>Open Field Guide</button>
+      <button class="primary" on:click={open}>Open Local Field Guide Window</button>
     </div>
   </div>
 </div>
@@ -163,6 +177,16 @@
   .skin.selected { border-color: var(--accent); }
   .skin-label { font-weight: 700; font-size: 0.9rem; }
   .skin-blurb { font-size: 0.72rem; color: var(--text-muted); }
+  .mono-colors { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; margin-top: 0.55rem; }
+  .mono-label { font-size: 0.75rem; color: var(--text-muted); }
+  .mono-swatch {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--bg-control); color: var(--text);
+    border: 1px solid transparent; border-radius: 4px; padding: 4px 9px;
+    font: inherit; font-size: 0.78rem; cursor: pointer;
+  }
+  .mono-swatch .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--swatch); box-shadow: 0 0 5px var(--swatch); }
+  .mono-swatch.selected { border-color: var(--swatch); }
   .share { display: flex; gap: 1rem; align-items: flex-start; }
   .qr { width: 120px; height: 120px; border-radius: 6px; background: #fff; flex: 0 0 auto; }
   .link-col { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }

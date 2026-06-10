@@ -1873,7 +1873,7 @@
               <button class="ov-btn faded" title="Reset view" aria-label="Reset view" on:click={() => visualizer?.resetView()}>⟲{#if !$railCollapsed} Reset View{/if}</button>
               <div class="ov-view">
                 <button class="ov-btn ov-eye" class:active={viewOpen} on:click={toggleViewPopover} title="View options" aria-label="View options">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>
                 </button>
                 {#if viewOpen}
                   <div class="ov-popover">
@@ -2378,7 +2378,7 @@
   .ov-btn.faded { opacity: 0.55; font-size: 1rem; }
   .ov-btn.faded:hover { opacity: 1; }
   .ov-btn.active { border-color: var(--accent, #ff5a1f); }
-  /* Semitransparent round eye that floats on the orrery and opens the View options (wireframe feel). */
+  /* Semitransparent round sliders button that floats on the orrery and opens the View options (wireframe feel). */
   .ov-eye {
     width: 36px;
     padding: 0;

@@ -15,6 +15,7 @@
   import CompanionModal from '$lib/components/CompanionModal.svelte';
   import InterstellarTransitModal from '$lib/components/InterstellarTransitModal.svelte';
   import { brandingStore } from '$lib/catalogue/branding';
+  import { guideConfigStore } from '$lib/catalogue/guideConfig';
   import { starmapStore } from '$lib/starmapStore';
   import { systemStore, viewportStore } from '$lib/stores';
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap } from '$lib/starmapStorage';
@@ -69,6 +70,12 @@
   let showSensorsModal = false;
   let showTemporalModal = false;
   let showAbout = false;
+  // Sub-editors opened FROM Settings reopen it (at the section they came from) when closed,
+  // so Back/close walks up the hierarchy instead of dumping the user back in the app.
+  let settingsReturnSection: 'starmap' | 'time' | 'technology' | 'planets' | 'system' | null = null;
+  function returnToSettings() {
+    if (settingsReturnSection) showSettingsModal = true;
+  }
   function applyStarmapOverrides(overrides: any) {
     starmapStore.update((s) => s ? { ...s, rulePackOverrides: { ...s.rulePackOverrides, ...overrides } } : s);
   }
@@ -265,6 +272,7 @@
       const map = get(starmapStore);
       if (map) broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: computePlayerStarmapSnapshot(map) });
       broadcastService.sendMessage({ type: 'SYNC_BRANDING', payload: get(brandingStore) });
+      broadcastService.sendMessage({ type: 'SYNC_GUIDECONFIG', payload: get(guideConfigStore) });
     };
   });
   // Re-broadcast the redacted starmap whenever it changes, so connected guides stay live.
@@ -274,6 +282,10 @@
   // Push branding (company name + logo) to guides whenever the GM edits it.
   $: if (browser && $brandingStore) {
     broadcastService.sendMessage({ type: 'SYNC_BRANDING', payload: $brandingStore });
+  }
+  // Push the GM-enforced guide view (skin/colour/constructs) whenever the GM changes it.
+  $: if (browser && $guideConfigStore) {
+    broadcastService.sendMessage({ type: 'SYNC_GUIDECONFIG', payload: $guideConfigStore });
   }
 
   // Subscribe to systemStore and update starmapStore
@@ -832,8 +844,8 @@
         on:new={handleRequestNewStarmap}
         on:open={handleUploadStarmap}
         on:save={handleDownloadStarmap}
-        on:settings={() => showSettingsModal = true}
-        on:llmsettings={() => showLlmSettingsModal = true}
+        on:settings={() => { settingsReturnSection = null; showSettingsModal = true; }}
+        on:llmsettings={() => { settingsReturnSection = null; showLlmSettingsModal = true; }}
         on:allbodies={() => showAllBodies = true}
         on:allships={() => showAllShips = true}
         on:routes={() => showRoutes = true}
@@ -861,8 +873,8 @@
       on:download={handleDownloadStarmap}
       on:upload={handleUploadStarmap}
       on:clear={handleClearStarmap}
-      on:settings={() => showSettingsModal = true}
-      on:llmsettings={() => showLlmSettingsModal = true}
+      on:settings={() => { settingsReturnSection = null; showSettingsModal = true; }}
+      on:llmsettings={() => { settingsReturnSection = null; showLlmSettingsModal = true; }}
       on:allbodies={() => showAllBodies = true}
       on:allships={() => showAllShips = true}
       on:routes={() => showRoutes = true}
@@ -886,31 +898,32 @@
     <SettingsModal
       bind:showModal={showSettingsModal}
       starmap={$starmapStore}
+      initialSection={settingsReturnSection}
       on:save={handleSaveSettings}
-      on:edittemporal={() => showTemporalModal = true}
-      on:editfuel={() => showFuelModal = true}
-      on:editatmospheres={() => showAtmosphereModal = true}
-      on:editsensors={() => showSensorsModal = true}
-      on:llm={() => showLlmSettingsModal = true}
+      on:edittemporal={() => { settingsReturnSection = 'time'; showTemporalModal = true; }}
+      on:editfuel={() => { settingsReturnSection = 'technology'; showFuelModal = true; }}
+      on:editatmospheres={() => { settingsReturnSection = 'planets'; showAtmosphereModal = true; }}
+      on:editsensors={() => { settingsReturnSection = 'technology'; showSensorsModal = true; }}
+      on:llm={() => { settingsReturnSection = 'system'; showLlmSettingsModal = true; }}
       on:about={() => showAbout = true}
     />
   {/if}
 
   {#if showLlmSettingsModal}
-    <LlmSettingsModal bind:showModal={showLlmSettingsModal} on:save={handleSaveLlmSettings} on:close={() => showLlmSettingsModal = false} />
+    <LlmSettingsModal bind:showModal={showLlmSettingsModal} on:save={handleSaveLlmSettings} on:close={() => { showLlmSettingsModal = false; returnToSettings(); }} />
   {/if}
 
   {#if showFuelModal && $starmapStore && selectedRulepack}
-    <EditFuelAndDrivesModal showModal={showFuelModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => showFuelModal = false} />
+    <EditFuelAndDrivesModal showModal={showFuelModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showFuelModal = false; returnToSettings(); }} />
   {/if}
   {#if showAtmosphereModal && $starmapStore && selectedRulepack}
-    <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => showAtmosphereModal = false} />
+    <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showAtmosphereModal = false; returnToSettings(); }} />
   {/if}
   {#if showSensorsModal && $starmapStore && selectedRulepack}
-    <EditSensorsModal showModal={showSensorsModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => showSensorsModal = false} />
+    <EditSensorsModal showModal={showSensorsModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showSensorsModal = false; returnToSettings(); }} />
   {/if}
   {#if showTemporalModal && $starmapStore}
-    <EditTemporalModal showModal={showTemporalModal} starmap={$starmapStore} on:save={(e) => starmapStore.update((s) => s ? { ...s, temporal: e.detail.temporal } : s)} on:close={() => showTemporalModal = false} />
+    <EditTemporalModal showModal={showTemporalModal} starmap={$starmapStore} on:save={(e) => starmapStore.update((s) => s ? { ...s, temporal: e.detail.temporal } : s)} on:close={() => { showTemporalModal = false; returnToSettings(); }} />
   {/if}
   {#if showAbout}
     <AboutModal rulePack={$systemStore ? effectiveRulePack : null} on:close={() => showAbout = false} />

@@ -14,24 +14,28 @@
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import CRTOverlay from '$lib/components/CRTOverlay.svelte';
   import { AU_KM, G } from '$lib/constants';
+  import { MONO_COLORS, normalizeGuideConfig } from '$lib/catalogue/guideConfig';
+  import type { MonoColor } from '$lib/catalogue/guideConfig';
+  import { randomGuideNote } from '$lib/catalogue/guideNotes';
   import type { System, RulePack, CelestialBody, Starmap } from '$lib/types';
 
-  type ThemeKey = 'green' | 'amber' | 'guide' | 'clean' | 'console';
+  // The view is GM-ENFORCED: the GM's Companion launcher broadcasts SYNC_GUIDECONFIG and the
+  // guide applies it — there is no player-facing picker. The URL carries the initial choice so
+  // the first paint matches before the broadcast lands.
+  type ThemeKey = 'mono' | 'guide' | 'clean' | 'console';
   interface ThemeDef {
     label: string;
     blurb: string;
     tier: 'static' | 'interactive';
     reportTheme: string;            // which ReportDocument theme to render underneath
-    tint: 'green' | 'amber' | 'none';
+    tint: 'mono' | 'none';
   }
   const THEMES: Record<ThemeKey, ThemeDef> = {
-    green:   { label: 'Green Screen',     blurb: 'Salvaged CRT terminal',     tier: 'static',      reportTheme: 'retro',    tint: 'green' },
-    amber:   { label: 'Amber Terminal',   blurb: 'Phosphor field unit',       tier: 'static',      reportTheme: 'retro',    tint: 'amber' },
-    guide:   { label: 'The Guide',        blurb: 'Friendly travel companion', tier: 'static',      reportTheme: 'standard', tint: 'none'  },
-    clean:   { label: 'Survey Datapad',   blurb: 'Clean instrument feed',     tier: 'static',      reportTheme: 'standard', tint: 'none'  },
-    console: { label: 'Starship Console', blurb: 'Live orbital plot',         tier: 'interactive', reportTheme: 'standard', tint: 'none'  },
+    mono:    { label: 'Monochrome Terminal', blurb: 'Salvaged CRT terminal',     tier: 'static',      reportTheme: 'retro',    tint: 'mono' },
+    guide:   { label: 'The Guide',           blurb: 'Friendly travel companion', tier: 'static',      reportTheme: 'standard', tint: 'none' },
+    clean:   { label: 'Survey Datapad',      blurb: 'Clean instrument feed',     tier: 'static',      reportTheme: 'standard', tint: 'none' },
+    console: { label: 'Starship Console',    blurb: 'Live orbital plot',         tier: 'interactive', reportTheme: 'standard', tint: 'none' },
   };
-  const THEME_ORDER: ThemeKey[] = ['green', 'amber', 'guide', 'clean', 'console'];
 
   const EARTH_GRAVITY = 9.80665;
   const EARTH_MASS_KG = 5.972e24;
@@ -44,10 +48,10 @@
   let branding: { name: string; logo: string | null } = { name: '', logo: null };
   let rulePack: RulePack | null = null;
   let sessionId: string | null = null;
-  let themeKey: ThemeKey = 'green';
+  let themeKey: ThemeKey = 'mono';
+  let monoColor: MonoColor = 'green';
   let lastUpdate: number | null = null;
   let connected = false;
-  let showThemePicker = false;
   // GM choice (?constructs=0) — whether artificial constructs appear in the guide, over and above
   // the standard player redaction (mirrors the printed report's "include constructs" option).
   let includeConstructs = true;
@@ -95,28 +99,109 @@
   // the orbital plot gently in motion so it feels alive.
   let currentTime = Date.now();
   let isPlaying = true;
-  let timeScale = 86400; // ~1 day per second
   let rafId = 0;
 
   // Interactive-tier selection.
   let focusedBodyId: string | null = null;
   let selectedBody: CelestialBody | null = null;
 
+  // --- Console navigation: a clickable star/planet list, with moons + constructs once a
+  //     planet is focused. Jumping also focuses the visualizer on that body. ---
+  function isStarNode(n: any): boolean {
+    return n?.roleHint === 'star' || (Array.isArray(n?.classes) && n.classes.some((c: string) => String(c).startsWith('star/')));
+  }
+  function isNavPlanet(n: any): boolean {
+    return n?.kind === 'body' && !isStarNode(n) && n.roleHint !== 'moon' && n.roleHint !== 'belt' && n.roleHint !== 'ring' && n.roleHint !== 'barycenter';
+  }
+  $: consoleStars = ((displaySystem?.nodes ?? []) as any[]).filter(isStarNode) as CelestialBody[];
+  function consolePlanetsOf(hostId: string): CelestialBody[] {
+    return ((displaySystem?.nodes ?? []) as any[])
+      .filter((n) => isNavPlanet(n) && (n.parentId === hostId || n.orbit?.hostId === hostId))
+      .sort((a, b) => (a.orbit?.elements?.a_AU || 0) - (b.orbit?.elements?.a_AU || 0)) as CelestialBody[];
+  }
+  function consoleChildrenOf(id: string | null): CelestialBody[] {
+    if (!id) return [];
+    return ((displaySystem?.nodes ?? []) as any[])
+      .filter((n) => (n.parentId === id || n.orbit?.hostId === id) && (n.roleHint === 'moon' || n.kind === 'construct'))
+      .sort((a, b) => (a.orbit?.elements?.a_AU || 0) - (b.orbit?.elements?.a_AU || 0)) as CelestialBody[];
+  }
+  // The planet whose moon/construct family is open in the nav (and governs the adaptive clock):
+  // the focused planet itself, or the focused child's parent planet.
+  $: expandedPlanetId = (() => {
+    const all = (displaySystem?.nodes ?? []) as any[];
+    const f = all.find((n) => n.id === focusedBodyId);
+    if (!f) return null;
+    if (isNavPlanet(f)) return f.id as string;
+    const pid = f.parentId || f.orbit?.hostId;
+    const p = all.find((n) => n.id === pid);
+    return p && isNavPlanet(p) ? (p.id as string) : null;
+  })();
+  $: expandedChildren = consoleChildrenOf(expandedPlanetId);
+  function jumpTo(id: string) {
+    focusedBodyId = id;
+    const node = displaySystem?.nodes.find((n) => n.id === id);
+    selectedBody = node && (node.kind === 'body' || node.kind === 'construct') ? (node as CelestialBody) : null;
+  }
+
+  // --- Adaptive time: slow the clock so the FASTEST orbiting object in view completes one
+  //     orbit every ~2 seconds (fast moons stay selectable). "In view" = the focused body's
+  //     children when it has any, else the system's planets. ---
+  function periodSec(b: any): number | null {
+    const d = b?.orbital_period_days;
+    return typeof d === 'number' && d > 0 ? d * 86400 : null;
+  }
+  $: timeScale = (() => {
+    const all = (displaySystem?.nodes ?? []) as any[];
+    let watched: any[] = expandedChildren.length ? expandedChildren : [];
+    if (!watched.length) watched = all.filter(isNavPlanet);
+    const periods = watched.map(periodSec).filter((p): p is number => p !== null);
+    if (!periods.length) return 86400; // fallback: ~a day per second
+    return Math.max(1, Math.min(...periods) / 2);
+  })();
+  function fmtTimeRate(sps: number): string {
+    const Y = 86400 * 365.25;
+    if (sps >= 2 * Y) return `${Math.round(sps / Y)} years`;
+    if (sps >= 2 * 86400) return `${Math.round(sps / 86400)} days`;
+    if (sps >= 2 * 3600) return `${Math.round(sps / 3600)} hours`;
+    if (sps >= 2 * 60) return `${Math.round(sps / 60)} minutes`;
+    return `${Math.round(sps)} seconds`;
+  }
+
+  // --- The Guide: DON'T PANIC front cover (once per session) + random margin-note banners. ---
+  let guideCoverDismissed = false;
+  if (browser) {
+    try { guideCoverDismissed = sessionStorage.getItem('sse-guide-cover-seen') === '1'; } catch { /* ignore */ }
+  }
+  function dismissGuideCover() {
+    guideCoverDismissed = true;
+    try { sessionStorage.setItem('sse-guide-cover-seen', '1'); } catch { /* ignore */ }
+  }
+  let topNote = '';
+  let bottomNote = '';
+  function rollNotes(_trigger: string | null) {
+    const t = randomGuideNote();
+    topNote = t;
+    bottomNote = randomGuideNote(t);
+  }
+  // Fresh notes every time the reader moves between systems (or back to the map).
+  $: rollNotes(selectedSystemId);
+  // Words wrap as units (letters are individually coloured, so each word is a nowrap group).
+  const PANIC_WORDS = "DON'T PANIC!!!!".split(' ').map((w, wi, arr) => ({
+    letters: w.split(''),
+    offset: arr.slice(0, wi).reduce((n, p) => n + p.length + 1, 0),
+  }));
+
   $: theme = THEMES[themeKey];
   $: nowLabel = lastUpdate ? new Date(lastUpdate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
 
-  function setTheme(k: ThemeKey) {
-    themeKey = k;
-    showThemePicker = false;
-    selectedBody = null;
-    if (browser) {
-      try {
-        const u = new URL(window.location.href);
-        u.searchParams.set('theme', k);
-        history.replaceState({}, '', u);
-        localStorage.setItem('catalogue-theme', k);
-      } catch { /* private mode / no history */ }
-    }
+  // Apply a GM-broadcast (or URL-derived) view config.
+  function applyGuideConfig(raw: { theme: string; monoColor: string; includeConstructs: boolean }) {
+    const c = normalizeGuideConfig(raw);
+    const themeChanged = c.theme !== themeKey;
+    themeKey = c.theme;
+    monoColor = c.monoColor;
+    includeConstructs = c.includeConstructs;
+    if (themeChanged) selectedBody = null;
   }
 
   function startClock() {
@@ -191,12 +276,13 @@
   onMount(async () => {
     const params = new URLSearchParams(window.location.search);
     sessionId = params.get('sid');
-    includeConstructs = params.get('constructs') !== '0';
-    const urlTheme = params.get('theme') as ThemeKey | null;
-    let stored: string | null = null;
-    try { stored = localStorage.getItem('catalogue-theme'); } catch { /* ignore */ }
-    if (urlTheme && THEMES[urlTheme]) themeKey = urlTheme;
-    else if (stored && THEMES[stored as ThemeKey]) themeKey = stored as ThemeKey;
+    // Initial view from the URL (legacy green/amber theme keys fold into mono + colour);
+    // the GM's SYNC_GUIDECONFIG broadcast takes over from there.
+    applyGuideConfig({
+      theme: params.get('theme') || 'mono',
+      monoColor: params.get('color') || 'green',
+      includeConstructs: params.get('constructs') !== '0',
+    });
 
     try {
       rulePack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json');
@@ -223,6 +309,7 @@
       connected = true;
     };
     broadcastService.onBrandingUpdate = (b) => { branding = b || { name: '', logo: null }; };
+    broadcastService.onGuideConfigUpdate = (c) => { if (c) applyGuideConfig(c); };
     broadcastService.sendMessage({ type: 'REQUEST_STARMAP', payload: sessionId });
     startClock();
   });
@@ -238,7 +325,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 </svelte:head>
 
-<main class="catalogue tint-{theme.tint} skin-{themeKey}" class:interactive={theme.tier === 'interactive'}>
+<main class="catalogue tint-{theme.tint} skin-{themeKey}" class:interactive={theme.tier === 'interactive'} style="--mono:{MONO_COLORS[monoColor].hex}">
   <!-- Device status bar -->
   <header class="statusbar">
     {#if selectedSystemId}
@@ -250,25 +337,24 @@
     <span class="status" class:live={connected} class:offline={!connected}>
       {#if connected}● LIVE{:else}○ GM OFFLINE — last {nowLabel}{/if}
     </span>
-    <button class="theme-btn" on:click={() => (showThemePicker = !showThemePicker)} aria-label="Change skin">
-      {theme.label}
-    </button>
   </header>
 
-  {#if showThemePicker}
-    <div class="theme-picker" role="menu">
-      {#each THEME_ORDER as k}
-        <button class="theme-option" class:active={k === themeKey} on:click={() => setTheme(k)} role="menuitem">
-          <span class="opt-label">{THEMES[k].label}</span>
-          <span class="opt-blurb">{THEMES[k].blurb}</span>
-          <span class="opt-tier">{THEMES[k].tier === 'interactive' ? 'live map' : 'document'}</span>
-        </button>
-      {/each}
+  {#if themeKey === 'guide' && !guideCoverDismissed}
+    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+    <div class="guide-cover" role="button" tabindex="0" on:click={dismissGuideCover} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') dismissGuideCover(); }}>
+      <div class="cover-inner">
+        <div class="panic" aria-label="Don't panic">
+          {#each PANIC_WORDS as word, wi}{#if wi > 0}{' '}{/if}<span class="panic-word">{#each word.letters as ch, i}<span style="--i:{word.offset + i}">{ch}</span>{/each}</span>{/each}
+        </div>
+        <p class="cover-sub">The Field Guide: the standard repository for all knowledge and wisdom. Abridged. Redacted. Mostly accurate.</p>
+        <p class="cover-hint">tap anywhere to open the Guide</p>
+      </div>
     </div>
   {/if}
 
   {#if themeKey === 'guide' && (selectedSystemNode || starmap)}
     <div class="guide-banner">A traveller's guide to {selectedSystemNode?.name ?? starmap?.name} — friendly, illustrated, and mostly accurate.</div>
+    {#if topNote}<div class="guide-note top">{topNote}</div>{/if}
   {/if}
 
   {#if !starmap}
@@ -335,6 +421,22 @@
           on:focus={handleFocus}
         />
       {/if}
+      <!-- Jump list: stars + planets; the focused planet unfolds its moons/constructs. -->
+      <nav class="console-nav" aria-label="System bodies">
+        {#each consoleStars as star (star.id)}
+          <button class="nav-item star" class:active={focusedBodyId === star.id} on:click={() => jumpTo(star.id)}>★ {star.name}</button>
+          {#each consolePlanetsOf(star.id) as p (p.id)}
+            <button class="nav-item" class:active={focusedBodyId === p.id} on:click={() => jumpTo(p.id)}>● {p.name}</button>
+            {#if expandedPlanetId === p.id}
+              {#each expandedChildren as c (c.id)}
+                <button class="nav-item sub" class:active={focusedBodyId === c.id} on:click={() => jumpTo(c.id)}>{c.kind === 'construct' ? '◆' : '○'} {c.name}</button>
+              {/each}
+            {/if}
+          {/each}
+        {/each}
+      </nav>
+      <!-- Adaptive clock read-out: the fastest body in view does ~1 orbit per 2 s. -->
+      <div class="time-rate">1 s ≈ {fmtTimeRate(timeScale)}</div>
       {#if selectedBody}
         <aside class="inspector">
           <div class="insp-head">
@@ -358,8 +460,12 @@
   {:else}
     <!-- Lo-fi / datapad / Guide: diagrammatic browser — clickable layout + a body panel. -->
     <div class="doc-scroll">
-      <CatalogueBrowser system={displaySystem} {includeConstructs} />
+      <CatalogueBrowser system={displaySystem} {includeConstructs} colorful={themeKey === 'guide'} />
     </div>
+  {/if}
+
+  {#if themeKey === 'guide' && starmap && bottomNote}
+    <div class="guide-note bottom">{bottomNote}</div>
   {/if}
 
   {#if theme.tint !== 'none'}
@@ -428,53 +534,6 @@
   .status { margin-left: auto; opacity: 0.85; }
   .status.live { color: #6fffa0; }
   .status.offline { color: #ffb061; }
-  .theme-btn {
-    background: rgba(255, 255, 255, 0.08);
-    color: inherit;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-    padding: 3px 10px;
-    font: inherit;
-    font-size: 11px;
-    cursor: pointer;
-  }
-  .theme-btn:hover { background: rgba(255, 255, 255, 0.16); }
-
-  .theme-picker {
-    position: absolute;
-    top: 34px;
-    right: 10px;
-    z-index: 100;
-    background: #0c1018;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 6px;
-    padding: 6px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 220px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
-  }
-  .theme-option {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-areas: 'label tier' 'blurb tier';
-    gap: 0 8px;
-    text-align: left;
-    background: transparent;
-    color: #cfd6e4;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    padding: 7px 9px;
-    cursor: pointer;
-    font: inherit;
-  }
-  .theme-option:hover { background: rgba(255, 255, 255, 0.06); }
-  .theme-option.active { border-color: #6fffa0; }
-  .opt-label { grid-area: label; font-weight: 700; font-size: 13px; }
-  .opt-blurb { grid-area: blurb; font-size: 11px; opacity: 0.6; }
-  .opt-tier { grid-area: tier; align-self: center; font-size: 10px; opacity: 0.55; text-transform: uppercase; }
-
   /* --- waiting state --- */
   .waiting { flex: 1; display: grid; place-items: center; text-align: center; }
   .waiting-inner h1 { font-size: 22px; margin: 0 0 8px; }
@@ -501,36 +560,142 @@
   /* Each skin just sets the terminal colour + background; the browser is built from currentColor
      and thin borders, so it adopts the hue. CRTOverlay (added for tint != none) supplies scanlines.
      (A WebGL filter package — spec §5 — is the eventual upgrade over this CSS approach.) */
-  .tint-green { color: #74f7b0; }
-  .tint-green .doc-scroll { background: #020806; }
-  .tint-green .sys-name, .tint-green .status.live { color: #74f7b0; }
-  .tint-amber { color: #ffb766; }
-  .tint-amber .doc-scroll { background: #0a0600; }
-  .tint-amber .sys-name, .tint-amber .status.live { color: #ffb766; }
-  .tint-green .doc-scroll, .tint-amber .doc-scroll { text-shadow: 0 0 1px currentColor; }
+  .tint-mono { color: var(--mono, #74f7b0); }
+  .tint-mono .doc-scroll { background: color-mix(in srgb, var(--mono, #74f7b0) 4%, #010204); text-shadow: 0 0 1px currentColor; }
+  .tint-mono .sys-name, .tint-mono .status.live { color: var(--mono, #74f7b0); }
 
-  /* --- The Guide: friendly illustrated travel companion (warm green book) --- */
+  /* --- The Guide: friendly illustrated travel companion — hopelessly, joyfully colourful.
+     Several FRIENDLY fonts: rounded sans for body, comic/chalk for banners and the cover. --- */
   .guide-banner {
     flex: 0 0 auto;
     text-align: center;
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', 'Trebuchet MS', cursive;
     font-style: italic;
     font-size: 13px;
     color: #061a10;
-    background: linear-gradient(180deg, #7CFFB2, #34d27e);
+    background: linear-gradient(90deg, #7CFFB2, #ffd76e, #ff9ce8, #8ed0ff, #7CFFB2);
     padding: 7px 12px;
     letter-spacing: 0.02em;
   }
-  .skin-guide { background: #04140d; color: #d6ffe8; font-family: Georgia, 'Times New Roman', serif; }
-  .skin-guide .statusbar { background: #07241a; border-bottom-color: rgba(124, 255, 178, 0.3); }
+  .skin-guide { background: #04140d; color: #d6ffe8; font-family: 'Trebuchet MS', 'Segoe UI', Verdana, sans-serif; }
+  .skin-guide .statusbar { background: #07241a; border-bottom-color: rgba(124, 255, 178, 0.3); font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', cursive; }
   .skin-guide .status.live { color: #7CFFB2; }
-  .skin-guide .sys-name { color: #7CFFB2; }
+  .skin-guide .sys-name { color: #ffd76e; }
+  .skin-guide .brand-name { color: #ff9ce8; }
   .skin-guide .doc-scroll { background: #04140d; }
+  /* Random Guide margin notes, top and bottom. */
+  .guide-note {
+    flex: 0 0 auto;
+    text-align: center;
+    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', 'Trebuchet MS', cursive;
+    font-size: 12px;
+    line-height: 1.45;
+    padding: 6px 14px;
+  }
+  .guide-note.top { color: #06231a; background: linear-gradient(90deg, #8ed0ff, #b9a4ff); }
+  .guide-note.bottom { color: #2a1606; background: linear-gradient(90deg, #ffd76e, #ff9c6e); border-top: 2px dashed rgba(0,0,0,0.35); }
+  .guide-note.bottom::before { content: 'THE GUIDE SAYS: '; font-weight: 700; letter-spacing: 0.05em; }
+  .guide-note.top::before { content: 'TRAVELLER ADVISORY: '; font-weight: 700; letter-spacing: 0.05em; }
+  /* The front cover: big, friendly, colourful letters. Tap to pass. */
+  .guide-cover {
+    position: absolute;
+    inset: 0;
+    z-index: 300;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(ellipse at 50% 35%, #0a3322, #04140d 70%);
+    cursor: pointer;
+    text-align: center;
+    padding: 24px;
+  }
+  .cover-inner { max-width: 560px; }
+  .panic {
+    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', 'Trebuchet MS', cursive;
+    font-weight: 700;
+    font-size: clamp(38px, 11vw, 92px);
+    line-height: 1.05;
+    user-select: none;
+  }
+  .panic-word { white-space: nowrap; display: inline-block; }
+  .panic-word span {
+    display: inline-block;
+    color: hsl(calc(var(--i) * 26), 95%, 66%);
+    transform: rotate(calc((var(--i) - 7) * 1.6deg));
+    text-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+  }
+  .cover-sub {
+    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', cursive;
+    color: #d6ffe8;
+    margin: 22px 0 0;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .cover-hint {
+    font-family: 'Trebuchet MS', Verdana, sans-serif;
+    color: #7CFFB2;
+    opacity: 0.6;
+    font-size: 12px;
+    margin-top: 26px;
+    animation: cover-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes cover-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.85; } }
   .skin-clean { color: #dfe5ef; }
   .skin-clean .doc-scroll { background: #0b0e14; }
 
   /* --- hi-tech console tier --- */
   .console-stage { flex: 1; position: relative; min-height: 0; }
+  .console-nav {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: calc(100% - 70px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: rgba(8, 11, 18, 0.78);
+    border: 1px solid rgba(120, 180, 255, 0.3);
+    border-radius: 8px;
+    padding: 6px;
+    min-width: 130px;
+    max-width: 190px;
+    font-family: system-ui, sans-serif;
+  }
+  .nav-item {
+    text-align: left;
+    background: transparent;
+    color: #cfd6e4;
+    border: none;
+    border-radius: 5px;
+    padding: 4px 8px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .nav-item:hover { background: rgba(120, 180, 255, 0.14); }
+  .nav-item.active { background: rgba(120, 180, 255, 0.26); color: #fff; }
+  .nav-item.star { font-weight: 700; }
+  .nav-item.sub { padding-left: 22px; opacity: 0.9; font-size: 11.5px; }
+  .time-rate {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    z-index: 20;
+    font-family: system-ui, sans-serif;
+    font-size: 11.5px;
+    letter-spacing: 0.04em;
+    color: #9fb0c8;
+    background: rgba(8, 11, 18, 0.7);
+    border: 1px solid rgba(120, 180, 255, 0.25);
+    border-radius: 6px;
+    padding: 4px 9px;
+    pointer-events: none;
+  }
   .console-hint {
     position: absolute;
     bottom: 14px;
