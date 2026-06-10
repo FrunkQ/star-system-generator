@@ -14,24 +14,27 @@
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import CRTOverlay from '$lib/components/CRTOverlay.svelte';
   import { AU_KM, G } from '$lib/constants';
+  import { MONO_COLORS, normalizeGuideConfig } from '$lib/catalogue/guideConfig';
+  import type { MonoColor } from '$lib/catalogue/guideConfig';
   import type { System, RulePack, CelestialBody, Starmap } from '$lib/types';
 
-  type ThemeKey = 'green' | 'amber' | 'guide' | 'clean' | 'console';
+  // The view is GM-ENFORCED: the GM's Companion launcher broadcasts SYNC_GUIDECONFIG and the
+  // guide applies it — there is no player-facing picker. The URL carries the initial choice so
+  // the first paint matches before the broadcast lands.
+  type ThemeKey = 'mono' | 'guide' | 'clean' | 'console';
   interface ThemeDef {
     label: string;
     blurb: string;
     tier: 'static' | 'interactive';
     reportTheme: string;            // which ReportDocument theme to render underneath
-    tint: 'green' | 'amber' | 'none';
+    tint: 'mono' | 'none';
   }
   const THEMES: Record<ThemeKey, ThemeDef> = {
-    green:   { label: 'Green Screen',     blurb: 'Salvaged CRT terminal',     tier: 'static',      reportTheme: 'retro',    tint: 'green' },
-    amber:   { label: 'Amber Terminal',   blurb: 'Phosphor field unit',       tier: 'static',      reportTheme: 'retro',    tint: 'amber' },
-    guide:   { label: 'The Guide',        blurb: 'Friendly travel companion', tier: 'static',      reportTheme: 'standard', tint: 'none'  },
-    clean:   { label: 'Survey Datapad',   blurb: 'Clean instrument feed',     tier: 'static',      reportTheme: 'standard', tint: 'none'  },
-    console: { label: 'Starship Console', blurb: 'Live orbital plot',         tier: 'interactive', reportTheme: 'standard', tint: 'none'  },
+    mono:    { label: 'Monochrome Terminal', blurb: 'Salvaged CRT terminal',     tier: 'static',      reportTheme: 'retro',    tint: 'mono' },
+    guide:   { label: 'The Guide',           blurb: 'Friendly travel companion', tier: 'static',      reportTheme: 'standard', tint: 'none' },
+    clean:   { label: 'Survey Datapad',      blurb: 'Clean instrument feed',     tier: 'static',      reportTheme: 'standard', tint: 'none' },
+    console: { label: 'Starship Console',    blurb: 'Live orbital plot',         tier: 'interactive', reportTheme: 'standard', tint: 'none' },
   };
-  const THEME_ORDER: ThemeKey[] = ['green', 'amber', 'guide', 'clean', 'console'];
 
   const EARTH_GRAVITY = 9.80665;
   const EARTH_MASS_KG = 5.972e24;
@@ -44,10 +47,10 @@
   let branding: { name: string; logo: string | null } = { name: '', logo: null };
   let rulePack: RulePack | null = null;
   let sessionId: string | null = null;
-  let themeKey: ThemeKey = 'green';
+  let themeKey: ThemeKey = 'mono';
+  let monoColor: MonoColor = 'green';
   let lastUpdate: number | null = null;
   let connected = false;
-  let showThemePicker = false;
   // GM choice (?constructs=0) — whether artificial constructs appear in the guide, over and above
   // the standard player redaction (mirrors the printed report's "include constructs" option).
   let includeConstructs = true;
@@ -105,18 +108,14 @@
   $: theme = THEMES[themeKey];
   $: nowLabel = lastUpdate ? new Date(lastUpdate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
 
-  function setTheme(k: ThemeKey) {
-    themeKey = k;
-    showThemePicker = false;
-    selectedBody = null;
-    if (browser) {
-      try {
-        const u = new URL(window.location.href);
-        u.searchParams.set('theme', k);
-        history.replaceState({}, '', u);
-        localStorage.setItem('catalogue-theme', k);
-      } catch { /* private mode / no history */ }
-    }
+  // Apply a GM-broadcast (or URL-derived) view config.
+  function applyGuideConfig(raw: { theme: string; monoColor: string; includeConstructs: boolean }) {
+    const c = normalizeGuideConfig(raw);
+    const themeChanged = c.theme !== themeKey;
+    themeKey = c.theme;
+    monoColor = c.monoColor;
+    includeConstructs = c.includeConstructs;
+    if (themeChanged) selectedBody = null;
   }
 
   function startClock() {
@@ -191,12 +190,13 @@
   onMount(async () => {
     const params = new URLSearchParams(window.location.search);
     sessionId = params.get('sid');
-    includeConstructs = params.get('constructs') !== '0';
-    const urlTheme = params.get('theme') as ThemeKey | null;
-    let stored: string | null = null;
-    try { stored = localStorage.getItem('catalogue-theme'); } catch { /* ignore */ }
-    if (urlTheme && THEMES[urlTheme]) themeKey = urlTheme;
-    else if (stored && THEMES[stored as ThemeKey]) themeKey = stored as ThemeKey;
+    // Initial view from the URL (legacy green/amber theme keys fold into mono + colour);
+    // the GM's SYNC_GUIDECONFIG broadcast takes over from there.
+    applyGuideConfig({
+      theme: params.get('theme') || 'mono',
+      monoColor: params.get('color') || 'green',
+      includeConstructs: params.get('constructs') !== '0',
+    });
 
     try {
       rulePack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json');
@@ -223,6 +223,7 @@
       connected = true;
     };
     broadcastService.onBrandingUpdate = (b) => { branding = b || { name: '', logo: null }; };
+    broadcastService.onGuideConfigUpdate = (c) => { if (c) applyGuideConfig(c); };
     broadcastService.sendMessage({ type: 'REQUEST_STARMAP', payload: sessionId });
     startClock();
   });
@@ -238,7 +239,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 </svelte:head>
 
-<main class="catalogue tint-{theme.tint} skin-{themeKey}" class:interactive={theme.tier === 'interactive'}>
+<main class="catalogue tint-{theme.tint} skin-{themeKey}" class:interactive={theme.tier === 'interactive'} style="--mono:{MONO_COLORS[monoColor].hex}">
   <!-- Device status bar -->
   <header class="statusbar">
     {#if selectedSystemId}
@@ -250,22 +251,7 @@
     <span class="status" class:live={connected} class:offline={!connected}>
       {#if connected}● LIVE{:else}○ GM OFFLINE — last {nowLabel}{/if}
     </span>
-    <button class="theme-btn" on:click={() => (showThemePicker = !showThemePicker)} aria-label="Change skin">
-      {theme.label}
-    </button>
   </header>
-
-  {#if showThemePicker}
-    <div class="theme-picker" role="menu">
-      {#each THEME_ORDER as k}
-        <button class="theme-option" class:active={k === themeKey} on:click={() => setTheme(k)} role="menuitem">
-          <span class="opt-label">{THEMES[k].label}</span>
-          <span class="opt-blurb">{THEMES[k].blurb}</span>
-          <span class="opt-tier">{THEMES[k].tier === 'interactive' ? 'live map' : 'document'}</span>
-        </button>
-      {/each}
-    </div>
-  {/if}
 
   {#if themeKey === 'guide' && (selectedSystemNode || starmap)}
     <div class="guide-banner">A traveller's guide to {selectedSystemNode?.name ?? starmap?.name} — friendly, illustrated, and mostly accurate.</div>
@@ -428,53 +414,6 @@
   .status { margin-left: auto; opacity: 0.85; }
   .status.live { color: #6fffa0; }
   .status.offline { color: #ffb061; }
-  .theme-btn {
-    background: rgba(255, 255, 255, 0.08);
-    color: inherit;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-    padding: 3px 10px;
-    font: inherit;
-    font-size: 11px;
-    cursor: pointer;
-  }
-  .theme-btn:hover { background: rgba(255, 255, 255, 0.16); }
-
-  .theme-picker {
-    position: absolute;
-    top: 34px;
-    right: 10px;
-    z-index: 100;
-    background: #0c1018;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 6px;
-    padding: 6px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 220px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
-  }
-  .theme-option {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-areas: 'label tier' 'blurb tier';
-    gap: 0 8px;
-    text-align: left;
-    background: transparent;
-    color: #cfd6e4;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    padding: 7px 9px;
-    cursor: pointer;
-    font: inherit;
-  }
-  .theme-option:hover { background: rgba(255, 255, 255, 0.06); }
-  .theme-option.active { border-color: #6fffa0; }
-  .opt-label { grid-area: label; font-weight: 700; font-size: 13px; }
-  .opt-blurb { grid-area: blurb; font-size: 11px; opacity: 0.6; }
-  .opt-tier { grid-area: tier; align-self: center; font-size: 10px; opacity: 0.55; text-transform: uppercase; }
-
   /* --- waiting state --- */
   .waiting { flex: 1; display: grid; place-items: center; text-align: center; }
   .waiting-inner h1 { font-size: 22px; margin: 0 0 8px; }
@@ -501,13 +440,9 @@
   /* Each skin just sets the terminal colour + background; the browser is built from currentColor
      and thin borders, so it adopts the hue. CRTOverlay (added for tint != none) supplies scanlines.
      (A WebGL filter package — spec §5 — is the eventual upgrade over this CSS approach.) */
-  .tint-green { color: #74f7b0; }
-  .tint-green .doc-scroll { background: #020806; }
-  .tint-green .sys-name, .tint-green .status.live { color: #74f7b0; }
-  .tint-amber { color: #ffb766; }
-  .tint-amber .doc-scroll { background: #0a0600; }
-  .tint-amber .sys-name, .tint-amber .status.live { color: #ffb766; }
-  .tint-green .doc-scroll, .tint-amber .doc-scroll { text-shadow: 0 0 1px currentColor; }
+  .tint-mono { color: var(--mono, #74f7b0); }
+  .tint-mono .doc-scroll { background: color-mix(in srgb, var(--mono, #74f7b0) 4%, #010204); text-shadow: 0 0 1px currentColor; }
+  .tint-mono .sys-name, .tint-mono .status.live { color: var(--mono, #74f7b0); }
 
   /* --- The Guide: friendly illustrated travel companion (warm green book) --- */
   .guide-banner {

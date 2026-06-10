@@ -15,6 +15,7 @@
   import CompanionModal from '$lib/components/CompanionModal.svelte';
   import InterstellarTransitModal from '$lib/components/InterstellarTransitModal.svelte';
   import { brandingStore } from '$lib/catalogue/branding';
+  import { guideConfigStore } from '$lib/catalogue/guideConfig';
   import { starmapStore } from '$lib/starmapStore';
   import { systemStore, viewportStore } from '$lib/stores';
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap } from '$lib/starmapStorage';
@@ -271,6 +272,7 @@
       const map = get(starmapStore);
       if (map) broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: computePlayerStarmapSnapshot(map) });
       broadcastService.sendMessage({ type: 'SYNC_BRANDING', payload: get(brandingStore) });
+      broadcastService.sendMessage({ type: 'SYNC_GUIDECONFIG', payload: get(guideConfigStore) });
     };
   });
   // Re-broadcast the redacted starmap whenever it changes, so connected guides stay live.
@@ -280,6 +282,10 @@
   // Push branding (company name + logo) to guides whenever the GM edits it.
   $: if (browser && $brandingStore) {
     broadcastService.sendMessage({ type: 'SYNC_BRANDING', payload: $brandingStore });
+  }
+  // Push the GM-enforced guide view (skin/colour/constructs) whenever the GM changes it.
+  $: if (browser && $guideConfigStore) {
+    broadcastService.sendMessage({ type: 'SYNC_GUIDECONFIG', payload: $guideConfigStore });
   }
 
   // Subscribe to systemStore and update starmapStore

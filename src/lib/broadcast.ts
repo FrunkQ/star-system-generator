@@ -29,7 +29,9 @@ export type BroadcastMessage =
   // projector's per-system SYNC_SYSTEM, so both can be served from the one session.
   | { type: 'SYNC_STARMAP'; payload: Starmap }
   | { type: 'REQUEST_STARMAP'; payload: string | null }
-  | { type: 'SYNC_BRANDING'; payload: { name: string; logo: string | null } };
+  | { type: 'SYNC_BRANDING'; payload: { name: string; logo: string | null } }
+  // GM-enforced Field Guide view (skin + terminal colour + constructs) — players can't override.
+  | { type: 'SYNC_GUIDECONFIG'; payload: { theme: string; monoColor: string; includeConstructs: boolean } };
 
 type BroadcastEnvelope = {
   sessionId: string | null;
@@ -219,6 +221,7 @@ class BroadcastService {
   public onStarmapUpdate: ((map: Starmap) => void) | null = null;
   public onRequestStarmap: ((requestingId: string | null) => void) | null = null;
   public onBrandingUpdate: ((b: { name: string; logo: string | null }) => void) | null = null;
+  public onGuideConfigUpdate: ((c: { theme: string; monoColor: string; includeConstructs: boolean }) => void) | null = null;
 
   private handleMessage(data: any) {
       // Check if this is an envelope or legacy message
@@ -285,6 +288,9 @@ class BroadcastService {
               break;
           case 'SYNC_BRANDING':
               if (!this.isSender && this.onBrandingUpdate) this.onBrandingUpdate(msg.payload);
+              break;
+          case 'SYNC_GUIDECONFIG':
+              if (!this.isSender && this.onGuideConfigUpdate) this.onGuideConfigUpdate(msg.payload);
               break;
           case 'REQUEST_STARMAP':
               if (this.isSender && this.onRequestStarmap) {
