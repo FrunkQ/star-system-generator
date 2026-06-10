@@ -64,7 +64,7 @@
 
 <style>
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 4vh 2vw; }
-  .modal { background: var(--bg-app, #0b0d12); border: 1px solid var(--border, #2a2d36); border-radius: 10px; width: min(760px, 96vw); max-height: 88vh; display: flex; flex-direction: column; color: var(--text, #e8e8e8); box-shadow: 0 12px 48px rgba(0,0,0,0.5); }
+  .modal { background: var(--bg-app, #0b0d12); border: 1px solid var(--border, #2a2d36); border-radius: 10px; width: min(760px, 96vw); max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; color: var(--text, #e8e8e8); box-shadow: 0 12px 48px rgba(0,0,0,0.5); }
   header { display: flex; align-items: flex-start; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border, #2a2d36); }
   h2 { margin: 0; font-size: 1.05rem; color: var(--accent, #ff5a1f); }
   .sub { margin: 3px 0 0; font-size: 0.82rem; color: var(--text-muted, #cfcfcf); }
@@ -73,7 +73,7 @@
   .leg .dot { width: 9px; height: 9px; border-radius: 50%; }
   .close { background: none; border: none; color: var(--text-muted, #cfcfcf); font-size: 1.6rem; line-height: 1; cursor: pointer; }
   .close:hover { color: var(--text, #fff); }
-  .grid { overflow-y: auto; padding: 14px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+  .grid { overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; padding: 14px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
   /* Loot-box rarity: each card is ringed + tinted by its type's tier (common→legendary). */
   .card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px; background: var(--bg-panel, #14161c); border: 1px solid color-mix(in srgb, var(--tier) 55%, var(--border, #2a2d36)); border-radius: 8px; cursor: pointer; transition: box-shadow 0.15s, transform 0.1s, border-color 0.15s; }
   .card:hover { border-color: var(--tier); transform: translateY(-2px); box-shadow: 0 0 12px color-mix(in srgb, var(--tier) 60%, transparent); }
@@ -81,4 +81,13 @@
   .noimg { width: 80px; height: 80px; border-radius: 50%; background: var(--bg-control, #232733); border: 2px solid var(--tier); display: flex; align-items: center; justify-content: center; text-transform: uppercase; color: var(--text-faint, #8a8a8a); font-weight: 700; }
   .name { font-size: 0.78rem; text-transform: capitalize; text-align: center; color: var(--text, #e8e8e8); line-height: 1.2; }
   .empty { grid-column: 1 / -1; color: var(--text-faint, #8a8a8a); text-align: center; padding: 24px; }
+  /* Phone: take the whole screen and shrink the thumbnails so the grid fits + scrolls. */
+  @media (max-width: 600px), (pointer: coarse) and (max-height: 700px) {
+    .overlay { padding: 0; align-items: stretch; justify-content: stretch; }
+    .modal { width: 100%; height: 100dvh; max-height: 100dvh; border-radius: 0; border: none; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
+    .card { padding: 6px; }
+    .card img, .noimg { width: 56px; height: 56px; }
+    .name { font-size: 0.72rem; }
+  }
 </style>
