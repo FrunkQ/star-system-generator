@@ -101,8 +101,9 @@ function gasGiantCloudColor(teqK: number): RGB {
 
 // Banding: gas/ice giants and thick-atmosphere worlds organise their clouds into latitudinal
 // bands; faster rotation drives more, tighter bands (Jupiter ~10 h → many; slow → mottled).
-function bandCount(body: CelestialBody, gasFrac: number): number {
+function bandCount(body: CelestialBody, gasFrac: number, iceGiant = false): number {
   if (gasFrac < 0.3) return 0;
+  if (iceGiant) return 3; // Uranus/Neptune: near-featureless, a couple of faint bands at most
   const rotH = body.rotation_period_hours;
   if (!rotH || rotH <= 0) return 6;
   const n = Math.round(60 / rotH);          // 10 h → 6 bands, 24 h → ~3
@@ -170,18 +171,32 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     }
   }
 
-  // 3c. Gas-rich worlds take their look from cloud decks (by temperature), not the surface.
+  // 3c. Gas-rich worlds take their look from their cloud chemistry, not the surface. The look is
+  //     COMPOSITION-driven so the four giants diverge and the gas-mix sliders actually do something:
+  //       methane (CH₄) is a strong red absorber → cyan→deep-blue with abundance + cold (Uranus vs
+  //       Neptune); ammonia (NH₃) → warm tan/gold with chromophore bands (Jupiter vs paler Saturn).
   const massMe = (body.massKg ?? 0) / EARTH_MASS_KG;
+  let iceGiant = false;
   if (mk.gas > 0.5) {
-    const cloud = gasGiantCloudColor(teq);
-    col = mix(col, cloud, 0.8);
-    push(rgbToHex(cloud), 'cloud', 0.8, 'cloud deck');
-    // record any specific chromophore decks as banding colours for a future renderer
-    for (const l of cloudLayers) if (l.colorHex) push(l.colorHex, 'cloud', 0.4, `${l.liquid} band`);
-    // Cold methane ice giants (≲ Neptune mass) are extra blue from their CH4.
-    if (teq < 250 && massMe < 50 && (atm?.composition?.['CH4'] ?? 0) > 0.01) {
-      col = mix(col, hexToRgb('#3b6fc4'), 0.5);
-      push('#3b6fc4', 'atmosphere', 0.5, 'methane blue');
+    const comp = atm?.composition ?? {};
+    const ch4 = comp['CH4'] ?? comp['methane'] ?? 0;
+    let cloud = gasGiantCloudColor(teq); // warm thermal base (ammonia / water / alkali / silicate)
+    // Methane absorption: stronger with abundance and with cold (we see deeper, more absorbing air).
+    const methaneStrength = Math.min(0.9, ch4 * 6 + (teq < 90 ? 0.22 : teq < 160 ? 0.08 : 0));
+    if (methaneStrength > 0.06 && teq < 420) {
+      const methaneHue = teq < 60 ? [47, 107, 214] as RGB : [70, 176, 216] as RGB; // Neptune deep blue ↔ Uranus cyan
+      cloud = mix(cloud, methaneHue, methaneStrength);
+    }
+    iceGiant = methaneStrength > 0.32;
+    col = mix(col, cloud, 0.85);
+    push(rgbToHex(cloud), 'cloud', 0.85, iceGiant ? 'methane haze' : 'ammonia cloud deck');
+    // Chromophore stripes belong to warm ammonia giants (Jupiter's browns/oranges); ice giants are
+    // near-featureless. Only emit band colours for the ammonia case → the renderer skips spots/stripes
+    // on Uranus/Neptune.
+    if (!iceGiant) {
+      for (const l of cloudLayers) if (l.colorHex) push(l.colorHex, 'cloud', 0.4, `${l.liquid} band`);
+      const chromo = teq < 200 ? '#a8642e' : teq < 400 ? '#c98a3e' : '#9a8478';
+      push(rgbToHex(mix(cloud, hexToRgb(chromo), 0.55)), 'cloud', 0.4 + 0.3 * Math.min(1, massMe / 318), 'chromophore band');
     }
   }
 
@@ -193,7 +208,8 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     push(rgbToHex(inc), 'incandescent', t, 'thermal glow');
   }
 
-  return { hex: rgbToHex(col), palette, banding: bandCount(body, mk.gas) };
+  // Ice giants are smooth (a few faint bands); ammonia giants band strongly with rotation.
+  return { hex: rgbToHex(col), palette, banding: bandCount(body, mk.gas, iceGiant) };
 }
 
 // Back-compat: callers/tests that just want the swatch.

@@ -87,17 +87,19 @@ function render(body: CelestialBody): HTMLCanvasElement {
   const banding = ap.banding || 0;
 
   if (banding > 0) {
-    // --- Gas/ice giant: latitudinal banding. Alternate light/dark stripes of the deck colour,
-    //     splash the chromophore band colours on seeded rows, add a storm oval for character.
+    // --- Gas/ice giant: latitudinal banding. Chromophore band stops exist only for warm ammonia
+    //     giants (Jupiter/Saturn) — their absence marks a smooth ice giant (Uranus/Neptune), which
+    //     gets very low contrast and NO storm.
+    const chromo = clouds.slice(1);                 // engine emits these only for ammonia giants
+    const smooth = chromo.length === 0;
     const base = clouds[0]?.hex ?? surface?.hex ?? '#c9b89a';
     const n = Math.max(2, banding);
     const bandH = SIZE / n;
+    const lo = smooth ? 0.985 : 0.86, hi = smooth ? 1.015 : 1.06;
     for (let i = 0; i < n; i++) {
-      ctx.fillStyle = shade(base, i % 2 === 0 ? 1.06 : 0.86);
+      ctx.fillStyle = shade(base, i % 2 === 0 ? hi : lo);
       ctx.fillRect(0, i * bandH, SIZE, bandH + 1);
     }
-    // chromophore bands from the engine (labelled '<liquid> band')
-    const chromo = clouds.slice(1);
     for (const ch of chromo) {
       const row = Math.floor(rnd() * n);
       ctx.globalAlpha = Math.min(0.7, ch.weight + 0.2);
@@ -105,10 +107,10 @@ function render(body: CelestialBody): HTMLCanvasElement {
       ctx.fillRect(0, row * bandH, SIZE, bandH * (0.6 + rnd() * 0.8));
       ctx.globalAlpha = 1;
     }
-    // a seeded storm oval (Great-Red-Spot-ish) on bigger band counts
-    if (n >= 4 && rnd() > 0.35) {
+    // Great-Red-Spot-style oval only on banded ammonia giants.
+    if (!smooth && n >= 4 && rnd() > 0.35) {
       const row = 1 + Math.floor(rnd() * (n - 2));
-      ctx.fillStyle = shade(base, 0.7);
+      ctx.fillStyle = shade(chromo[0]?.hex ?? base, 0.78);
       ctx.beginPath();
       ctx.ellipse(SIZE * (0.25 + rnd() * 0.5), (row + 0.5) * bandH, bandH * 1.1, bandH * 0.45, 0, 0, 2 * Math.PI);
       ctx.fill();
