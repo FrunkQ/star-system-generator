@@ -10,21 +10,27 @@
 
   const dispatch = createEventDispatcher();
 
-  // Sectioned settings (Starmap View / Tech / Planets / System). Orrery View was dropped (Q2).
-  type Section = 'starmap' | 'technology' | 'planets' | 'system';
-  let activeSection: Section = 'starmap';
+  // Sectioned settings (Starmap / Time / Tech / Planets / System). Orrery View was dropped (Q2).
+  type Section = 'starmap' | 'time' | 'technology' | 'planets' | 'system';
+  // Sub-editors (Time & Calendars, Fuel & Drives…) reopen Settings at their section on close.
+  export let initialSection: Section | null = null;
+  let activeSection: Section = initialSection ?? 'starmap';
 
   // On narrow / touch the modal is a drill-in: a list of sections (drilled=false) →
   // a section's content (drilled=true). "Back" goes UP a level rather than closing.
   const SECTION_LABELS: Record<Section, string> = {
-    starmap: 'Starmap View', technology: 'Tech', planets: 'Planets', system: 'System'
+    starmap: 'Starmap', time: 'Time', technology: 'Tech', planets: 'Planets', system: 'System'
   };
   let isNarrow = false;
-  let drilled = false;
+  let drilled = !!initialSection;
   let wasOpen = false;
   $: headerTitle = isNarrow && drilled ? SECTION_LABELS[activeSection] : 'Settings';
-  // Reset to the section list each time the modal (re)opens.
-  $: if (showModal && !wasOpen) { wasOpen = true; drilled = false; }
+  // Reset each time the modal (re)opens: to the requested section, else the section list.
+  $: if (showModal && !wasOpen) {
+    wasOpen = true;
+    if (initialSection) { activeSection = initialSection; drilled = true; }
+    else drilled = false;
+  }
   $: if (!showModal && wasOpen) { wasOpen = false; }
 
   onMount(() => {
@@ -44,12 +50,16 @@
   $: if (showModal) invertDisplay = starmap.invertDisplay ?? false;
 
 
-  // Starmap settings
+  // Starmap settings. The unit choice doubles as the scaling mode (matches the New Starmap
+  // modal): ly/pc are scaled maps, diagrammatic uses a free abstract unit (e.g. J8 for Jump-8).
   let starmapName = starmap.name;
-  let distanceUnit = starmap.distanceUnit;
-  let unitIsPrefix = starmap.unitIsPrefix;
+  const initialDiagrammatic = (starmap.mapMode ?? 'diagrammatic') === 'diagrammatic';
+  let unitChoice: 'ly' | 'pc' | 'diagrammatic' = initialDiagrammatic
+    ? 'diagrammatic'
+    : ((starmap.distanceUnit || '').toLowerCase() === 'pc' ? 'pc' : 'ly');
+  let abstractUnit = initialDiagrammatic ? (starmap.distanceUnit || 'J') : 'J';
+  let abstractOrder: 'prefix' | 'suffix' = starmap.unitIsPrefix ? 'prefix' : 'suffix';
   let generationEngine = starmap.generationEngine ?? 'standard';
-  let mapMode: 'diagrammatic' | 'scaled' = starmap.mapMode ?? 'diagrammatic';
   let showScaleBar = starmap.scale?.showScaleBar ?? true;
   let normalizedTemporal = ensureTemporalState(starmap).temporal!;
   let activeCalendarKey = normalizedTemporal.activeCalendarKey;
@@ -96,16 +106,18 @@
       }
     }
 
+    const diagrammatic = unitChoice === 'diagrammatic';
+    const distanceUnit = diagrammatic ? (abstractUnit.trim() || 'J') : unitChoice;
     dispatch('save', {
       starmap: {
         name: starmapName,
         distanceUnit,
-        unitIsPrefix,
-        mapMode,
+        unitIsPrefix: diagrammatic ? abstractOrder === 'prefix' : false,
+        mapMode: diagrammatic ? 'diagrammatic' : 'scaled',
         generationEngine,
         invertDisplay,
         scale: {
-          unit: distanceUnit || 'LY',
+          unit: distanceUnit,
           pixelsPerUnit: starmap.scale?.pixelsPerUnit && starmap.scale.pixelsPerUnit > 0 ? starmap.scale.pixelsPerUnit : 25,
           showScaleBar,
         },
@@ -181,7 +193,8 @@
 
     <div class="settings-layout">
       <nav class="settings-nav">
-        <button class:active={activeSection === 'starmap'} on:click={() => pickSection('starmap')}>Starmap View</button>
+        <button class:active={activeSection === 'starmap'} on:click={() => pickSection('starmap')}>Starmap</button>
+        <button class:active={activeSection === 'time'} on:click={() => pickSection('time')}>Time</button>
         <button class:active={activeSection === 'technology'} on:click={() => pickSection('technology')}>Tech</button>
         <button class:active={activeSection === 'planets'} on:click={() => pickSection('planets')}>Planets</button>
         <button class:active={activeSection === 'system'} on:click={() => pickSection('system')}>System</button>
@@ -194,22 +207,26 @@
             <input type="text" id="starmapName" bind:value={starmapName}>
           </div>
           <div class="form-group">
-            <label for="distanceUnit">Distance Unit</label>
-            <div style="display: flex; align-items: center; gap: 0.5em;">
-              <input type="text" id="distanceUnit" bind:value={distanceUnit}>
-              <span>(Example: {unitIsPrefix ? distanceUnit : ''}5{!unitIsPrefix ? distanceUnit : ''})</span>
-            </div>
-          </div>
-          <div class="form-group">
-            <label><input type="checkbox" bind:checked={unitIsPrefix} /> Unit is a prefix</label>
-          </div>
-          <div class="form-group">
-            <label for="mapMode">Map Mode</label>
-            <select id="mapMode" bind:value={mapMode}>
-              <option value="diagrammatic">Diagrammatic</option>
-              <option value="scaled">Scaled</option>
+            <label for="unitChoice">Distance/Scaling units</label>
+            <select id="unitChoice" bind:value={unitChoice}>
+              <option value="ly">Light Years (ly)</option>
+              <option value="pc">Parsecs (pc)</option>
+              <option value="diagrammatic">Diagrammatic (not scaled)</option>
             </select>
           </div>
+          {#if unitChoice === 'diagrammatic'}
+            <div class="form-group">
+              <label for="abstractUnit">Abstract unit</label>
+              <input type="text" id="abstractUnit" maxlength="6" placeholder="e.g. J for Jump" bind:value={abstractUnit}>
+            </div>
+            <div class="form-group">
+              <label for="abstractOrder">Unit order</label>
+              <select id="abstractOrder" bind:value={abstractOrder}>
+                <option value="prefix">Before the number ({abstractUnit.trim() || 'J'}8)</option>
+                <option value="suffix">After the number (8 {abstractUnit.trim() || 'J'})</option>
+              </select>
+            </div>
+          {/if}
           <div class="form-group highlight-row">
             <label for="generationEngine">Generation Engine</label>
             <select id="generationEngine" bind:value={generationEngine}>
@@ -242,6 +259,7 @@
             </label>
           </div>
 
+        {:else if activeSection === 'time'}
           <h3>Date &amp; time</h3>
           <div class="form-group">
             <label for="calendarSelect">Time/Date System</label>
@@ -450,9 +468,6 @@
     border-radius: 4px;
   }
 
-  input#distanceUnit {
-    width: 50%;
-  }
   .modal-actions {
     margin-top: 2em;
     display: flex;
