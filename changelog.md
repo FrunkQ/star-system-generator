@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.15-alpha - 10th Jun 2026
+
+* **Time controls**: the transport pill is now draggable (grip handle) and minimizable to just a clock — tap to expand; position and state persist. Scale bar moved to the bottom-right (it sat under the time pill).
+* **True colour**: liquid shades now come from the host star's light filtered by each liquid's absorption plus a refractive-index specular share — water under a red dwarf reads murky amber, not postcard blue. The disc mixes land/liquid proportionally by coverage for ANY surface liquid, with clouds/haze on top.
+* Ring shadows now match the planet's drawn disc size instead of a point-source sliver.
+
 ## v2.0.14-alpha - 9th Jun 2026
 
 * Black holes get a **Feeding** toggle (active accretion — changes the image, orrery accretion ring, and output). Pushing a neutron star's **magnetic field past ~10¹³ G** turns it into a (purple) **magnetar**, and dropping it back reverts.
