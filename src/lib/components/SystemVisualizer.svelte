@@ -15,6 +15,8 @@
   import { scaleBoxCox } from '../physics/scaling';
   import { findContainingHost } from '$lib/physics/orbits';
   import { getNodeColor, STAR_COLOR_MAP, tokenRgba } from '$lib/rendering/colors';
+  import { trueColorMode } from '$lib/rendering/colorModeStore';
+  import { getPlanetTexture } from '$lib/rendering/planetTexture';
 
   export let system: System | null;
   export let rulePack: RulePack;
@@ -735,10 +737,23 @@
                               const isGiant = parent.classes?.some((c: string) => c.includes('gas-giant') || c.includes('ice-giant'));
                               const minPlanetPx = isGiant ? 3 : 2;
                               const effPlanetRadius = Math.sqrt(planetRadiusAU * planetRadiusAU + Math.pow(minPlanetPx / zoom, 2));
-                              const shadowAngle = Math.asin(Math.min(1, effPlanetRadius / avgRadius));
-                              const startAngle = angleToStar - shadowAngle; const endAngle = angleToStar + shadowAngle;
-                              ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)'; ctx.lineWidth = widthAU;
-                              ctx.beginPath(); ctx.arc(0, 0, avgRadius, startAngle, endAngle); ctx.stroke();
+                              // Parallel-sided umbra: a band exactly one planet-diameter wide running
+                              // anti-starward, clipped to the ring annulus. (An arc segment has
+                              // constant ANGULAR width, so it fanned outward like a searchlight.)
+                              ctx.save();
+                              ctx.beginPath();
+                              ctx.arc(0, 0, outerRadiusAU, 0, 2 * Math.PI);
+                              ctx.arc(0, 0, innerRadiusAU, 0, 2 * Math.PI, true);
+                              ctx.clip('evenodd');
+                              ctx.rotate(angleToStar); // +x now points anti-starward
+                              const umbra = ctx.createLinearGradient(0, -effPlanetRadius, 0, effPlanetRadius);
+                              umbra.addColorStop(0, 'rgba(0,0,0,0)');
+                              umbra.addColorStop(0.18, 'rgba(0,0,0,0.45)');
+                              umbra.addColorStop(0.82, 'rgba(0,0,0,0.45)');
+                              umbra.addColorStop(1, 'rgba(0,0,0,0)');
+                              ctx.fillStyle = umbra;
+                              ctx.fillRect(0, -effPlanetRadius, outerRadiusAU * 1.05, 2 * effPlanetRadius);
+                              ctx.restore();
                           }
                       }
                   }
@@ -772,6 +787,7 @@
               drawConstructGlyph(ctx, node as CelestialBody, rx, ry, 8 / zoom);
           }
       }
+      const trueColorOn = get(trueColorMode);
       // Primary star (most massive) world position — drives the day/night terminator on bodies.
       const primaryStarNode = system.nodes
           .filter((n) => n.kind === 'body' && (n as any).roleHint === 'star')
@@ -823,8 +839,20 @@
               ctx.strokeStyle = '#444444'; // Subtle horizon visibility
               ctx.stroke();
           } else {
-              ctx.fillStyle = getNodeColor(node);
-              ctx.fill();
+              // #9 Procedural disc in true-colour mode: land/ocean patches at the real coverage,
+              // gas-giant banding, cloud + haze layers — once the disc is big enough to read.
+              const tex = (trueColorOn && node.roleHint !== 'star' && (node as any).apparentColor && finalRadius * zoom > 5)
+                  ? getPlanetTexture(node as CelestialBody)
+                  : null;
+              if (tex) {
+                  ctx.save();
+                  ctx.beginPath(); ctx.arc(rx, ry, finalRadius, 0, 2 * Math.PI); ctx.clip();
+                  ctx.drawImage(tex, rx - finalRadius, ry - finalRadius, finalRadius * 2, finalRadius * 2);
+                  ctx.restore();
+              } else {
+                  ctx.fillStyle = getNodeColor(node);
+                  ctx.fill();
+              }
           }
 
           // #10 Night side — shade the hemisphere facing away from the primary star (skip stars/BH;
