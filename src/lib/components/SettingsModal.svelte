@@ -387,6 +387,7 @@
     min-width: 0;
     max-height: 56vh;
     overflow-y: auto;
+    overflow-x: hidden;
   }
   .settings-content h3 {
     margin: 1.2em 0 0.6em;
@@ -457,6 +458,7 @@
     border-radius: 4px;
     border-left: 4px solid #4299e1;
     margin-bottom: 1em;
+    box-sizing: border-box;
   }
   input,
   select {
@@ -466,6 +468,8 @@
     border: 1px solid var(--border);
     color: var(--text) !important; /* Ensure text is light */
     border-radius: 4px;
+    /* Without border-box, 100% width + padding overflows the panel → spurious horizontal scrollbar. */
+    box-sizing: border-box;
   }
 
   .modal-actions {
