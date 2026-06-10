@@ -185,7 +185,11 @@
   }
   // Fresh notes every time the reader moves between systems (or back to the map).
   $: rollNotes(selectedSystemId);
-  const PANIC = "DON'T PANIC!!!!".split('');
+  // Words wrap as units (letters are individually coloured, so each word is a nowrap group).
+  const PANIC_WORDS = "DON'T PANIC!!!!".split(' ').map((w, wi, arr) => ({
+    letters: w.split(''),
+    offset: arr.slice(0, wi).reduce((n, p) => n + p.length + 1, 0),
+  }));
 
   $: theme = THEMES[themeKey];
   $: nowLabel = lastUpdate ? new Date(lastUpdate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
@@ -341,7 +345,7 @@
       <div class="cover-inner">
         <p class="cover-pre">On the cover, in large friendly letters:</p>
         <div class="panic" aria-label="Don't panic">
-          {#each PANIC as ch, i}<span style="--i:{i}">{ch === ' ' ? '\u00A0' : ch}</span>{/each}
+          {#each PANIC_WORDS as word, wi}{#if wi > 0}{' '}{/if}<span class="panic-word">{#each word.letters as ch, i}<span style="--i:{word.offset + i}">{ch}</span>{/each}</span>{/each}
         </div>
         <p class="cover-sub">The Field Guide: the standard repository for all knowledge and wisdom. Abridged. Redacted. Mostly accurate.</p>
         <p class="cover-hint">tap anywhere to open the Guide</p>
@@ -620,7 +624,8 @@
     line-height: 1.05;
     user-select: none;
   }
-  .panic span {
+  .panic-word { white-space: nowrap; display: inline-block; }
+  .panic-word span {
     display: inline-block;
     color: hsl(calc(var(--i) * 26), 95%, 66%);
     transform: rotate(calc((var(--i) - 7) * 1.6deg));
