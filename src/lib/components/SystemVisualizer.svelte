@@ -728,7 +728,14 @@
                               const angleToStar = Math.atan2(parentPos.y - grandParentPos.y, parentPos.x - grandParentPos.x);
                               let planetRadiusAU = (parent.radiusKm || 0) / AU_KM;
                               if (toytownFactor > 0) planetRadiusAU = scaleBoxCox(planetRadiusAU, toytownFactor, x0_distance);
-                              const shadowAngle = Math.atan2(planetRadiusAU, avgRadius);
+                              // Shadow width must match the planet's DRAWN disc, which has a minimum
+                              // pixel size — using the raw radius made the umbra a point-source sliver
+                              // far narrower than the visible planet. Same effective-radius rule as the
+                              // body draw loop.
+                              const isGiant = parent.classes?.some((c: string) => c.includes('gas-giant') || c.includes('ice-giant'));
+                              const minPlanetPx = isGiant ? 3 : 2;
+                              const effPlanetRadius = Math.sqrt(planetRadiusAU * planetRadiusAU + Math.pow(minPlanetPx / zoom, 2));
+                              const shadowAngle = Math.asin(Math.min(1, effPlanetRadius / avgRadius));
                               const startAngle = angleToStar - shadowAngle; const endAngle = angleToStar + shadowAngle;
                               ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)'; ctx.lineWidth = widthAU;
                               ctx.beginPath(); ctx.arc(0, 0, avgRadius, startAngle, endAngle); ctx.stroke();
@@ -1229,7 +1236,8 @@
           for (const m of multiples) { if (worldLengthKM / (m * power) >= 0.75) bestValue = m * power; }
           displayValue = bestValue; actualBarLengthPx = (displayValue / AU_KM) * zoom;
       }
-      const margin = 20; const x = margin; const y = canvas.height - margin;
+      // Bottom-RIGHT by default — the time transport pill lives bottom-left and was sitting on it.
+      const margin = 20; const x = canvas.width - margin - actualBarLengthPx; const y = canvas.height - margin;
       ctx.strokeStyle = '#ffffff'; ctx.fillStyle = '#ffffff'; ctx.lineWidth = 1; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + actualBarLengthPx, y); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x, y - 5); ctx.lineTo(x, y + 5); ctx.moveTo(x + actualBarLengthPx, y - 5); ctx.lineTo(x + actualBarLengthPx, y + 5); ctx.stroke();
