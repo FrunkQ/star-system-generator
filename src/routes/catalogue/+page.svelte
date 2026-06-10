@@ -280,7 +280,7 @@
       <div class="cover-inner">
         <p class="cover-pre">On the cover, in large friendly letters:</p>
         <div class="panic" aria-label="Don't panic">
-          {#each PANIC as ch, i}<span style="--i:{i}">{ch === ' ' ? ' ' : ch}</span>{/each}
+          {#each PANIC as ch, i}<span style="--i:{i}">{ch === ' ' ? '\u00A0' : ch}</span>{/each}
         </div>
         <p class="cover-sub">The Field Guide: the standard repository for all knowledge and wisdom. Abridged. Redacted. Mostly accurate.</p>
         <p class="cover-hint">tap anywhere to open the Guide</p>
