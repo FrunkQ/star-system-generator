@@ -808,13 +808,21 @@
           const minRadiusInWorld = minRadiusPx / zoom;
           const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
 
-          // #5 Star glow — a soft additive halo behind the disc (not for black holes).
-          if (node.roleHint === 'star' && !node.classes?.some((c) => c.includes('BH'))) {
-              const glowR = finalRadius * 3.4;
-              const col = hexToRgbTriplet(getNodeColor(node));
+          // #5 Star glow — a soft additive halo behind the disc. A very active (flaring) star
+          // throws a bigger, brighter halo; a feeding (active) black hole gets one too, in the
+          // hot-orange of its accretion disc (quiescent holes stay dark).
+          const isBlackHole = node.classes?.some((c) => c.includes('BH'));
+          const isActiveBH = node.classes?.includes('star/BH_active');
+          if (node.roleHint === 'star' && (!isBlackHole || isActiveBH)) {
+              // 0..1 activity: stellar flare level for stars, full-tilt for a feeding hole.
+              const activity = isActiveBH ? 1 : Math.max(0, Math.min(1, (node as any).flareActivity ?? 0));
+              const glowR = finalRadius * (3.4 + activity * 3.0);
+              const col = isActiveBH ? '255,150,40' : hexToRgbTriplet(getNodeColor(node));
+              const core = 0.5 + activity * 0.4;   // brighter core when active
+              const mid = 0.16 + activity * 0.22;
               const grad = ctx.createRadialGradient(rx, ry, finalRadius * 0.5, rx, ry, glowR);
-              grad.addColorStop(0, `rgba(${col},0.5)`);
-              grad.addColorStop(0.35, `rgba(${col},0.16)`);
+              grad.addColorStop(0, `rgba(${col},${core})`);
+              grad.addColorStop(0.35, `rgba(${col},${mid})`);
               grad.addColorStop(1, `rgba(${col},0)`);
               ctx.save();
               ctx.globalCompositeOperation = 'lighter';
