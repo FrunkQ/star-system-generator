@@ -428,7 +428,7 @@
     position: relative;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     padding: 5px 8px;
     border-radius: 12px;
     background: color-mix(in srgb, var(--bg-panel, #14161c) 86%, transparent);
@@ -474,7 +474,7 @@
   .tt-shuttle {
     position: relative;
     flex: 1 1 auto;
-    min-width: 110px;
+    min-width: 78px;
     display: flex;
     align-items: center;
   }
@@ -521,7 +521,7 @@
   .tt-step:disabled { opacity: 0.35; cursor: default; }
   .tt-rate {
     flex: 0 0 auto;
-    min-width: 56px;
+    min-width: 44px;
     text-align: center;
     font-size: 0.76rem;
     color: var(--text-faint, #8a8f9a);
