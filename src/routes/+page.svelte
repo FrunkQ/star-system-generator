@@ -80,6 +80,32 @@
     starmapStore.update((s) => s ? { ...s, rulePackOverrides: { ...s.rulePackOverrides, ...overrides } } : s);
   }
 
+  // Begin an interstellar journey from the transit planner: stamp it with the current game clock so
+  // the ship marker animates along the starmap as time plays/scrubs.
+  function handleStartJourney(e: CustomEvent<any>) {
+    const d = e.detail;
+    starmapStore.update((s) => {
+      if (!s) return s;
+      const startTimeSec = s.temporal?.displayTimeSec ?? '0';
+      const journey = {
+        id: `journey-${generateId()}`,
+        shipId: d.shipId,
+        shipName: d.shipName,
+        fromSystemId: d.fromSystemId,
+        toSystemId: d.toSystemId,
+        toBodyId: d.toBodyId ?? null,
+        toBodyName: d.toBodyName,
+        mode: d.mode,
+        startTimeSec: String(startTimeSec),
+        durationSec: d.observerSeconds,
+      };
+      // One live journey per ship — starting a new one replaces any prior flight for that ship.
+      const others = (s.activeJourneys ?? []).filter((j) => j.shipId !== d.shipId);
+      return { ...s, activeJourneys: [...others, journey] };
+    });
+    showInterstellarModal = false;
+  }
+
   // --- All-Bodies picker (cross-starmap directory): find any body/construct across every
   // system and jump straight to it. Lives in the rail (PC side panel) / + menu (mobile). ---
   let showAllBodies = false;
@@ -934,7 +960,7 @@
   {/if}
 
   {#if showInterstellarModal && $starmapStore}
-    <InterstellarTransitModal starmap={$starmapStore} rulePack={effectiveRulePack || selectedRulepack} initialShipId={interstellarShipId} on:close={() => showInterstellarModal = false} />
+    <InterstellarTransitModal starmap={$starmapStore} rulePack={effectiveRulePack || selectedRulepack} initialShipId={interstellarShipId} on:startjourney={handleStartJourney} on:close={() => showInterstellarModal = false} />
   {/if}
 
   {#if showAllBodies}

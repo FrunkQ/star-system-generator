@@ -439,6 +439,22 @@ export interface Route {
   lineStyle: 'solid' | 'dashed';
 }
 
+// A ship in flight between two systems, started from the transit planner. Progress is read off the
+// starmap's game clock: fraction = (displayTime − startTimeSec) / durationSec, so it advances as the
+// GM plays/scrubs time. Cancelling snaps the ship back to its origin.
+export interface ActiveJourney {
+  id: ID;
+  shipId: ID;
+  shipName: string;
+  fromSystemId: ID;
+  toSystemId: ID;
+  toBodyId?: ID | null;
+  toBodyName?: string;
+  mode: string;
+  startTimeSec: string;   // game-clock seconds at departure (matches TemporalState string seconds)
+  durationSec: number;    // outside-observer travel time
+}
+
 export interface StarmapScaleConfig {
   unit: string;
   pixelsPerUnit: number;
@@ -517,6 +533,7 @@ export interface Starmap {
   gmNotes?: string;
   systems: StarSystemNode[];
   routes: Route[];
+  activeJourneys?: ActiveJourney[];
   mapMode?: 'diagrammatic' | 'scaled';
   generationEngine?: 'standard' | 'evolutionary';
   invertDisplay?: boolean;

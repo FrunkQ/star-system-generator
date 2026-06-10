@@ -278,6 +278,31 @@
     ? ($starmapUiStore.gridType === 'hex' ? 'traveller-hex' : $starmapUiStore.gridType)
     : $starmapUiStore.gridType;
 
+  // --- Active interstellar journeys: ships in flight along the starmap, driven by the game clock. ---
+  $: journeyNowSec = Number(ensuredTemporal?.displayTimeSec ?? 0);
+  // Geometry for one journey at the current game time: endpoint positions, progress 0..1, and the
+  // ship's interpolated position. Null if either endpoint system is gone.
+  function journeyGeo(j: any) {
+    const from = starmap.systems.find((s) => s.id === j.fromSystemId);
+    const to = starmap.systems.find((s) => s.id === j.toSystemId);
+    if (!from || !to) return null;
+    const elapsed = journeyNowSec - Number(j.startTimeSec || 0);
+    const frac = j.durationSec > 0 ? Math.max(0, Math.min(1, elapsed / j.durationSec)) : 1;
+    const x = from.position.x + (to.position.x - from.position.x) * frac;
+    const y = from.position.y + (to.position.y - from.position.y) * frac;
+    return { from, to, frac, x, y };
+  }
+  $: activeJourneys = starmap.activeJourneys ?? [];
+
+  let journeyToCancel: any = null;
+  function requestCancelJourney(j: any) { journeyToCancel = j; }
+  function confirmCancelJourney() {
+    if (!journeyToCancel) return;
+    const id = journeyToCancel.id;
+    dispatch('updatestarmap', { ...starmap, activeJourneys: (starmap.activeJourneys ?? []).filter((j) => j.id !== id) });
+    journeyToCancel = null;
+  }
+
   function snapPointToCurrentGrid(x: number, y: number): { x: number; y: number } {
     if (effectiveGridType === 'none') return { x, y };
 
@@ -898,6 +923,22 @@
         {/if}
       {/each}
 
+      <!-- Active journeys: solid trail behind the ship, dashed path ahead, ship marker on top. -->
+      {#each activeJourneys as journey (journey.id)}
+        {@const g = journeyGeo(journey)}
+        {#if g}
+          <line class="journey-trail" x1={g.from.position.x} y1={g.from.position.y} x2={g.x} y2={g.y} />
+          <line class="journey-ahead" x1={g.x} y1={g.y} x2={g.to.position.x} y2={g.to.position.y} />
+          <g class="journey-ship" role="button" tabindex="0" transform="translate({g.x}, {g.y})"
+             on:click|stopPropagation={() => requestCancelJourney(journey)}
+             on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
+            <title>{journey.shipName} → {journey.toBodyName || g.to.name} ({Math.round(g.frac * 100)}%) — click to cancel</title>
+            <path class="journey-glyph" d="M0,-5 L4,0 L0,5 L-4,0 Z" />
+            <text class="journey-label" x="7" y="3">{journey.shipName}</text>
+          </g>
+        {/if}
+      {/each}
+
       {#each starmap.systems as systemNode}
         {@const visualNodes = getVisualNodes(systemNode.system)}
         <g
@@ -1126,6 +1167,19 @@
                 </ul>
               </div>
           {/if}
+
+  {#if journeyToCancel}
+    <div class="journey-cancel-backdrop" on:click={() => (journeyToCancel = null)} role="button" tabindex="0" on:keydown={(e) => { if (e.key === 'Escape') journeyToCancel = null; }}>
+      <div class="journey-cancel" on:click|stopPropagation role="dialog" aria-modal="true">
+        <h3>Cancel journey?</h3>
+        <p><strong>{journeyToCancel.shipName}</strong> is en route to {journeyToCancel.toBodyName || 'its destination'}. Cancelling returns the ship to its starting system.</p>
+        <div class="jc-buttons">
+          <button on:click={() => (journeyToCancel = null)}>Keep going</button>
+          <button class="danger" on:click={confirmCancelJourney}>Cancel journey</button>
+        </div>
+      </div>
+    </div>
+  {/if}
 
   {#if showSaveModal}
       <SaveSystemModal on:save={handleSaveStarmap} on:close={() => showSaveModal = false} />
@@ -1555,4 +1609,29 @@
     stroke: #000;
     stroke-width: 2px;
   }
+
+  /* Active journeys: the travelled trail is a faint solid line; the path still to go is dashed. */
+  .journey-trail { stroke: var(--accent, #ff5a1f); stroke-width: 1.5; opacity: 0.5; }
+  .journey-ahead { stroke: var(--accent, #ff5a1f); stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.85; }
+  .journey-ship { cursor: pointer; }
+  .journey-glyph { fill: #ffd23f; stroke: #000; stroke-width: 1px; paint-order: stroke; }
+  .journey-ship:hover .journey-glyph { fill: #fff; }
+  .journey-label {
+    fill: #ffd23f; font-size: 9px; paint-order: stroke; stroke: #000; stroke-width: 2px;
+    pointer-events: none;
+  }
+  .journey-cancel-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center; z-index: 2100;
+  }
+  .journey-cancel {
+    background: var(--bg-panel); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.2rem 1.4rem; width: 360px; max-width: 92vw;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  }
+  .journey-cancel h3 { margin: 0 0 0.5rem; }
+  .journey-cancel p { margin: 0 0 1rem; font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; }
+  .jc-buttons { display: flex; justify-content: flex-end; gap: 0.6rem; }
+  .jc-buttons button { padding: 8px 14px; border: none; border-radius: 4px; cursor: pointer; background: var(--bg-control); color: var(--text); font: inherit; }
+  .jc-buttons button.danger { background: var(--status-bad, #e0484d); color: #fff; }
 </style>
