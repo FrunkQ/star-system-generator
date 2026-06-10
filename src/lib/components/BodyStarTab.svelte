@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, untrack } from 'svelte';
   import type { CelestialBody } from '$lib/types';
-  import { SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG } from '$lib/constants';
+  import { SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, G, C_MS } from '$lib/constants';
   import { STAR_COLOR_MAP } from '$lib/rendering/colors';
 
   let { body, rulePack } = $props();
@@ -88,8 +88,11 @@
       'star/WD': { label: 'White Dwarf (WD)', ranges: { mass: [0.1, 1.4], radius: [0.008, 0.02], temp: [4000, 100000], rad: [0.01, 1], mag: [1e5, 1e9], rot: [0.1, 10] } },
       'star/NS': { label: 'Neutron Star (NS)', ranges: { mass: [1.4, 3], radius: [0.00001, 0.00002], temp: [100000, 1000000], rad: [100, 100000], mag: [1e8, 1e12], rot: [0.001, 1] } },
       'star/magnetar': { label: 'Magnetar', ranges: { mass: [1.4, 3], radius: [0.00001, 0.00002], temp: [100000, 1000000], rad: [10000, 1000000], mag: [1e13, 1e15], rot: [0.001, 1] } },
-      'star/BH': { label: 'Black Hole (BH)', ranges: { mass: [3, 100], radius: [0.00001, 0.001], temp: [0, 100], rad: [0, 0.001], mag: [0, 0], rot: [0.001, 1] } },
-      'star/BH_active': { label: 'Active Black Hole (Accretion)', ranges: { mass: [3, 100], radius: [0.00001, 0.001], temp: [10000, 1000000], rad: [1000, 1000000], mag: [1e3, 1e9], rot: [0.001, 1] } }
+      // BH radius band = Schwarzschild radii for the 3–300 M☉ mass band (8.9 km → 886 km). Mass cap
+      // 300 M☉ comfortably covers reality: heaviest known stellar-merger remnant ≈ 142 M☉ (GW190521);
+      // beyond that you're into galactic-core intermediate/supermassive territory, not a system anchor.
+      'star/BH': { label: 'Black Hole (BH)', ranges: { mass: [3, 300], radius: [1.27e-5, 1.27e-3], temp: [0, 100], rad: [0, 0.001], mag: [0, 0], rot: [0.001, 1] } },
+      'star/BH_active': { label: 'Active Black Hole (Accretion)', ranges: { mass: [3, 300], radius: [1.27e-5, 1.27e-3], temp: [10000, 1000000], rad: [1000, 1000000], mag: [1e3, 1e9], rot: [0.001, 1] } }
   };
 
   const spectralTypes = Object.keys(SPECTRAL_DATA);
@@ -223,6 +226,14 @@
       const val = Math.exp(massLogMin + (massLogMax - massLogMin) * massSliderPos);
       massSuns = parseFloat(val.toPrecision(3));
       body.massKg = massSuns * SOLAR_MASS_KG;
+      if (isBH) applySchwarzschild(); // event horizon is mass-driven
+      dispatch('update');
+  }
+
+  function handleMassNumberInput() {
+      body.massKg = massSuns * SOLAR_MASS_KG;
+      massSliderPos = (Math.log(Math.max(massMin, Math.min(massMax, massSuns))) - massLogMin) / (massLogMax - massLogMin);
+      if (isBH) applySchwarzschild();
       dispatch('update');
   }
 
@@ -328,6 +339,46 @@
       dispatch('update');
   }
 
+  // --- Black holes ---
+  const isBH = $derived(currentClass === 'star/BH' || currentClass === 'star/BH_active');
+
+  // Event-horizon (Schwarzschild) radius in solar radii: r_s = 2GM/c² (1 M☉ → 2.95 km).
+  function schwarzschildRadiusSuns(mSuns: number): number {
+      return (2 * G * mSuns * SOLAR_MASS_KG) / (C_MS * C_MS) / 1000 / SOLAR_RADIUS_KM;
+  }
+  // BH radius is not a free property — it IS the mass. Lock it whenever mass changes.
+  function applySchwarzschild() {
+      radiusSuns = parseFloat(schwarzschildRadiusSuns(massSuns).toPrecision(3));
+      body.radiusKm = radiusSuns * SOLAR_RADIUS_KM;
+      radiusSliderPos = (Math.log(Math.max(radiusMin, Math.min(radiusMax, radiusSuns))) - radiusLogMin) / (radiusLogMax - radiusLogMin);
+  }
+
+  // Sensible "middle ground" presets per BH state, validated against real objects:
+  //   Quiescent — a bare horizon: ~0 K (Hawking T is nano-Kelvin), no luminosity, and NO magnetic
+  //     field (the no-hair theorem: an isolated BH keeps only mass/spin/charge).
+  //   Feeding — an X-ray-binary-like accretor: hot blue disc (10⁴–10⁵ K effective), near-Eddington
+  //     output (XRBs run 10⁴–10⁶ L☉ for 3–30 M☉), and a disc-anchored field of ~10⁶ G (stellar-mass
+  //     MAD-model estimates span 10⁴–10⁸ G at the horizon).
+  function applyBHPresets(target: string) {
+      // Event horizon follows the current mass in both states.
+      applySchwarzschild();
+      if (target === 'star/BH_active') {
+          tempK = 30000;
+          magGauss = 1e6;
+          radiation = 30000;
+      } else {
+          tempK = 3; // CMB-cold; effectively dark
+          magGauss = 0;
+          radiation = 0.0001;
+      }
+      body.temperatureK = tempK;
+      body.magneticField = { strengthGauss: magGauss };
+      body.radiationOutput = radiation;
+      tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, Math.max(tempMin, tempK)))) - tempLogMin) / (tempLogMax - tempLogMin);
+      magSliderPos = (Math.log(Math.max(magMin, Math.min(magMax, Math.max(magMin, magGauss)))) - magLogMin) / (magLogMax - magLogMin);
+      radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, Math.max(radMin, radiation)))) - radLogMin) / (radLogMax - radLogMin);
+  }
+
   // Black hole feeding toggle: swap quiescent ↔ active accretion (changes image + orrery look + flux).
   function setBHFeeding(active: boolean) {
       const target = active ? 'star/BH_active' : 'star/BH';
@@ -337,11 +388,7 @@
       const others = body.classes.filter((c: string) => !prefixes.includes(c));
       body.classes = [target, ...others];
       updateImage(target);
-      const data = SPECTRAL_DATA[target];
-      if (data) { // active BHs radiate; quiescent ones don't — nudge temp into the class band
-          body.temperatureK = Math.round((data.ranges.temp[0] + data.ranges.temp[1]) / 2);
-          tempK = body.temperatureK;
-      }
+      applyBHPresets(target);
       dispatch('update');
   }
 
@@ -382,6 +429,9 @@
           tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, tempK))) - tempLogMin) / (tempLogMax - tempLogMin);
           body.temperatureK = tempK;
       }
+      // Picking a black hole from the dropdown applies the per-state presets too (event horizon
+      // from mass, no-hair zero field for quiescent / disc values for feeding).
+      if (val === 'star/BH' || val === 'star/BH_active') applyBHPresets(val);
       dispatch('update');
   }
 
@@ -418,7 +468,7 @@
     <div class="form-group">
         <div class="label-row">
             <label>Mass (Solar Masses)</label>
-            <input type="number" step="any" bind:value={massSuns} on:change={() => { body.massKg = massSuns * SOLAR_MASS_KG; dispatch('update'); }} />
+            <input type="number" step="any" bind:value={massSuns} on:change={handleMassNumberInput} />
         </div>
         <div class="slider-container">
             <svg class="slider-svg" width="100%" height="30">
@@ -431,19 +481,22 @@
         {/if}
     </div>
 
-    <!-- RADIUS -->
+    <!-- RADIUS (for black holes: the event horizon, locked to mass) -->
     <div class="form-group">
         <div class="label-row">
-            <label>Radius (Solar Radii)</label>
-            <input type="number" step="any" bind:value={radiusSuns} on:change={() => { body.radiusKm = radiusSuns * SOLAR_RADIUS_KM; dispatch('update'); }} />
+            <label>{isBH ? 'Event Horizon Radius (Solar Radii)' : 'Radius (Solar Radii)'}</label>
+            <input type="number" step="any" bind:value={radiusSuns} disabled={isBH} on:change={() => { body.radiusKm = radiusSuns * SOLAR_RADIUS_KM; dispatch('update'); }} />
         </div>
         <div class="slider-container">
             <svg class="slider-svg" width="100%" height="30">
                 <rect x="{getRangePct('radius', 'start')}%" y="0" width="{getRangePct('radius', 'width')}%" height="8" fill="#22aa44" />
             </svg>
-            <input type="range" min="0" max="1" step="0.001" bind:value={radiusSliderPos} on:input={updateRadius} class="full-width-slider overlay" />
+            <input type="range" min="0" max="1" step="0.001" bind:value={radiusSliderPos} disabled={isBH} on:input={updateRadius} class="full-width-slider overlay" />
         </div>
-        <div class="sub-label">{Math.round(body.radiusKm || 0).toLocaleString()} km</div>
+        <div class="sub-label">
+            {Math.round((body.radiusKm || 0) * 100) / 100 > 1000 ? Math.round(body.radiusKm || 0).toLocaleString() : (body.radiusKm || 0).toFixed(1)} km
+            {#if isBH}— Schwarzschild radius, driven by mass (r = 2GM/c²){/if}
+        </div>
     </div>
 
     <hr/>
@@ -503,20 +556,22 @@
         </div>
     </div>
 
-    <!-- MAGNETIC FIELD -->
+    <!-- MAGNETIC FIELD (quiescent BHs have none — no-hair theorem; feeding BHs carry a disc field) -->
     <div class="form-group">
         <div class="label-row">
             <label>Magnetic Field (Gauss)</label>
-            <input type="number" step="any" bind:value={magGauss} on:input={handleMagInput} />
+            <input type="number" step="any" bind:value={magGauss} disabled={currentClass === 'star/BH'} on:input={handleMagInput} />
         </div>
         <div class="slider-container">
             <svg class="slider-svg" width="100%" height="30">
                 <rect x="{getRangePct('mag', 'start')}%" y="0" width="{getRangePct('mag', 'width')}%" height="8" fill="#22aa44" />
             </svg>
-            <input type="range" min="0" max="1" step="0.001" bind:value={magSliderPos} on:input={updateMagSlider} class="full-width-slider overlay" />
+            <input type="range" min="0" max="1" step="0.001" bind:value={magSliderPos} disabled={currentClass === 'star/BH'} on:input={updateMagSlider} class="full-width-slider overlay" />
         </div>
         <div class="sub-label">
-            {#if magGauss > 10000}
+            {#if currentClass === 'star/BH'}
+                0 G — an isolated black hole keeps no magnetic field (no-hair theorem); feed it to anchor a disc field
+            {:else if magGauss > 10000}
                 {magGauss.toExponential(2)} G
             {:else}
                 {Math.round(magGauss).toLocaleString()} G
