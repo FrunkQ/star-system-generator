@@ -18,6 +18,7 @@
     ['fluids', 'Fluid layers'],
     ['magnetism', 'Magnetism'],
     ['geology', 'Geological activity'],
+    ['resonance', 'Resonances & stability'],
     ['colour', 'Apparent colour'],
     ['habitability', 'Habitability score'],
     ['classification', 'Classification (fingerprints)'],
@@ -238,11 +239,46 @@
           greenhouse (Venus).</li>
         <li><strong>Tidal-volcanic</strong> — tidal flux ≫ radiogenic, silicate lava (Io); <strong>cryovolcanic</strong>
           — icy shell + subsurface ocean (Europa).</li>
+        <li><strong>Resonance-pumped cryovolcanic</strong> — a mean-motion resonance keeps pumping the orbital
+          eccentricity, and ICE melts at ~273&nbsp;K rather than the ~1000&nbsp;K silicate bar, so modest sustained
+          flexing suffices (Enceladus, via Dione's 2:1). Needs an explicit water signal and a pumped e ≥ 0.004.</li>
+        <li><strong>Solar-seasonal geysers</strong> — on a very cold (&lt;60&nbsp;K) ice-covered world, sunlight through
+          translucent nitrogen ice builds a solid-state greenhouse that erupts gas pockets as geysers (Triton).
+          Driven by the distant sun, not interior heat.</li>
         <li><strong>Inactive</strong> — radiogenic heat has decayed below the convection threshold (Mars/Moon).</li>
       </ul>
       <p><strong>Age</strong> is the knob that turns Earth into Mars: radiogenic heat halves roughly every 2.8 Gyr
         and small bodies cool fastest, so <code>geothermalVigor</code> is calibrated to Earth-now ≈ 1 and an
         Earth-clone goes geologically dead by ~9 Gyr. Each body gets a unique <code>geology/*</code> tag.</p>
+    </section>
+
+    <section id="resonance">
+      <h2>Orbital resonances &amp; stability</h2>
+      <p><strong>Mean-motion resonances</strong> are detected from period ratios (periods go as a<sup>1.5</sup>):
+        two bodies round the same host whose ratio sits within ±1.5% of a small whole-number ratio (2:1, 3:2, …;
+        higher-order ratios like 5:3 must be within ±0.5% — wide tolerances tag coincidences). Barycentres
+        participate as point masses, which is how Pluto–Charon's pair lands the 3:2 with Neptune. Three
+        consecutive ~2:1s are flagged as a <strong>Laplace chain</strong> (Io–Europa–Ganymede's 1:2:4).
+        Each resonance is classed by consequence:</p>
+      <ul>
+        <li><strong>Protective</strong> — a tiny body shepherded by a giant: conjunctions are held away from the
+          crossing point, so even orbit-crossing pairs are metastable (Pluto crosses Neptune's orbit and never
+          meets it).</li>
+        <li><strong>Pumping</strong> — the lock continually re-excites eccentricity against tidal circularisation;
+          around a <em>planet</em> host this sustains tidal heating (Enceladus, the Galileans). Heliocentric
+          resonances shape orbits but heat nothing.</li>
+        <li><strong>Chaotic</strong> — comparable masses packed tightly enough that resonances overlap → ejection
+          risk.</li>
+      </ul>
+      <p><strong>Stability</strong> is an N-body proxy, not an integration: adjacent-pair <em>mutual-Hill spacing</em>
+        (Δ &lt; 3.5 critical, &lt; 5.5 tight, &lt; 8.5 marginal), orbit-crossing checks attenuated by inclination
+        and mass ratio, Roche-limit and host-radius intersection, Hill-sphere violations for moons and binary
+        pairs. Severity maps to a timescale (Very Unstable &lt;1 kyr · Unstable 1–100 Myr · Marginal &gt;100 Myr),
+        and the dominant driver yields a predicted <strong>fate</strong>: <em>spirals in</em> (Roche/host
+        intersection), <em>flung out</em> (Hill-sphere theft or packed spacing), <em>collision</em>
+        (comparable-mass crossing) or <em>hierarchy inversion</em>. Protective resonances cap a crossing pair at
+        Marginal. Results surface as <code>stability/*</code>, <code>fate/*</code> and <code>resonance/*</code>
+        tags plus the Orbital Stability and Resonance rows in the body panel.</p>
     </section>
 
     <section id="colour">
@@ -399,6 +435,10 @@
         <li>Flare dose is a time-averaged particle enhancement weighted by a calibrated activity model (spectral class + age), not an episodic-event simulation.</li>
         <li>Atmospheric escape is a calibrated heuristic (Jeans thermal + an XUV/stellar-wind erosion term), gated above ~9 km/s escape velocity so the Solar-System baseline is preserved — it only thins or strips, never invents.</li>
         <li>The pre-main-sequence over-luminosity and its Kelvin-Helmholtz timescale (∝ 1/mass) are a calibrated shape for a believable young-star preview, not a stellar-structure solve.</li>
+        <li>Resonance detection is a period-ratio tagger (within tolerance bands), not a libration analysis — it can't distinguish a true librating resonance from a near-coincidental ratio.</li>
+        <li>The resonant-pumping thresholds (e ≥ 0.004, planet-mass host) are calibrated cutoffs — tuned so Enceladus fires and Ganymede/Dione don't — and resonance pumping classifies the geology but does not yet feed the numeric tidal-heat model.</li>
+        <li>The solar-seasonal geyser branch is a trigger condition (cold + surface ice), not a sublimation-energy model.</li>
+        <li>Predicted fates (infall/ejection/collision) are heuristic outcomes read off the dominant instability driver, not N-body integrations.</li>
       </ul>
     </section>
 

@@ -590,6 +590,13 @@
           </div>
       {/if}
 
+      {#if body.kind === 'body' && (body as any).resonanceNote}
+          <div class="detail-item" title={(body as any).resonanceNote}>
+              <span class="label">Resonance</span>
+              <span class="value">{(body.orbit?.resonance ? `${body.orbit.resonance.numerator}:${body.orbit.resonance.denominator}` : (body.tags?.some((t) => t.key === 'resonance/laplace') ? 'Laplace chain' : 'Mean-motion'))}</span>
+          </div>
+      {/if}
+
       {#if isStar && body.temperatureK}
           <div class="detail-item" title="{Math.round(body.temperatureK - 273.15)} °C">
               <span class="label">Surface Temperature</span>

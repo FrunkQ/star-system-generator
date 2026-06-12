@@ -16,6 +16,8 @@ const NAMESPACE_META: Record<string, { group: string; color: string }> = {
   orbit:        { group: 'Orbit',        color: '#9a8ac0' },
   barycenter:   { group: 'Barycentre',   color: '#9a8ac0' },
   stability:    { group: 'Stability',    color: '#b0a060' },
+  resonance:    { group: 'Resonance',    color: '#c0a0e0' },
+  fate:         { group: 'Stability',    color: '#d06868' },
   structure:    { group: 'Structure',    color: '#5f8f8f' },
   geology:      { group: 'Geology',      color: '#c2733a' },
   tidal:        { group: 'Tidal',        color: '#d8843a' },
@@ -29,6 +31,40 @@ const NAMESPACE_META: Record<string, { group: string; color: string }> = {
 
 // Friendly label + physics description, keyed by exact tag.
 const TAG_INFO: Record<string, { label: string; description: string }> = {
+  // --- Resonances & predicted fates ---
+  'resonance/laplace': {
+    label: 'Laplace resonance',
+    description: 'Three bodies locked in a 1:2:4 orbital chain (Io–Europa–Ganymede style). The lock is protective AND continually pumps eccentricity — the archetypal driver of tidal heating.'
+  },
+  'fate/infall': {
+    label: 'Fated: spirals in',
+    description: 'The predicted end-state: the orbit decays inside the Roche limit or onto the host — consumed or tidally shredded into a ring.'
+  },
+  'fate/eject': {
+    label: 'Fated: flung out',
+    description: 'The predicted end-state: gravitational scattering pumps the orbit until the body is thrown onto an escape trajectory.'
+  },
+  'fate/collision': {
+    label: 'Fated: collision',
+    description: 'The predicted end-state: crossing orbits with a comparable-mass neighbour — a merger or mutual disruption.'
+  },
+  'fate/inversion': {
+    label: 'Unphysical hierarchy',
+    description: 'The orbiting body outweighs its host — rebuild the hierarchy.'
+  },
+  // --- Stability severities (timescales from the spacing/overlap heuristics) ---
+  'stability/marginal': {
+    label: 'Marginal',
+    description: 'Metastable: dynamically packed and perturbation-sensitive, but generally long-lived (>100 Myr to Gyr).'
+  },
+  'stability/unstable': {
+    label: 'Unstable',
+    description: 'Likely 1–100 Myr before disruption under sustained perturbations.'
+  },
+  'stability/very-unstable': {
+    label: 'Very unstable',
+    description: 'Likely <1 kyr before major orbital disruption (collision, ejection or infall).'
+  },
   // --- Geology (tectonics + volcanism by mechanism) ---
   'geology/plate-tectonics': {
     label: 'Plate tectonics',
@@ -107,6 +143,14 @@ export function describeTag(key: string): TagPresentation {
   const ns = key.split('/')[0];
   const meta = NAMESPACE_META[ns] ?? { group: 'Other', color: '#888888' };
   const info = TAG_INFO[key];
+  // Dynamic mean-motion resonance tags (resonance/3-2 → "3:2 resonance").
+  const mmr = !info && /^resonance\/(\d+)-(\d+)$/.exec(key);
+  if (mmr) {
+    return {
+      key, label: `${mmr[1]}:${mmr[2]} resonance`, group: meta.group, color: meta.color,
+      description: `Mean-motion resonance: the orbital periods sit in a ${mmr[1]}:${mmr[2]} whole-number ratio with a partner. Depending on the masses it shields the pair from close approaches, pumps eccentricity (tidal heating), or destabilises a packed system.`
+    };
+  }
   const label = info?.label ?? titleCase(key.includes('/') ? key.split('/').slice(1).join(' ') : key);
   return { key, label, description: info?.description ?? '', group: meta.group, color: meta.color };
 }
