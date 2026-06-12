@@ -328,7 +328,7 @@
         atmosphere, hydrosphere, tidal, rotation, orbit, star class, eccentricity).</p>
       <ul>
         <li>A body's fit to a band is <code>1</code> inside, decaying over a <em>relative</em> 15% soft edge, <code>0</code> beyond — so a tiny moon can't half-match a giant.</li>
-        <li>A type's score is the <strong>sum of its band fits</strong>, so more-specific types (more matched bands) outrank generic ones. Falling fully outside any defining band disqualifies the type.</li>
+        <li>A type's score is the <strong>mean of its band fits × a mild specificity bonus</strong> for band count. Among clean matches more matched bands still wins (specific beats generic), but a band-rich catch-all whose extra bands are barely-true edge slivers can't out-score a perfect match on fewer bands (summing fits used to let <em>barren</em>/<em>desert</em> steal Venus-class and dwarf-planet-class worlds). Falling fully outside any defining band disqualifies the type.</li>
         <li>The best <strong>base</strong> archetype wins (mutually exclusive); <strong>modifiers</strong> (ringed, eyeball, ultra-short-period, toroidal, ellipsoid, disrupted) stack on top.</li>
         <li><code>gas-giant</code> is a weighted-down fallback, so the specific giant types (hot-jupiter, the cloud-types, …) win when they apply.</li>
         <li>Classification reads raw physics features, <em>not</em> tags — so there's no circularity.</li>
@@ -353,7 +353,9 @@
         <li><code>geology/*</code> — tectonic regime (plate-tectonics, stagnant-lid, cryovolcanic, …)</li>
         <li><code>magnetic/*</code> — dynamo (intrinsic / induced / unshielded)</li>
         <li><code>habitability/*</code> — habitability tier (incl. subsurface)</li>
-        <li><code>stability/*</code> — n-body instability risk</li>
+        <li><code>stability/*</code> — n-body instability risk (marginal / unstable / very-unstable)</li>
+        <li><code>resonance/*</code> — mean-motion resonances (2-1, 3-2, …, laplace)</li>
+        <li><code>fate/*</code> — predicted end-state of an unstable orbit (infall, eject, collision)</li>
         <li><code>barycenter/auto</code> — auto-generated barycentre marker</li>
       </ul>
       <p>Generation writes provenance; the processor derives the rest from physics on every run. The UI renders each
@@ -408,6 +410,16 @@
         UNSHIELDED worlds, scaled by flux × age × (1 − magnetosphere), and gated off above ~9 km/s escape velocity
         so Earth/Venus/super-Earths keep their air. It only thins or strips, never invents — so a tiny hot world goes
         bare, a shielded super-Earth holds on, and giants keep everything.</p>
+
+      <h3>End-state vs evolving worlds</h3>
+      <p>Aging is <strong>opt-in per body</strong>. A hand-authored, imported or hand-picked world carries the
+        <em>end-state</em> its author chose — its atmosphere and type are never rewritten by the engine (re-aging
+        an authored world would strip every deliberate trace exosphere and reclassify it; "double-aging").
+        Generator-created worlds opt in: their atmospheres are treated as <em>primordial</em> and erode over the
+        system age from a stored baseline, so re-processing a system never compounds the loss, and their types
+        stay the engine's to derive. Two switches in the body editor control this — <em>Age over system
+        lifetime</em> on the atmosphere, and <em>Auto-classify</em> on the type — and hand-editing either
+        property switches its aging off automatically.</p>
     </section>
 
     <section id="baseline">
