@@ -23,6 +23,7 @@
   import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, STARTDATE_EPOCH_OFFSET_T } from '$lib/temporal/defaults';
   import { parseClockSeconds } from '$lib/temporal/utre';
   import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
+  import { registerDebugStateProvider } from '$lib/debugDump';
 
   let rulePacks: RulePack[] = [];
   let isLoading = true;
@@ -135,6 +136,13 @@
       }
       return pack;
   })();
+
+  // Live state for the support debug dump (Ctrl+Alt+Shift+D, see $lib/debugDump).
+  registerDebugStateProvider(() => ({
+    currentSystemId,
+    currentSystem: get(systemStore),
+    starmap: get(starmapStore)
+  }));
 
   onMount(async () => {
     try {

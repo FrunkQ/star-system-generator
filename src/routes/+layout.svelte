@@ -2,9 +2,29 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { browser, dev } from '$app/environment';
 	import { injectAnalytics } from '@vercel/analytics/sveltekit';
+	import { installDebugCapture, runDebugDump } from '$lib/debugDump';
 
 	let { children } = $props();
 	let swUpdateInterval: ReturnType<typeof setInterval> | undefined;
+
+	// Support debug dump — Ctrl+Alt+Shift+D anywhere in the app. Lives in the
+	// layout so it still works when the main view fails to render.
+	let dumpRunning = false;
+	async function handleDebugKey(e: KeyboardEvent) {
+		if (!(e.ctrlKey && e.altKey && e.shiftKey && e.code === 'KeyD')) return;
+		e.preventDefault();
+		if (dumpRunning) return;
+		dumpRunning = true;
+		try {
+			const summary = await runDebugDump(build);
+			window.alert(summary);
+		} catch (err) {
+			console.error('Debug dump failed:', err);
+			window.alert('Debug dump failed: ' + (err instanceof Error ? err.message : String(err)));
+		} finally {
+			dumpRunning = false;
+		}
+	}
 
 	// Vercel Web Analytics — anonymous visitor counts (user community OK'd tracking #s).
 	// Requires Web Analytics enabled in the Vercel project too.
@@ -23,6 +43,7 @@
 	let dismissed = $state(false);
 
 	onMount(() => {
+		installDebugCapture();
 		if (!('serviceWorker' in navigator)) return;
 		const isProd = import.meta.env.PROD;
 		const disableSw = window.location.search.includes('no-sw=1');
@@ -86,6 +107,8 @@
 	<meta name="apple-mobile-web-app-title" content="Star System Explorer" />
 	<link rel="apple-touch-icon" href="/images/ui/SSE-Icon480x480.png" />
 </svelte:head>
+
+<svelte:window onkeydown={handleDebugKey} />
 
 {@render children?.()}
 

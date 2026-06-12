@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.0.2-alpha - 12th Jun 2026
+
+* **Support debug dump**: press **Ctrl+Alt+Shift+D** anywhere in the app (or run `SSE_DEBUG_DUMP()` in the browser console) to download a diagnostic bundle for support. Files are saved one at a time, rawest data first, so storage contents escape even if the app itself is broken:
+  * `SSE-IndexedDB-RAW-<date>.json` — the full raw contents of SSE's browser database (saved starmap), dumped before anything else runs.
+  * `SSE-DebugDump-<date>.json` — browser/OS/GPU details, storage quota, service-worker state, captured console errors, and localStorage contents (API keys redacted).
+  * `<name>-Starmap-RECOVERED.json` — your starmap in the normal import format, recovered from the live app or, if the app failed to load it, straight from browser storage. Can be re-imported via Upload.
+  * `<name>-System-RECOVERED.json` — the system currently on screen, if any.
+
 ## v2.0.0-alpha - 12th Apr 2026
 
 * **Evolutionary System Wizard (New Generation Engine)**:
