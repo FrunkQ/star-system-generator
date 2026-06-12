@@ -12,6 +12,15 @@ const reFromMakeup = (Me, m) => Math.cbrt((Me / densFromMakeup(m)) * 5.513);
 // hot zones spread to larger orbits, separating the cloud-type giants from each other.
 const aFromTeq = (Teq, K = 651) => +( (K / Teq) ** 2 ).toFixed(4);
 
+// Deterministic scatter for starting positions (mean anomaly): the demo reads far better with
+// bodies spread around their orbits than lined up in a row at M0=0. An LCG (not Math.random)
+// keeps the generated file reproducible run-to-run.
+let m0seed = 42;
+const nextM0 = () => {
+  m0seed = (m0seed * 1664525 + 1013904223) % 4294967296;
+  return +((m0seed / 4294967296) * 2 * Math.PI).toFixed(4);
+};
+
 let idn = 0;
 const nodes = [];
 const star = {
@@ -31,7 +40,7 @@ function body(spec) {
   const n = {
     id, parentId: parent, name: name || target.replace('planet/', '').replace(/-/g, ' '),
     kind: 'body', roleHint: role, __target: target,
-    orbit: { hostId: parent, elements: { a_AU: aAU, e, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } },
+    orbit: { hostId: parent, elements: { a_AU: aAU, e, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: nextM0() } },
     massKg: Me * EM, radiusKm: radius_Re * ER,
     magneticField: { strengthGauss: mag }, tags: [],
   };
@@ -115,7 +124,7 @@ const superJ = body({ target: 'planet/super-jupiter', Me: 1500, Re: 13, Teq: 250
 // a ring child → the super-jupiter also gets the 'planet/ringed' modifier
 nodes.push({ id: 't-ring', parentId: superJ.id, name: 'Ring', kind: 'body', roleHint: 'ring',
   radiusInnerKm: 90000, radiusOuterKm: 140000, tags: [],
-  orbit: { hostId: superJ.id, elements: { a_AU: 0.0008, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } });
+  orbit: { hostId: superJ.id, elements: { a_AU: 0.0008, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: nextM0() } } });
 // an icy, tidally-flexed moon → subsurface-ocean
 body({ target: 'planet/subsurface-ocean', name: 'Subsurface Ocean', parent: superJ.id, Me: 0.02,
   makeup: { rock: 0.5, ice: 0.5 }, a: 0.003, e: 0.04, hydroComp: 'water', hydroCov: 0.4, mag: 0, role: 'moon' });
