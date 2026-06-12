@@ -3,10 +3,13 @@ import type { CelestialBody, Barycenter, RulePack, Expr, Feature, Fingerprint, F
 
 // --- Fingerprint classifier (Phase 04) ---------------------------------------------------
 // Each planet type is a fingerprint: the parameter bands that define it. A body's fit to a
-// band is 1.0 inside the band, decaying linearly outside it over one band-width of margin,
-// and 0 beyond that (which disqualifies the whole fingerprint — a body fully outside a
-// defining parameter is not that type). A fingerprint's score is the SUM of its band fits,
-// so more-specific types (more matched bands) outrank generic ones. The best-scoring BASE
+// band is 1.0 inside the band, decaying linearly outside it over a relative margin, and 0
+// beyond that (which disqualifies the whole fingerprint — a body fully outside a defining
+// parameter is not that type). A fingerprint's score is the MEAN of its band fits times a
+// mild specificity bonus for band count: among CLEAN matches, more matched bands still wins
+// (specific beats generic), but a band-rich catch-all whose extra bands are barely-true
+// edge slivers can no longer out-score a perfect match on fewer bands (summing fits let
+// barren/desert steal Venus-class and dwarf-planet-class worlds). The best-scoring BASE
 // archetype is chosen (mutually exclusive); MODIFIERS (ringed, eyeball, …) stack on top.
 
 function bandFit(value: number | string | undefined, band: FingerprintBand): number {
@@ -33,12 +36,17 @@ function bandFit(value: number | string | undefined, band: FingerprintBand): num
 
 function fingerprintScore(features: Record<string, number | string>, fp: Fingerprint): number {
   let sum = 0;
+  let n = 0;
   for (const [feat, band] of Object.entries(fp.match)) {
     const fit = bandFit(features[feat], band);
     if (fit <= 0) return 0; // fully outside a defining band → not this type
     sum += fit;
+    n++;
   }
-  return sum * (fp.weight ?? 1);
+  if (n === 0) return 0;
+  // Mean fit × specificity bonus (see header). For all-perfect matches this preserves the
+  // old band-count ordering; partial fits now drag the score down instead of padding it up.
+  return (sum / n) * (1 + 0.1 * n) * (fp.weight ?? 1);
 }
 
 // Human-readable form of a fingerprint band, for the "why this type" explanation.
