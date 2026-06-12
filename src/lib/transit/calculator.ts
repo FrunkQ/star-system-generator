@@ -327,6 +327,41 @@ export function calculateTransitPlan(
       }
   }
 
+  // BELT / RING DESTINATION (#13): a belt node's own anomaly is an arbitrary spot on the ring —
+  // it can sit on the far side of the star, which made Mars→belt plans fly PAST the sun to
+  // "rendezvous" with that phantom point. The intent of a belt/ring destination is "drop into a
+  // circular orbit at that radius" (the closest stretch of ring is fine), so retarget a massless
+  // phantom on a circular orbit at the annulus mid-radius, rotated to the ORIGIN's longitude.
+  // Rendezvous mode then matches the phantom's velocity = a circular orbit inside the belt.
+  if ((target.roleHint === 'belt' || target.roleHint === 'ring') && target.orbit) {
+      const midAu = (target.radiusInnerKm && target.radiusOuterKm)
+          ? ((target.radiusInnerKm + target.radiusOuterKm) / 2) / AU_KM
+          : target.orbit.elements.a_AU;
+      const phantom = {
+          ...target,
+          orbit: {
+              ...target.orbit,
+              elements: { ...target.orbit.elements, a_AU: midAu, e: 0 },
+              n_rad_per_s: undefined as any   // force recompute for the new radius
+          },
+          kind: 'construct' as any,           // massless → rendezvous mode, nothing to "orbit"
+          massKg: 0
+      };
+      if (effectiveOrigin) {
+          // Rotate the phantom so that at departure it sits at the origin's longitude around the
+          // belt's host (e=0 → adding Δangle to the anomaly rotates the position by exactly Δangle).
+          const beltHost = sys.nodes.find(n => n.id === target.orbit!.hostId) ?? root;
+          const hostR = getGlobalState(sys, beltHost as any, startTime).r;
+          const phR = getGlobalState(sys, phantom as any, startTime).r;
+          const origR = getGlobalState(sys, effectiveOrigin as any, startTime).r;
+          const cur = Math.atan2(phR.y - hostR.y, phR.x - hostR.x);
+          const want = Math.atan2(origR.y - hostR.y, origR.x - hostR.x);
+          phantom.orbit.elements.M0_rad += (want - cur);
+      }
+      effectiveTarget = phantom as CelestialBody;
+      forcedParkingRadiusAu = undefined;      // the ring itself IS the parking orbit
+  }
+
   // Update params with potentially forced radius
   const finalParams = { ...params, parkingOrbitRadius_au: forcedParkingRadiusAu };
 
