@@ -351,6 +351,17 @@ export function generateSystemFromConfig(seed: string, pack: RulePack, config: G
   // Metallicity + dynamical-history knobs reshape makeup + orbits before the processor re-derives.
   if (config.knobs && !config.emptyPlanets) applyKnobBias(nodes, rng, config.knobs);
 
+  // Generator-created worlds OPT IN to evolution: their atmospheres are primordial (the processor
+  // erodes them over the system age) and their classes are the engine's to derive. Hand-authored /
+  // imported / picker-placed bodies never get these flags — their values are end-state.
+  for (const n of nodes) {
+    const b = n as CelestialBody;
+    if (b.kind === 'body' && (b.roleHint === 'planet' || b.roleHint === 'moon')) {
+      b.evolveAtmosphere = true;
+      b.autoClassify = true;
+    }
+  }
+
   const system: System = {
     id: seed, name: systemName, seed, epochT0: Date.now(),
     age_Gyr: config.ageGyr ?? 4.6, nodes, rulePackId: pack.id, rulePackVersion: pack.version,

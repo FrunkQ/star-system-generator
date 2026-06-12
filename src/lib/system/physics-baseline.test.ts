@@ -202,6 +202,31 @@ describe('Solar System Physics Baseline', () => {
         expect(io.geoActivity?.regime).toBe('tidal-volcanic');
         expect(europa.geoActivity?.regime).toBe('cryovolcanic');
 
+        // --- Authored end-state preservation (the "double-aging" fix) ---
+        // Hand-authored bodies carry no evolveAtmosphere/autoClassify flags, so processing must
+        // NOT erode their deliberate trace exospheres nor overwrite their authored classes.
+        const mercury = processedSystem.nodes.find(n => n.name === 'Mercury') as CelestialBody;
+        expect(io.atmosphere?.main).toBe('SO2');                 // was wiped to 'None' pre-fix
+        expect(mercury.atmosphere?.main).toBe('Na');
+        expect(pluto.atmosphere?.main).toBe('N2');
+        expect(venus.classes?.[0]).toBe('planet/terrestrial');   // was reclassified 'desert' pre-fix
+        expect(io.classes?.[0]).toBe('planet/dwarf-planet');     // was reclassified 'barren' pre-fix
+        expect(mars.atmosphere?.pressure_bar).toBeCloseTo(0.006, 3); // no per-run erosion
+
+        // --- Opted-in aging is IDEMPOTENT (erodes from the atmosphere0 baseline) ---
+        // An evolving body must lose atmosphere ONCE for its age, not again on every re-process.
+        const agingInput = stripDerivedData(solSystem);
+        const marsIn = agingInput.nodes.find(n => n.name === 'Mars') as CelestialBody;
+        marsIn.evolveAtmosphere = true;
+        const aged1 = systemProcessor.process(agingInput, rulePack);
+        const mars1 = aged1.nodes.find(n => n.name === 'Mars') as CelestialBody;
+        const p1 = mars1.atmosphere?.pressure_bar ?? 0;             // capture BEFORE re-processing (in-place mutation)
+        expect(p1).toBeLessThan(0.006);                             // eroded once over 4.6 Gyr
+        expect(mars1.atmosphere0?.pressure_bar).toBeCloseTo(0.006, 3); // baseline preserved
+        const aged2 = systemProcessor.process(JSON.parse(JSON.stringify(aged1)), rulePack);
+        const mars2 = aged2.nodes.find(n => n.name === 'Mars') as CelestialBody;
+        expect(mars2.atmosphere?.pressure_bar).toBeCloseTo(p1, 10); // …and never again
+
         // --- Habitability ---
         expect(earth.habitabilityScore).toBeGreaterThan(90);
         expect(mars.habitabilityScore).toBeLessThan(40);

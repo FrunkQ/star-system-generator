@@ -29,6 +29,9 @@ describe('Testion taxonomy coverage', () => {
     const sys = JSON.parse(fs.readFileSync(file, 'utf-8')) as System;
     const targets = new Map<string, string>();
     for (const n of sys.nodes) if ((n as any).__target) targets.set(n.id, (n as any).__target);
+    // The harness must exercise the LIVE classifier — saved classes are authored (locked) by
+    // default, so opt every body into auto-classification before processing.
+    for (const n of sys.nodes) if (n.kind === 'body') (n as CelestialBody).autoClassify = true;
 
     const processed = systemProcessor.process(sys, pack);
     const hit = new Set<string>();

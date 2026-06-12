@@ -289,7 +289,13 @@ export class SystemProcessor implements ISystemProcessor {
         // Atmospheric escape over the system's age — thins/strips the atmosphere BEFORE greenhouse &
         // radiation read it (so a stripped world loses its greenhouse + shielding). Planets are assumed
         // to form a few Myr into the system's life (FORMATION_DELAY_GYR), so they erode for ~that long.
-        if (body.roleHint === 'planet' || body.roleHint === 'moon') {
+        // OPT-IN per body (evolveAtmosphere): hand-authored, imported and picker-placed worlds carry
+        // END-STATE atmospheres the GM chose — re-aging them deletes every deliberate trace exosphere.
+        // Opted-in bodies erode a COPY of their primordial baseline (atmosphere0, snapshotted on first
+        // run) so re-processing — which happens on every load and edit — never compounds the loss.
+        if ((body.roleHint === 'planet' || body.roleHint === 'moon') && body.evolveAtmosphere) {
+            if (!body.atmosphere0 && body.atmosphere) body.atmosphere0 = JSON.parse(JSON.stringify(body.atmosphere));
+            if (body.atmosphere0) body.atmosphere = JSON.parse(JSON.stringify(body.atmosphere0));
             const magG = body.magneticField?.strengthGauss || 0;
             const magShield = magG > 0 ? Math.min(0.99, (Math.log10(magG + 0.01) + 2) / 3) : 0;
             const stellarFluxRel = calculateTotalStellarRadiation(body, allNodes);
@@ -568,9 +574,11 @@ export class SystemProcessor implements ISystemProcessor {
         features['surfaceLiquid'] = body.hydrosphere?.layers?.find(l => l.location === 'surface')?.liquid ?? 'none';
 
         const newClasses = classifyBody(body, features, pack, allNodes);
-        // Preserve any "manual" or "special" classes that strictly aren't output by the classifier?
-        // The classifier is usually comprehensive.
-        body.classes = newClasses;
+        // Authored classes are END-STATE data (hand-built, imported, or picked from the type
+        // catalogue) — only the engine's own creations (autoClassify) or class-less bodies get
+        // (re)classified. body.classification below still records the engine's view either way,
+        // so the Newton panel can show what the physics WOULD call a locked body.
+        if (body.autoClassify || !body.classes?.length) body.classes = newClasses;
 
         // Re-derive the type IMAGE from the (re)classification so the picture ALWAYS matches the
         // type — editing makeup that reclassifies a world (ice-giant → puffy) now updates its image,
