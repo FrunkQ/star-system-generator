@@ -364,10 +364,21 @@
           renderPan = panState;
           lastAutoZoomTarget = 0;
       }
-      drawSystem(ctx);
+      // A draw exception must never kill the render loop (the next frame is
+      // only scheduled after this returns) — one bad body would otherwise
+      // freeze the whole canvas black. Log once, keep rendering.
+      try {
+        drawSystem(ctx);
+      } catch (err) {
+        if (!drawErrorLogged) {
+          drawErrorLogged = true;
+          console.error('SystemVisualizer: draw failed, skipping frame(s):', err);
+        }
+      }
     }
     animationFrameId = requestAnimationFrame(render);
   }
+  let drawErrorLogged = false;
 
   let lagrangePoints: Map<string, {x: number, y: number}> | null = null;
   function calculateLagrangePointPositions() {
@@ -626,6 +637,9 @@
           let a = node.orbit.elements.a_AU; let e = node.orbit.elements.e;
           if (toytownFactor > 0) a = scaleBoxCox(a, toytownFactor, x0_distance);
           const b = a * Math.sqrt(1 - e * e); const c = a * e;
+          // Bad orbit data (negative/NaN a, e >= 1) must not throw in ctx.ellipse
+          // and kill the canvas — skip this orbit line instead.
+          if (!Number.isFinite(a) || a <= 0 || !Number.isFinite(b) || b <= 0) continue;
           const omega_rad = (node.orbit.elements.omega_deg || 0) * (Math.PI / 180);
           ctx.strokeStyle = "#333"; ctx.lineWidth = 1 / zoom;
           ctx.save();
@@ -656,13 +670,19 @@
                   let alpha = node.roleHint === 'ring' ? 0.3 : 0.07;
                   ctx.strokeStyle = node.roleHint === 'ring' ? `rgba(200, 200, 200, ${alpha})` : `rgba(255, 255, 255, ${alpha})`;
                   ctx.beginPath();
+                  let drewBeltEllipse = false;
                   if (node.roleHint === 'belt' && node.orbit) {
                       let a = node.orbit.elements.a_AU;
                       if (toytownFactor > 0) a = scaleBoxCox(a, toytownFactor, x0_distance);
                       const e = node.orbit.elements.e; const b = a * Math.sqrt(1 - e * e); const c = a * e;
                       const omega_rad = (node.orbit.elements.omega_deg || 0) * (Math.PI / 180);
-                      ctx.save(); ctx.rotate(omega_rad); ctx.ellipse(-c, 0, a, b, 0, 0, 2 * Math.PI); ctx.restore();
-                  } else ctx.arc(0, 0, avgRadius, 0, 2 * Math.PI);
+                      // Same negative/NaN guard as the orbit lines above.
+                      if (Number.isFinite(a) && a > 0 && Number.isFinite(b) && b > 0) {
+                          ctx.save(); ctx.rotate(omega_rad); ctx.ellipse(-c, 0, a, b, 0, 0, 2 * Math.PI); ctx.restore();
+                          drewBeltEllipse = true;
+                      }
+                  }
+                  if (!drewBeltEllipse) ctx.arc(0, 0, avgRadius, 0, 2 * Math.PI);
                   ctx.stroke();
                   if (node.roleHint === 'ring') {
                       const parent = nodesById.get(node.parentId);

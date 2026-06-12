@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v1.10.2 - 12th Jun 2026
+
+* **Renderer resilience**: a body with bad orbit data (e.g. a negative semi-major axis) no longer kills the system view with a black/frozen canvas. Invalid orbit lines are skipped, and any drawing error now logs to the console (captured by the debug dump) instead of stopping the render loop.
+
 ## v1.10.1 - 12th Jun 2026
 
 * **Versioning note**: this site (the classic V1 interface) returns to its own 1.10.x version line; the in-development V2 carries the 2.x numbers on the beta site.
