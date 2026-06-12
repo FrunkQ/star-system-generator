@@ -2,8 +2,9 @@
 
 All notable changes are listed here:
 
-## v2.0.2-alpha - 12th Jun 2026
+## v1.10.1 - 12th Jun 2026
 
+* **Versioning note**: this site (the classic V1 interface) returns to its own 1.10.x version line; the in-development V2 carries the 2.x numbers on the beta site.
 * **Support debug dump**: press **Ctrl+Alt+Shift+D** anywhere in the app (or run `SSE_DEBUG_DUMP()` in the browser console) to download a diagnostic bundle for support. Files are saved one at a time, rawest data first, so storage contents escape even if the app itself is broken:
   * `SSE-IndexedDB-RAW-<date>.json` — the full raw contents of SSE's browser database (saved starmap), dumped before anything else runs.
   * `SSE-DebugDump-<date>.json` — browser/OS/GPU details, storage quota, service-worker state, captured console errors, and localStorage contents (API keys redacted).
