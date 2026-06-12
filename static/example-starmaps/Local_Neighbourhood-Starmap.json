@@ -2,7 +2,7 @@
   "id": "starmap-local-50",
   "name": "Local Neighbourhood",
   "description": "The definitive map of the closest star systems to Earth, including all confirmed exoplanets.",
-  "distanceUnit": "LY",
+  "distanceUnit": "ly",
   "unitIsPrefix": false,
   "systems": [
     {
@@ -7972,11 +7972,12 @@
     "playbackRunning": false,
     "playbackRateSecPerSec": 1
   },
-  "mapMode": "diagrammatic",
+  "mapMode": "scaled",
   "invertDisplay": false,
   "scale": {
-    "unit": "LY",
-    "pixelsPerUnit": 25,
+    "unit": "ly",
+    "pixelsPerUnit": 43.30127018922193,
     "showScaleBar": true
-  }
+  },
+  "generationEngine": "standard"
 }
