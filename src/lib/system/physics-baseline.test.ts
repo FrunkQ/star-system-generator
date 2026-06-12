@@ -179,6 +179,29 @@ describe('Solar System Physics Baseline', () => {
         expect(io.tidalHeatK).toBeLessThanOrEqual(5);
         expect(io.tags?.some(t => t.key === 'tidal/hotspots')).toBe(true);
 
+        // --- Resonances + geology (the calibration set for the resonance-aware model) ---
+        const enceladus = processedSystem.nodes.find(n => n.name === 'Enceladus') as CelestialBody;
+        const dione = processedSystem.nodes.find(n => n.name === 'Dione') as CelestialBody;
+        const triton = processedSystem.nodes.find(n => n.name === 'Triton') as CelestialBody;
+        const pluto = processedSystem.nodes.find(n => n.name === 'Pluto') as CelestialBody;
+        const europa = processedSystem.nodes.find(n => n.name === 'Europa') as CelestialBody;
+        // Galilean Laplace chain + Enceladus–Dione 2:1 detected.
+        expect(io.tags?.some(t => t.key === 'resonance/laplace')).toBe(true);
+        expect(enceladus.tags?.some(t => t.key === 'resonance/2-1')).toBe(true);
+        // Enceladus: resonance-pumped ICE cryovolcanism (the 1000 K silicate bar doesn't apply).
+        expect(enceladus.geoActivity?.regime).toBe('cryovolcanic');
+        // Dione: same resonance, but barely-pumped e (0.0022) → stays quiet.
+        expect(dione.geoActivity?.regime).toBe('inactive');
+        // Triton: circular orbit, no tidal heat — solar-seasonal N2 geysers instead.
+        expect(triton.geoActivity?.regime).toBe('cryovolcanic');
+        expect(triton.geoActivity?.driver).toContain('solar');
+        // Pluto: the 3:2 with Neptune shapes its orbit but heats nothing.
+        expect(pluto.tags?.some(t => t.key === 'resonance/3-2')).toBe(true);
+        expect(pluto.geoActivity?.regime).toBe('inactive');
+        // Io/Europa keep their classic regimes.
+        expect(io.geoActivity?.regime).toBe('tidal-volcanic');
+        expect(europa.geoActivity?.regime).toBe('cryovolcanic');
+
         // --- Habitability ---
         expect(earth.habitabilityScore).toBeGreaterThan(90);
         expect(mars.habitabilityScore).toBeLessThan(40);

@@ -1388,6 +1388,76 @@
       }
     },
     {
+      "id": "solar-system-tethys",
+      "parentId": "solar-system-saturn",
+      "name": "Tethys",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/sub-earth"
+      ],
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 37931187000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.0019694063733756073,
+          "e": 0.0001,
+          "i_deg": 1.12,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.8
+        }
+      },
+      "massKg": 617400000000000000000,
+      "radiusKm": 531.1,
+      "tags": [],
+      "areas": [],
+      "orbital_period_days": 1.888,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 45.31,
+      "description": "A mid-sized moon of almost pure water ice — one of the most reflective bodies in the solar system. Scarred by the enormous Odysseus crater and the vast Ithaca Chasma canyon. It holds Mimas in a 2:1 orbital resonance.",
+      "image": {
+        "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-dione",
+      "parentId": "solar-system-saturn",
+      "name": "Dione",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/sub-earth"
+      ],
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 37931187000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.0025227364415956223,
+          "e": 0.0022,
+          "i_deg": 0.019,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 4.1
+        }
+      },
+      "massKg": 1.0955e+21,
+      "radiusKm": 561.4,
+      "tags": [],
+      "areas": [],
+      "orbital_period_days": 2.737,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 65.69,
+      "description": "An ice moon streaked with bright wispy chasms over a possible deep internal ocean. Its 2:1 orbital resonance with Enceladus is the engine that keeps pumping that smaller moon's eccentricity — and so its famous geysers.",
+      "image": {
+        "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
       "id": "solar-system-mimas",
       "parentId": "solar-system-saturn",
       "name": "Mimas",

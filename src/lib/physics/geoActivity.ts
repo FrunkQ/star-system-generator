@@ -38,6 +38,10 @@ export interface GeoInputs {
                             // density can infer as rock, so this carries the ice signal explicitly
   tidalHotspots: boolean;   // tidal forcing above the hotspot onset
   tidalLavaFlows: boolean;  // tidal forcing reaching silicate melt
+  resonanceTidal?: boolean; // a mean-motion resonance pumps the eccentricity (sustained forcing the
+                            // instantaneous tidal index under-predicts — Enceladus–Dione 2:1)
+  surfaceIce?: boolean;     // an ice-covered surface (hydrosphere present, frozen or liquid below)
+  teqK?: number;            // equilibrium temperature — drives the solar-seasonal geyser branch
 }
 
 const ACTIVE_THRESHOLD = 0.35;   // relative vigor below which a rocky world is geologically dead
@@ -68,6 +72,23 @@ export function deriveGeoActivity(i: GeoInputs): GeoActivity {
     }
     notes.push('Tidal flexing drives silicate volcanism far exceeding radiogenic heat (Io-like).');
     return mk('tidal-volcanic', 'silicate-tidal', vigor, 'tidal flexing', ['geology/volcanic-tidal'], notes);
+  }
+
+  // --- Resonance-pumped cryovolcanism (Enceladus). A mean-motion resonance keeps pumping the
+  //     eccentricity, so even forcing far below the SILICATE melt threshold (~1000 K) sustains
+  //     activity in ICE, which melts at ~273 K. Gated on an explicit water signal (ocean / icy
+  //     shell / ice-covered surface) so resonant-but-dry moons (Mimas-like) stay quiet. ---
+  if (i.resonanceTidal && (i.hasSubsurfaceOcean || i.icyShell || (i.surfaceIce && iceFrac > 0.15))) {
+    notes.push('A mean-motion resonance continually pumps the orbital eccentricity; the resulting tidal flexing is modest by silicate standards but ample to melt ICE (~273 K vs ~1000 K) — geysers vent a subsurface ocean (Enceladus-like).');
+    return mk('cryovolcanic', 'cryo', Math.max(vigor, 0.4), 'resonance-pumped tidal flexing (icy)', ['geology/cryovolcanic'], notes);
+  }
+
+  // --- Solar-seasonal geysers (Triton). On a very cold ice-covered world, sunlight penetrating
+  //     translucent nitrogen ice builds a solid-state greenhouse a few kelvin warm — enough to
+  //     sublimate gas pockets that erupt as geysers. No interior heat or tidal forcing needed. ---
+  if ((i.teqK ?? Infinity) < 60 && i.surfaceIce && iceFrac > 0.2) {
+    notes.push('Sunlight through translucent nitrogen ice drives a solid-state greenhouse; sub-surface gas pockets erupt as seasonal geysers (Triton-like). Driven by the distant sun, not interior heat.');
+    return mk('cryovolcanic', 'cryo', Math.max(vigor, 0.15), 'solar-seasonal sublimation', ['geology/cryovolcanic'], notes);
   }
 
   // --- Radiogenic / secular heat path (the rocky planets). ---

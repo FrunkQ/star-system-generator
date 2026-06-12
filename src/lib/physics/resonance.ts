@@ -23,7 +23,14 @@ export interface ResonanceLink {
 const MMRS: Array<[number, number]> = [
   [2, 1], [3, 2], [4, 3], [5, 4], [3, 1], [5, 3], [5, 2], [7, 4], [4, 1], [7, 5],
 ];
-const TOL = 0.015; // ±1.5% of the exact ratio counts as "in/near" the resonance
+// First-order resonances (2:1, 3:2…) are wide and strong → ±1.5%. Higher-order ones are narrow —
+// a loose tolerance tags coincidental near-ratios (Rhea–Dione sit 0.96% off 5:3 and are NOT
+// resonant), so order ≥ 2 must be within ±0.5%.
+const TOL_FIRST_ORDER = 0.015;
+const TOL_HIGH_ORDER = 0.005;
+// Resonant eccentricity pumping only matters when the pumped e is meaningful: Enceladus (0.0047)
+// is visibly heated, Ganymede (0.0013) and Dione (0.0022) are not.
+const TIDAL_E_MIN = 0.004;
 
 function massKg(n: CelestialBody | Barycenter | undefined): number {
   if (!n) return 0;
@@ -36,7 +43,8 @@ function bestMMR(aIn: number, aOut: number): { j: number; k: number; order: numb
   let best: { j: number; k: number; order: number; ratioErr: number } | null = null;
   for (const [j, k] of MMRS) {
     const err = Math.abs(ratio - j / k) / (j / k);
-    if (err < TOL && (!best || (j - k) < best.order || ((j - k) === best.order && err < best.ratioErr))) {
+    const tol = (j - k) === 1 ? TOL_FIRST_ORDER : TOL_HIGH_ORDER;
+    if (err < tol && (!best || (j - k) < best.order || ((j - k) === best.order && err < best.ratioErr))) {
       best = { j, k, order: j - k, ratioErr: err };
     }
   }
@@ -100,12 +108,16 @@ export function annotateResonances(system: System): Map<string, ResonanceLink[]>
       if (!t.tags.some((x) => x.key === tagKey)) t.tags.push({ key: tagKey });
       (t as any).resonanceNote = note;
       if (protective) (t as any).resonanceProtective = true;
-      if (tidal && (t.orbit?.elements.e || 0) > 0.0005) (t as any).resonanceTidal = true;
+      if (tidal && (t.orbit?.elements.e || 0) >= TIDAL_E_MIN) (t as any).resonanceTidal = true;
     }
   };
 
-  for (const [, group] of byHost.entries()) {
+  for (const [hostId, group] of byHost.entries()) {
     if (group.length < 2) continue;
+    // Resonant TIDAL heating needs a massive nearby host raising the tide — i.e. moons of a planet.
+    // Heliocentric resonances (Pluto–Neptune around the Sun) shape orbits but heat nothing.
+    const hostNode = nodesById.get(hostId);
+    const hostIsPlanet = !!hostNode && hostNode.kind === 'body' && (hostNode as CelestialBody).roleHint !== 'star';
     group.sort((a, b) => a.aAU - b.aAU);
 
     // All pairs (groups are small) → strongest resonance per participant.
@@ -129,7 +141,7 @@ export function annotateResonances(system: System): Map<string, ResonanceLink[]>
 
         for (const [self, partner] of [[outer, inner], [inner, outer]] as const) {
           for (const t of self.targets) result.set(t.id, [...(result.get(t.id) || []), { ...link, partnerId: partner.id, partnerName: partner.name }]);
-          tagTargets(self, tag, `${mmr.j}:${mmr.k} mean-motion resonance with ${partner.name} — ${desc}.`, kind === 'protective', true);
+          tagTargets(self, tag, `${mmr.j}:${mmr.k} mean-motion resonance with ${partner.name} — ${desc}.`, kind === 'protective', hostIsPlanet);
         }
         if (outer.orbitOwner?.orbit) outer.orbitOwner.orbit.resonance = { numerator: mmr.j, denominator: mmr.k };
       }
@@ -142,7 +154,7 @@ export function annotateResonances(system: System): Map<string, ResonanceLink[]>
       const r1 = bestMMR(a.aAU, b.aAU), r2 = bestMMR(b.aAU, c.aAU);
       if (r1 && r2 && r1.j === 2 && r1.k === 1 && r2.j === 2 && r2.k === 1) {
         const note = `Laplace resonance chain (1:2:4) with ${a.name}/${b.name}/${c.name} — locked and tidally heated.`;
-        for (const p of [a, b, c]) tagTargets(p, 'resonance/laplace', note, true, true);
+        for (const p of [a, b, c]) tagTargets(p, 'resonance/laplace', note, true, hostIsPlanet);
       }
     }
   }

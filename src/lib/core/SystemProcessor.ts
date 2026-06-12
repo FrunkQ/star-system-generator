@@ -57,6 +57,11 @@ export class SystemProcessor implements ISystemProcessor {
             }
         }
 
+        // 1b. Mean-motion resonances (needs only orbits + masses, set by now). Runs BEFORE the
+        //     environment pass so geology can see resonance-pumped tidal forcing (Enceladus–Dione),
+        //     and before stability so protective resonances spare crossing orbits.
+        annotateResonances(processedSystem);
+
         // 2. Second Pass: Environment (Radiation, Temperature, Atmosphere Retention)
         // Requires basics to be set (like distance)
         for (const node of allNodes) {
@@ -81,9 +86,7 @@ export class SystemProcessor implements ISystemProcessor {
             }
         }
 
-        // 5. Resonances then stability: mean-motion resonances first, so the stability pass can let
-        //    protective resonances (Pluto's 3:2, the Galilean Laplace chain) spare crossing orbits.
-        annotateResonances(processedSystem);
+        // 5. Stability pass (consults the resonance annotations from 1b).
         annotateGravitationalStability(processedSystem);
 
         return processedSystem;
@@ -512,7 +515,12 @@ export class SystemProcessor implements ISystemProcessor {
                 hasSubsurfaceOcean: features['hasSubsurfaceOcean'] === 1,
                 icyShell,
                 tidalHotspots: tidalKeys.includes('tidal/hotspots') || tidalKeys.includes('tidal/volcanism'),
-                tidalLavaFlows: tidalKeys.includes('tidal/lava-flows')
+                tidalLavaFlows: tidalKeys.includes('tidal/lava-flows'),
+                // Resonance-pumped forcing (annotated in pass 1b) + the cold-ice signals for the
+                // Enceladus / Triton cryovolcanism branches.
+                resonanceTidal: !!(body as any).resonanceTidal,
+                surfaceIce: (body.hydrosphere?.coverage ?? 0) > 0.3,
+                teqK: body.equilibriumTempK
             });
             for (const key of body.geoActivity.tags) body.tags.push({ key });
             features['geoActive'] = body.geoActivity.active ? 1 : 0;
