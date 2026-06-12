@@ -212,6 +212,8 @@
       const val = (e.target as HTMLSelectElement).value;
       if (!body.classes) body.classes = [];
       body.classes[0] = val;
+      // An explicit pick is END-STATE: stop the classifier overwriting it on the next process.
+      body.autoClassify = false;
       if (rulePack?.classifier?.planetImages && rulePack.classifier.planetImages[val]) {
           if (!body.image) body.image = { url: '' };
           body.image.url = rulePack.classifier.planetImages[val];
@@ -220,6 +222,11 @@
   }
 
   function handleUpdate() {
+      dispatch('update');
+  }
+
+  function toggleAutoClassify(e: Event) {
+      body.autoClassify = (e.currentTarget as HTMLInputElement).checked;
       dispatch('update');
   }
 
@@ -349,9 +356,9 @@
 
     <hr/>
 
-    <!-- IMAGE SECTION -->
+    <!-- TYPE / IMAGE SECTION -->
     <div class="form-group">
-        <label>Image</label>
+        <label>Type / Image</label>
         <select value={body.classes?.[0] || 'planet/terrestrial'} on:change={updateVisualType}>
             {#each visualTypes as type}
                 <option value={type}>{type.replace('planet/', '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
@@ -360,7 +367,11 @@
                 <option disabled>No types loaded (Check RulePack)</option>
             {/if}
         </select>
-        <span class="sub-label">Updates planet image only.</span>
+        <label title="Off (default): the type you picked is end-state — the classifier never overwrites it. On: the physics engine derives the type (and image) from mass, makeup, atmosphere and temperature on every recalculation.">
+            <input type="checkbox" checked={!!body.autoClassify} on:change={toggleAutoClassify} />
+            Auto-classify (physics decides the type)
+        </label>
+        <span class="sub-label">Sets the body's type and image. Picking one switches auto-classify off.</span>
     </div>
 </div>
 

@@ -48,6 +48,7 @@
   }
 
   function handleAtmosphereChange() {
+    lockAging();
     if (selectedAtmosphereName === 'None') {
       body.atmosphere = undefined;
       body.greenhouseTempK = 0;
@@ -109,7 +110,8 @@
 
   function updateGasFraction(gas: string, newPercentage: number) {
       if (!body.atmosphere) return;
-      
+      lockAging();
+
       const newFraction = newPercentage / 100;
       const oldFraction = body.atmosphere.composition[gas] || 0;
       const diff = newFraction - oldFraction;
@@ -149,6 +151,7 @@
   function addGas(gas: string) {
       if (!body.atmosphere) return;
       if (body.atmosphere.composition[gas]) return;
+      lockAging();
 
       body.atmosphere.composition[gas] = 0.05; // Start with 5%
       normalizeComposition(body.atmosphere.composition);
@@ -163,6 +166,7 @@
 
   function removeGas(gas: string) {
       if (!body.atmosphere) return;
+      lockAging();
       delete body.atmosphere.composition[gas];
       
       if (Object.keys(body.atmosphere.composition).length > 0) {
@@ -177,6 +181,19 @@
       }
 
       applyChanges();
+  }
+
+  function toggleAtmosphereAging(e: Event) {
+      const on = (e.currentTarget as HTMLInputElement).checked;
+      body.evolveAtmosphere = on;
+      // Turning aging OFF freezes what you currently see as the authored end-state.
+      if (!on) body.atmosphere0 = undefined;
+      applyChanges();
+  }
+
+  // A hand edit makes the atmosphere END-STATE: aging auto-skips (the toggle re-enables it).
+  function lockAging() {
+      if (body.evolveAtmosphere) { body.evolveAtmosphere = false; body.atmosphere0 = undefined; }
   }
 
   function applyChanges() {
@@ -271,6 +288,7 @@
 
   function updatePressureValue(e: MouseEvent) {
       if (!svgPressureSlider || !body.atmosphere) return;
+      lockAging();
       const rect = svgPressureSlider.getBoundingClientRect();
       const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
       const minLog = Math.log(minP);
@@ -369,11 +387,22 @@
       <input type="text" id="atm-name" bind:value={body.atmosphere.name} on:change={applyChanges} />
     </div>
 
+    <!-- AGING (evolution opt-in) -->
+    <div class="aging-row">
+      <label class="aging-toggle" title="Off (default): this atmosphere is the end-state you authored — the engine never erodes it. On: it is treated as primordial and thins over the system's age (Jeans + stellar-wind escape, derived from a stored baseline so re-processing never compounds). Hand-editing the mix switches this off automatically.">
+        <input type="checkbox" checked={!!body.evolveAtmosphere} on:change={toggleAtmosphereAging} />
+        <span>Age over system lifetime</span>
+      </label>
+      {#if body.evolveAtmosphere && body.atmosphere0}
+        <span class="aging-hint">eroding from a {(body.atmosphere0.pressure_bar || 0).toPrecision(2)} bar baseline</span>
+      {/if}
+    </div>
+
     <!-- PRESSURE -->
     <div class="form-group">
       <div class="label-row">
           <label for="pressure">Surface Pressure (bar)</label>
-          <input type="number" bind:value={body.atmosphere.pressure_bar} step="0.01" on:input={applyChanges} />
+          <input type="number" bind:value={body.atmosphere.pressure_bar} step="0.01" on:input={() => { lockAging(); applyChanges(); }} />
       </div>
       <div class="orbital-slider-container" style="height: 60px;">
           <svg 
@@ -564,6 +593,24 @@
   }
   text { pointer-events: none; font-family: sans-serif; }
   
+  .aging-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      flex-wrap: wrap;
+  }
+  .aging-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 0.9em;
+      color: var(--text-muted);
+  }
+  .aging-hint {
+      font-size: 0.78em;
+      color: var(--text-faint);
+  }
   .advanced-toggle {
       cursor: pointer;
       font-weight: bold;
