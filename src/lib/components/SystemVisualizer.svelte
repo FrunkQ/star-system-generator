@@ -909,11 +909,13 @@
               ctx.beginPath(); ctx.arc(rx, ry, finalRadius, 0, 2 * Math.PI); ctx.clip();
               const g = ctx.createLinearGradient(rx + ux * finalRadius, ry + uy * finalRadius, rx - ux * finalRadius, ry - uy * finalRadius);
               if (locked) {
-                  // Lit day side, a tight terminator near the centre, a deep-dark night side.
+                  // Pronounced terminator: the day hemisphere stays fully lit, then a SHARP divide
+                  // near the centre into a clearly-dark (but still readable) night side. Kept off
+                  // near-black so a world viewed from its night side isn't just a dark blob.
                   g.addColorStop(0, 'rgba(0,0,0,0)');
-                  g.addColorStop(0.46, 'rgba(0,0,0,0.02)');
-                  g.addColorStop(0.6, 'rgba(0,0,0,0.55)');
-                  g.addColorStop(1, 'rgba(0,0,0,0.9)');
+                  g.addColorStop(0.48, 'rgba(0,0,0,0)');
+                  g.addColorStop(0.6, 'rgba(0,0,0,0.45)');
+                  g.addColorStop(1, 'rgba(0,0,0,0.6)');
               } else {
                   g.addColorStop(0, 'rgba(0,0,0,0)');
                   g.addColorStop(0.55, 'rgba(0,0,0,0.06)');
