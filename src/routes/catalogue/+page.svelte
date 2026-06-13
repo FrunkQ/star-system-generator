@@ -51,10 +51,11 @@
   let sessionId: string | null = null;
   let themeKey: ThemeKey = 'guide';   // The Guide is the default pre-picked skin
   // CRT "screen content" effects applied to <main> on the mono skin (overlay layers live in CRTOverlay).
-  // Invert = a visual lightness invert (dark↔light) that KEEPS the hue: invert(1) hue-rotate(180)
-  // flips black↔white but leaves the mono colour reading as itself, not its complement.
+  // Invert is a PALETTE SWAP (handled by the .crt-invert class below), not a luminance filter:
+  // the terminal colour becomes the background and the content goes dark (green-on-black ↔
+  // black-on-green). Only brightness/contrast/skew/corners are filter/transform here.
   $: crtStyle = theme?.tint === 'mono'
-    ? `filter: brightness(${$crtControls.brightness}) contrast(${$crtControls.contrast})${$crtControls.invert ? ' invert(1) hue-rotate(180deg)' : ''}; transform: skewX(${$crtControls.skew * 18}deg); border-radius: ${$crtControls.roundedCorners * 100}vmin;`
+    ? `filter: brightness(${$crtControls.brightness}) contrast(${$crtControls.contrast}); transform: skewX(${$crtControls.skew * 18}deg); border-radius: ${$crtControls.roundedCorners * 100}vmin;`
     : '';
   let monoColor: MonoColor = 'green';
   let lastUpdate: number | null = null;
@@ -361,7 +362,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 </svelte:head>
 
-<main class="catalogue tint-{theme.tint} skin-{themeKey}" class:interactive={theme.tier === 'interactive'} style="--mono:{MONO_COLORS[monoColor].hex}; {crtStyle}">
+<main class="catalogue tint-{theme.tint} skin-{themeKey}" class:interactive={theme.tier === 'interactive'} class:crt-invert={theme.tint === 'mono' && $crtControls.invert} style="--mono:{MONO_COLORS[monoColor].hex}; {crtStyle}">
   <!-- Device status bar -->
   <header class="statusbar">
     {#if selectedSystemId}
@@ -606,6 +607,13 @@
   .tint-mono { color: var(--mono, #74f7b0); }
   .tint-mono .doc-scroll { background: color-mix(in srgb, var(--mono, #74f7b0) 4%, #010204); text-shadow: 0 0 1px currentColor; }
   .tint-mono .sys-name, .tint-mono .status.live { color: var(--mono, #74f7b0); }
+
+  /* Invert = palette swap: the terminal colour becomes the background, content goes dark
+     (green-on-black ↔ black-on-green). Content reads via currentColor, so flipping `color` +
+     the backgrounds is enough; the few explicit var(--mono) text colours are overridden too. */
+  .catalogue.tint-mono.crt-invert { background: var(--mono, #74f7b0); color: #04070b; }
+  .tint-mono.crt-invert .doc-scroll { background: transparent; text-shadow: none; }
+  .tint-mono.crt-invert .sys-name, .tint-mono.crt-invert .status.live { color: #04070b; }
 
   /* --- The Guide: friendly illustrated travel companion — hopelessly, joyfully colourful.
      Several FRIENDLY fonts: rounded sans for body, comic/chalk for banners and the cover. --- */
