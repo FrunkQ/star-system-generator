@@ -21,7 +21,7 @@ export const MONO_COLORS: Record<MonoColor, { label: string; hex: string }> = {
 };
 
 const KEY = 'catalogue-guideconfig';
-const DEFAULT: GuideConfig = { theme: 'mono', monoColor: 'green', includeConstructs: true };
+const DEFAULT: GuideConfig = { theme: 'guide', monoColor: 'green', includeConstructs: true };
 
 const THEMES: GuideTheme[] = ['mono', 'guide', 'clean', 'console'];
 

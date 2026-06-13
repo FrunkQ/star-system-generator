@@ -8,13 +8,23 @@
   import type { System, CelestialBody } from '$lib/types';
   import { bodyFacts, bodyGlyph } from '$lib/catalogue/bodyFacts';
   import { AU_KM } from '$lib/constants';
+  import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
 
   export let system: System;
   export let includeConstructs = true;
   // The Guide skin: hopelessly over-colourful — every line a different friendly colour.
   export let colorful = false;
+  // Body imagery in the panel: 'disc' = procedural true-colour orrery disc (The Guide),
+  // 'photo' = the stock artist's-impression photo (Survey Datapad), 'none' = text only (CRT).
+  export let imagery: 'disc' | 'photo' | 'none' = 'none';
 
   let selectedId: string | null = null;
+
+  // A body is "ringed" if it hosts a ring child — drives the disc's Saturn ring.
+  function isRinged(b: CelestialBody | null): boolean {
+    if (!b) return false;
+    return (system?.nodes ?? []).some((n) => n.parentId === b.id && (n as any).roleHint === 'ring');
+  }
 
   function isStar(n: any): boolean {
     return n?.roleHint === 'star' || (Array.isArray(n?.classes) && n.classes.some((c: string) => String(c).startsWith('star/')));
@@ -195,6 +205,16 @@
         <h2><span class="g">{bodyGlyph(selected)}</span> {selected.name}</h2>
       </div>
 
+      {#if imagery === 'disc'}
+        <div class="body-art">
+          <PlanetDisc body={selected} ringed={isRinged(selected)} />
+        </div>
+      {:else if imagery === 'photo' && selected.image?.url}
+        <div class="body-art">
+          <img class="body-photo" src={selected.image.url} alt="Artist's impression of {selected.name}" />
+        </div>
+      {/if}
+
       {#if selectedMoons.length}
         <div class="moon-row">
           <span class="moon-label">Moons:</span>
@@ -242,6 +262,8 @@
     font-family: inherit;
   }
   .cat-head h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.02em; }
+  .body-art { display: flex; justify-content: center; margin: 6px 0 12px; }
+  .body-photo { max-width: 180px; width: 100%; height: auto; border-radius: 6px; display: block; }
   .cat-head .sub { margin: 2px 0 14px; opacity: 0.6; font-size: 0.8rem; }
 
   /* Clickable orbital diagram (skin-tinted via currentColor). */

@@ -48,7 +48,7 @@
   let branding: { name: string; logo: string | null } = { name: '', logo: null };
   let rulePack: RulePack | null = null;
   let sessionId: string | null = null;
-  let themeKey: ThemeKey = 'mono';
+  let themeKey: ThemeKey = 'guide';   // The Guide is the default pre-picked skin
   let monoColor: MonoColor = 'green';
   let lastUpdate: number | null = null;
   let connected = false;
@@ -279,7 +279,7 @@
     // Initial view from the URL (legacy green/amber theme keys fold into mono + colour);
     // the GM's SYNC_GUIDECONFIG broadcast takes over from there.
     applyGuideConfig({
-      theme: params.get('theme') || 'mono',
+      theme: params.get('theme') || 'guide',   // The Guide is the default pre-picked skin
       monoColor: params.get('color') || 'green',
       includeConstructs: params.get('constructs') !== '0',
     });
@@ -444,6 +444,9 @@
             <button class="insp-close" on:click={() => (selectedBody = null)} aria-label="Close">×</button>
           </div>
           <div class="insp-sub">{(selectedBody.roleHint || 'body').toUpperCase()}{selectedBody.class ? ' · ' + selectedBody.class : ''}</div>
+          {#if selectedBody.image?.url}
+            <img class="insp-photo" src={selectedBody.image.url} alt="Artist's impression of {selectedBody.name}" />
+          {/if}
           <dl class="insp-grid">
             {#each bodyFacts(selectedBody) as f}
               <dt>{f.label}</dt><dd>{f.value}</dd>
@@ -460,7 +463,8 @@
   {:else}
     <!-- Lo-fi / datapad / Guide: diagrammatic browser — clickable layout + a body panel. -->
     <div class="doc-scroll">
-      <CatalogueBrowser system={displaySystem} {includeConstructs} colorful={themeKey === 'guide'} />
+      <CatalogueBrowser system={displaySystem} {includeConstructs} colorful={themeKey === 'guide'}
+        imagery={themeKey === 'guide' ? 'disc' : themeKey === 'clean' ? 'photo' : 'none'} />
     </div>
   {/if}
 
@@ -726,6 +730,7 @@
   .insp-head h2 { margin: 0; font-size: 20px; }
   .insp-close { margin-left: auto; background: none; border: none; color: #9fb0c8; font-size: 22px; line-height: 1; cursor: pointer; }
   .insp-sub { font-size: 11px; letter-spacing: 0.08em; opacity: 0.6; margin: 2px 0 12px; }
+  .insp-photo { width: 100%; max-width: 220px; height: auto; border-radius: 6px; display: block; margin: 0 0 12px; }
   .insp-grid { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; margin: 0; font-size: 13px; }
   .insp-grid dt { opacity: 0.55; }
   .insp-grid dd { margin: 0; text-align: right; }
