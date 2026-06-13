@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.35-beta - 13th Jun 2026
+
+* **Tunable CRT on the Monochrome Terminal**: a "CRT" button opens a popup of sliders — brightness, contrast, invert, scanlines (intensity + width), vignette, rounded corners, picture skew, a rolling noise bar, white noise and flicker — all live and remembered. Built in the GM's chosen terminal colour.
+
 ## v2.0.34-beta - 13th Jun 2026
 
 * **The Guide's planet discs now match the orrery**: a day/night terminator (pronounced on tidally locked worlds) and glowing equatorial volcanoes on tidally active worlds like Io.
