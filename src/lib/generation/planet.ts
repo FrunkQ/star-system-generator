@@ -6,6 +6,15 @@ import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_K
 import { bodyFactory } from '../core/BodyFactory';
 import { calculateEquilibriumTemperature, calculateDistanceToStar } from '../physics/temperature';
 
+// Debris-density proxy for belts/rings: a massKg drawn so its log maps to a density fraction in
+// [fracLo, fracHi] on the 1e-5..1.0 Earth-mass scale the orrery/telemetry read (see
+// debrisDensityFrac / getBeltDensityDescription). NOT gravitational mass (excluded from perturbers).
+function densityProxyMassKg(rng: SeededRNG, fracLo: number, fracHi: number): number {
+    const frac = fracLo + rng.nextFloat() * (fracHi - fracLo);
+    const lo = Math.log(1e-5), hi = Math.log(1.0);
+    return EARTH_MASS_KG * Math.exp(lo + frac * (hi - lo));
+}
+
 export function _generatePlanetaryBody(
     rng: SeededRNG,
     pack: RulePack,
@@ -62,6 +71,9 @@ export function _generatePlanetaryBody(
         belt.orbit = orbit;
         belt.radiusInnerKm = radiusInnerKm;
         belt.radiusOuterKm = radiusOuterKm;
+        // Debris density (massKg as the optical/hazard proxy) — randomised so belts vary from
+        // sparse to dense; the orrery draws denser ones less transparent.
+        belt.massKg = densityProxyMassKg(rng, 0.2, 0.7);
 
         newNodes.push(belt);
         return newNodes;
@@ -268,6 +280,8 @@ export function _generatePlanetaryBody(
             ring.classes = ['ring/planetary'];
             ring.radiusInnerKm = ringInnerKm;
             ring.radiusOuterKm = ringOuterKm;
+            // Debris density (optical proxy) — most rings are faint, a Saturn-bright one is rarer.
+            ring.massKg = densityProxyMassKg(rng, 0.1, 0.9);
 
             newNodes.push(ring);
         }

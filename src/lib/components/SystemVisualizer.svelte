@@ -3,7 +3,7 @@
   import type { TransitPlan } from '$lib/transit/types';
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import { propagate } from "$lib/api";
-  import { AU_KM } from '../constants';
+  import { AU_KM, EARTH_MASS_KG } from '../constants';
   import * as zones from "$lib/physics/zones";
   import { calculateLagrangePoints } from "$lib/physics/lagrange";
   import { get } from 'svelte/store';
@@ -666,6 +666,16 @@
   };
 
   // "#rrggbb" / "#rgb" / "rgb(...)" → "r,g,b" for building rgba() gradients.
+  // Belt/ring DENSITY as a 0..1 fraction from its massKg debris-density proxy (log scale,
+  // 1e-5..1.0 Earth masses — mirrors getBeltDensityDescription). Drives how solid we draw it.
+  // Undefined density (legacy data) → a moderate default so it stays visible.
+  function debrisDensityFrac(massKg: number | undefined): number {
+      if (massKg === undefined || massKg <= 0) return 0.3;
+      const me = massKg / EARTH_MASS_KG;
+      const lo = Math.log(1e-5), hi = Math.log(1.0);
+      return Math.max(0, Math.min(1, (Math.log(me) - lo) / (hi - lo)));
+  }
+
   function hexToRgbTriplet(c: string): string {
       if (!c) return '255,255,255';
       if (c.startsWith('rgb')) { const m = c.match(/\d+/g); return m ? m.slice(0, 3).join(',') : '255,255,255'; }
@@ -725,7 +735,11 @@
                   ctx.translate(parentPos.x - renderPan.x, parentPos.y - renderPan.y);
                   if (node.roleHint === 'belt') ctx.lineWidth = Math.max(4 / zoom, widthAU);
                   else ctx.lineWidth = widthAU;
-                  let alpha = node.roleHint === 'ring' ? 0.3 : 0.07;
+                  // Opacity tracks DENSITY (massKg as a debris-density proxy): Saturn's dense rings
+                  // read solid, the other giants' thin rings are barely there; a denser belt looks
+                  // less transparent. Legacy data with no density falls back to a moderate level.
+                  const dens = debrisDensityFrac(node.massKg);
+                  let alpha = node.roleHint === 'ring' ? (0.05 + dens * 0.5) : (0.02 + dens * 0.18);
                   ctx.strokeStyle = node.roleHint === 'ring' ? `rgba(200, 200, 200, ${alpha})` : `rgba(255, 255, 255, ${alpha})`;
                   ctx.beginPath();
                   let drewBeltEllipse = false;
@@ -884,20 +898,61 @@
           }
 
           // #10 Night side — shade the hemisphere facing away from the primary star (skip stars/BH;
-          // only when the disc is big enough on screen to read).
+          // only when the disc is big enough on screen to read). A TIDALLY LOCKED world has a fixed,
+          // pronounced terminator: a sharp, dark day/night divide (no rotation to even it out).
           if (node.roleHint !== 'star' && primaryStarPos && finalRadius * zoom > 3) {
               const dx = primaryStarPos.x - pos.x, dy = primaryStarPos.y - pos.y;
               const len = Math.hypot(dx, dy) || 1;
               const ux = dx / len, uy = dy / len; // unit vector toward the star
+              const locked = !!(node as CelestialBody).tidallyLocked;
               ctx.save();
               ctx.beginPath(); ctx.arc(rx, ry, finalRadius, 0, 2 * Math.PI); ctx.clip();
               const g = ctx.createLinearGradient(rx + ux * finalRadius, ry + uy * finalRadius, rx - ux * finalRadius, ry - uy * finalRadius);
-              g.addColorStop(0, 'rgba(0,0,0,0)');
-              g.addColorStop(0.55, 'rgba(0,0,0,0.06)');
-              g.addColorStop(1, 'rgba(0,0,0,0.55)');
+              if (locked) {
+                  // Lit day side, a tight terminator near the centre, a deep-dark night side.
+                  g.addColorStop(0, 'rgba(0,0,0,0)');
+                  g.addColorStop(0.46, 'rgba(0,0,0,0.02)');
+                  g.addColorStop(0.6, 'rgba(0,0,0,0.55)');
+                  g.addColorStop(1, 'rgba(0,0,0,0.9)');
+              } else {
+                  g.addColorStop(0, 'rgba(0,0,0,0)');
+                  g.addColorStop(0.55, 'rgba(0,0,0,0.06)');
+                  g.addColorStop(1, 'rgba(0,0,0,0.55)');
+              }
               ctx.fillStyle = g;
               ctx.beginPath(); ctx.arc(rx, ry, finalRadius, 0, 2 * Math.PI); ctx.fill();
               ctx.restore();
+          }
+
+          // Tidal volcanism — self-luminous magma patches (Io). Drawn AFTER the night shade and
+          // added with 'lighter' so the hotspots glow even on the dark side. Patch placement is
+          // seeded by the node id so it's stable frame-to-frame.
+          if (node.roleHint !== 'star' && finalRadius * zoom > 5) {
+              const keys = (node.tags || []).map((t) => t.key);
+              const lava = keys.includes('tidal/lava-flows');
+              const volc = lava || keys.includes('tidal/volcanism') || keys.includes('tidal/hotspots');
+              if (volc) {
+                  const n = lava ? 6 : keys.includes('tidal/volcanism') ? 4 : 3;
+                  const core = lava ? '255,236,150' : '255,170,60';   // yellow-white vs orange
+                  const edge = lava ? '255,120,20' : '210,70,15';
+                  let s = 0; for (let k = 0; k < node.id.length; k++) s = (s * 31 + node.id.charCodeAt(k)) & 0xffffff;
+                  const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+                  ctx.save();
+                  ctx.beginPath(); ctx.arc(rx, ry, finalRadius, 0, 2 * Math.PI); ctx.clip();
+                  ctx.globalCompositeOperation = 'lighter';
+                  for (let p = 0; p < n; p++) {
+                      const ang = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * finalRadius * 0.82;
+                      const px = rx + Math.cos(ang) * rr, py = ry + Math.sin(ang) * rr;
+                      const pr = finalRadius * (0.1 + rnd() * 0.16);
+                      const mg = ctx.createRadialGradient(px, py, 0, px, py, pr);
+                      mg.addColorStop(0, `rgba(${core},0.95)`);
+                      mg.addColorStop(0.5, `rgba(${edge},0.7)`);
+                      mg.addColorStop(1, `rgba(${edge},0)`);
+                      ctx.fillStyle = mg;
+                      ctx.beginPath(); ctx.arc(px, py, pr, 0, 2 * Math.PI); ctx.fill();
+                  }
+                  ctx.restore();
+              }
           }
       }
       if (completedPlans && completedPlans.length > 0) {

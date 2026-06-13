@@ -636,7 +636,8 @@
       "surfaceRadiationMax": 79.30061929025628,
       "equilibriumTempMinK": 158.76608381729199,
       "equilibriumTempMaxK": 170.29745080024315,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 3e+21
     },
     {
       "id": "solar-system-jupiter",
@@ -772,7 +773,8 @@
       "surfaceRadiationMax": 20.398104867370254,
       "equilibriumTempMinK": 115.48799777578277,
       "equilibriumTempMaxK": 121.27923736184006,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 150000000000000000000
     },
     {
       "id": "solar-system-io",
@@ -1213,7 +1215,8 @@
       "surfaceRadiationMax": 6.115795927247294,
       "equilibriumTempMinK": 84.80866521817484,
       "equilibriumTempMaxK": 89.74334410980197,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 5e+23
     },
     {
       "id": "solar-system-titan",
@@ -1786,7 +1789,8 @@
       "surfaceRadiationMax": 1.4885526980868187,
       "equilibriumTempMinK": 60.17596429378085,
       "equilibriumTempMaxK": 63.034753064743356,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 400000000000000000000
     },
     {
       "id": "solar-system-titania",
@@ -2118,7 +2122,8 @@
       "surfaceRadiationMax": 0.5641689784936591,
       "equilibriumTempMinK": 48.902788450922024,
       "equilibriumTempMaxK": 49.45854123806973,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 200000000000000000000
     },
     {
       "id": "solar-system-triton",
@@ -2251,7 +2256,8 @@
       "surfaceRadiationMax": 0.3858024691358025,
       "equilibriumTempMinK": 40.682268812405674,
       "equilibriumTempMaxK": 44.97594042370899,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 1e+22
     },
     {
       "id": "solar-system-pluto",

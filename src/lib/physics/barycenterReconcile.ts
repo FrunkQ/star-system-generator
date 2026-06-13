@@ -33,6 +33,8 @@ function promoteMassiveCompanion(system: System): boolean {
     if (node.kind !== 'body') continue;
     const secondary = node as CelestialBody;
     if (!secondary.orbit || secondary.parentId === undefined) continue;
+    // Belts/rings carry massKg only as a debris-density proxy — never a gravitational companion.
+    if (secondary.roleHint === 'belt' || secondary.roleHint === 'ring') continue;
 
     const primary = nodesById.get(secondary.parentId as string);
     if (!primary || primary.kind !== 'body') continue;
