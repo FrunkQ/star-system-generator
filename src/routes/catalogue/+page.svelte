@@ -119,6 +119,31 @@
       .filter((n) => isNavPlanet(n) && (n.parentId === hostId || n.orbit?.hostId === hostId))
       .sort((a, b) => (a.orbit?.elements?.a_AU || 0) - (b.orbit?.elements?.a_AU || 0)) as CelestialBody[];
   }
+  // Console nav: planets PLUS belts and barycentres (shown as their dominant member, e.g. Pluto),
+  // so they're not missing from the jump list. Each entry's `id` is what gets focused.
+  function consoleBaryDominantId(bary: any): string {
+    const ns = (displaySystem?.nodes ?? []) as any[];
+    const members = ns.filter((n) => (bary.memberIds || []).includes(n.id) || n.parentId === bary.id);
+    members.sort((a, b) => (b.massKg || 0) - (a.massKg || 0));
+    return members[0]?.id ?? bary.id;
+  }
+  function consoleNavOf(hostId: string): { id: string; label: string; icon: string }[] {
+    const ns = (displaySystem?.nodes ?? []) as any[];
+    const beltMidAU = (n: any) => n.orbit?.elements?.a_AU
+      || (n.radiusInnerKm && n.radiusOuterKm ? (n.radiusInnerKm + n.radiusOuterKm) / 2 / AU_KM : 0);
+    const out: { id: string; label: string; icon: string; a: number }[] = [];
+    for (const n of ns) {
+      if (!(n.parentId === hostId || n.orbit?.hostId === hostId)) continue;
+      if (isNavPlanet(n)) out.push({ id: n.id, label: n.name, icon: '●', a: n.orbit?.elements?.a_AU || 0 });
+      else if (n.roleHint === 'belt') out.push({ id: n.id, label: n.name, icon: '◌', a: beltMidAU(n) });
+      else if (n.kind === 'barycenter') {
+        const domId = consoleBaryDominantId(n);
+        const dom = ns.find((x) => x.id === domId);
+        out.push({ id: domId, label: dom?.name ?? n.name, icon: '●', a: n.orbit?.elements?.a_AU || 0 });
+      }
+    }
+    return out.sort((a, b) => a.a - b.a).map(({ id, label, icon }) => ({ id, label, icon }));
+  }
   function consoleChildrenOf(id: string | null): CelestialBody[] {
     if (!id) return [];
     return ((displaySystem?.nodes ?? []) as any[])
@@ -425,8 +450,8 @@
       <nav class="console-nav" aria-label="System bodies">
         {#each consoleStars as star (star.id)}
           <button class="nav-item star" class:active={focusedBodyId === star.id} on:click={() => jumpTo(star.id)}>★ {star.name}</button>
-          {#each consolePlanetsOf(star.id) as p (p.id)}
-            <button class="nav-item" class:active={focusedBodyId === p.id} on:click={() => jumpTo(p.id)}>● {p.name}</button>
+          {#each consoleNavOf(star.id) as p (p.id)}
+            <button class="nav-item" class:active={focusedBodyId === p.id} on:click={() => jumpTo(p.id)}>{p.icon} {p.label}</button>
             {#if expandedPlanetId === p.id}
               {#each expandedChildren as c (c.id)}
                 <button class="nav-item sub" class:active={focusedBodyId === c.id} on:click={() => jumpTo(c.id)}>{c.kind === 'construct' ? '◆' : '○'} {c.name}</button>
@@ -444,7 +469,7 @@
             <button class="insp-close" on:click={() => (selectedBody = null)} aria-label="Close">×</button>
           </div>
           <div class="insp-sub">{(selectedBody.roleHint || 'body').toUpperCase()}{selectedBody.class ? ' · ' + selectedBody.class : ''}</div>
-          {#if selectedBody.image?.url}
+          {#if selectedBody.image?.url && selectedBody.kind !== 'construct'}
             <img class="insp-photo" src={selectedBody.image.url} alt="Artist's impression of {selectedBody.name}" />
           {/if}
           <dl class="insp-grid">

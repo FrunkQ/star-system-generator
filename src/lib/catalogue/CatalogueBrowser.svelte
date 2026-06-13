@@ -104,8 +104,18 @@
         : moonsOf(selected.id))
     : [];
   $: selectedConstructs = subject ? constructsOf(subject.id) : { surface: [], orbiting: [] };
-  // Photo crop: show the central fraction of the artist's-impression photo, zoomed (Survey Datapad).
+  // Photo crop: show the central fraction of the artist's-impression photo (Survey Datapad).
   const PHOTO_CROP_FRAC = 0.4; // central 40% — tunable
+
+  // "Back to parent": for a moon/construct/planet, the host to return to (a barycentre parent is
+  // kept as the barycentre node, shown as its dominant member).
+  $: parentNavId = (() => {
+    if (!selected || isBary(selected)) return null;
+    const pid = (selected as any).ui_parentId || selected.parentId || selected.orbit?.hostId;
+    const p = pid ? nodes.find((n) => n.id === pid) : null;
+    return p ? p.id : null;
+  })();
+  $: parentNavLabel = parentNavId ? displayLabel(nodes.find((n) => n.id === parentNavId)) : '';
 
   // Auto-select the first interesting body once data arrives.
   $: if ((!selectedId || !nodes.some((n) => n.id === selectedId)) && stars.length) {
@@ -234,16 +244,21 @@
         <h2><span class="g">{bodyGlyph(subject ?? selected)}</span> {panelTitle}</h2>
       </div>
 
-      {#if imagery === 'disc'}
+      {#if parentNavId}
+        <button class="back-to-parent" on:click={() => (selectedId = parentNavId)}>↑ {parentNavLabel}</button>
+      {/if}
+
+      {#if (subject ?? selected).kind === 'construct'}
+        <!-- Constructs don't get a picture. -->
+      {:else if imagery === 'disc'}
         <div class="body-art">
           <PlanetDisc body={subject ?? selected} ringed={isRinged(subject ?? selected)} />
         </div>
       {:else if imagery === 'photo' && (subject ?? selected).image?.url}
-        <!-- Survey Datapad: full-width, letterboxed, zoomed to the central fraction of the photo. -->
-        <div class="body-photo-crop">
+        <!-- Survey Datapad: full image WIDTH, letterboxed to its central PHOTO_CROP_FRAC (no zoom). -->
+        <div class="body-photo-crop" style="aspect-ratio: {1 / PHOTO_CROP_FRAC};">
           <img class="body-photo" src={(subject ?? selected).image.url}
-               alt="Artist's impression of {(subject ?? selected).name}"
-               style="transform: scale({1 / PHOTO_CROP_FRAC});" />
+               alt="Artist's impression of {(subject ?? selected).name}" />
         </div>
       {/if}
 
@@ -295,10 +310,10 @@
   }
   .cat-head h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.02em; }
   .body-art { display: flex; justify-content: center; margin: 6px 0 12px; }
-  /* Survey Datapad photo: full-width letterbox, image zoomed to its central region. */
+  /* Survey Datapad photo: full image width, letterboxed to its central band (object-fit cover on a
+     wide container crops top/bottom without magnifying). aspect-ratio is set inline from the frac. */
   .body-photo-crop {
     width: 100%;
-    aspect-ratio: 5 / 2;
     overflow: hidden;
     border-radius: 6px;
     margin: 6px 0 12px;
@@ -308,9 +323,22 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: center center;
     display: block;
-    transform-origin: center center;
   }
+  .back-to-parent {
+    background: none;
+    border: 1px solid currentColor;
+    color: inherit;
+    border-radius: 4px;
+    padding: 3px 10px;
+    margin: 0 0 10px;
+    font: inherit;
+    font-size: 0.85em;
+    cursor: pointer;
+    opacity: 0.8;
+  }
+  .back-to-parent:hover { opacity: 1; }
   .cat-head .sub { margin: 2px 0 14px; opacity: 0.6; font-size: 0.8rem; }
 
   /* Clickable orbital diagram (skin-tinted via currentColor). */

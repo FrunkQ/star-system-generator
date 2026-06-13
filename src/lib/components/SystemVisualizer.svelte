@@ -568,10 +568,10 @@
   function pickNodeAt(screenX: number, screenY: number): { node: CelestialBody; world: { x: number; y: number } } | null {
       if (!system) return null;
       const clickPos = screenToWorld(screenX, screenY);
-      let clickedNode: CelestialBody | null = null;
-      let minDistanceSq = Infinity;
       const clickableIds = getVisibleNodeIds(system, focusedBodyId);
       const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
+      // Collect every node whose pick-radius contains the click, with its centre distance.
+      const hits: { node: CelestialBody; distanceSq: number }[] = [];
       for (const node of system.nodes) {
           if (!clickableIds.has(node.id) || (node.kind !== 'body' && node.kind !== 'construct')) continue;
           const pos = targetPositions.get(node.id);
@@ -587,11 +587,18 @@
           else if (node.roleHint === 'moon') minRadiusPx = 8;
           const minRadiusInWorld = minRadiusPx / zoom;
           const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
-          if (distanceSq < finalRadius * finalRadius) {
-              if (distanceSq < minDistanceSq) { minDistanceSq = distanceSq; clickedNode = node as CelestialBody; }
-          }
+          if (distanceSq < finalRadius * finalRadius) hits.push({ node: node as CelestialBody, distanceSq });
       }
-      return clickedNode ? { node: clickedNode, world: clickPos } : null;
+      if (!hits.length) return null;
+      // Gate toward the PARENT when in doubt: if a hit's host is also under the cursor, drop the
+      // child — a general click on a planet shouldn't grab one of its moons/constructs. Only when
+      // the parent is NOT hit (you clicked a clearly-separated moon) does the child survive.
+      const hitIds = new Set(hits.map((h) => h.node.id));
+      const hostOf = (n: any) => (n.ui_parentId || n.parentId || n.orbit?.hostId) as string | undefined;
+      const preferred = hits.filter((h) => { const p = hostOf(h.node); return !(p && hitIds.has(p)); });
+      const pool = preferred.length ? preferred : hits;
+      pool.sort((a, b) => a.distanceSq - b.distanceSq);
+      return { node: pool[0].node, world: clickPos };
   }
 
   // --- Unified pointer gestures (Phase 02). Coords arriving here are canvas-relative
@@ -924,40 +931,45 @@
               }
           }
 
+          // Night side + magma are drawn in SCREEN space (identity transform). Canvas gradients
+          // baked over the orrery's tiny world-space extents (~1e-5 AU under a huge zoom) collapse
+          // to a single colour in the browser, so the terminator/lava silently vanished when zoomed
+          // in. In device pixels they render correctly. Screen mapping: s = world·zoom + halfScreen.
+          const sx = rx * zoom + width / 2;
+          const sy = ry * zoom + height / 2;
+          const sR = finalRadius * zoom;
+
           // #10 Night side — shade the hemisphere facing away from the primary star (skip stars/BH;
           // only when the disc is big enough on screen to read). A TIDALLY LOCKED world has a fixed,
           // pronounced terminator: a sharp, dark day/night divide (no rotation to even it out).
-          if (node.roleHint !== 'star' && primaryStarPos && finalRadius * zoom > 3) {
+          if (node.roleHint !== 'star' && primaryStarPos && sR > 3) {
               const dx = primaryStarPos.x - pos.x, dy = primaryStarPos.y - pos.y;
               const len = Math.hypot(dx, dy) || 1;
-              const ux = dx / len, uy = dy / len; // unit vector toward the star
+              const ux = dx / len, uy = dy / len; // unit vector toward the star (screen Y not flipped)
               const locked = !!(node as CelestialBody).tidallyLocked;
               ctx.save();
-              ctx.beginPath(); ctx.arc(rx, ry, finalRadius, 0, 2 * Math.PI); ctx.clip();
-              const g = ctx.createLinearGradient(rx + ux * finalRadius, ry + uy * finalRadius, rx - ux * finalRadius, ry - uy * finalRadius);
+              ctx.setTransform(1, 0, 0, 1, 0, 0);
+              ctx.beginPath(); ctx.arc(sx, sy, sR, 0, 2 * Math.PI); ctx.clip();
+              const g = ctx.createLinearGradient(sx + ux * sR, sy + uy * sR, sx - ux * sR, sy - uy * sR);
               if (locked) {
-                  // Pronounced terminator: the day hemisphere stays fully lit, then a SHARP divide
-                  // near the centre into a clearly-dark (but still readable) night side. Kept off
-                  // near-black so a world viewed from its night side isn't just a dark blob.
                   g.addColorStop(0, 'rgba(0,0,0,0)');
                   g.addColorStop(0.48, 'rgba(0,0,0,0)');
                   g.addColorStop(0.6, 'rgba(0,0,0,0.45)');
                   g.addColorStop(1, 'rgba(0,0,0,0.6)');
               } else {
                   g.addColorStop(0, 'rgba(0,0,0,0)');
-                  g.addColorStop(0.55, 'rgba(0,0,0,0.06)');
-                  g.addColorStop(1, 'rgba(0,0,0,0.55)');
+                  g.addColorStop(0.5, 'rgba(0,0,0,0.04)');
+                  g.addColorStop(1, 'rgba(0,0,0,0.6)');
               }
               ctx.fillStyle = g;
-              ctx.beginPath(); ctx.arc(rx, ry, finalRadius, 0, 2 * Math.PI); ctx.fill();
+              ctx.beginPath(); ctx.arc(sx, sy, sR, 0, 2 * Math.PI); ctx.fill();
               ctx.restore();
           }
 
           // Tidal volcanism — magma patches (Io). Tidal flexing dissipates strongest at low
-          // latitudes, so the hotspots cluster in an EQUATORIAL band (with scatter). Drawn opaque
-          // (source-over) so they read on a bright sulfur disc, with a bright incandescent core +
-          // glowing rim; placement seeded by the node id so it's stable frame-to-frame.
-          if (node.roleHint !== 'star' && finalRadius * zoom > 4) {
+          // latitudes, so the hotspots cluster in an EQUATORIAL band (with scatter). Opaque core +
+          // additive bloom; placement seeded by the node id so it's stable frame-to-frame.
+          if (node.roleHint !== 'star' && sR > 4) {
               const keys = (node.tags || []).map((t) => t.key);
               const lava = keys.includes('tidal/lava-flows');
               const volc = lava || keys.includes('tidal/volcanism') || keys.includes('tidal/hotspots');
@@ -965,18 +977,17 @@
                   const n = lava ? 8 : keys.includes('tidal/volcanism') ? 6 : 4;
                   const core = lava ? '255,244,200' : '255,210,120';  // white-hot vs incandescent orange
                   const mid  = lava ? '255,120,20'  : '220,70,18';    // molten orange / red
-                  let s = 0; for (let k = 0; k < node.id.length; k++) s = (s * 31 + node.id.charCodeAt(k)) & 0xffffff;
-                  const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+                  const mkRnd = () => { let s = 0; for (let k = 0; k < node.id.length; k++) s = (s * 31 + node.id.charCodeAt(k)) & 0xffffff; return () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; }; };
+                  let rnd = mkRnd();
                   ctx.save();
-                  ctx.beginPath(); ctx.arc(rx, ry, finalRadius, 0, 2 * Math.PI); ctx.clip();
+                  ctx.setTransform(1, 0, 0, 1, 0, 0);
+                  ctx.beginPath(); ctx.arc(sx, sy, sR, 0, 2 * Math.PI); ctx.clip();
                   for (let p = 0; p < n; p++) {
-                      // Latitude biased toward the equator (cubic), longitude across the lit disc;
-                      // the cos(lat) term keeps spots inside the projected sphere.
-                      const lat = (rnd() * 2 - 1); const latEq = lat * lat * lat * 0.62; // -0.62..0.62, dense near 0
+                      const lat = (rnd() * 2 - 1); const latEq = lat * lat * lat * 0.62; // dense near the equator
                       const lon = rnd() * 2 - 1;
-                      const py = ry + latEq * finalRadius;
-                      const px = rx + lon * finalRadius * 0.82 * Math.sqrt(Math.max(0, 1 - latEq * latEq));
-                      const pr = finalRadius * (0.08 + rnd() * 0.12);
+                      const py = sy + latEq * sR;
+                      const px = sx + lon * sR * 0.82 * Math.sqrt(Math.max(0, 1 - latEq * latEq));
+                      const pr = sR * (0.08 + rnd() * 0.12);
                       const mg = ctx.createRadialGradient(px, py, 0, px, py, pr);
                       mg.addColorStop(0, `rgba(${core},0.98)`);
                       mg.addColorStop(0.4, `rgba(${mid},0.9)`);
@@ -984,15 +995,14 @@
                       ctx.fillStyle = mg;
                       ctx.beginPath(); ctx.arc(px, py, pr, 0, 2 * Math.PI); ctx.fill();
                   }
-                  // A faint additive bloom so the brightest vents glow (esp. on the night side).
                   ctx.globalCompositeOperation = 'lighter';
-                  s = 7; // re-seed for repeatable bloom placement over the same patches
+                  rnd = mkRnd(); // same placement → bloom sits over the patches
                   for (let p = 0; p < Math.ceil(n / 2); p++) {
                       const lat = (rnd() * 2 - 1); const latEq = lat * lat * lat * 0.62;
                       const lon = rnd() * 2 - 1;
-                      const py = ry + latEq * finalRadius;
-                      const px = rx + lon * finalRadius * 0.82 * Math.sqrt(Math.max(0, 1 - latEq * latEq));
-                      const pr = finalRadius * 0.22;
+                      const py = sy + latEq * sR;
+                      const px = sx + lon * sR * 0.82 * Math.sqrt(Math.max(0, 1 - latEq * latEq));
+                      const pr = sR * 0.22;
                       const bg = ctx.createRadialGradient(px, py, 0, px, py, pr);
                       bg.addColorStop(0, `rgba(${core},0.5)`);
                       bg.addColorStop(1, `rgba(${mid},0)`);
