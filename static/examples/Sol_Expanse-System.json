@@ -643,7 +643,8 @@
       "surfaceRadiationMax": 79.30061929025628,
       "equilibriumTempMinK": 158.76608381729199,
       "equilibriumTempMaxK": 170.29745080024315,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 3e+21
     },
     {
       "id": "solar-system-jupiter",
@@ -779,7 +780,8 @@
       "surfaceRadiationMax": 20.398104867370254,
       "equilibriumTempMinK": 115.48799777578277,
       "equilibriumTempMaxK": 121.27923736184006,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 150000000000000000000
     },
     {
       "id": "solar-system-io",
@@ -1220,7 +1222,8 @@
       "surfaceRadiationMax": 6.115795927247294,
       "equilibriumTempMinK": 84.80866521817484,
       "equilibriumTempMaxK": 89.74334410980197,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 5e+23
     },
     {
       "id": "solar-system-titan",
@@ -1722,7 +1725,8 @@
       "surfaceRadiationMax": 1.4885526980868187,
       "equilibriumTempMinK": 60.17596429378085,
       "equilibriumTempMaxK": 63.034753064743356,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 400000000000000000000
     },
     {
       "id": "solar-system-titania",
@@ -2054,7 +2058,8 @@
       "surfaceRadiationMax": 0.5641689784936591,
       "equilibriumTempMinK": 48.902788450922024,
       "equilibriumTempMaxK": 49.45854123806973,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 200000000000000000000
     },
     {
       "id": "solar-system-triton",
@@ -2187,7 +2192,8 @@
       "surfaceRadiationMax": 0.3858024691358025,
       "equilibriumTempMinK": 40.682268812405674,
       "equilibriumTempMaxK": 44.97594042370899,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 1e+22
     },
     {
       "id": "solar-system-pluto",
@@ -3490,6 +3496,76 @@
         "n_rad_per_s": 8.027243170523019e-10
       },
       "tags": []
+    },
+    {
+      "id": "solar-system-tethys",
+      "parentId": "solar-system-saturn",
+      "name": "Tethys",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/sub-earth"
+      ],
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 37931187000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.0019694063733756073,
+          "e": 0.0001,
+          "i_deg": 1.12,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.8
+        }
+      },
+      "massKg": 617400000000000000000,
+      "radiusKm": 531.1,
+      "tags": [],
+      "areas": [],
+      "orbital_period_days": 1.888,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 45.31,
+      "description": "A mid-sized moon of almost pure water ice — one of the most reflective bodies in the solar system. Scarred by the enormous Odysseus crater and the vast Ithaca Chasma canyon. It holds Mimas in a 2:1 orbital resonance.",
+      "image": {
+        "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-dione",
+      "parentId": "solar-system-saturn",
+      "name": "Dione",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/sub-earth"
+      ],
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 37931187000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.0025227364415956223,
+          "e": 0.0022,
+          "i_deg": 0.019,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 4.1
+        }
+      },
+      "massKg": 1.0955e+21,
+      "radiusKm": 561.4,
+      "tags": [],
+      "areas": [],
+      "orbital_period_days": 2.737,
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 65.69,
+      "description": "An ice moon streaked with bright wispy chasms over a possible deep internal ocean. Its 2:1 orbital resonance with Enceladus is the engine that keeps pumping that smaller moon's eccentricity — and so its famous geysers.",
+      "image": {
+        "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
+      },
+      "isNameUserDefined": true
     }
   ],
   "rulePackId": "starter-sf-pack",
