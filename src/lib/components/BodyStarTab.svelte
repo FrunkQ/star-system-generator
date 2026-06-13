@@ -169,7 +169,21 @@
       return `background-color: ${bg}; border: 2px solid ${border}; box-shadow: 0 0 10px ${shadow};`;
   });
 
+  // Bolometric luminosity from Stefan-Boltzmann: L/L☉ = (R/R☉)²·(T/T☉)⁴.
   let luminosity = $derived((radiusSuns ** 2) * ((tempK / 5778) ** 4));
+
+  // For a THERMAL emitter (any real star — incl. white dwarfs / red giants, but NOT accretion- or
+  // non-thermal remnants), the radiated output IS that bolometric luminosity. So when the user edits
+  // temperature or radius we recompute radiationOutput from Stefan-Boltzmann instead of leaving it
+  // locked — fixing the old "change T, luminosity barely moves" behaviour. BH/NS/magnetar keep their
+  // independent (accretion/magnetospheric) radiation slider.
+  function syncRadiationFromSB() {
+      if (['star/BH', 'star/BH_active', 'star/NS', 'star/magnetar'].includes(currentClass)) return;
+      const L = (radiusSuns ** 2) * ((tempK / 5778) ** 4);
+      radiation = parseFloat(L.toPrecision(3));
+      body.radiationOutput = radiation;
+      radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, L))) - radLogMin) / (radLogMax - radLogMin);
+  }
 
   // --- Initialization & Sync ---
   $effect(() => {
@@ -241,6 +255,14 @@
       const val = Math.exp(radiusLogMin + (radiusLogMax - radiusLogMin) * radiusSliderPos);
       radiusSuns = parseFloat(val.toPrecision(3));
       body.radiusKm = radiusSuns * SOLAR_RADIUS_KM;
+      syncRadiationFromSB();
+      dispatch('update');
+  }
+
+  function handleRadiusInput() {
+      body.radiusKm = radiusSuns * SOLAR_RADIUS_KM;
+      radiusSliderPos = (Math.log(Math.max(radiusMin, Math.min(radiusMax, radiusSuns))) - radiusLogMin) / (radiusLogMax - radiusLogMin);
+      syncRadiationFromSB();
       dispatch('update');
   }
 
@@ -249,6 +271,7 @@
       tempK = Math.round(val);
       body.temperatureK = tempK;
       updateClassFromTemp(tempK);
+      syncRadiationFromSB();
       dispatch('update');
   }
 
@@ -265,6 +288,7 @@
       body.temperatureK = tempK;
       tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, tempK))) - tempLogMin) / (tempLogMax - tempLogMin);
       updateClassFromTemp(tempK);
+      syncRadiationFromSB();
       dispatch('update');
   }
 
@@ -485,7 +509,7 @@
     <div class="form-group">
         <div class="label-row">
             <label>{isBH ? 'Event Horizon Radius (Solar Radii)' : 'Radius (Solar Radii)'}</label>
-            <input type="number" step="any" bind:value={radiusSuns} disabled={isBH} on:change={() => { body.radiusKm = radiusSuns * SOLAR_RADIUS_KM; dispatch('update'); }} />
+            <input type="number" step="any" bind:value={radiusSuns} disabled={isBH} on:change={handleRadiusInput} />
         </div>
         <div class="slider-container">
             <svg class="slider-svg" width="100%" height="30">
