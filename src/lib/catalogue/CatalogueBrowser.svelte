@@ -73,10 +73,39 @@
   // Bodies with no stellar host shown (rogue planets / unparented constructs).
   $: rogues = nodes.filter((n) => !isStar(n) && n.roleHint !== 'moon' && n.kind !== 'construct' && !n.parentId && !n.orbit?.hostId);
 
+  // A barycentre is shown AS its dominant member (Pluto), with the barycentre named in parens, so
+  // "Pluto-Charon Barycenter" reads as "Pluto (Pluto-Charon Barycenter)" — you can see it IS Pluto.
+  function isBary(n: any): boolean { return n?.kind === 'barycenter'; }
+  function membersOf(bary: any): CelestialBody[] {
+    const ids: string[] = bary?.memberIds || [];
+    const byId = nodes.filter((n) => ids.includes(n.id));
+    const byParent = nodes.filter((n) => n.parentId === bary.id);
+    const all = [...new Set([...byId, ...byParent])];
+    return all.sort((a, b) => (b.massKg || 0) - (a.massKg || 0));
+  }
+  function dominantOf(bary: any): CelestialBody | null { return membersOf(bary)[0] ?? null; }
+  // Friendly label for the diagram/list: a barycentre shows its dominant member's name.
+  function displayLabel(n: any): string {
+    if (isBary(n)) return dominantOf(n)?.name ?? n.name;
+    return n.name;
+  }
+
   $: selected = nodes.find((n) => n.id === selectedId) || null;
-  $: facts = selected ? bodyFacts(selected) : [];
-  $: selectedMoons = selected ? moonsOf(selected.id) : [];
-  $: selectedConstructs = selected ? constructsOf(selected.id) : { surface: [], orbiting: [] };
+  // What the panel draws facts/image FROM (the dominant member for a barycentre).
+  $: subject = selected && isBary(selected) ? (dominantOf(selected) ?? selected) : selected;
+  $: panelTitle = selected && isBary(selected)
+    ? `${dominantOf(selected)?.name ?? '?'} (${selected.name})`
+    : (selected?.name ?? '');
+  $: facts = subject ? bodyFacts(subject) : [];
+  // For a barycentre, the companion members (Charon) join the moons row.
+  $: selectedMoons = selected
+    ? (isBary(selected)
+        ? [...membersOf(selected).filter((m) => m.id !== subject?.id), ...(subject ? moonsOf(subject.id) : [])]
+        : moonsOf(selected.id))
+    : [];
+  $: selectedConstructs = subject ? constructsOf(subject.id) : { surface: [], orbiting: [] };
+  // Photo crop: show the central fraction of the artist's-impression photo, zoomed (Survey Datapad).
+  const PHOTO_CROP_FRAC = 0.4; // central 40% — tunable
 
   // Auto-select the first interesting body once data arrives.
   $: if ((!selectedId || !nodes.some((n) => n.id === selectedId)) && stars.length) {
@@ -167,7 +196,7 @@
              on:click={() => (selectedId = e.b.id)} on:keydown={(ev) => { if (ev.key === 'Enter') selectedId = e.b.id; }}>
             <circle class="d-body" cx={e.x} cy={cy} r="6.5" style={colorful ? `fill:${colorOf(e.b.id, hueIndex)};stroke:${colorOf(e.b.id, hueIndex)}` : ''} />
             {#if moonsOf(e.b.id).length}<circle class="d-moon" cx={e.x + 10} cy={cy - 9} r="2.4" />{/if}
-            <text class="d-label" x={e.x} y={cy - 13} text-anchor="middle" style={colorful ? `fill:${colorOf(e.b.id, hueIndex)}` : ''}>{e.b.name}</text>
+            <text class="d-label" x={e.x} y={cy - 13} text-anchor="middle" style={colorful ? `fill:${colorOf(e.b.id, hueIndex)}` : ''}>{displayLabel(e.b)}</text>
           </g>
         {/each}
       {/each}
@@ -182,7 +211,7 @@
           {#each listBodiesOf(star.id) as b (b.id)}
             <button class="chip" class:sel={selectedId === b.id} on:click={() => (selectedId = b.id)}
               style={colorful ? `color:${colorOf(b.id, hueIndex)};border-color:${colorOf(b.id, hueIndex)}` : ''}>
-              <span class="g">{bodyGlyph(b)}</span>{b.name}
+              <span class="g">{bodyGlyph(b)}</span>{displayLabel(b)}
             </button>
           {/each}
         </div>
@@ -202,16 +231,19 @@
   {#if selected}
     <section class="panel">
       <div class="panel-head">
-        <h2><span class="g">{bodyGlyph(selected)}</span> {selected.name}</h2>
+        <h2><span class="g">{bodyGlyph(subject ?? selected)}</span> {panelTitle}</h2>
       </div>
 
       {#if imagery === 'disc'}
         <div class="body-art">
-          <PlanetDisc body={selected} ringed={isRinged(selected)} />
+          <PlanetDisc body={subject ?? selected} ringed={isRinged(subject ?? selected)} />
         </div>
-      {:else if imagery === 'photo' && selected.image?.url}
-        <div class="body-art">
-          <img class="body-photo" src={selected.image.url} alt="Artist's impression of {selected.name}" />
+      {:else if imagery === 'photo' && (subject ?? selected).image?.url}
+        <!-- Survey Datapad: full-width, letterboxed, zoomed to the central fraction of the photo. -->
+        <div class="body-photo-crop">
+          <img class="body-photo" src={(subject ?? selected).image.url}
+               alt="Artist's impression of {(subject ?? selected).name}"
+               style="transform: scale({1 / PHOTO_CROP_FRAC});" />
         </div>
       {/if}
 
@@ -263,7 +295,22 @@
   }
   .cat-head h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.02em; }
   .body-art { display: flex; justify-content: center; margin: 6px 0 12px; }
-  .body-photo { max-width: 180px; width: 100%; height: auto; border-radius: 6px; display: block; }
+  /* Survey Datapad photo: full-width letterbox, image zoomed to its central region. */
+  .body-photo-crop {
+    width: 100%;
+    aspect-ratio: 5 / 2;
+    overflow: hidden;
+    border-radius: 6px;
+    margin: 6px 0 12px;
+    background: #000;
+  }
+  .body-photo-crop .body-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transform-origin: center center;
+  }
   .cat-head .sub { margin: 2px 0 14px; opacity: 0.6; font-size: 0.8rem; }
 
   /* Clickable orbital diagram (skin-tinted via currentColor). */

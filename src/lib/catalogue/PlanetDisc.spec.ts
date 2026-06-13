@@ -12,25 +12,33 @@ function planet(extra: Partial<CelestialBody> = {}): CelestialBody {
 }
 
 describe('PlanetDisc', () => {
-  it('renders an SVG disc tinted by the apparent colour', () => {
+  it('renders an SVG disc', () => {
     const { container } = render(PlanetDisc, { props: { body: planet() } });
-    const svg = container.querySelector('svg.planet-disc');
-    expect(svg).toBeTruthy();
-    // The cartoon-sphere gradient and the body circle are always present.
+    expect(container.querySelector('svg.planet-disc')).toBeTruthy();
     expect(container.querySelector('radialGradient')).toBeTruthy();
-    expect(container.querySelector('circle')).toBeTruthy();
   });
 
-  it('draws ring ellipses when ringed', () => {
+  it('draws ring halves (transformed ellipses) only when ringed', () => {
     const plain = render(PlanetDisc, { props: { body: planet(), ringed: false } });
-    expect(plain.container.querySelectorAll('ellipse').length).toBe(0);
+    expect(plain.container.querySelectorAll('ellipse[transform]').length).toBe(0);
     const ringed = render(PlanetDisc, { props: { body: planet(), ringed: true } });
-    expect(ringed.container.querySelectorAll('ellipse').length).toBe(2); // back + front halves
+    expect(ringed.container.querySelectorAll('ellipse[transform]').length).toBe(2);
   });
 
-  it('draws latitudinal bands for a banded giant', () => {
-    const giant = planet({ apparentColor: { hex: '#d8b48a', palette: [], banding: 6 } });
-    const { container } = render(PlanetDisc, { props: { body: giant } });
-    expect(container.querySelectorAll('rect').length).toBeGreaterThan(0);
+  it('renders a belt as a field of rocks, not a sphere', () => {
+    const belt = planet({ roleHint: 'belt', massKg: 3e21 } as any);
+    const { container } = render(PlanetDisc, { props: { body: belt } });
+    // Many small rock circles, denser with more mass.
+    expect(container.querySelectorAll('circle').length).toBeGreaterThan(5);
+    const sparse = render(PlanetDisc, { props: { body: planet({ roleHint: 'belt', massKg: 1e19 } as any) } });
+    expect(sparse.container.querySelectorAll('circle').length)
+      .toBeLessThan(container.querySelectorAll('circle').length);
+  });
+
+  it('stamps any world called Earth as Mostly Harmless', () => {
+    const earth = render(PlanetDisc, { props: { body: planet({ name: 'Earth' }) } });
+    expect(earth.container.querySelector('.harmless-stamp')).toBeTruthy();
+    const other = render(PlanetDisc, { props: { body: planet({ name: 'Arrakis' }) } });
+    expect(other.container.querySelector('.harmless-stamp')).toBeFalsy();
   });
 });

@@ -730,7 +730,7 @@
   .insp-head h2 { margin: 0; font-size: 20px; }
   .insp-close { margin-left: auto; background: none; border: none; color: #9fb0c8; font-size: 22px; line-height: 1; cursor: pointer; }
   .insp-sub { font-size: 11px; letter-spacing: 0.08em; opacity: 0.6; margin: 2px 0 12px; }
-  .insp-photo { width: 100%; max-width: 220px; height: auto; border-radius: 6px; display: block; margin: 0 0 12px; }
+  .insp-photo { width: 100%; height: auto; border-radius: 6px; display: block; margin: 0 0 12px; }
   .insp-grid { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; margin: 0; font-size: 13px; }
   .insp-grid dt { opacity: 0.55; }
   .insp-grid dd { margin: 0; text-align: right; }
