@@ -23,6 +23,7 @@ const FORMATION_DELAY_GYR = 0.005;
 import { SeededRNG } from '../rng';
 import { annotateGravitationalStability } from '../physics/stability';
 import { annotateResonances } from '../physics/resonance';
+import { annotateReasonsToVisit } from '../physics/reasonsToVisit';
 import { reconcileBarycenters } from '../physics/barycenterReconcile';
 
 export class SystemProcessor implements ISystemProcessor {
@@ -104,6 +105,10 @@ export class SystemProcessor implements ISystemProcessor {
 
         // 5. Stability pass (consults the resonance annotations from 1b).
         annotateGravitationalStability(processedSystem);
+
+        // 6. RPG "reasons to visit" pass — reads the now-complete physics/tags and adds resource/
+        //    science/frontier/intrigue hooks (config-gated; reads the reasonsConfig store).
+        annotateReasonsToVisit(processedSystem);
 
         return processedSystem;
     }

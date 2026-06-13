@@ -26,7 +26,12 @@ const NAMESPACE_META: Record<string, { group: string; color: string }> = {
   climate:      { group: 'Climate',      color: '#6fae8f' },
   hazard:       { group: 'Hazard',       color: '#cc5555' },
   habitability: { group: 'Habitability', color: '#5bbf6a' },
-  biodiversity: { group: 'Biosphere',    color: '#4fa86a' }
+  biodiversity: { group: 'Biosphere',    color: '#4fa86a' },
+  // RPG "reasons to visit" categories.
+  resource:     { group: 'Resources',    color: '#d4a843' },
+  science:      { group: 'Science',       color: '#5a9fd0' },
+  frontier:     { group: 'Frontier',      color: '#6fae8f' },
+  intrigue:     { group: 'Intrigue',      color: '#b07ad0' }
 };
 
 // Friendly label + physics description, keyed by exact tag.
@@ -65,6 +70,43 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
     label: 'Very unstable',
     description: 'Likely <1 kyr before major orbital disruption (collision, ejection or infall).'
   },
+  // --- RPG "reasons to visit": resource / science / frontier / intrigue ---
+  'resource/heavy-metals':    { label: 'Heavy metals',      description: 'A metal-rich interior/crust — iron, nickel and friends in extractable concentrations.' },
+  'resource/platinum-group':  { label: 'Platinum-group',    description: 'Unusually metal-dense — platinum, iridium, osmium: high-value, low-bulk cargo.' },
+  'resource/rare-earths':     { label: 'Rare earths',       description: 'Lanthanides and friends in workable ore — the stuff of electronics and exotic alloys.' },
+  'resource/fissiles':        { label: 'Fissiles',          description: 'A radiogenic-rich crust: uranium/thorium for reactors and weapons-grade refining.' },
+  'resource/helium-3':        { label: 'Helium-3',          description: 'He-3 for clean fusion — abundant in giant atmospheres and solar-wind-soaked airless regolith.' },
+  'resource/deuterium':       { label: 'Deuterium',         description: 'Heavy hydrogen for fusion fuel — skimmed from giant atmospheres or extracted from water.' },
+  'resource/water-ice':       { label: 'Water ice',         description: 'Accessible water ice — reaction mass, life support and split-for-fuel.' },
+  'resource/volatiles':       { label: 'Volatiles',         description: 'Frozen gases (CO₂, ammonia, methane) — cheap propellant and industrial feedstock.' },
+  'resource/hydrocarbons':    { label: 'Hydrocarbons',      description: 'Liquid/solid hydrocarbons — a petrochemical bonanza (Titan-style methane seas).' },
+  'resource/exotic-crystals': { label: 'Exotic crystals',   description: 'High-pressure mineral phases from a deep interior — prized for tech and curiosity alike.' },
+  'resource/diamonds':        { label: 'Diamonds',          description: 'A carbon-rich, high-pressure world — diamond as bedrock, and as industrial abrasive.' },
+  'resource/organics':        { label: 'Organics',          description: 'Pre-biotic or biotic organic chemistry — feedstock, samples, or food supplies.' },
+  'resource/ore-belt':        { label: 'Asteroid ore',      description: 'A debris belt: undifferentiated metals, rock and ice ready for in-situ mining.' },
+
+  'science/pristine-protoplanetary': { label: 'Pristine protoplanetary', description: 'A very young world — a snapshot of planet formation before it weathers away.' },
+  'science/biosignature':            { label: 'Biosignature',            description: 'Signs of life — the find of a career, and a quarantine headache.' },
+  'science/extremophile-niche':      { label: 'Extremophile niche',      description: 'A sub-ice ocean or cryo-vent: a candidate for alien biochemistry.' },
+  'science/tidal-laboratory':        { label: 'Tidal laboratory',        description: 'Extreme tidal heating — a natural lab for interior physics (and a spectacular sight).' },
+  'science/impact-record':           { label: 'Impact record',           description: 'A battered or eccentric body preserving the system\'s collisional history.' },
+  'science/remnant-proximity':       { label: 'Remnant proximity',       description: 'Orbits near a stellar remnant — relativistic physics on the doorstep.' },
+  'science/resonance-showcase':      { label: 'Resonance showcase',      description: 'A clean orbital resonance — a textbook celestial-mechanics demonstration.' },
+  'science/rare-world-type':         { label: 'Rare world type',         description: 'An uncommon planet class — worth charting for its rarity alone.' },
+  'science/exotic-chemistry':        { label: 'Exotic chemistry',        description: 'Aggressive or artificial atmospheric chemistry — hazardous and fascinating.' },
+  'science/runaway-greenhouse':      { label: 'Runaway greenhouse',      description: 'A Venus-like hothouse — a cautionary tale and a climate-science prize.' },
+
+  'frontier/fuel-depot':     { label: 'Fuel depot',       description: 'Water/ice on hand to crack into propellant — a natural refuelling stop.' },
+  'frontier/gas-skimming':   { label: 'Gas skimming',     description: 'A giant whose upper atmosphere can be skimmed for hydrogen/helium fuel.' },
+  'frontier/aerobraking':    { label: 'Aerobraking',      description: 'Enough atmosphere to brake against — saves fuel on arrival.' },
+  'frontier/gravity-assist': { label: 'Gravity assist',   description: 'A massive body well placed for slingshot manoeuvres.' },
+  'frontier/waystation':     { label: 'Waystation site',  description: 'A solid, resource-bearing moon — a plausible spot for a forward base.' },
+
+  'intrigue/anomalous-signal':  { label: 'Anomalous signal',  description: 'Something here is broadcasting — or reflecting — that shouldn\'t be. (GM hook.)' },
+  'intrigue/derelict-rumour':   { label: 'Derelict rumour',   description: 'Spacers\' tales of a wreck or abandoned station in this neighbourhood. (GM hook.)' },
+  'intrigue/uncharted-feature': { label: 'Uncharted feature', description: 'A surface/orbital feature the surveys can\'t quite explain. (GM hook.)' },
+  'intrigue/legend':            { label: 'Legend',            description: 'A world that has entered legend — paradise, curse, or both. (GM hook.)' },
+
   // --- Orbit ---
   'orbit/tidally-locked': {
     label: 'Tidally locked',

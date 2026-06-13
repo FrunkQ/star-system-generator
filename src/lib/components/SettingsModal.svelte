@@ -4,6 +4,7 @@
   import { ensureTemporalState } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar } from '$lib/temporal/utre';
   import { starmapUiStore } from '$lib/starmapUiStore';
+  import { reasonsConfig, REASON_CATEGORIES } from '$lib/physics/reasonsToVisit';
 
   export let showModal: boolean;
   export let starmap: Starmap;
@@ -11,7 +12,7 @@
   const dispatch = createEventDispatcher();
 
   // Sectioned settings (Starmap / Time / Tech / Planets / System). Orrery View was dropped (Q2).
-  type Section = 'starmap' | 'time' | 'technology' | 'planets' | 'system';
+  type Section = 'starmap' | 'generation' | 'time' | 'technology' | 'planets' | 'system';
   // Sub-editors (Time & Calendars, Fuel & Drives…) reopen Settings at their section on close.
   export let initialSection: Section | null = null;
   let activeSection: Section = initialSection ?? 'starmap';
@@ -19,7 +20,7 @@
   // On narrow / touch the modal is a drill-in: a list of sections (drilled=false) →
   // a section's content (drilled=true). "Back" goes UP a level rather than closing.
   const SECTION_LABELS: Record<Section, string> = {
-    starmap: 'Starmap', time: 'Time', technology: 'Tech', planets: 'Planets', system: 'System'
+    starmap: 'Starmap', generation: 'Generation', time: 'Time', technology: 'Tech', planets: 'Planets', system: 'System'
   };
   let isNarrow = false;
   let drilled = !!initialSection;
@@ -194,6 +195,7 @@
     <div class="settings-layout">
       <nav class="settings-nav">
         <button class:active={activeSection === 'starmap'} on:click={() => pickSection('starmap')}>Starmap</button>
+        <button class:active={activeSection === 'generation'} on:click={() => pickSection('generation')}>Generation</button>
         <button class:active={activeSection === 'time'} on:click={() => pickSection('time')}>Time</button>
         <button class:active={activeSection === 'technology'} on:click={() => pickSection('technology')}>Tech</button>
         <button class:active={activeSection === 'planets'} on:click={() => pickSection('planets')}>Planets</button>
@@ -227,13 +229,6 @@
               </select>
             </div>
           {/if}
-          <div class="form-group highlight-row">
-            <label for="generationEngine">Generation Engine</label>
-            <select id="generationEngine" bind:value={generationEngine}>
-              <option value="standard">Standard (Stable)</option>
-              <option value="evolutionary">Evolutionary (Alpha Physics)</option>
-            </select>
-          </div>
           <div class="form-group">
             <label><input type="checkbox" bind:checked={showScaleBar} /> Show scale bar (scaled mode)</label>
           </div>
@@ -258,6 +253,32 @@
               <input type="checkbox" bind:checked={$starmapUiStore.travellerMode} /> Traveller mode
             </label>
           </div>
+
+        {:else if activeSection === 'generation'}
+          <div class="form-group highlight-row">
+            <label for="generationEngine">Generation Engine</label>
+            <select id="generationEngine" bind:value={generationEngine}>
+              <option value="standard">Standard (Stable)</option>
+              <option value="evolutionary">Evolutionary (Alpha Physics)</option>
+            </select>
+          </div>
+
+          <h3>Reasons to visit</h3>
+          <p class="section-hint">RPG hooks tagged onto worlds — mineable resources, scientific draws, frontier logistics and mysteries — inferred from the physics plus a seeded roll.</p>
+          <div class="form-group">
+            <label><input type="checkbox" bind:checked={$reasonsConfig.enabled} /> Add "reasons to visit" tags</label>
+          </div>
+          {#if $reasonsConfig.enabled}
+            <div class="form-group reason-cats">
+              {#each REASON_CATEGORIES as cat}
+                <label title={cat.desc}>
+                  <input type="checkbox" checked={$reasonsConfig.categories[cat.id]}
+                    on:change={(e) => reasonsConfig.update((c) => ({ ...c, categories: { ...c.categories, [cat.id]: e.currentTarget.checked } }))} />
+                  {cat.label}
+                </label>
+              {/each}
+            </div>
+          {/if}
 
         {:else if activeSection === 'time'}
           <h3>Date &amp; time</h3>
@@ -398,6 +419,8 @@
   }
   .settings-content h3:first-child { margin-top: 0; }
   .section-hint { color: var(--text-faint, #8a8f9a); margin: 0 0 12px; }
+  .reason-cats { display: flex; flex-direction: column; gap: 6px; padding-left: 18px; }
+  .reason-cats label { display: flex; align-items: center; gap: 7px; font-size: 0.92em; }
   .section-btn {
     display: block;
     width: 100%;
