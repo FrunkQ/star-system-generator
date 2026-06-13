@@ -202,6 +202,16 @@ describe('Solar System Physics Baseline', () => {
         expect(io.geoActivity?.regime).toBe('tidal-volcanic');
         expect(europa.geoActivity?.regime).toBe('cryovolcanic');
 
+        // Resonance now FEEDS the numeric tidal-heat model: a resonance-maintained eccentricity
+        // dissipates real heat (Enceladus via Dione 2:1, the Galilean Laplace chain), monotonic
+        // Io > Europa > Enceladus; a coincidentally-eccentric moon (Ganymede, Dione, Luna) that
+        // would circularise stays at zero.
+        expect(enceladus.tidalHeatK).toBeGreaterThan(0);   // was 0 before resonance-fed heating
+        expect(io.tidalHeatK!).toBeGreaterThan(europa.tidalHeatK!);
+        expect(europa.tidalHeatK!).toBeGreaterThan(enceladus.tidalHeatK!);
+        expect(dione.tidalHeatK ?? 0).toBe(0);
+        expect(moon.tidalHeatK ?? 0).toBe(0);              // Luna's e is transient, not pumped
+
         // --- Authored end-state preservation (the "double-aging" fix) ---
         // Hand-authored bodies carry no evolveAtmosphere/autoClassify flags, so processing must
         // NOT erode their deliberate trace exospheres nor overwrite their authored classes.

@@ -635,13 +635,23 @@ export class SystemProcessor implements ISystemProcessor {
         const rawTidalIndex = this.calculateRawTidalIndex(planet, host);
         if (rawTidalIndex <= 0) return 0;
 
-        // Tidal dissipation produces localized hotspots more than uniform global warming.
-        // Apply an activity onset so moderate forcing does not overheat global means.
+        // Tidal dissipation produces localized hotspots more than uniform global warming, so the
+        // global-mean contribution is small and capped.
         const meanCapK = 5.0;
-        const globalMeanOnset = 80.0;
-        if (rawTidalIndex <= globalMeanOnset) return 0;
-        const responseScale = 35.0;
-        return meanCapK * (1 - Math.exp(-(rawTidalIndex - globalMeanOnset) / responseScale));
+
+        // RESONANCE feeds the numeric heat. A mean-motion resonance MAINTAINS the eccentricity
+        // against tidal damping, so the dissipation is sustained — the moon heats from zero forcing
+        // up. A non-resonant eccentricity would circularise, so its transient heat must clear a high
+        // onset before it counts toward the mean. This is why Enceladus (pumped by the Dione 2:1)
+        // and the Galilean Laplace chain get real tidal heat, while a coincidentally-eccentric moon
+        // (Ganymede, Luna) stays cold. resonanceTidal is set in annotateResonances (pass 1b).
+        const onset = (planet as any).resonanceTidal ? 0 : 80.0;
+        const drive = rawTidalIndex - onset;
+        if (drive <= 0) return 0;
+
+        // Saturating response (→ meanCapK), monotonic in the drive so Io > Europa > Enceladus.
+        const halfSatK = 50.0; // drive at which the mean reaches half the cap
+        return meanCapK * (drive / (drive + halfSatK));
     }
 
     private calculateRawTidalIndex(planet: CelestialBody, host: CelestialBody): number {
