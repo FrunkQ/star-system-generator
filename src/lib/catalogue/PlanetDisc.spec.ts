@@ -35,6 +35,15 @@ describe('PlanetDisc', () => {
       .toBeLessThan(container.querySelectorAll('circle').length);
   });
 
+  it('draws magma patches for a tidally volcanic world (and not otherwise)', () => {
+    const quiet = render(PlanetDisc, { props: { body: planet() } });
+    expect(quiet.container.querySelector('radialGradient[id^="magma-"]')).toBeFalsy();
+    const io = planet({ tags: [{ key: 'tidal/volcanism' }] as any });
+    const { container } = render(PlanetDisc, { props: { body: io } });
+    expect(container.querySelector('radialGradient[id^="magma-"]')).toBeTruthy();
+    expect(container.querySelectorAll('g[clip-path] circle[fill^="url(#magma"]').length).toBeGreaterThan(0);
+  });
+
   it('stamps any world called Earth as Mostly Harmless', () => {
     const earth = render(PlanetDisc, { props: { body: planet({ name: 'Earth' }) } });
     expect(earth.container.querySelector('.harmless-stamp')).toBeTruthy();

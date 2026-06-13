@@ -70,6 +70,27 @@
   })();
 
   $: isEarth = (body.name || '').trim().toLowerCase() === 'earth' && body.roleHint !== 'star';
+
+  // Match the orrery: a day/night terminator (sharper for tidally locked worlds) and equatorial
+  // magma patches on tidally volcanic worlds. Lit from the upper-left (same as the vignette).
+  $: locked = !!(body as any).tidallyLocked;
+  $: tagKeys = (body.tags ?? []).map((t) => t.key);
+  $: isLava = tagKeys.includes('tidal/lava-flows');
+  $: magma = (() => {
+    if (isStar(body) || isBelt(body)) return [] as { cx: number; cy: number; r: number }[];
+    const volc = isLava || tagKeys.includes('tidal/volcanism') || tagKeys.includes('tidal/hotspots');
+    if (!volc) return [];
+    const n = isLava ? 7 : tagKeys.includes('tidal/volcanism') ? 5 : 3;
+    let s = 11; for (let k = 0; k < body.id.length; k++) s = (s * 31 + body.id.charCodeAt(k)) & 0xffffff;
+    const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+    return Array.from({ length: n }, () => {
+      const lat = rnd() * 2 - 1; const latEq = lat * lat * lat * 0.6;      // dense near the equator
+      const lon = rnd() * 2 - 1;
+      return { cx: 50 + lon * 26 * Math.sqrt(Math.max(0, 1 - latEq * latEq)), cy: 50 + latEq * 28, r: 1.8 + rnd() * 3 };
+    });
+  })();
+  $: showShade = !isStar(body) && !isBelt(body);
+
   const uid = Math.random().toString(36).slice(2, 8);
 </script>
 
@@ -97,6 +118,26 @@
       <clipPath id="clip-{uid}"><circle cx="50" cy="50" r="30" /></clipPath>
       <clipPath id="front-{uid}"><rect x="0" y="50" width="100" height="50" /></clipPath>
       <clipPath id="belt-{uid}"><ellipse cx="50" cy="50" rx="46" ry="15" /></clipPath>
+      <!-- Day/night terminator, lit from the upper-left → dark lower-right. Locked = sharp. -->
+      <linearGradient id="term-{uid}" x1="0%" y1="0%" x2="100%" y2="55%">
+        {#if locked}
+          <stop offset="0%" stop-color="rgba(0,0,0,0)" />
+          <stop offset="50%" stop-color="rgba(0,0,0,0)" />
+          <stop offset="62%" stop-color="rgba(0,0,0,0.45)" />
+          <stop offset="100%" stop-color="rgba(0,0,0,0.62)" />
+        {:else}
+          <stop offset="0%" stop-color="rgba(0,0,0,0)" />
+          <stop offset="55%" stop-color="rgba(0,0,0,0.05)" />
+          <stop offset="100%" stop-color="rgba(0,0,0,0.6)" />
+        {/if}
+      </linearGradient>
+      {#if magma.length}
+        <radialGradient id="magma-{uid}" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color={isLava ? 'rgba(255,244,200,0.98)' : 'rgba(255,210,120,0.98)'} />
+          <stop offset="45%" stop-color={isLava ? 'rgba(255,120,20,0.9)' : 'rgba(220,70,18,0.9)'} />
+          <stop offset="100%" stop-color={isLava ? 'rgba(255,120,20,0)' : 'rgba(220,70,18,0)'} />
+        </radialGradient>
+      {/if}
     </defs>
 
     {#if isBelt(body)}
@@ -129,6 +170,16 @@
           </g>
           <circle cx="50" cy="50" r="30" fill="url(#sph-{uid})" opacity="0.35" />
         {/if}
+      {/if}
+
+      <!-- Terminator first, then self-luminous magma on top so vents glow on the night side. -->
+      {#if showShade}
+        <circle cx="50" cy="50" r="30" fill="url(#term-{uid})" />
+      {/if}
+      {#if magma.length}
+        <g clip-path="url(#clip-{uid})">
+          {#each magma as m}<circle cx={m.cx} cy={m.cy} r={m.r} fill="url(#magma-{uid})" />{/each}
+        </g>
       {/if}
 
       {#if ringed}
