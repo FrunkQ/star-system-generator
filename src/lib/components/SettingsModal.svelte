@@ -255,14 +255,6 @@
           </div>
 
         {:else if activeSection === 'generation'}
-          <div class="form-group highlight-row">
-            <label for="generationEngine">Generation Engine</label>
-            <select id="generationEngine" bind:value={generationEngine}>
-              <option value="standard">Standard (Stable)</option>
-              <option value="evolutionary">Evolutionary (Alpha Physics)</option>
-            </select>
-          </div>
-
           <h3>Reasons to visit</h3>
           <p class="section-hint">RPG hooks tagged onto worlds — mineable resources, scientific draws, frontier logistics and mysteries — inferred from the physics plus a seeded roll.</p>
           <div class="form-group">
@@ -279,6 +271,15 @@
               {/each}
             </div>
           {/if}
+
+          <!-- De-emphasised: the experimental generation engine isn't important right now. -->
+          <div class="form-group engine-row">
+            <label for="generationEngine">Generation engine</label>
+            <select id="generationEngine" bind:value={generationEngine}>
+              <option value="standard">Standard (Stable)</option>
+              <option value="evolutionary">Evolutionary (Alpha Physics)</option>
+            </select>
+          </div>
 
         {:else if activeSection === 'time'}
           <h3>Date &amp; time</h3>
@@ -421,6 +422,9 @@
   .section-hint { color: var(--text-faint, #8a8f9a); margin: 0 0 12px; }
   .reason-cats { display: flex; flex-direction: column; gap: 6px; padding-left: 18px; }
   .reason-cats label { display: flex; align-items: center; gap: 7px; font-size: 0.92em; }
+  /* Generation engine is experimental and low-priority — pushed to the bottom and faded. */
+  .engine-row { margin-top: 28px; opacity: 0.4; font-size: 0.85em; }
+  .engine-row:hover, .engine-row:focus-within { opacity: 0.85; }
   .section-btn {
     display: block;
     width: 100%;

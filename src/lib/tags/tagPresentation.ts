@@ -84,6 +84,7 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'resource/diamonds':        { label: 'Diamonds',          description: 'A carbon-rich, high-pressure world — diamond as bedrock, and as industrial abrasive.' },
   'resource/organics':        { label: 'Organics',          description: 'Pre-biotic or biotic organic chemistry — feedstock, samples, or food supplies.' },
   'resource/ore-belt':        { label: 'Asteroid ore',      description: 'A debris belt: undifferentiated metals, rock and ice ready for in-situ mining.' },
+  'resource/oxidizer':        { label: 'Oxidizer',          description: 'A free-oxygen atmosphere — bankable oxidizer for chemical propellant and industry.' },
 
   'science/pristine-protoplanetary': { label: 'Pristine protoplanetary', description: 'A very young world — a snapshot of planet formation before it weathers away.' },
   'science/biosignature':            { label: 'Biosignature',            description: 'Signs of life — the find of a career, and a quarantine headache.' },
@@ -96,8 +97,9 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'science/exotic-chemistry':        { label: 'Exotic chemistry',        description: 'Aggressive or artificial atmospheric chemistry — hazardous and fascinating.' },
   'science/runaway-greenhouse':      { label: 'Runaway greenhouse',      description: 'A Venus-like hothouse — a cautionary tale and a climate-science prize.' },
 
-  'frontier/fuel-depot':     { label: 'Fuel depot',       description: 'Water/ice on hand to crack into propellant — a natural refuelling stop.' },
-  'frontier/gas-skimming':   { label: 'Gas skimming',     description: 'A giant whose upper atmosphere can be skimmed for hydrogen/helium fuel.' },
+  'frontier/fuel-depot':     { label: 'Water/ice refuelling', description: 'Accessible water/ice to crack into hydrogen/oxygen propellant — a wilderness refuelling stop.' },
+  'frontier/gas-skimming':   { label: 'Gas-giant refuelling', description: 'Skim the giant\'s hydrogen atmosphere for jump/reaction fuel — the classic Traveller wilderness top-up.' },
+  'frontier/life-support':   { label: 'Life-support resupply', description: 'Breathable oxygen and/or water on hand — replenish air and life-support consumables.' },
   'frontier/aerobraking':    { label: 'Aerobraking',      description: 'Enough atmosphere to brake against — saves fuel on arrival.' },
   'frontier/gravity-assist': { label: 'Gravity assist',   description: 'A massive body well placed for slingshot manoeuvres.' },
   'frontier/waystation':     { label: 'Waystation site',  description: 'A solid, resource-bearing moon — a plausible spot for a forward base.' },

@@ -59,6 +59,7 @@ interface BodyView {
   hydro: string | undefined;
   hydroCover: number;
   hasBio: boolean;
+  hasO2: boolean;
   ecc: number;
 }
 interface Ctx { ageGyr: number; hasRemnant: boolean; hasConstructs: boolean; }
@@ -83,6 +84,7 @@ const RULES: Rule[] = [
   { tag: 'resource/diamonds',       cat: 'resource', chance: 0.4,  when: (v) => v.mk.carbon >= 0.3 && v.massMe >= 0.8 },
   { tag: 'resource/organics',       cat: 'resource', chance: 0.5,  when: (v) => v.hasBio || v.tags.has('prebiotic-precursor') || (v.hydro === 'water' && v.teqK >= 250 && v.teqK <= 330) },
   { tag: 'resource/ore-belt',       cat: 'resource', chance: 0.8,  when: (v) => v.b.roleHint === 'belt' },
+  { tag: 'resource/oxidizer',       cat: 'resource', chance: 0.5,  when: (v) => v.hasO2 },
 
   // --- science ---
   { tag: 'science/pristine-protoplanetary', cat: 'science', chance: 0.85, when: (_, c) => c.ageGyr < 0.5 },
@@ -97,8 +99,10 @@ const RULES: Rule[] = [
   { tag: 'science/runaway-greenhouse',      cat: 'science', chance: 0.5,  when: (v) => v.regime === 'stagnant-lid' || v.tags.has('climate/runaway-greenhouse') },
 
   // --- frontier ---
-  { tag: 'frontier/fuel-depot',       cat: 'frontier', chance: 0.5,  when: (v) => v.mk.ice >= 0.2 || v.hydro === 'water' },
-  { tag: 'frontier/gas-skimming',     cat: 'frontier', chance: 0.6,  when: (v) => v.isGiant },
+  { tag: 'frontier/fuel-depot',       cat: 'frontier', chance: 0.6,  when: (v) => v.mk.ice >= 0.2 || v.hydro === 'water' || (v.teqK > 0 && v.teqK < 250 && v.tags.has('structure/icy-shell')) },
+  // Traveller-style wilderness refuelling: a gas giant's hydrogen is jump fuel — almost any one will do.
+  { tag: 'frontier/gas-skimming',     cat: 'frontier', chance: 0.92, when: (v) => v.isGiant },
+  { tag: 'frontier/life-support',     cat: 'frontier', chance: 0.6,  when: (v) => v.hasO2 || (v.hydro === 'water' && v.hasAtmo) },
   { tag: 'frontier/aerobraking',      cat: 'frontier', chance: 0.3,  when: (v) => v.hasAtmo && v.pressure >= 0.1 },
   { tag: 'frontier/gravity-assist',   cat: 'frontier', chance: 0.3,  when: (v) => v.massMe >= 50 },
   { tag: 'frontier/waystation',       cat: 'frontier', chance: 0.2,  when: (v) => v.b.roleHint === 'moon' && (v.mk.rock + v.mk.metal) > 0.4 },
@@ -128,6 +132,7 @@ function buildView(b: CelestialBody): BodyView {
     hydro: b.hydrosphere?.composition,
     hydroCover: b.hydrosphere?.coverage || 0,
     hasBio: !!b.biosphere || (b.tags || []).some((t) => t.key.startsWith('habitability/') && t.key !== 'habitability/none'),
+    hasO2: (b.tags || []).some((t) => t.key === 'oxidizer' || t.key.startsWith('breathable-human')) || (b.atmosphere?.composition?.['O2'] ?? 0) > 0.05,
     ecc: b.orbit?.elements.e || 0
   };
 }
