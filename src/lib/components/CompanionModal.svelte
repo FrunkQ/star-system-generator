@@ -9,6 +9,7 @@
   import { broadcastService } from '$lib/broadcast';
   import { brandingStore } from '$lib/catalogue/branding';
   import { guideConfigStore, MONO_COLORS } from '$lib/catalogue/guideConfig';
+  import CrtControlsPanel from '$lib/catalogue/CrtControlsPanel.svelte';
   import type { MonoColor } from '$lib/catalogue/guideConfig';
 
   export let sessionId: string;
@@ -117,6 +118,11 @@
             </button>
           {/each}
         </div>
+        <!-- GM-controlled CRT effect, broadcast to every player's terminal. -->
+        <div class="crt-section" style="--mono:{MONO_COLORS[$guideConfigStore.monoColor].hex}">
+          <span class="crt-hint">CRT effect (applied to every player's terminal — crank it to make them squint):</span>
+          <CrtControlsPanel embedded />
+        </div>
       {/if}
     </div>
 
@@ -178,6 +184,8 @@
   .skin-label { font-weight: 700; font-size: 0.9rem; }
   .skin-blurb { font-size: 0.72rem; color: var(--text-muted); }
   .mono-colors { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; margin-top: 0.55rem; }
+  .crt-section { margin-top: 0.7rem; border-top: 1px solid var(--border, #2a2f3a); padding-top: 0.5rem; }
+  .crt-hint { display: block; font-size: 0.78rem; opacity: 0.7; margin-bottom: 0.3rem; }
   .mono-label { font-size: 0.75rem; color: var(--text-muted); }
   .mono-swatch {
     display: inline-flex; align-items: center; gap: 6px;

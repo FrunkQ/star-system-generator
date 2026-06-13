@@ -4,12 +4,13 @@
   // catalogue page; this overlay supplies the additive layers: scanlines, vignette, white noise,
   // a rolling noise bar and brightness flicker. Inline CSS vars carry the live slider values.
   import { crtControls } from '$lib/catalogue/crtControls';
+  export let color = '#74f7b0';   // the terminal's --mono colour (noise/bar are tinted with it)
   $: c = $crtControls;
   $: barDur = c.noiseBarSpeed !== 0 ? Math.max(0.4, 6 / (Math.abs(c.noiseBarSpeed) * 14)) : 0;
 </script>
 
 <div class="crt-overlay"
-     style="--scan:{c.scanlineIntensity}; --scanw:{c.scanlineWidth}px; --vig:{c.vignette}; --noise:{c.interference}; --flick:{c.flicker};
+     style="--mono:{color}; --scan:{c.scanlineIntensity}; --scanw:{c.scanlineWidth}px; --vig:{c.vignette}; --noise:{c.interference}; --flick:{c.flicker};
             --barh:{c.noiseBarWidth}%; --bardur:{barDur}s; --bardir:{c.noiseBarSpeed < 0 ? 'reverse' : 'normal'};">
   {#if c.scanlineIntensity > 0}<div class="scanlines"></div>{/if}
   {#if c.vignette > 0}<div class="vignette"></div>{/if}
@@ -47,21 +48,26 @@
     box-shadow: inset 0 0 150px rgba(0,0,0,calc(var(--vig) * 0.7));
   }
 
-  /* Animated white noise (SVG turbulence), opacity = interference. */
+  /* Animated noise (SVG turbulence) tinted with the terminal colour (multiply over --mono). */
   .noise {
     opacity: var(--noise);
+    background-color: var(--mono);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-blend-mode: multiply;
     background-size: 180px 180px;
     mix-blend-mode: screen;
     animation: noiseShift 0.18s steps(3) infinite;
   }
 
-  /* A bright horizontal noise bar that rolls vertically. */
+  /* A horizontal noise bar in the terminal colour that rolls vertically. */
   .noisebar {
     height: var(--barh);
     inset: auto 0 auto 0;
     top: 0;
-    background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0) 100%);
+    background: linear-gradient(to bottom,
+      transparent 0%,
+      color-mix(in srgb, var(--mono) 55%, transparent) 50%,
+      transparent 100%);
     mix-blend-mode: screen;
     animation: barRoll var(--bardur) linear infinite var(--bardir);
   }

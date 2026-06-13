@@ -30,8 +30,9 @@ export type BroadcastMessage =
   | { type: 'SYNC_STARMAP'; payload: Starmap }
   | { type: 'REQUEST_STARMAP'; payload: string | null }
   | { type: 'SYNC_BRANDING'; payload: { name: string; logo: string | null } }
-  // GM-enforced Field Guide view (skin + terminal colour + constructs) — players can't override.
-  | { type: 'SYNC_GUIDECONFIG'; payload: { theme: string; monoColor: string; includeConstructs: boolean } };
+  // GM-enforced Field Guide view (skin + terminal colour + constructs + CRT effect) — players
+  // can't override; the CRT controls live on the GM, so `crt` carries the GM's chosen settings.
+  | { type: 'SYNC_GUIDECONFIG'; payload: { theme: string; monoColor: string; includeConstructs: boolean; crt?: Record<string, number | boolean> } };
 
 type BroadcastEnvelope = {
   sessionId: string | null;
@@ -221,7 +222,7 @@ class BroadcastService {
   public onStarmapUpdate: ((map: Starmap) => void) | null = null;
   public onRequestStarmap: ((requestingId: string | null) => void) | null = null;
   public onBrandingUpdate: ((b: { name: string; logo: string | null }) => void) | null = null;
-  public onGuideConfigUpdate: ((c: { theme: string; monoColor: string; includeConstructs: boolean }) => void) | null = null;
+  public onGuideConfigUpdate: ((c: { theme: string; monoColor: string; includeConstructs: boolean; crt?: Record<string, number | boolean> }) => void) | null = null;
 
   private handleMessage(data: any) {
       // Check if this is an envelope or legacy message

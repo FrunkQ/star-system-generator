@@ -312,7 +312,7 @@
 
 <style>
   .cat-browser {
-    max-width: 760px;
+    max-width: 92%;
     margin: 0 auto;
     padding: 16px 18px 40px;
     font-family: inherit;

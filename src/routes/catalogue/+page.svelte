@@ -13,8 +13,7 @@
   import { bodyFacts } from '$lib/catalogue/bodyFacts';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import CRTOverlay from '$lib/components/CRTOverlay.svelte';
-  import CrtControlsPanel from '$lib/catalogue/CrtControlsPanel.svelte';
-  import { crtControls } from '$lib/catalogue/crtControls';
+  import { crtControls, CRT_DEFAULTS } from '$lib/catalogue/crtControls';
   import { AU_KM, G } from '$lib/constants';
   import { MONO_COLORS, normalizeGuideConfig } from '$lib/catalogue/guideConfig';
   import type { MonoColor } from '$lib/catalogue/guideConfig';
@@ -51,10 +50,11 @@
   let rulePack: RulePack | null = null;
   let sessionId: string | null = null;
   let themeKey: ThemeKey = 'guide';   // The Guide is the default pre-picked skin
-  let showCrtControls = false;
   // CRT "screen content" effects applied to <main> on the mono skin (overlay layers live in CRTOverlay).
+  // Invert = a visual lightness invert (dark↔light) that KEEPS the hue: invert(1) hue-rotate(180)
+  // flips black↔white but leaves the mono colour reading as itself, not its complement.
   $: crtStyle = theme?.tint === 'mono'
-    ? `filter: brightness(${$crtControls.brightness}) contrast(${$crtControls.contrast})${$crtControls.invert ? ' invert(1)' : ''}; transform: skewX(${$crtControls.skew * 18}deg); border-radius: ${$crtControls.roundedCorners * 100}vmin;`
+    ? `filter: brightness(${$crtControls.brightness}) contrast(${$crtControls.contrast})${$crtControls.invert ? ' invert(1) hue-rotate(180deg)' : ''}; transform: skewX(${$crtControls.skew * 18}deg); border-radius: ${$crtControls.roundedCorners * 100}vmin;`
     : '';
   let monoColor: MonoColor = 'green';
   let lastUpdate: number | null = null;
@@ -226,13 +226,17 @@
   $: theme = THEMES[themeKey];
   $: nowLabel = lastUpdate ? new Date(lastUpdate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
 
-  // Apply a GM-broadcast (or URL-derived) view config.
-  function applyGuideConfig(raw: { theme: string; monoColor: string; includeConstructs: boolean }) {
+  // Apply a GM-broadcast (or URL-derived) view config. The CRT effect is GM-controlled: if the
+  // broadcast carries crt settings, adopt them (players have no CRT panel of their own).
+  function applyGuideConfig(raw: { theme: string; monoColor: string; includeConstructs: boolean; crt?: Record<string, number | boolean> }) {
     const c = normalizeGuideConfig(raw);
     const themeChanged = c.theme !== themeKey;
     themeKey = c.theme;
     monoColor = c.monoColor;
     includeConstructs = c.includeConstructs;
+    if (raw.crt && typeof raw.crt === 'object') {
+      crtControls.set({ ...CRT_DEFAULTS, ...(raw.crt as any) });
+    }
     if (themeChanged) selectedBody = null;
   }
 
@@ -506,18 +510,10 @@
 
 </main>
 
-<!-- CRT layers + controls live OUTSIDE main so the brightness/invert/skew filter doesn't touch them. -->
+<!-- CRT layers live OUTSIDE main so the brightness/invert/skew filter doesn't touch them. The CRT
+     effect is GM-controlled (set in the GM's Companion launcher), so there's no player-side panel. -->
 {#if theme.tint !== 'none'}
-  <CRTOverlay />
-{/if}
-{#if theme.tint === 'mono'}
-  <button class="crt-toggle" on:click={() => (showCrtControls = !showCrtControls)}
-          style="--mono:{MONO_COLORS[monoColor].hex}" title="CRT controls" aria-label="CRT controls">⚙ CRT</button>
-  {#if showCrtControls}
-    <div style="--mono:{MONO_COLORS[monoColor].hex}">
-      <CrtControlsPanel on:close={() => (showCrtControls = false)} />
-    </div>
-  {/if}
+  <CRTOverlay color={MONO_COLORS[monoColor].hex} />
 {/if}
 
 <style>
@@ -774,24 +770,6 @@
   .insp-close { margin-left: auto; background: none; border: none; color: #9fb0c8; font-size: 22px; line-height: 1; cursor: pointer; }
   .insp-sub { font-size: 11px; letter-spacing: 0.08em; opacity: 0.6; margin: 2px 0 12px; }
   .insp-photo { width: 100%; height: auto; border-radius: 6px; display: block; margin: 0 0 12px; }
-  /* CRT controls toggle (Monochrome Terminal only). */
-  .crt-toggle {
-    position: fixed;
-    bottom: 14px;
-    right: 14px;
-    z-index: 9400;
-    background: color-mix(in srgb, var(--mono, #74f7b0) 10%, #05080c);
-    border: 1px solid color-mix(in srgb, var(--mono, #74f7b0) 50%, transparent);
-    color: var(--mono, #74f7b0);
-    font-family: 'Courier New', ui-monospace, monospace;
-    font-size: 12px;
-    letter-spacing: 0.08em;
-    padding: 6px 11px;
-    border-radius: 6px;
-    cursor: pointer;
-    opacity: 0.85;
-  }
-  .crt-toggle:hover { opacity: 1; }
   .insp-grid { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; margin: 0; font-size: 13px; }
   .insp-grid dt { opacity: 0.55; }
   .insp-grid dd { margin: 0; text-align: right; }

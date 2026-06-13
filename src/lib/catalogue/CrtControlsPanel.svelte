@@ -4,6 +4,7 @@
   import { crtControls, resetCrtControls, CRT_PARAM_DEFS, type CrtControls } from '$lib/catalogue/crtControls';
   import { createEventDispatcher } from 'svelte';
   const dispatch = createEventDispatcher();
+  export let embedded = false;   // inline (GM launcher) vs floating popup
 
   const GROUPS = ['Display', 'CRT', 'Distortion', 'Signal'] as const;
   function defsFor(g: string) { return CRT_PARAM_DEFS.filter((d) => d.group === g); }
@@ -15,12 +16,12 @@
   }
 </script>
 
-<div class="crt-panel" role="dialog" aria-label="CRT controls">
+<div class="crt-panel" class:embedded role="dialog" aria-label="CRT controls">
   <header>
     <span>CRT Controls</span>
     <div class="head-btns">
       <button class="link" on:click={resetCrtControls} title="Reset to defaults">Reset</button>
-      <button class="close" on:click={() => dispatch('close')} aria-label="Close">×</button>
+      {#if !embedded}<button class="close" on:click={() => dispatch('close')} aria-label="Close">×</button>{/if}
     </div>
   </header>
   <div class="body">
@@ -62,6 +63,14 @@
     font-family: 'Courier New', ui-monospace, monospace;
     font-size: 12px;
     box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  }
+  /* Embedded in the GM launcher: a normal in-flow block, no fixed positioning/shadow. */
+  .crt-panel.embedded {
+    position: static;
+    width: auto;
+    max-height: 320px;
+    z-index: auto;
+    box-shadow: none;
   }
   header {
     display: flex; align-items: center; justify-content: space-between;
