@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.34-beta - 13th Jun 2026
+
+* **The Guide's planet discs now match the orrery**: a day/night terminator (pronounced on tidally locked worlds) and glowing equatorial volcanoes on tidally active worlds like Io.
+
 ## v2.0.33-beta - 13th Jun 2026
 
 * **Day/night terminator and volcanoes are back.** They were silently vanishing when zoomed into a body (a canvas-gradient quirk at extreme zoom); now drawn in screen space — a tidally locked world shows a clear lit/dark divide, and Io shows glowing equatorial volcanoes.
