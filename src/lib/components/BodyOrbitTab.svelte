@@ -113,6 +113,11 @@
   }
 function updateOrbit() {
     if (!body.orbit) return;
+    // A negative/zero/NaN semi-major axis is unphysical and throws in ctx.ellipse
+    // (it froze the orrery in a user file). Clamp to a tiny positive floor.
+    if (!Number.isFinite(a_AU) || a_AU <= 0) {
+        a_AU = Math.max(minA, 1e-6);
+    }
     const boundedE = Math.max(0, Math.min(e, safeMaxE));
     if (Math.abs(boundedE - e) > 1e-9) {
         e = parseFloat(boundedE.toFixed(6));

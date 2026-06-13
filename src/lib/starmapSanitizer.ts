@@ -94,6 +94,20 @@ function sanitizeJourneyLog(log: unknown): ScheduledJourneyLog | null {
   };
 }
 
+// A negative/NaN semi-major axis (sign slip during a manual orbit edit — seen in a user's Kerbol
+// import where Laythe had a_AU = -0.0018) throws IndexSizeError in ctx.ellipse and froze the
+// orrery. Self-heal it on load by taking the magnitude (the orbit size was right, just the sign).
+function sanitizeOrbit(node: CelestialBody): { node: CelestialBody; changed: boolean } {
+  const a = node.orbit?.elements?.a_AU;
+  if (typeof a !== 'number' || (Number.isFinite(a) && a > 0)) return { node, changed: false };
+  const fixed = Number.isFinite(a) ? Math.abs(a) : 0;
+  if (fixed === a) return { node, changed: false };
+  return {
+    node: { ...node, orbit: { ...node.orbit!, elements: { ...node.orbit!.elements, a_AU: fixed } } },
+    changed: true
+  };
+}
+
 function sanitizeConstructJourneys(node: CelestialBody): { node: CelestialBody; changed: boolean } {
   if (node.kind !== 'construct') return { node, changed: false };
   const logs = Array.isArray(node.scheduled_journeys)
@@ -112,8 +126,13 @@ export function sanitizeStarmapForRuntime(starmap: Starmap): Starmap {
     if (!Array.isArray(sysNode.system?.nodes)) return sysNode;
     let systemChanged = false;
     const nodes = sysNode.system.nodes.map((node) => {
-      if (!(node && typeof node === 'object' && (node as any).kind === 'construct')) return node;
-      const sanitized = sanitizeConstructJourneys(node as CelestialBody);
+      if (!(node && typeof node === 'object')) return node;
+      let current = node as CelestialBody;
+      // Self-heal a bad semi-major axis on any orbiting node (body or construct).
+      const orbitFix = sanitizeOrbit(current);
+      if (orbitFix.changed) { current = orbitFix.node; systemChanged = true; }
+      if ((current as any).kind !== 'construct') return current;
+      const sanitized = sanitizeConstructJourneys(current);
       if (sanitized.changed) systemChanged = true;
       return sanitized.node;
     });
