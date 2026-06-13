@@ -65,6 +65,12 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
     label: 'Very unstable',
     description: 'Likely <1 kyr before major orbital disruption (collision, ejection or infall).'
   },
+  // --- Orbit ---
+  'orbit/tidally-locked': {
+    label: 'Tidally locked',
+    description: 'Derived: the despinning timescale (∝ a⁶) is shorter than the system age, so the body has settled into synchronous rotation — one face permanently toward its host (the Moon, Mercury, most close-in worlds). Pin it by hand in the body editor to override.'
+  },
+
   // --- Geology (tectonics + volcanism by mechanism) ---
   'geology/plate-tectonics': {
     label: 'Plate tectonics',

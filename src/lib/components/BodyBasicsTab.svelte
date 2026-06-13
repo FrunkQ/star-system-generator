@@ -225,6 +225,17 @@
       dispatch('update');
   }
 
+  // Ticking the box PINS tidal locking (manual override) so the processor stops auto-deriving it.
+  function pinTidalLock() {
+      (body as any).tidalLockManual = true;
+      dispatch('update');
+  }
+  // Hand control back to the physics: clear the override, re-derive on the next process.
+  function resetTidalLockAuto() {
+      delete (body as any).tidalLockManual;
+      dispatch('update');
+  }
+
   function toggleAutoClassify(e: Event) {
       body.autoClassify = (e.currentTarget as HTMLInputElement).checked;
       dispatch('update');
@@ -348,10 +359,14 @@
     </div>
     
     <div class="form-group">
-        <label>
-            <input type="checkbox" bind:checked={body.tidallyLocked} on:change={handleUpdate} />
+        <label title="Auto-derived from the despinning timescale vs the system age. Tick or untick to pin it manually; the processor then leaves it alone.">
+            <input type="checkbox" bind:checked={body.tidallyLocked} on:change={pinTidalLock} />
             Tidally Locked
+            <span class="sub-label">{(body as any).tidalLockManual ? 'manual' : 'auto-derived'}</span>
         </label>
+        {#if (body as any).tidalLockManual}
+            <button type="button" class="link-btn" on:click={resetTidalLockAuto}>Reset to auto</button>
+        {/if}
     </div>
 
     <hr/>
@@ -411,6 +426,11 @@
   }
 
   .sub-label { font-size: 0.75em; color: var(--text-faint); }
+  .link-btn {
+      background: none; border: none; padding: 2px 0; margin-top: 2px;
+      color: var(--link, #6aa0d8); font-size: 0.75em; cursor: pointer; text-align: left;
+  }
+  .link-btn:hover { text-decoration: underline; }
   .row-spaced { display: flex; justify-content: space-between; }
   
   .category-badge {

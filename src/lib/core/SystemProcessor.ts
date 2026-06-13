@@ -15,6 +15,7 @@ import { deriveApparentColorParts } from '../rendering/apparentColor';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosphericEscape } from '../physics/atmosphere';
 import { flareActivity } from '../physics/stellar-evolution';
+import { predictTidalLock } from '../physics/tidalLock';
 
 // Planets are assumed to coalesce a few Myr into the system's life — the baseline for age-integrated
 // processes (atmospheric escape, etc.). Negligible vs Gyr ages but makes the assumption explicit.
@@ -323,6 +324,22 @@ export class SystemProcessor implements ISystemProcessor {
             }
         }
         body.tidalHeatK = tidalHeatingK;
+
+        // Tidal locking — derived from the despinning timescale vs the system age (a moon locks to
+        // its planet, a planet to its star/barycentre). DYNAMIC by default; the body editor's
+        // checkbox pins it (tidalLockManual) and skips this assessment. Emits orbit/tidally-locked.
+        if (!(body as any).tidalLockManual && (body.roleHint === 'planet' || body.roleHint === 'moon')) {
+            const lockHost = allNodes.find(n => n.id === body.parentId);
+            const lockHostMass = lockHost
+                ? (lockHost.kind === 'barycenter' ? (lockHost as Barycenter).effectiveMassKg : (lockHost as CelestialBody).massKg)
+                : 0;
+            body.tidallyLocked = predictTidalLock(
+                body.orbit?.elements.a_AU || 0, body.radiusKm || 0, body.massKg || 0,
+                lockHostMass || 0, this.systemAgeGyr
+            );
+        }
+        body.tags = (body.tags || []).filter(t => t.key !== 'orbit/tidally-locked');
+        if (body.tidallyLocked) body.tags.push({ key: 'orbit/tidally-locked' });
 
         // Radiogenic Heating (Simplified)
         // Internal heat is negligible for surface temp compared to solar/greenhouse for Earth-likes.

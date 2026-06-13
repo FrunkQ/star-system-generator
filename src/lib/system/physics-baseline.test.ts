@@ -212,6 +212,16 @@ describe('Solar System Physics Baseline', () => {
         expect(dione.tidalHeatK ?? 0).toBe(0);
         expect(moon.tidalHeatK ?? 0).toBe(0);              // Luna's e is transient, not pumped
 
+        // Tidal LOCKING is now DERIVED (the Sol file carries no tidallyLocked flags): close-in
+        // bodies despin within the age, AU-distance ones never do. Surfaced as orbit/tidally-locked.
+        expect(io.tidallyLocked).toBe(true);
+        expect(enceladus.tidallyLocked).toBe(true);
+        expect(moon.tidallyLocked).toBe(true);             // Luna
+        expect(earth.tidallyLocked).toBeFalsy();
+        expect(mars.tidallyLocked).toBeFalsy();
+        expect(io.tags?.some(t => t.key === 'orbit/tidally-locked')).toBe(true);
+        expect(earth.tags?.some(t => t.key === 'orbit/tidally-locked')).toBeFalsy();
+
         // --- Authored end-state preservation (the "double-aging" fix) ---
         // Hand-authored bodies carry no evolveAtmosphere/autoClassify flags, so processing must
         // NOT erode their deliberate trace exospheres nor overwrite their authored classes.

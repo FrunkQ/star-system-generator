@@ -344,7 +344,7 @@
         consistent namespaces:</p>
       <ul class="tags">
         <li><code>origin/*</code> — provenance (migrated, captured)</li>
-        <li><code>orbit/*</code> — orbital traits (retrograde, double)</li>
+        <li><code>orbit/*</code> — orbital traits (retrograde, double, tidally-locked)</li>
         <li><code>atmosphere/*</code> — atmosphere conditions (reducing, breathable)</li>
         <li><code>climate/*</code> — climate states (runaway-greenhouse)</li>
         <li><code>hazard/*</code> — hazards (flaring)</li>
@@ -410,6 +410,14 @@
         UNSHIELDED worlds, scaled by flux × age × (1 − magnetosphere), and gated off above ~9 km/s escape velocity
         so Earth/Venus/super-Earths keep their air. It only thins or strips, never invents — so a tiny hot world goes
         bare, a shielded super-Earth holds on, and giants keep everything.</p>
+
+      <h3>Tidal locking</h3>
+      <p>Whether a world keeps one face toward its host is <strong>derived</strong>, not authored: the
+        tidal despinning timescale <code>t ∝ ω·a⁶·m·Q / (M_host²·k₂·R³)</code> (Gladman/Peale) is compared
+        to the system age — if it's shorter, the body has had time to lock. The steep <code>a⁶</code>
+        dependence means every regular moon, Mercury and close-in (hot-Jupiter-style) worlds lock, while
+        the AU-distance planets and the gas giants spin free. It's surfaced as <code>orbit/tidally-locked</code>
+        and re-derived every run; the body editor's checkbox pins it by hand and skips the assessment.</p>
 
       <h3>End-state vs evolving worlds</h3>
       <p>Aging is <strong>opt-in per body</strong>. A hand-authored, imported or hand-picked world carries the
