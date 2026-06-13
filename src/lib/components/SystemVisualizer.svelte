@@ -9,7 +9,7 @@
   import { get } from 'svelte/store';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import type { PanState } from '$lib/viewport/stores';
-  import { clampZoom, dampedZoomStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM, frameForNode, suppressAutoZoomNearPeriapsis } from '$lib/viewport/camera';
+  import { clampZoom, dampedZoomStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM, frameForLevel, availableFrameLevels, suppressAutoZoomNearPeriapsis } from '$lib/viewport/camera';
   import { gestures } from '$lib/input/gestures';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
   import { scaleBoxCox } from '../physics/scaling';
@@ -250,11 +250,30 @@
     scaledWorldPositions = newScaledPositions;
   }
 
+  // The consistent click-zoom ladder (see camera.ts FRAME_LEVELS): selecting an object frames its
+  // first existing level; each re-click on the focused object steps down to the next.
+  let focusLevel = 1;
+
+  function levelsFor(nodeId: string): number[] {
+      return availableFrameLevels({ nodeId, system, toytownFactor, scaledWorldPositions, worldPositions });
+  }
+  function firstLevelFor(nodeId: string): number {
+      return levelsFor(nodeId)[0] ?? 3;
+  }
+  function nextLevelFor(nodeId: string, current: number): number {
+      const levels = levelsFor(nodeId);
+      const idx = levels.indexOf(current);
+      // Advance to the next existing level; clamp at the deepest (no wrap).
+      return idx >= 0 && idx < levels.length - 1 ? levels[idx + 1] : levels[levels.length - 1] ?? current;
+  }
+
   function calculateFrameForNode(nodeId: string): { pan: PanState, zoom: number } {
-      return frameForNode({
-          nodeId, system, canvas,
+      // forceOrbitView (e.g. the planner's orbit view) pins level 2 (object + satellites).
+      const level = forceOrbitView ? 2 : focusLevel;
+      return frameForLevel({
+          nodeId, level, system, canvas,
           currentPan: get(panStore), currentZoom: get(zoomStore),
-          toytownFactor, scaledWorldPositions, worldPositions, x0_distance, forceOrbitView
+          toytownFactor, scaledWorldPositions, worldPositions, x0_distance
       });
   }
 
@@ -263,6 +282,7 @@
       cameraMode = 'FOLLOW';
       const targetId = focusedBodyId || system.nodes.find(n => n.parentId === null)?.id;
       if (targetId) {
+          focusLevel = firstLevelFor(targetId);
           const frame = calculateFrameForNode(targetId);
           panStore.set(frame.pan, { duration: 0 });
           zoomStore.set(clampZoom(frame.zoom), { duration: 0 });
@@ -280,6 +300,8 @@
       const nodesById = new Map(system!.nodes.map(n => [n.id, n]));
       const targetNode = nodesById.get(targetId);
       if (targetNode && targetNode.kind === 'body' && targetNode.roleHint === 'belt') return;
+      // A NEW selection starts at the object's first existing framing level.
+      focusLevel = firstLevelFor(targetId);
       startFocusAnimation(targetId);
   }
 
@@ -596,8 +618,13 @@
       }
       const picked = pickNodeAt(clickX, clickY);
       if (picked) {
-        if (picked.node.id === focusedBodyId) zoomStore.set(clampZoom(get(zoomStore) * 2));
-        else dispatch("focus", picked.node.id);
+        if (picked.node.id === focusedBodyId) {
+          // Re-click the focused object → step DOWN to the next existing framing level.
+          focusLevel = nextLevelFor(picked.node.id, focusLevel);
+          startFocusAnimation(picked.node.id);
+        } else {
+          dispatch("focus", picked.node.id);
+        }
       }
   }
 
