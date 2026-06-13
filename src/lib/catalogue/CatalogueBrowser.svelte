@@ -7,7 +7,7 @@
   // the alternate picker (and the only way to select a belt, since blobs may overlap planets).
   import type { System, CelestialBody } from '$lib/types';
   import { bodyFacts, bodyGlyph } from '$lib/catalogue/bodyFacts';
-  import { AU_KM } from '$lib/constants';
+  import { AU_KM, EARTH_MASS_KG } from '$lib/constants';
   import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
 
   export let system: System;
@@ -21,9 +21,18 @@
   let selectedId: string | null = null;
 
   // A body is "ringed" if it hosts a ring child — drives the disc's Saturn ring.
-  function isRinged(b: CelestialBody | null): boolean {
-    if (!b) return false;
-    return (system?.nodes ?? []).some((n) => n.parentId === b.id && (n as any).roleHint === 'ring');
+  function ringChild(b: CelestialBody | null): CelestialBody | null {
+    if (!b) return null;
+    return (system?.nodes ?? []).find((n) => n.parentId === b.id && (n as any).roleHint === 'ring') as CelestialBody ?? null;
+  }
+  function isRinged(b: CelestialBody | null): boolean { return !!ringChild(b); }
+  // The ring's debris density (massKg proxy, log 1e-5..1 Me) → drives its drawn size in the disc.
+  function ringDensityOf(b: CelestialBody | null): number {
+    const r = ringChild(b);
+    const massKg = r?.massKg;
+    if (!massKg || massKg <= 0) return 0.5;
+    const me = massKg / EARTH_MASS_KG;
+    return Math.max(0, Math.min(1, (Math.log(me) - Math.log(1e-5)) / (Math.log(1) - Math.log(1e-5))));
   }
 
   function isStar(n: any): boolean {
@@ -252,7 +261,7 @@
         <!-- Constructs don't get a picture. -->
       {:else if imagery === 'disc'}
         <div class="body-art">
-          <PlanetDisc body={subject ?? selected} ringed={isRinged(subject ?? selected)} />
+          <PlanetDisc body={subject ?? selected} ringed={isRinged(subject ?? selected)} ringDensity={ringDensityOf(subject ?? selected)} />
         </div>
       {:else if imagery === 'photo' && (subject ?? selected).image?.url}
         <!-- Survey Datapad: full image WIDTH, letterboxed to its central PHOTO_CROP_FRAC (no zoom). -->

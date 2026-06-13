@@ -25,6 +25,15 @@ describe('PlanetDisc', () => {
     expect(ringed.container.querySelectorAll('ellipse[transform]').length).toBe(2);
   });
 
+  it('ring size scales with density', () => {
+    const rx = (c: Element) => parseFloat(c.querySelector('ellipse[transform]')!.getAttribute('rx')!);
+    const sw = (c: Element) => parseFloat(c.querySelector('ellipse[transform]')!.getAttribute('stroke-width')!);
+    const sparse = render(PlanetDisc, { props: { body: planet(), ringed: true, ringDensity: 0.1 } });
+    const dense = render(PlanetDisc, { props: { body: planet(), ringed: true, ringDensity: 0.95 } });
+    expect(rx(dense.container)).toBeGreaterThan(rx(sparse.container));
+    expect(sw(dense.container)).toBeGreaterThan(sw(sparse.container));
+  });
+
   it('renders a belt as a field of rocks, not a sphere', () => {
     const belt = planet({ roleHint: 'belt', massKg: 3e21 } as any);
     const { container } = render(PlanetDisc, { props: { body: belt } });

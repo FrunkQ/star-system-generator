@@ -10,7 +10,15 @@
 
   export let body: CelestialBody;
   export let ringed = false;
+  export let ringDensity = 0.6;   // 0..1 (debris density of the ring); scales its drawn size/opacity
   export let size = 132;
+
+  // Ring geometry from density: sparse rings are a thin faint hoop, dense ones a broad bright band.
+  $: ringRx = 38 + ringDensity * 10;       // outer extent 38..48
+  $: ringW = 2 + ringDensity * 8;          // band thickness 2..10
+  $: ringRy = 9 + ringDensity * 5;         // tilt depth 9..14
+  $: ringBackOp = 0.25 + ringDensity * 0.4;
+  $: ringFrontOp = 0.4 + ringDensity * 0.5;
 
   const isStar = (b: CelestialBody) => b.roleHint === 'star';
   const isBelt = (b: CelestialBody) => b.roleHint === 'belt' || b.roleHint === 'ring';
@@ -154,7 +162,7 @@
       {/if}
 
       {#if ringed}
-        <ellipse cx="50" cy="50" rx="46" ry="13" fill="none" stroke={shade(base, 0.2)} stroke-width="6" opacity="0.55"
+        <ellipse cx="50" cy="50" rx={ringRx} ry={ringRy} fill="none" stroke={shade(base, 0.2)} stroke-width={ringW} opacity={ringBackOp}
                  transform="rotate(-18 50 50)" />
       {/if}
 
@@ -183,7 +191,7 @@
       {/if}
 
       {#if ringed}
-        <ellipse cx="50" cy="50" rx="46" ry="13" fill="none" stroke={shade(base, 0.32)} stroke-width="6" opacity="0.75"
+        <ellipse cx="50" cy="50" rx={ringRx} ry={ringRy} fill="none" stroke={shade(base, 0.32)} stroke-width={ringW} opacity={ringFrontOp}
                  transform="rotate(-18 50 50)" clip-path="url(#front-{uid})" />
       {/if}
     {/if}
