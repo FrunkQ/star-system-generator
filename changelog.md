@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.36-beta - 13th Jun 2026
+
+* On The Guide's planet discs, a ring's drawn size now reflects its density — a sparse ring is a thin faint hoop, a dense one (Saturn) a broad bright band.
+
 ## v2.0.35-beta - 13th Jun 2026
 
 * **Tunable CRT on the Monochrome Terminal**: a "CRT" button opens a popup of sliders — brightness, contrast, invert, scanlines (intensity + width), vignette, rounded corners, picture skew, a rolling noise bar, white noise and flicker — all live and remembered. Built in the GM's chosen terminal colour.
