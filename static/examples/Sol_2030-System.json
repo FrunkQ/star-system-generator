@@ -368,7 +368,7 @@
       "surfaceRadiationMax": 516.5914867413795,
       "equilibriumTempMinK": 268.02902559330516,
       "equilibriumTempMaxK": 272.57215336377726,
-      "tidallyLocked": false,
+      "tidallyLocked": true,
       "internalHeatK": 0
     },
     {
@@ -521,7 +521,8 @@
       "equilibriumTempMinK": 209.0676331820912,
       "equilibriumTempMaxK": 229.59745553616693,
       "internalHeatK": 0,
-      "surfaceRadiation": 217.3509467234018
+      "surfaceRadiation": 217.3509467234018,
+      "tidallyLocked": true
     },
     {
       "id": "solar-system-deimos",
@@ -587,7 +588,8 @@
       "surfaceRadiationMax": 263.9708611822267,
       "equilibriumTempMinK": 209.06182927761577,
       "equilibriumTempMaxK": 229.58961999451796,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "tidallyLocked": true
     },
     {
       "id": "solar-system-asteroid-belt",
@@ -852,7 +854,8 @@
       "surfaceRadiationMax": 22.383726474569986,
       "equilibriumTempMinK": 115.46929658176818,
       "equilibriumTempMaxK": 121.25786298529958,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "tidallyLocked": true
     },
     {
       "id": "solar-system-europa",
@@ -933,7 +936,8 @@
       "hydrosphere": {
         "composition": "water",
         "coverage": 1
-      }
+      },
+      "tidallyLocked": true
     },
     {
       "id": "solar-system-ganymede",
@@ -1007,7 +1011,8 @@
       "hydrosphere": {
         "composition": "water",
         "coverage": 1
-      }
+      },
+      "tidallyLocked": true
     },
     {
       "id": "solar-system-callisto",
@@ -1078,7 +1083,8 @@
       "hydrosphere": {
         "composition": "water",
         "coverage": 1
-      }
+      },
+      "tidallyLocked": true
     },
     {
       "id": "solar-system-saturn",
@@ -1294,7 +1300,7 @@
       "equilibriumTempMinK": 80.06245942946718,
       "equilibriumTempMaxK": 84.71931924571962,
       "internalHeatK": 0,
-      "tidallyLocked": false,
+      "tidallyLocked": true,
       "magneticField": {
         "strengthGauss": 0
       },
@@ -1385,7 +1391,8 @@
       "hydrosphere": {
         "composition": "water",
         "coverage": 1
-      }
+      },
+      "tidallyLocked": true
     },
     {
       "id": "solar-system-tethys",
@@ -1420,7 +1427,8 @@
       "image": {
         "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "tidallyLocked": true
     },
     {
       "id": "solar-system-dione",
@@ -1455,7 +1463,8 @@
       "image": {
         "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
       },
-      "isNameUserDefined": true
+      "isNameUserDefined": true,
+      "tidallyLocked": true
     },
     {
       "id": "solar-system-mimas",
@@ -1523,7 +1532,8 @@
       "equilibriumTempMinK": 84.80626890623537,
       "equilibriumTempMaxK": 89.74074590829731,
       "internalHeatK": 0,
-      "surfaceRadiation": 7.44365878157485
+      "surfaceRadiation": 7.44365878157485,
+      "tidallyLocked": true
     },
     {
       "id": "solar-system-rhea",
@@ -1589,7 +1599,8 @@
       "surfaceRadiationMax": 8.111977005643967,
       "equilibriumTempMinK": 84.79680923695827,
       "equilibriumTempMaxK": 89.72933108999082,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "tidallyLocked": true
     },
     {
       "id": "solar-system-iapetus",
@@ -1655,7 +1666,8 @@
       "surfaceRadiationMax": 8.085559969372957,
       "equilibriumTempMinK": 84.70923894098269,
       "equilibriumTempMaxK": 89.6322170685639,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "tidallyLocked": true
     },
     {
       "id": "solar-system-uranus",
@@ -1854,7 +1866,8 @@
       "surfaceRadiationMax": 3.4881544365337165,
       "equilibriumTempMinK": 60.172286114456206,
       "equilibriumTempMaxK": 63.0305364122487,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "tidallyLocked": true
     },
     {
       "id": "solar-system-oberon",
@@ -1920,7 +1933,8 @@
       "surfaceRadiationMax": 3.4879940658514395,
       "equilibriumTempMinK": 60.17080186974225,
       "equilibriumTempMaxK": 63.02883822515217,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "tidallyLocked": true
     },
     {
       "id": "solar-system-ariel",
@@ -1986,7 +2000,8 @@
       "surfaceRadiationMax": 3.4884204935740075,
       "equilibriumTempMinK": 60.17474201533539,
       "equilibriumTempMaxK": 63.03335342393904,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "tidallyLocked": true
     },
     {
       "id": "solar-system-neptune",
@@ -2203,7 +2218,8 @@
       "hydrosphere": {
         "composition": "water",
         "coverage": 1
-      }
+      },
+      "tidallyLocked": true
     },
     {
       "id": "solar-system-kuiper-belt",
@@ -2405,7 +2421,8 @@
       "equilibriumTempMaxK": 49.55237835312566,
       "internalHeatK": 0,
       "orbitalStability": "Very Unstable",
-      "orbitalStabilityDetails": "Likely <1 kyr before major orbital disruption (collision/ejection/infall risk). Drivers: External orbit overlap with Neptune; External orbit overlap with Kuiper Belt."
+      "orbitalStabilityDetails": "Likely <1 kyr before major orbital disruption (collision/ejection/infall risk). Drivers: External orbit overlap with Neptune; External orbit overlap with Kuiper Belt.",
+      "tidallyLocked": true
     },
     {
       "id": "construct-iss",
