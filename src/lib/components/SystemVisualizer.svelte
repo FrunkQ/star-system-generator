@@ -926,31 +926,50 @@
               ctx.restore();
           }
 
-          // Tidal volcanism — self-luminous magma patches (Io). Drawn AFTER the night shade and
-          // added with 'lighter' so the hotspots glow even on the dark side. Patch placement is
-          // seeded by the node id so it's stable frame-to-frame.
-          if (node.roleHint !== 'star' && finalRadius * zoom > 5) {
+          // Tidal volcanism — magma patches (Io). Tidal flexing dissipates strongest at low
+          // latitudes, so the hotspots cluster in an EQUATORIAL band (with scatter). Drawn opaque
+          // (source-over) so they read on a bright sulfur disc, with a bright incandescent core +
+          // glowing rim; placement seeded by the node id so it's stable frame-to-frame.
+          if (node.roleHint !== 'star' && finalRadius * zoom > 4) {
               const keys = (node.tags || []).map((t) => t.key);
               const lava = keys.includes('tidal/lava-flows');
               const volc = lava || keys.includes('tidal/volcanism') || keys.includes('tidal/hotspots');
               if (volc) {
-                  const n = lava ? 6 : keys.includes('tidal/volcanism') ? 4 : 3;
-                  const core = lava ? '255,236,150' : '255,170,60';   // yellow-white vs orange
-                  const edge = lava ? '255,120,20' : '210,70,15';
+                  const n = lava ? 8 : keys.includes('tidal/volcanism') ? 6 : 4;
+                  const core = lava ? '255,244,200' : '255,210,120';  // white-hot vs incandescent orange
+                  const mid  = lava ? '255,120,20'  : '220,70,18';    // molten orange / red
                   let s = 0; for (let k = 0; k < node.id.length; k++) s = (s * 31 + node.id.charCodeAt(k)) & 0xffffff;
                   const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
                   ctx.save();
                   ctx.beginPath(); ctx.arc(rx, ry, finalRadius, 0, 2 * Math.PI); ctx.clip();
-                  ctx.globalCompositeOperation = 'lighter';
                   for (let p = 0; p < n; p++) {
-                      const ang = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * finalRadius * 0.82;
-                      const px = rx + Math.cos(ang) * rr, py = ry + Math.sin(ang) * rr;
-                      const pr = finalRadius * (0.1 + rnd() * 0.16);
+                      // Latitude biased toward the equator (cubic), longitude across the lit disc;
+                      // the cos(lat) term keeps spots inside the projected sphere.
+                      const lat = (rnd() * 2 - 1); const latEq = lat * lat * lat * 0.62; // -0.62..0.62, dense near 0
+                      const lon = rnd() * 2 - 1;
+                      const py = ry + latEq * finalRadius;
+                      const px = rx + lon * finalRadius * 0.82 * Math.sqrt(Math.max(0, 1 - latEq * latEq));
+                      const pr = finalRadius * (0.08 + rnd() * 0.12);
                       const mg = ctx.createRadialGradient(px, py, 0, px, py, pr);
-                      mg.addColorStop(0, `rgba(${core},0.95)`);
-                      mg.addColorStop(0.5, `rgba(${edge},0.7)`);
-                      mg.addColorStop(1, `rgba(${edge},0)`);
+                      mg.addColorStop(0, `rgba(${core},0.98)`);
+                      mg.addColorStop(0.4, `rgba(${mid},0.9)`);
+                      mg.addColorStop(1, `rgba(${mid},0)`);
                       ctx.fillStyle = mg;
+                      ctx.beginPath(); ctx.arc(px, py, pr, 0, 2 * Math.PI); ctx.fill();
+                  }
+                  // A faint additive bloom so the brightest vents glow (esp. on the night side).
+                  ctx.globalCompositeOperation = 'lighter';
+                  s = 7; // re-seed for repeatable bloom placement over the same patches
+                  for (let p = 0; p < Math.ceil(n / 2); p++) {
+                      const lat = (rnd() * 2 - 1); const latEq = lat * lat * lat * 0.62;
+                      const lon = rnd() * 2 - 1;
+                      const py = ry + latEq * finalRadius;
+                      const px = rx + lon * finalRadius * 0.82 * Math.sqrt(Math.max(0, 1 - latEq * latEq));
+                      const pr = finalRadius * 0.22;
+                      const bg = ctx.createRadialGradient(px, py, 0, px, py, pr);
+                      bg.addColorStop(0, `rgba(${core},0.5)`);
+                      bg.addColorStop(1, `rgba(${mid},0)`);
+                      ctx.fillStyle = bg;
                       ctx.beginPath(); ctx.arc(px, py, pr, 0, 2 * Math.PI); ctx.fill();
                   }
                   ctx.restore();
