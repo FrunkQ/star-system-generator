@@ -42,6 +42,8 @@
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem } from '$lib/system/importFixup';
   import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
+  import ShipPanel from '$lib/components/ShipPanel.svelte';
+  import { constructDisplayPlacement } from '$lib/transit/interstellar';
 
   let rulePacks: RulePack[] = [];
   let isLoading = true;
@@ -202,6 +204,37 @@
   }
   // Inter-system distance from the system the GM is currently in, in the map's unit — only meaningful
   // on a scaled map and when inside a system. Null otherwise (→ TagFinder sorts alphabetically).
+  // --- Starmap-level ship panel (an in-flight / stranded / arrived construct, opened from its
+  // starmap marker). Full construct editor + in-flight controls, all against the store. ---
+  let shipPanelJourneyId: string | null = null;
+  $: shipPanel = (() => {
+    const map = $starmapStore;
+    if (!shipPanelJourneyId || !map) return null;
+    const j = (map.activeJourneys ?? []).find((x) => x.id === shipPanelJourneyId);
+    if (!j) return null;
+    const sysNode = map.systems.find((s) => s.id === j.fromSystemId);   // construct still lives here pre-reconcile
+    const construct = sysNode?.system?.nodes.find((n) => n.id === j.shipId) as any;
+    if (!construct || !sysNode?.system) return null;
+    const host = (sysNode.system.nodes.find((n) => n.id === construct.parentId) as any) ?? null;
+    const p = constructDisplayPlacement(map, j.shipId, Number(map.temporal?.displayTimeSec ?? 0));
+    let status: 'before' | 'transit' | 'adrift' | 'arrived' = 'before';
+    let frac = 0;
+    if (p.kind === 'transit') { status = 'transit'; frac = p.frac; }
+    else if (p.kind === 'adrift') status = 'adrift';
+    else if (p.kind === 'system' && p.systemId === j.toSystemId) status = 'arrived';
+    return { journey: j, construct, system: sysNode.system, host, status, frac, fromName: sysNode.name, toName: map.systems.find((s) => s.id === j.toSystemId)?.name ?? '' };
+  })();
+  function handleShipResolve(journeyId: string, outcome: 'return' | 'arrive' | 'strand') {
+    const nowSec = String($starmapStore?.temporal?.displayTimeSec ?? '0');
+    starmapStore.update((m) => m ? { ...m, activeJourneys: (m.activeJourneys ?? []).map((j) => j.id === journeyId ? { ...j, outcome, endedAtSec: nowSec } : j) } : m);
+  }
+  function handleShipResume(journeyId: string) {
+    starmapStore.update((m) => m ? { ...m, activeJourneys: (m.activeJourneys ?? []).map((j) => j.id === journeyId ? { ...j, outcome: undefined, endedAtSec: undefined } : j) } : m);
+  }
+  function handleShipConstructUpdate(updated: any) {
+    starmapStore.update((m) => m ? { ...m, systems: m.systems.map((s) => s.system ? { ...s, system: { ...s.system, nodes: s.system.nodes.map((n) => n.id === updated.id ? updated : n) } } : s) } : m);
+  }
+
   function tagFinderDistance(systemId: string): number | null {
     const map = $starmapStore;
     if (!currentSystemId || !map || (map.mapMode ?? 'diagrammatic') !== 'scaled') return null;
@@ -994,6 +1027,7 @@
       on:catalogue={() => showCompanionModal = true}
       on:systemclick={handleSystemClick}
       on:focusconstruct={(e) => enterSystemAndFocus(e.detail.systemId, e.detail.id)}
+      on:openship={(e) => shipPanelJourneyId = e.detail.journeyId}
       on:systemzoom={handleSystemZoom}
       on:addsystemat={handleAddSystemAt}
       on:selectsystemforlink={handleSelectSystemForLink}
@@ -1091,6 +1125,23 @@
         />
       </div>
     </div>
+  {/if}
+
+  {#if shipPanel}
+    <ShipPanel
+      construct={shipPanel.construct}
+      system={shipPanel.system}
+      hostBody={shipPanel.host}
+      rulePack={effectiveRulePack || selectedRulepack}
+      status={shipPanel.status}
+      frac={shipPanel.frac}
+      fromName={shipPanel.fromName}
+      toName={shipPanel.toName}
+      on:resolve={(e) => handleShipResolve(shipPanel.journey.id, e.detail.outcome)}
+      on:resume={() => handleShipResume(shipPanel.journey.id)}
+      on:update={(e) => handleShipConstructUpdate(e.detail)}
+      on:close={() => (shipPanelJourneyId = null)}
+    />
   {/if}
 
   {#if showTagFinder}

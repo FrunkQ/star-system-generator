@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.74-beta - 14th Jun 2026
+
+* Clicking an interstellar ship (in transit, stranded, or arrived) now opens a full **ship panel** right on the starmap — the construct's complete editor plus its in-flight controls (End at source / destination / Strand here, or Resume / Re-fly), with live status and progress. Replaces the small cancel popup, so you can inspect and edit a ship without diving into a system.
+
 ## v2.0.73-beta - 14th Jun 2026
 
 * The interstellar ship marker now uses the construct's own assigned icon (shape + colour) instead of a generic diamond, with a state-coloured outline: black while under way, red when stranded, green when arrived.

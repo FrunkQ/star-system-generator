@@ -300,28 +300,9 @@
   // Edge colour by journey state: black under way, red stranded, green arrived.
   const EDGE_TRANSIT = '#111', EDGE_STRANDED = '#d04545', EDGE_ARRIVED = '#2f9e57';
 
-  let journeyToCancel: any = null;
-  function requestCancelJourney(j: any) { journeyToCancel = j; }
-  // Resolve a journey by EDITING ITS LOG RECORD (the source of truth) — never by moving the
-  // construct. Position is derived from the record + clock, so this stays reversible: scrub back
-  // before the end and the ship is mid-flight again. outcome: return | arrive | strand.
-  function resolveJourney(j: any, outcome: 'return' | 'arrive' | 'strand') {
-    const journeys = (starmap.activeJourneys ?? []).map((x) => x.id === j.id ? { ...x, outcome, endedAtSec: String(journeyNowSec) } : x);
-    dispatch('updatestarmap', { ...starmap, activeJourneys: journeys });
-    journeyToCancel = null;
-  }
-  function resumeJourney(j: any) {
-    const journeys = (starmap.activeJourneys ?? []).map((x) => x.id === j.id ? { ...x, outcome: undefined, endedAtSec: undefined } : x);
-    dispatch('updatestarmap', { ...starmap, activeJourneys: journeys });
-    journeyToCancel = null;
-  }
-  // Open the in-transit ship's CONSTRUCT — it still lives in the origin system until arrival, so we
-  // enter that system focused on it (opens its detail/editor, same path the all-bodies picker uses).
-  function openJourneyConstruct() {
-    if (!journeyToCancel) return;
-    dispatch('focusconstruct', { systemId: journeyToCancel.fromSystemId, id: journeyToCancel.shipId });
-    journeyToCancel = null;
-  }
+  // Clicking a ship opens the starmap-level ship panel (+page owns it: full construct editor + the
+  // in-flight controls). All journey resolution + construct edits are handled there against the store.
+  function requestCancelJourney(j: any) { dispatch('openship', { journeyId: j.id }); }
 
   function snapPointToCurrentGrid(x: number, y: number): { x: number; y: number } {
     if (effectiveGridType === 'none') return { x, y };
@@ -1217,41 +1198,6 @@
                 </ul>
               </div>
           {/if}
-
-  {#if journeyToCancel}
-    {@const jp = constructDisplayPlacement(starmap, journeyToCancel.shipId, journeyNowSec)}
-    <div class="journey-cancel-backdrop" on:click={() => (journeyToCancel = null)} role="button" tabindex="0" on:keydown={(e) => { if (e.key === 'Escape') journeyToCancel = null; }}>
-      <div class="journey-cancel" on:click|stopPropagation role="dialog" aria-modal="true">
-        <h3>{journeyToCancel.shipName}</h3>
-        {#if jp.kind === 'adrift'}
-          <p>Stranded in interstellar space between <strong>{systemById(journeyToCancel.fromSystemId)?.name}</strong> and <strong>{systemById(journeyToCancel.toSystemId)?.name}</strong>. Resume to put it back on its course (reversible — it's derived from the clock).</p>
-          <div class="jc-buttons">
-            <button on:click={() => (journeyToCancel = null)}>Close</button>
-            <button on:click={() => resumeJourney(journeyToCancel)}>Resume journey</button>
-            <button class="primary" on:click={openJourneyConstruct}>Open ship…</button>
-          </div>
-        {:else if jp.kind === 'system' && jp.systemId === journeyToCancel.toSystemId}
-          <p>Arrived at <strong>{systemById(journeyToCancel.toSystemId)?.name}</strong>.</p>
-          <div class="jc-buttons">
-            <button on:click={() => (journeyToCancel = null)}>Close</button>
-            <button on:click={() => resumeJourney(journeyToCancel)} title="Put it back en route">Re-fly journey</button>
-            <button class="primary" on:click={openJourneyConstruct}>Open ship…</button>
-          </div>
-        {:else}
-          <p>In transit to <strong>{journeyToCancel.toBodyName || systemById(journeyToCancel.toSystemId)?.name || 'its destination'}</strong>{#if jp.kind === 'transit'} — {Math.round(jp.frac * 100)}% there{/if}. End the journey:</p>
-          <div class="jc-buttons">
-            <button on:click={() => resolveJourney(journeyToCancel, 'return')} title="Turn back — the ship ends up at its origin system">At source</button>
-            <button on:click={() => resolveJourney(journeyToCancel, 'arrive')} title="Arrive now at the destination system">At destination</button>
-            <button class="danger" on:click={() => resolveJourney(journeyToCancel, 'strand')} title="Stop here — the ship is left adrift in interstellar space">Strand here</button>
-          </div>
-          <div class="jc-buttons">
-            <button on:click={() => (journeyToCancel = null)}>Close</button>
-            <button class="primary" on:click={openJourneyConstruct}>Open ship…</button>
-          </div>
-        {/if}
-      </div>
-    </div>
-  {/if}
 
   {#if showSaveModal}
       <SaveSystemModal on:save={handleSaveStarmap} on:close={() => showSaveModal = false} />
