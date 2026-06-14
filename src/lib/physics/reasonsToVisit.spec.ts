@@ -63,6 +63,31 @@ describe('reasons-to-visit tagger', () => {
     expect(() => importPack('{"nope":1}')).toThrow();
   });
 
+  it('can trigger on a custom tag value (text and numeric)', () => {
+    const pack: PoIPack = {
+      id: 'tv', name: 'Tag-value pack', description: '', enabled: true,
+      categories: [{ id: 'lore', label: 'Lore', desc: '' }],
+      rules: [
+        { id: 't1', tag: 'lore/imperial', category: 'lore', chance: 1, when: { eq: ['tag:faction/control', 'Empire'] } },
+        { id: 't2', tag: 'lore/perilous', category: 'lore', chance: 1, when: { gte: ['tag:danger', 5] } }
+      ]
+    };
+    const conf: ReasonsConfig = { enabled: true, categories: { lore: true } };
+    const s = sys();
+    const p = s.nodes.find((n) => n.id === 'p1') as CelestialBody;
+    p.tags = [{ key: 'faction/control', value: 'Empire' }, { key: 'danger', value: '7' }];
+    annotateReasonsToVisit(s, conf, [pack]);
+    expect((p.tags || []).some((t) => t.key === 'lore/imperial')).toBe(true);   // text match
+    expect((p.tags || []).some((t) => t.key === 'lore/perilous')).toBe(true);   // numeric ≥ on a string value
+
+    // A non-matching value fires neither.
+    const s2 = sys();
+    const p2 = s2.nodes.find((n) => n.id === 'p1') as CelestialBody;
+    p2.tags = [{ key: 'faction/control', value: 'Rebels' }, { key: 'danger', value: '2' }];
+    annotateReasonsToVisit(s2, conf, [pack]);
+    expect((p2.tags || []).some((t) => t.key.startsWith('lore/'))).toBe(false);
+  });
+
   it('stacks a second pack: its rules add new tags', () => {
     const extra: PoIPack = {
       id: 'sw', name: 'Test Pack', description: '', enabled: true,

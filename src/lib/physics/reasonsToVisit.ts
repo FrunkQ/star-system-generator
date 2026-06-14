@@ -8,6 +8,7 @@ import type { System, CelestialBody } from '../types';
 import { writable, get } from 'svelte/store';
 import { makeupFractions } from './makeup';
 import { EARTH_MASS_KG } from '../constants';
+import { registerPoiCategories } from '../tags/tagPresentation';
 
 // ---------------------------------------------------------------------------------------------
 // Declarative condition schema. `true` = always. Numeric ops take [field, value]; eq compares a
@@ -27,7 +28,7 @@ export type PoIExpr =
   | { hasTag: string }
   | { hasTagPrefix: string };
 
-export interface ReasonCategory { id: string; label: string; desc: string; }
+export interface ReasonCategory { id: string; label: string; desc: string; color?: string; textColor?: string; }
 export interface PoIRule { id: string; tag: string; category: string; chance: number; when: PoIExpr; enabled?: boolean; }
 export interface PoIPack { id: string; name: string; description: string; enabled: boolean; categories: ReasonCategory[]; rules: PoIRule[]; }
 
@@ -73,10 +74,10 @@ let _rid = 0; const R = (tag: string, category: string, chance: number, when: Po
 export const DEFAULT_POI_PACK: PoIPack = {
   id: 'default', name: 'Reasons to Visit (default)', description: 'The built-in physics-driven PoI hooks.', enabled: true,
   categories: [
-    { id: 'resource', label: 'Resources', desc: 'Mineable / economic value — fuels, metals, exotics' },
-    { id: 'science', label: 'Scientific interest', desc: 'Research draws — rare formations, biosignatures, anomalies' },
-    { id: 'frontier', label: 'Frontier logistics', desc: 'Refuelling, waystations, gravity assists' },
-    { id: 'intrigue', label: 'Mysteries & hooks', desc: 'Rumours, signals, legends — pure adventure bait' }
+    { id: 'resource', label: 'Resources', desc: 'Mineable / economic value — fuels, metals, exotics', color: '#d4a843', textColor: '#1a1206' },
+    { id: 'science', label: 'Scientific interest', desc: 'Research draws — rare formations, biosignatures, anomalies', color: '#5a9fd0', textColor: '#04121c' },
+    { id: 'frontier', label: 'Frontier logistics', desc: 'Refuelling, waystations, gravity assists', color: '#6fae8f', textColor: '#06160f' },
+    { id: 'intrigue', label: 'Mysteries & hooks', desc: 'Rumours, signals, legends — pure adventure bait', color: '#b07ad0', textColor: '#160a1c' }
   ],
   rules: [
     R('resource/heavy-metals', 'resource', 0.7, { gte: ['makeup.metal', 0.3] }),
@@ -141,11 +142,13 @@ function loadPacks(): PoIPack[] {
   try {
     const saved = JSON.parse(localStorage.getItem(PACKS_KEY) || 'null');
     if (!Array.isArray(saved) || !saved.length) return [def];
-    // Keep the built-in default authoritative (its rules can't be corrupted), but honour its saved
-    // enabled flag; append any user/imported packs.
+    // The built-in pack is user-editable: honour the saved (possibly edited) version if present,
+    // otherwise seed the built-in. "Reset" in the editor restores it to DEFAULT_POI_PACK.
     const out: PoIPack[] = [];
     const savedDefault = saved.find((p: PoIPack) => p.id === 'default');
-    out.push({ ...def, enabled: savedDefault ? savedDefault.enabled !== false : true });
+    out.push(savedDefault && Array.isArray(savedDefault.rules) && Array.isArray(savedDefault.categories)
+      ? { ...savedDefault, id: 'default' }
+      : def);
     for (const p of saved) if (p.id !== 'default' && p && p.id && Array.isArray(p.rules)) out.push(p);
     return out;
   } catch { return [def]; }
@@ -163,6 +166,16 @@ export function activeCategories(packs: PoIPack[]): ReasonCategory[] {
   for (const p of packs) { if (p.enabled === false) continue; for (const c of p.categories) if (!seen.has(c.id)) seen.set(c.id, c); }
   return [...seen.values()];
 }
+// Every category across ALL packs (enabled or not) — used to keep the tag presentation layer (chip
+// colours, grouping labels) in sync so even a disabled pack's lingering tags still render correctly.
+function allCategories(packs: PoIPack[]): ReasonCategory[] {
+  const seen = new Map<string, ReasonCategory>();
+  for (const p of packs) for (const c of p.categories) if (!seen.has(c.id)) seen.set(c.id, c);
+  return [...seen.values()];
+}
+// Push category styles (colour + label) into tagPresentation whenever the packs change, so a tag like
+// survey/geochem-sample picks up its pack-defined colour and heading. Fires once on init too.
+poiPacks.subscribe((p) => registerPoiCategories(allCategories(p)));
 
 // --- Import / export (JSON pack files). ---
 export function exportPack(pack: PoIPack): string {
@@ -179,6 +192,30 @@ export function importPack(json: string): PoIPack {
     categories: p.categories,
     rules: p.rules
   };
+}
+
+// --- Starmap embedding: a .json starmap carries its own packs so they travel with the map. The
+//     built-in default pack is never embedded (it's always present); only the user's stacked packs. ---
+export function packsForStarmap(): PoIPack[] {
+  return get(poiPacks).filter((p) => p.id !== 'default');
+}
+// Merge packs loaded from a starmap into the live store (replace by id, append new ones).
+export function mergeStarmapPacks(packs: PoIPack[] | undefined): void {
+  if (!Array.isArray(packs) || !packs.length) return;
+  poiPacks.update((cur) => {
+    const out = [...cur];
+    for (const p of packs) {
+      if (!p || !p.id || p.id === 'default' || !Array.isArray(p.rules)) continue;
+      const i = out.findIndex((x) => x.id === p.id);
+      if (i >= 0) out[i] = p; else out.push(p);
+    }
+    return out;
+  });
+}
+export function applyStarmapReasonsConfig(cfg: ReasonsConfig | undefined): void {
+  if (cfg && typeof cfg === 'object' && cfg.categories) {
+    reasonsConfig.set({ enabled: cfg.enabled ?? true, categories: { ...REASONS_DEFAULTS.categories, ...cfg.categories } });
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -198,8 +235,9 @@ type Features = Record<string, number | string | boolean> & { __tags: Set<string
 function buildFeatures(b: CelestialBody, ageGyr: number, hasRemnant: boolean, hasConstructs: boolean): Features {
   const mk = makeupFractions(b);
   const classes = b.classes || [];
-  const tags = new Set((b.tags || []).map((t) => t.key));
-  return {
+  const bodyTags = b.tags || [];
+  const tags = new Set(bodyTags.map((t) => t.key));
+  const f: Features = {
     __tags: tags,
     'makeup.metal': mk.metal, 'makeup.rock': mk.rock, 'makeup.carbon': mk.carbon, 'makeup.ice': mk.ice, 'makeup.gas': mk.gas,
     'makeup.rockMetal': mk.rock + mk.metal, 'makeup.rockIce': mk.rock + mk.ice,
@@ -221,6 +259,11 @@ function buildFeatures(b: CelestialBody, ageGyr: number, hasRemnant: boolean, ha
     regime: b.geoActivity?.regime || '',
     atmMain: b.atmosphere?.main || ''
   };
+  // Expose the player's own custom tag VALUES as `tag:<key>` fields, so PoI rules can trigger on
+  // them (e.g. a hand-added tag faction/control = "Empire" → eq tag:faction/control "Empire", or a
+  // numeric danger = "7" → gte tag:danger 5). Only tags that actually carry a value are exposed.
+  for (const t of bodyTags) if (t.value != null && t.value !== '') f['tag:' + t.key] = t.value;
+  return f;
 }
 
 function evalPoI(expr: PoIExpr, f: Features): boolean {
@@ -230,8 +273,9 @@ function evalPoI(expr: PoIExpr, f: Features): boolean {
   if ('not' in expr) return !evalPoI(expr.not, f);
   if ('hasTag' in expr) return f.__tags.has(expr.hasTag);
   if ('hasTagPrefix' in expr) { for (const k of f.__tags) if (k.startsWith(expr.hasTagPrefix)) return true; return false; }
-  if ('eq' in expr) return f[expr.eq[0]] === expr.eq[1];
-  const numField = (n: string) => { const v = f[n]; return typeof v === 'number' ? v : NaN; };
+  if ('eq' in expr) return String(f[expr.eq[0]] ?? '') === String(expr.eq[1]);
+  // Numeric fields may also arrive as numeric strings (custom tag values are stored as text).
+  const numField = (n: string) => { const v = f[n]; if (typeof v === 'number') return v; if (typeof v === 'string' && v.trim() !== '' && !Number.isNaN(Number(v))) return Number(v); return NaN; };
   if ('gt' in expr) return numField(expr.gt[0]) > expr.gt[1];
   if ('lt' in expr) return numField(expr.lt[0]) < expr.lt[1];
   if ('gte' in expr) return numField(expr.gte[0]) >= expr.gte[1];

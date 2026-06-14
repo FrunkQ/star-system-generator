@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.0.47-beta - 14th Jun 2026
+
+* **PoI packs, round 2.** The built-in "Reasons to Visit" pack is now fully editable (with a Reset to restore it). Rules are now built category-first: pick the category (which sets the tag's prefix and colour), then type just the tag name — a live preview shows the real compound tag (e.g. `survey/geochem-sample`). Each category has its own colour pickers (chip + text) that flow through to the tags everywhere. Numeric conditions with known bounds get a slider alongside the hand-editable number, and fraction ranges read as 0.0–1.0. Categories explain id (the prefix in the tag) vs label (the heading players see).
+* PoI rules can now trigger on your own custom tag **values** — e.g. a hand-added `danger`=`7` (use ≥/≤) or `faction/control`=`Empire` (use "is").
+* PoI pack/rule/category edits now re-tag every system immediately when you close the editor (no more waiting for the next body edit).
+* PoI packs now travel inside the `.json` starmap file — download embeds them, upload merges them back in.
+* Flat atmosphere tags (corrosive, oxidizer, greenhouse…) are now grouped under Atmosphere in the body Tags list, signalling that the atmosphere data is the lever.
+
 ## v2.0.46-beta - 14th Jun 2026
 
 * Removed the redundant lock-icon legend from the Tags editor (the meaning is in each icon's tooltip).

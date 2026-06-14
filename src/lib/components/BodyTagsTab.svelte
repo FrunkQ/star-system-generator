@@ -35,14 +35,14 @@
 
   // Group the body's tags by SOURCE so the player can see where each came from: their own first,
   // then PoI-rule tags (changeable via the pack) and physics tags (fixed) under category headings.
-  interface TagItem { key: string; value?: string; label: string; color: string; desc: string; }
+  interface TagItem { key: string; value?: string; label: string; color: string; textColor: string; desc: string; }
   $: groups = (() => {
     const manual: TagItem[] = [];
     const poi: Record<string, TagItem[]> = {};
     const physics: Record<string, TagItem[]> = {};
     for (const t of body.tags ?? []) {
       const info = describeTag(t.key);
-      const item: TagItem = { key: t.key, value: t.value, label: info.label, color: info.color, desc: info.description };
+      const item: TagItem = { key: t.key, value: t.value, label: info.label, color: info.color, textColor: info.textColor || '#fff', desc: info.description };
       const src = tagSource(t.key);
       if (src === 'manual') manual.push(item);
       else { const bucket = src === 'poi' ? poi : physics; (bucket[info.group] ||= []).push(item); }
@@ -64,7 +64,7 @@
         <h5 class="src-head manual-head">Yours</h5>
         <div class="tags-list">
           {#each groups.manual as t (t.key)}
-            <button class="tag-chip active" style="background-color:{t.color}" title={(t.desc ? t.desc + '\n\n' : '') + 'Your tag — click to remove'} on:click={() => removeTag(t.key)}>
+            <button class="tag-chip active" style="background-color:{t.color}; color:{t.textColor}" title={(t.desc ? t.desc + '\n\n' : '') + 'Your tag — click to remove'} on:click={() => removeTag(t.key)}>
               {t.label}{#if t.value}: {t.value}{/if} <span class="x">×</span>
             </button>
           {/each}
@@ -78,7 +78,7 @@
         <h5 class="src-head poi-head">{g} <span class="src-note">· PoI rule</span></h5>
         <div class="tags-list">
           {#each groups.poi[g] as t (t.key)}
-            <button class="tag-chip locked" style="background-color:{t.color}" title={(t.desc || t.label) + '\n\nFrom a PoI rule — re-applied every run. Change the rule/pack to alter it.'}>
+            <button class="tag-chip locked" style="background-color:{t.color}; color:{t.textColor}" title={(t.desc || t.label) + '\n\nFrom a PoI rule — re-applied every run. Change the rule/pack to alter it.'}>
               {t.label}{#if t.value}: {t.value}{/if}
               <svg class="lock poi" viewBox="0 0 24 24" width="11" height="11"><rect x="5" y="11" width="14" height="9" rx="1.5" fill="#111" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
             </button>

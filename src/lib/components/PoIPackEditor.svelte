@@ -4,7 +4,7 @@
   // (ANDed), with a raw-JSON fallback for complex any/not/nested logic.
   import { createEventDispatcher } from 'svelte';
   import { poiPacks, exportPack, importPack, POI_FIELDS, DEFAULT_POI_PACK,
-    type PoIPack, type PoIRule, type PoIExpr, type PoIField } from '$lib/physics/reasonsToVisit';
+    type PoIPack, type PoIRule, type PoIExpr, type PoIField, type ReasonCategory } from '$lib/physics/reasonsToVisit';
   import { EXAMPLE_POI_PACKS } from '$lib/physics/poiExamplePacks';
 
   const dispatch = createEventDispatcher();
@@ -13,8 +13,32 @@
   $: pack = packs.find((p) => p.id === selectedId) ?? packs[0];
   $: isDefault = pack?.id === 'default';
 
+  // Category colour helpers (chip background / font) — drive the live tag previews + the rule list.
+  const catOf = (id: string): ReasonCategory | undefined => pack?.categories.find((c) => c.id === id);
+  const catBg = (id: string) => catOf(id)?.color || '#555a66';
+  const catFg = (id: string) => catOf(id)?.textColor || '#ffffff';
+  // The compound tag is category-id + "/" + a sanitised suffix the user types.
+  const slug = (s: string) => s.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9/_-]/g, '');
+  const compoundTag = (catId: string, suffix: string) => `${catId}/${slug(suffix) || 'new-hook'}`;
+
   const fieldOf = (name: string): PoIField | undefined => POI_FIELDS.find((f) => f.field === name);
   const opsFor = (f?: PoIField) => f?.type === 'number' ? ['gte', 'lte', 'gt', 'lt', 'between'] : ['eq'];
+  // Human-readable range for a numeric field — fractions read clearer as 0.0–1.0.
+  const rangeText = (f?: PoIField) => f && f.type === 'number'
+    ? (f.max !== undefined && f.max <= 1 ? '0.0–1.0' : `${f.min ?? 0}–${f.max ?? '∞'}`)
+    : '';
+  // When a numeric field has explicit bounds, offer a slider (the number stays hand-editable).
+  const hasRange = (f?: PoIField) => !!f && f.type === 'number' && f.min !== undefined && f.max !== undefined;
+  const stepFor = (f: PoIField) => (f.max! <= 1 ? 0.01 : (f.max! <= 10 ? 0.1 : 1));
+  // A `tag:<key>` field reads one of the player's own custom tag VALUES — text or number — so allow
+  // every operator on it.
+  const isTagField = (field: string) => field === '__tag__' || field.startsWith('tag:');
+  const opsForRow = (row: { field: string }) => isTagField(row.field) ? ['eq', 'gte', 'lte', 'gt', 'lt', 'between'] : opsFor(fieldOf(row.field));
+  function onFieldChange(row: { field: string; op: string }, value: string) {
+    if (value === '__tag__') { row.field = row.field.startsWith('tag:') ? row.field : 'tag:'; row.op = 'eq'; }
+    else { row.field = value; row.op = opsFor(fieldOf(value))[0]; }
+    rows = rows;
+  }
   const OP_LABEL: Record<string, string> = { gte: '≥', lte: '≤', gt: '>', lt: '<', between: 'between', eq: 'is' };
 
   // --- pack ops ---
@@ -29,6 +53,10 @@
     if (id === 'default') return;
     update((ps) => ps.filter((p) => p.id !== id));
     selectedId = 'default';
+  }
+  function resetDefault() {
+    if (!confirm('Reset the built-in pack to its original categories and rules? Your edits to it will be lost.')) return;
+    update((ps) => ps.map((p) => p.id === 'default' ? { ...structuredClone(DEFAULT_POI_PACK), enabled: p.enabled } : p));
   }
   function doExport(p: PoIPack) {
     const blob = new Blob([exportPack(p)], { type: 'application/json' });
@@ -48,16 +76,18 @@
   }
 
   // --- categories ---
-  function addCategory() { patchPack({ categories: [...pack.categories, { id: 'cat' + pack.categories.length, label: 'Category', desc: '' }] }); }
-  function patchCategory(i: number, patch: Partial<{ id: string; label: string; desc: string }>) {
+  function addCategory() { patchPack({ categories: [...pack.categories, { id: 'new-category', label: 'New category', desc: '', color: '#6c8cb5', textColor: '#ffffff' }] }); }
+  function patchCategory(i: number, patch: Partial<ReasonCategory>) {
     patchPack({ categories: pack.categories.map((c, j) => j === i ? { ...c, ...patch } : c) });
   }
   function removeCategory(i: number) { patchPack({ categories: pack.categories.filter((_, j) => j !== i) }); }
 
   // --- rules ---
   let editing: PoIRule | null = null;
+  let ruleSuffix = '';          // the part after the category prefix, e.g. "geochem-sample"
   let rows: { field: string; op: string; value: string }[] = [];
   let rawMode = false; let rawText = ''; let ruleError = '';
+  const suffixOf = (tag: string) => tag.includes('/') ? tag.split('/').slice(1).join('/') : tag;
 
   function whenToRows(when: PoIExpr): { rows: typeof rows; raw: boolean } {
     const clauses = when === true ? [] : ('all' in (when as any) ? (when as any).all : [when]);
@@ -70,7 +100,7 @@
     return { rows: out, raw: false };
   }
   function rowsToWhen(rs: typeof rows): PoIExpr {
-    const clauses = rs.filter((r) => r.field).map((r): PoIExpr => {
+    const clauses = rs.filter((r) => r.field && r.field !== '__tag__' && r.field !== 'tag:').map((r): PoIExpr => {
       const f = fieldOf(r.field);
       if (r.op === 'eq') { const v = f?.type === 'bool' ? r.value === 'true' : (f?.type === 'number' ? parseFloat(r.value) : r.value); return { eq: [r.field, v] }; }
       if (r.op === 'between') { const [a, b] = r.value.split(',').map((x) => parseFloat(x)); return { between: [r.field, a || 0, b || 0] }; }
@@ -79,7 +109,9 @@
     return clauses.length === 0 ? true : (clauses.length === 1 ? clauses[0] : { all: clauses });
   }
   function startRule(r?: PoIRule) {
-    editing = r ? { ...r } : { id: 'r' + Math.random().toString(36).slice(2, 7), tag: pack.categories[0]?.id + '/new-hook', category: pack.categories[0]?.id || 'custom', chance: 0.5, when: true };
+    const cat0 = pack.categories[0]?.id || 'custom';
+    editing = r ? { ...r } : { id: 'r' + Math.random().toString(36).slice(2, 7), tag: cat0 + '/new-hook', category: cat0, chance: 0.5, when: true };
+    ruleSuffix = suffixOf(editing.tag);
     const parsed = whenToRows(editing.when); rows = parsed.rows; rawMode = parsed.raw; rawText = JSON.stringify(editing.when, null, 0); ruleError = '';
   }
   function saveRule() {
@@ -87,7 +119,8 @@
     let when: PoIExpr;
     if (rawMode) { try { when = JSON.parse(rawText); } catch { ruleError = 'Invalid JSON'; return; } }
     else when = rowsToWhen(rows);
-    const r = { ...editing, when };
+    // The tag is always category-id + "/" + the typed suffix, so it stays in sync with its category.
+    const r = { ...editing, tag: compoundTag(editing.category, ruleSuffix), when };
     patchPack({ rules: pack.rules.some((x) => x.id === r.id) ? pack.rules.map((x) => x.id === r.id ? r : x) : [...pack.rules, r] });
     editing = null;
   }
@@ -126,34 +159,39 @@
     {#if pack}
     <section class="detail">
       <div class="head-row">
-        <input class="pack-name" value={pack.name} disabled={isDefault} on:input={(e) => patchPack({ name: e.currentTarget.value })} />
+        <input class="pack-name" value={pack.name} on:input={(e) => patchPack({ name: e.currentTarget.value })} />
         <button class="ghost" on:click={() => doExport(pack)}>Export</button>
-        {#if !isDefault}<button class="ghost danger" on:click={() => deletePack(pack.id)}>Delete</button>{/if}
+        {#if isDefault}<button class="ghost" on:click={resetDefault} title="Restore the original built-in categories and rules">Reset</button>
+        {:else}<button class="ghost danger" on:click={() => deletePack(pack.id)}>Delete</button>{/if}
       </div>
-      {#if isDefault}<p class="note">The built-in pack is read-only — duplicate via Export → edit → Import, or add your own.</p>{/if}
+      {#if isDefault}<p class="note">This is the built-in pack — edit it freely. Use <b>Reset</b> to restore the originals.</p>{/if}
 
       <h3>Categories</h3>
+      <p class="note">A category is a tag <b>prefix</b> + a <b>colour</b>. The <b>id</b> is what appears in the tag (e.g. <code>survey</code> → <code>survey/…</code>); the <b>label</b> is the heading players see (e.g. "Survey Value").</p>
       {#each pack.categories as cat, i (i)}
         <div class="cat-row">
-          <input class="mono" value={cat.id} disabled={isDefault} on:input={(e) => patchCategory(i, { id: e.currentTarget.value })} placeholder="id" />
-          <input value={cat.label} disabled={isDefault} on:input={(e) => patchCategory(i, { label: e.currentTarget.value })} placeholder="label" />
-          {#if !isDefault}<button class="x small" on:click={() => removeCategory(i)}>×</button>{/if}
+          <input class="mono" value={cat.id} on:input={(e) => patchCategory(i, { id: e.currentTarget.value })} placeholder="id (prefix)" title="The prefix shown in the tag, e.g. 'survey' → survey/geochem-sample. No spaces." />
+          <input value={cat.label} on:input={(e) => patchCategory(i, { label: e.currentTarget.value })} placeholder="label (heading)" title="The display heading players see, e.g. 'Survey Value'." />
+          <input class="swatch" type="color" value={cat.color || '#6c8cb5'} on:input={(e) => patchCategory(i, { color: e.currentTarget.value })} title="Tag background colour" />
+          <input class="swatch" type="color" value={cat.textColor || '#ffffff'} on:input={(e) => patchCategory(i, { textColor: e.currentTarget.value })} title="Tag text colour" />
+          <span class="tag-chip-preview" style="background:{cat.color || '#6c8cb5'}; color:{cat.textColor || '#fff'}">{cat.id}/…</span>
+          <button class="x small" on:click={() => removeCategory(i)}>×</button>
         </div>
       {/each}
-      {#if !isDefault}<button class="add-line" on:click={addCategory}>+ category</button>{/if}
+      <button class="add-line" on:click={addCategory}>+ category</button>
 
       <h3>Rules <span class="muted">({pack.rules.length})</span></h3>
       <div class="rules">
         {#each pack.rules as r (r.id)}
           <div class="rule-row" class:off={r.enabled === false}>
             <input type="checkbox" checked={r.enabled !== false} on:change={() => toggleRule(r.id)} title="Enable/disable" />
-            <code class="rtag">{r.tag}</code>
+            <span class="rtag-chip" style="background:{catBg(r.category)}; color:{catFg(r.category)}" title={r.tag}>{r.tag}</span>
             <span class="rchance">{Math.round(r.chance * 100)}%</span>
-            {#if !isDefault}<button class="link" on:click={() => startRule(r)}>edit</button><button class="link danger" on:click={() => deleteRule(r.id)}>del</button>{/if}
+            <button class="link" on:click={() => startRule(r)}>edit</button><button class="link danger" on:click={() => deleteRule(r.id)}>del</button>
           </div>
         {/each}
       </div>
-      {#if !isDefault}<button class="add-line" on:click={() => startRule()}>+ rule</button>{/if}
+      <button class="add-line" on:click={() => startRule()}>+ rule</button>
     </section>
     {/if}
   </div>
@@ -163,12 +201,17 @@
     <div class="rule-edit-bg" on:click={() => (editing = null)} role="presentation">
     <div class="rule-edit" on:click|stopPropagation role="dialog" aria-label="Edit rule">
       <h3>Edit rule</h3>
-      <label class="fld">Tag <input value={editing.tag} on:input={(e) => editing.tag = e.currentTarget.value} placeholder="category/hook" /></label>
-      <label class="fld">Category
-        <select value={editing.category} on:change={(e) => editing.category = e.currentTarget.value}>
+      <label class="fld" title="The category sets the tag's prefix and colour.">Category
+        <select value={editing.category} on:change={(e) => { editing.category = e.currentTarget.value; editing = editing; }}>
           {#each pack.categories as c}<option value={c.id}>{c.label}</option>{/each}
         </select>
       </label>
+      <label class="fld" title="The specific tag name, e.g. 'geochem-sample'. Combined with the category it becomes the full tag below.">Tag name
+        <input value={ruleSuffix} on:input={(e) => { ruleSuffix = e.currentTarget.value; }} placeholder="e.g. geochem-sample" />
+      </label>
+      <div class="tag-final">Tag appears as:
+        <span class="tag-chip-preview" style="background:{catBg(editing.category)}; color:{catFg(editing.category)}">{compoundTag(editing.category, ruleSuffix)}</span>
+      </div>
       <label class="fld">Chance: {Math.round(editing.chance * 100)}%
         <input type="range" min="0" max="1" step="0.01" value={editing.chance} on:input={(e) => editing.chance = parseFloat(e.currentTarget.value)} />
       </label>
@@ -180,24 +223,34 @@
         <textarea class="raw" bind:value={rawText} rows="4" spellcheck="false"></textarea>
       {:else}
         {#each rows as row, i}
-          {@const f = fieldOf(row.field)}
+          {@const isTag = isTagField(row.field)}
+          {@const f = isTag ? undefined : fieldOf(row.field)}
           <div class="cond-row">
-            <select value={row.field} on:change={(e) => { row.field = e.currentTarget.value; const nf = fieldOf(row.field); row.op = opsFor(nf)[0]; rows = rows; }} title={f?.note}>
+            <select value={isTag ? '__tag__' : row.field} on:change={(e) => onFieldChange(row, e.currentTarget.value)} title={f?.note}>
               {#each POI_FIELDS as pf}<option value={pf.field}>{pf.label}</option>{/each}
+              <option value="__tag__">Custom tag value…</option>
             </select>
+            {#if isTag}
+              <input class="tagkey" placeholder="tag key" value={row.field.startsWith('tag:') ? row.field.slice(4) : ''} on:input={(e) => { row.field = 'tag:' + e.currentTarget.value; rows = rows; }} />
+            {/if}
             <select value={row.op} on:change={(e) => { row.op = e.currentTarget.value; rows = rows; }}>
-              {#each opsFor(f) as op}<option value={op}>{OP_LABEL[op]}</option>{/each}
+              {#each opsForRow(row) as op}<option value={op}>{OP_LABEL[op]}</option>{/each}
             </select>
             {#if f?.type === 'bool'}
               <select value={row.value} on:change={(e) => { row.value = e.currentTarget.value; rows = rows; }}><option value="true">true</option><option value="false">false</option></select>
             {:else if f?.type === 'string'}
               <input value={row.value} list="vals-{i}" on:input={(e) => { row.value = e.currentTarget.value; }} /><datalist id="vals-{i}">{#each (f?.values || []) as v}<option value={v}></option>{/each}</datalist>
+            {:else if f && hasRange(f) && row.op !== 'between'}
+              <div class="num-range">
+                <input class="slider" type="range" min={f.min} max={f.max} step={stepFor(f)} value={row.value === '' ? String(f.min) : row.value} on:input={(e) => { row.value = e.currentTarget.value; rows = rows; }} title="{f.min}–{f.max}" />
+                <input class="num" type="number" value={row.value} on:input={(e) => { row.value = e.currentTarget.value; rows = rows; }} />
+              </div>
             {:else}
-              <input value={row.value} on:input={(e) => { row.value = e.currentTarget.value; }} placeholder={row.op === 'between' ? 'min,max' : (f ? `${f.min}–${f.max}` : 'value')} />
+              <input value={row.value} on:input={(e) => { row.value = e.currentTarget.value; }} placeholder={row.op === 'between' ? 'min,max' : (f ? rangeText(f) : 'value')} />
             {/if}
             <button class="x small" on:click={() => { rows = rows.filter((_, j) => j !== i); }}>×</button>
           </div>
-          {#if f}<p class="fhint">{f.note}</p>{/if}
+          {#if isTag}<p class="fhint">Matches one of the body's own custom tag values — e.g. a hand-added <code>danger</code>=<code>7</code> (use ≥/≤) or <code>faction/control</code>=<code>Empire</code> (use "is").</p>{:else if f}<p class="fhint">{f.note}{#if rangeText(f)} <span class="range">(range {rangeText(f)})</span>{/if}</p>{/if}
         {/each}
         <button class="add-line" on:click={addRow}>+ condition</button>
         <p class="muted small">No conditions = always applies.</p>
@@ -239,12 +292,17 @@
   .muted { color: var(--text-faint); font-weight: 400; }
   .cat-row, .rule-row, .cond-row { display: flex; gap: 6px; align-items: center; margin: 3px 0; }
   .cat-row input, .cond-row input, .cond-row select, .rule-edit input, .rule-edit select { background: var(--bg-control); border: 1px solid var(--border); border-radius: 4px; padding: 5px 7px; color: var(--text); font-size: 0.8rem; }
-  .cat-row .mono { width: 110px; font-family: var(--font-mono, monospace); }
+  .cat-row .mono { width: 96px; font-family: var(--font-mono, monospace); }
+  .cat-row .swatch { width: 26px; height: 26px; padding: 1px; flex: 0 0 auto; cursor: pointer; }
+  .tag-chip-preview { font-family: var(--font-mono, monospace); font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+  .cat-row .tag-chip-preview { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .rules { display: flex; flex-direction: column; gap: 2px; max-height: 220px; overflow-y: auto; }
   .rule-row { font-size: 0.8rem; }
   .rule-row.off { opacity: 0.45; }
-  .rtag { flex: 1; font-family: var(--font-mono, monospace); font-size: 0.76rem; overflow: hidden; text-overflow: ellipsis; }
-  .rchance { color: var(--text-faint); width: 38px; text-align: right; }
+  .rtag-chip { flex: 1; min-width: 0; font-family: var(--font-mono, monospace); font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rchance { color: var(--text-muted); min-width: 40px; text-align: right; padding-right: 4px; }
+  .tag-final { display: flex; align-items: center; gap: 7px; font-size: 0.76rem; color: var(--text-muted); margin: 2px 0; flex-wrap: wrap; }
+  .range { color: var(--text-faint); }
   .link { background: none; border: none; color: var(--link); cursor: pointer; font-size: 0.76rem; padding: 0 2px; }
   .add-line { align-self: flex-start; background: none; border: 1px dashed var(--border); border-radius: 4px; color: var(--link); padding: 4px 10px; cursor: pointer; font-size: 0.78rem; margin-top: 3px; }
   .err { color: #f55; font-size: 0.78rem; }
@@ -256,6 +314,11 @@
   .cond-head { display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.5rem; font-size: 0.8rem; }
   .cond-row select:first-child { flex: 2; min-width: 0; }
   .cond-row input, .cond-row select { flex: 1; min-width: 0; }
+  .cond-row .tagkey { font-family: var(--font-mono, monospace); }
+  .cond-row .num-range { flex: 1; display: flex; gap: 6px; align-items: center; min-width: 0; }
+  .cond-row .num-range .slider { flex: 1; min-width: 36px; padding: 0; }
+  .cond-row .num-range .num { flex: 0 0 58px; width: 58px; }
+  .fhint code { font-family: var(--font-mono, monospace); background: var(--bg-control); padding: 0 3px; border-radius: 3px; }
   .raw { width: 100%; background: var(--bg-control); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: var(--font-mono, monospace); font-size: 0.76rem; padding: 6px; }
   .re-actions { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 0.6rem; }
   .re-actions button, .modal button.primary { padding: 7px 14px; border: none; border-radius: 4px; background: var(--bg-control); color: var(--text); cursor: pointer; }

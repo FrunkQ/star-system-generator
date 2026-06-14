@@ -8,6 +8,18 @@ export interface TagPresentation {
   description: string;
   group: string;
   color: string;
+  textColor?: string;
+}
+
+// PoI category styles, registered at runtime by the reasons-to-visit system from the active packs.
+// Keyed by category id (= the tag namespace before "/"). Lets a user-defined tag like
+// survey/geochem-sample render with its pack-chosen colour + heading. Stale entries are harmless.
+const POI_CATEGORY_STYLE: Record<string, { label: string; color: string; textColor?: string }> = {};
+export function registerPoiCategories(cats: { id: string; label: string; color?: string; textColor?: string }[]): void {
+  for (const c of cats) {
+    if (!c?.id) continue;
+    POI_CATEGORY_STYLE[c.id] = { label: c.label || c.id, color: c.color || NAMESPACE_META[c.id]?.color || '#888888', textColor: c.textColor };
+  }
 }
 
 // Per-namespace grouping + chip colour.
@@ -198,7 +210,9 @@ export function isManagedTag(key: string): boolean {
 export type TagSource = 'physics' | 'poi' | 'manual';
 export function tagSource(key: string): TagSource {
   if (key.includes('/')) {
-    const meta = NAMESPACE_META[key.split('/')[0]];
+    const ns = key.split('/')[0];
+    if (POI_CATEGORY_STYLE[ns]) return 'poi';   // a registered PoI pack category
+    const meta = NAMESPACE_META[ns];
     if (!meta) return 'manual';
     return meta.poi ? 'poi' : 'physics';
   }
@@ -209,9 +223,27 @@ function titleCase(s: string): string {
   return s.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Flat (un-namespaced) gas-role tags derived from the atmosphere composition. They live without a
+// "/" prefix for terseness, so group them explicitly under Atmosphere — this signals to the player
+// that the lever is the body's atmosphere data (edit that to change these physics-derived tags).
+const FLAT_ATMOSPHERE_TAGS = new Set([
+  'inert', 'oxidizer', 'breathable-human', 'breathable-human-hypoxic', 'reducing', 'corrosive',
+  'highly-corrosive', 'toxic-human', 'highly-toxic', 'asphyxiant', 'crushing-atmosphere', 'acid-rain',
+  'flammable', 'oxygen-toxicity', 'hypergolic', 'lifting-gas', 'greenhouse', 'super-greenhouse',
+  'prebiotic-precursor', 'technosignature'
+]);
+
 export function describeTag(key: string): TagPresentation {
   const ns = key.split('/')[0];
-  const meta = NAMESPACE_META[ns] ?? { group: 'Other', color: '#888888' };
+  // A registered PoI category wins (user/pack-chosen colour + heading), then flat atmosphere, then
+  // the built-in namespace map, then a neutral fallback.
+  const poiStyle = key.includes('/') ? POI_CATEGORY_STYLE[ns] : undefined;
+  const meta = poiStyle
+    ? { group: poiStyle.label, color: poiStyle.color }
+    : (!key.includes('/') && FLAT_ATMOSPHERE_TAGS.has(key))
+      ? { group: 'Atmosphere', color: NAMESPACE_META.atmosphere.color }
+      : NAMESPACE_META[ns] ?? { group: 'Other', color: '#888888' };
+  const textColor = poiStyle?.textColor;
   const info = TAG_INFO[key];
   // Dynamic mean-motion resonance tags (resonance/3-2 → "3:2 resonance").
   const mmr = !info && /^resonance\/(\d+)-(\d+)$/.exec(key);
@@ -222,7 +254,7 @@ export function describeTag(key: string): TagPresentation {
     };
   }
   const label = info?.label ?? titleCase(key.includes('/') ? key.split('/').slice(1).join(' ') : key);
-  return { key, label, description: info?.description ?? '', group: meta.group, color: meta.color };
+  return { key, label, description: info?.description ?? '', group: meta.group, color: meta.color, textColor };
 }
 
 // Suggested tags for the editor's "Common" list — grouped, current namespaces.

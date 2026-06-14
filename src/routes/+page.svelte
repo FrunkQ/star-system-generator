@@ -40,6 +40,7 @@
   import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem } from '$lib/system/importFixup';
+  import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
 
   let rulePacks: RulePack[] = [];
   let isLoading = true;
@@ -759,10 +760,24 @@
     showNewStarmapModal = true;
   }
 
+  // Re-run the PoI "reasons to visit" tagger across every system after the pack editor closes, so
+  // rule/category/pack edits take effect immediately rather than waiting for the next body edit.
+  function reprocessAllReasons() {
+    starmapStore.update((map) => {
+      if (!map) return map;
+      for (const node of map.systems) if (node?.system) annotateReasonsToVisit(node.system);
+      return { ...map };
+    });
+    const open = get(systemStore);
+    if (open) { annotateReasonsToVisit(open); systemStore.set({ ...open }); }
+  }
+
   function handleDownloadStarmap() {
     if (!$starmapStore) return;
 
-    const data = JSON.stringify($starmapStore, null, 2);
+    // Embed the user's PoI packs + reasons config so they travel inside the .json starmap file.
+    const exportObj = { ...$starmapStore, poiPacks: packsForStarmap(), reasonsConfig: get(reasonsConfig) };
+    const data = JSON.stringify(exportObj, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -786,7 +801,15 @@
     reader.onload = () => {
       try {
         const data = JSON.parse(reader.result as string);
+
+        // Bring in any PoI packs / reasons config the starmap carries, BEFORE re-deriving systems,
+        // so the embedded rules drive the re-tag below. These live app-wide once merged.
+        mergeStarmapPacks(data.poiPacks);
+        applyStarmapReasonsConfig(data.reasonsConfig);
+
         const sanitized = sanitizeStarmapForRuntime(data as StarmapType);
+        delete (sanitized as any).poiPacks;
+        delete (sanitized as any).reasonsConfig;
 
         // One-way import fix-up: strip baked-in derived data / legacy tags from every embedded
         // system so the new engine re-derives cleanly (v1 starmaps otherwise carry stale physics).
@@ -939,7 +962,7 @@
     />
   {/if}
   {#if showPoiEditor}
-    <PoIPackEditor on:close={() => { showPoiEditor = false; if (settingsReturnSection) showSettingsModal = true; }} />
+    <PoIPackEditor on:close={() => { showPoiEditor = false; reprocessAllReasons(); if (settingsReturnSection) showSettingsModal = true; }} />
   {/if}
 
   {#if showLlmSettingsModal}

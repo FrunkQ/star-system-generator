@@ -9,7 +9,7 @@ export const EXAMPLE_POI_PACKS: PoIPack[] = [
     name: 'Space Opera',
     description: 'Pulpy hooks for a galaxy-far-away game — relics, contested worlds, smuggler havens.',
     enabled: true,
-    categories: [{ id: 'opera', label: 'Space Opera', desc: 'Pulp adventure hooks' }],
+    categories: [{ id: 'opera', label: 'Space Opera', desc: 'Pulp adventure hooks', color: '#c9603f', textColor: '#1c0904' }],
     rules: [
       { id: 'so1', tag: 'opera/spice-world', category: 'opera', chance: 0.3, when: { any: [{ eq: ['hydro', 'methane'] }, { gte: ['makeup.ice', 0.4] }] } },
       { id: 'so2', tag: 'opera/crystal-caverns', category: 'opera', chance: 0.3, when: { gte: ['massMe', 2] } },
@@ -24,7 +24,7 @@ export const EXAMPLE_POI_PACKS: PoIPack[] = [
     name: 'Hard Science (survey)',
     description: 'Sober research targets only — no mysteries. A model for a grounded campaign (disable Intrigue to match).',
     enabled: true,
-    categories: [{ id: 'survey', label: 'Survey value', desc: 'Hard-science field targets' }],
+    categories: [{ id: 'survey', label: 'Survey value', desc: 'Hard-science field targets', color: '#4aa3a3', textColor: '#04140f' }],
     rules: [
       { id: 'hs1', tag: 'survey/geochem-sample', category: 'survey', chance: 0.4, when: { gte: ['makeup.metal', 0.3] } },
       { id: 'hs2', tag: 'survey/subsurface-ocean', category: 'survey', chance: 0.7, when: { any: [{ eq: ['regime', 'cryovolcanic'] }, { hasTag: 'structure/subsurface-ocean' }] } },
