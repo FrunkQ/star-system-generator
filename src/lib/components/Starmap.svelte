@@ -302,6 +302,13 @@
     dispatch('updatestarmap', { ...starmap, activeJourneys: (starmap.activeJourneys ?? []).filter((j) => j.id !== id) });
     journeyToCancel = null;
   }
+  // Open the in-transit ship's CONSTRUCT — it still lives in the origin system until arrival, so we
+  // enter that system focused on it (opens its detail/editor, same path the all-bodies picker uses).
+  function openJourneyConstruct() {
+    if (!journeyToCancel) return;
+    dispatch('focusconstruct', { systemId: journeyToCancel.fromSystemId, id: journeyToCancel.shipId });
+    journeyToCancel = null;
+  }
 
   function snapPointToCurrentGrid(x: number, y: number): { x: number; y: number } {
     if (effectiveGridType === 'none') return { x, y };
@@ -1170,13 +1177,15 @@
           {/if}
 
   {#if journeyToCancel}
+    {@const jg = journeyGeo(journeyToCancel)}
     <div class="journey-cancel-backdrop" on:click={() => (journeyToCancel = null)} role="button" tabindex="0" on:keydown={(e) => { if (e.key === 'Escape') journeyToCancel = null; }}>
       <div class="journey-cancel" on:click|stopPropagation role="dialog" aria-modal="true">
-        <h3>Cancel journey?</h3>
-        <p><strong>{journeyToCancel.shipName}</strong> is en route to {journeyToCancel.toBodyName || 'its destination'}. Cancelling returns the ship to its starting system.</p>
+        <h3>{journeyToCancel.shipName}</h3>
+        <p>In transit to <strong>{journeyToCancel.toBodyName || jg?.to?.name || 'its destination'}</strong>{#if jg} — {Math.round(jg.frac * 100)}% there{/if}. The ship's construct stays in its origin system until it arrives.</p>
         <div class="jc-buttons">
-          <button on:click={() => (journeyToCancel = null)}>Keep going</button>
+          <button on:click={() => (journeyToCancel = null)}>Close</button>
           <button class="danger" on:click={confirmCancelJourney}>Cancel journey</button>
+          <button class="primary" on:click={openJourneyConstruct}>Open ship…</button>
         </div>
       </div>
     </div>
@@ -1632,7 +1641,8 @@
   }
   .journey-cancel h3 { margin: 0 0 0.5rem; }
   .journey-cancel p { margin: 0 0 1rem; font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; }
-  .jc-buttons { display: flex; justify-content: flex-end; gap: 0.6rem; }
+  .jc-buttons { display: flex; justify-content: flex-end; gap: 0.6rem; flex-wrap: wrap; }
   .jc-buttons button { padding: 8px 14px; border: none; border-radius: 4px; cursor: pointer; background: var(--bg-control); color: var(--text); font: inherit; }
   .jc-buttons button.danger { background: var(--status-bad, #e0484d); color: #fff; }
+  .jc-buttons button.primary { background: var(--accent, #ff5a1f); color: var(--on-accent, #fff); }
 </style>

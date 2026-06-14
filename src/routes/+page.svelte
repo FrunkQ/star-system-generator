@@ -993,6 +993,7 @@
       on:new={handleRequestNewStarmap}
       on:catalogue={() => showCompanionModal = true}
       on:systemclick={handleSystemClick}
+      on:focusconstruct={(e) => enterSystemAndFocus(e.detail.systemId, e.detail.id)}
       on:systemzoom={handleSystemZoom}
       on:addsystemat={handleAddSystemAt}
       on:selectsystemforlink={handleSelectSystemForLink}

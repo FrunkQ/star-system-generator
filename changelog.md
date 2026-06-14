@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.69-beta - 14th Jun 2026
+
+* Clicking an in-transit interstellar ship on the starmap now opens a ship popup (name, destination, % progress) with an **Open ship…** button that jumps to its construct in its origin system (where the construct still lives mid-flight), plus the existing Cancel-journey option.
+
 ## v2.0.68-beta - 14th Jun 2026
 
 * Temporarily hid the yellow build-stamp banner on beta while real users test (still shown in local dev). Easy to re-enable.
