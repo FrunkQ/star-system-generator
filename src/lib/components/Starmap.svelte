@@ -938,7 +938,7 @@
             <line class="journey-trail" x1={from.position.x} y1={from.position.y} x2={p.x} y2={p.y} />
             <line class="journey-ahead" x1={p.x} y1={p.y} x2={to.position.x} y2={to.position.y} />
             <g class="journey-ship" role="button" tabindex="0" transform="translate({p.x}, {p.y})"
-               on:click|stopPropagation={() => requestCancelJourney(journey)}
+               on:pointerdown|stopPropagation={() => requestCancelJourney(journey)}
                on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
               <title>{journey.shipName} → {journey.toBodyName || to.name} ({Math.round(p.frac * 100)}%) — click for options</title>
               {#if ship?.icon_type === 'circle'}<circle r="5" {fill} stroke={EDGE_TRANSIT} stroke-width="1.6" />
@@ -948,7 +948,7 @@
           {/if}
         {:else if p.kind === 'adrift'}
           <g class="journey-ship adrift" role="button" tabindex="0" transform="translate({p.x}, {p.y})"
-             on:click|stopPropagation={() => requestCancelJourney(journey)}
+             on:pointerdown|stopPropagation={() => requestCancelJourney(journey)}
              on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
             <title>{journey.shipName} — stranded in interstellar space. Click for options.</title>
             {#if ship?.icon_type === 'circle'}<circle r="5.5" {fill} stroke={EDGE_STRANDED} stroke-width="2.2" />
@@ -960,7 +960,7 @@
           {@const to = systemById(journey.toSystemId)}
           {#if to}
             <g class="journey-ship arrived" role="button" tabindex="0" transform="translate({to.position.x}, {to.position.y})"
-               on:click|stopPropagation={() => requestCancelJourney(journey)}
+               on:pointerdown|stopPropagation={() => requestCancelJourney(journey)}
                on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
               <title>{journey.shipName} — arrived at {to.name}. Click for options.</title>
               {#if ship?.icon_type === 'circle'}<circle r="5" {fill} stroke={EDGE_ARRIVED} stroke-width="1.8" />

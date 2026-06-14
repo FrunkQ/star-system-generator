@@ -1171,7 +1171,7 @@
           <button class="allbodies-close" aria-label="Close" on:click={() => (showRoutes = false)}>×</button>
         </header>
         <div class="routes-body">
-          <h4>Journeys underway &amp; planned ({routesData.journeys.length})</h4>
+          <h4>In-system journeys ({routesData.journeys.length})</h4>
           {#if routesData.journeys.length === 0}
             <p class="routes-empty">No active or planned journeys.</p>
           {:else}
@@ -1191,7 +1191,7 @@
               <div class="route-row interstellar">
                 <span class="route-status {j.status}">{j.status}{j.status === 'active' ? ` ${j.pct}%` : ''}</span>
                 <div class="route-pills">
-                  <button class="pill ship" title="Open the ship" on:click={() => { showRoutes = false; shipPanelJourneyId = j.id; }}>{j.shipName}</button>
+                  <button class="pill ship" title="Open the ship" on:click={() => { showRoutes = false; if (currentSystemId) handleBackToStarmap(); shipPanelJourneyId = j.id; }}>{j.shipName}</button>
                   <button class="pill" title="Go to origin system" on:click={() => { showRoutes = false; enterSystemAndFocus(j.fromSystemId, null); }}>{j.from}</button>
                   <span class="arrow">→</span>
                   <button class="pill" title="Go to destination system" on:click={() => { showRoutes = false; enterSystemAndFocus(j.toSystemId, j.toBodyId); }}>{j.to}{j.toBodyName ? ` (${j.toBodyName})` : ''}</button>
@@ -1199,7 +1199,7 @@
               </div>
             {/each}
           {/if}
-          <h4>Interstellar routes ({routesData.interstellar.length})</h4>
+          <h4>Charted interstellar links ({routesData.interstellar.length})</h4>
           {#if routesData.interstellar.length === 0}
             <p class="routes-empty">No interstellar routes.</p>
           {:else}
@@ -1327,7 +1327,8 @@
     line-height: 1;
     cursor: pointer;
   }
-  .routes-body { overflow-y: auto; padding: 4px 2px; }
+  .routes-body { overflow-y: auto; overflow-x: hidden; padding: 4px 2px; }
+  .routes-body .route-row { box-sizing: border-box; max-width: 100%; }
   .routes-body h4 {
     margin: 12px 0 6px;
     font-size: 0.78rem;

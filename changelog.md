@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.76-beta - 14th Jun 2026
+
+* Fixed: clicking an interstellar ship on the starmap now reliably opens its panel (the map's pan gesture was swallowing the click).
+* Routes panel: clearer section names — "In-system journeys", "Interstellar journeys", and "Charted interstellar links" (the drawn system-to-system route lines, as opposed to ships actually in flight). Removed an unnecessary horizontal scrollbar.
+* Selecting an in-flight ship from the Routes panel now drops you to the starmap first if you were inside a system, so the ship panel opens in the right context.
+
 ## v2.0.75-beta - 14th Jun 2026
 
 * The "Routes…" panel's interstellar journeys are now interactive: the **ship**, its **origin** and its **destination** are each a clickable pill — tap the ship to open its panel, or a system to jump there.
