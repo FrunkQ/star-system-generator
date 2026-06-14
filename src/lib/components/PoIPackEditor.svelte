@@ -6,6 +6,7 @@
   import { poiPacks, exportPack, importPack, POI_FIELDS, DEFAULT_POI_PACK,
     type PoIPack, type PoIRule, type PoIExpr, type PoIField, type ReasonCategory } from '$lib/physics/reasonsToVisit';
   import { EXAMPLE_POI_PACKS } from '$lib/physics/poiExamplePacks';
+  import DualRange from './DualRange.svelte';
 
   const dispatch = createEventDispatcher();
   let selectedId = 'default';
@@ -30,6 +31,11 @@
   // When a numeric field has explicit bounds, offer a slider (the number stays hand-editable).
   const hasRange = (f?: PoIField) => !!f && f.type === 'number' && f.min !== undefined && f.max !== undefined;
   const stepFor = (f: PoIField) => (f.max! <= 1 ? 0.01 : (f.max! <= 10 ? 0.1 : 1));
+  // Parse a "low,high" between value, defaulting empties to the field bounds.
+  const betweenVals = (v: string, f: PoIField) => {
+    const [a, b] = (v || '').split(',').map((x) => parseFloat(x));
+    return { low: Number.isNaN(a) ? f.min! : a, high: Number.isNaN(b) ? f.max! : b };
+  };
   // A `tag:<key>` field reads one of the player's own custom tag VALUES — text or number — so allow
   // every operator on it.
   const isTagField = (field: string) => field === '__tag__' || field.startsWith('tag:');
@@ -37,6 +43,19 @@
   function onFieldChange(row: { field: string; op: string }, value: string) {
     if (value === '__tag__') { row.field = row.field.startsWith('tag:') ? row.field : 'tag:'; row.op = 'eq'; }
     else { row.field = value; row.op = opsFor(fieldOf(value))[0]; }
+    rows = rows;
+  }
+  // Switching op to/from "between" reshapes the value between a single number and a "lo,hi" pair.
+  function onOpChange(row: { field: string; op: string; value: string }, value: string) {
+    const f = fieldOf(row.field);
+    if (value === 'between' && !row.value.includes(',')) {
+      const cur = parseFloat(row.value);
+      const lo = Number.isNaN(cur) ? (f?.min ?? 0) : cur;
+      row.value = `${lo},${f?.max ?? lo}`;
+    } else if (value !== 'between' && row.value.includes(',')) {
+      row.value = row.value.split(',')[0];
+    }
+    row.op = value;
     rows = rows;
   }
   const OP_LABEL: Record<string, string> = { gte: '≥', lte: '≤', gt: '>', lt: '<', between: 'between', eq: 'is' };
@@ -103,7 +122,7 @@
     const clauses = rs.filter((r) => r.field && r.field !== '__tag__' && r.field !== 'tag:').map((r): PoIExpr => {
       const f = fieldOf(r.field);
       if (r.op === 'eq') { const v = f?.type === 'bool' ? r.value === 'true' : (f?.type === 'number' ? parseFloat(r.value) : r.value); return { eq: [r.field, v] }; }
-      if (r.op === 'between') { const [a, b] = r.value.split(',').map((x) => parseFloat(x)); return { between: [r.field, a || 0, b || 0] }; }
+      if (r.op === 'between') { const [a, b] = r.value.split(',').map((x) => parseFloat(x)); return { between: [r.field, Number.isNaN(a) ? 0 : a, Number.isNaN(b) ? 0 : b] }; }
       return { [r.op]: [r.field, parseFloat(r.value) || 0] } as PoIExpr;
     });
     return clauses.length === 0 ? true : (clauses.length === 1 ? clauses[0] : { all: clauses });
@@ -233,7 +252,7 @@
             {#if isTag}
               <input class="tagkey" placeholder="tag key" value={row.field.startsWith('tag:') ? row.field.slice(4) : ''} on:input={(e) => { row.field = 'tag:' + e.currentTarget.value; rows = rows; }} />
             {/if}
-            <select value={row.op} on:change={(e) => { row.op = e.currentTarget.value; rows = rows; }}>
+            <select value={row.op} on:change={(e) => onOpChange(row, e.currentTarget.value)}>
               {#each opsForRow(row) as op}<option value={op}>{OP_LABEL[op]}</option>{/each}
             </select>
             {#if f?.type === 'bool'}
@@ -245,11 +264,21 @@
                 <input class="slider" type="range" min={f.min} max={f.max} step={stepFor(f)} value={row.value === '' ? String(f.min) : row.value} on:input={(e) => { row.value = e.currentTarget.value; rows = rows; }} title="{f.min}–{f.max}" />
                 <input class="num" type="number" value={row.value} on:input={(e) => { row.value = e.currentTarget.value; rows = rows; }} />
               </div>
+            {:else if f && hasRange(f) && row.op === 'between'}
+              <!-- the dual slider renders full-width on its own line below -->
             {:else}
               <input value={row.value} on:input={(e) => { row.value = e.currentTarget.value; }} placeholder={row.op === 'between' ? 'min,max' : (f ? rangeText(f) : 'value')} />
             {/if}
             <button class="x small" on:click={() => { rows = rows.filter((_, j) => j !== i); }}>×</button>
           </div>
+          {#if f && hasRange(f) && row.op === 'between'}
+            {@const bv = betweenVals(row.value, f)}
+            <div class="between-row">
+              <input class="num" type="number" value={bv.low} on:input={(e) => { row.value = `${e.currentTarget.value},${bv.high}`; rows = rows; }} />
+              <DualRange min={f.min} max={f.max} step={stepFor(f)} low={bv.low} high={bv.high} on:change={(e) => { row.value = `${e.detail.low},${e.detail.high}`; rows = rows; }} />
+              <input class="num" type="number" value={bv.high} on:input={(e) => { row.value = `${bv.low},${e.currentTarget.value}`; rows = rows; }} />
+            </div>
+          {/if}
           {#if isTag}<p class="fhint">Matches one of the body's own custom tag values — e.g. a hand-added <code>danger</code>=<code>7</code> (use ≥/≤) or <code>faction/control</code>=<code>Empire</code> (use "is").</p>{:else if f}<p class="fhint">{f.note}{#if rangeText(f)} <span class="range">(range {rangeText(f)})</span>{/if}</p>{/if}
         {/each}
         <button class="add-line" on:click={addRow}>+ condition</button>
@@ -318,6 +347,8 @@
   .cond-row .num-range { flex: 1; display: flex; gap: 6px; align-items: center; min-width: 0; }
   .cond-row .num-range .slider { flex: 1; min-width: 36px; padding: 0; }
   .cond-row .num-range .num { flex: 0 0 58px; width: 58px; }
+  .between-row { display: flex; align-items: center; gap: 8px; margin: 1px 0 2px; padding: 0 2px; }
+  .between-row .num { flex: 0 0 56px; width: 56px; background: var(--bg-control); border: 1px solid var(--border); border-radius: 4px; padding: 5px 7px; color: var(--text); font-size: 0.8rem; }
   .fhint code { font-family: var(--font-mono, monospace); background: var(--bg-control); padding: 0 3px; border-radius: 3px; }
   .raw { width: 100%; background: var(--bg-control); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: var(--font-mono, monospace); font-size: 0.76rem; padding: 6px; }
   .re-actions { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 0.6rem; }
