@@ -170,7 +170,7 @@
       <p class="note">A category is a tag <b>prefix</b> + a <b>colour</b>. The <b>id</b> is what appears in the tag (e.g. <code>survey</code> → <code>survey/…</code>); the <b>label</b> is the heading players see (e.g. "Survey Value").</p>
       {#each pack.categories as cat, i (i)}
         <div class="cat-row">
-          <input class="mono" value={cat.id} on:input={(e) => patchCategory(i, { id: e.currentTarget.value })} placeholder="id (prefix)" title="The prefix shown in the tag, e.g. 'survey' → survey/geochem-sample. No spaces." />
+          <input class="mono" value={cat.id} on:input={(e) => patchCategory(i, { id: e.currentTarget.value })} placeholder="id (prefix)" title="The prefix shown in the tag, e.g. 'survey' → survey/geochem-sample." />
           <input value={cat.label} on:input={(e) => patchCategory(i, { label: e.currentTarget.value })} placeholder="label (heading)" title="The display heading players see, e.g. 'Survey Value'." />
           <input class="swatch" type="color" value={cat.color || '#6c8cb5'} on:input={(e) => patchCategory(i, { color: e.currentTarget.value })} title="Tag background colour" />
           <input class="swatch" type="color" value={cat.textColor || '#ffffff'} on:input={(e) => patchCategory(i, { textColor: e.currentTarget.value })} title="Tag text colour" />

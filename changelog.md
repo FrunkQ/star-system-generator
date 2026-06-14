@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.49-beta - 14th Jun 2026
+
+* PoI category ids may contain spaces — everything keys/splits on the first "/", so a space is purely cosmetic and nothing breaks. Dropped the misleading "No spaces" hint; no forced sanitisation.
+
 ## v2.0.48-beta - 14th Jun 2026
 
 * Removed the "Common:" quick-add list from the body Tags editor. Every entry was a physics-derived tag the engine owns and recomputes, so hand-adding one only produced a locked tag you couldn't remove — the custom-tag form remains for your own tags.
