@@ -7,6 +7,7 @@
   import BodyPicker from './BodyPicker.svelte';
   import FullscreenButton from './FullscreenButton.svelte';
   import type { Starmap, System, CelestialBody, RulePack, Barycenter } from '$lib/types';
+  import { constructDisplayPlacement } from '$lib/transit/interstellar';
   import StarmapInfoPanel from './StarmapInfoPanel.svelte';
   import BottomSheet from './BottomSheet.svelte';
   import TimeDisplay from './TimeDisplay.svelte';
@@ -280,26 +281,22 @@
 
   // --- Active interstellar journeys: ships in flight along the starmap, driven by the game clock. ---
   $: journeyNowSec = Number(ensuredTemporal?.displayTimeSec ?? 0);
-  // Geometry for one journey at the current game time: endpoint positions, progress 0..1, and the
-  // ship's interpolated position. Null if either endpoint system is gone.
-  function journeyGeo(j: any) {
-    const from = starmap.systems.find((s) => s.id === j.fromSystemId);
-    const to = starmap.systems.find((s) => s.id === j.toSystemId);
-    if (!from || !to) return null;
-    const elapsed = journeyNowSec - Number(j.startTimeSec || 0);
-    const frac = j.durationSec > 0 ? Math.max(0, Math.min(1, elapsed / j.durationSec)) : 1;
-    const x = from.position.x + (to.position.x - from.position.x) * frac;
-    const y = from.position.y + (to.position.y - from.position.y) * frac;
-    return { from, to, frac, x, y };
-  }
   $: activeJourneys = starmap.activeJourneys ?? [];
+  const systemById = (id: string) => starmap.systems.find((s) => s.id === id);
 
   let journeyToCancel: any = null;
   function requestCancelJourney(j: any) { journeyToCancel = j; }
-  function confirmCancelJourney() {
-    if (!journeyToCancel) return;
-    const id = journeyToCancel.id;
-    dispatch('updatestarmap', { ...starmap, activeJourneys: (starmap.activeJourneys ?? []).filter((j) => j.id !== id) });
+  // Resolve a journey by EDITING ITS LOG RECORD (the source of truth) — never by moving the
+  // construct. Position is derived from the record + clock, so this stays reversible: scrub back
+  // before the end and the ship is mid-flight again. outcome: return | arrive | strand.
+  function resolveJourney(j: any, outcome: 'return' | 'arrive' | 'strand') {
+    const journeys = (starmap.activeJourneys ?? []).map((x) => x.id === j.id ? { ...x, outcome, endedAtSec: String(journeyNowSec) } : x);
+    dispatch('updatestarmap', { ...starmap, activeJourneys: journeys });
+    journeyToCancel = null;
+  }
+  function resumeJourney(j: any) {
+    const journeys = (starmap.activeJourneys ?? []).map((x) => x.id === j.id ? { ...x, outcome: undefined, endedAtSec: undefined } : x);
+    dispatch('updatestarmap', { ...starmap, activeJourneys: journeys });
     journeyToCancel = null;
   }
   // Open the in-transit ship's CONSTRUCT — it still lives in the origin system until arrival, so we
@@ -931,19 +928,43 @@
         {/if}
       {/each}
 
-      <!-- Active journeys: solid trail behind the ship, dashed path ahead, ship marker on top. -->
+      <!-- Active journeys, placed by deriving from the log at the current clock: a moving ship
+           (trail behind, dashed path ahead) while in transit, or a static glyph when stranded. -->
       {#each activeJourneys as journey (journey.id)}
-        {@const g = journeyGeo(journey)}
-        {#if g}
-          <line class="journey-trail" x1={g.from.position.x} y1={g.from.position.y} x2={g.x} y2={g.y} />
-          <line class="journey-ahead" x1={g.x} y1={g.y} x2={g.to.position.x} y2={g.to.position.y} />
-          <g class="journey-ship" role="button" tabindex="0" transform="translate({g.x}, {g.y})"
+        {@const p = constructDisplayPlacement(starmap, journey.shipId, journeyNowSec)}
+        {#if p.kind === 'transit'}
+          {@const from = systemById(journey.fromSystemId)}
+          {@const to = systemById(journey.toSystemId)}
+          {#if from && to}
+            <line class="journey-trail" x1={from.position.x} y1={from.position.y} x2={p.x} y2={p.y} />
+            <line class="journey-ahead" x1={p.x} y1={p.y} x2={to.position.x} y2={to.position.y} />
+            <g class="journey-ship" role="button" tabindex="0" transform="translate({p.x}, {p.y})"
+               on:click|stopPropagation={() => requestCancelJourney(journey)}
+               on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
+              <title>{journey.shipName} → {journey.toBodyName || to.name} ({Math.round(p.frac * 100)}%) — click for options</title>
+              <path class="journey-glyph" d="M0,-5 L4,0 L0,5 L-4,0 Z" />
+              <text class="journey-label" x="7" y="3">{journey.shipName}</text>
+            </g>
+          {/if}
+        {:else if p.kind === 'adrift'}
+          <g class="journey-ship adrift" role="button" tabindex="0" transform="translate({p.x}, {p.y})"
              on:click|stopPropagation={() => requestCancelJourney(journey)}
              on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
-            <title>{journey.shipName} → {journey.toBodyName || g.to.name} ({Math.round(g.frac * 100)}%) — click to cancel</title>
-            <path class="journey-glyph" d="M0,-5 L4,0 L0,5 L-4,0 Z" />
-            <text class="journey-label" x="7" y="3">{journey.shipName}</text>
+            <title>{journey.shipName} — stranded in interstellar space. Click for options.</title>
+            <path class="journey-glyph adrift-glyph" d="M0,-6 L5,0 L0,6 L-5,0 Z" />
+            <text class="journey-label" x="8" y="3">{journey.shipName} (adrift)</text>
           </g>
+        {:else if p.kind === 'system' && p.systemId === journey.toSystemId}
+          <!-- Arrived: parked marker at the destination (until reconcile moves the node into it). -->
+          {@const to = systemById(journey.toSystemId)}
+          {#if to}
+            <g class="journey-ship arrived" role="button" tabindex="0" transform="translate({to.position.x}, {to.position.y})"
+               on:click|stopPropagation={() => requestCancelJourney(journey)}
+               on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
+              <title>{journey.shipName} — arrived at {to.name}. Click for options.</title>
+              <path class="journey-glyph arrived-glyph" d="M0,-5 L4,0 L0,5 L-4,0 Z" />
+            </g>
+          {/if}
         {/if}
       {/each}
 
@@ -1177,16 +1198,36 @@
           {/if}
 
   {#if journeyToCancel}
-    {@const jg = journeyGeo(journeyToCancel)}
+    {@const jp = constructDisplayPlacement(starmap, journeyToCancel.shipId, journeyNowSec)}
     <div class="journey-cancel-backdrop" on:click={() => (journeyToCancel = null)} role="button" tabindex="0" on:keydown={(e) => { if (e.key === 'Escape') journeyToCancel = null; }}>
       <div class="journey-cancel" on:click|stopPropagation role="dialog" aria-modal="true">
         <h3>{journeyToCancel.shipName}</h3>
-        <p>In transit to <strong>{journeyToCancel.toBodyName || jg?.to?.name || 'its destination'}</strong>{#if jg} — {Math.round(jg.frac * 100)}% there{/if}. The ship's construct stays in its origin system until it arrives.</p>
-        <div class="jc-buttons">
-          <button on:click={() => (journeyToCancel = null)}>Close</button>
-          <button class="danger" on:click={confirmCancelJourney}>Cancel journey</button>
-          <button class="primary" on:click={openJourneyConstruct}>Open ship…</button>
-        </div>
+        {#if jp.kind === 'adrift'}
+          <p>Stranded in interstellar space between <strong>{systemById(journeyToCancel.fromSystemId)?.name}</strong> and <strong>{systemById(journeyToCancel.toSystemId)?.name}</strong>. Resume to put it back on its course (reversible — it's derived from the clock).</p>
+          <div class="jc-buttons">
+            <button on:click={() => (journeyToCancel = null)}>Close</button>
+            <button on:click={() => resumeJourney(journeyToCancel)}>Resume journey</button>
+            <button class="primary" on:click={openJourneyConstruct}>Open ship…</button>
+          </div>
+        {:else if jp.kind === 'system' && jp.systemId === journeyToCancel.toSystemId}
+          <p>Arrived at <strong>{systemById(journeyToCancel.toSystemId)?.name}</strong>.</p>
+          <div class="jc-buttons">
+            <button on:click={() => (journeyToCancel = null)}>Close</button>
+            <button on:click={() => resumeJourney(journeyToCancel)} title="Put it back en route">Re-fly journey</button>
+            <button class="primary" on:click={openJourneyConstruct}>Open ship…</button>
+          </div>
+        {:else}
+          <p>In transit to <strong>{journeyToCancel.toBodyName || systemById(journeyToCancel.toSystemId)?.name || 'its destination'}</strong>{#if jp.kind === 'transit'} — {Math.round(jp.frac * 100)}% there{/if}. End the journey:</p>
+          <div class="jc-buttons">
+            <button on:click={() => resolveJourney(journeyToCancel, 'return')} title="Turn back — the ship ends up at its origin system">At source</button>
+            <button on:click={() => resolveJourney(journeyToCancel, 'arrive')} title="Arrive now at the destination system">At destination</button>
+            <button class="danger" on:click={() => resolveJourney(journeyToCancel, 'strand')} title="Stop here — the ship is left adrift in interstellar space">Strand here</button>
+          </div>
+          <div class="jc-buttons">
+            <button on:click={() => (journeyToCancel = null)}>Close</button>
+            <button class="primary" on:click={openJourneyConstruct}>Open ship…</button>
+          </div>
+        {/if}
       </div>
     </div>
   {/if}
@@ -1626,6 +1667,12 @@
   .journey-ship { cursor: pointer; }
   .journey-glyph { fill: #ffd23f; stroke: #000; stroke-width: 1px; paint-order: stroke; }
   .journey-ship:hover .journey-glyph { fill: #fff; }
+  /* Stranded ship: a cold, hollow grey diamond — clearly not under way. */
+  .journey-glyph.adrift-glyph { fill: #8a8f9a; }
+  .journey-ship.adrift:hover .journey-glyph { fill: #cfd3da; }
+  /* Arrived ship: a calm green diamond parked at the destination. */
+  .journey-glyph.arrived-glyph { fill: #6fcf8f; }
+  .journey-ship.arrived:hover .journey-glyph { fill: #9be0b3; }
   .journey-label {
     fill: #ffd23f; font-size: 9px; paint-order: stroke; stroke: #000; stroke-width: 2px;
     pointer-events: none;
