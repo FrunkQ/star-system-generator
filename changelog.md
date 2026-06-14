@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.67-beta - 14th Jun 2026
+
+* The Routes panel now lists interstellar journeys in flight. Previously it only showed in-system journeys and the static interstellar route lines, so a ship actually crossing between systems (animating on the map) didn't appear. New "Interstellar journeys" section shows each flight with its ship, from → to, live status (scheduled / active / completed) and % progress; click to jump to its destination.
+
 ## v2.0.66-beta - 14th Jun 2026
 
 * Fixed Find-by-tag results not putting the system you're in first on diagrammatic maps (they fell back to plain A–Z, so e.g. Rigel sorted ahead of the Sol system you had open). Now the current system always leads, then nearest/alphabetical.

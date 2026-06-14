@@ -119,11 +119,24 @@
   let showRoutes = false; // routes & journeys list (in-system underway/planned + interstellar)
   $: routesData = (() => {
     const map = $starmapStore;
-    if (!map) return { interstellar: [] as any[], journeys: [] as any[] };
+    if (!map) return { interstellar: [] as any[], journeys: [] as any[], interstellarJourneys: [] as any[] };
     const sysName = (id: string) => map.systems.find((s) => s.id === id)?.name ?? id;
     const interstellar = (map.routes ?? []).map((r) => ({
       id: r.id, source: sysName(r.sourceSystemId), target: sysName(r.targetSystemId), distance: r.distance, unit: r.unit
     }));
+    // Live interstellar flights (ships in transit between systems) — stored on the starmap, not on a
+    // construct, so they're gathered separately. Status/progress come from the game clock.
+    const nowSec = Number(map.temporal?.displayTimeSec ?? 0);
+    const interstellarJourneys = (map.activeJourneys ?? []).map((j: any) => {
+      const start = Number(j.startTimeSec ?? 0);
+      const end = start + Number(j.durationSec ?? 0);
+      const status = nowSec < start ? 'scheduled' : (nowSec >= end ? 'completed' : 'active');
+      const pct = end > start ? Math.max(0, Math.min(100, Math.round(((nowSec - start) / (end - start)) * 100))) : 0;
+      return {
+        id: j.id, shipName: j.shipName ?? 'Ship', from: sysName(j.fromSystemId), to: sysName(j.toSystemId),
+        toSystemId: j.toSystemId, toBodyId: j.toBodyId ?? null, toBodyName: j.toBodyName, status, pct
+      };
+    });
     const journeys: any[] = [];
     for (const sys of map.systems) {
       const nodes = sys.system?.nodes ?? [];
@@ -142,7 +155,7 @@
         }
       }
     }
-    return { interstellar, journeys };
+    return { interstellar, journeys, interstellarJourneys };
   })();
   $: allShips = allBodies.filter((n: any) => n.kind === 'construct');
   $: allBodies = (() => {
@@ -1118,6 +1131,17 @@
               </button>
             {/each}
           {/if}
+          <h4>Interstellar journeys ({routesData.interstellarJourneys.length})</h4>
+          {#if routesData.interstellarJourneys.length === 0}
+            <p class="routes-empty">No interstellar journeys.</p>
+          {:else}
+            {#each routesData.interstellarJourneys as j (j.id)}
+              <button class="route-row" on:click={() => { showRoutes = false; enterSystemAndFocus(j.toSystemId, j.toBodyId); }}>
+                <span class="route-status {j.status}">{j.status}</span>
+                <span class="route-main"><strong>{j.shipName}</strong> · {j.from} → {j.to}{j.toBodyName ? ` (${j.toBodyName})` : ''}{j.status === 'active' ? ` — ${j.pct}%` : ''}</span>
+              </button>
+            {/each}
+          {/if}
           <h4>Interstellar routes ({routesData.interstellar.length})</h4>
           {#if routesData.interstellar.length === 0}
             <p class="routes-empty">No interstellar routes.</p>
@@ -1281,6 +1305,7 @@
   }
   .route-status.active { background: color-mix(in srgb, var(--accent, #ff5a1f) 30%, transparent); color: var(--accent, #ff5a1f); }
   .route-status.scheduled { background: var(--bg-panel, #14161c); color: var(--text-muted, #cfcfcf); }
+  .route-status.completed { background: color-mix(in srgb, #4fa86a 26%, transparent); color: #6fcf8f; }
   .route-main { flex: 1 1 auto; min-width: 0; font-size: 0.9rem; }
   .route-sys { flex: 0 0 auto; color: var(--text-faint, #8a8f9a); font-size: 0.8rem; }
   footer {
