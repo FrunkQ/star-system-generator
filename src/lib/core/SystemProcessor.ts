@@ -23,15 +23,16 @@ const FORMATION_DELAY_GYR = 0.005;
 
 // Old friendly-label tags that duplicate physics-derived ones — dropped on load (the physics
 // re-adds the correct namespaced versions). Explicit so user free-text tags are never touched.
+// A few friendly-label duplicates of CURRENT physics tags (the new label differs from the key).
 const LEGACY_DUPLICATE_TAGS = new Set<string>([
-  'Active Volcanism', 'Tidally Locked', 'Active Volcano', 'Tidal Volcanism', 'Tidal Hotspots',
-  'Ringed', 'Rings'   // now derived from ring-child geometry (ring/* tags)
+  'Active Volcanism', 'Active Volcano', 'Tidal Volcanism', 'Tidal Hotspots', 'Rings'
 ]);
 import { SeededRNG } from '../rng';
 import { annotateGravitationalStability } from '../physics/stability';
 import { annotateResonances } from '../physics/resonance';
 import { annotateReasonsToVisit } from '../physics/reasonsToVisit';
 import { reconcileBarycenters } from '../physics/barycenterReconcile';
+import { isLegacyTag } from '../tags/tagPresentation';
 
 export class SystemProcessor implements ISystemProcessor {
     private systemAgeGyr = 4.6;
@@ -49,7 +50,9 @@ export class SystemProcessor implements ISystemProcessor {
         for (const node of allNodes) {
             const b = node as CelestialBody;
             if (!b.tags || !b.tags.length) continue;
-            b.tags = b.tags.filter((t) => !LEGACY_DUPLICATE_TAGS.has(t.key));
+            // Strip friendly-label duplicates AND the broader legacy set (classes-as-tags, retired
+            // atmosphere flavour, V1 display-name physics) — but NEVER a hand-added (manual) tag.
+            b.tags = b.tags.filter((t) => t.manual || (!LEGACY_DUPLICATE_TAGS.has(t.key) && !isLegacyTag(t.key)));
         }
 
         // Stellar flare activity (drives the flare particle dose on planets) — derived for every star

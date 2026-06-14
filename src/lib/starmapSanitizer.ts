@@ -1,5 +1,15 @@
 import type { CelestialBody, Starmap } from '$lib/types';
 import type { ScheduledJourneyLog, TransitPlan, TransitSegment, Vector2 } from '$lib/transit/types';
+import { isLegacyTag } from '$lib/tags/tagPresentation';
+
+// Drop V1 legacy tags the new engine replaces (classes, namespaced physics, atmosphere model). Never
+// touches a hand-added (manual) tag. Self-heals persisted/imported data without a full reprocess.
+function sanitizeTags(node: CelestialBody): { node: CelestialBody; changed: boolean } {
+  if (!Array.isArray(node.tags) || !node.tags.length) return { node, changed: false };
+  const kept = node.tags.filter((t) => t?.manual || !isLegacyTag(t.key));
+  if (kept.length === node.tags.length) return { node, changed: false };
+  return { node: { ...node, tags: kept }, changed: true };
+}
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -131,6 +141,9 @@ export function sanitizeStarmapForRuntime(starmap: Starmap): Starmap {
       // Self-heal a bad semi-major axis on any orbiting node (body or construct).
       const orbitFix = sanitizeOrbit(current);
       if (orbitFix.changed) { current = orbitFix.node; systemChanged = true; }
+      // Drop legacy duplicate tags (the new engine replaces them).
+      const tagFix = sanitizeTags(current);
+      if (tagFix.changed) { current = tagFix.node; systemChanged = true; }
       if ((current as any).kind !== 'construct') return current;
       const sanitized = sanitizeConstructJourneys(current);
       if (sanitized.changed) systemChanged = true;
