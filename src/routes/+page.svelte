@@ -25,6 +25,7 @@
   import Starmap from '$lib/components/Starmap.svelte';
   import SystemView from '$lib/components/SystemView.svelte';
   import BodyPicker from '$lib/components/BodyPicker.svelte';
+  import TagFinder from '$lib/components/TagFinder.svelte';
   import RouteEditorModal from '$lib/components/RouteEditorModal.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import PoIPackEditor from '$lib/components/PoIPackEditor.svelte';
@@ -113,6 +114,7 @@
   // --- All-Bodies picker (cross-starmap directory): find any body/construct across every
   // system and jump straight to it. Lives in the rail (PC side panel) / + menu (mobile). ---
   let showAllBodies = false;
+  let showTagFinder = false; // find bodies by tag across all systems
   let showAllShips = false; // constructs-only directory ("Ships")
   let showRoutes = false; // routes & journeys list (in-system underway/planned + interstellar)
   $: routesData = (() => {
@@ -174,6 +176,10 @@
     const node = allBodies.find((n) => n.id === e.detail);
     showAllBodies = false;
     if (node) enterSystemAndFocus(node.__systemId, node.id);
+  }
+  function handleTagFinderSelect(e: CustomEvent<{ systemId: string; id: string }>) {
+    showTagFinder = false;
+    enterSystemAndFocus(e.detail.systemId, e.detail.id);
   }
 
   let selectedRulepack: RulePack | undefined;
@@ -899,6 +905,7 @@
         on:settings={() => { settingsReturnSection = null; showSettingsModal = true; }}
         on:llmsettings={() => { settingsReturnSection = null; showLlmSettingsModal = true; }}
         on:allbodies={() => showAllBodies = true}
+        on:findtag={() => showTagFinder = true}
         on:allships={() => showAllShips = true}
         on:routes={() => showRoutes = true}
         on:about={() => showAbout = true}
@@ -928,6 +935,7 @@
       on:settings={() => { settingsReturnSection = null; showSettingsModal = true; }}
       on:llmsettings={() => { settingsReturnSection = null; showLlmSettingsModal = true; }}
       on:allbodies={() => showAllBodies = true}
+      on:findtag={() => showTagFinder = true}
       on:allships={() => showAllShips = true}
       on:routes={() => showRoutes = true}
       on:about={() => showAbout = true}
@@ -1009,6 +1017,23 @@
           emptyLabel="All bodies"
           contextOf={allBodiesContext}
           on:select={handleAllBodiesSelect}
+        />
+      </div>
+    </div>
+  {/if}
+
+  {#if showTagFinder}
+    <div class="allbodies-overlay" role="presentation" on:click={() => (showTagFinder = false)}>
+      <div class="allbodies-card" role="dialog" aria-label="Find by tag" on:click|stopPropagation>
+        <header class="allbodies-head">
+          <span>Find by tag</span>
+          <button class="allbodies-close" aria-label="Close" on:click={() => (showTagFinder = false)}>×</button>
+        </header>
+        <TagFinder
+          nodes={allBodies}
+          currentSystemId={currentSystemId}
+          contextOf={allBodiesContext}
+          on:select={handleTagFinderSelect}
         />
       </div>
     </div>

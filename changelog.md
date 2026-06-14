@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.54-beta - 14th Jun 2026
+
+* New "Find by tag…" in the rail: every tag across the whole starmap, grouped by category as coloured chips with counts. Click one to list the bodies that carry it (the current system first), then jump straight there — the fast way to find the nearest gas-giant refuelling, heavy-metal world, icy belt, biosignature, and so on.
+
 ## v2.0.53-beta - 14th Jun 2026
 
 * The body Tags editor's "Add a tag" is now category-first: pick a category (or Custom for a free-form key), type the tag name, and see the full tag players will see as a live coloured preview. Hand-added tags are marked as yours — they survive the reasons re-tag pass even when filed under an existing category, and always read as removable.

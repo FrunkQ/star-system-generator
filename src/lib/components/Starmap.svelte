@@ -834,6 +834,7 @@
         on:about={() => dispatch('about')}
         on:navigate={() => (railOpen = false)}
         on:allbodies={() => { railOpen = false; dispatch('allbodies'); }}
+        on:findtag={() => { railOpen = false; dispatch('findtag'); }}
         on:allships={() => { railOpen = false; dispatch('allships'); }}
         on:routes={() => { railOpen = false; dispatch('routes'); }}
         on:catalogue={() => { railOpen = false; dispatch('catalogue'); }}
