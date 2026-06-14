@@ -27,6 +27,7 @@
   import BodyPicker from '$lib/components/BodyPicker.svelte';
   import RouteEditorModal from '$lib/components/RouteEditorModal.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
+  import PoIPackEditor from '$lib/components/PoIPackEditor.svelte';
   import LlmSettingsModal from '$lib/components/LlmSettingsModal.svelte';
   import EditFuelAndDrivesModal from '$lib/components/EditFuelAndDrivesModal.svelte';
   import EditAtmospheresModal from '$lib/components/EditAtmospheresModal.svelte';
@@ -64,6 +65,7 @@
   let routeToEdit: Route | null = null;
   let showSettingsModal = false;
   let showLlmSettingsModal = false;
+  let showPoiEditor = false;
   // Technology editors (rulepack overrides) + About — moved up here from Starmap so the
   // sectioned Settings modal can open them from either view.
   let showFuelModal = false;
@@ -931,9 +933,13 @@
       on:editfuel={() => { settingsReturnSection = 'technology'; showFuelModal = true; }}
       on:editatmospheres={() => { settingsReturnSection = 'planets'; showAtmosphereModal = true; }}
       on:editsensors={() => { settingsReturnSection = 'technology'; showSensorsModal = true; }}
+      on:editpoi={() => { settingsReturnSection = 'generation'; showPoiEditor = true; }}
       on:llm={() => { settingsReturnSection = 'system'; showLlmSettingsModal = true; }}
       on:about={() => showAbout = true}
     />
+  {/if}
+  {#if showPoiEditor}
+    <PoIPackEditor on:close={() => { showPoiEditor = false; if (settingsReturnSection) showSettingsModal = true; }} />
   {/if}
 
   {#if showLlmSettingsModal}

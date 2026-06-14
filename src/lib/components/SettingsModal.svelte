@@ -4,7 +4,7 @@
   import { ensureTemporalState } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar } from '$lib/temporal/utre';
   import { starmapUiStore } from '$lib/starmapUiStore';
-  import { reasonsConfig, REASON_CATEGORIES } from '$lib/physics/reasonsToVisit';
+  import { reasonsConfig, poiPacks, activeCategories } from '$lib/physics/reasonsToVisit';
 
   export let showModal: boolean;
   export let starmap: Starmap;
@@ -262,14 +262,15 @@
           </div>
           {#if $reasonsConfig.enabled}
             <div class="form-group reason-cats">
-              {#each REASON_CATEGORIES as cat}
+              {#each activeCategories($poiPacks) as cat}
                 <label title={cat.desc}>
-                  <input type="checkbox" checked={$reasonsConfig.categories[cat.id]}
+                  <input type="checkbox" checked={$reasonsConfig.categories[cat.id] !== false}
                     on:change={(e) => reasonsConfig.update((c) => ({ ...c, categories: { ...c.categories, [cat.id]: e.currentTarget.checked } }))} />
                   {cat.label}
                 </label>
               {/each}
             </div>
+            <button class="section-btn" on:click={() => { dispatch('editpoi'); showModal = false; }}>Edit PoI rule packs…</button>
           {/if}
 
           <!-- De-emphasised: the experimental generation engine isn't important right now. -->
