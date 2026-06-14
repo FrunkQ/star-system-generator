@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.46-beta - 14th Jun 2026
+
+* Removed the redundant lock-icon legend from the Tags editor (the meaning is in each icon's tooltip).
+
 ## v2.0.45-beta - 14th Jun 2026
 
 * **Point-of-Interest rule packs.** The "reasons to visit" system is now fully editable: Settings → Generation → **Edit PoI rule packs** lets you manage stacked packs (enable, import, export, new, delete), add/remove categories, and create rules with a guided field → operator → value builder (with a raw-JSON mode for advanced logic). Two example packs ship — **Space Opera** and **Hard Science** — to learn from and build on. Share packs as .json files. Hard-science campaigns can drop the Intrigue category entirely; a Star Wars game can add its own.

@@ -102,10 +102,6 @@
       </div>
     {/each}
 
-    <p class="tag-hint">
-      <svg class="lock physics" viewBox="0 0 24 24" width="11" height="11"><rect x="5" y="11" width="14" height="9" rx="1.5" fill="#111" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg> physics (fixed) ·
-      <svg class="lock poi" viewBox="0 0 24 24" width="11" height="11"><rect x="5" y="11" width="14" height="9" rx="1.5" fill="#111" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg> PoI rule (edit the pack) · your tags are removable (×)
-    </p>
   </div>
 
   <div class="tag-group">
@@ -153,8 +149,6 @@
   .lock { flex: 0 0 auto; }
   .lock.physics { color: #ef4444; }   /* red outline — physics, cannot change */
   .lock.poi { color: #f59e0b; }       /* orange outline — PoI rule, changeable */
-  .tag-hint { font-size: 0.7em; color: var(--text-faint); margin: 6px 0 0; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-  .tag-hint .lock { vertical-align: middle; }
   .no-tags { color: var(--text-faint); font-style: italic; }
   .add-tag-form { display: flex; flex-direction: column; gap: 10px; }
   .row { display: flex; gap: 5px; }
