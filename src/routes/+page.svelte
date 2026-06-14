@@ -1229,6 +1229,12 @@
     font-weight: 600;
     color: var(--text, #e8e8e8);
   }
+  /* Phones: use nearly the whole screen — vertical space is scarce. */
+  @media (max-width: 640px) {
+    .allbodies-overlay { padding: 6px; }
+    .allbodies-card { width: 100%; height: 94vh; padding: 10px; }
+    .allbodies-head { padding: 0 2px 8px; }
+  }
   .allbodies-close {
     width: 32px;
     height: 32px;

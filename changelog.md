@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.65-beta - 14th Jun 2026
+
+* Find-by-tag on phones: the category pills are now much slimmer (tighter line height + padding) and the dialog uses nearly the full screen height, so the categories take a few compact rows and the results list gets the space.
+
 ## v2.0.64-beta - 14th Jun 2026
 
 * Toggling a PoI category in Settings → PoI now re-tags the whole map when you leave Settings (close or save), so deselected categories' tags vanish and re-enabled ones reappear — no manual refresh needed.

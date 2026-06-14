@@ -153,9 +153,9 @@
   .sugg .sgrp { margin-left: auto; color: var(--text-faint); font-size: 0.74rem; }
   .dot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
   .bubbles { display: flex; flex-wrap: wrap; gap: 4px; max-height: 38vh; overflow-y: auto; }
-  .bubble { background: color-mix(in srgb, var(--c) 22%, transparent); border: 1px solid var(--c); color: var(--text); border-radius: 999px; padding: 2px 9px; font-size: 0.74rem; line-height: 1.5; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+  .bubble { background: color-mix(in srgb, var(--c) 22%, transparent); border: 1px solid var(--c); color: var(--text); border-radius: 999px; padding: 1px 8px; font-size: 0.72rem; line-height: 1.3; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
   .bubble.open { background: var(--c); color: #fff; }
-  .bcnt { font-size: 0.7em; opacity: 0.75; }
+  .bcnt { font-size: 0.68em; opacity: 0.7; }
   .cat-tags { display: flex; flex-wrap: wrap; gap: 5px; padding: 6px; background: var(--bg-control); border-radius: 6px; }
   .chip { border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; color: #fff; }
   .chip:hover { filter: brightness(1.12); }
@@ -177,10 +177,11 @@
 
   /* Mobile: tighter bubbles/chips, and cap the browse area so results stay visible. */
   @media (max-width: 640px) {
+    .tag-finder { gap: 6px; }
     .bubbles { max-height: 30vh; gap: 3px; }
-    .bubble { padding: 2px 8px; font-size: 0.72rem; }
+    .bubble { padding: 0 7px; font-size: 0.7rem; line-height: 1.25; }
     .cat-tags { max-height: 26vh; overflow-y: auto; }
-    .chip { padding: 3px 7px; font-size: 0.74rem; }
+    .chip { padding: 2px 7px; font-size: 0.72rem; line-height: 1.3; }
     .res-name { font-size: 0.9rem; }
   }
 </style>
