@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { annotateReasonsToVisit, REASONS_DEFAULTS, type ReasonsConfig } from './reasonsToVisit';
+import { annotateReasonsToVisit, REASONS_DEFAULTS, DEFAULT_POI_PACK, exportPack, importPack, type ReasonsConfig, type PoIPack } from './reasonsToVisit';
 import type { System, CelestialBody } from '../types';
 
 function sys(): System {
@@ -53,5 +53,26 @@ describe('reasons-to-visit tagger', () => {
     annotateReasonsToVisit(s, cfg({ enabled: false }));
     const p = s.nodes.find((n) => n.id === 'p1') as CelestialBody;
     expect(reasonTags(p).length).toBe(0);
+  });
+
+  it('exports and re-imports a pack round-trip', () => {
+    const json = exportPack(DEFAULT_POI_PACK);
+    const back = importPack(json);
+    expect(back.rules.length).toBe(DEFAULT_POI_PACK.rules.length);
+    expect(back.categories.map((c) => c.id)).toEqual(DEFAULT_POI_PACK.categories.map((c) => c.id));
+    expect(() => importPack('{"nope":1}')).toThrow();
+  });
+
+  it('stacks a second pack: its rules add new tags', () => {
+    const extra: PoIPack = {
+      id: 'sw', name: 'Test Pack', description: '', enabled: true,
+      categories: [{ id: 'lore', label: 'Lore', desc: '' }],
+      rules: [{ id: 'x', tag: 'lore/spice', category: 'lore', chance: 1, when: { gte: ['makeup.metal', 0.1] } }]
+    };
+    const s = sys();
+    annotateReasonsToVisit(s, { enabled: true, categories: { ...REASONS_DEFAULTS.categories, lore: true } }, [DEFAULT_POI_PACK, extra]);
+    const p = s.nodes.find((n) => n.id === 'p1') as CelestialBody;
+    expect((p.tags || []).some((t) => t.key === 'lore/spice')).toBe(true);            // stacked pack fired
+    expect(reasonTags(p).some((k) => k.startsWith('resource/'))).toBe(true);          // default still ran
   });
 });
