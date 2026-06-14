@@ -117,14 +117,15 @@
         {#each cats as c}<option value={c.id}>{c.label}</option>{/each}
       </select>
     </label>
-    <label class="fld">{newCat === 'custom' ? 'Tag (full key)' : 'Tag name'}
-      <input type="text" bind:value={newName} placeholder={newCat === 'custom' ? 'e.g. faction/control' : 'e.g. spice'} />
+    <label class="fld">Name (what players see)
+      <input type="text" bind:value={newName} placeholder={newCat === 'custom' ? 'e.g. Smugglers, faction/control' : 'e.g. spice'} />
     </label>
     <label class="fld">Value (optional)
       <input type="text" bind:value={newValue} placeholder="e.g. Empire, 7" />
     </label>
     <div class="preview-row">Players see:
-      <span class="tag-chip-preview" style="background:{previewInfo.color}; color:{previewInfo.textColor || '#fff'}">{previewKey}{#if newValue.trim()}: {newValue}{/if}</span>
+      <span class="tag-chip-preview" style="background:{previewInfo.color}; color:{previewInfo.textColor || '#fff'}">{previewInfo.label}{#if newValue.trim()}: {newValue}{/if}</span>
+      {#if previewInfo.label.toLowerCase() !== previewKey.toLowerCase()}<code class="key-hint">{previewKey}</code>{/if}
     </div>
     <button class="add-btn" on:click={addCustomTag} disabled={!newName.trim()}>Add tag</button>
   </div>
@@ -153,7 +154,8 @@
   select { padding: 7px; border-radius: 4px; border: 1px solid var(--border); background-color: var(--bg-control); color: var(--text); }
   input { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid var(--border); background-color: var(--bg-control); color: var(--text); }
   .preview-row { display: flex; align-items: center; gap: 7px; font-size: 0.75em; color: var(--text-muted); flex-wrap: wrap; }
-  .tag-chip-preview { font-family: var(--font-mono, monospace); font-size: 0.92em; padding: 2px 7px; border-radius: 4px; }
+  .tag-chip-preview { font-size: 0.92em; padding: 2px 7px; border-radius: 4px; }
+  .key-hint { font-family: var(--font-mono, monospace); font-size: 0.85em; color: var(--text-faint); }
   .add-btn { width: 100%; padding: 8px; background-color: var(--bg-panel); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
   .add-btn:hover { background-color: var(--bg-control); }
   .add-btn:disabled { opacity: 0.5; cursor: not-allowed; }

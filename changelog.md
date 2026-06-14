@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.70-beta - 14th Jun 2026
+
+* Add-a-tag form: the "Players see" preview now shows the actual friendly label players will see (e.g. "My Depot"), not the raw tag key (e.g. `frontier/my-depot`) — the key is shown as a small hint only when it differs. The name field is relabelled to make clear you're typing what players see.
+
 ## v2.0.69-beta - 14th Jun 2026
 
 * Clicking an in-transit interstellar ship on the starmap now opens a ship popup (name, destination, % progress) with an **Open ship…** button that jumps to its construct in its origin system (where the construct still lives mid-flight), plus the existing Cancel-journey option.
