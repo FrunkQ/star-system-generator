@@ -69,7 +69,9 @@ export const POI_FIELDS: PoIField[] = [
 export interface ReasonsConfig { enabled: boolean; categories: Record<string, boolean>; }
 export const REASONS_DEFAULTS: ReasonsConfig = {
   enabled: true,
-  categories: { resource: true, science: true, frontier: true, intrigue: true }
+  // Mysteries & hooks (intrigue) default OFF — it's the most "GM flavour" set; the physical three
+  // (resources / science / frontier) are on. Existing users keep their saved choices.
+  categories: { resource: true, science: true, frontier: true, intrigue: false }
 };
 
 // --- The built-in default pack (the original rules, as data). Order preserved so the seeded roll

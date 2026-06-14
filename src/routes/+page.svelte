@@ -901,6 +901,7 @@
       return starmap;
     });
     showSettingsModal = false;
+    reprocessAllReasons();   // apply any PoI category toggle changes across the map
   }
 
   function handleSaveLlmSettings() {
@@ -1015,6 +1016,7 @@
       starmap={$starmapStore}
       initialSection={settingsReturnSection}
       on:save={handleSaveSettings}
+      on:close={() => reprocessAllReasons()}
       on:edittemporal={() => { settingsReturnSection = 'time'; showTemporalModal = true; }}
       on:editfuel={() => { settingsReturnSection = 'technology'; showFuelModal = true; }}
       on:editatmospheres={() => { settingsReturnSection = 'planets'; showAtmosphereModal = true; }}

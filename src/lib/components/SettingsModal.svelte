@@ -136,6 +136,7 @@
 
   function handleClose() {
     showModal = false;
+    dispatch('close');   // genuine dismissal (Back / backdrop) — lets the app re-tag for config changes
   }
 
   function handleKeyDown(event: KeyboardEvent) {
