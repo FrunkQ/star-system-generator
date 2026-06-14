@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.77-beta - 14th Jun 2026
+
+* Routes panel journeys now show the *when*, not just the route: a date-time plus how far ahead/behind "now" it is — "Departs {date} · in 4d", "Arrived {date} · 2d ago", or, for a flight under way, "40% · departed 3d ago · arrives {date} (in 5d)". Both in-system and interstellar journeys.
+
 ## v2.0.76-beta - 14th Jun 2026
 
 * Fixed: clicking an interstellar ship on the starmap now reliably opens its panel (the map's pan gesture was swallowing the click).

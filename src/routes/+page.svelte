@@ -37,7 +37,8 @@
   import AboutModal from '$lib/components/AboutModal.svelte';
   import EvolutionaryWizard from '$lib/components/EvolutionaryWizard.svelte';
   import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, STARTDATE_EPOCH_OFFSET_T } from '$lib/temporal/defaults';
-  import { parseClockSeconds } from '$lib/temporal/utre';
+  import { parseClockSeconds, resolveCalendar } from '$lib/temporal/utre';
+  import { getJourneyBounds } from '$lib/transit/scheduler';
   import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem } from '$lib/system/importFixup';
@@ -127,8 +128,17 @@
       id: r.id, source: sysName(r.sourceSystemId), target: sysName(r.targetSystemId), distance: r.distance, unit: r.unit
     }));
     // Live interstellar flights (ships in transit between systems) — stored on the starmap, not on a
-    // construct, so they're gathered separately. Status/progress come from the game clock.
+    // construct, so they're gathered separately. Status/progress + timing come from the game clock.
     const nowSec = Number(map.temporal?.displayTimeSec ?? 0);
+    const cal = map.temporal?.temporal_registry?.[map.temporal?.activeCalendarKey ?? ''];
+    const fmtDate = (sec: number) => { try { return cal ? resolveCalendar(BigInt(Math.round(sec)), cal).formatted : ''; } catch { return ''; } };
+    const dDays = (sec: number) => Math.round((sec - nowSec) / 86400);   // +ahead / −behind, in days
+    const rel = (sec: number) => { const d = dDays(sec); return d === 0 ? 'today' : d > 0 ? `in ${d}d` : `${-d}d ago`; };
+    // A "when" line for a journey given its start/end (game seconds) + status.
+    const whenLine = (start: number, end: number, status: string, pct: number) =>
+      status === 'scheduled' ? `Departs ${fmtDate(start)} · ${rel(start)}`
+      : status === 'completed' ? `Arrived ${fmtDate(end)} · ${rel(end)}`
+      : `${pct}% · departed ${rel(start)} · arrives ${fmtDate(end)} (${rel(end)})`;
     const interstellarJourneys = (map.activeJourneys ?? []).map((j: any) => {
       const start = Number(j.startTimeSec ?? 0);
       const end = start + Number(j.durationSec ?? 0);
@@ -136,7 +146,8 @@
       const pct = end > start ? Math.max(0, Math.min(100, Math.round(((nowSec - start) / (end - start)) * 100))) : 0;
       return {
         id: j.id, shipName: j.shipName ?? 'Ship', from: sysName(j.fromSystemId), to: sysName(j.toSystemId),
-        fromSystemId: j.fromSystemId, toSystemId: j.toSystemId, toBodyId: j.toBodyId ?? null, toBodyName: j.toBodyName, status, pct
+        fromSystemId: j.fromSystemId, toSystemId: j.toSystemId, toBodyId: j.toBodyId ?? null, toBodyName: j.toBodyName, status, pct,
+        when: whenLine(start, end, status, pct)
       };
     });
     const journeys: any[] = [];
@@ -149,10 +160,14 @@
           if (j.status !== 'scheduled' && j.status !== 'active') continue;
           const plans = j.plans ?? [];
           if (!plans.length) continue;
+          const bounds = getJourneyBounds(plans);   // game-MS timestamps
+          const startS = bounds ? bounds.startMs / 1000 : nowSec;
+          const endS = bounds ? bounds.endMs / 1000 : nowSec;
           journeys.push({
             id: j.id, constructId: n.id, constructName: n.name, systemId: sys.id, systemName: sys.name,
             origin: nodeName(plans[0].originId), target: nodeName(plans[plans.length - 1].targetId),
-            status: j.status, legs: plans.length
+            status: j.status, legs: plans.length,
+            when: whenLine(startS, endS, j.status, endS > startS ? Math.max(0, Math.min(100, Math.round(((nowSec - startS) / (endS - startS)) * 100))) : 0)
           });
         }
       }
@@ -1178,8 +1193,10 @@
             {#each routesData.journeys as j (j.id)}
               <button class="route-row" on:click={() => { showRoutes = false; enterSystemAndFocus(j.systemId, j.constructId); }}>
                 <span class="route-status {j.status}">{j.status}</span>
-                <span class="route-main"><strong>{j.constructName}</strong> · {j.origin} → {j.target}{j.legs > 1 ? ` (${j.legs} legs)` : ''}</span>
-                <span class="route-sys">{j.systemName}</span>
+                <span class="route-col">
+                  <span class="route-main"><strong>{j.constructName}</strong> · {j.origin} → {j.target}{j.legs > 1 ? ` (${j.legs} legs)` : ''}</span>
+                  <span class="route-when">{j.when} · {j.systemName}</span>
+                </span>
               </button>
             {/each}
           {/if}
@@ -1196,6 +1213,7 @@
                   <span class="arrow">→</span>
                   <button class="pill" title="Go to destination system" on:click={() => { showRoutes = false; enterSystemAndFocus(j.toSystemId, j.toBodyId); }}>{j.to}{j.toBodyName ? ` (${j.toBodyName})` : ''}</button>
                 </div>
+                <span class="route-when">{j.when}</span>
               </div>
             {/each}
           {/if}
@@ -1366,6 +1384,8 @@
   .route-status.completed { background: color-mix(in srgb, #4fa86a 26%, transparent); color: #6fcf8f; }
   .route-main { flex: 1 1 auto; min-width: 0; font-size: 0.9rem; }
   .route-sys { flex: 0 0 auto; color: var(--text-faint, #8a8f9a); font-size: 0.8rem; }
+  .route-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+  .route-when { font-size: 0.74rem; color: var(--text-faint, #8a8f9a); flex-basis: 100%; }
   /* Interstellar journey rows: source / destination / ship are individually clickable pills. */
   .route-row.interstellar { cursor: default; flex-wrap: wrap; }
   .route-pills { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; }
