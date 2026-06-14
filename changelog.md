@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.59-beta - 14th Jun 2026
+
+* PoI rule builder: every condition row now has a NOT toggle, so you can negate any condition without dropping to raw JSON. (Only deeply nested all-within-any and tag-prefix matches still need raw.)
+* Replaced the typed "Custom tag value…" field with a proper "Has tag…" group in the condition dropdown, listing the real tags present across your systems — pick one for a presence check (with NOT it becomes "is absent").
+
 ## v2.0.58-beta - 14th Jun 2026
 
 * Find-by-tag rebuilt into a proper filter tool that fits the screen: categories are bubbles you expand to see their tags, clicking a tag adds it to an active filter list (or quick-add via search), and clicking an active filter removes it. Results below show every body carrying all the selected tags, with its system and location. Opened from inside a system on a scaled map, results show inter-system distance and sort nearest-first; otherwise they're alphabetical.

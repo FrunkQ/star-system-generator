@@ -7,6 +7,9 @@
     type PoIPack, type PoIRule, type PoIExpr, type PoIField, type ReasonCategory, type PoIRole } from '$lib/physics/reasonsToVisit';
   import { EXAMPLE_POI_PACKS } from '$lib/physics/poiExamplePacks';
   import DualRange from './DualRange.svelte';
+  import { describeTag } from '$lib/tags/tagPresentation';
+
+  export let existingTags: string[] = [];   // every tag key present across the systems (for has: rows)
 
   const dispatch = createEventDispatcher();
   let selectedId = 'default';
@@ -37,13 +40,13 @@
     const [a, b] = (v || '').split(',').map((x) => parseFloat(x));
     return { low: Number.isNaN(a) ? f.min! : a, high: Number.isNaN(b) ? f.max! : b };
   };
-  // A `tag:<key>` field reads one of the player's own custom tag VALUES — text or number — so allow
-  // every operator on it.
-  const isTagField = (field: string) => field === '__tag__' || field.startsWith('tag:');
-  const opsForRow = (row: { field: string }) => isTagField(row.field) ? ['eq', 'gte', 'lte', 'gt', 'lt', 'between'] : opsFor(fieldOf(row.field));
+  // A `has:<tag>` field is a tag-PRESENCE check (the body carries that tag). With the row's NOT
+  // toggle it becomes "lacks that tag". The tag list is the real tags present across the systems.
+  const isHasField = (field: string) => field.startsWith('has:');
+  const opsForRow = (row: { field: string }) => isHasField(row.field) ? [] : opsFor(fieldOf(row.field));
   function onFieldChange(row: { field: string; op: string }, value: string) {
-    if (value === '__tag__') { row.field = row.field.startsWith('tag:') ? row.field : 'tag:'; row.op = 'eq'; }
-    else { row.field = value; row.op = opsFor(fieldOf(value))[0]; }
+    row.field = value;
+    row.op = isHasField(value) ? '' : opsFor(fieldOf(value))[0];
     rows = rows;
   }
   // Switching op to/from "between" reshapes the value between a single number and a "lo,hi" pair.
@@ -105,33 +108,49 @@
   // --- rules ---
   let editing: PoIRule | null = null;
   let ruleSuffix = '';          // the part after the category prefix, e.g. "geochem-sample"
-  let rows: { field: string; op: string; value: string }[] = [];
+  type Row = { field: string; op: string; value: string; neg?: boolean };
+  let rows: Row[] = [];
   let rawMode = false; let rawText = ''; let ruleError = '';
   let matchMode: 'all' | 'any' = 'all';      // builder combines its rows with AND (all) or OR (any)
   const suffixOf = (tag: string) => tag.includes('/') ? tag.split('/').slice(1).join('/') : tag;
 
-  // A condition is builder-representable if it's `true`, a single flat clause, or a flat all/any of
-  // flat clauses (gt/lt/gte/lte/between/eq). Nested all/any, not, and hasTag fall back to raw JSON.
-  function whenToRows(when: PoIExpr): { rows: typeof rows; raw: boolean; mode: 'all' | 'any' } {
+  // Parse a single flat clause into a row (no NOT). Returns null if it isn't flat-representable.
+  function clauseToRow(c: any): Row | null {
+    if ('hasTag' in c) return { field: `has:${c.hasTag}`, op: '', value: '' };
+    if ('between' in c) return { field: c.between[0], op: 'between', value: `${c.between[1]},${c.between[2]}` };
+    if ('eq' in c) return { field: c.eq[0], op: 'eq', value: String(c.eq[1]) };
+    const op = ['gt', 'lt', 'gte', 'lte'].find((o) => o in c);
+    return op ? { field: c[op][0], op, value: String(c[op][1]) } : null;
+  }
+  // A condition is builder-representable if it's `true`, a flat clause (optionally NOT-wrapped), or a
+  // flat all/any of those. Nested all/any and hasTagPrefix fall back to raw JSON.
+  function whenToRows(when: PoIExpr): { rows: Row[]; raw: boolean; mode: 'all' | 'any' } {
     if (when === true) return { rows: [], raw: false, mode: 'all' };
     let clauses: any[]; let mode: 'all' | 'any' = 'all';
     if ('all' in (when as any)) clauses = (when as any).all;
     else if ('any' in (when as any)) { clauses = (when as any).any; mode = 'any'; }
     else clauses = [when];
-    const out: typeof rows = [];
+    const out: Row[] = [];
     for (const c of clauses) {
-      if ('between' in c) out.push({ field: c.between[0], op: 'between', value: `${c.between[1]},${c.between[2]}` });
-      else if ('eq' in c) out.push({ field: c.eq[0], op: 'eq', value: String(c.eq[1]) });
-      else { const op = ['gt', 'lt', 'gte', 'lte'].find((o) => o in c); if (op) out.push({ field: (c as any)[op][0], op, value: String((c as any)[op][1]) }); else return { rows: [], raw: true, mode }; }
+      const neg = 'not' in c;
+      const row = clauseToRow(neg ? c.not : c);
+      if (!row) return { rows: [], raw: true, mode };   // nested / hasTagPrefix → raw
+      if (neg) row.neg = true;
+      out.push(row);
     }
     return { rows: out, raw: false, mode };
   }
-  function rowsToWhen(rs: typeof rows, mode: 'all' | 'any' = 'all'): PoIExpr {
-    const clauses = rs.filter((r) => r.field && r.field !== '__tag__' && r.field !== 'tag:').map((r): PoIExpr => {
-      const f = fieldOf(r.field);
-      if (r.op === 'eq') { const v = f?.type === 'bool' ? r.value === 'true' : (f?.type === 'number' ? parseFloat(r.value) : r.value); return { eq: [r.field, v] }; }
-      if (r.op === 'between') { const [a, b] = r.value.split(',').map((x) => parseFloat(x)); return { between: [r.field, Number.isNaN(a) ? 0 : a, Number.isNaN(b) ? 0 : b] }; }
-      return { [r.op]: [r.field, parseFloat(r.value) || 0] } as PoIExpr;
+  function rowsToWhen(rs: Row[], mode: 'all' | 'any' = 'all'): PoIExpr {
+    const clauses = rs.filter((r) => r.field).map((r): PoIExpr => {
+      let base: PoIExpr;
+      if (isHasField(r.field)) base = { hasTag: r.field.slice(4) };
+      else {
+        const f = fieldOf(r.field);
+        if (r.op === 'eq') { const v = f?.type === 'bool' ? r.value === 'true' : (f?.type === 'number' ? parseFloat(r.value) : r.value); base = { eq: [r.field, v] }; }
+        else if (r.op === 'between') { const [a, b] = r.value.split(',').map((x) => parseFloat(x)); base = { between: [r.field, Number.isNaN(a) ? 0 : a, Number.isNaN(b) ? 0 : b] }; }
+        else base = { [r.op]: [r.field, parseFloat(r.value) || 0] } as PoIExpr;
+      }
+      return r.neg ? { not: base } : base;
     });
     return clauses.length === 0 ? true : (clauses.length === 1 ? clauses[0] : (mode === 'any' ? { any: clauses } : { all: clauses }));
   }
@@ -140,7 +159,7 @@
       let parsed: PoIExpr;
       try { parsed = JSON.parse(rawText); } catch { ruleError = 'Invalid JSON.'; return; }
       const p = whenToRows(parsed);
-      if (p.raw) { ruleError = 'This condition uses nested / NOT / hasTag logic the builder can’t show — keep editing it as JSON.'; return; }
+      if (p.raw) { ruleError = 'This condition mixes nested all/any (or a tag-prefix match) the builder can’t show — keep editing it as JSON.'; return; }
       rows = p.rows; matchMode = p.mode; rawMode = false; ruleError = '';
     } else {
       rawText = JSON.stringify(rowsToWhen(rows, matchMode)); rawMode = true; ruleError = '';
@@ -176,6 +195,12 @@
   function deleteRule(id: string) { patchPack({ rules: pack.rules.filter((r) => r.id !== id) }); }
   function toggleRule(id: string) { patchPack({ rules: pack.rules.map((r) => r.id === id ? { ...r, enabled: r.enabled === false } : r) }); }
   function addRow() { rows = [...rows, { field: POI_FIELDS[0].field, op: 'gte', value: '0.3' }]; }
+  // Tags selectable as presence ("has:") conditions: real tags on bodies + any tag a rule produces.
+  $: tagOptions = (() => {
+    const set = new Set<string>(existingTags);
+    for (const p of packs) for (const r of p.rules) set.add(r.tag);
+    return [...set].filter(Boolean).sort();
+  })();
 </script>
 
 <div class="modal-bg" on:click={() => dispatch('close')} role="presentation">
@@ -297,36 +322,44 @@
         <textarea class="raw" bind:value={rawText} rows="4" spellcheck="false"></textarea>
       {:else}
         {#each rows as row, i}
-          {@const isTag = isTagField(row.field)}
-          {@const f = isTag ? undefined : fieldOf(row.field)}
+          {@const isHas = isHasField(row.field)}
+          {@const f = isHas ? undefined : fieldOf(row.field)}
           <div class="cond-row">
-            <select value={isTag ? '__tag__' : row.field} on:change={(e) => onFieldChange(row, e.currentTarget.value)} title={f?.note}>
-              {#each POI_FIELDS as pf}<option value={pf.field}>{pf.label}</option>{/each}
-              <option value="__tag__">Custom tag value…</option>
+            <label class="negchk" title="Negate this condition (NOT)"><input type="checkbox" checked={!!row.neg} on:change={(e) => { row.neg = e.currentTarget.checked; rows = rows; }} /> not</label>
+            <select value={row.field} on:change={(e) => onFieldChange(row, e.currentTarget.value)} title={f?.note}>
+              <optgroup label="Properties">
+                {#each POI_FIELDS as pf}<option value={pf.field}>{pf.label}</option>{/each}
+              </optgroup>
+              {#if tagOptions.length}
+                <optgroup label="Has tag…">
+                  {#each tagOptions as tk}<option value={'has:' + tk}>{describeTag(tk).label}</option>{/each}
+                </optgroup>
+              {/if}
             </select>
-            {#if isTag}
-              <input class="tagkey" placeholder="tag key" value={row.field.startsWith('tag:') ? row.field.slice(4) : ''} on:input={(e) => { row.field = 'tag:' + e.currentTarget.value; rows = rows; }} />
-            {/if}
-            <select class="op" value={row.op} on:change={(e) => onOpChange(row, e.currentTarget.value)}>
-              {#each opsForRow(row) as op}<option value={op}>{OP_LABEL[op]}</option>{/each}
-            </select>
-            {#if f?.type === 'bool'}
-              <select value={row.value} on:change={(e) => { row.value = e.currentTarget.value; rows = rows; }}><option value="true">true</option><option value="false">false</option></select>
-            {:else if f?.type === 'string'}
-              <input value={row.value} list="vals-{i}" on:input={(e) => { row.value = e.currentTarget.value; }} /><datalist id="vals-{i}">{#each (f?.values || []) as v}<option value={v}></option>{/each}</datalist>
-            {:else if f && hasRange(f) && row.op !== 'between'}
-              <div class="num-range">
-                <input class="slider" type="range" min={f.min} max={f.max} step={stepFor(f)} value={row.value === '' ? String(f.min) : row.value} on:input={(e) => { row.value = e.currentTarget.value; rows = rows; }} title="{f.min}–{f.max}" />
-                <input class="num" type="number" value={row.value} on:input={(e) => { row.value = e.currentTarget.value; rows = rows; }} />
-              </div>
-            {:else if f && hasRange(f) && row.op === 'between'}
-              <!-- the dual slider renders full-width on its own line below -->
+            {#if isHas}
+              <span class="has-label">{row.neg ? 'is absent' : 'is present'}</span>
             {:else}
-              <input value={row.value} on:input={(e) => { row.value = e.currentTarget.value; }} placeholder={row.op === 'between' ? 'min,max' : (f ? rangeText(f) : 'value')} />
+              <select class="op" value={row.op} on:change={(e) => onOpChange(row, e.currentTarget.value)}>
+                {#each opsForRow(row) as op}<option value={op}>{OP_LABEL[op]}</option>{/each}
+              </select>
+              {#if f?.type === 'bool'}
+                <select value={row.value} on:change={(e) => { row.value = e.currentTarget.value; rows = rows; }}><option value="true">true</option><option value="false">false</option></select>
+              {:else if f?.type === 'string'}
+                <input value={row.value} list="vals-{i}" on:input={(e) => { row.value = e.currentTarget.value; }} /><datalist id="vals-{i}">{#each (f?.values || []) as v}<option value={v}></option>{/each}</datalist>
+              {:else if f && hasRange(f) && row.op !== 'between'}
+                <div class="num-range">
+                  <input class="slider" type="range" min={f.min} max={f.max} step={stepFor(f)} value={row.value === '' ? String(f.min) : row.value} on:input={(e) => { row.value = e.currentTarget.value; rows = rows; }} title="{f.min}–{f.max}" />
+                  <input class="num" type="number" value={row.value} on:input={(e) => { row.value = e.currentTarget.value; rows = rows; }} />
+                </div>
+              {:else if f && hasRange(f) && row.op === 'between'}
+                <!-- the dual slider renders full-width on its own line below -->
+              {:else}
+                <input value={row.value} on:input={(e) => { row.value = e.currentTarget.value; }} placeholder={row.op === 'between' ? 'min,max' : (f ? rangeText(f) : 'value')} />
+              {/if}
             {/if}
             <button class="x small" on:click={() => { rows = rows.filter((_, j) => j !== i); }}>×</button>
           </div>
-          {#if f && hasRange(f) && row.op === 'between'}
+          {#if !isHas && f && hasRange(f) && row.op === 'between'}
             {@const bv = betweenVals(row.value, f)}
             <div class="between-row">
               <input class="num" type="number" value={bv.low} on:input={(e) => { row.value = `${e.currentTarget.value},${bv.high}`; rows = rows; }} />
@@ -334,7 +367,7 @@
               <input class="num" type="number" value={bv.high} on:input={(e) => { row.value = `${bv.low},${e.currentTarget.value}`; rows = rows; }} />
             </div>
           {/if}
-          {#if isTag}<p class="fhint">Matches one of the body's own custom tag values — e.g. a hand-added <code>danger</code>=<code>7</code> (use ≥/≤) or <code>faction/control</code>=<code>Empire</code> (use "is").</p>{:else if f}<p class="fhint">{f.note}{#if rangeText(f)} <span class="range">(range {rangeText(f)})</span>{/if}</p>{/if}
+          {#if isHas}<p class="fhint">True when the body carries the tag <code>{row.field.slice(4)}</code>{row.neg ? ' — negated, so it must NOT have it' : ''}.</p>{:else if f}<p class="fhint">{f.note}{#if rangeText(f)} <span class="range">(range {rangeText(f)})</span>{/if}</p>{/if}
         {/each}
         <button class="add-line" on:click={addRow}>+ condition</button>
         <p class="muted small">No conditions = always applies.</p>
@@ -407,7 +440,9 @@
   .cond-row select:first-child { flex: 2; min-width: 0; }
   .cond-row input, .cond-row select { flex: 1; min-width: 0; }
   .cond-row .op { flex: 0 0 auto; min-width: 58px; width: auto; }
-  .cond-row .tagkey { font-family: var(--font-mono, monospace); }
+  .cond-row .negchk { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 3px; font-size: 0.72rem; color: var(--text-muted); }
+  .cond-row .negchk input { width: auto; }
+  .cond-row .has-label { flex: 1; min-width: 0; font-size: 0.8rem; color: var(--text-muted); }
   .cond-row .num-range { flex: 1; display: flex; gap: 6px; align-items: center; min-width: 0; }
   .cond-row .num-range .slider { flex: 1; min-width: 36px; padding: 0; }
   .cond-row .num-range .num { flex: 0 0 58px; width: 58px; }

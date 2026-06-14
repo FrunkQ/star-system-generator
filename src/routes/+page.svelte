@@ -159,6 +159,12 @@
     }
     return out;
   })();
+  // Every distinct tag key across the starmap — fed to the PoI editor for its "has tag" conditions.
+  $: allTagKeys = (() => {
+    const s = new Set<string>();
+    for (const n of allBodies) for (const t of (n.tags ?? [])) if (t?.key) s.add(t.key);
+    return [...s];
+  })();
   function allBodiesContext(n: any): string {
     const parent = allBodies.find((x) => x.id === (n.orbit?.hostId || n.parentId) && x.__systemId === n.__systemId);
     const where = parent ? `orbits ${parent.name}` : '';
@@ -978,7 +984,7 @@
     />
   {/if}
   {#if showPoiEditor}
-    <PoIPackEditor on:close={() => { showPoiEditor = false; reprocessAllReasons(); if (settingsReturnSection) showSettingsModal = true; }} />
+    <PoIPackEditor existingTags={allTagKeys} on:close={() => { showPoiEditor = false; reprocessAllReasons(); if (settingsReturnSection) showSettingsModal = true; }} />
   {/if}
 
   {#if showLlmSettingsModal}
