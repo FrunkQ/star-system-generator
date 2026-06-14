@@ -532,6 +532,18 @@
         const grandparentId = contextBody.parentId;
         system.nodes.forEach(n => { if (n.parentId === grandparentId) visibleIds.add(n.id); });
       }
+      // Barycentres are TRANSPARENT containers: whenever a barycentre is visible (e.g. a binary-planet
+      // pair shown as a child of the focused star), its member bodies are too — otherwise the binary
+      // planets (grandchildren of the star) would be invisible/unclickable. Iterate to handle nesting.
+      let expanded = true;
+      while (expanded) {
+        expanded = false;
+        for (const n of system.nodes) {
+          if (n.kind === 'barycenter' && visibleIds.has(n.id) && Array.isArray((n as any).memberIds)) {
+            for (const m of (n as any).memberIds) if (!visibleIds.has(m)) { visibleIds.add(m); expanded = true; }
+          }
+        }
+      }
       return visibleIds;
   }
 

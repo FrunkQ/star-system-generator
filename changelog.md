@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.79-beta - 14th Jun 2026
+
+* Fixed binary planets (and other bodies) being dragged to the middle of the system: a "ghost" barycentre left behind by an earlier demote/merge had a dangling parent, which collapses to the centre. These now get cleaned up on recalculation, so the real bodies sit at their proper orbits.
+* Fixed binary planets not being selectable or labelled when viewing the system: a barycentre is now a transparent container, so its member bodies are shown/clickable whenever the barycentre is (including nested multi-star hierarchies).
+
 ## v2.0.78-beta - 14th Jun 2026
 
 * Find by tag gained a system-scope dropdown at the top: defaults to "All systems" on the starmap (or the system you're in when inside one), and you can switch scope at any time. Tags, counts and results all follow the selected scope.

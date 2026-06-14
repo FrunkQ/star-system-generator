@@ -174,12 +174,35 @@ function demoteWeakBinary(system: System): boolean {
   return false;
 }
 
+// Remove GHOST barycentres — ones that nothing actually orbits (no node has them as a parent). Demote
+// chains and stale saves can leave a barycentre whose members were re-homed elsewhere (e.g. a member
+// still points at the star, or at a since-removed nested barycentre). Such a ghost has a dangling
+// parentId, so it resolves to the system centre (0,0) and drags anything under it to the middle.
+// Since nothing references a ghost, deleting it moves nothing — it just clears the stray centre marker
+// and the corrupt reference. Also prunes member-id lists of removed/ghost ids.
+function removeGhostBarycenters(system: System): boolean {
+  const childCount = new Map<string, number>();
+  for (const n of system.nodes) if (n.parentId) childCount.set(n.parentId, (childCount.get(n.parentId) || 0) + 1);
+  const ghostIds = new Set(
+    system.nodes.filter((n) => n.kind === 'barycenter' && !(childCount.get(n.id) ?? 0)).map((n) => n.id)
+  );
+  if (!ghostIds.size) return false;
+  system.nodes = system.nodes.filter((n) => !ghostIds.has(n.id));
+  for (const n of system.nodes) {
+    if (n.kind === 'barycenter' && Array.isArray((n as Barycenter).memberIds)) {
+      (n as Barycenter).memberIds = (n as Barycenter).memberIds.filter((id) => !ghostIds.has(id));
+    }
+  }
+  return true;
+}
+
 export function reconcileBarycenters(system: System): System {
   // Run until stable to handle create/remove chains from one edit.
   for (let i = 0; i < 8; i++) {
     const promoted = promoteMassiveCompanion(system);
     const demoted = demoteWeakBinary(system);
-    if (!promoted && !demoted) break;
+    const healed = removeGhostBarycenters(system);
+    if (!promoted && !demoted && !healed) break;
   }
   return system;
 }
