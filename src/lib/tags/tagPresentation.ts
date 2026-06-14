@@ -11,7 +11,7 @@ export interface TagPresentation {
 }
 
 // Per-namespace grouping + chip colour.
-const NAMESPACE_META: Record<string, { group: string; color: string }> = {
+const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boolean }> = {
   origin:       { group: 'Origin',       color: '#8a8a9a' },
   orbit:        { group: 'Orbit',        color: '#9a8ac0' },
   barycenter:   { group: 'Barycentre',   color: '#9a8ac0' },
@@ -27,11 +27,11 @@ const NAMESPACE_META: Record<string, { group: string; color: string }> = {
   hazard:       { group: 'Hazard',       color: '#cc5555' },
   habitability: { group: 'Habitability', color: '#5bbf6a' },
   biodiversity: { group: 'Biosphere',    color: '#4fa86a' },
-  // RPG "reasons to visit" categories.
-  resource:     { group: 'Resources',    color: '#d4a843' },
-  science:      { group: 'Science',       color: '#5a9fd0' },
-  frontier:     { group: 'Frontier',      color: '#6fae8f' },
-  intrigue:     { group: 'Intrigue',      color: '#b07ad0' }
+  // RPG "reasons to visit" categories (poi: re-derived by a PoI RULE the user can change).
+  resource:     { group: 'Resources',    color: '#d4a843', poi: true },
+  science:      { group: 'Science',       color: '#5a9fd0', poi: true },
+  frontier:     { group: 'Frontier',      color: '#6fae8f', poi: true },
+  intrigue:     { group: 'Intrigue',      color: '#b07ad0', poi: true }
 };
 
 // Friendly label + physics description, keyed by exact tag.
@@ -190,8 +190,19 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
 // usefully removed by hand (they come straight back); the way to change them is the rules/PoI pack.
 // Anything else is a USER tag — free-text the player added, theirs to keep or remove.
 export function isManagedTag(key: string): boolean {
-  if (key.includes('/')) return (key.split('/')[0]) in NAMESPACE_META;
-  return key in TAG_INFO;
+  return tagSource(key) !== 'manual';
+}
+
+// Where a tag comes from: 'physics' (derived, fixed — red lock), 'poi' (a PoI rule, changeable via
+// the pack — orange lock), or 'manual' (the player's own — removable). Drives the Tags editor.
+export type TagSource = 'physics' | 'poi' | 'manual';
+export function tagSource(key: string): TagSource {
+  if (key.includes('/')) {
+    const meta = NAMESPACE_META[key.split('/')[0]];
+    if (!meta) return 'manual';
+    return meta.poi ? 'poi' : 'physics';
+  }
+  return key in TAG_INFO ? 'physics' : 'manual';
 }
 
 function titleCase(s: string): string {
