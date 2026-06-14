@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.61-beta - 14th Jun 2026
+
+* Starmaps now re-run the full physics + tagging pipeline on load, so a stored or example map picks up the current model (new tags, sharpened PoI rules, ring derivation, legacy-tag cleanup) instead of whatever was baked in when it was saved — no need to edit a body to trigger it. A "Running the physics…" progress bar (one step per star system, with a rotating joke) covers the recalc.
+
 ## v2.0.60-beta - 14th Jun 2026
 
 * Legacy "Other" tags cleaned up. V1-era tags that the new engine already replaces — classification stored as tags (planet/ice-giant, Super Earth, White Dwarf…), display-name physics duplicates (Tidally Locked → orbit/tidally-locked, planet/ringed → ring/system, Runaway Greenhouse Effect), and retired atmosphere flavour (voice-changer, noble-gas, haze-former…) — are now stripped on load and on every recalculation. Your own hand-added tags are never touched. In practice this empties the catch-all "Other" group: every tag now sits under a proper category.

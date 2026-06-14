@@ -1,7 +1,7 @@
 <script lang="ts">
   export let data;
   const { exampleSystems } = data;
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { browser } from '$app/environment';
   import { pushState, replaceState } from '$app/navigation';
   import { page } from '$app/stores';
@@ -604,10 +604,37 @@
               history.back();
           }
         }
+  // On load we re-run the FULL physics + tagging pipeline over every system, so a stored starmap
+  // picks up the current model (new tags, sharpened PoI, ring/* derivation, …) rather than whatever
+  // was baked in when it was last saved. A progress overlay (one tick per system) keeps it honest.
+  let physicsProgress: { done: number; total: number; joke: string } | null = null;
+  const PHYSICS_JOKES = [
+    'Re-lighting the stars…', 'Nudging electrons back into orbit…', 'Asking the gas giants to hold still…',
+    'Negotiating with the second law of thermodynamics…', 'Convincing the moons to stay tidally locked…',
+    'Balancing the barycentres…', 'Letting the comets finish their laps…', 'Warming up the habitable zones…',
+    'Counting the rings (twice)…', 'Apologising to Pluto…', 'Checking nobody fell into a black hole…',
+    'Carrying the one — it is a big one…', 'Spinning up the dynamos…', 'Measuring twice, cutting the snow line once…'
+  ];
+  async function recalcAllSystems(starmap: StarmapType): Promise<StarmapType> {
+    const systems = starmap.systems ?? [];
+    if (!selectedRulepack || systems.length === 0) return starmap;
+    physicsProgress = { done: 0, total: systems.length, joke: PHYSICS_JOKES[0] };
+    await tick();
+    for (let i = 0; i < systems.length; i++) {
+      const node = systems[i];
+      try { if (node?.system?.nodes) node.system = systemProcessor.process(node.system, selectedRulepack); }
+      catch (e) { console.warn('Recalc failed for system', node?.name, e); }
+      physicsProgress = { done: i + 1, total: systems.length, joke: i % 3 === 2 ? PHYSICS_JOKES[(i + 1) % PHYSICS_JOKES.length] : physicsProgress.joke };
+      await new Promise((r) => setTimeout(r, 30));   // yield so the bar repaints + the run reads as real
+    }
+    physicsProgress = null;
+    return starmap;
+  }
+
   async function handleLoadStarmap() {
     const savedStarmap = await loadSavedStarmap();
     if (savedStarmap) {
-      starmapStore.set(savedStarmap);
+      starmapStore.set(await recalcAllSystems(savedStarmap));
     } else {
       alert('No starmap found in browser storage.');
     }
@@ -618,7 +645,7 @@
           const response = await fetch('/example-starmaps/Local_Neighbourhood-Starmap.json');
           if (!response.ok) throw new Error('Failed to load example starmap.');
           const data = await response.json();
-          starmapStore.set(data);
+          starmapStore.set(await recalcAllSystems(data));
           showNewStarmapModal = false;
       } catch (e) {
           alert('Error loading example starmap: ' + (e as Error).message);
@@ -892,6 +919,20 @@
 
   <input type="file" bind:this={fileInput} on:change={handleFileSelected} style="display: none;" accept=".json" />
 
+  {#if physicsProgress}
+    <div class="physics-overlay" role="status" aria-live="polite">
+      <div class="physics-card">
+        <h2>Running the physics…</h2>
+        <div class="physics-bar"><div class="physics-fill" style="width:{Math.round((physicsProgress.done / physicsProgress.total) * 100)}%"></div></div>
+        <div class="physics-meta">
+          <span>{physicsProgress.done} / {physicsProgress.total} systems</span>
+          <span>{Math.round((physicsProgress.done / physicsProgress.total) * 100)}%</span>
+        </div>
+        <p class="physics-joke">{physicsProgress.joke}</p>
+      </div>
+    </div>
+  {/if}
+
   {#if isLoading}
     <p>Loading rule pack...</p>
   {:else if error}
@@ -1120,6 +1161,42 @@
        (loading / new-starmap modal / wizard) provide their own spacing. */
     padding: 0;
   }
+  .physics-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 4000;
+    background: var(--bg-app, #0b0d12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .physics-card {
+    width: min(440px, 100%);
+    text-align: center;
+    color: var(--text, #e8e8e8);
+  }
+  .physics-card h2 { margin: 0 0 18px; font-weight: 600; }
+  .physics-bar {
+    height: 10px;
+    background: var(--bg-control, #1c1f27);
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .physics-fill {
+    height: 100%;
+    background: var(--accent, #6aa0d8);
+    transition: width 0.15s ease;
+  }
+  .physics-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--text-faint, #8a8f9a);
+    margin-top: 8px;
+  }
+  .physics-joke { margin: 18px 0 0; color: var(--text-muted, #aab); font-style: italic; min-height: 1.4em; }
   .allbodies-overlay {
     position: fixed;
     inset: 0;
