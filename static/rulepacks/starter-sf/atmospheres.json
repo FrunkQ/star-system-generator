@@ -201,10 +201,6 @@
         {
           "name": "greenhouse",
           "trigger": "percent > 0.01"
-        },
-        {
-          "name": "haze-former",
-          "trigger": "pp > 0.5"
         }
       ]
     },

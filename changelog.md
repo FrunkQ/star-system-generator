@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.52-beta - 14th Jun 2026
+
+* Retired the "haze-former" tag — haze is now carried by the atmosphere/apparent-colour model, so the standalone tag was redundant. The rulepack no longer emits it and old saved data is stripped of it on load.
+
 ## v2.0.51-beta - 14th Jun 2026
 
 * "Ringed" is now a derived physics tag, not a hand-added one. The old manual "Ringed"/"Rings" tags are stripped on load and re-derived from the geometry — a body that hosts ring children gets `ring/system` ("Ringed"), more than one gets `ring/multiple` ("Multiple rings"), and each ring's debris mass sorts it into a light/medium/heavy tier (distinct tiers surfaced, so a heavy ring beside a faint one reads as both). In Sol that gives Saturn a heavy ring and Jupiter/Uranus/Neptune light ones. Ring tags get their own "Rings" group + colour.

@@ -64,6 +64,8 @@ const RETIRED_ATMOSPHERE_TAGS = [
     'abrasive-wind', 'steambath', 'buffer-gas', 'noble-gas', 'acidic-rain', 'visible-fumes', 'visible-gas',
     'reactive', 'cloud-former', 'condensible-metal', 'condensible-rock', 'condensible-fuel', 'glass-haze',
     'refractory', 'opaque', 'conductive-atmosphere', 'metal-embrittlement', 'volcanic',
+    // haze is now carried by the atmosphere/apparent-colour model, not a standalone tag
+    'haze-former',
     // legacy thickness / preset descriptors
     'thin', 'thick', 'exosphere', 'haze', 'hot'
 ];
