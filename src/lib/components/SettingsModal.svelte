@@ -318,6 +318,16 @@
           <p class="section-hint">App-wide preferences.</p>
           <button class="section-btn" on:click={() => { dispatch('llm'); showModal = false; }}>LLM Settings…</button>
           <a class="section-btn" href="/palette" on:click={() => showModal = false}>Appearance…</a>
+
+          <h4 class="advanced-head">Advanced</h4>
+          <div class="form-group">
+            <label for="generationEngine">Generation engine</label>
+            <select id="generationEngine" bind:value={generationEngine}>
+              <option value="standard">Standard (Stable)</option>
+              <option value="evolutionary">Evolutionary (Alpha Physics)</option>
+            </select>
+            <p class="section-hint">Experimental — the procedural generation pipeline used when creating new systems.</p>
+          </div>
         {/if}
       </div>
     </div>
@@ -426,6 +436,7 @@
   .cat-swatch { width: 12px; height: 12px; border-radius: 3px; flex: 0 0 auto; }
   .cat-name { flex: 1; }
   .cat-count { color: var(--text-faint, #8a8f9a); font-size: 0.85em; }
+  .advanced-head { margin: 22px 0 8px; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint, #8a8f9a); border-top: 1px solid var(--border); padding-top: 14px; }
   .section-btn {
     display: block;
     width: 100%;

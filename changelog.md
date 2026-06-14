@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.57-beta - 14th Jun 2026
+
+* PoI rules now target body kinds: each rule has an "Applies to" set (star / planet / moon / belt / ring / construct), so a rule only fires on the kinds you choose. The default rules are sharpened accordingly — rocky resources on planets & moons, ore/rare-metals/ice/shattered-core on belts, gas-skimming & helium-3 on giants, and so on.
+* The default rules were tightened to use this: belt and giant hooks no longer rely on redundant role checks inside their conditions, and a few were re-scoped (e.g. cold moons can now flag volatiles).
+* Settings → System gained an **Advanced** area, and the generation-engine selector lives there again.
+
 ## v2.0.56-beta - 14th Jun 2026
 
 * PoI rule builder now handles "any of" conditions, not just "all of" — so rules like Space Opera's spice-world open in the builder instead of falling back to raw JSON. A match-mode toggle (all of / any of) sits above the conditions, and "use builder" now either switches cleanly or explains when a condition is too complex (nested / NOT / hasTag) to show.

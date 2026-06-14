@@ -3,8 +3,8 @@
   // categories, and rules. Rule conditions are built with guided field → operator → value rows
   // (ANDed), with a raw-JSON fallback for complex any/not/nested logic.
   import { createEventDispatcher } from 'svelte';
-  import { poiPacks, exportPack, importPack, POI_FIELDS, DEFAULT_POI_PACK,
-    type PoIPack, type PoIRule, type PoIExpr, type PoIField, type ReasonCategory } from '$lib/physics/reasonsToVisit';
+  import { poiPacks, exportPack, importPack, POI_FIELDS, DEFAULT_POI_PACK, POI_ROLES, DEFAULT_POI_ROLES,
+    type PoIPack, type PoIRule, type PoIExpr, type PoIField, type ReasonCategory, type PoIRole } from '$lib/physics/reasonsToVisit';
   import { EXAMPLE_POI_PACKS } from '$lib/physics/poiExamplePacks';
   import DualRange from './DualRange.svelte';
 
@@ -166,6 +166,13 @@
     patchPack({ rules: pack.rules.some((x) => x.id === r.id) ? pack.rules.map((x) => x.id === r.id ? r : x) : [...pack.rules, r] });
     editing = null;
   }
+  function toggleRole(role: PoIRole, on: boolean) {
+    if (!editing) return;
+    const cur = new Set(editing.appliesTo && editing.appliesTo.length ? editing.appliesTo : DEFAULT_POI_ROLES);
+    if (on) cur.add(role); else cur.delete(role);
+    editing.appliesTo = [...cur]; editing = editing;
+  }
+  const ruleRoles = (r: PoIRule): PoIRole[] => (r.appliesTo && r.appliesTo.length ? r.appliesTo : DEFAULT_POI_ROLES);
   function deleteRule(id: string) { patchPack({ rules: pack.rules.filter((r) => r.id !== id) }); }
   function toggleRule(id: string) { patchPack({ rules: pack.rules.map((r) => r.id === id ? { ...r, enabled: r.enabled === false } : r) }); }
   function addRow() { rows = [...rows, { field: POI_FIELDS[0].field, op: 'gte', value: '0.3' }]; }
@@ -264,6 +271,14 @@
       <label class="fld">Chance: {Math.round(editing.chance * 100)}%
         <input type="range" min="0" max="1" step="0.01" value={editing.chance} on:input={(e) => editing.chance = parseFloat(e.currentTarget.value)} />
       </label>
+
+      <div class="fld" title="Which kinds of body this rule may tag.">Applies to
+        <div class="roles">
+          {#each POI_ROLES as role}
+            <label class="rolechk"><input type="checkbox" checked={ruleRoles(editing).includes(role)} on:change={(e) => toggleRole(role, e.currentTarget.checked)} /> {role}</label>
+          {/each}
+        </div>
+      </div>
 
       <div class="cond-head">
         {#if rawMode}<span>Condition (raw JSON)</span>
@@ -374,6 +389,9 @@
   .key-mono { font-family: var(--font-mono, monospace); font-size: 0.72rem; color: var(--text-faint); }
   .rule-edit .desc { width: 100%; background: var(--bg-control); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.8rem; padding: 6px; resize: vertical; }
   .cond-head .modesel { padding: 2px 4px; }
+  .roles { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+  .rolechk { display: inline-flex; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--text); text-transform: capitalize; }
+  .rolechk input { width: auto; }
   .range { color: var(--text-faint); }
   .link { background: none; border: none; color: var(--link); cursor: pointer; font-size: 0.76rem; padding: 0 2px; }
   .add-line { align-self: flex-start; background: none; border: 1px dashed var(--border); border-radius: 4px; color: var(--link); padding: 4px 10px; cursor: pointer; font-size: 0.78rem; margin-top: 3px; }

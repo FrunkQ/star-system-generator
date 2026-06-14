@@ -29,7 +29,11 @@ export type PoIExpr =
   | { hasTagPrefix: string };
 
 export interface ReasonCategory { id: string; label: string; desc: string; color?: string; textColor?: string; }
-export interface PoIRule { id: string; tag: string; category: string; chance: number; when: PoIExpr; enabled?: boolean; label?: string; description?: string; }
+// Which body roles a rule is allowed to fire on. Omitted → the classic planet/moon/belt set.
+export type PoIRole = 'star' | 'planet' | 'moon' | 'belt' | 'ring' | 'construct';
+export const POI_ROLES: PoIRole[] = ['star', 'planet', 'moon', 'belt', 'ring', 'construct'];
+export const DEFAULT_POI_ROLES: PoIRole[] = ['planet', 'moon', 'belt'];
+export interface PoIRule { id: string; tag: string; category: string; chance: number; when: PoIExpr; enabled?: boolean; label?: string; description?: string; appliesTo?: PoIRole[]; }
 export interface PoIPack { id: string; name: string; description: string; enabled: boolean; categories: ReasonCategory[]; rules: PoIRule[]; }
 
 // Feature fields exposed to rule conditions — the wizard reads this for its field picker + ranges.
@@ -70,7 +74,7 @@ export const REASONS_DEFAULTS: ReasonsConfig = {
 
 // --- The built-in default pack (the original rules, as data). Order preserved so the seeded roll
 //     sequence — and therefore which tags appear — is identical to the hardcoded version. ---
-let _rid = 0; const R = (tag: string, category: string, chance: number, when: PoIExpr): PoIRule => ({ id: `d${_rid++}`, tag, category, chance, when });
+let _rid = 0; const R = (tag: string, category: string, chance: number, when: PoIExpr, appliesTo?: PoIRole[]): PoIRule => ({ id: `d${_rid++}`, tag, category, chance, when, appliesTo });
 export const DEFAULT_POI_PACK: PoIPack = {
   id: 'default', name: 'Reasons to Visit (default)', description: 'The built-in physics-driven PoI hooks.', enabled: true,
   categories: [
@@ -80,48 +84,48 @@ export const DEFAULT_POI_PACK: PoIPack = {
     { id: 'intrigue', label: 'Mysteries & hooks', desc: 'Rumours, signals, legends — pure adventure bait', color: '#b07ad0', textColor: '#160a1c' }
   ],
   rules: [
-    R('resource/heavy-metals', 'resource', 0.7, { gte: ['makeup.metal', 0.3] }),
-    R('resource/platinum-group', 'resource', 0.45, { gte: ['makeup.metal', 0.5] }),
-    R('resource/rare-earths', 'resource', 0.4, { all: [{ gte: ['makeup.metal', 0.2] }, { gte: ['makeup.rock', 0.3] }] }),
-    R('resource/fissiles', 'resource', 0.3, { all: [{ gte: ['makeup.rockMetal', 0.6] }, { between: ['ageGyr', 0.5, 9] }] }),
-    R('resource/helium-3', 'resource', 0.6, { eq: ['isGiant', true] }),
-    R('resource/helium-3', 'resource', 0.3, { all: [{ eq: ['roleHint', 'moon'] }, { eq: ['hasAtmo', false] }, { gte: ['ageGyr', 3] }, { gt: ['makeup.rockIce', 0.5] }] }),
-    R('resource/deuterium', 'resource', 0.4, { any: [{ gte: ['makeup.gas', 0.4] }, { gte: ['hydroCover', 0.3] }] }),
-    R('resource/water-ice', 'resource', 0.7, { any: [{ gte: ['makeup.ice', 0.3] }, { hasTag: 'structure/icy-shell' }, { all: [{ gt: ['teqK', 0] }, { lt: ['teqK', 250] }, { eq: ['hydro', 'water'] }] }] }),
-    R('resource/volatiles', 'resource', 0.5, { any: [{ all: [{ eq: ['roleHint', 'belt'] }, { gt: ['teqK', 0] }, { lt: ['teqK', 160] }] }, { gte: ['makeup.ice', 0.5] }] }),
-    R('resource/hydrocarbons', 'resource', 0.8, { any: [{ eq: ['hydro', 'methane'] }, { eq: ['atmMain', 'CH4'] }] }),
-    R('resource/exotic-crystals', 'resource', 0.25, { all: [{ gte: ['massMe', 2] }, { gte: ['makeup.rockMetal', 0.7] }] }),
-    R('resource/diamonds', 'resource', 0.4, { all: [{ gte: ['makeup.carbon', 0.3] }, { gte: ['massMe', 0.8] }] }),
-    R('resource/organics', 'resource', 0.5, { any: [{ eq: ['hasBio', true] }, { hasTag: 'prebiotic-precursor' }, { all: [{ eq: ['hydro', 'water'] }, { between: ['teqK', 250, 330] }] }] }),
-    R('resource/ore-belt', 'resource', 0.8, { eq: ['roleHint', 'belt'] }),
-    R('resource/oxidizer', 'resource', 0.5, { eq: ['hasO2', true] }),
-    R('science/pristine-protoplanetary', 'science', 0.85, { lt: ['ageGyr', 0.5] }),
-    R('science/biosignature', 'science', 0.95, { eq: ['hasBio', true] }),
-    R('science/extremophile-niche', 'science', 0.8, { any: [{ eq: ['regime', 'cryovolcanic'] }, { hasTag: 'structure/subsurface-ocean' }, { hasTag: 'habitability/subsurface' }] }),
-    R('science/tidal-laboratory', 'science', 0.6, { any: [{ hasTag: 'tidal/hotspots' }, { eq: ['regime', 'tidal-volcanic'] }, { hasTag: 'resonance/laplace' }] }),
-    R('science/impact-record', 'science', 0.3, { any: [{ gt: ['ecc', 0.2] }, { eq: ['regime', 'crater'] }] }),
-    R('science/remnant-proximity', 'science', 0.6, { eq: ['hasRemnant', true] }),
-    R('science/resonance-showcase', 'science', 0.45, { hasTagPrefix: 'resonance/' }),
-    R('science/rare-world-type', 'science', 0.6, { eq: ['isRareType', true] }),
-    R('science/exotic-chemistry', 'science', 0.4, { any: [{ hasTag: 'highly-corrosive' }, { hasTag: 'corrosive' }, { hasTag: 'technosignature' }] }),
-    R('science/runaway-greenhouse', 'science', 0.5, { any: [{ eq: ['regime', 'stagnant-lid'] }, { hasTag: 'climate/runaway-greenhouse' }] }),
-    R('frontier/fuel-depot', 'frontier', 0.6, { any: [{ gte: ['makeup.ice', 0.2] }, { eq: ['hydro', 'water'] }, { all: [{ gt: ['teqK', 0] }, { lt: ['teqK', 250] }, { hasTag: 'structure/icy-shell' }] }] }),
-    R('frontier/gas-skimming', 'frontier', 0.92, { eq: ['isGiant', true] }),
-    R('frontier/life-support', 'frontier', 0.6, { any: [{ eq: ['hasO2', true] }, { all: [{ eq: ['hydro', 'water'] }, { eq: ['hasAtmo', true] }] }] }),
-    R('frontier/aerobraking', 'frontier', 0.3, { all: [{ eq: ['hasAtmo', true] }, { gte: ['pressure', 0.1] }] }),
-    R('frontier/gravity-assist', 'frontier', 0.3, { gte: ['massMe', 50] }),
-    R('frontier/waystation', 'frontier', 0.2, { all: [{ eq: ['roleHint', 'moon'] }, { gt: ['makeup.rockMetal', 0.4] }] }),
-    R('intrigue/anomalous-signal', 'intrigue', 0.08, true),
-    R('intrigue/derelict-rumour', 'intrigue', 0.18, { eq: ['hasConstructs', true] }),
-    R('intrigue/derelict-rumour', 'intrigue', 0.05, { eq: ['hasConstructs', false] }),
-    R('intrigue/uncharted-feature', 'intrigue', 0.1, true),
-    R('intrigue/legend', 'intrigue', 0.4, { any: [{ hasTag: 'habitability/super' }, { eq: ['isLegendClass', true] }] }),
-    // Belt-specific hooks (appended last → existing rolls/tags unchanged). Belts read by temperature
-    // (icy outer/Kuiper vs rocky-metallic inner) and orbital excitation (a stirred belt is likely a
-    // disrupted differentiated body — a shattered planetary core).
-    R('frontier/ice-mining', 'frontier', 0.7, { all: [{ eq: ['roleHint', 'belt'] }, { gt: ['teqK', 0] }, { lt: ['teqK', 150] }] }),
-    R('resource/rare-metals', 'resource', 0.4, { all: [{ eq: ['roleHint', 'belt'] }, { gte: ['teqK', 150] }] }),
-    R('science/shattered-core', 'science', 0.5, { all: [{ eq: ['roleHint', 'belt'] }, { gt: ['ecc', 0.12] }] })
+    // Rocky/solid-world resources — planets & moons (belts have their own ore/rare-metals hooks).
+    R('resource/heavy-metals', 'resource', 0.7, { gte: ['makeup.metal', 0.3] }, ['planet', 'moon']),
+    R('resource/platinum-group', 'resource', 0.45, { gte: ['makeup.metal', 0.5] }, ['planet', 'moon']),
+    R('resource/rare-earths', 'resource', 0.4, { all: [{ gte: ['makeup.metal', 0.2] }, { gte: ['makeup.rock', 0.3] }] }, ['planet', 'moon']),
+    R('resource/fissiles', 'resource', 0.3, { all: [{ gte: ['makeup.rockMetal', 0.6] }, { between: ['ageGyr', 0.5, 9] }] }, ['planet', 'moon']),
+    R('resource/helium-3', 'resource', 0.6, { eq: ['isGiant', true] }, ['planet']),
+    R('resource/helium-3', 'resource', 0.3, { all: [{ eq: ['hasAtmo', false] }, { gte: ['ageGyr', 3] }, { gt: ['makeup.rockIce', 0.5] }] }, ['moon']),
+    R('resource/deuterium', 'resource', 0.4, { any: [{ gte: ['makeup.gas', 0.4] }, { gte: ['hydroCover', 0.3] }] }, ['planet', 'moon']),
+    R('resource/water-ice', 'resource', 0.7, { any: [{ gte: ['makeup.ice', 0.3] }, { hasTag: 'structure/icy-shell' }, { all: [{ gt: ['teqK', 0] }, { lt: ['teqK', 250] }, { eq: ['hydro', 'water'] }] }] }, ['planet', 'moon']),
+    R('resource/volatiles', 'resource', 0.5, { any: [{ all: [{ gt: ['teqK', 0] }, { lt: ['teqK', 160] }] }, { gte: ['makeup.ice', 0.5] }] }, ['belt', 'moon']),
+    R('resource/hydrocarbons', 'resource', 0.8, { any: [{ eq: ['hydro', 'methane'] }, { eq: ['atmMain', 'CH4'] }] }, ['planet', 'moon']),
+    R('resource/exotic-crystals', 'resource', 0.25, { all: [{ gte: ['massMe', 2] }, { gte: ['makeup.rockMetal', 0.7] }] }, ['planet', 'moon']),
+    R('resource/diamonds', 'resource', 0.4, { all: [{ gte: ['makeup.carbon', 0.3] }, { gte: ['massMe', 0.8] }] }, ['planet', 'moon']),
+    R('resource/organics', 'resource', 0.5, { any: [{ eq: ['hasBio', true] }, { hasTag: 'prebiotic-precursor' }, { all: [{ eq: ['hydro', 'water'] }, { between: ['teqK', 250, 330] }] }] }, ['planet', 'moon']),
+    R('resource/ore-belt', 'resource', 0.8, true, ['belt']),
+    R('resource/oxidizer', 'resource', 0.5, { eq: ['hasO2', true] }, ['planet', 'moon']),
+    R('science/pristine-protoplanetary', 'science', 0.85, { lt: ['ageGyr', 0.5] }, ['planet', 'moon']),
+    R('science/biosignature', 'science', 0.95, { eq: ['hasBio', true] }, ['planet', 'moon']),
+    R('science/extremophile-niche', 'science', 0.8, { any: [{ eq: ['regime', 'cryovolcanic'] }, { hasTag: 'structure/subsurface-ocean' }, { hasTag: 'habitability/subsurface' }] }, ['planet', 'moon']),
+    R('science/tidal-laboratory', 'science', 0.6, { any: [{ hasTag: 'tidal/hotspots' }, { eq: ['regime', 'tidal-volcanic'] }, { hasTag: 'resonance/laplace' }] }, ['planet', 'moon']),
+    R('science/impact-record', 'science', 0.3, { any: [{ gt: ['ecc', 0.2] }, { eq: ['regime', 'crater'] }] }, ['planet', 'moon', 'belt']),
+    R('science/remnant-proximity', 'science', 0.6, { eq: ['hasRemnant', true] }, ['planet', 'moon']),
+    R('science/resonance-showcase', 'science', 0.45, { hasTagPrefix: 'resonance/' }, ['planet', 'moon']),
+    R('science/rare-world-type', 'science', 0.6, { eq: ['isRareType', true] }, ['planet', 'moon']),
+    R('science/exotic-chemistry', 'science', 0.4, { any: [{ hasTag: 'highly-corrosive' }, { hasTag: 'corrosive' }, { hasTag: 'technosignature' }] }, ['planet', 'moon']),
+    R('science/runaway-greenhouse', 'science', 0.5, { any: [{ eq: ['regime', 'stagnant-lid'] }, { hasTag: 'climate/runaway-greenhouse' }] }, ['planet']),
+    R('frontier/fuel-depot', 'frontier', 0.6, { any: [{ gte: ['makeup.ice', 0.2] }, { eq: ['hydro', 'water'] }, { all: [{ gt: ['teqK', 0] }, { lt: ['teqK', 250] }, { hasTag: 'structure/icy-shell' }] }] }, ['planet', 'moon']),
+    R('frontier/gas-skimming', 'frontier', 0.92, { eq: ['isGiant', true] }, ['planet']),
+    R('frontier/life-support', 'frontier', 0.6, { any: [{ eq: ['hasO2', true] }, { all: [{ eq: ['hydro', 'water'] }, { eq: ['hasAtmo', true] }] }] }, ['planet', 'moon']),
+    R('frontier/aerobraking', 'frontier', 0.3, { all: [{ eq: ['hasAtmo', true] }, { gte: ['pressure', 0.1] }] }, ['planet', 'moon']),
+    R('frontier/gravity-assist', 'frontier', 0.3, { gte: ['massMe', 50] }, ['planet']),
+    R('frontier/waystation', 'frontier', 0.2, { gt: ['makeup.rockMetal', 0.4] }, ['moon']),
+    R('intrigue/anomalous-signal', 'intrigue', 0.08, true, ['planet', 'moon', 'belt']),
+    R('intrigue/derelict-rumour', 'intrigue', 0.18, { eq: ['hasConstructs', true] }, ['planet', 'moon', 'belt']),
+    R('intrigue/derelict-rumour', 'intrigue', 0.05, { eq: ['hasConstructs', false] }, ['planet', 'moon', 'belt']),
+    R('intrigue/uncharted-feature', 'intrigue', 0.1, true, ['planet', 'moon', 'belt']),
+    R('intrigue/legend', 'intrigue', 0.4, { any: [{ hasTag: 'habitability/super' }, { eq: ['isLegendClass', true] }] }, ['planet', 'moon']),
+    // Belt-specific hooks. Belts read by temperature (icy outer/Kuiper vs rocky-metallic inner) and
+    // orbital excitation (a stirred belt is likely a disrupted differentiated body — a shattered core).
+    R('frontier/ice-mining', 'frontier', 0.7, { all: [{ gt: ['teqK', 0] }, { lt: ['teqK', 150] }] }, ['belt']),
+    R('resource/rare-metals', 'resource', 0.4, { gte: ['teqK', 150] }, ['belt']),
+    R('science/shattered-core', 'science', 0.5, { gt: ['ecc', 0.12] }, ['belt'])
   ]
 };
 
@@ -312,19 +316,23 @@ export function annotateReasonsToVisit(system: System, cfg?: ReasonsConfig, pack
   const hasConstructs = system.nodes.some((n) => n.kind === 'construct');
 
   for (const node of system.nodes) {
-    if (node.kind !== 'body') continue;
+    const isConstruct = node.kind === 'construct';
+    if (node.kind !== 'body' && !isConstruct) continue;   // skip barycentres
     const b = node as CelestialBody;
-    if (!['planet', 'moon', 'belt'].includes(b.roleHint)) continue;
+    const role = (isConstruct ? 'construct' : (b.roleHint || '')) as PoIRole;
     // Clear stale rule-tags by category prefix — but NEVER a hand-added (manual) tag, even if the
     // player filed it under an existing category (e.g. a custom frontier/my-depot).
     b.tags = (b.tags || []).filter((t) => t.manual || !catPrefixes.some((p) => t.key.startsWith(p)));
     if (!conf.enabled) continue;
 
     const f = buildFeatures(b, ageGyr, hasRemnant, hasConstructs);
+    if (isConstruct) f.roleHint = 'construct';
     const rng = mulberry32(hashStr(`${b.id}|${system.seed || ''}`));
     const added = new Set<string>();
     for (const rule of rules) {
-      const roll = rng(); // advance ALWAYS so category/pack toggles don't shift other rolls
+      const roll = rng(); // advance ALWAYS so category/role/pack toggles don't shift other rolls
+      const roles = rule.appliesTo && rule.appliesTo.length ? rule.appliesTo : DEFAULT_POI_ROLES;
+      if (!roles.includes(role)) continue;
       if (conf.categories[rule.category] === false) continue;
       if (added.has(rule.tag)) continue;
       if (evalPoI(rule.when, f) && roll < rule.chance) { b.tags.push({ key: rule.tag }); added.add(rule.tag); }
