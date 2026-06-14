@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.78-beta - 14th Jun 2026
+
+* Find by tag gained a system-scope dropdown at the top: defaults to "All systems" on the starmap (or the system you're in when inside one), and you can switch scope at any time. Tags, counts and results all follow the selected scope.
+
 ## v2.0.77-beta - 14th Jun 2026
 
 * Routes panel journeys now show the *when*, not just the route: a date-time plus how far ahead/behind "now" it is — "Departs {date} · in 4d", "Arrived {date} · 2d ago", or, for a flight under way, "40% · departed 3d ago · arrives {date} (in 5d)". Both in-system and interstellar journeys.

@@ -8,6 +8,7 @@
   export let nodes: any[] = [];                       // all bodies/constructs (with __systemId/__systemName/tags)
   export let contextOf: (n: any) => string = () => '';
   export let currentSystemId: string | null = null;
+  export let systems: { id: string; name: string }[] = [];   // for the system scope dropdown
   export let distanceOf: ((systemId: string) => number | null) | null = null;
   export let distanceUnit = 'ly';
   const dispatch = createEventDispatcher();
@@ -15,11 +16,14 @@
   let q = '';
   let expanded: string | null = null;     // expanded category group
   let filters: string[] = [];             // active tag keys (ANDed)
+  // Scope: 'all' systems, or one system. Defaults to the system you're in, else all.
+  let scope: string = currentSystemId ?? 'all';
+  $: scopedNodes = scope === 'all' ? nodes : nodes.filter((n) => n.__systemId === scope);
 
-  // tag key → the nodes that carry it
+  // tag key → the nodes (within scope) that carry it
   $: index = (() => {
     const m = new Map<string, any[]>();
-    for (const n of nodes) for (const t of (n.tags ?? [])) {
+    for (const n of scopedNodes) for (const t of (n.tags ?? [])) {
       const arr = m.get(t.key);
       if (arr) arr.push(n); else m.set(t.key, [n]);
     }
@@ -56,7 +60,7 @@
 
   // Results: nodes carrying every active filter tag.
   $: results = filters.length
-    ? nodes.filter((n) => { const keys = new Set((n.tags ?? []).map((t: any) => t.key)); return filters.every((f) => keys.has(f)); })
+    ? scopedNodes.filter((n) => { const keys = new Set((n.tags ?? []).map((t: any) => t.key)); return filters.every((f) => keys.has(f)); })
     : [];
   const byName = (a: any, b: any) =>
     String(a.n.__systemName).localeCompare(String(b.n.__systemName)) || String(a.n.name).localeCompare(String(b.n.name));
@@ -78,6 +82,12 @@
 </script>
 
 <div class="tag-finder">
+  <!-- system scope -->
+  <select class="scope" bind:value={scope}>
+    <option value="all">★ All systems</option>
+    {#each systems as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
+  </select>
+
   <!-- search / quick-add -->
   <div class="search-wrap">
     <input class="search" placeholder="Search tags to add a filter…" bind:value={q} on:keydown={onSearchKey} />
@@ -149,6 +159,8 @@
 <style>
   .tag-finder { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
   .search-wrap { position: relative; }
+  .scope { width: 100%; box-sizing: border-box; padding: 7px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); font-size: 0.86rem; }
+  .scope option[value="all"] { font-weight: 700; }
   .search { width: 100%; box-sizing: border-box; padding: 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); }
   .suggest { position: absolute; left: 0; right: 0; top: calc(100% + 2px); z-index: 5; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); max-height: 240px; overflow-y: auto; }
   .sugg { width: 100%; display: flex; align-items: center; gap: 7px; background: none; border: none; border-bottom: 1px solid var(--border); padding: 7px 9px; cursor: pointer; color: var(--text); text-align: left; font-size: 0.82rem; }

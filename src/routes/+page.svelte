@@ -1169,6 +1169,7 @@
         <TagFinder
           nodes={allBodies}
           currentSystemId={currentSystemId}
+          systems={($starmapStore?.systems ?? []).map((s) => ({ id: s.id, name: s.name }))}
           distanceOf={tagFinderDistance}
           distanceUnit={$starmapStore?.distanceUnit ?? 'ly'}
           contextOf={allBodiesContext}
