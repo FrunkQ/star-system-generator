@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.73-beta - 14th Jun 2026
+
+* The interstellar ship marker now uses the construct's own assigned icon (shape + colour) instead of a generic diamond, with a state-coloured outline: black while under way, red when stranded, green when arrived.
+
 ## v2.0.72-beta - 14th Jun 2026
 
 * Interstellar ships are now drawn from the journey log: a moving marker in transit, a grey diamond when stranded, a green diamond parked at the destination on arrival. Clicking an in-transit ship now offers End at source / End at destination / **Strand here** (left adrift in interstellar space), and stranded/arrived ships can be re-flown — all reversible, since position is derived from the log + clock (scrub back and the ship is en route again). (Persisting the construct into its new system, the in-system Transit panel, and relaunch-to-a-new-destination follow.)

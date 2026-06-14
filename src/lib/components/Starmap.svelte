@@ -283,6 +283,22 @@
   $: journeyNowSec = Number(ensuredTemporal?.displayTimeSec ?? 0);
   $: activeJourneys = starmap.activeJourneys ?? [];
   const systemById = (id: string) => starmap.systems.find((s) => s.id === id);
+  // The construct node behind a journey (for its assigned icon). It still lives in a system until reconcile.
+  const journeyShip = (j: any): any => {
+    for (const s of starmap.systems) { const n = (s.system?.nodes ?? []).find((x: any) => x.id === j.shipId); if (n) return n; }
+    return null;
+  };
+  // SVG path for a construct's icon_type (circle is rendered as a <circle> separately).
+  const iconPath = (type?: string): string => {
+    switch (type) {
+      case 'square': return 'M-4,-4 H4 V4 H-4 Z';
+      case 'triangle': return 'M0,-5 L5,4.5 L-5,4.5 Z';
+      case 'cross': return 'M-5,-1.6 H-1.6 V-5 H1.6 V-1.6 H5 V1.6 H1.6 V5 H-1.6 V1.6 H-5 Z';
+      default: return 'M0,-5 L5,0 L0,5 L-5,0 Z';   // diamond (and fallback)
+    }
+  };
+  // Edge colour by journey state: black under way, red stranded, green arrived.
+  const EDGE_TRANSIT = '#111', EDGE_STRANDED = '#d04545', EDGE_ARRIVED = '#2f9e57';
 
   let journeyToCancel: any = null;
   function requestCancelJourney(j: any) { journeyToCancel = j; }
@@ -932,6 +948,8 @@
            (trail behind, dashed path ahead) while in transit, or a static glyph when stranded. -->
       {#each activeJourneys as journey (journey.id)}
         {@const p = constructDisplayPlacement(starmap, journey.shipId, journeyNowSec)}
+        {@const ship = journeyShip(journey)}
+        {@const fill = ship?.icon_color || '#ffd23f'}
         {#if p.kind === 'transit'}
           {@const from = systemById(journey.fromSystemId)}
           {@const to = systemById(journey.toSystemId)}
@@ -942,8 +960,9 @@
                on:click|stopPropagation={() => requestCancelJourney(journey)}
                on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
               <title>{journey.shipName} → {journey.toBodyName || to.name} ({Math.round(p.frac * 100)}%) — click for options</title>
-              <path class="journey-glyph" d="M0,-5 L4,0 L0,5 L-4,0 Z" />
-              <text class="journey-label" x="7" y="3">{journey.shipName}</text>
+              {#if ship?.icon_type === 'circle'}<circle r="5" {fill} stroke={EDGE_TRANSIT} stroke-width="1.6" />
+              {:else}<path d={iconPath(ship?.icon_type)} {fill} stroke={EDGE_TRANSIT} stroke-width="1.6" />{/if}
+              <text class="journey-label" x="8" y="3">{journey.shipName}</text>
             </g>
           {/if}
         {:else if p.kind === 'adrift'}
@@ -951,7 +970,8 @@
              on:click|stopPropagation={() => requestCancelJourney(journey)}
              on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
             <title>{journey.shipName} — stranded in interstellar space. Click for options.</title>
-            <path class="journey-glyph adrift-glyph" d="M0,-6 L5,0 L0,6 L-5,0 Z" />
+            {#if ship?.icon_type === 'circle'}<circle r="5.5" {fill} stroke={EDGE_STRANDED} stroke-width="2.2" />
+            {:else}<path d={iconPath(ship?.icon_type)} {fill} stroke={EDGE_STRANDED} stroke-width="2.2" />{/if}
             <text class="journey-label" x="8" y="3">{journey.shipName} (adrift)</text>
           </g>
         {:else if p.kind === 'system' && p.systemId === journey.toSystemId}
@@ -962,7 +982,8 @@
                on:click|stopPropagation={() => requestCancelJourney(journey)}
                on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
               <title>{journey.shipName} — arrived at {to.name}. Click for options.</title>
-              <path class="journey-glyph arrived-glyph" d="M0,-5 L4,0 L0,5 L-4,0 Z" />
+              {#if ship?.icon_type === 'circle'}<circle r="5" {fill} stroke={EDGE_ARRIVED} stroke-width="1.8" />
+              {:else}<path d={iconPath(ship?.icon_type)} {fill} stroke={EDGE_ARRIVED} stroke-width="1.8" />{/if}
             </g>
           {/if}
         {/if}
@@ -1665,14 +1686,10 @@
   .journey-trail { stroke: var(--accent, #ff5a1f); stroke-width: 1.5; opacity: 0.5; }
   .journey-ahead { stroke: var(--accent, #ff5a1f); stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.85; }
   .journey-ship { cursor: pointer; }
-  .journey-glyph { fill: #ffd23f; stroke: #000; stroke-width: 1px; paint-order: stroke; }
-  .journey-ship:hover .journey-glyph { fill: #fff; }
-  /* Stranded ship: a cold, hollow grey diamond — clearly not under way. */
-  .journey-glyph.adrift-glyph { fill: #8a8f9a; }
-  .journey-ship.adrift:hover .journey-glyph { fill: #cfd3da; }
-  /* Arrived ship: a calm green diamond parked at the destination. */
-  .journey-glyph.arrived-glyph { fill: #6fcf8f; }
-  .journey-ship.arrived:hover .journey-glyph { fill: #9be0b3; }
+  /* The ship marker uses the construct's own icon (fill = its icon_color) with a state-coloured edge
+     (black under way, red stranded, green arrived) applied inline. */
+  .journey-ship path, .journey-ship circle { paint-order: stroke; }
+  .journey-ship:hover path, .journey-ship:hover circle { filter: brightness(1.25); }
   .journey-label {
     fill: #ffd23f; font-size: 9px; paint-order: stroke; stroke: #000; stroke-width: 2px;
     pointer-events: none;
