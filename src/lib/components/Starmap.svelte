@@ -20,6 +20,8 @@
   import StarmapScaleBar from './StarmapScaleBar.svelte';
   import { TravellerImporter } from '$lib/traveller/importer';
   import { computePlayerSnapshot } from '$lib/system/utils';
+  import { packsForStarmap, reasonsConfig } from '$lib/physics/reasonsToVisit';
+  import { get } from 'svelte/store';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
   import { ensureTemporalState, setMasterToDisplay } from '$lib/temporal/defaults';
   import TimeControls from './TimeControls.svelte';
@@ -403,6 +405,14 @@
           }
           return node;
       });
+
+      // A GM "Full Backup" must be self-contained: embed the user's PoI packs + reasons config so they
+      // travel inside the file (matching the rail's Download). The Player handout deliberately omits them
+      // (the computed tags are already baked into the redacted bodies; the rule definitions stay GM-side).
+      if (mode === 'GM') {
+          (starmapToSave as any).poiPacks = packsForStarmap();
+          (starmapToSave as any).reasonsConfig = get(reasonsConfig);
+      }
 
       // Download
       const json = JSON.stringify(starmapToSave, null, 2);

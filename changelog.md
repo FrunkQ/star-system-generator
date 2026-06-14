@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.82-beta - 15th Jun 2026
+
+* Fixed: the "GM (Full Backup)" save (Save System Data dialog) now embeds your custom PoI packs and reasons config, like the rail's Download already does. Previously this "complete data" backup left them out, so restoring it on a fresh browser would have lost your custom packs. Player (redacted) saves still omit them by design.
+
 ## v2.0.81-beta - 14th Jun 2026
 
 * Manual zoom is no longer overridden while an object is selected. Previously, playing time with a body selected forced the camera to keep zooming in to frame it; now a wheel/pinch zoom sticks, so you can pull back to a wider view and watch the body orbit at your chosen zoom. Selecting another body, re-clicking to step in, or Reset view re-engages auto-framing.
