@@ -21,6 +21,7 @@
   // The compound tag is category-id + "/" + a sanitised suffix the user types.
   const slug = (s: string) => s.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9/_-]/g, '');
   const compoundTag = (catId: string, suffix: string) => `${catId}/${slug(suffix) || 'new-hook'}`;
+  const prettyName = (s: string) => (slug(s).split('/').pop() || 'new-hook').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
   const fieldOf = (name: string): PoIField | undefined => POI_FIELDS.find((f) => f.field === name);
   const opsFor = (f?: PoIField) => f?.type === 'number' ? ['gte', 'lte', 'gt', 'lt', 'between'] : ['eq'];
@@ -106,40 +107,62 @@
   let ruleSuffix = '';          // the part after the category prefix, e.g. "geochem-sample"
   let rows: { field: string; op: string; value: string }[] = [];
   let rawMode = false; let rawText = ''; let ruleError = '';
+  let matchMode: 'all' | 'any' = 'all';      // builder combines its rows with AND (all) or OR (any)
   const suffixOf = (tag: string) => tag.includes('/') ? tag.split('/').slice(1).join('/') : tag;
 
-  function whenToRows(when: PoIExpr): { rows: typeof rows; raw: boolean } {
-    const clauses = when === true ? [] : ('all' in (when as any) ? (when as any).all : [when]);
+  // A condition is builder-representable if it's `true`, a single flat clause, or a flat all/any of
+  // flat clauses (gt/lt/gte/lte/between/eq). Nested all/any, not, and hasTag fall back to raw JSON.
+  function whenToRows(when: PoIExpr): { rows: typeof rows; raw: boolean; mode: 'all' | 'any' } {
+    if (when === true) return { rows: [], raw: false, mode: 'all' };
+    let clauses: any[]; let mode: 'all' | 'any' = 'all';
+    if ('all' in (when as any)) clauses = (when as any).all;
+    else if ('any' in (when as any)) { clauses = (when as any).any; mode = 'any'; }
+    else clauses = [when];
     const out: typeof rows = [];
     for (const c of clauses) {
       if ('between' in c) out.push({ field: c.between[0], op: 'between', value: `${c.between[1]},${c.between[2]}` });
       else if ('eq' in c) out.push({ field: c.eq[0], op: 'eq', value: String(c.eq[1]) });
-      else { const op = ['gt', 'lt', 'gte', 'lte'].find((o) => o in c); if (op) out.push({ field: (c as any)[op][0], op, value: String((c as any)[op][1]) }); else return { rows: [], raw: true }; }
+      else { const op = ['gt', 'lt', 'gte', 'lte'].find((o) => o in c); if (op) out.push({ field: (c as any)[op][0], op, value: String((c as any)[op][1]) }); else return { rows: [], raw: true, mode }; }
     }
-    return { rows: out, raw: false };
+    return { rows: out, raw: false, mode };
   }
-  function rowsToWhen(rs: typeof rows): PoIExpr {
+  function rowsToWhen(rs: typeof rows, mode: 'all' | 'any' = 'all'): PoIExpr {
     const clauses = rs.filter((r) => r.field && r.field !== '__tag__' && r.field !== 'tag:').map((r): PoIExpr => {
       const f = fieldOf(r.field);
       if (r.op === 'eq') { const v = f?.type === 'bool' ? r.value === 'true' : (f?.type === 'number' ? parseFloat(r.value) : r.value); return { eq: [r.field, v] }; }
       if (r.op === 'between') { const [a, b] = r.value.split(',').map((x) => parseFloat(x)); return { between: [r.field, Number.isNaN(a) ? 0 : a, Number.isNaN(b) ? 0 : b] }; }
       return { [r.op]: [r.field, parseFloat(r.value) || 0] } as PoIExpr;
     });
-    return clauses.length === 0 ? true : (clauses.length === 1 ? clauses[0] : { all: clauses });
+    return clauses.length === 0 ? true : (clauses.length === 1 ? clauses[0] : (mode === 'any' ? { any: clauses } : { all: clauses }));
+  }
+  function toggleRaw() {
+    if (rawMode) {
+      let parsed: PoIExpr;
+      try { parsed = JSON.parse(rawText); } catch { ruleError = 'Invalid JSON.'; return; }
+      const p = whenToRows(parsed);
+      if (p.raw) { ruleError = 'This condition uses nested / NOT / hasTag logic the builder can’t show — keep editing it as JSON.'; return; }
+      rows = p.rows; matchMode = p.mode; rawMode = false; ruleError = '';
+    } else {
+      rawText = JSON.stringify(rowsToWhen(rows, matchMode)); rawMode = true; ruleError = '';
+    }
   }
   function startRule(r?: PoIRule) {
     const cat0 = pack.categories[0]?.id || 'custom';
     editing = r ? { ...r } : { id: 'r' + Math.random().toString(36).slice(2, 7), tag: cat0 + '/new-hook', category: cat0, chance: 0.5, when: true };
     ruleSuffix = suffixOf(editing.tag);
-    const parsed = whenToRows(editing.when); rows = parsed.rows; rawMode = parsed.raw; rawText = JSON.stringify(editing.when, null, 0); ruleError = '';
+    const parsed = whenToRows(editing.when); rows = parsed.rows; rawMode = parsed.raw; matchMode = parsed.mode; rawText = JSON.stringify(editing.when, null, 0); ruleError = '';
   }
   function saveRule() {
     if (!editing) return;
     let when: PoIExpr;
     if (rawMode) { try { when = JSON.parse(rawText); } catch { ruleError = 'Invalid JSON'; return; } }
-    else when = rowsToWhen(rows);
+    else when = rowsToWhen(rows, matchMode);
     // The tag is always category-id + "/" + the typed suffix, so it stays in sync with its category.
-    const r = { ...editing, tag: compoundTag(editing.category, ruleSuffix), when };
+    const r: PoIRule = {
+      ...editing, tag: compoundTag(editing.category, ruleSuffix), when,
+      label: editing.label?.trim() || undefined,
+      description: editing.description?.trim() || undefined
+    };
     patchPack({ rules: pack.rules.some((x) => x.id === r.id) ? pack.rules.map((x) => x.id === r.id ? r : x) : [...pack.rules, r] });
     editing = null;
   }
@@ -225,18 +248,35 @@
           {#each pack.categories as c}<option value={c.id}>{c.label}</option>{/each}
         </select>
       </label>
-      <label class="fld" title="The specific tag name, e.g. 'geochem-sample'. Combined with the category it becomes the full tag below.">Tag name
+      <label class="fld" title="The internal tag key, e.g. 'geochem-sample'. Combined with the category it becomes the full tag id below.">Tag id (name)
         <input value={ruleSuffix} on:input={(e) => { ruleSuffix = e.currentTarget.value; }} placeholder="e.g. geochem-sample" />
       </label>
-      <div class="tag-final">Tag appears as:
-        <span class="tag-chip-preview" style="background:{catBg(editing.category)}; color:{catFg(editing.category)}">{compoundTag(editing.category, ruleSuffix)}</span>
+      <label class="fld" title="The friendly name players see on the chip. Blank = auto from the tag id.">Player name (label)
+        <input value={editing.label ?? ''} on:input={(e) => { editing.label = e.currentTarget.value; editing = editing; }} placeholder={prettyName(ruleSuffix)} />
+      </label>
+      <label class="fld" title="The hover text shown to players (the flavour / GM hook).">Hover description
+        <textarea class="desc" rows="2" value={editing.description ?? ''} on:input={(e) => { editing.description = e.currentTarget.value; editing = editing; }} placeholder="e.g. Spacers' tales of a wreck in this neighbourhood. (GM hook.)"></textarea>
+      </label>
+      <div class="tag-final">Players see:
+        <span class="tag-chip-preview" style="background:{catBg(editing.category)}; color:{catFg(editing.category)}" title={editing.description || ''}>{editing.label?.trim() || prettyName(ruleSuffix)}</span>
+        <code class="key-mono">{compoundTag(editing.category, ruleSuffix)}</code>
       </div>
       <label class="fld">Chance: {Math.round(editing.chance * 100)}%
         <input type="range" min="0" max="1" step="0.01" value={editing.chance} on:input={(e) => editing.chance = parseFloat(e.currentTarget.value)} />
       </label>
 
-      <div class="cond-head"><span>Condition {rawMode ? '(raw JSON)' : '(all of)'}</span>
-        <button class="link" on:click={() => { if (rawMode) { const p = whenToRows((() => { try { return JSON.parse(rawText); } catch { return true; } })()); rows = p.rows; rawMode = p.raw; } else { rawText = JSON.stringify(rowsToWhen(rows)); rawMode = true; } }}>{rawMode ? 'use builder' : 'raw JSON'}</button>
+      <div class="cond-head">
+        {#if rawMode}<span>Condition (raw JSON)</span>
+        {:else}
+          <span class="match">Match
+            <select class="modesel" bind:value={matchMode}>
+              <option value="all">all of</option>
+              <option value="any">any of</option>
+            </select>
+            conditions
+          </span>
+        {/if}
+        <button class="link" on:click={toggleRaw}>{rawMode ? 'use builder' : 'raw JSON'}</button>
       </div>
       {#if rawMode}
         <textarea class="raw" bind:value={rawText} rows="4" spellcheck="false"></textarea>
@@ -331,6 +371,9 @@
   .rtag-chip { flex: 1; min-width: 0; font-family: var(--font-mono, monospace); font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .rchance { color: var(--text-muted); min-width: 40px; text-align: right; padding-right: 4px; }
   .tag-final { display: flex; align-items: center; gap: 7px; font-size: 0.76rem; color: var(--text-muted); margin: 2px 0; flex-wrap: wrap; }
+  .key-mono { font-family: var(--font-mono, monospace); font-size: 0.72rem; color: var(--text-faint); }
+  .rule-edit .desc { width: 100%; background: var(--bg-control); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.8rem; padding: 6px; resize: vertical; }
+  .cond-head .modesel { padding: 2px 4px; }
   .range { color: var(--text-faint); }
   .link { background: none; border: none; color: var(--link); cursor: pointer; font-size: 0.76rem; padding: 0 2px; }
   .add-line { align-self: flex-start; background: none; border: 1px dashed var(--border); border-radius: 4px; color: var(--link); padding: 4px 10px; cursor: pointer; font-size: 0.78rem; margin-top: 3px; }

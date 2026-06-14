@@ -8,7 +8,7 @@ import type { System, CelestialBody } from '../types';
 import { writable, get } from 'svelte/store';
 import { makeupFractions } from './makeup';
 import { EARTH_MASS_KG } from '../constants';
-import { registerPoiCategories } from '../tags/tagPresentation';
+import { registerPoiCategories, registerPoiTags } from '../tags/tagPresentation';
 
 // ---------------------------------------------------------------------------------------------
 // Declarative condition schema. `true` = always. Numeric ops take [field, value]; eq compares a
@@ -29,7 +29,7 @@ export type PoIExpr =
   | { hasTagPrefix: string };
 
 export interface ReasonCategory { id: string; label: string; desc: string; color?: string; textColor?: string; }
-export interface PoIRule { id: string; tag: string; category: string; chance: number; when: PoIExpr; enabled?: boolean; }
+export interface PoIRule { id: string; tag: string; category: string; chance: number; when: PoIExpr; enabled?: boolean; label?: string; description?: string; }
 export interface PoIPack { id: string; name: string; description: string; enabled: boolean; categories: ReasonCategory[]; rules: PoIRule[]; }
 
 // Feature fields exposed to rule conditions — the wizard reads this for its field picker + ranges.
@@ -179,9 +179,13 @@ function allCategories(packs: PoIPack[]): ReasonCategory[] {
   for (const p of packs) for (const c of p.categories) if (!seen.has(c.id)) seen.set(c.id, c);
   return [...seen.values()];
 }
-// Push category styles (colour + label) into tagPresentation whenever the packs change, so a tag like
-// survey/geochem-sample picks up its pack-defined colour and heading. Fires once on init too.
-poiPacks.subscribe((p) => registerPoiCategories(allCategories(p)));
+// Push category styles (colour + label) AND per-rule tag presentation (player name + hover text) into
+// tagPresentation whenever the packs change, so a tag like survey/geochem-sample picks up its
+// pack-defined colour, heading, label and description. Fires once on init too.
+poiPacks.subscribe((p) => {
+  registerPoiCategories(allCategories(p));
+  registerPoiTags(p.flatMap((pk) => pk.rules).map((r) => ({ key: r.tag, label: r.label, description: r.description })));
+});
 
 // --- Import / export (JSON pack files). ---
 export function exportPack(pack: PoIPack): string {

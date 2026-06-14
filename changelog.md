@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.56-beta - 14th Jun 2026
+
+* PoI rule builder now handles "any of" conditions, not just "all of" — so rules like Space Opera's spice-world open in the builder instead of falling back to raw JSON. A match-mode toggle (all of / any of) sits above the conditions, and "use builder" now either switches cleanly or explains when a condition is too complex (nested / NOT / hasTag) to show.
+* PoI rules can now carry a player-facing name (label) and hover description, editable in the rule editor — so your own tags get the same friendly name + tooltip as the built-in ones (e.g. "Derelict rumour"). The example packs ship with these filled in.
+
 ## v2.0.55-beta - 14th Jun 2026
 
 * Settings: the "Generation" section is now "PoI" and the experimental generation-engine selector is gone. It's now a clean checklist of the loaded PoI categories — each with a colour swatch, its rule count, and a tickbox to show/hide it in the current view.

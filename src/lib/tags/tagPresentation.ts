@@ -22,6 +22,15 @@ export function registerPoiCategories(cats: { id: string; label: string; color?:
   }
 }
 
+// Per-tag friendly name + hover description, supplied by PoI rules (the editor's "player name" and
+// "hover text"). Rebuilt wholesale on each registration so deletions/edits take effect. Overrides
+// the built-in TAG_INFO / title-cased fallback for that exact tag key.
+const POI_TAG_META: Record<string, { label?: string; description?: string }> = {};
+export function registerPoiTags(tags: { key: string; label?: string; description?: string }[]): void {
+  for (const k of Object.keys(POI_TAG_META)) delete POI_TAG_META[k];
+  for (const t of tags) { if (t?.key && (t.label || t.description)) POI_TAG_META[t.key] = { label: t.label, description: t.description }; }
+}
+
 // Per-namespace grouping + chip colour.
 const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boolean }> = {
   origin:       { group: 'Origin',       color: '#8a8a9a' },
@@ -264,6 +273,7 @@ export function describeTag(key: string): TagPresentation {
       description: `Mean-motion resonance: the orbital periods sit in a ${mmr[1]}:${mmr[2]} whole-number ratio with a partner. Depending on the masses it shields the pair from close approaches, pumps eccentricity (tidal heating), or destabilises a packed system.`
     };
   }
-  const label = info?.label ?? titleCase(key.includes('/') ? key.split('/').slice(1).join(' ') : key);
-  return { key, label, description: info?.description ?? '', group: meta.group, color: meta.color, textColor };
+  const tagMeta = POI_TAG_META[key];
+  const label = tagMeta?.label || info?.label || titleCase(key.includes('/') ? key.split('/').slice(1).join(' ') : key);
+  return { key, label, description: tagMeta?.description ?? info?.description ?? '', group: meta.group, color: meta.color, textColor };
 }
