@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.75-beta - 14th Jun 2026
+
+* The "Routes…" panel's interstellar journeys are now interactive: the **ship**, its **origin** and its **destination** are each a clickable pill — tap the ship to open its panel, or a system to jump there.
+
 ## v2.0.74-beta - 14th Jun 2026
 
 * Clicking an interstellar ship (in transit, stranded, or arrived) now opens a full **ship panel** right on the starmap — the construct's complete editor plus its in-flight controls (End at source / destination / Strand here, or Resume / Re-fly), with live status and progress. Replaces the small cancel popup, so you can inspect and edit a ship without diving into a system.

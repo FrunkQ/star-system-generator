@@ -136,7 +136,7 @@
       const pct = end > start ? Math.max(0, Math.min(100, Math.round(((nowSec - start) / (end - start)) * 100))) : 0;
       return {
         id: j.id, shipName: j.shipName ?? 'Ship', from: sysName(j.fromSystemId), to: sysName(j.toSystemId),
-        toSystemId: j.toSystemId, toBodyId: j.toBodyId ?? null, toBodyName: j.toBodyName, status, pct
+        fromSystemId: j.fromSystemId, toSystemId: j.toSystemId, toBodyId: j.toBodyId ?? null, toBodyName: j.toBodyName, status, pct
       };
     });
     const journeys: any[] = [];
@@ -1188,10 +1188,15 @@
             <p class="routes-empty">No interstellar journeys.</p>
           {:else}
             {#each routesData.interstellarJourneys as j (j.id)}
-              <button class="route-row" on:click={() => { showRoutes = false; enterSystemAndFocus(j.toSystemId, j.toBodyId); }}>
-                <span class="route-status {j.status}">{j.status}</span>
-                <span class="route-main"><strong>{j.shipName}</strong> · {j.from} → {j.to}{j.toBodyName ? ` (${j.toBodyName})` : ''}{j.status === 'active' ? ` — ${j.pct}%` : ''}</span>
-              </button>
+              <div class="route-row interstellar">
+                <span class="route-status {j.status}">{j.status}{j.status === 'active' ? ` ${j.pct}%` : ''}</span>
+                <div class="route-pills">
+                  <button class="pill ship" title="Open the ship" on:click={() => { showRoutes = false; shipPanelJourneyId = j.id; }}>{j.shipName}</button>
+                  <button class="pill" title="Go to origin system" on:click={() => { showRoutes = false; enterSystemAndFocus(j.fromSystemId, null); }}>{j.from}</button>
+                  <span class="arrow">→</span>
+                  <button class="pill" title="Go to destination system" on:click={() => { showRoutes = false; enterSystemAndFocus(j.toSystemId, j.toBodyId); }}>{j.to}{j.toBodyName ? ` (${j.toBodyName})` : ''}</button>
+                </div>
+              </div>
             {/each}
           {/if}
           <h4>Interstellar routes ({routesData.interstellar.length})</h4>
@@ -1360,6 +1365,16 @@
   .route-status.completed { background: color-mix(in srgb, #4fa86a 26%, transparent); color: #6fcf8f; }
   .route-main { flex: 1 1 auto; min-width: 0; font-size: 0.9rem; }
   .route-sys { flex: 0 0 auto; color: var(--text-faint, #8a8f9a); font-size: 0.8rem; }
+  /* Interstellar journey rows: source / destination / ship are individually clickable pills. */
+  .route-row.interstellar { cursor: default; flex-wrap: wrap; }
+  .route-pills { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; }
+  .route-pills .pill {
+    border: 1px solid var(--border, #2a2d36); border-radius: 6px; padding: 3px 9px;
+    background: var(--bg-panel, #14161c); color: var(--text, #e8e8e8); cursor: pointer; font-size: 0.85rem;
+  }
+  .route-pills .pill:hover { border-color: var(--accent, #ff5a1f); }
+  .route-pills .pill.ship { font-weight: 600; }
+  .route-pills .arrow { color: var(--text-faint, #8a8f9a); }
   footer {
       margin-top: 2em;
       padding-top: 1em;
