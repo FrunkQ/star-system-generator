@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.66-beta - 14th Jun 2026
+
+* Fixed Find-by-tag results not putting the system you're in first on diagrammatic maps (they fell back to plain A–Z, so e.g. Rigel sorted ahead of the Sol system you had open). Now the current system always leads, then nearest/alphabetical.
+* Bumped the service-worker cache version so devices pick up the latest CSS/JS instead of serving a stale cached build (the cause of mobile layouts looking out of date — if a phone still looks old, reload once to let the new worker take over).
+
 ## v2.0.65-beta - 14th Jun 2026
 
 * Find-by-tag on phones: the category pills are now much slimmer (tighter line height + padding) and the dialog uses nearly the full screen height, so the categories take a few compact rows and the results list gets the space.

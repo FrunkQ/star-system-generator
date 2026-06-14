@@ -58,15 +58,18 @@
   $: results = filters.length
     ? nodes.filter((n) => { const keys = new Set((n.tags ?? []).map((t: any) => t.key)); return filters.every((f) => keys.has(f)); })
     : [];
+  const byName = (a: any, b: any) =>
+    String(a.n.__systemName).localeCompare(String(b.n.__systemName)) || String(a.n.name).localeCompare(String(b.n.name));
   $: sorted = (() => {
     const withDist = results.map((n) => ({ n, dist: distanceOf ? distanceOf(n.__systemId) : null }));
     const haveDist = withDist.some((r) => r.dist != null);
     if (haveDist) {
-      withDist.sort((a, b) => (a.dist ?? Infinity) - (b.dist ?? Infinity)
-        || String(a.n.__systemName).localeCompare(String(b.n.__systemName))
-        || String(a.n.name).localeCompare(String(b.n.name)));
+      // Scaled map + inside a system: nearest first (the current system is distance 0).
+      withDist.sort((a, b) => (a.dist ?? Infinity) - (b.dist ?? Infinity) || byName(a, b));
     } else {
-      withDist.sort((a, b) => String(a.n.__systemName).localeCompare(String(b.n.__systemName)) || String(a.n.name).localeCompare(String(b.n.name)));
+      // No distances (diagrammatic map or starmap view): the system you're in comes first, then A–Z.
+      withDist.sort((a, b) =>
+        (a.n.__systemId === currentSystemId ? 0 : 1) - (b.n.__systemId === currentSystemId ? 0 : 1) || byName(a, b));
     }
     return withDist;
   })();
