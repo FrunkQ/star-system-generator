@@ -96,4 +96,10 @@
   td code { background: none; padding: 0; }
   td:first-child code { color: var(--accent, #6aa0d8); }
   .ex-title { margin: 14px 0 4px; font-weight: 600; }
+  @media (max-width: 640px) {
+    main { padding: 18px 12px 60px; }
+    table { font-size: 0.8em; }
+    th, td { padding: 5px 5px; }
+    pre { font-size: 0.78em; }
+  }
 </style>

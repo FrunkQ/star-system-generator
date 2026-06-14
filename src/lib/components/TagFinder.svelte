@@ -152,10 +152,10 @@
   .sugg:hover { background: var(--bg-control); }
   .sugg .sgrp { margin-left: auto; color: var(--text-faint); font-size: 0.74rem; }
   .dot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
-  .bubbles { display: flex; flex-wrap: wrap; gap: 5px; }
-  .bubble { background: color-mix(in srgb, var(--c) 22%, transparent); border: 1px solid var(--c); color: var(--text); border-radius: 999px; padding: 4px 11px; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .bubbles { display: flex; flex-wrap: wrap; gap: 4px; max-height: 38vh; overflow-y: auto; }
+  .bubble { background: color-mix(in srgb, var(--c) 22%, transparent); border: 1px solid var(--c); color: var(--text); border-radius: 999px; padding: 2px 9px; font-size: 0.74rem; line-height: 1.5; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
   .bubble.open { background: var(--c); color: #fff; }
-  .bcnt { font-size: 0.72em; opacity: 0.8; }
+  .bcnt { font-size: 0.7em; opacity: 0.75; }
   .cat-tags { display: flex; flex-wrap: wrap; gap: 5px; padding: 6px; background: var(--bg-control); border-radius: 6px; }
   .chip { border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; color: #fff; }
   .chip:hover { filter: brightness(1.12); }
@@ -174,4 +174,13 @@
   .res-name { font-weight: 600; }
   .res-ctx { font-size: 0.76rem; color: var(--text-faint); }
   .res-dist { margin-left: auto; font-size: 0.76rem; color: var(--accent, #6aa0d8); white-space: nowrap; }
+
+  /* Mobile: tighter bubbles/chips, and cap the browse area so results stay visible. */
+  @media (max-width: 640px) {
+    .bubbles { max-height: 30vh; gap: 3px; }
+    .bubble { padding: 2px 8px; font-size: 0.72rem; }
+    .cat-tags { max-height: 26vh; overflow-y: auto; }
+    .chip { padding: 3px 7px; font-size: 0.74rem; }
+    .res-name { font-size: 0.9rem; }
+  }
 </style>

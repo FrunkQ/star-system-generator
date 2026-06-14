@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.63-beta - 14th Jun 2026
+
+* Mobile polish for the new tag tools. Find-by-tag's category bubbles are now compact pills in a bounded, scrollable browse area so they don't swamp a phone screen, and the results stay visible. The PoI rule-pack editor stacks its pack list above the detail (instead of side-by-side) on narrow screens, with the rule editor and condition rows going full-width and wrapping. The PoI reference page tightens up on mobile too.
+
 ## v2.0.62-beta - 14th Jun 2026
 
 * Cleaned ~380 legacy tags out of the bundled example systems/starmap at source, so fresh loads start clean. The runtime legacy-tag check is now a tiny principled rule (anything with capitals/spaces, or a planet/star/belt class-prefix) instead of a hand-maintained list — modern tags are always lowercase-namespaced, and retired atmosphere tags are already handled by the atmosphere model.

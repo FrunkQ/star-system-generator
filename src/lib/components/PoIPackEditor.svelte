@@ -458,4 +458,22 @@
   .re-actions { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 0.6rem; }
   .re-actions button, .modal button.primary { padding: 7px 14px; border: none; border-radius: 4px; background: var(--bg-control); color: var(--text); cursor: pointer; }
   .primary { background: var(--accent) !important; color: var(--on-accent, #fff); }
+
+  /* Mobile: stop the side-by-side from overflowing — stack the pack list above the detail, run the
+     pack list as wrapping chips, and let the rule editor + condition rows use the full width. */
+  @media (max-width: 760px) {
+    .modal { width: 100%; padding: 0.9rem; }
+    .cols { display: flex; flex-direction: column; gap: 0.7rem; min-height: 0; }
+    .packs { flex-direction: row; flex-wrap: wrap; align-items: center; border-right: none; border-bottom: 1px solid var(--border); padding: 0 0 0.7rem; }
+    .pack-row { flex: 0 0 auto; }
+    .pname { max-width: 120px; }
+    .pack-actions, .examples { flex: 0 0 auto; margin-top: 0; }
+    .examples { flex-direction: row; align-items: center; }
+    .rule-edit { width: 100%; padding: 0.9rem; }
+    .cond-row { flex-wrap: wrap; }
+    .cond-row select:first-child { flex: 1 1 100%; }
+    .cond-row .op { flex: 0 0 auto; }
+    .cat-row { flex-wrap: wrap; }
+    .cat-row .mono, .cat-row input { flex: 1 1 40%; }
+  }
 </style>
