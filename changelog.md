@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.48-beta - 14th Jun 2026
+
+* Removed the "Common:" quick-add list from the body Tags editor. Every entry was a physics-derived tag the engine owns and recomputes, so hand-adding one only produced a locked tag you couldn't remove — the custom-tag form remains for your own tags.
+
 ## v2.0.47-beta - 14th Jun 2026
 
 * **PoI packs, round 2.** The built-in "Reasons to Visit" pack is now fully editable (with a Reset to restore it). Rules are now built category-first: pick the category (which sets the tag's prefix and colour), then type just the tag name — a live preview shows the real compound tag (e.g. `survey/geochem-sample`). Each category has its own colour pickers (chip + text) that flow through to the tags everywhere. Numeric conditions with known bounds get a slider alongside the hand-editable number, and fraction ranges read as 0.0–1.0. Categories explain id (the prefix in the tag) vs label (the heading players see).

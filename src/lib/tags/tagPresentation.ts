@@ -256,12 +256,3 @@ export function describeTag(key: string): TagPresentation {
   const label = info?.label ?? titleCase(key.includes('/') ? key.split('/').slice(1).join(' ') : key);
   return { key, label, description: info?.description ?? '', group: meta.group, color: meta.color, textColor };
 }
-
-// Suggested tags for the editor's "Common" list — grouped, current namespaces.
-export const SUGGESTED_TAGS: string[] = [
-  'structure/subsurface-ocean', 'structure/icy-shell',
-  'geology/plate-tectonics', 'geology/cryovolcanic',
-  'orbit/tidally-locked', 'hazard/high-radiation',
-  'habitability/human', 'habitability/alien',
-  'biodiversity/high', 'biodiversity/low'
-];

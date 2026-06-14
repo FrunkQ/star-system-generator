@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
-  import { describeTag, SUGGESTED_TAGS, tagSource } from '$lib/tags/tagPresentation';
+  import { describeTag, tagSource } from '$lib/tags/tagPresentation';
 
   export let body: CelestialBody;
   export let rulePack: RulePack | null = null;
@@ -10,19 +10,11 @@
 
   let newKey = '';
   let newValue = '';
-  const commonTags = SUGGESTED_TAGS;
 
   function removeTag(key: string) {
       if (!body.tags) return;
       body.tags = body.tags.filter((t) => t.key !== key);
       dispatch('update');
-  }
-  function addSuggestedTag(tagKey: string) {
-      if (!body.tags) body.tags = [];
-      if (!body.tags.some(t => t.key === tagKey)) {
-          body.tags = [...body.tags, { key: tagKey }];
-          dispatch('update');
-      }
   }
   function addCustomTag() {
       if (!newKey) return;
@@ -104,20 +96,6 @@
 
   </div>
 
-  <div class="tag-group">
-    <span class="group-label">Common:</span>
-    <div class="tags-list">
-      {#each commonTags as sTag}
-        {#if !body.tags?.some(t => t.key === sTag)}
-          {@const sInfo = describeTag(sTag)}
-          <button class="tag-chip suggested" on:click={() => addSuggestedTag(sTag)} title={sInfo.description || 'Click to add'}>
-            {sInfo.label} <span class="plus">+</span>
-          </button>
-        {/if}
-      {/each}
-    </div>
-  </div>
-
   <hr />
   <h4>Add Custom Tag</h4>
   <div class="add-tag-form">
@@ -138,14 +116,11 @@
   .manual-head { color: var(--link, #6aa0d8); }
   .poi-head { color: #e0973a; }
   .physics-head { color: var(--text-faint); }
-  .group-label { font-size: 0.8em; color: var(--text-faint); }
   .tags-list { display: flex; flex-wrap: wrap; gap: 5px; }
   .tag-chip { border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.8em; cursor: pointer; display: flex; align-items: center; gap: 5px; color: #fff; }
   .tag-chip.active:hover { filter: brightness(1.12); }
   .tag-chip.locked { cursor: default; }
-  .tag-chip.suggested { background-color: var(--bg-panel); color: var(--link); border: 1px dashed var(--border); }
-  .tag-chip.suggested:hover { background-color: var(--bg-control); }
-  .x, .plus { font-weight: bold; font-size: 1.1em; line-height: 0.5; }
+  .x { font-weight: bold; font-size: 1.1em; line-height: 0.5; }
   .lock { flex: 0 0 auto; }
   .lock.physics { color: #ef4444; }   /* red outline — physics, cannot change */
   .lock.poi { color: #f59e0b; }       /* orange outline — PoI rule, changeable */
