@@ -218,26 +218,14 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
 };
 
 // --- Legacy tag cleanup -----------------------------------------------------------------------
-// V1-era tags that the new engine has a programmatic replacement for, so they're just stale
-// duplicates now: classification CLASSES (held in body.classes), namespaced physics tags
-// (orbit/tidally-locked, ring/system, geology/*, …), and the atmosphere/apparent-colour model.
-// Stripped on load + every process (never a manual tag). Matched by normalised slug, plus the
-// planet/ · star/ · belt/ class-as-tag prefixes (NOT ring/, which is now a live physics namespace).
-const LEGACY_TAG_SLUGS = new Set<string>([
-  // classification stored as a tag (now lives in body.classes)
-  'airless-rock', 'brown-dwarf', 'compact', 'dwarf-planet', 'eyeball-planet', 'flare-star',
-  'gas-giant', 'ice-giant', 'm-dwarf-world', 'sun-like', 'super-earth', 'terrestrial', 'white-dwarf',
-  // orbital / structural physics now derived + namespaced
-  'ringed', 'tidally-locked', 'retrograde-orbit', 'captured-body', 'habitable-zone',
-  'runaway-greenhouse-effect', 'variable-weather', 'extreme-variable', 'primordial', 'candidate',
-  // retired atmosphere flavour (now the atmosphere / apparent-colour model)
-  'acidic-rain', 'buffer-gas', 'cloud-former', 'cloudy-atmosphere', 'condensible-metal', 'exosphere',
-  'haze-former', 'high-humidity', 'hot', 'cold', 'cryogenic', 'thin', 'leak-prone',
-  'metal-embrittlement', 'noble-gas', 'pungent', 'visible-gas', 'voice-changer', 'volcanic'
-]);
+// V1 tags the new engine replaces are stripped (never a manual tag). We avoid a hand-maintained
+// list: a modern tag is always lowercase-hyphen-namespaced, so any key with an UPPERCASE letter or
+// SPACE is a V1 display-name ("Tidally Locked", "Ice Giant", "Sun-like"); classification stored as a
+// tag uses the planet/ · star/ · belt/ prefixes (NOT ring/, now a live physics namespace). The
+// lowercase retired-atmosphere flavour (voice-changer, noble-gas, …) is handled separately by the
+// atmosphere pass (RETIRED_ATMOSPHERE_TAGS), and the example files have been cleaned at source.
 export function isLegacyTag(key: string): boolean {
-  if (/^(planet|star|belt)\//.test(key)) return true;             // class duplicated as a tag
-  return LEGACY_TAG_SLUGS.has(key.trim().toLowerCase().replace(/\s+/g, '-'));
+  return /[A-Z\s]/.test(key) || /^(planet|star|belt)\//.test(key);
 }
 
 // A tag is "managed" (system-owned) if the engine re-derives it every run — physics namespaces,

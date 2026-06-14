@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.62-beta - 14th Jun 2026
+
+* Cleaned ~380 legacy tags out of the bundled example systems/starmap at source, so fresh loads start clean. The runtime legacy-tag check is now a tiny principled rule (anything with capitals/spaces, or a planet/star/belt class-prefix) instead of a hand-maintained list — modern tags are always lowercase-namespaced, and retired atmosphere tags are already handled by the atmosphere model.
+* Added a **PoI rule reference** page (linked from the rule editor) documenting every condition operator and every data field — programmatic name, type, range and meaning — generated directly from the engine's field list so it can't drift out of date.
+
 ## v2.0.61-beta - 14th Jun 2026
 
 * Starmaps now re-run the full physics + tagging pipeline on load, so a stored or example map picks up the current model (new tags, sharpened PoI rules, ring derivation, legacy-tag cleanup) instead of whatever was baked in when it was saved — no need to edit a body to trigger it. A "Running the physics…" progress bar (one step per star system, with a rotating joke) covers the recalc.

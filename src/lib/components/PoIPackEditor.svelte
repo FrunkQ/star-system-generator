@@ -159,7 +159,7 @@
       let parsed: PoIExpr;
       try { parsed = JSON.parse(rawText); } catch { ruleError = 'Invalid JSON.'; return; }
       const p = whenToRows(parsed);
-      if (p.raw) { ruleError = 'This condition mixes nested all/any (or a tag-prefix match) the builder can’t show — keep editing it as JSON.'; return; }
+      if (p.raw) { ruleError = 'This condition mixes nested all/any (or a tag-prefix match) the builder can’t show — keep editing it as JSON (see the reference link above).'; return; }
       rows = p.rows; matchMode = p.mode; rawMode = false; ruleError = '';
     } else {
       rawText = JSON.stringify(rowsToWhen(rows, matchMode)); rawMode = true; ruleError = '';
@@ -316,7 +316,10 @@
             conditions
           </span>
         {/if}
-        <button class="link" on:click={toggleRaw}>{rawMode ? 'use builder' : 'raw JSON'}</button>
+        <span class="cond-actions">
+          <a class="link" href="/poi-reference" target="_blank" rel="noopener" title="Fields, operators and JSON shapes">reference ↗</a>
+          <button class="link" on:click={toggleRaw}>{rawMode ? 'use builder' : 'raw JSON'}</button>
+        </span>
       </div>
       {#if rawMode}
         <textarea class="raw" bind:value={rawText} rows="4" spellcheck="false"></textarea>
@@ -422,6 +425,8 @@
   .key-mono { font-family: var(--font-mono, monospace); font-size: 0.72rem; color: var(--text-faint); }
   .rule-edit .desc { width: 100%; background: var(--bg-control); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.8rem; padding: 6px; resize: vertical; }
   .cond-head .modesel { padding: 2px 4px; }
+  .cond-actions { display: inline-flex; gap: 10px; align-items: baseline; }
+  .cond-actions a.link { text-decoration: none; }
   .roles { display: flex; flex-wrap: wrap; gap: 4px 12px; }
   .rolechk { display: inline-flex; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--text); text-transform: capitalize; }
   .rolechk input { width: auto; }

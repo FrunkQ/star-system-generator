@@ -39,14 +39,7 @@
       "image": {
         "url": "/images/star_types/F_supergiant.webp"
       },
-      "tags": [
-        {
-          "key": "Supergiant"
-        },
-        {
-          "key": "Cepheid Variable"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "orbit": {
         "hostId": "polaris-inner-barycenter",
@@ -83,7 +76,7 @@
       "magneticField": {
         "strengthGauss": 5
       },
-      "radiationOutput": 3.0,
+      "radiationOutput": 3,
       "image": {
         "url": "/images/star_types/F.webp"
       },
@@ -105,7 +98,7 @@
       },
       "description": "A main-sequence dwarf star trapped in a highly elliptical 30-year orbit around the Supergiant. At closest approach, it dives within 2 AU of the primary.",
       "isNameUserDefined": true,
-      "calculatedGravity_ms2": 206.0,
+      "calculatedGravity_ms2": 206,
       "orbital_period_days": 10811
     },
     {
@@ -120,7 +113,7 @@
       ],
       "orbit": {
         "hostId": "polaris-inner-barycenter",
-        "hostMu": 1070000000000000000000,
+        "hostMu": 1.07e+21,
         "t0": 1762339146908,
         "n_rad_per_s": 4.5e-12,
         "elements": {
@@ -139,28 +132,17 @@
       "image": {
         "url": "/images/star_types/F.webp"
       },
-      "tags": [
-        {
-          "key": "Wide Companion"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "description": "A distant companion star observable with small telescopes. It orbits the inner pair so slowly that it takes thousands of years to complete one revolution.",
       "isNameUserDefined": true,
-      "calculatedGravity_ms2": 200.0,
+      "calculatedGravity_ms2": 200,
       "orbital_period_days": 1500000
     }
   ],
   "rulePackId": "starter-sf-pack",
   "rulePackVersion": "0.1.4",
-  "tags": [
-    {
-      "key": "Triple Star System"
-    },
-    {
-      "key": "Supergiant Host"
-    }
-  ],
+  "tags": [],
   "visualScalingMultiplier": 0.01,
   "toytownFactor": 0,
   "isManuallyEdited": true

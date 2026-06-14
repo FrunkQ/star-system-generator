@@ -175,19 +175,10 @@
       "parentId": "seed-1771179697603-star-a",
       "tags": [
         {
-          "key": "planet/gas-giant"
-        },
-        {
           "key": "lifting-gas"
         },
         {
           "key": "reducing"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "leak-prone"
         },
         {
           "key": "greenhouse"

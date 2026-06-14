@@ -81,24 +81,6 @@
             "radiusKm": 2439.7,
             "tags": [
               {
-                "key": "exosphere"
-              },
-              {
-                "key": "thin"
-              },
-              {
-                "key": "hot"
-              },
-              {
-                "key": "visible-gas"
-              },
-              {
-                "key": "condensible-metal"
-              },
-              {
-                "key": "cloud-former"
-              },
-              {
                 "key": "habitability/none"
               }
             ],
@@ -174,15 +156,6 @@
             "radiusKm": 6051.8,
             "tags": [
               {
-                "key": "Runaway Greenhouse Effect"
-              },
-              {
-                "key": "Geologically Active (Volcanism)"
-              },
-              {
-                "key": "thick"
-              },
-              {
                 "key": "greenhouse"
               },
               {
@@ -193,9 +166,6 @@
               },
               {
                 "key": "inert"
-              },
-              {
-                "key": "nitrogen-narcosis"
               },
               {
                 "key": "habitability/none"
@@ -277,16 +247,10 @@
                 "key": "inert"
               },
               {
-                "key": "buffer-gas"
-              },
-              {
                 "key": "oxidizer"
               },
               {
                 "key": "breathable-human"
-              },
-              {
-                "key": "noble-gas"
               },
               {
                 "key": "habitability/earth-like"
@@ -387,12 +351,6 @@
             "radiusKm": 1737.4,
             "tags": [
               {
-                "key": "Airless Rock"
-              },
-              {
-                "key": "Tidally Locked"
-              },
-              {
                 "key": "habitability/alien"
               }
             ],
@@ -456,9 +414,6 @@
             "massKg": 6.39e+23,
             "radiusKm": 3389.5,
             "tags": [
-              {
-                "key": "thin"
-              },
               {
                 "key": "greenhouse"
               },
@@ -543,12 +498,6 @@
             "radiusKm": 11.2,
             "tags": [
               {
-                "key": "Airless Rock"
-              },
-              {
-                "key": "Tidally Locked"
-              },
-              {
                 "key": "habitability/alien"
               }
             ],
@@ -611,12 +560,6 @@
             "massKg": 1470000000000000,
             "radiusKm": 6.2,
             "tags": [
-              {
-                "key": "Airless Rock"
-              },
-              {
-                "key": "Tidally Locked"
-              },
               {
                 "key": "habitability/none"
               }
@@ -726,28 +669,10 @@
             "radiusKm": 69911,
             "tags": [
               {
-                "key": "planet/ringed"
-              },
-              {
                 "key": "lifting-gas"
               },
               {
                 "key": "reducing"
-              },
-              {
-                "key": "metal-embrittlement"
-              },
-              {
-                "key": "noble-gas"
-              },
-              {
-                "key": "voice-changer"
-              },
-              {
-                "key": "leak-prone"
-              },
-              {
-                "key": "haze-former"
               },
               {
                 "key": "habitability/none"
@@ -874,15 +799,6 @@
             "radiusKm": 1821.6,
             "tags": [
               {
-                "key": "Active Volcanism"
-              },
-              {
-                "key": "Tidally Locked"
-              },
-              {
-                "key": "volcanic"
-              },
-              {
                 "key": "habitability/none"
               }
             ],
@@ -957,18 +873,6 @@
             "massKg": 4.8e+22,
             "radiusKm": 1560.8,
             "tags": [
-              {
-                "key": "exosphere"
-              },
-              {
-                "key": "thin"
-              },
-              {
-                "key": "Subsurface Ocean"
-              },
-              {
-                "key": "Tidally Locked"
-              },
               {
                 "key": "oxidizer"
               },
@@ -1048,18 +952,6 @@
             "radiusKm": 2634.1,
             "tags": [
               {
-                "key": "exosphere"
-              },
-              {
-                "key": "thin"
-              },
-              {
-                "key": "Subsurface Ocean"
-              },
-              {
-                "key": "Tidally Locked"
-              },
-              {
                 "key": "habitability/none"
               }
             ],
@@ -1127,15 +1019,6 @@
             "radiusKm": 2410.3,
             "tags": [
               {
-                "key": "exosphere"
-              },
-              {
-                "key": "thin"
-              },
-              {
-                "key": "Tidally Locked"
-              },
-              {
                 "key": "habitability/none"
               }
             ],
@@ -1200,28 +1083,10 @@
             "radiusKm": 58232,
             "tags": [
               {
-                "key": "planet/ringed"
-              },
-              {
                 "key": "lifting-gas"
               },
               {
                 "key": "reducing"
-              },
-              {
-                "key": "metal-embrittlement"
-              },
-              {
-                "key": "noble-gas"
-              },
-              {
-                "key": "voice-changer"
-              },
-              {
-                "key": "leak-prone"
-              },
-              {
-                "key": "haze-former"
               },
               {
                 "key": "habitability/none"
@@ -1348,16 +1213,7 @@
             "radiusKm": 2574.7,
             "tags": [
               {
-                "key": "haze"
-              },
-              {
-                "key": "Tidally Locked"
-              },
-              {
                 "key": "inert"
-              },
-              {
-                "key": "buffer-gas"
               },
               {
                 "key": "asphyxiant"
@@ -1440,18 +1296,6 @@
             "massKg": 108000000000000000000,
             "radiusKm": 252.1,
             "tags": [
-              {
-                "key": "Active Cryovolcanism (Plumes)"
-              },
-              {
-                "key": "Subsurface Ocean"
-              },
-              {
-                "key": "Tidally Locked"
-              },
-              {
-                "key": "cloud-former"
-              },
               {
                 "key": "greenhouse"
               },
@@ -1540,12 +1384,6 @@
             "radiusKm": 198.2,
             "tags": [
               {
-                "key": "Airless Rock"
-              },
-              {
-                "key": "Tidally Locked"
-              },
-              {
                 "key": "habitability/alien"
               }
             ],
@@ -1609,12 +1447,6 @@
             "radiusKm": 763.8,
             "tags": [
               {
-                "key": "Airless Rock"
-              },
-              {
-                "key": "Tidally Locked"
-              },
-              {
                 "key": "habitability/none"
               }
             ],
@@ -1677,12 +1509,6 @@
             "massKg": 1.8e+21,
             "radiusKm": 734.5,
             "tags": [
-              {
-                "key": "Airless Rock"
-              },
-              {
-                "key": "Tidally Locked"
-              },
               {
                 "key": "habitability/none"
               }
@@ -1748,31 +1574,13 @@
             "radiusKm": 25362,
             "tags": [
               {
-                "key": "planet/ringed"
-              },
-              {
                 "key": "lifting-gas"
               },
               {
                 "key": "reducing"
               },
               {
-                "key": "metal-embrittlement"
-              },
-              {
-                "key": "noble-gas"
-              },
-              {
-                "key": "voice-changer"
-              },
-              {
-                "key": "leak-prone"
-              },
-              {
                 "key": "greenhouse"
-              },
-              {
-                "key": "haze-former"
               },
               {
                 "key": "habitability/none"
@@ -1898,12 +1706,6 @@
             "radiusKm": 788.4,
             "tags": [
               {
-                "key": "Airless Rock"
-              },
-              {
-                "key": "Tidally Locked"
-              },
-              {
                 "key": "habitability/none"
               }
             ],
@@ -1967,12 +1769,6 @@
             "radiusKm": 761.4,
             "tags": [
               {
-                "key": "Airless Rock"
-              },
-              {
-                "key": "Tidally Locked"
-              },
-              {
                 "key": "habitability/none"
               }
             ],
@@ -2035,12 +1831,6 @@
             "massKg": 1.29e+21,
             "radiusKm": 578.9,
             "tags": [
-              {
-                "key": "Airless Rock"
-              },
-              {
-                "key": "Tidally Locked"
-              },
               {
                 "key": "habitability/none"
               }
@@ -2106,31 +1896,13 @@
             "radiusKm": 24622,
             "tags": [
               {
-                "key": "planet/ringed"
-              },
-              {
                 "key": "lifting-gas"
               },
               {
                 "key": "reducing"
               },
               {
-                "key": "metal-embrittlement"
-              },
-              {
-                "key": "noble-gas"
-              },
-              {
-                "key": "voice-changer"
-              },
-              {
-                "key": "leak-prone"
-              },
-              {
                 "key": "greenhouse"
-              },
-              {
-                "key": "haze-former"
               },
               {
                 "key": "habitability/none"
@@ -2257,22 +2029,7 @@
             "radiusKm": 1353.4,
             "tags": [
               {
-                "key": "Retrograde Orbit"
-              },
-              {
-                "key": "Captured Body"
-              },
-              {
-                "key": "Active Cryovolcanism (Plumes)"
-              },
-              {
-                "key": "Tidally Locked"
-              },
-              {
                 "key": "inert"
-              },
-              {
-                "key": "buffer-gas"
               },
               {
                 "key": "habitability/none"
@@ -2394,16 +2151,7 @@
             "radiusKm": 1188.3,
             "tags": [
               {
-                "key": "thin"
-              },
-              {
-                "key": "exosphere"
-              },
-              {
                 "key": "inert"
-              },
-              {
-                "key": "buffer-gas"
               },
               {
                 "key": "reducing"
@@ -2484,12 +2232,6 @@
             "massKg": 1.58e+21,
             "radiusKm": 606,
             "tags": [
-              {
-                "key": "Airless Rock"
-              },
-              {
-                "key": "Tidally Locked"
-              },
               {
                 "key": "habitability/none"
               }
@@ -2972,11 +2714,7 @@
             "image": {
               "url": "/images/star_types/G.webp"
             },
-            "tags": [
-              {
-                "key": "Sun-like"
-              }
-            ],
+            "tags": [],
             "areas": [],
             "orbit": {
               "hostId": "alpha-centauri-barycenter",
@@ -3107,9 +2845,6 @@
             },
             "tags": [
               {
-                "key": "Flare Star"
-              },
-              {
                 "key": "stability/unstable"
               }
             ],
@@ -3166,15 +2901,6 @@
             "massKg": 1.55e+24,
             "radiusKm": 4830,
             "tags": [
-              {
-                "key": "Tidally Locked"
-              },
-              {
-                "key": "hot"
-              },
-              {
-                "key": "Airless Rock"
-              },
               {
                 "key": "habitability/none"
               }
@@ -3246,18 +2972,6 @@
             "massKg": 6.98e+24,
             "radiusKm": 6753,
             "tags": [
-              {
-                "key": "Tidally Locked"
-              },
-              {
-                "key": "m-dwarf-world"
-              },
-              {
-                "key": "eyeball-planet"
-              },
-              {
-                "key": "habitable-zone"
-              },
               {
                 "key": "greenhouse"
               },
@@ -3350,28 +3064,10 @@
             "radiusKm": 19112,
             "tags": [
               {
-                "key": "cold"
-              },
-              {
-                "key": "primordial"
-              },
-              {
-                "key": "planet/ice-giant"
-              },
-              {
                 "key": "lifting-gas"
               },
               {
                 "key": "reducing"
-              },
-              {
-                "key": "noble-gas"
-              },
-              {
-                "key": "voice-changer"
-              },
-              {
-                "key": "leak-prone"
               },
               {
                 "key": "habitability/none"
@@ -3439,28 +3135,10 @@
             "parentId": "alpha-centauri-a",
             "tags": [
               {
-                "key": "planet/gas-giant"
-              },
-              {
                 "key": "lifting-gas"
               },
               {
                 "key": "reducing"
-              },
-              {
-                "key": "metal-embrittlement"
-              },
-              {
-                "key": "noble-gas"
-              },
-              {
-                "key": "voice-changer"
-              },
-              {
-                "key": "leak-prone"
-              },
-              {
-                "key": "haze-former"
               },
               {
                 "key": "habitability/none"
@@ -3621,9 +3299,6 @@
             "parentId": "id-1771729912994-wzp41g4jt",
             "tags": [
               {
-                "key": "planet/dwarf-planet"
-              },
-              {
                 "key": "tidal/hotspots"
               },
               {
@@ -3722,16 +3397,7 @@
             "parentId": "id-1771729912994-wzp41g4jt",
             "tags": [
               {
-                "key": "planet/terrestrial"
-              },
-              {
                 "key": "tidal/hotspots"
-              },
-              {
-                "key": "volcanic"
-              },
-              {
-                "key": "cloud-former"
               },
               {
                 "key": "habitability/none"
@@ -3828,9 +3494,6 @@
             "parentId": "id-1771729912994-wzp41g4jt",
             "tags": [
               {
-                "key": "planet/terrestrial"
-              },
-              {
                 "key": "tidal/hotspots"
               },
               {
@@ -3922,25 +3585,16 @@
             "parentId": "id-1771729912994-wzp41g4jt",
             "tags": [
               {
-                "key": "planet/terrestrial"
-              },
-              {
                 "key": "tidal/hotspots"
               },
               {
                 "key": "inert"
               },
               {
-                "key": "buffer-gas"
-              },
-              {
                 "key": "asphyxiant"
               },
               {
                 "key": "oxidizer"
-              },
-              {
-                "key": "noble-gas"
               },
               {
                 "key": "habitability/human"
@@ -4054,22 +3708,13 @@
             "parentId": "id-1771729912994-wzp41g4jt",
             "tags": [
               {
-                "key": "planet/terrestrial"
-              },
-              {
                 "key": "tidal/hotspots"
               },
               {
                 "key": "inert"
               },
               {
-                "key": "buffer-gas"
-              },
-              {
                 "key": "asphyxiant"
-              },
-              {
-                "key": "noble-gas"
               },
               {
                 "key": "oxidizer"
@@ -4174,31 +3819,13 @@
             "parentId": "alpha-centauri-a",
             "tags": [
               {
-                "key": "planet/ice-giant"
-              },
-              {
                 "key": "lifting-gas"
               },
               {
                 "key": "reducing"
               },
               {
-                "key": "metal-embrittlement"
-              },
-              {
-                "key": "noble-gas"
-              },
-              {
-                "key": "voice-changer"
-              },
-              {
-                "key": "leak-prone"
-              },
-              {
                 "key": "greenhouse"
-              },
-              {
-                "key": "haze-former"
               },
               {
                 "key": "habitability/none"
@@ -4361,9 +3988,6 @@
             "parentId": "id-1772514407069-e3vx6ck38",
             "tags": [
               {
-                "key": "planet/dwarf-planet"
-              },
-              {
                 "key": "habitability/none"
               }
             ],
@@ -4446,9 +4070,6 @@
             "kind": "body",
             "parentId": "id-1772514407069-e3vx6ck38",
             "tags": [
-              {
-                "key": "planet/dwarf-planet"
-              },
               {
                 "key": "tidal/hotspots"
               },
@@ -4536,25 +4157,7 @@
             "parentId": "id-1772514407069-e3vx6ck38",
             "tags": [
               {
-                "key": "planet/dwarf-planet"
-              },
-              {
                 "key": "tidal/hotspots"
-              },
-              {
-                "key": "noble-gas"
-              },
-              {
-                "key": "leak-prone"
-              },
-              {
-                "key": "visible-gas"
-              },
-              {
-                "key": "condensible-metal"
-              },
-              {
-                "key": "cloud-former"
               },
               {
                 "key": "habitability/none"
@@ -4655,9 +4258,6 @@
             "parentId": "id-1772514407069-e3vx6ck38",
             "tags": [
               {
-                "key": "planet/terrestrial"
-              },
-              {
                 "key": "tidal/hotspots"
               },
               {
@@ -4749,37 +4349,16 @@
             "parentId": "alpha-centauri-a",
             "tags": [
               {
-                "key": "planet/ice-giant"
-              },
-              {
                 "key": "lifting-gas"
               },
               {
                 "key": "reducing"
               },
               {
-                "key": "metal-embrittlement"
-              },
-              {
-                "key": "noble-gas"
-              },
-              {
-                "key": "voice-changer"
-              },
-              {
-                "key": "leak-prone"
-              },
-              {
                 "key": "toxic-human"
               },
               {
                 "key": "greenhouse"
-              },
-              {
-                "key": "acidic-rain"
-              },
-              {
-                "key": "high-humidity"
               },
               {
                 "key": "habitability/none"
@@ -4876,12 +4455,6 @@
             "kind": "body",
             "parentId": "id-1772575372096-fw5wj5tku",
             "tags": [
-              {
-                "key": "Retrograde Orbit"
-              },
-              {
-                "key": "Captured Body"
-              },
               {
                 "key": "habitability/none"
               }
@@ -5043,24 +4616,6 @@
             "parentId": "alpha-centauri-b",
             "tags": [
               {
-                "key": "planet/terrestrial"
-              },
-              {
-                "key": "noble-gas"
-              },
-              {
-                "key": "leak-prone"
-              },
-              {
-                "key": "visible-gas"
-              },
-              {
-                "key": "condensible-metal"
-              },
-              {
-                "key": "cloud-former"
-              },
-              {
                 "key": "habitability/none"
               }
             ],
@@ -5155,19 +4710,10 @@
             "parentId": "alpha-centauri-b",
             "tags": [
               {
-                "key": "planet/terrestrial"
-              },
-              {
                 "key": "inert"
               },
               {
-                "key": "buffer-gas"
-              },
-              {
                 "key": "oxidizer"
-              },
-              {
-                "key": "noble-gas"
               },
               {
                 "key": "habitability/human"
@@ -5273,9 +4819,6 @@
             "parentId": "id-1773098960958-a4hui1n0t",
             "tags": [
               {
-                "key": "planet/terrestrial"
-              },
-              {
                 "key": "habitability/none"
               },
               {
@@ -5363,9 +4906,6 @@
             "kind": "body",
             "parentId": "id-1773098960958-a4hui1n0t",
             "tags": [
-              {
-                "key": "planet/dwarf-planet"
-              },
               {
                 "key": "habitability/none"
               },
@@ -5634,12 +5174,6 @@
             "parentId": "alpha-centauri-a",
             "tags": [
               {
-                "key": "planet/dwarf-planet"
-              },
-              {
-                "key": "cloud-former"
-              },
-              {
                 "key": "greenhouse"
               },
               {
@@ -5647,9 +5181,6 @@
               },
               {
                 "key": "reducing"
-              },
-              {
-                "key": "pungent"
               },
               {
                 "key": "habitability/none"
@@ -5747,11 +5278,7 @@
         ],
         "rulePackId": "starter-sf-pack",
         "rulePackVersion": "0.1.4",
-        "tags": [
-          {
-            "key": "Triple Star System"
-          }
-        ],
+        "tags": [],
         "visualScalingMultiplier": 0.01,
         "toytownFactor": 0,
         "isManuallyEdited": true
@@ -6524,15 +6051,6 @@
             "radiusKm": 7110,
             "tags": [
               {
-                "key": "Tidally Locked"
-              },
-              {
-                "key": "Airless Rock"
-              },
-              {
-                "key": "hot"
-              },
-              {
                 "key": "habitability/none"
               }
             ],
@@ -6590,13 +6108,7 @@
             "radiusKm": 6989,
             "tags": [
               {
-                "key": "Tidally Locked"
-              },
-              {
                 "key": "toxic-human"
-              },
-              {
-                "key": "Runaway Greenhouse Effect"
               },
               {
                 "key": "habitability/none"
@@ -6666,15 +6178,6 @@
             "radiusKm": 4906,
             "tags": [
               {
-                "key": "Tidally Locked"
-              },
-              {
-                "key": "m-dwarf-world"
-              },
-              {
-                "key": "eyeball-planet"
-              },
-              {
                 "key": "habitability/alien"
               }
             ],
@@ -6741,15 +6244,6 @@
             "massKg": 4.134e+24,
             "radiusKm": 5861,
             "tags": [
-              {
-                "key": "Tidally Locked"
-              },
-              {
-                "key": "m-dwarf-world"
-              },
-              {
-                "key": "eyeball-planet"
-              },
               {
                 "key": "habitability/alien"
               }
@@ -6818,15 +6312,6 @@
             "radiusKm": 6658,
             "tags": [
               {
-                "key": "Tidally Locked"
-              },
-              {
-                "key": "m-dwarf-world"
-              },
-              {
-                "key": "eyeball-planet"
-              },
-              {
                 "key": "habitability/none"
               }
             ],
@@ -6893,12 +6378,6 @@
             "massKg": 7.889e+24,
             "radiusKm": 7192,
             "tags": [
-              {
-                "key": "Tidally Locked"
-              },
-              {
-                "key": "super-earth"
-              },
               {
                 "key": "reducing"
               },
@@ -6970,15 +6449,6 @@
             "radiusKm": 4810,
             "tags": [
               {
-                "key": "Tidally Locked"
-              },
-              {
-                "key": "exosphere"
-              },
-              {
-                "key": "cryogenic"
-              },
-              {
                 "key": "habitability/none"
               }
             ],
@@ -7048,11 +6518,7 @@
         "age_Gyr": 0.6,
         "rulePackId": "starter-sf-pack",
         "rulePackVersion": "1.0.0",
-        "tags": [
-          {
-            "key": "Binary System"
-          }
-        ],
+        "tags": [],
         "nodes": [
           {
             "id": "luyten726-barycenter",
@@ -7086,11 +6552,7 @@
             "image": {
               "url": "/images/star_types/M.webp"
             },
-            "tags": [
-              {
-                "key": "Flare Star"
-              }
-            ],
+            "tags": [],
             "orbit": {
               "hostId": "luyten726-barycenter",
               "hostMu": 26000000000000000000,
@@ -7122,14 +6584,7 @@
             "image": {
               "url": "/images/star_types/M.webp"
             },
-            "tags": [
-              {
-                "key": "Flare Star"
-              },
-              {
-                "key": "Extreme Variable"
-              }
-            ],
+            "tags": [],
             "description": "The prototype for 'Flare Stars'. It can increase in brightness by 75 times in a matter of seconds due to extreme magnetic activity.",
             "orbit": {
               "hostId": "luyten726-barycenter",
@@ -7164,11 +6619,7 @@
         "age_Gyr": 1.8,
         "rulePackId": "starter-sf-pack",
         "rulePackVersion": "1.0.0",
-        "tags": [
-          {
-            "key": "Binary System"
-          }
-        ],
+        "tags": [],
         "nodes": [
           {
             "id": "procyon-barycenter",
@@ -7229,14 +6680,7 @@
             "image": {
               "url": "/images/star_types/WD.webp"
             },
-            "tags": [
-              {
-                "key": "White Dwarf"
-              },
-              {
-                "key": "Compact"
-              }
-            ],
+            "tags": [],
             "description": "A faint white dwarf companion, consisting of degenerate matter. It is slightly smaller than Earth but contains 60% of the Sun's mass.",
             "orbit": {
               "hostId": "procyon-barycenter",
@@ -7271,11 +6715,7 @@
         "age_Gyr": 6,
         "rulePackId": "starter-sf-pack",
         "rulePackVersion": "1.0.0",
-        "tags": [
-          {
-            "key": "Binary System"
-          }
-        ],
+        "tags": [],
         "nodes": [
           {
             "id": "61cygni-barycenter",
@@ -7368,11 +6808,7 @@
         "age_Gyr": 3,
         "rulePackId": "starter-sf-pack",
         "rulePackVersion": "1.0.0",
-        "tags": [
-          {
-            "key": "Binary System"
-          }
-        ],
+        "tags": [],
         "nodes": [
           {
             "id": "struve2398-barycenter",
@@ -7401,11 +6837,7 @@
             "image": {
               "url": "/images/star_types/M.webp"
             },
-            "tags": [
-              {
-                "key": "Flare Star"
-              }
-            ],
+            "tags": [],
             "orbit": {
               "hostId": "struve2398-barycenter",
               "hostMu": 110000000000000000000,
@@ -7437,11 +6869,7 @@
             "image": {
               "url": "/images/star_types/M.webp"
             },
-            "tags": [
-              {
-                "key": "Flare Star"
-              }
-            ],
+            "tags": [],
             "orbit": {
               "hostId": "struve2398-barycenter",
               "hostMu": 110000000000000000000,
@@ -7475,11 +6903,7 @@
         "age_Gyr": 0.6,
         "rulePackId": "starter-sf-pack",
         "rulePackVersion": "1.0.0",
-        "tags": [
-          {
-            "key": "Binary Brown Dwarf"
-          }
-        ],
+        "tags": [],
         "nodes": [
           {
             "id": "luhman16-barycenter",
@@ -7508,14 +6932,7 @@
             "image": {
               "url": "/images/star_types/L.webp"
             },
-            "tags": [
-              {
-                "key": "Brown Dwarf"
-              },
-              {
-                "key": "Cloudy Atmosphere"
-              }
-            ],
+            "tags": [],
             "orbit": {
               "hostId": "luhman16-barycenter",
               "hostMu": 8800000000000000000,
@@ -7547,14 +6964,7 @@
             "image": {
               "url": "/images/star_types/T.webp"
             },
-            "tags": [
-              {
-                "key": "Brown Dwarf"
-              },
-              {
-                "key": "Variable Weather"
-              }
-            ],
+            "tags": [],
             "description": "A T-type brown dwarf known for its patchy clouds of molten iron and silicates, causing significant brightness variations.",
             "orbit": {
               "hostId": "luhman16-barycenter",
@@ -7678,14 +7088,7 @@
             "massKg": 4.9e+25,
             "radiusKm": 11800,
             "description": "A candidate Super-Earth located squarely within the habitable zone. If confirmed, it is a prime target for life.",
-            "tags": [
-              {
-                "key": "Candidate"
-              },
-              {
-                "key": "Habitable Zone"
-              }
-            ],
+            "tags": [],
             "orbit": {
               "hostId": "lacaille9352-star",
               "hostMu": 66000000000000000000,

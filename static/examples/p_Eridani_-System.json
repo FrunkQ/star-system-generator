@@ -103,11 +103,7 @@
       "radiusKm": 587745.777,
       "axial_tilt_deg": 0,
       "rotation_period_hours": 454,
-      "tags": [
-        {
-          "key": "High Radiation (Flaring)"
-        }
-      ],
+      "tags": [],
       "classes": [
         "star/K"
       ],

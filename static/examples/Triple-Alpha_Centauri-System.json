@@ -39,11 +39,7 @@
       "image": {
         "url": "/images/star_types/G.webp"
       },
-      "tags": [
-        {
-          "key": "Sun-like"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "orbit": {
         "hostId": "alpha-centauri-barycenter",
@@ -174,9 +170,6 @@
       },
       "tags": [
         {
-          "key": "Flare Star"
-        },
-        {
           "key": "stability/unstable"
         }
       ],
@@ -233,15 +226,6 @@
       "massKg": 1.55e+24,
       "radiusKm": 4830,
       "tags": [
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "hot"
-        },
-        {
-          "key": "Airless Rock"
-        },
         {
           "key": "habitability/none"
         }
@@ -313,18 +297,6 @@
       "massKg": 6.98e+24,
       "radiusKm": 6753,
       "tags": [
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "m-dwarf-world"
-        },
-        {
-          "key": "eyeball-planet"
-        },
-        {
-          "key": "habitable-zone"
-        },
         {
           "key": "greenhouse"
         },
@@ -417,28 +389,10 @@
       "radiusKm": 19112,
       "tags": [
         {
-          "key": "cold"
-        },
-        {
-          "key": "primordial"
-        },
-        {
-          "key": "planet/ice-giant"
-        },
-        {
           "key": "lifting-gas"
         },
         {
           "key": "reducing"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
         },
         {
           "key": "habitability/none"
@@ -506,28 +460,10 @@
       "parentId": "alpha-centauri-a",
       "tags": [
         {
-          "key": "planet/gas-giant"
-        },
-        {
           "key": "lifting-gas"
         },
         {
           "key": "reducing"
-        },
-        {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
-          "key": "haze-former"
         },
         {
           "key": "habitability/none"
@@ -688,9 +624,6 @@
       "parentId": "id-1771729912994-wzp41g4jt",
       "tags": [
         {
-          "key": "planet/dwarf-planet"
-        },
-        {
           "key": "tidal/hotspots"
         },
         {
@@ -789,16 +722,7 @@
       "parentId": "id-1771729912994-wzp41g4jt",
       "tags": [
         {
-          "key": "planet/terrestrial"
-        },
-        {
           "key": "tidal/hotspots"
-        },
-        {
-          "key": "volcanic"
-        },
-        {
-          "key": "cloud-former"
         },
         {
           "key": "habitability/none"
@@ -895,9 +819,6 @@
       "parentId": "id-1771729912994-wzp41g4jt",
       "tags": [
         {
-          "key": "planet/terrestrial"
-        },
-        {
           "key": "tidal/hotspots"
         },
         {
@@ -989,25 +910,16 @@
       "parentId": "id-1771729912994-wzp41g4jt",
       "tags": [
         {
-          "key": "planet/terrestrial"
-        },
-        {
           "key": "tidal/hotspots"
         },
         {
           "key": "inert"
         },
         {
-          "key": "buffer-gas"
-        },
-        {
           "key": "asphyxiant"
         },
         {
           "key": "oxidizer"
-        },
-        {
-          "key": "noble-gas"
         },
         {
           "key": "habitability/human"
@@ -1121,22 +1033,13 @@
       "parentId": "id-1771729912994-wzp41g4jt",
       "tags": [
         {
-          "key": "planet/terrestrial"
-        },
-        {
           "key": "tidal/hotspots"
         },
         {
           "key": "inert"
         },
         {
-          "key": "buffer-gas"
-        },
-        {
           "key": "asphyxiant"
-        },
-        {
-          "key": "noble-gas"
         },
         {
           "key": "oxidizer"
@@ -1241,31 +1144,13 @@
       "parentId": "alpha-centauri-a",
       "tags": [
         {
-          "key": "planet/ice-giant"
-        },
-        {
           "key": "lifting-gas"
         },
         {
           "key": "reducing"
         },
         {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
           "key": "greenhouse"
-        },
-        {
-          "key": "haze-former"
         },
         {
           "key": "habitability/none"
@@ -1428,9 +1313,6 @@
       "parentId": "id-1772514407069-e3vx6ck38",
       "tags": [
         {
-          "key": "planet/dwarf-planet"
-        },
-        {
           "key": "habitability/none"
         }
       ],
@@ -1513,9 +1395,6 @@
       "kind": "body",
       "parentId": "id-1772514407069-e3vx6ck38",
       "tags": [
-        {
-          "key": "planet/dwarf-planet"
-        },
         {
           "key": "tidal/hotspots"
         },
@@ -1603,25 +1482,7 @@
       "parentId": "id-1772514407069-e3vx6ck38",
       "tags": [
         {
-          "key": "planet/dwarf-planet"
-        },
-        {
           "key": "tidal/hotspots"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
-          "key": "visible-gas"
-        },
-        {
-          "key": "condensible-metal"
-        },
-        {
-          "key": "cloud-former"
         },
         {
           "key": "habitability/none"
@@ -1722,9 +1583,6 @@
       "parentId": "id-1772514407069-e3vx6ck38",
       "tags": [
         {
-          "key": "planet/terrestrial"
-        },
-        {
           "key": "tidal/hotspots"
         },
         {
@@ -1816,37 +1674,16 @@
       "parentId": "alpha-centauri-a",
       "tags": [
         {
-          "key": "planet/ice-giant"
-        },
-        {
           "key": "lifting-gas"
         },
         {
           "key": "reducing"
         },
         {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
           "key": "toxic-human"
         },
         {
           "key": "greenhouse"
-        },
-        {
-          "key": "acidic-rain"
-        },
-        {
-          "key": "high-humidity"
         },
         {
           "key": "habitability/none"
@@ -1943,12 +1780,6 @@
       "kind": "body",
       "parentId": "id-1772575372096-fw5wj5tku",
       "tags": [
-        {
-          "key": "Retrograde Orbit"
-        },
-        {
-          "key": "Captured Body"
-        },
         {
           "key": "habitability/none"
         }
@@ -2110,24 +1941,6 @@
       "parentId": "alpha-centauri-b",
       "tags": [
         {
-          "key": "planet/terrestrial"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
-          "key": "visible-gas"
-        },
-        {
-          "key": "condensible-metal"
-        },
-        {
-          "key": "cloud-former"
-        },
-        {
           "key": "habitability/none"
         }
       ],
@@ -2222,19 +2035,10 @@
       "parentId": "alpha-centauri-b",
       "tags": [
         {
-          "key": "planet/terrestrial"
-        },
-        {
           "key": "inert"
         },
         {
-          "key": "buffer-gas"
-        },
-        {
           "key": "oxidizer"
-        },
-        {
-          "key": "noble-gas"
         },
         {
           "key": "habitability/human"
@@ -2340,9 +2144,6 @@
       "parentId": "id-1773098960958-a4hui1n0t",
       "tags": [
         {
-          "key": "planet/terrestrial"
-        },
-        {
           "key": "habitability/none"
         },
         {
@@ -2431,9 +2232,6 @@
       "kind": "body",
       "parentId": "id-1773098960958-a4hui1n0t",
       "tags": [
-        {
-          "key": "planet/dwarf-planet"
-        },
         {
           "key": "habitability/none"
         },
@@ -2702,12 +2500,6 @@
       "parentId": "alpha-centauri-a",
       "tags": [
         {
-          "key": "planet/dwarf-planet"
-        },
-        {
-          "key": "cloud-former"
-        },
-        {
           "key": "greenhouse"
         },
         {
@@ -2715,9 +2507,6 @@
         },
         {
           "key": "reducing"
-        },
-        {
-          "key": "pungent"
         },
         {
           "key": "habitability/none"
@@ -2815,11 +2604,7 @@
   ],
   "rulePackId": "starter-sf-pack",
   "rulePackVersion": "0.1.4",
-  "tags": [
-    {
-      "key": "Triple Star System"
-    }
-  ],
+  "tags": [],
   "visualScalingMultiplier": 0.01,
   "toytownFactor": 0,
   "isManuallyEdited": true

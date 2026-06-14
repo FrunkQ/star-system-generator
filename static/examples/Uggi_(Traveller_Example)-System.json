@@ -94,9 +94,6 @@
       "rotation_period_hours": 0.1,
       "tags": [
         {
-          "key": "High Radiation (Flaring)"
-        },
-        {
           "key": "stability/very-unstable"
         }
       ],
@@ -179,18 +176,6 @@
         },
         {
           "key": "reducing"
-        },
-        {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
         },
         {
           "key": "habitability/none"
@@ -279,9 +264,6 @@
       "kind": "body",
       "parentId": "seed-1768806184772-star-a",
       "tags": [
-        {
-          "key": "planet/terrestrial"
-        },
         {
           "key": "greenhouse"
         },
@@ -377,28 +359,10 @@
       "parentId": "seed-1768806184772-star-a",
       "tags": [
         {
-          "key": "planet/gas-giant"
-        },
-        {
           "key": "lifting-gas"
         },
         {
           "key": "reducing"
-        },
-        {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
-          "key": "haze-former"
         },
         {
           "key": "habitability/none"
@@ -500,13 +464,7 @@
       "parentId": "seed-1768806184772-star-a",
       "tags": [
         {
-          "key": "planet/terrestrial"
-        },
-        {
           "key": "inert"
-        },
-        {
-          "key": "buffer-gas"
         },
         {
           "key": "oxidizer"
@@ -516,9 +474,6 @@
         },
         {
           "key": "fire-hazard"
-        },
-        {
-          "key": "noble-gas"
         },
         {
           "key": "greenhouse"
@@ -675,28 +630,10 @@
       "parentId": "seed-1768806184772-star-a",
       "tags": [
         {
-          "key": "planet/gas-giant"
-        },
-        {
           "key": "lifting-gas"
         },
         {
           "key": "reducing"
-        },
-        {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
-          "key": "haze-former"
         },
         {
           "key": "habitability/none"
@@ -858,13 +795,7 @@
       "parentId": "id-1768809311477-1rywkmk7r",
       "tags": [
         {
-          "key": "planet/terrestrial"
-        },
-        {
           "key": "inert"
-        },
-        {
-          "key": "buffer-gas"
         },
         {
           "key": "oxidizer"
@@ -874,9 +805,6 @@
         },
         {
           "key": "fire-hazard"
-        },
-        {
-          "key": "noble-gas"
         },
         {
           "key": "habitability/alien"
@@ -1045,28 +973,10 @@
       "parentId": "seed-1768806184772-star-a",
       "tags": [
         {
-          "key": "planet/ice-giant"
-        },
-        {
           "key": "lifting-gas"
         },
         {
           "key": "reducing"
-        },
-        {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
-          "key": "haze-former"
         },
         {
           "key": "habitability/none"
@@ -1406,13 +1316,7 @@
       "parentId": "seed-1768806184772-star-a",
       "tags": [
         {
-          "key": "planet/terrestrial"
-        },
-        {
           "key": "inert"
-        },
-        {
-          "key": "buffer-gas"
         },
         {
           "key": "greenhouse"
@@ -1517,28 +1421,10 @@
       "parentId": "seed-1768806184772-star-a",
       "tags": [
         {
-          "key": "planet/brown-dwarf"
-        },
-        {
           "key": "lifting-gas"
         },
         {
           "key": "reducing"
-        },
-        {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
-          "key": "haze-former"
         },
         {
           "key": "habitability/none"
@@ -1635,9 +1521,6 @@
       "parentId": "seed-1768806184772-barycenter-0",
       "tags": [
         {
-          "key": "planet/terrestrial"
-        },
-        {
           "key": "habitability/none"
         },
         {
@@ -1729,9 +1612,6 @@
       "kind": "body",
       "parentId": "seed-1768806184772-barycenter-0",
       "tags": [
-        {
-          "key": "planet/terrestrial"
-        },
         {
           "key": "habitability/none"
         },
@@ -1903,9 +1783,6 @@
       "kind": "body",
       "parentId": "id-1768808239697-l5w24sb9b",
       "tags": [
-        {
-          "key": "planet/terrestrial"
-        },
         {
           "key": "habitability/alien"
         }
@@ -2523,9 +2400,6 @@
           "key": "tidal/hotspots"
         },
         {
-          "key": "planet/terrestrial"
-        },
-        {
           "key": "habitability/none"
         }
       ],
@@ -2610,9 +2484,6 @@
       "kind": "body",
       "parentId": "id-1768810736260-o7ivd9uff",
       "tags": [
-        {
-          "key": "planet/terrestrial"
-        },
         {
           "key": "habitability/none"
         },
@@ -2704,9 +2575,6 @@
       "parentId": "id-1768810736260-o7ivd9uff",
       "tags": [
         {
-          "key": "planet/terrestrial"
-        },
-        {
           "key": "habitability/none"
         },
         {
@@ -2796,12 +2664,6 @@
       "parentId": "id-1768810984567-44h7wf4oi",
       "tags": [
         {
-          "key": "planet/terrestrial"
-        },
-        {
-          "key": "cloud-former"
-        },
-        {
           "key": "greenhouse"
         },
         {
@@ -2809,9 +2671,6 @@
         },
         {
           "key": "reducing"
-        },
-        {
-          "key": "pungent"
         },
         {
           "key": "habitability/none"
@@ -4829,15 +4688,6 @@
       "kind": "body",
       "parentId": "seed-1768806184772-star-a",
       "tags": [
-        {
-          "key": "planet/terrestrial"
-        },
-        {
-          "key": "Retrograde Orbit"
-        },
-        {
-          "key": "Captured Body"
-        },
         {
           "key": "greenhouse"
         },
