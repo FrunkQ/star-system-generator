@@ -196,13 +196,88 @@ function removeGhostBarycenters(system: System): boolean {
   return true;
 }
 
+// The system root — the node nothing orbits (parentId null). Prefer a star/bary if several somehow lack a parent.
+function findRoot(system: System): CelestialBody | Barycenter | undefined {
+  const roots = system.nodes.filter((n) => !n.parentId);
+  return roots.find((n) => n.kind === 'barycenter' || (n as CelestialBody).roleHint === 'star') ?? roots[0];
+}
+
+// Re-home any node whose parentId points at a node that no longer exists. A dangling parent resolves to
+// the system centre (0,0) in the positioner, so the node — and a binary pair under a dangling barycentre —
+// collapses to the middle "no matter where it orbits". Reparent it to the root and re-point its orbit at
+// the root so it sits at a real distance again. a_AU is preserved (it was a distance from a real host);
+// only a missing/zero a_AU is given a sane default so the node isn't left stacked on the centre.
+function reparentDanglingNodes(system: System): boolean {
+  const ids = new Set(system.nodes.map((n) => n.id));
+  const root = findRoot(system);
+  if (!root) return false;
+  const rootMass = getMass(root);
+  let changed = false;
+  for (const n of system.nodes) {
+    if (!n.parentId || ids.has(n.parentId)) continue;
+    if (n.id === root.id) { n.parentId = null; changed = true; continue; }
+    n.parentId = root.id;
+    const a = n.orbit?.elements.a_AU;
+    n.orbit = {
+      t0: n.orbit?.t0 ?? 0,
+      ...n.orbit,
+      hostId: root.id,
+      hostMu: G * rootMass,
+      elements: {
+        e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0,
+        ...(n.orbit?.elements ?? {}),
+        a_AU: a && a > 0 ? a : 1
+      }
+    } as Orbit;
+    changed = true;
+  }
+  return changed;
+}
+
+// Repair a barycentre that has a valid parent but a degenerate own-orbit (no orbit, zero host mass, or
+// zero/absent a_AU). Such a pair sits exactly on its parent — typically the central star — so the binary
+// renders dead-centre and editing the members (which only sets the *separation*) never moves it. We can't
+// recover the original distance once it's gone, so we restore a valid, non-zero orbit around the parent
+// (keeping any surviving a_AU) which both un-sticks it from the centre and makes it editable again.
+function repairDegenerateAutoBary(system: System): boolean {
+  const nodesById = new Map(system.nodes.map((n) => [n.id, n]));
+  let changed = false;
+  for (const node of system.nodes) {
+    if (node.kind !== 'barycenter') continue;
+    const bary = node as Barycenter;
+    if (!bary.parentId) continue;                  // root barycentre legitimately sits at the centre
+    const parent = nodesById.get(bary.parentId);
+    if (!parent) continue;                          // dangling parent is handled by reparentDanglingNodes
+    const parentMass = getMass(parent as CelestialBody | Barycenter);
+    if (parentMass <= 0) continue;
+    const a = bary.orbit?.elements.a_AU ?? 0;
+    const degenerate = !bary.orbit || (bary.orbit.hostMu ?? 0) <= 0 || a <= 0;
+    if (!degenerate) continue;
+    bary.orbit = {
+      t0: bary.orbit?.t0 ?? 0,
+      ...bary.orbit,
+      hostId: bary.parentId,
+      hostMu: G * parentMass,
+      elements: {
+        e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0,
+        ...(bary.orbit?.elements ?? {}),
+        a_AU: a > 0 ? a : 1
+      }
+    } as Orbit;
+    changed = true;
+  }
+  return changed;
+}
+
 export function reconcileBarycenters(system: System): System {
   // Run until stable to handle create/remove chains from one edit.
   for (let i = 0; i < 8; i++) {
+    const reparented = reparentDanglingNodes(system);
     const promoted = promoteMassiveCompanion(system);
     const demoted = demoteWeakBinary(system);
     const healed = removeGhostBarycenters(system);
-    if (!promoted && !demoted && !healed) break;
+    const repaired = repairDegenerateAutoBary(system);
+    if (!reparented && !promoted && !demoted && !healed && !repaired) break;
   }
   return system;
 }

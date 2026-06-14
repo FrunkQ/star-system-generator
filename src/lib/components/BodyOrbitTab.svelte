@@ -156,6 +156,26 @@ function updateOrbit() {
       return safeKm / AU_KM;
   }
 
+  // When this body is one half of a binary, its orbit above only sets the SEPARATION from its partner —
+  // it cannot move the pair through the system. The pair's position lives on the barycentre's own orbit
+  // (parentBody, here a 2-member barycentre that itself orbits a star). Expose that so the user can
+  // actually reposition the pair instead of it appearing stuck.
+  $: parentIsBinary = !!parentBody
+      && (parentBody as any).kind === 'barycenter'
+      && ((parentBody as any).memberIds?.length === 2)
+      && !!(parentBody as any).orbit
+      && !!(parentBody as any).parentId;
+  let pairA_AU = 0;
+  $: if (parentIsBinary) pairA_AU = (parentBody as any).orbit.elements.a_AU ?? 0;
+
+  function handlePairDistance() {
+      if (!parentIsBinary) return;
+      const bary: any = parentBody;
+      bary.orbit.elements.a_AU = Math.max(0.001, Number(pairA_AU) || 0);
+      bary.orbit.lastEditedT0 = Date.now();
+      dispatch('update');
+  }
+
   $: peri = a_AU * (1 - e);
   $: aph = a_AU * (1 + e);
   $: minSafePeriapsisAU = calculateMinSafePeriapsisAU();
@@ -169,9 +189,21 @@ function updateOrbit() {
     {#if !body.orbit}
         <p>This body has no orbit (it might be the central star).</p>
     {:else}
+        {#if parentIsBinary}
+        <div class="form-group pair-group">
+            <div class="label-row">
+                <label title="Moves the whole binary pair through the system. The control below only sets how far apart the two bodies sit.">Pair distance from star (AU)</label>
+                <input type="number" step="any" min="0.001" bind:value={pairA_AU} on:input={handlePairDistance} />
+            </div>
+            <div class="full-width-slider">
+                <input class="pair-slider" type="range" min="0.05" max="60" step="0.05" bind:value={pairA_AU} on:input={handlePairDistance} />
+            </div>
+            <div class="info-row" style="font-size: 0.78em; color: var(--text-faint);">This moves both {(parentBody as any)?.name?.replace(' Barycenter','') ?? 'bodies'} together. Below sets their separation.</div>
+        </div>
+        {/if}
         <div class="form-group">
             <div class="label-row">
-                <label>Semi-Major Axis (AU)</label>
+                <label>{parentIsBinary ? 'Separation from partner (AU)' : 'Semi-Major Axis (AU)'}</label>
                 <input type="number" step="any" bind:value={a_AU} on:input={handleNumberInput} />
             </div>
             <div class="info-row" style="font-size: 0.8em; color: var(--text-faint); margin-bottom: 4px;">{rangeText}</div>
@@ -262,6 +294,14 @@ function updateOrbit() {
 <style>
   .tab-panel { padding: 10px; display: flex; flex-direction: column; gap: 15px; }
   .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .pair-group {
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent, #5b8def);
+      border-radius: 4px;
+      padding: 8px;
+      background: color-mix(in srgb, var(--accent, #5b8def) 7%, transparent);
+  }
+  .pair-slider { width: 100%; accent-color: var(--accent, #5b8def); }
   
   .label-row {
       display: flex;

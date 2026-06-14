@@ -220,8 +220,8 @@
       const parentTruePos = worldPositions.get(node.parentId)!;
       const nodeTruePos = worldPositions.get(node.id)!;
       let x: number, y: number;
-      if ((node.kind === 'body' || node.kind === 'construct') && node.orbit) {
-        const { a_AU: a, e, omega_deg } = node.orbit.elements; 
+      if ((node.kind === 'body' || node.kind === 'construct' || node.kind === 'barycenter') && node.orbit) {
+        const { a_AU: a, e, omega_deg } = node.orbit.elements;
         const w = (omega_deg || 0) * (Math.PI / 180);
         const dxTrue = nodeTruePos.x - parentTruePos.x;
         const dyTrue = nodeTruePos.y - parentTruePos.y;

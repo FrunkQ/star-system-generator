@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.80-beta - 14th Jun 2026
+
+* Binary pairs can now actually be moved. Editing one half of a binary only ever set the gap between the two bodies, never the pair's place in the system, so a pair could look stuck. The orbit panel for a binary body now has a "Pair distance from star" control that moves the whole pair, with the existing control relabelled "Separation from partner".
+* Further hardening against binary pairs stuck at the centre: a barycentre that kept a valid parent but lost its own orbit (so it sat exactly on the star) is now repaired on recalculation, and any body whose parent no longer exists is re-homed to the system's centre body at its real distance instead of collapsing to (0,0).
+* Fixed barycentres being left out of the compressed (Toytown) scale layout, so a binary on an eccentric orbit now scales consistently with everything else.
+
 ## v2.0.79-beta - 14th Jun 2026
 
 * Fixed binary planets (and other bodies) being dragged to the middle of the system: a "ghost" barycentre left behind by an earlier demote/merge had a dangling parent, which collapses to the centre. These now get cleaned up on recalculation, so the real bodies sit at their proper orbits.
