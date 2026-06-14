@@ -461,6 +461,17 @@ export interface ActiveJourney {
   durationSec: number;    // outside-observer travel time
 }
 
+// A construct stranded in interstellar space (a journey ended mid-flight). It no longer belongs to
+// any system — it sits at a starmap position between the systems it was travelling between, and can
+// be edited or relaunched on a new interstellar journey from there.
+export interface AdriftConstruct {
+  construct: CelestialBody;   // the full construct node (kind:'construct')
+  x: number; y: number;        // starmap position (interstellar)
+  fromSystemId?: ID;           // where it departed
+  toSystemId?: ID;             // where it had been heading
+  strandedAtSec?: string;      // game-clock seconds when it was stranded
+}
+
 export interface StarmapScaleConfig {
   unit: string;
   pixelsPerUnit: number;
@@ -540,6 +551,7 @@ export interface Starmap {
   systems: StarSystemNode[];
   routes: Route[];
   activeJourneys?: ActiveJourney[];
+  adriftConstructs?: AdriftConstruct[];   // ships stranded in interstellar space (ended a journey mid-flight)
   mapMode?: 'diagrammatic' | 'scaled';
   generationEngine?: 'standard' | 'evolutionary';
   invertDisplay?: boolean;
