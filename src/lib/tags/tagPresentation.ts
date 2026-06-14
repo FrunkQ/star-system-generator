@@ -31,6 +31,7 @@ const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boole
   resonance:    { group: 'Resonance',    color: '#c0a0e0' },
   fate:         { group: 'Stability',    color: '#d06868' },
   structure:    { group: 'Structure',    color: '#5f8f8f' },
+  ring:         { group: 'Rings',        color: '#b9a36a' },
   geology:      { group: 'Geology',      color: '#c2733a' },
   tidal:        { group: 'Tidal',        color: '#d8843a' },
   magnetic:     { group: 'Magnetism',    color: '#6aa0d8' },
@@ -126,6 +127,13 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
     label: 'Tidally locked',
     description: 'Derived: the despinning timescale (∝ a⁶) is shorter than the system age, so the body has settled into synchronous rotation — one face permanently toward its host (the Moon, Mercury, most close-in worlds). Pin it by hand in the body editor to override.'
   },
+
+  // --- Rings (derived from ring-child geometry) ---
+  'ring/system':   { label: 'Ringed',         description: 'Hosts a ring system — orbiting ice/rock debris — derived from a ring child in the geometry, not hand-tagged.' },
+  'ring/multiple': { label: 'Multiple rings',  description: 'More than one distinct ring orbits the body.' },
+  'ring/light':    { label: 'Light ring',      description: 'A faint, low-mass ring — sparse, tenuous debris.' },
+  'ring/medium':   { label: 'Medium ring',     description: 'A moderately dense ring of orbiting debris.' },
+  'ring/heavy':    { label: 'Heavy ring',      description: 'A dense, massive ring — a bright, prominent Saturn-like band.' },
 
   // --- Geology (tectonics + volcanism by mechanism) ---
   'geology/plate-tectonics': {

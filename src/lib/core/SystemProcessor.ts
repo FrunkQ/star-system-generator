@@ -24,7 +24,8 @@ const FORMATION_DELAY_GYR = 0.005;
 // Old friendly-label tags that duplicate physics-derived ones — dropped on load (the physics
 // re-adds the correct namespaced versions). Explicit so user free-text tags are never touched.
 const LEGACY_DUPLICATE_TAGS = new Set<string>([
-  'Active Volcanism', 'Tidally Locked', 'Active Volcano', 'Tidal Volcanism', 'Tidal Hotspots'
+  'Active Volcanism', 'Tidally Locked', 'Active Volcano', 'Tidal Volcanism', 'Tidal Hotspots',
+  'Ringed', 'Rings'   // now derived from ring-child geometry (ring/* tags)
 ]);
 import { SeededRNG } from '../rng';
 import { annotateGravitationalStability } from '../physics/stability';
@@ -518,6 +519,26 @@ export class SystemProcessor implements ISystemProcessor {
         }
         const cloudLayer = mk.gas <= 0.5 ? fluidLayers.find((l) => l.location === 'cloud') : undefined;
         if (cloudLayer) body.tags.push({ key: 'structure/cloud-deck', value: cloudColourName(cloudLayer.liquid) });
+
+        // Ring system — DERIVED from geometry (does the body host ring children?), not hand-tagged.
+        // One ring → "ringed"; more than one → "multiple rings". Each ring's debris mass sorts it into
+        // a light / medium / heavy tier (log scale, same as the orrery disc); the DISTINCT tiers present
+        // are surfaced, so a heavy ring beside a faint one reads as both.
+        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('ring/'));
+        const ringChildren = allNodes.filter(
+            (n) => n.kind === 'body' && (n as CelestialBody).roleHint === 'ring' && n.parentId === body.id
+        ) as CelestialBody[];
+        if (ringChildren.length) {
+            body.tags.push({ key: 'ring/system' });
+            if (ringChildren.length > 1) body.tags.push({ key: 'ring/multiple' });
+            const tiers = new Set<string>();
+            for (const r of ringChildren) {
+                const me = (r.massKg ?? 0) / EARTH_MASS_KG;
+                const d = me > 0 ? Math.max(0, Math.min(1, (Math.log(me) - Math.log(1e-5)) / (Math.log(1) - Math.log(1e-5)))) : 0.5;
+                tiers.add(d < 1 / 3 ? 'light' : d < 2 / 3 ? 'medium' : 'heavy');
+            }
+            for (const tier of ['light', 'medium', 'heavy']) if (tiers.has(tier)) body.tags.push({ key: `ring/${tier}` });
+        }
 
         // Magnetism profile (§2d) — descriptive read of the dynamo from interior conductive layers
         // + rotation; does NOT override the editable field strength. A salty subsurface ocean only
