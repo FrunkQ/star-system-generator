@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { endJourneyAtSource, endJourneyAtDestination, strandJourney } from './interstellar';
+import { endJourneyAtSource, endJourneyAtDestination, strandJourney, constructDisplayPlacement } from './interstellar';
 import type { Starmap } from '$lib/types';
 
 function makeStarmap(): Starmap {
@@ -65,5 +65,37 @@ describe('interstellar journey resolution', () => {
     const m = makeStarmap();
     expect(endJourneyAtDestination(m, 'nope').activeJourneys).toHaveLength(1);
     expect(strandJourney(m, 'nope', 0.5).adriftConstructs ?? []).toHaveLength(0);
+  });
+});
+
+describe('constructDisplayPlacement (derive-from-clock)', () => {
+  // journey j1: sysA(0,0) -> sysB(100,0), start 0, duration 1000.
+  it('before start → origin system', () => {
+    expect(constructDisplayPlacement(makeStarmap(), 'ship1', -10)).toEqual({ kind: 'system', systemId: 'sysA' });
+  });
+  it('mid-flight → transit at the interpolated point', () => {
+    const p = constructDisplayPlacement(makeStarmap(), 'ship1', 250) as any;
+    expect(p.kind).toBe('transit');
+    expect(p.frac).toBeCloseTo(0.25);
+    expect(p.x).toBeCloseTo(25);
+  });
+  it('after natural end → destination system (arrive)', () => {
+    expect(constructDisplayPlacement(makeStarmap(), 'ship1', 2000)).toEqual({ kind: 'system', systemId: 'sysB' });
+  });
+  it('outcome=strand with endedAtSec → adrift at that fraction even when scrubbed later', () => {
+    const m = makeStarmap();
+    m.activeJourneys![0].outcome = 'strand';
+    m.activeJourneys![0].endedAtSec = '600';   // 60% along
+    const p = constructDisplayPlacement(m, 'ship1', 5000) as any;
+    expect(p.kind).toBe('adrift');
+    expect(p.x).toBeCloseTo(60);
+  });
+  it('outcome=return → origin system after it ends', () => {
+    const m = makeStarmap();
+    m.activeJourneys![0].outcome = 'return';
+    expect(constructDisplayPlacement(m, 'ship1', 2000)).toEqual({ kind: 'system', systemId: 'sysA' });
+  });
+  it('no journey → the system that holds the node', () => {
+    expect(constructDisplayPlacement(endJourneyAtSource(makeStarmap(), 'j1'), 'ship1', 999)).toEqual({ kind: 'system', systemId: 'sysA' });
   });
 });

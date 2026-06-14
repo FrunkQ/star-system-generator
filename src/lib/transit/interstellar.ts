@@ -4,8 +4,64 @@
 //   - endJourneyAtSource:      cancel — it never left, stays in the origin system.
 //   - endJourneyAtDestination: it arrives — relocate the construct into the destination system.
 //   - strandJourney:           end mid-flight — pull it out into interstellar space (adrift).
-import type { Starmap, ActiveJourney, CelestialBody, AdriftConstruct } from '$lib/types';
+import type { Starmap, ActiveJourney, CelestialBody, AdriftConstruct, ID } from '$lib/types';
 import { G, SOLAR_MASS_KG } from '$lib/constants';
+
+// --- Derive-from-clock placement -----------------------------------------------------------------
+// Where a construct *appears* at a given game time, derived purely from its interstellar journey
+// record + the clock (no mutation). The same evaluator backs rendering, the routes panel, and (later)
+// autopilot. Persistent node moves are a separate reconcile step, keyed to ACTUAL time.
+export type ConstructPlacement =
+  | { kind: 'system'; systemId: ID }
+  | { kind: 'transit'; fromSystemId: ID; toSystemId: ID; x: number; y: number; frac: number }
+  | { kind: 'adrift'; x: number; y: number; fromSystemId?: ID; toSystemId?: ID };
+
+// The journey's effective end (early GM resolution wins over the natural arrival time), in game seconds.
+export function journeyEffectiveEndSec(j: ActiveJourney): number {
+  const start = Number(j.startTimeSec || 0);
+  const natural = start + (j.durationSec || 0);
+  const ended = j.endedAtSec != null ? Number(j.endedAtSec) : natural;
+  return Math.min(natural, ended);   // can't "end" after it would have naturally arrived
+}
+// Progress 0..1 at a given game time (clamped; uses the natural duration as the scale).
+function fracAt(j: ActiveJourney, sec: number): number {
+  const start = Number(j.startTimeSec || 0);
+  const dur = j.durationSec || 0;
+  if (dur <= 0) return 1;
+  return Math.max(0, Math.min(1, (Math.min(sec, journeyEffectiveEndSec(j)) - start) / dur));
+}
+const sysPos = (s: Starmap, id?: ID) => s.systems.find((x) => x.id === id)?.position;
+
+// Resolve where a construct is at a display time. Looks at its live journey first, then the adrift
+// list, then falls back to whichever system actually holds its node.
+export function constructDisplayPlacement(starmap: Starmap, constructId: ID, displaySec: number): ConstructPlacement {
+  const j = (starmap.activeJourneys ?? []).find((x) => x.shipId === constructId);
+  if (j) {
+    const from = sysPos(starmap, j.fromSystemId);
+    const to = sysPos(starmap, j.toSystemId);
+    const start = Number(j.startTimeSec || 0);
+    const endSec = journeyEffectiveEndSec(j);
+    if (from && to) {
+      if (displaySec < start) return { kind: 'system', systemId: j.fromSystemId };
+      if (displaySec < endSec) {
+        const f = fracAt(j, displaySec);
+        return { kind: 'transit', fromSystemId: j.fromSystemId, toSystemId: j.toSystemId, x: from.x + (to.x - from.x) * f, y: from.y + (to.y - from.y) * f, frac: f };
+      }
+      // Ended: outcome decides the resting place.
+      const outcome = j.outcome ?? 'arrive';
+      if (outcome === 'return') return { kind: 'system', systemId: j.fromSystemId };
+      if (outcome === 'strand') {
+        const f = fracAt(j, endSec);
+        return { kind: 'adrift', x: from.x + (to.x - from.x) * f, y: from.y + (to.y - from.y) * f, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
+      }
+      return { kind: 'system', systemId: j.toSystemId };   // arrive
+    }
+  }
+  const adrift = (starmap.adriftConstructs ?? []).find((a) => a.construct?.id === constructId);
+  if (adrift) return { kind: 'adrift', x: adrift.x, y: adrift.y, fromSystemId: adrift.fromSystemId, toSystemId: adrift.toSystemId };
+  const holding = starmap.systems.find((s) => (s.system?.nodes ?? []).some((n) => n.id === constructId));
+  return { kind: 'system', systemId: holding?.id ?? '' };
+}
 
 const clone = <T>(o: T): T => JSON.parse(JSON.stringify(o));
 const findJourney = (s: Starmap, id: string) => (s.activeJourneys ?? []).find((j) => j.id === id);

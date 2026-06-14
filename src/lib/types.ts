@@ -459,6 +459,11 @@ export interface ActiveJourney {
   mode: string;
   startTimeSec: string;   // game-clock seconds at departure (matches TemporalState string seconds)
   durationSec: number;    // outside-observer travel time
+  // --- Resolution (derive-from-clock model). The journey RECORD is the source of truth; a
+  // construct's displayed location is derived from it + the clock, and the persistent node move is
+  // committed by reconcile only once ACTUAL time passes the (effective) end. ---
+  outcome?: 'arrive' | 'return' | 'strand';   // how it ends; default 'arrive' (reaches destination)
+  endedAtSec?: string;    // game-clock seconds the GM resolved it early (abandon/strand); else natural end
 }
 
 // A construct stranded in interstellar space (a journey ended mid-flight). It no longer belongs to

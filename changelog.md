@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.71-beta - 14th Jun 2026
+
+* (Internal) Groundwork for real interstellar travel: a derive-from-clock placement resolver + journey resolution model (arrive / return / strand) that mirrors the in-system transit pattern (position derived from the clock, persistent state committed only at actual time). No user-facing change yet — the journey UI rides on this next.
+
 ## v2.0.70-beta - 14th Jun 2026
 
 * Add-a-tag form: the "Players see" preview now shows the actual friendly label players will see (e.g. "My Depot"), not the raw tag key (e.g. `frontier/my-depot`) — the key is shown as a small hint only when it differs. The name field is relabelled to make clear you're typing what players see.
