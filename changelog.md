@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.44-beta - 14th Jun 2026
+
+* Fixed a bug where your own custom tags could be wiped on recalculation. The body Tags editor now shows which tags are auto-derived (locked 🔒 — from physics or a rule) versus the ones you added (removable), so it's clear what's yours to edit.
+
 ## v2.0.43-beta - 14th Jun 2026
 
 * The CRT white-noise now looks like real TV static (animated grain that regenerates each frame) instead of a fixed pixelly image jerking around — still in the terminal colour. The /physics page gained a "Reasons to visit" section and was brought up to date.
