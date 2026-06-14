@@ -13,15 +13,14 @@
 	// Requires Web Analytics enabled in the Vercel project too.
 	injectAnalytics({ mode: dev ? 'development' : 'production' });
 
-	// DEV BUILD STAMP — shown ONLY on beta (and local dev), never on production, so
-	// a stale cached / PWA copy is obvious during testing. commit + time are baked
-	// in at build time and change every build.
+	// DEV BUILD STAMP — commit + time are baked in at build time and change every build.
+	// TEMPORARILY suppressed on beta while real users are testing (it was distracting). To bring it
+	// back on beta, re-add the beta.starsystemx.com host test below. Still shown in local dev.
 	const build = __BUILD_INFO__;
 	const builtAt = new Date(build.time).toLocaleString();
 	const showBuildStamp =
 		browser &&
-		(/(^|\.)beta\.starsystemx\.com$/i.test(window.location.hostname) ||
-			window.location.hostname === 'localhost' ||
+		(window.location.hostname === 'localhost' ||
 			window.location.hostname === '127.0.0.1');
 	let dismissed = $state(false);
 

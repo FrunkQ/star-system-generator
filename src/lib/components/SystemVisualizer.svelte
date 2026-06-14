@@ -1087,8 +1087,21 @@
           ctx.lineWidth = 4; // Bolder outline
           ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
           ctx.lineJoin = 'round';
-          
-          for (const node of system.nodes) {
+
+          // Draw labels child → parent (deepest hierarchy depth first) so a parent's label paints LAST
+          // and sits on TOP of its satellites' labels in a crowded cluster — the parent is the most
+          // important / most likely to be clicked.
+          const labelNodeById = new Map(system.nodes.map((n) => [n.id, n]));
+          const labelDepthCache = new Map<string, number>();
+          const labelDepth = (n: any): number => {
+              if (labelDepthCache.has(n.id)) return labelDepthCache.get(n.id)!;
+              let d = 0, cur = n, guard = 0;
+              while (cur?.parentId && guard++ < 32) { const p = labelNodeById.get(cur.parentId); if (!p) break; d++; cur = p; }
+              labelDepthCache.set(n.id, d); return d;
+          };
+          const labelOrder = [...system.nodes].sort((a, b) => labelDepth(b) - labelDepth(a));
+
+          for (const node of labelOrder) {
               if (!visibleLabelIds.has(node.id) || node.kind !== 'body') continue;
               if (node.roleHint === 'belt' && node.orbit && node.parentId) {
                   const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(node.parentId) : worldPositions.get(node.parentId);

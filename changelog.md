@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.68-beta - 14th Jun 2026
+
+* Temporarily hid the yellow build-stamp banner on beta while real users test (still shown in local dev). Easy to re-enable.
+* In the orrery, clustered body labels now draw child → parent, so a parent's name sits on top of its satellites' labels — the parent (most likely to be clicked) stays readable in a crowded group.
+
 ## v2.0.67-beta - 14th Jun 2026
 
 * The Routes panel now lists interstellar journeys in flight. Previously it only showed in-system journeys and the static interstellar route lines, so a ship actually crossing between systems (animating on the map) didn't appear. New "Interstellar journeys" section shows each flight with its ship, from → to, live status (scheduled / active / completed) and % progress; click to jump to its destination.
