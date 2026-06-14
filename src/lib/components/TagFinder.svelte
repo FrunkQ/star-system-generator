@@ -1,16 +1,20 @@
 <script lang="ts">
-  // Find-by-tag directory: every distinct tag across the starmap, grouped by category as coloured
-  // chips. Pick one → the bodies/constructs carrying it (current system first), click to jump there.
-  // Great for "where's the nearest gas-giant refuelling / heavy-metal world / ice belt".
+  // Find-by-tag directory. Browse categories as bubbles → expand one to see its tags → click a tag
+  // to add it to the active filter list (or quick-add via search). Results below = bodies carrying
+  // ALL active filter tags. Inside a system on a scaled map, results show inter-system distance and
+  // sort nearest-first; otherwise alphabetical.
   import { createEventDispatcher } from 'svelte';
   import { describeTag } from '$lib/tags/tagPresentation';
   export let nodes: any[] = [];                       // all bodies/constructs (with __systemId/__systemName/tags)
   export let contextOf: (n: any) => string = () => '';
   export let currentSystemId: string | null = null;
+  export let distanceOf: ((systemId: string) => number | null) | null = null;
+  export let distanceUnit = 'ly';
   const dispatch = createEventDispatcher();
 
-  let selected: string | null = null;
   let q = '';
+  let expanded: string | null = null;     // expanded category group
+  let filters: string[] = [];             // active tag keys (ANDed)
 
   // tag key → the nodes that carry it
   $: index = (() => {
@@ -22,82 +26,152 @@
     return m;
   })();
 
-  $: grouped = (() => {
-    const g: Record<string, { key: string; label: string; color: string; textColor: string; count: number }[]> = {};
-    const needle = q.trim().toLowerCase();
+  interface TagMeta { key: string; label: string; group: string; color: string; textColor: string; count: number; }
+  $: allMetas = (() => {
+    const out: TagMeta[] = [];
     for (const [key, bodies] of index) {
       const info = describeTag(key);
-      if (needle && !`${info.label} ${key} ${info.group}`.toLowerCase().includes(needle)) continue;
-      (g[info.group] ||= []).push({ key, label: info.label, color: info.color, textColor: info.textColor || '#fff', count: bodies.length });
+      out.push({ key, label: info.label, group: info.group, color: info.color, textColor: info.textColor || '#fff', count: bodies.length });
     }
+    return out;
+  })();
+  // group → its tags; plus a representative colour per group (the namespace/category colour).
+  $: grouped = (() => {
+    const g: Record<string, TagMeta[]> = {};
+    for (const m of allMetas) (g[m.group] ||= []).push(m);
     for (const k of Object.keys(g)) g[k].sort((a, b) => a.label.localeCompare(b.label));
     return g;
   })();
   $: groupNames = Object.keys(grouped).sort();
+  const groupColor = (g: string) => grouped[g]?.[0]?.color || '#888';
 
-  // Bodies for the chosen tag — current system first, then by system, then name.
-  $: matches = selected
-    ? [...(index.get(selected) ?? [])].sort((a, b) =>
-        (a.__systemId === currentSystemId ? 0 : 1) - (b.__systemId === currentSystemId ? 0 : 1)
-        || String(a.__systemName).localeCompare(String(b.__systemName))
-        || String(a.name).localeCompare(String(b.name)))
+  // Search suggestions (quick-add), excluding already-active filters.
+  $: suggestions = q.trim()
+    ? allMetas.filter((m) => !filters.includes(m.key) && `${m.label} ${m.key} ${m.group}`.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 8)
     : [];
-  $: selInfo = selected ? describeTag(selected) : null;
+
+  function addFilter(key: string) { if (!filters.includes(key)) filters = [...filters, key]; q = ''; }
+  function removeFilter(key: string) { filters = filters.filter((k) => k !== key); }
+  function onSearchKey(e: KeyboardEvent) { if (e.key === 'Enter' && suggestions[0]) { addFilter(suggestions[0].key); } }
+
+  // Results: nodes carrying every active filter tag.
+  $: results = filters.length
+    ? nodes.filter((n) => { const keys = new Set((n.tags ?? []).map((t: any) => t.key)); return filters.every((f) => keys.has(f)); })
+    : [];
+  $: sorted = (() => {
+    const withDist = results.map((n) => ({ n, dist: distanceOf ? distanceOf(n.__systemId) : null }));
+    const haveDist = withDist.some((r) => r.dist != null);
+    if (haveDist) {
+      withDist.sort((a, b) => (a.dist ?? Infinity) - (b.dist ?? Infinity)
+        || String(a.n.__systemName).localeCompare(String(b.n.__systemName))
+        || String(a.n.name).localeCompare(String(b.n.name)));
+    } else {
+      withDist.sort((a, b) => String(a.n.__systemName).localeCompare(String(b.n.__systemName)) || String(a.n.name).localeCompare(String(b.n.name)));
+    }
+    return withDist;
+  })();
+  const fmtDist = (d: number | null) => d == null ? '' : (d === 0 ? 'this system' : `${d} ${distanceUnit}`);
+  const metaFor = (key: string) => describeTag(key);
 </script>
 
 <div class="tag-finder">
-  {#if !selected}
-    <input class="search" placeholder="Search tags…" bind:value={q} />
-    {#if !groupNames.length}<p class="empty">No tags found{q ? ' for that search' : ''}.</p>{/if}
-    {#each groupNames as g (g)}
-      <div class="grp">
-        <h5>{g}</h5>
-        <div class="chips">
-          {#each grouped[g] as t (t.key)}
-            <button class="chip" style="background:{t.color}; color:{t.textColor}" on:click={() => (selected = t.key)} title={t.key}>
-              {t.label} <span class="cnt">{t.count}</span>
-            </button>
-          {/each}
-        </div>
-      </div>
-    {/each}
-  {:else}
-    <button class="back" on:click={() => (selected = null)}>← All tags</button>
-    <div class="sel-head">
-      <span class="chip" style="background:{selInfo?.color}; color:{selInfo?.textColor || '#fff'}">{selInfo?.label}</span>
-      <span class="cnt2">{matches.length} {matches.length === 1 ? 'body' : 'bodies'}</span>
-    </div>
-    {#if selInfo?.description}<p class="desc">{selInfo.description}</p>{/if}
-    <ul class="results">
-      {#each matches as n (n.__systemId + ':' + n.id)}
-        <li>
-          <button class="res" on:click={() => dispatch('select', { systemId: n.__systemId, id: n.id })}>
-            <span class="res-name">{n.name}</span>
-            <span class="res-ctx">{contextOf(n)}</span>
+  <!-- search / quick-add -->
+  <div class="search-wrap">
+    <input class="search" placeholder="Search tags to add a filter…" bind:value={q} on:keydown={onSearchKey} />
+    {#if suggestions.length}
+      <div class="suggest">
+        {#each suggestions as s (s.key)}
+          <button class="sugg" on:click={() => addFilter(s.key)}>
+            <span class="dot" style="background:{s.color}"></span>{s.label}
+            <span class="sgrp">{s.group}</span><span class="cnt">{s.count}</span>
           </button>
-        </li>
+        {/each}
+      </div>
+    {/if}
+  </div>
+
+  <!-- category bubbles -->
+  <div class="bubbles">
+    {#each groupNames as g (g)}
+      <button class="bubble" class:open={expanded === g} style="--c:{groupColor(g)}" on:click={() => (expanded = expanded === g ? null : g)}>
+        {g} <span class="bcnt">{grouped[g].length}</span>
+      </button>
+    {/each}
+  </div>
+  {#if expanded && grouped[expanded]}
+    <div class="cat-tags">
+      {#each grouped[expanded] as t (t.key)}
+        <button class="chip" class:active={filters.includes(t.key)} style="background:{t.color}; color:{t.textColor}" on:click={() => addFilter(t.key)} title={t.key}>
+          {t.label} <span class="cnt">{t.count}</span>
+        </button>
       {/each}
-    </ul>
+    </div>
   {/if}
+
+  <!-- active filters -->
+  <div class="filters">
+    {#if filters.length}
+      <span class="flabel">Filters (matching all):</span>
+      {#each filters as f (f)}
+        {@const m = metaFor(f)}
+        <button class="chip rm" style="background:{m.color}; color:{m.textColor || '#fff'}" on:click={() => removeFilter(f)} title="Click to remove">
+          {m.label} <span class="x">×</span>
+        </button>
+      {/each}
+    {:else}
+      <span class="hint">Pick a category bubble or search to add tag filters.</span>
+    {/if}
+  </div>
+
+  <!-- results -->
+  <div class="results">
+    {#if filters.length}
+      <div class="res-head">{sorted.length} {sorted.length === 1 ? 'match' : 'matches'}{distanceOf && sorted.some((r) => r.dist != null) ? ' · nearest first' : ''}</div>
+      {#if !sorted.length}<p class="empty">No body has all of those tags.</p>{/if}
+      <ul>
+        {#each sorted as r (r.n.__systemId + ':' + r.n.id)}
+          <li>
+            <button class="res" on:click={() => dispatch('select', { systemId: r.n.__systemId, id: r.n.id })}>
+              <span class="res-name">{r.n.name}</span>
+              <span class="res-ctx">{contextOf(r.n)}</span>
+              {#if r.dist != null}<span class="res-dist">{fmtDist(r.dist)}</span>{/if}
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </div>
 </div>
 
 <style>
-  .tag-finder { display: flex; flex-direction: column; gap: 8px; }
-  .search { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); }
-  .empty { color: var(--text-faint); font-style: italic; }
-  .grp { display: flex; flex-direction: column; gap: 4px; }
-  .grp h5 { margin: 6px 0 0; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
-  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag-finder { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+  .search-wrap { position: relative; }
+  .search { width: 100%; box-sizing: border-box; padding: 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); }
+  .suggest { position: absolute; left: 0; right: 0; top: calc(100% + 2px); z-index: 5; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); max-height: 240px; overflow-y: auto; }
+  .sugg { width: 100%; display: flex; align-items: center; gap: 7px; background: none; border: none; border-bottom: 1px solid var(--border); padding: 7px 9px; cursor: pointer; color: var(--text); text-align: left; font-size: 0.82rem; }
+  .sugg:hover { background: var(--bg-control); }
+  .sugg .sgrp { margin-left: auto; color: var(--text-faint); font-size: 0.74rem; }
+  .dot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+  .bubbles { display: flex; flex-wrap: wrap; gap: 5px; }
+  .bubble { background: color-mix(in srgb, var(--c) 22%, transparent); border: 1px solid var(--c); color: var(--text); border-radius: 999px; padding: 4px 11px; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .bubble.open { background: var(--c); color: #fff; }
+  .bcnt { font-size: 0.72em; opacity: 0.8; }
+  .cat-tags { display: flex; flex-wrap: wrap; gap: 5px; padding: 6px; background: var(--bg-control); border-radius: 6px; }
   .chip { border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; color: #fff; }
   .chip:hover { filter: brightness(1.12); }
+  .chip.active { outline: 2px solid #fff; }
   .cnt { font-size: 0.72em; opacity: 0.85; background: rgba(0,0,0,0.22); border-radius: 8px; padding: 0 5px; }
-  .back { align-self: flex-start; background: none; border: none; color: var(--link); cursor: pointer; font-size: 0.82rem; padding: 2px 0; }
-  .sel-head { display: flex; align-items: center; gap: 8px; }
-  .cnt2 { color: var(--text-faint); font-size: 0.8rem; }
-  .desc { margin: 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; }
-  .results { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 50vh; overflow-y: auto; }
-  .res { width: 100%; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; background: var(--bg-control); border: 1px solid var(--border); border-radius: 4px; padding: 7px 9px; cursor: pointer; color: var(--text); text-align: left; }
+  .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 26px; }
+  .flabel { font-size: 0.76rem; color: var(--text-faint); }
+  .hint { font-size: 0.78rem; color: var(--text-faint); font-style: italic; }
+  .chip.rm .x { font-weight: bold; }
+  .results { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
+  .res-head { font-size: 0.74rem; color: var(--text-faint); position: sticky; top: 0; background: var(--bg-panel); padding: 2px 0; }
+  .empty { color: var(--text-faint); font-style: italic; }
+  .results ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .res { width: 100%; display: flex; align-items: baseline; gap: 8px; background: var(--bg-control); border: 1px solid var(--border); border-radius: 4px; padding: 7px 9px; cursor: pointer; color: var(--text); text-align: left; }
   .res:hover { border-color: var(--accent); }
   .res-name { font-weight: 600; }
   .res-ctx { font-size: 0.76rem; color: var(--text-faint); }
+  .res-dist { margin-left: auto; font-size: 0.76rem; color: var(--accent, #6aa0d8); white-space: nowrap; }
 </style>

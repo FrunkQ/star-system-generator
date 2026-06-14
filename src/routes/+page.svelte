@@ -181,6 +181,14 @@
     showTagFinder = false;
     enterSystemAndFocus(e.detail.systemId, e.detail.id);
   }
+  // Inter-system distance from the system the GM is currently in, in the map's unit — only meaningful
+  // on a scaled map and when inside a system. Null otherwise (→ TagFinder sorts alphabetically).
+  function tagFinderDistance(systemId: string): number | null {
+    const map = $starmapStore;
+    if (!currentSystemId || !map || (map.mapMode ?? 'diagrammatic') !== 'scaled') return null;
+    if (systemId === currentSystemId) return 0;
+    return getSystemDistanceLy(map, currentSystemId, systemId);
+  }
 
   let selectedRulepack: RulePack | undefined;
   let fileInput: HTMLInputElement;
@@ -1032,6 +1040,8 @@
         <TagFinder
           nodes={allBodies}
           currentSystemId={currentSystemId}
+          distanceOf={tagFinderDistance}
+          distanceUnit={$starmapStore?.distanceUnit ?? 'ly'}
           contextOf={allBodiesContext}
           on:select={handleTagFinderSelect}
         />
