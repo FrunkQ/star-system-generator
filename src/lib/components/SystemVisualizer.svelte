@@ -92,6 +92,11 @@
   let inertiaRaf: number | null = null;
   let lastFocusedId: string | null = null;
   let isAnimatingFocus = false;
+  // When the user zooms manually we stop the camera from auto-zooming back to the focused object's "ideal
+  // frame" (which otherwise fights the wheel during playback). Pan-follow continues, so the object stays
+  // centred at the user's chosen zoom. Cleared by any deliberate re-frame (new selection, re-click-to-step,
+  // Reset view).
+  let userZoomOverride = false;
   let beltLabelClickAreas = new Map<string, { x1: number, y1: number, x2: number, y2: number }>();
   let x0_distance = 0.01; // Default pivot for distance scaling
 
@@ -280,6 +285,7 @@
   export function resetView() {
       if (!system || !canvas) return;
       cameraMode = 'FOLLOW';
+      userZoomOverride = false;
       const targetId = focusedBodyId || system.nodes.find(n => n.parentId === null)?.id;
       if (targetId) {
           focusLevel = firstLevelFor(targetId);
@@ -311,6 +317,8 @@
       const targetPosition = targetPositions.get(targetId);
       if (!targetPosition) return;
       cameraMode = 'FOLLOW';
+      userZoomOverride = false;   // an explicit (re)frame re-engages auto-zoom from this object's level
+      lastAutoZoomTarget = 0;
       isAnimatingFocus = true;
       const beforeViewport = { pan: get(panStore), zoom: get(zoomStore) };
       const rawAfterViewport = calculateFrameForNode(targetId);
@@ -396,7 +404,7 @@
               const nextZoom = dampedZoomStep(baseZoom, idealZoom);
               const deltaRatio = Math.abs(nextZoom - baseZoom) / Math.max(baseZoom, MIN_CAMERA_ZOOM);
 
-              if (!suppressNearPeriapsis && !tooSoon && deltaRatio > 0.02) {
+              if (!userZoomOverride && !suppressNearPeriapsis && !tooSoon && deltaRatio > 0.02) {
                   zoomStore.set(nextZoom, { duration: 200 });
                   lastAutoZoomTarget = nextZoom;
                   lastAutoZoomUpdateMs = now;
@@ -667,6 +675,7 @@
   // Zoom about a canvas-relative point, keeping that point fixed (old handleWheel logic,
   // generalised to take a factor so wheel and pinch share it).
   function zoomAt(factor: number, screenX: number, screenY: number) {
+      userZoomOverride = true;   // the user is driving zoom now — stop the auto-camera fighting them
       const worldPosBeforeZoom = screenToWorld(screenX, screenY);
       const newZoom = clampZoom(get(zoomStore) * factor);
       const newPanX = worldPosBeforeZoom.x - (screenX - canvas.width / 2) / newZoom;
