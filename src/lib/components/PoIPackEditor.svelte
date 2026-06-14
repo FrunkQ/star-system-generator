@@ -252,7 +252,7 @@
             {#if isTag}
               <input class="tagkey" placeholder="tag key" value={row.field.startsWith('tag:') ? row.field.slice(4) : ''} on:input={(e) => { row.field = 'tag:' + e.currentTarget.value; rows = rows; }} />
             {/if}
-            <select value={row.op} on:change={(e) => onOpChange(row, e.currentTarget.value)}>
+            <select class="op" value={row.op} on:change={(e) => onOpChange(row, e.currentTarget.value)}>
               {#each opsForRow(row) as op}<option value={op}>{OP_LABEL[op]}</option>{/each}
             </select>
             {#if f?.type === 'bool'}
@@ -294,7 +294,7 @@
 
 <style>
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 2200; }
-  .modal { background: var(--bg-panel); color: var(--text); border-radius: 8px; padding: 1.2rem 1.4rem; width: 860px; max-width: 96vw; max-height: 92vh; overflow-y: auto; display: flex; flex-direction: column; gap: 0.7rem; }
+  .modal { background: var(--bg-panel); color: var(--text); border-radius: 8px; padding: 1.2rem 1.4rem; width: 860px; max-width: 96vw; max-height: 95vh; overflow-y: auto; display: flex; flex-direction: column; gap: 0.7rem; }
   header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
   header h2 { margin: 0; }
   .lede { margin: 0; font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; }
@@ -325,7 +325,7 @@
   .cat-row .swatch { width: 26px; height: 26px; padding: 1px; flex: 0 0 auto; cursor: pointer; }
   .tag-chip-preview { font-family: var(--font-mono, monospace); font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
   .cat-row .tag-chip-preview { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .rules { display: flex; flex-direction: column; gap: 2px; max-height: 220px; overflow-y: auto; }
+  .rules { display: flex; flex-direction: column; gap: 2px; max-height: 46vh; overflow-y: auto; padding-right: 8px; }
   .rule-row { font-size: 0.8rem; }
   .rule-row.off { opacity: 0.45; }
   .rtag-chip { flex: 1; min-width: 0; font-family: var(--font-mono, monospace); font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -336,13 +336,16 @@
   .add-line { align-self: flex-start; background: none; border: 1px dashed var(--border); border-radius: 4px; color: var(--link); padding: 4px 10px; cursor: pointer; font-size: 0.78rem; margin-top: 3px; }
   .err { color: #f55; font-size: 0.78rem; }
   .rule-edit-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 2300; }
-  .rule-edit { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 1.1rem; width: 460px; max-width: 94vw; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; }
+  .rule-edit { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 1.1rem; width: 540px; max-width: 94vw; max-height: 92vh; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 0.5rem; }
+  .rule-edit input, .rule-edit select, .rule-edit textarea { box-sizing: border-box; }
+  .rule-edit input[type="range"] { width: 100%; margin: 0; }
   .rule-edit h3 { margin: 0 0 0.3rem; }
   .fld { display: flex; flex-direction: column; gap: 3px; font-size: 0.78rem; color: var(--text-muted); }
   .fld input, .fld select { width: 100%; }
   .cond-head { display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.5rem; font-size: 0.8rem; }
   .cond-row select:first-child { flex: 2; min-width: 0; }
   .cond-row input, .cond-row select { flex: 1; min-width: 0; }
+  .cond-row .op { flex: 0 0 auto; min-width: 58px; width: auto; }
   .cond-row .tagkey { font-family: var(--font-mono, monospace); }
   .cond-row .num-range { flex: 1; display: flex; gap: 6px; align-items: center; min-width: 0; }
   .cond-row .num-range .slider { flex: 1; min-width: 36px; padding: 0; }

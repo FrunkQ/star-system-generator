@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.55-beta - 14th Jun 2026
+
+* Settings: the "Generation" section is now "PoI" and the experimental generation-engine selector is gone. It's now a clean checklist of the loaded PoI categories — each with a colour swatch, its rule count, and a tickbox to show/hide it in the current view.
+* PoI editor polish: the rules list no longer overlaps its scrollbar and can grow taller; the rule editor is wider with a slimmer operator box (more room for the sliders), and the stray horizontal scrollbar while editing a rule is gone.
+
 ## v2.0.54-beta - 14th Jun 2026
 
 * New "Find by tag…" in the rail: every tag across the whole starmap, grouped by category as coloured chips with counts. Click one to list the bodies that carry it (the current system first), then jump straight there — the fast way to find the nearest gas-giant refuelling, heavy-metal world, icy belt, biosignature, and so on.

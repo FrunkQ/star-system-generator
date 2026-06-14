@@ -20,7 +20,7 @@
   // On narrow / touch the modal is a drill-in: a list of sections (drilled=false) →
   // a section's content (drilled=true). "Back" goes UP a level rather than closing.
   const SECTION_LABELS: Record<Section, string> = {
-    starmap: 'Starmap', generation: 'Generation', time: 'Time', technology: 'Tech', planets: 'Planets', system: 'System'
+    starmap: 'Starmap', generation: 'PoI', time: 'Time', technology: 'Tech', planets: 'Planets', system: 'System'
   };
   let isNarrow = false;
   let drilled = !!initialSection;
@@ -60,7 +60,13 @@
     : ((starmap.distanceUnit || '').toLowerCase() === 'pc' ? 'pc' : 'ly');
   let abstractUnit = initialDiagrammatic ? (starmap.distanceUnit || 'J') : 'J';
   let abstractOrder: 'prefix' | 'suffix' = starmap.unitIsPrefix ? 'prefix' : 'suffix';
-  let generationEngine = starmap.generationEngine ?? 'standard';
+  let generationEngine = starmap.generationEngine ?? 'standard';   // preserved on save; no longer surfaced in the UI
+  // Enabled-rule count per category across the enabled packs (shown beside each PoI category).
+  $: ruleCounts = (() => {
+    const m: Record<string, number> = {};
+    for (const p of $poiPacks) { if (p.enabled === false) continue; for (const r of p.rules) { if (r.enabled === false) continue; m[r.category] = (m[r.category] ?? 0) + 1; } }
+    return m;
+  })();
   let showScaleBar = starmap.scale?.showScaleBar ?? true;
   let normalizedTemporal = ensureTemporalState(starmap).temporal!;
   let activeCalendarKey = normalizedTemporal.activeCalendarKey;
@@ -195,7 +201,7 @@
     <div class="settings-layout">
       <nav class="settings-nav">
         <button class:active={activeSection === 'starmap'} on:click={() => pickSection('starmap')}>Starmap</button>
-        <button class:active={activeSection === 'generation'} on:click={() => pickSection('generation')}>Generation</button>
+        <button class:active={activeSection === 'generation'} on:click={() => pickSection('generation')}>PoI</button>
         <button class:active={activeSection === 'time'} on:click={() => pickSection('time')}>Time</button>
         <button class:active={activeSection === 'technology'} on:click={() => pickSection('technology')}>Tech</button>
         <button class:active={activeSection === 'planets'} on:click={() => pickSection('planets')}>Planets</button>
@@ -255,32 +261,26 @@
           </div>
 
         {:else if activeSection === 'generation'}
-          <h3>Reasons to visit</h3>
-          <p class="section-hint">RPG hooks tagged onto worlds — mineable resources, scientific draws, frontier logistics and mysteries — inferred from the physics plus a seeded roll.</p>
+          <h3>Points of Interest</h3>
+          <p class="section-hint">RPG hooks tagged onto worlds — mineable resources, scientific draws, frontier logistics and mysteries — from the loaded PoI packs (physics + a seeded roll).</p>
           <div class="form-group">
-            <label><input type="checkbox" bind:checked={$reasonsConfig.enabled} /> Add "reasons to visit" tags</label>
+            <label><input type="checkbox" bind:checked={$reasonsConfig.enabled} /> Show Point-of-Interest tags</label>
           </div>
           {#if $reasonsConfig.enabled}
+            <p class="section-hint">Categories currently loaded — tick to show in this view:</p>
             <div class="form-group reason-cats">
               {#each activeCategories($poiPacks) as cat}
-                <label title={cat.desc}>
+                <label class="cat-line" title={cat.desc}>
                   <input type="checkbox" checked={$reasonsConfig.categories[cat.id] !== false}
                     on:change={(e) => reasonsConfig.update((c) => ({ ...c, categories: { ...c.categories, [cat.id]: e.currentTarget.checked } }))} />
-                  {cat.label}
+                  <span class="cat-swatch" style="background:{cat.color || '#888'}"></span>
+                  <span class="cat-name">{cat.label}</span>
+                  <span class="cat-count">{ruleCounts[cat.id] ?? 0} {(ruleCounts[cat.id] ?? 0) === 1 ? 'rule' : 'rules'}</span>
                 </label>
               {/each}
             </div>
             <button class="section-btn" on:click={() => { dispatch('editpoi'); showModal = false; }}>Edit PoI rule packs…</button>
           {/if}
-
-          <!-- De-emphasised: the experimental generation engine isn't important right now. -->
-          <div class="form-group engine-row">
-            <label for="generationEngine">Generation engine</label>
-            <select id="generationEngine" bind:value={generationEngine}>
-              <option value="standard">Standard (Stable)</option>
-              <option value="evolutionary">Evolutionary (Alpha Physics)</option>
-            </select>
-          </div>
 
         {:else if activeSection === 'time'}
           <h3>Date &amp; time</h3>
@@ -421,11 +421,11 @@
   }
   .settings-content h3:first-child { margin-top: 0; }
   .section-hint { color: var(--text-faint, #8a8f9a); margin: 0 0 12px; }
-  .reason-cats { display: flex; flex-direction: column; gap: 6px; padding-left: 18px; }
-  .reason-cats label { display: flex; align-items: center; gap: 7px; font-size: 0.92em; }
-  /* Generation engine is experimental and low-priority — pushed to the bottom and faded. */
-  .engine-row { margin-top: 28px; opacity: 0.4; font-size: 0.85em; }
-  .engine-row:hover, .engine-row:focus-within { opacity: 0.85; }
+  .reason-cats { display: flex; flex-direction: column; gap: 4px; padding-left: 4px; }
+  .reason-cats .cat-line { display: flex; align-items: center; gap: 8px; font-size: 0.92em; }
+  .cat-swatch { width: 12px; height: 12px; border-radius: 3px; flex: 0 0 auto; }
+  .cat-name { flex: 1; }
+  .cat-count { color: var(--text-faint, #8a8f9a); font-size: 0.85em; }
   .section-btn {
     display: block;
     width: 100%;
