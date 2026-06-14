@@ -11,6 +11,13 @@
   // (greenscreen) view. Screen-blend adds bright speckles on dark; multiply darkens on the green.
   $: fg = c.invert ? '#04070b' : color;
   $: speckBlend = c.invert ? 'multiply' : 'screen';
+  // Normalised fg RGB (0..1) for the SVG colour-matrix that tints the static.
+  function norm(hex: string): [number, number, number] {
+    const h = hex.replace('#', ''); const n = h.length === 3 ? h.split('').map((x) => x + x).join('') : h;
+    return [parseInt(n.slice(0, 2), 16) / 255, parseInt(n.slice(2, 4), 16) / 255, parseInt(n.slice(4, 6), 16) / 255];
+  }
+  $: fgN = norm(fg);
+  const uid = Math.random().toString(36).slice(2, 8);
 </script>
 
 <div class="crt-overlay"
@@ -18,7 +25,20 @@
             --barh:{c.noiseBarWidth}%; --bardur:{barDur}s; --bardir:{c.noiseBarSpeed < 0 ? 'reverse' : 'normal'};">
   {#if c.scanlineIntensity > 0}<div class="scanlines"></div>{/if}
   {#if c.vignette > 0}<div class="vignette"></div>{/if}
-  {#if c.interference > 0}<div class="noise"></div>{/if}
+  {#if c.interference > 0}
+    <!-- TV static: the feTurbulence SEED is animated, so the grain regenerates each step instead of
+         a fixed pattern scrolling. feColorMatrix tints it to the foreground colour + thresholds alpha. -->
+    <svg class="noise" preserveAspectRatio="none" viewBox="0 0 320 200" style="opacity:{c.interference}; mix-blend-mode:{speckBlend}">
+      <filter id="crtnoise-{uid}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="2" stitchTiles="stitch" seed="1" result="t">
+          <animate attributeName="seed" values="1;13;29;41;57;73;89" dur="0.6s" calcMode="discrete" repeatCount="indefinite" />
+        </feTurbulence>
+        <feColorMatrix in="t" type="matrix"
+          values="0 0 0 0 {fgN[0]}  0 0 0 0 {fgN[1]}  0 0 0 0 {fgN[2]}  0.9 0 0 0 -0.32" />
+      </filter>
+      <rect width="100%" height="100%" filter="url(#crtnoise-{uid})" />
+    </svg>
+  {/if}
   {#if c.noiseBarWidth > 0}<div class="noisebar"></div>{/if}
   {#if c.flicker > 0}<div class="flicker"></div>{/if}
 </div>
@@ -52,17 +72,9 @@
     box-shadow: inset 0 0 150px rgba(0,0,0,calc(var(--vig) * 0.7));
   }
 
-  /* Foreground-colour speckles: a solid --fg fill masked by SVG turbulence (so only the noisy
-     spots show), blended onto the screen. Green specks on black; black specks on the green invert. */
-  .noise {
-    opacity: var(--noise);
-    background-color: var(--fg);
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='discrete' tableValues='0 0 0 1 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='discrete' tableValues='0 0 0 1 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    -webkit-mask-size: 200px 200px; mask-size: 200px 200px;
-    mix-blend-mode: var(--speckblend);
-    animation: noiseShift 0.16s steps(3) infinite;
-  }
+  /* TV-static layer (animated-seed turbulence, foreground-colour-tinted). The low-res viewBox is
+     stretched to fill, giving chunky CRT grain and keeping the per-frame filter cheap. */
+  .noise { width: 100%; height: 100%; }
 
   /* A horizontal noise bar in the foreground colour that rolls vertically. */
   .noisebar {
@@ -85,12 +97,6 @@
     --flickMax: var(--flick);
   }
 
-  @keyframes noiseShift {
-    0%   { -webkit-mask-position: 0 0;        mask-position: 0 0; }
-    33%  { -webkit-mask-position: -40px 30px; mask-position: -40px 30px; }
-    66%  { -webkit-mask-position: 30px -20px; mask-position: 30px -20px; }
-    100% { -webkit-mask-position: -10px 10px; mask-position: -10px 10px; }
-  }
   @keyframes barRoll {
     0% { top: -10%; }
     100% { top: 110%; }

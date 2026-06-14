@@ -23,6 +23,7 @@
     ['habitability', 'Habitability score'],
     ['classification', 'Classification (fingerprints)'],
     ['tags', 'Tags'],
+    ['reasons', 'Reasons to visit'],
     ['generation', 'Auto-generation'],
     ['baseline', 'Test fixtures (Sol & Testion)'],
     ['fudges', 'Known fudges']
@@ -364,6 +365,30 @@
         planet/ocean, etc.). The full layering is documented in <code>docs/classification-and-tags.md</code>.</p>
     </section>
 
+    <section id="reasons">
+      <h2>Reasons to visit (RPG hooks)</h2>
+      <p>On top of the physics, every world gets <em>game</em> hooks — why a crew would actually go there — so a
+        GM has something to point players at. They're inferred from the derived physics (makeup, age, mass,
+        temperature, geology, atmosphere and the other tags) plus a <strong>seeded roll</strong> keyed off the body
+        id + system seed, so a given system always tags the same way but not every world has everything. Four
+        namespaced categories, each toggleable (or off entirely) under <em>Settings → Generation</em>:</p>
+      <ul class="tags">
+        <li><code>resource/*</code> — extractables: heavy/rare metals, fissiles, helium-3, deuterium, water ice,
+          volatiles, hydrocarbons, diamonds, organics, asteroid ore, oxidizer</li>
+        <li><code>science/*</code> — research draws: biosignatures, pristine protoplanetary, tidal lab, impact
+          record, remnant proximity, resonance showcase, rare world type, exotic chemistry</li>
+        <li><code>frontier/*</code> — logistics: gas-giant &amp; water/ice <strong>refuelling</strong> (Traveller-style),
+          life-support resupply, aerobraking, gravity assists, waystation sites</li>
+        <li><code>intrigue/*</code> — pure bait (low odds): anomalous signals, derelict rumours, uncharted
+          features, legends</li>
+      </ul>
+      <p>Each candidate tag has a physics condition <em>and</em> a probability; the roll advances regardless of which
+        categories are enabled, so toggling one category never reshuffles the others. Scientifically plausible
+        (helium-3 on giants and old airless regolith; diamonds on carbon-rich high-pressure worlds; fissiles on
+        radiogenic crusts; refuelling on hydrogen giants and ice), but deliberately a hook generator, not a
+        first-principles resource model.</p>
+    </section>
+
     <section id="generation">
       <h2>Auto-generation</h2>
       <p>When you generate a system, the stars come from the HR diagram (aged to the chosen age), and the
@@ -456,7 +481,7 @@
         <li>Atmospheric escape is a calibrated heuristic (Jeans thermal + an XUV/stellar-wind erosion term), gated above ~9 km/s escape velocity so the Solar-System baseline is preserved — it only thins or strips, never invents.</li>
         <li>The pre-main-sequence over-luminosity and its Kelvin-Helmholtz timescale (∝ 1/mass) are a calibrated shape for a believable young-star preview, not a stellar-structure solve.</li>
         <li>Resonance detection is a period-ratio tagger (within tolerance bands), not a libration analysis — it can't distinguish a true librating resonance from a near-coincidental ratio.</li>
-        <li>The resonant-pumping thresholds (e ≥ 0.004, planet-mass host) are calibrated cutoffs — tuned so Enceladus fires and Ganymede/Dione don't — and resonance pumping classifies the geology but does not yet feed the numeric tidal-heat model.</li>
+        <li>The resonant-pumping thresholds (e ≥ 0.004, planet-mass host) are calibrated cutoffs — tuned so Enceladus fires and Ganymede/Dione don't. A resonance-maintained eccentricity now feeds the numeric tidal-heat model (it dissipates from zero forcing, where a transient eccentricity must clear an onset first), with the global-mean contribution still capped at a calibrated few kelvin.</li>
         <li>The solar-seasonal geyser branch is a trigger condition (cold + surface ice), not a sublimation-energy model.</li>
         <li>Predicted fates (infall/ejection/collision) are heuristic outcomes read off the dominant instability driver, not N-body integrations.</li>
       </ul>
