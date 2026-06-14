@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
-  import { describeTag, SUGGESTED_TAGS } from '$lib/tags/tagPresentation';
+  import { describeTag, SUGGESTED_TAGS, isManagedTag } from '$lib/tags/tagPresentation';
 
   export let body: CelestialBody;
   export let rulePack: RulePack | null = null;
@@ -45,19 +45,25 @@
                 {#if body.tags && body.tags.length > 0}
                     {#each body.tags as tag, i}
                         {@const info = describeTag(tag.key)}
+                        {@const managed = isManagedTag(tag.key)}
                         <button
                             class="tag-chip active"
+                            class:managed
                             style="background-color: {info.color};"
-                            on:click={() => removeTag(i)}
-                            title={info.description ? `${info.description}\n(click to remove)` : 'Click to remove'}
+                            on:click={() => { if (!managed) removeTag(i); }}
+                            title={managed
+                                ? `${info.description || info.label}\n\nAuto-derived (physics or a PoI rule) — re-applied every recalculation, so it can't be removed by hand. Change the rules to alter it.`
+                                : (info.description ? `${info.description}\n(your tag — click to remove)` : 'Your tag — click to remove')}
                         >
-                            {info.label}{#if tag.value}: {tag.value}{/if} <span class="x">×</span>
+                            {info.label}{#if tag.value}: {tag.value}{/if}
+                            <span class="x">{managed ? '🔒' : '×'}</span>
                         </button>
                     {/each}
                 {:else}
                     <span class="no-tags">None</span>
                 {/if}
             </div>
+            <p class="tag-hint">🔒 = auto-derived from physics or a PoI rule (locked). Tags you add are removable.</p>
         </div>
         
         <div class="tag-group">
@@ -98,6 +104,9 @@
   .tag-chip { border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.8em; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: background-color 0.2s; }
   .tag-chip.active { background-color: #3b82f6; color: white; }
   .tag-chip.active:hover { background-color: #2563eb; }
+  .tag-chip.managed { cursor: default; opacity: 0.92; }
+  .tag-chip.managed .x { font-size: 0.85em; }
+  .tag-hint { font-size: 0.72em; color: var(--text-faint); margin: 4px 0 0; width: 100%; }
   .tag-chip.suggested { background-color: var(--bg-panel); color: var(--link); border: 1px dashed var(--border); }
   .tag-chip.suggested:hover { background-color: var(--bg-control); }
   .x, .plus { font-weight: bold; font-size: 1.1em; line-height: 0.5; }

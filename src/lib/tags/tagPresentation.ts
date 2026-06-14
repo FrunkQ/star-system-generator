@@ -185,6 +185,15 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'habitability/none':       { label: 'Uninhabitable',    description: 'No plausible biosphere under the current model.' }
 };
 
+// A tag is "managed" (system-owned) if the engine re-derives it every run — physics namespaces,
+// known flat gas tags, and the PoI categories (resource/science/frontier/intrigue). These can't be
+// usefully removed by hand (they come straight back); the way to change them is the rules/PoI pack.
+// Anything else is a USER tag — free-text the player added, theirs to keep or remove.
+export function isManagedTag(key: string): boolean {
+  if (key.includes('/')) return (key.split('/')[0]) in NAMESPACE_META;
+  return key in TAG_INFO;
+}
+
 function titleCase(s: string): string {
   return s.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }

@@ -20,6 +20,12 @@ import { predictTidalLock } from '../physics/tidalLock';
 // Planets are assumed to coalesce a few Myr into the system's life — the baseline for age-integrated
 // processes (atmospheric escape, etc.). Negligible vs Gyr ages but makes the assumption explicit.
 const FORMATION_DELAY_GYR = 0.005;
+
+// Old friendly-label tags that duplicate physics-derived ones — dropped on load (the physics
+// re-adds the correct namespaced versions). Explicit so user free-text tags are never touched.
+const LEGACY_DUPLICATE_TAGS = new Set<string>([
+  'Active Volcanism', 'Tidally Locked', 'Active Volcano', 'Tidal Volcanism', 'Tidal Hotspots'
+]);
 import { SeededRNG } from '../rng';
 import { annotateGravitationalStability } from '../physics/stability';
 import { annotateResonances } from '../physics/resonance';
@@ -35,19 +41,14 @@ export class SystemProcessor implements ISystemProcessor {
         this.systemAgeGyr = system.age_Gyr ?? 4.6;
         const rng = new SeededRNG(system.seed); // Deterministic RNG for procedural aspects of processing
 
-        // Strip LEGACY tags on load. Old data carries friendly-label duplicates ("Active Volcanism",
-        // "Tidally Locked") of tags the physics now re-derives correctly each run (tidal/volcanism,
-        // orbit/tidally-locked). Valid tags are namespaced (ns/value) or one of the rulepack's flat
-        // gas tags; a flat tag with an uppercase letter or whitespace that isn't a gas tag is legacy
-        // junk → drop it (lowercase custom flat tags are kept).
-        const validFlatTags = new Set<string>();
-        if (rulePack.gasPhysics) {
-            for (const g of Object.values(rulePack.gasPhysics)) for (const t of (g.tags || [])) validFlatTags.add(t.name);
-        }
+        // Strip only KNOWN legacy duplicate tags — old data carries friendly-label copies
+        // ("Active Volcanism", "Tidally Locked") of tags the physics now re-derives each run
+        // (tidal/volcanism, orbit/tidally-locked). Use an explicit list so we NEVER wipe a user's
+        // own free-text tags (those are theirs to keep — see isUserTag in tagPresentation).
         for (const node of allNodes) {
             const b = node as CelestialBody;
             if (!b.tags || !b.tags.length) continue;
-            b.tags = b.tags.filter((t) => t.key.includes('/') || validFlatTags.has(t.key) || !/[A-Z\s]/.test(t.key));
+            b.tags = b.tags.filter((t) => !LEGACY_DUPLICATE_TAGS.has(t.key));
         }
 
         // Stellar flare activity (drives the flare particle dose on planets) — derived for every star
