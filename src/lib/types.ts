@@ -13,7 +13,7 @@ export interface Visibility {
   fields?: Record<string, boolean>;
 }
 
-export interface Tag { key: string; value?: string; ns?: string; }
+export interface Tag { key: string; value?: string; ns?: string; manual?: boolean; }
 
 export interface NodeBase {
   id: ID; name: string; parentId: ID | null; ui_parentId?: ID | null;

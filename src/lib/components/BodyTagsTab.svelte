@@ -2,14 +2,21 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
   import { describeTag, tagSource } from '$lib/tags/tagPresentation';
+  import { poiPacks, activeCategories } from '$lib/physics/reasonsToVisit';
 
   export let body: CelestialBody;
   export let rulePack: RulePack | null = null;
 
   const dispatch = createEventDispatcher();
 
-  let newKey = '';
+  // Add-a-tag form: pick a category (Custom = free-form key) → name → live preview of the full tag.
+  let newCat = 'custom';
+  let newName = '';
   let newValue = '';
+  $: cats = activeCategories($poiPacks);
+  const slug = (s: string) => s.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9/_-]/g, '');
+  $: previewKey = newCat === 'custom' ? (newName.trim() || 'tag') : `${newCat}/${slug(newName) || 'name'}`;
+  $: previewInfo = describeTag(previewKey);
 
   function removeTag(key: string) {
       if (!body.tags) return;
@@ -17,16 +24,21 @@
       dispatch('update');
   }
   function addCustomTag() {
-      if (!newKey) return;
+      const key = newCat === 'custom' ? newName.trim() : `${newCat}/${slug(newName)}`;
+      if (!key || (newCat !== 'custom' && !slug(newName))) return;
       if (!body.tags) body.tags = [];
-      body.tags = [...body.tags, { key: newKey, value: newValue }];
-      newKey = '';
-      newValue = '';
-      dispatch('update');
+      if (!body.tags.some((t) => t.key === key)) {
+          // manual:true marks it as the player's own — it survives the reasons re-tag pass even when
+          // filed under an existing category, and always reads as "Yours" (removable).
+          body.tags = [...body.tags, { key, value: newValue || undefined, manual: true }];
+          dispatch('update');
+      }
+      newName = ''; newValue = '';
   }
 
   // Group the body's tags by SOURCE so the player can see where each came from: their own first,
   // then PoI-rule tags (changeable via the pack) and physics tags (fixed) under category headings.
+  // A manual:true tag is always "Yours" regardless of its namespace.
   interface TagItem { key: string; value?: string; label: string; color: string; textColor: string; desc: string; }
   $: groups = (() => {
     const manual: TagItem[] = [];
@@ -35,7 +47,7 @@
     for (const t of body.tags ?? []) {
       const info = describeTag(t.key);
       const item: TagItem = { key: t.key, value: t.value, label: info.label, color: info.color, textColor: info.textColor || '#fff', desc: info.description };
-      const src = tagSource(t.key);
+      const src = t.manual ? 'manual' : tagSource(t.key);
       if (src === 'manual') manual.push(item);
       else { const bucket = src === 'poi' ? poi : physics; (bucket[info.group] ||= []).push(item); }
     }
@@ -97,13 +109,24 @@
   </div>
 
   <hr />
-  <h4>Add Custom Tag</h4>
+  <h4>Add a tag</h4>
   <div class="add-tag-form">
-    <div class="row">
-      <input type="text" placeholder="Key (e.g. faction/control)" bind:value={newKey} />
-      <input type="text" placeholder="Value (optional)" bind:value={newValue} />
+    <label class="fld">Category
+      <select bind:value={newCat}>
+        <option value="custom">Custom</option>
+        {#each cats as c}<option value={c.id}>{c.label}</option>{/each}
+      </select>
+    </label>
+    <label class="fld">{newCat === 'custom' ? 'Tag (full key)' : 'Tag name'}
+      <input type="text" bind:value={newName} placeholder={newCat === 'custom' ? 'e.g. faction/control' : 'e.g. spice'} />
+    </label>
+    <label class="fld">Value (optional)
+      <input type="text" bind:value={newValue} placeholder="e.g. Empire, 7" />
+    </label>
+    <div class="preview-row">Players see:
+      <span class="tag-chip-preview" style="background:{previewInfo.color}; color:{previewInfo.textColor || '#fff'}">{previewKey}{#if newValue.trim()}: {newValue}{/if}</span>
     </div>
-    <button class="add-btn" on:click={addCustomTag} disabled={!newKey}>Add Custom Tag</button>
+    <button class="add-btn" on:click={addCustomTag} disabled={!newName.trim()}>Add tag</button>
   </div>
 </div>
 
@@ -125,9 +148,12 @@
   .lock.physics { color: #ef4444; }   /* red outline — physics, cannot change */
   .lock.poi { color: #f59e0b; }       /* orange outline — PoI rule, changeable */
   .no-tags { color: var(--text-faint); font-style: italic; }
-  .add-tag-form { display: flex; flex-direction: column; gap: 10px; }
-  .row { display: flex; gap: 5px; }
+  .add-tag-form { display: flex; flex-direction: column; gap: 8px; }
+  .fld { display: flex; flex-direction: column; gap: 3px; font-size: 0.75em; color: var(--text-muted); }
+  select { padding: 7px; border-radius: 4px; border: 1px solid var(--border); background-color: var(--bg-control); color: var(--text); }
   input { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid var(--border); background-color: var(--bg-control); color: var(--text); }
+  .preview-row { display: flex; align-items: center; gap: 7px; font-size: 0.75em; color: var(--text-muted); flex-wrap: wrap; }
+  .tag-chip-preview { font-family: var(--font-mono, monospace); font-size: 0.92em; padding: 2px 7px; border-radius: 4px; }
   .add-btn { width: 100%; padding: 8px; background-color: var(--bg-panel); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
   .add-btn:hover { background-color: var(--bg-control); }
   .add-btn:disabled { opacity: 0.5; cursor: not-allowed; }

@@ -115,7 +115,13 @@ export const DEFAULT_POI_PACK: PoIPack = {
     R('intrigue/derelict-rumour', 'intrigue', 0.18, { eq: ['hasConstructs', true] }),
     R('intrigue/derelict-rumour', 'intrigue', 0.05, { eq: ['hasConstructs', false] }),
     R('intrigue/uncharted-feature', 'intrigue', 0.1, true),
-    R('intrigue/legend', 'intrigue', 0.4, { any: [{ hasTag: 'habitability/super' }, { eq: ['isLegendClass', true] }] })
+    R('intrigue/legend', 'intrigue', 0.4, { any: [{ hasTag: 'habitability/super' }, { eq: ['isLegendClass', true] }] }),
+    // Belt-specific hooks (appended last → existing rolls/tags unchanged). Belts read by temperature
+    // (icy outer/Kuiper vs rocky-metallic inner) and orbital excitation (a stirred belt is likely a
+    // disrupted differentiated body — a shattered planetary core).
+    R('frontier/ice-mining', 'frontier', 0.7, { all: [{ eq: ['roleHint', 'belt'] }, { gt: ['teqK', 0] }, { lt: ['teqK', 150] }] }),
+    R('resource/rare-metals', 'resource', 0.4, { all: [{ eq: ['roleHint', 'belt'] }, { gte: ['teqK', 150] }] }),
+    R('science/shattered-core', 'science', 0.5, { all: [{ eq: ['roleHint', 'belt'] }, { gt: ['ecc', 0.12] }] })
   ]
 };
 
@@ -305,7 +311,9 @@ export function annotateReasonsToVisit(system: System, cfg?: ReasonsConfig, pack
     if (node.kind !== 'body') continue;
     const b = node as CelestialBody;
     if (!['planet', 'moon', 'belt'].includes(b.roleHint)) continue;
-    b.tags = (b.tags || []).filter((t) => !catPrefixes.some((p) => t.key.startsWith(p)));
+    // Clear stale rule-tags by category prefix — but NEVER a hand-added (manual) tag, even if the
+    // player filed it under an existing category (e.g. a custom frontier/my-depot).
+    b.tags = (b.tags || []).filter((t) => t.manual || !catPrefixes.some((p) => t.key.startsWith(p)));
     if (!conf.enabled) continue;
 
     const f = buildFeatures(b, ageGyr, hasRemnant, hasConstructs);

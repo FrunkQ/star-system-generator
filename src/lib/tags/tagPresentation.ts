@@ -97,6 +97,7 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'resource/diamonds':        { label: 'Diamonds',          description: 'A carbon-rich, high-pressure world — diamond as bedrock, and as industrial abrasive.' },
   'resource/organics':        { label: 'Organics',          description: 'Pre-biotic or biotic organic chemistry — feedstock, samples, or food supplies.' },
   'resource/ore-belt':        { label: 'Asteroid ore',      description: 'A debris belt: undifferentiated metals, rock and ice ready for in-situ mining.' },
+  'resource/rare-metals':     { label: 'Asteroid rare metals', description: 'A warm, rocky-metallic belt — platinum-group and rare earths in low-gravity bodies that are cheap to mine.' },
   'resource/oxidizer':        { label: 'Oxidizer',          description: 'A free-oxygen atmosphere — bankable oxidizer for chemical propellant and industry.' },
 
   'science/pristine-protoplanetary': { label: 'Pristine protoplanetary', description: 'A very young world — a snapshot of planet formation before it weathers away.' },
@@ -109,7 +110,9 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'science/rare-world-type':         { label: 'Rare world type',         description: 'An uncommon planet class — worth charting for its rarity alone.' },
   'science/exotic-chemistry':        { label: 'Exotic chemistry',        description: 'Aggressive or artificial atmospheric chemistry — hazardous and fascinating.' },
   'science/runaway-greenhouse':      { label: 'Runaway greenhouse',      description: 'A Venus-like hothouse — a cautionary tale and a climate-science prize.' },
+  'science/shattered-core':          { label: 'Shattered core',          description: 'An eccentric, dynamically excited belt — likely the debris of a disrupted differentiated body, its metallic core laid bare. A window into planetary interiors (and a metal bonanza).' },
 
+  'frontier/ice-mining':     { label: 'Belt ice refuelling', description: 'Icy belt/Kuiper bodies — crack the ice for hydrogen/oxygen propellant; refuelling among the rocks, no gravity well.' },
   'frontier/fuel-depot':     { label: 'Water/ice refuelling', description: 'Accessible water/ice to crack into hydrogen/oxygen propellant — a wilderness refuelling stop.' },
   'frontier/gas-skimming':   { label: 'Gas-giant refuelling', description: 'Skim the giant\'s hydrogen atmosphere for jump/reaction fuel — the classic Traveller wilderness top-up.' },
   'frontier/life-support':   { label: 'Life-support resupply', description: 'Breathable oxygen and/or water on hand — replenish air and life-support consumables.' },

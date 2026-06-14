@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.53-beta - 14th Jun 2026
+
+* The body Tags editor's "Add a tag" is now category-first: pick a category (or Custom for a free-form key), type the tag name, and see the full tag players will see as a live coloured preview. Hand-added tags are marked as yours — they survive the reasons re-tag pass even when filed under an existing category, and always read as removable.
+* Belts now get their own reasons-to-visit hooks: icy/Kuiper belts flag "belt ice refuelling", warm rocky-metallic belts flag "asteroid rare metals", and dynamically excited (eccentric) belts flag a "shattered core" — the debris of a disrupted differentiated body.
+
 ## v2.0.52-beta - 14th Jun 2026
 
 * Retired the "haze-former" tag — haze is now carried by the atmosphere/apparent-colour model, so the standalone tag was redundant. The rulepack no longer emits it and old saved data is stripped of it on load.
