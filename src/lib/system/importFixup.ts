@@ -70,8 +70,19 @@ function classNamesFromPack(pack?: RulePack): Set<string> {
 
 function stripBody(body: CelestialBody, classNames: Set<string>): void {
   for (const f of DERIVED_FIELDS) delete (body as any)[f];
-  // Classification is re-derived from physics.
-  body.classes = [];
+  // Classification is re-derived from physics for planets/moons — but the processor NEVER
+  // re-classifies a star (its spectral class star/G… is generation/authored input). Wiping a
+  // star's classes here leaves it colourless, so it renders white on reload. Preserve the star's
+  // star/ class; if it only survived as a class-tag in an old save, recover it before the tag
+  // strip below drops it. Everything else is cleared so the engine re-derives cleanly.
+  if (body.roleHint === 'star') {
+    const fromClasses = (body.classes ?? []).filter((c) => typeof c === 'string' && c.startsWith('star/'));
+    body.classes = fromClasses.length
+      ? fromClasses
+      : (body.tags ?? []).map((t) => t.key).filter((k) => typeof k === 'string' && k.startsWith('star/'));
+  } else {
+    body.classes = [];
+  }
   // Derived sub-structures.
   if (body.hydrosphere) delete (body.hydrosphere as any).layers;
   if (body.atmosphere) { delete (body.atmosphere as any).molarMassKg; delete (body.atmosphere as any).scaleHeightKm; }

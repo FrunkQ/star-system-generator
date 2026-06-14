@@ -71,5 +71,27 @@ describe('fixUpImportedSystem', () => {
     expect(p.atmosphere.composition.O2).toBe(0.21);
     // tags: only the authored one survives
     expect(p.tags.map((t: any) => t.key)).toEqual(['faction/empire']);
+
+    // STAR spectral class must survive — the processor never re-derives it, so wiping it would
+    // leave the star colourless (renders white). The planet's class is still cleared (re-derived).
+    const star: any = sys.nodes.find((n: any) => n.id === 'star');
+    expect(star.classes).toEqual(['star/G']);
+  });
+
+  it('recovers a star spectral class that only survived as a class-tag (old v1 save)', () => {
+    const sys = {
+      id: 's', name: 'V1', rulePackId: 'starter-sf', nodes: [
+        {
+          id: 'star', name: 'Sun', kind: 'body', roleHint: 'star', parentId: null,
+          massKg: 2e30, radiusKm: 696000, temperatureK: 5260,
+          classes: [], tags: [{ key: 'star/K' }, { key: 'faction/empire' }]
+        }
+      ], orbit: undefined
+    } as unknown as System;
+
+    fixUpImportedSystem(sys);
+    const star: any = sys.nodes.find((n: any) => n.id === 'star');
+    expect(star.classes).toEqual(['star/K']);          // promoted from the tag
+    expect(star.tags.map((t: any) => t.key)).toEqual(['faction/empire']);  // class-tag stripped, authored kept
   });
 });
