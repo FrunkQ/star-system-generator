@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.86-beta - 15th Jun 2026
+
+* Sirius is now a proper binary in the default starmap. It was stored as Sirius B orbiting Sirius A rather than the two sharing a barycentre, so it didn't read as a binary and its eccentricity was being flattened on load. It now has an explicit Sirius A/B barycentre and processes to a stable, correctly-phased pair on a ~51-year eccentric orbit.
+
 ## v2.0.85-beta - 15th Jun 2026
 
 * Fixed binary stars drifting onto the same side of their barycentre. The two stars are meant to sit exactly opposite each other at all times, but the pairing offset their phase by half an orbit instead of flipping the orbit's orientation — which only lines up a circular pair. An eccentric pair (like Alpha Centauri) then swung onto the same side away from closest/farthest approach. They now stay diametrically opposite through the whole orbit; opening an affected system re-establishes the correct alignment automatically.

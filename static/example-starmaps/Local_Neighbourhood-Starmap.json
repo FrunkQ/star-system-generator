@@ -5478,8 +5478,20 @@
         "tags": [],
         "nodes": [
           {
-            "id": "sirius-a",
+            "id": "sirius-barycenter",
             "parentId": null,
+            "name": "Sirius Barycenter",
+            "kind": "barycenter",
+            "memberIds": [
+              "sirius-a",
+              "sirius-b"
+            ],
+            "effectiveMassKg": 6.1e+30,
+            "description": "The common centre of mass of the Sirius A/B binary. Sirius A is a brilliant white A-type star; Sirius B is the nearest white dwarf, the burnt-out core of a once-larger star. They circle each other every ~50 years on a markedly eccentric orbit."
+          },
+          {
+            "id": "sirius-a",
+            "parentId": "sirius-barycenter",
             "name": "Sirius A",
             "kind": "body",
             "roleHint": "star",
@@ -5491,11 +5503,24 @@
             "temperatureK": 9940,
             "image": {
               "url": "/images/star_types/A.webp"
+            },
+            "orbit": {
+              "hostId": "sirius-barycenter",
+              "hostMu": 406930000000000000000,
+              "t0": 1767000000000,
+              "elements": {
+                "a_AU": 6.557377049180328,
+                "e": 0.59,
+                "i_deg": 136,
+                "omega_deg": 0,
+                "Omega_deg": 0,
+                "M0_rad": 4.867960550330182
+              }
             }
           },
           {
             "id": "sirius-b",
-            "parentId": "sirius-a",
+            "parentId": "sirius-barycenter",
             "name": "Sirius B",
             "kind": "body",
             "roleHint": "star",
@@ -5506,11 +5531,11 @@
             "radiusKm": 5800,
             "temperatureK": 25200,
             "orbit": {
-              "hostId": "sirius-a",
-              "hostMu": 270000000000000000000,
+              "hostId": "sirius-barycenter",
+              "hostMu": 406930000000000000000,
               "t0": 1767000000000,
               "elements": {
-                "a_AU": 20,
+                "a_AU": 13.442622950819672,
                 "e": 0.59,
                 "i_deg": 136,
                 "omega_deg": 0,
