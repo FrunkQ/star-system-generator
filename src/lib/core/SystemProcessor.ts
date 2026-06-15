@@ -274,8 +274,14 @@ export class SystemProcessor implements ISystemProcessor {
         if (body.orbit && body.parentId) {
             const host = allNodes.find(n => n.id === body.parentId);
             const hostMass = (host?.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody)?.massKg) || 0;
-            
-            if (hostMass > 0) {
+            const isBaryMember = host?.kind === 'barycenter' && (host as Barycenter).memberIds?.includes(body.id);
+
+            if (isBaryMember && (body.orbit.n_rad_per_s || 0) > 0) {
+                // A binary member orbits the barycentre; BOTH members share one period — the relative
+                // orbit's — which the binary pass carries on n_rad_per_s. Deriving from a_member³/M_total
+                // would give each member a different, physically-wrong period (Rigil 25 yr, Toliman 60 yr).
+                body.orbital_period_days = (2 * Math.PI / body.orbit.n_rad_per_s!) / (60 * 60 * 24);
+            } else if (hostMass > 0) {
                 body.orbital_period_days = Math.sqrt(4 * Math.PI**2 * (body.orbit.elements.a_AU * AU_KM * 1000)**3 / (G * hostMass)) / (60 * 60 * 24);
             }
         }

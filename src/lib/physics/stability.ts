@@ -400,10 +400,17 @@ export function annotateGravitationalStability(system: System): System {
     }
 
     if (siblings.length >= 2) {
-      // Adjacent-pair scan is a pragmatic approximation for packed-system instability.
+      // A barycentre's member stars are the INNER binary — handled as a unit. Anything else under the
+      // same barycentre (e.g. Proxima at 13000 AU around the Alpha Cen A/B pair) is a WIDE hierarchical
+      // companion, not a co-planar neighbour of an individual member. The pair heuristics below model a
+      // flat packed system, so applying them across that hierarchy gap is meaningless and would flag a
+      // tight 80-yr binary partner as "flung out" because of a distant companion. Skip member↔non-member
+      // pairs; members↔members go to the binary assessor, non-members↔non-members to the generic one.
+      const memberIds = host && host.kind === 'barycenter' ? new Set(host.memberIds || []) : null;
       for (let i = 0; i < siblings.length - 1; i++) {
         const inner = siblings[i];
         const outer = siblings[i + 1];
+        if (memberIds && memberIds.has(inner.id) !== memberIds.has(outer.id)) continue;
         let pairAssessment: StabilityAssessment;
         if (isPrimaryBarycenterMemberPair(host, inner, outer) && host && host.kind === 'barycenter') {
           pairAssessment = assessBinaryPairStability(inner, outer, host, system, nodesById);

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.84-beta - 15th Jun 2026
+
+* Fixed binary stars being wrongly flagged unstable. When a wide companion shared the binary's barycentre as a flat third member (e.g. Proxima at 13000 AU around the Alpha Centauri A/B pair), the stability check Hill-compared that distant companion against an individual binary star and flagged the tight 80-year pair as "flung out". The check now treats a barycentre's member stars as the inner binary and skips that meaningless cross-hierarchy comparison.
+* Fixed binary stars showing two different orbital periods. Both members of a binary share one period (the pair's mutual orbit), but each was being computed from its own barycentric distance and the combined mass — so Rigil Kentaurus and Toliman read 25 and 60 years. They now correctly share the one period.
+
 ## v2.0.83-beta - 15th Jun 2026
 
 * Fixed all stars rendering white after uploading a saved starmap. The import fix-up wipes baked-in derived data so the engine re-derives it cleanly, but the processor never re-classifies a star — its spectral class (star/G, star/M…) is authored input. Clearing it left every star colourless (→ white). Stars now keep their spectral class through import (and recover it from a class-tag in old v1 saves), so they colour correctly on reload.
