@@ -31,14 +31,43 @@ committed only at "actual" (master) time. Autopilot reuses this:
 
 ## 3. Roles
 
-| Role | Pattern | Reorderable? |
-|---|---|---|
-| **Patrol** | Loop a set of waypoints (visit **all**) | **Yes — but coverage-constrained** (reorder the full circuit, never cherry-pick the nearest pair) |
-| **Mining run** | Source(s) → refinery/market → repeat; loads ore/day at source | Partial — **pickup must precede its dropoff** |
-| **Cargo / trade circuit** | Buy at A, sell at B, … | Partial — **pickup before dropoff** per consignment |
+**Don't model a fixed list of roles — model the AXES every role decomposes into, then ship the named roles
+as presets.** That way a new mission type is a new preset, not new code.
 
-Cargo roles carry **cargo state** (what's aboard, where it's bound), so the planner can't reorder a dropoff
-before its pickup. Patrol carries no such constraint.
+### 3a. The anchoring axes
+- **Trigger / cadence** — what makes the next trip happen:
+  - *Timetabled* (fixed departure times) · *Frequency* (revisit each waypoint within an interval) ·
+    *Continuous* (loop as fast as able) · *Demand-driven* (stochastic rate scaled by population /
+    enterprise size) · *One-shot* (single itinerary) · *Standing* (loiter / wait for an event).
+- **Route topology** — the shape of the work:
+  - *Circuit, visit-all* · *Out-and-back source↔sink* · *Point-to-point* · *Loiter / station-keep* ·
+    *One-way relocation*.
+- **Order policy** — how free the planner is to reorder:
+  - *Fixed* (the timetable IS the order) · *Reorderable, full-coverage* (patrol — visit all, rotate for
+    alignment + staleness) · *Precedence* (cargo/mining — pickup before its dropoff).
+- **Load / fuel profile** — drives the per-leg speed/efficiency pick:
+  - *Symmetric* · *Asymmetric* (out light + fuelled ⇒ fast legs possible; back heavy ⇒ efficiency legs) ·
+    *Passenger* (board/alight, comfort/time-sensitive).
+- **Purpose tag** — deliver · extract · presence · transport-people · explore · support-other-ships.
+
+### 3b. Named roles = presets over those axes
+| Role | Trigger | Topology | Order | Load |
+|---|---|---|---|---|
+| **Scheduled service** (cargo/passenger) | Timetabled | Circuit visit-all | Fixed | passenger symmetric / cargo asymmetric |
+| **Patrol** | Frequency | Circuit visit-all | Reorderable, full-coverage | symmetric |
+| **Ad-hoc cargo** | Demand-driven (pop/enterprise) | source↔sink / point-to-point | Precedence | asymmetric |
+| **Mining run** | Continuous | Out-and-back (belt points → refinery) | Precedence | asymmetric (out fuelled-fast, back ore-efficient) |
+| **Courier / express** | One-shot or on-demand | Point-to-point | Fixed | light, speed-prioritised |
+| **Tender / support** | Standing (responds to SOS / low fuel) | Point-to-point to the casualty | dynamic | carries fuel/parts — formalises the rescue ship |
+| **Picket / station-keeping** | Standing | Loiter at a point (optional short sweeps) | n/a | symmetric |
+| **Survey / exploration** | Frequency or one-shot | Circuit visit-all (prefers unvisited) | Reorderable | light |
+| **Relocation / migration** | One-shot | One-way | Fixed | heavy, one-way |
+| **Bespoke (GM-scripted)** | One-shot | any | Fixed (hand-ordered) | any | ← the catch-all for anything not a preset |
+
+Cargo/mining roles carry **cargo state** (what's aboard, where bound), so a dropoff can't be reordered
+before its pickup. Patrol/survey carry the coverage + staleness rule (§5). **Tender/support** is the natural
+home for the breakdown-rescue behaviour (§6) — a ship can be dedicated to it, or any spare ship can pick it
+up. **Bespoke** guarantees the system can always express a one-off the presets don't cover.
 
 ## 4. Inputs / knobs (per ship)
 
