@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.91-beta - 15th Jun 2026
+
+* The technical-details "Orbit (from …)" line now names the host, not just its type — "Orbit (from Star Sol)", "Orbit (from Planet Jupiter)", or for a barycentre "Orbit (from Pluto-Charon Barycenter — Pluto)".
+
 ## v2.0.90-beta - 15th Jun 2026
 
 * When a body orbits a barycentre, the orbit label now names the barycentre AND its primary body, e.g. "Orbits Pluto-Charon Barycenter (Pluto)" — a barycentre is a valid orbital point even though only its primary is selectable.

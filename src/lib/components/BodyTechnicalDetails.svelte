@@ -16,6 +16,23 @@
   export let parentBody: CelestialBody | null = null;
   export let rootStar: CelestialBody | null = null;
 
+  // The "Orbit (from …)" label: keep the host TYPE but name the actual host too (on a multi-star system
+  // a bare "Barycenter" / "star" is ambiguous). A barycentre also names its primary, since a body can
+  // orbit a barycentre though only its primary is selectable — e.g. "Pluto-Charon Barycenter — Pluto".
+  $: orbitHostLabel = (() => {
+      const p: any = parentBody;
+      if (!p) return 'Unknown';
+      if (p.kind === 'barycenter') {
+          const nodes = $systemStore?.nodes || [];
+          const members = ((p.memberIds || []) as string[]).map((id) => nodes.find((n: any) => n.id === id)).filter(Boolean) as any[];
+          const primary = members.reduce((best: any, m: any) =>
+              ((m.massKg || m.effectiveMassKg || 0) > (best?.massKg || best?.effectiveMassKg || 0) ? m : best), null);
+          return primary ? `${p.name} — ${primary.name}` : p.name;
+      }
+      const role = p.roleHint ? p.roleHint[0].toUpperCase() + p.roleHint.slice(1) : 'Body';
+      return `${role} ${p.name}`;
+  })();
+
   // Derived Reactive Properties for Constructs
   let constructSpecs: ConstructSpecs | null = null;
 
@@ -564,7 +581,7 @@
 
       {#if orbitalDistanceDisplay}
           <div class="detail-item" title={orbitalDistanceTooltip}>
-              <span class="label">Orbit (from {parentBody?.kind === 'barycenter' ? 'Barycenter' : (parentBody?.roleHint || 'Unknown')})</span>
+              <span class="label">Orbit (from {orbitHostLabel})</span>
               <span class="value">{orbitalDistanceDisplay}</span>
           </div>
       {/if}
