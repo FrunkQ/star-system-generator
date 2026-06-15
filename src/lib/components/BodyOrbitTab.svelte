@@ -7,6 +7,7 @@
 
   export let body: CelestialBody;
   export let parentBody: CelestialBody | null = null;
+  export let system: any = null;
   export let rulePack: RulePack | null = null;
 
   const dispatch = createEventDispatcher();
@@ -156,21 +157,26 @@ function updateOrbit() {
       return safeKm / AU_KM;
   }
 
-  // When this body is one half of a binary, its orbit above only sets the SEPARATION from its partner —
-  // it cannot move the pair through the system. The pair's position lives on the barycentre's own orbit
-  // (parentBody, here a 2-member barycentre that itself orbits a star). Expose that so the user can
-  // actually reposition the pair instead of it appearing stuck.
-  $: parentIsBinary = !!parentBody
+  // This body is one half of a binary when its parent is a 2-member barycentre. Its own orbit (above)
+  // only sets the SEPARATION from its partner; the PAIR's position in the system lives on the
+  // barycentre's own orbit. We surface both here so the pair is fully editable from the one body
+  // (barycentres are no longer selectable). For the ROOT pair the barycentre IS the system centre, so
+  // its distance slider is greyed. Editing either coupled value re-derives the partner on the next pass.
+  $: isBinaryMember = !!parentBody
       && (parentBody as any).kind === 'barycenter'
-      && ((parentBody as any).memberIds?.length === 2)
-      && !!(parentBody as any).orbit
-      && !!(parentBody as any).parentId;
+      && ((parentBody as any).memberIds?.length === 2);
+  $: isRootPair = isBinaryMember && !(parentBody as any).parentId;
+  $: pairHost = (isBinaryMember && (parentBody as any).parentId && system?.nodes)
+      ? (system.nodes.find((n: any) => n.id === (parentBody as any).parentId) ?? null)
+      : null;
+  $: pairHostName = pairHost ? pairHost.name : 'the system centre';
   let pairA_AU = 0;
-  $: if (parentIsBinary) pairA_AU = (parentBody as any).orbit.elements.a_AU ?? 0;
+  $: if (isBinaryMember && (parentBody as any).orbit) pairA_AU = (parentBody as any).orbit.elements.a_AU ?? 0;
+  $: pairMaxA = Math.max(60, (pairA_AU || 0) * 1.5);
 
   function handlePairDistance() {
-      if (!parentIsBinary) return;
       const bary: any = parentBody;
+      if (!isBinaryMember || isRootPair || !bary?.orbit) return;
       bary.orbit.elements.a_AU = Math.max(0.001, Number(pairA_AU) || 0);
       bary.orbit.lastEditedT0 = Date.now();
       dispatch('update');
@@ -189,21 +195,23 @@ function updateOrbit() {
     {#if !body.orbit}
         <p>This body has no orbit (it might be the central star).</p>
     {:else}
-        {#if parentIsBinary}
-        <div class="form-group pair-group">
+        {#if isBinaryMember}
+        <div class="form-group pair-group" class:rooted={isRootPair}>
             <div class="label-row">
-                <label title="Moves the whole binary pair through the system. The control below only sets how far apart the two bodies sit.">Pair distance from star (AU)</label>
-                <input type="number" step="any" min="0.001" bind:value={pairA_AU} on:input={handlePairDistance} />
+                <label title="Moves the whole binary pair through the system. The control below only sets how far apart the two bodies sit.">Distance from {pairHostName} (AU)</label>
+                <input type="number" step="any" min="0.001" bind:value={pairA_AU} on:input={handlePairDistance} disabled={isRootPair} />
             </div>
             <div class="full-width-slider">
-                <input class="pair-slider" type="range" min="0.05" max="60" step="0.05" bind:value={pairA_AU} on:input={handlePairDistance} />
+                <input class="pair-slider" type="range" min="0.05" max={pairMaxA} step="0.05" bind:value={pairA_AU} on:input={handlePairDistance} disabled={isRootPair} />
             </div>
-            <div class="info-row" style="font-size: 0.78em; color: var(--text-faint);">This moves both {(parentBody as any)?.name?.replace(' Barycenter','') ?? 'bodies'} together. Below sets their separation.</div>
+            <div class="info-row" style="font-size: 0.78em; color: var(--text-faint);">
+                {#if isRootPair}This pair is the system centre, so it has no distance to set. The control below sets how far apart the two bodies sit.{:else}Moves both bodies of the pair together. The control below sets their separation.{/if}
+            </div>
         </div>
         {/if}
         <div class="form-group">
             <div class="label-row">
-                <label>{parentIsBinary ? 'Separation from partner (AU)' : 'Semi-Major Axis (AU)'}</label>
+                <label>{isBinaryMember ? 'Separation from partner (AU)' : 'Semi-Major Axis (AU)'}</label>
                 <input type="number" step="any" bind:value={a_AU} on:input={handleNumberInput} />
             </div>
             <div class="info-row" style="font-size: 0.8em; color: var(--text-faint); margin-bottom: 4px;">{rangeText}</div>
@@ -302,6 +310,8 @@ function updateOrbit() {
       background: color-mix(in srgb, var(--accent, #5b8def) 7%, transparent);
   }
   .pair-slider { width: 100%; accent-color: var(--accent, #5b8def); }
+  .pair-group.rooted { opacity: 0.55; }
+  .pair-group input:disabled { cursor: not-allowed; }
   
   .label-row {
       display: flex;

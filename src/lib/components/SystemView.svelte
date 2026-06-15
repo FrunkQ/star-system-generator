@@ -1004,13 +1004,33 @@
     updateFocus(null, true); // Reset focus
   }
 
+  // Barycentres are never directly selectable: selecting one (a click, a picker, a saved focus, or the
+  // system root) resolves to its PRIMARY (most-massive) member, recursing through nested barycentres.
+  // The pair is then edited from that member's panel (distance-from-host + separation sliders).
+  function primaryMemberOf(id: string | null): string | null {
+      if (!id || !$systemStore) return id;
+      const byId = new Map($systemStore.nodes.map((n) => [n.id, n]));
+      let node: any = byId.get(id);
+      let guard = 0;
+      while (node && node.kind === 'barycenter' && guard++ < 16) {
+          const members = ((node.memberIds || []) as string[]).map((m) => byId.get(m)).filter(Boolean) as any[];
+          if (!members.length) break;
+          node = members.reduce((best, m) =>
+              ((m.massKg || m.effectiveMassKg || 0) > (best.massKg || best.effectiveMassKg || 0) ? m : best));
+      }
+      return node?.id ?? id;
+  }
+
   function updateFocus(id: string | null, replace: boolean = false) {
       isEditing = false;
       showZoneKeyPanel = false; // Close Zone Key on navigation
-      
-      // Canonicalize: If targeting Root, treat as null (System View default)
+
+      // Targeting the system root (a lone star OR the root barycentre) is the System View default —
+      // no body selected. Otherwise a barycentre target resolves to its primary member.
       if (rootStar && id === rootStar.id) {
           id = null;
+      } else {
+          id = primaryMemberOf(id);
       }
 
       const currentFocus = $page.state.focusId || null;
@@ -1031,6 +1051,13 @@
 
   function zoomOut() {
     if (focusedBody && focusedBody.parentId) {
+      // If the parent is the root barycentre, there's nothing higher in-system (the barycentre isn't
+      // selectable) — a top-level binary member zooms straight out to the starmap, like a lone root star.
+      const parent = $systemStore?.nodes.find(n => n.id === focusedBody!.parentId);
+      if (parent && !parent.parentId && parent.kind === 'barycenter') {
+        dispatch('back', { force: true });
+        return;
+      }
       updateFocus(focusedBody.parentId, true);
     } else {
       // "To Starmap" button clicked. Force exit to ensure state is cleared.
@@ -1039,7 +1066,7 @@
   }
 
   // Reactive Focus Handling via SvelteKit Router State
-  $: focusedBodyId = $page.state.focusId ?? ($systemStore?.nodes.find(n => !n.parentId)?.id || null);
+  $: focusedBodyId = primaryMemberOf($page.state.focusId ?? ($systemStore?.nodes.find(n => !n.parentId)?.id || null));
   $: focusedBody = $systemStore?.nodes.find(n => n.id === focusedBodyId) as CelestialBody || null;
   // For a construct, its *current* host is where its journeys have taken it (e.g. a
   // planet it's parked at), not its authored parentId (often the star it was first

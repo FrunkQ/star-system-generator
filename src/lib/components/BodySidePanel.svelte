@@ -87,7 +87,7 @@
     {:else if selectedTab === 'Basics'}
       <BodyBasicsTab {body} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Orbit'}
-      <BodyOrbitTab {body} {parentBody} {rulePack} on:update={handleUpdate} />
+      <BodyOrbitTab {body} {parentBody} {system} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Temp'}
       <BodyTemperatureTab {body} {rulePack} {rootStar} {parentBody} nodes={system.nodes} on:update={handleUpdate} />
     {:else if selectedTab === 'Atmosphere'}
