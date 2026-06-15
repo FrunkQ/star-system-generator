@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { systemProcessor } from '../core/SystemProcessor';
+import { propagateState } from './orbits';
 import type { System, RulePack, CelestialBody } from '../types';
 
 function loadRulePack(): RulePack {
@@ -36,5 +37,16 @@ describe('binary star stability + period (Alpha Centauri default-starmap data)',
     // both members share the one (relative) orbital period
     expect(a.orbital_period_days).toBeGreaterThan(0);
     expect(Math.abs((a.orbital_period_days || 0) - (b.orbital_period_days || 0))).toBeLessThan(1);
+
+    // The members must sit on OPPOSITE sides of the barycentre at every phase, not just at epoch.
+    // (With the old M0+pi coupling an eccentric pair drifted onto the same side mid-orbit.)
+    const periodMs = (a.orbital_period_days || 1) * 86400 * 1000;
+    const t0 = a.orbit!.t0;
+    for (const f of [0, 0.1, 0.25, 0.4, 0.6, 0.75, 0.9]) {
+      const ra = propagateState(a, t0 + f * periodMs).r;
+      const rb = propagateState(b, t0 + f * periodMs).r;
+      const cos = (ra.x * rb.x + ra.y * rb.y) / (Math.hypot(ra.x, ra.y) * Math.hypot(rb.x, rb.y));
+      expect(cos).toBeLessThan(-0.999);   // antiparallel
+    }
   });
 });

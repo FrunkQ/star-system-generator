@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.85-beta - 15th Jun 2026
+
+* Fixed binary stars drifting onto the same side of their barycentre. The two stars are meant to sit exactly opposite each other at all times, but the pairing offset their phase by half an orbit instead of flipping the orbit's orientation — which only lines up a circular pair. An eccentric pair (like Alpha Centauri) then swung onto the same side away from closest/farthest approach. They now stay diametrically opposite through the whole orbit; opening an affected system re-establishes the correct alignment automatically.
+
 ## v2.0.84-beta - 15th Jun 2026
 
 * Fixed binary stars being wrongly flagged unstable. When a wide companion shared the binary's barycentre as a flat third member (e.g. Proxima at 13000 AU around the Alpha Centauri A/B pair), the stability check Hill-compared that distant companion against an individual binary star and flagged the tight 80-year pair as "flung out". The check now treats a barycentre's member stars as the inner binary and skips that meaningless cross-hierarchy comparison.

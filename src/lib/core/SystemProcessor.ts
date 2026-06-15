@@ -240,11 +240,16 @@ export class SystemProcessor implements ISystemProcessor {
                     m1.orbit.elements.i_deg = coupledI;
                     m0.orbit.elements.Omega_deg = coupledOmega;
                     m1.orbit.elements.Omega_deg = coupledOmega;
+                    // The two members must sit on OPPOSITE sides of the barycentre at all times. That
+                    // means antiparallel position vectors: same true anomaly (so same M0), with the
+                    // argument of periapsis flipped by 180°. Offsetting M0 by π instead (the old way)
+                    // only lines them up for circular orbits — for an eccentric pair the nonlinear
+                    // mean→true map drifts them onto the SAME side away from periapsis/apoapsis.
                     m0.orbit.elements.omega_deg = coupledArgPeri;
-                    m1.orbit.elements.omega_deg = coupledArgPeri;
+                    m1.orbit.elements.omega_deg = (coupledArgPeri + 180) % 360;
 
                     m0.orbit.elements.M0_rad = refM0;
-                    m1.orbit.elements.M0_rad = this.normalizeAngle(refM0 + Math.PI);
+                    m1.orbit.elements.M0_rad = refM0;
 
                     m0.orbit.hostMu = G * totalMass;
                     m1.orbit.hostMu = G * totalMass;
