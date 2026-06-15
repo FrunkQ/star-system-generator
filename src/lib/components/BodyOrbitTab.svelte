@@ -171,6 +171,12 @@ function updateOrbit() {
       ? (system.nodes.find((n: any) => n.id === (parentBody as any).parentId) ?? null)
       : null;
   $: pairHostName = pairHost ? pairHost.name : 'the system centre';
+  // Name the actual bodies in the labels — on a multi-star system "partner"/"parent" is easy to lose.
+  $: partnerBody = (isBinaryMember && system?.nodes)
+      ? (system.nodes.find((n: any) => n.id !== body.id && ((parentBody as any).memberIds || []).includes(n.id)) ?? null)
+      : null;
+  $: partnerName = partnerBody ? partnerBody.name : 'its partner';
+  $: orbitHostName = parentBody ? ((parentBody as any).name ?? '') : '';
   let pairA_AU = 0;
   $: if (isBinaryMember && (parentBody as any).orbit) pairA_AU = (parentBody as any).orbit.elements.a_AU ?? 0;
   $: pairMaxA = Math.max(60, (pairA_AU || 0) * 1.5);
@@ -212,10 +218,10 @@ function updateOrbit() {
         {/if}
         <div class="form-group">
             <div class="label-row">
-                <label>{isBinaryMember ? 'Separation from partner (AU)' : 'Semi-Major Axis (AU)'}</label>
+                <label>{isBinaryMember ? `Separation from ${partnerName} (AU)` : 'Semi-Major Axis (AU)'}</label>
                 <input type="number" step="any" bind:value={a_AU} on:input={handleNumberInput} />
             </div>
-            <div class="info-row" style="font-size: 0.8em; color: var(--text-faint); margin-bottom: 4px;">{rangeText}</div>
+            <div class="info-row" style="font-size: 0.8em; color: var(--text-faint); margin-bottom: 4px;">{#if !isBinaryMember && orbitHostName}Orbits {orbitHostName} · {/if}{rangeText}</div>
             <!-- Custom Orbital Slider -->
             <div class="full-width-slider">
                 <OrbitalSlider value={a_AU} min={minA} max={maxA} {zones} on:input={handleOrbitalSliderInput} />

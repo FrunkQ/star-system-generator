@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.89-beta - 15th Jun 2026
+
+* Orbit editing now names the actual bodies instead of "partner"/"parent", so you don't lose yourself in a multi-star system. A binary body reads "Separation from {the other star/body}", and a normal orbit shows "Orbits {host}" alongside its range.
+
 ## v2.0.88-beta - 15th Jun 2026
 
 * Re-nested the triple-star examples (Alpha Centauri, Algol, Polaris). The third star was a flat extra child of the close pair's barycentre; it now hangs off a proper outer "system barycentre", so the inner pair orbits the system centre and the distant companion orbits it too — and the inner pair now has its own editable "distance from the system centre".
