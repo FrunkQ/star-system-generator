@@ -111,12 +111,16 @@ Because it's deterministic given the clock, re-running at the next decision poin
 - Each ship has a **% chance / year** of breaking down, rolled **deterministically** (seed + ship + time).
 - On breakdown the ship **stops in space** (new "stranded/adrift" state already exists from the interstellar
   work) and broadcasts an **SOS**.
-- The **nearest other autopilot ship** charts a course to it; on arrival the casualty is "fixed" and resumes
-  (and is then flagged as **needing maintenance**, raising its near-term breakdown chance until serviced).
+- The responder is the ship with the **soonest ETA to the casualty** (DECIDED — not nearest by raw
+  distance). ETA = time to divert from its current derived position to the casualty at *its* capable speed,
+  so a fast/dedicated **tender** beats a closer but slow returning hauler (which may still get lucky on
+  position). This reads right both logically and as a game: it makes a purpose-built rescue ship worth
+  having. On arrival the casualty is "fixed" and resumes (and is flagged as **needing maintenance**,
+  raising its near-term breakdown chance until serviced).
 - This is the one piece that breaks pure per-ship derivation (ships react to each other), so it needs a
-  **forward event-resolution pass**: advance the timeline → detect breakdowns → assign the nearest rescuer →
-  splice a diverted rescue leg into *that* ship's itinerary → continue. Still deterministic, still committed
-  only at actual time.
+  **forward event-resolution pass**: advance the timeline → detect breakdowns → assign the soonest-ETA
+  responder → splice a diverted rescue leg into *that* ship's itinerary → continue. Still deterministic,
+  still committed only at actual time.
 - **Maintenance schedule** feeds the breakdown probability: regular shore-leave/maintenance ⇒ lower chance.
 
 ## 7. Ship's log — the real tool
@@ -214,8 +218,9 @@ relive it.
   early or scrubbing breaks.
 - **Event pass cost:** the rescue interaction means a forward simulation over the active fleet between the
   last actual time and the display time — bound its horizon (don't simulate centuries).
-- **Rescue selection:** "nearest other auto ship" — nearest by distance now, or by ETA? ETA is righter but
-  costs more to evaluate. Probably distance-now for v1.
+- **Rescue selection:** ~~nearest-now vs nearest-ETA~~ **DECIDED: nearest-ETA** (Alex 2026-06-15) — accounts
+  for the responder's speed so a dedicated tender beats a closer slow hauler; better logic and game value.
+  Costs a per-candidate ETA estimate during the event pass, which is acceptable.
 - **Manual vs auto reorder:** GM hand-orders a route AND sets Detailed lookahead — does the planner override
   the manual order? Proposal: manual order is the *seed*; lookahead only reorders patrol, and shows a
   "reordered because…" note in the log so it's never silent.
