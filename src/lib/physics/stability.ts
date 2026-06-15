@@ -200,14 +200,18 @@ function assessBinaryPairStability(
       const eExt = Math.max(0, Math.min(0.999, bary.orbit.elements.e || 0));
       const hillAU = aExt * (1 - eExt) * Math.cbrt(mBin / (3 * parentMassKg));
       if (hillAU > 0) {
+        // A binary stays bound while its (apoapsis) separation is comfortably inside the Hill radius it
+        // has within its parent. Empirically a pair is safe out to ~1/3 of the Hill radius, so only flag
+        // as it approaches that — a pair at sep/Hill ~0.15 (e.g. Alpha Cen A/B inside the wider triple)
+        // is rock-solid and must not read as unstable.
         const frac = sepMaxAU / hillAU;
-        if (frac >= 0.33) {
+        if (frac >= 0.5) {
           out.severity = 3;
           out.reasons.push(`Binary wide vs Hill sphere (sep/Hill=${frac.toFixed(2)})`);
-        } else if (frac >= 0.20) {
+        } else if (frac >= 0.4) {
           out.severity = Math.max(out.severity, 2) as 0 | 1 | 2 | 3;
           out.reasons.push(`Binary moderately wide vs Hill sphere (sep/Hill=${frac.toFixed(2)})`);
-        } else if (frac >= 0.10) {
+        } else if (frac >= 0.3) {
           out.severity = Math.max(out.severity, 1) as 0 | 1 | 2 | 3;
           out.reasons.push(`Binary perturbation-sensitive (sep/Hill=${frac.toFixed(2)})`);
         }
@@ -251,6 +255,11 @@ function assessBinaryPairStability(
         const innerA = Math.min(a1, a2);
         const outerA = Math.max(a1, a2);
         if (outerA <= innerA) continue;
+        // Hierarchically separated orbits (one well outside the other, no band overlap above) are stable
+        // by construction — the planar mutual-Hill spacing test only applies to comparably-sized,
+        // near-adjacent orbits. Without this, a distant companion (Proxima ~14x the inner pair's SMA)
+        // gets a misleadingly small Delta and the tight inner binary is wrongly flagged critical.
+        if (outerA > innerA * 3) continue;
         const aMean = 0.5 * (innerA + outerA);
         const mutualHill = aMean * Math.cbrt((mBin + mSib) / (3 * parentMassKg));
         if (mutualHill <= 0) continue;

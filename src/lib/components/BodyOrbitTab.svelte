@@ -164,7 +164,8 @@ function updateOrbit() {
   // its distance slider is greyed. Editing either coupled value re-derives the partner on the next pass.
   $: isBinaryMember = !!parentBody
       && (parentBody as any).kind === 'barycenter'
-      && ((parentBody as any).memberIds?.length === 2);
+      && ((parentBody as any).memberIds?.length === 2)
+      && ((parentBody as any).memberIds as string[])?.includes(body.id);
   $: isRootPair = isBinaryMember && !(parentBody as any).parentId;
   $: pairHost = (isBinaryMember && (parentBody as any).parentId && system?.nodes)
       ? (system.nodes.find((n: any) => n.id === (parentBody as any).parentId) ?? null)

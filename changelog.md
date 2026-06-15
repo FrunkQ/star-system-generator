@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.88-beta - 15th Jun 2026
+
+* Re-nested the triple-star examples (Alpha Centauri, Algol, Polaris). The third star was a flat extra child of the close pair's barycentre; it now hangs off a proper outer "system barycentre", so the inner pair orbits the system centre and the distant companion orbits it too — and the inner pair now has its own editable "distance from the system centre".
+* Made the binary stability checks hierarchy-aware so a nested inner pair isn't wrongly flagged. A tight pair is only flagged as it nears ~a third of its Hill radius (Alpha Cen A/B sit at ~0.15 and are rock-solid), and a distant companion no longer trips the close-neighbour spacing test across a large orbital gap.
+* Fixed a binary detection edge case: a non-member companion sharing a pair's barycentre no longer shows the pair's "separation" control.
+
 ## v2.0.87-beta - 15th Jun 2026
 
 * Unified binary editing. Barycentres are no longer selectable on their own — clicking one (or a saved/most-massive default) now selects its primary star/body. A body that's half of a binary now edits the whole pair from one panel: a "Distance from {host}" slider that moves the pair through the system, plus a "Separation from partner" slider for how far apart the two sit. For the central (root) pair the distance slider is greyed, since the pair is the system centre. Works the same for stellar and planetary binaries. (Previously you had to select the barycentre to set distance and the body to set separation — two places, inconsistent.)

@@ -7,7 +7,7 @@
   "nodes": [
     {
       "id": "polaris-inner-barycenter",
-      "parentId": null,
+      "parentId": "polaris-inner-barycenter-outer",
       "name": "Polaris Aa/Ab Barycenter",
       "kind": "barycenter",
       "memberIds": [
@@ -17,7 +17,20 @@
       "tags": [],
       "effectiveMassKg": 1.325e+31,
       "description": "The center of mass for the Supergiant Aa and its close dwarf companion Ab.",
-      "tidallyLocked": false
+      "tidallyLocked": false,
+      "orbit": {
+        "hostId": "polaris-inner-barycenter-outer",
+        "hostMu": 1.06855543e+21,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 413.74141161773883,
+          "e": 0.1,
+          "i_deg": 45,
+          "omega_deg": 180,
+          "Omega_deg": 0,
+          "M0_rad": 1.5
+        }
+      }
     },
     {
       "id": "polaris-aa",
@@ -103,7 +116,7 @@
     },
     {
       "id": "polaris-b",
-      "parentId": "polaris-inner-barycenter",
+      "parentId": "polaris-inner-barycenter-outer",
       "name": "Polaris B",
       "kind": "body",
       "roleHint": "star",
@@ -112,12 +125,11 @@
         "star/F3V"
       ],
       "orbit": {
-        "hostId": "polaris-inner-barycenter",
-        "hostMu": 1.07e+21,
+        "hostId": "polaris-inner-barycenter-outer",
+        "hostMu": 1.06855543e+21,
         "t0": 1762339146908,
-        "n_rad_per_s": 4.5e-12,
         "elements": {
-          "a_AU": 2400,
+          "a_AU": 1986.2585883822612,
           "e": 0.1,
           "i_deg": 45,
           "omega_deg": 0,
@@ -138,6 +150,18 @@
       "isNameUserDefined": true,
       "calculatedGravity_ms2": 200,
       "orbital_period_days": 1500000
+    },
+    {
+      "id": "polaris-inner-barycenter-outer",
+      "parentId": null,
+      "kind": "barycenter",
+      "name": "Polaris Aa/Ab System Barycentre",
+      "memberIds": [
+        "polaris-inner-barycenter",
+        "polaris-b"
+      ],
+      "effectiveMassKg": 1.6010000000000001e+31,
+      "description": "The center of mass for the Supergiant Aa and its close dwarf companion Ab."
     }
   ],
   "rulePackId": "starter-sf-pack",

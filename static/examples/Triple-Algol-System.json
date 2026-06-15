@@ -7,7 +7,7 @@
   "nodes": [
     {
       "id": "algol-inner-barycenter",
-      "parentId": null,
+      "parentId": "algol-inner-barycenter-outer",
       "name": "Algol A/B Barycenter",
       "kind": "barycenter",
       "memberIds": [
@@ -17,7 +17,20 @@
       "tags": [],
       "effectiveMassKg": 7.705e+30,
       "description": "The center of mass for the eclipsing binary pair. The stars are so close that mass streams from Star B to Star A.",
-      "tidallyLocked": true
+      "tidallyLocked": true,
+      "orbit": {
+        "hostId": "algol-inner-barycenter-outer",
+        "hostMu": 739846154999999900000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.8202255299954895,
+          "e": 0.225,
+          "i_deg": 90,
+          "omega_deg": 180,
+          "Omega_deg": 0,
+          "M0_rad": 1.2
+        }
+      }
     },
     {
       "id": "algol-a",
@@ -103,7 +116,7 @@
     },
     {
       "id": "algol-c",
-      "parentId": "algol-inner-barycenter",
+      "parentId": "algol-inner-barycenter-outer",
       "name": "Algol C (Beta Persei Ab)",
       "kind": "body",
       "roleHint": "star",
@@ -112,12 +125,11 @@
         "star/Am"
       ],
       "orbit": {
-        "hostId": "algol-inner-barycenter",
-        "hostMu": 514200000000000000000,
+        "hostId": "algol-inner-barycenter-outer",
+        "hostMu": 739846154999999900000,
         "t0": 1762339146908,
-        "n_rad_per_s": 1.07e-7,
         "elements": {
-          "a_AU": 2.69,
+          "a_AU": 1.8697744700045105,
           "e": 0.225,
           "i_deg": 90,
           "omega_deg": 0,
@@ -138,6 +150,18 @@
       "isNameUserDefined": true,
       "calculatedGravity_ms2": 162,
       "orbital_period_days": 680.5
+    },
+    {
+      "id": "algol-inner-barycenter-outer",
+      "parentId": null,
+      "kind": "barycenter",
+      "name": "Algol A/B System Barycentre",
+      "memberIds": [
+        "algol-inner-barycenter",
+        "algol-c"
+      ],
+      "effectiveMassKg": 1.1085e+31,
+      "description": "The center of mass for the eclipsing binary pair. The stars are so close that mass streams from Star B to Star A."
     }
   ],
   "rulePackId": "starter-sf-pack",

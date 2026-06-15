@@ -2682,7 +2682,7 @@
         "nodes": [
           {
             "id": "alpha-centauri-barycenter",
-            "parentId": null,
+            "parentId": "alpha-centauri-barycenter-outer",
             "name": "Alpha Centauri Barycenter",
             "kind": "barycenter",
             "memberIds": [
@@ -2692,7 +2692,20 @@
             "tags": [],
             "effectiveMassKg": 3.421e+30,
             "description": "The common center of mass for the Alpha Centauri A/B binary pair. These two Sun-like stars orbit each other in a close, 80-year dance.",
-            "tidallyLocked": false
+            "tidallyLocked": false,
+            "orbit": {
+              "hostId": "alpha-centauri-barycenter-outer",
+              "hostMu": 244789029548000000000,
+              "t0": 1762339146908,
+              "elements": {
+                "a_AU": 874.2056190963333,
+                "e": 0.5,
+                "i_deg": 0,
+                "omega_deg": 180,
+                "Omega_deg": 0,
+                "M0_rad": 0
+              }
+            }
           },
           {
             "id": "alpha-centauri-a",
@@ -2812,7 +2825,7 @@
           },
           {
             "id": "proxima-centauri-star",
-            "parentId": "alpha-centauri-barycenter",
+            "parentId": "alpha-centauri-barycenter-outer",
             "name": "Proxima Centauri (Alpha Centauri C)",
             "kind": "body",
             "roleHint": "star",
@@ -2821,11 +2834,11 @@
               "star/M5.5V"
             ],
             "orbit": {
-              "hostId": "alpha-centauri-barycenter",
-              "hostMu": 228300000000000000000,
+              "hostId": "alpha-centauri-barycenter-outer",
+              "hostMu": 244789029548000000000,
               "t0": 1762339146908,
               "elements": {
-                "a_AU": 13000,
+                "a_AU": 12125.794380903666,
                 "e": 0.5,
                 "i_deg": 0,
                 "omega_deg": 0,
@@ -5274,6 +5287,18 @@
             },
             "orbitalStability": "Very Unstable",
             "orbitalStabilityDetails": "Likely <1 kyr before major orbital disruption (collision/ejection/infall risk). Drivers: Orbit exceeds host's stable Hill sphere (stolen by external tide).; Minor-body crossing in pair Oceanus/Khione/513532 Cameron."
+          },
+          {
+            "id": "alpha-centauri-barycenter-outer",
+            "parentId": null,
+            "kind": "barycenter",
+            "name": "Alpha Centauri System Barycentre",
+            "memberIds": [
+              "alpha-centauri-barycenter",
+              "proxima-centauri-star"
+            ],
+            "effectiveMassKg": 3.667636e+30,
+            "description": "The common center of mass for the Alpha Centauri A/B binary pair. These two Sun-like stars orbit each other in a close, 80-year dance."
           }
         ],
         "rulePackId": "starter-sf-pack",
