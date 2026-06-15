@@ -170,13 +170,26 @@ function updateOrbit() {
   $: pairHost = (isBinaryMember && (parentBody as any).parentId && system?.nodes)
       ? (system.nodes.find((n: any) => n.id === (parentBody as any).parentId) ?? null)
       : null;
-  $: pairHostName = pairHost ? pairHost.name : 'the system centre';
+  // A body can legitimately orbit a barycentre (a valid orbital point) even though only the barycentre's
+  // primary is selectable — so when the host IS a barycentre, name it AND its primary, e.g.
+  // "Pluto-Charon Barycentre (Pluto)", so it's clear what's being orbited.
+  function hostLabel(node: any, sys: any): string {
+      if (!node) return '';
+      if (node.kind === 'barycenter' && sys?.nodes) {
+          const members = ((node.memberIds || []) as string[]).map((id) => sys.nodes.find((n: any) => n.id === id)).filter(Boolean) as any[];
+          const primary = members.reduce((best: any, m: any) =>
+              ((m.massKg || m.effectiveMassKg || 0) > (best?.massKg || best?.effectiveMassKg || 0) ? m : best), null);
+          return primary ? `${node.name} (${primary.name})` : node.name;
+      }
+      return node.name ?? '';
+  }
+  $: pairHostName = pairHost ? hostLabel(pairHost, system) : 'the system centre';
   // Name the actual bodies in the labels — on a multi-star system "partner"/"parent" is easy to lose.
   $: partnerBody = (isBinaryMember && system?.nodes)
       ? (system.nodes.find((n: any) => n.id !== body.id && ((parentBody as any).memberIds || []).includes(n.id)) ?? null)
       : null;
   $: partnerName = partnerBody ? partnerBody.name : 'its partner';
-  $: orbitHostName = parentBody ? ((parentBody as any).name ?? '') : '';
+  $: orbitHostName = hostLabel(parentBody, system);
   let pairA_AU = 0;
   $: if (isBinaryMember && (parentBody as any).orbit) pairA_AU = (parentBody as any).orbit.elements.a_AU ?? 0;
   $: pairMaxA = Math.max(60, (pairA_AU || 0) * 1.5);

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.90-beta - 15th Jun 2026
+
+* When a body orbits a barycentre, the orbit label now names the barycentre AND its primary body, e.g. "Orbits Pluto-Charon Barycenter (Pluto)" — a barycentre is a valid orbital point even though only its primary is selectable.
+
 ## v2.0.89-beta - 15th Jun 2026
 
 * Orbit editing now names the actual bodies instead of "partner"/"parent", so you don't lose yourself in a multi-star system. A binary body reads "Separation from {the other star/body}", and a normal orbit shows "Orbits {host}" alongside its range.
