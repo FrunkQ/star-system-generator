@@ -33,7 +33,7 @@ committed only at "actual" (master) time. Autopilot reuses this:
 
 | Role | Pattern | Reorderable? |
 |---|---|---|
-| **Patrol** | Loop a set of waypoints | **Yes** — no precedence; reorder freely for efficiency |
+| **Patrol** | Loop a set of waypoints (visit **all**) | **Yes — but coverage-constrained** (reorder the full circuit, never cherry-pick the nearest pair) |
 | **Mining run** | Source(s) → refinery/market → repeat; loads ore/day at source | Partial — **pickup must precede its dropoff** |
 | **Cargo / trade circuit** | Buy at A, sell at B, … | Partial — **pickup before dropoff** per consignment |
 
@@ -51,6 +51,13 @@ before its pickup. Patrol carries no such constraint.
   - `1–5` → search orderings of the next N targets and pick the best **overall** (fastest or most
     efficient) using *projected* orbital positions at the estimated arrival times. Patrol may swap order
     "when the planets align"; cargo reorders only within pickup-before-dropoff constraints.
+  - **Coverage rule (patrol):** patrol means *visit them all*. Optimisation reorders a **complete circuit**
+    of the waypoints (a closed tour) — it must NOT minimise per-hop distance, or with A & B closest it
+    would just shuttle A↔B and starve C, D, E. So the objective is "cheapest full loop that visits every
+    waypoint", plus a **staleness/fairness** term: the longer a waypoint has gone unvisited, the more its
+    visit is prioritised, so efficiency reordering can never indefinitely defer a far waypoint. Lookahead
+    chooses *which leg of the full circuit to fly next* (and whether to rotate the loop's order when
+    alignment favours it), never *which waypoints to skip*.
 - **Maintenance cadence:** planned shore-leave/maintenance interval; following it lowers breakdown chance.
 
 ## 5. The planner
@@ -58,10 +65,11 @@ before its pickup. Patrol carries no such constraint.
 Runs at each **decision point** (on arrival, or at a scheduled re-plan), deterministically from the clock:
 
 1. Gather the candidate next N targets (N = lookahead).
-2. For patrol: enumerate valid orderings (≤5 ⇒ brute force is trivial). For cargo: enumerate orderings
-   that respect cargo precedence.
+2. For patrol: enumerate orderings of the **full circuit** (visit-all closed tour, ≤5 waypoints ⇒ brute
+   force is trivial) — never a subset. For cargo: enumerate orderings that respect cargo precedence.
 3. For each ordering, project each leg using forward orbital positions, the speed/efficiency setting, and
-   per-**fuel-type** consumption; cost = total time or total fuel (per the slider).
+   per-**fuel-type** consumption; cost = total time or total fuel (per the slider) **minus a staleness
+   credit** for waypoints overdue a visit, so a far-but-neglected waypoint isn't perpetually deferred.
 4. Pick the best ordering; emit its first leg(s) as journey records, **pre-acquiring fuel** for future legs
    (insert refuelling segments by fuel type / availability).
 5. Insert non-travel segments as needed: refuel, crew change (company) or shore leave (private),
