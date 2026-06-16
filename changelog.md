@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.106-beta - 16th Jun 2026
+
+* Measure tool on the scaled starmap: a 📏 toggle (top-right) lets you tap any two targets — stars or interstellar ships — to read the straight-line distance between them in the map's units. Tap a third to start a new measurement.
+
 ## v2.0.105-beta - 16th Jun 2026
 
 * The three core Construct-of-Interest categories (Status, Owner, Purpose) are now properly locked: their name and their "one only" setting can't be changed (Owner stays single-choice, Status/Purpose stay multi), since autopilot relies on them. You can still add your own categories and add tags within these.

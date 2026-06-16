@@ -305,7 +305,10 @@
 
   // Clicking a ship opens the starmap-level ship panel (+page owns it: full construct editor + the
   // in-flight controls). All journey resolution + construct edits are handled there against the store.
-  function requestCancelJourney(j: any) { dispatch('openship', { journeyId: j.id }); }
+  function requestCancelJourney(j: any, mx?: number, my?: number) {
+    if (measureMode && mx !== undefined && my !== undefined) { measurePick(mx, my, j.shipName); return; }
+    dispatch('openship', { journeyId: j.id });
+  }
 
   function snapPointToCurrentGrid(x: number, y: number): { x: number; y: number } {
     if (effectiveGridType === 'none') return { x, y };
@@ -604,13 +607,30 @@
       return 'none';
   }
 
+  // --- Measure tool (scaled maps only): tap two targets — any stars or interstellar ships — to read the
+  //     distance between them, in the map's scale units. ---
+  let measureMode = false;
+  let measureA: { x: number; y: number; label: string } | null = null;
+  let measureB: { x: number; y: number; label: string } | null = null;
+  function toggleMeasure() { measureMode = !measureMode; if (!measureMode) { measureA = null; measureB = null; } }
+  function measurePick(x: number, y: number, label: string) {
+    if (!measureA || (measureA && measureB)) { measureA = { x, y, label }; measureB = null; }
+    else if (x !== measureA.x || y !== measureA.y) { measureB = { x, y, label }; }
+  }
+  $: measureDist = (measureA && measureB && activeScale.pixelsPerUnit > 0)
+    ? roundDistance(Math.hypot(measureB.x - measureA.x, measureB.y - measureA.y) / activeScale.pixelsPerUnit)
+    : null;
+
   function handleStarClick(event: MouseEvent, systemId: string) {
     if (dragMoved) {
       dragMoved = false;
       return;
     }
     if (event.button === 0) { // Left click
-      if (linkingMode) {
+      if (measureMode) {
+        const s = systemById(systemId);
+        if (s) measurePick(s.position.x, s.position.y, s.name);
+      } else if (linkingMode) {
         dispatch('selectsystemforlink', systemId);
       } else {
         dispatch('systemclick', systemId);
@@ -879,6 +899,7 @@
     {/if}
     <div class="ov-topright">
       {#if mode === 'phone'}<FullscreenButton />{/if}
+      {#if isScaled}<button class="ov-reset" class:active={measureMode} title="Measure distance between two stars or ships" aria-label="Measure distance" on:click={toggleMeasure}>📏{#if !$railCollapsed} {measureMode ? 'Measuring…' : 'Measure'}{/if}</button>{/if}
       <button class="ov-reset" title="Reset view" aria-label="Reset view" on:click={resetView}>⟲{#if !$railCollapsed} Reset View{/if}</button>
     </div>
     <svg
@@ -950,7 +971,7 @@
             <line class="journey-trail" x1={from.position.x} y1={from.position.y} x2={p.x} y2={p.y} />
             <line class="journey-ahead" x1={p.x} y1={p.y} x2={to.position.x} y2={to.position.y} />
             <g class="journey-ship" role="button" tabindex="0" transform="translate({p.x}, {p.y})"
-               on:pointerdown|stopPropagation={() => requestCancelJourney(journey)}
+               on:pointerdown|stopPropagation={() => requestCancelJourney(journey, p.x, p.y)}
                on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
               <title>{journey.shipName} → {journey.toBodyName || to.name} ({Math.round(p.frac * 100)}%) — click for options</title>
               {#if ship?.icon_type === 'circle'}<circle r="5" {fill} stroke={EDGE_TRANSIT} stroke-width="1.6" />
@@ -961,7 +982,7 @@
           {/if}
         {:else if p.kind === 'adrift'}
           <g class="journey-ship adrift" role="button" tabindex="0" transform="translate({p.x}, {p.y})"
-             on:pointerdown|stopPropagation={() => requestCancelJourney(journey)}
+             on:pointerdown|stopPropagation={() => requestCancelJourney(journey, p.x, p.y)}
              on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
             <title>{journey.shipName} — {(p.vx || p.vy) ? 'coasting (out of fuel to stop)' : 'stranded'} in interstellar space. Click for options.</title>
             {#if p.vx || p.vy}
@@ -980,7 +1001,7 @@
           {@const to = systemById(journey.toSystemId)}
           {#if to}
             <g class="journey-ship arrived" role="button" tabindex="0" transform="translate({to.position.x}, {to.position.y})"
-               on:pointerdown|stopPropagation={() => requestCancelJourney(journey)}
+               on:pointerdown|stopPropagation={() => requestCancelJourney(journey, to.position.x, to.position.y)}
                on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
               <title>{journey.shipName} — arrived at {to.name}. Click for options.</title>
               {#if ship?.icon_type === 'circle'}<circle r="5" {fill} stroke={EDGE_ARRIVED} stroke-width="1.8" />
@@ -1146,6 +1167,16 @@
           {systemNode.name}
         </text>
       {/each}
+
+      <!-- Measure tool overlay: line + distance between the two picked targets (stars or ships). -->
+      {#if measureMode && measureA}
+        <circle class="measure-pt" cx={measureA.x} cy={measureA.y} r="4" />
+        {#if measureB}
+          <line class="measure-line" x1={measureA.x} y1={measureA.y} x2={measureB.x} y2={measureB.y} />
+          <circle class="measure-pt" cx={measureB.x} cy={measureB.y} r="4" />
+          <text class="measure-label" x={(measureA.x + measureB.x) / 2} y={(measureA.y + measureB.y) / 2 - 6} text-anchor="middle">{measureDist} {activeScale.unit}</text>
+        {/if}
+      {/if}
       </g>
     </svg>
     <StarmapScaleBar
@@ -1433,6 +1464,10 @@
     white-space: nowrap;
   }
   .ov-reset:hover { opacity: 1; background: var(--bg-control-hover, #232733); }
+  .ov-reset.active { opacity: 1; border-color: var(--accent, #5b8def); color: var(--accent, #5b8def); }
+  .measure-line { stroke: var(--accent, #5b8def); stroke-width: 1.5; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
+  .measure-pt { fill: var(--accent, #5b8def); }
+  .measure-label { fill: var(--accent, #5b8def); font-size: 11px; font-weight: 600; paint-order: stroke; stroke: #000; stroke-width: 3px; stroke-linejoin: round; }
   .time-overlay {
     position: absolute;
     bottom: 14px;
