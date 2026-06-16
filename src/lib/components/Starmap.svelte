@@ -7,7 +7,7 @@
   import BodyPicker from './BodyPicker.svelte';
   import FullscreenButton from './FullscreenButton.svelte';
   import type { Starmap, System, CelestialBody, RulePack, Barycenter } from '$lib/types';
-  import { constructDisplayPlacement, flybyTurn } from '$lib/transit/interstellar';
+  import { constructDisplayPlacement, flybyTurn, interstellarConstructIds } from '$lib/transit/interstellar';
   import StarmapInfoPanel from './StarmapInfoPanel.svelte';
   import BottomSheet from './BottomSheet.svelte';
   import TimeDisplay from './TimeDisplay.svelte';
@@ -561,9 +561,28 @@
       return [];
   }
 
-  // --- BodyPicker (starmap-scoped: pick a system by name) ---
-  const systemPickerCategorize = () => ['Systems'];
+  // --- BodyPicker (starmap-scoped: pick a system by name, OR an interstellar ship) ---
+  // Ships in transit / stranded belong to no system, so the orrery pickers hide them; here at starmap
+  // level they DO belong — listed under their own "Interstellar" group (and findable by name).
+  $: interstellarPickerNodes = (() => {
+      const ids = interstellarConstructIds(starmap, journeyNowSec);
+      const out: any[] = [];
+      for (const id of ids) {
+          let construct: any = null, journeyId: string | null = null;
+          const j = (activeJourneys ?? []).find((x) => x.shipId === id);
+          if (j) { journeyId = j.id; construct = journeyShip(j); }
+          if (!construct) construct = (starmap.adriftConstructs ?? []).find((a) => a.construct?.id === id)?.construct;
+          if (!construct) continue;
+          const p = constructDisplayPlacement(starmap, id, journeyNowSec);
+          out.push({ ...construct, kind: 'construct', __interstellar: true, __journeyId: journeyId, __state: p.kind });
+      }
+      return out;
+  })();
+  $: pickerNodes = [...starmap.systems, ...interstellarPickerNodes];
+
+  const systemPickerCategorize = (n: any) => n?.kind === 'construct' ? ['Interstellar'] : ['Systems'];
   function systemPickerColor(sysNode: any): string {
+      if (sysNode?.kind === 'construct') return sysNode.icon_color || '#ffd23f';
       const vis = getVisualNodes(sysNode.system);
       return vis.length ? getStarColor(vis[0]) : '#888';
   }
@@ -580,6 +599,7 @@
       return { stars, planets, moons, constructs };
   }
   function systemPickerContext(sysNode: any): string {
+      if (sysNode?.kind === 'construct') return sysNode.__state === 'adrift' ? 'adrift in interstellar space' : 'in transit';
       const c = countNodes(sysNode.system?.nodes ?? []);
       const bits = [] as string[];
       if (c.stars) bits.push(`${c.stars}★`);
@@ -598,6 +618,8 @@
       return `${starmap.systems.length} systems · ${stars} stars · ${planets} planets · ${moons} moons · ${constructs} constructs`;
   })();
   function handlePickSystem(e: CustomEvent<string>) {
+      const ship = interstellarPickerNodes.find((n) => n.id === e.detail);
+      if (ship) { if (ship.__journeyId) dispatch('openship', { journeyId: ship.__journeyId }); return; }
       dispatch('systemclick', e.detail);
   }
 
@@ -901,16 +923,16 @@
       <div class="time-display-overlay"><TimeDisplay temporal={ensuredTemporal} /></div>
     {/if}
     <BodyPicker
-      nodes={starmap.systems}
+      nodes={pickerNodes}
       focusedId={null}
       emptyLabel="Starmap"
-      placeholder="Search systems…"
+      placeholder="Search systems & ships…"
       top={mode === 'phone' ? 64 : 56}
       categorize={systemPickerCategorize}
       colorOf={systemPickerColor}
       contextOf={systemPickerContext}
       summaryText={starmapSummary}
-      roleOf={() => 'system'}
+      roleOf={(n) => n?.kind === 'construct' ? 'construct' : 'system'}
       filterItems={() => true}
       on:select={handlePickSystem}
     />

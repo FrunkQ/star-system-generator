@@ -1902,7 +1902,7 @@
               </div>
             {/if}
             <BodyPicker
-                nodes={$systemStore.nodes}
+                nodes={displaySystem?.nodes ?? $systemStore.nodes}
                 focusedId={focusedBodyId}
                 top={mode === 'phone' ? 64 : 56}
                 on:select={(e) => updateFocus(e.detail)}

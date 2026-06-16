@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.125-beta - 16th Jun 2026
+
+* Body picker now treats interstellar ships consistently with the orrery: a ship in transit or stranded no longer appears in its origin system's picker (it's left the system), and instead shows up in the starmap-level picker under its own "Interstellar" group — searchable by name, and selecting it opens its ship panel.
+
 ## v2.0.124-beta - 16th Jun 2026
 
 * The in-system adrift coast is now full N-body: every massive body pulls on a cut-loose ship (the same perturber set the transit planner already uses), so it can be slung past a planet, not just fall round the sun. Belts and rings are excluded (distributed debris, not point masses), as are barycentres (their mass already lives on the child bodies).
