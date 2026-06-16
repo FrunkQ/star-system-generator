@@ -14,6 +14,7 @@
     type TransitMode, type TransitResult,
   } from '$lib/interstellar/transit';
   import { constructDisplayPlacement, interstellarConstructIds } from '$lib/transit/interstellar';
+  import { redirectDeltaV, headingOffsetDeg } from '$lib/physics/redirect';
 
   export let starmap: Starmap;
   export let rulePack: RulePack;
@@ -129,17 +130,52 @@
     return (au && au > 0 ? au : 1) * AU_M;
   })();
 
-  // Straight-line distance between the two systems, using the starmap scale.
+  // The ship's CURRENT position + velocity, derived from the clock — so a course replotted from an adrift
+  // or in-flight ship starts from where it actually is (and carries its momentum), not its origin system.
+  $: nowSec = Number(starmap?.temporal?.displayTimeSec ?? 0);
+  $: originPlacement = shipId ? constructDisplayPlacement(starmap, shipId, nowSec) : null;
+  $: originIsPoint = !!(originPlacement && (originPlacement.kind === 'transit' || originPlacement.kind === 'adrift'));
+  $: originPoint = (() => {
+    const p = originPlacement;
+    if (p && (p.kind === 'transit' || p.kind === 'adrift')) return { x: p.x, y: p.y };
+    if (p && p.kind === 'system') { const s = starmap.systems.find((x) => x.id === p.systemId); if (s) return { x: s.position?.x ?? 0, y: s.position?.y ?? 0 }; }
+    return shipSystemNode ? { x: shipSystemNode.position?.x ?? 0, y: shipSystemNode.position?.y ?? 0 } : null;
+  })();
+  // Current drift velocity (starmap coords / game-second); only an adrift coast carries one.
+  $: originVel = (originPlacement && originPlacement.kind === 'adrift')
+    ? { vx: (originPlacement as any).vx ?? 0, vy: (originPlacement as any).vy ?? 0 }
+    : { vx: 0, vy: 0 };
+
+  // Straight-line distance from the ship's current position to the target, using the starmap scale.
   $: distanceInfo = (() => {
-    if (!shipSystemNode || !targetPoint) return null;
-    const dx = (shipSystemNode.position?.x ?? 0) - targetPoint.x;
-    const dy = (shipSystemNode.position?.y ?? 0) - targetPoint.y;
+    if (!originPoint || !targetPoint) return null;
+    const dx = originPoint.x - targetPoint.x;
+    const dy = originPoint.y - targetPoint.y;
     const px = Math.hypot(dx, dy);
     const unit = starmap.scale?.unit || starmap.distanceUnit || 'LY';
     const perUnit = starmap.scale?.pixelsPerUnit || 1;
     const value = px / perUnit;
-    return { value, unit, meters: distanceToMeters(value, unit) };
+    const metersPerCoord = distanceToMeters(1, unit) / perUnit;
+    return { value, unit, meters: distanceToMeters(value, unit), metersPerCoord };
   })();
+
+  // Honest vector Δv to redirect the ship's existing momentum onto the new heading. A destination along
+  // the current drift is ~free; reversing costs the whole speed. Surfaced so the physics is visible.
+  $: redirectDvMs = (() => {
+    if (!originPoint || !targetPoint || !distanceInfo) return 0;
+    const m = distanceInfo.metersPerCoord;
+    const vMs: [number, number] = [originVel.vx * m, originVel.vy * m];
+    if (vMs[0] === 0 && vMs[1] === 0) return 0;
+    return redirectDeltaV(vMs, [targetPoint.x - originPoint.x, targetPoint.y - originPoint.y]);
+  })();
+  $: headingOffset = (originVel.vx || originVel.vy) && originPoint && targetPoint
+    ? headingOffsetDeg([originVel.vx, originVel.vy], [targetPoint.x - originPoint.x, targetPoint.y - originPoint.y])
+    : 0;
+  $: redirectAffordable = redirectDvMs <= shipDv || mode !== 'realistic';
+  $: originLabel = originPlacement?.kind === 'adrift' ? 'adrift in interstellar space'
+    : originPlacement?.kind === 'transit' ? 'in transit'
+    : (shipSystemNode?.name ?? 'unknown');
+  const fmtSpeed = (ms: number) => ms >= 1000 ? `${(ms / 1000).toFixed(ms >= 100000 ? 0 : 1)} km/s` : `${Math.round(ms)} m/s`;
 
   $: result = ((): TransitResult | null => {
     if (mode === 'jump') return jumpTransit(jumpDays, distanceInfo?.meters || 0);
@@ -152,7 +188,7 @@
         dryMassKg: (specs.dryMass_tonnes || 0) * 1000,
         fuelMassKg: (specs.fuelMass_tonnes || 0) * 1000,
         fuelFraction,
-        starMassKg: (primaryStar as any)?.massKg || 0,
+        starMassKg: originIsPoint ? 0 : ((primaryStar as any)?.massKg || 0),  // adrift in deep space: no star to escape
         orbitRadius_m,
         distance_m: d,
         accel_ms2,
@@ -170,14 +206,17 @@
   // Start Journey is allowed whenever the journey actually arrives (finite observer time) AND there's a
   // valid destination (a system, or a chosen vessel/point).
   $: hasDest = destKind === 'vessel' ? !!selectedVessel : !!destNode;
-  $: canStart = !!(result && Number.isFinite(result.observerSeconds) && result.observerSeconds >= 0 && shipEntry && hasDest);
+  $: canStart = !!(result && Number.isFinite(result.observerSeconds) && result.observerSeconds >= 0 && shipEntry && hasDest && redirectAffordable);
 
   function startJourney() {
     if (!canStart || !shipEntry || !result) return;
     const common = {
       shipId,
       shipName: shipEntry.construct.name,
-      fromSystemId: shipSystemNode!.id,
+      fromSystemId: shipSystemNode?.id ?? '',
+      // Replotted from where the ship currently sits (adrift / in-flight): record the point origin + the
+      // Δv spent to redirect its momentum onto the new heading. A fresh launch from a system omits these.
+      ...(originIsPoint && originPoint ? { fromX: originPoint.x, fromY: originPoint.y, fromLabel: 'Replotted course', redirectDvMs } : {}),
       mode,
       observerSeconds: result.observerSeconds,
       shipSeconds: result.shipSeconds,
@@ -216,7 +255,7 @@
       <p class="empty">That ship is no longer on the map.</p>
     {:else}
       <!-- Ship is fixed (opened from it) -->
-      <p class="ship-line">Ship: <strong>{shipEntry.construct.name}</strong> <span class="muted">— currently at {shipSystemNode?.name}</span></p>
+      <p class="ship-line">Ship: <strong>{shipEntry.construct.name}</strong> <span class="muted">— currently {originLabel}</span></p>
 
       {#if vessels.length}
         <div class="dest-kind">
@@ -256,6 +295,13 @@
 
       {#if distanceInfo}
         <p class="distance">Distance: <strong>{distanceInfo.value.toFixed(2)} {distanceInfo.unit}</strong>{#if destKind === 'vessel' && selectedVessel} → rendezvous with <strong>{selectedVessel.name}</strong>{:else if destBody} → final approach to <strong>{destBody.name}</strong>{/if}</p>
+        {#if originVel.vx || originVel.vy}
+          <p class="redirect" class:bad={!redirectAffordable}>
+            Redirect Δv: <strong>{fmtSpeed(redirectDvMs)}</strong>
+            <span class="muted">— current drift is {headingOffset.toFixed(0)}° off the new heading{#if headingOffset < 5} (almost free — you're already going this way){:else if headingOffset > 150} (nearly a full reversal — costs your whole speed){/if}</span>
+            {#if !redirectAffordable}<br /><span class="warn">Not enough Δv ({fmtSpeed(shipDv)}) to redirect — refuel, or pick a heading closer to the current drift.</span>{/if}
+          </p>
+        {/if}
       {:else}
         <p class="distance">Pick a destination.</p>
       {/if}
@@ -347,6 +393,10 @@
   select, input[type="range"] { width: 100%; box-sizing: border-box; }
   select { padding: 0.4em; background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
   .distance { margin: 0; font-size: 0.9rem; color: var(--text-muted); }
+  .redirect { margin: 0; font-size: 0.85rem; color: var(--text); border-left: 3px solid #46c46a; padding-left: 8px; }
+  .redirect.bad { border-left-color: #e0484d; }
+  .redirect .muted { color: var(--text-muted); }
+  .redirect .warn { color: #e0484d; }
   .hint-warn { color: var(--status-warn, #d8a23a); font-size: 0.82rem; }
   .dest-kind { display: flex; gap: 1.25rem; font-size: 0.88rem; }
   .dest-kind label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }

@@ -135,6 +135,26 @@ describe('flybyTurn — interstellar slingshot (Stage 3, honest 2-body deflectio
   });
 });
 
+describe('point-origin journeys (New Transit — replot from where the ship sits)', () => {
+  it('departs from fromX/fromY, not the origin system', () => {
+    const m = makeStarmap();
+    const j = (m.activeJourneys as any)[0];
+    j.fromX = 30; j.fromY = 40;   // replotted from a deep-space point; dest sysB at (100,0)
+    const p = constructDisplayPlacement(m, 'ship1', 500) as any;   // frac 0.5
+    expect(p.kind).toBe('transit');
+    expect(p.x).toBeCloseTo(65);   // 30 + (100-30)*0.5
+    expect(p.y).toBeCloseTo(20);   // 40 + (0-40)*0.5
+  });
+  it('before departure it sits adrift at the point origin, not in a system', () => {
+    const m = makeStarmap();
+    const j = (m.activeJourneys as any)[0];
+    j.fromX = 30; j.fromY = 40; j.startTimeSec = '100';
+    const p = constructDisplayPlacement(m, 'ship1', 0) as any;
+    expect(p.kind).toBe('adrift');
+    expect(p.x).toBeCloseTo(30); expect(p.y).toBeCloseTo(40);
+  });
+});
+
 describe('point-destination journeys (Stage 2 — fly to a spot, e.g. a stranded ship)', () => {
   it('transits toward the point and rendezvouses (adrift) there on arrival', () => {
     const m = makeStarmap();   // sysA(0,0), dur 1000

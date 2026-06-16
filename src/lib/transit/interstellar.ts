@@ -83,21 +83,28 @@ const sysPos = (s: Starmap, id?: ID) => s.systems.find((x) => x.id === id)?.posi
 export function constructDisplayPlacement(starmap: Starmap, constructId: ID, displaySec: number): ConstructPlacement {
   const j = (starmap.activeJourneys ?? []).find((x) => x.shipId === constructId);
   if (j) {
-    const from = sysPos(starmap, j.fromSystemId);
+    // A POINT origin (e.g. a course replotted from where an adrift ship sits) overrides the origin system.
+    const pointOrigin = j.fromX != null && j.fromY != null;
+    const from = pointOrigin ? { x: j.fromX as number, y: j.fromY as number } : sysPos(starmap, j.fromSystemId);
     // A POINT destination (e.g. a stranded ship) overrides the destination system's position.
     const pointTarget = j.toX != null && j.toY != null;
     const to = pointTarget ? { x: j.toX as number, y: j.toY as number } : sysPos(starmap, j.toSystemId);
     const start = Number(j.startTimeSec || 0);
     const endSec = journeyEffectiveEndSec(j);
     if (from && to) {
-      if (displaySec < start) return { kind: 'system', systemId: j.fromSystemId };
+      // Before departure: in the origin system, or adrift at the point it's being replotted from.
+      if (displaySec < start) return pointOrigin
+        ? { kind: 'adrift', x: from.x, y: from.y, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId }
+        : { kind: 'system', systemId: j.fromSystemId };
       if (displaySec < endSec) {
         const f = fracAt(j, displaySec);
         return { kind: 'transit', fromSystemId: j.fromSystemId, toSystemId: j.toSystemId, x: from.x + (to.x - from.x) * f, y: from.y + (to.y - from.y) * f, frac: f };
       }
       // Ended: outcome decides the resting place.
       const outcome = j.outcome ?? 'arrive';
-      if (outcome === 'return') return { kind: 'system', systemId: j.fromSystemId };
+      if (outcome === 'return') return pointOrigin
+        ? { kind: 'adrift', x: from.x, y: from.y, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId }
+        : { kind: 'system', systemId: j.fromSystemId };
       if (outcome === 'strand') {
         const f = fracAt(j, endSec);
         const sx = from.x + (to.x - from.x) * f, sy = from.y + (to.y - from.y) * f;

@@ -985,8 +985,8 @@
         {@const ship = journeyShip(journey)}
         {@const fill = ship?.icon_color || '#ffd23f'}
         {#if p.kind === 'transit'}
-          {@const from = systemById(journey.fromSystemId)}
-          {@const to = systemById(journey.toSystemId)}
+          {@const from = (journey.fromX != null && journey.fromY != null) ? { position: { x: journey.fromX, y: journey.fromY }, name: journey.fromLabel || 'Deep space' } : systemById(journey.fromSystemId)}
+          {@const to = (journey.toX != null && journey.toY != null) ? { position: { x: journey.toX, y: journey.toY }, name: journey.toLabel || 'Deep space' } : systemById(journey.toSystemId)}
           {#if from && to}
             <line class="journey-trail" x1={from.position.x} y1={from.position.y} x2={p.x} y2={p.y} />
             <line class="journey-ahead" x1={p.x} y1={p.y} x2={to.position.x} y2={to.position.y} />

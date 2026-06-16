@@ -472,6 +472,12 @@ export interface ActiveJourney {
                           // space (e.g. a stranded ship) rather than a system. When set, the journey
                           // targets this point and "arrival" rendezvouses there (adrift) instead of docking.
   toLabel?: string;       // human label for a point destination (e.g. the target ship's name)
+  fromX?: number; fromY?: number;  // POINT origin (starmap coords) — a course replotted from where the
+                          // ship currently sits (e.g. a refuelled adrift ship), not a system. Symmetric
+                          // with toX/toY: when set, the journey departs this point.
+  fromLabel?: string;     // human label for a point origin
+  redirectDvMs?: number;  // Δv spent at departure to redirect the ship's existing momentum onto the new
+                          // heading (0 if it was at rest / already aligned). Recorded for the log/fuel.
 }
 
 // A construct stranded in interstellar space (a journey ended mid-flight). It no longer belongs to

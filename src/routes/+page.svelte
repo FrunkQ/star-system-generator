@@ -111,6 +111,8 @@
         durationSec: d.observerSeconds,
         ...(d.cannotStop ? { cannotStop: true } : {}),
         ...(d.toX != null && d.toY != null ? { toX: d.toX, toY: d.toY, toLabel: d.toLabel } : {}),
+        ...(d.fromX != null && d.fromY != null ? { fromX: d.fromX, fromY: d.fromY, fromLabel: d.fromLabel } : {}),
+        ...(d.redirectDvMs ? { redirectDvMs: d.redirectDvMs } : {}),
       };
       // Realistic mode drains the propellant the trip burns from the ship's tanks (scaled across tanks so
       // the total drops by the used mass). Departing spends the fuel even if the journey is later cancelled.
@@ -1263,6 +1265,7 @@
       toName={shipPanel.toName}
       on:resolve={(e) => handleShipResolve(shipPanel.journey.id, e.detail.outcome, e.detail.coast)}
       on:resume={() => handleShipResume(shipPanel.journey.id)}
+      on:newtransit={() => { interstellarShipId = shipPanel.construct.id; showInterstellarModal = true; shipPanelJourneyId = null; }}
       on:update={(e) => handleShipConstructUpdate(e.detail)}
       on:close={() => (shipPanelJourneyId = null)}
     />

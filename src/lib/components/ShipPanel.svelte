@@ -36,18 +36,25 @@
       <span class="route">{fromName} → {toName}{#if status==='transit'} · {Math.round(frac*100)}%{/if}</span>
     </div>
     {#if status === 'adrift'}
-      <p class="hint">Stranded in interstellar space. Resume to put it back on course (reversible).</p>
-      <div class="t-actions"><button on:click={() => dispatch('resume')}>Resume journey</button></div>
+      <p class="hint">Stranded in interstellar space. <strong>Chart a new course</strong> is the physical choice — it replots from here, carrying the ship's current velocity. Resuming the old course pretends it never stopped.</p>
+      <div class="t-actions">
+        <button class="physical" on:click={() => dispatch('newtransit')} title="Plot a fresh interstellar course from the ship's current position and velocity (e.g. after refuelling)">Chart a new course</button>
+        <button class="destructive" on:click={() => dispatch('resume')} title="Resume the original course — physically impossible from a dead stop (universe-breaking)">Continue journey</button>
+        <button on:click={() => dispatch('close')} title="Leave it stranded for now">Cancel</button>
+      </div>
     {:else if status === 'arrived'}
       <p class="hint">Arrived at its destination.</p>
-      <div class="t-actions"><button on:click={() => dispatch('resume')}>Re-fly journey</button></div>
-    {:else}
-      <p class="hint">End the journey — reversible (it's derived from the clock; scrub back and it's en route again):</p>
       <div class="t-actions">
-        <button on:click={() => dispatch('resolve', { outcome: 'return' })} title="Turn back to the origin system">At source</button>
-        <button on:click={() => dispatch('resolve', { outcome: 'arrive' })} title="Arrive now at the destination">At destination</button>
-        <button class="danger" on:click={() => dispatch('resolve', { outcome: 'strand', coast: true })} title="Abort but keep momentum — it coasts on in a straight line">Strand · drift</button>
-        <button class="danger" on:click={() => dispatch('resolve', { outcome: 'strand', coast: false })} title="Abort and stop dead in space">Strand · stop</button>
+        <button class="physical" on:click={() => dispatch('newtransit')} title="Plot a fresh interstellar course onward from here">Chart a new course</button>
+        <button on:click={() => dispatch('resume')} title="Re-fly the same journey">Re-fly journey</button>
+      </div>
+    {:else}
+      <p class="hint">Aborting? <strong>Strand · drift</strong> is the physical choice — a coasting ship can't just stop. All outcomes are reversible (derived from the clock; scrub back and it's en route again).</p>
+      <div class="t-actions">
+        <button class="physical" on:click={() => dispatch('resolve', { outcome: 'strand', coast: true })} title="Abort but keep momentum — it coasts on in a straight line (physically correct)">Strand · drift</button>
+        <button class="caution" on:click={() => dispatch('resolve', { outcome: 'strand', coast: false })} title="Abort and stop dead in space — ignores momentum, not physically correct">Strand · stop</button>
+        <button class="destructive" on:click={() => dispatch('resolve', { outcome: 'return' })} title="Delete this trip — the ship returns to where it started, as if it never left (removes the journey)">Delete trip</button>
+        <button on:click={() => dispatch('close')} title="Keep the journey running unchanged">Continue journey</button>
       </div>
     {/if}
   </section>
@@ -80,6 +87,10 @@
   .hint { margin: 0; font-size: 0.78rem; color: var(--text-faint); }
   .t-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .t-actions button { padding: 6px 12px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg-panel); color: var(--text); cursor: pointer; font-size: 0.82rem; }
-  .t-actions button.danger { border-color: #d04545; color: #e06a6a; }
+  /* Colour = physics honesty: green is the valid choice, orange is allowed-but-unphysical, red is
+     destructive / universe-breaking, plain is a neutral dismiss. */
+  .t-actions button.physical { border-color: #2f9e57; color: #6fcf8f; }
+  .t-actions button.caution { border-color: #d98a2b; color: #e8a857; }
+  .t-actions button.destructive { border-color: #d04545; color: #e06a6a; }
   .editor { min-width: 0; }
 </style>

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.120-beta - 16th Jun 2026
+
+* New Transit: replot a fresh interstellar course from where a ship currently is (e.g. once it's been refuelled), not from its origin system. The planner now takes the ship's live position and — crucially — its current velocity, charging an honest vector Δv to redirect that momentum: a destination along the current drift is nearly free, a reversal costs the whole speed. The cost (and how far off your drift the new heading is) is shown, and the journey is blocked if the ship hasn't the Δv to redirect.
+* Ship-panel actions recoloured by physical honesty: green = the valid choice (Strand · drift; Chart a new course), orange = allowed-but-unphysical (Strand · stop), red = destructive / universe-breaking (Delete trip; resume from a dead stop), neutral = dismiss. Dropped the "jump to destination" option (it skewed the clock).
+
 ## v2.0.119-beta - 16th Jun 2026
 
 * The construct tag-adder category dropdown now lists only enabled categories (disabled ones are hidden, not greyed).
