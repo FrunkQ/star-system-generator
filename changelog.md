@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.118-beta - 16th Jun 2026
+
+* In the construct tag adder, the category dropdown now colours "Custom" and bolds the three core always-on categories (Status, Owner, Purpose) so they stand out from the optional ones.
+
 ## v2.0.117-beta - 16th Jun 2026
 
 * The starmap measure tool now tracks a moving ship. Measure to a construct and its endpoint follows the ship as you advance time (re-derived from the clock, like the system view), so the distance stays live instead of freezing at the spot you clicked. Measuring between two stars is unchanged.

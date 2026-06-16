@@ -91,8 +91,8 @@
   <div class="add-tag-form">
     <label class="fld">Category
       <select bind:value={newCat}>
-        <option value="custom">Custom</option>
-        {#each $coiCategories as c (c.id)}<option value={c.id}>{c.label}</option>{/each}
+        <option value="custom" style="color: var(--accent, #5b8def); font-weight: 600;">Custom</option>
+        {#each $coiCategories as c (c.id)}<option value={c.id} style={c.required ? 'font-weight: 700;' : ''}>{c.label}</option>{/each}
       </select>
     </label>
     {#if availableInCat.length}
