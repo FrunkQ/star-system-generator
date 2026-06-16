@@ -201,13 +201,28 @@
   $: allBodies = (() => {
     const map = $starmapStore;
     if (!map) return [] as any[];
+    const nowSec = Number(map.temporal?.displayTimeSec ?? 0);
+    const interIds = interstellarConstructIds(map, nowSec);
     const out: any[] = [];
     for (const sys of map.systems) {
       const sysName = sys.name;
       for (const n of (sys.system?.nodes ?? [])) {
-        if (n.kind === 'body' || n.kind === 'construct') {
+        if (n.kind !== 'body' && n.kind !== 'construct') continue;
+        // An interstellar construct (in transit / stranded) has left its system — list it under
+        // "Interstellar space", not its source system, so it isn't found where it no longer is.
+        if (n.kind === 'construct' && interIds.has(n.id)) {
+          const j = (map.activeJourneys ?? []).find((x) => x.shipId === n.id);
+          out.push({ ...n, __systemId: `interstellar:${n.id}`, __systemName: 'Interstellar space', __interstellar: true, __journeyId: j?.id ?? null });
+        } else {
           out.push({ ...n, __systemId: sys.id, __systemName: sysName });
         }
+      }
+    }
+    // Constructs fully pulled out into interstellar space (no longer in any system's nodes).
+    for (const a of (map.adriftConstructs ?? [])) {
+      const c = a.construct;
+      if (c && !out.some((x) => x.id === c.id)) {
+        out.push({ ...c, __systemId: `interstellar:${c.id}`, __systemName: 'Interstellar space', __interstellar: true, __journeyId: null });
       }
     }
     return out;
@@ -284,7 +299,13 @@
   function handleAllBodiesSelect(e: CustomEvent<string>) {
     const node = allBodies.find((n) => n.id === e.detail);
     showAllBodies = false;
-    if (node) enterSystemAndFocus(node.__systemId, node.id);
+    if (!node) return;
+    // Interstellar construct → open its starmap ship panel (it has no system to enter).
+    if (node.__interstellar) {
+      if (node.__journeyId) { if (currentSystemId) exitToStarmap(); shipPanelJourneyId = node.__journeyId; }
+      return;
+    }
+    enterSystemAndFocus(node.__systemId, node.id);
   }
   function handleTagFinderSelect(e: CustomEvent<{ systemId: string; id: string }>) {
     showTagFinder = false;

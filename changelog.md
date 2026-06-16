@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.131-beta - 16th Jun 2026
+
+* The in-system ship's "Plan Transit" button is now contextual: when the ship is on a journey it's replaced by the Cancel · drift / Cancel · stop controls; when idle it shows Plan Transit. Ship's Log is always available.
+* Fixed: a ship adrift in interstellar space no longer shows under its source system in the rail "Find construct…" / "Find body…" directories — it's listed under "Interstellar space" and selecting it opens its ship panel.
+
 ## v2.0.130-beta - 16th Jun 2026
 
 * You can now abort an in-system journey straight from the selected ship — no need to dig into the ship's log. Two buttons appear when a ship has a live journey: Cancel · drift (green — coast on under gravity, the physical choice) and Cancel · stop (orange — halt, then fall toward the star). Both clear any future plans too.

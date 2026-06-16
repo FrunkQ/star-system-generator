@@ -307,18 +307,20 @@
         {#if !isEditingConstruct && !hideActions}
             <!-- Plan Transit (Only available if NOT on surface) -->
             {#if construct.placement !== 'Surface'}
-                <button class="action-btn transit" on:click={() => dispatch('planTransit')}>
-                    Plan Transit
-                </button>
-                <button class="action-btn transit" on:click={() => dispatch('openJourneyLog')} title="Open ship log (future scheduled journeys)">
-                    Ship's Log ({futureJourneyCount})
-                </button>
+                <!-- Contextual transit controls: plan one when idle, abort when on a journey. Abort
+                     directly here (no digging into the log) — Drift coasts on under gravity (physical);
+                     Stop halts, then falls toward the star. Either clears future plans too. -->
                 {#if hasJourney}
-                    <!-- Abort directly from the ship (no need to dig into the log). Drift = coast on under
-                         gravity (physical); Stop = halt, then fall toward the star. Clears future plans too. -->
                     <button class="action-btn cancel-drift" on:click={() => dispatch('cancelactive', { coast: true })} title="Abort the journey but keep momentum — coast on under gravity">Cancel · drift</button>
                     <button class="action-btn cancel-stop" on:click={() => dispatch('cancelactive', { coast: false })} title="Abort and stop dead — it then falls under the system's gravity">Cancel · stop</button>
+                {:else}
+                    <button class="action-btn transit" on:click={() => dispatch('planTransit')}>
+                        Plan Transit
+                    </button>
                 {/if}
+                <button class="action-btn transit" on:click={() => dispatch('openJourneyLog')} title="Open ship log (scheduled journeys)">
+                    Ship's Log ({futureJourneyCount})
+                </button>
             {/if}
 
             {#if landingAnalysis}
