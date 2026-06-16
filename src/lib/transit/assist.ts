@@ -276,7 +276,7 @@ function buildAssistTransitPlan(
         const f3 = calculateFuelMass(m, dv3, params.shipIsp);
         fuelEst = f1 + f2 + f3;
     } else {
-        fuelEst = totalDV * 0.05; // Fallback
+        fuelEst = Infinity; // No engine/Isp → can't perform the assist burn; infeasible, not a fake number.
     }
     
     // Generate Segments for Visualization

@@ -866,7 +866,7 @@ function calculateLambertPlan(
         fuel1 = calculateFuelMass(m0, dv1_applied_mps, params.shipIsp!);
         m1 = m0 - fuel1;
     } else {
-        fuel1 = dv1_applied_mps * 0.01;
+        fuel1 = Infinity; // No engine/Isp → can't move; the plan is infeasible, not "cheap".
     }
 
     let dv2_applied_au_s = 0;
@@ -892,7 +892,7 @@ function calculateLambertPlan(
     if (useRocketEq) {
         fuel2 = calculateFuelMass(m1, dv2_applied_mps, params.shipIsp!);
     } else {
-        fuel2 = dv2_applied_mps * 0.01;
+        fuel2 = Infinity;
     }
 
     const totalBurnTime = accelTime_sec + brakeTime_sec;
@@ -901,7 +901,7 @@ function calculateLambertPlan(
         const dv2_capped_mps = Math.min(dv2_applied_mps, remainingForBrake * brakeAccel_mps2);
         dv2_applied_au_s = dv2_capped_mps / AU_M;
         brakeTime_sec = dv2_capped_mps / brakeAccel_mps2;
-        fuel2 = useRocketEq ? calculateFuelMass(m1, dv2_capped_mps, params.shipIsp!) : dv2_capped_mps * 0.01;
+        fuel2 = useRocketEq ? calculateFuelMass(m1, dv2_capped_mps, params.shipIsp!) : Infinity;
     }
 
     const totalDeltaV_ms = dv1_applied_mps + dv2_applied_mps;

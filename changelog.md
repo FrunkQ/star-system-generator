@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.144-beta - 16th Jun 2026
+
+* Transit fuel sanity: a ship with no usable main engine (zero Isp) no longer shows fabricated fuel figures (the old "Δv × 0.01" / "× 0.05" placeholders that produced things like 0.4 t and 6.5-billion-tonne flybys). Such plans are now correctly infeasible — fuel reads "—" and the planner says the engine can't make the move. No engine, no move.
+
 ## v2.0.143-beta - 16th Jun 2026
 
 * Performance: the drifting-ship forecast path is now a solid faint line (a dashed line over a path spanning billions of metres made the canvas grind through countless dash segments), and its trajectory integration is cached per ship+clock so it no longer re-computes every frame while panning or idle.

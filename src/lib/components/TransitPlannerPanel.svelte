@@ -35,7 +35,10 @@
   export let completedPlans: TransitPlan[] = [];
   export let initialState: StateVector | undefined = undefined;
 
-  const dispatch = createEventDispatcher(); 
+  const dispatch = createEventDispatcher();
+
+  // Infeasible plans (no engine → infinite fuel) read as "—", not "Infinityt".
+  const fmtT = (kg: number) => Number.isFinite(kg) ? `${(kg / 1000).toFixed(1)}t` : '—';
 
   let targetId: ID = '';
   let selectedOrbitId: string = 'lo'; // Default to Low Orbit
@@ -999,7 +1002,7 @@
                     {#if (p.initialDelay_days || 0) > 0}
                         <div class="plan-fuel" style="font-size: 0.8em; color: #88ccff;">wait {(p.initialDelay_days || 0)}d</div>
                     {/if}
-                    <div class="plan-fuel" style="font-size: 0.9em; color: #aaa;">{(p.totalFuel_kg/1000).toFixed(1)}t</div>
+                    <div class="plan-fuel" style="font-size: 0.9em; color: #aaa;">{fmtT(p.totalFuel_kg)}</div>
                     <div class="plan-g">{(p.maxG || 0).toFixed(2)} g / {(((p.accelRatio || 0) + (p.brakeRatio || 0)) * 100).toFixed(0)}%</div>                    {#if p.hiddenReason}
                         <div style="font-size: 0.7em; color: #ff6666; margin-top: 4px; text-transform: uppercase;">
                             {p.hiddenReason.replace('Unstable Direct Burn ', '').replace(/[()]/g, '')}
@@ -1117,8 +1120,8 @@
             <div class="result-item">
                 <span>Fuel:</span>
                 <strong>
-                    {(plan.totalFuel_kg / 1000).toFixed(1)}t
-                    {#if originId}
+                    {fmtT(plan.totalFuel_kg)}
+                    {#if originId && Number.isFinite(plan.totalFuel_kg)}
                         {@const construct = system.nodes.find(n => n.id === (constructId || originId))}
                         {#if construct && construct.fuel_tanks && construct.fuel_tanks.length > 0}
                             {@const mainTank = construct.fuel_tanks.reduce((prev, current) => (prev.capacity_units > current.capacity_units) ? prev : current)}
@@ -1126,7 +1129,7 @@
                             {@const density = fuelDef ? fuelDef.density_kg_per_m3 : 1000}
                             {@const capacityKg = mainTank.capacity_units * density}
                             {@const currentKg = mainTank.current_units * density}
-                            / 
+                            /
                             <span style="color: {(currentKg - totalUsedFuel - plan.totalFuel_kg) < 0 ? '#ff3333' : '#88ccff'}">
                                 {((currentKg - totalUsedFuel - plan.totalFuel_kg) / 1000).toFixed(1)}t left
                             </span>
