@@ -41,8 +41,8 @@
     (construct as any).object_playerhidden = !(construct as any).object_playerhidden;
     dispatch('update', construct);
   }
-  // Sensors on/off (e.g. run dark en-route). Absent = on.
-  $: sensorsOn = (construct as any).sensors_active !== false;
+  // Sensors toggle: shows the ship's sensor-range rings in the orrery. Off by default.
+  $: sensorsOn = (construct as any).sensors_active === true;
   function toggleSensors() {
     (construct as any).sensors_active = !sensorsOn;
     dispatch('update', construct);
@@ -63,7 +63,7 @@
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8z"/><circle cx="12" cy="12" r="3"/></svg>
         {/if}
       </button>
-      <button class="icon-btn" class:on={sensorsOn} on:click={toggleSensors} title={sensorsOn ? 'Sensors active — click to run dark' : 'Sensors off — click to activate'} aria-label="Toggle sensors">
+      <button class="icon-btn" class:on={sensorsOn} on:click={toggleSensors} title={sensorsOn ? 'Sensor ranges shown — click to hide' : 'Show sensor range rings'} aria-label="Toggle sensor ranges">
         <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1A10 10 0 0 1 4.9 4.9"/><path d="M7.8 16.2a6 6 0 0 1 0-8.4"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4"/><path d="M19.1 4.9a10 10 0 0 1 0 14.2"/></svg>
       </button>
       <span class="dot" class:transit={status==='transit'||status==='before'} class:adrift={status==='adrift'} class:arrived={status==='arrived'}></span>

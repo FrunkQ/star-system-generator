@@ -753,7 +753,7 @@
       ctx.scale(zoom, zoom);
       // Zones are drawn in screen-space overlay after world-space pass for better dash/LOD performance.
       if (showTravellerZones) drawTravellerZones(ctx);
-      if (showSensors) drawSensorOverlay(ctx);
+      drawSensorOverlay(ctx);   // gates internally on the global view toggle OR the ship's sensors flag
       for (const node of system.nodes) {
           if (!node.orbit || !node.parentId || (node.kind === 'body' && node.roleHint === 'belt')) continue;
           const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(node.parentId) : worldPositions.get(node.parentId);
@@ -1061,9 +1061,9 @@
       if (showZones) drawStellarZonesOverlay(ctx, width, height);
       
       // Draw Sensor Labels (Screen Space Overlay)
-      if (showSensors && focusedBodyId) {
+      if (focusedBodyId) {
           const node = system.nodes.find(n => n.id === focusedBodyId);
-          if (node && node.kind === 'construct' && (node as CelestialBody).sensors) {
+          if (node && node.kind === 'construct' && (node as CelestialBody).sensors && (showSensors || (node as any).sensors_active === true)) {
               const pos = toytownFactor > 0 ? scaledWorldPositions.get(node.id) : worldPositions.get(node.id);
               if (pos) {
                   const screenPos = worldToScreen(pos.x, pos.y);
@@ -1241,9 +1241,11 @@
 
   function drawSensorOverlay(ctx: CanvasRenderingContext2D) {
       if (!system || !zoom || !focusedBodyId) return;
-      
+
       const node = system.nodes.find(n => n.id === focusedBodyId);
       if (!node || node.kind !== 'construct' || !(node as CelestialBody).sensors) return;
+      // Per-ship sensors toggle drives the range rings (or the global Sensors view option).
+      if (!showSensors && (node as any).sensors_active !== true) return;
       
       const pos = toytownFactor > 0 ? scaledWorldPositions.get(node.id) : worldPositions.get(node.id);
       if (!pos) return;

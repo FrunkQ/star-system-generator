@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.137-beta - 16th Jun 2026
+
+* The ship sensors toggle now does something: turning it on draws that construct's sensor-range rings (and labels) around it in the orrery, from its defined sensors. Off by default; the global View → Sensors option still shows the focused ship's ranges too.
+
 ## v2.0.136-beta - 16th Jun 2026
 
 * Ship's log: dropped the now-redundant "Leg" framing (each journey is a single hop) — entries lead with the route and add the arrival (differential) speed alongside the end state. Fixed the wildly-wrong arrival/departure year (journey times are unix-epoch; they're now converted to the calendar's master-time correctly).
