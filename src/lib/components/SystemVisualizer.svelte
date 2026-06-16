@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { System, CelestialBody, Barycenter, RulePack, SystemNode } from '$lib/types';
   import type { TransitPlan } from '$lib/transit/types';
-  import { getJourneyBounds } from '$lib/transit/scheduler';
+  import { getJourneyBounds, coastPathUnderGravity } from '$lib/transit/scheduler';
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import { propagate } from "$lib/api";
   import { AU_KM, EARTH_MASS_KG } from '../constants';
@@ -742,6 +742,19 @@
       return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
   }
 
+  // A construct is coasting now if it isn't on an active (non-cancelled) journey but has an aborted one
+  // that's already taken effect — i.e. it's drifting/falling under gravity, so it gets a forecast path.
+  function isCoastingNow(node: any): boolean {
+      const logs = node.scheduled_journeys || [];
+      if (!logs.length) return false;
+      for (const l of logs) {
+          if (l.status === 'cancelled') continue;
+          const b = getJourneyBounds(l.plans);
+          if (b && currentTime >= b.startMs && currentTime <= b.endMs) return false;
+      }
+      return logs.some((l: any) => l.status === 'cancelled' && l.cancelledAtSec && Number(l.cancelledAtSec) * 1000 <= currentTime);
+  }
+
   function drawSystem(ctx: CanvasRenderingContext2D) {
       if (!system || !zoom) return;
       const { width, height } = canvas;
@@ -1046,6 +1059,33 @@
                   if (!b || currentTime > b.endMs) continue;
                   for (const plan of log.plans) drawTransitPlan(ctx, plan, false, 0.16, true);
               }
+          }
+      }
+      // Predicted coast path for drifting/stopped ships — the conic they're about to follow (fall to the
+      // star / ellipse / hyperbola). A faint red dashed forecast, handy for sanity-checking their vector.
+      if (system) {
+          for (const node of system.nodes) {
+              if (node.kind !== 'construct' || !(node as any).vector_position_au || !isCoastingNow(node as any)) continue;
+              const vel = (node as any).vector_velocity_ms ?? { x: 0, y: 0 };
+              const pts = coastPathUnderGravity(system, (node as any).vector_position_au, vel, currentTime, 40);
+              if (pts.length < 2) continue;
+              ctx.beginPath();
+              ctx.strokeStyle = 'rgba(208, 69, 69, 0.55)';
+              ctx.lineWidth = 1.4 / zoom;
+              ctx.setLineDash([4 / zoom, 4 / zoom]);
+              for (let i = 0; i < pts.length; i++) {
+                  let p = pts[i];
+                  if (toytownFactor > 0) {
+                      const rr = Math.sqrt(p.x * p.x + p.y * p.y);
+                      const rn = scaleBoxCox(rr, toytownFactor, x0_distance);
+                      const ang = Math.atan2(p.y, p.x);
+                      p = { x: rn * Math.cos(ang), y: rn * Math.sin(ang) };
+                  }
+                  if (i === 0) ctx.moveTo(p.x - renderPan.x, p.y - renderPan.y);
+                  else ctx.lineTo(p.x - renderPan.x, p.y - renderPan.y);
+              }
+              ctx.stroke();
+              ctx.setLineDash([]);
           }
       }
       if (completedPlans && completedPlans.length > 0) {

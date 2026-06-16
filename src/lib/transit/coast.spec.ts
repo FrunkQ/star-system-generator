@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { coastUnderGravity } from './scheduler';
+import { coastUnderGravity, coastPathUnderGravity } from './scheduler';
 import type { System } from '$lib/types';
 
 // One Sun-mass star at the system root (sits at the origin). A cut-loose ship then coasts under its real
@@ -28,6 +28,15 @@ describe('coastUnderGravity — in-system adrift under real gravity', () => {
     expect(r.position_au.x).toBeLessThan(1);   // pulled inward
     expect(r.position_au.x).toBeGreaterThan(0);
     expect(r.velocity_ms.x).toBeLessThan(0);   // moving sunward
+  });
+
+  it('coastPathUnderGravity forecasts an inward-curving fall from rest', () => {
+    const pts = coastPathUnderGravity(sys, { x: 1, y: 0 }, { x: 0, y: 0 }, 0, 40);
+    expect(pts.length).toBe(41);                       // 40 steps + the start
+    expect(pts[0]).toEqual({ x: 1, y: 0 });            // starts where the ship is
+    const r0 = Math.hypot(pts[0].x, pts[0].y);
+    const rEnd = Math.hypot(pts[pts.length - 1].x, pts[pts.length - 1].y);
+    expect(rEnd).toBeLessThan(r0);                     // has fallen inward
   });
 
   it('with no star it falls back to a straight line', () => {

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.142-beta - 16th Jun 2026
+
+* A drifting/stopped in-system ship now draws a faint red dashed forecast of its path — the conic it's about to follow under gravity (a slow fall to the star, an ellipse, or a hyperbola escaping), ~40 steps ahead. Handy for sanity-checking its velocity vector.
+
 ## v2.0.141-beta - 16th Jun 2026
 
 * Plan Transit from an adrift/stopped in-system ship now replots from where the ship actually is, carrying its current position and velocity — so the redirect-Δv cost of turning its momentum applies, matching the interstellar "Chart a new course". (Previously it replanned from the body, ignoring the drift.)

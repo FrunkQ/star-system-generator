@@ -3,7 +3,7 @@ import type { TransitPlan, Vector2 } from '$lib/transit/types';
 import { AU_KM, G } from '$lib/constants';
 import { getGlobalState } from '$lib/transit/physics';
 import { driftAt } from '$lib/physics/driftIntegrator';
-import { systemGravityField } from '$lib/physics/systemGravity';
+import { systemGravityField, G_AU } from '$lib/physics/systemGravity';
 
 const AU_M = AU_KM * 1000;
 
@@ -45,6 +45,49 @@ export function coastUnderGravity(
     field, tSec, step
   );
   return { position_au: { x: r.x, y: r.y }, velocity_ms: { x: r.vx * AU_M, y: r.vy * AU_M } };
+}
+
+// Predict a coasting ship's FUTURE path under the system's gravity — a polyline of `steps` points so the
+// orrery can draw the conic it's about to follow (a slow fall to the star, an ellipse, or a hyperbola
+// escaping). Auto-sizes the horizon to ~a quarter orbital period at the ship's distance so the arc is
+// visibly curved at any scale. Returns AU positions (oldest→newest), empty if there's nothing to pull on.
+export function coastPathUnderGravity(
+  system: System,
+  startPos_au: Vector2,
+  startVel_ms: { x: number; y: number },
+  t0Ms: number,
+  steps = 40
+): Vector2[] {
+  const bodies = system.nodes
+    .filter((n) => n.kind === 'body' && ((n as any).massKg || 0) > 0 && (n as any).roleHint !== 'belt' && (n as any).roleHint !== 'ring')
+    .map((n) => ({ id: n.id, massKg: (n as any).massKg as number }));
+  if (!bodies.length) return [];
+  const field = systemGravityField(bodies, (id, t) => {
+    const node = system.nodes.find((n) => n.id === id);
+    if (!node) return [0, 0];
+    const s = getGlobalState(system, node as any, t * 1000);
+    return [s.r.x, s.r.y];
+  });
+  // Horizon ≈ a quarter orbital period at the ship's distance from the most massive body.
+  const maxMass = bodies.reduce((m, b) => Math.max(m, b.massKg), 0);
+  const r = Math.max(1e-6, Math.hypot(startPos_au.x, startPos_au.y));
+  const mu = G_AU * maxMass;
+  const charSec = mu > 0 ? Math.sqrt((r * r * r) / mu) : 3.15e7; // √(r³/μ) = T/2π (≈1 rad of arc)
+  // One characteristic time ≈ a radian of orbit, or most of a radial fall — long enough to read the
+  // curve, short enough that a near-radial plunge doesn't whip through the star and fly back out.
+  const horizonSec = Math.max(86400, charSec);
+  const stepSec = horizonSec / steps;
+  const sub = Math.min(86400, Math.max(300, stepSec / 40)); // RK4 sub-step
+
+  const pts: Vector2[] = [{ x: startPos_au.x, y: startPos_au.y }];
+  let x = startPos_au.x, y = startPos_au.y, vx = startVel_ms.x / AU_M, vy = startVel_ms.y / AU_M;
+  let t = t0Ms / 1000;
+  for (let k = 0; k < steps; k++) {
+    const rr = driftAt({ t0: t, x, y, vx, vy }, field, t + stepSec, sub);
+    x = rr.x; y = rr.y; vx = rr.vx; vy = rr.vy; t += stepSec;
+    pts.push({ x, y });
+  }
+  return pts;
 }
 
 // arrivalPlacement code -> human label and parking-altitude factor (radii above surface),
