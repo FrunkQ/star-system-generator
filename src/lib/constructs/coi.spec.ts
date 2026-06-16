@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_COI_CATEGORIES, toggleCoI, constructHasCoI, constructTardiness, mergeStarmapCoIs, coiCategories, activeCoICategories, exportCoIs, importCoIs, orphanedCoITags, removeCoITag, normalizeCoIs, derivedStatusKey, type CoICategory } from './coi';
+import { DEFAULT_COI_CATEGORIES, toggleCoI, constructHasCoI, constructTardiness, mergeStarmapCoIs, coiCategories, activeCoICategories, exportCoIs, importCoIs, orphanedCoITags, removeCoITag, normalizeCoIs, derivedStatusKey, addCoITag, type CoICategory } from './coi';
+import { get } from 'svelte/store';
 import type { CelestialBody } from '../types';
 
 const ship = (): CelestialBody => ({ id: 's', name: 'Ship', kind: 'construct', parentId: null, tags: [] } as any);
@@ -62,6 +63,22 @@ describe('ensureConstructActiveTag (legacy ships default to Active)', () => {
     expect(ensureConstructActiveTag(s)).toBe(false);   // idempotent
     const tagged = { id: 'c2', name: 'C2', kind: 'construct', parentId: null, tags: [{ key: 'status/damaged' }] } as any;
     expect(ensureConstructActiveTag(tagged)).toBe(false);   // already has a status — leave it
+  });
+});
+
+describe('addCoITag (custom-tag adder)', () => {
+  it('adds a tag to an existing category (so it shows everywhere)', () => {
+    const key = addCoITag('purpose', 'Purpose', 'Privateer');
+    expect(key).toBe('purpose/privateer');
+    const purpose = get(coiCategories).find((c) => c.id === 'purpose')!;
+    expect(purpose.tags.some((t) => t.key === 'purpose/privateer' && t.label === 'Privateer')).toBe(true);
+  });
+  it('creates a Custom category for a free tag', () => {
+    const key = addCoITag('custom', 'Custom', 'Flagship');
+    expect(key).toBe('custom/flagship');
+    const custom = get(coiCategories).find((c) => c.id === 'custom');
+    expect(custom?.enabled).toBe(true);
+    expect(custom?.tags.some((t) => t.key === 'custom/flagship')).toBe(true);
   });
 });
 

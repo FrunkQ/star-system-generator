@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.110-beta - 16th Jun 2026
+
+* The journey line now shows where a ship will end up adrift: the powered leg is orange, and the drift it can't avoid is red, projected on across the map — visible from the moment it sets off, so an under-fuelled trip reads as "orange to here, then red off into the dark".
+* A construct's Tags tab gained an "Add a tag" form matching the body/PoI one (pick a category or Custom → name → live preview). Adding under a category persists it there, so it shows in the CoI editor and everywhere else.
+
 ## v2.0.109-beta - 16th Jun 2026
 
 * You can now send a ship to the rescue: when planning an interstellar journey, the destination can be "An interstellar ship" — pick a stranded (or in-flight) vessel and the planner plots a course to it, reading the distance and feasibility just like a system trip. Arriving rendezvouses at the ship's location. (For a still-moving target you're aimed at where it is now; matching a moving ship is a later refinement.)

@@ -220,6 +220,28 @@ export function toggleCoI(construct: CelestialBody, cat: CoICategory, key: strin
   }
 }
 
+// Add a tag to a CoI category (creating the category if it doesn't exist, e.g. a free-form 'custom'
+// category). Persists into the store so it appears in the CoI editor and everywhere else. Returns the key.
+export function addCoITag(catId: string, catLabel: string, tagLabel: string): string | null {
+  const label = tagLabel.trim();
+  const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  if (!slug) return null;
+  const key = `${catId}/${slug}`;
+  coiCategories.update((cs) => {
+    const i = cs.findIndex((c) => c.id === catId);
+    if (i < 0) {
+      return [...cs, { id: catId, label: catLabel || catId, color: '#777777', textColor: '#fff', single: false, enabled: true, tags: [{ key, label }] }];
+    }
+    const cat = cs[i];
+    const out = [...cs];
+    out[i] = cat.tags.some((t) => t.key === key)
+      ? { ...cat, enabled: true }
+      : { ...cat, enabled: true, tags: [...cat.tags, { key, label }] };
+    return out;
+  });
+  return key;
+}
+
 // Remove a CoI tag outright (for cleaning up orphans).
 export function removeCoITag(construct: CelestialBody, key: string): void {
   if (Array.isArray(construct.tags)) construct.tags = construct.tags.filter((t) => t.key !== key);

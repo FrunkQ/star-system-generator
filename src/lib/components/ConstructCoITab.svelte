@@ -1,7 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody } from '$lib/types';
-  import { coiCategories, activeCoICategories, orphanedCoITags, removeCoITag, toggleCoI, constructHasCoI, type CoICategory } from '$lib/constructs/coi';
+  import { coiCategories, activeCoICategories, orphanedCoITags, removeCoITag, toggleCoI, constructHasCoI, addCoITag, type CoICategory } from '$lib/constructs/coi';
+  import { describeTag } from '$lib/tags/tagPresentation';
 
   export let construct: CelestialBody;
   const dispatch = createEventDispatcher();
@@ -18,6 +19,28 @@
   // Tags whose category was turned off or removed — kept on the ship but shown greyed/inactive.
   $: orphans = (void tick, orphanedCoITags(construct, $coiCategories));
   function dropOrphan(key: string) { removeCoITag(construct, key); tick++; dispatch('update'); }
+
+  // --- Add a tag: mirrors the body/PoI "Add a tag" form (category-first → name → live preview). Adding
+  //     under a category persists it there (so it shows in the CoI editor + everywhere); Custom files it
+  //     under a free-form "Custom" category. ---
+  let newCat = 'custom';
+  let newName = '';
+  let newValue = '';
+  const slug = (s: string) => s.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9/_-]/g, '');
+  $: previewKey = `${newCat}/${slug(newName) || 'name'}`;
+  $: previewInfo = describeTag(previewKey);
+  function addCustom() {
+    const label = newName.trim();
+    if (!label) return;
+    const cat = $coiCategories.find((c) => c.id === newCat);
+    const key = addCoITag(newCat, cat?.label || 'Custom', label);
+    if (key && !construct.tags?.some((t) => t.key === key)) {
+      (construct.tags ?? (construct.tags = [])).push({ key, value: newValue.trim() || undefined, manual: true, coi: true } as any);
+      tick++;
+      dispatch('update');
+    }
+    newName = ''; newValue = '';
+  }
 </script>
 
 <div class="coi-tab">
@@ -43,6 +66,28 @@
       </div>
     </div>
   {/each}
+
+  <hr />
+  <h4>Add a tag</h4>
+  <div class="add-tag-form">
+    <label class="fld">Category
+      <select bind:value={newCat}>
+        <option value="custom">Custom</option>
+        {#each $coiCategories as c (c.id)}<option value={c.id}>{c.label}</option>{/each}
+      </select>
+    </label>
+    <label class="fld">Name
+      <input type="text" bind:value={newName} placeholder={newCat === 'custom' ? 'e.g. Flagship, faction' : 'e.g. tug'} on:keydown={(e) => e.key === 'Enter' && addCustom()} />
+    </label>
+    <label class="fld">Value (optional)
+      <input type="text" bind:value={newValue} placeholder="e.g. Empire, 7" />
+    </label>
+    <div class="preview-row">Shows as:
+      <span class="tag-chip-preview" style="background:{previewInfo.color}; color:{previewInfo.textColor || '#fff'}">{previewInfo.label}{#if newValue.trim()}: {newValue}{/if}</span>
+      {#if previewInfo.label.toLowerCase() !== previewKey.toLowerCase()}<code class="key-hint">{previewKey}</code>{/if}
+    </div>
+    <button class="add-btn" on:click={addCustom} disabled={!newName.trim()}>Add tag</button>
+  </div>
 
   {#if orphans.length}
     <div class="cat inactive">
@@ -83,4 +128,16 @@
   .swatch.off { background: var(--border, #555); }
   .chip.ghost { display: inline-flex; align-items: center; gap: 5px; font-style: italic; cursor: default; border-style: dashed; }
   .chip.ghost .drop { background: none; border: none; color: var(--text-muted, #b8bcc4); cursor: pointer; padding: 0; font-size: 0.9em; }
+  .add-tag-form { display: flex; flex-direction: column; gap: 8px; }
+  .fld { display: flex; flex-direction: column; gap: 3px; font-size: 0.75em; color: var(--text-muted); }
+  .add-tag-form select { padding: 7px; border-radius: 4px; border: 1px solid var(--border); background-color: var(--bg-control); color: var(--text); }
+  .add-tag-form input { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid var(--border); background-color: var(--bg-control); color: var(--text); }
+  .preview-row { display: flex; align-items: center; gap: 7px; font-size: 0.75em; color: var(--text-muted); flex-wrap: wrap; }
+  .tag-chip-preview { font-size: 0.92em; padding: 2px 7px; border-radius: 4px; }
+  .key-hint { font-family: var(--font-mono, monospace); font-size: 0.85em; color: var(--text-faint); }
+  .add-btn { width: 100%; padding: 8px; background-color: var(--bg-panel); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+  .add-btn:hover { background-color: var(--bg-control); }
+  .add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 5px 0; width: 100%; }
+  h4 { margin: 0; color: var(--link); font-size: 0.9em; text-transform: uppercase; }
 </style>

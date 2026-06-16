@@ -972,6 +972,14 @@
           {#if from && to}
             <line class="journey-trail" x1={from.position.x} y1={from.position.y} x2={p.x} y2={p.y} />
             <line class="journey-ahead" x1={p.x} y1={p.y} x2={to.position.x} y2={to.position.y} />
+            {#if journey.cannotStop}
+              <!-- Can't brake: the powered leg (orange) reaches the destination, then it drifts on (red),
+                   shown from departure so you can see the overshoot coming. -->
+              {@const ddx = to.position.x - from.position.x}
+              {@const ddy = to.position.y - from.position.y}
+              {@const dmag = Math.hypot(ddx, ddy) || 1}
+              <line class="journey-drift" x1={to.position.x} y1={to.position.y} x2={to.position.x + (ddx / dmag) * 4000} y2={to.position.y + (ddy / dmag) * 4000} />
+            {/if}
             <g class="journey-ship" role="button" tabindex="0" transform="translate({p.x}, {p.y})"
                on:pointerdown|stopPropagation={() => requestCancelJourney(journey, p.x, p.y)}
                on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
@@ -991,7 +999,7 @@
               {@const mag = Math.hypot(p.vx, p.vy) || 1}
               <!-- Project the onward heading a long way so a fly-by visibly tears off across (and off) the
                    map; the SVG clips it at the edge. -->
-              <line class="journey-ahead" x1="0" y1="0" x2={(p.vx / mag) * 4000} y2={(p.vy / mag) * 4000} />
+              <line class="journey-drift" x1="0" y1="0" x2={(p.vx / mag) * 4000} y2={(p.vy / mag) * 4000} />
             {/if}
             {#if ship?.icon_type === 'circle'}<circle r="5.5" {fill} stroke={EDGE_STRANDED} stroke-width="2.2" />
             {:else}<path d={iconPath(ship?.icon_type)} {fill} stroke={EDGE_STRANDED} stroke-width="2.2" />{/if}
@@ -1689,6 +1697,7 @@
   /* Active journeys: the travelled trail is a faint solid line; the path still to go is dashed. */
   .journey-trail { stroke: var(--accent, #ff5a1f); stroke-width: 1.5; opacity: 0.5; }
   .journey-ahead { stroke: var(--accent, #ff5a1f); stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.85; }
+  .journey-drift { stroke: #d04545; stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.9; }
   .journey-ship { cursor: pointer; }
   /* The ship marker uses the construct's own icon (fill = its icon_color) with a state-coloured edge
      (black under way, red stranded, green arrived) applied inline. */
