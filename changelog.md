@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.109-beta - 16th Jun 2026
+
+* You can now send a ship to the rescue: when planning an interstellar journey, the destination can be "An interstellar ship" — pick a stranded (or in-flight) vessel and the planner plots a course to it, reading the distance and feasibility just like a system trip. Arriving rendezvouses at the ship's location. (For a still-moving target you're aimed at where it is now; matching a moving ship is a later refinement.)
+
 ## v2.0.108-beta - 16th Jun 2026
 
 * (Groundwork) Interstellar journeys can now target a point in space, not just a star system — the foundation for plotting a course to a stranded ship. Arriving at a point rendezvouses there. The destination picker for this follows next.

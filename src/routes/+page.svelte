@@ -110,6 +110,7 @@
         startTimeSec: String(startTimeSec),
         durationSec: d.observerSeconds,
         ...(d.cannotStop ? { cannotStop: true } : {}),
+        ...(d.toX != null && d.toY != null ? { toX: d.toX, toY: d.toY, toLabel: d.toLabel } : {}),
       };
       // One live journey per ship — starting a new one replaces any prior flight for that ship.
       const others = (s.activeJourneys ?? []).filter((j) => j.shipId !== d.shipId);

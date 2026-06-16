@@ -13,6 +13,7 @@
     distanceToMeters, formatDuration, crewLoad, kineticEnergyJoules, massEnergyEquivalent, fmtFractionC,
     type TransitMode, type TransitResult,
   } from '$lib/interstellar/transit';
+  import { constructDisplayPlacement, interstellarConstructIds } from '$lib/transit/interstellar';
 
   export let starmap: Starmap;
   export let rulePack: RulePack;
@@ -84,6 +85,32 @@
   $: destBody = destBodies.find((b) => b.id === destBodyId) || null;
   const bodyLabel = (b: CelestialBody) => `${isStar(b) ? '★ ' : b.roleHint === 'moon' ? '   ○ ' : b.kind === 'construct' ? '   ◆ ' : '  ● '}${b.name}`;
 
+  // Destination can instead be an INTERSTELLAR VESSEL — a point in space (e.g. fly out to rescue a
+  // stranded ship). The target is a snapshot of the vessel's current position; a stranded ship sits
+  // still, an in-flight one keeps moving (true moving-intercept is a later refinement).
+  let destKind: 'system' | 'vessel' = 'system';
+  $: vessels = (() => {
+    const nowSec = Number(starmap?.temporal?.displayTimeSec ?? 0);
+    const nameOf = (id: string) => {
+      for (const s of starmap.systems) { const n = s.system?.nodes?.find((x) => x.id === id); if (n) return n.name; }
+      return (starmap.adriftConstructs ?? []).find((x) => x.construct?.id === id)?.construct?.name ?? 'Ship';
+    };
+    const out: { id: string; name: string; x: number; y: number; moving: boolean }[] = [];
+    for (const id of interstellarConstructIds(starmap, nowSec)) {
+      if (id === shipId) continue;
+      const p = constructDisplayPlacement(starmap, id, nowSec);
+      if (p.kind === 'transit' || p.kind === 'adrift') out.push({ id, name: nameOf(id), x: p.x, y: p.y, moving: p.kind === 'transit' });
+    }
+    return out;
+  })();
+  let vesselId = '';
+  $: if ((!vesselId || !vessels.some((v) => v.id === vesselId)) && vessels.length) vesselId = vessels[0].id;
+  $: selectedVessel = vessels.find((v) => v.id === vesselId) || null;
+  $: if (destKind === 'vessel' && !vessels.length) destKind = 'system';   // nothing out there to fly to
+  $: targetPoint = destKind === 'vessel'
+    ? (selectedVessel ? { x: selectedVessel.x, y: selectedVessel.y } : null)
+    : (destNode ? { x: destNode.position?.x ?? 0, y: destNode.position?.y ?? 0 } : null);
+
   $: specs = (() => {
     if (!shipEntry) return null;
     try {
@@ -104,9 +131,9 @@
 
   // Straight-line distance between the two systems, using the starmap scale.
   $: distanceInfo = (() => {
-    if (!shipSystemNode || !destNode) return null;
-    const dx = (shipSystemNode.position?.x ?? 0) - (destNode.position?.x ?? 0);
-    const dy = (shipSystemNode.position?.y ?? 0) - (destNode.position?.y ?? 0);
+    if (!shipSystemNode || !targetPoint) return null;
+    const dx = (shipSystemNode.position?.x ?? 0) - targetPoint.x;
+    const dy = (shipSystemNode.position?.y ?? 0) - targetPoint.y;
     const px = Math.hypot(dx, dy);
     const unit = starmap.scale?.unit || starmap.distanceUnit || 'LY';
     const perUnit = starmap.scale?.pixelsPerUnit || 1;
@@ -140,24 +167,41 @@
   // The relativistic energy bill to reach the chosen speed for THIS ship.
   $: relEnergyJ = mode === 'relativistic' && shipMassKg > 0 ? kineticEnergyJoules(shipMassKg, speedFrac) : 0;
 
-  // Start Journey is allowed whenever the journey actually arrives (finite observer time).
-  $: canStart = !!(result && Number.isFinite(result.observerSeconds) && result.observerSeconds >= 0 && shipEntry && destNode);
+  // Start Journey is allowed whenever the journey actually arrives (finite observer time) AND there's a
+  // valid destination (a system, or a chosen vessel/point).
+  $: hasDest = destKind === 'vessel' ? !!selectedVessel : !!destNode;
+  $: canStart = !!(result && Number.isFinite(result.observerSeconds) && result.observerSeconds >= 0 && shipEntry && hasDest);
 
   function startJourney() {
-    if (!canStart || !shipEntry || !destNode || !result) return;
-    dispatch('startjourney', {
+    if (!canStart || !shipEntry || !result) return;
+    const common = {
       shipId,
       shipName: shipEntry.construct.name,
       fromSystemId: shipSystemNode!.id,
-      toSystemId: destNode.id,
-      toBodyId: destBodyId || null,
-      toBodyName: destBody?.name || destNode.name,
       mode,
       observerSeconds: result.observerSeconds,
       shipSeconds: result.shipSeconds,
       headline: result.headline,
       cannotStop: result.cannotStop ?? false,
-    });
+    };
+    if (destKind === 'vessel' && selectedVessel) {
+      dispatch('startjourney', {
+        ...common,
+        toSystemId: shipSystemNode!.id,   // nominal origin reference; the real target is the point below
+        toBodyId: null,
+        toBodyName: selectedVessel.name,
+        toX: selectedVessel.x,
+        toY: selectedVessel.y,
+        toLabel: selectedVessel.name,
+      });
+    } else if (destNode) {
+      dispatch('startjourney', {
+        ...common,
+        toSystemId: destNode.id,
+        toBodyId: destBodyId || null,
+        toBodyName: destBody?.name || destNode.name,
+      });
+    }
   }
 </script>
 
@@ -173,26 +217,46 @@
       <!-- Ship is fixed (opened from it) -->
       <p class="ship-line">Ship: <strong>{shipEntry.construct.name}</strong> <span class="muted">— currently at {shipSystemNode?.name}</span></p>
 
-      <!-- Two-fold destination: system, then a body within it -->
-      <div class="row">
-        <label class="field">
-          <span>Destination system</span>
-          <select bind:value={destId}>
-            {#each destOptions as d (d.id)}<option value={d.id}>{d.name}</option>{/each}
-          </select>
-        </label>
-        <label class="field">
-          <span>Destination body</span>
-          <select bind:value={destBodyId}>
-            {#each destBodies as b (b.id)}<option value={b.id}>{bodyLabel(b)}</option>{/each}
-          </select>
-        </label>
-      </div>
+      {#if vessels.length}
+        <div class="dest-kind">
+          <label><input type="radio" bind:group={destKind} value="system" /> A star system</label>
+          <label><input type="radio" bind:group={destKind} value="vessel" /> An interstellar ship ({vessels.length})</label>
+        </div>
+      {/if}
+
+      {#if destKind === 'vessel'}
+        <!-- Fly to a ship out in interstellar space (e.g. a rescue) — a point destination. -->
+        <div class="row">
+          <label class="field">
+            <span>Target ship</span>
+            <select bind:value={vesselId}>
+              {#each vessels as v (v.id)}<option value={v.id}>{v.moving ? '➤ ' : '⚠ '}{v.name}{v.moving ? ' (in transit)' : ' (adrift)'}</option>{/each}
+            </select>
+          </label>
+        </div>
+        {#if selectedVessel?.moving}<p class="distance hint-warn">This ship is still moving — you'll be aimed at where it is now, not where it'll be. Best for stranded targets.</p>{/if}
+      {:else}
+        <!-- Two-fold destination: system, then a body within it -->
+        <div class="row">
+          <label class="field">
+            <span>Destination system</span>
+            <select bind:value={destId}>
+              {#each destOptions as d (d.id)}<option value={d.id}>{d.name}</option>{/each}
+            </select>
+          </label>
+          <label class="field">
+            <span>Destination body</span>
+            <select bind:value={destBodyId}>
+              {#each destBodies as b (b.id)}<option value={b.id}>{bodyLabel(b)}</option>{/each}
+            </select>
+          </label>
+        </div>
+      {/if}
 
       {#if distanceInfo}
-        <p class="distance">Distance: <strong>{distanceInfo.value.toFixed(2)} {distanceInfo.unit}</strong>{#if destBody} → final approach to <strong>{destBody.name}</strong>{/if}</p>
+        <p class="distance">Distance: <strong>{distanceInfo.value.toFixed(2)} {distanceInfo.unit}</strong>{#if destKind === 'vessel' && selectedVessel} → rendezvous with <strong>{selectedVessel.name}</strong>{:else if destBody} → final approach to <strong>{destBody.name}</strong>{/if}</p>
       {:else}
-        <p class="distance">Pick a different destination system.</p>
+        <p class="distance">Pick a destination.</p>
       {/if}
 
       <div class="modes">
@@ -282,6 +346,9 @@
   select, input[type="range"] { width: 100%; box-sizing: border-box; }
   select { padding: 0.4em; background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
   .distance { margin: 0; font-size: 0.9rem; color: var(--text-muted); }
+  .hint-warn { color: var(--status-warn, #d8a23a); font-size: 0.82rem; }
+  .dest-kind { display: flex; gap: 1.25rem; font-size: 0.88rem; }
+  .dest-kind label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
   .distance strong { color: var(--text); }
   .modes { display: flex; gap: 0.4rem; flex-wrap: wrap; }
   .mode { flex: 1; min-width: 110px; padding: 0.5em; background: var(--bg-control); color: var(--text); border: 1px solid transparent; border-radius: 4px; cursor: pointer; font: inherit; }
