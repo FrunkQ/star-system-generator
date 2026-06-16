@@ -100,6 +100,8 @@
   let userZoomOverride = false;
   let beltLabelClickAreas = new Map<string, { x1: number, y1: number, x2: number, y2: number }>();
   let x0_distance = 0.01; // Default pivot for distance scaling
+  // Cache of coasting ships' forecast polylines, keyed by ship+clock so it isn't re-integrated per frame.
+  const coastPathCache = new Map<string, { key: string; pts: { x: number; y: number }[] }>();
 
   let lastSystemId: string | null = null;
   let lastFramedPlanId: string | null = null;
@@ -1062,17 +1064,24 @@
           }
       }
       // Predicted coast path for drifting/stopped ships — the conic they're about to follow (fall to the
-      // star / ellipse / hyperbola). A faint red dashed forecast, handy for sanity-checking their vector.
+      // star / ellipse / hyperbola). SOLID faint line (a dash over a path that can span billions of metres
+      // makes the canvas compute a zillion dash segments → frame death). The 40-step integration is cached
+      // per ship+clock so panning/zooming doesn't re-run it every frame.
       if (system) {
           for (const node of system.nodes) {
               if (node.kind !== 'construct' || !(node as any).vector_position_au || !isCoastingNow(node as any)) continue;
-              const vel = (node as any).vector_velocity_ms ?? { x: 0, y: 0 };
-              const pts = coastPathUnderGravity(system, (node as any).vector_position_au, vel, currentTime, 40);
+              const vp = (node as any).vector_position_au, vel = (node as any).vector_velocity_ms ?? { x: 0, y: 0 };
+              const key = `${currentTime}|${vp.x},${vp.y}|${vel.x},${vel.y}`;
+              let cached = coastPathCache.get(node.id);
+              if (!cached || cached.key !== key) {
+                  cached = { key, pts: coastPathUnderGravity(system, vp, vel, currentTime, 40) };
+                  coastPathCache.set(node.id, cached);
+              }
+              const pts = cached.pts;
               if (pts.length < 2) continue;
               ctx.beginPath();
-              ctx.strokeStyle = 'rgba(208, 69, 69, 0.55)';
+              ctx.strokeStyle = 'rgba(208, 69, 69, 0.5)';
               ctx.lineWidth = 1.4 / zoom;
-              ctx.setLineDash([4 / zoom, 4 / zoom]);
               for (let i = 0; i < pts.length; i++) {
                   let p = pts[i];
                   if (toytownFactor > 0) {
@@ -1085,7 +1094,6 @@
                   else ctx.lineTo(p.x - renderPan.x, p.y - renderPan.y);
               }
               ctx.stroke();
-              ctx.setLineDash([]);
           }
       }
       if (completedPlans && completedPlans.length > 0) {

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.143-beta - 16th Jun 2026
+
+* Performance: the drifting-ship forecast path is now a solid faint line (a dashed line over a path spanning billions of metres made the canvas grind through countless dash segments), and its trajectory integration is cached per ship+clock so it no longer re-computes every frame while panning or idle.
+
 ## v2.0.142-beta - 16th Jun 2026
 
 * A drifting/stopped in-system ship now draws a faint red dashed forecast of its path — the conic it's about to follow under gravity (a slow fall to the star, an ellipse, or a hyperbola escaping), ~40 steps ahead. Handy for sanity-checking its velocity vector.
