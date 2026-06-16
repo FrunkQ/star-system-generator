@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.132-beta - 16th Jun 2026
+
+* The starmap ship panel no longer opens straight into the editor — it leads with status and controls; the editor is now behind a pencil icon. Added a player-visibility toggle (eye icon) so a GM can re-reveal a hidden interstellar ship, a fuel gauge at the top (current vs capacity, red when low) and a Refuel button.
+
 ## v2.0.131-beta - 16th Jun 2026
 
 * The in-system ship's "Plan Transit" button is now contextual: when the ship is on a journey it's replaced by the Cancel · drift / Cancel · stop controls; when idle it shows Plan Transit. Ship's Log is always available.

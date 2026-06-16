@@ -371,6 +371,11 @@
     starmapStore.update((m) => m ? { ...m, systems: m.systems.map((s) => s.system ? { ...s, system: { ...s.system, nodes: s.system.nodes.map((n) => n.id === updated.id ? updated : n) } } : s) } : m);
   }
 
+  // Refuel a starmap ship (fill its tanks). The construct still lives in its origin-system node.
+  function handleShipRefuel(constructId: string) {
+    starmapStore.update((m) => m ? { ...m, systems: m.systems.map((s) => s.system ? { ...s, system: { ...s.system, nodes: s.system.nodes.map((n) => (n.id === constructId && Array.isArray((n as any).fuel_tanks)) ? { ...n, fuel_tanks: (n as any).fuel_tanks.map((t: any) => ({ ...t, current_units: t.capacity_units })) } : n) } } : s) } : m);
+  }
+
   function tagFinderDistance(systemId: string): number | null {
     const map = $starmapStore;
     if (systemId?.startsWith('interstellar:')) return null;   // interstellar ships have no system distance
@@ -1288,6 +1293,7 @@
       on:resume={() => handleShipResume(shipPanel.journey.id)}
       on:newtransit={() => { interstellarShipId = shipPanel.construct.id; showInterstellarModal = true; shipPanelJourneyId = null; }}
       on:update={(e) => handleShipConstructUpdate(e.detail)}
+      on:refuel={() => handleShipRefuel(shipPanel.construct.id)}
       on:close={() => (shipPanelJourneyId = null)}
     />
   {/if}
