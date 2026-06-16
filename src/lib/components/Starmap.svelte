@@ -1695,8 +1695,10 @@
   }
 
   /* Active journeys: the travelled trail is a faint solid line; the path still to go is dashed. */
-  .journey-trail { stroke: var(--accent, #ff5a1f); stroke-width: 1.5; opacity: 0.5; }
-  .journey-ahead { stroke: var(--accent, #ff5a1f); stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.85; }
+  /* Powered journey = deep yellow (the planner's #ffcc00); the unavoidable drift = danger red. Yellow vs
+     red reads far more clearly than the old orange-vs-red. */
+  .journey-trail { stroke: #ffcc00; stroke-width: 1.5; opacity: 0.5; }
+  .journey-ahead { stroke: #ffcc00; stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.9; }
   .journey-drift { stroke: #d04545; stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.9; }
   .journey-ship { cursor: pointer; }
   /* The ship marker uses the construct's own icon (fill = its icon_color) with a state-coloured edge

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.114-beta - 16th Jun 2026
+
+* The powered journey line is now deep yellow (the planner's yellow) instead of orange, so it reads clearly distinct from the red drift line — yellow = on course, red = drifting.
+
 ## v2.0.113-beta - 16th Jun 2026
 
 * (Groundwork, Stage 3) Real-units in-system gravity for a drifting ship — feeds the drift integrator true G in AU, so a stationary ship falls toward its star and a fly-by slings around it (verified: a 1-AU circular orbit comes out at a ~1-year period). The orrery wiring that shows it follows.
