@@ -119,3 +119,26 @@ export async function hasSavedStarmap(): Promise<boolean> {
   return saved !== null;
 }
 
+// Wipe EVERYTHING this app has stored in the browser — the IndexedDB starmap DB, all localStorage
+// (saved map, PoI/CoI packs, palette, rail, settings…) and sessionStorage. Used by the Settings danger
+// zone to reproduce a brand-new-user state. Caller should reload the page afterwards.
+export async function clearAllData(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try { window.localStorage.clear(); } catch { /* private mode */ }
+  try { window.sessionStorage.clear(); } catch { /* private mode */ }
+  dbPromise = null;
+  if (hasIndexedDb()) {
+    await new Promise<void>((resolve) => {
+      let done = false;
+      const finish = () => { if (!done) { done = true; resolve(); } };
+      try {
+        const req = window.indexedDB.deleteDatabase(DB_NAME);
+        req.onsuccess = finish;
+        req.onerror = finish;
+        req.onblocked = finish;   // another tab holds it open; we've cleared the rest, reload will follow
+        setTimeout(finish, 1500); // never hang the danger button
+      } catch { finish(); }
+    });
+  }
+}
+

@@ -6,6 +6,15 @@
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { reasonsConfig, poiPacks, activeCategories } from '$lib/physics/reasonsToVisit';
   import { coiCategories, setCoIEnabled } from '$lib/constructs/coi';
+  import { clearAllData } from '$lib/starmapStorage';
+
+  let clearing = false;
+  async function clearEverything() {
+    if (!confirm('Clear ALL data?\n\nThis permanently deletes your saved starmap, PoI/CoI packs, settings, palette and everything else this app has stored in this browser — reproducing a brand-new install. This cannot be undone.')) return;
+    if (!confirm('Are you absolutely sure? Everything will be wiped and the app will reload as a new user.')) return;
+    clearing = true;
+    try { await clearAllData(); } finally { window.location.reload(); }
+  }
 
   export let showModal: boolean;
   export let starmap: Starmap;
@@ -347,6 +356,12 @@
             </select>
             <p class="section-hint">Experimental — the procedural generation pipeline used when creating new systems.</p>
           </div>
+
+          <h4 class="advanced-head danger-head">Danger zone</h4>
+          <div class="form-group">
+            <p class="section-hint">Wipe everything this app has stored in this browser — saved starmap, PoI/CoI packs, settings, palette, session — and reload as a brand-new user. Useful for testing the first-run experience. Cannot be undone.</p>
+            <button class="section-btn danger-btn" on:click={clearEverything} disabled={clearing}>{clearing ? 'Clearing…' : 'Clear all data…'}</button>
+          </div>
         {/if}
       </div>
     </div>
@@ -456,6 +471,10 @@
   .cat-name { flex: 1; }
   .cat-count { color: var(--text-faint, #8a8f9a); font-size: 0.85em; }
   .advanced-head { margin: 22px 0 8px; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint, #8a8f9a); border-top: 1px solid var(--border); padding-top: 14px; }
+  .danger-head { color: var(--status-bad, #d04545); border-top-color: color-mix(in srgb, var(--status-bad, #d04545) 40%, var(--border)); }
+  .danger-btn { border: 1px solid var(--status-bad, #d04545) !important; color: var(--status-bad, #d04545) !important; }
+  .danger-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--status-bad, #d04545) 16%, transparent) !important; }
+  .danger-btn:disabled { opacity: 0.6; cursor: default; }
   .section-btn {
     display: block;
     width: 100%;
