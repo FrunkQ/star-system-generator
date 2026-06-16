@@ -171,11 +171,19 @@
   $: headingOffset = (originVel.vx || originVel.vy) && originPoint && targetPoint
     ? headingOffsetDeg([originVel.vx, originVel.vy], [targetPoint.x - originPoint.x, targetPoint.y - originPoint.y])
     : 0;
-  $: redirectAffordable = redirectDvMs <= shipDv || mode !== 'realistic';
+  // Killing/redirecting your momentum burns REAL propellant (rocket equation from the wet mass) — it's
+  // drained on departure, so the now-lighter ship carries into the next transit's Δv. Refuelling is the
+  // GM's manual job, so we don't gate on it; we just charge the mass. Only matters where fuel is tracked
+  // (realistic mode); massless/relativistic/jump don't.
+  $: exhaustV = (specs?.avgVacIsp || 0) * G0;   // effective exhaust velocity, m/s
+  $: redirectFuelKg = (mode === 'realistic' && redirectDvMs > 0 && exhaustV > 0 && shipMassKg > 0)
+    ? shipMassKg * (1 - Math.exp(-redirectDvMs / exhaustV))
+    : 0;
   $: originLabel = originPlacement?.kind === 'adrift' ? 'adrift in interstellar space'
     : originPlacement?.kind === 'transit' ? 'in transit'
     : (shipSystemNode?.name ?? 'unknown');
   const fmtSpeed = (ms: number) => ms >= 1000 ? `${(ms / 1000).toFixed(ms >= 100000 ? 0 : 1)} km/s` : `${Math.round(ms)} m/s`;
+  const fmtMass = (kg: number) => kg >= 1000 ? `${(kg / 1000).toFixed(kg >= 100000 ? 0 : 1)} t` : `${Math.round(kg)} kg`;
 
   $: result = ((): TransitResult | null => {
     if (mode === 'jump') return jumpTransit(jumpDays, distanceInfo?.meters || 0);
@@ -206,7 +214,7 @@
   // Start Journey is allowed whenever the journey actually arrives (finite observer time) AND there's a
   // valid destination (a system, or a chosen vessel/point).
   $: hasDest = destKind === 'vessel' ? !!selectedVessel : !!destNode;
-  $: canStart = !!(result && Number.isFinite(result.observerSeconds) && result.observerSeconds >= 0 && shipEntry && hasDest && redirectAffordable);
+  $: canStart = !!(result && Number.isFinite(result.observerSeconds) && result.observerSeconds >= 0 && shipEntry && hasDest);
 
   function startJourney() {
     if (!canStart || !shipEntry || !result) return;
@@ -222,7 +230,7 @@
       shipSeconds: result.shipSeconds,
       headline: result.headline,
       cannotStop: result.cannotStop ?? false,
-      fuelUsedKg: mode === 'realistic' ? (result.fuelUsedKg ?? 0) : 0,
+      fuelUsedKg: mode === 'realistic' ? ((result.fuelUsedKg ?? 0) + redirectFuelKg) : 0,
     };
     if (destKind === 'vessel' && selectedVessel) {
       dispatch('startjourney', {
@@ -296,10 +304,9 @@
       {#if distanceInfo}
         <p class="distance">Distance: <strong>{distanceInfo.value.toFixed(2)} {distanceInfo.unit}</strong>{#if destKind === 'vessel' && selectedVessel} → rendezvous with <strong>{selectedVessel.name}</strong>{:else if destBody} → final approach to <strong>{destBody.name}</strong>{/if}</p>
         {#if originVel.vx || originVel.vy}
-          <p class="redirect" class:bad={!redirectAffordable}>
-            Redirect Δv: <strong>{fmtSpeed(redirectDvMs)}</strong>
+          <p class="redirect">
+            Redirect Δv: <strong>{fmtSpeed(redirectDvMs)}</strong>{#if mode === 'realistic' && redirectFuelKg > 0} — burns <strong>{fmtMass(redirectFuelKg)}</strong> of propellant{/if}
             <span class="muted">— current drift is {headingOffset.toFixed(0)}° off the new heading{#if headingOffset < 5} (almost free — you're already going this way){:else if headingOffset > 150} (nearly a full reversal — costs your whole speed){/if}</span>
-            {#if !redirectAffordable}<br /><span class="warn">Not enough Δv ({fmtSpeed(shipDv)}) to redirect — refuel, or pick a heading closer to the current drift.</span>{/if}
           </p>
         {/if}
       {:else}
@@ -394,9 +401,7 @@
   select { padding: 0.4em; background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
   .distance { margin: 0; font-size: 0.9rem; color: var(--text-muted); }
   .redirect { margin: 0; font-size: 0.85rem; color: var(--text); border-left: 3px solid #46c46a; padding-left: 8px; }
-  .redirect.bad { border-left-color: #e0484d; }
   .redirect .muted { color: var(--text-muted); }
-  .redirect .warn { color: #e0484d; }
   .hint-warn { color: var(--status-warn, #d8a23a); font-size: 0.82rem; }
   .dest-kind { display: flex; gap: 1.25rem; font-size: 0.88rem; }
   .dest-kind label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }

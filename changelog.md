@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.121-beta - 16th Jun 2026
+
+* The New Transit redirect now burns real propellant: the Δv to swing a coasting ship onto a new heading is charged as fuel mass (rocket equation) and drained from the tanks on departure, so the lighter ship carries into the next course's Δv. The planner shows how much propellant the turn-around costs. No affordability gate — refuelling stays the GM's manual call.
+
 ## v2.0.120-beta - 16th Jun 2026
 
 * New Transit: replot a fresh interstellar course from where a ship currently is (e.g. once it's been refuelled), not from its origin system. The planner now takes the ship's live position and — crucially — its current velocity, charging an honest vector Δv to redirect that momentum: a destination along the current drift is nearly free, a reversal costs the whole speed. The cost (and how far off your drift the new heading is) is shown, and the journey is blocked if the ship hasn't the Δv to redirect.
