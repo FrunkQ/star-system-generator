@@ -10,8 +10,13 @@
   export let isEditingConstruct: boolean = false; 
   export let hideActions: boolean = false; // New prop
   export let futureJourneyCount: number = 0;
+  // The ship's live kinematic state at the current clock (from the scheduler) — so the location readout
+  // says the right thing: Orbiting / Docked / Landed / In transit / Adrift. Null = no journey info.
+  export let kinematicState: string | null = null;
   // Any live (non-cancelled) scheduled journey → offer a direct abort on the ship.
   $: hasJourney = (construct.scheduled_journeys || []).some((l) => l.status !== 'cancelled');
+  // Resolve the location heading: trust the live state, else fall back to the authored placement.
+  $: effectiveState = kinematicState || (construct.placement === 'Surface' ? 'Landed' : 'Orbiting');
 
   const dispatch = createEventDispatcher();
 
@@ -223,14 +228,37 @@
         <span class="label">Total Vacuum Δv</span>
         <span class="value">{(specs.totalVacuumDeltaV_ms / 1000).toLocaleString(undefined, {maximumFractionDigits: 1})} km/s</span>
       </div>
-      <div class="spec-item derived" title="Orbital profile around the current host body">
-        <span class="label">Orbit</span>
-        <span class="value">{specs.orbit_string}</span>
-      </div>
-      <div class="spec-item derived" title="Current orbital period derived from mean motion or Keplerian elements">
-        <span class="label">Orbital Period</span>
-        <span class="value">{orbitalPeriodDisplay}</span>
-      </div>
+      {#if effectiveState === 'Transit'}
+        <div class="spec-item derived" title="The ship is currently under way on a planned course">
+          <span class="label">Status</span>
+          <span class="value">In transit{#if hostBody} → {hostBody.name}{/if}</span>
+        </div>
+      {:else if effectiveState === 'Deep Space'}
+        <div class="spec-item derived" title="Cut loose — coasting under the system's gravity, off any planned course">
+          <span class="label">Status</span>
+          <span class="value">Adrift — coasting</span>
+        </div>
+      {:else if effectiveState === 'Landed'}
+        <div class="spec-item derived" title="Landed on the surface">
+          <span class="label">Location</span>
+          <span class="value">Surface{#if hostBody} of {hostBody.name}{/if}</span>
+        </div>
+      {:else if effectiveState === 'Docked'}
+        <div class="spec-item derived" title="Docked">
+          <span class="label">Location</span>
+          <span class="value">Docked{#if hostBody} at {hostBody.name}{/if}</span>
+        </div>
+      {:else}
+        <!-- Orbiting: the orbit profile + period make sense here. -->
+        <div class="spec-item derived" title="Orbital profile around the current host body">
+          <span class="label">Orbit{#if hostBody} ({hostBody.name}){/if}</span>
+          <span class="value">{specs.orbit_string}</span>
+        </div>
+        <div class="spec-item derived" title="Current orbital period derived from mean motion or Keplerian elements">
+          <span class="label">Orbital Period</span>
+          <span class="value">{orbitalPeriodDisplay}</span>
+        </div>
+      {/if}
     </div>
 
     {#if landingAnalysis}

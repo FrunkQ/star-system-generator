@@ -26,6 +26,7 @@
   export let isEditing: boolean = false;
   export let isPlanning: boolean = false;
   export let futureJourneyCount: number = 0;
+  export let kinematicState: string | null = null;
   export let clearFutureCount: number = 0;
   export let activeCount: number = 0;
 
@@ -60,6 +61,7 @@
             hostBody={hostBody}
             {rulePack}
             futureJourneyCount={futureJourneyCount}
+            {kinematicState}
             isEditingConstruct={isEditing}
             hideActions={isPlanning}
             on:planTransit

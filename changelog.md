@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.133-beta - 16th Jun 2026
+
+* The construct stat block now reports its actual current state instead of always showing "Orbit / Orbital Period": In transit → destination, Adrift → coasting, Landed → surface of host, Docked → host, and only an orbiting ship shows the orbit profile + period (now labelled with the host). Driven by the ship's live kinematic state at the current clock.
+
 ## v2.0.132-beta - 16th Jun 2026
 
 * The starmap ship panel no longer opens straight into the editor — it leads with status and controls; the editor is now behind a pencil icon. Added a player-visibility toggle (eye icon) so a GM can re-reveal a hidden interstellar ship, a fuel gauge at the top (current vs capacity, red when low) and a Refuel button.

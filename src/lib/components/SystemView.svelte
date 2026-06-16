@@ -1096,6 +1096,11 @@
   $: focusedFutureJourneyCount = (focusedBody && focusedBody.kind === 'construct')
       ? countFutureJourneys(focusedBody, currentTime)
       : 0;
+  // The focused ship's live kinematic state (Transit / Deep Space / Orbiting / Docked / Landed) at the
+  // display clock — drives the location heading in its stat block.
+  $: focusedKinematicState = (focusedBody && focusedBody.kind === 'construct' && $systemStore)
+      ? (sampleJourneyKinematicsAtTime($systemStore, focusedBody, currentTime)?.state ?? null)
+      : null;
   $: if (!focusedBody || focusedBody.kind !== 'construct') isShipLogOpen = false;
 
   // Handle Back to Starmap if systemId is lost from state
@@ -2008,6 +2013,7 @@
                     {isEditing}
                     {isPlanning}
                     futureJourneyCount={focusedFutureJourneyCount}
+                    kinematicState={focusedKinematicState}
                     clearFutureCount={countFutureJourneys(focusedBody, getActualTimeMs())}
                     activeCount={activeJourneyCountForActualTime(focusedBody)}
                     on:closelog={handleCloseJourneyLog}
