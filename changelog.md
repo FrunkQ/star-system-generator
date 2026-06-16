@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.138-beta - 16th Jun 2026
+
+* Fixed: the in-system Cancel · drift/stop buttons now actually abort the journey at the point you're viewing (they were keyed to actual time, so on a previewed flight they did nothing). The ship strands where you see it.
+* Ship's Log button restyled to yellow-on-black (captain's-log look) and added to the interstellar ship panel too, for consistency.
+
 ## v2.0.137-beta - 16th Jun 2026
 
 * The ship sensors toggle now does something: turning it on draws that construct's sensor-range rings (and labels) around it in the orrery, from its defined sensors. Off by default; the global View → Sensors option still shows the focused ship's ranges too.

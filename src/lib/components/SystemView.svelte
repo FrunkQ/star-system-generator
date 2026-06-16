@@ -1701,7 +1701,9 @@
   function handleCancelActivePlan(e?: CustomEvent) {
       if (!focusedBody || focusedBody.kind !== 'construct') return;
       const coast = e?.detail?.coast ?? true;   // default drift; false = stop dead
-      const nowMs = getActualTimeMs();
+      // Abort at the DISPLAY time — strand the ship where the GM currently sees it (the abort buttons are
+      // shown based on the live display state), not at actual/master time where it may not have launched yet.
+      const nowMs = currentTime;
       systemStore.update((sys) => {
           if (!sys) return null;
           const nodes = sys.nodes.map((n) => {

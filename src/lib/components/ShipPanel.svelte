@@ -8,6 +8,7 @@
   import { describeTag } from '$lib/tags/tagPresentation';
   import ConstructSidePanel from './ConstructSidePanel.svelte';
   import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
+  import ShipLogPane from './ShipLogPane.svelte';
 
   export let construct: CelestialBody;
   export let system: System;
@@ -23,6 +24,7 @@
 
   // Edit is opt-in (icon), not the default view — the panel leads with status + controls.
   let showEditor = false;
+  let showLog = false;
 
   // Current fuel (after whatever the journey has burned) vs capacity, from the tanks.
   $: fuelDefs = (rulePack as any)?.fuelDefinitions?.entries || [];
@@ -115,6 +117,13 @@
     {/if}
   </section>
 
+  <div class="log-row">
+    <button class="log-btn" class:on={showLog} on:click={() => showLog = !showLog} title="Open the ship's log">Ship's Log</button>
+  </div>
+  {#if showLog}
+    <ShipLogPane focusedBody={construct} clearFutureCount={0} activeCount={0} on:close={() => showLog = false} />
+  {/if}
+
   <!-- The full read-only ship data block, same as the in-system info block (actions hidden — the transit
        controls above are the journey's). Edit is opt-in via the pencil. -->
   <ConstructDerivedSpecs {construct} {hostBody} {rulePack} {kinematicState} hideActions={true} />
@@ -157,6 +166,10 @@
   .fuel-num { color: var(--text); white-space: nowrap; }
   .refuel-btn { background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 5px; padding: 3px 8px; cursor: pointer; font-size: 0.8rem; white-space: nowrap; }
   .refuel-btn:hover { border-color: var(--accent, #5b8def); }
+  .log-row { display: flex; }
+  .log-btn { background: #141414; color: #ffd23f; border: 1px solid var(--border); border-radius: 5px; padding: 6px 12px; cursor: pointer; font-size: 0.82rem; font-weight: 600; }
+  .log-btn:hover { filter: brightness(1.2); }
+  .log-btn.on { outline: 1px solid #ffd23f; }
   .title { display: flex; align-items: center; gap: 9px; }
   .title h2 { margin: 0; font-size: 1.1rem; }
   .dot { width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto; border: 2px solid; }

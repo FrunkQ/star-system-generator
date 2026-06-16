@@ -344,7 +344,7 @@
                         Plan Transit
                     </button>
                 {/if}
-                <button class="action-btn transit" on:click={() => dispatch('openJourneyLog')} title="Open ship log (scheduled journeys)">
+                <button class="action-btn log" on:click={() => dispatch('openJourneyLog')} title="Open ship log (scheduled journeys)">
                     Ship's Log ({futureJourneyCount})
                 </button>
             {/if}
@@ -403,6 +403,8 @@
   /* Abort controls: green = physical (coast on), orange = stop dead (then falls). */
   .action-btn.cancel-drift { background-color: #2f9e57; }
   .action-btn.cancel-stop { background-color: #d98a2b; }
+  /* Ship's Log = captain's-log aesthetic: yellow on black. */
+  .action-btn.log { background-color: #141414; color: #ffd23f; }
 
   .btn-detail {
       font-weight: normal;
