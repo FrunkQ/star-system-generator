@@ -5,6 +5,7 @@
   // its origin system until reconcile, so the editor gets a real system context.
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, System, RulePack } from '$lib/types';
+  import { describeTag } from '$lib/tags/tagPresentation';
   import ConstructSidePanel from './ConstructSidePanel.svelte';
 
   export let construct: CelestialBody;
@@ -63,6 +64,19 @@
     <ConstructSidePanel {construct} {system} {hostBody} {rulePack} hideActions
       on:update={(e) => dispatch('update', e.detail)} />
   </div>
+
+  <!-- Tags at the bottom, matching a body's detail pane and the in-system construct view. -->
+  {#if construct.tags && construct.tags.length > 0}
+    <div class="construct-tags">
+      <span class="tags-label">Tags</span>
+      <div class="tags-container">
+        {#each construct.tags as tag}
+          {@const info = describeTag(tag.key)}
+          <span class="tag" style="border-color: {info.color}; color: {info.color};" title={info.description}>{info.label}{#if tag.value}: {tag.value}{/if}</span>
+        {/each}
+      </div>
+    </div>
+  {/if}
 </div>
 </div>
 
@@ -93,4 +107,8 @@
   .t-actions button.caution { border-color: #d98a2b; color: #e8a857; }
   .t-actions button.destructive { border-color: #d04545; color: #e06a6a; }
   .editor { min-width: 0; }
+  .construct-tags { padding-top: 0.6em; border-top: 1px solid var(--border); }
+  .tags-label { font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); }
+  .tags-container { display: flex; flex-wrap: wrap; gap: 0.5em; margin-top: 0.5em; }
+  .tag { background-color: var(--bg-control); padding: 0.2em 0.5em; border: 1px solid; border-radius: 3px; font-size: 0.8em; }
 </style>

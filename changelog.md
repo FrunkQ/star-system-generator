@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.122-beta - 16th Jun 2026
+
+* In-transit / stranded ships (opened from the starmap) now show their tags as chips at the bottom of the panel, matching the in-system construct view and bodies.
+
 ## v2.0.121-beta - 16th Jun 2026
 
 * The New Transit redirect now burns real propellant: the Δv to swing a coasting ship onto a new heading is charged as fuel mass (rocket equation) and drained from the tanks on departure, so the lighter ship carries into the next course's Δv. The planner shows how much propellant the turn-around costs. No affordability gate — refuelling stays the GM's manual call.
