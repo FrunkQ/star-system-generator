@@ -580,7 +580,7 @@
   })();
   $: pickerNodes = [...starmap.systems, ...interstellarPickerNodes];
 
-  const systemPickerCategorize = (n: any) => n?.kind === 'construct' ? ['Interstellar'] : ['Systems'];
+  const systemPickerCategorize = (n: any) => n?.kind === 'construct' ? ['Constructs'] : ['Systems'];
   function systemPickerColor(sysNode: any): string {
       if (sysNode?.kind === 'construct') return sysNode.icon_color || '#ffd23f';
       const vis = getVisualNodes(sysNode.system);
@@ -934,6 +934,7 @@
       summaryText={starmapSummary}
       roleOf={(n) => n?.kind === 'construct' ? 'construct' : 'system'}
       filterItems={() => true}
+      sections={true}
       on:select={handlePickSystem}
     />
     <!-- Desktop: a draggable floating info panel. Phone uses the bottom sheet instead. -->

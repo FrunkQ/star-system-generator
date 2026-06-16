@@ -37,6 +37,7 @@
   export let inline = false; // embed in a form (relative, full-width) vs float over a canvas
   export let summaryText = ''; // optional aggregate summary shown at the top of the dropdown
   export let startOpen = false; // open the dropdown immediately (e.g. in a dedicated modal)
+  export let sections = false; // multi-category: show consecutive heading+items sections instead of drill-in
 
   // Injectable so the same picker drives the starmap (systems) as well as a system (bodies).
   // categorize returns ALL categories a node belongs to (overlapping, like the old summary
@@ -295,6 +296,20 @@
             </button></li>
           {/each}
         </ul>
+      {:else if sections && categories.length > 1}
+        <!-- Consecutive sections: each category is a heading followed by its items, all expanded. -->
+        <ul>
+          {#each categories as c (c.key)}
+            <li class="section-head">{c.key}</li>
+            {#each c.items as n (n.id)}
+              <li><button class="row" class:active={n.id === focusedId} on:click={() => pick(n.id)}>
+                <span class="dot" style={swatchStyle(n)}></span>
+                <span class="row-name">{n.name}</span>
+                <span class="row-ctx">{contextOf(n)}</span>
+              </button></li>
+            {/each}
+          {/each}
+        </ul>
       {:else if categories.length === 1}
         <!-- One category (e.g. starmap systems): list items directly, no drill step. -->
         <ul>
@@ -445,6 +460,14 @@
     border: 1px solid var(--border, #2a2d36);
     border-radius: 10px;
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  }
+  .section-head {
+    padding: 6px 12px 3px;
+    color: var(--text-faint, #8a8f9a);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border, #2a2d36);
   }
   .panel-head {
     display: flex;

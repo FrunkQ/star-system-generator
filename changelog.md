@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.126-beta - 16th Jun 2026
+
+* Starmap picker now shows Systems and Constructs as consecutive labelled sections (rather than click-to-drill), and the interstellar-ship group is renamed "Constructs".
+
 ## v2.0.125-beta - 16th Jun 2026
 
 * Body picker now treats interstellar ships consistently with the orrery: a ship in transit or stranded no longer appears in its origin system's picker (it's left the system), and instead shows up in the starmap-level picker under its own "Interstellar" group — searchable by name, and selecting it opens its ship panel.
