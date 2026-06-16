@@ -12,7 +12,7 @@
   const dispatch = createEventDispatcher();
 
   // Sectioned settings (Starmap / Time / Tech / Planets / System). Orrery View was dropped (Q2).
-  type Section = 'starmap' | 'generation' | 'time' | 'technology' | 'planets' | 'system';
+  type Section = 'starmap' | 'generation' | 'coi' | 'time' | 'technology' | 'planets' | 'system';
   // Sub-editors (Time & Calendars, Fuel & Drives…) reopen Settings at their section on close.
   export let initialSection: Section | null = null;
   let activeSection: Section = initialSection ?? 'starmap';
@@ -20,7 +20,7 @@
   // On narrow / touch the modal is a drill-in: a list of sections (drilled=false) →
   // a section's content (drilled=true). "Back" goes UP a level rather than closing.
   const SECTION_LABELS: Record<Section, string> = {
-    starmap: 'Starmap', generation: 'PoI', time: 'Time', technology: 'Tech', planets: 'Planets', system: 'System'
+    starmap: 'Starmap', generation: 'PoI', coi: 'CoIs', time: 'Time', technology: 'Tech', planets: 'Planets', system: 'System'
   };
   let isNarrow = false;
   let drilled = !!initialSection;
@@ -203,6 +203,7 @@
       <nav class="settings-nav">
         <button class:active={activeSection === 'starmap'} on:click={() => pickSection('starmap')}>Starmap</button>
         <button class:active={activeSection === 'generation'} on:click={() => pickSection('generation')}>PoI</button>
+        <button class:active={activeSection === 'coi'} on:click={() => pickSection('coi')}>CoIs</button>
         <button class:active={activeSection === 'time'} on:click={() => pickSection('time')}>Time</button>
         <button class:active={activeSection === 'technology'} on:click={() => pickSection('technology')}>Tech</button>
         <button class:active={activeSection === 'planets'} on:click={() => pickSection('planets')}>Planets</button>
@@ -282,6 +283,11 @@
             </div>
             <button class="section-btn" on:click={() => { dispatch('editpoi'); showModal = false; }}>Edit PoI rule packs…</button>
           {/if}
+
+        {:else if activeSection === 'coi'}
+          <h3>Constructs of Interest</h3>
+          <p class="section-hint">Hand-applied tags for ships &amp; stations — set on a construct's Tags tab. Unlike PoIs these are never auto-derived; you choose them. Owner sets the ship's tardiness, Purpose says what it does. They travel inside the starmap.</p>
+          <button class="section-btn" on:click={() => { dispatch('editcoi'); showModal = false; }}>Edit Constructs of Interest…</button>
 
         {:else if activeSection === 'time'}
           <h3>Date &amp; time</h3>

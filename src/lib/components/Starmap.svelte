@@ -21,6 +21,7 @@
   import { TravellerImporter } from '$lib/traveller/importer';
   import { computePlayerSnapshot } from '$lib/system/utils';
   import { packsForStarmap, reasonsConfig } from '$lib/physics/reasonsToVisit';
+  import { coiForStarmap } from '$lib/constructs/coi';
   import { get } from 'svelte/store';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
   import { ensureTemporalState, setMasterToDisplay } from '$lib/temporal/defaults';
@@ -412,6 +413,7 @@
       if (mode === 'GM') {
           (starmapToSave as any).poiPacks = packsForStarmap();
           (starmapToSave as any).reasonsConfig = get(reasonsConfig);
+          (starmapToSave as any).coiCategories = coiForStarmap();
       }
 
       // Download

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.92-beta - 15th Jun 2026
+
+* New: Constructs of Interest (CoIs) — hand-applied tags for ships & stations, on a new "Tags" tab in the construct panel. Two starter sets ship: Owner (Military / Corporation / Consortium / Pirate / Owner-operator — pick one; it carries the ship's tardiness) and Purpose (Patrol, Mining, Courier, Refuel, Cargo-transport, Survey, Colony, HQ and more — pick any). Unlike Points of Interest these are never auto-derived — you choose them. The category and tag lists are editable under Settings → CoIs (add/rename/recolour, set owner tardiness, reset to defaults), and they travel inside the starmap file. This is the groundwork for autopilot.
+
 ## v2.0.91-beta - 15th Jun 2026
 
 * The technical-details "Orbit (from …)" line now names the host, not just its type — "Orbit (from Star Sol)", "Orbit (from Planet Jupiter)", or for a barycentre "Orbit (from Pluto-Charon Barycenter — Pluto)".

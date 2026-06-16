@@ -29,6 +29,8 @@
   import RouteEditorModal from '$lib/components/RouteEditorModal.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import PoIPackEditor from '$lib/components/PoIPackEditor.svelte';
+  import CoIEditor from '$lib/components/CoIEditor.svelte';
+  import { coiForStarmap, mergeStarmapCoIs } from '$lib/constructs/coi';
   import LlmSettingsModal from '$lib/components/LlmSettingsModal.svelte';
   import EditFuelAndDrivesModal from '$lib/components/EditFuelAndDrivesModal.svelte';
   import EditAtmospheresModal from '$lib/components/EditAtmospheresModal.svelte';
@@ -71,6 +73,7 @@
   let showSettingsModal = false;
   let showLlmSettingsModal = false;
   let showPoiEditor = false;
+  let showCoiEditor = false;
   // Technology editors (rulepack overrides) + About — moved up here from Starmap so the
   // sectioned Settings modal can open them from either view.
   let showFuelModal = false;
@@ -884,7 +887,7 @@
     if (!$starmapStore) return;
 
     // Embed the user's PoI packs + reasons config so they travel inside the .json starmap file.
-    const exportObj = { ...$starmapStore, poiPacks: packsForStarmap(), reasonsConfig: get(reasonsConfig) };
+    const exportObj = { ...$starmapStore, poiPacks: packsForStarmap(), reasonsConfig: get(reasonsConfig), coiCategories: coiForStarmap() };
     const data = JSON.stringify(exportObj, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -914,10 +917,12 @@
         // so the embedded rules drive the re-tag below. These live app-wide once merged.
         mergeStarmapPacks(data.poiPacks);
         applyStarmapReasonsConfig(data.reasonsConfig);
+        mergeStarmapCoIs(data.coiCategories);
 
         const sanitized = sanitizeStarmapForRuntime(data as StarmapType);
         delete (sanitized as any).poiPacks;
         delete (sanitized as any).reasonsConfig;
+        delete (sanitized as any).coiCategories;
 
         // One-way import fix-up: strip baked-in derived data / legacy tags from every embedded
         // system so the new engine re-derives cleanly (v1 starmaps otherwise carry stale physics).
@@ -1085,12 +1090,16 @@
       on:editatmospheres={() => { settingsReturnSection = 'planets'; showAtmosphereModal = true; }}
       on:editsensors={() => { settingsReturnSection = 'technology'; showSensorsModal = true; }}
       on:editpoi={() => { settingsReturnSection = 'generation'; showPoiEditor = true; }}
+      on:editcoi={() => { settingsReturnSection = 'coi'; showCoiEditor = true; }}
       on:llm={() => { settingsReturnSection = 'system'; showLlmSettingsModal = true; }}
       on:about={() => showAbout = true}
     />
   {/if}
   {#if showPoiEditor}
     <PoIPackEditor existingTags={allTagKeys} on:close={() => { showPoiEditor = false; reprocessAllReasons(); if (settingsReturnSection) showSettingsModal = true; }} />
+  {/if}
+  {#if showCoiEditor}
+    <CoIEditor on:close={() => { showCoiEditor = false; if (settingsReturnSection) showSettingsModal = true; }} />
   {/if}
 
   {#if showLlmSettingsModal}
