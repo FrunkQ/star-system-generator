@@ -41,31 +41,50 @@
     }
     newName = ''; newValue = '';
   }
+
+  // The existing tags defined in the chosen category that this construct doesn't carry yet — click one to
+  // add it (mirrors the PoI/body adder: pick a category → see what's available → click, or type a custom).
+  $: availableInCat = newCat === 'custom' ? [] : (() => {
+    void tick;
+    const cat = $coiCategories.find((c) => c.id === newCat);
+    if (!cat) return [] as { key: string; label: string; color?: string; textColor?: string }[];
+    return cat.tags
+      .filter((t) => !t.derived && !has(t.key))
+      .map((t) => ({ key: t.key, label: t.label, color: cat.color, textColor: cat.textColor }));
+  })();
+  function addExisting(key: string) {
+    const cat = $coiCategories.find((c) => c.id === newCat);
+    if (cat) toggle(cat, key);
+  }
 </script>
 
 <div class="coi-tab">
   <p class="hint">Tag this construct by hand. <strong>Owner</strong> sets how punctual it is (its tardiness); <strong>Purpose</strong> describes what it does. These travel with the starmap and feed autopilot later.</p>
 
   {#each cats as cat (cat.id)}
-    <div class="cat">
-      <div class="cat-head">
-        <span class="swatch" style="background:{cat.color || '#666'}"></span>
-        <span class="cat-label">{cat.label}</span>
-        {#if cat.single}<span class="one">choose one</span>{/if}
+    {@const applied = cat.tags.filter((t) => !t.derived && has(t.key))}
+    {#if applied.length}
+      <div class="cat">
+        <div class="cat-head">
+          <span class="swatch" style="background:{cat.color || '#666'}"></span>
+          <span class="cat-label">{cat.label}</span>
+        </div>
+        <div class="chips">
+          {#each applied as t (t.key)}
+            <button
+              class="chip on"
+              style={`background:${cat.color || '#444'}; color:${cat.textColor || '#fff'}; border-color:${cat.color || '#444'}`}
+              title={t.tardiness !== undefined ? `Tardiness ${t.tardiness} · click to remove` : 'Click to remove'}
+              on:click={() => toggle(cat, t.key)}
+            >{t.label} ✕</button>
+          {/each}
+        </div>
       </div>
-      <div class="chips">
-        {#each cat.tags.filter((t) => !t.derived) as t (t.key)}
-          <button
-            class="chip"
-            class:on={has(t.key)}
-            style={has(t.key) ? `background:${cat.color || '#444'}; color:${cat.textColor || '#fff'}; border-color:${cat.color || '#444'}` : ''}
-            title={t.tardiness !== undefined ? `Tardiness ${t.tardiness}` : ''}
-            on:click={() => toggle(cat, t.key)}
-          >{t.label}</button>
-        {/each}
-      </div>
-    </div>
+    {/if}
   {/each}
+  {#if !cats.some((c) => c.tags.some((t) => !t.derived && has(t.key))) && !orphans.length}
+    <p class="empty-note">No tags on this construct yet — pick a category below to see what's available, or add your own.</p>
+  {/if}
 
   <hr />
   <h4>Add a tag</h4>
@@ -76,6 +95,14 @@
         {#each $coiCategories as c (c.id)}<option value={c.id}>{c.label}</option>{/each}
       </select>
     </label>
+    {#if availableInCat.length}
+      <div class="avail-row">
+        <span class="avail-lbl">Available:</span>
+        {#each availableInCat as a (a.key)}
+          <button class="avail-chip" style="background:{a.color || '#444'}; color:{a.textColor || '#fff'}" on:click={() => addExisting(a.key)} title="Add {a.label}">+ {a.label}</button>
+        {/each}
+      </div>
+    {/if}
     <label class="fld">Name
       <input type="text" bind:value={newName} placeholder={newCat === 'custom' ? 'e.g. Flagship, faction' : 'e.g. tug'} on:keydown={(e) => e.key === 'Enter' && addCustom()} />
     </label>
@@ -128,6 +155,11 @@
   .swatch.off { background: var(--border, #555); }
   .chip.ghost { display: inline-flex; align-items: center; gap: 5px; font-style: italic; cursor: default; border-style: dashed; }
   .chip.ghost .drop { background: none; border: none; color: var(--text-muted, #b8bcc4); cursor: pointer; padding: 0; font-size: 0.9em; }
+  .empty-note { font-size: 0.82em; color: var(--text-faint, #888); font-style: italic; margin: 4px 0 0; }
+  .avail-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .avail-lbl { font-size: 0.72em; color: var(--text-faint, #888); }
+  .avail-chip { border: none; border-radius: 999px; padding: 3px 9px; font-size: 0.78em; cursor: pointer; }
+  .avail-chip:hover { filter: brightness(1.12); }
   .add-tag-form { display: flex; flex-direction: column; gap: 8px; }
   .fld { display: flex; flex-direction: column; gap: 3px; font-size: 0.75em; color: var(--text-muted); }
   .add-tag-form select { padding: 7px; border-radius: 4px; border: 1px solid var(--border); background-color: var(--bg-control); color: var(--text); }

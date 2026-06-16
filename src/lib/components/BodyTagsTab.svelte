@@ -18,6 +18,28 @@
   $: previewKey = newCat === 'custom' ? (newName.trim() || 'tag') : `${newCat}/${slug(newName) || 'name'}`;
   $: previewInfo = describeTag(previewKey);
 
+  // The existing PoI tags defined in the chosen category that this body doesn't have yet — click one to
+  // add it manually (kept as the player's own, so the reasons pass never strips it).
+  $: availableInCat = newCat === 'custom' ? [] : (() => {
+    const have = new Set((body.tags ?? []).map((t) => t.key));
+    const seen = new Set<string>();
+    const out: { key: string; label: string; color: string; textColor: string }[] = [];
+    for (const p of $poiPacks) {
+      if (p.enabled === false) continue;
+      for (const r of p.rules ?? []) {
+        if (r.category !== newCat || !r.tag || have.has(r.tag) || seen.has(r.tag)) continue;
+        seen.add(r.tag);
+        const info = describeTag(r.tag);
+        out.push({ key: r.tag, label: info.label, color: info.color, textColor: info.textColor || '#fff' });
+      }
+    }
+    return out;
+  })();
+  function addExisting(key: string) {
+    if (!body.tags) body.tags = [];
+    if (!body.tags.some((t) => t.key === key)) { body.tags = [...body.tags, { key, manual: true }]; dispatch('update'); }
+  }
+
   function removeTag(key: string) {
       if (!body.tags) return;
       body.tags = body.tags.filter((t) => t.key !== key);
@@ -117,6 +139,14 @@
         {#each cats as c}<option value={c.id}>{c.label}</option>{/each}
       </select>
     </label>
+    {#if availableInCat.length}
+      <div class="avail-row">
+        <span class="avail-lbl">Available:</span>
+        {#each availableInCat as a (a.key)}
+          <button class="avail-chip" style="background:{a.color}; color:{a.textColor}" on:click={() => addExisting(a.key)} title="Add {a.label}">+ {a.label}</button>
+        {/each}
+      </div>
+    {/if}
     <label class="fld">Name (what players see)
       <input type="text" bind:value={newName} placeholder={newCat === 'custom' ? 'e.g. Smugglers, faction/control' : 'e.g. spice'} />
     </label>
@@ -155,6 +185,10 @@
   input { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid var(--border); background-color: var(--bg-control); color: var(--text); }
   .preview-row { display: flex; align-items: center; gap: 7px; font-size: 0.75em; color: var(--text-muted); flex-wrap: wrap; }
   .tag-chip-preview { font-size: 0.92em; padding: 2px 7px; border-radius: 4px; }
+  .avail-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .avail-lbl { font-size: 0.72em; color: var(--text-faint); }
+  .avail-chip { border: none; border-radius: 4px; padding: 3px 8px; font-size: 0.78em; cursor: pointer; }
+  .avail-chip:hover { filter: brightness(1.12); }
   .key-hint { font-family: var(--font-mono, monospace); font-size: 0.85em; color: var(--text-faint); }
   .add-btn { width: 100%; padding: 8px; background-color: var(--bg-panel); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
   .add-btn:hover { background-color: var(--bg-control); }
