@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.136-beta - 16th Jun 2026
+
+* Ship's log: dropped the now-redundant "Leg" framing (each journey is a single hop) — entries lead with the route and add the arrival (differential) speed alongside the end state. Fixed the wildly-wrong arrival/departure year (journey times are unix-epoch; they're now converted to the calendar's master-time correctly).
+
 ## v2.0.135-beta - 16th Jun 2026
 
 * The starmap ship panel now shows the full ship data block again (same read-only stat block as in-system), with only the transit controls swapped for the interstellar set. The visibility eye moved to the left and is joined by a sensors on/off toggle (run dark en-route); edit stays behind the pencil.

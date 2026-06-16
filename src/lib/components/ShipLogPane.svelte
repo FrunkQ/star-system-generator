@@ -8,7 +8,7 @@
   import type { CelestialBody } from '$lib/types';
   import { systemStore } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
-  import { resolveCalendar, BIG_BANG_TO_UNIX_EPOCH_T } from '$lib/temporal/utre';
+  import { resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
   import { getJourneyBounds } from '$lib/transit/scheduler';
 
   export let focusedBody: CelestialBody;
@@ -19,23 +19,22 @@
 
   function formatLogTime(ms: number): string {
       if (!Number.isFinite(ms)) return 'n/a';
-      const sec = BigInt(Math.floor(ms / 1000));
       const temporal = get(starmapStore)?.temporal;
       if (temporal) {
           const calendar = temporal.temporal_registry[temporal.activeCalendarKey];
-          if (calendar) return resolveCalendar(sec, calendar).formatted;
+          // Journey times are unix-epoch ms; the calendar resolver wants MASTER (since-Big-Bang) seconds.
+          if (calendar) return resolveCalendar(unixMsToMasterSeconds(ms), calendar).formatted;
       }
       const d = new Date(ms);
       if (Number.isFinite(d.getTime())) return d.toISOString();
-      return `${sec.toString()}s`;
+      return `${Math.floor(ms / 1000)}s`;
   }
 
+  // createdAtSec / cancelledAtSec are stored as unix-epoch SECONDS → unix ms for formatLogTime.
   function safeClockSecStringToMs(value: string | undefined): number {
       try {
           if (!value) return 0;
-          const sec = BigInt(value);
-          const unixSec = sec - BIG_BANG_TO_UNIX_EPOCH_T;
-          return Number(unixSec) * 1000;
+          return Number(BigInt(value)) * 1000;
       } catch {
           return 0;
       }
@@ -92,11 +91,12 @@
           <div class="ship-log-meta">Window: {formatLogTime(bounds.startMs)} -> {formatLogTime(bounds.endMs)}</div>
         {/if}
         <div class="ship-log-legs">
-          {#each log.plans as leg, legIndex}
+          {#each log.plans as leg}
             <div class="ship-log-leg">
-              <div><strong>Leg {legIndex + 1}:</strong> {nodeName(leg.originId)} -> {nodeName(leg.targetId)}</div>
+              <div class="ship-log-route">{nodeName(leg.originId)} → {nodeName(leg.targetId)}</div>
               <div class="ship-log-meta">Depart: {formatLogTime(leg.startTime)}</div>
               <div class="ship-log-meta">Arrive: {formatLogTime(leg.startTime + (leg.totalTime_days * 86400 * 1000))}</div>
+              <div class="ship-log-meta">Arrival speed: {fmtSpeed(leg.arrivalVelocity_ms || 0)}</div>
               <div class="ship-log-meta ship-log-exit">Ends: {exitState(leg)}</div>
             </div>
           {/each}
@@ -170,6 +170,10 @@
   .ship-log-leg {
       border-left: 2px solid #2f5d76;
       padding-left: 0.55em;
+  }
+  .ship-log-route {
+      font-weight: 600;
+      color: var(--text);
   }
   .ship-log-exit {
       color: #8fcf9f;
