@@ -46,7 +46,7 @@
   import { fixUpImportedSystem } from '$lib/system/importFixup';
   import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
   import ShipPanel from '$lib/components/ShipPanel.svelte';
-  import { constructDisplayPlacement, interstellarConstructIds } from '$lib/transit/interstellar';
+  import { constructDisplayPlacement, interstellarConstructIds, endJourneyAtSource } from '$lib/transit/interstellar';
 
   let rulePacks: RulePack[] = [];
   let isLoading = true;
@@ -290,8 +290,29 @@
     return { journey: j, construct, system: sysNode.system, host, status, frac, fromName: sysNode.name, toName: map.systems.find((s) => s.id === j.toSystemId)?.name ?? '' };
   })();
   function handleShipResolve(journeyId: string, outcome: 'return' | 'arrive' | 'strand', coast?: boolean) {
-    const nowSec = String($starmapStore?.temporal?.displayTimeSec ?? '0');
-    starmapStore.update((m) => m ? { ...m, activeJourneys: (m.activeJourneys ?? []).map((j) => j.id === journeyId ? { ...j, outcome, endedAtSec: nowSec, ...(outcome === 'strand' ? { strandCoast: coast } : {}) } : j) } : m);
+    const m = $starmapStore;
+    if (!m) return;
+    const nowSec = String(m.temporal?.displayTimeSec ?? '0');
+    // Send-home / cancel actually REMOVES the journey (it's undone — the ship is back in its origin), not
+    // just marks it. Any later journeys for the same vessel become invalid (the chain can't skip a leg),
+    // so they're removed too — with a warning that lists them first.
+    if (outcome === 'return') {
+      const journey = (m.activeJourneys ?? []).find((j) => j.id === journeyId);
+      if (!journey) return;
+      const sName = (id?: string) => m.systems.find((s) => s.id === id)?.name ?? id ?? '?';
+      const future = (m.activeJourneys ?? []).filter((j) => j.id !== journeyId && j.shipId === journey.shipId);
+      if (future.length) {
+        const list = future.map((f) => `• ${sName(f.fromSystemId)} → ${sName(f.toSystemId)}`).join('\n');
+        if (!confirm(`Cancelling this journey will permanently remove ${future.length} onward journey(s) for ${journey.shipName} (the chain can't continue without this leg):\n\n${list}\n\nProceed?`)) return;
+      }
+      let next = endJourneyAtSource(m, journeyId);          // drops the journey, ship stays in its origin
+      if (future.length) next = { ...next, activeJourneys: (next.activeJourneys ?? []).filter((j) => j.shipId !== journey.shipId) };
+      starmapStore.set(next);
+      shipPanelJourneyId = null;                             // journey's gone — close its panel
+      return;
+    }
+    // arrive / strand stay reversible (resume / re-fly) — just record the outcome.
+    starmapStore.update((mm) => mm ? { ...mm, activeJourneys: (mm.activeJourneys ?? []).map((j) => j.id === journeyId ? { ...j, outcome, endedAtSec: nowSec, ...(outcome === 'strand' ? { strandCoast: coast } : {}) } : j) } : mm);
   }
   function handleShipResume(journeyId: string) {
     starmapStore.update((m) => m ? { ...m, activeJourneys: (m.activeJourneys ?? []).map((j) => j.id === journeyId ? { ...j, outcome: undefined, endedAtSec: undefined } : j) } : m);

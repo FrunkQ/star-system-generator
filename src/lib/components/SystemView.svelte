@@ -84,8 +84,11 @@
   // still physically lives in its origin system, but it must not be drawn there; it only shows at starmap
   // level. Hide such constructs from the orrery (reactive to the clock, so it appears/disappears as you
   // scrub through its journey window).
+  // NB: journey times are stored in MASTER/universe seconds (since the Big Bang), but the orrery's
+  // currentTime is a unix-epoch clock — convert before asking who's interstellar, or the placement is
+  // evaluated in the wrong epoch (always reads "not departed") and nothing ever hides.
   $: interstellarIds = ($starmapStore && $systemStore)
-      ? interstellarConstructIds($starmapStore, currentTime / 1000)
+      ? interstellarConstructIds($starmapStore, Number(unixMsToMasterSeconds(currentTime)))
       : new Set<string>();
   $: displaySystem = ($systemStore && interstellarIds.size)
       ? { ...$systemStore, nodes: $systemStore.nodes.filter((n) => !(n.kind === 'construct' && interstellarIds.has(n.id))) }

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.104-beta - 16th Jun 2026
+
+* Fixed: sending a ship home / cancelling an interstellar journey now actually removes it — it no longer lingers in Routes still ticking along. If the vessel has later journeys that depended on it, you're warned (with the list) and they're removed too, since the chain can't skip a leg.
+* Fixed: an interstellar ship now correctly disappears from its origin system's orrery while in transit. (The hide was being evaluated in the wrong time epoch, so it never triggered.) It's display-time driven, so scrubbing back before departure brings it back.
+
 ## v2.0.103-beta - 16th Jun 2026
 
 * A coasting fly-by (a ship that couldn't brake) now projects its dashed heading line right across the map, so you can see it tearing off and out of the edge rather than just a short stub.
