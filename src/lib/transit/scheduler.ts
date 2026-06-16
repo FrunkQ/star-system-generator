@@ -7,13 +7,14 @@ import { systemGravityField } from '$lib/physics/systemGravity';
 
 const AU_M = AU_KM * 1000;
 
-const isStarNode = (n: any) =>
-  n?.roleHint === 'star' || (Array.isArray(n?.classes) && n.classes.some((c: string) => String(c).startsWith('star/')));
-
-// Coast a cut-loose ship under the system's REAL gravity (its stars). A residual velocity then traces a
-// slow conic section round the sun — a bound ellipse, or a hyperbola if it's above escape — instead of
-// the old straight line. Falls back to a straight line if the system has no star to pull on it. AU + sec,
-// matching the orrery + G_AU; the field's attractors move (binaries) via getGlobalState.
+// Coast a cut-loose ship under the system's REAL gravity — full N-body: every massive body pulls (the
+// same perturber set the transit integrator uses, calculator.ts), so the ship can be slung past a planet,
+// not only fall round the sun. A residual velocity traces a real trajectory (bound ellipse, hyperbola
+// above escape, bent by close encounters) instead of the old straight line. Belts/rings are distributed
+// debris-density, not point masses — excluded (mirrors transits); barycenters are abstract points whose
+// mass already lives on their child bodies — excluded to avoid double-counting. Falls back to a straight
+// line if there's nothing massive. AU + sec, matching the orrery + G_AU; attractors move (orbiting
+// planets, binary stars) via getGlobalState.
 export function coastUnderGravity(
   system: System,
   startPos_au: Vector2,
@@ -27,11 +28,11 @@ export function coastUnderGravity(
     velocity_ms: { ...startVel_ms }
   };
   if (!(dtSec > 0)) return { position_au: { ...startPos_au }, velocity_ms: { ...startVel_ms } };
-  const stars = system.nodes
-    .filter((n) => isStarNode(n) && ((n as any).massKg || 0) > 0)
+  const bodies = system.nodes
+    .filter((n) => n.kind === 'body' && ((n as any).massKg || 0) > 0 && (n as any).roleHint !== 'belt' && (n as any).roleHint !== 'ring')
     .map((n) => ({ id: n.id, massKg: (n as any).massKg as number }));
-  if (!stars.length) return straight;
-  const field = systemGravityField(stars, (id, t) => {
+  if (!bodies.length) return straight;
+  const field = systemGravityField(bodies, (id, t) => {
     const node = system.nodes.find((n) => n.id === id);
     if (!node) return [0, 0];
     const s = getGlobalState(system, node as any, t * 1000); // field time is seconds; getGlobalState wants ms
