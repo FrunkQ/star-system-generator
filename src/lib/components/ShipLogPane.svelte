@@ -45,6 +45,23 @@
       const n = $systemStore?.nodes.find((x) => x.id === nodeId);
       return n?.name || nodeId;
   }
+
+  // How a hop ENDS — the handoff the next journey (or autopilot) picks up: parked (docked / in orbit) or
+  // free with a leftover velocity (a fly-past). Read straight off the plan.
+  const PLACEMENT: Record<string, string> = {
+      lo: 'Low orbit', mo: 'Medium orbit', ho: 'High orbit', geo: 'Geostationary orbit',
+      surface: 'Surface', l4: 'L4', l5: 'L5'
+  };
+  const fmtSpeed = (ms: number) => ms >= 1000 ? `${(ms / 1000).toFixed(1)} km/s` : `${Math.round(ms)} m/s`;
+  function exitState(leg: any): string {
+      const isFlyby = (leg.interceptSpeed_ms || 0) > 0 || (leg.segments || []).some((s: any) => (s.warnings || []).includes('Flyby'));
+      if (isFlyby) {
+          const v = leg.arrivalVelocity_ms || leg.interceptSpeed_ms || 0;
+          return `Fly-past — carries ${fmtSpeed(v)} Δv`;
+      }
+      if (leg.arrivalPlacement && PLACEMENT[leg.arrivalPlacement]) return `In ${PLACEMENT[leg.arrivalPlacement]}`;
+      return 'Docked';
+  }
 </script>
 
 <div class="ship-log-panel">
@@ -80,6 +97,7 @@
               <div><strong>Leg {legIndex + 1}:</strong> {nodeName(leg.originId)} -> {nodeName(leg.targetId)}</div>
               <div class="ship-log-meta">Depart: {formatLogTime(leg.startTime)}</div>
               <div class="ship-log-meta">Arrive: {formatLogTime(leg.startTime + (leg.totalTime_days * 86400 * 1000))}</div>
+              <div class="ship-log-meta ship-log-exit">Ends: {exitState(leg)}</div>
             </div>
           {/each}
         </div>
@@ -152,5 +170,8 @@
   .ship-log-leg {
       border-left: 2px solid #2f5d76;
       padding-left: 0.55em;
+  }
+  .ship-log-exit {
+      color: #8fcf9f;
   }
 </style>

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.128-beta - 16th Jun 2026
+
+* (Transit refactor, stage 5) The ship's log now shows how each hop ends — Docked, In <orbit>, or Fly-past (carrying its leftover Δv) — the handoff state the next journey or autopilot picks up.
+
 ## v2.0.127-beta - 16th Jun 2026
 
 * (Transit refactor, stage 2) Each in-system hop is now its own single journey on the timeline rather than a leg inside one multi-leg journey object. A multi-stop plan commits as several chained journeys; the ship flies the identical path (the scheduler already chains journeys in time and reconciles to the final arrival), but every hop is now independently log-able and autopilot-sequenceable. Groundwork for retiring the journey-legs machinery.
