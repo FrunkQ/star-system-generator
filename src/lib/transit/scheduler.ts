@@ -2,8 +2,49 @@ import type { CelestialBody, System } from '$lib/types';
 import type { TransitPlan, Vector2 } from '$lib/transit/types';
 import { AU_KM, G } from '$lib/constants';
 import { getGlobalState } from '$lib/transit/physics';
+import { driftAt } from '$lib/physics/driftIntegrator';
+import { systemGravityField } from '$lib/physics/systemGravity';
 
 const AU_M = AU_KM * 1000;
+
+const isStarNode = (n: any) =>
+  n?.roleHint === 'star' || (Array.isArray(n?.classes) && n.classes.some((c: string) => String(c).startsWith('star/')));
+
+// Coast a cut-loose ship under the system's REAL gravity (its stars). A residual velocity then traces a
+// slow conic section round the sun — a bound ellipse, or a hyperbola if it's above escape — instead of
+// the old straight line. Falls back to a straight line if the system has no star to pull on it. AU + sec,
+// matching the orrery + G_AU; the field's attractors move (binaries) via getGlobalState.
+export function coastUnderGravity(
+  system: System,
+  startPos_au: Vector2,
+  startVel_ms: { x: number; y: number },
+  t0Ms: number,
+  tMs: number
+): { position_au: Vector2; velocity_ms: { x: number; y: number } } {
+  const dtSec = (tMs - t0Ms) / 1000;
+  const straight = {
+    position_au: { x: startPos_au.x + (startVel_ms.x / AU_M) * dtSec, y: startPos_au.y + (startVel_ms.y / AU_M) * dtSec },
+    velocity_ms: { ...startVel_ms }
+  };
+  if (!(dtSec > 0)) return { position_au: { ...startPos_au }, velocity_ms: { ...startVel_ms } };
+  const stars = system.nodes
+    .filter((n) => isStarNode(n) && ((n as any).massKg || 0) > 0)
+    .map((n) => ({ id: n.id, massKg: (n as any).massKg as number }));
+  if (!stars.length) return straight;
+  const field = systemGravityField(stars, (id, t) => {
+    const node = system.nodes.find((n) => n.id === id);
+    if (!node) return [0, 0];
+    const s = getGlobalState(system, node as any, t * 1000); // field time is seconds; getGlobalState wants ms
+    return [s.r.x, s.r.y];
+  });
+  const t0Sec = t0Ms / 1000, tSec = tMs / 1000;
+  const step = Math.min(86400, Math.max(600, dtSec / 4000)); // ~4000 RK4 steps, clamped 10 min … 1 day
+  const r = driftAt(
+    { t0: t0Sec, x: startPos_au.x, y: startPos_au.y, vx: startVel_ms.x / AU_M, vy: startVel_ms.y / AU_M },
+    field, tSec, step
+  );
+  return { position_au: { x: r.x, y: r.y }, velocity_ms: { x: r.vx * AU_M, y: r.vy * AU_M } };
+}
 
 // arrivalPlacement code -> human label and parking-altitude factor (radii above surface),
 // matching samplePostJourneyState's visual parking orbit.
@@ -182,17 +223,13 @@ export function sampleJourneyKinematicsAtTime(
     if (timeMs < bounds.startMs) break;
 
     if (cancelledAtMs !== null && log.cancelState && timeMs >= cancelledAtMs) {
-      const dtSec = (timeMs - cancelledAtMs) / 1000;
-      const vxAuSec = log.cancelState.velocity_ms.x / AU_M;
-      const vyAuSec = log.cancelState.velocity_ms.y / AU_M;
+      // Adrift: coast under the star(s)' real gravity — a slow conic round the sun, not a straight line.
+      const coasted = coastUnderGravity(system, log.cancelState.position_au, log.cancelState.velocity_ms, cancelledAtMs, timeMs);
       return {
         journeyId: log.id,
         state: 'Deep Space',
-        position_au: {
-          x: log.cancelState.position_au.x + vxAuSec * dtSec,
-          y: log.cancelState.position_au.y + vyAuSec * dtSec
-        },
-        velocity_ms: { ...log.cancelState.velocity_ms }
+        position_au: coasted.position_au,
+        velocity_ms: coasted.velocity_ms
       };
     }
 

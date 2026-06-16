@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.123-beta - 16th Jun 2026
+
+* In-system adrift ships now coast under the star's real gravity instead of drifting in a straight line: cut a ship loose mid-transit and it traces a slow conic section round the sun (a bound ellipse, or a hyperbola if it's above escape) — the same drift engine the interstellar slingshot uses, now in the orrery. (Groundwork toward unifying in-system travel onto the clock-derived model.)
+
 ## v2.0.122-beta - 16th Jun 2026
 
 * In-transit / stranded ships (opened from the starmap) now show their tags as chips at the bottom of the panel, matching the in-system construct view and bodies.
