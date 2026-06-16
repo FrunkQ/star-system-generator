@@ -963,7 +963,11 @@
           <g class="journey-ship adrift" role="button" tabindex="0" transform="translate({p.x}, {p.y})"
              on:pointerdown|stopPropagation={() => requestCancelJourney(journey)}
              on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
-            <title>{journey.shipName} — stranded in interstellar space. Click for options.</title>
+            <title>{journey.shipName} — {(p.vx || p.vy) ? 'coasting (out of fuel to stop)' : 'stranded'} in interstellar space. Click for options.</title>
+            {#if p.vx || p.vy}
+              {@const mag = Math.hypot(p.vx, p.vy) || 1}
+              <line class="journey-ahead" x1="0" y1="0" x2={(p.vx / mag) * 60} y2={(p.vy / mag) * 60} />
+            {/if}
             {#if ship?.icon_type === 'circle'}<circle r="5.5" {fill} stroke={EDGE_STRANDED} stroke-width="2.2" />
             {:else}<path d={iconPath(ship?.icon_type)} {fill} stroke={EDGE_STRANDED} stroke-width="2.2" />{/if}
             <text class="journey-label" x="8" y="3">{journey.shipName} (adrift)</text>

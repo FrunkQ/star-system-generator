@@ -42,6 +42,37 @@ describe('interstellarConstructIds (system-view hide / find-by-tag scope)', () =
   });
 });
 
+describe('ballistic adrift drift (Stage 1)', () => {
+  it('a momentum-drive (torch) strand coasts in a straight line; position grows with the clock', () => {
+    // j1: torch mode, sysA(0,0)→sysB(100,0), depart 0, duration 1000 → velocity 0.1 units/sec
+    const m = strandJourney(makeStarmap(), 'j1', 0.5, '500');   // stranded at frac 0.5 → x=50, t0=500
+    const p1 = constructDisplayPlacement(m, 'ship1', 500);
+    const p2 = constructDisplayPlacement(m, 'ship1', 1500);     // +1000 s
+    expect(p1.kind).toBe('adrift');
+    if (p1.kind === 'adrift' && p2.kind === 'adrift') {
+      expect(p1.x).toBeCloseTo(50);
+      expect(p2.x).toBeCloseTo(150);          // coasted 100 units in 1000 s (0.1 u/s)
+      expect(p2.y).toBeCloseTo(0);            // straight line along the leg
+      expect(p1.vx).toBeCloseTo(0.1);
+    }
+    // deterministic / reversible: same T → same point
+    const again = constructDisplayPlacement(m, 'ship1', 1500);
+    if (again.kind === 'adrift' && p2.kind === 'adrift') expect(again.x).toBeCloseTo(p2.x);
+  });
+
+  it('a jump strand is stationary (no drift)', () => {
+    const base = makeStarmap();
+    (base.activeJourneys as any)[0].mode = 'jump';
+    const m = strandJourney(base, 'j1', 0.5, '500');
+    const p1 = constructDisplayPlacement(m, 'ship1', 500);
+    const p2 = constructDisplayPlacement(m, 'ship1', 9999);
+    if (p1.kind === 'adrift' && p2.kind === 'adrift') {
+      expect(p2.x).toBeCloseTo(p1.x);   // unmoved
+      expect(p2.vx ?? 0).toBe(0);
+    }
+  });
+});
+
 describe('interstellar journey resolution', () => {
   it('endJourneyAtSource drops the journey and leaves the construct in its origin system', () => {
     const out = endJourneyAtSource(makeStarmap(), 'j1');
@@ -95,13 +126,22 @@ describe('constructDisplayPlacement (derive-from-clock)', () => {
   it('after natural end → destination system (arrive)', () => {
     expect(constructDisplayPlacement(makeStarmap(), 'ship1', 2000)).toEqual({ kind: 'system', systemId: 'sysB' });
   });
-  it('outcome=strand with endedAtSec → adrift at that fraction even when scrubbed later', () => {
+  it('outcome=strand: a jump-drive abort stays fixed at that fraction even when scrubbed later', () => {
     const m = makeStarmap();
+    m.activeJourneys![0].mode = 'jump';
     m.activeJourneys![0].outcome = 'strand';
     m.activeJourneys![0].endedAtSec = '600';   // 60% along
     const p = constructDisplayPlacement(m, 'ship1', 5000) as any;
     expect(p.kind).toBe('adrift');
-    expect(p.x).toBeCloseTo(60);
+    expect(p.x).toBeCloseTo(60);               // stationary — no drift
+  });
+  it('outcome=strand: a momentum drive (torch) coasts on past the strand point', () => {
+    const m = makeStarmap();                   // torch mode, 100 units over 1000 s → 0.1 u/s
+    m.activeJourneys![0].outcome = 'strand';
+    m.activeJourneys![0].endedAtSec = '600';   // strands at x=60
+    const p = constructDisplayPlacement(m, 'ship1', 1600) as any;   // +1000 s
+    expect(p.kind).toBe('adrift');
+    expect(p.x).toBeCloseTo(160);              // drifted another 100 units along the heading
   });
   it('outcome=return → origin system after it ends', () => {
     const m = makeStarmap();

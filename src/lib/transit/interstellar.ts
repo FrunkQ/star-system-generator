@@ -14,7 +14,11 @@ import { G, SOLAR_MASS_KG } from '$lib/constants';
 export type ConstructPlacement =
   | { kind: 'system'; systemId: ID }
   | { kind: 'transit'; fromSystemId: ID; toSystemId: ID; x: number; y: number; frac: number }
-  | { kind: 'adrift'; x: number; y: number; fromSystemId?: ID; toSystemId?: ID };
+  | { kind: 'adrift'; x: number; y: number; vx?: number; vy?: number; fromSystemId?: ID; toSystemId?: ID };
+
+// Whether a journey's drive coasts (keeps momentum) when interrupted, vs stops dead. A jump/gate/field
+// drive just stops; anything with real momentum (relativistic, torch, sublight…) keeps drifting.
+function coasts(mode: string | undefined): boolean { return !/jump|gate|warp|hyper/i.test(mode || ''); }
 
 // The journey's effective end (early GM resolution wins over the natural arrival time), in game seconds.
 export function journeyEffectiveEndSec(j: ActiveJourney): number {
@@ -52,13 +56,25 @@ export function constructDisplayPlacement(starmap: Starmap, constructId: ID, dis
       if (outcome === 'return') return { kind: 'system', systemId: j.fromSystemId };
       if (outcome === 'strand') {
         const f = fracAt(j, endSec);
-        return { kind: 'adrift', x: from.x + (to.x - from.x) * f, y: from.y + (to.y - from.y) * f, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
+        const sx = from.x + (to.x - from.x) * f, sy = from.y + (to.y - from.y) * f;
+        // A momentum-drive strand coasts on in a straight line at its transit velocity; a jump strand stops.
+        if (coasts(j.mode) && (j.durationSec || 0) > 0) {
+          const vx = (to.x - from.x) / j.durationSec, vy = (to.y - from.y) / j.durationSec;
+          const dt = displaySec - endSec;
+          return { kind: 'adrift', x: sx + vx * dt, y: sy + vy * dt, vx, vy, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
+        }
+        return { kind: 'adrift', x: sx, y: sy, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
       }
       return { kind: 'system', systemId: j.toSystemId };   // arrive
     }
   }
   const adrift = (starmap.adriftConstructs ?? []).find((a) => a.construct?.id === constructId);
-  if (adrift) return { kind: 'adrift', x: adrift.x, y: adrift.y, fromSystemId: adrift.fromSystemId, toSystemId: adrift.toSystemId };
+  if (adrift) {
+    const vx = adrift.vx ?? 0, vy = adrift.vy ?? 0;
+    const t0 = Number(adrift.t0Sec ?? adrift.strandedAtSec ?? displaySec);
+    const dt = (vx || vy) ? displaySec - t0 : 0;   // stationary unless it has a drift velocity
+    return { kind: 'adrift', x: adrift.x + vx * dt, y: adrift.y + vy * dt, vx, vy, fromSystemId: adrift.fromSystemId, toSystemId: adrift.toSystemId };
+  }
   const holding = starmap.systems.find((s) => (s.system?.nodes ?? []).some((n) => n.id === constructId));
   return { kind: 'system', systemId: holding?.id ?? '' };
 }
@@ -140,13 +156,21 @@ export function strandJourney(starmap: Starmap, journeyId: string, frac: number,
   if (!loc || !fromSys || !toSys) return dropJourney(starmap, journeyId);
 
   const f = Math.max(0, Math.min(1, Number.isFinite(frac) ? frac : 0.5));
+  // A momentum drive keeps coasting from the strand point at its transit velocity (units per game-second);
+  // a jump/field drive stops dead (no velocity stored).
+  const coast = coasts(journey.mode) && (journey.durationSec || 0) > 0;
   const adrift: AdriftConstruct = {
     construct: clone(loc.node),
     x: fromSys.position.x + (toSys.position.x - fromSys.position.x) * f,
     y: fromSys.position.y + (toSys.position.y - fromSys.position.y) * f,
     fromSystemId: journey.fromSystemId,
     toSystemId: journey.toSystemId,
-    strandedAtSec: atSec
+    strandedAtSec: atSec,
+    ...(coast ? {
+      vx: (toSys.position.x - fromSys.position.x) / journey.durationSec,
+      vy: (toSys.position.y - fromSys.position.y) / journey.durationSec,
+      t0Sec: atSec
+    } : {})
   };
   const systems = starmap.systems.map((s) =>
     s.id === journey.fromSystemId ? { ...s, system: { ...s.system, nodes: s.system.nodes.filter((_, i) => i !== loc.idx) } } : s

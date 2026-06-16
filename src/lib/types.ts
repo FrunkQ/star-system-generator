@@ -475,6 +475,11 @@ export interface AdriftConstruct {
   fromSystemId?: ID;           // where it departed
   toSystemId?: ID;             // where it had been heading
   strandedAtSec?: string;      // game-clock seconds when it was stranded
+  // Ballistic drift: a momentum drive (relativistic/torch) interrupted keeps coasting. vx/vy are
+  // starmap units per game-SECOND; position is DERIVED as (x,y) + (vx,vy)·(displaySec − t0Sec). Absent /
+  // zero = stationary (a jump-drive abort just stops). Stays reversible — only the anchor is stored.
+  vx?: number; vy?: number;
+  t0Sec?: string;              // anchor time for the drift (game-clock seconds); defaults to strandedAtSec
 }
 
 export interface StarmapScaleConfig {
