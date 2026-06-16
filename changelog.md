@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.112-beta - 16th Jun 2026
+
+* (Groundwork, Stage 3) Added the deterministic drift integrator that will bend a coasting ship's path under gravity — the engine behind the upcoming fly-by slingshot and the in-system "stationary object falls toward the star". No visible change yet; the wiring follows.
+
 ## v2.0.111-beta - 16th Jun 2026
 
 * A "Realistic" interstellar journey now actually burns its fuel: starting one drains the propellant the trip uses from the ship's tanks (the whole tank if it can't brake). So a tank-emptying overreach really does leave the ship coasting on empty.
