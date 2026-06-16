@@ -8,7 +8,7 @@
   export let nodes: any[] = [];                       // all bodies/constructs (with __systemId/__systemName/tags)
   export let contextOf: (n: any) => string = () => '';
   export let currentSystemId: string | null = null;
-  export let systems: { id: string; name: string }[] = [];   // for the system scope dropdown
+  export let systems: { id: string; name: string; interstellar?: boolean }[] = [];   // for the system scope dropdown
   export let distanceOf: ((systemId: string) => number | null) | null = null;
   export let distanceUnit = 'ly';
   const dispatch = createEventDispatcher();
@@ -16,9 +16,20 @@
   let q = '';
   let expanded: string | null = null;     // expanded category group
   let filters: string[] = [];             // active tag keys (ANDed)
+  // Two finders share this tool: body tags vs construct (ship/station) tags — they use different tag sets.
+  let mode: 'bodies' | 'constructs' = 'bodies';
+  function setMode(m: 'bodies' | 'constructs') {
+    if (m === mode) return;
+    mode = m; filters = []; expanded = null; q = '';
+    if (m === 'bodies' && scope.startsWith('interstellar:')) scope = 'all';   // interstellar scope is constructs-only
+  }
   // Scope: 'all' systems, or one system. Defaults to the system you're in, else all.
   let scope: string = currentSystemId ?? 'all';
-  $: scopedNodes = scope === 'all' ? nodes : nodes.filter((n) => n.__systemId === scope);
+  $: kindNodes = nodes.filter((n) => mode === 'constructs' ? n.kind === 'construct' : n.kind !== 'construct');
+  $: scopedNodes = scope === 'all' ? kindNodes : kindNodes.filter((n) => n.__systemId === scope);
+  // Real systems vs interstellar pseudo-systems (each a ship out in the void), grouped at the bottom.
+  $: realSystems = systems.filter((s) => !s.interstellar);
+  $: interSystems = systems.filter((s) => s.interstellar);
 
   // tag key → the nodes (within scope) that carry it
   $: index = (() => {
@@ -82,10 +93,21 @@
 </script>
 
 <div class="tag-finder">
+  <!-- bodies vs constructs -->
+  <div class="tf-tabs">
+    <button class:active={mode === 'bodies'} on:click={() => setMode('bodies')}>Bodies</button>
+    <button class:active={mode === 'constructs'} on:click={() => setMode('constructs')}>Constructs</button>
+  </div>
+
   <!-- system scope -->
   <select class="scope" bind:value={scope}>
     <option value="all">★ All systems</option>
-    {#each systems as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
+    {#each realSystems as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
+    {#if mode === 'constructs' && interSystems.length}
+      <optgroup label="Interstellar">
+        {#each interSystems as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
+      </optgroup>
+    {/if}
   </select>
 
   <!-- search / quick-add -->
@@ -140,7 +162,7 @@
   <div class="results">
     {#if filters.length}
       <div class="res-head">{sorted.length} {sorted.length === 1 ? 'match' : 'matches'}{distanceOf && sorted.some((r) => r.dist != null) ? ' · nearest first' : ''}</div>
-      {#if !sorted.length}<p class="empty">No body has all of those tags.</p>{/if}
+      {#if !sorted.length}<p class="empty">No {mode === 'constructs' ? 'construct' : 'body'} has all of those tags.</p>{/if}
       <ul>
         {#each sorted as r (r.n.__systemId + ':' + r.n.id)}
           <li>
@@ -158,6 +180,9 @@
 
 <style>
   .tag-finder { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+  .tf-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); }
+  .tf-tabs button { flex: 1; background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-muted, #b8bcc4); padding: 6px 8px; cursor: pointer; font-size: 0.86rem; }
+  .tf-tabs button.active { color: var(--text, #e8e8e8); border-bottom-color: var(--accent, #5b8def); font-weight: 600; }
   .search-wrap { position: relative; }
   .scope { width: 100%; box-sizing: border-box; padding: 7px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); font-size: 0.86rem; }
   .scope option[value="all"] { font-weight: 700; }

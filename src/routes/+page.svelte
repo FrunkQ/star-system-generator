@@ -46,7 +46,7 @@
   import { fixUpImportedSystem } from '$lib/system/importFixup';
   import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
   import ShipPanel from '$lib/components/ShipPanel.svelte';
-  import { constructDisplayPlacement } from '$lib/transit/interstellar';
+  import { constructDisplayPlacement, interstellarConstructIds } from '$lib/transit/interstellar';
 
   let rulePacks: RulePack[] = [];
   let isLoading = true;
@@ -192,6 +192,39 @@
     }
     return out;
   })();
+  // Find-by-tag node + scope lists. Interstellar constructs (in transit OR stranded) belong to no system
+  // map, so each becomes its own pseudo-"system" (id `interstellar:<id>`) grouped at the bottom of the
+  // scope dropdown; "All systems" still includes them. Adrift ships (not in any system's nodes) are added.
+  $: tagFinderNodes = (() => {
+    const map = $starmapStore;
+    if (!map) return [] as any[];
+    const nowSec = Number(map.temporal?.displayTimeSec ?? 0);
+    const interIds = interstellarConstructIds(map, nowSec);
+    const out: any[] = [];
+    for (const sys of map.systems) {
+      for (const n of (sys.system?.nodes ?? [])) {
+        if (n.kind !== 'body' && n.kind !== 'construct') continue;
+        if (n.kind === 'construct' && interIds.has(n.id)) {
+          out.push({ ...n, __systemId: `interstellar:${n.id}`, __systemName: n.name, __interstellar: true });
+        } else {
+          out.push({ ...n, __systemId: sys.id, __systemName: sys.name });
+        }
+      }
+    }
+    for (const a of (map.adriftConstructs ?? [])) {
+      const c = a.construct; if (!c) continue;
+      if (out.some((n) => n.id === c.id)) continue;   // already added via a journey above
+      out.push({ ...c, __systemId: `interstellar:${c.id}`, __systemName: c.name, __interstellar: true });
+    }
+    return out;
+  })();
+  $: tagFinderSystems = (() => {
+    const real = ($starmapStore?.systems ?? []).map((s) => ({ id: s.id, name: s.name, interstellar: false }));
+    const seen = new Set<string>(); const inter: { id: string; name: string; interstellar: boolean }[] = [];
+    for (const n of tagFinderNodes) if (n.__interstellar && !seen.has(n.__systemId)) { seen.add(n.__systemId); inter.push({ id: n.__systemId, name: n.__systemName, interstellar: true }); }
+    return [...real, ...inter];
+  })();
+
   // Every distinct tag key across the starmap — fed to the PoI editor for its "has tag" conditions.
   $: allTagKeys = (() => {
     const s = new Set<string>();
@@ -199,6 +232,7 @@
     return [...s];
   })();
   function allBodiesContext(n: any): string {
+    if (n.__interstellar) return 'Interstellar space';
     const parent = allBodies.find((x) => x.id === (n.orbit?.hostId || n.parentId) && x.__systemId === n.__systemId);
     const where = parent ? `orbits ${parent.name}` : '';
     return [n.__systemName, where].filter(Boolean).join(' · ');
@@ -218,6 +252,12 @@
   }
   function handleTagFinderSelect(e: CustomEvent<{ systemId: string; id: string }>) {
     showTagFinder = false;
+    // An interstellar construct has no system to enter — open its starmap-level ship panel instead.
+    if (e.detail.systemId?.startsWith('interstellar:')) {
+      const j = ($starmapStore?.activeJourneys ?? []).find((x) => x.shipId === e.detail.id);
+      if (j) { if (currentSystemId) exitToStarmap(); shipPanelJourneyId = j.id; }
+      return;
+    }
     enterSystemAndFocus(e.detail.systemId, e.detail.id);
   }
   // Inter-system distance from the system the GM is currently in, in the map's unit — only meaningful
@@ -255,6 +295,7 @@
 
   function tagFinderDistance(systemId: string): number | null {
     const map = $starmapStore;
+    if (systemId?.startsWith('interstellar:')) return null;   // interstellar ships have no system distance
     if (!currentSystemId || !map || (map.mapMode ?? 'diagrammatic') !== 'scaled') return null;
     if (systemId === currentSystemId) return 0;
     return getSystemDistanceLy(map, currentSystemId, systemId);
@@ -1176,9 +1217,9 @@
           <button class="allbodies-close" aria-label="Close" on:click={() => (showTagFinder = false)}>×</button>
         </header>
         <TagFinder
-          nodes={allBodies}
+          nodes={tagFinderNodes}
           currentSystemId={currentSystemId}
-          systems={($starmapStore?.systems ?? []).map((s) => ({ id: s.id, name: s.name }))}
+          systems={tagFinderSystems}
           distanceOf={tagFinderDistance}
           distanceUnit={$starmapStore?.distanceUnit ?? 'ly'}
           contextOf={allBodiesContext}

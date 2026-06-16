@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.97-beta - 16th Jun 2026
+
+* Find by tag now has Bodies and Constructs tabs — search worlds by their physics/PoI tags, or ships & stations by their Constructs-of-Interest tags (Owner, Purpose, Status…). The system filter still works on both.
+* Interstellar ships (in transit or stranded) show up in the Constructs tab grouped under "Interstellar" at the bottom of the system dropdown — "All systems" includes them too. Selecting one opens its starmap ship panel (where you can redirect it). So you can, say, search the "ship-repair" Purpose tag to find the nearest repair ship even if it's out crossing the void.
+
 ## v2.0.96-beta - 16th Jun 2026
 
 * Fixed: a ship that's interstellar — in transit or stranded — no longer appears inside a system's orrery. It belongs to no system map while it's out there; it shows only at starmap level. The hide follows the clock, so a ship vanishes from its origin as it departs and reappears in its destination on arrival (scrub back and it's en route again).
