@@ -1655,17 +1655,22 @@
           const newNodes = sys.nodes.map(node => {
               if (node.id !== focusedBodyId) return node;
               const existing = Array.isArray(node.scheduled_journeys) ? node.scheduled_journeys : [];
+              // Each hop is now its OWN single-plan journey on the timeline (no more multi-leg journey
+              // object). The scheduler already chains multiple logs in time and reconciles to the latest
+              // arrival, so the trajectory is identical — but every leg is independently log-able / autopilot-
+              // sequenceable, and carries its own entry/exit state.
+              const createdAtSec = BigInt(Math.floor(currentTime / 1000)).toString();
               return {
                   ...node,
                   scheduled_journeys: [
                       ...existing,
-                      {
+                      ...plansToSchedule.map((p) => ({
                           id: generateId(),
-                          createdAtSec: BigInt(Math.floor(currentTime / 1000)).toString(),
-                          plans: plansToSchedule.map((p) => JSON.parse(JSON.stringify(p))),
-                          status: 'scheduled',
+                          createdAtSec,
+                          plans: [JSON.parse(JSON.stringify(p))],
+                          status: 'scheduled' as const,
                           forceExecute
-                      }
+                      }))
                   ],
                   draft_transit_plan: undefined
               };

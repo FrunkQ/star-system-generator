@@ -1,8 +1,8 @@
 // Bump this on release so the activate handler purges stale precached assets (e.g. an old app
 // shell that pinned outdated CSS on a device). Runtime fetches are network-first, but the precached
 // "/" shell needs a version change to refresh.
-const STATIC_CACHE = 'sse-static-v2.0.126';
-const RUNTIME_CACHE = 'sse-runtime-v2.0.126';
+const STATIC_CACHE = 'sse-static-v2.0.127';
+const RUNTIME_CACHE = 'sse-runtime-v2.0.127';
 
 const PRECACHE_URLS = [
   '/',

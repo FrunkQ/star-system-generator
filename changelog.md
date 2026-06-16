@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.127-beta - 16th Jun 2026
+
+* (Transit refactor, stage 2) Each in-system hop is now its own single journey on the timeline rather than a leg inside one multi-leg journey object. A multi-stop plan commits as several chained journeys; the ship flies the identical path (the scheduler already chains journeys in time and reconciles to the final arrival), but every hop is now independently log-able and autopilot-sequenceable. Groundwork for retiring the journey-legs machinery.
+
 ## v2.0.126-beta - 16th Jun 2026
 
 * Starmap picker now shows Systems and Constructs as consecutive labelled sections (rather than click-to-drill), and the interstellar-ship group is renamed "Constructs".
