@@ -13,8 +13,6 @@
   // The ship's live kinematic state at the current clock (from the scheduler) — so the location readout
   // says the right thing: Orbiting / Docked / Landed / In transit / Adrift. Null = no journey info.
   export let kinematicState: string | null = null;
-  // Any live (non-cancelled) scheduled journey → offer a direct abort on the ship.
-  $: hasJourney = (construct.scheduled_journeys || []).some((l) => l.status !== 'cancelled');
   // Resolve the location heading: trust the live state, else fall back to the authored placement.
   $: effectiveState = kinematicState || (construct.placement === 'Surface' ? 'Landed' : 'Orbiting');
 
@@ -335,10 +333,10 @@
         {#if !isEditingConstruct && !hideActions}
             <!-- Plan Transit (Only available if NOT on surface) -->
             {#if construct.placement !== 'Surface'}
-                <!-- Contextual transit controls: plan one when idle, abort when on a journey. Abort
-                     directly here (no digging into the log) — Drift coasts on under gravity (physical);
-                     Stop halts, then falls toward the star. Either clears future plans too. -->
-                {#if hasJourney}
+                <!-- Contextual transit controls keyed to the LIVE state: only a ship actually under way
+                     can be aborted (drift = coast on under gravity, stop = halt then fall). Once it's
+                     arrived / orbiting / docked / adrift it shows Plan Transit again. -->
+                {#if effectiveState === 'Transit'}
                     <button class="action-btn cancel-drift" on:click={() => dispatch('cancelactive', { coast: true })} title="Abort the journey but keep momentum — coast on under gravity">Cancel · drift</button>
                     <button class="action-btn cancel-stop" on:click={() => dispatch('cancelactive', { coast: false })} title="Abort and stop dead — it then falls under the system's gravity">Cancel · stop</button>
                 {:else}

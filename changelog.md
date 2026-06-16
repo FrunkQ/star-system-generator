@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.134-beta - 16th Jun 2026
+
+* Fixed: an arrived in-system ship no longer shows the Cancel · drift/stop controls (which did nothing) — they now appear only while the ship is actually under way; an arrived/orbiting/adrift ship shows Plan Transit again.
+* Scheduling an in-system transit now rewinds Display Time back to the journey's start after the simulation, so no apparent time passes — the ship sits at departure with its faint transit line ahead (Actual time was never touched).
+
 ## v2.0.133-beta - 16th Jun 2026
 
 * The construct stat block now reports its actual current state instead of always showing "Orbit / Orbital Period": In transit → destination, Adrift → coasting, Landed → surface of host, Docked → host, and only an orbiting ship shows the orbit profile + period (now labelled with the host). Driven by the ship's live kinematic state at the current clock.

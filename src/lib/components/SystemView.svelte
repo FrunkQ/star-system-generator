@@ -1597,8 +1597,7 @@
       // (which starts from this one's end-state) — chained on the timeline, not as legs in one journey.
       const plansToSchedule = finalPlan ? [finalPlan] : [];
       if (plansToSchedule.length === 0 || !focusedBodyId) return;
-      const lastScheduledPlan = plansToSchedule[plansToSchedule.length - 1];
-      const finalScheduledTimeMs = lastScheduledPlan.startTime + (lastScheduledPlan.totalTime_days * 86400 * 1000);
+      const startScheduledTimeMs = plansToSchedule[0].startTime;
 
       systemStore.update(sys => {
           if (!sys) return null;
@@ -1628,10 +1627,11 @@
           return { ...sys, nodes: newNodes, isManuallyEdited: true };
       });
 
-      // Keep the user's preview context: move Display Time to the end of the scheduled journey.
-      // Actual/master time remains unchanged until explicitly aligned.
-      currentTime = finalScheduledTimeMs;
-      const bigBangSec = unixMsToMasterSeconds(finalScheduledTimeMs);
+      // The execute animation simulated the trip; now REWIND Display Time to the journey's start so no
+      // apparent time has passed — the ship sits at departure with its faint transit line ahead. Actual/
+      // master time was never touched.
+      currentTime = startScheduledTimeMs;
+      const bigBangSec = unixMsToMasterSeconds(startScheduledTimeMs);
       applyTemporalUpdate((temporal) => ({
         ...temporal,
         displayTimeSec: bigBangSec.toString()
