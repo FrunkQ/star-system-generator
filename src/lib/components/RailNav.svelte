@@ -15,6 +15,7 @@
   // (chroma-key) toggle; greenscreenOn highlights it.
   export let projectorOpen = false;
   export let rulerOn = false;
+  export let rulerAvailable = false;   // starmap: only when scaled (system view always has it)
   export let crtOn = false; // projector "Greenscreen CRT" toggle is on
 
   let fileOpen = false; // File group (New / Open / Save) inline accordion
@@ -108,8 +109,8 @@
 
   <div class="spacer"></div>
 
-  {#if activeView === 'system'}
-    <button class="rail-btn" class:active={rulerOn} title="Measure: tap two bodies for the distance between them in AU" on:click={() => dispatch('ruler')}>
+  {#if activeView === 'system' || rulerAvailable}
+    <button class="rail-btn" class:active={rulerOn} title={activeView === 'system' ? 'Measure: tap two bodies for the distance between them in AU' : 'Measure: tap two stars or ships for the distance between them'} on:click={() => dispatch('ruler')}>
       <span class="ic" class:accent={rulerOn}>{@html svg(I.ruler)}</span><span class="rail-label">Measure</span>
     </button>
   {/if}

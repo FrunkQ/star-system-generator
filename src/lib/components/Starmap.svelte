@@ -858,6 +858,9 @@
     <svelte:fragment slot="rail">
       <RailNav
         activeView="starmap"
+        rulerOn={measureMode}
+        rulerAvailable={isScaled}
+        on:ruler={() => { railOpen = false; toggleMeasure(); }}
         on:starmap={() => { railOpen = false; }}
         on:new={() => dispatch('new')}
         on:open={() => dispatch('upload')}
@@ -899,7 +902,6 @@
     {/if}
     <div class="ov-topright">
       {#if mode === 'phone'}<FullscreenButton />{/if}
-      {#if isScaled}<button class="ov-reset" class:active={measureMode} title="Measure distance between two stars or ships" aria-label="Measure distance" on:click={toggleMeasure}>📏{#if !$railCollapsed} {measureMode ? 'Measuring…' : 'Measure'}{/if}</button>{/if}
       <button class="ov-reset" title="Reset view" aria-label="Reset view" on:click={resetView}>⟲{#if !$railCollapsed} Reset View{/if}</button>
     </div>
     <svg

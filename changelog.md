@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.107-beta - 16th Jun 2026
+
+* Moved the starmap measure tool onto the side rail (the same "Measure" slot as the in-system one), instead of a separate on-canvas button.
+
 ## v2.0.106-beta - 16th Jun 2026
 
 * Measure tool on the scaled starmap: a 📏 toggle (top-right) lets you tap any two targets — stars or interstellar ships — to read the straight-line distance between them in the map's units. Tap a third to start a new measurement.
