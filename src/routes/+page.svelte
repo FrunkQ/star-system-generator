@@ -288,9 +288,9 @@
     else if (p.kind === 'system' && p.systemId === j.toSystemId) status = 'arrived';
     return { journey: j, construct, system: sysNode.system, host, status, frac, fromName: sysNode.name, toName: map.systems.find((s) => s.id === j.toSystemId)?.name ?? '' };
   })();
-  function handleShipResolve(journeyId: string, outcome: 'return' | 'arrive' | 'strand') {
+  function handleShipResolve(journeyId: string, outcome: 'return' | 'arrive' | 'strand', coast?: boolean) {
     const nowSec = String($starmapStore?.temporal?.displayTimeSec ?? '0');
-    starmapStore.update((m) => m ? { ...m, activeJourneys: (m.activeJourneys ?? []).map((j) => j.id === journeyId ? { ...j, outcome, endedAtSec: nowSec } : j) } : m);
+    starmapStore.update((m) => m ? { ...m, activeJourneys: (m.activeJourneys ?? []).map((j) => j.id === journeyId ? { ...j, outcome, endedAtSec: nowSec, ...(outcome === 'strand' ? { strandCoast: coast } : {}) } : j) } : m);
   }
   function handleShipResume(journeyId: string) {
     starmapStore.update((m) => m ? { ...m, activeJourneys: (m.activeJourneys ?? []).map((j) => j.id === journeyId ? { ...j, outcome: undefined, endedAtSec: undefined } : j) } : m);
@@ -1208,7 +1208,7 @@
       frac={shipPanel.frac}
       fromName={shipPanel.fromName}
       toName={shipPanel.toName}
-      on:resolve={(e) => handleShipResolve(shipPanel.journey.id, e.detail.outcome)}
+      on:resolve={(e) => handleShipResolve(shipPanel.journey.id, e.detail.outcome, e.detail.coast)}
       on:resume={() => handleShipResume(shipPanel.journey.id)}
       on:update={(e) => handleShipConstructUpdate(e.detail)}
       on:close={() => (shipPanelJourneyId = null)}

@@ -46,7 +46,8 @@
       <div class="t-actions">
         <button on:click={() => dispatch('resolve', { outcome: 'return' })} title="Turn back to the origin system">At source</button>
         <button on:click={() => dispatch('resolve', { outcome: 'arrive' })} title="Arrive now at the destination">At destination</button>
-        <button class="danger" on:click={() => dispatch('resolve', { outcome: 'strand' })} title="Stop here — left adrift in interstellar space">Strand here</button>
+        <button class="danger" on:click={() => dispatch('resolve', { outcome: 'strand', coast: true })} title="Abort but keep momentum — it coasts on in a straight line">Strand · drift</button>
+        <button class="danger" on:click={() => dispatch('resolve', { outcome: 'strand', coast: false })} title="Abort and stop dead in space">Strand · stop</button>
       </div>
     {/if}
   </section>

@@ -464,6 +464,8 @@ export interface ActiveJourney {
   // committed by reconcile only once ACTUAL time passes the (effective) end. ---
   outcome?: 'arrive' | 'return' | 'strand';   // how it ends; default 'arrive' (reaches destination)
   endedAtSec?: string;    // game-clock seconds the GM resolved it early (abandon/strand); else natural end
+  strandCoast?: boolean;  // on a strand: true = keep momentum (drift on), false = stop dead. Overrides the
+                          // drive-mode default. Set when the GM picks "drift" vs "stop" at the abort.
 }
 
 // A construct stranded in interstellar space (a journey ended mid-flight). It no longer belongs to

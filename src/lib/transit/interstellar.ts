@@ -57,8 +57,9 @@ export function constructDisplayPlacement(starmap: Starmap, constructId: ID, dis
       if (outcome === 'strand') {
         const f = fracAt(j, endSec);
         const sx = from.x + (to.x - from.x) * f, sy = from.y + (to.y - from.y) * f;
-        // A momentum-drive strand coasts on in a straight line at its transit velocity; a jump strand stops.
-        if (coasts(j.mode) && (j.durationSec || 0) > 0) {
+        // Coast on in a straight line, or stop dead. The GM's explicit choice (strandCoast) wins; otherwise
+        // the drive mode decides (momentum drives coast, jump/field drives stop).
+        if ((j.strandCoast ?? coasts(j.mode)) && (j.durationSec || 0) > 0) {
           const vx = (to.x - from.x) / j.durationSec, vy = (to.y - from.y) / j.durationSec;
           const dt = displaySec - endSec;
           return { kind: 'adrift', x: sx + vx * dt, y: sy + vy * dt, vx, vy, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
@@ -158,7 +159,7 @@ export function strandJourney(starmap: Starmap, journeyId: string, frac: number,
   const f = Math.max(0, Math.min(1, Number.isFinite(frac) ? frac : 0.5));
   // A momentum drive keeps coasting from the strand point at its transit velocity (units per game-second);
   // a jump/field drive stops dead (no velocity stored).
-  const coast = coasts(journey.mode) && (journey.durationSec || 0) > 0;
+  const coast = (journey.strandCoast ?? coasts(journey.mode)) && (journey.durationSec || 0) > 0;
   const adrift: AdriftConstruct = {
     construct: clone(loc.node),
     x: fromSys.position.x + (toSys.position.x - fromSys.position.x) * f,

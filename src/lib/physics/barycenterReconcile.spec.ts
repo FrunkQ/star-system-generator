@@ -44,6 +44,53 @@ describe('reconcileBarycenters — ghost cleanup', () => {
   });
 });
 
+// Deleting one half of a binary must dissolve the pair: the survivor returns to its original orbit around
+// the star, NOT keep orbiting the now one-body barycentre.
+describe('reconcileBarycenters — dissolve a binary that lost a member', () => {
+  it('a binary PLANET whose partner is deleted returns to the star at the barycentre\'s orbit', () => {
+    const sys = {
+      seed: 's', nodes: [
+        { id: 'star', kind: 'body', roleHint: 'star', name: 'Sun', parentId: null, massKg: 2e30 },
+        { id: 'pair', kind: 'barycenter', name: 'A-B', parentId: 'star', memberIds: ['a', 'b'], effectiveMassKg: 9e24,
+          orbit: { hostId: 'star', hostMu: 1.33e20, t0: 0, elements: { a_AU: 3, e: 0.1, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } },
+        { id: 'a', kind: 'body', roleHint: 'planet', name: 'A', parentId: 'pair', massKg: 6e24,
+          orbit: { hostId: 'pair', hostMu: 6e14, t0: 0, elements: { a_AU: 0.001, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } }
+        // 'b' has been DELETED (gone from nodes; still listed in memberIds)
+      ]
+    } as unknown as System;
+
+    reconcileBarycenters(sys);
+
+    expect(sys.nodes.some((n) => n.kind === 'barycenter')).toBe(false);   // pair dissolved
+    const a = sys.nodes.find((n) => n.id === 'a') as any;
+    expect(a.parentId).toBe('star');                                       // back on the star
+    expect(a.orbit.hostId).toBe('star');
+    expect(a.orbit.elements.a_AU).toBeCloseTo(3);                          // at the barycentre's old orbit
+    expect(a.orbit.elements.e).toBeCloseTo(0.1);
+  });
+
+  it('a binary STAR whose partner is deleted: survivor becomes the centre, circumbinary planet re-homes to it', () => {
+    const sys = {
+      seed: 's', nodes: [
+        { id: 'bary', kind: 'barycenter', name: 'AB', parentId: null, memberIds: ['sa', 'sb'], effectiveMassKg: 4e30 },
+        { id: 'sa', kind: 'body', roleHint: 'star', name: 'A', parentId: 'bary', massKg: 2e30,
+          orbit: { hostId: 'bary', hostMu: 2e20, t0: 0, elements: { a_AU: 10, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } },
+        // 'sb' deleted
+        { id: 'p', kind: 'body', roleHint: 'planet', name: 'P', parentId: 'bary', massKg: 6e24,
+          orbit: { hostId: 'bary', hostMu: 2.6e20, t0: 0, elements: { a_AU: 40, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } }
+      ]
+    } as unknown as System;
+
+    reconcileBarycenters(sys);
+    expect(sys.nodes.some((n) => n.kind === 'barycenter')).toBe(false);
+    const sa = sys.nodes.find((n) => n.id === 'sa') as any;
+    const p = sys.nodes.find((n) => n.id === 'p') as any;
+    expect(sa.parentId).toBeNull();          // surviving star is the centre
+    expect(p.parentId).toBe('sa');           // planet now orbits the surviving star
+    expect(p.orbit.hostId).toBe('sa');
+  });
+});
+
 // A binary pair whose barycentre has a VALID parent (the star) but a broken own-orbit would render dead
 // centre "no matter where the members orbit" — because editing a member only sets the pair separation,
 // never the pair's distance from the star. These heals un-stick that.

@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.101-beta - 16th Jun 2026
+
+* Fixed: deleting one half of a binary now properly dissolves the pair — the surviving planet returns to its original orbit around the star (it used to keep orbiting the leftover, now one-body, barycentre). Same for a binary star: delete one and the survivor becomes the system centre, any circumbinary planets re-home onto it, and the changed central mass re-balances their orbital periods on the next recalculation.
+* Aborting an interstellar journey now lets you choose: "Strand · drift" (keeps momentum and coasts on) or "Strand · stop" (stops dead in space).
+* The Status tags the app needs — Active, plus the auto "In transit" / "Adrift" — can no longer be deleted in the CoI editor; you can still add as many of your own as you like.
+
 ## v2.0.100-beta - 16th Jun 2026
 
 * Constructs of Interest now has three core categories — Status (now at the top), Owner and Purpose — that are always on and can't be removed (autopilot relies on them). You can still freely edit the tags inside them; only Status's "Active" is fixed.

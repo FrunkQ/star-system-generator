@@ -118,6 +118,12 @@ export function normalizeCoIs(cats: CoICategory[]): CoICategory[] {
     if (def.id === 'status') {
       if (!cur.tags.some((t) => t.key === 'status/active')) cur.tags.unshift({ key: 'status/active', label: 'Active' });
       for (const t of cur.tags) if (t.key === 'status/active') t.locked = true;
+      // The system NEEDS the derived state tags — re-add any a stale/imported set is missing.
+      for (const d of [{ key: 'status/in-transit', label: 'In transit' }, { key: 'status/adrift', label: 'Adrift' }]) {
+        let t = cur.tags.find((x) => x.key === d.key);
+        if (!t) { t = { ...d }; cur.tags.push(t); }
+        t.derived = true;
+      }
     }
   }
   // Core categories first (in their defaults order), everything else after, original order preserved.

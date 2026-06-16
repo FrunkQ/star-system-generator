@@ -269,15 +269,56 @@ function repairDegenerateAutoBary(system: System): boolean {
   return changed;
 }
 
+// A binary that LOST a member (its partner was deleted) must DISSOLVE — not leave the survivor orbiting a
+// stale one-body barycentre. The surviving member returns to orbiting the barycentre's PARENT (the star)
+// on the barycentre's own orbit, so it's back where it started. Any other children (e.g. circumbinary
+// planets that orbited the pair) re-home onto the survivor, which now carries the central mass — so on the
+// next process pass their periods/physics rebalance around the new host (relevant when a STAR partner is
+// deleted: the system's central gravity changes).
+function dissolveStaleBinary(system: System): boolean {
+  const byId = new Map(system.nodes.map((n) => [n.id, n]));
+  for (const node of system.nodes) {
+    if (node.kind !== 'barycenter') continue;
+    const bary = node as Barycenter;
+    const presentMembers = (bary.memberIds ?? []).filter((id) => byId.has(id));
+    if (presentMembers.length >= 2) continue;                 // still a real pair — leave it
+    const children = system.nodes.filter((n) => n.parentId === bary.id);
+    if (!children.length) continue;                            // childless ghost → removeGhostBarycenters
+    const survivorId = presentMembers[0]
+      ?? children.reduce((best, c) => (getMass(c as any) > getMass(best as any) ? c : best), children[0]).id;
+    const parent = bary.parentId ? byId.get(bary.parentId) : undefined;
+    const parentMass = getMass(parent as CelestialBody | Barycenter | undefined);
+    for (const child of children) {
+      const cb = child as CelestialBody;
+      if (child.id === survivorId) {
+        child.parentId = bary.parentId;
+        // Inherit the barycentre's orbit around the star; if the barycentre was the root, the survivor
+        // becomes the centre (no orbit).
+        cb.orbit = bary.orbit
+          ? { ...cloneOrbit(bary.orbit), hostId: bary.parentId as string, hostMu: parentMass > 0 ? G * parentMass : bary.orbit.hostMu }
+          : undefined;
+      } else {
+        // circumbinary / other child now orbits the survivor
+        child.parentId = survivorId;
+        if (cb.orbit) { cb.orbit.hostId = survivorId; cb.orbit.hostMu = G * getMass(byId.get(survivorId) as any); }
+      }
+    }
+    system.nodes = system.nodes.filter((n) => n.id !== bary.id);
+    return true;
+  }
+  return false;
+}
+
 export function reconcileBarycenters(system: System): System {
   // Run until stable to handle create/remove chains from one edit.
   for (let i = 0; i < 8; i++) {
     const reparented = reparentDanglingNodes(system);
+    const dissolved = dissolveStaleBinary(system);
     const promoted = promoteMassiveCompanion(system);
     const demoted = demoteWeakBinary(system);
     const healed = removeGhostBarycenters(system);
     const repaired = repairDegenerateAutoBary(system);
-    if (!reparented && !promoted && !demoted && !healed && !repaired) break;
+    if (!reparented && !dissolved && !promoted && !demoted && !healed && !repaired) break;
   }
   return system;
 }

@@ -82,7 +82,7 @@
               <span class="tag" class:locked={t.locked} class:derived={t.derived} style="border-color:{cat.color}" title={t.locked ? 'Required baseline — can\'t be removed' : t.derived ? 'Set automatically from the ship\'s state' : ''}>
                 {t.label}{#if t.derived} <span class="auto">auto</span>{/if}
                 {#if cat.id === 'owner'}<input class="tard" type="number" min="0" max="1" step="0.05" value={t.tardiness ?? ''} title="Tardiness 0..1" on:input={(e) => setTardiness(cat, t.key, parseFloat((e.currentTarget as HTMLInputElement).value))} />{/if}
-                {#if !t.locked}<button class="tx" on:click={() => removeTag(cat, t.key)} aria-label="Remove tag">✕</button>{/if}
+                {#if !t.locked && !t.derived}<button class="tx" on:click={() => removeTag(cat, t.key)} aria-label="Remove tag">✕</button>{/if}
               </span>
             {/each}
             <button class="add-tag" on:click={() => addTag(cat)}>+ tag</button>
