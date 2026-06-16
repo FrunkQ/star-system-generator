@@ -34,17 +34,79 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
   },
   {
     id: 'purpose', label: 'Purpose', color: '#2f9e8f', textColor: '#ffffff', single: false,
-    tags: [
+    tags: mkTags('purpose', [
       'patrol', 'ship-repair', 'refuel', 'leisure', 'people-transport', 'cargo-transport',
       'bulk-carrier', 'courier', 'mining', 'survey-prospecting', 'survey-science', 'prison',
-      'colony', 'research', 'manufacturing', 'trade-hub', 'HQ'
-    ].map((p) => ({ key: `purpose/${p}`, label: prettify(p) }))
+      'colony', 'research', 'manufacturing', 'trade-hub', 'HQ', 'salvage', 'rescue-tender',
+      'medical', 'diplomatic', 'tanker', 'factory-ship', 'farm-ship', 'comms-relay', 'defence-platform'
+    ])
+  },
+  {
+    // The ship's size/role class — scale governs what jobs make sense (a capital ship won't run courier).
+    id: 'class', label: 'Hull class', color: '#8a6fc0', textColor: '#ffffff', single: true,
+    tags: mkTags('class', [
+      'shuttle', 'fighter', 'gunship', 'corvette', 'frigate', 'destroyer', 'cruiser',
+      ['capital', 'Capital ship'], 'carrier', 'dreadnought', 'freighter', ['liner', 'Liner'],
+      'tug', 'station', 'habitat', 'orbital-elevator'
+    ])
+  },
+  {
+    // FTL method — genre-defining and relevant to routing (sublight ships can't jump between stars).
+    id: 'drive', label: 'FTL drive', color: '#c07f3f', textColor: '#ffffff', single: true,
+    tags: mkTags('drive', [
+      ['sublight', 'Sublight only'], 'jump-drive', 'warp', 'hyperdrive', ['gate', 'Wormhole / gate'],
+      ['generation', 'Generation ship'], ['torch', 'Torch (fusion)'], 'solar-sail', ['ftl-unknown', 'Exotic / unknown']
+    ])
+  },
+  {
+    // Operational state — guidance cares (a derelict isn't going anywhere; damaged needs repair first).
+    id: 'status', label: 'Status', color: '#5a7d8c', textColor: '#ffffff', single: true,
+    tags: mkTags('status', [
+      'active', 'damaged', 'adrift', 'derelict', 'mothballed', ['construction', 'Under construction'],
+      'impounded', 'quarantined', 'lost', 'decommissioned'
+    ])
+  },
+  {
+    // Stance toward the party — a quick GM read; could colour contacts on a future tactical view.
+    id: 'disposition', label: 'Disposition', color: '#b05050', textColor: '#ffffff', single: true,
+    tags: mkTags('disposition', ['allied', 'friendly', 'neutral', 'wary', 'hostile', 'unknown'])
+  },
+  {
+    // Flavour/behaviour traits (multi) — several can be true at once.
+    id: 'profile', label: 'Profile', color: '#7a8a3f', textColor: '#ffffff', single: false,
+    tags: mkTags('profile', [
+      'armed', 'unarmed', 'shielded', 'stealth', 'cloaked', ['q-ship', 'Q-ship (disguised)'],
+      'unregistered', ['ai-controlled', 'AI-controlled'], ['uncrewed', 'Automated / uncrewed'],
+      'luxury', 'decrepit', 'experimental'
+    ])
+  },
+  {
+    // What it carries (multi) — feeds trade/hauling logic and cargo-handling waypoints.
+    id: 'cargo', label: 'Cargo type', color: '#9c7b4a', textColor: '#ffffff', single: false,
+    tags: mkTags('cargo', [
+      'passengers', ['ore', 'Bulk ore'], ['refined', 'Refined goods'], ['volatiles', 'Fuel / volatiles'],
+      'hazmat', ['bio', 'Bio / livestock'], ['reefer', 'Refrigerated'], 'munitions', 'contraband', 'data'
+    ])
+  },
+  {
+    // Tech level / origin — sets the sci-fi register (primitive frontier vs precursor relic).
+    id: 'tech', label: 'Tech & origin', color: '#6a6f7a', textColor: '#ffffff', single: true,
+    tags: mkTags('tech', [
+      'primitive', 'industrial', 'standard', 'advanced', 'experimental',
+      'alien', ['precursor', 'Precursor / ancient']
+    ])
   }
 ];
 
 function prettify(slug: string): string {
   if (slug === 'HQ') return 'HQ';
   return slug.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
+}
+// Build a category's tags from a list of slugs, or [slug, explicitLabel] pairs where prettify won't do.
+function mkTags(catId: string, entries: (string | [string, string])[]): CoITag[] {
+  return entries.map((e) => typeof e === 'string'
+    ? { key: `${catId}/${e}`, label: prettify(e) }
+    : { key: `${catId}/${e[0]}`, label: e[1] });
 }
 
 const COI_KEY = 'coi-categories';
