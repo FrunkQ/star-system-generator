@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { endJourneyAtSource, endJourneyAtDestination, strandJourney, constructDisplayPlacement } from './interstellar';
+import { endJourneyAtSource, endJourneyAtDestination, strandJourney, constructDisplayPlacement, interstellarConstructIds } from './interstellar';
 import type { Starmap } from '$lib/types';
 
 function makeStarmap(): Starmap {
@@ -28,6 +28,19 @@ function makeStarmap(): Starmap {
   } as unknown as Starmap;
 }
 const shipIn = (m: Starmap, sysId: string) => (m.systems.find((s) => s.id === sysId)!.system.nodes as any[]).some((n) => n.id === 'ship1');
+
+describe('interstellarConstructIds (system-view hide / find-by-tag scope)', () => {
+  it('flags a ship mid-transit, but not before departure or after arrival', () => {
+    const m = makeStarmap();   // j1: depart 0, duration 1000
+    expect(interstellarConstructIds(m, -10).has('ship1')).toBe(false);  // before departure → in origin system
+    expect(interstellarConstructIds(m, 500).has('ship1')).toBe(true);   // mid-transit → interstellar
+    expect(interstellarConstructIds(m, 2000).has('ship1')).toBe(false); // arrived → in destination system
+  });
+  it('flags a stranded/adrift ship', () => {
+    const m = strandJourney(makeStarmap(), 'j1', 0.5, '500');
+    expect(interstellarConstructIds(m, 2000).has('ship1')).toBe(true);
+  });
+});
 
 describe('interstellar journey resolution', () => {
   it('endJourneyAtSource drops the journey and leaves the construct in its origin system', () => {

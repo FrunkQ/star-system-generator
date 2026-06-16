@@ -63,6 +63,20 @@ export function constructDisplayPlacement(starmap: Starmap, constructId: ID, dis
   return { kind: 'system', systemId: holding?.id ?? '' };
 }
 
+// Construct ids that are currently INTERSTELLAR at a display time — in transit OR stranded/adrift. While
+// interstellar a ship belongs to no system map (its node still physically lives in its origin system, but
+// it must not be shown there); it appears only at starmap level. Shared by the system-view hide, the
+// transit destination chooser, and the find-by-tag scope.
+export function interstellarConstructIds(starmap: Starmap, displaySec: number): Set<ID> {
+  const out = new Set<ID>();
+  for (const j of starmap.activeJourneys ?? []) {
+    const p = constructDisplayPlacement(starmap, j.shipId, displaySec);
+    if (p.kind === 'transit' || p.kind === 'adrift') out.add(j.shipId);
+  }
+  for (const a of starmap.adriftConstructs ?? []) if (a.construct?.id) out.add(a.construct.id);
+  return out;
+}
+
 const clone = <T>(o: T): T => JSON.parse(JSON.stringify(o));
 const findJourney = (s: Starmap, id: string) => (s.activeJourneys ?? []).find((j) => j.id === id);
 const dropJourney = (s: Starmap, id: string): Starmap => ({ ...s, activeJourneys: (s.activeJourneys ?? []).filter((j) => j.id !== id) });

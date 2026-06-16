@@ -31,6 +31,7 @@
 
   import { systemStore, viewportStore } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
+  import { interstellarConstructIds } from '$lib/transit/interstellar';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import { get } from 'svelte/store';
@@ -79,6 +80,16 @@
     else window.removeEventListener('pointerdown', closeViewOnOutside, true);
   }
   $: toytownOn = ($systemStore?.toytownFactor ?? 0) > 0;
+  // A construct that's currently interstellar (in transit OR stranded) belongs to NO system map — its node
+  // still physically lives in its origin system, but it must not be drawn there; it only shows at starmap
+  // level. Hide such constructs from the orrery (reactive to the clock, so it appears/disappears as you
+  // scrub through its journey window).
+  $: interstellarIds = ($starmapStore && $systemStore)
+      ? interstellarConstructIds($starmapStore, currentTime / 1000)
+      : new Set<string>();
+  $: displaySystem = ($systemStore && interstellarIds.size)
+      ? { ...$systemStore, nodes: $systemStore.nodes.filter((n) => !(n.kind === 'construct' && interstellarIds.has(n.id))) }
+      : $systemStore;
   function setScaleMode(toytown: boolean) {
     if (!$systemStore) return;
     systemStore.update(s => {
@@ -1936,7 +1947,7 @@
                 bind:this={visualizer}
                 bind:cameraMode
                 fullScreen={true}
-                system={$systemStore}
+                system={displaySystem}
                 {rulePack} 
                 currentTime={isPlanning ? (transitChainTime + (transitDelayDays * 86400 * 1000) + transitJourneyOffset) : currentTime} 
                 {focusedBodyId} 

@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.0.96-beta - 16th Jun 2026
+
+* Fixed: a ship that's interstellar — in transit or stranded — no longer appears inside a system's orrery. It belongs to no system map while it's out there; it shows only at starmap level. The hide follows the clock, so a ship vanishes from its origin as it departs and reappears in its destination on arrival (scrub back and it's en route again).
+
+## v2.0.95-beta - 16th Jun 2026
+
+* New (Settings → System → Danger zone): "Clear all data…" wipes everything this app has stored in the browser — saved starmap, PoI/CoI packs, settings, palette, session — and reloads as a brand-new user, for testing the first-run experience. Double-confirmed.
+
 ## v2.0.94-beta - 16th Jun 2026
 
 * Constructs of Interest now have an on/off page (Settings → CoIs), like Points of Interest: tick which categories are available on constructs. Owner, Purpose and Status are on by default; Hull class, FTL drive, Disposition and Tech & origin are off until you want them.
