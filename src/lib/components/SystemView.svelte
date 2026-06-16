@@ -1553,10 +1553,27 @@
           plannerOriginId = latest.plan.targetId;
           const seg = latest.plan.segments?.[latest.plan.segments.length - 1];
           transitChainState = seg ? { r: { ...seg.endState.r }, v: { ...seg.endState.v } } : undefined;
-      } else {
-          transitChainTime = currentTime;
-          transitChainState = undefined;
+          return;
       }
+
+      // Adrift / coasting (an aborted journey) — replot from where the ship ACTUALLY is now, carrying its
+      // current position + velocity so the redirect-Δv physics applies (matches interstellar "Chart a new
+      // course"). Frame it on the system root so the heliocentric state passes through unchanged.
+      const kin = $systemStore ? sampleJourneyKinematicsAtTime($systemStore, focusedBody as CelestialBody, currentTime) : null;
+      if (kin && (kin.state === 'Deep Space' || kin.state === 'Transit')) {
+          const AU_M = AU_KM * 1000;
+          const root = $systemStore.nodes.find((n) => !n.parentId);
+          transitChainTime = currentTime;
+          plannerOriginId = root?.id ?? focusedBody.id;
+          transitChainState = {
+              r: { x: kin.position_au.x, y: kin.position_au.y },
+              v: { x: kin.velocity_ms.x / AU_M, y: kin.velocity_ms.y / AU_M }
+          };
+          return;
+      }
+
+      transitChainTime = currentTime;
+      transitChainState = undefined;
   }
 
   // --- Transit planner handlers (extracted from the markup in 01.7; PlannerPane

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.141-beta - 16th Jun 2026
+
+* Plan Transit from an adrift/stopped in-system ship now replots from where the ship actually is, carrying its current position and velocity — so the redirect-Δv cost of turning its momentum applies, matching the interstellar "Chart a new course". (Previously it replanned from the body, ignoring the drift.)
+
 ## v2.0.140-beta - 16th Jun 2026
 
 * A ship stopped/adrift mid in-system flight no longer offers an invalid "Land on <origin>" (it isn't there). Instead it shows Plan Transit (green, plot a fresh course) and Resume journey (orange, re-fly the aborted plan). Landing/takeoff now only show when the ship is actually at a body. Plan Transit is green throughout.
