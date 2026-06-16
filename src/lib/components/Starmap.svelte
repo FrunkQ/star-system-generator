@@ -966,7 +966,9 @@
             <title>{journey.shipName} — {(p.vx || p.vy) ? 'coasting (out of fuel to stop)' : 'stranded'} in interstellar space. Click for options.</title>
             {#if p.vx || p.vy}
               {@const mag = Math.hypot(p.vx, p.vy) || 1}
-              <line class="journey-ahead" x1="0" y1="0" x2={(p.vx / mag) * 60} y2={(p.vy / mag) * 60} />
+              <!-- Project the onward heading a long way so a fly-by visibly tears off across (and off) the
+                   map; the SVG clips it at the edge. -->
+              <line class="journey-ahead" x1="0" y1="0" x2={(p.vx / mag) * 4000} y2={(p.vy / mag) * 4000} />
             {/if}
             {#if ship?.icon_type === 'circle'}<circle r="5.5" {fill} stroke={EDGE_STRANDED} stroke-width="2.2" />
             {:else}<path d={iconPath(ship?.icon_type)} {fill} stroke={EDGE_STRANDED} stroke-width="2.2" />{/if}

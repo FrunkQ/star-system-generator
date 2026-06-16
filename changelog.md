@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.103-beta - 16th Jun 2026
+
+* A coasting fly-by (a ship that couldn't brake) now projects its dashed heading line right across the map, so you can see it tearing off and out of the edge rather than just a short stub.
+
 ## v2.0.102-beta - 16th Jun 2026
 
 * A "Realistic" interstellar plan that reaches the destination but can't brake now plays out properly: starting it ("Start (fly-by — won't stop)") sends the ship to the destination and then coasts it on *past*, adrift with its velocity — instead of magically stopping. Forcing "At destination" on its ship panel still lets you park it there if you want.
