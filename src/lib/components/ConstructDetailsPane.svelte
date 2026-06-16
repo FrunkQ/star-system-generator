@@ -67,6 +67,7 @@
             on:planTransit
             on:openJourneyLog
             on:cancelactive
+            on:resumejourney
             on:takeoff
             on:land
         />

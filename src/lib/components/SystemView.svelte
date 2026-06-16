@@ -1698,6 +1698,27 @@
       });
   }
 
+  // Resume the most-recently-aborted in-system journey: un-cancel it so it re-flies its original plan
+  // (orange / unphysical — it ignores that the ship stopped). Pairs with Cancel · drift/stop.
+  function handleResumeJourney() {
+      if (!focusedBody || focusedBody.kind !== 'construct') return;
+      systemStore.update((sys) => {
+          if (!sys) return null;
+          const nodes = sys.nodes.map((n) => {
+              if (n.id !== focusedBody.id || n.kind !== 'construct') return n;
+              const logs = [...((n as CelestialBody).scheduled_journeys || [])];
+              // newest cancelled journey (by cancel time) → un-cancel.
+              let bestIdx = -1, bestT = -Infinity;
+              logs.forEach((l, i) => { if (l.status === 'cancelled') { const t = Number(l.cancelledAtSec ?? 0); if (t >= bestT) { bestT = t; bestIdx = i; } } });
+              if (bestIdx < 0) return n;
+              const { cancelledAtSec, cancelState, ...rest } = logs[bestIdx] as any;
+              logs[bestIdx] = { ...rest, status: 'scheduled' };
+              return { ...n, scheduled_journeys: logs };
+          });
+          return { ...sys, nodes, isManuallyEdited: true };
+      });
+  }
+
   function handleCancelActivePlan(e?: CustomEvent) {
       if (!focusedBody || focusedBody.kind !== 'construct') return;
       const coast = e?.detail?.coast ?? true;   // default drift; false = stop dead
@@ -2021,6 +2042,7 @@
                     on:closelog={handleCloseJourneyLog}
                     on:clearfuture={handleClearFuturePlans}
                     on:cancelactive={handleCancelActivePlan}
+                    on:resumejourney={handleResumeJourney}
                     on:update={handleConstructUpdate}
                     on:delete={handleDeleteNode}
                     on:closeedit={() => isEditing = false}

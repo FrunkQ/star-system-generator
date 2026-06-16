@@ -339,17 +339,21 @@
                 {#if effectiveState === 'Transit'}
                     <button class="action-btn cancel-drift" on:click={() => dispatch('cancelactive', { coast: true })} title="Abort the journey but keep momentum — coast on under gravity">Cancel · drift</button>
                     <button class="action-btn cancel-stop" on:click={() => dispatch('cancelactive', { coast: false })} title="Abort and stop dead — it then falls under the system's gravity">Cancel · stop</button>
+                {:else if effectiveState === 'Deep Space'}
+                    <!-- Adrift / stopped mid-flight: plot a fresh course (the physical choice) or resume the
+                         aborted one (orange — re-flies the old plan as if it never stopped). -->
+                    <button class="action-btn go" on:click={() => dispatch('planTransit')}>Plan Transit</button>
+                    <button class="action-btn resume" on:click={() => dispatch('resumejourney')} title="Resume the aborted journey on its original plan (ignores that it stopped)">Resume journey</button>
                 {:else}
-                    <button class="action-btn transit" on:click={() => dispatch('planTransit')}>
-                        Plan Transit
-                    </button>
+                    <button class="action-btn go" on:click={() => dispatch('planTransit')}>Plan Transit</button>
                 {/if}
                 <button class="action-btn log" on:click={() => dispatch('openJourneyLog')} title="Open ship log (scheduled journeys)">
                     Ship's Log ({futureJourneyCount})
                 </button>
             {/if}
 
-            {#if landingAnalysis}
+            <!-- Landing/takeoff only when the ship is actually AT a body — not adrift or in transit. -->
+            {#if landingAnalysis && effectiveState !== 'Transit' && effectiveState !== 'Deep Space'}
                 {#if construct.placement === 'Surface'}
                     <!-- Takeoff -->
                     {#if landingAnalysis.takeoff.possible}
@@ -405,6 +409,9 @@
   .action-btn.cancel-stop { background-color: #d98a2b; }
   /* Ship's Log = captain's-log aesthetic: yellow on black. */
   .action-btn.log { background-color: #141414; color: #ffd23f; }
+  /* Plan Transit = the valid/physical choice (green); Resume = allowed-but-unphysical (orange). */
+  .action-btn.go { background-color: #2f9e57; }
+  .action-btn.resume { background-color: #d98a2b; }
 
   .btn-detail {
       font-weight: normal;

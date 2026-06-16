@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.140-beta - 16th Jun 2026
+
+* A ship stopped/adrift mid in-system flight no longer offers an invalid "Land on <origin>" (it isn't there). Instead it shows Plan Transit (green, plot a fresh course) and Resume journey (orange, re-fly the aborted plan). Landing/takeoff now only show when the ship is actually at a body. Plan Transit is green throughout.
+
 ## v2.0.139-beta - 16th Jun 2026
 
 * In-system body/ship header now matches the interstellar ship panel: Edit is a toggle (click the pencil again to close — the "Done" button is gone), it highlights while active, and the sensors icon uses the same waves glyph.
