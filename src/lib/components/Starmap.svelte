@@ -306,7 +306,7 @@
   // Clicking a ship opens the starmap-level ship panel (+page owns it: full construct editor + the
   // in-flight controls). All journey resolution + construct edits are handled there against the store.
   function requestCancelJourney(j: any, mx?: number, my?: number) {
-    if (measureMode && mx !== undefined && my !== undefined) { measurePick(mx, my, j.shipName); return; }
+    if (measureMode && mx !== undefined && my !== undefined) { measurePick(mx, my, j.shipName, j.shipId); return; }
     dispatch('openship', { journeyId: j.id });
   }
 
@@ -610,15 +610,33 @@
   // --- Measure tool (scaled maps only): tap two targets — any stars or interstellar ships — to read the
   //     distance between them, in the map's scale units. ---
   let measureMode = false;
-  let measureA: { x: number; y: number; label: string } | null = null;
-  let measureB: { x: number; y: number; label: string } | null = null;
+  // An endpoint is a fixed point (star) or — when constructId is set — a moving construct, in which case
+  // its position is re-derived from the clock so the ruler TRACKS the ship as time advances.
+  type MeasureEnd = { x: number; y: number; label: string; constructId?: string };
+  let measureA: MeasureEnd | null = null;
+  let measureB: MeasureEnd | null = null;
   function toggleMeasure() { measureMode = !measureMode; if (!measureMode) { measureA = null; measureB = null; } }
-  function measurePick(x: number, y: number, label: string) {
-    if (!measureA || (measureA && measureB)) { measureA = { x, y, label }; measureB = null; }
-    else if (x !== measureA.x || y !== measureA.y) { measureB = { x, y, label }; }
+  function measurePick(x: number, y: number, label: string, constructId?: string) {
+    const same = (e: MeasureEnd) => constructId ? e.constructId === constructId : (!e.constructId && x === e.x && y === e.y);
+    if (!measureA || (measureA && measureB)) { measureA = { x, y, label, constructId }; measureB = null; }
+    else if (!same(measureA)) { measureB = { x, y, label, constructId }; }
   }
-  $: measureDist = (measureA && measureB && activeScale.pixelsPerUnit > 0)
-    ? roundDistance(Math.hypot(measureB.x - measureA.x, measureB.y - measureA.y) / activeScale.pixelsPerUnit)
+  // Resolve an endpoint to a live position: a construct endpoint follows its clock-derived placement
+  // (transit/adrift point, or the system it's resting in); a plain point stays put. Takes nowSec + sm as
+  // args so the reactive statements below re-run when the clock or starmap changes.
+  function resolveMeasure(ep: MeasureEnd | null, nowSec: number, sm: Starmap): MeasureEnd | null {
+    if (!ep) return null;
+    if (ep.constructId) {
+      const pl = constructDisplayPlacement(sm, ep.constructId, nowSec);
+      if (pl.kind === 'transit' || pl.kind === 'adrift') return { ...ep, x: pl.x, y: pl.y };
+      if (pl.kind === 'system') { const s = systemById(pl.systemId); if (s) return { ...ep, x: s.position.x, y: s.position.y }; }
+    }
+    return ep;
+  }
+  $: mA = resolveMeasure(measureA, journeyNowSec, starmap);
+  $: mB = resolveMeasure(measureB, journeyNowSec, starmap);
+  $: measureDist = (mA && mB && activeScale.pixelsPerUnit > 0)
+    ? roundDistance(Math.hypot(mB.x - mA.x, mB.y - mA.y) / activeScale.pixelsPerUnit)
     : null;
 
   function handleStarClick(event: MouseEvent, systemId: string) {
@@ -1183,12 +1201,12 @@
       {/each}
 
       <!-- Measure tool overlay: line + distance between the two picked targets (stars or ships). -->
-      {#if measureMode && measureA}
-        <circle class="measure-pt" cx={measureA.x} cy={measureA.y} r="4" />
-        {#if measureB}
-          <line class="measure-line" x1={measureA.x} y1={measureA.y} x2={measureB.x} y2={measureB.y} />
-          <circle class="measure-pt" cx={measureB.x} cy={measureB.y} r="4" />
-          <text class="measure-label" x={(measureA.x + measureB.x) / 2} y={(measureA.y + measureB.y) / 2 - 6} text-anchor="middle">{measureDist} {activeScale.unit}</text>
+      {#if measureMode && mA}
+        <circle class="measure-pt" cx={mA.x} cy={mA.y} r="4" />
+        {#if mB}
+          <line class="measure-line" x1={mA.x} y1={mA.y} x2={mB.x} y2={mB.y} />
+          <circle class="measure-pt" cx={mB.x} cy={mB.y} r="4" />
+          <text class="measure-label" x={(mA.x + mB.x) / 2} y={(mA.y + mB.y) / 2 - 6} text-anchor="middle">{measureDist} {activeScale.unit}</text>
         {/if}
       {/if}
       </g>
