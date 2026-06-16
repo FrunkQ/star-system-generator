@@ -7,6 +7,7 @@
   import type { CelestialBody, System, RulePack } from '$lib/types';
   import { describeTag } from '$lib/tags/tagPresentation';
   import ConstructSidePanel from './ConstructSidePanel.svelte';
+  import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
 
   export let construct: CelestialBody;
   export let system: System;
@@ -40,16 +41,21 @@
     (construct as any).object_playerhidden = !(construct as any).object_playerhidden;
     dispatch('update', construct);
   }
+  // Sensors on/off (e.g. run dark en-route). Absent = on.
+  $: sensorsOn = (construct as any).sensors_active !== false;
+  function toggleSensors() {
+    (construct as any).sensors_active = !sensorsOn;
+    dispatch('update', construct);
+  }
+  // Map the journey status to the data block's live location state.
+  $: kinematicState = status === 'transit' ? 'Transit' : status === 'adrift' ? 'Deep Space' : status === 'arrived' ? 'Orbiting' : null;
 </script>
 
 <div class="ship-bg" on:click={() => dispatch('close')} role="presentation">
 <div class="ship-panel" on:click|stopPropagation role="dialog" aria-label="Ship">
   <header>
     <div class="title">
-      <span class="dot" class:transit={status==='transit'||status==='before'} class:adrift={status==='adrift'} class:arrived={status==='arrived'}></span>
-      <h2>{construct.name}</h2>
-    </div>
-    <div class="head-actions">
+      <!-- Eye + sensors on the LEFT, mirroring the normal ship info-block chrome. -->
       <button class="icon-btn" class:on={!(construct).object_playerhidden} on:click={toggleVisibility} title={(construct).object_playerhidden ? 'Hidden from players — click to reveal' : 'Visible to players — click to hide'} aria-label="Toggle player visibility">
         {#if (construct).object_playerhidden}
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19M6.61 6.61A18.5 18.5 0 0 0 2 12s3 8 10 8a9.12 9.12 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
@@ -57,6 +63,13 @@
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8z"/><circle cx="12" cy="12" r="3"/></svg>
         {/if}
       </button>
+      <button class="icon-btn" class:on={sensorsOn} on:click={toggleSensors} title={sensorsOn ? 'Sensors active — click to run dark' : 'Sensors off — click to activate'} aria-label="Toggle sensors">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1A10 10 0 0 1 4.9 4.9"/><path d="M7.8 16.2a6 6 0 0 1 0-8.4"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4"/><path d="M19.1 4.9a10 10 0 0 1 0 14.2"/></svg>
+      </button>
+      <span class="dot" class:transit={status==='transit'||status==='before'} class:adrift={status==='adrift'} class:arrived={status==='arrived'}></span>
+      <h2>{construct.name}</h2>
+    </div>
+    <div class="head-actions">
       <button class="icon-btn" class:on={showEditor} on:click={() => showEditor = !showEditor} title={showEditor ? 'Hide editor' : 'Edit ship'} aria-label="Toggle editor">
         <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
       </button>
@@ -101,6 +114,10 @@
       </div>
     {/if}
   </section>
+
+  <!-- The full read-only ship data block, same as the in-system info block (actions hidden — the transit
+       controls above are the journey's). Edit is opt-in via the pencil. -->
+  <ConstructDerivedSpecs {construct} {hostBody} {rulePack} {kinematicState} hideActions={true} />
 
   {#if showEditor}
     <div class="editor">

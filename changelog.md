@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.135-beta - 16th Jun 2026
+
+* The starmap ship panel now shows the full ship data block again (same read-only stat block as in-system), with only the transit controls swapped for the interstellar set. The visibility eye moved to the left and is joined by a sensors on/off toggle (run dark en-route); edit stays behind the pencil.
+* Every ship now draws a faint line for its current/upcoming trip in the orrery, not just the one being planned.
+
 ## v2.0.134-beta - 16th Jun 2026
 
 * Fixed: an arrived in-system ship no longer shows the Cancel · drift/stop controls (which did nothing) — they now appear only while the ship is actually under way; an arrived/orbiting/adrift ship shows Plan Transit again.

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { System, CelestialBody, Barycenter, RulePack, SystemNode } from '$lib/types';
   import type { TransitPlan } from '$lib/transit/types';
+  import { getJourneyBounds } from '$lib/transit/scheduler';
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import { propagate } from "$lib/api";
   import { AU_KM, EARTH_MASS_KG } from '../constants';
@@ -1031,6 +1032,19 @@
                       ctx.beginPath(); ctx.arc(px, py, pr, 0, 2 * Math.PI); ctx.fill();
                   }
                   ctx.restore();
+              }
+          }
+      }
+      // Faint trip lines for EVERY ship's current/upcoming journey, so the whole map shows who's going
+      // where (not just the ship being planned). Skip finished trips. Bright planning lines draw on top.
+      if (system) {
+          for (const node of system.nodes) {
+              if (node.kind !== 'construct') continue;
+              for (const log of ((node as any).scheduled_journeys || [])) {
+                  if (log.status === 'cancelled') continue;
+                  const b = getJourneyBounds(log.plans);
+                  if (!b || currentTime > b.endMs) continue;
+                  for (const plan of log.plans) drawTransitPlan(ctx, plan, false, 0.16, true);
               }
           }
       }
