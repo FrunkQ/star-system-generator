@@ -1693,14 +1693,15 @@
       });
   }
 
-  function handleCancelActivePlan() {
+  function handleCancelActivePlan(e?: CustomEvent) {
       if (!focusedBody || focusedBody.kind !== 'construct') return;
+      const coast = e?.detail?.coast ?? true;   // default drift; false = stop dead
       const nowMs = getActualTimeMs();
       systemStore.update((sys) => {
           if (!sys) return null;
           const nodes = sys.nodes.map((n) => {
               if (n.id !== focusedBody.id || n.kind !== 'construct') return n;
-              const cancelled = cancelActiveJourney(sys, n as CelestialBody, nowMs);
+              const cancelled = cancelActiveJourney(sys, n as CelestialBody, nowMs, coast);
               // Cascading policy: cancelling active also clears all future plans.
               return clearFutureJourneys(cancelled, nowMs);
           });

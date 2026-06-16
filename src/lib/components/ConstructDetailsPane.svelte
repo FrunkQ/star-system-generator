@@ -64,6 +64,7 @@
             hideActions={isPlanning}
             on:planTransit
             on:openJourneyLog
+            on:cancelactive
             on:takeoff
             on:land
         />

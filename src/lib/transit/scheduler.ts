@@ -279,7 +279,8 @@ export function clearFutureJourneys(construct: CelestialBody, timeMs: number): C
 export function cancelActiveJourney(
   system: System,
   construct: CelestialBody,
-  timeMs: number
+  timeMs: number,
+  coast = true   // true = keep current velocity (drift on under gravity); false = stop dead (then falls)
 ): CelestialBody {
   const logs = construct.scheduled_journeys || [];
   let changed = false;
@@ -307,11 +308,16 @@ export function cancelActiveJourney(
         })();
 
     changed = true;
+    // "Stop dead" zeroes the velocity at the cut point; the gravity coast then takes over from rest
+    // (it falls toward the star). "Drift" keeps the current velocity (coasts on along its arc).
+    const finalCancelState = cancelState && !coast
+      ? { ...cancelState, velocity_ms: { x: 0, y: 0 } }
+      : cancelState;
     return {
       ...log,
       status: 'cancelled',
       cancelledAtSec: BigInt(Math.floor(timeMs / 1000)).toString(),
-      cancelState
+      cancelState: finalCancelState
     };
   });
 

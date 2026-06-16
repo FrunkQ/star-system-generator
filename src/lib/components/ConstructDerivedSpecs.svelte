@@ -10,6 +10,8 @@
   export let isEditingConstruct: boolean = false; 
   export let hideActions: boolean = false; // New prop
   export let futureJourneyCount: number = 0;
+  // Any live (non-cancelled) scheduled journey → offer a direct abort on the ship.
+  $: hasJourney = (construct.scheduled_journeys || []).some((l) => l.status !== 'cancelled');
 
   const dispatch = createEventDispatcher();
 
@@ -311,6 +313,12 @@
                 <button class="action-btn transit" on:click={() => dispatch('openJourneyLog')} title="Open ship log (future scheduled journeys)">
                     Ship's Log ({futureJourneyCount})
                 </button>
+                {#if hasJourney}
+                    <!-- Abort directly from the ship (no need to dig into the log). Drift = coast on under
+                         gravity (physical); Stop = halt, then fall toward the star. Clears future plans too. -->
+                    <button class="action-btn cancel-drift" on:click={() => dispatch('cancelactive', { coast: true })} title="Abort the journey but keep momentum — coast on under gravity">Cancel · drift</button>
+                    <button class="action-btn cancel-stop" on:click={() => dispatch('cancelactive', { coast: false })} title="Abort and stop dead — it then falls under the system's gravity">Cancel · stop</button>
+                {/if}
             {/if}
 
             {#if landingAnalysis}
@@ -364,7 +372,10 @@
       background-color: var(--accent); /* Uniform Blue */
   }
   .action-btn:hover { opacity: 0.9; }
-  
+  /* Abort controls: green = physical (coast on), orange = stop dead (then falls). */
+  .action-btn.cancel-drift { background-color: #2f9e57; }
+  .action-btn.cancel-stop { background-color: #d98a2b; }
+
   .btn-detail {
       font-weight: normal;
       font-size: 0.8em;
