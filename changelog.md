@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.98-beta - 16th Jun 2026
+
+* A ship hidden from players now shows the same crossed-eye reminder on the starmap when it's interstellar (in transit, stranded or just arrived), so you can tell at a glance that the players can't see it.
+* Find by tag: the system dropdown and the tag search now sit side by side, taking less vertical space.
+
 ## v2.0.97-beta - 16th Jun 2026
 
 * Find by tag now has Bodies and Constructs tabs — search worlds by their physics/PoI tags, or ships & stations by their Constructs-of-Interest tags (Owner, Purpose, Status…). The system filter still works on both.

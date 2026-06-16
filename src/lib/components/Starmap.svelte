@@ -956,6 +956,7 @@
               {#if ship?.icon_type === 'circle'}<circle r="5" {fill} stroke={EDGE_TRANSIT} stroke-width="1.6" />
               {:else}<path d={iconPath(ship?.icon_type)} {fill} stroke={EDGE_TRANSIT} stroke-width="1.6" />{/if}
               <text class="journey-label" x="8" y="3">{journey.shipName}</text>
+              {#if ship?.object_playerhidden}<g class="hidden-eye" transform="translate(7,-7) scale(0.5)" pointer-events="none"><title>Hidden from players — not shown in the field guide</title><path d="M-5 0 C -3 -3.2, 3 -3.2, 5 0 C 3 3.2, -3 3.2, -5 0 Z" fill="none" stroke="#ff6b6b" stroke-width="1.4" /><circle cx="0" cy="0" r="1.5" fill="#ff6b6b" /><line x1="-6" y1="4.5" x2="6" y2="-4.5" stroke="#ff6b6b" stroke-width="1.6" /></g>{/if}
             </g>
           {/if}
         {:else if p.kind === 'adrift'}
@@ -966,6 +967,7 @@
             {#if ship?.icon_type === 'circle'}<circle r="5.5" {fill} stroke={EDGE_STRANDED} stroke-width="2.2" />
             {:else}<path d={iconPath(ship?.icon_type)} {fill} stroke={EDGE_STRANDED} stroke-width="2.2" />{/if}
             <text class="journey-label" x="8" y="3">{journey.shipName} (adrift)</text>
+            {#if ship?.object_playerhidden}<g class="hidden-eye" transform="translate(7,-7) scale(0.5)" pointer-events="none"><title>Hidden from players — not shown in the field guide</title><path d="M-5 0 C -3 -3.2, 3 -3.2, 5 0 C 3 3.2, -3 3.2, -5 0 Z" fill="none" stroke="#ff6b6b" stroke-width="1.4" /><circle cx="0" cy="0" r="1.5" fill="#ff6b6b" /><line x1="-6" y1="4.5" x2="6" y2="-4.5" stroke="#ff6b6b" stroke-width="1.6" /></g>{/if}
           </g>
         {:else if p.kind === 'system' && p.systemId === journey.toSystemId}
           <!-- Arrived: parked marker at the destination (until reconcile moves the node into it). -->
@@ -977,6 +979,7 @@
               <title>{journey.shipName} — arrived at {to.name}. Click for options.</title>
               {#if ship?.icon_type === 'circle'}<circle r="5" {fill} stroke={EDGE_ARRIVED} stroke-width="1.8" />
               {:else}<path d={iconPath(ship?.icon_type)} {fill} stroke={EDGE_ARRIVED} stroke-width="1.8" />{/if}
+              {#if ship?.object_playerhidden}<g class="hidden-eye" transform="translate(7,-7) scale(0.5)" pointer-events="none"><title>Hidden from players — not shown in the field guide</title><path d="M-5 0 C -3 -3.2, 3 -3.2, 5 0 C 3 3.2, -3 3.2, -5 0 Z" fill="none" stroke="#ff6b6b" stroke-width="1.4" /><circle cx="0" cy="0" r="1.5" fill="#ff6b6b" /><line x1="-6" y1="4.5" x2="6" y2="-4.5" stroke="#ff6b6b" stroke-width="1.6" /></g>{/if}
             </g>
           {/if}
         {/if}

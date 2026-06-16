@@ -99,21 +99,20 @@
     <button class:active={mode === 'constructs'} on:click={() => setMode('constructs')}>Constructs</button>
   </div>
 
-  <!-- system scope -->
-  <select class="scope" bind:value={scope}>
-    <option value="all">★ All systems</option>
-    {#each realSystems as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
-    {#if mode === 'constructs' && interSystems.length}
-      <optgroup label="Interstellar">
-        {#each interSystems as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
-      </optgroup>
-    {/if}
-  </select>
-
-  <!-- search / quick-add -->
-  <div class="search-wrap">
-    <input class="search" placeholder="Search tags to add a filter…" bind:value={q} on:keydown={onSearchKey} />
-    {#if suggestions.length}
+  <!-- system scope + search, side by side to save vertical space -->
+  <div class="top-row">
+    <select class="scope" bind:value={scope}>
+      <option value="all">★ All systems</option>
+      {#each realSystems as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
+      {#if mode === 'constructs' && interSystems.length}
+        <optgroup label="Interstellar">
+          {#each interSystems as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
+        </optgroup>
+      {/if}
+    </select>
+    <div class="search-wrap">
+      <input class="search" placeholder="Search tags…" bind:value={q} on:keydown={onSearchKey} />
+      {#if suggestions.length}
       <div class="suggest">
         {#each suggestions as s (s.key)}
           <button class="sugg" on:click={() => addFilter(s.key)}>
@@ -122,7 +121,8 @@
           </button>
         {/each}
       </div>
-    {/if}
+      {/if}
+    </div>
   </div>
 
   <!-- category bubbles -->
@@ -183,6 +183,9 @@
   .tf-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); }
   .tf-tabs button { flex: 1; background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-muted, #b8bcc4); padding: 6px 8px; cursor: pointer; font-size: 0.86rem; }
   .tf-tabs button.active { color: var(--text, #e8e8e8); border-bottom-color: var(--accent, #5b8def); font-weight: 600; }
+  .top-row { display: flex; gap: 6px; align-items: stretch; }
+  .top-row .scope { flex: 0 0 42%; width: auto; }
+  .top-row .search-wrap { flex: 1 1 auto; }
   .search-wrap { position: relative; }
   .scope { width: 100%; box-sizing: border-box; padding: 7px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); font-size: 0.86rem; }
   .scope option[value="all"] { font-weight: 700; }
