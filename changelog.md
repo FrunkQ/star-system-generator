@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.119-beta - 16th Jun 2026
+
+* The construct tag-adder category dropdown now lists only enabled categories (disabled ones are hidden, not greyed).
+* A construct's read-only detail view now shows its tags as chips at the bottom, matching how a body's detail pane does.
+
 ## v2.0.118-beta - 16th Jun 2026
 
 * In the construct tag adder, the category dropdown now colours "Custom" and bolds the three core always-on categories (Status, Owner, Purpose) so they stand out from the optional ones.

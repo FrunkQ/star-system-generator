@@ -15,6 +15,8 @@
     dispatch('update');
   }
   $: cats = activeCoICategories($coiCategories);
+  // If the adder was pointed at a category that's since been disabled, fall back to Custom.
+  $: if (newCat !== 'custom' && !cats.some((c) => c.id === newCat)) newCat = 'custom';
   $: has = (key: string) => { void tick; return constructHasCoI(construct, key); };
   // Tags whose category was turned off or removed — kept on the ship but shown greyed/inactive.
   $: orphans = (void tick, orphanedCoITags(construct, $coiCategories));
@@ -92,7 +94,7 @@
     <label class="fld">Category
       <select bind:value={newCat}>
         <option value="custom" style="color: var(--accent, #5b8def); font-weight: 600;">Custom</option>
-        {#each $coiCategories as c (c.id)}<option value={c.id} style={c.required ? 'font-weight: 700;' : ''}>{c.label}</option>{/each}
+        {#each cats as c (c.id)}<option value={c.id} style={c.required ? 'font-weight: 700;' : ''}>{c.label}</option>{/each}
       </select>
     </label>
     {#if availableInCat.length}

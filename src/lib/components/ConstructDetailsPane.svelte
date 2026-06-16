@@ -10,6 +10,7 @@
   // (ConstructSidePanel) - SystemView wires each to its own handler.
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, StarSystem } from '$lib/types';
+  import { describeTag } from '$lib/tags/tagPresentation';
   import ShipLogPane from './ShipLogPane.svelte';
   import ConstructSidePanel from './ConstructSidePanel.svelte';
   import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
@@ -66,5 +67,24 @@
             on:takeoff
             on:land
         />
+        <!-- Tags at the bottom of the read-only view, mirroring a body's detail pane. -->
+        {#if focusedBody.tags && focusedBody.tags.length > 0}
+            <div class="construct-tags">
+                <span class="tags-label">Tags</span>
+                <div class="tags-container">
+                    {#each focusedBody.tags as tag}
+                        {@const info = describeTag(tag.key)}
+                        <span class="tag" style="border-color: {info.color}; color: {info.color};" title={info.description}>{info.label}{#if tag.value}: {tag.value}{/if}</span>
+                    {/each}
+                </div>
+            </div>
+        {/if}
     {/if}
 {/if}
+
+<style>
+    .construct-tags { margin-top: 0.75em; padding-top: 0.6em; border-top: 1px solid var(--border); }
+    .tags-label { font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); }
+    .tags-container { display: flex; flex-wrap: wrap; gap: 0.5em; margin-top: 0.5em; }
+    .tag { background-color: var(--bg-control); padding: 0.2em 0.5em; border: 1px solid; border-radius: 3px; font-size: 0.8em; }
+</style>
