@@ -183,6 +183,7 @@
       shipSeconds: result.shipSeconds,
       headline: result.headline,
       cannotStop: result.cannotStop ?? false,
+      fuelUsedKg: mode === 'realistic' ? (result.fuelUsedKg ?? 0) : 0,
     };
     if (destKind === 'vessel' && selectedVessel) {
       dispatch('startjourney', {

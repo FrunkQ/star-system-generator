@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.111-beta - 16th Jun 2026
+
+* A "Realistic" interstellar journey now actually burns its fuel: starting one drains the propellant the trip uses from the ship's tanks (the whole tank if it can't brake). So a tank-emptying overreach really does leave the ship coasting on empty.
+
 ## v2.0.110-beta - 16th Jun 2026
 
 * The journey line now shows where a ship will end up adrift: the powered leg is orange, and the drift it can't avoid is red, projected on across the map — visible from the moment it sets off, so an under-fuelled trip reads as "orange to here, then red off into the dark".

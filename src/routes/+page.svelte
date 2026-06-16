@@ -112,9 +112,25 @@
         ...(d.cannotStop ? { cannotStop: true } : {}),
         ...(d.toX != null && d.toY != null ? { toX: d.toX, toY: d.toY, toLabel: d.toLabel } : {}),
       };
+      // Realistic mode drains the propellant the trip burns from the ship's tanks (scaled across tanks so
+      // the total drops by the used mass). Departing spends the fuel even if the journey is later cancelled.
+      const drainKg = Number(d.fuelUsedKg) || 0;
+      const fuelDefs = (effectiveRulePack || selectedRulepack)?.fuelDefinitions?.entries || [];
+      const systems = (drainKg <= 0) ? s.systems : s.systems.map((sys) => {
+        if (sys.id !== d.fromSystemId || !sys.system?.nodes) return sys;
+        const nodes = sys.system.nodes.map((n: any) => {
+          if (n.id !== d.shipId || !n.fuel_tanks?.length) return n;
+          let total = 0;
+          for (const t of n.fuel_tanks) { const fd = fuelDefs.find((f: any) => f.id === t.fuel_type_id); if (fd) total += (t.current_units ?? 0) * fd.density_kg_per_m3; }
+          if (total <= 0) return n;
+          const factor = Math.max(0, (total - drainKg) / total);
+          return { ...n, fuel_tanks: n.fuel_tanks.map((t: any) => ({ ...t, current_units: (t.current_units ?? 0) * factor })) };
+        });
+        return { ...sys, system: { ...sys.system, nodes } };
+      });
       // One live journey per ship — starting a new one replaces any prior flight for that ship.
       const others = (s.activeJourneys ?? []).filter((j) => j.shipId !== d.shipId);
-      return { ...s, activeJourneys: [...others, journey] };
+      return { ...s, systems, activeJourneys: [...others, journey] };
     });
     showInterstellarModal = false;
   }

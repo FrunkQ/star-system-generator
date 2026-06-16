@@ -67,6 +67,7 @@ export interface TransitResult {
   headline: string;
   detail: string;
   cannotStop?: boolean;   // reaches the destination but lacks the Δv to brake — arrives as a coasting fly-by
+  fuelUsedKg?: number;    // realistic mode: propellant the journey consumes (drained on departure)
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -156,10 +157,13 @@ export function realisticTransit(p: RealisticInput): TransitResult {
   const ship = t.ship + burnExtra;
   const burnNote = burnExtra > 0 ? ` Burns add ${formatDuration(burnExtra)} at ${(p.accel_ms2! / G0).toFixed(1)} g.` : '';
   if (dvBrake >= cruise) {
+    // Burns the outbound fuel plus only as much of the reserve as it takes to null the cruise speed.
+    const mBrakeEnd = ve > 0 ? mAfter / Math.exp(cruise / ve) : mAfter;
     return {
       status: 'green', cruise_ms: cruise, fractionC: cruise / C_MS, observerSeconds: observer, shipSeconds: ship, gamma: t.gamma,
       headline: 'Full journey — arrives and stops',
       detail: `Escapes the star, cruises at ${fmtKms(cruise)} (${pctC(cruise)}), and the ${fmtKms(dvBrake)} reserve brakes it to rest at the destination.${burnNote}`,
+      fuelUsedKg: burn + Math.max(0, mAfter - mBrakeEnd),
     };
   }
   return {
@@ -167,6 +171,7 @@ export function realisticTransit(p: RealisticInput): TransitResult {
     headline: 'Reaches interstellar space — but cannot stop',
     detail: `Cruises at ${fmtKms(cruise)} (${pctC(cruise)}) but has only ${fmtKms(dvBrake)} of braking Δv (needs ${fmtKms(cruise)}). It arrives as an unstoppable fly-by, then coasts on adrift — reserve more fuel to brake.${burnNote}`,
     cannotStop: true,
+    fuelUsedKg: p.fuelMassKg,   // burns the lot (outbound + the entire reserve trying to slow)
   };
 }
 
