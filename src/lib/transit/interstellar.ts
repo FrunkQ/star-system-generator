@@ -66,6 +66,14 @@ export function constructDisplayPlacement(starmap: Starmap, constructId: ID, dis
         }
         return { kind: 'adrift', x: sx, y: sy, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
       }
+      // Natural end (no explicit GM resolution): a "realistic" plan that couldn't brake reaches the
+      // destination but coasts ON past it — a fly-by that becomes adrift with velocity. (A GM who forces
+      // 'arrive' via the panel overrides this and stops it there.)
+      if (j.outcome == null && j.cannotStop && (j.durationSec || 0) > 0) {
+        const vx = (to.x - from.x) / j.durationSec, vy = (to.y - from.y) / j.durationSec;
+        const dt = displaySec - endSec;
+        return { kind: 'adrift', x: to.x + vx * dt, y: to.y + vy * dt, vx, vy, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
+      }
       return { kind: 'system', systemId: j.toSystemId };   // arrive
     }
   }

@@ -466,6 +466,8 @@ export interface ActiveJourney {
   endedAtSec?: string;    // game-clock seconds the GM resolved it early (abandon/strand); else natural end
   strandCoast?: boolean;  // on a strand: true = keep momentum (drift on), false = stop dead. Overrides the
                           // drive-mode default. Set when the GM picks "drift" vs "stop" at the abort.
+  cannotStop?: boolean;   // realistic plan that can't brake: it reaches the destination then coasts on past
+                          // it (a fly-by → adrift with velocity), rather than stopping.
 }
 
 // A construct stranded in interstellar space (a journey ended mid-flight). It no longer belongs to

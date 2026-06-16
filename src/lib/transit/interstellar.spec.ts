@@ -73,6 +73,27 @@ describe('ballistic adrift drift (Stage 1)', () => {
   });
 });
 
+describe('realistic "cannot stop" fly-by (Stage-1 integration)', () => {
+  it('reaches the destination then coasts on past it as adrift-with-velocity', () => {
+    const m = makeStarmap();   // sysA(0,0)→sysB(100,0), depart 0, dur 1000
+    (m.activeJourneys as any)[0].cannotStop = true;
+    const atArrival = constructDisplayPlacement(m, 'ship1', 1000);   // natural end
+    const later = constructDisplayPlacement(m, 'ship1', 2000);       // +1000 s past
+    expect(atArrival.kind).toBe('adrift');
+    if (atArrival.kind === 'adrift' && later.kind === 'adrift') {
+      expect(atArrival.x).toBeCloseTo(100);   // at the destination at end
+      expect(later.x).toBeCloseTo(200);       // coasted on past it
+      expect(atArrival.vx).toBeCloseTo(0.1);
+    }
+  });
+  it('a GM-forced arrival overrides the fly-by and stops at the destination', () => {
+    const m = makeStarmap();
+    (m.activeJourneys as any)[0].cannotStop = true;
+    (m.activeJourneys as any)[0].outcome = 'arrive';
+    expect(constructDisplayPlacement(m, 'ship1', 2000)).toEqual({ kind: 'system', systemId: 'sysB' });
+  });
+});
+
 describe('interstellar journey resolution', () => {
   it('endJourneyAtSource drops the journey and leaves the construct in its origin system', () => {
     const out = endJourneyAtSource(makeStarmap(), 'j1');

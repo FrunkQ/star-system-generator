@@ -156,6 +156,7 @@
       observerSeconds: result.observerSeconds,
       shipSeconds: result.shipSeconds,
       headline: result.headline,
+      cannotStop: result.cannotStop ?? false,
     });
   }
 </script>
@@ -264,7 +265,7 @@
 
     <div class="buttons">
       <button on:click={() => dispatch('close')}>Cancel</button>
-      <button class="primary" disabled={!canStart} on:click={startJourney} title={canStart ? 'Begin this journey — the ship appears on the starmap' : 'This journey does not arrive — adjust the plan'}>Start Journey</button>
+      <button class="primary" disabled={!canStart} on:click={startJourney} title={canStart ? (result?.cannotStop ? 'Begin — it reaches the destination but cannot brake, so it flies by and coasts on adrift' : 'Begin this journey — the ship appears on the starmap') : 'This journey does not arrive — adjust the plan'}>{result?.cannotStop ? 'Start (fly-by — won’t stop)' : 'Start Journey'}</button>
     </div>
   </div>
 </div>

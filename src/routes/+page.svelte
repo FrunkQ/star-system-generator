@@ -109,6 +109,7 @@
         mode: d.mode,
         startTimeSec: String(startTimeSec),
         durationSec: d.observerSeconds,
+        ...(d.cannotStop ? { cannotStop: true } : {}),
       };
       // One live journey per ship — starting a new one replaces any prior flight for that ship.
       const others = (s.activeJourneys ?? []).filter((j) => j.shipId !== d.shipId);

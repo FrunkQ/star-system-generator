@@ -66,6 +66,7 @@ export interface TransitResult {
   gamma: number;
   headline: string;
   detail: string;
+  cannotStop?: boolean;   // reaches the destination but lacks the Δv to brake — arrives as a coasting fly-by
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -164,7 +165,8 @@ export function realisticTransit(p: RealisticInput): TransitResult {
   return {
     status: 'yellow', cruise_ms: cruise, fractionC: cruise / C_MS, observerSeconds: observer, shipSeconds: ship, gamma: t.gamma,
     headline: 'Reaches interstellar space — but cannot stop',
-    detail: `Cruises at ${fmtKms(cruise)} (${pctC(cruise)}) but has only ${fmtKms(dvBrake)} of braking Δv (needs ${fmtKms(cruise)}). It arrives as an unstoppable fly-by — reserve more fuel for the burn.${burnNote}`,
+    detail: `Cruises at ${fmtKms(cruise)} (${pctC(cruise)}) but has only ${fmtKms(dvBrake)} of braking Δv (needs ${fmtKms(cruise)}). It arrives as an unstoppable fly-by, then coasts on adrift — reserve more fuel to brake.${burnNote}`,
+    cannotStop: true,
   };
 }
 
