@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.113-beta - 16th Jun 2026
+
+* (Groundwork, Stage 3) Real-units in-system gravity for a drifting ship — feeds the drift integrator true G in AU, so a stationary ship falls toward its star and a fly-by slings around it (verified: a 1-AU circular orbit comes out at a ~1-year period). The orrery wiring that shows it follows.
+
 ## v2.0.112-beta - 16th Jun 2026
 
 * (Groundwork, Stage 3) Added the deterministic drift integrator that will bend a coasting ship's path under gravity — the engine behind the upcoming fly-by slingshot and the in-system "stationary object falls toward the star". No visible change yet; the wiring follows.
