@@ -62,6 +62,40 @@ truth means this fits with no new mutable state.
 | **Restricted-N-body wobble** | **Moderate** (~2–4 days) | Deterministic RK4 test-particle integrator over the known field; checkpoint sampling in the log; per-scale `dt` tuning (interstellar: large dt, weak distant gravity; in-system: finer dt). The integrator is small; the care is determinism + checkpoint bookkeeping. |
 | **In-system "stationary falls toward the star"** | falls out for free | Same integrator: anchor at rest ⇒ the in-system field accelerates it. No extra machinery beyond sampling in-system body positions (already closed-form). |
 
+## Fly-by swings around the target star (Stage 3 consequence)
+
+A "Realistic, cannot-stop" plan (shipped in Stage 1) reaches the destination and coasts on past it. Today
+that's a straight line. Once the gravity integrator lands, the coasting ship is just a test particle in the
+**destination star's** field as it passes — so it naturally bends into a **hyperbolic gravity swing
+(slingshot)** around that star, deflecting its onward heading, rather than flying dead straight. No special
+case needed: it's the same restricted-N-body integration, anchored at the arrival point with the cruise
+velocity, evaluated against the in-system bodies of the system it's tearing through. (A nice emergent
+detail: the swing direction/strength depends on how close the fly-by passes the star.)
+
+## Intercept & dock with a MOVING target (validate after this lands)
+
+The rescue's other half: flying TO a target that's itself moving — a coasting fly-by derelict, an adrift
+ship drifting, or another ship under way. Two sub-problems, both tractable because the target's trajectory
+is already deterministic (Stage 1 drift / a derivable journey):
+
+- **Intercept** — don't aim where the target IS, aim where it WILL BE at arrival. Since the target's
+  position is a known function of time, this is a lead-time solve (root-find: pick arrival T so the
+  interceptor's reachable position at T equals target(T)). The transit calculator currently targets a
+  FIXED system+body, so this needs the point-destination model (Stage 2) generalised to a *time-varying*
+  point.
+- **Dock** — arriving at the same place isn't enough; you must match the target's **velocity vector** at
+  rendezvous, or you blow past it. That's an extra Δv = |v_arrival − v_target| on top of the journey — i.e.
+  **more fuel** (exactly the concern). The planner must add this matching burn to the budget/feasibility
+  check; with a fast coasting derelict the match cost can dominate, and a fuel-short ship would itself
+  become a fly-by (recursively the same cannot-stop case).
+
+**Validation checklist (when we get here):** (1) a journey can target a moving construct, not just a
+system/body; (2) the planner leads the target (arrival point = target position at arrival time); (3) the
+Δv budget includes the velocity-match term and the plan goes infeasible / fly-by if fuel is short;
+(4) on success the interceptor ends co-located AND co-moving with the target (a real dock), reversibly.
+This rides on Stage 2 (point/moving destinations) + the Stage 1 velocity model; flag it as its own
+verification pass once those exist.
+
 ## Recommended sequence
 
 1. **Ballistic drift first** — closed-form, low risk, immediately useful (relativistic/out-of-fuel aborts
