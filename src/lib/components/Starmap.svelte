@@ -7,7 +7,7 @@
   import BodyPicker from './BodyPicker.svelte';
   import FullscreenButton from './FullscreenButton.svelte';
   import type { Starmap, System, CelestialBody, RulePack, Barycenter } from '$lib/types';
-  import { constructDisplayPlacement } from '$lib/transit/interstellar';
+  import { constructDisplayPlacement, flybyTurn } from '$lib/transit/interstellar';
   import StarmapInfoPanel from './StarmapInfoPanel.svelte';
   import BottomSheet from './BottomSheet.svelte';
   import TimeDisplay from './TimeDisplay.svelte';
@@ -973,10 +973,14 @@
             <line class="journey-trail" x1={from.position.x} y1={from.position.y} x2={p.x} y2={p.y} />
             <line class="journey-ahead" x1={p.x} y1={p.y} x2={to.position.x} y2={to.position.y} />
             {#if journey.cannotStop}
-              <!-- Can't brake: the powered leg (orange) reaches the destination, then it drifts on (red),
-                   shown from departure so you can see the overshoot coming. -->
-              {@const ddx = to.position.x - from.position.x}
-              {@const ddy = to.position.y - from.position.y}
+              <!-- Can't brake: the powered leg (yellow) reaches the destination, then it drifts on (red),
+                   shown from departure so you can see the overshoot — and the slingshot — coming. The
+                   drift heading is the incoming direction turned by the star's flyby deflection. -->
+              {@const turn = flybyTurn(starmap, journey, from.position, to.position)}
+              {@const ddx0 = to.position.x - from.position.x}
+              {@const ddy0 = to.position.y - from.position.y}
+              {@const ddx = turn ? ddx0 * Math.cos(turn) - ddy0 * Math.sin(turn) : ddx0}
+              {@const ddy = turn ? ddx0 * Math.sin(turn) + ddy0 * Math.cos(turn) : ddy0}
               {@const dmag = Math.hypot(ddx, ddy) || 1}
               <line class="journey-drift" x1={to.position.x} y1={to.position.y} x2={to.position.x + (ddx / dmag) * 4000} y2={to.position.y + (ddy / dmag) * 4000} />
             {/if}

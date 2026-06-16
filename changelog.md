@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.116-beta - 16th Jun 2026
+
+* (Stage 3) Interstellar slingshot. A fly-by that can't stop now whips around the destination star instead of tearing straight off the map — an honest closed-form 2-body deflection from the incoming speed, the targeted body's distance from the star (the periapsis), and the star's mass. The drift track kinks at the star, shown from departure so you can see the slingshot coming. It's deliberately honest: a normal star barely bends a fast interstellar ship (so most fly-bys still look near-straight), but a slow craft — or a black hole — bends hard.
+
 ## v2.0.115-beta - 16th Jun 2026
 
 * Unified the body (PoI) and construct (CoI) tag adders. Picking a category now shows that category's existing, not-yet-applied tags as click-to-add chips — so you can finally add a defined PoI tag to a body by hand, not only via the auto-rules. Type a custom one below as before. The construct Tags tab now lists only the tags actually on the ship (click to remove); you add from the category-first picker. Hand-added tags are always removable and never stripped by the auto-tagging pass.

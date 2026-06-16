@@ -5,7 +5,49 @@
 //   - endJourneyAtDestination: it arrives — relocate the construct into the destination system.
 //   - strandJourney:           end mid-flight — pull it out into interstellar space (adrift).
 import type { Starmap, ActiveJourney, CelestialBody, AdriftConstruct, ID } from '$lib/types';
-import { G, SOLAR_MASS_KG } from '$lib/constants';
+import { G, SOLAR_MASS_KG, AU_KM } from '$lib/constants';
+import { hyperbolicFlyby } from '$lib/physics/flyby';
+import { distanceToMeters } from '$lib/interstellar/transit';
+
+const AU_M = AU_KM * 1000;
+const isStarNode = (n: any) =>
+  n?.roleHint === 'star' || (Array.isArray(n?.classes) && n.classes.some((c: string) => String(c).startsWith('star/')));
+
+// Stage 3 — a fly-by that can't stop whips around the destination star (an honest 2-body slingshot).
+// Returns the signed turn (radians) to rotate the post-arrival drift by, 0 when there's nothing to wrap
+// (a deep-space point target, no star, or degenerate maths). The ship aimed at a body whose solar
+// distance is the periapsis; by arrival that body has moved on, so the ship reaches that radius and
+// slings round the star. Negligible for a normal star at interstellar speed, real for a black hole or a
+// slow craft — exactly what the physics gives.
+const GRAZE_AU = 0.02; // a star-aimed pass (no specific body) grazes this close — "very close to the sun"
+export function flybyTurn(
+  starmap: Starmap,
+  j: ActiveJourney,
+  from: { x: number; y: number },
+  to: { x: number; y: number }
+): number {
+  if (j.toX != null && j.toY != null) return 0; // deep-space point target — no central mass to wrap
+  const dest = starmap.systems.find((s) => s.id === j.toSystemId);
+  const nodes = dest?.system?.nodes ?? [];
+  let starMassKg = 0;
+  for (const n of nodes) if (isStarNode(n)) starMassKg = Math.max(starMassKg, (n as any).massKg || 0);
+  if (!(starMassKg > 0)) return 0;
+  let a_AU = 0;
+  if (j.toBodyId) {
+    const body = nodes.find((n) => n.id === j.toBodyId) as any;
+    a_AU = body?.orbit?.elements?.a_AU || 0;
+  }
+  const rp_m = Math.max(a_AU, GRAZE_AU) * AU_M;
+  const dx = to.x - from.x, dy = to.y - from.y;
+  const coordDist = Math.hypot(dx, dy);
+  const dur = j.durationSec || 0;
+  if (!(coordDist > 0) || !(dur > 0)) return 0;
+  const vinf = distanceToMeters(coordDist, starmap.distanceUnit) / dur; // m/s, outside-observer cruise speed
+  const turn = hyperbolicFlyby([vinf, 0], rp_m, G * starMassKg).turn;
+  // Vary the wrap side per ship so a fleet doesn't all bend identically.
+  const side = (j.shipId || '').length % 2 === 0 ? 1 : -1;
+  return side * turn;
+}
 
 // --- Derive-from-clock placement -----------------------------------------------------------------
 // Where a construct *appears* at a given game time, derived purely from its interstellar journey
@@ -72,7 +114,13 @@ export function constructDisplayPlacement(starmap: Starmap, constructId: ID, dis
       // destination but coasts ON past it — a fly-by that becomes adrift with velocity. (A GM who forces
       // 'arrive' via the panel overrides this and stops it there.)
       if (j.outcome == null && j.cannotStop && (j.durationSec || 0) > 0) {
-        const vx = (to.x - from.x) / j.durationSec, vy = (to.y - from.y) / j.durationSec;
+        let vx = (to.x - from.x) / j.durationSec, vy = (to.y - from.y) / j.durationSec;
+        // Slingshot: whip the onward drift around the destination star (honest 2-body deflection).
+        const turn = flybyTurn(starmap, j, from, to);
+        if (turn) {
+          const c = Math.cos(turn), s = Math.sin(turn);
+          [vx, vy] = [vx * c - vy * s, vx * s + vy * c];
+        }
         const dt = displaySec - endSec;
         return { kind: 'adrift', x: to.x + vx * dt, y: to.y + vy * dt, vx, vy, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
       }
