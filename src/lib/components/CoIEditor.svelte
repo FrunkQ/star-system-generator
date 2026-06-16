@@ -72,9 +72,9 @@
           <div class="cat-row">
             <label class="on" title={cat.required ? 'Core category — always available (autopilot needs it)' : 'Available on constructs'}><input type="checkbox" checked={cat.enabled === true || cat.required} disabled={cat.required} on:change={(e) => setCoIEnabled(cat.id, (e.currentTarget as HTMLInputElement).checked)} /></label>
             <input class="color" type="color" value={cat.color || '#666666'} on:input={(e) => setCat(cat.id, { color: (e.currentTarget as HTMLInputElement).value })} />
-            <input class="label" value={cat.label} on:input={(e) => setCat(cat.id, { label: (e.currentTarget as HTMLInputElement).value })} />
+            <input class="label" value={cat.label} readonly={cat.required} title={cat.required ? 'Core category name is fixed (autopilot relies on it)' : ''} on:input={(e) => { if (!cat.required) setCat(cat.id, { label: (e.currentTarget as HTMLInputElement).value }); }} />
             {#if cat.required}<span class="req" title="Core category — required by autopilot">core</span>{/if}
-            <label class="single"><input type="checkbox" checked={cat.single} on:change={(e) => setCat(cat.id, { single: (e.currentTarget as HTMLInputElement).checked })} /> one only</label>
+            <label class="single" class:locked={cat.required} title={cat.required ? 'Fixed for this core category' : ''}><input type="checkbox" checked={cat.single} disabled={cat.required} on:change={(e) => setCat(cat.id, { single: (e.currentTarget as HTMLInputElement).checked })} /> one only</label>
             {#if !cat.required}<button class="del" title="Remove category" on:click={() => removeCategory(cat.id)}>🗑</button>{/if}
           </div>
           <div class="tags">
@@ -117,10 +117,13 @@
   .single { font-size: 0.78em; color: var(--text-muted); display: flex; align-items: center; gap: 3px; white-space: nowrap; }
   .del, .tx { background: none; border: none; cursor: pointer; color: var(--text-muted); }
   .tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px 2px 10px; border: 1px solid var(--border, #333); border-radius: 999px; font-size: 0.8em; }
-  .tag.locked { padding-right: 10px; font-weight: 600; }
+  .tag { display: inline-flex; align-items: center; gap: 3px; padding: 1px 5px 1px 8px; border: 1px solid var(--border, #333); border-radius: 999px; font-size: 0.72em; line-height: 1.5; }
+  .tag.locked { padding-right: 8px; font-weight: 600; }
   .tag.derived { opacity: 0.8; border-style: dashed; }
-  .tag .auto { font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-faint, #8a8f9a); }
+  .tag .auto { font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-faint, #8a8f9a); }
+  .tag .tx { font-size: 0.95em; line-height: 1; padding: 0 0 0 1px; }
+  .single.locked { opacity: 0.55; }
+  .label[readonly] { opacity: 0.75; cursor: default; }
   .req { font-size: 0.62em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent, #5b8def); border: 1px solid currentColor; border-radius: 4px; padding: 0 3px; }
   .tard { width: 46px; padding: 1px 3px; font-size: 0.85em; background: var(--bg-control); border: 1px solid var(--border); color: var(--text); border-radius: 3px; }
   .add-tag { background: var(--bg-control, #20232b); border: 1px dashed var(--border, #555); border-radius: 999px; padding: 2px 10px; font-size: 0.8em; cursor: pointer; color: var(--text-muted); }

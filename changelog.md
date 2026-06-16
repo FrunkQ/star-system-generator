@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.105-beta - 16th Jun 2026
+
+* The three core Construct-of-Interest categories (Status, Owner, Purpose) are now properly locked: their name and their "one only" setting can't be changed (Owner stays single-choice, Status/Purpose stay multi), since autopilot relies on them. You can still add your own categories and add tags within these.
+* Every construct now carries an "Active" status by default (legacy ships included), and "In transit" is split into "In transit (interstellar)" and "In transit (in-system)", both set automatically from what the ship is actually doing.
+* CoI editor tags are more compact (uniform small pills).
+
 ## v2.0.104-beta - 16th Jun 2026
 
 * Fixed: sending a ship home / cancelling an interstellar journey now actually removes it — it no longer lingers in Routes still ticking along. If the vessel has later journeys that depended on it, you're warned (with the list) and they're removed too, since the chain can't skip a leg.

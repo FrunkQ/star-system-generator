@@ -30,7 +30,7 @@
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import PoIPackEditor from '$lib/components/PoIPackEditor.svelte';
   import CoIEditor from '$lib/components/CoIEditor.svelte';
-  import { coiForStarmap, mergeStarmapCoIs, derivedStatusKey } from '$lib/constructs/coi';
+  import { coiForStarmap, mergeStarmapCoIs, derivedStatusKey, ensureConstructActiveTag } from '$lib/constructs/coi';
   import LlmSettingsModal from '$lib/components/LlmSettingsModal.svelte';
   import EditFuelAndDrivesModal from '$lib/components/EditFuelAndDrivesModal.svelte';
   import EditAtmospheresModal from '$lib/components/EditAtmospheresModal.svelte';
@@ -211,6 +211,16 @@
           const sk = derivedStatusKey(constructDisplayPlacement(map, n.id, nowSec).kind);
           const tags = sk ? [...(n.tags ?? []), { key: sk, coi: true, derived: true }] : (n.tags ?? []);
           out.push({ ...n, tags, __systemId: `interstellar:${n.id}`, __systemName: n.name, __interstellar: true });
+        } else if (n.kind === 'construct') {
+          // In-system construct mid an in-system transit (a scheduled journey straddling now) gets the
+          // derived "In transit (in-system)" status, mirroring the interstellar mirror above.
+          const midTransit = (n.scheduled_journeys ?? []).some((j: any) => {
+            if (j.status !== 'active' && j.status !== 'scheduled') return false;
+            const b = (j.plans?.length) ? getJourneyBounds(j.plans) : null;
+            return b ? (b.startMs / 1000 <= nowSec && nowSec < b.endMs / 1000) : false;
+          });
+          const tags = midTransit ? [...(n.tags ?? []), { key: 'status/in-transit-system', coi: true, derived: true }] : (n.tags ?? []);
+          out.push({ ...n, tags, __systemId: sys.id, __systemName: sys.name });
         } else {
           out.push({ ...n, __systemId: sys.id, __systemName: sys.name });
         }
@@ -755,8 +765,12 @@
     await tick();
     for (let i = 0; i < systems.length; i++) {
       const node = systems[i];
-      try { if (node?.system?.nodes) node.system = systemProcessor.process(node.system, selectedRulepack); }
-      catch (e) { console.warn('Recalc failed for system', node?.name, e); }
+      try {
+        if (node?.system?.nodes) {
+          node.system = systemProcessor.process(node.system, selectedRulepack);
+          for (const n of node.system.nodes) if (n.kind === 'construct') ensureConstructActiveTag(n as any);  // legacy ships → Active
+        }
+      } catch (e) { console.warn('Recalc failed for system', node?.name, e); }
       physicsProgress = { done: i + 1, total: systems.length, joke: i % 3 === 2 ? PHYSICS_JOKES[(i + 1) % PHYSICS_JOKES.length] : physicsProgress.joke };
       await new Promise((r) => setTimeout(r, 30));   // yield so the bar repaints + the run reads as real
     }

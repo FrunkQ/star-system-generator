@@ -31,7 +31,8 @@ describe('core categories (autopilot needs Status, Owner, Purpose)', () => {
     expect(status.single).toBe(false);                                   // a ship can be Damaged AND Active
     expect(status.tags.find((t) => t.key === 'status/active')?.locked).toBe(true);
     expect(status.tags.find((t) => t.key === 'status/adrift')?.derived).toBe(true);
-    expect(status.tags.find((t) => t.key === 'status/in-transit')?.derived).toBe(true);
+    expect(status.tags.find((t) => t.key === 'status/in-transit-interstellar')?.derived).toBe(true);
+    expect(status.tags.find((t) => t.key === 'status/in-transit-system')?.derived).toBe(true);
   });
   it('Status, Owner and Purpose are all required', () => {
     for (const id of ['status', 'owner', 'purpose']) {
@@ -52,9 +53,21 @@ describe('core categories (autopilot needs Status, Owner, Purpose)', () => {
   });
 });
 
+describe('ensureConstructActiveTag (legacy ships default to Active)', () => {
+  it('adds status/active to a construct with no status tag, idempotently', async () => {
+    const { ensureConstructActiveTag } = await import('./coi');
+    const s = { id: 'c', name: 'C', kind: 'construct', parentId: null, tags: [] } as any;
+    expect(ensureConstructActiveTag(s)).toBe(true);
+    expect(s.tags.some((t: any) => t.key === 'status/active')).toBe(true);
+    expect(ensureConstructActiveTag(s)).toBe(false);   // idempotent
+    const tagged = { id: 'c2', name: 'C2', kind: 'construct', parentId: null, tags: [{ key: 'status/damaged' }] } as any;
+    expect(ensureConstructActiveTag(tagged)).toBe(false);   // already has a status — leave it
+  });
+});
+
 describe('derived status mirrors internal state', () => {
   it('maps placement kind to a status tag', () => {
-    expect(derivedStatusKey('transit')).toBe('status/in-transit');
+    expect(derivedStatusKey('transit')).toBe('status/in-transit-interstellar');
     expect(derivedStatusKey('adrift')).toBe('status/adrift');
     expect(derivedStatusKey('system')).toBeNull();
   });

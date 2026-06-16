@@ -33,7 +33,8 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
     id: 'status', label: 'Status', color: '#5a7d8c', textColor: '#ffffff', single: false, enabled: true, required: true,
     tags: [
       { key: 'status/active', label: 'Active', locked: true },
-      { key: 'status/in-transit', label: 'In transit', derived: true },
+      { key: 'status/in-transit-interstellar', label: 'In transit (interstellar)', derived: true },
+      { key: 'status/in-transit-system', label: 'In transit (in-system)', derived: true },
       { key: 'status/adrift', label: 'Adrift', derived: true },
       ...mkTags('status', [
         'damaged', 'derelict', 'mothballed', ['construction', 'Under construction'],
@@ -119,7 +120,7 @@ export function normalizeCoIs(cats: CoICategory[]): CoICategory[] {
       if (!cur.tags.some((t) => t.key === 'status/active')) cur.tags.unshift({ key: 'status/active', label: 'Active' });
       for (const t of cur.tags) if (t.key === 'status/active') t.locked = true;
       // The system NEEDS the derived state tags — re-add any a stale/imported set is missing.
-      for (const d of [{ key: 'status/in-transit', label: 'In transit' }, { key: 'status/adrift', label: 'Adrift' }]) {
+      for (const d of [{ key: 'status/in-transit-interstellar', label: 'In transit (interstellar)' }, { key: 'status/in-transit-system', label: 'In transit (in-system)' }, { key: 'status/adrift', label: 'Adrift' }]) {
         let t = cur.tags.find((x) => x.key === d.key);
         if (!t) { t = { ...d }; cur.tags.push(t); }
         t.derived = true;
@@ -170,9 +171,19 @@ export function setCoIEnabled(id: string, on: boolean): void {
 // The Status tag a construct's CURRENT internal placement implies (derived, not stored): adrift / in
 // transit. Mirrors the journey state so find-by-tag and displays can surface e.g. all adrift ships.
 export function derivedStatusKey(placementKind: 'transit' | 'adrift' | string | undefined): string | null {
-  if (placementKind === 'transit') return 'status/in-transit';
+  if (placementKind === 'transit') return 'status/in-transit-interstellar';
   if (placementKind === 'adrift') return 'status/adrift';
   return null;
+}
+
+// Ensure a construct carries the baseline Active status — legacy ships predate the Status category, so
+// any construct with no manual status/* tag gets status/active. Mutates in place; idempotent.
+export function ensureConstructActiveTag(construct: CelestialBody): boolean {
+  if (construct.kind !== 'construct') return false;
+  const tags = construct.tags ?? (construct.tags = []);
+  if (tags.some((t) => t.key.startsWith('status/'))) return false;
+  tags.push({ key: 'status/active', manual: true, coi: true } as Tag);
+  return true;
 }
 
 // --- Save / load CoI sets as files (like PoI packs) so people can swap genres. The whole category set
