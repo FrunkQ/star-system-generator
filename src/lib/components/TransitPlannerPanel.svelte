@@ -889,32 +889,6 @@
         <strong>Current Position:</strong> <span style="color: #eee;">{originString}</span>
     </div>
     
-    {#if completedPlans.length > 0}
-        <div class="completed-legs">
-            <h4>Journey So Far</h4>
-            {#each completedPlans as leg, i}
-                <div class="leg-summary">
-                    <strong>Leg {i + 1}:</strong>
-                    {system.nodes.find(n => n.id === leg.originId)?.name || 'Unknown'}
-                    →
-                    {system.nodes.find(n => n.id === leg.targetId)?.name || 'Unknown'}
-                    <span class="leg-meta">
-                        ({formatDuration(leg.totalTime_days)}, {(leg.totalFuel_kg/1000).toFixed(1)}t fuel)
-                    </span>
-                    {#if i === completedPlans.length - 1}
-                        <button class="remove-leg-btn" on:click={() => dispatch('undoLastLeg')} title="Undo this leg">×</button>
-                    {/if}
-                </div>
-            {/each}
-            <div class="total-summary">
-                <strong>Total:</strong> 
-                {formatDuration(completedPlans.reduce((a,b) => a + b.totalTime_days, 0))} / 
-                {(totalUsedFuel/1000).toFixed(1)}t fuel
-            </div>
-            <hr/>
-        </div>
-    {/if}
-
     {#if currentConstructSpecs}
         {@const startFuel = currentConstructSpecs.fuelMass_tonnes * 1000}
         {@const remainingAfterLegs = startFuel - totalUsedFuel}
@@ -1208,12 +1182,8 @@
         
         <div class="actions" class:executing={isExecuting}>
             {#if plan}
-                <div class="action-group">
-                    <button class="calculate-btn" on:click={() => dispatch('addNextLeg', plan)} disabled={isImpossible || isInsufficientFuel || isExecuting} title={isImpossible ? "Plan Impossible" : (isInsufficientFuel ? "Insufficient Fuel" : "Add to Flight Plan")}>Add Next Leg</button>
-                    {#if completedPlans.length > 0}
-                         <button class="cancel-btn" on:click={() => dispatch('undoLastLeg')} disabled={isExecuting}>Cancel Previous Leg</button>
-                    {/if}
-                </div>
+                <!-- Single hop: schedule THIS journey. Multi-stop is built by planning the next hop after
+                     it (the planner re-opens from this journey's end-state) — chained on the timeline. -->
                 <div class="execute-wrap">
                     <button class="calculate-btn execute" on:click={() => triggerExecute(plan)} disabled={!canAfford || isImpossible || isInsufficientFuel || isExecuting} title={isImpossible ? "Plan Impossible (See warning above)" : (isInsufficientFuel ? "Insufficient Fuel (See warning above)" : (!canAfford ? "Insufficient Fuel" : "Schedule Flight Plan"))}>
                         {isExecuting ? 'Simulating Transit...' : 'Schedule Journey'}
@@ -1222,21 +1192,6 @@
                         <button
                             class="disabled-capture"
                             on:click={() => handleBlockedExecuteClick(plan)}
-                            title="Show why this journey cannot be executed"
-                            aria-label="Explain why execute journey is blocked"
-                        ></button>
-                    {/if}
-                </div>
-            {:else if completedPlans.length > 0}
-                <button class="cancel-btn" on:click={() => dispatch('undoLastLeg')} disabled={isExecuting}>Cancel Last Leg</button>
-                <div class="execute-wrap">
-                    <button class="calculate-btn execute" on:click={() => triggerExecute(null)} disabled={!canAfford || isExecuting} title={!canAfford ? "Insufficient Fuel" : "Schedule Flight Plan"}>
-                        {isExecuting ? 'Simulating Transit...' : 'Schedule Journey'}
-                    </button>
-                    {#if !isExecuting && !canAfford}
-                        <button
-                            class="disabled-capture"
-                            on:click={() => handleBlockedExecuteClick(null)}
                             title="Show why this journey cannot be executed"
                             aria-label="Explain why execute journey is blocked"
                         ></button>

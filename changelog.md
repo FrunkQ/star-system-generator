@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.129-beta - 16th Jun 2026
+
+* (Transit refactor, stage 4) Retired in-system journey legs. The planner is now single-hop: plan a journey, Schedule it, and to add a stop just plan the next one — the planner re-opens from where the ship's last journey ends (its position + velocity), chaining hops on the timeline rather than bundling them as legs in one journey. Removed the "Add Next Leg"/"Cancel Previous Leg" builder and the draft-plan save.
+
 ## v2.0.128-beta - 16th Jun 2026
 
 * (Transit refactor, stage 5) The ship's log now shows how each hop ends — Docked, In <orbit>, or Fly-past (carrying its leftover Δv) — the handoff state the next journey or autopilot picks up.

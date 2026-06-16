@@ -1529,35 +1529,29 @@
       visualizer?.resetView(); 
       plannerOriginId = focusedBody.id;
       planningConstructId = focusedBody.id;
-      
-      // Attempt to restore draft plan
-      if (focusedBody.draft_transit_plan && focusedBody.draft_transit_plan.length > 0) {
-          const draft = focusedBody.draft_transit_plan as TransitPlan[];
-          const firstLegStart = draft[0].startTime;
-          
-          // Only restore if the plan starts in the future relative to current time
-          // (Allowing for small epsilon or if we assume simulation time stops while planning)
-          if (firstLegStart >= currentTime - 1000) {
-              completedTransitPlans = draft;
-              
-              // Reconstruct chain state from last leg
-              const lastLeg = draft[draft.length - 1];
-              transitChainTime = lastLeg.startTime + (lastLeg.totalTime_days * 86400 * 1000);
-              plannerOriginId = lastLeg.targetId;
-              
-              if (lastLeg.segments.length > 0) {
-                  const endState = lastLeg.segments[lastLeg.segments.length - 1].endState;
-                  transitChainState = { r: { ...endState.r }, v: { ...endState.v } };
-              }
-              return;
-          }
-      }
-      
-      // Default: Start fresh
-      transitChainTime = currentTime;
       completedTransitPlans = [];
-      transitChainState = undefined;
       transitDelayDays = 0;
+
+      // Timeline chaining: the next hop starts where the ship's LATEST scheduled journey ends, picking up
+      // its exit state (position + velocity vector) as the entry. So multi-stop is built one hop at a time,
+      // each appended to the timeline — no in-journey legs. Else start fresh from the ship now.
+      const logs = (focusedBody.scheduled_journeys || []).filter((l) => l.status !== 'cancelled');
+      let latest: { endMs: number; plan: TransitPlan } | null = null;
+      for (const log of logs) {
+          const p = log.plans?.[log.plans.length - 1];
+          if (!p) continue;
+          const endMs = p.startTime + (p.totalTime_days * 86400 * 1000);
+          if (!latest || endMs > latest.endMs) latest = { endMs, plan: p };
+      }
+      if (latest && latest.endMs >= currentTime - 1000) {
+          transitChainTime = latest.endMs;
+          plannerOriginId = latest.plan.targetId;
+          const seg = latest.plan.segments?.[latest.plan.segments.length - 1];
+          transitChainState = seg ? { r: { ...seg.endState.r }, v: { ...seg.endState.v } } : undefined;
+      } else {
+          transitChainTime = currentTime;
+          transitChainState = undefined;
+      }
   }
 
   // --- Transit planner handlers (extracted from the markup in 01.7; PlannerPane
@@ -1572,57 +1566,6 @@
       visualizer?.fitToNodes([origin, target]);
   }
 
-  function handleAddNextLeg(e: CustomEvent) {
-      const plan = e.detail;
-      completedTransitPlans = [...completedTransitPlans, plan];
-      transitChainTime = plan.startTime + (plan.totalTime_days * 86400 * 1000);
-
-      plannerOriginId = plan.targetId;
-      transitDelayDays = 0;
-      currentTransitPlan = null;
-      transitAlternatives = [];
-      transitPreviewPos = null;
-      transitJourneyOffset = 0;
-
-      // Store arrival state for next leg chaining
-      if (plan.segments.length > 0) {
-          const endState = plan.segments[plan.segments.length - 1].endState;
-          transitChainState = { r: { ...endState.r }, v: { ...endState.v } };
-      }
-  }
-
-  function handleUndoLastLeg() {
-      if (completedTransitPlans.length === 0) return;
-
-      // Remove last plan
-      completedTransitPlans = completedTransitPlans.slice(0, -1);
-
-      if (completedTransitPlans.length > 0) {
-          // Revert the time cursor to the END of the new last leg, ready to re-plan.
-          // prevLeg.startTime is absolute (includes any pre-leg delay).
-          const prevLeg = completedTransitPlans[completedTransitPlans.length - 1];
-          transitChainTime = prevLeg.startTime + (prevLeg.totalTime_days * 86400 * 1000);
-
-          plannerOriginId = prevLeg.targetId;
-
-          if (prevLeg.segments.length > 0) {
-              const endState = prevLeg.segments[prevLeg.segments.length - 1].endState;
-              transitChainState = { r: { ...endState.r }, v: { ...endState.v } };
-          }
-      } else {
-          // Reset to initial
-          transitChainTime = currentTime;
-          plannerOriginId = focusedBody ? focusedBody.id : '';
-          transitChainState = undefined;
-      }
-
-      // Clear previews
-      currentTransitPlan = null;
-      transitAlternatives = [];
-      transitPreviewPos = null;
-      transitJourneyOffset = 0;
-      transitDelayDays = 0;
-  }
 
   // One-button refuel: top up every tank of the ship being planned.
   function handleRefuel() {
@@ -1645,7 +1588,9 @@
           : (payload as TransitPlan | null);
       const forceExecute = !!(payload && typeof payload === 'object' && 'force' in payload && payload.force);
 
-      const plansToSchedule = [...completedTransitPlans, ...(finalPlan ? [finalPlan] : [])];
+      // Single-hop: one plan -> one journey on the timeline. Multi-stop is built by planning the next hop
+      // (which starts from this one's end-state) — chained on the timeline, not as legs in one journey.
+      const plansToSchedule = finalPlan ? [finalPlan] : [];
       if (plansToSchedule.length === 0 || !focusedBodyId) return;
       const lastScheduledPlan = plansToSchedule[plansToSchedule.length - 1];
       const finalScheduledTimeMs = lastScheduledPlan.startTime + (lastScheduledPlan.totalTime_days * 86400 * 1000);
@@ -1698,12 +1643,6 @@
   }
 
   function handleClosePlanner() {
-      // Save Draft Plan
-      if (focusedBody && completedTransitPlans.length > 0) {
-          focusedBody.draft_transit_plan = completedTransitPlans;
-          handleBodyUpdate({ detail: focusedBody } as CustomEvent);
-      }
-
       isPlanning = false;
       currentTransitPlan = null;
       transitDelayDays = 0;
@@ -2031,8 +1970,6 @@
                     on:executionStateChange={(e) => isTransitExecuting = e.detail}
                     on:previewUpdate={handlePlannerPreviewUpdate}
                     on:targetSelected={handlePlannerTargetSelected}
-                    on:addNextLeg={handleAddNextLeg}
-                    on:undoLastLeg={handleUndoLastLeg}
                     on:executePlan={handleExecutePlan}
                     on:interstellar={() => dispatch('interstellar', { shipId: planningConstructId || plannerOriginId })}
                     on:refuel={handleRefuel}
