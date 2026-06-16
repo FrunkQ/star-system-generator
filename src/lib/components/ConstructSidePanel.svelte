@@ -192,7 +192,6 @@
             dispatch('delete', construct.id);
         }
     }}>Delete</button>
-    <button class="primary" on:click={() => dispatch('close')}>Done</button>
     <input type="file" bind:this={fileInput} on:change={handleImport} accept=".json" style="display: none;" />
   </div>
 

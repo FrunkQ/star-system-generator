@@ -107,7 +107,6 @@
             dispatch('delete', body.id);
         }
     }}>Delete</button>
-    <button class="primary" on:click={() => dispatch('close')}>Done</button>
   </div>
 
   <div class="live-stats">

@@ -1951,7 +1951,7 @@
                 {isEditing} {isPlanning} {isShipLogOpen}
                 on:togglevisibility={handleToggleVisibility}
                 on:rename={(e) => { dispatch('renameNode', e.detail); systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s); }}
-                on:enteredit={() => { isEditing = true; showZoneKeyPanel = false; visualizer?.resetView(); }}
+                on:toggleedit={() => { isEditing = !isEditing; if (isEditing) { showZoneKeyPanel = false; visualizer?.resetView(); } }}
                 on:showphysics={() => showPhysicsModal = true}
             />
             {/if}

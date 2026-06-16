@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.139-beta - 16th Jun 2026
+
+* In-system body/ship header now matches the interstellar ship panel: Edit is a toggle (click the pencil again to close — the "Done" button is gone), it highlights while active, and the sensors icon uses the same waves glyph.
+
 ## v2.0.138-beta - 16th Jun 2026
 
 * Fixed: the in-system Cancel · drift/stop buttons now actually abort the journey at the point you're viewing (they were keyed to actual time, so on a previewed flight they did nothing). The ship strands where you see it.

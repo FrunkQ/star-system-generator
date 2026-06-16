@@ -25,14 +25,11 @@
             title={hasSensors ? "Toggle Sensor Overlay" : "No Sensors Installed"}
             style="position: relative;"
         >
-            <!-- Satellite Dish Base Icon -->
+            <!-- Sensor waves (matches the ship panel) -->
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                  stroke={hasSensors ? (showSensors ? "#4ade80" : "#888") : "#666"}
                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 12.5a9 9 0 0 1-14.88 6.42" /> <!-- Dish Curve -->
-                <path d="M2 20l5-5" /> <!-- Stand -->
-                <path d="M12.5 7.5l-5 5" /> <!-- Feed Arm -->
-                <circle cx="13" cy="7" r="1.5" /> <!-- Feed Node -->
+                <path d="M4.9 19.1A10 10 0 0 1 4.9 4.9"/><path d="M7.8 16.2a6 6 0 0 1 0-8.4"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4"/><path d="M19.1 4.9a10 10 0 0 1 0 14.2"/>
             </svg>
 
             <!-- No Entry Overlay if no sensors -->
@@ -65,8 +62,9 @@
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7c-1-2-3-2-4-1-2 1.5-2 5 0 8 1.2 1.8 2.6 3 4 3s2.8-1.2 4-3c2-3 2-6.5 0-8-1-1-3-1-4 1Z"/><path d="M12 7c0-2 .6-3.5 2-4.5"/></svg>
         </button>
     {/if}
-    {#if !isEditing && !isPlanning && !isShipLogOpen && (focusedBody.kind !== 'barycenter' || focusedBody.parentId)}
-        <button class="edit-btn" on:click={() => dispatch('enteredit')} title="Edit body" aria-label="Edit body">
+    {#if !isPlanning && !isShipLogOpen && (focusedBody.kind !== 'barycenter' || focusedBody.parentId)}
+        <!-- Edit is a TOGGLE — click again to close (no separate Done button). -->
+        <button class="edit-btn" class:on={isEditing} on:click={() => dispatch('toggleedit')} title={isEditing ? 'Close editor' : 'Edit'} aria-label="Toggle editor">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
         </button>
     {/if}
@@ -129,6 +127,11 @@
   .apple-btn { color: var(--ok, #46c46a); }
   .edit-btn:hover {
       background-color: var(--bg-control);
+      color: var(--accent);
+      border-color: var(--accent);
+  }
+  /* Active (editing) — highlight like the ship panel's edit toggle. */
+  .edit-btn.on {
       color: var(--accent);
       border-color: var(--accent);
   }
