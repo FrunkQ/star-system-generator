@@ -10,6 +10,8 @@ export interface CoITag {
   key: string;       // namespaced, e.g. 'owner/military', 'purpose/patrol'
   label: string;     // what the user sees
   tardiness?: number; // owner tags carry the 0..1 tardiness the ship inherits (used later by autopilot)
+  locked?: boolean;  // can't be removed (e.g. Status: Active is the operational baseline)
+  derived?: boolean; // auto-mirrored from internal state (e.g. Status: Adrift / In transit), not hand-set
 }
 export interface CoICategory {
   id: string;        // the tag prefix, e.g. 'owner'
@@ -18,13 +20,29 @@ export interface CoICategory {
   textColor?: string;
   single?: boolean;  // true = at most one tag from this category may be applied (e.g. one Owner)
   enabled?: boolean; // shown on constructs / usable when true (toggled on the Settings -> CoIs page)
+  required?: boolean; // a core category autopilot needs (Status, Owner, Purpose): always on, can't be removed/deselected; its tag list is still editable
   tags: CoITag[];
 }
 
 // Starter sets (Alex 2026-06-15). Owner -> tardiness; Purpose -> what the ship is for.
 export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
   {
-    id: 'owner', label: 'Owner', color: '#3f6fb0', textColor: '#ffffff', single: true, enabled: true,
+    // Operational state. Multi-select (a ship can be Damaged AND Active). ACTIVE is the locked baseline.
+    // Adrift / In transit are DERIVED from the journey log (mirroring internal state), not hand-set.
+    // A CORE category autopilot relies on — always on, can't be removed.
+    id: 'status', label: 'Status', color: '#5a7d8c', textColor: '#ffffff', single: false, enabled: true, required: true,
+    tags: [
+      { key: 'status/active', label: 'Active', locked: true },
+      { key: 'status/in-transit', label: 'In transit', derived: true },
+      { key: 'status/adrift', label: 'Adrift', derived: true },
+      ...mkTags('status', [
+        'damaged', 'derelict', 'mothballed', ['construction', 'Under construction'],
+        'impounded', 'quarantined', 'lost', 'decommissioned'
+      ])
+    ]
+  },
+  {
+    id: 'owner', label: 'Owner', color: '#3f6fb0', textColor: '#ffffff', single: true, enabled: true, required: true,
     tags: [
       { key: 'owner/military', label: 'Military', tardiness: 0 },
       { key: 'owner/corporation', label: 'Corporation', tardiness: 0.25 },
@@ -34,7 +52,7 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
     ]
   },
   {
-    id: 'purpose', label: 'Purpose', color: '#2f9e8f', textColor: '#ffffff', single: false, enabled: true,
+    id: 'purpose', label: 'Purpose', color: '#2f9e8f', textColor: '#ffffff', single: false, enabled: true, required: true,
     tags: mkTags('purpose', [
       'patrol', 'ship-repair', 'refuel', 'leisure', 'people-transport', 'cargo-transport',
       'bulk-carrier', 'courier', 'mining', 'survey-prospecting', 'survey-science', 'prison',
@@ -57,14 +75,6 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
     tags: mkTags('drive', [
       ['sublight', 'Sublight only'], 'jump-drive', 'warp', 'hyperdrive', ['gate', 'Wormhole / gate'],
       ['generation', 'Generation ship'], ['torch', 'Torch (fusion)'], 'solar-sail', ['ftl-unknown', 'Exotic / unknown']
-    ])
-  },
-  {
-    // Operational state — guidance cares (a derelict isn't going anywhere; damaged needs repair first).
-    id: 'status', label: 'Status', color: '#5a7d8c', textColor: '#ffffff', single: true, enabled: true,
-    tags: mkTags('status', [
-      'active', 'damaged', 'adrift', 'derelict', 'mothballed', ['construction', 'Under construction'],
-      'impounded', 'quarantined', 'lost', 'decommissioned'
     ])
   },
   {
@@ -93,12 +103,35 @@ function mkTags(catId: string, entries: (string | [string, string])[]): CoITag[]
     : { key: `${catId}/${e[0]}`, label: e[1] });
 }
 
+// Enforce the invariant autopilot relies on: the three CORE categories (Status, Owner, Purpose) always
+// exist, sit first (Status top), stay enabled, and can't be removed; Status always keeps its locked
+// Active tag. Their tag LISTS are otherwise user-editable. Applied to any externally-sourced category set
+// (load / import / starmap merge) so a stale or hand-edited set can never drop the essentials.
+export function normalizeCoIs(cats: CoICategory[]): CoICategory[] {
+  const out = cats.map((c) => ({ ...c, tags: [...(c.tags ?? [])] }));
+  const byId = new Map(out.map((c) => [c.id, c]));
+  for (const def of DEFAULT_COI_CATEGORIES.filter((d) => d.required)) {
+    let cur = byId.get(def.id);
+    if (!cur) { cur = structuredClone(def); out.push(cur); byId.set(def.id, cur); }
+    cur.required = true;
+    cur.enabled = true;
+    if (def.id === 'status') {
+      if (!cur.tags.some((t) => t.key === 'status/active')) cur.tags.unshift({ key: 'status/active', label: 'Active' });
+      for (const t of cur.tags) if (t.key === 'status/active') t.locked = true;
+    }
+  }
+  // Core categories first (in their defaults order), everything else after, original order preserved.
+  const order = DEFAULT_COI_CATEGORIES.filter((d) => d.required).map((d) => d.id);
+  const rank = (c: CoICategory) => { const i = order.indexOf(c.id); return i < 0 ? order.length : i; };
+  return out.map((c, i) => ({ c, i })).sort((a, b) => rank(a.c) - rank(b.c) || a.i - b.i).map((x) => x.c);
+}
+
 const COI_KEY = 'coi-categories';
 function load(): CoICategory[] {
   if (typeof localStorage === 'undefined') return structuredClone(DEFAULT_COI_CATEGORIES);
   try {
     const saved = JSON.parse(localStorage.getItem(COI_KEY) || 'null');
-    if (Array.isArray(saved) && saved.length && saved.every((c) => c && c.id && Array.isArray(c.tags))) return saved;
+    if (Array.isArray(saved) && saved.length && saved.every((c) => c && c.id && Array.isArray(c.tags))) return normalizeCoIs(saved);
   } catch { /* fall through */ }
   return structuredClone(DEFAULT_COI_CATEGORIES);
 }
@@ -125,7 +158,15 @@ export function activeCoICategories(cats: CoICategory[]): CoICategory[] {
   return cats.filter((c) => c.enabled === true);
 }
 export function setCoIEnabled(id: string, on: boolean): void {
-  coiCategories.update((cs) => cs.map((c) => c.id === id ? { ...c, enabled: on } : c));
+  coiCategories.update((cs) => cs.map((c) => c.id === id ? { ...c, enabled: c.required ? true : on } : c));
+}
+
+// The Status tag a construct's CURRENT internal placement implies (derived, not stored): adrift / in
+// transit. Mirrors the journey state so find-by-tag and displays can surface e.g. all adrift ships.
+export function derivedStatusKey(placementKind: 'transit' | 'adrift' | string | undefined): string | null {
+  if (placementKind === 'transit') return 'status/in-transit';
+  if (placementKind === 'adrift') return 'status/adrift';
+  return null;
 }
 
 // --- Save / load CoI sets as files (like PoI packs) so people can swap genres. The whole category set
@@ -139,7 +180,7 @@ export function importCoIs(json: string): CoICategory[] {
   if (!Array.isArray(cats) || !cats.every((c) => c && c.id && Array.isArray(c.tags))) {
     throw new Error('Not a valid CoI pack (needs categories[] with id + tags).');
   }
-  return cats.map((c) => ({ ...c, enabled: c.enabled !== false }));
+  return normalizeCoIs(cats.map((c) => ({ ...c, enabled: c.enabled !== false })));
 }
 
 // --- Applying / reading CoIs on a construct (tags live in construct.tags, flagged manual so the PoI
@@ -206,6 +247,6 @@ export function mergeStarmapCoIs(cats: CoICategory[] | undefined): void {
       const i = out.findIndex((x) => x.id === c.id);
       if (i >= 0) out[i] = c; else out.push(c);
     }
-    return out;
+    return normalizeCoIs(out);
   });
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_COI_CATEGORIES, toggleCoI, constructHasCoI, constructTardiness, mergeStarmapCoIs, coiCategories, activeCoICategories, exportCoIs, importCoIs, orphanedCoITags, removeCoITag } from './coi';
+import { DEFAULT_COI_CATEGORIES, toggleCoI, constructHasCoI, constructTardiness, mergeStarmapCoIs, coiCategories, activeCoICategories, exportCoIs, importCoIs, orphanedCoITags, removeCoITag, normalizeCoIs, derivedStatusKey, type CoICategory } from './coi';
 import type { CelestialBody } from '../types';
 
 const ship = (): CelestialBody => ({ id: 's', name: 'Ship', kind: 'construct', parentId: null, tags: [] } as any);
@@ -20,6 +20,43 @@ describe('CoI defaults', () => {
     expect(purpose.single).toBe(false);
     expect(purpose.tags.map((t) => t.key)).toContain('purpose/patrol');
     expect(purpose.tags.map((t) => t.key)).toContain('purpose/mining');
+  });
+});
+
+describe('core categories (autopilot needs Status, Owner, Purpose)', () => {
+  it('Status is first, required, multi-select, with a locked Active + derived states', () => {
+    expect(DEFAULT_COI_CATEGORIES[0].id).toBe('status');
+    const status = DEFAULT_COI_CATEGORIES[0];
+    expect(status.required).toBe(true);
+    expect(status.single).toBe(false);                                   // a ship can be Damaged AND Active
+    expect(status.tags.find((t) => t.key === 'status/active')?.locked).toBe(true);
+    expect(status.tags.find((t) => t.key === 'status/adrift')?.derived).toBe(true);
+    expect(status.tags.find((t) => t.key === 'status/in-transit')?.derived).toBe(true);
+  });
+  it('Status, Owner and Purpose are all required', () => {
+    for (const id of ['status', 'owner', 'purpose']) {
+      expect(DEFAULT_COI_CATEGORIES.find((c) => c.id === id)?.required).toBe(true);
+    }
+  });
+  it('normalizeCoIs re-adds a dropped core category, forces it enabled, and locks Active', () => {
+    // a stale/hand-broken set: no status, owner disabled, in the wrong order
+    const broken: CoICategory[] = [
+      { id: 'class', label: 'Hull', enabled: true, tags: [{ key: 'class/x', label: 'X' }] },
+      { id: 'owner', label: 'Owner', enabled: false, required: true, single: true, tags: [{ key: 'owner/military', label: 'Mil' }] }
+    ];
+    const fixed = normalizeCoIs(broken);
+    expect(fixed[0].id).toBe('status');                                  // core first, status top
+    expect(fixed.find((c) => c.id === 'status')?.tags.some((t) => t.key === 'status/active' && t.locked)).toBe(true);
+    expect(fixed.find((c) => c.id === 'owner')?.enabled).toBe(true);     // re-enabled
+    expect(fixed.find((c) => c.id === 'class')).toBeTruthy();            // non-core kept
+  });
+});
+
+describe('derived status mirrors internal state', () => {
+  it('maps placement kind to a status tag', () => {
+    expect(derivedStatusKey('transit')).toBe('status/in-transit');
+    expect(derivedStatusKey('adrift')).toBe('status/adrift');
+    expect(derivedStatusKey('system')).toBeNull();
   });
 });
 

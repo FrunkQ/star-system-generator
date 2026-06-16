@@ -31,7 +31,7 @@
         {#if cat.single}<span class="one">choose one</span>{/if}
       </div>
       <div class="chips">
-        {#each cat.tags as t (t.key)}
+        {#each cat.tags.filter((t) => !t.derived) as t (t.key)}
           <button
             class="chip"
             class:on={has(t.key)}

@@ -30,7 +30,7 @@
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import PoIPackEditor from '$lib/components/PoIPackEditor.svelte';
   import CoIEditor from '$lib/components/CoIEditor.svelte';
-  import { coiForStarmap, mergeStarmapCoIs } from '$lib/constructs/coi';
+  import { coiForStarmap, mergeStarmapCoIs, derivedStatusKey } from '$lib/constructs/coi';
   import LlmSettingsModal from '$lib/components/LlmSettingsModal.svelte';
   import EditFuelAndDrivesModal from '$lib/components/EditFuelAndDrivesModal.svelte';
   import EditAtmospheresModal from '$lib/components/EditAtmospheresModal.svelte';
@@ -205,7 +205,11 @@
       for (const n of (sys.system?.nodes ?? [])) {
         if (n.kind !== 'body' && n.kind !== 'construct') continue;
         if (n.kind === 'construct' && interIds.has(n.id)) {
-          out.push({ ...n, __systemId: `interstellar:${n.id}`, __systemName: n.name, __interstellar: true });
+          // Mirror the internal interstellar state as a (non-persisted) derived Status tag so you can
+          // find e.g. all adrift / in-transit ships by tag — the rescue search.
+          const sk = derivedStatusKey(constructDisplayPlacement(map, n.id, nowSec).kind);
+          const tags = sk ? [...(n.tags ?? []), { key: sk, coi: true, derived: true }] : (n.tags ?? []);
+          out.push({ ...n, tags, __systemId: `interstellar:${n.id}`, __systemName: n.name, __interstellar: true });
         } else {
           out.push({ ...n, __systemId: sys.id, __systemName: sys.name });
         }
@@ -214,7 +218,9 @@
     for (const a of (map.adriftConstructs ?? [])) {
       const c = a.construct; if (!c) continue;
       if (out.some((n) => n.id === c.id)) continue;   // already added via a journey above
-      out.push({ ...c, __systemId: `interstellar:${c.id}`, __systemName: c.name, __interstellar: true });
+      const sk = derivedStatusKey(constructDisplayPlacement(map, c.id, nowSec).kind);
+      const tags = sk ? [...(c.tags ?? []), { key: sk, coi: true, derived: true }] : (c.tags ?? []);
+      out.push({ ...c, tags, __systemId: `interstellar:${c.id}`, __systemName: c.name, __interstellar: true });
     }
     return out;
   })();

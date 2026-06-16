@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.100-beta - 16th Jun 2026
+
+* Constructs of Interest now has three core categories — Status (now at the top), Owner and Purpose — that are always on and can't be removed (autopilot relies on them). You can still freely edit the tags inside them; only Status's "Active" is fixed.
+* Status is now multi-select (a ship can be Damaged and still Active) and its "Adrift" / "In transit" tags are set automatically from the ship's actual journey state — so Find by tag (Constructs) can surface, say, every adrift ship for a rescue, without anyone tagging them by hand.
+
 ## v2.0.99-beta - 16th Jun 2026
 
 * Aborting a journey now respects the drive. A jump/field drive interrupted just stops dead (stranded, as before). A momentum drive (relativistic, torch, sublight…) keeps coasting in a straight line at its current speed and heading — the dashed line now follows that heading, and it drifts on across the map (off the edge eventually). Fully reversible: scrub the clock and it slides back along its line. (Stage 1 of the adrift-physics plan; gravity-wobble to follow.)

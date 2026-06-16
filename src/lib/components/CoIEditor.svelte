@@ -70,18 +70,19 @@
       {#each cats as cat (cat.id)}
         <div class="cat">
           <div class="cat-row">
-            <label class="on" title="Available on constructs"><input type="checkbox" checked={cat.enabled === true} on:change={(e) => setCoIEnabled(cat.id, (e.currentTarget as HTMLInputElement).checked)} /></label>
+            <label class="on" title={cat.required ? 'Core category — always available (autopilot needs it)' : 'Available on constructs'}><input type="checkbox" checked={cat.enabled === true || cat.required} disabled={cat.required} on:change={(e) => setCoIEnabled(cat.id, (e.currentTarget as HTMLInputElement).checked)} /></label>
             <input class="color" type="color" value={cat.color || '#666666'} on:input={(e) => setCat(cat.id, { color: (e.currentTarget as HTMLInputElement).value })} />
             <input class="label" value={cat.label} on:input={(e) => setCat(cat.id, { label: (e.currentTarget as HTMLInputElement).value })} />
+            {#if cat.required}<span class="req" title="Core category — required by autopilot">core</span>{/if}
             <label class="single"><input type="checkbox" checked={cat.single} on:change={(e) => setCat(cat.id, { single: (e.currentTarget as HTMLInputElement).checked })} /> one only</label>
-            <button class="del" title="Remove category" on:click={() => removeCategory(cat.id)}>🗑</button>
+            {#if !cat.required}<button class="del" title="Remove category" on:click={() => removeCategory(cat.id)}>🗑</button>{/if}
           </div>
           <div class="tags">
             {#each cat.tags as t (t.key)}
-              <span class="tag" style="border-color:{cat.color}">
-                {t.label}
+              <span class="tag" class:locked={t.locked} class:derived={t.derived} style="border-color:{cat.color}" title={t.locked ? 'Required baseline — can\'t be removed' : t.derived ? 'Set automatically from the ship\'s state' : ''}>
+                {t.label}{#if t.derived} <span class="auto">auto</span>{/if}
                 {#if cat.id === 'owner'}<input class="tard" type="number" min="0" max="1" step="0.05" value={t.tardiness ?? ''} title="Tardiness 0..1" on:input={(e) => setTardiness(cat, t.key, parseFloat((e.currentTarget as HTMLInputElement).value))} />{/if}
-                <button class="tx" on:click={() => removeTag(cat, t.key)} aria-label="Remove tag">✕</button>
+                {#if !t.locked}<button class="tx" on:click={() => removeTag(cat, t.key)} aria-label="Remove tag">✕</button>{/if}
               </span>
             {/each}
             <button class="add-tag" on:click={() => addTag(cat)}>+ tag</button>
@@ -117,6 +118,10 @@
   .del, .tx { background: none; border: none; cursor: pointer; color: var(--text-muted); }
   .tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px 2px 10px; border: 1px solid var(--border, #333); border-radius: 999px; font-size: 0.8em; }
+  .tag.locked { padding-right: 10px; font-weight: 600; }
+  .tag.derived { opacity: 0.8; border-style: dashed; }
+  .tag .auto { font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-faint, #8a8f9a); }
+  .req { font-size: 0.62em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent, #5b8def); border: 1px solid currentColor; border-radius: 4px; padding: 0 3px; }
   .tard { width: 46px; padding: 1px 3px; font-size: 0.85em; background: var(--bg-control); border: 1px solid var(--border); color: var(--text); border-radius: 3px; }
   .add-tag { background: var(--bg-control, #20232b); border: 1px dashed var(--border, #555); border-radius: 999px; padding: 2px 10px; font-size: 0.8em; cursor: pointer; color: var(--text-muted); }
   footer { display: flex; gap: 0.5rem; justify-content: flex-end; border-top: 1px solid var(--border, #333); padding-top: 0.75rem; }

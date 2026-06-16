@@ -300,10 +300,10 @@
           <p class="section-hint">Categories — tick the ones you want available on constructs:</p>
           <div class="form-group reason-cats">
             {#each $coiCategories as cat (cat.id)}
-              <label class="cat-line">
-                <input type="checkbox" checked={cat.enabled === true} on:change={(e) => setCoIEnabled(cat.id, e.currentTarget.checked)} />
+              <label class="cat-line" title={cat.required ? 'Core category — always on (autopilot needs it)' : ''}>
+                <input type="checkbox" checked={cat.enabled === true || cat.required} disabled={cat.required} on:change={(e) => setCoIEnabled(cat.id, e.currentTarget.checked)} />
                 <span class="cat-swatch" style="background:{cat.color || '#888'}"></span>
-                <span class="cat-name">{cat.label}</span>
+                <span class="cat-name">{cat.label}{#if cat.required} <span class="cat-req">core</span>{/if}</span>
                 <span class="cat-count">{cat.tags.length} {cat.tags.length === 1 ? 'tag' : 'tags'}</span>
               </label>
             {/each}
@@ -470,6 +470,7 @@
   .cat-swatch { width: 12px; height: 12px; border-radius: 3px; flex: 0 0 auto; }
   .cat-name { flex: 1; }
   .cat-count { color: var(--text-faint, #8a8f9a); font-size: 0.85em; }
+  .cat-req { font-size: 0.62em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent, #5b8def); border: 1px solid currentColor; border-radius: 4px; padding: 0 3px; vertical-align: middle; }
   .advanced-head { margin: 22px 0 8px; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint, #8a8f9a); border-top: 1px solid var(--border); padding-top: 14px; }
   .danger-head { color: var(--status-bad, #d04545); border-top-color: color-mix(in srgb, var(--status-bad, #d04545) 40%, var(--border)); }
   .danger-btn { border: 1px solid var(--status-bad, #d04545) !important; color: var(--status-bad, #d04545) !important; }
