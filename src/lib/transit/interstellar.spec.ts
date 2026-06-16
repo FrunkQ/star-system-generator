@@ -94,6 +94,20 @@ describe('realistic "cannot stop" fly-by (Stage-1 integration)', () => {
   });
 });
 
+describe('point-destination journeys (Stage 2 — fly to a spot, e.g. a stranded ship)', () => {
+  it('transits toward the point and rendezvouses (adrift) there on arrival', () => {
+    const m = makeStarmap();   // sysA(0,0), dur 1000
+    (m.activeJourneys as any)[0].toX = 50;
+    (m.activeJourneys as any)[0].toY = 30;
+    const mid = constructDisplayPlacement(m, 'ship1', 500);    // frac 0.5 from (0,0) → (50,30)
+    const arrived = constructDisplayPlacement(m, 'ship1', 2000);
+    expect(mid.kind).toBe('transit');
+    if (mid.kind === 'transit') { expect(mid.x).toBeCloseTo(25); expect(mid.y).toBeCloseTo(15); }
+    expect(arrived.kind).toBe('adrift');   // sits at the rendezvous point, not "in a system"
+    if (arrived.kind === 'adrift') { expect(arrived.x).toBeCloseTo(50); expect(arrived.y).toBeCloseTo(30); }
+  });
+});
+
 describe('interstellar journey resolution', () => {
   it('endJourneyAtSource drops the journey and leaves the construct in its origin system', () => {
     const out = endJourneyAtSource(makeStarmap(), 'j1');

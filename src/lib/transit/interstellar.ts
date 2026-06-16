@@ -42,7 +42,9 @@ export function constructDisplayPlacement(starmap: Starmap, constructId: ID, dis
   const j = (starmap.activeJourneys ?? []).find((x) => x.shipId === constructId);
   if (j) {
     const from = sysPos(starmap, j.fromSystemId);
-    const to = sysPos(starmap, j.toSystemId);
+    // A POINT destination (e.g. a stranded ship) overrides the destination system's position.
+    const pointTarget = j.toX != null && j.toY != null;
+    const to = pointTarget ? { x: j.toX as number, y: j.toY as number } : sysPos(starmap, j.toSystemId);
     const start = Number(j.startTimeSec || 0);
     const endSec = journeyEffectiveEndSec(j);
     if (from && to) {
@@ -74,6 +76,9 @@ export function constructDisplayPlacement(starmap: Starmap, constructId: ID, dis
         const dt = displaySec - endSec;
         return { kind: 'adrift', x: to.x + vx * dt, y: to.y + vy * dt, vx, vy, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
       }
+      // Arrived: at a point destination it rendezvouses there (sits adrift at the spot — e.g. reaching a
+      // stranded ship); at a system it's in that system.
+      if (pointTarget) return { kind: 'adrift', x: to.x, y: to.y, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
       return { kind: 'system', systemId: j.toSystemId };   // arrive
     }
   }

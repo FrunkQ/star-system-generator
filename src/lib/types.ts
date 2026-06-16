@@ -468,6 +468,10 @@ export interface ActiveJourney {
                           // drive-mode default. Set when the GM picks "drift" vs "stop" at the abort.
   cannotStop?: boolean;   // realistic plan that can't brake: it reaches the destination then coasts on past
                           // it (a fly-by → adrift with velocity), rather than stopping.
+  toX?: number; toY?: number;  // POINT destination (starmap coords) — flying to a spot in interstellar
+                          // space (e.g. a stranded ship) rather than a system. When set, the journey
+                          // targets this point and "arrival" rendezvouses there (adrift) instead of docking.
+  toLabel?: string;       // human label for a point destination (e.g. the target ship's name)
 }
 
 // A construct stranded in interstellar space (a journey ended mid-flight). It no longer belongs to

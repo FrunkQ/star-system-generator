@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.108-beta - 16th Jun 2026
+
+* (Groundwork) Interstellar journeys can now target a point in space, not just a star system — the foundation for plotting a course to a stranded ship. Arriving at a point rendezvouses there. The destination picker for this follows next.
+
 ## v2.0.107-beta - 16th Jun 2026
 
 * Moved the starmap measure tool onto the side rail (the same "Measure" slot as the in-system one), instead of a separate on-canvas button.
