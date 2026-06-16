@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_COI_CATEGORIES, toggleCoI, constructHasCoI, constructTardiness, mergeStarmapCoIs, coiCategories } from './coi';
+import { DEFAULT_COI_CATEGORIES, toggleCoI, constructHasCoI, constructTardiness, mergeStarmapCoIs, coiCategories, activeCoICategories, exportCoIs, importCoIs, orphanedCoITags, removeCoITag } from './coi';
 import type { CelestialBody } from '../types';
 
 const ship = (): CelestialBody => ({ id: 's', name: 'Ship', kind: 'construct', parentId: null, tags: [] } as any);
@@ -20,6 +20,33 @@ describe('CoI defaults', () => {
     expect(purpose.single).toBe(false);
     expect(purpose.tags.map((t) => t.key)).toContain('purpose/patrol');
     expect(purpose.tags.map((t) => t.key)).toContain('purpose/mining');
+  });
+});
+
+describe('CoI enabled / active set', () => {
+  it('only Owner, Purpose and Status default on', () => {
+    const on = DEFAULT_COI_CATEGORIES.filter((c) => c.enabled === true).map((c) => c.id).sort();
+    expect(on).toEqual(['owner', 'purpose', 'status']);
+  });
+  it('Profile and Cargo are not default categories', () => {
+    const ids = DEFAULT_COI_CATEGORIES.map((c) => c.id);
+    expect(ids).not.toContain('profile');
+    expect(ids).not.toContain('cargo');
+  });
+  it('activeCoICategories filters to enabled only', () => {
+    const active = activeCoICategories(DEFAULT_COI_CATEGORIES);
+    expect(active.every((c) => c.enabled === true)).toBe(true);
+    expect(active.some((c) => c.id === 'class')).toBe(false);   // Hull class default off
+  });
+});
+
+describe('CoI save / load pack', () => {
+  it('round-trips through export/import', () => {
+    const json = exportCoIs(DEFAULT_COI_CATEGORIES);
+    expect(json).toContain('sse-coi-pack');
+    const back = importCoIs(json);
+    expect(back.map((c) => c.id)).toEqual(DEFAULT_COI_CATEGORIES.map((c) => c.id));
+    expect(() => importCoIs('{"nope":1}')).toThrow();
   });
 });
 
@@ -44,6 +71,23 @@ describe('toggleCoI', () => {
     expect(s.tags!.find((t) => t.key === 'purpose/mining')?.manual).toBe(true);
     toggleCoI(s, purpose, 'purpose/mining');
     expect(constructHasCoI(s, 'purpose/mining')).toBe(false);
+  });
+});
+
+describe('orphaned CoI tags (category turned off / removed)', () => {
+  it('a CoI tag from an inactive category is reported orphaned, labelled, and removable', () => {
+    const s = ship();
+    s.tags = [{ key: 'class/cruiser', manual: true, coi: true } as any];   // Hull class is default OFF
+    const orph = orphanedCoITags(s, DEFAULT_COI_CATEGORIES);
+    expect(orph.map((o) => o.key)).toContain('class/cruiser');
+    expect(orph[0].label).toBe('Cruiser');                                  // label still resolved from the disabled category
+    removeCoITag(s, 'class/cruiser');
+    expect(s.tags!.some((t) => t.key === 'class/cruiser')).toBe(false);
+  });
+  it('a tag in an active category is not orphaned', () => {
+    const s = ship();
+    toggleCoI(s, purpose, 'purpose/patrol');
+    expect(orphanedCoITags(s, DEFAULT_COI_CATEGORIES).length).toBe(0);
   });
 });
 

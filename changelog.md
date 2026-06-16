@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.0.94-beta - 16th Jun 2026
+
+* Constructs of Interest now have an on/off page (Settings → CoIs), like Points of Interest: tick which categories are available on constructs. Owner, Purpose and Status are on by default; Hull class, FTL drive, Disposition and Tech & origin are off until you want them.
+* Save/Load CoI packs — export your category set to a file and load it back (or share it), so you can swap genres. They still travel inside the starmap regardless.
+* Turning off or deleting a category no longer loses tags already applied to ships: they stay on the construct shown greyed under "Inactive", with an ✕ to clear them if you want.
+* Dropped two default categories: Profile (inferred from the ship's fitted equipment) and Cargo type (set on the construct's Cargo tab).
+
 ## v2.0.93-beta - 15th Jun 2026
 
 * Expanded the default Constructs of Interest with more science-fiction range: more Purposes (salvage, rescue-tender, medical, diplomatic, tanker, factory/farm ship, comms relay, defence platform) plus new categories — Hull class (shuttle → dreadnought, station, habitat), FTL drive (sublight, jump, warp, hyperdrive, gate, generation, torch, sail), Status (active, damaged, derelict, mothballed…), Disposition (allied → hostile), Profile (armed, stealth, cloaked, Q-ship, AI/uncrewed, luxury…) and Cargo type (passengers, ore, hazmat, contraband…). All editable under Settings → CoIs; existing maps keep their lists (use Reset to defaults to pick up the new set).

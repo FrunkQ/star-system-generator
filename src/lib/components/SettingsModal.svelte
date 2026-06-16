@@ -5,6 +5,7 @@
   import { parseClockSeconds, resolveCalendar } from '$lib/temporal/utre';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { reasonsConfig, poiPacks, activeCategories } from '$lib/physics/reasonsToVisit';
+  import { coiCategories, setCoIEnabled } from '$lib/constructs/coi';
 
   export let showModal: boolean;
   export let starmap: Starmap;
@@ -287,6 +288,17 @@
         {:else if activeSection === 'coi'}
           <h3>Constructs of Interest</h3>
           <p class="section-hint">Hand-applied tags for ships &amp; stations — set on a construct's Tags tab. Unlike PoIs these are never auto-derived; you choose them. Owner sets the ship's tardiness, Purpose says what it does. They travel inside the starmap.</p>
+          <p class="section-hint">Categories — tick the ones you want available on constructs:</p>
+          <div class="form-group reason-cats">
+            {#each $coiCategories as cat (cat.id)}
+              <label class="cat-line">
+                <input type="checkbox" checked={cat.enabled === true} on:change={(e) => setCoIEnabled(cat.id, e.currentTarget.checked)} />
+                <span class="cat-swatch" style="background:{cat.color || '#888'}"></span>
+                <span class="cat-name">{cat.label}</span>
+                <span class="cat-count">{cat.tags.length} {cat.tags.length === 1 ? 'tag' : 'tags'}</span>
+              </label>
+            {/each}
+          </div>
           <button class="section-btn" on:click={() => { dispatch('editcoi'); showModal = false; }}>Edit Constructs of Interest…</button>
 
         {:else if activeSection === 'time'}

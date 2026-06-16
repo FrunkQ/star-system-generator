@@ -17,13 +17,14 @@ export interface CoICategory {
   color?: string;    // chip background
   textColor?: string;
   single?: boolean;  // true = at most one tag from this category may be applied (e.g. one Owner)
+  enabled?: boolean; // shown on constructs / usable when true (toggled on the Settings -> CoIs page)
   tags: CoITag[];
 }
 
 // Starter sets (Alex 2026-06-15). Owner -> tardiness; Purpose -> what the ship is for.
 export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
   {
-    id: 'owner', label: 'Owner', color: '#3f6fb0', textColor: '#ffffff', single: true,
+    id: 'owner', label: 'Owner', color: '#3f6fb0', textColor: '#ffffff', single: true, enabled: true,
     tags: [
       { key: 'owner/military', label: 'Military', tardiness: 0 },
       { key: 'owner/corporation', label: 'Corporation', tardiness: 0.25 },
@@ -33,7 +34,7 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
     ]
   },
   {
-    id: 'purpose', label: 'Purpose', color: '#2f9e8f', textColor: '#ffffff', single: false,
+    id: 'purpose', label: 'Purpose', color: '#2f9e8f', textColor: '#ffffff', single: false, enabled: true,
     tags: mkTags('purpose', [
       'patrol', 'ship-repair', 'refuel', 'leisure', 'people-transport', 'cargo-transport',
       'bulk-carrier', 'courier', 'mining', 'survey-prospecting', 'survey-science', 'prison',
@@ -43,7 +44,7 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
   },
   {
     // The ship's size/role class — scale governs what jobs make sense (a capital ship won't run courier).
-    id: 'class', label: 'Hull class', color: '#8a6fc0', textColor: '#ffffff', single: true,
+    id: 'class', label: 'Hull class', color: '#8a6fc0', textColor: '#ffffff', single: true, enabled: false,
     tags: mkTags('class', [
       'shuttle', 'fighter', 'gunship', 'corvette', 'frigate', 'destroyer', 'cruiser',
       ['capital', 'Capital ship'], 'carrier', 'dreadnought', 'freighter', ['liner', 'Liner'],
@@ -52,7 +53,7 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
   },
   {
     // FTL method — genre-defining and relevant to routing (sublight ships can't jump between stars).
-    id: 'drive', label: 'FTL drive', color: '#c07f3f', textColor: '#ffffff', single: true,
+    id: 'drive', label: 'FTL drive', color: '#c07f3f', textColor: '#ffffff', single: true, enabled: false,
     tags: mkTags('drive', [
       ['sublight', 'Sublight only'], 'jump-drive', 'warp', 'hyperdrive', ['gate', 'Wormhole / gate'],
       ['generation', 'Generation ship'], ['torch', 'Torch (fusion)'], 'solar-sail', ['ftl-unknown', 'Exotic / unknown']
@@ -60,7 +61,7 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
   },
   {
     // Operational state — guidance cares (a derelict isn't going anywhere; damaged needs repair first).
-    id: 'status', label: 'Status', color: '#5a7d8c', textColor: '#ffffff', single: true,
+    id: 'status', label: 'Status', color: '#5a7d8c', textColor: '#ffffff', single: true, enabled: true,
     tags: mkTags('status', [
       'active', 'damaged', 'adrift', 'derelict', 'mothballed', ['construction', 'Under construction'],
       'impounded', 'quarantined', 'lost', 'decommissioned'
@@ -68,29 +69,12 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
   },
   {
     // Stance toward the party — a quick GM read; could colour contacts on a future tactical view.
-    id: 'disposition', label: 'Disposition', color: '#b05050', textColor: '#ffffff', single: true,
+    id: 'disposition', label: 'Disposition', color: '#b05050', textColor: '#ffffff', single: true, enabled: false,
     tags: mkTags('disposition', ['allied', 'friendly', 'neutral', 'wary', 'hostile', 'unknown'])
   },
   {
-    // Flavour/behaviour traits (multi) — several can be true at once.
-    id: 'profile', label: 'Profile', color: '#7a8a3f', textColor: '#ffffff', single: false,
-    tags: mkTags('profile', [
-      'armed', 'unarmed', 'shielded', 'stealth', 'cloaked', ['q-ship', 'Q-ship (disguised)'],
-      'unregistered', ['ai-controlled', 'AI-controlled'], ['uncrewed', 'Automated / uncrewed'],
-      'luxury', 'decrepit', 'experimental'
-    ])
-  },
-  {
-    // What it carries (multi) — feeds trade/hauling logic and cargo-handling waypoints.
-    id: 'cargo', label: 'Cargo type', color: '#9c7b4a', textColor: '#ffffff', single: false,
-    tags: mkTags('cargo', [
-      'passengers', ['ore', 'Bulk ore'], ['refined', 'Refined goods'], ['volatiles', 'Fuel / volatiles'],
-      'hazmat', ['bio', 'Bio / livestock'], ['reefer', 'Refrigerated'], 'munitions', 'contraband', 'data'
-    ])
-  },
-  {
     // Tech level / origin — sets the sci-fi register (primitive frontier vs precursor relic).
-    id: 'tech', label: 'Tech & origin', color: '#6a6f7a', textColor: '#ffffff', single: true,
+    id: 'tech', label: 'Tech & origin', color: '#6a6f7a', textColor: '#ffffff', single: true, enabled: false,
     tags: mkTags('tech', [
       'primitive', 'industrial', 'standard', 'advanced', 'experimental',
       'alien', ['precursor', 'Precursor / ancient']
@@ -136,6 +120,28 @@ export function resetCoIs(): void {
   coiCategories.set(structuredClone(DEFAULT_COI_CATEGORIES));
 }
 
+// Only ENABLED categories are offered on constructs and used by guidance (toggled on Settings -> CoIs).
+export function activeCoICategories(cats: CoICategory[]): CoICategory[] {
+  return cats.filter((c) => c.enabled === true);
+}
+export function setCoIEnabled(id: string, on: boolean): void {
+  coiCategories.update((cs) => cs.map((c) => c.id === id ? { ...c, enabled: on } : c));
+}
+
+// --- Save / load CoI sets as files (like PoI packs) so people can swap genres. The whole category set
+//     is one "CoI pack". (They also travel inside the starmap regardless.) ---
+export function exportCoIs(cats: CoICategory[]): string {
+  return JSON.stringify({ _kind: 'sse-coi-pack', _version: 1, categories: cats }, null, 2);
+}
+export function importCoIs(json: string): CoICategory[] {
+  const p = JSON.parse(json);
+  const cats = Array.isArray(p) ? p : p?.categories;
+  if (!Array.isArray(cats) || !cats.every((c) => c && c.id && Array.isArray(c.tags))) {
+    throw new Error('Not a valid CoI pack (needs categories[] with id + tags).');
+  }
+  return cats.map((c) => ({ ...c, enabled: c.enabled !== false }));
+}
+
 // --- Applying / reading CoIs on a construct (tags live in construct.tags, flagged manual so the PoI
 //     re-tag pass never strips them). ---
 export function constructHasCoI(construct: CelestialBody, key: string): boolean {
@@ -152,8 +158,30 @@ export function toggleCoI(construct: CelestialBody, cat: CoICategory, key: strin
     construct.tags = construct.tags.filter((t) => t.key !== key);
   } else {
     if (cat.single) construct.tags = construct.tags.filter((t) => !catKeys.has(t.key)); // one per single-select category
-    construct.tags.push({ key, manual: true } as Tag);
+    construct.tags.push({ key, manual: true, coi: true } as Tag);
   }
+}
+
+// Remove a CoI tag outright (for cleaning up orphans).
+export function removeCoITag(construct: CelestialBody, key: string): void {
+  if (Array.isArray(construct.tags)) construct.tags = construct.tags.filter((t) => t.key !== key);
+}
+
+// A friendly label for a CoI tag key — from its (possibly disabled) category if still defined, else
+// derived from the key. Used to render orphaned tags whose category was removed.
+export function coiTagLabel(key: string, cats: CoICategory[]): string {
+  for (const c of cats) { const t = c.tags.find((x) => x.key === key); if (t) return t.label; }
+  const suffix = key.split('/')[1] || key;
+  return suffix.split('-').map((w) => w[0]?.toUpperCase() + w.slice(1)).join(' ');
+}
+
+// CoI tags on a construct whose category is no longer ACTIVE (disabled, removed, or the tag deleted from
+// its category). They're kept on the construct but shown greyed/inactive so nothing silently vanishes.
+export function orphanedCoITags(construct: CelestialBody, cats: CoICategory[]): { key: string; label: string }[] {
+  const activeKeys = new Set(activeCoICategories(cats).flatMap((c) => c.tags.map((t) => t.key)));
+  return (construct.tags || [])
+    .filter((t) => t.coi && !activeKeys.has(t.key))
+    .map((t) => ({ key: t.key, label: coiTagLabel(t.key, cats) }));
 }
 
 // The tardiness a construct inherits from its Owner CoI (used later by autopilot); undefined if no owner set.

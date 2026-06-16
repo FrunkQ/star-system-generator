@@ -1,9 +1,29 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import { coiCategories, resetCoIs, type CoICategory } from '$lib/constructs/coi';
+  import { coiCategories, resetCoIs, exportCoIs, importCoIs, mergeStarmapCoIs, setCoIEnabled, type CoICategory } from '$lib/constructs/coi';
 
   const dispatch = createEventDispatcher();
+  let fileInput: HTMLInputElement;
   $: cats = $coiCategories;
+
+  function save() {
+    const blob = new Blob([exportCoIs(cats)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'constructs-of-interest.json';
+    a.click(); URL.revokeObjectURL(url);
+  }
+  function load(e: Event) {
+    const f = (e.target as HTMLInputElement).files?.[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try { mergeStarmapCoIs(importCoIs(r.result as string)); }
+      catch (err) { alert('Could not load that CoI pack: ' + (err as Error).message); }
+    };
+    r.readAsText(f);
+    (e.target as HTMLInputElement).value = '';
+  }
 
   const slug = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
@@ -13,7 +33,7 @@
     const label = prompt('New category name (e.g. Faction)?');
     if (!label) return;
     const id = slug(label);
-    mutate((cs) => cs.some((c) => c.id === id) ? cs : [...cs, { id, label, color: '#666', textColor: '#fff', single: false, tags: [] }]);
+    mutate((cs) => cs.some((c) => c.id === id) ? cs : [...cs, { id, label, color: '#666', textColor: '#fff', single: false, enabled: true, tags: [] }]);
   }
   function removeCategory(id: string) {
     if (!confirm('Remove this category and its tags?')) return;
@@ -50,6 +70,7 @@
       {#each cats as cat (cat.id)}
         <div class="cat">
           <div class="cat-row">
+            <label class="on" title="Available on constructs"><input type="checkbox" checked={cat.enabled === true} on:change={(e) => setCoIEnabled(cat.id, (e.currentTarget as HTMLInputElement).checked)} /></label>
             <input class="color" type="color" value={cat.color || '#666666'} on:input={(e) => setCat(cat.id, { color: (e.currentTarget as HTMLInputElement).value })} />
             <input class="label" value={cat.label} on:input={(e) => setCat(cat.id, { label: (e.currentTarget as HTMLInputElement).value })} />
             <label class="single"><input type="checkbox" checked={cat.single} on:change={(e) => setCat(cat.id, { single: (e.currentTarget as HTMLInputElement).checked })} /> one only</label>
@@ -71,6 +92,9 @@
 
     <footer>
       <button on:click={addCategory}>+ Category</button>
+      <button on:click={save} title="Download these CoIs as a pack file">Save…</button>
+      <button on:click={() => fileInput.click()} title="Load a CoI pack (merges by category)">Load…</button>
+      <input type="file" accept=".json" bind:this={fileInput} on:change={load} style="display:none" />
       <button class="reset" on:click={() => { if (confirm('Reset CoIs to the built-in defaults?')) resetCoIs(); }}>Reset to defaults</button>
       <button class="primary" on:click={() => dispatch('close')}>Done</button>
     </footer>

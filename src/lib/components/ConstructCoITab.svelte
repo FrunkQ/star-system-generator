@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody } from '$lib/types';
-  import { coiCategories, toggleCoI, constructHasCoI, type CoICategory } from '$lib/constructs/coi';
+  import { coiCategories, activeCoICategories, orphanedCoITags, removeCoITag, toggleCoI, constructHasCoI, type CoICategory } from '$lib/constructs/coi';
 
   export let construct: CelestialBody;
   const dispatch = createEventDispatcher();
@@ -13,8 +13,11 @@
     tick++;
     dispatch('update');
   }
-  $: cats = $coiCategories;
+  $: cats = activeCoICategories($coiCategories);
   $: has = (key: string) => { void tick; return constructHasCoI(construct, key); };
+  // Tags whose category was turned off or removed — kept on the ship but shown greyed/inactive.
+  $: orphans = (void tick, orphanedCoITags(construct, $coiCategories));
+  function dropOrphan(key: string) { removeCoITag(construct, key); tick++; dispatch('update'); }
 </script>
 
 <div class="coi-tab">
@@ -40,6 +43,24 @@
       </div>
     </div>
   {/each}
+
+  {#if orphans.length}
+    <div class="cat inactive">
+      <div class="cat-head">
+        <span class="swatch off"></span>
+        <span class="cat-label">Inactive</span>
+        <span class="one">category turned off or removed</span>
+      </div>
+      <div class="chips">
+        {#each orphans as o (o.key)}
+          <span class="chip ghost" title="This tag's category is no longer active. It's kept on the construct — remove it with ✕.">
+            {o.label}
+            <button class="drop" on:click={() => dropOrphan(o.key)} aria-label="Remove tag">✕</button>
+          </span>
+        {/each}
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -58,4 +79,8 @@
   }
   .chip:hover { border-color: var(--accent, #5b8def); }
   .chip.on { font-weight: 600; }
+  .inactive { opacity: 0.6; }
+  .swatch.off { background: var(--border, #555); }
+  .chip.ghost { display: inline-flex; align-items: center; gap: 5px; font-style: italic; cursor: default; border-style: dashed; }
+  .chip.ghost .drop { background: none; border: none; color: var(--text-muted, #b8bcc4); cursor: pointer; padding: 0; font-size: 0.9em; }
 </style>
