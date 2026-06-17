@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.160-beta - 17th Jun 2026
+
+* Create New Construct now filters exactly like Find by tag. Every enabled CoI category (Owner, Purpose, Resources, Hull class, FTL drive, Tech, Universe, Status) is a clickable bubble — open it to see its tags (with live counts) and click to add them to the filter; multiple tags match as "all of these". Search still spans names and tags together, so "Rocinante" finds the ship and "shipyard" finds the ports, and it composes with the tag filters.
+
 ## v2.0.159-beta - 17th Jun 2026
 
 * Create New Construct is now a tag-filter picker instead of a folder tree. Search by name or capability (type "shipyard" and you get the four ports that build ships; "refuel" the refuelling stops), narrow by Universe (Expanse / Traveller / Aliens / …) and role (Ship / Station / …), and every construct shows its CoI tags inline — so a Class A starport reads as its bundle of capabilities at a glance. The old `Universe/Type/Subtype` class-path string (which only drove the folder tree, and was redundant once Universe, Hull class and capabilities became tags) has been dropped from every template.

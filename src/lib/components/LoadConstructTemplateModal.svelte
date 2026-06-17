@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
-  import { coiCategories, coiTagLabel } from '$lib/constructs/coi';
+  import { coiCategories, activeCoICategories, coiTagLabel } from '$lib/constructs/coi';
 
   export let rulePack: RulePack;
   export let mode: 'overwrite' | 'create' = 'overwrite';
@@ -9,12 +9,13 @@
   const dispatch = createEventDispatcher();
 
   let allTemplates: CelestialBody[] = [];
-  let search = '';
-  let selectedUniverse: string | null = null;   // a universe/* tag key
-  let selectedRole: string | null = null;        // a roleHint value
+  let q = '';                            // free-text search — matches name, description AND tags
+  let expanded: string | null = null;    // which category facet is open
+  let filters: string[] = [];            // active tag keys (ANDed, like Find by tag)
   let selectedTemplate: CelestialBody | null = null;
 
   $: cats = $coiCategories;
+  $: activeCats = activeCoICategories(cats);
   const label = (key: string) => coiTagLabel(key, cats);
   const roleLabel = (r: string) => r.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -30,33 +31,50 @@
 
   const tagKeys = (t: CelestialBody): string[] => (t.tags || []).map((x: any) => x.key);
 
-  // Facet chips, derived from the templates' own tags. Universe = the new universe/* CoI; Role = roleHint.
-  $: universes = Array.from(new Set(allTemplates.flatMap((t) => tagKeys(t).filter((k) => k.startsWith('universe/'))))).sort();
-  $: roles = Array.from(new Set(allTemplates.map((t) => t.roleHint).filter(Boolean))) as string[];
+  // tag key -> templates carrying it (for facet counts).
+  $: index = (() => {
+    const m = new Map<string, CelestialBody[]>();
+    for (const t of allTemplates) for (const k of tagKeys(t)) {
+      const a = m.get(k); if (a) a.push(t); else m.set(k, [t]);
+    }
+    return m;
+  })();
 
-  $: filtered = allTemplates.filter((t) => {
-    if (selectedUniverse && !tagKeys(t).includes(selectedUniverse)) return false;
-    if (selectedRole && t.roleHint !== selectedRole) return false;
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      const inName = t.name?.toLowerCase().includes(q);
-      const inDesc = t.description?.toLowerCase().includes(q);
-      const inTags = tagKeys(t).some((k) => k.toLowerCase().includes(q) || label(k).toLowerCase().includes(q));
-      if (!inName && !inDesc && !inTags) return false;
+  // One facet per ENABLED CoI category, listing the tags actually present on the templates (with counts).
+  // Categories the GM has turned off in Settings -> CoIs simply don't appear here.
+  $: facets = activeCats
+    .map((c) => ({
+      id: c.id, label: c.label, color: c.color || '#888', textColor: c.textColor || '#fff',
+      tags: c.tags.map((t) => t.key).filter((k) => index.has(k))
+        .map((k) => ({ key: k, label: label(k), count: index.get(k)!.length }))
+    }))
+    .filter((f) => f.tags.length > 0);
+
+  $: results = allTemplates.filter((t) => {
+    const keys = new Set(tagKeys(t));
+    if (!filters.every((f) => keys.has(f))) return false;          // must carry ALL active filter tags
+    if (q.trim()) {
+      const s = q.trim().toLowerCase();
+      const inName = t.name?.toLowerCase().includes(s);
+      const inDesc = t.description?.toLowerCase().includes(s);
+      const inTags = [...keys].some((k) => k.toLowerCase().includes(s) || label(k).toLowerCase().includes(s));
+      if (!inName && !inDesc && !inTags) return false;             // search spans names AND tags
     }
     return true;
   }).sort((a, b) => a.name.localeCompare(b.name));
 
-  // Tags worth showing on a row: skip the universe (it's a facet) and status; lead with class then purpose.
+  const catColor = (key: string) => activeCats.find((c) => key.startsWith(c.id + '/'))?.color || '#666';
+  // Tags worth showing on a row — skip Status noise; lead class, owner, purpose, resource.
   const chipTags = (t: CelestialBody): string[] => {
-    const keys = tagKeys(t).filter((k) => !k.startsWith('universe/') && !k.startsWith('status/'));
-    const rank = (k: string) => (k.startsWith('class/') ? 0 : k.startsWith('owner/') ? 1 : k.startsWith('purpose/') ? 2 : k.startsWith('resource/') ? 3 : 4);
+    const keys = tagKeys(t).filter((k) => !k.startsWith('status/'));
+    const rank = (k: string) => (k.startsWith('universe/') ? 0 : k.startsWith('class/') ? 1 : k.startsWith('owner/') ? 2 : k.startsWith('purpose/') ? 3 : k.startsWith('resource/') ? 4 : 5);
     return keys.sort((a, b) => rank(a) - rank(b));
   };
 
-  function toggleUniverse(k: string) { selectedUniverse = selectedUniverse === k ? null : k; }
-  function toggleRole(r: string) { selectedRole = selectedRole === r ? null : r; }
-  function clearFilters() { search = ''; selectedUniverse = null; selectedRole = null; }
+  function toggleFilter(key: string) {
+    filters = filters.includes(key) ? filters.filter((k) => k !== key) : [...filters, key];
+  }
+  function clearAll() { q = ''; filters = []; expanded = null; }
 
   function handleLoad() {
     if (selectedTemplate) { dispatch('load', selectedTemplate); dispatch('close'); }
@@ -71,29 +89,48 @@
       <p class="warning">Warning: Overwrites current configuration.</p>
     {/if}
 
-    <!-- Filters: search by name/capability, then narrow by Universe + Role. -->
-    <div class="filters">
-      <input class="search" type="text" placeholder="Search name or capability (e.g. shipyard, refuel)…" bind:value={search} />
-      <div class="chip-row">
-        {#each universes as u}
-          <button class="chip universe {selectedUniverse === u ? 'on' : ''}" on:click={() => toggleUniverse(u)}>{label(u)}</button>
+    <div class="filters-panel">
+      <input class="search" type="text" placeholder="Search name or tag (e.g. Rocinante, shipyard, refuel)…" bind:value={q} />
+
+      <!-- One bubble per enabled CoI category; open it to pick tags into the filter (ANDed). -->
+      <div class="bubbles">
+        {#each facets as f (f.id)}
+          <button class="bubble" class:open={expanded === f.id} style="--c:{f.color}" on:click={() => (expanded = expanded === f.id ? null : f.id)}>
+            {f.label} <span class="bcnt">{f.tags.length}</span>
+          </button>
         {/each}
       </div>
-      <div class="chip-row">
-        {#each roles as r}
-          <button class="chip role {selectedRole === r ? 'on' : ''}" on:click={() => toggleRole(r)}>{roleLabel(r)}</button>
-        {/each}
-        {#if search || selectedUniverse || selectedRole}
-          <button class="chip clear" on:click={clearFilters}>Clear</button>
+      {#if expanded}
+        {@const f = facets.find((x) => x.id === expanded)}
+        {#if f}
+          <div class="cat-tags">
+            {#each f.tags as t (t.key)}
+              <button class="chip" class:active={filters.includes(t.key)} style="background:{f.color}; color:{f.textColor}" on:click={() => toggleFilter(t.key)} title={t.key}>
+                {t.label} <span class="cnt">{t.count}</span>
+              </button>
+            {/each}
+          </div>
+        {/if}
+      {/if}
+
+      <div class="active-filters">
+        {#if filters.length}
+          <span class="flabel">Matching all:</span>
+          {#each filters as key (key)}
+            <button class="chip rm" style="background:{catColor(key)}" on:click={() => toggleFilter(key)} title="Remove">{label(key)} <span class="x">×</span></button>
+          {/each}
+          <button class="clear" on:click={clearAll}>Clear</button>
+        {:else}
+          <span class="hint">Open a category to filter, or search by name/tag.</span>
         {/if}
       </div>
     </div>
 
     <div class="browser-window">
-      {#if filtered.length === 0}
+      {#if results.length === 0}
         <div class="empty-msg">No constructs match.</div>
       {/if}
-      {#each filtered as t (t.id || t.name)}
+      {#each results as t (t.id || t.name)}
         <div class="browser-item {selectedTemplate === t ? 'selected' : ''}"
              on:click={() => (selectedTemplate = t)}
              on:dblclick={handleLoad}>
@@ -103,7 +140,7 @@
           <div class="file-info">
             <span class="name">{t.name}</span>
             <div class="tag-chips">
-              {#each chipTags(t) as k}<span class="tag-chip">{label(k)}</span>{/each}
+              {#each chipTags(t) as k}<span class="tag-chip" style="border-color:{catColor(k)}">{label(k)}</span>{/each}
             </div>
           </div>
         </div>
@@ -120,7 +157,7 @@
             {selectedTemplate.systems?.power_plants?.[0]?.type || 'No Power'}
           </div>
         {:else}
-          <span class="placeholder">{filtered.length} construct{filtered.length === 1 ? '' : 's'} — select one…</span>
+          <span class="placeholder">{results.length} construct{results.length === 1 ? '' : 's'} — select one…</span>
         {/if}
       </div>
       <div class="buttons">
@@ -142,7 +179,7 @@
   }
   .modal {
     background-color: var(--bg-panel); border-radius: 8px;
-    display: flex; flex-direction: column; width: 640px; height: 560px;
+    display: flex; flex-direction: column; width: 640px; height: 580px;
     border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     color: var(--text); overflow: hidden;
   }
@@ -155,8 +192,7 @@
     font-size: 0.8em; text-align: center;
   }
 
-  /* Filters */
-  .filters {
+  .filters-panel {
     padding: 10px 15px; background-color: var(--bg-panel);
     border-bottom: 1px solid var(--border-soft); display: flex; flex-direction: column; gap: 8px;
   }
@@ -165,18 +201,37 @@
     border: 1px solid var(--border); background: var(--bg-control); color: var(--text); font-size: 0.9em;
   }
   .search:focus { outline: none; border-color: var(--accent); }
-  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip {
-    padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border);
-    background: var(--bg-control); color: var(--text-muted); font-size: 0.78em; cursor: pointer;
-    transition: background 0.1s, color 0.1s, border-color 0.1s;
-  }
-  .chip:hover { background: var(--bg-control-hover); }
-  .chip.universe.on { background: #7a6a9a; border-color: #7a6a9a; color: #fff; }
-  .chip.role.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .chip.clear { color: var(--text-faint); border-style: dashed; }
 
-  /* List */
+  .bubbles { display: flex; flex-wrap: wrap; gap: 4px; }
+  .bubble {
+    background: color-mix(in srgb, var(--c) 22%, transparent); border: 1px solid var(--c);
+    color: var(--text); border-radius: 999px; padding: 2px 9px; font-size: 0.74rem;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .bubble.open { background: var(--c); color: #fff; }
+  .bcnt { font-size: 0.68em; opacity: 0.7; }
+
+  .cat-tags {
+    display: flex; flex-wrap: wrap; gap: 5px; padding: 6px; max-height: 22vh; overflow-y: auto;
+    background: var(--bg-control); border-radius: 6px;
+  }
+  .chip {
+    border: none; border-radius: 4px; padding: 3px 8px; font-size: 0.78rem; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; color: #fff;
+  }
+  .chip:hover { filter: brightness(1.12); }
+  .chip.active { outline: 2px solid #fff; }
+  .cnt { font-size: 0.72em; opacity: 0.85; background: rgba(0,0,0,0.22); border-radius: 8px; padding: 0 5px; }
+
+  .active-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 24px; }
+  .flabel { font-size: 0.74rem; color: var(--text-faint); }
+  .hint { font-size: 0.76rem; color: var(--text-faint); font-style: italic; }
+  .chip.rm .x { font-weight: bold; margin-left: 2px; }
+  .clear {
+    background: none; border: 1px dashed var(--border); color: var(--text-faint);
+    border-radius: 999px; padding: 2px 9px; font-size: 0.74rem; cursor: pointer;
+  }
+
   .browser-window { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
   .browser-item {
     display: flex; align-items: flex-start; padding: 8px 12px; border-radius: 4px;
@@ -200,7 +255,6 @@
   }
   .empty-msg { color: var(--text-faint); text-align: center; margin-top: 50px; font-style: italic; }
 
-  /* Footer */
   .footer {
     padding: 15px; background-color: var(--bg-panel); border-top: 1px solid var(--border-soft);
     display: flex; justify-content: space-between; align-items: center;
@@ -209,10 +263,9 @@
   .selected-info .stats { color: var(--text-muted); font-size: 0.85em; }
   .placeholder { color: var(--text-faint); font-style: italic; }
   .buttons { display: flex; gap: 10px; }
-  button { padding: 8px 16px; border-radius: 4px; cursor: pointer; border: none; font-size: 0.9em; }
-  button.secondary { background-color: var(--bg-control); color: var(--text-muted); }
+  button.secondary { background-color: var(--bg-control); color: var(--text-muted); padding: 8px 16px; border-radius: 4px; cursor: pointer; border: none; font-size: 0.9em; }
   button.secondary:hover { background-color: var(--bg-control-hover); }
-  button.primary { background-color: var(--accent); color: white; }
+  button.primary { background-color: var(--accent); color: white; padding: 8px 16px; border-radius: 4px; cursor: pointer; border: none; font-size: 0.9em; }
   button.primary:hover { background-color: #0056b3; }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
