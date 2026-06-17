@@ -73,6 +73,25 @@ on the inherited tag (alongside the precedent of `tardiness` on Owner, `readines
 the rulepack/tech editors (Settings) — the tag becomes a property of the tech. Editing the definition
 re-derives every entity that uses it.
 
+## Resource reconciliation — atmosphere (deterministic) vs ground (prospect) — DONE v2.0.166
+Key constraint found: `annotateReasonsToVisit` **clears + owns the `resource/*` namespace** (strips all
+non-manual resource tags, then re-derives), so atmosphere resources can't be added in an earlier pass —
+they'd be wiped. Resolution (Alex 2026-06-17):
+- **Atmosphere-present resources are DETERMINISTIC (chance 1.0)** — the gas is measurably there, so the
+  resource certainly is. Seeded by `applyAtmosphereResources` in SystemProcessor **right after** the reasons
+  pass, from the gas `resourceTags` + composition, carrying the gas % as abundance.
+- **Ground / subsurface resources stay SEMI-RANDOM PoI rules** (metals, fissiles, diamonds…) — a prospecting
+  gamble, where the PoI rule is the only seeder.
+- The duplicate atmosphere chance-rules were **removed** (O₂→oxidizer, giant→He-3, CH₄-atmosphere→
+  hydrocarbons); the deterministic pass owns those. De-dup: an existing key (e.g. water-ice from surface ice)
+  is **enriched** with abundance/provenance, not duplicated.
+- **Provenance** (`Tag.source`): atmosphere tags carry `source:'atmosphere'`; rule tags carry
+  `source:'rule:<id>'`. Drives the planned mouseover ("where did this resource come from?").
+
+**Still TODO (UI):** the provenance **mouseover** display on a resource chip; and the per-rule **auto-seed
+toggle** in Edit Rule (chance 1.0 = always/deterministic, 0–1 = random, OFF = manual-only), highlighting
+which resource rules are deterministic vs random vs manual.
+
 ## Build sequence
 1. Add `resource/noble-gases` + `resource/antimatter` to the CoI Resources category (antimatter: no gen rule).
 2. Add the tag fields to the three definition files (gas→resource, fuel→resource+availability, engine→drive).
