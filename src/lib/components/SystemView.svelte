@@ -1506,8 +1506,32 @@
     });
   }
 
+  // Throttle the (potentially expensive, for coasting ships) re-derive while the clock is being jogged:
+  // run it at most every ~150ms during a scrub, then a trailing "settle" pass so the FINAL time is exact.
+  // Fast/cheap while dragging, right when you let go.
+  const SYNC_THROTTLE_MS = 150;
+  let lastSyncWallMs = 0;
+  let settleTimer: ReturnType<typeof setTimeout> | null = null;
+  let settleTime = 0;
+  function requestSync(timeMs: number) {
+    settleTime = timeMs;
+    const now = (typeof performance !== 'undefined' ? performance.now() : 0);
+    if (now - lastSyncWallMs >= SYNC_THROTTLE_MS) {
+      lastSyncWallMs = now;
+      if (settleTimer) { clearTimeout(settleTimer); settleTimer = null; }
+      syncScheduledJourneysAtDisplayTime(timeMs);
+    } else {
+      if (settleTimer) clearTimeout(settleTimer);
+      settleTimer = setTimeout(() => {
+        settleTimer = null;
+        lastSyncWallMs = (typeof performance !== 'undefined' ? performance.now() : 0);
+        syncScheduledJourneysAtDisplayTime(settleTime);   // exact at the resting time
+      }, SYNC_THROTTLE_MS);
+    }
+  }
+
   $: if ($systemStore && !isPlanning) {
-    syncScheduledJourneysAtDisplayTime(currentTime);
+    requestSync(currentTime);
   }
 
   function handleClickOutside(event: MouseEvent) {

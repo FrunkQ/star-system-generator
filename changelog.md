@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.148-beta - 17th Jun 2026
+
+* Scrubbing/jogging the clock is much smoother. The orrery was re-deriving every coasting ship's position on every single jog frame; it now throttles that re-derive to ~150ms while you're moving the clock and does one exact pass the moment you settle — fast estimates while dragging, right when you let go.
+* Routes panel: added a "Stranded ships" group at the bottom — constructs that are adrift/coasting (not under power, not orbiting), in-system or in interstellar space, with where they are and where they were bound. Click to jump to the ship.
+
 ## v2.0.147-beta - 17th Jun 2026
 
 * Big performance fix for drifting ships. The orrery was re-integrating a coasting ship's whole trajectory from its cancel point every single frame — so the longer it had been adrift, the heavier each redraw (the jumpy clock and "orrery barely moves"). It now steps forward incrementally from the previous frame's state, so each frame is cheap and constant regardless of how long the ship's been coasting; the path also stops jittering (each frame extends the last instead of recomputing).

@@ -195,7 +195,27 @@
         }
       }
     }
-    return { interstellar, journeys, interstellarJourneys };
+    // Stranded = cut loose, coasting (not under power, not orbiting). In-system: a construct carrying a
+    // cancelled journey with a captured cancelState. Interstellar: anything in adriftConstructs. (Times kept
+    // out of here deliberately until the clock/epoch audit — just who & where.)
+    const stranded: any[] = [];
+    for (const sys of map.systems) {
+      for (const n of (sys.system?.nodes ?? []) as any[]) {
+        if (n.kind !== 'construct') continue;
+        const cancelled = (n.scheduled_journeys ?? []).filter((j: any) => j.status === 'cancelled' && j.cancelState);
+        if (!cancelled.length) continue;
+        const last = cancelled[cancelled.length - 1];
+        const plans = last.plans ?? [];
+        const wasBound = plans.length ? ((sys.system?.nodes ?? []) as any[]).find((x) => x.id === plans[plans.length - 1].targetId)?.name : null;
+        stranded.push({ id: n.id, constructName: n.name, where: sys.name, systemId: sys.id, wasBound, interstellar: false });
+      }
+    }
+    for (const a of (map.adriftConstructs ?? [])) {
+      if (!a.construct?.id) continue;
+      const j = (map.activeJourneys ?? []).find((x: any) => x.shipId === a.construct.id);
+      stranded.push({ id: a.construct.id, constructName: a.construct.name ?? 'Ship', where: 'Interstellar space', wasBound: sysName(a.toSystemId ?? ''), interstellar: true, journeyId: j?.id ?? null });
+    }
+    return { interstellar, journeys, interstellarJourneys, stranded };
   })();
   $: allShips = allBodies.filter((n: any) => n.kind === 'construct');
   $: allBodies = (() => {
@@ -1368,6 +1388,22 @@
               </div>
             {/each}
           {/if}
+          {#if routesData.stranded.length}
+            <h4>Stranded ships ({routesData.stranded.length})</h4>
+            {#each routesData.stranded as s (s.id)}
+              <div class="route-row static">
+                <span class="route-main">
+                  {#if s.interstellar && s.journeyId}
+                    <button class="pill ship" title="Open the ship" on:click={() => { showRoutes = false; if (currentSystemId) handleBackToStarmap(); shipPanelJourneyId = s.journeyId; }}>{s.constructName}</button>
+                  {:else if !s.interstellar}
+                    <button class="pill ship" title="Go to the ship" on:click={() => { showRoutes = false; enterSystemAndFocus(s.systemId, s.id); }}>{s.constructName}</button>
+                  {:else}<strong>{s.constructName}</strong>{/if}
+                  <span class="route-stranded"> · adrift, coasting</span>
+                </span>
+                <span class="route-sys">{s.where}{#if s.wasBound} · was bound {s.wasBound}{/if}</span>
+              </div>
+            {/each}
+          {/if}
         </div>
       </div>
     </div>
@@ -1526,6 +1562,7 @@
   .route-sys { flex: 0 0 auto; color: var(--text-faint, #8a8f9a); font-size: 0.8rem; }
   .route-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
   .route-when { font-size: 0.74rem; color: var(--text-faint, #8a8f9a); flex-basis: 100%; }
+  .route-stranded { color: #e8a857; font-size: 0.82em; }
   /* Interstellar journey rows: source / destination / ship are individually clickable pills. */
   .route-row.interstellar { cursor: default; flex-wrap: wrap; }
   .route-pills { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; }
