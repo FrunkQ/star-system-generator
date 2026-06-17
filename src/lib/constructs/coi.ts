@@ -10,7 +10,10 @@ export interface CoITag {
   key: string;       // namespaced, e.g. 'owner/military', 'purpose/patrol'
   label: string;     // what the user sees
   tardiness?: number; // owner tags carry the 0..1 tardiness the ship inherits (used later by autopilot)
-  locked?: boolean;  // can't be removed (e.g. Status: Active is the operational baseline)
+  readiness?: number; // STATUS tags only: 0..1 operational capability (drive). Absent ⇒ 1 (no impairment).
+                      // A construct is assumed operational (1) unless a status blocks it: Derelict 0 (dead),
+                      // Under construction 0.5 (half drive), etc. See constructReadiness().
+  locked?: boolean;  // can't be removed
   derived?: boolean; // auto-mirrored from internal state (e.g. Status: Adrift / In transit), not hand-set
 }
 export interface CoICategory {
@@ -27,19 +30,27 @@ export interface CoICategory {
 // Starter sets (Alex 2026-06-15). Owner -> tardiness; Purpose -> what the ship is for.
 export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
   {
-    // Operational state. Multi-select (a ship can be Damaged AND Active). ACTIVE is the locked baseline.
+    // Operational state. Multi-select. NO "Active" tag — a construct is assumed fully operational (readiness
+    // 1) unless a status impairs it; each blocking status carries a `readiness` (0..1) drive multiplier.
     // Adrift / In transit are DERIVED from the journey log (mirroring internal state), not hand-set.
     // A CORE category autopilot relies on — always on, can't be removed.
     id: 'status', label: 'Status', color: '#5a7d8c', textColor: '#ffffff', single: false, enabled: true, required: true,
     tags: [
-      { key: 'status/active', label: 'Active', locked: true },
       { key: 'status/in-transit-interstellar', label: 'In transit (interstellar)', derived: true },
       { key: 'status/in-transit-system', label: 'In transit (in-system)', derived: true },
-      { key: 'status/adrift', label: 'Adrift', derived: true },
-      ...mkTags('status', [
-        'damaged', 'distress', 'refit', 'dormant', 'captured', 'derelict', 'mothballed',
-        ['construction', 'Under construction'], 'impounded', 'quarantined', 'lost', 'decommissioned'
-      ])
+      { key: 'status/adrift', label: 'Adrift', derived: true, readiness: 0 },
+      { key: 'status/damaged', label: 'Damaged', readiness: 0.5 },
+      { key: 'status/distress', label: 'Distress', readiness: 0 },
+      { key: 'status/refit', label: 'Refit', readiness: 0 },
+      { key: 'status/dormant', label: 'Dormant', readiness: 0 },
+      { key: 'status/captured', label: 'Captured' },
+      { key: 'status/derelict', label: 'Derelict', readiness: 0 },
+      { key: 'status/mothballed', label: 'Mothballed', readiness: 0 },
+      { key: 'status/construction', label: 'Under construction', readiness: 0.5 },
+      { key: 'status/impounded', label: 'Impounded', readiness: 0 },
+      { key: 'status/quarantined', label: 'Quarantined', readiness: 0 },
+      { key: 'status/lost', label: 'Lost', readiness: 0 },
+      { key: 'status/decommissioned', label: 'Decommissioned', readiness: 0 }
     ]
   },
   {
@@ -150,13 +161,19 @@ export function normalizeCoIs(cats: CoICategory[]): CoICategory[] {
     cur.required = true;
     cur.enabled = true;
     if (def.id === 'status') {
-      if (!cur.tags.some((t) => t.key === 'status/active')) cur.tags.unshift({ key: 'status/active', label: 'Active' });
-      for (const t of cur.tags) if (t.key === 'status/active') t.locked = true;
-      // The system NEEDS the derived state tags — re-add any a stale/imported set is missing.
-      for (const d of [{ key: 'status/in-transit-interstellar', label: 'In transit (interstellar)' }, { key: 'status/in-transit-system', label: 'In transit (in-system)' }, { key: 'status/adrift', label: 'Adrift' }]) {
+      // Drop any legacy "Active" tag — operational is now the default (no tag), gated by readiness.
+      cur.tags = cur.tags.filter((t) => t.key !== 'status/active');
+      // The system NEEDS the derived state tags — re-add any a stale/imported set is missing (Adrift is a
+      // zero-readiness blocker; in-transit are operational).
+      for (const d of [
+        { key: 'status/in-transit-interstellar', label: 'In transit (interstellar)' },
+        { key: 'status/in-transit-system', label: 'In transit (in-system)' },
+        { key: 'status/adrift', label: 'Adrift', readiness: 0 }
+      ]) {
         let t = cur.tags.find((x) => x.key === d.key);
         if (!t) { t = { ...d }; cur.tags.push(t); }
         t.derived = true;
+        if ((d as any).readiness !== undefined) t.readiness = (d as any).readiness;
       }
     }
   }
@@ -209,14 +226,22 @@ export function derivedStatusKey(placementKind: 'transit' | 'adrift' | string | 
   return null;
 }
 
-// Ensure a construct carries the baseline Active status — legacy ships predate the Status category, so
-// any construct with no manual status/* tag gets status/active. Mutates in place; idempotent.
-export function ensureConstructActiveTag(construct: CelestialBody): boolean {
-  if (construct.kind !== 'construct') return false;
-  const tags = construct.tags ?? (construct.tags = []);
-  if (tags.some((t) => t.key.startsWith('status/'))) return false;
-  tags.push({ key: 'status/active', manual: true, coi: true } as Tag);
-  return true;
+// A construct's operational readiness (0..1) — its capability multiplier for movement/drive. There is no
+// "Active" tag: a construct is assumed fully operational (1) unless a Status tag impairs it, in which case
+// the LOWEST readiness among its status tags wins (the most limiting blocker). Derelict 0 = dead in space;
+// Under construction / Damaged 0.5 = half drive. Statuses with no `readiness` (e.g. In transit, Captured)
+// don't impair. Pass the category set to avoid a store read in hot paths.
+export function constructReadiness(construct: CelestialBody, cats?: CoICategory[]): number {
+  const statusCat = (cats ?? get(coiCategories)).find((c) => c.id === 'status');
+  if (!statusCat) return 1;
+  const readinessOf = new Map(statusCat.tags.map((t) => [t.key, t.readiness]));
+  let r = 1;
+  for (const tag of construct.tags ?? []) {
+    if (!tag.key.startsWith('status/')) continue;
+    const rd = readinessOf.get(tag.key);
+    if (typeof rd === 'number') r = Math.min(r, rd);
+  }
+  return r;
 }
 
 // --- Save / load CoI sets as files (like PoI packs) so people can swap genres. The whole category set

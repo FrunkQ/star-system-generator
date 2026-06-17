@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.0.161-beta - 17th Jun 2026
+
+* Killed the "Active" construct status — it was on everything by default and told you nothing. A construct is now assumed fully operational unless a status says otherwise. Each Status carries a readiness (0–1 drive capability): Derelict / Adrift / Distress / Mothballed / Impounded / Quarantined / Lost / Decommissioned / Refit / Dormant = 0 (can't move), Damaged and Under construction = 0.5 (half drive), and anything unimpaired = 1. A construct's overall readiness is its most-limiting status (lowest wins), exposed via `constructReadiness()` for the upcoming autopilot/drive work.
+
+## v2.0.161-beta - 17th Jun 2026
+
+* Dropped the "Active" construct status — it was noise (everything would carry it). A construct is now assumed fully operational unless a status blocks it, and each Status carries a readiness (0..1) capability factor: Derelict 0 (dead in space), Under construction / Damaged 0.5 (half drive), Adrift / Distress / Mothballed / Impounded … 0. A construct's readiness is the lowest among its statuses (the worst blocker wins); nothing applied = 1. (`constructReadiness()` — the hook the transit/autopilot layer will scale drive capability by.)
+
 ## v2.0.160-beta - 17th Jun 2026
 
 * Create New Construct now filters exactly like Find by tag. Every enabled CoI category (Owner, Purpose, Resources, Hull class, FTL drive, Tech, Universe, Status) is a clickable bubble — open it to see its tags (with live counts) and click to add them to the filter; multiple tags match as "all of these". Search still spans names and tags together, so "Rocinante" finds the ship and "shipyard" finds the ports, and it composes with the tag filters.

@@ -30,7 +30,7 @@
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import PoIPackEditor from '$lib/components/PoIPackEditor.svelte';
   import CoIEditor from '$lib/components/CoIEditor.svelte';
-  import { coiForStarmap, mergeStarmapCoIs, derivedStatusKey, ensureConstructActiveTag } from '$lib/constructs/coi';
+  import { coiForStarmap, mergeStarmapCoIs, derivedStatusKey } from '$lib/constructs/coi';
   import LlmSettingsModal from '$lib/components/LlmSettingsModal.svelte';
   import EditFuelAndDrivesModal from '$lib/components/EditFuelAndDrivesModal.svelte';
   import EditAtmospheresModal from '$lib/components/EditAtmospheresModal.svelte';
@@ -833,7 +833,6 @@
       try {
         if (node?.system?.nodes) {
           node.system = systemProcessor.process(node.system, selectedRulepack);
-          for (const n of node.system.nodes) if (n.kind === 'construct') ensureConstructActiveTag(n as any);  // legacy ships → Active
         }
       } catch (e) { console.warn('Recalc failed for system', node?.name, e); }
       physicsProgress = { done: i + 1, total: systems.length, joke: i % 3 === 2 ? PHYSICS_JOKES[(i + 1) % PHYSICS_JOKES.length] : physicsProgress.joke };

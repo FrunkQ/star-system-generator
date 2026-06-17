@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_COI_CATEGORIES, toggleCoI, constructHasCoI, constructTardiness, mergeStarmapCoIs, coiCategories, activeCoICategories, exportCoIs, importCoIs, orphanedCoITags, removeCoITag, normalizeCoIs, derivedStatusKey, addCoITag, type CoICategory } from './coi';
+import { DEFAULT_COI_CATEGORIES, toggleCoI, constructHasCoI, constructTardiness, constructReadiness, mergeStarmapCoIs, coiCategories, activeCoICategories, exportCoIs, importCoIs, orphanedCoITags, removeCoITag, normalizeCoIs, derivedStatusKey, addCoITag, type CoICategory } from './coi';
 import { get } from 'svelte/store';
 import type { CelestialBody } from '../types';
 
@@ -25,44 +25,48 @@ describe('CoI defaults', () => {
 });
 
 describe('core categories (autopilot needs Status, Owner, Purpose)', () => {
-  it('Status is first, required, multi-select, with a locked Active + derived states', () => {
+  it('Status is first, required, multi-select, with derived states + readiness blockers and NO Active tag', () => {
     expect(DEFAULT_COI_CATEGORIES[0].id).toBe('status');
     const status = DEFAULT_COI_CATEGORIES[0];
     expect(status.required).toBe(true);
-    expect(status.single).toBe(false);                                   // a ship can be Damaged AND Active
-    expect(status.tags.find((t) => t.key === 'status/active')?.locked).toBe(true);
+    expect(status.single).toBe(false);                                   // a ship can be Damaged AND Quarantined
+    expect(status.tags.some((t) => t.key === 'status/active')).toBe(false); // Active removed — operational is the default
     expect(status.tags.find((t) => t.key === 'status/adrift')?.derived).toBe(true);
+    expect(status.tags.find((t) => t.key === 'status/adrift')?.readiness).toBe(0);
+    expect(status.tags.find((t) => t.key === 'status/derelict')?.readiness).toBe(0);
+    expect(status.tags.find((t) => t.key === 'status/construction')?.readiness).toBe(0.5);
     expect(status.tags.find((t) => t.key === 'status/in-transit-interstellar')?.derived).toBe(true);
-    expect(status.tags.find((t) => t.key === 'status/in-transit-system')?.derived).toBe(true);
   });
   it('Status, Owner and Purpose are all required', () => {
     for (const id of ['status', 'owner', 'purpose']) {
       expect(DEFAULT_COI_CATEGORIES.find((c) => c.id === id)?.required).toBe(true);
     }
   });
-  it('normalizeCoIs re-adds a dropped core category, forces it enabled, and locks Active', () => {
-    // a stale/hand-broken set: no status, owner disabled, in the wrong order
+  it('normalizeCoIs re-adds a dropped core category, forces it enabled, strips legacy Active, keeps derived', () => {
+    // a stale/hand-broken set: owner disabled, wrong order, and a stale status set still carrying Active
     const broken: CoICategory[] = [
       { id: 'class', label: 'Hull', enabled: true, tags: [{ key: 'class/x', label: 'X' }] },
-      { id: 'owner', label: 'Owner', enabled: false, required: true, single: true, tags: [{ key: 'owner/military', label: 'Mil' }] }
+      { id: 'owner', label: 'Owner', enabled: false, required: true, single: true, tags: [{ key: 'owner/military', label: 'Mil' }] },
+      { id: 'status', label: 'Status', required: true, enabled: true, tags: [{ key: 'status/active', label: 'Active', locked: true }, { key: 'status/damaged', label: 'Damaged' }] }
     ];
     const fixed = normalizeCoIs(broken);
     expect(fixed[0].id).toBe('status');                                  // core first, status top
-    expect(fixed.find((c) => c.id === 'status')?.tags.some((t) => t.key === 'status/active' && t.locked)).toBe(true);
+    const st = fixed.find((c) => c.id === 'status')!;
+    expect(st.tags.some((t) => t.key === 'status/active')).toBe(false);  // legacy Active stripped
+    expect(st.tags.find((t) => t.key === 'status/adrift')?.derived).toBe(true); // derived re-added
     expect(fixed.find((c) => c.id === 'owner')?.enabled).toBe(true);     // re-enabled
     expect(fixed.find((c) => c.id === 'class')).toBeTruthy();            // non-core kept
   });
 });
 
-describe('ensureConstructActiveTag (legacy ships default to Active)', () => {
-  it('adds status/active to a construct with no status tag, idempotently', async () => {
-    const { ensureConstructActiveTag } = await import('./coi');
-    const s = { id: 'c', name: 'C', kind: 'construct', parentId: null, tags: [] } as any;
-    expect(ensureConstructActiveTag(s)).toBe(true);
-    expect(s.tags.some((t: any) => t.key === 'status/active')).toBe(true);
-    expect(ensureConstructActiveTag(s)).toBe(false);   // idempotent
-    const tagged = { id: 'c2', name: 'C2', kind: 'construct', parentId: null, tags: [{ key: 'status/damaged' }] } as any;
-    expect(ensureConstructActiveTag(tagged)).toBe(false);   // already has a status — leave it
+describe('constructReadiness (operational capability — no Active tag)', () => {
+  it('is 1 by default, else the lowest status blocker; ignores non-status tags', () => {
+    const base = { id: 'c', name: 'C', kind: 'construct', parentId: null, tags: [] } as any;
+    expect(constructReadiness(base, DEFAULT_COI_CATEGORIES)).toBe(1);                              // operational by default
+    expect(constructReadiness({ ...base, tags: [{ key: 'status/derelict' }] }, DEFAULT_COI_CATEGORIES)).toBe(0);     // dead
+    expect(constructReadiness({ ...base, tags: [{ key: 'status/construction' }] }, DEFAULT_COI_CATEGORIES)).toBe(0.5); // half drive
+    expect(constructReadiness({ ...base, tags: [{ key: 'status/damaged' }, { key: 'status/derelict' }] }, DEFAULT_COI_CATEGORIES)).toBe(0); // lowest wins
+    expect(constructReadiness({ ...base, tags: [{ key: 'purpose/patrol' }, { key: 'status/captured' }] }, DEFAULT_COI_CATEGORIES)).toBe(1); // non-blocking
   });
 });
 
