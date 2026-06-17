@@ -61,14 +61,14 @@
   // Group the body's tags by SOURCE so the player can see where each came from: their own first,
   // then PoI-rule tags (changeable via the pack) and physics tags (fixed) under category headings.
   // A manual:true tag is always "Yours" regardless of its namespace.
-  interface TagItem { key: string; value?: string; label: string; color: string; textColor: string; desc: string; }
+  interface TagItem { key: string; value?: string; label: string; color: string; textColor: string; desc: string; source?: string; }
   $: groups = (() => {
     const manual: TagItem[] = [];
     const poi: Record<string, TagItem[]> = {};
     const physics: Record<string, TagItem[]> = {};
     for (const t of body.tags ?? []) {
       const info = describeTag(t.key);
-      const item: TagItem = { key: t.key, value: t.value, label: info.label, color: info.color, textColor: info.textColor || '#fff', desc: info.description };
+      const item: TagItem = { key: t.key, value: t.value, label: info.label, color: info.color, textColor: info.textColor || '#fff', desc: info.description, source: t.source };
       const src = t.manual ? 'manual' : tagSource(t.key);
       if (src === 'manual') manual.push(item);
       else { const bucket = src === 'poi' ? poi : physics; (bucket[info.group] ||= []).push(item); }
@@ -76,6 +76,17 @@
     return { manual, poi, physics };
   })();
   const sortedGroups = (r: Record<string, TagItem[]>) => Object.keys(r).sort();
+
+  // Which rule seeded a tag (Tag.source = 'rule:<id>') — so the mouseover says exactly where it came from
+  // and whether it was deterministic (chance 100%) or a roll. The rules live in the active PoI packs.
+  $: ruleById = (() => { const m = new Map<string, any>(); for (const p of $poiPacks) for (const r of (p.rules ?? [])) m.set(r.id, r); return m; })();
+  function provenance(source?: string): string {
+    if (!source?.startsWith('rule:')) return 'From a PoI rule — re-applied every run. Change the rule/pack to alter it.';
+    const r = ruleById.get(source.slice(5));
+    if (!r) return 'Seeded by a rule no longer in the pack.';
+    const det = r.chance >= 1 ? 'always seeded (deterministic)' : `${Math.round(r.chance * 100)}% chance`;
+    return `Seeded by rule "${r.label || r.tag}" — ${det}. Edit it in Settings → Reasons to Visit.`;
+  }
 </script>
 
 <div class="tab-panel">
@@ -104,7 +115,7 @@
         <h5 class="src-head poi-head">{g} <span class="src-note">· PoI rule</span></h5>
         <div class="tags-list">
           {#each groups.poi[g] as t (t.key)}
-            <button class="tag-chip locked" style="background-color:{t.color}; color:{t.textColor}" title={(t.desc || t.label) + '\n\nFrom a PoI rule — re-applied every run. Change the rule/pack to alter it.'}>
+            <button class="tag-chip locked" style="background-color:{t.color}; color:{t.textColor}" title={(t.desc ? t.desc + '\n\n' : '') + provenance(t.source)}>
               {t.label}{#if t.value}: {t.value}{/if}
               <svg class="lock poi" viewBox="0 0 24 24" width="11" height="11"><rect x="5" y="11" width="14" height="9" rx="1.5" fill="#111" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
             </button>
