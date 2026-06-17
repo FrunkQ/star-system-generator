@@ -918,17 +918,11 @@ function calculateLambertPlan(
     // Belts/rings are DISTRIBUTED mass — their `massKg` is a debris-density proxy, not gravitational
     // mass, with no single point to pull toward — so exclude them as point-mass perturbers (mirrors
     // gravity-assist). Otherwise a belt would inject a bogus point-gravity tug toward a ring location.
-    const massNodes = sys.nodes.filter(n => n.id !== (frameParentId || root.id) && (n.kind === 'body' || n.kind === 'barycenter') && n.roleHint !== 'belt' && n.roleHint !== 'ring');
-    const nBodySources = massNodes.map(n => {
-        const state = getGlobalState(sys, n as any, startTime);
-        const parentState = frameParentId ? getGlobalState(sys, sys.nodes.find(fn => fn.id === frameParentId)!, startTime) : null;
-        return {
-            mu: getNodeMass(sys, n) * G / Math.pow(AU_M, 3),
-            pos: parentState ? subtract(state.r, parentState.r) : state.r
-        };
-    });
-
-    const integration = integrateBallisticPath(startState.r, result.v1, durationSec, mu_au, totalPoints, targetAimPos, nBodySources);
+    // NOTE: the DISPLAYED path is integrated 2-body to match the (2-body) Lambert solution. Feeding the
+    // full n-body perturber set here made the integrated path drift off the Lambert target, and the linear
+    // drift-correction then flattened the conic into a near-straight chord (the "straight transit lines"
+    // bug). Proper fix = solve Lambert against the n-body field; banked. Until then: draw what we solved.
+    const integration = integrateBallisticPath(startState.r, result.v1, durationSec, mu_au, totalPoints, targetAimPos);
     const localPath = integration.points;
     const totalDriftM = integration.drift_au * AU_M;
 
@@ -1280,18 +1274,9 @@ function calculateFastPlan(
     const segments: TransitSegment[] = [];
     const sampleCount = Math.min(3000, Math.max(240, Math.ceil(totalTime / (3600 * 2))));
     
-    // N-Body summation sources (belts/rings excluded — distributed debris-density, not point masses)
-    const massNodes = sys.nodes.filter(n => n.id !== frameNode.id && (n.kind === 'body' || n.kind === 'barycenter') && n.roleHint !== 'belt' && n.roleHint !== 'ring');
-    const nBodySources = massNodes.map(n => {
-        const state = getGlobalState(sys, n as any, startTime);
-        const parentState = getGlobalState(sys, frameNode, startTime);
-        return {
-            mu: getNodeMass(sys, n) * G / Math.pow(AU_M, 3),
-            pos: subtract(state.r, parentState.r)
-        };
-    });
-
-    const integration = integrateBallisticPath(rStart, v1, totalTime, muLocalAu, sampleCount, rEnd, nBodySources);
+    // 2-body displayed path (matches the solved trajectory) — see the note in calculateLambertPlan: the
+    // n-body perturbers here drove the straight-line bug via the drift-correction. Banked: n-body-aware solve.
+    const integration = integrateBallisticPath(rStart, v1, totalTime, muLocalAu, sampleCount, rEnd);
     const rawLocalPath = integration.points;
     const totalDriftM = integration.drift_au * AU_M;
 

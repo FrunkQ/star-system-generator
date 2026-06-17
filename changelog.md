@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.145-beta - 17th Jun 2026
+
+* Transit courses curve again. The planner solves a clean 2-body (Sun-only) transfer but was *drawing* the path re-integrated through the full n-body field; because the target was 2-body, the path drifted off it and a linear correction flattened the conic into a near-straight line. The displayed path now matches the model it solves (2-body), so transfers show their proper conic arcs. (Trade-off: the n-body-derived trajectory-correction tags are quiet until the proper n-body-aware solver lands.)
+
 ## v2.0.144-beta - 16th Jun 2026
 
 * Transit fuel sanity: a ship with no usable main engine (zero Isp) no longer shows fabricated fuel figures (the old "Δv × 0.01" / "× 0.05" placeholders that produced things like 0.4 t and 6.5-billion-tonne flybys). Such plans are now correctly infeasible — fuel reads "—" and the planner says the engine can't make the move. No engine, no move.
