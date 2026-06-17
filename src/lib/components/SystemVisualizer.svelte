@@ -569,6 +569,14 @@
           }
         }
       }
+      // Free-floating constructs (in transit, deep space, or drifting/adrift) are positioned by an absolute
+      // vector_position_au, not by the orbital hierarchy — calculateWorldPositions draws their glyph
+      // regardless. They have no parent in the focus chain, so the hierarchy walk above misses them, which
+      // is why a drifting ship lost both its label and its clickability. Whatever is drawn free should also
+      // be nameable and selectable: add every absolutely-positioned construct here.
+      for (const n of system.nodes) {
+          if (n.kind === 'construct' && (n as any).vector_position_au) visibleIds.add(n.id);
+      }
       return visibleIds;
   }
 
