@@ -91,19 +91,21 @@ describe('derived status mirrors internal state', () => {
 });
 
 describe('CoI enabled / active set', () => {
-  it('only Owner, Purpose and Status default on', () => {
+  it('the core trio plus Resources, Hull class, FTL drive and Tech default on (only Disposition off)', () => {
     const on = DEFAULT_COI_CATEGORIES.filter((c) => c.enabled === true).map((c) => c.id).sort();
-    expect(on).toEqual(['owner', 'purpose', 'status']);
+    expect(on).toEqual(['class', 'drive', 'owner', 'purpose', 'resource', 'status', 'tech']);
+    expect(DEFAULT_COI_CATEGORIES.find((c) => c.id === 'disposition')?.enabled).not.toBe(true);
   });
-  it('Profile and Cargo are not default categories', () => {
+  it('Profile and Cargo are not default categories (Resources reuses the resource/ namespace)', () => {
     const ids = DEFAULT_COI_CATEGORIES.map((c) => c.id);
     expect(ids).not.toContain('profile');
     expect(ids).not.toContain('cargo');
+    expect(ids).toContain('resource');
   });
   it('activeCoICategories filters to enabled only', () => {
     const active = activeCoICategories(DEFAULT_COI_CATEGORIES);
     expect(active.every((c) => c.enabled === true)).toBe(true);
-    expect(active.some((c) => c.id === 'class')).toBe(false);   // Hull class default off
+    expect(active.some((c) => c.id === 'disposition')).toBe(false);   // Disposition default off
   });
 });
 
@@ -144,12 +146,12 @@ describe('toggleCoI', () => {
 describe('orphaned CoI tags (category turned off / removed)', () => {
   it('a CoI tag from an inactive category is reported orphaned, labelled, and removable', () => {
     const s = ship();
-    s.tags = [{ key: 'class/cruiser', manual: true, coi: true } as any];   // Hull class is default OFF
+    s.tags = [{ key: 'disposition/hostile', manual: true, coi: true } as any];   // Disposition is default OFF
     const orph = orphanedCoITags(s, DEFAULT_COI_CATEGORIES);
-    expect(orph.map((o) => o.key)).toContain('class/cruiser');
-    expect(orph[0].label).toBe('Cruiser');                                  // label still resolved from the disabled category
-    removeCoITag(s, 'class/cruiser');
-    expect(s.tags!.some((t) => t.key === 'class/cruiser')).toBe(false);
+    expect(orph.map((o) => o.key)).toContain('disposition/hostile');
+    expect(orph[0].label).toBe('Hostile');                                       // label still resolved from the disabled category
+    removeCoITag(s, 'disposition/hostile');
+    expect(s.tags!.some((t) => t.key === 'disposition/hostile')).toBe(false);
   });
   it('a tag in an active category is not orphaned', () => {
     const s = ship();

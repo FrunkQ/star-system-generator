@@ -62,8 +62,21 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
     ])
   },
   {
+    // What a construct mines, refines, stockpiles or hauls. DELIBERATELY shares the `resource/` prefix +
+    // slug vocabulary with the PoI resource namespace (a body's natural deposit), styled to match, so the
+    // two read as ONE ledger — "find all water-ice in the system" spans bodies AND ships. Provenance stays
+    // clean: a body's resource/* is physics-derived; a construct's is coi/manual (hand-set, GM-owned).
+    id: 'resource', label: 'Resources', color: '#d4a843', textColor: '#000000', single: false, enabled: true,
+    tags: mkTags('resource', [
+      ['water-ice', 'Water ice'], 'volatiles', 'organics', ['heavy-metals', 'Heavy metals'],
+      ['platinum-group', 'Platinum-group'], ['rare-metals', 'Rare metals'], ['rare-earths', 'Rare earths'],
+      'fissiles', ['helium-3', 'Helium-3'], 'deuterium', 'hydrocarbons',
+      ['exotic-crystals', 'Exotic crystals'], 'diamonds', 'oxidizer', ['ore-belt', 'Asteroid ore']
+    ])
+  },
+  {
     // The ship's size/role class — scale governs what jobs make sense (a capital ship won't run courier).
-    id: 'class', label: 'Hull class', color: '#8a6fc0', textColor: '#ffffff', single: true, enabled: false,
+    id: 'class', label: 'Hull class', color: '#8a6fc0', textColor: '#ffffff', single: true, enabled: true,
     tags: mkTags('class', [
       'shuttle', 'fighter', 'gunship', 'corvette', 'frigate', 'destroyer', 'cruiser',
       ['capital', 'Capital ship'], 'carrier', 'dreadnought', 'freighter', ['liner', 'Liner'],
@@ -72,7 +85,7 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
   },
   {
     // FTL method — genre-defining and relevant to routing (sublight ships can't jump between stars).
-    id: 'drive', label: 'FTL drive', color: '#c07f3f', textColor: '#ffffff', single: true, enabled: false,
+    id: 'drive', label: 'FTL drive', color: '#c07f3f', textColor: '#ffffff', single: true, enabled: true,
     tags: mkTags('drive', [
       ['sublight', 'Sublight only'], 'jump-drive', 'warp', 'hyperdrive', ['gate', 'Wormhole / gate'],
       ['generation', 'Generation ship'], ['torch', 'Torch (fusion)'], 'solar-sail', ['ftl-unknown', 'Exotic / unknown']
@@ -85,7 +98,7 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
   },
   {
     // Tech level / origin — sets the sci-fi register (primitive frontier vs precursor relic).
-    id: 'tech', label: 'Tech & origin', color: '#6a6f7a', textColor: '#ffffff', single: true, enabled: false,
+    id: 'tech', label: 'Tech & origin', color: '#6a6f7a', textColor: '#ffffff', single: true, enabled: true,
     tags: mkTags('tech', [
       'primitive', 'industrial', 'standard', 'advanced', 'experimental',
       'alien', ['precursor', 'Precursor / ancient']

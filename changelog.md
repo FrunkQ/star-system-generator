@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.157-beta - 17th Jun 2026
+
+* Constructs of Interest now cover resources. Added a "Resources" CoI category that deliberately shares the same `resource/` vocabulary as the physics-derived body resources (water ice, heavy metals, helium-3, …), so a body's natural deposit and a ship's cargo of the same thing read as one ledger — provenance stays clear because a construct's resource tag is hand-set, a body's is derived. Hull class, FTL drive and Tech & origin CoI categories are now on by default too.
+* The starter construct templates ship pre-tagged with CoIs. Every template (asteroids → motherships → corvettes → starports) now carries a sensible Owner / Purpose / Hull class / FTL drive / Tech / Resources set, so a freshly placed Rocinante already reads as an owner-operated torch-drive corvette and an M-type asteroid already advertises its heavy metals.
+
 ## v2.0.156-beta - 17th Jun 2026
 
 * Fixed the star editor snapping mass (and radius/temperature/radiation) back to its stored value as you typed — you couldn't enter or paste a precise figure like 0.9489222894122541 M☉. The sync that seeds those fields from the body was re-running on every render (the body re-resolves as the clock ticks) and overwriting your half-typed value. It now only pulls from the body when you actually switch to a different body; everything you edit in place sticks.
