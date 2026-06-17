@@ -689,7 +689,7 @@
   "anomaly": [
     {
       "id": "template-anomaly-derelict-ship",
-      "tags": [ { "key": "status/derelict", "coi": true, "manual": true }, { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/cargo-transport", "coi": true, "manual": true }, { "key": "class/freighter", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/hard-scifi", "coi": true, "manual": true } ],
+      "tags": [ { "key": "status/derelict", "coi": true, "manual": true }, { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/cargo-transport", "coi": true, "manual": true }, { "key": "class/freighter", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/hard-scifi", "coi": true, "manual": true } ],
       "name": "Derelict Freighter",
       "kind": "construct",
       "roleHint": "ship",
@@ -718,7 +718,7 @@
   "ship": [
     {
       "id": "template-aliens-sulaco",
-      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/people-transport", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "class/carrier", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/aliens", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/people-transport", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "class/carrier", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/aliens", "coi": true, "manual": true } ],
       "name": "USS Sulaco",
       "kind": "construct",
       "roleHint": "ship",
@@ -747,7 +747,7 @@
     },
     {
       "id": "template-aliens-dropship",
-      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/people-transport", "coi": true, "manual": true }, { "key": "class/dropship", "coi": true, "manual": true }, { "key": "drive/sublight", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/aliens", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/people-transport", "coi": true, "manual": true }, { "key": "class/dropship", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/aliens", "coi": true, "manual": true } ],
       "name": "UD-4L Cheyenne Dropship",
       "kind": "construct",
       "roleHint": "ship",
@@ -776,7 +776,7 @@
     },
     {
       "id": "template-aliens-nostromo",
-      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/bulk-carrier", "coi": true, "manual": true }, { "key": "purpose/refining", "coi": true, "manual": true }, { "key": "purpose/tanker", "coi": true, "manual": true }, { "key": "class/tug", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/aliens", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/bulk-carrier", "coi": true, "manual": true }, { "key": "purpose/refining", "coi": true, "manual": true }, { "key": "purpose/tanker", "coi": true, "manual": true }, { "key": "class/tug", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/aliens", "coi": true, "manual": true } ],
       "name": "USCSS Nostromo",
       "kind": "construct",
       "roleHint": "ship",
@@ -805,7 +805,7 @@
     },
     {
       "id": "construct-ssto-heavy",
-      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/cargo-transport", "coi": true, "manual": true }, { "key": "purpose/people-transport", "coi": true, "manual": true }, { "key": "class/shuttle", "coi": true, "manual": true }, { "key": "drive/sublight", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/contemporary", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/cargo-transport", "coi": true, "manual": true }, { "key": "purpose/people-transport", "coi": true, "manual": true }, { "key": "class/shuttle", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/contemporary", "coi": true, "manual": true } ],
       "name": "Ascension Heavy Lifter",
       "kind": "construct",
       "roleHint": "ship",
@@ -840,7 +840,7 @@
     },
     {
       "id": "template-ship-shuttle",
-      "tags": [ { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/people-transport", "coi": true, "manual": true }, { "key": "purpose/cargo-transport", "coi": true, "manual": true }, { "key": "class/shuttle", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/hard-scifi", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/people-transport", "coi": true, "manual": true }, { "key": "purpose/cargo-transport", "coi": true, "manual": true }, { "key": "class/shuttle", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/hard-scifi", "coi": true, "manual": true } ],
       "name": "Intra-system Shuttle",
       "kind": "construct",
       "roleHint": "ship",
@@ -910,7 +910,7 @@
     },
     {
       "id": "template-expanse-rocinante",
-      "tags": [ { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "purpose/salvage", "coi": true, "manual": true }, { "key": "class/corvette", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "purpose/salvage", "coi": true, "manual": true }, { "key": "class/corvette", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "Rocinante (Corvette)",
       "kind": "construct",
       "roleHint": "ship",
@@ -939,7 +939,7 @@
     },
     {
       "id": "template-expanse-nauvoo",
-      "tags": [ { "key": "status/construction", "coi": true, "manual": true }, { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "class/colony-ship", "coi": true, "manual": true }, { "key": "drive/generation", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
+      "tags": [ { "key": "status/construction", "coi": true, "manual": true }, { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "class/colony-ship", "coi": true, "manual": true }, { "key": "class/generation-ship", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "LDSS Nauvoo",
       "kind": "construct",
       "roleHint": "ship",
@@ -968,7 +968,7 @@
     },
     {
       "id": "template-expanse-donnager",
-      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "purpose/HQ", "coi": true, "manual": true }, { "key": "class/battleship", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "purpose/HQ", "coi": true, "manual": true }, { "key": "class/battleship", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "MCRN Donnager",
       "kind": "construct",
       "roleHint": "ship",
@@ -997,7 +997,7 @@
     },
     {
       "id": "template-expanse-canterbury",
-      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/bulk-carrier", "coi": true, "manual": true }, { "key": "purpose/tanker", "coi": true, "manual": true }, { "key": "class/freighter", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/industrial", "coi": true, "manual": true }, { "key": "resource/water-ice", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/bulk-carrier", "coi": true, "manual": true }, { "key": "purpose/tanker", "coi": true, "manual": true }, { "key": "class/freighter", "coi": true, "manual": true }, { "key": "tech/industrial", "coi": true, "manual": true }, { "key": "resource/water-ice", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "The Canterbury",
       "kind": "construct",
       "roleHint": "ship",
@@ -1026,7 +1026,7 @@
     },
     {
       "id": "template-expanse-razorback",
-      "tags": [ { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/courier", "coi": true, "manual": true }, { "key": "class/pinnace", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/courier", "coi": true, "manual": true }, { "key": "class/pinnace", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "The Razorback",
       "kind": "construct",
       "roleHint": "ship",
@@ -1055,7 +1055,7 @@
     },
     {
       "id": "template-expanse-scirocco",
-      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "class/cruiser", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "class/cruiser", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "MCRN Scirocco",
       "kind": "construct",
       "roleHint": "ship",
@@ -1084,7 +1084,7 @@
     },
     {
       "id": "template-expanse-pella",
-      "tags": [ { "key": "owner/pirate", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "class/frigate", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/pirate", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "class/frigate", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "The Pella",
       "kind": "construct",
       "roleHint": "ship",

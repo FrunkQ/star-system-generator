@@ -37,10 +37,25 @@ describe('core categories (autopilot needs Status, Owner, Purpose)', () => {
     expect(status.tags.find((t) => t.key === 'status/construction')?.readiness).toBe(0.5);
     expect(status.tags.find((t) => t.key === 'status/in-transit-interstellar')?.derived).toBe(true);
   });
-  it('Status, Owner and Purpose are all required', () => {
-    for (const id of ['status', 'owner', 'purpose']) {
+  it('the six CORE categories (Status, Owner, Purpose, Resources, Hull class, FTL drive) are required', () => {
+    for (const id of ['status', 'owner', 'purpose', 'resource', 'class', 'drive']) {
       expect(DEFAULT_COI_CATEGORIES.find((c) => c.id === id)?.required).toBe(true);
     }
+    // Universe / Tech / Disposition are NOT core (can be toggled off)
+    for (const id of ['universe', 'tech', 'disposition']) {
+      expect(DEFAULT_COI_CATEGORIES.find((c) => c.id === id)?.required).not.toBe(true);
+    }
+  });
+  it('FTL drive lists FTL methods only — no sublight/torch/solar-sail/generation; generation is a Hull class', () => {
+    const drive = DEFAULT_COI_CATEGORIES.find((c) => c.id === 'drive')!;
+    const keys = drive.tags.map((t) => t.key);
+    expect(keys).toContain('drive/jump-drive');
+    for (const gone of ['drive/sublight', 'drive/torch', 'drive/solar-sail', 'drive/generation']) {
+      expect(keys).not.toContain(gone);
+    }
+    const cls = DEFAULT_COI_CATEGORIES.find((c) => c.id === 'class')!.tags.map((t) => t.key);
+    expect(cls).toContain('class/generation-ship');
+    expect(cls).toEqual(expect.arrayContaining(['class/yacht', 'class/racer']));
   });
   it('normalizeCoIs re-adds a dropped core category, forces it enabled, strips legacy Active, keeps derived', () => {
     // a stale/hand-broken set: owner disabled, wrong order, and a stale status set still carrying Active
@@ -118,7 +133,8 @@ describe('CoI save / load pack', () => {
     const json = exportCoIs(DEFAULT_COI_CATEGORIES);
     expect(json).toContain('sse-coi-pack');
     const back = importCoIs(json);
-    expect(back.map((c) => c.id)).toEqual(DEFAULT_COI_CATEGORIES.map((c) => c.id));
+    // import re-normalises (CORE categories sorted first), so compare as a set, not by order.
+    expect(back.map((c) => c.id).sort()).toEqual(DEFAULT_COI_CATEGORIES.map((c) => c.id).sort());
     expect(() => importCoIs('{"nope":1}')).toThrow();
   });
 });

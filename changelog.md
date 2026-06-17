@@ -2,13 +2,17 @@
 
 All notable changes are listed here:
 
+## v2.0.162-beta - 17th Jun 2026
+
+* Resources, Hull class and FTL drive are now CORE construct categories — always on, can't be switched off, like Status / Owner / Purpose. (And the Resources reason-to-visit category is forced on for bodies too.)
+* FTL drive cleaned up to genuine FTL methods only. Sublight is now the default (no selection means sublight), so the `sublight` tag is gone; torch and solar-sail are sublight engines (hard calc data), not FTL, so they're gone too; generation ship is a Hull class, not a drive. Jump Drive is the default FTL.
+* Hull class gained Yacht, Racer and Generation ship.
+* Added Noble gases + Antimatter resources so every fuel type has a source (antimatter is manual-only — never auto-generated, hand-added to a high-end port).
+* Groundwork for tags-from-hardware: fuel definitions now declare where each fuel can be refuelled (a mix of `resource/` and `frontier/` tags) and an availability class (common / manufactured / exotic); engine definitions declare the FTL drive tag they confer (only the warp ring — everything else is sublight). Constructs will inherit drive + fuel-source tags from their actual engines/tanks next.
+
 ## v2.0.161-beta - 17th Jun 2026
 
 * Killed the "Active" construct status — it was on everything by default and told you nothing. A construct is now assumed fully operational unless a status says otherwise. Each Status carries a readiness (0–1 drive capability): Derelict / Adrift / Distress / Mothballed / Impounded / Quarantined / Lost / Decommissioned / Refit / Dormant = 0 (can't move), Damaged and Under construction = 0.5 (half drive), and anything unimpaired = 1. A construct's overall readiness is its most-limiting status (lowest wins), exposed via `constructReadiness()` for the upcoming autopilot/drive work.
-
-## v2.0.161-beta - 17th Jun 2026
-
-* Dropped the "Active" construct status — it was noise (everything would carry it). A construct is now assumed fully operational unless a status blocks it, and each Status carries a readiness (0..1) capability factor: Derelict 0 (dead in space), Under construction / Damaged 0.5 (half drive), Adrift / Distress / Mothballed / Impounded … 0. A construct's readiness is the lowest among its statuses (the worst blocker wins); nothing applied = 1. (`constructReadiness()` — the hook the transit/autopilot layer will scale drive capability by.)
 
 ## v2.0.160-beta - 17th Jun 2026
 

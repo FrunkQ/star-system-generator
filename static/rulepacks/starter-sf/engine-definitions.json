@@ -1,6 +1,7 @@
 {
   "id": "engine-definitions",
   "name": "Propulsion Systems (Comprehensive)",
+  "_doc": "drive_tags = the FTL drive/* CoI tag this engine confers on its construct. Empty = sublight (the default — torch, ion, NTR, pulse and chemical are all sublight propulsion with hard calc data, NOT FTL). Only a genuine FTL drive (warp ring, jump drive) confers a drive tag.",
   "entries": [
     {
       "id": "engine-rcs-hydrazine",
@@ -11,7 +12,8 @@
       "efficiency_isp": 230,
       "atmo_efficiency": 0.6,
       "powerDraw_MW": 0.01,
-      "description": "Standard attitude control thrusters. Reliable and responsive."
+      "description": "Standard attitude control thrusters. Reliable and responsive.",
+      "drive_tags": []
     },
     {
       "id": "engine-chemical-methalox",
@@ -22,7 +24,8 @@
       "efficiency_isp": 370,
       "atmo_efficiency": 0.9,
       "powerDraw_MW": 0.5,
-      "description": "Workhorse chemical engine for high-G maneuvers."
+      "description": "Workhorse chemical engine for high-G maneuvers.",
+      "drive_tags": []
     },
     {
       "id": "engine-chemical-metallic",
@@ -33,7 +36,8 @@
       "efficiency_isp": 1100,
       "atmo_efficiency": 0.95,
       "powerDraw_MW": 2.0,
-      "description": "Releases the stored energy of metastable hydrogen. Incredible performance for a chemical rocket, bordering on nuclear efficiency."
+      "description": "Releases the stored energy of metastable hydrogen. Incredible performance for a chemical rocket, bordering on nuclear efficiency.",
+      "drive_tags": []
     },
     {
       "id": "engine-ntr-solid",
@@ -44,7 +48,8 @@
       "efficiency_isp": 900,
       "atmo_efficiency": 0.7,
       "powerDraw_MW": 15.0,
-      "description": "Fission reactor heating propellant. The standard for interplanetary liners."
+      "description": "Fission reactor heating propellant. The standard for interplanetary liners.",
+      "drive_tags": []
     },
     {
       "id": "engine-ntr-gas",
@@ -55,7 +60,8 @@
       "efficiency_isp": 1800,
       "atmo_efficiency": 0.8,
       "powerDraw_MW": 50.0,
-      "description": "Advanced open-cycle design running at extreme temperatures for double the efficiency of solid cores."
+      "description": "Advanced open-cycle design running at extreme temperatures for double the efficiency of solid cores.",
+      "drive_tags": []
     },
     {
       "id": "engine-orion-pulse",
@@ -66,7 +72,8 @@
       "efficiency_isp": 4000,
       "atmo_efficiency": 0.0,
       "powerDraw_MW": 0.0,
-      "description": "Detonates nuclear charges behind a pusher plate. Brutal lifting power."
+      "description": "Detonates nuclear charges behind a pusher plate. Brutal lifting power.",
+      "drive_tags": []
     },
     {
       "id": "engine-ion-gridded",
@@ -77,7 +84,8 @@
       "efficiency_isp": 12000,
       "atmo_efficiency": 0.0,
       "powerDraw_MW": 2.0,
-      "description": "Uses electrostatic fields to accelerate ions. Ultra-high efficiency but agonizingly low thrust."
+      "description": "Uses electrostatic fields to accelerate ions. Ultra-high efficiency but agonizingly low thrust.",
+      "drive_tags": []
     },
     {
       "id": "engine-vasimr",
@@ -88,7 +96,8 @@
       "efficiency_isp": 4000,
       "atmo_efficiency": 0.0,
       "powerDraw_MW": 20.0,
-      "description": "Variable Specific Impulse Magnetoplasma Rocket. Can trade efficiency for thrust. Runs on cheaper Argon."
+      "description": "Variable Specific Impulse Magnetoplasma Rocket. Can trade efficiency for thrust. Runs on cheaper Argon.",
+      "drive_tags": []
     },
     {
       "id": "engine-fusion-epstein",
@@ -99,7 +108,8 @@
       "efficiency_isp": 1100000,
       "atmo_efficiency": 0.5,
       "powerDraw_MW": 200.0,
-      "description": "High-energy magnetic coil acceleration. Allows continuous 1G burns."
+      "description": "High-energy magnetic coil acceleration. Allows continuous 1G burns.",
+      "drive_tags": []
     },
     {
       "id": "engine-antimatter-beam",
@@ -110,7 +120,8 @@
       "efficiency_isp": 10000000,
       "atmo_efficiency": 1.0,
       "powerDraw_MW": 1000.0,
-      "description": "Direct 1:1 conversion of mass to energy. Relativistic exhaust."
+      "description": "Direct 1:1 conversion of mass to energy. Relativistic exhaust.",
+      "drive_tags": []
     },
     {
       "id": "engine-warp-drive",
@@ -121,7 +132,8 @@
       "efficiency_isp": 0,
       "atmo_efficiency": 0.0,
       "powerDraw_MW": 5000.0,
-      "description": "Compresses space to allow FTL travel. Requires exotic matter."
+      "description": "Compresses space to allow FTL travel. Requires exotic matter.",
+      "drive_tags": ["drive/warp"]
     }
   ]
 }

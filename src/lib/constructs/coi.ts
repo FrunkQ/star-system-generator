@@ -84,16 +84,17 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
     // slug vocabulary with the PoI resource namespace (a body's natural deposit), styled to match, so the
     // two read as ONE ledger — "find all water-ice in the system" spans bodies AND ships. Provenance stays
     // clean: a body's resource/* is physics-derived; a construct's is coi/manual (hand-set, GM-owned).
-    id: 'resource', label: 'Resources', color: '#d4a843', textColor: '#000000', single: false, enabled: true,
+    id: 'resource', label: 'Resources', color: '#d4a843', textColor: '#000000', single: false, enabled: true, required: true,
     tags: mkTags('resource', [
       // Raw materials — shared with the PoI body-resource namespace.
       ['water-ice', 'Water ice'], 'volatiles', 'organics', ['heavy-metals', 'Heavy metals'],
       ['platinum-group', 'Platinum-group'], ['rare-metals', 'Rare metals'], ['rare-earths', 'Rare earths'],
-      'fissiles', ['helium-3', 'Helium-3'], 'deuterium', 'hydrocarbons',
+      'fissiles', ['helium-3', 'Helium-3'], 'deuterium', 'hydrocarbons', ['noble-gases', 'Noble gases'],
       ['exotic-crystals', 'Exotic crystals'], 'diamonds', 'oxidizer', ['ore-belt', 'Asteroid ore'],
       // Finished / exotic goods — CoI-only (a body can't manufacture these; they never appear on a planet).
+      // Antimatter is MANUAL-ONLY: never auto-generated (0% on the sliders); hand-added to a high-end port.
       'provisions', 'technology', ['alien-technology', 'Alien technology'],
-      ['exotic-matter', 'Exotic matter'], 'luxuries', 'pharmaceuticals'
+      ['exotic-matter', 'Exotic matter'], 'antimatter', 'luxuries', 'pharmaceuticals'
     ])
   },
   {
@@ -107,19 +108,22 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
   },
   {
     // The ship's size/role class — scale governs what jobs make sense (a capital ship won't run courier).
-    id: 'class', label: 'Hull class', color: '#8a6fc0', textColor: '#ffffff', single: true, enabled: true,
+    id: 'class', label: 'Hull class', color: '#8a6fc0', textColor: '#ffffff', single: true, enabled: true, required: true,
     tags: mkTags('class', [
-      'shuttle', 'dropship', 'pinnace', 'fighter', 'gunship', 'scout', 'corvette', 'frigate', 'destroyer',
-      'cruiser', 'battleship', ['capital', 'Capital ship'], 'carrier', 'dreadnought', 'freighter',
-      ['liner', 'Liner'], ['colony-ship', 'Colony ship'], 'tug', 'platform', 'station', 'habitat', 'orbital-elevator'
+      'shuttle', 'dropship', 'pinnace', 'yacht', 'racer', 'fighter', 'gunship', 'scout', 'corvette',
+      'frigate', 'destroyer', 'cruiser', 'battleship', ['capital', 'Capital ship'], 'carrier', 'dreadnought',
+      'freighter', ['liner', 'Liner'], ['colony-ship', 'Colony ship'], ['generation-ship', 'Generation ship'],
+      'tug', 'platform', 'station', 'habitat', 'orbital-elevator'
     ])
   },
   {
-    // FTL method — genre-defining and relevant to routing (sublight ships can't jump between stars).
-    id: 'drive', label: 'FTL drive', color: '#c07f3f', textColor: '#ffffff', single: true, enabled: true,
+    // FTL METHODS ONLY (CORE). Sublight is the default — NO selection means sublight, so there's no
+    // 'sublight' tag. Torch and solar-sail are sublight engines (hard calc data on the engine list), NOT
+    // FTL. Generation ship is a Hull class, not a drive. Jump Drive is the default FTL (green when the
+    // hull actually carries FTL hardware, red but still selectable otherwise — UI).
+    id: 'drive', label: 'FTL drive', color: '#c07f3f', textColor: '#ffffff', single: true, enabled: true, required: true,
     tags: mkTags('drive', [
-      ['sublight', 'Sublight only'], 'jump-drive', 'warp', 'hyperdrive', ['gate', 'Wormhole / gate'],
-      ['generation', 'Generation ship'], ['torch', 'Torch (fusion)'], 'solar-sail', ['ftl-unknown', 'Exotic / unknown']
+      'jump-drive', 'warp', 'hyperdrive', ['gate', 'Wormhole / gate'], ['ftl-unknown', 'Exotic / unknown']
     ])
   },
   {

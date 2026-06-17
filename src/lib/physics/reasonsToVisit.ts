@@ -138,11 +138,15 @@ export const REASON_CATEGORIES: ReasonCategory[] = DEFAULT_POI_PACK.categories;
 // Stores: per-category enable (+ master) and the list of stacked packs.
 // ---------------------------------------------------------------------------------------------
 const CFG_KEY = 'reasons-to-visit-config';
+// 'resource' is a CORE reason-to-visit category — forced on for every user (it's the backbone of the
+// shared resource ledger that fuel sourcing + construct cargo lean on). A saved `resource:false` is
+// overridden on load so it can never be turned off.
+export const CORE_REASON_CATEGORIES = ['resource'] as const;
 function loadConfig(): ReasonsConfig {
   if (typeof localStorage === 'undefined') return structuredClone(REASONS_DEFAULTS);
   try {
     const v = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
-    return { enabled: v.enabled ?? true, categories: { ...REASONS_DEFAULTS.categories, ...(v.categories || {}) } };
+    return { enabled: v.enabled ?? true, categories: { ...REASONS_DEFAULTS.categories, ...(v.categories || {}), resource: true } };
   } catch { return structuredClone(REASONS_DEFAULTS); }
 }
 export const reasonsConfig = writable<ReasonsConfig>(loadConfig());
