@@ -90,11 +90,15 @@ export function coastPathUnderGravity(
   startPos_au: Vector2,
   startVel_ms: { x: number; y: number },
   t0Ms: number,
-  steps = 40
+  steps = 40,
+  // Moons are dropped from the field by default — that's the live-scrubber path, where re-integrating the
+  // full satellite census every clock frame is the cost that killed it. A one-shot/settled plot (the clock
+  // has stopped moving) can afford them: pass true for a higher-fidelity forecast that feels moon flybys.
+  includeMoons = false
 ): Vector2[] {
   if (!Number.isFinite(startPos_au?.x) || !Number.isFinite(startPos_au?.y)) return [];
   const bodies = system.nodes
-    .filter((n) => n.kind === 'body' && ((n as any).massKg || 0) > 0 && (n as any).roleHint !== 'belt' && (n as any).roleHint !== 'ring' && (n as any).roleHint !== 'moon')
+    .filter((n) => n.kind === 'body' && ((n as any).massKg || 0) > 0 && (n as any).roleHint !== 'belt' && (n as any).roleHint !== 'ring' && (includeMoons || (n as any).roleHint !== 'moon'))
     .map((n) => ({ id: n.id, massKg: (n as any).massKg as number }));
   if (!bodies.length) return [];
   const field = systemGravityField(bodies, (id, t) => {

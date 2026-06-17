@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.150-beta - 17th Jun 2026
+
+* Adrift forecast line now upgrades when you stop. While the clock is moving (playing or scrubbing) it stays the cheap moon-free integration; ~0.3s after the clock goes still it recomputes once as a moon-inclusive plot, so a close moon flyby in the forecast is honest when you're parked but never costs you while dragging. Fast estimate in motion, accurate path at rest. (`coastPathUnderGravity` gained an `includeMoons` flag; the live position stays moon-free for frame-to-frame consistency.)
+
 ## v2.0.149-beta - 17th Jun 2026
 
 * The real performance fix for adrift ships. The slow part was never the throttle — it was the **maths per recompute**. Two things were grinding millions of operations on every redraw: (1) the gravity field included **every body in the system, moons and all** (~50 in Sol), and (2) the forecast line re-integrated each segment with ~40 sub-steps. Moons are negligible for a heliocentric coast (the star and the planet you're passing are what matter), so they're dropped from the field, and the faint forecast line now uses one integration step per point. Together that's ~50-100x less work per frame — adrift trajectories now refresh in well under half a second instead of ~6 seconds.

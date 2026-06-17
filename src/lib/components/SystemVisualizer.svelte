@@ -102,6 +102,20 @@
   let x0_distance = 0.01; // Default pivot for distance scaling
   // Cache of coasting ships' forecast polylines, keyed by ship+clock so it isn't re-integrated per frame.
   const coastPathCache = new Map<string, { key: string; pts: { x: number; y: number }[] }>();
+  // While the clock is moving (playing/scrubbing) the forecast is the cheap moon-free integration; once the
+  // clock has been still for a beat it upgrades to a one-shot moon-inclusive plot (fast estimate while you
+  // drag, the accurate path when you settle). The continuous render loop repaints the upgrade automatically.
+  let forecastSettled = false;
+  let forecastSettleTimer: ReturnType<typeof setTimeout> | null = null;
+  let lastForecastClock = currentTime;
+  $: {
+      if (currentTime !== lastForecastClock) {
+          lastForecastClock = currentTime;
+          forecastSettled = false;
+          if (forecastSettleTimer) clearTimeout(forecastSettleTimer);
+          forecastSettleTimer = setTimeout(() => { forecastSettled = true; }, 300);
+      }
+  }
 
   let lastSystemId: string | null = null;
   let lastFramedPlanId: string | null = null;
@@ -368,7 +382,7 @@
     };
   });
 
-  onDestroy(() => { cancelAnimationFrame(animationFrameId); stopInertia(); });
+  onDestroy(() => { cancelAnimationFrame(animationFrameId); stopInertia(); if (forecastSettleTimer) clearTimeout(forecastSettleTimer); });
 
   function screenToWorld(screenX: number, screenY: number): { x: number, y: number } {
       if (!canvas || !zoom) return { x: 0, y: 0 };
@@ -1071,10 +1085,10 @@
           for (const node of system.nodes) {
               if (node.kind !== 'construct' || !(node as any).vector_position_au || !isCoastingNow(node as any)) continue;
               const vp = (node as any).vector_position_au, vel = (node as any).vector_velocity_ms ?? { x: 0, y: 0 };
-              const key = `${currentTime}|${vp.x},${vp.y}|${vel.x},${vel.y}`;
+              const key = `${currentTime}|${vp.x},${vp.y}|${vel.x},${vel.y}|${forecastSettled ? 'M' : 'm'}`;
               let cached = coastPathCache.get(node.id);
               if (!cached || cached.key !== key) {
-                  cached = { key, pts: coastPathUnderGravity(system, vp, vel, currentTime, 64) };
+                  cached = { key, pts: coastPathUnderGravity(system, vp, vel, currentTime, 64, forecastSettled) };
                   coastPathCache.set(node.id, cached);
               }
               const pts = cached.pts;
