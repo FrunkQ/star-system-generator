@@ -328,6 +328,26 @@ export function calculateAtmosphereTags(body: CelestialBody, rulePack: RulePack)
 }
 
 /**
+ * Resource tags a body INHERITS from its atmosphere composition (docs/tag-inheritance.md). Each gas confers
+ * its `resourceTags`, and the gas's fraction sums into the tag's abundance (the `value`, 0..1) — so a trace
+ * gas extracts slowly and an abundant one fast (extraction_time = amount / (rate × abundance)). Pure: pass
+ * the gasPhysics map. Tags are flagged `inherited` (derived from the air, not hand-set). Not yet wired into
+ * the SystemProcessor pass — see docs/tag-inheritance.md build sequence.
+ */
+export function atmosphereResourceTags(body: CelestialBody, gasPhysics?: RulePack['gasPhysics']): Tag[] {
+    const comp = body.atmosphere?.composition;
+    if (!comp || !gasPhysics) return [];
+    const abundance = new Map<string, number>();
+    for (const [gas, fraction] of Object.entries(comp)) {
+        if (!(fraction > 0)) continue;
+        for (const key of (gasPhysics[gas]?.resourceTags ?? [])) {
+            abundance.set(key, (abundance.get(key) ?? 0) + fraction);
+        }
+    }
+    return [...abundance].map(([key, f]) => ({ key, value: f.toFixed(4), inherited: true } as Tag));
+}
+
+/**
  * Checks if a specific gas can be retained by a planet's gravity.
  * Uses the Jeans Escape simplified model.
  */
