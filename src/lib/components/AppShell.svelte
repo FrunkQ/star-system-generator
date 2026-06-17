@@ -167,6 +167,9 @@
     max-width: 200px;
     border-right: 1px solid #1c1f27;
     overflow-y: auto;
+    /* overflow-y:auto alone promotes overflow-x to auto too, so a label a hair wider than the 200px cap
+       left a permanent horizontal scrollbar along the bottom. Clip it; labels truncate (see RailNav). */
+    overflow-x: hidden;
   }
   .area.strip {
     grid-area: strip;

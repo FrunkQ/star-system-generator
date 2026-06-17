@@ -232,6 +232,9 @@
     color: #22c55e;
   }
   .rail-btn.gs-on { border-color: #22c55e; background: color-mix(in srgb, #22c55e 12%, transparent); }
+  /* Let labels shrink + ellipsis within the rail rather than overflow its width (the bottom scrollbar). */
+  .rail-btn { min-width: 0; }
+  .rail-label { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .ic { display: flex; flex: 0 0 auto; color: var(--text-muted, #cfcfcf); }
   .ic.accent { color: var(--accent); }
   .chev { margin-left: auto; color: var(--text-faint, #8a8f9a); font-size: 0.8rem; }

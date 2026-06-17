@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.152-beta - 17th Jun 2026
+
+* Left rail no longer shows a permanent horizontal scrollbar along its bottom. Setting `overflow-y: auto` on the rail quietly promoted `overflow-x` to auto as well, so a nav label a hair wider than the 200px cap left a scrollbar parked there at all times. The rail now clips horizontally and long labels ellipsis within it.
+
 ## v2.0.151-beta - 17th Jun 2026
 
 * A drifting ship keeps its name and stays clickable. Free-floating constructs (in transit, deep space, or adrift/coasting) are positioned absolutely rather than by the orbital hierarchy, so the "what's visible at this focus level" set — which gates both the on-canvas label and click hit-testing — was skipping them, even though their glyph was always drawn. We never had unparented objects before drifting was a thing. They're now always nameable and selectable, matching how they're drawn.
