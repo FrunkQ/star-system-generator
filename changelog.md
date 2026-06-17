@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.169-beta - 17th Jun 2026
+
+* Fixed: a rescued ship lingered under Routes → "Stranded ships" even after a new journey had taken it home and parked it (e.g. the Rocinante safely in Uranus low orbit still showed "adrift, coasting · was bound Uranus"). The stranded list flagged any ship carrying a cancelled-drift journey without checking whether a later journey had since superseded it — the same supersession blind spot fixed earlier in the orrery position and drift-line. It now only lists a ship as stranded if no later journey has started since the drift began.
+
 ## v2.0.168-beta - 17th Jun 2026
 
 * A body's resource tag now tells you where it came from. Hovering it names the exact rule that seeded it and whether it was deterministic (always) or a chance roll — e.g. "Seeded by rule 'resource/oxidizer' — always seeded (deterministic). Edit it in Settings → Reasons to Visit." Makes the reasoning obvious and points you straight at the lever to change it.

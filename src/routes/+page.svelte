@@ -205,6 +205,18 @@
         const cancelled = (n.scheduled_journeys ?? []).filter((j: any) => j.status === 'cancelled' && j.cancelState);
         if (!cancelled.length) continue;
         const last = cancelled[cancelled.length - 1];
+        // Only stranded if the drift hasn't been SUPERSEDED — i.e. no later (non-cancelled) journey has
+        // started since the cancel. A rescued ship now on/finished a new journey isn't adrift any more.
+        // (Mirrors the supersede fix in sampleJourneyKinematicsAtTime / isCoastingNow.)
+        const cancelSec = last.cancelledAtSec ? Number(last.cancelledAtSec) : 0;
+        const superseded = (n.scheduled_journeys ?? []).some((j: any) => {
+          if (j.status === 'cancelled') return false;
+          const b = getJourneyBounds(j.plans ?? []);
+          if (!b) return false;
+          const startSec = b.startMs / 1000;
+          return startSec > cancelSec && nowSec >= startSec;
+        });
+        if (superseded) continue;
         const plans = last.plans ?? [];
         const wasBound = plans.length ? ((sys.system?.nodes ?? []) as any[]).find((x) => x.id === plans[plans.length - 1].targetId)?.name : null;
         stranded.push({ id: n.id, constructName: n.name, where: sys.name, systemId: sys.id, wasBound, interstellar: false });
