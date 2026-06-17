@@ -905,6 +905,27 @@
     applyTemporalUpdate(() => event.detail);
   }
 
+  // Actual/master clock on the SAME unix-ms scale as currentTime + journey times (mirrors the currentTime
+  // derivation in the reactive below, but from masterTimeSec). NB getActualTimeMs() returns masterSec*1000
+  // WITHOUT the Big-Bang offset — that's a different (universe-ms) scale and must NOT be compared with
+  // journey times; this is the correct one for the ship-log seek cutoff.
+  $: actualTimeMs = ensuredTemporal
+    ? Number(parseClockSeconds(ensuredTemporal.masterTimeSec, 0n) - BIG_BANG_TO_UNIX_EPOCH_T) * 1000
+    : currentTime;
+
+  // Ship's-log "jump display time here": set DISPLAY time only (a preview/scrub, never touches actual time).
+  // The reactive currentTime derivation picks it up. The clocks are only offered for times >= actualTimeMs,
+  // so this never rewinds display before the committed present.
+  function handleSeekDisplayTime(event: CustomEvent) {
+    const ms = event.detail?.ms;
+    if (!Number.isFinite(ms)) return;
+    stopAlignAnimation();
+    isAligningTime = false;
+    alignActualSecondsOverride = null;
+    const displaySec = unixMsToMasterSeconds(ms);
+    applyTemporalUpdate((time) => ({ ...time, displayTimeSec: displaySec.toString() }));
+  }
+
   function handleToggleVisibility() {
     if (focusedBody && $systemStore) {
       systemStore.update(sys => {
@@ -2080,6 +2101,8 @@
                     kinematicState={focusedKinematicState}
                     clearFutureCount={countFutureJourneys(focusedBody, getActualTimeMs())}
                     activeCount={activeJourneyCountForActualTime(focusedBody)}
+                    {actualTimeMs}
+                    on:seek={handleSeekDisplayTime}
                     on:closelog={handleCloseJourneyLog}
                     on:clearfuture={handleClearFuturePlans}
                     on:cancelactive={handleCancelActivePlan}

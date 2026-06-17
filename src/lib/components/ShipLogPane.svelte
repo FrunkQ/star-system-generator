@@ -14,6 +14,10 @@
   export let focusedBody: CelestialBody;
   export let clearFutureCount: number;
   export let activeCount: number;
+  // Actual/master clock in unix-ms. A log time gets a clickable "jump display time here" clock ONLY when it's
+  // at or after actual time — you can preview the present/future, but not rewind display before what's
+  // already committed. Default Infinity = no seek wired by this host, so no clocks render.
+  export let actualTimeMs: number = Infinity;
 
   const dispatch = createEventDispatcher();
 
@@ -64,6 +68,16 @@
   }
 </script>
 
+<!-- A small clock that jumps DISPLAY time to a logged moment. Only rendered for times at/after actual
+     time (the cutoff) — rewinding display before the committed present isn't offered. -->
+{#snippet seekClock(ms)}
+  {#if Number.isFinite(ms) && ms >= actualTimeMs}
+    <button class="seek-clock" type="button" title={`Set display time to ${formatLogTime(ms)}`} aria-label="Set display time to this moment" on:click={() => dispatch('seek', { ms })}>
+      <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v4.7l3 1.8"/></svg>
+    </button>
+  {/if}
+{/snippet}
+
 <div class="ship-log-panel">
   <div class="ship-log-header">
     <h4>Ship's Log</h4>
@@ -82,28 +96,31 @@
   {:else}
     {#each (focusedBody.scheduled_journeys || []) as log, i}
       {@const adrift = log.status === 'cancelled' && log.cancelState}
+      {@const createdMs = safeClockSecStringToMs(log.createdAtSec)}
       <div class="ship-log-entry">
         <div class="ship-log-title">
           <strong>Journey {i + 1}</strong>
           <span class="ship-log-status" class:adrift>{adrift ? 'ADRIFT · COASTING' : log.status.toUpperCase()}</span>
         </div>
-        <div class="ship-log-meta">Created: {formatLogTime(safeClockSecStringToMs(log.createdAtSec))}</div>
+        <div class="ship-log-meta">Created: {formatLogTime(createdMs)} {@render seekClock(createdMs)}</div>
         {#if getJourneyBounds(log.plans)}
           {@const bounds = getJourneyBounds(log.plans)!}
-          <div class="ship-log-meta">Window: {formatLogTime(bounds.startMs)} -> {formatLogTime(bounds.endMs)}</div>
+          <div class="ship-log-meta">Window: {formatLogTime(bounds.startMs)} {@render seekClock(bounds.startMs)} -> {formatLogTime(bounds.endMs)} {@render seekClock(bounds.endMs)}</div>
         {/if}
         {#if adrift}
-          <div class="ship-log-meta ship-log-adrift">Cancelled &amp; coasting since {formatLogTime(safeClockSecStringToMs(log.cancelledAtSec))} from ({log.cancelState.position_au.x.toFixed(2)}, {log.cancelState.position_au.y.toFixed(2)}) AU</div>
+          {@const cancelMs = safeClockSecStringToMs(log.cancelledAtSec)}
+          <div class="ship-log-meta ship-log-adrift">Cancelled &amp; coasting since {formatLogTime(cancelMs)} {@render seekClock(cancelMs)} from ({log.cancelState.position_au.x.toFixed(2)}, {log.cancelState.position_au.y.toFixed(2)}) AU</div>
         {/if}
         {#if adrift}
           <div class="ship-log-meta ship-log-planned-hdr">Originally planned route (aborted):</div>
         {/if}
         <div class="ship-log-legs">
           {#each log.plans as leg}
+            {@const arriveMs = leg.startTime + (leg.totalTime_days * 86400 * 1000)}
             <div class="ship-log-leg">
               <div class="ship-log-route">{nodeName(leg.originId)} → {nodeName(leg.targetId)}</div>
-              <div class="ship-log-meta">Depart: {formatLogTime(leg.startTime)}</div>
-              <div class="ship-log-meta">Arrive: {formatLogTime(leg.startTime + (leg.totalTime_days * 86400 * 1000))}</div>
+              <div class="ship-log-meta">Depart: {formatLogTime(leg.startTime)} {@render seekClock(leg.startTime)}</div>
+              <div class="ship-log-meta">Arrive: {formatLogTime(arriveMs)} {@render seekClock(arriveMs)}</div>
               <div class="ship-log-meta">Arrival speed: {fmtSpeed(leg.arrivalVelocity_ms || 0)}</div>
               <div class="ship-log-meta ship-log-exit">Ends: {exitState(leg)}</div>
             </div>
@@ -196,5 +213,24 @@
       font-style: italic;
       opacity: 0.7;
       margin-top: 0.35rem;
+  }
+  .seek-clock {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      padding: 1px;
+      margin-left: 2px;
+      background: transparent;
+      border: none;
+      border-radius: 3px;
+      color: var(--accent, #e8a857);
+      opacity: 0.55;
+      cursor: pointer;
+      transition: opacity 0.12s ease, background 0.12s ease;
+  }
+  .seek-clock:hover {
+      opacity: 1;
+      background: var(--bg-control-hover, rgba(255, 255, 255, 0.08));
   }
 </style>

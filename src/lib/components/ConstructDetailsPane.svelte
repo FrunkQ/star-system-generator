@@ -29,6 +29,7 @@
   export let kinematicState: string | null = null;
   export let clearFutureCount: number = 0;
   export let activeCount: number = 0;
+  export let actualTimeMs: number = Infinity;
 
   const dispatch = createEventDispatcher();
 </script>
@@ -39,9 +40,11 @@
             focusedBody={focusedBody}
             clearFutureCount={clearFutureCount}
             activeCount={activeCount}
+            {actualTimeMs}
             on:close={() => dispatch('closelog')}
             on:clearfuture
             on:cancelactive
+            on:seek
         />
     {:else if isEditing}
         <ConstructSidePanel

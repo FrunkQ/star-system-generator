@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.154-beta - 17th Jun 2026
+
+* Ship's Log time navigation: every logged time (Created, Window start/end, Depart, Arrive, "coasting since") now has a small clock icon beside it. Hover tells you it'll set the display time to that moment; click jumps the orrery's display clock straight there. The clock only appears on times at or after actual/master time — you can preview the present and future, but it won't offer to rewind display before the committed present (the cutoff you asked for).
+
 ## v2.0.153-beta - 17th Jun 2026
 
 * Fixed: a stranded ship that's since been given a NEW journey stayed stuck on "Adrift — coasting" in the orrery even though its log showed the new trip. The kinematics resolver returned the moment it hit the old cancelled-drift journey (journeys are scanned oldest-first), so the later journey never got to take over — the ship's log read right but its drawn position/status didn't. The drift now only governs *until the next journey begins*; once a later journey has started it takes over, as it should. Existing saves heal themselves — just nudge the clock after updating and the ship snaps to its real state.
