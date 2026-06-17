@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.155-beta - 17th Jun 2026
+
+* Fixed: the red coast/drift forecast line lingered after a stranded ship was given a new journey and established orbit — it stayed pinned to the now-parked ship, pointing at its destination. The "is it coasting?" check had the same blind spot the position resolver did: a cancelled drift counted forever once past its cancel time. It now only counts as coasting until the next journey begins, so the line clears the moment the ship is picked up.
+* Ship's Log status is now live against the display clock. A journey badge reads PLANNED before it departs, IN TRANSIT mid-flight, then COMPLETED — and for an aborted trip, IN TRANSIT up to the cancel then ADRIFT · COASTING. Scrub the clock with the log open (e.g. rewind to before a transit) and the badge, the "coasting since" line, and the "originally planned route" note all update with it, instead of being frozen on the stored end-state.
+* Ship's Log: a journey that set off from a drift now reads "Adrift around Sol (for N days) → Uranus" instead of just "Sol → Uranus", joining the abandoned drift and the rescue journey together at a glance.
+
 ## v2.0.154-beta - 17th Jun 2026
 
 * Ship's Log time navigation: every logged time (Created, Window start/end, Depart, Arrive, "coasting since") now has a small clock icon beside it. Hover tells you it'll set the display time to that moment; click jumps the orrery's display clock straight there. The clock only appears on times at or after actual/master time — you can preview the present and future, but it won't offer to rewind display before the committed present (the cutoff you asked for).

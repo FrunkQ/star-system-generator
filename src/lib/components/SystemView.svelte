@@ -2102,6 +2102,7 @@
                     clearFutureCount={countFutureJourneys(focusedBody, getActualTimeMs())}
                     activeCount={activeJourneyCountForActualTime(focusedBody)}
                     {actualTimeMs}
+                    displayTimeMs={currentTime}
                     on:seek={handleSeekDisplayTime}
                     on:closelog={handleCloseJourneyLog}
                     on:clearfuture={handleClearFuturePlans}

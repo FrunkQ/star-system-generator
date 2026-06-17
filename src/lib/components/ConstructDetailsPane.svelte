@@ -30,6 +30,7 @@
   export let clearFutureCount: number = 0;
   export let activeCount: number = 0;
   export let actualTimeMs: number = Infinity;
+  export let displayTimeMs: number = NaN;
 
   const dispatch = createEventDispatcher();
 </script>
@@ -41,6 +42,7 @@
             clearFutureCount={clearFutureCount}
             activeCount={activeCount}
             {actualTimeMs}
+            {displayTimeMs}
             on:close={() => dispatch('closelog')}
             on:clearfuture
             on:cancelactive

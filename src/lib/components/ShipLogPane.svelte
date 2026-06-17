@@ -18,6 +18,24 @@
   // at or after actual time — you can preview the present/future, but not rewind display before what's
   // already committed. Default Infinity = no seek wired by this host, so no clocks render.
   export let actualTimeMs: number = Infinity;
+  // The DISPLAY clock in unix-ms. The log may be open while time is scrubbed, so each journey's status badge
+  // is derived from this (PLANNED / IN TRANSIT / COMPLETED / ADRIFT) rather than the stored status field.
+  // NaN = host didn't wire it → fall back to the stored status.
+  export let displayTimeMs: number = NaN;
+
+  // Status of a journey AT the current display time, not its stored end-state. PLANNED before it starts,
+  // IN TRANSIT mid-flight, then COMPLETED — or, for an aborted journey, ADRIFT · COASTING once cancelled.
+  function dynamicStatus(log: any, bounds: { startMs: number; endMs: number } | null): string {
+      if (!bounds || !Number.isFinite(displayTimeMs)) {
+          return (log.status === 'cancelled' && log.cancelState) ? 'ADRIFT · COASTING' : String(log.status || '').toUpperCase();
+      }
+      if (displayTimeMs < bounds.startMs) return 'PLANNED';
+      const cancelMs = log.cancelledAtSec ? safeClockSecStringToMs(log.cancelledAtSec) : null;
+      if (cancelMs !== null && log.cancelState) {
+          return displayTimeMs >= cancelMs ? 'ADRIFT · COASTING' : 'IN TRANSIT';
+      }
+      return displayTimeMs >= bounds.endMs ? 'COMPLETED' : 'IN TRANSIT';
+  }
 
   const dispatch = createEventDispatcher();
 
@@ -95,30 +113,39 @@
     <div class="ship-log-empty">No journeys logged.</div>
   {:else}
     {#each (focusedBody.scheduled_journeys || []) as log, i}
-      {@const adrift = log.status === 'cancelled' && log.cancelState}
       {@const createdMs = safeClockSecStringToMs(log.createdAtSec)}
+      {@const bounds = getJourneyBounds(log.plans)}
+      {@const dynStatus = dynamicStatus(log, bounds)}
+      {@const adriftNow = dynStatus === 'ADRIFT · COASTING'}
+      {@const prevLog = (focusedBody.scheduled_journeys || [])[i - 1]}
+      {@const startedAdrift = i > 0 && prevLog && prevLog.status === 'cancelled' && prevLog.cancelState && prevLog.cancelledAtSec}
+      {@const driftFromMs = startedAdrift ? safeClockSecStringToMs(prevLog.cancelledAtSec) : 0}
       <div class="ship-log-entry">
         <div class="ship-log-title">
           <strong>Journey {i + 1}</strong>
-          <span class="ship-log-status" class:adrift>{adrift ? 'ADRIFT · COASTING' : log.status.toUpperCase()}</span>
+          <span class="ship-log-status" class:adrift={adriftNow}>{dynStatus}</span>
         </div>
         <div class="ship-log-meta">Created: {formatLogTime(createdMs)} {@render seekClock(createdMs)}</div>
-        {#if getJourneyBounds(log.plans)}
-          {@const bounds = getJourneyBounds(log.plans)!}
+        {#if bounds}
           <div class="ship-log-meta">Window: {formatLogTime(bounds.startMs)} {@render seekClock(bounds.startMs)} -> {formatLogTime(bounds.endMs)} {@render seekClock(bounds.endMs)}</div>
         {/if}
-        {#if adrift}
+        {#if adriftNow}
           {@const cancelMs = safeClockSecStringToMs(log.cancelledAtSec)}
           <div class="ship-log-meta ship-log-adrift">Cancelled &amp; coasting since {formatLogTime(cancelMs)} {@render seekClock(cancelMs)} from ({log.cancelState.position_au.x.toFixed(2)}, {log.cancelState.position_au.y.toFixed(2)}) AU</div>
         {/if}
-        {#if adrift}
+        {#if adriftNow}
           <div class="ship-log-meta ship-log-planned-hdr">Originally planned route (aborted):</div>
         {/if}
         <div class="ship-log-legs">
-          {#each log.plans as leg}
+          {#each log.plans as leg, legIndex}
             {@const arriveMs = leg.startTime + (leg.totalTime_days * 86400 * 1000)}
+            {@const driftDays = Math.max(0, Math.round((leg.startTime - driftFromMs) / 86400000))}
             <div class="ship-log-leg">
-              <div class="ship-log-route">{nodeName(leg.originId)} → {nodeName(leg.targetId)}</div>
+              {#if startedAdrift && legIndex === 0}
+                <div class="ship-log-route">Adrift around {nodeName(leg.originId)} (for {driftDays} days) → {nodeName(leg.targetId)}</div>
+              {:else}
+                <div class="ship-log-route">{nodeName(leg.originId)} → {nodeName(leg.targetId)}</div>
+              {/if}
               <div class="ship-log-meta">Depart: {formatLogTime(leg.startTime)} {@render seekClock(leg.startTime)}</div>
               <div class="ship-log-meta">Arrive: {formatLogTime(arriveMs)} {@render seekClock(arriveMs)}</div>
               <div class="ship-log-meta">Arrival speed: {fmtSpeed(leg.arrivalVelocity_ms || 0)}</div>

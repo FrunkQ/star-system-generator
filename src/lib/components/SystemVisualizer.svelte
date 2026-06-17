@@ -771,12 +771,28 @@
   function isCoastingNow(node: any): boolean {
       const logs = node.scheduled_journeys || [];
       if (!logs.length) return false;
+      // On a real journey right now → in transit, not coasting.
       for (const l of logs) {
           if (l.status === 'cancelled') continue;
           const b = getJourneyBounds(l.plans);
           if (b && currentTime >= b.startMs && currentTime <= b.endMs) return false;
       }
-      return logs.some((l: any) => l.status === 'cancelled' && l.cancelledAtSec && Number(l.cancelledAtSec) * 1000 <= currentTime);
+      // A cancelled drift only coasts from its cancel time UNTIL the next journey begins. If a later journey
+      // has since started (e.g. the ship was picked up and flown to Uranio), the drift is over — no forecast
+      // line. Mirrors the supersede fix in sampleJourneyKinematicsAtTime; without it the drift line lingers,
+      // pinned at the now-parked ship, after it has established orbit.
+      for (const l of logs) {
+          if (l.status !== 'cancelled' || !l.cancelledAtSec) continue;
+          const cancelMs = Number(l.cancelledAtSec) * 1000;
+          if (currentTime < cancelMs) continue;
+          const superseded = logs.some((o: any) => {
+              if (o === l || o.status === 'cancelled') return false;
+              const ob = getJourneyBounds(o.plans);
+              return ob && ob.startMs > cancelMs && currentTime >= ob.startMs;
+          });
+          if (!superseded) return true;
+      }
+      return false;
   }
 
   function drawSystem(ctx: CanvasRenderingContext2D) {
