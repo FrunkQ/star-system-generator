@@ -2,6 +2,18 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import type { Starmap, RulePack, FuelDefinition, EngineDefinition } from '$lib/types';
   import { generateId } from '$lib/utils';
+  import TagListEditor from './TagListEditor.svelte';
+  import { coiCategories } from '$lib/constructs/coi';
+  import { poiPacks } from '$lib/physics/reasonsToVisit';
+  import { describeTag } from '$lib/tags/tagPresentation';
+
+  // Tag options, sourced entirely from the data (CoI Resources + drive categories, PoI frontier rules) —
+  // nothing hard-coded. Fuels source from resources OR frontier-refuelling; engines confer an FTL drive.
+  $: resourceOpts = ($coiCategories.find((c) => c.id === 'resource')?.tags || []).map((t) => ({ key: t.key, label: t.label }));
+  $: frontierOpts = [...new Set($poiPacks.flatMap((p) => (p.rules || []).filter((r) => r.category === 'frontier').map((r) => r.tag)))]
+        .map((k) => ({ key: k, label: describeTag(k).label }));
+  $: driveOpts = ($coiCategories.find((c) => c.id === 'drive')?.tags || []).map((t) => ({ key: t.key, label: t.label }));
+  $: fuelTagOpts = [...resourceOpts, ...frontierOpts];
 
   export let showModal: boolean;
   export let rulePack: RulePack;
@@ -62,6 +74,10 @@
       }
     }
     
+    // Ensure the inheritance-tag fields exist so the editors can bind to them.
+    loadedFuels.forEach((f) => { if (!Array.isArray(f.refuel_tags)) f.refuel_tags = []; if (!f.availability) f.availability = 'common'; });
+    loadedEngines.forEach((e) => { if (!Array.isArray(e.drive_tags)) e.drive_tags = []; });
+
     // Trigger reactivity
     fuels = loadedFuels;
     engines = loadedEngines;
@@ -175,6 +191,18 @@
                                 <label>Description</label>
                                 <input type="text" bind:value={fuel.description} />
                             </div>
+                            <div class="field full">
+                                <label>Can be refuelled where (resource / frontier tags)</label>
+                                <TagListEditor bind:tags={fuel.refuel_tags} options={fuelTagOpts} placeholder="+ source" />
+                            </div>
+                            <div class="field">
+                                <label>Availability</label>
+                                <select bind:value={fuel.availability}>
+                                    <option value="common">Common (any refuel stop)</option>
+                                    <option value="manufactured">Manufactured (factory + raw)</option>
+                                    <option value="exotic">Exotic (only at its resource)</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 {/each}
@@ -223,6 +251,10 @@
                             <div class="field full">
                                 <label>Description</label>
                                 <input type="text" bind:value={engine.description} />
+                            </div>
+                            <div class="field full">
+                                <label>Provides FTL drive (blank = sublight)</label>
+                                <TagListEditor bind:tags={engine.drive_tags} options={driveOpts} placeholder="+ FTL drive" />
                             </div>
                         </div>
                     </div>

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.165-beta - 17th Jun 2026
+
+* The tag-inheritance data is now visible and editable in its editors (Settings → Technology), so it's not hidden in the JSON. Edit Fuel & Drives: each fuel has a "Can be refuelled where" tag editor (pick resource/* and frontier/* sources) plus an Availability setting (common / manufactured / exotic); each engine has a "Provides FTL drive" tag editor. Edit Atmospheres: each gas has a "Provides resources" tag editor (with a note that a body inherits these by composition, the gas % as abundance). Every option list is sourced from the data — the CoI Resources / FTL-drive categories and the PoI frontier rules — nothing hard-coded. New reusable `TagListEditor` (chips + add-dropdown).
+
 ## v2.0.164-beta - 17th Jun 2026
 
 * Tag inheritance, body side (groundwork): atmosphere gases now declare which resource(s) they confer — O₂ → oxidizer, Argon/Krypton/Neon → noble gases, Helium → He-3, methane/ethane → hydrocarbons, water vapour → water ice, CO₂/ammonia/nitrogen → volatiles, iron vapour → heavy metals. A pure resolver reads a body's atmosphere and yields its resource tags, carrying each gas's fraction as the tag's abundance (so extraction time scales: trace gas slow, abundant gas fast). Not yet applied to bodies in the live pipeline — that's the next, baseline-checked step.

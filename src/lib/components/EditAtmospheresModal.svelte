@@ -1,6 +1,12 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import type { Starmap, RulePack } from '$lib/types';
+  import TagListEditor from './TagListEditor.svelte';
+  import { coiCategories } from '$lib/constructs/coi';
+
+  // Resource tag options, sourced from the CoI Resources category — nothing hard-coded. A gas confers these
+  // resource tags onto a body whose atmosphere contains it (with the gas % as abundance).
+  $: resourceOpts = ($coiCategories.find((c) => c.id === 'resource')?.tags || []).map((t) => ({ key: t.key, label: t.label }));
 
   export let showModal: boolean;
   export let rulePack: RulePack;
@@ -26,6 +32,7 @@
       Object.entries(rulePack.gasPhysics).forEach(([key, val]) => {
         defaultGasKeys.add(key);
         gases[key] = JSON.parse(JSON.stringify(val));
+        if (!Array.isArray(gases[key].resourceTags)) gases[key].resourceTags = []; // bindable
       });
     }
 
@@ -86,7 +93,8 @@
               radiativeCooling: 0.1,
               meltK: 100,
               boilK: 150,
-              tags: []
+              tags: [],
+              resourceTags: []
           };
           gases = { ...gases };
       }
@@ -192,6 +200,10 @@
                             <div class="field">
                                 <label>Boiling Point (K)</label>
                                 <input type="number" bind:value={gas.boilK} />
+                            </div>
+                            <div class="field full">
+                                <label>Provides resources (a body's atmosphere inherits these; the gas % = abundance)</label>
+                                <TagListEditor bind:tags={gas.resourceTags} options={resourceOpts} placeholder="+ resource" />
                             </div>
                         </div>
                     </div>
