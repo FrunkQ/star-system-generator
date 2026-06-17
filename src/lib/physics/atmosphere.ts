@@ -344,7 +344,29 @@ export function atmosphereResourceTags(body: CelestialBody, gasPhysics?: RulePac
             abundance.set(key, (abundance.get(key) ?? 0) + fraction);
         }
     }
-    return [...abundance].map(([key, f]) => ({ key, value: f.toFixed(4), inherited: true } as Tag));
+    return [...abundance].map(([key, f]) => ({ key, value: f.toFixed(4), inherited: true, source: 'atmosphere' } as Tag));
+}
+
+/**
+ * Apply the deterministic atmosphere-derived resource tags to a body. Runs AFTER the reasons-to-visit pass
+ * (which owns + clears the resource/* namespace), so these survive. Atmosphere resources are DETERMINISTIC
+ * (the gas is measurably present → the resource is certainly there), unlike the semi-random ground/makeup
+ * resource rules. If a resource key is already present (e.g. water-ice also seeded from surface ice), it's
+ * enriched with the atmosphere abundance + provenance rather than duplicated. Mutates body.tags in place.
+ */
+export function applyAtmosphereResources(body: CelestialBody, gasPhysics?: RulePack['gasPhysics']): void {
+    if (body.kind !== 'body') return;
+    const derived = atmosphereResourceTags(body, gasPhysics);
+    if (!derived.length) return;
+    body.tags = body.tags || [];
+    for (const t of derived) {
+        const existing = body.tags.find((x) => x.key === t.key);
+        if (existing) {
+            if (!existing.manual) { existing.value = t.value; existing.source = t.source; existing.inherited = true; }
+        } else {
+            body.tags.push(t);
+        }
+    }
 }
 
 /**

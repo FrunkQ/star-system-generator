@@ -91,17 +91,18 @@ export const DEFAULT_POI_PACK: PoIPack = {
     R('resource/platinum-group', 'resource', 0.45, { gte: ['makeup.metal', 0.5] }, ['planet', 'moon']),
     R('resource/rare-earths', 'resource', 0.4, { all: [{ gte: ['makeup.metal', 0.2] }, { gte: ['makeup.rock', 0.3] }] }, ['planet', 'moon']),
     R('resource/fissiles', 'resource', 0.3, { all: [{ gte: ['makeup.rockMetal', 0.6] }, { between: ['ageGyr', 0.5, 9] }] }, ['planet', 'moon']),
-    R('resource/helium-3', 'resource', 0.6, { eq: ['isGiant', true] }, ['planet']),
+    // (Gas-giant He-3 is now seeded deterministically from the He in its atmosphere — see the atmosphere
+    //  resource pass.) This is the airless-moon regolith He-3 — a ground prospect, so it stays semi-random.
     R('resource/helium-3', 'resource', 0.3, { all: [{ eq: ['hasAtmo', false] }, { gte: ['ageGyr', 3] }, { gt: ['makeup.rockIce', 0.5] }] }, ['moon']),
     R('resource/deuterium', 'resource', 0.4, { any: [{ gte: ['makeup.gas', 0.4] }, { gte: ['hydroCover', 0.3] }] }, ['planet', 'moon']),
     R('resource/water-ice', 'resource', 0.7, { any: [{ gte: ['makeup.ice', 0.3] }, { hasTag: 'structure/icy-shell' }, { all: [{ gt: ['teqK', 0] }, { lt: ['teqK', 250] }, { eq: ['hydro', 'water'] }] }] }, ['planet', 'moon']),
     R('resource/volatiles', 'resource', 0.5, { any: [{ all: [{ gt: ['teqK', 0] }, { lt: ['teqK', 160] }] }, { gte: ['makeup.ice', 0.5] }] }, ['belt', 'moon']),
-    R('resource/hydrocarbons', 'resource', 0.8, { any: [{ eq: ['hydro', 'methane'] }, { eq: ['atmMain', 'CH4'] }] }, ['planet', 'moon']),
+    R('resource/hydrocarbons', 'resource', 0.8, { eq: ['hydro', 'methane'] }, ['planet', 'moon']),  // surface methane (lakes); CH4 *atmosphere* is seeded deterministically by the atmosphere pass
     R('resource/exotic-crystals', 'resource', 0.25, { all: [{ gte: ['massMe', 2] }, { gte: ['makeup.rockMetal', 0.7] }] }, ['planet', 'moon']),
     R('resource/diamonds', 'resource', 0.4, { all: [{ gte: ['makeup.carbon', 0.3] }, { gte: ['massMe', 0.8] }] }, ['planet', 'moon']),
     R('resource/organics', 'resource', 0.5, { any: [{ eq: ['hasBio', true] }, { hasTag: 'prebiotic-precursor' }, { all: [{ eq: ['hydro', 'water'] }, { between: ['teqK', 250, 330] }] }] }, ['planet', 'moon']),
     R('resource/ore-belt', 'resource', 0.8, true, ['belt']),
-    R('resource/oxidizer', 'resource', 0.5, { eq: ['hasO2', true] }, ['planet', 'moon']),
+    // (resource/oxidizer from O2 is now seeded deterministically by the atmosphere pass — was a chance rule here.)
     R('science/pristine-protoplanetary', 'science', 0.85, { lt: ['ageGyr', 0.5] }, ['planet', 'moon']),
     R('science/biosignature', 'science', 0.95, { eq: ['hasBio', true] }, ['planet', 'moon']),
     R('science/extremophile-niche', 'science', 0.8, { any: [{ eq: ['regime', 'cryovolcanic'] }, { hasTag: 'structure/subsurface-ocean' }, { hasTag: 'habitability/subsurface' }] }, ['planet', 'moon']),
@@ -341,7 +342,7 @@ export function annotateReasonsToVisit(system: System, cfg?: ReasonsConfig, pack
       if (!roles.includes(role)) continue;
       if (conf.categories[rule.category] === false) continue;
       if (added.has(rule.tag)) continue;
-      if (evalPoI(rule.when, f) && roll < rule.chance) { b.tags.push({ key: rule.tag }); added.add(rule.tag); }
+      if (evalPoI(rule.when, f) && roll < rule.chance) { b.tags.push({ key: rule.tag, source: `rule:${rule.id}` }); added.add(rule.tag); }
     }
   }
 }

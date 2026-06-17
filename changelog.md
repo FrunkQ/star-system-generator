@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.166-beta - 17th Jun 2026
+
+* Body resources reconciled into one model — no more double-adding. Atmosphere-derived resources (noble gases, oxidizer, helium-3, hydrocarbons, water from vapour, volatiles) are now seeded **deterministically** from the gas composition: if the gas is measurably there, the resource is certainly there, and the gas's % rides along as abundance (extraction time). Ground/subsurface resources (metals, fissiles, diamonds, organics…) stay **semi-random prospects** — you have to dig to find out. The old chance-rules that duplicated the atmosphere ones (O₂→oxidizer, giant→helium-3, CH₄-atmosphere→hydrocarbons) were removed, since the deterministic atmosphere pass now owns those. Every derived resource tag also records where it came from (which gas, or which rule), ready for a provenance mouseover.
+
 ## v2.0.165-beta - 17th Jun 2026
 
 * The tag-inheritance data is now visible and editable in its editors (Settings → Technology), so it's not hidden in the JSON. Edit Fuel & Drives: each fuel has a "Can be refuelled where" tag editor (pick resource/* and frontier/* sources) plus an Availability setting (common / manufactured / exotic); each engine has a "Provides FTL drive" tag editor. Edit Atmospheres: each gas has a "Provides resources" tag editor (with a note that a body inherits these by composition, the gas % as abundance). Every option list is sourced from the data — the CoI Resources / FTL-drive categories and the PoI frontier rules — nothing hard-coded. New reusable `TagListEditor` (chips + add-dropdown).
