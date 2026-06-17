@@ -37,8 +37,8 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
       { key: 'status/in-transit-system', label: 'In transit (in-system)', derived: true },
       { key: 'status/adrift', label: 'Adrift', derived: true },
       ...mkTags('status', [
-        'damaged', 'derelict', 'mothballed', ['construction', 'Under construction'],
-        'impounded', 'quarantined', 'lost', 'decommissioned'
+        'damaged', 'distress', 'refit', 'dormant', 'captured', 'derelict', 'mothballed',
+        ['construction', 'Under construction'], 'impounded', 'quarantined', 'lost', 'decommissioned'
       ])
     ]
   },
@@ -46,8 +46,10 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
     id: 'owner', label: 'Owner', color: '#3f6fb0', textColor: '#ffffff', single: true, enabled: true, required: true,
     tags: [
       { key: 'owner/military', label: 'Military', tardiness: 0 },
+      { key: 'owner/government', label: 'Government', tardiness: 0.1 },
       { key: 'owner/corporation', label: 'Corporation', tardiness: 0.25 },
       { key: 'owner/consortium', label: 'Consortium', tardiness: 0.5 },
+      { key: 'owner/independent', label: 'Independent', tardiness: 0.6 },
       { key: 'owner/pirate', label: 'Pirate', tardiness: 0.75 },
       { key: 'owner/owner-operator', label: 'Owner-operator', tardiness: 1 }
     ]
@@ -55,10 +57,15 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
   {
     id: 'purpose', label: 'Purpose', color: '#2f9e8f', textColor: '#ffffff', single: false, enabled: true, required: true,
     tags: mkTags('purpose', [
-      'patrol', 'ship-repair', 'refuel', 'leisure', 'people-transport', 'cargo-transport',
-      'bulk-carrier', 'courier', 'mining', 'survey-prospecting', 'survey-science', 'prison',
-      'colony', 'research', 'manufacturing', 'trade-hub', 'HQ', 'salvage', 'rescue-tender',
-      'medical', 'diplomatic', 'tanker', 'factory-ship', 'farm-ship', 'comms-relay', 'defence-platform'
+      'patrol', 'ship-repair', 'refuel', 'resupply', 'leisure', 'people-transport', 'cargo-transport',
+      'bulk-carrier', 'courier', 'mining', 'refining', 'survey-prospecting', 'survey-science', 'prison',
+      'colony', 'agriculture', 'research', 'intelligence', 'manufacturing', 'power-generation', 'trade-hub',
+      'HQ', 'government', 'forward-base', 'customs', 'salvage', 'rescue-tender', 'medical', 'diplomatic',
+      'tanker', 'factory-ship', 'farm-ship', 'comms-relay', 'beacon', 'defence-platform',
+      // Traveller-style port capabilities — a "Class A starport" is just a bundle of these, not a label.
+      ['refined-fuel', 'Refined fuel'], ['unrefined-fuel', 'Unrefined fuel'],
+      ['shipyard', 'Shipyard'], ['shipyard-jump', 'Shipyard (jump-capable)'], ['shipyard-craft', 'Shipyard (small craft)'],
+      'drydock', 'brokerage', 'lodging', ['bonded-warehouse', 'Bonded warehouse'], 'extraterritorial'
     ])
   },
   {
@@ -68,19 +75,32 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
     // clean: a body's resource/* is physics-derived; a construct's is coi/manual (hand-set, GM-owned).
     id: 'resource', label: 'Resources', color: '#d4a843', textColor: '#000000', single: false, enabled: true,
     tags: mkTags('resource', [
+      // Raw materials — shared with the PoI body-resource namespace.
       ['water-ice', 'Water ice'], 'volatiles', 'organics', ['heavy-metals', 'Heavy metals'],
       ['platinum-group', 'Platinum-group'], ['rare-metals', 'Rare metals'], ['rare-earths', 'Rare earths'],
       'fissiles', ['helium-3', 'Helium-3'], 'deuterium', 'hydrocarbons',
-      ['exotic-crystals', 'Exotic crystals'], 'diamonds', 'oxidizer', ['ore-belt', 'Asteroid ore']
+      ['exotic-crystals', 'Exotic crystals'], 'diamonds', 'oxidizer', ['ore-belt', 'Asteroid ore'],
+      // Finished / exotic goods — CoI-only (a body can't manufacture these; they never appear on a planet).
+      'provisions', 'technology', ['alien-technology', 'Alien technology'],
+      ['exotic-matter', 'Exotic matter'], 'luxuries', 'pharmaceuticals'
+    ])
+  },
+  {
+    // The setting / IP register a construct belongs to. Replaces the universe level of the old class-path
+    // hierarchy ("Expanse/Ship/Corvette") so "show me every Expanse ship" is a tag filter, not a folder.
+    id: 'universe', label: 'Universe', color: '#7a6a9a', textColor: '#ffffff', single: true, enabled: true,
+    tags: mkTags('universe', [
+      'contemporary', ['hard-scifi', 'Hard sci-fi'], ['high-scifi', 'High sci-fi'],
+      'expanse', 'aliens', 'traveller', 'mothership', 'natural'
     ])
   },
   {
     // The ship's size/role class — scale governs what jobs make sense (a capital ship won't run courier).
     id: 'class', label: 'Hull class', color: '#8a6fc0', textColor: '#ffffff', single: true, enabled: true,
     tags: mkTags('class', [
-      'shuttle', 'fighter', 'gunship', 'corvette', 'frigate', 'destroyer', 'cruiser',
-      ['capital', 'Capital ship'], 'carrier', 'dreadnought', 'freighter', ['liner', 'Liner'],
-      'tug', 'station', 'habitat', 'orbital-elevator'
+      'shuttle', 'dropship', 'pinnace', 'fighter', 'gunship', 'scout', 'corvette', 'frigate', 'destroyer',
+      'cruiser', 'battleship', ['capital', 'Capital ship'], 'carrier', 'dreadnought', 'freighter',
+      ['liner', 'Liner'], ['colony-ship', 'Colony ship'], 'tug', 'platform', 'station', 'habitat', 'orbital-elevator'
     ])
   },
   {

@@ -4,7 +4,7 @@
   "small_body": [
     {
       "id": "template-asteroid-c-type",
-      "tags": [ { "key": "resource/water-ice", "coi": true, "manual": true }, { "key": "resource/volatiles", "coi": true, "manual": true }, { "key": "resource/organics", "coi": true, "manual": true } ],
+      "tags": [ { "key": "resource/water-ice", "coi": true, "manual": true }, { "key": "resource/volatiles", "coi": true, "manual": true }, { "key": "resource/organics", "coi": true, "manual": true }, { "key": "universe/natural", "coi": true, "manual": true } ],
       "name": "Asteroid (C-Type)",
       "kind": "construct",
       "roleHint": "small_body",
@@ -34,7 +34,7 @@
     },
     {
       "id": "template-asteroid-m-type",
-      "tags": [ { "key": "resource/heavy-metals", "coi": true, "manual": true }, { "key": "resource/platinum-group", "coi": true, "manual": true }, { "key": "resource/rare-metals", "coi": true, "manual": true } ],
+      "tags": [ { "key": "resource/heavy-metals", "coi": true, "manual": true }, { "key": "resource/platinum-group", "coi": true, "manual": true }, { "key": "resource/rare-metals", "coi": true, "manual": true }, { "key": "universe/natural", "coi": true, "manual": true } ],
       "name": "Asteroid (M-Type)",
       "kind": "construct",
       "roleHint": "small_body",
@@ -64,7 +64,7 @@
     },
     {
       "id": "template-comet-active",
-      "tags": [ { "key": "resource/water-ice", "coi": true, "manual": true }, { "key": "resource/volatiles", "coi": true, "manual": true } ],
+      "tags": [ { "key": "resource/water-ice", "coi": true, "manual": true }, { "key": "resource/volatiles", "coi": true, "manual": true }, { "key": "universe/natural", "coi": true, "manual": true } ],
       "name": "Comet (Active)",
       "kind": "construct",
       "roleHint": "small_body",
@@ -94,7 +94,7 @@
     },
     {
       "id": "template-captured-rock",
-      "tags": [ { "key": "resource/ore-belt", "coi": true, "manual": true } ],
+      "tags": [ { "key": "resource/ore-belt", "coi": true, "manual": true }, { "key": "universe/natural", "coi": true, "manual": true } ],
       "name": "Captured Rock (Moonlet)",
       "kind": "construct",
       "roleHint": "small_body",
@@ -126,7 +126,7 @@
   "station": [
     {
       "id": "construct-iss",
-      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/contemporary", "coi": true, "manual": true } ],
       "name": "International Space Station",
       "kind": "construct",
       "roleHint": "station",
@@ -159,7 +159,7 @@
     },
     {
       "id": "construct-tiangong",
-      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/government", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/contemporary", "coi": true, "manual": true } ],
       "name": "Tiangong Station",
       "kind": "construct",
       "roleHint": "station",
@@ -189,7 +189,7 @@
     },
     {
       "id": "construct-lunar-gateway",
-      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "purpose/forward-base", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/contemporary", "coi": true, "manual": true } ],
       "name": "Lunar Gateway",
       "kind": "construct",
       "roleHint": "station",
@@ -219,7 +219,7 @@
     },
     {
       "id": "template-mothership-prosperos-dream",
-      "tags": [ { "key": "owner/pirate", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "purpose/leisure", "coi": true, "manual": true }, { "key": "purpose/ship-repair", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/pirate", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "purpose/brokerage", "coi": true, "manual": true }, { "key": "purpose/leisure", "coi": true, "manual": true }, { "key": "purpose/ship-repair", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "purpose/resupply", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "resource/technology", "coi": true, "manual": true }, { "key": "universe/mothership", "coi": true, "manual": true } ],
       "name": "Prospero's Dream",
       "kind": "construct",
       "roleHint": "station",
@@ -256,7 +256,7 @@
     },
     {
       "id": "template-station-research-outpost",
-      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "purpose/survey-science", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "purpose/survey-science", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/hard-scifi", "coi": true, "manual": true } ],
       "name": "Orbital Research Outpost",
       "kind": "construct",
       "roleHint": "station",
@@ -291,7 +291,7 @@
     },
     {
       "id": "template-station-trade-hub",
-      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "purpose/brokerage", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "purpose/refined-fuel", "coi": true, "manual": true }, { "key": "purpose/resupply", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "resource/technology", "coi": true, "manual": true }, { "key": "universe/hard-scifi", "coi": true, "manual": true } ],
       "name": "Orbital Trade Hub",
       "kind": "construct",
       "roleHint": "station",
@@ -319,7 +319,7 @@
     },
     {
       "id": "template-expanse-ceres",
-      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "class/habitat", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "resource/water-ice", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "purpose/resupply", "coi": true, "manual": true }, { "key": "class/habitat", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "resource/water-ice", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "Ceres Station",
       "kind": "construct",
       "roleHint": "station",
@@ -349,7 +349,7 @@
     },
     {
       "id": "template-expanse-eros",
-      "tags": [ { "key": "owner/pirate", "coi": true, "manual": true }, { "key": "purpose/leisure", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "class/habitat", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/pirate", "coi": true, "manual": true }, { "key": "purpose/leisure", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "purpose/brokerage", "coi": true, "manual": true }, { "key": "class/habitat", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "Eros Station",
       "kind": "construct",
       "roleHint": "station",
@@ -379,7 +379,7 @@
     },
     {
       "id": "template-expanse-tycho",
-      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/manufacturing", "coi": true, "manual": true }, { "key": "purpose/ship-repair", "coi": true, "manual": true }, { "key": "purpose/HQ", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/shipyard-jump", "coi": true, "manual": true }, { "key": "purpose/drydock", "coi": true, "manual": true }, { "key": "purpose/manufacturing", "coi": true, "manual": true }, { "key": "purpose/HQ", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "Tycho Station",
       "kind": "construct",
       "roleHint": "station",
@@ -412,7 +412,7 @@
     },
     {
       "id": "template-expanse-anderson",
-      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/industrial", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "purpose/refining", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/industrial", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "Anderson Station",
       "kind": "construct",
       "roleHint": "station",
@@ -442,7 +442,7 @@
     },
     {
       "id": "template-expanse-thoth",
-      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/experimental", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "purpose/intelligence", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/experimental", "coi": true, "manual": true }, { "key": "resource/alien-technology", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "Thoth Station",
       "kind": "construct",
       "roleHint": "station",
@@ -472,7 +472,7 @@
     },
     {
       "id": "template-expanse-ganymede",
-      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "class/habitat", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "resource/organics", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/agriculture", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "purpose/resupply", "coi": true, "manual": true }, { "key": "class/habitat", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "resource/provisions", "coi": true, "manual": true }, { "key": "resource/organics", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "Ganymede Ag Domes",
       "kind": "construct",
       "roleHint": "station",
@@ -502,7 +502,7 @@
     },
     {
       "id": "template-expanse-phoebe",
-      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/experimental", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "purpose/intelligence", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/experimental", "coi": true, "manual": true }, { "key": "resource/alien-technology", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "Phoebe Research Station",
       "kind": "construct",
       "roleHint": "station",
@@ -532,7 +532,7 @@
     },
     {
       "id": "template-lunar-lovell",
-      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "purpose/HQ", "coi": true, "manual": true }, { "key": "class/habitat", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/government", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "purpose/government", "coi": true, "manual": true }, { "key": "purpose/HQ", "coi": true, "manual": true }, { "key": "class/habitat", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "Lovell City",
       "kind": "construct",
       "roleHint": "station",
@@ -564,7 +564,7 @@
   "habitat": [
     {
       "id": "template-habitat-oneill-cylinder",
-      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "class/habitat", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "purpose/agriculture", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "class/habitat", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "resource/provisions", "coi": true, "manual": true }, { "key": "universe/hard-scifi", "coi": true, "manual": true } ],
       "name": "O'Neill Cylinder",
       "kind": "construct",
       "roleHint": "habitat",
@@ -592,7 +592,7 @@
     },
     {
       "id": "template-habitat-asteroid-base",
-      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "purpose/mining", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "class/habitat", "coi": true, "manual": true }, { "key": "tech/industrial", "coi": true, "manual": true }, { "key": "resource/water-ice", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "purpose/mining", "coi": true, "manual": true }, { "key": "purpose/refining", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "class/habitat", "coi": true, "manual": true }, { "key": "tech/industrial", "coi": true, "manual": true }, { "key": "resource/water-ice", "coi": true, "manual": true }, { "key": "universe/hard-scifi", "coi": true, "manual": true } ],
       "name": "Asteroid Base (Ceres-style)",
       "kind": "construct",
       "roleHint": "habitat",
@@ -622,7 +622,7 @@
   "infrastructure": [
     {
       "id": "template-infrastructure-jump-gate",
-      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "drive/gate", "coi": true, "manual": true }, { "key": "tech/precursor", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "drive/gate", "coi": true, "manual": true }, { "key": "tech/precursor", "coi": true, "manual": true }, { "key": "universe/high-scifi", "coi": true, "manual": true } ],
       "name": "Jump Gate",
       "kind": "construct",
       "roleHint": "infrastructure",
@@ -652,7 +652,7 @@
     },
     {
       "id": "template-infrastructure-defense-platform",
-      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "purpose/defence-platform", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "purpose/defence-platform", "coi": true, "manual": true }, { "key": "class/platform", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/hard-scifi", "coi": true, "manual": true } ],
       "name": "Defense Platform",
       "kind": "construct",
       "roleHint": "infrastructure",
@@ -680,6 +680,7 @@
     },
     {
       "id": "template-infrastructure-jump-point",
+      "tags": [ { "key": "universe/high-scifi", "coi": true, "manual": true } ],
       "name": "Jump Point",
       "kind": "construct",
       "roleHint": "infrastructure",
@@ -711,7 +712,7 @@
   "anomaly": [
     {
       "id": "template-anomaly-derelict-ship",
-      "tags": [ { "key": "status/derelict", "coi": true, "manual": true }, { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/cargo-transport", "coi": true, "manual": true }, { "key": "class/freighter", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "status/derelict", "coi": true, "manual": true }, { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/cargo-transport", "coi": true, "manual": true }, { "key": "class/freighter", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/hard-scifi", "coi": true, "manual": true } ],
       "name": "Derelict Freighter",
       "kind": "construct",
       "roleHint": "ship",
@@ -741,7 +742,7 @@
   "ship": [
     {
       "id": "template-aliens-sulaco",
-      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/people-transport", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "class/carrier", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/people-transport", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "class/carrier", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/aliens", "coi": true, "manual": true } ],
       "name": "USS Sulaco",
       "kind": "construct",
       "roleHint": "ship",
@@ -771,7 +772,7 @@
     },
     {
       "id": "template-aliens-dropship",
-      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/people-transport", "coi": true, "manual": true }, { "key": "class/shuttle", "coi": true, "manual": true }, { "key": "drive/sublight", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/people-transport", "coi": true, "manual": true }, { "key": "class/dropship", "coi": true, "manual": true }, { "key": "drive/sublight", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/aliens", "coi": true, "manual": true } ],
       "name": "UD-4L Cheyenne Dropship",
       "kind": "construct",
       "roleHint": "ship",
@@ -801,7 +802,7 @@
     },
     {
       "id": "template-aliens-nostromo",
-      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/bulk-carrier", "coi": true, "manual": true }, { "key": "purpose/tanker", "coi": true, "manual": true }, { "key": "class/tug", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/bulk-carrier", "coi": true, "manual": true }, { "key": "purpose/refining", "coi": true, "manual": true }, { "key": "purpose/tanker", "coi": true, "manual": true }, { "key": "class/tug", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/aliens", "coi": true, "manual": true } ],
       "name": "USCSS Nostromo",
       "kind": "construct",
       "roleHint": "ship",
@@ -831,7 +832,7 @@
     },
     {
       "id": "construct-ssto-heavy",
-      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/cargo-transport", "coi": true, "manual": true }, { "key": "purpose/people-transport", "coi": true, "manual": true }, { "key": "class/shuttle", "coi": true, "manual": true }, { "key": "drive/sublight", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/cargo-transport", "coi": true, "manual": true }, { "key": "purpose/people-transport", "coi": true, "manual": true }, { "key": "class/shuttle", "coi": true, "manual": true }, { "key": "drive/sublight", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/contemporary", "coi": true, "manual": true } ],
       "name": "Ascension Heavy Lifter",
       "kind": "construct",
       "roleHint": "ship",
@@ -867,7 +868,7 @@
     },
     {
       "id": "template-ship-shuttle",
-      "tags": [ { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/people-transport", "coi": true, "manual": true }, { "key": "purpose/cargo-transport", "coi": true, "manual": true }, { "key": "class/shuttle", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/people-transport", "coi": true, "manual": true }, { "key": "purpose/cargo-transport", "coi": true, "manual": true }, { "key": "class/shuttle", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/hard-scifi", "coi": true, "manual": true } ],
       "name": "Intra-system Shuttle",
       "kind": "construct",
       "roleHint": "ship",
@@ -901,7 +902,7 @@
     },
     {
       "id": "template-ship-warp",
-      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/survey-science", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "class/cruiser", "coi": true, "manual": true }, { "key": "drive/warp", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/survey-science", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "class/cruiser", "coi": true, "manual": true }, { "key": "drive/warp", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "resource/exotic-matter", "coi": true, "manual": true }, { "key": "universe/high-scifi", "coi": true, "manual": true } ],
       "name": "FTL Explorer (Enterprise-class)",
       "kind": "construct",
       "roleHint": "ship",
@@ -939,7 +940,7 @@
     },
     {
       "id": "template-expanse-rocinante",
-      "tags": [ { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "purpose/salvage", "coi": true, "manual": true }, { "key": "class/corvette", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "purpose/salvage", "coi": true, "manual": true }, { "key": "class/corvette", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "Rocinante (Corvette)",
       "kind": "construct",
       "roleHint": "ship",
@@ -969,7 +970,7 @@
     },
     {
       "id": "template-expanse-nauvoo",
-      "tags": [ { "key": "status/construction", "coi": true, "manual": true }, { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "class/capital", "coi": true, "manual": true }, { "key": "drive/generation", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "status/construction", "coi": true, "manual": true }, { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "class/colony-ship", "coi": true, "manual": true }, { "key": "drive/generation", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "LDSS Nauvoo",
       "kind": "construct",
       "roleHint": "ship",
@@ -999,7 +1000,7 @@
     },
     {
       "id": "template-expanse-donnager",
-      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "purpose/HQ", "coi": true, "manual": true }, { "key": "class/dreadnought", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "purpose/HQ", "coi": true, "manual": true }, { "key": "class/battleship", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "MCRN Donnager",
       "kind": "construct",
       "roleHint": "ship",
@@ -1029,7 +1030,7 @@
     },
     {
       "id": "template-expanse-canterbury",
-      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/bulk-carrier", "coi": true, "manual": true }, { "key": "purpose/tanker", "coi": true, "manual": true }, { "key": "class/freighter", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/industrial", "coi": true, "manual": true }, { "key": "resource/water-ice", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/bulk-carrier", "coi": true, "manual": true }, { "key": "purpose/tanker", "coi": true, "manual": true }, { "key": "class/freighter", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/industrial", "coi": true, "manual": true }, { "key": "resource/water-ice", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "The Canterbury",
       "kind": "construct",
       "roleHint": "ship",
@@ -1059,7 +1060,7 @@
     },
     {
       "id": "template-expanse-razorback",
-      "tags": [ { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/courier", "coi": true, "manual": true }, { "key": "class/shuttle", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/courier", "coi": true, "manual": true }, { "key": "class/pinnace", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "The Razorback",
       "kind": "construct",
       "roleHint": "ship",
@@ -1089,7 +1090,7 @@
     },
     {
       "id": "template-expanse-scirocco",
-      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "class/cruiser", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "class/cruiser", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "MCRN Scirocco",
       "kind": "construct",
       "roleHint": "ship",
@@ -1119,7 +1120,7 @@
     },
     {
       "id": "template-expanse-pella",
-      "tags": [ { "key": "owner/pirate", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "class/frigate", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/pirate", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "class/frigate", "coi": true, "manual": true }, { "key": "drive/torch", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/expanse", "coi": true, "manual": true } ],
       "name": "The Pella",
       "kind": "construct",
       "roleHint": "ship",
@@ -1151,7 +1152,7 @@
   "traveller": [
     {
       "id": "template-traveller-highport-class-a",
-      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/ship-repair", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "purpose/manufacturing", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/shipyard-jump", "coi": true, "manual": true }, { "key": "purpose/refined-fuel", "coi": true, "manual": true }, { "key": "purpose/drydock", "coi": true, "manual": true }, { "key": "purpose/brokerage", "coi": true, "manual": true }, { "key": "purpose/lodging", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "purpose/customs", "coi": true, "manual": true }, { "key": "purpose/extraterritorial", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "resource/technology", "coi": true, "manual": true }, { "key": "universe/traveller", "coi": true, "manual": true } ],
       "name": "Class A Starport (Highport)",
       "kind": "construct",
       "roleHint": "station",
@@ -1181,7 +1182,7 @@
     },
     {
       "id": "template-traveller-highport-class-b",
-      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/ship-repair", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/shipyard-craft", "coi": true, "manual": true }, { "key": "purpose/refined-fuel", "coi": true, "manual": true }, { "key": "purpose/drydock", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "purpose/lodging", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/traveller", "coi": true, "manual": true } ],
       "name": "Class B Starport (Highport)",
       "kind": "construct",
       "roleHint": "station",
@@ -1211,7 +1212,7 @@
     },
     {
       "id": "template-traveller-downport-basic",
-      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "purpose/customs", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/traveller", "coi": true, "manual": true } ],
       "name": "Planetary Downport",
       "kind": "construct",
       "roleHint": "infrastructure",
@@ -1241,7 +1242,7 @@
     },
     {
       "id": "template-traveller-naval-base",
-      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "purpose/ship-repair", "coi": true, "manual": true }, { "key": "purpose/HQ", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "purpose/drydock", "coi": true, "manual": true }, { "key": "purpose/ship-repair", "coi": true, "manual": true }, { "key": "purpose/HQ", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/traveller", "coi": true, "manual": true } ],
       "name": "Imperial Naval Base",
       "kind": "construct",
       "roleHint": "station",
@@ -1271,7 +1272,7 @@
     },
     {
       "id": "template-traveller-scout-base",
-      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/survey-science", "coi": true, "manual": true }, { "key": "purpose/courier", "coi": true, "manual": true }, { "key": "purpose/comms-relay", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/forward-base", "coi": true, "manual": true }, { "key": "purpose/survey-science", "coi": true, "manual": true }, { "key": "purpose/courier", "coi": true, "manual": true }, { "key": "purpose/comms-relay", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/traveller", "coi": true, "manual": true } ],
       "name": "IISS Scout Base",
       "kind": "construct",
       "roleHint": "station",
@@ -1301,7 +1302,7 @@
     },
     {
       "id": "template-traveller-way-station",
-      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "purpose/comms-relay", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "purpose/refined-fuel", "coi": true, "manual": true }, { "key": "purpose/comms-relay", "coi": true, "manual": true }, { "key": "purpose/forward-base", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/traveller", "coi": true, "manual": true } ],
       "name": "Way Station",
       "kind": "construct",
       "roleHint": "station",
@@ -1331,7 +1332,7 @@
     },
     {
       "id": "template-traveller-research-station",
-      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "purpose/intelligence", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/traveller", "coi": true, "manual": true } ],
       "name": "Research Station",
       "kind": "construct",
       "roleHint": "station",
@@ -1361,7 +1362,7 @@
     },
     {
       "id": "template-traveller-base-military",
-      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "purpose/HQ", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/patrol", "coi": true, "manual": true }, { "key": "purpose/HQ", "coi": true, "manual": true }, { "key": "purpose/defence-platform", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/traveller", "coi": true, "manual": true } ],
       "name": "Planetary Military Base",
       "kind": "construct",
       "roleHint": "infrastructure",
@@ -1391,7 +1392,7 @@
     },
     {
       "id": "template-traveller-naval-depot",
-      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/ship-repair", "coi": true, "manual": true }, { "key": "purpose/manufacturing", "coi": true, "manual": true }, { "key": "purpose/HQ", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/military", "coi": true, "manual": true }, { "key": "purpose/shipyard-jump", "coi": true, "manual": true }, { "key": "purpose/drydock", "coi": true, "manual": true }, { "key": "purpose/manufacturing", "coi": true, "manual": true }, { "key": "purpose/HQ", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "universe/traveller", "coi": true, "manual": true } ],
       "name": "Imperial Naval Depot",
       "kind": "construct",
       "roleHint": "station",
@@ -1421,7 +1422,7 @@
     },
     {
       "id": "template-traveller-base-corsair",
-      "tags": [ { "key": "owner/pirate", "coi": true, "manual": true }, { "key": "purpose/ship-repair", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "purpose/salvage", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/industrial", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/pirate", "coi": true, "manual": true }, { "key": "purpose/ship-repair", "coi": true, "manual": true }, { "key": "purpose/trade-hub", "coi": true, "manual": true }, { "key": "purpose/brokerage", "coi": true, "manual": true }, { "key": "purpose/salvage", "coi": true, "manual": true }, { "key": "purpose/leisure", "coi": true, "manual": true }, { "key": "class/station", "coi": true, "manual": true }, { "key": "tech/industrial", "coi": true, "manual": true }, { "key": "resource/technology", "coi": true, "manual": true }, { "key": "universe/traveller", "coi": true, "manual": true } ],
       "name": "Corsair Base",
       "kind": "construct",
       "roleHint": "station",
@@ -1451,7 +1452,7 @@
     },
     {
       "id": "template-traveller-starport-class-d",
-      "tags": [ { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/refuel", "coi": true, "manual": true }, { "key": "tech/industrial", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/owner-operator", "coi": true, "manual": true }, { "key": "purpose/unrefined-fuel", "coi": true, "manual": true }, { "key": "tech/industrial", "coi": true, "manual": true }, { "key": "universe/traveller", "coi": true, "manual": true } ],
       "name": "Class D Spaceport",
       "kind": "construct",
       "roleHint": "infrastructure",
@@ -1481,7 +1482,7 @@
     },
     {
       "id": "template-traveller-starport-class-e",
-      "tags": [ { "key": "purpose/comms-relay", "coi": true, "manual": true }, { "key": "tech/primitive", "coi": true, "manual": true } ],
+      "tags": [ { "key": "purpose/beacon", "coi": true, "manual": true }, { "key": "tech/primitive", "coi": true, "manual": true }, { "key": "universe/traveller", "coi": true, "manual": true } ],
       "name": "Class E Beacon",
       "kind": "construct",
       "roleHint": "infrastructure",
@@ -1511,7 +1512,7 @@
     },
     {
       "id": "template-traveller-city-domed-hardened",
-      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/traveller", "coi": true, "manual": true } ],
       "name": "Hardened Dome City",
       "kind": "construct",
       "roleHint": "infrastructure",
@@ -1526,7 +1527,7 @@
     },
     {
       "id": "template-traveller-city-subsurface",
-      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/colony", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/traveller", "coi": true, "manual": true } ],
       "name": "Subsurface Arcology",
       "kind": "construct",
       "roleHint": "infrastructure",
@@ -1541,7 +1542,7 @@
     },
     {
       "id": "template-traveller-solar-farm-flare",
-      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/manufacturing", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/corporation", "coi": true, "manual": true }, { "key": "purpose/power-generation", "coi": true, "manual": true }, { "key": "tech/standard", "coi": true, "manual": true }, { "key": "universe/traveller", "coi": true, "manual": true } ],
       "name": "Hardened Solar Array",
       "kind": "construct",
       "roleHint": "infrastructure",

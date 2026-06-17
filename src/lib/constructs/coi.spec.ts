@@ -91,9 +91,9 @@ describe('derived status mirrors internal state', () => {
 });
 
 describe('CoI enabled / active set', () => {
-  it('the core trio plus Resources, Hull class, FTL drive and Tech default on (only Disposition off)', () => {
+  it('the core trio plus Resources, Universe, Hull class, FTL drive and Tech default on (only Disposition off)', () => {
     const on = DEFAULT_COI_CATEGORIES.filter((c) => c.enabled === true).map((c) => c.id).sort();
-    expect(on).toEqual(['class', 'drive', 'owner', 'purpose', 'resource', 'status', 'tech']);
+    expect(on).toEqual(['class', 'drive', 'owner', 'purpose', 'resource', 'status', 'tech', 'universe']);
     expect(DEFAULT_COI_CATEGORIES.find((c) => c.id === 'disposition')?.enabled).not.toBe(true);
   });
   it('Profile and Cargo are not default categories (Resources reuses the resource/ namespace)', () => {

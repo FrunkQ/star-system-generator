@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.158-beta - 17th Jun 2026
+
+* Much richer construct vocabulary (CoIs). New Purpose tags fill gaps the first pass exposed — resupply (air/food, vs refuel), forward-base, shipyard, refining, agriculture, power-generation, customs, intelligence, beacon, government — plus a Traveller-style port-capability set (refined/unrefined fuel, shipyard jump-capable vs small-craft, drydock, brokerage, lodging, bonded warehouse, extraterritorial) so a "Class A starport" is now a bundle of capabilities rather than an opaque label. Added Owner: Government + Independent; Hull classes: dropship, pinnace, scout, battleship, colony-ship, platform; Resources: provisions, technology, alien-technology, exotic-matter, luxuries, pharmaceuticals (the finished/exotic tier is construct-only — a planet can't manufacture them); Status: distress, refit, dormant, captured.
+* New Universe CoI category (Contemporary / Hard sci-fi / High sci-fi / Expanse / Aliens / Traveller / Mothership / Natural) — every starter template now carries its setting, so "show me every Expanse ship" is a tag filter.
+* All starter templates re-tagged with the refined vocabulary: the Donnager is a battleship, the Nauvoo a colony-ship, Ganymede an agriculture/provisions source, Tycho a jump-capable shipyard, the Traveller starports proper capability bundles, and so on.
+
 ## v2.0.157-beta - 17th Jun 2026
 
 * Constructs of Interest now cover resources. Added a "Resources" CoI category that deliberately shares the same `resource/` vocabulary as the physics-derived body resources (water ice, heavy metals, helium-3, …), so a body's natural deposit and a ship's cargo of the same thing read as one ledger — provenance stays clear because a construct's resource tag is hand-set, a body's is derived. Hull class, FTL drive and Tech & origin CoI categories are now on by default too.
