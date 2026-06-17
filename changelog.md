@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.146-beta - 17th Jun 2026
+
+* Fixed a hard freeze (and a ship "teleporting") when a construct's journey/abort is timestamped far from the current clock — e.g. flights dated years before the active calendar's epoch. The orrery was re-integrating that ship's gravity coast over the whole gap every frame; it now bounds the integration (fixed step count, capped span) and ignores non-finite/out-of-epoch time gaps, so it resolves instantly instead of locking up.
+
 ## v2.0.145-beta - 17th Jun 2026
 
 * Transit courses curve again. The planner solves a clean 2-body (Sun-only) transfer but was *drawing* the path re-integrated through the full n-body field; because the target was 2-body, the path drifted off it and a linear correction flattened the conic into a near-straight line. The displayed path now matches the model it solves (2-body), so transfers show their proper conic arcs. (Trade-off: the n-body-derived trajectory-correction tags are quiet until the proper n-body-aware solver lands.)

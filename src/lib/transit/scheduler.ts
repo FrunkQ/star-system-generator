@@ -22,29 +22,42 @@ export function coastUnderGravity(
   t0Ms: number,
   tMs: number
 ): { position_au: Vector2; velocity_ms: { x: number; y: number } } {
-  const dtSec = (tMs - t0Ms) / 1000;
-  const straight = {
-    position_au: { x: startPos_au.x + (startVel_ms.x / AU_M) * dtSec, y: startPos_au.y + (startVel_ms.y / AU_M) * dtSec },
-    velocity_ms: { ...startVel_ms }
-  };
-  if (!(dtSec > 0)) return { position_au: { ...startPos_au }, velocity_ms: { ...startVel_ms } };
+  const dtSecRaw = (tMs - t0Ms) / 1000;
+  // Guard pathological gaps: a non-finite span, or a journey/abort timestamped in a different epoch than
+  // the clock (e.g. flights at 2300 vs a 2323 calendar) yields an enormous dt. Integrating that EVERY frame
+  // is the freeze; the runaway integral is the "teleport". Hold at the anchor for garbage, and CAP the span
+  // so an old-but-valid adrift ship still resolves cheaply (~bounded step count) instead of grinding.
+  if (!(dtSecRaw > 0) || !Number.isFinite(dtSecRaw)) {
+    return { position_au: { ...startPos_au }, velocity_ms: { ...startVel_ms } };
+  }
+  const MAX_COAST_SEC = 3.15e10; // ~1000 years — beyond this we just hold the last coasted state
+  const dtSec = Math.min(dtSecRaw, MAX_COAST_SEC);
   const bodies = system.nodes
     .filter((n) => n.kind === 'body' && ((n as any).massKg || 0) > 0 && (n as any).roleHint !== 'belt' && (n as any).roleHint !== 'ring')
     .map((n) => ({ id: n.id, massKg: (n as any).massKg as number }));
-  if (!bodies.length) return straight;
+  if (!bodies.length) {
+    return {
+      position_au: { x: startPos_au.x + (startVel_ms.x / AU_M) * dtSec, y: startPos_au.y + (startVel_ms.y / AU_M) * dtSec },
+      velocity_ms: { ...startVel_ms }
+    };
+  }
   const field = systemGravityField(bodies, (id, t) => {
     const node = system.nodes.find((n) => n.id === id);
     if (!node) return [0, 0];
     const s = getGlobalState(system, node as any, t * 1000); // field time is seconds; getGlobalState wants ms
     return [s.r.x, s.r.y];
   });
-  const t0Sec = t0Ms / 1000, tSec = tMs / 1000;
-  const step = Math.min(86400, Math.max(600, dtSec / 4000)); // ~4000 RK4 steps, clamped 10 min … 1 day
+  const t0Sec = t0Ms / 1000;
+  const step = Math.max(600, dtSec / 2000); // bound the step COUNT (~2000), so a long span can't run away
   const r = driftAt(
     { t0: t0Sec, x: startPos_au.x, y: startPos_au.y, vx: startVel_ms.x / AU_M, vy: startVel_ms.y / AU_M },
-    field, tSec, step
+    field, t0Sec + dtSec, step
   );
-  return { position_au: { x: r.x, y: r.y }, velocity_ms: { x: r.vx * AU_M, y: r.vy * AU_M } };
+  const safe = (v: number, fb: number) => (Number.isFinite(v) ? v : fb);
+  return {
+    position_au: { x: safe(r.x, startPos_au.x), y: safe(r.y, startPos_au.y) },
+    velocity_ms: { x: safe(r.vx * AU_M, startVel_ms.x), y: safe(r.vy * AU_M, startVel_ms.y) }
+  };
 }
 
 // Predict a coasting ship's FUTURE path under the system's gravity — a polyline of `steps` points so the
@@ -58,6 +71,7 @@ export function coastPathUnderGravity(
   t0Ms: number,
   steps = 40
 ): Vector2[] {
+  if (!Number.isFinite(startPos_au?.x) || !Number.isFinite(startPos_au?.y)) return [];
   const bodies = system.nodes
     .filter((n) => n.kind === 'body' && ((n as any).massKg || 0) > 0 && (n as any).roleHint !== 'belt' && (n as any).roleHint !== 'ring')
     .map((n) => ({ id: n.id, massKg: (n as any).massKg as number }));
