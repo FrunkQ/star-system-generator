@@ -106,7 +106,7 @@ Runs at each **decision point** (on arrival, or at a scheduled re-plan), determi
 
 Because it's deterministic given the clock, re-running at the next decision point is safe and scrubbable.
 
-## 6. Events: breakdown → SOS → rescue (the hard part)
+## 6. Events: breakdown → SOS → rescue (the hard part) — BANKED (future, dropped from the current build; see §12.9)
 
 - Each ship has a **% chance / year** of breaking down, rolled **deterministically** (seed + ship + time).
 - On breakdown the ship **stops in space** (new "stranded/adrift" state already exists from the interstellar
@@ -208,9 +208,9 @@ relive it.
 1. **Log records + cargo accounting + Totals tab** — highest value, pure log/aggregation, no new engine.
 2. **Waypoint PoI pack** — destinations the planner can query.
 3. **Planner: lookahead** — patrol reorder first, then precedence-constrained cargo; per-fuel-type planning.
-4. **Maintenance** — cadence + breakdown-probability input + inserted segments.
-5. **Breakdown → SOS → rescue** — last; the only piece needing the forward event-resolution pass.
-6. **UI** — the Autopilot tab and the Log/Totals viewer, layered on as the data behind them lands.
+4. **UI** — the Autopilot tab and the Log/Totals viewer, layered on as the data behind them lands.
+5. **~~Maintenance~~ + ~~Breakdown → SOS → rescue~~** — **BANKED (future, §12.9)**; dropped from the current
+   build. The inter-ship event pass is deferred — autopilot works fully without it.
 
 ## 11. Open questions / risks
 
@@ -342,4 +342,14 @@ resolver already reads. Disengage flips `enabled` and truncates emission at the 
 2. Status derivation + badge + disengage-at-next-stage (reads the itinerary; cheap).
 3. Wire the planner (§5) so Engage actually emits a patrol circuit (Fixed first, then Free/lookahead).
 4. Cargo rates + manifest + log records (§12.6) for mining/haul roles.
-5. Maintenance, then the breakdown→SOS→rescue event pass (§6) last.
+
+That's the autopilot scope for now — sentence tab → status → planner → cargo. It's all per-ship,
+deterministic, and rides the existing log model.
+
+### 12.9 BANKED for later — Maintenance + Breakdown → SOS → rescue (Alex, 2026-06-17)
+Explicitly **dropped from the current build** and banked as a future feature. This is §6 + the maintenance
+cadence: the % -chance-per-year breakdown, the SOS, the soonest-ETA responder, and the **forward
+event-resolution pass** that splices a rescue leg into another ship's itinerary. It's the ONE piece that
+breaks pure per-ship derivation (ships react to each other), so it's the natural thing to defer — autopilot
+works fully without it. Pick it up only when the rest is solid and there's appetite for the inter-ship
+simulation. (§6 above is the design, kept for when it's green-lit.)
