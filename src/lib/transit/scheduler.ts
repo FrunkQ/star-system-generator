@@ -307,13 +307,19 @@ export function sampleJourneyKinematicsAtTime(
 
     if (cancelledAtMs !== null && log.cancelState && timeMs >= cancelledAtMs) {
       // Adrift: coast under the star(s)' real gravity — a slow conic round the sun, not a straight line.
+      // This drift only governs UNTIL a later journey begins. A ship that was stranded and then given a
+      // NEW journey (logs are sorted by start, so the new one is processed later) must not stay pinned to
+      // the old drift — otherwise the ship's log reads right but the orrery still shows "Adrift · coasting".
+      // Stash the coast as the running candidate (like a completed journey) and keep scanning: a subsequent
+      // journey that has already started overwrites it; if none has, this is what we return.
       const coasted = coastUnderGravity(system, log.cancelState.position_au, log.cancelState.velocity_ms, cancelledAtMs, timeMs);
-      return {
+      candidateAfterCompletion = {
         journeyId: log.id,
         state: 'Deep Space',
         position_au: coasted.position_au,
         velocity_ms: coasted.velocity_ms
       };
+      continue;
     }
 
     if (timeMs > effectiveEndMs) {

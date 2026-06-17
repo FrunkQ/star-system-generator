@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { coastUnderGravity, coastPathUnderGravity } from './scheduler';
-import type { System } from '$lib/types';
+import { coastUnderGravity, coastPathUnderGravity, sampleJourneyKinematicsAtTime } from './scheduler';
+import type { System, CelestialBody } from '$lib/types';
 
 // One Sun-mass star at the system root (sits at the origin). A cut-loose ship then coasts under its real
 // gravity — the in-system "adrift" path — so this validates the wiring (ms↔s, m/s↔AU/s, star detection).
@@ -44,5 +44,53 @@ describe('coastUnderGravity — in-system adrift under real gravity', () => {
     const empty = { id: 's', nodes: [] } as unknown as System;
     const r = coastUnderGravity(empty, { x: 1, y: 0 }, { x: vCirc, y: 0 }, 0, 1000);
     expect(r.position_au.x).toBeCloseTo(1 + (vCirc / AU_M) * 1, 6);
+  });
+});
+
+describe('sampleJourneyKinematicsAtTime — a new journey supersedes an old cancelled drift', () => {
+  // Regression: a ship stranded (cancelled journey w/ cancelState) and then given a NEW journey was still
+  // resolving to the old drift, because the cancelled-drift branch returned immediately on the first
+  // (earliest-start) log and the later journey never got to govern — log read right, orrery showed adrift.
+  const star = { id: 'star', kind: 'body', roleHint: 'star', classes: ['star/G'], parentId: null, massKg: SOLAR, radiusKm: 696000 };
+  const sysWithStar = { id: 's', nodes: [star] } as unknown as System;
+
+  const DAY = 86400 * 1000;
+  const seg = (pts: { x: number; y: number }[]) => ({
+    id: 'seg', type: 'Coast', startTime: 0, endTime: DAY, startState: { r: pts[0], v: { x: 0, y: 0 } },
+    endState: { r: pts[pts.length - 1], v: { x: 0, y: 0 } }, hostId: 'star', pathPoints: pts, warnings: [], fuelUsed_kg: 0
+  });
+
+  const ship = {
+    id: 'ship', kind: 'construct', name: 'Test', parentId: 'star',
+    scheduled_journeys: [
+      // 1) Cancelled mid-flight at day 5, left drifting at (5,0) with some velocity.
+      {
+        id: 'journey-cancelled', status: 'cancelled',
+        cancelledAtSec: String(5 * 86400),
+        cancelState: { position_au: { x: 5, y: 0 }, velocity_ms: { x: 0, y: 1000 } },
+        plans: [{ id: 'p1', originId: 'star', targetId: 'star', startTime: 0, totalTime_days: 10,
+                  segments: [seg([{ x: 0, y: 0 }, { x: 5, y: 0 }])], arrivalPlacement: 'lo' }]
+      },
+      // 2) A NEW journey, planned long after the drift began — completes by day 30.
+      {
+        id: 'journey-new', status: 'completed',
+        plans: [{ id: 'p2', originId: 'star', targetId: 'star', startTime: 20 * DAY, totalTime_days: 10,
+                  segments: [seg([{ x: 0, y: 0 }, { x: 1, y: 0 }])], arrivalPlacement: 'lo' }]
+      }
+    ]
+  } as unknown as CelestialBody;
+
+  it('after the new journey completes, the ship is governed by it, not the old drift', () => {
+    const res = sampleJourneyKinematicsAtTime(sysWithStar, ship, 40 * DAY);
+    expect(res).not.toBeNull();
+    expect(res!.journeyId).toBe('journey-new'); // NOT 'journey-cancelled'
+    expect(res!.state).toBe('Orbiting');        // parked at the new journey's target, not 'Deep Space' adrift
+  });
+
+  it('between the cancel and the new journey, the ship is still adrift', () => {
+    const res = sampleJourneyKinematicsAtTime(sysWithStar, ship, 12 * DAY);
+    expect(res).not.toBeNull();
+    expect(res!.journeyId).toBe('journey-cancelled');
+    expect(res!.state).toBe('Deep Space'); // coasting — the new journey hasn't started yet
   });
 });
