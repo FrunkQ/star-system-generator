@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.149-beta - 17th Jun 2026
+
+* The real performance fix for adrift ships. The slow part was never the throttle — it was the **maths per recompute**. Two things were grinding millions of operations on every redraw: (1) the gravity field included **every body in the system, moons and all** (~50 in Sol), and (2) the forecast line re-integrated each segment with ~40 sub-steps. Moons are negligible for a heliocentric coast (the star and the planet you're passing are what matter), so they're dropped from the field, and the faint forecast line now uses one integration step per point. Together that's ~50-100x less work per frame — adrift trajectories now refresh in well under half a second instead of ~6 seconds.
+* Ship's Log, adrift entries: the planned-route block is now headed "Originally planned route (aborted)" so it's clear that section is the trip that was cancelled mid-flight, not where the ship is now. The "Ends:" line also names the destination — e.g. "In Low orbit of Uranus" / "Docked at Uranus" / "Fly-past of Uranus" — instead of just "In Low orbit".
+
 ## v2.0.148-beta - 17th Jun 2026
 
 * Scrubbing/jogging the clock is much smoother. The orrery was re-deriving every coasting ship's position on every single jog frame; it now throttles that re-derive to ~150ms while you're moving the clock and does one exact pass the moment you settle — fast estimates while dragging, right when you let go.

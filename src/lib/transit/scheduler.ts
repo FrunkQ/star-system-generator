@@ -42,7 +42,7 @@ export function coastUnderGravity(
   const tEndSec = tEndMs / 1000;
   const t0Sec = t0Ms / 1000;
   const bodies = system.nodes
-    .filter((n) => n.kind === 'body' && ((n as any).massKg || 0) > 0 && (n as any).roleHint !== 'belt' && (n as any).roleHint !== 'ring')
+    .filter((n) => n.kind === 'body' && ((n as any).massKg || 0) > 0 && (n as any).roleHint !== 'belt' && (n as any).roleHint !== 'ring' && (n as any).roleHint !== 'moon')
     .map((n) => ({ id: n.id, massKg: (n as any).massKg as number }));
   if (!bodies.length) {
     const dt = (tEndMs - t0Ms) / 1000;
@@ -94,7 +94,7 @@ export function coastPathUnderGravity(
 ): Vector2[] {
   if (!Number.isFinite(startPos_au?.x) || !Number.isFinite(startPos_au?.y)) return [];
   const bodies = system.nodes
-    .filter((n) => n.kind === 'body' && ((n as any).massKg || 0) > 0 && (n as any).roleHint !== 'belt' && (n as any).roleHint !== 'ring')
+    .filter((n) => n.kind === 'body' && ((n as any).massKg || 0) > 0 && (n as any).roleHint !== 'belt' && (n as any).roleHint !== 'ring' && (n as any).roleHint !== 'moon')
     .map((n) => ({ id: n.id, massKg: (n as any).massKg as number }));
   if (!bodies.length) return [];
   const field = systemGravityField(bodies, (id, t) => {
@@ -112,7 +112,7 @@ export function coastPathUnderGravity(
   // a near-radial plunge doesn't whip through the star and fly back out.
   const horizonSec = Math.max(86400, charSec * 2);
   const stepSec = horizonSec / steps;
-  const sub = Math.min(86400, Math.max(300, stepSec / 40)); // RK4 sub-step
+  const sub = stepSec; // 1 RK4 step per polyline point — plenty for a faint forecast, and ~40x cheaper
 
   const pts: Vector2[] = [{ x: startPos_au.x, y: startPos_au.y }];
   let x = startPos_au.x, y = startPos_au.y, vx = startVel_ms.x / AU_M, vy = startVel_ms.y / AU_M;

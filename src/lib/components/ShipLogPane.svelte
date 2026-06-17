@@ -53,13 +53,14 @@
   };
   const fmtSpeed = (ms: number) => ms >= 1000 ? `${(ms / 1000).toFixed(1)} km/s` : `${Math.round(ms)} m/s`;
   function exitState(leg: any): string {
+      const target = leg.targetId ? nodeName(leg.targetId) : '';
       const isFlyby = (leg.interceptSpeed_ms || 0) > 0 || (leg.segments || []).some((s: any) => (s.warnings || []).includes('Flyby'));
       if (isFlyby) {
           const v = leg.arrivalVelocity_ms || leg.interceptSpeed_ms || 0;
-          return `Fly-past — carries ${fmtSpeed(v)} Δv`;
+          return `Fly-past${target ? ` of ${target}` : ''} — carries ${fmtSpeed(v)} Δv`;
       }
-      if (leg.arrivalPlacement && PLACEMENT[leg.arrivalPlacement]) return `In ${PLACEMENT[leg.arrivalPlacement]}`;
-      return 'Docked';
+      if (leg.arrivalPlacement && PLACEMENT[leg.arrivalPlacement]) return `In ${PLACEMENT[leg.arrivalPlacement]}${target ? ` of ${target}` : ''}`;
+      return target ? `Docked at ${target}` : 'Docked';
   }
 </script>
 
@@ -93,6 +94,9 @@
         {/if}
         {#if adrift}
           <div class="ship-log-meta ship-log-adrift">Cancelled &amp; coasting since {formatLogTime(safeClockSecStringToMs(log.cancelledAtSec))} from ({log.cancelState.position_au.x.toFixed(2)}, {log.cancelState.position_au.y.toFixed(2)}) AU</div>
+        {/if}
+        {#if adrift}
+          <div class="ship-log-meta ship-log-planned-hdr">Originally planned route (aborted):</div>
         {/if}
         <div class="ship-log-legs">
           {#each log.plans as leg}
@@ -187,5 +191,10 @@
   }
   .ship-log-adrift {
       color: #e8a857;
+  }
+  .ship-log-planned-hdr {
+      font-style: italic;
+      opacity: 0.7;
+      margin-top: 0.35rem;
   }
 </style>
