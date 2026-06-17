@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.163-beta - 17th Jun 2026
+
+* Tag inheritance, construct side: a ship's FTL drive is now read from its actual engines, not hand-set. A warp ship shows Warp because it carries an Alcubierre ring; torch/ion/NTR ships show no FTL (sublight). In the Create New Construct picker the inherited drive appears as a dashed "derived" chip, and the FTL Explorer's redundant hand-set Warp tag has been dropped (it comes from the engine now). New resolver functions (`constructDriveTag` / `constructRefuelTags` / `inheritedConstructTags`) also gather a construct's refuel sources from its fuel tanks — the groundwork the autopilot will use to find where each fuel can be replenished.
+
 ## v2.0.162-beta - 17th Jun 2026
 
 * Resources, Hull class and FTL drive are now CORE construct categories — always on, can't be switched off, like Status / Owner / Purpose. (And the Resources reason-to-visit category is forced on for bodies too.)

@@ -13,7 +13,7 @@ export interface Visibility {
   fields?: Record<string, boolean>;
 }
 
-export interface Tag { key: string; value?: string; ns?: string; manual?: boolean; coi?: boolean; }
+export interface Tag { key: string; value?: string; ns?: string; manual?: boolean; coi?: boolean; inherited?: boolean; }
 
 export interface NodeBase {
   id: ID; name: string; parentId: ID | null; ui_parentId?: ID | null;
@@ -328,6 +328,11 @@ export interface FuelDefinition {
   name: string;
   density_kg_per_m3: number;
   description: string;
+  // Tag inheritance: where this fuel can be sourced — resource/* (a deposit) or frontier/* (a refuel
+  // context). availability: common = any refuel stop; manufactured = factory + raw; exotic = only where
+  // its own resource tag is present. See docs/tag-inheritance.md.
+  refuel_tags?: string[];
+  availability?: 'common' | 'manufactured' | 'exotic';
 }
 
 export interface EngineDefinition {
@@ -341,6 +346,7 @@ export interface EngineDefinition {
   powerDraw_MW?: number; // Optional: Power drawn by the engine when active
   atmo_efficiency?: number; // Optional: Thrust multiplier in atmosphere (0-1)
   description: string;
+  drive_tags?: string[]; // FTL drive/* tag(s) this engine confers; empty/absent = sublight. See docs/tag-inheritance.md.
 }
 
 export interface GasTag {

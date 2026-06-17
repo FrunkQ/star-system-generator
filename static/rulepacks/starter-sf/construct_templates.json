@@ -873,7 +873,7 @@
     },
     {
       "id": "template-ship-warp",
-      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/survey-science", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "class/cruiser", "coi": true, "manual": true }, { "key": "drive/warp", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "resource/exotic-matter", "coi": true, "manual": true }, { "key": "universe/high-scifi", "coi": true, "manual": true } ],
+      "tags": [ { "key": "owner/consortium", "coi": true, "manual": true }, { "key": "purpose/survey-science", "coi": true, "manual": true }, { "key": "purpose/research", "coi": true, "manual": true }, { "key": "class/cruiser", "coi": true, "manual": true }, { "key": "tech/advanced", "coi": true, "manual": true }, { "key": "resource/exotic-matter", "coi": true, "manual": true }, { "key": "universe/high-scifi", "coi": true, "manual": true } ],
       "name": "FTL Explorer (Enterprise-class)",
       "kind": "construct",
       "roleHint": "ship",

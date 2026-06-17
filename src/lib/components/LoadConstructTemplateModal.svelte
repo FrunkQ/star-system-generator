@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
   import { coiCategories, activeCoICategories, coiTagLabel } from '$lib/constructs/coi';
+  import { constructDriveTag, byId } from '$lib/constructs/inheritance';
 
   export let rulePack: RulePack;
   export let mode: 'overwrite' | 'create' = 'overwrite';
@@ -16,6 +17,7 @@
 
   $: cats = $coiCategories;
   $: activeCats = activeCoICategories(cats);
+  $: engineMap = byId(rulePack?.engineDefinitions);   // for engine→drive inheritance display
   const label = (key: string) => coiTagLabel(key, cats);
   const roleLabel = (r: string) => r.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -131,6 +133,8 @@
         <div class="empty-msg">No constructs match.</div>
       {/if}
       {#each results as t (t.id || t.name)}
+        {@const handSetDrive = (t.tags || []).some((x) => x.key.startsWith('drive/'))}
+        {@const inheritedDrive = handSetDrive ? null : constructDriveTag(t, engineMap)}
         <div class="browser-item {selectedTemplate === t ? 'selected' : ''}"
              on:click={() => (selectedTemplate = t)}
              on:dblclick={handleLoad}>
@@ -141,6 +145,7 @@
             <span class="name">{t.name}</span>
             <div class="tag-chips">
               {#each chipTags(t) as k}<span class="tag-chip" style="border-color:{catColor(k)}">{label(k)}</span>{/each}
+              {#if inheritedDrive}<span class="tag-chip inherited" title="inherited from engines">{label(inheritedDrive)}</span>{/if}
             </div>
           </div>
         </div>
@@ -253,6 +258,8 @@
     background: var(--bg-control-hover, rgba(255,255,255,0.07)); color: var(--text-muted);
     border: 1px solid var(--border-soft);
   }
+  /* Inherited-from-hardware tag (e.g. the FTL drive from the engines) — dashed to read as derived. */
+  .tag-chip.inherited { border-style: dashed; border-color: var(--accent, #c07f3f); font-style: italic; }
   .empty-msg { color: var(--text-faint); text-align: center; margin-top: 50px; font-style: italic; }
 
   .footer {
