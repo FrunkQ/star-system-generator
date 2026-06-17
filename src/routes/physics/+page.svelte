@@ -484,6 +484,7 @@
         <li>The resonant-pumping thresholds (e ≥ 0.004, planet-mass host) are calibrated cutoffs — tuned so Enceladus fires and Ganymede/Dione don't. A resonance-maintained eccentricity now feeds the numeric tidal-heat model (it dissipates from zero forcing, where a transient eccentricity must clear an onset first), with the global-mean contribution still capped at a calibrated few kelvin.</li>
         <li>The solar-seasonal geyser branch is a trigger condition (cold + surface ice), not a sublimation-energy model.</li>
         <li>Predicted fates (infall/ejection/collision) are heuristic outcomes read off the dominant instability driver, not N-body integrations.</li>
+        <li>Coasting/adrift transit trajectories ignore moons: the gravity field used to integrate a drifting ship includes only stars and planets, never their moons. A moon's pull on a heliocentric coast is negligible, and including the full satellite census would make every clock-slider frame re-integrate dozens of extra bodies — impractical for live scrubbing in a browser. The star and any planet the ship passes still bend the path.</li>
       </ul>
     </section>
 
