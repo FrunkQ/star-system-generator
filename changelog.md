@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.147-beta - 17th Jun 2026
+
+* Big performance fix for drifting ships. The orrery was re-integrating a coasting ship's whole trajectory from its cancel point every single frame — so the longer it had been adrift, the heavier each redraw (the jumpy clock and "orrery barely moves"). It now steps forward incrementally from the previous frame's state, so each frame is cheap and constant regardless of how long the ship's been coasting; the path also stops jittering (each frame extends the last instead of recomputing).
+* The drift forecast line reaches a bit further ahead.
+* The ship's log now reads "Adrift · coasting" for a cancelled-and-drifting journey, with when and where it was cut loose, rather than a bare "Cancelled".
+
 ## v2.0.146-beta - 17th Jun 2026
 
 * Fixed a hard freeze (and a ship "teleporting") when a construct's journey/abort is timestamped far from the current clock — e.g. flights dated years before the active calendar's epoch. The orrery was re-integrating that ship's gravity coast over the whole gap every frame; it now bounds the integration (fixed step count, capped span) and ignores non-finite/out-of-epoch time gaps, so it resolves instantly instead of locking up.

@@ -1074,7 +1074,7 @@
               const key = `${currentTime}|${vp.x},${vp.y}|${vel.x},${vel.y}`;
               let cached = coastPathCache.get(node.id);
               if (!cached || cached.key !== key) {
-                  cached = { key, pts: coastPathUnderGravity(system, vp, vel, currentTime, 40) };
+                  cached = { key, pts: coastPathUnderGravity(system, vp, vel, currentTime, 64) };
                   coastPathCache.set(node.id, cached);
               }
               const pts = cached.pts;

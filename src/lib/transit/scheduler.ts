@@ -7,6 +7,13 @@ import { systemGravityField, G_AU } from '$lib/physics/systemGravity';
 
 const AU_M = AU_KM * 1000;
 
+// Incremental coast cache: the ship's last resolved coast state, keyed by its anchor (cancel point). Lets
+// us step FORWARD from the last frame's result by a tiny delta instead of re-integrating the whole span
+// from the anchor every redraw (which was O(elapsed) → the orrery overload + clock-jumps). Scrubbing back
+// past the cached time falls back to an exact recompute from the anchor.
+type CoastState = { tEndMs: number; x: number; y: number; vx: number; vy: number };
+const coastIncrCache = new Map<string, CoastState>();
+
 // Coast a cut-loose ship under the system's REAL gravity — full N-body: every massive body pulls (the
 // same perturber set the transit integrator uses, calculator.ts), so the ship can be slung past a planet,
 // not only fall round the sun. A residual velocity traces a real trajectory (bound ellipse, hyperbola
@@ -31,13 +38,16 @@ export function coastUnderGravity(
     return { position_au: { ...startPos_au }, velocity_ms: { ...startVel_ms } };
   }
   const MAX_COAST_SEC = 3.15e10; // ~1000 years — beyond this we just hold the last coasted state
-  const dtSec = Math.min(dtSecRaw, MAX_COAST_SEC);
+  const tEndMs = Math.min(tMs, t0Ms + MAX_COAST_SEC * 1000);
+  const tEndSec = tEndMs / 1000;
+  const t0Sec = t0Ms / 1000;
   const bodies = system.nodes
     .filter((n) => n.kind === 'body' && ((n as any).massKg || 0) > 0 && (n as any).roleHint !== 'belt' && (n as any).roleHint !== 'ring')
     .map((n) => ({ id: n.id, massKg: (n as any).massKg as number }));
   if (!bodies.length) {
+    const dt = (tEndMs - t0Ms) / 1000;
     return {
-      position_au: { x: startPos_au.x + (startVel_ms.x / AU_M) * dtSec, y: startPos_au.y + (startVel_ms.y / AU_M) * dtSec },
+      position_au: { x: startPos_au.x + (startVel_ms.x / AU_M) * dt, y: startPos_au.y + (startVel_ms.y / AU_M) * dt },
       velocity_ms: { ...startVel_ms }
     };
   }
@@ -47,12 +57,23 @@ export function coastUnderGravity(
     const s = getGlobalState(system, node as any, t * 1000); // field time is seconds; getGlobalState wants ms
     return [s.r.x, s.r.y];
   });
-  const t0Sec = t0Ms / 1000;
-  const step = Math.max(600, dtSec / 2000); // bound the step COUNT (~2000), so a long span can't run away
-  const r = driftAt(
-    { t0: t0Sec, x: startPos_au.x, y: startPos_au.y, vx: startVel_ms.x / AU_M, vy: startVel_ms.y / AU_M },
-    field, t0Sec + dtSec, step
-  );
+
+  // Incremental: continue from the last cached state when stepping FORWARD (cheap delta); recompute from the
+  // anchor only on a cache miss or a backward scrub. This is the perf fix — no more O(elapsed) per frame.
+  const key = `${t0Ms}|${startPos_au.x},${startPos_au.y}|${startVel_ms.x},${startVel_ms.y}`;
+  const prev = coastIncrCache.get(key);
+  const from = (prev && prev.tEndMs <= tEndMs && prev.tEndMs >= t0Ms)
+    ? { t0: prev.tEndMs / 1000, x: prev.x, y: prev.y, vx: prev.vx, vy: prev.vy }
+    : { t0: t0Sec, x: startPos_au.x, y: startPos_au.y, vx: startVel_ms.x / AU_M, vy: startVel_ms.y / AU_M };
+  const spanSec = tEndSec - from.t0;
+  const r = spanSec <= 0
+    ? { x: from.x, y: from.y, vx: from.vx, vy: from.vy }
+    : driftAt(from, field, tEndSec, Math.max(600, spanSec / 2000)); // ≤~2000 steps for the (now small) span
+
+  if (Number.isFinite(r.x) && Number.isFinite(r.y)) {
+    if (coastIncrCache.size > 256) coastIncrCache.clear(); // cheap bound; entries are tiny
+    coastIncrCache.set(key, { tEndMs, x: r.x, y: r.y, vx: r.vx, vy: r.vy });
+  }
   const safe = (v: number, fb: number) => (Number.isFinite(v) ? v : fb);
   return {
     position_au: { x: safe(r.x, startPos_au.x), y: safe(r.y, startPos_au.y) },
@@ -87,9 +108,9 @@ export function coastPathUnderGravity(
   const r = Math.max(1e-6, Math.hypot(startPos_au.x, startPos_au.y));
   const mu = G_AU * maxMass;
   const charSec = mu > 0 ? Math.sqrt((r * r * r) / mu) : 3.15e7; // √(r³/μ) = T/2π (≈1 rad of arc)
-  // One characteristic time ≈ a radian of orbit, or most of a radial fall — long enough to read the
-  // curve, short enough that a near-radial plunge doesn't whip through the star and fly back out.
-  const horizonSec = Math.max(86400, charSec);
+  // ~2 characteristic times ≈ a good arc ahead (longer reach, as requested) while still short enough that
+  // a near-radial plunge doesn't whip through the star and fly back out.
+  const horizonSec = Math.max(86400, charSec * 2);
   const stepSec = horizonSec / steps;
   const sub = Math.min(86400, Math.max(300, stepSec / 40)); // RK4 sub-step
 

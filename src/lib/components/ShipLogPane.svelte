@@ -80,15 +80,19 @@
     <div class="ship-log-empty">No journeys logged.</div>
   {:else}
     {#each (focusedBody.scheduled_journeys || []) as log, i}
+      {@const adrift = log.status === 'cancelled' && log.cancelState}
       <div class="ship-log-entry">
         <div class="ship-log-title">
           <strong>Journey {i + 1}</strong>
-          <span class="ship-log-status">{log.status.toUpperCase()}</span>
+          <span class="ship-log-status" class:adrift>{adrift ? 'ADRIFT · COASTING' : log.status.toUpperCase()}</span>
         </div>
         <div class="ship-log-meta">Created: {formatLogTime(safeClockSecStringToMs(log.createdAtSec))}</div>
         {#if getJourneyBounds(log.plans)}
           {@const bounds = getJourneyBounds(log.plans)!}
           <div class="ship-log-meta">Window: {formatLogTime(bounds.startMs)} -> {formatLogTime(bounds.endMs)}</div>
+        {/if}
+        {#if adrift}
+          <div class="ship-log-meta ship-log-adrift">Cancelled &amp; coasting since {formatLogTime(safeClockSecStringToMs(log.cancelledAtSec))} from ({log.cancelState.position_au.x.toFixed(2)}, {log.cancelState.position_au.y.toFixed(2)}) AU</div>
         {/if}
         <div class="ship-log-legs">
           {#each log.plans as leg}
@@ -177,5 +181,11 @@
   }
   .ship-log-exit {
       color: #8fcf9f;
+  }
+  .ship-log-status.adrift {
+      color: #e8a857;
+  }
+  .ship-log-adrift {
+      color: #e8a857;
   }
 </style>

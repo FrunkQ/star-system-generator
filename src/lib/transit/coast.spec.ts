@@ -30,13 +30,14 @@ describe('coastUnderGravity — in-system adrift under real gravity', () => {
     expect(r.velocity_ms.x).toBeLessThan(0);   // moving sunward
   });
 
-  it('coastPathUnderGravity forecasts an inward-curving fall from rest', () => {
+  it('coastPathUnderGravity forecasts a fall toward the star from rest', () => {
     const pts = coastPathUnderGravity(sys, { x: 1, y: 0 }, { x: 0, y: 0 }, 0, 40);
     expect(pts.length).toBe(41);                       // 40 steps + the start
     expect(pts[0]).toEqual({ x: 1, y: 0 });            // starts where the ship is
-    const r0 = Math.hypot(pts[0].x, pts[0].y);
-    const rEnd = Math.hypot(pts[pts.length - 1].x, pts[pts.length - 1].y);
-    expect(rEnd).toBeLessThan(r0);                     // has fallen inward
+    // The horizon now reaches well into the fall (and a radial plunge can sling back out), so assert that
+    // the path gets MUCH closer to the star somewhere along it, not that the endpoint is closer.
+    const minR = Math.min(...pts.map((p) => Math.hypot(p.x, p.y)));
+    expect(minR).toBeLessThan(0.5);
   });
 
   it('with no star it falls back to a straight line', () => {
