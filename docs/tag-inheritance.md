@@ -45,6 +45,14 @@ Each fuel already links its engine (`fuel_type_id`). Add the source + class:
 O₂→`oxidizer`; Ar/Kr/Xe/Ne→`noble-gases`; CH₄→`hydrocarbons`; CO₂/NH₃→`volatiles`; He→`helium-3`;
 H₂O→`water-ice`. A body inherits the tag if the gas is present above a small threshold.
 
+**The gas PERCENTAGE rides along, and sets extraction time.** The inherited resource tag carries the gas's
+abundance (its % of the atmosphere), so a trace gas (0.9 % Argon) extracts slowly and an abundant one fast.
+This is the same **abundance × rate ⇒ time** shape as mining ore (source richness × ship rate ⇒ dwell), and
+it feeds the autopilot dwell model: `extraction_time = amount ÷ (ship_extraction_rate × gas_fraction)`. So a
+gas-skimmer parked at a He-3-rich gas giant fills fast; at a trace source it loiters. The abundance is a value
+on the inherited tag (alongside the precedent of `tardiness` on Owner, `readiness` on Status, and the planned
+`rate` on Service tags) — values-on-tags is now the consistent pattern for "anything that takes time".
+
 ## Rules / decisions
 - **Two new resources** to make every fuel sourceable: `resource/noble-gases`, `resource/antimatter`.
 - **Antimatter is MANUAL-ONLY** (Alex): never auto-generated (0 % on the rarity/generation sliders); a GM
