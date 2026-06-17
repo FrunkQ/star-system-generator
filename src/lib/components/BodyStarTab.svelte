@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, untrack } from 'svelte';
+  import { createEventDispatcher } from 'svelte';
   import type { CelestialBody } from '$lib/types';
   import { SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, G, C_MS } from '$lib/constants';
   import { STAR_COLOR_MAP } from '$lib/rendering/colors';
@@ -22,6 +22,10 @@
   const massLogMin = Math.log(massMin);
   const massLogMax = Math.log(massMax);
   let massSliderPos = $state(0.5);
+  // Which body the editable fields below were last synced from. The sync effect re-runs on every render
+  // (the body proxy re-resolves as the clock ticks), so we only pull values FROM the body when a different
+  // body is selected — otherwise it clobbers a half-typed value (the "can't type a precise mass" bug).
+  let lastSyncedBodyId: string | null = null;
 
   // --- Radius Slider Config ---
   const radiusMin = 0.01;
@@ -187,51 +191,42 @@
 
   // --- Initialization & Sync ---
   $effect(() => {
-      if (body) {
-          if (body.massKg) {
-              const m = body.massKg / SOLAR_MASS_KG;
-              const currentMassSuns = untrack(() => massSuns);
-              if (Math.abs(m - currentMassSuns) > 0.001) {
-                  massSuns = m;
-                  massSliderPos = (Math.log(Math.max(massMin, Math.min(massMax, m))) - massLogMin) / (massLogMax - massLogMin);
-              }
-          }
-          if (body.radiusKm) {
-              const r = body.radiusKm / SOLAR_RADIUS_KM;
-              const currentRadiusSuns = untrack(() => radiusSuns);
-              if (Math.abs(r - currentRadiusSuns) > 0.001) {
-                  radiusSuns = r;
-                  radiusSliderPos = (Math.log(Math.max(radiusMin, Math.min(radiusMax, r))) - radiusLogMin) / (radiusLogMax - radiusLogMin);
-              }
-          }
-          if (body.temperatureK !== undefined) {
-              const currentTempK = untrack(() => tempK);
-              if (Math.abs(body.temperatureK - currentTempK) > 1) {
-                  tempK = body.temperatureK;
-                  tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, body.temperatureK))) - tempLogMin) / (tempLogMax - tempLogMin);
-              }
-          }
-          if (body.radiationOutput !== undefined) {
-              const currentRadiation = untrack(() => radiation);
-              if (Math.abs(body.radiationOutput - currentRadiation) > 0.01) {
-                  radiation = body.radiationOutput;
-                  radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, body.radiationOutput))) - radLogMin) / (radLogMax - radLogMin);
-              }
-          }
-          rotationHours = body.rotation_period_hours || 0;
-          
-          if (body.magneticField?.strengthGauss !== undefined) {
-              const currentMag = untrack(() => magGauss);
-              if (Math.abs(body.magneticField.strengthGauss - currentMag) > (currentMag * 0.01 + 0.01)) {
-                  magGauss = body.magneticField.strengthGauss;
-                  magSliderPos = (Math.log(Math.max(magMin, Math.min(magMax, magGauss))) - magLogMin) / (magLogMax - magLogMin);
-              }
-          }
+      if (!body) return;
 
-          const currentClassStr = body.classes?.[0];
-          if (currentClassStr) {
-              updateImage(currentClassStr);
-          }
+      // Keep the preview image in step with the spectral class on every pass (idempotent + cheap).
+      const currentClassStr = body.classes?.[0];
+      if (currentClassStr) updateImage(currentClassStr);
+
+      // Pull the editable numeric fields FROM the body only when a DIFFERENT body is selected. This effect
+      // re-runs on every render (the body proxy re-resolves as the clock ticks / store updates); doing the
+      // sync each time would overwrite a value you're mid-way through typing — type or paste a precise mass
+      // and it snaps back to the stored one. Same-body edits (sliders, number inputs, spectral type) set
+      // these locals in their own handlers, so this is purely the on-load seed.
+      if (body.id === lastSyncedBodyId) return;
+      lastSyncedBodyId = body.id;
+
+      if (body.massKg) {
+          const m = body.massKg / SOLAR_MASS_KG;
+          massSuns = m;
+          massSliderPos = (Math.log(Math.max(massMin, Math.min(massMax, m))) - massLogMin) / (massLogMax - massLogMin);
+      }
+      if (body.radiusKm) {
+          const r = body.radiusKm / SOLAR_RADIUS_KM;
+          radiusSuns = r;
+          radiusSliderPos = (Math.log(Math.max(radiusMin, Math.min(radiusMax, r))) - radiusLogMin) / (radiusLogMax - radiusLogMin);
+      }
+      if (body.temperatureK !== undefined) {
+          tempK = body.temperatureK;
+          tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, body.temperatureK))) - tempLogMin) / (tempLogMax - tempLogMin);
+      }
+      if (body.radiationOutput !== undefined) {
+          radiation = body.radiationOutput;
+          radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, body.radiationOutput))) - radLogMin) / (radLogMax - radLogMin);
+      }
+      rotationHours = body.rotation_period_hours || 0;
+      if (body.magneticField?.strengthGauss !== undefined) {
+          magGauss = body.magneticField.strengthGauss;
+          magSliderPos = (Math.log(Math.max(magMin, Math.min(magMax, magGauss))) - magLogMin) / (magLogMax - magLogMin);
       }
   });
 
