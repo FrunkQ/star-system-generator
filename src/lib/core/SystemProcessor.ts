@@ -13,7 +13,7 @@ import { deriveMagnetism } from '../physics/magnetism';
 import { deriveGeoActivity } from '../physics/geoActivity';
 import { deriveApparentColorParts } from '../rendering/apparentColor';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
-import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosphericEscape, applyAtmosphereResources } from '../physics/atmosphere';
+import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosphericEscape } from '../physics/atmosphere';
 import { flareActivity } from '../physics/stellar-evolution';
 import { predictTidalLock } from '../physics/tidalLock';
 
@@ -114,14 +114,6 @@ export class SystemProcessor implements ISystemProcessor {
         // 6. RPG "reasons to visit" pass — reads the now-complete physics/tags and adds resource/
         //    science/frontier/intrigue hooks (config-gated; reads the reasonsConfig store).
         annotateReasonsToVisit(processedSystem);
-
-        // 6b. Deterministic atmosphere-derived resources (noble gases, oxidizer, He-3, hydrocarbons…), seeded
-        //     AFTER the reasons pass (which clears + owns resource/*). The gas is measurably present, so the
-        //     resource is certain — chance 1.0 — unlike the semi-random ground rules. Carries the gas % as
-        //     abundance for extraction time, and provenance for the tag's mouseover.
-        for (const node of allNodes) {
-            if (node.kind === 'body') applyAtmosphereResources(node as CelestialBody, rulePack.gasPhysics);
-        }
 
         return processedSystem;
     }

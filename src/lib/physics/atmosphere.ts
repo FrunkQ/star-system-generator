@@ -327,47 +327,9 @@ export function calculateAtmosphereTags(body: CelestialBody, rulePack: RulePack)
     return Array.from(tags);
 }
 
-/**
- * Resource tags a body INHERITS from its atmosphere composition (docs/tag-inheritance.md). Each gas confers
- * its `resourceTags`, and the gas's fraction sums into the tag's abundance (the `value`, 0..1) — so a trace
- * gas extracts slowly and an abundant one fast (extraction_time = amount / (rate × abundance)). Pure: pass
- * the gasPhysics map. Tags are flagged `inherited` (derived from the air, not hand-set). Not yet wired into
- * the SystemProcessor pass — see docs/tag-inheritance.md build sequence.
- */
-export function atmosphereResourceTags(body: CelestialBody, gasPhysics?: RulePack['gasPhysics']): Tag[] {
-    const comp = body.atmosphere?.composition;
-    if (!comp || !gasPhysics) return [];
-    const abundance = new Map<string, number>();
-    for (const [gas, fraction] of Object.entries(comp)) {
-        if (!(fraction > 0)) continue;
-        for (const key of (gasPhysics[gas]?.resourceTags ?? [])) {
-            abundance.set(key, (abundance.get(key) ?? 0) + fraction);
-        }
-    }
-    return [...abundance].map(([key, f]) => ({ key, value: f.toFixed(4), inherited: true, source: 'atmosphere' } as Tag));
-}
-
-/**
- * Apply the deterministic atmosphere-derived resource tags to a body. Runs AFTER the reasons-to-visit pass
- * (which owns + clears the resource/* namespace), so these survive. Atmosphere resources are DETERMINISTIC
- * (the gas is measurably present → the resource is certainly there), unlike the semi-random ground/makeup
- * resource rules. If a resource key is already present (e.g. water-ice also seeded from surface ice), it's
- * enriched with the atmosphere abundance + provenance rather than duplicated. Mutates body.tags in place.
- */
-export function applyAtmosphereResources(body: CelestialBody, gasPhysics?: RulePack['gasPhysics']): void {
-    if (body.kind !== 'body') return;
-    const derived = atmosphereResourceTags(body, gasPhysics);
-    if (!derived.length) return;
-    body.tags = body.tags || [];
-    for (const t of derived) {
-        const existing = body.tags.find((x) => x.key === t.key);
-        if (existing) {
-            if (!existing.manual) { existing.value = t.value; existing.source = t.source; existing.inherited = true; }
-        } else {
-            body.tags.push(t);
-        }
-    }
-}
+// (Atmosphere → resource derivation now lives in the PoI reasons rules — deterministic chance-1.0 rules on
+//  hasO2 / hasNobleGas / atmMain / isGiant — so it's visible and tweakable in Edit Rule, not a hidden pass.
+//  See docs/tag-inheritance.md "Resource reconciliation".)
 
 /**
  * Checks if a specific gas can be retained by a planet's gravity.

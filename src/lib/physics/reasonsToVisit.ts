@@ -63,7 +63,8 @@ export const POI_FIELDS: PoIField[] = [
   { field: 'roleHint', label: 'Body kind', type: 'string', values: ['planet', 'moon', 'belt'], note: 'planet / moon / belt.' },
   { field: 'hydro', label: 'Surface liquid', type: 'string', values: ['water', 'methane', 'ammonia'], note: 'Dominant surface liquid.' },
   { field: 'regime', label: 'Geology regime', type: 'string', values: ['plate-tectonics', 'stagnant-lid', 'tidal-volcanic', 'cryovolcanic', 'crater', 'inactive'], note: 'Tectonic/volcanic regime.' },
-  { field: 'atmMain', label: 'Main atmos. gas', type: 'string', values: ['CO2', 'N2', 'O2', 'CH4', 'H2', 'He'], note: 'Dominant atmospheric gas.' }
+  { field: 'atmMain', label: 'Main atmos. gas', type: 'string', values: ['CO2', 'N2', 'O2', 'CH4', 'H2', 'He'], note: 'Dominant atmospheric gas.' },
+  { field: 'hasNobleGas', label: 'Noble gas in air', type: 'bool', note: 'Atmosphere contains Ar/Kr/Xe/Ne (>0.1%).' }
 ];
 
 export interface ReasonsConfig { enabled: boolean; categories: Record<string, boolean>; }
@@ -91,18 +92,20 @@ export const DEFAULT_POI_PACK: PoIPack = {
     R('resource/platinum-group', 'resource', 0.45, { gte: ['makeup.metal', 0.5] }, ['planet', 'moon']),
     R('resource/rare-earths', 'resource', 0.4, { all: [{ gte: ['makeup.metal', 0.2] }, { gte: ['makeup.rock', 0.3] }] }, ['planet', 'moon']),
     R('resource/fissiles', 'resource', 0.3, { all: [{ gte: ['makeup.rockMetal', 0.6] }, { between: ['ageGyr', 0.5, 9] }] }, ['planet', 'moon']),
-    // (Gas-giant He-3 is now seeded deterministically from the He in its atmosphere — see the atmosphere
-    //  resource pass.) This is the airless-moon regolith He-3 — a ground prospect, so it stays semi-random.
-    R('resource/helium-3', 'resource', 0.3, { all: [{ eq: ['hasAtmo', false] }, { gte: ['ageGyr', 3] }, { gt: ['makeup.rockIce', 0.5] }] }, ['moon']),
+    R('resource/helium-3', 'resource', 1.0, { eq: ['isGiant', true] }, ['planet']),  // He in a giant's atmosphere — deterministic
+    R('resource/helium-3', 'resource', 0.3, { all: [{ eq: ['hasAtmo', false] }, { gte: ['ageGyr', 3] }, { gt: ['makeup.rockIce', 0.5] }] }, ['moon']),  // airless-moon regolith (solar-wind implanted) — a prospect, semi-random
     R('resource/deuterium', 'resource', 0.4, { any: [{ gte: ['makeup.gas', 0.4] }, { gte: ['hydroCover', 0.3] }] }, ['planet', 'moon']),
-    R('resource/water-ice', 'resource', 0.7, { any: [{ gte: ['makeup.ice', 0.3] }, { hasTag: 'structure/icy-shell' }, { all: [{ gt: ['teqK', 0] }, { lt: ['teqK', 250] }, { eq: ['hydro', 'water'] }] }] }, ['planet', 'moon']),
+    R('resource/water-ice', 'resource', 1.0, { any: [{ eq: ['hydro', 'water'] }, { gte: ['hydroCover', 0.1] }, { gte: ['makeup.ice', 0.3] }, { hasTag: 'structure/icy-shell' }] }, ['planet', 'moon']),  // any liquid water OR ice → water-ice (deterministic; was wrongly capped to frozen worlds <250K)
     R('resource/volatiles', 'resource', 0.5, { any: [{ all: [{ gt: ['teqK', 0] }, { lt: ['teqK', 160] }] }, { gte: ['makeup.ice', 0.5] }] }, ['belt', 'moon']),
-    R('resource/hydrocarbons', 'resource', 0.8, { eq: ['hydro', 'methane'] }, ['planet', 'moon']),  // surface methane (lakes); CH4 *atmosphere* is seeded deterministically by the atmosphere pass
+    R('resource/hydrocarbons', 'resource', 1.0, { any: [{ eq: ['atmMain', 'CH4'] }, { eq: ['hydro', 'methane'] }] }, ['planet', 'moon']),  // methane atmosphere OR surface lakes — deterministic
     R('resource/exotic-crystals', 'resource', 0.25, { all: [{ gte: ['massMe', 2] }, { gte: ['makeup.rockMetal', 0.7] }] }, ['planet', 'moon']),
     R('resource/diamonds', 'resource', 0.4, { all: [{ gte: ['makeup.carbon', 0.3] }, { gte: ['massMe', 0.8] }] }, ['planet', 'moon']),
     R('resource/organics', 'resource', 0.5, { any: [{ eq: ['hasBio', true] }, { hasTag: 'prebiotic-precursor' }, { all: [{ eq: ['hydro', 'water'] }, { between: ['teqK', 250, 330] }] }] }, ['planet', 'moon']),
     R('resource/ore-belt', 'resource', 0.8, true, ['belt']),
-    // (resource/oxidizer from O2 is now seeded deterministically by the atmosphere pass — was a chance rule here.)
+    // Atmosphere-present resources — DETERMINISTIC (the gas is measurably there, so the resource is): chance 1.0.
+    R('resource/oxidizer', 'resource', 1.0, { eq: ['hasO2', true] }, ['planet', 'moon']),
+    R('resource/noble-gases', 'resource', 1.0, { eq: ['hasNobleGas', true] }, ['planet', 'moon']),
+    R('resource/volatiles', 'resource', 1.0, { eq: ['atmMain', 'CO2'] }, ['planet', 'moon']),
     R('science/pristine-protoplanetary', 'science', 0.85, { lt: ['ageGyr', 0.5] }, ['planet', 'moon']),
     R('science/biosignature', 'science', 0.95, { eq: ['hasBio', true] }, ['planet', 'moon']),
     R('science/extremophile-niche', 'science', 0.8, { any: [{ eq: ['regime', 'cryovolcanic'] }, { hasTag: 'structure/subsurface-ocean' }, { hasTag: 'habitability/subsurface' }] }, ['planet', 'moon']),
@@ -271,6 +274,7 @@ function buildFeatures(b: CelestialBody, ageGyr: number, hasRemnant: boolean, ha
     isGiant: classes.some((c) => c.includes('gas-giant') || c.includes('ice-giant')) || mk.gas >= 0.4,
     hasAtmo: !!b.atmosphere && b.atmosphere.name !== 'None',
     hasO2: [...tags].some((k) => k === 'oxidizer' || k.startsWith('breathable-human')) || (b.atmosphere?.composition?.['O2'] ?? 0) > 0.05,
+    hasNobleGas: (() => { const c = b.atmosphere?.composition || {}; return ((c['Ar'] ?? 0) + (c['Kr'] ?? 0) + (c['Xe'] ?? 0) + (c['Ne'] ?? 0)) > 0.001; })(),
     hasBio: !!b.biosphere || [...tags].some((k) => k.startsWith('habitability/') && k !== 'habitability/none'),
     hasRemnant, hasConstructs,
     isRareType: classes.some((c) => RARE_CLASSES.some((r) => c.includes(r))),

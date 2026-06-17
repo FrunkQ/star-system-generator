@@ -364,9 +364,6 @@ export interface GasPhysics {
   meltK: number;
   boilK: number;
   tags?: GasTag[];
-  // Tag inheritance: resource/* tags this gas confers on a body whose atmosphere contains it. The gas's
-  // fraction of the atmosphere rides along as the tag's abundance (extraction time). See docs/tag-inheritance.md.
-  resourceTags?: string[];
 }
 
 export interface ClimateModelGreenhouseConfig {

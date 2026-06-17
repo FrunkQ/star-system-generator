@@ -1,7 +1,6 @@
 {
   "gasPhysics": {
     "N2": {
-      "resourceTags": ["resource/volatiles"],
       "molarMass": 0.028,
       "shielding": 7.2,
       "greenhouse": 0,
@@ -22,7 +21,6 @@
       ]
     },
     "O2": {
-      "resourceTags": ["resource/oxidizer"],
       "molarMass": 0.032,
       "shielding": 7.5,
       "greenhouse": 0,
@@ -59,7 +57,6 @@
       ]
     },
     "Ar": {
-      "resourceTags": ["resource/noble-gases"],
       "molarMass": 0.04,
       "shielding": 8.5,
       "greenhouse": 0,
@@ -80,7 +77,6 @@
       ]
     },
     "He": {
-      "resourceTags": ["resource/helium-3"],
       "molarMass": 0.004,
       "shielding": 1,
       "greenhouse": 0,
@@ -97,7 +93,6 @@
       ]
     },
     "Ne": {
-      "resourceTags": ["resource/noble-gases"],
       "molarMass": 0.02,
       "shielding": 3,
       "greenhouse": 0,
@@ -118,7 +113,6 @@
       ]
     },
     "Kr": {
-      "resourceTags": ["resource/noble-gases"],
       "molarMass": 0.084,
       "shielding": 12,
       "greenhouse": 0,
@@ -143,7 +137,6 @@
       ]
     },
     "CO2": {
-      "resourceTags": ["resource/volatiles"],
       "molarMass": 0.044,
       "shielding": 8,
       "greenhouse": 22,
@@ -168,7 +161,6 @@
       ]
     },
     "H2O": {
-      "resourceTags": ["resource/water-ice"],
       "molarMass": 0.018,
       "shielding": 8.5,
       "greenhouse": 3,
@@ -189,7 +181,6 @@
       ]
     },
     "CH4": {
-      "resourceTags": ["resource/hydrocarbons"],
       "molarMass": 0.016,
       "shielding": 5,
       "greenhouse": 25,
@@ -262,7 +253,6 @@
       ]
     },
     "NH3": {
-      "resourceTags": ["resource/volatiles"],
       "molarMass": 0.017,
       "shielding": 5,
       "greenhouse": 18,
@@ -411,7 +401,6 @@
       ]
     },
     "C2H6": {
-      "resourceTags": ["resource/hydrocarbons"],
       "molarMass": 0.03,
       "shielding": 5.5,
       "greenhouse": 20,
@@ -482,7 +471,6 @@
       "tags": []
     },
     "Fe": {
-      "resourceTags": ["resource/heavy-metals"],
       "molarMass": 0.056,
       "shielding": 80,
       "greenhouse": 15,

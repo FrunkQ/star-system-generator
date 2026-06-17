@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.167-beta - 17th Jun 2026
+
+* Body resources are now **all PoI rules** — visible and tweakable in Edit Rule, nothing hidden in code. Reverted the separate atmosphere pass from v2.0.166: atmosphere resources (oxidizer from O₂, noble gases, helium-3 from gas giants, hydrocarbons from methane, volatiles from CO₂) are **deterministic rules** (chance 100% — the gas is measurably there, so the resource is). Added a "noble gas in air" rule condition. Ground/subsurface resources stay semi-random prospects, and every seeded tag records which rule produced it.
+* Fixed water-ice: it was wrongly capped to frozen worlds (<250 K), so Earth's liquid oceans didn't count. Now **any liquid water or ice deterministically yields water-ice** — water always reads as a water-ice resource.
+* Clarified that "auto-seeding optional" is simply a rule's existing **Chance slider + Enable checkbox** (100 % = deterministic, under 100 % = a random roll, disabled = manual-only) — not a new feature. Removed the now-superseded per-gas "Provides resources" editor.
+
 ## v2.0.166-beta - 17th Jun 2026
 
 * Body resources reconciled into one model — no more double-adding. Atmosphere-derived resources (noble gases, oxidizer, helium-3, hydrocarbons, water from vapour, volatiles) are now seeded **deterministically** from the gas composition: if the gas is measurably there, the resource is certainly there, and the gas's % rides along as abundance (extraction time). Ground/subsurface resources (metals, fissiles, diamonds, organics…) stay **semi-random prospects** — you have to dig to find out. The old chance-rules that duplicated the atmosphere ones (O₂→oxidizer, giant→helium-3, CH₄-atmosphere→hydrocarbons) were removed, since the deterministic atmosphere pass now owns those. Every derived resource tag also records where it came from (which gas, or which rule), ready for a provenance mouseover.

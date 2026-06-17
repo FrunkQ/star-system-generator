@@ -89,6 +89,10 @@
         {
           "key": "resource/rare-earths",
           "source": "rule:d2"
+        },
+        {
+          "key": "science/impact-record",
+          "source": "rule:d21"
         }
       ],
       "areas": [],
@@ -413,14 +417,12 @@
           "key": "habitability/none"
         },
         {
-          "key": "frontier/aerobraking",
-          "source": "rule:d26"
+          "key": "resource/volatiles",
+          "source": "rule:d16"
         },
         {
-          "key": "resource/volatiles",
-          "value": "1.0000",
-          "inherited": true,
-          "source": "atmosphere"
+          "key": "science/runaway-greenhouse",
+          "source": "rule:d26"
         }
       ],
       "areas": [],
@@ -719,48 +721,28 @@
           "key": "habitability/earth-like"
         },
         {
-          "key": "resource/organics",
-          "source": "rule:d11"
-        },
-        {
-          "key": "science/biosignature",
-          "source": "rule:d14"
-        },
-        {
-          "key": "frontier/fuel-depot",
-          "source": "rule:d23"
-        },
-        {
-          "key": "frontier/life-support",
-          "source": "rule:d25"
-        },
-        {
-          "key": "frontier/aerobraking",
-          "source": "rule:d26"
-        },
-        {
-          "key": "resource/volatiles",
-          "value": "0.7774",
-          "inherited": true,
-          "source": "atmosphere"
-        },
-        {
-          "key": "resource/oxidizer",
-          "value": "0.2092",
-          "inherited": true,
-          "source": "atmosphere"
-        },
-        {
-          "key": "resource/noble-gases",
-          "value": "0.0095",
-          "inherited": true,
-          "source": "atmosphere"
+          "key": "resource/deuterium",
+          "source": "rule:d6"
         },
         {
           "key": "resource/water-ice",
-          "value": "0.0040",
-          "inherited": true,
-          "source": "atmosphere"
+          "source": "rule:d7"
+        },
+        {
+          "key": "resource/oxidizer",
+          "source": "rule:d14"
+        },
+        {
+          "key": "resource/noble-gases",
+          "source": "rule:d15"
+        },
+        {
+          "key": "science/biosignature",
+          "source": "rule:d18"
+        },
+        {
+          "key": "frontier/fuel-depot",
+          "source": "rule:d27"
         }
       ],
       "areas": [],
@@ -1099,7 +1081,7 @@
         },
         {
           "key": "resource/helium-3",
-          "source": "rule:d4"
+          "source": "rule:d5"
         }
       ],
       "areas": [],
@@ -1379,9 +1361,7 @@
         },
         {
           "key": "resource/volatiles",
-          "value": "0.9770",
-          "inherited": true,
-          "source": "atmosphere"
+          "source": "rule:d16"
         }
       ],
       "areas": [],
@@ -1677,6 +1657,10 @@
         {
           "key": "resource/fissiles",
           "source": "rule:d3"
+        },
+        {
+          "key": "resource/water-ice",
+          "source": "rule:d7"
         }
       ],
       "areas": [],
@@ -1963,11 +1947,15 @@
         },
         {
           "key": "resource/water-ice",
-          "source": "rule:d6"
+          "source": "rule:d7"
         },
         {
           "key": "resource/volatiles",
-          "source": "rule:d7"
+          "source": "rule:d8"
+        },
+        {
+          "key": "frontier/fuel-depot",
+          "source": "rule:d27"
         }
       ],
       "areas": [],
@@ -2228,7 +2216,12 @@
         },
         "resonance": null
       },
-      "tags": [],
+      "tags": [
+        {
+          "key": "resource/ore-belt",
+          "source": "rule:d13"
+        }
+      ],
       "areas": [],
       "description": "A torus-shaped region of space between Mars and Jupiter, occupied by millions of asteroids. This is leftover material from the early Solar System that was prevented from forming a planet by Jupiter's immense gravity. The largest object in the belt is the dwarf planet Ceres.",
       "isNameUserDefined": true,
@@ -2344,28 +2337,16 @@
           "key": "stability/marginal"
         },
         {
-          "key": "science/resonance-showcase",
-          "source": "rule:d19"
+          "key": "resource/helium-3",
+          "source": "rule:d4"
         },
         {
-          "key": "frontier/fuel-depot",
-          "source": "rule:d23"
+          "key": "resource/deuterium",
+          "source": "rule:d6"
         },
         {
           "key": "frontier/gas-skimming",
-          "source": "rule:d24"
-        },
-        {
-          "key": "resource/helium-3",
-          "value": "0.1300",
-          "inherited": true,
-          "source": "atmosphere"
-        },
-        {
-          "key": "resource/hydrocarbons",
-          "value": "0.0030",
-          "inherited": true,
-          "source": "atmosphere"
+          "source": "rule:d28"
         }
       ],
       "areas": [],
@@ -2765,8 +2746,12 @@
           "key": "habitability/none"
         },
         {
+          "key": "resource/volatiles",
+          "source": "rule:d8"
+        },
+        {
           "key": "science/tidal-laboratory",
-          "source": "rule:d16"
+          "source": "rule:d20"
         }
       ],
       "areas": [],
@@ -3110,34 +3095,28 @@
           "source": "rule:d3"
         },
         {
-          "key": "resource/deuterium",
-          "source": "rule:d5"
-        },
-        {
           "key": "resource/water-ice",
-          "source": "rule:d6"
-        },
-        {
-          "key": "resource/volatiles",
           "source": "rule:d7"
         },
         {
-          "key": "science/biosignature",
+          "key": "resource/oxidizer",
           "source": "rule:d14"
         },
         {
-          "key": "science/extremophile-niche",
-          "source": "rule:d15"
+          "key": "science/biosignature",
+          "source": "rule:d18"
         },
         {
-          "key": "science/resonance-showcase",
+          "key": "science/extremophile-niche",
           "source": "rule:d19"
         },
         {
-          "key": "resource/oxidizer",
-          "value": "1.0000",
-          "inherited": true,
-          "source": "atmosphere"
+          "key": "science/tidal-laboratory",
+          "source": "rule:d20"
+        },
+        {
+          "key": "frontier/life-support",
+          "source": "rule:d29"
         }
       ],
       "areas": [],
@@ -3464,20 +3443,24 @@
           "source": "rule:d3"
         },
         {
-          "key": "resource/water-ice",
+          "key": "resource/deuterium",
           "source": "rule:d6"
         },
         {
-          "key": "resource/volatiles",
+          "key": "resource/water-ice",
           "source": "rule:d7"
         },
         {
+          "key": "resource/volatiles",
+          "source": "rule:d8"
+        },
+        {
           "key": "science/tidal-laboratory",
-          "source": "rule:d16"
+          "source": "rule:d20"
         },
         {
           "key": "frontier/fuel-depot",
-          "source": "rule:d23"
+          "source": "rule:d27"
         }
       ],
       "areas": [],
@@ -3778,12 +3761,12 @@
           "key": "habitability/none"
         },
         {
-          "key": "resource/helium-3",
-          "source": "rule:d4"
+          "key": "resource/water-ice",
+          "source": "rule:d7"
         },
         {
-          "key": "frontier/fuel-depot",
-          "source": "rule:d23"
+          "key": "resource/volatiles",
+          "source": "rule:d8"
         }
       ],
       "areas": [],
@@ -4090,32 +4073,24 @@
           "key": "stability/marginal"
         },
         {
-          "key": "resource/deuterium",
-          "source": "rule:d5"
+          "key": "resource/helium-3",
+          "source": "rule:d4"
         },
         {
-          "key": "science/resonance-showcase",
-          "source": "rule:d19"
+          "key": "frontier/fuel-depot",
+          "source": "rule:d27"
         },
         {
           "key": "frontier/gas-skimming",
-          "source": "rule:d24"
+          "source": "rule:d28"
         },
         {
           "key": "frontier/aerobraking",
-          "source": "rule:d26"
+          "source": "rule:d30"
         },
         {
-          "key": "resource/helium-3",
-          "value": "0.0300",
-          "inherited": true,
-          "source": "atmosphere"
-        },
-        {
-          "key": "resource/hydrocarbons",
-          "value": "0.0045",
-          "inherited": true,
-          "source": "atmosphere"
+          "key": "frontier/gravity-assist",
+          "source": "rule:d31"
         }
       ],
       "areas": [],
@@ -4517,35 +4492,23 @@
         },
         {
           "key": "resource/water-ice",
-          "source": "rule:d6"
-        },
-        {
-          "key": "resource/volatiles",
-          "source": "atmosphere",
-          "value": "0.9500",
-          "inherited": true
+          "source": "rule:d7"
         },
         {
           "key": "resource/hydrocarbons",
-          "source": "atmosphere",
-          "value": "0.0500",
-          "inherited": true
-        },
-        {
-          "key": "resource/organics",
-          "source": "rule:d11"
+          "source": "rule:d9"
         },
         {
           "key": "science/biosignature",
-          "source": "rule:d14"
+          "source": "rule:d18"
         },
         {
           "key": "frontier/fuel-depot",
-          "source": "rule:d23"
+          "source": "rule:d27"
         },
         {
           "key": "frontier/waystation",
-          "source": "rule:d28"
+          "source": "rule:d32"
         }
       ],
       "areas": [],
@@ -4878,41 +4841,31 @@
         },
         {
           "key": "resource/deuterium",
-          "source": "rule:d5"
+          "source": "rule:d6"
         },
         {
           "key": "resource/water-ice",
-          "source": "atmosphere",
-          "value": "0.9000",
-          "inherited": true
-        },
-        {
-          "key": "resource/volatiles",
-          "source": "atmosphere",
-          "value": "0.0300",
-          "inherited": true
-        },
-        {
-          "key": "resource/organics",
-          "source": "rule:d11"
+          "source": "rule:d7"
         },
         {
           "key": "science/biosignature",
-          "source": "rule:d14"
+          "source": "rule:d18"
         },
         {
           "key": "science/extremophile-niche",
-          "source": "rule:d15"
+          "source": "rule:d19"
+        },
+        {
+          "key": "frontier/fuel-depot",
+          "source": "rule:d27"
         },
         {
           "key": "frontier/life-support",
-          "source": "rule:d25"
+          "source": "rule:d29"
         },
         {
-          "key": "resource/hydrocarbons",
-          "value": "0.0100",
-          "inherited": true,
-          "source": "atmosphere"
+          "key": "frontier/waystation",
+          "source": "rule:d32"
         }
       ],
       "areas": [],
@@ -5244,15 +5197,11 @@
         },
         {
           "key": "resource/helium-3",
-          "source": "rule:d4"
+          "source": "rule:d5"
         },
         {
           "key": "resource/water-ice",
-          "source": "rule:d6"
-        },
-        {
-          "key": "frontier/fuel-depot",
-          "source": "rule:d23"
+          "source": "rule:d7"
         }
       ],
       "areas": [],
@@ -5538,12 +5487,16 @@
           "key": "habitability/none"
         },
         {
+          "key": "resource/helium-3",
+          "source": "rule:d5"
+        },
+        {
           "key": "resource/water-ice",
-          "source": "rule:d6"
+          "source": "rule:d7"
         },
         {
           "key": "resource/volatiles",
-          "source": "rule:d7"
+          "source": "rule:d8"
         }
       ],
       "areas": [],
@@ -5833,28 +5786,32 @@
           "key": "habitability/subsurface"
         },
         {
-          "key": "resource/water-ice",
-          "source": "rule:d6"
+          "key": "resource/helium-3",
+          "source": "rule:d5"
         },
         {
-          "key": "resource/volatiles",
+          "key": "resource/water-ice",
           "source": "rule:d7"
         },
         {
-          "key": "resource/organics",
-          "source": "rule:d11"
+          "key": "resource/volatiles",
+          "source": "rule:d8"
         },
         {
           "key": "science/biosignature",
-          "source": "rule:d14"
+          "source": "rule:d18"
+        },
+        {
+          "key": "science/extremophile-niche",
+          "source": "rule:d19"
         },
         {
           "key": "science/tidal-laboratory",
-          "source": "rule:d16"
+          "source": "rule:d20"
         },
         {
-          "key": "science/resonance-showcase",
-          "source": "rule:d19"
+          "key": "frontier/fuel-depot",
+          "source": "rule:d27"
         }
       ],
       "areas": [],
@@ -6149,11 +6106,11 @@
         },
         {
           "key": "resource/water-ice",
-          "source": "rule:d6"
+          "source": "rule:d7"
         },
         {
           "key": "resource/volatiles",
-          "source": "rule:d7"
+          "source": "rule:d8"
         }
       ],
       "areas": [],
@@ -6444,8 +6401,12 @@
           "key": "habitability/none"
         },
         {
+          "key": "resource/water-ice",
+          "source": "rule:d7"
+        },
+        {
           "key": "frontier/fuel-depot",
-          "source": "rule:d23"
+          "source": "rule:d27"
         }
       ],
       "areas": [],
@@ -6742,28 +6703,20 @@
           "key": "habitability/none"
         },
         {
-          "key": "resource/deuterium",
-          "source": "rule:d5"
+          "key": "resource/helium-3",
+          "source": "rule:d4"
         },
         {
-          "key": "frontier/fuel-depot",
-          "source": "rule:d23"
+          "key": "resource/deuterium",
+          "source": "rule:d6"
         },
         {
           "key": "frontier/gas-skimming",
-          "source": "rule:d24"
+          "source": "rule:d28"
         },
         {
-          "key": "resource/helium-3",
-          "value": "0.1500",
-          "inherited": true,
-          "source": "atmosphere"
-        },
-        {
-          "key": "resource/hydrocarbons",
-          "value": "0.0230",
-          "inherited": true,
-          "source": "atmosphere"
+          "key": "frontier/aerobraking",
+          "source": "rule:d30"
         }
       ],
       "areas": [],
@@ -7143,7 +7096,7 @@
           "key": "habitability/none"
         },
         {
-          "key": "resource/volatiles",
+          "key": "resource/water-ice",
           "source": "rule:d7"
         }
       ],
@@ -7424,11 +7377,11 @@
         },
         {
           "key": "resource/water-ice",
-          "source": "rule:d6"
+          "source": "rule:d7"
         },
         {
-          "key": "frontier/fuel-depot",
-          "source": "rule:d23"
+          "key": "resource/volatiles",
+          "source": "rule:d8"
         }
       ],
       "areas": [],
@@ -7707,20 +7660,16 @@
           "key": "habitability/none"
         },
         {
-          "key": "resource/helium-3",
-          "source": "rule:d4"
-        },
-        {
           "key": "resource/water-ice",
-          "source": "rule:d6"
-        },
-        {
-          "key": "resource/volatiles",
           "source": "rule:d7"
         },
         {
-          "key": "frontier/fuel-depot",
-          "source": "rule:d23"
+          "key": "resource/volatiles",
+          "source": "rule:d8"
+        },
+        {
+          "key": "frontier/waystation",
+          "source": "rule:d32"
         }
       ],
       "areas": [],
@@ -8008,28 +7957,16 @@
           "key": "habitability/none"
         },
         {
-          "key": "science/resonance-showcase",
-          "source": "rule:d19"
+          "key": "resource/helium-3",
+          "source": "rule:d4"
         },
         {
-          "key": "frontier/fuel-depot",
+          "key": "science/resonance-showcase",
           "source": "rule:d23"
         },
         {
           "key": "frontier/gas-skimming",
-          "source": "rule:d24"
-        },
-        {
-          "key": "resource/helium-3",
-          "value": "0.1900",
-          "inherited": true,
-          "source": "atmosphere"
-        },
-        {
-          "key": "resource/hydrocarbons",
-          "value": "0.0150",
-          "inherited": true,
-          "source": "atmosphere"
+          "source": "rule:d28"
         }
       ],
       "areas": [],
@@ -8433,36 +8370,24 @@
           "source": "rule:d3"
         },
         {
-          "key": "resource/organics",
-          "source": "rule:d11"
-        },
-        {
-          "key": "science/biosignature",
-          "source": "rule:d14"
-        },
-        {
-          "key": "science/extremophile-niche",
-          "source": "rule:d15"
-        },
-        {
-          "key": "frontier/fuel-depot",
-          "source": "rule:d23"
-        },
-        {
-          "key": "frontier/life-support",
-          "source": "rule:d25"
+          "key": "resource/water-ice",
+          "source": "rule:d7"
         },
         {
           "key": "resource/volatiles",
-          "value": "0.9990",
-          "inherited": true,
-          "source": "atmosphere"
+          "source": "rule:d8"
         },
         {
-          "key": "resource/hydrocarbons",
-          "value": "0.0010",
-          "inherited": true,
-          "source": "atmosphere"
+          "key": "science/biosignature",
+          "source": "rule:d18"
+        },
+        {
+          "key": "science/extremophile-niche",
+          "source": "rule:d19"
+        },
+        {
+          "key": "frontier/fuel-depot",
+          "source": "rule:d27"
         }
       ],
       "areas": [],
@@ -8759,16 +8684,12 @@
       },
       "tags": [
         {
-          "key": "resource/volatiles",
-          "source": "rule:d7"
-        },
-        {
           "key": "resource/ore-belt",
-          "source": "rule:d12"
+          "source": "rule:d13"
         },
         {
           "key": "frontier/ice-mining",
-          "source": "rule:d34"
+          "source": "rule:d38"
         }
       ],
       "areas": [],
@@ -8903,27 +8824,15 @@
         },
         {
           "key": "resource/water-ice",
-          "source": "rule:d6"
+          "source": "rule:d7"
         },
         {
-          "key": "science/impact-record",
-          "source": "rule:d17"
-        },
-        {
-          "key": "frontier/fuel-depot",
+          "key": "science/resonance-showcase",
           "source": "rule:d23"
         },
         {
-          "key": "resource/volatiles",
-          "value": "0.9800",
-          "inherited": true,
-          "source": "atmosphere"
-        },
-        {
-          "key": "resource/hydrocarbons",
-          "value": "0.0100",
-          "inherited": true,
-          "source": "atmosphere"
+          "key": "frontier/fuel-depot",
+          "source": "rule:d27"
         }
       ],
       "areas": [],
@@ -9241,23 +9150,23 @@
         },
         {
           "key": "resource/helium-3",
-          "source": "rule:d4"
+          "source": "rule:d5"
         },
         {
           "key": "resource/water-ice",
-          "source": "rule:d6"
-        },
-        {
-          "key": "resource/volatiles",
           "source": "rule:d7"
         },
         {
-          "key": "science/resonance-showcase",
-          "source": "rule:d19"
+          "key": "science/impact-record",
+          "source": "rule:d21"
         },
         {
           "key": "frontier/fuel-depot",
-          "source": "rule:d23"
+          "source": "rule:d27"
+        },
+        {
+          "key": "frontier/waystation",
+          "source": "rule:d32"
         }
       ],
       "areas": [],
