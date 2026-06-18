@@ -10,6 +10,7 @@ export interface CoITag {
   key: string;       // namespaced, e.g. 'owner/military', 'purpose/patrol'
   label: string;     // what the user sees
   tardiness?: number; // owner tags carry the 0..1 tardiness the ship inherits (used later by autopilot)
+  rate?: number; // capability tags (mining/loading/skimming…) carry a default rate (t/day); per-ship override via the tag value × source abundance ⇒ dwell. See docs/autopilot-spec.md §12.6.
   readiness?: number; // STATUS tags only: 0..1 operational capability (drive). Absent ⇒ 1 (no impairment).
                       // A construct is assumed operational (1) unless a status blocks it: Derelict 0 (dead),
                       // Under construction 0.5 (half drive), etc. See constructReadiness().

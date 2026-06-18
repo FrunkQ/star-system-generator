@@ -11,6 +11,7 @@
   import ConstructSensorsTab from './ConstructSensorsTab.svelte';
   import ConstructModulesTab from './ConstructModulesTab.svelte';
   import ConstructCoITab from './ConstructCoITab.svelte';
+  import AutopilotTab from './AutopilotTab.svelte';
   import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
   import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
 
@@ -150,6 +151,7 @@
     <button class:active={selectedTab === 'Sensors'} on:click={() => setTab('Sensors')}>Sensors</button>
     <button class:active={selectedTab === 'Modules'} on:click={() => setTab('Modules')}>Modules</button>
     <button class:active={selectedTab === 'Tags'} on:click={() => setTab('Tags')}>Tags</button>
+    <button class:active={selectedTab === 'Autopilot'} on:click={() => setTab('Autopilot')}>Autopilot</button>
   </div>
 
   <div class="tab-content">
@@ -173,6 +175,8 @@
       <ConstructModulesTab {construct} on:update={handleUpdate} />
     {:else if selectedTab === 'Tags'}
       <ConstructCoITab {construct} on:update={handleUpdate} />
+    {:else if selectedTab === 'Autopilot'}
+      <AutopilotTab {construct} {system} on:update={handleUpdate} />
     {/if}
   </div>
   

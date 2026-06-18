@@ -114,6 +114,30 @@ export interface FuelTank {
   current_units: number;
 }
 
+// Autopilot wizard plan on a construct (docs/autopilot-spec.md §12). Capture-only for now — the planner
+// that flies it comes later. A WHERE is a specific place OR the nearest source of a resource tag.
+export type AutopilotWhere = { kind: 'place' | 'resource'; placeId?: ID; resourceKey?: string };
+export type AutopilotAction = 'mine' | 'scan' | 'load' | 'unload' | 'dock' | 'patrol';
+export interface AutopilotWaypoint {
+  where: AutopilotWhere;
+  action: AutopilotAction;
+  rate_tpd?: number;        // mine/load/skim fill rate (t/day) — default from the hull's capability tag
+  fillAmount_t?: number;    // mine/load — how much to take on (blank = fill the hold)
+  deliverTo?: AutopilotWhere; // mine/load — where the cargo goes
+}
+export interface Autopilot {
+  enabled: boolean;
+  traversal: 'in-order' | 'best-order' | 'any';   // visit all in order / all best order / any one as needed
+  waypoints: AutopilotWaypoint[];
+  tardiness?: number;       // 0..1 Discipline; undefined ⇒ inherit from the Owner CoI
+  planning: number;         // 0..5 lookahead (also schedules refuel/restock); 0 = greedy
+  drive: number;            // 0..1 Drive bias: 0 efficiency … 1 speed
+  maxJourneyDays?: number;  // cap on any single hop (stops 50-year zero-fuel routes); also bounds mine/load dwell
+  autoRefuel: boolean;
+  fuelMarginJourneys: number;
+  autoRestock: boolean;
+}
+
 export interface SensorDefinition {
   id: string;
   name: string;
@@ -188,6 +212,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   engines?: Engine[]; // Array of engines attached to the construct
   fuel_tanks?: FuelTank[]; // Array of fuel tanks attached to the construct
   sensors?: SensorInstance[]; // Array of sensors attached to the construct
+  autopilot?: Autopilot; // Autopilot plan (the wizard) — see docs/autopilot-spec.md
   current_cargo_tonnes?: number; // Current cargo mass in tonnes
   current_crew_count?: number; // Current number of crew members
   cargoDescription?: string; // User-editable description of the cargo

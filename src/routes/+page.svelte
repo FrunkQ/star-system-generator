@@ -145,7 +145,7 @@
   let showRoutes = false; // routes & journeys list (in-system underway/planned + interstellar)
   $: routesData = (() => {
     const map = $starmapStore;
-    if (!map) return { interstellar: [] as any[], journeys: [] as any[], interstellarJourneys: [] as any[] };
+    if (!map) return { interstellar: [] as any[], journeys: [] as any[], interstellarJourneys: [] as any[], stranded: [] as any[], autopilotShips: [] as any[] };
     const sysName = (id: string) => map.systems.find((s) => s.id === id)?.name ?? id;
     const interstellar = (map.routes ?? []).map((r) => ({
       id: r.id, source: sysName(r.sourceSystemId), target: sysName(r.targetSystemId), distance: r.distance, unit: r.unit
@@ -227,7 +227,21 @@
       const j = (map.activeJourneys ?? []).find((x: any) => x.shipId === a.construct.id);
       stranded.push({ id: a.construct.id, constructName: a.construct.name ?? 'Ship', where: 'Interstellar space', wasBound: sysName(a.toSystemId ?? ''), interstellar: true, journeyId: j?.id ?? null });
     }
-    return { interstellar, journeys, interstellarJourneys, stranded };
+    // Under autopilot — constructs with an engaged plan. (Plan summary for now; live action + the "!" stuck
+    // marker arrive with the planner. Capture-only.)
+    const autopilotShips: any[] = [];
+    const TRAVERSAL_LABEL: Record<string, string> = { 'in-order': 'all in order', 'best-order': 'all, best order', 'any': 'any as needed' };
+    for (const sys of map.systems) {
+      for (const n of (sys.system?.nodes ?? []) as any[]) {
+        if (n.kind !== 'construct' || !n.autopilot?.enabled) continue;
+        const ap = n.autopilot;
+        const wpName = (w: any) => !w ? '' : w.kind === 'resource' ? (w.resourceKey?.split('/')[1] ?? 'resource') : (((sys.system?.nodes ?? []) as any[]).find((x) => x.id === w.placeId)?.name ?? 'somewhere');
+        const first = ap.waypoints?.[0];
+        const summary = first ? `${first.action} ${wpName(first.where)}${ap.waypoints.length > 1 ? ` +${ap.waypoints.length - 1}` : ''} · ${TRAVERSAL_LABEL[ap.traversal] ?? ap.traversal}` : 'no locations set';
+        autopilotShips.push({ id: n.id, constructName: n.name, where: sys.name, systemId: sys.id, summary, needsAttention: !ap.waypoints?.length });
+      }
+    }
+    return { interstellar, journeys, interstellarJourneys, stranded, autopilotShips };
   })();
   $: allShips = allBodies.filter((n: any) => n.kind === 'construct');
   $: allBodies = (() => {
@@ -1415,6 +1429,19 @@
               </div>
             {/each}
           {/if}
+          {#if routesData.autopilotShips.length}
+            <h4>Under autopilot ({routesData.autopilotShips.length})</h4>
+            {#each routesData.autopilotShips as a (a.id)}
+              <div class="route-row static">
+                <span class="route-main">
+                  <button class="pill ship" title="Go to the ship" on:click={() => { showRoutes = false; enterSystemAndFocus(a.systemId, a.id); }}>{a.constructName}</button>
+                  {#if a.needsAttention}<span class="route-attention" title="Needs attention">!</span>{/if}
+                  <span class="route-autopilot"> · {a.summary}</span>
+                </span>
+                <span class="route-sys">{a.where}</span>
+              </div>
+            {/each}
+          {/if}
         </div>
       </div>
     </div>
@@ -1574,6 +1601,8 @@
   .route-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
   .route-when { font-size: 0.74rem; color: var(--text-faint, #8a8f9a); flex-basis: 100%; }
   .route-stranded { color: #e8a857; font-size: 0.82em; }
+  .route-autopilot { color: #6aa0d8; font-size: 0.82em; }
+  .route-attention { color: #fff; background: #cc5555; border-radius: 50%; font-weight: 700; font-size: 0.72em; padding: 0 5px; margin-left: 4px; }
   /* Interstellar journey rows: source / destination / ship are individually clickable pills. */
   .route-row.interstellar { cursor: default; flex-wrap: wrap; }
   .route-pills { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; }
