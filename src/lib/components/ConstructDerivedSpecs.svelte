@@ -47,6 +47,17 @@
     }
   }
 
+  // Accel range: maxVacuumG is at CURRENT fuel; scale by mass to show empty (lightest) ↔ full (heaviest),
+  // so it's obvious why a high-thrust hull crawls with full tanks.
+  $: accelRange = (() => {
+    if (!specs || !specs.maxVacuumG || !specs.totalMass_tonnes || !specs.fuelCapacity_tonnes) return null;
+    const massEmpty = specs.totalMass_tonnes - specs.fuelMass_tonnes;       // tanks dry
+    const massFull = massEmpty + specs.fuelCapacity_tonnes;                 // tanks full
+    const k = specs.maxVacuumG * specs.totalMass_tonnes;                    // ∝ thrust (g·t)
+    return { empty: massEmpty > 0 ? k / massEmpty : 0, full: massFull > 0 ? k / massFull : 0 };
+  })();
+  const fmtG = (g: number) => (g < 1 ? g.toFixed(2) : g.toFixed(1));
+
   function formatOrbitalPeriod(seconds: number): string {
     if (!isFinite(seconds) || seconds <= 0) return 'N/A';
     if (seconds < 60) return `${seconds.toFixed(1)} s`;
@@ -218,9 +229,9 @@
         <span class="value">{typeof specs.endurance_days === 'number' ? specs.endurance_days.toLocaleString() + ' days' : specs.endurance_days}</span>
       </div>
 
-      <div class="spec-item derived" title="Maximum acceleration in vacuum">
+      <div class="spec-item derived" title="Acceleration in vacuum at current fuel. Range shows fully fuelled (heavy, slow) to empty (light, fast).">
         <span class="label">Max Vacuum Accel.</span>
-        <span class="value">{specs.maxVacuumG.toFixed(2)} g</span>
+        <span class="value">{specs.maxVacuumG.toFixed(2)} g{#if accelRange} <span class="accel-range">({fmtG(accelRange.full)}–{fmtG(accelRange.empty)} g full→empty)</span>{/if}</span>
       </div>
       <div class="spec-item derived" title="Total delta-V available in vacuum">
         <span class="label">Total Vacuum Δv</span>
@@ -479,6 +490,10 @@
   .value {
     font-size: 1.1em;
     color: var(--text);
+  }
+  .accel-range {
+    font-size: 0.78em;
+    color: var(--text-faint);
   }
   .value.possible {
     color: var(--status-ok);

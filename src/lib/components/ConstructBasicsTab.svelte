@@ -105,13 +105,6 @@
 <div class="tab-panel">
     <div class="row">
       <div class="form-group" style="flex: 1;">
-        <label for="construct-class">Class:</label>
-        <input type="text" id="construct-class" bind:value={construct.class} on:input={handleUpdate} />
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="form-group" style="flex: 1;">
         <label for="icon-type">Icon Type:</label>
         <select id="icon-type" bind:value={construct.icon_type} on:change={handleUpdate}>
           <option value="square">Square</option>

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.180-beta - 18th Jun 2026
+
+* The ship stat block now shows the acceleration range — e.g. "2.10 g (2.1–15.0 g full→empty)" — right next to Max Vacuum Accel, so the fuelled-vs-empty difference is always visible, not just in the autopilot tab.
+* Retired the old free-text "Class" box from the construct editor. A ship's class is described by its Hull-class tag (and the other capability tags) now, picked from the tag/pill selector — the legacy box is redundant.
+
 ## v2.0.179-beta - 18th Jun 2026
 
 * The autopilot Max accel control now shows the ship's real acceleration range — e.g. "2.1 g fully fuelled to 15.0 g empty" — so it's obvious why a high-thrust hull crawls with full tanks (all that fuel mass). Makes setting a sensible cap, or matching a slow escort, much clearer.
