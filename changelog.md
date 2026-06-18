@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.202-beta - 18th Jun 2026
+
+* Autopilot status is now real, not just "needs setup". A ship under autopilot shows a live read-out on its panel — transiting, holding between legs, coasting, or stuck — and a ship that's engaged but couldn't plan a route (can't reach or fuel its next stop) now correctly flags red and sorts to the top of Routes, lighting the rail's notification dot. So the fleet view reflects what's actually happening.
+
 ## v2.0.201-beta - 18th Jun 2026
 
 * Unified the autopilot symbol — the gently pulsing ship icon now comes from one shared component, so it's identical everywhere it appears: the Engage button, the locked "Under autopilot" button, the ship's-log badge, and the Routes "Under autopilot" heading.

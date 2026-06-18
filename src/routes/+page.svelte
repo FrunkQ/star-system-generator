@@ -250,9 +250,11 @@
         const first = ap.legs?.[0];
         const tail = `${TRAVERSAL_LABEL[ap.traversal] ?? ap.traversal}${ap.repeat === false ? ' · once' : ''}`;
         const summary = first ? `${legText(first)}${ap.legs.length > 1 ? ` +${ap.legs.length - 1}` : ''} · ${tail}` : 'no stops set';
-        // Attention marker: orange = needs GM setup (no stops). stuck (red) / done (green) come from the planner later.
-        const attention = !ap.legs?.length ? 'intervention' : null;
-        const attentionLabel = attention === 'stuck' ? 'Stuck — needs attention' : attention === 'done' ? 'Finished — autopilot disengaged' : attention === 'intervention' ? 'Needs setup — no stops added' : '';
+        // Attention marker. orange = needs GM setup (no stops). red = stuck: engaged with a route but the
+        // planner produced no journeys (couldn't reach/fuel the first hop, or all journeys were aborted).
+        const hasLiveJourneys = (n.scheduled_journeys || []).some((l: any) => l.status !== 'cancelled');
+        const attention = !ap.legs?.length ? 'intervention' : !hasLiveJourneys ? 'stuck' : null;
+        const attentionLabel = attention === 'stuck' ? 'Stuck — no journeys (could not reach/fuel the next stop)' : attention === 'intervention' ? 'Needs setup — no stops added' : '';
         autopilotShips.push({ id: n.id, constructName: n.name, where: sys.name, systemId: sys.id, summary, attention, attentionLabel });
       }
     }

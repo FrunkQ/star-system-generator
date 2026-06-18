@@ -30,6 +30,18 @@
   // Resolve the location heading: trust the live state, else fall back to the authored placement.
   $: effectiveState = kinematicState || (construct.placement === 'Surface' ? 'Landed' : 'Orbiting');
 
+  // Live autopilot read-out, derived from the engaged plan + the ship's current kinematic state.
+  $: apStatus = (() => {
+    const ap: any = (construct as any).autopilot;
+    if (!ap?.enabled) return null;
+    if (!ap.legs?.length) return { text: 'idle — no stops set', cls: 'warn' };
+    const hasJourneys = (construct.scheduled_journeys || []).some((l: any) => l.status !== 'cancelled');
+    if (!hasJourneys) return { text: 'stuck — no route scheduled', cls: 'bad' };
+    if (effectiveState === 'Transit') return { text: 'transiting…', cls: '' };
+    if (effectiveState === 'Deep Space' || effectiveState === 'Adrift') return { text: 'coasting in deep space', cls: 'warn' };
+    return { text: 'holding between legs', cls: '' };
+  })();
+
   const dispatch = createEventDispatcher();
 
   let specs: ConstructSpecs | null = null;
@@ -362,6 +374,7 @@
             {#if construct.placement !== 'Surface'}
                 {#if construct.autopilot?.enabled}
                     <!-- Autopilot owns the ship — click to disengage (opens the stop-how dialog). -->
+                    {#if apStatus}<div class="ap-status {apStatus.cls}"><AutopilotShipIcon size={13} /> <span>Autopilot · {apStatus.text}</span></div>{/if}
                     <button class="action-btn autopilot-locked" title="Under autopilot — click to disengage and take manual control" on:click={() => dispatch('disengage')}>
                         <AutopilotShipIcon size={15} />
                         Under autopilot
@@ -453,6 +466,9 @@
       display: inline-flex; align-items: center; gap: 7px; justify-content: center;
       cursor: pointer;
   }
+  .ap-status { display: flex; align-items: center; gap: 6px; font-size: 0.82em; color: var(--text-muted); margin-bottom: 5px; }
+  .ap-status.warn { color: #d8922f; }
+  .ap-status.bad { color: #cc5555; }
   /* Abort controls: green = physical (coast on), orange = stop dead (then falls). */
   .action-btn.cancel-drift { background-color: #2f9e57; }
   .action-btn.cancel-stop { background-color: #d98a2b; }
