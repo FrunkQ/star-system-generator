@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.191-beta - 18th Jun 2026
+
+* Groundwork (no visible change yet): the autopilot planner's deterministic core — it walks a captured plan's legs in order, chains the journeys with dwell, loops or runs once, commits as far ahead as the Planning slider says, and flags a ship "stuck" if it can't reach or fuel the next hop (refuelling for free where it harvests a compatible resource). Pure + unit-tested; the wiring to actually fly ships comes next.
+
 ## v2.0.190-beta - 18th Jun 2026
 
 * The Newton panel's classification now lets you click any candidate type to see *its* reasoning, not just the winner's. Each band shows the body's value against the type's range with a colour-coded fit bar (green = solid, amber = marginal, red = barely inside), so you can see exactly how the winning score was earned — and why a runner-up fell short. Clicking a candidate inspects it; an explicit "Pin … as the type" button commits your choice.
