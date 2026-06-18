@@ -2,11 +2,31 @@
   // Autopilot wizard (docs/autopilot-spec.md §12). CAPTURE-ONLY for now: builds + saves the plan on the
   // construct; the planner that actually flies it comes later. Sections — Route (legs), Behaviour, Avoid, Logistics.
   import { createEventDispatcher } from 'svelte';
-  import type { CelestialBody, System, Autopilot, AutopilotAction, AutopilotWhere, AutopilotLeg } from '$lib/types';
+  import type { CelestialBody, System, Autopilot, AutopilotAction, AutopilotWhere, AutopilotLeg, RulePack } from '$lib/types';
   import { coiCategories, coiTagLabel } from '$lib/constructs/coi';
+  import { calculateFullConstructSpecs } from '$lib/construct-logic';
 
   export let construct: CelestialBody;
   export let system: System | null = null;
+  export let rulePack: RulePack | null = null;
+  export let hostBody: CelestialBody | null = null;
+
+  // Drive ceiling at vacuum — derived. maxVacuumG is at CURRENT fuel; scale by mass to get the empty→full
+  // range so the GM sees why a "15 g" hull only manages ~1 g when its tanks are full.
+  $: specs = (rulePack?.engineDefinitions && rulePack?.fuelDefinitions)
+    ? calculateFullConstructSpecs(construct, rulePack.engineDefinitions.entries, rulePack.fuelDefinitions.entries, hostBody)
+    : null;
+  $: accelRange = (() => {
+    if (!specs || !specs.maxVacuumG || !specs.totalMass_tonnes) return null;
+    const massEmpty = specs.totalMass_tonnes - specs.fuelMass_tonnes;          // tanks dry
+    const massFull = massEmpty + specs.fuelCapacity_tonnes;                    // tanks full
+    const thrustConst = specs.maxVacuumG * specs.totalMass_tonnes;             // ∝ thrust (g·t)
+    return {
+      empty: massEmpty > 0 ? thrustConst / massEmpty : 0,
+      full: massFull > 0 ? thrustConst / massFull : 0
+    };
+  })();
+  const fmtG = (g: number) => (g < 1 ? g.toFixed(2) : g.toFixed(1));
 
   const dispatch = createEventDispatcher();
   const update = () => dispatch('update');
@@ -286,6 +306,7 @@
     <div class="sld">
       <div class="sld-top"><span>Max accel</span><span class="v">{ap.maxAccelG ? `${ap.maxAccelG} g` : 'full thrust'}</span></div>
       <div class="accel-in"><input class="num" type="number" min="0" step="0.1" placeholder="full" bind:value={ap.maxAccelG} on:change={update} /> <span class="unit">g</span></div>
+      {#if accelRange}<p class="hint subtle">This drive: <strong>{fmtG(accelRange.full)} g</strong> fully fuelled → <strong>{fmtG(accelRange.empty)} g</strong> empty (heavy tanks = slower).</p>{/if}
       <p class="hint subtle">Caps acceleration below the drive's limit — for comfort/economy, or to stop a slow escort being left behind.</p>
     </div>
     <div class="sld">

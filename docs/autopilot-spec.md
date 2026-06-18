@@ -422,3 +422,8 @@ It bounds the transit the planner may select: where **Drive** picks a point with
 speed/efficiency range, **Max accel** lowers the top of that range. Capture build = a g number input (blank =
 full); the planner clamps the chosen brachistochrone/burn to `min(maxAccelG, ship maxVacuumG)`. The ship's
 real ceiling is the derived `maxVacuumG` (construct-logic.ts) — surface it as a hint when the planner lands.
+
+**Surfaced (v2.0.179):** the control shows the drive's accel **range** — fully fuelled → empty — derived by
+scaling `maxVacuumG` (computed at *current* fuel) by mass: empty = thrust/massDryOfFuel, full =
+thrust/(massDryOfFuel + fuelCapacity). Needs rulePack engine+fuel defs threaded into the tab (now passed from
+ConstructSidePanel). Kills the "my 15 g torch only does 1 g" confusion — full tanks are heavy.

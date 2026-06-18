@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.179-beta - 18th Jun 2026
+
+* The autopilot Max accel control now shows the ship's real acceleration range — e.g. "2.1 g fully fuelled to 15.0 g empty" — so it's obvious why a high-thrust hull crawls with full tanks (all that fuel mass). Makes setting a sensible cap, or matching a slow escort, much clearer.
+
 ## v2.0.178-beta - 18th Jun 2026
 
 * Autopilot Behaviour gains a Max accel cap (in g, blank = full thrust). Hold the ship below its engines' limit for a comfortable, economical ride — or cap a lead ship's acceleration so slower escorts don't get left behind. The Drive slider still chooses speed-vs-fuel within whatever ceiling you set.

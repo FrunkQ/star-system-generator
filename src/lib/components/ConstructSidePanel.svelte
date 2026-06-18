@@ -176,7 +176,7 @@
     {:else if selectedTab === 'Tags'}
       <ConstructCoITab {construct} on:update={handleUpdate} />
     {:else if selectedTab === 'Autopilot'}
-      <AutopilotTab {construct} {system} on:update={handleUpdate} />
+      <AutopilotTab {construct} {system} {rulePack} {hostBody} on:update={handleUpdate} />
     {/if}
   </div>
   
