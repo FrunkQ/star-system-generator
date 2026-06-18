@@ -242,7 +242,7 @@
           if (leg.action === 'mine') return `mine ${resNames(leg.resourceKeys) || 'resource'}`;
           if (leg.action === 'transport') return `transport ${resNames(leg.resourceKeys) || 'cargo'}${leg.placeId ? ` from ${nodeName(leg.placeId)}` : ''}`;
           if (leg.action === 'patrol') return `patrol ${leg.placeId ? nodeName(leg.placeId) : 'system'}`;
-          return 'explore';
+          return `explore${resNames(leg.resourceKeys) ? ' for ' + resNames(leg.resourceKeys) : ''}`;
         };
         const first = ap.legs?.[0];
         const summary = first ? `${legText(first)}${ap.legs.length > 1 ? ` +${ap.legs.length - 1}` : ''} · ${TRAVERSAL_LABEL[ap.traversal] ?? ap.traversal}` : 'no stops set';

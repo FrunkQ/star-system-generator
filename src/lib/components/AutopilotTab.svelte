@@ -19,14 +19,16 @@
   $: if (construct && !construct.autopilot) construct.autopilot = { ...DEFAULT_AP, legs: [] };
   $: ap = construct.autopilot ?? DEFAULT_AP;
 
-  // Four distinct verbs. Dock/unload fall out of deliverTo; scan folded into patrol.
+  // Four verbs = two behaviours × two targeting modes. Dock/unload fall out of deliverTo; scan folded into patrol.
   const ACTIONS: { a: AutopilotAction; label: string; desc: string }[] = [
     { a: 'mine', label: 'Mine', desc: 'go to the nearest source of a resource and extract it' },
     { a: 'transport', label: 'Transport', desc: 'carry cargo or people from a place to a destination' },
-    { a: 'patrol', label: 'Patrol', desc: 'loiter and sweep an area for a while' },
-    { a: 'explore', label: 'Explore', desc: 'keep pushing outward, refuelling as able' }
+    { a: 'patrol', label: 'Patrol', desc: 'loiter and sweep a place for a while' },
+    { a: 'explore', label: 'Explore', desc: 'seek new sources it hasn’t logged, surveying each' }
   ];
-  const NEEDS_CARGO = (a: AutopilotAction) => a === 'mine' || a === 'transport';
+  // HAUL = gather + deliver (mine/transport); LOITER = go + dwell (patrol/explore).
+  const FAMILY: Record<AutopilotAction, 'haul' | 'loiter'> = { mine: 'haul', transport: 'haul', patrol: 'loiter', explore: 'loiter' };
+  const NEEDS_CARGO = (a: AutopilotAction) => FAMILY[a] === 'haul';
   const PEOPLE_KEY = 'people/passengers';
   $: cats = $coiCategories;
   const labelFor = (k: string) => (k === PEOPLE_KEY ? 'Passengers' : coiTagLabel(k, cats));
@@ -65,14 +67,14 @@
     if (a === 'mine') return { action: a, resourceKeys: [], rate_tpd: defaultRate(), fillAmount_t: freeCargo() || undefined };
     if (a === 'transport') return { action: a, resourceKeys: [], rate_tpd: defaultRate(), fillAmount_t: freeCargo() || undefined };
     if (a === 'patrol') return { action: a, loiterDays: 30 };
-    return { action: a }; // explore
+    return { action: a, resourceKeys: [], loiterDays: 30, noRevisit: true }; // explore: resource-driven loiter, non-repeating
   }
   function addLeg() { construct.autopilot!.legs = [...ap.legs, blankLeg(suggestedAction())]; update(); }
   function removeLeg(i: number) { construct.autopilot!.legs = ap.legs.filter((_, j) => j !== i); update(); }
   // Switching action resets the action-specific fields so stale data doesn't leak across verbs.
   function setAction(leg: AutopilotLeg, a: AutopilotAction) {
     const fresh = blankLeg(a);
-    Object.assign(leg, { action: a, placeId: undefined, resourceKeys: undefined, rate_tpd: undefined, fillAmount_t: undefined, deliverTo: undefined, loiterDays: undefined }, fresh);
+    Object.assign(leg, { action: a, placeId: undefined, resourceKeys: undefined, rate_tpd: undefined, fillAmount_t: undefined, deliverTo: undefined, loiterDays: undefined, noRevisit: undefined }, fresh);
     construct.autopilot!.legs = [...ap.legs];
     update();
   }
@@ -195,7 +197,19 @@
             <input class="num" type="number" min="0" bind:value={leg.loiterDays} on:change={update} /> <span class="unit">days</span>
 
           {:else}
-            <span class="explore-note">Heads outward toward unvisited space, refuelling as it goes (unless fuel is ignored below).</span>
+            <span class="lbl">seeking</span>
+            <span class="res-pick">
+              {#each leg.resourceKeys ?? [] as k}
+                <span class="chip">{labelFor(k)}<button class="chip-x" title="Remove" on:click={() => removeLegResource(leg, k)}>✕</button></span>
+              {/each}
+              <select value="" on:change={(e) => { addLegResource(leg, e.currentTarget.value); e.currentTarget.value = ''; }}>
+                <option value="">+ resource (any if blank)</option>
+                {#each resourceOpts.filter((r) => !(leg.resourceKeys ?? []).includes(r.key)) as r}<option value={r.key}>{r.label}</option>{/each}
+              </select>
+            </span>
+            <span class="lbl">survey</span>
+            <input class="num" type="number" min="0" bind:value={leg.loiterDays} on:change={update} /> <span class="unit">days</span>
+            <span class="explore-note">heads to new sources, skipping places already in its log</span>
           {/if}
         </div>
 

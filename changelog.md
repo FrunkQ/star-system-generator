@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.173-beta - 18th Jun 2026
+
+* Autopilot Explore gains a survey/loiter time and an optional resource target — it heads to new sources (skipping places already in its log) and dwells to scan/survey, the mirror of Patrol. The four actions now line up as two behaviour pairs: Mine/Transport gather and deliver (resource- vs place-driven), Patrol/Explore go-and-dwell (place- vs resource-driven). Under the hood that's modelled as one "don't revisit" flag (on for Explore for now, not yet shown) so the same machinery can later surface as a switch on any leg.
+
 ## v2.0.172-beta - 18th Jun 2026
 
 * Autopilot wizard, big simplify + clarity pass. Actions cut to four distinct verbs: **Mine** (a resource only — go to the nearest source), **Transport** (a place AND cargo/people — pick up what from where, deliver onward), **Patrol** (loiter and sweep an area for a set number of days — absorbs the old Scan), and **Explore** (keep pushing outward, refuelling as able). Dock and Unload are gone — they're inferred from the deliver-to. Each stop is now a strongly-bordered "Leg" card with a Leg number and a drag handle so you can reorder the route, and there's a new **Avoid** section to list locations the ship won't visit or replenish at (e.g. politically unaligned). "Max journey time" is relabelled **Max time per leg** and now clearly means the whole leg — travel out, do the work, and return. The "+ add location" button is now "+ add stop".

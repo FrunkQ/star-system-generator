@@ -117,18 +117,21 @@ export interface FuelTank {
 // Autopilot wizard plan on a construct (docs/autopilot-spec.md §12). Capture-only for now — the planner
 // that flies it comes later. A WHERE is a specific place OR the nearest source of a resource tag.
 export type AutopilotWhere = { kind: 'place' | 'resource'; placeId?: ID; resourceKeys?: string[] }; // resource = a source of ANY of these
-// Four distinct verbs. mine = resource-only (nearest source); transport = a place AND cargo/people;
-// patrol = loiter/sweep a place (absorbs the old scan); explore = push outward, refuel as able.
-// Dock/unload are no longer actions — they're inferred from deliverTo.
+// Four verbs = two behaviours × two targeting modes (the underlying abstraction):
+//   HAUL family   — gather/carry then deliver:  mine (resource-targeted) ↔ transport (place-targeted)
+//   LOITER family — go somewhere new + dwell:    explore (resource-targeted) ↔ patrol (place-targeted)
+// Place-targeted = anchored to a specific body/station (placeId); resource-targeted = nearest source of
+// resourceKeys. Dock/unload are inferred from deliverTo. Scan folded into patrol.
 export type AutopilotAction = 'mine' | 'transport' | 'patrol' | 'explore';
 export interface AutopilotLeg {
   action: AutopilotAction;
-  placeId?: ID;             // transport: pickup source; patrol: where to patrol (optional)
-  resourceKeys?: string[];  // mine: what to extract; transport: what to carry (cargo type or 'people/passengers')
-  rate_tpd?: number;        // mine/transport fill rate (t/day) — default from the hull's capability tag
-  fillAmount_t?: number;    // mine/transport — how much to take on (defaults to free cargo space)
-  deliverTo?: AutopilotWhere; // mine/transport — where the cargo/people go (docking + unloading implied)
-  loiterDays?: number;      // patrol — how long to loiter/sweep before moving on
+  placeId?: ID;             // place-targeted: transport pickup source / patrol location
+  resourceKeys?: string[];  // resource-targeted: mine what to extract / explore what to seek; transport: cargo (incl 'people/passengers')
+  rate_tpd?: number;        // haul fill rate (t/day) — default from the hull's capability tag
+  fillAmount_t?: number;    // haul — how much to take on (defaults to free cargo space)
+  deliverTo?: AutopilotWhere; // haul — where the cargo/people go (docking + unloading implied)
+  loiterDays?: number;      // loiter — how long to loiter/scan/survey before moving on
+  noRevisit?: boolean;      // loiter — skip places already in the ship's log (defaults on for explore); not yet surfaced in the UI
 }
 export interface Autopilot {
   enabled: boolean;
