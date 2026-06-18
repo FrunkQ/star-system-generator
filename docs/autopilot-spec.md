@@ -427,3 +427,22 @@ real ceiling is the derived `maxVacuumG` (construct-logic.ts) — surface it as 
 scaling `maxVacuumG` (computed at *current* fuel) by mass: empty = thrust/massDryOfFuel, full =
 thrust/(massDryOfFuel + fuelCapacity). Needs rulePack engine+fuel defs threaded into the tab (now passed from
 ConstructSidePanel). Kills the "my 15 g torch only does 1 g" confusion — full tanks are heavy.
+
+### 12.16 You don't mine a ship — Mine resolves over BODIES only (Alex, 2026-06-18)
+The `resource/*` namespace is shared by bodies AND constructs on purpose (the unified "where is water-ice in
+this system" ledger). But that means a hauler like The Canterbury carries `resource/water-ice` as a CARGO/role
+manifest — and a naive Mine resolver seeking "nearest source of water-ice" would treat the tanker (or itself)
+as a deposit. It must not.
+
+**Rule — source resolution by action:**
+- **Mine = extract from a NATURAL BODY only.** Candidates are nodes with `kind === 'body'` (roleHint
+  planet/moon/belt/ring) carrying a *derived* `resource/*` (provenance `Tag.source` = `rule:*` / `atmosphere`).
+  Constructs are NEVER mining targets, even when tagged with the resource. The Canterbury can't be mined; it
+  can't mine another ship; it can't mine itself.
+- **A construct's `resource/*` = cargo / trade manifest** (`coi:true, manual:true`), not a deposit. It may be a
+  **Transport** source or market (buy/transfer/load from a station), and it still appears in the unified
+  Find-by-tag DIRECTORY ("who has water-ice"), but it is excluded from MINE candidates.
+
+The distinction is already encoded — filter mine candidates by `kind === 'body'` and (optionally)
+`Tag.source` being rule-derived rather than a manual CoI. No new field needed. Lock this into the planner's
+source-resolution from day one.
