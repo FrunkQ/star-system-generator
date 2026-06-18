@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.189-beta - 18th Jun 2026
+
+* Interior makeup presets are now labelled "Composition presets" and filtered to the body's mass, so you're only offered mixes that make sense — no "Gas giant" on a moonlet or "Iron-rich" at Jupiter mass. Each preset also has a hover hint, and "Iron" is clearer as "Iron-rich".
+
 ## v2.0.188-beta - 18th Jun 2026
 
 * Classification is now transparent and overridable. The Newton ("apple") panel gains a Classification section showing the ranked candidate types with their scores, which one won, and the bands that decided it. When two types score within 10% of each other the call is flagged borderline — the apple icon turns orange with a "!" so you spot it without opening — and you can click any candidate to pin it (e.g. force Earth to "earth-like" instead of "swamp"). A pinned type sticks (the engine won't override it) and the panel still shows what the physics would have called it, with a one-click way to hand it back to auto.

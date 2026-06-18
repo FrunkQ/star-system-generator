@@ -17,15 +17,19 @@
   const LABELS: Record<string, string> = { metal: 'Metal', rock: 'Rock', carbon: 'Carbon', ice: 'Ice', gas: 'Gas' };
   const SWATCH: Record<string, string> = { metal: '#9c8d7a', rock: '#a9805a', carbon: '#3a3a40', ice: '#cfe6ff', gas: '#d8c79a' };
 
-  const PRESETS: Array<{ name: string; mk: Makeup }> = [
-    { name: 'Iron', mk: { metal: 0.7, rock: 0.3 } },
-    { name: 'Rocky', mk: { rock: 0.85, metal: 0.15 } },
-    { name: 'Carbon', mk: { carbon: 0.5, rock: 0.5 } },
-    { name: 'Icy', mk: { ice: 0.6, rock: 0.4 } },
-    { name: 'Ocean', mk: { rock: 0.5, ice: 0.5 } },
-    { name: 'Ice giant', mk: { gas: 0.7, ice: 0.3 } },
-    { name: 'Gas giant', mk: { gas: 0.95, ice: 0.05 } }
+  // Presets carry a plausible mass range (Earth masses) so we only offer the ones that make sense for
+  // this body — no "Gas giant" on a moonlet, no "Iron world" at Jupiter mass.
+  const PRESETS: Array<{ name: string; mk: Makeup; minMe?: number; maxMe?: number; hint: string }> = [
+    { name: 'Iron-rich', mk: { metal: 0.7, rock: 0.3 }, maxMe: 20, hint: 'Dense metal-core world (Mercury-like).' },
+    { name: 'Rocky', mk: { rock: 0.85, metal: 0.15 }, maxMe: 20, hint: 'Silicate + metal terrestrial (Earth/Mars-like).' },
+    { name: 'Carbon', mk: { carbon: 0.5, rock: 0.5 }, maxMe: 20, hint: 'Carbon-rich world (graphite/diamond interior).' },
+    { name: 'Icy', mk: { ice: 0.6, rock: 0.4 }, maxMe: 25, hint: 'Ice + rock body (icy moon / Kuiper world).' },
+    { name: 'Ocean', mk: { rock: 0.5, ice: 0.5 }, maxMe: 25, hint: 'Deep water/ice mantle over rock.' },
+    { name: 'Ice giant', mk: { gas: 0.7, ice: 0.3 }, minMe: 3, maxMe: 100, hint: 'Volatile envelope over an icy core (Neptune-like).' },
+    { name: 'Gas giant', mk: { gas: 0.95, ice: 0.05 }, minMe: 30, hint: 'Massive H/He envelope (Jupiter/Saturn-like).' }
   ];
+  // Filter to the presets plausible at this body's mass (always leaves at least one across the range).
+  $: visiblePresets = PRESETS.filter((p) => massMe >= (p.minMe ?? 0) && massMe <= (p.maxMe ?? Infinity));
 
   // Editable working copy as 0–100 sliders. Seed from explicit makeup, else infer from density.
   let pct: Record<string, number> = {};
@@ -74,9 +78,10 @@
     <span class="hint">density &amp; radius derive from this</span>
   </div>
 
+  <div class="presets-label">Composition presets <span class="presets-sub">— for this mass</span></div>
   <div class="presets">
-    {#each PRESETS as p}
-      <button class="preset" on:click={() => setPreset(p.mk)}>{p.name}</button>
+    {#each visiblePresets as p}
+      <button class="preset" title={p.hint} on:click={() => setPreset(p.mk)}>{p.name}</button>
     {/each}
   </div>
 
@@ -105,7 +110,9 @@
   .head { display: flex; align-items: baseline; justify-content: space-between; }
   .title { font-weight: 600; color: var(--text); }
   .hint { font-size: 0.75em; color: var(--text-faint); }
-  .presets { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 6px; }
+  .presets-label { font-size: 0.75em; color: var(--text-muted); margin-top: 4px; }
+  .presets-sub { color: var(--text-faint); }
+  .presets { display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 0 6px; }
   .preset { font-size: 0.75em; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--link); cursor: pointer; }
   .preset:hover { background: var(--bg-control); }
   .row { display: grid; grid-template-columns: 14px 54px 1fr 40px; align-items: center; gap: 8px; }
