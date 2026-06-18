@@ -233,29 +233,32 @@ relive it.
 This supersedes the rougher §9a mock and resolves the open speed/efficiency/route question. It also leans on
 the CoI work just shipped (Owner → tardiness, Purpose → role vocabulary, the construct tag system).
 
-### 12.1 The Autopilot tab is ONE editable sentence
-Instead of a form of sliders, the tab reads as a plain-English **itinerary sentence** whose every meaningful
-word is a tappable token. Building autopilot = completing the sentence.
+### 12.1 The Autopilot tab — a WIZARD builder (Alex 2026-06-17: not a literal sentence)
+The tab is a compact guided builder in three sections. Mockups shown + approved-in-principle.
 
-```
-The Kestrel will  ⟨patrol⟩  ⟨Vesta · Ceres · Pallas⟩  ⟨reordering for the best run⟩,
-flying ⟨balanced⟩, ⟨keeping a relaxed schedule⟩, and ⟨servicing every 2 years⟩.        [ Engage ]
-```
+**(A) Route**
+- **Traversal** — a segmented control: **All · in order** (fixed circuit) | **All · best order** (visit all,
+  reorder for alignment — §12.3) | **Any · as needed** (don't visit all; go to whichever one is best/needed —
+  the miner-picks-nearest-ore / tanker-tops-up-nearest-depot case).
+- **Locations** — a list; each row is built from dropdowns: **WHERE** (toggle **Place** = a specific
+  body/station, OR **Resource** = the nearest source of `resource/X` — uses the resource tags) → **action**
+  (Mine / Scan / Load / Unload / Dock / Patrol — **suggested from the ship's capability tags**, GM-overridable)
+  → for Mine/Load a **deliver-to** drop-off (Place or Resource). For Mine/Skim/Load the row also shows the
+  **rate** ("Mine at `15` t/day", defaulted from the hull's capability, editable — see 12.6).
 
-Tokens (tap to edit in place):
-- **role** — patrol / haul / mine / courier / trade / picket / survey / relocate / bespoke. (= a Purpose CoI.)
-- **waypoints** — opens the waypoint picker (the hierarchical/tag picker we just built, scoped to waypoint
-  PoIs); drag to reorder; this is ALSO where per-stop cargo actions are set ("load 100 t ore", "unload all").
-- **route mode** — "in a fixed order" ↔ "reordering for the best run" (see 12.3).
-- **drive bias** — "as fast as it can" / "balanced" / "sipping fuel" (the Speed↔Efficiency value, named).
-- **discipline** — "like clockwork" / "relaxed" / "on Bob's time" (Tardiness, named) — **defaults from the
-  Owner CoI** (military ⇒ clockwork … owner-operator ⇒ Bob's), overridable.
-- **maintenance** — "servicing every N years".
+**(B) Behaviour** (the "character" sliders, named ends, no bare numbers):
+- **Discipline** (= Tardiness) — Military·on-time ↔ Bob's·days-slip. **Defaults from the Owner CoI**, overridable.
+- **Planning** (= Lookahead 0–5) — Reactive·decide-on-arrival ↔ Detailed·5-ahead. THIS is the trade-off
+  analysis: at higher levels it reorders the run and **waits for an alignment when it pays off** ("hold 50 d to
+  save 100 d overall"). Only this slider unlocks that reasoning.
+- **Drive** (= Speed↔Efficiency) — Thrifty·save-fuel ↔ Fast·burn-hard. Per-leg burn + the reorder cost function.
 
-Tapping a continuous token (drive bias, discipline) opens a small slider popover whose CURRENT value is the
-word shown; discrete tokens (role, route mode) cycle or open a tiny menu. The sentence is always readable, so
-the GM never has to decode a panel of unlabelled sliders. "Engage" runs the planner (§5) and the ship starts
-flying; editing any token = a timestamped re-plan (reversible, like every journey edit).
+**(C) Logistics** — checkboxes, automated by default: **Auto-refuel** (keep fuel for `[N]` journeys ahead) and
+**Auto-restock** life support. Uncheck either to manage it by hand (simplicity escape hatch).
+
+"Engage" saves the plan (first build = capture-only; the planner that flies it is the next step). A stuck ship
+flags a **`!`** for GM attention; the **Routes** panel gets an **"Under autopilot"** section listing each
+autopiloted ship + its current action + any `!`. (The slider/3-way detail is unchanged below.)
 
 ### 12.2 Status — knowing it's on autopilot, and stopping gracefully
 - **Derived status.** A construct under autopilot carries a derived `status/autopilot` tag (mirrors the
