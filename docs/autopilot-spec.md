@@ -412,3 +412,13 @@ largely redundant**: firm timetables only make sense when distances are fixed, a
 orbits/moves, so "depart on a clock" rarely matches reality. The derive-from-clock "go when ready + Planning
 look-ahead" model already covers the sensible cases. Revisit only if a fixed-infrastructure (gates/stations)
 scheduled-service use case appears.
+
+### 12.15 Max-acceleration cap (Alex, 2026-06-18)
+A `maxAccelG` cap (g) in Behaviour, **below the drive's true ceiling** (undefined ⇒ full thrust). Two uses:
+- **Comfort / economy** — don't redline the engines (passenger comfort, wear, fuel).
+- **Escort cohesion** — cap the **lead** ship's accel so slower escorts/support craft don't get left behind.
+
+It bounds the transit the planner may select: where **Drive** picks a point within the available
+speed/efficiency range, **Max accel** lowers the top of that range. Capture build = a g number input (blank =
+full); the planner clamps the chosen brachistochrone/burn to `min(maxAccelG, ship maxVacuumG)`. The ship's
+real ceiling is the derived `maxVacuumG` (construct-logic.ts) — surface it as a hint when the planner lands.

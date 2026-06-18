@@ -145,6 +145,7 @@ export interface Autopilot {
   tardiness?: number;       // 0..1 Discipline; undefined ⇒ inherit from the Owner CoI
   planning: number;         // 0..5 lookahead — covers fuel/restock scheduling too; 0 = greedy
   drive: number;            // 0..1 Drive bias: 0 efficiency … 1 speed
+  maxAccelG?: number;       // hard accel cap (g) on transit, below the drive's limit; undefined ⇒ full thrust. Comfort/economy, or cap a lead ship so slow escorts keep up
   maxJourneyDays?: number;  // cap on a whole LEG (travel out, work, and return) — stops 50-year crawls
   ignoreFuel: boolean;      // simplify: this ship doesn't require or consume fuel
   ignoreSupplies: boolean;  // simplify: this ship doesn't require life-support supplies

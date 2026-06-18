@@ -284,6 +284,11 @@
       <div class="ends"><span>Thrifty · save fuel</span><span>Fast · burn hard</span></div>
     </div>
     <div class="sld">
+      <div class="sld-top"><span>Max accel</span><span class="v">{ap.maxAccelG ? `${ap.maxAccelG} g` : 'full thrust'}</span></div>
+      <div class="accel-in"><input class="num" type="number" min="0" step="0.1" placeholder="full" bind:value={ap.maxAccelG} on:change={update} /> <span class="unit">g</span></div>
+      <p class="hint subtle">Caps acceleration below the drive's limit — for comfort/economy, or to stop a slow escort being left behind.</p>
+    </div>
+    <div class="sld">
       <div class="sld-top"><span>Max time per leg</span><span class="v">{ap.maxJourneyDays ? `${ap.maxJourneyDays} days` : 'no cap'}</span></div>
       <input type="range" min="0" max="3650" step="10" value={ap.maxJourneyDays ?? 0} on:input={(e) => { const v = parseInt(e.currentTarget.value); construct.autopilot!.maxJourneyDays = v || undefined; update(); }} />
       <div class="ends"><span>no cap</span><span>whole leg: travel out, work, and return</span></div>
@@ -351,6 +356,7 @@
   .ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-faint); margin-top: 2px; }
   .hint { margin: 6px 0 0; font-size: 11px; color: var(--accent); }
   .hint.subtle { color: var(--text-faint); }
+  .accel-in { display: flex; align-items: center; gap: 6px; }
   .chk { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
   .inline-chk { display: inline-flex; align-items: center; gap: 5px; color: var(--text-muted); cursor: pointer; font-size: 12px; }
   .res-pick { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 5px; }
