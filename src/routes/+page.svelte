@@ -235,10 +235,18 @@
       for (const n of (sys.system?.nodes ?? []) as any[]) {
         if (n.kind !== 'construct' || !n.autopilot?.enabled) continue;
         const ap = n.autopilot;
-        const wpName = (w: any) => !w ? '' : w.kind === 'resource' ? ((w.resourceKeys ?? []).map((k: string) => k.split('/')[1]).join('/') || 'resource') : (((sys.system?.nodes ?? []) as any[]).find((x) => x.id === w.placeId)?.name ?? 'somewhere');
-        const first = ap.waypoints?.[0];
-        const summary = first ? `${first.action} ${wpName(first.where)}${ap.waypoints.length > 1 ? ` +${ap.waypoints.length - 1}` : ''} · ${TRAVERSAL_LABEL[ap.traversal] ?? ap.traversal}` : 'no locations set';
-        autopilotShips.push({ id: n.id, constructName: n.name, where: sys.name, systemId: sys.id, summary, needsAttention: !ap.waypoints?.length });
+        const nodeName = (id: string) => ((sys.system?.nodes ?? []) as any[]).find((x) => x.id === id)?.name ?? 'somewhere';
+        const resNames = (keys: string[] = []) => keys.map((k: string) => k === 'people/passengers' ? 'passengers' : k.split('/')[1]).join('/');
+        const legText = (leg: any) => {
+          if (!leg) return '';
+          if (leg.action === 'mine') return `mine ${resNames(leg.resourceKeys) || 'resource'}`;
+          if (leg.action === 'transport') return `transport ${resNames(leg.resourceKeys) || 'cargo'}${leg.placeId ? ` from ${nodeName(leg.placeId)}` : ''}`;
+          if (leg.action === 'patrol') return `patrol ${leg.placeId ? nodeName(leg.placeId) : 'system'}`;
+          return 'explore';
+        };
+        const first = ap.legs?.[0];
+        const summary = first ? `${legText(first)}${ap.legs.length > 1 ? ` +${ap.legs.length - 1}` : ''} · ${TRAVERSAL_LABEL[ap.traversal] ?? ap.traversal}` : 'no stops set';
+        autopilotShips.push({ id: n.id, constructName: n.name, where: sys.name, systemId: sys.id, summary, needsAttention: !ap.legs?.length });
       }
     }
     return { interstellar, journeys, interstellarJourneys, stranded, autopilotShips };
