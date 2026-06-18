@@ -29,6 +29,7 @@
 
   export let starmap: Starmap;
   export let rulePack: RulePack; // We need this prop to show defaults!
+  export let routesAttention: 'stuck' | 'intervention' | 'done' | null = null; // worst fleet attention → rail Routes dot
   export let linkingMode: boolean = false;
   export let selectedSystemForLink: string | null = null;
 
@@ -900,6 +901,7 @@
         activeView="starmap"
         rulerOn={measureMode}
         rulerAvailable={isScaled}
+        {routesAttention}
         on:ruler={() => { railOpen = false; toggleMeasure(); }}
         on:starmap={() => { railOpen = false; }}
         on:new={() => dispatch('new')}

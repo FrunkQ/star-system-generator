@@ -255,7 +255,12 @@
         autopilotShips.push({ id: n.id, constructName: n.name, where: sys.name, systemId: sys.id, summary, attention, attentionLabel });
       }
     }
-    return { interstellar, journeys, interstellarJourneys, stranded, autopilotShips };
+    // Attention-needing ships sort to the top — best way to scan the fleet at a glance.
+    const ATTN_RANK: Record<string, number> = { stuck: 0, intervention: 1, done: 2 };
+    autopilotShips.sort((a, b) => (ATTN_RANK[a.attention] ?? 3) - (ATTN_RANK[b.attention] ?? 3));
+    // Worst current attention across the fleet → drives the rail Routes notification dot.
+    const worstAttention = autopilotShips.find((s) => s.attention)?.attention ?? null;
+    return { interstellar, journeys, interstellarJourneys, stranded, autopilotShips, worstAttention };
   })();
   $: allShips = allBodies.filter((n: any) => n.kind === 'construct');
   $: allBodies = (() => {
@@ -1208,6 +1213,7 @@
       <SystemView
         system={$systemStore} rulePack={effectiveRulePack} {exampleSystems}
         {broadcastSessionId}
+        routesAttention={routesData.worstAttention}
         on:new={handleRequestNewStarmap}
         on:open={handleUploadStarmap}
         on:save={handleDownloadStarmap}
@@ -1230,6 +1236,7 @@
       bind:this={starmapComponent}
       starmap={$starmapStore}
       rulePack={selectedRulepack}
+      routesAttention={routesData.worstAttention}
       on:new={handleRequestNewStarmap}
       on:catalogue={() => showCompanionModal = true}
       on:systemclick={handleSystemClick}

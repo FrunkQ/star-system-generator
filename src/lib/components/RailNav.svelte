@@ -17,6 +17,7 @@
   export let rulerOn = false;
   export let rulerAvailable = false;   // starmap: only when scaled (system view always has it)
   export let crtOn = false; // projector "Greenscreen CRT" toggle is on
+  export let routesAttention: 'stuck' | 'intervention' | 'done' | null = null; // worst fleet attention → Routes notification dot
 
   let fileOpen = false; // File group (New / Open / Save) inline accordion
   $: collapsed = $railCollapsed;
@@ -82,8 +83,8 @@
   <button class="rail-btn" title="Find bodies by tag (resources, refuelling, hazards…) across all systems" on:click={() => go('findtag')}>
     <span class="ic">{@html svg(I.tag)}</span><span class="rail-label">Find by tag…</span>
   </button>
-  <button class="rail-btn" title="Routes & journeys" on:click={() => go('routes')}>
-    <span class="ic">{@html svg(I.routes)}</span><span class="rail-label">Routes…</span>
+  <button class="rail-btn" title={routesAttention ? `Routes & journeys — a ship needs attention (${routesAttention})` : 'Routes & journeys'} on:click={() => go('routes')}>
+    <span class="ic">{@html svg(I.routes)}{#if routesAttention}<span class="rail-dot {routesAttention}"></span>{/if}</span><span class="rail-label">Routes…{#if routesAttention}<span class="rail-dot inline {routesAttention}"></span>{/if}</span>
   </button>
   <!-- Field Guide is campaign-wide (whole starmap), so it's available from BOTH the starmap and a system. -->
   <button class="rail-btn" title="Open the players' live field guide (Companion App)" on:click={() => go('catalogue')}>
@@ -235,7 +236,14 @@
   /* Let labels shrink + ellipsis within the rail rather than overflow its width (the bottom scrollbar). */
   .rail-btn { min-width: 0; }
   .rail-label { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  .ic { display: flex; flex: 0 0 auto; color: var(--text-muted, #cfcfcf); }
+  .ic { display: flex; flex: 0 0 auto; color: var(--text-muted, #cfcfcf); position: relative; }
+  /* Routes notification dot — worst fleet attention. On the icon (shows when collapsed) + inline in the label. */
+  .rail-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+  .ic > .rail-dot { position: absolute; top: -2px; right: -3px; border: 1px solid var(--bg-panel, #14161c); }
+  .rail-dot.inline { display: inline-block; margin-left: 6px; vertical-align: middle; }
+  .rail-dot.stuck { background: #cc5555; }
+  .rail-dot.intervention { background: #d8922f; }
+  .rail-dot.done { background: #4a9e5c; }
   .ic.accent { color: var(--accent); }
   .chev { margin-left: auto; color: var(--text-faint, #8a8f9a); font-size: 0.8rem; }
   .rail-btn.sub { margin-left: 14px; background: transparent; }

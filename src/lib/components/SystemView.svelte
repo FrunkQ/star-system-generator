@@ -57,6 +57,7 @@
   export let system: System;
   export let rulePack: RulePack;
   export let exampleSystems: string[];
+  export let routesAttention: 'stuck' | 'intervention' | 'done' | null = null; // worst fleet attention → rail Routes dot
 
   // Phase 03: SystemView owns its own AppShell. `mode` is driven by the shell (bound), and
   // the detail panes live in the shell's detail slot (right panel on desktop, BottomSheet on
@@ -1925,6 +1926,7 @@
         {projectorOpen}
         rulerOn={rulerActive}
         crtOn={isCrtMode}
+        {routesAttention}
         on:starmap={() => { railOpen = false; dispatch('back', { force: true }); }}
         on:projector={() => { railOpen = false; handleShare(); }}
         on:projectorcrt={handleToggleCrt}
