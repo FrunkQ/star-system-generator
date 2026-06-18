@@ -6,6 +6,10 @@ All notable changes are listed here:
 
 * Fixed: a rescued ship lingered under Routes → "Stranded ships" even after a new journey had taken it home and parked it (e.g. the Rocinante safely in Uranus low orbit still showed "adrift, coasting · was bound Uranus"). The stranded list flagged any ship carrying a cancelled-drift journey without checking whether a later journey had since superseded it — the same supersession blind spot fixed earlier in the orrery position and drift-line. It now only lists a ship as stranded if no later journey has started since the drift began.
 
+## v2.0.170-beta - 18th Jun 2026
+
+* A ship under autopilot can't be flown by hand. While autopilot is engaged, the manual Plan Transit / Cancel controls are replaced by a greyed-out "Under autopilot" button — turn autopilot off (Autopilot tab) to take manual control back.
+
 ## v2.0.169-beta - 18th Jun 2026
 
 * Autopilot — first cut (the wizard). A construct now has an Autopilot tab (after Tags) that builds a plan in three parts: Route (visit all in order / all best order / any as needed, with locations that are a specific place OR "the nearest source of resource X", a per-location action suggested from the ship's own capabilities — Mine/Scan/Load/Unload/Dock/Patrol — and a deliver-to for mined/loaded cargo, with the fill rate shown); Behaviour (Discipline, Planning, Drive and Max-journey-time sliders — Planning is the look-ahead that also schedules refuelling and waits for alignments when it pays off, Max-journey-time stops absurd zero-fuel crawls); and Logistics (auto-refuel with a fuel margin, auto-restock — uncheck to manage by hand). It's capture-only for now — it saves the plan and lists the ship under a new "Under autopilot" group in Routes (with a "!" when it needs attention); the planner that actually flies it is the next step.

@@ -333,6 +333,10 @@
         {#if !isEditingConstruct && !hideActions}
             <!-- Plan Transit (Only available if NOT on surface) -->
             {#if construct.placement !== 'Surface'}
+                {#if construct.autopilot?.enabled}
+                    <!-- Autopilot owns the ship — manual transit is locked. Turn it off (Autopilot tab) to fly by hand. -->
+                    <button class="action-btn" disabled title="This ship is under autopilot — turn autopilot off (Autopilot tab) to fly it manually">Under autopilot</button>
+                {:else}
                 <!-- Contextual transit controls keyed to the LIVE state: only a ship actually under way
                      can be aborted (drift = coast on under gravity, stop = halt then fall). Once it's
                      arrived / orbiting / docked / adrift it shows Plan Transit again. -->
@@ -346,6 +350,7 @@
                     <button class="action-btn resume" on:click={() => dispatch('resumejourney')} title="Resume the aborted journey on its original plan (ignores that it stopped)">Resume journey</button>
                 {:else}
                     <button class="action-btn go" on:click={() => dispatch('planTransit')}>Plan Transit</button>
+                {/if}
                 {/if}
                 <button class="action-btn log" on:click={() => dispatch('openJourneyLog')} title="Open ship log (scheduled journeys)">
                     Ship's Log ({futureJourneyCount})
@@ -404,6 +409,8 @@
       background-color: var(--accent); /* Uniform Blue */
   }
   .action-btn:hover { opacity: 0.9; }
+  .action-btn:disabled { background-color: var(--bg-control); color: var(--text-faint); cursor: not-allowed; opacity: 1; }
+  .action-btn:disabled:hover { opacity: 1; }
   /* Abort controls: green = physical (coast on), orange = stop dead (then falls). */
   .action-btn.cancel-drift { background-color: #2f9e57; }
   .action-btn.cancel-stop { background-color: #d98a2b; }
