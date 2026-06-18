@@ -219,7 +219,9 @@
             </span>
             <span class="lbl">survey</span>
             <input class="num" type="number" min="0" bind:value={leg.loiterDays} on:change={update} /> <span class="unit">days</span>
-            <span class="explore-note">heads to new sources, skipping places already in its log</span>
+            <label class="inline-chk" title="Skip places already in the ship's log so it keeps pushing into new territory">
+              <input type="checkbox" bind:checked={leg.noRevisit} on:change={update} /> don't revisit logged places
+            </label>
           {/if}
         </div>
 
@@ -333,6 +335,7 @@
   .ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-faint); margin-top: 2px; }
   .hint { margin: 6px 0 0; font-size: 11px; color: var(--accent); }
   .chk { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .inline-chk { display: inline-flex; align-items: center; gap: 5px; color: var(--text-muted); cursor: pointer; font-size: 12px; }
   .res-pick { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 5px; }
   .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--bg-surface, var(--bg-control)); border: 1px solid var(--border); border-radius: 999px; padding: 2px 4px 2px 8px; font-size: 11px; }
   .chip-x { background: none; border: none; color: var(--text-faint); cursor: pointer; padding: 0 2px; font-size: 10px; }

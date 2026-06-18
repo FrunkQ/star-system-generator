@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.175-beta - 18th Jun 2026
+
+* Autopilot Explore now shows a "don't revisit logged places" switch (on by default), so you can let an explorer sweep the same rich sources again instead of always pushing into new territory.
+
 ## v2.0.174-beta - 18th Jun 2026
 
 * Autopilot gains a fifth action, Flyby — race past a location without stopping, keeping speed for the fastest, most efficient run. For now it's captured in the wizard (pick a place to fly past) and shown in the Routes summary; the clever part — flying that keeps momentum leg-to-leg and slingshots when the next stop is the other way, rather than coming to a stop each time — is noted as still being built and banked for later.
