@@ -9,8 +9,9 @@ import { G, AU_KM } from '../constants';
 const EARTH_G = 9.80665;
 const EARTH_MASS_KG = 5.972e24;
 
-// Tag categories that are pure bookkeeping / derived physics — uninteresting as story hooks.
-const BORING_TAG_PREFIXES = new Set(['stability', 'makeup', 'class', 'size', 'mass', 'radius']);
+// Tag categories that are pure bookkeeping / derived physics — uninteresting as story hooks. (Hull
+// 'class' tags stay IN — owner/purpose/class/drive/resource etc. are exactly the narrative hooks.)
+const BORING_TAG_PREFIXES = new Set(['stability', 'makeup', 'size', 'mass', 'radius']);
 
 function tagHints(tags?: { key: string }[]): string[] {
   if (!Array.isArray(tags)) return [];
@@ -64,6 +65,25 @@ export function summarizeBodyForLLM(body: CelestialBody): Record<string, any> {
   if (typeof rad === 'number') out.radiation = rad < 5 ? 'low' : rad < 100 ? 'moderate' : 'high — hazardous';
 
   const hints = tagHints(body.tags);
+  if (hints.length) out.featureHints = hints;
+  return out;
+}
+
+// Constructs (ships/stations) get their own summary — real hull specs, NOT planetary fields, and NO
+// legacy free-text `class` (the CoI tags describe role/class now). featureHints carries ALL its tags
+// (owner, purpose, hull class, drive, resources, status…) so the seed + tags steer the writing.
+export function summarizeConstructForLLM(c: CelestialBody): Record<string, any> {
+  const out: Record<string, any> = { name: c.name, type: 'construct' };
+  const pp: any = c.physical_parameters ?? {};
+  if (Array.isArray(pp.dimensionsM) && pp.dimensionsM.length) out.dimensions = `${pp.dimensionsM.join(' x ')} m`;
+  if (pp.massKg) out.hullMass = `${Math.round(pp.massKg).toLocaleString()} kg`;
+  if (c.crew) out.crew = `${c.crew.current ?? 0} / ${c.crew.max ?? 0}`;
+  if (pp.cargoCapacity_tonnes) out.cargo = `${Math.round(c.current_cargo_tonnes ?? 0).toLocaleString()} / ${pp.cargoCapacity_tonnes.toLocaleString()} t`;
+  if (Array.isArray(c.engines) && c.engines.length) {
+    out.engines = c.engines.map((e: any) => `${e.quantity}x ${String(e.engine_id).replace('engine-', '').replace(/-/g, ' ')}`).join(', ');
+  }
+  if (c.placement) out.placement = c.placement;
+  const hints = tagHints(c.tags);
   if (hints.length) out.featureHints = hints;
   return out;
 }

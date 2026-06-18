@@ -7,7 +7,7 @@
   import { get } from 'svelte/store';
   import { PROMPT_TEMPLATE } from '$lib/ai/prompt';
   import { CONSTRUCT_PROMPT } from '$lib/ai/construct-prompt';
-  import { summarizeBodyForLLM, summarizeStarForLLM } from '$lib/ai/curate';
+  import { summarizeBodyForLLM, summarizeStarForLLM, summarizeConstructForLLM } from '$lib/ai/curate';
   import styles from '$lib/ai/styles.json';
   import tags from '$lib/ai/tags.json';
   import constructStyles from '$lib/ai/construct-styles.json';
@@ -55,8 +55,9 @@
   function openAIModal() {
     if (body.kind === 'construct') {
       currentPromptTemplate = CONSTRUCT_PROMPT;
-      // Curated summary, not the raw construct JSON — keeps the prompt focused on story.
-      currentPromptData = { CONSTRUCT: summarizeBodyForLLM(body) };
+      // Curated construct summary (real hull specs + ALL tags, no legacy class). Key must match the
+      // template's %%CONSTRUCT_SPECS%% placeholder, else the data never reaches the prompt.
+      currentPromptData = { CONSTRUCT_SPECS: summarizeConstructForLLM(body) };
       currentStyles = constructStyles;
       currentTags = constructTags;
     } else {
