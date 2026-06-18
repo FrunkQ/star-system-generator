@@ -5,9 +5,12 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, Makeup } from '$lib/types';
   import { EARTH_MASS_KG, EARTH_RADIUS_KM } from '$lib/constants';
-  import { normalizeMakeup, compressedDensityFromMakeup, radiusReFromMassMakeup, makeupFractions } from '$lib/physics/makeup';
+  import { normalizeMakeup, compressedDensityFromMakeup, radiusReFromMassMakeup, massMeFromRadiusMakeup, makeupFractions } from '$lib/physics/makeup';
 
   export let body: CelestialBody;
+  // Which of mass/radius is the user-pinned driver (planets/moons). 'mass' → makeup resizes the body;
+  // 'radius' → makeup re-masses it (radius stays put). Stars/belts ignore this.
+  export let sizeDriver: 'mass' | 'radius' = 'mass';
   const dispatch = createEventDispatcher();
 
   const KEYS: Array<keyof Makeup> = ['metal', 'rock', 'carbon', 'ice', 'gas'];
@@ -44,9 +47,19 @@
   // makeup therefore resizes the body to match. (Stars/belts keep their own sizing.)
   function apply() {
     body.makeup = { ...norm };
-    if (drivesSize) body.radiusKm = derivedRadiusRe * EARTH_RADIUS_KM;
+    if (drivesSize) {
+      if (sizeDriver === 'radius') {
+        // Radius is pinned → makeup changes the implied MASS instead.
+        const rRe = (body.radiusKm ?? 0) / EARTH_RADIUS_KM;
+        body.massKg = massMeFromRadiusMakeup(rRe, norm) * EARTH_MASS_KG;
+      } else {
+        body.radiusKm = derivedRadiusRe * EARTH_RADIUS_KM;
+      }
+    }
     dispatch('update');
   }
+  // What the makeup re-derives, for the readout below.
+  $: derivedMassMe = sizeDriver === 'radius' ? massMeFromRadiusMakeup((body.radiusKm ?? 0) / EARTH_RADIUS_KM, norm) : massMe;
   function setPreset(mk: Makeup) {
     const f = normalizeMakeup(mk);
     for (const k of KEYS) pct[k] = Math.round(f[k] * 100);
@@ -78,7 +91,9 @@
 
   <div class="derived">
     <div><span class="d-label">Density</span><span class="d-val">{derivedDensity.toFixed(2)} g/cc</span></div>
-    {#if drivesSize}
+    {#if drivesSize && sizeDriver === 'radius'}
+      <div><span class="d-label">Mass</span><span class="d-val">{derivedMassMe < 0.01 ? derivedMassMe.toExponential(1) : derivedMassMe.toFixed(2)} M⊕</span></div>
+    {:else if drivesSize}
       <div><span class="d-label">Radius</span><span class="d-val">{derivedRadiusRe.toFixed(2)} R⊕</span></div>
     {/if}
   </div>

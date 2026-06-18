@@ -64,6 +64,20 @@ export function radiusReFromMassMakeup(mass_Me: number, m: Makeup): number {
   return Math.cbrt((Math.max(0, mass_Me) / rho) * 5.513);
 }
 
+// Inverse of radiusReFromMassMakeup: the mass (Earth masses) whose makeup-derived radius matches a
+// target radius. radiusReFromMassMakeup is monotonic in mass for rocky/icy/carbon bodies, so a
+// geometric bisection over log-mass converges cleanly. (Gas-dominated bodies are degeneracy-flat in
+// radius — the caller should keep those mass-driven; this still returns a best-effort value.)
+export function massMeFromRadiusMakeup(radius_Re: number, m: Makeup): number {
+  const target = Math.max(1e-6, radius_Re);
+  let lo = 1e-7, hi = 1e6; // tiny moonlet → well past brown-dwarf
+  for (let i = 0; i < 60; i++) {
+    const mid = Math.sqrt(lo * hi);
+    if (radiusReFromMassMakeup(mid, m) < target) lo = mid; else hi = mid;
+  }
+  return Math.sqrt(lo * hi);
+}
+
 // Reverse: a representative makeup for an UNCOMPRESSED grain density (g/cc), by inverting the
 // volume-additive blend between the two bracketing grain densities. Physically grounded — a density
 // of 5.4 lands at ~⅔ metal (Mercury), not a coarse "rocky" bucket.

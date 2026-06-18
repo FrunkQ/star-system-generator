@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
   import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '$lib/constants';
+  import { radiusReFromMassMakeup, massMeFromRadiusMakeup, makeupFractions } from '$lib/physics/makeup';
   import MakeupEditor from './MakeupEditor.svelte';
 
   export let body: CelestialBody;
@@ -10,6 +11,21 @@
   const dispatch = createEventDispatcher();
 
   $: useSolarUnits = body.roleHint === 'star';
+
+  // --- Mass ↔ radius driver (planets/moons only). The two are coupled through makeup; you can only
+  //     pin one, so a toggle picks which is editable and which is derived. Gas giants are degeneracy-
+  //     flat in radius, so they stay mass-driven (radius can't sensibly drive mass there). ---
+  $: isPlanetMoon = body.roleHint === 'planet' || body.roleHint === 'moon';
+  $: gasDominated = makeupFractions(body).gas > 0.5;
+  let sizeDriver: 'mass' | 'radius' = 'mass';
+  $: if (gasDominated && sizeDriver !== 'mass') sizeDriver = 'mass';
+  function setSizeDriver(d: 'mass' | 'radius') { if (!gasDominated) sizeDriver = d; }
+  function deriveRadiusFromMass() {
+    body.radiusKm = radiusReFromMassMakeup((body.massKg ?? 0) / EARTH_MASS_KG, makeupFractions(body)) * EARTH_RADIUS_KM;
+  }
+  function deriveMassFromRadius() {
+    body.massKg = massMeFromRadiusMakeup((body.radiusKm ?? 0) / EARTH_RADIUS_KM, makeupFractions(body)) * EARTH_MASS_KG;
+  }
 
   // UI Helpers
   let massValueInternal = 0;   // In Earths (for planets/moons), or Suns (for stars)
@@ -167,6 +183,7 @@
       }
       // Update internal mass value for slider to react
       massValueInternal = useSolarUnits ? body.massKg / SOLAR_MASS_KG : body.massKg / EARTH_MASS_KG;
+      if (isPlanetMoon && sizeDriver === 'mass') deriveRadiusFromMass();
       updateClassFromSize();
       dispatch('update');
   }
@@ -175,6 +192,7 @@
       const val = Math.exp(massLogMin + (massLogMax - massLogMin) * massSliderPos);
       massValueInternal = parseFloat(val.toPrecision(4));
       body.massKg = massValueInternal * (useSolarUnits ? SOLAR_MASS_KG : EARTH_MASS_KG);
+      if (isPlanetMoon && sizeDriver === 'mass') deriveRadiusFromMass();
       updateClassFromSize();
       dispatch('update');
   }
@@ -190,13 +208,14 @@
           body.radiusKm = val; // KM
           radiusValueInternal = val; // Store input in KM
       }
+      if (isPlanetMoon && sizeDriver === 'radius') deriveMassFromRadius();
       updateClassFromSize();
       dispatch('update');
   }
 
   function updateRadiusFromSlider() {
       const val = Math.exp(radiusLogMin + (radiusLogMax - radiusLogMin) * radiusSliderPos);
-      
+
       if (useSolarUnits) {
           radiusValueInternal = parseFloat(val.toPrecision(4)); // Store in Suns Radii
           body.radiusKm = radiusValueInternal * SOLAR_RADIUS_KM; // Suns Radii to KM
@@ -204,6 +223,7 @@
           radiusValueInternal = parseFloat(val.toFixed(0)); // Store in KM
           body.radiusKm = radiusValueInternal; // KM
       }
+      if (isPlanetMoon && sizeDriver === 'radius') deriveMassFromRadius();
       updateClassFromSize();
       dispatch('update');
   }
@@ -252,44 +272,86 @@
 </script>
 
 <div class="tab-panel">
-    
+
+    {#if isPlanetMoon}
+        <!-- Size driver — pin mass OR radius; the other derives through the interior makeup. -->
+        <div class="driver-row">
+            <span class="driver-label">Size from</span>
+            <div class="driver-seg">
+                <button class:on={sizeDriver === 'mass'} on:click={() => setSizeDriver('mass')}>Mass</button>
+                <button class:on={sizeDriver === 'radius'} disabled={gasDominated}
+                        title={gasDominated ? "A gas giant's radius is set by mass + degeneracy — keep it mass-driven." : 'Pin the radius; mass is derived from it via the makeup.'}
+                        on:click={() => setSizeDriver('radius')}>Radius</button>
+            </div>
+        </div>
+    {/if}
+
     <!-- MASS SECTION -->
-    <div class="form-group">
-        <div class="label-row">
-            <label for="mass">Mass ({displayMassUnit})</label>
-            <input type="number" id="mass" step="any" bind:value={displayMassValue} on:input={updateMassFromInput} />
+    {#if isPlanetMoon && sizeDriver === 'radius'}
+        <!-- Mass is derived from radius + makeup. -->
+        <div class="form-group">
+            <div class="label-row">
+                <label>Mass <span class="derived-tag" title="Mass is computed from the radius and interior makeup. Edit the radius or makeup below to change it.">derived</span></label>
+                <div class="read-only-value">{displayMassValue < 0.01 ? displayMassValue.toExponential(2) : displayMassValue.toPrecision(3)} {displayMassUnit}</div>
+            </div>
+            <div class="sub-label"><span>{(body.massKg || 0).toExponential(2)} kg</span></div>
         </div>
-        <input 
-            type="range" min="0" max="1" step="0.001" 
-            bind:value={massSliderPos} 
-            on:input={updateMassFromSlider} 
-            class="full-width-slider"
-            list="mass-ticks"
-        />
-        <datalist id="mass-ticks">
-            <option value="0" label="{currentMassMin.toPrecision(1)}"></option>
-            <option value="0.25"></option>
-            <option value="0.5" label="{useSolarUnits ? '1' : '1'}"></option>
-            <option value="0.75"></option>
-            <option value="1" label="{currentMassMax}"></option>
-        </datalist>
-        <div class="sub-label">
-            <span>{(body.massKg || 0).toExponential(2)} kg</span>
+    {:else}
+        <div class="form-group">
+            <div class="label-row">
+                <label for="mass">Mass ({displayMassUnit})</label>
+                <input type="number" id="mass" step="any" bind:value={displayMassValue} on:input={updateMassFromInput} />
+            </div>
+            <input
+                type="range" min="0" max="1" step="0.001"
+                bind:value={massSliderPos}
+                on:input={updateMassFromSlider}
+                class="full-width-slider"
+                list="mass-ticks"
+            />
+            <datalist id="mass-ticks">
+                <option value="0" label="{currentMassMin.toPrecision(1)}"></option>
+                <option value="0.25"></option>
+                <option value="0.5" label="{useSolarUnits ? '1' : '1'}"></option>
+                <option value="0.75"></option>
+                <option value="1" label="{currentMassMax}"></option>
+            </datalist>
+            <div class="sub-label">
+                <span>{(body.massKg || 0).toExponential(2)} kg</span>
+            </div>
+            {#if !useSolarUnits && massValueInternal >= 25000}
+                <button class="action-btn ignite-btn" on:click={igniteStar}>🔥 Ignite into Star</button>
+            {/if}
         </div>
-        {#if !useSolarUnits && massValueInternal >= 25000}
-            <button class="action-btn ignite-btn" on:click={igniteStar}>🔥 Ignite into Star</button>
-        {/if}
-    </div>
+    {/if}
 
     <hr/>
 
-    {#if body.roleHint === 'planet' || body.roleHint === 'moon'}
+    {#if isPlanetMoon && sizeDriver === 'mass'}
         <!-- RADIUS is derived from mass + makeup (set the cause, not the size). -->
         <div class="form-group">
             <div class="label-row">
-                <label>Radius <span class="derived-tag" title="Radius is computed from the mass and interior makeup (with gravitational compression). Edit the makeup below to change it.">derived</span></label>
+                <label>Radius <span class="derived-tag" title="Radius is computed from the mass and interior makeup (with gravitational compression). Edit the mass or makeup to change it.">derived</span></label>
                 <div class="read-only-value">{Math.round(body.radiusKm || 0).toLocaleString()} km</div>
             </div>
+            <div class="sub-label row-spaced">
+                <span>{((body.radiusKm || 0) / EARTH_RADIUS_KM).toFixed(2)} R⊕</span>
+                <span class="category-badge">{sizeCategory}</span>
+            </div>
+        </div>
+    {:else if isPlanetMoon && sizeDriver === 'radius'}
+        <!-- RADIUS is the pinned driver; mass derives from it + makeup. -->
+        <div class="form-group">
+            <div class="label-row">
+                <label for="radius">Radius (km)</label>
+                <input type="number" id="radius" step="any" bind:value={displayRadiusValue} on:input={updateRadiusFromInput} />
+            </div>
+            <input
+                type="range" min="0" max="1" step="0.001"
+                bind:value={radiusSliderPos}
+                on:input={updateRadiusFromSlider}
+                class="full-width-slider"
+            />
             <div class="sub-label row-spaced">
                 <span>{((body.radiusKm || 0) / EARTH_RADIUS_KM).toFixed(2)} R⊕</span>
                 <span class="category-badge">{sizeCategory}</span>
@@ -325,7 +387,7 @@
     <!-- INTERIOR MAKEUP → derives density (and, for planets/moons, radius). -->
     {#if body.roleHint === 'planet' || body.roleHint === 'moon'}
         <div class="form-group">
-            <MakeupEditor {body} on:update={() => dispatch('update')} />
+            <MakeupEditor {body} {sizeDriver} on:update={() => dispatch('update')} />
         </div>
     {:else}
         <!-- DENSITY DISPLAY (stars / belts / rings keep the read-only density) -->
@@ -442,6 +504,14 @@
       color: var(--text-faint, #8a8a8a); border: 1px solid var(--border); border-radius: 3px;
       padding: 0 4px; margin-left: 4px; cursor: help; font-weight: 400;
   }
+
+  .driver-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .driver-label { font-size: 0.8em; color: var(--text-faint); }
+  .driver-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
+  .driver-seg button { background: transparent; border: none; border-right: 1px solid var(--border); color: var(--text-muted); padding: 3px 12px; cursor: pointer; font-size: 0.8em; }
+  .driver-seg button:last-child { border-right: none; }
+  .driver-seg button.on { background: var(--accent, #ff5a1f); color: #fff; }
+  .driver-seg button:disabled { color: var(--text-faint); cursor: not-allowed; opacity: 0.6; }
 
   input[type="checkbox"] { width: auto; margin-right: 5px; }
   

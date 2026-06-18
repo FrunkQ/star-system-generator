@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.187-beta - 18th Jun 2026
+
+* You can now edit a planet or moon by radius, not just mass. A "Size from: Mass | Radius" toggle on the body's Basics tab picks which you pin — the other is derived through the interior makeup (with gravitational compression). So you can set a mass and watch the radius follow, or set the radius you want and let the mass follow, fine-tuning either with the composition sliders. Gas giants stay mass-driven (their radius is fixed by mass and degeneracy, so radius can't sensibly drive mass); stars and belts/rings are unaffected.
+
 ## v2.0.186-beta - 18th Jun 2026
 
 * New System wizard: after clicking the HR diagram you can now hand-type each star's Temperature, Luminosity and Mass to dial in a specific star. Figures that don't make physical sense turn red, and a Fix button recomputes the rest (and the star type) to be consistent — trusting the temperature/luminosity you set, or solving a main-sequence star for the mass if that's all you changed. A genuinely impossible star is just labelled "Exotic" rather than blocked — if you want it, you can have it.
