@@ -56,6 +56,7 @@
             {rulePack}
             hideActions={isPlanning}
             on:update
+            on:disengage
             on:delete
             on:close={() => dispatch('closeedit')}
             on:tabchange

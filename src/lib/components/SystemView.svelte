@@ -33,6 +33,7 @@
   import { starmapStore } from '$lib/starmapStore';
   import { interstellarConstructIds } from '$lib/transit/interstellar';
   import { generateAutopilotChain } from '$lib/transit/autopilotAdapter';
+  import AutopilotDisengageDialog from './AutopilotDisengageDialog.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import { get } from 'svelte/store';
@@ -1815,6 +1816,26 @@
       });
   }
 
+  // Disengage autopilot via the confirmation dialog. 'graceful' = finish the current leg then stop;
+  // 'drift'/'stop' = abort the active journey now (coast vs dead). All clear the autopilot flag so the
+  // generator won't refill the route. Reuses the existing manual cancel/clear handlers.
+  let showDisengageDialog = false;
+  function disengageAutopilot(mode: 'graceful' | 'drift' | 'stop') {
+    if (!focusedBody || focusedBody.kind !== 'construct') { showDisengageDialog = false; return; }
+    const id = focusedBody.id;
+    systemStore.update((sys) => {
+      if (!sys) return null;
+      const nodes = sys.nodes.map((n) =>
+        n.id === id && n.kind === 'construct'
+          ? { ...n, autopilot: { ...(n as any).autopilot, enabled: false } }
+          : n);
+      return { ...sys, nodes, isManuallyEdited: true };
+    });
+    if (mode === 'graceful') handleClearFuturePlans();
+    else handleCancelActivePlan({ detail: { coast: mode === 'drift' } } as CustomEvent);
+    showDisengageDialog = false;
+  }
+
   function handleCancelActivePlan(e?: CustomEvent) {
       if (!focusedBody || focusedBody.kind !== 'construct') return;
       const coast = e?.detail?.coast ?? true;   // default drift; false = stop dead
@@ -2144,6 +2165,7 @@
                     on:cancelactive={handleCancelActivePlan}
                     on:resumejourney={handleResumeJourney}
                     on:update={handleConstructUpdate}
+                    on:disengage={() => { showDisengageDialog = true; }}
                     on:delete={handleDeleteNode}
                     on:closeedit={() => isEditing = false}
                     on:tabchange={(e) => activeEditTab = e.detail}
@@ -2214,6 +2236,14 @@
 
     {#if showSaveModal}
         <SaveSystemModal on:save={handleSaveSystem} on:close={() => showSaveModal = false} />
+    {/if}
+
+    {#if showDisengageDialog && focusedBody && focusedBody.kind === 'construct'}
+        <AutopilotDisengageDialog
+            shipName={focusedBody.name}
+            inTransit={focusedKinematicState === 'Transit'}
+            on:choose={(e) => disengageAutopilot(e.detail)}
+            on:close={() => { showDisengageDialog = false; }} />
     {/if}
 
     {#if showPhysicsModal && focusedBody && focusedBody.kind === 'body'}

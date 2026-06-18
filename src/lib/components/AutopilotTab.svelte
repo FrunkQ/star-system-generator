@@ -160,7 +160,7 @@
   </div>
 
   <button type="button" class="engage-toggle" class:on={ap.enabled} aria-pressed={ap.enabled}
-          on:click={() => { construct.autopilot!.enabled = !ap.enabled; update(); }}>
+          on:click={() => { if (ap.enabled) { dispatch('disengage'); } else { construct.autopilot!.enabled = true; update(); } }}>
     <span class="eng-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z" /></svg>
     </span>

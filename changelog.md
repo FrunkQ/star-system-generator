@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.199-beta - 18th Jun 2026
+
+* Turning autopilot off now asks how to stop, instead of just cutting it. A dialog offers, on the usual risk scale: End after this leg (green — finish the current hop and dock), Abandon · drift (orange — cut now, coast on momentum), Abandon · stop (red — cut now, kill velocity), and Cancel (keep flying). Drift/stop only appear when the ship's actually under way. Colours are accents on a dark dialog — clear, not alarming.
+
 ## v2.0.198-beta - 18th Jun 2026
 
 * Autopilot visibility pass: the locked "Under autopilot" button on a ship now shows as a black-and-yellow hazard stripe (white text) so it's obvious at a glance the ship is flying itself. In Routes, ships that need attention sort to the top of "Under autopilot" (red = stuck, orange = needs setup, green = finished), so you can scan the whole fleet fast. And the Routes button on the side rail gains a coloured notification dot showing the worst current state across the fleet.
