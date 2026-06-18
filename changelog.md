@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.197-beta - 18th Jun 2026
+
+* Autopilot-planned journeys are now badged "⚙ autopilot" in the ship's log, so you can tell self-flown legs from hand-planned ones at a glance. (Existing autopilot journeys gain the badge once regenerated — toggle Engage off/on.)
+
 ## v2.0.196-beta - 18th Jun 2026
 
 * The autopilot Engage control is now a proper toggle instead of a tiny corner tickbox — a full-width button with a navigation icon, a clear "Engage autopilot" / "Autopilot engaged" label, and an ON/OFF pill, lighting up in the accent colour (with a gentle pulse) when engaged. Much harder to miss, and obvious whether a ship is flying itself.

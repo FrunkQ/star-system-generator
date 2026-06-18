@@ -98,7 +98,8 @@ export function generateAutopilotChain(
     id: `ap-${createdAtSec}-${i}`,
     createdAtSec,
     plans: [JSON.parse(JSON.stringify(p))],
-    status: 'scheduled' as const
+    status: 'scheduled' as const,
+    autopilot: true
   }));
 
   return { logs, attention: res.attention, stuckReason: res.stuckReason, done: res.done };

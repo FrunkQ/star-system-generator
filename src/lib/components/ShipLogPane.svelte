@@ -123,6 +123,7 @@
       <div class="ship-log-entry">
         <div class="ship-log-title">
           <strong>Journey {i + 1}</strong>
+          {#if log.autopilot}<span class="ship-log-auto" title="Planned and flown by autopilot">⚙ autopilot</span>{/if}
           <span class="ship-log-status" class:adrift={adriftNow}>{dynStatus}</span>
         </div>
         <div class="ship-log-meta">Created: {formatLogTime(createdMs)} {@render seekClock(createdMs)}</div>
@@ -207,6 +208,16 @@
   .ship-log-status {
       color: var(--link);
       font-size: 0.85em;
+  }
+  .ship-log-auto {
+      align-self: center;
+      color: var(--accent, #ff5a1f);
+      border: 1px solid var(--accent, #ff5a1f);
+      border-radius: 999px;
+      padding: 0 7px;
+      font-size: 0.72em;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
   }
   .ship-log-meta {
       color: var(--text-muted);
