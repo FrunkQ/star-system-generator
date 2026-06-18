@@ -155,10 +155,21 @@
   <div class="ap-head">
     <div>
       <span class="ap-title">Autopilot</span>
-      <span class="ap-sub">capture-only — saves the plan; flying it comes later</span>
+      <span class="ap-sub">build the route below, then engage</span>
     </div>
-    <label class="engage"><input type="checkbox" bind:checked={ap.enabled} on:change={update} /> Engage</label>
   </div>
+
+  <button type="button" class="engage-toggle" class:on={ap.enabled} aria-pressed={ap.enabled}
+          on:click={() => { construct.autopilot!.enabled = !ap.enabled; update(); }}>
+    <span class="eng-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z" /></svg>
+    </span>
+    <span class="eng-text">
+      <strong>{ap.enabled ? 'Autopilot engaged' : 'Engage autopilot'}</strong>
+      <small>{ap.enabled ? 'flying its route — click to take the helm' : 'click to hand it the helm'}</small>
+    </span>
+    <span class="eng-pill">{ap.enabled ? 'ON' : 'OFF'}</span>
+  </button>
 
   <!-- A. ROUTE -->
   <section>
@@ -356,7 +367,31 @@
   .ap-head { display: flex; align-items: center; justify-content: space-between; }
   .ap-title { font-weight: 600; font-size: 15px; }
   .ap-sub { color: var(--text-faint); font-size: 11px; margin-left: 8px; }
-  .engage { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .engage-toggle {
+    display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 14px;
+    border: 1px solid var(--border); border-radius: 9px; background: var(--bg-control);
+    color: var(--text-muted); cursor: pointer; text-align: left; transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  }
+  .engage-toggle:hover { border-color: var(--accent); color: var(--text); }
+  .engage-toggle.on {
+    border-color: var(--accent); color: var(--text);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    box-shadow: inset 0 0 0 1px var(--accent), 0 0 18px -7px var(--accent);
+  }
+  .eng-icon { flex: 0 0 auto; display: flex; color: var(--text-faint); }
+  .engage-toggle:hover .eng-icon { color: var(--accent); }
+  .engage-toggle.on .eng-icon { color: var(--accent); animation: eng-pulse 1.9s ease-in-out infinite; }
+  .eng-text { flex: 1 1 auto; display: flex; flex-direction: column; line-height: 1.25; }
+  .eng-text strong { font-size: 0.98em; color: var(--text); }
+  .eng-text small { font-size: 0.72em; color: var(--text-faint); }
+  .eng-pill {
+    flex: 0 0 auto; font-size: 0.72em; font-weight: 700; letter-spacing: 0.07em;
+    padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--bg-panel); color: var(--text-faint);
+  }
+  .engage-toggle.on .eng-pill { background: var(--accent); color: #fff; border-color: var(--accent); }
+  @keyframes eng-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  @media (prefers-reduced-motion: reduce) { .engage-toggle.on .eng-icon { animation: none; } }
   section { border-top: 1px solid var(--border-soft); padding-top: 10px; }
   h6 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
   .note { text-transform: none; letter-spacing: 0; color: var(--text-faint); font-weight: 400; }

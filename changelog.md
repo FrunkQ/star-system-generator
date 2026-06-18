@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.196-beta - 18th Jun 2026
+
+* The autopilot Engage control is now a proper toggle instead of a tiny corner tickbox — a full-width button with a navigation icon, a clear "Engage autopilot" / "Autopilot engaged" label, and an ON/OFF pill, lighting up in the accent colour (with a gentle pulse) when engaged. Much harder to miss, and obvious whether a ship is flying itself.
+
 ## v2.0.195-beta - 18th Jun 2026
 
 * Fixed: engaging autopilot did nothing — the construct editor's updates run through a different handler than the one that generated the journey chain, so the trigger never fired. Engaging an in-order patrol/transport ship now actually plans and flies its route. (If a ship was already engaged before this fix, toggle Engage off and on to kick it.)
