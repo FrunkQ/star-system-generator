@@ -357,18 +357,26 @@ breaks pure per-ship derivation (ships react to each other), so it's the natural
 works fully without it. Pick it up only when the rest is solid and there's appetite for the inter-ship
 simulation. (§6 above is the design, kept for when it's green-lit.)
 
-### 12.10 BANKED for later — Flyby / Race (momentum-carrying transit) (Alex, 2026-06-18)
-A fifth action, **Flyby**, captured in the wizard but with its **planner side banked**. Flyby does NOT come
-to rest at the waypoint: it preserves the ship's current velocity / delta-v and passes through, optimising
-for the fastest, most fuel-efficient route overall by skipping the decelerate-then-reaccelerate burns every
-other action implies. The hard part — why it's banked — is that every other action assumes **arrive-at-rest**,
-so the planner can treat each leg independently. Flyby chains momentum leg-to-leg:
+### 12.10 Flyby / Race = loiter 0 (NOT a separate action) (Alex, 2026-06-18)
+Flyby is **not its own verb** — it's the **loiterDays === 0** case of the LOITER family (patrol / explore). A
+patrol/explore leg with loiter 0 doesn't stop: it keeps its velocity / delta-v and passes through. This makes
+patrol/explore multipurpose (a *fast patrol* when not loitering) and keeps the action list to four. The
+wizard surfaces it as a hint under the loiter field ("0 = flyby — races past without stopping"); the Routes
+summary prints `flyby …` when loiter is 0.
 
-- If the next destination lies roughly **ahead** of the current heading, coast/burn through — big time + fuel win.
-- If the next destination is **the other way**, the ship still has to scrub speed (decel burn) or use a
-  **gravity slingshot** to redirect, which is materially more complex than a come-to-rest hop.
+**Planner side is BANKED** — this is the hard part. Every other leg assumes **arrive-at-rest**, so legs plan
+independently. A flyby (loiter 0) chains momentum leg-to-leg:
+- Next destination roughly **ahead** → coast/burn through (big time + fuel win).
+- Next destination **the other way** → still must scrub speed (decel burn) or **gravity-slingshot** to redirect.
 
-So Flyby needs a planner that carries the velocity vector across legs and decides per-junction whether to
-coast, scrub, or slingshot — a different model from the rest. The capture stub (place-targeted "fly past X")
-exists now so it shows in the action list and the route summary; the momentum/slingshot planner is deferred
-until the come-to-rest planner (§5) is solid.
+So the planner must carry the velocity vector across legs and choose coast / scrub / slingshot per junction —
+a different model from the come-to-rest planner (§5), deferred until that's solid. **Caveat (Alex):** with
+Planning = 1 (look only one ahead) a flyby is a *terrible* idea — the ship zips past, THEN plans the next
+hop, having thrown away the approach. Possible, but it wants high Planning to be sensible.
+
+### 12.11 Tardiness = random slack on STOPPED time only (Alex, 2026-06-18)
+Discipline/Tardiness adds a **random** (seed+time-derived, so still reproducible/scrubbable) slack scaled by
+the slider to **time the ship spends stopped** — loading, unloading, mining dwell, loitering, docking,
+refuelling. It does **not** perturb transit time, and it has **no effect on a flyby (loiter 0)** because the
+ship never stops. (Supersedes the earlier "deterministic slack on legs/dwells" framing in §12.5: it's random
+slack on *stops*, not legs.)

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.176-beta - 18th Jun 2026
+
+* Autopilot Flyby is no longer a separate action — it's simply a Patrol or Explore leg with the loiter time set to 0. The ship doesn't stop, keeps its speed, and races past, so a patrol can be a fast sweep when you don't want it sitting around. The wizard hints this under the loiter field and the Routes summary shows it as a flyby. (The clever momentum-carrying, slingshot-when-going-the-other-way flight is still being built.)
+* Clarified what Discipline does: it adds random slack to time the ship spends stopped (loading, loitering, docking), scaled by the slider — it doesn't touch transit time, and has no effect on a non-stop flyby.
+
 ## v2.0.175-beta - 18th Jun 2026
 
 * Autopilot Explore now shows a "don't revisit logged places" switch (on by default), so you can let an explorer sweep the same rich sources again instead of always pushing into new territory.

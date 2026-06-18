@@ -119,13 +119,12 @@ export interface FuelTank {
 export type AutopilotWhere = { kind: 'place' | 'resource'; placeId?: ID; resourceKeys?: string[] }; // resource = a source of ANY of these
 // Verbs = behaviours × targeting modes (the underlying abstraction):
 //   HAUL family   — gather/carry then deliver:  mine (resource-targeted) ↔ transport (place-targeted)
-//   LOITER family — go somewhere new + dwell:    explore (resource-targeted) ↔ patrol (place-targeted)
-//   FLYBY         — race past without stopping (place-targeted). NOTE: the planner side is BANKED —
-//                   it must carry momentum leg-to-leg (no slow-down burn) and slingshot/scrub when the
-//                   next stop is the other way, which breaks the come-to-rest assumption of the others.
+//   LOITER family — go somewhere + dwell:        explore (resource-targeted) ↔ patrol (place-targeted)
 // Place-targeted = anchored to a specific body/station (placeId); resource-targeted = nearest source of
 // resourceKeys. Dock/unload are inferred from deliverTo. Scan folded into patrol.
-export type AutopilotAction = 'mine' | 'transport' | 'patrol' | 'explore' | 'flyby';
+// FLYBY = loiterDays === 0: don't stop, keep delta-v, momentum-carry to the next leg (planner BANKED —
+// it must coast/scrub/slingshot per junction, breaking the come-to-rest assumption of every other leg).
+export type AutopilotAction = 'mine' | 'transport' | 'patrol' | 'explore';
 export interface AutopilotLeg {
   action: AutopilotAction;
   placeId?: ID;             // place-targeted: transport pickup source / patrol location
@@ -133,7 +132,7 @@ export interface AutopilotLeg {
   rate_tpd?: number;        // haul fill rate (t/day) — default from the hull's capability tag
   fillAmount_t?: number;    // haul — how much to take on (defaults to free cargo space)
   deliverTo?: AutopilotWhere; // haul — where the cargo/people go (docking + unloading implied)
-  loiterDays?: number;      // loiter — how long to loiter/scan/survey before moving on
+  loiterDays?: number;      // loiter — days to loiter/scan/survey before moving on; 0 ⇒ flyby (don't stop, keep delta-v)
   noRevisit?: boolean;      // loiter — skip places already in the ship's log (defaults on for explore); not yet surfaced in the UI
 }
 export interface Autopilot {

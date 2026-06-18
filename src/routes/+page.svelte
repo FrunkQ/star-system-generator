@@ -241,9 +241,9 @@
           if (!leg) return '';
           if (leg.action === 'mine') return `mine ${resNames(leg.resourceKeys) || 'resource'}`;
           if (leg.action === 'transport') return `transport ${resNames(leg.resourceKeys) || 'cargo'}${leg.placeId ? ` from ${nodeName(leg.placeId)}` : ''}`;
-          if (leg.action === 'patrol') return `patrol ${leg.placeId ? nodeName(leg.placeId) : 'system'}`;
-          if (leg.action === 'flyby') return `flyby ${leg.placeId ? nodeName(leg.placeId) : 'onward'}`;
-          return `explore${resNames(leg.resourceKeys) ? ' for ' + resNames(leg.resourceKeys) : ''}`;
+          const fly = (leg.loiterDays ?? 0) === 0;
+          if (leg.action === 'patrol') return `${fly ? 'flyby' : 'patrol'} ${leg.placeId ? nodeName(leg.placeId) : 'system'}`;
+          return `${fly ? 'flyby' : 'explore'}${resNames(leg.resourceKeys) ? ' for ' + resNames(leg.resourceKeys) : ''}`;
         };
         const first = ap.legs?.[0];
         const summary = first ? `${legText(first)}${ap.legs.length > 1 ? ` +${ap.legs.length - 1}` : ''} · ${TRAVERSAL_LABEL[ap.traversal] ?? ap.traversal}` : 'no stops set';
