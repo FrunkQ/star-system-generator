@@ -380,3 +380,35 @@ the slider to **time the ship spends stopped** — loading, unloading, mining dw
 refuelling. It does **not** perturb transit time, and it has **no effect on a flyby (loiter 0)** because the
 ship never stops. (Supersedes the earlier "deterministic slack on legs/dwells" framing in §12.5: it's random
 slack on *stops*, not legs.)
+
+### 12.12 Run-once vs Repeat + the attention-marker taxonomy (Alex, 2026-06-18)
+A **Repeat ↔ Run once** toggle (`autopilot.repeat`, default repeat). Repeat loops the route forever (today's
+behaviour); **Run once** completes the route a single time, then **auto-disengages** autopilot and flags the
+ship for the GM. This completes the cadence axis (courier one-shots, one-way relocation/migration,
+decommission runs) without a new action.
+
+The **Routes "Under autopilot" `!` marker** is now a 3-state, colour-coded signal (`AutopilotAttention`):
+- **Red — stuck.** Can't proceed (no fuel/route, blocked). Needs attention. (Planner-set; banked.)
+- **Orange — intervention.** Something needs a GM decision. Currently also covers "no stops set" (setup).
+- **Green — done.** Finished a Run-once route and auto-disengaged. (Planner-set; banked.)
+
+Capture build wires the colours + labels and derives the orange "no stops" case now; red/green are set by the
+planner when it flies the plan (auto-disengage-on-complete is planner work).
+
+### 12.13 Escort / shadow — a DYNAMIC (moving) target (Alex, 2026-06-18)
+A fifth action, **Escort**: shadow another **construct** at a **standoff distance** (`escortKm`) — 0 = tight
+formation, large = trail outside the target's sensor range (a covert tail or a stand-off support vessel). This
+introduces the one genuinely new targeting concept: the leg's target is a **moving construct**, not a fixed
+place or a resource source. Capture build = pick a ship (constructs-only list) + a km standoff.
+
+**Planner side BANKED:** matching a moving target's trajectory while holding a distance is a station-keeping /
+pursuit problem, distinct from the go-to-a-point legs — it shares the "target isn't a fixed point" machinery
+with the flyby momentum work, so bank the two together. Open Qs for later: what if the target jumps
+interstellar / is destroyed / itself goes adrift (does the escort hold, follow, or rescue?).
+
+### 12.14 BANKED/DROPPED — Timetabled departures (Alex, 2026-06-18)
+Scheduled/fixed-cadence departures (a liner that leaves every N days regardless of readiness) are **dropped as
+largely redundant**: firm timetables only make sense when distances are fixed, and in this sim everything
+orbits/moves, so "depart on a clock" rarely matches reality. The derive-from-clock "go when ready + Planning
+look-ahead" model already covers the sensible cases. Revisit only if a fixed-infrastructure (gates/stations)
+scheduled-service use case appears.

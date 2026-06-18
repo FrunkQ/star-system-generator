@@ -241,13 +241,18 @@
           if (!leg) return '';
           if (leg.action === 'mine') return `mine ${resNames(leg.resourceKeys) || 'resource'}`;
           if (leg.action === 'transport') return `transport ${resNames(leg.resourceKeys) || 'cargo'}${leg.placeId ? ` from ${nodeName(leg.placeId)}` : ''}`;
+          if (leg.action === 'escort') return `escort ${leg.placeId ? nodeName(leg.placeId) : 'ship'}${leg.escortKm != null ? ` @ ${leg.escortKm}km` : ''}`;
           const fly = (leg.loiterDays ?? 0) === 0;
           if (leg.action === 'patrol') return `${fly ? 'flyby' : 'patrol'} ${leg.placeId ? nodeName(leg.placeId) : 'system'}`;
           return `${fly ? 'flyby' : 'explore'}${resNames(leg.resourceKeys) ? ' for ' + resNames(leg.resourceKeys) : ''}`;
         };
         const first = ap.legs?.[0];
-        const summary = first ? `${legText(first)}${ap.legs.length > 1 ? ` +${ap.legs.length - 1}` : ''} · ${TRAVERSAL_LABEL[ap.traversal] ?? ap.traversal}` : 'no stops set';
-        autopilotShips.push({ id: n.id, constructName: n.name, where: sys.name, systemId: sys.id, summary, needsAttention: !ap.legs?.length });
+        const tail = `${TRAVERSAL_LABEL[ap.traversal] ?? ap.traversal}${ap.repeat === false ? ' · once' : ''}`;
+        const summary = first ? `${legText(first)}${ap.legs.length > 1 ? ` +${ap.legs.length - 1}` : ''} · ${tail}` : 'no stops set';
+        // Attention marker: orange = needs GM setup (no stops). stuck (red) / done (green) come from the planner later.
+        const attention = !ap.legs?.length ? 'intervention' : null;
+        const attentionLabel = attention === 'stuck' ? 'Stuck — needs attention' : attention === 'done' ? 'Finished — autopilot disengaged' : attention === 'intervention' ? 'Needs setup — no stops added' : '';
+        autopilotShips.push({ id: n.id, constructName: n.name, where: sys.name, systemId: sys.id, summary, attention, attentionLabel });
       }
     }
     return { interstellar, journeys, interstellarJourneys, stranded, autopilotShips };
@@ -1444,7 +1449,7 @@
               <div class="route-row static">
                 <span class="route-main">
                   <button class="pill ship" title="Go to the ship" on:click={() => { showRoutes = false; enterSystemAndFocus(a.systemId, a.id); }}>{a.constructName}</button>
-                  {#if a.needsAttention}<span class="route-attention" title="Needs attention">!</span>{/if}
+                  {#if a.attention}<span class="route-attention {a.attention}" title={a.attentionLabel}>!</span>{/if}
                   <span class="route-autopilot"> · {a.summary}</span>
                 </span>
                 <span class="route-sys">{a.where}</span>
@@ -1612,6 +1617,9 @@
   .route-stranded { color: #e8a857; font-size: 0.82em; }
   .route-autopilot { color: #6aa0d8; font-size: 0.82em; }
   .route-attention { color: #fff; background: #cc5555; border-radius: 50%; font-weight: 700; font-size: 0.72em; padding: 0 5px; margin-left: 4px; }
+  .route-attention.stuck { background: #cc5555; }
+  .route-attention.intervention { background: #d8922f; }
+  .route-attention.done { background: #4a9e5c; }
   /* Interstellar journey rows: source / destination / ship are individually clickable pills. */
   .route-row.interstellar { cursor: default; flex-wrap: wrap; }
   .route-pills { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; }

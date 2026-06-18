@@ -120,25 +120,28 @@ export type AutopilotWhere = { kind: 'place' | 'resource'; placeId?: ID; resourc
 // Verbs = behaviours × targeting modes (the underlying abstraction):
 //   HAUL family   — gather/carry then deliver:  mine (resource-targeted) ↔ transport (place-targeted)
 //   LOITER family — go somewhere + dwell:        explore (resource-targeted) ↔ patrol (place-targeted)
+//   ESCORT        — shadow a MOVING construct at a standoff distance (dynamic target, not a fixed point).
 // Place-targeted = anchored to a specific body/station (placeId); resource-targeted = nearest source of
 // resourceKeys. Dock/unload are inferred from deliverTo. Scan folded into patrol.
 // FLYBY = loiterDays === 0: don't stop, keep delta-v, momentum-carry to the next leg (planner BANKED —
 // it must coast/scrub/slingshot per junction, breaking the come-to-rest assumption of every other leg).
-export type AutopilotAction = 'mine' | 'transport' | 'patrol' | 'explore';
+export type AutopilotAction = 'mine' | 'transport' | 'patrol' | 'explore' | 'escort';
 export interface AutopilotLeg {
   action: AutopilotAction;
-  placeId?: ID;             // place-targeted: transport pickup source / patrol location
+  placeId?: ID;             // place-targeted: transport pickup source / patrol location / escort target (a construct)
   resourceKeys?: string[];  // resource-targeted: mine what to extract / explore what to seek; transport: cargo (incl 'people/passengers')
   rate_tpd?: number;        // haul fill rate (t/day) — default from the hull's capability tag
   fillAmount_t?: number;    // haul — how much to take on (defaults to free cargo space)
   deliverTo?: AutopilotWhere; // haul — where the cargo/people go (docking + unloading implied)
   loiterDays?: number;      // loiter — days to loiter/scan/survey before moving on; 0 ⇒ flyby (don't stop, keep delta-v)
-  noRevisit?: boolean;      // loiter — skip places already in the ship's log (defaults on for explore); not yet surfaced in the UI
+  noRevisit?: boolean;      // loiter — skip places already in the ship's log (defaults on for explore)
+  escortKm?: number;        // escort — standoff distance to hold from the shadowed construct (0 = formation; large = outside sensor range)
 }
 export interface Autopilot {
   enabled: boolean;
   traversal: 'in-order' | 'best-order' | 'any';   // visit all in order / all best order / any one as needed
   legs: AutopilotLeg[];
+  repeat: boolean;          // true ⇒ loop the route forever; false ⇒ run once, then flag green + auto-disengage
   tardiness?: number;       // 0..1 Discipline; undefined ⇒ inherit from the Owner CoI
   planning: number;         // 0..5 lookahead — covers fuel/restock scheduling too; 0 = greedy
   drive: number;            // 0..1 Drive bias: 0 efficiency … 1 speed
@@ -147,6 +150,9 @@ export interface Autopilot {
   ignoreSupplies: boolean;  // simplify: this ship doesn't require life-support supplies
   avoidPlaceIds?: ID[];     // locations the ship won't visit or replenish at (e.g. politically unaligned)
 }
+// Routes "Under autopilot" attention marker: red = stuck (can't proceed), orange = needs GM decision,
+// green = finished a once-route (auto-disengaged). Derived by the planner; null = running fine.
+export type AutopilotAttention = 'stuck' | 'intervention' | 'done';
 
 export interface SensorDefinition {
   id: string;

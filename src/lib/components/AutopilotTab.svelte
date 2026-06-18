@@ -12,7 +12,7 @@
   const update = () => dispatch('update');
 
   const DEFAULT_AP: Autopilot = {
-    enabled: false, traversal: 'in-order', legs: [], planning: 2, drive: 0.5,
+    enabled: false, traversal: 'in-order', legs: [], repeat: true, planning: 2, drive: 0.5,
     ignoreFuel: false, ignoreSupplies: false, avoidPlaceIds: []
   };
   // Ensure the object exists so the bindings have something to write to.
@@ -24,10 +24,11 @@
     { a: 'mine', label: 'Mine', desc: 'go to the nearest source of a resource and extract it' },
     { a: 'transport', label: 'Transport', desc: 'carry cargo or people from a place to a destination' },
     { a: 'patrol', label: 'Patrol', desc: 'loiter and sweep a place — set loiter 0 to race past' },
-    { a: 'explore', label: 'Explore', desc: 'seek new sources it hasn’t logged, surveying each' }
+    { a: 'explore', label: 'Explore', desc: 'seek new sources it hasn’t logged, surveying each' },
+    { a: 'escort', label: 'Escort', desc: 'shadow another ship at a set standoff distance' }
   ];
-  // HAUL = gather + deliver (mine/transport); LOITER = go + dwell (patrol/explore); loiter 0 ⇒ flyby.
-  const FAMILY: Record<AutopilotAction, 'haul' | 'loiter'> = { mine: 'haul', transport: 'haul', patrol: 'loiter', explore: 'loiter' };
+  // HAUL = gather + deliver (mine/transport); LOITER = go + dwell (patrol/explore, loiter 0 ⇒ flyby); ESCORT = shadow a construct.
+  const FAMILY: Record<AutopilotAction, 'haul' | 'loiter' | 'escort'> = { mine: 'haul', transport: 'haul', patrol: 'loiter', explore: 'loiter', escort: 'escort' };
   const NEEDS_CARGO = (a: AutopilotAction) => FAMILY[a] === 'haul';
   const PEOPLE_KEY = 'people/passengers';
   $: cats = $coiCategories;
@@ -35,6 +36,9 @@
 
   // Place options = bodies + other constructs in this system; Resource options = the CoI Resources.
   $: placeOpts = (system?.nodes ?? []).filter((n: any) => n.id !== construct.id && (n.kind === 'body' || n.kind === 'construct'))
+       .map((n: any) => ({ id: n.id, name: n.name }));
+  // Escort targets a MOVING construct, so only other constructs are eligible.
+  $: constructOpts = (system?.nodes ?? []).filter((n: any) => n.id !== construct.id && n.kind === 'construct')
        .map((n: any) => ({ id: n.id, name: n.name }));
   $: resourceOpts = (cats.find((c) => c.id === 'resource')?.tags ?? []).map((t) => ({ key: t.key, label: t.label }));
   // Transport can carry people as well as any resource.
@@ -67,6 +71,7 @@
     if (a === 'mine') return { action: a, resourceKeys: [], rate_tpd: defaultRate(), fillAmount_t: freeCargo() || undefined };
     if (a === 'transport') return { action: a, resourceKeys: [], rate_tpd: defaultRate(), fillAmount_t: freeCargo() || undefined };
     if (a === 'patrol') return { action: a, loiterDays: 30 };
+    if (a === 'escort') return { action: a, escortKm: 100 }; // shadow a construct at a standoff distance
     return { action: a, resourceKeys: [], loiterDays: 30, noRevisit: true }; // explore: resource-driven loiter, non-repeating
   }
   function addLeg() { construct.autopilot!.legs = [...ap.legs, blankLeg(suggestedAction())]; update(); }
@@ -74,7 +79,7 @@
   // Switching action resets the action-specific fields so stale data doesn't leak across verbs.
   function setAction(leg: AutopilotLeg, a: AutopilotAction) {
     const fresh = blankLeg(a);
-    Object.assign(leg, { action: a, placeId: undefined, resourceKeys: undefined, rate_tpd: undefined, fillAmount_t: undefined, deliverTo: undefined, loiterDays: undefined, noRevisit: undefined }, fresh);
+    Object.assign(leg, { action: a, placeId: undefined, resourceKeys: undefined, rate_tpd: undefined, fillAmount_t: undefined, deliverTo: undefined, loiterDays: undefined, noRevisit: undefined, escortKm: undefined }, fresh);
     construct.autopilot!.legs = [...ap.legs];
     update();
   }
@@ -133,6 +138,14 @@
           <button class:on={ap.traversal === v} on:click={() => { construct.autopilot!.traversal = v as any; update(); }}>{t}</button>
         {/each}
       </div>
+    </div>
+    <div class="row">
+      <span class="lbl">Then</span>
+      <div class="seg">
+        <button class:on={ap.repeat} on:click={() => { construct.autopilot!.repeat = true; update(); }}>Repeat forever</button>
+        <button class:on={!ap.repeat} on:click={() => { construct.autopilot!.repeat = false; update(); }}>Run once</button>
+      </div>
+      {#if !ap.repeat}<span class="explore-note">finishes the route, flags green, and disengages autopilot</span>{/if}
     </div>
 
     {#each ap.legs as leg, i}
@@ -196,6 +209,16 @@
             <span class="lbl">loiter</span>
             <input class="num" type="number" min="0" bind:value={leg.loiterDays} on:change={update} /> <span class="unit">days</span>
             {#if (leg.loiterDays ?? 0) === 0}<span class="explore-note">0 = flyby — races past without stopping (planner WIP)</span>{/if}
+
+          {:else if leg.action === 'escort'}
+            <span class="lbl">shadow</span>
+            <select bind:value={leg.placeId} on:change={update}>
+              <option value={undefined}>— pick a ship —</option>
+              {#each constructOpts as c}<option value={c.id}>{c.name}</option>{/each}
+            </select>
+            <span class="lbl">at</span>
+            <input class="num" type="number" min="0" bind:value={leg.escortKm} on:change={update} /> <span class="unit">km standoff</span>
+            {#if !constructOpts.length}<span class="explore-note">no other ships in this system to escort</span>{/if}
 
           {:else}
             <span class="lbl">seeking</span>

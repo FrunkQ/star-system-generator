@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.177-beta - 18th Jun 2026
+
+* Autopilot gains a Repeat-forever / Run-once choice. Run-once flies the route a single time, then finishes — it'll flag the ship green and switch autopilot off (a courier drop, a one-way relocation, a final decommission run). The "Under autopilot" marker in Routes is now colour-coded: red = stuck, orange = needs your input, green = finished.
+* New Escort action — shadow another ship at a standoff distance you set in km (sit in close formation, or trail outside its sensor range as a covert tail or stand-off support vessel). It's the first action that follows a moving target rather than a fixed place. Captured for now; the trajectory-matching flight is still being built.
+
 ## v2.0.176-beta - 18th Jun 2026
 
 * Autopilot Flyby is no longer a separate action — it's simply a Patrol or Explore leg with the loiter time set to 0. The ship doesn't stop, keeps its speed, and races past, so a patrol can be a fast sweep when you don't want it sitting around. The wizard hints this under the loiter field and the Routes summary shows it as a flyby. (The clever momentum-carrying, slingshot-when-going-the-other-way flight is still being built.)
