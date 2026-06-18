@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.174-beta - 18th Jun 2026
+
+* Autopilot gains a fifth action, Flyby — race past a location without stopping, keeping speed for the fastest, most efficient run. For now it's captured in the wizard (pick a place to fly past) and shown in the Routes summary; the clever part — flying that keeps momentum leg-to-leg and slingshots when the next stop is the other way, rather than coming to a stop each time — is noted as still being built and banked for later.
+
 ## v2.0.173-beta - 18th Jun 2026
 
 * Autopilot Explore gains a survey/loiter time and an optional resource target — it heads to new sources (skipping places already in its log) and dwells to scan/survey, the mirror of Patrol. The four actions now line up as two behaviour pairs: Mine/Transport gather and deliver (resource- vs place-driven), Patrol/Explore go-and-dwell (place- vs resource-driven). Under the hood that's modelled as one "don't revisit" flag (on for Explore for now, not yet shown) so the same machinery can later surface as a switch on any leg.

@@ -242,6 +242,7 @@
           if (leg.action === 'mine') return `mine ${resNames(leg.resourceKeys) || 'resource'}`;
           if (leg.action === 'transport') return `transport ${resNames(leg.resourceKeys) || 'cargo'}${leg.placeId ? ` from ${nodeName(leg.placeId)}` : ''}`;
           if (leg.action === 'patrol') return `patrol ${leg.placeId ? nodeName(leg.placeId) : 'system'}`;
+          if (leg.action === 'flyby') return `flyby ${leg.placeId ? nodeName(leg.placeId) : 'onward'}`;
           return `explore${resNames(leg.resourceKeys) ? ' for ' + resNames(leg.resourceKeys) : ''}`;
         };
         const first = ap.legs?.[0];

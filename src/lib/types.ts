@@ -117,12 +117,15 @@ export interface FuelTank {
 // Autopilot wizard plan on a construct (docs/autopilot-spec.md §12). Capture-only for now — the planner
 // that flies it comes later. A WHERE is a specific place OR the nearest source of a resource tag.
 export type AutopilotWhere = { kind: 'place' | 'resource'; placeId?: ID; resourceKeys?: string[] }; // resource = a source of ANY of these
-// Four verbs = two behaviours × two targeting modes (the underlying abstraction):
+// Verbs = behaviours × targeting modes (the underlying abstraction):
 //   HAUL family   — gather/carry then deliver:  mine (resource-targeted) ↔ transport (place-targeted)
 //   LOITER family — go somewhere new + dwell:    explore (resource-targeted) ↔ patrol (place-targeted)
+//   FLYBY         — race past without stopping (place-targeted). NOTE: the planner side is BANKED —
+//                   it must carry momentum leg-to-leg (no slow-down burn) and slingshot/scrub when the
+//                   next stop is the other way, which breaks the come-to-rest assumption of the others.
 // Place-targeted = anchored to a specific body/station (placeId); resource-targeted = nearest source of
 // resourceKeys. Dock/unload are inferred from deliverTo. Scan folded into patrol.
-export type AutopilotAction = 'mine' | 'transport' | 'patrol' | 'explore';
+export type AutopilotAction = 'mine' | 'transport' | 'patrol' | 'explore' | 'flyby';
 export interface AutopilotLeg {
   action: AutopilotAction;
   placeId?: ID;             // place-targeted: transport pickup source / patrol location

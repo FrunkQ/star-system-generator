@@ -24,10 +24,11 @@
     { a: 'mine', label: 'Mine', desc: 'go to the nearest source of a resource and extract it' },
     { a: 'transport', label: 'Transport', desc: 'carry cargo or people from a place to a destination' },
     { a: 'patrol', label: 'Patrol', desc: 'loiter and sweep a place for a while' },
-    { a: 'explore', label: 'Explore', desc: 'seek new sources it hasn’t logged, surveying each' }
+    { a: 'explore', label: 'Explore', desc: 'seek new sources it hasn’t logged, surveying each' },
+    { a: 'flyby', label: 'Flyby', desc: 'race past without stopping — keep speed, no slow-down burn' }
   ];
-  // HAUL = gather + deliver (mine/transport); LOITER = go + dwell (patrol/explore).
-  const FAMILY: Record<AutopilotAction, 'haul' | 'loiter'> = { mine: 'haul', transport: 'haul', patrol: 'loiter', explore: 'loiter' };
+  // HAUL = gather + deliver (mine/transport); LOITER = go + dwell (patrol/explore); FLYBY = pass through.
+  const FAMILY: Record<AutopilotAction, 'haul' | 'loiter' | 'flyby'> = { mine: 'haul', transport: 'haul', patrol: 'loiter', explore: 'loiter', flyby: 'flyby' };
   const NEEDS_CARGO = (a: AutopilotAction) => FAMILY[a] === 'haul';
   const PEOPLE_KEY = 'people/passengers';
   $: cats = $coiCategories;
@@ -67,6 +68,7 @@
     if (a === 'mine') return { action: a, resourceKeys: [], rate_tpd: defaultRate(), fillAmount_t: freeCargo() || undefined };
     if (a === 'transport') return { action: a, resourceKeys: [], rate_tpd: defaultRate(), fillAmount_t: freeCargo() || undefined };
     if (a === 'patrol') return { action: a, loiterDays: 30 };
+    if (a === 'flyby') return { action: a }; // place-targeted pass-through; planner banked
     return { action: a, resourceKeys: [], loiterDays: 30, noRevisit: true }; // explore: resource-driven loiter, non-repeating
   }
   function addLeg() { construct.autopilot!.legs = [...ap.legs, blankLeg(suggestedAction())]; update(); }
@@ -195,6 +197,14 @@
             </select>
             <span class="lbl">loiter</span>
             <input class="num" type="number" min="0" bind:value={leg.loiterDays} on:change={update} /> <span class="unit">days</span>
+
+          {:else if leg.action === 'flyby'}
+            <span class="lbl">past</span>
+            <select bind:value={leg.placeId} on:change={update}>
+              <option value={undefined}>— next on route —</option>
+              {#each placeOpts as p}<option value={p.id}>{p.name}</option>{/each}
+            </select>
+            <span class="explore-note">fast non-stop pass — momentum-carrying flight is still being built</span>
 
           {:else}
             <span class="lbl">seeking</span>

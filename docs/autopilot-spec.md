@@ -356,3 +356,19 @@ event-resolution pass** that splices a rescue leg into another ship's itinerary.
 breaks pure per-ship derivation (ships react to each other), so it's the natural thing to defer — autopilot
 works fully without it. Pick it up only when the rest is solid and there's appetite for the inter-ship
 simulation. (§6 above is the design, kept for when it's green-lit.)
+
+### 12.10 BANKED for later — Flyby / Race (momentum-carrying transit) (Alex, 2026-06-18)
+A fifth action, **Flyby**, captured in the wizard but with its **planner side banked**. Flyby does NOT come
+to rest at the waypoint: it preserves the ship's current velocity / delta-v and passes through, optimising
+for the fastest, most fuel-efficient route overall by skipping the decelerate-then-reaccelerate burns every
+other action implies. The hard part — why it's banked — is that every other action assumes **arrive-at-rest**,
+so the planner can treat each leg independently. Flyby chains momentum leg-to-leg:
+
+- If the next destination lies roughly **ahead** of the current heading, coast/burn through — big time + fuel win.
+- If the next destination is **the other way**, the ship still has to scrub speed (decel burn) or use a
+  **gravity slingshot** to redirect, which is materially more complex than a come-to-rest hop.
+
+So Flyby needs a planner that carries the velocity vector across legs and decides per-junction whether to
+coast, scrub, or slingshot — a different model from the rest. The capture stub (place-targeted "fly past X")
+exists now so it shows in the action list and the route summary; the momentum/slingshot planner is deferred
+until the come-to-rest planner (§5) is solid.
