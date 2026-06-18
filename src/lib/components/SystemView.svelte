@@ -777,9 +777,26 @@
   }
 
   function handleConstructUpdate(event: CustomEvent<CelestialBody>) {
-    const updatedConstruct = event.detail;
+    let updatedConstruct = event.detail;
     systemStore.update(system => {
       if (!system) return null;
+
+      // Autopilot: an engaged ship with no pending journeys gets its plan flown — generate the chain
+      // from its current position + the clock and attach it. (Regenerates once it runs dry; clock-advance
+      // top-up + status/disengage come next.)
+      if ((updatedConstruct as any).autopilot?.enabled
+          && countFutureJourneys(updatedConstruct, currentTime) === 0) {
+        try {
+          const working = { ...system, nodes: system.nodes.map(n => n.id === updatedConstruct.id ? updatedConstruct : n) };
+          const gen = generateAutopilotChain(updatedConstruct, working, rulePack, currentTime);
+          if (gen?.logs?.length) {
+            updatedConstruct = { ...updatedConstruct, scheduled_journeys: [ ...(updatedConstruct.scheduled_journeys || []), ...gen.logs ] };
+          } else if (gen) {
+            console.warn('[autopilot] no journeys generated:', gen.attention, gen.stuckReason);
+          }
+        } catch (e) { console.warn('[autopilot] chain generation failed:', e); }
+      }
+
       const nodeIndex = system.nodes.findIndex(n => n.id === updatedConstruct.id);
       if (nodeIndex !== -1) {
         system.nodes[nodeIndex] = updatedConstruct;
