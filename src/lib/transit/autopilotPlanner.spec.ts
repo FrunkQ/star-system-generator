@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { walkStops, legToStops, planToStops, type AutopilotStop, type SolveLeg } from './autopilotPlanner';
+import { walkStops, legToStops, planToStops, chooseSource, scoreSources, type AutopilotStop, type SolveLeg } from './autopilotPlanner';
 
 const DAY_MS = 86_400_000;
 
@@ -115,5 +115,46 @@ describe('autopilot legToStops', () => {
   it('mine/explore/escort yield no stops in slice 1', () => {
     expect(legToStops({ action: 'mine', resourceKeys: ['resource/water-ice'] }, noFuel)).toEqual([]);
     expect(planToStops([{ action: 'patrol', placeId: 'A' }, { action: 'mine', resourceKeys: ['x'] }], noFuel)).toHaveLength(1);
+  });
+});
+
+describe('autopilot chooseSource — destination scoring with free-refuel nudge', () => {
+  it('prefers richer + closer sources', () => {
+    const best = chooseSource([
+      { id: 'far-poor', travelCost: 100, abundance: 0.2 },
+      { id: 'near-rich', travelCost: 10, abundance: 0.9 }
+    ]);
+    expect(best?.id).toBe('near-rich');
+  });
+
+  it('a free-refuel source wins a close call (mines AND refuels beats mines-only)', () => {
+    // Two moons, equal abundance + distance; one also refuels the ship → it should win.
+    const best = chooseSource([
+      { id: 'mine-only', travelCost: 20, abundance: 0.6, refuels: false },
+      { id: 'mine+fuel', travelCost: 20, abundance: 0.6, refuels: true }
+    ]);
+    expect(best?.id).toBe('mine+fuel');
+  });
+
+  it('the nudge is modest — a clearly better mining source still wins when fuel is fine', () => {
+    const best = chooseSource([
+      { id: 'rich-no-fuel', travelCost: 10, abundance: 0.95, refuels: false },
+      { id: 'poor-but-fuel', travelCost: 90, abundance: 0.15, refuels: true }
+    ]);
+    expect(best?.id).toBe('rich-no-fuel');
+  });
+
+  it('when the ship is low on fuel, a self-fuelling source weighs much heavier', () => {
+    const cands = [
+      { id: 'rich-no-fuel', travelCost: 10, abundance: 0.7, refuels: false },
+      { id: 'ok-and-fuel', travelCost: 30, abundance: 0.5, refuels: true }
+    ];
+    expect(chooseSource(cands)?.id).toBe('rich-no-fuel');                 // fuel fine → richer wins
+    expect(chooseSource(cands, { needsFuel: true })?.id).toBe('ok-and-fuel'); // low fuel → self-fueller wins
+  });
+
+  it('empty candidate set → null', () => {
+    expect(chooseSource([])).toBeNull();
+    expect(scoreSources([])).toEqual([]);
   });
 });
