@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.193-beta - 18th Jun 2026
+
+* A ship's info panel now shows "Refuels from" under Fuel Mass — the resources and refuelling contexts its fuels can be sourced from (e.g. Water ice · Gas-giant refuelling). It makes the connection obvious: a body carrying any of these is a valid top-up, and it's exactly what the autopilot's harvest-refuel will key on, so you can tell at a glance where a ship can self-fuel.
+
 ## v2.0.192-beta - 18th Jun 2026
 
 * Groundwork (no visible change yet): the autopilot planner can now score which source to send a ship to — richer + closer wins, with a nudge toward a body that *also* refuels the ship for free (so when mining and refuelling could be the same stop, the ship prefers it and skips a detour). The nudge is small normally and much stronger when the ship is actually low on fuel. Pure + unit-tested.

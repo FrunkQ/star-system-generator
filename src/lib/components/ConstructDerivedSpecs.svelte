@@ -3,6 +3,19 @@
   import type { CelestialBody, RulePack } from '$lib/types';
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { AU_KM } from '$lib/constants';
+  import { describeTag } from '$lib/tags/tagPresentation';
+
+  // The resources/contexts this ship can refuel from = the union of its fuels' refuel_tags. Surfacing
+  // it next to Fuel Mass makes the link obvious: a body carrying one of these is a valid top-up (and
+  // the autopilot's harvest-refuel keys on the same test). Human-labelled via describeTag.
+  $: refuelSources = (() => {
+    const keys = new Set<string>();
+    for (const tank of construct.fuel_tanks ?? []) {
+      const def = rulePack?.fuelDefinitions?.entries.find((f) => f.id === tank.fuel_type_id);
+      for (const t of def?.refuel_tags ?? []) keys.add(t);
+    }
+    return [...keys].map((k) => describeTag(k).label);
+  })();
 
   export let construct: CelestialBody;
   export let rulePack: RulePack;
@@ -204,6 +217,12 @@
         <span class="label">Fuel Mass</span>
         <span class="value">{Math.round(specs.fuelMass_tonnes).toLocaleString()} t</span>
       </div>
+      {#if refuelSources.length}
+        <div class="spec-item fixed wide" title="Resources / refuelling contexts this ship's fuels can be sourced from. A body carrying any of these is a valid top-up — and the autopilot will refuel there.">
+          <span class="label">Refuels from</span>
+          <span class="value refuel-from">{refuelSources.join(' · ')}</span>
+        </div>
+      {/if}
       <div class="spec-item derived" title="Current total mass including fuel and cargo">
         <span class="label">Total Mass</span>
         <span class="value">{Math.round(specs.totalMass_tonnes).toLocaleString()} t</span>
@@ -477,6 +496,8 @@
   .spec-item.derived {
     border-left: 3px solid var(--data-derived);
   }
+  .spec-item.wide { grid-column: 1 / -1; }
+  .value.refuel-from { font-size: 0.85em; color: var(--text-muted); line-height: 1.4; }
   .label {
     font-size: 0.8em;
     color: var(--text-muted);
