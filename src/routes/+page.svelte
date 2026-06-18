@@ -33,6 +33,7 @@
   import { coiForStarmap, mergeStarmapCoIs, derivedStatusKey } from '$lib/constructs/coi';
   import LlmSettingsModal from '$lib/components/LlmSettingsModal.svelte';
   import EditFuelAndDrivesModal from '$lib/components/EditFuelAndDrivesModal.svelte';
+  import AutopilotShipIcon from '$lib/components/AutopilotShipIcon.svelte';
   import EditAtmospheresModal from '$lib/components/EditAtmospheresModal.svelte';
   import EditSensorsModal from '$lib/components/EditSensorsModal.svelte';
   import EditTemporalModal from '$lib/components/EditTemporalModal.svelte';
@@ -1451,7 +1452,7 @@
             {/each}
           {/if}
           {#if routesData.autopilotShips.length}
-            <h4>Under autopilot ({routesData.autopilotShips.length})</h4>
+            <h4 class="ap-heading"><AutopilotShipIcon size={14} /> Under autopilot ({routesData.autopilotShips.length})</h4>
             {#each routesData.autopilotShips as a (a.id)}
               <div class="route-row static">
                 <span class="route-main">
@@ -1581,6 +1582,7 @@
     cursor: pointer;
   }
   .routes-body { overflow-y: auto; overflow-x: hidden; padding: 4px 2px; }
+  .ap-heading { display: flex; align-items: center; gap: 7px; }
   .routes-body .route-row { box-sizing: border-box; max-width: 100%; }
   .routes-body h4 {
     margin: 12px 0 6px;

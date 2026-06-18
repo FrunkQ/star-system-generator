@@ -5,6 +5,7 @@
   import type { CelestialBody, System, Autopilot, AutopilotAction, AutopilotWhere, AutopilotLeg, RulePack } from '$lib/types';
   import { coiCategories, coiTagLabel } from '$lib/constructs/coi';
   import { calculateFullConstructSpecs } from '$lib/construct-logic';
+  import AutopilotShipIcon from './AutopilotShipIcon.svelte';
 
   export let construct: CelestialBody;
   export let system: System | null = null;
@@ -167,9 +168,7 @@
             else if (canEngage) { construct.autopilot!.enabled = true; update(); }
             else { needStopsHint = true; }
           }}>
-    <span class="eng-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z" /></svg>
-    </span>
+    <span class="eng-icon"><AutopilotShipIcon size={24} pulse={ap.enabled} /></span>
     <span class="eng-text">
       <strong>{ap.enabled ? 'Autopilot engaged' : 'Engage autopilot'}</strong>
       <small>{ap.enabled ? 'flying its route — click to take the helm' : canEngage ? 'click to hand it the helm' : 'add a stop below to enable'}</small>
@@ -387,7 +386,7 @@
   }
   .eng-icon { flex: 0 0 auto; display: flex; color: var(--text-faint); }
   .engage-toggle:hover .eng-icon { color: var(--accent); }
-  .engage-toggle.on .eng-icon { color: var(--accent); animation: eng-pulse 1.9s ease-in-out infinite; }
+  .engage-toggle.on .eng-icon { color: var(--accent); }
   .eng-text { flex: 1 1 auto; display: flex; flex-direction: column; line-height: 1.25; }
   .eng-text strong { font-size: 0.98em; color: var(--text); }
   .eng-text small { font-size: 0.72em; color: var(--text-faint); }

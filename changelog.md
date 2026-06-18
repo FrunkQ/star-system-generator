@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.201-beta - 18th Jun 2026
+
+* Unified the autopilot symbol — the gently pulsing ship icon now comes from one shared component, so it's identical everywhere it appears: the Engage button, the locked "Under autopilot" button, the ship's-log badge, and the Routes "Under autopilot" heading.
+
 ## v2.0.200-beta - 18th Jun 2026
 
 * The "Under autopilot" button on a ship is now clickable and opens the disengage dialog — so you can hand control back from the ship's panel, not just the Autopilot tab.

@@ -4,6 +4,7 @@
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { AU_KM } from '$lib/constants';
   import { describeTag } from '$lib/tags/tagPresentation';
+  import AutopilotShipIcon from './AutopilotShipIcon.svelte';
 
   // The resources/contexts this ship can refuel from = the union of its fuels' refuel_tags. Surfacing
   // it next to Fuel Mass makes the link obvious: a body carrying one of these is a valid top-up (and
@@ -362,7 +363,7 @@
                 {#if construct.autopilot?.enabled}
                     <!-- Autopilot owns the ship — click to disengage (opens the stop-how dialog). -->
                     <button class="action-btn autopilot-locked" title="Under autopilot — click to disengage and take manual control" on:click={() => dispatch('disengage')}>
-                        <span class="ap-ship" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z" /></svg></span>
+                        <AutopilotShipIcon size={15} />
                         Under autopilot
                     </button>
                 {:else}
@@ -452,9 +453,6 @@
       display: inline-flex; align-items: center; gap: 7px; justify-content: center;
       cursor: pointer;
   }
-  .action-btn.autopilot-locked .ap-ship { display: inline-flex; animation: ap-ship-pulse 1.9s ease-in-out infinite; }
-  @keyframes ap-ship-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
-  @media (prefers-reduced-motion: reduce) { .action-btn.autopilot-locked .ap-ship { animation: none; } }
   /* Abort controls: green = physical (coast on), orange = stop dead (then falls). */
   .action-btn.cancel-drift { background-color: #2f9e57; }
   .action-btn.cancel-stop { background-color: #d98a2b; }

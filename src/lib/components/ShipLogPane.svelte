@@ -10,6 +10,7 @@
   import { starmapStore } from '$lib/starmapStore';
   import { resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
   import { getJourneyBounds } from '$lib/transit/scheduler';
+  import AutopilotShipIcon from './AutopilotShipIcon.svelte';
 
   export let focusedBody: CelestialBody;
   export let clearFutureCount: number;
@@ -123,7 +124,7 @@
       <div class="ship-log-entry">
         <div class="ship-log-title">
           <strong>Journey {i + 1}</strong>
-          {#if log.autopilot}<span class="ship-log-auto" title="Planned and flown by autopilot"><span class="ap-ship" aria-hidden="true"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z" /></svg></span> autopilot</span>{/if}
+          {#if log.autopilot}<span class="ship-log-auto" title="Planned and flown by autopilot"><AutopilotShipIcon size={11} /> autopilot</span>{/if}
           <span class="ship-log-status" class:adrift={adriftNow}>{dynStatus}</span>
         </div>
         <div class="ship-log-meta">Created: {formatLogTime(createdMs)} {@render seekClock(createdMs)}</div>
@@ -220,9 +221,6 @@
       letter-spacing: 0.03em;
       white-space: nowrap;
   }
-  .ship-log-auto .ap-ship { display: inline-flex; animation: ap-ship-pulse 1.9s ease-in-out infinite; }
-  @keyframes ap-ship-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
-  @media (prefers-reduced-motion: reduce) { .ship-log-auto .ap-ship { animation: none; } }
   .ship-log-meta {
       color: var(--text-muted);
       font-size: 0.85em;
