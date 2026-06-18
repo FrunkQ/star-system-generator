@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.194-beta - 18th Jun 2026
+
+* Autopilot ships now actually fly (first cut). Engage a construct whose plan visits places in order — Patrol (loiter) and Transport (load → deliver) — and it generates the journey chain from where it is now and follows it, looping or running once. It honours Drive (fast vs thrifty), the Max-accel cap and Max-time-per-leg, and uses the harvest/depot fuel rules (a ship that can refuel where it loads will). Still to come: resource-seeking legs (Mine/Explore), live status read-out + auto-disengage, and rolling the route forward as the clock advances — right now it commits a full circuit when you engage.
+
 ## v2.0.193-beta - 18th Jun 2026
 
 * A ship's info panel now shows "Refuels from" under Fuel Mass — the resources and refuelling contexts its fuels can be sourced from (e.g. Water ice · Gas-giant refuelling). It makes the connection obvious: a body carrying any of these is a valid top-up, and it's exactly what the autopilot's harvest-refuel will key on, so you can tell at a glance where a ship can self-fuel.

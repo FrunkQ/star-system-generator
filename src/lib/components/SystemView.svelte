@@ -32,6 +32,7 @@
   import { systemStore, viewportStore } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
   import { interstellarConstructIds } from '$lib/transit/interstellar';
+  import { generateAutopilotChain } from '$lib/transit/autopilotAdapter';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import { get } from 'svelte/store';
@@ -788,9 +789,24 @@
   }
 
   function handleBodyUpdate(event: CustomEvent<CelestialBody>) {
-    const updatedBody = event.detail;
+    let updatedBody = event.detail;
     systemStore.update(system => {
       if (!system) return null;
+
+      // Autopilot: an engaged ship with no pending journeys gets its plan flown — generate the journey
+      // chain from its current position + the clock and attach it. (Regenerates after it runs dry; the
+      // clock-advance top-up + status/disengage wiring come next.)
+      if (updatedBody.kind === 'construct' && (updatedBody as any).autopilot?.enabled
+          && countFutureJourneys(updatedBody, currentTime) === 0) {
+        try {
+          const working = { ...system, nodes: system.nodes.map(n => n.id === updatedBody.id ? updatedBody : n) };
+          const gen = generateAutopilotChain(updatedBody, working, rulePack, currentTime);
+          if (gen?.logs?.length) {
+            updatedBody = { ...updatedBody, scheduled_journeys: [ ...(updatedBody.scheduled_journeys || []), ...gen.logs ] };
+          }
+        } catch (e) { console.warn('[autopilot] chain generation failed:', e); }
+      }
+
       const nodeIndex = system.nodes.findIndex(n => n.id === updatedBody.id);
       if (nodeIndex !== -1) {
         system.nodes[nodeIndex] = updatedBody;
