@@ -235,7 +235,7 @@
       for (const n of (sys.system?.nodes ?? []) as any[]) {
         if (n.kind !== 'construct' || !n.autopilot?.enabled) continue;
         const ap = n.autopilot;
-        const wpName = (w: any) => !w ? '' : w.kind === 'resource' ? (w.resourceKey?.split('/')[1] ?? 'resource') : (((sys.system?.nodes ?? []) as any[]).find((x) => x.id === w.placeId)?.name ?? 'somewhere');
+        const wpName = (w: any) => !w ? '' : w.kind === 'resource' ? ((w.resourceKeys ?? []).map((k: string) => k.split('/')[1]).join('/') || 'resource') : (((sys.system?.nodes ?? []) as any[]).find((x) => x.id === w.placeId)?.name ?? 'somewhere');
         const first = ap.waypoints?.[0];
         const summary = first ? `${first.action} ${wpName(first.where)}${ap.waypoints.length > 1 ? ` +${ap.waypoints.length - 1}` : ''} · ${TRAVERSAL_LABEL[ap.traversal] ?? ap.traversal}` : 'no locations set';
         autopilotShips.push({ id: n.id, constructName: n.name, where: sys.name, systemId: sys.id, summary, needsAttention: !ap.waypoints?.length });

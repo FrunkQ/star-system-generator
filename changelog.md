@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.171-beta - 18th Jun 2026
+
+* Autopilot wizard tweaks: a resource location now takes several resources at once (go to the nearest source of any of them), the mine/load "fill" defaults to the ship's free cargo space, and Logistics is simplified — the auto-refuel/restock toggles (Planning already schedules those) are now "Ignore fuel" / "Ignore life support" switches for ships you don't want to model fuel or supplies on.
+
 ## v2.0.169-beta - 17th Jun 2026
 
 * Fixed: a rescued ship lingered under Routes → "Stranded ships" even after a new journey had taken it home and parked it (e.g. the Rocinante safely in Uranus low orbit still showed "adrift, coasting · was bound Uranus"). The stranded list flagged any ship carrying a cancelled-drift journey without checking whether a later journey had since superseded it — the same supersession blind spot fixed earlier in the orrery position and drift-line. It now only lists a ship as stranded if no later journey has started since the drift began.

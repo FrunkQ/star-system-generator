@@ -2,18 +2,18 @@
   // Autopilot wizard (docs/autopilot-spec.md §12). CAPTURE-ONLY for now: builds + saves the plan on the
   // construct; the planner that actually flies it comes later. Three sections — Route, Behaviour, Logistics.
   import { createEventDispatcher } from 'svelte';
-  import type { CelestialBody, StarSystem, Autopilot, AutopilotAction, AutopilotWhere } from '$lib/types';
+  import type { CelestialBody, System, Autopilot, AutopilotAction, AutopilotWhere } from '$lib/types';
   import { coiCategories, coiTagLabel } from '$lib/constructs/coi';
 
   export let construct: CelestialBody;
-  export let system: StarSystem | null = null;
+  export let system: System | null = null;
 
   const dispatch = createEventDispatcher();
   const update = () => dispatch('update');
 
   const DEFAULT_AP: Autopilot = {
     enabled: false, traversal: 'in-order', waypoints: [], planning: 2, drive: 0.5,
-    autoRefuel: true, fuelMarginJourneys: 3, autoRestock: true
+    ignoreFuel: false, ignoreSupplies: false
   };
   // Ensure the object exists so the bindings have something to write to.
   $: if (construct && !construct.autopilot) construct.autopilot = { ...DEFAULT_AP, waypoints: [] };
@@ -46,16 +46,30 @@
     return Math.max(1, Math.round(cap / 100)) || 10;
   }
 
+  // Free cargo space = capacity − what's already aboard. Default fill target for mine/load.
+  function freeCargo(): number {
+    const cap = construct.physical_parameters?.cargoCapacity_tonnes ?? 0;
+    return Math.max(0, Math.round(cap - (construct.current_cargo_tonnes ?? 0)));
+  }
+
   function addWaypoint() {
     const a = suggestedAction();
     construct.autopilot!.waypoints = [...ap.waypoints, {
       where: { kind: 'place' }, action: a,
-      ...(NEEDS_CARGO(a) ? { rate_tpd: defaultRate() } : {})
+      ...(NEEDS_CARGO(a) ? { rate_tpd: defaultRate(), fillAmount_t: freeCargo() || undefined } : {})
     }];
     update();
   }
   function removeWaypoint(i: number) { construct.autopilot!.waypoints = ap.waypoints.filter((_, j) => j !== i); update(); }
   function setWhereKind(w: AutopilotWhere, kind: 'place' | 'resource') { w.kind = kind; update(); }
+  // Resource sources are multi-select — a waypoint may target ANY of several resources.
+  function addResourceKey(w: AutopilotWhere, key: string) {
+    if (!key) return;
+    const keys = w.resourceKeys ?? [];
+    if (!keys.includes(key)) w.resourceKeys = [...keys, key];
+    update();
+  }
+  function removeResourceKey(w: AutopilotWhere, key: string) { w.resourceKeys = (w.resourceKeys ?? []).filter((k) => k !== key); update(); }
 </script>
 
 <div class="tab-panel ap">
@@ -92,10 +106,16 @@
               {#each placeOpts as p}<option value={p.id}>{p.name}</option>{/each}
             </select>
           {:else}
-            <select bind:value={w.where.resourceKey} on:change={update}>
-              <option value={undefined}>— any source of —</option>
-              {#each resourceOpts as r}<option value={r.key}>{r.label}</option>{/each}
-            </select>
+            <span class="res-pick">
+              <span class="lbl">any source of</span>
+              {#each w.where.resourceKeys ?? [] as k}
+                <span class="chip">{label(k)}<button class="chip-x" title="Remove" on:click={() => removeResourceKey(w.where, k)}>✕</button></span>
+              {/each}
+              <select value="" on:change={(e) => { addResourceKey(w.where, e.currentTarget.value); e.currentTarget.value = ''; }}>
+                <option value="">+ add resource</option>
+                {#each resourceOpts.filter((r) => !(w.where.resourceKeys ?? []).includes(r.key)) as r}<option value={r.key}>{r.label}</option>{/each}
+              </select>
+            </span>
           {/if}
           <span class="arrow">→</span>
           <select bind:value={w.action} on:change={update}>
@@ -108,14 +128,14 @@
             <span class="lbl">at</span>
             <input class="num" type="number" min="0" bind:value={w.rate_tpd} on:change={update} /> <span class="unit">t/day</span>
             <span class="lbl">fill</span>
-            <input class="num" type="number" min="0" placeholder="hold" bind:value={w.fillAmount_t} on:change={update} /> <span class="unit">t</span>
+            <input class="num" type="number" min="0" placeholder="free space" bind:value={w.fillAmount_t} on:change={update} /> <span class="unit">t</span>
             <span class="arrow">→ deliver to</span>
             <span class="seg sm">
               <button class:on={w.deliverTo?.kind !== 'resource'} on:click={() => { w.deliverTo = { kind: 'place', placeId: w.deliverTo?.placeId }; update(); }}>Place</button>
-              <button class:on={w.deliverTo?.kind === 'resource'} on:click={() => { w.deliverTo = { kind: 'resource', resourceKey: w.deliverTo?.resourceKey }; update(); }}>Resource</button>
+              <button class:on={w.deliverTo?.kind === 'resource'} on:click={() => { w.deliverTo = { kind: 'resource', resourceKeys: w.deliverTo?.resourceKeys }; update(); }}>Resource</button>
             </span>
             {#if w.deliverTo?.kind === 'resource'}
-              <select bind:value={w.deliverTo.resourceKey} on:change={update}><option value={undefined}>—</option>{#each resourceOpts as r}<option value={r.key}>{r.label}</option>{/each}</select>
+              <select value={w.deliverTo.resourceKeys?.[0] ?? ''} on:change={(e) => { w.deliverTo = { kind: 'resource', resourceKeys: e.currentTarget.value ? [e.currentTarget.value] : [] }; update(); }}><option value="">—</option>{#each resourceOpts as r}<option value={r.key}>{r.label}</option>{/each}</select>
             {:else}
               <select value={w.deliverTo?.placeId} on:change={(e) => { w.deliverTo = { kind: 'place', placeId: e.currentTarget.value }; update(); }}><option value={undefined}>—</option>{#each placeOpts as p}<option value={p.id}>{p.name}</option>{/each}</select>
             {/if}
@@ -154,10 +174,9 @@
 
   <!-- C. LOGISTICS -->
   <section>
-    <h6>Logistics <span class="note">automatic — uncheck to manage by hand</span></h6>
-    <label class="chk"><input type="checkbox" bind:checked={ap.autoRefuel} on:change={update} /> Auto-refuel — keep fuel for
-      <input class="num sm" type="number" min="1" bind:value={ap.fuelMarginJourneys} on:change={update} /> journeys ahead</label>
-    <label class="chk"><input type="checkbox" bind:checked={ap.autoRestock} on:change={update} /> Auto-restock life support</label>
+    <h6>Logistics <span class="note">Planning schedules refuel + restock; tick to skip entirely</span></h6>
+    <label class="chk"><input type="checkbox" bind:checked={ap.ignoreFuel} on:change={update} /> Ignore fuel — this ship doesn't require or burn fuel</label>
+    <label class="chk"><input type="checkbox" bind:checked={ap.ignoreSupplies} on:change={update} /> Ignore life support — this ship doesn't need supplies</label>
   </section>
 </div>
 
@@ -185,7 +204,6 @@
   .add { width: 100%; border: 1px dashed var(--border); background: none; color: var(--text-muted); padding: 7px; border-radius: 5px; cursor: pointer; }
   select { background: var(--bg-control); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 3px 6px; font-size: 12px; }
   .num { width: 60px; background: var(--bg-control); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 3px 6px; }
-  .num.sm { width: 44px; }
   .unit { color: var(--text-faint); }
   .sld { margin-bottom: 14px; }
   .sld-top { display: flex; justify-content: space-between; margin-bottom: 4px; }
@@ -194,4 +212,8 @@
   .ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-faint); margin-top: 2px; }
   .hint { margin: 6px 0 0; font-size: 11px; color: var(--accent); }
   .chk { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .res-pick { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--bg-control); border: 1px solid var(--border); border-radius: 999px; padding: 2px 4px 2px 8px; font-size: 11px; }
+  .chip-x { background: none; border: none; color: var(--text-faint); cursor: pointer; padding: 0 2px; font-size: 10px; }
+  .chip-x:hover { color: var(--text); }
 </style>

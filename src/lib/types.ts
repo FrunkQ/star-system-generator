@@ -116,13 +116,13 @@ export interface FuelTank {
 
 // Autopilot wizard plan on a construct (docs/autopilot-spec.md §12). Capture-only for now — the planner
 // that flies it comes later. A WHERE is a specific place OR the nearest source of a resource tag.
-export type AutopilotWhere = { kind: 'place' | 'resource'; placeId?: ID; resourceKey?: string };
+export type AutopilotWhere = { kind: 'place' | 'resource'; placeId?: ID; resourceKeys?: string[] }; // resource = a source of ANY of these
 export type AutopilotAction = 'mine' | 'scan' | 'load' | 'unload' | 'dock' | 'patrol';
 export interface AutopilotWaypoint {
   where: AutopilotWhere;
   action: AutopilotAction;
   rate_tpd?: number;        // mine/load/skim fill rate (t/day) — default from the hull's capability tag
-  fillAmount_t?: number;    // mine/load — how much to take on (blank = fill the hold)
+  fillAmount_t?: number;    // mine/load — how much to take on (defaults to free cargo space)
   deliverTo?: AutopilotWhere; // mine/load — where the cargo goes
 }
 export interface Autopilot {
@@ -130,12 +130,11 @@ export interface Autopilot {
   traversal: 'in-order' | 'best-order' | 'any';   // visit all in order / all best order / any one as needed
   waypoints: AutopilotWaypoint[];
   tardiness?: number;       // 0..1 Discipline; undefined ⇒ inherit from the Owner CoI
-  planning: number;         // 0..5 lookahead (also schedules refuel/restock); 0 = greedy
+  planning: number;         // 0..5 lookahead — covers fuel/restock scheduling too; 0 = greedy
   drive: number;            // 0..1 Drive bias: 0 efficiency … 1 speed
   maxJourneyDays?: number;  // cap on any single hop (stops 50-year zero-fuel routes); also bounds mine/load dwell
-  autoRefuel: boolean;
-  fuelMarginJourneys: number;
-  autoRestock: boolean;
+  ignoreFuel: boolean;      // simplify: this ship doesn't require or consume fuel
+  ignoreSupplies: boolean;  // simplify: this ship doesn't require life-support supplies
 }
 
 export interface SensorDefinition {
