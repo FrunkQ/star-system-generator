@@ -31,6 +31,15 @@
     (body as any).autoClassify = true;
     dispatch('update', body);
   }
+  // Which candidate's "why" to show — click a candidate to inspect it; defaults to the winner. Reset
+  // when the focused body changes.
+  let lastBodyId = '';
+  let inspecting: string | null = null;
+  $: if (body.id !== lastBodyId) { lastBodyId = body.id; inspecting = null; }
+  $: inspectClass = inspecting ?? cls?.base;
+  $: inspectBands = cls?.candidates.find((c) => c.class === inspectClass)?.bands ?? cls?.bands ?? [];
+  // Closeness → colour: green = solid fit, amber = marginal, red = barely inside the band.
+  const fitColor = (f: number) => (f >= 0.85 ? '#7fd1a8' : f >= 0.5 ? '#d8c06a' : '#cc7777');
 </script>
 
 <div class="overlay" on:click|self={close} role="presentation">
@@ -67,20 +76,33 @@
             <p class="note">Physics would call this <strong>{tlabel(cls.base)}</strong> ({cls.baseScore}). <button class="linkish" on:click={useAuto}>hand it back to the engine</button></p>
           {/if}
 
-          <span class="col-label" style="margin-top:8px; display:block;">Candidates — click to pin</span>
+          <span class="col-label" style="margin-top:8px; display:block;">Candidates — click to see why</span>
           <div class="cands">
             {#each cls.candidates as c}
-              <button class="cand" class:win={c.class === cls.base} class:cur={c.class === currentClass} on:click={() => pickClass(c.class)} title={c.class === cls.base ? 'Engine pick — click to pin' : 'Pin this type instead'}>
+              <button class="cand" class:win={c.class === cls.base} class:cur={c.class === currentClass} class:insp={c.class === inspectClass} on:click={() => (inspecting = c.class)} title="Show how this type's bands fit">
                 <span class="cand-name">{tlabel(c.class)}</span>
                 <span class="cand-score">{c.score}</span>
               </button>
             {/each}
           </div>
 
-          {#if cls.bands.length}
-            <span class="col-label" style="margin-top:10px; display:block;">Why {tlabel(cls.base)}</span>
-            {#each cls.bands as b}
-              <div class="field"><span class="f-label">{b.feature}: {b.value}</span><span class="f-value">{b.band} <span class="fit">{Math.round(b.fit * 100)}%</span></span></div>
+          <div class="insp-actions">
+            {#if inspectClass === currentClass}
+              <span class="note">Inspecting the current type.</span>
+            {:else}
+              <button class="pin-btn" on:click={() => pickClass(inspectClass)}>Pin “{tlabel(inspectClass)}” as the type</button>
+            {/if}
+          </div>
+
+          {#if inspectBands.length}
+            <span class="col-label" style="margin-top:10px; display:block;">Why {tlabel(inspectClass)} — band fits (score {cls.candidates.find((c) => c.class === inspectClass)?.score ?? '—'})</span>
+            {#each inspectBands as b}
+              <div class="band">
+                <span class="b-feat">{b.feature}: {b.value}</span>
+                <span class="b-band">{b.band}</span>
+                <span class="b-bar"><span class="b-fill" style="width:{Math.round(b.fit * 100)}%; background:{fitColor(b.fit)}"></span></span>
+                <span class="b-fit" style="color:{fitColor(b.fit)}">{Math.round(b.fit * 100)}%</span>
+              </div>
             {/each}
           {/if}
           {#if cls.modifiers.length}<p class="note">Modifiers: {cls.modifiers.map((m) => `${tlabel(m.class)} (${m.score})`).join(', ')}</p>{/if}
@@ -163,9 +185,18 @@
   .cand:hover { border-color: var(--accent, #ff5a1f); color: var(--text, #fff); }
   .cand.win { border-color: #7fd1a8; }
   .cand.cur { background: var(--accent, #ff5a1f); color: #fff; border-color: var(--accent, #ff5a1f); }
+  .cand.insp { box-shadow: 0 0 0 2px var(--accent, #ff5a1f); }
   .cand-score { font-variant-numeric: tabular-nums; opacity: 0.7; font-size: 0.76rem; }
   .fit { color: var(--text-faint, #8a8a8a); font-size: 0.76rem; }
   .linkish { background: none; border: none; color: var(--accent, #ff5a1f); cursor: pointer; padding: 0; font: inherit; text-decoration: underline; }
+  .insp-actions { margin-top: 8px; }
+  .pin-btn { background: var(--accent, #ff5a1f); border: none; color: #fff; border-radius: 5px; padding: 4px 10px; cursor: pointer; font-size: 0.82rem; }
+  .band { display: grid; grid-template-columns: 1fr auto 80px 38px; gap: 8px; align-items: center; padding: 2px 0; font-size: 0.82rem; }
+  .b-feat { color: var(--text-muted, #cfcfcf); }
+  .b-band { color: var(--text-faint, #9a9a9a); font-variant-numeric: tabular-nums; }
+  .b-bar { height: 6px; background: var(--bg-control, #1a1d24); border-radius: 3px; overflow: hidden; }
+  .b-fill { display: block; height: 100%; }
+  .b-fit { text-align: right; font-variant-numeric: tabular-nums; font-size: 0.78rem; }
   .tags { display: flex; flex-direction: column; gap: 8px; }
   .prov { display: grid; grid-template-columns: 150px 130px 1fr; gap: 8px; align-items: baseline; font-size: 0.82rem; }
   .chip { color: #fff; border-radius: 4px; padding: 2px 8px; font-size: 0.78rem; justify-self: start; }

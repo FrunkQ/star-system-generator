@@ -63,7 +63,9 @@ export interface ClassExplanation {
   baseScore: number;
   bands: ClassBandMatch[];
   runnerUp?: { class: string; score: number };
-  candidates: { class: string; score: number }[]; // ranked base types that scored > 0 (winner first)
+  // ranked base types that scored > 0 (winner first); each carries its OWN band fits so the Newton
+  // panel can show "why" for whichever candidate you click, not just the winner.
+  candidates: { class: string; score: number; bands: ClassBandMatch[] }[];
   borderline: boolean;                              // runner-up scored within ~10% of the winner — a coin-toss the GM may want to settle
   modifiers: { class: string; score: number }[];
   fallback: boolean;
@@ -92,15 +94,18 @@ export function explainClassification(
     };
   }
 
-  const candidates = bases.slice(0, 5).map((s) => ({ class: s.fp.class, score: +s.score.toFixed(2) }));
+  const bandsForFp = (fp: Fingerprint): ClassBandMatch[] =>
+    Object.entries(fp.match).map(([feature, band]) => ({
+      feature,
+      value: features[feature] ?? '—',
+      band: bandToStr(band),
+      fit: +bandFit(features[feature], band).toFixed(2)
+    }));
+
+  const candidates = bases.slice(0, 5).map((s) => ({ class: s.fp.class, score: +s.score.toFixed(2), bands: bandsForFp(s.fp) }));
   const borderline = bases.length > 1 && bases[1].score >= base.score * BORDERLINE_RATIO;
 
-  const bands: ClassBandMatch[] = Object.entries(base.fp.match).map(([feature, band]) => ({
-    feature,
-    value: features[feature] ?? '—',
-    band: bandToStr(band),
-    fit: +bandFit(features[feature], band).toFixed(2)
-  }));
+  const bands = bandsForFp(base.fp);
   const modifiers = scored
     .filter((s) => s.fp.kind === 'modifier' && s.score >= 0.6)
     .map((s) => ({ class: s.fp.class, score: +s.score.toFixed(2) }));

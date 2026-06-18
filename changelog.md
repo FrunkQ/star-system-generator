@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.190-beta - 18th Jun 2026
+
+* The Newton panel's classification now lets you click any candidate type to see *its* reasoning, not just the winner's. Each band shows the body's value against the type's range with a colour-coded fit bar (green = solid, amber = marginal, red = barely inside), so you can see exactly how the winning score was earned — and why a runner-up fell short. Clicking a candidate inspects it; an explicit "Pin … as the type" button commits your choice.
+
 ## v2.0.189-beta - 18th Jun 2026
 
 * Interior makeup presets are now labelled "Composition presets" and filtered to the body's mass, so you're only offered mixes that make sense — no "Gas giant" on a moonlet or "Iron-rich" at Jupiter mass. Each preset also has a hover hint, and "Iron" is clearer as "Iron-rich".
