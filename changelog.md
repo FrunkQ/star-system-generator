@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.200-beta - 18th Jun 2026
+
+* The "Under autopilot" button on a ship is now clickable and opens the disengage dialog — so you can hand control back from the ship's panel, not just the Autopilot tab.
+* Engage is disabled until the route has at least one stop; tapping it empty highlights the "+ add stop" button and says so, rather than engaging an empty plan. Dropped the now-redundant "build the route below" caption.
+* Autopilot is represented everywhere by a gently pulsing ship icon (the little "Asteroids" ship) instead of a cog — on the Engage button, the locked button, and the ship's-log badge.
+
 ## v2.0.199-beta - 18th Jun 2026
 
 * Turning autopilot off now asks how to stop, instead of just cutting it. A dialog offers, on the usual risk scale: End after this leg (green — finish the current hop and dock), Abandon · drift (orange — cut now, coast on momentum), Abandon · stop (red — cut now, kill velocity), and Cancel (keep flying). Drift/stop only appear when the ship's actually under way. Colours are accents on a dark dialog — clear, not alarming.

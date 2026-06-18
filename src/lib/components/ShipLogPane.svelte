@@ -123,7 +123,7 @@
       <div class="ship-log-entry">
         <div class="ship-log-title">
           <strong>Journey {i + 1}</strong>
-          {#if log.autopilot}<span class="ship-log-auto" title="Planned and flown by autopilot">⚙ autopilot</span>{/if}
+          {#if log.autopilot}<span class="ship-log-auto" title="Planned and flown by autopilot"><span class="ap-ship" aria-hidden="true"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z" /></svg></span> autopilot</span>{/if}
           <span class="ship-log-status" class:adrift={adriftNow}>{dynStatus}</span>
         </div>
         <div class="ship-log-meta">Created: {formatLogTime(createdMs)} {@render seekClock(createdMs)}</div>
@@ -211,14 +211,18 @@
   }
   .ship-log-auto {
       align-self: center;
+      display: inline-flex; align-items: center; gap: 4px;
       color: var(--accent, #ff5a1f);
       border: 1px solid var(--accent, #ff5a1f);
       border-radius: 999px;
-      padding: 0 7px;
+      padding: 1px 8px;
       font-size: 0.72em;
       letter-spacing: 0.03em;
       white-space: nowrap;
   }
+  .ship-log-auto .ap-ship { display: inline-flex; animation: ap-ship-pulse 1.9s ease-in-out infinite; }
+  @keyframes ap-ship-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+  @media (prefers-reduced-motion: reduce) { .ship-log-auto .ap-ship { animation: none; } }
   .ship-log-meta {
       color: var(--text-muted);
       font-size: 0.85em;

@@ -74,6 +74,7 @@
             on:openJourneyLog
             on:cancelactive
             on:resumejourney
+            on:disengage
             on:takeoff
             on:land
         />

@@ -360,8 +360,11 @@
             <!-- Plan Transit (Only available if NOT on surface) -->
             {#if construct.placement !== 'Surface'}
                 {#if construct.autopilot?.enabled}
-                    <!-- Autopilot owns the ship — manual transit is locked. Turn it off (Autopilot tab) to fly by hand. -->
-                    <button class="action-btn autopilot-locked" disabled title="This ship is under autopilot — turn autopilot off (Autopilot tab) to fly it manually">⚙ Under autopilot</button>
+                    <!-- Autopilot owns the ship — click to disengage (opens the stop-how dialog). -->
+                    <button class="action-btn autopilot-locked" title="Under autopilot — click to disengage and take manual control" on:click={() => dispatch('disengage')}>
+                        <span class="ap-ship" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z" /></svg></span>
+                        Under autopilot
+                    </button>
                 {:else}
                 <!-- Contextual transit controls keyed to the LIVE state: only a ship actually under way
                      can be aborted (drift = coast on under gravity, stop = halt then fall). Once it's
@@ -437,15 +440,21 @@
   .action-btn:hover { opacity: 0.9; }
   .action-btn:disabled { background-color: var(--bg-control); color: var(--text-faint); cursor: not-allowed; opacity: 1; }
   .action-btn:disabled:hover { opacity: 1; }
-  /* Under autopilot = hazard stripes, so it's unmistakable at a glance that the ship is flying itself. */
-  .action-btn.autopilot-locked:disabled {
+  /* Under autopilot = hazard stripes, so it's unmistakable at a glance that the ship is flying itself.
+     Clickable now (opens the disengage dialog). */
+  .action-btn.autopilot-locked {
       color: #fff;
       font-weight: 700;
       text-shadow: 0 1px 2px rgba(0,0,0,0.9);
       background-color: #1a1a1a;
       background-image: repeating-linear-gradient(45deg, #e8b600 0 14px, #1a1a1a 14px 28px);
       border-color: #e8b600;
+      display: inline-flex; align-items: center; gap: 7px; justify-content: center;
+      cursor: pointer;
   }
+  .action-btn.autopilot-locked .ap-ship { display: inline-flex; animation: ap-ship-pulse 1.9s ease-in-out infinite; }
+  @keyframes ap-ship-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+  @media (prefers-reduced-motion: reduce) { .action-btn.autopilot-locked .ap-ship { animation: none; } }
   /* Abort controls: green = physical (coast on), orange = stop dead (then falls). */
   .action-btn.cancel-drift { background-color: #2f9e57; }
   .action-btn.cancel-stop { background-color: #d98a2b; }

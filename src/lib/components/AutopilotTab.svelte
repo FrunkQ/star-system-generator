@@ -50,6 +50,9 @@
     }
   }
   $: ap = construct.autopilot ?? DEFAULT_AP;
+  // Engage needs at least one stop. The toggle stays clickable when empty so a tap can flag the need.
+  $: canEngage = (ap.legs?.length ?? 0) > 0;
+  let needStopsHint = false;
 
   // Four verbs = two behaviours × two targeting modes. Dock/unload fall out of deliverTo; scan folded into patrol.
   const ACTIONS: { a: AutopilotAction; label: string; desc: string }[] = [
@@ -106,7 +109,7 @@
     if (a === 'escort') return { action: a, escortKm: 100 }; // shadow a construct at a standoff distance
     return { action: a, resourceKeys: [], loiterDays: 30, noRevisit: true }; // explore: resource-driven loiter, non-repeating
   }
-  function addLeg() { construct.autopilot!.legs = [...(ap.legs ?? []), blankLeg(suggestedAction())]; update(); }
+  function addLeg() { needStopsHint = false; construct.autopilot!.legs = [...(ap.legs ?? []), blankLeg(suggestedAction())]; update(); }
   function removeLeg(i: number) { construct.autopilot!.legs = ap.legs.filter((_, j) => j !== i); update(); }
   // Switching action resets the action-specific fields so stale data doesn't leak across verbs.
   function setAction(leg: AutopilotLeg, a: AutopilotAction) {
@@ -155,21 +158,25 @@
   <div class="ap-head">
     <div>
       <span class="ap-title">Autopilot</span>
-      <span class="ap-sub">build the route below, then engage</span>
     </div>
   </div>
 
-  <button type="button" class="engage-toggle" class:on={ap.enabled} aria-pressed={ap.enabled}
-          on:click={() => { if (ap.enabled) { dispatch('disengage'); } else { construct.autopilot!.enabled = true; update(); } }}>
+  <button type="button" class="engage-toggle" class:on={ap.enabled} class:disabled={!ap.enabled && !canEngage} aria-pressed={ap.enabled}
+          on:click={() => {
+            if (ap.enabled) { dispatch('disengage'); }
+            else if (canEngage) { construct.autopilot!.enabled = true; update(); }
+            else { needStopsHint = true; }
+          }}>
     <span class="eng-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z" /></svg>
     </span>
     <span class="eng-text">
       <strong>{ap.enabled ? 'Autopilot engaged' : 'Engage autopilot'}</strong>
-      <small>{ap.enabled ? 'flying its route — click to take the helm' : 'click to hand it the helm'}</small>
+      <small>{ap.enabled ? 'flying its route — click to take the helm' : canEngage ? 'click to hand it the helm' : 'add a stop below to enable'}</small>
     </span>
     <span class="eng-pill">{ap.enabled ? 'ON' : 'OFF'}</span>
   </button>
+  {#if needStopsHint && !canEngage}<p class="engage-hint">Add at least one stop before engaging — use the “+ add stop” button below.</p>{/if}
 
   <!-- A. ROUTE -->
   <section>
@@ -303,7 +310,7 @@
         {/if}
       </div>
     {/each}
-    <button class="add" on:click={addLeg}>+ add stop</button>
+    <button class="add" class:hint={needStopsHint && !canEngage} on:click={addLeg}>+ add stop</button>
   </section>
 
   <!-- B. BEHAVIOUR -->
@@ -391,7 +398,11 @@
   }
   .engage-toggle.on .eng-pill { background: var(--accent); color: #fff; border-color: var(--accent); }
   @keyframes eng-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-  @media (prefers-reduced-motion: reduce) { .engage-toggle.on .eng-icon { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .engage-toggle.on .eng-icon, .add.hint { animation: none; } }
+  .engage-toggle.disabled { opacity: 0.55; }
+  .engage-toggle.disabled:hover { border-color: var(--border); }
+  .engage-hint { margin: 7px 2px 0; font-size: 0.78em; color: var(--accent); }
+  .add.hint { border-color: var(--accent); color: var(--accent); animation: eng-pulse 1.1s ease-in-out infinite; }
   section { border-top: 1px solid var(--border-soft); padding-top: 10px; }
   h6 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
   .note { text-transform: none; letter-spacing: 0; color: var(--text-faint); font-weight: 400; }
