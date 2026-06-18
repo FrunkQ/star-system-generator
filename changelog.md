@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.183-beta - 18th Jun 2026
+
+* Removed the leftover read-only "Class" line (e.g. "Expanse/Ship/Transport") from the ship spec block — the editor box for it went a couple of versions ago, and a ship's class is described by its tags now.
+
 ## v2.0.182-beta - 18th Jun 2026
 
 * Fixed the construct/body detail panel always showing a stray horizontal scrollbar and feeling a touch too narrow. The panel scrolled vertically, which quietly enabled horizontal scrolling too, so anything a few pixels wide (the scrollbar itself, a full-width input) tripped it. Horizontal overflow is now clipped, the same fix the left rail already had.

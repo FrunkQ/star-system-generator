@@ -188,10 +188,6 @@
 {#if specs}
   <div class="derived-specs">
     <div class="specs-grid">
-      <div class="spec-item fixed" title="The construct's designated class">
-        <span class="label">Class</span>
-        <span class="value">{construct.class || 'N/A'}</span>
-      </div>
       <div class="spec-item fixed" title="Current crew / Maximum crew">
         <span class="label">Crew</span>
         <span class="value">{construct.crew?.current || 0} <span class="detail">(Max: {construct.crew?.max || 0})</span></span>
