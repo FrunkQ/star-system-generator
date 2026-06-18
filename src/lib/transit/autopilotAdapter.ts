@@ -6,10 +6,87 @@ import type { ScheduledJourneyLog, TransitMode } from './types';
 import { calculateTransitPlan } from './calculator';
 import { calculateFullConstructSpecs } from '$lib/construct-logic';
 import { resolveConstructCurrentHostId } from './scheduler';
-import { planToStops, walkStops } from './autopilotPlanner';
+import { legToStops, walkStops, chooseSource, type AutopilotStop } from './autopilotPlanner';
 
 const DAY_MS = 86_400_000;
 const G0 = 9.80665;
+
+const aAU = (sys: System, id: string) => (sys.nodes.find((n) => n.id === id) as any)?.orbit?.elements?.a_AU ?? 0;
+const ELIGIBLE_ROLES = new Set(['planet', 'moon', 'belt', 'ring']);
+
+// Candidate bodies that can satisfy a resource-targeted leg — NATURAL BODIES ONLY (mine-bodies-only,
+// spec §12.16; never a ship). travelCost is a cheap orbital-distance proxy from the ship's current host;
+// abundance from the tag value; refuels = the body also carries a fuel-source the ship can use.
+export function gatherResourceCandidates(
+  sys: System,
+  resourceKeys: string[],
+  fromHostId: string,
+  refuelKeys: Set<string>
+) {
+  const want = new Set(resourceKeys);
+  const anyResource = want.size === 0; // explore "any" → any body carrying a resource
+  const fromA = aAU(sys, fromHostId);
+  const out: { id: string; travelCost: number; abundance: number; refuels: boolean }[] = [];
+  for (const n of sys.nodes as any[]) {
+    if (n.kind !== 'body' || !ELIGIBLE_ROLES.has(n.roleHint)) continue;
+    if (n.id === fromHostId) continue;
+    const tags: any[] = n.tags ?? [];
+    const matched = tags.filter((t) => (anyResource ? String(t.key).startsWith('resource/') : want.has(t.key)));
+    if (!matched.length) continue;
+    const abundance = Math.min(1, Math.max(...matched.map((t) => Number(t.value) || 0.5)));
+    const refuels = tags.some((t) => refuelKeys.has(t.key));
+    out.push({ id: n.id, travelCost: Math.abs(aAU(sys, n.id) - fromA) + 0.001, abundance, refuels });
+  }
+  return out;
+}
+
+// Resolve a mine/explore leg from the ship's current host into concrete stops (the chosen source + any
+// deliver-to). Returns [] when nothing in the system carries the resource (the leg is skipped).
+export function resolveResourceStops(
+  leg: any,
+  fromHostId: string,
+  sys: System,
+  isFuelCompatible: (k: string) => boolean,
+  refuelKeys: Set<string>,
+  needsFuel: boolean
+): AutopilotStop[] {
+  const cands = gatherResourceCandidates(sys, leg.resourceKeys ?? [], fromHostId, refuelKeys);
+  const best = chooseSource(cands, { needsFuel });
+  if (!best) return [];
+  if (leg.action === 'explore') {
+    return [{ targetId: best.id, dwellDays: leg.loiterDays ?? 30, refuelHere: best.refuels, verb: 'explore', resourceKeys: leg.resourceKeys }];
+  }
+  // mine: dwell from fill ÷ rate (else a default); self-fuel if the body refuels or the ore is fuel-grade.
+  const dwell = leg.fillAmount_t && leg.rate_tpd ? leg.fillAmount_t / leg.rate_tpd : 5;
+  const stops: AutopilotStop[] = [{
+    targetId: best.id, dwellDays: dwell,
+    refuelHere: best.refuels || (leg.resourceKeys ?? []).some(isFuelCompatible),
+    verb: 'mine', resourceKeys: leg.resourceKeys
+  }];
+  if (leg.deliverTo?.placeId) stops.push({ targetId: leg.deliverTo.placeId, dwellDays: 1, refuelHere: false, verb: 'unload', resourceKeys: leg.resourceKeys });
+  return stops;
+}
+
+// Build the full stop list, resolving resource legs against the system as we chain (each "nearest source"
+// is relative to where the ship is when it gets there).
+export function buildAdapterStops(
+  legs: any[],
+  startHostId: string,
+  sys: System,
+  isFuelCompatible: (k: string) => boolean,
+  refuelKeys: Set<string>,
+  needsFuel: boolean
+): AutopilotStop[] {
+  let fromHost = startHostId;
+  const stops: AutopilotStop[] = [];
+  for (const leg of legs) {
+    const s = (leg.action === 'mine' || leg.action === 'explore')
+      ? resolveResourceStops(leg, fromHost, sys, isFuelCompatible, refuelKeys, needsFuel)
+      : legToStops(leg, isFuelCompatible);
+    if (s.length) { stops.push(...s); fromHost = s[s.length - 1].targetId; }
+  }
+  return stops;
+}
 
 export interface AutopilotGenResult {
   logs: ScheduledJourneyLog[];
@@ -51,8 +128,9 @@ export function generateAutopilotChain(
   const startHostId = resolveConstructCurrentHostId(construct, fromTimeMs) || construct.parentId || '';
   if (!startHostId) return { logs: [], attention: 'stuck', stuckReason: 'no host to depart from', done: false };
 
-  const stops = planToStops(ap.legs, isFuelCompatible);
-  if (!stops.length) return { logs: [], attention: 'intervention', done: false }; // only resource/escort legs (slice 2+)
+  const needsFuel = !ap.ignoreFuel && budget < capacity * 0.5; // low on fuel → prefer self-fuelling sources
+  const stops = buildAdapterStops(ap.legs, startHostId, system, isFuelCompatible, refuelKeys, needsFuel);
+  if (!stops.length) return { logs: [], attention: 'intervention', done: false }; // no resolvable stops (e.g. resource not present)
 
   const repeat = ap.repeat !== false;
   const driveFast = (ap.drive ?? 0.5) >= 0.5;
