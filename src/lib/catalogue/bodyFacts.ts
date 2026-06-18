@@ -50,7 +50,9 @@ export function bodyFacts(b: CelestialBody): Fact[] {
   const add = (label: string, value: string) => { if (value) out.push({ label, value }); };
   const K2C = (k?: number) => (typeof k === 'number' ? Math.round(k - 273.15) : null);
 
-  add('Type', [b.roleHint, b.class].filter(Boolean).join(' · '));
+  // Bodies keep their scientific classification (planet/ocean, spectral type); constructs don't carry the
+  // retired free-text hull class — their CoI tags below describe them instead.
+  add('Type', [b.roleHint, b.kind === 'construct' ? '' : b.class].filter(Boolean).join(' · '));
 
   // --- Orbit & rotation ---
   add('Orbit distance', orbitDist(b));

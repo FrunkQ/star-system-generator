@@ -1532,13 +1532,18 @@
             <div class="construct-block data-box">
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px;">
                     <strong>{construct.name.toUpperCase()}</strong>
-                    <span>{construct.class}</span>
                 </div>
-                
+
                 <div style="margin-bottom: 10px;">
                     <span style="background: #ddd; padding: 2px 5px; font-size: 0.9em;">LAST REPORTED POSITION:</span>
                     <span style="font-family: monospace; font-weight: bold;">{getLocationDescription(construct)}</span>
                 </div>
+
+                {#if construct.tags && construct.tags.length > 0}
+                    <div style="margin-bottom: 10px; font-size: 0.9em; color: #555;">
+                        <strong>Tags:</strong> {getTagsString(construct)}
+                    </div>
+                {/if}
 
                 <!-- Description (full width) -->
                 {#if construct.description}

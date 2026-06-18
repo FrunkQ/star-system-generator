@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.184-beta - 18th Jun 2026
+
+* Scrubbed the retired construct "Class" from the printed report and the players' Field Guide, and made both show a ship's tags instead. The report's ship entries now list their tags (owner, purpose, hull class, resources…) the way body entries already do, and the Field Guide no longer prints the old "Expanse/Ship/Transport" line. Bodies keep their scientific classification (planet/ocean, spectral type) — that's not the retired field.
+
 ## v2.0.183-beta - 18th Jun 2026
 
 * Removed the leftover read-only "Class" line (e.g. "Expanse/Ship/Transport") from the ship spec block — the editor box for it went a couple of versions ago, and a ship's class is described by its tags now.
