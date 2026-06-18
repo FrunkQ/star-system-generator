@@ -14,6 +14,23 @@
 
   $: star = system?.nodes.find((nd) => nd.parentId === null) as CelestialBody | undefined;
   $: trace = buildPhysicsTrace(body, { ageGyr: (system as any)?.age_Gyr, star });
+
+  // Classification working + borderline override. body.classification is the engine's explanation
+  // (recorded even for pinned bodies, so we can show "physics would say X"). body.classes[0] is the
+  // ACTUAL type; autoClassify === false means the GM has pinned it.
+  $: cls = (body as any).classification as import('$lib/system/classification').ClassExplanation | undefined;
+  $: currentClass = body.classes?.[0];
+  $: pinned = (body as any).autoClassify === false;
+  const tlabel = (k?: string) => (k || '').split('/').pop()?.replace(/[-_]/g, ' ') || (k ?? '');
+  function pickClass(c: string) {
+    body.classes = [c];
+    (body as any).autoClassify = false; // pin — the processor won't override an authored class
+    dispatch('update', body);
+  }
+  function useAuto() {
+    (body as any).autoClassify = true;
+    dispatch('update', body);
+  }
 </script>
 
 <div class="overlay" on:click|self={close} role="presentation">
@@ -36,6 +53,40 @@
     </header>
 
     <div class="content">
+      {#if cls && !cls.fallback}
+        <section class="layer">
+          <div class="layer-head">
+            <h3>Classification {#if cls.borderline}<span class="borderline" title="Two types scored within 10% of each other — a borderline call. Pick the one you want below.">! borderline</span>{/if}</h3>
+            <a class="layer-link" href="/physics" target="_blank" rel="noopener">physics ›</a>
+          </div>
+          <div class="cls-now">
+            <span>Type: <strong>{tlabel(currentClass)}</strong></span>
+            {#if pinned}<span class="pin-tag" title="You pinned this type — the engine won't override it.">pinned</span>{/if}
+          </div>
+          {#if pinned && cls.base !== currentClass}
+            <p class="note">Physics would call this <strong>{tlabel(cls.base)}</strong> ({cls.baseScore}). <button class="linkish" on:click={useAuto}>hand it back to the engine</button></p>
+          {/if}
+
+          <span class="col-label" style="margin-top:8px; display:block;">Candidates — click to pin</span>
+          <div class="cands">
+            {#each cls.candidates as c}
+              <button class="cand" class:win={c.class === cls.base} class:cur={c.class === currentClass} on:click={() => pickClass(c.class)} title={c.class === cls.base ? 'Engine pick — click to pin' : 'Pin this type instead'}>
+                <span class="cand-name">{tlabel(c.class)}</span>
+                <span class="cand-score">{c.score}</span>
+              </button>
+            {/each}
+          </div>
+
+          {#if cls.bands.length}
+            <span class="col-label" style="margin-top:10px; display:block;">Why {tlabel(cls.base)}</span>
+            {#each cls.bands as b}
+              <div class="field"><span class="f-label">{b.feature}: {b.value}</span><span class="f-value">{b.band} <span class="fit">{Math.round(b.fit * 100)}%</span></span></div>
+            {/each}
+          {/if}
+          {#if cls.modifiers.length}<p class="note">Modifiers: {cls.modifiers.map((m) => `${tlabel(m.class)} (${m.score})`).join(', ')}</p>{/if}
+        </section>
+      {/if}
+
       {#each trace.layers as layer}
         <section class="layer">
           <div class="layer-head">
@@ -104,6 +155,17 @@
   .f-value { color: var(--text, #e8e8e8); font-variant-numeric: tabular-nums; text-align: right; }
   .f-value.out { color: #7fd1a8; }
   .note { margin: 8px 0 0; font-size: 0.78rem; color: var(--text-faint, #8a8a8a); line-height: 1.4; }
+  .borderline { font-size: 0.72rem; font-weight: 700; color: #fff; background: #d8922f; border-radius: 4px; padding: 1px 7px; margin-left: 8px; }
+  .cls-now { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+  .pin-tag { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: #d8922f; border: 1px solid #d8922f; border-radius: 3px; padding: 0 5px; }
+  .cands { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+  .cand { display: inline-flex; align-items: center; gap: 8px; background: var(--bg-control, #1a1d24); border: 1px solid var(--border, #2a2d36); border-radius: 6px; padding: 4px 10px; cursor: pointer; color: var(--text-muted, #cfcfcf); font-size: 0.82rem; }
+  .cand:hover { border-color: var(--accent, #ff5a1f); color: var(--text, #fff); }
+  .cand.win { border-color: #7fd1a8; }
+  .cand.cur { background: var(--accent, #ff5a1f); color: #fff; border-color: var(--accent, #ff5a1f); }
+  .cand-score { font-variant-numeric: tabular-nums; opacity: 0.7; font-size: 0.76rem; }
+  .fit { color: var(--text-faint, #8a8a8a); font-size: 0.76rem; }
+  .linkish { background: none; border: none; color: var(--accent, #ff5a1f); cursor: pointer; padding: 0; font: inherit; text-decoration: underline; }
   .tags { display: flex; flex-direction: column; gap: 8px; }
   .prov { display: grid; grid-template-columns: 150px 130px 1fr; gap: 8px; align-items: baseline; font-size: 0.82rem; }
   .chip { color: #fff; border-radius: 4px; padding: 2px 8px; font-size: 0.78rem; justify-self: start; }

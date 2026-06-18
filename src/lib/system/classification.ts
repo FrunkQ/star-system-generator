@@ -63,9 +63,14 @@ export interface ClassExplanation {
   baseScore: number;
   bands: ClassBandMatch[];
   runnerUp?: { class: string; score: number };
+  candidates: { class: string; score: number }[]; // ranked base types that scored > 0 (winner first)
+  borderline: boolean;                              // runner-up scored within ~10% of the winner — a coin-toss the GM may want to settle
   modifiers: { class: string; score: number }[];
   fallback: boolean;
 }
+
+// How close the runner-up must be (fraction of the winner's score) to call a classification borderline.
+export const BORDERLINE_RATIO = 0.9;
 
 // Explain WHY a body classified as it did: the winning base type, the defining bands it matched
 // (with the body's value + fit), the runner-up it beat, and any stacked modifiers.
@@ -83,9 +88,12 @@ export function explainClassification(
   if (!base) {
     return {
       base: (features['mass_Me'] as number) > 10 ? 'planet/gas-giant' : 'planet/terrestrial',
-      baseScore: 0, bands: [], modifiers: [], fallback: true
+      baseScore: 0, bands: [], candidates: [], borderline: false, modifiers: [], fallback: true
     };
   }
+
+  const candidates = bases.slice(0, 5).map((s) => ({ class: s.fp.class, score: +s.score.toFixed(2) }));
+  const borderline = bases.length > 1 && bases[1].score >= base.score * BORDERLINE_RATIO;
 
   const bands: ClassBandMatch[] = Object.entries(base.fp.match).map(([feature, band]) => ({
     feature,
@@ -102,6 +110,8 @@ export function explainClassification(
     baseScore: +base.score.toFixed(2),
     bands,
     runnerUp: bases[1] ? { class: bases[1].fp.class, score: +bases[1].score.toFixed(2) } : undefined,
+    candidates,
+    borderline,
     modifiers,
     fallback: false
   };

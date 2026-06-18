@@ -2182,7 +2182,7 @@
     {/if}
 
     {#if showPhysicsModal && focusedBody && focusedBody.kind === 'body'}
-        <PhysicsTraceModal body={focusedBody} system={$systemStore} on:close={() => showPhysicsModal = false} />
+        <PhysicsTraceModal body={focusedBody} system={$systemStore} on:update={handleBodyUpdate} on:close={() => showPhysicsModal = false} />
     {/if}
 
     {#if showAddTypeModal && pendingAdd}

@@ -57,9 +57,13 @@
         on:change={(e) => dispatch('rename', { nodeId: focusedBody.id, newName: (e.currentTarget as HTMLInputElement).value })}
         class="name-input" title="Click to rename" />
     {#if !isPlanning && !isShipLogOpen && focusedBody.kind === 'body' && focusedBody.roleHint !== 'star'}
-        <button class="edit-btn apple-btn" on:click={() => dispatch('showphysics')} title="Show the working (physics & tag provenance)" aria-label="Show the physics working">
+        <button class="edit-btn apple-btn" class:borderline={(focusedBody as any).classification?.borderline}
+                on:click={() => dispatch('showphysics')}
+                title={(focusedBody as any).classification?.borderline ? 'Borderline classification — click to see candidates and choose' : 'Show the working (physics & tag provenance)'}
+                aria-label="Show the physics working">
             <!-- Newton's apple -->
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7c-1-2-3-2-4-1-2 1.5-2 5 0 8 1.2 1.8 2.6 3 4 3s2.8-1.2 4-3c2-3 2-6.5 0-8-1-1-3-1-4 1Z"/><path d="M12 7c0-2 .6-3.5 2-4.5"/></svg>
+            {#if (focusedBody as any).classification?.borderline}<span class="bl-dot" aria-hidden="true">!</span>{/if}
         </button>
     {/if}
     {#if !isPlanning && !isShipLogOpen && (focusedBody.kind !== 'barycenter' || focusedBody.parentId)}
@@ -124,7 +128,10 @@
       justify-content: center;
   }
   /* Green apple = "the working is safe to peek at" (and a friendly nod to Newton's orchard). */
-  .apple-btn { color: var(--ok, #46c46a); }
+  .apple-btn { color: var(--ok, #46c46a); position: relative; }
+  /* Borderline classification → orange apple + a "!" dot, nudging the GM to open it and choose. */
+  .apple-btn.borderline { color: #d8922f; }
+  .bl-dot { position: absolute; top: -3px; right: -3px; min-width: 12px; height: 12px; padding: 0 2px; border-radius: 6px; background: #d8922f; color: #fff; font-size: 9px; font-weight: 700; line-height: 12px; text-align: center; }
   .edit-btn:hover {
       background-color: var(--bg-control);
       color: var(--accent);
