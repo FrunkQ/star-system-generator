@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.186-beta - 18th Jun 2026
+
+* New System wizard: after clicking the HR diagram you can now hand-type each star's Temperature, Luminosity and Mass to dial in a specific star. Figures that don't make physical sense turn red, and a Fix button recomputes the rest (and the star type) to be consistent — trusting the temperature/luminosity you set, or solving a main-sequence star for the mass if that's all you changed. A genuinely impossible star is just labelled "Exotic" rather than blocked — if you want it, you can have it.
+
 ## v2.0.185-beta - 18th Jun 2026
 
 * The AI description writer now understands ships properly. Constructs were silently sending the LLM none of their details (a placeholder key mismatch) — now they pass real hull specs (dimensions, mass, crew, cargo, engines) plus all their tags (owner, purpose, hull class, drive, resources…), and no longer feed the retired free-text "class". Bodies already passed their tags; hull-class tags now flow through too. So generated ship descriptions can actually draw on what the ship is and does.

@@ -5,7 +5,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { RulePack, System } from '$lib/types';
   import HRDiagram from './HRDiagram.svelte';
-  import { ageStar, isEngulfedAt, getStarLifespanGyr, type StarSeed } from '$lib/physics/stellar-evolution';
+  import { ageStar, isEngulfedAt, getStarLifespanGyr, deriveStarFromHR, classifyStar, determineSpectralClass, type StarSeed } from '$lib/physics/stellar-evolution';
   import { generateSystemFromConfig, planStarHierarchy, type GenerationKnobs, type StarPlanNode } from '$lib/generation/generateFromConfig';
   import { fixUpImportedSystem } from '$lib/system/importFixup';
   import { systemProcessor } from '$lib/core/SystemProcessor';
@@ -48,6 +48,53 @@
   let hovered: StarSeed | null = null;  // live readout of the point under the cursor on the HR diagram
   // Order by mass (heaviest = primary) so the hierarchy reads primary → companions.
   $: ordered = [...selectedStars].sort((a, b) => b.massKg - a.massKg);
+
+  // --- Hand-editing a clicked star (type M/T/L for a specific star) + sanity-check + Fix ---
+  // Temperature & Luminosity are the canonical HR pair (mass/radius/class derive from them). The fields
+  // are never blocked — we only flag what's physically off and offer a one-click Fix.
+  let edited: Record<string, { t?: boolean; l?: boolean; m?: boolean }> = {};
+  $: statuses = new Map(selectedStars.map((s) => [s.id, starStatus(s)]));
+
+  function starStatus(s: StarSeed) {
+    const mSolar = s.massKg / SOL;
+    const derivedMSolar = deriveStarFromHR(s.temperatureK, s.luminositySolar).massKg / SOL;
+    const cat = classifyStar({ tempK: s.temperatureK, lumSolar: s.luminositySolar, massKg: s.massKg, ageGyr: 0 }).category;
+    const impossible = /invalid/i.test(cat);
+    const tBad = !(s.temperatureK >= 1000 && s.temperatureK <= 60000);
+    const lBad = !(s.luminositySolar >= 1e-6 && s.luminositySolar <= 1e7);
+    const mBad = derivedMSolar > 0 && Math.abs(mSolar - derivedMSolar) / derivedMSolar > 0.3;
+    return { tBad, lBad, mBad, impossible, anyBad: tBad || lBad || mBad || impossible };
+  }
+
+  function setStarField(s: StarSeed, field: 't' | 'l' | 'm', raw: string) {
+    const v = parseFloat(raw);
+    if (!Number.isFinite(v)) return;
+    if (field === 't') s.temperatureK = v;
+    else if (field === 'l') s.luminositySolar = v;
+    else s.massKg = v * SOL;
+    s.spectralClass = determineSpectralClass(s.temperatureK);
+    edited[s.id] = { ...(edited[s.id] ?? {}), [field]: true };
+    selectedStars = selectedStars; // re-derive ordering/hierarchy, redraw the HR diagram
+  }
+
+  // Recompute the NON-edited figures to be consistent. Trusts T & L (the HR position); if only mass was
+  // typed, solves a main-sequence star of that mass instead. If still impossible, label it Exotic — never block.
+  function fixStar(s: StarSeed) {
+    const e = edited[s.id] ?? {};
+    let T = s.temperatureK, L = s.luminositySolar;
+    if (e.m && !e.t && !e.l) {
+      const mSolar = Math.max(0.05, s.massKg / SOL);
+      L = Math.pow(mSolar, 3.5);                       // mass→luminosity (L ∝ M^3.5)
+      T = Math.pow(10, (Math.log10(L) + 24.5) / 6.5);  // invert the main-sequence L(T) used by classifyStar
+    }
+    const d = deriveStarFromHR(T, L);
+    s.temperatureK = d.temperatureK; s.luminositySolar = d.luminositySolar;
+    s.massKg = d.massKg; s.radiusKm = d.radiusKm;
+    s.spectralClass = d.spectralClass; s.category = d.category; s.luminosityClass = d.luminosityClass;
+    if (/invalid/i.test(d.category)) s.category = 'Exotic';
+    edited[s.id] = {};
+    selectedStars = selectedStars;
+  }
 
   // The planned hierarchy (the EXACT pairing the generator will build) → a flattened, depth-indented
   // preview + a compact diagram, so you feel the close/wide binary structure before generating.
@@ -185,10 +232,20 @@
                     <span class="pair-bracket">⌐</span><span class="pair-label">binary — {sepLabel(row.sepAU)}</span>
                   </div>
                 {:else}
+                  {@const st = statuses.get(row.seed.id)}
                   <div class="hier-row" style="padding-left:{row.depth * 16}px">
                     <span class="star-dot" style="background:{starColor(row.seed)}"></span>
                     <span class="role">{LETTERS[row.index] ?? '?'}</span>
-                    <span class="star-meta">{row.seed.spectralClass}-type{row.seed.category?.includes('Dwarf') && row.seed.spectralClass === 'M' ? ' (red dwarf)' : ''} · {fmt(row.seed.temperatureK, 0)} K · {fmt(row.seed.luminositySolar, row.seed.luminositySolar < 10 ? 3 : 0)} L☉ · {fmt(massSolar(row.seed), 2)} M☉</span>
+                    <span class="star-edit">
+                      <input class="se-num" class:bad={st?.tBad} type="number" min="0" title="Temperature (K)"
+                             value={Math.round(row.seed.temperatureK)} on:change={(e) => setStarField(row.seed, 't', e.currentTarget.value)} /><span class="se-u">K</span>
+                      <input class="se-num" class:bad={st?.lBad} type="number" min="0" step="any" title="Luminosity (Sol = 1)"
+                             value={+row.seed.luminositySolar.toPrecision(3)} on:change={(e) => setStarField(row.seed, 'l', e.currentTarget.value)} /><span class="se-u">L☉</span>
+                      <input class="se-num" class:bad={st?.mBad} type="number" min="0" step="any" title="Mass (Sol = 1)"
+                             value={+massSolar(row.seed).toPrecision(3)} on:change={(e) => setStarField(row.seed, 'm', e.currentTarget.value)} /><span class="se-u">M☉</span>
+                      <span class="se-cls" class:bad={st?.impossible}>{st?.impossible ? 'Exotic' : `${row.seed.spectralClass}-type`}</span>
+                      {#if st?.anyBad}<button class="se-fix" title="Recompute the other figures (and type) to be physically consistent" on:click={() => fixStar(row.seed)}>Fix</button>{/if}
+                    </span>
                     <button class="x" title="Remove" on:click={() => (selectedStars = selectedStars.filter((x) => x.id !== row.seed.id))}>×</button>
                   </div>
                 {/if}
@@ -308,7 +365,13 @@
   .hier-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
   .star-dot { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 6px rgba(255,255,255,0.25); }
   .role { font-size: 0.78em; font-weight: 700; color: var(--link); min-width: 84px; }
-  .star-meta { font-size: 0.82em; color: var(--text-muted, #cfcfcf); flex: 1; }
+  .star-edit { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; flex: 1; font-size: 0.82em; }
+  .se-num { width: 62px; background: var(--bg-control); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 2px 5px; font-size: 0.95em; }
+  .se-num.bad { border-color: #cc5555; background: rgba(204, 85, 85, 0.12); color: #ff9a9a; }
+  .se-u { color: var(--text-faint); margin-right: 4px; }
+  .se-cls { color: var(--text-muted); margin-left: 2px; }
+  .se-cls.bad { color: #cc5555; font-weight: 600; }
+  .se-fix { background: var(--accent, #ff5a1f); border: none; color: #fff; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 0.95em; }
   .hier-row .x { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1em; line-height: 0.5; }
   .hier-row .x:hover { color: var(--accent, #ff5a1f); }
 
