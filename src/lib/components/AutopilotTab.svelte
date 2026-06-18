@@ -27,6 +27,12 @@
     };
   })();
   const fmtG = (g: number) => (g < 1 ? g.toFixed(2) : g.toFixed(1));
+  // Max-accel slider bounds: top = the ship's best (empty-tank) accel, else a sane fallback. Hazard tint
+  // follows standardised human limits — orange above 2 g, red above 10 g.
+  $: accelCeiling = Math.max(1, Math.ceil(accelRange?.empty ?? 15));
+  $: accelStep = accelCeiling > 20 ? 1 : accelCeiling > 5 ? 0.5 : accelCeiling > 1 ? 0.1 : 0.05;
+  $: accelEff = ap.maxAccelG ?? accelCeiling; // effective cap (full thrust ⇒ the ceiling)
+  $: accelHazard = accelEff > 10 ? 'danger' : accelEff > 2 ? 'warn' : '';
 
   const dispatch = createEventDispatcher();
   const update = () => dispatch('update');
@@ -35,8 +41,14 @@
     enabled: false, traversal: 'in-order', legs: [], repeat: true, planning: 2, drive: 0.5,
     ignoreFuel: false, ignoreSupplies: false, avoidPlaceIds: []
   };
-  // Ensure the object exists so the bindings have something to write to.
-  $: if (construct && !construct.autopilot) construct.autopilot = { ...DEFAULT_AP, legs: [] };
+  // Ensure the object exists AND is well-shaped — older saves may carry a partial/legacy autopilot (e.g. the
+  // pre-`legs` `waypoints` model), so merge defaults and guarantee `legs` is an array before anything reads it.
+  $: if (construct) {
+    const a: any = construct.autopilot;
+    if (!a || !Array.isArray(a.legs)) {
+      construct.autopilot = { ...DEFAULT_AP, ...(a ?? {}), legs: Array.isArray(a?.legs) ? a.legs : [] };
+    }
+  }
   $: ap = construct.autopilot ?? DEFAULT_AP;
 
   // Four verbs = two behaviours × two targeting modes. Dock/unload fall out of deliverTo; scan folded into patrol.
@@ -94,7 +106,7 @@
     if (a === 'escort') return { action: a, escortKm: 100 }; // shadow a construct at a standoff distance
     return { action: a, resourceKeys: [], loiterDays: 30, noRevisit: true }; // explore: resource-driven loiter, non-repeating
   }
-  function addLeg() { construct.autopilot!.legs = [...ap.legs, blankLeg(suggestedAction())]; update(); }
+  function addLeg() { construct.autopilot!.legs = [...(ap.legs ?? []), blankLeg(suggestedAction())]; update(); }
   function removeLeg(i: number) { construct.autopilot!.legs = ap.legs.filter((_, j) => j !== i); update(); }
   // Switching action resets the action-specific fields so stale data doesn't leak across verbs.
   function setAction(leg: AutopilotLeg, a: AutopilotAction) {
@@ -304,10 +316,11 @@
       <div class="ends"><span>Thrifty · save fuel</span><span>Fast · burn hard</span></div>
     </div>
     <div class="sld">
-      <div class="sld-top"><span>Max accel</span><span class="v">{ap.maxAccelG ? `${ap.maxAccelG} g` : 'full thrust'}</span></div>
-      <div class="accel-in"><input class="num" type="number" min="0" step="0.1" placeholder="full" bind:value={ap.maxAccelG} on:change={update} /> <span class="unit">g</span></div>
+      <div class="sld-top"><span>Max accel</span><span class="v" class:warn={accelHazard === 'warn'} class:danger={accelHazard === 'danger'}>{ap.maxAccelG == null ? 'full thrust' : `${fmtG(ap.maxAccelG)} g`}</span></div>
+      <input type="range" min="0" max={accelCeiling} step={accelStep} value={ap.maxAccelG ?? accelCeiling} on:input={(e) => { const v = parseFloat(e.currentTarget.value); construct.autopilot!.maxAccelG = v >= accelCeiling ? undefined : v; update(); }} />
+      <div class="ends"><span>0 g</span><span>{fmtG(accelCeiling)} g · full</span></div>
       {#if accelRange}<p class="hint subtle">This drive: <strong>{fmtG(accelRange.full)} g</strong> fully fuelled → <strong>{fmtG(accelRange.empty)} g</strong> empty (heavy tanks = slower).</p>{/if}
-      <p class="hint subtle">Caps acceleration below the drive's limit — for comfort/economy, or to stop a slow escort being left behind.</p>
+      <p class="hint subtle">Above 2 g is uncomfortable, above 10 g hazardous to a human crew. Cap it for comfort, or so a slow escort keeps up.</p>
     </div>
     <div class="sld">
       <div class="sld-top"><span>Max time per leg</span><span class="v">{ap.maxJourneyDays ? `${ap.maxJourneyDays} days` : 'no cap'}</span></div>
@@ -377,7 +390,8 @@
   .ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-faint); margin-top: 2px; }
   .hint { margin: 6px 0 0; font-size: 11px; color: var(--accent); }
   .hint.subtle { color: var(--text-faint); }
-  .accel-in { display: flex; align-items: center; gap: 6px; }
+  .sld-top .v.warn { color: #d8922f; }
+  .sld-top .v.danger { color: #cc5555; }
   .chk { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
   .inline-chk { display: inline-flex; align-items: center; gap: 5px; color: var(--text-muted); cursor: pointer; font-size: 12px; }
   .res-pick { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 5px; }

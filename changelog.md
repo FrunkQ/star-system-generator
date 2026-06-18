@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.181-beta - 18th Jun 2026
+
+* Fixed "+ add stop" doing nothing (and throwing) on autopilot plans created before the recent rework — the tab now repairs an older/partial autopilot object on open instead of choking on its missing route list.
+* Max accel is now a slider up to the ship's best (empty-tank) acceleration, with the readout turning amber above 2 g and red above 10 g — the standard comfort/hazard limits for a human crew. Slide it to the top for full thrust.
+
 ## v2.0.180-beta - 18th Jun 2026
 
 * The ship stat block now shows the acceleration range — e.g. "2.10 g (2.1–15.0 g full→empty)" — right next to Max Vacuum Accel, so the fuelled-vs-empty difference is always visible, not just in the autopilot tab.
