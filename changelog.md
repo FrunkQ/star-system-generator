@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.182-beta - 18th Jun 2026
+
+* Fixed the construct/body detail panel always showing a stray horizontal scrollbar and feeling a touch too narrow. The panel scrolled vertically, which quietly enabled horizontal scrolling too, so anything a few pixels wide (the scrollbar itself, a full-width input) tripped it. Horizontal overflow is now clipped, the same fix the left rail already had.
+
 ## v2.0.181-beta - 18th Jun 2026
 
 * Fixed "+ add stop" doing nothing (and throwing) on autopilot plans created before the recent rework — the tab now repairs an older/partial autopilot object on open instead of choking on its missing route list.

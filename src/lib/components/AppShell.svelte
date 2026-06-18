@@ -196,6 +196,9 @@
     position: relative;
     border-left: 1px solid #1c1f27;
     overflow-y: auto;
+    /* As with .area.rail above: overflow-y:auto promotes overflow-x to auto too, so content a hair wider
+       than the panel (the scrollbar's width, a 100%-wide input) spawns a phantom horizontal scrollbar. */
+    overflow-x: hidden;
   }
   .area.detail.resizing {
     user-select: none;
