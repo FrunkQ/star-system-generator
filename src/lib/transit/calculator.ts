@@ -192,9 +192,19 @@ export function calculateTransitPlan(
       // display trajectory — drops the path-point count to a minimum. For the autopilot reorder search, which
       // needs only time + Δv and runs the solver many times. Same core math; far cheaper. (Default: full path.)
       costOnly?: boolean;
+      // Quote: the lightest tier, for the lookahead/reorder search that runs MANY times. Produces only the
+      // two analytic-cost families the search ranks on — "Efficient Now" (Lambert/Hohmann, depart-now) and
+      // "Direct Burn" (torch) — and skips the expensive Most-Efficient delayed-launch-window sweep (~100
+      // Lambert solves) + the gravity-assist candidate search + the display path. Both returned plans are the
+      // SAME real solver outputs the full call commits with, so a quoted leg cannot diverge from the flown one.
+      // (Implies costOnly.)
+      quote?: boolean;
   }
 ): TransitPlan[] {
   const plans: TransitPlan[] = [];
+  // Quote tier always skips the display trajectory (it only ever reports time/Δv).
+  if (params.quote) params.costOnly = true;
+  const quote = !!params.quote;
 
   // 1. Find Nodes
   const origin = sys.nodes.find(n => n.id === originId);
@@ -617,8 +627,10 @@ export function calculateTransitPlan(
       return solveVariantAt(startTime, startState, name, type, constraints);
   }
 
-  // 1. Most Efficient (Hohmann-like + delayed launch window search)
+  // 1. Most Efficient (Hohmann-like + delayed launch window search) — skipped under quote (its delayed-launch
+  // sweep is ~100 Lambert solves; the search ranks on "Efficient Now" + "Direct Burn" instead).
   let mostEfficientPlan: TransitPlan | null = null;
+  if (!quote) {
   const localTargetPeriodDays = frameParentId ? estimateOrbitalPeriodDays(effectiveTarget, frameMu) : null;
   // For local-frame transfers (planet->moon, moon->moon), search within about one target orbit.
   const maxSearchDelayDays = frameParentId
@@ -686,6 +698,7 @@ export function calculateTransitPlan(
       });
   }
   if (mostEfficientPlan) plans.push(mostEfficientPlan);
+  } // end !quote (Most Efficient delayed-window search)
 
   // 2. Balanced Alternative (Efficient Now)
   const balancedPlan = solveVariant('Efficient Now', 'Efficiency', {
@@ -717,9 +730,10 @@ export function calculateTransitPlan(
       plans.push(directPlan);
   }
 
-  // 4. Gravity Assist (Deep Space) - V2 Feature
+  // 4. Gravity Assist (Deep Space) - V2 Feature — skipped under quote (its candidate search is heavy and the
+  // assist plan is never the family the lookahead ranks on).
   const dist_start_au = distanceAU(getGlobalState(sys, effectiveOrigin!, startTime).r, getGlobalState(sys, effectiveTarget, startTime).r);
-  if (dist_start_au > 0.5 && !frameParentId) { // Only for interplanetary
+  if (!quote && dist_start_au > 0.5 && !frameParentId) { // Only for interplanetary
       const assistPlan = calculateAssistPlan(sys, effectiveOrigin, effectiveTarget, root, startTime, getGlobalState(sys, effectiveOrigin!, startTime), {
           maxG: finalParams.maxG,
           shipMass_kg: finalParams.shipMass_kg,

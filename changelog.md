@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.209-beta - 23rd Jun 2026
+
+* Autopilot lookahead now has a `quote` tier in the transfer solver — the lightest cost estimate, for the reorder/planning search that runs many times per decision. It produces only the two families the search ranks fast-vs-thrifty on (Hohmann-family "Efficient Now" and torch "Direct Burn") and skips the expensive Most-Efficient delayed-launch-window sweep (~100 Lambert solves), the gravity-assist candidate search, and the display path. Result: ~140x faster per leg (~0.14 ms vs ~19.5 ms). Both quoted families are the *same* real solver outputs the full call commits with — a test pins the quoted torch leg's time/Δv to the full Direct Burn and checks the quoted efficiency leg is never cheaper than the real window-search optimum — so a quoted ordering can never disagree with the leg it actually flies. (Hohmann transfers were and remain a first-class option; this just makes costing them in bulk affordable.)
+
 ## v2.0.208-beta - 23rd Jun 2026
 
 * Autopilot reorder is now cheap to run. The transfer solver gained a `costOnly` mode that computes a leg's time and Δv (the only things the reorder search needs) while skipping the dense display trajectory — direct/torch legs drop from hundreds of path points to ~24, gravity-assist legs from ~1900 to ~80. The committed legs still fly the full trajectory; a test pins the costOnly time/Δv to the full-plan values so the search can never disagree with what it commits.

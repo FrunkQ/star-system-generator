@@ -260,4 +260,39 @@ describe('Transit Calculator — costOnly (autopilot reorder cost path)', () => 
       expect(pts(c)).toBeLessThan(pts(f));
     }
   });
+
+  it('quote returns only the two cost families the search ranks on (Efficient Now + Direct Burn)', () => {
+    const system = loadSolSystem();
+    const earthId = nodeIdByName(system, 'Earth');
+    const saturnId = nodeIdByName(system, 'Saturn');
+    const startTime = Date.UTC(2030, 0, 1, 0, 0, 0);
+    const params: any = {
+      maxG: 3.0, accelRatio: 0.6, brakeRatio: 0.3, interceptSpeed_ms: 0, brakeAtArrival: true,
+      shipMass_kg: 2_000_000, shipIsp: 380, aerobrake: { allowed: false, limit_kms: 0 }
+    };
+    const full = calculateTransitPlan(system, earthId, saturnId, startTime, 'Economy', { ...params });
+    const quote = calculateTransitPlan(system, earthId, saturnId, startTime, 'Economy', { ...params, quote: true });
+
+    // Quote drops the costly extras: the delayed-window "Most Efficient" and the gravity-assist "Complex".
+    expect(quote.some((p) => p.name === 'Most Efficient')).toBe(false);
+    expect(quote.some((p) => p.planType === 'Complex')).toBe(false);
+    // It keeps a torch (Direct Burn) and an efficiency (Efficient Now) leg to rank fast-vs-thrifty on.
+    expect(quote.some((p) => p.name === 'Direct Burn')).toBe(true);
+    expect(quote.some((p) => p.planType === 'Efficiency')).toBe(true);
+
+    // FAITHFULNESS: the torch leg the search ranks on is the SAME plan the full solver commits — equal cost,
+    // so a quoted ordering can never disagree with the leg it actually flies.
+    const qDirect = quote.find((p) => p.name === 'Direct Burn')!;
+    const fDirect = full.find((p) => p.name === 'Direct Burn')!;
+    expect(qDirect).toBeTruthy();
+    expect(fDirect).toBeTruthy();
+    expect(qDirect.totalTime_days).toBeCloseTo(fDirect.totalTime_days, 2);
+    expect(qDirect.totalDeltaV_ms).toBeCloseTo(fDirect.totalDeltaV_ms, 0);
+
+    // The quoted efficiency leg is a conservative (>=) stand-in for the full Most-Efficient window search —
+    // never cheaper than the real optimum, so the search never under-promises what the commit can do.
+    const qEff = quote.find((p) => p.planType === 'Efficiency')!;
+    const fEff = full.find((p) => p.name === 'Most Efficient') || full.find((p) => p.planType === 'Efficiency')!;
+    expect(qEff.totalDeltaV_ms).toBeGreaterThanOrEqual(fEff.totalDeltaV_ms - 1);
+  });
 });
