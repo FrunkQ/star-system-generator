@@ -388,12 +388,12 @@
   const SOLAR_LUM_W = 3.828e26;
   const SB_SIGMA = 5.670374e-8;     // Stefan–Boltzmann
   const QUIESCENT_F = 1e-4;         // below this Eddington fraction → no meaningful disc (quiescent)
-  let accF = 0;                     // current accretion rate as a fraction of Eddington (0..1)
-  let accSliderPos = 0;             // 0..1 log-mapped slider position
+  let accF = $state(0);             // current accretion rate as a fraction of Eddington (0..1)
+  let accSliderPos = $state(0);     // 0..1 log-mapped slider position
   // log map: pos 0 → off; pos→1 → f = 1 (Eddington). f = 10^(6·pos − 6).
   const fFromPos = (pos: number) => (pos <= 0.001 ? 0 : Math.pow(10, 6 * pos - 6));
   const posFromF = (f: number) => (f <= 0 ? 0 : Math.max(0, Math.min(1, (Math.log10(f) + 6) / 6)));
-  $: eddLsun = 32000 * ((body.massKg || 0) / SOLAR_MASS_KG); // Eddington luminosity (L☉)
+  const eddLsun = $derived(32000 * ((body.massKg || 0) / SOLAR_MASS_KG)); // Eddington luminosity (L☉)
 
   function applyAccretion(f: number) {
       f = Math.max(0, Math.min(1, f)); // Eddington-limited (hard cap)

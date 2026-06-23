@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.206-beta - 19th Jun 2026
+
+* Build fix: the black-hole accretion code (v2.0.204) used legacy `$:`/`let` reactivity inside a runes-mode component, which the dev server tolerated but the production build rejected — so v2.0.204 onward weren't deploying. Converted to `$derived`/`$state`. No behaviour change; the slider works as before.
+
 ## v2.0.205-beta - 19th Jun 2026
 
 * Autopilot ships now keep flying as you scrub or play. A looping route extends itself ahead of the display clock (the view you're actually watching), so it never runs out of plan mid-circuit — and it only ever adds future legs, so rewinding is safe. A "run once" route shows "route complete · standing by" (green) once the display clock reaches its end, and the ship actually disengages for good once master/actual time catches up — using actual time purely as the backstop, the way you described it.
