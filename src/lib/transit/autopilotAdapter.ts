@@ -5,6 +5,7 @@ import type { CelestialBody, System, RulePack, ConstructLogEvent } from '$lib/ty
 import type { ScheduledJourneyLog, TransitMode } from './types';
 import { calculateTransitPlan } from './calculator';
 import { calculateFullConstructSpecs } from '$lib/construct-logic';
+import { constructTardiness } from '$lib/constructs/coi';
 import { resolveConstructCurrentHostId } from './scheduler';
 import { legToStops, walkStops, chooseSource, reorderWaypoints, type AutopilotStop, type StopEvent } from './autopilotPlanner';
 
@@ -56,12 +57,14 @@ export function resolveResourceStops(
   if (leg.action === 'explore') {
     return [{ targetId: best.id, dwellDays: leg.loiterDays ?? 30, refuelHere: best.refuels, verb: 'explore', resourceKeys: leg.resourceKeys }];
   }
-  // mine: dwell from fill ÷ rate (else a default); self-fuel if the body refuels or the ore is fuel-grade.
-  const dwell = leg.fillAmount_t && leg.rate_tpd ? leg.fillAmount_t / leg.rate_tpd : 5;
+  // mine: dwell is finalised later from tonnes / (rate × abundance) once the haul amount is known; carry the
+  // rate + the chosen source's richness so a richer deposit fills faster. Self-fuel if the body refuels or the
+  // ore is fuel-grade. (Provisional dwell here is overwritten in generateAutopilotChain.)
+  const dwell = leg.fillAmount_t && leg.rate_tpd ? leg.fillAmount_t / (leg.rate_tpd * Math.max(0.05, best.abundance)) : 5;
   const stops: AutopilotStop[] = [{
     targetId: best.id, dwellDays: dwell,
     refuelHere: best.refuels || (leg.resourceKeys ?? []).some(isFuelCompatible),
-    verb: 'mine', resourceKeys: leg.resourceKeys, tonnes: leg.fillAmount_t
+    verb: 'mine', resourceKeys: leg.resourceKeys, tonnes: leg.fillAmount_t, rate_tpd: leg.rate_tpd, abundance: best.abundance
   }];
   if (leg.deliverTo?.placeId) stops.push({ targetId: leg.deliverTo.placeId, dwellDays: 1, refuelHere: false, verb: 'unload', resourceKeys: leg.resourceKeys, tonnes: leg.fillAmount_t });
   return stops;
@@ -189,15 +192,22 @@ export function generateAutopilotChain(
   const needsFuel = !ap.ignoreFuel && budget < capacity * 0.5; // low on fuel → prefer self-fuelling sources
   const stops = buildAdapterStops(plannedLegs, startHostId, system, isFuelCompatible, refuelKeys, needsFuel);
   if (!stops.length) return { logs: [], flightLog: [], attention: 'intervention', done: false }; // no resolvable stops (e.g. resource not present)
-  // Default any haul that didn't pin an amount to the ship's free cargo space.
+  // Default any haul that didn't pin an amount to the ship's free cargo space, then size the dwell from
+  // tonnes / (rate × abundance) — a richer source (or a faster loader) fills in fewer days.
   for (const s of stops) {
     if (s.tonnes == null && (s.verb === 'load' || s.verb === 'unload' || s.verb === 'mine') && freeCargo_t > 0) s.tonnes = freeCargo_t;
+    if ((s.verb === 'load' || s.verb === 'mine') && s.rate_tpd && s.rate_tpd > 0 && s.tonnes) {
+      s.dwellDays = s.tonnes / (s.rate_tpd * Math.max(0.05, s.abundance ?? 1));
+    }
   }
 
   // Commit horizon. Planning is the eventual incremental depth; until the clock-advance top-up exists,
   // commit at least one full circuit so a fired-up ship visibly flies its route (capped to avoid huge chains).
   const planning = Math.max(1, Math.floor(ap.planning ?? 2));
   const horizon = repeat ? Math.min(Math.max(planning, stops.length), 24) : Math.max(stops.length, 1);
+
+  // Discipline: explicit slider wins, else inherit from the Owner CoI (military 0 … owner-operator 1).
+  const tardiness = ap.tardiness ?? constructTardiness(construct) ?? 0;
 
   const res = walkStops(stops, {
     fromMs: fromTimeMs,
@@ -208,7 +218,9 @@ export function generateAutopilotChain(
     fuelBudget_ms: budget,
     fuelCapacity_ms: capacity,
     solveLeg,
-    maxJourneyDays: ap.maxJourneyDays
+    maxJourneyDays: ap.maxJourneyDays,
+    tardiness,
+    slackSeed: construct.id
   });
 
   const createdAtSec = BigInt(Math.floor(fromTimeMs / 1000)).toString();

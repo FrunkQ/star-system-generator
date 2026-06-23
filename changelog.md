@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.211-beta - 23rd Jun 2026
+
+* Mining dwell now reflects how rich the deposit is: time at a source = tonnes ÷ (the ship's fill rate × the source's abundance), so a fat 0.9-richness ice moon fills far faster than a lean 0.3 one. The chosen source's richness rides on the stop, and the dwell is finalised once the haul amount is known.
+* **Tardiness** finally does something. The Discipline slider (or the inherited Owner-CoI value — military punctual … owner-operator sloppy) adds slack to the time a ship sits *stopped* (loading, mining, loitering) — never to transit, and never to a flyby (it doesn't stop, so it can't be late). The slack is deterministic (seeded from the ship's id + the stop time), so a given timeline replays identically every scrub. "Bob's trading run" now genuinely runs late.
+
 ## v2.0.210-beta - 23rd Jun 2026
 
 * Autopilot ships now keep a **flight log**. As the planner commits a route it records the work that happens at the stops — loaded/unloaded/mined tonnages, refuelling, station-keeping — as timestamped breadcrumbs (e.g. "Loaded 120 t water-ice at Enceladus"), shown in the Ship's Log beneath the journeys with a click-to-jump clock on each. Cargo aboard is now shown live and is *derived* from that log (running sum of loads/mines minus unloads at the display time), so it scrubs with the clock and a route regen can't desync it. The log is pruned in step when future plans are cleared or a journey is cancelled. (Foundation for the Totals tab + cargo-precedence reordering.)

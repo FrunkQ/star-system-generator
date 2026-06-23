@@ -22,6 +22,8 @@ export interface AutopilotStop {
   verb: string;             // 'patrol' | 'load' | 'unload' | 'mine' | 'explore' — the live action read-out + log kind
   resourceKeys?: string[];  // what's gathered/carried at this stop (cargo + harvest-refuel)
   tonnes?: number;          // cargo mass moved at this stop (load/unload/mine) — for the flight log + cargo derivation
+  rate_tpd?: number;        // haul fill rate (t/day) — dwell = tonnes / (rate × abundance)
+  abundance?: number;       // mine — source richness 0..1; a richer deposit fills faster (load/place = 1)
 }
 
 // A work event the planner emits at a stop (between transit journeys). The adapter finalises these into
@@ -70,6 +72,16 @@ export interface AutopilotPlanOpts {
   fuelCapacity_ms: number;  // Δv when full (after a top-up)
   solveLeg: SolveLeg;
   maxJourneyDays?: number;  // cap on any single hop's travel time
+  tardiness?: number;       // 0..1 Discipline — adds deterministic slack to STOPPED time only (0 = punctual)
+  slackSeed?: string;       // reproducible seed (the construct id) so the slack is the same every replay
+}
+
+// Deterministic [0,1) hash — tardiness slack must be reproducible/scrubbable, so no Math.random (which is
+// also banned in this codebase). FNV-1a over the seed string.
+function hash01(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return ((h >>> 0) % 1_000_000) / 1_000_000;
 }
 
 export interface AutopilotPlanResult {
@@ -127,7 +139,10 @@ export function walkStops(stops: AutopilotStop[], opts: AutopilotPlanOpts): Auto
     }
 
     // Hold at the stop (dwell becomes the gap before the next hop → resolver shows "waiting at host").
-    t += Math.max(0, stop.dwellDays) * DAY_MS;
+    // Tardiness adds slack to STOPPED time only — a flyby (dwell 0) never stops, so it's never late.
+    const baseDwell = Math.max(0, stop.dwellDays);
+    const slack = baseDwell > 0 && opts.tardiness ? opts.tardiness * hash01(`${opts.slackSeed ?? ''}:${i}:${atSecStr(t)}`) : 0;
+    t += baseDwell * (1 + slack) * DAY_MS;
     // Harvest/depot top-up: refuelling here means the NEXT hop (e.g. the return leg) departs fuelled.
     if (stop.refuelHere) {
       budget = capacity;
@@ -150,7 +165,7 @@ export function walkStops(stops: AutopilotStop[], opts: AutopilotPlanOpts): Auto
 // `isFuelCompatible(resourceKey)` is true when the ship can refuel from that resource (its fuels'
 // refuel_tags include the key) — wired from the rulepack fuel definitions in production.
 export function legToStops(
-  leg: { action: string; placeId?: ID; resourceKeys?: string[]; loiterDays?: number; fillAmount_t?: number; deliverTo?: { placeId?: ID } },
+  leg: { action: string; placeId?: ID; resourceKeys?: string[]; loiterDays?: number; fillAmount_t?: number; rate_tpd?: number; deliverTo?: { placeId?: ID } },
   isFuelCompatible: (resourceKey: string) => boolean,
   loadDwellDays = 1
 ): AutopilotStop[] {
@@ -163,10 +178,10 @@ export function legToStops(
     const carry = leg.resourceKeys ?? [];
     const gathersFuel = carry.some(isFuelCompatible); // self-fuel from a compatible cargo (e.g. water-ice)
     const stops: AutopilotStop[] = [
-      { targetId: leg.placeId, dwellDays: loadDwellDays, refuelHere: gathersFuel, verb: 'load', resourceKeys: carry, tonnes: leg.fillAmount_t }
+      { targetId: leg.placeId, dwellDays: loadDwellDays, refuelHere: gathersFuel, verb: 'load', resourceKeys: carry, tonnes: leg.fillAmount_t, rate_tpd: leg.rate_tpd }
     ];
     if (leg.deliverTo?.placeId) {
-      stops.push({ targetId: leg.deliverTo.placeId, dwellDays: loadDwellDays, refuelHere: false, verb: 'unload', resourceKeys: carry, tonnes: leg.fillAmount_t });
+      stops.push({ targetId: leg.deliverTo.placeId, dwellDays: loadDwellDays, refuelHere: false, verb: 'unload', resourceKeys: carry, tonnes: leg.fillAmount_t, rate_tpd: leg.rate_tpd });
     }
     return stops;
   }

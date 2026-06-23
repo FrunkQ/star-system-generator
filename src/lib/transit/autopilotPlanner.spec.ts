@@ -84,6 +84,27 @@ describe('autopilot flight log — stop work events + cargo derivation', () => {
   });
 });
 
+describe('autopilot tardiness slack', () => {
+  const dwellStop = (id: string, d: number): AutopilotStop => ({ targetId: id, dwellDays: d, refuelHere: false, verb: 'patrol' });
+
+  it('extends STOPPED time by a deterministic, seed-stable amount; punctual at tardiness 0', () => {
+    const stops = [dwellStop('A', 10)];
+    const punctual = walkStops(stops, { ...baseOpts, planningHorizon: 1 });               // tardiness undefined → 0
+    const late = walkStops(stops, { ...baseOpts, planningHorizon: 1, tardiness: 1, slackSeed: 'bob' });
+    const lateAgain = walkStops(stops, { ...baseOpts, planningHorizon: 1, tardiness: 1, slackSeed: 'bob' });
+    // 10d travel + 10d dwell punctually; the late ship lingers longer at the stop.
+    expect(punctual.finalTimeMs).toBe((10 + 10) * DAY_MS);
+    expect(late.finalTimeMs).toBeGreaterThan(punctual.finalTimeMs);
+    expect(lateAgain.finalTimeMs).toBe(late.finalTimeMs); // reproducible (same seed → same slack)
+  });
+
+  it('a flyby (dwell 0) is never late — no stopped time to slip', () => {
+    const stops = [{ targetId: 'A', dwellDays: 0, refuelHere: false, verb: 'patrol' } as AutopilotStop];
+    const r = walkStops(stops, { ...baseOpts, planningHorizon: 1, tardiness: 1, slackSeed: 'bob' });
+    expect(r.finalTimeMs).toBe(10 * DAY_MS); // just the travel, no dwell, no slack
+  });
+});
+
 describe('autopilot walkStops — stuck flags', () => {
   it('flags stuck when a hop has no route', () => {
     const r = walkStops([patrol('A'), patrol('X'), patrol('C')], { ...baseOpts, solveLeg: stubSolve(10, 1000, ['X']) });

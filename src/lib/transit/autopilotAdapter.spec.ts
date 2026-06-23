@@ -46,7 +46,11 @@ describe('resolveResourceStops', () => {
     const leg = { action: 'mine', resourceKeys: ['resource/water-ice'], rate_tpd: 10, fillAmount_t: 100, deliverTo: { placeId: 'ceres' } };
     const stops = resolveResourceStops(leg, 'star', system, noFuel, new Set(), false);
     expect(stops.map((s) => [s.targetId, s.verb])).toEqual([['rich-near', 'mine'], ['ceres', 'unload']]);
-    expect(stops[0].dwellDays).toBe(10); // 100 t ÷ 10 t/day
+    // dwell scales with source richness: 100 t ÷ (10 t/day × 0.9 abundance) ≈ 11.1 days; the richness is
+    // carried on the stop so the adapter can re-size the dwell once the haul amount is finalised.
+    expect(stops[0].dwellDays).toBeCloseTo(100 / (10 * 0.9), 3);
+    expect(stops[0].abundance).toBe(0.9);
+    expect(stops[0].rate_tpd).toBe(10);
   });
 
   it('mine self-fuels at the source when the ore is fuel-grade', () => {
