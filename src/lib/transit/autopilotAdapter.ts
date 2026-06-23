@@ -7,7 +7,7 @@ import { calculateTransitPlan } from './calculator';
 import { calculateFullConstructSpecs } from '$lib/construct-logic';
 import { constructTardiness } from '$lib/constructs/coi';
 import { resolveConstructCurrentHostId } from './scheduler';
-import { legToStops, walkStops, chooseSource, reorderWaypoints, type AutopilotStop, type StopEvent } from './autopilotPlanner';
+import { legToStops, walkStops, chooseSource, reorderWaypoints, selectAnyOrder, type AutopilotStop, type StopEvent } from './autopilotPlanner';
 
 const DAY_MS = 86_400_000;
 const G0 = 9.80665;
@@ -176,10 +176,14 @@ export function generateAutopilotChain(
     return c;
   };
 
-  // best-order: reorder the legs (gated to fixed-place plans for now) to minimise total cost over the
-  // next `planning` stops, using the real solver's cost. Other traversals fly as listed (in-order).
+  // Traversal (both gated to fixed-place plans for now; resource/escort legs fly as listed):
+  //  • best-order — reorder the next `planning` legs to minimise total cost (visit ALL).
+  //  • any        — greedily commit the best next stop, re-picking with a freshness bias (visit WHICHEVER).
+  // Both cost candidates with the same quote-backed legCost the legs are committed with.
   let plannedLegs = ap.legs;
-  if (ap.traversal === 'best-order' && (ap.planning ?? 0) > 0 && ap.legs.every((l: any) => l.placeId)) {
+  let anyOrder = false;
+  const allPlace = ap.legs.every((l: any) => l.placeId);
+  if (ap.traversal === 'best-order' && (ap.planning ?? 0) > 0 && allPlace) {
     const wps = ap.legs.map((leg: any, i: number) => ({ id: String(i), targetId: leg.placeId as string, dwellMs: (leg.loiterDays ?? 1) * DAY_MS }));
     const ordered = reorderWaypoints(wps, {
       startHostId, fromMs: fromTimeMs, planning: ap.planning,
@@ -187,6 +191,16 @@ export function generateAutopilotChain(
       maxLegMs: ap.maxJourneyDays ? ap.maxJourneyDays * DAY_MS : undefined
     });
     plannedLegs = ordered.map((w) => ap.legs[Number(w.id)]);
+  } else if (ap.traversal === 'any' && ap.legs.length > 1 && allPlace) {
+    anyOrder = true;
+    const steps = Math.min(Math.max(Math.floor(ap.planning ?? 2), ap.legs.length), 12);
+    const wps = ap.legs.map((leg: any, i: number) => ({ id: String(i), targetId: leg.placeId as string, dwellMs: (leg.loiterDays ?? 1) * DAY_MS }));
+    const seq = selectAnyOrder(wps, {
+      startHostId, fromMs: fromTimeMs, steps,
+      objective: driveFast ? 'time' : 'fuel', legCost, freshnessWeight: 0.8,
+      maxLegMs: ap.maxJourneyDays ? ap.maxJourneyDays * DAY_MS : undefined
+    });
+    plannedLegs = seq.map((w) => ap.legs[Number(w.id)]);
   }
 
   const needsFuel = !ap.ignoreFuel && budget < capacity * 0.5; // low on fuel → prefer self-fuelling sources
@@ -201,10 +215,12 @@ export function generateAutopilotChain(
     }
   }
 
-  // Commit horizon. Planning is the eventual incremental depth; until the clock-advance top-up exists,
-  // commit at least one full circuit so a fired-up ship visibly flies its route (capped to avoid huge chains).
+  // Commit horizon. For 'any', the greedy selection IS the commitment — walk exactly those stops (no looping
+  // of the picks; the clock top-up re-selects from the ship's new position next time). Otherwise commit at
+  // least one full circuit so a fired-up ship visibly flies its route (capped to avoid huge chains).
   const planning = Math.max(1, Math.floor(ap.planning ?? 2));
-  const horizon = repeat ? Math.min(Math.max(planning, stops.length), 24) : Math.max(stops.length, 1);
+  const horizon = anyOrder ? Math.max(1, stops.length)
+    : repeat ? Math.min(Math.max(planning, stops.length), 24) : Math.max(stops.length, 1);
 
   // Discipline: explicit slider wins, else inherit from the Owner CoI (military 0 … owner-operator 1).
   const tardiness = ap.tardiness ?? constructTardiness(construct) ?? 0;

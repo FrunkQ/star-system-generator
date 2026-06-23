@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { walkStops, legToStops, planToStops, chooseSource, scoreSources, reorderWaypoints, cargoAboardAt, type AutopilotStop, type SolveLeg, type ReorderOpts } from './autopilotPlanner';
+import { walkStops, legToStops, planToStops, chooseSource, scoreSources, reorderWaypoints, selectAnyOrder, cargoAboardAt, type AutopilotStop, type SolveLeg, type ReorderOpts } from './autopilotPlanner';
 
 const DAY_MS = 86_400_000;
 
@@ -102,6 +102,32 @@ describe('autopilot tardiness slack', () => {
     const stops = [{ targetId: 'A', dwellDays: 0, refuelHere: false, verb: 'patrol' } as AutopilotStop];
     const r = walkStops(stops, { ...baseOpts, planningHorizon: 1, tardiness: 1, slackSeed: 'bob' });
     expect(r.finalTimeMs).toBe(10 * DAY_MS); // just the travel, no dwell, no slack
+  });
+});
+
+describe("autopilot 'any' traversal — selectAnyOrder", () => {
+  const wps = [
+    { id: 'a', targetId: 'A', dwellMs: 0 },
+    { id: 'b', targetId: 'B', dwellMs: 0 },
+    { id: 'c', targetId: 'C', dwellMs: 0 }
+  ];
+  // Cost depends only on the destination (a fixed per-stop expense), so "best next" is deterministic.
+  const fixedCost = (costs: Record<string, number>) => (_from: string, to: string) => ({ timeMs: (costs[to] ?? 1) * DAY_MS, dvMs: (costs[to] ?? 1) * 100 });
+
+  it('with no freshness it just repeats the single cheapest stop', () => {
+    const seq = selectAnyOrder(wps, { startHostId: 'home', fromMs: 0, steps: 4, objective: 'time', legCost: fixedCost({ A: 1, B: 2, C: 3 }), freshnessWeight: 0 });
+    expect(seq.map((w) => w.targetId)).toEqual(['A', 'A', 'A', 'A']);
+  });
+
+  it('a freshness surcharge spreads coverage so it does not just hammer the cheapest', () => {
+    const seq = selectAnyOrder(wps, { startHostId: 'home', fromMs: 0, steps: 6, objective: 'time', legCost: fixedCost({ A: 1, B: 2, C: 3 }), freshnessWeight: 2 });
+    expect(seq.map((w) => w.targetId)).toContain('A');
+    expect(new Set(seq.map((w) => w.targetId)).size).toBeGreaterThan(1); // not all the same stop
+  });
+
+  it('never picks a stop whose hop exceeds the max-leg cap', () => {
+    const seq = selectAnyOrder(wps, { startHostId: 'home', fromMs: 0, steps: 3, objective: 'time', legCost: fixedCost({ A: 1, B: 2, C: 50 }), freshnessWeight: 0, maxLegMs: 10 * DAY_MS });
+    expect(seq.map((w) => w.targetId)).not.toContain('C');
   });
 });
 

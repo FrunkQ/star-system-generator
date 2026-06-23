@@ -294,6 +294,48 @@ export function reorderWaypoints(wps: ReorderWaypoint[], opts: ReorderOpts): Reo
   return [...best, ...tail];
 }
 
+export interface AnyOrderOpts {
+  startHostId: ID;
+  fromMs: number;
+  steps: number;               // how many picks to commit this generation (the 'any' horizon)
+  objective: 'time' | 'fuel';
+  legCost: (fromId: ID, toId: ID, departMs: number) => { timeMs: number; dvMs: number };
+  freshnessWeight?: number;    // surcharge (×cost) on a just-serviced stop, decaying to 0 over the route length
+  maxLegMs?: number;
+}
+
+// 'Any · as needed': greedily commit the single best NEXT stop, then re-pick from the ship's new position —
+// with a freshness surcharge that decays over the route so a just-serviced stop is unlikely to win twice
+// running, and every stop tends to get covered over time (without forcing a fixed circuit). Pure; legCost is
+// injected (the SAME quote-backed cost the legs are committed with). Repetition is allowed by design.
+export function selectAnyOrder(wps: ReorderWaypoint[], opts: AnyOrderOpts): ReorderWaypoint[] {
+  if (!wps.length) return [];
+  const out: ReorderWaypoint[] = [];
+  let host = opts.startHostId, t = opts.fromMs;
+  const window = Math.max(2, wps.length);     // a stop's freshness penalty fades over ~one route's worth of picks
+  const lastStep = new Map<string, number>();
+  for (let step = 0; step < Math.max(1, opts.steps); step++) {
+    let best: ReorderWaypoint | null = null, bestScore = Infinity, bestTimeMs = 0;
+    for (const wp of wps) {
+      const c = opts.legCost(host, wp.targetId, t);
+      if (!Number.isFinite(c.timeMs) || (opts.maxLegMs && c.timeMs > opts.maxLegMs)) continue;
+      let score = opts.objective === 'time' ? c.timeMs : c.dvMs;
+      const ls = lastStep.get(wp.id);
+      if (ls !== undefined) {
+        const recency = Math.max(0, 1 - (step - ls) / window); // 1 = just serviced … 0 = long ago
+        score += (opts.freshnessWeight ?? 0) * recency * score;
+      }
+      if (score < bestScore) { bestScore = score; best = wp; bestTimeMs = c.timeMs; }
+    }
+    if (!best) break;                          // nothing reachable from here
+    out.push(best);
+    t += bestTimeMs + Math.max(0, best.dwellMs);
+    host = best.targetId;
+    lastStep.set(best.id, step);
+  }
+  return out;
+}
+
 // Build the full stop list for an engaged plan (in-order traversal, Slice 1).
 export function planToStops(
   legs: Array<Parameters<typeof legToStops>[0]>,
