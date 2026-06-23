@@ -4,6 +4,7 @@
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { AU_KM } from '$lib/constants';
   import { describeTag } from '$lib/tags/tagPresentation';
+  import { getJourneyBounds } from '$lib/transit/scheduler';
   import AutopilotShipIcon from './AutopilotShipIcon.svelte';
 
   // The resources/contexts this ship can refuel from = the union of its fuels' refuel_tags. Surfacing
@@ -27,6 +28,7 @@
   // The ship's live kinematic state at the current clock (from the scheduler) — so the location readout
   // says the right thing: Orbiting / Docked / Landed / In transit / Adrift. Null = no journey info.
   export let kinematicState: string | null = null;
+  export let displayTimeMs: number = NaN; // the GM's display clock — drives the run-once "route complete" read-out
   // Resolve the location heading: trust the live state, else fall back to the authored placement.
   $: effectiveState = kinematicState || (construct.placement === 'Surface' ? 'Landed' : 'Orbiting');
 
@@ -35,8 +37,15 @@
     const ap: any = (construct as any).autopilot;
     if (!ap?.enabled) return null;
     if (!ap.legs?.length) return { text: 'idle — no stops set', cls: 'warn' };
-    const hasJourneys = (construct.scheduled_journeys || []).some((l: any) => l.status !== 'cancelled');
-    if (!hasJourneys) return { text: 'stuck — no route scheduled', cls: 'bad' };
+    const live = (construct.scheduled_journeys || []).filter((l: any) => l.status !== 'cancelled');
+    if (!live.length) return { text: 'stuck — no route scheduled', cls: 'bad' };
+    // Run-once that the display clock has flown to the end → complete (green); the hard disengage commits
+    // once actual time catches up.
+    if (ap.repeat === false && Number.isFinite(displayTimeMs)) {
+      let end = -Infinity;
+      for (const l of live) { const b = getJourneyBounds(l.plans); if (b) end = Math.max(end, b.endMs); }
+      if (Number.isFinite(end) && displayTimeMs >= end) return { text: 'route complete · standing by', cls: 'done' };
+    }
     if (effectiveState === 'Transit') return { text: 'transiting…', cls: '' };
     if (effectiveState === 'Deep Space' || effectiveState === 'Adrift') return { text: 'coasting in deep space', cls: 'warn' };
     return { text: 'holding between legs', cls: '' };
@@ -469,6 +478,7 @@
   .ap-status { display: flex; align-items: center; gap: 6px; font-size: 0.82em; color: var(--text-muted); margin-bottom: 5px; }
   .ap-status.warn { color: #d8922f; }
   .ap-status.bad { color: #cc5555; }
+  .ap-status.done { color: #4a9e5c; }
   /* Abort controls: green = physical (coast on), orange = stop dead (then falls). */
   .action-btn.cancel-drift { background-color: #2f9e57; }
   .action-btn.cancel-stop { background-color: #d98a2b; }

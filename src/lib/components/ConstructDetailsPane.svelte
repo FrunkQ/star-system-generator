@@ -70,6 +70,7 @@
             {kinematicState}
             isEditingConstruct={isEditing}
             hideActions={isPlanning}
+            {displayTimeMs}
             on:planTransit
             on:openJourneyLog
             on:cancelactive

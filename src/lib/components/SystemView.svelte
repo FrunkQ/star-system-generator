@@ -807,6 +807,51 @@
     });
   }
 
+  // --- Autopilot clock top-up + run-once disengage. Keyed on the DISPLAY clock (the GM's working view),
+  //     so a ship visibly keeps flying as they scrub/play. Top-up only ever APPENDS future legs, so it's
+  //     non-destructive on scrub-back. The hard disengage commits at ACTUAL time (the backstop). ---
+  const AP_LOOKAHEAD_MS = 120 * 86_400_000; // keep ~120 days of route committed ahead of the display clock
+  function endOfLogs(logs: any[]): number {
+    let end = -Infinity;
+    for (const l of logs || []) { if (l.status === 'cancelled') continue; const b = getJourneyBounds(l.plans); if (b) end = Math.max(end, b.endMs); }
+    return end;
+  }
+  function maybeTopUpAutopilot(displayMs: number) {
+    if (!Number.isFinite(displayMs)) return;
+    const sys = get(systemStore);
+    if (!sys) return;
+    // Only repeat ships extend; a run-once route deliberately ends. Need an existing chain that's running low.
+    const due = sys.nodes.some((n: any) => n.kind === 'construct' && n.autopilot?.enabled && n.autopilot.repeat !== false
+      && (n.scheduled_journeys || []).some((l: any) => l.status !== 'cancelled')
+      && endOfLogs(n.scheduled_journeys || []) < displayMs + AP_LOOKAHEAD_MS);
+    if (!due) return;
+    systemStore.update((s) => {
+      if (!s) return s;
+      let changed = false;
+      const nodes = s.nodes.map((n: any) => {
+        if (n.kind !== 'construct' || !n.autopilot?.enabled || n.autopilot.repeat === false) return n;
+        let logs = n.scheduled_journeys || [];
+        let end = endOfLogs(logs);
+        if (!Number.isFinite(end) || end >= displayMs + AP_LOOKAHEAD_MS) return n;
+        let added = false, guard = 0;
+        // Extend (appending future legs from the chain's end) until the route covers the display clock.
+        while (end < displayMs + AP_LOOKAHEAD_MS && guard++ < 12) {
+          try {
+            const gen = generateAutopilotChain({ ...n, scheduled_journeys: logs }, s, rulePack, end);
+            if (!gen?.logs?.length) break;
+            logs = [...logs, ...gen.logs];
+            const ne = endOfLogs(logs);
+            if (!(ne > end)) break; // no forward progress → stop (avoid a spin)
+            end = ne; added = true;
+          } catch (e) { console.warn('[autopilot] top-up failed:', e); break; }
+        }
+        if (added) { changed = true; return { ...n, scheduled_journeys: logs }; }
+        return n;
+      });
+      return changed ? { ...s, nodes } : s;
+    });
+  }
+
   function handleBodyUpdate(event: CustomEvent<CelestialBody>) {
     let updatedBody = event.detail;
     systemStore.update(system => {
@@ -1158,6 +1203,8 @@
       ? (sampleJourneyKinematicsAtTime($systemStore, focusedBody, currentTime)?.state ?? null)
       : null;
   $: if (!focusedBody || focusedBody.kind !== 'construct') isShipLogOpen = false;
+  // Keep autopilot routes extended ahead of the display clock as the GM scrubs/plays.
+  $: maybeTopUpAutopilot(currentTime);
 
   // Handle Back to Starmap if systemId is lost from state
   $: if (browser && !$page.state.systemId) {
@@ -1551,6 +1598,17 @@
         if (reconciled !== nextNode) {
           nextNode = reconciled;
           nodeChanged = true;
+        }
+
+        // Run-once autopilot: once ACTUAL time has flown the whole route (every journey completed),
+        // disengage for real — the persistent backstop. (The display-time "done · green" is derived.)
+        const ap: any = (nextNode as any).autopilot;
+        if (ap?.enabled && ap.repeat === false && (nextNode.scheduled_journeys || []).length) {
+          const live = (nextNode.scheduled_journeys || []).filter((l: any) => l.status !== 'cancelled');
+          if (live.length && live.every((l: any) => l.status === 'completed')) {
+            nextNode = { ...nextNode, autopilot: { ...ap, enabled: false } };
+            nodeChanged = true;
+          }
         }
 
         if (nodeChanged) changed = true;

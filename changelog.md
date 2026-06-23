@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.205-beta - 19th Jun 2026
+
+* Autopilot ships now keep flying as you scrub or play. A looping route extends itself ahead of the display clock (the view you're actually watching), so it never runs out of plan mid-circuit — and it only ever adds future legs, so rewinding is safe. A "run once" route shows "route complete · standing by" (green) once the display clock reaches its end, and the ship actually disengages for good once master/actual time catches up — using actual time purely as the backstop, the way you described it.
+
 ## v2.0.204-beta - 19th Jun 2026
 
 * Black holes get a "material infall" accretion slider instead of a feeding on/off switch — and everything else is now derived from it by physics. Slide from a bare quiescent horizon (dark, ~0 K, no field) up to the Eddington limit, and the disc's luminosity, inner-edge temperature (Stefan–Boltzmann from the accretion rate), magnetic field, and radiation all follow, with the output hard-capped at Eddington. This fixes two bugs: a quiescent black hole no longer shows a bogus 1,000,000 K surface temperature (it's correctly dark/cold), and a feeding black hole now shines realistically (~10²–10⁵ L☉ for a stellar-mass accretor) instead of near-zero.
