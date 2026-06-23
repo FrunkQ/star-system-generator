@@ -99,7 +99,7 @@ export function calculateAssistPlan(
     root: CelestialBody | Barycenter,
     startTime: number,
     startState: StateVector,
-    params: { maxG: number; shipMass_kg?: number; shipIsp?: number; }
+    params: { maxG: number; shipMass_kg?: number; shipIsp?: number; costOnly?: boolean; }
 ): TransitPlan | null {
     
     const candidates = findAssistCandidates(sys, origin, target);
@@ -260,7 +260,7 @@ function buildAssistTransitPlan(
     t1: number, t2: number, t3: number,
     s1: StateVector, leg1: {v1: Vector2, v2: Vector2}, leg2: {v1: Vector2, v2: Vector2},
     dv1: number, dv_assist: number, dv3: number,
-    params: { maxG: number; shipMass_kg?: number; shipIsp?: number; }
+    params: { maxG: number; shipMass_kg?: number; shipIsp?: number; costOnly?: boolean; }
 ): TransitPlan {
     const totalTimeDays = (t3 - t1) / (1000 * 86400);
     const totalDV = dv1 + dv_assist + dv3;
@@ -291,9 +291,10 @@ function buildAssistTransitPlan(
     const t1_end = t2 - flybyDtSec * 1000;
     const t2_start = t2 + flybyDtSec * 1000;
     
-    // Dynamic steps for long coasts
-    const steps1 = Math.min(2000, Math.max(100, Math.ceil((t1_end - t1) / (1000 * 86400 * 2))));
-    const steps2 = Math.min(2000, Math.max(100, Math.ceil((t3 - t2_start) / (1000 * 86400 * 2))));
+    // Dynamic steps for long coasts (costOnly keeps the analytic cost but skips the dense display path).
+    const costOnly = params.costOnly;
+    const steps1 = costOnly ? 24 : Math.min(2000, Math.max(100, Math.ceil((t1_end - t1) / (1000 * 86400 * 2))));
+    const steps2 = costOnly ? 24 : Math.min(2000, Math.max(100, Math.ceil((t3 - t2_start) / (1000 * 86400 * 2))));
 
     // LEG 1 Path (Truncated) - WITH DRIFT CORRECTION
     // We generate the FULL path to T2 (Flyby Center), force it to hit the Planet, then slice it back.

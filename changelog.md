@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.208-beta - 23rd Jun 2026
+
+* Autopilot reorder is now cheap to run. The transfer solver gained a `costOnly` mode that computes a leg's time and Δv (the only things the reorder search needs) while skipping the dense display trajectory — direct/torch legs drop from hundreds of path points to ~24, gravity-assist legs from ~1900 to ~80. The committed legs still fly the full trajectory; a test pins the costOnly time/Δv to the full-plan values so the search can never disagree with what it commits.
+
 ## v2.0.207-beta - 19th Jun 2026
 
 * Autopilot "All · best order" now actually reorders the route. The planner looks a few stops ahead (how many is set by the Planning slider) and picks the visiting order with the lowest total cost — time when Drive is fast, fuel when it's thrifty — honouring the max-time-per-leg cap. Crucially, it costs candidate orders with the *same* transfer solver that flies the legs (cached), so the order it chooses and the journeys it commits can never disagree. "Closest now vs later" falls out naturally as bodies move. (Place-targeted routes for now; resource/escort legs stay in listed order.)

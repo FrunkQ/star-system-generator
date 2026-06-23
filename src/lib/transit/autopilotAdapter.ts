@@ -134,13 +134,15 @@ export function generateAutopilotChain(
   const maxG = ap.maxAccelG && ap.maxAccelG > 0 ? Math.min(ap.maxAccelG, specs.maxVacuumG || ap.maxAccelG) : (specs.maxVacuumG || 1);
 
   // THE one transfer model — used to both cost the reorder AND commit the legs, so they can't disagree.
-  const solveLeg = (originId: string, targetId: string, startMs: number) => {
+  // costOnly skips the full display trajectory (just time/Δv), for the many-call reorder search.
+  const solveLeg = (originId: string, targetId: string, startMs: number, costOnly = false) => {
     const params: any = {
       maxG, accelRatio: 0.3, brakeRatio: 0.3, interceptSpeed_ms: 0,
       shipMass_kg: (specs.totalMass_tonnes || 0) * 1000,
       shipDryMass_kg: dryKg,
       shipIsp: Isp || undefined,
-      brakeAtArrival: true
+      brakeAtArrival: true,
+      costOnly
     };
     const all = calculateTransitPlan(system, originId, targetId, startMs, mode, params);
     const valid = all.filter((p) => p.isValid && !p.hiddenReason);
@@ -157,7 +159,7 @@ export function generateAutopilotChain(
     const key = `${originId}|${targetId}|${Math.round(departMs / DAY_MS)}`;
     let c = costCache.get(key);
     if (!c) {
-      const s = solveLeg(originId, targetId, departMs);
+      const s = solveLeg(originId, targetId, departMs, true); // costOnly — skip the display trajectory
       c = s.valid ? { timeMs: s.arriveMs - departMs, dvMs: s.deltaV_ms } : { timeMs: Infinity, dvMs: Infinity };
       costCache.set(key, c);
     }

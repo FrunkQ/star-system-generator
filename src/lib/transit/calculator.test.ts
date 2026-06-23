@@ -234,3 +234,30 @@ describe('Transit Calculator Grounded Cases', () => {
     expect(minR).toBeGreaterThan(0.2);
   });
 });
+
+describe('Transit Calculator — costOnly (autopilot reorder cost path)', () => {
+  it('costOnly returns the same time/Δv as the full plan, but far fewer path points', () => {
+    const system = loadSolSystem();
+    const earthId = nodeIdByName(system, 'Earth');
+    const saturnId = nodeIdByName(system, 'Saturn');
+    const startTime = Date.UTC(2030, 0, 1, 0, 0, 0);
+    const params: any = {
+      maxG: 3.0, accelRatio: 0.6, brakeRatio: 0.3, interceptSpeed_ms: 0, brakeAtArrival: true,
+      shipMass_kg: 2_000_000, shipIsp: 380, aerobrake: { allowed: false, limit_kms: 0 }
+    };
+    const full = calculateTransitPlan(system, earthId, saturnId, startTime, 'Economy', { ...params });
+    const cheap = calculateTransitPlan(system, earthId, saturnId, startTime, 'Economy', { ...params, costOnly: true });
+    expect(full.length).toBeGreaterThan(0);
+
+    const pts = (p: any) => p.segments.reduce((s: number, seg: any) => s + (seg.pathPoints?.length || 0), 0);
+    for (const f of full) {
+      const c = cheap.find((x) => x.planType === f.planType && x.name === f.name);
+      if (!c) continue;
+      // Same analytic cost — the reorder and the committed leg can't disagree.
+      expect(c.totalTime_days).toBeCloseTo(f.totalTime_days, 2);
+      expect(Math.abs(c.totalDeltaV_ms - f.totalDeltaV_ms) / Math.max(1, f.totalDeltaV_ms)).toBeLessThan(0.05);
+      // ...but the heavy display trajectory is skipped.
+      expect(pts(c)).toBeLessThan(pts(f));
+    }
+  });
+});

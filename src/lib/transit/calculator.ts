@@ -188,6 +188,10 @@ export function calculateTransitPlan(
       initialDelay_days?: number;
       directAccelRatio?: number; // NEW
       directBrakeRatio?: number; // NEW
+      // Cost-only: keep the analytic time/Δv (computed before the integration) but skip generating the full
+      // display trajectory — drops the path-point count to a minimum. For the autopilot reorder search, which
+      // needs only time + Δv and runs the solver many times. Same core math; far cheaper. (Default: full path.)
+      costOnly?: boolean;
   }
 ): TransitPlan[] {
   const plans: TransitPlan[] = [];
@@ -719,7 +723,8 @@ export function calculateTransitPlan(
       const assistPlan = calculateAssistPlan(sys, effectiveOrigin, effectiveTarget, root, startTime, getGlobalState(sys, effectiveOrigin!, startTime), {
           maxG: finalParams.maxG,
           shipMass_kg: finalParams.shipMass_kg,
-          shipIsp: finalParams.shipIsp
+          shipIsp: finalParams.shipIsp,
+          costOnly: finalParams.costOnly
       });
       if (assistPlan) {
           assistPlan.planType = 'Complex';
@@ -912,7 +917,7 @@ function calculateLambertPlan(
     const displayBrakeTimeSec = brakeTime_sec;
     const accelEndTime = startTime + displayAccelTimeSec * 1000;
     const brakeStartTime = arrivalTime - displayBrakeTimeSec * 1000;
-    const totalPoints = Math.min(5000, Math.max(300, Math.ceil(durationSec / (86400 * 2))));
+    const totalPoints = params.costOnly ? 24 : Math.min(5000, Math.max(300, Math.ceil(durationSec / (86400 * 2))));
     
     // 5. N-Body & Path Integration
     // Belts/rings are DISTRIBUTED mass — their `massKg` is a debris-density proxy, not gravitational
@@ -1272,7 +1277,7 @@ function calculateFastPlan(
     const brakeStartTime = startTime + (accelTime + coastTime) * 1000;
 
     const segments: TransitSegment[] = [];
-    const sampleCount = Math.min(3000, Math.max(240, Math.ceil(totalTime / (3600 * 2))));
+    const sampleCount = params.costOnly ? 24 : Math.min(3000, Math.max(240, Math.ceil(totalTime / (3600 * 2))));
     
     // 2-body displayed path (matches the solved trajectory) — see the note in calculateLambertPlan: the
     // n-body perturbers here drove the straight-line bug via the drift-correction. Banked: n-body-aware solve.
