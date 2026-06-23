@@ -364,25 +364,26 @@ export function clearFutureJourneys(construct: CelestialBody, timeMs: number): C
   return { ...construct, scheduled_journeys: filtered };
 }
 
-// Trim the FLOWN past of a repeat autopilot route so the committed chain + flight log stay bounded over a long
-// run (a repeat ship tops up forever, so otherwise the past grows without bound — a huge log and an orrery
-// spider-web of stale paths). Drops autopilot-flown legs that ended more than `retentionMs` behind actual time;
-// keeps manual journeys, anything cancelled/adrift, and the active + future legs (the active leg always ends
-// ahead of actual time, so its path never flickers). Deterministically regenerable, and the forward
-// advance-planning is never touched. Returns the same object when nothing was trimmed. Key off ACTUAL time.
-export function trimFlownAutopilotPast(construct: CelestialBody, actualMs: number, retentionMs: number): CelestialBody {
+// Trim the heavy FLOWN-past JOURNEY data of a repeat autopilot route so the committed chain (and the orrery
+// it draws) stays bounded over a long run — a repeat ship tops up forever, so otherwise the past grows without
+// bound (a huge journey list + a spider-web of stale paths). Keeps the last `keepFlown` autopilot legs that
+// finished before ACTUAL time, plus all manual journeys, anything cancelled/adrift, and the active + future
+// legs. The lightweight FLIGHT LOG is deliberately NOT trimmed — it's the permanent history (kept forever);
+// only the regenerable path/journey data is dropped, and the forward advance-planning is never touched.
+// Keyed off ACTUAL time so scrubbing the display never deletes. Returns the same object when nothing changed.
+export function trimFlownAutopilotPast(construct: CelestialBody, actualMs: number, keepFlown = 2): CelestialBody {
   const logs = construct.scheduled_journeys || [];
   if (!logs.length) return construct;
-  const cutoffMs = actualMs - Math.max(0, retentionMs);
-  const kept = logs.filter((log: any) => {
-    if (!log.autopilot || log.status === 'cancelled') return true; // never auto-trim manual/adrift legs
-    const bounds = getJourneyBounds(log.plans);
-    return !bounds || bounds.endMs >= cutoffMs;                    // keep active + recent + future
-  });
+  // Autopilot legs that have finished (relative to actual time), oldest → newest.
+  const flown = logs
+    .map((log) => ({ log, end: getJourneyBounds(log.plans)?.endMs ?? Infinity }))
+    .filter((x) => (x.log as any).autopilot && x.log.status !== 'cancelled' && x.end < actualMs)
+    .sort((a, b) => a.end - b.end);
+  if (flown.length <= keepFlown) return construct;
+  const drop = new Set(flown.slice(0, flown.length - keepFlown).map((x) => x.log.id));
+  const kept = logs.filter((log) => !drop.has(log.id));
   if (kept.length === logs.length) return construct;
-  const cutoffSec = Math.floor(cutoffMs / 1000);
-  const flightLog = (construct.flight_log || []).filter((e) => Number(e.atSec) >= cutoffSec);
-  return { ...construct, scheduled_journeys: kept, flight_log: flightLog };
+  return { ...construct, scheduled_journeys: kept }; // flight_log kept forever
 }
 
 export function cancelActiveJourney(

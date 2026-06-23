@@ -106,7 +106,8 @@ export function generateAutopilotChain(
   construct: CelestialBody,
   system: System,
   rulePack: RulePack,
-  fromTimeMs: number
+  fromTimeMs: number,
+  maxLegs?: number   // how many legs to commit this call; defaults to Planning. Top-up passes the shortfall.
 ): AutopilotGenResult | null {
   const ap: any = (construct as any).autopilot;
   if (!ap?.enabled || !Array.isArray(ap.legs) || !ap.legs.length) return null;
@@ -193,7 +194,7 @@ export function generateAutopilotChain(
     plannedLegs = ordered.map((w) => ap.legs[Number(w.id)]);
   } else if (ap.traversal === 'any' && ap.legs.length > 1 && allPlace) {
     anyOrder = true;
-    const steps = Math.min(Math.max(Math.floor(ap.planning ?? 2), ap.legs.length), 12);
+    const steps = Math.max(1, Math.floor(maxLegs ?? ap.planning ?? 2)); // commit Planning picks ahead
     const wps = ap.legs.map((leg: any, i: number) => ({ id: String(i), targetId: leg.placeId as string, dwellMs: (leg.loiterDays ?? 1) * DAY_MS }));
     const seq = selectAnyOrder(wps, {
       startHostId, fromMs: fromTimeMs, steps,
@@ -215,12 +216,12 @@ export function generateAutopilotChain(
     }
   }
 
-  // Commit horizon. For 'any', the greedy selection IS the commitment — walk exactly those stops (no looping
-  // of the picks; the clock top-up re-selects from the ship's new position next time). Otherwise commit at
-  // least one full circuit so a fired-up ship visibly flies its route (capped to avoid huge chains).
-  const planning = Math.max(1, Math.floor(ap.planning ?? 2));
+  // Commit horizon = Planning legs ahead (what the slider literally promises). The clock top-up keeps Planning
+  // legs committed ahead of the display clock as time advances. For 'any', the greedy selection IS the
+  // commitment (walk exactly those stops). A run-once route commits its whole length (it deliberately ends).
+  const legsToCommit = Math.max(1, Math.floor(maxLegs ?? ap.planning ?? 2));
   const horizon = anyOrder ? Math.max(1, stops.length)
-    : repeat ? Math.min(Math.max(planning, stops.length), 24) : Math.max(stops.length, 1);
+    : repeat ? legsToCommit : Math.max(stops.length, 1);
 
   // Discipline: explicit slider wins, else inherit from the Owner CoI (military 0 … owner-operator 1).
   const tardiness = ap.tardiness ?? constructTardiness(construct) ?? 0;

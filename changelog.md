@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.215-beta - 23rd Jun 2026
+
+* The flight-log **history is now kept forever** (it's tiny) — only the heavy journey/path data is bounded. A repeat ship retains just its last 2 flown legs of committed journeys (plus active + future), so the orrery and journey list stay clean, while the Ship's Log flight-log keeps the full breadcrumb history.
+* **Planning now means what it says.** The slider commits exactly N legs ahead of the display clock (was: at least one full circuit, then padded to ~120 days). The top-up keeps N legs committed ahead as the clock advances — so "look 4 ahead" plans 4 legs, not 7. Run-once routes still commit their whole length.
+
 ## v2.0.214-beta - 23rd Jun 2026
 
 * Autopilot routes no longer accumulate forever. A repeat ship tops up its committed route as the clock advances, but never trimmed the flown past — so after a long run the ship's log grew to dozens of legs and the orrery filled with a spider-web of stale paths (especially obvious after scrubbing back to the start). Now the flown past of a repeat route is trimmed: completed autopilot legs that ended more than ~30 days behind actual time are dropped, along with their flight-log events. The active and future legs are untouched (the advance-planning never needs recalculating), manual journeys and adrift ships are never auto-trimmed, and it's keyed to actual time so scrubbing the display never deletes anything. The dropped past is deterministically regenerable.

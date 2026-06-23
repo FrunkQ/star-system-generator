@@ -810,49 +810,53 @@
   }
 
   // --- Autopilot clock top-up + run-once disengage. Keyed on the DISPLAY clock (the GM's working view),
-  //     so a ship visibly keeps flying as they scrub/play. Top-up only ever APPENDS future legs, so it's
-  //     non-destructive on scrub-back. The hard disengage commits at ACTUAL time (the backstop). ---
-  const AP_LOOKAHEAD_MS = 120 * 86_400_000; // keep ~120 days of route committed ahead of the display clock
-  // Retain only ~this far of FLOWN autopilot route behind actual time. A repeat ship tops up forever, so the
-  // committed past would grow without bound (huge ship's log + an orrery spider-web of stale paths). Completed
-  // autopilot legs older than this are dropped — they're deterministically regenerable, and trimming the past
-  // never touches the forward advance-planning. Keyed to ACTUAL time, so scrubbing the display never deletes.
-  const AP_LOG_RETENTION_MS = 30 * 86_400_000;
+  //     so a ship visibly keeps flying as they scrub/play. Top-up keeps exactly Planning legs committed AHEAD
+  //     of the display clock (what the slider promises), appending as the clock advances — never destructive on
+  //     scrub-back. The hard disengage commits at ACTUAL time (the backstop). ---
+  // How many FLOWN autopilot legs to keep in the heavy journey/path data (the orrery draws these). A repeat
+  // ship tops up forever, so otherwise the committed past grows without bound (a spider-web of stale paths).
+  // The lightweight flight-log history is kept FOREVER — only this regenerable journey data is bounded.
+  const AP_KEEP_FLOWN = 2;
   function endOfLogs(logs: any[]): number {
     let end = -Infinity;
     for (const l of logs || []) { if (l.status === 'cancelled') continue; const b = getJourneyBounds(l.plans); if (b) end = Math.max(end, b.endMs); }
     return end;
   }
+  const planningOf = (n: any) => Math.max(1, Math.floor(n.autopilot?.planning ?? 2));
   function maybeTopUpAutopilot(displayMs: number) {
     if (!Number.isFinite(displayMs)) return;
     const sys = get(systemStore);
     if (!sys) return;
-    // Only repeat ships extend; a run-once route deliberately ends. Need an existing chain that's running low.
+    // Only repeat ships extend; a run-once route deliberately ends. Top up when fewer than Planning legs are
+    // committed ahead of the display clock.
     const due = sys.nodes.some((n: any) => n.kind === 'construct' && n.autopilot?.enabled && n.autopilot.repeat !== false
       && (n.scheduled_journeys || []).some((l: any) => l.status !== 'cancelled')
-      && endOfLogs(n.scheduled_journeys || []) < displayMs + AP_LOOKAHEAD_MS);
+      && countFutureJourneys(n, displayMs) < planningOf(n));
     if (!due) return;
     systemStore.update((s) => {
       if (!s) return s;
       let changed = false;
       const nodes = s.nodes.map((n: any) => {
         if (n.kind !== 'construct' || !n.autopilot?.enabled || n.autopilot.repeat === false) return n;
+        const planning = planningOf(n);
         let logs = n.scheduled_journeys || [];
         let flog = n.flight_log || [];
-        let end = endOfLogs(logs);
-        if (!Number.isFinite(end) || end >= displayMs + AP_LOOKAHEAD_MS) return n;
+        let future = countFutureJourneys({ ...n, scheduled_journeys: logs }, displayMs);
+        if (future >= planning) return n;
         let added = false, guard = 0;
-        // Extend (appending future legs from the chain's end) until the route covers the display clock.
-        while (end < displayMs + AP_LOOKAHEAD_MS && guard++ < 12) {
+        // Append from the chain's end until Planning legs are committed ahead of the display clock.
+        while (future < planning && guard++ < 24) {
+          const end = endOfLogs(logs);
+          const from = Number.isFinite(end) ? end : displayMs;
           try {
-            const gen = generateAutopilotChain({ ...n, scheduled_journeys: logs }, s, rulePack, end);
+            const gen = generateAutopilotChain({ ...n, scheduled_journeys: logs }, s, rulePack, from, planning - future);
             if (!gen?.logs?.length) break;
             logs = [...logs, ...gen.logs];
             flog = [...flog, ...gen.flightLog];
-            const ne = endOfLogs(logs);
-            if (!(ne > end)) break; // no forward progress → stop (avoid a spin)
-            end = ne; added = true;
           } catch (e) { console.warn('[autopilot] top-up failed:', e); break; }
+          const nf = countFutureJourneys({ ...n, scheduled_journeys: logs }, displayMs);
+          if (nf <= future) break; // no forward progress → stop (avoid a spin)
+          future = nf; added = true;
         }
         if (added) { changed = true; return { ...n, scheduled_journeys: logs, flight_log: flog }; }
         return n;
@@ -1622,10 +1626,10 @@
           }
         }
 
-        // Trim the flown past of a REPEAT autopilot route so the committed chain + flight log stay bounded over
-        // a long run (otherwise the past grows without bound — huge log + an orrery spider-web of stale paths).
+        // Trim the heavy flown-past JOURNEY data of a REPEAT autopilot route so the orrery + journey list stay
+        // bounded over a long run (the flight-log history is kept forever — only this regenerable data is cut).
         if (ap?.enabled && ap.repeat !== false) {
-          const trimmed = trimFlownAutopilotPast(nextNode, actualMs, AP_LOG_RETENTION_MS);
+          const trimmed = trimFlownAutopilotPast(nextNode, actualMs, AP_KEEP_FLOWN);
           if (trimmed !== nextNode) { nextNode = trimmed; nodeChanged = true; }
         }
 
