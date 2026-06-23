@@ -797,11 +797,16 @@
               scheduled_journeys: [ ...(updatedConstruct.scheduled_journeys || []), ...gen.logs ],
               flight_log: [ ...(updatedConstruct.flight_log || []), ...gen.flightLog ],
               autopilotStuckReason: undefined };
-          } else if (gen) {
-            console.warn('[autopilot] no journeys generated:', gen.attention, gen.stuckReason);
-            updatedConstruct = { ...updatedConstruct, autopilotStuckReason: apReasonText(gen) };
+          } else {
+            // No journeys — engaged but going nowhere. ALWAYS surface why (null = couldn't even start, e.g.
+            // missing engine/fuel data or no ship specs) so the ship never silently sits there "flying".
+            console.warn('[autopilot] no journeys generated:', gen?.attention, gen?.stuckReason);
+            updatedConstruct = { ...updatedConstruct, autopilotStuckReason: gen ? apReasonText(gen) : 'could not start — no engine/fuel data or ship specs' };
           }
-        } catch (e) { console.warn('[autopilot] chain generation failed:', e); }
+        } catch (e) {
+          console.warn('[autopilot] chain generation failed:', e);
+          updatedConstruct = { ...updatedConstruct, autopilotStuckReason: 'planner error while plotting the route (see console)' };
+        }
       }
 
       const nodeIndex = system.nodes.findIndex(n => n.id === updatedConstruct.id);
@@ -898,10 +903,13 @@
               scheduled_journeys: [ ...(updatedBody.scheduled_journeys || []), ...gen.logs ],
               flight_log: [ ...(updatedBody.flight_log || []), ...gen.flightLog ],
               autopilotStuckReason: undefined };
-          } else if (gen) {
-            updatedBody = { ...updatedBody, autopilotStuckReason: apReasonText(gen) };
+          } else {
+            updatedBody = { ...updatedBody, autopilotStuckReason: gen ? apReasonText(gen) : 'could not start — no engine/fuel data or ship specs' };
           }
-        } catch (e) { console.warn('[autopilot] chain generation failed:', e); }
+        } catch (e) {
+          console.warn('[autopilot] chain generation failed:', e);
+          updatedBody = { ...updatedBody, autopilotStuckReason: 'planner error while plotting the route (see console)' };
+        }
       }
 
       const nodeIndex = system.nodes.findIndex(n => n.id === updatedBody.id);
