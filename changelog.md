@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.204-beta - 19th Jun 2026
+
+* Black holes get a "material infall" accretion slider instead of a feeding on/off switch — and everything else is now derived from it by physics. Slide from a bare quiescent horizon (dark, ~0 K, no field) up to the Eddington limit, and the disc's luminosity, inner-edge temperature (Stefan–Boltzmann from the accretion rate), magnetic field, and radiation all follow, with the output hard-capped at Eddington. This fixes two bugs: a quiescent black hole no longer shows a bogus 1,000,000 K surface temperature (it's correctly dark/cold), and a feeding black hole now shines realistically (~10²–10⁵ L☉ for a stellar-mass accretor) instead of near-zero.
+
 ## v2.0.203-beta - 19th Jun 2026
 
 * Autopilot Mine and Explore legs now fly. Instead of a fixed place, the ship finds the best body for the job — scoring sources by richness, closeness, and whether it can also refuel there (so a moon that yields ore and fuel wins over one that's just ore). Only natural bodies are ever mined (never another ship), and mining heads on to its deliver-to drop-off. So a "mine water-ice → deliver to Ceres" plan now actually picks a Saturn moon and hauls.

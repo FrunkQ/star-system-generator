@@ -69,7 +69,7 @@ export function ageStar(star: StarSeed, ageYears: number): StarSeed & { isDead?:
         } else {
             // Remnant, by progenitor mass.
             isDead = true;
-            if (mSolar > 25) { phase = 'black-hole'; L = 1e-8; T = 1e6; }
+            if (mSolar > 25) { phase = 'black-hole'; L = 1e-9; T = 0; } // bare quiescent horizon (feeding is set in the editor)
             else if (mSolar > 8) { phase = 'neutron-star'; L = 1e-5; T = 600000; }
             else {
                 phase = 'white-dwarf';
@@ -81,6 +81,9 @@ export function ageStar(star: StarSeed, ageYears: number): StarSeed & { isDead?:
     }
 
     const props = deriveStarFromHR(Math.max(1500, T), Math.max(1e-9, L), isDead, star.massKg);
+    // A quiescent black hole has no thermal surface — the HR clamp (≥1500 K, needed for the radius/class
+    // math) must not leak into the displayed temperature. (Feeding raises it again via the editor.)
+    if (phase === 'black-hole') { props.temperatureK = 0; props.luminositySolar = 1e-9; }
     return { ...star, ...props, isDead, phase };
 }
 

@@ -228,6 +228,9 @@
           magGauss = body.magneticField.strengthGauss;
           magSliderPos = (Math.log(Math.max(magMin, Math.min(magMax, magGauss))) - magLogMin) / (magLogMax - magLogMin);
       }
+      // Black-hole accretion slider — seed from the stored Eddington fraction (active class ⇒ a default).
+      accF = (body as any).accretionEddington ?? ((body.classes?.[0] === 'star/BH_active') ? 0.5 : 0);
+      accSliderPos = posFromF(accF);
   });
 
   // --- Updates ---
@@ -378,37 +381,60 @@
   //   Feeding — an X-ray-binary-like accretor: hot blue disc (10⁴–10⁵ K effective), near-Eddington
   //     output (XRBs run 10⁴–10⁶ L☉ for 3–30 M☉), and a disc-anchored field of ~10⁶ G (stellar-mass
   //     MAD-model estimates span 10⁴–10⁸ G at the horizon).
-  function applyBHPresets(target: string) {
-      // Event horizon follows the current mass in both states.
-      applySchwarzschild();
-      if (target === 'star/BH_active') {
-          tempK = 30000;
-          magGauss = 1e6;
-          radiation = 30000;
+  // --- Black-hole accretion: a single "material infall" slider (Eddington fraction) drives EVERYTHING
+  //     from physics. Below a threshold it's a bare quiescent horizon (dark, ~0 K, no field); above it,
+  //     a feeding accretion disc whose luminosity, inner-disc temperature and field are all derived.
+  //     Hard limit: the radiative output is capped at the Eddington luminosity. ---
+  const SOLAR_LUM_W = 3.828e26;
+  const SB_SIGMA = 5.670374e-8;     // Stefan–Boltzmann
+  const QUIESCENT_F = 1e-4;         // below this Eddington fraction → no meaningful disc (quiescent)
+  let accF = 0;                     // current accretion rate as a fraction of Eddington (0..1)
+  let accSliderPos = 0;             // 0..1 log-mapped slider position
+  // log map: pos 0 → off; pos→1 → f = 1 (Eddington). f = 10^(6·pos − 6).
+  const fFromPos = (pos: number) => (pos <= 0.001 ? 0 : Math.pow(10, 6 * pos - 6));
+  const posFromF = (f: number) => (f <= 0 ? 0 : Math.max(0, Math.min(1, (Math.log10(f) + 6) / 6)));
+  $: eddLsun = 32000 * ((body.massKg || 0) / SOLAR_MASS_KG); // Eddington luminosity (L☉)
+
+  function applyAccretion(f: number) {
+      f = Math.max(0, Math.min(1, f)); // Eddington-limited (hard cap)
+      accF = f;
+      (body as any).accretionEddington = f;
+      applySchwarzschild(); // event horizon is mass-driven, both states
+
+      let cls: string, T: number, L: number, B: number, R: number;
+      if (f < QUIESCENT_F) {
+          // Bare horizon: Hawking T is nano-kelvin → effectively 0; no luminosity; no-hair → no field.
+          cls = 'star/BH'; T = 0; L = 1e-9; B = 0; R = 0;
       } else {
-          tempK = 3; // CMB-cold; effectively dark
-          magGauss = 0;
-          radiation = 0.0001;
+          cls = 'star/BH_active';
+          L = f * eddLsun;                                   // L = f · L_Edd (≤ Eddington)
+          const Rs_m = 2 * G * (body.massKg || 0) / (C_MS * C_MS);
+          const Rin_m = 3 * Rs_m;                             // ~ISCO; disc inner edge
+          const Lw = L * SOLAR_LUM_W;
+          T = Math.round(Math.pow(Lw / (4 * Math.PI * Rin_m * Rin_m * SB_SIGMA), 0.25)); // inner-disc T (K)
+          B = Math.round(1e6 * Math.sqrt(f));                 // disc-anchored field, scales with infall
+          R = L;                                              // radiation output tracks luminosity
       }
-      body.temperatureK = tempK;
-      body.magneticField = { strengthGauss: magGauss };
-      body.radiationOutput = radiation;
+      tempK = T; magGauss = B; radiation = R;
+      body.temperatureK = T;
+      body.luminositySolar = L;
+      body.magneticField = { strengthGauss: B };
+      body.radiationOutput = R;
+      currentClass = cls;
+      if (!body.classes) body.classes = [];
+      const others = body.classes.filter((c: string) => !Object.keys(SPECTRAL_DATA).includes(c));
+      body.classes = [cls, ...others];
+      updateImage(cls);
+      accSliderPos = posFromF(f);
       tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, Math.max(tempMin, tempK)))) - tempLogMin) / (tempLogMax - tempLogMin);
       magSliderPos = (Math.log(Math.max(magMin, Math.min(magMax, Math.max(magMin, magGauss)))) - magLogMin) / (magLogMax - magLogMin);
       radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, Math.max(radMin, radiation)))) - radLogMin) / (radLogMax - radLogMin);
-  }
-
-  // Black hole feeding toggle: swap quiescent ↔ active accretion (changes image + orrery look + flux).
-  function setBHFeeding(active: boolean) {
-      const target = active ? 'star/BH_active' : 'star/BH';
-      currentClass = target;
-      if (!body.classes) body.classes = [];
-      const prefixes = Object.keys(SPECTRAL_DATA);
-      const others = body.classes.filter((c: string) => !prefixes.includes(c));
-      body.classes = [target, ...others];
-      updateImage(target);
-      applyBHPresets(target);
       dispatch('update');
+  }
+  // Picking a BH from the dropdown seeds a state: keep its current infall, else default quiescent.
+  function applyBHPresets(target: string) {
+      const seed = target === 'star/BH_active' ? Math.max((body as any).accretionEddington ?? 0.5, QUIESCENT_F) : ((body as any).accretionEddington ?? 0);
+      applyAccretion(seed);
   }
 
   function updateImage(starClass: string) {
@@ -469,10 +495,21 @@
             <div class="color-preview" style="{starStyle}"></div>
         </div>
         {#if currentClass === 'star/BH' || currentClass === 'star/BH_active'}
-            <label class="bh-feeding" style="display:flex; align-items:center; gap:8px; margin-top:8px; font-size:0.9em;">
-                <input type="checkbox" checked={currentClass === 'star/BH_active'} on:change={(e) => setBHFeeding((e.target as HTMLInputElement).checked)} />
-                Feeding (accretion disk) — active black hole
-            </label>
+            <div class="bh-accretion" style="margin-top:10px;">
+                <label style="font-size:0.85em; display:flex; justify-content:space-between;">
+                    <span>Material infall (accretion)</span>
+                    <span style="opacity:0.8;">{accF < QUIESCENT_F ? 'quiescent' : `${(accF * 100).toPrecision(2)}% Eddington`}</span>
+                </label>
+                <input type="range" min="0" max="1" step="0.005" bind:value={accSliderPos} on:input={() => applyAccretion(fFromPos(accSliderPos))} style="width:100%;" />
+                <div style="display:flex; justify-content:space-between; font-size:0.72em; opacity:0.7;"><span>bare horizon</span><span>Eddington limit</span></div>
+                <p style="font-size:0.76em; opacity:0.8; margin:5px 0 0;">
+                    {#if accF < QUIESCENT_F}
+                        Dark, ~0 K, no field — an isolated horizon (Hawking radiation is negligible).
+                    {:else}
+                        Feeding disc: <strong>{tempK.toLocaleString()} K</strong> inner edge · <strong>{body.luminositySolar < 0.01 ? body.luminositySolar.toExponential(1) : Math.round(body.luminositySolar).toLocaleString()} L☉</strong> · <strong>{magGauss.toExponential(0)} G</strong>{#if accF >= 0.999} · at the Eddington limit{/if}
+                    {/if}
+                </p>
+            </div>
         {/if}
         {#if currentClass === 'star/NS' || currentClass === 'star/magnetar'}
             <p class="ns-hint" style="margin:6px 0 0; font-size:0.78em; opacity:0.7;">
