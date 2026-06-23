@@ -5,6 +5,7 @@ import { getGlobalState, calculateFuelMass } from './physics';
 import { AU_KM, G } from '../constants';
 
 const AU_M = AU_KM * 1000;
+const DEBUG_TRANSIT = false; // per-solve assist trace; off so it doesn't flood the console during playback
 
 interface AssistCandidate {
     body: CelestialBody | Barycenter;
@@ -85,7 +86,7 @@ function findAssistCandidates(sys: System, origin: CelestialBody | Barycenter, t
     }
 
     const result = candidates.sort((a, b) => b.score - a.score).slice(0, 3); // Top 3 only
-    if (result.length > 0) console.log(`[AssistDebug] Selected Candidates: ${result.map(c => c.body.name).join(', ')}`);
+    if (result.length > 0 && DEBUG_TRANSIT) console.log(`[AssistDebug] Selected Candidates: ${result.map(c => c.body.name).join(', ')}`);
     return result;
 }
 
@@ -216,7 +217,7 @@ export function calculateAssistPlan(
                     continue; 
                 }
 
-                console.log(`[AssistDebug] FOUND PLAN! ${origin.name} -> ${flybyBody.name} -> ${target.name}`);
+                if (DEBUG_TRANSIT) console.log(`[AssistDebug] FOUND PLAN! ${origin.name} -> ${flybyBody.name} -> ${target.name}`);
                 // If we got here, this is a VALID Assist!
                 // Calculate Costs
                 // dV1 = Departure from Origin

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.217-beta - 24th Jun 2026
+
+* Killed the transit-solver console spam. The planner logged a `[TransitPlanner] Debug:` line on every single solve — and the autopilot lookahead fires hundreds of (cheap) solves per route generation, so playing time flooded the console with thousands of lines and dragged playback (console logging is slow). All per-solve traces are now behind a `DEBUG_TRANSIT` flag, off by default. No behaviour change; the genuine "corrupted orbit" warning is kept.
+
 ## v2.0.216-beta - 24th Jun 2026
 
 * When autopilot can't plot a course, the Autopilot tab now says **why** instead of just silently sitting there. The Engage banner turns red ("Autopilot stuck") and shows the reason — "not enough fuel to reach Enceladus", "no resolvable stops — check the resource or place exists and is reachable", "no host to depart from", etc. Cleared automatically once it plots successfully. (No more needing the browser console to find out why a ship won't move.)

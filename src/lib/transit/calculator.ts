@@ -8,6 +8,11 @@ import { AU_KM, G } from '../constants';
 
 const AU_M = AU_KM * 1000;
 const DAY_S = 86400;
+
+// Per-solve trace logging. OFF by default: the solver runs many times per autopilot generation (the
+// reorder/lookahead alone fires hundreds of quote calls), so logging on every call floods the console and
+// drags playback. Flip to true only when debugging a specific transfer.
+const DEBUG_TRANSIT = false;
 const SOLAR_MASS_KG = 1.989e30;
 
 function getNodeMass(sys: System, node: any): number {
@@ -262,7 +267,7 @@ export function calculateTransitPlan(
       }
   }
 
-  console.log(`[TransitPlanner] Debug: Root mass=${getNodeMass(sys, root)}, Frame=${frameParentId || 'Global'}, FrameMu=${frameMu}`);
+  if (DEBUG_TRANSIT) console.log(`[TransitPlanner] Debug: Root mass=${getNodeMass(sys, root)}, Frame=${frameParentId || 'Global'}, FrameMu=${frameMu}`);
 
   // SANITIZATION: Check for "Impossible Orbit" (Sun Gravity around a Planet)
   let effectiveOrigin = origin;
@@ -478,7 +483,7 @@ export function calculateTransitPlan(
   const r2_m = r2 * AU_M;
   const t_hohmann_sec = Math.PI * Math.sqrt(Math.pow(r1_m + r2_m, 3) / (8 * frameMu));
   
-  console.log(`[TransitPlanner] Debug: startPos=${startPos.x.toFixed(4)},${startPos.y.toFixed(4)} | r1=${r1.toFixed(2)} AU | r2=${r2.toFixed(2)} AU | t_hohmann=${(t_hohmann_sec/86400).toFixed(1)}d`);
+  if (DEBUG_TRANSIT) console.log(`[TransitPlanner] Debug: startPos=${startPos.x.toFixed(4)},${startPos.y.toFixed(4)} | r1=${r1.toFixed(2)} AU | r2=${r2.toFixed(2)} AU | t_hohmann=${(t_hohmann_sec/86400).toFixed(1)}d`);
 
   const accel = (params.maxG || 0.1) * 9.81;
 
@@ -765,7 +770,7 @@ export function calculateTransitPlan(
           p.hiddenReason = "Impractical Duration (>10x optimal)";
       }
       
-      if (p.hiddenReason) {
+      if (p.hiddenReason && DEBUG_TRANSIT) {
           console.log(`[TransitPlanner] Debug: Plan '${p.name}' hidden because: ${p.hiddenReason} (DV: ${p.totalDeltaV_ms.toFixed(0)}m/s, Time: ${p.totalTime_days.toFixed(1)}d)`);
       }
   });
