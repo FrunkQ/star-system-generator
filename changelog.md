@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.213-beta - 23rd Jun 2026
+
+* Routes & journeys: autopilot-flown journeys no longer clutter the "In-system journeys" list — that's now just manual/player routes. Each ship's autopilot legs live under the "Under autopilot" heading instead, tucked into a collapsible "N planned legs" section per ship (a long committed route stays out of the way until you expand it). Each leg is still clickable to jump to the ship.
+
 ## v2.0.212-beta - 23rd Jun 2026
 
 * The **"Any · as needed"** route mode now flies. Instead of visiting every stop in some order, the ship greedily heads to whichever single stop is best right now (nearest/cheapest per the Drive setting), works it, then re-picks from its new position — with a freshness bias so a just-serviced stop is unlikely to win twice running and the others still get covered over time. It costs candidates with the same quote-backed solver the legs are committed with, and respects the max-time-per-leg cap. (Place-targeted routes for now, like best-order.)

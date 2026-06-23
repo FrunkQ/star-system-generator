@@ -174,7 +174,10 @@
         when: whenLine(start, end, status, pct)
       };
     });
+    // Manual/player journeys go in the main list; autopilot-flown ones are pulled out and grouped per-ship
+    // under the "Under autopilot" heading (kept off the manual list, and collapsible since a route can be long).
     const journeys: any[] = [];
+    const apJourneysByConstruct: Record<string, any[]> = {};
     for (const sys of map.systems) {
       const nodes = sys.system?.nodes ?? [];
       const nodeName = (id: string) => (nodes as any[]).find((n) => n.id === id)?.name ?? id;
@@ -187,12 +190,14 @@
           const bounds = getJourneyBounds(plans);   // game-MS timestamps
           const startS = bounds ? bounds.startMs / 1000 : nowSec;
           const endS = bounds ? bounds.endMs / 1000 : nowSec;
-          journeys.push({
+          const row = {
             id: j.id, constructId: n.id, constructName: n.name, systemId: sys.id, systemName: sys.name,
             origin: nodeName(plans[0].originId), target: nodeName(plans[plans.length - 1].targetId),
             status: j.status, legs: plans.length,
             when: whenLine(startS, endS, j.status, endS > startS ? Math.max(0, Math.min(100, Math.round(((nowSec - startS) / (endS - startS)) * 100))) : 0)
-          });
+          };
+          if (j.autopilot) (apJourneysByConstruct[n.id] = apJourneysByConstruct[n.id] || []).push(row);
+          else journeys.push(row);
         }
       }
     }
@@ -255,7 +260,7 @@
         const hasLiveJourneys = (n.scheduled_journeys || []).some((l: any) => l.status !== 'cancelled');
         const attention = !ap.legs?.length ? 'intervention' : !hasLiveJourneys ? 'stuck' : null;
         const attentionLabel = attention === 'stuck' ? 'Stuck — no journeys (could not reach/fuel the next stop)' : attention === 'intervention' ? 'Needs setup — no stops added' : '';
-        autopilotShips.push({ id: n.id, constructName: n.name, where: sys.name, systemId: sys.id, summary, attention, attentionLabel });
+        autopilotShips.push({ id: n.id, constructName: n.name, where: sys.name, systemId: sys.id, summary, attention, attentionLabel, journeys: apJourneysByConstruct[n.id] ?? [] });
       }
     }
     // Attention-needing ships sort to the top — best way to scan the fleet at a glance.
@@ -1456,7 +1461,7 @@
           {#if routesData.autopilotShips.length}
             <h4 class="ap-heading"><AutopilotShipIcon size={14} /> Under autopilot ({routesData.autopilotShips.length})</h4>
             {#each routesData.autopilotShips as a (a.id)}
-              <div class="route-row static">
+              <div class="route-row static ap-ship">
                 <span class="route-main">
                   <button class="pill ship" title="Go to the ship" on:click={() => { showRoutes = false; enterSystemAndFocus(a.systemId, a.id); }}>{a.constructName}</button>
                   {#if a.attention}<span class="route-attention {a.attention}" title={a.attentionLabel}>!</span>{/if}
@@ -1464,6 +1469,20 @@
                 </span>
                 <span class="route-sys">{a.where}</span>
               </div>
+              {#if a.journeys.length}
+                <details class="ap-legs">
+                  <summary>{a.journeys.length} planned {a.journeys.length === 1 ? 'leg' : 'legs'}</summary>
+                  {#each a.journeys as j (j.id)}
+                    <button class="route-row ap-leg" on:click={() => { showRoutes = false; enterSystemAndFocus(j.systemId, j.constructId); }}>
+                      <span class="route-status {j.status}">{j.status}</span>
+                      <span class="route-col">
+                        <span class="route-main">{j.origin} → {j.target}{j.legs > 1 ? ` (${j.legs} legs)` : ''}</span>
+                        <span class="route-when">{j.when}</span>
+                      </span>
+                    </button>
+                  {/each}
+                </details>
+              {/if}
             {/each}
           {/if}
         </div>
@@ -1585,6 +1604,11 @@
   }
   .routes-body { overflow-y: auto; overflow-x: hidden; padding: 4px 2px; }
   .ap-heading { display: flex; align-items: center; gap: 7px; }
+  .ap-ship { border-left: 2px solid var(--accent, #ff5a1f); }
+  .ap-legs { margin: 0 0 0.5em 0.6em; }
+  .ap-legs > summary { cursor: pointer; color: var(--text-muted); font-size: 0.82em; padding: 0.2em 0; list-style-position: inside; user-select: none; }
+  .ap-legs > summary:hover { color: var(--text); }
+  .ap-legs .ap-leg { margin: 0.2em 0 0 0.4em; border-left: 2px solid #2f5d76; opacity: 0.92; }
   .routes-body .route-row { box-sizing: border-box; max-width: 100%; }
   .routes-body h4 {
     margin: 12px 0 6px;
