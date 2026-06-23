@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.216-beta - 24th Jun 2026
+
+* When autopilot can't plot a course, the Autopilot tab now says **why** instead of just silently sitting there. The Engage banner turns red ("Autopilot stuck") and shows the reason — "not enough fuel to reach Enceladus", "no resolvable stops — check the resource or place exists and is reachable", "no host to depart from", etc. Cleared automatically once it plots successfully. (No more needing the browser console to find out why a ship won't move.)
+
 ## v2.0.215-beta - 23rd Jun 2026
 
 * The flight-log **history is now kept forever** (it's tiny) — only the heavy journey/path data is bounded. A repeat ship retains just its last 2 flown legs of committed journeys (plus active + future), so the orrery and journey list stay clean, while the Ship's Log flight-log keeps the full breadcrumb history.

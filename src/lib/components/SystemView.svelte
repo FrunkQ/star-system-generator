@@ -794,9 +794,11 @@
           if (gen?.logs?.length) {
             updatedConstruct = { ...updatedConstruct,
               scheduled_journeys: [ ...(updatedConstruct.scheduled_journeys || []), ...gen.logs ],
-              flight_log: [ ...(updatedConstruct.flight_log || []), ...gen.flightLog ] };
+              flight_log: [ ...(updatedConstruct.flight_log || []), ...gen.flightLog ],
+              autopilotStuckReason: undefined };
           } else if (gen) {
             console.warn('[autopilot] no journeys generated:', gen.attention, gen.stuckReason);
+            updatedConstruct = { ...updatedConstruct, autopilotStuckReason: apReasonText(gen) };
           }
         } catch (e) { console.warn('[autopilot] chain generation failed:', e); }
       }
@@ -821,6 +823,12 @@
     let end = -Infinity;
     for (const l of logs || []) { if (l.status === 'cancelled') continue; const b = getJourneyBounds(l.plans); if (b) end = Math.max(end, b.endMs); }
     return end;
+  }
+  // Human reason a course couldn't be plotted, for the Autopilot tab (so the GM doesn't need the console).
+  function apReasonText(gen: { attention: string | null; stuckReason?: string }): string {
+    if (gen.stuckReason) return gen.stuckReason;
+    if (gen.attention === 'intervention') return 'no resolvable stops — check the resource or place exists and is reachable';
+    return 'could not plot a course';
   }
   const planningOf = (n: any) => Math.max(1, Math.floor(n.autopilot?.planning ?? 2));
   function maybeTopUpAutopilot(displayMs: number) {
@@ -881,7 +889,10 @@
           if (gen?.logs?.length) {
             updatedBody = { ...updatedBody,
               scheduled_journeys: [ ...(updatedBody.scheduled_journeys || []), ...gen.logs ],
-              flight_log: [ ...(updatedBody.flight_log || []), ...gen.flightLog ] };
+              flight_log: [ ...(updatedBody.flight_log || []), ...gen.flightLog ],
+              autopilotStuckReason: undefined };
+          } else if (gen) {
+            updatedBody = { ...updatedBody, autopilotStuckReason: apReasonText(gen) };
           }
         } catch (e) { console.warn('[autopilot] chain generation failed:', e); }
       }

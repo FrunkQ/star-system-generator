@@ -248,6 +248,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   fuel_tanks?: FuelTank[]; // Array of fuel tanks attached to the construct
   sensors?: SensorInstance[]; // Array of sensors attached to the construct
   autopilot?: Autopilot; // Autopilot plan (the wizard) — see docs/autopilot-spec.md
+  autopilotStuckReason?: string; // why the planner couldn't plot a course (surfaced in the Autopilot tab); cleared on success
   current_cargo_tonnes?: number; // Current cargo mass in tonnes
   current_crew_count?: number; // Current number of crew members
   cargoDescription?: string; // User-editable description of the cargo

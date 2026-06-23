@@ -162,16 +162,16 @@
     </div>
   </div>
 
-  <button type="button" class="engage-toggle" class:on={ap.enabled} class:disabled={!ap.enabled && !canEngage} aria-pressed={ap.enabled}
+  <button type="button" class="engage-toggle" class:on={ap.enabled} class:stuck={ap.enabled && !!construct.autopilotStuckReason} class:disabled={!ap.enabled && !canEngage} aria-pressed={ap.enabled}
           on:click={() => {
             if (ap.enabled) { dispatch('disengage'); }
             else if (canEngage) { construct.autopilot!.enabled = true; update(); }
             else { needStopsHint = true; }
           }}>
-    <span class="eng-icon"><AutopilotShipIcon size={24} pulse={ap.enabled} /></span>
+    <span class="eng-icon"><AutopilotShipIcon size={24} pulse={ap.enabled && !construct.autopilotStuckReason} /></span>
     <span class="eng-text">
-      <strong>{ap.enabled ? 'Autopilot engaged' : 'Engage autopilot'}</strong>
-      <small>{ap.enabled ? 'flying its route — click to take the helm' : canEngage ? 'click to hand it the helm' : 'add a stop below to enable'}</small>
+      <strong>{ap.enabled ? (construct.autopilotStuckReason ? 'Autopilot stuck' : 'Autopilot engaged') : 'Engage autopilot'}</strong>
+      <small>{ap.enabled ? (construct.autopilotStuckReason ? `can't plot a course — ${construct.autopilotStuckReason}` : 'flying its route — click to take the helm') : canEngage ? 'click to hand it the helm' : 'add a stop below to enable'}</small>
     </span>
     <span class="eng-pill">{ap.enabled ? 'ON' : 'OFF'}</span>
   </button>
@@ -384,6 +384,14 @@
     background: color-mix(in srgb, var(--accent) 15%, transparent);
     box-shadow: inset 0 0 0 1px var(--accent), 0 0 18px -7px var(--accent);
   }
+  /* Engaged but the planner can't plot a course — flag it red so the GM sees why nothing's moving. */
+  .engage-toggle.on.stuck {
+    border-color: #cc5555; color: var(--text);
+    background: color-mix(in srgb, #cc5555 16%, transparent);
+    box-shadow: inset 0 0 0 1px #cc5555, 0 0 18px -7px #cc5555;
+  }
+  .engage-toggle.on.stuck .eng-icon, .engage-toggle.on.stuck .eng-pill { color: #e88; }
+  .engage-toggle.on.stuck .eng-pill { background: #cc5555; color: #fff; border-color: #cc5555; }
   .eng-icon { flex: 0 0 auto; display: flex; color: var(--text-faint); }
   .engage-toggle:hover .eng-icon { color: var(--accent); }
   .engage-toggle.on .eng-icon { color: var(--accent); }
