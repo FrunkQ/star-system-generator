@@ -36,7 +36,7 @@ The system is built as a **Layered Simulation Pipeline**, separating data-driven
 
 ### Layer 4: Specialized Modules (The Gameplay)
 *   **Transit System (`src/lib/transit/`)**:
-    *   `calculator.ts`: Solves the **Lambert Problem** for efficient orbits and **Kinematic Paths** for direct burns.
+    *   `calculator.ts`: Emits up to four plan families per call — **Lambert** (Most Efficient + Efficient Now), **Kinematic** torch (Direct Burn), and a **Gravity-Assist** chain (`assist.ts`). Runs at three cost tiers (full · `costOnly` · `quote`) so the autopilot lookahead can cost legs ~140× cheaper without a parallel model. See [transit-architecture.md](transit-architecture.md).
     *   `scheduler.ts**: Interpolates `ScheduledJourneyLog` paths against the mission clock to provide live positions for moving constructs.
 *   **Transit Feasibility & Sanity**: 
     To maintain a responsive and realistic UI, the planner applies several filters:
