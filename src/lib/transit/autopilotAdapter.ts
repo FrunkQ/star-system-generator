@@ -1,12 +1,12 @@
 // Autopilot adapter (Slice 1, step 2) — wires the pure planner core to live system data and the real
 // transit solver, producing the ScheduledJourneyLog chain an engaged ship flies. Kept separate from the
 // pure `autopilotPlanner` so the core stays testable; this is the "impure" edge (specs, calculator, ids).
-import type { CelestialBody, System, RulePack } from '$lib/types';
+import type { CelestialBody, System, RulePack, ConstructLogEvent } from '$lib/types';
 import type { ScheduledJourneyLog, TransitMode } from './types';
 import { calculateTransitPlan } from './calculator';
 import { calculateFullConstructSpecs } from '$lib/construct-logic';
 import { resolveConstructCurrentHostId } from './scheduler';
-import { legToStops, walkStops, chooseSource, reorderWaypoints, type AutopilotStop } from './autopilotPlanner';
+import { legToStops, walkStops, chooseSource, reorderWaypoints, type AutopilotStop, type StopEvent } from './autopilotPlanner';
 
 const DAY_MS = 86_400_000;
 const G0 = 9.80665;
@@ -61,9 +61,9 @@ export function resolveResourceStops(
   const stops: AutopilotStop[] = [{
     targetId: best.id, dwellDays: dwell,
     refuelHere: best.refuels || (leg.resourceKeys ?? []).some(isFuelCompatible),
-    verb: 'mine', resourceKeys: leg.resourceKeys
+    verb: 'mine', resourceKeys: leg.resourceKeys, tonnes: leg.fillAmount_t
   }];
-  if (leg.deliverTo?.placeId) stops.push({ targetId: leg.deliverTo.placeId, dwellDays: 1, refuelHere: false, verb: 'unload', resourceKeys: leg.resourceKeys });
+  if (leg.deliverTo?.placeId) stops.push({ targetId: leg.deliverTo.placeId, dwellDays: 1, refuelHere: false, verb: 'unload', resourceKeys: leg.resourceKeys, tonnes: leg.fillAmount_t });
   return stops;
 }
 
@@ -90,6 +90,7 @@ export function buildAdapterStops(
 
 export interface AutopilotGenResult {
   logs: ScheduledJourneyLog[];
+  flightLog: ConstructLogEvent[];   // work events at the stops (load/unload/mine/refuel/loiter) for the ship's log
   attention: 'stuck' | 'intervention' | null;
   stuckReason?: string;
   done: boolean;
@@ -126,7 +127,12 @@ export function generateAutopilotChain(
   const capacity = Isp > 0 && dryKg > 0 && wetFullKg > dryKg ? Isp * G0 * Math.log(wetFullKg / dryKg) : budget;
 
   const startHostId = resolveConstructCurrentHostId(construct, fromTimeMs) || construct.parentId || '';
-  if (!startHostId) return { logs: [], attention: 'stuck', stuckReason: 'no host to depart from', done: false };
+  if (!startHostId) return { logs: [], flightLog: [], attention: 'stuck', stuckReason: 'no host to depart from', done: false };
+
+  // Free cargo space — the default haul amount when a leg doesn't pin fillAmount_t.
+  const freeCargo_t = Math.max(0, ((specs as any).cargoCapacity_tonnes || 0) - (construct.current_cargo_tonnes || 0));
+  const nodeName = (id: string) => (system.nodes.find((n) => n.id === id) as any)?.name || id;
+  const resLabel = (k?: string) => (k ? k.replace(/^resource\//, '').replace(/-/g, ' ') : '');
 
   const repeat = ap.repeat !== false;
   const driveFast = (ap.drive ?? 0.5) >= 0.5;
@@ -182,7 +188,11 @@ export function generateAutopilotChain(
 
   const needsFuel = !ap.ignoreFuel && budget < capacity * 0.5; // low on fuel → prefer self-fuelling sources
   const stops = buildAdapterStops(plannedLegs, startHostId, system, isFuelCompatible, refuelKeys, needsFuel);
-  if (!stops.length) return { logs: [], attention: 'intervention', done: false }; // no resolvable stops (e.g. resource not present)
+  if (!stops.length) return { logs: [], flightLog: [], attention: 'intervention', done: false }; // no resolvable stops (e.g. resource not present)
+  // Default any haul that didn't pin an amount to the ship's free cargo space.
+  for (const s of stops) {
+    if (s.tonnes == null && (s.verb === 'load' || s.verb === 'unload' || s.verb === 'mine') && freeCargo_t > 0) s.tonnes = freeCargo_t;
+  }
 
   // Commit horizon. Planning is the eventual incremental depth; until the clock-advance top-up exists,
   // commit at least one full circuit so a fired-up ship visibly flies its route (capped to avoid huge chains).
@@ -210,5 +220,24 @@ export function generateAutopilotChain(
     autopilot: true
   }));
 
-  return { logs, attention: res.attention, stuckReason: res.stuckReason, done: res.done };
+  const flightLog: ConstructLogEvent[] = res.events.map((e, i) => finalizeEvent(e, i, nodeName, resLabel));
+
+  return { logs, flightLog, attention: res.attention, stuckReason: res.stuckReason, done: res.done };
+}
+
+// Turn a name-free StopEvent from the pure core into a display-ready flight-log entry (id + human text).
+function finalizeEvent(e: StopEvent, i: number, nodeName: (id: string) => string, resLabel: (k?: string) => string): ConstructLogEvent {
+  const place = nodeName(e.placeId);
+  const res = resLabel(e.resourceKey);
+  const amt = e.tonnes ? `${Math.round(e.tonnes)} t ` : '';
+  let text: string;
+  switch (e.kind) {
+    case 'load':   text = `Loaded ${amt}${res || 'cargo'} at ${place}`; break;
+    case 'unload': text = `Unloaded ${amt}${res || 'cargo'} at ${place}`; break;
+    case 'mine':   text = `Mined ${amt}${res || 'ore'} at ${place}`; break;
+    case 'refuel': text = `Refuelled${res ? ` (${res})` : ''} at ${place}`; break;
+    case 'loiter': text = `Held station at ${place}`; break;
+    default:       text = `${e.kind} at ${place}`;
+  }
+  return { id: `ev-${e.atSec}-${i}`, atSec: e.atSec, kind: e.kind, text, placeId: e.placeId, resourceKey: e.resourceKey, tonnes: e.tonnes };
 }

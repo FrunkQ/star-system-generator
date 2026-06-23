@@ -10,6 +10,7 @@
   import { starmapStore } from '$lib/starmapStore';
   import { resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
   import { getJourneyBounds } from '$lib/transit/scheduler';
+  import { cargoAboardAt } from '$lib/transit/autopilotPlanner';
   import AutopilotShipIcon from './AutopilotShipIcon.svelte';
 
   export let focusedBody: CelestialBody;
@@ -85,6 +86,14 @@
       if (leg.arrivalPlacement && PLACEMENT[leg.arrivalPlacement]) return `In ${PLACEMENT[leg.arrivalPlacement]}${target ? ` of ${target}` : ''}`;
       return target ? `Docked at ${target}` : 'Docked';
   }
+
+  // Flight log: the stop-work breadcrumbs (load/unload/mine/refuel/loiter) the journeys don't show, time-
+  // sorted. Cargo aboard at the display moment is DERIVED from it (no stored cargo state to drift).
+  const KIND_GLYPH: Record<string, string> = {
+      load: '▲', unload: '▼', mine: '⛏', refuel: '⛽', loiter: '◷', stuck: '!', disengage: '✕', depart: '→', arrive: '⇲'
+  };
+  $: flightLog = [...(focusedBody.flight_log || [])].sort((a, b) => Number(a.atSec) - Number(b.atSec));
+  $: cargoAboard = Number.isFinite(displayTimeMs) ? cargoAboardAt(focusedBody.flight_log, Math.floor(displayTimeMs / 1000)) : 0;
 </script>
 
 <!-- A small clock that jumps DISPLAY time to a logged moment. Only rendered for times at/after actual
@@ -157,6 +166,24 @@
         </div>
       </div>
     {/each}
+  {/if}
+
+  {#if flightLog.length}
+    <div class="flight-log">
+      <div class="flight-log-hdr">
+        <strong>Flight Log</strong>
+        {#if Number.isFinite(displayTimeMs)}<span class="cargo-now" title="Cargo aboard at the current display time, derived from the log">Cargo aboard: {Math.round(cargoAboard)} t</span>{/if}
+      </div>
+      {#each flightLog as ev}
+        {@const evMs = safeClockSecStringToMs(ev.atSec)}
+        {@const future = Number.isFinite(displayTimeMs) && evMs > displayTimeMs}
+        <div class="flight-log-row" class:future>
+          <span class="fl-kind fl-{ev.kind}">{KIND_GLYPH[ev.kind] || '·'}</span>
+          <span class="fl-text">{ev.text}</span>
+          <span class="fl-time">{formatLogTime(evMs)} {@render seekClock(evMs)}</span>
+        </div>
+      {/each}
+    </div>
   {/if}
 </div>
 
@@ -253,6 +280,51 @@
       font-style: italic;
       opacity: 0.7;
       margin-top: 0.35rem;
+  }
+  .flight-log {
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: #181818;
+      padding: 0.6em;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3em;
+  }
+  .flight-log-hdr {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.6em;
+      color: #ffb088;
+      margin-bottom: 0.2em;
+  }
+  .cargo-now {
+      color: #8fcf9f;
+      font-size: 0.82em;
+      font-weight: 600;
+  }
+  .flight-log-row {
+      display: grid;
+      grid-template-columns: 1.2em 1fr auto;
+      align-items: baseline;
+      gap: 0.5em;
+      font-size: 0.85em;
+      color: var(--text);
+  }
+  .flight-log-row.future {
+      opacity: 0.5;
+  }
+  .fl-kind {
+      text-align: center;
+      color: var(--text-muted);
+  }
+  .fl-load, .fl-mine { color: #8fcf9f; }
+  .fl-unload { color: #e8a857; }
+  .fl-refuel { color: #6fb6ff; }
+  .fl-time {
+      color: var(--text-muted);
+      font-size: 0.92em;
+      white-space: nowrap;
   }
   .seek-clock {
       display: inline-flex;

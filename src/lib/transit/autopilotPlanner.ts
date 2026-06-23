@@ -7,10 +7,11 @@
 // Slice 1 scope: traversal 'in-order' + repeat/run-once; PLACE-targeted legs (patrol, transport);
 // Planning = commit-horizon; basic fuel stuck-flag with harvest/depot top-up. Deferred: resource
 // resolution (mine/explore), best-order/any + reorder, tardiness, cargo accounting, escort/flyby.
-import type { CelestialBody, ID } from '$lib/types';
+import type { CelestialBody, ID, ConstructLogKind, ConstructLogEvent } from '$lib/types';
 import type { TransitPlan } from './types';
 
 const DAY_MS = 86_400_000;
+const atSecStr = (ms: number) => BigInt(Math.floor(ms / 1000)).toString();
 
 // A leg expands into one or more STOPS (patrol → 1; transport → load + unload). The walker only ever
 // sees stops, which keeps the core a clean "go to target, hold, maybe refuel" loop.
@@ -18,8 +19,37 @@ export interface AutopilotStop {
   targetId: ID;
   dwellDays: number;        // time held at the target — loiter (patrol) / load / unload
   refuelHere: boolean;      // can top fuel up here (harvest of a fuel-compatible resource, or a depot)
-  verb: string;             // 'patrol' | 'load' | 'unload' — for the live action read-out
+  verb: string;             // 'patrol' | 'load' | 'unload' | 'mine' | 'explore' — the live action read-out + log kind
   resourceKeys?: string[];  // what's gathered/carried at this stop (cargo + harvest-refuel)
+  tonnes?: number;          // cargo mass moved at this stop (load/unload/mine) — for the flight log + cargo derivation
+}
+
+// A work event the planner emits at a stop (between transit journeys). The adapter finalises these into
+// ConstructLogEvents (id + display text with real names); kept structured + name-free here so the core stays pure.
+export interface StopEvent {
+  atSec: string;
+  kind: ConstructLogKind;
+  placeId: ID;
+  resourceKey?: string;
+  tonnes?: number;
+}
+
+// Map a stop verb to its flight-log kind (the work the journey legs don't already show).
+const VERB_KIND: Record<string, ConstructLogKind | undefined> = {
+  load: 'load', unload: 'unload', mine: 'mine', patrol: 'loiter', explore: 'loiter'
+};
+
+// Cargo aboard at a moment = the running sum of the flight log up to that time (load/mine add, unload
+// removes). DERIVED, never stored — so it scrubs with the clock and a regen can't desync it. atSec in seconds.
+export function cargoAboardAt(events: ConstructLogEvent[] | undefined, atSec: number): number {
+  if (!events?.length) return 0;
+  let aboard = 0;
+  for (const e of events) {
+    if (Number(e.atSec) > atSec) continue;
+    if (e.kind === 'load' || e.kind === 'mine') aboard += e.tonnes || 0;
+    else if (e.kind === 'unload') aboard -= e.tonnes || 0;
+  }
+  return Math.max(0, aboard);
 }
 
 // Solve a single hop origin→target departing at startMs. Production wraps `calculateTransitPlan` +
@@ -44,6 +74,7 @@ export interface AutopilotPlanOpts {
 
 export interface AutopilotPlanResult {
   plans: TransitPlan[];     // the leg chain to store in a ScheduledJourneyLog
+  events: StopEvent[];      // work events at the stops (load/unload/mine/refuel/loiter) for the flight log
   endHostId: ID;            // where the ship ends up within this horizon
   attention: 'stuck' | null;
   stuckReason?: string;
@@ -55,13 +86,14 @@ export interface AutopilotPlanResult {
 // dwell, refuelling where possible, and stopping early for a completed run-once route or a stuck state.
 export function walkStops(stops: AutopilotStop[], opts: AutopilotPlanOpts): AutopilotPlanResult {
   const out: TransitPlan[] = [];
+  const events: StopEvent[] = [];
   let host = opts.startHostId;
   let t = opts.fromMs;
   let budget = opts.ignoreFuel ? Infinity : opts.fuelBudget_ms;
   const capacity = opts.ignoreFuel ? Infinity : opts.fuelCapacity_ms;
   const horizon = Math.max(1, Math.floor(opts.planningHorizon));
 
-  if (!stops.length) return { plans: [], endHostId: host, attention: null, done: false, finalTimeMs: t };
+  if (!stops.length) return { plans: [], events, endHostId: host, attention: null, done: false, finalTimeMs: t };
 
   let i = 0;
   let committed = 0;
@@ -72,15 +104,15 @@ export function walkStops(stops: AutopilotStop[], opts: AutopilotPlanOpts): Auto
     if (host !== stop.targetId) {
       const solve = opts.solveLeg(host, stop.targetId, t);
       if (!solve || !solve.valid) {
-        return { plans: out, endHostId: host, attention: 'stuck', stuckReason: `no route to ${stop.targetId}`, done: false, finalTimeMs: t };
+        return { plans: out, events, endHostId: host, attention: 'stuck', stuckReason: `no route to ${stop.targetId}`, done: false, finalTimeMs: t };
       }
       const legDays = solve.plans.reduce((s, p) => s + (p.totalTime_days || 0), 0);
       if (opts.maxJourneyDays && legDays > opts.maxJourneyDays) {
-        return { plans: out, endHostId: host, attention: 'stuck', stuckReason: `hop to ${stop.targetId} exceeds the ${opts.maxJourneyDays}-day cap`, done: false, finalTimeMs: t };
+        return { plans: out, events, endHostId: host, attention: 'stuck', stuckReason: `hop to ${stop.targetId} exceeds the ${opts.maxJourneyDays}-day cap`, done: false, finalTimeMs: t };
       }
       if (budget < solve.deltaV_ms) {
         // Basic stuck-flag: can't reach the next stop and no top-up was available at this one.
-        return { plans: out, endHostId: host, attention: 'stuck', stuckReason: `not enough fuel to reach ${stop.targetId}`, done: false, finalTimeMs: t };
+        return { plans: out, events, endHostId: host, attention: 'stuck', stuckReason: `not enough fuel to reach ${stop.targetId}`, done: false, finalTimeMs: t };
       }
       budget -= solve.deltaV_ms;
       out.push(...solve.plans);
@@ -88,20 +120,29 @@ export function walkStops(stops: AutopilotStop[], opts: AutopilotPlanOpts): Auto
       host = stop.targetId;
     }
 
+    // Work event at the stop — the load/unload/mine/loiter the transit journeys don't themselves record.
+    const kind = VERB_KIND[stop.verb];
+    if (kind && (kind !== 'loiter' || stop.dwellDays > 0)) {
+      events.push({ atSec: atSecStr(t), kind, placeId: stop.targetId, resourceKey: stop.resourceKeys?.[0], tonnes: stop.tonnes });
+    }
+
     // Hold at the stop (dwell becomes the gap before the next hop → resolver shows "waiting at host").
     t += Math.max(0, stop.dwellDays) * DAY_MS;
     // Harvest/depot top-up: refuelling here means the NEXT hop (e.g. the return leg) departs fuelled.
-    if (stop.refuelHere) budget = capacity;
+    if (stop.refuelHere) {
+      budget = capacity;
+      events.push({ atSec: atSecStr(t), kind: 'refuel', placeId: stop.targetId, resourceKey: stop.resourceKeys?.[0] });
+    }
 
     committed++;
     i++;
 
     if (!opts.repeat && i >= stops.length) {
-      return { plans: out, endHostId: host, attention: null, done: true, finalTimeMs: t };
+      return { plans: out, events, endHostId: host, attention: null, done: true, finalTimeMs: t };
     }
   }
 
-  return { plans: out, endHostId: host, attention: null, done: false, finalTimeMs: t };
+  return { plans: out, events, endHostId: host, attention: null, done: false, finalTimeMs: t };
 }
 
 // Expand a captured autopilot leg into stops. Slice 1 handles the PLACE-targeted verbs; resource-
@@ -109,7 +150,7 @@ export function walkStops(stops: AutopilotStop[], opts: AutopilotPlanOpts): Auto
 // `isFuelCompatible(resourceKey)` is true when the ship can refuel from that resource (its fuels'
 // refuel_tags include the key) — wired from the rulepack fuel definitions in production.
 export function legToStops(
-  leg: { action: string; placeId?: ID; resourceKeys?: string[]; loiterDays?: number; deliverTo?: { placeId?: ID } },
+  leg: { action: string; placeId?: ID; resourceKeys?: string[]; loiterDays?: number; fillAmount_t?: number; deliverTo?: { placeId?: ID } },
   isFuelCompatible: (resourceKey: string) => boolean,
   loadDwellDays = 1
 ): AutopilotStop[] {
@@ -122,10 +163,10 @@ export function legToStops(
     const carry = leg.resourceKeys ?? [];
     const gathersFuel = carry.some(isFuelCompatible); // self-fuel from a compatible cargo (e.g. water-ice)
     const stops: AutopilotStop[] = [
-      { targetId: leg.placeId, dwellDays: loadDwellDays, refuelHere: gathersFuel, verb: 'load', resourceKeys: carry }
+      { targetId: leg.placeId, dwellDays: loadDwellDays, refuelHere: gathersFuel, verb: 'load', resourceKeys: carry, tonnes: leg.fillAmount_t }
     ];
     if (leg.deliverTo?.placeId) {
-      stops.push({ targetId: leg.deliverTo.placeId, dwellDays: loadDwellDays, refuelHere: false, verb: 'unload', resourceKeys: carry });
+      stops.push({ targetId: leg.deliverTo.placeId, dwellDays: loadDwellDays, refuelHere: false, verb: 'unload', resourceKeys: carry, tonnes: leg.fillAmount_t });
     }
     return stops;
   }

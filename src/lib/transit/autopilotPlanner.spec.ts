@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { walkStops, legToStops, planToStops, chooseSource, scoreSources, reorderWaypoints, type AutopilotStop, type SolveLeg, type ReorderOpts } from './autopilotPlanner';
+import { walkStops, legToStops, planToStops, chooseSource, scoreSources, reorderWaypoints, cargoAboardAt, type AutopilotStop, type SolveLeg, type ReorderOpts } from './autopilotPlanner';
 
 const DAY_MS = 86_400_000;
 
@@ -55,6 +55,32 @@ describe('autopilot walkStops — in-order chain', () => {
     const r = walkStops(stops, { ...baseOpts, planningHorizon: 5, repeat: false });
     expect(r.plans.map((p) => p.targetId)).toEqual(['A', 'B']);
     expect(r.done).toBe(true);
+  });
+});
+
+describe('autopilot flight log — stop work events + cargo derivation', () => {
+  const load = (id: string, t: number): AutopilotStop => ({ targetId: id, dwellDays: 1, refuelHere: false, verb: 'load', resourceKeys: ['resource/water-ice'], tonnes: t });
+  const unload = (id: string, t: number): AutopilotStop => ({ targetId: id, dwellDays: 1, refuelHere: false, verb: 'unload', resourceKeys: ['resource/water-ice'], tonnes: t });
+
+  it('emits load/unload events and derives cargo aboard purely from them', () => {
+    const r = walkStops([load('A', 120), unload('B', 120)], { ...baseOpts, planningHorizon: 2, repeat: false });
+    expect(r.events.map((e) => e.kind)).toEqual(['load', 'unload']);
+    const loadAt = Number(r.events[0].atSec);
+    const unloadAt = Number(r.events[1].atSec);
+    expect(cargoAboardAt(r.events as any, loadAt - 1)).toBe(0);   // before loading
+    expect(cargoAboardAt(r.events as any, unloadAt - 1)).toBe(120); // carrying
+    expect(cargoAboardAt(r.events as any, unloadAt)).toBe(0);     // delivered
+  });
+
+  it('mine adds cargo + emits refuel where flagged; a flyby (dwell 0) logs no loiter', () => {
+    const mine: AutopilotStop = { targetId: 'M', dwellDays: 3, refuelHere: true, verb: 'mine', resourceKeys: ['resource/ore'], tonnes: 50 };
+    const flyby: AutopilotStop = { targetId: 'P', dwellDays: 0, refuelHere: false, verb: 'patrol' };
+    const r = walkStops([mine, flyby], { ...baseOpts, planningHorizon: 2, repeat: false });
+    const kinds = r.events.map((e) => e.kind);
+    expect(kinds).toContain('mine');
+    expect(kinds).toContain('refuel');
+    expect(kinds).not.toContain('loiter'); // flyby never stops → no loiter event
+    expect(cargoAboardAt(r.events as any, Infinity)).toBe(50);
   });
 });
 

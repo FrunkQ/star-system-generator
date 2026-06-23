@@ -151,6 +151,24 @@ export interface Autopilot {
   ignoreSupplies: boolean;  // simplify: this ship doesn't require life-support supplies
   avoidPlaceIds?: ID[];     // locations the ship won't visit or replenish at (e.g. politically unaligned)
 }
+// One entry in a construct's autopilot FLIGHT LOG — the deterministic ledger the planner appends to as it
+// commits a route (work that happens at the STOPS, between transit journeys). ShipLogPane renders these merged
+// and time-sorted with the journeys; the Totals tab derives every aggregate (tonnes/annum, loops, on-time %)
+// purely by reducing over them, so there is no extra mutable cargo/fuel state to keep in sync. Timestamps are
+// universe-seconds (bigint string, like ScheduledJourneyLog.createdAtSec); events are scrubbable by atSec.
+export type ConstructLogKind = 'depart' | 'arrive' | 'load' | 'unload' | 'mine' | 'refuel' | 'loiter' | 'stuck' | 'disengage';
+export interface ConstructLogEvent {
+  id: ID;
+  journeyId?: ID;        // the ScheduledJourneyLog this stop belongs to — pruned together on cancel/clear
+  atSec: string;         // when it happens (universe-seconds)
+  kind: ConstructLogKind;
+  text: string;          // human breadcrumb, e.g. "Loaded 120 t water-ice at Enceladus"
+  placeId?: ID;          // where it happened
+  resourceKey?: string;  // load / unload / mine — what moved
+  tonnes?: number;       // load / unload / mine — cargo mass moved (+aboard for load/mine, −aboard for unload)
+  fuelKg?: number;       // refuel — fuel taken on
+  plannedAtSec?: string; // the on-time baseline (vs atSec once tardiness slack is applied) — for on-time %
+}
 // Routes "Under autopilot" attention marker: red = stuck (can't proceed), orange = needs GM decision,
 // green = finished a once-route (auto-disengaged). Derived by the planner; null = running fine.
 export type AutopilotAttention = 'stuck' | 'intervention' | 'done';
@@ -243,6 +261,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   // Transit Planning Persistence
   draft_transit_plan?: any[]; // Holds TransitPlan[] for resuming sessions
   scheduled_journeys?: ScheduledJourneyLog[];
+  flight_log?: ConstructLogEvent[]; // autopilot flight log — events the planner emits at stops (see docs/autopilot-spec.md §7)
   
   // Star-only: magnetic flare activity 0..1 (drives an episodic particle dose on close planets).
   flareActivity?: number;

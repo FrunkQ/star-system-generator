@@ -792,7 +792,9 @@
           const working = { ...system, nodes: system.nodes.map(n => n.id === updatedConstruct.id ? updatedConstruct : n) };
           const gen = generateAutopilotChain(updatedConstruct, working, rulePack, currentTime);
           if (gen?.logs?.length) {
-            updatedConstruct = { ...updatedConstruct, scheduled_journeys: [ ...(updatedConstruct.scheduled_journeys || []), ...gen.logs ] };
+            updatedConstruct = { ...updatedConstruct,
+              scheduled_journeys: [ ...(updatedConstruct.scheduled_journeys || []), ...gen.logs ],
+              flight_log: [ ...(updatedConstruct.flight_log || []), ...gen.flightLog ] };
           } else if (gen) {
             console.warn('[autopilot] no journeys generated:', gen.attention, gen.stuckReason);
           }
@@ -831,6 +833,7 @@
       const nodes = s.nodes.map((n: any) => {
         if (n.kind !== 'construct' || !n.autopilot?.enabled || n.autopilot.repeat === false) return n;
         let logs = n.scheduled_journeys || [];
+        let flog = n.flight_log || [];
         let end = endOfLogs(logs);
         if (!Number.isFinite(end) || end >= displayMs + AP_LOOKAHEAD_MS) return n;
         let added = false, guard = 0;
@@ -840,12 +843,13 @@
             const gen = generateAutopilotChain({ ...n, scheduled_journeys: logs }, s, rulePack, end);
             if (!gen?.logs?.length) break;
             logs = [...logs, ...gen.logs];
+            flog = [...flog, ...gen.flightLog];
             const ne = endOfLogs(logs);
             if (!(ne > end)) break; // no forward progress → stop (avoid a spin)
             end = ne; added = true;
           } catch (e) { console.warn('[autopilot] top-up failed:', e); break; }
         }
-        if (added) { changed = true; return { ...n, scheduled_journeys: logs }; }
+        if (added) { changed = true; return { ...n, scheduled_journeys: logs, flight_log: flog }; }
         return n;
       });
       return changed ? { ...s, nodes } : s;
@@ -866,7 +870,9 @@
           const working = { ...system, nodes: system.nodes.map(n => n.id === updatedBody.id ? updatedBody : n) };
           const gen = generateAutopilotChain(updatedBody, working, rulePack, currentTime);
           if (gen?.logs?.length) {
-            updatedBody = { ...updatedBody, scheduled_journeys: [ ...(updatedBody.scheduled_journeys || []), ...gen.logs ] };
+            updatedBody = { ...updatedBody,
+              scheduled_journeys: [ ...(updatedBody.scheduled_journeys || []), ...gen.logs ],
+              flight_log: [ ...(updatedBody.flight_log || []), ...gen.flightLog ] };
           }
         } catch (e) { console.warn('[autopilot] chain generation failed:', e); }
       }
@@ -1840,6 +1846,16 @@
       isShipLogOpen = false;
   }
 
+  // Drop flight-log events at/after a cutoff — keeps the deterministic ledger in step when future journeys
+  // are cleared/cancelled, so cargo (derived from the log) doesn't show deliveries that never happen now.
+  function pruneFlightLog(node: any, cutoffMs: number) {
+      const log = node.flight_log;
+      if (!log?.length) return node;
+      const cutSec = Math.floor(cutoffMs / 1000);
+      const kept = log.filter((e: any) => Number(e.atSec) < cutSec);
+      return kept.length === log.length ? node : { ...node, flight_log: kept };
+  }
+
   function handleClearFuturePlans() {
       if (!focusedBody || focusedBody.kind !== 'construct') return;
       const nowMs = getActualTimeMs();
@@ -1847,7 +1863,7 @@
           if (!sys) return null;
           const nodes = sys.nodes.map((n) => {
               if (n.id !== focusedBody.id || n.kind !== 'construct') return n;
-              return clearFutureJourneys(n as CelestialBody, nowMs);
+              return pruneFlightLog(clearFutureJourneys(n as CelestialBody, nowMs), nowMs);
           });
           return { ...sys, nodes, isManuallyEdited: true };
       });
@@ -1905,8 +1921,8 @@
           const nodes = sys.nodes.map((n) => {
               if (n.id !== focusedBody.id || n.kind !== 'construct') return n;
               const cancelled = cancelActiveJourney(sys, n as CelestialBody, nowMs, coast);
-              // Cascading policy: cancelling active also clears all future plans.
-              return clearFutureJourneys(cancelled, nowMs);
+              // Cascading policy: cancelling active also clears all future plans (+ their flight-log events).
+              return pruneFlightLog(clearFutureJourneys(cancelled, nowMs), nowMs);
           });
           return { ...sys, nodes, isManuallyEdited: true };
       });

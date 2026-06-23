@@ -406,6 +406,27 @@ pursuit problem, distinct from the go-to-a-point legs — it shares the "target 
 with the flyby momentum work, so bank the two together. Open Qs for later: what if the target jumps
 interstellar / is destroyed / itself goes adrift (does the escort hold, follow, or rescue?).
 
+**UNIFIED PRIMITIVE (Alex, 2026-06-23) — escort, pursuit and flyby-momentum are ONE capability, not three.**
+The shared primitive is **rendezvous with a moving target**, parameterised by two independent toggles:
+- *Arrival condition* — **match velocity** (dock / station-keep / formation) **or** don't (**flyby**, carry residual velocity).
+- *After arrival* — **terminate at contact** **or** **sustain a standoff hold** at `escortKm`.
+
+Then: **pursuit** = intercept → terminate (standoff 0, no hold); **escort** = intercept → sustain hold; **flyby**
+= intercept with the match-velocity toggle off. The "different start point" is just a cost input (near vs far
+changes the transfer's time/Δv, not the method) — so there must be ONE moving-target planner, not separate
+escort/pursuit solvers. Two consequences that make this cheap here:
+1. **The intercept is mostly already solved.** The transit layer already targets a construct and already has the
+   match-V-vs-flyby arrival toggle (see transit-architecture.md §5: Construct → V=0 docking; Flyby → residual
+   velocity). The genuinely new work is only the *sustained* phase (continuously nulling relative position/
+   velocity as the leader manoeuvres) and the standoff offset.
+2. **The sim is deterministic-from-the-clock, so the target's future path is KNOWN** (it's just another
+   construct's sampled itinerary). You solve the intercept to its *projected* position up front — no reactive
+   re-solve loop. The only non-determinism (GM override / breakdown) is the banked forward-event-pass problem,
+   not the intercept's. So even "pursuit of an autopilot ship" is computable deterministically.
+
+Build implication: implement **one** "moving-target intercept (match-V or flyby, optional standoff hold)" capability;
+escort, pursuit and flyby-momentum are settings over it. (Combat/non-cooperative evasion stays out of scope.)
+
 ### 12.14 BANKED/DROPPED — Timetabled departures (Alex, 2026-06-18)
 Scheduled/fixed-cadence departures (a liner that leaves every N days regardless of readiness) are **dropped as
 largely redundant**: firm timetables only make sense when distances are fixed, and in this sim everything
