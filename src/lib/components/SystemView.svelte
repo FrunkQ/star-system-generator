@@ -27,7 +27,7 @@
   import SaveSystemModal from './SaveSystemModal.svelte';
   import PlannerPane from './PlannerPane.svelte';
   import type { TransitPlan } from '$lib/transit/types';
-  import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney, resolveConstructCurrentHostId, reconcileConstructArrival } from '$lib/transit/scheduler';
+  import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney, resolveConstructCurrentHostId, reconcileConstructArrival, trimFlownAutopilotPast } from '$lib/transit/scheduler';
 
   import { systemStore, viewportStore } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
@@ -813,6 +813,11 @@
   //     so a ship visibly keeps flying as they scrub/play. Top-up only ever APPENDS future legs, so it's
   //     non-destructive on scrub-back. The hard disengage commits at ACTUAL time (the backstop). ---
   const AP_LOOKAHEAD_MS = 120 * 86_400_000; // keep ~120 days of route committed ahead of the display clock
+  // Retain only ~this far of FLOWN autopilot route behind actual time. A repeat ship tops up forever, so the
+  // committed past would grow without bound (huge ship's log + an orrery spider-web of stale paths). Completed
+  // autopilot legs older than this are dropped — they're deterministically regenerable, and trimming the past
+  // never touches the forward advance-planning. Keyed to ACTUAL time, so scrubbing the display never deletes.
+  const AP_LOG_RETENTION_MS = 30 * 86_400_000;
   function endOfLogs(logs: any[]): number {
     let end = -Infinity;
     for (const l of logs || []) { if (l.status === 'cancelled') continue; const b = getJourneyBounds(l.plans); if (b) end = Math.max(end, b.endMs); }
@@ -1615,6 +1620,13 @@
             nextNode = { ...nextNode, autopilot: { ...ap, enabled: false } };
             nodeChanged = true;
           }
+        }
+
+        // Trim the flown past of a REPEAT autopilot route so the committed chain + flight log stay bounded over
+        // a long run (otherwise the past grows without bound — huge log + an orrery spider-web of stale paths).
+        if (ap?.enabled && ap.repeat !== false) {
+          const trimmed = trimFlownAutopilotPast(nextNode, actualMs, AP_LOG_RETENTION_MS);
+          if (trimmed !== nextNode) { nextNode = trimmed; nodeChanged = true; }
         }
 
         if (nodeChanged) changed = true;

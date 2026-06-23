@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.214-beta - 23rd Jun 2026
+
+* Autopilot routes no longer accumulate forever. A repeat ship tops up its committed route as the clock advances, but never trimmed the flown past — so after a long run the ship's log grew to dozens of legs and the orrery filled with a spider-web of stale paths (especially obvious after scrubbing back to the start). Now the flown past of a repeat route is trimmed: completed autopilot legs that ended more than ~30 days behind actual time are dropped, along with their flight-log events. The active and future legs are untouched (the advance-planning never needs recalculating), manual journeys and adrift ships are never auto-trimmed, and it's keyed to actual time so scrubbing the display never deletes anything. The dropped past is deterministically regenerable.
+
 ## v2.0.213-beta - 23rd Jun 2026
 
 * Routes & journeys: autopilot-flown journeys no longer clutter the "In-system journeys" list — that's now just manual/player routes. Each ship's autopilot legs live under the "Under autopilot" heading instead, tucked into a collapsible "N planned legs" section per ship (a long committed route stays out of the way until you expand it). Each leg is still clickable to jump to the ship.

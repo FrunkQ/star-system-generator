@@ -364,6 +364,27 @@ export function clearFutureJourneys(construct: CelestialBody, timeMs: number): C
   return { ...construct, scheduled_journeys: filtered };
 }
 
+// Trim the FLOWN past of a repeat autopilot route so the committed chain + flight log stay bounded over a long
+// run (a repeat ship tops up forever, so otherwise the past grows without bound — a huge log and an orrery
+// spider-web of stale paths). Drops autopilot-flown legs that ended more than `retentionMs` behind actual time;
+// keeps manual journeys, anything cancelled/adrift, and the active + future legs (the active leg always ends
+// ahead of actual time, so its path never flickers). Deterministically regenerable, and the forward
+// advance-planning is never touched. Returns the same object when nothing was trimmed. Key off ACTUAL time.
+export function trimFlownAutopilotPast(construct: CelestialBody, actualMs: number, retentionMs: number): CelestialBody {
+  const logs = construct.scheduled_journeys || [];
+  if (!logs.length) return construct;
+  const cutoffMs = actualMs - Math.max(0, retentionMs);
+  const kept = logs.filter((log: any) => {
+    if (!log.autopilot || log.status === 'cancelled') return true; // never auto-trim manual/adrift legs
+    const bounds = getJourneyBounds(log.plans);
+    return !bounds || bounds.endMs >= cutoffMs;                    // keep active + recent + future
+  });
+  if (kept.length === logs.length) return construct;
+  const cutoffSec = Math.floor(cutoffMs / 1000);
+  const flightLog = (construct.flight_log || []).filter((e) => Number(e.atSec) >= cutoffSec);
+  return { ...construct, scheduled_journeys: kept, flight_log: flightLog };
+}
+
 export function cancelActiveJourney(
   system: System,
   construct: CelestialBody,
