@@ -780,6 +780,7 @@
 
   function handleConstructUpdate(event: CustomEvent<CelestialBody>) {
     let updatedConstruct = event.detail;
+    delete apTopUpMark[updatedConstruct.id]; // a manual edit (refuel / route change) gets a fresh top-up attempt
     systemStore.update(system => {
       if (!system) return null;
 
@@ -831,16 +832,20 @@
     return 'could not plot a course';
   }
   const planningOf = (n: any) => Math.max(1, Math.floor(n.autopilot?.planning ?? 2));
+  // Per-ship "last future-leg count we already handled". The replan must fire ONCE per leg-completion — i.e.
+  // only when the future count has freshly DROPPED below Planning — never re-attempt at a level we've already
+  // tried (so a ship that can't be topped up, e.g. stuck on fuel, doesn't re-solve its route every frame).
+  // Cleared on a manual edit (refuel / route change) so the ship gets a fresh attempt. Nothing changes between
+  // leg-completions, so between them there is zero solving.
+  let apTopUpMark: Record<string, number> = {};
   function maybeTopUpAutopilot(displayMs: number) {
     if (!Number.isFinite(displayMs)) return;
     const sys = get(systemStore);
     if (!sys) return;
-    // Only repeat ships extend; a run-once route deliberately ends. Top up when fewer than Planning legs are
-    // committed ahead of the display clock.
-    const due = sys.nodes.some((n: any) => n.kind === 'construct' && n.autopilot?.enabled && n.autopilot.repeat !== false
+    const wantsGen = (n: any) => n.kind === 'construct' && n.autopilot?.enabled && n.autopilot.repeat !== false
       && (n.scheduled_journeys || []).some((l: any) => l.status !== 'cancelled')
-      && countFutureJourneys(n, displayMs) < planningOf(n));
-    if (!due) return;
+      && (() => { const f = countFutureJourneys(n, displayMs); return f < planningOf(n) && f < (apTopUpMark[n.id] ?? Infinity); })();
+    if (!sys.nodes.some(wantsGen)) return;
     systemStore.update((s) => {
       if (!s) return s;
       let changed = false;
@@ -850,7 +855,8 @@
         let logs = n.scheduled_journeys || [];
         let flog = n.flight_log || [];
         let future = countFutureJourneys({ ...n, scheduled_journeys: logs }, displayMs);
-        if (future >= planning) return n;
+        // Only on a FRESH drop below Planning; record the level so the same shortfall isn't retried every frame.
+        if (future >= planning || future >= (apTopUpMark[n.id] ?? Infinity)) { apTopUpMark[n.id] = future; return n; }
         let added = false, guard = 0;
         // Append from the chain's end until Planning legs are committed ahead of the display clock.
         while (future < planning && guard++ < 24) {
@@ -866,6 +872,7 @@
           if (nf <= future) break; // no forward progress → stop (avoid a spin)
           future = nf; added = true;
         }
+        apTopUpMark[n.id] = future; // Planning if topped up, else the stuck level — don't re-solve it next frame.
         if (added) { changed = true; return { ...n, scheduled_journeys: logs, flight_log: flog }; }
         return n;
       });

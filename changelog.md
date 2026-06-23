@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.218-beta - 24th Jun 2026
+
+* Autopilot replanning now fires once per leg-completion, not every frame. The top-up only re-solves when a ship's committed lookahead has *freshly* dropped below Planning (a leg was just consumed) — and a ship that can't be topped up (e.g. stuck on fuel) records that level and stops re-solving the same shortfall every frame. Between leg-completions nothing changes, so there's zero solving. A manual edit (refuel / route change) clears the mark so the ship gets a fresh attempt. (This was the real cause of the solver churn during playback.)
+
 ## v2.0.217-beta - 24th Jun 2026
 
 * Killed the transit-solver console spam. The planner logged a `[TransitPlanner] Debug:` line on every single solve — and the autopilot lookahead fires hundreds of (cheap) solves per route generation, so playing time flooded the console with thousands of lines and dragged playback (console logging is slow). All per-solve traces are now behind a `DEBUG_TRANSIT` flag, off by default. No behaviour change; the genuine "corrupted orbit" warning is kept.
