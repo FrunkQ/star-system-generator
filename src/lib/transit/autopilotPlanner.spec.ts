@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { walkStops, legToStops, planToStops, chooseSource, scoreSources, type AutopilotStop, type SolveLeg } from './autopilotPlanner';
+import { walkStops, legToStops, planToStops, chooseSource, scoreSources, reorderWaypoints, type AutopilotStop, type SolveLeg, type ReorderOpts } from './autopilotPlanner';
 
 const DAY_MS = 86_400_000;
 
@@ -156,5 +156,38 @@ describe('autopilot chooseSource — destination scoring with free-refuel nudge'
   it('empty candidate set → null', () => {
     expect(chooseSource([])).toBeNull();
     expect(scoreSources([])).toEqual([]);
+  });
+});
+
+describe('reorderWaypoints — bounded-lookahead reorder (cost injected)', () => {
+  // Stub cost: a symmetric distance map (seconds), Δv = time (so objective doesn't change the order here).
+  const D: Record<string, number> = { 'home>A': 1, 'home>B': 10, 'A>B': 1, 'B>A': 1, 'A>home': 1, 'B>home': 10 };
+  const legCost = (f: string, t: string) => { const s = (D[`${f}>${t}`] ?? D[`${t}>${f}`] ?? 5) * 1000; return { timeMs: s, dvMs: s }; };
+  const base: ReorderOpts = { startHostId: 'home', fromMs: 0, planning: 3, objective: 'time', legCost };
+  const wp = (id: string, staleness = 0): any => ({ id, targetId: id.toUpperCase(), dwellMs: 0, staleness });
+
+  it('reorders to the cheaper visiting order (near-first)', () => {
+    // listed [B, A]: home→B(10)+B→A(1)=11 ; reordered [A, B]: home→A(1)+A→B(1)=2 → pick [A,B].
+    const out = reorderWaypoints([wp('b'), wp('a')], base);
+    expect(out.map((w) => w.id)).toEqual(['a', 'b']);
+  });
+
+  it('planning 0 = no reorder (fly as listed)', () => {
+    const out = reorderWaypoints([wp('b'), wp('a')], { ...base, planning: 0 });
+    expect(out.map((w) => w.id)).toEqual(['b', 'a']);
+  });
+
+  it('staleness pulls a long-unvisited waypoint earlier (when transit cost ties)', () => {
+    // A and B equidistant from home but far apart → transit cost ties; staleness breaks it toward B-first.
+    const D2: Record<string, number> = { 'home>A': 1, 'home>B': 1, 'A>B': 10, 'B>A': 10 };
+    const lc = (f: string, t: string) => { const s = (D2[`${f}>${t}`] ?? 5) * 1000; return { timeMs: s, dvMs: s }; };
+    const out = reorderWaypoints([wp('a'), wp('b', 1)], { startHostId: 'home', fromMs: 0, planning: 3, objective: 'time', legCost: lc, stalenessWeight: 1 });
+    expect(out[0].id).toBe('b'); // B's overdue-credit beats the tie
+  });
+
+  it('prunes orderings with a hop over the max-leg cap', () => {
+    // cap 5 s → the home→B(10 s) hop is illegal, so B can never be first; A-first survives.
+    const out = reorderWaypoints([wp('b'), wp('a')], { ...base, maxLegMs: 5000 });
+    expect(out[0].id).toBe('a');
   });
 });

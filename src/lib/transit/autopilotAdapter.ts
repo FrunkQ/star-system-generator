@@ -6,7 +6,7 @@ import type { ScheduledJourneyLog, TransitMode } from './types';
 import { calculateTransitPlan } from './calculator';
 import { calculateFullConstructSpecs } from '$lib/construct-logic';
 import { resolveConstructCurrentHostId } from './scheduler';
-import { legToStops, walkStops, chooseSource, type AutopilotStop } from './autopilotPlanner';
+import { legToStops, walkStops, chooseSource, reorderWaypoints, type AutopilotStop } from './autopilotPlanner';
 
 const DAY_MS = 86_400_000;
 const G0 = 9.80665;
@@ -128,15 +128,12 @@ export function generateAutopilotChain(
   const startHostId = resolveConstructCurrentHostId(construct, fromTimeMs) || construct.parentId || '';
   if (!startHostId) return { logs: [], attention: 'stuck', stuckReason: 'no host to depart from', done: false };
 
-  const needsFuel = !ap.ignoreFuel && budget < capacity * 0.5; // low on fuel → prefer self-fuelling sources
-  const stops = buildAdapterStops(ap.legs, startHostId, system, isFuelCompatible, refuelKeys, needsFuel);
-  if (!stops.length) return { logs: [], attention: 'intervention', done: false }; // no resolvable stops (e.g. resource not present)
-
   const repeat = ap.repeat !== false;
   const driveFast = (ap.drive ?? 0.5) >= 0.5;
   const mode: TransitMode = 'Economy';
   const maxG = ap.maxAccelG && ap.maxAccelG > 0 ? Math.min(ap.maxAccelG, specs.maxVacuumG || ap.maxAccelG) : (specs.maxVacuumG || 1);
 
+  // THE one transfer model — used to both cost the reorder AND commit the legs, so they can't disagree.
   const solveLeg = (originId: string, targetId: string, startMs: number) => {
     const params: any = {
       maxG, accelRatio: 0.3, brakeRatio: 0.3, interceptSpeed_ms: 0,
@@ -153,6 +150,36 @@ export function generateAutopilotChain(
     const chosen = valid[0];
     return { plans: [chosen], arriveMs: startMs + (chosen.totalTime_days || 0) * DAY_MS, deltaV_ms: chosen.totalDeltaV_ms || 0, valid: true };
   };
+  // Reorder cost = the SAME solveLeg, cached by (from,to,day) so the permutation search stays affordable
+  // without ever inventing a parallel cost model.
+  const costCache = new Map<string, { timeMs: number; dvMs: number }>();
+  const legCost = (originId: string, targetId: string, departMs: number) => {
+    const key = `${originId}|${targetId}|${Math.round(departMs / DAY_MS)}`;
+    let c = costCache.get(key);
+    if (!c) {
+      const s = solveLeg(originId, targetId, departMs);
+      c = s.valid ? { timeMs: s.arriveMs - departMs, dvMs: s.deltaV_ms } : { timeMs: Infinity, dvMs: Infinity };
+      costCache.set(key, c);
+    }
+    return c;
+  };
+
+  // best-order: reorder the legs (gated to fixed-place plans for now) to minimise total cost over the
+  // next `planning` stops, using the real solver's cost. Other traversals fly as listed (in-order).
+  let plannedLegs = ap.legs;
+  if (ap.traversal === 'best-order' && (ap.planning ?? 0) > 0 && ap.legs.every((l: any) => l.placeId)) {
+    const wps = ap.legs.map((leg: any, i: number) => ({ id: String(i), targetId: leg.placeId as string, dwellMs: (leg.loiterDays ?? 1) * DAY_MS }));
+    const ordered = reorderWaypoints(wps, {
+      startHostId, fromMs: fromTimeMs, planning: ap.planning,
+      objective: driveFast ? 'time' : 'fuel', legCost,
+      maxLegMs: ap.maxJourneyDays ? ap.maxJourneyDays * DAY_MS : undefined
+    });
+    plannedLegs = ordered.map((w) => ap.legs[Number(w.id)]);
+  }
+
+  const needsFuel = !ap.ignoreFuel && budget < capacity * 0.5; // low on fuel → prefer self-fuelling sources
+  const stops = buildAdapterStops(plannedLegs, startHostId, system, isFuelCompatible, refuelKeys, needsFuel);
+  if (!stops.length) return { logs: [], attention: 'intervention', done: false }; // no resolvable stops (e.g. resource not present)
 
   // Commit horizon. Planning is the eventual incremental depth; until the clock-advance top-up exists,
   // commit at least one full circuit so a fired-up ship visibly flies its route (capped to avoid huge chains).

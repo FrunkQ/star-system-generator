@@ -181,6 +181,63 @@ export function chooseSource(cands: SourceCandidate[], opts: ChooseSourceOpts = 
   return best;
 }
 
+// --- Bounded-lookahead reorder (Slice 3a) ---
+// The reorder is a pure SEARCH; the cost of a hop is INJECTED (`legCost`) so there is exactly one transfer
+// model in production — the caller wraps the real `calculateTransitPlan` (cached), NOT a parallel formula.
+// That keeps the order the planner optimises and the journeys it commits costed by the same physics.
+export interface ReorderWaypoint { id: ID; targetId: ID; dwellMs: number; staleness?: number }
+export interface ReorderOpts {
+  startHostId: ID;
+  fromMs: number;
+  planning: number;            // lookahead depth (0 ⇒ no reorder, fly as listed)
+  objective: 'time' | 'fuel';  // from Drive: fast → time, thrifty → Δv
+  // Cost of one hop, departing at departMs — production wraps the real `calculateTransitPlan` (cached), so
+  // the reorder and the committed legs share ONE model; tests stub it. timeMs non-finite ⇒ unreachable.
+  legCost: (fromId: ID, toId: ID, departMs: number) => { timeMs: number; dvMs: number };
+  maxLegMs?: number;           // Max-time-per-leg: prune any ordering with a hop over the cap
+  stalenessWeight?: number;    // fairness credit so a long-unvisited waypoint isn't perpetually deferred
+}
+
+function permutations<T>(arr: T[]): T[][] {
+  if (arr.length <= 1) return [arr];
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i++) {
+    const rest = [...arr.slice(0, i), ...arr.slice(i + 1)];
+    for (const p of permutations(rest)) out.push([arr[i], ...p]);
+  }
+  return out;
+}
+
+function routeCost(order: ReorderWaypoint[], opts: ReorderOpts): number {
+  let host = opts.startHostId, t = opts.fromMs, total = 0;
+  for (const wp of order) {
+    const c = opts.legCost(host, wp.targetId, t);
+    if (!Number.isFinite(c.timeMs) || (opts.maxLegMs && c.timeMs > opts.maxLegMs)) return Infinity;
+    total += opts.objective === 'time' ? c.timeMs : c.dvMs;
+    t += c.timeMs; // arrival at this waypoint
+    // Fairness: a stale waypoint reached LATE costs more, so the optimiser visits the overdue ones sooner.
+    total += (wp.staleness ?? 0) * (opts.stalenessWeight ?? 0) * (t - opts.fromMs);
+    t += Math.max(0, wp.dwellMs);
+    host = wp.targetId;
+  }
+  return total;
+}
+
+// Reorder the next `planning` waypoints to minimise total torch cost over PROJECTED positions (the closer
+// a body is NOW, the cheaper — and that swings as bodies orbit, so "closest now vs later" genuinely matters).
+// planning 0 ⇒ greedy (fly as listed). Brute-force the window (≤6 ⇒ ≤720 perms); the rest keep their order.
+export function reorderWaypoints(wps: ReorderWaypoint[], opts: ReorderOpts): ReorderWaypoint[] {
+  if ((opts.planning ?? 0) <= 0 || wps.length <= 1) return wps;
+  const N = Math.min(wps.length, Math.max(2, Math.floor(opts.planning)), 6);
+  const window = wps.slice(0, N), tail = wps.slice(N);
+  let best = window, bestCost = Infinity;
+  for (const perm of permutations(window)) {
+    const c = routeCost(perm, opts);
+    if (c < bestCost) { bestCost = c; best = perm; }
+  }
+  return [...best, ...tail];
+}
+
 // Build the full stop list for an engaged plan (in-order traversal, Slice 1).
 export function planToStops(
   legs: Array<Parameters<typeof legToStops>[0]>,
