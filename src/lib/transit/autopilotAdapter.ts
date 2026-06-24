@@ -78,11 +78,22 @@ export function buildAdapterStops(
   sys: System,
   isFuelCompatible: (k: string) => boolean,
   refuelKeys: Set<string>,
-  needsFuel: boolean
+  needsFuel: boolean,
+  fromTimeMs = 0
 ): AutopilotStop[] {
   let fromHost = startHostId;
   const stops: AutopilotStop[] = [];
   for (const leg of legs) {
+    // Escort/pursuit = rendezvous with a MOVING construct, then hold. Because the sim is deterministic from the
+    // clock, the target's location is known: resolve where it is and go there (matching velocity = formation).
+    // The clock top-up re-resolves as the target moves, so the escort follows it host-to-host. (km standoff is
+    // a later refinement; this holds at the target's host.)
+    if (leg.action === 'escort') {
+      const target = (sys.nodes as any[]).find((n) => n.id === leg.placeId && n.kind === 'construct');
+      const targetHost = target ? (resolveConstructCurrentHostId(target, fromTimeMs) || target.parentId) : undefined;
+      if (targetHost) { stops.push({ targetId: targetHost, dwellDays: leg.loiterDays ?? 5, refuelHere: false, verb: 'patrol' }); fromHost = targetHost; }
+      continue;
+    }
     const s = (leg.action === 'mine' || leg.action === 'explore')
       ? resolveResourceStops(leg, fromHost, sys, isFuelCompatible, refuelKeys, needsFuel)
       : legToStops(leg, isFuelCompatible);
@@ -189,7 +200,7 @@ export function generateAutopilotChain(
   // Both cost candidates with the same quote-backed legCost the legs are committed with.
   let plannedLegs = ap.legs;
   let anyOrder = false;
-  const allPlace = ap.legs.every((l: any) => l.placeId);
+  const allPlace = ap.legs.every((l: any) => l.placeId && l.action !== 'escort'); // escort = a MOVING target, never reordered as a fixed place
   if (ap.traversal === 'best-order' && (ap.planning ?? 0) > 0 && allPlace) {
     const wps = ap.legs.map((leg: any, i: number) => ({ id: String(i), targetId: leg.placeId as string, dwellMs: (leg.loiterDays ?? 1) * DAY_MS }));
     const ordered = reorderWaypoints(wps, {
@@ -211,7 +222,7 @@ export function generateAutopilotChain(
   }
 
   const needsFuel = !ap.ignoreFuel && budget < capacity * 0.5; // low on fuel → prefer self-fuelling sources
-  const stops = buildAdapterStops(plannedLegs, startHostId, system, isFuelCompatible, refuelKeys, needsFuel);
+  const stops = buildAdapterStops(plannedLegs, startHostId, system, isFuelCompatible, refuelKeys, needsFuel, fromTimeMs);
   if (!stops.length) return { logs: [], flightLog: [], attention: 'intervention', done: false }; // no resolvable stops (e.g. resource not present)
   // Default any haul that didn't pin an amount to the ship's free cargo space, then size the dwell from
   // tonnes / (rate × abundance) — a richer source (or a faster loader) fills in fewer days.

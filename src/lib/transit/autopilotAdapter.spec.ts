@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { gatherResourceCandidates, resolveResourceStops } from './autopilotAdapter';
+import { gatherResourceCandidates, resolveResourceStops, buildAdapterStops } from './autopilotAdapter';
 
 // Minimal system stub — only the fields the resolver reads.
 function sys(nodes: any[]) { return { nodes } as any; }
@@ -71,5 +71,23 @@ describe('resolveResourceStops', () => {
   it('returns [] when nothing carries the resource', () => {
     const stops = resolveResourceStops({ action: 'mine', resourceKeys: ['resource/unobtainium'] }, 'star', system, noFuel, new Set(), false);
     expect(stops).toEqual([]);
+  });
+});
+
+describe('buildAdapterStops — escort follows a moving construct', () => {
+  it("rendezvous at the escorted ship's current host (re-resolved as it moves)", () => {
+    const system = sys([
+      body('mars', 'planet', 1.5),
+      { id: 'escortee', kind: 'construct', parentId: 'mars' } // no journeys → current host is its parent
+    ]);
+    const stops = buildAdapterStops([{ action: 'escort', placeId: 'escortee', loiterDays: 7 }], 'earth', system, () => false, new Set(), false, 0);
+    expect(stops).toHaveLength(1);
+    expect(stops[0].targetId).toBe('mars'); // go to where the escorted ship is
+    expect(stops[0].dwellDays).toBe(7);
+  });
+
+  it('yields no stop when the escort target is missing', () => {
+    const stops = buildAdapterStops([{ action: 'escort', placeId: 'ghost' }], 'earth', sys([]), () => false, new Set(), false, 0);
+    expect(stops).toHaveLength(0);
   });
 });
