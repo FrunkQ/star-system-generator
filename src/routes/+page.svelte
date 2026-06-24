@@ -40,7 +40,7 @@
   import AboutModal from '$lib/components/AboutModal.svelte';
   import EvolutionaryWizard from '$lib/components/EvolutionaryWizard.svelte';
   import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, STARTDATE_EPOCH_OFFSET_T } from '$lib/temporal/defaults';
-  import { parseClockSeconds, resolveCalendar } from '$lib/temporal/utre';
+  import { parseClockSeconds, resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
   import { getJourneyBounds } from '$lib/transit/scheduler';
   import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
   import { systemProcessor } from '$lib/core/SystemProcessor';
@@ -187,9 +187,11 @@
           if (j.status !== 'scheduled' && j.status !== 'active') continue;
           const plans = j.plans ?? [];
           if (!plans.length) continue;
-          const bounds = getJourneyBounds(plans);   // game-MS timestamps
-          const startS = bounds ? bounds.startMs / 1000 : nowSec;
-          const endS = bounds ? bounds.endMs / 1000 : nowSec;
+          const bounds = getJourneyBounds(plans);   // unix-MS timestamps
+          // In-system journeys are unix-ms; whenLine/nowSec work in MASTER (since-Big-Bang) seconds. Convert,
+          // or the dates resolve ~13.8 billion years off (the Big-Bang offset). See docs/time-architecture.md.
+          const startS = bounds ? Number(unixMsToMasterSeconds(bounds.startMs)) : nowSec;
+          const endS = bounds ? Number(unixMsToMasterSeconds(bounds.endMs)) : nowSec;
           const row = {
             id: j.id, constructId: n.id, constructName: n.name, systemId: sys.id, systemName: sys.name,
             origin: nodeName(plans[0].originId), target: nodeName(plans[plans.length - 1].targetId),

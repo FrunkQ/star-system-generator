@@ -1863,7 +1863,11 @@
   function getActualTimeMs(): number {
       const temporal = get(starmapStore)?.temporal;
       if (!temporal) return currentTime;
-      return Number(parseClockSeconds(temporal.masterTimeSec, 0n) * 1000n);
+      // ACTUAL time in UNIX-ms (to compare with journey startMs/endMs, which are unix-ms). masterTimeSec is
+      // MASTER seconds (since the Big Bang) — must subtract the Big-Bang→unix offset, exactly like the
+      // actualTimeMs reactive. Without it this returned master-ms (~4.35e20), so countFutureJourneys saw every
+      // journey as long past → Clear/Cancel always 0, and the autopilot trim/arrival reconcile were skewed.
+      return Number(parseClockSeconds(temporal.masterTimeSec, 0n) - BIG_BANG_TO_UNIX_EPOCH_T) * 1000;
   }
 
 

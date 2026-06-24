@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.220-beta - 24th Jun 2026
+
+* Fixed two time-datum bugs (see docs/time-architecture.md):
+  * **Routes & journeys panel showed dates ~13.8 billion years off** (e.g. "-13787286102 AD · 5035701601582d ago"). The in-system journey rows fed unix-seconds into the date formatter, which expects master/since-Big-Bang seconds (the interstellar unit). Now converted with `unixMsToMasterSeconds`, like the Ship's Log already does.
+  * **Clear Future Plans / Cancel Active always showed (0)** so you could never delete a ship's planned journeys. `getActualTimeMs()` returned master-milliseconds instead of unix-ms (it skipped the Big-Bang→unix offset), so actual time read as ~13.8 billion years in the future and every journey counted as "already past". Fixed to unix-ms — which also corrects the autopilot past-trim cutoff and the arrival reconcile, both of which use it.
+
 ## v2.0.219-beta - 24th Jun 2026
 
 * Autopilot can no longer silently sit there "flying its route" while going nowhere. On Engage, if the planner produces no journeys for *any* reason — including the cases that previously slipped through silently (generation returned null because of missing engine/fuel data or ship specs, or the planner threw) — the Engage banner now always turns red with a reason. Engaging now either flies, or tells you why it can't.
