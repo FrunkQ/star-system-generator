@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { walkStops, legToStops, planToStops, chooseSource, scoreSources, reorderWaypoints, selectAnyOrder, cargoAboardAt, fuelKgAt, type AutopilotStop, type SolveLeg, type ReorderOpts } from './autopilotPlanner';
+import { walkStops, legToStops, planToStops, chooseSource, scoreSources, reorderWaypoints, selectAnyOrder, cargoAboardAt, fuelKgAt, computeAutopilotTotals, type AutopilotStop, type SolveLeg, type ReorderOpts } from './autopilotPlanner';
 
 const DAY_MS = 86_400_000;
 
@@ -125,6 +125,32 @@ describe('autopilot tardiness slack', () => {
     const stops = [{ targetId: 'A', dwellDays: 0, refuelHere: false, verb: 'patrol' } as AutopilotStop];
     const r = walkStops(stops, { ...baseOpts, planningHorizon: 1, tardiness: 1, slackSeed: 'bob' });
     expect(r.finalTimeMs).toBe(10 * DAY_MS); // just the travel, no dwell, no slack
+  });
+});
+
+describe('autopilot totals — computeAutopilotTotals', () => {
+  const DAY_S = 86400;
+  const ev = (atDay: number, kind: string, res: string, tonnes?: number) =>
+    ({ id: `${atDay}`, atSec: String(atDay * DAY_S), kind, text: '', resourceKey: `resource/${res}`, tonnes } as any);
+
+  it('aggregates delivered/gathered by resource + tonnes per annum over the span', () => {
+    const events = [
+      ev(0, 'mine', 'water-ice', 100),
+      ev(10, 'unload', 'water-ice', 100),
+      ev(20, 'mine', 'water-ice', 100),
+      { id: 'r', atSec: String(12 * DAY_S), kind: 'refuel', text: '' } as any
+    ];
+    const t = computeAutopilotTotals(events, 365.25 * DAY_S); // one year in
+    expect(t.gathered['water-ice']).toBe(200);     // two mining runs
+    expect(t.delivered['water-ice']).toBe(100);    // one delivery
+    expect(t.deliveredTotal_t).toBe(100);
+    expect(t.refuels).toBe(1);
+    expect(t.tonnesPerAnnum).toBeCloseTo(100, 0);  // 100 t delivered over ~1 year
+  });
+
+  it('ignores events after the query time', () => {
+    const events = [ev(0, 'unload', 'ore', 50), ev(100, 'unload', 'ore', 50)];
+    expect(computeAutopilotTotals(events, 50 * DAY_S).deliveredTotal_t).toBe(50); // the 2nd hasn't happened yet
   });
 });
 

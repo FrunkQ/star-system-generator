@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.224-beta - 24th Jun 2026
+
+* **Totals & averages** in the Ship's Log — a collapsible panel that aggregates the flight log up to where you're looking: cargo delivered (overall + per resource), the headline **tonnes/annum** efficiency, total gathered, refuels, stops worked, and the span it's measured over. Purely derived (no stored state), so it climbs as you play and reads correctly at any scrubbed moment.
+
 ## v2.0.223-beta - 24th Jun 2026
 
 * **Fuel over time** — the Ship's Log now shows a live "Fuel: X%" (red when ≤15%) that drains as the ship burns and climbs as it refuels, derived for free like cargo. It uses the real per-segment burn fuel, so a torch ship's tanks fall smoothly while a burn-coast-burn spends ~half on the injection burn, coasts flat, then ~half on capture — no hard-coded split needed. Refuels restore toward full (instant at a port, ramped across a frontier harvest). Especially handy for abandoned ships: the fuel they're stranded with is just the curve read at the moment they were cut loose.

@@ -102,6 +102,42 @@ export function fuelKgAt(
   return Math.max(0, Math.min(capacityKg, fuel));
 }
 
+// Totals / averages, derived PURELY by reducing the flight log up to a moment — no extra stored state (spec
+// §7). Cargo by resource (gathered vs delivered), lifetime delivered, the headline tonnes/annum efficiency,
+// refuels, stops worked, and the span it's all measured over. In-progress transfers count pro-rata (same ramp
+// as the cargo curve), so the figures climb smoothly as you play.
+export interface AutopilotTotals {
+  delivered: Record<string, number>;   // tonnes delivered (unloaded) by resource
+  gathered: Record<string, number>;    // tonnes gathered (loaded/mined) by resource
+  deliveredTotal_t: number;
+  gatheredTotal_t: number;
+  tonnesPerAnnum: number;              // headline efficiency: delivered ÷ years elapsed
+  refuels: number;
+  stopsWorked: number;
+  spanDays: number;
+}
+export function computeAutopilotTotals(events: ConstructLogEvent[] | undefined, atSec: number): AutopilotTotals {
+  const delivered: Record<string, number> = {};
+  const gathered: Record<string, number> = {};
+  let deliveredTotal = 0, gatheredTotal = 0, refuels = 0, stopsWorked = 0, first = Infinity;
+  for (const e of events ?? []) {
+    const start = Number(e.atSec);
+    if (start > atSec) continue;
+    first = Math.min(first, start);
+    const dur = e.durationSec || 0;
+    const frac = dur > 0 ? Math.min(1, Math.max(0, (atSec - start) / dur)) : 1;
+    const res = e.resourceKey ? e.resourceKey.replace(/^resource\//, '') : 'cargo';
+    const amt = (e.tonnes || 0) * frac;
+    if (e.kind === 'unload') { delivered[res] = (delivered[res] || 0) + amt; deliveredTotal += amt; stopsWorked++; }
+    else if (e.kind === 'load' || e.kind === 'mine') { gathered[res] = (gathered[res] || 0) + amt; gatheredTotal += amt; stopsWorked++; }
+    else if (e.kind === 'refuel') refuels++;
+    else if (e.kind === 'loiter') stopsWorked++;
+  }
+  const spanDays = Number.isFinite(first) ? Math.max(0, (atSec - first) / 86400) : 0;
+  const years = spanDays / 365.25;
+  return { delivered, gathered, deliveredTotal_t: deliveredTotal, gatheredTotal_t: gatheredTotal, tonnesPerAnnum: years > 0 ? deliveredTotal / years : 0, refuels, stopsWorked, spanDays };
+}
+
 // Solve a single hop origin→target departing at startMs. Production wraps `calculateTransitPlan` +
 // ship params; tests stub it. Returns null / valid:false when no route is possible.
 export type SolveLeg = (

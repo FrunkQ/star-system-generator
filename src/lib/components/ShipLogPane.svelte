@@ -10,7 +10,7 @@
   import { starmapStore } from '$lib/starmapStore';
   import { resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
   import { getJourneyBounds } from '$lib/transit/scheduler';
-  import { cargoAboardAt, fuelKgAt } from '$lib/transit/autopilotPlanner';
+  import { cargoAboardAt, fuelKgAt, computeAutopilotTotals } from '$lib/transit/autopilotPlanner';
   import { calculateFullConstructSpecs } from '$lib/construct-logic';
   import AutopilotShipIcon from './AutopilotShipIcon.svelte';
 
@@ -105,6 +105,9 @@
   $: fuelPct = (fuelCapKg > 0 && Number.isFinite(displayTimeMs))
       ? Math.round(100 * fuelKgAt(focusedBody.scheduled_journeys, focusedBody.flight_log, fuelCapKg, startFuelKg, Math.floor(displayTimeMs / 1000)) / fuelCapKg)
       : null;
+  // Totals / averages, aggregated from the flight log up to the display moment (spec §7).
+  $: totals = Number.isFinite(displayTimeMs) ? computeAutopilotTotals(focusedBody.flight_log, Math.floor(displayTimeMs / 1000)) : null;
+  const fmtT = (t: number) => t >= 1000 ? `${(t / 1000).toFixed(1)} kt` : `${Math.round(t)} t`;
 </script>
 
 <!-- A small clock that jumps DISPLAY time to a logged moment. Only rendered for times at/after actual
@@ -197,6 +200,23 @@
           <span class="fl-time">{formatLogTime(evMs)} {@render seekClock(evMs)}</span>
         </div>
       {/each}
+
+      {#if totals && (totals.deliveredTotal_t > 0 || totals.gatheredTotal_t > 0 || totals.refuels > 0)}
+        <details class="totals">
+          <summary>Totals &amp; averages</summary>
+          <div class="totals-grid">
+            <span class="tl-key">Delivered</span><span class="tl-val">{fmtT(totals.deliveredTotal_t)}</span>
+            <span class="tl-key">Efficiency</span><span class="tl-val">{fmtT(totals.tonnesPerAnnum)}/yr</span>
+            <span class="tl-key">Gathered</span><span class="tl-val">{fmtT(totals.gatheredTotal_t)}</span>
+            <span class="tl-key">Refuels</span><span class="tl-val">{totals.refuels}</span>
+            <span class="tl-key">Stops worked</span><span class="tl-val">{totals.stopsWorked}</span>
+            <span class="tl-key">Over</span><span class="tl-val">{Math.round(totals.spanDays)} days</span>
+          </div>
+          {#if Object.keys(totals.delivered).length}
+            <div class="totals-by">{#each Object.entries(totals.delivered) as [res, t]}<span class="tl-chip">{fmtT(t as number)} {res.replace(/-/g, ' ')}</span>{/each}</div>
+          {/if}
+        </details>
+      {/if}
     </div>
   {/if}
 </div>
@@ -320,6 +340,13 @@
   }
   .fuel-now { color: #6fb6ff; font-size: 0.82em; font-weight: 600; }
   .fuel-now.low { color: #e8714f; }
+  .totals { margin-top: 0.5em; border-top: 1px solid var(--border); padding-top: 0.4em; }
+  .totals > summary { cursor: pointer; color: #ffb088; font-size: 0.85em; font-weight: 600; user-select: none; }
+  .totals-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.15em 0.8em; margin-top: 0.4em; font-size: 0.85em; }
+  .tl-key { color: var(--text-muted); }
+  .tl-val { color: var(--text); font-weight: 600; }
+  .totals-by { display: flex; flex-wrap: wrap; gap: 0.35em; margin-top: 0.5em; }
+  .tl-chip { background: var(--bg-control); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; font-size: 0.78em; color: #8fcf9f; }
   .flight-log-row {
       display: grid;
       grid-template-columns: 1.2em 1fr auto;
