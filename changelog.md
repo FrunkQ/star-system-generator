@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.222-beta - 24th Jun 2026
+
+* Refuelling now distinguishes a port from the frontier. A port/depot tops the tanks up **instantly**, but harvesting fuel out in the black (gas-skimming, mining fuel-grade ice) fills at a **rate over the harvest dwell** — the refuel breadcrumb reads "Refuelled (ice) at Enceladus over 18 days" vs an instant "Refuelled at Ceres Station". This is the same continuous-over-time treatment cargo got, and the groundwork for the fuel-level curve.
+
 ## v2.0.221-beta - 24th Jun 2026
 
 * Autopilot cargo is now a real, continuous quantity over time:

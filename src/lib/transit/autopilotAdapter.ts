@@ -266,7 +266,11 @@ function finalizeEvent(e: StopEvent, i: number, nodeName: (id: string) => string
     case 'load':   text = `Loaded ${amt}${res || 'cargo'} at ${place}`; break;
     case 'unload': text = `Unloaded ${amt}${res || 'cargo'} at ${place}`; break;
     case 'mine':   text = `Mined ${amt}${res || 'ore'} at ${place}`; break;
-    case 'refuel': text = `Refuelled${res ? ` (${res})` : ''} at ${place}`; break;
+    case 'refuel': {
+      const days = e.durationSec ? Math.round(e.durationSec / 86400) : 0;
+      text = days > 0 ? `Refuelled${res ? ` (${res})` : ''} at ${place} over ${days} ${days === 1 ? 'day' : 'days'}` : `Refuelled${res ? ` (${res})` : ''} at ${place}`;
+      break;
+    }
     case 'loiter': text = `Held station at ${place}`; break;
     default:       text = `${e.kind} at ${place}`;
   }

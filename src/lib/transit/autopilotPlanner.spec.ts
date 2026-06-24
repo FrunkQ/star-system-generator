@@ -96,6 +96,15 @@ describe('autopilot flight log — stop work events + cargo derivation', () => {
     expect(kinds).not.toContain('loiter'); // flyby never stops → no loiter event
     expect(cargoAboardAt(r.events as any, Infinity)).toBe(50);
   });
+
+  it('frontier-harvest refuel ramps over the dwell; a port/depot refuel is instant', () => {
+    const harvest: AutopilotStop = { targetId: 'M', dwellDays: 4, refuelHere: true, verb: 'mine', resourceKeys: ['resource/ice'] };
+    const depot: AutopilotStop = { targetId: 'P', dwellDays: 2, refuelHere: true, verb: 'patrol' };
+    const r = walkStops([harvest, depot], { ...baseOpts, planningHorizon: 2, repeat: false });
+    const refuels = r.events.filter((e) => e.kind === 'refuel');
+    expect(refuels[0].durationSec).toBe(4 * 86400); // harvested over the mining dwell
+    expect(refuels[1].durationSec).toBe(0);         // port top-up is instant
+  });
 });
 
 describe('autopilot tardiness slack', () => {

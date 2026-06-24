@@ -162,15 +162,20 @@ export function walkStops(stops: AutopilotStop[], opts: AutopilotPlanOpts): Auto
       events.push({ atSec: atSecStr(t), kind, placeId: stop.targetId, resourceKey: stop.resourceKeys?.[0] });
     }
 
+    // Refuel: a port/depot tops the tanks up INSTANTLY, but harvesting fuel on the frontier (gas-skimming,
+    // mining fuel-grade ice) fills at a rate — so it ramps over the harvest dwell, like cargo. Emitted at the
+    // arrival time with that duration so the fuel curve rises across the stop, not in a step at departure.
+    if (stop.refuelHere) {
+      const frontierHarvest = kind === 'mine' || kind === 'load';
+      events.push({ atSec: atSecStr(t), kind: 'refuel', placeId: stop.targetId, resourceKey: stop.resourceKeys?.[0], durationSec: frontierHarvest ? dwellDays * 86400 : 0 });
+    }
+
     // Hold at the stop (dwell becomes the gap before the next hop → resolver shows "waiting at host").
     // Tardiness adds slack to STOPPED time only — a flyby (dwell 0) never stops, so it's never late.
     const slack = dwellDays > 0 && opts.tardiness ? opts.tardiness * hash01(`${opts.slackSeed ?? ''}:${i}:${atSecStr(t)}`) : 0;
     t += dwellDays * (1 + slack) * DAY_MS;
-    // Harvest/depot top-up: refuelling here means the NEXT hop (e.g. the return leg) departs fuelled.
-    if (stop.refuelHere) {
-      budget = capacity;
-      events.push({ atSec: atSecStr(t), kind: 'refuel', placeId: stop.targetId, resourceKey: stop.resourceKeys?.[0] });
-    }
+    if (stop.refuelHere) budget = capacity; // the NEXT hop (e.g. the return leg) departs fuelled
+
 
     committed++;
     i++;
