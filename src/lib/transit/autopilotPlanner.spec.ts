@@ -62,14 +62,28 @@ describe('autopilot flight log — stop work events + cargo derivation', () => {
   const load = (id: string, t: number): AutopilotStop => ({ targetId: id, dwellDays: 1, refuelHere: false, verb: 'load', resourceKeys: ['resource/water-ice'], tonnes: t });
   const unload = (id: string, t: number): AutopilotStop => ({ targetId: id, dwellDays: 1, refuelHere: false, verb: 'unload', resourceKeys: ['resource/water-ice'], tonnes: t });
 
-  it('emits load/unload events and derives cargo aboard purely from them', () => {
+  it('emits load/unload events and ramps cargo across the dwell (not a step)', () => {
     const r = walkStops([load('A', 120), unload('B', 120)], { ...baseOpts, planningHorizon: 2, repeat: false });
     expect(r.events.map((e) => e.kind)).toEqual(['load', 'unload']);
-    const loadAt = Number(r.events[0].atSec);
-    const unloadAt = Number(r.events[1].atSec);
-    expect(cargoAboardAt(r.events as any, loadAt - 1)).toBe(0);   // before loading
-    expect(cargoAboardAt(r.events as any, unloadAt - 1)).toBe(120); // carrying
-    expect(cargoAboardAt(r.events as any, unloadAt)).toBe(0);     // delivered
+    const lo = r.events[0], un = r.events[1];
+    const loadAt = Number(lo.atSec), unloadAt = Number(un.atSec);
+    expect(cargoAboardAt(r.events as any, loadAt - 1)).toBe(0);                 // before loading
+    expect(cargoAboardAt(r.events as any, loadAt + (lo.durationSec! / 2))).toBeCloseTo(60, 1); // half-loaded
+    expect(cargoAboardAt(r.events as any, unloadAt - 1)).toBe(120);             // carrying full
+    expect(cargoAboardAt(r.events as any, unloadAt + (un.durationSec! / 2))).toBeCloseTo(60, 1); // half-delivered
+    expect(cargoAboardAt(r.events as any, unloadAt + un.durationSec!)).toBe(0); // fully delivered
+  });
+
+  it('caps a load to the hold and sizes the dwell to what is actually moved', () => {
+    const mine: AutopilotStop = { targetId: 'M', dwellDays: 3, refuelHere: false, verb: 'mine', resourceKeys: ['resource/ore'], tonnes: 9999, rate_tpd: 10, abundance: 1 };
+    const full = walkStops([mine], { ...baseOpts, planningHorizon: 1, startCargo_t: 100, cargoCapacity_t: 100 });
+    const fm = full.events.find((e) => e.kind === 'mine')!;
+    expect(fm.tonnes).toBe(0);                  // already full → nothing mined…
+    expect(fm.durationSec).toBe(0);             // …and no idle time wasted at the source
+    const room = walkStops([mine], { ...baseOpts, planningHorizon: 1, startCargo_t: 30, cargoCapacity_t: 100 });
+    const rm = room.events.find((e) => e.kind === 'mine')!;
+    expect(rm.tonnes).toBe(70);                 // fills only the free 70 t
+    expect(rm.durationSec).toBe(70 / 10 * 86400); // dwell sized to 70 t ÷ 10 t/day = 7 days
   });
 
   it('mine adds cargo + emits refuel where flagged; a flyby (dwell 0) logs no loiter', () => {

@@ -93,7 +93,7 @@
       load: '▲', unload: '▼', mine: '⛏', refuel: '⛽', loiter: '◷', stuck: '!', disengage: '✕', depart: '→', arrive: '⇲'
   };
   $: flightLog = [...(focusedBody.flight_log || [])].sort((a, b) => Number(a.atSec) - Number(b.atSec));
-  $: cargoAboard = Number.isFinite(displayTimeMs) ? cargoAboardAt(focusedBody.flight_log, Math.floor(displayTimeMs / 1000)) : 0;
+  $: cargoAboard = Number.isFinite(displayTimeMs) ? cargoAboardAt(focusedBody.flight_log, Math.floor(displayTimeMs / 1000), focusedBody.current_cargo_tonnes || 0) : 0;
 </script>
 
 <!-- A small clock that jumps DISPLAY time to a logged moment. Only rendered for times at/after actual

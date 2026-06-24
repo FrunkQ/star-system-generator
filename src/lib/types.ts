@@ -166,6 +166,7 @@ export interface ConstructLogEvent {
   placeId?: ID;          // where it happened
   resourceKey?: string;  // load / unload / mine — what moved
   tonnes?: number;       // load / unload / mine — cargo mass moved (+aboard for load/mine, −aboard for unload)
+  durationSec?: number;  // load / unload / mine happen OVER the dwell, so cargo ramps rather than steps
   fuelKg?: number;       // refuel — fuel taken on
   plannedAtSec?: string; // the on-time baseline (vs atSec once tardiness slack is applied) — for on-time %
 }

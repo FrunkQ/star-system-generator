@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.0.221-beta - 24th Jun 2026
+
+* Autopilot cargo is now a real, continuous quantity over time:
+  * **Ramps instead of stepping** — cargo fills gradually across the mining/loading dwell and empties across the unload, so the "Cargo aboard" read-out climbs and falls smoothly as you scrub/play (it's derived, so it costs nothing between events).
+  * **Capacity-aware** — a load or mine never overfills the hold, and an unload never delivers more than is aboard. The logged tonnage is the *actual* amount moved.
+  * **A full ship mines nothing** — start the route already loaded and the mine moves 0 t, with **no idle time wasted at the source** (the dwell is sized to what's actually loaded ÷ rate × richness) — it just carries on to deliver. Starting cargo comes from the ship's current cargo.
+
 ## v2.0.220-beta - 24th Jun 2026
 
 * Fixed two time-datum bugs (see docs/time-architecture.md):

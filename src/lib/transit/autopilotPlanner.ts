@@ -34,6 +34,7 @@ export interface StopEvent {
   placeId: ID;
   resourceKey?: string;
   tonnes?: number;
+  durationSec?: number;     // load/mine/unload happen OVER the dwell, so cargo ramps rather than steps
 }
 
 // Map a stop verb to its flight-log kind (the work the journey legs don't already show).
@@ -41,15 +42,20 @@ const VERB_KIND: Record<string, ConstructLogKind | undefined> = {
   load: 'load', unload: 'unload', mine: 'mine', patrol: 'loiter', explore: 'loiter'
 };
 
-// Cargo aboard at a moment = the running sum of the flight log up to that time (load/mine add, unload
-// removes). DERIVED, never stored — so it scrubs with the clock and a regen can't desync it. atSec in seconds.
-export function cargoAboardAt(events: ConstructLogEvent[] | undefined, atSec: number): number {
-  if (!events?.length) return 0;
-  let aboard = 0;
-  for (const e of events) {
-    if (Number(e.atSec) > atSec) continue;
-    if (e.kind === 'load' || e.kind === 'mine') aboard += e.tonnes || 0;
-    else if (e.kind === 'unload') aboard -= e.tonnes || 0;
+// Cargo aboard at a moment = a starting load plus the running flight-log delta up to that time (load/mine add,
+// unload removes), each transfer RAMPING linearly across its dwell rather than stepping. DERIVED, never stored
+// — it scrubs with the clock and a regen can't desync it. atSec in seconds; startCargo_t = cargo when the
+// ledger began (the ship's current_cargo_tonnes at engage).
+export function cargoAboardAt(events: ConstructLogEvent[] | undefined, atSec: number, startCargo_t = 0): number {
+  let aboard = startCargo_t;
+  for (const e of events ?? []) {
+    const start = Number(e.atSec);
+    if (start > atSec) continue;
+    const dur = e.durationSec || 0;
+    const frac = dur > 0 ? Math.min(1, Math.max(0, (atSec - start) / dur)) : 1; // partway through a transfer
+    const amt = (e.tonnes || 0) * frac;
+    if (e.kind === 'load' || e.kind === 'mine') aboard += amt;
+    else if (e.kind === 'unload') aboard -= amt;
   }
   return Math.max(0, aboard);
 }
@@ -74,6 +80,8 @@ export interface AutopilotPlanOpts {
   maxJourneyDays?: number;  // cap on any single hop's travel time
   tardiness?: number;       // 0..1 Discipline — adds deterministic slack to STOPPED time only (0 = punctual)
   slackSeed?: string;       // reproducible seed (the construct id) so the slack is the same every replay
+  startCargo_t?: number;    // cargo already aboard when the route begins (so a full hauler mines nothing)
+  cargoCapacity_t?: number; // hold capacity — a load never exceeds it; an unload never drops below empty
 }
 
 // Deterministic [0,1) hash — tardiness slack must be reproducible/scrubbable, so no Math.random (which is
@@ -104,6 +112,8 @@ export function walkStops(stops: AutopilotStop[], opts: AutopilotPlanOpts): Auto
   let budget = opts.ignoreFuel ? Infinity : opts.fuelBudget_ms;
   const capacity = opts.ignoreFuel ? Infinity : opts.fuelCapacity_ms;
   const horizon = Math.max(1, Math.floor(opts.planningHorizon));
+  let cargo = Math.max(0, opts.startCargo_t ?? 0);                 // cargo aboard, tracked so loads/unloads are real
+  const holdCap = opts.cargoCapacity_t && opts.cargoCapacity_t > 0 ? opts.cargoCapacity_t : Infinity;
 
   if (!stops.length) return { plans: [], events, endHostId: host, attention: null, done: false, finalTimeMs: t };
 
@@ -132,17 +142,30 @@ export function walkStops(stops: AutopilotStop[], opts: AutopilotPlanOpts): Auto
       host = stop.targetId;
     }
 
-    // Work event at the stop — the load/unload/mine/loiter the transit journeys don't themselves record.
+    // Work event at the stop — the load/unload/mine/loiter the transit journeys don't themselves record. Cargo
+    // moves are capped to what's physically possible: a load/mine never overfills the hold (a full ship mines
+    // nothing), an unload never delivers more than is aboard. The LOGGED tonnage is the real amount moved, and
+    // a load/mine dwell is sized to THAT amount (÷ rate × source abundance) — so a full ship doesn't idle at
+    // the source for the full nominal fill time.
     const kind = VERB_KIND[stop.verb];
-    if (kind && (kind !== 'loiter' || stop.dwellDays > 0)) {
-      events.push({ atSec: atSecStr(t), kind, placeId: stop.targetId, resourceKey: stop.resourceKeys?.[0], tonnes: stop.tonnes });
+    let dwellDays = Math.max(0, stop.dwellDays);
+    if (kind === 'load' || kind === 'mine') {
+      const moved = Math.max(0, Math.min(stop.tonnes ?? (holdCap - cargo), holdCap - cargo));
+      if (stop.rate_tpd && stop.rate_tpd > 0) dwellDays = moved / (stop.rate_tpd * Math.max(0.05, stop.abundance ?? 1));
+      cargo += moved;
+      events.push({ atSec: atSecStr(t), kind, placeId: stop.targetId, resourceKey: stop.resourceKeys?.[0], tonnes: moved, durationSec: dwellDays * 86400 });
+    } else if (kind === 'unload') {
+      const moved = Math.max(0, Math.min(stop.tonnes ?? cargo, cargo));
+      cargo -= moved;
+      events.push({ atSec: atSecStr(t), kind, placeId: stop.targetId, resourceKey: stop.resourceKeys?.[0], tonnes: moved, durationSec: dwellDays * 86400 });
+    } else if (kind && dwellDays > 0) {
+      events.push({ atSec: atSecStr(t), kind, placeId: stop.targetId, resourceKey: stop.resourceKeys?.[0] });
     }
 
     // Hold at the stop (dwell becomes the gap before the next hop → resolver shows "waiting at host").
     // Tardiness adds slack to STOPPED time only — a flyby (dwell 0) never stops, so it's never late.
-    const baseDwell = Math.max(0, stop.dwellDays);
-    const slack = baseDwell > 0 && opts.tardiness ? opts.tardiness * hash01(`${opts.slackSeed ?? ''}:${i}:${atSecStr(t)}`) : 0;
-    t += baseDwell * (1 + slack) * DAY_MS;
+    const slack = dwellDays > 0 && opts.tardiness ? opts.tardiness * hash01(`${opts.slackSeed ?? ''}:${i}:${atSecStr(t)}`) : 0;
+    t += dwellDays * (1 + slack) * DAY_MS;
     // Harvest/depot top-up: refuelling here means the NEXT hop (e.g. the return leg) departs fuelled.
     if (stop.refuelHere) {
       budget = capacity;

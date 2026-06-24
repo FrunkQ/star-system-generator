@@ -237,7 +237,9 @@ export function generateAutopilotChain(
     solveLeg,
     maxJourneyDays: ap.maxJourneyDays,
     tardiness,
-    slackSeed: construct.id
+    slackSeed: construct.id,
+    startCargo_t: Math.max(0, construct.current_cargo_tonnes || 0), // a full hauler delivers before it mines more
+    cargoCapacity_t: (specs as any).cargoCapacity_tonnes || 0
   });
 
   const createdAtSec = BigInt(Math.floor(fromTimeMs / 1000)).toString();
@@ -268,5 +270,5 @@ function finalizeEvent(e: StopEvent, i: number, nodeName: (id: string) => string
     case 'loiter': text = `Held station at ${place}`; break;
     default:       text = `${e.kind} at ${place}`;
   }
-  return { id: `ev-${e.atSec}-${i}`, atSec: e.atSec, kind: e.kind, text, placeId: e.placeId, resourceKey: e.resourceKey, tonnes: e.tonnes };
+  return { id: `ev-${e.atSec}-${i}`, atSec: e.atSec, kind: e.kind, text, placeId: e.placeId, resourceKey: e.resourceKey, tonnes: e.tonnes, durationSec: e.durationSec };
 }
