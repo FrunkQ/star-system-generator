@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.226-beta - 24th Jun 2026
+
+* A hauler that starts a route already carrying cargo now **delivers it first**. If the route opens on a mine/load but has a drop-off, an unload of the existing cargo is prepended at that drop-off — so a ship that comes on shift full clears its hold before gathering more, rather than carting the old load around the circuit.
+
 ## v2.0.225-beta - 24th Jun 2026
 
 * Autopilot now respects a ship's **readiness** (its worst Status blocker). A wreck, impounded, dormant or otherwise non-operational ship (readiness 0) can't be engaged — it says so plainly ("not operational — its status prevents movement") instead of silently failing. A damaged or under-construction ship (readiness 0.5) limps along at **reduced thrust** (max accel scaled by readiness), so its transfers are slower and thirstier — exactly what a half-crippled hull should manage.

@@ -222,6 +222,18 @@ export function generateAutopilotChain(
     }
   }
 
+  // Precedence: a ship that BEGINS with cargo aboard should deliver it before gathering more (Alex: "if already
+  // full, the first port of call may be home to unload"). If the route opens on a load/mine but has a drop-off,
+  // prepend an unload of the existing cargo at that drop-off so it clears the hold first.
+  const startCargo_t = Math.max(0, construct.current_cargo_tonnes || 0);
+  if (startCargo_t > 0) {
+    const firstWork = stops.find((s) => s.verb === 'load' || s.verb === 'mine' || s.verb === 'unload');
+    const firstDrop = stops.find((s) => s.verb === 'unload');
+    if (firstWork && firstDrop && firstWork.verb !== 'unload') {
+      stops.unshift({ targetId: firstDrop.targetId, dwellDays: 1, refuelHere: false, verb: 'unload', resourceKeys: firstDrop.resourceKeys, tonnes: startCargo_t });
+    }
+  }
+
   // Commit horizon = Planning legs ahead (what the slider literally promises). The clock top-up keeps Planning
   // legs committed ahead of the display clock as time advances. For 'any', the greedy selection IS the
   // commitment (walk exactly those stops). A run-once route commits its whole length (it deliberately ends).
