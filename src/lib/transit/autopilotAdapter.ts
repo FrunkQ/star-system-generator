@@ -5,7 +5,7 @@ import type { CelestialBody, System, RulePack, ConstructLogEvent } from '$lib/ty
 import type { ScheduledJourneyLog, TransitMode } from './types';
 import { calculateTransitPlan } from './calculator';
 import { calculateFullConstructSpecs } from '$lib/construct-logic';
-import { constructTardiness } from '$lib/constructs/coi';
+import { constructTardiness, constructReadiness } from '$lib/constructs/coi';
 import { resolveConstructCurrentHostId } from './scheduler';
 import { legToStops, walkStops, chooseSource, reorderWaypoints, selectAnyOrder, type AutopilotStop, type StopEvent } from './autopilotPlanner';
 
@@ -130,6 +130,11 @@ export function generateAutopilotChain(
   const budget = specs.totalVacuumDeltaV_ms || 0;
   const capacity = Isp > 0 && dryKg > 0 && wetFullKg > dryKg ? Isp * G0 * Math.log(wetFullKg / dryKg) : budget;
 
+  // Readiness (0..1, the worst Status blocker): a wreck/impounded/dormant ship (0) can't be sent anywhere; a
+  // damaged or under-construction ship (e.g. 0.5) limps along at reduced thrust. Applied to maxG below.
+  const readiness = constructReadiness(construct);
+  if (readiness <= 0) return { logs: [], flightLog: [], attention: 'stuck', stuckReason: 'not operational — its status prevents movement (repair/release it first)', done: false };
+
   const startHostId = resolveConstructCurrentHostId(construct, fromTimeMs) || construct.parentId || '';
   if (!startHostId) return { logs: [], flightLog: [], attention: 'stuck', stuckReason: 'no host to depart from', done: false };
 
@@ -141,7 +146,8 @@ export function generateAutopilotChain(
   const repeat = ap.repeat !== false;
   const driveFast = (ap.drive ?? 0.5) >= 0.5;
   const mode: TransitMode = 'Economy';
-  const maxG = ap.maxAccelG && ap.maxAccelG > 0 ? Math.min(ap.maxAccelG, specs.maxVacuumG || ap.maxAccelG) : (specs.maxVacuumG || 1);
+  const maxGFull = ap.maxAccelG && ap.maxAccelG > 0 ? Math.min(ap.maxAccelG, specs.maxVacuumG || ap.maxAccelG) : (specs.maxVacuumG || 1);
+  const maxG = maxGFull * readiness; // a damaged ship limps along at reduced thrust (readiness 0..1)
 
   // THE one transfer model — used to both cost the reorder AND commit the legs, so they can't disagree.
   // `light` selects the quote tier (Efficient Now + Direct Burn only, no delayed-window sweep / assist / path)
