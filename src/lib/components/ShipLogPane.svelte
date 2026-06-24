@@ -10,10 +10,12 @@
   import { starmapStore } from '$lib/starmapStore';
   import { resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
   import { getJourneyBounds } from '$lib/transit/scheduler';
-  import { cargoAboardAt } from '$lib/transit/autopilotPlanner';
+  import { cargoAboardAt, fuelKgAt } from '$lib/transit/autopilotPlanner';
+  import { calculateFullConstructSpecs } from '$lib/construct-logic';
   import AutopilotShipIcon from './AutopilotShipIcon.svelte';
 
   export let focusedBody: CelestialBody;
+  export let rulePack: any = null;
   export let clearFutureCount: number;
   export let activeCount: number;
   // Actual/master clock in unix-ms. A log time gets a clickable "jump display time here" clock ONLY when it's
@@ -94,6 +96,15 @@
   };
   $: flightLog = [...(focusedBody.flight_log || [])].sort((a, b) => Number(a.atSec) - Number(b.atSec));
   $: cargoAboard = Number.isFinite(displayTimeMs) ? cargoAboardAt(focusedBody.flight_log, Math.floor(displayTimeMs / 1000), focusedBody.current_cargo_tonnes || 0) : 0;
+  // Fuel % at the display moment — derived from the burn segments + refuel events (see fuelKgAt). Needs the
+  // rulepack to size the tanks; null when unavailable so the read-out simply hides.
+  $: fuelSpecs = (rulePack?.engineDefinitions && rulePack?.fuelDefinitions && focusedBody.kind === 'construct')
+      ? calculateFullConstructSpecs(focusedBody, rulePack.engineDefinitions.entries, rulePack.fuelDefinitions.entries, null) : null;
+  $: fuelCapKg = fuelSpecs ? (fuelSpecs.fuelCapacity_tonnes || 0) * 1000 : 0;
+  $: startFuelKg = fuelSpecs ? Math.max(0, ((fuelSpecs.totalMass_tonnes || 0) - (fuelSpecs.dryMass_tonnes || 0)) * 1000) : 0;
+  $: fuelPct = (fuelCapKg > 0 && Number.isFinite(displayTimeMs))
+      ? Math.round(100 * fuelKgAt(focusedBody.scheduled_journeys, focusedBody.flight_log, fuelCapKg, startFuelKg, Math.floor(displayTimeMs / 1000)) / fuelCapKg)
+      : null;
 </script>
 
 <!-- A small clock that jumps DISPLAY time to a logged moment. Only rendered for times at/after actual
@@ -172,7 +183,10 @@
     <div class="flight-log">
       <div class="flight-log-hdr">
         <strong>Flight Log</strong>
-        {#if Number.isFinite(displayTimeMs)}<span class="cargo-now" title="Cargo aboard at the current display time, derived from the log">Cargo aboard: {Math.round(cargoAboard)} t</span>{/if}
+        <span class="now-stats">
+          {#if fuelPct !== null}<span class="fuel-now" class:low={fuelPct <= 15} title="Fuel at the current display time, derived from burns + refuels">Fuel: {fuelPct}%</span>{/if}
+          {#if Number.isFinite(displayTimeMs)}<span class="cargo-now" title="Cargo aboard at the current display time, derived from the log">Cargo: {Math.round(cargoAboard)} t</span>{/if}
+        </span>
       </div>
       {#each flightLog as ev}
         {@const evMs = safeClockSecStringToMs(ev.atSec)}
@@ -298,11 +312,14 @@
       color: #ffb088;
       margin-bottom: 0.2em;
   }
+  .now-stats { display: inline-flex; gap: 0.7em; align-items: baseline; }
   .cargo-now {
       color: #8fcf9f;
       font-size: 0.82em;
       font-weight: 600;
   }
+  .fuel-now { color: #6fb6ff; font-size: 0.82em; font-weight: 600; }
+  .fuel-now.low { color: #e8714f; }
   .flight-log-row {
       display: grid;
       grid-template-columns: 1.2em 1fr auto;

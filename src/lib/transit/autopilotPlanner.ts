@@ -60,6 +60,48 @@ export function cargoAboardAt(events: ConstructLogEvent[] | undefined, atSec: nu
   return Math.max(0, aboard);
 }
 
+// Fuel aboard (kg) at a moment — DERIVED, like cargo. Fuel drains across each burn SEGMENT (accel/coast/brake)
+// over its own window, so a torch ship burns smoothly while a burn-coast-burn spends ~half on the injection
+// burn, coasts flat, then ~half on capture — straight from the real segment fuel, no hard-coded split. Refuels
+// top the tanks back toward full (instantly at a port, ramped across a frontier harvest's durationSec). Burns
+// and refuels never overlap in time (transit vs. dwell), so a single time-ordered walk is exact. Especially
+// useful for an ABANDONED ship: its fuel at the cancel moment is just fuelKgAt(…, cancelSec).
+export function fuelKgAt(
+  journeys: { status?: string; plans?: any[] }[] | undefined,
+  flightLog: ConstructLogEvent[] | undefined,
+  capacityKg: number,
+  startFuelKg: number,
+  atSec: number
+): number {
+  if (!(capacityKg > 0)) return startFuelKg;
+  const fe: { start: number; end: number; refuel: boolean; kg: number }[] = [];
+  for (const log of journeys ?? []) {
+    if (log.status === 'cancelled') continue;
+    for (const p of log.plans ?? []) {
+      for (const s of p.segments ?? []) {
+        const start = (s.startTime ?? 0) / 1000;
+        const end = Math.max(start, (s.endTime ?? s.startTime ?? 0) / 1000);
+        const kg = s.fuelUsed_kg || 0;
+        if (kg > 0) fe.push({ start, end, refuel: false, kg });
+      }
+    }
+  }
+  for (const e of flightLog ?? []) {
+    if (e.kind !== 'refuel') continue;
+    const start = Number(e.atSec);
+    fe.push({ start, end: start + (e.durationSec || 0), refuel: true, kg: 0 });
+  }
+  fe.sort((a, b) => a.start - b.start);
+  let fuel = startFuelKg;
+  for (const e of fe) {
+    if (e.start > atSec) break;
+    const frac = e.end > e.start ? Math.min(1, (atSec - e.start) / (e.end - e.start)) : 1;
+    if (e.refuel) fuel = fuel + (capacityKg - fuel) * frac;   // ramp toward full
+    else fuel = fuel - e.kg * frac;                            // drain across the burn
+  }
+  return Math.max(0, Math.min(capacityKg, fuel));
+}
+
 // Solve a single hop origin→target departing at startMs. Production wraps `calculateTransitPlan` +
 // ship params; tests stub it. Returns null / valid:false when no route is possible.
 export type SolveLeg = (

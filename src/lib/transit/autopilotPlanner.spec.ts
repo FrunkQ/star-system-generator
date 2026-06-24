@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { walkStops, legToStops, planToStops, chooseSource, scoreSources, reorderWaypoints, selectAnyOrder, cargoAboardAt, type AutopilotStop, type SolveLeg, type ReorderOpts } from './autopilotPlanner';
+import { walkStops, legToStops, planToStops, chooseSource, scoreSources, reorderWaypoints, selectAnyOrder, cargoAboardAt, fuelKgAt, type AutopilotStop, type SolveLeg, type ReorderOpts } from './autopilotPlanner';
 
 const DAY_MS = 86_400_000;
 
@@ -125,6 +125,30 @@ describe('autopilot tardiness slack', () => {
     const stops = [{ targetId: 'A', dwellDays: 0, refuelHere: false, verb: 'patrol' } as AutopilotStop];
     const r = walkStops(stops, { ...baseOpts, planningHorizon: 1, tardiness: 1, slackSeed: 'bob' });
     expect(r.finalTimeMs).toBe(10 * DAY_MS); // just the travel, no dwell, no slack
+  });
+});
+
+describe('autopilot fuel over time — fuelKgAt', () => {
+  const DAY_S = 86400;
+  // One burn leg draining 400 kg over 10 days, then a refuel 20 days in.
+  const journeys = [{ status: 'scheduled', plans: [{ segments: [{ startTime: 0, endTime: 10 * DAY_MS, fuelUsed_kg: 400 }] }] }];
+
+  it('drains fuel across the burn segment and clamps to empty', () => {
+    expect(fuelKgAt(journeys, [], 1000, 1000, 5 * DAY_S)).toBeCloseTo(800, 5);   // half the burn done
+    expect(fuelKgAt(journeys, [], 1000, 1000, 10 * DAY_S)).toBeCloseTo(600, 5);  // burn complete
+    expect(fuelKgAt(journeys, [], 1000, 1000, -1)).toBe(1000);                    // before departure: full
+  });
+
+  it('a port refuel restores instantly; a frontier refuel ramps to full', () => {
+    const instant = [{ id: 'r', atSec: String(20 * DAY_S), kind: 'refuel', text: '', durationSec: 0 } as any];
+    expect(fuelKgAt(journeys, instant, 1000, 1000, 20 * DAY_S)).toBeCloseTo(1000, 5); // 600 → full at once
+    const frontier = [{ id: 'r', atSec: String(20 * DAY_S), kind: 'refuel', text: '', durationSec: 4 * DAY_S } as any];
+    expect(fuelKgAt(journeys, frontier, 1000, 1000, 22 * DAY_S)).toBeCloseTo(800, 5); // 600 + (1000-600)/2
+  });
+
+  it('an abandoned (cancelled) journey burns no fuel', () => {
+    const dead = [{ status: 'cancelled', plans: [{ segments: [{ startTime: 0, endTime: 10 * DAY_MS, fuelUsed_kg: 400 }] }] }];
+    expect(fuelKgAt(dead, [], 1000, 1000, 10 * DAY_S)).toBe(1000);
   });
 });
 
