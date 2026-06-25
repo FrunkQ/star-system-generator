@@ -523,7 +523,9 @@
                   const b = getJourneyBounds(l.plans);
                   return b && currentTime >= b.startMs && currentTime <= b.endMs;
               });
-              if (onJourney) {
+              // Transit (precomputed journey path) AND coast (deterministic conic) are both cheap to evaluate
+              // at the render clock — derive per-frame so both move smoothly, rather than the throttled vector.
+              if (onJourney || isCoastingNow(node)) {
                   const s = sampleJourneyKinematicsAtTime(system, node as any, currentTime);
                   if (s) { const abs = { x: s.position_au.x, y: s.position_au.y }; positions.set(nodeId, abs); return abs; }
               }

@@ -3,6 +3,7 @@ import type { TransitPlan, Vector2 } from '$lib/transit/types';
 import { AU_KM, G } from '$lib/constants';
 import { getGlobalState } from '$lib/transit/physics';
 import { driftAt } from '$lib/physics/driftIntegrator';
+import { coastConicAt } from '$lib/physics/twoBodyCoast';
 import { systemGravityField, G_AU } from '$lib/physics/systemGravity';
 
 const AU_M = AU_KM * 1000;
@@ -101,30 +102,20 @@ export function coastPathUnderGravity(
     .filter((n) => n.kind === 'body' && ((n as any).massKg || 0) > 0 && (n as any).roleHint !== 'belt' && (n as any).roleHint !== 'ring' && (includeMoons || (n as any).roleHint !== 'moon'))
     .map((n) => ({ id: n.id, massKg: (n as any).massKg as number }));
   if (!bodies.length) return [];
-  const field = systemGravityField(bodies, (id, t) => {
-    const node = system.nodes.find((n) => n.id === id);
-    if (!node) return [0, 0];
-    const s = getGlobalState(system, node as any, t * 1000);
-    return [s.r.x, s.r.y];
-  });
-  // Horizon ≈ a quarter orbital period at the ship's distance from the most massive body.
+  // Horizon ≈ a couple of characteristic times at the ship's distance from the most massive body — a good arc
+  // ahead, short enough that a near-radial plunge doesn't whip clear through the star.
   const maxMass = bodies.reduce((m, b) => Math.max(m, b.massKg), 0);
   const r = Math.max(1e-6, Math.hypot(startPos_au.x, startPos_au.y));
   const mu = G_AU * maxMass;
   const charSec = mu > 0 ? Math.sqrt((r * r * r) / mu) : 3.15e7; // √(r³/μ) = T/2π (≈1 rad of arc)
-  // ~2 characteristic times ≈ a good arc ahead (longer reach, as requested) while still short enough that
-  // a near-radial plunge doesn't whip through the star and fly back out.
   const horizonSec = Math.max(86400, charSec * 2);
   const stepSec = horizonSec / steps;
-  const sub = stepSec; // 1 RK4 step per polyline point — plenty for a faint forecast, and ~40x cheaper
-
-  const pts: Vector2[] = [{ x: startPos_au.x, y: startPos_au.y }];
-  let x = startPos_au.x, y = startPos_au.y, vx = startVel_ms.x / AU_M, vy = startVel_ms.y / AU_M;
-  let t = t0Ms / 1000;
-  for (let k = 0; k < steps; k++) {
-    const rr = driftAt({ t0: t, x, y, vx, vy }, field, t + stepSec, sub);
-    x = rr.x; y = rr.y; vx = rr.vx; vy = rr.vy; t += stepSec;
-    pts.push({ x, y });
+  // Sample the DETERMINISTIC conic rather than step-integrating — one stable curve that doesn't jitter as the
+  // clock advances (the old integrator re-ran with different steps each frame), and exact through perihelion.
+  const pts: Vector2[] = [];
+  for (let k = 0; k <= steps; k++) {
+    const c = coastConicAt(system, startPos_au, startVel_ms, t0Ms, t0Ms + k * stepSec * 1000);
+    pts.push(c ? c.position_au : { x: startPos_au.x, y: startPos_au.y });
   }
   return pts;
 }
@@ -312,7 +303,10 @@ export function sampleJourneyKinematicsAtTime(
       // the old drift — otherwise the ship's log reads right but the orrery still shows "Adrift · coasting".
       // Stash the coast as the running candidate (like a completed journey) and keep scanning: a subsequent
       // journey that has already started overwrites it; if none has, this is what we return.
-      const coasted = coastUnderGravity(system, log.cancelState.position_au, log.cancelState.velocity_ms, cancelledAtMs, timeMs);
+      // Deterministic conic (exact through perihelion, no step-integration drift); the old integrator is only a
+      // fallback for a system with no star to fall toward.
+      const coasted = coastConicAt(system, log.cancelState.position_au, log.cancelState.velocity_ms, cancelledAtMs, timeMs)
+        ?? coastUnderGravity(system, log.cancelState.position_au, log.cancelState.velocity_ms, cancelledAtMs, timeMs);
       candidateAfterCompletion = {
         journeyId: log.id,
         state: 'Deep Space',
