@@ -193,10 +193,11 @@
     {@const prevLog = journeys[i - 1]}
     {@const startedAdrift = i > 0 && prevLog && prevLog.status === 'cancelled' && prevLog.cancelState && prevLog.cancelledAtSec}
     {@const driftFromMs = startedAdrift ? safeClockSecStringToMs(prevLog.cancelledAtSec) : 0}
+    {@const apAction = log.plans?.[0]?.autopilotAction}
     <div class="ship-log-entry">
       <div class="ship-log-title">
         <strong>Journey {i + 1}</strong>
-        {#if log.autopilot}<span class="ship-log-auto" title="Planned and flown by autopilot"><AutopilotShipIcon size={11} /> autopilot</span>{/if}
+        {#if log.autopilot}<span class="ship-log-auto" title={`Autopilot${apAction ? ` — ${apAction}` : ''}`}><AutopilotShipIcon size={11} /> {apAction || 'autopilot'}</span>{/if}
         <span class="ship-log-status" class:adrift={adriftNow}>{dynStatus}</span>
       </div>
       <div class="ship-log-meta">Created: {formatLogTime(createdMs)} {@render seekClock(createdMs)}</div>

@@ -24,6 +24,7 @@ export interface AutopilotStop {
   tonnes?: number;          // cargo mass moved at this stop (load/unload/mine) — for the flight log + cargo derivation
   rate_tpd?: number;        // haul fill rate (t/day) — dwell = tonnes / (rate × abundance)
   abundance?: number;       // mine — source richness 0..1; a richer deposit fills faster (load/place = 1)
+  action?: string;          // the leg's verb (mine/transport/patrol/explore/escort) — tags the journey for the log
 }
 
 // A work event the planner emits at a stop (between transit journeys). The adapter finalises these into
@@ -215,6 +216,7 @@ export function walkStops(stops: AutopilotStop[], opts: AutopilotPlanOpts): Auto
         return { plans: out, events, endHostId: host, attention: 'stuck', stuckReason: `not enough fuel to reach ${stop.targetId}`, done: false, finalTimeMs: t };
       }
       budget -= solve.deltaV_ms;
+      for (const p of solve.plans) (p as any).autopilotAction = stop.action ?? stop.verb; // tag the journey's kind
       out.push(...solve.plans);
       t = solve.arriveMs;
       host = stop.targetId;

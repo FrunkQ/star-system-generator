@@ -91,7 +91,7 @@ export function buildAdapterStops(
     if (leg.action === 'escort') {
       const target = (sys.nodes as any[]).find((n) => n.id === leg.placeId && n.kind === 'construct');
       const targetHost = target ? (resolveConstructCurrentHostId(target, fromTimeMs) || target.parentId) : undefined;
-      if (targetHost) { stops.push({ targetId: targetHost, dwellDays: leg.loiterDays ?? 5, refuelHere: false, verb: 'patrol' }); fromHost = targetHost; }
+      if (targetHost) { stops.push({ targetId: targetHost, dwellDays: leg.loiterDays ?? 5, refuelHere: false, verb: 'patrol', action: 'escort' }); fromHost = targetHost; }
       continue;
     }
     const s = (leg.action === 'mine' || leg.action === 'explore')

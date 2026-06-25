@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.235-beta - 25th Jun 2026
+
+* Each journey in the Ship's Log now says what *kind* of trip it is next to the autopilot badge — mine / load / unload / patrol / explore / escort — instead of just "autopilot", so you can read a route at a glance.
+
 ## v2.0.234-beta - 25th Jun 2026
 
 * Ship's Log re-ordered to read like an itinerary, per your spec. DEFAULT now shows the current/active journey at the TOP, then each upcoming planned trip downward in the order it happens (events tucked under their journey) — then a short "Recent history" section of just the **last 2 completed** journeys, then a **Show full history** button. Full history shows every trip, most-recent at the top (reverse-chronological). (Was: everything newest-first with no history limit or section.)
