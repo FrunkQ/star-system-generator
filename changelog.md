@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.232-beta - 25th Jun 2026
+
+* The Ship's Log is now one **reverse-chronological timeline** instead of a journeys list with a separate flight-log section at the bottom. Journeys and the work events that happened on them (load/mine/unload/refuel) are interleaved by time, newest first, so scrubbing reads naturally and a journey's events sit right with it. Fuel % and Cargo show in a bar at the top. By default it shows the recent window (the retained journeys + their events); a **Show full history** button reveals every logged event back to the start (the flight log is kept forever even after old journey paths are trimmed).
+
 ## v2.0.231-beta - 25th Jun 2026
 
 * Abandoned/adrift ships now coast on a deterministic Keplerian conic instead of a step-integrated drift. The old integration was sampling-dependent (scrubbing changed the step count, so the same ship reached 400 vs 1500 km/s) and injected energy through perihelion (the unphysical slingshot out of the system). The new universal-variable two-body propagator is exact and energy-conserving for ellipse / parabola / hyperbola alike, so a cut-loose ship follows one stable, repeatable path — and the forecast ("future direction") line is now a single steady curve that no longer jitters as the clock advances. Coast motion is also derived per-frame now, so it's as smooth as orbital motion.
