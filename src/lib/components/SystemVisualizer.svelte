@@ -513,22 +513,15 @@
           if (positions.has(nodeId)) return positions.get(nodeId)!;
           const node = nodesById.get(nodeId);
           if (!node) return { x: 0, y: 0 };
-          if (node.kind === 'construct') {
-              // Derive the TRANSIT position per-frame from the (deterministic, precomputed) journey path at the
-              // render clock — NOT the stored vector_position_au, which the reconcile only refreshes every
-              // ~150ms, so at speed a transiting ship visibly steps ~a day per refresh. Only sample when there's
-              // an active journey now (cheap path search); coasting/adrift ships keep the stored coast vector.
-              const onJourney = (node.scheduled_journeys || []).some((l: any) => {
-                  if (l.status === 'cancelled') return false;
-                  const b = getJourneyBounds(l.plans);
-                  return b && currentTime >= b.startMs && currentTime <= b.endMs;
-              });
-              // Transit (precomputed journey path) AND coast (deterministic conic) are both cheap to evaluate
-              // at the render clock — derive per-frame so both move smoothly, rather than the throttled vector.
-              if (onJourney || isCoastingNow(node)) {
-                  const s = sampleJourneyKinematicsAtTime(system, node as any, currentTime);
-                  if (s) { const abs = { x: s.position_au.x, y: s.position_au.y }; positions.set(nodeId, abs); return abs; }
-              }
+          if (node.kind === 'construct' && (node.scheduled_journeys || []).length) {
+              // Resolve a construct's position PER-FRAME at the render clock — transit path, coast conic, OR the
+              // post-arrival parking orbit (sampleJourneyKinematicsAtTime computes all of these relative to the
+              // HOST BODY at THIS time). Reading the stored vector_position_au instead pins the ship to the
+              // host's position at the last ~150ms reconcile tick; since the host itself is drawn per-frame, at
+              // a deep zoom the ship jitters against it by the host's orbital motion over that 150ms. Sampling
+              // here keeps both in the same coordinate frame at the same instant.
+              const s = sampleJourneyKinematicsAtTime(system, node as any, currentTime);
+              if (s) { const abs = { x: s.position_au.x, y: s.position_au.y }; positions.set(nodeId, abs); return abs; }
               if (node.vector_position_au) {
                   const absolute = { x: node.vector_position_au.x, y: node.vector_position_au.y };
                   positions.set(nodeId, absolute);
