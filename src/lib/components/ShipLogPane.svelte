@@ -138,28 +138,36 @@
     return ev.text || ev.kind;
   }
 
-  // ONE reverse-chronological timeline: journeys (at their departure) + flight-log work events, interleaved by
-  // time, newest first — so the events of a journey sit right with it and scrubbing reads naturally. By default
-  // it shows the retained window (the last couple of journeys + their events); "show full history" reveals every
-  // logged event back to the start (the flight log is kept forever, even after old journey paths are trimmed).
+  // The log reads like an itinerary. DEFAULT: what's happening + what's coming, soonest-first (current at the
+  // top, furthest-planned at the bottom), each journey's work events under it; then a small "recent history" of
+  // the last 2 finished journeys (most-recent first); then a "Show full history" button. FULL HISTORY: every
+  // trip, most-recent at the top (reverse-chrono). The flight log is kept forever, so history can reach back
+  // past the journey paths the trim has dropped.
   let showAll = false;
   $: journeys = focusedBody.scheduled_journeys || [];
-  $: earliestJourneySec = journeys.reduce((m: number, l: any) => { const b = getJourneyBounds(l.plans); return b ? Math.min(m, b.startMs / 1000) : m; }, Infinity);
-  $: hasOlderHistory = (focusedBody.flight_log || []).some((e: any) => Number(e.atSec) < earliestJourneySec);
-  $: timeline = (() => {
+  $: nowSec = Number.isFinite(displayTimeMs) ? displayTimeMs / 1000 : Number.POSITIVE_INFINITY;
+  $: allItems = (() => {
     const items: any[] = [];
     journeys.forEach((log: any, idx: number) => {
       const b = getJourneyBounds(log.plans);
-      items.push({ type: 'journey', key: 'j' + log.id, atSec: b ? b.startMs / 1000 : Number(log.createdAtSec || 0), log, idx });
+      const start = b ? b.startMs / 1000 : Number(log.createdAtSec || 0);
+      items.push({ type: 'journey', key: 'j' + log.id, atSec: start, endSec: b ? b.endMs / 1000 : start, log, idx });
     });
     for (const ev of (focusedBody.flight_log || [])) {
       const s = Number(ev.atSec);
-      if (!showAll && s < earliestJourneySec) continue;
-      items.push({ type: 'event', key: 'e' + ev.id, atSec: s, ev });
+      items.push({ type: 'event', key: 'e' + ev.id, atSec: s, endSec: s + (ev.durationSec || 0), ev });
     }
-    items.sort((a, b) => b.atSec - a.atSec); // newest first
     return items;
   })();
+  // Not-yet-finished (active + planned), soonest first → current at top, future downward.
+  $: futureItems = allItems.filter((it) => it.endSec >= nowSec).sort((a, b) => a.atSec - b.atSec);
+  // Finished, newest first; default keeps only the last 2 journeys' worth.
+  $: pastItems = allItems.filter((it) => it.endSec < nowSec).sort((a, b) => b.atSec - a.atSec);
+  $: pastJourneyStarts = pastItems.filter((it) => it.type === 'journey').map((it) => it.atSec);
+  $: pastCutoff = pastJourneyStarts.length >= 2 ? pastJourneyStarts[1] : Number.NEGATIVE_INFINITY;
+  $: recentPast = pastItems.filter((it) => it.atSec >= pastCutoff);
+  $: hasOlderHistory = pastItems.length > recentPast.length;
+  $: allReverse = [...allItems].sort((a, b) => b.atSec - a.atSec);
 </script>
 
 <!-- A small clock that jumps DISPLAY time to a logged moment. Only rendered for times at/after actual
@@ -169,6 +177,68 @@
     <button class="seek-clock" type="button" title={`Set display time to ${formatLogTime(ms)}`} aria-label="Set display time to this moment" on:click={() => dispatch('seek', { ms })}>
       <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v4.7l3 1.8"/></svg>
     </button>
+  {/if}
+{/snippet}
+
+<!-- One log entry — a journey block or a flight-log work-event row. Shared across the planned, recent-history
+     and full-history lists so they all render identically. -->
+{#snippet logEntry(item)}
+  {#if item.type === 'journey'}
+    {@const log = item.log}
+    {@const i = item.idx}
+    {@const createdMs = safeClockSecStringToMs(log.createdAtSec)}
+    {@const bounds = getJourneyBounds(log.plans)}
+    {@const dynStatus = dynamicStatus(log, bounds)}
+    {@const adriftNow = dynStatus === 'ADRIFT · COASTING'}
+    {@const prevLog = journeys[i - 1]}
+    {@const startedAdrift = i > 0 && prevLog && prevLog.status === 'cancelled' && prevLog.cancelState && prevLog.cancelledAtSec}
+    {@const driftFromMs = startedAdrift ? safeClockSecStringToMs(prevLog.cancelledAtSec) : 0}
+    <div class="ship-log-entry">
+      <div class="ship-log-title">
+        <strong>Journey {i + 1}</strong>
+        {#if log.autopilot}<span class="ship-log-auto" title="Planned and flown by autopilot"><AutopilotShipIcon size={11} /> autopilot</span>{/if}
+        <span class="ship-log-status" class:adrift={adriftNow}>{dynStatus}</span>
+      </div>
+      <div class="ship-log-meta">Created: {formatLogTime(createdMs)} {@render seekClock(createdMs)}</div>
+      {#if bounds}
+        <div class="ship-log-meta">Window: {formatLogTime(bounds.startMs)} {@render seekClock(bounds.startMs)} -> {formatLogTime(bounds.endMs)} {@render seekClock(bounds.endMs)}</div>
+      {/if}
+      {#if adriftNow}
+        {@const cancelMs = safeClockSecStringToMs(log.cancelledAtSec)}
+        <div class="ship-log-meta ship-log-adrift">Cancelled &amp; coasting since {formatLogTime(cancelMs)} {@render seekClock(cancelMs)} from ({log.cancelState.position_au.x.toFixed(2)}, {log.cancelState.position_au.y.toFixed(2)}) AU</div>
+      {/if}
+      {#if adriftNow}
+        <div class="ship-log-meta ship-log-planned-hdr">Originally planned route (aborted):</div>
+      {/if}
+      <div class="ship-log-legs">
+        {#each log.plans as leg, legIndex}
+          {@const arriveMs = leg.startTime + (leg.totalTime_days * 86400 * 1000)}
+          {@const driftDays = Math.max(0, Math.round((leg.startTime - driftFromMs) / 86400000))}
+          <div class="ship-log-leg">
+            {#if startedAdrift && legIndex === 0}
+              <div class="ship-log-route">Adrift around {nodeName(leg.originId)} (for {driftDays} days) → {nodeName(leg.targetId)}</div>
+            {:else}
+              <div class="ship-log-route">{nodeName(leg.originId)} → {nodeName(leg.targetId)}</div>
+            {/if}
+            <div class="ship-log-meta">Depart: {formatLogTime(leg.startTime)} {@render seekClock(leg.startTime)}</div>
+            <div class="ship-log-meta">Arrive: {formatLogTime(arriveMs)} {@render seekClock(arriveMs)}</div>
+            <div class="ship-log-meta">Arrival speed: {fmtSpeed(leg.arrivalVelocity_ms || 0)}</div>
+            <div class="ship-log-meta ship-log-exit">Ends: {exitState(leg)}</div>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {:else}
+    {@const ev = item.ev}
+    {@const evMs = safeClockSecStringToMs(ev.atSec)}
+    {@const endMs = evMs + (ev.durationSec ? ev.durationSec * 1000 : 0)}
+    {@const future = Number.isFinite(displayTimeMs) && evMs > displayTimeMs}
+    {@const active = ev.durationSec && Number.isFinite(displayTimeMs) && evMs <= displayTimeMs && displayTimeMs < endMs}
+    <div class="flight-log-row" class:future class:active>
+      <span class="fl-kind fl-{ev.kind}">{KIND_GLYPH[ev.kind] || '·'}</span>
+      <span class="fl-text">{liveEventText(ev, Math.floor(displayTimeMs / 1000))}</span>
+      <span class="fl-time">{#if active}done {formatLogTime(endMs)} {@render seekClock(endMs)}{:else}{formatLogTime(evMs)} {@render seekClock(evMs)}{/if}</span>
+    </div>
   {/if}
 {/snippet}
 
@@ -192,74 +262,31 @@
     </div>
   {/if}
 
-  {#if timeline.length === 0}
+  {#if futureItems.length === 0 && pastItems.length === 0}
     <div class="ship-log-empty">Nothing logged yet.</div>
-  {:else}
+  {:else if showAll}
+    <!-- Full history: every trip, most-recent at the top. -->
     <div class="timeline">
-      {#each timeline as item (item.key)}
-        {#if item.type === 'journey'}
-          {@const log = item.log}
-          {@const i = item.idx}
-          {@const createdMs = safeClockSecStringToMs(log.createdAtSec)}
-          {@const bounds = getJourneyBounds(log.plans)}
-          {@const dynStatus = dynamicStatus(log, bounds)}
-          {@const adriftNow = dynStatus === 'ADRIFT · COASTING'}
-          {@const prevLog = journeys[i - 1]}
-          {@const startedAdrift = i > 0 && prevLog && prevLog.status === 'cancelled' && prevLog.cancelState && prevLog.cancelledAtSec}
-          {@const driftFromMs = startedAdrift ? safeClockSecStringToMs(prevLog.cancelledAtSec) : 0}
-          <div class="ship-log-entry">
-            <div class="ship-log-title">
-              <strong>Journey {i + 1}</strong>
-              {#if log.autopilot}<span class="ship-log-auto" title="Planned and flown by autopilot"><AutopilotShipIcon size={11} /> autopilot</span>{/if}
-              <span class="ship-log-status" class:adrift={adriftNow}>{dynStatus}</span>
-            </div>
-            <div class="ship-log-meta">Created: {formatLogTime(createdMs)} {@render seekClock(createdMs)}</div>
-            {#if bounds}
-              <div class="ship-log-meta">Window: {formatLogTime(bounds.startMs)} {@render seekClock(bounds.startMs)} -> {formatLogTime(bounds.endMs)} {@render seekClock(bounds.endMs)}</div>
-            {/if}
-            {#if adriftNow}
-              {@const cancelMs = safeClockSecStringToMs(log.cancelledAtSec)}
-              <div class="ship-log-meta ship-log-adrift">Cancelled &amp; coasting since {formatLogTime(cancelMs)} {@render seekClock(cancelMs)} from ({log.cancelState.position_au.x.toFixed(2)}, {log.cancelState.position_au.y.toFixed(2)}) AU</div>
-            {/if}
-            {#if adriftNow}
-              <div class="ship-log-meta ship-log-planned-hdr">Originally planned route (aborted):</div>
-            {/if}
-            <div class="ship-log-legs">
-              {#each log.plans as leg, legIndex}
-                {@const arriveMs = leg.startTime + (leg.totalTime_days * 86400 * 1000)}
-                {@const driftDays = Math.max(0, Math.round((leg.startTime - driftFromMs) / 86400000))}
-                <div class="ship-log-leg">
-                  {#if startedAdrift && legIndex === 0}
-                    <div class="ship-log-route">Adrift around {nodeName(leg.originId)} (for {driftDays} days) → {nodeName(leg.targetId)}</div>
-                  {:else}
-                    <div class="ship-log-route">{nodeName(leg.originId)} → {nodeName(leg.targetId)}</div>
-                  {/if}
-                  <div class="ship-log-meta">Depart: {formatLogTime(leg.startTime)} {@render seekClock(leg.startTime)}</div>
-                  <div class="ship-log-meta">Arrive: {formatLogTime(arriveMs)} {@render seekClock(arriveMs)}</div>
-                  <div class="ship-log-meta">Arrival speed: {fmtSpeed(leg.arrivalVelocity_ms || 0)}</div>
-                  <div class="ship-log-meta ship-log-exit">Ends: {exitState(leg)}</div>
-                </div>
-              {/each}
-            </div>
-          </div>
-        {:else}
-          {@const ev = item.ev}
-          {@const evMs = safeClockSecStringToMs(ev.atSec)}
-          {@const endMs = evMs + (ev.durationSec ? ev.durationSec * 1000 : 0)}
-          {@const future = Number.isFinite(displayTimeMs) && evMs > displayTimeMs}
-          {@const active = ev.durationSec && Number.isFinite(displayTimeMs) && evMs <= displayTimeMs && displayTimeMs < endMs}
-          <div class="flight-log-row" class:future class:active>
-            <span class="fl-kind fl-{ev.kind}">{KIND_GLYPH[ev.kind] || '·'}</span>
-            <span class="fl-text">{liveEventText(ev, Math.floor(displayTimeMs / 1000))}</span>
-            <span class="fl-time">{#if active}done {formatLogTime(endMs)} {@render seekClock(endMs)}{:else}{formatLogTime(evMs)} {@render seekClock(evMs)}{/if}</span>
-          </div>
-        {/if}
-      {/each}
+      {#each allReverse as item (item.key)}{@render logEntry(item)}{/each}
     </div>
-
-    {#if hasOlderHistory || showAll}
-      <button class="history-toggle" type="button" on:click={() => (showAll = !showAll)}>{showAll ? 'Hide older history' : 'Show full history'}</button>
+    <button class="history-toggle" type="button" on:click={() => (showAll = false)}>Hide full history</button>
+  {:else}
+    <!-- What's happening + what's coming, soonest first (current at top, future downward). -->
+    <div class="timeline">
+      {#each futureItems as item (item.key)}{@render logEntry(item)}{/each}
+    </div>
+    {#if recentPast.length}
+      <div class="history-divider">Recent history</div>
+      <div class="timeline">
+        {#each recentPast as item (item.key)}{@render logEntry(item)}{/each}
+      </div>
     {/if}
+    {#if hasOlderHistory}
+      <button class="history-toggle" type="button" on:click={() => (showAll = true)}>Show full history</button>
+    {/if}
+  {/if}
+
+  {#if (futureItems.length || pastItems.length)}
 
     {#if totals && (totals.deliveredTotal_t > 0 || totals.gatheredTotal_t > 0 || totals.refuels > 0)}
       <details class="totals">
@@ -396,6 +423,8 @@
   .timeline { display: flex; flex-direction: column; gap: 0.5em; }
   .history-toggle { align-self: center; background: var(--bg-control); color: var(--text-muted); border: 1px solid var(--border); border-radius: 4px; padding: 0.3em 0.9em; cursor: pointer; font-size: 0.82em; }
   .history-toggle:hover { color: var(--text); border-color: var(--accent); }
+  .history-divider { display: flex; align-items: center; gap: 0.6em; color: var(--text-muted); font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.05em; margin: 0.3em 0 0.1em; }
+  .history-divider::before, .history-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
   .cargo-now {
       color: #8fcf9f;
       font-size: 0.82em;

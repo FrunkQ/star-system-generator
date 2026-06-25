@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.234-beta - 25th Jun 2026
+
+* Ship's Log re-ordered to read like an itinerary, per your spec. DEFAULT now shows the current/active journey at the TOP, then each upcoming planned trip downward in the order it happens (events tucked under their journey) — then a short "Recent history" section of just the **last 2 completed** journeys, then a **Show full history** button. Full history shows every trip, most-recent at the top (reverse-chronological). (Was: everything newest-first with no history limit or section.)
+
 ## v2.0.233-beta - 25th Jun 2026
 
 * Fixed a parked ship jittering against its host at deep zoom (e.g. The Cant in low orbit around Ganymede at 1 h/s). Its position was stored as an absolute vector the reconcile only refreshes every ~150 ms, computed relative to the host's position at that tick — but the host is redrawn every frame, so the ship lagged the host by its orbital motion over those 150 ms (invisible at system scale, large at moon-surface zoom: the ship and planet effectively on different clocks). The orrery now resolves a construct's position per-frame at the render clock (transit, coast, AND post-arrival parking orbit — the last computed relative to the host body at the same instant), so ship and host stay locked in the same frame. (Regression from the autopilot reconcile storing parked positions; V1 orbit-propagated parked ships per-frame.)
