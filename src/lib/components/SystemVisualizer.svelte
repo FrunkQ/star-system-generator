@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { System, CelestialBody, Barycenter, RulePack, SystemNode } from '$lib/types';
   import type { TransitPlan } from '$lib/transit/types';
-  import { getJourneyBounds, coastPathUnderGravity } from '$lib/transit/scheduler';
+  import { getJourneyBounds, coastPathUnderGravity, sampleJourneyKinematicsAtTime } from '$lib/transit/scheduler';
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import { propagate } from "$lib/api";
   import { AU_KM, EARTH_MASS_KG } from '../constants';
@@ -513,10 +513,25 @@
           if (positions.has(nodeId)) return positions.get(nodeId)!;
           const node = nodesById.get(nodeId);
           if (!node) return { x: 0, y: 0 };
-          if (node.kind === 'construct' && node.vector_position_au) {
-              const absolute = { x: node.vector_position_au.x, y: node.vector_position_au.y };
-              positions.set(nodeId, absolute);
-              return absolute;
+          if (node.kind === 'construct') {
+              // Derive the TRANSIT position per-frame from the (deterministic, precomputed) journey path at the
+              // render clock — NOT the stored vector_position_au, which the reconcile only refreshes every
+              // ~150ms, so at speed a transiting ship visibly steps ~a day per refresh. Only sample when there's
+              // an active journey now (cheap path search); coasting/adrift ships keep the stored coast vector.
+              const onJourney = (node.scheduled_journeys || []).some((l: any) => {
+                  if (l.status === 'cancelled') return false;
+                  const b = getJourneyBounds(l.plans);
+                  return b && currentTime >= b.startMs && currentTime <= b.endMs;
+              });
+              if (onJourney) {
+                  const s = sampleJourneyKinematicsAtTime(system, node as any, currentTime);
+                  if (s) { const abs = { x: s.position_au.x, y: s.position_au.y }; positions.set(nodeId, abs); return abs; }
+              }
+              if (node.vector_position_au) {
+                  const absolute = { x: node.vector_position_au.x, y: node.vector_position_au.y };
+                  positions.set(nodeId, absolute);
+                  return absolute;
+              }
           }
           if (node.parentId === null) { positions.set(nodeId, { x: 0, y: 0 }); return { x: 0, y: 0 }; }
           const parentPos = getPosition(node.parentId);

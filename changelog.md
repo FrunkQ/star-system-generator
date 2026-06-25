@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.230-beta - 25th Jun 2026
+
+* Fixed jerky playback at speed. A construct in transit was drawn from a stored position the reconcile only refreshes every ~150 ms, so at e.g. 7 d/s a ship stepped ~a day per refresh (and a just-arrived ship flickered to its old spot before snapping back) — far more visible now that ships are constantly under autopilot transit. The orrery now derives a transiting ship's position from its (precomputed, deterministic) journey path at the render clock every frame, so transit motion is as smooth as orbital motion. (Coasting/adrift ships still use the stored coast vector for now.)
+
 ## v2.0.229-beta - 25th Jun 2026
 
 * Haul amount now defaults to **"fill the hold"** (blank), not a baked free-space number — so a ship that delivers its existing cargo first then fills to *full* capacity, instead of reserving room for cargo it no longer carries. Type a number for a deliberate partial load. (Clear the fill field on existing routes to get the new behaviour.)
