@@ -108,6 +108,35 @@
   // Totals / averages, aggregated from the flight log up to the display moment (spec §7).
   $: totals = Number.isFinite(displayTimeMs) ? computeAutopilotTotals(focusedBody.flight_log, Math.floor(displayTimeMs / 1000)) : null;
   const fmtT = (t: number) => t >= 1000 ? `${(t / 1000).toFixed(1)} kt` : `${Math.round(t)} t`;
+  const resLabel = (k?: string) => (k ? k.replace(/^resource\//, '').replace(/-/g, ' ') : '');
+
+  // A flight-log entry rendered AGAINST the display clock: a transfer in progress shows how far through it is
+  // (and its window gives the ETA); before it's a plan, after it's done. Instant events read the same always.
+  function liveEventText(ev: any, displaySec: number): string {
+    const place = nodeName(ev.placeId);
+    const res = resLabel(ev.resourceKey);
+    const total = ev.tonnes || 0;
+    const start = Number(ev.atSec);
+    const dur = ev.durationSec || 0;
+    const future = Number.isFinite(displaySec) && displaySec < start;
+    const active = dur > 0 && Number.isFinite(displaySec) && displaySec >= start && displaySec < start + dur;
+    const frac = !Number.isFinite(displaySec) ? 1 : dur > 0 ? Math.min(1, Math.max(0, (displaySec - start) / dur)) : (future ? 0 : 1);
+    if (ev.kind === 'mine' || ev.kind === 'load' || ev.kind === 'unload') {
+      const what = res || (ev.kind === 'mine' ? 'ore' : 'cargo');
+      const ing = ev.kind === 'mine' ? 'Mining' : ev.kind === 'load' ? 'Loading' : 'Unloading';
+      const ed = ev.kind === 'mine' ? 'Mined' : ev.kind === 'load' ? 'Loaded' : 'Unloaded';
+      if (future) return `${ing} ${fmtT(total)} ${what} at ${place} (planned)`;
+      if (active) return `${ing} ${fmtT(total * frac)} / ${fmtT(total)} ${what} at ${place} — ${Math.round(frac * 100)}%`;
+      return `${ed} ${fmtT(total)} ${what} at ${place}`;
+    }
+    if (ev.kind === 'refuel') {
+      if (future) return `Refuel${res ? ` (${res})` : ''} at ${place} (planned)`;
+      if (active) return `Refuelling${res ? ` (${res})` : ''} at ${place} — ${Math.round(frac * 100)}%`;
+      return `Refuelled${res ? ` (${res})` : ''} at ${place}`;
+    }
+    if (ev.kind === 'loiter') return future ? `Hold at ${place} (planned)` : `Held station at ${place}`;
+    return ev.text || ev.kind;
+  }
 </script>
 
 <!-- A small clock that jumps DISPLAY time to a logged moment. Only rendered for times at/after actual
@@ -193,11 +222,13 @@
       </div>
       {#each flightLog as ev}
         {@const evMs = safeClockSecStringToMs(ev.atSec)}
+        {@const endMs = evMs + (ev.durationSec ? ev.durationSec * 1000 : 0)}
         {@const future = Number.isFinite(displayTimeMs) && evMs > displayTimeMs}
-        <div class="flight-log-row" class:future>
+        {@const active = ev.durationSec && Number.isFinite(displayTimeMs) && evMs <= displayTimeMs && displayTimeMs < endMs}
+        <div class="flight-log-row" class:future class:active>
           <span class="fl-kind fl-{ev.kind}">{KIND_GLYPH[ev.kind] || '·'}</span>
-          <span class="fl-text">{ev.text}</span>
-          <span class="fl-time">{formatLogTime(evMs)} {@render seekClock(evMs)}</span>
+          <span class="fl-text">{liveEventText(ev, Math.floor(displayTimeMs / 1000))}</span>
+          <span class="fl-time">{#if active}done {formatLogTime(endMs)} {@render seekClock(endMs)}{:else}{formatLogTime(evMs)} {@render seekClock(evMs)}{/if}</span>
         </div>
       {/each}
 
@@ -358,6 +389,7 @@
   .flight-log-row.future {
       opacity: 0.5;
   }
+  .flight-log-row.active .fl-text { color: #ffcf8f; font-weight: 600; } /* a transfer underway right now */
   .fl-kind {
       text-align: center;
       color: var(--text-muted);

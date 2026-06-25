@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.228-beta - 25th Jun 2026
+
+* Flight-log entries are now **live, not baked**. A mine/load/unload/refuel that takes time renders against the display clock: a *planned* one reads "Mining 999 kt water ice at Ganymede (planned)"; one *underway* shows progress "Mining 0.4 / 1.0 kt … — 45%" (highlighted, and its timestamp flips to the completion time — your ETA); and a *finished* one reads "Mined 999 kt …". Scrub through a long mining run and watch it fill. Instant events read the same throughout.
+
 ## v2.0.227-beta - 24th Jun 2026
 
 * **Escort** now flies (first cut). An escort leg rendezvous with the target construct at its current location and holds there; because the sim is deterministic from the clock, the target's position is always known, and the clock top-up re-resolves it so the escort follows its charge host-to-host as it moves. Matching velocity = formation. Escort legs are kept out of best-order/any reordering (a moving target is never a fixed waypoint). (km-precise standoff is a later refinement; this holds at the target's host.)
