@@ -228,7 +228,10 @@ export function walkStops(stops: AutopilotStop[], opts: AutopilotPlanOpts): Auto
     const kind = VERB_KIND[stop.verb];
     let dwellDays = Math.max(0, stop.dwellDays);
     if (kind === 'load' || kind === 'mine') {
-      const moved = Math.max(0, Math.min(stop.tonnes ?? (holdCap - cargo), holdCap - cargo));
+      // Undefined tonnes = "fill the hold" → top up to capacity (needs a known hold). A typed amount is a cap.
+      const free = holdCap - cargo; // Infinity when no capacity is set
+      const want = stop.tonnes ?? (Number.isFinite(free) ? free : 0);
+      const moved = Math.max(0, Math.min(want, free));
       if (stop.rate_tpd && stop.rate_tpd > 0) dwellDays = moved / (stop.rate_tpd * Math.max(0.05, stop.abundance ?? 1));
       cargo += moved;
       events.push({ atSec: atSecStr(t), kind, placeId: stop.targetId, resourceKey: stop.resourceKeys?.[0], tonnes: moved, durationSec: dwellDays * 86400 });

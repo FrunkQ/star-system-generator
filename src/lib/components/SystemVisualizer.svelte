@@ -1088,17 +1088,19 @@
               }
           }
       }
-      // Faint trip lines for EVERY ship's current/upcoming journey, so the whole map shows who's going
-      // where (not just the ship being planned). Skip finished trips. Bright planning lines draw on top.
+      // Faint trip lines for each ship's current + NEXT journey only — enough to show who's going where without
+      // a spider-web of the whole committed route (an autopilot ship may have many legs queued). Skip finished
+      // trips. Bright planning lines draw on top.
       if (system) {
           for (const node of system.nodes) {
               if (node.kind !== 'construct') continue;
-              for (const log of ((node as any).scheduled_journeys || [])) {
-                  if (log.status === 'cancelled') continue;
-                  const b = getJourneyBounds(log.plans);
-                  if (!b || currentTime > b.endMs) continue;
-                  for (const plan of log.plans) drawTransitPlan(ctx, plan, false, 0.16, true);
-              }
+              const live = ((node as any).scheduled_journeys || [])
+                  .filter((l: any) => l.status !== 'cancelled')
+                  .map((l: any) => ({ l, b: getJourneyBounds(l.plans) }))
+                  .filter((x: any) => x.b && currentTime <= x.b.endMs)     // not finished
+                  .sort((a: any, b: any) => a.b.startMs - b.b.startMs);
+              for (const x of live.slice(0, 2)) // [0] = active/earliest, [1] = the next one
+                  for (const plan of x.l.plans) drawTransitPlan(ctx, plan, false, 0.16, true);
           }
       }
       // Predicted coast path for drifting/stopped ships — the conic they're about to follow (fall to the

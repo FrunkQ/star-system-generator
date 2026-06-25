@@ -149,8 +149,6 @@ export function generateAutopilotChain(
   const startHostId = resolveConstructCurrentHostId(construct, fromTimeMs) || construct.parentId || '';
   if (!startHostId) return { logs: [], flightLog: [], attention: 'stuck', stuckReason: 'no host to depart from', done: false };
 
-  // Free cargo space — the default haul amount when a leg doesn't pin fillAmount_t.
-  const freeCargo_t = Math.max(0, ((specs as any).cargoCapacity_tonnes || 0) - (construct.current_cargo_tonnes || 0));
   const nodeName = (id: string) => (system.nodes.find((n) => n.id === id) as any)?.name || id;
   const resLabel = (k?: string) => (k ? k.replace(/^resource\//, '').replace(/-/g, ' ') : '');
 
@@ -224,10 +222,9 @@ export function generateAutopilotChain(
   const needsFuel = !ap.ignoreFuel && budget < capacity * 0.5; // low on fuel → prefer self-fuelling sources
   const stops = buildAdapterStops(plannedLegs, startHostId, system, isFuelCompatible, refuelKeys, needsFuel, fromTimeMs);
   if (!stops.length) return { logs: [], flightLog: [], attention: 'intervention', done: false }; // no resolvable stops (e.g. resource not present)
-  // Default any haul that didn't pin an amount to the ship's free cargo space, then size the dwell from
-  // tonnes / (rate × abundance) — a richer source (or a faster loader) fills in fewer days.
+  // Size each pinned-amount haul's dwell from tonnes / (rate × abundance). Unpinned hauls ("fill the hold")
+  // are sized inside walkStops once it knows the real free space after any deliver-first unload.
   for (const s of stops) {
-    if (s.tonnes == null && (s.verb === 'load' || s.verb === 'unload' || s.verb === 'mine') && freeCargo_t > 0) s.tonnes = freeCargo_t;
     if ((s.verb === 'load' || s.verb === 'mine') && s.rate_tpd && s.rate_tpd > 0 && s.tonnes) {
       s.dwellDays = s.tonnes / (s.rate_tpd * Math.max(0.05, s.abundance ?? 1));
     }

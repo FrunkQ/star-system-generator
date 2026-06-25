@@ -104,8 +104,10 @@
   }
 
   function blankLeg(a: AutopilotAction): AutopilotLeg {
-    if (a === 'mine') return { action: a, resourceKeys: [], rate_tpd: defaultRate(), fillAmount_t: freeCargo() || undefined };
-    if (a === 'transport') return { action: a, resourceKeys: [], rate_tpd: defaultRate(), fillAmount_t: freeCargo() || undefined };
+    // fillAmount left undefined = "fill the hold" (the planner tops up to capacity at load time, accounting for
+    // whatever's already been delivered first). A typed value is a deliberate partial load.
+    if (a === 'mine') return { action: a, resourceKeys: [], rate_tpd: defaultRate() };
+    if (a === 'transport') return { action: a, resourceKeys: [], rate_tpd: defaultRate() };
     if (a === 'patrol') return { action: a, loiterDays: 30 };
     if (a === 'escort') return { action: a, escortKm: 100 }; // shadow a construct at a standoff distance
     return { action: a, resourceKeys: [], loiterDays: 30, noRevisit: true }; // explore: resource-driven loiter, non-repeating
@@ -228,7 +230,7 @@
             <span class="lbl">at</span>
             <input class="num" type="number" min="0" bind:value={leg.rate_tpd} on:change={update} /> <span class="unit">t/day</span>
             <span class="lbl">fill</span>
-            <input class="num" type="number" min="0" placeholder="free space" bind:value={leg.fillAmount_t} on:change={update} /> <span class="unit">t</span>
+            <input class="num" type="number" min="0" placeholder="fill the hold" bind:value={leg.fillAmount_t} on:change={update} /> <span class="unit">t</span>
 
           {:else if leg.action === 'transport'}
             <span class="lbl">from</span>
@@ -247,7 +249,7 @@
               </select>
             </span>
             <span class="lbl">up to</span>
-            <input class="num" type="number" min="0" placeholder="free space" bind:value={leg.fillAmount_t} on:change={update} /> <span class="unit">t</span>
+            <input class="num" type="number" min="0" placeholder="fill the hold" bind:value={leg.fillAmount_t} on:change={update} /> <span class="unit">t</span>
 
           {:else if leg.action === 'patrol'}
             <span class="lbl">around</span>

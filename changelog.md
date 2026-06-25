@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.229-beta - 25th Jun 2026
+
+* Haul amount now defaults to **"fill the hold"** (blank), not a baked free-space number — so a ship that delivers its existing cargo first then fills to *full* capacity, instead of reserving room for cargo it no longer carries. Type a number for a deliberate partial load. (Clear the fill field on existing routes to get the new behaviour.)
+* The orrery no longer draws a ship's whole committed route — just its **current and next** leg, so the map stays readable when ships have many legs queued.
+
 ## v2.0.228-beta - 25th Jun 2026
 
 * Flight-log entries are now **live, not baked**. A mine/load/unload/refuel that takes time renders against the display clock: a *planned* one reads "Mining 999 kt water ice at Ganymede (planned)"; one *underway* shows progress "Mining 0.4 / 1.0 kt … — 45%" (highlighted, and its timestamp flips to the completion time — your ETA); and a *finished* one reads "Mined 999 kt …". Scrub through a long mining run and watch it fill. Instant events read the same throughout.
