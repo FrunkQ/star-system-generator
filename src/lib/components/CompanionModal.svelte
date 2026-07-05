@@ -9,7 +9,7 @@
   import { broadcastService } from '$lib/broadcast';
   import { brandingStore } from '$lib/catalogue/branding';
   import { guideConfigStore, MONO_COLORS } from '$lib/catalogue/guideConfig';
-  import { measurementUnit } from '$lib/stores';
+  import { measurementUnit, temperatureUnit } from '$lib/stores';
   import CrtControlsPanel from '$lib/catalogue/CrtControlsPanel.svelte';
   import type { MonoColor } from '$lib/catalogue/guideConfig';
 
@@ -57,7 +57,7 @@
   });
 
   // Theme/colour ride the URL too so a freshly-opened guide paints right before the first broadcast.
-  $: url = `${origin}/catalogue?sid=${sessionId}&theme=${$guideConfigStore.theme}&color=${$guideConfigStore.monoColor}&constructs=${$guideConfigStore.includeConstructs ? 1 : 0}&units=${$measurementUnit}`;
+  $: url = `${origin}/catalogue?sid=${sessionId}&theme=${$guideConfigStore.theme}&color=${$guideConfigStore.monoColor}&constructs=${$guideConfigStore.includeConstructs ? 1 : 0}&units=${$measurementUnit}&temp=${$temperatureUnit}`;
   $: if (browser && url) {
     QRCode.toDataURL(url, { margin: 1, width: 240, color: { dark: '#0a0d14', light: '#ffffff' } })
       .then((d) => (qrDataUrl = d))

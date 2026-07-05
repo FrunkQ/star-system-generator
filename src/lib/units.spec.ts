@@ -33,14 +33,18 @@ describe('units — metric vs imperial display (SI stays internal)', () => {
     expect(formatSpeedAuto(9000, 'imperial').endsWith(' mi/s')).toBe(true);
   });
 
-  it('temperature: °C for metric, °F for imperial, from either K or C', () => {
-    expect(formatTempC(0, 'metric')).toBe('0 °C');
-    expect(formatTempC(0, 'imperial')).toBe('32 °F');
-    expect(formatTempC(100, 'imperial')).toBe('212 °F');
-    expect(formatTempK(273.15, 'metric')).toBe('0 °C');
-    expect(formatTempK(373.15, 'imperial')).toBe('212 °F');
-    // input round-trip
-    expect(displayTempToC(cToDisplayTemp(25, 'imperial'), 'imperial')).toBeCloseTo(25, 6);
+  it('temperature: °C / °F / K switch, from either K or C', () => {
+    expect(formatTempC(0, 'C')).toBe('0 °C');
+    expect(formatTempC(0, 'F')).toBe('32 °F');
+    expect(formatTempC(100, 'F')).toBe('212 °F');
+    expect(formatTempC(0, 'K')).toBe('273 K');
+    expect(formatTempK(273.15, 'C')).toBe('0 °C');
+    expect(formatTempK(373.15, 'F')).toBe('212 °F');
+    expect(formatTempK(300, 'K')).toBe('300 K');
+    // input round-trip for each unit
+    for (const u of ['C', 'F', 'K'] as const) {
+      expect(displayTempToC(cToDisplayTemp(25, u), u)).toBeCloseTo(25, 6);
+    }
   });
 
   it('input converters round-trip cleanly (edit in the display unit, store in SI)', () => {

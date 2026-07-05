@@ -4,7 +4,7 @@ import {
   formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatSpeedAuto, distanceUnitLabel, speedUnitLabel,
   kmToDisplayNum, displayNumToKm, kmsToDisplayNum, displayNumToKms,
   formatTempC, formatTempK, tempUnitLabel, cToDisplayTemp, displayTempToC,
-  type MeasurementUnits
+  type MeasurementUnits, type TemperatureUnit
 } from './units';
 
 // Helper for creating a writable store that persists to localStorage
@@ -30,10 +30,12 @@ export const starmapStore = writable<Starmap | null>(null);
 // independently on the projector/player from a broadcast — so display code has one reactive value to read
 // regardless of whether a full starmap is present.
 export const measurementUnit = writable<MeasurementUnits>('metric');
+// Temperature has its OWN switch (°C / °F / K), independent of the distance metric/imperial choice.
+export const temperatureUnit = writable<TemperatureUnit>('C');
 
-// Reactive formatter bundle — components read `$fmt.km(value)` etc. and re-render when the unit changes.
-// All inputs are SI/native (km, AU, km/s, m/s); only the rendered string differs.
-export const fmt = derived(measurementUnit, (u) => ({
+// Reactive formatter bundle — components read `$fmt.km(value)` etc. and re-render when either unit changes.
+// All inputs are SI/native (km, AU, km/s, m/s, K/°C); only the rendered string differs.
+export const fmt = derived([measurementUnit, temperatureUnit], ([u, t]) => ({
   km: (km: number, decimals = 0) => formatDistanceKm(km, u, decimals),         // value in KM
   au: (au: number, decimals = 0) => formatDistanceAu(au, u, decimals),         // value in AU → km/miles (local orbits)
   speedKmS: (kmps: number, decimals = 1) => formatSpeedKmS(kmps, u, decimals), // value in KM/S
@@ -41,17 +43,18 @@ export const fmt = derived(measurementUnit, (u) => ({
   speedAuto: (ms: number) => formatSpeedAuto(ms, u),                           // value in M/S, magnitude-aware
   distUnit: distanceUnitLabel(u),                                             // bare "km" | "mi" label
   speedUnit: speedUnitLabel(u),                                              // bare "km/s" | "mi/s" label
-  tempC: (celsius: number, decimals = 0) => formatTempC(celsius, u, decimals), // value in °C → °C/°F
-  tempK: (kelvin: number, decimals = 0) => formatTempK(kelvin, u, decimals),   // value in K  → °C/°F
-  tempUnit: tempUnitLabel(u),                                                // bare "°C" | "°F" label
+  tempC: (celsius: number, decimals = 0) => formatTempC(celsius, t, decimals), // value in °C → °C/°F/K
+  tempK: (kelvin: number, decimals = 0) => formatTempK(kelvin, t, decimals),   // value in K  → °C/°F/K
+  tempUnit: tempUnitLabel(t),                                                // bare "°C" | "°F" | "K" label
   // Editable-input converters (SI ↔ display unit): value in KM/KM·S/°C shown/edited in the display unit.
   toDist: (km: number) => kmToDisplayNum(km, u),
   fromDist: (v: number) => displayNumToKm(v, u),
   toKmS: (kmps: number) => kmsToDisplayNum(kmps, u),
   fromKmS: (v: number) => displayNumToKms(v, u),
-  toTemp: (celsius: number) => cToDisplayTemp(celsius, u),
-  fromTemp: (v: number) => displayTempToC(v, u),
-  units: u
+  toTemp: (celsius: number) => cToDisplayTemp(celsius, t),
+  fromTemp: (v: number) => displayTempToC(v, t),
+  units: u,
+  temp: t
 }));
 
 export const viewportStore = writable({

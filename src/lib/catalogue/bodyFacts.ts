@@ -2,7 +2,7 @@
 // interactive console inspector. The snapshot is already redacted, so we just format for reading.
 import type { CelestialBody } from '$lib/types';
 import { G, AU_KM } from '$lib/constants';
-import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatTempK, type MeasurementUnits } from '$lib/units';
+import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
 
 const EARTH_G = 9.80665;
 const EARTH_MASS_KG = 5.972e24;
@@ -29,8 +29,8 @@ export function massRel(b: CelestialBody): string {
   const m = b.massKg / EARTH_MASS_KG;
   return `${m < 1000 ? m.toFixed(2) : m.toExponential(2)} M⊕`;
 }
-export function tempC(b: CelestialBody, units: MeasurementUnits = 'metric'): string {
-  return b.temperatureK === undefined ? '' : formatTempK(b.temperatureK, units);
+export function tempC(b: CelestialBody, tempUnit: TemperatureUnit = 'C'): string {
+  return b.temperatureK === undefined ? '' : formatTempK(b.temperatureK, tempUnit);
 }
 export function atmosphere(b: CelestialBody): string {
   if (!b.atmosphere) return 'None';
@@ -46,7 +46,7 @@ const titleCase = (s: string) => s.replace(/[-_/]/g, ' ').replace(/\b\w/g, (c) =
 // Full report-parity facts for a body, enriched with the Phase-04 derived data (temperature range,
 // radiation, geology, magnetism, fluids, ascent Δv). Both guide tiers (diagrammatic browser +
 // hi-tech console inspector) render this, so they match the printed report's depth.
-export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric'): Fact[] {
+export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', tempUnit: TemperatureUnit = 'C'): Fact[] {
   const out: Fact[] = [];
   const any = b as any;
   const add = (label: string, value: string) => { if (value) out.push({ label, value }); };
@@ -74,9 +74,9 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric'):
   }
 
   // --- Climate ---
-  add('Surface temp', tempC(b, units));
+  add('Surface temp', tempC(b, tempUnit));
   const tminK = any.equilibriumTempMinK, tmaxK = any.equilibriumTempMaxK;
-  if (typeof tminK === 'number' && typeof tmaxK === 'number') add('Temp range', `${formatTempK(tminK, units)} to ${formatTempK(tmaxK, units)}`);
+  if (typeof tminK === 'number' && typeof tmaxK === 'number') add('Temp range', `${formatTempK(tminK, tempUnit)} to ${formatTempK(tmaxK, tempUnit)}`);
   add('Atmosphere', atmosphere(b));
   if (b.atmosphere?.composition) {
     const gases = Object.entries(b.atmosphere.composition).sort((a, c) => c[1] - a[1]).slice(0, 3)

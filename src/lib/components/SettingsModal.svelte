@@ -79,6 +79,7 @@
   })();
   let showScaleBar = starmap.scale?.showScaleBar ?? true;
   let measurementUnits: 'metric' | 'imperial' = starmap.measurementUnits ?? 'metric';
+  let temperatureUnit: 'C' | 'F' | 'K' = starmap.temperatureUnit ?? 'C';
   let normalizedTemporal = ensureTemporalState(starmap).temporal!;
   let activeCalendarKey = normalizedTemporal.activeCalendarKey;
   let calendarKeys = Object.keys(normalizedTemporal.temporal_registry);
@@ -135,6 +136,7 @@
         generationEngine,
         invertDisplay,
         measurementUnits,
+        temperatureUnit,
         scale: {
           unit: distanceUnit,
           pixelsPerUnit: starmap.scale?.pixelsPerUnit && starmap.scale.pixelsPerUnit > 0 ? starmap.scale.pixelsPerUnit : 25,
@@ -257,6 +259,14 @@
             <select id="measurementUnits" bind:value={measurementUnits}>
               <option value="metric">Metric (km, km/s)</option>
               <option value="imperial">Imperial (miles, mph)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="temperatureUnit" title="Temperature display — independent of the distance units above. Values are stored in Kelvin either way.">Temperature</label>
+            <select id="temperatureUnit" bind:value={temperatureUnit}>
+              <option value="C">Celsius (°C)</option>
+              <option value="F">Fahrenheit (°F)</option>
+              <option value="K">Kelvin (K)</option>
             </select>
           </div>
 

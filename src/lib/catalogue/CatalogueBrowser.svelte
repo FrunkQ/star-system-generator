@@ -8,12 +8,13 @@
   import type { System, CelestialBody } from '$lib/types';
   import { bodyFacts, bodyGlyph } from '$lib/catalogue/bodyFacts';
   import { AU_KM, EARTH_MASS_KG } from '$lib/constants';
-  import type { MeasurementUnits } from '$lib/units';
+  import type { MeasurementUnits, TemperatureUnit } from '$lib/units';
   import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
 
   export let system: System;
   export let includeConstructs = true;
   export let units: MeasurementUnits = 'metric';   // in-system km/miles display
+  export let tempUnit: TemperatureUnit = 'C';      // temperature display (°C / °F / K)
   // The Guide skin: hopelessly over-colourful — every line a different friendly colour.
   export let colorful = false;
   // Body imagery in the panel: 'disc' = procedural true-colour orrery disc (The Guide),
@@ -107,7 +108,7 @@
   $: panelTitle = selected && isBary(selected)
     ? `${dominantOf(selected)?.name ?? '?'} (${selected.name})`
     : (selected?.name ?? '');
-  $: facts = subject ? bodyFacts(subject, units) : [];
+  $: facts = subject ? bodyFacts(subject, units, tempUnit) : [];
   // For a barycentre, the companion members (Charon) join the moons row.
   $: selectedMoons = selected
     ? (isBary(selected)

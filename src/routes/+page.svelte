@@ -18,7 +18,7 @@
   import { guideConfigStore } from '$lib/catalogue/guideConfig';
   import { crtControls } from '$lib/catalogue/crtControls';
   import { starmapStore } from '$lib/starmapStore';
-  import { systemStore, viewportStore, measurementUnit } from '$lib/stores';
+  import { systemStore, viewportStore, measurementUnit, temperatureUnit } from '$lib/stores';
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap } from '$lib/starmapStorage';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
   import GenerationWizard from '$lib/components/GenerationWizard.svelte';
@@ -601,8 +601,9 @@
     broadcastService.sendMessage({ type: 'SYNC_GUIDECONFIG', payload: { ...$guideConfigStore, crt: $crtControls } });
   }
 
-  // Keep the runtime in-system display unit in sync with the loaded starmap (source of truth).
+  // Keep the runtime display units in sync with the loaded starmap (source of truth).
   $: measurementUnit.set($starmapStore?.measurementUnits ?? 'metric');
+  $: temperatureUnit.set($starmapStore?.temperatureUnit ?? 'C');
 
   // Subscribe to systemStore and update starmapStore
   systemStore.subscribe(system => {

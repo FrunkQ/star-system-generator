@@ -12,6 +12,7 @@
   let theme = 'retro';
   let includeConstructs = true;
   let units: 'metric' | 'imperial' = 'metric';
+  let tempUnit: 'C' | 'F' | 'K' = 'C';
   let loading = true;
   let error = '';
 
@@ -28,6 +29,7 @@
       theme = data.theme;
       includeConstructs = data.includeConstructs ?? true;
       units = data.units === 'imperial' ? 'imperial' : 'metric';
+      tempUnit = data.tempUnit === 'F' || data.tempUnit === 'K' ? data.tempUnit : 'C';
       system = mode === 'Player' ? computePlayerSnapshot(data.system) : data.system;
       loading = false;
     } catch (e) {
@@ -47,7 +49,7 @@
 {:else if error}
   <div class="error">{error}</div>
 {:else}
-  <ReportDocument {system} {mode} {theme} {includeConstructs} {units} chrome="report" />
+  <ReportDocument {system} {mode} {theme} {includeConstructs} {units} {tempUnit} chrome="report" />
 {/if}
 
 <style>

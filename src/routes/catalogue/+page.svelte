@@ -15,7 +15,7 @@
   import CRTOverlay from '$lib/components/CRTOverlay.svelte';
   import { crtControls, CRT_DEFAULTS } from '$lib/catalogue/crtControls';
   import { AU_KM, G } from '$lib/constants';
-  import { formatTempK, type MeasurementUnits } from '$lib/units';
+  import { formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
   import { MONO_COLORS, normalizeGuideConfig } from '$lib/catalogue/guideConfig';
   import type { MonoColor } from '$lib/catalogue/guideConfig';
   import { randomGuideNote } from '$lib/catalogue/guideNotes';
@@ -279,7 +279,7 @@
     return (m < 1000 ? m.toFixed(2) : m.toExponential(2)) + ' M⊕';
   }
   function tempC(b: CelestialBody) {
-    return b.temperatureK === undefined ? '-' : formatTempK(b.temperatureK, units);
+    return b.temperatureK === undefined ? '-' : formatTempK(b.temperatureK, tempUnit);
   }
   function orbitDist(b: CelestialBody) {
     const a = b.orbit?.elements?.a_AU;
@@ -312,11 +312,13 @@
   }
 
   let units: MeasurementUnits = 'metric';   // in-system km/miles, from the launcher URL (?units=)
+  let tempUnit: TemperatureUnit = 'C';       // temperature °C/°F/K, from the launcher URL (?temp=)
 
   onMount(async () => {
     const params = new URLSearchParams(window.location.search);
     sessionId = params.get('sid');
     units = params.get('units') === 'imperial' ? 'imperial' : 'metric';
+    { const tp = params.get('temp'); tempUnit = tp === 'F' || tp === 'K' ? tp : 'C'; }
     // Initial view from the URL (legacy green/amber theme keys fold into mono + colour);
     // the GM's SYNC_GUIDECONFIG broadcast takes over from there.
     applyGuideConfig({
@@ -489,7 +491,7 @@
             <img class="insp-photo" src={selectedBody.image.url} alt="Artist's impression of {selectedBody.name}" />
           {/if}
           <dl class="insp-grid">
-            {#each bodyFacts(selectedBody, units) as f}
+            {#each bodyFacts(selectedBody, units, tempUnit) as f}
               <dt>{f.label}</dt><dd>{f.value}</dd>
             {/each}
           </dl>
@@ -504,7 +506,7 @@
   {:else}
     <!-- Lo-fi / datapad / Guide: diagrammatic browser — clickable layout + a body panel. -->
     <div class="doc-scroll">
-      <CatalogueBrowser system={displaySystem} {includeConstructs} {units} colorful={themeKey === 'guide'}
+      <CatalogueBrowser system={displaySystem} {includeConstructs} {units} {tempUnit} colorful={themeKey === 'guide'}
         imagery={themeKey === 'guide' ? 'disc' : themeKey === 'clean' ? 'photo' : 'none'} />
     </div>
   {/if}

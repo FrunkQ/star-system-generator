@@ -76,7 +76,7 @@
     {:else}
         <div class="read-only-row">
             <label>Equilibrium Temp (Solar Heating)</label>
-            <span class="value">{Math.round(body.equilibriumTempK || 0)} K ({$fmt.tempK(body.equilibriumTempK || 0)})</span>
+            <span class="value">{$fmt.tempK(body.equilibriumTempK || 0)}</span>
         </div>
         
         {#if body.albedoBreakdown}
@@ -130,7 +130,7 @@
         <div class="read-only-row highlight">
             <label>Mean Surface Temperature</label>
             <span class="value large" style="color: {getTempColor(body.temperatureK || 0)}">
-                {Math.round(body.temperatureK || 0)} K ({$fmt.tempK(body.temperatureK || 0)})
+                {$fmt.tempK(body.temperatureK || 0)}
             </span>
         </div>
 

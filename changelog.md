@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.249-beta - 5th Jul 2026
+
+* Temperature is now its own switch (Settings → Starmap → Temperature: **°C / °F / Kelvin**), independent of the distance units — so you can pair km with Kelvin, miles with °C, etc. The old "X K (Y °C)" dual readouts collapse to a single value in your chosen unit. Report + Companion guide carry the choice too.
+
 ## v2.0.248-beta - 5th Jul 2026
 
 * Temperatures now follow the measurement-units choice too: metric shows °C, imperial shows °F (Kelvin stays internal, and scientific "X K" readouts stay Kelvin). Covers body surface/equilibrium temps, day/night and component ranges, the report, and the player catalogue/guide. Temperature *deltas* (greenhouse/tidal/internal offsets) read in K since a temperature difference isn't a °F value.

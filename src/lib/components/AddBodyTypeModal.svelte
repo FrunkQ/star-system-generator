@@ -35,7 +35,7 @@
     <header>
       <div>
         <h2>Add {role === 'moon' ? 'moon' : 'planet'} — pick a type</h2>
-        <p class="sub">All viable at this orbit (~{$fmt.tempK(teqK)} / {Math.round(teqK)} K) — rarity just signals how eccentric. {viable.length} types.</p>
+        <p class="sub">All viable at this orbit (~{$fmt.tempK(teqK)}) — rarity just signals how eccentric. {viable.length} types.</p>
         <div class="legend">
           {#each LEGEND as l}<span class="leg"><span class="dot" style="background:{l.color}"></span>{l.label}</span>{/each}
         </div>

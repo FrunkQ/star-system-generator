@@ -8,6 +8,8 @@
 import { AU_KM } from './constants';
 
 export type MeasurementUnits = 'metric' | 'imperial';
+// Temperature is its OWN switch (independent of metric/imperial): °C, °F, or scientific Kelvin.
+export type TemperatureUnit = 'C' | 'F' | 'K';
 
 export const KM_PER_MILE = 1.609344;
 export const MILE_PER_KM = 1 / KM_PER_MILE; // ≈ 0.621371
@@ -66,25 +68,26 @@ export function speedUnitLabel(units: MeasurementUnits): string {
   return units === 'imperial' ? 'mi/s' : 'km/s';
 }
 
-// TEMPERATURE. Stored internally in kelvin; displayed °C (metric) or °F (imperial). Two entry points because
-// sites hold either a kelvin value or an already-computed Celsius value.
-export function formatTempC(celsius: number, units: MeasurementUnits, decimals = 0): string {
+// TEMPERATURE. Stored internally in kelvin; displayed °C / °F / K per the temperature switch. Two entry
+// points because sites hold either a kelvin value or an already-computed Celsius value.
+export function formatTempC(celsius: number, t: TemperatureUnit, decimals = 0): string {
   if (!Number.isFinite(celsius)) return '—';
-  if (units === 'imperial') return `${fmtNum(celsius * 9 / 5 + 32, decimals)} °F`;
+  if (t === 'F') return `${fmtNum(celsius * 9 / 5 + 32, decimals)} °F`;
+  if (t === 'K') return `${fmtNum(celsius + 273.15, decimals)} K`;
   return `${fmtNum(celsius, decimals)} °C`;
 }
-export function formatTempK(kelvin: number, units: MeasurementUnits, decimals = 0): string {
-  return Number.isFinite(kelvin) ? formatTempC(kelvin - 273.15, units, decimals) : '—';
+export function formatTempK(kelvin: number, t: TemperatureUnit, decimals = 0): string {
+  return Number.isFinite(kelvin) ? formatTempC(kelvin - 273.15, t, decimals) : '—';
 }
-export function tempUnitLabel(units: MeasurementUnits): string {
-  return units === 'imperial' ? '°F' : '°C';
+export function tempUnitLabel(t: TemperatureUnit): string {
+  return t === 'F' ? '°F' : t === 'K' ? 'K' : '°C';
 }
 // Editable temperature inputs: a Celsius value shown/edited in the display unit, converted back on input.
-export function cToDisplayTemp(celsius: number, units: MeasurementUnits): number {
-  return units === 'imperial' ? celsius * 9 / 5 + 32 : celsius;
+export function cToDisplayTemp(celsius: number, t: TemperatureUnit): number {
+  return t === 'F' ? celsius * 9 / 5 + 32 : t === 'K' ? celsius + 273.15 : celsius;
 }
-export function displayTempToC(v: number, units: MeasurementUnits): number {
-  return units === 'imperial' ? (v - 32) * 5 / 9 : v;
+export function displayTempToC(v: number, t: TemperatureUnit): number {
+  return t === 'F' ? (v - 32) * 5 / 9 : t === 'K' ? v - 273.15 : v;
 }
 
 // NUMERIC converters for editable INPUTS — a value stored in km/km·s, shown/edited in the display unit and
