@@ -143,7 +143,11 @@ The largest item and the one you asked to see designed before it is built. Likel
 "can't turn a terrestrial into a gas giant / classifier doesn't re-run" bug, because it forces a clean
 reclassify-on-settle (F-RECLASS) and lets mass/radius move independently of composition.
 
-- **D0 — UI & interaction proposal (design only, for sign-off).** Deliver a written proposal covering:
+- **D0 — UI & interaction proposal (design only, for sign-off).** ✅ DRAFTED → `docs/body-editing-design.md`
+  (+ an interactive panel mock published as an Artifact). Awaiting Alex's sign-off + the open decisions at the
+  end of that doc. Key finding: the physics already exists in `makeup.ts` (reuse, don't recreate); the
+  terrestrial→gas-giant bug is 3 gates (radius can't grow without gas-dominated makeup; giant presets are
+  mass-gated so hidden; `autoClassify=false` sticks the type). Original brief covered:
   - An **average-density slider** above the Interior-makeup sliders.
   - **Composition presets as buttons** (Iron-rich, Rocky, Carbon, Icy, Ocean, **+ Gas/Giant** which is
     currently missing), each with a default makeup and a density BAND; only presets whose band contains the
