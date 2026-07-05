@@ -269,6 +269,87 @@
           "class": "planet/terrestrial",
           "score": 1.2
         },
+        "candidates": [
+          {
+            "class": "planet/hot-eyeball",
+            "score": 1.56,
+            "bands": [
+              {
+                "feature": "tidallyLocked",
+                "value": 1,
+                "band": "1 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "Teq_K",
+                "value": 425.41259320721076,
+                "band": "320 – 1200",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/terrestrial",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "radius_Re",
+                "value": 0.3829383142363836,
+                "band": "0.35 – 1.8",
+                "fit": 1
+              },
+              {
+                "feature": "density",
+                "value": 5.400543717051585,
+                "band": "3 – 8.5",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/mesoplanet",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "radius_Re",
+                "value": 0.3829383142363836,
+                "band": "0.08 – 0.4",
+                "fit": 1
+              },
+              {
+                "feature": "mass_Me",
+                "value": 0.05500669792364367,
+                "band": "0.002 – 0.1",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/sub-earth",
+            "score": 1.18,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.05500669792364367,
+                "band": "0.05 – 0.5",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.3829383142363836,
+                "band": "0.4 – 0.8",
+                "fit": 0.72
+              },
+              {
+                "feature": "density",
+                "value": 5.400543717051585,
+                "band": "3 – 8",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": false,
         "modifiers": [],
         "fallback": false
       },
@@ -571,6 +652,75 @@
           "class": "planet/terrestrial",
           "score": 1.2
         },
+        "candidates": [
+          {
+            "class": "planet/silicate",
+            "score": 1.23,
+            "bands": [
+              {
+                "feature": "makeup.rock",
+                "value": 0.8265108340833138,
+                "band": "0.6 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "makeup.metal",
+                "value": 0.17348916591668623,
+                "band": "0.1 – 0.4",
+                "fit": 1
+              },
+              {
+                "feature": "mass_Me",
+                "value": 0.8149698593436034,
+                "band": "0.3 – 8",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/terrestrial",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "radius_Re",
+                "value": 0.9498979752001256,
+                "band": "0.35 – 1.8",
+                "fit": 1
+              },
+              {
+                "feature": "density",
+                "value": 5.24226578279936,
+                "band": "3 – 8.5",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/desert",
+            "score": 1.13,
+            "bands": [
+              {
+                "feature": "Teq_K",
+                "value": 244.6440078746525,
+                "band": "260 – 360",
+                "fit": 0.61
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0,
+                "band": "0 – 0.15",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.9498979752001256,
+                "band": "0.4 – 1.8",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": true,
         "modifiers": [],
         "fallback": false
       },
@@ -945,6 +1095,159 @@
           "class": "planet/jungle",
           "score": 1.68
         },
+        "candidates": [
+          {
+            "class": "planet/swamp",
+            "score": 1.82,
+            "bands": [
+              {
+                "feature": "hasBiosphere",
+                "value": 1,
+                "band": "1 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "Teq_K",
+                "value": 255.49408288423908,
+                "band": "278 – 300",
+                "fit": 0.46
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0.71,
+                "band": "0.6 – 0.95",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.composition",
+                "value": "water",
+                "band": "water",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/jungle",
+            "score": 1.68,
+            "bands": [
+              {
+                "feature": "hasBiosphere",
+                "value": 1,
+                "band": "1 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "Teq_K",
+                "value": 255.49408288423908,
+                "band": "290 – 318",
+                "fit": 0.21
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0.71,
+                "band": "0.35 – 0.85",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.composition",
+                "value": "water",
+                "band": "water",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/earth-analogue",
+            "score": 1.5,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 1,
+                "band": "0.8 – 1.3",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 1,
+                "band": "0.9 – 1.15",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0.71,
+                "band": "0.5 – 0.85",
+                "fit": 1
+              },
+              {
+                "feature": "atm.composition.O2",
+                "value": 0.20917376363364712,
+                "band": "0.1 – 0.35",
+                "fit": 1
+              },
+              {
+                "feature": "Teq_K",
+                "value": 255.49408288423908,
+                "band": "255 – 300",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/earth-like",
+            "score": 1.4,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 1,
+                "band": "0.5 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0.71,
+                "band": "0.3 – 0.9",
+                "fit": 1
+              },
+              {
+                "feature": "atm.composition.O2",
+                "value": 0.20917376363364712,
+                "band": "0.05 – 0.4",
+                "fit": 1
+              },
+              {
+                "feature": "Teq_K",
+                "value": 255.49408288423908,
+                "band": "250 – 315",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/silicate",
+            "score": 1.23,
+            "bands": [
+              {
+                "feature": "makeup.rock",
+                "value": 0.8019716646700878,
+                "band": "0.6 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "makeup.metal",
+                "value": 0.19802833532991218,
+                "band": "0.1 – 0.4",
+                "fit": 1
+              },
+              {
+                "feature": "mass_Me",
+                "value": 1,
+                "band": "0.3 – 8",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": true,
         "modifiers": [],
         "fallback": false
       },
@@ -1217,6 +1520,117 @@
           "class": "planet/mesoplanet",
           "score": 1.2
         },
+        "candidates": [
+          {
+            "class": "planet/cold-eyeball",
+            "score": 1.51,
+            "bands": [
+              {
+                "feature": "tidallyLocked",
+                "value": 1,
+                "band": "1 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "Teq_K",
+                "value": 267.19206115251916,
+                "band": "120 – 255",
+                "fit": 0.68
+              }
+            ]
+          },
+          {
+            "class": "planet/mesoplanet",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "radius_Re",
+                "value": 0.27270444200282534,
+                "band": "0.08 – 0.4",
+                "fit": 1
+              },
+              {
+                "feature": "mass_Me",
+                "value": 0.012294038847957132,
+                "band": "0.002 – 0.1",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/barren",
+            "score": 1.19,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 2.375063038914256,
+                "band": "0 – 4",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0,
+                "band": "0 – 0.02",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.01",
+                "fit": 1
+              },
+              {
+                "feature": "atm.main",
+                "value": "None",
+                "band": "None",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 1.04,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 2.375063038914256,
+                "band": "0 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/dwarf-planet",
+            "score": 0.84,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.012294038847957132,
+                "band": "0.0005 – 0.05",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.27270444200282534,
+                "band": "0.05 – 0.25",
+                "fit": 0.39
+              }
+            ]
+          }
+        ],
+        "borderline": false,
         "modifiers": [],
         "fallback": false
       },
@@ -1511,6 +1925,51 @@
           "class": "planet/terrestrial",
           "score": 1.2
         },
+        "candidates": [
+          {
+            "class": "planet/sub-earth",
+            "score": 1.3,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.10699933020763562,
+                "band": "0.05 – 0.5",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.5320200910375137,
+                "band": "0.4 – 0.8",
+                "fit": 1
+              },
+              {
+                "feature": "density",
+                "value": 3.9174668861457773,
+                "band": "3 – 8",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/terrestrial",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "radius_Re",
+                "value": 0.5320200910375137,
+                "band": "0.35 – 1.8",
+                "fit": 1
+              },
+              {
+                "feature": "density",
+                "value": 3.9174668861457773,
+                "band": "3 – 8.5",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": true,
         "modifiers": [],
         "fallback": false
       },
@@ -1803,6 +2262,99 @@
           "class": "planet/planetesimal",
           "score": 1.2
         },
+        "candidates": [
+          {
+            "class": "planet/cold-eyeball",
+            "score": 1.8,
+            "bands": [
+              {
+                "feature": "tidallyLocked",
+                "value": 1,
+                "band": "1 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "Teq_K",
+                "value": 206.09012054039917,
+                "band": "120 – 255",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/planetesimal",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 1.7749497655726723e-9,
+                "band": "0 – 0.003",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.0017579657824517343,
+                "band": "0 – 0.1",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/barren",
+            "score": 1.19,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.01123988275231171,
+                "band": "0 – 4",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0,
+                "band": "0 – 0.02",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.01",
+                "fit": 1
+              },
+              {
+                "feature": "atm.main",
+                "value": "None",
+                "band": "None",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 1.04,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.01123988275231171,
+                "band": "0 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": false,
         "modifiers": [],
         "fallback": false
       },
@@ -2091,6 +2643,99 @@
           "class": "planet/planetesimal",
           "score": 1.2
         },
+        "candidates": [
+          {
+            "class": "planet/cold-eyeball",
+            "score": 1.8,
+            "bands": [
+              {
+                "feature": "tidallyLocked",
+                "value": 1,
+                "band": "1 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "Teq_K",
+                "value": 200.01352688297754,
+                "band": "120 – 255",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/planetesimal",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 2.461486939048895e-10,
+                "band": "0 – 0.003",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.0009731596295714959,
+                "band": "0 – 0.1",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/barren",
+            "score": 1.19,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.0056257532828946554,
+                "band": "0 – 4",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0,
+                "band": "0 – 0.02",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.01",
+                "fit": 1
+              },
+              {
+                "feature": "atm.main",
+                "value": "None",
+                "band": "None",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 1.04,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.0056257532828946554,
+                "band": "0 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": false,
         "modifiers": [],
         "fallback": false
       },
@@ -2503,6 +3148,45 @@
           "class": "planet/gas-giant",
           "score": 1.08
         },
+        "candidates": [
+          {
+            "class": "planet/ammonia-clouds-gas-giant",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 317.8164768921634,
+                "band": "50 – 4000",
+                "fit": 1
+              },
+              {
+                "feature": "Teq_K",
+                "value": 110.11372430182148,
+                "band": "80 – 160",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/gas-giant",
+            "score": 1.08,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 317.8164768921634,
+                "band": "50 – 4000",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 10.973316590802073,
+                "band": "3.5 – 25",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": true,
         "modifiers": [
           {
             "class": "planet/ringed",
@@ -2930,6 +3614,105 @@
           "class": "planet/cold-eyeball",
           "score": 1.55
         },
+        "candidates": [
+          {
+            "class": "planet/sulfur",
+            "score": 1.68,
+            "bands": [
+              {
+                "feature": "atm.main",
+                "value": "SO2",
+                "band": "SO2 | S",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.28592057761732853,
+                "band": "0.2 – 2",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/cold-eyeball",
+            "score": 1.55,
+            "bands": [
+              {
+                "feature": "tidallyLocked",
+                "value": 1,
+                "band": "1 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "Teq_K",
+                "value": 115.07189469246724,
+                "band": "120 – 255",
+                "fit": 0.73
+              }
+            ]
+          },
+          {
+            "class": "planet/mesoplanet",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "radius_Re",
+                "value": 0.28592057761732853,
+                "band": "0.08 – 0.4",
+                "fit": 1
+              },
+              {
+                "feature": "mass_Me",
+                "value": 0.014953114534494306,
+                "band": "0.002 – 0.1",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 0.99,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 2.5580974236010183,
+                "band": "0 – 2.5",
+                "fit": 0.85
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 1e-8,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/dwarf-planet",
+            "score": 0.63,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.014953114534494306,
+                "band": "0.0005 – 0.05",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.28592057761732853,
+                "band": "0.05 – 0.25",
+                "fit": 0.04
+              }
+            ]
+          }
+        ],
+        "borderline": true,
         "modifiers": [],
         "fallback": false
       },
@@ -3290,6 +4073,87 @@
           "class": "planet/dwarf-planet",
           "score": 1.2
         },
+        "candidates": [
+          {
+            "class": "planet/subsurface-ocean",
+            "score": 2.16,
+            "bands": [
+              {
+                "feature": "hasSubsurfaceOcean",
+                "value": 1,
+                "band": "1 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "Teq_K",
+                "value": 95.87697921381438,
+                "band": "0 – 273",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/dwarf-planet",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.008037508372404554,
+                "band": "0.0005 – 0.05",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.24498508868309526,
+                "band": "0.05 – 0.25",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/mesoplanet",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "radius_Re",
+                "value": 0.24498508868309526,
+                "band": "0.08 – 0.4",
+                "fit": 1
+              },
+              {
+                "feature": "mass_Me",
+                "value": 0.008037508372404554,
+                "band": "0.002 – 0.1",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 1.04,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 2.026118538014776,
+                "band": "0 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 1e-11,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": false,
         "modifiers": [],
         "fallback": false
       },
@@ -3617,6 +4481,75 @@
           "class": "planet/mesoplanet",
           "score": 1.07
         },
+        "candidates": [
+          {
+            "class": "planet/ice",
+            "score": 1.3,
+            "bands": [
+              {
+                "feature": "Teq_K",
+                "value": 95.85237968671684,
+                "band": "0 – 190",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 1,
+                "band": "0.1 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.41345157746036726,
+                "band": "0.3 – 2.2",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/mesoplanet",
+            "score": 1.07,
+            "bands": [
+              {
+                "feature": "radius_Re",
+                "value": 0.41345157746036726,
+                "band": "0.08 – 0.4",
+                "fit": 0.78
+              },
+              {
+                "feature": "mass_Me",
+                "value": 0.024782317481580707,
+                "band": "0.002 – 0.1",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 0.82,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 2.7386251249966462,
+                "band": "0 – 2.5",
+                "fit": 0.36
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": false,
         "modifiers": [],
         "fallback": false
       },
@@ -3918,6 +4851,75 @@
           "class": "planet/mesoplanet",
           "score": 1.2
         },
+        "candidates": [
+          {
+            "class": "planet/ice",
+            "score": 1.3,
+            "bands": [
+              {
+                "feature": "Teq_K",
+                "value": 95.80244283934795,
+                "band": "0 – 190",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 1,
+                "band": "0.1 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.37832365405744783,
+                "band": "0.3 – 2.2",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/mesoplanet",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "radius_Re",
+                "value": 0.37832365405744783,
+                "band": "0.08 – 0.4",
+                "fit": 1
+              },
+              {
+                "feature": "mass_Me",
+                "value": 0.017916945746818486,
+                "band": "0.002 – 0.1",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 1.04,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 2.434300555114677,
+                "band": "0 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": true,
         "modifiers": [],
         "fallback": false
       },
@@ -4247,6 +5249,63 @@
           "class": "planet/mini-jupiter",
           "score": 1.14
         },
+        "candidates": [
+          {
+            "class": "planet/ammonia-clouds-gas-giant",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 95.16075016744809,
+                "band": "50 – 4000",
+                "fit": 1
+              },
+              {
+                "feature": "Teq_K",
+                "value": 81.15750990778466,
+                "band": "80 – 160",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/mini-jupiter",
+            "score": 1.14,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 95.16075016744809,
+                "band": "50 – 150",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 9.14016637890441,
+                "band": "3.5 – 9",
+                "fit": 0.9
+              }
+            ]
+          },
+          {
+            "class": "planet/gas-giant",
+            "score": 1.08,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 95.16075016744809,
+                "band": "50 – 4000",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 9.14016637890441,
+                "band": "3.5 – 25",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": true,
         "modifiers": [
           {
             "class": "planet/ringed",
@@ -4678,6 +5737,27 @@
             "fit": 1
           }
         ],
+        "candidates": [
+          {
+            "class": "planet/mesoplanet",
+            "score": 1.16,
+            "bands": [
+              {
+                "feature": "radius_Re",
+                "value": 0.40412808036415004,
+                "band": "0.08 – 0.4",
+                "fit": 0.93
+              },
+              {
+                "feature": "mass_Me",
+                "value": 0.022438044206296047,
+                "band": "0.002 – 0.1",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": false,
         "modifiers": [],
         "fallback": false
       },
@@ -5051,6 +6131,69 @@
           "class": "planet/planetesimal",
           "score": 1.2
         },
+        "candidates": [
+          {
+            "class": "planet/subsurface-ocean",
+            "score": 2.16,
+            "bands": [
+              {
+                "feature": "hasSubsurfaceOcean",
+                "value": 1,
+                "band": "1 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "Teq_K",
+                "value": 71.51175187109993,
+                "band": "0 – 273",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/planetesimal",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.000018084393837910247,
+                "band": "0 – 0.003",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.03956992622822163,
+                "band": "0 – 0.1",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 1.04,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.23913509365762983,
+                "band": "0 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 1e-9,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": false,
         "modifiers": [],
         "fallback": false
       },
@@ -5338,6 +6481,81 @@
           "class": "planet/barren",
           "score": 1.19
         },
+        "candidates": [
+          {
+            "class": "planet/planetesimal",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.00010338245144005357,
+                "band": "0 – 0.003",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.08336210955893894,
+                "band": "0 – 0.1",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/barren",
+            "score": 1.19,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.3939245263749884,
+                "band": "0 – 4",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0,
+                "band": "0 – 0.02",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.01",
+                "fit": 1
+              },
+              {
+                "feature": "atm.main",
+                "value": "None",
+                "band": "None",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 1.04,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.3939245263749884,
+                "band": "0 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": true,
         "modifiers": [],
         "fallback": false
       },
@@ -5633,6 +6851,81 @@
           "class": "planet/barren",
           "score": 1.19
         },
+        "candidates": [
+          {
+            "class": "planet/planetesimal",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.00018343938379102476,
+                "band": "0 – 0.003",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.08811803484539318,
+                "band": "0 – 0.1",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/barren",
+            "score": 1.19,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.5103731826185224,
+                "band": "0 – 4",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0,
+                "band": "0 – 0.02",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.01",
+                "fit": 1
+              },
+              {
+                "feature": "atm.main",
+                "value": "None",
+                "band": "None",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 1.04,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.5103731826185224,
+                "band": "0 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": true,
         "modifiers": [],
         "fallback": false
       },
@@ -5966,6 +7259,99 @@
           "class": "planet/planetesimal",
           "score": 1.2
         },
+        "candidates": [
+          {
+            "class": "planet/subsurface-ocean",
+            "score": 2.16,
+            "bands": [
+              {
+                "feature": "hasSubsurfaceOcean",
+                "value": 1,
+                "band": "1 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "Teq_K",
+                "value": 75.52068188790528,
+                "band": "0 – 273",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/planetesimal",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.000006279303415941058,
+                "band": "0 – 0.003",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.031109715900172655,
+                "band": "0 – 0.1",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/barren",
+            "score": 1.19,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.15892113879278857,
+                "band": "0 – 4",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0,
+                "band": "0 – 0.02",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.01",
+                "fit": 1
+              },
+              {
+                "feature": "atm.main",
+                "value": "None",
+                "band": "None",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 1.04,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.15892113879278857,
+                "band": "0 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": false,
         "modifiers": [],
         "fallback": false
       },
@@ -6258,6 +7644,63 @@
           "class": "planet/crater",
           "score": 1.04
         },
+        "candidates": [
+          {
+            "class": "planet/barren",
+            "score": 1.19,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.6340039310216693,
+                "band": "0 – 4",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0,
+                "band": "0 – 0.02",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.01",
+                "fit": 1
+              },
+              {
+                "feature": "atm.main",
+                "value": "None",
+                "band": "None",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 1.04,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.6340039310216693,
+                "band": "0 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": false,
         "modifiers": [],
         "fallback": false
       },
@@ -6554,6 +7997,63 @@
           "class": "planet/crater",
           "score": 1.04
         },
+        "candidates": [
+          {
+            "class": "planet/barren",
+            "score": 1.19,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.5719501946736291,
+                "band": "0 – 4",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0,
+                "band": "0 – 0.02",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.01",
+                "fit": 1
+              },
+              {
+                "feature": "atm.main",
+                "value": "None",
+                "band": "None",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 1.04,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.5719501946736291,
+                "band": "0 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": false,
         "modifiers": [],
         "fallback": false
       },
@@ -6868,6 +8368,39 @@
             "fit": 1
           }
         ],
+        "candidates": [
+          {
+            "class": "planet/ice-giant",
+            "score": 1.4,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 14.536168787675821,
+                "band": "8 – 50",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 3.980850729869722,
+                "band": "2.5 – 6",
+                "fit": 1
+              },
+              {
+                "feature": "Teq_K",
+                "value": 58.14918586235795,
+                "band": "0 – 200",
+                "fit": 1
+              },
+              {
+                "feature": "density",
+                "value": 1.270371237371746,
+                "band": "1 – 3.5",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": false,
         "modifiers": [
           {
             "class": "planet/ringed",
@@ -7233,6 +8766,81 @@
           "class": "planet/barren",
           "score": 1.19
         },
+        "candidates": [
+          {
+            "class": "planet/dwarf-planet",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.0005693235097119892,
+                "band": "0.0005 – 0.05",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.12374823418615602,
+                "band": "0.05 – 0.25",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/barren",
+            "score": 1.19,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.7587243292614866,
+                "band": "0 – 4",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0,
+                "band": "0 – 0.02",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.01",
+                "fit": 1
+              },
+              {
+                "feature": "atm.main",
+                "value": "None",
+                "band": "None",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 1.04,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.7587243292614866,
+                "band": "0 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": true,
         "modifiers": [],
         "fallback": false
       },
@@ -7517,6 +9125,81 @@
           "class": "planet/barren",
           "score": 1.19
         },
+        "candidates": [
+          {
+            "class": "planet/dwarf-planet",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.0005023442732752846,
+                "band": "0.0005 – 0.05",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.11951028096060273,
+                "band": "0.05 – 0.25",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/barren",
+            "score": 1.19,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.7252238044823573,
+                "band": "0 – 4",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0,
+                "band": "0 – 0.02",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.01",
+                "fit": 1
+              },
+              {
+                "feature": "atm.main",
+                "value": "None",
+                "band": "None",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 1.04,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.7252238044823573,
+                "band": "0 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": true,
         "modifiers": [],
         "fallback": false
       },
@@ -7805,6 +9488,81 @@
           "class": "planet/barren",
           "score": 1.19
         },
+        "candidates": [
+          {
+            "class": "planet/planetesimal",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.0002160080375083724,
+                "band": "0 – 0.003",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.09086485638047402,
+                "band": "0 – 0.1",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/barren",
+            "score": 1.19,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.5453947336040949,
+                "band": "0 – 4",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0,
+                "band": "0 – 0.02",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.01",
+                "fit": 1
+              },
+              {
+                "feature": "atm.main",
+                "value": "None",
+                "band": "None",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 1.04,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.5453947336040949,
+                "band": "0 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": true,
         "modifiers": [],
         "fallback": false
       },
@@ -8130,6 +9888,57 @@
           "class": "planet/super-neptune",
           "score": 0.49
         },
+        "candidates": [
+          {
+            "class": "planet/ice-giant",
+            "score": 1.4,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 17.14668452779638,
+                "band": "8 – 50",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 3.864699419243447,
+                "band": "2.5 – 6",
+                "fit": 1
+              },
+              {
+                "feature": "Teq_K",
+                "value": 46.44477891503087,
+                "band": "0 – 200",
+                "fit": 1
+              },
+              {
+                "feature": "density",
+                "value": 1.6377264623937882,
+                "band": "1 – 3.5",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/super-neptune",
+            "score": 0.49,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 17.14668452779638,
+                "band": "20 – 80",
+                "fit": 0.05
+              },
+              {
+                "feature": "radius_Re",
+                "value": 3.864699419243447,
+                "band": "4 – 8",
+                "fit": 0.77
+              }
+            ]
+          }
+        ],
+        "borderline": false,
         "modifiers": [
           {
             "class": "planet/ringed",
@@ -8557,6 +10366,69 @@
           "class": "planet/mesoplanet",
           "score": 1.2
         },
+        "candidates": [
+          {
+            "class": "planet/dwarf-planet",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.0035833891493636974,
+                "band": "0.0005 – 0.05",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.212431329461623,
+                "band": "0.05 – 0.25",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/mesoplanet",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "radius_Re",
+                "value": 0.212431329461623,
+                "band": "0.08 – 0.4",
+                "fit": 1
+              },
+              {
+                "feature": "mass_Me",
+                "value": 0.0035833891493636974,
+                "band": "0.002 – 0.1",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 1.04,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 1.4528194995595896,
+                "band": "0 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0.000014,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": true,
         "modifiers": [],
         "fallback": false
       },
@@ -8997,6 +10869,69 @@
           "class": "planet/mesoplanet",
           "score": 1.2
         },
+        "candidates": [
+          {
+            "class": "planet/dwarf-planet",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.002181848626925653,
+                "band": "0.0005 – 0.05",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.1865170302935175,
+                "band": "0.05 – 0.25",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/mesoplanet",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "radius_Re",
+                "value": 0.1865170302935175,
+                "band": "0.08 – 0.4",
+                "fit": 1
+              },
+              {
+                "feature": "mass_Me",
+                "value": 0.002181848626925653,
+                "band": "0.002 – 0.1",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 1.04,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 1.2098374365619018,
+                "band": "0 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0.00001,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": true,
         "modifiers": [],
         "fallback": false
       },
@@ -9304,6 +11239,81 @@
           "class": "planet/barren",
           "score": 1.19
         },
+        "candidates": [
+          {
+            "class": "planet/planetesimal",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.00026456798392498327,
+                "band": "0 – 0.003",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.09511850572908491,
+                "band": "0 – 0.1",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/barren",
+            "score": 1.19,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.5899430525741685,
+                "band": "0 – 4",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0,
+                "band": "0 – 0.02",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.01",
+                "fit": 1
+              },
+              {
+                "feature": "atm.main",
+                "value": "None",
+                "band": "None",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "planet/crater",
+            "score": 1.04,
+            "bands": [
+              {
+                "feature": "escapeVelocity_kms",
+                "value": 0.5899430525741685,
+                "band": "0 – 2.5",
+                "fit": 1
+              },
+              {
+                "feature": "age_Gyr",
+                "value": 4.603,
+                "band": "3 – 14",
+                "fit": 1
+              },
+              {
+                "feature": "atm.pressure_bar",
+                "value": 0,
+                "band": "0 – 0.05",
+                "fit": 1
+              }
+            ]
+          }
+        ],
+        "borderline": true,
         "modifiers": [],
         "fallback": false
       },
