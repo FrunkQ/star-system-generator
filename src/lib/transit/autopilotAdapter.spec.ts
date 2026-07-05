@@ -89,6 +89,32 @@ describe('resolveResourceStops', () => {
   });
 });
 
+describe('buildAdapterStops — Avoid list + explore noRevisit', () => {
+  const system = sys([
+    body('star', 'star', 0),
+    body('near', 'moon', 9.4, [['resource/water-ice', 0.9]]),
+    body('far', 'moon', 14, [['resource/water-ice', 0.8]])
+  ]);
+  const mine = { action: 'mine', resourceKeys: ['resource/water-ice'], rate_tpd: 10, fillAmount_t: 50 };
+
+  it('an avoided place is never auto-chosen as a resource source', () => {
+    const stops = buildAdapterStops([mine], 'star', system, () => false, new Set(), false, 0, new Set(['near']));
+    expect(stops[0].targetId).toBe('far'); // best source was near, but it's on the avoid list
+  });
+
+  it("explore with noRevisit skips places already in the ship's log — the survey pushes outward", () => {
+    const explore = { action: 'explore', resourceKeys: ['resource/water-ice'], loiterDays: 10, noRevisit: true };
+    const stops = buildAdapterStops([explore], 'star', system, () => false, new Set(), false, 0, undefined, new Set(['near']));
+    expect(stops[0].targetId).toBe('far'); // 'near' already visited → next source out
+  });
+
+  it('without noRevisit the visited set is ignored', () => {
+    const explore = { action: 'explore', resourceKeys: ['resource/water-ice'], loiterDays: 10, noRevisit: false };
+    const stops = buildAdapterStops([explore], 'star', system, () => false, new Set(), false, 0, undefined, new Set(['near']));
+    expect(stops[0].targetId).toBe('near');
+  });
+});
+
 describe('buildAdapterStops — escort follows a moving construct', () => {
   it("rendezvous at the escorted ship's current host (re-resolved as it moves)", () => {
     const system = sys([

@@ -35,11 +35,14 @@ const ELIGIBLE_ROLES = new Set(['planet', 'moon', 'belt', 'ring']);
 // Candidate bodies that can satisfy a resource-targeted leg — NATURAL BODIES ONLY (mine-bodies-only,
 // spec §12.16; never a ship). travelCost is a cheap orbital-distance proxy from the ship's current host;
 // abundance from the tag value; refuels = the body also carries a fuel-source the ship can use.
+// `exclude` filters AUTO-CHOSEN destinations only (Avoid-list places + explore's already-visited log) — an
+// explicitly-picked place leg always wins over its own avoid list.
 export function gatherResourceCandidates(
   sys: System,
   resourceKeys: string[],
   fromHostId: string,
-  refuelKeys: Set<string>
+  refuelKeys: Set<string>,
+  exclude?: Set<string>
 ) {
   const want = new Set(resourceKeys);
   const anyResource = want.size === 0; // explore "any" → any body carrying a resource
@@ -48,6 +51,7 @@ export function gatherResourceCandidates(
   for (const n of sys.nodes as any[]) {
     if (n.kind !== 'body' || !ELIGIBLE_ROLES.has(n.roleHint)) continue;
     if (n.id === fromHostId) continue;
+    if (exclude?.has(n.id)) continue;
     const tags: any[] = n.tags ?? [];
     const matched = tags.filter((t) => (anyResource ? String(t.key).startsWith('resource/') : want.has(t.key)));
     if (!matched.length) continue;
@@ -66,9 +70,10 @@ export function resolveResourceStops(
   sys: System,
   isFuelCompatible: (k: string) => boolean,
   refuelKeys: Set<string>,
-  needsFuel: boolean
+  needsFuel: boolean,
+  exclude?: Set<string>
 ): AutopilotStop[] {
-  const cands = gatherResourceCandidates(sys, leg.resourceKeys ?? [], fromHostId, refuelKeys);
+  const cands = gatherResourceCandidates(sys, leg.resourceKeys ?? [], fromHostId, refuelKeys, exclude);
   const best = chooseSource(cands, { needsFuel });
   if (!best) return [];
   if (leg.action === 'explore') {
@@ -96,7 +101,9 @@ export function buildAdapterStops(
   isFuelCompatible: (k: string) => boolean,
   refuelKeys: Set<string>,
   needsFuel: boolean,
-  fromTimeMs = 0
+  fromTimeMs = 0,
+  avoid?: Set<string>,   // Avoid list — auto-chosen sources never land here (explicit place legs still win)
+  visited?: Set<string>  // places already in the ship's log — explore's noRevisit skips them, pushing outward
 ): AutopilotStop[] {
   let fromHost = startHostId;
   const stops: AutopilotStop[] = [];
@@ -111,8 +118,11 @@ export function buildAdapterStops(
       if (targetHost) { stops.push({ targetId: targetHost, dwellDays: leg.loiterDays ?? 5, refuelHere: false, verb: 'patrol', action: 'escort' }); fromHost = targetHost; }
       continue;
     }
+    const exclude = (avoid?.size || (leg.action === 'explore' && leg.noRevisit && visited?.size))
+      ? new Set<string>([...(avoid ?? []), ...((leg.action === 'explore' && leg.noRevisit ? visited : undefined) ?? [])])
+      : undefined;
     const s = (leg.action === 'mine' || leg.action === 'explore')
-      ? resolveResourceStops(leg, fromHost, sys, isFuelCompatible, refuelKeys, needsFuel)
+      ? resolveResourceStops(leg, fromHost, sys, isFuelCompatible, refuelKeys, needsFuel, exclude)
       : legToStops(leg, isFuelCompatible);
     if (s.length) { stops.push(...s); fromHost = s[s.length - 1].targetId; }
   }
@@ -249,7 +259,12 @@ export function generateAutopilotChain(
   }
 
   const needsFuel = !ap.ignoreFuel && budget < capacity * 0.5; // low on fuel → prefer self-fuelling sources
-  const stops = buildAdapterStops(plannedLegs, startHostId, system, isFuelCompatible, refuelKeys, needsFuel, fromTimeMs);
+  // Avoid list: auto-chosen resource sources never land at these (an explicit place leg still wins — the GM
+  // said go there). Visited: places already in the ship's log — explore legs with noRevisit skip them, so
+  // each top-up pushes the survey outward instead of circling the nearest source.
+  const avoid = new Set<string>((ap.avoidPlaceIds ?? []).filter(Boolean));
+  const visited = new Set<string>(((construct as any).flight_log ?? []).map((e: any) => e.placeId).filter(Boolean));
+  const stops = buildAdapterStops(plannedLegs, startHostId, system, isFuelCompatible, refuelKeys, needsFuel, fromTimeMs, avoid, visited);
   if (!stops.length) return { logs: [], flightLog: [], attention: 'intervention', done: false }; // no resolvable stops (e.g. resource not present)
   // Size each pinned-amount haul's dwell from tonnes / (rate × abundance). Unpinned hauls ("fill the hold")
   // are sized inside walkStops once it knows the real free space after any deliver-first unload.
