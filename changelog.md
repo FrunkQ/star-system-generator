@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.239-beta - 5th Jul 2026
+
+* Autopilot guide expanded: per-action "what's considered / how it's chosen / when it's reconsidered" decision procedure (incl. exactly how escorts track their charge) + how a leg becomes a flight plan (the four solver families and what Drive picks).
+* Coast perf: an unbound ship already heading outward no longer encounter-checks planet bands it can never come back down to.
+
 ## v2.0.238-beta - 5th Jul 2026
 
 * Fixed thrifty autopilot ships mis-scheduling after a delayed-launch (wait-for-alignment) leg: the wait window wasn't counted toward arrival, so following legs stacked on top of it.
