@@ -78,6 +78,33 @@ describe('fixUpImportedSystem', () => {
     expect(star.classes).toEqual(['star/G']);
   });
 
+  it('KEEPS auto-barycentres so a nested pair is not orphaned (Sirius Ab collapse regression)', () => {
+    // A v1 planet + oversized-moon pair that v1 promoted into an auto-barycentre carrying the REAL orbit
+    // around the star (a_AU 4.44). Deleting the barycentre here orphaned the members; the processor then
+    // re-homed them onto the system root with only their tiny local separation, collapsing them to centre.
+    // fixUpImportedSystem must now PRESERVE the auto-barycentre so reconcileBarycenters can place it right.
+    const sys = {
+      id: 's', name: 'Binary', rulePackId: 'starter-sf', nodes: [
+        { id: 'star', name: 'Star A', kind: 'body', roleHint: 'star', parentId: null, massKg: 2e30, radiusKm: 696000, classes: ['star/A'], tags: [] },
+        {
+          id: 'bary', name: 'Ab-AbI Barycenter', kind: 'barycenter', parentId: 'star',
+          memberIds: ['ab', 'abi'], effectiveMassKg: 1.8e25, tags: [{ key: 'barycenter/auto' }],
+          orbit: { hostId: 'star', hostMu: 2.7e20, t0: 0, elements: { a_AU: 4.44, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 } }
+        },
+        { id: 'ab', name: 'Ab', kind: 'body', roleHint: 'planet', parentId: 'bary', massKg: 1.7e25, radiusKm: 6000,
+          orbit: { hostId: 'bary', hostMu: 1.2e15, t0: 0, elements: { a_AU: 0.0012, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 } }, tags: [] },
+        { id: 'abi', name: 'Ab I', kind: 'body', roleHint: 'moon', parentId: 'bary', massKg: 1.5e24, radiusKm: 2000,
+          orbit: { hostId: 'bary', hostMu: 1.2e15, t0: 0, elements: { a_AU: 0.0018, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 3.2 } }, tags: [] }
+      ], orbit: undefined
+    } as unknown as System;
+
+    fixUpImportedSystem(sys);
+    const bary: any = sys.nodes.find((n: any) => n.id === 'bary');
+    expect(bary).toBeDefined();                          // NOT deleted
+    expect(bary.orbit.elements.a_AU).toBe(4.44);         // real orbit preserved
+    expect(sys.nodes.find((n: any) => n.id === 'ab')?.parentId).toBe('bary'); // pair still intact
+  });
+
   it('recovers a star spectral class that only survived as a class-tag (old v1 save)', () => {
     const sys = {
       id: 's', name: 'V1', rulePackId: 'starter-sf', nodes: [

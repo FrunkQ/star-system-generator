@@ -95,12 +95,16 @@ export function fixUpImportedSystem(system: System, pack?: RulePack): System {
   const classNames = classNamesFromPack(pack);
   for (const node of system.nodes) {
     if (node.kind === 'body') stripBody(node as CelestialBody, classNames);
-    // Auto-generated barycentres are reconciled by the processor; drop them so they don't duplicate.
-    if (node.kind === 'barycenter' && (node as any).tags?.some?.((t: Tag) => t.key === 'barycenter/auto')) {
-      (node as any).__autoBary = true;
-    }
   }
-  // Remove auto barycentres (the processor regenerates them from the orbital hierarchy).
-  system.nodes = system.nodes.filter((n) => !(n as any).__autoBary);
+  // NOTE: we used to DELETE every auto-barycentre here and let the processor regenerate them. But a
+  // nested auto-barycentre (e.g. a planet + an oversized moon that v1 promoted) carries the pair's REAL
+  // orbit around its host (its own `orbit`, e.g. 4.44 AU from the star); deleting it orphaned the two
+  // members, and the processor's dangling-node repair then re-homed them onto the SYSTEM ROOT with only
+  // their tiny local separation as `a_AU` — collapsing the pair to the centre / inside the star
+  // (the Sirius Ab bug). The processor's `reconcileBarycenters` is a full normalise state-machine
+  // (promote / demote / dissolve / de-ghost / repair) that handles a surviving auto-barycentre correctly
+  // and won't duplicate it (it only promotes bodies parented to a BODY, and members here are parented to
+  // the barycentre). So we KEEP auto-barycentres and let reconcile normalise them, preserving the pair's
+  // real placement. Their `barycenter/auto` tag survives (bodies-only tag strip above doesn't touch it).
   return system;
 }

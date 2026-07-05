@@ -218,6 +218,16 @@
       scaledWorldPositions = worldPositions;
       return;
     }
+    // `worldPositions` is reactive ($: line ~137) but this runs imperatively from the draw loop, which
+    // ticks independently of Svelte's reactive flush. Right after a NEW system is loaded, `system` (a prop)
+    // holds the new nodes while `worldPositions` can still be the PREVIOUS system's map for a frame — so a
+    // lookup by a new node id misses and the `.x` reads below throw "reading 'x' of undefined" (the Procyon
+    // load crash). Rebuild from the current system when the map is out of sync so true positions always
+    // cover the nodes we're about to scale.
+    let truePos = worldPositions;
+    if (truePos.size < system.nodes.length || (system.nodes[0] && !truePos.has(system.nodes[0].id))) {
+      truePos = calculateWorldPositions(system, currentTime);
+    }
     const nodesById = new Map(system.nodes.map(n => [n.id, n]));
     const newScaledPositions = new Map<string, { x: number, y: number }>();
     function getScaledPosition(nodeId: string): { x: number, y: number } {
@@ -229,8 +239,14 @@
         return { x: 0, y: 0 };
       }
       const parentScaledPos = getScaledPosition(node.parentId);
-      const parentTruePos = worldPositions.get(node.parentId)!;
-      const nodeTruePos = worldPositions.get(node.id)!;
+      // Belt-and-braces: if a true position is still missing, fall back to the parent's position (the node
+      // sits on its parent for this one frame) rather than dereferencing undefined.
+      const nodeTruePos = truePos.get(node.id);
+      const parentTruePos = truePos.get(node.parentId);
+      if (!nodeTruePos || !parentTruePos) {
+        newScaledPositions.set(nodeId, { ...parentScaledPos });
+        return parentScaledPos;
+      }
       let x: number, y: number;
       if ((node.kind === 'body' || node.kind === 'construct' || node.kind === 'barycenter') && node.orbit) {
         const { a_AU: a, e, omega_deg } = node.orbit.elements;

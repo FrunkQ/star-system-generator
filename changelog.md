@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.244-beta - 5th Jul 2026
+
+* Fixed legacy (V1) binary systems loading wrong. Two distinct bugs in the barycentre load path: (1) importing a system could crash the orrery with "Cannot read properties of undefined" when the scaled-position pass raced a just-loaded system; (2) a nested binary pair (a planet with an oversized moon that V1 had promoted to a barycentre) collapsed to the system centre / inside the star, because the import step deleted its barycentre and orphaned the pair. Both fixed — legacy binaries now load and sit where they should.
+
 ## v2.0.243-beta - 5th Jul 2026
 
 * The Autopilot tab now has a **Guide** button (top-right) that opens the full user guide in-app — how routes are chosen for each action, the sliders, fuel/cargo, escorts and the map colours. It reads the same doc that ships in the repo, so help and docs never drift.
