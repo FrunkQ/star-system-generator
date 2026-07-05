@@ -134,6 +134,14 @@ function soiCandidates(system: System, rootId: string): SoiCandidate[] {
   return out;
 }
 
+// Hill spheres for DISPLAY — the same candidates and radii the patched-conic coast hands off at, exported so
+// the orrery overlay can never disagree with the physics boundary it's drawing. Radii in AU.
+export function hillSpheresAu(system: System): { id: string; rAu: number }[] {
+  const root: any = system.nodes.find((n: any) => n.parentId === null || n.parentId == null);
+  if (!root) return [];
+  return soiCandidates(system, root.id).map((c) => ({ id: c.id, rAu: c.rHm / AU_M }));
+}
+
 // A candidate's global state in SI (getGlobalState returns AU + AU/s).
 function bodyStateM(system: System, node: any, tSec: number): { r: Vector2; v: Vector2 } {
   if (!node) return { r: { x: 0, y: 0 }, v: { x: 0, y: 0 } }; // node deleted mid-drift — degrade, don't throw

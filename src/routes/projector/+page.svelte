@@ -25,6 +25,7 @@
   // View Settings
   let showNames = true;
   let showZones = false;
+  let showHillSpheres = false;
   let showLPoints = false;
   let showTravellerZones = false;
 
@@ -93,8 +94,9 @@
           (settings) => {
               showNames = settings.showNames;
               showZones = settings.showZones;
+              showHillSpheres = settings.showHillSpheres ?? false;
               showLPoints = settings.showLPoints;
-              showTravellerZones = settings.showTravellerZones;
+              showTravellerZones = settings.showTravellerZones ?? false;
           },
           (time) => {
               isPlaying = time.isPlaying;
@@ -146,8 +148,9 @@
             {rulePack} 
             {currentTime} 
             {focusedBodyId}
-            {showNames} 
-            {showZones} 
+            {showNames}
+            {showZones}
+            {showHillSpheres}
             {showLPoints}
             {showTravellerZones}
             toytownFactor={$systemStore.toytownFactor || 0}

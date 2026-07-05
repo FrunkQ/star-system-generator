@@ -13,6 +13,7 @@
   import { clampZoom, dampedZoomStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM, frameForLevel, availableFrameLevels, suppressAutoZoomNearPeriapsis } from '$lib/viewport/camera';
   import { gestures } from '$lib/input/gestures';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
+  import { hillSpheresAu } from '$lib/physics/twoBodyCoast';
   import { scaleBoxCox } from '../physics/scaling';
   import { findContainingHost } from '$lib/physics/orbits';
   import { getNodeColor, STAR_COLOR_MAP, tokenRgba } from '$lib/rendering/colors';
@@ -29,6 +30,7 @@
   export let showTravellerZones: boolean = false;
   export let showSensors: boolean = false;
   export let showVectors: boolean = false;
+  export let showHillSpheres: boolean = false;
   export let toytownFactor: number = 0;
   export let fullScreen: boolean = false;
   // Canvas backdrop — overridable so the projector can switch to a chroma-key green.
@@ -1084,6 +1086,33 @@
                   }
                   ctx.restore();
               }
+          }
+      }
+      // Hill spheres — each planet-mass body's gravitational bubble, and EXACTLY the boundary the adrift
+      // coast physics hands over at (same helper, so the drawn circle can't disagree with the handoff).
+      // Solid light yellow + faint fill — dashed strokes over AU-scale circles make the canvas grind.
+      if (showHillSpheres && system) {
+          for (const h of hillSpheresAu(system)) {
+              const pos = toytownFactor > 0 ? scaledWorldPositions.get(h.id) : worldPositions.get(h.id);
+              if (!pos) continue;
+              let r = h.rAu;
+              if (toytownFactor > 0) {
+                  // Radial Box-Cox compression: span the sphere between its scaled inner/outer radial extent
+                  // and draw the mean as a circle (the mode is stylised; exactness lives in Real scale).
+                  const world = worldPositions.get(h.id);
+                  const d = world ? Math.hypot(world.x, world.y) : 0;
+                  const outer = scaleBoxCox(d + h.rAu, toytownFactor, x0_distance);
+                  const inner = scaleBoxCox(Math.max(0, d - h.rAu), toytownFactor, x0_distance);
+                  r = Math.max(0, (outer - inner) / 2);
+              }
+              if (!(r > 0)) continue;
+              ctx.beginPath();
+              ctx.arc(pos.x - renderPan.x, pos.y - renderPan.y, r, 0, 2 * Math.PI);
+              ctx.fillStyle = 'rgba(255, 232, 130, 0.06)';
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(255, 232, 130, 0.38)';
+              ctx.lineWidth = 1 / zoom;
+              ctx.stroke();
           }
       }
       // Trip lines for each ship's current + NEXT journey only — enough to show who's going where without

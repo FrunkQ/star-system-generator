@@ -214,6 +214,7 @@
   let showDropdown = false;
   let showNames = true;
   let showZones = false;
+  let showHillSpheres = false;
   let showZoneKeyPanel = false; // Controls display of ZoneKey in the right panel
   let showLPoints = false;
   let showTravellerZones = false;
@@ -1441,7 +1442,7 @@
                 broadcastService.sendMessage({ type: 'SYNC_RULEPACK', payload: rulePack });
                 broadcastService.sendMessage({ type: 'SYNC_FOCUS', payload: focusedBodyId });
                 broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' } });
-                broadcastService.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: { showNames, showZones, showLPoints, showTravellerZones } });
+                broadcastService.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: { showNames, showZones, showHillSpheres, showLPoints, showTravellerZones } });
                 broadcastService.sendMessage({ type: 'SYNC_TIME', payload: { currentTime, isPlaying, timeScale } });
                 broadcastService.sendMessage({ type: 'SYNC_CRT_MODE', payload: isCrtMode });
                 broadcastService.sendMessage({ type: 'SYNC_GREENSCREEN', payload: isGreenscreen });
@@ -1470,9 +1471,9 @@
 
   // Reactive Broadcasts for View Settings
   $: if (browser && $systemStore) {
-      broadcastService.sendMessage({ 
-          type: 'SYNC_VIEW_SETTINGS', 
-          payload: { showNames, showZones, showLPoints, showTravellerZones } 
+      broadcastService.sendMessage({
+          type: 'SYNC_VIEW_SETTINGS',
+          payload: { showNames, showZones, showHillSpheres, showLPoints, showTravellerZones }
       });
   }
 
@@ -2132,6 +2133,7 @@
                   <div class="ov-popover">
                     <label><input type="checkbox" bind:checked={showNames} /> Names</label>
                     <label><input type="checkbox" bind:checked={showZones} on:change={() => showZoneKeyPanel = showZones} /> Zones</label>
+                    <label title="Each planet-mass body's gravitational bubble — where an adrift ship gets grabbed"><input type="checkbox" bind:checked={showHillSpheres} /> Hill spheres</label>
                     <label><input type="checkbox" bind:checked={showLPoints} /> Lagrange points</label>
                     {#if $starmapUiStore.travellerMode}
                       <label><input type="checkbox" bind:checked={showTravellerZones} /> Traveller zones</label>
@@ -2165,9 +2167,10 @@
                 {rulePack} 
                 currentTime={isPlanning ? (transitChainTime + (transitDelayDays * 86400 * 1000) + transitJourneyOffset) : currentTime} 
                 {focusedBodyId} 
-                {showNames} 
-                {showZones} 
-                {showLPoints} 
+                {showNames}
+                {showZones}
+                {showHillSpheres}
+                {showLPoints}
                 {showTravellerZones}
                 {showSensors}
                 {showVectors}
