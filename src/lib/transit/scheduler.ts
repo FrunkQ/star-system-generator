@@ -82,36 +82,30 @@ export function coastUnderGravity(
   };
 }
 
-// Predict a coasting ship's FUTURE path under the system's gravity — a polyline of `steps` points so the
-// orrery can draw the conic it's about to follow (a slow fall to the star, an ellipse, or a hyperbola
-// escaping). Auto-sizes the horizon to ~a quarter orbital period at the ship's distance so the arc is
-// visibly curved at any scale. Returns AU positions (oldest→newest), empty if there's nothing to pull on.
+// Predict a coasting ship's FUTURE path — a polyline of `steps` points so the orrery can draw the trajectory
+// it's about to follow (a slow fall to the star, an ellipse, a hyperbola escaping, or a bend at a planet).
+// The forecast just SAMPLES the same deterministic coastConicAt the adrift ship actually follows — one model
+// for the line AND the ship, so they can never disagree. Auto-sizes the horizon to ~a quarter orbital period
+// at the ship's distance so the arc is visibly curved at any scale. Returns AU positions (oldest→newest),
+// empty if there's no star to fall to.
 export function coastPathUnderGravity(
   system: System,
   startPos_au: Vector2,
   startVel_ms: { x: number; y: number },
   t0Ms: number,
-  steps = 40,
-  // Moons are dropped from the field by default — that's the live-scrubber path, where re-integrating the
-  // full satellite census every clock frame is the cost that killed it. A one-shot/settled plot (the clock
-  // has stopped moving) can afford them: pass true for a higher-fidelity forecast that feels moon flybys.
-  includeMoons = false
+  steps = 40
 ): Vector2[] {
   if (!Number.isFinite(startPos_au?.x) || !Number.isFinite(startPos_au?.y)) return [];
-  const bodies = system.nodes
-    .filter((n) => n.kind === 'body' && ((n as any).massKg || 0) > 0 && (n as any).roleHint !== 'belt' && (n as any).roleHint !== 'ring' && (includeMoons || (n as any).roleHint !== 'moon'))
-    .map((n) => ({ id: n.id, massKg: (n as any).massKg as number }));
-  if (!bodies.length) return [];
-  // Horizon ≈ a couple of characteristic times at the ship's distance from the most massive body — a good arc
+  if (!coastConicAt(system, startPos_au, startVel_ms, t0Ms, t0Ms)) return []; // no star — nothing to pull on
+  // Horizon ≈ a couple of characteristic times at the ship's distance from the root mass — a good arc
   // ahead, short enough that a near-radial plunge doesn't whip clear through the star.
-  const maxMass = bodies.reduce((m, b) => Math.max(m, b.massKg), 0);
+  const root: any = system.nodes.find((n: any) => n.parentId == null);
+  const rootMass = root?.massKg ?? root?.effectiveMassKg ?? 0;
   const r = Math.max(1e-6, Math.hypot(startPos_au.x, startPos_au.y));
-  const mu = G_AU * maxMass;
+  const mu = G_AU * rootMass;
   const charSec = mu > 0 ? Math.sqrt((r * r * r) / mu) : 3.15e7; // √(r³/μ) = T/2π (≈1 rad of arc)
   const horizonSec = Math.max(86400, charSec * 2);
   const stepSec = horizonSec / steps;
-  // Sample the DETERMINISTIC conic rather than step-integrating — one stable curve that doesn't jitter as the
-  // clock advances (the old integrator re-ran with different steps each frame), and exact through perihelion.
   const pts: Vector2[] = [];
   for (let k = 0; k <= steps; k++) {
     const c = coastConicAt(system, startPos_au, startVel_ms, t0Ms, t0Ms + k * stepSec * 1000);
