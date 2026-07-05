@@ -1086,9 +1086,10 @@
               }
           }
       }
-      // Faint trip lines for each ship's current + NEXT journey only — enough to show who's going where without
+      // Trip lines for each ship's current + NEXT journey only — enough to show who's going where without
       // a spider-web of the whole committed route (an autopilot ship may have many legs queued). Skip finished
-      // trips. Bright planning lines draw on top.
+      // trips. Drawn in burn colours (green accel / yellow coast / red brake): the ACTIVE leg bright, the next
+      // one faded — brightness reads as now-vs-later, colour as where it burns. Planning lines draw on top.
       if (system) {
           for (const node of system.nodes) {
               if (node.kind !== 'construct') continue;
@@ -1097,8 +1098,9 @@
                   .map((l: any) => ({ l, b: getJourneyBounds(l.plans) }))
                   .filter((x: any) => x.b && currentTime <= x.b.endMs)     // not finished
                   .sort((a: any, b: any) => a.b.startMs - b.b.startMs);
-              for (const x of live.slice(0, 2)) // [0] = active/earliest, [1] = the next one
-                  for (const plan of x.l.plans) drawTransitPlan(ctx, plan, false, 0.16, true);
+              live.slice(0, 2).forEach((x: any, idx: number) => { // [0] = active/earliest, [1] = the next one
+                  for (const plan of x.l.plans) drawTransitPlan(ctx, plan, false, idx === 0 ? 0.55 : 0.18, false, true);
+              });
           }
       }
       // Predicted coast path for drifting/stopped ships — the conic they're about to follow (fall to the
@@ -1118,7 +1120,7 @@
               const pts = cached.pts;
               if (pts.length < 2) continue;
               ctx.beginPath();
-              ctx.strokeStyle = 'rgba(208, 69, 69, 0.5)';
+              ctx.strokeStyle = 'rgba(255, 150, 50, 0.55)'; // ORANGE = uncontrolled coast (adrift), vs red = powered braking
               ctx.lineWidth = 1.4 / zoom;
               for (let i = 0; i < pts.length; i++) {
                   let p = pts[i];
@@ -1688,10 +1690,13 @@
       }
   }
 
-  function drawTransitPlan(ctx: CanvasRenderingContext2D, plan: TransitPlan, isCompleted: boolean = false, alphaOverride?: number, forceGrey: boolean = false) {
+  // colorized: keep the burn colours (green accel / yellow coast / red brake) even at a reduced alpha —
+  // used for committed route lines, where brightness encodes current-vs-future but the colours still tell
+  // you where the ship burns and where it coasts. Without it a reduced alpha means the flat "ghost" tint.
+  function drawTransitPlan(ctx: CanvasRenderingContext2D, plan: TransitPlan, isCompleted: boolean = false, alphaOverride?: number, forceGrey: boolean = false, colorized: boolean = false) {
       if (!plan) return;
       const alpha = alphaOverride !== undefined ? alphaOverride : (isCompleted ? 0.6 : 1.0);
-      const isGhost = alphaOverride !== undefined && !forceGrey;
+      const isGhost = alphaOverride !== undefined && !forceGrey && !colorized;
       for (const segment of plan.segments) {
           ctx.beginPath();
           if (forceGrey) { ctx.setLineDash([]); ctx.strokeStyle = `rgba(100, 100, 100, ${alpha})`; }
