@@ -115,15 +115,16 @@ describe('buildAdapterStops — Avoid list + explore noRevisit', () => {
   });
 });
 
-describe('buildAdapterStops — escort follows a moving construct', () => {
-  it("rendezvous at the escorted ship's current host (re-resolved as it moves)", () => {
+describe('buildAdapterStops — escort intercepts a moving construct', () => {
+  it('targets the escorted CONSTRUCT itself — catch it wherever it is, ports or open space', () => {
     const system = sys([
       body('mars', 'planet', 1.5),
-      { id: 'escortee', kind: 'construct', parentId: 'mars' } // no journeys → current host is its parent
+      { id: 'escortee', kind: 'construct', parentId: 'mars' }
     ]);
     const stops = buildAdapterStops([{ action: 'escort', placeId: 'escortee', loiterDays: 7 }], 'earth', system, () => false, new Set(), false, 0);
     expect(stops).toHaveLength(1);
-    expect(stops[0].targetId).toBe('mars'); // go to where the escorted ship is
+    expect(stops[0].targetId).toBe('escortee'); // the ship, not its host — the solver rendezvouses directly
+    expect(stops[0].action).toBe('escort');
     expect(stops[0].dwellDays).toBe(7);
   });
 
@@ -132,13 +133,12 @@ describe('buildAdapterStops — escort follows a moving construct', () => {
     expect(stops).toHaveLength(0);
   });
 
-  it('honours the km standoff: parks at the escorted ship orbit + escortKm', () => {
-    const AU_KM = 149597870.7;
+  it('carries the km standoff through to the formation sampler', () => {
     const system = sys([
       body('mars', 'planet', 1.5),
-      { id: 'escortee', kind: 'construct', parentId: 'mars', orbit: { hostId: 'mars', elements: { a_AU: 0.0005 } } }
+      { id: 'escortee', kind: 'construct', parentId: 'mars' }
     ]);
     const stops = buildAdapterStops([{ action: 'escort', placeId: 'escortee', escortKm: 1000 }], 'earth', system, () => false, new Set(), false, 0);
-    expect(stops[0].parkRadiusAu).toBeCloseTo(0.0005 + 1000 / AU_KM, 9);
+    expect(stops[0].escortKm).toBe(1000);
   });
 });

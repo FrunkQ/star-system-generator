@@ -8,7 +8,6 @@ import { calculateFullConstructSpecs } from '$lib/construct-logic';
 import { constructTardiness, constructReadiness } from '$lib/constructs/coi';
 import { resolveConstructCurrentHostId } from './scheduler';
 import { legToStops, walkStops, chooseSource, reorderWaypoints, selectAnyOrder, type AutopilotStop, type StopEvent } from './autopilotPlanner';
-import { AU_KM } from '$lib/constants';
 
 const DAY_MS = 86_400_000;
 const G0 = 9.81; // matches transit/physics G0 — capacity estimates here must use the same constant as calculateFuelMass
@@ -109,20 +108,19 @@ export function buildAdapterStops(
   let fromHost = startHostId;
   const stops: AutopilotStop[] = [];
   for (const leg of legs) {
-    // Escort/pursuit = rendezvous with a MOVING construct, then hold. Because the sim is deterministic from the
-    // clock, the target's location is known: resolve where it is and go there (matching velocity = formation).
-    // The clock top-up re-resolves as the target moves, so the escort follows it host-to-host. The km STANDOFF
-    // is honoured at arrival: park at the escorted ship's own orbital radius + escortKm, so at deep zoom the
-    // pair sit visibly separated. (Velocity-matched shadowing DURING the target's transits stays banked with
-    // the station-keeping primitive.)
+    // Escort/pursuit = rendezvous with a MOVING construct, then hold. The escort targets the CONSTRUCT
+    // ITSELF — the transit solver handles construct targets (same as the manual planner), the arrival is a
+    // velocity-matched rendezvous, and the post-arrival sampler is genuine FORMATION FLYING: the escort
+    // mirrors its charge's motion tick by tick through everything it subsequently does, offset by the km
+    // standoff (samplePostJourneyState). So an escort can catch a ship in open space, not just at a port.
+    // Caveat: a charge that is mid-BURN at solve time is aimed at via linear projection of its current
+    // vector — intercepting coasting/parked charges is accurate; a long chase of an accelerating target
+    // closes with a visible correction at arrival (journey-aware aiming is the banked refinement).
     if (leg.action === 'escort') {
       const target = (sys.nodes as any[]).find((n) => n.id === leg.placeId && n.kind === 'construct');
-      const targetHost = target ? (resolveConstructCurrentHostId(target, fromTimeMs) || target.parentId) : undefined;
-      if (targetHost) {
-        const baseAu = target?.orbit?.elements?.a_AU || target?.parking_orbit_radius_au || 0;
-        const parkRadiusAu = baseAu > 0 ? baseAu + Math.max(0, leg.escortKm ?? 0) / AU_KM : undefined;
-        stops.push({ targetId: targetHost, dwellDays: leg.loiterDays ?? 5, refuelHere: false, verb: 'patrol', action: 'escort', parkRadiusAu });
-        fromHost = targetHost;
+      if (target) {
+        stops.push({ targetId: target.id, dwellDays: leg.loiterDays ?? 5, refuelHere: false, verb: 'patrol', action: 'escort', escortKm: Math.max(0, leg.escortKm ?? 0) });
+        fromHost = target.id;
       }
       continue;
     }
@@ -201,9 +199,6 @@ export function generateAutopilotChain(
   // coastiest won't fit, returns that cheapest attempt so the walker's stuck flag carries real numbers.
   // The reorder search costs at the preferred tier only — the downgrade is an emergency brake, not a mode.
   const preferredTier = profileIndexForDrive(ap.drive ?? 0.5);
-  // Escort standoff: per-target arrival parking radius (populated from the resolved stops below — the map is
-  // declared here so the solveLeg closure can read it).
-  const parkByTarget = new Map<string, number>();
   const solveLeg = (originId: string, targetId: string, startMs: number, light = false, dvAvailable_ms?: number) => {
     let fallback: { plans: any[]; arriveMs: number; deltaV_ms: number; valid: boolean } | null = null;
     for (let tier = preferredTier; tier >= 0; tier--) {
@@ -216,8 +211,6 @@ export function generateAutopilotChain(
         brakeAtArrival: true,
         quote: light
       };
-      const parkAu = parkByTarget.get(targetId);
-      if (parkAu && parkAu > 0) params.parkingOrbitRadius_au = parkAu; // escort standoff parking
       const all = calculateTransitPlan(system, originId, targetId, startMs, mode, params);
       const valid = all.filter((p) => p.isValid && !p.hiddenReason);
       if (!valid.length) continue; // a coastier profile may still be solvable
@@ -294,7 +287,6 @@ export function generateAutopilotChain(
   const visited = new Set<string>(((construct as any).flight_log ?? []).map((e: any) => e.placeId).filter(Boolean));
   const stops = buildAdapterStops(plannedLegs, startHostId, system, isFuelCompatible, refuelKeys, needsFuel, fromTimeMs, avoid, visited);
   if (!stops.length) return { logs: [], flightLog: [], attention: 'intervention', done: false }; // no resolvable stops (e.g. resource not present)
-  for (const s of stops) if (s.parkRadiusAu && s.parkRadiusAu > 0) parkByTarget.set(s.targetId, s.parkRadiusAu); // escort standoffs → solveLeg
   // Size each pinned-amount haul's dwell from tonnes / (rate × abundance). Unpinned hauls ("fill the hold")
   // are sized inside walkStops once it knows the real free space after any deliver-first unload.
   for (const s of stops) {

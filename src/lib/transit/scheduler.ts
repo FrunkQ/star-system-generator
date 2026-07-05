@@ -507,12 +507,22 @@ function samplePostJourneyState(
   if (targetNode) {
     if (targetNode.kind === 'construct' && !isExplicitDockToConstruct && finalPos) {
       // It's a Rendezvous/Brake Burn with a Construct, but not a hard Dock.
-      // We should perfectly match its state (formation flying).
+      // We should perfectly match its state (formation flying) — offset by the escort's km standoff when the
+      // journey carries one: the escort TRAILS its charge along the velocity vector (0 = wingtip formation,
+      // large = a shadowing tail). Same matched velocity either way.
       const s = getGlobalState(system, targetNode as any, timeMs);
+      let px = s.r.x, py = s.r.y;
+      const standKm = (lastPlan as any).escortStandoffKm || 0;
+      const vmag = Math.hypot(s.v.x, s.v.y);
+      if (standKm > 0 && vmag > 1e-18) {
+        const offAu = standKm / AU_KM;
+        px -= (s.v.x / vmag) * offAu;
+        py -= (s.v.y / vmag) * offAu;
+      }
       return {
         journeyId: log.id,
         state: 'Deep Space', // Matches Construct Rendezvous behavior
-        position_au: s.r,
+        position_au: { x: px, y: py },
         velocity_ms: { x: s.v.x * AU_M, y: s.v.y * AU_M }
       };
     }

@@ -47,6 +47,45 @@ describe('coastUnderGravity — in-system adrift under real gravity', () => {
   });
 });
 
+describe('escort formation — rendezvous with a construct, velocity match + km standoff', () => {
+  const DAY = 86400 * 1000;
+  const starF = { id: 'star', kind: 'body', roleHint: 'star', classes: ['star/G'], parentId: null, massKg: SOLAR, radiusKm: 696000 };
+  // The charge: a ship in deep space at (1,0) AU doing 30 km/s in +y (vector epoch = the query time, so no drift).
+  const charge = {
+    id: 'charge', kind: 'construct', name: 'Charge', parentId: 'star', flight_state: 'Deep Space',
+    vector_position_au: { x: 1, y: 0 }, vector_velocity_ms: { x: 0, y: 30000 }, vector_epoch_ms: 5 * DAY
+  };
+  const sysF = { id: 'f', nodes: [starF, charge] } as unknown as System;
+  const seg = (pts: { x: number; y: number }[]) => ({
+    id: 'seg', type: 'Coast', startTime: 0, endTime: DAY, startState: { r: pts[0], v: { x: 0, y: 0 } },
+    endState: { r: pts[pts.length - 1], v: { x: 0, y: 0 } }, hostId: 'star', pathPoints: pts, warnings: [], fuelUsed_kg: 0
+  });
+  const escortShip = (standKm?: number) => ({
+    id: 'esc', kind: 'construct', name: 'Escort', parentId: 'star',
+    scheduled_journeys: [{
+      id: 'j1', status: 'completed',
+      plans: [{ id: 'p', originId: 'star', targetId: 'charge', startTime: 0, totalTime_days: 1,
+                segments: [seg([{ x: 0, y: 0 }, { x: 1, y: 0 }])], escortStandoffKm: standKm }]
+    }]
+  }) as unknown as CelestialBody;
+
+  it('after rendezvous the escort rides its charge — velocity-matched formation in open space', () => {
+    const res = sampleJourneyKinematicsAtTime(sysF, escortShip(undefined), 5 * DAY)!;
+    expect(res.state).toBe('Deep Space');
+    expect(res.position_au.x).toBeCloseTo(1, 9);
+    expect(res.position_au.y).toBeCloseTo(0, 9);
+    expect(res.velocity_ms.y).toBeCloseTo(30000, 6); // matched, not zero
+  });
+
+  it('a km standoff trails the charge along its velocity vector', () => {
+    const standKm = 149597.8707; // = exactly 0.001 AU, for clean maths
+    const res = sampleJourneyKinematicsAtTime(sysF, escortShip(standKm), 5 * DAY)!;
+    expect(res.position_au.x).toBeCloseTo(1, 9);
+    expect(res.position_au.y).toBeCloseTo(-0.001, 9); // trailing behind the +y motion
+    expect(res.velocity_ms.y).toBeCloseTo(30000, 6);  // same matched velocity either way
+  });
+});
+
 describe('sampleJourneyKinematicsAtTime — a new journey supersedes an old cancelled drift', () => {
   // Regression: a ship stranded (cancelled journey w/ cancelState) and then given a NEW journey was still
   // resolving to the old drift, because the cancelled-drift branch returned immediately on the first

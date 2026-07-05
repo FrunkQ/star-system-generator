@@ -80,18 +80,20 @@ there is nothing hidden beyond it.
 ### Escort (construct-driven — the target MOVES)
 
 - **Considered:** only the one construct you named. If it no longer exists, the leg yields nothing.
-- **Chosen:** the whole sim is deterministic from the clock, so the target's location is never a
-  guess — the planner resolves **where the escorted ship is at the projected departure time** (its
-  current host: the body it's docked at, orbiting, or was last placed at), and solves a real
-  rendezvous flight to that host. On arrival the escort parks at the target's own orbital radius
-  **plus your km standoff** (0 = tight formation; large = a covert tail outside sensor range), then
-  holds for the loiter time.
-- **Reconsidered:** at every top-up. If the charge has moved on since the escort's last leg was
-  committed, the next leg resolves its NEW host — so the escort follows it from port to port. This
-  is also the current honest limitation: while the target is mid-transit the escort waits to see
-  where it lands rather than flying formation alongside the burn (velocity-matched shadowing is a
-  planned refinement). Escort legs are never reordered by *best order* — a moving target is not a
-  fixed waypoint.
+- **Chosen:** the escort targets the construct ITSELF — not its host. The transit solver flies a
+  real rendezvous to it **wherever it is, in port or in open space**, arriving velocity-matched.
+  From then on the escort is in genuine FORMATION: it mirrors its charge's motion moment to moment
+  through everything the charge subsequently does, trailing it along its velocity vector by your
+  **km standoff** (0 = wingtip formation; large = a shadowing tail outside sensor range).
+- **Reconsidered:** at every top-up — if the escort ever finds itself away from its charge (you
+  redeployed it, or it was engaged late), the next leg is a fresh intercept.
+- **Caveats:** a charge that is mid-BURN at solve time is aimed at via a straight-line projection
+  of its current velocity — catching a coasting, adrift or parked ship is accurate; a long chase
+  of a hard-accelerating target closes with a visible correction at arrival (aiming against the
+  target's committed flight plan is the planned refinement). Escort legs are never reordered by
+  *best order* — a moving target is not a fixed waypoint. And if you want to BUZZ a ship rather
+  than stay with it, that's the manual planner's Flyby arrival (set an intercept speed); autopilot
+  escorts always match velocity.
 
 The **Avoid** list (bottom of the tab) applies to every SEARCH above — a ship never auto-chooses
 an avoided body as a source or fuel stop. Naming an avoided place explicitly as a leg still works:
@@ -212,7 +214,9 @@ one definition.
 
 - Flyby legs (loiter 0) don't yet carry momentum into the next leg — each leg still starts and
   ends at rest. Banked with the slingshot planner.
-- Escorts hold at their charge's host between its transits rather than flying formation mid-burn.
+- Escort INTERCEPTS aim at a straight-line projection of the charge's current velocity — accurate
+  for parked/coasting/adrift charges, off for a target mid-burn (once caught, formation tracks it
+  through anything).
 - Life-support supplies are not yet modelled.
 - Moons inside a planet's Hill sphere don't get a nested sphere of their own (either for the
   overlay or for adrift ships).
