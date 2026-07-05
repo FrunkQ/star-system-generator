@@ -1,5 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+    import { get } from 'svelte/store';
+    import { fmt } from '$lib/stores';
     import { type StarSeed, stepNBody, handleMergers, shiftToBarycentricFrame, checkEjections, deriveStarFromHR } from '$lib/physics/stellar-evolution';
 
     const dispatch = createEventDispatcher();
@@ -327,7 +329,7 @@
 
                 ctx.fillStyle = '#00ff00';
                 ctx.font = '9px monospace';
-                ctx.fillText(`${speedKmS.toFixed(1)} km/s`, vEndX + 5, vEndY + 3);
+                ctx.fillText(get(fmt).speedKmS(speedKmS, 1), vEndX + 5, vEndY + 3);
             }
 
             // Reduced radius for better aesthetics

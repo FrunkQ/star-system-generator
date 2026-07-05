@@ -2,7 +2,7 @@
   import type { CelestialBody, RulePack, System, Tag } from '$lib/types';
   import { createEventDispatcher, onMount } from 'svelte';
   import { recalculateSystemPhysics } from '$lib/system/postprocessing';
-  import { systemStore } from '$lib/stores';
+  import { systemStore, fmt } from '$lib/stores';
   import { checkGasRetention, isCryoImpactedGreenhouseGas } from '$lib/physics/atmosphere';
   import { evaluateTagTriggers as evalTrigger } from '$lib/utils';
 
@@ -429,7 +429,7 @@
         </div>
         <div class="stat">
             <span class="label">Scale Height:</span>
-            <span class="value">{body.atmosphere.scaleHeightKm ? body.atmosphere.scaleHeightKm.toFixed(1) : '-'} km</span>
+            <span class="value">{body.atmosphere.scaleHeightKm ? $fmt.km(body.atmosphere.scaleHeightKm, 1) : '-'}</span>
         </div>
         <div class="stat">
             <span class="label" title="Percent of incoming stellar radiation blocked by atmospheric composition and pressure.">Radiation Block:</span>

@@ -6,7 +6,7 @@
   import { createEventDispatcher } from 'svelte';
   import { get } from 'svelte/store';
   import type { CelestialBody } from '$lib/types';
-  import { systemStore } from '$lib/stores';
+  import { systemStore, fmt } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
   import { resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
   import { getJourneyBounds } from '$lib/transit/scheduler';
@@ -77,13 +77,12 @@
       lo: 'Low orbit', mo: 'Medium orbit', ho: 'High orbit', geo: 'Geostationary orbit',
       surface: 'Surface', l4: 'L4', l5: 'L5'
   };
-  const fmtSpeed = (ms: number) => ms >= 1000 ? `${(ms / 1000).toFixed(1)} km/s` : `${Math.round(ms)} m/s`;
   function exitState(leg: any): string {
       const target = leg.targetId ? nodeName(leg.targetId) : '';
       const isFlyby = (leg.interceptSpeed_ms || 0) > 0 || (leg.segments || []).some((s: any) => (s.warnings || []).includes('Flyby'));
       if (isFlyby) {
           const v = leg.arrivalVelocity_ms || leg.interceptSpeed_ms || 0;
-          return `Fly-past${target ? ` of ${target}` : ''} — carries ${fmtSpeed(v)} Δv`;
+          return `Fly-past${target ? ` of ${target}` : ''} — carries ${$fmt.speedAuto(v)} Δv`;
       }
       if (leg.arrivalPlacement && PLACEMENT[leg.arrivalPlacement]) return `In ${PLACEMENT[leg.arrivalPlacement]}${target ? ` of ${target}` : ''}`;
       return target ? `Docked at ${target}` : 'Docked';
@@ -223,7 +222,7 @@
             {/if}
             <div class="ship-log-meta">Depart: {formatLogTime(leg.startTime)} {@render seekClock(leg.startTime)}</div>
             <div class="ship-log-meta">Arrive: {formatLogTime(arriveMs)} {@render seekClock(arriveMs)}</div>
-            <div class="ship-log-meta">Arrival speed: {fmtSpeed(leg.arrivalVelocity_ms || 0)}</div>
+            <div class="ship-log-meta">Arrival speed: {$fmt.speedAuto(leg.arrivalVelocity_ms || 0)}</div>
             <div class="ship-log-meta ship-log-exit">Ends: {exitState(leg)}</div>
           </div>
         {/each}

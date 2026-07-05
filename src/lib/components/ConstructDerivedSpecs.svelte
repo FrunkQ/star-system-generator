@@ -3,6 +3,7 @@
   import type { CelestialBody, RulePack } from '$lib/types';
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { AU_KM } from '$lib/constants';
+  import { fmt } from '$lib/stores';
   import { describeTag } from '$lib/tags/tagPresentation';
   import { getJourneyBounds } from '$lib/transit/scheduler';
   import AutopilotShipIcon from './AutopilotShipIcon.svelte';
@@ -272,7 +273,7 @@
       </div>
       <div class="spec-item derived" title="Total delta-V available in vacuum">
         <span class="label">Total Vacuum Δv</span>
-        <span class="value">{(specs.totalVacuumDeltaV_ms / 1000).toLocaleString(undefined, {maximumFractionDigits: 1})} km/s</span>
+        <span class="value">{$fmt.speedMs(specs.totalVacuumDeltaV_ms, 1)}</span>
       </div>
       {#if effectiveState === 'Transit'}
         <div class="spec-item derived" title="The ship is currently under way on a planned course">

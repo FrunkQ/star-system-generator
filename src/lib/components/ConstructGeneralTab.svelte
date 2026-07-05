@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import type { CelestialBody, System } from '$lib/types';
   import { AU_KM } from '$lib/constants';
+  import { fmt } from '$lib/stores';
   import { getPlanetColor } from '$lib/rendering/colors';
 
   export let system: System;
@@ -399,7 +400,7 @@
             }} />
         </div>
         <div class="altitude-display">
-            <span class="radius-info">Radius: {parentRadiusKm.toLocaleString()} km</span>
+            <span class="radius-info">Radius: {$fmt.km(parentRadiusKm)}</span>
         </div>
         <svg bind:this={sliderEl} class="slider-svg" 
              on:mousedown={() => isDragging = true} on:mouseup={() => isDragging = false} on:mouseleave={() => isDragging = false}

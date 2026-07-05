@@ -15,6 +15,7 @@
   } from '$lib/interstellar/transit';
   import { constructDisplayPlacement, interstellarConstructIds } from '$lib/transit/interstellar';
   import { redirectDeltaV, headingOffsetDeg } from '$lib/physics/redirect';
+  import { fmt } from '$lib/stores';
 
   export let starmap: Starmap;
   export let rulePack: RulePack;
@@ -182,7 +183,6 @@
   $: originLabel = originPlacement?.kind === 'adrift' ? 'adrift in interstellar space'
     : originPlacement?.kind === 'transit' ? 'in transit'
     : (shipSystemNode?.name ?? 'unknown');
-  const fmtSpeed = (ms: number) => ms >= 1000 ? `${(ms / 1000).toFixed(ms >= 100000 ? 0 : 1)} km/s` : `${Math.round(ms)} m/s`;
   const fmtMass = (kg: number) => kg >= 1000 ? `${(kg / 1000).toFixed(kg >= 100000 ? 0 : 1)} t` : `${Math.round(kg)} kg`;
 
   $: result = ((): TransitResult | null => {
@@ -305,7 +305,7 @@
         <p class="distance">Distance: <strong>{distanceInfo.value.toFixed(2)} {distanceInfo.unit}</strong>{#if destKind === 'vessel' && selectedVessel} → rendezvous with <strong>{selectedVessel.name}</strong>{:else if destBody} → final approach to <strong>{destBody.name}</strong>{/if}</p>
         {#if originVel.vx || originVel.vy}
           <p class="redirect">
-            Redirect Δv: <strong>{fmtSpeed(redirectDvMs)}</strong>{#if mode === 'realistic' && redirectFuelKg > 0} — burns <strong>{fmtMass(redirectFuelKg)}</strong> of propellant{/if}
+            Redirect Δv: <strong>{$fmt.speedAuto(redirectDvMs)}</strong>{#if mode === 'realistic' && redirectFuelKg > 0} — burns <strong>{fmtMass(redirectFuelKg)}</strong> of propellant{/if}
             <span class="muted">— current drift is {headingOffset.toFixed(0)}° off the new heading{#if headingOffset < 5} (almost free — you're already going this way){:else if headingOffset > 150} (nearly a full reversal — costs your whole speed){/if}</span>
           </p>
         {/if}
@@ -333,7 +333,7 @@
           <label class="slider">
             <span>Fuel committed to the outbound burn: <strong>{Math.round(fuelFraction * 100)}%</strong></span>
             <input type="range" min="0" max="1" step="0.01" bind:value={fuelFraction} />
-            <span class="hint">More fuel out = faster, but leaves less to brake. Ship Δv (full tank): {(shipDv / 1000).toFixed(1)} km/s</span>
+            <span class="hint">More fuel out = faster, but leaves less to brake. Ship Δv (full tank): {$fmt.speedMs(shipDv, 1)}</span>
           </label>
           <label class="slider">
             <span>Burn acceleration: <strong style="color:{crewColor}">{gForce.toFixed(1)} g</strong></span>
@@ -373,7 +373,7 @@
           <div class="times">
             <div><span class="k">Crew time</span><span class="v">{formatDuration(result.shipSeconds)}</span></div>
             <div><span class="k">Observer time</span><span class="v">{formatDuration(result.observerSeconds)}</span></div>
-            <div><span class="k">{mode === 'massless' ? 'Peak speed' : 'Cruise'}</span><span class="v">{result.cruise_ms > 0 ? (result.fractionC >= 0.01 ? fmtFractionC(result.fractionC) : (result.cruise_ms / 1000).toFixed(0) + ' km/s') : '—'}</span></div>
+            <div><span class="k">{mode === 'massless' ? 'Peak speed' : 'Cruise'}</span><span class="v">{result.cruise_ms > 0 ? (result.fractionC >= 0.01 ? fmtFractionC(result.fractionC) : $fmt.speedMs(result.cruise_ms, 0)) : '—'}</span></div>
             {#if result.gamma > 1.01 && Number.isFinite(result.gamma)}<div><span class="k">Dilation</span><span class="v">×{result.gamma.toFixed(2)}</span></div>{/if}
           </div>
           <p class="detail">{result.detail}</p>

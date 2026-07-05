@@ -78,6 +78,7 @@
     return m;
   })();
   let showScaleBar = starmap.scale?.showScaleBar ?? true;
+  let measurementUnits: 'metric' | 'imperial' = starmap.measurementUnits ?? 'metric';
   let normalizedTemporal = ensureTemporalState(starmap).temporal!;
   let activeCalendarKey = normalizedTemporal.activeCalendarKey;
   let calendarKeys = Object.keys(normalizedTemporal.temporal_registry);
@@ -133,6 +134,7 @@
         mapMode: diagrammatic ? 'diagrammatic' : 'scaled',
         generationEngine,
         invertDisplay,
+        measurementUnits,
         scale: {
           unit: distanceUnit,
           pixelsPerUnit: starmap.scale?.pixelsPerUnit && starmap.scale.pixelsPerUnit > 0 ? starmap.scale.pixelsPerUnit : 25,
@@ -249,6 +251,13 @@
           {/if}
           <div class="form-group">
             <label><input type="checkbox" bind:checked={showScaleBar} /> Show scale bar (scaled mode)</label>
+          </div>
+          <div class="form-group">
+            <label for="measurementUnits" title="How in-system distances and speeds are shown (radii, orbits, sensor ranges, Δv). Values are stored in SI either way — this is display only. The interstellar map unit above is separate.">Measurement units (in-system)</label>
+            <select id="measurementUnits" bind:value={measurementUnits}>
+              <option value="metric">Metric (km, km/s)</option>
+              <option value="imperial">Imperial (miles, mph)</option>
+            </select>
           </div>
 
           <h3>Map display</h3>

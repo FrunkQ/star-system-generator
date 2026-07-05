@@ -8,6 +8,7 @@
   import { AU_KM } from '$lib/constants';
   import type { RulePack } from '$lib/types';
   import { get } from 'svelte/store';
+  import { fmt } from '$lib/stores';
   import { getNodeColor } from '$lib/rendering/colors';
   import { getAbsoluteOrbitalDistanceAU } from '$lib/system/utils';
   import { calculateFlightTelemetry, type TelemetryPoint } from '$lib/transit/telemetry';
@@ -117,14 +118,14 @@
       if (isImpossible && plan) {
           return {
               title: 'Journey Cannot Be Executed',
-              detail: `Required delta-V is ${(plan.totalDeltaV_ms / 1000).toFixed(1)} km/s, but ship capability is ${(maxPotentialDeltaV_ms / 1000).toFixed(1)} km/s (fully fueled).`
+              detail: `Required delta-V is ${$fmt.speedMs(plan.totalDeltaV_ms, 1)}, but ship capability is ${$fmt.speedMs(maxPotentialDeltaV_ms, 1)} (fully fueled).`
           };
       }
 
       if (isInsufficientFuel && plan && currentConstructSpecs) {
           return {
               title: 'Journey Cannot Be Executed',
-              detail: `Required delta-V is ${(plan.totalDeltaV_ms / 1000).toFixed(1)} km/s, but current fuel supports ${(currentConstructSpecs.totalVacuumDeltaV_ms / 1000).toFixed(1)} km/s.`
+              detail: `Required delta-V is ${$fmt.speedMs(plan.totalDeltaV_ms, 1)}, but current fuel supports ${$fmt.speedMs(currentConstructSpecs.totalVacuumDeltaV_ms, 1)}.`
           };
       }
 
@@ -975,15 +976,15 @@
     {#if isImpossible && currentConstructSpecs && plan}
         <div class="warning-box impossible" style="background-color: #330000; border-color: #660000; color: #ff6666; text-align: left; padding: 0.8em; margin-bottom: 1em;">
              <strong>🚫 Engine Capability Exceeded (Insufficient Isp)</strong><br/>
-             Plan requires <span style="color: white;">{(plan.totalDeltaV_ms/1000).toFixed(1)} km/s</span>. 
-             Ship max (fully fueled) is <span style="color: white;">{(maxPotentialDeltaV_ms/1000).toFixed(1)} km/s</span>.
+             Plan requires <span style="color: white;">{$fmt.speedMs(plan.totalDeltaV_ms, 1)}</span>.
+             Ship max (fully fueled) is <span style="color: white;">{$fmt.speedMs(maxPotentialDeltaV_ms, 1)}</span>.
              <div style="font-size: 0.9em; color: #aaa; margin-top: 0.3em;">To achieve this range, you need higher efficiency engines (e.g. Nuclear/Fusion), not just more fuel.</div>
         </div>
     {:else if isInsufficientFuel && currentConstructSpecs && plan}
         <div class="warning-box insufficient-fuel" style="background-color: #332b00; border-color: #665500; color: #ffcc00; text-align: left; padding: 0.8em; margin-bottom: 1em;">
              <strong>⛽ Insufficient Fuel</strong><br/>
-             Plan requires <span style="color: white;">{(plan.totalDeltaV_ms/1000).toFixed(1)} km/s</span>.
-             Current fuel provides <span style="color: white;">{(currentConstructSpecs.totalVacuumDeltaV_ms/1000).toFixed(1)} km/s</span>.
+             Plan requires <span style="color: white;">{$fmt.speedMs(plan.totalDeltaV_ms, 1)}</span>.
+             Current fuel provides <span style="color: white;">{$fmt.speedMs(currentConstructSpecs.totalVacuumDeltaV_ms, 1)}</span>.
              <div style="font-size: 0.9em; color: #aaa; margin-top: 0.3em;">Refuel your ship to reach the required range.</div>
         </div>
     {/if}
@@ -1111,11 +1112,11 @@
             </div>
             <div class="result-item">
                 <span>Delta-V:</span>
-                <strong>{(plan.totalDeltaV_ms / 1000).toFixed(2)} km/s</strong>
+                <strong>{$fmt.speedMs(plan.totalDeltaV_ms, 2)}</strong>
             </div>
             <div class="result-item">
                 <span>Arrival Rel. Speed:</span>
-                <strong>{(plan.arrivalVelocity_ms / 1000).toFixed(2)} km/s</strong>
+                <strong>{$fmt.speedMs(plan.arrivalVelocity_ms, 2)}</strong>
             </div>
             <div class="result-item">
                 <span>Fuel:</span>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
+  import { fmt } from '$lib/stores';
   import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '$lib/constants';
   import { radiusReFromMassMakeup, massMeFromRadiusMakeup, makeupFractions } from '$lib/physics/makeup';
   import MakeupEditor from './MakeupEditor.svelte';
@@ -332,7 +333,7 @@
         <div class="form-group">
             <div class="label-row">
                 <label>Radius <span class="derived-tag" title="Radius is computed from the mass and interior makeup (with gravitational compression). Edit the mass or makeup to change it.">derived</span></label>
-                <div class="read-only-value">{Math.round(body.radiusKm || 0).toLocaleString()} km</div>
+                <div class="read-only-value">{$fmt.km(body.radiusKm || 0)}</div>
             </div>
             <div class="sub-label row-spaced">
                 <span>{((body.radiusKm || 0) / EARTH_RADIUS_KM).toFixed(2)} R⊕</span>
@@ -378,7 +379,7 @@
                 <option value="1" label="{Math.round(currentRadiusMax)}"></option>
             </datalist>
             <div class="sub-label row-spaced">
-                <span>{Math.round(body.radiusKm || 0).toLocaleString()} km</span>
+                <span>{$fmt.km(body.radiusKm || 0)}</span>
                 <span class="category-badge">{sizeCategory}</span>
             </div>
         </div>

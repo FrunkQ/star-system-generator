@@ -649,8 +649,10 @@ export interface Starmap {
   generationEngine?: 'standard' | 'evolutionary';
   invertDisplay?: boolean;
   scale?: StarmapScaleConfig;
-  distanceUnit: string;
+  distanceUnit: string;                        // INTERSTELLAR map unit (ly / pc / diagrammatic) — see mapMode
   unitIsPrefix: boolean;
+  measurementUnits?: 'metric' | 'imperial';    // IN-SYSTEM distance/speed display: km/km·s (default) vs miles/mph
+
   temporal?: TemporalState;
   rulePackOverrides?: RulePackOverrides;
   travellerMetadata?: {

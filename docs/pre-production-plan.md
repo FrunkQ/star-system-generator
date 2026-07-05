@@ -82,7 +82,12 @@ fixes, not one.
 
 ---
 
-## Phase B — Units (miles / km)  (self-contained, high visible value, low risk)
+## Phase B — Units (miles / km)  ✅ B1+B2 DONE (v2.0.245-beta); B3-inputs follow-up
+
+Foundation + display sweep shipped: `units.ts` formatter + `fmt`/`measurementUnit` store, Settings→Starmap
+toggle (default metric), ~16 display sites across 14 components routed through `$fmt`. REMAINING (B3-inputs):
+editable orbit inputs around a planet/moon should accept km (construct a_AU input, belt/ring inputs stay as
+authored units for now); the Δv budgets now read km/s in metric too (consider speedAuto for small values).
 
 Mechanical once the formatter exists; big call-site surface. Independent of every other phase — a clean
 stand-alone chunk.

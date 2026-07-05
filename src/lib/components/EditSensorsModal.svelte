@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import type { Starmap, RulePack, SensorDefinition } from '$lib/types';
   import { AU_KM } from '$lib/constants';
+  import { fmt } from '$lib/stores';
 
   export let showModal: boolean;
   export let rulePack: RulePack;
@@ -86,11 +87,13 @@
       }
   }
 
-  function formatRange(km: number): string {
+  // Reactive so the km-branch re-renders when the in-system unit (km/miles) toggles.
+  // The AU-branch stays as an astronomer's AU regardless of unit (acceptable for large ranges).
+  $: formatRange = (km: number): string => {
       if (km >= AU_KM * 0.1) return `${(km / AU_KM).toFixed(2)} AU`;
       if (km >= 1000000) return `${(km / 1000000).toFixed(1)}M km`;
-      return `${Math.round(km).toLocaleString()} km`;
-  }
+      return $fmt.km(km);
+  };
 
   function handleSave() {
     const overrides: any = {};

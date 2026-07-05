@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.245-beta - 5th Jul 2026
+
+* Measurement units toggle (Settings → Starmap → "Measurement units"): switch in-system distances and speeds between **Metric (km, km/s)** and **Imperial (miles, mi/s)**. Purely a display choice — everything is still stored and computed in SI. Covers body radii/circumferences, moon & local-orbit distances, orbital-zone bands, sensor ranges, Δv and arrival/cruise speeds, and the ruler readout. Planet/star orbits stay in AU (an astronomical unit, not a km/miles thing) and the interstellar map keeps ly/pc.
+
 ## v2.0.244-beta - 5th Jul 2026
 
 * Fixed legacy (V1) binary systems loading wrong. Two distinct bugs in the barycentre load path: (1) importing a system could crash the orrery with "Cannot read properties of undefined" when the scaled-position pass raced a just-loaded system; (2) a nested binary pair (a planet with an oversized moon that V1 had promoted to a barycentre) collapsed to the system centre / inside the star, because the import step deleted its barycentre and orphaned the pair. Both fixed — legacy binaries now load and sit where they should.

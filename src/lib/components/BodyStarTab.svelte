@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody } from '$lib/types';
+  import { fmt } from '$lib/stores';
   import { SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, G, C_MS } from '$lib/constants';
   import { STAR_COLOR_MAP } from '$lib/rendering/colors';
 
@@ -550,7 +551,7 @@
             <input type="range" min="0" max="1" step="0.001" bind:value={radiusSliderPos} disabled={isBH} on:input={updateRadius} class="full-width-slider overlay" />
         </div>
         <div class="sub-label">
-            {Math.round((body.radiusKm || 0) * 100) / 100 > 1000 ? Math.round(body.radiusKm || 0).toLocaleString() : (body.radiusKm || 0).toFixed(1)} km
+            {Math.round((body.radiusKm || 0) * 100) / 100 > 1000 ? $fmt.km(body.radiusKm || 0) : $fmt.km(body.radiusKm || 0, 1)}
             {#if isBH}— Schwarzschild radius, driven by mass (r = 2GM/c²){/if}
         </div>
     </div>

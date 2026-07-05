@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack, SensorInstance, SensorDefinition } from '$lib/types';
   import { AU_KM } from '$lib/constants';
+  import { fmt } from '$lib/stores';
 
   export let construct: CelestialBody;
   export let rulePack: RulePack;
@@ -40,21 +41,23 @@
       dispatch('update');
   }
 
-  function formatRange(km: number): string {
+  // Reactive so the km-branch re-renders when the in-system unit (km/miles) toggles.
+  // The AU-branch stays as an astronomer's AU regardless of unit (acceptable for large ranges).
+  $: formatRange = (km: number): string => {
       if (km >= AU_KM * 0.1) {
           return `${(km / AU_KM).toFixed(2)} AU`;
       }
       if (km >= 1000000) {
           return `${(km / 1000000).toFixed(1)}M km`;
       }
-      return `${Math.round(km).toLocaleString()} km`;
-  }
+      return $fmt.km(km);
+  };
 
-  function formatDefinitionRange(def: SensorDefinition): string {
+  $: formatDefinitionRange = (def: SensorDefinition): string => {
       const unit = def.preferred_unit || (def.range_km >= AU_KM ? 'AU' : 'km');
       if (unit === 'AU') return `${(def.range_km / AU_KM).toFixed(2)} AU`;
-      return `${Math.round(def.range_km).toLocaleString()} km`;
-  }
+      return $fmt.km(def.range_km);
+  };
 
   // Range Editing State
   let editingRangeIndex: number | null = null;

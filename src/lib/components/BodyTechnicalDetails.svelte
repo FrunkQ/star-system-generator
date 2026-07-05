@@ -6,7 +6,7 @@
   import { calculateDeltaVBudgets, calculateSurfaceTemperature, calculateGreenhouseEffect } from '$lib/system/postprocessing';
   import { isCryoImpactedGreenhouseGas } from '$lib/physics/atmosphere';
   import { composeSurfaceTemperatureFromDeltaComponents } from '$lib/physics/temperature';
-  import { systemStore } from '$lib/stores';
+  import { systemStore, fmt } from '$lib/stores';
   import { get } from 'svelte/store';
   import { calculateSurfaceRadiation } from '$lib/physics/radiation';
   import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_GRAVITY, EARTH_DENSITY, RADIATION_UNSHIELDED_DOSE_MSV_YR } from '$lib/constants';
@@ -189,10 +189,10 @@
 
         if (body.orbit) {
             if (body.roleHint === 'moon') {
-                orbitalDistanceDisplay = `${Math.round(body.orbit.elements.a_AU * AU_KM).toLocaleString()} km`;
+                orbitalDistanceDisplay = $fmt.km(body.orbit.elements.a_AU * AU_KM);
                 const peri = body.orbit.elements.a_AU * (1 - body.orbit.elements.e);
                 const aph = body.orbit.elements.a_AU * (1 + body.orbit.elements.e);
-                orbitalDistanceTooltip = `Periapsis: ${Math.round(peri * AU_KM).toLocaleString()} km\nApoapsis: ${Math.round(aph * AU_KM).toLocaleString()} km`;
+                orbitalDistanceTooltip = `Periapsis: ${$fmt.km(peri * AU_KM)}\nApoapsis: ${$fmt.km(aph * AU_KM)}`;
             } else {
                 orbitalDistanceDisplay = `${body.orbit.elements.a_AU.toFixed(3)} AU`;
                 const peri = body.orbit.elements.a_AU * (1 - body.orbit.elements.e);
@@ -543,14 +543,14 @@
               
                     {#if body.kind === 'body' && body.radiusKm}              <div class="detail-item">
                   <span class="label">Radius</span>
-                  <span class="value">{body.radiusKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+                  <span class="value">{$fmt.km(body.radiusKm)}</span>
               </div>
           {/if}
 
                 {#if circumferenceKm && !isStar}
                     <div class="detail-item">
                         <span class="label">Circumference</span>
-                        <span class="value">{circumferenceKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+                        <span class="value">{$fmt.km(circumferenceKm)}</span>
                     </div>
                 {/if}
                 {#if surfaceGravityG !== null && !isStar}
@@ -725,21 +725,21 @@
           <div class="detail-item orbital-zones">
               <span class="label">Orbital Zones</span>
               <div class="zone-details">
-                  <span><strong>Low Orbit:</strong> {Math.round(body.orbitalBoundaries.minLeoKm).toLocaleString()} - {Math.round(body.orbitalBoundaries.leoMoeBoundaryKm).toLocaleString()} km</span>
-                  
+                  <span><strong>Low Orbit:</strong> {$fmt.km(body.orbitalBoundaries.minLeoKm)} - {$fmt.km(body.orbitalBoundaries.leoMoeBoundaryKm)}</span>
+
                   {#if body.orbitalBoundaries.leoMoeBoundaryKm < body.orbitalBoundaries.meoHeoBoundaryKm}
-                    <span><strong>Mid Orbit:</strong> {Math.round(body.orbitalBoundaries.leoMoeBoundaryKm).toLocaleString()} - {Math.round(body.orbitalBoundaries.meoHeoBoundaryKm).toLocaleString()} km {#if body.orbitalBoundaries.isGeoFallback}(Galactic Standard){/if}</span>
+                    <span><strong>Mid Orbit:</strong> {$fmt.km(body.orbitalBoundaries.leoMoeBoundaryKm)} - {$fmt.km(body.orbitalBoundaries.meoHeoBoundaryKm)} {#if body.orbitalBoundaries.isGeoFallback}(Galactic Standard){/if}</span>
                   {/if}
-                  
+
                   {#if body.orbitalBoundaries.geoStationaryKm && !body.orbitalBoundaries.isGeoFallback}
-                      <span><strong>Geostationary:</strong> {Math.round(body.orbitalBoundaries.geoStationaryKm).toLocaleString()} km</span>
+                      <span><strong>Geostationary:</strong> {$fmt.km(body.orbitalBoundaries.geoStationaryKm)}</span>
                   {:else if !body.orbitalBoundaries.isGeoFallback && body.orbitalBoundaries.heoUpperBoundaryKm >= 1000}
                        <!-- Only show "Unstable" if it's not a micro-system (SOI >= 1000km) -->
                       <span><strong>Geostationary:</strong> Unstable</span>
                   {/if}
-                  
+
                   {#if body.orbitalBoundaries.meoHeoBoundaryKm < body.orbitalBoundaries.heoUpperBoundaryKm}
-                    <span><strong>High Orbit:</strong> {Math.round(body.orbitalBoundaries.meoHeoBoundaryKm).toLocaleString()} - {Math.round(body.orbitalBoundaries.heoUpperBoundaryKm).toLocaleString()} km</span>
+                    <span><strong>High Orbit:</strong> {$fmt.km(body.orbitalBoundaries.meoHeoBoundaryKm)} - {$fmt.km(body.orbitalBoundaries.heoUpperBoundaryKm)}</span>
                   {/if}
               </div>
           </div>
@@ -753,19 +753,19 @@
                       {#if isGasGiant}
                           <div><span><strong>Surface to LO:</strong> N/A - No surface</span></div>
                       {:else}
-                          <div><span><strong>Surface to LO:</strong> {body.loDeltaVBudget_ms.toLocaleString(undefined, {maximumFractionDigits: 0})} m/s</span></div>
+                          <div><span><strong>Surface to LO:</strong> {$fmt.speedMs(body.loDeltaVBudget_ms, 1)}</span></div>
                       {/if}
                   {/if}
                   {#if body.propulsiveLandBudget_ms !== undefined}
                        {#if isGasGiant}
                           <div><span><strong>LO to Surface (Propulsive):</strong> N/A - No surface</span></div>
                       {:else}
-                          <div><span><strong>LO to Surface (Propulsive):</strong> {body.propulsiveLandBudget_ms.toLocaleString(undefined, {maximumFractionDigits: 0})} m/s</span></div>
+                          <div><span><strong>LO to Surface (Propulsive):</strong> {$fmt.speedMs(body.propulsiveLandBudget_ms, 1)}</span></div>
                       {/if}
                   {/if}
                   {#if body.aerobrakeLandBudget_ms !== undefined}
                       {#if body.aerobrakeLandBudget_ms !== -1}
-                          <div><span><strong>{isGasGiant ? 'Aerobrake / Fuel Scoop' : 'LO to Surface (Aerobrake)'}:</strong> {body.aerobrakeLandBudget_ms.toLocaleString(undefined, {maximumFractionDigits: 0})} m/s</span></div>
+                          <div><span><strong>{isGasGiant ? 'Aerobrake / Fuel Scoop' : 'LO to Surface (Aerobrake)'}:</strong> {$fmt.speedMs(body.aerobrakeLandBudget_ms, 1)}</span></div>
                       {:else}
                           <div><span><strong>{isGasGiant ? 'Aerobrake / Fuel Scoop' : 'LO to Surface (Aerobrake)'}:</strong> N/A (No Atmosphere)</span></div>
                       {/if}
