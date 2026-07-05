@@ -15,6 +15,7 @@
   import CRTOverlay from '$lib/components/CRTOverlay.svelte';
   import { crtControls, CRT_DEFAULTS } from '$lib/catalogue/crtControls';
   import { AU_KM, G } from '$lib/constants';
+  import type { MeasurementUnits } from '$lib/units';
   import { MONO_COLORS, normalizeGuideConfig } from '$lib/catalogue/guideConfig';
   import type { MonoColor } from '$lib/catalogue/guideConfig';
   import { randomGuideNote } from '$lib/catalogue/guideNotes';
@@ -310,9 +311,12 @@
     return parts.join(' · ') || 'uncharted';
   }
 
+  let units: MeasurementUnits = 'metric';   // in-system km/miles, from the launcher URL (?units=)
+
   onMount(async () => {
     const params = new URLSearchParams(window.location.search);
     sessionId = params.get('sid');
+    units = params.get('units') === 'imperial' ? 'imperial' : 'metric';
     // Initial view from the URL (legacy green/amber theme keys fold into mono + colour);
     // the GM's SYNC_GUIDECONFIG broadcast takes over from there.
     applyGuideConfig({
@@ -485,7 +489,7 @@
             <img class="insp-photo" src={selectedBody.image.url} alt="Artist's impression of {selectedBody.name}" />
           {/if}
           <dl class="insp-grid">
-            {#each bodyFacts(selectedBody) as f}
+            {#each bodyFacts(selectedBody, units) as f}
               <dt>{f.label}</dt><dd>{f.value}</dd>
             {/each}
           </dl>
@@ -500,7 +504,7 @@
   {:else}
     <!-- Lo-fi / datapad / Guide: diagrammatic browser — clickable layout + a body panel. -->
     <div class="doc-scroll">
-      <CatalogueBrowser system={displaySystem} {includeConstructs} colorful={themeKey === 'guide'}
+      <CatalogueBrowser system={displaySystem} {includeConstructs} {units} colorful={themeKey === 'guide'}
         imagery={themeKey === 'guide' ? 'disc' : themeKey === 'clean' ? 'photo' : 'none'} />
     </div>
   {/if}

@@ -29,7 +29,7 @@
   import type { TransitPlan } from '$lib/transit/types';
   import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney, resolveConstructCurrentHostId, reconcileConstructArrival, trimFlownAutopilotPast } from '$lib/transit/scheduler';
 
-  import { systemStore, viewportStore } from '$lib/stores';
+  import { systemStore, viewportStore, measurementUnit } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
   import { interstellarConstructIds } from '$lib/transit/interstellar';
   import { generateAutopilotChain } from '$lib/transit/autopilotAdapter';
@@ -932,7 +932,8 @@
           system: $systemStore,
           mode: event.detail.mode,
           theme: event.detail.theme,
-          includeConstructs: event.detail.includeConstructs
+          includeConstructs: event.detail.includeConstructs,
+          units: get(measurementUnit)   // carry the GM's km/miles choice into the (separate-route) report
       };
       sessionStorage.setItem('reportData', JSON.stringify(reportData));
       window.open('/report', '_blank');

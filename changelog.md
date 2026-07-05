@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.246-beta - 5th Jul 2026
+
+* The measurement-units choice now also drives the **printed report** and the **player Companion catalogue/guide** — radii, local-orbit distances, ascent/landing Δv all honour km/miles. The report carries the GM's current setting; the Companion guide gets it from its launch link.
+
 ## v2.0.245-beta - 5th Jul 2026
 
 * Measurement units toggle (Settings → Starmap → "Measurement units"): switch in-system distances and speeds between **Metric (km, km/s)** and **Imperial (miles, mi/s)**. Purely a display choice — everything is still stored and computed in SI. Covers body radii/circumferences, moon & local-orbit distances, orbital-zone bands, sensor ranges, Δv and arrival/cruise speeds, and the ruler readout. Planet/star orbits stay in AU (an astronomical unit, not a km/miles thing) and the interstellar map keeps ly/pc.

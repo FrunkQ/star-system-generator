@@ -3,6 +3,7 @@
   import type { System, CelestialBody, Barycenter } from '$lib/types';
   import { AU_KM, G } from '$lib/constants';
   import { composeSurfaceTemperatureFromDeltaComponents } from '$lib/physics/temperature';
+  import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, type MeasurementUnits } from '$lib/units';
 
   // Extracted from /report so the printable report and the live /catalogue (Companion App)
   // can render the same player-safe document. Data arrives already redacted — both the report
@@ -13,6 +14,7 @@
   export let theme: string = 'retro';
   export let includeConstructs = true;
   export let chrome: 'report' | 'catalogue' = 'report';
+  export let units: MeasurementUnits = 'metric';   // in-system distance/speed display (km vs miles)
   let overviewMainHostId: string | null = null;
   let overviewBodies: Array<CelestialBody | Barycenter> = [];
   let rootStars: CelestialBody[] = [];
@@ -294,9 +296,8 @@
 
   function formatOrbitDist(a_au: number | undefined | null) {
       if (a_au === undefined || a_au === null) return '-';
-      if (a_au < 0.05) { 
-          return formatNumber(a_au * AU_KM, 0) + ' km';
-      }
+      // Close-in / local orbits render in km (or miles); wider star orbits keep AU.
+      if (a_au < 0.05) return formatDistanceAu(a_au, units);
       return a_au.toFixed(3) + ' AU';
   }
 
@@ -360,10 +361,10 @@
       if (body.kind === 'barycenter') return '-';
       const anyBody = body as any;
       if (anyBody.loDeltaVBudget_ms) {
-          const ascent = (anyBody.loDeltaVBudget_ms / 1000).toFixed(1) + ' km/s';
-          const land = anyBody.aerobrakeLandBudget_ms > 0 
-              ? (anyBody.aerobrakeLandBudget_ms / 1000).toFixed(1) + ' km/s (Aero)' 
-              : (anyBody.propulsiveLandBudget_ms / 1000).toFixed(1) + ' km/s';
+          const ascent = formatSpeedKmS(anyBody.loDeltaVBudget_ms / 1000, units, 1);
+          const land = anyBody.aerobrakeLandBudget_ms > 0
+              ? formatSpeedKmS(anyBody.aerobrakeLandBudget_ms / 1000, units, 1) + ' (Aero)'
+              : formatSpeedKmS(anyBody.propulsiveLandBudget_ms / 1000, units, 1);
           return `Ascent: ${ascent} | Land: ${land}`;
       }
       return '-';
@@ -950,7 +951,7 @@
                         <tbody>
                             <tr>
                                 <th>Mass</th><td>{(primary.massKg / 1.989e30).toFixed(3)} Solar Masses</td>
-                                <th>Radius</th><td>{formatNumber(primary.radiusKm)} km</td>
+                                <th>Radius</th><td>{formatDistanceKm(primary.radiusKm, units)}</td>
                                 {#if primary.temperatureK}
                                 <th>Temp</th><td>{Math.round((primary.temperatureK) - 273.15)}°C</td>
                                 {/if}
@@ -996,7 +997,7 @@
                                                     <tr><th>Day Length</th><td>{child.rotation_period_hours ? child.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
                                                     <tr><th>Axial Tilt</th><td>{(child as any).axial_tilt_deg ? (child as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
                                                     <tr><th>Mass</th><td>{phys.massRel}</td></tr>
-                                                    <tr><th>Radius</th><td>{formatNumber(child.radiusKm)} km</td></tr>
+                                                    <tr><th>Radius</th><td>{formatDistanceKm(child.radiusKm, units)}</td></tr>
                                                     <tr><th>Gravity</th><td>{phys.gravity}</td></tr>
                                                     <tr><th>Density</th><td>{phys.density}</td></tr>
                                                     <tr><th>Delta-V</th><td>{getOrbitalMechanics(child)}</td></tr>
@@ -1066,7 +1067,7 @@
                                                             <tr><th>Day Length</th><td>{grandchild.rotation_period_hours ? grandchild.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
                                                             <tr><th>Axial Tilt</th><td>{(grandchild as any).axial_tilt_deg ? (grandchild as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
                                                             <tr><th>Mass</th><td>{gPhys.massRel}</td></tr>
-                                                            <tr><th>Radius</th><td>{formatNumber(grandchild.radiusKm)} km</td></tr>
+                                                            <tr><th>Radius</th><td>{formatDistanceKm(grandchild.radiusKm, units)}</td></tr>
                                                             <tr><th>Gravity</th><td>{gPhys.gravity}</td></tr>
                                                             <tr><th>Density</th><td>{gPhys.density}</td></tr>
                                                             <tr><th>Delta-V</th><td>{getOrbitalMechanics(grandchild)}</td></tr>
@@ -1139,7 +1140,7 @@
                                             <tr><th>Day Length</th><td>{(topChild as CelestialBody).rotation_period_hours ? (topChild as CelestialBody).rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
                                             <tr><th>Axial Tilt</th><td>{(topChild as any).axial_tilt_deg ? (topChild as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
                                             <tr><th>Mass</th><td>{phys.massRel}</td></tr>
-                                            <tr><th>Radius</th><td>{formatNumber((topChild as CelestialBody).radiusKm)} km</td></tr>
+                                            <tr><th>Radius</th><td>{formatDistanceKm((topChild as CelestialBody).radiusKm, units)}</td></tr>
                                             <tr><th>Gravity</th><td>{phys.gravity}</td></tr>
                                             <tr><th>Density</th><td>{phys.density}</td></tr>
                                             <tr><th>Delta-V</th><td>{getOrbitalMechanics(topChild as CelestialBody)}</td></tr>
@@ -1209,7 +1210,7 @@
                                                     <tr><th>Day Length</th><td>{grandchild.rotation_period_hours ? grandchild.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
                                                     <tr><th>Axial Tilt</th><td>{(grandchild as any).axial_tilt_deg ? (grandchild as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
                                                     <tr><th>Mass</th><td>{gPhys.massRel}</td></tr>
-                                                    <tr><th>Radius</th><td>{formatNumber(grandchild.radiusKm)} km</td></tr>
+                                                    <tr><th>Radius</th><td>{formatDistanceKm(grandchild.radiusKm, units)}</td></tr>
                                                     <tr><th>Gravity</th><td>{gPhys.gravity}</td></tr>
                                                     <tr><th>Density</th><td>{gPhys.density}</td></tr>
                                                     <tr><th>Delta-V</th><td>{getOrbitalMechanics(grandchild)}</td></tr>
@@ -1313,7 +1314,7 @@
                                                     <tr><th>Eccentricity</th><td>{child.orbit?.elements.e.toFixed(3)}</td></tr>
                                                     <tr><th>Day Length</th><td>{child.rotation_period_hours ? child.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
                                                     <tr><th>Mass</th><td>{phys.massRel}</td></tr>
-                                                    <tr><th>Radius</th><td>{formatNumber(child.radiusKm)} km</td></tr>
+                                                    <tr><th>Radius</th><td>{formatDistanceKm(child.radiusKm, units)}</td></tr>
                                                     <tr><th>Gravity</th><td>{phys.gravity}</td></tr>
                                                 </tbody>
                                             </table>
@@ -1353,7 +1354,7 @@
                                                             <tr><th>Eccentricity</th><td>{grandchild.orbit?.elements.e.toFixed(3)}</td></tr>
                                                             <tr><th>Day Length</th><td>{grandchild.rotation_period_hours ? grandchild.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
                                                             <tr><th>Mass</th><td>{gPhys.massRel}</td></tr>
-                                                            <tr><th>Radius</th><td>{formatNumber(grandchild.radiusKm)} km</td></tr>
+                                                            <tr><th>Radius</th><td>{formatDistanceKm(grandchild.radiusKm, units)}</td></tr>
                                                             <tr><th>Gravity</th><td>{gPhys.gravity}</td></tr>
                                                         </tbody>
                                                      </table>
@@ -1396,7 +1397,7 @@
                                             <tr><th>Day Length</th><td>{(topBody as CelestialBody).rotation_period_hours ? (topBody as CelestialBody).rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
                                             <tr><th>Axial Tilt</th><td>{(topBody as any).axial_tilt_deg ? (topBody as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
                                             <tr><th>Mass</th><td>{phys.massRel}</td></tr>
-                                            <tr><th>Radius</th><td>{formatNumber((topBody as CelestialBody).radiusKm)} km</td></tr>
+                                            <tr><th>Radius</th><td>{formatDistanceKm((topBody as CelestialBody).radiusKm, units)}</td></tr>
                                             <tr><th>Gravity</th><td>{phys.gravity}</td></tr>
                                             <tr><th>Density</th><td>{phys.density}</td></tr>
                                             <tr><th>Delta-V</th><td>{getOrbitalMechanics(topBody as CelestialBody)}</td></tr>
@@ -1466,7 +1467,7 @@
                                                     <tr><th>Day Length</th><td>{moon.rotation_period_hours ? moon.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
                                                     <tr><th>Axial Tilt</th><td>{(moon as any).axial_tilt_deg ? (moon as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
                                                     <tr><th>Mass</th><td>{gPhys.massRel}</td></tr>
-                                                    <tr><th>Radius</th><td>{formatNumber(moon.radiusKm)} km</td></tr>
+                                                    <tr><th>Radius</th><td>{formatDistanceKm(moon.radiusKm, units)}</td></tr>
                                                     <tr><th>Gravity</th><td>{gPhys.gravity}</td></tr>
                                                     <tr><th>Density</th><td>{gPhys.density}</td></tr>
                                                     <tr><th>Delta-V</th><td>{getOrbitalMechanics(moon)}</td></tr>

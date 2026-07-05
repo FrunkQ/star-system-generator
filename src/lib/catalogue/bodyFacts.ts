@@ -2,6 +2,7 @@
 // interactive console inspector. The snapshot is already redacted, so we just format for reading.
 import type { CelestialBody } from '$lib/types';
 import { G, AU_KM } from '$lib/constants';
+import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, type MeasurementUnits } from '$lib/units';
 
 const EARTH_G = 9.80665;
 const EARTH_MASS_KG = 5.972e24;
@@ -12,10 +13,11 @@ export function fmtNum(n: number | undefined | null, d = 0): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: d });
 }
 
-export function orbitDist(b: CelestialBody): string {
+export function orbitDist(b: CelestialBody, units: MeasurementUnits = 'metric'): string {
   const a = b.orbit?.elements?.a_AU;
   if (typeof a !== 'number' || a <= 0) return '';
-  return a < 0.05 ? `${fmtNum(a * AU_KM)} km` : `${a.toFixed(3)} AU`;
+  // Close-in / local orbits render in km (or miles); wider star orbits keep AU.
+  return a < 0.05 ? formatDistanceAu(a, units) : `${a.toFixed(3)} AU`;
 }
 export function gravityG(b: CelestialBody): string {
   if (!b.massKg || !b.radiusKm) return '';
@@ -44,7 +46,7 @@ const titleCase = (s: string) => s.replace(/[-_/]/g, ' ').replace(/\b\w/g, (c) =
 // Full report-parity facts for a body, enriched with the Phase-04 derived data (temperature range,
 // radiation, geology, magnetism, fluids, ascent Δv). Both guide tiers (diagrammatic browser +
 // hi-tech console inspector) render this, so they match the printed report's depth.
-export function bodyFacts(b: CelestialBody): Fact[] {
+export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric'): Fact[] {
   const out: Fact[] = [];
   const any = b as any;
   const add = (label: string, value: string) => { if (value) out.push({ label, value }); };
@@ -55,7 +57,7 @@ export function bodyFacts(b: CelestialBody): Fact[] {
   add('Type', [b.roleHint, b.kind === 'construct' ? '' : b.class].filter(Boolean).join(' · '));
 
   // --- Orbit & rotation ---
-  add('Orbit distance', orbitDist(b));
+  add('Orbit distance', orbitDist(b, units));
   const e = b.orbit?.elements?.e;
   if (typeof e === 'number' && e >= 0.05) add('Eccentricity', e.toFixed(3));
   add('Orbital period', b.orbital_period_days ? `${b.orbital_period_days < 2 ? b.orbital_period_days.toFixed(2) : Math.round(b.orbital_period_days).toLocaleString()} days` : '');
@@ -65,7 +67,7 @@ export function bodyFacts(b: CelestialBody): Fact[] {
 
   // --- Bulk ---
   add('Mass', massRel(b));
-  add('Radius', b.radiusKm ? `${fmtNum(b.radiusKm)} km` : '');
+  add('Radius', b.radiusKm ? formatDistanceKm(b.radiusKm, units) : '');
   add('Gravity', gravityG(b));
   if (b.massKg && b.radiusKm) {
     const vol = (4 / 3) * Math.PI * Math.pow(b.radiusKm * 1000, 3);
@@ -93,7 +95,7 @@ export function bodyFacts(b: CelestialBody): Fact[] {
   }
   if (any.magneticField?.strengthGauss) add('Magnetosphere', `${any.magneticField.strengthGauss.toFixed(2)} G`);
   if (any.geoActivity?.regime) add('Geology', titleCase(String(any.geoActivity.regime)));
-  if (any.loDeltaVBudget_ms) add('Ascent Δv', `${(any.loDeltaVBudget_ms / 1000).toFixed(1)} km/s`);
+  if (any.loDeltaVBudget_ms) add('Ascent Δv', formatSpeedKmS(any.loDeltaVBudget_ms / 1000, units, 1));
 
   // --- Life ---
   if (typeof b.habitabilityScore === 'number') add('Habitability', `${Math.round(b.habitabilityScore)}%`);
