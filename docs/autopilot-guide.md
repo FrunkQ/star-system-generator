@@ -149,17 +149,15 @@ so there is nothing fixed to reorder).
   Defaults from the ship's Owner tag if you don't set it.
 - **Planning** — how far ahead the ship commits, in legs. Low = reactive, plans the next hop only;
   high = commits several legs and gives *best order* its reordering window.
-- **Drive** — the speed–economy axis. It does two things:
-  1. Picks the plan: fast ships take the quickest transfer, thrifty ships the cheapest — and a
-     thrifty ship will happily commit a **delayed launch window** if waiting a month makes the
-     transfer far cheaper (the wait shows in its log as time at the port).
-  2. Sets the **burn profile**: how much of each leg is under thrust. Thrifty end = 20% accelerate,
-     60% coast, 20% brake; speed end = 50/50 continuous burn with no coast at all, the classic
-     flip-and-burn. You can read this directly off the orrery — see *Reading the map* below.
-
-  **Fuel is a second limit on top**: if the chosen profile would cost more fuel than is aboard, the
-  ship automatically steps down to a longer coast — it goes slower rather than stranding itself.
-  Only if even the thriftiest profile won't fit does it stop and raise the stuck flag.
+- **Drive** — the speed–economy axis, doing two things. First it **picks the plan**: fast ships
+  take the quickest transfer, thrifty ships the cheapest — and a thrifty ship will happily commit a
+  **delayed launch window** if waiting a month makes the transfer far cheaper (the wait shows in its
+  log as time at the port). Second it sets the **burn profile** — how much of each leg is under
+  thrust: thrifty end 20% accelerate / 60% coast / 20% brake, speed end 50/50 continuous burn with
+  no coast at all (the classic flip-and-burn), which you can read straight off the orrery (see
+  *Reading the map*). **Fuel is a second limit on top:** if the chosen profile would cost more fuel
+  than is aboard, the ship steps down to a longer coast — it goes slower rather than stranding
+  itself, and only stops if even the thriftiest profile won't fit.
 
 ## Limits and safety
 

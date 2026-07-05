@@ -6,6 +6,11 @@
   import { coiCategories, coiTagLabel } from '$lib/constructs/coi';
   import { calculateFullConstructSpecs } from '$lib/construct-logic';
   import AutopilotShipIcon from './AutopilotShipIcon.svelte';
+  import HelpModal from './HelpModal.svelte';
+  // The user-facing guide, bundled from its single source in docs/ so the help reads the same as the repo doc.
+  import autopilotGuide from '../../../docs/autopilot-guide.md?raw';
+
+  let showHelp = false;
 
   export let construct: CelestialBody;
   export let system: System | null = null;
@@ -162,7 +167,15 @@
     <div>
       <span class="ap-title">Autopilot</span>
     </div>
+    <button type="button" class="ap-help" title="How autopilot works" aria-label="Autopilot guide" on:click={() => (showHelp = true)}>
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+      Guide
+    </button>
   </div>
+
+  {#if showHelp}
+    <HelpModal markdown={autopilotGuide} on:close={() => (showHelp = false)} />
+  {/if}
 
   <button type="button" class="engage-toggle" class:on={ap.enabled} class:stuck={ap.enabled && !!construct.autopilotStuckReason} class:disabled={!ap.enabled && !canEngage} aria-pressed={ap.enabled}
           on:click={() => {
@@ -379,6 +392,12 @@
   .ap { display: flex; flex-direction: column; gap: 16px; font-size: 13px; }
   .ap-head { display: flex; align-items: center; justify-content: space-between; }
   .ap-title { font-weight: 600; font-size: 15px; }
+  .ap-help {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--bg-control); border: 1px solid var(--border); border-radius: var(--radius-sm, 6px);
+    color: var(--text-muted, #cfcfcf); font-size: 12px; padding: 3px 8px; cursor: pointer;
+  }
+  .ap-help:hover { background: var(--bg-control-hover); color: var(--accent); border-color: var(--accent); }
   .ap-sub { color: var(--text-faint); font-size: 11px; margin-left: 8px; }
   .engage-toggle {
     display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 14px;
