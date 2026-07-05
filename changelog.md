@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.243-beta - 5th Jul 2026
+
+* The Autopilot tab now has a **Guide** button (top-right) that opens the full user guide in-app — how routes are chosen for each action, the sliders, fuel/cargo, escorts and the map colours. It reads the same doc that ships in the repo, so help and docs never drift.
+
 ## v2.0.242-beta - 5th Jul 2026
 
 * Escort formation is now capability-checked: a charge that burns harder than its escort's thrust ceiling leaves it behind — the escort coasts on from the break moment (deterministic) and commits a fresh chase at its next top-up. Cap the lead ship's Max acceleration to keep a mixed flotilla together.
