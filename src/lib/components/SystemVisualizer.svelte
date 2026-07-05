@@ -370,7 +370,7 @@
     };
   });
 
-  onDestroy(() => { cancelAnimationFrame(animationFrameId); stopInertia(); if (forecastSettleTimer) clearTimeout(forecastSettleTimer); });
+  onDestroy(() => { cancelAnimationFrame(animationFrameId); stopInertia(); });
 
   function screenToWorld(screenX: number, screenY: number): { x: number, y: number } {
       if (!canvas || !zoom) return { x: 0, y: 0 };
