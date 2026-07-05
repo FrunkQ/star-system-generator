@@ -25,6 +25,7 @@ export interface AutopilotStop {
   rate_tpd?: number;        // haul fill rate (t/day) — dwell = tonnes / (rate × abundance)
   abundance?: number;       // mine — source richness 0..1; a richer deposit fills faster (load/place = 1)
   action?: string;          // the leg's verb (mine/transport/patrol/explore/escort) — tags the journey for the log
+  parkRadiusAu?: number;    // escort — arrival parking radius (the escorted ship's orbit + the km standoff)
 }
 
 // A work event the planner emits at a stop (between transit journeys). The adapter finalises these into

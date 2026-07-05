@@ -131,4 +131,14 @@ describe('buildAdapterStops — escort follows a moving construct', () => {
     const stops = buildAdapterStops([{ action: 'escort', placeId: 'ghost' }], 'earth', sys([]), () => false, new Set(), false, 0);
     expect(stops).toHaveLength(0);
   });
+
+  it('honours the km standoff: parks at the escorted ship orbit + escortKm', () => {
+    const AU_KM = 149597870.7;
+    const system = sys([
+      body('mars', 'planet', 1.5),
+      { id: 'escortee', kind: 'construct', parentId: 'mars', orbit: { hostId: 'mars', elements: { a_AU: 0.0005 } } }
+    ]);
+    const stops = buildAdapterStops([{ action: 'escort', placeId: 'escortee', escortKm: 1000 }], 'earth', system, () => false, new Set(), false, 0);
+    expect(stops[0].parkRadiusAu).toBeCloseTo(0.0005 + 1000 / AU_KM, 9);
+  });
 });
