@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { keplerUniversal } from './twoBodyCoast';
+import { keplerUniversal, coastConicAt } from './twoBodyCoast';
+import { AU_KM, G } from '../constants';
+import type { System } from '../types';
 
 // Normalised units (mu = 1) so the maths is clean: a circular orbit at r=1 has v=1 and period 2π.
 const energy = (r: any, v: any, mu = 1) => (v.x * v.x + v.y * v.y) / 2 - mu / Math.hypot(r.x, r.y);
@@ -54,5 +56,90 @@ describe('keplerUniversal — deterministic two-body propagation', () => {
       const s = keplerUniversal(r0, v0, 1, dt);
       expect(energy(s.r, s.v)).toBeCloseTo(e0, 5);
     }
+  });
+
+  it('century-scale queries on a closed orbit stay exact (period reduction)', () => {
+    const r0 = { x: 1, y: 0 }, v0 = { x: 0, y: 1 }; // circular, mu=1, period 2π
+    const s = keplerUniversal(r0, v0, 1, 2 * Math.PI * 10_000 + Math.PI / 2); // 10k revs + a quarter
+    expect(s.r.x).toBeCloseTo(0, 4);
+    expect(s.r.y).toBeCloseTo(1, 4);
+  });
+});
+
+// —— Patched-conic SOI layer (coastConicAt) ————————————————————————————————————————————————————————————
+// Real SI system: a Sun-mass star at the root + a Jupiter on a circular 5.2 AU orbit. Hill radius
+// r_H = 5.2·∛(m_J/3M_☉) ≈ 0.355 AU.
+const SOLAR = 1.989e30;
+const M_JUP = 1.898e27;
+const AU_M = AU_KM * 1000;
+const A_JUP = 5.2;
+const vJup = Math.sqrt((G * SOLAR) / (A_JUP * AU_M)); // ≈ 13.06 km/s
+
+const star = { id: 'star', kind: 'body', roleHint: 'star', parentId: null, massKg: SOLAR };
+const jupiter = {
+  id: 'jup', kind: 'body', roleHint: 'planet', parentId: 'star', massKg: M_JUP,
+  orbit: { hostId: 'star', hostMu: G * SOLAR, t0: 0, elements: { a_AU: A_JUP, e: 0, M0_rad: 0, omega_deg: 0 } }
+};
+const sysStarOnly = { id: 'ref', nodes: [star] } as unknown as System;
+const sysWithJup = { id: 'jov', nodes: [star, jupiter] } as unknown as System;
+
+describe('coastConicAt — patched-conic SOI handoff', () => {
+  it('a drift past Jupiter gets BENT (the fling is back), unlike the star-only conic', () => {
+    // Start just inside Jupiter's Hill sphere (0.3 AU sunward of it, boundary at 0.355 AU), moving +y at
+    // 5 km/s relative to the planet — a hyperbolic flyby that should exit deflected.
+    const p0 = { x: A_JUP - 0.3, y: 0 };
+    const v0 = { x: 0, y: vJup + 5000 };
+    const AT = 1e7 * 1000; // ~116 days — well past the ~26-day sphere transit
+    const patched = coastConicAt(sysWithJup, p0, v0, 0, AT)!;
+    const starOnly = coastConicAt(sysStarOnly, p0, v0, 0, AT)!;
+    expect(Number.isFinite(patched.position_au.x)).toBe(true);
+    const dx = patched.position_au.x - starOnly.position_au.x;
+    const dy = patched.position_au.y - starOnly.position_au.y;
+    expect(Math.hypot(dx, dy)).toBeGreaterThan(0.02); // Jupiter measurably bent the trajectory
+    // ...and the encounter exchanged energy with the planet (a real slingshot, not a cosmetic wiggle).
+    const vP = Math.hypot(patched.velocity_ms.x, patched.velocity_ms.y);
+    const vS = Math.hypot(starOnly.velocity_ms.x, starOnly.velocity_ms.y);
+    expect(Math.abs(vP - vS)).toBeGreaterThan(50);
+  });
+
+  it('is query-order independent: incremental scrubbing matches the one-shot answer exactly', () => {
+    const p0 = { x: A_JUP - 0.3, y: 0 };
+    const v0 = { x: 0, y: vJup + 5000 };
+    const AT = 1e7 * 1000;
+    const oneShot = coastConicAt(sysWithJup, p0, v0, 0, AT)!;
+    // Different system id → different cache track, built by incremental queries instead of one jump.
+    const sysB = { id: 'jov-b', nodes: [star, jupiter] } as unknown as System;
+    for (const t of [1e6, 3e6, 6e6, 8e6]) coastConicAt(sysB, p0, v0, 0, t * 1000);
+    const incremental = coastConicAt(sysB, p0, v0, 0, AT)!;
+    expect(incremental.position_au.x).toBeCloseTo(oneShot.position_au.x, 10);
+    expect(incremental.position_au.y).toBeCloseTo(oneShot.position_au.y, 10);
+    expect(incremental.velocity_ms.x).toBeCloseTo(oneShot.velocity_ms.x, 6);
+    expect(incremental.velocity_ms.y).toBeCloseTo(oneShot.velocity_ms.y, 6);
+  });
+
+  it('a ship abandoned on a tight orbit INSIDE the sphere is captured — it stays with the planet', () => {
+    const rRel = 0.05; // AU from Jupiter, well inside r_H, apo ≪ 0.95·r_H → capture
+    const vCircJ = Math.sqrt((G * M_JUP) / (rRel * AU_M)); // ≈ 4.1 km/s circular about Jupiter
+    const p0 = { x: A_JUP - rRel, y: 0 };
+    const v0 = { x: 0, y: vJup + vCircJ };
+    for (const days of [30, 300, 1500]) {
+      const at = days * 86400 * 1000;
+      const s = coastConicAt(sysWithJup, p0, v0, 0, at)!;
+      // Jupiter's own position at t (circular orbit from angle n·t).
+      const ang = (vJup / (A_JUP * AU_M)) * days * 86400;
+      const jx = A_JUP * Math.cos(ang), jy = A_JUP * Math.sin(ang);
+      const d = Math.hypot(s.position_au.x - jx, s.position_au.y - jy);
+      expect(d).toBeLessThan(0.1); // still riding with the planet, not off on a sun ellipse
+    }
+  });
+
+  it('a ship that never reaches any planet band is EXACTLY the pure star conic (pruned, zero cost)', () => {
+    const vCirc1 = Math.sqrt((G * SOLAR) / AU_M);
+    const p0 = { x: 1, y: 0 }, v0 = { x: 0, y: vCirc1 }; // circular at 1 AU — can't reach 5.2±
+    const AT = 5 * 365.25 * 86400 * 1000;
+    const patched = coastConicAt(sysWithJup, p0, v0, 0, AT)!;
+    const starOnly = coastConicAt(sysStarOnly, p0, v0, 0, AT)!;
+    expect(patched.position_au.x).toBeCloseTo(starOnly.position_au.x, 10);
+    expect(patched.position_au.y).toBeCloseTo(starOnly.position_au.y, 10);
   });
 });
