@@ -10,7 +10,7 @@ import { resolveConstructCurrentHostId } from './scheduler';
 import { legToStops, walkStops, chooseSource, reorderWaypoints, selectAnyOrder, type AutopilotStop, type StopEvent } from './autopilotPlanner';
 
 const DAY_MS = 86_400_000;
-const G0 = 9.80665;
+const G0 = 9.81; // matches transit/physics G0 — capacity estimates here must use the same constant as calculateFuelMass
 
 // Autopilot flies a FIXED burn profile: 30% accel / 40% coast / 30% brake of each leg. Fire-and-forget legs
 // don't get the manual planner's per-leg profile sliders; a balanced profile is robust across ship classes
