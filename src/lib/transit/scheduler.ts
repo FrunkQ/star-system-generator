@@ -461,6 +461,32 @@ function samplePlanPathAtTime(
   return null;
 }
 
+// First moment at/after `fromMs` at which `construct` is under thrust exceeding `accelCap_ms2`, scanning its
+// committed journey segments (Accel/Brake Δv ÷ duration). Null if it never out-pulls the cap. Pure function
+// of the journey data, so the formation-break moment is deterministic and scrub-safe.
+function firstThrustAboveMs(construct: any, fromMs: number, accelCap_ms2: number): number | null {
+  let earliest: number | null = null;
+  for (const log of (construct?.scheduled_journeys ?? []) as any[]) {
+    if (log.status === 'cancelled') continue;
+    for (const plan of log.plans ?? []) {
+      for (const seg of plan.segments ?? []) {
+        if (seg.type !== 'Accel' && seg.type !== 'Brake') continue;
+        if (!(seg.endTime > fromMs)) continue;
+        const durSec = (seg.endTime - seg.startTime) / 1000;
+        if (!(durSec > 0)) continue;
+        const dvx = ((seg.endState?.v?.x ?? 0) - (seg.startState?.v?.x ?? 0)) * AU_M;
+        const dvy = ((seg.endState?.v?.y ?? 0) - (seg.startState?.v?.y ?? 0)) * AU_M;
+        const accel = Math.hypot(dvx, dvy) / durSec;
+        if (accel > accelCap_ms2) {
+          const at = Math.max(seg.startTime, fromMs);
+          if (earliest === null || at < earliest) earliest = at;
+        }
+      }
+    }
+  }
+  return earliest;
+}
+
 function samplePostJourneyState(
   system: System,
   log: { id: string; plans: TransitPlan[] },
@@ -506,23 +532,40 @@ function samplePostJourneyState(
   const targetNode = system.nodes.find((n) => n.id === lastPlan.targetId);
   if (targetNode) {
     if (targetNode.kind === 'construct' && !isExplicitDockToConstruct && finalPos) {
-      // It's a Rendezvous/Brake Burn with a Construct, but not a hard Dock.
-      // We should perfectly match its state (formation flying) — offset by the escort's km standoff when the
-      // journey carries one: the escort TRAILS its charge along the velocity vector (0 = wingtip formation,
-      // large = a shadowing tail). Same matched velocity either way.
-      const s = getGlobalState(system, targetNode as any, timeMs);
-      let px = s.r.x, py = s.r.y;
-      const standKm = (lastPlan as any).escortStandoffKm || 0;
-      const vmag = Math.hypot(s.v.x, s.v.y);
-      if (standKm > 0 && vmag > 1e-18) {
-        const offAu = standKm / AU_KM;
-        px -= (s.v.x / vmag) * offAu;
-        py -= (s.v.y / vmag) * offAu;
+      // It's a Rendezvous/Brake Burn with a Construct, but not a hard Dock: formation flying — the escort
+      // mirrors its charge, trailing along the velocity vector by the km standoff (0 = wingtip formation).
+      // CAPABILITY CHECK: formation only holds while the charge doesn't out-accelerate the escort. The plan
+      // carries the escort's own thrust ceiling (escortMaxAccel_ms2, +5% grace so identical ships never
+      // flap); the first committed charge burn above it BREAKS formation at that moment — the escort keeps
+      // the matched state it had right then and coasts (deterministic patched conic), visibly left behind,
+      // until the autopilot top-up commits a fresh chase.
+      const formationStandoff = (s: { r: Vector2; v: Vector2 }) => {
+        let px = s.r.x, py = s.r.y;
+        const standKm = (lastPlan as any).escortStandoffKm || 0;
+        const vmag = Math.hypot(s.v.x, s.v.y);
+        if (standKm > 0 && vmag > 1e-18) {
+          const offAu = standKm / AU_KM;
+          px -= (s.v.x / vmag) * offAu;
+          py -= (s.v.y / vmag) * offAu;
+        }
+        return { x: px, y: py };
+      };
+      const cap = (lastPlan as any).escortMaxAccel_ms2;
+      const breakMs = cap && cap > 0 ? firstThrustAboveMs(targetNode, completedAtMs, cap) : null;
+      if (breakMs !== null && timeMs >= breakMs) {
+        // LEFT BEHIND — freeze the formation state at the break moment and coast from there.
+        const sB = getGlobalState(system, targetNode as any, breakMs);
+        const posB = formationStandoff(sB);
+        const velB = { x: sB.v.x * AU_M, y: sB.v.y * AU_M };
+        const coasted = coastConicAt(system, posB, velB, breakMs, timeMs)
+          ?? coastUnderGravity(system, posB, velB, breakMs, timeMs);
+        return { journeyId: log.id, state: 'Deep Space', position_au: coasted.position_au, velocity_ms: coasted.velocity_ms };
       }
+      const s = getGlobalState(system, targetNode as any, timeMs);
       return {
         journeyId: log.id,
         state: 'Deep Space', // Matches Construct Rendezvous behavior
-        position_au: { x: px, y: py },
+        position_au: formationStandoff(s),
         velocity_ms: { x: s.v.x * AU_M, y: s.v.y * AU_M }
       };
     }

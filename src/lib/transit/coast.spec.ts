@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { coastUnderGravity, coastPathUnderGravity, sampleJourneyKinematicsAtTime } from './scheduler';
+import { coastConicAt } from '$lib/physics/twoBodyCoast';
 import type { System, CelestialBody } from '$lib/types';
 
 // One Sun-mass star at the system root (sits at the origin). A cut-loose ship then coasts under its real
@@ -83,6 +84,39 @@ describe('escort formation — rendezvous with a construct, velocity match + km 
     expect(res.position_au.x).toBeCloseTo(1, 9);
     expect(res.position_au.y).toBeCloseTo(-0.001, 9); // trailing behind the +y motion
     expect(res.velocity_ms.y).toBeCloseTo(30000, 6);  // same matched velocity either way
+  });
+
+  it('a charge that OUT-ACCELERATES the escort breaks formation — left behind, coasting from the break', () => {
+    // The charge commits a 10 m/s² burn at day 6. A 1 m/s² escort must break formation AT that moment and
+    // coast on from the state it held right then; a 100 m/s² escort keeps up as if nothing happened.
+    const burn = {
+      id: 's1', type: 'Accel', startTime: 6 * DAY, endTime: 6 * DAY + 3_600_000, hostId: 'star',
+      startState: { r: { x: 1, y: 0.0173 }, v: { x: 0, y: 30000 / AU_M } },
+      endState: { r: { x: 1, y: 0.0175 }, v: { x: 0, y: 66000 / AU_M } }, // +36 km/s over 1 h = 10 m/s²
+      pathPoints: [{ x: 1, y: 0.0173 }, { x: 1, y: 0.0175 }], warnings: [], fuelUsed_kg: 0
+    };
+    const chargeBurning = {
+      ...charge,
+      scheduled_journeys: [{ id: 'cj', status: 'scheduled', plans: [{ id: 'cp', originId: 'star', targetId: 'x', startTime: 6 * DAY, totalTime_days: 0.05, segments: [burn] }] }]
+    };
+    const sysB = { id: 'b', nodes: [starF, chargeBurning] } as unknown as System;
+    const escortWithCap = (cap: number) => {
+      const e: any = escortShip(undefined);
+      e.scheduled_journeys[0].plans[0].escortMaxAccel_ms2 = cap;
+      return e as CelestialBody;
+    };
+
+    const kept = sampleJourneyKinematicsAtTime(sysB, escortWithCap(100), 8 * DAY)!; // strong escort: still formation
+    expect(kept.position_au.x).toBeCloseTo(1, 6);
+    expect(kept.position_au.y).toBeCloseTo((30000 * 3 * 86400) / AU_M, 6); // charge's (linear) state at day 8
+
+    const left = sampleJourneyKinematicsAtTime(sysB, escortWithCap(1), 8 * DAY)!;   // weak escort: broken at day 6
+    const yAtBreak = (30000 * 86400) / AU_M; // charge state at the break moment (day 6, epoch day 5)
+    const exp = coastConicAt(sysB, { x: 1, y: yAtBreak }, { x: 0, y: 30000 }, 6 * DAY, 8 * DAY)!;
+    expect(left.position_au.x).toBeCloseTo(exp.position_au.x, 9); // EXACTLY the coast from the break state
+    expect(left.position_au.y).toBeCloseTo(exp.position_au.y, 9);
+    const gap = Math.hypot(left.position_au.x - kept.position_au.x, left.position_au.y - kept.position_au.y);
+    expect(gap).toBeGreaterThan(1e-4); // visibly left behind
   });
 });
 

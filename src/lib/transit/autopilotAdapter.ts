@@ -6,7 +6,8 @@ import type { ScheduledJourneyLog, TransitMode } from './types';
 import { calculateTransitPlan } from './calculator';
 import { calculateFullConstructSpecs } from '$lib/construct-logic';
 import { constructTardiness, constructReadiness } from '$lib/constructs/coi';
-import { resolveConstructCurrentHostId } from './scheduler';
+import { resolveConstructCurrentHostId, sampleJourneyKinematicsAtTime } from './scheduler';
+import { getGlobalState } from './physics';
 import { legToStops, walkStops, chooseSource, reorderWaypoints, selectAnyOrder, type AutopilotStop, type StopEvent } from './autopilotPlanner';
 
 const DAY_MS = 86_400_000;
@@ -179,8 +180,22 @@ export function generateAutopilotChain(
   const readiness = constructReadiness(construct);
   if (readiness <= 0) return { logs: [], flightLog: [], attention: 'stuck', stuckReason: 'not operational — its status prevents movement (repair/release it first)', done: false };
 
-  const startHostId = resolveConstructCurrentHostId(construct, fromTimeMs) || construct.parentId || '';
+  let startHostId = resolveConstructCurrentHostId(construct, fromTimeMs) || construct.parentId || '';
   if (!startHostId) return { logs: [], flightLog: [], attention: 'stuck', stuckReason: 'no host to depart from', done: false };
+  // If our nominal host is a CONSTRUCT we're no longer actually with — formation broken because the charge
+  // out-accelerated us, or we were redeployed — plan from our OWN position instead (origin = this ship, the
+  // same way the manual planner departs from wherever a ship is). This is what turns a broken formation
+  // into a fresh chase leg at the next top-up.
+  const hostNode: any = system.nodes.find((n) => n.id === startHostId);
+  if (hostNode?.kind === 'construct' && startHostId !== construct.id) {
+    const mine = sampleJourneyKinematicsAtTime(system, construct, fromTimeMs);
+    const myPos = mine?.position_au ?? (construct as any).vector_position_au;
+    if (myPos) {
+      const theirs = getGlobalState(system, hostNode, fromTimeMs);
+      const sepAu = Math.hypot(myPos.x - theirs.r.x, myPos.y - theirs.r.y);
+      if (sepAu > 0.01) startHostId = construct.id; // ~1.5M km — far beyond any sane standoff
+    }
+  }
 
   const nodeName = (id: string) => (system.nodes.find((n) => n.id === id) as any)?.name || id;
   const resLabel = (k?: string) => (k ? k.replace(/^resource\//, '').replace(/-/g, ' ') : '');
@@ -334,6 +349,12 @@ export function generateAutopilotChain(
     startCargo_t: Math.max(0, construct.current_cargo_tonnes || 0), // a full hauler delivers before it mines more
     cargoCapacity_t: (specs as any).cargoCapacity_tonnes || 0
   });
+
+  // Escort capability: stamp the escort's own thrust ceiling on its escort plans so the formation sampler
+  // can break formation the moment the charge out-accelerates it (+5% grace so identical ships never flap).
+  for (const p of res.plans) {
+    if ((p as any).autopilotAction === 'escort') (p as any).escortMaxAccel_ms2 = maxG * G0 * 1.05;
+  }
 
   const createdAtSec = BigInt(Math.floor(fromTimeMs / 1000)).toString();
   const logs: ScheduledJourneyLog[] = res.plans.map((p, i) => ({

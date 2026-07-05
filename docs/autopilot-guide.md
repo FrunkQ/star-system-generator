@@ -85,6 +85,11 @@ there is nothing hidden beyond it.
   From then on the escort is in genuine FORMATION: it mirrors its charge's motion moment to moment
   through everything the charge subsequently does, trailing it along its velocity vector by your
   **km standoff** (0 = wingtip formation; large = a shadowing tail outside sensor range).
+  Formation is CAPABILITY-CHECKED: the moment the charge commits a burn harder than the escort's
+  own thrust ceiling, formation breaks — the escort keeps the velocity it held at that instant and
+  coasts on, visibly left behind, until its next planning top-up commits a fresh chase (a charge
+  that keeps outrunning it ends in an honest stuck flag). If you want a mixed flotilla to hold
+  together, cap the LEAD ship's Max acceleration to the slowest escort's ceiling.
 - **Reconsidered:** at every top-up — if the escort ever finds itself away from its charge (you
   redeployed it, or it was engaged late), the next leg is a fresh intercept.
 - **Caveats:** a charge that is mid-BURN at solve time is aimed at via a straight-line projection
