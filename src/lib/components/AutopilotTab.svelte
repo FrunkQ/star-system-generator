@@ -366,7 +366,12 @@
   <section>
     <h6>Logistics <span class="note">Planning schedules refuel + restock; tick to skip entirely</span></h6>
     <label class="chk"><input type="checkbox" bind:checked={ap.ignoreFuel} on:change={update} /> Ignore fuel — this ship doesn't require or burn fuel</label>
-    <label class="chk"><input type="checkbox" bind:checked={ap.ignoreSupplies} on:change={update} /> Ignore life support — this ship doesn't need supplies</label>
+    <!-- Supplies aren't modelled yet, so every ship effectively ignores them — shown ticked + locked so the
+         UI reflects real capability instead of implying a working consumption model. Re-enable (bind to
+         ap.ignoreSupplies) when the supplies model lands. -->
+    <label class="chk disabled" title="Life-support supplies aren't modelled yet — every ship currently behaves as if this is on. Future feature.">
+      <input type="checkbox" checked disabled /> Ignore life support — supplies aren't modelled yet <span class="note">(future feature)</span>
+    </label>
   </section>
 </div>
 
@@ -448,6 +453,7 @@
   .sld-top .v.warn { color: #d8922f; }
   .sld-top .v.danger { color: #cc5555; }
   .chk { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .chk.disabled { opacity: 0.45; cursor: not-allowed; }
   .inline-chk { display: inline-flex; align-items: center; gap: 5px; color: var(--text-muted); cursor: pointer; font-size: 12px; }
   .res-pick { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 5px; }
   .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--bg-surface, var(--bg-control)); border: 1px solid var(--border); border-radius: 999px; padding: 2px 4px 2px 8px; font-size: 11px; }
