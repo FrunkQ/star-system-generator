@@ -221,9 +221,19 @@ export function generateAutopilotChain(
       const all = calculateTransitPlan(system, originId, targetId, startMs, mode, params);
       const valid = all.filter((p) => p.isValid && !p.hiddenReason);
       if (!valid.length) continue; // a coastier profile may still be solvable
+      // Max time per leg counts the WHOLE leg — a delayed launch window PLUS the transit. A cheap plan that
+      // waits 300 days for alignment busts a 250-day cap even if it only flies 200; when the capped set is
+      // non-empty, choose from it (a faster family wins over waiting), and only when NOTHING fits keep the
+      // uncapped best so the walker's over-cap stuck flag reports real numbers.
+      const elapsedDays = (p: any) => ((Number.isFinite(p.startTime) ? p.startTime : startMs) - startMs) / DAY_MS + (p.totalTime_days || 0);
+      let pool = valid;
+      if (ap.maxJourneyDays && ap.maxJourneyDays > 0) {
+        const within = valid.filter((p) => elapsedDays(p) <= ap.maxJourneyDays);
+        if (within.length) pool = within;
+      }
       // Drive: fast → least time; thrifty → least Δv/fuel.
-      valid.sort((a, b) => (driveFast ? a.totalTime_days - b.totalTime_days : a.totalDeltaV_ms - b.totalDeltaV_ms));
-      const chosen = valid[0];
+      pool.sort((a: any, b: any) => (driveFast ? a.totalTime_days - b.totalTime_days : a.totalDeltaV_ms - b.totalDeltaV_ms));
+      const chosen = pool[0];
       // Arrival = the plan's OWN departure + transit: the Most Efficient family can commit a DELAYED launch
       // window (startTime = now + up to ~1000 days — this IS the "wait for alignment" behaviour, thrifty
       // ships pick it by Δv), so anchoring arrival on the requested startMs understated every delayed leg

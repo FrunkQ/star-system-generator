@@ -58,6 +58,25 @@ describe('autopilot walkStops — in-order chain', () => {
   });
 });
 
+describe('walkStops — Max time per leg counts the WHOLE leg', () => {
+  it('a delayed launch window counts against the cap, not just the transit', () => {
+    // 5-day transit but a 10-day launch-window wait → 15 days elapsed. A 12-day cap must reject it even
+    // though the flight alone fits.
+    const solveLeg: SolveLeg = (originId, targetId, startMs) => {
+      const depart = startMs + 10 * DAY_MS; // delayed window
+      const plan: any = { id: 'p', targetId, startTime: depart, totalTime_days: 5, totalDeltaV_ms: 100, isValid: true };
+      return { plans: [plan], arriveMs: depart + 5 * DAY_MS, deltaV_ms: 100, valid: true };
+    };
+    const r = walkStops([patrol('A')], { ...baseOpts, planningHorizon: 1, solveLeg, maxJourneyDays: 12 });
+    expect(r.attention).toBe('stuck');
+    expect(r.stuckReason).toContain('12-day cap');
+    // ...and a cap that accommodates the wait passes.
+    const ok = walkStops([patrol('A')], { ...baseOpts, planningHorizon: 1, solveLeg, maxJourneyDays: 20 });
+    expect(ok.attention).toBeNull();
+    expect(ok.plans).toHaveLength(1);
+  });
+});
+
 describe('walkStops — hands its running Δv budget to solveLeg', () => {
   it('passes the remaining budget per hop so production can step the burn profile down', () => {
     const seen: (number | undefined)[] = [];

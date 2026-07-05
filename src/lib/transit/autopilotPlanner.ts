@@ -212,9 +212,11 @@ export function walkStops(stops: AutopilotStop[], opts: AutopilotPlanOpts): Auto
       if (!solve || !solve.valid) {
         return { plans: out, events, endHostId: host, attention: 'stuck', stuckReason: `no route to ${stop.targetId}`, done: false, finalTimeMs: t };
       }
-      const legDays = solve.plans.reduce((s, p) => s + (p.totalTime_days || 0), 0);
+      // Whole-leg cap: elapsed from "ready to depart" to arrival — so a delayed launch window (the thrifty
+      // wait-for-alignment plan) counts against Max time per leg, not just the transit itself.
+      const legDays = (solve.arriveMs - t) / DAY_MS;
       if (opts.maxJourneyDays && legDays > opts.maxJourneyDays) {
-        return { plans: out, events, endHostId: host, attention: 'stuck', stuckReason: `hop to ${stop.targetId} exceeds the ${opts.maxJourneyDays}-day cap`, done: false, finalTimeMs: t };
+        return { plans: out, events, endHostId: host, attention: 'stuck', stuckReason: `hop to ${stop.targetId} exceeds the ${opts.maxJourneyDays}-day cap (${Math.round(legDays)} days incl. any launch-window wait)`, done: false, finalTimeMs: t };
       }
       if (budget < solve.deltaV_ms) {
         // Basic stuck-flag: can't reach the next stop and no top-up was available at this one.

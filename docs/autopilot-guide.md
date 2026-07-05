@@ -114,7 +114,7 @@ thrifty ships the least FUEL (usually Most Efficient) — which is why a thrifty
 port waiting for an alignment window: that IS its cheapest route, and the wait shows in its log.
 Drive also sets the burn profile within the leg (20/60/20 coast-heavy up to 50/50 continuous
 burn), fuel shortage steps that profile automatically toward longer coasts, and *Max time per leg*
-strikes out any plan slower than your cap.
+strikes out any plan whose WHOLE elapsed leg — launch-window wait included — exceeds your cap.
 
 The *best order* / *any* traversals cost their candidate orderings with a lightweight quote from
 the **same solver** at the projected departure times — so "wait for the planets to align" and
@@ -159,10 +159,14 @@ so there is nothing fixed to reorder).
 - **Max acceleration** — cap thrust below the drive's ceiling, for crew comfort (1–1.5 g is a sane
   ceiling for humans) or so slower escorts can keep up. The readout shows the drive's real range
   from fully-fuelled to empty tanks.
-- **Max time per leg** — a hard cap on any single leg. Prevents the zero-fuel fifty-year crawl.
-- **Ignore fuel / Ignore life support** — modelling shortcuts declaring the ship simply doesn't
-  consume these. (Life-support supplies aren't yet modelled; the switch is there for when they
-  are.)
+- **Max time per leg** — a hard cap on any single leg, counting the WHOLE leg: a delayed launch
+  window is part of the leg, so a plan that waits 300 days and flies 200 busts a 250-day cap.
+  When the cheap-but-waiting plan is over the cap, the ship takes a faster family instead of
+  stranding; only if nothing fits does it stop with the over-cap reason. Prevents the zero-fuel
+  fifty-year crawl.
+- **Ignore fuel** — a modelling shortcut declaring the ship simply doesn't consume fuel.
+- **Ignore life support** — shown ticked and locked: supplies aren't modelled yet, so every ship
+  currently behaves as if this is on. It will unlock when the supplies model lands.
 
 When the ship cannot proceed — no route, over the leg cap, out of fuel with no top-up available —
 it stops and shows a red **stuck** banner on the Autopilot tab with the exact reason. The Routes
