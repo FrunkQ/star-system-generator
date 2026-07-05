@@ -195,7 +195,14 @@ function radialRange(r0: Vector2, v0: Vector2, mu: number): { rp: number; ra: nu
 // orbit the root DIRECTLY (their root-distance band is just a(1±e)); S-type/other hierarchies are kept and
 // left to the march. Valid for the whole segment — the conic doesn't change until the next handoff.
 function pruneCandidates(seg: CoastSegment, rootId: string, cands: SoiCandidate[]): SoiCandidate[] {
-  const { rp, ra } = radialRange(seg.r0, seg.v0, seg.mu);
+  let { rp, ra } = radialRange(seg.r0, seg.v0, seg.mu);
+  // An UNBOUND ship already heading outward never comes back down: its future radii start at where it is
+  // now, not at the conic's periapsis (which it passed long ago). Without this, a ship 50 years into an
+  // escape still "overlaps" every planet band and encounter-marches for nothing.
+  const rNow = Math.hypot(seg.r0.x, seg.r0.y);
+  const outbound = seg.r0.x * seg.v0.x + seg.r0.y * seg.v0.y >= 0;
+  const E = (seg.v0.x * seg.v0.x + seg.v0.y * seg.v0.y) / 2 - seg.mu / rNow;
+  if (E >= 0 && outbound) rp = Math.max(rp, rNow * 0.999);
   return cands.filter((c) => {
     const hostId = c.node.orbit?.hostId ?? c.node.parentId;
     if (hostId !== rootId) return true; // not a direct root orbiter — can't cheaply band it, keep it
