@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.247-beta - 5th Jul 2026
+
+* Editable distance/speed inputs now follow the measurement-units choice too: their labels show the current unit (Altitude (km)/(mi), ring radii, Max Entry Speed (km/s)/(mi/s)) and you edit in that unit — converted back to SI on save, with no round-trip drift. Caught a few more raw km/s readouts that the first pass missed (construct Δv in the technical panel, relativistic cruise speed, ring parent Hill-sphere). Belt/orbit distances stay in AU; the body Radius editor is left for the upcoming mass/radius/density rework.
+
 ## v2.0.246-beta - 5th Jul 2026
 
 * The measurement-units choice now also drives the **printed report** and the **player Companion catalogue/guide** — radii, local-orbit distances, ascent/landing Δv all honour km/miles. The report carries the GM's current setting; the Companion guide gets it from its launch link.

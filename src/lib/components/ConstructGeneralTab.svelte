@@ -390,11 +390,12 @@
   {#if showOrbitalSlider}
     <div class="form-group slider-group">
         <div class="label-row">
-            <label>Altitude (km)</label>
-            <input type="number" step="any" min="0" value={Math.round(((construct.orbit?.elements.a_AU || 0) * AU_KM) - parentRadiusKm)} on:input={(e) => {
-                const alt = parseFloat(e.currentTarget.value);
-                if (isNaN(alt)) return;
-                if (construct.orbit) construct.orbit.elements.a_AU = (alt + parentRadiusKm) / AU_KM;
+            <label>Altitude ({$fmt.distUnit})</label>
+            <input type="number" step="any" min="0" value={Math.round($fmt.toDist(((construct.orbit?.elements.a_AU || 0) * AU_KM) - parentRadiusKm))} on:input={(e) => {
+                const disp = parseFloat(e.currentTarget.value);
+                if (isNaN(disp)) return;
+                const altKm = $fmt.fromDist(disp);
+                if (construct.orbit) construct.orbit.elements.a_AU = (altKm + parentRadiusKm) / AU_KM;
                 updateSliderState();
                 dispatch('update');
             }} />

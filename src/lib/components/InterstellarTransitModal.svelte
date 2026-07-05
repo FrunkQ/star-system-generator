@@ -350,7 +350,7 @@
           <label class="slider">
             <span>Cruise speed: <strong>{fmtPctC(speedFrac)}</strong></span>
             <input type="range" min="0" max="1" step="0.001" bind:value={speedSv} />
-            <span class="hint">{(speedFrac * C_MS / 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })} km/s · slider is log near 0 and near c (reaches 99.999%).</span>
+            <span class="hint">{$fmt.speedMs(speedFrac * C_MS, 0)} · slider is log near 0 and near c (reaches 99.999%).</span>
           </label>
           {#if relEnergyJ > 0}
             <p class="energy">Kinetic energy to reach {fmtPctC(speedFrac)} for this ship ({(shipMassKg / 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })} t): <strong>{relEnergyJ.toExponential(2)} J</strong> — equivalent to converting <strong>{massEnergyEquivalent(relEnergyJ)}</strong> entirely to energy.</p>

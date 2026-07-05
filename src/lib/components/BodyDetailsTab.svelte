@@ -2,6 +2,7 @@
   import { untrack, createEventDispatcher } from 'svelte';
   import type { CelestialBody } from '$lib/types';
   import { AU_KM, EARTH_MASS_KG } from '$lib/constants';
+  import { fmt } from '$lib/stores';
 
   import { calculateAllStellarZones } from '$lib/physics/zones';
 
@@ -246,19 +247,19 @@
         <!-- RING (KM) -->
         <div class="form-group">
             <div class="label-row">
-                <label>Inner Radius (km)</label>
-                <input type="number" step="100" bind:value={ringInnerKm} on:input={updateRingDimensions} />
+                <label>Inner Radius ({$fmt.distUnit})</label>
+                <input type="number" step="any" value={Math.round($fmt.toDist(ringInnerKm))} on:input={(e) => { ringInnerKm = $fmt.fromDist(parseFloat(e.currentTarget.value) || 0); updateRingDimensions(); }} />
             </div>
             <input type="range" min="0" max="1" step="0.001" bind:value={innerSliderPos} on:input={handleRingSlider} class="full-width-slider" />
         </div>
         
         <div class="form-group">
             <div class="label-row">
-                <label>Outer Radius (km)</label>
-                <input type="number" step="100" bind:value={ringOuterKm} on:input={updateRingDimensions} />
+                <label>Outer Radius ({$fmt.distUnit})</label>
+                <input type="number" step="any" value={Math.round($fmt.toDist(ringOuterKm))} on:input={(e) => { ringOuterKm = $fmt.fromDist(parseFloat(e.currentTarget.value) || 0); updateRingDimensions(); }} />
             </div>
             <input type="range" min="0" max="1" step="0.001" bind:value={outerSliderPos} on:input={handleRingSlider} class="full-width-slider" />
-            <div class="sub-label">Parent Hill Sphere: {Math.round(parentSoiKm).toLocaleString()} km</div>
+            <div class="sub-label">Parent Hill Sphere: {$fmt.km(parentSoiKm)}</div>
         </div>
     {/if}
 

@@ -483,7 +483,7 @@
           <span class="value">{constructSpecs.maxVacuumG.toFixed(2)} g</span>        </div>
         <div class="detail-item">
           <span class="label">Total Vacuum Δv</span>
-          <span class="value">{(constructSpecs.totalVacuumDeltaV_ms / 1000).toLocaleString(undefined, {maximumFractionDigits: 1})} km/s</span>
+          <span class="value">{$fmt.speedMs(constructSpecs.totalVacuumDeltaV_ms, 1)}</span>
         </div>
         <div class="detail-item">
           <span class="label">Power Surplus</span>

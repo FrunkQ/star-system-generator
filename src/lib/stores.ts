@@ -1,7 +1,8 @@
 import { writable, derived } from 'svelte/store';
 import type { System, Starmap } from './types';
 import {
-  formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatSpeedAuto, distanceUnitLabel,
+  formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatSpeedAuto, distanceUnitLabel, speedUnitLabel,
+  kmToDisplayNum, displayNumToKm, kmsToDisplayNum, displayNumToKms,
   type MeasurementUnits
 } from './units';
 
@@ -38,6 +39,12 @@ export const fmt = derived(measurementUnit, (u) => ({
   speedMs: (ms: number, decimals = 1) => formatSpeedKmS(ms / 1000, u, decimals), // value in M/S (e.g. Δv)
   speedAuto: (ms: number) => formatSpeedAuto(ms, u),                           // value in M/S, magnitude-aware
   distUnit: distanceUnitLabel(u),                                             // bare "km" | "mi" label
+  speedUnit: speedUnitLabel(u),                                              // bare "km/s" | "mi/s" label
+  // Editable-input converters (SI ↔ display unit): value in KM/KM·S shown/edited in the display unit.
+  toDist: (km: number) => kmToDisplayNum(km, u),
+  fromDist: (v: number) => displayNumToKm(v, u),
+  toKmS: (kmps: number) => kmsToDisplayNum(kmps, u),
+  fromKmS: (v: number) => displayNumToKms(v, u),
   units: u
 }));
 

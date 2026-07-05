@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatSpeedAuto, MILE_PER_KM } from './units';
+import {
+  formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatSpeedAuto, MILE_PER_KM,
+  kmToDisplayNum, displayNumToKm, kmsToDisplayNum, displayNumToKms
+} from './units';
 import { AU_KM } from './constants';
 
 describe('units — metric vs imperial display (SI stays internal)', () => {
@@ -27,6 +30,19 @@ describe('units — metric vs imperial display (SI stays internal)', () => {
     expect(formatSpeedAuto(9000, 'metric')).toBe('9.0 km/s');
     expect(formatSpeedAuto(500, 'imperial').endsWith(' ft/s')).toBe(true);
     expect(formatSpeedAuto(9000, 'imperial').endsWith(' mi/s')).toBe(true);
+  });
+
+  it('input converters round-trip cleanly (edit in the display unit, store in SI)', () => {
+    // metric is identity
+    expect(kmToDisplayNum(6371, 'metric')).toBe(6371);
+    expect(displayNumToKm(6371, 'metric')).toBe(6371);
+    // imperial converts and round-trips back to the same km
+    const mi = kmToDisplayNum(6371, 'imperial');
+    expect(mi).toBeCloseTo(6371 * MILE_PER_KM, 6);
+    expect(displayNumToKm(mi, 'imperial')).toBeCloseTo(6371, 6);
+    // speed converters likewise
+    const mis = kmsToDisplayNum(11, 'imperial');
+    expect(displayNumToKms(mis, 'imperial')).toBeCloseTo(11, 6);
   });
 
   it('non-finite is dashed, never NaN', () => {

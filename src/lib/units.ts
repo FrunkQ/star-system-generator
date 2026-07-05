@@ -61,3 +61,22 @@ export function formatSpeedAuto(ms: number, units: MeasurementUnits): string {
 export function distanceUnitLabel(units: MeasurementUnits): string {
   return units === 'imperial' ? 'mi' : 'km';
 }
+
+export function speedUnitLabel(units: MeasurementUnits): string {
+  return units === 'imperial' ? 'mi/s' : 'km/s';
+}
+
+// NUMERIC converters for editable INPUTS — a value stored in km/km·s, shown/edited in the display unit and
+// converted back on input (so an imperial GM edits in miles). No formatting, just the number.
+export function kmToDisplayNum(km: number, units: MeasurementUnits): number {
+  return units === 'imperial' ? km * MILE_PER_KM : km;
+}
+export function displayNumToKm(v: number, units: MeasurementUnits): number {
+  return units === 'imperial' ? v * KM_PER_MILE : v;
+}
+export function kmsToDisplayNum(kmps: number, units: MeasurementUnits): number {
+  return units === 'imperial' ? kmps * MILE_PER_KM : kmps;
+}
+export function displayNumToKms(v: number, units: MeasurementUnits): number {
+  return units === 'imperial' ? v * KM_PER_MILE : v;
+}
