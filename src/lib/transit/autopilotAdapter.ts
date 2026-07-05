@@ -12,6 +12,14 @@ import { legToStops, walkStops, chooseSource, reorderWaypoints, selectAnyOrder, 
 const DAY_MS = 86_400_000;
 const G0 = 9.80665;
 
+// Autopilot flies a FIXED burn profile: 30% accel / 40% coast / 30% brake of each leg. Fire-and-forget legs
+// don't get the manual planner's per-leg profile sliders; a balanced profile is robust across ship classes
+// and leaves the solver coast margin. This is the ONE deliberate input difference from the manual planner
+// (the solver itself is shared) — a hand-tuned manual quote for the same route can legitimately differ in
+// time/fuel from the committed autopilot leg. Keep these as the single source if more call sites appear.
+const AUTOPILOT_ACCEL_RATIO = 0.3;
+const AUTOPILOT_BRAKE_RATIO = 0.3;
+
 const aAU = (sys: System, id: string) => (sys.nodes.find((n) => n.id === id) as any)?.orbit?.elements?.a_AU ?? 0;
 const ELIGIBLE_ROLES = new Set(['planet', 'moon', 'belt', 'ring']);
 
@@ -163,7 +171,7 @@ export function generateAutopilotChain(
   // for the many-call reorder search; committed legs run the full solver.
   const solveLeg = (originId: string, targetId: string, startMs: number, light = false) => {
     const params: any = {
-      maxG, accelRatio: 0.3, brakeRatio: 0.3, interceptSpeed_ms: 0,
+      maxG, accelRatio: AUTOPILOT_ACCEL_RATIO, brakeRatio: AUTOPILOT_BRAKE_RATIO, interceptSpeed_ms: 0,
       shipMass_kg: (specs.totalMass_tonnes || 0) * 1000,
       shipDryMass_kg: dryKg,
       shipIsp: Isp || undefined,
