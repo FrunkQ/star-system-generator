@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.238-beta - 5th Jul 2026
+
+* Fixed thrifty autopilot ships mis-scheduling after a delayed-launch (wait-for-alignment) leg: the wait window wasn't counted toward arrival, so following legs stacked on top of it.
+* Escort standoff distance is now honoured: the escort parks at its charge's orbital radius + the km standoff (0 = formation).
+* New user guide: docs/autopilot-guide.md — how routes, searching (mine/explore choose their own sources), traversals, sliders, fuel/cargo and the map colours all work.
+
 ## v2.0.237-beta - 5th Jul 2026
 
 * Fixed the orrery dying (blank canvas + garbage tiles, `createRadialGradient non-finite` spam) after abandoning a ship mid-torch and letting it drift for years: the universal-Kepler solve overflowed on fast hyperbolic escapes over long spans → NaN positions poisoned the draw loop. Proper hyperbolic starter + overflow cap + a never-NaN fallback; energy still conserved.
