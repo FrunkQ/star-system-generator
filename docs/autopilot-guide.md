@@ -30,27 +30,95 @@ and let the ship search; one names another **ship**.
 | **Explore** | a resource (optional) | SEARCH for a source it hasn't visited, go and survey it, then push on to the next new one. |
 | **Escort** | a construct | Rendezvous with a moving ship and stay with it. |
 
-### Searching, not listing
+## How each action decides its route
 
-Mine and Explore legs do not name a body — they name a **resource** (or, for Explore, optionally
-nothing, meaning "anything interesting"). The ship chooses the destination itself:
+For every action, three questions have the same shape: **what destinations are considered**, **how
+one is chosen**, and **when the choice is reconsidered**. This is the whole decision procedure —
+there is nothing hidden beyond it.
 
-- Every natural body in the system carrying the resource is a candidate — planets, moons, belts,
-  rings. Ships are never mining targets, even if they carry the same resource tag as cargo.
-- Candidates are scored on **richness** (the deposit's abundance), **closeness** (from wherever the
-  ship is at that point in the route), and a bonus if the body can also **refuel** the ship — a
-  source that does both saves a separate fuel detour. When the tanks are low that bonus grows
-  sharply: a hungry ship will accept a slightly poorer deposit to fill its tanks at the same stop.
-- The choice is re-made as the route repeats: each time the planner tops the route up, "nearest
-  source" is judged from where the ship actually is, at the time it will actually be there.
+### Transport (place-driven haul)
 
-**Explore** adds one more rule: with *don't revisit logged places* on (the default), any body
-already in the ship's log is excluded — so a surveyor works outward through a system, visiting
-somewhere new each circuit, rather than orbiting its favourite rock forever.
+- **Considered:** exactly the places you named — the pick-up and the deliver-to. No search.
+- **Chosen:** the destinations are yours; only the flight between them is the ship's to solve
+  (see *How a leg becomes a flight plan* below).
+- **Reconsidered:** never — but under *best order* / *any* traversal the SEQUENCE of your transport
+  legs may be rearranged (cargo pick-up always precedes its drop-off).
 
-The **Avoid** list (bottom of the tab) removes places from the search entirely — a ship will never
-auto-choose an avoided body as a source or fuel stop. Naming an avoided place explicitly as a leg
-still works: your explicit order beats the ship's politics.
+### Patrol (place-driven presence)
+
+- **Considered:** the place you named.
+- **Chosen:** yours. Loiter time is yours too; loiter 0 makes it a flyby.
+- **Reconsidered:** never, apart from traversal reordering.
+
+### Mine (resource-driven — the ship SEARCHES)
+
+- **Considered:** every **natural body** in the system carrying the named resource tag — planets,
+  moons, belts, rings. Never a ship (a tanker full of ice is cargo, not a deposit), never the body
+  it is currently sitting at, never anything on the **Avoid** list.
+- **Chosen:** each candidate is scored on three things — **richness** (the deposit's abundance
+  value, which also sets how fast the hold fills), **closeness** (from wherever the ship will be
+  when this leg comes up, not from where it is now), and a **refuelling bonus** if the body can
+  also top up the ship's tanks (a source that does both saves a whole fuel detour). When the tanks
+  are below half, that bonus grows sharply — a hungry ship accepts a poorer deposit to refuel while
+  it works. Highest score wins. The deliver-to you named is then appended as the drop-off.
+- **Reconsidered:** every time the planner tops the route up (each time a leg completes and a new
+  one is committed). A repeating mine route therefore re-runs the search from the ship's actual
+  position each circuit — if a richer or closer source has become sensible, it switches.
+
+### Explore (resource-driven survey — searches for somewhere NEW)
+
+- **Considered:** as Mine — every natural body carrying the sought resource (or, with no resource
+  set, ANY body carrying any resource) — minus the Avoid list, and minus **every place already in
+  the ship's log** when *don't revisit* is on (the default).
+- **Chosen:** same scoring as Mine. Because visited places are excluded, the "best" source is
+  always somewhere new — the effect is a survey that works outward through the system, one fresh
+  body per circuit, rather than orbiting its favourite rock.
+- **Reconsidered:** at every top-up, against a log that has grown by one — that's what drives the
+  outward sweep. When every carrier of the resource has been visited, the leg finds nothing and
+  the ship raises the orange needs-your-decision flag.
+
+### Escort (construct-driven — the target MOVES)
+
+- **Considered:** only the one construct you named. If it no longer exists, the leg yields nothing.
+- **Chosen:** the whole sim is deterministic from the clock, so the target's location is never a
+  guess — the planner resolves **where the escorted ship is at the projected departure time** (its
+  current host: the body it's docked at, orbiting, or was last placed at), and solves a real
+  rendezvous flight to that host. On arrival the escort parks at the target's own orbital radius
+  **plus your km standoff** (0 = tight formation; large = a covert tail outside sensor range), then
+  holds for the loiter time.
+- **Reconsidered:** at every top-up. If the charge has moved on since the escort's last leg was
+  committed, the next leg resolves its NEW host — so the escort follows it from port to port. This
+  is also the current honest limitation: while the target is mid-transit the escort waits to see
+  where it lands rather than flying formation alongside the burn (velocity-matched shadowing is a
+  planned refinement). Escort legs are never reordered by *best order* — a moving target is not a
+  fixed waypoint.
+
+The **Avoid** list (bottom of the tab) applies to every SEARCH above — a ship never auto-chooses
+an avoided body as a source or fuel stop. Naming an avoided place explicitly as a leg still works:
+your explicit order beats the ship's politics.
+
+## How a leg becomes a flight plan
+
+Once a destination is fixed, the flight to it is solved by the SAME transit solver you use in Plan
+Transit — the autopilot has no separate, simpler maths that could disagree with it. Each hop, the
+solver offers up to four plan families:
+
+- **Most Efficient** — a minimum-fuel transfer that may include a **delayed launch window** (it
+  sweeps departure dates up to ~1000 days ahead looking for cheap geometry);
+- **Efficient Now** — the best minimum-fuel transfer departing immediately;
+- **Direct Burn** — the torch solution: flip-and-burn, fast and thirsty;
+- **Flyby Assist** — a gravity-assist route via a heavyweight planet, where geometry allows.
+
+The **Drive** slider picks the winner: fast ships take the least TIME (usually Direct Burn),
+thrifty ships the least FUEL (usually Most Efficient) — which is why a thrifty ship will sit in
+port waiting for an alignment window: that IS its cheapest route, and the wait shows in its log.
+Drive also sets the burn profile within the leg (20/60/20 coast-heavy up to 50/50 continuous
+burn), fuel shortage steps that profile automatically toward longer coasts, and *Max time per leg*
+strikes out any plan slower than your cap.
+
+The *best order* / *any* traversals cost their candidate orderings with a lightweight quote from
+the **same solver** at the projected departure times — so "wait for the planets to align" and
+"don't cross the sun for the far one" fall out of real transfer costs, not rules of thumb.
 
 ## Route order — three traversals
 
@@ -122,16 +190,6 @@ loaded, mined, unloaded, refuelled — sit with their journeys, updating live ac
 so a half-finished loading run reads as such. Each journey is badged with its action
 (mine/load/unload/patrol/explore/escort). **Totals & averages** at the bottom reduces the whole
 log: tonnes delivered by resource, tonnes per annum, stops, refuels, time span.
-
-## Escort
-
-An escort leg shadows another construct. The target's position is always known (the whole sim is
-deterministic), so the escort resolves where its charge is and goes there, re-resolving as it
-moves — it follows host to host. The **km standoff** is honoured at arrival: the escort parks at
-its charge's own orbital radius plus the standoff, so at deep zoom the pair sit visibly apart
-(0 = tight formation, large = a covert tail outside sensor range). Velocity-matched shadowing
-*during* the target's transits is a planned refinement; today the escort catches up at the next
-port of call.
 
 ## Reading the map
 
