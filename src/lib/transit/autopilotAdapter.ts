@@ -12,13 +12,22 @@ import { legToStops, walkStops, chooseSource, reorderWaypoints, selectAnyOrder, 
 const DAY_MS = 86_400_000;
 const G0 = 9.81; // matches transit/physics G0 — capacity estimates here must use the same constant as calculateFuelMass
 
-// Autopilot flies a FIXED burn profile: 30% accel / 40% coast / 30% brake of each leg. Fire-and-forget legs
-// don't get the manual planner's per-leg profile sliders; a balanced profile is robust across ship classes
-// and leaves the solver coast margin. This is the ONE deliberate input difference from the manual planner
-// (the solver itself is shared) — a hand-tuned manual quote for the same route can legitimately differ in
-// time/fuel from the committed autopilot leg. Keep these as the single source if more call sites appear.
-const AUTOPILOT_ACCEL_RATIO = 0.3;
-const AUTOPILOT_BRAKE_RATIO = 0.3;
+// Autopilot burn profile is a STRAIGHT TIE to the Drive slider (efficiency ↔ speed): a thrifty ship coasts
+// long (20/60/20 accel/coast/brake), a fast one burns continuously (50/0/50), with fixed graduations between
+// — mirroring the manual planner's profile sliders without exposing a second dial. Fuel is a SECOND limit on
+// top: if the preferred tier's leg costs more Δv than is aboard, solveLeg steps DOWN toward the coastiest
+// tier until the leg fits (go slower rather than strand); only if even 20/60/20 won't fit does the walker
+// raise the stuck flag. The solver itself stays shared with the manual planner — profile choice is the one
+// deliberate input difference.
+export const AUTOPILOT_PROFILES = [
+  { accel: 0.2, brake: 0.2 }, // 20/60/20 — longest coast, thriftiest
+  { accel: 0.3, brake: 0.3 }, // 30/40/30
+  { accel: 0.4, brake: 0.4 }, // 40/20/40
+  { accel: 0.5, brake: 0.5 }  // 50/0/50 — continuous burn, fastest
+];
+// drive 0..1 → tier index (0.5 rounds up to the speedier middle, matching driveFast = drive >= 0.5).
+export const profileIndexForDrive = (drive: number) =>
+  Math.min(AUTOPILOT_PROFILES.length - 1, Math.max(0, Math.round((Number.isFinite(drive) ? drive : 0.5) * (AUTOPILOT_PROFILES.length - 1))));
 
 const aAU = (sys: System, id: string) => (sys.nodes.find((n) => n.id === id) as any)?.orbit?.elements?.a_AU ?? 0;
 const ELIGIBLE_ROLES = new Set(['planet', 'moon', 'belt', 'ring']);
@@ -169,22 +178,34 @@ export function generateAutopilotChain(
   // THE one transfer model — used to both cost the reorder AND commit the legs, so they can't disagree.
   // `light` selects the quote tier (Efficient Now + Direct Burn only, no delayed-window sweep / assist / path)
   // for the many-call reorder search; committed legs run the full solver.
-  const solveLeg = (originId: string, targetId: string, startMs: number, light = false) => {
-    const params: any = {
-      maxG, accelRatio: AUTOPILOT_ACCEL_RATIO, brakeRatio: AUTOPILOT_BRAKE_RATIO, interceptSpeed_ms: 0,
-      shipMass_kg: (specs.totalMass_tonnes || 0) * 1000,
-      shipDryMass_kg: dryKg,
-      shipIsp: Isp || undefined,
-      brakeAtArrival: true,
-      quote: light
-    };
-    const all = calculateTransitPlan(system, originId, targetId, startMs, mode, params);
-    const valid = all.filter((p) => p.isValid && !p.hiddenReason);
-    if (!valid.length) return { plans: [], arriveMs: startMs, deltaV_ms: 0, valid: false };
-    // Drive: fast → least time; thrifty → least Δv/fuel.
-    valid.sort((a, b) => (driveFast ? a.totalTime_days - b.totalTime_days : a.totalDeltaV_ms - b.totalDeltaV_ms));
-    const chosen = valid[0];
-    return { plans: [chosen], arriveMs: startMs + (chosen.totalTime_days || 0) * DAY_MS, deltaV_ms: chosen.totalDeltaV_ms || 0, valid: true };
+  // Burn profile: starts at the Drive-preferred tier; if `dvAvailable_ms` is given and the chosen leg costs
+  // more than that, steps DOWN through coastier tiers until it fits (slower but affordable). If even the
+  // coastiest won't fit, returns that cheapest attempt so the walker's stuck flag carries real numbers.
+  // The reorder search costs at the preferred tier only — the downgrade is an emergency brake, not a mode.
+  const preferredTier = profileIndexForDrive(ap.drive ?? 0.5);
+  const solveLeg = (originId: string, targetId: string, startMs: number, light = false, dvAvailable_ms?: number) => {
+    let fallback: { plans: any[]; arriveMs: number; deltaV_ms: number; valid: boolean } | null = null;
+    for (let tier = preferredTier; tier >= 0; tier--) {
+      const prof = AUTOPILOT_PROFILES[tier];
+      const params: any = {
+        maxG, accelRatio: prof.accel, brakeRatio: prof.brake, interceptSpeed_ms: 0,
+        shipMass_kg: (specs.totalMass_tonnes || 0) * 1000,
+        shipDryMass_kg: dryKg,
+        shipIsp: Isp || undefined,
+        brakeAtArrival: true,
+        quote: light
+      };
+      const all = calculateTransitPlan(system, originId, targetId, startMs, mode, params);
+      const valid = all.filter((p) => p.isValid && !p.hiddenReason);
+      if (!valid.length) continue; // a coastier profile may still be solvable
+      // Drive: fast → least time; thrifty → least Δv/fuel.
+      valid.sort((a, b) => (driveFast ? a.totalTime_days - b.totalTime_days : a.totalDeltaV_ms - b.totalDeltaV_ms));
+      const chosen = valid[0];
+      const res = { plans: [chosen], arriveMs: startMs + (chosen.totalTime_days || 0) * DAY_MS, deltaV_ms: chosen.totalDeltaV_ms || 0, valid: true };
+      if (dvAvailable_ms === undefined || res.deltaV_ms <= dvAvailable_ms) return res;
+      fallback = res; // over budget — remember the cheapest so far, try a longer coast
+    }
+    return fallback ?? { plans: [], arriveMs: startMs, deltaV_ms: 0, valid: false };
   };
   // Reorder cost = the SAME solveLeg, cached by (from,to,day) so the permutation search stays affordable
   // without ever inventing a parallel cost model.
@@ -268,7 +289,9 @@ export function generateAutopilotChain(
     ignoreFuel: !!ap.ignoreFuel,
     fuelBudget_ms: budget,
     fuelCapacity_ms: capacity,
-    solveLeg,
+    // The walker's 4th arg is dvAvailable (its running fuel state) — pin `light` to false so committed legs
+    // always run the full solver, with the fuel-aware profile step-down live.
+    solveLeg: (o: string, tgt: string, t: number, dv?: number) => solveLeg(o, tgt, t, false, dv),
     maxJourneyDays: ap.maxJourneyDays,
     tardiness,
     slackSeed: construct.id,

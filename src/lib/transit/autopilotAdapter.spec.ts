@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { gatherResourceCandidates, resolveResourceStops, buildAdapterStops } from './autopilotAdapter';
+import { gatherResourceCandidates, resolveResourceStops, buildAdapterStops, AUTOPILOT_PROFILES, profileIndexForDrive } from './autopilotAdapter';
 
 // Minimal system stub — only the fields the resolver reads.
 function sys(nodes: any[]) { return { nodes } as any; }
@@ -7,6 +7,21 @@ const body = (id: string, roleHint: string, a_AU: number, tags: [string, number?
   ({ id, kind: 'body', roleHint, orbit: { elements: { a_AU } }, tags: tags.map(([key, value]) => ({ key, value })) });
 const ship = (id: string, tags: [string, number?][] = []) =>
   ({ id, kind: 'construct', roleHint: 'ship', tags: tags.map(([key, value]) => ({ key, value })) });
+
+describe('burn profile — a straight tie to the Drive slider', () => {
+  it('efficiency end coasts long, speed end burns continuously', () => {
+    expect(AUTOPILOT_PROFILES[profileIndexForDrive(0)]).toEqual({ accel: 0.2, brake: 0.2 }); // 20/60/20
+    expect(profileIndexForDrive(0.34)).toBe(1);                                              // 30/40/30
+    expect(profileIndexForDrive(0.5)).toBe(2);  // rounds to the speedier middle, matching driveFast >= 0.5
+    expect(AUTOPILOT_PROFILES[profileIndexForDrive(1)]).toEqual({ accel: 0.5, brake: 0.5 }); // 50/0/50 — no coast
+  });
+
+  it('clamps out-of-range and defaults garbage to the balanced default', () => {
+    expect(profileIndexForDrive(-1)).toBe(0);
+    expect(profileIndexForDrive(2)).toBe(AUTOPILOT_PROFILES.length - 1);
+    expect(profileIndexForDrive(NaN)).toBe(2); // treated as drive 0.5
+  });
+});
 
 describe('gatherResourceCandidates — mine-bodies-only', () => {
   const system = sys([

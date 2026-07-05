@@ -141,10 +141,14 @@ export function computeAutopilotTotals(events: ConstructLogEvent[] | undefined, 
 
 // Solve a single hop origin→target departing at startMs. Production wraps `calculateTransitPlan` +
 // ship params; tests stub it. Returns null / valid:false when no route is possible.
+// `dvAvailable_ms` = the Δv currently aboard at departure — production uses it to step the burn profile
+// down toward a coastier (cheaper) tier when the preferred one wouldn't fit the tanks (go slower, don't
+// strand). Optional so stubs can ignore it.
 export type SolveLeg = (
   originId: ID,
   targetId: ID,
-  startMs: number
+  startMs: number,
+  dvAvailable_ms?: number
 ) => { plans: TransitPlan[]; arriveMs: number; deltaV_ms: number; valid: boolean } | null;
 
 export interface AutopilotPlanOpts {
@@ -203,7 +207,7 @@ export function walkStops(stops: AutopilotStop[], opts: AutopilotPlanOpts): Auto
 
     // Travel to the stop (skip if we're already sitting there — a leg that targets the current host).
     if (host !== stop.targetId) {
-      const solve = opts.solveLeg(host, stop.targetId, t);
+      const solve = opts.solveLeg(host, stop.targetId, t, Number.isFinite(budget) ? budget : undefined);
       if (!solve || !solve.valid) {
         return { plans: out, events, endHostId: host, attention: 'stuck', stuckReason: `no route to ${stop.targetId}`, done: false, finalTimeMs: t };
       }

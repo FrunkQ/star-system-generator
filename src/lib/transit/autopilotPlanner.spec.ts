@@ -58,6 +58,26 @@ describe('autopilot walkStops — in-order chain', () => {
   });
 });
 
+describe('walkStops — hands its running Δv budget to solveLeg', () => {
+  it('passes the remaining budget per hop so production can step the burn profile down', () => {
+    const seen: (number | undefined)[] = [];
+    const solveLeg: SolveLeg = (originId, targetId, startMs, dv) => {
+      seen.push(dv);
+      const plan: any = { id: `${originId}->${targetId}`, targetId, startTime: startMs, totalTime_days: 10, totalDeltaV_ms: 1000, isValid: true };
+      return { plans: [plan], arriveMs: startMs + 10 * DAY_MS, deltaV_ms: 1000, valid: true };
+    };
+    walkStops([patrol('A'), patrol('B')], { ...baseOpts, planningHorizon: 2, repeat: false, ignoreFuel: false, fuelBudget_ms: 5000, fuelCapacity_ms: 5000, solveLeg });
+    expect(seen).toEqual([5000, 4000]); // budget drains hop by hop
+  });
+
+  it('passes undefined when fuel is ignored (no downgrade pressure)', () => {
+    const seen: (number | undefined)[] = [];
+    const solveLeg: SolveLeg = (o, t, startMs, dv) => { seen.push(dv); return stubSolve()(o, t, startMs); };
+    walkStops([patrol('A')], { ...baseOpts, planningHorizon: 1, solveLeg }); // baseOpts ignores fuel
+    expect(seen).toEqual([undefined]);
+  });
+});
+
 describe('autopilot flight log — stop work events + cargo derivation', () => {
   const load = (id: string, t: number): AutopilotStop => ({ targetId: id, dwellDays: 1, refuelHere: false, verb: 'load', resourceKeys: ['resource/water-ice'], tonnes: t });
   const unload = (id: string, t: number): AutopilotStop => ({ targetId: id, dwellDays: 1, refuelHere: false, verb: 'unload', resourceKeys: ['resource/water-ice'], tonnes: t });
