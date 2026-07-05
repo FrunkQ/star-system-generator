@@ -58,6 +58,29 @@ describe('keplerUniversal — deterministic two-body propagation', () => {
     }
   });
 
+  it('survives a fast hyperbolic escape sampled YEARS later (no Stumpff overflow → NaN)', () => {
+    // Regression: The Canterbury abandoned mid-torch at ~600 km/s, sampled 3.4 years on. The elliptic-style
+    // χ guess grows ∝ dt, so √-z blew past cosh/sinh's double-precision ceiling → NaN → the orrery's whole
+    // draw loop died (createRadialGradient non-finite). Real SI units to match the field failure.
+    const muSun = 6.674e-11 * 1.989e30;
+    const AUm = 1.495978707e11;
+    const r0 = { x: -2.25 * AUm, y: -0.02 * AUm };
+    const v0 = { x: 6e5, y: 1e5 }; // ~608 km/s — deep hyperbolic
+    const dt = 3.4 * 365.25 * 86400;
+    const s = keplerUniversal(r0, v0, muSun, dt);
+    expect(Number.isFinite(s.r.x) && Number.isFinite(s.r.y)).toBe(true);
+    expect(Number.isFinite(s.v.x) && Number.isFinite(s.v.y)).toBe(true);
+    // Energy conserved (relative — the magnitudes are ~1e11)
+    const E0 = (v0.x * v0.x + v0.y * v0.y) / 2 - muSun / Math.hypot(r0.x, r0.y);
+    const E1 = (s.v.x * s.v.x + s.v.y * s.v.y) / 2 - muSun / Math.hypot(s.r.x, s.r.y);
+    expect(Math.abs(E1 - E0) / Math.abs(E0)).toBeLessThan(1e-6);
+    // And it's genuinely gone downrange ~v∞·dt (asymptotic drift), not stuck or teleported
+    const gone = Math.hypot(s.r.x - r0.x, s.r.y - r0.y);
+    const vMag = Math.hypot(v0.x, v0.y);
+    expect(gone).toBeGreaterThan(0.9 * vMag * dt);
+    expect(gone).toBeLessThan(1.01 * vMag * dt);
+  });
+
   it('century-scale queries on a closed orbit stay exact (period reduction)', () => {
     const r0 = { x: 1, y: 0 }, v0 = { x: 0, y: 1 }; // circular, mu=1, period 2π
     const s = keplerUniversal(r0, v0, 1, 2 * Math.PI * 10_000 + Math.PI / 2); // 10k revs + a quarter

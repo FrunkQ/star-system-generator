@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.237-beta - 5th Jul 2026
+
+* Fixed the orrery dying (blank canvas + garbage tiles, `createRadialGradient non-finite` spam) after abandoning a ship mid-torch and letting it drift for years: the universal-Kepler solve overflowed on fast hyperbolic escapes over long spans → NaN positions poisoned the draw loop. Proper hyperbolic starter + overflow cap + a never-NaN fallback; energy still conserved.
+
 ## v2.0.236-beta - 5th Jul 2026
 
 * Transfer-logic audit fixes: one shared rocket equation everywhere (de-duped copy removed), autopilot burn profile surfaced, hyperbolic-element guard on the orbit propagator, forecast-line dead code pruned.

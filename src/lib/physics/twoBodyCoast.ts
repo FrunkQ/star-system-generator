@@ -57,8 +57,27 @@ export function keplerUniversal(
     if (Number.isFinite(T) && T > 0 && Math.abs(dtEff) > T) dtEff = dtEff % T;
   }
 
-  // Initial guess for the universal anomaly χ (Curtis 3.4).
-  let chi = Math.abs(alpha) > 1e-12 ? sqrtMu * Math.abs(alpha) * dtEff : (sqrtMu * dtEff) / r0mag;
+  // Universal-anomaly cap (hyperbolic only): sinh/cosh(√-z) overflows double precision past √-z ≈ 700 —
+  // but the SOLUTION always sits far below (at the root, √-z = the hyperbolic anomaly ≈ ln(2·M_h), and
+  // e^650 seconds outlives the universe). Capping χ keeps every Stumpff evaluation finite without ever
+  // clipping a reachable answer. This was the "abandoned mid-torch, sampled years later" NaN: the
+  // elliptic-style χ guess grows ∝ dt and blew straight through the overflow line.
+  const chiCap = alpha < 0 ? 650 / Math.sqrt(-alpha) : Infinity;
+
+  // Initial guess for the universal anomaly χ — elliptic per Curtis 3.4; hyperbolic per the standard
+  // log-form starter (Vallado Alg. 8), which lands near the root instead of ∝ dt past it.
+  let chi: number;
+  if (alpha < -1e-12) {
+    const num = -2 * mu * alpha * dtEff;
+    const den = r0mag * vr0 + Math.sign(dtEff) * Math.sqrt(-mu / alpha) * (1 - r0mag * alpha);
+    const arg = den !== 0 ? num / den : 0;
+    chi = arg > 0 ? Math.sign(dtEff) * Math.sqrt(-1 / alpha) * Math.log(arg) : (sqrtMu * dtEff) / r0mag;
+  } else if (alpha > 1e-12) {
+    chi = sqrtMu * alpha * dtEff;
+  } else {
+    chi = (sqrtMu * dtEff) / r0mag;
+  }
+  if (Number.isFinite(chiCap)) chi = Math.max(-chiCap, Math.min(chiCap, chi));
 
   for (let i = 0; i < 200; i++) {
     const z = alpha * chi * chi;
@@ -66,9 +85,10 @@ export function keplerUniversal(
     const chi2 = chi * chi, chi3 = chi2 * chi;
     const F = (r0mag * vr0 / sqrtMu) * chi2 * C + (1 - alpha * r0mag) * chi3 * S + r0mag * chi - sqrtMu * dtEff;
     const dF = (r0mag * vr0 / sqrtMu) * chi * (1 - alpha * chi2 * S) + (1 - alpha * r0mag) * chi2 * C + r0mag;
-    if (Math.abs(dF) < 1e-30) break;
+    if (!Number.isFinite(F) || !Number.isFinite(dF) || Math.abs(dF) < 1e-30) { chi *= 0.5; continue; } // recover, never NaN-poison
     const ratio = F / dF;
     chi -= ratio;
+    if (Number.isFinite(chiCap)) chi = Math.max(-chiCap, Math.min(chiCap, chi));
     if (Math.abs(ratio) < 1e-9) break;
   }
 
@@ -82,6 +102,11 @@ export function keplerUniversal(
   const fdot = (sqrtMu / (rmag * r0mag)) * (alpha * chi * chi * chi * S - chi);
   const gdot = 1 - (chi * chi / rmag) * C;
   const v = { x: fdot * r0.x + gdot * v0.x, y: fdot * r0.y + gdot * v0.y };
+  // Belt-and-braces: a non-finite state must never reach the renderer (one NaN kills the whole canvas
+  // frame). Degrade to the ballistic asymptote — where a fast unbound ship is headed anyway.
+  if (!Number.isFinite(r.x) || !Number.isFinite(r.y) || !Number.isFinite(v.x) || !Number.isFinite(v.y)) {
+    return { r: { x: r0.x + v0.x * dtEff, y: r0.y + v0.y * dtEff }, v: { ...v0 } };
+  }
   return { r, v };
 }
 
