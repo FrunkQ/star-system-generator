@@ -332,7 +332,7 @@
                 nightMinTempC = Math.max(-273, nightMinTempC);
                 nightMaxTempC = Math.max(nightMinTempC, nightMaxTempC);
             }
-            tempTooltip = `Equilibrium: ${Math.round((body.equilibriumTempK || 0) - 273.15)}°C | Greenhouse: +${Math.round(body.greenhouseTempK || 0)}°C | Internal: +${Math.round(body.internalHeatK || 0)}°C | Tidal: +${Math.round(body.tidalHeatK || 0)}°C | Radiogenic: +${Math.round(body.radiogenicHeatK || 0)}°C`;
+            tempTooltip = `Equilibrium: ${$fmt.tempK(body.equilibriumTempK || 0)} | Greenhouse: +${Math.round(body.greenhouseTempK || 0)} K | Internal: +${Math.round(body.internalHeatK || 0)} K | Tidal: +${Math.round(body.tidalHeatK || 0)} K | Radiogenic: +${Math.round(body.radiogenicHeatK || 0)} K`;
         }
     }
 
@@ -615,21 +615,21 @@
       {/if}
 
       {#if isStar && body.temperatureK}
-          <div class="detail-item" title="{Math.round(body.temperatureK - 273.15)} °C">
+          <div class="detail-item" title="{$fmt.tempK(body.temperatureK)}">
               <span class="label">Surface Temperature</span>
               <span class="value">{Math.round(body.temperatureK).toLocaleString()} K</span>
           </div>
       {:else if surfaceTempC !== null}
           <div class="detail-item" title={tempTooltip}>
               <span class="label">Avg. Surface Temp.</span>
-              <span class="value">{Math.round(surfaceTempC)} °C</span>
+              <span class="value">{$fmt.tempC(surfaceTempC)}</span>
               {#if body.temperatureProfile && (body.temperatureProfile.totalMaxK - body.temperatureProfile.totalMinK) > 5}
                   {@const p = body.temperatureProfile}
-                  <div class="temp-total">Total: {Math.round(p.totalMinK - 273.15)}°C to {Math.round(p.totalMaxK - 273.15)}°C</div>
+                  <div class="temp-total">Total: {$fmt.tempK(p.totalMinK)} to {$fmt.tempK(p.totalMaxK)}</div>
                   {#each p.components as c}
                       <div class="temp-comp" class:volcanic={c.source === 'tidal-hotspot'}>
                           <span class="tc-label">{c.label}</span>
-                          <span class="tc-range">{Math.round(c.lowK - 273.15)}°C to {Math.round(c.highK - 273.15)}°C</span>
+                          <span class="tc-range">{$fmt.tempK(c.lowK)} to {$fmt.tempK(c.highK)}</span>
                       </div>
                   {/each}
               {/if}

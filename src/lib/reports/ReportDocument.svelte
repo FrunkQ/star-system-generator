@@ -3,7 +3,7 @@
   import type { System, CelestialBody, Barycenter } from '$lib/types';
   import { AU_KM, G } from '$lib/constants';
   import { composeSurfaceTemperatureFromDeltaComponents } from '$lib/physics/temperature';
-  import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, type MeasurementUnits } from '$lib/units';
+  import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatTempC, formatTempK, type MeasurementUnits } from '$lib/units';
 
   // Extracted from /report so the printable report and the live /catalogue (Companion App)
   // can render the same player-safe document. Data arrives already redacted — both the report
@@ -148,8 +148,7 @@
 
   function getTemp(body: CelestialBody | Barycenter) {
       if (body.kind === 'barycenter' || body.temperatureK === undefined) return '-';
-      const c = Math.round(body.temperatureK - 273.15);
-      return `${c}°C`;
+      return formatTempK(body.temperatureK, units);
   }
 
   function getTempDetails(body: CelestialBody | Barycenter) {
@@ -198,7 +197,7 @@
       const min = (body as any).equilibriumTempMinK;
       const max = (body as any).equilibriumTempMaxK;
       if (typeof min !== 'number' || typeof max !== 'number') return '-';
-      return `${Math.round(min - 273.15)}°C to ${Math.round(max - 273.15)}°C`;
+      return `${formatTempK(min, units)} to ${formatTempK(max, units)}`;
   }
 
   function getTempProfile(body: CelestialBody | Barycenter) {
@@ -253,9 +252,9 @@
           nightMaxTempC = nightCenter + (orbitalHalfRange + latitudinalSpanC * 0.3);
       }
 
-      const range = `${Math.round(minTempC)}°C to ${Math.round(maxTempC)}°C`;
-      const day = `${Math.round(dayMinTempC)}°C to ${Math.round(dayMaxTempC)}°C`;
-      const night = `${Math.round(nightMinTempC)}°C to ${Math.round(nightMaxTempC)}°C`;
+      const range = `${formatTempC(minTempC, units)} to ${formatTempC(maxTempC, units)}`;
+      const day = `${formatTempC(dayMinTempC, units)} to ${formatTempC(dayMaxTempC, units)}`;
+      const night = `${formatTempC(nightMinTempC, units)} to ${formatTempC(nightMaxTempC, units)}`;
       const hotspotNote = body.tags?.some((t) => t.key === 'tidal/hotspots') ? ' | Tidal hotspots' : '';
       return `Range: ${range} | Day: ${day} | Night: ${night}${hotspotNote}`;
   }
@@ -953,7 +952,7 @@
                                 <th>Mass</th><td>{(primary.massKg / 1.989e30).toFixed(3)} Solar Masses</td>
                                 <th>Radius</th><td>{formatDistanceKm(primary.radiusKm, units)}</td>
                                 {#if primary.temperatureK}
-                                <th>Temp</th><td>{Math.round((primary.temperatureK) - 273.15)}°C</td>
+                                <th>Temp</th><td>{formatTempK(primary.temperatureK, units)}</td>
                                 {/if}
                                 <th>Lum</th><td>{getLuminosity(primary)}</td>
                             </tr>

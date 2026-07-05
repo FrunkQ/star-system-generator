@@ -15,7 +15,7 @@
   import CRTOverlay from '$lib/components/CRTOverlay.svelte';
   import { crtControls, CRT_DEFAULTS } from '$lib/catalogue/crtControls';
   import { AU_KM, G } from '$lib/constants';
-  import type { MeasurementUnits } from '$lib/units';
+  import { formatTempK, type MeasurementUnits } from '$lib/units';
   import { MONO_COLORS, normalizeGuideConfig } from '$lib/catalogue/guideConfig';
   import type { MonoColor } from '$lib/catalogue/guideConfig';
   import { randomGuideNote } from '$lib/catalogue/guideNotes';
@@ -279,7 +279,7 @@
     return (m < 1000 ? m.toFixed(2) : m.toExponential(2)) + ' M⊕';
   }
   function tempC(b: CelestialBody) {
-    return b.temperatureK === undefined ? '-' : Math.round(b.temperatureK - 273.15) + ' °C';
+    return b.temperatureK === undefined ? '-' : formatTempK(b.temperatureK, units);
   }
   function orbitDist(b: CelestialBody) {
     const a = b.orbit?.elements?.a_AU;

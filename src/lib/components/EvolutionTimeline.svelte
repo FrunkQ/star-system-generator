@@ -4,6 +4,7 @@
     import { type StarSeed, ageStar, getStarLifespanGyr } from '$lib/physics/stellar-evolution';
     import type { System, Node, ID, CelestialBody } from '$lib/types';
     import { getPlanetColor } from '$lib/rendering/colors';
+    import { fmt } from '$lib/stores';
 
     const dispatch = createEventDispatcher();
     
@@ -472,7 +473,7 @@
                                         </div>
                                         <div class="main-stats-row">
                                             <span class="stat">Dist: <b>{(p.axis || p.a).toFixed(2)}</b> AU</span>
-                                            <span class="stat">Temp: <b>{(p.surfaceTemp - 273.15).toFixed(0)}</b>°C</span>
+                                            <span class="stat">Temp: <b>{$fmt.tempK(p.surfaceTemp)}</b></span>
                                             <span class="stat">Mass: <b>{(p.earthMass || 0).toFixed(2)}</b> M⊕</span>
                                             <span class="stat">Grav: <b>{(p.surfaceGravity || 0).toFixed(2)}</b> G</span>
                                         </div>

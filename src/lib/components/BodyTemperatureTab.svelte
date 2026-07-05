@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, Barycenter, RulePack } from '$lib/types';
   import { calculateEquilibriumTemperature, estimateBondAlbedo, estimateInternalHeatK, composeSurfaceTemperatureFromDeltaComponents } from '$lib/physics/temperature';
+  import { fmt } from '$lib/stores';
 
   export let body: CelestialBody;
   export let rulePack: RulePack;
@@ -70,12 +71,12 @@
         <div class="form-group">
             <label>Surface Temperature (Kelvin)</label>
             <input type="number" bind:value={body.temperatureK} on:input={() => dispatch('update')} />
-            <span class="sub-label">{Math.round((body.temperatureK || 0) - 273.15)} °C</span>
+            <span class="sub-label">{$fmt.tempK(body.temperatureK || 0)}</span>
         </div>
     {:else}
         <div class="read-only-row">
             <label>Equilibrium Temp (Solar Heating)</label>
-            <span class="value">{Math.round(body.equilibriumTempK || 0)} K ({Math.round((body.equilibriumTempK || 0) - 273.15)} °C)</span>
+            <span class="value">{Math.round(body.equilibriumTempK || 0)} K ({$fmt.tempK(body.equilibriumTempK || 0)})</span>
         </div>
         
         {#if body.albedoBreakdown}
@@ -129,7 +130,7 @@
         <div class="read-only-row highlight">
             <label>Mean Surface Temperature</label>
             <span class="value large" style="color: {getTempColor(body.temperatureK || 0)}">
-                {Math.round(body.temperatureK || 0)} K ({Math.round((body.temperatureK || 0) - 273.15)} °C)
+                {Math.round(body.temperatureK || 0)} K ({$fmt.tempK(body.temperatureK || 0)})
             </span>
         </div>
 

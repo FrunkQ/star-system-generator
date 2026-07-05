@@ -3,6 +3,7 @@
   import type { CelestialBody, RulePack } from '$lib/types';
   import { LIQUIDS as FALLBACK_LIQUIDS } from '$lib/constants';
   import { liquidsLiquidInRange } from '$lib/physics/liquids';
+  import { fmt } from '$lib/stores';
 
   export let body: CelestialBody;
   export let rulePack: RulePack | null = null;
@@ -33,7 +34,7 @@
       : (currentTemp >= (currentLiquidDef.meltK - 20) && currentTemp <= (currentLiquidDef.boilK + 20));
       
   $: warningMsg = !isCurrentValid && body.hydrosphere 
-      ? `Warning: ${Math.round(currentTemp - 273.15)}°C is outside stability range for ${currentLiquidDef?.label || body.hydrosphere.composition}.` 
+      ? `Warning: ${$fmt.tempK(currentTemp)} is outside stability range for ${currentLiquidDef?.label || body.hydrosphere.composition}.`
       : '';
 
   // Coverage Slider State

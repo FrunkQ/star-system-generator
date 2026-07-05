@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatSpeedAuto, MILE_PER_KM,
-  kmToDisplayNum, displayNumToKm, kmsToDisplayNum, displayNumToKms
+  kmToDisplayNum, displayNumToKm, kmsToDisplayNum, displayNumToKms,
+  formatTempC, formatTempK, cToDisplayTemp, displayTempToC
 } from './units';
 import { AU_KM } from './constants';
 
@@ -30,6 +31,16 @@ describe('units — metric vs imperial display (SI stays internal)', () => {
     expect(formatSpeedAuto(9000, 'metric')).toBe('9.0 km/s');
     expect(formatSpeedAuto(500, 'imperial').endsWith(' ft/s')).toBe(true);
     expect(formatSpeedAuto(9000, 'imperial').endsWith(' mi/s')).toBe(true);
+  });
+
+  it('temperature: °C for metric, °F for imperial, from either K or C', () => {
+    expect(formatTempC(0, 'metric')).toBe('0 °C');
+    expect(formatTempC(0, 'imperial')).toBe('32 °F');
+    expect(formatTempC(100, 'imperial')).toBe('212 °F');
+    expect(formatTempK(273.15, 'metric')).toBe('0 °C');
+    expect(formatTempK(373.15, 'imperial')).toBe('212 °F');
+    // input round-trip
+    expect(displayTempToC(cToDisplayTemp(25, 'imperial'), 'imperial')).toBeCloseTo(25, 6);
   });
 
   it('input converters round-trip cleanly (edit in the display unit, store in SI)', () => {

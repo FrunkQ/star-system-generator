@@ -3,6 +3,7 @@ import type { System, Starmap } from './types';
 import {
   formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatSpeedAuto, distanceUnitLabel, speedUnitLabel,
   kmToDisplayNum, displayNumToKm, kmsToDisplayNum, displayNumToKms,
+  formatTempC, formatTempK, tempUnitLabel, cToDisplayTemp, displayTempToC,
   type MeasurementUnits
 } from './units';
 
@@ -40,11 +41,16 @@ export const fmt = derived(measurementUnit, (u) => ({
   speedAuto: (ms: number) => formatSpeedAuto(ms, u),                           // value in M/S, magnitude-aware
   distUnit: distanceUnitLabel(u),                                             // bare "km" | "mi" label
   speedUnit: speedUnitLabel(u),                                              // bare "km/s" | "mi/s" label
-  // Editable-input converters (SI ↔ display unit): value in KM/KM·S shown/edited in the display unit.
+  tempC: (celsius: number, decimals = 0) => formatTempC(celsius, u, decimals), // value in °C → °C/°F
+  tempK: (kelvin: number, decimals = 0) => formatTempK(kelvin, u, decimals),   // value in K  → °C/°F
+  tempUnit: tempUnitLabel(u),                                                // bare "°C" | "°F" label
+  // Editable-input converters (SI ↔ display unit): value in KM/KM·S/°C shown/edited in the display unit.
   toDist: (km: number) => kmToDisplayNum(km, u),
   fromDist: (v: number) => displayNumToKm(v, u),
   toKmS: (kmps: number) => kmsToDisplayNum(kmps, u),
   fromKmS: (v: number) => displayNumToKms(v, u),
+  toTemp: (celsius: number) => cToDisplayTemp(celsius, u),
+  fromTemp: (v: number) => displayTempToC(v, u),
   units: u
 }));
 

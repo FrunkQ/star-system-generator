@@ -2,7 +2,7 @@
 // interactive console inspector. The snapshot is already redacted, so we just format for reading.
 import type { CelestialBody } from '$lib/types';
 import { G, AU_KM } from '$lib/constants';
-import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, type MeasurementUnits } from '$lib/units';
+import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatTempK, type MeasurementUnits } from '$lib/units';
 
 const EARTH_G = 9.80665;
 const EARTH_MASS_KG = 5.972e24;
@@ -29,8 +29,8 @@ export function massRel(b: CelestialBody): string {
   const m = b.massKg / EARTH_MASS_KG;
   return `${m < 1000 ? m.toFixed(2) : m.toExponential(2)} M⊕`;
 }
-export function tempC(b: CelestialBody): string {
-  return b.temperatureK === undefined ? '' : `${Math.round(b.temperatureK - 273.15)} °C`;
+export function tempC(b: CelestialBody, units: MeasurementUnits = 'metric'): string {
+  return b.temperatureK === undefined ? '' : formatTempK(b.temperatureK, units);
 }
 export function atmosphere(b: CelestialBody): string {
   if (!b.atmosphere) return 'None';
@@ -50,7 +50,6 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric'):
   const out: Fact[] = [];
   const any = b as any;
   const add = (label: string, value: string) => { if (value) out.push({ label, value }); };
-  const K2C = (k?: number) => (typeof k === 'number' ? Math.round(k - 273.15) : null);
 
   // Bodies keep their scientific classification (planet/ocean, spectral type); constructs don't carry the
   // retired free-text hull class — their CoI tags below describe them instead.
@@ -75,9 +74,9 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric'):
   }
 
   // --- Climate ---
-  add('Surface temp', tempC(b));
-  const tmin = K2C(any.equilibriumTempMinK), tmax = K2C(any.equilibriumTempMaxK);
-  if (tmin !== null && tmax !== null) add('Temp range', `${tmin} to ${tmax} °C`);
+  add('Surface temp', tempC(b, units));
+  const tminK = any.equilibriumTempMinK, tmaxK = any.equilibriumTempMaxK;
+  if (typeof tminK === 'number' && typeof tmaxK === 'number') add('Temp range', `${formatTempK(tminK, units)} to ${formatTempK(tmaxK, units)}`);
   add('Atmosphere', atmosphere(b));
   if (b.atmosphere?.composition) {
     const gases = Object.entries(b.atmosphere.composition).sort((a, c) => c[1] - a[1]).slice(0, 3)

@@ -82,7 +82,15 @@ fixes, not one.
 
 ---
 
-## Phase B — Units (miles / km)  ✅ B1+B2 DONE (v2.0.245-beta); B3-inputs follow-up
+## Phase B — Units (miles / km + °C/°F)  ✅ DONE (v2.0.245–248-beta)
+
+Distance/speed (km/miles) AND temperature (°C/°F) both follow one `measurementUnits` toggle; Kelvin/AU stay
+as scientific/astronomical units. Formatter + `fmt` store, Settings toggle, sweeps across app + report +
+catalogue + unit-aware inputs. KNOWN FOLLOW-UPS: body Radius editor (deferred to Phase D); the stored
+habitability-breakdown temp string (SystemProcessor ~906) + LLM curate temp are generation-time strings that
+won't react to the toggle (fix render-side if wanted); a separate Kelvin option (3-way °C/°F/K) if sci-fi GMs
+want it.
+
 
 Foundation + display sweep shipped: `units.ts` formatter + `fmt`/`measurementUnit` store, Settings→Starmap
 toggle (default metric), ~16 display sites across 14 components routed through `$fmt`. v2.0.246 extended it to

@@ -7,6 +7,7 @@
   import { viableTypesAt } from '$lib/generation/generateBodyOfType';
   import { rarityOf, rarityTier } from '$lib/generation/typeDraw';
   import { thumbUrl } from '$lib/util/thumbs';
+  import { fmt } from '$lib/stores';
 
   export let rulePack: RulePack;
   export let teqK: number;
@@ -22,7 +23,6 @@
     .sort((a, b) => a.class.localeCompare(b.class));
 
   const pretty = (cls: string) => cls.replace('planet/', '').replace(/-/g, ' ');
-  const tempC = Math.round(teqK - 273.15);
   const tierOf = (cls: string) => rarityTier(rarityOf(cls, rulePack));
   const LEGEND = [
     { label: 'Common', color: '#b8c0cc' }, { label: 'Uncommon', color: '#4caf50' },
@@ -35,7 +35,7 @@
     <header>
       <div>
         <h2>Add {role === 'moon' ? 'moon' : 'planet'} — pick a type</h2>
-        <p class="sub">All viable at this orbit (~{tempC} °C / {Math.round(teqK)} K) — rarity just signals how eccentric. {viable.length} types.</p>
+        <p class="sub">All viable at this orbit (~{$fmt.tempK(teqK)} / {Math.round(teqK)} K) — rarity just signals how eccentric. {viable.length} types.</p>
         <div class="legend">
           {#each LEGEND as l}<span class="leg"><span class="dot" style="background:{l.color}"></span>{l.label}</span>{/each}
         </div>

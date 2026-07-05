@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.248-beta - 5th Jul 2026
+
+* Temperatures now follow the measurement-units choice too: metric shows °C, imperial shows °F (Kelvin stays internal, and scientific "X K" readouts stay Kelvin). Covers body surface/equilibrium temps, day/night and component ranges, the report, and the player catalogue/guide. Temperature *deltas* (greenhouse/tidal/internal offsets) read in K since a temperature difference isn't a °F value.
+
 ## v2.0.247-beta - 5th Jul 2026
 
 * Editable distance/speed inputs now follow the measurement-units choice too: their labels show the current unit (Altitude (km)/(mi), ring radii, Max Entry Speed (km/s)/(mi/s)) and you edit in that unit — converted back to SI on save, with no round-trip drift. Caught a few more raw km/s readouts that the first pass missed (construct Δv in the technical panel, relativistic cruise speed, ring parent Hill-sphere). Belt/orbit distances stay in AU; the body Radius editor is left for the upcoming mass/radius/density rework.
