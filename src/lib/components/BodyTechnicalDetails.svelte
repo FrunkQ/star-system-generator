@@ -615,7 +615,7 @@
       {/if}
 
       {#if isStar && body.temperatureK}
-          <div class="detail-item" title="{$fmt.tempK(body.temperatureK)}">
+          <div class="detail-item" title="{Math.round(body.temperatureK).toLocaleString()} K">
               <span class="label">Surface Temperature</span>
               <span class="value">{Math.round(body.temperatureK).toLocaleString()} K</span>
           </div>

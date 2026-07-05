@@ -74,7 +74,8 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   }
 
   // --- Climate ---
-  add('Surface temp', tempC(b, tempUnit));
+  // Stars are always Kelvin (a ~5,778 K star reads oddly as °C); the switch governs planet/moon temps.
+  add('Surface temp', tempC(b, b.roleHint === 'star' ? 'K' : tempUnit));
   const tminK = any.equilibriumTempMinK, tmaxK = any.equilibriumTempMaxK;
   if (typeof tminK === 'number' && typeof tmaxK === 'number') add('Temp range', `${formatTempK(tminK, tempUnit)} to ${formatTempK(tmaxK, tempUnit)}`);
   add('Atmosphere', atmosphere(b));

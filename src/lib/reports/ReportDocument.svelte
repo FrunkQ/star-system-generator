@@ -149,7 +149,8 @@
 
   function getTemp(body: CelestialBody | Barycenter) {
       if (body.kind === 'barycenter' || body.temperatureK === undefined) return '-';
-      return formatTempK(body.temperatureK, tempUnit);
+      // Stars are always Kelvin (a ~5,778 K star reads oddly as °C); the switch governs planet/moon temps.
+      return formatTempK(body.temperatureK, (body as any).roleHint === 'star' ? 'K' : tempUnit);
   }
 
   function getTempDetails(body: CelestialBody | Barycenter) {
@@ -953,7 +954,7 @@
                                 <th>Mass</th><td>{(primary.massKg / 1.989e30).toFixed(3)} Solar Masses</td>
                                 <th>Radius</th><td>{formatDistanceKm(primary.radiusKm, units)}</td>
                                 {#if primary.temperatureK}
-                                <th>Temp</th><td>{formatTempK(primary.temperatureK, tempUnit)}</td>
+                                <th>Temp</th><td>{formatTempK(primary.temperatureK, 'K')}</td>
                                 {/if}
                                 <th>Lum</th><td>{getLuminosity(primary)}</td>
                             </tr>
