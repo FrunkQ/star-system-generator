@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.240-beta - 5th Jul 2026
+
+* Max time per leg now counts the WHOLE leg — a delayed launch window included. An over-cap waiting plan loses to a faster family instead of stranding the ship; the stuck reason reports the elapsed days when nothing fits.
+* Ignore life support shown ticked + locked (supplies aren't modelled yet) so the UI reflects real capability.
+
 ## v2.0.239-beta - 5th Jul 2026
 
 * Autopilot guide expanded: per-action "what's considered / how it's chosen / when it's reconsidered" decision procedure (incl. exactly how escorts track their charge) + how a leg becomes a flight plan (the four solver families and what Drive picks).
