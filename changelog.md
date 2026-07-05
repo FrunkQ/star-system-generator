@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.242-beta - 5th Jul 2026
+
+* Escort formation is now capability-checked: a charge that burns harder than its escort's thrust ceiling leaves it behind — the escort coasts on from the break moment (deterministic) and commits a fresh chase at its next top-up. Cap the lead ship's Max acceleration to keep a mixed flotilla together.
+
 ## v2.0.241-beta - 5th Jul 2026
 
 * Escorts now catch their charge ANYWHERE — in port or open space. The escort targets the construct itself (real rendezvous, velocity-matched) and then flies genuine formation, mirroring the charge through everything it does, trailing by the km standoff (replaces the host-parking approximation). Caveat: intercept aiming projects a mid-burn charge linearly; coasting/parked charges are exact.
