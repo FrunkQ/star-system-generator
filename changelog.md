@@ -2,6 +2,15 @@
 
 All notable changes are listed here:
 
+## v2.0.236-beta - 5th Jul 2026
+
+* Transfer-logic audit fixes: one shared rocket equation everywhere (de-duped copy removed), autopilot burn profile surfaced, hyperbolic-element guard on the orbit propagator, forecast-line dead code pruned.
+* **Adrift ships get flung by planets again** — patched-conic coast: exact star conic between encounters, exact planet conic through each Hill sphere (deterministic, scrub-safe), capture when abandoned deep inside one. The red forecast line shows the bend too.
+* Autopilot burn profile now follows the Drive slider (20/60/20 thrifty coast → 50/50 continuous burn), stepping down to a longer coast when fuel is short rather than stranding.
+* Committed route lines drawn in burn colours (green accel / yellow coast / red brake), active leg bright, next leg faded; uncontrolled (adrift) coast is now orange.
+* New **Hill spheres** View option — light-yellow bubbles showing each planet's gravitational grab radius (GM view + projector), exactly the boundary the coast physics uses.
+* Autopilot Avoid list and explore "don't revisit" are now enforced by the planner (were capture-only).
+
 ## v2.0.235-beta - 25th Jun 2026
 
 * Each journey in the Ship's Log now says what *kind* of trip it is next to the autopilot badge — mine / load / unload / patrol / explore / escort — instead of just "autopilot", so you can read a route at a glance.
