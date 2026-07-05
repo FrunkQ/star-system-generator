@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.241-beta - 5th Jul 2026
+
+* Escorts now catch their charge ANYWHERE — in port or open space. The escort targets the construct itself (real rendezvous, velocity-matched) and then flies genuine formation, mirroring the charge through everything it does, trailing by the km standoff (replaces the host-parking approximation). Caveat: intercept aiming projects a mid-burn charge linearly; coasting/parked charges are exact.
+
 ## v2.0.240-beta - 5th Jul 2026
 
 * Max time per leg now counts the WHOLE leg — a delayed launch window included. An over-cap waiting plan loses to a faster family instead of stranding the ship; the stuck reason reports the elapsed days when nothing fits.
