@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { endJourneyAtSource, endJourneyAtDestination, strandJourney, constructDisplayPlacement, interstellarConstructIds, flybyTurn } from './interstellar';
+import { endJourneyAtSource, endJourneyAtDestination, strandJourney, constructDisplayPlacement, interstellarConstructIds, flybyTurn, adriftFromSystemExit } from './interstellar';
 import type { Starmap } from '$lib/types';
+import { LY_M } from '$lib/constants';
 
 function makeStarmap(): Starmap {
   return {
@@ -166,6 +167,28 @@ describe('point-destination journeys (Stage 2 — fly to a spot, e.g. a stranded
     if (mid.kind === 'transit') { expect(mid.x).toBeCloseTo(25); expect(mid.y).toBeCloseTo(15); }
     expect(arrived.kind).toBe('adrift');   // sits at the rendezvous point, not "in a system"
     if (arrived.kind === 'adrift') { expect(arrived.x).toBeCloseTo(50); expect(arrived.y).toBeCloseTo(30); }
+  });
+});
+
+describe('adriftFromSystemExit (C1 — leaving the system past the Hill limit)', () => {
+  const construct = { id: 'ship', kind: 'construct', name: 'The Cant' } as any;
+
+  it('parks at the departure system position and drifts at real speed along the in-system heading', () => {
+    const a = adriftFromSystemExit(construct, { x: 10, y: 20 }, { x: 0, y: 30000 }, '900', 'ly', 'sysA');
+    expect(a.x).toBe(10); expect(a.y).toBe(20);
+    expect(a.fromSystemId).toBe('sysA');
+    expect(a.strandedAtSec).toBe('900');
+    expect(a.t0Sec).toBe('900');
+    expect(a.vy).toBeGreaterThan(0);                       // heading was +y → drifts +y
+    expect(a.vx! / a.vy!).toBeCloseTo(0, 6);               // essentially pure +y
+    expect(a.vy! / (30000 / LY_M)).toBeCloseTo(1, 6);      // magnitude = speed in ly/s
+    expect(a.construct.id).toBe('ship');
+    expect(a.construct).not.toBe(construct);               // cloned, not aliased
+  });
+
+  it('zero speed yields a stationary strand (no vx/vy)', () => {
+    const still = adriftFromSystemExit(construct, { x: 1, y: 2 }, { x: 0, y: 0 }, '5', 'ly');
+    expect(still.vx).toBeUndefined(); expect(still.vy).toBeUndefined();
   });
 });
 

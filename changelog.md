@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.252-beta - 5th Jul 2026
+
+* A ship that coasts out past the star's Hill limit now genuinely **leaves the system** — it's removed from the system map and appears on the starmap as an adrift interstellar ship, drifting slowly onward at its real speed along the heading it left on. (The Hill limit is ~2 ly, so a flung ship takes a long time to actually get there — scrub forward to watch it cross over.)
+
 ## v2.0.251-beta - 5th Jul 2026
 
 * Hill-sphere overlay now shows STARS too: each star's Hill boundary draws as an unshaded line with a "[Star] Hill Limit" label (like the frost line) — including the root star's own galactic Hill limit (~2 ly for a Sun, the edge of the system). Planets keep their shaded bubbles.

@@ -31,7 +31,8 @@
 
   import { systemStore, viewportStore, measurementUnit, temperatureUnit } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
-  import { interstellarConstructIds } from '$lib/transit/interstellar';
+  import { interstellarConstructIds, adriftFromSystemExit } from '$lib/transit/interstellar';
+  import { rootStarHillAu } from '$lib/physics/twoBodyCoast';
   import { generateAutopilotChain } from '$lib/transit/autopilotAdapter';
   import AutopilotDisengageDialog from './AutopilotDisengageDialog.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
@@ -1527,6 +1528,7 @@
 
   function syncScheduledJourneysAtDisplayTime(timeMs: number) {
     if (!Number.isFinite(timeMs)) return;
+    const strands: { node: any; vel: { x: number; y: number }; atSec: string }[] = [];
     systemStore.update((sys) => {
       if (!sys) return null;
       let changed = false;
@@ -1534,6 +1536,12 @@
       // Reconciliation is keyed to the AUTHORITATIVE (master/actual) clock, not the display
       // time being previewed - so scrubbing the display never rewrites saved placement.
       const actualMs = getActualTimeMs();
+
+      // C1 — a construct that has coasted BEYOND the root star's Hill limit has left the local system.
+      const rootNode: any = sys.nodes.find((n) => (n as any).parentId == null);
+      const rootMass = (rootNode?.massKg ?? rootNode?.effectiveMassKg ?? 0) as number;
+      const hillLimitAu = rootMass > 0 ? rootStarHillAu(rootMass) : Infinity;
+      const exitAtSec = String(Math.floor(Number(unixMsToMasterSeconds(actualMs))));
 
       const nodes = sys.nodes.map((node) => {
         if (node.kind !== 'construct') return node;
@@ -1666,9 +1674,34 @@
         return nextNode;
       });
 
-      if (!changed) return sys;
-      return { ...sys, nodes };
+      // Collect Hill-limit crossings (Deep Space ships past the boundary) and pull them out of the system.
+      if (hillLimitAu < Infinity) {
+        for (const n of nodes as any[]) {
+          if (n.kind === 'construct' && n.flight_state === 'Deep Space' && n.vector_position_au) {
+            const dist = Math.hypot(n.vector_position_au.x, n.vector_position_au.y);
+            if (dist > hillLimitAu) strands.push({ node: n, vel: n.vector_velocity_ms ?? { x: 0, y: 0 }, atSec: exitAtSec });
+          }
+        }
+      }
+      const strandedIds = new Set(strands.map((s) => s.node.id));
+      const finalNodes = strandedIds.size ? nodes.filter((n) => !strandedIds.has(n.id)) : nodes;
+      if (!changed && !strandedIds.size) return sys;
+      return { ...sys, nodes: finalNodes };
     });
+
+    // Hand the stranded ships to the starmap as interstellar adrift constructs (park + slow drift, keeping
+    // their in-system heading angle). Only touches adriftConstructs — the node removal above syncs to the
+    // starmap via +page. One-shot: once gone from the system they can't re-trigger.
+    if (strands.length) {
+      const map = get(starmapStore);
+      const sysId = get(systemStore)?.id;
+      if (map && sysId) {
+        const sysNode = map.systems.find((s) => s.system.id === sysId || s.id === sysId);
+        const systemPos = sysNode?.position ?? { x: 0, y: 0 };
+        const adrifts = strands.map((s) => adriftFromSystemExit(s.node, systemPos, s.vel, s.atSec, map.distanceUnit, sysNode?.id));
+        starmapStore.update((m) => (m ? { ...m, adriftConstructs: [...(m.adriftConstructs ?? []), ...adrifts] } : m));
+      }
+    }
   }
 
   // Throttle the (potentially expensive, for coasting ships) re-derive while the clock is being jogged:

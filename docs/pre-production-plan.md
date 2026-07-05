@@ -115,7 +115,13 @@ Note: keep serialised values SI; this is presentation only ([[feedback_full_dev_
 
 ---
 
-## Phase C — Orrery & the system boundary  (builds on fresh Hill-sphere work)
+## Phase C — Orrery & the system boundary  ✅ DONE (C2/C3 v2.0.251, C1 v2.0.252)
+
+C1 handoff: a construct coasting beyond the root star's Hill limit (~2 ly) is pulled out of the system and
+added to starmap.adriftConstructs at the departure system's position, drifting at its real speed along its
+in-system heading angle (per the design decision). Detected in the system reconcile; reuses the existing
+adrift infrastructure. NOTE: physically it takes centuries to reach 2 ly, so the GM scrubs forward to see it.
+Possible future tweak: a smaller configurable "system edge" if the Hill limit feels too far.
 
 - **C2 — Star Hill limit line + label.** Extend the Hill-sphere overlay: draw the STAR's Hill sphere as an
   unshaded line (planets stay shaded bubbles) with a frost-line-style text label "[Star name] Hill Limit".

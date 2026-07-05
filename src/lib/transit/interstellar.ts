@@ -251,3 +251,30 @@ export function strandJourney(starmap: Starmap, journeyId: string, frac: number,
     activeJourneys: (starmap.activeJourneys ?? []).filter((j) => j.id !== journeyId)
   };
 }
+
+// A construct that coasted BEYOND its star's Hill limit has left the system — turn its in-system kinematic
+// state into an interstellar AdriftConstruct at the departure system's map position. Its real speed converts
+// to starmap units/game-second; the drift heads along the in-system velocity ANGLE (the orrery and the
+// starmap are unrelated 2-D frames, so the angle is a visual convention, per the design decision). A
+// non-physical (diagrammatic) map or zero speed yields a stationary strand.
+export function adriftFromSystemExit(
+  construct: CelestialBody,
+  systemPos: { x: number; y: number },
+  velocity_ms: { x: number; y: number },
+  atSec: string,
+  distanceUnit: string,
+  fromSystemId?: ID
+): AdriftConstruct {
+  const speed = Math.hypot(velocity_ms.x || 0, velocity_ms.y || 0);
+  const angle = Math.atan2(velocity_ms.y || 0, velocity_ms.x || 0);
+  const mPerUnit = distanceToMeters(1, distanceUnit);                // metres per 1 starmap unit
+  const vUnits = mPerUnit > 0 && Number.isFinite(mPerUnit) ? speed / mPerUnit : 0; // units per game-second
+  return {
+    construct: clone(construct),
+    x: systemPos.x,
+    y: systemPos.y,
+    fromSystemId,
+    strandedAtSec: atSec,
+    ...(vUnits > 0 ? { vx: vUnits * Math.cos(angle), vy: vUnits * Math.sin(angle), t0Sec: atSec } : {})
+  };
+}
