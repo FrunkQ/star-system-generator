@@ -2254,7 +2254,7 @@
             {:else if focusedBody}
             
             {#if showZoneKeyPanel}
-                <ZoneKey />
+                <ZoneKey on:close={() => showZoneKeyPanel = false} />
             {:else}
                 {#if focusedBody && focusedBody.kind !== 'construct'}
                     <BodyDetailsPane

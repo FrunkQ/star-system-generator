@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { keplerUniversal, coastConicAt } from './twoBodyCoast';
+import { keplerUniversal, coastConicAt, hillSpheresAu, rootStarHillAu } from './twoBodyCoast';
 import { AU_KM, G } from '../constants';
 import type { System } from '../types';
 
@@ -105,6 +105,24 @@ const jupiter = {
 };
 const sysStarOnly = { id: 'ref', nodes: [star] } as unknown as System;
 const sysWithJup = { id: 'jov', nodes: [star, jupiter] } as unknown as System;
+
+describe('hillSpheresAu — planets shaded, stars labelled (incl. root galactic limit)', () => {
+  it('a solar-mass root star has a ~2 ly Hill limit, scaling as cbrt(mass)', () => {
+    expect(rootStarHillAu(SOLAR) / 63241.077).toBeCloseTo(2.0, 2);           // ~2 ly
+    expect(rootStarHillAu(8 * SOLAR) / rootStarHillAu(SOLAR)).toBeCloseTo(2, 5); // cbrt(8) = 2
+  });
+  it('includes the root star (isStar) plus planets, and marks companion stars', () => {
+    const sys = { id: 's', nodes: [
+      { id: 'sun', kind: 'body', roleHint: 'star', parentId: null, name: 'Sol', massKg: SOLAR },
+      { id: 'jup', kind: 'body', roleHint: 'planet', parentId: 'sun', name: 'Jupiter', massKg: M_JUP, orbit: { hostId: 'sun', hostMu: G * SOLAR, elements: { a_AU: A_JUP } } }
+    ] } as unknown as System;
+    const hs = hillSpheresAu(sys);
+    const sun = hs.find((h) => h.id === 'sun'); const jup = hs.find((h) => h.id === 'jup');
+    expect(sun?.isStar).toBe(true);
+    expect(jup?.isStar).toBe(false);
+    expect(sun!.rAu).toBeGreaterThan(jup!.rAu); // the galactic limit dwarfs a planet Hill sphere
+  });
+});
 
 describe('coastConicAt — patched-conic SOI handoff', () => {
   it('a drift past Jupiter gets BENT (the fling is back), unlike the star-only conic', () => {

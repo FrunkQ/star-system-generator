@@ -1125,8 +1125,12 @@
               if (!(r > 0)) continue;
               ctx.beginPath();
               ctx.arc(pos.x - renderPan.x, pos.y - renderPan.y, r, 0, 2 * Math.PI);
-              ctx.fillStyle = 'rgba(255, 232, 130, 0.06)';
-              ctx.fill();
+              // Planets: shaded bubble. Stars: an unshaded line only (the "[Star] Hill Limit" — labelled in
+              // screen space below), so a huge star limit doesn't wash the whole canvas in fill.
+              if (!h.isStar) {
+                  ctx.fillStyle = 'rgba(255, 232, 130, 0.06)';
+                  ctx.fill();
+              }
               ctx.strokeStyle = 'rgba(255, 232, 130, 0.38)';
               ctx.lineWidth = 1 / zoom;
               ctx.stroke();
@@ -1359,6 +1363,24 @@
                       }
                   }
               }
+          }
+      }
+      // Hill-limit labels — "[Star] Hill Limit" at the top of each star's Hill circle (frost-line style).
+      if (showHillSpheres && system) {
+          ctx.font = `12px sans-serif`; ctx.textAlign = 'center';
+          for (const h of hillSpheresAu(system)) {
+              if (!h.isStar) continue;
+              const world = worldPositions.get(h.id);
+              const pos = toytownFactor > 0 ? scaledWorldPositions.get(h.id) : world;
+              if (!pos || !world) continue;
+              const d = Math.hypot(world.x, world.y);
+              const topR = toytownFactor > 0
+                  ? Math.max(0, (scaleBoxCox(d + h.rAu, toytownFactor, x0_distance) - scaleBoxCox(Math.max(0, d - h.rAu), toytownFactor, x0_distance)) / 2)
+                  : h.rAu;
+              const screenPos = worldToScreen(pos.x, pos.y - topR);
+              if (screenPos.x < -120 || screenPos.x > width + 120 || screenPos.y < -40 || screenPos.y > height + 40) continue;
+              ctx.fillStyle = 'rgba(255, 232, 130, 0.9)';
+              ctx.fillText(`${h.name} Hill Limit`, screenPos.x, screenPos.y - 5);
           }
       }
       if (showLPoints && lagrangePoints) {

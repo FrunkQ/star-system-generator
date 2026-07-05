@@ -159,12 +159,32 @@ function soiCandidates(system: System, rootId: string): SoiCandidate[] {
   return out;
 }
 
-// Hill spheres for DISPLAY — the same candidates and radii the patched-conic coast hands off at, exported so
-// the orrery overlay can never disagree with the physics boundary it's drawing. Radii in AU.
-export function hillSpheresAu(system: System): { id: string; rAu: number }[] {
+const LY_AU = 63241.077;
+// A ROOT star's own Hill sphere is set by the GALAXY, not a local host — the boundary beyond which the star
+// no longer gravitationally dominates and a ship has effectively left the system (the interstellar-handoff
+// edge). It scales as cbrt(mass); the Sun's is ~1-4 ly depending on the galactic-mass model, so we take ~2 ly
+// for a solar mass. Approximate by design (a_gal·cbrt(M*/3M_gal) folded into one constant).
+const SUN_GALACTIC_HILL_LY = 2.0;
+export function rootStarHillAu(massKg: number): number {
+  const mSun = massKg / 1.989e30;
+  return mSun > 0 ? SUN_GALACTIC_HILL_LY * LY_AU * Math.cbrt(mSun) : 0;
+}
+
+// Hill spheres for DISPLAY — the same candidates and radii the patched-conic coast hands off at (planets +
+// companion stars), PLUS the root star's galactic Hill limit (the system boundary). `isStar` lets the overlay
+// draw stars as a bare labelled line and planets as shaded bubbles. Radii in AU.
+export function hillSpheresAu(system: System): { id: string; rAu: number; isStar: boolean; name: string }[] {
   const root: any = system.nodes.find((n: any) => n.parentId === null || n.parentId == null);
   if (!root) return [];
-  return soiCandidates(system, root.id).map((c) => ({ id: c.id, rAu: c.rHm / AU_M }));
+  const out = soiCandidates(system, root.id).map((c) => ({
+    id: c.id, rAu: c.rHm / AU_M, isStar: c.node.roleHint === 'star', name: c.node.name ?? ''
+  }));
+  // The root star's own (galactic) Hill limit — the "[Star] Hill Limit" boundary. A barycentre root has no
+  // single star to label; its companion stars above already carry their local Hill spheres.
+  if (root.roleHint === 'star' && (root.massKg || 0) > 0) {
+    out.push({ id: root.id, rAu: rootStarHillAu(root.massKg), isStar: true, name: root.name ?? '' });
+  }
+  return out;
 }
 
 // A candidate's global state in SI (getGlobalState returns AU + AU/s).

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.251-beta - 5th Jul 2026
+
+* Hill-sphere overlay now shows STARS too: each star's Hill boundary draws as an unshaded line with a "[Star] Hill Limit" label (like the frost line) — including the root star's own galactic Hill limit (~2 ly for a Sun, the edge of the system). Planets keep their shaded bubbles.
+* The Stellar Zones Key panel now has a close (×) button; re-selecting Zones from View options brings it back.
+
 ## v2.0.250-beta - 5th Jul 2026
 
 * Stars always show their temperature in Kelvin, whatever the temperature switch is set to (a ~5,778 K star reads oddly as °C/°F) — the °C/°F/K choice governs planet & moon temps. Fixes the report and the Companion guide showing star temps in °C/°F.

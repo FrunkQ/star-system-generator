@@ -1,4 +1,10 @@
+<script lang="ts">
+	import { createEventDispatcher } from 'svelte';
+	const dispatch = createEventDispatcher();
+</script>
+
 <div class="zone-key-container">
+	<button class="zk-close" title="Close key (re-select Zones to show it again)" aria-label="Close zones key" on:click={() => dispatch('close')}>×</button>
 	<h4>Stellar Zones Key (likely order from star to edge)</h4>
 	<ul>
 		<li>
@@ -153,6 +159,7 @@
 
 <style>
 	.zone-key-container {
+		position: relative;
 		border: 1px solid var(--border);
 		border-radius: 8px;
 		padding: 1em;
@@ -160,6 +167,22 @@
 		font-size: 1em; /* You had this set to 1.0em, just tidied it */
 		font-family: sans-serif;
 	}
+	.zk-close {
+		position: absolute;
+		top: 6px;
+		right: 6px;
+		width: 26px;
+		height: 26px;
+		border: 1px solid var(--status-bad, #e0484d);
+		border-radius: 6px;
+		background: color-mix(in srgb, var(--status-bad, #e0484d) 16%, var(--bg-control, #333));
+		color: var(--status-bad, #e0484d);
+		cursor: pointer;
+		line-height: 1;
+		font-size: 1.1rem;
+		font-weight: 700;
+	}
+	.zk-close:hover { background: color-mix(in srgb, var(--status-bad, #e0484d) 30%, var(--bg-control, #333)); }
 	h4 {
 		margin-top: 0;
 		color: var(--accent);
