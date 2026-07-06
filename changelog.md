@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.258-beta - 6th Jul 2026
+
+* **Reloading an existing map now re-derives classifications** (not just tags). On load the app already re-runs the physics, but it wasn't stripping the stored classes first — so a body that already carried a (now-outdated) type kept it, and engine fixes like the moon-eyeball correction didn't show until you re-imported the file. Refresh now strips baked-in derived data and re-derives from the authored inputs, exactly like importing a file does; hand-pinned types (auto-classify off) and authored inputs are preserved. No staleness flag needed — derived data is never trusted from storage.
+
 ## v2.0.257-beta - 6th Jul 2026
 
 * Fixed a **hand-picked body type not surviving save → reload**. When you pick a type and switch off *Auto-classify*, that choice is authored data — but on load the import fix-up wiped the class and the engine re-derived it, silently reverting your pick. Pinned types (auto-classify off) now persist across load, exactly like a star's spectral class; bodies left on auto-classify still re-derive as before.

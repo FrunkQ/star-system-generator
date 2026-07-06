@@ -891,7 +891,11 @@
       const node = systems[i];
       try {
         if (node?.system?.nodes) {
-          node.system = systemProcessor.process(node.system, selectedRulepack);
+          // STRIP baked-in derived data first (same as file import), THEN re-derive. Without the strip
+          // a stored body keeps its old class/tags — the processor's guard won't re-classify a body that
+          // already has a (stale) non-empty class — so an engine fix (e.g. the moon-eyeball correction)
+          // would never show on a refresh of an existing map. Authored inputs + GM-pinned types survive.
+          node.system = systemProcessor.process(fixUpImportedSystem(node.system, selectedRulepack), selectedRulepack);
         }
       } catch (e) { console.warn('Recalc failed for system', node?.name, e); }
       physicsProgress = { done: i + 1, total: systems.length, joke: i % 3 === 2 ? PHYSICS_JOKES[(i + 1) % PHYSICS_JOKES.length] : physicsProgress.joke };
