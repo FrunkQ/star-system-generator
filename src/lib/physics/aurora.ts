@@ -39,3 +39,17 @@ export function deriveAurora(body: CelestialBody): Aurora {
   const strength = auroraStrength(body);
   return { strength, tier: auroraTier(strength) };
 }
+
+// The dominant auroral emitter and its colour, from the atmosphere — like real skies: atomic oxygen
+// glows green, nitrogen blue-violet, CO₂ violet, a hydrogen/helium giant red-pink. Shared by the
+// renderer (uses the hex) and the physics trace (uses the gas + colour name) so they can't drift.
+export function auroraEmitter(body: CelestialBody): { gas: string; colour: string; hex: string; tip: string } {
+  const c: any = body.atmosphere?.composition ?? {};
+  const g = (k: string) => c[k] ?? 0;
+  const o = g('O2') + g('O'), n = g('N2'), hhe = g('H2') + g('He'), co2 = g('CO2');
+  if (hhe > 0.4) return { gas: 'hydrogen/helium', colour: 'red-pink', hex: '#ff7e6a', tip: '#8ab6ff' };
+  if (co2 > 0.4) return { gas: 'carbon dioxide', colour: 'violet', hex: '#c86ad0', tip: '#ff7a9a' };
+  if (o > 0.04) return { gas: 'atomic oxygen', colour: 'green', hex: '#57e39a', tip: '#e88ad6' };
+  if (n > 0.5) return { gas: 'nitrogen', colour: 'blue-violet', hex: '#7ea6ff', tip: '#c877e0' };
+  return { gas: 'mixed gases', colour: 'green', hex: '#57e39a', tip: '#e88ad6' };
+}

@@ -7,6 +7,7 @@
   import { starColorFromTempK } from '$lib/rendering/apparentColor';
   import { getPlanetTexture } from '$lib/rendering/planetTexture';
   import { oblatePolarFactor } from '$lib/rendering/bodyShape';
+  import { auroraEmitter } from '$lib/physics/aurora';
   import { EARTH_MASS_KG } from '$lib/constants';
 
   export let body: CelestialBody;
@@ -144,16 +145,7 @@
   $: auroraStr = auroraTag ? Math.max(0, Math.min(1.3, parseFloat(auroraTag.value ?? '0') || 0)) : 0;
   $: hasAurora = !isStar(body) && !isBelt(body) && auroraStr > 0;
   $: auroraBrilliant = auroraStr >= 0.55;
-  $: auroraCol = (() => {
-    const c: any = body.atmosphere?.composition ?? {};
-    const g = (k: string) => c[k] ?? 0;
-    const o = g('O2') + g('O'), n = g('N2'), hhe = g('H2') + g('He'), co2 = g('CO2');
-    if (hhe > 0.4) return { core: '#ff7e6a', tip: '#8ab6ff' };   // H/He giant: red-orange + blue
-    if (co2 > 0.4) return { core: '#c86ad0', tip: '#ff7a9a' };   // CO₂: violet + red
-    if (o > 0.04) return { core: '#57e39a', tip: '#e88ad6' };    // oxygen: classic green + magenta
-    if (n > 0.5) return { core: '#7ea6ff', tip: '#c877e0' };     // nitrogen: blue-violet
-    return { core: '#57e39a', tip: '#e88ad6' };
-  })();
+  $: auroraCol = (() => { const e = auroraEmitter(body); return { core: e.hex, tip: e.tip }; })();
   // Spiky, swirled oval ringing a pole — a foreshortened ellipse whose points alternate out into spikes
   // (auroral curtains) and drift tangentially (a swirl), so it hugs the pole rather than floating flat.
   function auroraOval(cy: number, off: number): string {

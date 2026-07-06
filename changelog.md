@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.297-beta - 6th Jul 2026
+
+* **The physics panel now explains auroras and orbital stability.** A new **Aurora** entry shows why it glows the colour it does (the atmosphere gas that's excited — oxygen green, nitrogen blue-violet, etc.) and how its strength comes from atmosphere + field + incident flux. A new **Orbital stability** entry shows the orbit's perihelion→aphelion, the assessment, and *why* — including when a mean-motion resonance (Pluto/Neptune style) shepherds a crossing orbit into stability rather than doom. Great for spotting a surprising verdict.
+
 ## v2.0.296-beta - 6th Jul 2026
 
 * **Auroras now follow the axial tilt.** Because the magnetic poles ride with the spin axis, the auroral ovals rotate with a world's axial tilt (like the cloud banding does) instead of staying pinned to the top and bottom — so a tipped-over world shows its auroras off to the side.

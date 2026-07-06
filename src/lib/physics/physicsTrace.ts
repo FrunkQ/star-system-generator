@@ -7,6 +7,7 @@ import type { CelestialBody } from '$lib/types';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM, G } from '$lib/constants';
 import { makeupFractions, bulkDensityFromMakeup } from './makeup';
 import { describeTag } from '$lib/tags/tagPresentation';
+import { auroraEmitter } from './aurora';
 
 export interface TraceField { label: string; value: string; }
 export interface TraceLayer {
@@ -167,6 +168,26 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     });
   }
 
+  // 5b. Aurora — why this colour, how strong. Needs all three: atmosphere gas to glow, a field to
+  //     funnel particles to the poles, and an incident ionising flux to drive them.
+  const auroraTag = (body.tags ?? []).find((t) => t.key.startsWith('aurora/'));
+  if (auroraTag) {
+    const em = auroraEmitter(body);
+    layers.push({
+      id: 'aurora', title: 'Aurora', link: '/physics#magnetism',
+      inputs: [
+        { label: 'Atmosphere', value: `${n(body.atmosphere?.pressure_bar, 3, 'bar')} · ${em.gas}` },
+        { label: 'Magnetosphere', value: body.magnetism ? (body.magnetism.intrinsic ? 'intrinsic' : body.magnetism.source) : 'none' },
+        { label: 'Incident flux (Earth=1)', value: n(body.stellarRadiation, 2) }
+      ],
+      outputs: [
+        { label: 'Strength → tier', value: `${auroraTag.value ?? '—'} → ${describeTag(auroraTag.key).label}` },
+        { label: 'Colour', value: `${em.colour} — ${em.gas} glows` }
+      ],
+      notes: ['Ionising particles funnelled down the field lines to the magnetic poles excite the upper atmosphere; it glows the colour of whichever gas is struck, like a neon sign. Remove the air, the field, or the incident flux and the aurora goes with it.']
+    });
+  }
+
   // 6. Geological activity
   if (body.geoActivity) {
     const g = body.geoActivity;
@@ -215,6 +236,28 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
         { label: 'Tier', value: tier ? describeTag(tier.key).label : '—' }
       ],
       notes: ['Geology + magnetism modifiers are heuristic guesswork — see /physics.']
+    });
+  }
+
+  // 9. Orbital stability — WHY the orbit is stable or not, and how a mean-motion resonance can shepherd
+  //    a crossing orbit (Pluto/Neptune) into metastability rather than doom.
+  if (body.orbit) {
+    const stabLabel = (body as any).orbitalStability as string | undefined;
+    const stabDetails = (body as any).orbitalStabilityDetails as string | undefined;
+    const fateTag = (body.tags ?? []).find((t) => t.key.startsWith('fate/'));
+    const eN = body.orbit.elements.e ?? 0;
+    const aN = body.orbit.elements.a_AU ?? 0;
+    layers.push({
+      id: 'stability', title: 'Orbital stability', link: '/physics#stability',
+      inputs: [
+        { label: 'Orbit', value: `${n(aN, 3, 'AU')} · e ${n(eN, 3)}` },
+        { label: 'Perihelion → aphelion', value: `${n(aN * (1 - eN), 3)}–${n(aN * (1 + eN), 3)} AU` }
+      ],
+      outputs: [
+        { label: 'Assessment', value: stabLabel ?? 'Stable' },
+        ...(fateTag ? [{ label: 'Predicted fate', value: describeTag(fateTag.key).label }] : [])
+      ],
+      notes: [stabDetails ?? 'No orbit-crossing neighbour or loose binding found — a well-spaced, stable orbit.']
     });
   }
 
