@@ -196,10 +196,18 @@ function removeGhostBarycenters(system: System): boolean {
   return true;
 }
 
-// The system root — the node nothing orbits (parentId null). Prefer a star/bary if several somehow lack a parent.
+// The system root — the node nothing orbits. That's a node with NO parent, OR one whose parentId is
+// DANGLING (points at a node that no longer exists — e.g. a hand-edited file that dropped the auto
+// barycentre two stars orbited). Treating a dangling-parent node as a root lets reparentDanglingNodes
+// re-home the orphans (and promoteMassiveCompanion then rebuilds the missing barycentre). Prefer a
+// star/barycentre, then the most massive candidate, so the heavier star anchors the rebuilt pair.
 function findRoot(system: System): CelestialBody | Barycenter | undefined {
-  const roots = system.nodes.filter((n) => !n.parentId);
-  return roots.find((n) => n.kind === 'barycenter' || (n as CelestialBody).roleHint === 'star') ?? roots[0];
+  const ids = new Set(system.nodes.map((n) => n.id));
+  const roots = system.nodes.filter((n) => !n.parentId || !ids.has(n.parentId as string));
+  const preferred = roots.filter((n) => n.kind === 'barycenter' || (n as CelestialBody).roleHint === 'star');
+  const pool = preferred.length ? preferred : roots;
+  return pool.reduce<CelestialBody | Barycenter | undefined>(
+    (best, n) => (!best || getMass(n) > getMass(best) ? n : best), undefined);
 }
 
 // Re-home any node whose parentId points at a node that no longer exists. A dangling parent resolves to

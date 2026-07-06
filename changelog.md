@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.295-beta - 6th Jul 2026
+
+* **Self-heal a binary whose barycentre went missing.** A hand-edited (or otherwise corrupted) system where two stars orbit a barycentre that isn't in the file would fail to load — nothing had a valid root. The barycentre reconciler now recognises an orphaned node (one whose parent no longer exists) as a root, re-homes the stragglers, and rebuilds the missing barycentre, so the system loads normally.
+
 ## v2.0.294-beta - 6th Jul 2026
 
 * **Cratered surfaces.** Old, airless, geologically dead worlds — no atmosphere to burn up impactors, no resurfacing to erase the scars — now show impact craters (Mercury, the Moon, Callisto…). Driven by the airless + geologically-inactive condition, or an explicit impact-record tag; shown in The Guide and the orrery.

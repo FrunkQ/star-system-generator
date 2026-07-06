@@ -42,6 +42,35 @@ describe('reconcileBarycenters — ghost cleanup', () => {
     reconcileBarycenters(sys);
     expect(sys.nodes.some((n) => n.id === 'bary')).toBe(true);   // real barycentre survives
   });
+
+  // A hand-edited file that DROPPED the auto barycentre two stars orbited: both stars have a dangling
+  // parent and no node has a null parent, so there is no valid root and the system won't lay out.
+  // The reconciler must treat a dangling-parent node as a root, re-home the orphans, and rebuild the bary.
+  it('rebuilds a missing barycentre that two orphaned stars orbited', () => {
+    const orbit = (host: string, a: number, M0 = 0) => ({ hostId: host, hostMu: 1e20, t0: 0, elements: { a_AU: a, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: M0 } });
+    const sys = {
+      seed: 's', nodes: [
+        { id: 'star-a', kind: 'body', roleHint: 'star', name: 'A', parentId: 'gone-bary', massKg: 2.5e30, orbit: orbit('gone-bary', 36) },
+        { id: 'star-b', kind: 'body', roleHint: 'star', name: 'B', parentId: 'gone-bary', massKg: 9e29, orbit: orbit('gone-bary', 101, 3.14) },
+        { id: 'p1', kind: 'body', roleHint: 'planet', name: 'P1', parentId: 'star-a', massKg: 3e24, orbit: orbit('star-a', 0.8) },
+        { id: 'p2', kind: 'body', roleHint: 'planet', name: 'P2', parentId: 'star-b', massKg: 2e24, orbit: orbit('star-b', 0.1) },
+      ]
+    } as unknown as System;
+
+    reconcileBarycenters(sys);
+
+    const roots = sys.nodes.filter((n) => !n.parentId);
+    expect(roots.length).toBe(1);                          // exactly one root now
+    expect(roots[0].kind).toBe('barycenter');              // the barycentre was rebuilt
+    const byId = new Map(sys.nodes.map((n) => [n.id, n]));
+    expect((byId.get('star-a') as any).parentId).toBe(roots[0].id);
+    expect((byId.get('star-b') as any).parentId).toBe(roots[0].id);
+    // no dangling parents remain, and each planet stayed with its star
+    const ids = new Set(sys.nodes.map((n) => n.id));
+    expect(sys.nodes.every((n) => !n.parentId || ids.has(n.parentId as string))).toBe(true);
+    expect((byId.get('p1') as any).parentId).toBe('star-a');
+    expect((byId.get('p2') as any).parentId).toBe('star-b');
+  });
 });
 
 // Deleting one half of a binary must dissolve the pair: the survivor returns to its original orbit around
