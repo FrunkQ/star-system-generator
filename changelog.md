@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.292-beta - 6th Jul 2026
+
+* **No more clouds on airless worlds.** A body with only a tenuous exosphere — like Mercury's sputtered sodium/potassium halo at a ten-billionth of a bar — was wrongly getting a "cloud deck" (and cloud-tinted colouring), because the model looked at what the thin gas was *made of* but not how little of it there is. Clouds now require a real atmosphere (≥ ~1 µbar), so exosphere worlds render and read as the bare rock they are, while thin-but-real atmospheres (Mars, Triton, Pluto) keep their clouds.
+
 ## v2.0.291-beta - 6th Jul 2026
 
 * **Tags keep their context in reports and the field guide.** They were being shortened to the bare last word — "Dynamo", "Oblate", "Brilliant" — losing what they meant. They now read with their category, matching the GM window: "Magnetism · Intrinsic dynamo", "Shape · Oblate", "Brilliant aurora: 0.62", "Climate · Polar ice". (The category is only added where it clarifies — no "Atmosphere · Inert atmosphere".)

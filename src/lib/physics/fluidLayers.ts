@@ -65,7 +65,12 @@ export function deriveFluidLayers(body: CelestialBody, pack?: RulePack): FluidLa
   //     cloud-forming species (and their liquid + colour) is owned HERE by GAS_CLOUD — this model
   //     supersedes the old rulepack "cloud-former" gas tag. ---
   const comp = body.atmosphere?.composition;
-  if (comp) {
+  // Clouds need a real atmosphere to suspend them. A tenuous EXOSPHERE — Mercury's sputtered Na/K
+  // halo (~1e-11 bar), a lunar sputter atmosphere — is collisionless: condensable species dominate the
+  // composition but there's essentially nothing there, so it forms NO cloud deck. Gate on absolute
+  // pressure, not just the composition fraction. (1 µbar admits Triton/Pluto-thin real atmospheres.)
+  const atmPressureBar = body.atmosphere?.pressure_bar ?? 0;
+  if (comp && atmPressureBar >= 1e-6) {
     for (const [gas, frac] of Object.entries(comp)) {
       if ((frac as number) < 0.001) continue;
       const m = GAS_CLOUD[gas];
