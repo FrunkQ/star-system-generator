@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.281-beta - 6th Jul 2026
+
+* **Phase G viz — atmosphere limb-glow.** Worlds with an atmosphere now get a soft halo hugging the limb in The Guide's disc, its strength scaled by surface pressure (wispy → faint, Earth → moderate, Venus → strong) and its colour from the atmosphere's haze. Airless worlds keep a clean edge.
+
 ## v2.0.280-beta - 6th Jul 2026
 
 * **Phase G viz — gas-giant bands now tilt with the spin axis.** Cloud banding (its count already set by rotation) is drawn tilted by the world's axial tilt, so a planet tipped on its side like Uranus shows near-vertical bands instead of the usual horizontal stripes. Shows in the orrery and The Guide.

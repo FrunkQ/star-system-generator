@@ -93,6 +93,15 @@
   // Polar ice caps (Phase G): frost at the cold poles / night side of a world liquid at its mean
   // temperature. Tag-driven (climate/polar-ice), drawn on the surface so the terminator dims them.
   $: hasPolarIce = !isStar(body) && !isBelt(body) && tagKeys.includes('climate/polar-ice');
+
+  // Atmosphere limb-glow (Phase G): a soft halo hugging the limb, its strength from the surface
+  // pressure (log-scaled: wispy ~0.02 bar → faint, Earth 1 bar → moderate, thick Venus/giant → full),
+  // coloured by the atmosphere/haze palette stop (else a default sky blue).
+  $: atmPressure = (body.atmosphere?.pressure_bar ?? (body.atmosphere as any)?.pressure_atm ?? 0) as number;
+  $: hasAtmoGlow = !isStar(body) && !isBelt(body) && atmPressure > 0.02;
+  $: atmColor = palette.find((p) => p.role === 'atmosphere')?.hex
+    ?? palette.find((p) => p.role === 'cloud')?.hex ?? '#9fc6e8';
+  $: atmStrength = Math.max(0, Math.min(1, (Math.log10(Math.max(1e-3, atmPressure)) + 2) / 3));
   $: magma = (() => {
     if (isStar(body) || isBelt(body)) return [] as { cx: number; cy: number; r: number }[];
     const volc = isLava || tagKeys.includes('tidal/volcanism') || tagKeys.includes('tidal/hotspots');
@@ -161,6 +170,16 @@
           <stop offset="100%" stop-color="rgba(244,250,255,0.96)" />
         </linearGradient>
       {/if}
+      {#if hasAtmoGlow}
+        <!-- Halo hugging the limb (peak at r=30), fading out to r=40 and slightly inward. -->
+        <radialGradient id="atmglow-{uid}" gradientUnits="userSpaceOnUse" cx="50" cy="50" r="40">
+          <stop offset="0" stop-color={atmColor} stop-opacity="0" />
+          <stop offset="0.68" stop-color={atmColor} stop-opacity="0" />
+          <stop offset="0.75" stop-color={atmColor} stop-opacity={(0.55 * atmStrength).toFixed(2)} />
+          <stop offset="0.9" stop-color={atmColor} stop-opacity={(0.16 * atmStrength).toFixed(2)} />
+          <stop offset="1" stop-color={atmColor} stop-opacity="0" />
+        </radialGradient>
+      {/if}
       {#if magma.length}
         <radialGradient id="magma-{uid}" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stop-color={isLava ? 'rgba(255,244,200,0.98)' : 'rgba(255,210,120,0.98)'} />
@@ -220,6 +239,10 @@
         <g clip-path="url(#clip-{uid})">
           {#each magma as m}<circle cx={m.cx} cy={m.cy} r={m.r} fill="url(#magma-{uid})" />{/each}
         </g>
+      {/if}
+      <!-- Atmosphere limb-glow on top (transparent centre leaves the surface untouched). -->
+      {#if hasAtmoGlow}
+        <circle cx="50" cy="50" r="40" fill="url(#atmglow-{uid})" />
       {/if}
       </g>
 
