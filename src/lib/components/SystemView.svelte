@@ -2411,7 +2411,7 @@
     {/if}
 
     {#if showAddTypeModal && pendingAdd}
-        <AddBodyTypeModal {rulePack} teqK={pendingAdd.teqK} role={pendingAdd.role}
+        <AddBodyTypeModal {rulePack} teqK={pendingAdd.teqK} role={pendingAdd.role} hostMassKg={pendingAdd.hostMassKg}
             on:select={placeBodyOfType} on:close={() => { showAddTypeModal = false; pendingAdd = null; }} />
     {/if}
 

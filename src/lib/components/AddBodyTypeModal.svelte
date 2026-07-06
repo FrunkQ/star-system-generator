@@ -8,19 +8,28 @@
   import { rarityOf, rarityTier } from '$lib/generation/typeDraw';
   import { thumbUrl } from '$lib/util/thumbs';
   import { fmt } from '$lib/stores';
+  import { EARTH_MASS_KG } from '$lib/constants';
 
   export let rulePack: RulePack;
   export let teqK: number;
   export let role: 'planet' | 'moon';
+  export let hostMassKg: number = 0; // host body's mass — moons are mass-gated by it (few for a terrestrial, more for a giant)
 
   const dispatch = createEventDispatcher();
   const close = () => dispatch('close');
 
   $: fingerprints = (rulePack.classifier?.fingerprints ?? []) as Fingerprint[];
   $: images = (rulePack.classifier as any)?.planetImages ?? {};
-  $: viable = viableTypesAt(teqK, role, fingerprints)
+  $: viable = viableTypesAt(teqK, role, fingerprints, hostMassKg)
     .slice()
     .sort((a, b) => a.class.localeCompare(b.class));
+
+  // Moons are ALSO gated by the host's mass (a terrestrial can only hold small airless/icy moons; a
+  // giant can hold larger, icy, atmosphered ones). Surface that second gate in the header.
+  $: hostMe = hostMassKg / EARTH_MASS_KG;
+  $: hostMassLabel = hostMe >= 300 ? `${(hostMe / 317.8).toFixed(1)} M♃` : hostMe >= 10 ? `${Math.round(hostMe)} M⊕` : `${hostMe.toFixed(2)} M⊕`;
+  $: hostIsGiant = hostMe >= 15;
+  $: massGated = role === 'moon' && hostMassKg > 0;
 
   const pretty = (cls: string) => cls.replace('planet/', '').replace(/-/g, ' ');
   const tierOf = (cls: string) => rarityTier(rarityOf(cls, rulePack));
@@ -35,7 +44,11 @@
     <header>
       <div>
         <h2>Add {role === 'moon' ? 'moon' : 'planet'} — pick a type</h2>
-        <p class="sub">All viable at this orbit (~{$fmt.tempK(teqK)}) — rarity just signals how eccentric. {viable.length} types.</p>
+        {#if massGated}
+          <p class="sub">Viable at this orbit (~{$fmt.tempK(teqK)}) <strong>and</strong> this host's mass ({hostMassLabel} — {hostIsGiant ? 'a giant, so larger, icy &amp; atmosphered moons are on the menu' : 'terrestrial, so only small airless / icy moons'}). {viable.length} types.</p>
+        {:else}
+          <p class="sub">All viable at this orbit (~{$fmt.tempK(teqK)}) — rarity just signals how eccentric. {viable.length} types.</p>
+        {/if}
         <div class="legend">
           {#each LEGEND as l}<span class="leg"><span class="dot" style="background:{l.color}"></span>{l.label}</span>{/each}
         </div>
@@ -56,7 +69,7 @@
         </button>
       {/each}
       {#if viable.length === 0}
-        <p class="empty">No catalogued types are viable at this temperature.</p>
+        <p class="empty">No catalogued types are viable at this temperature{massGated ? " and host mass" : ""}.</p>
       {/if}
     </div>
   </div>

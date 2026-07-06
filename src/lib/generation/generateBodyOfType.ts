@@ -56,17 +56,45 @@ function co2FractionForWarming(d: number): number {
   return GH_TABLE[GH_TABLE.length - 1][0];
 }
 
-// Which base types could exist at a given equilibrium temperature (and role). A type is viable when
-// the orbit's T_eq falls inside its T_eq band (with a little slack); types without a T_eq band are
-// always offered. Greenhouse types get extra COLD-edge slack (see above). Moons exclude giants/stars.
-export function viableTypesAt(teqK: number, role: 'planet' | 'moon', fingerprints: Fingerprint[]): Fingerprint[] {
+// A moon caps at ~10% of its host's mass (Pluto–Charon, ~12%, is the extreme before it reads as a
+// double planet / barycentre rather than a satellite).
+export const MOON_MASS_CAP = 0.1;
+// A host at/above this mass (ice-giant scale and up) can hold LARGER, atmosphered, watery moons
+// (Titan, Europa, Ganymede); a terrestrial-scale host can only manage small airless/icy rock.
+const GIANT_HOST_ME = 15;
+// Surface / atmosphere / biosphere types that imply a SUBSTANTIAL world — implausible as a small rocky
+// planet's moon, but fine around a giant. Airless / icy / volcanic rock (barren, crater, ice, lava,
+// desert) stays available to any host, so a terrestrial's moon defaults to airless rock.
+const SUBSTANTIAL_MOON = /ocean|hycean|forest|jungle|swamp|terrestrial|earth-analogue|earth-like|superhabitable|methane|ammonia|phosphorus|chlorine|fluorine|sulfur/;
+
+// Which base types could exist at a given equilibrium temperature (and role) around a host of a given
+// mass. A type is viable when the orbit's T_eq falls inside its T_eq band (with slack); types without a
+// T_eq band are always offered on temperature. Greenhouse types get extra COLD-edge slack. Moons also
+// exclude giants/eyeballs, and are MASS-GATED by the host: a terrestrial offers only small airless/icy
+// moons; a gas giant offers more (bigger, watery, atmosphered). hostMassKg 0 ⇒ no mass gate.
+export function viableTypesAt(teqK: number, role: 'planet' | 'moon', fingerprints: Fingerprint[], hostMassKg = 0): Fingerprint[] {
   const SLACK = 0.12; // 12% — matches the classifier's soft edge
+  const isMoon = role === 'moon';
+  const hostMe = hostMassKg / EARTH_MASS_KG;
+  const hostIsGiant = hostMe >= GIANT_HOST_ME;
+  const maxMoonMe = hostMe * MOON_MASS_CAP;
   return fingerprints.filter((fp) => {
     if (fp.kind !== 'base') return false;
     // A rogue planet is by definition UNBOUND — placing one in an orbit makes it not-rogue, so it's
     // never offered/drawn for a bound slot (the classifier still uses it for genuinely unbound bodies).
     if (/rogue/.test(fp.class)) return false;
-    if (role === 'moon' && /gas-giant|neptune|jupiter|dwarf|brown/.test(fp.class)) return false;
+    // A moon can never be a member of the giant family (it orbits one) nor an eyeball (locked to its
+    // planet, not the star). Covers gas/ice giants, neptunes, jupiters, helium & puffy giants, brown/
+    // dwarf bodies. (The old filter missed ice-giant / helium / puffy, so moons could be gas giants.)
+    if (isMoon && /giant|neptune|jupiter|helium|puff|brown|dwarf|eyeball/.test(fp.class)) return false;
+    if (isMoon && hostMe > 0) {
+      // A moon must fit under its host: drop any type whose characteristic mass exceeds the moon cap.
+      const mb = fp.match['mass_Me'];
+      if (Array.isArray(mb) && typeof mb[0] === 'number' && mb[0] > maxMoonMe) return false;
+      // Around a terrestrial-scale host, only simple airless/icy/rocky moons are plausible — the
+      // substantial atmosphere/ocean/biosphere worlds need a giant host.
+      if (!hostIsGiant && SUBSTANTIAL_MOON.test(fp.class)) return false;
+    }
     const band = fp.match['Teq_K'];
     if (!Array.isArray(band) || typeof band[0] !== 'number') return true; // no temp constraint
     const [lo, hi] = band as [number, number];
@@ -91,12 +119,17 @@ export function generateBodyOfType(
   // lived heat engine, which is also what earns the super-habitable mass bonus and keeps it
   // tectonically active when old. So default it into that band unless the fingerprint pins a mass.
   const isSuperhab = /superhabitable/.test(fp.class);
-  const massFallback = isGiant ? 50 + rng() * 250 : isSuperhab ? 1.3 + rng() * 2.2 : 0.5 + rng() * 1.5;
+  // A moon that doesn't get its size from a type mass-band defaults to a SMALL airless/icy body
+  // (Luna ≈ 0.012 M⊕, Titan ≈ 0.023) rather than an Earth-mass world — it should not be
+  // gravitationally significant to its host.
+  const massFallback = isGiant ? 50 + rng() * 250
+    : isSuperhab ? 1.3 + rng() * 2.2
+    : ctx.role === 'moon' ? 0.002 + rng() * 0.03
+    : 0.5 + rng() * 1.5;
   let massMe = pick(m['mass_Me'], rng, massFallback);
   // A MOON must stay well below its host (else it's a double planet / barycentre, not a satellite).
-  // Cap at 20% of the host so a 0.6 M⊕ planet can't sprout a 16 M⊕ "moon".
   if (ctx.role === 'moon' && ctx.hostMassKg > 0) {
-    massMe = Math.min(massMe, (ctx.hostMassKg / EARTH_MASS_KG) * 0.2);
+    massMe = Math.min(massMe, (ctx.hostMassKg / EARTH_MASS_KG) * MOON_MASS_CAP);
   }
   out.massKg = massMe * EARTH_MASS_KG;
 

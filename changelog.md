@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.0.265-beta - 6th Jul 2026
+
+* **E1 — moons are now gated by their host's mass**, in both the "Add moon" picker and procedural generation. A terrestrial can only hold small airless / icy moons (barren, crater, ice, desert, planetesimal…) — airless rock the default — while a gas giant offers far more (Titan-like methane, Europa-like ocean/ice, bigger bodies). The "Add moon — pick a type" header now says so and the count reflects it (a terrestrial host drops from ~28 types to ~7). Also: a manually-added moon defaults to a small (not gravitationally significant) size instead of Earth-mass, and moons can no longer be gas-giant-family types (helium/puffy/ice-giant) — an old filter gap.
+
+## v2.0.264-beta - 6th Jul 2026
+
+* Generated gas giants now migrate into the true **hot-Jupiter zone** (down to ~0.025 AU, log-biased), so genuine hot Jupiters actually appear — puffed up by the thermal inflation and classified as hot / ultra-hot Jupiters — rather than only warm giants at the fringe. Migration is also slightly more likely.
+
 ## v2.0.263-beta - 6th Jul 2026
 
 * Freshly-generated gas giants now **inflate at generation** too: once a giant's final (post-migration) orbit and temperature are known, a close-in one is born puffy — the same thermal-inflation model the editor uses — so a generated hot Jupiter comes out low-density and classifies as one. Cold giants are unchanged.

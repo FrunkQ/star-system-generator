@@ -29,6 +29,26 @@ describe('viableTypesAt — location filters the menu', () => {
     expect(names.every((n) => !/gas-giant|jupiter|neptune/.test(n))).toBe(true);
   });
 
+  it('moons are mass-gated by the host: a terrestrial offers only small airless/icy moons (E1)', () => {
+    const fps = fingerprints();
+    const EARTH = 5.972e24;
+    const names = viableTypesAt(250, 'moon', fps, 1 * EARTH).map((f) => f.class);
+    expect(names).not.toContain('planet/super-earth');  // 2–10 M⊕ — far too big for a 1 M⊕ host
+    expect(names).not.toContain('planet/ocean');         // substantial-world type — needs a real planet
+    expect(names).not.toContain('planet/earth-like');
+    expect(names.some((n) => /ice|barren|mesoplanet|planetesimal|desert|crater/.test(n))).toBe(true); // airless/icy stay
+  });
+
+  it('a gas-giant host offers MORE moon types than a terrestrial host, and 0 host mass = no gate (E1)', () => {
+    const fps = fingerprints();
+    const EARTH = 5.972e24;
+    const terr = viableTypesAt(250, 'moon', fps, 1 * EARTH).length;
+    const giant = viableTypesAt(250, 'moon', fps, 318 * EARTH).length;
+    const ungated = viableTypesAt(250, 'moon', fps).length; // hostMassKg defaults 0 → no mass gate
+    expect(giant).toBeGreaterThan(terr);
+    expect(ungated).toBeGreaterThan(terr);
+  });
+
   it('greenhouse types still offered at a cold-edge orbit (bare T_eq below the band)', () => {
     // earth-like band is T_eq [250,315]; at 235 K bare equilibrium it would fall out WITHOUT the
     // greenhouse cold-slack — but we know it carries a warming atmosphere, so it stays on the menu.
@@ -95,6 +115,16 @@ describe('generateBodyOfType — params land in the type bands', () => {
     const body = generateBodyOfType(fp, { distAU: 5, hostMassKg: 2e30, role: 'planet', rng: mid, teqK: 150 });
     const comp = (body.atmosphere as any)?.composition ?? {};
     expect(comp.CO2 ?? 0).toBe(0);
+  });
+
+  it('a moon defaults to a small (not gravitationally significant) size (E1)', () => {
+    // A no-mass-band type (airless rock) placed as a moon should default to a small body, not Earth-mass.
+    const fp = fingerprints().find((f) => f.class === 'planet/barren')
+      ?? fingerprints().find((f) => f.kind === 'base' && !f.match['mass_Me'] && !/giant|jupiter|neptune/.test(f.class))!;
+    const body = generateBodyOfType(fp, { distAU: 1, hostMassKg: 5.972e24, role: 'moon', rng: mid });
+    const massMe = (body.massKg ?? 0) / 5.972e24;
+    expect(massMe).toBeGreaterThan(0);
+    expect(massMe).toBeLessThan(0.1); // well under Earth — a proper satellite, not a co-planet
   });
 
   it('an iron world gets a metal-rich makeup and derived radius', () => {
