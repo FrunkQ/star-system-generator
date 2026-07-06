@@ -3,7 +3,7 @@
   import type { CelestialBody, RulePack, Makeup } from '$lib/types';
   import { fmt } from '$lib/stores';
   import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '$lib/constants';
-  import { makeupFractions, normalizeMakeup } from '$lib/physics/makeup';
+  import { makeupFractions, normalizeMakeup, gasThermalInflationFactor } from '$lib/physics/makeup';
   import {
     densityGcc, editMass, editRadius, editDensity, editMakeup, setMakeupComponent,
     COMPOSITION_PRESETS, presetValidAt, presetActive,
@@ -196,18 +196,46 @@
       dispatch('update');
   }
 
+  // Gas-giant THERMAL INFLATION (F-OVR): insolation puffs the envelope, so a gas giant's derived radius
+  // (and hence density) tracks its equilibrium temperature. Derived from Teq by default; the GM can pin a
+  // multiplier. Only meaningful for gas-dominated bodies (terrestrials ignore it).
+  $: pGasDominated = pMakeup.gas > 0.5;
+  $: pInflationDerived = gasThermalInflationFactor(body.equilibriumTempK ?? 0);
+  $: pInflation = body.overrides?.gasThermalInflation ?? pInflationDerived;
+  $: inflationOverridden = typeof body.overrides?.gasThermalInflation === 'number';
+  const effInflation = () => (body.overrides?.gasThermalInflation ?? gasThermalInflationFactor(body.equilibriumTempK ?? 0));
+
   const heldDensity = () =>
       (lock === 'density' ? densityGcc((body.massKg ?? 0) / EARTH_MASS_KG, (body.radiusKm ?? 0) / EARTH_RADIUS_KM) : undefined);
-  function applyMass(v: number)   { if (Number.isFinite(v)) commit(editMass(pState(), v, lock, heldDensity())); }
+  function applyMass(v: number)   { if (Number.isFinite(v)) commit(editMass(pState(), v, lock, heldDensity(), effInflation())); }
   function applyRadius(v: number) { if (Number.isFinite(v)) commit(editRadius(pState(), v, lock, heldDensity())); }
   function applyDensity(v: number){ if (Number.isFinite(v)) commit(editDensity(pState(), v, lock)); }
   function applyMakeupComp(k: keyof Makeup, pctVal: number) {
       const nm = setMakeupComponent(pState().makeup, k, clamp(pctVal, 0, 100) / 100);
-      commit(editMakeup(pState(), nm, lock));
+      commit(editMakeup(pState(), nm, lock, effInflation()));
   }
   function applyPreset(mk: Makeup) {
-      commit(editMakeup(pState(), normalizeMakeup(mk), lock));
+      commit(editMakeup(pState(), normalizeMakeup(mk), lock, effInflation()));
   }
+
+  // Thermal-inflation override controls (gas giants). Changing it re-derives the radius from the mass.
+  function ensureOverrides() { if (!body.overrides) body.overrides = {}; }
+  function setInflation(v: number) {
+      if (!Number.isFinite(v)) return;
+      ensureOverrides();
+      body.overrides!.gasThermalInflation = clamp(v, 0.5, 3);
+      commit(editMass(pState(), pState().massMe, lock, heldDensity(), body.overrides!.gasThermalInflation));
+  }
+  function startInflationOverride() { setInflation(pInflationDerived); }
+  function resetInflationAuto() {
+      if (body.overrides) {
+          delete body.overrides.gasThermalInflation;
+          if (Object.keys(body.overrides).length === 0) delete body.overrides;
+      }
+      commit(editMass(pState(), pState().massMe, lock, heldDensity(), gasThermalInflationFactor(body.equilibriumTempK ?? 0)));
+  }
+  const onInflSlider = (e: Event) => setInflation(+(e.target as HTMLInputElement).value);
+  const onInflNum = (e: Event)    => setInflation(parseFloat((e.target as HTMLInputElement).value));
 
   const onMassSlider = (e: Event)  => applyMass(logVal(+(e.target as HTMLInputElement).value, pMassMin, pMassMax));
   const onRadSlider = (e: Event)   => applyRadius(logVal(+(e.target as HTMLInputElement).value, pRadMin, pRadMax));
@@ -333,6 +361,30 @@
         {/each}
     </div>
     <p class="compress-note">Density is gravity-compressed by mass - the same mix packs denser on a super-Earth than on a moon. Adding metal or ice shifts the density (and its magnetic tagging); the physics re-reads the type on release.</p>
+
+    {#if pGasDominated}
+        <hr/>
+        <div class="sc-field">
+            <div class="sc-row">
+                <label>Thermal inflation
+                    {#if inflationOverridden}<span class="sc-ovr-pill" title="Manually overridden — this puffiness is used instead of the value implied by the equilibrium temperature.">overridden</span>
+                    {:else}<span class="sc-derived-pill" title="Derived from the equilibrium temperature: a hotter giant puffs up (bigger radius, lower density); a cold one sits near 1 R Jupiter.">derived</span>{/if}
+                </label>
+                {#if inflationOverridden}
+                    <input class="sc-num" type="number" min="0.5" max="3" step="0.01" value={pInflation.toFixed(2)} on:input={onInflNum} />
+                {:else}
+                    <span class="sc-derived-val">×{pInflation.toFixed(2)}</span>
+                {/if}
+                <span class="sc-unit">×R</span>
+            </div>
+            {#if inflationOverridden}
+                <input class="sc-slider" type="range" min="0.8" max="2.2" step="0.01" value={pInflation} on:input={onInflSlider} />
+                <div class="sub-label"><button type="button" class="link-btn" on:click={resetInflationAuto}>Reset to calculated ↺</button></div>
+            {:else}
+                <div class="sub-label">Insolation puffs the envelope (Teq {Math.round(body.equilibriumTempK ?? 0)} K → ×{pInflationDerived.toFixed(2)}). <button type="button" class="link-btn inline" on:click={startInflationOverride}>override</button></div>
+            {/if}
+        </div>
+    {/if}
 
   {:else}
     <!-- ===================== STAR / BELT / RING size editor ===================== -->
@@ -520,4 +572,10 @@
   .mk-num { width: 52px; padding: 2px 4px; font-size: 0.85em; }
   .mk-pct { font-size: 0.8em; color: var(--text-faint); }
   .compress-note { margin: 2px 0 0; font-size: 0.72em; color: var(--text-faint); line-height: 1.4; }
+  .sc-derived-val { min-width: 90px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+  .sc-derived-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }
+  .sc-ovr-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent, #ff5a1f); border: 1px solid var(--accent, #ff5a1f); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }
+  .link-btn { background: none; border: none; padding: 0; color: var(--link, #6aa0d8); font-size: 0.9em; cursor: pointer; }
+  .link-btn.inline { margin-left: 4px; }
+  .link-btn:hover { text-decoration: underline; }
 </style>

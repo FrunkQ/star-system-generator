@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bulkDensityFromMakeup, compressedDensityFromMakeup, radiusReFromMassMakeup, compressionFactor, inferMakeupFromDensity, makeupFractions } from './makeup';
+import { bulkDensityFromMakeup, compressedDensityFromMakeup, radiusReFromMassMakeup, compressionFactor, inferMakeupFromDensity, makeupFractions, gasThermalInflationFactor } from './makeup';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM } from '$lib/constants';
 import type { CelestialBody } from '$lib/types';
 
@@ -41,5 +41,29 @@ describe('makeup density + gravitational compression', () => {
     const r = radiusReFromMassMakeup(317.8, { gas: 0.95, ice: 0.05 });
     expect(r).toBeGreaterThan(9);
     expect(r).toBeLessThan(13);
+  });
+});
+
+describe('gas-giant thermal inflation', () => {
+  const jupiter = { gas: 0.95, ice: 0.05 };
+
+  it('inflation factor: negligible when cold, grows with temperature', () => {
+    expect(gasThermalInflationFactor(100)).toBeCloseTo(1, 3);   // cold Jupiter
+    expect(gasThermalInflationFactor(1400)).toBeGreaterThan(1.2); // hot Jupiter puffs up
+    expect(gasThermalInflationFactor(3000)).toBeCloseTo(1.7, 1);  // saturates near +70%
+  });
+
+  it('a hot gas giant is larger and less dense than a cold one at the same mass', () => {
+    const cold = radiusReFromMassMakeup(317.8, jupiter, gasThermalInflationFactor(100));
+    const hot = radiusReFromMassMakeup(317.8, jupiter, gasThermalInflationFactor(1800));
+    expect(hot).toBeGreaterThan(cold * 1.2);
+    // same mass in a bigger radius ⇒ lower density
+    const rho = (r: number) => 5.513 * 317.8 / r ** 3;
+    expect(rho(hot)).toBeLessThan(rho(cold));
+  });
+
+  it('inflation does NOT change a rocky body (no thermal expansion of rock/metal)', () => {
+    const rocky = { rock: 0.8, metal: 0.2 };
+    expect(radiusReFromMassMakeup(1, rocky, 1.7)).toBeCloseTo(radiusReFromMassMakeup(1, rocky, 1), 5);
   });
 });

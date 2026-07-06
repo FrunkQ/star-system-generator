@@ -45,21 +45,35 @@ export function compressedDensityFromMakeup(mass_Me: number, m: Makeup): number 
 
 const JUPITER_ME = 317.8;
 const JUPITER_RE = 11.2;
+
+// THERMAL INFLATION: insolation puffs a gas giant's envelope. A cold/temperate giant sits near 1 R_J;
+// an irradiated hot Jupiter inflates (bigger radius, lower density). Negligible below ~600 K, climbing
+// to ~+70% for the most irradiated (~2200 K+). Terrestrials don't do this (rock/metal don't thermally
+// expand), so it's applied ONLY to the gas-giant radius model. Returns a radius MULTIPLIER (≥1).
+const INFLATE_T0 = 600, INFLATE_T1 = 2200, INFLATE_MAX = 0.7;
+export function gasThermalInflationFactor(teqK: number): number {
+  const t = Math.max(0, Math.min(1, (teqK - INFLATE_T0) / (INFLATE_T1 - INFLATE_T0)));
+  return 1 + INFLATE_MAX * t;
+}
+
 // Gas giants don't follow the rocky compression — degeneracy pressure makes their radius roughly
 // CONSTANT (~1 Rjup) across a wide mass range: sub-Jovians are smaller, super-Jovians/brown dwarfs
-// slowly shrink as gravity wins. A measured giant usually has its radius set directly; this is for
-// derive-from-makeup. (Chen–Kipping-ish.)
-function gasGiantRadiusRe(mass_Me: number): number {
+// slowly shrink as gravity wins. The `inflation` multiplier then puffs a hot giant up. A measured giant
+// usually has its radius set directly; this is for derive-from-makeup. (Chen–Kipping-ish.)
+function gasGiantRadiusRe(mass_Me: number, inflation = 1): number {
   const Mj = Math.max(0.001, mass_Me / JUPITER_ME);
-  if (Mj < 0.4) return JUPITER_RE * Math.pow(Mj / 0.4, 0.45);  // sub-Saturn: grows with mass
-  return JUPITER_RE * Math.pow(Mj, -0.04);                      // Jovian → brown dwarf: gently shrinks
+  const base = Mj < 0.4
+    ? JUPITER_RE * Math.pow(Mj / 0.4, 0.45)  // sub-Saturn: grows with mass
+    : JUPITER_RE * Math.pow(Mj, -0.04);      // Jovian → brown dwarf: gently shrinks
+  return base * Math.max(0.5, inflation);
 }
 
 // Radius (Earth radii) implied by a mass (Earth masses) + makeup. Rocky/icy bodies use compression
 // (Earth: rock/metal mix → ρ ≈ 5.5 → radius ≈ 1); gas-dominated bodies use the giant mass–radius
-// relation (Jupiter mass → ~11.2 R⊕).
-export function radiusReFromMassMakeup(mass_Me: number, m: Makeup): number {
-  if (normalizeMakeup(m).gas > 0.5) return gasGiantRadiusRe(mass_Me);
+// relation (Jupiter mass → ~11.2 R⊕) with an optional thermal-inflation multiplier (rocky bodies
+// ignore it — no thermal expansion).
+export function radiusReFromMassMakeup(mass_Me: number, m: Makeup, inflation = 1): number {
+  if (normalizeMakeup(m).gas > 0.5) return gasGiantRadiusRe(mass_Me, inflation);
   const rho = compressedDensityFromMakeup(mass_Me, m);
   return Math.cbrt((Math.max(0, mass_Me) / rho) * 5.513);
 }
@@ -68,12 +82,12 @@ export function radiusReFromMassMakeup(mass_Me: number, m: Makeup): number {
 // target radius. radiusReFromMassMakeup is monotonic in mass for rocky/icy/carbon bodies, so a
 // geometric bisection over log-mass converges cleanly. (Gas-dominated bodies are degeneracy-flat in
 // radius — the caller should keep those mass-driven; this still returns a best-effort value.)
-export function massMeFromRadiusMakeup(radius_Re: number, m: Makeup): number {
+export function massMeFromRadiusMakeup(radius_Re: number, m: Makeup, inflation = 1): number {
   const target = Math.max(1e-6, radius_Re);
   let lo = 1e-7, hi = 1e6; // tiny moonlet → well past brown-dwarf
   for (let i = 0; i < 60; i++) {
     const mid = Math.sqrt(lo * hi);
-    if (radiusReFromMassMakeup(mid, m) < target) lo = mid; else hi = mid;
+    if (radiusReFromMassMakeup(mid, m, inflation) < target) lo = mid; else hi = mid;
   }
   return Math.sqrt(lo * hi);
 }

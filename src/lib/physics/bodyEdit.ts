@@ -54,7 +54,7 @@ export function setMakeupComponent(m: Required<Makeup>, key: keyof Makeup, frac:
 
 // Edit MASS. Default: composition held → radius follows. radius-lock: mass drags, radius held, so density &
 // composition shift. density-lock: density held → radius follows, composition held.
-export function editMass(s: BodyEditState, newMassMe: number, lock: EditLock, heldDensity?: number): BodyEditState {
+export function editMass(s: BodyEditState, newMassMe: number, lock: EditLock, heldDensity?: number, inflation = 1): BodyEditState {
   const massMe = clamp(newMassMe, MIN_M, MAX_M);
   if (lock === 'radius') {
     return { massMe, radiusRe: s.radiusRe, makeup: makeupForGeomDensity(densityGcc(massMe, s.radiusRe), massMe) };
@@ -62,7 +62,7 @@ export function editMass(s: BodyEditState, newMassMe: number, lock: EditLock, he
   if (lock === 'density' && heldDensity) {
     return { massMe, radiusRe: clamp(radiusFromMassDensity(massMe, heldDensity), MIN_R, MAX_R), makeup: s.makeup };
   }
-  return { massMe, radiusRe: clamp(radiusReFromMassMakeup(massMe, s.makeup), MIN_R, MAX_R), makeup: s.makeup };
+  return { massMe, radiusRe: clamp(radiusReFromMassMakeup(massMe, s.makeup, inflation), MIN_R, MAX_R), makeup: s.makeup };
 }
 
 // Edit RADIUS. Default (and mass-lock): mass held → density & composition shift. density-lock: density held →
@@ -88,11 +88,11 @@ export function editDensity(s: BodyEditState, newDensity: number, lock: EditLock
 
 // Set the makeup to a given mix (a preset or a full composition). Default (and radius-lock): radius held →
 // mass follows. mass-lock: mass held → radius follows. NOT valid when density is locked (composition held).
-export function editMakeup(s: BodyEditState, makeup: Required<Makeup>, lock: EditLock): BodyEditState {
+export function editMakeup(s: BodyEditState, makeup: Required<Makeup>, lock: EditLock, inflation = 1): BodyEditState {
   if (lock === 'mass') {
-    return { massMe: s.massMe, radiusRe: clamp(radiusReFromMassMakeup(s.massMe, makeup), MIN_R, MAX_R), makeup };
+    return { massMe: s.massMe, radiusRe: clamp(radiusReFromMassMakeup(s.massMe, makeup, inflation), MIN_R, MAX_R), makeup };
   }
-  return { massMe: clamp(massMeFromRadiusMakeup(s.radiusRe, makeup), MIN_M, MAX_M), radiusRe: s.radiusRe, makeup };
+  return { massMe: clamp(massMeFromRadiusMakeup(s.radiusRe, makeup, inflation), MIN_M, MAX_M), radiusRe: s.radiusRe, makeup };
 }
 
 // ——— composition presets, gated by DENSITY (bands overlap — several are plausible at one density) ————————
