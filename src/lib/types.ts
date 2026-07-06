@@ -653,6 +653,7 @@ export interface Starmap {
   unitIsPrefix: boolean;
   measurementUnits?: 'metric' | 'imperial';    // IN-SYSTEM distance/speed display: km/km·s (default) vs miles/mph
   temperatureUnit?: 'C' | 'F' | 'K';            // temperature display: °C (default) / °F / Kelvin — its own switch
+  systemEdgeAu?: number;                        // "leaves the system" boundary in AU; unset = the star's Hill limit
 
   temporal?: TemporalState;
   rulePackOverrides?: RulePackOverrides;

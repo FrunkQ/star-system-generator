@@ -1537,10 +1537,12 @@
       // time being previewed - so scrubbing the display never rewrites saved placement.
       const actualMs = getActualTimeMs();
 
-      // C1 — a construct that has coasted BEYOND the root star's Hill limit has left the local system.
+      // C1 — a construct that has coasted BEYOND the system edge has left the local system. The edge is a
+      // configurable AU distance (Settings → Starmap → System edge), or the root star's Hill limit by default.
       const rootNode: any = sys.nodes.find((n) => (n as any).parentId == null);
       const rootMass = (rootNode?.massKg ?? rootNode?.effectiveMassKg ?? 0) as number;
-      const hillLimitAu = rootMass > 0 ? rootStarHillAu(rootMass) : Infinity;
+      const edgeAu = get(starmapStore)?.systemEdgeAu;
+      const hillLimitAu = (edgeAu && edgeAu > 0) ? edgeAu : (rootMass > 0 ? rootStarHillAu(rootMass) : Infinity);
       const exitAtSec = String(Math.floor(Number(unixMsToMasterSeconds(actualMs))));
 
       const nodes = sys.nodes.map((node) => {

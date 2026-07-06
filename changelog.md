@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.253-beta - 6th Jul 2026
+
+* Fixed imported stars showing **0 K** — a star's effective temperature is an authored input (it sets the spectral class), but import was stripping it like a planet's derived surface temp. Loaded stars keep their real temperature now (e.g. Procyon 7,070 K).
+* **System edge** setting (Settings → Starmap → System edge): choose where a coasting ship counts as having left the system — the star's Hill limit (~2 ly, default) or a tighter custom distance in AU for quicker interstellar departures.
+* Tidied the Stellar Zones Key close button (was a heavy red box in the corner; now a clean × that highlights on hover).
+
 ## v2.0.252-beta - 5th Jul 2026
 
 * A ship that coasts out past the star's Hill limit now genuinely **leaves the system** — it's removed from the system map and appears on the starmap as an adrift interstellar ship, drifting slowly onward at its real speed along the heading it left on. (The Hill limit is ~2 ly, so a flung ship takes a long time to actually get there — scrub forward to watch it cross over.)

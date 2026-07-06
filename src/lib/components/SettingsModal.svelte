@@ -80,6 +80,9 @@
   let showScaleBar = starmap.scale?.showScaleBar ?? true;
   let measurementUnits: 'metric' | 'imperial' = starmap.measurementUnits ?? 'metric';
   let temperatureUnit: 'C' | 'F' | 'K' = starmap.temperatureUnit ?? 'C';
+  // System edge — the "left the local system" boundary. Unset = each star's Hill limit; a number = a fixed AU.
+  let systemEdgeMode: 'hill' | 'custom' = (starmap.systemEdgeAu ?? 0) > 0 ? 'custom' : 'hill';
+  let systemEdgeAu: number = starmap.systemEdgeAu && starmap.systemEdgeAu > 0 ? starmap.systemEdgeAu : 10000;
   let normalizedTemporal = ensureTemporalState(starmap).temporal!;
   let activeCalendarKey = normalizedTemporal.activeCalendarKey;
   let calendarKeys = Object.keys(normalizedTemporal.temporal_registry);
@@ -137,6 +140,7 @@
         invertDisplay,
         measurementUnits,
         temperatureUnit,
+        systemEdgeAu: systemEdgeMode === 'custom' && systemEdgeAu > 0 ? systemEdgeAu : undefined,
         scale: {
           unit: distanceUnit,
           pixelsPerUnit: starmap.scale?.pixelsPerUnit && starmap.scale.pixelsPerUnit > 0 ? starmap.scale.pixelsPerUnit : 25,
@@ -269,6 +273,19 @@
               <option value="K">Kelvin (K)</option>
             </select>
           </div>
+          <div class="form-group">
+            <label for="systemEdge" title="Where a coasting ship counts as having LEFT the local system (handed over to the starmap as an interstellar adrift ship). The Hill limit is the star's true gravitational reach (~2 ly) — set a tighter custom distance for quicker, gameplay-friendly departures.">System edge</label>
+            <select id="systemEdge" bind:value={systemEdgeMode}>
+              <option value="hill">Star's Hill limit (~2 ly)</option>
+              <option value="custom">Custom distance…</option>
+            </select>
+          </div>
+          {#if systemEdgeMode === 'custom'}
+            <div class="form-group">
+              <label for="systemEdgeAu">Edge distance (AU)</label>
+              <input id="systemEdgeAu" type="number" min="1" step="any" bind:value={systemEdgeAu} />
+            </div>
+          {/if}
 
           <h3>Map display</h3>
           <div class="form-group">

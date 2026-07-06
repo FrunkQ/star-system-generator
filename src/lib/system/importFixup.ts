@@ -69,7 +69,14 @@ function classNamesFromPack(pack?: RulePack): Set<string> {
 }
 
 function stripBody(body: CelestialBody, classNames: Set<string>): void {
-  for (const f of DERIVED_FIELDS) delete (body as any)[f];
+  // A STAR's temperatureK is its EFFECTIVE TEMPERATURE — an authored INPUT (it defines the spectral class,
+  // like mass/radius), NOT a derived planet surface temp. The processor re-derives planet temps but never a
+  // star's, so stripping it left loaded stars at 0 K. Keep it for stars; strip it (and the rest) for others.
+  const isStar = body.roleHint === 'star';
+  for (const f of DERIVED_FIELDS) {
+    if (isStar && f === 'temperatureK') continue;
+    delete (body as any)[f];
+  }
   // Classification is re-derived from physics for planets/moons — but the processor NEVER
   // re-classifies a star (its spectral class star/G… is generation/authored input). Wiping a
   // star's classes here leaves it colourless, so it renders white on reload. Preserve the star's

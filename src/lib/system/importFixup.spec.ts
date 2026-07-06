@@ -76,6 +76,10 @@ describe('fixUpImportedSystem', () => {
     // leave the star colourless (renders white). The planet's class is still cleared (re-derived).
     const star: any = sys.nodes.find((n: any) => n.id === 'star');
     expect(star.classes).toEqual(['star/G']);
+    // A star's temperatureK is its effective temp (an INPUT) — must survive import (was stripped → 0 K bug).
+    expect(star.temperatureK).toBe(5778);
+    // A planet's temperatureK is a derived surface temp — still stripped.
+    expect(p.temperatureK).toBeUndefined();
   });
 
   it('KEEPS auto-barycentres so a nested pair is not orphaned (Sirius Ab collapse regression)', () => {

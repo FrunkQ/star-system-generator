@@ -169,20 +169,23 @@
 	}
 	.zk-close {
 		position: absolute;
-		top: 6px;
-		right: 6px;
-		width: 26px;
-		height: 26px;
-		border: 1px solid var(--status-bad, #e0484d);
+		top: 8px;
+		right: 8px;
+		width: 24px;
+		height: 24px;
+		padding: 0;
+		border: none;
 		border-radius: 6px;
-		background: color-mix(in srgb, var(--status-bad, #e0484d) 16%, var(--bg-control, #333));
-		color: var(--status-bad, #e0484d);
+		background: transparent;
+		color: var(--text-faint, #8a8f99);
 		cursor: pointer;
 		line-height: 1;
-		font-size: 1.1rem;
-		font-weight: 700;
+		font-size: 1.25rem;
+		transition: color .12s, background .12s;
 	}
-	.zk-close:hover { background: color-mix(in srgb, var(--status-bad, #e0484d) 30%, var(--bg-control, #333)); }
+	.zk-close:hover { color: var(--status-bad, #e0484d); background: color-mix(in srgb, var(--status-bad, #e0484d) 14%, transparent); }
+	.zk-close:focus-visible { outline: 2px solid var(--accent, #e8963c); outline-offset: 1px; }
+	h4 { padding-right: 26px; }
 	h4 {
 		margin-top: 0;
 		color: var(--accent);
