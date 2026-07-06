@@ -74,6 +74,10 @@ export interface BurnPlan { atTimeMs: number; frame: "perifocal"; dv_mps: [numbe
 
 export interface MagneticField {
   strengthGauss: number;
+  // F-OVR: true once the GM has manually set the field. A manual value OVERRIDES the derived
+  // magnetism model — it governs the magnetic/* shielding tags (0 → unshielded, >0 → dynamo/
+  // induced) instead of the interior dynamo read. Absent/false → the field follows the model.
+  manual?: boolean;
 }
 
 // Derived magnetism profile (§2d) — a DESCRIPTIVE, baseline-safe read of the dynamo from the

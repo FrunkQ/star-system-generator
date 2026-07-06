@@ -308,8 +308,24 @@
       if (!body.magneticField) {
           body.magneticField = { strengthGauss: 0 };
       }
-      
+
       body.magneticField.strengthGauss = Math.exp(minLog + (maxLog - minLog) * pct);
+      body.magneticField.manual = true; // F-OVR: a hand-set field overrides the derived model
+      applyChanges();
+  }
+
+  // Typing/dragging the field is a manual override (governs the magnetic/* shielding tags).
+  function setMagManual() {
+      if (!body.magneticField) body.magneticField = { strengthGauss: 0 };
+      body.magneticField.manual = true;
+      applyChanges();
+  }
+  // Hand the field back to the physics: seed the value from the derived model's mid-range and drop
+  // the override, so the shielding tag follows the interior dynamo read again.
+  function resetMagAuto() {
+      const r = body.magnetism?.estimatedRangeGauss;
+      const mid = r ? (r.min + r.max) / 2 : 0;
+      body.magneticField = { strengthGauss: +mid.toFixed(4) };
       applyChanges();
   }
 </script>
@@ -326,9 +342,12 @@
   <!-- MAGNETOSPHERE -->
   <div class="form-group">
       <div class="label-row">
-           <label>Magnetosphere (Gauss)</label>
-           <input type="number" step="0.01" bind:value={body.magneticField.strengthGauss} on:input={applyChanges} />
+           <label>Magnetosphere (Gauss) {#if body.magneticField?.manual}<span class="mag-override" title="Manually overridden — this field governs the shielding tags instead of the interior model.">overridden</span>{/if}</label>
+           <input type="number" step="0.01" bind:value={body.magneticField.strengthGauss} on:input={setMagManual} />
       </div>
+      {#if body.magneticField?.manual}
+          <button type="button" class="mag-reset-btn" on:click={resetMagAuto}>Reset to calculated ↺</button>
+      {/if}
       <div class="orbital-slider-container" style="height: 80px;">
           <svg 
               bind:this={svgMagSlider}
@@ -563,6 +582,15 @@
   .mag-geom { font-size: 0.8em; color: var(--text-muted); text-transform: capitalize; }
   .mag-range { font-size: 0.8em; color: var(--link); margin-left: auto; }
   .mag-note { margin: 4px 0 0; font-size: 0.78em; color: var(--text-faint); line-height: 1.4; }
+  .mag-override {
+    font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent, #ff5a1f);
+    border: 1px solid var(--accent, #ff5a1f); border-radius: 3px; padding: 0 4px; margin-left: 6px; cursor: help;
+  }
+  .mag-reset-btn {
+    align-self: flex-start; background: none; border: none; padding: 2px 0; margin-top: 2px;
+    color: var(--link, #6aa0d8); font-size: 0.78em; cursor: pointer;
+  }
+  .mag-reset-btn:hover { text-decoration: underline; }
   .form-group {
     display: flex;
     flex-direction: column;

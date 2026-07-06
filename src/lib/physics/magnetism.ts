@@ -5,9 +5,24 @@
 // GEOMETRY — descriptively. It does NOT overwrite the editable MagneticField.strengthGauss; it
 // grounds a plausible RANGE and explains the dynamo (intrinsic vs induced, dipolar vs tilted/off-
 // centre), so the displayed/edited value can be sanity-checked against the interior model.
-import type { CelestialBody, Magnetism, DynamoSource, MagnetGeometry } from '$lib/types';
+import type { CelestialBody, Magnetism, MagneticField, DynamoSource, MagnetGeometry } from '$lib/types';
 import { EARTH_MASS_KG } from '$lib/constants';
 import { makeupFractions } from './makeup';
+
+// Which magnetic/* shielding tag a body carries. F-OVR (E3): a MANUALLY-set field overrides the
+// derived interior dynamo — its strength alone decides shielding (0 → unshielded, >0 → a field), so
+// zeroing the field strips the tag and raising it adds one, regardless of what the interior implies.
+// Without a manual override the tag follows the derived magnetism model (intrinsic dynamo / induced /
+// none). The induced character is kept from the model when the overridden field is non-zero.
+export function magneticShieldingTag(magnetism: Magnetism, field?: MagneticField): string {
+  const inducedSource = magnetism.source === 'salty-ocean-induced';
+  if (field?.manual) {
+    return field.strengthGauss > 0
+      ? (inducedSource ? 'magnetic/induced' : 'magnetic/dynamo')
+      : 'magnetic/unshielded';
+  }
+  return magnetism.intrinsic ? 'magnetic/dynamo' : inducedSource ? 'magnetic/induced' : 'magnetic/unshielded';
+}
 
 // Rotation support for a dynamo: fast spin organises convection into a strong, ordered field;
 // very slow / tidally-locked spin (Venus 5832 h) barely sustains one. Earth (24 h) ≈ 1.

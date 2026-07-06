@@ -179,13 +179,18 @@ reclassify-on-settle (F-RECLASS) and lets mass/radius move independently of comp
 
 ## Phase E — Generation, classification & tags  (correctness bugs)
 
-- **E2 — Moons wrongly classified "Cold Eyeball".** A moon can never be an eyeball; it has a day/night cycle
-  (the far side still gets stellar thermal input). Guard: eyeball classes require star-lock, not
-  planet-lock; moons are excluded. (Already noted in [[project_sse_v2_backlog]].) Add a fixture. **Effort S,
-  Risk Low.**
-- **E3 — Magnetic-field tag reconciliation on manual edit.** Setting the field to 0 (or from 0 to non-zero)
-  must add/remove the magnetic tags. First real consumer of F-OVR (magnetic field becomes an overridable
-  derived value) + F-RECLASS (tags reconcile on settle). **Effort S–M, Risk Low.**
+- **E2 — Moons wrongly classified "Cold Eyeball".**  ✅ DONE (v2.0.255-beta). New classifier feature
+  `starTidallyLocked` (= tidallyLocked AND orbitsStar); the three eyeball base fingerprints + two eyeball
+  rules key on it instead of `tidallyLocked`, so a moon (locked to its planet, orbitsStar=0) can never be an
+  eyeball. Corrected three outer moons in the Sol baseline; new `classification.spec` cases lock both
+  directions. Planets unchanged (orbitsStar=1).
+- **E3 — Magnetic-field tag reconciliation on manual edit.**  ✅ DONE (v2.0.256-beta). `MagneticField.manual`
+  flag (F-OVR): set on any GM edit of the field (Atmosphere → Magnetosphere). `magneticShieldingTag()`
+  (magnetism.ts) governs the `magnetic/*` tag — a manual field of 0 → unshielded, >0 → dynamo/induced,
+  overriding the interior model; non-manual bodies still follow the derived model (zero fixture churn).
+  "Overridden" marker + "Reset to calculated" control (re-seeds from the model mid-range, drops the
+  override). Browser-verified round-trip; 4 new magnetism.spec cases. NOTE: this is a targeted F-OVR (a
+  `manual` bool on the field), not yet the general `body.overrides` object — F3/albedo can generalise it.
 - **E1 — Moon sizing & the add-moon picker.** Generation and manual "Add moon" should default to an
   appropriate (not gravitationally significant) size, and the type picker must be MASS-GATED by the host:
   a terrestrial offers only the few plausible moons (airless rock the common default), a gas giant offers

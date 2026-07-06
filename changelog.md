@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.256-beta - 6th Jul 2026
+
+* The **magnetosphere tag now follows the field you set**. Editing a body's magnetic field (Atmosphere → Magnetosphere) is treated as a manual override: set it to 0 and the world reads as *No magnetosphere* (even if its interior would drive a dynamo); raise it above 0 and it gains one. An "overridden" marker and a **Reset to calculated** control appear while a manual value is in force — reset re-seeds the field from the interior model and hands the tag back to the physics. Untouched bodies keep deriving their field from the interior as before.
+
 ## v2.0.255-beta - 6th Jul 2026
 
 * Fixed **moons being mis-classified as "eyeball" worlds**. An eyeball world needs a permanent substellar point — it has to be tidally locked to its *star*. A moon is locked to its *planet*, so its far side still turns through the star's day and night; it can never be an eyeball. The eyeball types now require star-lock, so tidally-locked moons classify by what they actually are (dwarf planet, mesoplanet, planetesimal…). Corrects several outer moons in the bundled Solar System.

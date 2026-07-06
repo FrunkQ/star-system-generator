@@ -9,7 +9,7 @@ import { makeupFractions } from '../physics/makeup';
 import { surfaceTempProfile } from '../physics/surfaceTemperature';
 import { deriveFluidLayers, cloudColourName } from '../physics/fluidLayers';
 import { phaseAt, liquidDef, biosolventScore } from '../physics/liquids';
-import { deriveMagnetism } from '../physics/magnetism';
+import { deriveMagnetism, magneticShieldingTag } from '../physics/magnetism';
 import { deriveGeoActivity } from '../physics/geoActivity';
 import { deriveApparentColorParts } from '../rendering/apparentColor';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
@@ -573,11 +573,11 @@ export class SystemProcessor implements ISystemProcessor {
         }
         body.magnetism = deriveMagnetism(body, { insideHostMagnetosphere });
         body.tags = (body.tags || []).filter(t => !t.key.startsWith('magnetic/'));
-        body.tags.push({
-            key: body.magnetism.intrinsic ? 'magnetic/dynamo'
-                : body.magnetism.source === 'salty-ocean-induced' ? 'magnetic/induced'
-                : 'magnetic/unshielded'
-        });
+        // The shielding tag reconciles with the field the GM sees. F-OVR: once the field is set
+        // MANUALLY it overrides the interior dynamo read — set it to 0 and the world becomes
+        // unshielded (tag removed) even if the model implies a dynamo; set it above 0 and it gains a
+        // field even if the model finds none. Untouched bodies follow the derived model as before.
+        body.tags.push({ key: magneticShieldingTag(body.magnetism, body.magneticField) });
 
         // Geological activity (tectonics + volcanism by MECHANISM) — the biosphere keystone. Uses
         // makeup (radiogenic budget + iron core), mass/radius (cooling rate), system AGE (radiogenic

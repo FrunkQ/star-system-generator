@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { deriveMagnetism } from './magnetism';
-import type { CelestialBody, FluidLayer } from '$lib/types';
+import { deriveMagnetism, magneticShieldingTag } from './magnetism';
+import type { CelestialBody, FluidLayer, Magnetism, MagneticField } from '$lib/types';
 import { EARTH_MASS_KG } from '$lib/constants';
 
 function body(p: Partial<CelestialBody> & { layers?: FluidLayer[] }): CelestialBody {
@@ -81,5 +81,35 @@ describe('deriveMagnetism', () => {
     }));
     expect(m.source).toBe('suppressed');
     expect(m.estimatedRangeGauss.max).toBeLessThan(0.1);
+  });
+});
+
+// E3 — the magnetic/* shielding tag must reconcile with a MANUALLY-set field (F-OVR): setting the
+// field to 0 removes the field (unshielded), raising it above 0 adds one, overriding the interior
+// dynamo model. Untouched (non-manual) bodies keep following the model.
+describe('magneticShieldingTag — manual field overrides the model (E3)', () => {
+  const dynamoModel: Magnetism = { source: 'iron-core', geometry: 'dipolar', intrinsic: true, estimatedRangeGauss: { min: 0.1, max: 0.7 }, notes: [] };
+  const noneModel: Magnetism = { source: 'none', geometry: 'none', intrinsic: false, estimatedRangeGauss: { min: 0, max: 0 }, notes: [] };
+  const inducedModel: Magnetism = { source: 'salty-ocean-induced', geometry: 'induced', intrinsic: false, estimatedRangeGauss: { min: 0.0005, max: 0.01 }, notes: [] };
+  const manual = (strengthGauss: number): MagneticField => ({ strengthGauss, manual: true });
+
+  it('follows the model when the field is not a manual override', () => {
+    expect(magneticShieldingTag(dynamoModel, undefined)).toBe('magnetic/dynamo');
+    expect(magneticShieldingTag(dynamoModel, { strengthGauss: 0 })).toBe('magnetic/dynamo'); // generated 0, not manual
+    expect(magneticShieldingTag(noneModel, undefined)).toBe('magnetic/unshielded');
+    expect(magneticShieldingTag(inducedModel, undefined)).toBe('magnetic/induced');
+  });
+
+  it('a manual field of 0 strips the field even when the model implies a dynamo', () => {
+    expect(magneticShieldingTag(dynamoModel, manual(0))).toBe('magnetic/unshielded');
+  });
+
+  it('a manual field above 0 adds a dynamo even when the model finds none', () => {
+    expect(magneticShieldingTag(noneModel, manual(2.5))).toBe('magnetic/dynamo');
+  });
+
+  it('a manual non-zero field keeps the induced character; zero strips it', () => {
+    expect(magneticShieldingTag(inducedModel, manual(0.005))).toBe('magnetic/induced');
+    expect(magneticShieldingTag(inducedModel, manual(0))).toBe('magnetic/unshielded');
   });
 });
