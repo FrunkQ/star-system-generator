@@ -487,8 +487,8 @@
             <button class="insp-close" on:click={() => (selectedBody = null)} aria-label="Close">×</button>
           </div>
           <div class="insp-sub">{(selectedBody.roleHint || 'body').toUpperCase()}{selectedBody.kind !== 'construct' && selectedBody.class ? ' · ' + selectedBody.class : ''}</div>
-          {#if selectedBody.image?.url && selectedBody.kind !== 'construct'}
-            <img class="insp-photo" src={selectedBody.image.url} alt="Artist's impression of {selectedBody.name}" />
+          {#if selectedBody.image?.url}
+            <img class="insp-photo" src={selectedBody.image.url} alt={(selectedBody.kind === 'construct' ? 'Image of ' : "Artist's impression of ") + selectedBody.name} />
           {/if}
           <dl class="insp-grid">
             {#each bodyFacts(selectedBody, units, tempUnit) as f}

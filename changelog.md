@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.275-beta - 6th Jul 2026
+
+* **Construct photos now show in the player views.** A construct's uploaded picture appears anywhere a body's picture would — the **Survey Datapad** panel and the **Starship Console** inspector. (Constructs were coded to never show a picture back when they couldn't have one.) The Guide keeps to its own procedural artwork and the CRT stays text-only, as before.
+
 ## v2.0.274-beta - 6th Jul 2026
 
 * **F2 — custom images.** Give any body or construct its own picture. For a body it lives under **Type / Image** in the editor; for a construct it's **Add / replace image** on the **Basic** tab (constructs stay as their icon glyph until you add one). Uploads are downscaled to a compact thumbnail so they save with the system and stream to players without bloat. The custom picture shows in the detail pane and survives reloads; **Remove** reverts a body to its derived artwork and a construct to its icon.

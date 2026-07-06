@@ -261,7 +261,14 @@
       {/if}
 
       {#if (subject ?? selected).kind === 'construct'}
-        <!-- Constructs don't get a picture. -->
+        <!-- A construct only ever has a GM-uploaded photo; show it wherever we'd show a body photo
+             (Survey Datapad). The Guide's procedural discs and the CRT's text-only skin show nothing. -->
+        {#if imagery === 'photo' && (subject ?? selected).image?.url}
+          <div class="body-photo-crop" style="aspect-ratio: {1 / PHOTO_CROP_FRAC};">
+            <img class="body-photo" src={(subject ?? selected).image.url}
+                 alt="Image of {(subject ?? selected).name}" />
+          </div>
+        {/if}
       {:else if imagery === 'disc'}
         <div class="body-art">
           <PlanetDisc body={subject ?? selected} ringed={isRinged(subject ?? selected)} ringDensity={ringDensityOf(subject ?? selected)} />
