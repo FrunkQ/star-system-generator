@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.276-beta - 6th Jul 2026
+
+* **One slider for spin.** The Day Length editor is now a single log-scaled slider running from the break-up limit (fast) to slow, its track **colour-zoned** by the shape the spin produces — spherical (green), oblate (amber), ellipsoid (orange), near break-up (red) — so you can see a world flatten as you drag. **Tidal lock is a snap-notch** on the track (drag onto it, or click the padlock) instead of a separate checkbox; drag away and it releases. **Retrograde** is its own toggle (the day-length box always shows the magnitude). A numeric box stays for precise entry, and the break-up floor is still a hard stop. **Axial Tilt** becomes a 0–180° slider with a synced value box too.
+
 ## v2.0.275-beta - 6th Jul 2026
 
 * **Construct photos now show in the player views.** A construct's uploaded picture appears anywhere a body's picture would — the **Survey Datapad** panel and the **Starship Console** inspector. (Constructs were coded to never show a picture back when they couldn't have one.) The Guide keeps to its own procedural artwork and the CRT stays text-only, as before.

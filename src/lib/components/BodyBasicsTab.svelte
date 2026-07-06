@@ -280,13 +280,58 @@
     spherical: 'Spherical', oblate: 'Oblate (flattened)', ellipsoid: 'Ellipsoid',
     'near-breakup': 'Near break-up', unstable: 'Would fly apart → ring'
   };
-  function onRotationInput() {
-    // Hard limit: below the break-up period a body can't hold together, so clamp there.
-    const t = body.rotation_period_hours ?? 0;
-    if (t > 0 && t < breakupHours) body.rotation_period_hours = +breakupHours.toFixed(2);
-    handleUpdate();
+
+  // Day-length slider: one LOG-scaled control from the break-up limit (fast, left) to very slow (right),
+  // its track coloured by the shape zone. Spin DIRECTION is a separate retrograde flag (the stored period's
+  // sign), and the synchronous (tidally-locked) period sits on the track as a snap notch — no checkbox.
+  const SNAP_FRAC = 0.03;           // how close (in slider units) to the notch you must be to snap-lock
+  $: rotMagHours = Math.abs(body.rotation_period_hours ?? 0);
+  $: isRetrograde = (body.rotation_period_hours ?? 0) < 0;
+  $: syncPeriodHours = Math.max(0, (body.orbital_period_days ?? 0) * 24); // locked ⇒ day = orbit
+  $: pMin = Math.max(0.01, breakupHours);
+  $: pMax = Math.max(pMin * 4, syncPeriodHours * 1.5, 20000);
+  $: logSpan = Math.log(pMax / pMin) || 1;
+  const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
+  $: periodToPos = (p: number) => clamp01(Math.log(Math.min(pMax, Math.max(pMin, p || pMin)) / pMin) / logSpan);
+  $: posToPeriod = (s: number) => pMin * Math.pow(pMax / pMin, clamp01(s));
+  $: rotPos = periodToPos(rotMagHours || pMax); // no spin ⇒ park at the slow end
+  $: syncPos = syncPeriodHours >= pMin ? periodToPos(syncPeriodHours) : -1;
+  // Colour-zone track. Boundaries are spin FRACTIONS (period = breakup / fraction): near-breakup 0.8,
+  // ellipsoid 0.5, oblate 0.25. Fast (small period) = left = red; slow = right = green.
+  $: rotTrack = (() => {
+    const pct = (x: number) => (periodToPos(x) * 100).toFixed(1) + '%';
+    const s08 = pct(pMin / 0.8), s05 = pct(pMin / 0.5), s025 = pct(pMin / 0.25);
+    return `linear-gradient(to right,` +
+      `var(--rot-unstable) 0%, var(--rot-unstable) ${s08},` +
+      `var(--rot-ellipsoid) ${s08}, var(--rot-ellipsoid) ${s05},` +
+      `var(--rot-oblate) ${s05}, var(--rot-oblate) ${s025},` +
+      `var(--rot-spherical) ${s025}, var(--rot-spherical) 100%)`;
+  })();
+
+  function writePeriod(magHours: number, opts: { locked: boolean }) {
+    let mag = Math.abs(magHours) || 0;
+    if (mag > 0 && mag < breakupHours) mag = +breakupHours.toFixed(2); // hard break-up floor
+    body.rotation_period_hours = +(isRetrograde ? -mag : mag).toFixed(2);
+    body.tidallyLocked = opts.locked;
+    (body as any).tidalLockManual = true; // any hand-set rate/lock is a manual pin
+    body = body;
+    dispatch('update');
   }
-  function pinTidalLock() { (body as any).tidalLockManual = true; dispatch('update'); }
+  function onRotSlider(e: Event) {
+    const s = parseFloat((e.currentTarget as HTMLInputElement).value);
+    if (syncPos >= 0 && Math.abs(s - syncPos) <= SNAP_FRAC) { writePeriod(syncPeriodHours, { locked: true }); return; }
+    writePeriod(posToPeriod(s), { locked: false });
+  }
+  function onRotMagInput(e: Event) {
+    writePeriod(parseFloat((e.currentTarget as HTMLInputElement).value) || 0, { locked: false });
+  }
+  function lockTidally() { if (syncPeriodHours >= pMin) writePeriod(syncPeriodHours, { locked: true }); }
+  function toggleRetrograde(e: Event) {
+    const retro = (e.currentTarget as HTMLInputElement).checked;
+    body.rotation_period_hours = (retro ? -1 : 1) * Math.abs(body.rotation_period_hours ?? 0);
+    body = body;
+    dispatch('update');
+  }
   function resetTidalLockAuto() { delete (body as any).tidalLockManual; dispatch('update'); }
   function toggleAutoClassify(e: Event) { body.autoClassify = (e.currentTarget as HTMLInputElement).checked; dispatch('update'); }
 
@@ -483,31 +528,50 @@
 
     <hr/>
 
-    <div class="row">
-        <div class="form-group">
-            <label for="rotation">Day Length (Hours)</label>
-            <input type="number" id="rotation" step="0.1" min={breakupHours.toFixed(2)} bind:value={body.rotation_period_hours} on:input={onRotationInput} />
-            {#if isPlanetMoon && (rotDensity || 0) > 0}
-                <span class="sub-label shape-note shape-{rotDeform.shape}" title="Faster spin (shorter day) flattens the body; below the break-up period the equator sheds mass and it would become a ring. The limit is set by the bulk density (composition).">
-                    {SHAPE_LABEL[rotDeform.shape]} · break-up {breakupHours < 1 ? breakupHours.toFixed(2) : breakupHours.toFixed(1)} h{#if rotDeform.shape !== 'spherical'} · f {rotDeform.oblateness.toFixed(2)}{/if}
-                </span>
-            {/if}
+    <div class="rot-editor">
+        <div class="rot-head">
+            <label for="rotation">Day Length</label>
+            <div class="rot-num">
+                <input type="number" id="rotation" step="0.1" min={breakupHours.toFixed(2)}
+                       value={rotMagHours ? +rotMagHours.toFixed(2) : ''} on:input={onRotMagInput} />
+                <span class="unit">h</span>
+            </div>
         </div>
-        <div class="form-group">
-            <label for="tilt">Axial Tilt (°)</label>
-            <input type="number" id="tilt" step="0.1" bind:value={body.axial_tilt_deg} on:input={handleUpdate} />
+        {#if (rotDensity || 0) > 0}
+            <div class="rot-slider-wrap">
+                <input class="rot-slider" type="range" min="0" max="1" step="0.001"
+                       value={rotPos} on:input={onRotSlider} style="--rot-track: {rotTrack};"
+                       aria-label="Day length — log scale from the break-up limit (fast) to slow" />
+                {#if syncPos >= 0}
+                    <button type="button" class="rot-lock-notch" class:on={body.tidallyLocked}
+                            style="left: {(syncPos * 100).toFixed(1)}%;" on:click={lockTidally}
+                            title="Tidally locked — the day equals the orbit. Click, or drag the slider onto this notch, to lock.">🔒</button>
+                {/if}
+            </div>
+            <div class="rot-scale"><span>fast · break-up</span><span>slow</span></div>
+            <span class="sub-label shape-note shape-{rotDeform.shape}" title="Faster spin (shorter day) flattens the body; below the break-up period the equator sheds mass and it would become a ring. The limit is set by the bulk density (composition).">
+                {SHAPE_LABEL[rotDeform.shape]}{#if body.tidallyLocked} · tidally locked{/if} · break-up {breakupHours < 1 ? breakupHours.toFixed(2) : breakupHours.toFixed(1)} h{#if rotDeform.shape !== 'spherical'} · f {rotDeform.oblateness.toFixed(2)}{/if}
+            </span>
+        {/if}
+        <div class="rot-flags">
+            <label class="inline-check" title="Spin direction. Retrograde bodies (like Venus) turn opposite their orbit; stored as a negative day length.">
+                <input type="checkbox" checked={isRetrograde} on:change={toggleRetrograde} />
+                Retrograde (spins backwards)
+            </label>
+            {#if (body as any).tidalLockManual}
+                <button type="button" class="link-btn" on:click={resetTidalLockAuto}>Reset spin to auto</button>
+            {/if}
         </div>
     </div>
 
     <div class="form-group">
-        <label title="Auto-derived from the despinning timescale vs the system age. Tick or untick to pin it manually; the processor then leaves it alone.">
-            <input type="checkbox" bind:checked={body.tidallyLocked} on:change={pinTidalLock} />
-            Tidally Locked
-            <span class="sub-label">{(body as any).tidalLockManual ? 'manual' : 'auto-derived'}</span>
-        </label>
-        {#if (body as any).tidalLockManual}
-            <button type="button" class="link-btn" on:click={resetTidalLockAuto}>Reset to auto</button>
-        {/if}
+        <label for="tilt">Axial Tilt: {(body.axial_tilt_deg ?? 0).toFixed(0)}°</label>
+        <div class="tilt-row">
+            <input class="tilt-slider" type="range" id="tilt" min="0" max="180" step="1"
+                   bind:value={body.axial_tilt_deg} on:input={handleUpdate} />
+            <input class="tilt-num" type="number" step="0.1" min="0" max="180"
+                   bind:value={body.axial_tilt_deg} on:input={handleUpdate} />
+        </div>
     </div>
 
     <hr/>
@@ -562,6 +626,37 @@
   }
   .sub-label { font-size: 0.75em; color: var(--text-faint); }
   .shape-note { font-variant-numeric: tabular-nums; }
+
+  /* --- Day-length slider (E4 shape-aware) --- */
+  .rot-editor {
+    --rot-unstable: #c0392b; --rot-ellipsoid: #e07b39; --rot-oblate: #d6b53c; --rot-spherical: #3c9a5f;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .rot-head { display: flex; align-items: center; justify-content: space-between; }
+  .rot-head label { margin: 0; color: var(--text-muted); font-size: 0.9em; }
+  .rot-num { display: flex; align-items: center; gap: 4px; }
+  .rot-num input { width: 90px; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); }
+  .rot-num .unit { color: var(--text-faint); font-size: 0.85em; }
+  .rot-slider-wrap { position: relative; padding: 2px 0; }
+  .rot-slider { width: 100%; margin: 0; -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; }
+  .rot-slider::-webkit-slider-runnable-track { height: 10px; border-radius: 5px; background: var(--rot-track); border: 1px solid rgba(0,0,0,0.25); }
+  .rot-slider::-moz-range-track { height: 10px; border-radius: 5px; background: var(--rot-track); border: 1px solid rgba(0,0,0,0.25); }
+  .rot-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; margin-top: -4px; border-radius: 50%; background: #fff; border: 2px solid #222; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+  .rot-slider::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #222; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+  .rot-lock-notch {
+    position: absolute; top: -3px; transform: translateX(-50%); z-index: 2;
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 4px;
+    padding: 0 2px; font-size: 0.8em; line-height: 1.4; cursor: pointer; opacity: 0.7;
+  }
+  .rot-lock-notch:hover { opacity: 1; }
+  .rot-lock-notch.on { opacity: 1; border-color: var(--accent, #ff5a1f); box-shadow: 0 0 0 1px var(--accent, #ff5a1f); }
+  .rot-scale { display: flex; justify-content: space-between; font-size: 0.7em; color: var(--text-faint); }
+  .rot-flags { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .inline-check { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--text); font-size: 0.85em; }
+  .inline-check input { width: auto; }
+  .tilt-row { display: flex; align-items: center; gap: 8px; }
+  .tilt-slider { flex: 1; }
+  .tilt-num { width: 70px; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); }
   .shape-oblate { color: #6aa0d8; }
   .shape-ellipsoid { color: #e0a24a; }
   .shape-near-breakup { color: #e06a4a; font-weight: 600; }
