@@ -66,7 +66,7 @@
 
   const auroras = [
     mk({ name: 'Oxygen · green (Earth)', apparentColorHex: '#2f6ea5', atmosphere: { pressure_bar: 1, composition: { N2: 0.78, O2: 0.21 } } as any, tags: [{ key: 'aurora/strong', value: '0.42' }, { key: 'climate/polar-ice', value: 'water' }] }),
-    mk({ name: 'Nitrogen · blue-violet', apparentColorHex: '#37589a', atmosphere: { pressure_bar: 1.5, composition: { N2: 0.98 } } as any, tags: [{ key: 'aurora/strong', value: '0.48' }] }),
+    mk({ name: 'Nitrogen · blue-violet · 40° tilt', apparentColorHex: '#37589a', axial_tilt_deg: 40, atmosphere: { pressure_bar: 1.5, composition: { N2: 0.98 } } as any, tags: [{ key: 'aurora/strong', value: '0.48' }] }),
     mk({ name: 'CO₂ · violet', apparentColorHex: '#9a6a5a', atmosphere: { pressure_bar: 2, composition: { CO2: 0.95 } } as any, tags: [{ key: 'aurora/moderate', value: '0.28' }] }),
     mk({ name: 'H/He giant · red-pink (brilliant)', apparentColorHex: '#c9a878', axial_tilt_deg: 3,
         atmosphere: { pressure_bar: 1000, composition: { H2: 0.9, He: 0.1 } } as any,

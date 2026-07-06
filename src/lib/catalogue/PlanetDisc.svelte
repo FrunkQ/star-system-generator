@@ -362,21 +362,25 @@
         {@const go = Math.min(0.5, 0.2 + auroraStr * 0.45)}
         {@const co = Math.min(0.95, 0.45 + auroraStr * 0.55)}
         {@const fo = 0.1 + auroraStr * 0.14}
-        <!-- Near pole (top): the whole oval faces us; pokes slightly past the limb. -->
-        <g clip-path="url(#aurclip-{uid})">
-          <path d={auroraTop} fill={auroraCol.core} fill-opacity={fo} stroke={auroraCol.core} stroke-width={gw} stroke-linejoin="round" opacity={go} filter="url(#aurblur-{uid})" />
-          <path d={auroraTop} fill="none" stroke={auroraCol.core} stroke-width={cw} stroke-linejoin="round" opacity={co} />
-          {#if auroraBrilliant}
-            <path d={auroraTop} fill="none" stroke={auroraCol.tip} stroke-width={cw * 0.6} stroke-linejoin="round" opacity="0.6" />
-          {/if}
-        </g>
-        <!-- Far pole (bottom): upper half fades behind the planet; lower arc pokes past the bottom limb. -->
-        <g clip-path="url(#aurclip-{uid})" mask="url(#aurbotmask-{uid})">
-          <path d={auroraBot} fill={auroraCol.core} fill-opacity={fo} stroke={auroraCol.core} stroke-width={gw} stroke-linejoin="round" opacity={go} filter="url(#aurblur-{uid})" />
-          <path d={auroraBot} fill="none" stroke={auroraCol.core} stroke-width={cw} stroke-linejoin="round" opacity={co} />
-          {#if auroraBrilliant}
-            <path d={auroraBot} fill="none" stroke={auroraCol.tip} stroke-width={cw * 0.6} stroke-linejoin="round" opacity="0.6" />
-          {/if}
+        <!-- The magnetic poles follow the SPIN AXIS, so the ovals rotate with the axial tilt (same as
+             the cloud banding) — a tipped world like Uranus shows its auroras off to the side. -->
+        <g transform="rotate({(body.axial_tilt_deg ?? 0).toFixed(1)} 50 50)">
+          <!-- Near pole (top): the whole oval faces us; pokes slightly past the limb. -->
+          <g clip-path="url(#aurclip-{uid})">
+            <path d={auroraTop} fill={auroraCol.core} fill-opacity={fo} stroke={auroraCol.core} stroke-width={gw} stroke-linejoin="round" opacity={go} filter="url(#aurblur-{uid})" />
+            <path d={auroraTop} fill="none" stroke={auroraCol.core} stroke-width={cw} stroke-linejoin="round" opacity={co} />
+            {#if auroraBrilliant}
+              <path d={auroraTop} fill="none" stroke={auroraCol.tip} stroke-width={cw * 0.6} stroke-linejoin="round" opacity="0.6" />
+            {/if}
+          </g>
+          <!-- Far pole (bottom): upper half fades behind the planet; lower arc pokes past the bottom limb. -->
+          <g clip-path="url(#aurclip-{uid})" mask="url(#aurbotmask-{uid})">
+            <path d={auroraBot} fill={auroraCol.core} fill-opacity={fo} stroke={auroraCol.core} stroke-width={gw} stroke-linejoin="round" opacity={go} filter="url(#aurblur-{uid})" />
+            <path d={auroraBot} fill="none" stroke={auroraCol.core} stroke-width={cw} stroke-linejoin="round" opacity={co} />
+            {#if auroraBrilliant}
+              <path d={auroraBot} fill="none" stroke={auroraCol.tip} stroke-width={cw * 0.6} stroke-linejoin="round" opacity="0.6" />
+            {/if}
+          </g>
         </g>
       {/if}
 
