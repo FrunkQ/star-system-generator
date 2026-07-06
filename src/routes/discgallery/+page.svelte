@@ -31,6 +31,13 @@
     mk({ name: 'None (airless)', apparentColorHex: '#9a9aa2', atmosphere: { pressure_bar: 0 } as any }),
   ];
 
+  const shapes = [
+    mk({ name: 'Oblate (fast spin)', apparentColorHex: '#c89868', oblateness: 0.4 }),
+    mk({ name: 'Ellipsoid', apparentColorHex: '#b8916f', oblateness: 0.62 }),
+    mk({ name: 'Near break-up', apparentColorHex: '#a89060', oblateness: 0.78 }),
+    mk({ name: 'Toroid (flew apart)', apparentColorHex: '#c2a888', oblateness: 0.92 }),
+  ];
+
   const auroras = [
     mk({ name: 'Faint aurora', apparentColorHex: '#3a6ea5', atmosphere: { pressure_bar: 0.8 } as any, tags: [{ key: 'aurora/faint', value: '0.10' }] }),
     mk({ name: 'Aurora · Earth-class', apparentColorHex: '#2f6ea5', atmosphere: { pressure_bar: 1 } as any, tags: [{ key: 'aurora/strong', value: '0.37' }, { key: 'climate/polar-ice', value: 'water' }] }),
@@ -67,6 +74,13 @@
   <h2>Atmosphere limb-glow — strength from surface pressure</h2>
   <div class="gallery">
     {#each atmospheres as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Rotational shape — flattening to break-up</h2>
+  <div class="gallery">
+    {#each shapes as b}
       <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
     {/each}
   </div>

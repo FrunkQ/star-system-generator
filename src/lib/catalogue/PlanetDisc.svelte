@@ -19,6 +19,11 @@
   $: discPolF = oblatePolarFactor(body.oblateness);
   $: discSquash = discPolF < 0.999 ? `translate(0 ${(50 * (1 - discPolF)).toFixed(2)}) scale(1 ${discPolF.toFixed(3)})` : '';
 
+  // Rotationally unstable (Phase G): a body spun past ~0.8 of its break-up limit has flown apart into a
+  // ring — draw a true torus (a tilted annulus with a hole) instead of an ever-thinner lens. Oblateness
+  // 0.8 corresponds to spin fraction ~0.8 (the near-breakup / toroidal regime).
+  $: isToroid = !isStar(body) && !isBelt(body) && (body.oblateness ?? 0) >= 0.8;
+
   // Ring geometry from density: sparse rings are a thin faint hoop, dense ones a broad bright band.
   $: ringRx = 38 + ringDensity * 10;       // outer extent 38..48
   $: ringW = 2 + ringDensity * 8;          // band thickness 2..10
@@ -216,6 +221,17 @@
           <stop offset="100%" stop-color={isLava ? 'rgba(255,120,20,0)' : 'rgba(220,70,18,0)'} />
         </radialGradient>
       {/if}
+      {#if isToroid}
+        <mask id="torus-{uid}">
+          <ellipse cx="50" cy="50" rx="34" ry="10" fill="white" />
+          <ellipse cx="50" cy="50" rx="15" ry="4.4" fill="black" />
+        </mask>
+        <linearGradient id="torusfill-{uid}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color={shade(base, 0.28)} />
+          <stop offset="45%" stop-color={base} />
+          <stop offset="100%" stop-color={shade(base, -0.42)} />
+        </linearGradient>
+      {/if}
     </defs>
 
     {#if isBelt(body)}
@@ -226,6 +242,11 @@
           <circle cx={rk.x} cy={rk.y} r={rk.r} fill="#b8b8c0" opacity="0.85" />
         {/each}
       </g>
+    {:else if isToroid}
+      <!-- Spun past break-up → a ring. A tilted annulus with a hole, shaded for a little volume. -->
+      <ellipse cx="50" cy="50" rx="34" ry="10" fill="url(#torusfill-{uid})" mask="url(#torus-{uid})" />
+      <path d="M16 50 A34 10 0 0 0 84 50" fill="none" stroke={shade(base, 0.5)} stroke-width="0.8" opacity="0.55" />
+      <ellipse cx="50" cy="50" rx="15" ry="4.4" fill="none" stroke={shade(base, -0.5)} stroke-width="0.6" opacity="0.5" />
     {:else}
       {#if isStar(body)}
         <circle cx="50" cy="50" r="48" fill="url(#glow-{uid})" />

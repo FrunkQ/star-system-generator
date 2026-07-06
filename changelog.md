@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.283-beta - 6th Jul 2026
+
+* **Phase G viz — bodies spun past break-up now render as a ring.** A world driven past ~0.8 of its break-up spin (the toroidal regime) has flown apart into a ring, so The Guide draws a true torus — a tilted annulus with a hole — instead of an ever-thinner lens. Rounds out the rotational-shape series (sphere → oblate → ellipsoid → ring), now all viewable in the rendered-world gallery.
+
 ## v2.0.282-beta - 6th Jul 2026
 
 * **Phase G viz — auroras.** New physics driver: a world with an **atmosphere + a magnetic field + an incident ionising particle flux** now gets an aurora, graded faint → moderate → strong → brilliant (a new `aurora/*` tag, explained in the physics panel). Calibrated on the solar system — Jupiter brilliant, Earth and Saturn strong, the ice giants moderate, and no-field or airless worlds none. The Guide draws it as zig-zag polar curtains that grow from a subtle shimmer to huge blazing ovals with the strength, green with magenta tips at the top end.
