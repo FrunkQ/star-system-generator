@@ -115,7 +115,7 @@ function assessPairStability(
     const protectedPair = isResonanceProtected(inner) || isResonanceProtected(outer);
     if (protectedPair) {
       adjustedSeverity = 1;
-      out.reasons.push(`Orbit crossing of ${inner.name}/${outer.name} shepherded by mean-motion resonance`);
+      out.reasons.push(`${inner.name} and ${outer.name} cross orbits — which on its own would be unstable — but a locked mean-motion resonance keeps their conjunctions away from the crossing point, so it stays stable`);
     } else {
       if (massRatio < 1e-3) {
         out.reasons.push(`Minor-body crossing in pair ${inner.name}/${outer.name}`);
@@ -250,7 +250,7 @@ function assessBinaryPairStability(
           // crossing is metastable (marginal), not a collision/ejection sentence.
           if (binaryProtected || isResonanceProtected(sib)) {
             out.severity = Math.max(out.severity, 1) as 0 | 1 | 2 | 3;
-            out.reasons.push(`Orbit crossing with ${sib.name} shepherded by mean-motion resonance`);
+            out.reasons.push(`its orbit crosses ${sib.name}'s — which on its own would be unstable — but a locked mean-motion resonance keeps their conjunctions away from the crossing point, so it stays stable`);
             continue;
           }
           if (massRatio >= 0.1) {
