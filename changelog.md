@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.288-beta - 6th Jul 2026
+
+* **Gallery: the same Earth under different stars.** The rendered-world gallery now shows one Earth-like world lit by an M dwarf, a K star, the Sun and a hot A star, so you can see how starlight tints its ocean, clouds and surface — murky amber under a red dwarf, cool and bright under a blue star.
+
 ## v2.0.287-beta - 6th Jul 2026
 
 * **A feeding black hole now looks like it's feeding.** Its accretion glow and disc scale with the material-infall (Eddington) rate — more infall makes a bigger, brighter halo and a thicker disc that heats from orange toward yellow-white. Quiescent (non-feeding) holes stay dark, as before.

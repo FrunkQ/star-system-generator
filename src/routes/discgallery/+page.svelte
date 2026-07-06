@@ -4,6 +4,7 @@
   // rotational shape). Linked from Settings → System → Appearance. Uses synthetic example bodies.
   import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
   import type { CelestialBody } from '$lib/types';
+  import { deriveApparentColorParts } from '$lib/rendering/apparentColor';
 
   const mk = (over: Partial<CelestialBody> & { name: string }) => ({
     id: over.name, roleHint: 'planet', apparentColorHex: '#3a6ea5',
@@ -32,6 +33,28 @@
   ];
 
   const litBody = mk({ name: 'lit', apparentColorHex: '#3a7ac0', atmosphere: { pressure_bar: 1 } as any });
+
+  // The SAME Earth-like world under different spectral-class stars — starlight tints the ocean, clouds
+  // and surface (water under a red dwarf is murky amber; under a blue star, cool and bright).
+  const earthLike = {
+    id: 'earth-star', roleHint: 'planet',
+    makeup: { rock: 0.68, metal: 0.32 },
+    hydrosphere: { coverage: 0.71, composition: 'water',
+      layers: [{ location: 'surface', liquid: 'water' }, { location: 'cloud', liquid: 'water' }] },
+    atmosphere: { pressure_bar: 1, composition: { N2: 0.78, O2: 0.21 } },
+    equilibriumTempK: 288, temperatureK: 288,
+    tags: [{ key: 'climate/polar-ice', value: 'water' }],
+  };
+  const starClasses = [
+    { name: 'M dwarf · 3200 K', t: 3200 },
+    { name: 'K star · 4500 K', t: 4500 },
+    { name: 'G / Sun · 5800 K', t: 5800 },
+    { name: 'A star · 9000 K', t: 9000 },
+  ];
+  const earthUnderStars = starClasses.map((s) => {
+    const ap = deriveApparentColorParts(earthLike as any, undefined, { starTempK: s.t });
+    return { ...JSON.parse(JSON.stringify(earthLike)), name: `Earth · ${s.name}`, apparentColor: ap, apparentColorHex: ap.hex } as unknown as CelestialBody;
+  });
 
   const shapes = [
     mk({ name: 'Oblate (fast spin)', apparentColorHex: '#c89868', oblateness: 0.4 }),
@@ -76,6 +99,13 @@
   <h2>Atmosphere limb-glow — strength from surface pressure</h2>
   <div class="gallery">
     {#each atmospheres as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Same Earth under different stars — starlight tints ocean, cloud &amp; surface</h2>
+  <div class="gallery">
+    {#each earthUnderStars as b}
       <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
     {/each}
   </div>
