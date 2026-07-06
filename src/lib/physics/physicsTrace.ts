@@ -197,7 +197,7 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
   if (auroraTag) {
     const em = auroraEmitter(body);
     layers.push({
-      id: 'aurora', title: 'Aurora', link: '/physics#magnetism',
+      id: 'aurora', title: 'Aurora', link: '/physics#aurora',
       inputs: [
         { label: 'Atmosphere', value: `${n(body.atmosphere?.pressure_bar, 3, 'bar')} · ${em.gas}` },
         { label: 'Magnetosphere', value: body.magnetism ? (body.magnetism.intrinsic ? 'intrinsic' : body.magnetism.source) : 'none' },
@@ -274,7 +274,7 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     const eN = orbEl?.e ?? 0;
     const aN = orbEl?.a_AU ?? 0;
     layers.push({
-      id: 'stability', title: 'Orbital stability', link: '/physics#stability',
+      id: 'stability', title: 'Orbital stability', link: '/physics#resonance',
       inputs: [
         { label: bary ? `Orbit (as the ${bary.name || 'pair'})` : 'Orbit', value: `${n(aN, 3, 'AU')} · e ${n(eN, 3)}` },
         { label: 'Perihelion → aphelion', value: `${n(aN * (1 - eN), 3)}–${n(aN * (1 + eN), 3)} AU` }

@@ -17,9 +17,10 @@
     ['radiation-split', 'Spectral photon/particle split'],
     ['fluids', 'Fluid layers'],
     ['magnetism', 'Magnetism'],
+    ['aurora', 'Auroras'],
     ['geology', 'Geological activity'],
     ['resonance', 'Resonances & stability'],
-    ['colour', 'Apparent colour'],
+    ['colour', 'Apparent colour & visualisation'],
     ['habitability', 'Habitability score'],
     ['classification', 'Classification (fingerprints)'],
     ['tags', 'Tags'],
@@ -228,6 +229,28 @@
         band, tagged <code>magnetic/dynamo</code>, <code>magnetic/induced</code> or <code>magnetic/unshielded</code>.</p>
     </section>
 
+    <section id="aurora">
+      <h2>Auroras</h2>
+      <p>An aurora is charged stellar-wind particles funnelled down a planet's magnetic field lines and exciting gas
+        in the upper atmosphere. So it needs all three: a <strong>magnetosphere</strong> to channel the particles, an
+        <strong>atmosphere</strong> for them to hit, and a <strong>particle flux</strong> to arrive. The tag strength
+        (<code>aurora/faint</code> … <code>aurora/brilliant</code>) scales with field strength × atmospheric pressure ×
+        incident flux — strongest on a magnetised world close to an active star.</p>
+      <p><strong>Colour is the emitting gas</strong>, exactly as on Earth — each species fluoresces at its own
+        wavelength when excited:</p>
+      <ul>
+        <li><strong>Oxygen</strong> → the familiar green (and high-altitude red).</li>
+        <li><strong>Nitrogen</strong> (N₂) → blue-violet.</li>
+        <li><strong>Carbon dioxide</strong> → violet.</li>
+        <li><strong>Hydrogen / helium</strong> → red-pink (the giant-planet palette).</li>
+      </ul>
+      <p>The renderer reads the dominant auroral gas and paints the oval in that colour. <strong>Shape</strong> is a
+        pole-hugging ring (an auroral oval), exaggerated for legibility à la Hubble's Jupiter — stronger auroras reach
+        further toward the equator, glow slightly past the limb, and follow the body's <strong>axial tilt</strong>
+        along with everything else in its frame (see the visualisation notes below). The Newton panel's
+        <em>Aurora</em> layer names the gas and the colour for any world that has one.</p>
+    </section>
+
     <section id="geology">
       <h2>Geological activity</h2>
       <p>"Volcanic" is not one thing — Earth, Venus and Io are active for mechanically different reasons, with
@@ -283,14 +306,42 @@
     </section>
 
     <section id="colour">
-      <h2>Apparent colour <span class="phase">§2e</span></h2>
+      <h2>Apparent colour &amp; visualisation <span class="phase">§2e</span></h2>
       <p>Instead of one swatch per class, a body's <strong>true colour</strong> is composed: a surface base from
         makeup fractions, a blue ocean overlay, a tint from the dominant coloured atmospheric gas, condensed cloud
         decks veiling the surface (sulfuric/sulfur/alkali opaque; water patchy, so Earth stays blue), gas-giant
         cloud colours by temperature, methane-blue ice giants, and incandescence when very hot. The result is kept
         both as a single flattened hex <em>and</em> as the un-mixed <strong>palette</strong> of contributions + a
-        band count — so a future sphere/shader renderer can draw Earth's ocean/land/cloud mix or Jupiter's bands
-        from the same derivation.</p>
+        band count — so the disc renderer can draw Earth's ocean/land/cloud mix or Jupiter's bands from the same
+        derivation.</p>
+      <h3>What the disc shows</h3>
+      <p>The same derived physics drives a procedural <strong>disc</strong> — used both in the orbital view and in
+        The Guide — so a world <em>looks</em> like its numbers. Every feature below is read from a physics-derived
+        tag or value, never dialled in:</p>
+      <ul>
+        <li><strong>Terminator</strong> — the lit/dark divide from the star's direction; pronounced and permanent on
+          a <a href="#generation">tidally-locked</a> world.</li>
+        <li><strong>Polar ice caps</strong> — frozen caps on worlds cold enough at the poles, sized by climate and
+          following the axial tilt.</li>
+        <li><strong>Cloud decks &amp; gas bands</strong> — condensed clouds veil the surface; gas giants get
+          latitudinal bands, tinted by chromophore (methane, ammonia) and temperature.</li>
+        <li><strong>Atmosphere limb-glow</strong> — a soft halo whose thickness scales with surface pressure and
+          whose colour comes from the haze.</li>
+        <li><strong>Auroras</strong> — the pole-hugging ovals described <a href="#aurora">above</a>, coloured by the
+          emitting gas.</li>
+        <li><strong>Volcanic incandescence</strong> — glowing vents on tidal-volcanic worlds (Io), clustered near the
+          equator.</li>
+        <li><strong>Craters</strong> — impact scarring on old, airless, geologically-dead worlds (an atmosphere or an
+          active surface erases them).</li>
+        <li><strong>Rings</strong> — density-driven brightness, and they tilt with the body's axis.</li>
+        <li><strong>Shape</strong> — high spin visibly <strong>oblates</strong> a world and smears its bands; extreme
+          spin reaches ellipsoid and toroidal forms (see <a href="#classification">modifiers</a>).</li>
+      </ul>
+      <p>Rendering order matters: all fields are drawn in the body's own frame and then the whole disc is
+        <strong>squashed for oblateness and rotated to the axial tilt as the final step</strong> — so caps, bands,
+        auroras and rings all stay locked to the same tilted body, while the star-lit terminator is compensated to
+        keep pointing at the star. A gallery of the renderer across compositions, tilts and stellar light lives at
+        <code>/discgallery</code>.</p>
     </section>
 
     <section id="habitability">
