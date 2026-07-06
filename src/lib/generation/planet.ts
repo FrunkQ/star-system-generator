@@ -5,6 +5,7 @@ import { weightedChoice, randomFromRange, toRoman } from '../utils';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
 import { bodyFactory } from '../core/BodyFactory';
 import { calculateEquilibriumTemperature, calculateDistanceToStar } from '../physics/temperature';
+import { gasThermalInflationFactor } from '../physics/makeup';
 
 // Debris-density proxy for belts/rings: a massKg drawn so its log maps to a density fraction in
 // [fracLo, fracHi] on the 1e-5..1.0 Earth-mass scale the orrery/telemetry read (see
@@ -215,7 +216,15 @@ export function _generatePlanetaryBody(
     
     // Quick Equillibrium Estimate
     const equilibriumTempK = calculateEquilibriumTemperature(planet, allNodes, 0.3);
-    
+
+    // Gas giants inflate with insolation: now that the final orbit (post-migration) and its equilibrium
+    // temperature are known, puff a close-in / migrated giant up (bigger radius, lower density) the same
+    // way the editor does — so a generated hot Jupiter is born puffy and classifies as one. Cold giants
+    // sit near ×1.0 and are unchanged. Skip if the radius was explicitly overridden by the caller.
+    if (planetType === 'planet/gas-giant' && !propertyOverrides?.radiusKm && planet.radiusKm) {
+        planet.radiusKm *= gasThermalInflationFactor(equilibriumTempK);
+    }
+
     const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
     const isTidallyLocked = (planet.orbit.elements.a_AU) < 0.1 * Math.pow(hostMass / SOLAR_MASS_KG, 1/3);
 

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.263-beta - 6th Jul 2026
+
+* Freshly-generated gas giants now **inflate at generation** too: once a giant's final (post-migration) orbit and temperature are known, a close-in one is born puffy — the same thermal-inflation model the editor uses — so a generated hot Jupiter comes out low-density and classifies as one. Cold giants are unchanged.
+
 ## v2.0.262-beta - 6th Jul 2026
 
 * The body **data panel now surfaces GM overrides and gas-giant puffiness**. A "GM overrides" line lists which values you've pinned by hand (albedo, magnetic field, thermal inflation, a locked type) so it's clear at a glance what the physics owns vs what you've set. Gas giants also get a **Thermal inflation** readout (×factor, flagged *puffy* when inflated, *override* when hand-set).
