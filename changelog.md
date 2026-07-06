@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.278-beta - 6th Jul 2026
+
+* **Fixed: deleting the primary star of an imported/legacy system left it on the starmap.** Those systems store the map node under a different id from the system inside it, and the delete matched the wrong one — so it worked for freshly-created systems but silently no-op'd for loaded ones. The delete now resolves either id to the right node before removing it.
+
 ## v2.0.277-beta - 6th Jul 2026
 
 * **Deleting the primary star now deletes the whole system — on purpose, with a warning.** Previously it silently left a broken, empty husk on the starmap. The star's delete button now reads **"Delete system"** and asks you to confirm ("this removes the whole system and everything orbiting it") before dropping the entire system and returning you to the starmap.

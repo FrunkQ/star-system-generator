@@ -1046,11 +1046,17 @@
   }
 
   function handleDeleteSystem(event: CustomEvent<string>) {
-    const systemIdToDelete = event.detail;
+    const target = event.detail;
     starmapStore.update(starmap => {
       if (starmap) {
-        starmap.systems = starmap.systems.filter(s => s.id !== systemIdToDelete);
-        starmap.routes = starmap.routes.filter(r => r.sourceSystemId !== systemIdToDelete && r.targetSystemId !== systemIdToDelete);
+        // Systems are keyed on the wrapper NODE id, but a delete can arrive with either that node id
+        // (starmap right-click) or the inner system.id (deleting the primary star from inside the
+        // system) — and for imported/legacy systems those two differ, so a straight s.id match misses.
+        // Resolve to the node id first (same dual-id lookup used when saving a system back).
+        const node = starmap.systems.find(s => s.id === target || s.system?.id === target);
+        const nodeId = node?.id ?? target;
+        starmap.systems = starmap.systems.filter(s => s.id !== nodeId);
+        starmap.routes = starmap.routes.filter(r => r.sourceSystemId !== nodeId && r.targetSystemId !== nodeId);
       }
       return starmap;
     });
