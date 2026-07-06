@@ -1,8 +1,7 @@
 # Autopilot — User Guide
 
 This is the GM-facing guide to the construct autopilot: what each option does and how the ship
-decides where to go. (The design/implementation spec lives in `autopilot-spec.md`; this document
-describes behaviour as shipped.)
+decides where to go. It describes behaviour as shipped.
 
 ## What the autopilot is
 
