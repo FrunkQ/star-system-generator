@@ -189,6 +189,11 @@
   const cycleRadUnit = () => { radUnit = radUnit === 'earth' ? 'jupiter' : radUnit === 'jupiter' ? 'dist' : 'earth'; };
   $: massUnitSym = massUnit === 'earth' ? 'M⊕' : massUnit === 'jupiter' ? 'M♃' : 't';
   $: radUnitSym = radUnit === 'earth' ? 'R⊕' : radUnit === 'jupiter' ? 'R♃' : $fmt.distUnit;
+  // Tooltip: what the CURRENT unit means, then a "click to change" line below it.
+  $: massUnitName = massUnit === 'earth' ? 'Earth masses' : massUnit === 'jupiter' ? 'Jupiter masses' : 'tonnes';
+  $: radUnitName = radUnit === 'earth' ? 'Earth radii' : radUnit === 'jupiter' ? 'Jupiter radii' : ($fmt.distUnit === 'mi' ? 'miles' : 'kilometres');
+  $: massUnitTitle = `${massUnitName} (${massUnitSym})\nClick to change units`;
+  $: radUnitTitle = `${radUnitName} (${radUnitSym})\nClick to change units`;
   $: massDisp = massUnit === 'earth' ? pMassMe : massUnit === 'jupiter' ? pMassMe / M_JUP_ME : (body.massKg ?? 0) / 1000;
   $: radDisp = radUnit === 'earth' ? pRadiusRe : radUnit === 'jupiter' ? pRadiusRe / R_JUP_RE : $fmt.toDist(body.radiusKm ?? 0);
   const massMeFromDisp = (v: number) => massUnit === 'earth' ? v : massUnit === 'jupiter' ? v * M_JUP_ME : (v * 1000) / EARTH_MASS_KG;
@@ -397,8 +402,8 @@
         <div class="sc-row">
             <button class="lock" class:on={lock === 'mass'} title={lock === 'mass' ? 'Mass pinned - click to release' : 'Pin the mass'} on:click={() => toggleLock('mass')} aria-label="Lock mass">{lock === 'mass' ? '🔒' : '🔓'}</button>
             <label>Mass</label>
-            <button class="sc-unit-cycle" on:click={cycleMassUnit} title="Units: Earth · Jupiter · tonnes — click to change" aria-label="Change mass units">{massUnitSym}</button>
             <input class="sc-num" type="number" step="any" value={r4(massDisp)} on:input={onMassNum} disabled={lock === 'mass'} />
+            <button class="sc-unit-cycle" on:click={cycleMassUnit} title={massUnitTitle} aria-label="Change mass units">{massUnitSym}</button>
         </div>
         <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pMassPos} on:input={onMassSlider} disabled={lock === 'mass'} />
         <div class="sub-label">{(body.massKg || 0).toExponential(2)} kg{#if pMassMe >= 318} · {(pMassMe / 317.8).toFixed(2)} M♃{/if}</div>
@@ -409,8 +414,8 @@
         <div class="sc-row">
             <button class="lock" class:on={lock === 'radius'} title={lock === 'radius' ? 'Radius pinned - click to release' : 'Pin the radius'} on:click={() => toggleLock('radius')} aria-label="Lock radius">{lock === 'radius' ? '🔒' : '🔓'}</button>
             <label>Radius</label>
-            <button class="sc-unit-cycle" on:click={cycleRadUnit} title="Units: Earth · Jupiter · {$fmt.distUnit} — click to change" aria-label="Change radius units">{radUnitSym}</button>
             <input class="sc-num" type="number" step="any" value={r4(radDisp)} on:input={onRadNum} disabled={lock === 'radius'} />
+            <button class="sc-unit-cycle" on:click={cycleRadUnit} title={radUnitTitle} aria-label="Change radius units">{radUnitSym}</button>
         </div>
         <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pRadPos} on:input={onRadSlider} disabled={lock === 'radius'} />
         <div class="sub-label">{$fmt.km(body.radiusKm || 0)}</div>
