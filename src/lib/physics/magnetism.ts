@@ -12,14 +12,17 @@ import { makeupFractions } from './makeup';
 // Which magnetic/* shielding tag a body carries. F-OVR (E3): a MANUALLY-set field overrides the
 // derived interior dynamo — its strength alone decides shielding (0 → unshielded, >0 → a field), so
 // zeroing the field strips the tag and raising it adds one, regardless of what the interior implies.
-// Without a manual override the tag follows the derived magnetism model (intrinsic dynamo / induced /
-// none). The induced character is kept from the model when the overridden field is non-zero.
+// When a manual field is present but the interior model finds NO natural source for it (not a dynamo,
+// not induced), the field is ANOMALOUS — the GM put it there (artificial / exotic / unknown origin),
+// so it gets its own tag rather than masquerading as an intrinsic dynamo. Without a manual override the
+// tag follows the derived magnetism model (intrinsic dynamo / induced / none).
 export function magneticShieldingTag(magnetism: Magnetism, field?: MagneticField): string {
   const inducedSource = magnetism.source === 'salty-ocean-induced';
   if (field?.manual) {
-    return field.strengthGauss > 0
-      ? (inducedSource ? 'magnetic/induced' : 'magnetic/dynamo')
-      : 'magnetic/unshielded';
+    if (field.strengthGauss <= 0) return 'magnetic/unshielded';
+    if (inducedSource) return 'magnetic/induced';
+    if (magnetism.intrinsic) return 'magnetic/dynamo';
+    return 'magnetic/anomalous'; // field with no interior dynamo → unknown/artificial origin
   }
   return magnetism.intrinsic ? 'magnetic/dynamo' : inducedSource ? 'magnetic/induced' : 'magnetic/unshielded';
 }

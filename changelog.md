@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.259-beta - 6th Jul 2026
+
+* New **Anomalous field** magnetosphere tag. If you give a body a magnetic field that its interior can't explain (no dynamo, not an induced ocean field), it no longer pretends to be a natural dynamo — it's tagged as an anomalous field of unknown or artificial origin (a megastructure, exotic matter, a young system…). Natural dynamos and induced fields are unchanged.
+
 ## v2.0.258-beta - 6th Jul 2026
 
 * **Reloading an existing map now re-derives classifications** (not just tags). On load the app already re-runs the physics, but it wasn't stripping the stored classes first — so a body that already carried a (now-outdated) type kept it, and engine fixes like the moon-eyeball correction didn't show until you re-imported the file. Refresh now strips baked-in derived data and re-derives from the authored inputs, exactly like importing a file does; hand-pinned types (auto-classify off) and authored inputs are preserved. No staleness flag needed — derived data is never trusted from storage.

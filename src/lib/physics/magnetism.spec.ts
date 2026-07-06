@@ -104,8 +104,12 @@ describe('magneticShieldingTag — manual field overrides the model (E3)', () =>
     expect(magneticShieldingTag(dynamoModel, manual(0))).toBe('magnetic/unshielded');
   });
 
-  it('a manual field above 0 adds a dynamo even when the model finds none', () => {
-    expect(magneticShieldingTag(noneModel, manual(2.5))).toBe('magnetic/dynamo');
+  it('a manual field above 0 on a body with no natural source reads as ANOMALOUS (GM-imposed/unknown)', () => {
+    expect(magneticShieldingTag(noneModel, manual(2.5))).toBe('magnetic/anomalous');
+  });
+
+  it('a manual field on a body whose model DOES have a dynamo stays a dynamo (source is known)', () => {
+    expect(magneticShieldingTag(dynamoModel, manual(3))).toBe('magnetic/dynamo');
   });
 
   it('a manual non-zero field keeps the induced character; zero strips it', () => {

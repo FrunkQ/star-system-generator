@@ -178,6 +178,7 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'magnetic/dynamo':     { label: 'Intrinsic dynamo', description: 'A convecting conductive interior generates a self-sustained magnetic field that shields the atmosphere from stellar wind.' },
   'magnetic/induced':    { label: 'Induced field',    description: "A conductive subsurface ocean induces a weak field within the host planet's magnetosphere — no internal dynamo (Europa)." },
   'magnetic/unshielded': { label: 'No magnetosphere', description: 'No convecting conductor (or far too slow rotation) → the atmosphere is exposed to stellar-wind stripping.' },
+  'magnetic/anomalous':  { label: 'Anomalous field',  description: 'A magnetic field with no interior dynamo to explain it — an imposed field of unknown or artificial origin (megastructure, exotic matter, a young system…).' },
 
   // --- Structure (derived layering) ---
   'structure/icy-shell':        { label: 'Icy shell',        description: 'A frozen exterior (the value names the ice — water, nitrogen, CO₂, methane…) over a rockier interior.' },
