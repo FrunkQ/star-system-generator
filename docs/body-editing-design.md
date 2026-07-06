@@ -89,10 +89,22 @@ compositions are plausible, and all of them light up:
 | Ice giant | 1.0 – 3.5 | gas .70 / ice .30 |
 | Gas giant | 0.3 – 1.6 | gas .95 / ice .05 |
 
-Picking a preset sets the makeup → its implied density → the chain derives mass (radius held). The **Interior
-makeup sliders** stay below as the fine-tune (a preset is just a starting mix); dragging them re-derives mass
-the same way. Picking a *giant* preset makes the makeup gas-dominated, which switches the radius model to the
-gas-giant one — the radius balloons and (with enough mass) the classifier flips. **This is the fix.**
+Picking a preset sets the makeup → its implied density → the chain derives mass (radius held). Picking a
+*giant* preset makes the makeup gas-dominated, which switches the radius model to the gas-giant one — the
+radius balloons and (with enough mass) the classifier flips. **This is the fix.**
+
+**Interior makeup is a live control, tied to the density lock** (refined after review). The makeup sliders are
+the *composition* — and the composition IS what a locked density freezes. So:
+
+- **Density unlocked** → the makeup sliders are editable and drive the density directly (finer than the single
+  density slider). Dragging a component recomputes the implied density and flows to whichever size quantity is
+  unlocked — e.g. *radius locked + drag Metal up → density rises → mass rises*; *mass locked + drag Metal up →
+  density rises → radius shrinks*. The valid-preset set re-gates as you go.
+- **Density locked** → makeup is held (shown read-only), because it defines the frozen density. Now mass ↔
+  radius trade off freely without recomposing the world.
+
+So density-lock and composition-lock are the same lock, which keeps the whole model consistent — there is
+never a case where the makeup and the density disagree.
 
 ## Live type + reclassify on release
 
@@ -110,24 +122,31 @@ Two changes fix the "type won't change" problem:
 
 ```
 ┌─ Size & Composition ──────────────────────────────┐
-│  Type:  Terrestrial  →  live: Rocky (super-earth)  │   ← live classification, updates as you drag
+│  Type:  Terrestrial              live | was …      │   ← live classification, updates as you drag
 │                                                    │
-│  Mass     🔒  [────●───────]   3.4 M⊕   (2.0e25 kg) │   ← three sliders, each with a lock
-│  Radius   🔒  [──────●─────]   1.5 R⊕   (9,560 km)  │
-│  Density  🔒  [────●───────]   5.1 g/cc             │   ← NEW, sits ABOVE the makeup
+│  Mass                       [  3.400 ] M⊕          │   ← every value takes a typed number too
+│  🔒 [══════════●═══════════════]                   │      (larger, more prominent sliders)
+│  Radius                     [  1.500 ] R⊕          │
+│  🔒 [════════════●═════════════]                   │
+│  Density                    [   5.10 ] g/cc        │   ← lock density = hold composition
+│  🔒 [══════●═══════════════════]                   │
 │                                                    │
 │  Composition preset:                               │
-│   [Iron-rich] [Rocky] [Carbon] [Ocean]             │   ← density-gated: valid ones enabled,
-│   [Icy·dim]  [Ice giant·dim]  [Gas giant·dim]      │      out-of-band ones greyed
+│   [Iron-rich] [Rocky] [Carbon] [Ocean]             │   ← density-gated: valid enabled,
+│   [Icy·dim]  [Ice giant·dim]  [Gas giant·dim]      │      out-of-band greyed
 │                                                    │
-│  Interior makeup            Density 5.1 g/cc        │
-│   Metal  [──●───]  32%                              │   ← fine-tune; re-derives mass on release
-│   Rock   [────●─]  68%                              │
-│   Carbon [●─────]   0%                              │
-│   Ice    [●─────]   0%                              │
-│   Gas    [●─────]   0%                              │
+│  Interior makeup      Density 5.10 g/cc · recompose │
+│   Metal  [══●═════]  [ 32 ]%                        │   ← editable when density unlocked; each
+│   Rock   [══════●═]  [ 68 ]%                        │      row a slider + a typed %. Back-drives
+│   Carbon [●═══════]  [  0 ]%                        │      density → mass/radius, re-gates presets.
+│   Ice    [●═══════]  [  0 ]%                        │
+│   Gas    [●═══════]  [  0 ]%                        │
 └────────────────────────────────────────────────────┘
 ```
+
+Every value (mass, radius, density, and each makeup %) has a **manual number field** beside its slider — type
+or drag. The mass/radius/density sliders are enlarged since they're the primary controls. When density is
+locked the makeup rows render read-only.
 
 Gas giants no longer get a special locked mode — the same panel, with the density in the gas band and a
 gas-dominated makeup, is a gas giant. Stars / belts / rings keep their existing simpler editors (they don't
