@@ -1000,11 +1000,15 @@
           // hot-orange of its accretion disc (quiescent holes stay dark).
           const isBlackHole = node.classes?.some((c) => c.includes('BH'));
           const isActiveBH = node.classes?.includes('star/BH_active');
+          // Black-hole material infall (Eddington fraction, ~0..1+) drives the accretion look: more
+          // feeding → a bigger, brighter, hotter disc + halo. Quiescent holes stay dark.
+          const accRate = isActiveBH ? Math.max(0, Math.min(1.3, (node as any).accretionEddington ?? 0.5)) : 0;
           if (node.roleHint === 'star' && (!isBlackHole || isActiveBH)) {
-              // 0..1 activity: stellar flare level for stars, full-tilt for a feeding hole.
-              const activity = isActiveBH ? 1 : Math.max(0, Math.min(1, (node as any).flareActivity ?? 0));
+              // 0..1 activity: stellar flare level for stars, the infall rate for a feeding hole.
+              const activity = isActiveBH ? Math.min(1, 0.25 + accRate) : Math.max(0, Math.min(1, (node as any).flareActivity ?? 0));
               const glowR = finalRadius * (3.4 + activity * 3.0);
-              const col = isActiveBH ? '255,150,40' : hexToRgbTriplet(getNodeColor(node));
+              // Feeding hole: disc colour warms from orange toward yellow-white as infall climbs.
+              const col = isActiveBH ? `255,${Math.round(150 + accRate * 70)},${Math.round(40 + accRate * 110)}` : hexToRgbTriplet(getNodeColor(node));
               const core = 0.5 + activity * 0.4;   // brighter core when active
               const mid = 0.16 + activity * 0.22;
               const grad = ctx.createRadialGradient(rx, ry, finalRadius * 0.5, rx, ry, glowR);
@@ -1026,8 +1030,9 @@
           if (node.classes?.includes('star/BH_active')) {
               ctx.fillStyle = '#000000';
               ctx.fill();
-              ctx.lineWidth = Math.max(2 / zoom, finalRadius * 0.2); // Accretion disk
-              ctx.strokeStyle = '#ffaa00'; // Hot orange
+              // Accretion disc: thickens with the infall rate, and heats orange → yellow-white.
+              ctx.lineWidth = Math.max(1.5 / zoom, finalRadius * (0.12 + accRate * 0.4));
+              ctx.strokeStyle = accRate > 0.75 ? '#ffe0a0' : '#ffaa00';
               ctx.stroke();
           } else if (node.classes?.includes('star/BH')) {
               ctx.fillStyle = '#000000';

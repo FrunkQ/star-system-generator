@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.287-beta - 6th Jul 2026
+
+* **A feeding black hole now looks like it's feeding.** Its accretion glow and disc scale with the material-infall (Eddington) rate — more infall makes a bigger, brighter halo and a thicker disc that heats from orange toward yellow-white. Quiescent (non-feeding) holes stay dark, as before.
+
 ## v2.0.286-beta - 6th Jul 2026
 
 * **Auroras look like auroras now — and their colour comes from the air.** Redrawn as spiky, swirled glowing **ovals ringing each magnetic pole** (Hubble-Jupiter style) that hug the planet instead of the old floating zig-zag. Their **colour is set by the atmosphere's gas**, like real skies: atomic oxygen glows green (Earth), nitrogen blue-violet, CO₂ violet, and a hydrogen/helium giant red-pink. Strength still scales the size and brightness. Shows in both The Guide and the orrery.
