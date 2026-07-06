@@ -21,7 +21,9 @@ export interface TraceLayer {
 export interface TagProvenance { key: string; label: string; description: string; layer: string; color: string; }
 export interface PhysicsTrace { layers: TraceLayer[]; tags: TagProvenance[] }
 
-export interface TraceContext { ageGyr?: number; star?: CelestialBody | null; host?: CelestialBody | Barycenter | null }
+export interface TraceContext { ageGyr?: number; star?: CelestialBody | null; host?: CelestialBody | Barycenter | null; partner?: CelestialBody | null }
+
+const AU_KM = 1.495978707e8;
 
 const n = (v: number | undefined | null, d = 2, unit = ''): string =>
   v == null || !isFinite(v) ? '—' : `${(+v).toFixed(d)}${unit ? ' ' + unit : ''}`;
@@ -57,6 +59,17 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
   const radiusRe = (body.radiusKm ?? 0) / EARTH_RADIUS_KM;
   const densityGcc = body.massKg && body.radiusKm
     ? (body.massKg / ((4 / 3) * Math.PI * Math.pow(body.radiusKm * 1000, 3))) / 1000 : 0;
+
+  // A member of a binary orbits the BARYCENTRE at a tiny separation; the orbit that governs its
+  // temperature AND stability (and reads sensibly) is the barycentre's HELIOCENTRIC orbit, not the
+  // ~0.0001 AU pair orbit. Compute it once here so both layers agree. (ctx.host is the parent node.)
+  const bary = ctx.host && ctx.host.kind === 'barycenter' ? (ctx.host as Barycenter) : null;
+  const heliocentricEl = bary?.orbit?.elements ?? body.orbit?.elements;
+  // Co-orbit partner separation (semi-major of the relative orbit = sum of each member's orbit
+  // about the barycentre). Used to explain the small self-orbit distance in the panels.
+  const partnerSepKm = bary && ctx.partner
+    ? ((body.orbit?.elements.a_AU ?? 0) + (ctx.partner.orbit?.elements.a_AU ?? 0)) * AU_KM
+    : null;
 
   // 0. Classification — WHY this type (headline). The winning fingerprint, the defining bands it
   //    matched (with the body's value + fit), and the runner-up it beat.
@@ -123,8 +136,15 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
   layers.push({
     id: 'temperature', title: 'Temperature & tidal heat', link: '/physics#temp-range',
     inputs: [
-      { label: 'Semi-major axis', value: n(body.orbit?.elements.a_AU, 3, 'AU') },
-      { label: 'Eccentricity', value: n(body.orbit?.elements.e, 3) },
+      {
+        label: bary ? `Semi-major axis (to ${ctx.star?.name ?? 'star'}, as the ${bary.name || 'pair'})` : 'Semi-major axis',
+        value: n(heliocentricEl?.a_AU, 3, 'AU')
+      },
+      { label: 'Eccentricity', value: n(heliocentricEl?.e, 3) },
+      ...(partnerSepKm != null && ctx.partner ? [{
+        label: `Co-orbit partner (${ctx.partner.name})`,
+        value: `${n(partnerSepKm, 0, 'km')} apart`
+      }] : []),
       { label: 'Star', value: ctx.star?.name ?? '—' },
       ...(body.albedoBreakdown ? [{
         label: 'Albedo (derived)',
@@ -132,8 +152,11 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
       }] : [])
     ],
     outputs: tempOut,
-    notes: body.temperatureRangeK && body.temperatureRangeK.max - body.temperatureRangeK.min > 5
-      ? ['The mean averages heat over the whole body; the range captures cold night sides and localized (tidal-volcanic) hotspots.'] : []
+    notes: [
+      ...(bary ? [`Equilibrium temperature is set by the distance to ${ctx.star?.name ?? 'the star'} — the ${bary.name || 'barycentre'}'s ${n(heliocentricEl?.a_AU, 1, 'AU')} orbit — not the small orbit ${ctx.partner ? `around its partner ${ctx.partner.name}` : 'within the pair'}.`] : []),
+      ...(body.temperatureRangeK && body.temperatureRangeK.max - body.temperatureRangeK.min > 5
+        ? ['The mean averages heat over the whole body; the range captures cold night sides and localized (tidal-volcanic) hotspots.'] : [])
+    ]
   });
 
   // 4. Fluid layers
@@ -245,13 +268,11 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     const stabLabel = (body as any).orbitalStability as string | undefined;
     const stabDetails = (body as any).orbitalStabilityDetails as string | undefined;
     const fateTag = (body.tags ?? []).find((t) => t.key.startsWith('fate/'));
-    // A member of a binary orbits the BARYCENTRE at a tiny separation; the orbit that governs its
-    // stability (and reads sensibly) is the barycentre's HELIOCENTRIC orbit, not the ~0.0001 AU pair
-    // orbit. Show that instead, and note the pair. (ctx.host is the body's parent node.)
-    const bary = ctx.host && ctx.host.kind === 'barycenter' ? (ctx.host as Barycenter) : null;
-    const orbEl = bary?.orbit?.elements ?? body.orbit.elements;
-    const eN = orbEl.e ?? 0;
-    const aN = orbEl.a_AU ?? 0;
+    // Binary members are judged on the barycentre's HELIOCENTRIC orbit (computed once, above),
+    // not the ~0.0001 AU pair orbit.
+    const orbEl = heliocentricEl ?? body.orbit.elements;
+    const eN = orbEl?.e ?? 0;
+    const aN = orbEl?.a_AU ?? 0;
     layers.push({
       id: 'stability', title: 'Orbital stability', link: '/physics#stability',
       inputs: [

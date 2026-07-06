@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.305-beta - 6th Jul 2026
+
+* **Temperature panel shows the real distance-to-star for binary members.** Like the stability layer, the Temperature & tidal heat entry used the ~0.0001 AU pair orbit as the semi-major axis (reading "0.000 AU"). It now uses the barycentre's heliocentric orbit — e.g. "Semi-major axis (to Sol, as the Pluto–Charon Barycenter): 39.5 AU" — and adds a **co-orbit partner** line ("Charon — 19,268 km apart") plus a note explaining equilibrium temperature is set by the distance to the star, not the small orbit within the pair.
+
 ## v2.0.304-beta - 6th Jul 2026
 
 * **Stability note now spells out the resonance rescue.** The resonance driver used to read only "shepherded by mean-motion resonance", which didn't make clear the resonance is what saves an otherwise-doomed crossing. It now reads "…crosses Neptune's — which on its own would be unstable — but a locked mean-motion resonance keeps their conjunctions away from the crossing point, so it stays stable", for both binary members and ordinary sibling pairs.

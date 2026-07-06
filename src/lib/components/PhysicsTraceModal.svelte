@@ -14,7 +14,11 @@
 
   $: star = system?.nodes.find((nd) => nd.parentId === null) as CelestialBody | undefined;
   $: host = body.parentId ? (system?.nodes.find((nd) => nd.id === body.parentId) as any) ?? null : null;
-  $: trace = buildPhysicsTrace(body, { ageGyr: (system as any)?.age_Gyr, star, host });
+  // The co-orbit partner: the OTHER body sharing this barycentre (for binary members like Pluto/Charon).
+  $: partner = host?.kind === 'barycenter' && body.parentId
+    ? (system?.nodes.find((nd) => nd.parentId === body.parentId && nd.id !== body.id) as any) ?? null
+    : null;
+  $: trace = buildPhysicsTrace(body, { ageGyr: (system as any)?.age_Gyr, star, host, partner });
 
   // Classification working + borderline override. body.classification is the engine's explanation
   // (recorded even for pinned bodies, so we can show "physics would say X"). body.classes[0] is the
