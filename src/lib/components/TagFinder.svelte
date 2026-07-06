@@ -5,6 +5,11 @@
   // sort nearest-first; otherwise alphabetical.
   import { createEventDispatcher } from 'svelte';
   import { describeTag } from '$lib/tags/tagPresentation';
+  import HelpModal from './HelpModal.svelte';
+  // The user-facing guide, bundled from its single source in docs/ so the help reads the same as the repo doc.
+  import tagsGuide from '../../../docs/tags-guide.md?raw';
+
+  let showHelp = false;
   export let nodes: any[] = [];                       // all bodies/constructs (with __systemId/__systemName/tags)
   export let contextOf: (n: any) => string = () => '';
   export let currentSystemId: string | null = null;
@@ -97,7 +102,15 @@
   <div class="tf-tabs">
     <button class:active={mode === 'bodies'} on:click={() => setMode('bodies')}>Bodies</button>
     <button class:active={mode === 'constructs'} on:click={() => setMode('constructs')}>Constructs</button>
+    <button type="button" class="tf-help" title="About tags, PoI & CoI" aria-label="Tags guide" on:click={() => (showHelp = true)}>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+      Guide
+    </button>
   </div>
+
+  {#if showHelp}
+    <HelpModal markdown={tagsGuide} on:close={() => (showHelp = false)} />
+  {/if}
 
   <!-- system scope + search, side by side to save vertical space -->
   <div class="top-row">
@@ -183,6 +196,9 @@
   .tf-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); }
   .tf-tabs button { flex: 1; background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-muted, #b8bcc4); padding: 6px 8px; cursor: pointer; font-size: 0.86rem; }
   .tf-tabs button.active { color: var(--text, #e8e8e8); border-bottom-color: var(--accent, #5b8def); font-weight: 600; }
+  .tf-tabs .tf-help { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; color: var(--text-muted, #b8bcc4); font-size: 0.78rem; }
+  .tf-tabs .tf-help:hover { color: var(--accent, #5b8def); }
+  .tf-tabs .tf-help svg { flex: 0 0 auto; }
   .top-row { display: flex; gap: 6px; align-items: stretch; }
   .top-row .scope { flex: 0 0 42%; width: auto; }
   .top-row .search-wrap { flex: 1 1 auto; }

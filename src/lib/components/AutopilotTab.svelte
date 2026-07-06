@@ -1,6 +1,6 @@
 <script lang="ts">
-  // Autopilot wizard (docs/autopilot-spec.md §12). CAPTURE-ONLY for now: builds + saves the plan on the
-  // construct; the planner that actually flies it comes later. Sections — Route (legs), Behaviour, Avoid, Logistics.
+  // Autopilot wizard — builds + saves the plan on the construct; the planner flies it.
+  // User-facing behaviour is documented in docs/autopilot-guide.md. Sections — Route (legs), Behaviour, Avoid, Logistics.
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, System, Autopilot, AutopilotAction, AutopilotWhere, AutopilotLeg, RulePack } from '$lib/types';
   import { coiCategories, coiTagLabel } from '$lib/constructs/coi';
