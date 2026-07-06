@@ -33,6 +33,7 @@ const NS_LAYER: Record<string, string> = {
   climate: 'Climate', hazard: 'Radiation / hazards', orbit: 'Orbit', origin: 'Generation',
   stability: 'Orbital stability', barycenter: 'Barycentres', shape: 'Rotational shape',
   ring: 'Rings', resonance: 'Orbital resonance', fate: 'Orbital stability', biodiversity: 'Biosphere',
+  aurora: 'Magnetism',
   // "Reasons to visit" PoI categories — derived by the PoI rules pack, not a physics layer.
   resource: 'Reasons to visit', science: 'Reasons to visit', frontier: 'Reasons to visit', intrigue: 'Reasons to visit'
 };

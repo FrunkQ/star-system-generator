@@ -31,6 +31,16 @@
     mk({ name: 'None (airless)', apparentColorHex: '#9a9aa2', atmosphere: { pressure_bar: 0 } as any }),
   ];
 
+  const auroras = [
+    mk({ name: 'Faint aurora', apparentColorHex: '#3a6ea5', atmosphere: { pressure_bar: 0.8 } as any, tags: [{ key: 'aurora/faint', value: '0.10' }] }),
+    mk({ name: 'Aurora · Earth-class', apparentColorHex: '#2f6ea5', atmosphere: { pressure_bar: 1 } as any, tags: [{ key: 'aurora/strong', value: '0.37' }, { key: 'climate/polar-ice', value: 'water' }] }),
+    mk({ name: 'Strong aurora', apparentColorHex: '#37589a', atmosphere: { pressure_bar: 2 } as any, tags: [{ key: 'aurora/strong', value: '0.48' }] }),
+    mk({ name: 'Brilliant · Jupiter-class', apparentColorHex: '#c9a878', axial_tilt_deg: 3,
+        atmosphere: { pressure_bar: 1000 } as any,
+        apparentColor: { hex: '#c9a878', banding: 8, palette: ammonia('#e8d3ab', '#c89868', '#9c6b3e') } as any,
+        tags: [{ key: 'aurora/brilliant', value: '0.75' }] }),
+  ];
+
   const giants = [
     mk({ name: 'Jupiter-like · fast spin · 3° tilt', apparentColorHex: '#d8b888', axial_tilt_deg: 3,
         apparentColor: { hex: '#d8b888', banding: 8, palette: ammonia('#e8d3ab', '#c89868', '#9c6b3e') } as any }),
@@ -57,6 +67,13 @@
   <h2>Atmosphere limb-glow — strength from surface pressure</h2>
   <div class="gallery">
     {#each atmospheres as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Auroras — atmosphere + magnetic field + ionising radiation</h2>
+  <div class="gallery">
+    {#each auroras as b}
       <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
     {/each}
   </div>

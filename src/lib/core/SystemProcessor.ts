@@ -10,6 +10,7 @@ import { surfaceTempProfile } from '../physics/surfaceTemperature';
 import { deriveFluidLayers, cloudColourName } from '../physics/fluidLayers';
 import { phaseAt, liquidDef, biosolventScore } from '../physics/liquids';
 import { deriveMagnetism, magneticShieldingTag } from '../physics/magnetism';
+import { deriveAurora } from '../physics/aurora';
 import { rotationalDeform } from '../physics/rotation';
 import { deriveGeoActivity } from '../physics/geoActivity';
 import { deriveApparentColorParts } from '../rendering/apparentColor';
@@ -595,6 +596,13 @@ export class SystemProcessor implements ISystemProcessor {
         features['spinFraction'] = deform.fraction;
         body.tags = (body.tags || []).filter((t) => !t.key.startsWith('shape/'));
         if (deform.shape !== 'spherical') body.tags.push({ key: `shape/${deform.shape}` });
+
+        // Auroras (Phase G viz driver): atmosphere + magnetosphere + incident ionising flux → a polar
+        // glow, graded faint→brilliant. Derived here (after magnetism + radiation + atmosphere are all
+        // final); the numeric strength rides on the tag value so the renderer can scale the curtain.
+        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('aurora/'));
+        const aurora = deriveAurora(body);
+        if (aurora.tier) body.tags.push({ key: `aurora/${aurora.tier}`, value: aurora.strength.toFixed(2) });
 
         // Geological activity (tectonics + volcanism by MECHANISM) — the biosphere keystone. Uses
         // makeup (radiogenic budget + iron core), mass/radius (cooling rate), system AGE (radiogenic

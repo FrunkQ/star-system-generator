@@ -44,6 +44,7 @@ const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boole
   geology:      { group: 'Geology',      color: '#c2733a' },
   tidal:        { group: 'Tidal',        color: '#d8843a' },
   magnetic:     { group: 'Magnetism',    color: '#6aa0d8' },
+  aurora:       { group: 'Aurorae',      color: '#57d69a' },
   atmosphere:   { group: 'Atmosphere',   color: '#8aa0b0' },
   climate:      { group: 'Climate',      color: '#6fae8f' },
   hazard:       { group: 'Hazard',       color: '#cc5555' },
@@ -75,6 +76,7 @@ const NAMESPACE_DESC: Record<string, string> = {
   atmosphere:   'A property of the atmosphere\'s composition.',
   climate:      'A derived surface-climate condition.',
   hazard:       'An environmental or stellar hazard to visitors or the atmosphere.',
+  aurora:       'A polar auroral glow from ionising particles funnelled into the atmosphere by the magnetic field.',
   habitability: 'The body\'s habitability tier under the current model.',
   biodiversity: 'A property of the body\'s biosphere.',
   shape:        'The body\'s rotational shape — how far its spin has deformed it from a sphere.'
@@ -234,6 +236,12 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'magnetic/tenuous':    { label: 'Tenuous magnetosphere', description: 'A real but very weak field (well under a tenth of Earth’s) — a small or slowly-spinning iron core (Mercury ≈ 0.003 G). Barely any stellar-wind shielding.' },
   'magnetic/unshielded': { label: 'No magnetosphere', description: 'No convecting conductor (or far too slow rotation) → the atmosphere is exposed to stellar-wind stripping.' },
   'magnetic/anomalous':  { label: 'Anomalous field',  description: 'A magnetic field with no interior dynamo to explain it — an imposed field of unknown or artificial origin (megastructure, exotic matter, a young system…).' },
+
+  // --- Aurorae (atmosphere + magnetosphere + ionising particle flux) ---
+  'aurora/faint':     { label: 'Faint aurora',     description: 'A subtle polar shimmer — enough field to channel some ionising particles into the upper air, but a weak display.' },
+  'aurora/moderate':  { label: 'Aurora',           description: 'Clear auroral curtains ringing the magnetic poles where funnelled particles excite the atmosphere — an Earth-class light show.' },
+  'aurora/strong':    { label: 'Strong aurora',    description: 'Bright, restless polar curtains — a stout magnetosphere pouring particles into a substantial atmosphere.' },
+  'aurora/brilliant': { label: 'Brilliant aurora', description: 'Huge, blazing auroral ovals — the Jupiter class, where an immense field and dense atmosphere light up on a planetary scale.' },
 
   // --- Shape (rotational deformation) ---
   'shape/oblate':       { label: 'Oblate', description: 'Spinning fast enough to visibly flatten at the poles and bulge at the equator (Jupiter/Saturn-like).' },

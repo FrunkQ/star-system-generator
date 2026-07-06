@@ -102,6 +102,30 @@
   $: atmColor = palette.find((p) => p.role === 'atmosphere')?.hex
     ?? palette.find((p) => p.role === 'cloud')?.hex ?? '#9fc6e8';
   $: atmStrength = Math.max(0, Math.min(1, (Math.log10(Math.max(1e-3, atmPressure)) + 2) / 3));
+
+  // Auroras (Phase G): polar curtains driven by the aurora/* tag's strength (atmosphere + magnetosphere
+  // + ionising flux, computed in the processor). Zig-zag arcs ringing each pole — bigger, brighter and
+  // jaggier with strength, classic green with magenta tips when brilliant.
+  $: auroraTag = (body.tags ?? []).find((t) => t.key.startsWith('aurora/'));
+  $: auroraStr = auroraTag ? Math.max(0, Math.min(1.3, parseFloat(auroraTag.value ?? '0') || 0)) : 0;
+  $: hasAurora = !isStar(body) && !isBelt(body) && auroraStr > 0;
+  $: auroraBrilliant = auroraStr >= 0.55;
+  function auroraCurtain(poleY: number, off: number): string {
+    let s = 17 + off; for (let k = 0; k < body.id.length; k++) s = (s * 31 + body.id.charCodeAt(k)) & 0xffffff;
+    const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+    const cx = 50, halfW = 11 + auroraStr * 13, amp = 1.4 + auroraStr * 4.2, dir = poleY < 50 ? 1 : -1, steps = 11;
+    let d = '';
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const x = cx - halfW + 2 * halfW * t;
+      const arc = Math.sin(t * Math.PI) * 4 * dir;                       // shallow bow toward the equator
+      const zig = (i % 2 ? -1 : 1) * amp * (0.5 + rnd() * 0.9);          // shimmer
+      d += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ' ' + (poleY + arc + zig).toFixed(1) + ' ';
+    }
+    return d;
+  }
+  $: auroraTop = hasAurora ? auroraCurtain(30, 3) : '';
+  $: auroraBot = hasAurora ? auroraCurtain(70, 8) : '';
   $: magma = (() => {
     if (isStar(body) || isBelt(body)) return [] as { cx: number; cy: number; r: number }[];
     const volc = isLava || tagKeys.includes('tidal/volcanism') || tagKeys.includes('tidal/hotspots');
@@ -180,6 +204,11 @@
           <stop offset="1" stop-color={atmColor} stop-opacity="0" />
         </radialGradient>
       {/if}
+      {#if hasAurora}
+        <filter id="aurblur-{uid}" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation={(0.8 + auroraStr * 1.3).toFixed(2)} />
+        </filter>
+      {/if}
       {#if magma.length}
         <radialGradient id="magma-{uid}" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stop-color={isLava ? 'rgba(255,244,200,0.98)' : 'rgba(255,210,120,0.98)'} />
@@ -240,6 +269,24 @@
           {#each magma as m}<circle cx={m.cx} cy={m.cy} r={m.r} fill="url(#magma-{uid})" />{/each}
         </g>
       {/if}
+      <!-- Auroral curtains ringing the poles: a soft blurred glow under a crisp shimmer. -->
+      {#if hasAurora}
+        {@const gw = 3 + auroraStr * 4}
+        {@const cw = 0.9 + auroraStr * 1.2}
+        {@const go = Math.min(0.6, 0.25 + auroraStr * 0.5)}
+        {@const co = Math.min(0.92, 0.4 + auroraStr * 0.6)}
+        <g clip-path="url(#clip-{uid})">
+          <path d={auroraTop} fill="none" stroke="#57d69a" stroke-width={gw} stroke-linecap="round" opacity={go} filter="url(#aurblur-{uid})" />
+          <path d={auroraBot} fill="none" stroke="#57d69a" stroke-width={gw} stroke-linecap="round" opacity={go} filter="url(#aurblur-{uid})" />
+          <path d={auroraTop} fill="none" stroke="#b8f5d6" stroke-width={cw} stroke-linecap="round" opacity={co} />
+          <path d={auroraBot} fill="none" stroke="#b8f5d6" stroke-width={cw} stroke-linecap="round" opacity={co} />
+          {#if auroraBrilliant}
+            <path d={auroraTop} fill="none" stroke="#e0a0e0" stroke-width={cw * 0.7} stroke-linecap="round" opacity="0.5" />
+            <path d={auroraBot} fill="none" stroke="#e0a0e0" stroke-width={cw * 0.7} stroke-linecap="round" opacity="0.5" />
+          {/if}
+        </g>
+      {/if}
+
       <!-- Atmosphere limb-glow on top (transparent centre leaves the surface untouched). -->
       {#if hasAtmoGlow}
         <circle cx="50" cy="50" r="40" fill="url(#atmglow-{uid})" />
