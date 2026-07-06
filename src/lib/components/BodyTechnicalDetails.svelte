@@ -732,11 +732,11 @@
           <div class="detail-item biosphere">
               <span class="label">Biosphere</span>
               <div class="biosphere-details">
-                  <span><strong>Complexity:</strong> {body.biosphere.complexity}</span>
-                  <span><strong>Biochemistry:</strong> {body.biosphere.biochemistry}</span>
-                  <span><strong>Energy Source:</strong> {body.biosphere.energy_source}</span>
-                  <span><strong>Morphologies:</strong> {body.biosphere.morphologies.join(', ')}</span>
-                  <span><strong>Coverage:</strong> {(body.biosphere.coverage * 100).toFixed(0)}%</span>
+                  {#if body.biosphere.complexity}<span><strong>Complexity:</strong> {body.biosphere.complexity}</span>{/if}
+                  {#if body.biosphere.biochemistry}<span><strong>Biochemistry:</strong> {body.biosphere.biochemistry}</span>{/if}
+                  {#if body.biosphere.energy_source}<span><strong>Energy Source:</strong> {body.biosphere.energy_source}</span>{/if}
+                  {#if body.biosphere.morphologies?.length}<span><strong>Morphologies:</strong> {body.biosphere.morphologies.join(', ')}</span>{/if}
+                  {#if body.biosphere.coverage != null}<span><strong>Coverage:</strong> {(body.biosphere.coverage * 100).toFixed(0)}%</span>{/if}
               </div>
           </div>
       {/if}
