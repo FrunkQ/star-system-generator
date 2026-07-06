@@ -1,7 +1,7 @@
 <script lang="ts">
-  // Dev-only gallery for The Guide's procedural PlanetDisc — lets us eyeball the Phase-G viz
-  // (polar ice, bands, atmosphere glow, auroras, shapes) across body types without wiring up a
-  // live Companion broadcast. Not linked from the app; visit /discgallery directly.
+  // Gallery for The Guide's procedural PlanetDisc — a reference for how worlds are rendered from
+  // their physics + tags (polar ice, gas-giant banding + spin-axis tilt, atmosphere glow, auroras,
+  // rotational shape). Linked from Settings → System → Appearance. Uses synthetic example bodies.
   import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
   import type { CelestialBody } from '$lib/types';
 
@@ -10,26 +10,58 @@
     temperatureK: 288, temperatureRangeK: { min: 240, max: 305 }, tags: [], ...over
   }) as unknown as CelestialBody;
 
-  const bodies = [
+  // Ammonia-giant palette (a base cloud + chromophore bands) vs a smooth ice-giant (one cloud stop).
+  const ammonia = (b: string, c1: string, c2: string) => ([
+    { hex: b, role: 'cloud', weight: 1 }, { hex: c1, role: 'cloud', weight: 0.6 }, { hex: c2, role: 'cloud', weight: 0.4 },
+  ]);
+  const iceGiant = (b: string) => ([{ hex: b, role: 'cloud', weight: 1 }]);
+
+  const surface = [
     mk({ name: 'Temperate + polar ice', apparentColorHex: '#2f6ea5', tags: [{ key: 'climate/polar-ice', value: 'water' }] }),
     mk({ name: 'Polar ice, oblate', apparentColorHex: '#4a8ec5', oblateness: 0.32, tags: [{ key: 'climate/polar-ice', value: 'water' }] }),
     mk({ name: 'Polar ice, tidally locked', apparentColorHex: '#6aa0c0', tidallyLocked: true, tags: [{ key: 'climate/polar-ice', value: 'water' }] } as any),
-    mk({ name: 'No ice (dry)', apparentColorHex: '#b08050', tags: [] }),
+    mk({ name: 'Dry world (no ice)', apparentColorHex: '#b08050', tags: [] }),
     mk({ name: 'Lava world', apparentColorHex: '#7a2e1e', tags: [{ key: 'tidal/lava-flows' }] }),
+  ];
+
+  const giants = [
+    mk({ name: 'Jupiter-like · fast spin · 3° tilt', apparentColorHex: '#d8b888', axial_tilt_deg: 3,
+        apparentColor: { hex: '#d8b888', banding: 8, palette: ammonia('#e8d3ab', '#c89868', '#9c6b3e') } as any }),
+    mk({ name: 'Saturn-like · 27° tilt', apparentColorHex: '#d8c89a', axial_tilt_deg: 27,
+        apparentColor: { hex: '#d8c89a', banding: 5, palette: ammonia('#e6dcb8', '#c8b888', '#a89860') } as any }),
+    mk({ name: 'Ice giant · smooth', apparentColorHex: '#8fc4d6', axial_tilt_deg: 28,
+        apparentColor: { hex: '#8fc4d6', banding: 3, palette: iceGiant('#a6d4e2') } as any }),
+    mk({ name: 'Uranus-like · 98° tilt (on its side)', apparentColorHex: '#a6d8dc', axial_tilt_deg: 98,
+        apparentColor: { hex: '#a6d8dc', banding: 4, palette: iceGiant('#b8e0e4') } as any }),
   ];
 </script>
 
-<h1>PlanetDisc gallery (dev)</h1>
-<div class="gallery">
-  {#each bodies as b}
-    <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
-  {/each}
+<div class="page">
+  <h1>Rendered worlds — reference gallery</h1>
+  <p class="lead">How The Guide draws a world from its physics and tags. These are illustrative examples.</p>
+
+  <h2>Surface features</h2>
+  <div class="gallery">
+    {#each surface as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Gas &amp; ice giants — banding from spin, tilted by the axis</h2>
+  <div class="gallery">
+    {#each giants as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
 </div>
 
 <style>
   :global(body) { background: #0a0a12; margin: 0; }
-  h1 { color: #8aa0b0; font-family: sans-serif; font-size: 1rem; padding: 16px 24px 0; }
-  .gallery { display: flex; flex-wrap: wrap; gap: 28px; padding: 24px; }
-  figure { margin: 0; text-align: center; color: #ccd; font-family: sans-serif; font-size: 0.8rem; }
-  figcaption { margin-top: 8px; }
+  .page { padding: 20px 24px 48px; font-family: system-ui, sans-serif; color: #ccd; }
+  h1 { color: #cfe0ea; font-size: 1.15rem; margin: 8px 0 4px; }
+  .lead { color: #8a97a6; margin: 0 0 18px; font-size: 0.85rem; }
+  h2 { color: #8aa8bc; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin: 26px 0 4px; }
+  .gallery { display: flex; flex-wrap: wrap; gap: 28px; padding: 12px 0; }
+  figure { margin: 0; text-align: center; font-size: 0.78rem; width: 168px; }
+  figcaption { margin-top: 8px; color: #b8c2cc; }
 </style>

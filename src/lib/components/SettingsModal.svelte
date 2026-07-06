@@ -382,6 +382,8 @@
           <p class="section-hint">App-wide preferences.</p>
           <button class="section-btn" on:click={() => { dispatch('llm'); showModal = false; }}>LLM Settings…</button>
           <a class="section-btn" href="/palette" on:click={() => showModal = false}>Appearance…</a>
+          <a class="section-btn" href="/discgallery" target="_blank" rel="noopener" on:click={() => showModal = false}>Rendered world gallery…</a>
+          <p class="section-hint">A reference for how worlds are drawn from their physics and tags — polar ice, gas-giant banding, rotational shape and more.</p>
 
           <h4 class="advanced-head">Advanced</h4>
           <div class="form-group">

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.280-beta - 6th Jul 2026
+
+* **Phase G viz — gas-giant bands now tilt with the spin axis.** Cloud banding (its count already set by rotation) is drawn tilted by the world's axial tilt, so a planet tipped on its side like Uranus shows near-vertical bands instead of the usual horizontal stripes. Shows in the orrery and The Guide.
+* **Rendered-world gallery.** The dev disc gallery is now a proper reference page (`/discgallery`), linked from **Settings → System → Appearance** — a quick look at how worlds are drawn from their physics and tags (polar ice, banding + tilt, rotational shape…).
+
 ## v2.0.279-beta - 6th Jul 2026
 
 * **Phase G viz — polar ice caps.** Worlds that are liquid at their mean temperature but freeze at the poles (the `climate/polar-ice` tag — Earth, Mars…) now show frozen caps in The Guide's rendered disc. The caps sit on the surface, so the day/night terminator dims them, and they follow a fast rotator's oblate squash.
