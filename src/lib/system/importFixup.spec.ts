@@ -82,6 +82,27 @@ describe('fixUpImportedSystem', () => {
     expect(p.temperatureK).toBeUndefined();
   });
 
+  it('KEEPS a GM-pinned planet type (autoClassify=false) across load; still wipes an auto class', () => {
+    const sys = {
+      id: 's', name: 'N', rulePackId: 'starter-sf', nodes: [
+        // GM turned auto-classify OFF and picked "Ocean world" — authored, must survive.
+        { id: 'pinned', name: 'Pinned', kind: 'body', roleHint: 'planet', parentId: null,
+          massKg: EARTH_MASS_KG, radiusKm: EARTH_RADIUS_KM, makeup: { rock: 0.7, metal: 0.3 },
+          autoClassify: false, classes: ['planet/ocean'], tags: [] },
+        // A body left on auto-classify — its baked class is derived data, still stripped.
+        { id: 'auto', name: 'Auto', kind: 'body', roleHint: 'planet', parentId: null,
+          massKg: EARTH_MASS_KG, radiusKm: EARTH_RADIUS_KM, makeup: { rock: 0.7, metal: 0.3 },
+          autoClassify: true, classes: ['planet/terrestrial'], tags: [] }
+      ], orbit: undefined
+    } as unknown as System;
+
+    fixUpImportedSystem(sys);
+    const pinned: any = sys.nodes.find((n: any) => n.id === 'pinned');
+    const auto: any = sys.nodes.find((n: any) => n.id === 'auto');
+    expect(pinned.classes).toEqual(['planet/ocean']); // hand-picked type survives (processor won't re-derive it)
+    expect(auto.classes).toEqual([]);                   // auto class wiped → re-derived by the processor
+  });
+
   it('KEEPS auto-barycentres so a nested pair is not orphaned (Sirius Ab collapse regression)', () => {
     // A v1 planet + oversized-moon pair that v1 promoted into an auto-barycentre carrying the REAL orbit
     // around the star (a_AU 4.44). Deleting the barycentre here orphaned the members; the processor then

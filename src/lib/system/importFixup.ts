@@ -87,6 +87,13 @@ function stripBody(body: CelestialBody, classNames: Set<string>): void {
     body.classes = fromClasses.length
       ? fromClasses
       : (body.tags ?? []).map((t) => t.key).filter((k) => typeof k === 'string' && k.startsWith('star/'));
+  } else if (body.autoClassify === false) {
+    // A GM who turned auto-classify OFF has PINNED the type — that's authored end-state data, not stale
+    // derived data, so keep it (as we do for a star's spectral class). Without this the class is wiped
+    // and the processor re-derives it (its guard re-classifies when classes is empty), silently losing a
+    // hand-picked type on every save→load. Only genuine planet/* classes survive; a legacy class-as-tag
+    // or empty pick still falls through to the re-derive path below.
+    body.classes = (body.classes ?? []).filter((c) => typeof c === 'string' && c.startsWith('planet/'));
   } else {
     body.classes = [];
   }
