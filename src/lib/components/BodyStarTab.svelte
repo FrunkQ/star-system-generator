@@ -169,7 +169,8 @@
       if (type === 'BH_active') { bg = '#000000'; border = '#ffaa00'; shadow = '#ffaa00'; }
       if (type === 'NS') { bg = '#c0c0ff'; shadow = '#c0c0ff'; }
       if (type === 'WD') { bg = '#f0f0f0'; shadow = '#f0f0f0'; }
-      if (type === 'red-giant') { bg = '#8b0000'; shadow = '#8b0000'; }
+      // A red giant is a thermal star — keep the temperature colour (from getStarColorFromTemp above),
+      // no special-case override. Only accretion/non-thermal remnants get a fixed swatch.
 
       return `background-color: ${bg}; border: 2px solid ${border}; box-shadow: 0 0 10px ${shadow};`;
   });

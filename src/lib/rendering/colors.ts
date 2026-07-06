@@ -28,7 +28,7 @@ const STAR_DEFS: Record<string, [string, string]> = {
   magnetar: ['--star-magnetar', '#800080'],
   BH: ['--star-bh', '#000000'],
   BH_active: ['--star-bh', '#000000'],
-  'red-giant': ['--star-red-giant', '#8b0000'],
+  'red-giant': ['--star-red-giant', '#ffc46f'],  // a cool K/M-temperature star; coloured by temp via starKey
   default: ['', '#ffffff']
 };
 
@@ -46,9 +46,12 @@ const BODY_DEFS: Record<string, [string, string]> = {
 // Resolve a node's star colour key. Star classes come as either a single letter
 // ("star/G") or a full spectral class ("star/G2V") or a named remnant ("star/red-giant",
 // "star/WD", "star/BH"). Try an exact key, then the BH family, then the leading letter.
-function starKey(node: { classes?: string[] }): string {
+function starKey(node: { classes?: string[]; temperatureK?: number }): string {
   const raw = (node.classes?.[0] || '').split('/')[1] || '';
   if (!raw) return 'default';
+  // A red giant is a standard COOL star in late evolution (K/M temperatures) — colour it by its
+  // temperature like any other star, not with a special blood-red swatch.
+  if (raw === 'red-giant') return (node.temperatureK ?? 3500) >= 3700 ? 'K' : 'M';
   if (STAR_DEFS[raw]) return raw;
   if (raw.includes('BH')) return 'BH';
   if (STAR_DEFS[raw[0]]) return raw[0];

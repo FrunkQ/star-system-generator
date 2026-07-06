@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.284-beta - 6th Jul 2026
+
+* **Red giants are now coloured like the standard stars they are.** A red giant is just a cool, swollen K/M-temperature star, so it's now tinted by its temperature (warm orange) like every other star instead of a special blood-red swatch — in the orrery and the editor swatch. (Audit confirmed they already behave as standard stars everywhere else — generation, planet counts, classification.)
+
 ## v2.0.283-beta - 6th Jul 2026
 
 * **Phase G viz — bodies spun past break-up now render as a ring.** A world driven past ~0.8 of its break-up spin (the toroidal regime) has flown apart into a ring, so The Guide draws a true torus — a tilted annulus with a hole — instead of an ever-thinner lens. Rounds out the rotational-shape series (sphere → oblate → ellipsoid → ring), now all viewable in the rendered-world gallery.
