@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.307-beta - 7th Jul 2026
+
+* **Fixed a UI lock-up on life-bearing generated worlds.** A world with a biosphere but no `morphologies` list (the shape the new generator produces) crashed the body detail panel (`morphologies.join` on undefined), which froze the whole view and made it unclickable — and made the planet vanish when you zoomed in. Every biosphere field is now guarded. (Also the likely cause of the "deleting objects locks up" reports.)
+* **Help hub.** A new **Help** entry on the rail (above About) opens a hub linking every guide — Getting Started, the physics reference, the in-app Tags and Autopilot guides, the changelog, Discord and the tutorial video. The **Tags guide** is now also reachable from the PoI and CoI editors, and **About** links Getting Started.
+* **Docs:** Traveller instructions now describe the **Settings → System → Traveller mode** checkbox; user-facing links point to **https://starsystemx.com/** (with the **beta.starsystemx.com** channel noted). Removed the unused Design Review file.
+
 ## v2.0.306-beta - 6th Jul 2026
 
 * **Documentation overhaul for the V2 drop.**
