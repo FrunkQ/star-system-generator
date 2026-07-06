@@ -20,6 +20,7 @@
   import { getNodeColor, STAR_COLOR_MAP, tokenRgba } from '$lib/rendering/colors';
   import { trueColorMode } from '$lib/rendering/colorModeStore';
   import { getPlanetTexture } from '$lib/rendering/planetTexture';
+  import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 
   export let system: System | null;
   export let rulePack: RulePack;
@@ -990,8 +991,10 @@
               ctx.restore();
           }
 
+          // Draw the body as its actual (oblate) shape — a fast rotator is flattened along its poles.
+          const ryRadius = finalRadius * oblatePolarFactor((node as CelestialBody).oblateness);
           ctx.beginPath();
-          ctx.arc(rx, ry, finalRadius, 0, 2 * Math.PI);
+          ctx.ellipse(rx, ry, finalRadius, ryRadius, 0, 0, 2 * Math.PI);
 
           // Custom Rendering for Black Holes
           if (node.classes?.includes('star/BH_active')) {
@@ -1014,8 +1017,8 @@
                   : null;
               if (tex) {
                   ctx.save();
-                  ctx.beginPath(); ctx.arc(rx, ry, finalRadius, 0, 2 * Math.PI); ctx.clip();
-                  ctx.drawImage(tex, rx - finalRadius, ry - finalRadius, finalRadius * 2, finalRadius * 2);
+                  ctx.beginPath(); ctx.ellipse(rx, ry, finalRadius, ryRadius, 0, 0, 2 * Math.PI); ctx.clip();
+                  ctx.drawImage(tex, rx - finalRadius, ry - ryRadius, finalRadius * 2, ryRadius * 2);
                   ctx.restore();
               } else {
                   ctx.fillStyle = getNodeColor(node);

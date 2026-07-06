@@ -3,6 +3,7 @@
   import type { System, CelestialBody, Barycenter } from '$lib/types';
   import { AU_KM, G } from '$lib/constants';
   import { composeSurfaceTemperatureFromDeltaComponents } from '$lib/physics/temperature';
+  import { oblatePolarFactor } from '$lib/rendering/bodyShape';
   import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatTempC, formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
 
   // Extracted from /report so the printable report and the live /catalogue (Companion App)
@@ -776,7 +777,7 @@
                                 {@const beltSize = getBeltDisplaySize(body, bodyRadius)}
                                 <ellipse cx={markerX} cy={itemY} rx={beltSize.rx} ry={beltSize.ry} fill="#9a9a9a" fill-opacity="0.30" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9" />
                             {:else}
-                                <circle cx={markerX} cy={itemY} r={bodyRadius} fill={item.type === 'moon' ? "#333" : "#111"} />
+                                <ellipse cx={markerX} cy={itemY} rx={bodyRadius} ry={bodyRadius * oblatePolarFactor(body.oblateness)} fill={item.type === 'moon' ? "#333" : "#111"} />
                             {/if}
                             {#if isPlanetLike(body) && hasRingSystem(body)}
                                 <ellipse cx={markerX} cy={itemY - 2} rx={bodyRadius * 1.55} ry={Math.max(1.5, bodyRadius * 0.55)} fill="none" stroke="#666" stroke-width="1" />
@@ -828,7 +829,7 @@
                                     {@const beltSize = getBeltDisplaySize(body, bodyRadius)}
                                     <ellipse cx={markerX} cy={itemY} rx={beltSize.rx} ry={beltSize.ry} fill="#9a9a9a" fill-opacity="0.30" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9" />
                                 {:else}
-                                    <circle cx={markerX} cy={itemY} r={bodyRadius} fill={item.type === 'moon' ? "#333" : "#111"} />
+                                    <ellipse cx={markerX} cy={itemY} rx={bodyRadius} ry={bodyRadius * oblatePolarFactor(body.oblateness)} fill={item.type === 'moon' ? "#333" : "#111"} />
                                 {/if}
                                 {#if isPlanetLike(body) && hasRingSystem(body)}
                                     <ellipse cx={markerX} cy={itemY - 2} rx={bodyRadius * 1.55} ry={Math.max(1.5, bodyRadius * 0.55)} fill="none" stroke="#666" stroke-width="1" />
@@ -897,7 +898,7 @@
                                     {@const beltSize = getBeltDisplaySize(body, bodyRadius)}
                                     <ellipse cx={markerX} cy={itemY} rx={beltSize.rx} ry={beltSize.ry} fill="#9a9a9a" fill-opacity="0.30" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9" />
                                 {:else}
-                                    <circle cx={markerX} cy={itemY} r={bodyRadius} fill={item.type === 'moon' ? "#333" : "#111"} />
+                                    <ellipse cx={markerX} cy={itemY} rx={bodyRadius} ry={bodyRadius * oblatePolarFactor(body.oblateness)} fill={item.type === 'moon' ? "#333" : "#111"} />
                                 {/if}
                                 {#if isPlanetLike(body) && hasRingSystem(body)}
                                     <ellipse cx={markerX} cy={itemY - 2} rx={bodyRadius * 1.55} ry={Math.max(1.5, bodyRadius * 0.55)} fill="none" stroke="#666" stroke-width="1" />

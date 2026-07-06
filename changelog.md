@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.269-beta - 6th Jul 2026
+
+* **Planets and moons are now drawn as their actual shape** — a fast rotator shows visibly flattened (oblate), not a perfect circle — in the orrery, the projector, the printed report and The Guide's discs. The flattening comes straight from the rotational-deformation model (E4), so a world near its break-up spin draws as a thin lens. Rings keep their own plane.
+
 ## v2.0.268-beta - 6th Jul 2026
 
 * **Magnetospheres now respond to rotation and composition.** A body's field strength is derived from its dynamo (rotation, interior makeup and core size) rather than a fixed number — spin a world up or make it metal-rich and the field grows; the GM override still wins. Calibrates to the real planets (Earth ~0.5 G, Jupiter ~4.3 G). **Mercury** now reads a **Tenuous magnetosphere** (~0.003 G) instead of "No magnetosphere" — a metal-rich body keeps a weak field even when small and slow-spinning. New *Tenuous magnetosphere* tag for real-but-negligible fields, and the field readout shows enough decimals to see them (0.003 G, not 0.00 G).

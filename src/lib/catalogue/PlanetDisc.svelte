@@ -6,12 +6,18 @@
   import type { CelestialBody, ApparentColorStop } from '$lib/types';
   import { starColorFromTempK } from '$lib/rendering/apparentColor';
   import { getPlanetTexture } from '$lib/rendering/planetTexture';
+  import { oblatePolarFactor } from '$lib/rendering/bodyShape';
   import { EARTH_MASS_KG } from '$lib/constants';
 
   export let body: CelestialBody;
   export let ringed = false;
   export let ringDensity = 0.6;   // 0..1 (debris density of the ring); scales its drawn size/opacity
   export let size = 132;
+
+  // Oblate flattening (E4): squash the disc body vertically about the centre (y=50) so a fast rotator
+  // reads as flattened. Rings keep their own plane, so only the body group is transformed.
+  $: discPolF = oblatePolarFactor(body.oblateness);
+  $: discSquash = discPolF < 0.999 ? `translate(0 ${(50 * (1 - discPolF)).toFixed(2)}) scale(1 ${discPolF.toFixed(3)})` : '';
 
   // Ring geometry from density: sparse rings are a thin faint hoop, dense ones a broad bright band.
   $: ringRx = 38 + ringDensity * 10;       // outer extent 38..48
@@ -166,6 +172,8 @@
                  transform="rotate(-18 50 50)" />
       {/if}
 
+      <!-- Body (oblate-squashed about the centre; rings keep their own plane). -->
+      <g transform={discSquash}>
       <!-- Disc: the real orrery texture if we have it, else a flat shaded sphere. -->
       {#if textureUrl}
         <image href={textureUrl} x="20" y="20" width="60" height="60" clip-path="url(#clip-{uid})" preserveAspectRatio="xMidYMid slice" />
@@ -189,6 +197,7 @@
           {#each magma as m}<circle cx={m.cx} cy={m.cy} r={m.r} fill="url(#magma-{uid})" />{/each}
         </g>
       {/if}
+      </g>
 
       {#if ringed}
         <ellipse cx="50" cy="50" rx={ringRx} ry={ringRy} fill="none" stroke={shade(base, 0.32)} stroke-width={ringW} opacity={ringFrontOp}
