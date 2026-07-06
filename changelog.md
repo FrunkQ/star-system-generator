@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.0.277-beta - 6th Jul 2026
+
+* **Deleting the primary star now deletes the whole system — on purpose, with a warning.** Previously it silently left a broken, empty husk on the starmap. The star's delete button now reads **"Delete system"** and asks you to confirm ("this removes the whole system and everything orbiting it") before dropping the entire system and returning you to the starmap.
+* **GM overrides moved to the bottom** of the read-only data panel, below the tags, where it reads as a footnote rather than a header.
+* **Every tag now explains itself in the physics (!) panel.** Filled in the write-ups that were missing (origin, orbit, barycentre, hazard, runaway-greenhouse, the namespaced atmosphere tags…), gave each tag a proper source-layer instead of "Other", and added a namespace-level fallback so any future tag (auroras, bands…) is always explained rather than blank.
+
 ## v2.0.276-beta - 6th Jul 2026
 
 * **One slider for spin.** The Day Length editor is now a single log-scaled slider running from the break-up limit (fast) to slow, its track **colour-zoned** by the shape the spin produces — spherical (green), oblate (amber), ellipsoid (orange), near break-up (red) — so you can see a world flatten as you drag. **Tidal lock is a snap-notch** on the track (drag onto it, or click the padlock) instead of a separate checkbox; drag away and it releases. **Retrograde** is its own toggle (the day-length box always shows the magnitude). A numeric box stays for precise entry, and the break-up floor is still a hard stop. **Axial Tilt** becomes a 0–180° slider with a synced value box too.

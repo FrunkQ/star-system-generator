@@ -1245,6 +1245,7 @@
         on:catalogue={() => showCompanionModal = true}
         on:interstellar={(e) => { interstellarShipId = e.detail?.shipId || ''; showInterstellarModal = true; }}
         on:back={handleBackToStarmap}
+        on:deletesystem={handleDeleteSystem}
         on:renameNode={handleRenameNode}
       />
     {/if}

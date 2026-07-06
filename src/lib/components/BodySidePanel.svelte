@@ -109,10 +109,14 @@
 
   <div class="actions-row">
     <button class="danger" on:click={() => {
+        // The primary star's delete is really a whole-system delete; SystemView.handleDeleteNode owns
+        // that loud confirmation, so don't double-prompt here. Everything else gets the usual check.
+        const isRoot = rootStar && body.id === rootStar.id;
+        if (isRoot) { dispatch('delete', body.id); return; }
         if (confirm(`Are you sure you want to delete ${body.name}?`)) {
             dispatch('delete', body.id);
         }
-    }}>Delete</button>
+    }}>{rootStar && body.id === rootStar.id ? 'Delete system' : 'Delete'}</button>
   </div>
 
   <div class="live-stats">

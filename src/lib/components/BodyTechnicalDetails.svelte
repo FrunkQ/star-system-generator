@@ -429,13 +429,6 @@
         <span class="value">{body.kind}{#if body.kind === 'body'} ({body.roleHint}){/if}</span>
     </div>
 
-    {#if activeOverrides.length}
-        <div class="detail-item overrides-callout" title="Values the GM has pinned by hand. Everything else is derived by the physics engine; a pinned value is saved and fed into the derivation instead.">
-            <span class="label">GM overrides</span>
-            <span class="value">{#each activeOverrides as o}<span class="ovr-badge">{o}</span>{/each}</span>
-        </div>
-    {/if}
-
     {#if body.kind === 'body' && body.traveller}
         <div class="detail-item traveller-data">
             <span class="label">Traveller UWP ({body.traveller.allegianceName || body.traveller.allegiance})</span>
@@ -810,6 +803,13 @@
                       <span class="tag" style="border-color: {info.color}; color: {info.color};" title={info.description}>{info.label}{#if tag.value}: {tag.value}{/if}</span>
                   {/each}
               </div>
+          </div>
+      {/if}
+
+      {#if activeOverrides.length}
+          <div class="detail-item overrides-callout" title="Values the GM has pinned by hand. Everything else is derived by the physics engine; a pinned value is saved and fed into the derivation instead.">
+              <span class="label">GM overrides</span>
+              <span class="value">{#each activeOverrides as o}<span class="ovr-badge">{o}</span>{/each}</span>
           </div>
       {/if}
 </div>

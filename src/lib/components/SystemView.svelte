@@ -1261,6 +1261,21 @@
     const nodeId = event.detail;
     const nodeToDelete = $systemStore.nodes.find(n => n.id === nodeId);
 
+    // Deleting the system's parentless root (the primary star, or the root barycentre of a multiple
+    // star) is really "delete the whole system": removing just the star would leave an orphaned,
+    // unusable husk on the starmap. Confirm loudly, then drop the entire system via the starmap owner.
+    const isSystemRoot = !!nodeToDelete && !nodeToDelete.parentId
+      && (nodeToDelete.roleHint === 'star' || nodeToDelete.kind === 'barycenter');
+    if (isSystemRoot) {
+      const ok = confirm(
+        `Delete the entire "${$systemStore.name || 'system'}" system?\n\n` +
+        `${nodeToDelete.name} is its primary star — deleting it removes the whole system and ` +
+        `everything orbiting it. This can't be undone.`);
+      if (!ok) return;
+      dispatch('deletesystem', $systemStore.id);
+      return;
+    }
+
     let nextFocusId: string | null = null;
     if (focusedBodyId === nodeId) {
         if (nodeToDelete?.parentId) {

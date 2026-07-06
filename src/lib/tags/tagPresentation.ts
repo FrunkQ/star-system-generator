@@ -56,6 +56,30 @@ const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boole
   intrigue:     { group: 'Intrigue',      color: '#b07ad0', poi: true }
 };
 
+// Namespace-level fallback description. Every derived tag should justify its existence in the physics
+// panel, so when a specific TAG_INFO entry is missing (a new tag we haven't written up yet — auroras,
+// bands, a fresh climate flag…) we still explain what KIND of thing it is rather than showing nothing.
+// Add a specific TAG_INFO entry to say more; add a line here when you introduce a whole new namespace.
+const NAMESPACE_DESC: Record<string, string> = {
+  origin:       'How and where this body formed, versus where it ended up.',
+  orbit:        'A property of the body\'s orbit.',
+  barycenter:   'A shared centre-of-mass balance point that two or more bodies orbit.',
+  stability:    'How dynamically stable the orbit is over the long term.',
+  resonance:    'An orbital resonance — a whole-number period ratio — with a neighbour.',
+  fate:         'The predicted long-term end-state of the orbit.',
+  structure:    'A derived internal or surface layer of the body.',
+  ring:         'A property of the body\'s ring system.',
+  geology:      'The body\'s tectonic and volcanic regime, set by its interior heat.',
+  tidal:        'A consequence of tidal heating from a close, eccentric or resonant orbit.',
+  magnetic:     'The body\'s magnetic field and the stellar-wind shielding it provides.',
+  atmosphere:   'A property of the atmosphere\'s composition.',
+  climate:      'A derived surface-climate condition.',
+  hazard:       'An environmental or stellar hazard to visitors or the atmosphere.',
+  habitability: 'The body\'s habitability tier under the current model.',
+  biodiversity: 'A property of the body\'s biosphere.',
+  shape:        'The body\'s rotational shape — how far its spin has deformed it from a sphere.'
+};
+
 // Friendly label + physics description, keyed by exact tag.
 const TAG_INFO: Record<string, { label: string; description: string }> = {
   // --- Resonances & predicted fates ---
@@ -139,6 +163,36 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
     label: 'Tidally locked',
     description: 'Derived: the despinning timescale (∝ a⁶) is shorter than the system age, so the body has settled into synchronous rotation — one face permanently toward its host (the Moon, Mercury, most close-in worlds). Pin it by hand in the body editor to override.'
   },
+  'orbit/retrograde': {
+    label: 'Retrograde orbit',
+    description: 'Orbits opposite to the system\'s general direction — usually the signature of a captured body or a violent dynamical past.'
+  },
+  'orbit/double': {
+    label: 'Double planet',
+    description: 'Two comparable-mass bodies orbiting their common barycentre rather than one clearly orbiting the other (Pluto–Charon).'
+  },
+
+  // --- Origin (how the body came to be where it is) ---
+  'origin/captured': {
+    label: 'Captured',
+    description: 'Not formed here: a retrograde or steeply-inclined orbit is the tell-tale of a body gravitationally captured from elsewhere (Triton, the irregular moons).'
+  },
+  'origin/migrated': {
+    label: 'Migrated',
+    description: 'Formed at a different distance and migrated to its present orbit — the classic history of a hot Jupiter that spiralled inward through the disc.'
+  },
+
+  // --- Barycentre ---
+  'barycenter/auto': {
+    label: 'Auto barycentre',
+    description: 'An automatically-inserted balance point (centre of mass) that a multiple-star or double-planet pair orbits — created by the engine to keep the hierarchy physical, not hand-placed.'
+  },
+
+  // --- Hazard ---
+  'hazard/flaring': {
+    label: 'Flare hazard',
+    description: 'The host star flares — episodic flares and coronal mass ejections spike radiation and can erode an unshielded atmosphere (common on active M-dwarfs).'
+  },
 
   // --- Rings (derived from ring-child geometry) ---
   'ring/system':   { label: 'Ringed',         description: 'Hosts a ring system — orbiting ice/rock debris — derived from a ring child in the geometry, not hand-tagged.' },
@@ -190,11 +244,15 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   // --- Structure (derived layering) ---
   'structure/icy-shell':        { label: 'Icy shell',        description: 'A frozen exterior (the value names the ice — water, nitrogen, CO₂, methane…) over a rockier interior.' },
   'climate/polar-ice':          { label: 'Polar ice',        description: 'Liquid at the mean temperature, but the cold poles / night side dip below the solvent\'s freezing point — partial frozen caps.' },
+  'climate/runaway-greenhouse': { label: 'Runaway greenhouse', description: 'A runaway greenhouse has taken hold — trapped heat has driven surface volatiles into a thick, self-reinforcing hothouse atmosphere (Venus).' },
   'structure/subsurface-ocean': { label: 'Subsurface ocean', description: 'A liquid ocean beneath an ice crust, kept liquid by tidal and/or radiogenic interior heat.' },
   'structure/cloud-deck':       { label: 'Cloud deck',       description: 'A condensed cloud layer in the atmosphere — affects albedo, apparent colour and greenhouse warming.' },
 
   // --- Atmosphere gas roles (flat keys, from the atmosphere composition). RPG-relevant only:
   //     survival, breathability, equipment hazards, world-building signals. ---
+  // Namespaced atmosphere variants emitted by the generator (alongside the flat gas-role keys below).
+  'atmosphere/breathable':     { label: 'Breathable',       description: 'The atmosphere\'s composition and pressure fall within the human-breathable envelope — air you could breathe unaided.' },
+  'atmosphere/reducing':       { label: 'Reducing',         description: 'A reducing atmosphere with no free oxygen — hydrogen/methane/ammonia chemistry, typical of a young or abiotic world.' },
   'inert':                     { label: 'Inert atmosphere', description: 'Dominated by chemically unreactive gases (N₂, noble gases) — no reactive chemistry.' },
   'oxidizer':                  { label: 'Oxidizing',        description: 'Free oxidizer (e.g. O₂) present — a strong sign of an active biosphere or photochemistry.' },
   'breathable-human':          { label: 'Breathable',       description: 'Composition and partial pressures fall within the human-breathable envelope.' },
@@ -294,5 +352,7 @@ export function describeTag(key: string): TagPresentation {
   }
   const tagMeta = POI_TAG_META[key];
   const label = tagMeta?.label || info?.label || titleCase(key.includes('/') ? key.split('/').slice(1).join(' ') : key);
-  return { key, label, description: tagMeta?.description ?? info?.description ?? '', group: meta.group, color: meta.color, textColor };
+  // Never leave a tag unexplained: specific write-up → namespace-level fallback → (last resort) blank.
+  const description = tagMeta?.description ?? info?.description ?? (key.includes('/') ? NAMESPACE_DESC[ns] : undefined) ?? '';
+  return { key, label, description, group: meta.group, color: meta.color, textColor };
 }

@@ -31,7 +31,10 @@ const NS_LAYER: Record<string, string> = {
   structure: 'Fluid layers', geology: 'Geological activity', magnetic: 'Magnetism',
   tidal: 'Temperature range & tidal heat', habitability: 'Habitability', atmosphere: 'Atmosphere',
   climate: 'Climate', hazard: 'Radiation / hazards', orbit: 'Orbit', origin: 'Generation',
-  stability: 'Orbital stability', barycenter: 'Barycentres'
+  stability: 'Orbital stability', barycenter: 'Barycentres', shape: 'Rotational shape',
+  ring: 'Rings', resonance: 'Orbital resonance', fate: 'Orbital stability', biodiversity: 'Biosphere',
+  // "Reasons to visit" PoI categories — derived by the PoI rules pack, not a physics layer.
+  resource: 'Reasons to visit', science: 'Reasons to visit', frontier: 'Reasons to visit', intrigue: 'Reasons to visit'
 };
 // Flat (non-namespaced) tag keys → their producing layer. All the kept gas-role tags come from
 // the Atmosphere layer.
