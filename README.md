@@ -74,7 +74,7 @@ Plus a long tail: a tape-measure tool, a far richer temperature model (tidal hea
 * **Procedural & hand generation.** Grow a system from a calibrated HR-diagram star pick, or place bodies anywhere by hand — new planets bind to the dominant gravitational influence under your cursor. Adding a planet offers physically appropriate choices to keep you plausible; you can still edit anything afterwards.
 * **Starmap.** A pan-and-zoom map of many systems, with a bundled Local Neighbourhood example (~12 ly out — Alpha Centauri, Barnard's Star, TRAPPIST-1), proper binary/trinary hierarchies, a square/hex/no-grid overlay, snap-to-grid, a toggleable Milky Way backdrop, independent Display/Actual time controls, and data-driven editable calendars.
   ![Local Neighbourhood Starmap](static/screenshots/LocalNeighbourhood.PNG)
-* **Traveller integration.** Import whole subsectors from [travellermap.com](https://travellermap.com), or enter systems by UWP; a dedicated UWP block shows population, starport and political data. A **Traveller Hex** snap mode aligns everything to hexes.
+* **Traveller integration.** Import whole subsectors from [travellermap.com](https://travellermap.com), or enter systems by UWP; a dedicated UWP block shows population, starport and political data. **Traveller mode** (Settings → System) aligns everything to hexes.
   ![Traveller Style Starmap](static/screenshots/TravellerStyle.PNG)
 * **Constructs & infrastructure.** Place ships and stations anywhere — low orbit to deep space to a planetary surface — each with tracked Mass, Crew, Power, Fuel, Engines, Cargo and Sensors. A rich template library ships (hard sci-fi outposts, *The Expanse*, *Aliens*, *Mothership*); load, refit and save your own. CoI tags let engine and fuel choices drive real capabilities.
 * **Transit & interstellar planner.** Lambert-solver transfers for local hops and system-wide journeys, plus interstellar travel with Realistic, Massless, Relativistic and Jump models. Journeys schedule against Display Time and execute as time advances; intercepts target live in-transit position and velocity; a stress graph flags G-forces and radiation.
@@ -108,7 +108,7 @@ Plus a long tail: a tape-measure tool, a far richer temperature model (tidal hea
 
 ### Traveller tools
 
-1. Set the starmap snap mode to **Traveller Hex**.
+1. Enable **Traveller mode** — tick the checkbox under **Settings → System → Traveller mode** to align the map to hexes.
 2. **Bulk import** — right-click the background → *Add Traveller Map SubSector Here*, search a sector (e.g. "Spinward Marches") and pick a subsector.
 3. **Manual UWP** — right-click a hex → *Add Traveller UWP Here*, enter the UWP (e.g. `A788899-C`).
 
@@ -128,7 +128,7 @@ You can usually enable this for free: sign up at [OpenRouter](https://openrouter
 
 ### For users
 
-Open **https://star-system-generator.vercel.app/** — the latest build, made automatically from this repo. While in active development there's no guarantee saves stay forward-compatible. A short walkthrough lives in [GettingStarted.md](./GettingStarted.md).
+Open **https://starsystemx.com/** — the live app. For the newest features ahead of release, there's a **beta channel** at **https://beta.starsystemx.com/**; while it's in active development there's no guarantee beta saves stay forward-compatible. A short walkthrough lives in [GettingStarted.md](./GettingStarted.md).
 
 ### For developers
 
