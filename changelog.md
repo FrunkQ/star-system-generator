@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.0.268-beta - 6th Jul 2026
+
+* **Magnetospheres now respond to rotation and composition.** A body's field strength is derived from its dynamo (rotation, interior makeup and core size) rather than a fixed number — spin a world up or make it metal-rich and the field grows; the GM override still wins. Calibrates to the real planets (Earth ~0.5 G, Jupiter ~4.3 G). **Mercury** now reads a **Tenuous magnetosphere** (~0.003 G) instead of "No magnetosphere" — a metal-rich body keeps a weak field even when small and slow-spinning. New *Tenuous magnetosphere* tag for real-but-negligible fields, and the field readout shows enough decimals to see them (0.003 G, not 0.00 G).
+
+## v2.0.267-beta - 6th Jul 2026
+
+* **Rotational deformation.** How fast a world can spin is now limited by its composition: the bulk density sets a hard **break-up spin**, and as a body approaches it it visibly flattens — spherical → oblate → ellipsoid → near-break-up → *would fly apart into a ring*. The shape is derived live from density + day length (so editing either updates it), surfaced as tags, and drives the ellipsoid/toroidal planet types (which now use the real spin limit instead of fixed hour thresholds). The Day Length editor shows the live shape and the break-up period, and won't let you spin a body past the point where it would disintegrate. Jupiter and Saturn correctly read as oblate.
+
 ## v2.0.266-beta - 6th Jul 2026
 
 * Fixed **generated gas giants having impossible densities**. A giant's radius was drawn independently of its mass, so a heavy one could come out denser than iron (a "helium" giant read as ~21 g/cc and even mis-labelled non-gas). A giant's radius is now derived from its mass (degeneracy keeps it near one Jupiter radius across a wide mass range) plus thermal inflation, and it's explicitly gas-dominated — so densities are physical. Giant masses are also drawn log-uniformly, so most come out around a Jupiter instead of piling up at brown-dwarf mass (median dropped from ~6 to ~1.9 Jupiter masses).
