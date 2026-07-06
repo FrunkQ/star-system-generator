@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.301-beta - 6th Jul 2026
+
+* **Pluto is no longer flagged "Very Unstable".** A binary/barycentre's orbital-stability check (Pluto–Charon orbits a barycentre) ignored two things the ordinary planet check already handled: a protective mean-motion resonance, and that belts are distributed debris rather than a gravitational neighbour. So Pluto read as doomed for crossing Neptune and the Kuiper Belt. It now correctly reads **Marginal** — metastable, "shepherded by mean-motion resonance" — matching the 3:2 resonance the panel already showed.
+
 ## v2.0.300-beta - 6th Jul 2026
 
 * **Pick the units when editing a planet's mass and radius.** In the Size & Composition editor there's now a little unit button in the gap next to "Mass" and "Radius" — click it to cycle Mass between Earth masses, Jupiter masses and tonnes, and Radius between Earth radii, Jupiter radii and km/miles (following your starmap's distance setting). Makes small moons and giants far easier to type in than everything-in-Earth-units. The slider is unchanged; only the number field's units switch.

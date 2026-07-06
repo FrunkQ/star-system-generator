@@ -218,11 +218,18 @@ function assessBinaryPairStability(
       }
 
       // 2) Neighboring sibling perturbations on the barycenter's parent orbit.
+      // A protective mean-motion resonance is tagged on the binary's MEMBER bodies (e.g. Pluto's 3:2
+      // with Neptune), so check them — a shepherded crossing is metastable, not doomed.
+      const binaryProtected = isResonanceProtected(memberA) || isResonanceProtected(memberB);
       const hostSiblings = system.nodes.filter((n) => {
         if (n.id === bary.id) return false;
         if (n.kind !== 'body') return false;
-        if (!(n as CelestialBody).orbit) return false;
-        return n.parentId === bary.parentId;
+        const b = n as CelestialBody;
+        if (!b.orbit) return false;
+        // Belts/rings are DISTRIBUTED debris, not a point-mass gravitational sibling — a barycentre
+        // crossing the Kuiper Belt is normal, not a disruption (matches the main sibling loop's rule).
+        if (b.roleHint === 'belt' || b.roleHint === 'ring') return false;
+        return b.parentId === bary.parentId;
       }) as CelestialBody[];
 
       const aBary = bary.orbit.elements.a_AU || 0;
@@ -239,6 +246,13 @@ function assessBinaryPairStability(
         const massRatio = mBin > 0 ? (mSib / mBin) : 0;
 
         if (overlap) {
+          // Pluto/Neptune style: the resonance holds conjunctions away from the crossing point, so the
+          // crossing is metastable (marginal), not a collision/ejection sentence.
+          if (binaryProtected || isResonanceProtected(sib)) {
+            out.severity = Math.max(out.severity, 1) as 0 | 1 | 2 | 3;
+            out.reasons.push(`Orbit crossing with ${sib.name} shepherded by mean-motion resonance`);
+            continue;
+          }
           if (massRatio >= 0.1) {
             out.severity = 3;
           } else if (massRatio >= 0.01) {
