@@ -690,8 +690,9 @@ export class SystemProcessor implements ISystemProcessor {
         // type — editing makeup that reclassifies a world (ice-giant → puffy) now updates its image,
         // and an imported body's stale generation-time image is corrected. (Stars use a different
         // image map and are untouched here.)
+        // …but NOT if the GM has uploaded a CUSTOM image (F2) — that's authored, so leave it alone.
         const primaryClass = body.classes?.[0];
-        if (body.roleHint !== 'star' && primaryClass && pack.classifier?.planetImages) {
+        if (body.roleHint !== 'star' && primaryClass && pack.classifier?.planetImages && !(body.image as any)?.custom) {
             const img = pack.classifier.planetImages[primaryClass]
                 ?? pack.classifier.planetImages[`planet/${primaryClass.split('/')[1]}`];
             if (img) body.image = { url: img };

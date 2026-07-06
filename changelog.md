@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.274-beta - 6th Jul 2026
+
+* **F2 — custom images.** Give any body or construct its own picture. For a body it lives under **Type / Image** in the editor; for a construct it's **Add / replace image** on the **Basic** tab (constructs stay as their icon glyph until you add one). Uploads are downscaled to a compact thumbnail so they save with the system and stream to players without bloat. The custom picture shows in the detail pane and survives reloads; **Remove** reverts a body to its derived artwork and a construct to its icon.
+
 ## v2.0.273-beta - 6th Jul 2026
 
 * **Credit your systems.** Select the main star and open the new **System Info** tab to add your name, contact, a date and a version. When anyone selects that star they see "This system was created by …" under its image, so your work travels with the system when you share it.

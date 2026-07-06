@@ -47,7 +47,7 @@ export interface ApparentColorStop { hex: string; role: ApparentColorRole; weigh
 export interface ApparentColor { hex: string; palette: ApparentColorStop[]; banding?: number; }
 // Bulk interior makeup (mass fractions, normalised). Density + radius derive from it (§2a).
 export interface Makeup { metal?: number; rock?: number; carbon?: number; ice?: number; gas?: number; }
-export interface ImageRef { url: string; title?: string; credit?: string; license?: string; sourceUrl?: string; }
+export interface ImageRef { url: string; title?: string; credit?: string; license?: string; sourceUrl?: string; custom?: boolean; }
 
 export interface Area {
   id: ID; name: string;
@@ -292,6 +292,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   internalHeatK?: number;
   apparentColorHex?: string;  // derived true colour (makeup + atmosphere/clouds + temperature)
   apparentColor?: ApparentColor;  // un-mixed palette behind apparentColorHex (for richer rendering)
+  image?: ImageRef;           // type/artwork image; ImageRef.custom = a GM-uploaded picture the processor won't overwrite
   
   // Traveller Data
   traveller?: TravellerWorldData;

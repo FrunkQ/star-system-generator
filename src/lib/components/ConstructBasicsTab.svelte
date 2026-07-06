@@ -3,10 +3,31 @@
   import type { CelestialBody } from '$lib/types';
   import { THERMAL_LIMITS, DEFAULT_AEROBRAKE_LIMIT_KM_S } from '$lib/constants';
   import { fmt } from '$lib/stores';
+  import { fileToDownscaledDataUrl } from '$lib/util/imageUpload';
 
   export let construct: CelestialBody;
 
   const dispatch = createEventDispatcher();
+
+  // F2 — optional custom image for a construct (default is the icon glyph).
+  let imgInput: HTMLInputElement;
+  async function onImageUpload(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const url = await fileToDownscaledDataUrl(file, 512);
+      construct.image = { url, custom: true };
+      construct = construct;
+      dispatch('update');
+    } catch { alert('Could not read that image file.'); }
+    finally { input.value = ''; }
+  }
+  function removeCustomImage() {
+    construct.image = undefined;
+    construct = construct;
+    dispatch('update');
+  }
 
   // Initialize nested physical_parameters if it doesn't exist
   if (!construct.physical_parameters) {
@@ -121,6 +142,22 @@
       </div>
     </div>
 
+    <div class="form-group">
+      <label>Image <span class="descriptor">(optional — defaults to the icon)</span></label>
+      <div class="custom-image">
+        {#if construct.image?.custom}
+          <img class="custom-thumb" src={construct.image.url} alt="Custom construct artwork" />
+        {/if}
+        <button type="button" class="img-btn" on:click={() => imgInput?.click()}>
+          {construct.image?.custom ? 'Replace image…' : 'Add image…'}
+        </button>
+        {#if construct.image?.custom}
+          <button type="button" class="img-btn remove" on:click={removeCustomImage}>Remove</button>
+        {/if}
+        <input type="file" accept="image/*" bind:this={imgInput} on:change={onImageUpload} hidden />
+      </div>
+    </div>
+
     <div class="row">
       <div class="form-group">
         <label for="dry-mass">Dry Mass (tonnes):</label>
@@ -193,6 +230,19 @@
   .dimensions-group .dimensions-inputs input {
     text-align: center;
   }
+
+  .custom-image { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .custom-thumb {
+    width: 48px; height: 48px; object-fit: cover; border-radius: 4px;
+    border: 1px solid var(--border); background: var(--bg-control);
+  }
+  .img-btn {
+    width: auto; padding: 6px 10px; font-size: 0.9em; cursor: pointer;
+    background: var(--bg-control); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px;
+  }
+  .img-btn:hover { border-color: var(--accent, var(--text-muted)); }
+  .img-btn.remove { color: var(--danger, #e06c6c); }
 
   .checkbox-group { display: flex; flex-direction: column; gap: 10px; }
   .checkbox-group label { display: flex; align-items: center; gap: 10px; color: var(--text); }
