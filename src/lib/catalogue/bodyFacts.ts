@@ -3,6 +3,7 @@
 import type { CelestialBody } from '$lib/types';
 import { G, AU_KM } from '$lib/constants';
 import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
+import { tagContextLabel } from '$lib/tags/tagPresentation';
 
 const EARTH_G = 9.80665;
 const EARTH_MASS_KG = 5.972e24;
@@ -101,9 +102,10 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   if (typeof b.habitabilityScore === 'number') add('Habitability', `${Math.round(b.habitabilityScore)}%`);
   if (b.biosphere) add('Native life', `present (cover ${Math.round((b.biosphere.coverage || 0) * 100)}%)`);
 
-  // --- GM-surfaced narrative/feature tags ---
+  // --- GM-surfaced narrative/feature tags --- (contextual labels so "Oblate"/"Dynamo" keep their
+  // category: "Shape · Oblate", "Magnetism · Intrinsic dynamo", "Brilliant aurora: 0.62".)
   if (Array.isArray(b.tags) && b.tags.length) {
-    const tagLabels = b.tags.map((t: any) => titleCase(String(t.key).split('/').pop() || '')).filter(Boolean);
+    const tagLabels = b.tags.map((t: any) => tagContextLabel(String(t.key), t.value)).filter(Boolean);
     if (tagLabels.length) add('Tags', Array.from(new Set(tagLabels)).join(', '));
   }
   return out;

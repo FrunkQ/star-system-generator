@@ -4,6 +4,7 @@
   import { AU_KM, G } from '$lib/constants';
   import { composeSurfaceTemperatureFromDeltaComponents } from '$lib/physics/temperature';
   import { oblatePolarFactor } from '$lib/rendering/bodyShape';
+  import { tagContextLabel } from '$lib/tags/tagPresentation';
   import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatTempC, formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
 
   // Extracted from /report so the printable report and the live /catalogue (Companion App)
@@ -374,7 +375,9 @@
 
   function getTagsString(body: CelestialBody | Barycenter) {
       if (!body.tags || body.tags.length === 0) return '-';
-      return body.tags.map(t => t.key.split('/').pop()?.replace(/_/g, ' ')).join(', ');
+      // Use the CONTEXTUAL label so a bare "Dynamo"/"Oblate"/"Brilliant" keeps its category out of the
+      // GM window — e.g. "Magnetism · Intrinsic dynamo", "Shape · Oblate", "Brilliant aurora: 0.62".
+      return body.tags.map(t => tagContextLabel(t.key, (t as any).value)).join(', ');
   }
 
   function isStarNode(node: any): boolean {

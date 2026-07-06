@@ -44,7 +44,8 @@ const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boole
   geology:      { group: 'Geology',      color: '#c2733a' },
   tidal:        { group: 'Tidal',        color: '#d8843a' },
   magnetic:     { group: 'Magnetism',    color: '#6aa0d8' },
-  aurora:       { group: 'Aurorae',      color: '#57d69a' },
+  aurora:       { group: 'Aurora',       color: '#57d69a' },
+  shape:        { group: 'Shape',        color: '#c9a0e0' },
   atmosphere:   { group: 'Atmosphere',   color: '#8aa0b0' },
   climate:      { group: 'Climate',      color: '#6fae8f' },
   hazard:       { group: 'Hazard',       color: '#cc5555' },
@@ -363,4 +364,18 @@ export function describeTag(key: string): TagPresentation {
   // Never leave a tag unexplained: specific write-up → namespace-level fallback → (last resort) blank.
   const description = tagMeta?.description ?? info?.description ?? (key.includes('/') ? NAMESPACE_DESC[ns] : undefined) ?? '';
   return { key, label, description, group: meta.group, color: meta.color, textColor };
+}
+
+// A CONTEXTUAL label for compact lists (reports, the field guide) where a bare "Oblate" or "Dynamo"
+// loses its category. Prepends the group when it adds meaning — "Shape · Oblate", "Magnetism · Intrinsic
+// dynamo" — but skips it when the label already conveys the category (e.g. "Brilliant aurora", "Inert
+// atmosphere") to avoid "Aurora · Brilliant aurora". Appends the tag value when present ("… : 0.62").
+export function tagContextLabel(key: string, value?: string): string {
+  const { label, group } = describeTag(key);
+  const gl = group.toLowerCase();
+  const glSingular = gl.replace(/s$/, '');
+  const known = !!group && group !== 'Other';
+  const redundant = known && (label.toLowerCase().includes(gl) || label.toLowerCase().includes(glSingular));
+  const base = known && !redundant ? `${group} · ${label}` : label;
+  return value ? `${base}: ${value}` : base;
 }
