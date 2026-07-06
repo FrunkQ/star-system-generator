@@ -5,7 +5,7 @@
 // which is why a biome/life world can be dropped into the Goldilocks zone and a lava world can't.
 import type { CelestialBody, Fingerprint, FingerprintBand, Makeup } from '$lib/types';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM } from '$lib/constants';
-import { radiusReFromMassMakeup } from '$lib/physics/makeup';
+import { radiusReFromMassMakeup, gasThermalInflationFactor } from '$lib/physics/makeup';
 
 type RNG = () => number;
 
@@ -13,6 +13,15 @@ function pick(band: FingerprintBand | undefined, rng: RNG, fallback: number): nu
   if (Array.isArray(band) && typeof band[0] === 'number') {
     const [lo, hi] = band as [number, number];
     return lo + rng() * (hi - lo);
+  }
+  return fallback;
+}
+// Log-uniform pick — for a band that spans orders of magnitude (giant masses), so the draw isn't biased
+// to the high end. A helium giant's [10, 4000] M⊕ band then favours a ~Jupiter mass, not a brown dwarf.
+function pickLog(band: FingerprintBand | undefined, rng: RNG, fallback: number): number {
+  if (Array.isArray(band) && typeof band[0] === 'number') {
+    const lo = Math.max(1e-6, band[0] as number), hi = Math.max(lo, band[1] as number);
+    return Math.exp(Math.log(lo) + rng() * (Math.log(hi) - Math.log(lo)));
   }
   return fallback;
 }
@@ -114,7 +123,7 @@ export function generateBodyOfType(
   const out: Partial<CelestialBody> = { classes: [fp.class], tags: [] };
 
   // --- Mass ---
-  const isGiant = /gas-giant|jupiter|neptune|brown|puff/.test(fp.class);
+  const isGiant = /giant|jupiter|neptune|helium|puff|brown/.test(fp.class);
   // A superhabitable world is, by thesis, a SUPER-EARTH (1.3–3.5 Me): more land + a bigger, longer-
   // lived heat engine, which is also what earns the super-habitable mass bonus and keeps it
   // tectonically active when old. So default it into that band unless the fingerprint pins a mass.
@@ -126,7 +135,9 @@ export function generateBodyOfType(
     : isSuperhab ? 1.3 + rng() * 2.2
     : ctx.role === 'moon' ? 0.002 + rng() * 0.03
     : 0.5 + rng() * 1.5;
-  let massMe = pick(m['mass_Me'], rng, massFallback);
+  // Giants span orders of magnitude in mass — sample that band LOG-uniformly so most come out around a
+  // Jupiter rather than piling up at the brown-dwarf top of the band. Everything else stays linear.
+  let massMe = (isGiant ? pickLog : pick)(m['mass_Me'], rng, massFallback);
   // A MOON must stay well below its host (else it's a double planet / barycentre, not a satellite).
   if (ctx.role === 'moon' && ctx.hostMassKg > 0) {
     massMe = Math.min(massMe, (ctx.hostMassKg / EARTH_MASS_KG) * MOON_MASS_CAP);
@@ -148,9 +159,17 @@ export function generateBodyOfType(
   if (!hasMakeup && LIQUID_WATER_TYPE.test(fp.class)) {
     mk.metal = 0.32; mk.rock = 0.68; hasMakeup = true;
   }
+  // A giant with no explicit makeup is gas-dominated → its radius comes from the giant mass–radius model
+  // (degeneracy keeps it ~1 R♃ across a wide mass range) plus thermal inflation, NOT an independent
+  // radius/density band. Drawing radius independently of mass left heavy giants at impossible densities
+  // (a 2000 M⊕ "helium" giant read as ~21 g/cc). Deriving from mass keeps the density physical.
+  if (isGiant && !hasMakeup) {
+    mk.gas = 0.92; mk.ice = 0.08; hasMakeup = true;
+  }
   if (hasMakeup) {
     out.makeup = mk;
-    out.radiusKm = radiusReFromMassMakeup(massMe, mk) * EARTH_RADIUS_KM;
+    const inflation = isGiant ? gasThermalInflationFactor(ctx.teqK ?? 0) : 1;
+    out.radiusKm = radiusReFromMassMakeup(massMe, mk, inflation) * EARTH_RADIUS_KM;
   } else if (m['radius_Re']) {
     out.radiusKm = pick(m['radius_Re'], rng, 1) * EARTH_RADIUS_KM;
   } else if (Array.isArray(m['density'])) {

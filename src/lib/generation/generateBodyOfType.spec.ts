@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs'; import path from 'path';
 import { generateBodyOfType, viableTypesAt } from './generateBodyOfType';
+import { radiusReFromMassMakeup } from '../physics/makeup';
 import { classifyByFingerprint } from '../system/classification';
 import type { Fingerprint } from '$lib/types';
 
@@ -125,6 +126,21 @@ describe('generateBodyOfType — params land in the type bands', () => {
     const massMe = (body.massKg ?? 0) / 5.972e24;
     expect(massMe).toBeGreaterThan(0);
     expect(massMe).toBeLessThan(0.1); // well under Earth — a proper satellite, not a co-planet
+  });
+
+  it('a giant derives its radius from mass (gas-dominated, physical density — no independent-draw anomaly)', () => {
+    // A "helium" giant used to draw its radius from a band INDEPENDENTLY of mass, so a heavy one read as
+    // ~21 g/cc (denser than iron) and its makeup mis-inferred as rock. It must now be gas-dominated with
+    // a radius derived from the giant mass–radius model.
+    const fp = fingerprints().find((f) => f.class === 'planet/helium')
+      ?? fingerprints().find((f) => f.class === 'planet/gas-giant')!;
+    const body = generateBodyOfType(fp, { distAU: 5, hostMassKg: 2e30, role: 'planet', rng: mid, teqK: 100 });
+    const massMe = (body.massKg ?? 0) / 5.972e24;
+    const rho = (body.massKg! * 1000) / ((4 / 3) * Math.PI * (body.radiusKm! * 1e5) ** 3);
+    expect(body.makeup?.gas ?? 0).toBeGreaterThan(0.5);       // gas-dominated, not mis-inferred rock
+    expect(rho).toBeLessThan(8);                               // physical for a sub-Jovian/Jovian, not 21 g/cc
+    const expected = radiusReFromMassMakeup(massMe, body.makeup!, 1) * 6371; // cold ⇒ no inflation
+    expect(body.radiusKm! / expected).toBeCloseTo(1, 2);      // radius came from the mass–radius model
   });
 
   it('an iron world gets a metal-rich makeup and derived radius', () => {

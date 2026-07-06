@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.266-beta - 6th Jul 2026
+
+* Fixed **generated gas giants having impossible densities**. A giant's radius was drawn independently of its mass, so a heavy one could come out denser than iron (a "helium" giant read as ~21 g/cc and even mis-labelled non-gas). A giant's radius is now derived from its mass (degeneracy keeps it near one Jupiter radius across a wide mass range) plus thermal inflation, and it's explicitly gas-dominated — so densities are physical. Giant masses are also drawn log-uniformly, so most come out around a Jupiter instead of piling up at brown-dwarf mass (median dropped from ~6 to ~1.9 Jupiter masses).
+
 ## v2.0.265-beta - 6th Jul 2026
 
 * **E1 — moons are now gated by their host's mass**, in both the "Add moon" picker and procedural generation. A terrestrial can only hold small airless / icy moons (barren, crater, ice, desert, planetesimal…) — airless rock the default — while a gas giant offers far more (Titan-like methane, Europa-like ocean/ice, bigger bodies). The "Add moon — pick a type" header now says so and the count reflects it (a terrestrial host drops from ~28 types to ~7). Also: a manually-added moon defaults to a small (not gravitationally significant) size instead of Earth-mass, and moons can no longer be gas-giant-family types (helium/puffy/ice-giant) — an old filter gap.
