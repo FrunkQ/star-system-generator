@@ -348,6 +348,9 @@ export interface System {
   visualScalingMultiplier?: number;
   toytownFactor?: number;
   isManuallyEdited?: boolean;
+  // Authorship credit — shown under the main star and editable on its "System Info" tab. Authored data,
+  // saved with the system; never stripped by the import fix-up.
+  credits?: { author?: string; contact?: string; created?: string; version?: string };
 }
 
 // Rule Pack interfaces (subset for M0–M1)

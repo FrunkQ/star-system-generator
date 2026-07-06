@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.273-beta - 6th Jul 2026
+
+* **Credit your systems.** Select the main star and open the new **System Info** tab to add your name, contact, a date and a version. When anyone selects that star they see "This system was created by …" under its image, so your work travels with the system when you share it.
+
 ## v2.0.272-beta - 6th Jul 2026
 
 * **F1** — the New System screen now has a **"Load saved system"** button beside the example loader, so you can drop a system you previously saved (or one from a shared starmap) straight onto the map at the clicked spot — no need to open it as a whole starmap first.

@@ -2338,6 +2338,13 @@
             {/if}
             
             <BodyImage body={focusedBody} />
+            {#if focusedBody?.roleHint === 'star' && $systemStore?.credits?.author}
+                {@const c = $systemStore.credits}
+                <div class="system-credit">
+                    <span class="cred-line">This system was created by <strong>{c.author}</strong>{#if c.version} <span class="cred-ver">v{c.version}</span>{/if}{#if c.created} <span class="cred-date">· {c.created}</span>{/if}</span>
+                    {#if c.contact}<div class="cred-contact">{c.contact}</div>{/if}
+                </div>
+            {/if}
             <!-- GM notes are ALWAYS editable (not gated on Edit) — Edit is only for body
                  properties + the flavour description. -->
             <GmNotesEditor body={focusedBody} on:update={handleBodyUpdate} />
@@ -2426,6 +2433,13 @@
     font-size: 0.9em;
     position: relative;
   }
+  .system-credit {
+    margin: 6px 0 2px; padding: 6px 10px; border-left: 2px solid var(--accent, #ff5a1f);
+    background: var(--bg-panel, #1c1c22); border-radius: 4px; font-size: 0.82em; color: var(--text-muted);
+  }
+  .system-credit .cred-line { color: var(--text); }
+  .system-credit .cred-ver, .system-credit .cred-date { color: var(--text-faint); font-variant-numeric: tabular-nums; }
+  .system-credit .cred-contact { font-size: 0.92em; color: var(--text-faint); margin-top: 2px; }
   .controls {
     margin: 0.5em 0;
     display: flex;

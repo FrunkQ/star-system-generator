@@ -10,6 +10,7 @@
   import BodyHydrosphereTab from './BodyHydrosphereTab.svelte';
   import BodyBiosphereTab from './BodyBiosphereTab.svelte';
   import BodyTagsTab from './BodyTagsTab.svelte';
+  import SystemInfoTab from './SystemInfoTab.svelte';
   import BodyTechnicalDetails from './BodyTechnicalDetails.svelte';
 
   export let body: CelestialBody;
@@ -65,6 +66,9 @@
         {#if isStar && body.parentId}
             <button class:active={selectedTab === 'Orbit'} on:click={() => setTab('Orbit')}>Orbit</button>
         {/if}
+        {#if isStar}
+            <button class:active={selectedTab === 'SystemInfo'} on:click={() => setTab('SystemInfo')}>System Info</button>
+        {/if}
     {/if}
     
     {#if !isBeltOrRing && !isStar && !isBarycenter}
@@ -96,6 +100,8 @@
       <BodyHydrosphereTab {body} on:update={handleUpdate} />
     {:else if selectedTab === 'Bio'}
       <BodyBiosphereTab {body} {rulePack} on:update={handleUpdate} />
+    {:else if selectedTab === 'SystemInfo'}
+      <SystemInfoTab {system} on:update={handleUpdate} />
     {:else if selectedTab === 'Tags'}
       <BodyTagsTab {body} {rulePack} on:update={handleUpdate} />
     {/if}
