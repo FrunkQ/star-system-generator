@@ -41,6 +41,7 @@
     wasOpen = true;
     if (initialSection) { activeSection = initialSection; drilled = true; }
     else drilled = false;
+    invertDisplay = starmap.invertDisplay ?? false;   // sync ONCE per open (see note below)
   }
   $: if (!showModal && wasOpen) { wasOpen = false; }
 
@@ -57,8 +58,11 @@
     if (isNarrow && drilled) drilled = false;
     else handleClose();
   }
+  // Local, applied on Save. It's synced from the starmap ONCE when the modal opens (in the wasOpen
+  // block above) — NOT on every reactive run. The old `$: if (showModal) …` re-ran whenever any
+  // dependency changed (e.g. toggling the background image), resetting the user's unsaved invert choice
+  // and making the two checkboxes appear to fight / self-uncheck.
   let invertDisplay = starmap.invertDisplay ?? false;
-  $: if (showModal) invertDisplay = starmap.invertDisplay ?? false;
 
 
   // Starmap settings. The unit choice doubles as the scaling mode (matches the New Starmap
@@ -292,7 +296,7 @@
             <label><input type="checkbox" bind:checked={$starmapUiStore.showBackgroundImage} disabled={invertDisplay} /> Show background image</label>
           </div>
           <div class="form-group">
-            <label title="Print-friendly white background + dark labels (disables the background image)."><input type="checkbox" bind:checked={invertDisplay} /> Invert display (print)</label>
+            <label title="Print-friendly white background + dark labels (disables the background image)."><input type="checkbox" bind:checked={invertDisplay} /> Invert Starmap display (print)</label>
           </div>
           <div class="form-group">
             <label for="gridType">Snap grid</label>

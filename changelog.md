@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.299-beta - 6th Jul 2026
+
+* **Fixed the Invert / background-image toggles fighting each other** in Settings → Starmap. The invert setting was being re-synced from the saved map on every little change while the panel was open, so it (and the background toggle it disables) could spontaneously flip back. It's now read once when the panel opens, so the two behave predictably: turning on invert disables the background image, turning it off restores it. Also relabelled to "Invert Starmap display (print)".
+
 ## v2.0.298-beta - 6th Jul 2026
 
 * **Axially-tilted worlds now tip correctly — including their rings.** Previously the oblate squash stayed vertical while the bands tilted, and a planet's rings didn't tilt at all. Now the whole body — the flattening, cloud bands, polar caps, auroras and the ring system — is drawn upright and then rotated to the axial tilt as one final step, so everything stays aligned (a tipped Saturn shows a tilted, squashed disc with a matching ring). The day/night terminator still points at the star.
