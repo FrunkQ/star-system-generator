@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.289-beta - 6th Jul 2026
+
+* **Aurora depth + placement.** The far (bottom) auroral oval now has its upper half hidden behind the planet, so it reads as a proper slightly-top-down view instead of floating in front. Auroras also sit closer to the poles when faint and only reach down toward the equator as they grow stronger.
+
 ## v2.0.288-beta - 6th Jul 2026
 
 * **Gallery: the same Earth under different stars.** The rendered-world gallery now shows one Earth-like world lit by an M dwarf, a K star, the Sun and a hot A star, so you can see how starlight tints its ocean, clouds and surface — murky amber under a red dwarf, cool and bright under a blue star.

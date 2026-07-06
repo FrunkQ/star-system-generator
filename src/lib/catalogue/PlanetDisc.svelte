@@ -153,8 +153,13 @@
     }
     return d + 'Z';
   }
-  $: auroraTop = hasAurora ? auroraOval(29, 3) : '';
-  $: auroraBot = hasAurora ? auroraOval(71, 8) : '';
+  // Sit tight to the poles when faint, extend toward the equator as strength grows. The far (bottom)
+  // oval is pulled up a touch so its VISIBLE lower arc stays on the disc (the upper half is clipped
+  // away behind the planet), rather than dropping off the bottom limb.
+  $: auroraTopCy = 22 + auroraStr * 9;
+  $: auroraBotCy = 74 - auroraStr * 4;
+  $: auroraTop = hasAurora ? auroraOval(auroraTopCy, 3) : '';
+  $: auroraBot = hasAurora ? auroraOval(auroraBotCy, 8) : '';
   $: magma = (() => {
     if (isStar(body) || isBelt(body)) return [] as { cx: number; cy: number; r: number }[];
     const volc = isLava || tagKeys.includes('tidal/volcanism') || tagKeys.includes('tidal/hotspots');
@@ -237,6 +242,9 @@
         <filter id="aurblur-{uid}" x="-40%" y="-40%" width="180%" height="180%">
           <feGaussianBlur stdDeviation={(0.8 + auroraStr * 1.3).toFixed(2)} />
         </filter>
+        <!-- Slight top-down view: the far pole's oval only shows below its centre; the upper half is
+             behind the planet. Clip the bottom aurora to the band below its centre line. -->
+        <clipPath id="aurbot-{uid}"><rect x="0" y={auroraBotCy.toFixed(1)} width="100" height={(100 - auroraBotCy).toFixed(1)} /></clipPath>
       {/if}
       {#if magma.length}
         <radialGradient id="magma-{uid}" cx="50%" cy="50%" r="50%">
@@ -321,15 +329,23 @@
         {@const go = Math.min(0.5, 0.2 + auroraStr * 0.45)}
         {@const co = Math.min(0.95, 0.45 + auroraStr * 0.55)}
         {@const fo = 0.1 + auroraStr * 0.14}
+        <!-- Near pole (top): the whole oval faces us. -->
         <g clip-path="url(#clip-{uid})">
           <path d={auroraTop} fill={auroraCol.core} fill-opacity={fo} stroke={auroraCol.core} stroke-width={gw} stroke-linejoin="round" opacity={go} filter="url(#aurblur-{uid})" />
-          <path d={auroraBot} fill={auroraCol.core} fill-opacity={fo} stroke={auroraCol.core} stroke-width={gw} stroke-linejoin="round" opacity={go} filter="url(#aurblur-{uid})" />
           <path d={auroraTop} fill="none" stroke={auroraCol.core} stroke-width={cw} stroke-linejoin="round" opacity={co} />
-          <path d={auroraBot} fill="none" stroke={auroraCol.core} stroke-width={cw} stroke-linejoin="round" opacity={co} />
           {#if auroraBrilliant}
             <path d={auroraTop} fill="none" stroke={auroraCol.tip} stroke-width={cw * 0.6} stroke-linejoin="round" opacity="0.6" />
-            <path d={auroraBot} fill="none" stroke={auroraCol.tip} stroke-width={cw * 0.6} stroke-linejoin="round" opacity="0.6" />
           {/if}
+        </g>
+        <!-- Far pole (bottom): upper half hidden behind the planet (sphere ∩ below-centre band). -->
+        <g clip-path="url(#clip-{uid})">
+          <g clip-path="url(#aurbot-{uid})">
+            <path d={auroraBot} fill={auroraCol.core} fill-opacity={fo} stroke={auroraCol.core} stroke-width={gw} stroke-linejoin="round" opacity={go} filter="url(#aurblur-{uid})" />
+            <path d={auroraBot} fill="none" stroke={auroraCol.core} stroke-width={cw} stroke-linejoin="round" opacity={co} />
+            {#if auroraBrilliant}
+              <path d={auroraBot} fill="none" stroke={auroraCol.tip} stroke-width={cw * 0.6} stroke-linejoin="round" opacity="0.6" />
+            {/if}
+          </g>
         </g>
       {/if}
 
