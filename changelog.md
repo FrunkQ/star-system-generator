@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.0.306-beta - 6th Jul 2026
+
+* **Documentation overhaul for the V2 drop.**
+  * **README + Getting Started** rewritten around the V2 feature set — a new "What's new in V2" section (interstellar travel, the Field Guide, derived geology/composition, the tagging/PoI/CoI overhaul, autopilot, true-colour worlds, the Newton panel…) and a fuller walkthrough covering the generation wizard, tags, autopilot and interstellar travel.
+  * **New Tags guide** (PoI/CoI, manual tagging, packs, Find-by-tag) opened via a **Guide** button on the Find-by-tag panel — same in-app help pattern as the Autopilot guide.
+  * **/physics page** gained an **Auroras** section (colour from the emitting gas, pole-hugging shape) and a **disc visualisation** rundown (terminator, ice caps, bands, limb-glow, craters, rings, oblateness, tilt-as-final-step). Two Newton-panel deep-links fixed: the Aurora layer now lands on `#aurora`, and Orbital stability on `#resonance` (was a dead `#stability` anchor).
+  * **Repo tidy** — internal dev docs moved under `docs/dev/`; superseded design proposals for now-shipped features retired.
+
 ## v2.0.305-beta - 6th Jul 2026
 
 * **Temperature panel shows the real distance-to-star for binary members.** Like the stability layer, the Temperature & tidal heat entry used the ~0.0001 AU pair orbit as the semi-major axis (reading "0.000 AU"). It now uses the barycentre's heliocentric orbit — e.g. "Semi-major axis (to Sol, as the Pluto–Charon Barycenter): 39.5 AU" — and adds a **co-orbit partner** line ("Charon — 19,268 km apart") plus a note explaining equilibrium temperature is set by the distance to the star, not the small orbit within the pair.
