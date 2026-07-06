@@ -178,6 +178,26 @@
     } finally { busy = false; }
   }
 
+  // Load a previously-SAVED system file (what the in-system "Load System" does) and drop it in at the
+  // clicked position, same as loading an example. Accepts a single-system JSON or a starmap (first system).
+  let fileInput: HTMLInputElement;
+  async function loadSystemFile(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    busy = true;
+    try {
+      const raw = JSON.parse(await file.text());
+      const rawSystem = Array.isArray(raw?.nodes) ? raw : raw?.systems?.[0]?.system;
+      if (!rawSystem || !Array.isArray(rawSystem.nodes)) throw new Error('not a system file');
+      const system = systemProcessor.process(fixUpImportedSystem(rawSystem as System, rulePack), rulePack);
+      dispatch('generate', { system });
+    } catch (err) {
+      console.error('Failed to load system file', err);
+      alert('Could not load that file — pick a saved system (or starmap) JSON.');
+    } finally { busy = false; input.value = ''; }
+  }
+
   const pretty = (n: string) => n.replace(/-System\.json$/, '').replace(/_/g, ' ').replace(/-/g, ' ');
   const fmt = (n: number, d = 1) => n.toLocaleString(undefined, { maximumFractionDigits: d });
 </script>
@@ -202,6 +222,11 @@
               {#each exampleSystems as ex}<option value={ex}>{pretty(ex)}</option>{/each}
             </select>
             <button class="primary" disabled={!chosenExample || busy} on:click={() => loadExample(chosenExample)}>Load</button>
+          </div>
+          <div class="row load-saved">
+            <span class="muted">or load one you saved earlier —</span>
+            <button class="ghost" disabled={busy} on:click={() => fileInput?.click()}>Load saved system…</button>
+            <input type="file" accept="application/json,.json" bind:this={fileInput} on:change={loadSystemFile} style="display:none" />
           </div>
         </section>
 
@@ -341,6 +366,11 @@
   .block { margin-bottom: 18px; }
   .block h3 { margin: 0 0 8px; font-size: 0.9rem; color: var(--text, #fff); }
   .row { display: flex; gap: 8px; }
+  .row.load-saved { margin-top: 8px; align-items: center; }
+  .row.load-saved .muted { font-size: 0.8em; color: var(--text-muted, #cfcfcf); }
+  .ghost { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--link); cursor: pointer; font-size: 0.85em; }
+  .ghost:hover:not(:disabled) { background: var(--bg-control); border-color: var(--accent); }
+  .ghost:disabled { opacity: 0.5; cursor: default; }
   select, .row select { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); }
   .presets { display: flex; flex-wrap: wrap; gap: 6px; }
   .preset { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--link); cursor: pointer; font-size: 0.85em; }
