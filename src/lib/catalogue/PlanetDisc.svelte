@@ -90,6 +90,9 @@
   $: locked = !!(body as any).tidallyLocked;
   $: tagKeys = (body.tags ?? []).map((t) => t.key);
   $: isLava = tagKeys.includes('tidal/lava-flows');
+  // Polar ice caps (Phase G): frost at the cold poles / night side of a world liquid at its mean
+  // temperature. Tag-driven (climate/polar-ice), drawn on the surface so the terminator dims them.
+  $: hasPolarIce = !isStar(body) && !isBelt(body) && tagKeys.includes('climate/polar-ice');
   $: magma = (() => {
     if (isStar(body) || isBelt(body)) return [] as { cx: number; cy: number; r: number }[];
     const volc = isLava || tagKeys.includes('tidal/volcanism') || tagKeys.includes('tidal/hotspots');
@@ -145,6 +148,19 @@
           <stop offset="100%" stop-color="rgba(0,0,0,0.6)" />
         {/if}
       </linearGradient>
+      {#if hasPolarIce}
+        <!-- Frost fading from the pole toward the cap edge (top cap fades downward, bottom upward). -->
+        <linearGradient id="icetop-{uid}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(244,250,255,0.96)" />
+          <stop offset="62%" stop-color="rgba(228,242,255,0.72)" />
+          <stop offset="100%" stop-color="rgba(216,236,255,0)" />
+        </linearGradient>
+        <linearGradient id="icebot-{uid}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(216,236,255,0)" />
+          <stop offset="38%" stop-color="rgba(228,242,255,0.72)" />
+          <stop offset="100%" stop-color="rgba(244,250,255,0.96)" />
+        </linearGradient>
+      {/if}
       {#if magma.length}
         <radialGradient id="magma-{uid}" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stop-color={isLava ? 'rgba(255,244,200,0.98)' : 'rgba(255,210,120,0.98)'} />
@@ -186,6 +202,14 @@
           </g>
           <circle cx="50" cy="50" r="30" fill="url(#sph-{uid})" opacity="0.35" />
         {/if}
+      {/if}
+
+      <!-- Polar ice caps sit on the surface (under the terminator, so the night side dims them). -->
+      {#if hasPolarIce}
+        <g clip-path="url(#clip-{uid})">
+          <ellipse cx="50" cy="20" rx="26" ry="17" fill="url(#icetop-{uid})" />
+          <ellipse cx="50" cy="80" rx="26" ry="17" fill="url(#icebot-{uid})" />
+        </g>
       {/if}
 
       <!-- Terminator first, then self-luminous magma on top so vents glow on the night side. -->
