@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.290-beta - 6th Jul 2026
+
+* Fixed a stray "Mostly Harmless" mark showing under Earth in the **orrery**. The Guide's Earth easter-egg stamp was riding along when the orrery started reusing The Guide's renderer; it's now Guide-only again.
+
 ## v2.0.289-beta - 6th Jul 2026
 
 * **Aurora depth + placement.** The far (bottom) auroral oval now has its upper half hidden behind the planet, so it reads as a proper slightly-top-down view instead of floating in front. Auroras also sit closer to the poles when faint and only reach down toward the equator as they grow stronger.

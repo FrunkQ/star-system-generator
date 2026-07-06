@@ -28,6 +28,7 @@
   // upper-left look the stand-alone Guide uses; the orrery passes the true angle (radians) toward the
   // primary star so the terminator is physically correct when this disc is reused there.
   export let lightAngle: number | null = null;
+  export let showStamp = true;   // The Guide's "Mostly Harmless" Earth easter egg; off when reused in the orrery
   $: _lux = lightAngle == null ? 0 : Math.cos(lightAngle);
   $: _luy = lightAngle == null ? 0 : Math.sin(lightAngle);
   $: termC = lightAngle == null
@@ -362,8 +363,8 @@
     {/if}
   </svg>
 
-  {#if isEarth}
-    <!-- Don't Panic. -->
+  {#if isEarth && showStamp}
+    <!-- Don't Panic. (Guide only — suppressed when this disc is reused as an orrery overlay.) -->
     <span class="harmless-stamp">Mostly Harmless</span>
   {/if}
 </div>

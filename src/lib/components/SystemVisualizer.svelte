@@ -1904,7 +1904,7 @@
   <div style="position:absolute; inset:0; overflow:hidden; pointer-events:none;">
     {#each discOverlays as o (o.id)}
       <div style="position:absolute; left:0; top:0; width:{DISC_OVERLAY_REF}px; height:{DISC_OVERLAY_REF}px; transform-origin:0 0; transform:translate({o.x}px,{o.y}px) scale({o.scale}) translate(-50%,-50%); will-change:transform;">
-        <PlanetDisc body={o.body} size={DISC_OVERLAY_REF} lightAngle={o.lightAngle} />
+        <PlanetDisc body={o.body} size={DISC_OVERLAY_REF} lightAngle={o.lightAngle} showStamp={false} />
       </div>
     {/each}
   </div>
