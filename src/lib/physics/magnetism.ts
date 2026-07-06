@@ -43,8 +43,8 @@ export function magneticShieldingTag(magnetism: Magnetism, field?: MagneticField
 // Rotation support for a dynamo: fast spin organises convection into a strong, ordered field;
 // very slow / tidally-locked spin (Venus 5832 h) barely sustains one. Earth (24 h) ≈ 1.
 function rotationFactor(body: CelestialBody): number {
-  const h = body.rotation_period_hours;
-  if (!h || h <= 0) return 0.6;                 // unknown → middling
+  const h = Math.abs(body.rotation_period_hours ?? 0); // retrograde (negative) spin is just as slow/fast
+  if (!h) return 0.6;                           // unknown → middling
   return Math.max(0.04, Math.min(1.6, 24 / h)); // 10 h → 1.6 (clamped), 24 h → 1, 5832 h → ~0.04
 }
 
