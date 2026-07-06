@@ -8,6 +8,10 @@
   import { EXAMPLE_POI_PACKS } from '$lib/physics/poiExamplePacks';
   import DualRange from './DualRange.svelte';
   import { describeTag } from '$lib/tags/tagPresentation';
+  import HelpModal from './HelpModal.svelte';
+  import tagsGuide from '../../../docs/tags-guide.md?raw';
+
+  let showHelp = false;
 
   export let existingTags: string[] = [];   // every tag key present across the systems (for has: rows)
 
@@ -205,7 +209,16 @@
 
 <div class="modal-bg" on:click={() => dispatch('close')} role="presentation">
 <div class="modal" on:click|stopPropagation role="dialog" aria-label="PoI pack editor">
-  <header><h2>Point-of-Interest packs</h2><button class="x" on:click={() => dispatch('close')} aria-label="Close">×</button></header>
+  <header><h2>Point-of-Interest packs</h2>
+    <div class="head-actions">
+      <button type="button" class="poi-help" title="About tags, PoI & CoI" on:click={() => (showHelp = true)}>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+        Guide
+      </button>
+      <button class="x" on:click={() => dispatch('close')} aria-label="Close">×</button>
+    </div>
+  </header>
+  {#if showHelp}<HelpModal markdown={tagsGuide} on:close={() => (showHelp = false)} />{/if}
   <p class="lede">Rules tag worlds with reasons to visit. Packs stack — enable several at once. Edit raw rules here, or hand a pack file to a friend. Physics-locked tags can't be changed; these add to them.</p>
 
   <div class="cols">
@@ -389,6 +402,10 @@
   header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
   header h2 { margin: 0; }
   .lede { margin: 0; font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; }
+  .head-actions { display: flex; align-items: center; gap: 10px; }
+  .poi-help { display: inline-flex; align-items: center; gap: 4px; background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted, #b8bcc4); font-size: 0.78rem; padding: 3px 8px; cursor: pointer; }
+  .poi-help:hover { color: var(--accent); border-color: var(--accent); }
+  .poi-help svg { flex: 0 0 auto; }
   .x { background: none; border: none; color: var(--text); font-size: 1.4rem; line-height: 1; cursor: pointer; }
   .x.small { font-size: 1rem; color: #f55; }
   .cols { display: grid; grid-template-columns: 230px 1fr; gap: 1rem; min-height: 320px; }

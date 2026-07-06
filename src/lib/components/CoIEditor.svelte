@@ -1,7 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { coiCategories, resetCoIs, exportCoIs, importCoIs, mergeStarmapCoIs, setCoIEnabled, type CoICategory } from '$lib/constructs/coi';
+  import HelpModal from './HelpModal.svelte';
+  import tagsGuide from '../../../docs/tags-guide.md?raw';
 
+  let showHelp = false;
   const dispatch = createEventDispatcher();
   let fileInput: HTMLInputElement;
   $: cats = $coiCategories;
@@ -62,8 +65,15 @@
   <div class="modal" on:click|stopPropagation role="dialog" aria-label="Constructs of Interest">
     <header>
       <h2>Constructs of Interest</h2>
-      <button class="x" on:click={() => dispatch('close')} aria-label="Close">✕</button>
+      <div class="head-actions">
+        <button type="button" class="coi-help" title="About tags, PoI & CoI" on:click={() => (showHelp = true)}>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+          Guide
+        </button>
+        <button class="x" on:click={() => dispatch('close')} aria-label="Close">✕</button>
+      </div>
     </header>
+    {#if showHelp}<HelpModal markdown={tagsGuide} on:close={() => (showHelp = false)} />{/if}
     <p class="hint">Hand-applied tags for ships &amp; stations (set on a construct's Tags tab). Owner tags carry a tardiness (0 = always on time, 1 = very tardy). These travel inside the starmap file.</p>
 
     <div class="cats">
@@ -107,6 +117,10 @@
   .modal { background: var(--bg-panel, #14161c); color: var(--text, #e8e8e8); border-radius: 8px; width: min(640px, 94vw); max-height: 88vh; overflow-y: auto; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; }
   header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border, #333); padding-bottom: 0.5rem; }
   h2 { margin: 0; font-size: 1.1rem; }
+  .head-actions { display: flex; align-items: center; gap: 10px; }
+  .coi-help { display: inline-flex; align-items: center; gap: 4px; background: none; border: 1px solid var(--border, #333); border-radius: 6px; color: var(--text-muted, #b8bcc4); font-size: 0.78rem; padding: 3px 8px; cursor: pointer; }
+  .coi-help:hover { color: var(--accent); border-color: var(--accent); }
+  .coi-help svg { flex: 0 0 auto; }
   .x { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem; }
   .hint { font-size: 0.82em; color: var(--text-faint, #8a8f9a); margin: 0; line-height: 1.4; }
   .cats { display: flex; flex-direction: column; gap: 12px; }

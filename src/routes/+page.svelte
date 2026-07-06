@@ -38,6 +38,7 @@
   import EditSensorsModal from '$lib/components/EditSensorsModal.svelte';
   import EditTemporalModal from '$lib/components/EditTemporalModal.svelte';
   import AboutModal from '$lib/components/AboutModal.svelte';
+  import HelpMenuModal from '$lib/components/HelpMenuModal.svelte';
   import EvolutionaryWizard from '$lib/components/EvolutionaryWizard.svelte';
   import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, STARTDATE_EPOCH_OFFSET_T } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
@@ -82,6 +83,7 @@
   let showSensorsModal = false;
   let showTemporalModal = false;
   let showAbout = false;
+  let showHelpMenu = false;
   // Sub-editors opened FROM Settings reopen it (at the section they came from) when closed,
   // so Back/close walks up the hierarchy instead of dumping the user back in the app.
   let settingsReturnSection: 'starmap' | 'time' | 'technology' | 'planets' | 'system' | null = null;
@@ -1248,6 +1250,7 @@
         on:allships={() => showAllShips = true}
         on:routes={() => showRoutes = true}
         on:about={() => showAbout = true}
+        on:help={() => showHelpMenu = true}
         on:catalogue={() => showCompanionModal = true}
         on:interstellar={(e) => { interstellarShipId = e.detail?.shipId || ''; showInterstellarModal = true; }}
         on:back={handleBackToStarmap}
@@ -1282,6 +1285,7 @@
       on:allships={() => showAllShips = true}
       on:routes={() => showRoutes = true}
       on:about={() => showAbout = true}
+      on:help={() => showHelpMenu = true}
       on:updatestarmap={(e) => starmapStore.set(e.detail)}
       {selectedSystemForLink}
     />
@@ -1336,6 +1340,9 @@
   {/if}
   {#if showTemporalModal && $starmapStore}
     <EditTemporalModal showModal={showTemporalModal} starmap={$starmapStore} on:save={(e) => starmapStore.update((s) => s ? { ...s, temporal: e.detail.temporal } : s)} on:close={() => { showTemporalModal = false; returnToSettings(); }} />
+  {/if}
+  {#if showHelpMenu}
+    <HelpMenuModal on:close={() => showHelpMenu = false} />
   {/if}
   {#if showAbout}
     <AboutModal rulePack={$systemStore ? effectiveRulePack : null} on:close={() => showAbout = false} />

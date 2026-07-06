@@ -2135,6 +2135,7 @@
         on:settings={() => dispatch('settings')}
         on:llmsettings={() => dispatch('llmsettings')}
         on:about={() => dispatch('about')}
+        on:help={() => dispatch('help')}
         on:navigate={() => (railOpen = false)}
         on:allbodies={() => { railOpen = false; dispatch('allbodies'); }}
         on:findtag={() => { railOpen = false; dispatch('findtag'); }}
