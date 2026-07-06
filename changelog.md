@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.262-beta - 6th Jul 2026
+
+* The body **data panel now surfaces GM overrides and gas-giant puffiness**. A "GM overrides" line lists which values you've pinned by hand (albedo, magnetic field, thermal inflation, a locked type) so it's clear at a glance what the physics owns vs what you've set. Gas giants also get a **Thermal inflation** readout (×factor, flagged *puffy* when inflated, *override* when hand-set).
+
 ## v2.0.261-beta - 6th Jul 2026
 
 * **Gas giants now inflate with heat.** A gas giant's radius (and so its density) tracks its equilibrium temperature — a close-in hot Jupiter puffs up and thins out, a cold one sits near 1 Jupiter radius. This is derived by default; the Size & Composition editor shows a gas-giant-only **Thermal inflation** row (derived from Teq) that you can *override* to model a young, hot or contracted giant independent of orbit, with a *Reset to calculated* control. Terrestrials are unaffected (rock and metal don't thermally expand). Overriding at ×1.5 took Jupiter from ρ≈1.3 to ρ≈0.37 g/cc.

@@ -9,6 +9,7 @@
   import { systemStore, fmt } from '$lib/stores';
   import { get } from 'svelte/store';
   import { calculateSurfaceRadiation } from '$lib/physics/radiation';
+  import { makeupFractions, gasThermalInflationFactor } from '$lib/physics/makeup';
   import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_GRAVITY, EARTH_DENSITY, RADIATION_UNSHIELDED_DOSE_MSV_YR } from '$lib/constants';
 
   export let body: CelestialBody | Barycenter | null;
@@ -32,6 +33,18 @@
       const role = p.roleHint ? p.roleHint[0].toUpperCase() + p.roleHint.slice(1) : 'Body';
       return `${role} ${p.name}`;
   })();
+
+  // GM overrides + gas-giant puffiness — surfaced read-only so it's clear which values the physics owns
+  // and which the GM has pinned.
+  $: cbody = (body && (body as any).kind === 'body') ? (body as CelestialBody) : null;
+  $: bodyGasDominated = cbody ? makeupFractions(cbody).gas > 0.5 : false;
+  $: bodyInflation = cbody ? ((cbody.overrides?.gasThermalInflation) ?? gasThermalInflationFactor(cbody.equilibriumTempK ?? 0)) : 1;
+  $: activeOverrides = cbody ? ([
+      cbody.overrides?.albedo !== undefined ? 'Albedo' : null,
+      cbody.magneticField?.manual ? 'Magnetic field' : null,
+      cbody.overrides?.gasThermalInflation !== undefined ? 'Thermal inflation' : null,
+      cbody.autoClassify === false ? 'Type (pinned)' : null
+  ].filter(Boolean) as string[]) : [];
 
   // Derived Reactive Properties for Constructs
   let constructSpecs: ConstructSpecs | null = null;
@@ -415,6 +428,13 @@
         <span class="value">{body.kind}{#if body.kind === 'body'} ({body.roleHint}){/if}</span>
     </div>
 
+    {#if activeOverrides.length}
+        <div class="detail-item overrides-callout" title="Values the GM has pinned by hand. Everything else is derived by the physics engine; a pinned value is saved and fed into the derivation instead.">
+            <span class="label">GM overrides</span>
+            <span class="value">{#each activeOverrides as o}<span class="ovr-badge">{o}</span>{/each}</span>
+        </div>
+    {/if}
+
     {#if body.kind === 'body' && body.traveller}
         <div class="detail-item traveller-data">
             <span class="label">Traveller UWP ({body.traveller.allegianceName || body.traveller.allegiance})</span>
@@ -562,6 +582,12 @@
                     <div class="detail-item">
                         <span class="label">Density (rel. to Earth)</span>
                         <span class="value">{densityRelative.toFixed(2)}</span>
+                    </div>
+                {/if}
+                {#if bodyGasDominated && !isStar}
+                    <div class="detail-item" title="Insolation puffs a gas giant's envelope: higher inflation → larger radius, lower density. Derived from the equilibrium temperature unless the GM overrides it.">
+                        <span class="label">Thermal inflation</span>
+                        <span class="value">×{bodyInflation.toFixed(2)}{#if bodyInflation > 1.05} · puffy{/if}{#if cbody?.overrides?.gasThermalInflation !== undefined} <span class="ovr-badge">override</span>{/if}</span>
                     </div>
                 {/if}
           {#if body.kind === 'body' && body.axial_tilt_deg}
@@ -803,6 +829,15 @@
       border-radius: 4px;
       border-left: 3px solid var(--accent);
       cursor: default; /* So title attribute tooltips show up consistently */
+  }
+  .detail-item.overrides-callout {
+      grid-column: 1 / -1;
+      border-left-color: var(--accent, #ff5a1f);
+  }
+  .ovr-badge {
+      display: inline-block; font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.03em;
+      color: var(--accent, #ff5a1f); border: 1px solid var(--accent, #ff5a1f); border-radius: 3px;
+      padding: 0 5px; margin: 2px 4px 0 0;
   }
   .temp-total { font-size: 0.82em; color: var(--text); margin-top: 4px; font-weight: 600; }
   .temp-comp { display: flex; justify-content: space-between; gap: 8px; font-size: 0.78em; color: var(--text-muted); margin-top: 2px; }
