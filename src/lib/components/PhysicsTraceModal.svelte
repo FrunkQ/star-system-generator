@@ -13,7 +13,8 @@
   const close = () => dispatch('close');
 
   $: star = system?.nodes.find((nd) => nd.parentId === null) as CelestialBody | undefined;
-  $: trace = buildPhysicsTrace(body, { ageGyr: (system as any)?.age_Gyr, star });
+  $: host = body.parentId ? (system?.nodes.find((nd) => nd.id === body.parentId) as any) ?? null : null;
+  $: trace = buildPhysicsTrace(body, { ageGyr: (system as any)?.age_Gyr, star, host });
 
   // Classification working + borderline override. body.classification is the engine's explanation
   // (recorded even for pinned bodies, so we can show "physics would say X"). body.classes[0] is the

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.303-beta - 6th Jul 2026
+
+* **Binary members show the pair's real orbit in the physics panel.** For a body that orbits a barycentre (e.g. Pluto around the Pluto–Charon barycentre), the Orbital-stability entry now shows the barycentre's ~39.5 AU heliocentric orbit — labelled "as the Pluto–Charon Barycenter" — instead of the misleading ~0.0001 AU orbit within the pair, with a note explaining stability is judged on the pair's shared orbit.
+
 ## v2.0.302-beta - 6th Jul 2026
 
 * **Mass/Radius unit button polish.** The unit cycler now sits to the right of the number box (lined up with Density's g/cc), and hovering it explains the current unit — e.g. "Earth masses (M⊕)" — with a "Click to change units" line below.

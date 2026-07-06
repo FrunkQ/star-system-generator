@@ -3,7 +3,7 @@
 // and why). Built post-hoc from the body (no processor instrumentation), so it's risk-free and
 // always in sync with what's displayed. The Newton/Apple panel renders this; every layer deep-
 // links to the matching /physics section. Educational + the primary debug surface.
-import type { CelestialBody } from '$lib/types';
+import type { CelestialBody, Barycenter } from '$lib/types';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM, G } from '$lib/constants';
 import { makeupFractions, bulkDensityFromMakeup } from './makeup';
 import { describeTag } from '$lib/tags/tagPresentation';
@@ -21,7 +21,7 @@ export interface TraceLayer {
 export interface TagProvenance { key: string; label: string; description: string; layer: string; color: string; }
 export interface PhysicsTrace { layers: TraceLayer[]; tags: TagProvenance[] }
 
-export interface TraceContext { ageGyr?: number; star?: CelestialBody | null }
+export interface TraceContext { ageGyr?: number; star?: CelestialBody | null; host?: CelestialBody | Barycenter | null }
 
 const n = (v: number | undefined | null, d = 2, unit = ''): string =>
   v == null || !isFinite(v) ? '—' : `${(+v).toFixed(d)}${unit ? ' ' + unit : ''}`;
@@ -245,19 +245,27 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     const stabLabel = (body as any).orbitalStability as string | undefined;
     const stabDetails = (body as any).orbitalStabilityDetails as string | undefined;
     const fateTag = (body.tags ?? []).find((t) => t.key.startsWith('fate/'));
-    const eN = body.orbit.elements.e ?? 0;
-    const aN = body.orbit.elements.a_AU ?? 0;
+    // A member of a binary orbits the BARYCENTRE at a tiny separation; the orbit that governs its
+    // stability (and reads sensibly) is the barycentre's HELIOCENTRIC orbit, not the ~0.0001 AU pair
+    // orbit. Show that instead, and note the pair. (ctx.host is the body's parent node.)
+    const bary = ctx.host && ctx.host.kind === 'barycenter' ? (ctx.host as Barycenter) : null;
+    const orbEl = bary?.orbit?.elements ?? body.orbit.elements;
+    const eN = orbEl.e ?? 0;
+    const aN = orbEl.a_AU ?? 0;
     layers.push({
       id: 'stability', title: 'Orbital stability', link: '/physics#stability',
       inputs: [
-        { label: 'Orbit', value: `${n(aN, 3, 'AU')} · e ${n(eN, 3)}` },
+        { label: bary ? `Orbit (as the ${bary.name || 'pair'})` : 'Orbit', value: `${n(aN, 3, 'AU')} · e ${n(eN, 3)}` },
         { label: 'Perihelion → aphelion', value: `${n(aN * (1 - eN), 3)}–${n(aN * (1 + eN), 3)} AU` }
       ],
       outputs: [
         { label: 'Assessment', value: stabLabel ?? 'Stable' },
         ...(fateTag ? [{ label: 'Predicted fate', value: describeTag(fateTag.key).label }] : [])
       ],
-      notes: [stabDetails ?? 'No orbit-crossing neighbour or loose binding found — a well-spaced, stable orbit.']
+      notes: [
+        ...(bary ? [`Orbits the ${bary.name || 'barycentre'} — a member of a binary/multiple, so stability is judged on the pair's shared orbit around the star, not the small orbit within the pair.`] : []),
+        stabDetails ?? 'No orbit-crossing neighbour or loose binding found — a well-spaced, stable orbit.'
+      ]
     });
   }
 
