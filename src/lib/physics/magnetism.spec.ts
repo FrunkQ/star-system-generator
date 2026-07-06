@@ -45,6 +45,19 @@ describe('deriveMagnetism', () => {
     expect(m.estimatedRangeGauss.max).toBeGreaterThan(5);
   });
 
+  it('helium rain: a cool Saturn-mass giant is throttled, but a hot Jupiter is not', () => {
+    const giant = (massMe: number, teqK: number) => deriveMagnetism(body({
+      massKg: Me(massMe), rotation_period_hours: 10, equilibriumTempK: teqK, makeup: { gas: 0.9, ice: 0.1 },
+      layers: [{ liquid: 'metallic-hydrogen', location: 'interior', conductive: true }]
+    }));
+    const jupiter = giant(318, 110);   // massive, cold → hot interior anyway → strong (~4 G)
+    const saturn = giant(95, 80);      // smaller, cold → helium rain throttles it (~0.2 G)
+    const hotJupiter = giant(95, 1500);// small but blowtorched → hot interior → strong again
+    expect(saturn.nominalGauss).toBeLessThan(jupiter.nominalGauss * 0.2);   // Saturn ≪ Jupiter
+    expect(hotJupiter.nominalGauss).toBeGreaterThan(saturn.nominalGauss * 3); // insolation revives it
+    expect(jupiter.nominalGauss).toBeGreaterThan(3);
+  });
+
   it('Neptune: superionic-water mantle → tilted/off-centre field', () => {
     const m = deriveMagnetism(body({
       massKg: Me(17), rotation_period_hours: 16, makeup: { gas: 0.6, ice: 0.4 },

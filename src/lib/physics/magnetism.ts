@@ -84,9 +84,20 @@ export function deriveMagnetism(body: CelestialBody, opts: MagnetismOpts = {}): 
     source = 'metallic-hydrogen';
     geometry = 'dipolar';
     intrinsic = true;
-    range = band(3 * rot, 16 * rot);
-    nominalGauss = 2.7 * rot; // Jupiter ≈ 4.3 G (Saturn's anomalously weak field is an outlier — override it)
-    notes.push('Liquid metallic-hydrogen envelope drives a strong dipolar field (Jupiter-class).');
+    // HELIUM RAIN: in a COOL giant interior helium becomes immiscible in metallic hydrogen and rains
+    // out, forming a stably-stratified layer that throttles the dynamo (why Saturn's field is ~20x
+    // weaker than Jupiter's). A HOT interior — from mass (self-compression) or strong insolation (hot
+    // Jupiters) — avoids it. `interiorWarmth` proxies that; heFactor is ~1 for Jupiter/hot Jupiters and
+    // drops toward 0.05 for cool Saturn-and-below giants. (Calibrated: Jupiter ≈ 4.3 G, Saturn ≈ 0.2 G.)
+    const massMj = massMe / 317.8;
+    const insolationBoost = Math.min(1.5, (body.equilibriumTempK ?? 0) / 1000);
+    const interiorWarmth = massMj + insolationBoost;
+    const heFactor = Math.max(0.05, Math.min(1, (interiorWarmth - 0.35) / (0.9 - 0.35)));
+    range = band(3 * rot * heFactor, 16 * rot * heFactor);
+    nominalGauss = 2.7 * rot * heFactor;
+    notes.push(heFactor < 0.5
+      ? 'A cool interior lets helium rain out and throttle the metallic-hydrogen dynamo → a weak, axisymmetric field (Saturn-like).'
+      : 'Liquid metallic-hydrogen envelope drives a strong dipolar field (Jupiter-class).');
   } else if (interior?.liquid === 'superionic-water') {
     // Ice giant: superionic-water mantle convects in a thin shell → tilted, off-centre, multipolar
     // (Uranus/Neptune fields are offset ~0.5 R and tilted ~60° from the spin axis).

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.271-beta - 6th Jul 2026
+
+* **Saturn-class gas giants now have realistically weak fields.** A cool gas-giant interior lets helium rain out and throttle the dynamo (why Saturn's field is ~20x weaker than Jupiter's). The model now captures this: a hot interior — from mass or strong insolation — keeps the field strong, so Jupiter (~4 G) and hot Jupiters stay powerful while a cool Saturn-mass giant drops to ~0.2 G. Calibrates Jupiter/Saturn/Uranus/Neptune all close to reality.
+
 ## v2.0.270-beta - 6th Jul 2026
 
 * Fixed **Venus (and other retrograde rotators) reading a magnetosphere they should not have**. A retrograde body stores a negative rotation period, which the dynamo model mistook for "rotation unknown" and treated as a normal spin — so Venus, which really spins far too slowly for a dynamo, came out with an Earth-ish field. It now uses the rotation magnitude, so Venus correctly reads *No magnetosphere*.

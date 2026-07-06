@@ -5075,7 +5075,7 @@
       ],
       "areas": [],
       "magneticField": {
-        "strengthGauss": 4.32
+        "strengthGauss": 0.2403
       },
       "atmosphere": {
         "name": "Hydrogen–Helium (Jupiter-like)",
@@ -5168,12 +5168,12 @@
         "geometry": "dipolar",
         "intrinsic": true,
         "estimatedRangeGauss": {
-          "min": 4.8,
-          "max": 25.6
+          "min": 0.267,
+          "max": 1.424
         },
-        "nominalGauss": 4.32,
+        "nominalGauss": 0.2402978513972975,
         "notes": [
-          "Liquid metallic-hydrogen envelope drives a strong dipolar field (Jupiter-class)."
+          "A cool interior lets helium rain out and throttle the metallic-hydrogen dynamo → a weak, axisymmetric field (Saturn-like)."
         ]
       },
       "oblateness": 0.17457339743332512,
