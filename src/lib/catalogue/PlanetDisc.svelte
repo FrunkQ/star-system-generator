@@ -121,6 +121,22 @@
     ?? palette.find((p) => p.role === 'cloud')?.hex ?? '#9fc6e8';
   $: atmStrength = Math.max(0, Math.min(1, (Math.log10(Math.max(1e-3, atmPressure)) + 2) / 3));
 
+  // Cratered surface (Phase G flourish): an old, airless, geologically DEAD world has no atmosphere to
+  // burn up impactors and no resurfacing to erase the scars, so it accumulates craters (Mercury, the
+  // Moon, Callisto). Driven by that airless + inactive condition, or an explicit impact-record tag.
+  $: hasCraters = !isStar(body) && !isBelt(body) && atmPressure < 0.02
+    && (tagKeys.includes('geology/inactive') || tagKeys.includes('science/impact-record'));
+  $: craters = (() => {
+    if (!hasCraters) return [] as { cx: number; cy: number; r: number }[];
+    let s = 41; for (let k = 0; k < body.id.length; k++) s = (s * 31 + body.id.charCodeAt(k)) & 0xffffff;
+    const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+    const n = 12 + Math.floor(rnd() * 6);                       // 12..17 craters, seeded by the body id
+    return Array.from({ length: n }, () => {
+      const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 26; // spread over the disc, inside the limb
+      return { cx: 50 + Math.cos(t) * rr, cy: 50 + Math.sin(t) * rr, r: 1.1 + rnd() * rnd() * 4 };
+    });
+  })();
+
   // Auroras (Phase G): a spiky glowing OVAL ringing each magnetic pole (Hubble-Jupiter style), driven by
   // the aurora/* tag's strength. Colour comes from the atmosphere's dominant auroral emitter, like real
   // skies: atomic oxygen → green, nitrogen → blue-violet, hydrogen/helium giants → red-pink, CO₂ → violet.
@@ -311,6 +327,15 @@
           </g>
           <circle cx="50" cy="50" r="30" fill="url(#sph-{uid})" opacity="0.35" />
         {/if}
+      {/if}
+
+      <!-- Impact craters on an old airless surface: a dark bowl with a faint sunlit rim. -->
+      {#if hasCraters}
+        <g clip-path="url(#clip-{uid})">
+          {#each craters as c}
+            <circle cx={c.cx} cy={c.cy} r={c.r} fill="rgba(0,0,0,0.16)" stroke="rgba(236,236,240,0.16)" stroke-width={Math.max(0.25, c.r * 0.16)} />
+          {/each}
+        </g>
       {/if}
 
       <!-- Polar ice caps sit on the surface (under the terminator, so the night side dims them). -->

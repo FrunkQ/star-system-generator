@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.294-beta - 6th Jul 2026
+
+* **Cratered surfaces.** Old, airless, geologically dead worlds — no atmosphere to burn up impactors, no resurfacing to erase the scars — now show impact craters (Mercury, the Moon, Callisto…). Driven by the airless + geologically-inactive condition, or an explicit impact-record tag; shown in The Guide and the orrery.
+
 ## v2.0.293-beta - 6th Jul 2026
 
 * **Auroras glow over the limb, and the far pole no longer looks "half-painted".** They now extend a touch past the planet's edge (like a real aurora above the atmosphere) instead of stopping dead at the circle, and the far (bottom) pole's oval fades softly behind the planet rather than terminating in a hard flat line. Holds up on oblate worlds too.
