@@ -185,8 +185,11 @@ export function _generatePlanetaryBody(
     }
 
     if (rng.nextFloat() < migrationChance && planetType === 'planet/gas-giant') {
-        const newA_AU = randomFromRange(rng, 0.1, 0.5);
-        planet.orbit.elements.a_AU = newA_AU;
+        // Hot-Jupiter migration: draw the new orbit LOG-uniformly across the migrated-giant zone so a good
+        // share land in the true hot-Jupiter band (~0.025–0.06 AU, Teq 1200 K+) instead of only the warm
+        // outskirts. A close-in giant then inflates (below, once its Teq is known) and classifies as a
+        // hot / ultra-hot Jupiter. 0.025 AU is just outside the Roche limit for a Sun-like host.
+        planet.orbit.elements.a_AU = Math.exp(randomFromRange(rng, Math.log(0.025), Math.log(0.6)));
         planet.tags.push({ key: 'origin/migrated' });
     }
 
