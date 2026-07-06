@@ -139,6 +139,13 @@
       <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
     {/each}
   </div>
+
+  <h2>Ringed &amp; tilted — squash, bands, poles and ring all tilt together</h2>
+  <div class="gallery">
+    <figure><PlanetDisc body={giants[1]} size={168} ringed={true} ringDensity={0.7} /><figcaption>Ringed giant · 27° tilt</figcaption></figure>
+    <figure><PlanetDisc body={giants[3]} size={168} ringed={true} ringDensity={0.6} /><figcaption>Ringed giant · 98° tilt (on its side)</figcaption></figure>
+    <figure><PlanetDisc body={mk({ name: 'Oblate + 45° tilt', apparentColorHex: '#c89868', oblateness: 0.4, axial_tilt_deg: 45, apparentColor: { hex: '#c89868', banding: 6, palette: ammonia('#e6dcb8', '#c8b888', '#a89860') } as any })} size={168} ringed={true} ringDensity={0.6} /><figcaption>Oblate + ring · 45° tilt</figcaption></figure>
+  </div>
 </div>
 
 <style>

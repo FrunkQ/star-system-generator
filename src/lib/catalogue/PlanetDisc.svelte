@@ -30,13 +30,18 @@
   // primary star so the terminator is physically correct when this disc is reused there.
   export let lightAngle: number | null = null;
   export let showStamp = true;   // The Guide's "Mostly Harmless" Earth easter egg; off when reused in the orrery
-  $: _lux = lightAngle == null ? 0 : Math.cos(lightAngle);
-  $: _luy = lightAngle == null ? 0 : Math.sin(lightAngle);
-  $: termC = lightAngle == null
-    ? { x1: 0, y1: 0, x2: 100, y2: 55 }
-    : { x1: 50 + 50 * _lux, y1: 50 + 50 * _luy, x2: 50 - 50 * _lux, y2: 50 - 50 * _luy };
-  $: hlCx = lightAngle == null ? 38 : Math.round(50 + 16 * _lux);
-  $: hlCy = lightAngle == null ? 34 : Math.round(50 + 16 * _luy);
+  // The whole body group is rotated by the axial tilt as its final step (so the squash, bands, rings and
+  // poles all tilt together). The day/night terminator must still point at the STAR, so we express its
+  // light direction in the BODY frame — the real angle MINUS the tilt — and let the group's rotation put
+  // it back. (Default null light = the Guide's stylised upper-left.)
+  const DEFAULT_LIGHT_ANGLE = Math.atan2(-0.55, -0.4);   // upper-left
+  $: bodyTiltRad = ((body.axial_tilt_deg ?? 0) * Math.PI) / 180;
+  $: _effLA = (lightAngle ?? DEFAULT_LIGHT_ANGLE) - bodyTiltRad;
+  $: _lux = Math.cos(_effLA);
+  $: _luy = Math.sin(_effLA);
+  $: termC = { x1: 50 + 50 * _lux, y1: 50 + 50 * _luy, x2: 50 - 50 * _lux, y2: 50 - 50 * _luy };
+  $: hlCx = Math.round(50 + 16 * _lux);
+  $: hlCy = Math.round(50 + 16 * _luy);
 
   // Ring geometry from density: sparse rings are a thin faint hoop, dense ones a broad bright band.
   $: ringRx = 38 + ringDensity * 10;       // outer extent 38..48
@@ -296,6 +301,10 @@
       <path d="M16 50 A34 10 0 0 0 84 50" fill="none" stroke={shade(base, 0.5)} stroke-width="0.8" opacity="0.55" />
       <ellipse cx="50" cy="50" rx="15" ry="4.4" fill="none" stroke={shade(base, -0.5)} stroke-width="0.6" opacity="0.5" />
     {:else}
+      <!-- FINAL axial-tilt rotation for the WHOLE body system — glow, RINGS (equatorial plane) and the
+           squashed body with all its surface features — so the oblate squash, bands, poles and rings all
+           tilt together. The terminator's light is pre-compensated (above) so it still points at the star. -->
+      <g transform="rotate({(body.axial_tilt_deg ?? 0).toFixed(1)} 50 50)">
       {#if isStar(body)}
         <circle cx="50" cy="50" r="48" fill="url(#glow-{uid})" />
       {/if}
@@ -305,7 +314,7 @@
                  transform="rotate(-18 50 50)" />
       {/if}
 
-      <!-- Body (oblate-squashed about the centre; rings keep their own plane). -->
+      <!-- Body (oblate-squashed about the centre; the whole group above carries the axial tilt). -->
       <g transform={discSquash}>
       <!-- Disc: the real orrery texture if we have it, else a flat shaded sphere. -->
       {#if textureUrl}
@@ -354,25 +363,22 @@
         {@const go = Math.min(0.5, 0.2 + auroraStr * 0.45)}
         {@const co = Math.min(0.95, 0.45 + auroraStr * 0.55)}
         {@const fo = 0.1 + auroraStr * 0.14}
-        <!-- The magnetic poles follow the SPIN AXIS, so the ovals rotate with the axial tilt (same as
-             the cloud banding) — a tipped world like Uranus shows its auroras off to the side. -->
-        <g transform="rotate({(body.axial_tilt_deg ?? 0).toFixed(1)} 50 50)">
-          <!-- Near pole (top): the whole oval faces us; pokes slightly past the limb. -->
-          <g clip-path="url(#aurclip-{uid})">
-            <path d={auroraTop} fill={auroraCol.core} fill-opacity={fo} stroke={auroraCol.core} stroke-width={gw} stroke-linejoin="round" opacity={go} filter="url(#aurblur-{uid})" />
-            <path d={auroraTop} fill="none" stroke={auroraCol.core} stroke-width={cw} stroke-linejoin="round" opacity={co} />
-            {#if auroraBrilliant}
-              <path d={auroraTop} fill="none" stroke={auroraCol.tip} stroke-width={cw * 0.6} stroke-linejoin="round" opacity="0.6" />
-            {/if}
-          </g>
-          <!-- Far pole (bottom): upper half fades behind the planet; lower arc pokes past the bottom limb. -->
-          <g clip-path="url(#aurclip-{uid})" mask="url(#aurbotmask-{uid})">
-            <path d={auroraBot} fill={auroraCol.core} fill-opacity={fo} stroke={auroraCol.core} stroke-width={gw} stroke-linejoin="round" opacity={go} filter="url(#aurblur-{uid})" />
-            <path d={auroraBot} fill="none" stroke={auroraCol.core} stroke-width={cw} stroke-linejoin="round" opacity={co} />
-            {#if auroraBrilliant}
-              <path d={auroraBot} fill="none" stroke={auroraCol.tip} stroke-width={cw * 0.6} stroke-linejoin="round" opacity="0.6" />
-            {/if}
-          </g>
+        <!-- The magnetic poles follow the spin axis; the outer body-group rotation carries the tilt. -->
+        <!-- Near pole (top): the whole oval faces us; pokes slightly past the limb. -->
+        <g clip-path="url(#aurclip-{uid})">
+          <path d={auroraTop} fill={auroraCol.core} fill-opacity={fo} stroke={auroraCol.core} stroke-width={gw} stroke-linejoin="round" opacity={go} filter="url(#aurblur-{uid})" />
+          <path d={auroraTop} fill="none" stroke={auroraCol.core} stroke-width={cw} stroke-linejoin="round" opacity={co} />
+          {#if auroraBrilliant}
+            <path d={auroraTop} fill="none" stroke={auroraCol.tip} stroke-width={cw * 0.6} stroke-linejoin="round" opacity="0.6" />
+          {/if}
+        </g>
+        <!-- Far pole (bottom): upper half fades behind the planet; lower arc pokes past the bottom limb. -->
+        <g clip-path="url(#aurclip-{uid})" mask="url(#aurbotmask-{uid})">
+          <path d={auroraBot} fill={auroraCol.core} fill-opacity={fo} stroke={auroraCol.core} stroke-width={gw} stroke-linejoin="round" opacity={go} filter="url(#aurblur-{uid})" />
+          <path d={auroraBot} fill="none" stroke={auroraCol.core} stroke-width={cw} stroke-linejoin="round" opacity={co} />
+          {#if auroraBrilliant}
+            <path d={auroraBot} fill="none" stroke={auroraCol.tip} stroke-width={cw * 0.6} stroke-linejoin="round" opacity="0.6" />
+          {/if}
         </g>
       {/if}
 
@@ -386,6 +392,7 @@
         <ellipse cx="50" cy="50" rx={ringRx} ry={ringRy} fill="none" stroke={shade(base, 0.32)} stroke-width={ringW} opacity={ringFrontOp}
                  transform="rotate(-18 50 50)" clip-path="url(#front-{uid})" />
       {/if}
+      </g>
     {/if}
   </svg>
 

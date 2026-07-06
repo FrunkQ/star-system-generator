@@ -87,42 +87,36 @@ function render(body: CelestialBody): HTMLCanvasElement {
   const banding = ap.banding || 0;
 
   if (banding > 0) {
-    // --- Gas/ice giant: latitudinal banding (count from rotation), TILTED by the spin axis so a
-    //     world tipped on its side like Uranus (98°) shows near-vertical bands. Chromophore band
-    //     stops exist only for warm ammonia giants (Jupiter/Saturn) — their absence marks a smooth
-    //     ice giant (Uranus/Neptune), which gets very low contrast and NO storm.
+    // --- Gas/ice giant: latitudinal banding (count from rotation), drawn HORIZONTAL. The spin-axis
+    //     TILT is applied by the renderer rotating the whole body (texture + squash + poles) as one, so
+    //     the bands and the oblate flattening stay consistent. Chromophore band stops exist only for
+    //     warm ammonia giants (Jupiter/Saturn) — their absence marks a smooth ice giant, low-contrast
+    //     and NO storm.
     const chromo = clouds.slice(1);                 // engine emits these only for ammonia giants
     const smooth = chromo.length === 0;
     const base = clouds[0]?.hex ?? surface?.hex ?? '#c9b89a';
     const n = Math.max(2, banding);
     const bandH = SIZE / n;
     const lo = smooth ? 0.985 : 0.86, hi = smooth ? 1.015 : 1.06;
-    // Draw bands in a centred, over-sized, rotated frame so the tilt covers the whole canvas.
-    const R = SIZE * 0.75;                           // half-extent (> canvas diagonal/2) after rotation
-    const nDraw = Math.ceil((2 * R) / bandH) + 1;
-    ctx.save();
-    ctx.translate(SIZE / 2, SIZE / 2);
-    ctx.rotate(((body.axial_tilt_deg ?? 0) * Math.PI) / 180);
-    for (let i = 0; i < nDraw; i++) {
+    for (let i = 0; i < n; i++) {
       ctx.fillStyle = shade(base, i % 2 === 0 ? hi : lo);
-      ctx.fillRect(-R, -R + i * bandH, 2 * R, bandH + 1);
+      ctx.fillRect(0, i * bandH, SIZE, bandH + 1);
     }
     for (const ch of chromo) {
-      const row = Math.floor(rnd() * nDraw);
+      const row = Math.floor(rnd() * n);
       ctx.globalAlpha = Math.min(0.7, ch.weight + 0.2);
       ctx.fillStyle = ch.hex;
-      ctx.fillRect(-R, -R + row * bandH, 2 * R, bandH * (0.6 + rnd() * 0.8));
+      ctx.fillRect(0, row * bandH, SIZE, bandH * (0.6 + rnd() * 0.8));
       ctx.globalAlpha = 1;
     }
     // Great-Red-Spot-style oval only on banded ammonia giants, sitting on one band.
     if (!smooth && n >= 4 && rnd() > 0.35) {
-      const row = 2 + Math.floor(rnd() * Math.max(1, nDraw - 4));
+      const row = 1 + Math.floor(rnd() * (n - 2));
       ctx.fillStyle = shade(chromo[0]?.hex ?? base, 0.78);
       ctx.beginPath();
-      ctx.ellipse((rnd() - 0.5) * SIZE * 0.7, -R + (row + 0.5) * bandH, bandH * 1.1, bandH * 0.45, 0, 0, 2 * Math.PI);
+      ctx.ellipse(SIZE * (0.25 + rnd() * 0.5), (row + 0.5) * bandH, bandH * 1.1, bandH * 0.45, 0, 0, 2 * Math.PI);
       ctx.fill();
     }
-    ctx.restore();
   } else {
     // --- Rocky world: land vs liquid at the true coverage fraction. If the world is mostly
     //     ocean, paint ocean as the base and draw LAND patches instead, so the % reads right.
@@ -186,7 +180,6 @@ export function getPlanetTexture(body: CelestialBody): HTMLCanvasElement | null 
   if (typeof document === 'undefined' || !body.apparentColor) return null;
   const ap = body.apparentColor;
   const key = `${body.id}|${ap.hex}|${ap.banding || 0}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|` +
-    `${Math.round(body.axial_tilt_deg ?? 0)}|` +
     ap.palette.map((p) => `${p.role}:${p.hex}:${p.weight.toFixed(2)}`).join(',');
   let tex = cache.get(key);
   if (!tex) {
