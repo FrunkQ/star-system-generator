@@ -646,6 +646,17 @@ export class SystemProcessor implements ISystemProcessor {
         features['magnetismSource'] = body.magnetism?.source ?? 'none';
         features['surfaceLiquid'] = body.hydrosphere?.layers?.find(l => l.location === 'surface')?.liquid ?? 'none';
 
+        // A gas/ice-dominated body has no solid surface: any biosphere, hydrosphere or surface liquid
+        // is physically meaningless for classification. Zero those features so the terrestrial/habitable
+        // fingerprints (swamp, jungle, ocean…) cannot match on stale surface data and mask the giant —
+        // this is what lets a world recomposed to gas-dominated actually classify as a giant.
+        if (mk.gas > 0.5) {
+            features['hasBiosphere'] = 0;
+            features['hydrosphere.coverage'] = 0;
+            features['hydrosphere.composition'] = 'none';
+            features['surfaceLiquid'] = 'none';
+        }
+
         const newClasses = classifyBody(body, features, pack, allNodes);
         // Authored classes are END-STATE data (hand-built, imported, or picked from the type
         // catalogue) — only the engine's own creations (autoClassify) or class-less bodies get

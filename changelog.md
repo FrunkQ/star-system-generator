@@ -2,7 +2,11 @@
 
 All notable changes are listed here:
 
-## v2.0.253-beta - 6th Jul 2026
+## v2.0.254-beta - 6th Jul 2026
+
+* **Size & Composition editor** (a planet/moon's Composition tab, rebuilt). Mass, radius and density are bound by one equation (ρ = M/(4/3·π·R³)), so you get three large sliders — Mass, Radius, Density — each with a typed number field and a padlock. Drag one and the physics holds the sensible quantity and derives another: drag mass → the radius follows; drag radius → the density (and interior makeup) shift; set a density → the mass follows. A padlock pins any of the three: **locking Density holds the composition**, so you can resize a world freely without recomposing it.
+* **Composition presets are now gated by density**, not mass — Iron-rich, Rocky, Carbon, Ocean, Icy, Ice giant, Gas giant light up when today's density falls in their band (bands overlap, since several mixes are plausible at one density). The interior-makeup sliders are live: while density is unlocked, nudging metal or ice back-drives the density, which re-gates the presets and (with radius held) shifts the mass.
+* **You can finally turn a terrestrial into a gas giant.** Drop the density toward ~1 g/cc, pick the Gas giant preset — the makeup goes gas-dominated, the gas-giant radius model kicks in and the world balloons to Jupiter scale — then dial the mass up. It reclassifies for real (a gas/ice-dominated world no longer clings to a leftover biosphere/ocean when the physics decides its type). Dial it back down and it returns to a terrestrial — nothing authored is destroyed.
 
 * Fixed imported stars showing **0 K** — a star's effective temperature is an authored input (it sets the spectral class), but import was stripping it like a planet's derived surface temp. Loaded stars keep their real temperature now (e.g. Procyon 7,070 K).
 * **System edge** setting (Settings → Starmap → System edge): choose where a coasting ship counts as having left the system — the star's Hill limit (~2 ly, default) or a tighter custom distance in AU for quicker interstellar departures.

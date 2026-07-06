@@ -1,10 +1,14 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { CelestialBody, RulePack } from '$lib/types';
+  import type { CelestialBody, RulePack, Makeup } from '$lib/types';
   import { fmt } from '$lib/stores';
   import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '$lib/constants';
-  import { radiusReFromMassMakeup, massMeFromRadiusMakeup, makeupFractions } from '$lib/physics/makeup';
-  import MakeupEditor from './MakeupEditor.svelte';
+  import { makeupFractions, normalizeMakeup } from '$lib/physics/makeup';
+  import {
+    densityGcc, editMass, editRadius, editDensity, editMakeup, setMakeupComponent,
+    COMPOSITION_PRESETS, presetValidAt, presetActive,
+    type EditLock, type BodyEditState
+  } from '$lib/physics/bodyEdit';
 
   export let body: CelestialBody;
   export let rulePack: RulePack | null = null;
@@ -12,99 +16,56 @@
   const dispatch = createEventDispatcher();
 
   $: useSolarUnits = body.roleHint === 'star';
-
-  // --- Mass ↔ radius driver (planets/moons only). The two are coupled through makeup; you can only
-  //     pin one, so a toggle picks which is editable and which is derived. Gas giants are degeneracy-
-  //     flat in radius, so they stay mass-driven (radius can't sensibly drive mass there). ---
   $: isPlanetMoon = body.roleHint === 'planet' || body.roleHint === 'moon';
-  $: gasDominated = makeupFractions(body).gas > 0.5;
-  let sizeDriver: 'mass' | 'radius' = 'mass';
-  $: if (gasDominated && sizeDriver !== 'mass') sizeDriver = 'mass';
-  function setSizeDriver(d: 'mass' | 'radius') { if (!gasDominated) sizeDriver = d; }
-  function deriveRadiusFromMass() {
-    body.radiusKm = radiusReFromMassMakeup((body.massKg ?? 0) / EARTH_MASS_KG, makeupFractions(body)) * EARTH_RADIUS_KM;
-  }
-  function deriveMassFromRadius() {
-    body.massKg = massMeFromRadiusMakeup((body.radiusKm ?? 0) / EARTH_RADIUS_KM, makeupFractions(body)) * EARTH_MASS_KG;
-  }
 
-  // UI Helpers
-  let massValueInternal = 0;   // In Earths (for planets/moons), or Suns (for stars)
-  let radiusValueInternal = 0; // In KM (for planets/moons), or Suns Radii (for stars)
+  const clamp = (x: number, a: number, b: number) => Math.max(a, Math.min(b, x));
+  const r4 = (x: number) => (Number.isFinite(x) ? Number(x.toPrecision(4)) : 0);
+
+  // ============================================================================
+  //  STAR / BELT / RING size editor (unchanged) — mass + radius sliders, density
+  //  read-out. Planets/moons use the Size & Composition editor further down.
+  // ============================================================================
+  let massValueInternal = 0;   // In Earths (planets/moons) or Suns (stars)
+  let radiusValueInternal = 0; // In KM (planets/moons) or Solar radii (stars)
   let densityValue = 0;        // g/cm^3
 
-  // --- Mass Slider Config ---
-  const massMinEarths = 0.000000001; // Very small for tonnes
-  const massMaxEarths = 26000; // ~80 Jupiter masses (Start of M-dwarf stars)
-  const massMinSuns = 0.01;
-  const massMaxSuns = 100;
-
+  const massMinEarths = 0.000000001, massMaxEarths = 26000;
+  const massMinSuns = 0.01, massMaxSuns = 100;
   $: currentMassMin = useSolarUnits ? massMinSuns : massMinEarths;
   $: currentMassMax = useSolarUnits ? massMaxSuns : massMaxEarths;
-  
   $: massLogMin = Math.log(currentMassMin);
   $: massLogMax = Math.log(currentMassMax);
   let massSliderPos = 0.5;
 
-  // --- Radius Slider Config ---
-  const radiusMinKm = 100; // Smallest practical body radius in km
-  const radiusMaxEarths = 22 * EARTH_RADIUS_KM; // Max for planets in km
+  const radiusMinKm = 100;
+  const radiusMaxEarths = 22 * EARTH_RADIUS_KM;
   const radiusMinSuns = 0.1 * SOLAR_RADIUS_KM;
   const radiusMaxSuns = 50 * SOLAR_RADIUS_KM;
-  
   $: currentRadiusMin = useSolarUnits ? radiusMinSuns : radiusMinKm;
   $: currentRadiusMax = useSolarUnits ? radiusMaxSuns : radiusMaxEarths;
-
   $: radiusLogMin = Math.log(currentRadiusMin);
   $: radiusLogMax = Math.log(currentRadiusMax);
   let radiusSliderPos = 0.5;
 
-  // Visual Types
   $: visualTypes = rulePack?.classifier?.planetImages ? Object.keys(rulePack.classifier.planetImages) : [];
 
-  // --- Reactivity: Body -> UI (Update internal values from body prop) ---
   $: if (body.massKg !== undefined) {
       massValueInternal = useSolarUnits ? body.massKg / SOLAR_MASS_KG : body.massKg / EARTH_MASS_KG;
-      // Ensure slider position is updated when body.massKg changes externally
       const safeVal = Math.max(currentMassMin, Math.min(currentMassMax, massValueInternal));
       massSliderPos = (Math.log(safeVal) - massLogMin) / (massLogMax - massLogMin);
   }
-
   $: if (body.radiusKm !== undefined) {
-      radiusValueInternal = useSolarUnits ? body.radiusKm / SOLAR_RADIUS_KM : body.radiusKm; // Convert to Suns for stars
+      radiusValueInternal = useSolarUnits ? body.radiusKm / SOLAR_RADIUS_KM : body.radiusKm;
       const safeVal = Math.max(currentRadiusMin, Math.min(currentRadiusMax, radiusValueInternal));
       radiusSliderPos = (Math.log(safeVal) - radiusLogMin) / (radiusLogMax - radiusLogMin);
   }
 
-  // --- Mass Display Logic ---
-  const massThresholdEarths = 0.001; // Below this, switch to tonnes
-
+  const massThresholdEarths = 0.001;
   $: displayMassUnit = useSolarUnits ? 'Suns' : ((massValueInternal < massThresholdEarths) ? 'Tonnes' : 'Earths');
-  $: displayMassValue = (displayMassUnit === 'Tonnes') 
-      ? (body.massKg || 0) / 1000 // kg to tonnes
-      : (displayMassUnit === 'Suns' ? massValueInternal : massValueInternal); // MassValueInternal is already in Earths or Suns
-
-  let massInputStep = 0.0001; 
-  $: if (displayMassUnit === 'Tonnes') {
-      if (displayMassValue < 10) massInputStep = 0.001;
-      else if (displayMassValue < 1000) massInputStep = 1;
-      else massInputStep = 1000;
-  } else {
-      massInputStep = 0.0001; // Default for Earth/Sun masses
-  }
-
-  // --- Radius Display Logic ---
+  $: displayMassValue = (displayMassUnit === 'Tonnes') ? (body.massKg || 0) / 1000 : massValueInternal;
   $: displayRadiusUnit = useSolarUnits ? 'Suns' : 'km';
-  $: displayRadiusValue = useSolarUnits ? radiusValueInternal : radiusValueInternal; // value is in KM or Solar Radii
-  let radiusInputStep = 1;
-  $: if (useSolarUnits) { radiusInputStep = 0.001; }
-  else {
-      if (displayRadiusValue < 1000) radiusInputStep = 1;
-      else if (displayRadiusValue < 10000) radiusInputStep = 10;
-      else radiusInputStep = 100;
-  }
+  $: displayRadiusValue = radiusValueInternal;
 
-  // --- Density Calculation ---
   $: if (body.massKg && body.radiusKm) {
       const massG = body.massKg * 1000;
       const radiusCm = body.radiusKm * 100000;
@@ -112,7 +73,6 @@
       densityValue = massG / volCm3;
   }
 
-  // --- Size Category Helper ---
   function getSizeCategory(rKm: number, mKg: number): string {
       const mEarths = mKg / EARTH_MASS_KG;
       if (mEarths > 4000) return "Brown Dwarf";
@@ -129,40 +89,21 @@
       const rKm = body.radiusKm || 0;
       const mKg = body.massKg || 0;
       const mEarths = mKg / EARTH_MASS_KG;
-      
-      let newClass = "";
-      let newColor = "";
-
-      if (mEarths > 4000) {
-          newClass = "planet/brown-dwarf";
-          newColor = "#5d4037"; // Dark Brown
-      } else if (rKm < 200) {
-          // Moonlet / Asteroid
-      } else if (rKm < 800) {
-          newClass = "planet/dwarf-planet";
-          newColor = "#bdc3c7"; // Grey
-      } else if (rKm < 2 * EARTH_RADIUS_KM) {
-          newClass = "planet/terrestrial";
-          newColor = "#e67e22"; // Orange
-      } else if (rKm < 6 * EARTH_RADIUS_KM) {
-          newClass = "planet/ice-giant";
-          newColor = "#81ecec"; // Light Blue
-      } else {
-          newClass = "planet/gas-giant";
-          newColor = "#e74c3c"; // Red
-      }
-
+      let newClass = "", newColor = "";
+      if (mEarths > 4000) { newClass = "planet/brown-dwarf"; newColor = "#5d4037"; }
+      else if (rKm < 200) { /* moonlet */ }
+      else if (rKm < 800) { newClass = "planet/dwarf-planet"; newColor = "#bdc3c7"; }
+      else if (rKm < 2 * EARTH_RADIUS_KM) { newClass = "planet/terrestrial"; newColor = "#e67e22"; }
+      else if (rKm < 6 * EARTH_RADIUS_KM) { newClass = "planet/ice-giant"; newColor = "#81ecec"; }
+      else { newClass = "planet/gas-giant"; newColor = "#e74c3c"; }
       if (newClass) {
           if (!body.classes) body.classes = [];
           body.classes[0] = newClass;
-
           if (!body.tags) body.tags = [];
           const sizeTags = ["planet/dwarf-planet", "planet/terrestrial", "planet/ice-giant", "planet/gas-giant", "planet/brown-dwarf"];
           body.tags = body.tags.filter(t => !sizeTags.includes(t.key));
           body.tags.push({ key: newClass });
-
           body.color = newColor;
-
           if (rulePack?.classifier?.planetImages && rulePack.classifier.planetImages[newClass]) {
               if (!body.image) body.image = { url: '' };
               body.image.url = rulePack.classifier.planetImages[newClass];
@@ -170,71 +111,126 @@
       }
   }
 
-  // --- Updates ---
   function updateMassFromInput(event: Event) {
       const val = parseFloat((event.target as HTMLInputElement).value);
       if (isNaN(val)) return;
-
-      if (displayMassUnit === 'Tonnes') {
-          body.massKg = val * 1000; // Tonnes to kg
-      } else if (displayMassUnit === 'Suns') {
-          body.massKg = val * SOLAR_MASS_KG;
-      } else { // Earths
-          body.massKg = val * EARTH_MASS_KG;
-      }
-      // Update internal mass value for slider to react
+      if (displayMassUnit === 'Tonnes') body.massKg = val * 1000;
+      else if (displayMassUnit === 'Suns') body.massKg = val * SOLAR_MASS_KG;
+      else body.massKg = val * EARTH_MASS_KG;
       massValueInternal = useSolarUnits ? body.massKg / SOLAR_MASS_KG : body.massKg / EARTH_MASS_KG;
-      if (isPlanetMoon && sizeDriver === 'mass') deriveRadiusFromMass();
       updateClassFromSize();
       dispatch('update');
   }
-
   function updateMassFromSlider() {
       const val = Math.exp(massLogMin + (massLogMax - massLogMin) * massSliderPos);
       massValueInternal = parseFloat(val.toPrecision(4));
       body.massKg = massValueInternal * (useSolarUnits ? SOLAR_MASS_KG : EARTH_MASS_KG);
-      if (isPlanetMoon && sizeDriver === 'mass') deriveRadiusFromMass();
       updateClassFromSize();
       dispatch('update');
   }
-
   function updateRadiusFromInput(event: Event) {
       const val = parseFloat((event.target as HTMLInputElement).value);
       if (isNaN(val)) return;
-
-      if (useSolarUnits) {
-          body.radiusKm = val * SOLAR_RADIUS_KM; // Suns Radii to KM
-          radiusValueInternal = val; // Store input in Suns Radii
-      } else {
-          body.radiusKm = val; // KM
-          radiusValueInternal = val; // Store input in KM
-      }
-      if (isPlanetMoon && sizeDriver === 'radius') deriveMassFromRadius();
+      if (useSolarUnits) { body.radiusKm = val * SOLAR_RADIUS_KM; radiusValueInternal = val; }
+      else { body.radiusKm = val; radiusValueInternal = val; }
       updateClassFromSize();
       dispatch('update');
   }
-
   function updateRadiusFromSlider() {
       const val = Math.exp(radiusLogMin + (radiusLogMax - radiusLogMin) * radiusSliderPos);
-
-      if (useSolarUnits) {
-          radiusValueInternal = parseFloat(val.toPrecision(4)); // Store in Suns Radii
-          body.radiusKm = radiusValueInternal * SOLAR_RADIUS_KM; // Suns Radii to KM
-      } else {
-          radiusValueInternal = parseFloat(val.toFixed(0)); // Store in KM
-          body.radiusKm = radiusValueInternal; // KM
-      }
-      if (isPlanetMoon && sizeDriver === 'radius') deriveMassFromRadius();
+      if (useSolarUnits) { radiusValueInternal = parseFloat(val.toPrecision(4)); body.radiusKm = radiusValueInternal * SOLAR_RADIUS_KM; }
+      else { radiusValueInternal = parseFloat(val.toFixed(0)); body.radiusKm = radiusValueInternal; }
       updateClassFromSize();
       dispatch('update');
   }
+
+  // ============================================================================
+  //  SIZE & COMPOSITION editor (planets / moons) — the mass/radius/density chain.
+  //  Mass, radius and density are bound by rho = M/(4/3*pi*R^3): each edit HOLDS one
+  //  quantity and DERIVES another (bodyEdit.ts), with an optional per-field lock.
+  //  Interior makeup is slaved to the density unless the GM edits it directly.
+  // ============================================================================
+  const MK_KEYS: Array<keyof Makeup> = ['metal', 'rock', 'carbon', 'ice', 'gas'];
+  const MK_LABEL: Record<string, string> = { metal: 'Metal', rock: 'Rock', carbon: 'Carbon', ice: 'Ice', gas: 'Gas' };
+  const MK_SWATCH: Record<string, string> = { metal: '#9c8d7a', rock: '#a9805a', carbon: '#3a3a40', ice: '#cfe6ff', gas: '#d8c79a' };
+
+  let lock: EditLock = null;
+  function toggleLock(which: Exclude<EditLock, null>) { lock = lock === which ? null : which; }
+
+  // Slider ranges (log scale). Bounds mirror bodyEdit.ts clamps.
+  const pMassMin = 1e-4, pMassMax = 1e5;   // Earth masses (moonlet -> past brown dwarf)
+  const pRadMin = 0.02,  pRadMax = 40;      // Earth radii
+  const pDenMin = 0.1,   pDenMax = 30;      // g/cc
+  const logPos = (v: number, lo: number, hi: number) =>
+      clamp((Math.log(clamp(v, lo, hi)) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)), 0, 1);
+  const logVal = (pos: number, lo: number, hi: number) =>
+      Math.exp(Math.log(lo) + (Math.log(hi) - Math.log(lo)) * pos);
+
+  // Live state read straight from the body (Earth-relative units).
+  $: pMassMe = (body.massKg ?? 0) / EARTH_MASS_KG;
+  $: pRadiusRe = (body.radiusKm ?? 0) / EARTH_RADIUS_KM;
+  $: pMakeup = normalizeMakeup(makeupFractions(body));
+  $: pDensity = densityGcc(pMassMe, pRadiusRe);
+  $: pMassPos = logPos(pMassMe, pMassMin, pMassMax);
+  $: pRadPos = logPos(pRadiusRe, pRadMin, pRadMax);
+  $: pDenPos = logPos(pDensity, pDenMin, pDenMax);
+
+  // Read the live state straight from the body (NOT the reactive pMassMe/pMakeup vars, which are
+  // stale within a synchronous edit batch — so consecutive edits chain off fresh values).
+  function pState(): BodyEditState {
+      return {
+          massMe: (body.massKg ?? 0) / EARTH_MASS_KG,
+          radiusRe: (body.radiusKm ?? 0) / EARTH_RADIUS_KM,
+          makeup: normalizeMakeup(makeupFractions(body))
+      };
+  }
+  // Every edit through this panel commits back to the body and hands the TYPE to the
+  // physics: autoClassify on -> the fingerprint classifier re-derives class + image on
+  // the next process (so terrestrial -> gas giant actually flips as you cross the bands).
+  function commit(out: BodyEditState) {
+      body.massKg = out.massMe * EARTH_MASS_KG;
+      body.radiusKm = out.radiusRe * EARTH_RADIUS_KM;
+      body.makeup = { ...out.makeup };
+      body.autoClassify = true;
+      body = body; // trigger local reactivity now, without waiting on the parent reprocess
+      dispatch('update');
+  }
+
+  const heldDensity = () =>
+      (lock === 'density' ? densityGcc((body.massKg ?? 0) / EARTH_MASS_KG, (body.radiusKm ?? 0) / EARTH_RADIUS_KM) : undefined);
+  function applyMass(v: number)   { if (Number.isFinite(v)) commit(editMass(pState(), v, lock, heldDensity())); }
+  function applyRadius(v: number) { if (Number.isFinite(v)) commit(editRadius(pState(), v, lock, heldDensity())); }
+  function applyDensity(v: number){ if (Number.isFinite(v)) commit(editDensity(pState(), v, lock)); }
+  function applyMakeupComp(k: keyof Makeup, pctVal: number) {
+      const nm = setMakeupComponent(pState().makeup, k, clamp(pctVal, 0, 100) / 100);
+      commit(editMakeup(pState(), nm, lock));
+  }
+  function applyPreset(mk: Makeup) {
+      commit(editMakeup(pState(), normalizeMakeup(mk), lock));
+  }
+
+  const onMassSlider = (e: Event)  => applyMass(logVal(+(e.target as HTMLInputElement).value, pMassMin, pMassMax));
+  const onRadSlider = (e: Event)   => applyRadius(logVal(+(e.target as HTMLInputElement).value, pRadMin, pRadMax));
+  const onDenSlider = (e: Event)   => applyDensity(logVal(+(e.target as HTMLInputElement).value, pDenMin, pDenMax));
+  const onMassNum = (e: Event)     => applyMass(parseFloat((e.target as HTMLInputElement).value));
+  const onRadNum = (e: Event)      => applyRadius(parseFloat((e.target as HTMLInputElement).value));
+  const onDenNum = (e: Event)      => applyDensity(parseFloat((e.target as HTMLInputElement).value));
+  const onMkSlider = (k: keyof Makeup, e: Event) => applyMakeupComp(k, +(e.target as HTMLInputElement).value);
+  const onMkNum = (k: keyof Makeup, e: Event)    => applyMakeupComp(k, parseFloat((e.target as HTMLInputElement).value) || 0);
+
+  // Live classification the physics has assigned (updated after each commit -> process()).
+  function prettyClass(c: string | undefined): string {
+      if (!c) return '—';
+      return c.replace(/^(planet|star)\//, '').replace(/-/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
+  }
+  $: liveType = prettyClass(body.classes?.[0]);
+  $: makeupLocked = lock === 'density'; // density-lock === composition-lock
 
   function updateVisualType(e: Event) {
       const val = (e.target as HTMLSelectElement).value;
       if (!body.classes) body.classes = [];
       body.classes[0] = val;
-      // An explicit pick is END-STATE: stop the classifier overwriting it on the next process.
-      body.autoClassify = false;
+      body.autoClassify = false; // an explicit pick is end-state
       if (rulePack?.classifier?.planetImages && rulePack.classifier.planetImages[val]) {
           if (!body.image) body.image = { url: '' };
           body.image.url = rulePack.classifier.planetImages[val];
@@ -242,26 +238,10 @@
       dispatch('update');
   }
 
-  function handleUpdate() {
-      dispatch('update');
-  }
-
-  // Ticking the box PINS tidal locking (manual override) so the processor stops auto-deriving it.
-  function pinTidalLock() {
-      (body as any).tidalLockManual = true;
-      dispatch('update');
-  }
-  // Hand control back to the physics: clear the override, re-derive on the next process.
-  function resetTidalLockAuto() {
-      delete (body as any).tidalLockManual;
-      dispatch('update');
-  }
-
-  function toggleAutoClassify(e: Event) {
-      body.autoClassify = (e.currentTarget as HTMLInputElement).checked;
-      dispatch('update');
-  }
-
+  function handleUpdate() { dispatch('update'); }
+  function pinTidalLock() { (body as any).tidalLockManual = true; dispatch('update'); }
+  function resetTidalLockAuto() { delete (body as any).tidalLockManual; dispatch('update'); }
+  function toggleAutoClassify(e: Event) { body.autoClassify = (e.currentTarget as HTMLInputElement).checked; dispatch('update'); }
   function igniteStar() {
       body.roleHint = 'star';
       if (!body.classes) body.classes = [];
@@ -274,139 +254,140 @@
 
 <div class="tab-panel">
 
-    {#if isPlanetMoon}
-        <!-- Size driver — pin mass OR radius; the other derives through the interior makeup. -->
-        <div class="driver-row">
-            <span class="driver-label">Size from</span>
-            <div class="driver-seg">
-                <button class:on={sizeDriver === 'mass'} on:click={() => setSizeDriver('mass')}>Mass</button>
-                <button class:on={sizeDriver === 'radius'} disabled={gasDominated}
-                        title={gasDominated ? "A gas giant's radius is set by mass + degeneracy — keep it mass-driven." : 'Pin the radius; mass is derived from it via the makeup.'}
-                        on:click={() => setSizeDriver('radius')}>Radius</button>
-            </div>
-        </div>
-    {/if}
+  {#if isPlanetMoon}
+    <!-- ===================== SIZE & COMPOSITION (planets / moons) ===================== -->
+    <div class="sc-head">
+        <div class="sc-title">Size &amp; Composition</div>
+        <div class="sc-type"><span class="sc-type-label">Type</span> <span class="sc-type-val">{liveType}</span></div>
+    </div>
+    <div class="sc-sub"><span class="category-badge">{sizeCategory}</span></div>
 
-    <!-- MASS SECTION -->
-    {#if isPlanetMoon && sizeDriver === 'radius'}
-        <!-- Mass is derived from radius + makeup. -->
-        <div class="form-group">
-            <div class="label-row">
-                <label>Mass <span class="derived-tag" title="Mass is computed from the radius and interior makeup. Edit the radius or makeup below to change it.">derived</span></label>
-                <div class="read-only-value">{displayMassValue < 0.01 ? displayMassValue.toExponential(2) : displayMassValue.toPrecision(3)} {displayMassUnit}</div>
-            </div>
-            <div class="sub-label"><span>{(body.massKg || 0).toExponential(2)} kg</span></div>
+    <!-- MASS -->
+    <div class="sc-field" class:locked={lock === 'mass'}>
+        <div class="sc-row">
+            <button class="lock" class:on={lock === 'mass'} title={lock === 'mass' ? 'Mass pinned - click to release' : 'Pin the mass'} on:click={() => toggleLock('mass')} aria-label="Lock mass">{lock === 'mass' ? '🔒' : '🔓'}</button>
+            <label>Mass</label>
+            <input class="sc-num" type="number" step="any" value={r4(pMassMe)} on:input={onMassNum} disabled={lock === 'mass'} />
+            <span class="sc-unit">M⊕</span>
         </div>
-    {:else}
-        <div class="form-group">
-            <div class="label-row">
-                <label for="mass">Mass ({displayMassUnit})</label>
-                <input type="number" id="mass" step="any" bind:value={displayMassValue} on:input={updateMassFromInput} />
-            </div>
-            <input
-                type="range" min="0" max="1" step="0.001"
-                bind:value={massSliderPos}
-                on:input={updateMassFromSlider}
-                class="full-width-slider"
-                list="mass-ticks"
-            />
-            <datalist id="mass-ticks">
-                <option value="0" label="{currentMassMin.toPrecision(1)}"></option>
-                <option value="0.25"></option>
-                <option value="0.5" label="{useSolarUnits ? '1' : '1'}"></option>
-                <option value="0.75"></option>
-                <option value="1" label="{currentMassMax}"></option>
-            </datalist>
-            <div class="sub-label">
-                <span>{(body.massKg || 0).toExponential(2)} kg</span>
-            </div>
-            {#if !useSolarUnits && massValueInternal >= 25000}
-                <button class="action-btn ignite-btn" on:click={igniteStar}>🔥 Ignite into Star</button>
-            {/if}
+        <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pMassPos} on:input={onMassSlider} disabled={lock === 'mass'} />
+        <div class="sub-label">{(body.massKg || 0).toExponential(2)} kg{#if pMassMe >= 318} · {(pMassMe / 317.8).toFixed(2)} M♃{/if}</div>
+    </div>
+
+    <!-- RADIUS -->
+    <div class="sc-field" class:locked={lock === 'radius'}>
+        <div class="sc-row">
+            <button class="lock" class:on={lock === 'radius'} title={lock === 'radius' ? 'Radius pinned - click to release' : 'Pin the radius'} on:click={() => toggleLock('radius')} aria-label="Lock radius">{lock === 'radius' ? '🔒' : '🔓'}</button>
+            <label>Radius</label>
+            <input class="sc-num" type="number" step="any" value={r4(pRadiusRe)} on:input={onRadNum} disabled={lock === 'radius'} />
+            <span class="sc-unit">R⊕</span>
         </div>
+        <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pRadPos} on:input={onRadSlider} disabled={lock === 'radius'} />
+        <div class="sub-label">{$fmt.km(body.radiusKm || 0)}</div>
+    </div>
+
+    <!-- DENSITY (lock = hold composition) -->
+    <div class="sc-field" class:locked={lock === 'density'}>
+        <div class="sc-row">
+            <button class="lock" class:on={lock === 'density'} title={lock === 'density' ? 'Density & composition pinned - click to release' : 'Pin the density (holds the interior makeup)'} on:click={() => toggleLock('density')} aria-label="Lock density">{lock === 'density' ? '🔒' : '🔓'}</button>
+            <label>Density</label>
+            <input class="sc-num" type="number" step="any" value={r4(pDensity)} on:input={onDenNum} disabled={lock === 'density'} />
+            <span class="sc-unit">g/cc</span>
+        </div>
+        <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pDenPos} on:input={onDenSlider} disabled={lock === 'density'} />
+        <div class="sub-label">{lock === 'density' ? 'composition held' : 'infers the interior makeup below'}</div>
+    </div>
+
+    {#if pMassMe >= 25000}
+        <button class="action-btn ignite-btn" on:click={igniteStar}>🔥 Ignite into Star</button>
     {/if}
 
     <hr/>
 
-    {#if isPlanetMoon && sizeDriver === 'mass'}
-        <!-- RADIUS is derived from mass + makeup (set the cause, not the size). -->
-        <div class="form-group">
-            <div class="label-row">
-                <label>Radius <span class="derived-tag" title="Radius is computed from the mass and interior makeup (with gravitational compression). Edit the mass or makeup to change it.">derived</span></label>
-                <div class="read-only-value">{$fmt.km(body.radiusKm || 0)}</div>
-            </div>
-            <div class="sub-label row-spaced">
-                <span>{((body.radiusKm || 0) / EARTH_RADIUS_KM).toFixed(2)} R⊕</span>
-                <span class="category-badge">{sizeCategory}</span>
-            </div>
-        </div>
-    {:else if isPlanetMoon && sizeDriver === 'radius'}
-        <!-- RADIUS is the pinned driver; mass derives from it + makeup. -->
-        <div class="form-group">
-            <div class="label-row">
-                <label for="radius">Radius (km)</label>
-                <input type="number" id="radius" step="any" bind:value={displayRadiusValue} on:input={updateRadiusFromInput} />
-            </div>
-            <input
-                type="range" min="0" max="1" step="0.001"
-                bind:value={radiusSliderPos}
-                on:input={updateRadiusFromSlider}
-                class="full-width-slider"
-            />
-            <div class="sub-label row-spaced">
-                <span>{((body.radiusKm || 0) / EARTH_RADIUS_KM).toFixed(2)} R⊕</span>
-                <span class="category-badge">{sizeCategory}</span>
-            </div>
-        </div>
-    {:else}
-        <!-- RADIUS SECTION (editable for stars / belts / rings) -->
-        <div class="form-group">
-            <div class="label-row">
-                <label for="radius">Radius ({displayRadiusUnit})</label>
-                <input type="number" id="radius" step="any" bind:value={displayRadiusValue} on:input={updateRadiusFromInput} />
-            </div>
-            <input
-                type="range" min="0" max="1" step="0.001"
-                bind:value={radiusSliderPos}
-                on:input={updateRadiusFromSlider}
-                class="full-width-slider"
-                list="radius-ticks"
-            />
-            <datalist id="radius-ticks">
-                <option value="0" label="{Math.round(currentRadiusMin)}"></option>
-                <option value="0.33"></option>
-                <option value="0.66"></option>
-                <option value="1" label="{Math.round(currentRadiusMax)}"></option>
-            </datalist>
-            <div class="sub-label row-spaced">
-                <span>{$fmt.km(body.radiusKm || 0)}</span>
-                <span class="category-badge">{sizeCategory}</span>
-            </div>
-        </div>
-    {/if}
+    <!-- COMPOSITION PRESETS - gated by the current density (bands overlap on purpose) -->
+    <div class="sc-presets-label">Composition preset <span class="sc-presets-sub">- valid at {pDensity.toFixed(1)} g/cc</span></div>
+    <div class="sc-presets">
+        {#each COMPOSITION_PRESETS as p}
+            <button class="preset"
+                    class:active={presetActive(p, pMakeup)}
+                    disabled={makeupLocked || !presetValidAt(p, pDensity)}
+                    title={makeupLocked ? 'Unlock density to recompose' : (presetValidAt(p, pDensity) ? `Set a ${p.name} interior` : `Out of band at ${pDensity.toFixed(1)} g/cc (needs ${p.band[0]}-${p.band[1]})`)}
+                    on:click={() => applyPreset(p.makeup)}>{p.name}</button>
+        {/each}
+    </div>
 
-    <!-- INTERIOR MAKEUP → derives density (and, for planets/moons, radius). -->
-    {#if body.roleHint === 'planet' || body.roleHint === 'moon'}
-        <div class="form-group">
-            <MakeupEditor {body} {sizeDriver} on:update={() => dispatch('update')} />
+    <!-- INTERIOR MAKEUP - editable when density is unlocked; back-drives density -->
+    <div class="sc-makeup" class:frozen={makeupLocked}>
+        <div class="sc-makeup-head">
+            <span>Interior makeup</span>
+            <span class="hint">{makeupLocked ? 'held by density lock' : 'drives density -> size'}</span>
         </div>
-    {:else}
-        <!-- DENSITY DISPLAY (stars / belts / rings keep the read-only density) -->
-        <div class="form-group density-group">
-            <div class="label-row">
-                <label>Calculated Density</label>
-                <div class="read-only-value">{densityValue.toFixed(2)} g/cm³</div>
+        {#each MK_KEYS as k}
+            <div class="mk-row">
+                <span class="swatch" style="background-color: {MK_SWATCH[k]}"></span>
+                <label for="mk-{k}">{MK_LABEL[k]}</label>
+                <input id="mk-{k}" type="range" min="0" max="100" step="1" value={Math.round((pMakeup[k] ?? 0) * 100)} on:input={(e) => onMkSlider(k, e)} disabled={makeupLocked} />
+                <input class="mk-num" type="number" min="0" max="100" step="1" value={Math.round((pMakeup[k] ?? 0) * 100)} on:input={(e) => onMkNum(k, e)} disabled={makeupLocked} />
+                <span class="mk-pct">%</span>
             </div>
-            <div class="density-bar">
-                <div class="density-fill" style="width: {Math.min(100, (densityValue / 15) * 100)}%; background-color: hsl({120 - Math.min(120, (densityValue/8)*120)}, 70%, 50%);"></div>
-            </div>
-            <div class="sub-label row-spaced">
-                <span>Gas/Ice</span>
-                <span>Rock</span>
-                <span>Iron</span>
-            </div>
+        {/each}
+    </div>
+    <p class="compress-note">Density is gravity-compressed by mass - the same mix packs denser on a super-Earth than on a moon. Adding metal or ice shifts the density (and its magnetic tagging); the physics re-reads the type on release.</p>
+
+  {:else}
+    <!-- ===================== STAR / BELT / RING size editor ===================== -->
+    <div class="form-group">
+        <div class="label-row">
+            <label for="mass">Mass ({displayMassUnit})</label>
+            <input type="number" id="mass" step="any" bind:value={displayMassValue} on:input={updateMassFromInput} />
         </div>
-    {/if}
+        <input type="range" min="0" max="1" step="0.001" bind:value={massSliderPos} on:input={updateMassFromSlider} class="full-width-slider" list="mass-ticks" />
+        <datalist id="mass-ticks">
+            <option value="0" label="{currentMassMin.toPrecision(1)}"></option>
+            <option value="0.25"></option>
+            <option value="0.5" label="1"></option>
+            <option value="0.75"></option>
+            <option value="1" label="{currentMassMax}"></option>
+        </datalist>
+        <div class="sub-label"><span>{(body.massKg || 0).toExponential(2)} kg</span></div>
+        {#if !useSolarUnits && massValueInternal >= 25000}
+            <button class="action-btn ignite-btn" on:click={igniteStar}>🔥 Ignite into Star</button>
+        {/if}
+    </div>
+
+    <hr/>
+
+    <div class="form-group">
+        <div class="label-row">
+            <label for="radius">Radius ({displayRadiusUnit})</label>
+            <input type="number" id="radius" step="any" bind:value={displayRadiusValue} on:input={updateRadiusFromInput} />
+        </div>
+        <input type="range" min="0" max="1" step="0.001" bind:value={radiusSliderPos} on:input={updateRadiusFromSlider} class="full-width-slider" list="radius-ticks" />
+        <datalist id="radius-ticks">
+            <option value="0" label="{Math.round(currentRadiusMin)}"></option>
+            <option value="0.33"></option>
+            <option value="0.66"></option>
+            <option value="1" label="{Math.round(currentRadiusMax)}"></option>
+        </datalist>
+        <div class="sub-label row-spaced">
+            <span>{$fmt.km(body.radiusKm || 0)}</span>
+            <span class="category-badge">{sizeCategory}</span>
+        </div>
+    </div>
+
+    <div class="form-group density-group">
+        <div class="label-row">
+            <label>Calculated Density</label>
+            <div class="read-only-value">{densityValue.toFixed(2)} g/cm³</div>
+        </div>
+        <div class="density-bar">
+            <div class="density-fill" style="width: {Math.min(100, (densityValue / 15) * 100)}%; background-color: hsl({120 - Math.min(120, (densityValue/8)*120)}, 70%, 50%);"></div>
+        </div>
+        <div class="sub-label row-spaced">
+            <span>Gas/Ice</span><span>Rock</span><span>Iron</span>
+        </div>
+    </div>
+  {/if}
 
     <hr/>
 
@@ -420,7 +401,7 @@
             <input type="number" id="tilt" step="0.1" bind:value={body.axial_tilt_deg} on:input={handleUpdate} />
         </div>
     </div>
-    
+
     <div class="form-group">
         <label title="Auto-derived from the despinning timescale vs the system age. Tick or untick to pin it manually; the processor then leaves it alone.">
             <input type="checkbox" bind:checked={body.tidallyLocked} on:change={pinTidalLock} />
@@ -434,7 +415,6 @@
 
     <hr/>
 
-    <!-- TYPE / IMAGE SECTION -->
     <div class="form-group">
         <label>Type / Image</label>
         <select value={body.classes?.[0] || 'planet/terrestrial'} on:change={updateVisualType}>
@@ -445,7 +425,7 @@
                 <option disabled>No types loaded (Check RulePack)</option>
             {/if}
         </select>
-        <label title="Off (default): the type you picked is end-state — the classifier never overwrites it. On: the physics engine derives the type (and image) from mass, makeup, atmosphere and temperature on every recalculation.">
+        <label title="Off (default): the type you picked is end-state - the classifier never overwrites it. On: the physics engine derives the type (and image) from mass, makeup, atmosphere and temperature on every recalculation.">
             <input type="checkbox" checked={!!body.autoClassify} on:change={toggleAutoClassify} />
             Auto-classify (physics decides the type)
         </label>
@@ -457,13 +437,8 @@
   .tab-panel { padding: 10px; display: flex; flex-direction: column; gap: 15px; }
   .row { display: flex; gap: 10px; }
   .form-group { display: flex; flex-direction: column; flex: 1; gap: 5px; }
-  
-  .label-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-  }
 
+  .label-row { display: flex; justify-content: space-between; align-items: center; }
   label { color: var(--text-muted); font-size: 0.9em; margin: 0; }
 
   input[type="number"], select, .read-only-value {
@@ -477,17 +452,11 @@
       font-size: 1em;
       box-sizing: border-box;
   }
-  
   select { width: 100%; text-align: left; }
-  
   .read-only-value {
-      background: var(--bg-panel);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      cursor: default;
-      font-family: monospace;
+      background: var(--bg-panel); border: 1px solid var(--border);
+      color: var(--text-muted); cursor: default; font-family: monospace;
   }
-
   .sub-label { font-size: 0.75em; color: var(--text-faint); }
   .link-btn {
       background: none; border: none; padding: 2px 0; margin-top: 2px;
@@ -495,60 +464,60 @@
   }
   .link-btn:hover { text-decoration: underline; }
   .row-spaced { display: flex; justify-content: space-between; }
-  
-  .category-badge {
-      color: #4da6ff;
-      font-weight: bold;
-  }
-  .derived-tag {
-      font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.04em;
-      color: var(--text-faint, #8a8a8a); border: 1px solid var(--border); border-radius: 3px;
-      padding: 0 4px; margin-left: 4px; cursor: help; font-weight: 400;
-  }
-
-  .driver-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-  .driver-label { font-size: 0.8em; color: var(--text-faint); }
-  .driver-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
-  .driver-seg button { background: transparent; border: none; border-right: 1px solid var(--border); color: var(--text-muted); padding: 3px 12px; cursor: pointer; font-size: 0.8em; }
-  .driver-seg button:last-child { border-right: none; }
-  .driver-seg button.on { background: var(--accent, #ff5a1f); color: #fff; }
-  .driver-seg button:disabled { color: var(--text-faint); cursor: not-allowed; opacity: 0.6; }
+  .category-badge { color: #4da6ff; font-weight: bold; }
 
   input[type="checkbox"] { width: auto; margin-right: 5px; }
-  
-  .full-width-slider {
-      width: 100%;
-      margin: 0;
-      cursor: pointer;
-  }
-  
+  .full-width-slider { width: 100%; margin: 0; cursor: pointer; }
   hr { border: 0; border-top: 1px solid var(--border); margin: 5px 0; width: 100%; }
 
-  .density-bar {
-      width: 100%;
-      height: 6px;
-      background: var(--bg-panel);
-      border-radius: 3px;
-      overflow: hidden;
-      margin-top: 2px;
-  }
-  .density-fill {
-      height: 100%;
-      transition: width 0.3s, background-color 0.3s;
-  }
+  .density-bar { width: 100%; height: 6px; background: var(--bg-panel); border-radius: 3px; overflow: hidden; margin-top: 2px; }
+  .density-fill { height: 100%; transition: width 0.3s, background-color 0.3s; }
 
-  .action-btn {
-      width: 100%;
-      padding: 8px;
-      margin-top: 10px;
-      border: none;
-      border-radius: 4px;
-      font-weight: bold;
-      cursor: pointer;
-  }
-  .ignite-btn {
-      background-color: #d35400;
-      color: white;
-  }
+  .action-btn { width: 100%; padding: 8px; margin-top: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+  .ignite-btn { background-color: #d35400; color: white; }
   .ignite-btn:hover { background-color: #e67e22; }
+
+  /* ---- Size & Composition editor ---- */
+  .sc-head { display: flex; align-items: baseline; justify-content: space-between; }
+  .sc-title { font-weight: 600; color: var(--text); }
+  .sc-type { font-size: 0.85em; }
+  .sc-type-label { color: var(--text-faint); text-transform: uppercase; font-size: 0.85em; letter-spacing: 0.04em; }
+  .sc-type-val { color: #4da6ff; font-weight: 600; }
+  .sc-sub { margin-top: -8px; }
+
+  .sc-field { display: flex; flex-direction: column; gap: 4px; }
+  .sc-field.locked { opacity: 0.85; }
+  .sc-row { display: flex; align-items: center; gap: 8px; }
+  .sc-row label { flex: 1; color: var(--text); font-size: 0.95em; }
+  .sc-num { width: 90px; }
+  .sc-unit { width: 34px; font-size: 0.8em; color: var(--text-faint); }
+  .lock {
+      background: transparent; border: 1px solid var(--border); border-radius: 4px;
+      padding: 2px 5px; cursor: pointer; font-size: 0.85em; line-height: 1;
+  }
+  .lock.on { background: var(--accent, #ff5a1f); border-color: var(--accent, #ff5a1f); }
+
+  /* Larger, more prominent primary sliders */
+  .sc-slider { width: 100%; height: 22px; cursor: pointer; margin: 0; accent-color: var(--accent, #ff5a1f); }
+  .sc-slider:disabled { cursor: not-allowed; opacity: 0.5; }
+
+  .sc-presets-label { font-size: 0.8em; color: var(--text-muted); }
+  .sc-presets-sub { color: var(--text-faint); }
+  .sc-presets { display: flex; flex-wrap: wrap; gap: 4px; }
+  .preset { font-size: 0.75em; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--link); cursor: pointer; }
+  .preset:hover:not(:disabled) { background: var(--bg-control); }
+  .preset:disabled { opacity: 0.35; cursor: not-allowed; }
+  .preset.active { background: var(--accent, #ff5a1f); color: #fff; border-color: var(--accent, #ff5a1f); }
+
+  .sc-makeup { display: flex; flex-direction: column; gap: 6px; }
+  .sc-makeup.frozen { opacity: 0.6; }
+  .sc-makeup-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.85em; color: var(--text-muted); }
+  .sc-makeup-head .hint { font-size: 0.85em; color: var(--text-faint); }
+  .mk-row { display: grid; grid-template-columns: 14px 52px 1fr 52px 14px; align-items: center; gap: 8px; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.2); }
+  .mk-row label { font-size: 0.85em; color: var(--text-muted); }
+  .mk-row input[type="range"] { width: 100%; accent-color: var(--accent, #ff5a1f); }
+  .mk-num { width: 52px; padding: 2px 4px; font-size: 0.85em; }
+  .mk-pct { font-size: 0.8em; color: var(--text-faint); }
+  .compress-note { margin: 2px 0 0; font-size: 0.72em; color: var(--text-faint); line-height: 1.4; }
 </style>
