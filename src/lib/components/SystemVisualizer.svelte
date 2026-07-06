@@ -21,6 +21,7 @@
   import { trueColorMode } from '$lib/rendering/colorModeStore';
   import { getPlanetTexture } from '$lib/rendering/planetTexture';
   import { oblatePolarFactor } from '$lib/rendering/bodyShape';
+  import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
 
   export let system: System | null;
   export let rulePack: RulePack;
@@ -89,6 +90,15 @@
   
   // This is the pan value used for the current frame's render, to avoid store updates every frame
   let renderPan: PanState = { x: 0, y: 0 };
+
+  // Big bodies are rendered by REUSING The Guide's PlanetDisc as an SVG overlay (so the tag-driven viz
+  // — polar ice, auroras, glow, banding, shape — is identical in both views). Perf safeguards: only
+  // bodies large on screen become overlays (few at a time), capped in count, and each disc is rendered
+  // at a fixed reference size and GPU-scaled via CSS transform (no per-frame filter re-rasterising).
+  const DISC_OVERLAY_REF = 220;   // px the PlanetDisc SVG is rendered at, then transform-scaled
+  const DISC_OVERLAY_MIN_R = 11;  // min on-screen body radius (px) to promote to an overlay
+  const DISC_OVERLAY_CAP = 14;    // max simultaneous overlays (biggest first)
+  let discOverlays: { id: string; body: CelestialBody; x: number; y: number; scale: number; lightAngle: number | null }[] = [];
   let lastAutoZoomTarget: number = 0;
   let lastAutoZoomUpdateMs = 0;
 
@@ -816,6 +826,7 @@
   function drawSystem(ctx: CanvasRenderingContext2D) {
       if (!system || !zoom) return;
       const { width, height } = canvas;
+      const nextOverlays: typeof discOverlays = [];  // PlanetDisc overlays collected this frame
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       ctx.save();
       ctx.fillStyle = backgroundColor;
@@ -969,6 +980,21 @@
           const minRadiusInWorld = minRadiusPx / zoom;
           const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
 
+          // Promote a big-on-screen planet/moon to a PlanetDisc SVG overlay (true-colour only) so it
+          // renders exactly like The Guide. Skip the canvas disc/effects for it — the overlay owns it.
+          if (trueColorOn && (node.roleHint === 'planet' || node.roleHint === 'moon')
+              && (node as any).apparentColor && finalRadius * zoom >= DISC_OVERLAY_MIN_R) {
+              const sR = finalRadius * zoom;
+              const sx = rx * zoom + width / 2, sy = ry * zoom + height / 2;
+              // Only overlay bodies actually on screen, so the off-canvas giants can't steal the cap.
+              if (sx + sR >= 0 && sx - sR <= width && sy + sR >= 0 && sy - sR <= height) {
+                  const la = primaryStarPos ? Math.atan2(primaryStarPos.y - pos.y, primaryStarPos.x - pos.x) : null;
+                  nextOverlays.push({ id: node.id, body: node as CelestialBody, x: sx, y: sy, scale: sR / (0.3 * DISC_OVERLAY_REF), lightAngle: la });
+                  continue;
+              }
+              // Off-screen but big: fall through to the cheap canvas path (clipped away anyway).
+          }
+
           // #5 Star glow — a soft additive halo behind the disc. A very active (flaring) star
           // throws a bigger, brighter halo; a feeding (active) black hole gets one too, in the
           // hot-orange of its accretion disc (quiescent holes stay dark).
@@ -1108,6 +1134,11 @@
               }
           }
       }
+      // Publish this frame's PlanetDisc overlays (biggest first, capped) for the SVG layer to render.
+      discOverlays = nextOverlays.length > DISC_OVERLAY_CAP
+          ? [...nextOverlays].sort((a, b) => b.scale - a.scale).slice(0, DISC_OVERLAY_CAP)
+          : nextOverlays;
+
       // Hill spheres — each planet-mass body's gravitational bubble, and EXACTLY the boundary the adrift
       // coast physics hands over at (same helper, so the drawn circle can't disagree with the handoff).
       // Solid light yellow + faint fill — dashed strokes over AU-scale circles make the canvas grind.
@@ -1848,14 +1879,28 @@
       panStore.set({ x: centerX, y: centerY }, { duration: 500 }); zoomStore.set(targetZoom, { duration: 500 });
   }
 </script>
-<canvas
-    bind:this={canvas}
-    use:gestures={canvasGestures}
-    class:fullscreen={fullScreen}
-    style:background-color={backgroundColor}
-    style="cursor: grab; width: 100%; touch-action: none;"
-    style:border={fullScreen ? 'none' : '1px solid #333'}
-    style:margin-top={fullScreen ? '0' : '1em'}
-    style:display={fullScreen ? 'block' : 'inline-block'}
-    style:height={fullScreen ? '100%' : 'auto'}
-></canvas>
+<div class="viz-wrap"
+     style:position="relative"
+     style:width="100%"
+     style:line-height="0"
+     style:height={fullScreen ? '100%' : 'auto'}
+     style:margin-top={fullScreen ? '0' : '1em'}>
+  <canvas
+      bind:this={canvas}
+      use:gestures={canvasGestures}
+      class:fullscreen={fullScreen}
+      style:background-color={backgroundColor}
+      style="cursor: grab; width: 100%; touch-action: none;"
+      style:border={fullScreen ? 'none' : '1px solid #333'}
+      style:display={fullScreen ? 'block' : 'inline-block'}
+      style:height={fullScreen ? '100%' : 'auto'}
+  ></canvas>
+  <!-- PlanetDisc overlays for big bodies: rendered at a fixed size, GPU-scaled by CSS transform. -->
+  <div style="position:absolute; inset:0; overflow:hidden; pointer-events:none;">
+    {#each discOverlays as o (o.id)}
+      <div style="position:absolute; left:0; top:0; width:{DISC_OVERLAY_REF}px; height:{DISC_OVERLAY_REF}px; transform-origin:0 0; transform:translate({o.x}px,{o.y}px) scale({o.scale}) translate(-50%,-50%); will-change:transform;">
+        <PlanetDisc body={o.body} size={DISC_OVERLAY_REF} lightAngle={o.lightAngle} />
+      </div>
+    {/each}
+  </div>
+</div>

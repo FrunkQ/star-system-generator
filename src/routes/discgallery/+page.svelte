@@ -31,6 +31,8 @@
     mk({ name: 'None (airless)', apparentColorHex: '#9a9aa2', atmosphere: { pressure_bar: 0 } as any }),
   ];
 
+  const litBody = mk({ name: 'lit', apparentColorHex: '#3a7ac0', atmosphere: { pressure_bar: 1 } as any });
+
   const shapes = [
     mk({ name: 'Oblate (fast spin)', apparentColorHex: '#c89868', oblateness: 0.4 }),
     mk({ name: 'Ellipsoid', apparentColorHex: '#b8916f', oblateness: 0.62 }),
@@ -76,6 +78,14 @@
     {#each atmospheres as b}
       <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
     {/each}
+  </div>
+
+  <h2>Light direction (terminator) — for orrery reuse</h2>
+  <div class="gallery">
+    <figure><PlanetDisc body={litBody} size={168} /><figcaption>default (upper-left)</figcaption></figure>
+    <figure><PlanetDisc body={litBody} size={168} lightAngle={0} /><figcaption>from right</figcaption></figure>
+    <figure><PlanetDisc body={litBody} size={168} lightAngle={Math.PI / 2} /><figcaption>from below</figcaption></figure>
+    <figure><PlanetDisc body={litBody} size={168} lightAngle={Math.PI} /><figcaption>from left</figcaption></figure>
   </div>
 
   <h2>Rotational shape — flattening to break-up</h2>

@@ -24,6 +24,18 @@
   // 0.8 corresponds to spin fraction ~0.8 (the near-breakup / toroidal regime).
   $: isToroid = !isStar(body) && !isBelt(body) && (body.oblateness ?? 0) >= 0.8;
 
+  // Light direction for the day/night terminator + specular highlight. Default (null) is the stylised
+  // upper-left look the stand-alone Guide uses; the orrery passes the true angle (radians) toward the
+  // primary star so the terminator is physically correct when this disc is reused there.
+  export let lightAngle: number | null = null;
+  $: _lux = lightAngle == null ? 0 : Math.cos(lightAngle);
+  $: _luy = lightAngle == null ? 0 : Math.sin(lightAngle);
+  $: termC = lightAngle == null
+    ? { x1: 0, y1: 0, x2: 100, y2: 55 }
+    : { x1: 50 + 50 * _lux, y1: 50 + 50 * _luy, x2: 50 - 50 * _lux, y2: 50 - 50 * _luy };
+  $: hlCx = lightAngle == null ? 38 : Math.round(50 + 16 * _lux);
+  $: hlCy = lightAngle == null ? 34 : Math.round(50 + 16 * _luy);
+
   // Ring geometry from density: sparse rings are a thin faint hoop, dense ones a broad bright band.
   $: ringRx = 38 + ringDensity * 10;       // outer extent 38..48
   $: ringW = 2 + ringDensity * 8;          // band thickness 2..10
@@ -153,13 +165,13 @@
   <svg viewBox="0 0 100 100" width={size} height={size} class="planet-disc" role="img"
        aria-label="Rendered impression of {body.name}">
     <defs>
-      <radialGradient id="sph-{uid}" cx="38%" cy="34%" r="72%">
+      <radialGradient id="sph-{uid}" cx="{hlCx}%" cy="{hlCy}%" r="72%">
         <stop offset="0%" stop-color={shade(base, 0.45)} />
         <stop offset="55%" stop-color={base} />
         <stop offset="100%" stop-color={shade(base, -0.55)} />
       </radialGradient>
       <!-- Roundness vignette laid over the flat texture so it reads as a sphere. -->
-      <radialGradient id="vig-{uid}" cx="38%" cy="34%" r="72%">
+      <radialGradient id="vig-{uid}" cx="{hlCx}%" cy="{hlCy}%" r="72%">
         <stop offset="0%" stop-color="rgba(255,255,255,0.28)" />
         <stop offset="42%" stop-color="rgba(255,255,255,0)" />
         <stop offset="100%" stop-color="rgba(0,0,0,0.5)" />
@@ -174,7 +186,7 @@
       <clipPath id="front-{uid}"><rect x="0" y="50" width="100" height="50" /></clipPath>
       <clipPath id="belt-{uid}"><ellipse cx="50" cy="50" rx="46" ry="15" /></clipPath>
       <!-- Day/night terminator, lit from the upper-left → dark lower-right. Locked = sharp. -->
-      <linearGradient id="term-{uid}" x1="0%" y1="0%" x2="100%" y2="55%">
+      <linearGradient id="term-{uid}" x1="{termC.x1}%" y1="{termC.y1}%" x2="{termC.x2}%" y2="{termC.y2}%">
         {#if locked}
           <stop offset="0%" stop-color="rgba(0,0,0,0)" />
           <stop offset="50%" stop-color="rgba(0,0,0,0)" />

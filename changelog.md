@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.285-beta - 6th Jul 2026
+
+* **The orrery and The Guide now share one renderer.** The tag-driven viz (polar ice, auroras, atmosphere glow, banding + spin-axis tilt, rotational shape) was only appearing in The Guide; it now appears in the orrery too, because a body big enough on screen is drawn with the very same PlanetDisc renderer — so the two views can't drift apart. The orrery keeps its physically-correct day/night terminator (a new light-direction is passed to the disc). Performance-guarded: only on-screen bodies large enough to show detail are promoted (capped in number), each rendered once and GPU-scaled, so panning and zooming stay smooth.
+
 ## v2.0.284-beta - 6th Jul 2026
 
 * **Red giants are now coloured like the standard stars they are.** A red giant is just a cool, swollen K/M-temperature star, so it's now tinted by its temperature (warm orange) like every other star instead of a special blood-red swatch — in the orrery and the editor swatch. (Audit confirmed they already behave as standard stars everywhere else — generation, planet counts, classification.)
