@@ -191,11 +191,13 @@ reclassify-on-settle (F-RECLASS) and lets mass/radius move independently of comp
   "Overridden" marker + "Reset to calculated" control (re-seeds from the model mid-range, drops the
   override). Browser-verified round-trip; 4 new magnetism.spec cases. NOTE: this is a targeted F-OVR (a
   `manual` bool on the field), not yet the general `body.overrides` object — F3/albedo can generalise it.
-- **E1 — Moon sizing & the add-moon picker.** Generation and manual "Add moon" should default to an
-  appropriate (not gravitationally significant) size, and the type picker must be MASS-GATED by the host:
-  a terrestrial offers only the few plausible moons (airless rock the common default), a gas giant offers
-  more. Audit the generator's moon-mass draw and the picker's option filter. **Effort M, Risk Med**
-  (touches generation; verify against the calibration fixtures).
+- **E1 — Moon sizing & the add-moon picker.**  ✅ DONE (v2.0.265-beta). `viableTypesAt` gains a `hostMassKg`
+  arg (threaded from AddBodyTypeModal + generateFromConfig): a moon type is dropped if its characteristic
+  mass exceeds ~10% of the host, and a terrestrial-scale host also drops the "substantial world" surface
+  types — leaving small airless/icy moons (airless rock default); a giant keeps the broad set (terrestrial
+  ~28→~7). Manual add-moon now defaults to a small size (~0.002–0.03 M⊕) instead of Earth-mass. Broadened the
+  moon giant-family exclusion (added ice-giant/helium/puffy). AddBodyTypeModal header states the mass gate +
+  count. Prereq work done first: gas-giant thermal inflation (2.0.261/263) + hot-Jupiter migration (2.0.264).
 - **E4 — Ellipsoid / toroidal classification.** Add a deformation data point (from rotation period and/or
   tidal pull from a close companion) so fast rotators read as oblate/ellipsoid and extreme cases as
   toroidal. New classifier input + render hint. **Effort M–L, Risk Med** (additive; needs calibration so it
