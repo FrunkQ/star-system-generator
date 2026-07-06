@@ -5,6 +5,7 @@
   import { systemStore, fmt } from '$lib/stores';
   import { checkGasRetention, isCryoImpactedGreenhouseGas } from '$lib/physics/atmosphere';
   import { evaluateTagTriggers as evalTrigger } from '$lib/utils';
+  import { formatGauss } from '$lib/physics/magnetism';
 
   const dispatch = createEventDispatcher();
 
@@ -320,12 +321,10 @@
       body.magneticField.manual = true;
       applyChanges();
   }
-  // Hand the field back to the physics: seed the value from the derived model's mid-range and drop
-  // the override, so the shielding tag follows the interior dynamo read again.
+  // Hand the field back to the physics: drop the override so the processor re-derives the strength from
+  // the model (rotation + composition + core size) on the next pass.
   function resetMagAuto() {
-      const r = body.magnetism?.estimatedRangeGauss;
-      const mid = r ? (r.min + r.max) / 2 : 0;
-      body.magneticField = { strengthGauss: +mid.toFixed(4) };
+      body.magneticField = { strengthGauss: +(body.magnetism?.nominalGauss ?? 0).toFixed(4) };
       applyChanges();
   }
 </script>
@@ -343,7 +342,7 @@
   <div class="form-group">
       <div class="label-row">
            <label>Magnetosphere (Gauss) {#if body.magneticField?.manual}<span class="mag-override" title="Manually overridden — this field governs the shielding tags instead of the interior model.">overridden</span>{/if}</label>
-           <input type="number" step="0.01" bind:value={body.magneticField.strengthGauss} on:input={setMagManual} />
+           <input type="number" step="0.001" bind:value={body.magneticField.strengthGauss} on:input={setMagManual} />
       </div>
       {#if body.magneticField?.manual}
           <button type="button" class="mag-reset-btn" on:click={resetMagAuto}>Reset to calculated ↺</button>
@@ -381,7 +380,7 @@
                   <span class="mag-source">{m.source.replace(/-/g, ' ')}</span>
                   {#if m.source !== 'none'}
                       <span class="mag-geom">{m.geometry.replace(/-/g, ' ')}{m.intrinsic ? ' · intrinsic' : ' · induced'}</span>
-                      <span class="mag-range">implies ~{m.estimatedRangeGauss.min}–{m.estimatedRangeGauss.max} G</span>
+                      <span class="mag-range">implies ~{formatGauss(m.estimatedRangeGauss.min)}–{formatGauss(m.estimatedRangeGauss.max)} G</span>
                   {/if}
               </div>
               {#if m.notes.length}<p class="mag-note">{m.notes[0]}</p>{/if}

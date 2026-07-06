@@ -16,15 +16,28 @@ import { makeupFractions } from './makeup';
 // not induced), the field is ANOMALOUS — the GM put it there (artificial / exotic / unknown origin),
 // so it gets its own tag rather than masquerading as an intrinsic dynamo. Without a manual override the
 // tag follows the derived magnetism model (intrinsic dynamo / induced / none).
+// A field this weak (< ~10% of Earth's ~0.5 G) exists but is negligible for shielding — a TENUOUS
+// magnetosphere (Mercury ≈ 0.003 G, ~1% of Earth's).
+export const TENUOUS_GAUSS = 0.05;
+
+// Format a field strength in Gauss with enough precision to SEE a tenuous field — a fixed 2 dp showed
+// Mercury's ~0.003 G as "0.00 G". Small fields get more decimals.
+export function formatGauss(g: number): string {
+  const v = g || 0;
+  if (v >= 1) return v.toFixed(2);
+  if (v >= 0.01) return v.toFixed(3);
+  if (v > 0) return v.toFixed(4);
+  return '0';
+}
+
 export function magneticShieldingTag(magnetism: Magnetism, field?: MagneticField): string {
+  const s = field?.strengthGauss ?? 0; // the effective field (GM-set if manual, else derived from the model)
   const inducedSource = magnetism.source === 'salty-ocean-induced';
-  if (field?.manual) {
-    if (field.strengthGauss <= 0) return 'magnetic/unshielded';
-    if (inducedSource) return 'magnetic/induced';
-    if (magnetism.intrinsic) return 'magnetic/dynamo';
-    return 'magnetic/anomalous'; // field with no interior dynamo → unknown/artificial origin
-  }
-  return magnetism.intrinsic ? 'magnetic/dynamo' : inducedSource ? 'magnetic/induced' : 'magnetic/unshielded';
+  if (s <= 0) return 'magnetic/unshielded';
+  if (inducedSource) return 'magnetic/induced';            // induced fields are inherently weak — keep the label
+  if (s < TENUOUS_GAUSS) return 'magnetic/tenuous';        // present but negligible (Mercury-like)
+  if (field?.manual && magnetism.source === 'none') return 'magnetic/anomalous'; // GM field with no interior source
+  return 'magnetic/dynamo';
 }
 
 // Rotation support for a dynamo: fast spin organises convection into a strong, ordered field;
@@ -58,6 +71,9 @@ export function deriveMagnetism(body: CelestialBody, opts: MagnetismOpts = {}): 
   let geometry: MagnetGeometry = 'none';
   let intrinsic = false;
   let range = band(0, 0);
+  // A single representative strength (Gauss), calibrated to the real planets, scaled by rotation (a
+  // faster dynamo → stronger field) and core size. The field derives from this unless the GM overrides it.
+  let nominalGauss = 0;
 
   // A carbon-rich interior forms a poorly-convecting polymeric C–N–H / diamond layer that damps a
   // deep dynamo (the "suppressed" case the brief calls out).
@@ -69,6 +85,7 @@ export function deriveMagnetism(body: CelestialBody, opts: MagnetismOpts = {}): 
     geometry = 'dipolar';
     intrinsic = true;
     range = band(3 * rot, 16 * rot);
+    nominalGauss = 2.7 * rot; // Jupiter ≈ 4.3 G (Saturn's anomalously weak field is an outlier — override it)
     notes.push('Liquid metallic-hydrogen envelope drives a strong dipolar field (Jupiter-class).');
   } else if (interior?.liquid === 'superionic-water') {
     // Ice giant: superionic-water mantle convects in a thin shell → tilted, off-centre, multipolar
@@ -77,28 +94,38 @@ export function deriveMagnetism(body: CelestialBody, opts: MagnetismOpts = {}): 
     geometry = 'off-centre';
     intrinsic = true;
     range = band(0.1 * rot, 1.0 * rot);
+    nominalGauss = 0.15 * rot; // Uranus/Neptune ≈ 0.14–0.23 G
     notes.push('Superionic-water mantle dynamo → tilted, off-centre, multipolar field (Uranus/Neptune-like).');
-  } else if (interior?.liquid === 'liquid-iron' && massMe > 0.3) {
-    // Rocky world with a molten iron core → Earth-like dipole, strength scaling with spin & size.
+    // A molten iron core drives a dynamo. Normally that shows up as a conductive liquid-iron layer on a
+    // rocky-mass world; but a metal-RICH body (Mercury is ~70 % iron) retains a partially molten core and
+    // a weak field even when it's small and the layer model calls the core solid — hence the metal escape.
+  } else if ((interior?.liquid === 'liquid-iron' && massMe > 0.3) || (mk.metal > 0.5 && massMe > 0.02)) {
+    const sizeF = Math.min(1.4, Math.max(0.3, Math.cbrt(massMe))); // bigger core → stronger
     if (carbonSuppressed) {
       source = 'suppressed';
       geometry = 'multipolar';
       intrinsic = true;
       range = band(0.005 * rot, 0.05 * rot);
+      nominalGauss = 0.02 * rot * sizeF;
       notes.push('Iron-core dynamo damped by a carbon-rich (polymeric C–N–H / diamond) layer → weak, disordered field.');
     } else if (rot < 0.12) {
-      // Too slow to organise a dynamo (Venus): core may convect but the field is negligible.
+      // Very slow rotation can't organise an ordered dynamo. A large iron core (Mercury) still musters a
+      // weak, disordered field; an Earth-composition slow rotator (Venus) is left essentially unshielded.
+      const bigIronCore = mk.metal > 0.5;
       source = 'suppressed';
-      geometry = 'none';
-      intrinsic = false;
-      range = band(0, 0.002);
-      notes.push('Molten core present, but rotation is far too slow to sustain an ordered dynamo (Venus-like).');
+      geometry = bigIronCore ? 'multipolar' : 'none';
+      intrinsic = bigIronCore;
+      range = bigIronCore ? band(0.001, 0.006) : band(0, 0.002);
+      nominalGauss = bigIronCore ? 0.003 : 0; // Mercury ≈ 0.003 G (tenuous); Venus ≈ 0
+      notes.push(bigIronCore
+        ? 'A large iron core keeps a weak, disordered field despite very slow rotation (Mercury-like).'
+        : 'Molten core present, but rotation is far too slow to sustain an ordered dynamo (Venus-like).');
     } else {
       source = 'iron-core';
       geometry = 'dipolar';
       intrinsic = true;
-      const sizeF = Math.min(1.4, Math.max(0.4, Math.cbrt(massMe))); // bigger core → stronger
       range = band(0.1 * rot * sizeF, 0.7 * rot * sizeF);
+      nominalGauss = 0.5 * rot * sizeF; // Earth ≈ 0.5 G
       notes.push('Molten iron core → Earth-like dipolar field; shields the atmosphere from stellar wind.');
     }
   }
@@ -110,6 +137,7 @@ export function deriveMagnetism(body: CelestialBody, opts: MagnetismOpts = {}): 
     geometry = 'induced';
     intrinsic = false;
     range = band(0.0005, 0.01);
+    nominalGauss = 0.005;
     notes.push('Conductive subsurface ocean induces a weak field within the host planet\'s magnetosphere (Europa-like).');
   }
 
@@ -117,5 +145,5 @@ export function deriveMagnetism(body: CelestialBody, opts: MagnetismOpts = {}): 
     notes.push('No convecting conductive layer (or far too slow rotation) → no magnetic shielding.');
   }
 
-  return { source, geometry, intrinsic, estimatedRangeGauss: range, notes };
+  return { source, geometry, intrinsic, estimatedRangeGauss: range, nominalGauss, notes };
 }

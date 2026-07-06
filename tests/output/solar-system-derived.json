@@ -74,7 +74,7 @@
           "value": "orange"
         },
         {
-          "key": "magnetic/unshielded"
+          "key": "magnetic/tenuous"
         },
         {
           "key": "geology/inactive"
@@ -127,7 +127,7 @@
       "equilibriumTempMaxK": 474.7374959995413,
       "tidallyLocked": true,
       "magneticField": {
-        "strengthGauss": 0
+        "strengthGauss": 0.003
       },
       "internalHeatK": 0,
       "calculatedGravity_ms2": 3.683564214339057,
@@ -199,15 +199,16 @@
         ]
       },
       "magnetism": {
-        "source": "none",
-        "geometry": "none",
-        "intrinsic": false,
+        "source": "suppressed",
+        "geometry": "multipolar",
+        "intrinsic": true,
         "estimatedRangeGauss": {
-          "min": 0,
-          "max": 0
+          "min": 0.001,
+          "max": 0.006
         },
+        "nominalGauss": 0.003,
         "notes": [
-          "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
+          "A large iron core keeps a weak, disordered field despite very slow rotation (Mercury-like)."
         ]
       },
       "oblateness": 0.000001272841752605334,
@@ -354,7 +355,7 @@
         "modifiers": [],
         "fallback": false
       },
-      "habitabilityScore": 7.3872686400977905,
+      "habitabilityScore": 15.38726864009779,
       "habitabilityBreakdown": {
         "factors": [
           {
@@ -430,13 +431,9 @@
           {
             "label": "Geologically inactive (no recycling)",
             "delta": -10
-          },
-          {
-            "label": "No magnetosphere (atmosphere stripping)",
-            "delta": -8
           }
         ],
-        "finalScore": 7,
+        "finalScore": 15,
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
@@ -596,9 +593,13 @@
           "min": 0.056,
           "max": 0.3923
         },
+        "nominalGauss": 0.280221704519341,
         "notes": [
           "Molten iron core → Earth-like dipolar field; shields the atmosphere from stellar wind."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0.2802
       },
       "oblateness": 7.637335768889923e-8,
       "geoActivity": {
@@ -899,7 +900,7 @@
       ],
       "areas": [],
       "magneticField": {
-        "strengthGauss": 0.5
+        "strengthGauss": 0.5014
       },
       "atmosphere": {
         "name": "Nitrogen–Oxygen (Earth-like)",
@@ -1022,6 +1023,7 @@
           "min": 0.1003,
           "max": 0.7019
         },
+        "nominalGauss": 0.5013787916771121,
         "notes": [
           "Molten iron core → Earth-like dipolar field; shields the atmosphere from stellar wind."
         ]
@@ -1472,9 +1474,13 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0
       },
       "oblateness": 0.000009478371541712931,
       "geoActivity": {
@@ -1854,6 +1860,7 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
@@ -2201,9 +2208,13 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0
       },
       "oblateness": 0.12886936484042955,
       "geoActivity": {
@@ -2565,9 +2576,13 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0
       },
       "oblateness": 0.010041517915863664,
       "geoActivity": {
@@ -2955,7 +2970,7 @@
       ],
       "areas": [],
       "magneticField": {
-        "strengthGauss": 4.28
+        "strengthGauss": 4.32
       },
       "atmosphere": {
         "name": "Hydrogen–Helium (Jupiter-like)",
@@ -3051,6 +3066,7 @@
           "min": 4.8,
           "max": 25.6
         },
+        "nominalGauss": 4.32,
         "notes": [
           "Liquid metallic-hydrogen envelope drives a strong dipolar field (Jupiter-class)."
         ]
@@ -3511,9 +3527,13 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0
       },
       "oblateness": 0.0021399203182074344,
       "geoActivity": {
@@ -3959,9 +3979,13 @@
           "min": 0.0005,
           "max": 0.01
         },
+        "nominalGauss": 0.005,
         "notes": [
           "Conductive subsurface ocean induces a weak field within the host planet's magnetosphere (Europa-like)."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0.005
       },
       "oblateness": 0.00062255878629147,
       "geoActivity": {
@@ -4273,7 +4297,7 @@
       ],
       "areas": [],
       "magneticField": {
-        "strengthGauss": 0.007
+        "strengthGauss": 0
       },
       "axial_tilt_deg": 0,
       "rotation_period_hours": 171.6,
@@ -4362,6 +4386,7 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
@@ -4733,9 +4758,13 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0
       },
       "oblateness": 0.00004654612251557393,
       "geoActivity": {
@@ -5046,7 +5075,7 @@
       ],
       "areas": [],
       "magneticField": {
-        "strengthGauss": 0.21
+        "strengthGauss": 4.32
       },
       "atmosphere": {
         "name": "Hydrogen–Helium (Jupiter-like)",
@@ -5142,6 +5171,7 @@
           "min": 4.8,
           "max": 25.6
         },
+        "nominalGauss": 4.32,
         "notes": [
           "Liquid metallic-hydrogen envelope drives a strong dipolar field (Jupiter-class)."
         ]
@@ -5634,6 +5664,7 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
@@ -6019,9 +6050,13 @@
           "min": 0.0005,
           "max": 0.01
         },
+        "nominalGauss": 0.005,
         "notes": [
           "Conductive subsurface ocean induces a weak field within the host planet's magnetosphere (Europa-like)."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0.005
       },
       "oblateness": 0.007828709686467344,
       "geoActivity": {
@@ -6382,9 +6417,13 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0
       },
       "oblateness": 0.006742689784954953,
       "geoActivity": {
@@ -6753,9 +6792,13 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0
       },
       "oblateness": 0.0021353316822122527,
       "geoActivity": {
@@ -7162,9 +7205,13 @@
           "min": 0.0005,
           "max": 0.01
         },
+        "nominalGauss": 0.005,
         "notes": [
           "Conductive subsurface ocean induces a weak field within the host planet's magnetosphere (Europa-like)."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0.005
       },
       "oblateness": 0.023273436592320042,
       "geoActivity": {
@@ -7536,9 +7583,13 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0
       },
       "oblateness": 0.0009440948510978029,
       "geoActivity": {
@@ -7890,9 +7941,13 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0
       },
       "oblateness": 0.000003465856103310481,
       "geoActivity": {
@@ -8178,7 +8233,7 @@
       ],
       "areas": [],
       "magneticField": {
-        "strengthGauss": 0.23
+        "strengthGauss": 0.09
       },
       "atmosphere": {
         "name": "Ice Giant (Uranus-like)",
@@ -8273,6 +8328,7 @@
           "min": 0.06,
           "max": 0.6
         },
+        "nominalGauss": 0.09,
         "notes": [
           "Superionic-water mantle dynamo → tilted, off-centre, multipolar field (Uranus/Neptune-like)."
         ]
@@ -8673,9 +8729,13 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0
       },
       "oblateness": 0.00018860750309831472,
       "geoActivity": {
@@ -9033,9 +9093,13 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0
       },
       "oblateness": 0.00008045839086046679,
       "geoActivity": {
@@ -9397,9 +9461,13 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0
       },
       "oblateness": 0.0023456132052674552,
       "geoActivity": {
@@ -9690,7 +9758,7 @@
       ],
       "areas": [],
       "magneticField": {
-        "strengthGauss": 0.14
+        "strengthGauss": 0.2235
       },
       "atmosphere": {
         "name": "Ice Giant (Uranus-like)",
@@ -9781,6 +9849,7 @@
           "min": 0.149,
           "max": 1.4898
         },
+        "nominalGauss": 0.22346368715083798,
         "notes": [
           "Superionic-water mantle dynamo → tilted, off-centre, multipolar field (Uranus/Neptune-like)."
         ]
@@ -10265,9 +10334,13 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0
       },
       "oblateness": 0.00033336381537566677,
       "geoActivity": {
@@ -10775,9 +10848,13 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0
       },
       "oblateness": 0.0003126141202576074,
       "geoActivity": {
@@ -11152,9 +11229,13 @@
           "min": 0,
           "max": 0
         },
+        "nominalGauss": 0,
         "notes": [
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
+      },
+      "magneticField": {
+        "strengthGauss": 0
       },
       "oblateness": 0.0003419286569030933,
       "geoActivity": {

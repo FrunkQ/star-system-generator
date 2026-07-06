@@ -96,6 +96,7 @@ export interface Magnetism {
   geometry: MagnetGeometry;
   intrinsic: boolean;                              // self-generated (vs induced by a host field)
   estimatedRangeGauss: { min: number; max: number };
+  nominalGauss: number;                            // a single representative strength (rotation + composition + size scaled); the field derives from this unless the GM overrides it
   notes: string[];
 }
 

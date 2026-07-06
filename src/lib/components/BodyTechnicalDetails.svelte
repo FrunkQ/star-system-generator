@@ -10,6 +10,7 @@
   import { get } from 'svelte/store';
   import { calculateSurfaceRadiation } from '$lib/physics/radiation';
   import { makeupFractions, gasThermalInflationFactor } from '$lib/physics/makeup';
+  import { formatGauss } from '$lib/physics/magnetism';
   import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_GRAVITY, EARTH_DENSITY, RADIATION_UNSHIELDED_DOSE_MSV_YR } from '$lib/constants';
 
   export let body: CelestialBody | Barycenter | null;
@@ -672,7 +673,7 @@
       {#if body.magneticField}
           <div class="detail-item" title="Magnetic field strength in Gauss. A value > 1 is strong enough to offer significant protection from stellar radiation.">
               <span class="label">Magnetic Field</span>
-              <span class="value">{body.magneticField.strengthGauss.toFixed(2)} G</span>
+              <span class="value">{formatGauss(body.magneticField.strengthGauss)} G</span>
           </div>
       {/if}
 

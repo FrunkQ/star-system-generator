@@ -84,36 +84,33 @@ describe('deriveMagnetism', () => {
   });
 });
 
-// E3 — the magnetic/* shielding tag must reconcile with a MANUALLY-set field (F-OVR): setting the
-// field to 0 removes the field (unshielded), raising it above 0 adds one, overriding the interior
-// dynamo model. Untouched (non-manual) bodies keep following the model.
-describe('magneticShieldingTag — manual field overrides the model (E3)', () => {
-  const dynamoModel: Magnetism = { source: 'iron-core', geometry: 'dipolar', intrinsic: true, estimatedRangeGauss: { min: 0.1, max: 0.7 }, notes: [] };
-  const noneModel: Magnetism = { source: 'none', geometry: 'none', intrinsic: false, estimatedRangeGauss: { min: 0, max: 0 }, notes: [] };
-  const inducedModel: Magnetism = { source: 'salty-ocean-induced', geometry: 'induced', intrinsic: false, estimatedRangeGauss: { min: 0.0005, max: 0.01 }, notes: [] };
+// E3/E4 — the magnetic/* shielding tag reads the EFFECTIVE field strength (derived from the model, or
+// the GM's manual value). The processor sets strengthGauss from the model's nominalGauss unless manual.
+describe('magneticShieldingTag — reads the effective field strength', () => {
+  const dynamoModel: Magnetism = { source: 'iron-core', geometry: 'dipolar', intrinsic: true, estimatedRangeGauss: { min: 0.1, max: 0.7 }, nominalGauss: 0.5, notes: [] };
+  const noneModel: Magnetism = { source: 'none', geometry: 'none', intrinsic: false, estimatedRangeGauss: { min: 0, max: 0 }, nominalGauss: 0, notes: [] };
+  const inducedModel: Magnetism = { source: 'salty-ocean-induced', geometry: 'induced', intrinsic: false, estimatedRangeGauss: { min: 0.0005, max: 0.01 }, nominalGauss: 0.005, notes: [] };
   const manual = (strengthGauss: number): MagneticField => ({ strengthGauss, manual: true });
 
-  it('follows the model when the field is not a manual override', () => {
-    expect(magneticShieldingTag(dynamoModel, undefined)).toBe('magnetic/dynamo');
-    expect(magneticShieldingTag(dynamoModel, { strengthGauss: 0 })).toBe('magnetic/dynamo'); // generated 0, not manual
-    expect(magneticShieldingTag(noneModel, undefined)).toBe('magnetic/unshielded');
-    expect(magneticShieldingTag(inducedModel, undefined)).toBe('magnetic/induced');
+  it('a healthy field is a dynamo; nothing is unshielded', () => {
+    expect(magneticShieldingTag(dynamoModel, { strengthGauss: 0.5 })).toBe('magnetic/dynamo');
+    expect(magneticShieldingTag(noneModel, { strengthGauss: 0 })).toBe('magnetic/unshielded');
   });
 
-  it('a manual field of 0 strips the field even when the model implies a dynamo', () => {
+  it('a whisker of a field (Mercury-like) is TENUOUS, not a full dynamo', () => {
+    expect(magneticShieldingTag(dynamoModel, { strengthGauss: 0.003 })).toBe('magnetic/tenuous');
+    expect(magneticShieldingTag(dynamoModel, { strengthGauss: 0.049 })).toBe('magnetic/tenuous');
+    expect(magneticShieldingTag(dynamoModel, { strengthGauss: 0.06 })).toBe('magnetic/dynamo');
+  });
+
+  it('an induced ocean field keeps its label even though it is weak', () => {
+    expect(magneticShieldingTag(inducedModel, { strengthGauss: 0.005 })).toBe('magnetic/induced');
+    expect(magneticShieldingTag(inducedModel, { strengthGauss: 0 })).toBe('magnetic/unshielded');
+  });
+
+  it('a MANUAL field of 0 strips the field; above 0 with no interior source is ANOMALOUS', () => {
     expect(magneticShieldingTag(dynamoModel, manual(0))).toBe('magnetic/unshielded');
-  });
-
-  it('a manual field above 0 on a body with no natural source reads as ANOMALOUS (GM-imposed/unknown)', () => {
-    expect(magneticShieldingTag(noneModel, manual(2.5))).toBe('magnetic/anomalous');
-  });
-
-  it('a manual field on a body whose model DOES have a dynamo stays a dynamo (source is known)', () => {
-    expect(magneticShieldingTag(dynamoModel, manual(3))).toBe('magnetic/dynamo');
-  });
-
-  it('a manual non-zero field keeps the induced character; zero strips it', () => {
-    expect(magneticShieldingTag(inducedModel, manual(0.005))).toBe('magnetic/induced');
-    expect(magneticShieldingTag(inducedModel, manual(0))).toBe('magnetic/unshielded');
+    expect(magneticShieldingTag(noneModel, manual(2.5))).toBe('magnetic/anomalous');   // GM-imposed, no source
+    expect(magneticShieldingTag(dynamoModel, manual(3))).toBe('magnetic/dynamo');       // model has a source
   });
 });

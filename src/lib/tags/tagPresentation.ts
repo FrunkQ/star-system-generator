@@ -177,6 +177,7 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   // --- Magnetism ---
   'magnetic/dynamo':     { label: 'Intrinsic dynamo', description: 'A convecting conductive interior generates a self-sustained magnetic field that shields the atmosphere from stellar wind.' },
   'magnetic/induced':    { label: 'Induced field',    description: "A conductive subsurface ocean induces a weak field within the host planet's magnetosphere — no internal dynamo (Europa)." },
+  'magnetic/tenuous':    { label: 'Tenuous magnetosphere', description: 'A real but very weak field (well under a tenth of Earth’s) — a small or slowly-spinning iron core (Mercury ≈ 0.003 G). Barely any stellar-wind shielding.' },
   'magnetic/unshielded': { label: 'No magnetosphere', description: 'No convecting conductor (or far too slow rotation) → the atmosphere is exposed to stellar-wind stripping.' },
   'magnetic/anomalous':  { label: 'Anomalous field',  description: 'A magnetic field with no interior dynamo to explain it — an imposed field of unknown or artificial origin (megastructure, exotic matter, a young system…).' },
 

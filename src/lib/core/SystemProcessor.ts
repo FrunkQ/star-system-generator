@@ -573,11 +573,17 @@ export class SystemProcessor implements ISystemProcessor {
             }
         }
         body.magnetism = deriveMagnetism(body, { insideHostMagnetosphere });
+        // The field STRENGTH derives from the model (rotation + composition + core size) unless the GM
+        // has set it manually (F-OVR). So spinning a world up or making it metal-rich changes its field,
+        // and a small iron-cored world like Mercury gets a tenuous field instead of nothing. A manual
+        // value is left untouched and still overrides the tag below.
+        if (!body.magneticField?.manual) {
+            body.magneticField = { strengthGauss: +body.magnetism.nominalGauss.toFixed(4) };
+        }
         body.tags = (body.tags || []).filter(t => !t.key.startsWith('magnetic/'));
-        // The shielding tag reconciles with the field the GM sees. F-OVR: once the field is set
-        // MANUALLY it overrides the interior dynamo read — set it to 0 and the world becomes
-        // unshielded (tag removed) even if the model implies a dynamo; set it above 0 and it gains a
-        // field even if the model finds none. Untouched bodies follow the derived model as before.
+        // The shielding tag reconciles with the field the GM sees: 0 → unshielded, a whisker → tenuous
+        // (Mercury), induced ocean → induced, a manual field with no interior source → anomalous, else a
+        // dynamo. A manual value overrides the derived one.
         body.tags.push({ key: magneticShieldingTag(body.magnetism, body.magneticField) });
 
         // Rotational deformation (E4). A spinning body flattens; past the density-set breakup spin it
