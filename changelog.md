@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.260-beta - 6th Jul 2026
+
+* **Albedo is a GM override again** (Temperature tab). It's still derived from the surface and cloud decks by default, but you can click *override* to pin a reflectivity — it's saved and fed into the equilibrium temperature and the classification, with a *Reset to calculated* control that hands it back to the physics. Darkening a world warms it; brightening cools it. (First use of the new saved-override mechanism; temperature itself stays derived — tweak albedo or radiogenic heat to move it.)
+
 ## v2.0.259-beta - 6th Jul 2026
 
 * New **Anomalous field** magnetosphere tag. If you give a body a magnetic field that its interior can't explain (no dynamo, not an induced ocean field), it no longer pretends to be a natural dynamo — it's tagged as an anomalous field of unknown or artificial origin (a megastructure, exotic matter, a young system…). Natural dynamos and induced fields are unchanged.

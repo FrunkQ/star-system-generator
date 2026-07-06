@@ -43,9 +43,11 @@ function giantAlbedo(teqK: number, ch4: number, massMe: number, isIceGiant: bool
 }
 
 export function deriveAlbedo(body: CelestialBody, teqK: number, pack?: RulePack | null): AlbedoBreakdown {
-  // A manually pinned albedo still wins (e.g. art direction), but it's no longer required.
-  if (typeof body.albedo === 'number' && body.albedo >= 0 && body.albedo <= 1) {
-    return { albedo: body.albedo, surfaceAlbedo: body.albedo, cloudAlbedo: 0, cloudCover: 0, note: 'Manually set.' };
+  // F-OVR: a GM-pinned albedo (body.overrides.albedo) wins and is fed straight into the temperature
+  // solve; the legacy body.albedo is honoured too. Otherwise the albedo is derived below.
+  const pinned = body.overrides?.albedo ?? (typeof body.albedo === 'number' ? body.albedo : undefined);
+  if (typeof pinned === 'number' && pinned >= 0 && pinned <= 1) {
+    return { albedo: pinned, surfaceAlbedo: pinned, cloudAlbedo: 0, cloudCover: 0, note: 'Manually set (GM override).' };
   }
   const mk = makeupFractions(body);
   const massMe = (body.massKg ?? 0) / 5.972e24;

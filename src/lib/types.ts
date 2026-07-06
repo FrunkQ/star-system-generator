@@ -211,6 +211,13 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   tidallyLocked?: boolean;      // one face permanently toward its primary (no day/night cycle)
   obliquity_deg?: number;       // axial tilt — drives seasonal variation
   albedoBreakdown?: { albedo: number; surfaceAlbedo: number; cloudAlbedo: number; cloudCover: number; cloudSpecies?: string; note: string };
+  // F-OVR: GM overrides for otherwise-derived scalars. A key being PRESENT means the GM pinned that
+  // value — it is saved and fed into the derivation instead of the computed default, with a reset that
+  // deletes the key and hands control back to the physics. (magneticField uses its own `manual` flag.)
+  overrides?: {
+    albedo?: number;              // Bond albedo 0..1 (else derived from makeup + cloud decks)
+    gasThermalInflation?: number; // gas-giant radius inflation factor (else derived from insolation)
+  };
   calculatedGravity_ms2?: number;
   distanceToHost_km?: number;
   orbitalBoundaries?: OrbitalBoundaries;

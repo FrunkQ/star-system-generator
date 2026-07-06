@@ -14,11 +14,33 @@
 
   function calculateEquilibrium() {
       // Use shared helper for robust calculation (handles Binaries, Moons, etc.)
-      // Note: The helper assumes body.orbit is up to date, which it should be due to binding in BodyOrbitTab.
-      // However, if we are editing 'body' locally here, we rely on the object reference being updated elsewhere?
-      // No, BodyOrbitTab updates 'body' directly. 'body' is passed by reference.
-      // But we need to ensure we pass the correct albedo.
-      return calculateEquilibriumTemperature(body, nodes, estimateBondAlbedo(body));
+      // A GM albedo override (body.overrides.albedo) wins over the estimate, so this preview matches
+      // what the processor's deriveAlbedo will commit.
+      return calculateEquilibriumTemperature(body, nodes, body.overrides?.albedo ?? estimateBondAlbedo(body));
+  }
+
+  // --- Albedo F-OVR: derived by default; the GM can pin a value that feeds temperature + classification.
+  $: albedoOverridden = typeof body.overrides?.albedo === 'number';
+  function ensureOverrides() { if (!body.overrides) body.overrides = {}; }
+  function startAlbedoOverride() {
+      ensureOverrides();
+      body.overrides!.albedo = body.albedoBreakdown?.albedo ?? estimateBondAlbedo(body); // seed from the current derived value
+      updateTotal();
+      dispatch('update');
+  }
+  function onAlbedoInput() {
+      if (body.overrides && typeof body.overrides.albedo === 'number') {
+          body.overrides.albedo = Math.max(0, Math.min(1, body.overrides.albedo));
+      }
+      updateTotal();
+  }
+  function resetAlbedoAuto() {
+      if (body.overrides) {
+          delete body.overrides.albedo;
+          if (Object.keys(body.overrides).length === 0) delete body.overrides;
+      }
+      updateTotal();
+      dispatch('update');
   }
 
   function updateTotal() {
@@ -60,9 +82,15 @@
       return 'var(--temp-hot)';
   }
 
-  // Watch for external changes
-  $: if (body.orbit?.elements.a_AU || parentBody?.orbit?.elements.a_AU) {
-      updateTotal();
+  // Recompute the local temperature preview only when the ORBIT distance actually changes (or the body
+  // switches) — NOT on every reprocess/body-prop update. Firing on every change made updateTotal fight
+  // the processor's own temperature write and loop once an albedo override couples albedo → equilibrium
+  // → greenhouse. After an edit the processor owns the committed temperature; the tab renders that.
+  let lastEqKey = '';
+  $: {
+      const au = body.orbit?.elements.a_AU ?? parentBody?.orbit?.elements.a_AU ?? 0;
+      const key = `${body.id}:${au}`;
+      if (au && key !== lastEqKey) { lastEqKey = key; updateTotal(); }
   }
 </script>
 
@@ -79,11 +107,20 @@
             <span class="value">{$fmt.tempK(body.equilibriumTempK || 0)}</span>
         </div>
         
-        {#if body.albedoBreakdown}
+        {#if albedoOverridden}
+            <div class="form-group">
+                <label>Bond Albedo <span class="override-pill" title="Manually overridden — this reflectivity feeds the temperature and classification instead of the derived value.">overridden</span></label>
+                <div class="input-row">
+                    <input type="range" min="0" max="1" step="0.01" bind:value={body.overrides.albedo} on:input={onAlbedoInput} on:change={() => dispatch('update')} />
+                    <input type="number" min="0" max="1" step="0.01" bind:value={body.overrides.albedo} on:input={onAlbedoInput} on:change={() => dispatch('update')} style="width: 60px;" />
+                </div>
+                <button type="button" class="link-btn" on:click={resetAlbedoAuto}>Reset to calculated ↺</button>
+            </div>
+        {:else if body.albedoBreakdown}
             {@const ab = body.albedoBreakdown}
             <div class="read-only-row">
                 <label>Bond Albedo <span class="derived-pill" title="Reflectivity is derived from the surface makeup and the cloud decks that condense at this temperature — tweak the makeup / atmosphere / water and it follows.">derived</span></label>
-                <span class="value">{ab.albedo}</span>
+                <span class="value">{ab.albedo} <button type="button" class="link-btn inline" on:click={startAlbedoOverride}>override</button></span>
             </div>
             <div class="albedo-note">
                 {#if ab.cloudCover > 0}
@@ -95,7 +132,7 @@
         {:else}
             <div class="read-only-row">
                 <label>Bond Albedo</label>
-                <span class="value">{(body.albedo ?? 0).toFixed(2)}</span>
+                <span class="value">{(body.albedo ?? 0).toFixed(2)} <button type="button" class="link-btn inline" on:click={startAlbedoOverride}>override</button></span>
             </div>
         {/if}
 
@@ -187,4 +224,8 @@
   .comp-range { font-variant-numeric: tabular-nums; white-space: nowrap; }
   .albedo-note { font-size: 0.78em; color: var(--text-faint); line-height: 1.4; margin-top: -4px; }
   .derived-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }
+  .override-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent, #ff5a1f); border: 1px solid var(--accent, #ff5a1f); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }
+  .link-btn { background: none; border: none; padding: 2px 0; color: var(--link, #6aa0d8); font-size: 0.78em; cursor: pointer; }
+  .link-btn.inline { margin-left: 6px; font-size: 0.72em; }
+  .link-btn:hover { text-decoration: underline; }
 </style>

@@ -36,4 +36,14 @@ describe('deriveAlbedo', () => {
     expect(a.albedo).toBe(0.9);
     expect(a.note).toMatch(/manual/i);
   });
+
+  it('a GM albedo OVERRIDE (overrides.albedo) wins over the derived value', () => {
+    // An ocean world would derive ~0.3; the override forces it dark, and that value is what feeds temperature.
+    const a = deriveAlbedo(body({
+      hydrosphere: { composition: 'water', coverage: 0.7 } as any,
+      overrides: { albedo: 0.05 }
+    }), 255);
+    expect(a.albedo).toBe(0.05);
+    expect(a.note).toMatch(/override/i);
+  });
 });
