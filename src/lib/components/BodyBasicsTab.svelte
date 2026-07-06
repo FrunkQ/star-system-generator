@@ -177,6 +177,23 @@
   $: pRadPos = logPos(pRadiusRe, pRadMin, pRadMax);
   $: pDenPos = logPos(pDensity, pDenMin, pDenMax);
 
+  // Unit selectors for the Mass & Radius number fields — a 3-way click cycler shown in the label gap, so
+  // a tiny moon (awkward as 1e-8 M⊕) can be edited in tonnes or km instead. The SLIDER stays in canonical
+  // Earth units; only the number field's display unit changes. Radius' third option follows the starmap's
+  // km/mi choice.
+  const M_JUP_ME = 317.8;    // Jupiter mass in Earth masses
+  const R_JUP_RE = 11.209;   // Jupiter radius in Earth radii
+  let massUnit: 'earth' | 'jupiter' | 'tonnes' = 'earth';
+  let radUnit: 'earth' | 'jupiter' | 'dist' = 'earth';
+  const cycleMassUnit = () => { massUnit = massUnit === 'earth' ? 'jupiter' : massUnit === 'jupiter' ? 'tonnes' : 'earth'; };
+  const cycleRadUnit = () => { radUnit = radUnit === 'earth' ? 'jupiter' : radUnit === 'jupiter' ? 'dist' : 'earth'; };
+  $: massUnitSym = massUnit === 'earth' ? 'M⊕' : massUnit === 'jupiter' ? 'M♃' : 't';
+  $: radUnitSym = radUnit === 'earth' ? 'R⊕' : radUnit === 'jupiter' ? 'R♃' : $fmt.distUnit;
+  $: massDisp = massUnit === 'earth' ? pMassMe : massUnit === 'jupiter' ? pMassMe / M_JUP_ME : (body.massKg ?? 0) / 1000;
+  $: radDisp = radUnit === 'earth' ? pRadiusRe : radUnit === 'jupiter' ? pRadiusRe / R_JUP_RE : $fmt.toDist(body.radiusKm ?? 0);
+  const massMeFromDisp = (v: number) => massUnit === 'earth' ? v : massUnit === 'jupiter' ? v * M_JUP_ME : (v * 1000) / EARTH_MASS_KG;
+  const radReFromDisp = (v: number) => radUnit === 'earth' ? v : radUnit === 'jupiter' ? v * R_JUP_RE : $fmt.fromDist(v) / EARTH_RADIUS_KM;
+
   // Read the live state straight from the body (NOT the reactive pMassMe/pMakeup vars, which are
   // stale within a synchronous edit batch — so consecutive edits chain off fresh values).
   function pState(): BodyEditState {
@@ -242,8 +259,8 @@
   const onMassSlider = (e: Event)  => applyMass(logVal(+(e.target as HTMLInputElement).value, pMassMin, pMassMax));
   const onRadSlider = (e: Event)   => applyRadius(logVal(+(e.target as HTMLInputElement).value, pRadMin, pRadMax));
   const onDenSlider = (e: Event)   => applyDensity(logVal(+(e.target as HTMLInputElement).value, pDenMin, pDenMax));
-  const onMassNum = (e: Event)     => applyMass(parseFloat((e.target as HTMLInputElement).value));
-  const onRadNum = (e: Event)      => applyRadius(parseFloat((e.target as HTMLInputElement).value));
+  const onMassNum = (e: Event)     => applyMass(massMeFromDisp(parseFloat((e.target as HTMLInputElement).value)));
+  const onRadNum = (e: Event)      => applyRadius(radReFromDisp(parseFloat((e.target as HTMLInputElement).value)));
   const onDenNum = (e: Event)      => applyDensity(parseFloat((e.target as HTMLInputElement).value));
   const onMkSlider = (k: keyof Makeup, e: Event) => applyMakeupComp(k, +(e.target as HTMLInputElement).value);
   const onMkNum = (k: keyof Makeup, e: Event)    => applyMakeupComp(k, parseFloat((e.target as HTMLInputElement).value) || 0);
@@ -380,8 +397,8 @@
         <div class="sc-row">
             <button class="lock" class:on={lock === 'mass'} title={lock === 'mass' ? 'Mass pinned - click to release' : 'Pin the mass'} on:click={() => toggleLock('mass')} aria-label="Lock mass">{lock === 'mass' ? '🔒' : '🔓'}</button>
             <label>Mass</label>
-            <input class="sc-num" type="number" step="any" value={r4(pMassMe)} on:input={onMassNum} disabled={lock === 'mass'} />
-            <span class="sc-unit">M⊕</span>
+            <button class="sc-unit-cycle" on:click={cycleMassUnit} title="Units: Earth · Jupiter · tonnes — click to change" aria-label="Change mass units">{massUnitSym}</button>
+            <input class="sc-num" type="number" step="any" value={r4(massDisp)} on:input={onMassNum} disabled={lock === 'mass'} />
         </div>
         <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pMassPos} on:input={onMassSlider} disabled={lock === 'mass'} />
         <div class="sub-label">{(body.massKg || 0).toExponential(2)} kg{#if pMassMe >= 318} · {(pMassMe / 317.8).toFixed(2)} M♃{/if}</div>
@@ -392,8 +409,8 @@
         <div class="sc-row">
             <button class="lock" class:on={lock === 'radius'} title={lock === 'radius' ? 'Radius pinned - click to release' : 'Pin the radius'} on:click={() => toggleLock('radius')} aria-label="Lock radius">{lock === 'radius' ? '🔒' : '🔓'}</button>
             <label>Radius</label>
-            <input class="sc-num" type="number" step="any" value={r4(pRadiusRe)} on:input={onRadNum} disabled={lock === 'radius'} />
-            <span class="sc-unit">R⊕</span>
+            <button class="sc-unit-cycle" on:click={cycleRadUnit} title="Units: Earth · Jupiter · {$fmt.distUnit} — click to change" aria-label="Change radius units">{radUnitSym}</button>
+            <input class="sc-num" type="number" step="any" value={r4(radDisp)} on:input={onRadNum} disabled={lock === 'radius'} />
         </div>
         <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pRadPos} on:input={onRadSlider} disabled={lock === 'radius'} />
         <div class="sub-label">{$fmt.km(body.radiusKm || 0)}</div>
@@ -694,6 +711,13 @@
   .sc-row label { flex: 1; color: var(--text); font-size: 0.95em; }
   .sc-num { width: 90px; }
   .sc-unit { width: 34px; font-size: 0.8em; color: var(--text-faint); }
+  /* Clickable 3-way unit cycler sitting in the gap between the label and the value. */
+  .sc-unit-cycle {
+      min-width: 30px; text-align: center; font-size: 0.8em; line-height: 1.2;
+      background: var(--bg-control, #1b1e26); color: var(--text-muted);
+      border: 1px solid var(--border); border-radius: 4px; padding: 2px 5px; cursor: pointer;
+  }
+  .sc-unit-cycle:hover { border-color: var(--accent, #ff5a1f); color: var(--text); }
   .lock {
       background: transparent; border: 1px solid var(--border); border-radius: 4px;
       padding: 2px 5px; cursor: pointer; font-size: 0.85em; line-height: 1;

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.300-beta - 6th Jul 2026
+
+* **Pick the units when editing a planet's mass and radius.** In the Size & Composition editor there's now a little unit button in the gap next to "Mass" and "Radius" — click it to cycle Mass between Earth masses, Jupiter masses and tonnes, and Radius between Earth radii, Jupiter radii and km/miles (following your starmap's distance setting). Makes small moons and giants far easier to type in than everything-in-Earth-units. The slider is unchanged; only the number field's units switch.
+
 ## v2.0.299-beta - 6th Jul 2026
 
 * **Fixed the Invert / background-image toggles fighting each other** in Settings → Starmap. The invert setting was being re-synced from the saved map on every little change while the panel was open, so it (and the background toggle it disables) could spontaneously flip back. It's now read once when the panel opens, so the two behave predictably: turning on invert disables the background image, turning it off restores it. Also relabelled to "Invert Starmap display (print)".
