@@ -137,7 +137,18 @@ Possible future tweak: a smaller configurable "system edge" if the Hill limit fe
 
 ---
 
-## Phase D — Body editing: mass / radius / density  (design-gated flagship)
+## Phase D — Body editing: mass / radius / density  ✅ DONE (D0 design; D1 v2.0.254-beta)
+
+D1 shipped: the planet/moon Composition tab is now a **Size & Composition editor** — three large
+Mass/Radius/Density sliders, each with a typed field + per-field lock, over the ρ = M/(4/3·π·R³)
+preservation chain (`src/lib/physics/bodyEdit.ts`, 9 tests). Density-gated composition presets;
+live interior-makeup rows that back-drive density; density-lock ≡ composition-lock. Absorbed and
+removed `MakeupEditor.svelte`. The terrestrial→gas-giant transition works end-to-end, backed by a
+`SystemProcessor` gate: a gas-dominated body (makeup.gas > 0.5) zeroes its biosphere/hydrosphere/
+surface-liquid classifier features so it classifies as a giant instead of clinging to a leftover
+habitable fingerprint — non-destructive, reverses cleanly. Every panel edit sets `autoClassify`
+(F-RECLASS-lite). NOTE: F-OVR proper (saved per-field overrides object) was NOT built — D1 routes
+type control through `autoClassify` instead; E3/F3 still need the real F-OVR mechanism.
 
 The largest item and the one you asked to see designed before it is built. Likely also fixes the
 "can't turn a terrestrial into a gas giant / classifier doesn't re-run" bug, because it forces a clean

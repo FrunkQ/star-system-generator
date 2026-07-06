@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'fs';
+import path from 'path';
 import { classifyByFingerprint } from './classification';
 import type { Fingerprint } from '$lib/types';
 
@@ -41,5 +43,34 @@ describe('classifyByFingerprint', () => {
   it('weak modifier slivers are not added', () => {
     const noRing = { mass_Me: 318, radius_Re: 11, has_ring_child: 0 };
     expect(classifyByFingerprint(noRing, FPS, 4)).not.toContain('planet/ringed');
+  });
+});
+
+// E2 — an eyeball world needs STAR-lock (a permanent substellar point). A moon is tidally locked
+// to its PLANET, not the star, so its far side still cycles through stellar day/night — it can
+// never be an eyeball. The real rulepack's eyeball fingerprints key on `starTidallyLocked`, which
+// the processor sets to 1 only when the body is tidally locked AND orbits a star (orbitsStar=1).
+describe('eyeball classes require star-lock, not planet-lock (E2)', () => {
+  const realFps = JSON.parse(
+    fs.readFileSync(path.resolve('static/rulepacks/starter-sf/classification.json'), 'utf-8')
+  ).classifier.fingerprints as Fingerprint[];
+
+  // A cold, tidally-locked terrestrial: icy except the substellar point.
+  const coldEyeball = {
+    tidallyLocked: 1, starTidallyLocked: 1, orbitsStar: 1,
+    Teq_K: 200, radius_Re: 0.9, density: 4, mass_Me: 0.8
+  };
+
+  it('a STAR-locked world in the cold band classifies as a cold-eyeball', () => {
+    expect(classifyByFingerprint(coldEyeball, realFps, 4)[0]).toBe('planet/cold-eyeball');
+  });
+
+  it('a moon locked to its PLANET (starTidallyLocked=0) is never an eyeball', () => {
+    // Same body, but it orbits a planet: still tidallyLocked, but not star-locked.
+    const moon = { ...coldEyeball, starTidallyLocked: 0, orbitsStar: 0 };
+    const cls = classifyByFingerprint(moon, realFps, 4);
+    expect(cls).not.toContain('planet/cold-eyeball');
+    expect(cls).not.toContain('planet/eyeball');
+    expect(cls).not.toContain('planet/hot-eyeball');
   });
 });

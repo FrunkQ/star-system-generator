@@ -478,7 +478,12 @@ export class SystemProcessor implements ISystemProcessor {
             SurfaceTemp_K: body.temperatureK || 0,
             orbital_period_days: body.orbital_period_days || 0,
             rotation_period_hours: Math.abs(body.rotation_period_hours || 0),
-            tidallyLocked: body.tidallyLocked ? 1 : 0
+            tidallyLocked: body.tidallyLocked ? 1 : 0,
+            // Eyeball worlds need STAR-lock: a permanent substellar point facing the star. A moon is
+            // tidally locked to its PLANET, not the star, so its far side still cycles through stellar
+            // day/night — it can never be an eyeball. orbitsStar is 0 for moons (they orbit a planet /
+            // planet-moon barycentre), so this is 0 for them even when tidallyLocked is 1.
+            starTidallyLocked: (body.tidallyLocked && orbitsStar) ? 1 : 0
         };
 
         // Default the environment features so airless/dry bodies match (undefined would

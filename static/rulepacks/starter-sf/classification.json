@@ -1077,7 +1077,7 @@
         "kind": "base",
         "note": "Tidally locked, temperate — substellar oasis.",
         "match": {
-          "tidallyLocked": [
+          "starTidallyLocked": [
             1,
             1
           ],
@@ -1097,7 +1097,7 @@
         "kind": "base",
         "note": "Tidally locked with a molten/dry dayside.",
         "match": {
-          "tidallyLocked": [
+          "starTidallyLocked": [
             1,
             1
           ],
@@ -1113,7 +1113,7 @@
         "kind": "base",
         "note": "Tidally locked, icy except the substellar point.",
         "match": {
-          "tidallyLocked": [
+          "starTidallyLocked": [
             1,
             1
           ],
@@ -1750,7 +1750,7 @@
           "all": [
             {
               "eq": [
-                "tidallyLocked",
+                "starTidallyLocked",
                 1
               ]
             },
@@ -1787,7 +1787,7 @@
           "all": [
             {
               "eq": [
-                "tidallyLocked",
+                "starTidallyLocked",
                 1
               ]
             },

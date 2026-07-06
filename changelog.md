@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.255-beta - 6th Jul 2026
+
+* Fixed **moons being mis-classified as "eyeball" worlds**. An eyeball world needs a permanent substellar point — it has to be tidally locked to its *star*. A moon is locked to its *planet*, so its far side still turns through the star's day and night; it can never be an eyeball. The eyeball types now require star-lock, so tidally-locked moons classify by what they actually are (dwarf planet, mesoplanet, planetesimal…). Corrects several outer moons in the bundled Solar System.
+
 ## v2.0.254-beta - 6th Jul 2026
 
 * **Size & Composition editor** (a planet/moon's Composition tab, rebuilt). Mass, radius and density are bound by one equation (ρ = M/(4/3·π·R³)), so you get three large sliders — Mass, Radius, Density — each with a typed number field and a padlock. Drag one and the physics holds the sensible quantity and derives another: drag mass → the radius follows; drag radius → the density (and interior makeup) shift; set a density → the mass follows. A padlock pins any of the three: **locking Density holds the composition**, so you can resize a world freely without recomposing it.

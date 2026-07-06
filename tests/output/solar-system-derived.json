@@ -253,7 +253,7 @@
         "baseScore": 1.56,
         "bands": [
           {
-            "feature": "tidallyLocked",
+            "feature": "starTidallyLocked",
             "value": 1,
             "band": "1 – 1",
             "fit": 1
@@ -275,7 +275,7 @@
             "score": 1.56,
             "bands": [
               {
-                "feature": "tidallyLocked",
+                "feature": "starTidallyLocked",
                 "value": 1,
                 "band": "1 – 1",
                 "fit": 1
@@ -1500,45 +1500,27 @@
       },
       "apparentColorHex": "#9c7a5a",
       "classification": {
-        "base": "planet/cold-eyeball",
-        "baseScore": 1.51,
+        "base": "planet/mesoplanet",
+        "baseScore": 1.2,
         "bands": [
           {
-            "feature": "tidallyLocked",
-            "value": 1,
-            "band": "1 – 1",
+            "feature": "radius_Re",
+            "value": 0.27270444200282534,
+            "band": "0.08 – 0.4",
             "fit": 1
           },
           {
-            "feature": "Teq_K",
-            "value": 267.19206115251916,
-            "band": "120 – 255",
-            "fit": 0.68
+            "feature": "mass_Me",
+            "value": 0.012294038847957132,
+            "band": "0.002 – 0.1",
+            "fit": 1
           }
         ],
         "runnerUp": {
-          "class": "planet/mesoplanet",
-          "score": 1.2
+          "class": "planet/barren",
+          "score": 1.19
         },
         "candidates": [
-          {
-            "class": "planet/cold-eyeball",
-            "score": 1.51,
-            "bands": [
-              {
-                "feature": "tidallyLocked",
-                "value": 1,
-                "band": "1 – 1",
-                "fit": 1
-              },
-              {
-                "feature": "Teq_K",
-                "value": 267.19206115251916,
-                "band": "120 – 255",
-                "fit": 0.68
-              }
-            ]
-          },
           {
             "class": "planet/mesoplanet",
             "score": 1.2,
@@ -1630,7 +1612,7 @@
             ]
           }
         ],
-        "borderline": false,
+        "borderline": true,
         "modifiers": [],
         "fallback": false
       },
@@ -2242,45 +2224,27 @@
       },
       "apparentColorHex": "#b0a092",
       "classification": {
-        "base": "planet/cold-eyeball",
-        "baseScore": 1.8,
+        "base": "planet/planetesimal",
+        "baseScore": 1.2,
         "bands": [
           {
-            "feature": "tidallyLocked",
-            "value": 1,
-            "band": "1 – 1",
+            "feature": "mass_Me",
+            "value": 1.7749497655726723e-9,
+            "band": "0 – 0.003",
             "fit": 1
           },
           {
-            "feature": "Teq_K",
-            "value": 206.09012054039917,
-            "band": "120 – 255",
+            "feature": "radius_Re",
+            "value": 0.0017579657824517343,
+            "band": "0 – 0.1",
             "fit": 1
           }
         ],
         "runnerUp": {
-          "class": "planet/planetesimal",
-          "score": 1.2
+          "class": "planet/barren",
+          "score": 1.19
         },
         "candidates": [
-          {
-            "class": "planet/cold-eyeball",
-            "score": 1.8,
-            "bands": [
-              {
-                "feature": "tidallyLocked",
-                "value": 1,
-                "band": "1 – 1",
-                "fit": 1
-              },
-              {
-                "feature": "Teq_K",
-                "value": 206.09012054039917,
-                "band": "120 – 255",
-                "fit": 1
-              }
-            ]
-          },
           {
             "class": "planet/planetesimal",
             "score": 1.2,
@@ -2354,7 +2318,7 @@
             ]
           }
         ],
-        "borderline": false,
+        "borderline": true,
         "modifiers": [],
         "fallback": false
       },
@@ -2623,45 +2587,27 @@
       },
       "apparentColorHex": "#bab3ad",
       "classification": {
-        "base": "planet/cold-eyeball",
-        "baseScore": 1.8,
+        "base": "planet/planetesimal",
+        "baseScore": 1.2,
         "bands": [
           {
-            "feature": "tidallyLocked",
-            "value": 1,
-            "band": "1 – 1",
+            "feature": "mass_Me",
+            "value": 2.461486939048895e-10,
+            "band": "0 – 0.003",
             "fit": 1
           },
           {
-            "feature": "Teq_K",
-            "value": 200.01352688297754,
-            "band": "120 – 255",
+            "feature": "radius_Re",
+            "value": 0.0009731596295714959,
+            "band": "0 – 0.1",
             "fit": 1
           }
         ],
         "runnerUp": {
-          "class": "planet/planetesimal",
-          "score": 1.2
+          "class": "planet/barren",
+          "score": 1.19
         },
         "candidates": [
-          {
-            "class": "planet/cold-eyeball",
-            "score": 1.8,
-            "bands": [
-              {
-                "feature": "tidallyLocked",
-                "value": 1,
-                "band": "1 – 1",
-                "fit": 1
-              },
-              {
-                "feature": "Teq_K",
-                "value": 200.01352688297754,
-                "band": "120 – 255",
-                "fit": 1
-              }
-            ]
-          },
           {
             "class": "planet/planetesimal",
             "score": 1.2,
@@ -2735,7 +2681,7 @@
             ]
           }
         ],
-        "borderline": false,
+        "borderline": true,
         "modifiers": [],
         "fallback": false
       },
@@ -3611,8 +3557,8 @@
           }
         ],
         "runnerUp": {
-          "class": "planet/cold-eyeball",
-          "score": 1.55
+          "class": "planet/mesoplanet",
+          "score": 1.2
         },
         "candidates": [
           {
@@ -3630,24 +3576,6 @@
                 "value": 0.28592057761732853,
                 "band": "0.2 – 2",
                 "fit": 1
-              }
-            ]
-          },
-          {
-            "class": "planet/cold-eyeball",
-            "score": 1.55,
-            "bands": [
-              {
-                "feature": "tidallyLocked",
-                "value": 1,
-                "band": "1 – 1",
-                "fit": 1
-              },
-              {
-                "feature": "Teq_K",
-                "value": 115.07189469246724,
-                "band": "120 – 255",
-                "fit": 0.73
               }
             ]
           },
@@ -3712,7 +3640,7 @@
             ]
           }
         ],
-        "borderline": true,
+        "borderline": false,
         "modifiers": [],
         "fallback": false
       },
