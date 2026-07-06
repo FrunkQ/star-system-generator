@@ -210,6 +210,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.000001272841752605334,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -599,6 +600,7 @@
           "Molten iron core → Earth-like dipolar field; shields the atmosphere from stellar wind."
         ]
       },
+      "oblateness": 7.637335768889923e-8,
       "geoActivity": {
         "regime": "stagnant-lid",
         "volcanism": "resurfacing",
@@ -1024,6 +1026,7 @@
           "Molten iron core → Earth-like dipolar field; shields the atmosphere from stellar wind."
         ]
       },
+      "oblateness": 0.004312523427243434,
       "geoActivity": {
         "regime": "plate-tectonics",
         "volcanism": "arc-effusive",
@@ -1473,6 +1476,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.000009478371541712931,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -1854,6 +1858,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.005745063944604033,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -2090,6 +2095,9 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "shape/oblate"
+        },
+        {
           "key": "geology/inactive"
         },
         {
@@ -2197,6 +2205,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.12886936484042955,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -2560,6 +2569,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.010041517915863664,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -2922,6 +2932,9 @@
           "key": "magnetic/dynamo"
         },
         {
+          "key": "shape/oblate"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -3042,6 +3055,7 @@
           "Liquid metallic-hydrogen envelope drives a strong dipolar field (Jupiter-class)."
         ]
       },
+      "oblateness": 0.10426494738447482,
       "apparentColor": {
         "hex": "#cab696",
         "palette": [
@@ -3501,6 +3515,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.0021399203182074344,
       "geoActivity": {
         "regime": "tidal-volcanic",
         "volcanism": "silicate-tidal",
@@ -3948,6 +3963,7 @@
           "Conductive subsurface ocean induces a weak field within the host planet's magnetosphere (Europa-like)."
         ]
       },
+      "oblateness": 0.00062255878629147,
       "geoActivity": {
         "regime": "cryovolcanic",
         "volcanism": "cryo",
@@ -4350,6 +4366,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.00023925417066642297,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -4720,6 +4737,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.00004654612251557393,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -4997,6 +5015,9 @@
           "key": "magnetic/dynamo"
         },
         {
+          "key": "shape/oblate"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -5125,6 +5146,7 @@
           "Liquid metallic-hydrogen envelope drives a strong dipolar field (Jupiter-class)."
         ]
       },
+      "oblateness": 0.17457339743332512,
       "apparentColor": {
         "hex": "#b8b5a0",
         "palette": [
@@ -5616,6 +5638,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.00004964141974468107,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -6000,6 +6023,7 @@
           "Conductive subsurface ocean induces a weak field within the host planet's magnetosphere (Europa-like)."
         ]
       },
+      "oblateness": 0.007828709686467344,
       "geoActivity": {
         "regime": "cryovolcanic",
         "volcanism": "cryo",
@@ -6362,6 +6386,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.006742689784954953,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -6732,6 +6757,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.0021353316822122527,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -7140,6 +7166,7 @@
           "Conductive subsurface ocean induces a weak field within the host planet's magnetosphere (Europa-like)."
         ]
       },
+      "oblateness": 0.023273436592320042,
       "geoActivity": {
         "regime": "cryovolcanic",
         "volcanism": "cryo",
@@ -7513,6 +7540,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.0009440948510978029,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -7866,6 +7894,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.000003465856103310481,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -8248,6 +8277,7 @@
           "Superionic-water mantle dynamo → tilted, off-centre, multipolar field (Uranus/Neptune-like)."
         ]
       },
+      "oblateness": 0.036071586176023455,
       "apparentColor": {
         "hex": "#a3a0a7",
         "palette": [
@@ -8647,6 +8677,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.00018860750309831472,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -9006,6 +9037,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.00008045839086046679,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -9369,6 +9401,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.0023456132052674552,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -9752,6 +9785,7 @@
           "Superionic-water mantle dynamo → tilted, off-centre, multipolar field (Uranus/Neptune-like)."
         ]
       },
+      "oblateness": 0.0320433540207409,
       "apparentColor": {
         "hex": "#aaa3a3",
         "palette": [
@@ -10235,6 +10269,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.00033336381537566677,
       "geoActivity": {
         "regime": "cryovolcanic",
         "volcanism": "cryo",
@@ -10744,6 +10779,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.0003126141202576074,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -11120,6 +11156,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "oblateness": 0.0003419286569030933,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",

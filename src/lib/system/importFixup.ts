@@ -17,12 +17,13 @@ const DERIVED_FIELDS = [
   'surfaceRadiation', 'radiationShieldingMag', 'habitabilityScore', 'orbitalBoundaries',
   'loDeltaVBudget_ms', 'propulsiveLandBudget_ms', 'aerobrakeLandBudget_ms',
   'apparentColorHex', 'apparentColor', 'magnetism', 'geoActivity', 'albedoBreakdown', 'classification',
-  'albedo'  // now derived from makeup + clouds; an old pinned value would override the model
+  'albedo',  // now derived from makeup + clouds; an old pinned value would override the model
+  'oblateness'  // derived from spin vs density-set breakup limit
 ];
 
 // Tag namespaces the processor owns (re-derived every run).
 const DERIVED_TAG_PREFIXES = [
-  'geology/', 'magnetic/', 'structure/', 'tidal/', 'habitability/', 'climate/', 'stability/', 'barycenter/'
+  'geology/', 'magnetic/', 'structure/', 'tidal/', 'habitability/', 'climate/', 'stability/', 'barycenter/', 'shape/'
 ];
 // Flat (non-namespaced) tags the processor manages or has retired.
 const DERIVED_FLAT_TAGS = new Set([

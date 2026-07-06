@@ -10,6 +10,7 @@ import { surfaceTempProfile } from '../physics/surfaceTemperature';
 import { deriveFluidLayers, cloudColourName } from '../physics/fluidLayers';
 import { phaseAt, liquidDef, biosolventScore } from '../physics/liquids';
 import { deriveMagnetism, magneticShieldingTag } from '../physics/magnetism';
+import { rotationalDeform } from '../physics/rotation';
 import { deriveGeoActivity } from '../physics/geoActivity';
 import { deriveApparentColorParts } from '../rendering/apparentColor';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
@@ -578,6 +579,16 @@ export class SystemProcessor implements ISystemProcessor {
         // unshielded (tag removed) even if the model implies a dynamo; set it above 0 and it gains a
         // field even if the model finds none. Untouched bodies follow the derived model as before.
         body.tags.push({ key: magneticShieldingTag(body.magnetism, body.magneticField) });
+
+        // Rotational deformation (E4). A spinning body flattens; past the density-set breakup spin it
+        // would shed mass into a ring. DERIVED dynamically from the bulk density (composition) + rotation
+        // period, so it tracks either changing. Stored (renderers draw the oblate shape) + surfaced as
+        // progressive shape/* tags, and the ellipsoid/toroidal classes key on the spin fraction below.
+        const deform = rotationalDeform(body.rotation_period_hours ?? 0, density_gcc);
+        body.oblateness = deform.oblateness;
+        features['spinFraction'] = deform.fraction;
+        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('shape/'));
+        if (deform.shape !== 'spherical') body.tags.push({ key: `shape/${deform.shape}` });
 
         // Geological activity (tectonics + volcanism by MECHANISM) — the biosphere keystone. Uses
         // makeup (radiogenic budget + iron core), mass/radius (cooling rate), system AGE (radiogenic

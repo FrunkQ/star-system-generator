@@ -209,6 +209,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   temperatureRangeK?: { min: number; max: number };
   temperatureProfile?: SurfaceTempProfile;  // the range DECOMPOSED by cause (seasonal/diurnal/…)
   tidallyLocked?: boolean;      // one face permanently toward its primary (no day/night cycle)
+  oblateness?: number;          // DERIVED equatorial flattening f=(a−c)/a from spin vs the breakup limit; renderers draw the squashed shape
   obliquity_deg?: number;       // axial tilt — drives seasonal variation
   albedoBreakdown?: { albedo: number; surfaceAlbedo: number; cloudAlbedo: number; cloudCover: number; cloudSpecies?: string; note: string };
   // F-OVR: GM overrides for otherwise-derived scalars. A key being PRESENT means the GM pinned that

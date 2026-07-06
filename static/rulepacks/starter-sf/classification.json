@@ -1170,9 +1170,9 @@
         "kind": "modifier",
         "note": "Spinning so fast it is donut-shaped.",
         "match": {
-          "rotation_period_hours": [
-            0,
-            2
+          "spinFraction": [
+            0.8,
+            10
           ]
         }
       },
@@ -1181,9 +1181,9 @@
         "kind": "modifier",
         "note": "Rotationally flattened.",
         "match": {
-          "rotation_period_hours": [
-            2,
-            6
+          "spinFraction": [
+            0.5,
+            0.8
           ]
         }
       },
@@ -2146,9 +2146,9 @@
       },
       {
         "when": {
-          "lt": [
-            "rotation_period_hours",
-            2
+          "gt": [
+            "spinFraction",
+            0.8
           ]
         },
         "addClass": "planet/toroidal",
@@ -2159,14 +2159,14 @@
           "all": [
             {
               "lt": [
-                "rotation_period_hours",
-                6
+                "spinFraction",
+                0.8
               ]
             },
             {
               "gt": [
-                "rotation_period_hours",
-                2
+                "spinFraction",
+                0.5
               ]
             }
           ]

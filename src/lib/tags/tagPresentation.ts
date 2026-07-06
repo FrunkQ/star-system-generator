@@ -180,6 +180,12 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'magnetic/unshielded': { label: 'No magnetosphere', description: 'No convecting conductor (or far too slow rotation) → the atmosphere is exposed to stellar-wind stripping.' },
   'magnetic/anomalous':  { label: 'Anomalous field',  description: 'A magnetic field with no interior dynamo to explain it — an imposed field of unknown or artificial origin (megastructure, exotic matter, a young system…).' },
 
+  // --- Shape (rotational deformation) ---
+  'shape/oblate':       { label: 'Oblate', description: 'Spinning fast enough to visibly flatten at the poles and bulge at the equator (Jupiter/Saturn-like).' },
+  'shape/ellipsoid':    { label: 'Ellipsoid', description: 'Rapid rotation has pulled it into a distinctly triaxial, egg-in-plan shape — well beyond a gentle bulge.' },
+  'shape/near-breakup': { label: 'Near break-up', description: 'Spinning so fast the equator is close to the mass-shedding limit — strongly deformed, tending toroidal.' },
+  'shape/unstable':     { label: 'Rotationally unstable', description: 'At or beyond its break-up spin — the equator can no longer hold on; the body would fly apart into a ring.' },
+
   // --- Structure (derived layering) ---
   'structure/icy-shell':        { label: 'Icy shell',        description: 'A frozen exterior (the value names the ice — water, nitrogen, CO₂, methane…) over a rockier interior.' },
   'climate/polar-ice':          { label: 'Polar ice',        description: 'Liquid at the mean temperature, but the cold poles / night side dip below the solvent\'s freezing point — partial frozen caps.' },

@@ -4,6 +4,7 @@
   import { fmt } from '$lib/stores';
   import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '$lib/constants';
   import { makeupFractions, normalizeMakeup, gasThermalInflationFactor } from '$lib/physics/makeup';
+  import { breakupPeriodHours, rotationalDeform, type RotationalShape } from '$lib/physics/rotation';
   import {
     densityGcc, editMass, editRadius, editDensity, editMakeup, setMakeupComponent,
     COMPOSITION_PRESETS, presetValidAt, presetActive,
@@ -267,6 +268,23 @@
   }
 
   function handleUpdate() { dispatch('update'); }
+
+  // Rotational deformation (E4): the bulk density sets a hard BREAK-UP spin — spin any faster and the
+  // equator sheds mass into a ring. Derived live from density + the day length, so it tracks composition
+  // edits too. We surface the shape and hard-clamp the day length at the break-up period.
+  $: rotDensity = isPlanetMoon ? pDensity : densityValue;
+  $: breakupHours = breakupPeriodHours(rotDensity || 0);
+  $: rotDeform = rotationalDeform(body.rotation_period_hours ?? 0, rotDensity || 0);
+  const SHAPE_LABEL: Record<RotationalShape, string> = {
+    spherical: 'Spherical', oblate: 'Oblate (flattened)', ellipsoid: 'Ellipsoid',
+    'near-breakup': 'Near break-up', unstable: 'Would fly apart → ring'
+  };
+  function onRotationInput() {
+    // Hard limit: below the break-up period a body can't hold together, so clamp there.
+    const t = body.rotation_period_hours ?? 0;
+    if (t > 0 && t < breakupHours) body.rotation_period_hours = +breakupHours.toFixed(2);
+    handleUpdate();
+  }
   function pinTidalLock() { (body as any).tidalLockManual = true; dispatch('update'); }
   function resetTidalLockAuto() { delete (body as any).tidalLockManual; dispatch('update'); }
   function toggleAutoClassify(e: Event) { body.autoClassify = (e.currentTarget as HTMLInputElement).checked; dispatch('update'); }
@@ -446,7 +464,12 @@
     <div class="row">
         <div class="form-group">
             <label for="rotation">Day Length (Hours)</label>
-            <input type="number" id="rotation" step="0.1" bind:value={body.rotation_period_hours} on:input={handleUpdate} />
+            <input type="number" id="rotation" step="0.1" min={breakupHours.toFixed(2)} bind:value={body.rotation_period_hours} on:input={onRotationInput} />
+            {#if isPlanetMoon && (rotDensity || 0) > 0}
+                <span class="sub-label shape-note shape-{rotDeform.shape}" title="Faster spin (shorter day) flattens the body; below the break-up period the equator sheds mass and it would become a ring. The limit is set by the bulk density (composition).">
+                    {SHAPE_LABEL[rotDeform.shape]} · break-up {breakupHours < 1 ? breakupHours.toFixed(2) : breakupHours.toFixed(1)} h{#if rotDeform.shape !== 'spherical'} · f {rotDeform.oblateness.toFixed(2)}{/if}
+                </span>
+            {/if}
         </div>
         <div class="form-group">
             <label for="tilt">Axial Tilt (°)</label>
@@ -510,6 +533,11 @@
       color: var(--text-muted); cursor: default; font-family: monospace;
   }
   .sub-label { font-size: 0.75em; color: var(--text-faint); }
+  .shape-note { font-variant-numeric: tabular-nums; }
+  .shape-oblate { color: #6aa0d8; }
+  .shape-ellipsoid { color: #e0a24a; }
+  .shape-near-breakup { color: #e06a4a; font-weight: 600; }
+  .shape-unstable { color: #e0483c; font-weight: 700; }
   .link-btn {
       background: none; border: none; padding: 2px 0; margin-top: 2px;
       color: var(--link, #6aa0d8); font-size: 0.75em; cursor: pointer; text-align: left;
