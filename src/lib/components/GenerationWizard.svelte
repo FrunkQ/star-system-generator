@@ -10,12 +10,17 @@
   import { fixUpImportedSystem } from '$lib/system/importFixup';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { SOLAR_MASS_KG } from '$lib/constants';
+  import UboxImportModal from './UboxImportModal.svelte';
 
   export let rulePack: RulePack;
   export let exampleSystems: string[] = [];
 
   const dispatch = createEventDispatcher();
   const close = () => dispatch('close');
+
+  // Universe Sandbox import (.ubox) — opens a dedicated modal that converts + shows the diff.
+  let uboxBytes: Uint8Array | null = null;
+  let uboxFileName = '';
 
   let step: 1 | 2 = 1;
   let selectedStars: StarSeed[] = [];
@@ -185,6 +190,13 @@
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
+    // A Universe Sandbox save goes through the .ubox converter modal instead of the JSON path.
+    if (file.name.toLowerCase().endsWith('.ubox')) {
+      uboxFileName = file.name;
+      uboxBytes = new Uint8Array(await file.arrayBuffer());
+      input.value = '';
+      return;
+    }
     busy = true;
     try {
       const raw = JSON.parse(await file.text());
@@ -226,7 +238,11 @@
           <div class="row load-saved">
             <span class="muted">or load one you saved earlier —</span>
             <button class="ghost" disabled={busy} on:click={() => fileInput?.click()}>Load saved system…</button>
-            <input type="file" accept="application/json,.json" bind:this={fileInput} on:change={loadSystemFile} style="display:none" />
+            <input type="file" accept="application/json,.json,.ubox" bind:this={fileInput} on:change={loadSystemFile} style="display:none" />
+          </div>
+          <div class="row load-saved">
+            <span class="muted">or bring in a Universe Sandbox save —</span>
+            <button class="ghost" disabled={busy} on:click={() => fileInput?.click()}>Import .ubox…</button>
           </div>
         </section>
 
@@ -353,6 +369,16 @@
     </footer>
   </div>
 </div>
+
+{#if uboxBytes}
+  <UboxImportModal
+    bytes={uboxBytes}
+    fileName={uboxFileName}
+    {rulePack}
+    on:close={() => (uboxBytes = null)}
+    on:load={(e) => { uboxBytes = null; dispatch('generate', { system: e.detail.system }); }}
+  />
+{/if}
 
 <style>
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 3vh 2vw; }

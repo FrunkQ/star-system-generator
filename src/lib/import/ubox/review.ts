@@ -72,3 +72,39 @@ export function buildImportReview(processed: System, result: UboxImportResult): 
 
   return { counts: result.counts, assumptions: result.assumptions, skipped, comparisons };
 }
+
+/** Render an Import Review as plain text for the one-click "copy for review" button — a self-contained
+ *  report the GM can paste into a document to chase down anything that did not import cleanly. */
+export function reviewToText(review: ImportReview, opts: { title?: string; ageGyr?: number } = {}): string {
+  const L: string[] = [];
+  L.push(`Universe Sandbox import${opts.title ? ` — ${opts.title}` : ''}`);
+  L.push('='.repeat(60));
+  const c = review.counts;
+  L.push(`Imported: ${c.stars} star(s), ${c.planets} planet(s), ${c.moons} moon(s), ${c.rings} ring(s)`);
+  if (typeof opts.ageGyr === 'number') L.push(`System age: ${opts.ageGyr} Gyr`);
+  L.push('');
+
+  if (review.assumptions.length) {
+    L.push('ASSUMPTIONS APPLIED');
+    for (const a of review.assumptions) L.push(`  - ${a}`);
+    L.push('');
+  }
+
+  if (review.skipped.length) {
+    L.push('SKIPPED');
+    for (const s of review.skipped) L.push(`  - ${s.reason}: ${s.count}${s.examples.length ? `  (${s.examples.join(', ')})` : ''}`);
+    L.push('');
+  }
+
+  const order: Record<string, number> = { unexplained: 0, explained: 1, aligned: 2 };
+  const rows = [...review.comparisons].sort((a, b) => order[a.bucket] - order[b.bucket]);
+  const tally = { aligned: 0, explained: 0, unexplained: 0 };
+  for (const r of review.comparisons) tally[r.bucket]++;
+  L.push(`AUDIT vs Universe Sandbox values — ${tally.aligned} aligned, ${tally.explained} explained, ${tally.unexplained} unexplained`);
+  L.push('(SSG derives its own physics; "explained" differences are expected, "unexplained" are worth a look.)');
+  for (const r of rows) {
+    L.push(`  [${r.bucket.toUpperCase()}] ${r.body} — ${r.metric}: US ${r.us}  ->  SSG ${r.ssg}`);
+    if (r.note && r.bucket !== 'aligned') L.push(`        ${r.note}`);
+  }
+  return L.join('\n');
+}

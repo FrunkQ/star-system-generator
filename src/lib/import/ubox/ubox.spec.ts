@@ -5,7 +5,7 @@ import { G, SOLAR_MASS_KG, AU_KM } from '$lib/constants';
 import { systemProcessor } from '$lib/core/SystemProcessor';
 import { fixUpImportedSystem } from '$lib/system/importFixup';
 import type { System, RulePack, CelestialBody } from '$lib/types';
-import { importUbox, listUboxSimulations, buildImportReview, UboxError, RECOMMENDED_MIN_MASS_KG } from './index';
+import { importUbox, listUboxSimulations, previewUbox, buildImportReview, reviewToText, UboxError, RECOMMENDED_MIN_MASS_KG } from './index';
 import { convertUbox } from './convert';
 import { stateVectorsToElements, elementsToWorkPosition, roundTripError, type V3 } from './kepler';
 import type { ParsedUbox, UsSimulation } from './types';
@@ -60,6 +60,28 @@ describe('ubox parse', () => {
   it('rejects a non-zip with a typed error', () => {
     expect(() => importUbox(new Uint8Array([1, 2, 3, 4, 5]))).toThrow(UboxError);
     try { importUbox(new Uint8Array([1, 2, 3, 4, 5])); } catch (e) { expect((e as UboxError).code).toBe('not-a-zip'); }
+  });
+
+  it('previewUbox lists bodies heaviest-first (for the slider)', () => {
+    const bytes = new Uint8Array(fs.readFileSync(path.join(FIX, 'minimal.ubox')));
+    const preview = previewUbox(bytes);
+    expect(preview.bodies[0].name).toBe('Star');                 // heaviest
+    expect(preview.bodies.map((b) => b.name)).toEqual(['Star', 'Planet', 'Moon']);
+    for (let i = 1; i < preview.bodies.length; i++) expect(preview.bodies[i - 1].mass).toBeGreaterThanOrEqual(preview.bodies[i].mass);
+  });
+});
+
+describe('ubox reviewToText', () => {
+  const pack = loadRulePack();
+  it('renders a self-contained plain-text report with the three buckets', () => {
+    const result = convertUbox(solRealistic());
+    const snapshotClone = JSON.parse(JSON.stringify(result.snapshot));
+    const processed = systemProcessor.process(fixUpImportedSystem(result.system as System, pack), pack) as System;
+    const text = reviewToText(buildImportReview(processed, { ...result, snapshot: snapshotClone }), { title: 'Solar System', ageGyr: 4.6 });
+    expect(text).toContain('Universe Sandbox import — Solar System');
+    expect(text).toContain('AUDIT vs Universe Sandbox values');
+    expect(text).toMatch(/\d+ aligned/);
+    expect(text.split('\n').length).toBeGreaterThan(5);
   });
 });
 

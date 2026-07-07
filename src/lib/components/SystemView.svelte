@@ -40,6 +40,7 @@
   import { get } from 'svelte/store';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem, stripSystemForExport } from '$lib/system/importFixup';
+  import UboxImportModal from './UboxImportModal.svelte';
   import { generateId, toRoman } from '$lib/utils';
   import { AU_KM, EARTH_MASS_KG, G } from '$lib/constants';
   import { propagate } from '$lib/api';
@@ -68,6 +69,9 @@
   let sheetSnap: 'peek' | 'half' | 'full' = 'peek';
   let railOpen = false; // phone slide-in rail; closed before opening a modal
   let railUploadInput: HTMLInputElement; // hidden file input for the rail's Upload JSON
+  // Universe Sandbox import (.ubox) — the rail upload also accepts these, routed to a converter modal.
+  let uboxBytes: Uint8Array | null = null;
+  let uboxFileName = '';
 
   // Orbit scale: binary Toytown (compressed, fits one screen) vs Real (true AU). The
   // continuous compression slider stays as the advanced control while in Toytown.
@@ -1362,10 +1366,17 @@
     URL.revokeObjectURL(url);
   }
 
-  function handleUploadJson(event: Event) {
+  async function handleUploadJson(event: Event) {
     const input = event.target as HTMLInputElement;
     if (!input.files || input.files.length === 0) return;
     const file = input.files[0];
+    // A Universe Sandbox save goes through the .ubox converter modal instead of the JSON path.
+    if (file.name.toLowerCase().endsWith('.ubox')) {
+      uboxFileName = file.name;
+      uboxBytes = new Uint8Array(await file.arrayBuffer());
+      input.value = '';
+      return;
+    }
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
@@ -2147,7 +2158,7 @@
            Starmap nav, Projector and Report moved up into the icon rail proper. -->
       <!-- System-JSON download/upload moved into the File group. Hidden input kept here
            for the File group's Upload action. -->
-      <input type="file" accept="application/json,.json" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
+      <input type="file" accept="application/json,.json,.ubox" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
       </RailNav>
     </svelte:fragment>
     <svelte:fragment slot="canvas">
@@ -2436,6 +2447,20 @@
     {#if showAddTypeModal && pendingAdd}
         <AddBodyTypeModal {rulePack} teqK={pendingAdd.teqK} role={pendingAdd.role} hostMassKg={pendingAdd.hostMassKg}
             on:select={placeBodyOfType} on:close={() => { showAddTypeModal = false; pendingAdd = null; }} />
+    {/if}
+
+    {#if uboxBytes}
+        <UboxImportModal bytes={uboxBytes} fileName={uboxFileName} {rulePack}
+            on:close={() => (uboxBytes = null)}
+            on:load={(e) => {
+                let sys = e.detail.system;
+                const oldId = $systemStore?.id;
+                if (oldId) sys.id = oldId;       // preserve the starmap link, like a JSON load
+                systemStore.set(sys);
+                currentTime = sys?.epochT0 || Date.now();
+                focusedBodyId = null;
+                uboxBytes = null;
+            }} />
     {/if}
 
     {/if}
