@@ -50,7 +50,8 @@ Behaviour:
 install is on hand to churn out test saves). The shopping list — each saved fresh from the current
 US version, noting the version number:
 
-1. The default Sol simulation (baseline: known bodies, known answers).
+1. The default Sol simulation (baseline: known bodies, known answers). — RECEIVED 2026-07-07,
+   torn down; findings in §4a. NOTE: it contains no moons, so item 2 is now the top priority.
 2. Jupiter + Galilean moons focus (moon representation + hierarchy).
 3. A binary/multi-star system (barycentre question).
 4. An O- or B-type star with planets (age-cap exercise, §7.4).
@@ -105,6 +106,72 @@ The converter should:
 Failure at any step → the §2 error path with the specific reason ("not a zip", "no simulation data
 found", "unrecognised format version").
 
+## 4a. Phase 0 findings — confirmed against a real sample (Update 36.2.1, BuildRevision 48569)
+
+Teardown of a fresh default "Solar System" save (28.9 MB) confirmed the following. All of this is
+the NEW format; legacy remains unknown.
+
+**Archive layout.** Standard ZIP. Members: `manifest.json` (container index),
+`simulation-<Name>.json` (the state — 3.2 MB here), `simulation-<Name>-info.json` (workshop
+metadata), `-ui-state.json` (camera; ignore), `-thumbnail.png` / `-large.jpg` (ignore), and
+`-surface.zip` (26.7 MB of surface data; ignore). **Resolution is manifest-driven, not sniffed**:
+`manifest.json` → `Entries[]` with `BaseType: "Simulation"` → `Path`; `Header.EntryPoint(s)` names
+the primary simulation by ID. Multiple simulations/objects = more entries. `Header.BuildRevision`
++ `BuildName` give exact version detection. (Content-sniffing survives only as the legacy-format
+fallback.)
+
+**Simulation JSON.** Top level: `Name`, `Date` (in-sim date — Import Review only), `TimePassed`,
+integrator settings (ignore), and `Entities: []` — 632 in the default save: 1 star, 8 planets,
+622 `sso` (asteroids/TNOs), 1 `"dummy"` utility entity (skip it).
+
+**Entity schema (all confirmed SI).** Key fields per entity: `Name`, `Id` (int),
+`Category` (`star`/`planet`/`sso`), `Mass` (kg), `Radius` (m), `Density` (kg/m³),
+`Age` (SECONDS — Sun reads 4.66 Gyr), `Position`/`Velocity`/`AngularVelocity`/`RotationAxis`
+(vectors serialised as `"x;y;z"` STRINGS with E-notation; positions in m, velocities m/s, angular
+velocity rad/s), `Orientation` (quaternion `"x;y;z;w"`), `HorizonID` (JPL Horizons reference —
+sometimes with a trailing `;`), `Flags`, and `Components: []`.
+
+**Hierarchy: NOT stored.** `Parent` and `CustomOrbitParentId` are `-1` on every body including
+planets — §7.3 Hill-sphere inference is REQUIRED, not a fallback. (Caution: names repeat across
+categories — the save's "Io" is asteroid 85 Io, not the moon.)
+
+**Components per body** (the environment data): `Celestial` — `AtmosphereMass` (kg),
+`MeanMolecularWeightDryAir`, `CustomScaleHeight`, `Luminosity` (W; Sun 3.846e26), `StarType`
+(enum, meaning TBC), `MagneticField` (**gauss** — Earth reads 0.31869) + `MagPoleAngle`, and
+`SurfaceTemperatureOverride` (≠0 presumably when user-pinned). `HeatComponent` —
+`SurfaceTemperature` (K; Sun 5779.6, Earth 286.9), `Albedo` (Earth 0.306), `EmitsLight`.
+`CompositionComponent.depots` — **a full mass inventory by material**: Earth carries
+`Iron` 1.47e24 kg, `Silicate` 4.50e24 kg, `Water` 1.43e21 kg (the ocean, to the digit), plus
+per-gas atmosphere masses (`Nitrogen`, `Oxygen`, `Argon`, `Carbon Dioxide`).
+
+**Consequences for the field map (§6):**
+
+- `makeup` CAN be imported directly after all: Iron/Silicate(/Carbon/ices) depot masses → SSG
+  metal/rock fractions (Earth: 0.25/0.75 — matches SSG's Earth). Better than density inference;
+  keep density inference as the fallback when depots are absent.
+- `atmosphere.composition`: gas depot masses ÷ molecular weights → mole fractions.
+  `atmosphere.pressure_bar`: from `AtmosphereMass·g/(4πR²)` (Earth computes ~1.1 bar; the gas-depot
+  sum is ~5.15e18 kg vs `AtmosphereMass` 5.95e18 — the gap is likely water vapour; note in review).
+- `hydrosphere`: the `Water` depot gives MASS; SSG wants COVERAGE — needs a depth/hypsometry
+  heuristic (design detail for Phase 1), flagged in the Import Review.
+- **Obliquity** is NOT in `RotationAxis` (that is ±Y for every planet): it is recovered by rotating
+  `RotationAxis` by the `Orientation` quaternion and measuring against the orbit normal —
+  numerically verified: Earth 23.4°, Uranus 97.8° (its retrograde flip encoded as the +Y axis
+  sign), Jupiter 2.2°. Rotation period from `|AngularVelocity|` (Earth 23.93 h sidereal ✓).
+- **Per-body `Age` is stored** — §7.4 upgrades from "assume" to "import": take the primary star's
+  `Age`; the lifespan cap becomes a VALIDATION (stored age > `getStarLifespanGyr` → clamp + flag).
+- **User edits are distinguishable** (open question 8 answered): `SurfaceTemperatureOverride`,
+  `UserChanged*` / `UserSet*` flags and `LockedProperties` mark hand-set values — a US-pinned
+  temperature can map to review context (and potentially SSG overrides where one exists).
+- **sso flood policy** (622 in the default save): always import `star` + `planet`; import `sso`
+  above a mass threshold (default ≥ 5e20 kg keeps Ceres + the major TNOs, ~20 bodies; CLI flag /
+  UI control to adjust); summarise the remainder as a count in the Import Review (belt aggregation
+  is the future refinement). Skip `"dummy"` utility entities.
+
+**Still unconfirmed (samples wanted, §3 list):** moon representation (the default save contains NO
+moons — need the Jupiter-system save), multi-star saves, object-preset members, evolved-star
+distinguishability, the `StarType` enum, and the legacy format.
+
 ## 5. Conversion principle: authored inputs only
 
 The converter emits a **minimal** SSG `System` JSON — the same shape as the stripped save files
@@ -122,6 +189,10 @@ derives it, and per the physics-honesty principle it will usually do so more def
 values US displays.
 
 ## 6. Field mapping
+
+For the NEW format most of the TBC column is now resolved — see §4a for the confirmed entity
+schema, units and the depot-derived mappings (makeup, atmosphere, hydrosphere, magnetic field,
+obliquity, age). This table remains the intent summary; §4a wins where they differ.
 
 | Universe Sandbox (TBC Phase 0)     | SSG field                        | Treatment |
 |------------------------------------|----------------------------------|-----------|
@@ -208,7 +279,12 @@ cooling), and a flat default is physically wrong for hot stars: an O or B star c
 old (O-type main-sequence lifetimes are a few Myr). SSG already has the tool for this —
 `getStarLifespanGyr(massKg)` in `physics/stellar-evolution.ts` (Sun ≈ 10 Gyr, 10 M☉ ≈ 30 Myr).
 
-Policy when the save carries no meaningful age (expected case):
+CONFIRMED (§4a): new-format saves store a per-body `Age` in seconds (the default save's Sun reads
+4.66 Gyr) — so the PRIMARY policy is to **import** it: `age_Gyr = primary star's Age / 3.156e16`,
+validated against `getStarLifespanGyr` (stored age exceeding the star's lifespan → clamp to the
+§7.4 default below + flag in the Import Review).
+
+Fallback policy when a save carries no usable age (legacy format, or Age missing/zero):
 
 - `age_Gyr = min(4.6, 0.5 × getStarLifespanGyr(massKg of the shortest-lived star present))` —
   i.e. Sun-like and cooler systems default to 4.6 Gyr as before; a B-star system defaults to
