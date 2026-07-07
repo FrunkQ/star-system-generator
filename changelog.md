@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.310-beta - 7th Jul 2026
+
+* **Right-clicking a star in the orrery no longer shows starmap actions.** The in-system body menu wrongly offered "Zoom to System / Start Link / Delete System" (starmap-only) on a star; it now offers just **Add Construct**, like planets and moons.
+* **About trimmed.** Removed the Getting Started, physics-reference and tutorial-video links that the new Help menu now covers; About just points to Help.
+
 ## v2.0.309-beta - 7th Jul 2026
 
 * **Orrery labels & constructs now sit above planet discs.** Since the true-colour disc overlays are an HTML layer over the canvas, a zoomed-in planet could hide its own label ("Earth") and any ship/station in front of it. Labels, construct markers, velocity vectors and the ruler now paint on a dedicated foreground canvas layered above the discs, so they're always visible.
