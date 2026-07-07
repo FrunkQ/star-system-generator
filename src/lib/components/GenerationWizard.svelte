@@ -243,9 +243,9 @@
           <div class="row load-saved">
             <span class="muted">or load one you saved earlier —</span>
             <button class="ghost" disabled={busy} on:click={() => fileInput?.click()}>Load saved system…</button>
-            <input type="file" accept="application/json,.json,.ubox,.sc,.pak" bind:this={fileInput} on:change={loadSystemFile} style="display:none" />
+            <input type="file" accept="application/json,.json,.ubox,.sc,.se,.pak" bind:this={fileInput} on:change={loadSystemFile} style="display:none" />
           </div>
-          <p class="muted accepts">Accepts an SSE v1/v2 system (.json), a Universe Sandbox save (.ubox), or a SpaceEngine catalogue (.sc / .pak).</p>
+          <p class="muted accepts">Accepts an SSE v1/v2 system (.json), a Universe Sandbox save (.ubox), or a SpaceEngine export (.sc / .se / .pak).</p>
         </section>
 
         <section class="block">

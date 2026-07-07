@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.331-beta - 7th Jul 2026
+
+* SpaceEngine import now also accepts `.se` as well as `.sc` and `.pak` (some exports use it), and the New System text names the SpaceEngine export formats.
+
 ## v2.0.330-beta - 7th Jul 2026
 
 * **Import from SpaceEngine (.sc / .pak).** You can now drop a SpaceEngine catalogue straight into SSG, right alongside Universe Sandbox saves — the New System dialogue and the in-system upload accept `.sc` and `.pak` files. SpaceEngine is a close fit (it stores real orbits and an explicit parent for each body), so the import is near-1:1: stars, planets, moons, binary stars and barycentres, orbits, composition, atmospheres and oceans all come across, and SSG derives the rest. The same converter window as the Universe Sandbox import handles it — a mass slider for how many small bodies to include, and a diff afterwards showing anything SSG derived differently, with one-click copy. Tested against the real Solar System catalogue (with the Earth-Moon and Pluto-Charon barycentres), a procedurally generated system, and a life-bearing binary. Under the hood the two importers now share one modal, one archive reader and one review, so both stay consistent.

@@ -2162,7 +2162,7 @@
            Starmap nav, Projector and Report moved up into the icon rail proper. -->
       <!-- System-JSON download/upload moved into the File group. Hidden input kept here
            for the File group's Upload action. -->
-      <input type="file" accept="application/json,.json,.ubox,.sc,.pak" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
+      <input type="file" accept="application/json,.json,.ubox,.sc,.se,.pak" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
       </RailNav>
     </svelte:fragment>
     <svelte:fragment slot="canvas">
