@@ -3,15 +3,13 @@
   import type { RulePack, System } from '$lib/types';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem } from '$lib/system/importFixup';
-  import {
-    previewUbox, listUboxSimulations, importUbox, buildImportReview, reviewToText,
-    RECOMMENDED_MIN_MASS_KG, UboxError,
-    type UboxPreview, type ImportReview
-  } from '$lib/import/ubox';
+  import { reviewToText, type ImportReview } from '$lib/import/shared/review';
+  import type { ImportAdapter, ImportResultLike } from '$lib/import/adapters';
 
   export let bytes: Uint8Array;
   export let fileName = '';
   export let rulePack: RulePack;
+  export let source: ImportAdapter;   // the format adapter (Universe Sandbox / SpaceEngine / …)
 
   const dispatch = createEventDispatcher();
   const close = () => dispatch('close');
@@ -20,28 +18,29 @@
   let phase: Phase = 'preview';
   let errorMsg = '';
 
-  let sims: { name: string; path: string }[] = [];
-  let buildName = '';
+  let sims: { name: string }[] = [];
+  let subtitle = '';
   let selectedSim = 0;
-  let preview: UboxPreview | null = null;
+  let bodies: { name: string; mass: number }[] = [];
+  let previewNote = '';
 
   // mass slider (log scale). logThreshold in log10(kg); bodies with mass >= threshold are imported.
-  let logThreshold = Math.log10(RECOMMENDED_MIN_MASS_KG);
+  let logThreshold = Math.log10(source.recommendedMinMass);
   let logMin = 15, logMax = 30;
   $: threshold = Math.pow(10, logThreshold);
-  $: includedCount = preview ? preview.bodies.filter((b) => b.mass >= threshold).length : 0;
-  $: totalBodies = preview ? preview.bodies.length : 0;
+  $: includedCount = bodies.filter((b) => b.mass >= threshold).length;
+  $: totalBodies = bodies.length;
   $: heavyImport = includedCount > 150;
 
   let review: ImportReview | null = null;
   let processedSystem: System | null = null;
+  let systemName = '';
   let copied = false;
 
   onMount(() => {
     try {
-      const listing = listUboxSimulations(bytes);
-      sims = listing.simulations;
-      buildName = listing.buildName;
+      sims = source.systems(bytes);
+      subtitle = source.subtitle(bytes);
       loadPreview(0);
     } catch (e) { fail(e); }
   });
@@ -49,19 +48,20 @@
   function loadPreview(idx: number) {
     try {
       selectedSim = idx;
-      preview = previewUbox(bytes, idx);
-      if (preview.bodies.length) {
-        logMin = Math.log10(preview.bodies[preview.bodies.length - 1].mass);
-        logMax = Math.log10(preview.bodies[0].mass);
-        // keep the default inside the actual range
-        logThreshold = Math.min(logMax, Math.max(logMin, Math.log10(RECOMMENDED_MIN_MASS_KG)));
+      const p = source.preview(bytes, idx);
+      bodies = p.bodies;
+      previewNote = p.note ?? '';
+      if (bodies.length) {
+        logMin = Math.log10(bodies[bodies.length - 1].mass);
+        logMax = Math.log10(bodies[0].mass);
+        logThreshold = Math.min(logMax, Math.max(logMin, Math.log10(source.recommendedMinMass)));
       }
       phase = 'preview';
     } catch (e) { fail(e); }
   }
 
   function fail(e: unknown) {
-    errorMsg = e instanceof UboxError ? e.message : `Could not read that Universe Sandbox file (${(e as Error).message}).`;
+    errorMsg = (e as Error)?.message ?? String(e);
     phase = 'error';
   }
 
@@ -69,7 +69,7 @@
     phase = 'importing';
     await new Promise((r) => setTimeout(r, 20)); // let the "importing" state paint
     try {
-      const result = importUbox(bytes, { simulation: selectedSim, minBodyMassKg: threshold });
+      const result: ImportResultLike = source.convert(bytes, selectedSim, threshold);
       // Process to convergence: a fresh ocean world settles its greenhouse over a few passes.
       let sys = systemProcessor.process(fixUpImportedSystem(result.system, rulePack), rulePack) as System;
       const maxT = (s: System) => Math.max(0, ...s.nodes.map((n: any) => n.temperatureK ?? 0));
@@ -81,20 +81,20 @@
         prev = now;
       }
       processedSystem = sys;
-      review = buildImportReview(sys, result);
+      systemName = result.system.name;
+      review = source.buildReview(sys, result);
       phase = 'review';
     } catch (e) { fail(e); }
   }
 
   async function copyReview() {
     if (!review) return;
-    const text = reviewToText(review, { title: preview?.simName || fileName, ageGyr: processedSystem?.age_Gyr });
+    const text = reviewToText(review, { title: systemName || fileName, ageGyr: processedSystem?.age_Gyr });
     try {
       await navigator.clipboard.writeText(text);
       copied = true;
       setTimeout(() => (copied = false), 2000);
     } catch {
-      // clipboard blocked (insecure context) — fall back to a temporary textarea select
       const ta = document.createElement('textarea');
       ta.value = text; document.body.appendChild(ta); ta.select();
       try { document.execCommand('copy'); copied = true; setTimeout(() => (copied = false), 2000); } catch { /* give up quietly */ }
@@ -102,9 +102,7 @@
     }
   }
 
-  function loadSystem() {
-    if (processedSystem) dispatch('load', { system: processedSystem });
-  }
+  function loadSystem() { if (processedSystem) dispatch('load', { system: processedSystem }); }
 
   const fmtMass = (kg: number) => {
     const me = kg / 5.972e24;
@@ -115,11 +113,11 @@
 </script>
 
 <div class="overlay" on:click|self={close} role="presentation">
-  <div class="modal" role="dialog" aria-label="Import a Universe Sandbox simulation">
+  <div class="modal" role="dialog" aria-label="Import a system">
     <header>
       <div>
-        <h2>Import from Universe Sandbox</h2>
-        <p class="sub">{fileName}{buildName ? ` · ${buildName}` : ''}</p>
+        <h2>Import from {source.label}</h2>
+        <p class="sub">{fileName}{subtitle ? ` · ${subtitle}` : ''}</p>
       </div>
       <button class="close" on:click={close} aria-label="Close">×</button>
     </header>
@@ -140,7 +138,7 @@
       {:else if phase === 'preview'}
         {#if sims.length > 1}
           <section class="block">
-            <h3>Simulation</h3>
+            <h3>System</h3>
             <select on:change={(e) => loadPreview((e.target as HTMLSelectElement).selectedIndex)}>
               {#each sims as s, i}<option value={i} selected={i === selectedSim}>{s.name}</option>{/each}
             </select>
@@ -150,8 +148,8 @@
         <section class="block">
           <h3>What to bring in</h3>
           <p class="muted">
-            Universe Sandbox systems can hold thousands of small bodies. Drag toward the smaller masses to
-            include more of them — your browser does the work, so it's your call.
+            This file can hold many small bodies. Drag toward the smaller masses to include more of them —
+            your browser does the work, so it's your call.
           </p>
           <div class="slider-row">
             <span class="end">Largest only</span>
@@ -161,9 +159,7 @@
           <div class="readout">
             <strong>{includedCount}</strong> of {totalBodies} bodies
             <span class="muted">· cutoff ≥ {fmtMass(threshold)}</span>
-            {#if preview && preview.particleCount > 0}
-              <span class="muted">· {preview.particleCount.toLocaleString()} ring/fragment particles are always summarised, not imported</span>
-            {/if}
+            {#if previewNote}<span class="muted">· {previewNote}</span>{/if}
           </div>
           {#if heavyImport}
             <p class="warn">Importing {includedCount} bodies — large systems can be slow to render and edit in the browser.</p>
@@ -174,7 +170,7 @@
           <p class="muted">
             Only the essentials come across (mass, radius, orbit, composition). SSG derives temperature,
             climate, classification, geology and habitability itself — and afterwards shows you a review of
-            anything it derived differently from Universe Sandbox, so you can check what looks off.
+            anything it derived differently from {source.label}, so you can check what looks off.
           </p>
         </section>
 
@@ -185,6 +181,7 @@
             <span>{review.counts.stars} star(s)</span>
             <span>{review.counts.planets} planet(s)</span>
             <span>{review.counts.moons} moon(s)</span>
+            {#if review.counts.other}<span>{review.counts.other} barycentre(s)</span>{/if}
             {#if review.counts.rings}<span>{review.counts.rings} ring(s)</span>{/if}
             {#if processedSystem}<span class="muted">age {processedSystem.age_Gyr} Gyr</span>{/if}
           </div>
@@ -206,7 +203,7 @@
 
         <section class="block">
           <div class="audit-head">
-            <h3>Diff vs Universe Sandbox</h3>
+            <h3>Diff vs {source.label}</h3>
             <button class="ghost small" on:click={copyReview}>{copied ? 'Copied ✓' : 'Copy for review'}</button>
           </div>
           <p class="muted">SSG derives its own physics — "explained" differences are expected. Anything marked <em>needs a look</em> is worth investigating.</p>
@@ -228,7 +225,7 @@
     <footer>
       {#if phase === 'preview'}
         <button class="ghost" on:click={close}>Cancel</button>
-        <button class="primary" disabled={!preview || includedCount === 0} on:click={runImport}>Import {includedCount} bodies</button>
+        <button class="primary" disabled={!bodies.length || includedCount === 0} on:click={runImport}>Import {includedCount} bodies</button>
       {:else if phase === 'review'}
         <button class="ghost" on:click={() => (phase = 'preview')}>Adjust selection</button>
         <button class="primary" on:click={loadSystem}>Load system</button>

@@ -40,7 +40,8 @@
   import { get } from 'svelte/store';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem, stripSystemForExport } from '$lib/system/importFixup';
-  import UboxImportModal from './UboxImportModal.svelte';
+  import ImportModal from './ImportModal.svelte';
+  import { adapterForFile, type ImportAdapter } from '$lib/import/adapters';
   import { generateId, toRoman } from '$lib/utils';
   import { AU_KM, EARTH_MASS_KG, G } from '$lib/constants';
   import { propagate } from '$lib/api';
@@ -69,9 +70,10 @@
   let sheetSnap: 'peek' | 'half' | 'full' = 'peek';
   let railOpen = false; // phone slide-in rail; closed before opening a modal
   let railUploadInput: HTMLInputElement; // hidden file input for the rail's Upload JSON
-  // Universe Sandbox import (.ubox) — the rail upload also accepts these, routed to a converter modal.
-  let uboxBytes: Uint8Array | null = null;
-  let uboxFileName = '';
+  // External-format import (.ubox / .sc / .pak) — the rail upload routes these to the converter modal.
+  let importBytes: Uint8Array | null = null;
+  let importFileName = '';
+  let importSource: ImportAdapter | null = null;
 
   // Orbit scale: binary Toytown (compressed, fits one screen) vs Real (true AU). The
   // continuous compression slider stays as the advanced control while in Toytown.
@@ -1370,10 +1372,12 @@
     const input = event.target as HTMLInputElement;
     if (!input.files || input.files.length === 0) return;
     const file = input.files[0];
-    // A Universe Sandbox save goes through the .ubox converter modal instead of the JSON path.
-    if (file.name.toLowerCase().endsWith('.ubox')) {
-      uboxFileName = file.name;
-      uboxBytes = new Uint8Array(await file.arrayBuffer());
+    // An external simulator file (.ubox / .sc / .pak) goes through the converter modal, not the JSON path.
+    const adapter = adapterForFile(file.name);
+    if (adapter) {
+      importSource = adapter;
+      importFileName = file.name;
+      importBytes = new Uint8Array(await file.arrayBuffer());
       input.value = '';
       return;
     }
@@ -2158,7 +2162,7 @@
            Starmap nav, Projector and Report moved up into the icon rail proper. -->
       <!-- System-JSON download/upload moved into the File group. Hidden input kept here
            for the File group's Upload action. -->
-      <input type="file" accept="application/json,.json,.ubox" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
+      <input type="file" accept="application/json,.json,.ubox,.sc,.pak" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
       </RailNav>
     </svelte:fragment>
     <svelte:fragment slot="canvas">
@@ -2449,9 +2453,9 @@
             on:select={placeBodyOfType} on:close={() => { showAddTypeModal = false; pendingAdd = null; }} />
     {/if}
 
-    {#if uboxBytes}
-        <UboxImportModal bytes={uboxBytes} fileName={uboxFileName} {rulePack}
-            on:close={() => (uboxBytes = null)}
+    {#if importBytes && importSource}
+        <ImportModal bytes={importBytes} fileName={importFileName} source={importSource} {rulePack}
+            on:close={() => (importBytes = null)}
             on:load={(e) => {
                 let sys = e.detail.system;
                 const oldId = $systemStore?.id;
@@ -2459,7 +2463,7 @@
                 systemStore.set(sys);
                 currentTime = sys?.epochT0 || Date.now();
                 focusedBodyId = null;
-                uboxBytes = null;
+                importBytes = null;
             }} />
     {/if}
 

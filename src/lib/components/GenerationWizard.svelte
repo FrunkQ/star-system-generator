@@ -10,7 +10,8 @@
   import { fixUpImportedSystem } from '$lib/system/importFixup';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { SOLAR_MASS_KG } from '$lib/constants';
-  import UboxImportModal from './UboxImportModal.svelte';
+  import ImportModal from './ImportModal.svelte';
+  import { adapterForFile, type ImportAdapter } from '$lib/import/adapters';
 
   export let rulePack: RulePack;
   export let exampleSystems: string[] = [];
@@ -18,9 +19,10 @@
   const dispatch = createEventDispatcher();
   const close = () => dispatch('close');
 
-  // Universe Sandbox import (.ubox) — opens a dedicated modal that converts + shows the diff.
-  let uboxBytes: Uint8Array | null = null;
-  let uboxFileName = '';
+  // External-format import (.ubox / .sc / .pak) — opens the converter modal that shows the diff.
+  let importBytes: Uint8Array | null = null;
+  let importFileName = '';
+  let importSource: ImportAdapter | null = null;
 
   let step: 1 | 2 = 1;
   let selectedStars: StarSeed[] = [];
@@ -190,10 +192,12 @@
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
-    // A Universe Sandbox save goes through the .ubox converter modal instead of the JSON path.
-    if (file.name.toLowerCase().endsWith('.ubox')) {
-      uboxFileName = file.name;
-      uboxBytes = new Uint8Array(await file.arrayBuffer());
+    // An external simulator file (.ubox / .sc / .pak) goes through the converter modal, not the JSON path.
+    const adapter = adapterForFile(file.name);
+    if (adapter) {
+      importSource = adapter;
+      importFileName = file.name;
+      importBytes = new Uint8Array(await file.arrayBuffer());
       input.value = '';
       return;
     }
@@ -214,8 +218,8 @@
   const fmt = (n: number, d = 1) => n.toLocaleString(undefined, { maximumFractionDigits: d });
 </script>
 
-<!-- Hide the wizard while the Universe Sandbox importer is open, so it doesn't sit on top and block it. -->
-<div class="overlay" class:hidden={!!uboxBytes} on:click|self={close} role="presentation">
+<!-- Hide the wizard while the importer is open, so it doesn't sit on top and block it. -->
+<div class="overlay" class:hidden={!!importBytes} on:click|self={close} role="presentation">
   <div class="modal" role="dialog" aria-label="Generate a new system">
     <header>
       <div>
@@ -239,9 +243,9 @@
           <div class="row load-saved">
             <span class="muted">or load one you saved earlier —</span>
             <button class="ghost" disabled={busy} on:click={() => fileInput?.click()}>Load saved system…</button>
-            <input type="file" accept="application/json,.json,.ubox" bind:this={fileInput} on:change={loadSystemFile} style="display:none" />
+            <input type="file" accept="application/json,.json,.ubox,.sc,.pak" bind:this={fileInput} on:change={loadSystemFile} style="display:none" />
           </div>
-          <p class="muted accepts">Accepts an SSE v1 or v2 system file (.json) or a Universe Sandbox save (.ubox).</p>
+          <p class="muted accepts">Accepts an SSE v1/v2 system (.json), a Universe Sandbox save (.ubox), or a SpaceEngine catalogue (.sc / .pak).</p>
         </section>
 
         <section class="block">
@@ -368,13 +372,14 @@
   </div>
 </div>
 
-{#if uboxBytes}
-  <UboxImportModal
-    bytes={uboxBytes}
-    fileName={uboxFileName}
+{#if importBytes && importSource}
+  <ImportModal
+    bytes={importBytes}
+    fileName={importFileName}
+    source={importSource}
     {rulePack}
-    on:close={() => (uboxBytes = null)}
-    on:load={(e) => { uboxBytes = null; dispatch('generate', { system: e.detail.system }); }}
+    on:close={() => (importBytes = null)}
+    on:load={(e) => { importBytes = null; dispatch('generate', { system: e.detail.system }); }}
   />
 {/if}
 
