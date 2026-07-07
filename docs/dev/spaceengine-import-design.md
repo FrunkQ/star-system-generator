@@ -109,7 +109,52 @@ SSG stores `a_AU` in AU and angles in degrees, orbits in a single ecliptic-like 
 
 These are exactly the things a real sample settles in five minutes and a guess gets wrong.
 
-## 7. Open questions (need samples to answer)
+## 6a. Phase 0 findings — confirmed against 3 real .sc files (2026-07-07)
+
+Torn down: `SolarSys.sc` (catalogue Sol), `Random.sc` (procedural single-star + 258 bodies),
+`Binary-life.sc` (procedural binary, 2 stars + 720 bodies). All facts below verified.
+
+- **Format**: `BodyType "Name" { ... }` blocks; `//` line comments; `Key Value` (value to end of line)
+  and `Key { nested }`. Values: numbers (incl. `9e-6`), quoted strings (may contain `/` aliases and
+  spaces), parenthesised tuples `( r g b )` (colours), and numeric arrays (rotation `PeriodicTerms`).
+  Top-level non-body directives exist (`LogLevel 0`) — skip anything that isn't a known body block.
+- **Body types seen**: `Star`, `Planet`, `Moon`, `DwarfMoon`, `Comet`, `Barycenter`. (Asteroid likely
+  exists too.) Comets/DwarfMoons dominate procedural files (180–650 each) → the mass slider applies here
+  too.
+- **Hierarchy**: `ParentBody "Name"` is explicit and ALIAS-AWARE — the Sun is `Star "Sun/Sol"` and
+  Mercury's `ParentBody "Sun"` must match it. Index every `/`-separated alias. ROOT = a body whose
+  `ParentBody` names something not defined in the file (Sol's `"Solar System"`) OR references itself
+  (the binary's root `Barycenter` has `ParentBody` = its own name). A root `Star` → SSG star root (no
+  orbit); a root `Barycenter` → SSG barycenter root.
+- **Orbit — TWO conventions, both present**:
+  - Procedural: `Eccentricity`, `Inclination`, `AscendingNode` (Ω°), `ArgOfPericenter` (ω°),
+    `MeanAnomaly` (M0°) — map straight across (M0° → rad).
+  - Catalogue: `AscendingNode` (Ω°), `LongOfPericen` (ϖ°) → ω = ϖ − Ω, `MeanLongitude` (L°) →
+    M0 = L − ϖ.
+  - `SemiMajorAxis` = AU; **`SemiMajorAxisKm` = km** (close moons — divide by AU_KM). `Period` = years
+    (cross-check only). `AnalyticModel "…-DE"` present alongside elements → use the elements; if ONLY
+    AnalyticModel and no `SemiMajorAxis` → treat as root (the Sun).
+  - `RefPlane`: `"Ecliptic"` (catalogue) or `"Equator"` (procedural). SSG has ONE plane, so map the
+    numbers directly and note RefPlane in the review — mixed frames are a minor visual inaccuracy, not
+    worth reconstructing.
+- **Units confirmed**: star `MassSol`/`RadSol`, `Temperature` (K), `Luminosity`/`LumBol` (L☉),
+  `Age` (Gyr), `Class` (spectral, e.g. "G2V", "K1.9 V"); planet/moon `Mass` (Earth masses),
+  `Radius` (km); `RotationPeriod` (hours; Mercury 1407.5 h ✓); `Obliquity` (deg). Also-possible variants
+  to accept: `MassJup`/`MassEarth`/`MassKg`, `RadiusSol`/`RadiusKm`. `RotationModel "IAU"{ RotationRate
+  deg/day }` → period = 360/rate × 24 h when `RotationPeriod` absent.
+- **Environment blocks**:
+  - `Interior { Composition { Silicates, Metals, Ice, Hydrogen, … } }` — mass-fraction PERCENT →
+    SSG makeup (Silicates→rock, Metals→metal, ices→ice, H/He→gas). Normalise to fractions.
+  - `Atmosphere { Pressure (atm), Composition { N2, O2, … } (percent) }` → SSG atmosphere (species %/100
+    → fractions; pressure atm ≈ bar). `NoAtmosphere true` → none.
+  - `Ocean { Height, Composition { H2O, NaCl } }` → SSG hydrosphere water. NO coverage given → assume a
+    default (~0.7) and flag, or leave for the user. Height is depth, not coverage.
+  - Discard (SSG derives; audit against them): `AlbedoBond`, `Greenhouse` (K), planet `Temperature`,
+    planet `Luminosity`. `Life { … }` block exists (Earth, the "life-bearing" binary) — note only.
+- **Multi-system**: a file is normally ONE connected tree (one root). If several roots appear, treat as
+  several systems → a picker (reuse the ubox multi-sim pattern).
+
+## 7. Open questions (mostly ANSWERED above — remaining nuances)
 
 1. Exact unit conventions per key (SemiMajorAxis, Radius, Period, RotationPeriod, the Mass* variants).
 2. Full set of body-type block names actually used, and how `Barycenter` nests its members.
