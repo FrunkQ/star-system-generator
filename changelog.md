@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.318-beta - 7th Jul 2026
+
+* **Radiogenic heating fixed — now a proper, persistent GM override that drives geology.** Three bugs, all reported and confirmed: (1) the radiogenic slider wrote to a field that was stripped on every load and never re-derived, so it **reset to 0 on reload**; (2) it was disconnected from geology, so raising it **didn't change the geology tag**; (3) there was no real override control. Radiogenic heating is now a GM **override** (like albedo) — set it in the Temperature tab (derived default is ~0, since radiogenic surface heat is negligible vs sunlight), and it now **persists across save/load** *and* **boosts the geological vigor** (~12 K ≈ +1 Earth-vigor), so cranking it can wake a dead world and change its tectonics/volcanism tag. Any radiogenic values still present in an existing save are **migrated** into the override on load (values already stripped to 0 by an earlier reload can't be recovered — you'll need to re-set those).
+
 ## v2.0.317-beta - 7th Jul 2026
 
 * **Welcome popup: a heads-up callout.** The first-run V2 welcome now flags that a big release will have the odd bug (with a link to report them on Discord) and warns that systems saved in V2 won't open in the old V1 app — keep a backup before re-saving.

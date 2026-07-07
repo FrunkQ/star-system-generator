@@ -83,6 +83,14 @@ function stripBody(body: CelestialBody, classNames: Set<string>): void {
   // like mass/radius), NOT a derived planet surface temp. The processor re-derives planet temps but never a
   // star's, so stripping it left loaded stars at 0 K. Keep it for stars; strip it (and the rest) for others.
   const isStar = body.roleHint === 'star';
+  // MIGRATION: radiogenic heat used to be an editable field on the body (stripped on load → lost). It's
+  // now a GM OVERRIDE (body.overrides.radiogenicHeatK) that persists. Recover any still-present authored
+  // value into the override before the strip below removes it.
+  const legacyRadiogenic = (body as any).radiogenicHeatK;
+  if (typeof legacyRadiogenic === 'number' && legacyRadiogenic > 0 && body.overrides?.radiogenicHeatK == null) {
+    body.overrides = body.overrides || {};
+    body.overrides.radiogenicHeatK = legacyRadiogenic;
+  }
   for (const f of DERIVED_FIELDS) {
     // A star's effective temperature AND its luminosity (radiationOutput) are authored INPUTS that
     // define it (like mass/radius) and are never re-derived on load — keep them; strip for everyone else.

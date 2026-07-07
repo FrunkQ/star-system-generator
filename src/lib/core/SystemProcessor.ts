@@ -417,9 +417,10 @@ export class SystemProcessor implements ISystemProcessor {
         body.tags = (body.tags || []).filter(t => t.key !== 'orbit/tidally-locked');
         if (body.tidallyLocked) body.tags.push({ key: 'orbit/tidally-locked' });
 
-        // Radiogenic Heating (Simplified)
-        // Internal heat is negligible for surface temp compared to solar/greenhouse for Earth-likes.
-        const radiogenicHeatK = body.radiogenicHeatK || 0; 
+        // Radiogenic Heating — a GM OVERRIDE (body.overrides.radiogenicHeatK), re-derived from it each run
+        // so it survives save/load. Default 0 (radiogenic surface heat is negligible vs sunlight for most
+        // worlds). When the GM sets it, it adds surface heat AND boosts the geological vigor (see geology).
+        const radiogenicHeatK = body.overrides?.radiogenicHeatK ?? 0;
         body.radiogenicHeatK = radiogenicHeatK;
         body.internalHeatK = estimateInternalHeatK(body, pack);
 
@@ -668,7 +669,10 @@ export class SystemProcessor implements ISystemProcessor {
                 // Enceladus / Triton cryovolcanism branches.
                 resonanceTidal: !!(body as any).resonanceTidal,
                 surfaceIce: (body.hydrosphere?.coverage ?? 0) > 0.3,
-                teqK: body.equilibriumTempK
+                teqK: body.equilibriumTempK,
+                // A GM radiogenic-heat override boosts the geothermal vigor, so cranking the slider can
+                // wake a dead world (or intensify an active one) and change its geology/* tag.
+                radiogenicOverrideK: body.radiogenicHeatK ?? 0
             });
             for (const key of body.geoActivity.tags) body.tags.push({ key });
             features['geoActive'] = body.geoActivity.active ? 1 : 0;

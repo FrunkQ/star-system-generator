@@ -42,10 +42,14 @@ export interface GeoInputs {
                             // instantaneous tidal index under-predicts — Enceladus–Dione 2:1)
   surfaceIce?: boolean;     // an ice-covered surface (hydrosphere present, frozen or liquid below)
   teqK?: number;            // equilibrium temperature — drives the solar-seasonal geyser branch
+  radiogenicOverrideK?: number; // GM radiogenic-heat override (+K) — adds to the geothermal vigor
 }
 
 const ACTIVE_THRESHOLD = 0.35;   // relative vigor below which a rocky world is geologically dead
 const RADIOGENIC_HALFLIFE_GYR = 2.8;
+// How much a GM radiogenic-heat override (in K) adds to the relative vigor: ~12 K ≈ +1 (Earth-now),
+// so a modest slider can wake a dead world and cranking it hard drives vigorous tectonics/volcanism.
+const RADIOGENIC_K_PER_VIGOR = 12;
 
 // Relative radiogenic+secular geothermal vigor, calibrated so Earth today ≈ 1.
 export function geothermalVigor(i: Pick<GeoInputs, 'makeup' | 'massMe' | 'radiusRe' | 'ageGyr'>): number {
@@ -61,7 +65,9 @@ export function geothermalVigor(i: Pick<GeoInputs, 'makeup' | 'massMe' | 'radius
 export function deriveGeoActivity(i: GeoInputs): GeoActivity {
   const iceFrac = i.makeup.ice;
   const carbonRich = i.makeup.carbon > 0.3;
-  const vigor = geothermalVigor(i);
+  // A GM radiogenic-heat override adds directly to the derived vigor (extra internal heat = more
+  // geological drive), so the Temperature-tab slider actually changes the geology regime + tag.
+  const vigor = geothermalVigor(i) + Math.max(0, i.radiogenicOverrideK ?? 0) / RADIOGENIC_K_PER_VIGOR;
   const notes: string[] = [];
 
   // --- Tidal forcing takes precedence (it dwarfs radiogenic heat for the moons that have it). ---

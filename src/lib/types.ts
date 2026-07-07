@@ -219,6 +219,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   overrides?: {
     albedo?: number;              // Bond albedo 0..1 (else derived from makeup + cloud decks)
     gasThermalInflation?: number; // gas-giant radius inflation factor (else derived from insolation)
+    radiogenicHeatK?: number;     // GM radiogenic-heat override (+K): adds surface heat AND geological vigor
   };
   calculatedGravity_ms2?: number;
   distanceToHost_km?: number;

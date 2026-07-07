@@ -43,14 +43,41 @@
       dispatch('update');
   }
 
+  // --- Radiogenic F-OVR: derived default is ~0 (radiogenic surface heat is negligible vs sunlight); the
+  // GM can override it to add surface heat AND drive the geological vigor/tag. Saved in body.overrides.
+  $: radiogenicOverridden = typeof body.overrides?.radiogenicHeatK === 'number';
+  function startRadiogenicOverride() {
+      ensureOverrides();
+      body.overrides!.radiogenicHeatK = body.radiogenicHeatK ?? 0;
+      updateTotal();
+      dispatch('update');
+  }
+  function onRadiogenicInput() {
+      if (body.overrides && typeof body.overrides.radiogenicHeatK === 'number') {
+          body.overrides.radiogenicHeatK = Math.max(0, Math.min(40, body.overrides.radiogenicHeatK));
+          body.radiogenicHeatK = body.overrides.radiogenicHeatK; // immediate preview; processor confirms on update
+      }
+      updateTotal();
+  }
+  function resetRadiogenicAuto() {
+      if (body.overrides) {
+          delete body.overrides.radiogenicHeatK;
+          if (Object.keys(body.overrides).length === 0) delete body.overrides;
+      }
+      body.radiogenicHeatK = 0;
+      updateTotal();
+      dispatch('update');
+  }
+
   function updateTotal() {
       if (body.roleHint === 'star') {
           dispatch('update');
           return;
       }
 
-      // Ensure defaults are set if undefined, but only when updating (radiogenic is editable)
-      if (body.radiogenicHeatK === undefined) body.radiogenicHeatK = 0;
+      // Radiogenic heat is a GM override (body.overrides.radiogenicHeatK); mirror it onto radiogenicHeatK
+      // for the live preview (the processor re-derives the same on update).
+      body.radiogenicHeatK = body.overrides?.radiogenicHeatK ?? 0;
 
       // Greenhouse and Tidal are derived, but we need to ensure the props exist for display.
       if (body.greenhouseTempK === undefined) body.greenhouseTempK = 0;
@@ -154,13 +181,21 @@
             <span class="value">{Math.round(body.internalHeatK || 0)} K</span>
         </div>
 
-        <div class="form-group">
-            <label>Radiogenic Heating (+K)</label>
-            <div class="input-row">
-                <input type="range" min="0" max="40" step="1" bind:value={body.radiogenicHeatK} on:input={updateTotal} on:change={() => dispatch('update')} />
-                <input type="number" step="1" bind:value={body.radiogenicHeatK} on:input={updateTotal} on:change={() => dispatch('update')} style="width: 60px;" />
+        {#if radiogenicOverridden}
+            <div class="form-group">
+                <label>Radiogenic Heating (+K) <span class="override-pill" title="Manually overridden — adds this much surface heat and boosts the world's geological vigor (tectonics/volcanism tag).">overridden</span></label>
+                <div class="input-row">
+                    <input type="range" min="0" max="40" step="1" bind:value={body.overrides.radiogenicHeatK} on:input={onRadiogenicInput} on:change={() => dispatch('update')} />
+                    <input type="number" min="0" max="40" step="1" bind:value={body.overrides.radiogenicHeatK} on:input={onRadiogenicInput} on:change={() => dispatch('update')} style="width: 60px;" />
+                </div>
+                <button type="button" class="link-btn" on:click={resetRadiogenicAuto}>Reset to derived ↺</button>
             </div>
-        </div>
+        {:else}
+            <div class="read-only-row">
+                <label>Radiogenic Heating (+K) <span class="derived-pill" title="Radiogenic surface heat is negligible vs sunlight for most worlds, so it's ~0 by default. Override it to add heat and drive geology on exotic/young worlds.">derived</span></label>
+                <span class="value">{Math.round(body.radiogenicHeatK || 0)} K <button type="button" class="link-btn inline" on:click={startRadiogenicOverride}>override</button></span>
+            </div>
+        {/if}
         
         <hr />
         
