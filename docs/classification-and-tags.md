@@ -36,7 +36,10 @@ set) is described by a **fingerprint**: the parameter bands that DEFINE it. See
   beyond. Fully outside any band → that type is **disqualified**.
 - Type score = **sum of band fits** → more‑specific types (more matched bands) outrank generic
   ones automatically. The best **base** archetype wins (mutually exclusive); **modifiers**
-  (`ringed`, `eyeball`, `ultra-short-period`, `toroidal`, `ellipsoid`, `disrupted`) stack.
+  (`ringed`, `ultra-short-period`, `toroidal`, `ellipsoid`, `disrupted`) stack.
+- `eyeball` (and `hot-eyeball` / `cold-eyeball`) are **base** types, gated on tidal-lock to the
+  **star** (`starTidallyLocked`) — a moon locked to its planet still turns relative to its star, so it
+  is not an eyeball.
 - `gas-giant` is the explicit fallback (`weight 0.9`) so specific giant types win when they fit;
   it only fills the temperature gaps between the cloud‑type giants.
 
@@ -48,9 +51,11 @@ specific type is shadowed by a catch‑all. Verify real systems with `physics-ba
 ### Feature inputs
 `mass_Me, radius_Re, density (g/cc), Teq_K, SurfaceTemp_K, a_AU, eccentricity, age_Gyr,
 stellarType, stellarIrradiation, escapeVelocity_kms, orbital_period_days, rotation_period_hours,
-tidalHeating, tidallyLocked, has_ring_child, parentId, orbitsStar, atm.main, atm.pressure_bar,
-atm.composition.<gas>, hydrosphere.coverage, hydrosphere.composition`. Missing atmosphere /
-hydrosphere default to `None` / `0` so airless/dry bodies match (e.g. `barren`).
+tidalHeating, tidallyLocked, starTidallyLocked, radiation_flux, has_ring_child, hasSubsurfaceOcean,
+parentId, orbitsStar, makeup.metal, makeup.rock, makeup.carbon, makeup.ice, makeup.gas, atm.main,
+atm.pressure_bar, atm.composition.<gas>, hydrosphere.coverage, hydrosphere.composition`. The
+`makeup.*` interior fractions are how iron / silicate / coreless / carbon types classify. Missing
+atmosphere / hydrosphere default to `None` / `0` so airless/dry bodies match (e.g. `barren`).
 
 ### GM‑only types (no fingerprint)
 `forest, jungle, swamp, ecumenopolis` need biome / industrialisation data the engine doesn't

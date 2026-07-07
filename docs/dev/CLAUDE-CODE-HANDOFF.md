@@ -1,5 +1,10 @@
 # Star System Explorer — `beta` branch implementation plan
 
+> **HISTORICAL PLAN (kept for reference).** Phases 01–06 in this document have all been delivered and
+> V2 has shipped to production. The "Repo orientation" line counts, file paths and phase statuses below
+> are as-of-planning and are now stale (e.g. `lib/viewport/` was created and `lib/cameraStore.ts` removed).
+> For the current architecture see `ARCHITECTURE.md` and `technical-overview.md`.
+
 **Audience:** Claude Code (or any coding agent) working on `FrunkQ/star-system-generator` against the `beta` branch.
 **Companion docs:** see `Design Review.html` (architecture + physics + UX rationale) and `v2 Prototype.html` (clickable touch shell).
 **Target:** `beta.starsystemx.com` (auto-deployed from the `beta` branch).

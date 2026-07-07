@@ -48,7 +48,21 @@ The system distinguishes between "Rendezvous" and "Capture" based on target type
 
 ---
 
-## 4. Current Constraints & Known Issues
+## 4. Construct Interaction Logging (`constructInteractions.ts`)
+
+When an autopilot ship visits another construct — unloads cargo, loads, refuels, or holds station —
+that visit is shown on the **visited** construct's log too, not only the ship's. It is NOT mirror-persisted:
+the visiting ship's `flight_log` is the single source of truth (each event carries the `placeId` it happened
+at), and `deriveIncomingVisits(system, targetId)` scans the fleet's logs on demand to produce a target
+construct's incoming visits. Because it is derived, it stays correct through time-scrubbing (the log pane's
+own past/future split filters by the display clock) and never needs its own dedup or prune. Consumed by
+`ShipLogPane.svelte`, rendered from the receiver's side with the visiting ship named.
+
+**See also** (transit surface beyond the core solver): `interstellar.ts` (relativistic interstellar travel),
+`autopilotPlanner.ts`/`autopilotAdapter.ts` (route generation + flight log), `assist.ts` (gravity assists),
+`twoBodyCoast.ts` (adrift/coast conics), `scheduler.ts` (live sampling against the clock).
+
+## 5. Current Constraints & Known Issues
 
 ### **Stability & Insanity Checks**
 The planner applies several filters to prevent numerical artifacts from cluttering the UI:

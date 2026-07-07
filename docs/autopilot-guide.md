@@ -199,6 +199,11 @@ so a half-finished loading run reads as such. Each journey is badged with its ac
 (mine/load/unload/patrol/explore/escort). **Totals & averages** at the bottom reduces the whole
 log: tonnes delivered by resource, tonnes per annum, stops, refuels, time span.
 
+**Incoming visits.** A construct's log also shows the visits made *to* it by other ships — a station,
+depot or tanker sees who delivered, collected, refuelled or held station there, in a distinct colour with
+an inbound marker. These are synthesised live from the visiting ships' own logs, so they stay correct as
+you scrub time.
+
 ## Reading the map
 
 Committed routes draw on the orrery in burn colours: **green** = accelerating, **yellow** =

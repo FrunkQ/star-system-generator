@@ -37,7 +37,10 @@ The system is built as a **Layered Simulation Pipeline**, separating data-driven
 ### Layer 4: Specialized Modules (The Gameplay)
 *   **Transit System (`src/lib/transit/`)**:
     *   `calculator.ts`: Solves the **Lambert Problem** for efficient orbits and **Kinematic Paths** for direct burns.
-    *   `scheduler.ts**: Interpolates `ScheduledJourneyLog` paths against the mission clock to provide live positions for moving constructs.
+    *   `scheduler.ts`: Interpolates `ScheduledJourneyLog` paths against the mission clock to provide live positions for moving constructs.
+    *   `interstellar.ts`: Interstellar travel between systems, with relativistic time dilation.
+    *   `autopilotPlanner.ts` / `autopilotAdapter.ts`: Generate the journey chain an engaged ship flies, plus its flight log.
+    *   `constructInteractions.ts`: Derives a visited construct's incoming-visit log from the fleet's flight logs (see the transit-architecture doc).
 *   **Transit Feasibility & Sanity**: 
     To maintain a responsive and realistic UI, the planner applies several filters:
     *   **Impractical Delta-V Cap**: Solutions exceeding 10,000 km/s (Numerical Divergence) are hidden.

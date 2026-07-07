@@ -27,7 +27,7 @@ These are scientifically plausible (helium-3 on old airless regolith, diamonds o
 
 ## Constructs of Interest (CoI)
 
-A **Construct of Interest** is the same idea applied to *ships and stations*: a tag describing a capability or role. Three core categories are always on — Status, Owner and Purpose — plus optional ones you can enable: Hull class, FTL drive, Disposition, Tech & origin, and Resources.
+A **Construct of Interest** is the same idea applied to *ships and stations*: a tag describing a capability or role. Six categories are always on — Status, Owner, Purpose, Resources, Hull class and FTL drive. Universe and Tech & origin are on by default but can be switched off; Disposition is off by default. All are editable under Settings → CoIs.
 
 CoI tags aren't just labels — the engine reads them. A construct's FTL drive and range are inherited from its fitted engine (a warp drive confers FTL; a sublight drive doesn't), and its refuel sources come from its fuel tanks. The **autopilot** uses all of this to route a ship: what it can mine, where it can refuel, whether it can jump.
 

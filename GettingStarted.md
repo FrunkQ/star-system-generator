@@ -25,7 +25,7 @@ Click a system to drop into the **System Visualiser** — a real-time 2D orbital
 ![Toytown View](static/screenshots/Expanse-Toytown.PNG)
 
 * **Focus**: click any planet, moon or construct to centre the camera and open its data.
-* **Time control**: play/pause and scrub the time slider to watch orbits evolve — fast-forward years to find alignment windows. Display Time (what you're scrubbing) and Actual Time (the committed "now") are independent.
+* **Time control**: play/pause and scrub the time slider to watch orbits evolve — fast-forward years to find alignment windows (the first time you press **+**, playback starts so you immediately see it move). Display Time (what you're scrubbing) and Actual Time (the committed "now") are independent.
 * **Toytown view**: real space is mostly empty, so scale bodies up to see them relative to each other.
 * **True-colour worlds**: bodies are drawn from their real physics — star light, surface liquids, haze and clouds, plus auroras, ice caps, cratering, volcanic hotspots, and visible oblateness on fast rotators.
 * **Overlays**: turn on **Hill Spheres** to see each body's gravitational "grab" boundary (handy for placing moons), or use the **Measure** tool from the rail to read the straight-line distance between two bodies — it even tracks a moving ship.
@@ -38,7 +38,7 @@ Use the generation wizard to build a system from scratch. Pick your star on a ca
 ### Or build by hand
 1. **Right-click** a body or clear space → **Add Planet Here**. New planets bind to the dominant gravitational influence under your cursor.
 2. You'll be offered **physically appropriate** planet choices to keep you plausible — pick one, then fine-tune.
-3. Open the editor to adjust mass, radius and **interior makeup** (metal / rock / carbon / ocean / ice / gas). Density emerges from the composition, and dialling density toward ~1 g/cc turns a terrestrial into a gas giant. Rotation period and axial tilt have their own sliders (rotation snaps to tidal locking); spin a world fast enough and it visibly flattens.
+3. Open the editor to adjust mass, radius and **interior makeup** (metal / rock / carbon / ice / gas). Oceans are modelled separately, as surface or subsurface fluid layers, not as an interior-makeup slider. Density emerges from the composition, and dialling density toward ~1 g/cc turns a terrestrial into a gas giant. Rotation period and axial tilt have their own sliders (rotation snaps to tidal locking); spin a world fast enough and it visibly flattens.
 
 Everything recomputes live: temperature, fluids, magnetosphere, geology, habitability and tags all update as you edit. Derived values you disagree with (albedo, radiogenic heating, magnetosphere) can be overridden — and those overrides drive the tags in turn.
 

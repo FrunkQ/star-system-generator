@@ -28,8 +28,10 @@ Notes from the build that differ from or refine this design:
   the magnetosphere; they diverge by design (Jupiter US 6220 G vs SSG 4.3 G). `makeup` IS imported from
   depots (stable, idempotent, Earth 0.25/0.75 matches) — the earlier idempotence worry was the
   greenhouse, not makeup.
-- **Phase 2 (in-app dialogue wiring + review modal) is NOT done** — deliberately deferred. The feature
-  is CLI-testable only until Phase 2 lands.
+- **Phase 2 (in-app dialogue wiring + review modal) SHIPPED (beta v2.0.328).** In-app import runs
+  through the generalized `src/lib/components/ImportModal.svelte` driven by `src/lib/import/adapters.ts`
+  (`uboxAdapter`) — there is no separate `UboxImportModal`. The mass slider and audit review live in that
+  one shared modal, shared with the SpaceEngine importer. See §9.
 
 ## 0. Ground rules for the implementer
 
@@ -45,26 +47,31 @@ Notes from the build that differ from or refine this design:
 ## 1. Dependency
 
 Add `fflate` (prod dependency) in Phase 1. It runs in Node AND the browser, so the same module
-serves the CLI now and the dialogues later. Use `unzipSync` on a `Uint8Array`.
+serves the CLI now and the dialogues later. NOTE (as shipped): the code does **not** use
+`unzipSync` — its browser build eagerly decompresses every member and misreads Universe Sandbox's
+ZIP64 size sentinel (0xFFFFFFFF) as a 4 GB allocation and throws. Instead `src/lib/import/shared/zip.ts`
+hand-walks the central directory and `inflateSync`s only the wanted members: `readZipMembers(bytes, ['.json'])`.
 
 ## 2. Files
 
 Phase 1:
 
 ```
-src/lib/import/ubox/types.ts        // US-side + result interfaces (below)
-src/lib/import/ubox/parse.ts        // zip -> manifest -> simulation JSON (tolerant parse)
+src/lib/import/ubox/types.ts        // US-side interfaces (result types now alias shared/review)
+src/lib/import/ubox/parse.ts        // zip -> manifest -> simulation JSON; calls shared readZipMembers
 src/lib/import/ubox/kepler.ts       // state vectors -> Keplerian elements (+ round-trip check)
 src/lib/import/ubox/hierarchy.ts    // local-root selection + Hill-sphere parent inference
 src/lib/import/ubox/convert.ts      // entities -> SSG System + reference snapshot
-src/lib/import/ubox/review.ts       // processed system + snapshot -> ImportReview
+src/lib/import/ubox/review.ts       // one-line re-export of shared/review (buildImportReview, reviewToText)
 src/lib/import/ubox/index.ts        // public API re-exports
 src/lib/import/ubox/ubox.spec.ts    // unit tests (matrix in §10)
+src/lib/import/shared/zip.ts        // ZIP64-safe central-directory reader, shared with SpaceEngine .pak
+src/lib/import/shared/review.ts     // generalized ImportReview builder, shared across importers
 scripts/ubox2ssg.mjs                // CLI wrapper
 tests/fixtures/ubox/                // trimmed fixtures (§10.1)
 ```
 
-Phase 2 (separate change): dialogue wiring + review modal (§9).
+Phase 2 (SHIPPED): dialogue wiring via the shared `ImportModal.svelte` + `adapters.ts` (§9).
 
 ## 3. Public API (index.ts)
 
@@ -269,19 +276,18 @@ percentile }` (SSG's existing ring shape). Fewer than 50 → review count only.
 (zero importable bodies). Skip reasons (enum, used in review): `particle`, `dummy`, `far-field`,
 `unbound`, `below-mass-threshold`, `object-preset`, `unparseable-entity`.
 
-## 9. Phase 2 wiring (separate change, after CLI proves the module)
+## 9. Phase 2 wiring (SHIPPED)
 
-- `GenerationWizard.svelte` (~line 229) and `SystemView.svelte` (~line 2150): extend `accept` to
-  `"application/json,.json,.ubox"`; in the handlers, branch on `file.name.endsWith('.ubox')` →
-  `new Uint8Array(await file.arrayBuffer())` → `listUboxSimulations` (>1 → picker; a tiny modal
-  listing names, radio + OK) → `importUbox` → the existing `fixUpImportedSystem → process` path →
-  `buildImportReview` → show `UboxImportReviewModal.svelte`.
-- `UboxImportReviewModal.svelte`: compact popup (repo popup conventions) with three sections —
-  counts/assumptions, the audit table (aligned collapsed by default; explained + unexplained
-  expanded), skipped list. A "mass slider" control on the picker step showing the live body count
-  (re-run the filter client-side; conversion is fast, the zip is already inflated) and the §4a
-  performance advisory below the recommended default.
-- Version bump + changelog on push.
+Superseded by ONE generalized flow shared with the SpaceEngine importer, not a ubox-only modal:
+
+- `src/lib/import/adapters.ts` — `ImportAdapter` interface + `uboxAdapter` (and `spaceengineAdapter`),
+  plus `adapterForFile(name)` (`.ubox` → ubox; `.sc`/`.pak` → spaceengine). An adapter exposes
+  `subtitle`, `systems`/`preview`, `convert`, and `buildReview`.
+- `src/lib/components/ImportModal.svelte` — the single import dialogue: system picker, the mass slider
+  (live body count, cutoff shown in Earth masses + kg), the audit review (aligned / explained / needs-a-look
+  buckets), and copy-to-clipboard. `GenerationWizard.svelte` and `SystemView.svelte` accept
+  `.json,.ubox,.sc,.pak` and route the bytes through `adapterForFile` into this modal.
+- Conversion still runs the shipped contract: `convert → fixUpImportedSystem → systemProcessor.process → buildImportReview`.
 
 ## 10. Test matrix (ubox.spec.ts — all against trimmed fixtures)
 
