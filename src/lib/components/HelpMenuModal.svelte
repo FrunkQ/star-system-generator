@@ -104,7 +104,8 @@
     font-weight: 700;
   }
   .help-close:hover { background: color-mix(in srgb, var(--status-bad, #e0484d) 30%, var(--bg-control)); }
-  .help-body { overflow-y: auto; padding: 14px 18px 18px; }
+  .help-body { overflow-y: auto; overflow-x: hidden; padding: 14px 18px 18px; box-sizing: border-box; }
+  .help-body * { box-sizing: border-box; }
   .intro { margin: 0 0 12px; color: var(--text-muted, #cfcfcf); font-size: 0.9rem; }
   .help-group { margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px; }
   .group-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint, #8a8f9a); }
