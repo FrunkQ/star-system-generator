@@ -51,6 +51,15 @@
         and the <a href="/physics" target="_blank" rel="noopener noreferrer">physics reference</a> — or find
         every guide any time under <strong>Help</strong> in the menu.
       </p>
+
+      <div class="heads-up">
+        <p><strong>Expect the odd bug.</strong> This is a huge release with a lot going on under the hood, so
+        some things will slip through. If you hit one, please report it on
+        <a href="https://discord.gg/UAEq4zzjD8" target="_blank" rel="noopener noreferrer">our Discord</a> —
+        it's the fastest way to get it fixed. Thank you for helping shape V2!</p>
+        <p><strong>One-way upgrade:</strong> systems saved in V2 will <em>not</em> open in the old V1 app, so
+        keep a backup of anything precious before you re-save it.</p>
+      </div>
     </div>
 
     <footer class="w-foot">
@@ -94,6 +103,21 @@
   .dot { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; background: var(--accent, #ff5a1f); transform: translateY(-1px); }
   .guides-line { margin: 14px 0 0; font-size: 0.86rem; color: var(--text-muted, #cfcfcf); line-height: 1.5; }
   .guides-line a { color: var(--link, #6ca6ff); }
+  .heads-up {
+    margin: 14px 0 2px;
+    padding: 11px 14px;
+    border: 1px solid color-mix(in srgb, var(--accent, #ff5a1f) 45%, transparent);
+    border-left: 3px solid var(--accent, #ff5a1f);
+    border-radius: 0 8px 8px 0;
+    background: color-mix(in srgb, var(--accent, #ff5a1f) 10%, transparent);
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--text, #e8e8e8);
+  }
+  .heads-up p { margin: 0; }
+  .heads-up p + p { margin-top: 8px; }
+  .heads-up strong { color: var(--accent, #ff5a1f); }
+  .heads-up a { color: var(--link, #6ca6ff); font-weight: 600; }
   .w-foot {
     display: flex; justify-content: flex-end; gap: 10px;
     padding: 12px 18px; border-top: 1px solid var(--border); flex: 0 0 auto;

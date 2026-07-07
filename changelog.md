@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.317-beta - 7th Jul 2026
+
+* **Welcome popup: a heads-up callout.** The first-run V2 welcome now flags that a big release will have the odd bug (with a link to report them on Discord) and warns that systems saved in V2 won't open in the old V1 app — keep a backup before re-saving.
+
 ## v2.0.316-beta - 7th Jul 2026
 
 * **Saved files are now much smaller — and carry no stale physics.** Downloads used to bake in every derived value (temperatures, radiation, colours, classification, magnetism, boundaries…); since the app re-derives all of that on load, it was pure bloat. Saves now strip derived data to a clone before writing, keeping only your authored inputs — around **80% smaller** in testing. Nothing is lost on reload: authored data that *looks* derived (a star's temperature & luminosity, a GM-pinned type, a manual tidal lock, albedo overrides, your own tags) is carefully preserved, and everything else is recomputed. A new round-trip test proves save→load reproduces the system exactly.
