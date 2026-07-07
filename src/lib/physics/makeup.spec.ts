@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bulkDensityFromMakeup, compressedDensityFromMakeup, radiusReFromMassMakeup, compressionFactor, inferMakeupFromDensity, makeupFractions, gasThermalInflationFactor } from './makeup';
+import { bulkDensityFromMakeup, compressedDensityFromMakeup, radiusReFromMassMakeup, compressionFactor, inferMakeupFromDensity, makeupFractions, gasThermalInflationFactor, isFluidGiant, rendersAsGiant } from './makeup';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM } from '$lib/constants';
 import type { CelestialBody } from '$lib/types';
 
@@ -65,5 +65,25 @@ describe('gas-giant thermal inflation', () => {
   it('inflation does NOT change a rocky body (no thermal expansion of rock/metal)', () => {
     const rocky = { rock: 0.8, metal: 0.2 };
     expect(radiusReFromMassMakeup(1, rocky, 1.7)).toBeCloseTo(radiusReFromMassMakeup(1, rocky, 1), 5);
+  });
+});
+
+describe('fluid-giant detection (drives the giant render look)', () => {
+  const b = (p: Partial<CelestialBody>): CelestialBody => ({ id: 'x', kind: 'body', roleHint: 'planet', ...p } as CelestialBody);
+
+  it('an ice-dominated giant (massive, low density, low gas) is a fluid giant and renders as a giant', () => {
+    const iceGiant = b({ makeup: { ice: 0.97, gas: 0.03 }, massKg: 2.92e27, radiusKm: 81549 }); // ~489 M⊕, ρ≈1.29
+    expect(isFluidGiant(iceGiant)).toBe(true);
+    expect(rendersAsGiant(iceGiant)).toBe(true);
+  });
+
+  it('a gas-dominated giant renders as a giant even below the mass threshold', () => {
+    expect(rendersAsGiant(b({ makeup: { gas: 0.8, ice: 0.2 }, massKg: 3e25, radiusKm: 30000 }))).toBe(true);
+  });
+
+  it('a small icy moon and a rocky super-Earth are NOT giants', () => {
+    expect(isFluidGiant(b({ makeup: { ice: 0.6, rock: 0.4 }, massKg: 4.8e22, radiusKm: 1560 }))).toBe(false); // Europa-ish
+    expect(rendersAsGiant(b({ makeup: { ice: 0.6, rock: 0.4 }, massKg: 4.8e22, radiusKm: 1560 }))).toBe(false);
+    expect(isFluidGiant(b({ makeup: { rock: 0.7, metal: 0.3 }, massKg: 6e25, radiusKm: 12000 }))).toBe(false); // ~10 M⊕, dense
   });
 });

@@ -8,7 +8,7 @@
 // the un-mixed PALETTE of contributions, so a future sphere/shader renderer can draw Earth's
 // ocean/land/cloud mix or Jupiter's bands without re-deriving anything.
 import type { CelestialBody, RulePack, ApparentColor, ApparentColorStop } from '$lib/types';
-import { makeupFractions } from '$lib/physics/makeup';
+import { makeupFractions, rendersAsGiant } from '$lib/physics/makeup';
 import { EARTH_MASS_KG, LIQUIDS } from '$lib/constants';
 
 type RGB = [number, number, number];
@@ -102,8 +102,8 @@ function gasGiantCloudColor(teqK: number): RGB {
 // Banding: gas/ice giants and thick-atmosphere worlds organise their clouds into latitudinal
 // bands; faster rotation drives more, tighter bands (Jupiter ~10 h → many; slow → mottled).
 function bandCount(body: CelestialBody, gasFrac: number, iceGiant = false): number {
+  if (iceGiant) return 3; // Uranus/Neptune: near-featureless, a couple of faint bands at most (ice giants have LOW gas)
   if (gasFrac < 0.3) return 0;
-  if (iceGiant) return 3; // Uranus/Neptune: near-featureless, a couple of faint bands at most
   const rotH = body.rotation_period_hours;
   if (!rotH || rotH <= 0) return 6;
   const n = Math.round(60 / rotH);          // 10 h → 6 bands, 24 h → ~3
@@ -177,7 +177,9 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
   //       Neptune); ammonia (NH₃) → warm tan/gold with chromophore bands (Jupiter vs paler Saturn).
   const massMe = (body.massKg ?? 0) / EARTH_MASS_KG;
   let iceGiant = false;
-  if (mk.gas > 0.5) {
+  // A giant takes its whole look from its cloud chemistry. Gate on rendersAsGiant (NOT just gas > 0.5) so
+  // an ICE giant — ice-dominated, low gas — reads as a smooth cool cloud-world, not a cratered iceball.
+  if (rendersAsGiant(body)) {
     const comp = atm?.composition ?? {};
     const ch4 = comp['CH4'] ?? comp['methane'] ?? 0;
     let cloud = gasGiantCloudColor(teq); // warm thermal base (ammonia / water / alkali / silicate)
@@ -187,7 +189,18 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
       const methaneHue = teq < 60 ? [47, 107, 214] as RGB : [70, 176, 216] as RGB; // Neptune deep blue ↔ Uranus cyan
       cloud = mix(cloud, methaneHue, methaneStrength);
     }
-    iceGiant = methaneStrength > 0.32;
+    // An ice-dominated giant is an ICE GIANT even when the atmosphere carries no explicit methane readout
+    // (its envelope IS ices — water/ammonia/methane): tint it cool by temperature so it reads Uranus/Neptune,
+    // not a warm ammonia giant, and keep it smooth (faint bands, no chromophore stripes).
+    if (mk.ice > mk.gas) {
+      if (methaneStrength <= 0.32) {
+        const iceHue: RGB = teq < 60 ? [47, 107, 214] : teq < 160 ? [70, 176, 216] : [124, 178, 208];
+        cloud = mix(cloud, iceHue, 0.5);
+      }
+      iceGiant = true;
+    } else {
+      iceGiant = methaneStrength > 0.32;
+    }
     col = mix(col, cloud, 0.85);
     push(rgbToHex(cloud), 'cloud', 0.85, iceGiant ? 'methane haze' : 'ammonia cloud deck');
     // Chromophore stripes belong to warm ammonia giants (Jupiter's browns/oranges); ice giants are

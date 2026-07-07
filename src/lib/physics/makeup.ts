@@ -125,3 +125,23 @@ export function makeupFractions(body: CelestialBody): Required<Makeup> {
   const uncompressed = density_gcc / compressionFactor(massMe, { rock: 1 });
   return normalizeMakeup(inferMakeupFromDensity(uncompressed));
 }
+
+// A massive, low-density body is a FLUID GIANT — a gas OR ice giant. Same physical test computeMakeup
+// uses to infer a giant's makeup (mass > 8 M⊕, bulk density < 2.5 g/cc). The point of a separate helper:
+// an ICE giant is ice-dominated with a LOW gas fraction, so keying "is a giant?" off `makeup.gas > 0.5`
+// alone mistakes it for a solid iceball — this catches both.
+export function isFluidGiant(body: CelestialBody): boolean {
+  const massKg = body.massKg || 0;
+  const radiusM = (body.radiusKm || 0) * 1000;
+  if (massKg <= 0 || radiusM <= 0) return false;
+  const volM3 = (4 / 3) * Math.PI * radiusM ** 3;
+  const density_gcc = (massKg / volM3) / 1000;
+  return massKg / EARTH_MASS_KG > 8 && density_gcc < 2.5;
+}
+
+// Should this body be DRAWN as a giant (banded cloud-world, never a cratered solid surface)? True for a
+// gas-dominated body OR any fluid giant (so ice giants qualify). The single source of truth shared by the
+// apparent-colour derivation and the disc renderer so they can't disagree.
+export function rendersAsGiant(body: CelestialBody): boolean {
+  return makeupFractions(body).gas > 0.5 || isFluidGiant(body);
+}

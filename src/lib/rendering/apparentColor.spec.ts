@@ -88,6 +88,18 @@ describe('deriveApparentColor', () => {
     expect(ice.palette.some((p) => p.label === 'chromophore band')).toBe(false);
   });
 
+  // An ICE-dominated giant (low gas fraction) must still render as a giant — bands, cool cloud — not a
+  // bare cratered icy surface. Regression for the "ice giant looks like a pockmarked moon" bug: the giant
+  // look was gated on gas > 0.5, which an ice giant never meets.
+  it('an ice-dominated giant (low gas) reads as a banded cool giant, not a bare icy surface', () => {
+    const parts = deriveApparentColorParts(body({ roleHint: 'planet', makeup: { ice: 0.97, gas: 0.03 },
+      massKg: 2.92e27, radiusKm: 81549, equilibriumTempK: 60 }), PACK);
+    expect(parts.banding).toBeGreaterThanOrEqual(2);         // was 0 before (gas < 0.3 → no bands)
+    expect(parts.palette.some((p) => p.role === 'cloud')).toBe(true); // took the giant cloud path
+    const [r, , b] = rgb(parts.hex);
+    expect(b).toBeGreaterThanOrEqual(r);                     // cool-toned, like Uranus/Neptune
+  });
+
   // #9 — proportional mixing by coverage.
   it('ocean coverage mixes proportionally (wetter world reads bluer)', () => {
     const at = (coverage: number) => rgb(deriveApparentColor(

@@ -8,6 +8,7 @@
   import { getPlanetTexture } from '$lib/rendering/planetTexture';
   import { oblatePolarFactor } from '$lib/rendering/bodyShape';
   import { auroraEmitter } from '$lib/physics/aurora';
+  import { rendersAsGiant } from '$lib/physics/makeup';
   import { EARTH_MASS_KG } from '$lib/constants';
 
   export let body: CelestialBody;
@@ -156,7 +157,9 @@
   // Cratered surface (Phase G flourish): an old, airless, geologically DEAD world has no atmosphere to
   // burn up impactors and no resurfacing to erase the scars, so it accumulates craters (Mercury, the
   // Moon, Callisto). Driven by that airless + inactive condition, or an explicit impact-record tag.
-  $: hasCraters = !isStar(body) && !isBelt(body) && atmPressure < 0.02
+  // A fluid giant (gas OR ice giant) has no solid surface to crater — an ice giant reads as airless +
+  // "inactive" but must never be pockmarked, so exclude giants explicitly.
+  $: hasCraters = !isStar(body) && !isBelt(body) && !rendersAsGiant(body) && atmPressure < 0.02
     && (tagKeys.includes('geology/inactive') || tagKeys.includes('science/impact-record'));
   $: craters = (() => {
     if (!hasCraters) return [] as { cx: number; cy: number; r: number }[];
