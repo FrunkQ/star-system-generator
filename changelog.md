@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.311-beta - 7th Jul 2026
+
+* **Help menu no longer shows a stray horizontal scrollbar.** The guide cards were a hair too wide (padding on top of a full-width box); fixed with border-box sizing.
+
 ## v2.0.310-beta - 7th Jul 2026
 
 * **Right-clicking a star in the orrery no longer shows starmap actions.** The in-system body menu wrongly offered "Zoom to System / Start Link / Delete System" (starmap-only) on a star; it now offers just **Add Construct**, like planets and moons.
