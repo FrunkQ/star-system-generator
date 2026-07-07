@@ -67,6 +67,24 @@
     return f >= 0 ? rgbHex([r + (255 - r) * f, g + (255 - g) * f, b + (255 - b) * f])
                   : rgbHex([r * (1 + f), g * (1 + f), b * (1 + f)]);
   }
+  // Emission colour for a self-luminous brown dwarf by effective temperature (K): cool → deep red, hot
+  // young L-dwarf → amber. Interpolates between calibrated blackbody-ish stops (never blue — BDs are cool).
+  function bdGlowColour(teff: number): string {
+    const stops: [number, string][] = [
+      [250, '#3a0f06'], [600, '#6e1808'], [1000, '#a3320c'], [1400, '#c85614'],
+      [1800, '#e07d22'], [2300, '#f2a03e'], [2800, '#ffbf6e']
+    ];
+    if (teff <= stops[0][0]) return stops[0][1];
+    for (let i = 1; i < stops.length; i++) {
+      if (teff <= stops[i][0]) {
+        const [t0, c0] = stops[i - 1], [t1, c1] = stops[i];
+        const f = (teff - t0) / (t1 - t0);
+        const a = hexToRgb(c0), b = hexToRgb(c1);
+        return rgbHex([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]);
+      }
+    }
+    return stops[stops.length - 1][1];
+  }
 
   $: base = isStar(body)
     ? (body.apparentColorHex ?? rgbHex(starColorFromTempK(body.temperatureK)))
@@ -117,6 +135,14 @@
   // Polar ice caps (Phase G): frost at the cold poles / night side of a world liquid at its mean
   // temperature. Tag-driven (climate/polar-ice), drawn on the surface so the terminator dims them.
   $: hasPolarIce = !isStar(body) && !isBelt(body) && tagKeys.includes('climate/polar-ice');
+
+  // Self-luminous brown dwarf (thermal/self-luminous, value = its effective temperature): it radiates
+  // its OWN heat, so it glows like a dim, cool star — an emission halo coloured by that temperature
+  // (deep red when cold → amber when a hot young L-dwarf). Never blue: brown dwarfs are cool.
+  $: selfLumTag = (body.tags ?? []).find((t) => t.key === 'thermal/self-luminous');
+  $: isSelfLuminous = !!selfLumTag && !isStar(body) && !isBelt(body);
+  $: selfLumTeff = selfLumTag ? (Number(selfLumTag.value) || 0) : 0;
+  $: selfLumColor = bdGlowColour(selfLumTeff);
 
   // Atmosphere limb-glow (Phase G): a soft halo hugging the limb, its strength from the surface
   // pressure (log-scaled: wispy ~0.02 bar → faint, Earth 1 bar → moderate, thick Venus/giant → full),
@@ -252,6 +278,17 @@
           <stop offset="1" stop-color={atmColor} stop-opacity="0" />
         </radialGradient>
       {/if}
+      {#if isSelfLuminous}
+        <!-- Self-luminous emission halo: strong at the limb (r≈30), glowing outward to r=52 (rendered
+             behind the disc, so it reads as a glow ringing the body — a dim, cool "failed star"). -->
+        <radialGradient id="bdglow-{uid}" gradientUnits="userSpaceOnUse" cx="50" cy="50" r="52">
+          <stop offset="0" stop-color={selfLumColor} stop-opacity="0.85" />
+          <stop offset="0.55" stop-color={selfLumColor} stop-opacity="0.72" />
+          <stop offset="0.62" stop-color={selfLumColor} stop-opacity="0.5" />
+          <stop offset="0.82" stop-color={selfLumColor} stop-opacity="0.18" />
+          <stop offset="1" stop-color={selfLumColor} stop-opacity="0" />
+        </radialGradient>
+      {/if}
       {#if hasAurora}
         <filter id="aurblur-{uid}" x="-40%" y="-40%" width="180%" height="180%">
           <feGaussianBlur stdDeviation={(0.8 + auroraStr * 1.3).toFixed(2)} />
@@ -307,6 +344,10 @@
       <g transform="rotate({(body.axial_tilt_deg ?? 0).toFixed(1)} 50 50)">
       {#if isStar(body)}
         <circle cx="50" cy="50" r="48" fill="url(#glow-{uid})" />
+      {/if}
+      {#if isSelfLuminous}
+        <!-- A self-luminous brown dwarf glows like a dim, cool star (behind the disc → a halo). -->
+        <circle cx="50" cy="50" r="52" fill="url(#bdglow-{uid})" />
       {/if}
 
       {#if ringed}

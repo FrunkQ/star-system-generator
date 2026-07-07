@@ -84,6 +84,15 @@
     mk({ name: 'Uranus-like · 98° tilt (on its side)', apparentColorHex: '#a6d8dc', axial_tilt_deg: 98,
         apparentColor: { hex: '#a6d8dc', banding: 4, palette: iceGiant('#b8e0e4') } as any }),
   ];
+
+  // Self-luminous brown dwarfs: the emission halo's colour comes from the thermal/self-luminous tag's
+  // value (its effective temperature). Cool T-dwarf → deep red; hot young L-dwarf → amber.
+  const brownDwarfs = [
+    mk({ name: 'Y/T dwarf · 500 K', apparentColorHex: '#2e1410', temperatureK: 500, tags: [{ key: 'thermal/self-luminous', value: '500' }] }),
+    mk({ name: 'T dwarf · 900 K', apparentColorHex: '#4a1e12', temperatureK: 900, tags: [{ key: 'thermal/self-luminous', value: '900' }] }),
+    mk({ name: 'L dwarf · 1500 K', apparentColorHex: '#6e2c14', temperatureK: 1500, tags: [{ key: 'thermal/self-luminous', value: '1500' }] }),
+    mk({ name: 'Hot young L · 2300 K', apparentColorHex: '#8a4018', temperatureK: 2300, tags: [{ key: 'thermal/self-luminous', value: '2300' }] }),
+  ];
 </script>
 
 <div class="page">
@@ -129,6 +138,13 @@
   <h2>Auroras — atmosphere + magnetic field + ionising radiation</h2>
   <div class="gallery">
     {#each auroras as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Self-luminous brown dwarfs — glow &amp; colour from their own heat</h2>
+  <div class="gallery">
+    {#each brownDwarfs as b}
       <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
     {/each}
   </div>
