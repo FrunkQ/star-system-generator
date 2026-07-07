@@ -212,12 +212,12 @@
           <p class="muted">SSG derives its own physics — "explained" differences are expected. Anything marked <em>needs a look</em> is worth investigating.</p>
           <div class="table">
             {#each [...review.comparisons].sort((a, b) => (a.bucket === 'unexplained' ? -1 : b.bucket === 'unexplained' ? 1 : a.bucket === 'explained' ? -1 : 1)) as r}
-              <div class="trow {r.bucket}">
+              <div class="trow {r.bucket}" class:has-note={!!r.note} title={r.note ?? ''}>
                 <span class="dot"></span>
                 <span class="body">{r.body}</span>
                 <span class="metric muted">{r.metric}</span>
                 <span class="vals">{r.us} → {r.ssg}</span>
-                <span class="bk">{bucketLabel[r.bucket]}</span>
+                <span class="bk">{r.reason ?? bucketLabel[r.bucket]}</span>
               </div>
             {/each}
           </div>
@@ -270,6 +270,8 @@
   .trow.unexplained { outline: 1px solid var(--danger, #d5564f); }
   .vals { font-variant-numeric: tabular-nums; }
   .bk { font-size: 0.78em; color: var(--text-faint, #778); white-space: nowrap; }
+  .trow.has-note { cursor: help; }
+  .trow.explained .bk { color: var(--warning, #e08a4a); border-bottom: 1px dotted currentColor; }
   .trow.unexplained .bk { color: var(--danger, #d5564f); font-weight: 600; }
   footer { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--border, #333); }
   button.primary { background: var(--accent, #ff5a1f); color: #fff; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: 600; }

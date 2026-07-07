@@ -153,7 +153,8 @@ export interface ReviewRow {
   us: string;             // US value, formatted
   ssg: string;            // SSG derived value, formatted
   bucket: ReviewBucket;
-  note?: string;          // explanation for the 'explained' bucket
+  reason?: string;        // SHORT why (a couple of words), shown inline
+  note?: string;          // the full explanation, shown on hover / in the copied report
 }
 
 export interface ImportReview {

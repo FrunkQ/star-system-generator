@@ -29,7 +29,7 @@ export function buildImportReview(processed: System, result: UboxImportResult): 
         body: snap.name, metric: 'surface temperature',
         us: `${us.toFixed(0)} K`, ssg: `${ssg.toFixed(0)} K`,
         bucket: aligned ? 'aligned' : 'explained',
-        ...(aligned ? {} : { note: TEMP_EXPLAIN })
+        ...(aligned ? {} : { reason: ssg > us ? 'SSG runs it warmer' : 'SSG runs it cooler', note: TEMP_EXPLAIN })
       });
     }
 
@@ -41,7 +41,7 @@ export function buildImportReview(processed: System, result: UboxImportResult): 
       comparisons.push({
         body: snap.name, metric: 'magnetic field',
         us: `${snap.magneticFieldGauss.toFixed(3)} G`, ssg: `${ssgField.toFixed(3)} G`,
-        bucket: aligned ? 'aligned' : 'explained', ...(aligned ? {} : { note: MAG_EXPLAIN })
+        bucket: aligned ? 'aligned' : 'explained', ...(aligned ? {} : { reason: 'SSG-derived field', note: MAG_EXPLAIN })
       });
     }
 
@@ -103,7 +103,8 @@ export function reviewToText(review: ImportReview, opts: { title?: string; ageGy
   L.push(`AUDIT vs Universe Sandbox values — ${tally.aligned} aligned, ${tally.explained} explained, ${tally.unexplained} unexplained`);
   L.push('(SSG derives its own physics; "explained" differences are expected, "unexplained" are worth a look.)');
   for (const r of rows) {
-    L.push(`  [${r.bucket.toUpperCase()}] ${r.body} — ${r.metric}: US ${r.us}  ->  SSG ${r.ssg}`);
+    const tag = r.bucket === 'aligned' ? 'ALIGNED' : r.reason ? `${r.bucket.toUpperCase()} — ${r.reason}` : r.bucket.toUpperCase();
+    L.push(`  [${tag}] ${r.body} — ${r.metric}: US ${r.us}  ->  SSG ${r.ssg}`);
     if (r.note && r.bucket !== 'aligned') L.push(`        ${r.note}`);
   }
   return L.join('\n');

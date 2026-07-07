@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.329-beta - 7th Jul 2026
+
+* Universe Sandbox import diff: the "explained" rows now say *why* in a couple of words (e.g. "SSG runs it cooler", "SSG-derived field"), with the full explanation on hover. The copied-for-review text carries the short reason too.
+
 ## v2.0.328-beta - 7th Jul 2026
 
 * Fixed: importing a `.ubox` from the New System dialogue left the New System window sitting on top of the importer, blocking it. The dialogue now hides while the importer is open (and the importer sits above everything).
