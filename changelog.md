@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.336-beta - 7th Jul 2026
+
+* **Refreshed the opening splash for V2.** The start-screen intro was still describing V1. Two new write-ups now alternate each time the dialog opens — one physics-forward, one framed around running a system at your table.
+
 ## v2.0.335-beta - 7th Jul 2026
 
 * **SpaceEngine import: lopsided barycentres collapse.** SpaceEngine models a planet and a big moon (Earth + Moon) as both orbiting a shared barycentre. SSG only shows a barycentre for a near-equal pair, so an imported one that's very lopsided (mass ratio < 8%, the same test SSG uses) is now dissolved — the moon simply orbits the planet directly, like everywhere else. Genuine co-orbiting pairs (Pluto-Charon, binary stars) keep their barycentre.

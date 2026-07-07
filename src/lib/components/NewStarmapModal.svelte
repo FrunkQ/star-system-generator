@@ -8,6 +8,20 @@
 
   const dispatch = createEventDispatcher();
 
+  // The intro blurb alternates on each appearance: Option 1 (physics-forward) on the
+  // first display, Option 2 (GM-facing) on the next, and so on. The chosen index is
+  // persisted so it advances across sessions, not just within one.
+  const SPLASH_BLURBS = [
+    'A procedural generator for scientifically-plausible star systems, with a real-time orbital visualiser and a multi-system starmap. Every world is derived from real physics — composition, oceans, magnetism, geology and true colour — and you can fly your own spacecraft between them: efficient transfers, hard burns, or relativistic interstellar jumps, with fuel, time and hazard all calculated.',
+    "Build scientifically-plausible star systems for your sci-fi table and bring them to life. Every world is derived from real physics; a real-time orrery and starmap let you fly efficient transfers, hard burns or relativistic interstellar journeys; NPC ships run their own routes on autopilot; and you can serve a live, redacted Field Guide straight to your players' own devices.",
+  ];
+  let blurbIndex = 0;
+  if (typeof localStorage !== 'undefined') {
+    const stored = Number(localStorage.getItem('splash-blurb-index'));
+    blurbIndex = Number.isFinite(stored) ? ((stored % SPLASH_BLURBS.length) + SPLASH_BLURBS.length) % SPLASH_BLURBS.length : 0;
+    localStorage.setItem('splash-blurb-index', String((blurbIndex + 1) % SPLASH_BLURBS.length));
+  }
+
   let starmapName = 'My Starmap';
   // Only one rule pack exists, so it is applied automatically rather than offered as a choice.
   let selectedRulepack: RulePack | undefined = rulepacks && rulepacks.length > 0 ? rulepacks[0] : undefined;
@@ -34,7 +48,7 @@
     <div class="left-pane">
         <img src="/images/ui/SSE-Logo.png" alt="Star System Explorer" class="main-logo" />
         
-        <p>A procedural generator for creating scientifically-plausible star systems, complete with a real-time orbital visualizer and starmap. Full astrodynamics simulation letting you easily model your own spacecraft and let them transit efficienctly or "hard burn" with fuel, time and hazard calculations.</p>
+        <p>{SPLASH_BLURBS[blurbIndex]}</p>
 
         <p>For discussion, feedback, bugs and suggestions go to <a href="https://discord.gg/UAEq4zzjD8" target="_blank">Our Discord</a>.</p>
 
