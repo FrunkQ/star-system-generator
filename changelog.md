@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.333-beta - 7th Jul 2026
+
+* **Import fixes + docs.** The import mass slider had its end labels reversed (the "all bodies" end read "largest only") and its included-count was one too low at the extremes (a floating-point rounding artefact) — both fixed. The first-run V2 welcome popup now lists importing from Universe Sandbox and SpaceEngine among the new features, and the README, Getting Started guide and dev docs were refreshed to cover the importers.
+
 ## v2.0.332-beta - 7th Jul 2026
 
 * SpaceEngine import: removed an erroneous `.se` extension — SpaceEngine exports are `.sc` (with `.pak` addons also handled). The New System text names `.sc`.
