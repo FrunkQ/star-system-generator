@@ -40,7 +40,7 @@
   import { get } from 'svelte/store';
   import { calculateSurfaceTemperature } from '$lib/system/postprocessing';
   import { systemProcessor } from '$lib/core/SystemProcessor';
-  import { fixUpImportedSystem } from '$lib/system/importFixup';
+  import { fixUpImportedSystem, stripSystemForExport } from '$lib/system/importFixup';
   import { generateId, toRoman } from '$lib/utils';
   import { AU_KM, EARTH_MASS_KG, G } from '$lib/constants';
   import { propagate } from '$lib/api';
@@ -1340,8 +1340,9 @@
     if (mode === 'Player') {
         systemToSave = computePlayerSnapshot($systemStore);
     } else {
-        // Deep copy for GM mode to avoid mutating store if we filter constructs below
-        systemToSave = JSON.parse(JSON.stringify($systemStore));
+        // GM save: strip derived physics from a clone (the load path re-derives it), so the file is small
+        // and carries only authored inputs — never stale baked-in data.
+        systemToSave = stripSystemForExport($systemStore, rulePack);
     }
 
     // 2. Filter Constructs if requested

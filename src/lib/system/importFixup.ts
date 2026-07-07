@@ -9,21 +9,30 @@
 // descriptions, GM notes, and any genuinely-authored namespaced tags). Then the caller re-processes.
 import type { System, CelestialBody, Tag, RulePack } from '$lib/types';
 
-// Derived fields the processor recomputes — never trust them from an old file.
+// Derived fields the processor recomputes — never trust them from an old file. (Also stripped on EXPORT
+// so saved files carry only authored INPUTS and stay small — the load path re-derives all of this.)
 const DERIVED_FIELDS = [
   'calculatedGravity_ms2', 'calculatedRotationPeriod_s', 'orbital_period_days', 'distanceToHost_km',
   'equilibriumTempK', 'equilibriumTempMinK', 'equilibriumTempMaxK', 'greenhouseTempK', 'temperatureK',
   'temperatureRangeK', 'temperatureProfile', 'tidalHeatK', 'radiogenicHeatK', 'internalHeatK',
-  'surfaceRadiation', 'radiationShieldingMag', 'habitabilityScore', 'orbitalBoundaries',
+  'surfaceRadiation', 'surfaceRadiationMin', 'surfaceRadiationMax', 'radiationShieldingMag',
+  'radiationShieldingAtmo', 'stellarRadiation', 'stellarRadiationMin', 'stellarRadiationMax',
+  'photonRadiation', 'particleRadiation', 'habitabilityScore', 'habitabilityBreakdown', 'orbitalBoundaries',
   'loDeltaVBudget_ms', 'propulsiveLandBudget_ms', 'aerobrakeLandBudget_ms',
   'apparentColorHex', 'apparentColor', 'magnetism', 'geoActivity', 'albedoBreakdown', 'classification',
   'albedo',  // now derived from makeup + clouds; an old pinned value would override the model
-  'oblateness'  // derived from spin vs density-set breakup limit
+  'oblateness',  // derived from spin vs density-set breakup limit
+  // Substellar self-luminosity (brown dwarfs) — all re-derived by the processor's substellar pass.
+  'isSelfLuminous', 'selfLuminousTeffK', 'internalLuminositySolar',
+  // A star's radiationOutput (its luminosity) is authored input and is KEPT for stars (see stripBody);
+  // on a planet it's a derived brown-dwarf luminosity, so strip it there.
+  'radiationOutput'
 ];
 
 // Tag namespaces the processor owns (re-derived every run).
 const DERIVED_TAG_PREFIXES = [
-  'geology/', 'magnetic/', 'structure/', 'tidal/', 'habitability/', 'climate/', 'stability/', 'barycenter/', 'shape/', 'aurora/'
+  'geology/', 'magnetic/', 'structure/', 'tidal/', 'habitability/', 'climate/', 'stability/', 'barycenter/', 'shape/', 'aurora/', 'thermal/',
+  'resonance/', 'fate/'  // re-derived every run by the resonance + stability passes
 ];
 // Flat (non-namespaced) tags the processor manages or has retired.
 const DERIVED_FLAT_TAGS = new Set([
@@ -75,7 +84,9 @@ function stripBody(body: CelestialBody, classNames: Set<string>): void {
   // star's, so stripping it left loaded stars at 0 K. Keep it for stars; strip it (and the rest) for others.
   const isStar = body.roleHint === 'star';
   for (const f of DERIVED_FIELDS) {
-    if (isStar && f === 'temperatureK') continue;
+    // A star's effective temperature AND its luminosity (radiationOutput) are authored INPUTS that
+    // define it (like mass/radius) and are never re-derived on load — keep them; strip for everyone else.
+    if (isStar && (f === 'temperatureK' || f === 'radiationOutput')) continue;
     delete (body as any)[f];
   }
   // Classification is re-derived from physics for planets/moons — but the processor NEVER
@@ -122,4 +133,32 @@ export function fixUpImportedSystem(system: System, pack?: RulePack): System {
   // the barycentre). So we KEEP auto-barycentres and let reconcile normalise them, preserving the pair's
   // real placement. Their `barycenter/auto` tag survives (bodies-only tag strip above doesn't touch it).
   return system;
+}
+
+// Strip derived data from a CLONE of a system — for SAVING. Uses the SAME field/tag strip as the import
+// fix-up, so it is symmetric and lossless (the load path re-derives all of it), but on a copy and WITHOUT
+// the barycentre reconciliation (a load-time heal). Result carries only authored INPUTS, so saved files
+// stay small and never ship stale derived physics.
+export function stripSystemForExport(system: System, pack?: RulePack): System {
+  const clone = JSON.parse(JSON.stringify(system)) as System;
+  const classNames = classNamesFromPack(pack);
+  for (const node of clone.nodes ?? []) {
+    if (node.kind === 'body') stripBody(node as CelestialBody, classNames);
+  }
+  return clone;
+}
+
+// Same, for a whole starmap (every embedded system). Returns a stripped CLONE; the original is untouched.
+export function stripStarmapForExport<T extends { systems?: Array<{ system?: System }> }>(
+  starmap: T,
+  pack?: RulePack
+): T {
+  const clone = JSON.parse(JSON.stringify(starmap)) as T;
+  const classNames = classNamesFromPack(pack);
+  for (const node of clone.systems ?? []) {
+    for (const body of node?.system?.nodes ?? []) {
+      if ((body as CelestialBody).kind === 'body') stripBody(body as CelestialBody, classNames);
+    }
+  }
+  return clone;
 }

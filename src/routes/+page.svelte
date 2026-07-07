@@ -46,7 +46,7 @@
   import { getJourneyBounds } from '$lib/transit/scheduler';
   import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
   import { systemProcessor } from '$lib/core/SystemProcessor';
-  import { fixUpImportedSystem } from '$lib/system/importFixup';
+  import { fixUpImportedSystem, stripStarmapForExport } from '$lib/system/importFixup';
   import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
   import ShipPanel from '$lib/components/ShipPanel.svelte';
   import { constructDisplayPlacement, interstellarConstructIds, endJourneyAtSource } from '$lib/transit/interstellar';
@@ -1116,8 +1116,11 @@
   function handleDownloadStarmap() {
     if (!$starmapStore) return;
 
+    // Strip derived physics from a CLONE before writing — the load path re-derives everything, so the
+    // file needs only authored inputs. Keeps saved files small and free of stale baked-in data.
+    const lean = stripStarmapForExport($starmapStore, selectedRulepack ?? undefined);
     // Embed the user's PoI packs + reasons config so they travel inside the .json starmap file.
-    const exportObj = { ...$starmapStore, poiPacks: packsForStarmap(), reasonsConfig: get(reasonsConfig), coiCategories: coiForStarmap() };
+    const exportObj = { ...lean, poiPacks: packsForStarmap(), reasonsConfig: get(reasonsConfig), coiCategories: coiForStarmap() };
     const data = JSON.stringify(exportObj, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
