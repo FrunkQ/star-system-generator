@@ -3,6 +3,7 @@
   import type { CelestialBody, RulePack } from '$lib/types';
   import { describeTag, tagSource } from '$lib/tags/tagPresentation';
   import { poiPacks, activeCategories } from '$lib/physics/reasonsToVisit';
+  import { customTagVocabulary } from '$lib/tags/customTags';
 
   export let body: CelestialBody;
   export let rulePack: RulePack | null = null;
@@ -20,7 +21,14 @@
 
   // The existing PoI tags defined in the chosen category that this body doesn't have yet — click one to
   // add it manually (kept as the player's own, so the reasons pass never strips it).
-  $: availableInCat = newCat === 'custom' ? [] : (() => {
+  // For "Custom", offer the starmap-wide vocabulary of custom tags used on ANY body/construct (across all
+  // systems), minus the ones this body already has — so a tag added anywhere is a one-click reuse here.
+  $: availableInCat = newCat === 'custom' ? (() => {
+    const have = new Set((body.tags ?? []).map((t) => t.key));
+    return $customTagVocabulary
+      .filter((e) => !have.has(e.key))
+      .map((e) => { const info = describeTag(e.key); return { key: e.key, label: info.label, color: info.color, textColor: info.textColor || '#fff' }; });
+  })() : (() => {
     const have = new Set((body.tags ?? []).map((t) => t.key));
     const seen = new Set<string>();
     const out: { key: string; label: string; color: string; textColor: string }[] = [];
@@ -152,7 +160,7 @@
     </label>
     {#if availableInCat.length}
       <div class="avail-row">
-        <span class="avail-lbl">Available:</span>
+        <span class="avail-lbl">{newCat === 'custom' ? 'Reuse from this starmap:' : 'Available:'}</span>
         {#each availableInCat as a (a.key)}
           <button class="avail-chip" style="background:{a.color}; color:{a.textColor}" on:click={() => addExisting(a.key)} title="Add {a.label}">+ {a.label}</button>
         {/each}

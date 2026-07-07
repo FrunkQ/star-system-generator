@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.319-beta - 7th Jul 2026
+
+* **Custom tags are now shared across the whole starmap.** A free-form tag you add on a body in one system (e.g. `faction/red-syndicate`) is now offered as a one-click **"Reuse from this starmap"** option when tagging any body in any other system — no more retyping and no drift between `red-syndicate` and `Red Syndicate`. The list is derived live from every custom tag in use across the map (and updates as you add/remove them). PoI/CoI packs and custom construct tags were already starmap-wide; this closes the gap for manual body tags.
+
 ## v2.0.318-beta - 7th Jul 2026
 
 * **Radiogenic heating fixed — now a proper, persistent GM override that drives geology.** Three bugs, all reported and confirmed: (1) the radiogenic slider wrote to a field that was stripped on every load and never re-derived, so it **reset to 0 on reload**; (2) it was disconnected from geology, so raising it **didn't change the geology tag**; (3) there was no real override control. Radiogenic heating is now a GM **override** (like albedo) — set it in the Temperature tab (derived default is ~0, since radiogenic surface heat is negligible vs sunlight), and it now **persists across save/load** *and* **boosts the geological vigor** (~12 K ≈ +1 Earth-vigor), so cranking it can wake a dead world and change its tectonics/volcanism tag. Any radiogenic values still present in an existing save are **migrated** into the override on load (values already stripped to 0 by an earlier reload can't be recovered — you'll need to re-set those).
