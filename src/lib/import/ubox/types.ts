@@ -105,19 +105,9 @@ export type SkipReason =
 
 export interface SkippedEntity { name: string; reason: SkipReason; }
 
-/** US values we deliberately did NOT import, kept per node id for the audit (spec §9). */
-export interface UsSnapshotEntry {
-  name: string;
-  roleHint: string;
-  surfaceTemperatureK?: number;
-  albedo?: number;
-  magneticFieldGauss?: number;
-  luminosityW?: number;
-  densityKgM3?: number;
-  ageGyr?: number;
-  pressureBar?: number;      // converter's own derived pressure input (cross-check)
-}
-export type UsReferenceSnapshot = Record<string, UsSnapshotEntry>;
+// The reference snapshot + Import Review types are shared across importers.
+export type { SnapshotEntry as UsSnapshotEntry, ReferenceSnapshot as UsReferenceSnapshot } from '../shared/review';
+import type { ReferenceSnapshot } from '../shared/review';
 
 export interface UboxImportOptions {
   /** index (0-based) or Name of the simulation when the archive lists several; default: the manifest EntryPoint. */
@@ -135,31 +125,11 @@ export interface UboxListing {
 export interface UboxImportResult {
   /** UNPROCESSED authored-inputs system — the caller runs fixUpImportedSystem + systemProcessor.process. */
   system: System;
-  snapshot: UsReferenceSnapshot;
+  snapshot: ReferenceSnapshot;
   skipped: SkippedEntity[];
   assumptions: string[];
   counts: { stars: number; planets: number; moons: number; other: number; rings: number };
 }
 
-// ---------------------------------------------------------------------------
-// Import Review (review.ts)
-// ---------------------------------------------------------------------------
-
-export type ReviewBucket = 'aligned' | 'explained' | 'unexplained';
-
-export interface ReviewRow {
-  body: string;
-  metric: string;         // e.g. 'surface temperature'
-  us: string;             // US value, formatted
-  ssg: string;            // SSG derived value, formatted
-  bucket: ReviewBucket;
-  reason?: string;        // SHORT why (a couple of words), shown inline
-  note?: string;          // the full explanation, shown on hover / in the copied report
-}
-
-export interface ImportReview {
-  counts: UboxImportResult['counts'];
-  assumptions: string[];
-  skipped: { reason: SkipReason; count: number; examples: string[] }[];
-  comparisons: ReviewRow[];
-}
+// Import Review types are shared across importers.
+export type { ReviewBucket, ReviewRow, ImportReview } from '../shared/review';

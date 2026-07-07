@@ -78,8 +78,8 @@ describe('ubox reviewToText', () => {
     const snapshotClone = JSON.parse(JSON.stringify(result.snapshot));
     const processed = systemProcessor.process(fixUpImportedSystem(result.system as System, pack), pack) as System;
     const text = reviewToText(buildImportReview(processed, { ...result, snapshot: snapshotClone }), { title: 'Solar System', ageGyr: 4.6 });
-    expect(text).toContain('Universe Sandbox import — Solar System');
-    expect(text).toContain('AUDIT vs Universe Sandbox values');
+    expect(text).toContain('System import — Solar System');
+    expect(text).toContain('AUDIT vs source values');
     expect(text).toMatch(/\d+ aligned/);
     expect(text.split('\n').length).toBeGreaterThan(5);
   });
