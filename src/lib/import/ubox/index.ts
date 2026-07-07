@@ -1,0 +1,32 @@
+// Universe Sandbox (.ubox) import — public API. Design §3.
+//   const result = importUbox(bytes, opts);
+//   const processed = systemProcessor.process(fixUpImportedSystem(result.system, pack), pack);
+//   const review = buildImportReview(processed, result);
+import { listSimulations, parseUbox } from './parse';
+import { convertUbox } from './convert';
+import { UboxError } from './types';
+import type { UboxImportOptions, UboxImportResult, UboxListing } from './types';
+
+export { UboxError } from './types';
+export { RECOMMENDED_MIN_MASS_KG } from './convert';
+export { buildImportReview } from './review';
+export type {
+  UboxImportOptions, UboxImportResult, UboxListing, ImportReview, ReviewRow, ReviewBucket,
+  SkippedEntity, SkipReason, UsReferenceSnapshot, UboxErrorCode
+} from './types';
+
+/** Enumerate the simulations inside a .ubox archive (for the multi-sim picker / CLI --list). */
+export function listUboxSimulations(bytes: Uint8Array): UboxListing {
+  const { simulations, buildName, buildRevision } = listSimulations(bytes);
+  return { simulations, buildName, buildRevision };
+}
+
+/** Convert a .ubox archive into an UNPROCESSED authored-inputs SSG system + audit snapshot. */
+export function importUbox(bytes: Uint8Array, options: UboxImportOptions = {}): UboxImportResult {
+  const parsed = parseUbox(bytes, options.simulation);
+  const result = convertUbox(parsed, options);
+  if (!result.system.nodes.length) {
+    throw new UboxError('empty-system', 'That Universe Sandbox simulation produced no importable bodies (all were skipped — try lowering the mass threshold).');
+  }
+  return result;
+}
