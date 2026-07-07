@@ -11,6 +11,7 @@
   import { resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
   import { getJourneyBounds } from '$lib/transit/scheduler';
   import { cargoAboardAt, fuelKgAt, computeAutopilotTotals } from '$lib/transit/autopilotPlanner';
+  import { deriveIncomingVisits } from '$lib/transit/constructInteractions';
   import { calculateFullConstructSpecs } from '$lib/construct-logic';
   import AutopilotShipIcon from './AutopilotShipIcon.svelte';
 
@@ -112,7 +113,6 @@
   // A flight-log entry rendered AGAINST the display clock: a transfer in progress shows how far through it is
   // (and its window gives the ETA); before it's a plan, after it's done. Instant events read the same always.
   function liveEventText(ev: any, displaySec: number): string {
-    const place = nodeName(ev.placeId);
     const res = resLabel(ev.resourceKey);
     const total = ev.tonnes || 0;
     const start = Number(ev.atSec);
@@ -120,6 +120,24 @@
     const future = Number.isFinite(displaySec) && displaySec < start;
     const active = dur > 0 && Number.isFinite(displaySec) && displaySec >= start && displaySec < start + dur;
     const frac = !Number.isFinite(displaySec) ? 1 : dur > 0 ? Math.min(1, Math.max(0, (displaySec - start) / dur)) : (future ? 0 : 1);
+    // Incoming visit: told from THIS construct's side (the place is itself), naming the visiting ship.
+    if (ev.incoming) {
+      const ship = ev.fromName || 'A ship';
+      if (ev.kind === 'unload' || ev.kind === 'load') {
+        const what = res || 'cargo';
+        const collect = ev.kind === 'load';
+        if (future) return `${ship} to ${collect ? 'collect' : 'deliver'} ${fmtT(total)} ${what} (planned)`;
+        if (active) return `${ship} ${collect ? 'collecting' : 'delivering'} ${fmtT(total * frac)} / ${fmtT(total)} ${what} — ${Math.round(frac * 100)}%`;
+        return `${ship} ${collect ? 'collected' : 'delivered'} ${fmtT(total)} ${what}`;
+      }
+      if (ev.kind === 'refuel') {
+        if (future) return `Refuel ${ship} (planned)`;
+        if (active) return `Refuelling ${ship} — ${Math.round(frac * 100)}%`;
+        return `Refuelled ${ship}`;
+      }
+      return future ? `${ship} to hold station here (planned)` : `${ship} held station here`;
+    }
+    const place = nodeName(ev.placeId);
     if (ev.kind === 'mine' || ev.kind === 'load' || ev.kind === 'unload') {
       const what = res || (ev.kind === 'mine' ? 'ore' : 'cargo');
       const ing = ev.kind === 'mine' ? 'Mining' : ev.kind === 'load' ? 'Loading' : 'Unloading';
@@ -145,6 +163,9 @@
   let showAll = false;
   $: journeys = focusedBody.scheduled_journeys || [];
   $: nowSec = Number.isFinite(displayTimeMs) ? displayTimeMs / 1000 : Number.POSITIVE_INFINITY;
+  // Visits made TO this construct by other ships — derived live from the fleet's logs (see
+  // constructInteractions.ts), so a station/depot shows arrivals it never scheduled itself.
+  $: incomingVisits = focusedBody.kind === 'construct' ? deriveIncomingVisits($systemStore, focusedBody.id) : [];
   $: allItems = (() => {
     const items: any[] = [];
     journeys.forEach((log: any, idx: number) => {
@@ -153,6 +174,10 @@
       items.push({ type: 'journey', key: 'j' + log.id, atSec: start, endSec: b ? b.endMs / 1000 : start, log, idx });
     });
     for (const ev of (focusedBody.flight_log || [])) {
+      const s = Number(ev.atSec);
+      items.push({ type: 'event', key: 'e' + ev.id, atSec: s, endSec: s + (ev.durationSec || 0), ev });
+    }
+    for (const ev of incomingVisits) {
       const s = Number(ev.atSec);
       items.push({ type: 'event', key: 'e' + ev.id, atSec: s, endSec: s + (ev.durationSec || 0), ev });
     }
@@ -234,8 +259,8 @@
     {@const endMs = evMs + (ev.durationSec ? ev.durationSec * 1000 : 0)}
     {@const future = Number.isFinite(displayTimeMs) && evMs > displayTimeMs}
     {@const active = ev.durationSec && Number.isFinite(displayTimeMs) && evMs <= displayTimeMs && displayTimeMs < endMs}
-    <div class="flight-log-row" class:future class:active>
-      <span class="fl-kind fl-{ev.kind}">{KIND_GLYPH[ev.kind] || '·'}</span>
+    <div class="flight-log-row" class:future class:active class:incoming={ev.incoming}>
+      <span class="fl-kind fl-{ev.kind}" class:fl-incoming={ev.incoming}>{ev.incoming ? '⇠' : (KIND_GLYPH[ev.kind] || '·')}</span>
       <span class="fl-text">{liveEventText(ev, Math.floor(displayTimeMs / 1000))}</span>
       <span class="fl-time">{#if active}done {formatLogTime(endMs)} {@render seekClock(endMs)}{:else}{formatLogTime(evMs)} {@render seekClock(evMs)}{/if}</span>
     </div>
@@ -458,6 +483,10 @@
   .fl-load, .fl-mine { color: #8fcf9f; }
   .fl-unload { color: #e8a857; }
   .fl-refuel { color: #6fb6ff; }
+  /* Incoming visits (another ship came HERE) read in a distinct violet so they separate at a glance from
+     this construct's own outbound work. */
+  .fl-kind.fl-incoming { color: #b89cff; }
+  .flight-log-row.incoming .fl-text { color: #cdbcff; }
   .fl-time {
       color: var(--text-muted);
       font-size: 0.92em;

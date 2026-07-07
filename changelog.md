@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.337-beta - 7th Jul 2026
+
+* **Construct logs now show incoming visits.** When an autopilot ship delivers, collects, refuels or holds station at another construct (a station, depot or tanker), that visit now appears on the *receiving* construct's log too — "Chariot delivered 120 t water-ice", "Refuelled Chariot" — in a distinct colour with an inbound marker. Derived live from the fleet's own logs, so it stays correct as you scrub time.
+
 ## v2.0.336-beta - 7th Jul 2026
 
 * **Refreshed the opening splash for V2.** The start-screen intro was still describing V1. Two new write-ups now alternate each time the dialog opens — one physics-forward, one framed around running a system at your table.

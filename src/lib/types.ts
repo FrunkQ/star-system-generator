@@ -174,6 +174,7 @@ export interface ConstructLogEvent {
   durationSec?: number;  // load / unload / mine happen OVER the dwell, so cargo ramps rather than steps
   fuelKg?: number;       // refuel — fuel taken on
   plannedAtSec?: string; // the on-time baseline (vs atSec once tardiness slack is applied) — for on-time %
+  fromConstructId?: ID;  // set only on a DERIVED incoming-visit event (see transit/constructInteractions.ts) — the visiting ship
 }
 // Routes "Under autopilot" attention marker: red = stuck (can't proceed), orange = needs GM decision,
 // green = finished a once-route (auto-disengaged). Derived by the planner; null = running fine.
