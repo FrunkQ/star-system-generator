@@ -38,6 +38,9 @@ Thanks to @Athena, @Mafro & @malize from the creative community on our <a href="
 <li><a href="https://www.youtube.com/@scottmanley" target="_blank">Scott Manley</a></li>
 </ul>
 
+<p><strong>Open-Source Software:</strong><br>
+Built with <a href="https://kit.svelte.dev/" target="_blank" rel="noopener noreferrer">SvelteKit</a>. Uses <a href="https://github.com/101arrowz/fflate" target="_blank" rel="noopener noreferrer">fflate</a> (unzipping Universe Sandbox &amp; SpaceEngine imports), <a href="https://peerjs.com/" target="_blank" rel="noopener noreferrer">PeerJS</a> (live sharing to players' devices) and <a href="https://github.com/soldair/node-qrcode" target="_blank" rel="noopener noreferrer">qrcode</a> (share-link QR codes) — each under the MIT license.</p>
+
 <hr>
 
 <p><strong>Image Attributions:</strong></p>
