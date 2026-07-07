@@ -8,7 +8,7 @@ import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions } from '../physics/makeup';
 import { surfaceTempProfile } from '../physics/surfaceTemperature';
 import { deriveFluidLayers, cloudColourName } from '../physics/fluidLayers';
-import { phaseAt, liquidDef, biosolventScore } from '../physics/liquids';
+import { phaseAt, liquidDef, biosolventScore, solventCoverageWeight } from '../physics/liquids';
 import { deriveMagnetism, magneticShieldingTag } from '../physics/magnetism';
 import { deriveAurora } from '../physics/aurora';
 import { rotationalDeform } from '../physics/rotation';
@@ -879,9 +879,13 @@ export class SystemProcessor implements ISystemProcessor {
         // quality: water is ideal (1.0), hydrocarbons/ammonia are plausible alternatives (0.6),
         // everything else can't host life (0). Uses the fluid-layer model: a frozen ice cap is not
         // a surface solvent (its life potential is the subsurface ocean), so it scores 0 here.
+        // Quality (water=1 / hydrocarbon-ammonia=0.6 / none=0) is weighted by a PRESENCE-first coverage
+        // ramp: any standing liquid is high-value at once, so a little scores most of the marks and it
+        // climbs to full by ~18% coverage — not a step where a 2% sea == a global ocean.
         const hasSurfaceLiquid = (planet.hydrosphere?.layers || []).some(l => l.location === 'surface');
         if (hasSurfaceLiquid) {
-            factors.solvent = biosolventScore(planet.hydrosphere?.composition, pack); // 1 / 0.6 / 0
+            factors.solvent = biosolventScore(planet.hydrosphere?.composition, pack)
+                * solventCoverageWeight(planet.hydrosphere?.coverage ?? 0);
         }
         score += factors.solvent * 25;
 
@@ -985,7 +989,7 @@ export class SystemProcessor implements ISystemProcessor {
             factors: [
                 { label: 'Temperature', points: +(factors.temp * 25).toFixed(1), max: 25, value: `${Math.round(planet.temperatureK ?? 0)} K (${tC} °C)`, ideal: tempIdeal,
                   range: { value: Math.round(planet.temperatureK ?? 0), lo: tempIdealLo - tempFall, idealLo: tempIdealLo, idealHi: tempIdealHi, hi: tempIdealHi + tempFall, unit: 'K' } },
-                { label: 'Liquid solvent', points: +(factors.solvent * 25).toFixed(1), max: 25, value: hasSurfaceLiquid ? `${Math.round((planet.hydrosphere?.coverage ?? 0) * 100)}% ${planet.hydrosphere?.composition}` : 'no surface liquid (frozen?)', ideal: 'liquid water best' },
+                { label: 'Liquid solvent', points: +(factors.solvent * 25).toFixed(1), max: 25, value: hasSurfaceLiquid ? `${Math.round((planet.hydrosphere?.coverage ?? 0) * 100)}% ${planet.hydrosphere?.composition}` : 'no surface liquid (frozen?)', ideal: 'any surface liquid is high-value — presence matters more than amount; water scores best' },
                 { label: 'Pressure', points: +(factors.pressure * 18).toFixed(1), max: 18, value: `${(planet.atmosphere?.pressure_bar ?? 0).toFixed(2)} bar`, ideal: '0.5–2 bar',
                   range: { value: +(planet.atmosphere?.pressure_bar ?? 0).toFixed(2), lo: 0, idealLo: 0.5, idealHi: 2.0, hi: 4.0, unit: 'bar' } },
                 { label: 'Radiation', points: +(factors.radiation * 17).toFixed(1), max: 17, value: `${(planet.surfaceRadiation ?? 0).toFixed(2)} mSv`, ideal: '< 5 mSv',

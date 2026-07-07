@@ -380,8 +380,14 @@
         is the master variable: solvent (20, +5 for water = 25), temperature vs that solvent's liquid range (25),
         atmospheric pressure (18), radiation (17), and surface gravity (15, a weak constraint with a wide 0.5–1.5 g
         tolerance) — the instantaneous <em>surface</em> conditions. The solvent must be genuinely <em>liquid</em>
-        (a frozen ice cap scores 0 — its life potential is the subsurface ocean below).
-        On top of that the model folds in <strong>long-term</strong> factors from the geology and magnetism above:</p>
+        (a frozen ice cap scores 0 — its life potential is the subsurface ocean below).</p>
+      <p>The solvent factor is weighted <strong>presence-first</strong>: a standing surface liquid is high-value the
+        moment it exists, and — for a world with only <em>one</em> known example to calibrate against — the <em>amount</em>
+        is a weak signal next to whether it stays liquid at all (which the temperature and pressure factors already
+        carry). So coverage feeds a gentle ramp, not an on/off switch: presence alone earns ~60% of the marks, rising
+        to full by ~18% coverage. A 2% sea therefore scores high but not maximal — it no longer ties a global ocean.
+        Non-water solvents (hydrocarbon, ammonia) take the same ramp at a lower quality ceiling.</p>
+      <p>On top of that the model folds in <strong>long-term</strong> factors from the geology and magnetism above:</p>
       <ul>
         <li><strong>Plate tectonics</strong> +8 (carbonate–silicate climate regulation); <strong>stagnant-lid</strong>
           −25 (runaway-greenhouse risk); <strong>tidal-volcanic</strong> −20 (resurfaced too fast); <strong>inactive</strong>

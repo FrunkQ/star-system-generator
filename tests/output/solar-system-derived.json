@@ -355,7 +355,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -728,7 +728,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -1262,7 +1262,7 @@
             "points": 25,
             "max": 25,
             "value": "71% water",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -1633,7 +1633,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -1975,7 +1975,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -2351,7 +2351,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -2720,7 +2720,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -3187,7 +3187,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -3678,7 +3678,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -4125,7 +4125,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -4524,7 +4524,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -4900,7 +4900,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -5301,7 +5301,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -5729,7 +5729,7 @@
         "modifiers": [],
         "fallback": false
       },
-      "habitabilityScore": 50.5637282466154,
+      "habitabilityScore": 46.23039491328207,
       "habitabilityBreakdown": {
         "factors": [
           {
@@ -5749,10 +5749,10 @@
           },
           {
             "label": "Liquid solvent",
-            "points": 15,
+            "points": 10.7,
             "max": 25,
             "value": "5% methane",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -5800,7 +5800,7 @@
             }
           }
         ],
-        "surfaceScore": 69,
+        "surfaceScore": 64,
         "modifiers": [
           {
             "label": "Geologically inactive (no recycling)",
@@ -5811,7 +5811,7 @@
             "delta": -8
           }
         ],
-        "finalScore": 51,
+        "finalScore": 46,
         "tier": "habitability/alien"
       },
       "orbitalBoundaries": {
@@ -6174,7 +6174,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -6542,7 +6542,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -6918,7 +6918,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -7350,7 +7350,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -7705,7 +7705,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -8064,7 +8064,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -8423,7 +8423,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -8865,7 +8865,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -9230,7 +9230,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -9599,7 +9599,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -9987,7 +9987,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -10479,7 +10479,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -10989,7 +10989,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",
@@ -11377,7 +11377,7 @@
             "points": 0,
             "max": 25,
             "value": "no surface liquid (frozen?)",
-            "ideal": "liquid water best"
+            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
           },
           {
             "label": "Pressure",

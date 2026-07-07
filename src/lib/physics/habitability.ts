@@ -1,6 +1,7 @@
 import type { CelestialBody, System, RulePack, Orbit } from '../types';
 import { G } from '../constants';
 import { calculateAllStellarZones } from './zones';
+import { solventCoverageWeight } from './liquids';
 
 export function findViableHabitableOrbit(host: CelestialBody, system: System, type: 'earth-like' | 'human-habitable' | 'alien-habitable', pack: RulePack): { success: true, orbit: Orbit } | { success: false, reason: string } {
     if (host.roleHint !== 'star') {
@@ -109,9 +110,10 @@ export function calculateHabitabilityScore(planet: CelestialBody) {
     }
     score += factors.pressure * 20;
 
-    // Solvent Score (Max 20 points)
-    if ((planet.hydrosphere?.coverage || 0) > 0.1) {
-        factors.solvent = 1;
+    // Solvent Score (Max 20 points) — presence-weighted by coverage (a little liquid is worth most of
+    // the marks, ramping to full by ~18%) rather than a hard on/off at 10%. Matches the main scorer.
+    if ((planet.hydrosphere?.coverage || 0) > 0) {
+        factors.solvent = solventCoverageWeight(planet.hydrosphere?.coverage || 0);
         if (planet.hydrosphere?.composition === 'water') {
             score += 5; // Bonus for water
         }

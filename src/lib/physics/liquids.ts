@@ -42,6 +42,19 @@ export function biosolventScore(name: string | undefined, pack?: RulePack | null
   return q === 'ideal' ? 1 : q === 'alternative' ? 0.6 : 0;
 }
 
+// Presence-weighted coverage for the liquid-solvent habitability factor. A standing surface liquid is
+// high-value the MOMENT it exists (extract, purify, irrigate, and a place for chemistry to run), so the
+// amount matters far less than the presence — a 2% sea and a 70% ocean are both "this world has water".
+// Presence alone is therefore worth most of the marks (the FLOOR), with the rest ramping in linearly up
+// to full marks by ~FULL coverage. This replaces a hard step (any liquid → full marks) that made a 2%
+// puddle score identical to an ocean world. Returns a 0..1 weight; multiply it into the solvent score.
+export function solventCoverageWeight(coverage: number): number {
+  const FLOOR = 0.6;   // presence alone = 60% of the solvent marks...
+  const FULL = 0.18;   // ...rising to 100% by ~18% surface coverage
+  const cov = Math.max(0, coverage || 0);
+  return Math.max(FLOOR, Math.min(1, FLOOR + (1 - FLOOR) * (cov / FULL)));
+}
+
 // How a substance is distributed across a body's temperature RANGE (not just its mean). With the
 // decomposed profile we know a volatile can be frozen at the poles, liquid in the temperate band,
 // AND boiling off at the hotspots — all on the same world.
