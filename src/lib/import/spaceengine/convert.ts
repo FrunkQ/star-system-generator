@@ -256,16 +256,12 @@ export function convertSc(sources: string[], options: ScImportOptions = {}): ScI
       if (lum != null) (node as any).radiationOutput = lum;
       counts.stars++;
     } else {
-      // Gas/ice giants: SpaceEngine's Interior calls the fluid mantle "Ices" (Neptune ≈ 78% ice / 15%
-      // gas), but SSG's render + radius model key off the GAS fraction (>0.5 = a giant with cloud bands;
-      // otherwise a solid icy surface — which made an imported Neptune look like a big cratered moon).
-      // So for a giant we DON'T import the explicit makeup — SSG's density inference derives a
-      // gas-dominated mix (like its own Neptune, which carries no makeup), classifying + rendering it
-      // correctly. Criterion matches SSG's own giant test (mass > 8 M⊕ and bulk density < 2.5 g/cc).
-      const rM = (node.radiusKm ?? 0) * 1000;
-      const densityGcc = rM > 0 ? (node.massKg ?? 0) / ((4 / 3) * Math.PI * rM * rM * rM) / 1000 : 0;
-      const isGiant = (node.massKg ?? 0) / EARTH_MASS_KG > 8 && densityGcc > 0 && densityGcc < 2.5;
-      if (!isGiant) { const mk = makeupFromInterior(b, assumptions, name); if (mk) node.makeup = mk; }
+      // Import the real interior composition, including for giants. SpaceEngine calls a giant's fluid mantle
+      // "Ices" (Neptune ≈ 78% ice / 15% gas), so an ice giant imports as ice-dominated — that's correct. The
+      // renderer keys the giant look off mass + density (isFluidGiant), NOT the gas fraction, so an ice giant
+      // still draws as a cool banded giant rather than a cratered moon, and classification keys off
+      // mass/radius/density, so an ice-dominated makeup doesn't change its type.
+      const mk = makeupFromInterior(b, assumptions, name); if (mk) node.makeup = mk;
       const atm = atmosphereFrom(b); if (atm) node.atmosphere = atm;
       if (sub(b, 'Ocean')) { node.hydrosphere = { composition: 'water', coverage: 0.6 }; assumptions.push(`${name}: ocean present in the source but coverage isn't stored — assumed 60%.`); }
       if (role === 'planet') counts.planets++; else counts.moons++;

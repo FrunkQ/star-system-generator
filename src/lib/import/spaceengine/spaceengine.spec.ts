@@ -7,6 +7,7 @@ import type { System, RulePack, CelestialBody } from '$lib/types';
 import { parseSc } from './parse';
 import { convertSc, previewSc } from './convert';
 import { importSc, buildImportReview, reviewToText } from './index';
+import { isFluidGiant, rendersAsGiant } from '$lib/physics/makeup';
 
 function isObject(x: any) { return x && typeof x === 'object' && !Array.isArray(x); }
 function deepMerge(t: any, s: any): any { const o = { ...t }; if (isObject(t) && isObject(s)) Object.keys(s).forEach((k) => { o[k] = isObject(s[k]) && k in t ? deepMerge(t[k], s[k]) : s[k]; }); return o; }
@@ -114,6 +115,32 @@ describe('spaceengine binary (barycentre root)', () => {
     const stars = r.system.nodes.filter((n) => (n as CelestialBody).roleHint === 'star');
     expect(stars.length).toBe(2);
     for (const s of stars) expect(byId.get(s.parentId as string)).toBe(root);
+  });
+});
+
+describe('spaceengine ice-giant import keeps its real composition', () => {
+  // SpaceEngine models an ice giant's fluid mantle as "Ices" (Neptune ≈ 78% ice / 15% gas). We used to
+  // strip that and let SSG infer a gas-dominated mix so the renderer's gas>0.5 test would draw a giant;
+  // now the renderer keys the giant look off mass + density, so the real composition is imported.
+  const src = `Star "Sun/Sol" { Class "G2V" MassSol 1.0 }
+Planet "Neptune" { ParentBody "Sun" Mass 17.15 Radius 24622
+  Orbit { SemiMajorAxis 30.1 Eccentricity 0.008 }
+  Interior { Composition { Ices 78 Hydrogen 15 Silicates 7 } } }`;
+
+  it('imports the ice-dominated makeup (not stripped to gas) and reads as a fluid giant', () => {
+    const neptune = node(convertSc([src]).system, 'Neptune');
+    expect(neptune.makeup!.ice).toBeGreaterThan(0.7);   // real composition kept
+    expect(neptune.makeup!.gas ?? 0).toBeLessThan(0.3);
+    expect(isFluidGiant(neptune)).toBe(true);            // giant by mass + density, not gas fraction
+    expect(rendersAsGiant(neptune)).toBe(true);
+  });
+
+  it('still classifies + renders as a giant after processing', () => {
+    const pack = loadRulePack();
+    const processed = systemProcessor.process(fixUpImportedSystem(convertSc([src]).system, pack), pack) as System;
+    const neptune = node(processed, 'Neptune');
+    expect(rendersAsGiant(neptune)).toBe(true);
+    expect((neptune.classes ?? []).some((c) => /giant|neptune/.test(c))).toBe(true);
   });
 });
 
