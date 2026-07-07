@@ -4,40 +4,25 @@
 
   export let x: number;
   export let y: number;
-  export let selectedNode: CelestialBody | Barycenter | null; // Changed from isStar
-  export let isLinking: boolean;
-  export let linkStartNode: CelestialBody | Barycenter | null;
+  export let selectedNode: CelestialBody | Barycenter | null;
+  // Retained for compatibility with the caller; linking is a starmap-only action so these are unused here.
+  export let isLinking = false;
+  export let linkStartNode: CelestialBody | Barycenter | null = null;
+  void isLinking; void linkStartNode;
 
   const dispatch = createEventDispatcher();
-
-  function handleLinkClick() {
-    if (selectedNode) {
-      dispatch('link', selectedNode);
-    }
-  }
 </script>
 
 <div class="context-menu" style="left: {x}px; top: {y}px;">
   <ul>
     {#if selectedNode}
-      {#if selectedNode.kind === 'body' && (selectedNode.roleHint === 'star' || selectedNode.roleHint === 'barycenter')}
-        <li on:click={() => dispatch('zoom')}>Zoom to System</li>
-        {#if isLinking && linkStartNode?.id !== selectedNode.id}
-          <li on:click={handleLinkClick}>Finish Link to {selectedNode.name}</li>
-        {:else if isLinking && linkStartNode?.id === selectedNode.id}
-          <li on:click={handleLinkClick} class="cancel-link">Cancel Link</li>
-        {:else}
-          <li on:click={handleLinkClick}>Start Link</li>
-        {/if}
-        <li on:click={() => dispatch('delete')}>Delete System</li>
-        <li on:click={() => dispatch('addConstruct', selectedNode)}>Add Construct</li>
-      {:else if selectedNode.kind === 'body' && (selectedNode.roleHint === 'planet' || selectedNode.roleHint === 'moon')}
+      {#if selectedNode.kind === 'body'}
+        <!-- Inside a system: the only sensible right-click action on a star/planet/moon is to add a
+             construct orbiting it. (Zoom / Link / Delete System are starmap actions and don't belong here.) -->
         <li on:click={() => dispatch('addConstruct', selectedNode)}>Add Construct</li>
       {:else if selectedNode.kind === 'construct'}
         <!-- Future: Edit/Delete Construct options -->
       {/if}
-    {:else}
-      <li on:click={() => dispatch('addsystem')}>Add System Here</li>
     {/if}
   </ul>
 </div>
