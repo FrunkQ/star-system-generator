@@ -1,5 +1,5 @@
 import { writable, derived } from 'svelte/store';
-import type { System, Starmap } from './types';
+import type { System } from './types';
 import {
   formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatSpeedAuto, distanceUnitLabel, speedUnitLabel,
   kmToDisplayNum, displayNumToKm, kmsToDisplayNum, displayNumToKms,
@@ -23,7 +23,6 @@ function persistentWritable<T>(key: string, startValue: T) {
 }
 
 export const systemStore = writable<System | null>(null);
-export const starmapStore = writable<Starmap | null>(null);
 
 // Runtime in-system display unit (km vs miles). SOURCE OF TRUTH is the loaded starmap's `measurementUnits`
 // (persisted); this writable is the RUNTIME copy kept in sync by the app on load / settings change, and set
