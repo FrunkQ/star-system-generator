@@ -13,7 +13,7 @@ You start at the **Starmap** — a pan-and-zoom map tracking many star systems a
 ![Traveller Style Starmap](static/screenshots/TravellerStyle.PNG)
 
 * **Navigate**: drag to pan, scroll to zoom.
-* **Add systems**: right-click empty space to place a new system.
+* **Add systems**: right-click empty space to place a new system. In the **New System** dialogue you can also **import** a Universe Sandbox save (`.ubox`) or a SpaceEngine export (`.sc`) — pick the file, choose how many small bodies to include with the mass slider, and review the diff before loading.
 * **Link systems**: right-click a star → *Link System*, then click a second star to draw a jump route.
 * **Find by tag…**: from the rail, hunt across every system for what you need — the nearest gas giant to refuel at, a world with a breathable atmosphere, or anything you've tagged.
 * **Settings**: toggle the Milky Way backdrop, switch grid style (Square / Hex / None), pick metric or imperial units, and enable **Traveller mode** for hex alignment.

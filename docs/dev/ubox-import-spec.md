@@ -1,8 +1,9 @@
 # Universe Sandbox (.ubox) Import — Specification
 
-Status: DRAFT for review — no code yet. Phase 0 (discovery) cannot complete without a real
-sample `.ubox` file; everything in the "Universe Sandbox side" sections is to be confirmed
-against one.
+Status: SHIPPED (beta v2.0.328, 2026-07-07). Phases 0–2 complete — the findings below (§4a) were
+confirmed against real Update 36.2.1 saves, and the importer is live in-app (converter modal + mass
+slider + Import Review diff). Implementation notes live in `ubox-import-design.md`; module at
+`src/lib/import/ubox/`. This spec is kept as the WHAT/WHY record.
 
 ## 1. Purpose
 

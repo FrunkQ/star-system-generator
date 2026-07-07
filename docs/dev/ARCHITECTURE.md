@@ -71,6 +71,11 @@ The application is built on a modular "Factory-Generator-Processor" pipeline, de
     *   **`importer.ts`**: Orchestrates both bulk subsector imports and single manual UWP entries. It maps RPG codes to physical parameters and ensures consistency between manual and imported data.
     *   **`decoder.ts`**: Handles the parsing and expansion of Universal World Profiles (UWP), trade codes, extensions (IX/EX/CX), and population strings.
     *   **`rng.ts`**: Provides a strictly deterministic seeded RNG based on world names/UWP to ensure consistent results across all users.
+*   `src/lib/import/`: **External-simulator import** (converts other tools' systems into authored-inputs SSG systems, then lets the Processor derive the rest).
+    *   **`shared/`**: `zip.ts` (a dependency-quirk-free, ZIP64-safe archive reader for `.ubox`/`.pak`) and `review.ts` (the "Import Review" audit — compares SSG's derived values against a snapshot of what the source stored, bucketing each as aligned / explained / needs-a-look).
+    *   **`ubox/`**: Universe Sandbox (`.ubox`). State-vector→Keplerian conversion + Hill-sphere hierarchy inference (US stores neither orbits nor parents).
+    *   **`spaceengine/`**: SpaceEngine (`.sc`/`.pak`). A `.sc` brace-format parser + near-1:1 mapping (SpaceEngine stores Keplerian elements and an explicit `ParentBody`).
+    *   **`adapters.ts`**: normalises each format to the surface `ImportModal.svelte` needs, so one modal serves every source. CLIs: `scripts/ubox2ssg.mjs`, `scripts/sc2ssg.mjs`.
 *   `src/lib/components/`: Svelte UI components.
     *   `SystemView.svelte`: Main controller for the system view.
     *   `SystemVisualizer.svelte`: Canvas/SVG renderer for the orbital view.

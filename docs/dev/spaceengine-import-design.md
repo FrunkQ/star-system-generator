@@ -4,8 +4,12 @@ Sibling to the Universe Sandbox importer (`ubox-import-design.md`). SpaceEngine 
 SSG than Universe Sandbox: it stores **Keplerian orbital elements** (like us) and an **explicit
 parent** per body, so the import is close to 1:1 — no state-vector conversion, no hierarchy inference.
 
-Status: DESIGN — needs real `.sc` / `.pak` samples before the parser + mapping are built (units are the
-main unknown; see §7).
+Status: SHIPPED (beta v2.0.330, 2026-07-07). Built and verified against three real `.sc` files
+(§6a). Module: `src/lib/import/spaceengine/{parse,convert,index}.ts`; CLI `scripts/sc2ssg.mjs`;
+in-app via the shared `ImportModal.svelte` + `src/lib/import/adapters.ts`. `.sc` is the export format
+users have; `.pak` (an addon zip) is handled for free by the shared reader but doesn't appear in
+exports. (The reuse plan in §1 is DONE — the shared zip reader + review live in
+`src/lib/import/shared/`, and one modal serves both importers.)
 
 ## 1. What's reused vs new
 
