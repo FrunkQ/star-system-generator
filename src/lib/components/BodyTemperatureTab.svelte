@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, Barycenter, RulePack } from '$lib/types';
-  import { calculateEquilibriumTemperature, estimateBondAlbedo, estimateInternalHeatK, composeSurfaceTemperatureFromDeltaComponents } from '$lib/physics/temperature';
+  import { calculateEquilibriumTemperature, estimateBondAlbedo, estimateInternalHeatK, composeBodySurfaceTemperature } from '$lib/physics/temperature';
   import { fmt } from '$lib/stores';
 
   export let body: CelestialBody;
@@ -14,9 +14,13 @@
 
   function calculateEquilibrium() {
       // Use shared helper for robust calculation (handles Binaries, Moons, etc.)
-      // A GM albedo override (body.overrides.albedo) wins over the estimate, so this preview matches
-      // what the processor's deriveAlbedo will commit.
-      return calculateEquilibriumTemperature(body, nodes, body.overrides?.albedo ?? estimateBondAlbedo(body));
+      // Albedo precedence MUST match the processor so this preview reads the same equilibrium temp:
+      // a GM override wins, else the DERIVED cloud albedo the processor committed (albedoBreakdown),
+      // else the coarse heuristic as a last resort for a not-yet-processed body. (Using the heuristic
+      // here instead of the derived value was why the tab's Mean Surface Temperature disagreed with
+      // the habitability/geology figures, which read the processor's committed temperatureK.)
+      const albedo = body.overrides?.albedo ?? body.albedoBreakdown?.albedo ?? estimateBondAlbedo(body);
+      return calculateEquilibriumTemperature(body, nodes, albedo);
   }
 
   // --- Albedo F-OVR: derived by default; the GM can pin a value that feeds temperature + classification.
@@ -85,13 +89,9 @@
       body.internalHeatK = estimateInternalHeatK(body, rulePack);
 
       const eq = calculateEquilibrium();
-      const newTemp = composeSurfaceTemperatureFromDeltaComponents(
-          eq,
-          body.greenhouseTempK || 0,
-          body.tidalHeatK || 0,
-          body.radiogenicHeatK || 0,
-          body.internalHeatK || 0
-      );
+      // Compose through the shared helper (reads greenhouse/tidal/radiogenic/internal AND the
+      // brown-dwarf self-luminous term off the body) so the preview equals the processor's value.
+      const newTemp = composeBodySurfaceTemperature(body, eq);
       
       // Only dispatch if values actually changed to avoid loops
       if (Math.abs(eq - (body.equilibriumTempK || 0)) > 0.1 || Math.abs(newTemp - (body.temperatureK || 0)) > 0.1) {

@@ -69,7 +69,7 @@
         habitability are all <em>downstream</em> of its interior makeup and temperature.</p>
       <ol class="layering">
         <li><strong>Interior makeup</strong> (metal / rock / carbon / ice / gas fractions) → <strong>density</strong> and, with mass, <strong>radius</strong>.</li>
-        <li><strong>Orbit &amp; stars</strong> → equilibrium temperature → greenhouse, tidal &amp; internal heat → <strong>mean surface temperature</strong> and its <strong>range</strong> (cold night side ↔ tidal-volcanic hotspots).</li>
+        <li><strong>Orbit &amp; stars</strong> → equilibrium temperature → greenhouse, tidal, radiogenic &amp; internal heat → <strong>mean surface temperature</strong> and its <strong>range</strong> (cold night side ↔ tidal-volcanic hotspots).</li>
         <li><strong>Fluid layers</strong> — surface ocean, subsurface (under-ice) ocean, cloud decks, deep conductive interior — derived from makeup + temperature + atmosphere.</li>
         <li><strong>Magnetism</strong> — the dynamo implied by the conductive interior layers + rotation (intrinsic vs induced; dipolar vs tilted/off-centre).</li>
         <li><strong>Geological activity</strong> — tectonic regime + volcanism by <em>mechanism</em>, using makeup, mass/radius, system <em>age</em>, surface water and tidal heat.</li>
@@ -137,10 +137,19 @@
 
     <section id="greenhouse">
       <h2>Greenhouse &amp; surface temperature</h2>
-      <p>Surface temperature composes the equilibrium temperature with additive deltas: greenhouse forcing
+      <p>Surface temperature composes the equilibrium temperature with additive heat: greenhouse forcing
         (from atmospheric composition + pressure, capped to avoid runaway blow-ups), tidal heating, radiogenic
-        heat, and giant internal heat. The greenhouse model and its cryo/CIA parameters live in the rulepack
-        (<code>climateModel.greenhouse</code>) so they're tunable, not hard-coded.</p>
+        heat, giant internal heat, and — for a <a href="#temp-range">self-luminous brown dwarf</a> — its own
+        photosphere. These are summed in <strong>flux space</strong> (each as σT⁴, then back to a temperature),
+        not stacked as naive +K, so a body already warm doesn't gain a full extra degree per degree of forcing.
+        The greenhouse model and its cryo/CIA parameters live in the rulepack (<code>climateModel.greenhouse</code>)
+        so they're tunable, not hard-coded.</p>
+      <p>The result is <strong>one</strong> mean surface temperature, and everything downstream reads that same
+        number: the <a href="#habitability">habitability</a> temperature score, the classifier, and the display.
+        <strong>Radiogenic heat</strong> is a GM override (0 by default — negligible against sunlight for most
+        worlds); when set it both warms the surface <em>and</em> drives the world's
+        <a href="#geology">geological vigour</a>, so a young or exotic world can run hot and tectonically alive
+        independently of its star.</p>
       <p><strong>Clouds are coupled to temperature in BOTH directions</strong>, but not by a single term that
         would double-count: their <em>cooling</em> (reflectivity) is the derived <a href="#temperature">albedo</a>
         above, while their <em>warming</em> is the greenhouse of the gas they condensed from (Venus's clouds are

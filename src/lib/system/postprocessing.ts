@@ -4,7 +4,8 @@ import { AU_KM, G } from '../constants';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, calculateGreenhouseEffect, recalculateAtmosphereDerivedProperties } from '../physics/atmosphere';
 import { calculateHabitabilityScore } from '../physics/habitability';
-import { calculateEquilibriumTemperature, calculateEquilibriumTemperatureRange, estimateBondAlbedo, composeSurfaceTemperatureFromDeltaComponents, estimateInternalHeatK } from '../physics/temperature';
+import { calculateEquilibriumTemperature, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, estimateInternalHeatK } from '../physics/temperature';
+import { deriveAlbedo } from '../physics/albedo';
 import { calculateSurfaceRadiation } from '../physics/radiation';
 import { annotateGravitationalStability } from '../physics/stability';
 import { annotateResonances } from '../physics/resonance';
@@ -18,22 +19,27 @@ export { calculateMolarMass, calculateGreenhouseEffect, calculateHabitabilitySco
  * Mutates the body object.
  */
 export function calculateSurfaceTemperature(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[]) {
-    const albedo = estimateBondAlbedo(body);
-    const equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedo);
-    const range = calculateEquilibriumTemperatureRange(body, allNodes, albedo);
-    
+    // Albedo ⇄ equilibrium-temp is a coupled fixed point (clouds condense at a temperature, and the
+    // resulting reflectivity sets that temperature). Solve it exactly as SystemProcessor does — two
+    // iterations off a 0.3 first guess — so this path commits the SAME equilibrium/albedo the main
+    // pipeline would, instead of the coarse estimateBondAlbedo heuristic (which read a different value
+    // and made the editor's temperature disagree with habitability/geology).
+    let albedoInfo = deriveAlbedo(body, calculateEquilibriumTemperature(body, allNodes, 0.3));
+    let equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedoInfo.albedo);
+    albedoInfo = deriveAlbedo(body, equilibriumTempK);
+    equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedoInfo.albedo);
+    const range = calculateEquilibriumTemperatureRange(body, allNodes, albedoInfo.albedo);
+
     if (equilibriumTempK > 0) {
         body.equilibriumTempK = equilibriumTempK;
+        body.albedoBreakdown = albedoInfo;
         (body as any).equilibriumTempMinK = range.minK;
         (body as any).equilibriumTempMaxK = range.maxK;
+        // Radiogenic heat is a GM override — re-derive it here (as SystemProcessor does) so this path
+        // doesn't silently drop it when it runs before a full process.
+        body.radiogenicHeatK = body.overrides?.radiogenicHeatK ?? body.radiogenicHeatK ?? 0;
         // Total Temp will be finalized after greenhouse is calculated in recalculateAtmosphereDerivedProperties
-        body.temperatureK = composeSurfaceTemperatureFromDeltaComponents(
-            equilibriumTempK,
-            body.greenhouseTempK || 0,
-            body.tidalHeatK || 0,
-            body.radiogenicHeatK || 0,
-            body.internalHeatK || 0
-        );
+        body.temperatureK = composeBodySurfaceTemperature(body, equilibriumTempK);
     }
 }
 
@@ -56,13 +62,7 @@ export function recalculateSystemPhysics(system: System, rulePack: RulePack): Sy
 
             // 3. Finalize Surface Temp (now that Greenhouse is updated)
             body.internalHeatK = estimateInternalHeatK(body, rulePack);
-            body.temperatureK = composeSurfaceTemperatureFromDeltaComponents(
-                body.equilibriumTempK || 0,
-                body.greenhouseTempK || 0,
-                body.tidalHeatK || 0,
-                body.radiogenicHeatK || 0,
-                body.internalHeatK || 0
-            );
+            body.temperatureK = composeBodySurfaceTemperature(body);
 
             // 4. Finalize Surface Radiation (now that Shielding is updated)
             body.surfaceRadiation = calculateSurfaceRadiation(body, system.nodes, rulePack);
@@ -138,15 +138,10 @@ export function processSystemData(system: System, rulePack: RulePack): System {
             // --- Recalculate Atmosphere (V1.4.0) ---
             recalculateAtmosphereDerivedProperties(body, system.nodes, rulePack);
             
-            // Finalize Temperature
+            // Finalize Temperature (radiogenic is a GM override — re-derive it as SystemProcessor does)
             body.internalHeatK = estimateInternalHeatK(body, rulePack);
-            body.temperatureK = composeSurfaceTemperatureFromDeltaComponents(
-                body.equilibriumTempK || 0,
-                body.greenhouseTempK || 0,
-                body.tidalHeatK || 0,
-                body.radiogenicHeatK || 0,
-                body.internalHeatK || 0
-            );
+            body.radiogenicHeatK = body.overrides?.radiogenicHeatK ?? body.radiogenicHeatK ?? 0;
+            body.temperatureK = composeBodySurfaceTemperature(body);
             // Finalize Radiation
             body.surfaceRadiation = calculateSurfaceRadiation(body, system.nodes, rulePack);
 

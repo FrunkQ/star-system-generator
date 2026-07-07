@@ -124,6 +124,7 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     { label: 'Equilibrium temp', value: n(body.equilibriumTempK, 0, 'K') },
     { label: 'Greenhouse Δ', value: n(body.greenhouseTempK, 0, 'K') },
     { label: 'Tidal heat Δ (capped)', value: n(body.tidalHeatK, 1, 'K') },
+    { label: 'Radiogenic Δ', value: n(body.radiogenicHeatK, 1, 'K') },
     { label: 'Internal heat Δ', value: n(body.internalHeatK, 1, 'K') },
     { label: 'Mean surface temp', value: n(body.temperatureK, 0, 'K') }
   ];
@@ -168,6 +169,7 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
       ...(ctx.host && (ctx.host as any).isSelfLuminous ? [`Warmed and irradiated by BOTH ${ctx.star?.name ?? 'the star'} AND its self-luminous host ${ctx.host.name} (a brown dwarf, ${n((ctx.host as any).selfLuminousTeffK, 0, 'K')}). Flux and radiation SUM over every luminous source (Σ Lᵢ / 4πdᵢ²), so a close-in moon of a brown dwarf is far warmer and more irradiated than its distance from the system star alone would imply.`] : []),
       ...((body as any).isSelfLuminous && selfLumTeff ? [`Self-luminous: a brown dwarf (~${n((body.massKg ?? 0) / 1.898e27, 0)} M♃) that radiates its OWN heat from gravitational contraction and early deuterium burning. Its surface sits at ~${n(selfLumTeff, 0, 'K')} regardless of the distant star, it cools with age (L→T→Y, floor ~250 K), and it warms & irradiates its moons like a mini-star.`] : []),
       ...(bary ? [`Equilibrium temperature is set by the distance to ${ctx.star?.name ?? 'the star'} — the ${bary.name || 'barycentre'}'s ${n(heliocentricEl?.a_AU, 1, 'AU')} orbit — not the small orbit ${ctx.partner ? `around its partner ${ctx.partner.name}` : 'within the pair'}.`] : []),
+      ...((body.radiogenicHeatK ?? 0) > 0 ? [`Radiogenic heat (+${n(body.radiogenicHeatK, 1, 'K')}, a GM override) is summed into the mean surface temperature in flux space alongside greenhouse, tidal and internal heat — so it feeds the habitability temperature score. The same override also drives the world's geological vigour (tectonics/volcanism), independently of sunlight.`] : []),
       ...(body.temperatureRangeK && body.temperatureRangeK.max - body.temperatureRangeK.min > 5
         ? ['The mean averages heat over the whole body; the range captures cold night sides and localized (tidal-volcanic) hotspots.'] : [])
     ]

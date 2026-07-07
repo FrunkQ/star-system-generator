@@ -179,6 +179,26 @@ export function composeSurfaceTemperatureFromDeltaComponents(
     return Math.pow(totalFlux / STEFAN_BOLTZMANN_CONSTANT, 0.25);
 }
 
+/**
+ * THE authoritative surface temperature of a body from its already-committed heat components.
+ * Single source of truth so every recompute path — the main SystemProcessor, the postprocessing
+ * recalcs, and the editor's live preview — composes the SAME value. Reads every heat term off the
+ * body (greenhouse, tidal, radiogenic, giant-internal, brown-dwarf self-luminous), so no call site
+ * can silently drop one (the self-luminous term in particular kept being dropped by 5-arg calls,
+ * which made re-processing a brown dwarf appear to COOL it). Pass equilibriumTempK when it has just
+ * been recomputed and not yet written back to the body; otherwise it defaults to body.equilibriumTempK.
+ */
+export function composeBodySurfaceTemperature(body: CelestialBody, equilibriumTempK?: number): number {
+    return composeSurfaceTemperatureFromDeltaComponents(
+        equilibriumTempK ?? body.equilibriumTempK ?? 0,
+        body.greenhouseTempK || 0,
+        body.tidalHeatK || 0,
+        body.radiogenicHeatK || 0,
+        body.internalHeatK || 0,
+        (body as any).selfLuminousTeffK || 0
+    );
+}
+
 export function estimateInternalHeatK(body: CelestialBody, rulePack?: RulePack): number {
     if (body.roleHint !== 'planet') return 0;
     const cfg = rulePack?.climateModel?.internalHeat;

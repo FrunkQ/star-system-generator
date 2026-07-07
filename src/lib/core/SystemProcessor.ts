@@ -1,7 +1,7 @@
 import type { ISystemProcessor } from './interfaces';
 import type { System, RulePack, CelestialBody, Barycenter } from '../types';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG } from '../constants';
-import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeSurfaceTemperatureFromDeltaComponents, estimateInternalHeatK } from '../physics/temperature';
+import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, estimateInternalHeatK } from '../physics/temperature';
 import { deriveAlbedo } from '../physics/albedo';
 import { calculateSurfaceRadiation, calculateTotalStellarRadiation } from '../physics/radiation';
 import { classifyBody, explainClassification } from '../system/classification';
@@ -427,15 +427,10 @@ export class SystemProcessor implements ISystemProcessor {
         // V1.4.0 Unified Atmospheric Physics
         recalculateAtmosphereDerivedProperties(body, allNodes, pack);
 
-        // Total temperature from flux-space composition (avoids direct +K stacking artifacts).
-        body.temperatureK = composeSurfaceTemperatureFromDeltaComponents(
-            equilibriumTempK,
-            body.greenhouseTempK || 0,
-            tidalHeatingK,
-            radiogenicHeatK,
-            body.internalHeatK || 0,
-            (body as any).selfLuminousTeffK || 0   // brown dwarf: self-luminous photosphere temperature
-        );
+        // Total temperature from flux-space composition (avoids direct +K stacking artifacts). All heat
+        // terms are already committed on the body above (greenhouse, tidal, radiogenic, internal,
+        // self-luminous) — compose them through the shared helper so this matches every other path.
+        body.temperatureK = composeBodySurfaceTemperature(body, equilibriumTempK);
 
         // Surface temperature DECOMPOSED by cause (latitude / seasonal / day-night / locked faces /
         // tidal hotspots) — the whole picture, not one opaque min/max.
