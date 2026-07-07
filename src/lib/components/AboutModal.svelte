@@ -18,11 +18,7 @@
 <p><strong>Version:</strong> ${APP_VERSION}<br>
 <strong>Date:</strong> ${APP_DATE}</p>
 
-<p>A tool for creating and exploring scientifically-plausible star systems.</p>
-
-<p>➤ <a href="https://github.com/FrunkQ/star-system-generator/blob/beta/GettingStarted.md" target="_blank" rel="noopener noreferrer"><strong>Getting Started guide</strong></a> — a walkthrough of the whole app. (More guides under <strong>Help</strong> in the menu.)</p>
-
-<p>➤ <a href="/physics" target="_blank" rel="noopener noreferrer"><strong>Physics &amp; classification reference</strong></a> — every constant, derivation, fudge, and how a world's type &amp; tags are decided.</p>
+<p>A tool for creating and exploring scientifically-plausible star systems. Guides &amp; references are under <strong>Help</strong> in the menu.</p>
 
 <hr>
 
@@ -32,8 +28,7 @@ Thanks to @Athena, @Mafro & @malize from the creative community on our <a href="
 <p>A special thanks to <a href="https://www.iammitch.com/" target="_blank">Mitch Anderson</a> for permission to use his <a href="https://github.com/tmanderson/Accrete.js" target="_blank">Accrete.js</a> code in the new experimental system generation. <br> That in turn was built on the work of: Stephen H. Dole, Carl Sagan, Richard Isaacson, <a href="https://www.academia.edu/4173808/Extra-Solar_Planetary_Systems_A_Microcomputer_Simulation" target="_blank">Martyn Fogg</a>, Matt Burdick, <a href="https://www.eldacur.com/~brons/NerdCorner/StarGen/StarGen.html" target="_blank">Jim Burrows</a> & <a href="https://znark.com/create/accrete.html" target="_blank">Ian Burrell</a>.</p>
 
 <p><strong>Community & Support:</strong><br>
-<a href="https://discord.gg/UAEq4zzjD8" target="_blank">Join us on Discord!</a><br>
-<a href="https://youtu.be/LrgNh2PVOlg" target="_blank">Watch the Tutorial Video</a></p>
+<a href="https://discord.gg/UAEq4zzjD8" target="_blank">Join us on Discord!</a></p>
 
 <p><strong>Inspiration:</strong></p>
 <ul>
