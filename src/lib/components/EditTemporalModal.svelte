@@ -363,27 +363,27 @@
     z-index: 2000;
   }
   .modal {
-    background: #1e1e1e;
+    background: var(--bg-panel);
     width: 980px;
     height: 88%;
     border-radius: 8px;
     display: flex;
     flex-direction: column;
-    border: 1px solid #444;
+    border: 1px solid var(--border);
   }
   .header {
     padding: 14px 16px;
-    border-bottom: 1px solid #333;
-    background: #252525;
+    border-bottom: 1px solid var(--border-soft);
+    background: var(--bg-panel);
   }
   .header h2 {
     margin: 0;
-    color: #eee;
+    color: var(--text);
     font-size: 1.2em;
   }
   .subtitle {
     margin: 6px 0 0;
-    color: #aaa;
+    color: var(--text-muted);
     font-size: 0.85em;
   }
   .content {
@@ -393,7 +393,7 @@
     min-height: 0;
   }
   .calendar-list {
-    border-right: 1px solid #333;
+    border-right: 1px solid var(--border-soft);
     padding: 12px;
     display: flex;
     flex-direction: column;
@@ -407,7 +407,7 @@
   }
   .calendar-list button {
     text-align: left;
-    background: #2c2c2c;
+    background: var(--bg-panel);
     border: 1px solid #3f3f3f;
     color: #ddd;
     border-radius: 4px;
@@ -469,16 +469,16 @@
   }
   input,
   select {
-    background: #2b2b2b;
+    background: var(--bg-panel);
     border: 1px solid #474747;
-    color: #eee;
+    color: var(--text);
     border-radius: 4px;
     padding: 6px 7px;
   }
   .section-title {
     margin-top: 6px;
     padding-top: 8px;
-    border-top: 1px solid #333;
+    border-top: 1px solid var(--border-soft);
     color: #d4d8df;
     font-size: 0.9em;
     font-weight: 700;
@@ -533,8 +533,8 @@
   }
   .footer {
     padding: 12px 16px;
-    border-top: 1px solid #333;
-    background: #252525;
+    border-top: 1px solid var(--border-soft);
+    background: var(--bg-panel);
     display: flex;
     justify-content: flex-end;
     gap: 10px;

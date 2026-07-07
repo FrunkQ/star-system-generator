@@ -2,6 +2,18 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import type { Starmap, RulePack, FuelDefinition, EngineDefinition } from '$lib/types';
   import { generateId } from '$lib/utils';
+  import TagListEditor from './TagListEditor.svelte';
+  import { coiCategories } from '$lib/constructs/coi';
+  import { poiPacks } from '$lib/physics/reasonsToVisit';
+  import { describeTag } from '$lib/tags/tagPresentation';
+
+  // Tag options, sourced entirely from the data (CoI Resources + drive categories, PoI frontier rules) —
+  // nothing hard-coded. Fuels source from resources OR frontier-refuelling; engines confer an FTL drive.
+  $: resourceOpts = ($coiCategories.find((c) => c.id === 'resource')?.tags || []).map((t) => ({ key: t.key, label: t.label }));
+  $: frontierOpts = [...new Set($poiPacks.flatMap((p) => (p.rules || []).filter((r) => r.category === 'frontier').map((r) => r.tag)))]
+        .map((k) => ({ key: k, label: describeTag(k).label }));
+  $: driveOpts = ($coiCategories.find((c) => c.id === 'drive')?.tags || []).map((t) => ({ key: t.key, label: t.label }));
+  $: fuelTagOpts = [...resourceOpts, ...frontierOpts];
 
   export let showModal: boolean;
   export let rulePack: RulePack;
@@ -62,6 +74,10 @@
       }
     }
     
+    // Ensure the inheritance-tag fields exist so the editors can bind to them.
+    loadedFuels.forEach((f) => { if (!Array.isArray(f.refuel_tags)) f.refuel_tags = []; if (!f.availability) f.availability = 'common'; });
+    loadedEngines.forEach((e) => { if (!Array.isArray(e.drive_tags)) e.drive_tags = []; });
+
     // Trigger reactivity
     fuels = loadedFuels;
     engines = loadedEngines;
@@ -175,6 +191,18 @@
                                 <label>Description</label>
                                 <input type="text" bind:value={fuel.description} />
                             </div>
+                            <div class="field full">
+                                <label>Can be refuelled where (resource / frontier tags)</label>
+                                <TagListEditor bind:tags={fuel.refuel_tags} options={fuelTagOpts} placeholder="+ source" />
+                            </div>
+                            <div class="field">
+                                <label>Availability</label>
+                                <select bind:value={fuel.availability}>
+                                    <option value="common">Common (any refuel stop)</option>
+                                    <option value="manufactured">Manufactured (factory + raw)</option>
+                                    <option value="exotic">Exotic (only at its resource)</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 {/each}
@@ -224,6 +252,10 @@
                                 <label>Description</label>
                                 <input type="text" bind:value={engine.description} />
                             </div>
+                            <div class="field full">
+                                <label>Provides FTL drive (blank = sublight)</label>
+                                <TagListEditor bind:tags={engine.drive_tags} options={driveOpts} placeholder="+ FTL drive" />
+                            </div>
                         </div>
                     </div>
                 {/each}
@@ -249,35 +281,35 @@
     z-index: 2000;
   }
   .modal {
-    background: #1e1e1e;
+    background: var(--bg-panel);
     width: 800px;
     height: 80%;
     border-radius: 8px;
     display: flex; flex-direction: column;
-    border: 1px solid #444;
+    border: 1px solid var(--border);
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   }
   .header {
       padding: 15px;
-      border-bottom: 1px solid #333;
-      background: #252525;
+      border-bottom: 1px solid var(--border-soft);
+      background: var(--bg-panel);
   }
-  h2 { margin: 0 0 10px 0; color: #eee; font-size: 1.2em; }
-  
+  h2 { margin: 0 0 10px 0; color: var(--text); font-size: 1.2em; }
+
   .tabs { display: flex; gap: 10px; }
   .tabs button {
-      background: #333; border: none; color: #aaa;
+      background: var(--bg-panel); border: none; color: var(--text-muted);
       padding: 8px 16px; cursor: pointer; border-radius: 4px;
   }
   .tabs button.active {
-      background: #007bff; color: white;
+      background: var(--accent); color: white;
   }
 
   .content {
       flex: 1;
       overflow-y: auto;
       padding: 15px;
-      background: #1a1a1a;
+      background: var(--bg-panel);
   }
 
   .list-container {
@@ -285,26 +317,26 @@
   }
 
   .item-card {
-      background: #2a2a2a;
-      border: 1px solid #444;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
       border-radius: 4px;
       padding: 10px;
   }
-  
+
   .item-header {
       display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px;
+      margin-bottom: 10px; border-bottom: 1px solid var(--border-soft); padding-bottom: 5px;
   }
   .name-input {
-      background: transparent; border: none; color: #fff; font-weight: bold; font-size: 1.1em;
+      background: transparent; border: none; color: var(--text); font-weight: bold; font-size: 1.1em;
       width: 100%;
   }
-  .name-input:focus { background: #333; outline: none; }
-  
+  .name-input:focus { background: var(--bg-panel); outline: none; }
+
   .delete-btn {
-      background: transparent; color: #666; border: none; cursor: pointer; font-size: 1.2em;
+      background: transparent; color: var(--text-faint); border: none; cursor: pointer; font-size: 1.2em;
   }
-  .delete-btn:hover { color: #ff4444; }
+  .delete-btn:hover { color: var(--status-bad); }
 
   .item-body {
       display: flex; flex-wrap: wrap; gap: 10px;
@@ -314,27 +346,27 @@
   }
   .field.full { flex-basis: 100%; }
   
-  label { font-size: 0.8em; color: #888; }
+  label { font-size: 0.8em; color: var(--text-faint); }
   input, select {
-      background: #333; border: 1px solid #444; color: #eee; padding: 4px; border-radius: 3px;
+      background: var(--bg-panel); border: 1px solid var(--border); color: var(--text); padding: 4px; border-radius: 3px;
   }
-  
+
   .format-hint {
-      font-size: 0.75em; color: #666; margin-top: 2px; text-align: right;
+      font-size: 0.75em; color: var(--text-faint); margin-top: 2px; text-align: right;
   }
 
   .add-btn {
-      padding: 10px; background: #333; border: 1px dashed #555; color: #aaa; cursor: pointer;
+      padding: 10px; background: var(--bg-panel); border: 1px dashed var(--border); color: var(--text-muted); cursor: pointer;
       width: 100%; text-align: center;
   }
-  .add-btn:hover { background: #383838; color: #fff; border-color: #888; }
+  .add-btn:hover { background: var(--bg-control); color: var(--text); border-color: #888; }
 
   .footer {
-      padding: 15px; border-top: 1px solid #333; background: #252525;
+      padding: 15px; border-top: 1px solid var(--border-soft); background: var(--bg-panel);
       display: flex; justify-content: flex-end; gap: 10px;
   }
   .footer button {
       padding: 8px 20px; border-radius: 4px; border: none; cursor: pointer;
   }
-  .primary { background: #007bff; color: white; }
+  .primary { background: var(--accent); color: white; }
 </style>

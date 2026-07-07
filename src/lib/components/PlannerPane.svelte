@@ -39,6 +39,8 @@
     on:addNextLeg
     on:undoLastLeg
     on:executePlan
+    on:interstellar
+    on:refuel
     on:close
 />
 {#if focusedBody}

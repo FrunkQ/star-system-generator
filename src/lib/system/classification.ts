@@ -1,5 +1,152 @@
 // src/lib/system/classification.ts
-import type { CelestialBody, Barycenter, RulePack, Expr, Feature } from "../types";
+import type { CelestialBody, Barycenter, RulePack, Expr, Feature, Fingerprint, FingerprintBand } from "../types";
+
+// --- Fingerprint classifier (Phase 04) ---------------------------------------------------
+// Each planet type is a fingerprint: the parameter bands that define it. A body's fit to a
+// band is 1.0 inside the band, decaying linearly outside it over a relative margin, and 0
+// beyond that (which disqualifies the whole fingerprint — a body fully outside a defining
+// parameter is not that type). A fingerprint's score is the MEAN of its band fits times a
+// mild specificity bonus for band count: among CLEAN matches, more matched bands still wins
+// (specific beats generic), but a band-rich catch-all whose extra bands are barely-true
+// edge slivers can no longer out-score a perfect match on fewer bands (summing fits let
+// barren/desert steal Venus-class and dwarf-planet-class worlds). The best-scoring BASE
+// archetype is chosen (mutually exclusive); MODIFIERS (ringed, eyeball, …) stack on top.
+
+function bandFit(value: number | string | undefined, band: FingerprintBand): number {
+  // Categorical band: a string or list of accepted strings → exact (hard) match.
+  if (typeof band === 'string') return value === band ? 1 : 0;
+  if (Array.isArray(band) && (typeof band[0] === 'string' || typeof band[1] === 'string')) {
+    return (band as string[]).includes(value as string) ? 1 : 0;
+  }
+  // Numeric band [lo, hi].
+  const [lo, hi] = band as [number, number];
+  if (typeof value !== 'number' || Number.isNaN(value)) return 0;
+  if (value >= lo && value <= hi) return 1;
+  // Soft edge measured RELATIVE to the boundary it crossed (tol = 15%). Mass/radius/temp
+  // span orders of magnitude, so an absolute (band-width) margin is wrong — a 0.02-Me moon
+  // must NOT half-match a 50–4000 Me gas-giant band. Relative distance fixes that.
+  const TOL = 0.15;
+  if (value < lo) {
+    const ref = lo !== 0 ? Math.abs(lo) : (hi !== 0 ? Math.abs(hi) : 1);
+    return Math.max(0, 1 - ((lo - value) / ref) / TOL);
+  }
+  const refHi = hi !== 0 ? Math.abs(hi) : 1;
+  return Math.max(0, 1 - ((value - hi) / refHi) / TOL);
+}
+
+function fingerprintScore(features: Record<string, number | string>, fp: Fingerprint): number {
+  let sum = 0;
+  let n = 0;
+  for (const [feat, band] of Object.entries(fp.match)) {
+    const fit = bandFit(features[feat], band);
+    if (fit <= 0) return 0; // fully outside a defining band → not this type
+    sum += fit;
+    n++;
+  }
+  if (n === 0) return 0;
+  // Mean fit × specificity bonus (see header). For all-perfect matches this preserves the
+  // old band-count ordering; partial fits now drag the score down instead of padding it up.
+  return (sum / n) * (1 + 0.1 * n) * (fp.weight ?? 1);
+}
+
+// Human-readable form of a fingerprint band, for the "why this type" explanation.
+function bandToStr(band: FingerprintBand): string {
+  if (typeof band === 'string') return band;
+  if (Array.isArray(band) && typeof band[0] === 'string') return (band as string[]).join(' | ');
+  const [lo, hi] = band as [number, number];
+  return `${lo} – ${hi}`;
+}
+
+export interface ClassBandMatch { feature: string; value: number | string; band: string; fit: number }
+export interface ClassExplanation {
+  base: string;
+  baseScore: number;
+  bands: ClassBandMatch[];
+  runnerUp?: { class: string; score: number };
+  // ranked base types that scored > 0 (winner first); each carries its OWN band fits so the Newton
+  // panel can show "why" for whichever candidate you click, not just the winner.
+  candidates: { class: string; score: number; bands: ClassBandMatch[] }[];
+  borderline: boolean;                              // runner-up scored within ~10% of the winner — a coin-toss the GM may want to settle
+  modifiers: { class: string; score: number }[];
+  fallback: boolean;
+}
+
+// How close the runner-up must be (fraction of the winner's score) to call a classification borderline.
+export const BORDERLINE_RATIO = 0.9;
+
+// Explain WHY a body classified as it did: the winning base type, the defining bands it matched
+// (with the body's value + fit), the runner-up it beat, and any stacked modifiers.
+export function explainClassification(
+  features: Record<string, number | string>,
+  fingerprints: Fingerprint[]
+): ClassExplanation {
+  const scored = fingerprints
+    .map((fp) => ({ fp, score: fingerprintScore(features, fp) }))
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score);
+  const bases = scored.filter((s) => s.fp.kind === 'base');
+  const base = bases[0];
+
+  if (!base) {
+    return {
+      base: (features['mass_Me'] as number) > 10 ? 'planet/gas-giant' : 'planet/terrestrial',
+      baseScore: 0, bands: [], candidates: [], borderline: false, modifiers: [], fallback: true
+    };
+  }
+
+  const bandsForFp = (fp: Fingerprint): ClassBandMatch[] =>
+    Object.entries(fp.match).map(([feature, band]) => ({
+      feature,
+      value: features[feature] ?? '—',
+      band: bandToStr(band),
+      fit: +bandFit(features[feature], band).toFixed(2)
+    }));
+
+  const candidates = bases.slice(0, 5).map((s) => ({ class: s.fp.class, score: +s.score.toFixed(2), bands: bandsForFp(s.fp) }));
+  const borderline = bases.length > 1 && bases[1].score >= base.score * BORDERLINE_RATIO;
+
+  const bands = bandsForFp(base.fp);
+  const modifiers = scored
+    .filter((s) => s.fp.kind === 'modifier' && s.score >= 0.6)
+    .map((s) => ({ class: s.fp.class, score: +s.score.toFixed(2) }));
+
+  return {
+    base: base.fp.class,
+    baseScore: +base.score.toFixed(2),
+    bands,
+    runnerUp: bases[1] ? { class: bases[1].fp.class, score: +bases[1].score.toFixed(2) } : undefined,
+    candidates,
+    borderline,
+    modifiers,
+    fallback: false
+  };
+}
+
+export function classifyByFingerprint(
+  features: Record<string, number | string>,
+  fingerprints: Fingerprint[],
+  maxClasses: number
+): string[] {
+  const scored = fingerprints
+    .map((fp) => ({ fp, score: fingerprintScore(features, fp) }))
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  const out: string[] = [];
+  // Best base archetype first (mutually exclusive).
+  const base = scored.find((s) => s.fp.kind === 'base');
+  if (base) out.push(base.fp.class);
+  // Then stack modifiers that are a real match (not a margin sliver).
+  for (const s of scored) {
+    if (s.fp.kind === 'modifier' && s.score >= 0.6 && !out.includes(s.fp.class)) out.push(s.fp.class);
+    if (out.length >= maxClasses) break;
+  }
+
+  if (out.length === 0) {
+    out.push((features['mass_Me'] as number) > 10 ? 'planet/gas-giant' : 'planet/terrestrial');
+  }
+  return out;
+}
 
 // Helper function to recursively evaluate classifier expressions
 function evaluateExpr(features: Record<string, number | string>, expr: Expr, tags: {key: string, value?: any}[]): boolean {
@@ -23,6 +170,11 @@ export function classifyBody(planet: CelestialBody, features: Record<string, num
     const planetId = features['id'] as string;
     const hasRing = allNodes.some(n => n.parentId === planetId && n.kind === 'body' && (n as CelestialBody).roleHint === 'ring');
     features['has_ring_child'] = hasRing ? 1 : 0;
+
+    // Phase 04: prefer the per-type fingerprint engine when the rulepack provides one.
+    if (pack.classifier.fingerprints && pack.classifier.fingerprints.length > 0) {
+        return classifyByFingerprint(features, pack.classifier.fingerprints, pack.classifier.maxClasses || 4);
+    }
 
     const scores: Record<string, number> = {};
 

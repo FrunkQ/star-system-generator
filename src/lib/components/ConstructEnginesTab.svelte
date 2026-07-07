@@ -115,12 +115,12 @@
 
 <style>
   .tab-panel { padding: 10px; }
-  hr { border: 1px solid #555; margin: 1em 0; }
+  hr { border: 1px solid var(--border); margin: 1em 0; }
   .add-engine-form { display: flex; gap: 10px; align-items: center; }
   .engine-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-  .engine-item { display: flex; justify-content: flex-start; align-items: center; background-color: #444; padding: 8px; border-radius: 4px; gap: 10px; }
+  .engine-item { display: flex; justify-content: flex-start; align-items: center; background-color: var(--bg-control); padding: 8px; border-radius: 4px; gap: 10px; }
   .engine-info { display: flex; flex-direction: column; flex-grow: 1; }
-  .engine-info small { color: #ccc; font-size: 0.8em; }
+  .engine-info small { color: var(--text-muted); font-size: 0.8em; }
   .quantity-controls { display: flex; align-items: center; gap: 10px; margin-left: auto; }
   .quantity-controls button { padding: 2px 8px; }
   .remove-btn { background-color: #800; color: white; border: 1px solid #c00; }

@@ -1,146 +1,87 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
+  import { coiCategories, activeCoICategories, coiTagLabel } from '$lib/constructs/coi';
+  import { constructDriveTag, byId } from '$lib/constructs/inheritance';
 
   export let rulePack: RulePack;
   export let mode: 'overwrite' | 'create' = 'overwrite';
 
   const dispatch = createEventDispatcher();
 
-  // -- Tree Logic Types --
-  type FileSystemNode = {
-    name: string;
-    type: 'folder' | 'file';
-    children: Record<string, FileSystemNode>; // For folders
-    template?: CelestialBody; // For files
-    path: string; // Full path for breadcrumbs/IDs
-  };
-
-  let rootNode: FileSystemNode = { name: 'Root', type: 'folder', children: {}, path: '' };
-  let currentPath: string[] = []; // Current folder path (for breadcrumbs)
-  let currentNode: FileSystemNode = rootNode;
+  let allTemplates: CelestialBody[] = [];
+  let q = '';                            // free-text search — matches name, description AND tags
+  let expanded: string | null = null;    // which category facet is open
+  let filters: string[] = [];            // active tag keys (ANDed, like Find by tag)
   let selectedTemplate: CelestialBody | null = null;
 
+  $: cats = $coiCategories;
+  $: activeCats = activeCoICategories(cats);
+  $: engineMap = byId(rulePack?.engineDefinitions);   // for engine→drive inheritance display
+  const label = (key: string) => coiTagLabel(key, cats);
+  const roleLabel = (r: string) => r.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
   onMount(() => {
-    buildTree();
+    const flat: CelestialBody[] = [];
+    if (rulePack?.constructTemplates) {
+      for (const list of Object.values(rulePack.constructTemplates)) {
+        if (Array.isArray(list)) flat.push(...(list as CelestialBody[]));
+      }
+    }
+    allTemplates = flat;
   });
 
-  function buildTree() {
-    const allTemplates: CelestialBody[] = [];
-    
-    // 1. Flatten the existing categorized structure
-    if (rulePack && rulePack.constructTemplates) {
-      Object.values(rulePack.constructTemplates).forEach(list => {
-        if (Array.isArray(list)) {
-          allTemplates.push(...list);
-        }
-      });
+  const tagKeys = (t: CelestialBody): string[] => (t.tags || []).map((x: any) => x.key);
+
+  // tag key -> templates carrying it (for facet counts).
+  $: index = (() => {
+    const m = new Map<string, CelestialBody[]>();
+    for (const t of allTemplates) for (const k of tagKeys(t)) {
+      const a = m.get(k); if (a) a.push(t); else m.set(k, [t]);
     }
+    return m;
+  })();
 
-    // 2. Build the tree based on 'class' property
-    const root: FileSystemNode = { name: 'All Constructs', type: 'folder', children: {}, path: '' };
+  // One facet per ENABLED CoI category, listing the tags actually present on the templates (with counts).
+  // Categories the GM has turned off in Settings -> CoIs simply don't appear here.
+  $: facets = activeCats
+    .map((c) => ({
+      id: c.id, label: c.label, color: c.color || '#888', textColor: c.textColor || '#fff',
+      tags: c.tags.map((t) => t.key).filter((k) => index.has(k))
+        .map((k) => ({ key: k, label: label(k), count: index.get(k)!.length }))
+    }))
+    .filter((f) => f.tags.length > 0);
 
-    allTemplates.forEach(t => {
-        // Use 'class' if available, otherwise fallback to roleHint or 'Uncategorized'
-        const classString = t.class || t.roleHint || 'Uncategorized';
-        const parts = classString.split('/').map(p => p.trim()).filter(p => p);
+  $: results = allTemplates.filter((t) => {
+    const keys = new Set(tagKeys(t));
+    if (!filters.every((f) => keys.has(f))) return false;          // must carry ALL active filter tags
+    if (q.trim()) {
+      const s = q.trim().toLowerCase();
+      const inName = t.name?.toLowerCase().includes(s);
+      const inDesc = t.description?.toLowerCase().includes(s);
+      const inTags = [...keys].some((k) => k.toLowerCase().includes(s) || label(k).toLowerCase().includes(s));
+      if (!inName && !inDesc && !inTags) return false;             // search spans names AND tags
+    }
+    return true;
+  }).sort((a, b) => a.name.localeCompare(b.name));
 
-        // If hierarchy is deep (Category/Subcategory/Type), put item in Subcategory folder.
-        // If shallow (Category), put in Category folder.
-        const folderParts = parts.length > 1 ? parts.slice(0, -1) : parts;
+  const catColor = (key: string) => activeCats.find((c) => key.startsWith(c.id + '/'))?.color || '#666';
+  // Tags worth showing on a row — skip Status noise; lead class, owner, purpose, resource.
+  const chipTags = (t: CelestialBody): string[] => {
+    const keys = tagKeys(t).filter((k) => !k.startsWith('status/'));
+    const rank = (k: string) => (k.startsWith('universe/') ? 0 : k.startsWith('class/') ? 1 : k.startsWith('owner/') ? 2 : k.startsWith('purpose/') ? 3 : k.startsWith('resource/') ? 4 : 5);
+    return keys.sort((a, b) => rank(a) - rank(b));
+  };
 
-        let currentLevel = root;
-        let pathSoFar = '';
-
-        // Navigate/Create folders
-        folderParts.forEach((part, index) => {
-            pathSoFar += (pathSoFar ? '/' : '') + part;
-            
-            // Normalize key to lowercase for grouping, but keep display name
-            const key = part.toLowerCase();
-            
-            if (!currentLevel.children[key]) {
-                currentLevel.children[key] = {
-                    name: part.charAt(0).toUpperCase() + part.slice(1), // Capitalize for display
-                    type: 'folder',
-                    children: {},
-                    path: pathSoFar
-                };
-            }
-            currentLevel = currentLevel.children[key];
-        });
-
-        // Add the file (template) to the final folder
-        // Use ID as key to ensure uniqueness
-        const fileKey = t.id || t.name;
-        currentLevel.children[fileKey] = {
-            name: t.name,
-            type: 'file',
-            children: {},
-            template: t,
-            path: pathSoFar + '/' + t.name
-        };
-    });
-
-    rootNode = root;
-    currentNode = rootNode;
+  function toggleFilter(key: string) {
+    filters = filters.includes(key) ? filters.filter((k) => k !== key) : [...filters, key];
   }
-
-  
-  // --- Revised Navigation State ---
-  let historyStack: FileSystemNode[] = []; // Stack of folders visited
-
-  function enterFolder(node: FileSystemNode) {
-      historyStack = [...historyStack, currentNode];
-      currentNode = node;
-      selectedTemplate = null;
-  }
-
-  function jumpToRoot() {
-      historyStack = [];
-      currentNode = rootNode;
-      selectedTemplate = null;
-  }
-
-  function goBack() {
-      if (historyStack.length > 0) {
-          const prev = historyStack.pop();
-          historyStack = historyStack; // trigger reactivity
-          currentNode = prev!;
-          selectedTemplate = null;
-      }
-  }
-
-  function jumpTo(index: number) {
-      const targetNode = historyStack[index];
-      historyStack = historyStack.slice(0, index); 
-      currentNode = targetNode;
-      selectedTemplate = null;
-  }
-
-  function selectTemplate(node: FileSystemNode) {
-      if (node.template) {
-          selectedTemplate = node.template;
-      }
-  }
+  function clearAll() { q = ''; filters = []; expanded = null; }
 
   function handleLoad() {
-    if (selectedTemplate) {
-      dispatch('load', selectedTemplate);
-      dispatch('close');
-    }
+    if (selectedTemplate) { dispatch('load', selectedTemplate); dispatch('close'); }
   }
-
-  function close() {
-    dispatch('close');
-  }
-  
-  // Sort helpers
-  $: sortedChildren = Object.values(currentNode.children).sort((a, b) => {
-      if (a.type === b.type) return a.name.localeCompare(b.name);
-      return a.type === 'folder' ? -1 : 1; // Folders first
-  });
-
+  function close() { dispatch('close'); }
 </script>
 
 <div class="modal-background" on:click={close}>
@@ -150,286 +91,188 @@
       <p class="warning">Warning: Overwrites current configuration.</p>
     {/if}
 
-    <!-- Breadcrumbs -->
-    <div class="breadcrumbs">
-        <span 
-            class="crumb {currentNode === rootNode ? 'active' : ''}" 
-            on:click={jumpToRoot}
-        >
-            {rootNode.name}
-        </span>
-        {#each historyStack as node, i}
-            {#if node !== rootNode}
-             <span class="separator">/</span>
-             <span class="crumb" on:click={() => jumpTo(i)}>{node.name}</span>
-            {/if}
-        {/each}
-        {#if currentNode !== rootNode}
-            <span class="separator">/</span>
-            <span class="crumb active">{currentNode.name}</span>
-        {/if}
-    </div>
+    <div class="filters-panel">
+      <input class="search" type="text" placeholder="Search name or tag (e.g. Rocinante, shipyard, refuel)…" bind:value={q} />
 
-    <!-- Browser Area -->
-    <div class="browser-window">
-        {#if sortedChildren.length === 0}
-            <div class="empty-msg">No items found.</div>
-        {/if}
-
-        {#each sortedChildren as child}
-            {#if child.type === 'folder'}
-                <div class="browser-item folder" on:click={() => enterFolder(child)}>
-                    <span class="icon">📁</span>
-                    <span class="name">{child.name}</span>
-                    <span class="arrow">›</span>
-                </div>
-            {:else}
-                <div class="browser-item file {selectedTemplate === child.template ? 'selected' : ''}" 
-                     on:click={() => selectTemplate(child)}
-                     on:dblclick={handleLoad}>
-                    <div class="icon-wrapper">
-                        <div class="construct-icon {child.template?.icon_type || 'circle'}" 
-                             style="background-color: {child.template?.icon_color || '#888'}">
-                        </div>
-                    </div>
-                    <div class="file-info">
-                        <span class="name">{child.name}</span>
-                        <span class="desc">{child.template?.description || ''}</span>
-                    </div>
-                </div>
-            {/if}
-        {/each}
-    </div>
-    
-    <!-- Preview / Actions -->
-    <div class="footer">
-        <div class="selected-info">
-            {#if selectedTemplate}
-                <strong>{selectedTemplate.name}</strong>
-                <div class="stats">
-                    {selectedTemplate.roleHint} • 
-                    {(selectedTemplate.physical_parameters?.massKg / 1000).toLocaleString()}t • 
-                    {selectedTemplate.systems?.power_plants?.[0]?.type || 'No Power'}
-                </div>
-            {:else}
-                <span class="placeholder">Select a template...</span>
-            {/if}
-        </div>
-        <div class="buttons">
-          <button class="secondary" on:click={close}>Cancel</button>
-          <button class="primary" on:click={handleLoad} disabled={!selectedTemplate}>
-            {mode === 'create' ? 'Create' : 'Load'}
+      <!-- One bubble per enabled CoI category; open it to pick tags into the filter (ANDed). -->
+      <div class="bubbles">
+        {#each facets as f (f.id)}
+          <button class="bubble" class:open={expanded === f.id} style="--c:{f.color}" on:click={() => (expanded = expanded === f.id ? null : f.id)}>
+            {f.label} <span class="bcnt">{f.tags.length}</span>
           </button>
+        {/each}
+      </div>
+      {#if expanded}
+        {@const f = facets.find((x) => x.id === expanded)}
+        {#if f}
+          <div class="cat-tags">
+            {#each f.tags as t (t.key)}
+              <button class="chip" class:active={filters.includes(t.key)} style="background:{f.color}; color:{f.textColor}" on:click={() => toggleFilter(t.key)} title={t.key}>
+                {t.label} <span class="cnt">{t.count}</span>
+              </button>
+            {/each}
+          </div>
+        {/if}
+      {/if}
+
+      <div class="active-filters">
+        {#if filters.length}
+          <span class="flabel">Matching all:</span>
+          {#each filters as key (key)}
+            <button class="chip rm" style="background:{catColor(key)}" on:click={() => toggleFilter(key)} title="Remove">{label(key)} <span class="x">×</span></button>
+          {/each}
+          <button class="clear" on:click={clearAll}>Clear</button>
+        {:else}
+          <span class="hint">Open a category to filter, or search by name/tag.</span>
+        {/if}
+      </div>
+    </div>
+
+    <div class="browser-window">
+      {#if results.length === 0}
+        <div class="empty-msg">No constructs match.</div>
+      {/if}
+      {#each results as t (t.id || t.name)}
+        {@const handSetDrive = (t.tags || []).some((x) => x.key.startsWith('drive/'))}
+        {@const inheritedDrive = handSetDrive ? null : constructDriveTag(t, engineMap)}
+        <div class="browser-item {selectedTemplate === t ? 'selected' : ''}"
+             on:click={() => (selectedTemplate = t)}
+             on:dblclick={handleLoad}>
+          <div class="icon-wrapper">
+            <div class="construct-icon {t.icon_type || 'triangle'}" style="background-color: {t.icon_color || '#ffd24d'}"></div>
+          </div>
+          <div class="file-info">
+            <span class="name">{t.name}</span>
+            <div class="tag-chips">
+              {#each chipTags(t) as k}<span class="tag-chip" style="border-color:{catColor(k)}">{label(k)}</span>{/each}
+              {#if inheritedDrive}<span class="tag-chip inherited" title="inherited from engines">{label(inheritedDrive)}</span>{/if}
+            </div>
+          </div>
         </div>
+      {/each}
+    </div>
+
+    <div class="footer">
+      <div class="selected-info">
+        {#if selectedTemplate}
+          <strong>{selectedTemplate.name}</strong>
+          <div class="stats">
+            {roleLabel(selectedTemplate.roleHint || '')} •
+            {((selectedTemplate.physical_parameters?.massKg || 0) / 1000).toLocaleString()}t •
+            {selectedTemplate.systems?.power_plants?.[0]?.type || 'No Power'}
+          </div>
+        {:else}
+          <span class="placeholder">{results.length} construct{results.length === 1 ? '' : 's'} — select one…</span>
+        {/if}
+      </div>
+      <div class="buttons">
+        <button class="secondary" on:click={close}>Cancel</button>
+        <button class="primary" on:click={handleLoad} disabled={!selectedTemplate}>
+          {mode === 'create' ? 'Create' : 'Load'}
+        </button>
+      </div>
     </div>
   </div>
 </div>
 
 <style>
   .modal-background {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 2000;
-    backdrop-filter: blur(2px);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 2000; backdrop-filter: blur(2px);
   }
-
   .modal {
-    background-color: #1e1e1e;
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    width: 600px;
-    height: 500px;
-    border: 1px solid #444;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-    color: #eee;
-    overflow: hidden;
+    background-color: var(--bg-panel); border-radius: 8px;
+    display: flex; flex-direction: column; width: 640px; height: 580px;
+    border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    color: var(--text); overflow: hidden;
   }
-
   h2 {
-      margin: 0;
-      padding: 15px;
-      background-color: #252525;
-      border-bottom: 1px solid #333;
-      font-size: 1.2em;
-      text-align: left;
+    margin: 0; padding: 15px; background-color: var(--bg-panel);
+    border-bottom: 1px solid var(--border-soft); font-size: 1.2em; text-align: left;
   }
-
   .warning {
-    background-color: #443300;
-    color: #ffcc00;
-    margin: 0;
-    padding: 5px;
-    font-size: 0.8em;
-    text-align: center;
+    background-color: #443300; color: var(--warning); margin: 0; padding: 5px;
+    font-size: 0.8em; text-align: center;
   }
 
-  /* Breadcrumbs */
-  .breadcrumbs {
-      display: flex;
-      padding: 10px 15px;
-      background-color: #2a2a2a;
-      border-bottom: 1px solid #333;
-      font-size: 0.9em;
-      overflow-x: auto;
+  .filters-panel {
+    padding: 10px 15px; background-color: var(--bg-panel);
+    border-bottom: 1px solid var(--border-soft); display: flex; flex-direction: column; gap: 8px;
   }
-  .crumb {
-      cursor: pointer;
-      color: #88ccff;
+  .search {
+    width: 100%; box-sizing: border-box; padding: 7px 10px; border-radius: 5px;
+    border: 1px solid var(--border); background: var(--bg-control); color: var(--text); font-size: 0.9em;
   }
-  .crumb:hover {
-      text-decoration: underline;
+  .search:focus { outline: none; border-color: var(--accent); }
+
+  .bubbles { display: flex; flex-wrap: wrap; gap: 4px; }
+  .bubble {
+    background: color-mix(in srgb, var(--c) 22%, transparent); border: 1px solid var(--c);
+    color: var(--text); border-radius: 999px; padding: 2px 9px; font-size: 0.74rem;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
   }
-  .crumb.active {
-      color: #aaa;
-      cursor: default;
-      text-decoration: none;
+  .bubble.open { background: var(--c); color: #fff; }
+  .bcnt { font-size: 0.68em; opacity: 0.7; }
+
+  .cat-tags {
+    display: flex; flex-wrap: wrap; gap: 5px; padding: 6px; max-height: 22vh; overflow-y: auto;
+    background: var(--bg-control); border-radius: 6px;
   }
-  .separator {
-      margin: 0 8px;
-      color: #666;
+  .chip {
+    border: none; border-radius: 4px; padding: 3px 8px; font-size: 0.78rem; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; color: #fff;
+  }
+  .chip:hover { filter: brightness(1.12); }
+  .chip.active { outline: 2px solid #fff; }
+  .cnt { font-size: 0.72em; opacity: 0.85; background: rgba(0,0,0,0.22); border-radius: 8px; padding: 0 5px; }
+
+  .active-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 24px; }
+  .flabel { font-size: 0.74rem; color: var(--text-faint); }
+  .hint { font-size: 0.76rem; color: var(--text-faint); font-style: italic; }
+  .chip.rm .x { font-weight: bold; margin-left: 2px; }
+  .clear {
+    background: none; border: 1px dashed var(--border); color: var(--text-faint);
+    border-radius: 999px; padding: 2px 9px; font-size: 0.74rem; cursor: pointer;
   }
 
-  /* Browser Window */
-  .browser-window {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-  }
-  
+  .browser-window { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
   .browser-item {
-      display: flex;
-      align-items: center;
-      padding: 8px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background-color 0.1s;
-      border: 1px solid transparent;
+    display: flex; align-items: flex-start; padding: 8px 12px; border-radius: 4px;
+    cursor: pointer; transition: background-color 0.1s; border: 1px solid transparent;
   }
-  .browser-item:hover {
-      background-color: #333;
-  }
-  .browser-item.selected {
-      background-color: #004080;
-      border-color: #0059b3;
-  }
-  
-  .icon {
-      font-size: 1.2em;
-      margin-right: 12px;
-      width: 24px;
-      text-align: center;
-  }
-  
-  .folder .name {
-      font-weight: bold;
-      flex-grow: 1;
-  }
-  .arrow {
-      color: #666;
-  }
-
-  .file-info {
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-  }
-  .file .name {
-      color: #eee;
-  }
-  .file .desc {
-      color: #888;
-      font-size: 0.8em;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      white-space: normal;
-  }
-
-  .icon-wrapper {
-      width: 24px;
-      margin-right: 12px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-  }
-  
-  .construct-icon {
-      width: 14px;
-      height: 14px;
-  }
-  
+  .browser-item:hover { background-color: var(--bg-control); }
+  .browser-item.selected { background-color: #004080; border-color: #0059b3; }
+  .icon-wrapper { width: 24px; margin-right: 12px; padding-top: 2px; display: flex; justify-content: center; }
+  .construct-icon { width: 14px; height: 14px; }
   .construct-icon.circle { border-radius: 50%; }
   .construct-icon.square { border-radius: 2px; }
-  .construct-icon.triangle { 
-      clip-path: polygon(50% 0%, 0% 100%, 100% 100%); 
+  .construct-icon.triangle { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
+  .construct-icon.diamond { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
+  .file-info { display: flex; flex-direction: column; overflow: hidden; gap: 4px; }
+  .file-info .name { color: var(--text); font-weight: 500; }
+  .tag-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag-chip {
+    font-size: 0.7em; padding: 1px 6px; border-radius: 3px;
+    background: var(--bg-control-hover, rgba(255,255,255,0.07)); color: var(--text-muted);
+    border: 1px solid var(--border-soft);
   }
-  .empty-msg {
-      color: #666;
-      text-align: center;
-      margin-top: 50px;
-      font-style: italic;
-  }
+  /* Inherited-from-hardware tag (e.g. the FTL drive from the engines) — dashed to read as derived. */
+  .tag-chip.inherited { border-style: dashed; border-color: var(--accent, #c07f3f); font-style: italic; }
+  .empty-msg { color: var(--text-faint); text-align: center; margin-top: 50px; font-style: italic; }
 
-  /* Footer */
   .footer {
-      padding: 15px;
-      background-color: #252525;
-      border-top: 1px solid #333;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    padding: 15px; background-color: var(--bg-panel); border-top: 1px solid var(--border-soft);
+    display: flex; justify-content: space-between; align-items: center;
   }
-  
-  .selected-info {
-      display: flex;
-      flex-direction: column;
-      text-align: left;
-      font-size: 0.9em;
-      max-width: 60%;
-  }
-  .selected-info .stats {
-      color: #999;
-      font-size: 0.85em;
-  }
-  .placeholder {
-      color: #666;
-      font-style: italic;
-  }
-
-  .buttons {
-      display: flex;
-      gap: 10px;
-  }
-  button {
-      padding: 8px 16px;
-      border-radius: 4px;
-      cursor: pointer;
-      border: none;
-      font-size: 0.9em;
-  }
-  button.secondary {
-      background-color: #444;
-      color: #ccc;
-  }
-  button.secondary:hover { background-color: #555; }
-  
-  button.primary {
-      background-color: #007bff;
-      color: white;
-  }
+  .selected-info { display: flex; flex-direction: column; text-align: left; font-size: 0.9em; max-width: 60%; }
+  .selected-info .stats { color: var(--text-muted); font-size: 0.85em; }
+  .placeholder { color: var(--text-faint); font-style: italic; }
+  .buttons { display: flex; gap: 10px; }
+  button.secondary { background-color: var(--bg-control); color: var(--text-muted); padding: 8px 16px; border-radius: 4px; cursor: pointer; border: none; font-size: 0.9em; }
+  button.secondary:hover { background-color: var(--bg-control-hover); }
+  button.primary { background-color: var(--accent); color: white; padding: 8px 16px; border-radius: 4px; cursor: pointer; border: none; font-size: 0.9em; }
   button.primary:hover { background-color: #0056b3; }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-
+  button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

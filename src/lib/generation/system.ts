@@ -17,7 +17,16 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
 
   // 2. Generate Planets
   generatePlanets(systemRoot, nodes, pack, rng, systemName, isBinary, starA, starB, empty);
-  
+
+  // Generator-created worlds opt in to evolution (aging + auto-classification) — see generateFromConfig.
+  for (const n of nodes) {
+    const b = n as CelestialBody;
+    if (b.kind === 'body' && (b.roleHint === 'planet' || b.roleHint === 'moon')) {
+      b.evolveAtmosphere = true;
+      b.autoClassify = true;
+    }
+  }
+
   const system: System = {
       id: seed,
       name: systemName,

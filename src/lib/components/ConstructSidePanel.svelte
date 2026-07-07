@@ -10,6 +10,8 @@
   import ConstructPowerTab from './ConstructPowerTab.svelte';
   import ConstructSensorsTab from './ConstructSensorsTab.svelte';
   import ConstructModulesTab from './ConstructModulesTab.svelte';
+  import ConstructCoITab from './ConstructCoITab.svelte';
+  import AutopilotTab from './AutopilotTab.svelte';
   import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
   import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
 
@@ -148,6 +150,8 @@
     <button class:active={selectedTab === 'Power'} on:click={() => setTab('Power')}>Power</button>
     <button class:active={selectedTab === 'Sensors'} on:click={() => setTab('Sensors')}>Sensors</button>
     <button class:active={selectedTab === 'Modules'} on:click={() => setTab('Modules')}>Modules</button>
+    <button class:active={selectedTab === 'Tags'} on:click={() => setTab('Tags')}>Tags</button>
+    <button class:active={selectedTab === 'Autopilot'} on:click={() => setTab('Autopilot')}>Autopilot</button>
   </div>
 
   <div class="tab-content">
@@ -169,6 +173,10 @@
       <ConstructSensorsTab {construct} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Modules'}
       <ConstructModulesTab {construct} on:update={handleUpdate} />
+    {:else if selectedTab === 'Tags'}
+      <ConstructCoITab {construct} on:update={handleUpdate} />
+    {:else if selectedTab === 'Autopilot'}
+      <AutopilotTab {construct} {system} {rulePack} {hostBody} on:update={handleUpdate} on:disengage />
     {/if}
   </div>
   
@@ -188,7 +196,6 @@
             dispatch('delete', construct.id);
         }
     }}>Delete</button>
-    <button class="primary" on:click={() => dispatch('close')}>Done</button>
     <input type="file" bind:this={fileInput} on:change={handleImport} accept=".json" style="display: none;" />
   </div>
 
@@ -212,9 +219,9 @@
   }
 
   .tabs button {
-    background-color: #333;
-    color: #aaa;
-    border: 1px solid #444;
+    background-color: var(--bg-panel);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
     padding: 4px 8px;
     border-radius: 3px;
     cursor: pointer;
@@ -223,14 +230,14 @@
   }
 
   .tabs button.active {
-    background-color: #ff3e00;
+    background-color: var(--accent);
     color: white;
-    border-color: #ff3e00;
+    border-color: var(--accent);
   }
 
   .tab-content {
-    background-color: #222;
-    border: 1px solid #444;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border);
     border-radius: 4px;
     padding: 5px;
     min-height: 200px;
@@ -262,7 +269,7 @@
       border-color: #aa0000;
   }
   .actions-row button.primary {
-      background-color: #007bff;
+      background-color: var(--accent);
       color: white;
       border-color: #0056b3;
   }

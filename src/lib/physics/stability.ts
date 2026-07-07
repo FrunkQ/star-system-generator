@@ -2,10 +2,19 @@ import type { CelestialBody, Barycenter, System } from '../types';
 
 type OrbitalNode = CelestialBody;
 
+type Fate = 'infall' | 'eject' | 'collision' | 'inversion';
 interface StabilityAssessment {
   severity: 0 | 1 | 2 | 3;
   reasons: string[];
+  fate?: Fate;
 }
+
+const FATE_TEXT: Record<Fate, string> = {
+  infall: 'Predicted outcome: spirals in — consumed by or tidally shredded against the host.',
+  eject: 'Predicted outcome: flung out — gravitationally scattered onto an escape trajectory.',
+  collision: 'Predicted outcome: collision — crossing orbits with a comparable-mass neighbour.',
+  inversion: 'Predicted outcome: hierarchy is unphysical — the orbiter outweighs its host.',
+};
 
 function getHostMassKg(host: CelestialBody | Barycenter | undefined): number {
   if (!host) return 0;
@@ -49,11 +58,19 @@ function severityDescription(severity: number): string | null {
 }
 
 function mergeAssessment(target: StabilityAssessment, incoming: StabilityAssessment) {
-  if (incoming.severity > target.severity) target.severity = incoming.severity as 0 | 1 | 2 | 3;
+  // The dominant (most-severe) driver owns the predicted fate.
+  if (incoming.severity > target.severity) {
+    target.severity = incoming.severity as 0 | 1 | 2 | 3;
+    if (incoming.fate) target.fate = incoming.fate;
+  } else if (!target.fate && incoming.fate) {
+    target.fate = incoming.fate;
+  }
   for (const reason of incoming.reasons) {
     if (!target.reasons.includes(reason)) target.reasons.push(reason);
   }
 }
+
+const isResonanceProtected = (n: CelestialBody) => !!(n as any).resonanceProtective;
 
 function assessPairStability(
   inner: CelestialBody,
@@ -91,14 +108,24 @@ function assessPairStability(
     if (massRatio >= 1e-3) overlapSeverity = 2;
     if (massRatio >= 1e-2) overlapSeverity = 3;
 
-    const adjustedSeverity = Math.max(1, Math.min(3, overlapSeverity + planePenalty)) as 1 | 2 | 3;
-    if (adjustedSeverity > out.severity) out.severity = adjustedSeverity;
+    let adjustedSeverity = Math.max(1, Math.min(3, overlapSeverity + planePenalty)) as 1 | 2 | 3;
 
-    if (massRatio < 1e-3) {
-      out.reasons.push(`Minor-body crossing in pair ${inner.name}/${outer.name}`);
+    // A protective mean-motion resonance (e.g. Pluto's 3:2 with Neptune) keeps conjunctions away
+    // from the crossing point, so the crossing is metastable rather than doomed.
+    const protectedPair = isResonanceProtected(inner) || isResonanceProtected(outer);
+    if (protectedPair) {
+      adjustedSeverity = 1;
+      out.reasons.push(`${inner.name} and ${outer.name} cross orbits — which on its own would be unstable — but a locked mean-motion resonance keeps their conjunctions away from the crossing point, so it stays stable`);
     } else {
-      out.reasons.push(`Orbit overlap in pair ${inner.name}/${outer.name}`);
+      if (massRatio < 1e-3) {
+        out.reasons.push(`Minor-body crossing in pair ${inner.name}/${outer.name}`);
+      } else {
+        out.reasons.push(`Orbit overlap in pair ${inner.name}/${outer.name}`);
+      }
+      // Comparable masses collide; a lightweight crosser is scattered out.
+      out.fate = massRatio >= 1e-2 ? 'collision' : 'eject';
     }
+    if (adjustedSeverity > out.severity) out.severity = adjustedSeverity;
   }
 
   // 2) Mutual Hill spacing heuristic (N-body stability proxy)
@@ -114,6 +141,9 @@ function assessPairStability(
 
     if (mutualHill > 0) {
       const delta = (a2 - a1) / mutualHill;
+      // Packed systems shed their lighter member by scattering it out (Hill-spacing instability →
+      // ejection), unless a resonance is holding the pair.
+      if (delta < 5.5 && !isResonanceProtected(inner) && !isResonanceProtected(outer)) out.fate = out.fate ?? 'eject';
       if (delta < 3.5) {
         if (out.severity < 3) out.severity = 3;
         out.reasons.push(`Critical Hill spacing (Delta=${delta.toFixed(2)})`);
@@ -170,25 +200,36 @@ function assessBinaryPairStability(
       const eExt = Math.max(0, Math.min(0.999, bary.orbit.elements.e || 0));
       const hillAU = aExt * (1 - eExt) * Math.cbrt(mBin / (3 * parentMassKg));
       if (hillAU > 0) {
+        // A binary stays bound while its (apoapsis) separation is comfortably inside the Hill radius it
+        // has within its parent. Empirically a pair is safe out to ~1/3 of the Hill radius, so only flag
+        // as it approaches that — a pair at sep/Hill ~0.15 (e.g. Alpha Cen A/B inside the wider triple)
+        // is rock-solid and must not read as unstable.
         const frac = sepMaxAU / hillAU;
-        if (frac >= 0.33) {
+        if (frac >= 0.5) {
           out.severity = 3;
           out.reasons.push(`Binary wide vs Hill sphere (sep/Hill=${frac.toFixed(2)})`);
-        } else if (frac >= 0.20) {
+        } else if (frac >= 0.4) {
           out.severity = Math.max(out.severity, 2) as 0 | 1 | 2 | 3;
           out.reasons.push(`Binary moderately wide vs Hill sphere (sep/Hill=${frac.toFixed(2)})`);
-        } else if (frac >= 0.10) {
+        } else if (frac >= 0.3) {
           out.severity = Math.max(out.severity, 1) as 0 | 1 | 2 | 3;
           out.reasons.push(`Binary perturbation-sensitive (sep/Hill=${frac.toFixed(2)})`);
         }
       }
 
       // 2) Neighboring sibling perturbations on the barycenter's parent orbit.
+      // A protective mean-motion resonance is tagged on the binary's MEMBER bodies (e.g. Pluto's 3:2
+      // with Neptune), so check them — a shepherded crossing is metastable, not doomed.
+      const binaryProtected = isResonanceProtected(memberA) || isResonanceProtected(memberB);
       const hostSiblings = system.nodes.filter((n) => {
         if (n.id === bary.id) return false;
         if (n.kind !== 'body') return false;
-        if (!(n as CelestialBody).orbit) return false;
-        return n.parentId === bary.parentId;
+        const b = n as CelestialBody;
+        if (!b.orbit) return false;
+        // Belts/rings are DISTRIBUTED debris, not a point-mass gravitational sibling — a barycentre
+        // crossing the Kuiper Belt is normal, not a disruption (matches the main sibling loop's rule).
+        if (b.roleHint === 'belt' || b.roleHint === 'ring') return false;
+        return b.parentId === bary.parentId;
       }) as CelestialBody[];
 
       const aBary = bary.orbit.elements.a_AU || 0;
@@ -205,6 +246,13 @@ function assessBinaryPairStability(
         const massRatio = mBin > 0 ? (mSib / mBin) : 0;
 
         if (overlap) {
+          // Pluto/Neptune style: the resonance holds conjunctions away from the crossing point, so the
+          // crossing is metastable (marginal), not a collision/ejection sentence.
+          if (binaryProtected || isResonanceProtected(sib)) {
+            out.severity = Math.max(out.severity, 1) as 0 | 1 | 2 | 3;
+            out.reasons.push(`its orbit crosses ${sib.name}'s — which on its own would be unstable — but a locked mean-motion resonance keeps their conjunctions away from the crossing point, so it stays stable`);
+            continue;
+          }
           if (massRatio >= 0.1) {
             out.severity = 3;
           } else if (massRatio >= 0.01) {
@@ -221,6 +269,11 @@ function assessBinaryPairStability(
         const innerA = Math.min(a1, a2);
         const outerA = Math.max(a1, a2);
         if (outerA <= innerA) continue;
+        // Hierarchically separated orbits (one well outside the other, no band overlap above) are stable
+        // by construction — the planar mutual-Hill spacing test only applies to comparably-sized,
+        // near-adjacent orbits. Without this, a distant companion (Proxima ~14x the inner pair's SMA)
+        // gets a misleadingly small Delta and the tight inner binary is wrongly flagged critical.
+        if (outerA > innerA * 3) continue;
         const aMean = 0.5 * (innerA + outerA);
         const mutualHill = aMean * Math.cbrt((mBin + mSib) / (3 * parentMassKg));
         if (mutualHill <= 0) continue;
@@ -260,6 +313,7 @@ function assessHostBindingStability(
   // 1. Mass Inversion Check
   if (nodeMass > hostMassKg * 1.05) {
     out.severity = 3;
+    out.fate = 'inversion';
     out.reasons.push(`Massive inversion: orbiting body is heavier than its host. (Recommendation: Click "Rebuild Hierarchy" below)`);
   }
 
@@ -272,6 +326,7 @@ function assessHostBindingStability(
     const hostRadiusAU = ((host as CelestialBody).radiusKm || 0) / 149597870.7;
     if (periNodeAU > 0 && periNodeAU <= hostRadiusAU) {
       out.severity = 3;
+      out.fate = 'infall';
       out.reasons.push(`Orbit intersects host radius (Consumed/Collided).`);
     } else if (periNodeAU > 0) {
       // Simplified rigid Roche limit: D = R * (2 * rho_p / rho_s)^(1/3)
@@ -282,6 +337,7 @@ function assessHostBindingStability(
       
       if (periNodeAU <= rocheLimitAU) {
         out.severity = 3;
+        out.fate = 'infall';
         out.reasons.push(`Orbit is within host's Roche Limit (Tidally disrupted/Ring formation).`);
       }
     }
@@ -303,6 +359,7 @@ function assessHostBindingStability(
         const frac = apoNode / hillAU;
         if (frac >= 0.5) {
           out.severity = 3;
+          out.fate = 'eject';
           out.reasons.push(`Orbit exceeds host's stable Hill sphere (stolen by external tide).`);
         } else if (frac >= 0.33) {
           out.severity = Math.max(out.severity, 2) as 0 | 1 | 2 | 3;
@@ -321,13 +378,21 @@ export function annotateGravitationalStability(system: System): System {
   // Clear existing stability tags/fields each pass.
   for (const node of system.nodes) {
     if (!('tags' in node)) continue;
-    node.tags = (node.tags || []).filter((t) => !t.key.startsWith('stability/'));
+    node.tags = (node.tags || []).filter((t) => !t.key.startsWith('stability/') && !t.key.startsWith('fate/'));
     delete (node as any).orbitalStability;
     delete (node as any).orbitalStabilityDetails;
   }
 
+  // Belts/rings are DISTRIBUTED mass (their massKg is a debris-density proxy, not a point
+  // mass), so they must not act as gravitational siblings — otherwise a belt's "mass" feeds
+  // the mutual-Hill-spacing check and spuriously flags a neighbouring planet as unstable.
+  // (Gravity-assist already skips them; orbits.ts flags them isDistributed.)
   const orbitalNodes = system.nodes.filter(
-    (n) => n.kind === 'body' && (n as CelestialBody).orbit
+    (n) =>
+      n.kind === 'body' &&
+      (n as CelestialBody).orbit &&
+      (n as CelestialBody).roleHint !== 'belt' &&
+      (n as CelestialBody).roleHint !== 'ring'
   ) as OrbitalNode[];
 
   const byHost = new Map<string, OrbitalNode[]>();
@@ -358,10 +423,17 @@ export function annotateGravitationalStability(system: System): System {
     }
 
     if (siblings.length >= 2) {
-      // Adjacent-pair scan is a pragmatic approximation for packed-system instability.
+      // A barycentre's member stars are the INNER binary — handled as a unit. Anything else under the
+      // same barycentre (e.g. Proxima at 13000 AU around the Alpha Cen A/B pair) is a WIDE hierarchical
+      // companion, not a co-planar neighbour of an individual member. The pair heuristics below model a
+      // flat packed system, so applying them across that hierarchy gap is meaningless and would flag a
+      // tight 80-yr binary partner as "flung out" because of a distant companion. Skip member↔non-member
+      // pairs; members↔members go to the binary assessor, non-members↔non-members to the generic one.
+      const memberIds = host && host.kind === 'barycenter' ? new Set(host.memberIds || []) : null;
       for (let i = 0; i < siblings.length - 1; i++) {
         const inner = siblings[i];
         const outer = siblings[i + 1];
+        if (memberIds && memberIds.has(inner.id) !== memberIds.has(outer.id)) continue;
         let pairAssessment: StabilityAssessment;
         if (isPrimaryBarycenterMemberPair(host, inner, outer) && host && host.kind === 'barycenter') {
           pairAssessment = assessBinaryPairStability(inner, outer, host, system, nodesById);
@@ -381,16 +453,18 @@ export function annotateGravitationalStability(system: System): System {
       const label = severityLabel(assessment.severity);
       const base = severityDescription(assessment.severity);
       if (!label || !base) continue;
+      const fateText = assessment.fate ? ` ${FATE_TEXT[assessment.fate]}` : '';
       (node as any).orbitalStability = label;
       (node as any).orbitalStabilityDetails =
-        assessment.reasons.length > 0
+        (assessment.reasons.length > 0
           ? `${base} Drivers: ${assessment.reasons.join('; ')}.`
-          : base;
+          : base) + fateText;
 
-      // Keep a short machine-readable tag for filtering and quick visibility in Tags UI.
+      // Keep short machine-readable tags for filtering and quick visibility in Tags UI.
       if (!node.tags) node.tags = [];
       const slug = label.toLowerCase().replace(/\s+/g, '-');
       node.tags.push({ key: `stability/${slug}` });
+      if (assessment.fate) node.tags.push({ key: `fate/${assessment.fate}` });
     }
   }
 

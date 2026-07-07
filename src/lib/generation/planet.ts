@@ -5,6 +5,16 @@ import { weightedChoice, randomFromRange, toRoman } from '../utils';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
 import { bodyFactory } from '../core/BodyFactory';
 import { calculateEquilibriumTemperature, calculateDistanceToStar } from '../physics/temperature';
+import { gasThermalInflationFactor } from '../physics/makeup';
+
+// Debris-density proxy for belts/rings: a massKg drawn so its log maps to a density fraction in
+// [fracLo, fracHi] on the 1e-5..1.0 Earth-mass scale the orrery/telemetry read (see
+// debrisDensityFrac / getBeltDensityDescription). NOT gravitational mass (excluded from perturbers).
+function densityProxyMassKg(rng: SeededRNG, fracLo: number, fracHi: number): number {
+    const frac = fracLo + rng.nextFloat() * (fracHi - fracLo);
+    const lo = Math.log(1e-5), hi = Math.log(1.0);
+    return EARTH_MASS_KG * Math.exp(lo + frac * (hi - lo));
+}
 
 export function _generatePlanetaryBody(
     rng: SeededRNG,
@@ -19,7 +29,8 @@ export function _generatePlanetaryBody(
     planetTypeOverride?: string,
     generateChildren: boolean = true,
     propertyOverrides?: Partial<CelestialBody>,
-    allowBelt: boolean = true
+    allowBelt: boolean = true,
+    skipRandomAtmosphere: boolean = false
 ): CelestialBody[] {
     const newNodes: CelestialBody[] = [];
 
@@ -34,7 +45,11 @@ export function _generatePlanetaryBody(
     if (isBelt && !(host.kind === 'body' && host.roleHint === 'planet')) {
         // ... Belt Generation (Refactored in Phase 1) ...
         const beltWidthRange = pack.distributions['belt_width_au_range']?.entries[0]?.value || [0.5, 1.5];
-        const widthAU = randomFromRange(rng, beltWidthRange[0], beltWidthRange[1]);
+        // Belts grind down with AGE: a young system still has its primordial debris (wide, massive
+        // belt); an old one has had it swept up or collisionally ground away (narrow). Factor ~1.7×
+        // at 0.1 Gyr → ~1× at 4.6 Gyr → ~0.45× past 10 Gyr.
+        const ageBeltFactor = Math.max(0.45, Math.min(1.7, 1.65 - 0.12 * age_Gyr));
+        const widthAU = randomFromRange(rng, beltWidthRange[0], beltWidthRange[1]) * ageBeltFactor;
         const centerAU = orbit.elements.a_AU;
 
         let radiusInnerKm = (centerAU - widthAU / 2) * AU_KM;
@@ -57,6 +72,9 @@ export function _generatePlanetaryBody(
         belt.orbit = orbit;
         belt.radiusInnerKm = radiusInnerKm;
         belt.radiusOuterKm = radiusOuterKm;
+        // Debris density (massKg as the optical/hazard proxy) — randomised so belts vary from
+        // sparse to dense; the orrery draws denser ones less transparent.
+        belt.massKg = densityProxyMassKg(rng, 0.2, 0.7);
 
         newNodes.push(belt);
         return newNodes;
@@ -167,9 +185,12 @@ export function _generatePlanetaryBody(
     }
 
     if (rng.nextFloat() < migrationChance && planetType === 'planet/gas-giant') {
-        const newA_AU = randomFromRange(rng, 0.1, 0.5);
-        planet.orbit.elements.a_AU = newA_AU;
-        planet.tags.push({ key: 'Migrated Planet' });
+        // Hot-Jupiter migration: draw the new orbit LOG-uniformly across the migrated-giant zone so a good
+        // share land in the true hot-Jupiter band (~0.025–0.06 AU, Teq 1200 K+) instead of only the warm
+        // outskirts. A close-in giant then inflates (below, once its Teq is known) and classifies as a
+        // hot / ultra-hot Jupiter. 0.025 AU is just outside the Roche limit for a Sun-like host.
+        planet.orbit.elements.a_AU = Math.exp(randomFromRange(rng, Math.log(0.025), Math.log(0.6)));
+        planet.tags.push({ key: 'origin/migrated' });
     }
 
     if (propertyOverrides) {
@@ -189,8 +210,8 @@ export function _generatePlanetaryBody(
     }
 
     if (planet.orbit?.isRetrogradeOrbit) {
-        planet.tags.push({ key: 'Captured Body' });
-        planet.tags.push({ key: 'Retrograde Orbit' });
+        planet.tags.push({ key: 'origin/captured' });
+        planet.tags.push({ key: 'orbit/retrograde' });
     }
 
     // --- Prepare Features for Atmosphere Generation ---
@@ -198,7 +219,15 @@ export function _generatePlanetaryBody(
     
     // Quick Equillibrium Estimate
     const equilibriumTempK = calculateEquilibriumTemperature(planet, allNodes, 0.3);
-    
+
+    // Gas giants inflate with insolation: now that the final orbit (post-migration) and its equilibrium
+    // temperature are known, puff a close-in / migrated giant up (bigger radius, lower density) the same
+    // way the editor does — so a generated hot Jupiter is born puffy and classifies as one. Cold giants
+    // sit near ×1.0 and are unchanged. Skip if the radius was explicitly overridden by the caller.
+    if (planetType === 'planet/gas-giant' && !propertyOverrides?.radiusKm && planet.radiusKm) {
+        planet.radiusKm *= gasThermalInflationFactor(equilibriumTempK);
+    }
+
     const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
     const isTidallyLocked = (planet.orbit.elements.a_AU) < 0.1 * Math.pow(hostMass / SOLAR_MASS_KG, 1/3);
 
@@ -213,8 +242,10 @@ export function _generatePlanetaryBody(
 
     // --- Atmosphere Generation ---
     if (propertyOverrides?.atmosphere) {
-        // Already set via spread
-    } else {
+        // Already set via spread (e.g. a typed draw built its own atmosphere to classify correctly).
+    } else if (!skipRandomAtmosphere) {
+        // Legacy random atmosphere. Skipped for typed draws so the rarity slider isn't bypassed by
+        // a random exotic (SO2/He…) atmosphere being slapped onto a deliberately-basic world.
         _generateAtmosphere(rng, pack, planet, features, planetType);
     }
 
@@ -261,6 +292,8 @@ export function _generatePlanetaryBody(
             ring.classes = ['ring/planetary'];
             ring.radiusInnerKm = ringInnerKm;
             ring.radiusOuterKm = ringOuterKm;
+            // Debris density (optical proxy) — most rings are faint, a Saturn-bright one is rarer.
+            ring.massKg = densityProxyMassKg(rng, 0.1, 0.9);
 
             newNodes.push(ring);
         }
@@ -287,7 +320,7 @@ export function _generatePlanetaryBody(
                 isDoublePlanet = true;
                 numMoons = 1;
                 totalMoonBudgetKg = (planet.massKg || 0) * randomFromRange(rng, 0.01, 0.10);
-                planet.tags.push({ key: 'Double Planet' });
+                planet.tags.push({ key: 'orbit/double' });
             } else {
                 // Realistic budget: 0.01% - 0.025% for Giants (Jovian model), 0.001% - 0.005% for Terrestrials
                 const budgetFactor = isGiant ? randomFromRange(rng, 0.0001, 0.00025) : randomFromRange(rng, 0.00001, 0.00005);
@@ -381,7 +414,7 @@ export function _generatePlanetaryBody(
             const moonOverrides: Partial<CelestialBody> = {
                 massKg: moonMass,
                 radiusKm: radiusKm,
-                tags: isDoublePlanet ? [{ key: 'Double Planet' }] : []
+                tags: isDoublePlanet ? [{ key: 'orbit/double' }] : []
             };
 
             const moonNodes = _generatePlanetaryBody(rng, pack, `${planet.id}-moon`, j, planet, moonOrbit, `${planet.name} ${toRoman(j + 1)}`, [...allNodes, ...newNodes], age_Gyr, undefined, true, moonOverrides);
@@ -405,7 +438,7 @@ function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBo
 
         if (massEarths < minMass || !hasAtmosphere) {
             planet.atmosphere = undefined;
-            planet.tags.push({ key: 'Airless Rock' });
+            
             return;
         }
     }
@@ -493,10 +526,10 @@ function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBo
             main: 'H2',
             pressure_bar: 100,
         };
-        planet.tags.push({ key: 'reducing' });
+        planet.tags.push({ key: 'atmosphere/reducing' });
     } else {
         planet.atmosphere = undefined;
         planet.magneticField = undefined;
-        planet.tags.push({ key: 'Airless Rock' });
+        
     }
 }

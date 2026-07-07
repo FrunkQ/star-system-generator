@@ -29,6 +29,56 @@ export function dampedZoomStep(current: number, target: number): number {
 	return clampZoom(safeCurrent * clampedRatio);
 }
 
+// --- Multi-level click framing -------------------------------------------------------------
+// A consistent zoom ladder applied to ANY focusable object (star/planet/moon/construct/barycentre).
+// Selecting frames level 1; each further click on the focused object steps DOWN to the next level
+// that exists; missing levels are skipped. Levels:
+//   1 "context"    — object centred, its PARENT sits `parentBorderFrac` in from the screen edge
+//                    (a large parent may bleed off-screen — you'll see ~the inner 1-2·border of it).
+//   2 "satellites" — object centred, its FURTHEST satellite `satelliteBorderFrac` from the edge.
+//   3 "close"      — object centred, filling ~`fillFrac` of the smaller screen dimension.
+// All percentages are tunable here.
+export const FRAME_LEVELS = {
+	parentBorderFrac: 0.10,    // level 1: parent this far in from the edge
+	satelliteBorderFrac: 0.10, // level 2: furthest satellite this far from the edge
+	fillFrac: 0.50             // level 3: object diameter ≈ this fraction of min(screen) dimension
+};
+export type FrameLevelConfig = typeof FRAME_LEVELS;
+
+function bodyRadiusAUof(node: any, toytownFactor: number, x0_distance: number): number {
+	if (!node || node.kind !== 'body' || !node.radiusKm) return 0;
+	let r = node.radiusKm / AU_KM;
+	if (toytownFactor > 0) r = scaleBoxCox(r, toytownFactor, x0_distance);
+	return r;
+}
+
+// The framing host = the construct's UI host (ui_parentId) if any, else the real parent.
+function framingParentId(node: any): string | null {
+	return (node?.ui_parentId as string) || (node?.parentId as string) || null;
+}
+
+// Which of the 3 levels actually exist for this node, in zoom-in order.
+export function availableFrameLevels(args: {
+	nodeId: string;
+	system: System | null;
+	toytownFactor: number;
+	scaledWorldPositions: WorldPositions;
+	worldPositions: WorldPositions;
+}): number[] {
+	const { nodeId, system, toytownFactor, scaledWorldPositions, worldPositions } = args;
+	if (!system) return [3];
+	const node = system.nodes.find((n) => n.id === nodeId);
+	if (!node) return [3];
+	const positions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
+	const levels: number[] = [];
+	const parentId = framingParentId(node);
+	if (parentId && positions.get(parentId)) levels.push(1);
+	const hasSatellite = system.nodes.some((n) => n.parentId === nodeId && positions.get(n.id));
+	if (hasSatellite) levels.push(2);
+	levels.push(3);
+	return levels;
+}
+
 // --- State-dependent framing helpers (arg-bag; the consumer supplies its
 // current world positions / canvas / camera so these stay pure). ---
 
@@ -161,4 +211,74 @@ export function frameForNode(args: {
 		}
 		return { pan: targetPosition, zoom: clampZoom(newZoom) };
 	}
+}
+
+// Level-aware framing — the consistent click ladder (see FRAME_LEVELS). Always centres on the
+// object; the level chooses the extent. A barycentre is treated as one object (its members are its
+// satellites at level 2, the same as a planet's moons). Callers pass a level that's known to exist
+// (use availableFrameLevels); if it somehow doesn't, this falls through to the close (level-3) view.
+export function frameForLevel(args: {
+	nodeId: string;
+	level: number;
+	system: System | null;
+	canvas: HTMLCanvasElement | null;
+	currentPan: PanState;
+	currentZoom: number;
+	toytownFactor: number;
+	scaledWorldPositions: WorldPositions;
+	worldPositions: WorldPositions;
+	x0_distance: number;
+	config?: FrameLevelConfig;
+}): { pan: PanState; zoom: number } {
+	const {
+		nodeId, level, system, canvas, currentPan, currentZoom, toytownFactor,
+		scaledWorldPositions, worldPositions, x0_distance
+	} = args;
+	const cfg = args.config ?? FRAME_LEVELS;
+	if (!system || !canvas) return { pan: currentPan, zoom: currentZoom };
+	const nodesById = new Map(system.nodes.map((n) => [n.id, n]));
+	const node: any = nodesById.get(nodeId);
+	const positions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
+	const pos = node ? positions.get(nodeId) : undefined;
+	if (!node || !pos) return { pan: currentPan, zoom: currentZoom };
+	const minDimension = Math.min(canvas.width, canvas.height);
+	const radiusAU = bodyRadiusAUof(node, toytownFactor, x0_distance);
+
+	// A ring frames to its own outer edge regardless of level.
+	if (node.roleHint === 'ring') {
+		let outerRadiusAU = (node.radiusOuterKm || 100000) / AU_KM;
+		if (toytownFactor > 0) outerRadiusAU = scaleBoxCox(outerRadiusAU, toytownFactor, x0_distance);
+		const half = outerRadiusAU / Math.max(0.05, 1 - cfg.satelliteBorderFrac);
+		return { pan: pos, zoom: clampZoom((minDimension / 2) / Math.max(half, 1e-9)) };
+	}
+
+	// Level 1 — object + parent, parent border-fraction in from the edge.
+	if (level <= 1) {
+		const parentId = framingParentId(node);
+		const ppos = parentId ? positions.get(parentId) : undefined;
+		if (ppos) {
+			const d = Math.hypot(pos.x - ppos.x, pos.y - ppos.y);
+			const half = Math.max(d, radiusAU * 2, 1e-9) / Math.max(0.05, 1 - cfg.parentBorderFrac);
+			return { pan: pos, zoom: clampZoom((minDimension / 2) / half) };
+		}
+	}
+
+	// Level 2 — object + all its satellites, furthest one border-fraction from the edge.
+	if (level <= 2) {
+		let maxD = 0;
+		for (const c of system.nodes) {
+			if (c.parentId !== nodeId) continue;
+			const cp = positions.get(c.id);
+			if (cp) maxD = Math.max(maxD, Math.hypot(cp.x - pos.x, cp.y - pos.y));
+		}
+		if (maxD > 0) {
+			const half = Math.max(maxD, radiusAU * 2, 1e-9) / Math.max(0.05, 1 - cfg.satelliteBorderFrac);
+			return { pan: pos, zoom: clampZoom((minDimension / 2) / half) };
+		}
+	}
+
+	// Level 3 — object fills ~fillFrac of the screen. Radius-less nodes (constructs) get a small
+	// fixed patch since their glyph is screen-fixed anyway.
+	const half = radiusAU > 0 ? radiusAU / Math.max(0.05, cfg.fillFrac) : 0.005;
+	return { pan: pos, zoom: clampZoom((minDimension / 2) / Math.max(half, 1e-9)) };
 }

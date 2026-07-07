@@ -3,6 +3,22 @@
   import type { CelestialBody, RulePack } from '$lib/types';
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { AU_KM } from '$lib/constants';
+  import { fmt } from '$lib/stores';
+  import { describeTag } from '$lib/tags/tagPresentation';
+  import { getJourneyBounds } from '$lib/transit/scheduler';
+  import AutopilotShipIcon from './AutopilotShipIcon.svelte';
+
+  // The resources/contexts this ship can refuel from = the union of its fuels' refuel_tags. Surfacing
+  // it next to Fuel Mass makes the link obvious: a body carrying one of these is a valid top-up (and
+  // the autopilot's harvest-refuel keys on the same test). Human-labelled via describeTag.
+  $: refuelSources = (() => {
+    const keys = new Set<string>();
+    for (const tank of construct.fuel_tanks ?? []) {
+      const def = rulePack?.fuelDefinitions?.entries.find((f) => f.id === tank.fuel_type_id);
+      for (const t of def?.refuel_tags ?? []) keys.add(t);
+    }
+    return [...keys].map((k) => describeTag(k).label);
+  })();
 
   export let construct: CelestialBody;
   export let rulePack: RulePack;
@@ -10,6 +26,31 @@
   export let isEditingConstruct: boolean = false; 
   export let hideActions: boolean = false; // New prop
   export let futureJourneyCount: number = 0;
+  // The ship's live kinematic state at the current clock (from the scheduler) — so the location readout
+  // says the right thing: Orbiting / Docked / Landed / In transit / Adrift. Null = no journey info.
+  export let kinematicState: string | null = null;
+  export let displayTimeMs: number = NaN; // the GM's display clock — drives the run-once "route complete" read-out
+  // Resolve the location heading: trust the live state, else fall back to the authored placement.
+  $: effectiveState = kinematicState || (construct.placement === 'Surface' ? 'Landed' : 'Orbiting');
+
+  // Live autopilot read-out, derived from the engaged plan + the ship's current kinematic state.
+  $: apStatus = (() => {
+    const ap: any = (construct as any).autopilot;
+    if (!ap?.enabled) return null;
+    if (!ap.legs?.length) return { text: 'idle — no stops set', cls: 'warn' };
+    const live = (construct.scheduled_journeys || []).filter((l: any) => l.status !== 'cancelled');
+    if (!live.length) return { text: 'stuck — no route scheduled', cls: 'bad' };
+    // Run-once that the display clock has flown to the end → complete (green); the hard disengage commits
+    // once actual time catches up.
+    if (ap.repeat === false && Number.isFinite(displayTimeMs)) {
+      let end = -Infinity;
+      for (const l of live) { const b = getJourneyBounds(l.plans); if (b) end = Math.max(end, b.endMs); }
+      if (Number.isFinite(end) && displayTimeMs >= end) return { text: 'route complete · standing by', cls: 'done' };
+    }
+    if (effectiveState === 'Transit') return { text: 'transiting…', cls: '' };
+    if (effectiveState === 'Deep Space' || effectiveState === 'Adrift') return { text: 'coasting in deep space', cls: 'warn' };
+    return { text: 'holding between legs', cls: '' };
+  })();
 
   const dispatch = createEventDispatcher();
 
@@ -41,6 +82,17 @@
       specs = null;
     }
   }
+
+  // Accel range: maxVacuumG is at CURRENT fuel; scale by mass to show empty (lightest) ↔ full (heaviest),
+  // so it's obvious why a high-thrust hull crawls with full tanks.
+  $: accelRange = (() => {
+    if (!specs || !specs.maxVacuumG || !specs.totalMass_tonnes || !specs.fuelCapacity_tonnes) return null;
+    const massEmpty = specs.totalMass_tonnes - specs.fuelMass_tonnes;       // tanks dry
+    const massFull = massEmpty + specs.fuelCapacity_tonnes;                 // tanks full
+    const k = specs.maxVacuumG * specs.totalMass_tonnes;                    // ∝ thrust (g·t)
+    return { empty: massEmpty > 0 ? k / massEmpty : 0, full: massFull > 0 ? k / massFull : 0 };
+  })();
+  const fmtG = (g: number) => (g < 1 ? g.toFixed(2) : g.toFixed(1));
 
   function formatOrbitalPeriod(seconds: number): string {
     if (!isFinite(seconds) || seconds <= 0) return 'N/A';
@@ -172,10 +224,6 @@
 {#if specs}
   <div class="derived-specs">
     <div class="specs-grid">
-      <div class="spec-item fixed" title="The construct's designated class">
-        <span class="label">Class</span>
-        <span class="value">{construct.class || 'N/A'}</span>
-      </div>
       <div class="spec-item fixed" title="Current crew / Maximum crew">
         <span class="label">Crew</span>
         <span class="value">{construct.crew?.current || 0} <span class="detail">(Max: {construct.crew?.max || 0})</span></span>
@@ -192,6 +240,12 @@
         <span class="label">Fuel Mass</span>
         <span class="value">{Math.round(specs.fuelMass_tonnes).toLocaleString()} t</span>
       </div>
+      {#if refuelSources.length}
+        <div class="spec-item fixed wide" title="Resources / refuelling contexts this ship's fuels can be sourced from. A body carrying any of these is a valid top-up — and the autopilot will refuel there.">
+          <span class="label">Refuels from</span>
+          <span class="value refuel-from">{refuelSources.join(' · ')}</span>
+        </div>
+      {/if}
       <div class="spec-item derived" title="Current total mass including fuel and cargo">
         <span class="label">Total Mass</span>
         <span class="value">{Math.round(specs.totalMass_tonnes).toLocaleString()} t</span>
@@ -213,22 +267,45 @@
         <span class="value">{typeof specs.endurance_days === 'number' ? specs.endurance_days.toLocaleString() + ' days' : specs.endurance_days}</span>
       </div>
 
-      <div class="spec-item derived" title="Maximum acceleration in vacuum">
+      <div class="spec-item derived" title="Acceleration in vacuum at current fuel. Range shows fully fuelled (heavy, slow) to empty (light, fast).">
         <span class="label">Max Vacuum Accel.</span>
-        <span class="value">{specs.maxVacuumG.toFixed(2)} g</span>
+        <span class="value">{specs.maxVacuumG.toFixed(2)} g{#if accelRange} <span class="accel-range">({fmtG(accelRange.full)}–{fmtG(accelRange.empty)} g full→empty)</span>{/if}</span>
       </div>
       <div class="spec-item derived" title="Total delta-V available in vacuum">
         <span class="label">Total Vacuum Δv</span>
-        <span class="value">{(specs.totalVacuumDeltaV_ms / 1000).toLocaleString(undefined, {maximumFractionDigits: 1})} km/s</span>
+        <span class="value">{$fmt.speedMs(specs.totalVacuumDeltaV_ms, 1)}</span>
       </div>
-      <div class="spec-item derived" title="Orbital profile around the current host body">
-        <span class="label">Orbit</span>
-        <span class="value">{specs.orbit_string}</span>
-      </div>
-      <div class="spec-item derived" title="Current orbital period derived from mean motion or Keplerian elements">
-        <span class="label">Orbital Period</span>
-        <span class="value">{orbitalPeriodDisplay}</span>
-      </div>
+      {#if effectiveState === 'Transit'}
+        <div class="spec-item derived" title="The ship is currently under way on a planned course">
+          <span class="label">Status</span>
+          <span class="value">In transit{#if hostBody} → {hostBody.name}{/if}</span>
+        </div>
+      {:else if effectiveState === 'Deep Space'}
+        <div class="spec-item derived" title="Cut loose — coasting under the system's gravity, off any planned course">
+          <span class="label">Status</span>
+          <span class="value">Adrift — coasting</span>
+        </div>
+      {:else if effectiveState === 'Landed'}
+        <div class="spec-item derived" title="Landed on the surface">
+          <span class="label">Location</span>
+          <span class="value">Surface{#if hostBody} of {hostBody.name}{/if}</span>
+        </div>
+      {:else if effectiveState === 'Docked'}
+        <div class="spec-item derived" title="Docked">
+          <span class="label">Location</span>
+          <span class="value">Docked{#if hostBody} at {hostBody.name}{/if}</span>
+        </div>
+      {:else}
+        <!-- Orbiting: the orbit profile + period make sense here. -->
+        <div class="spec-item derived" title="Orbital profile around the current host body">
+          <span class="label">Orbit{#if hostBody} ({hostBody.name}){/if}</span>
+          <span class="value">{specs.orbit_string}</span>
+        </div>
+        <div class="spec-item derived" title="Current orbital period derived from mean motion or Keplerian elements">
+          <span class="label">Orbital Period</span>
+          <span class="value">{orbitalPeriodDisplay}</span>
+        </div>
+      {/if}
     </div>
 
     {#if landingAnalysis}
@@ -305,15 +382,36 @@
         {#if !isEditingConstruct && !hideActions}
             <!-- Plan Transit (Only available if NOT on surface) -->
             {#if construct.placement !== 'Surface'}
-                <button class="action-btn transit" on:click={() => dispatch('planTransit')}>
-                    Plan Transit
-                </button>
-                <button class="action-btn transit" on:click={() => dispatch('openJourneyLog')} title="Open ship log (future scheduled journeys)">
+                {#if construct.autopilot?.enabled}
+                    <!-- Autopilot owns the ship — click to disengage (opens the stop-how dialog). -->
+                    {#if apStatus}<div class="ap-status {apStatus.cls}"><AutopilotShipIcon size={13} /> <span>Autopilot · {apStatus.text}</span></div>{/if}
+                    <button class="action-btn autopilot-locked" title="Under autopilot — click to disengage and take manual control" on:click={() => dispatch('disengage')}>
+                        <AutopilotShipIcon size={15} />
+                        Under autopilot
+                    </button>
+                {:else}
+                <!-- Contextual transit controls keyed to the LIVE state: only a ship actually under way
+                     can be aborted (drift = coast on under gravity, stop = halt then fall). Once it's
+                     arrived / orbiting / docked / adrift it shows Plan Transit again. -->
+                {#if effectiveState === 'Transit'}
+                    <button class="action-btn cancel-drift" on:click={() => dispatch('cancelactive', { coast: true })} title="Abort the journey but keep momentum — coast on under gravity">Cancel · drift</button>
+                    <button class="action-btn cancel-stop" on:click={() => dispatch('cancelactive', { coast: false })} title="Abort and stop dead — it then falls under the system's gravity">Cancel · stop</button>
+                {:else if effectiveState === 'Deep Space'}
+                    <!-- Adrift / stopped mid-flight: plot a fresh course (the physical choice) or resume the
+                         aborted one (orange — re-flies the old plan as if it never stopped). -->
+                    <button class="action-btn go" on:click={() => dispatch('planTransit')}>Plan Transit</button>
+                    <button class="action-btn resume" on:click={() => dispatch('resumejourney')} title="Resume the aborted journey on its original plan (ignores that it stopped)">Resume journey</button>
+                {:else}
+                    <button class="action-btn go" on:click={() => dispatch('planTransit')}>Plan Transit</button>
+                {/if}
+                {/if}
+                <button class="action-btn log" on:click={() => dispatch('openJourneyLog')} title="Open ship log (scheduled journeys)">
                     Ship's Log ({futureJourneyCount})
                 </button>
             {/if}
 
-            {#if landingAnalysis}
+            <!-- Landing/takeoff only when the ship is actually AT a body — not adrift or in transit. -->
+            {#if landingAnalysis && effectiveState !== 'Transit' && effectiveState !== 'Deep Space'}
                 {#if construct.placement === 'Surface'}
                     <!-- Takeoff -->
                     {#if landingAnalysis.takeoff.possible}
@@ -344,7 +442,7 @@
       gap: 10px;
       margin-top: 15px;
       padding-top: 15px;
-      border-top: 1px dashed #444;
+      border-top: 1px dashed var(--border);
   }
   .action-btn {
       flex: 1; /* Equal width */
@@ -361,10 +459,36 @@
       gap: 2px;
       font-size: 0.95em;
       transition: opacity 0.2s;
-      background-color: #007bff; /* Uniform Blue */
+      background-color: var(--accent); /* Uniform Blue */
   }
   .action-btn:hover { opacity: 0.9; }
-  
+  .action-btn:disabled { background-color: var(--bg-control); color: var(--text-faint); cursor: not-allowed; opacity: 1; }
+  .action-btn:disabled:hover { opacity: 1; }
+  /* Under autopilot = hazard stripes, so it's unmistakable at a glance that the ship is flying itself.
+     Clickable now (opens the disengage dialog). */
+  .action-btn.autopilot-locked {
+      color: #fff;
+      font-weight: 700;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+      background-color: #1a1a1a;
+      background-image: repeating-linear-gradient(45deg, #e8b600 0 14px, #1a1a1a 14px 28px);
+      border-color: #e8b600;
+      display: inline-flex; align-items: center; gap: 7px; justify-content: center;
+      cursor: pointer;
+  }
+  .ap-status { display: flex; align-items: center; gap: 6px; font-size: 0.82em; color: var(--text-muted); margin-bottom: 5px; }
+  .ap-status.warn { color: #d8922f; }
+  .ap-status.bad { color: #cc5555; }
+  .ap-status.done { color: #4a9e5c; }
+  /* Abort controls: green = physical (coast on), orange = stop dead (then falls). */
+  .action-btn.cancel-drift { background-color: #2f9e57; }
+  .action-btn.cancel-stop { background-color: #d98a2b; }
+  /* Ship's Log = captain's-log aesthetic: yellow on black. */
+  .action-btn.log { background-color: #141414; color: #ffd23f; }
+  /* Plan Transit = the valid/physical choice (green); Resume = allowed-but-unphysical (orange). */
+  .action-btn.go { background-color: #2f9e57; }
+  .action-btn.resume { background-color: #d98a2b; }
+
   .btn-detail {
       font-weight: normal;
       font-size: 0.8em;
@@ -374,26 +498,26 @@
   .derived-specs {
     margin-top: 1em;
     padding-top: 1em;
-    border-top: 1px solid #555;
+    border-top: 1px solid var(--border);
   }
   h4 {
     margin-top: 0;
     margin-bottom: 0.75em;
-    color: #ccc;
+    color: var(--text-muted);
     font-size: 1.1em;
   }
   .subheader {
     margin-top: 1em;
     margin-bottom: 0.5em;
     font-size: 1em;
-    color: #ccc;
+    color: var(--text-muted);
   }
   .fixed-header {
-    border-left: 3px solid #ff3e00; /* Red for Fixed */
+    border-left: 3px solid var(--data-fixed); /* you typed this */
     padding-left: 0.5em;
   }
   .derived-header, .landing-header {
-    border-left: 3px solid #007bff; /* Blue for Derived */
+    border-left: 3px solid var(--data-derived); /* computed */
     padding-left: 0.5em;
   }
   .specs-grid {
@@ -404,36 +528,42 @@
   .spec-item {
     display: flex;
     flex-direction: column;
-    background-color: #252525;
+    background-color: var(--bg-control);
     padding: 0.6em;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     cursor: help;
   }
   .spec-item.fixed {
-    border-left: 3px solid #ff3e00; /* Red */
+    border-left: 3px solid var(--data-fixed);
   }
   .spec-item.derived {
-    border-left: 3px solid #007bff; /* Blue */
+    border-left: 3px solid var(--data-derived);
   }
+  .spec-item.wide { grid-column: 1 / -1; }
+  .value.refuel-from { font-size: 0.85em; color: var(--text-muted); line-height: 1.4; }
   .label {
     font-size: 0.8em;
-    color: #999;
+    color: var(--text-muted);
     text-transform: uppercase;
     margin-bottom: 0.2em;
   }
   .value {
     font-size: 1.1em;
-    color: #eee;
+    color: var(--text);
+  }
+  .accel-range {
+    font-size: 0.78em;
+    color: var(--text-faint);
   }
   .value.possible {
-    color: #4CAF50;
+    color: var(--status-ok);
   }
   .value.impossible {
-    color: #F44336;
+    color: var(--status-bad);
   }
   .detail {
     font-size: 0.8em;
-    color: #aaa;
+    color: var(--text-muted);
     margin-left: 0.5em;
   }
 </style>

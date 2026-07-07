@@ -3,7 +3,7 @@ import { SeededRNG } from '../rng';
 import { weightedChoice, randomFromRange } from '../utils';
 import { _generateStar } from './star';
 import { bodyFactory } from '../core/BodyFactory';
-import { G, AU_KM } from '../constants';
+import { G, AU_KM, EARTH_MASS_KG } from '../constants';
 
 export interface StarSetupResult {
     nodes: (CelestialBody | Barycenter)[];
@@ -68,6 +68,8 @@ export function setupStars(seed: string, pack: RulePack, rng: SeededRNG, generat
             ring.classes = ['ring/accretion_disk'];
             ring.radiusInnerKm = (starA.radiusKm || 0) * 1.1;
             ring.radiusOuterKm = (starA.radiusKm || 0) * randomFromRange(rng, 5, 20);
+            // An accretion disk is bright/dense — draw it solid (massKg = optical-density proxy).
+            ring.massKg = EARTH_MASS_KG * 0.32;
             nodes.push(ring);
         }
     } else {

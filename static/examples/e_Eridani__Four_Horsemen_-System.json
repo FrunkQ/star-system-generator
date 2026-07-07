@@ -119,28 +119,10 @@
       "parentId": "seed-1770921635537-star-a",
       "tags": [
         {
-          "key": "planet/ice-giant"
-        },
-        {
           "key": "lifting-gas"
         },
         {
           "key": "reducing"
-        },
-        {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
-          "key": "haze-former"
         },
         {
           "key": "habitability/none"
@@ -239,19 +221,10 @@
       "parentId": "seed-1770921635537-star-a",
       "tags": [
         {
-          "key": "planet/ice-giant"
-        },
-        {
           "key": "lifting-gas"
         },
         {
           "key": "reducing"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "leak-prone"
         },
         {
           "key": "greenhouse"
@@ -356,36 +329,13 @@
       "parentId": "seed-1770921635537-star-a",
       "tags": [
         {
-          "key": "planet/ice-giant"
-        },
-        {
-          "key": "propane in atmosphere",
-          "value": ""
-        },
-        {
-          "key": "acetelyne in atmosphere",
-          "value": ""
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
           "key": "lifting-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
         },
         {
           "key": "reducing"
         },
         {
           "key": "greenhouse"
-        },
-        {
-          "key": "condensible-fuel"
         },
         {
           "key": "habitability/none"
@@ -483,31 +433,13 @@
       "parentId": "seed-1770921635537-star-a",
       "tags": [
         {
-          "key": "planet/ice-giant"
-        },
-        {
           "key": "lifting-gas"
         },
         {
           "key": "reducing"
         },
         {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
           "key": "greenhouse"
-        },
-        {
-          "key": "haze-former"
         },
         {
           "key": "habitability/none"
@@ -665,13 +597,7 @@
       "parentId": "id-1770925738754-2t8crgr3t",
       "tags": [
         {
-          "key": "planet/terrestrial"
-        },
-        {
           "key": "inert"
-        },
-        {
-          "key": "buffer-gas"
         },
         {
           "key": "oxidizer"
@@ -680,13 +606,7 @@
           "key": "breathable-human"
         },
         {
-          "key": "cloud-former"
-        },
-        {
           "key": "greenhouse"
-        },
-        {
-          "key": "noble-gas"
         },
         {
           "key": "habitability/alien"

@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack, SensorInstance, SensorDefinition } from '$lib/types';
   import { AU_KM } from '$lib/constants';
+  import { fmt } from '$lib/stores';
 
   export let construct: CelestialBody;
   export let rulePack: RulePack;
@@ -40,21 +41,23 @@
       dispatch('update');
   }
 
-  function formatRange(km: number): string {
+  // Reactive so the km-branch re-renders when the in-system unit (km/miles) toggles.
+  // The AU-branch stays as an astronomer's AU regardless of unit (acceptable for large ranges).
+  $: formatRange = (km: number): string => {
       if (km >= AU_KM * 0.1) {
           return `${(km / AU_KM).toFixed(2)} AU`;
       }
       if (km >= 1000000) {
           return `${(km / 1000000).toFixed(1)}M km`;
       }
-      return `${Math.round(km).toLocaleString()} km`;
-  }
+      return $fmt.km(km);
+  };
 
-  function formatDefinitionRange(def: SensorDefinition): string {
+  $: formatDefinitionRange = (def: SensorDefinition): string => {
       const unit = def.preferred_unit || (def.range_km >= AU_KM ? 'AU' : 'km');
       if (unit === 'AU') return `${(def.range_km / AU_KM).toFixed(2)} AU`;
-      return `${Math.round(def.range_km).toLocaleString()} km`;
-  }
+      return $fmt.km(def.range_km);
+  };
 
   // Range Editing State
   let editingRangeIndex: number | null = null;
@@ -151,22 +154,22 @@
     
     select {
         flex-grow: 1;
-        background: #333;
-        color: #eee;
-        border: 1px solid #555;
+        background: var(--bg-panel);
+        color: var(--text);
+        border: 1px solid var(--border);
         padding: 5px;
         border-radius: 3px;
     }
 
     button {
-        background: #444;
-        color: #eee;
-        border: 1px solid #555;
+        background: var(--bg-control);
+        color: var(--text);
+        border: 1px solid var(--border);
         border-radius: 3px;
         cursor: pointer;
         padding: 5px 10px;
     }
-    button:hover { background: #555; }
+    button:hover { background: var(--bg-control-hover); }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .sensor-list {
@@ -176,8 +179,8 @@
     }
 
     .sensor-card {
-        background: #2a2a2a;
-        border: 1px solid #444;
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
         border-radius: 4px;
         padding: 10px;
         display: flex;
@@ -196,21 +199,21 @@
         background: transparent;
         border: none;
         border-bottom: 1px solid transparent;
-        color: #88ccff;
+        color: var(--link);
         font-weight: bold;
         font-size: 1em;
         flex-grow: 1;
     }
     .sensor-name-input:focus {
-        border-bottom-color: #88ccff;
+        border-bottom-color: var(--link);
         outline: none;
-        background: #222;
+        background: var(--bg-panel);
     }
 
     .delete-btn {
         background: transparent;
         border: none;
-        color: #ff4444;
+        color: var(--status-bad);
         font-weight: bold;
         padding: 0 5px;
     }
@@ -224,43 +227,43 @@
     }
 
     .label {
-        color: #888;
+        color: var(--text-faint);
         width: 50px;
         flex-shrink: 0;
     }
 
     .value.clickable {
-        color: #eee;
-        border-bottom: 1px dashed #666;
+        color: var(--text);
+        border-bottom: 1px dashed var(--border);
         cursor: pointer;
     }
-    .value.clickable:hover { color: #fff; border-bottom-color: #fff; }
+    .value.clickable:hover { color: var(--text); border-bottom-color: var(--text); }
 
     .range-editor {
         display: flex;
         gap: 5px;
         align-items: center;
     }
-    .range-editor input { width: 80px; background: #222; border: 1px solid #555; color: #fff; }
-    .range-editor select { width: auto; background: #222; border: 1px solid #555; color: #fff; }
+    .range-editor input { width: 80px; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text); }
+    .range-editor select { width: auto; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text); }
 
     .description-input {
         flex-grow: 1;
         background: transparent;
-        border: 1px solid #444;
-        color: #ccc;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
         padding: 2px 5px;
         border-radius: 2px;
         font-size: 0.9em;
     }
     .description-input:focus {
-        background: #222;
-        border-color: #666;
+        background: var(--bg-panel);
+        border-color: var(--border);
         outline: none;
     }
-    
+
     .empty-msg {
-        color: #666;
+        color: var(--text-faint);
         text-align: center;
         font-style: italic;
     }

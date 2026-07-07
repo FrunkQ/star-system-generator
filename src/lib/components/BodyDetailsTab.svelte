@@ -2,6 +2,7 @@
   import { untrack, createEventDispatcher } from 'svelte';
   import type { CelestialBody } from '$lib/types';
   import { AU_KM, EARTH_MASS_KG } from '$lib/constants';
+  import { fmt } from '$lib/stores';
 
   import { calculateAllStellarZones } from '$lib/physics/zones';
 
@@ -246,19 +247,19 @@
         <!-- RING (KM) -->
         <div class="form-group">
             <div class="label-row">
-                <label>Inner Radius (km)</label>
-                <input type="number" step="100" bind:value={ringInnerKm} on:input={updateRingDimensions} />
+                <label>Inner Radius ({$fmt.distUnit})</label>
+                <input type="number" step="any" value={Math.round($fmt.toDist(ringInnerKm))} on:input={(e) => { ringInnerKm = $fmt.fromDist(parseFloat(e.currentTarget.value) || 0); updateRingDimensions(); }} />
             </div>
             <input type="range" min="0" max="1" step="0.001" bind:value={innerSliderPos} on:input={handleRingSlider} class="full-width-slider" />
         </div>
         
         <div class="form-group">
             <div class="label-row">
-                <label>Outer Radius (km)</label>
-                <input type="number" step="100" bind:value={ringOuterKm} on:input={updateRingDimensions} />
+                <label>Outer Radius ({$fmt.distUnit})</label>
+                <input type="number" step="any" value={Math.round($fmt.toDist(ringOuterKm))} on:input={(e) => { ringOuterKm = $fmt.fromDist(parseFloat(e.currentTarget.value) || 0); updateRingDimensions(); }} />
             </div>
             <input type="range" min="0" max="1" step="0.001" bind:value={outerSliderPos} on:input={handleRingSlider} class="full-width-slider" />
-            <div class="sub-label">Parent Hill Sphere: {Math.round(parentSoiKm).toLocaleString()} km</div>
+            <div class="sub-label">Parent Hill Sphere: {$fmt.km(parentSoiKm)}</div>
         </div>
     {/if}
 
@@ -307,8 +308,8 @@
   .section-header {
       font-size: 0.8em;
       text-transform: uppercase;
-      color: #888;
-      border-bottom: 1px solid #444;
+      color: var(--text-faint);
+      border-bottom: 1px solid var(--border);
       padding-bottom: 2px;
       margin-top: 5px;
   }
@@ -321,14 +322,14 @@
       align-items: center;
   }
   
-  label { color: #ccc; font-size: 0.9em; margin: 0; }
-  
-  input[type="number"] { 
-      padding: 4px; 
-      background: #444; 
-      border: 1px solid #555; 
-      color: #eee; 
-      border-radius: 3px; 
+  label { color: var(--text-muted); font-size: 0.9em; margin: 0; }
+
+  input[type="number"] {
+      padding: 4px;
+      background: var(--bg-control);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 3px;
       width: 80px;
       text-align: right;
   }
@@ -342,10 +343,10 @@
   .density-bar {
       width: 100%;
       height: 8px;
-      background: #222;
+      background: var(--bg-panel);
       border-radius: 4px;
       overflow: hidden;
-      border: 1px solid #444;
+      border: 1px solid var(--border);
   }
   .density-fill {
       height: 100%;

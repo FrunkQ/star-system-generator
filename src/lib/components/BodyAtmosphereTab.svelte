@@ -1,10 +1,11 @@
 <script lang="ts">
   import type { CelestialBody, RulePack, System, Tag } from '$lib/types';
   import { createEventDispatcher, onMount } from 'svelte';
-  import { recalculateSystemPhysics } from '$lib/system/postprocessing';
-  import { systemStore } from '$lib/stores';
+  import { systemProcessor } from '$lib/core/SystemProcessor';
+  import { systemStore, fmt } from '$lib/stores';
   import { checkGasRetention, isCryoImpactedGreenhouseGas } from '$lib/physics/atmosphere';
   import { evaluateTagTriggers as evalTrigger } from '$lib/utils';
+  import { formatGauss } from '$lib/physics/magnetism';
 
   const dispatch = createEventDispatcher();
 
@@ -48,6 +49,7 @@
   }
 
   function handleAtmosphereChange() {
+    lockAging();
     if (selectedAtmosphereName === 'None') {
       body.atmosphere = undefined;
       body.greenhouseTempK = 0;
@@ -109,7 +111,8 @@
 
   function updateGasFraction(gas: string, newPercentage: number) {
       if (!body.atmosphere) return;
-      
+      lockAging();
+
       const newFraction = newPercentage / 100;
       const oldFraction = body.atmosphere.composition[gas] || 0;
       const diff = newFraction - oldFraction;
@@ -149,6 +152,7 @@
   function addGas(gas: string) {
       if (!body.atmosphere) return;
       if (body.atmosphere.composition[gas]) return;
+      lockAging();
 
       body.atmosphere.composition[gas] = 0.05; // Start with 5%
       normalizeComposition(body.atmosphere.composition);
@@ -163,6 +167,7 @@
 
   function removeGas(gas: string) {
       if (!body.atmosphere) return;
+      lockAging();
       delete body.atmosphere.composition[gas];
       
       if (Object.keys(body.atmosphere.composition).length > 0) {
@@ -179,9 +184,25 @@
       applyChanges();
   }
 
+  function toggleAtmosphereAging(e: Event) {
+      const on = (e.currentTarget as HTMLInputElement).checked;
+      body.evolveAtmosphere = on;
+      // Turning aging OFF freezes what you currently see as the authored end-state.
+      if (!on) body.atmosphere0 = undefined;
+      applyChanges();
+  }
+
+  // A hand edit makes the atmosphere END-STATE: aging auto-skips (the toggle re-enables it).
+  function lockAging() {
+      if (body.evolveAtmosphere) { body.evolveAtmosphere = false; body.atmosphere0 = undefined; }
+  }
+
   function applyChanges() {
-      // 1. Recalculate Logic
-      recalculateSystemPhysics(system, rulePack);
+      // 1. Recalculate Logic — the ONE physics pipeline (same pass as load/generation), so an edit can
+      // never disagree with a reload. (The old light recalculateSystemPhysics fork drifted twice: the
+      // heat-model audit and the habitability scorer.) process() mutates the node objects in place,
+      // so the local `body` reference stays live.
+      systemProcessor.process(system, rulePack);
       
       // 2. Sync to global store
       systemStore.update(s => {
@@ -271,6 +292,7 @@
 
   function updatePressureValue(e: MouseEvent) {
       if (!svgPressureSlider || !body.atmosphere) return;
+      lockAging();
       const rect = svgPressureSlider.getBoundingClientRect();
       const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
       const minLog = Math.log(minP);
@@ -290,8 +312,22 @@
       if (!body.magneticField) {
           body.magneticField = { strengthGauss: 0 };
       }
-      
+
       body.magneticField.strengthGauss = Math.exp(minLog + (maxLog - minLog) * pct);
+      body.magneticField.manual = true; // F-OVR: a hand-set field overrides the derived model
+      applyChanges();
+  }
+
+  // Typing/dragging the field is a manual override (governs the magnetic/* shielding tags).
+  function setMagManual() {
+      if (!body.magneticField) body.magneticField = { strengthGauss: 0 };
+      body.magneticField.manual = true;
+      applyChanges();
+  }
+  // Hand the field back to the physics: drop the override so the processor re-derives the strength from
+  // the model (rotation + composition + core size) on the next pass.
+  function resetMagAuto() {
+      body.magneticField = { strengthGauss: +(body.magnetism?.nominalGauss ?? 0).toFixed(4) };
       applyChanges();
   }
 </script>
@@ -308,9 +344,12 @@
   <!-- MAGNETOSPHERE -->
   <div class="form-group">
       <div class="label-row">
-           <label>Magnetosphere (Gauss)</label>
-           <input type="number" step="0.01" bind:value={body.magneticField.strengthGauss} on:input={applyChanges} />
+           <label>Magnetosphere (Gauss) {#if body.magneticField?.manual}<span class="mag-override" title="Manually overridden — this field governs the shielding tags instead of the interior model.">overridden</span>{/if}</label>
+           <input type="number" step="0.001" bind:value={body.magneticField.strengthGauss} on:input={setMagManual} />
       </div>
+      {#if body.magneticField?.manual}
+          <button type="button" class="mag-reset-btn" on:click={resetMagAuto}>Reset to calculated ↺</button>
+      {/if}
       <div class="orbital-slider-container" style="height: 80px;">
           <svg 
               bind:this={svgMagSlider}
@@ -318,7 +357,7 @@
               on:mousedown={handleMagMouseDown}
               preserveAspectRatio="none"
           >
-              <rect x="0" y="20" width="100%" height="10" fill="#333" rx="5" />
+              <rect x="0" y="20" width="100%" height="10" fill="var(--bg-panel)" rx="5" />
               <!-- Zone Indicators -->
               <rect x="0" y="35" width="{getMagPercent(2)}%" height="4" fill="orange" rx="1" />
               <text x="0%" y="50" fill="orange" font-size="10">Terrestrial</text>
@@ -331,12 +370,25 @@
 
               {#each magMarks as mark}
                   {@const pct = getMagPercent(mark.val)}
-                  <line x1="{pct}%" y1="15" x2="{pct}%" y2="35" stroke="#888" stroke-width="1" />
-                  <text x="{pct}%" y="65" fill="#888" font-size="9" text-anchor="middle">{mark.label}</text>
+                  <line x1="{pct}%" y1="15" x2="{pct}%" y2="35" stroke="var(--text-faint)" stroke-width="1" />
+                  <text x="{pct}%" y="65" fill="var(--text-faint)" font-size="9" text-anchor="middle">{mark.label}</text>
               {/each}
               <circle cx="{getMagPercent(body.magneticField?.strengthGauss || minMag)}%" cy="25" r="6" fill="#fff" stroke="#000" stroke-width="2" />
           </svg>
       </div>
+      {#if body.magnetism}
+          {@const m = body.magnetism}
+          <div class="mag-derived">
+              <div class="mag-derived-head">
+                  <span class="mag-source">{m.source.replace(/-/g, ' ')}</span>
+                  {#if m.source !== 'none'}
+                      <span class="mag-geom">{m.geometry.replace(/-/g, ' ')}{m.intrinsic ? ' · intrinsic' : ' · induced'}</span>
+                      <span class="mag-range">implies ~{formatGauss(m.estimatedRangeGauss.min)}–{formatGauss(m.estimatedRangeGauss.max)} G</span>
+                  {/if}
+              </div>
+              {#if m.notes.length}<p class="mag-note">{m.notes[0]}</p>{/if}
+          </div>
+      {/if}
   </div>
 
   <div class="form-group">
@@ -356,11 +408,22 @@
       <input type="text" id="atm-name" bind:value={body.atmosphere.name} on:change={applyChanges} />
     </div>
 
+    <!-- AGING (evolution opt-in) -->
+    <div class="aging-row">
+      <label class="aging-toggle" title="Off (default): this atmosphere is the end-state you authored — the engine never erodes it. On: it is treated as primordial and thins over the system's age (Jeans + stellar-wind escape, derived from a stored baseline so re-processing never compounds). Hand-editing the mix switches this off automatically.">
+        <input type="checkbox" checked={!!body.evolveAtmosphere} on:change={toggleAtmosphereAging} />
+        <span>Age over system lifetime</span>
+      </label>
+      {#if body.evolveAtmosphere && body.atmosphere0}
+        <span class="aging-hint">eroding from a {(body.atmosphere0.pressure_bar || 0).toPrecision(2)} bar baseline</span>
+      {/if}
+    </div>
+
     <!-- PRESSURE -->
     <div class="form-group">
       <div class="label-row">
           <label for="pressure">Surface Pressure (bar)</label>
-          <input type="number" bind:value={body.atmosphere.pressure_bar} step="0.01" on:input={applyChanges} />
+          <input type="number" bind:value={body.atmosphere.pressure_bar} step="0.01" on:input={() => { lockAging(); applyChanges(); }} />
       </div>
       <div class="orbital-slider-container" style="height: 60px;">
           <svg 
@@ -369,11 +432,11 @@
               on:mousedown={handlePressureMouseDown}
               preserveAspectRatio="none"
           >
-              <rect x="0" y="20" width="100%" height="10" fill="#333" rx="5" />
+              <rect x="0" y="20" width="100%" height="10" fill="var(--bg-panel)" rx="5" />
               {#each pressureMarks as mark}
                   {@const pct = getPressurePercent(mark.val)}
-                  <line x1="{pct}%" y1="15" x2="{pct}%" y2="35" stroke="#888" stroke-width="1" />
-                  <text x="{pct}%" y="45" fill="#888" font-size="9" text-anchor="middle">{mark.label}</text>
+                  <line x1="{pct}%" y1="15" x2="{pct}%" y2="35" stroke="var(--text-faint)" stroke-width="1" />
+                  <text x="{pct}%" y="45" fill="var(--text-faint)" font-size="9" text-anchor="middle">{mark.label}</text>
               {/each}
               <circle cx="{getPressurePercent(body.atmosphere.pressure_bar || minP)}%" cy="25" r="6" fill="#fff" stroke="#000" stroke-width="2" />
           </svg>
@@ -387,7 +450,7 @@
         </div>
         <div class="stat">
             <span class="label">Scale Height:</span>
-            <span class="value">{body.atmosphere.scaleHeightKm ? body.atmosphere.scaleHeightKm.toFixed(1) : '-'} km</span>
+            <span class="value">{body.atmosphere.scaleHeightKm ? $fmt.km(body.atmosphere.scaleHeightKm, 1) : '-'}</span>
         </div>
         <div class="stat">
             <span class="label" title="Percent of incoming stellar radiation blocked by atmospheric composition and pressure.">Radiation Block:</span>
@@ -512,6 +575,24 @@
     gap: 1.2rem;
     padding: 10px;
   }
+  .mag-derived {
+    margin-top: 4px; padding: 6px 8px; border-radius: 4px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+  }
+  .mag-derived-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+  .mag-source { font-weight: 600; text-transform: capitalize; color: var(--text); }
+  .mag-geom { font-size: 0.8em; color: var(--text-muted); text-transform: capitalize; }
+  .mag-range { font-size: 0.8em; color: var(--link); margin-left: auto; }
+  .mag-note { margin: 4px 0 0; font-size: 0.78em; color: var(--text-faint); line-height: 1.4; }
+  .mag-override {
+    font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent, #ff5a1f);
+    border: 1px solid var(--accent, #ff5a1f); border-radius: 3px; padding: 0 4px; margin-left: 6px; cursor: help;
+  }
+  .mag-reset-btn {
+    align-self: flex-start; background: none; border: none; padding: 2px 0; margin-top: 2px;
+    color: var(--link, #6aa0d8); font-size: 0.78em; cursor: pointer;
+  }
+  .mag-reset-btn:hover { text-decoration: underline; }
   .form-group {
     display: flex;
     flex-direction: column;
@@ -525,9 +606,9 @@
   .slider-row input[type="number"], .label-row input[type="number"] {
       width: 85px;
       padding: 4px;
-      background: #222;
-      border: 1px solid #444;
-      color: #fff;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      color: var(--text);
       text-align: right;
   }
   .orbital-slider-container {
@@ -542,17 +623,35 @@
   }
   text { pointer-events: none; font-family: sans-serif; }
   
+  .aging-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      flex-wrap: wrap;
+  }
+  .aging-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 0.9em;
+      color: var(--text-muted);
+  }
+  .aging-hint {
+      font-size: 0.78em;
+      color: var(--text-faint);
+  }
   .advanced-toggle {
       cursor: pointer;
       font-weight: bold;
-      color: #88ccff;
+      color: var(--link);
       user-select: none;
       padding: 8px 0;
-      border-top: 1px solid #333;
+      border-top: 1px solid var(--border-soft);
       font-size: 0.9em;
   }
   .advanced-toggle:hover {
-      color: #fff;
+      color: var(--text);
   }
   
   .composition-editor {
@@ -574,13 +673,13 @@
       gap: 10px;
   }
   .gas-row.condensed .gas-name {
-      color: #88ccff;
+      color: var(--link);
   }
   .gas-row.escaping .gas-name {
       color: #ffaa88;
   }
   .phase-warning {
-      color: #ffcc00;
+      color: var(--warning);
       font-weight: bold;
       margin-left: 4px;
       font-size: 0.8em;
@@ -595,7 +694,7 @@
   }
   .cryo-icon {
       margin-left: 4px;
-      color: #88ccff;
+      color: var(--link);
       font-size: 0.9em;
       cursor: help;
   }
@@ -606,8 +705,8 @@
       font-family: monospace;
       font-size: 0.85em;
       background: #1f1f1f;
-      border: 1px solid #555;
-      color: #eee;
+      border: 1px solid var(--border);
+      color: var(--text);
       padding: 2px 4px;
       border-radius: 3px;
   }
@@ -630,20 +729,20 @@
   }
   .mini-tag {
       font-size: 0.7em;
-      background: #444;
-      color: #aaa;
+      background: var(--bg-control);
+      color: var(--text-muted);
       padding: 1px 6px;
       border-radius: 4px;
-      border: 1px solid #555;
+      border: 1px solid var(--border);
   }
 
   .add-gas-row select {
       width: 100%;
       margin-top: 5px;
       padding: 6px;
-      background: #333;
-      border: 1px dashed #555;
-      color: #aaa;
+      background: var(--bg-panel);
+      border: 1px dashed var(--border);
+      color: var(--text-muted);
   }
 
   .composition-summary {
@@ -652,21 +751,21 @@
       gap: 6px;
   }
   .summary-chip {
-      background: #333;
+      background: var(--bg-panel);
       padding: 3px 8px;
       border-radius: 12px;
       font-size: 0.8em;
-      border: 1px solid #444;
+      border: 1px solid var(--border);
       display: flex;
       align-items: center;
       position: relative;
   }
   .summary-chip.condensed {
       border-color: #5588aa;
-      color: #88ccff;
+      color: var(--link);
   }
   .summary-chip .gas { font-weight: bold; margin-right: 4px; }
-  .summary-chip .pct { color: #aaa; }
+  .summary-chip .pct { color: var(--text-muted); }
   .phase-indicator {
       margin-left: 5px;
       font-size: 0.9em;
@@ -695,10 +794,10 @@
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap: 8px;
-      background: #1a1a1a;
+      background: var(--bg-panel);
       padding: 12px;
       border-radius: 8px;
-      border: 1px solid #333;
+      border: 1px solid var(--border-soft);
   }
   .stat {
       display: flex;
@@ -707,7 +806,7 @@
       text-align: center;
   }
   .stat .label {
-      color: #666;
+      color: var(--text-faint);
       font-size: 0.7em;
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -716,7 +815,7 @@
   .stat .value {
       font-weight: bold;
       font-size: 0.95em;
-      color: #eee;
+      color: var(--text);
   }
   .stat .value.hot { color: #ffaa88; }
 </style>

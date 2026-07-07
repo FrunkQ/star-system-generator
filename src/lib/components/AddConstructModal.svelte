@@ -235,13 +235,13 @@
   }
 
   .modal {
-    background-color: #333;
+    background-color: var(--bg-panel);
     padding: 20px;
     border-radius: 5px;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    color: #fff;
+    color: var(--text);
     max-width: 500px;
     text-align: center;
   }

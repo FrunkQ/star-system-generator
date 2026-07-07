@@ -1,19 +1,27 @@
 <script lang="ts">
   import type { System, CelestialBody, Barycenter, RulePack, SystemNode } from '$lib/types';
   import type { TransitPlan } from '$lib/transit/types';
+  import { getJourneyBounds, coastPathUnderGravity, sampleJourneyKinematicsAtTime } from '$lib/transit/scheduler';
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import { propagate } from "$lib/api";
-  import { AU_KM } from '../constants';
+  import { AU_KM, EARTH_MASS_KG } from '../constants';
   import * as zones from "$lib/physics/zones";
   import { calculateLagrangePoints } from "$lib/physics/lagrange";
   import { get } from 'svelte/store';
+  import { fmt } from '$lib/stores';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import type { PanState } from '$lib/viewport/stores';
-  import { clampZoom, dampedZoomStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM, frameForNode, suppressAutoZoomNearPeriapsis } from '$lib/viewport/camera';
+  import { clampZoom, dampedZoomStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM, frameForLevel, availableFrameLevels, suppressAutoZoomNearPeriapsis } from '$lib/viewport/camera';
+  import { gestures } from '$lib/input/gestures';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
+  import { hillSpheresAu } from '$lib/physics/twoBodyCoast';
   import { scaleBoxCox } from '../physics/scaling';
   import { findContainingHost } from '$lib/physics/orbits';
-  import { getNodeColor, STAR_COLOR_MAP } from '$lib/rendering/colors';
+  import { getNodeColor, STAR_COLOR_MAP, tokenRgba } from '$lib/rendering/colors';
+  import { trueColorMode } from '$lib/rendering/colorModeStore';
+  import { getPlanetTexture } from '$lib/rendering/planetTexture';
+  import { oblatePolarFactor } from '$lib/rendering/bodyShape';
+  import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
 
   export let system: System | null;
   export let rulePack: RulePack;
@@ -25,8 +33,11 @@
   export let showTravellerZones: boolean = false;
   export let showSensors: boolean = false;
   export let showVectors: boolean = false;
+  export let showHillSpheres: boolean = false;
   export let toytownFactor: number = 0;
   export let fullScreen: boolean = false;
+  // Canvas backdrop — overridable so the projector can switch to a chroma-key green.
+  export let backgroundColor: string = '#08090d';
   export let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
   export let forceOrbitView: boolean = false;
   export let transitPlan: TransitPlan | null = null;
@@ -34,8 +45,24 @@
   export let alternativePlans: TransitPlan[] = [];
   export let transitPreviewPos: { x: number, y: number } | null = null;
   export let isExecuting: boolean = false;
+  // Measuring tape (ported from the wireframe): when on, taps pick two bodies and we draw a dashed
+  // line + the straight-line distance between them in AU. Distance uses the TRUE (uncompressed) AU
+  // positions, so it's correct even in Toytown scale.
+  export let rulerActive: boolean = false;
 
-  const dispatch = createEventDispatcher<{ 
+  let rulerA: { id: string; name: string } | null = null;
+  let rulerB: { id: string; name: string } | null = null;
+  // Clear the measurement whenever the tool is switched off.
+  $: if (!rulerActive) { rulerA = null; rulerB = null; }
+  $: rulerDistanceAU = (() => {
+    if (!rulerA || !rulerB) return null;
+    const a = worldPositions.get(rulerA.id);
+    const b = worldPositions.get(rulerB.id);
+    if (!a || !b) return null;
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  })();
+
+  const dispatch = createEventDispatcher<{
     focus: string | null,
     showBodyContextMenu: { node: CelestialBody, x: number, y: number },
     backgroundContextMenu: { x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number }
@@ -49,6 +76,10 @@
 
   // --- Canvas and Rendering State ---
   let canvas: HTMLCanvasElement;
+  // Foreground overlay canvas: sits above the PlanetDisc HTML layer; constructs + labels draw here
+  // so they're never hidden behind a big planet disc. Sized to match `canvas` each frame.
+  let fgCanvas: HTMLCanvasElement;
+  let fgCtx: CanvasRenderingContext2D | null = null;
   let animationFrameId: number;
   let worldPositions = new Map<string, { x: number, y: number }>();
   let scaledWorldPositions = new Map<string, { x: number, y: number }>();
@@ -63,17 +94,34 @@
   
   // This is the pan value used for the current frame's render, to avoid store updates every frame
   let renderPan: PanState = { x: 0, y: 0 };
+
+  // Big bodies are rendered by REUSING The Guide's PlanetDisc as an SVG overlay (so the tag-driven viz
+  // — polar ice, auroras, glow, banding, shape — is identical in both views). Perf safeguards: only
+  // bodies large on screen become overlays (few at a time), capped in count, and each disc is rendered
+  // at a fixed reference size and GPU-scaled via CSS transform (no per-frame filter re-rasterising).
+  const DISC_OVERLAY_REF = 220;   // px the PlanetDisc SVG is rendered at, then transform-scaled
+  const DISC_OVERLAY_MIN_R = 11;  // min on-screen body radius (px) to promote to an overlay
+  const DISC_OVERLAY_CAP = 14;    // max simultaneous overlays (biggest first)
+  let discOverlays: { id: string; body: CelestialBody; x: number; y: number; scale: number; lightAngle: number | null }[] = [];
   let lastAutoZoomTarget: number = 0;
   let lastAutoZoomUpdateMs = 0;
 
   // --- Interaction State ---
   let isPanning = false;
-  let lastPanX: number;
-  let lastPanY: number;
+  let inertiaRaf: number | null = null;
   let lastFocusedId: string | null = null;
   let isAnimatingFocus = false;
+  // When the user zooms manually we stop the camera from auto-zooming back to the focused object's "ideal
+  // frame" (which otherwise fights the wheel during playback). Pan-follow continues, so the object stays
+  // centred at the user's chosen zoom. Cleared by any deliberate re-frame (new selection, re-click-to-step,
+  // Reset view).
+  let userZoomOverride = false;
   let beltLabelClickAreas = new Map<string, { x1: number, y1: number, x2: number, y2: number }>();
   let x0_distance = 0.01; // Default pivot for distance scaling
+  // Cache of coasting ships' forecast polylines, keyed by ship+clock so the conic isn't re-sampled per frame.
+  // (The old settle-timer that upgraded a moon-free integration to a moon-inclusive one is gone: the forecast
+  // now samples the same deterministic patched conic the ship actually follows — one fidelity, always.)
+  const coastPathCache = new Map<string, { key: string; pts: { x: number; y: number }[] }>();
 
   let lastSystemId: string | null = null;
   let lastFramedPlanId: string | null = null;
@@ -186,6 +234,16 @@
       scaledWorldPositions = worldPositions;
       return;
     }
+    // `worldPositions` is reactive ($: line ~137) but this runs imperatively from the draw loop, which
+    // ticks independently of Svelte's reactive flush. Right after a NEW system is loaded, `system` (a prop)
+    // holds the new nodes while `worldPositions` can still be the PREVIOUS system's map for a frame — so a
+    // lookup by a new node id misses and the `.x` reads below throw "reading 'x' of undefined" (the Procyon
+    // load crash). Rebuild from the current system when the map is out of sync so true positions always
+    // cover the nodes we're about to scale.
+    let truePos = worldPositions;
+    if (truePos.size < system.nodes.length || (system.nodes[0] && !truePos.has(system.nodes[0].id))) {
+      truePos = calculateWorldPositions(system, currentTime);
+    }
     const nodesById = new Map(system.nodes.map(n => [n.id, n]));
     const newScaledPositions = new Map<string, { x: number, y: number }>();
     function getScaledPosition(nodeId: string): { x: number, y: number } {
@@ -197,11 +255,17 @@
         return { x: 0, y: 0 };
       }
       const parentScaledPos = getScaledPosition(node.parentId);
-      const parentTruePos = worldPositions.get(node.parentId)!;
-      const nodeTruePos = worldPositions.get(node.id)!;
+      // Belt-and-braces: if a true position is still missing, fall back to the parent's position (the node
+      // sits on its parent for this one frame) rather than dereferencing undefined.
+      const nodeTruePos = truePos.get(node.id);
+      const parentTruePos = truePos.get(node.parentId);
+      if (!nodeTruePos || !parentTruePos) {
+        newScaledPositions.set(nodeId, { ...parentScaledPos });
+        return parentScaledPos;
+      }
       let x: number, y: number;
-      if ((node.kind === 'body' || node.kind === 'construct') && node.orbit) {
-        const { a_AU: a, e, omega_deg } = node.orbit.elements; 
+      if ((node.kind === 'body' || node.kind === 'construct' || node.kind === 'barycenter') && node.orbit) {
+        const { a_AU: a, e, omega_deg } = node.orbit.elements;
         const w = (omega_deg || 0) * (Math.PI / 180);
         const dxTrue = nodeTruePos.x - parentTruePos.x;
         const dyTrue = nodeTruePos.y - parentTruePos.y;
@@ -230,19 +294,40 @@
     scaledWorldPositions = newScaledPositions;
   }
 
+  // The consistent click-zoom ladder (see camera.ts FRAME_LEVELS): selecting an object frames its
+  // first existing level; each re-click on the focused object steps down to the next.
+  let focusLevel = 1;
+
+  function levelsFor(nodeId: string): number[] {
+      return availableFrameLevels({ nodeId, system, toytownFactor, scaledWorldPositions, worldPositions });
+  }
+  function firstLevelFor(nodeId: string): number {
+      return levelsFor(nodeId)[0] ?? 3;
+  }
+  function nextLevelFor(nodeId: string, current: number): number {
+      const levels = levelsFor(nodeId);
+      const idx = levels.indexOf(current);
+      // Advance to the next existing level; clamp at the deepest (no wrap).
+      return idx >= 0 && idx < levels.length - 1 ? levels[idx + 1] : levels[levels.length - 1] ?? current;
+  }
+
   function calculateFrameForNode(nodeId: string): { pan: PanState, zoom: number } {
-      return frameForNode({
-          nodeId, system, canvas,
+      // forceOrbitView (e.g. the planner's orbit view) pins level 2 (object + satellites).
+      const level = forceOrbitView ? 2 : focusLevel;
+      return frameForLevel({
+          nodeId, level, system, canvas,
           currentPan: get(panStore), currentZoom: get(zoomStore),
-          toytownFactor, scaledWorldPositions, worldPositions, x0_distance, forceOrbitView
+          toytownFactor, scaledWorldPositions, worldPositions, x0_distance
       });
   }
 
   export function resetView() {
       if (!system || !canvas) return;
       cameraMode = 'FOLLOW';
+      userZoomOverride = false;
       const targetId = focusedBodyId || system.nodes.find(n => n.parentId === null)?.id;
       if (targetId) {
+          focusLevel = firstLevelFor(targetId);
           const frame = calculateFrameForNode(targetId);
           panStore.set(frame.pan, { duration: 0 });
           zoomStore.set(clampZoom(frame.zoom), { duration: 0 });
@@ -260,6 +345,8 @@
       const nodesById = new Map(system!.nodes.map(n => [n.id, n]));
       const targetNode = nodesById.get(targetId);
       if (targetNode && targetNode.kind === 'body' && targetNode.roleHint === 'belt') return;
+      // A NEW selection starts at the object's first existing framing level.
+      focusLevel = firstLevelFor(targetId);
       startFocusAnimation(targetId);
   }
 
@@ -269,6 +356,8 @@
       const targetPosition = targetPositions.get(targetId);
       if (!targetPosition) return;
       cameraMode = 'FOLLOW';
+      userZoomOverride = false;   // an explicit (re)frame re-engages auto-zoom from this object's level
+      lastAutoZoomTarget = 0;
       isAnimatingFocus = true;
       const beforeViewport = { pan: get(panStore), zoom: get(zoomStore) };
       const rawAfterViewport = calculateFrameForNode(targetId);
@@ -315,7 +404,7 @@
     };
   });
 
-  onDestroy(() => cancelAnimationFrame(animationFrameId));
+  onDestroy(() => { cancelAnimationFrame(animationFrameId); stopInertia(); });
 
   function screenToWorld(screenX: number, screenY: number): { x: number, y: number } {
       if (!canvas || !zoom) return { x: 0, y: 0 };
@@ -337,6 +426,16 @@
     if (canvas && system) {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
+      // Keep the foreground overlay canvas matched to the base canvas + wipe it for this frame.
+      if (fgCanvas) {
+        if (fgCanvas.width !== canvas.width || fgCanvas.height !== canvas.height) {
+          fgCanvas.width = canvas.width; fgCanvas.height = canvas.height;
+        }
+        fgCtx = fgCanvas.getContext('2d');
+        fgCtx?.clearRect(0, 0, fgCanvas.width, fgCanvas.height);
+      } else {
+        fgCtx = null;
+      }
       calculateScaledPositions();
       if (needsReset) { resetView(); needsReset = false; }
       calculateLagrangePointPositions();
@@ -354,7 +453,7 @@
               const nextZoom = dampedZoomStep(baseZoom, idealZoom);
               const deltaRatio = Math.abs(nextZoom - baseZoom) / Math.max(baseZoom, MIN_CAMERA_ZOOM);
 
-              if (!suppressNearPeriapsis && !tooSoon && deltaRatio > 0.02) {
+              if (!userZoomOverride && !suppressNearPeriapsis && !tooSoon && deltaRatio > 0.02) {
                   zoomStore.set(nextZoom, { duration: 200 });
                   lastAutoZoomTarget = nextZoom;
                   lastAutoZoomUpdateMs = now;
@@ -364,9 +463,9 @@
           renderPan = panState;
           lastAutoZoomTarget = 0;
       }
-      // A draw exception must never kill the render loop (the next frame is
-      // only scheduled after this returns) — one bad body would otherwise
-      // freeze the whole canvas black. Log once, keep rendering.
+      // A draw exception must never kill the render loop (the next frame is only
+      // scheduled after this returns) — one bad body would otherwise freeze the
+      // whole canvas black. Log once (the debug dump captures it), keep rendering.
       try {
         drawSystem(ctx);
       } catch (err) {
@@ -446,10 +545,20 @@
           if (positions.has(nodeId)) return positions.get(nodeId)!;
           const node = nodesById.get(nodeId);
           if (!node) return { x: 0, y: 0 };
-          if (node.kind === 'construct' && node.vector_position_au) {
-              const absolute = { x: node.vector_position_au.x, y: node.vector_position_au.y };
-              positions.set(nodeId, absolute);
-              return absolute;
+          if (node.kind === 'construct' && (node.scheduled_journeys || []).length) {
+              // Resolve a construct's position PER-FRAME at the render clock — transit path, coast conic, OR the
+              // post-arrival parking orbit (sampleJourneyKinematicsAtTime computes all of these relative to the
+              // HOST BODY at THIS time). Reading the stored vector_position_au instead pins the ship to the
+              // host's position at the last ~150ms reconcile tick; since the host itself is drawn per-frame, at
+              // a deep zoom the ship jitters against it by the host's orbital motion over that 150ms. Sampling
+              // here keeps both in the same coordinate frame at the same instant.
+              const s = sampleJourneyKinematicsAtTime(system, node as any, currentTime);
+              if (s) { const abs = { x: s.position_au.x, y: s.position_au.y }; positions.set(nodeId, abs); return abs; }
+              if (node.vector_position_au) {
+                  const absolute = { x: node.vector_position_au.x, y: node.vector_position_au.y };
+                  positions.set(nodeId, absolute);
+                  return absolute;
+              }
           }
           if (node.parentId === null) { positions.set(nodeId, { x: 0, y: 0 }); return { x: 0, y: 0 }; }
           const parentPos = getPosition(node.parentId);
@@ -490,6 +599,26 @@
         const grandparentId = contextBody.parentId;
         system.nodes.forEach(n => { if (n.parentId === grandparentId) visibleIds.add(n.id); });
       }
+      // Barycentres are TRANSPARENT containers: whenever a barycentre is visible (e.g. a binary-planet
+      // pair shown as a child of the focused star), its member bodies are too — otherwise the binary
+      // planets (grandchildren of the star) would be invisible/unclickable. Iterate to handle nesting.
+      let expanded = true;
+      while (expanded) {
+        expanded = false;
+        for (const n of system.nodes) {
+          if (n.kind === 'barycenter' && visibleIds.has(n.id) && Array.isArray((n as any).memberIds)) {
+            for (const m of (n as any).memberIds) if (!visibleIds.has(m)) { visibleIds.add(m); expanded = true; }
+          }
+        }
+      }
+      // Free-floating constructs (in transit, deep space, or drifting/adrift) are positioned by an absolute
+      // vector_position_au, not by the orbital hierarchy — calculateWorldPositions draws their glyph
+      // regardless. They have no parent in the focus chain, so the hierarchy walk above misses them, which
+      // is why a drifting ship lost both its label and its clickability. Whatever is drawn free should also
+      // be nameable and selectable: add every absolutely-positioned construct here.
+      for (const n of system.nodes) {
+          if (n.kind === 'construct' && (n as any).vector_position_au) visibleIds.add(n.id);
+      }
       return visibleIds;
   }
 
@@ -500,11 +629,8 @@
   function drawConstructGlyph(ctx: CanvasRenderingContext2D, node: CelestialBody, x: number, y: number, sizePx: number): void {
       const size = sizePx;
       const c = node as any;
-      ctx.fillStyle = c.icon_color || '#f0f0f0';
-      if (c.icon_type === 'triangle') {
-          ctx.beginPath(); ctx.moveTo(x, y - size / 2); ctx.lineTo(x + size / 2, y + size / 2);
-          ctx.lineTo(x - size / 2, y + size / 2); ctx.closePath(); ctx.fill();
-      } else if (c.icon_type === 'circle') {
+      ctx.fillStyle = c.icon_color || '#ffd24d';
+      if (c.icon_type === 'circle') {
           ctx.beginPath(); ctx.arc(x, y, size / 2, 0, 2 * Math.PI); ctx.fill();
       } else if (c.icon_type === 'diamond') {
           ctx.beginPath(); ctx.moveTo(x, y - size / 2); ctx.lineTo(x + size / 2, y);
@@ -513,9 +639,12 @@
           const thickness = size / 3;
           ctx.fillRect(x - thickness / 2, y - size / 2, thickness, size);
           ctx.fillRect(x - size / 2, y - thickness / 2, size, thickness);
-      } else {
-          // Default Square
+      } else if (c.icon_type === 'square') {
           ctx.fillRect(x - size / 2, y - size / 2, size, size);
+      } else {
+          // Default: triangle (bodies are circles/spheres, so constructs read as triangles)
+          ctx.beginPath(); ctx.moveTo(x, y - size / 2); ctx.lineTo(x + size / 2, y + size / 2);
+          ctx.lineTo(x - size / 2, y + size / 2); ctx.closePath(); ctx.fill();
       }
   }
 
@@ -526,10 +655,10 @@
   function pickNodeAt(screenX: number, screenY: number): { node: CelestialBody; world: { x: number; y: number } } | null {
       if (!system) return null;
       const clickPos = screenToWorld(screenX, screenY);
-      let clickedNode: CelestialBody | null = null;
-      let minDistanceSq = Infinity;
       const clickableIds = getVisibleNodeIds(system, focusedBodyId);
       const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
+      // Collect every node whose pick-radius contains the click, with its centre distance.
+      const hits: { node: CelestialBody; distanceSq: number }[] = [];
       for (const node of system.nodes) {
           if (!clickableIds.has(node.id) || (node.kind !== 'body' && node.kind !== 'construct')) continue;
           const pos = targetPositions.get(node.id);
@@ -545,18 +674,35 @@
           else if (node.roleHint === 'moon') minRadiusPx = 8;
           const minRadiusInWorld = minRadiusPx / zoom;
           const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
-          if (distanceSq < finalRadius * finalRadius) {
-              if (distanceSq < minDistanceSq) { minDistanceSq = distanceSq; clickedNode = node as CelestialBody; }
-          }
+          if (distanceSq < finalRadius * finalRadius) hits.push({ node: node as CelestialBody, distanceSq });
       }
-      return clickedNode ? { node: clickedNode, world: clickPos } : null;
+      if (!hits.length) return null;
+      // Gate toward the PARENT when in doubt: if a hit's host is also under the cursor, drop the
+      // child — a general click on a planet shouldn't grab one of its moons/constructs. Only when
+      // the parent is NOT hit (you clicked a clearly-separated moon) does the child survive.
+      const hitIds = new Set(hits.map((h) => h.node.id));
+      const hostOf = (n: any) => (n.ui_parentId || n.parentId || n.orbit?.hostId) as string | undefined;
+      const preferred = hits.filter((h) => { const p = hostOf(h.node); return !(p && hitIds.has(p)); });
+      const pool = preferred.length ? preferred : hits;
+      pool.sort((a, b) => a.distanceSq - b.distanceSq);
+      return { node: pool[0].node, world: clickPos };
   }
 
-  function handleClick(event: MouseEvent) {
+  // --- Unified pointer gestures (Phase 02). Coords arriving here are canvas-relative
+  //     (the gestures action subtracts getBoundingClientRect), matching the old
+  //     `clientX - rect.left`. Behaviour is otherwise the pre-Phase-02 mouse logic. ---
+
+  // Tap = the old handleClick body (focus, or zoom-in if already focused; belt labels first).
+  function handleTap(clickX: number, clickY: number) {
       if (!system) return;
-      const rect = canvas.getBoundingClientRect();
-      const clickX = event.clientX - rect.left;
-      const clickY = event.clientY - rect.top;
+      // Measuring tape: tap picks endpoint A then B; a third tap restarts from that body as A.
+      if (rulerActive) {
+          const pick = pickNodeAt(clickX, clickY);
+          if (!pick) return;
+          if (!rulerA || (rulerA && rulerB)) { rulerA = { id: pick.node.id, name: pick.node.name }; rulerB = null; }
+          else if (pick.node.id !== rulerA.id) { rulerB = { id: pick.node.id, name: pick.node.name }; }
+          return;
+      }
       if (showNames) {
           for (const [beltId, area] of beltLabelClickAreas.entries()) {
               if (clickX >= area.x1 && clickX <= area.x2 && clickY >= area.y1 && clickY <= area.y2) {
@@ -566,70 +712,145 @@
       }
       const picked = pickNodeAt(clickX, clickY);
       if (picked) {
-        if (picked.node.id === focusedBodyId) zoomStore.set(clampZoom(get(zoomStore) * 2));
-        else dispatch("focus", picked.node.id);
+        if (picked.node.id === focusedBodyId) {
+          // Re-click the focused object → step DOWN to the next existing framing level.
+          focusLevel = nextLevelFor(picked.node.id, focusLevel);
+          startFocusAnimation(picked.node.id);
+        } else {
+          dispatch("focus", picked.node.id);
+        }
       }
   }
 
-  function handleContextMenu(event: MouseEvent) {
-      event.preventDefault();
+  // Long-press / right-click = the old handleContextMenu body. The menu is positioned in
+  // screen space, so convert the canvas-relative point back via the bounding rect.
+  function openContextMenu(clickX: number, clickY: number) {
       if (!system) return;
       const rect = canvas.getBoundingClientRect();
-      const clickX = event.clientX - rect.left;
-      const clickY = event.clientY - rect.top;
+      const screenX = clickX + rect.left;
+      const screenY = clickY + rect.top;
       const picked = pickNodeAt(clickX, clickY);
-      if (picked) dispatch("showBodyContextMenu", { node: picked.node, x: event.clientX, y: event.clientY });
+      if (picked) dispatch("showBodyContextMenu", { node: picked.node, x: screenX, y: screenY });
       else {
         const clickPos = screenToWorld(clickX, clickY);
         const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
         const dominantBody = findContainingHost(clickPos.x, clickPos.y, system.nodes, targetPositions);
-        dispatch("backgroundContextMenu", { x: clickPos.x, y: clickPos.y, dominantBody, screenX: event.clientX, screenY: event.clientY });
+        dispatch("backgroundContextMenu", { x: clickPos.x, y: clickPos.y, dominantBody, screenX, screenY });
       }
   }
 
-  function handleWheel(event: WheelEvent) {
-      event.preventDefault();
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = event.clientX - rect.left;
-      const mouseY = event.clientY - rect.top;
-      const worldPosBeforeZoom = screenToWorld(mouseX, mouseY);
-      const zoomFactor = event.deltaY < 0 ? 1.2 : 1 / 1.2;
-      const newZoom = clampZoom(get(zoomStore) * zoomFactor);
-      const newPanX = worldPosBeforeZoom.x - (mouseX - canvas.width / 2) / newZoom;
-      const newPanY = worldPosBeforeZoom.y - (mouseY - canvas.height / 2) / newZoom;
+  // Zoom about a canvas-relative point, keeping that point fixed (old handleWheel logic,
+  // generalised to take a factor so wheel and pinch share it).
+  function zoomAt(factor: number, screenX: number, screenY: number) {
+      userZoomOverride = true;   // the user is driving zoom now — stop the auto-camera fighting them
+      const worldPosBeforeZoom = screenToWorld(screenX, screenY);
+      const newZoom = clampZoom(get(zoomStore) * factor);
+      const newPanX = worldPosBeforeZoom.x - (screenX - canvas.width / 2) / newZoom;
+      const newPanY = worldPosBeforeZoom.y - (screenY - canvas.height / 2) / newZoom;
       panStore.set({ x: newPanX, y: newPanY }, { duration: 0 });
       zoomStore.set(newZoom, { duration: 0 });
   }
 
-  function handleMouseDown(event: MouseEvent) {
-      isPanning = true; cameraMode = 'MANUAL';
-      lastPanX = event.clientX; lastPanY = event.clientY;
-      canvas.style.cursor = 'grabbing';
-  }
-
-  function handleMouseUp() { isPanning = false; canvas.style.cursor = 'grab'; }
-
-  function handleMouseMove(event: MouseEvent) {
-      if (!isPanning) return;
-      const dx = event.clientX - lastPanX; const dy = event.clientY - lastPanY;
-      const panDeltaX = dx / get(zoomStore); const panDeltaY = dy / get(zoomStore);
+  // Pan by a screen-pixel delta (old handleMouseMove logic).
+  function panBy(dx: number, dy: number) {
+      const z = get(zoomStore);
       const currentPan = get(panStore);
-      panStore.set({ x: currentPan.x - panDeltaX, y: currentPan.y - panDeltaY }, { duration: 0 });
-      lastPanX = event.clientX; lastPanY = event.clientY;
+      panStore.set({ x: currentPan.x - dx / z, y: currentPan.y - dy / z }, { duration: 0 });
   }
 
-  function drawSystem(ctx: CanvasRenderingContext2D) {
+  function stopInertia() {
+      if (inertiaRaf !== null) { cancelAnimationFrame(inertiaRaf); inertiaRaf = null; }
+  }
+
+  // Fling: decay the release velocity (px/s) by 0.92 per frame, stop below 2 px/s.
+  function startInertia(vx: number, vy: number) {
+      stopInertia();
+      if (Math.hypot(vx, vy) < 2) return;
+      let vX = vx, vY = vy, lastT = 0;
+      const step = (t: number) => {
+          if (!lastT) { lastT = t; inertiaRaf = requestAnimationFrame(step); return; }
+          const dt = (t - lastT) / 1000; lastT = t;
+          panBy(vX * dt, vY * dt);
+          vX *= 0.92; vY *= 0.92;
+          if (Math.hypot(vX, vY) < 2) { inertiaRaf = null; return; }
+          inertiaRaf = requestAnimationFrame(step);
+      };
+      inertiaRaf = requestAnimationFrame(step);
+  }
+
+  const canvasGestures = {
+      onPanStart: () => { isPanning = true; cameraMode = 'MANUAL'; stopInertia(); if (canvas) canvas.style.cursor = 'grabbing'; },
+      onPan: ({ dx, dy }: { dx: number; dy: number }) => panBy(dx, dy),
+      onPanEnd: ({ vx, vy }: { vx: number; vy: number }) => { isPanning = false; if (canvas) canvas.style.cursor = 'grab'; startInertia(vx, vy); },
+      onZoom: ({ factor, x, y }: { factor: number; x: number; y: number }) => zoomAt(factor, x, y),
+      onTap: ({ x, y }: { x: number; y: number }) => handleTap(x, y),
+      onLongPress: ({ x, y }: { x: number; y: number }) => openContextMenu(x, y)
+  };
+
+  // "#rrggbb" / "#rgb" / "rgb(...)" → "r,g,b" for building rgba() gradients.
+  // Belt/ring DENSITY as a 0..1 fraction from its massKg debris-density proxy (log scale,
+  // 1e-5..1.0 Earth masses — mirrors getBeltDensityDescription). Drives how solid we draw it.
+  // Undefined density (legacy data) → a moderate default so it stays visible.
+  function debrisDensityFrac(massKg: number | undefined): number {
+      if (massKg === undefined || massKg <= 0) return 0.3;
+      const me = massKg / EARTH_MASS_KG;
+      const lo = Math.log(1e-5), hi = Math.log(1.0);
+      return Math.max(0, Math.min(1, (Math.log(me) - lo) / (hi - lo)));
+  }
+
+  function hexToRgbTriplet(c: string): string {
+      if (!c) return '255,255,255';
+      if (c.startsWith('rgb')) { const m = c.match(/\d+/g); return m ? m.slice(0, 3).join(',') : '255,255,255'; }
+      let h = c.replace('#', '');
+      if (h.length === 3) h = h.split('').map((x) => x + x).join('');
+      const n = parseInt(h, 16);
+      if (Number.isNaN(n)) return '255,255,255';
+      return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
+  }
+
+  // A construct is coasting now if it isn't on an active (non-cancelled) journey but has an aborted one
+  // that's already taken effect — i.e. it's drifting/falling under gravity, so it gets a forecast path.
+  function isCoastingNow(node: any): boolean {
+      const logs = node.scheduled_journeys || [];
+      if (!logs.length) return false;
+      // On a real journey right now → in transit, not coasting.
+      for (const l of logs) {
+          if (l.status === 'cancelled') continue;
+          const b = getJourneyBounds(l.plans);
+          if (b && currentTime >= b.startMs && currentTime <= b.endMs) return false;
+      }
+      // A cancelled drift only coasts from its cancel time UNTIL the next journey begins. If a later journey
+      // has since started (e.g. the ship was picked up and flown to Uranio), the drift is over — no forecast
+      // line. Mirrors the supersede fix in sampleJourneyKinematicsAtTime; without it the drift line lingers,
+      // pinned at the now-parked ship, after it has established orbit.
+      for (const l of logs) {
+          if (l.status !== 'cancelled' || !l.cancelledAtSec) continue;
+          const cancelMs = Number(l.cancelledAtSec) * 1000;
+          if (currentTime < cancelMs) continue;
+          const superseded = logs.some((o: any) => {
+              if (o === l || o.status === 'cancelled') return false;
+              const ob = getJourneyBounds(o.plans);
+              return ob && ob.startMs > cancelMs && currentTime >= ob.startMs;
+          });
+          if (!superseded) return true;
+      }
+      return false;
+  }
+
+  function drawSystem(baseCtx: CanvasRenderingContext2D) {
       if (!system || !zoom) return;
+      const ctx = baseCtx;
       const { width, height } = canvas;
+      const nextOverlays: typeof discOverlays = [];  // PlanetDisc overlays collected this frame
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       ctx.save();
-      ctx.fillStyle = "#08090d";
+      ctx.fillStyle = backgroundColor;
       ctx.fillRect(0, 0, width, height);
       ctx.translate(width / 2, height / 2);
       ctx.scale(zoom, zoom);
       // Zones are drawn in screen-space overlay after world-space pass for better dash/LOD performance.
       if (showTravellerZones) drawTravellerZones(ctx);
-      if (showSensors) drawSensorOverlay(ctx);
+      drawSensorOverlay(ctx);   // gates internally on the global view toggle OR the ship's sensors flag
       for (const node of system.nodes) {
           if (!node.orbit || !node.parentId || (node.kind === 'body' && node.roleHint === 'belt')) continue;
           const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(node.parentId) : worldPositions.get(node.parentId);
@@ -638,7 +859,7 @@
           if (toytownFactor > 0) a = scaleBoxCox(a, toytownFactor, x0_distance);
           const b = a * Math.sqrt(1 - e * e); const c = a * e;
           // Bad orbit data (negative/NaN a, e >= 1) must not throw in ctx.ellipse
-          // and kill the canvas — skip this orbit line instead.
+          // and freeze the canvas — skip this orbit line instead.
           if (!Number.isFinite(a) || a <= 0 || !Number.isFinite(b) || b <= 0) continue;
           const omega_rad = (node.orbit.elements.omega_deg || 0) * (Math.PI / 180);
           ctx.strokeStyle = "#333"; ctx.lineWidth = 1 / zoom;
@@ -667,7 +888,11 @@
                   ctx.translate(parentPos.x - renderPan.x, parentPos.y - renderPan.y);
                   if (node.roleHint === 'belt') ctx.lineWidth = Math.max(4 / zoom, widthAU);
                   else ctx.lineWidth = widthAU;
-                  let alpha = node.roleHint === 'ring' ? 0.3 : 0.07;
+                  // Opacity tracks DENSITY (massKg as a debris-density proxy): Saturn's dense rings
+                  // read solid, the other giants' thin rings are barely there; a denser belt looks
+                  // less transparent. Legacy data with no density falls back to a moderate level.
+                  const dens = debrisDensityFrac(node.massKg);
+                  let alpha = node.roleHint === 'ring' ? (0.05 + dens * 0.5) : (0.02 + dens * 0.18);
                   ctx.strokeStyle = node.roleHint === 'ring' ? `rgba(200, 200, 200, ${alpha})` : `rgba(255, 255, 255, ${alpha})`;
                   ctx.beginPath();
                   let drewBeltEllipse = false;
@@ -676,7 +901,7 @@
                       if (toytownFactor > 0) a = scaleBoxCox(a, toytownFactor, x0_distance);
                       const e = node.orbit.elements.e; const b = a * Math.sqrt(1 - e * e); const c = a * e;
                       const omega_rad = (node.orbit.elements.omega_deg || 0) * (Math.PI / 180);
-                      // Same negative/NaN guard as the orbit lines above.
+                      // Same negative/NaN guard as the orbit lines above — fall back to the arc.
                       if (Number.isFinite(a) && a > 0 && Number.isFinite(b) && b > 0) {
                           ctx.save(); ctx.rotate(omega_rad); ctx.ellipse(-c, 0, a, b, 0, 0, 2 * Math.PI); ctx.restore();
                           drewBeltEllipse = true;
@@ -692,10 +917,30 @@
                               const angleToStar = Math.atan2(parentPos.y - grandParentPos.y, parentPos.x - grandParentPos.x);
                               let planetRadiusAU = (parent.radiusKm || 0) / AU_KM;
                               if (toytownFactor > 0) planetRadiusAU = scaleBoxCox(planetRadiusAU, toytownFactor, x0_distance);
-                              const shadowAngle = Math.atan2(planetRadiusAU, avgRadius);
-                              const startAngle = angleToStar - shadowAngle; const endAngle = angleToStar + shadowAngle;
-                              ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)'; ctx.lineWidth = widthAU;
-                              ctx.beginPath(); ctx.arc(0, 0, avgRadius, startAngle, endAngle); ctx.stroke();
+                              // Shadow width must match the planet's DRAWN disc, which has a minimum
+                              // pixel size — using the raw radius made the umbra a point-source sliver
+                              // far narrower than the visible planet. Same effective-radius rule as the
+                              // body draw loop.
+                              const isGiant = parent.classes?.some((c: string) => c.includes('gas-giant') || c.includes('ice-giant'));
+                              const minPlanetPx = isGiant ? 3 : 2;
+                              const effPlanetRadius = Math.sqrt(planetRadiusAU * planetRadiusAU + Math.pow(minPlanetPx / zoom, 2));
+                              // Parallel-sided umbra: a band exactly one planet-diameter wide running
+                              // anti-starward, clipped to the ring annulus. (An arc segment has
+                              // constant ANGULAR width, so it fanned outward like a searchlight.)
+                              ctx.save();
+                              ctx.beginPath();
+                              ctx.arc(0, 0, outerRadiusAU, 0, 2 * Math.PI);
+                              ctx.arc(0, 0, innerRadiusAU, 0, 2 * Math.PI, true);
+                              ctx.clip('evenodd');
+                              ctx.rotate(angleToStar); // +x now points anti-starward
+                              const umbra = ctx.createLinearGradient(0, -effPlanetRadius, 0, effPlanetRadius);
+                              umbra.addColorStop(0, 'rgba(0,0,0,0)');
+                              umbra.addColorStop(0.18, 'rgba(0,0,0,0.45)');
+                              umbra.addColorStop(0.82, 'rgba(0,0,0,0.45)');
+                              umbra.addColorStop(1, 'rgba(0,0,0,0)');
+                              ctx.fillStyle = umbra;
+                              ctx.fillRect(0, -effPlanetRadius, outerRadiusAU * 1.05, 2 * effPlanetRadius);
+                              ctx.restore();
                           }
                       }
                   }
@@ -729,6 +974,13 @@
               drawConstructGlyph(ctx, node as CelestialBody, rx, ry, 8 / zoom);
           }
       }
+      const trueColorOn = get(trueColorMode);
+      // Primary star (most massive) world position — drives the day/night terminator on bodies.
+      const primaryStarNode = system.nodes
+          .filter((n) => n.kind === 'body' && (n as any).roleHint === 'star')
+          .sort((a: any, b: any) => (b.massKg || 0) - (a.massKg || 0))[0];
+      const primaryStarPos = primaryStarNode ? scaledWorldPositions.get(primaryStarNode.id) : null;
+
       for (const node of system.nodes) {
           const pos = scaledWorldPositions.get(node.id);
           if (!pos || node.kind !== 'body') continue;
@@ -742,16 +994,60 @@
           else if (node.roleHint === 'moon') minRadiusPx = 1;
           const minRadiusInWorld = minRadiusPx / zoom;
           const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
-          
-          ctx.beginPath(); 
-          ctx.arc(rx, ry, finalRadius, 0, 2 * Math.PI);
+
+          // Promote a big-on-screen planet/moon to a PlanetDisc SVG overlay (true-colour only) so it
+          // renders exactly like The Guide. Skip the canvas disc/effects for it — the overlay owns it.
+          if (trueColorOn && (node.roleHint === 'planet' || node.roleHint === 'moon')
+              && (node as any).apparentColor && finalRadius * zoom >= DISC_OVERLAY_MIN_R) {
+              const sR = finalRadius * zoom;
+              const sx = rx * zoom + width / 2, sy = ry * zoom + height / 2;
+              // Only overlay bodies actually on screen, so the off-canvas giants can't steal the cap.
+              if (sx + sR >= 0 && sx - sR <= width && sy + sR >= 0 && sy - sR <= height) {
+                  const la = primaryStarPos ? Math.atan2(primaryStarPos.y - pos.y, primaryStarPos.x - pos.x) : null;
+                  nextOverlays.push({ id: node.id, body: node as CelestialBody, x: sx, y: sy, scale: sR / (0.3 * DISC_OVERLAY_REF), lightAngle: la });
+                  continue;
+              }
+              // Off-screen but big: fall through to the cheap canvas path (clipped away anyway).
+          }
+
+          // #5 Star glow — a soft additive halo behind the disc. A very active (flaring) star
+          // throws a bigger, brighter halo; a feeding (active) black hole gets one too, in the
+          // hot-orange of its accretion disc (quiescent holes stay dark).
+          const isBlackHole = node.classes?.some((c) => c.includes('BH'));
+          const isActiveBH = node.classes?.includes('star/BH_active');
+          // Black-hole material infall (Eddington fraction, ~0..1+) drives the accretion look: more
+          // feeding → a bigger, brighter, hotter disc + halo. Quiescent holes stay dark.
+          const accRate = isActiveBH ? Math.max(0, Math.min(1.3, (node as any).accretionEddington ?? 0.5)) : 0;
+          if (node.roleHint === 'star' && (!isBlackHole || isActiveBH)) {
+              // 0..1 activity: stellar flare level for stars, the infall rate for a feeding hole.
+              const activity = isActiveBH ? Math.min(1, 0.25 + accRate) : Math.max(0, Math.min(1, (node as any).flareActivity ?? 0));
+              const glowR = finalRadius * (3.4 + activity * 3.0);
+              // Feeding hole: disc colour warms from orange toward yellow-white as infall climbs.
+              const col = isActiveBH ? `255,${Math.round(150 + accRate * 70)},${Math.round(40 + accRate * 110)}` : hexToRgbTriplet(getNodeColor(node));
+              const core = 0.5 + activity * 0.4;   // brighter core when active
+              const mid = 0.16 + activity * 0.22;
+              const grad = ctx.createRadialGradient(rx, ry, finalRadius * 0.5, rx, ry, glowR);
+              grad.addColorStop(0, `rgba(${col},${core})`);
+              grad.addColorStop(0.35, `rgba(${col},${mid})`);
+              grad.addColorStop(1, `rgba(${col},0)`);
+              ctx.save();
+              ctx.globalCompositeOperation = 'lighter';
+              ctx.beginPath(); ctx.arc(rx, ry, glowR, 0, 2 * Math.PI); ctx.fillStyle = grad; ctx.fill();
+              ctx.restore();
+          }
+
+          // Draw the body as its actual (oblate) shape — a fast rotator is flattened along its poles.
+          const ryRadius = finalRadius * oblatePolarFactor((node as CelestialBody).oblateness);
+          ctx.beginPath();
+          ctx.ellipse(rx, ry, finalRadius, ryRadius, 0, 0, 2 * Math.PI);
 
           // Custom Rendering for Black Holes
           if (node.classes?.includes('star/BH_active')) {
               ctx.fillStyle = '#000000';
               ctx.fill();
-              ctx.lineWidth = Math.max(2 / zoom, finalRadius * 0.2); // Accretion disk
-              ctx.strokeStyle = '#ffaa00'; // Hot orange
+              // Accretion disc: thickens with the infall rate, and heats orange → yellow-white.
+              ctx.lineWidth = Math.max(1.5 / zoom, finalRadius * (0.12 + accRate * 0.4));
+              ctx.strokeStyle = accRate > 0.75 ? '#ffe0a0' : '#ffaa00';
               ctx.stroke();
           } else if (node.classes?.includes('star/BH')) {
               ctx.fillStyle = '#000000';
@@ -760,8 +1056,188 @@
               ctx.strokeStyle = '#444444'; // Subtle horizon visibility
               ctx.stroke();
           } else {
-              ctx.fillStyle = getNodeColor(node); 
-              ctx.fill();
+              // #9 Procedural disc in true-colour mode: land/ocean patches at the real coverage,
+              // gas-giant banding, cloud + haze layers — once the disc is big enough to read.
+              const tex = (trueColorOn && node.roleHint !== 'star' && (node as any).apparentColor && finalRadius * zoom > 5)
+                  ? getPlanetTexture(node as CelestialBody)
+                  : null;
+              if (tex) {
+                  ctx.save();
+                  ctx.beginPath(); ctx.ellipse(rx, ry, finalRadius, ryRadius, 0, 0, 2 * Math.PI); ctx.clip();
+                  ctx.drawImage(tex, rx - finalRadius, ry - ryRadius, finalRadius * 2, ryRadius * 2);
+                  ctx.restore();
+              } else {
+                  ctx.fillStyle = getNodeColor(node);
+                  ctx.fill();
+              }
+          }
+
+          // Night side + magma are drawn in SCREEN space (identity transform). Canvas gradients
+          // baked over the orrery's tiny world-space extents (~1e-5 AU under a huge zoom) collapse
+          // to a single colour in the browser, so the terminator/lava silently vanished when zoomed
+          // in. In device pixels they render correctly. Screen mapping: s = world·zoom + halfScreen.
+          const sx = rx * zoom + width / 2;
+          const sy = ry * zoom + height / 2;
+          const sR = finalRadius * zoom;
+
+          // #10 Night side — shade the hemisphere facing away from the primary star (skip stars/BH;
+          // only when the disc is big enough on screen to read). A TIDALLY LOCKED world has a fixed,
+          // pronounced terminator: a sharp, dark day/night divide (no rotation to even it out).
+          if (node.roleHint !== 'star' && primaryStarPos && sR > 3) {
+              const dx = primaryStarPos.x - pos.x, dy = primaryStarPos.y - pos.y;
+              const len = Math.hypot(dx, dy) || 1;
+              const ux = dx / len, uy = dy / len; // unit vector toward the star (screen Y not flipped)
+              const locked = !!(node as CelestialBody).tidallyLocked;
+              ctx.save();
+              ctx.setTransform(1, 0, 0, 1, 0, 0);
+              ctx.beginPath(); ctx.arc(sx, sy, sR, 0, 2 * Math.PI); ctx.clip();
+              const g = ctx.createLinearGradient(sx + ux * sR, sy + uy * sR, sx - ux * sR, sy - uy * sR);
+              if (locked) {
+                  g.addColorStop(0, 'rgba(0,0,0,0)');
+                  g.addColorStop(0.48, 'rgba(0,0,0,0)');
+                  g.addColorStop(0.6, 'rgba(0,0,0,0.45)');
+                  g.addColorStop(1, 'rgba(0,0,0,0.6)');
+              } else {
+                  g.addColorStop(0, 'rgba(0,0,0,0)');
+                  g.addColorStop(0.5, 'rgba(0,0,0,0.04)');
+                  g.addColorStop(1, 'rgba(0,0,0,0.6)');
+              }
+              ctx.fillStyle = g;
+              ctx.beginPath(); ctx.arc(sx, sy, sR, 0, 2 * Math.PI); ctx.fill();
+              ctx.restore();
+          }
+
+          // Tidal volcanism — magma patches (Io). Tidal flexing dissipates strongest at low
+          // latitudes, so the hotspots cluster in an EQUATORIAL band (with scatter). Opaque core +
+          // additive bloom; placement seeded by the node id so it's stable frame-to-frame.
+          if (node.roleHint !== 'star' && sR > 4) {
+              const keys = (node.tags || []).map((t) => t.key);
+              const lava = keys.includes('tidal/lava-flows');
+              const volc = lava || keys.includes('tidal/volcanism') || keys.includes('tidal/hotspots');
+              if (volc) {
+                  const n = lava ? 8 : keys.includes('tidal/volcanism') ? 6 : 4;
+                  const core = lava ? '255,244,200' : '255,210,120';  // white-hot vs incandescent orange
+                  const mid  = lava ? '255,120,20'  : '220,70,18';    // molten orange / red
+                  const mkRnd = () => { let s = 0; for (let k = 0; k < node.id.length; k++) s = (s * 31 + node.id.charCodeAt(k)) & 0xffffff; return () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; }; };
+                  let rnd = mkRnd();
+                  ctx.save();
+                  ctx.setTransform(1, 0, 0, 1, 0, 0);
+                  ctx.beginPath(); ctx.arc(sx, sy, sR, 0, 2 * Math.PI); ctx.clip();
+                  for (let p = 0; p < n; p++) {
+                      const lat = (rnd() * 2 - 1); const latEq = lat * lat * lat * 0.62; // dense near the equator
+                      const lon = rnd() * 2 - 1;
+                      const py = sy + latEq * sR;
+                      const px = sx + lon * sR * 0.82 * Math.sqrt(Math.max(0, 1 - latEq * latEq));
+                      const pr = sR * (0.08 + rnd() * 0.12);
+                      const mg = ctx.createRadialGradient(px, py, 0, px, py, pr);
+                      mg.addColorStop(0, `rgba(${core},0.98)`);
+                      mg.addColorStop(0.4, `rgba(${mid},0.9)`);
+                      mg.addColorStop(1, `rgba(${mid},0)`);
+                      ctx.fillStyle = mg;
+                      ctx.beginPath(); ctx.arc(px, py, pr, 0, 2 * Math.PI); ctx.fill();
+                  }
+                  ctx.globalCompositeOperation = 'lighter';
+                  rnd = mkRnd(); // same placement → bloom sits over the patches
+                  for (let p = 0; p < Math.ceil(n / 2); p++) {
+                      const lat = (rnd() * 2 - 1); const latEq = lat * lat * lat * 0.62;
+                      const lon = rnd() * 2 - 1;
+                      const py = sy + latEq * sR;
+                      const px = sx + lon * sR * 0.82 * Math.sqrt(Math.max(0, 1 - latEq * latEq));
+                      const pr = sR * 0.22;
+                      const bg = ctx.createRadialGradient(px, py, 0, px, py, pr);
+                      bg.addColorStop(0, `rgba(${core},0.5)`);
+                      bg.addColorStop(1, `rgba(${mid},0)`);
+                      ctx.fillStyle = bg;
+                      ctx.beginPath(); ctx.arc(px, py, pr, 0, 2 * Math.PI); ctx.fill();
+                  }
+                  ctx.restore();
+              }
+          }
+      }
+      // Publish this frame's PlanetDisc overlays (biggest first, capped) for the SVG layer to render.
+      discOverlays = nextOverlays.length > DISC_OVERLAY_CAP
+          ? [...nextOverlays].sort((a, b) => b.scale - a.scale).slice(0, DISC_OVERLAY_CAP)
+          : nextOverlays;
+
+      // Hill spheres — each planet-mass body's gravitational bubble, and EXACTLY the boundary the adrift
+      // coast physics hands over at (same helper, so the drawn circle can't disagree with the handoff).
+      // Solid light yellow + faint fill — dashed strokes over AU-scale circles make the canvas grind.
+      if (showHillSpheres && system) {
+          for (const h of hillSpheresAu(system)) {
+              const pos = toytownFactor > 0 ? scaledWorldPositions.get(h.id) : worldPositions.get(h.id);
+              if (!pos) continue;
+              let r = h.rAu;
+              if (toytownFactor > 0) {
+                  // Radial Box-Cox compression: span the sphere between its scaled inner/outer radial extent
+                  // and draw the mean as a circle (the mode is stylised; exactness lives in Real scale).
+                  const world = worldPositions.get(h.id);
+                  const d = world ? Math.hypot(world.x, world.y) : 0;
+                  const outer = scaleBoxCox(d + h.rAu, toytownFactor, x0_distance);
+                  const inner = scaleBoxCox(Math.max(0, d - h.rAu), toytownFactor, x0_distance);
+                  r = Math.max(0, (outer - inner) / 2);
+              }
+              if (!(r > 0)) continue;
+              ctx.beginPath();
+              ctx.arc(pos.x - renderPan.x, pos.y - renderPan.y, r, 0, 2 * Math.PI);
+              // Planets: shaded bubble. Stars: an unshaded line only (the "[Star] Hill Limit" — labelled in
+              // screen space below), so a huge star limit doesn't wash the whole canvas in fill.
+              if (!h.isStar) {
+                  ctx.fillStyle = 'rgba(255, 232, 130, 0.06)';
+                  ctx.fill();
+              }
+              ctx.strokeStyle = 'rgba(255, 232, 130, 0.38)';
+              ctx.lineWidth = 1 / zoom;
+              ctx.stroke();
+          }
+      }
+      // Trip lines for each ship's current + NEXT journey only — enough to show who's going where without
+      // a spider-web of the whole committed route (an autopilot ship may have many legs queued). Skip finished
+      // trips. Drawn in burn colours (green accel / yellow coast / red brake): the ACTIVE leg bright, the next
+      // one faded — brightness reads as now-vs-later, colour as where it burns. Planning lines draw on top.
+      if (system) {
+          for (const node of system.nodes) {
+              if (node.kind !== 'construct') continue;
+              const live = ((node as any).scheduled_journeys || [])
+                  .filter((l: any) => l.status !== 'cancelled')
+                  .map((l: any) => ({ l, b: getJourneyBounds(l.plans) }))
+                  .filter((x: any) => x.b && currentTime <= x.b.endMs)     // not finished
+                  .sort((a: any, b: any) => a.b.startMs - b.b.startMs);
+              live.slice(0, 2).forEach((x: any, idx: number) => { // [0] = active/earliest, [1] = the next one
+                  for (const plan of x.l.plans) drawTransitPlan(ctx, plan, false, idx === 0 ? 0.55 : 0.18, false, true);
+              });
+          }
+      }
+      // Predicted coast path for drifting/stopped ships — the conic they're about to follow (fall to the
+      // star / ellipse / hyperbola). SOLID faint line (a dash over a path that can span billions of metres
+      // makes the canvas compute a zillion dash segments → frame death). The 40-step integration is cached
+      // per ship+clock so panning/zooming doesn't re-run it every frame.
+      if (system) {
+          for (const node of system.nodes) {
+              if (node.kind !== 'construct' || !(node as any).vector_position_au || !isCoastingNow(node as any)) continue;
+              const vp = (node as any).vector_position_au, vel = (node as any).vector_velocity_ms ?? { x: 0, y: 0 };
+              const key = `${currentTime}|${vp.x},${vp.y}|${vel.x},${vel.y}`;
+              let cached = coastPathCache.get(node.id);
+              if (!cached || cached.key !== key) {
+                  cached = { key, pts: coastPathUnderGravity(system, vp, vel, currentTime, 64) };
+                  coastPathCache.set(node.id, cached);
+              }
+              const pts = cached.pts;
+              if (pts.length < 2) continue;
+              ctx.beginPath();
+              ctx.strokeStyle = 'rgba(255, 150, 50, 0.55)'; // ORANGE = uncontrolled coast (adrift), vs red = powered braking
+              ctx.lineWidth = 1.4 / zoom;
+              for (let i = 0; i < pts.length; i++) {
+                  let p = pts[i];
+                  if (toytownFactor > 0) {
+                      const rr = Math.sqrt(p.x * p.x + p.y * p.y);
+                      const rn = scaleBoxCox(rr, toytownFactor, x0_distance);
+                      const ang = Math.atan2(p.y, p.x);
+                      p = { x: rn * Math.cos(ang), y: rn * Math.sin(ang) };
+                  }
+                  if (i === 0) ctx.moveTo(p.x - renderPan.x, p.y - renderPan.y);
+                  else ctx.lineTo(p.x - renderPan.x, p.y - renderPan.y);
+              }
+              ctx.stroke();
           }
       }
       if (completedPlans && completedPlans.length > 0) {
@@ -777,9 +1253,9 @@
       if (showZones) drawStellarZonesOverlay(ctx, width, height);
       
       // Draw Sensor Labels (Screen Space Overlay)
-      if (showSensors && focusedBodyId) {
+      if (focusedBodyId) {
           const node = system.nodes.find(n => n.id === focusedBodyId);
-          if (node && node.kind === 'construct' && (node as CelestialBody).sensors) {
+          if (node && node.kind === 'construct' && (node as CelestialBody).sensors && (showSensors || (node as any).sensors_active === true)) {
               const pos = toytownFactor > 0 ? scaledWorldPositions.get(node.id) : worldPositions.get(node.id);
               if (pos) {
                   const screenPos = worldToScreen(pos.x, pos.y);
@@ -808,6 +1284,13 @@
           }
       }
       
+      // --- Foreground overlay: constructs, vectors, ruler and ALL labels draw on the overlay
+      //     canvas (fgCtx) so they sit ABOVE the PlanetDisc overlays (which are an HTML layer over
+      //     the base canvas). We're already in screen space (transform restored above) and fgCtx is
+      //     a fresh identity-transform canvas, so worldToScreen coords match. Falls back to the base
+      //     canvas if the overlay isn't ready yet. `ctx` is re-bound for this block only. ---
+      {
+      const ctx = fgCtx ?? baseCtx;
       // Draw Constructs and Barycenters (Screen Space Overlay)
       for (const node of system.nodes) {
           const pos = getConstructDisplayPosition(node) || scaledWorldPositions.get(node.id);
@@ -830,6 +1313,7 @@
       }
 
       if (toytownFactor === 0) drawScaleBar(ctx);
+      if (rulerActive) drawRuler(ctx);
       if (showNames) {
           beltLabelClickAreas.clear();
           const visibleLabelIds = getVisibleNodeIds(system, focusedBodyId);
@@ -837,8 +1321,21 @@
           ctx.lineWidth = 4; // Bolder outline
           ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
           ctx.lineJoin = 'round';
-          
-          for (const node of system.nodes) {
+
+          // Draw labels child → parent (deepest hierarchy depth first) so a parent's label paints LAST
+          // and sits on TOP of its satellites' labels in a crowded cluster — the parent is the most
+          // important / most likely to be clicked.
+          const labelNodeById = new Map(system.nodes.map((n) => [n.id, n]));
+          const labelDepthCache = new Map<string, number>();
+          const labelDepth = (n: any): number => {
+              if (labelDepthCache.has(n.id)) return labelDepthCache.get(n.id)!;
+              let d = 0, cur = n, guard = 0;
+              while (cur?.parentId && guard++ < 32) { const p = labelNodeById.get(cur.parentId); if (!p) break; d++; cur = p; }
+              labelDepthCache.set(n.id, d); return d;
+          };
+          const labelOrder = [...system.nodes].sort((a, b) => labelDepth(b) - labelDepth(a));
+
+          for (const node of labelOrder) {
               if (!visibleLabelIds.has(node.id) || node.kind !== 'body') continue;
               if (node.roleHint === 'belt' && node.orbit && node.parentId) {
                   const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(node.parentId) : worldPositions.get(node.parentId);
@@ -899,14 +1396,14 @@
       }
       if (showZones && stellarZones.size > 0) {
           const zoneLabels = [
-              { key: 'rocheLimit', name: 'Roche Limit', color: 'rgba(180, 0, 0, 0.8)' },
-              { key: 'silicateLine', name: 'Rock Line', color: 'rgba(165, 42, 42, 0.8)' },
-              { key: 'sootLine', name: 'Soot Line', color: 'rgba(105, 105, 105, 0.8)' },
-              { key: 'goldilocksInner', name: 'Habitable Zone', color: 'rgba(0, 255, 0, 0.8)' },
-              { key: 'formationFrostLine', name: 'Frost Line (Form.)', color: 'rgba(173, 216, 230, 0.8)' },
-              { key: 'currentFrostLine', name: 'Frost Line (Curr.)', color: 'rgba(173, 216, 230, 0.8)' },
-              { key: 'co2IceLine', name: 'CO2 Ice Line', color: 'rgba(255, 255, 255, 0.8)' },
-              { key: 'coIceLine', name: 'CO Ice Line', color: 'rgba(0, 0, 255, 0.8)' }
+              { key: 'rocheLimit', name: 'Roche Limit', color: tokenRgba('--zone-roche', '#b40000', 0.8) },
+              { key: 'silicateLine', name: 'Rock Line', color: tokenRgba('--zone-rock-line', '#a52a2a', 0.8) },
+              { key: 'sootLine', name: 'Soot Line', color: tokenRgba('--zone-soot-line', '#696969', 0.8) },
+              { key: 'goldilocksInner', name: 'Habitable Zone', color: tokenRgba('--zone-habitable', '#00ff00', 0.8) },
+              { key: 'formationFrostLine', name: 'Frost Line (Form.)', color: tokenRgba('--zone-frost-line', '#add8e6', 0.8) },
+              { key: 'currentFrostLine', name: 'Frost Line (Curr.)', color: tokenRgba('--zone-frost-line', '#add8e6', 0.8) },
+              { key: 'co2IceLine', name: 'CO2 Ice Line', color: tokenRgba('--zone-co2-ice', '#ffffff', 0.8) },
+              { key: 'coIceLine', name: 'CO Ice Line', color: tokenRgba('--zone-co-ice', '#0000ff', 0.8) }
           ];
           ctx.font = `12px sans-serif`; ctx.textAlign = 'center';
           for (const [starId, zones] of stellarZones) {
@@ -929,6 +1426,24 @@
               }
           }
       }
+      // Hill-limit labels — "[Star] Hill Limit" at the top of each star's Hill circle (frost-line style).
+      if (showHillSpheres && system) {
+          ctx.font = `12px sans-serif`; ctx.textAlign = 'center';
+          for (const h of hillSpheresAu(system)) {
+              if (!h.isStar) continue;
+              const world = worldPositions.get(h.id);
+              const pos = toytownFactor > 0 ? scaledWorldPositions.get(h.id) : world;
+              if (!pos || !world) continue;
+              const d = Math.hypot(world.x, world.y);
+              const topR = toytownFactor > 0
+                  ? Math.max(0, (scaleBoxCox(d + h.rAu, toytownFactor, x0_distance) - scaleBoxCox(Math.max(0, d - h.rAu), toytownFactor, x0_distance)) / 2)
+                  : h.rAu;
+              const screenPos = worldToScreen(pos.x, pos.y - topR);
+              if (screenPos.x < -120 || screenPos.x > width + 120 || screenPos.y < -40 || screenPos.y > height + 40) continue;
+              ctx.fillStyle = 'rgba(255, 232, 130, 0.9)';
+              ctx.fillText(`${h.name} Hill Limit`, screenPos.x, screenPos.y - 5);
+          }
+      }
       if (showLPoints && lagrangePoints) {
           const crossSize = 5 / zoom; ctx.lineWidth = 1.5 / zoom;
           for (const [key, pos] of lagrangePoints.entries()) {
@@ -939,13 +1454,16 @@
               ctx.fillText(name, screenPos.x + 8, screenPos.y);
           }
       }
+      } // --- end foreground overlay block ---
   }
 
   function drawSensorOverlay(ctx: CanvasRenderingContext2D) {
       if (!system || !zoom || !focusedBodyId) return;
-      
+
       const node = system.nodes.find(n => n.id === focusedBodyId);
       if (!node || node.kind !== 'construct' || !(node as CelestialBody).sensors) return;
+      // Per-ship sensors toggle drives the range rings (or the global Sensors view option).
+      if (!showSensors && (node as any).sensors_active !== true) return;
       
       const pos = toytownFactor > 0 ? scaledWorldPositions.get(node.id) : worldPositions.get(node.id);
       if (!pos) return;
@@ -1066,35 +1584,80 @@
       const kill = toScreenRadius(zones.killZone || 0);
       const danger = toScreenRadius(zones.dangerZone || 0);
 
-      drawZoneBand(screenStar.x, screenStar.y, hzOuter, hzInner, 'rgba(0, 255, 0, 0.1)');
-      drawZoneBand(screenStar.x, screenStar.y, danger, kill, 'rgba(200, 100, 0, 0.2)');
-      drawZoneBand(screenStar.x, screenStar.y, kill, 0, 'rgba(180, 0, 0, 0.2)');
+      drawZoneBand(screenStar.x, screenStar.y, hzOuter, hzInner, tokenRgba('--zone-habitable', '#00ff00', 0.1));
+      drawZoneBand(screenStar.x, screenStar.y, danger, kill, tokenRgba('--zone-danger', '#c86400', 0.2));
+      drawZoneBand(screenStar.x, screenStar.y, kill, 0, tokenRgba('--zone-kill', '#b40000', 0.2));
 
       const rocheAu = starNode ? calculateRocheLimit(starNode) : 0;
-      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(rocheAu), 'rgba(180, 0, 0, 0.5)');
-      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.silicateLine || 0), 'rgba(165, 42, 42, 0.5)');
-      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.sootLine || 0), 'rgba(105, 105, 105, 0.5)');
-      
+      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(rocheAu), tokenRgba('--zone-roche', '#b40000', 0.5));
+      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.silicateLine || 0), tokenRgba('--zone-rock-line', '#a52a2a', 0.5));
+      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.sootLine || 0), tokenRgba('--zone-soot-line', '#696969', 0.5));
+
       // Dual Frost Lines
       const formationFrost = toScreenRadius(zones.formationFrostLine || 0);
       const currentFrost = toScreenRadius(zones.currentFrostLine || 0);
-      
+
       // Draw Formation Frost Line (Dashed)
       if (formationFrost > 0) {
           ctx.beginPath();
           ctx.arc(screenStar.x, screenStar.y, formationFrost, 0, 2 * Math.PI);
-          ctx.strokeStyle = 'rgba(173, 216, 230, 0.5)';
+          ctx.strokeStyle = tokenRgba('--zone-frost-line', '#add8e6', 0.5);
           ctx.setLineDash([4, 4]);
           ctx.stroke();
           ctx.setLineDash([]);
       }
 
       // Draw Current Frost Line (Solid/Standard dash)
-      drawZoneLine(screenStar.x, screenStar.y, currentFrost, 'rgba(173, 216, 230, 0.5)');
+      drawZoneLine(screenStar.x, screenStar.y, currentFrost, tokenRgba('--zone-frost-line', '#add8e6', 0.5));
 
-      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.co2IceLine || 0), 'rgba(255, 255, 255, 0.5)');
-      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.coIceLine || 0), 'rgba(0, 0, 255, 0.5)');
+      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.co2IceLine || 0), tokenRgba('--zone-co2-ice', '#ffffff', 0.5));
+      drawZoneLine(screenStar.x, screenStar.y, toScreenRadius(zones.coIceLine || 0), tokenRgba('--zone-co-ice', '#0000ff', 0.5));
     }
+  }
+
+  // Measuring tape overlay: dashed line + endpoint rings between the two picked bodies, with a
+  // distance readout (AU, plus km when short) at the midpoint. Endpoints follow the bodies live.
+  function drawRuler(ctx: CanvasRenderingContext2D) {
+      if (!rulerA) return;
+      const display = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
+      const accent = '#ff9b2f';
+      const ringAt = (id: string) => {
+          const w = display.get(id);
+          if (!w) return null;
+          const s = worldToScreen(w.x, w.y);
+          ctx.beginPath(); ctx.arc(s.x, s.y, 7, 0, Math.PI * 2);
+          ctx.strokeStyle = accent; ctx.lineWidth = 2; ctx.stroke();
+          return s;
+      };
+      const sa = ringAt(rulerA.id);
+      if (!sa) return;
+      if (!rulerB) return;
+      const sb = ringAt(rulerB.id);
+      if (!sb) return;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.setLineDash([6, 5]);
+      ctx.moveTo(sa.x, sa.y); ctx.lineTo(sb.x, sb.y);
+      ctx.strokeStyle = accent; ctx.lineWidth = 1.6; ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (rulerDistanceAU != null) {
+          const au = rulerDistanceAU;
+          const label = au < 0.01
+              ? get(fmt).km(au * AU_KM)
+              : `${au.toFixed(au < 10 ? 3 : 2)} AU` + (au < 0.2 ? `  (${get(fmt).km(au * AU_KM)})` : '');
+          const mx = (sa.x + sb.x) / 2, my = (sa.y + sb.y) / 2;
+          ctx.font = '600 12px "IBM Plex Mono", ui-monospace, monospace';
+          const tw = ctx.measureText(label).width;
+          ctx.fillStyle = 'rgba(17, 20, 26, 0.9)';
+          ctx.fillRect(mx - tw / 2 - 6, my - 20, tw + 12, 18);
+          ctx.strokeStyle = accent; ctx.lineWidth = 1; ctx.strokeRect(mx - tw / 2 - 6, my - 20, tw + 12, 18);
+          ctx.fillStyle = accent; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(label, mx, my - 11);
+          ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
+      }
+      ctx.restore();
   }
 
   function drawScaleBar(ctx: CanvasRenderingContext2D) {
@@ -1110,7 +1673,8 @@
           for (const m of multiples) { if (worldLengthKM / (m * power) >= 0.75) bestValue = m * power; }
           displayValue = bestValue; actualBarLengthPx = (displayValue / AU_KM) * zoom;
       }
-      const margin = 20; const x = margin; const y = canvas.height - margin;
+      // Bottom-RIGHT by default — the time transport pill lives bottom-left and was sitting on it.
+      const margin = 20; const x = canvas.width - margin - actualBarLengthPx; const y = canvas.height - margin;
       ctx.strokeStyle = '#ffffff'; ctx.fillStyle = '#ffffff'; ctx.lineWidth = 1; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + actualBarLengthPx, y); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x, y - 5); ctx.lineTo(x, y + 5); ctx.moveTo(x + actualBarLengthPx, y - 5); ctx.lineTo(x + actualBarLengthPx, y + 5); ctx.stroke();
@@ -1256,10 +1820,13 @@
       }
   }
 
-  function drawTransitPlan(ctx: CanvasRenderingContext2D, plan: TransitPlan, isCompleted: boolean = false, alphaOverride?: number, forceGrey: boolean = false) {
+  // colorized: keep the burn colours (green accel / yellow coast / red brake) even at a reduced alpha —
+  // used for committed route lines, where brightness encodes current-vs-future but the colours still tell
+  // you where the ship burns and where it coasts. Without it a reduced alpha means the flat "ghost" tint.
+  function drawTransitPlan(ctx: CanvasRenderingContext2D, plan: TransitPlan, isCompleted: boolean = false, alphaOverride?: number, forceGrey: boolean = false, colorized: boolean = false) {
       if (!plan) return;
       const alpha = alphaOverride !== undefined ? alphaOverride : (isCompleted ? 0.6 : 1.0);
-      const isGhost = alphaOverride !== undefined && !forceGrey;
+      const isGhost = alphaOverride !== undefined && !forceGrey && !colorized;
       for (const segment of plan.segments) {
           ctx.beginPath();
           if (forceGrey) { ctx.setLineDash([]); ctx.strokeStyle = `rgba(100, 100, 100, ${alpha})`; }
@@ -1340,14 +1907,30 @@
       panStore.set({ x: centerX, y: centerY }, { duration: 500 }); zoomStore.set(targetZoom, { duration: 500 });
   }
 </script>
-<canvas 
-    bind:this={canvas} 
-    on:click={handleClick} 
-    on:contextmenu={handleContextMenu}
-    on:wheel|preventDefault={handleWheel}
-    on:mousedown={handleMouseDown}
-    on:mouseup={handleMouseUp}
-    on:mouseleave={handleMouseUp}
-    on:mousemove={handleMouseMove}
-    style="border: 1px solid #333; margin-top: 1em; background-color: #08090d; cursor: grab; width: 100%; touch-action: none;"
-></canvas>
+<div class="viz-wrap"
+     style:position="relative"
+     style:width="100%"
+     style:line-height="0"
+     style:height={fullScreen ? '100%' : 'auto'}
+     style:margin-top={fullScreen ? '0' : '1em'}>
+  <canvas
+      bind:this={canvas}
+      use:gestures={canvasGestures}
+      class:fullscreen={fullScreen}
+      style:background-color={backgroundColor}
+      style="cursor: grab; width: 100%; touch-action: none;"
+      style:border={fullScreen ? 'none' : '1px solid #333'}
+      style:display={fullScreen ? 'block' : 'inline-block'}
+      style:height={fullScreen ? '100%' : 'auto'}
+  ></canvas>
+  <!-- PlanetDisc overlays for big bodies: rendered at a fixed size, GPU-scaled by CSS transform. -->
+  <div style="position:absolute; inset:0; overflow:hidden; pointer-events:none;">
+    {#each discOverlays as o (o.id)}
+      <div style="position:absolute; left:0; top:0; width:{DISC_OVERLAY_REF}px; height:{DISC_OVERLAY_REF}px; transform-origin:0 0; transform:translate({o.x}px,{o.y}px) scale({o.scale}) translate(-50%,-50%); will-change:transform;">
+        <PlanetDisc body={o.body} size={DISC_OVERLAY_REF} lightAngle={o.lightAngle} showStamp={false} />
+      </div>
+    {/each}
+  </div>
+  <!-- Foreground overlay: constructs + labels, painted above the disc layer so they're never hidden. -->
+  <canvas bind:this={fgCanvas} style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;"></canvas>
+</div>

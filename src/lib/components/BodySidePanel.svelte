@@ -10,6 +10,7 @@
   import BodyHydrosphereTab from './BodyHydrosphereTab.svelte';
   import BodyBiosphereTab from './BodyBiosphereTab.svelte';
   import BodyTagsTab from './BodyTagsTab.svelte';
+  import SystemInfoTab from './SystemInfoTab.svelte';
   import BodyTechnicalDetails from './BodyTechnicalDetails.svelte';
 
   export let body: CelestialBody;
@@ -54,7 +55,7 @@
 <div class="body-side-panel">
   <div class="tabs">
     {#if !isBeltOrRing && !isStar && !isBarycenter}
-        <button class:active={selectedTab === 'Basics'} on:click={() => setTab('Basics')}>Basics</button>
+        <button class:active={selectedTab === 'Basics'} on:click={() => setTab('Basics')}>Composition</button>
         <button class:active={selectedTab === 'Orbit'} on:click={() => setTab('Orbit')}>Orbit</button>
     {:else if isBarycenter}
         {#if body.parentId}
@@ -64,6 +65,9 @@
         <button class:active={selectedTab === 'Details'} on:click={() => setTab('Details')}>Details</button>
         {#if isStar && body.parentId}
             <button class:active={selectedTab === 'Orbit'} on:click={() => setTab('Orbit')}>Orbit</button>
+        {/if}
+        {#if isStar}
+            <button class:active={selectedTab === 'SystemInfo'} on:click={() => setTab('SystemInfo')}>System Info</button>
         {/if}
     {/if}
     
@@ -87,7 +91,7 @@
     {:else if selectedTab === 'Basics'}
       <BodyBasicsTab {body} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Orbit'}
-      <BodyOrbitTab {body} {parentBody} {rulePack} on:update={handleUpdate} />
+      <BodyOrbitTab {body} {parentBody} {system} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Temp'}
       <BodyTemperatureTab {body} {rulePack} {rootStar} {parentBody} nodes={system.nodes} on:update={handleUpdate} />
     {:else if selectedTab === 'Atmosphere'}
@@ -96,6 +100,8 @@
       <BodyHydrosphereTab {body} on:update={handleUpdate} />
     {:else if selectedTab === 'Bio'}
       <BodyBiosphereTab {body} {rulePack} on:update={handleUpdate} />
+    {:else if selectedTab === 'SystemInfo'}
+      <SystemInfoTab {system} on:update={handleUpdate} />
     {:else if selectedTab === 'Tags'}
       <BodyTagsTab {body} {rulePack} on:update={handleUpdate} />
     {/if}
@@ -103,11 +109,14 @@
 
   <div class="actions-row">
     <button class="danger" on:click={() => {
+        // The primary star's delete is really a whole-system delete; SystemView.handleDeleteNode owns
+        // that loud confirmation, so don't double-prompt here. Everything else gets the usual check.
+        const isRoot = rootStar && body.id === rootStar.id;
+        if (isRoot) { dispatch('delete', body.id); return; }
         if (confirm(`Are you sure you want to delete ${body.name}?`)) {
             dispatch('delete', body.id);
         }
-    }}>Delete</button>
-    <button class="primary" on:click={() => dispatch('close')}>Done</button>
+    }}>{rootStar && body.id === rootStar.id ? 'Delete system' : 'Delete'}</button>
   </div>
 
   <div class="live-stats">
@@ -130,9 +139,9 @@
   }
 
   .tabs button {
-    background-color: #333;
-    color: #aaa;
-    border: 1px solid #444;
+    background-color: var(--bg-panel);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
     padding: 4px 8px;
     border-radius: 3px;
     cursor: pointer;
@@ -141,14 +150,14 @@
   }
 
   .tabs button.active {
-    background-color: #ff3e00;
+    background-color: var(--accent);
     color: white;
-    border-color: #ff3e00;
+    border-color: var(--accent);
   }
 
   .tab-content {
-    background-color: #222;
-    border: 1px solid #444;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border);
     border-radius: 4px;
     padding: 5px;
     min-height: 300px;
@@ -157,7 +166,7 @@
   .live-stats {
       margin-top: 10px;
       padding-top: 10px;
-      border-top: 1px solid #444;
+      border-top: 1px solid var(--border);
   }
 
   .actions-row {
@@ -179,7 +188,7 @@
       color: white;
   }
   .actions-row button.primary {
-      background-color: #007bff;
+      background-color: var(--accent);
       color: white;
   }
 </style>

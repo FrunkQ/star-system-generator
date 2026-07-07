@@ -59,26 +59,7 @@
       },
       "massKg": 3.285e+23,
       "radiusKm": 2439.7,
-      "tags": [
-        {
-          "key": "exosphere"
-        },
-        {
-          "key": "thin"
-        },
-        {
-          "key": "hot"
-        },
-        {
-          "key": "visible-gas"
-        },
-        {
-          "key": "condensible-metal"
-        },
-        {
-          "key": "cloud-former"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "atmosphere": {
         "name": "Sodium–Potassium Exosphere",
@@ -109,7 +90,6 @@
       "equilibriumTempMinK": 400.51066545601077,
       "equilibriumTempMaxK": 493.4119818789391,
       "tidallyLocked": false,
-      "albedo": 0.07,
       "magneticField": {
         "strengthGauss": 0
       },
@@ -139,32 +119,7 @@
       },
       "massKg": 4.867e+24,
       "radiusKm": 6051.8,
-      "tags": [
-        {
-          "key": "Runaway Greenhouse Effect"
-        },
-        {
-          "key": "Geologically Active (Volcanism)"
-        },
-        {
-          "key": "thick"
-        },
-        {
-          "key": "greenhouse"
-        },
-        {
-          "key": "toxic-human"
-        },
-        {
-          "key": "crushing-atmosphere"
-        },
-        {
-          "key": "inert"
-        },
-        {
-          "key": "nitrogen-narcosis"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "atmosphere": {
         "name": "Carbon Dioxide (Venus-like)",
@@ -195,7 +150,6 @@
       "equilibriumTempMinK": 230.86677373783644,
       "equilibriumTempMaxK": 232.43553333561587,
       "tidallyLocked": false,
-      "albedo": 0.75,
       "internalHeatK": 0
     },
     {
@@ -223,23 +177,7 @@
       },
       "massKg": 5.972e+24,
       "radiusKm": 6371,
-      "tags": [
-        {
-          "key": "inert"
-        },
-        {
-          "key": "buffer-gas"
-        },
-        {
-          "key": "oxidizer"
-        },
-        {
-          "key": "breathable-human"
-        },
-        {
-          "key": "noble-gas"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "magneticField": {
         "strengthGauss": 0.5
@@ -318,14 +256,7 @@
       },
       "massKg": 7.342e+22,
       "radiusKm": 1737.4,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "axial_tilt_deg": 6.68,
       "rotation_period_hours": 655.7,
@@ -345,8 +276,6 @@
       "surfaceRadiationMax": 516.5914867413795,
       "equilibriumTempMinK": 268.02902559330516,
       "equilibriumTempMaxK": 272.57215336377726,
-      "tidallyLocked": false,
-      "albedo": 0.11,
       "internalHeatK": 0
     },
     {
@@ -374,17 +303,7 @@
       },
       "massKg": 6.39e+23,
       "radiusKm": 3389.5,
-      "tags": [
-        {
-          "key": "thin"
-        },
-        {
-          "key": "greenhouse"
-        },
-        {
-          "key": "inert"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "atmosphere": {
         "name": "Carbon Dioxide (Mars-like)",
@@ -416,7 +335,6 @@
       "equilibriumTempMinK": 200.8814029932705,
       "equilibriumTempMaxK": 220.60807768564948,
       "tidallyLocked": false,
-      "albedo": 0.25,
       "magneticField": {
         "strengthGauss": 0
       },
@@ -447,14 +365,7 @@
       },
       "massKg": 10600000000000000,
       "radiusKm": 11.2,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "axial_tilt_deg": 0,
       "rotation_period_hours": 7.66,
@@ -500,14 +411,7 @@
       },
       "massKg": 1470000000000000,
       "radiusKm": 6.2,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "axial_tilt_deg": 0,
       "rotation_period_hours": 30.35,
@@ -568,7 +472,8 @@
       "surfaceRadiationMax": 79.30061929025628,
       "equilibriumTempMinK": 158.76608381729199,
       "equilibriumTempMaxK": 170.29745080024315,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 3e+21
     },
     {
       "id": "solar-system-jupiter",
@@ -595,35 +500,7 @@
       },
       "massKg": 1.898e+27,
       "radiusKm": 69911,
-      "tags": [
-        {
-          "key": "planet/ringed"
-        },
-        {
-          "key": "lifting-gas"
-        },
-        {
-          "key": "reducing"
-        },
-        {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
-          "key": "haze-former"
-        },
-        {
-          "key": "stability/marginal"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "magneticField": {
         "strengthGauss": 4.28
@@ -658,7 +535,6 @@
       "equilibriumTempMinK": 107.48415397706725,
       "equilibriumTempMaxK": 112.875163989493,
       "tidallyLocked": false,
-      "albedo": 0.34,
       "internalHeatK": 52,
       "orbitalStability": "Marginal",
       "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=7.95)."
@@ -702,7 +578,8 @@
       "surfaceRadiationMax": 20.398104867370254,
       "equilibriumTempMinK": 115.48799777578277,
       "equilibriumTempMaxK": 121.27923736184006,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 150000000000000000000
     },
     {
       "id": "solar-system-io",
@@ -729,23 +606,7 @@
       },
       "massKg": 8.93e+22,
       "radiusKm": 1821.6,
-      "tags": [
-        {
-          "key": "Active Volcanism"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "tidal/hotspots"
-        },
-        {
-          "key": "volcanic"
-        },
-        {
-          "key": "cloud-former"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "atmosphere": {
         "name": "Sulfur Dioxide (Io-like)",
@@ -801,26 +662,7 @@
       },
       "massKg": 4.8e+22,
       "radiusKm": 1560.8,
-      "tags": [
-        {
-          "key": "exosphere"
-        },
-        {
-          "key": "thin"
-        },
-        {
-          "key": "Subsurface Ocean"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "tidal/hotspots"
-        },
-        {
-          "key": "oxidizer"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "atmosphere": {
         "name": "Tenuous Oxygen (Europa-like)",
@@ -849,7 +691,11 @@
       "surfaceRadiationMax": 22.370308062000678,
       "equilibriumTempMinK": 115.4514492507216,
       "equilibriumTempMaxK": 121.23789897164019,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 1
+      }
     },
     {
       "id": "solar-system-ganymede",
@@ -876,20 +722,7 @@
       },
       "massKg": 1.48e+23,
       "radiusKm": 2634.1,
-      "tags": [
-        {
-          "key": "exosphere"
-        },
-        {
-          "key": "thin"
-        },
-        {
-          "key": "Subsurface Ocean"
-        },
-        {
-          "key": "Tidally Locked"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "magneticField": {
         "strengthGauss": 0.007
@@ -912,7 +745,11 @@
       "surfaceRadiationMax": 22.19180841178692,
       "equilibriumTempMinK": 115.42357628739295,
       "equilibriumTempMaxK": 121.20486405061217,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 1
+      }
     },
     {
       "id": "solar-system-callisto",
@@ -939,17 +776,7 @@
       },
       "massKg": 1.07e+23,
       "radiusKm": 2410.3,
-      "tags": [
-        {
-          "key": "exosphere"
-        },
-        {
-          "key": "thin"
-        },
-        {
-          "key": "Tidally Locked"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "axial_tilt_deg": 0,
       "rotation_period_hours": 400.5,
@@ -969,7 +796,11 @@
       "surfaceRadiationMax": 22.304294895599508,
       "equilibriumTempMinK": 115.36540442937387,
       "equilibriumTempMaxK": 121.13955678944673,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 1
+      }
     },
     {
       "id": "solar-system-saturn",
@@ -996,35 +827,7 @@
       },
       "massKg": 5.683e+26,
       "radiusKm": 58232,
-      "tags": [
-        {
-          "key": "planet/ringed"
-        },
-        {
-          "key": "lifting-gas"
-        },
-        {
-          "key": "reducing"
-        },
-        {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
-          "key": "haze-former"
-        },
-        {
-          "key": "stability/marginal"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "magneticField": {
         "strengthGauss": 0.21
@@ -1059,7 +862,6 @@
       "equilibriumTempMinK": 78.92605367308619,
       "equilibriumTempMaxK": 83.51878868921848,
       "tidallyLocked": false,
-      "albedo": 0.34,
       "internalHeatK": 52,
       "orbitalStability": "Marginal",
       "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=7.95)."
@@ -1103,7 +905,8 @@
       "surfaceRadiationMax": 6.115795927247294,
       "equilibriumTempMinK": 84.80866521817484,
       "equilibriumTempMaxK": 89.74334410980197,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 5e+23
     },
     {
       "id": "solar-system-titan",
@@ -1130,26 +933,7 @@
       },
       "massKg": 1.34e+23,
       "radiusKm": 2574.7,
-      "tags": [
-        {
-          "key": "haze"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "inert"
-        },
-        {
-          "key": "buffer-gas"
-        },
-        {
-          "key": "asphyxiant"
-        },
-        {
-          "key": "greenhouse"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "atmosphere": {
         "name": "Methane Haze (Titan-like)",
@@ -1180,10 +964,12 @@
       "equilibriumTempMinK": 80.06245942946718,
       "equilibriumTempMaxK": 84.71931924571962,
       "internalHeatK": 0,
-      "tidallyLocked": false,
-      "albedo": 0.3,
       "magneticField": {
         "strengthGauss": 0
+      },
+      "hydrosphere": {
+        "composition": "methane",
+        "coverage": 0.05
       }
     },
     {
@@ -1210,29 +996,7 @@
       },
       "massKg": 108000000000000000000,
       "radiusKm": 252.1,
-      "tags": [
-        {
-          "key": "Active Cryovolcanism (Plumes)"
-        },
-        {
-          "key": "Subsurface Ocean"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "cloud-former"
-        },
-        {
-          "key": "greenhouse"
-        },
-        {
-          "key": "lifting-gas"
-        },
-        {
-          "key": "reducing"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "atmosphere": {
         "name": "Water Vapor Plume (Enceladus-like)",
@@ -1264,7 +1028,79 @@
       "surfaceRadiationMax": 8.114591541575054,
       "equilibriumTempMinK": 84.80487367967481,
       "equilibriumTempMaxK": 89.7389256675223,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 1
+      }
+    },
+    {
+      "id": "solar-system-tethys",
+      "parentId": "solar-system-saturn",
+      "name": "Tethys",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/sub-earth"
+      ],
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 37931187000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.0019694063733756073,
+          "e": 0.0001,
+          "i_deg": 1.12,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.8
+        }
+      },
+      "massKg": 617400000000000000000,
+      "radiusKm": 531.1,
+      "tags": [],
+      "areas": [],
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 45.31,
+      "description": "A mid-sized moon of almost pure water ice — one of the most reflective bodies in the solar system. Scarred by the enormous Odysseus crater and the vast Ithaca Chasma canyon. It holds Mimas in a 2:1 orbital resonance.",
+      "image": {
+        "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
+      },
+      "isNameUserDefined": true
+    },
+    {
+      "id": "solar-system-dione",
+      "parentId": "solar-system-saturn",
+      "name": "Dione",
+      "kind": "body",
+      "roleHint": "moon",
+      "classes": [
+        "planet/sub-earth"
+      ],
+      "orbit": {
+        "hostId": "solar-system-saturn",
+        "hostMu": 37931187000000000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.0025227364415956223,
+          "e": 0.0022,
+          "i_deg": 0.019,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 4.1
+        }
+      },
+      "massKg": 1.0955e+21,
+      "radiusKm": 561.4,
+      "tags": [],
+      "areas": [],
+      "axial_tilt_deg": 0,
+      "rotation_period_hours": 65.69,
+      "description": "An ice moon streaked with bright wispy chasms over a possible deep internal ocean. Its 2:1 orbital resonance with Enceladus is the engine that keeps pumping that smaller moon's eccentricity — and so its famous geysers.",
+      "image": {
+        "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
+      },
+      "isNameUserDefined": true
     },
     {
       "id": "solar-system-mimas",
@@ -1291,17 +1127,7 @@
       },
       "massKg": 37500000000000000000,
       "radiusKm": 198.2,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "tidal/hotspots"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "axial_tilt_deg": 0,
       "rotation_period_hours": 22.56,
@@ -1347,14 +1173,7 @@
       },
       "massKg": 2.3e+21,
       "radiusKm": 763.8,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "axial_tilt_deg": 0,
       "rotation_period_hours": 108.2,
@@ -1400,14 +1219,7 @@
       },
       "massKg": 1.8e+21,
       "radiusKm": 734.5,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "axial_tilt_deg": 0,
       "rotation_period_hours": 1903.6,
@@ -1454,35 +1266,7 @@
       },
       "massKg": 8.681e+25,
       "radiusKm": 25362,
-      "tags": [
-        {
-          "key": "planet/ringed"
-        },
-        {
-          "key": "lifting-gas"
-        },
-        {
-          "key": "reducing"
-        },
-        {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
-          "key": "greenhouse"
-        },
-        {
-          "key": "haze-former"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "magneticField": {
         "strengthGauss": 0.23
@@ -1557,7 +1341,8 @@
       "surfaceRadiationMax": 1.4885526980868187,
       "equilibriumTempMinK": 60.17596429378085,
       "equilibriumTempMaxK": 63.034753064743356,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 400000000000000000000
     },
     {
       "id": "solar-system-titania",
@@ -1583,14 +1368,7 @@
       },
       "massKg": 3.4e+21,
       "radiusKm": 788.4,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "axial_tilt_deg": 0,
       "rotation_period_hours": 208.8,
@@ -1636,14 +1414,7 @@
       },
       "massKg": 3e+21,
       "radiusKm": 761.4,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "axial_tilt_deg": 0,
       "rotation_period_hours": 323,
@@ -1689,14 +1460,7 @@
       },
       "massKg": 1.29e+21,
       "radiusKm": 578.9,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "axial_tilt_deg": 0,
       "rotation_period_hours": 60.48,
@@ -1743,35 +1507,7 @@
       },
       "massKg": 1.024e+26,
       "radiusKm": 24622,
-      "tags": [
-        {
-          "key": "planet/ringed"
-        },
-        {
-          "key": "lifting-gas"
-        },
-        {
-          "key": "reducing"
-        },
-        {
-          "key": "metal-embrittlement"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
-        },
-        {
-          "key": "greenhouse"
-        },
-        {
-          "key": "haze-former"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "magneticField": {
         "strengthGauss": 0.14
@@ -1806,7 +1542,6 @@
       "equilibriumTempMinK": 46.34789785206162,
       "equilibriumTempMaxK": 46.87462190356624,
       "tidallyLocked": false,
-      "albedo": 0.29,
       "internalHeatK": 24
     },
     {
@@ -1848,7 +1583,8 @@
       "surfaceRadiationMax": 0.5641689784936591,
       "equilibriumTempMinK": 48.902788450922024,
       "equilibriumTempMaxK": 49.45854123806973,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 200000000000000000000
     },
     {
       "id": "solar-system-triton",
@@ -1875,26 +1611,7 @@
       },
       "massKg": 2.14e+22,
       "radiusKm": 1353.4,
-      "tags": [
-        {
-          "key": "Retrograde Orbit"
-        },
-        {
-          "key": "Captured Body"
-        },
-        {
-          "key": "Active Cryovolcanism (Plumes)"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "inert"
-        },
-        {
-          "key": "buffer-gas"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "atmosphere": {
         "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
@@ -1924,7 +1641,11 @@
       "surfaceRadiationMax": 2.5640355986732013,
       "equilibriumTempMinK": 48.90116679948243,
       "equilibriumTempMaxK": 49.45686367036647,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 1
+      }
     },
     {
       "id": "solar-system-kuiper-belt",
@@ -1965,7 +1686,8 @@
       "surfaceRadiationMax": 0.3858024691358025,
       "equilibriumTempMinK": 40.682268812405674,
       "equilibriumTempMaxK": 44.97594042370899,
-      "internalHeatK": 0
+      "internalHeatK": 0,
+      "massKg": 1e+22
     },
     {
       "id": "solar-system-pluto",
@@ -1993,26 +1715,7 @@
       },
       "massKg": 1.303e+22,
       "radiusKm": 1188.3,
-      "tags": [
-        {
-          "key": "thin"
-        },
-        {
-          "key": "exosphere"
-        },
-        {
-          "key": "inert"
-        },
-        {
-          "key": "buffer-gas"
-        },
-        {
-          "key": "reducing"
-        },
-        {
-          "key": "stability/very-unstable"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "atmosphere": {
         "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
@@ -2072,17 +1775,7 @@
       },
       "massKg": 1.58e+21,
       "radiusKm": 606,
-      "tags": [
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "stability/very-unstable"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "axial_tilt_deg": 0,
       "rotation_period_hours": 153.3,
@@ -2441,11 +2134,7 @@
         },
         "n_rad_per_s": 8.027243170523019e-10
       },
-      "tags": [
-        {
-          "key": "barycenter/auto"
-        }
-      ]
+      "tags": []
     }
   ],
   "rulePackId": "starter-sf-pack",

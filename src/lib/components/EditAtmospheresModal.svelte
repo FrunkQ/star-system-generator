@@ -284,35 +284,35 @@
     z-index: 2000;
   }
   .modal {
-    background: #1e1e1e;
+    background: var(--bg-panel);
     width: 900px;
     height: 85%;
     border-radius: 8px;
     display: flex; flex-direction: column;
-    border: 1px solid #444;
+    border: 1px solid var(--border);
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   }
   .header {
       padding: 15px;
-      border-bottom: 1px solid #333;
-      background: #252525;
+      border-bottom: 1px solid var(--border-soft);
+      background: var(--bg-panel);
   }
-  h2 { margin: 0 0 10px 0; color: #eee; font-size: 1.2em; }
-  
+  h2 { margin: 0 0 10px 0; color: var(--text); font-size: 1.2em; }
+
   .tabs { display: flex; gap: 10px; }
   .tabs button {
-      background: #333; border: none; color: #aaa;
+      background: var(--bg-panel); border: none; color: var(--text-muted);
       padding: 8px 16px; cursor: pointer; border-radius: 4px;
   }
   .tabs button.active {
-      background: #007bff; color: white;
+      background: var(--accent); color: white;
   }
 
   .content {
       flex: 1;
       overflow-y: auto;
       padding: 15px;
-      background: #1a1a1a;
+      background: var(--bg-panel);
   }
 
   .list-container {
@@ -320,26 +320,26 @@
   }
 
   .item-card {
-      background: #2a2a2a;
-      border: 1px solid #444;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
       border-radius: 4px;
       padding: 10px;
   }
-  
+
   .item-header {
       display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px;
+      margin-bottom: 10px; border-bottom: 1px solid var(--border-soft); padding-bottom: 5px;
   }
-  .formula { font-weight: bold; color: #007bff; font-family: monospace; font-size: 1.2em; }
+  .formula { font-weight: bold; color: var(--accent); font-family: monospace; font-size: 1.2em; }
   .name-input {
-      background: transparent; border: none; color: #fff; font-weight: bold; font-size: 1.1em;
+      background: transparent; border: none; color: var(--text); font-weight: bold; font-size: 1.1em;
       width: 100%;
   }
-  
+
   .delete-btn {
-      background: transparent; color: #666; border: none; cursor: pointer; font-size: 1.2em;
+      background: transparent; color: var(--text-faint); border: none; cursor: pointer; font-size: 1.2em;
   }
-  .delete-btn:hover { color: #ff4444; }
+  .delete-btn:hover { color: var(--status-bad); }
 
   .item-body {
       display: flex; flex-wrap: wrap; gap: 10px;
@@ -349,9 +349,9 @@
   }
   .field.full { flex-basis: 100%; }
   
-  label { font-size: 0.8em; color: #888; }
+  label { font-size: 0.8em; color: var(--text-faint); }
   input, select {
-      background: #333; border: 1px solid #444; color: #eee; padding: 4px; border-radius: 3px;
+      background: var(--bg-panel); border: 1px solid var(--border); color: var(--text); padding: 4px; border-radius: 3px;
   }
 
   .mix-grid {
@@ -365,26 +365,26 @@
       flex: 1; display: flex; flex-direction: column;
   }
   .header-summary {
-      font-size: 0.75em; color: #888; margin-top: 2px;
+      font-size: 0.75em; color: var(--text-faint); margin-top: 2px;
   }
-  
-  .small-del { background: none; border: none; color: #666; cursor: pointer; }
-  .small-add { background: #333; border: 1px dashed #555; color: #888; padding: 4px; cursor: pointer; font-size: 0.8em; }
-  .small-btn { background: #333; border: 1px solid #444; color: #aaa; padding: 2px 6px; cursor: pointer; font-size: 0.8em; border-radius: 3px; }
-  .small-btn:hover { color: #fff; background: #444; }
-  .sep { color: #666; font-size: 0.8em; }
+
+  .small-del { background: none; border: none; color: var(--text-faint); cursor: pointer; }
+  .small-add { background: var(--bg-panel); border: 1px dashed var(--border); color: var(--text-faint); padding: 4px; cursor: pointer; font-size: 0.8em; }
+  .small-btn { background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-muted); padding: 2px 6px; cursor: pointer; font-size: 0.8em; border-radius: 3px; }
+  .small-btn:hover { color: var(--text); background: var(--bg-control); }
+  .sep { color: var(--text-faint); font-size: 0.8em; }
 
   .add-btn {
-      padding: 10px; background: #333; border: 1px dashed #555; color: #aaa; cursor: pointer;
+      padding: 10px; background: var(--bg-panel); border: 1px dashed var(--border); color: var(--text-muted); cursor: pointer;
       width: 100%; text-align: center;
   }
 
   .footer {
-      padding: 15px; border-top: 1px solid #333; background: #252525;
+      padding: 15px; border-top: 1px solid var(--border-soft); background: var(--bg-panel);
       display: flex; justify-content: flex-end; gap: 10px;
   }
   .footer button {
       padding: 8px 20px; border-radius: 4px; border: none; cursor: pointer;
   }
-  .primary { background: #007bff; color: white; }
+  .primary { background: var(--accent); color: white; }
 </style>

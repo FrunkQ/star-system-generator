@@ -44,25 +44,22 @@
               const formattedValue = displayValue >= 1000 ? (displayValue/1000).toFixed(1) + 'k' : displayValue.toString();
               label = unitIsPrefix ? `${distanceUnit}${formattedValue}` : `${formattedValue} ${distanceUnit}`;
 
-              // Ticks
-              ticks = [];
-              const numTicks = 5; // Try to have sub-ticks
-              for(let i=0; i<=numTicks; i++) {
-                  ticks.push((i / numTicks) * displayWidthPx);
-              }
+              // End ticks only, matching the system map's scale bar.
+              ticks = [0, displayWidthPx];
           }
       }
   }
 </script>
 
 {#if isScaled}
+<!-- Bottom-RIGHT, styled to match the system map's canvas scale bar (label above, end ticks). -->
 <div class="scale-bar-container">
+    <div class="scale-label">{label}</div>
     <div class="scale-bar" style="width: {displayWidthPx}px;">
         {#each ticks as tick}
             <div class="tick" style="left: {tick}px;"></div>
         {/each}
     </div>
-    <div class="scale-label">{label}</div>
 </div>
 {/if}
 
@@ -70,37 +67,35 @@
     .scale-bar-container {
         position: absolute;
         bottom: 16px;
-        left: 20px; 
+        right: 20px;
         display: flex;
         flex-direction: column;
         align-items: center;
         pointer-events: none;
         z-index: 10;
-        background-color: rgba(0, 0, 0, 0.5);
         padding: 5px 10px;
-        border-radius: 4px;
     }
 
     .scale-bar {
-        height: 2px;
+        height: 1px;
         background-color: #fff;
         position: relative;
-        margin-bottom: 5px;
         transition: width 0.2s;
     }
 
     .tick {
         position: absolute;
         width: 1px;
-        height: 8px;
+        height: 10px;
         background-color: #fff;
-        bottom: 0;
+        top: -4.5px;
     }
 
     .scale-label {
         color: #fff;
         font-size: 12px;
-        font-family: monospace;
+        font-family: sans-serif;
         text-shadow: 1px 1px 2px black;
+        margin-bottom: 6px;
     }
 </style>

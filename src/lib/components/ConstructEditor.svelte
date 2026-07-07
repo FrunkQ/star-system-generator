@@ -15,8 +15,8 @@
 <style>
   .editor-container {
     padding: 1em;
-    border: 1px solid #444;
+    border: 1px solid var(--border);
     border-radius: 5px;
-    background-color: #222;
+    background-color: var(--bg-panel);
   }
 </style>

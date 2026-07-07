@@ -1,3 +1,7 @@
+// ⚠️ PRESERVE — do NOT delete in the Phase-A cleanup. The Accrete procedural disk-accretion engine
+// (this adapter + src/lib/vendor/accrete-js) is being KEPT for v3 generation, even though its only
+// current caller (EvolutionTimeline) is being removed. After the cleanup it stays as a standalone,
+// caller-less module to harvest in v3.
 import { StarSystem, Planetismal } from '../vendor/accrete-js/src/index.js';
 import { type StarSeed, ageStar, getStarLifespanGyr } from './stellar-evolution';
 import type { CelestialBody, Orbit, Node, ID } from '../types';
@@ -144,11 +148,10 @@ export function mapAccreteToBody(p: any, id: ID, parentId: ID): Node {
         surface_pressure_bar: (p.surfacePressure || 0) / 1000, // Convert mb to bar
     };
 
-    // Add specific tags based on Accrete/StarGen results
-    if (p.greenhouseEffect) body.tags.push({ key: 'Runaway Greenhouse' });
-    if (p.hydrosphere > 0.5) body.tags.push({ key: 'Ocean World' });
-    if (p.iceCover > 0.5) body.tags.push({ key: 'Ice World' });
-    if (p.breathabilityCode === 1) body.tags.push({ key: 'Breathable' });
+    // Condition tags (orthogonal to the planet TYPE, which the classifier now owns — so the
+    // old 'Ocean World' / 'Ice World' tags are dropped: planet/ocean & planet/ice cover them).
+    if (p.greenhouseEffect) body.tags.push({ key: 'climate/runaway-greenhouse' });
+    if (p.breathabilityCode === 1) body.tags.push({ key: 'atmosphere/breathable' });
 
     const orbit: Orbit = {
         parentId,

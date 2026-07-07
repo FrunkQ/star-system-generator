@@ -7,7 +7,7 @@
   "nodes": [
     {
       "id": "algol-inner-barycenter",
-      "parentId": null,
+      "parentId": "algol-inner-barycenter-outer",
       "name": "Algol A/B Barycenter",
       "kind": "barycenter",
       "memberIds": [
@@ -17,7 +17,20 @@
       "tags": [],
       "effectiveMassKg": 7.705e+30,
       "description": "The center of mass for the eclipsing binary pair. The stars are so close that mass streams from Star B to Star A.",
-      "tidallyLocked": true
+      "tidallyLocked": true,
+      "orbit": {
+        "hostId": "algol-inner-barycenter-outer",
+        "hostMu": 739846154999999900000,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 0.8202255299954895,
+          "e": 0.225,
+          "i_deg": 90,
+          "omega_deg": 180,
+          "Omega_deg": 0,
+          "M0_rad": 1.2
+        }
+      }
     },
     {
       "id": "algol-a",
@@ -39,20 +52,16 @@
       "image": {
         "url": "/images/star_types/B.webp"
       },
-      "tags": [
-        {
-          "key": "Main Sequence"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "orbit": {
         "hostId": "algol-inner-barycenter",
         "hostMu": 514200000000000000000,
         "t0": 1762339146908,
-        "n_rad_per_s": 2.533e-5,
+        "n_rad_per_s": 0.00002533,
         "elements": {
           "a_AU": 0.013,
-          "e": 0.0,
+          "e": 0,
           "i_deg": 82,
           "omega_deg": 0,
           "Omega_deg": 0,
@@ -61,7 +70,7 @@
       },
       "description": "The primary star, a hot, blue-white B-type star. It is the recipient of stellar material stripped from its companion, making it spin rapidly.",
       "isNameUserDefined": true,
-      "calculatedGravity_ms2": 116.0,
+      "calculatedGravity_ms2": 116,
       "orbital_period_days": 2.867
     },
     {
@@ -84,23 +93,16 @@
       "image": {
         "url": "/images/star_types/K_subgiant.webp"
       },
-      "tags": [
-        {
-          "key": "Subgiant"
-        },
-        {
-          "key": "Roche Lobe Overflow"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "orbit": {
         "hostId": "algol-inner-barycenter",
         "hostMu": 514200000000000000000,
         "t0": 1762339146908,
-        "n_rad_per_s": 2.533e-5,
+        "n_rad_per_s": 0.00002533,
         "elements": {
           "a_AU": 0.049,
-          "e": 0.0,
+          "e": 0,
           "i_deg": 82,
           "omega_deg": 180,
           "Omega_deg": 0,
@@ -114,7 +116,7 @@
     },
     {
       "id": "algol-c",
-      "parentId": "algol-inner-barycenter",
+      "parentId": "algol-inner-barycenter-outer",
       "name": "Algol C (Beta Persei Ab)",
       "kind": "body",
       "roleHint": "star",
@@ -123,12 +125,11 @@
         "star/Am"
       ],
       "orbit": {
-        "hostId": "algol-inner-barycenter",
-        "hostMu": 514200000000000000000,
+        "hostId": "algol-inner-barycenter-outer",
+        "hostMu": 739846154999999900000,
         "t0": 1762339146908,
-        "n_rad_per_s": 1.07e-7,
         "elements": {
-          "a_AU": 2.69,
+          "a_AU": 1.8697744700045105,
           "e": 0.225,
           "i_deg": 90,
           "omega_deg": 0,
@@ -143,28 +144,29 @@
       "image": {
         "url": "/images/star_types/A.webp"
       },
-      "tags": [
-        {
-          "key": "Metallic Line Star"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "description": "A stable A-type star orbiting the chaotic inner pair every 1.86 years. It orbits in a plane nearly perpendicular to the inner binary.",
       "isNameUserDefined": true,
-      "calculatedGravity_ms2": 162.0,
+      "calculatedGravity_ms2": 162,
       "orbital_period_days": 680.5
+    },
+    {
+      "id": "algol-inner-barycenter-outer",
+      "parentId": null,
+      "kind": "barycenter",
+      "name": "Algol A/B System Barycentre",
+      "memberIds": [
+        "algol-inner-barycenter",
+        "algol-c"
+      ],
+      "effectiveMassKg": 1.1085e+31,
+      "description": "The center of mass for the eclipsing binary pair. The stars are so close that mass streams from Star B to Star A."
     }
   ],
   "rulePackId": "starter-sf-pack",
   "rulePackVersion": "0.1.4",
-  "tags": [
-    {
-      "key": "Triple Star System"
-    },
-    {
-      "key": "Eclipsing Binary"
-    }
-  ],
+  "tags": [],
   "visualScalingMultiplier": 0.01,
   "toytownFactor": 0,
   "isManuallyEdited": true

@@ -70,13 +70,13 @@
 
 <style>
   .tab-panel { padding: 10px; }
-  hr { border: 1px solid #555; margin: 1em 0; }
+  hr { border: 1px solid var(--border); margin: 1em 0; }
   .power-plant-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-  .power-plant-item { background-color: #444; padding: 8px; border-radius: 4px; display: flex; justify-content: flex-start; align-items: center; gap: 10px; }
+  .power-plant-item { background-color: var(--bg-control); padding: 8px; border-radius: 4px; display: flex; justify-content: flex-start; align-items: center; gap: 10px; }
   .power-plant-item span { flex-grow: 1; }
   .output-controls { display: flex; align-items: center; gap: 5px; margin-left: auto; }
   .output-controls input { width: 80px; }
   .remove-btn { background-color: #800; color: white; border: 1px solid #c00; }
   .add-power-plant-form { display: flex; flex-direction: column; gap: 10px; }
-  .add-power-plant-form input[type="text"], .add-power-plant-form input[type="number"] { padding: 8px; border-radius: 4px; border: 1px solid #555; background-color: #444; color: #eee; }
+  .add-power-plant-form input[type="text"], .add-power-plant-form input[type="number"] { padding: 8px; border-radius: 4px; border: 1px solid var(--border); background-color: var(--bg-control); color: var(--text); }
 </style>

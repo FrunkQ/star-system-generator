@@ -1,5 +1,8 @@
 import type { CelestialBody, Barycenter, System, RulePack } from '../types';
 import { SOLAR_RADIUS_KM, AU_KM } from '../constants';
+import { isLuminousSource } from './substellar';
+import { equivalentFluxDistanceAU } from './zones';
+import { deriveAlbedo } from './albedo';
 
 const STEFAN_BOLTZMANN_CONSTANT = 5.670374419e-8;
 
@@ -84,7 +87,13 @@ export function calculateDistanceToStar(
     allNodes: (CelestialBody | Barycenter)[]
 ): number {
     const range = distanceRangeBetweenNodes(body, star, allNodes);
-    return range.mean;
+    if (range.mean <= 0) return range.mean;
+    // 04.1: eccentric orbits receive a higher time-averaged flux, so the flux-equivalent
+    // distance is a·(1−e²)^¼ (< a), not the mean a. Derive the dominant eccentricity from
+    // the perihelion/aphelion spread — exact for a body directly orbiting the star; for
+    // moons the planet's orbit dominates the spread, which is what we want.
+    const ecc = range.max + range.min > 0 ? (range.max - range.min) / (range.max + range.min) : 0;
+    return equivalentFluxDistanceAU(range.mean, ecc);
 }
 
 export function calculateDistanceRangeToStar(
@@ -136,7 +145,11 @@ export function composeSurfaceTemperatureFromDeltaComponents(
     greenhouseDeltaK: number,
     tidalDeltaK: number,
     radiogenicDeltaK: number,
-    internalDeltaK: number = 0
+    internalDeltaK: number = 0,
+    // A self-luminous body (brown dwarf) sets its own photosphere temperature. Unlike the deltas above
+    // (which "raise by ΔK"), this is an ABSOLUTE flux term (σ·Teff⁴) added directly, so the surface reads
+    // ≈ its own Teff regardless of the faint equilibrium temperature from a distant star.
+    selfLuminousTeffK: number = 0
 ): number {
     const teq = Math.max(0, equilibriumTempK || 0);
     const baseFlux = STEFAN_BOLTZMANN_CONSTANT * Math.pow(teq, 4);
@@ -153,14 +166,64 @@ export function composeSurfaceTemperatureFromDeltaComponents(
         return STEFAN_BOLTZMANN_CONSTANT * (Math.pow(teq + d, 4) - Math.pow(teq, 4));
     };
 
+    const selfLumFlux = selfLuminousTeffK > 0
+        ? STEFAN_BOLTZMANN_CONSTANT * Math.pow(selfLuminousTeffK, 4)
+        : 0;
     const totalFlux = baseFlux
         + deltaToFlux(greenhouseDeltaK)
         + deltaToFlux(tidalDeltaK)
         + deltaToFlux(radiogenicDeltaK)
-        + deltaToFlux(internalDeltaK);
+        + deltaToFlux(internalDeltaK)
+        + selfLumFlux;
 
     if (totalFlux <= 0) return 0;
     return Math.pow(totalFlux / STEFAN_BOLTZMANN_CONSTANT, 0.25);
+}
+
+/**
+ * THE authoritative surface temperature of a body from its already-committed heat components.
+ * Single source of truth so every compose site — the SystemProcessor, the single-body refresh below,
+ * the editor's live preview, and UI range variants — produces the SAME value. Reads every heat term
+ * off the body (greenhouse, tidal, radiogenic, giant-internal, brown-dwarf self-luminous), so no call
+ * site can silently drop one (the self-luminous term in particular kept being dropped by 5-arg calls,
+ * which made re-processing a brown dwarf appear to COOL it). Pass equilibriumTempK when composing a
+ * variant (min/max, day/night) or a value not yet written back; otherwise it defaults to the body's.
+ */
+export function composeBodySurfaceTemperature(body: CelestialBody, equilibriumTempK?: number): number {
+    return composeSurfaceTemperatureFromDeltaComponents(
+        equilibriumTempK ?? body.equilibriumTempK ?? 0,
+        body.greenhouseTempK || 0,
+        body.tidalHeatK || 0,
+        body.radiogenicHeatK || 0,
+        body.internalHeatK || 0,
+        (body as any).selfLuminousTeffK || 0
+    );
+}
+
+/**
+ * Recalculates the equilibrium and total surface temperature for ONE body, in place — the same
+ * albedo ⇄ equilibrium fixed point and flux-space composition the SystemProcessor commits, exposed
+ * as a single-body refresh for live UI panels. (The full pipeline is systemProcessor.process(); use
+ * that for anything beyond a display preview — this helper deliberately duplicates no formulas,
+ * only orchestrates the shared ones.)
+ */
+export function calculateSurfaceTemperature(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[]) {
+    // Two fixed-point iterations off a 0.3 first guess — identical to SystemProcessor.processEnvironment.
+    let albedoInfo = deriveAlbedo(body, calculateEquilibriumTemperature(body, allNodes, 0.3));
+    let equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedoInfo.albedo);
+    albedoInfo = deriveAlbedo(body, equilibriumTempK);
+    equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedoInfo.albedo);
+    const range = calculateEquilibriumTemperatureRange(body, allNodes, albedoInfo.albedo);
+
+    if (equilibriumTempK > 0) {
+        body.equilibriumTempK = equilibriumTempK;
+        body.albedoBreakdown = albedoInfo;
+        (body as any).equilibriumTempMinK = range.minK;
+        (body as any).equilibriumTempMaxK = range.maxK;
+        // Radiogenic heat is a GM override — re-derive it so this path can't silently drop it.
+        body.radiogenicHeatK = body.overrides?.radiogenicHeatK ?? body.radiogenicHeatK ?? 0;
+        body.temperatureK = composeBodySurfaceTemperature(body, equilibriumTempK);
+    }
 }
 
 export function estimateInternalHeatK(body: CelestialBody, rulePack?: RulePack): number {
@@ -185,7 +248,7 @@ export function calculateEquilibriumTemperature(
     allNodes: (CelestialBody | Barycenter)[],
     albedo: number = estimateBondAlbedo(body)
 ): number {
-    const allStars = allNodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
+    const allStars = allNodes.filter(n => isLuminousSource(n as any)) as CelestialBody[];
     
     let totalLuminosityTimesArea = 0;
     
@@ -214,7 +277,7 @@ export function calculateEquilibriumTemperatureRange(
     allNodes: (CelestialBody | Barycenter)[],
     albedo: number = estimateBondAlbedo(body)
 ): { minK: number; maxK: number } {
-    const allStars = allNodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
+    const allStars = allNodes.filter(n => isLuminousSource(n as any)) as CelestialBody[];
     let fluxMin = 0;
     let fluxMax = 0;
 

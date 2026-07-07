@@ -3,7 +3,7 @@
         "terrestrial_min_mass_for_atmosphere_earth": 0.1,
         "terrestrial_magnetic_field_chance": 0.8,
         "frost_line_base_au": 2.7,
-        "planet_migration_chance": 0.1,
+        "planet_migration_chance": 0.18,
         "danger_zone_multiplier": 5,
         "atmosphere_retention_factor": 100,
         "binary_placement_rules": [

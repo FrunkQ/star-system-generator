@@ -1,19 +1,51 @@
 <script lang="ts">
   import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
+  import { describeTag } from "$lib/tags/tagPresentation";
   import { calculateOrbitalBoundaries, type OrbitalBoundaries, type PlanetData } from "$lib/physics/orbits";
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
-  import { calculateDeltaVBudgets, calculateSurfaceTemperature, calculateGreenhouseEffect } from '$lib/system/postprocessing';
-  import { isCryoImpactedGreenhouseGas } from '$lib/physics/atmosphere';
-  import { composeSurfaceTemperatureFromDeltaComponents } from '$lib/physics/temperature';
-  import { systemStore } from '$lib/stores';
+  import { calculateDeltaVBudgets } from '$lib/physics/orbits';
+  import { isCryoImpactedGreenhouseGas, calculateGreenhouseEffect } from '$lib/physics/atmosphere';
+  import { calculateSurfaceTemperature, composeBodySurfaceTemperature } from '$lib/physics/temperature';
+  import { systemStore, fmt } from '$lib/stores';
   import { get } from 'svelte/store';
   import { calculateSurfaceRadiation } from '$lib/physics/radiation';
+  import { makeupFractions, gasThermalInflationFactor } from '$lib/physics/makeup';
+  import { formatGauss } from '$lib/physics/magnetism';
   import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_GRAVITY, EARTH_DENSITY, RADIATION_UNSHIELDED_DOSE_MSV_YR } from '$lib/constants';
 
   export let body: CelestialBody | Barycenter | null;
   export let rulePack: RulePack;
   export let parentBody: CelestialBody | null = null;
   export let rootStar: CelestialBody | null = null;
+
+  // The "Orbit (from …)" label: keep the host TYPE but name the actual host too (on a multi-star system
+  // a bare "Barycenter" / "star" is ambiguous). A barycentre also names its primary, since a body can
+  // orbit a barycentre though only its primary is selectable — e.g. "Pluto-Charon Barycenter — Pluto".
+  $: orbitHostLabel = (() => {
+      const p: any = parentBody;
+      if (!p) return 'Unknown';
+      if (p.kind === 'barycenter') {
+          const nodes = $systemStore?.nodes || [];
+          const members = ((p.memberIds || []) as string[]).map((id) => nodes.find((n: any) => n.id === id)).filter(Boolean) as any[];
+          const primary = members.reduce((best: any, m: any) =>
+              ((m.massKg || m.effectiveMassKg || 0) > (best?.massKg || best?.effectiveMassKg || 0) ? m : best), null);
+          return primary ? `${p.name} — ${primary.name}` : p.name;
+      }
+      const role = p.roleHint ? p.roleHint[0].toUpperCase() + p.roleHint.slice(1) : 'Body';
+      return `${role} ${p.name}`;
+  })();
+
+  // GM overrides + gas-giant puffiness — surfaced read-only so it's clear which values the physics owns
+  // and which the GM has pinned.
+  $: cbody = (body && (body as any).kind === 'body') ? (body as CelestialBody) : null;
+  $: bodyGasDominated = cbody ? makeupFractions(cbody).gas > 0.5 : false;
+  $: bodyInflation = cbody ? ((cbody.overrides?.gasThermalInflation) ?? gasThermalInflationFactor(cbody.equilibriumTempK ?? 0)) : 1;
+  $: activeOverrides = cbody ? ([
+      cbody.overrides?.albedo !== undefined ? 'Albedo' : null,
+      cbody.magneticField?.manual ? 'Magnetic field' : null,
+      cbody.overrides?.gasThermalInflation !== undefined ? 'Thermal inflation' : null,
+      cbody.autoClassify === false ? 'Type (pinned)' : null
+  ].filter(Boolean) as string[]) : [];
 
   // Derived Reactive Properties for Constructs
   let constructSpecs: ConstructSpecs | null = null;
@@ -171,10 +203,10 @@
 
         if (body.orbit) {
             if (body.roleHint === 'moon') {
-                orbitalDistanceDisplay = `${Math.round(body.orbit.elements.a_AU * AU_KM).toLocaleString()} km`;
+                orbitalDistanceDisplay = $fmt.km(body.orbit.elements.a_AU * AU_KM);
                 const peri = body.orbit.elements.a_AU * (1 - body.orbit.elements.e);
                 const aph = body.orbit.elements.a_AU * (1 + body.orbit.elements.e);
-                orbitalDistanceTooltip = `Periapsis: ${Math.round(peri * AU_KM).toLocaleString()} km\nApoapsis: ${Math.round(aph * AU_KM).toLocaleString()} km`;
+                orbitalDistanceTooltip = `Periapsis: ${$fmt.km(peri * AU_KM)}\nApoapsis: ${$fmt.km(aph * AU_KM)}`;
             } else {
                 orbitalDistanceDisplay = `${body.orbit.elements.a_AU.toFixed(3)} AU`;
                 const peri = body.orbit.elements.a_AU * (1 - body.orbit.elements.e);
@@ -241,22 +273,21 @@
             // Prefer post-processed multi-star/barycenter-aware range when available.
             const eqMinK = typeof (body as any).equilibriumTempMinK === 'number' ? (body as any).equilibriumTempMinK : null;
             const eqMaxK = typeof (body as any).equilibriumTempMaxK === 'number' ? (body as any).equilibriumTempMaxK : null;
-            const greenhouseK = body.greenhouseTempK || 0;
-            const tidalK = body.tidalHeatK || 0;
-            const radiogenicK = body.radiogenicHeatK || 0;
-            const internalK = body.internalHeatK || 0;
             const pressureBar = body.atmosphere?.pressure_bar || 0;
 
+            // Range variants recompose the body's OWN heat terms (greenhouse/tidal/radiogenic/internal/
+            // self-luminous) over a varied equilibrium via the shared helper — no per-term duplication,
+            // and the self-luminous term can't get dropped (the old 5-arg calls omitted it).
             if (pressureBar < 0.01 && body.roleHint !== 'star') {
                 // Airless/near-airless worlds should expose large day/night surface swings.
                 const tEq = body.equilibriumTempK || 0;
                 const eqMinAirless = Math.max(3, tEq * 0.5);
                 const eqMaxAirless = tEq * 1.45;
-                minTempC = composeSurfaceTemperatureFromDeltaComponents(eqMinAirless, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
-                maxTempC = composeSurfaceTemperatureFromDeltaComponents(eqMaxAirless, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
+                minTempC = composeBodySurfaceTemperature(body, eqMinAirless) - 273.15;
+                maxTempC = composeBodySurfaceTemperature(body, eqMaxAirless) - 273.15;
             } else if (eqMinK !== null && eqMaxK !== null) {
-                minTempC = composeSurfaceTemperatureFromDeltaComponents(eqMinK, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
-                maxTempC = composeSurfaceTemperatureFromDeltaComponents(eqMaxK, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
+                minTempC = composeBodySurfaceTemperature(body, eqMinK) - 273.15;
+                maxTempC = composeBodySurfaceTemperature(body, eqMaxK) - 273.15;
             } else if (body.orbit && body.equilibriumTempK) {
                 // Fallback for legacy bodies that do not have precomputed ranges.
                 const e = body.orbit.elements.e;
@@ -267,8 +298,8 @@
                 const tEq = body.equilibriumTempK;
                 const tEqMaxK = tEq * orbitMax * (1 + variability);
                 const tEqMinK = tEq * orbitMin * (1 - variability);
-                const tMaxK = composeSurfaceTemperatureFromDeltaComponents(tEqMaxK, greenhouseK, tidalK, radiogenicK, internalK);
-                const tMinK = composeSurfaceTemperatureFromDeltaComponents(tEqMinK, greenhouseK, tidalK, radiogenicK, internalK);
+                const tMaxK = composeBodySurfaceTemperature(body, tEqMaxK);
+                const tMinK = composeBodySurfaceTemperature(body, tEqMinK);
                 maxTempC = tMaxK - 273.15;
                 minTempC = tMinK - 273.15;
             }
@@ -288,10 +319,10 @@
                     const nightMinEq = Math.max(3, tEq * (body.tidallyLocked ? 0.33 : 0.40));
                     const nightMaxEq = tEq * (body.tidallyLocked ? 0.72 : 0.85);
 
-                    dayMinTempC = composeSurfaceTemperatureFromDeltaComponents(dayMinEq, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
-                    dayMaxTempC = composeSurfaceTemperatureFromDeltaComponents(dayMaxEq, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
-                    nightMinTempC = composeSurfaceTemperatureFromDeltaComponents(nightMinEq, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
-                    nightMaxTempC = composeSurfaceTemperatureFromDeltaComponents(nightMaxEq, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
+                    dayMinTempC = composeBodySurfaceTemperature(body, dayMinEq) - 273.15;
+                    dayMaxTempC = composeBodySurfaceTemperature(body, dayMaxEq) - 273.15;
+                    nightMinTempC = composeBodySurfaceTemperature(body, nightMinEq) - 273.15;
+                    nightMaxTempC = composeBodySurfaceTemperature(body, nightMaxEq) - 273.15;
                 } else {
                     // Atmosphere damps day/night swings.
                     let dayNightSpanC = (1 - pressureMix) * 70 + 8;
@@ -314,7 +345,7 @@
                 nightMinTempC = Math.max(-273, nightMinTempC);
                 nightMaxTempC = Math.max(nightMinTempC, nightMaxTempC);
             }
-            tempTooltip = `Equilibrium: ${Math.round((body.equilibriumTempK || 0) - 273.15)}°C | Greenhouse: +${Math.round(body.greenhouseTempK || 0)}°C | Internal: +${Math.round(body.internalHeatK || 0)}°C | Tidal: +${Math.round(body.tidalHeatK || 0)}°C | Radiogenic: +${Math.round(body.radiogenicHeatK || 0)}°C`;
+            tempTooltip = `Equilibrium: ${$fmt.tempK(body.equilibriumTempK || 0)} | Greenhouse: +${Math.round(body.greenhouseTempK || 0)} K | Internal: +${Math.round(body.internalHeatK || 0)} K | Tidal: +${Math.round(body.tidalHeatK || 0)} K | Radiogenic: +${Math.round(body.radiogenicHeatK || 0)} K`;
         }
     }
 
@@ -360,11 +391,12 @@
       }
       val = Math.max(0, Math.min(1, val));
 
-      if (val < 0.2) return { text: "Sparse (Navigation Trivial)", color: "#00ff00" }; // Green
-      if (val < 0.4) return { text: "Light (Standard)", color: "#88ff00" }; // Light Green
-      if (val < 0.6) return { text: "Moderate (Minor Hazards)", color: "#ffff00" }; // Yellow
-      if (val < 0.8) return { text: "Dense (Navigation Hazard)", color: "#ff8800" }; // Orange
-      return { text: "Ultra-Dense (Deadly)", color: "#ff0000" }; // Red
+      // Unified onto the shared safe -> deadly hazard ramp (same as star radiation).
+      if (val < 0.2) return { text: "Sparse (Navigation Trivial)", color: "var(--hazard-0)" };
+      if (val < 0.4) return { text: "Light (Standard)", color: "var(--hazard-1)" };
+      if (val < 0.6) return { text: "Moderate (Minor Hazards)", color: "var(--hazard-2)" };
+      if (val < 0.8) return { text: "Dense (Navigation Hazard)", color: "var(--hazard-3)" };
+      return { text: "Ultra-Dense (Deadly)", color: "var(--hazard-4)" };
   }
 
   // --- Constants ---
@@ -464,7 +496,7 @@
           <span class="value">{constructSpecs.maxVacuumG.toFixed(2)} g</span>        </div>
         <div class="detail-item">
           <span class="label">Total Vacuum Δv</span>
-          <span class="value">{(constructSpecs.totalVacuumDeltaV_ms / 1000).toLocaleString(undefined, {maximumFractionDigits: 1})} km/s</span>
+          <span class="value">{$fmt.speedMs(constructSpecs.totalVacuumDeltaV_ms, 1)}</span>
         </div>
         <div class="detail-item">
           <span class="label">Power Surplus</span>
@@ -524,14 +556,14 @@
               
                     {#if body.kind === 'body' && body.radiusKm}              <div class="detail-item">
                   <span class="label">Radius</span>
-                  <span class="value">{body.radiusKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+                  <span class="value">{$fmt.km(body.radiusKm)}</span>
               </div>
           {/if}
 
                 {#if circumferenceKm && !isStar}
                     <div class="detail-item">
                         <span class="label">Circumference</span>
-                        <span class="value">{circumferenceKm.toLocaleString(undefined, {maximumFractionDigits: 0})} km</span>
+                        <span class="value">{$fmt.km(circumferenceKm)}</span>
                     </div>
                 {/if}
                 {#if surfaceGravityG !== null && !isStar}
@@ -543,6 +575,12 @@
                     <div class="detail-item">
                         <span class="label">Density (rel. to Earth)</span>
                         <span class="value">{densityRelative.toFixed(2)}</span>
+                    </div>
+                {/if}
+                {#if bodyGasDominated && !isStar}
+                    <div class="detail-item" title="Insolation puffs a gas giant's envelope: higher inflation → larger radius, lower density. Derived from the equilibrium temperature unless the GM overrides it.">
+                        <span class="label">Thermal inflation</span>
+                        <span class="value">×{bodyInflation.toFixed(2)}{#if bodyInflation > 1.05} · puffy{/if}{#if cbody?.overrides?.gasThermalInflation !== undefined} <span class="ovr-badge">override</span>{/if}</span>
                     </div>
                 {/if}
           {#if body.kind === 'body' && body.axial_tilt_deg}
@@ -562,7 +600,7 @@
 
       {#if orbitalDistanceDisplay}
           <div class="detail-item" title={orbitalDistanceTooltip}>
-              <span class="label">Orbit (from {parentBody?.kind === 'barycenter' ? 'Barycenter' : (parentBody?.roleHint || 'Unknown')})</span>
+              <span class="label">Orbit (from {orbitHostLabel})</span>
               <span class="value">{orbitalDistanceDisplay}</span>
           </div>
       {/if}
@@ -588,34 +626,31 @@
           </div>
       {/if}
 
+      {#if body.kind === 'body' && (body as any).resonanceNote}
+          <div class="detail-item" title={(body as any).resonanceNote}>
+              <span class="label">Resonance</span>
+              <span class="value">{(body.orbit?.resonance ? `${body.orbit.resonance.numerator}:${body.orbit.resonance.denominator}` : (body.tags?.some((t) => t.key === 'resonance/laplace') ? 'Laplace chain' : 'Mean-motion'))}</span>
+          </div>
+      {/if}
+
       {#if isStar && body.temperatureK}
-          <div class="detail-item" title="{Math.round(body.temperatureK - 273.15)} °C">
+          <div class="detail-item" title="{Math.round(body.temperatureK).toLocaleString()} K">
               <span class="label">Surface Temperature</span>
               <span class="value">{Math.round(body.temperatureK).toLocaleString()} K</span>
           </div>
       {:else if surfaceTempC !== null}
           <div class="detail-item" title={tempTooltip}>
               <span class="label">Avg. Surface Temp.</span>
-              <span class="value">{Math.round(surfaceTempC)} °C</span>
-              {#if minTempC !== null && maxTempC !== null}
-                  <div style="font-size: 0.8em; color: #aaa; margin-top: 2px;">
-                      Range: {Math.round(minTempC)}°C to {Math.round(maxTempC)}°C
-                  </div>
-              {/if}
-              {#if dayMinTempC !== null && dayMaxTempC !== null}
-                  <div style="font-size: 0.8em; color: #ddd; margin-top: 2px;">
-                      Day-side: {Math.round(dayMinTempC)}°C to {Math.round(dayMaxTempC)}°C
-                  </div>
-              {/if}
-              {#if nightMinTempC !== null && nightMaxTempC !== null}
-                  <div style="font-size: 0.8em; color: #9ec7ff; margin-top: 2px;">
-                      Night-side: {Math.round(nightMinTempC)}°C to {Math.round(nightMaxTempC)}°C
-                  </div>
-              {/if}
-              {#if body.tags?.some(t => t.key === 'tidal/hotspots')}
-                  <div style="font-size: 0.8em; color: #ffb366; margin-top: 2px;">
-                      Tidal forces cause localized hotspots despite modest global average warming.
-                  </div>
+              <span class="value">{$fmt.tempC(surfaceTempC)}</span>
+              {#if body.temperatureProfile && (body.temperatureProfile.totalMaxK - body.temperatureProfile.totalMinK) > 5}
+                  {@const p = body.temperatureProfile}
+                  <div class="temp-total">Total: {$fmt.tempK(p.totalMinK)} to {$fmt.tempK(p.totalMaxK)}</div>
+                  {#each p.components as c}
+                      <div class="temp-comp" class:volcanic={c.source === 'tidal-hotspot'}>
+                          <span class="tc-label">{c.label}</span>
+                          <span class="tc-range">{$fmt.tempK(c.lowK)} to {$fmt.tempK(c.highK)}</span>
+                      </div>
+                  {/each}
               {/if}
           </div>
       {/if}
@@ -630,7 +665,7 @@
       {#if body.magneticField}
           <div class="detail-item" title="Magnetic field strength in Gauss. A value > 1 is strong enough to offer significant protection from stellar radiation.">
               <span class="label">Magnetic Field</span>
-              <span class="value">{body.magneticField.strengthGauss.toFixed(2)} G</span>
+              <span class="value">{formatGauss(body.magneticField.strengthGauss)} G</span>
           </div>
       {/if}
 
@@ -639,7 +674,7 @@
               <span class="label">Surface Radiation</span>
               <span class="value">{surfaceRadiationText} ({displayedSurfaceRadiation?.toFixed(2)})</span>
               {#if minSurfaceRadiation !== null && maxSurfaceRadiation !== null}
-                  <div style="font-size: 0.8em; color: #aaa; margin-top: 2px;">
+                  <div style="font-size: 0.8em; color: var(--text-muted); margin-top: 2px;">
                       Range: {minSurfaceRadiation.toFixed(2)} to {maxSurfaceRadiation.toFixed(2)} mSv/y
                   </div>
               {/if}
@@ -696,11 +731,11 @@
           <div class="detail-item biosphere">
               <span class="label">Biosphere</span>
               <div class="biosphere-details">
-                  <span><strong>Complexity:</strong> {body.biosphere.complexity}</span>
-                  <span><strong>Biochemistry:</strong> {body.biosphere.biochemistry}</span>
-                  <span><strong>Energy Source:</strong> {body.biosphere.energy_source}</span>
-                  <span><strong>Morphologies:</strong> {body.biosphere.morphologies.join(', ')}</span>
-                  <span><strong>Coverage:</strong> {(body.biosphere.coverage * 100).toFixed(0)}%</span>
+                  {#if body.biosphere.complexity}<span><strong>Complexity:</strong> {body.biosphere.complexity}</span>{/if}
+                  {#if body.biosphere.biochemistry}<span><strong>Biochemistry:</strong> {body.biosphere.biochemistry}</span>{/if}
+                  {#if body.biosphere.energy_source}<span><strong>Energy Source:</strong> {body.biosphere.energy_source}</span>{/if}
+                  {#if body.biosphere.morphologies?.length}<span><strong>Morphologies:</strong> {body.biosphere.morphologies.join(', ')}</span>{/if}
+                  {#if body.biosphere.coverage != null}<span><strong>Coverage:</strong> {(body.biosphere.coverage * 100).toFixed(0)}%</span>{/if}
               </div>
           </div>
       {/if}
@@ -709,21 +744,21 @@
           <div class="detail-item orbital-zones">
               <span class="label">Orbital Zones</span>
               <div class="zone-details">
-                  <span><strong>Low Orbit:</strong> {Math.round(body.orbitalBoundaries.minLeoKm).toLocaleString()} - {Math.round(body.orbitalBoundaries.leoMoeBoundaryKm).toLocaleString()} km</span>
-                  
+                  <span><strong>Low Orbit:</strong> {$fmt.km(body.orbitalBoundaries.minLeoKm)} - {$fmt.km(body.orbitalBoundaries.leoMoeBoundaryKm)}</span>
+
                   {#if body.orbitalBoundaries.leoMoeBoundaryKm < body.orbitalBoundaries.meoHeoBoundaryKm}
-                    <span><strong>Mid Orbit:</strong> {Math.round(body.orbitalBoundaries.leoMoeBoundaryKm).toLocaleString()} - {Math.round(body.orbitalBoundaries.meoHeoBoundaryKm).toLocaleString()} km {#if body.orbitalBoundaries.isGeoFallback}(Galactic Standard){/if}</span>
+                    <span><strong>Mid Orbit:</strong> {$fmt.km(body.orbitalBoundaries.leoMoeBoundaryKm)} - {$fmt.km(body.orbitalBoundaries.meoHeoBoundaryKm)} {#if body.orbitalBoundaries.isGeoFallback}(Galactic Standard){/if}</span>
                   {/if}
-                  
+
                   {#if body.orbitalBoundaries.geoStationaryKm && !body.orbitalBoundaries.isGeoFallback}
-                      <span><strong>Geostationary:</strong> {Math.round(body.orbitalBoundaries.geoStationaryKm).toLocaleString()} km</span>
+                      <span><strong>Geostationary:</strong> {$fmt.km(body.orbitalBoundaries.geoStationaryKm)}</span>
                   {:else if !body.orbitalBoundaries.isGeoFallback && body.orbitalBoundaries.heoUpperBoundaryKm >= 1000}
                        <!-- Only show "Unstable" if it's not a micro-system (SOI >= 1000km) -->
                       <span><strong>Geostationary:</strong> Unstable</span>
                   {/if}
-                  
+
                   {#if body.orbitalBoundaries.meoHeoBoundaryKm < body.orbitalBoundaries.heoUpperBoundaryKm}
-                    <span><strong>High Orbit:</strong> {Math.round(body.orbitalBoundaries.meoHeoBoundaryKm).toLocaleString()} - {Math.round(body.orbitalBoundaries.heoUpperBoundaryKm).toLocaleString()} km</span>
+                    <span><strong>High Orbit:</strong> {$fmt.km(body.orbitalBoundaries.meoHeoBoundaryKm)} - {$fmt.km(body.orbitalBoundaries.heoUpperBoundaryKm)}</span>
                   {/if}
               </div>
           </div>
@@ -737,19 +772,19 @@
                       {#if isGasGiant}
                           <div><span><strong>Surface to LO:</strong> N/A - No surface</span></div>
                       {:else}
-                          <div><span><strong>Surface to LO:</strong> {body.loDeltaVBudget_ms.toLocaleString(undefined, {maximumFractionDigits: 0})} m/s</span></div>
+                          <div><span><strong>Surface to LO:</strong> {$fmt.speedMs(body.loDeltaVBudget_ms, 1)}</span></div>
                       {/if}
                   {/if}
                   {#if body.propulsiveLandBudget_ms !== undefined}
                        {#if isGasGiant}
                           <div><span><strong>LO to Surface (Propulsive):</strong> N/A - No surface</span></div>
                       {:else}
-                          <div><span><strong>LO to Surface (Propulsive):</strong> {body.propulsiveLandBudget_ms.toLocaleString(undefined, {maximumFractionDigits: 0})} m/s</span></div>
+                          <div><span><strong>LO to Surface (Propulsive):</strong> {$fmt.speedMs(body.propulsiveLandBudget_ms, 1)}</span></div>
                       {/if}
                   {/if}
                   {#if body.aerobrakeLandBudget_ms !== undefined}
                       {#if body.aerobrakeLandBudget_ms !== -1}
-                          <div><span><strong>{isGasGiant ? 'Aerobrake / Fuel Scoop' : 'LO to Surface (Aerobrake)'}:</strong> {body.aerobrakeLandBudget_ms.toLocaleString(undefined, {maximumFractionDigits: 0})} m/s</span></div>
+                          <div><span><strong>{isGasGiant ? 'Aerobrake / Fuel Scoop' : 'LO to Surface (Aerobrake)'}:</strong> {$fmt.speedMs(body.aerobrakeLandBudget_ms, 1)}</span></div>
                       {:else}
                           <div><span><strong>{isGasGiant ? 'Aerobrake / Fuel Scoop' : 'LO to Surface (Aerobrake)'}:</strong> N/A (No Atmosphere)</span></div>
                       {/if}
@@ -763,9 +798,17 @@
               <span class="label">Tags</span>
               <div class="tags-container">
                   {#each body.tags as tag}
-                      <span class="tag">{tag.key}{#if tag.value}: {tag.value}{/if}</span>
+                      {@const info = describeTag(tag.key)}
+                      <span class="tag" style="border-color: {info.color}; color: {info.color};" title={info.description}>{info.label}{#if tag.value}: {tag.value}{/if}</span>
                   {/each}
               </div>
+          </div>
+      {/if}
+
+      {#if activeOverrides.length}
+          <div class="detail-item overrides-callout" title="Values the GM has pinned by hand. Everything else is derived by the physics engine; a pinned value is saved and fed into the derivation instead.">
+              <span class="label">GM overrides</span>
+              <span class="value">{#each activeOverrides as o}<span class="ovr-badge">{o}</span>{/each}</span>
           </div>
       {/if}
 </div>
@@ -773,8 +816,10 @@
 <style>
   .details-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 0.75em;
+      /* Lower min so the data flows into 2+ columns even in a ~360px panel,
+         instead of one long single column. Wider panels pack more columns. */
+      grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+      gap: 0.6em;
   }
   .detail-item {
       display: flex;
@@ -782,12 +827,25 @@
       background-color: #252525;
       padding: 0.6em;
       border-radius: 4px;
-      border-left: 3px solid #ff3e00;
+      border-left: 3px solid var(--accent);
       cursor: default; /* So title attribute tooltips show up consistently */
   }
+  .detail-item.overrides-callout {
+      grid-column: 1 / -1;
+      border-left-color: var(--accent, #ff5a1f);
+  }
+  .ovr-badge {
+      display: inline-block; font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.03em;
+      color: var(--accent, #ff5a1f); border: 1px solid var(--accent, #ff5a1f); border-radius: 3px;
+      padding: 0 5px; margin: 2px 4px 0 0;
+  }
+  .temp-total { font-size: 0.82em; color: var(--text); margin-top: 4px; font-weight: 600; }
+  .temp-comp { display: flex; justify-content: space-between; gap: 8px; font-size: 0.78em; color: var(--text-muted); margin-top: 2px; }
+  .temp-comp .tc-range { color: #9ec7ff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .temp-comp.volcanic .tc-label, .temp-comp.volcanic .tc-range { color: #ffb366; }
   .detail-item.description {
       grid-column: 1 / -1;
-      border-left-color: #444;
+      border-left-color: var(--border);
   }
   .detail-item.traveller-data {
       grid-column: 1 / -1;
@@ -798,7 +856,7 @@
       gap: 1em;
       font-size: 0.9em;
       margin-top: 0.2em;
-      color: #ccc;
+      color: var(--text-muted);
   }
   .traveller-codes {
       display: flex;
@@ -810,21 +868,21 @@
       margin-top: 0.5em;
       font-family: monospace;
       font-size: 0.75em;
-      color: #666;
+      color: var(--text-faint);
       white-space: pre-wrap;
       word-break: break-all;
-      border-top: 1px solid #444;
+      border-top: 1px solid var(--border);
       padding-top: 4px;
   }
   .label {
       font-size: 0.8em;
-      color: #999;
+      color: var(--text-muted);
       text-transform: uppercase;
       margin-bottom: 0.2em;
   }
   .value {
       font-size: 1.1em;
-      color: #eee;
+      color: var(--text);
   }
   .detail-item.atmosphere {
     grid-column: 1 / -1;
@@ -837,7 +895,7 @@
     gap: 0.5em;
   }
   .gas {
-    background-color: #333;
+    background-color: var(--bg-panel);
     padding: 0.2em 0.5em;
     border-radius: 3px;
     font-size: 0.9em;
@@ -847,16 +905,16 @@
   }
   .cryo-icon {
     margin-left: 4px;
-    color: #88ccff;
+    color: var(--link);
     cursor: help;
   }
   .gas-percent {
     margin-left: 0.5em;
-    color: #ccc;
+    color: var(--text-muted);
   }
   .composition-trace p {
     font-style: italic;
-    color: #999;
+    color: var(--text-muted);
     margin: 0.5em 0 0 0;
   }
 
@@ -901,11 +959,11 @@
   }
 
   .tag {
-    background-color: #444;
+    background-color: var(--bg-control);
     padding: 0.2em 0.5em;
     border-radius: 3px;
     font-size: 0.8em;
-    color: #eee;
+    color: var(--text);
   }
 
   .detail-item.unstable {

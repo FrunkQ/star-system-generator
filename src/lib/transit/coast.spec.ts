@@ -1,0 +1,169 @@
+import { describe, it, expect } from 'vitest';
+import { coastUnderGravity, coastPathUnderGravity, sampleJourneyKinematicsAtTime } from './scheduler';
+import { coastConicAt } from '$lib/physics/twoBodyCoast';
+import type { System, CelestialBody } from '$lib/types';
+
+// One Sun-mass star at the system root (sits at the origin). A cut-loose ship then coasts under its real
+// gravity — the in-system "adrift" path — so this validates the wiring (ms↔s, m/s↔AU/s, star detection).
+const SOLAR = 1.989e30;
+const YEAR = 365.25 * 86400;
+const G = 6.674e-11, AU_M = 1.495978707e11;
+const vCirc = Math.sqrt((G * SOLAR) / AU_M); // ≈ 29.8 km/s, Earth's orbital speed
+
+const sys = {
+  id: 's', nodes: [{ id: 'star', kind: 'body', roleHint: 'star', classes: ['star/G'], parentId: null, massKg: SOLAR }]
+} as unknown as System;
+
+describe('coastUnderGravity — in-system adrift under real gravity', () => {
+  it('a ship at circular speed holds ~1 AU and sweeps round (a slow ellipse, not a straight line)', () => {
+    const r = coastUnderGravity(sys, { x: 1, y: 0 }, { x: 0, y: vCirc }, 0, (YEAR / 4) * 1000);
+    const radius = Math.hypot(r.position_au.x, r.position_au.y);
+    expect(radius).toBeCloseTo(1, 1);          // stays ~1 AU
+    expect(r.position_au.y).toBeGreaterThan(0.8); // swept ~90° round the star
+    // a straight line would have flown off to (1, ~7.4) — confirm gravity bent it
+    expect(r.position_au.x).toBeLessThan(0.6);
+  });
+
+  it('a stationary ship falls toward the star', () => {
+    const r = coastUnderGravity(sys, { x: 1, y: 0 }, { x: 0, y: 0 }, 0, (YEAR * 0.1) * 1000);
+    expect(r.position_au.x).toBeLessThan(1);   // pulled inward
+    expect(r.position_au.x).toBeGreaterThan(0);
+    expect(r.velocity_ms.x).toBeLessThan(0);   // moving sunward
+  });
+
+  it('coastPathUnderGravity forecasts a fall toward the star from rest', () => {
+    const pts = coastPathUnderGravity(sys, { x: 1, y: 0 }, { x: 0, y: 0 }, 0, 40);
+    expect(pts.length).toBe(41);                       // 40 steps + the start
+    expect(pts[0]).toEqual({ x: 1, y: 0 });            // starts where the ship is
+    // The horizon now reaches well into the fall (and a radial plunge can sling back out), so assert that
+    // the path gets MUCH closer to the star somewhere along it, not that the endpoint is closer.
+    const minR = Math.min(...pts.map((p) => Math.hypot(p.x, p.y)));
+    expect(minR).toBeLessThan(0.5);
+  });
+
+  it('with no star it falls back to a straight line', () => {
+    const empty = { id: 's', nodes: [] } as unknown as System;
+    const r = coastUnderGravity(empty, { x: 1, y: 0 }, { x: vCirc, y: 0 }, 0, 1000);
+    expect(r.position_au.x).toBeCloseTo(1 + (vCirc / AU_M) * 1, 6);
+  });
+});
+
+describe('escort formation — rendezvous with a construct, velocity match + km standoff', () => {
+  const DAY = 86400 * 1000;
+  const starF = { id: 'star', kind: 'body', roleHint: 'star', classes: ['star/G'], parentId: null, massKg: SOLAR, radiusKm: 696000 };
+  // The charge: a ship in deep space at (1,0) AU doing 30 km/s in +y (vector epoch = the query time, so no drift).
+  const charge = {
+    id: 'charge', kind: 'construct', name: 'Charge', parentId: 'star', flight_state: 'Deep Space',
+    vector_position_au: { x: 1, y: 0 }, vector_velocity_ms: { x: 0, y: 30000 }, vector_epoch_ms: 5 * DAY
+  };
+  const sysF = { id: 'f', nodes: [starF, charge] } as unknown as System;
+  const seg = (pts: { x: number; y: number }[]) => ({
+    id: 'seg', type: 'Coast', startTime: 0, endTime: DAY, startState: { r: pts[0], v: { x: 0, y: 0 } },
+    endState: { r: pts[pts.length - 1], v: { x: 0, y: 0 } }, hostId: 'star', pathPoints: pts, warnings: [], fuelUsed_kg: 0
+  });
+  const escortShip = (standKm?: number) => ({
+    id: 'esc', kind: 'construct', name: 'Escort', parentId: 'star',
+    scheduled_journeys: [{
+      id: 'j1', status: 'completed',
+      plans: [{ id: 'p', originId: 'star', targetId: 'charge', startTime: 0, totalTime_days: 1,
+                segments: [seg([{ x: 0, y: 0 }, { x: 1, y: 0 }])], escortStandoffKm: standKm }]
+    }]
+  }) as unknown as CelestialBody;
+
+  it('after rendezvous the escort rides its charge — velocity-matched formation in open space', () => {
+    const res = sampleJourneyKinematicsAtTime(sysF, escortShip(undefined), 5 * DAY)!;
+    expect(res.state).toBe('Deep Space');
+    expect(res.position_au.x).toBeCloseTo(1, 9);
+    expect(res.position_au.y).toBeCloseTo(0, 9);
+    expect(res.velocity_ms.y).toBeCloseTo(30000, 6); // matched, not zero
+  });
+
+  it('a km standoff trails the charge along its velocity vector', () => {
+    const standKm = 149597.8707; // = exactly 0.001 AU, for clean maths
+    const res = sampleJourneyKinematicsAtTime(sysF, escortShip(standKm), 5 * DAY)!;
+    expect(res.position_au.x).toBeCloseTo(1, 9);
+    expect(res.position_au.y).toBeCloseTo(-0.001, 9); // trailing behind the +y motion
+    expect(res.velocity_ms.y).toBeCloseTo(30000, 6);  // same matched velocity either way
+  });
+
+  it('a charge that OUT-ACCELERATES the escort breaks formation — left behind, coasting from the break', () => {
+    // The charge commits a 10 m/s² burn at day 6. A 1 m/s² escort must break formation AT that moment and
+    // coast on from the state it held right then; a 100 m/s² escort keeps up as if nothing happened.
+    const burn = {
+      id: 's1', type: 'Accel', startTime: 6 * DAY, endTime: 6 * DAY + 3_600_000, hostId: 'star',
+      startState: { r: { x: 1, y: 0.0173 }, v: { x: 0, y: 30000 / AU_M } },
+      endState: { r: { x: 1, y: 0.0175 }, v: { x: 0, y: 66000 / AU_M } }, // +36 km/s over 1 h = 10 m/s²
+      pathPoints: [{ x: 1, y: 0.0173 }, { x: 1, y: 0.0175 }], warnings: [], fuelUsed_kg: 0
+    };
+    const chargeBurning = {
+      ...charge,
+      scheduled_journeys: [{ id: 'cj', status: 'scheduled', plans: [{ id: 'cp', originId: 'star', targetId: 'x', startTime: 6 * DAY, totalTime_days: 0.05, segments: [burn] }] }]
+    };
+    const sysB = { id: 'b', nodes: [starF, chargeBurning] } as unknown as System;
+    const escortWithCap = (cap: number) => {
+      const e: any = escortShip(undefined);
+      e.scheduled_journeys[0].plans[0].escortMaxAccel_ms2 = cap;
+      return e as CelestialBody;
+    };
+
+    const kept = sampleJourneyKinematicsAtTime(sysB, escortWithCap(100), 8 * DAY)!; // strong escort: still formation
+    expect(kept.position_au.x).toBeCloseTo(1, 6);
+    expect(kept.position_au.y).toBeCloseTo((30000 * 3 * 86400) / AU_M, 6); // charge's (linear) state at day 8
+
+    const left = sampleJourneyKinematicsAtTime(sysB, escortWithCap(1), 8 * DAY)!;   // weak escort: broken at day 6
+    const yAtBreak = (30000 * 86400) / AU_M; // charge state at the break moment (day 6, epoch day 5)
+    const exp = coastConicAt(sysB, { x: 1, y: yAtBreak }, { x: 0, y: 30000 }, 6 * DAY, 8 * DAY)!;
+    expect(left.position_au.x).toBeCloseTo(exp.position_au.x, 9); // EXACTLY the coast from the break state
+    expect(left.position_au.y).toBeCloseTo(exp.position_au.y, 9);
+    const gap = Math.hypot(left.position_au.x - kept.position_au.x, left.position_au.y - kept.position_au.y);
+    expect(gap).toBeGreaterThan(1e-4); // visibly left behind
+  });
+});
+
+describe('sampleJourneyKinematicsAtTime — a new journey supersedes an old cancelled drift', () => {
+  // Regression: a ship stranded (cancelled journey w/ cancelState) and then given a NEW journey was still
+  // resolving to the old drift, because the cancelled-drift branch returned immediately on the first
+  // (earliest-start) log and the later journey never got to govern — log read right, orrery showed adrift.
+  const star = { id: 'star', kind: 'body', roleHint: 'star', classes: ['star/G'], parentId: null, massKg: SOLAR, radiusKm: 696000 };
+  const sysWithStar = { id: 's', nodes: [star] } as unknown as System;
+
+  const DAY = 86400 * 1000;
+  const seg = (pts: { x: number; y: number }[]) => ({
+    id: 'seg', type: 'Coast', startTime: 0, endTime: DAY, startState: { r: pts[0], v: { x: 0, y: 0 } },
+    endState: { r: pts[pts.length - 1], v: { x: 0, y: 0 } }, hostId: 'star', pathPoints: pts, warnings: [], fuelUsed_kg: 0
+  });
+
+  const ship = {
+    id: 'ship', kind: 'construct', name: 'Test', parentId: 'star',
+    scheduled_journeys: [
+      // 1) Cancelled mid-flight at day 5, left drifting at (5,0) with some velocity.
+      {
+        id: 'journey-cancelled', status: 'cancelled',
+        cancelledAtSec: String(5 * 86400),
+        cancelState: { position_au: { x: 5, y: 0 }, velocity_ms: { x: 0, y: 1000 } },
+        plans: [{ id: 'p1', originId: 'star', targetId: 'star', startTime: 0, totalTime_days: 10,
+                  segments: [seg([{ x: 0, y: 0 }, { x: 5, y: 0 }])], arrivalPlacement: 'lo' }]
+      },
+      // 2) A NEW journey, planned long after the drift began — completes by day 30.
+      {
+        id: 'journey-new', status: 'completed',
+        plans: [{ id: 'p2', originId: 'star', targetId: 'star', startTime: 20 * DAY, totalTime_days: 10,
+                  segments: [seg([{ x: 0, y: 0 }, { x: 1, y: 0 }])], arrivalPlacement: 'lo' }]
+      }
+    ]
+  } as unknown as CelestialBody;
+
+  it('after the new journey completes, the ship is governed by it, not the old drift', () => {
+    const res = sampleJourneyKinematicsAtTime(sysWithStar, ship, 40 * DAY);
+    expect(res).not.toBeNull();
+    expect(res!.journeyId).toBe('journey-new'); // NOT 'journey-cancelled'
+    expect(res!.state).toBe('Orbiting');        // parked at the new journey's target, not 'Deep Space' adrift
+  });
+
+  it('between the cancel and the new journey, the ship is still adrift', () => {
+    const res = sampleJourneyKinematicsAtTime(sysWithStar, ship, 12 * DAY);
+    expect(res).not.toBeNull();
+    expect(res!.journeyId).toBe('journey-cancelled');
+    expect(res!.state).toBe('Deep Space'); // coasting — the new journey hasn't started yet
+  });
+});

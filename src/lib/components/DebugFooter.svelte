@@ -42,12 +42,12 @@
       margin-top: 1em;
   }
   pre {
-    background-color: #1a1a1a;
-    border: 1px solid #333;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-soft);
     padding: 1em;
     border-radius: 5px;
     white-space: pre-wrap;
-    color: #eee;
+    color: var(--text);
     font-family: monospace;
   }
 </style>

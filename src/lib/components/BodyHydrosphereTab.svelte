@@ -2,6 +2,8 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
   import { LIQUIDS as FALLBACK_LIQUIDS } from '$lib/constants';
+  import { liquidsLiquidInRange } from '$lib/physics/liquids';
+  import { fmt } from '$lib/stores';
 
   export let body: CelestialBody;
   export let rulePack: RulePack | null = null;
@@ -12,11 +14,17 @@
 
   $: currentTemp = body.temperatureK || 0;
 
-  // Filter liquids based on current temperature (+/- 20K buffer)
-  // We list ALL liquids defined in liquids.json that are stable, ignoring the generation distribution list.
-  $: validLiquids = liquids.filter(l => 
-      currentTemp >= (l.meltK - 20) && currentTemp <= (l.boilK + 20)
-  );
+  // The surface INSOLATION range (poles↔equator, night↔day, winter↔summer) — excludes localized
+  // tidal-volcanic hotspots, which are vents, not where a standing liquid body sits.
+  $: profile = body.temperatureProfile;
+  $: surfaceMinK = profile ? profile.totalMinK : currentTemp;
+  $: surfaceMaxK = profile
+      ? Math.max(profile.meanK, ...profile.components.filter(c => c.source !== 'tidal-hotspot').map(c => c.highK))
+      : currentTemp;
+
+  // Offer every liquid that is LIQUID somewhere across that range (e.g. liquid at the equator even
+  // if the mean is below freezing) — the temperature model now informs which solvents are viable.
+  $: validLiquids = liquidsLiquidInRange(surfaceMinK, surfaceMaxK, rulePack);
   
   // Check if current selection is valid
   $: currentLiquidDef = body.hydrosphere ? liquids.find(l => l.name === body.hydrosphere!.composition) : null;
@@ -26,7 +34,7 @@
       : (currentTemp >= (currentLiquidDef.meltK - 20) && currentTemp <= (currentLiquidDef.boilK + 20));
       
   $: warningMsg = !isCurrentValid && body.hydrosphere 
-      ? `Warning: ${Math.round(currentTemp - 273.15)}°C is outside stability range for ${currentLiquidDef?.label || body.hydrosphere.composition}.` 
+      ? `Warning: ${$fmt.tempK(currentTemp)} is outside stability range for ${currentLiquidDef?.label || body.hydrosphere.composition}.`
       : '';
 
   // Coverage Slider State
@@ -135,6 +143,22 @@
             </div>
         </div>
     {/if}
+
+    {#if body.hydrosphere?.layers && body.hydrosphere.layers.length}
+        <div class="form-group">
+            <label>Derived Fluid Layers <span class="derived-pill" title="Computed from the composition, temperature range and atmosphere: surface vs subsurface oceans, cloud decks, and the deep conductive layer that drives the magnetic dynamo.">derived</span></label>
+            <div class="layers">
+                {#each body.hydrosphere.layers as l}
+                    <div class="layer">
+                        <span class="l-dot" style="background-color: {l.colorHex || '#888'}"></span>
+                        <span class="l-loc">{l.location}</span>
+                        <span class="l-liq">{l.liquid.replace(/-/g, ' ')}</span>
+                        {#if l.conductive}<span class="l-flag" title="Electrically conductive — can drive a magnetic dynamo">conductive</span>{/if}
+                    </div>
+                {/each}
+            </div>
+        </div>
+    {/if}
 </div>
 
 <style>
@@ -147,11 +171,18 @@
       align-items: center;
   }
   
-  label { color: #ccc; font-size: 0.9em; }
-  input, select { padding: 8px; border-radius: 4px; border: 1px solid #555; background-color: #444; color: #eee; }
+  label { color: var(--text-muted); font-size: 0.9em; }
+  input, select { padding: 8px; border-radius: 4px; border: 1px solid var(--border); background-color: var(--bg-control); color: var(--text); }
   
   select.warning { border-color: #f59e0b; color: #f59e0b; }
   .warning-text { color: #f59e0b; font-size: 0.8em; margin-top: 2px; }
+  .derived-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }
+  .layers { display: flex; flex-direction: column; gap: 4px; }
+  .layer { display: flex; align-items: center; gap: 8px; font-size: 0.85em; }
+  .l-dot { width: 11px; height: 11px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); flex: 0 0 auto; }
+  .l-loc { color: var(--text-muted); text-transform: capitalize; width: 78px; flex: 0 0 auto; }
+  .l-liq { color: var(--text); text-transform: capitalize; }
+  .l-flag { font-size: 0.72em; color: #6aa0d8; border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-left: auto; }
 
   .viz-container {
       position: relative;
@@ -186,6 +217,6 @@
       display: flex;
       justify-content: space-between;
       font-size: 0.7em;
-      color: #888;
+      color: var(--text-faint);
   }
 </style>

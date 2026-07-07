@@ -8,6 +8,7 @@
   import { AU_KM } from '$lib/constants';
   import type { RulePack } from '$lib/types';
   import { get } from 'svelte/store';
+  import { fmt } from '$lib/stores';
   import { getNodeColor } from '$lib/rendering/colors';
   import { getAbsoluteOrbitalDistanceAU } from '$lib/system/utils';
   import { calculateFlightTelemetry, type TelemetryPoint } from '$lib/transit/telemetry';
@@ -15,6 +16,7 @@
 
   import DualRangeSlider from './DualRangeSlider.svelte';
   import TransitStressGraph from './TransitStressGraph.svelte';
+  import BodyPicker from './BodyPicker.svelte';
 
   function getTcmClass(g: number): string {
       if (g > 10.0) return 'tcm-critical';
@@ -34,7 +36,10 @@
   export let completedPlans: TransitPlan[] = [];
   export let initialState: StateVector | undefined = undefined;
 
-  const dispatch = createEventDispatcher(); 
+  const dispatch = createEventDispatcher();
+
+  // Infeasible plans (no engine → infinite fuel) read as "—", not "Infinityt".
+  const fmtT = (kg: number) => Number.isFinite(kg) ? `${(kg / 1000).toFixed(1)}t` : '—';
 
   let targetId: ID = '';
   let selectedOrbitId: string = 'lo'; // Default to Low Orbit
@@ -113,14 +118,14 @@
       if (isImpossible && plan) {
           return {
               title: 'Journey Cannot Be Executed',
-              detail: `Required delta-V is ${(plan.totalDeltaV_ms / 1000).toFixed(1)} km/s, but ship capability is ${(maxPotentialDeltaV_ms / 1000).toFixed(1)} km/s (fully fueled).`
+              detail: `Required delta-V is ${$fmt.speedMs(plan.totalDeltaV_ms, 1)}, but ship capability is ${$fmt.speedMs(maxPotentialDeltaV_ms, 1)} (fully fueled).`
           };
       }
 
       if (isInsufficientFuel && plan && currentConstructSpecs) {
           return {
               title: 'Journey Cannot Be Executed',
-              detail: `Required delta-V is ${(plan.totalDeltaV_ms / 1000).toFixed(1)} km/s, but current fuel supports ${(currentConstructSpecs.totalVacuumDeltaV_ms / 1000).toFixed(1)} km/s.`
+              detail: `Required delta-V is ${$fmt.speedMs(plan.totalDeltaV_ms, 1)}, but current fuel supports ${$fmt.speedMs(currentConstructSpecs.totalVacuumDeltaV_ms, 1)}.`
           };
       }
 
@@ -888,32 +893,6 @@
         <strong>Current Position:</strong> <span style="color: #eee;">{originString}</span>
     </div>
     
-    {#if completedPlans.length > 0}
-        <div class="completed-legs">
-            <h4>Journey So Far</h4>
-            {#each completedPlans as leg, i}
-                <div class="leg-summary">
-                    <strong>Leg {i + 1}:</strong>
-                    {system.nodes.find(n => n.id === leg.originId)?.name || 'Unknown'}
-                    →
-                    {system.nodes.find(n => n.id === leg.targetId)?.name || 'Unknown'}
-                    <span class="leg-meta">
-                        ({formatDuration(leg.totalTime_days)}, {(leg.totalFuel_kg/1000).toFixed(1)}t fuel)
-                    </span>
-                    {#if i === completedPlans.length - 1}
-                        <button class="remove-leg-btn" on:click={() => dispatch('undoLastLeg')} title="Undo this leg">×</button>
-                    {/if}
-                </div>
-            {/each}
-            <div class="total-summary">
-                <strong>Total:</strong> 
-                {formatDuration(completedPlans.reduce((a,b) => a + b.totalTime_days, 0))} / 
-                {(totalUsedFuel/1000).toFixed(1)}t fuel
-            </div>
-            <hr/>
-        </div>
-    {/if}
-
     {#if currentConstructSpecs}
         {@const startFuel = currentConstructSpecs.fuelMass_tonnes * 1000}
         {@const remainingAfterLegs = startFuel - totalUsedFuel}
@@ -922,7 +901,10 @@
         
         <div class="fuel-gauge-container">
             <div class="fuel-labels">
-                <span>Fuel</span>
+                <span>Fuel
+                  <button type="button" title="Fill all tanks to capacity" on:click={() => dispatch('refuel')}
+                    style="margin-left:6px; background:transparent; border:1px solid var(--border); color:var(--accent); border-radius:4px; padding:1px 7px; cursor:pointer; font:inherit; font-size:0.85em;">⛽ Refuel</button>
+                </span>
                 <span>
                     <span style="color: #88ccff">{(remainingAfterLegs/1000).toFixed(1)}t</span> 
                     {#if planCost > 0}
@@ -957,12 +939,15 @@
     
     <div class="form-group">
         <label>Target</label>
-        <select bind:value={targetId} on:change={handleTargetChange}>
-            <option value="">Select Target...</option>
-            {#each bodies as body}
-                <option value={body.id} style="color: {getOptionColor(body)}">{body.name}</option>
-            {/each}
-        </select>
+        <BodyPicker
+            inline
+            nodes={bodies}
+            focusedId={targetId}
+            emptyLabel="Select target…"
+            placeholder="Search destinations…"
+            colorOf={getOptionColor}
+            on:select={(e) => { targetId = e.detail; handleTargetChange(); }}
+        />
         
         {#if orbitOptions.length > 0}
             <select bind:value={selectedOrbitId} on:change={handleCalculate} style="margin-top: 5px; font-size: 0.9em; padding: 0.3em;">
@@ -976,6 +961,10 @@
                 {/each}
             </select>
         {/if}
+        <button type="button" on:click={() => dispatch('interstellar')}
+            style="margin-top:8px; width:100%; background:transparent; border:1px dashed var(--border); color:var(--accent); border-radius:4px; padding:7px; cursor:pointer; font:inherit; font-size:0.85em;">
+            ✦ …or plan an interstellar journey to another system
+        </button>
     </div>
 
     {#if hiddenPlanCount > 0}
@@ -987,15 +976,15 @@
     {#if isImpossible && currentConstructSpecs && plan}
         <div class="warning-box impossible" style="background-color: #330000; border-color: #660000; color: #ff6666; text-align: left; padding: 0.8em; margin-bottom: 1em;">
              <strong>🚫 Engine Capability Exceeded (Insufficient Isp)</strong><br/>
-             Plan requires <span style="color: white;">{(plan.totalDeltaV_ms/1000).toFixed(1)} km/s</span>. 
-             Ship max (fully fueled) is <span style="color: white;">{(maxPotentialDeltaV_ms/1000).toFixed(1)} km/s</span>.
+             Plan requires <span style="color: white;">{$fmt.speedMs(plan.totalDeltaV_ms, 1)}</span>.
+             Ship max (fully fueled) is <span style="color: white;">{$fmt.speedMs(maxPotentialDeltaV_ms, 1)}</span>.
              <div style="font-size: 0.9em; color: #aaa; margin-top: 0.3em;">To achieve this range, you need higher efficiency engines (e.g. Nuclear/Fusion), not just more fuel.</div>
         </div>
     {:else if isInsufficientFuel && currentConstructSpecs && plan}
         <div class="warning-box insufficient-fuel" style="background-color: #332b00; border-color: #665500; color: #ffcc00; text-align: left; padding: 0.8em; margin-bottom: 1em;">
              <strong>⛽ Insufficient Fuel</strong><br/>
-             Plan requires <span style="color: white;">{(plan.totalDeltaV_ms/1000).toFixed(1)} km/s</span>.
-             Current fuel provides <span style="color: white;">{(currentConstructSpecs.totalVacuumDeltaV_ms/1000).toFixed(1)} km/s</span>.
+             Plan requires <span style="color: white;">{$fmt.speedMs(plan.totalDeltaV_ms, 1)}</span>.
+             Current fuel provides <span style="color: white;">{$fmt.speedMs(currentConstructSpecs.totalVacuumDeltaV_ms, 1)}</span>.
              <div style="font-size: 0.9em; color: #aaa; margin-top: 0.3em;">Refuel your ship to reach the required range.</div>
         </div>
     {/if}
@@ -1014,7 +1003,7 @@
                     {#if (p.initialDelay_days || 0) > 0}
                         <div class="plan-fuel" style="font-size: 0.8em; color: #88ccff;">wait {(p.initialDelay_days || 0)}d</div>
                     {/if}
-                    <div class="plan-fuel" style="font-size: 0.9em; color: #aaa;">{(p.totalFuel_kg/1000).toFixed(1)}t</div>
+                    <div class="plan-fuel" style="font-size: 0.9em; color: #aaa;">{fmtT(p.totalFuel_kg)}</div>
                     <div class="plan-g">{(p.maxG || 0).toFixed(2)} g / {(((p.accelRatio || 0) + (p.brakeRatio || 0)) * 100).toFixed(0)}%</div>                    {#if p.hiddenReason}
                         <div style="font-size: 0.7em; color: #ff6666; margin-top: 4px; text-transform: uppercase;">
                             {p.hiddenReason.replace('Unstable Direct Burn ', '').replace(/[()]/g, '')}
@@ -1123,17 +1112,17 @@
             </div>
             <div class="result-item">
                 <span>Delta-V:</span>
-                <strong>{(plan.totalDeltaV_ms / 1000).toFixed(2)} km/s</strong>
+                <strong>{$fmt.speedMs(plan.totalDeltaV_ms, 2)}</strong>
             </div>
             <div class="result-item">
                 <span>Arrival Rel. Speed:</span>
-                <strong>{(plan.arrivalVelocity_ms / 1000).toFixed(2)} km/s</strong>
+                <strong>{$fmt.speedMs(plan.arrivalVelocity_ms, 2)}</strong>
             </div>
             <div class="result-item">
                 <span>Fuel:</span>
                 <strong>
-                    {(plan.totalFuel_kg / 1000).toFixed(1)}t
-                    {#if originId}
+                    {fmtT(plan.totalFuel_kg)}
+                    {#if originId && Number.isFinite(plan.totalFuel_kg)}
                         {@const construct = system.nodes.find(n => n.id === (constructId || originId))}
                         {#if construct && construct.fuel_tanks && construct.fuel_tanks.length > 0}
                             {@const mainTank = construct.fuel_tanks.reduce((prev, current) => (prev.capacity_units > current.capacity_units) ? prev : current)}
@@ -1141,7 +1130,7 @@
                             {@const density = fuelDef ? fuelDef.density_kg_per_m3 : 1000}
                             {@const capacityKg = mainTank.capacity_units * density}
                             {@const currentKg = mainTank.current_units * density}
-                            / 
+                            /
                             <span style="color: {(currentKg - totalUsedFuel - plan.totalFuel_kg) < 0 ? '#ff3333' : '#88ccff'}">
                                 {((currentKg - totalUsedFuel - plan.totalFuel_kg) / 1000).toFixed(1)}t left
                             </span>
@@ -1197,12 +1186,8 @@
         
         <div class="actions" class:executing={isExecuting}>
             {#if plan}
-                <div class="action-group">
-                    <button class="calculate-btn" on:click={() => dispatch('addNextLeg', plan)} disabled={isImpossible || isInsufficientFuel || isExecuting} title={isImpossible ? "Plan Impossible" : (isInsufficientFuel ? "Insufficient Fuel" : "Add to Flight Plan")}>Add Next Leg</button>
-                    {#if completedPlans.length > 0}
-                         <button class="cancel-btn" on:click={() => dispatch('undoLastLeg')} disabled={isExecuting}>Cancel Previous Leg</button>
-                    {/if}
-                </div>
+                <!-- Single hop: schedule THIS journey. Multi-stop is built by planning the next hop after
+                     it (the planner re-opens from this journey's end-state) — chained on the timeline. -->
                 <div class="execute-wrap">
                     <button class="calculate-btn execute" on:click={() => triggerExecute(plan)} disabled={!canAfford || isImpossible || isInsufficientFuel || isExecuting} title={isImpossible ? "Plan Impossible (See warning above)" : (isInsufficientFuel ? "Insufficient Fuel (See warning above)" : (!canAfford ? "Insufficient Fuel" : "Schedule Flight Plan"))}>
                         {isExecuting ? 'Simulating Transit...' : 'Schedule Journey'}
@@ -1211,21 +1196,6 @@
                         <button
                             class="disabled-capture"
                             on:click={() => handleBlockedExecuteClick(plan)}
-                            title="Show why this journey cannot be executed"
-                            aria-label="Explain why execute journey is blocked"
-                        ></button>
-                    {/if}
-                </div>
-            {:else if completedPlans.length > 0}
-                <button class="cancel-btn" on:click={() => dispatch('undoLastLeg')} disabled={isExecuting}>Cancel Last Leg</button>
-                <div class="execute-wrap">
-                    <button class="calculate-btn execute" on:click={() => triggerExecute(null)} disabled={!canAfford || isExecuting} title={!canAfford ? "Insufficient Fuel" : "Schedule Flight Plan"}>
-                        {isExecuting ? 'Simulating Transit...' : 'Schedule Journey'}
-                    </button>
-                    {#if !isExecuting && !canAfford}
-                        <button
-                            class="disabled-capture"
-                            on:click={() => handleBlockedExecuteClick(null)}
                             title="Show why this journey cannot be executed"
                             aria-label="Explain why execute journey is blocked"
                         ></button>
@@ -1242,8 +1212,8 @@
 <style>
     .planner-panel {
         padding: 1em;
-        background: #222;
-        border: 1px solid #444;
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
         border-radius: 5px;
         display: flex;
         flex-direction: column;
@@ -1264,17 +1234,17 @@
         display: flex;
         justify-content: space-between;
         font-size: 0.8em;
-        color: #888;
+        color: var(--text-faint);
     }
     select, input[type="text"], input[type="range"], .static-value {
-        background: #333;
-        color: #eee;
-        border: 1px solid #555;
+        background: var(--bg-panel);
+        color: var(--text);
+        border: 1px solid var(--border);
         padding: 0.5em;
         border-radius: 3px;
     }
     .static-value {
-        color: #88ccff;
+        color: var(--link);
         font-weight: bold;
     }
     .action-group {
@@ -1296,7 +1266,7 @@
     }
     .calculate-btn {
         flex: 1;
-        background: #444;
+        background: var(--bg-control);
         color: white;
         padding: 0.5em;
         border: none;
@@ -1314,7 +1284,7 @@
     }
     .cancel-btn:hover { background: #773333; }
     
-    .calculate-btn:hover { background: #555; }
+    .calculate-btn:hover { background: var(--bg-control-hover); }
     
     .calculate-btn.execute {
         background-color: #28a745;
@@ -1361,21 +1331,21 @@
     .dialog-card {
         width: min(520px, calc(100vw - 24px));
         background: #1f1f1f;
-        border: 1px solid #555;
+        border: 1px solid var(--border);
         border-radius: 8px;
         padding: 14px;
-        color: #eee;
+        color: var(--text);
     }
     .dialog-card h4 {
         margin: 0 0 8px 0;
     }
     .dialog-card p {
         margin: 0 0 10px 0;
-        color: #ccc;
+        color: var(--text-muted);
     }
     .dialog-note {
         font-size: 0.9em;
-        color: #aaa;
+        color: var(--text-muted);
     }
     .dialog-actions {
         display: flex;
@@ -1389,35 +1359,35 @@
     }
     .close-btn {
         margin-top: 0; /* Align with row */
-        background: #333;
-        border: 1px solid #444;
-        color: #aaa;
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        color: var(--text-muted);
         cursor: pointer;
         padding: 0.5em;
         width: auto;
     }
     .preview-slider {
-        border-top: 1px solid #444;
+        border-top: 1px solid var(--border);
         padding-top: 1em;
         margin-top: 0.5em;
     }
     .completed-legs {
-        background: #1a1a1a;
+        background: var(--bg-panel);
         padding: 0.5em;
         border-radius: 3px;
         margin-bottom: 1em;
         border-left: 3px solid #007bff;
     }
     .tags-container-box {
-        background: #1a1a1a;
+        background: var(--bg-panel);
         padding: 0.6em;
         border-radius: 4px;
         margin-top: 0.8em;
-        border: 1px solid #333;
+        border: 1px solid var(--border-soft);
     }
     .tags-label {
         font-size: 0.7em;
-        color: #888;
+        color: var(--text-faint);
         text-transform: uppercase;
         letter-spacing: 0.05em;
         margin-bottom: 4px;
@@ -1433,8 +1403,8 @@
         font-size: 0.8em;
         font-weight: bold;
         text-transform: uppercase;
-        background-color: #444;
-        color: #eee;
+        background-color: var(--bg-control);
+        color: var(--text);
     }
     .tag.sundiver {
         background-color: #dc3545;
@@ -1463,7 +1433,7 @@
     .completed-legs h4 {
         margin: 0 0 0.5em 0;
         font-size: 0.9em;
-        color: #aaa;
+        color: var(--text-muted);
         text-transform: uppercase;
     }
     .plan-selector {
@@ -1473,8 +1443,8 @@
     }
     .plan-card {
         flex: 1;
-        background: #333;
-        border: 1px solid #555;
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
         border-radius: 4px;
         padding: 8px;
         cursor: pointer;
@@ -1482,7 +1452,7 @@
         transition: all 0.2s;
     }
     .plan-card:hover {
-        background: #444;
+        background: var(--bg-control);
     }
     .plan-card.selected {
         background: #004085;
@@ -1493,16 +1463,16 @@
         font-weight: bold;
         text-transform: uppercase;
         font-size: 0.8em;
-        color: #fff;
+        color: var(--text);
         margin-bottom: 2px;
     }
     .plan-time {
         font-size: 1.1em;
-        color: #88ccff;
+        color: var(--link);
     }
     .plan-g {
         font-size: 0.8em;
-        color: #aaa;
+        color: var(--text-muted);
     }
     .controls-section {
         transition: opacity 0.3s;
@@ -1517,12 +1487,12 @@
         margin-bottom: 0.25em;
     }
     .leg-meta {
-        color: #888;
+        color: var(--text-faint);
         margin-left: 0.5em;
     }
     hr {
         border: 0;
-        border-top: 1px solid #444;
+        border-top: 1px solid var(--border);
         margin: 0.5em 0;
     }
     .warning-box {
@@ -1568,7 +1538,7 @@
         background: #111;
         padding: 0.8em;
         border-radius: 4px;
-        border: 1px solid #333;
+        border: 1px solid var(--border-soft);
         margin-bottom: 0.5em;
     }
     .fuel-labels {
@@ -1577,11 +1547,11 @@
         font-size: 0.8em;
         margin-bottom: 5px;
         text-transform: uppercase;
-        color: #888;
+        color: var(--text-faint);
     }
     .fuel-bar-bg {
         height: 10px;
-        background: #222;
+        background: var(--bg-panel);
         border-radius: 5px;
         position: relative;
         overflow: hidden;
@@ -1606,7 +1576,7 @@
     }
     .advanced-toggle {
         font-size: 0.85em;
-        color: #aaa;
+        color: var(--text-muted);
         cursor: pointer;
         padding: 5px;
         user-select: none;
@@ -1615,7 +1585,7 @@
         gap: 5px;
     }
     .advanced-toggle:hover {
-        color: #fff;
+        color: var(--text);
     }
     .warning-text {
         color: #ff6666;

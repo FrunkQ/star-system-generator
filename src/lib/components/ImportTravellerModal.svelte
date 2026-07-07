@@ -164,22 +164,22 @@
       z-index: 2000;
   }
   .modal-content {
-      background: #222;
+      background: var(--bg-panel);
       padding: 20px;
       border-radius: 8px;
       width: 400px;
-      color: #eee;
-      border: 1px solid #444;
+      color: var(--text);
+      border: 1px solid var(--border);
   }
   .form-group { margin-bottom: 15px; position: relative; }
-  label { display: block; margin-bottom: 5px; color: #aaa; }
-  input, select { width: 100%; padding: 8px; background: #333; border: 1px solid #555; color: #fff; }
-  
+  label { display: block; margin-bottom: 5px; color: var(--text-muted); }
+  input, select { width: 100%; padding: 8px; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text); }
+
   .dropdown-list {
       position: absolute;
       top: 100%; left: 0; right: 0;
-      background: #333;
-      border: 1px solid #555;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
       list-style: none;
       padding: 0; margin: 0;
       max-height: 200px;
@@ -187,10 +187,10 @@
       z-index: 100;
   }
   .dropdown-list li { padding: 8px; cursor: pointer; }
-  .dropdown-list li:hover { background: #444; }
+  .dropdown-list li:hover { background: var(--bg-control); }
 
   .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
   button { padding: 8px 16px; cursor: pointer; }
-  .status { color: #aaa; font-style: italic; }
-  .hint { font-size: 0.8em; color: #888; margin-top: 4px; }
+  .status { color: var(--text-muted); font-style: italic; }
+  .hint { font-size: 0.8em; color: var(--text-faint); margin-top: 4px; }
 </style>

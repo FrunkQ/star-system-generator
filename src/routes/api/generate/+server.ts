@@ -6,10 +6,8 @@ export const POST: RequestHandler = async ({ request }) => {
   try {
     const { settings, fullPrompt } = await request.json();
 
-    if (!settings.apiKey) {
-      console.error('[API /api/generate] Error: API key not set.');
-      return json({ error: 'OpenRouter API key is not set in settings.' }, { status: 400 });
-    }
+    // API key is OPTIONAL now: a local server (LM Studio / Ollama at e.g. http://localhost:1234/v1)
+    // needs none. Only hosted providers (OpenRouter) require one — we just forward whatever's set.
     if (!settings.selectedModel) {
       console.error('[API /api/generate] Error: Model not selected.');
       return json({ error: 'No LLM model selected in settings.' }, { status: 400 });
@@ -19,13 +17,14 @@ export const POST: RequestHandler = async ({ request }) => {
       return json({ error: 'No prompt was provided to the API.' }, { status: 400 });
     }
 
-    console.log(`[API /api/generate] Sending request to OpenRouter endpoint: ${settings.apiEndpoint}/chat/completions`);
-    const response = await fetch(`${settings.apiEndpoint}/chat/completions`, {
+    const endpoint = (settings.apiEndpoint || 'https://openrouter.ai/api/v1').replace(/\/$/, '');
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (settings.apiKey) headers['Authorization'] = `Bearer ${settings.apiKey}`;
+
+    console.log(`[API /api/generate] Sending request to endpoint: ${endpoint}/chat/completions`);
+    const response = await fetch(`${endpoint}/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${settings.apiKey}`
-      },
+      headers,
       body: JSON.stringify({
         model: settings.selectedModel,
         messages: [{ role: 'user', content: fullPrompt }],

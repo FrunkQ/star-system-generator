@@ -1,7 +1,7 @@
 <script lang="ts">
   export let data;
   const { exampleSystems } = data;
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { browser } from '$app/environment';
   import { pushState, replaceState } from '$app/navigation';
   import { page } from '$app/stores';
@@ -9,27 +9,62 @@
   import type { RulePack, System, Starmap as StarmapType, StarSystemNode, Route } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import { generateSystem, renameNode } from '$lib/api';
-  import { validateStarmap } from '$lib/utils';
+  import { validateStarmap, generateId } from '$lib/utils';
+  import { broadcastService } from '$lib/broadcast';
+  import { computePlayerStarmapSnapshot } from '$lib/system/utils';
+  import CompanionModal from '$lib/components/CompanionModal.svelte';
+  import InterstellarTransitModal from '$lib/components/InterstellarTransitModal.svelte';
+  import { brandingStore } from '$lib/catalogue/branding';
+  import { guideConfigStore } from '$lib/catalogue/guideConfig';
+  import { crtControls } from '$lib/catalogue/crtControls';
   import { starmapStore } from '$lib/starmapStore';
-  import { systemStore, viewportStore } from '$lib/stores';
+  import { systemStore, viewportStore, measurementUnit, temperatureUnit } from '$lib/stores';
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap } from '$lib/starmapStorage';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
+  import GenerationWizard from '$lib/components/GenerationWizard.svelte';
   import Starmap from '$lib/components/Starmap.svelte';
   import SystemView from '$lib/components/SystemView.svelte';
+  import BodyPicker from '$lib/components/BodyPicker.svelte';
+  import TagFinder from '$lib/components/TagFinder.svelte';
   import RouteEditorModal from '$lib/components/RouteEditorModal.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
+  import PoIPackEditor from '$lib/components/PoIPackEditor.svelte';
+  import CoIEditor from '$lib/components/CoIEditor.svelte';
+  import { coiForStarmap, mergeStarmapCoIs, derivedStatusKey } from '$lib/constructs/coi';
   import LlmSettingsModal from '$lib/components/LlmSettingsModal.svelte';
+  import EditFuelAndDrivesModal from '$lib/components/EditFuelAndDrivesModal.svelte';
+  import AutopilotShipIcon from '$lib/components/AutopilotShipIcon.svelte';
+  import EditAtmospheresModal from '$lib/components/EditAtmospheresModal.svelte';
+  import EditSensorsModal from '$lib/components/EditSensorsModal.svelte';
+  import EditTemporalModal from '$lib/components/EditTemporalModal.svelte';
+  import AboutModal from '$lib/components/AboutModal.svelte';
+  import HelpMenuModal from '$lib/components/HelpMenuModal.svelte';
+  import WelcomeModal from '$lib/components/WelcomeModal.svelte';
   import EvolutionaryWizard from '$lib/components/EvolutionaryWizard.svelte';
   import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, STARTDATE_EPOCH_OFFSET_T } from '$lib/temporal/defaults';
-  import { parseClockSeconds } from '$lib/temporal/utre';
+  import { parseClockSeconds, resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
+  import { getJourneyBounds } from '$lib/transit/scheduler';
   import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
-  import { registerDebugStateProvider } from '$lib/debugDump';
+  import { systemProcessor } from '$lib/core/SystemProcessor';
+  import { fixUpImportedSystem, stripStarmapForExport } from '$lib/system/importFixup';
+  import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
+  import ShipPanel from '$lib/components/ShipPanel.svelte';
+  import { constructDisplayPlacement, interstellarConstructIds, endJourneyAtSource } from '$lib/transit/interstellar';
 
   let rulePacks: RulePack[] = [];
   let isLoading = true;
   let error: string | null = null;
 
+  // Companion App broadcast lives here (root), not in SystemView, so the players' field guide works
+  // whether the GM is on the starmap or inside a system. We own the session id; SystemView reuses it.
+  let broadcastSessionId = generateId();
+  let showCompanionModal = false;
+  let showInterstellarModal = false;
+  let interstellarShipId = '';
+
   let showNewStarmapModal = false;
+  let showGenerationWizard = false;
+  let pendingWizardPosition: { x: number; y: number } | null = null;
   let showEvolutionaryWizard = false;
   let pendingStarmapData: any = null;
   let currentSystemId: string | null = null;
@@ -40,6 +75,399 @@
   let routeToEdit: Route | null = null;
   let showSettingsModal = false;
   let showLlmSettingsModal = false;
+  let showPoiEditor = false;
+  let showCoiEditor = false;
+  // Technology editors (rulepack overrides) + About — moved up here from Starmap so the
+  // sectioned Settings modal can open them from either view.
+  let showFuelModal = false;
+  let showAtmosphereModal = false;
+  let showSensorsModal = false;
+  let showTemporalModal = false;
+  let showAbout = false;
+  let showHelpMenu = false;
+  // First-run V2 welcome (shown once — returning V1 users need to know what changed).
+  const WELCOME_KEY = 'sse_welcome_v2_seen';
+  let showWelcome = false;
+  function dismissWelcome() {
+    showWelcome = false;
+    try { if (browser) localStorage.setItem(WELCOME_KEY, '1'); } catch { /* private mode */ }
+  }
+  // Sub-editors opened FROM Settings reopen it (at the section they came from) when closed,
+  // so Back/close walks up the hierarchy instead of dumping the user back in the app.
+  let settingsReturnSection: 'starmap' | 'time' | 'technology' | 'planets' | 'system' | null = null;
+  function returnToSettings() {
+    if (settingsReturnSection) showSettingsModal = true;
+  }
+  function applyStarmapOverrides(overrides: any) {
+    starmapStore.update((s) => s ? { ...s, rulePackOverrides: { ...s.rulePackOverrides, ...overrides } } : s);
+  }
+
+  // Begin an interstellar journey from the transit planner: stamp it with the current game clock so
+  // the ship marker animates along the starmap as time plays/scrubs.
+  function handleStartJourney(e: CustomEvent<any>) {
+    const d = e.detail;
+    starmapStore.update((s) => {
+      if (!s) return s;
+      const startTimeSec = s.temporal?.displayTimeSec ?? '0';
+      const journey = {
+        id: `journey-${generateId()}`,
+        shipId: d.shipId,
+        shipName: d.shipName,
+        fromSystemId: d.fromSystemId,
+        toSystemId: d.toSystemId,
+        toBodyId: d.toBodyId ?? null,
+        toBodyName: d.toBodyName,
+        mode: d.mode,
+        startTimeSec: String(startTimeSec),
+        durationSec: d.observerSeconds,
+        ...(d.cannotStop ? { cannotStop: true } : {}),
+        ...(d.toX != null && d.toY != null ? { toX: d.toX, toY: d.toY, toLabel: d.toLabel } : {}),
+        ...(d.fromX != null && d.fromY != null ? { fromX: d.fromX, fromY: d.fromY, fromLabel: d.fromLabel } : {}),
+        ...(d.redirectDvMs ? { redirectDvMs: d.redirectDvMs } : {}),
+      };
+      // Realistic mode drains the propellant the trip burns from the ship's tanks (scaled across tanks so
+      // the total drops by the used mass). Departing spends the fuel even if the journey is later cancelled.
+      const drainKg = Number(d.fuelUsedKg) || 0;
+      const fuelDefs = (effectiveRulePack || selectedRulepack)?.fuelDefinitions?.entries || [];
+      const systems = (drainKg <= 0) ? s.systems : s.systems.map((sys) => {
+        if (sys.id !== d.fromSystemId || !sys.system?.nodes) return sys;
+        const nodes = sys.system.nodes.map((n: any) => {
+          if (n.id !== d.shipId || !n.fuel_tanks?.length) return n;
+          let total = 0;
+          for (const t of n.fuel_tanks) { const fd = fuelDefs.find((f: any) => f.id === t.fuel_type_id); if (fd) total += (t.current_units ?? 0) * fd.density_kg_per_m3; }
+          if (total <= 0) return n;
+          const factor = Math.max(0, (total - drainKg) / total);
+          return { ...n, fuel_tanks: n.fuel_tanks.map((t: any) => ({ ...t, current_units: (t.current_units ?? 0) * factor })) };
+        });
+        return { ...sys, system: { ...sys.system, nodes } };
+      });
+      // One live journey per ship — starting a new one replaces any prior flight for that ship.
+      const others = (s.activeJourneys ?? []).filter((j) => j.shipId !== d.shipId);
+      return { ...s, systems, activeJourneys: [...others, journey] };
+    });
+    showInterstellarModal = false;
+  }
+
+  // --- All-Bodies picker (cross-starmap directory): find any body/construct across every
+  // system and jump straight to it. Lives in the rail (PC side panel) / + menu (mobile). ---
+  let showAllBodies = false;
+  let showTagFinder = false; // find bodies by tag across all systems
+  let showAllShips = false; // constructs-only directory ("Ships")
+  let showRoutes = false; // routes & journeys list (in-system underway/planned + interstellar)
+  $: routesData = (() => {
+    const map = $starmapStore;
+    if (!map) return { interstellar: [] as any[], journeys: [] as any[], interstellarJourneys: [] as any[], stranded: [] as any[], autopilotShips: [] as any[] };
+    const sysName = (id: string) => map.systems.find((s) => s.id === id)?.name ?? id;
+    const interstellar = (map.routes ?? []).map((r) => ({
+      id: r.id, source: sysName(r.sourceSystemId), target: sysName(r.targetSystemId), distance: r.distance, unit: r.unit
+    }));
+    // Live interstellar flights (ships in transit between systems) — stored on the starmap, not on a
+    // construct, so they're gathered separately. Status/progress + timing come from the game clock.
+    const nowSec = Number(map.temporal?.displayTimeSec ?? 0);
+    const cal = map.temporal?.temporal_registry?.[map.temporal?.activeCalendarKey ?? ''];
+    const fmtDate = (sec: number) => { try { return cal ? resolveCalendar(BigInt(Math.round(sec)), cal).formatted : ''; } catch { return ''; } };
+    const dDays = (sec: number) => Math.round((sec - nowSec) / 86400);   // +ahead / −behind, in days
+    const rel = (sec: number) => { const d = dDays(sec); return d === 0 ? 'today' : d > 0 ? `in ${d}d` : `${-d}d ago`; };
+    // A "when" line for a journey given its start/end (game seconds) + status.
+    const whenLine = (start: number, end: number, status: string, pct: number) =>
+      status === 'scheduled' ? `Departs ${fmtDate(start)} · ${rel(start)}`
+      : status === 'completed' ? `Arrived ${fmtDate(end)} · ${rel(end)}`
+      : `${pct}% · departed ${rel(start)} · arrives ${fmtDate(end)} (${rel(end)})`;
+    const interstellarJourneys = (map.activeJourneys ?? []).map((j: any) => {
+      const start = Number(j.startTimeSec ?? 0);
+      const end = start + Number(j.durationSec ?? 0);
+      const status = nowSec < start ? 'scheduled' : (nowSec >= end ? 'completed' : 'active');
+      const pct = end > start ? Math.max(0, Math.min(100, Math.round(((nowSec - start) / (end - start)) * 100))) : 0;
+      return {
+        id: j.id, shipName: j.shipName ?? 'Ship', from: sysName(j.fromSystemId), to: sysName(j.toSystemId),
+        fromSystemId: j.fromSystemId, toSystemId: j.toSystemId, toBodyId: j.toBodyId ?? null, toBodyName: j.toBodyName, status, pct,
+        when: whenLine(start, end, status, pct)
+      };
+    });
+    // Manual/player journeys go in the main list; autopilot-flown ones are pulled out and grouped per-ship
+    // under the "Under autopilot" heading (kept off the manual list, and collapsible since a route can be long).
+    const journeys: any[] = [];
+    const apJourneysByConstruct: Record<string, any[]> = {};
+    for (const sys of map.systems) {
+      const nodes = sys.system?.nodes ?? [];
+      const nodeName = (id: string) => (nodes as any[]).find((n) => n.id === id)?.name ?? id;
+      for (const n of nodes as any[]) {
+        if (n.kind !== 'construct') continue;
+        for (const j of (n.scheduled_journeys ?? [])) {
+          if (j.status !== 'scheduled' && j.status !== 'active') continue;
+          const plans = j.plans ?? [];
+          if (!plans.length) continue;
+          const bounds = getJourneyBounds(plans);   // unix-MS timestamps
+          // In-system journeys are unix-ms; whenLine/nowSec work in MASTER (since-Big-Bang) seconds. Convert,
+          // or the dates resolve ~13.8 billion years off (the Big-Bang offset). See docs/time-architecture.md.
+          const startS = bounds ? Number(unixMsToMasterSeconds(bounds.startMs)) : nowSec;
+          const endS = bounds ? Number(unixMsToMasterSeconds(bounds.endMs)) : nowSec;
+          const row = {
+            id: j.id, constructId: n.id, constructName: n.name, systemId: sys.id, systemName: sys.name,
+            origin: nodeName(plans[0].originId), target: nodeName(plans[plans.length - 1].targetId),
+            status: j.status, legs: plans.length,
+            when: whenLine(startS, endS, j.status, endS > startS ? Math.max(0, Math.min(100, Math.round(((nowSec - startS) / (endS - startS)) * 100))) : 0)
+          };
+          if (j.autopilot) (apJourneysByConstruct[n.id] = apJourneysByConstruct[n.id] || []).push(row);
+          else journeys.push(row);
+        }
+      }
+    }
+    // Stranded = cut loose, coasting (not under power, not orbiting). In-system: a construct carrying a
+    // cancelled journey with a captured cancelState. Interstellar: anything in adriftConstructs. (Times kept
+    // out of here deliberately until the clock/epoch audit — just who & where.)
+    const stranded: any[] = [];
+    for (const sys of map.systems) {
+      for (const n of (sys.system?.nodes ?? []) as any[]) {
+        if (n.kind !== 'construct') continue;
+        const cancelled = (n.scheduled_journeys ?? []).filter((j: any) => j.status === 'cancelled' && j.cancelState);
+        if (!cancelled.length) continue;
+        const last = cancelled[cancelled.length - 1];
+        // Only stranded if the drift hasn't been SUPERSEDED — i.e. no later (non-cancelled) journey has
+        // started since the cancel. A rescued ship now on/finished a new journey isn't adrift any more.
+        // (Mirrors the supersede fix in sampleJourneyKinematicsAtTime / isCoastingNow.)
+        const cancelSec = last.cancelledAtSec ? Number(last.cancelledAtSec) : 0;
+        const superseded = (n.scheduled_journeys ?? []).some((j: any) => {
+          if (j.status === 'cancelled') return false;
+          const b = getJourneyBounds(j.plans ?? []);
+          if (!b) return false;
+          const startSec = b.startMs / 1000;
+          return startSec > cancelSec && nowSec >= startSec;
+        });
+        if (superseded) continue;
+        const plans = last.plans ?? [];
+        const wasBound = plans.length ? ((sys.system?.nodes ?? []) as any[]).find((x) => x.id === plans[plans.length - 1].targetId)?.name : null;
+        stranded.push({ id: n.id, constructName: n.name, where: sys.name, systemId: sys.id, wasBound, interstellar: false });
+      }
+    }
+    for (const a of (map.adriftConstructs ?? [])) {
+      if (!a.construct?.id) continue;
+      const j = (map.activeJourneys ?? []).find((x: any) => x.shipId === a.construct.id);
+      stranded.push({ id: a.construct.id, constructName: a.construct.name ?? 'Ship', where: 'Interstellar space', wasBound: sysName(a.toSystemId ?? ''), interstellar: true, journeyId: j?.id ?? null });
+    }
+    // Under autopilot — constructs with an engaged plan. (Plan summary for now; live action + the "!" stuck
+    // marker arrive with the planner. Capture-only.)
+    const autopilotShips: any[] = [];
+    const TRAVERSAL_LABEL: Record<string, string> = { 'in-order': 'all in order', 'best-order': 'all, best order', 'any': 'any as needed' };
+    for (const sys of map.systems) {
+      for (const n of (sys.system?.nodes ?? []) as any[]) {
+        if (n.kind !== 'construct' || !n.autopilot?.enabled) continue;
+        const ap = n.autopilot;
+        const nodeName = (id: string) => ((sys.system?.nodes ?? []) as any[]).find((x) => x.id === id)?.name ?? 'somewhere';
+        const resNames = (keys: string[] = []) => keys.map((k: string) => k === 'people/passengers' ? 'passengers' : k.split('/')[1]).join('/');
+        const legText = (leg: any) => {
+          if (!leg) return '';
+          if (leg.action === 'mine') return `mine ${resNames(leg.resourceKeys) || 'resource'}`;
+          if (leg.action === 'transport') return `transport ${resNames(leg.resourceKeys) || 'cargo'}${leg.placeId ? ` from ${nodeName(leg.placeId)}` : ''}`;
+          if (leg.action === 'escort') return `escort ${leg.placeId ? nodeName(leg.placeId) : 'ship'}${leg.escortKm != null ? ` @ ${leg.escortKm}km` : ''}`;
+          const fly = (leg.loiterDays ?? 0) === 0;
+          if (leg.action === 'patrol') return `${fly ? 'flyby' : 'patrol'} ${leg.placeId ? nodeName(leg.placeId) : 'system'}`;
+          return `${fly ? 'flyby' : 'explore'}${resNames(leg.resourceKeys) ? ' for ' + resNames(leg.resourceKeys) : ''}`;
+        };
+        const first = ap.legs?.[0];
+        const tail = `${TRAVERSAL_LABEL[ap.traversal] ?? ap.traversal}${ap.repeat === false ? ' · once' : ''}`;
+        const summary = first ? `${legText(first)}${ap.legs.length > 1 ? ` +${ap.legs.length - 1}` : ''} · ${tail}` : 'no stops set';
+        // Attention marker. orange = needs GM setup (no stops). red = stuck: engaged with a route but the
+        // planner produced no journeys (couldn't reach/fuel the first hop, or all journeys were aborted).
+        const hasLiveJourneys = (n.scheduled_journeys || []).some((l: any) => l.status !== 'cancelled');
+        const attention = !ap.legs?.length ? 'intervention' : !hasLiveJourneys ? 'stuck' : null;
+        const attentionLabel = attention === 'stuck' ? 'Stuck — no journeys (could not reach/fuel the next stop)' : attention === 'intervention' ? 'Needs setup — no stops added' : '';
+        autopilotShips.push({ id: n.id, constructName: n.name, where: sys.name, systemId: sys.id, summary, attention, attentionLabel, journeys: apJourneysByConstruct[n.id] ?? [] });
+      }
+    }
+    // Attention-needing ships sort to the top — best way to scan the fleet at a glance.
+    const ATTN_RANK: Record<string, number> = { stuck: 0, intervention: 1, done: 2 };
+    autopilotShips.sort((a, b) => (ATTN_RANK[a.attention] ?? 3) - (ATTN_RANK[b.attention] ?? 3));
+    // Worst current attention across the fleet → drives the rail Routes notification dot.
+    const worstAttention = autopilotShips.find((s) => s.attention)?.attention ?? null;
+    return { interstellar, journeys, interstellarJourneys, stranded, autopilotShips, worstAttention };
+  })();
+  $: allShips = allBodies.filter((n: any) => n.kind === 'construct');
+  $: allBodies = (() => {
+    const map = $starmapStore;
+    if (!map) return [] as any[];
+    const nowSec = Number(map.temporal?.displayTimeSec ?? 0);
+    const interIds = interstellarConstructIds(map, nowSec);
+    const out: any[] = [];
+    for (const sys of map.systems) {
+      const sysName = sys.name;
+      for (const n of (sys.system?.nodes ?? [])) {
+        if (n.kind !== 'body' && n.kind !== 'construct') continue;
+        // An interstellar construct (in transit / stranded) has left its system — list it under
+        // "Interstellar space", not its source system, so it isn't found where it no longer is.
+        if (n.kind === 'construct' && interIds.has(n.id)) {
+          const j = (map.activeJourneys ?? []).find((x) => x.shipId === n.id);
+          out.push({ ...n, __systemId: `interstellar:${n.id}`, __systemName: 'Interstellar space', __interstellar: true, __journeyId: j?.id ?? null });
+        } else {
+          out.push({ ...n, __systemId: sys.id, __systemName: sysName });
+        }
+      }
+    }
+    // Constructs fully pulled out into interstellar space (no longer in any system's nodes).
+    for (const a of (map.adriftConstructs ?? [])) {
+      const c = a.construct;
+      if (c && !out.some((x) => x.id === c.id)) {
+        out.push({ ...c, __systemId: `interstellar:${c.id}`, __systemName: 'Interstellar space', __interstellar: true, __journeyId: null });
+      }
+    }
+    return out;
+  })();
+  // Find-by-tag node + scope lists. Interstellar constructs (in transit OR stranded) belong to no system
+  // map, so each becomes its own pseudo-"system" (id `interstellar:<id>`) grouped at the bottom of the
+  // scope dropdown; "All systems" still includes them. Adrift ships (not in any system's nodes) are added.
+  $: tagFinderNodes = (() => {
+    const map = $starmapStore;
+    if (!map) return [] as any[];
+    const nowSec = Number(map.temporal?.displayTimeSec ?? 0);
+    const interIds = interstellarConstructIds(map, nowSec);
+    const out: any[] = [];
+    for (const sys of map.systems) {
+      for (const n of (sys.system?.nodes ?? [])) {
+        if (n.kind !== 'body' && n.kind !== 'construct') continue;
+        if (n.kind === 'construct' && interIds.has(n.id)) {
+          // Mirror the internal interstellar state as a (non-persisted) derived Status tag so you can
+          // find e.g. all adrift / in-transit ships by tag — the rescue search.
+          const sk = derivedStatusKey(constructDisplayPlacement(map, n.id, nowSec).kind);
+          const tags = sk ? [...(n.tags ?? []), { key: sk, coi: true, derived: true }] : (n.tags ?? []);
+          out.push({ ...n, tags, __systemId: `interstellar:${n.id}`, __systemName: n.name, __interstellar: true });
+        } else if (n.kind === 'construct') {
+          // In-system construct mid an in-system transit (a scheduled journey straddling now) gets the
+          // derived "In transit (in-system)" status, mirroring the interstellar mirror above.
+          const midTransit = (n.scheduled_journeys ?? []).some((j: any) => {
+            if (j.status !== 'active' && j.status !== 'scheduled') return false;
+            const b = (j.plans?.length) ? getJourneyBounds(j.plans) : null;
+            return b ? (b.startMs / 1000 <= nowSec && nowSec < b.endMs / 1000) : false;
+          });
+          const tags = midTransit ? [...(n.tags ?? []), { key: 'status/in-transit-system', coi: true, derived: true }] : (n.tags ?? []);
+          out.push({ ...n, tags, __systemId: sys.id, __systemName: sys.name });
+        } else {
+          out.push({ ...n, __systemId: sys.id, __systemName: sys.name });
+        }
+      }
+    }
+    for (const a of (map.adriftConstructs ?? [])) {
+      const c = a.construct; if (!c) continue;
+      if (out.some((n) => n.id === c.id)) continue;   // already added via a journey above
+      const sk = derivedStatusKey(constructDisplayPlacement(map, c.id, nowSec).kind);
+      const tags = sk ? [...(c.tags ?? []), { key: sk, coi: true, derived: true }] : (c.tags ?? []);
+      out.push({ ...c, tags, __systemId: `interstellar:${c.id}`, __systemName: c.name, __interstellar: true });
+    }
+    return out;
+  })();
+  $: tagFinderSystems = (() => {
+    const real = ($starmapStore?.systems ?? []).map((s) => ({ id: s.id, name: s.name, interstellar: false }));
+    const seen = new Set<string>(); const inter: { id: string; name: string; interstellar: boolean }[] = [];
+    for (const n of tagFinderNodes) if (n.__interstellar && !seen.has(n.__systemId)) { seen.add(n.__systemId); inter.push({ id: n.__systemId, name: n.__systemName, interstellar: true }); }
+    return [...real, ...inter];
+  })();
+
+  // Every distinct tag key across the starmap — fed to the PoI editor for its "has tag" conditions.
+  $: allTagKeys = (() => {
+    const s = new Set<string>();
+    for (const n of allBodies) for (const t of (n.tags ?? [])) if (t?.key) s.add(t.key);
+    return [...s];
+  })();
+  function allBodiesContext(n: any): string {
+    if (n.__interstellar) return 'Interstellar space';
+    const parent = allBodies.find((x) => x.id === (n.orbit?.hostId || n.parentId) && x.__systemId === n.__systemId);
+    const where = parent ? `orbits ${parent.name}` : '';
+    return [n.__systemName, where].filter(Boolean).join(' · ');
+  }
+  function enterSystemAndFocus(sysId: string, focusId: string | null) {
+    const currentMap = get(starmapStore);
+    const systemNode = currentMap?.systems.find((s) => s.id === sysId);
+    if (!systemNode) return;
+    viewportStore.set(systemNode.viewport ?? { pan: { x: 0, y: 0 }, zoom: 1 });
+    systemStore.set(JSON.parse(JSON.stringify(systemNode.system)));
+    pushState('', focusId ? { systemId: sysId, focusId } : { systemId: sysId });
+  }
+  function handleAllBodiesSelect(e: CustomEvent<string>) {
+    const node = allBodies.find((n) => n.id === e.detail);
+    showAllBodies = false;
+    if (!node) return;
+    // Interstellar construct → open its starmap ship panel (it has no system to enter).
+    if (node.__interstellar) {
+      if (node.__journeyId) { if (currentSystemId) exitToStarmap(); shipPanelJourneyId = node.__journeyId; }
+      return;
+    }
+    enterSystemAndFocus(node.__systemId, node.id);
+  }
+  function handleTagFinderSelect(e: CustomEvent<{ systemId: string; id: string }>) {
+    showTagFinder = false;
+    // An interstellar construct has no system to enter — open its starmap-level ship panel instead.
+    if (e.detail.systemId?.startsWith('interstellar:')) {
+      const j = ($starmapStore?.activeJourneys ?? []).find((x) => x.shipId === e.detail.id);
+      if (j) { if (currentSystemId) exitToStarmap(); shipPanelJourneyId = j.id; }
+      return;
+    }
+    enterSystemAndFocus(e.detail.systemId, e.detail.id);
+  }
+  // Inter-system distance from the system the GM is currently in, in the map's unit — only meaningful
+  // on a scaled map and when inside a system. Null otherwise (→ TagFinder sorts alphabetically).
+  // --- Starmap-level ship panel (an in-flight / stranded / arrived construct, opened from its
+  // starmap marker). Full construct editor + in-flight controls, all against the store. ---
+  let shipPanelJourneyId: string | null = null;
+  $: shipPanel = (() => {
+    const map = $starmapStore;
+    if (!shipPanelJourneyId || !map) return null;
+    const j = (map.activeJourneys ?? []).find((x) => x.id === shipPanelJourneyId);
+    if (!j) return null;
+    const sysNode = map.systems.find((s) => s.id === j.fromSystemId);   // construct still lives here pre-reconcile
+    const construct = sysNode?.system?.nodes.find((n) => n.id === j.shipId) as any;
+    if (!construct || !sysNode?.system) return null;
+    const host = (sysNode.system.nodes.find((n) => n.id === construct.parentId) as any) ?? null;
+    const p = constructDisplayPlacement(map, j.shipId, Number(map.temporal?.displayTimeSec ?? 0));
+    let status: 'before' | 'transit' | 'adrift' | 'arrived' = 'before';
+    let frac = 0;
+    if (p.kind === 'transit') { status = 'transit'; frac = p.frac; }
+    else if (p.kind === 'adrift') status = 'adrift';
+    else if (p.kind === 'system' && p.systemId === j.toSystemId) status = 'arrived';
+    return { journey: j, construct, system: sysNode.system, host, status, frac, fromName: sysNode.name, toName: map.systems.find((s) => s.id === j.toSystemId)?.name ?? '' };
+  })();
+  function handleShipResolve(journeyId: string, outcome: 'return' | 'arrive' | 'strand', coast?: boolean) {
+    const m = $starmapStore;
+    if (!m) return;
+    const nowSec = String(m.temporal?.displayTimeSec ?? '0');
+    // Send-home / cancel actually REMOVES the journey (it's undone — the ship is back in its origin), not
+    // just marks it. Any later journeys for the same vessel become invalid (the chain can't skip a leg),
+    // so they're removed too — with a warning that lists them first.
+    if (outcome === 'return') {
+      const journey = (m.activeJourneys ?? []).find((j) => j.id === journeyId);
+      if (!journey) return;
+      const sName = (id?: string) => m.systems.find((s) => s.id === id)?.name ?? id ?? '?';
+      const future = (m.activeJourneys ?? []).filter((j) => j.id !== journeyId && j.shipId === journey.shipId);
+      if (future.length) {
+        const list = future.map((f) => `• ${sName(f.fromSystemId)} → ${sName(f.toSystemId)}`).join('\n');
+        if (!confirm(`Cancelling this journey will permanently remove ${future.length} onward journey(s) for ${journey.shipName} (the chain can't continue without this leg):\n\n${list}\n\nProceed?`)) return;
+      }
+      let next = endJourneyAtSource(m, journeyId);          // drops the journey, ship stays in its origin
+      if (future.length) next = { ...next, activeJourneys: (next.activeJourneys ?? []).filter((j) => j.shipId !== journey.shipId) };
+      starmapStore.set(next);
+      shipPanelJourneyId = null;                             // journey's gone — close its panel
+      return;
+    }
+    // arrive / strand stay reversible (resume / re-fly) — just record the outcome.
+    starmapStore.update((mm) => mm ? { ...mm, activeJourneys: (mm.activeJourneys ?? []).map((j) => j.id === journeyId ? { ...j, outcome, endedAtSec: nowSec, ...(outcome === 'strand' ? { strandCoast: coast } : {}) } : j) } : mm);
+  }
+  function handleShipResume(journeyId: string) {
+    starmapStore.update((m) => m ? { ...m, activeJourneys: (m.activeJourneys ?? []).map((j) => j.id === journeyId ? { ...j, outcome: undefined, endedAtSec: undefined } : j) } : m);
+  }
+  function handleShipConstructUpdate(updated: any) {
+    starmapStore.update((m) => m ? { ...m, systems: m.systems.map((s) => s.system ? { ...s, system: { ...s.system, nodes: s.system.nodes.map((n) => n.id === updated.id ? updated : n) } } : s) } : m);
+  }
+
+  // Refuel a starmap ship (fill its tanks). The construct still lives in its origin-system node.
+  function handleShipRefuel(constructId: string) {
+    starmapStore.update((m) => m ? { ...m, systems: m.systems.map((s) => s.system ? { ...s, system: { ...s.system, nodes: s.system.nodes.map((n) => (n.id === constructId && Array.isArray((n as any).fuel_tanks)) ? { ...n, fuel_tanks: (n as any).fuel_tanks.map((t: any) => ({ ...t, current_units: t.capacity_units })) } : n) } } : s) } : m);
+  }
+
+  function tagFinderDistance(systemId: string): number | null {
+    const map = $starmapStore;
+    if (systemId?.startsWith('interstellar:')) return null;   // interstellar ships have no system distance
+    if (!currentSystemId || !map || (map.mapMode ?? 'diagrammatic') !== 'scaled') return null;
+    if (systemId === currentSystemId) return 0;
+    return getSystemDistanceLy(map, currentSystemId, systemId);
+  }
 
   let selectedRulepack: RulePack | undefined;
   let fileInput: HTMLInputElement;
@@ -137,13 +565,6 @@
       return pack;
   })();
 
-  // Live state for the support debug dump (Ctrl+Alt+Shift+D, see $lib/debugDump).
-  registerDebugStateProvider(() => ({
-    currentSystemId,
-    currentSystem: get(systemStore),
-    starmap: get(starmapStore)
-  }));
-
   onMount(async () => {
     try {
       const starterRulepack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json');
@@ -156,6 +577,10 @@
       isLoading = false;
     }
 
+    // First-run V2 welcome — once per browser, independent of whether a starmap exists (V1 upgraders
+    // have a saved map; new users don't). Shown over whatever loads underneath.
+    try { if (browser && localStorage.getItem(WELCOME_KEY) !== '1') showWelcome = true; } catch { /* private mode */ }
+
     await migrateLegacyStarmapToIndexedDb();
     hasSavedStarmap = await hasPersistedStarmap();
     if (hasSavedStarmap) {
@@ -164,6 +589,35 @@
       showNewStarmapModal = true;
     }
   });
+
+  // --- Companion App broadcast (whole redacted starmap) ---
+  onMount(() => {
+    if (!browser) return;
+    broadcastService.initSender(broadcastSessionId);
+    broadcastService.onRequestStarmap = (requestingId) => {
+      if (requestingId && requestingId !== broadcastSessionId) return;
+      const map = get(starmapStore);
+      if (map) broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: computePlayerStarmapSnapshot(map) });
+      broadcastService.sendMessage({ type: 'SYNC_BRANDING', payload: get(brandingStore) });
+      broadcastService.sendMessage({ type: 'SYNC_GUIDECONFIG', payload: { ...get(guideConfigStore), crt: get(crtControls) } });
+    };
+  });
+  // Re-broadcast the redacted starmap whenever it changes, so connected guides stay live.
+  $: if (browser && $starmapStore) {
+    broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: computePlayerStarmapSnapshot($starmapStore) });
+  }
+  // Push branding (company name + logo) to guides whenever the GM edits it.
+  $: if (browser && $brandingStore) {
+    broadcastService.sendMessage({ type: 'SYNC_BRANDING', payload: $brandingStore });
+  }
+  // Push the GM-enforced guide view (skin/colour/constructs + CRT effect) whenever the GM changes it.
+  $: if (browser && ($guideConfigStore || $crtControls)) {
+    broadcastService.sendMessage({ type: 'SYNC_GUIDECONFIG', payload: { ...$guideConfigStore, crt: $crtControls } });
+  }
+
+  // Keep the runtime display units in sync with the loaded starmap (source of truth).
+  $: measurementUnit.set($starmapStore?.measurementUnits ?? 'metric');
+  $: temperatureUnit.set($starmapStore?.temperatureUnit ?? 'C');
 
   // Subscribe to systemStore and update starmapStore
   systemStore.subscribe(system => {
@@ -411,28 +865,64 @@
     }
   }
 
+        // Direct, unconditional exit straight to the starmap — clears the focused system and
+        // replaces the (possibly multi-level focus) history entry so we land on the map, not
+        // somewhere up the focus hierarchy or back at the initial page load.
+        function exitToStarmap() {
+            currentSystemId = null;
+            systemStore.set(null);
+            replaceState('', {});
+        }
+
         function handleBackToStarmap(event: CustomEvent<{ force?: boolean }> | undefined) {
-          // Check if this was a forced exit (e.g. from SystemView intercepting a Back button)
+          // Forced exit (e.g. SystemView intercepting a Back button, or the persistent rail's
+          // "← Starmap") goes straight to the map. A plain back walks the history stack so the
+          // in-system "Zoom Out" hierarchy nav still works.
           const force = event?.detail?.force;
-    
-                if (force) {
-                    // console.log('Forced Exit to Starmap');
-                    currentSystemId = null;
-                    systemStore.set(null);              // We use replaceState to ensure we are effectively "on" the Starmap now, 
-              // replacing the sticky system entry we were stuck on.
-              replaceState('', {}); 
+          if (force) {
+              exitToStarmap();
           } else {
-              // Standard "To Starmap" button click. 
-              // We prefer history.back() to play nice with the stack, 
-              // BUT if the stack is messy, this might fail.
-              // For now, let's trust the button means "Back".
               history.back();
           }
         }
+  // On load we re-run the FULL physics + tagging pipeline over every system, so a stored starmap
+  // picks up the current model (new tags, sharpened PoI, ring/* derivation, …) rather than whatever
+  // was baked in when it was last saved. A progress overlay (one tick per system) keeps it honest.
+  let physicsProgress: { done: number; total: number; joke: string } | null = null;
+  const PHYSICS_JOKES = [
+    'Re-lighting the stars…', 'Nudging electrons back into orbit…', 'Asking the gas giants to hold still…',
+    'Negotiating with the second law of thermodynamics…', 'Convincing the moons to stay tidally locked…',
+    'Balancing the barycentres…', 'Letting the comets finish their laps…', 'Warming up the habitable zones…',
+    'Counting the rings (twice)…', 'Apologising to Pluto…', 'Checking nobody fell into a black hole…',
+    'Carrying the one — it is a big one…', 'Spinning up the dynamos…', 'Measuring twice, cutting the snow line once…'
+  ];
+  async function recalcAllSystems(starmap: StarmapType): Promise<StarmapType> {
+    const systems = starmap.systems ?? [];
+    if (!selectedRulepack || systems.length === 0) return starmap;
+    physicsProgress = { done: 0, total: systems.length, joke: PHYSICS_JOKES[0] };
+    await tick();
+    for (let i = 0; i < systems.length; i++) {
+      const node = systems[i];
+      try {
+        if (node?.system?.nodes) {
+          // STRIP baked-in derived data first (same as file import), THEN re-derive. Without the strip
+          // a stored body keeps its old class/tags — the processor's guard won't re-classify a body that
+          // already has a (stale) non-empty class — so an engine fix (e.g. the moon-eyeball correction)
+          // would never show on a refresh of an existing map. Authored inputs + GM-pinned types survive.
+          node.system = systemProcessor.process(fixUpImportedSystem(node.system, selectedRulepack), selectedRulepack);
+        }
+      } catch (e) { console.warn('Recalc failed for system', node?.name, e); }
+      physicsProgress = { done: i + 1, total: systems.length, joke: i % 3 === 2 ? PHYSICS_JOKES[(i + 1) % PHYSICS_JOKES.length] : physicsProgress.joke };
+      await new Promise((r) => setTimeout(r, 30));   // yield so the bar repaints + the run reads as real
+    }
+    physicsProgress = null;
+    return starmap;
+  }
+
   async function handleLoadStarmap() {
     const savedStarmap = await loadSavedStarmap();
     if (savedStarmap) {
-      starmapStore.set(savedStarmap);
+      starmapStore.set(await recalcAllSystems(savedStarmap));
     } else {
       alert('No starmap found in browser storage.');
     }
@@ -443,52 +933,30 @@
           const response = await fetch('/example-starmaps/Local_Neighbourhood-Starmap.json');
           if (!response.ok) throw new Error('Failed to load example starmap.');
           const data = await response.json();
-          starmapStore.set(data);
+          starmapStore.set(await recalcAllSystems(data));
           showNewStarmapModal = false;
       } catch (e) {
           alert('Error loading example starmap: ' + (e as Error).message);
       }
   }
 
+  // "Add System" now opens the generation wizard (examples / presets / HR + age + knobs) instead of
+  // dropping a fully-random system. The clicked position is remembered for placement.
   function handleAddSystemAt(event: CustomEvent<{ x: number; y: number }>) {
     if (!$starmapStore || !selectedRulepack) return;
+    pendingWizardPosition = { x: event.detail.x, y: event.detail.y };
+    showGenerationWizard = true;
+  }
 
-    const { x, y } = event.detail;
-    const generationEngine = $starmapStore.generationEngine || 'standard';
-
-    if (generationEngine === 'evolutionary') {
-      pendingStarmapData = { 
-        name: "New System", 
-        rulepack: selectedRulepack, 
-        distanceUnit: $starmapStore.distanceUnit, 
-        unitIsPrefix: $starmapStore.unitIsPrefix, 
-        mapMode: $starmapStore.mapMode,
-        position: { x, y }
-      };
-      showEvolutionaryWizard = true;
-      return;
-    }
-
-    const seed = `seed-${Date.now()}`;
-    const newSystem = generateSystem(seed, selectedRulepack, {}, 'Random', false);
+  // The wizard produced a fully-processed system — drop it at the remembered position.
+  function placeGeneratedSystem(event: CustomEvent<{ system: System }>) {
+    showGenerationWizard = false;
+    const pos = pendingWizardPosition; pendingWizardPosition = null;
+    if (!$starmapStore || !pos) return;
+    const newSystem = event.detail.system;
     const displayTimeSec = parseClockSeconds($starmapStore.temporal?.displayTimeSec, STARTDATE_EPOCH_OFFSET_T).toString();
-
-    const newSystemNode: StarSystemNode = {
-      id: newSystem.id,
-      name: newSystem.name,
-      position: { x, y },
-      system: newSystem,
-      time: {
-        displayTimeSec
-      }
-    };
-
-    starmapStore.update(starmap => {
-      if (starmap) {
-        starmap.systems = [...starmap.systems, newSystemNode];
-      }
-      return starmap;
-    });
+    const newSystemNode: StarSystemNode = { id: newSystem.id, name: newSystem.name, position: pos, system: newSystem, time: { displayTimeSec } };
+    starmapStore.update(starmap => { if (starmap) starmap.systems = [...starmap.systems, newSystemNode]; return starmap; });
   }
 
 
@@ -592,11 +1060,17 @@
   }
 
   function handleDeleteSystem(event: CustomEvent<string>) {
-    const systemIdToDelete = event.detail;
+    const target = event.detail;
     starmapStore.update(starmap => {
       if (starmap) {
-        starmap.systems = starmap.systems.filter(s => s.id !== systemIdToDelete);
-        starmap.routes = starmap.routes.filter(r => r.sourceSystemId !== systemIdToDelete && r.targetSystemId !== systemIdToDelete);
+        // Systems are keyed on the wrapper NODE id, but a delete can arrive with either that node id
+        // (starmap right-click) or the inner system.id (deleting the primary star from inside the
+        // system) — and for imported/legacy systems those two differ, so a straight s.id match misses.
+        // Resolve to the node id first (same dual-id lookup used when saving a system back).
+        const node = starmap.systems.find(s => s.id === target || s.system?.id === target);
+        const nodeId = node?.id ?? target;
+        starmap.systems = starmap.systems.filter(s => s.id !== nodeId);
+        starmap.routes = starmap.routes.filter(r => r.sourceSystemId !== nodeId && r.targetSystemId !== nodeId);
       }
       return starmap;
     });
@@ -612,16 +1086,42 @@
   }
 
   function handleClearStarmap() {
-    if (confirm('ARE YOU SURE? This will clear the current starmap from the screen. Your saved starmap in browser storage will remain.')) {
+    if (confirm('Clear the current starmap and start a new one?\n\nDownload it first if you want to keep a copy.')) {
       starmapStore.set(null);
       showNewStarmapModal = true;
     }
   }
 
+  // File > New Starmap. Guard the destructive replace: only confirm when there's actually a
+  // populated starmap to lose (first run / empty map opens straight to the modal).
+  function handleRequestNewStarmap() {
+    const current = get(starmapStore);
+    const hasContent = !!current && Array.isArray(current.systems) && current.systems.length > 0;
+    if (hasContent && !confirm('Start a new starmap?\n\nThis clears the current one. Download it first if you want to keep a copy.')) return;
+    showNewStarmapModal = true;
+  }
+
+  // Re-run the PoI "reasons to visit" tagger across every system after the pack editor closes, so
+  // rule/category/pack edits take effect immediately rather than waiting for the next body edit.
+  function reprocessAllReasons() {
+    starmapStore.update((map) => {
+      if (!map) return map;
+      for (const node of map.systems) if (node?.system) annotateReasonsToVisit(node.system);
+      return { ...map };
+    });
+    const open = get(systemStore);
+    if (open) { annotateReasonsToVisit(open); systemStore.set({ ...open }); }
+  }
+
   function handleDownloadStarmap() {
     if (!$starmapStore) return;
 
-    const data = JSON.stringify($starmapStore, null, 2);
+    // Strip derived physics from a CLONE before writing — the load path re-derives everything, so the
+    // file needs only authored inputs. Keeps saved files small and free of stale baked-in data.
+    const lean = stripStarmapForExport($starmapStore, selectedRulepack ?? undefined);
+    // Embed the user's PoI packs + reasons config so they travel inside the .json starmap file.
+    const exportObj = { ...lean, poiPacks: packsForStarmap(), reasonsConfig: get(reasonsConfig), coiCategories: coiForStarmap() };
+    const data = JSON.stringify(exportObj, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -645,8 +1145,29 @@
     reader.onload = () => {
       try {
         const data = JSON.parse(reader.result as string);
+
+        // Bring in any PoI packs / reasons config the starmap carries, BEFORE re-deriving systems,
+        // so the embedded rules drive the re-tag below. These live app-wide once merged.
+        mergeStarmapPacks(data.poiPacks);
+        applyStarmapReasonsConfig(data.reasonsConfig);
+        mergeStarmapCoIs(data.coiCategories);
+
         const sanitized = sanitizeStarmapForRuntime(data as StarmapType);
-        
+        delete (sanitized as any).poiPacks;
+        delete (sanitized as any).reasonsConfig;
+        delete (sanitized as any).coiCategories;
+
+        // One-way import fix-up: strip baked-in derived data / legacy tags from every embedded
+        // system so the new engine re-derives cleanly (v1 starmaps otherwise carry stale physics).
+        if (selectedRulepack && Array.isArray(sanitized.systems)) {
+          for (const node of sanitized.systems) {
+            if (node?.system?.nodes) {
+              try { node.system = systemProcessor.process(fixUpImportedSystem(node.system, selectedRulepack), selectedRulepack); }
+              catch (e) { console.warn('Fix-up failed for system', node.name, e); }
+            }
+          }
+        }
+
         const errors = validateStarmap(sanitized);
         if (errors.length > 0) {
             alert('Starmap Validation Failed:\n\n' + errors.slice(0, 10).join('\n') + (errors.length > 10 ? `\n...and ${errors.length - 10} more errors.` : ''));
@@ -679,6 +1200,7 @@
       return starmap;
     });
     showSettingsModal = false;
+    reprocessAllReasons();   // apply any PoI category toggle changes across the map
   }
 
   function handleSaveLlmSettings() {
@@ -697,6 +1219,20 @@
 
   <input type="file" bind:this={fileInput} on:change={handleFileSelected} style="display: none;" accept=".json" />
 
+  {#if physicsProgress}
+    <div class="physics-overlay" role="status" aria-live="polite">
+      <div class="physics-card">
+        <h2>Running the physics…</h2>
+        <div class="physics-bar"><div class="physics-fill" style="width:{Math.round((physicsProgress.done / physicsProgress.total) * 100)}%"></div></div>
+        <div class="physics-meta">
+          <span>{physicsProgress.done} / {physicsProgress.total} systems</span>
+          <span>{Math.round((physicsProgress.done / physicsProgress.total) * 100)}%</span>
+        </div>
+        <p class="physics-joke">{physicsProgress.joke}</p>
+      </div>
+    </div>
+  {/if}
+
   {#if isLoading}
     <p>Loading rule pack...</p>
   {:else if error}
@@ -712,12 +1248,43 @@
         on:upload={handleUploadStarmap} 
         on:loadExampleStarmap={handleLoadExampleStarmap}
     />
-  {:else if $starmapStore && !currentSystemId}
+  {:else if $starmapStore && currentSystemId}
+    <!-- SystemView owns its own AppShell (rail/strip/canvas/bar/detail/fab); forward app nav. -->
+    {#if $systemStore && effectiveRulePack}
+      <SystemView
+        system={$systemStore} rulePack={effectiveRulePack} {exampleSystems}
+        {broadcastSessionId}
+        routesAttention={routesData.worstAttention}
+        on:new={handleRequestNewStarmap}
+        on:open={handleUploadStarmap}
+        on:save={handleDownloadStarmap}
+        on:settings={() => { settingsReturnSection = null; showSettingsModal = true; }}
+        on:llmsettings={() => { settingsReturnSection = null; showLlmSettingsModal = true; }}
+        on:allbodies={() => showAllBodies = true}
+        on:findtag={() => showTagFinder = true}
+        on:allships={() => showAllShips = true}
+        on:routes={() => showRoutes = true}
+        on:about={() => showAbout = true}
+        on:help={() => showHelpMenu = true}
+        on:catalogue={() => showCompanionModal = true}
+        on:interstellar={(e) => { interstellarShipId = e.detail?.shipId || ''; showInterstellarModal = true; }}
+        on:back={handleBackToStarmap}
+        on:deletesystem={handleDeleteSystem}
+        on:renameNode={handleRenameNode}
+      />
+    {/if}
+  {:else if $starmapStore}
+    <!-- Starmap owns its own AppShell now; forward its rail's app-nav. -->
     <Starmap
       bind:this={starmapComponent}
       starmap={$starmapStore}
       rulePack={selectedRulepack}
+      routesAttention={routesData.worstAttention}
+      on:new={handleRequestNewStarmap}
+      on:catalogue={() => showCompanionModal = true}
       on:systemclick={handleSystemClick}
+      on:focusconstruct={(e) => enterSystemAndFocus(e.detail.systemId, e.detail.id)}
+      on:openship={(e) => shipPanelJourneyId = e.detail.journeyId}
       on:systemzoom={handleSystemZoom}
       on:addsystemat={handleAddSystemAt}
       on:selectsystemforlink={handleSelectSystemForLink}
@@ -726,62 +1293,420 @@
       on:download={handleDownloadStarmap}
       on:upload={handleUploadStarmap}
       on:clear={handleClearStarmap}
-      on:settings={() => showSettingsModal = true}
-      on:llmsettings={() => showLlmSettingsModal = true}
+      on:settings={() => { settingsReturnSection = null; showSettingsModal = true; }}
+      on:llmsettings={() => { settingsReturnSection = null; showLlmSettingsModal = true; }}
+      on:allbodies={() => showAllBodies = true}
+      on:findtag={() => showTagFinder = true}
+      on:allships={() => showAllShips = true}
+      on:routes={() => showRoutes = true}
+      on:about={() => showAbout = true}
+      on:help={() => showHelpMenu = true}
       on:updatestarmap={(e) => starmapStore.set(e.detail)}
       {selectedSystemForLink}
     />
 
-        <footer class="starmap-footer">
-
-          <p><strong>Community Credits:</strong></p>
-          <p>Thanks to @Athena, @Mafro & @malize from the creative community on our <a href="https://discord.gg/UAEq4zzjD8" target="_blank">SSE Discord</a> for the example star systems!</p>
-
-          <p>A special thanks to <a href="https://www.iammitch.com/" target="_blank">Mitch Anderson</a> for permission to use his <a href="https://github.com/tmanderson/Accrete.js" target="_blank">Accrete.js</a> code in the new experimental system generation. That in turn was built on the work of: Stephen H. Dole, Carl Sagan, Richard Isaacson, <a href="https://www.academia.edu/4173808/Extra-Solar_Planetary_Systems_A_Microcomputer_Simulation" target="_blank">Martyn Fogg</a>, Matt Burdick, <a href="https://www.eldacur.com/~brons/NerdCorner/StarGen/StarGen.html" target="_blank">Jim Burrows</a> & <a href="https://znark.com/create/accrete.html" target="_blank">Ian Burrell</a>.</p>
-
-          <p><strong>Image Attributions:</strong></p>
-
-          <p>Planet Images: Courtesy of Pablo Carlos Budassi, used under a <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a> license. Source: <a href="https://pablocarlosbudassi.com/2021/02/planet-types.html" target="_blank" rel="noopener noreferrer">pablocarlosbudassi.com</a>.</p>
-
-          <p>Star Images: Sourced from the <a href="https://beyond-universe.fandom.com/wiki/" target="_blank" rel="noopener noreferrer">Beyond Universe Wiki</a> on Fandom, used under a <a href="https://creativecommons.org/licenses/by-sa/3.0/us/" target="_blank" rel="noopener noreferrer">CC-BY-SA</a> license.</p>
-
-          <p>Magnetar Image & Starmap Background: Courtesy of ESO/L. Calçada & S. Brunier, used under a <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> license. Sources: <a href="https://www.eso.org/public/images/eso1415a/" target="_blank" rel="noopener noreferrer">ESO Magnetar</a>, <a href="https://www.eso.org/public/images/eso0932a/" target="_blank" rel="noopener noreferrer">ESO Milky Way</a>.</p>
-
-          <p>Black Hole Accretion Disk Image: Courtesy of NASA’s Goddard Space Flight Center/Jeremy Schnittman, used under a <a href="https://svs.gsfc.nasa.gov/13232" target="_blank" rel="noopener noreferrer">Public Domain</a> license. Source: <a href="https://svs.gsfc.nasa.gov/13232" target="_blank" rel="noopener noreferrer">NASA SVS</a>.</p>
-
-          <p>H-R Diagram Background: <a href="https://www.eso.org/public/images/eso0728c/" target="_blank" rel="noopener noreferrer">ESO</a>, used under a <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> license.</p>
-
-          <p>Weyland-Yutani Logo: Sourced from <a href="https://commons.wikimedia.org/wiki/File:Weyland-Yutani_cryo-tube.jpg" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> by <a href="https://commons.wikimedia.org/wiki/User:IllaZilla" target="_blank" rel="noopener noreferrer">IllaZilla</a>, used under a <a href="https://creativecommons.org/licenses/by-sa/3.0/deed.en" target="_blank" rel="noopener noreferrer">Creative Commons Attribution-Share Alike 3.0 Unported</a> license. Changes made: Logo Extracted.</p>
-
-          <p class="project-attribution">
-
-            <a href="https://github.com/FrunkQ/star-system-generator" target="_blank" rel="noopener noreferrer">Star System Explorer</a> © 2026 FrunkQ. Licensed under <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank" rel="noopener noreferrer">GPL-3.0</a>.
-
-          </p>
-
-        </footer>
-  {:else if $starmapStore && currentSystemId && $systemStore && effectiveRulePack}
-    <SystemView system={$systemStore} rulePack={effectiveRulePack} {exampleSystems} on:back={handleBackToStarmap} on:renameNode={handleRenameNode} />
   {/if}
 
   {#if showRouteEditorModal && routeToEdit && $starmapStore}
     <RouteEditorModal bind:showModal={showRouteEditorModal} route={routeToEdit} starmap={$starmapStore} on:save={handleSaveRoute} on:rescale={handleRescaleRoute} on:delete={handleDeleteRoute} />
   {/if}
 
+  {#if showGenerationWizard && selectedRulepack}
+    <GenerationWizard rulePack={selectedRulepack} {exampleSystems}
+      on:generate={placeGeneratedSystem} on:close={() => { showGenerationWizard = false; pendingWizardPosition = null; }} />
+  {/if}
+
   {#if showSettingsModal && $starmapStore}
-    <SettingsModal bind:showModal={showSettingsModal} starmap={$starmapStore} on:save={handleSaveSettings} />
+    <SettingsModal
+      bind:showModal={showSettingsModal}
+      starmap={$starmapStore}
+      initialSection={settingsReturnSection}
+      on:save={handleSaveSettings}
+      on:close={() => reprocessAllReasons()}
+      on:edittemporal={() => { settingsReturnSection = 'time'; showTemporalModal = true; }}
+      on:editfuel={() => { settingsReturnSection = 'technology'; showFuelModal = true; }}
+      on:editatmospheres={() => { settingsReturnSection = 'planets'; showAtmosphereModal = true; }}
+      on:editsensors={() => { settingsReturnSection = 'technology'; showSensorsModal = true; }}
+      on:editpoi={() => { settingsReturnSection = 'generation'; showPoiEditor = true; }}
+      on:editcoi={() => { settingsReturnSection = 'coi'; showCoiEditor = true; }}
+      on:llm={() => { settingsReturnSection = 'system'; showLlmSettingsModal = true; }}
+      on:about={() => showAbout = true}
+    />
+  {/if}
+  {#if showPoiEditor}
+    <PoIPackEditor existingTags={allTagKeys} on:close={() => { showPoiEditor = false; reprocessAllReasons(); if (settingsReturnSection) showSettingsModal = true; }} />
+  {/if}
+  {#if showCoiEditor}
+    <CoIEditor on:close={() => { showCoiEditor = false; if (settingsReturnSection) showSettingsModal = true; }} />
   {/if}
 
   {#if showLlmSettingsModal}
-    <LlmSettingsModal bind:showModal={showLlmSettingsModal} on:save={handleSaveLlmSettings} on:close={() => showLlmSettingsModal = false} />
+    <LlmSettingsModal bind:showModal={showLlmSettingsModal} on:save={handleSaveLlmSettings} on:close={() => { showLlmSettingsModal = false; returnToSettings(); }} />
+  {/if}
+
+  {#if showFuelModal && $starmapStore && selectedRulepack}
+    <EditFuelAndDrivesModal showModal={showFuelModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showFuelModal = false; returnToSettings(); }} />
+  {/if}
+  {#if showAtmosphereModal && $starmapStore && selectedRulepack}
+    <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showAtmosphereModal = false; returnToSettings(); }} />
+  {/if}
+  {#if showSensorsModal && $starmapStore && selectedRulepack}
+    <EditSensorsModal showModal={showSensorsModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showSensorsModal = false; returnToSettings(); }} />
+  {/if}
+  {#if showTemporalModal && $starmapStore}
+    <EditTemporalModal showModal={showTemporalModal} starmap={$starmapStore} on:save={(e) => starmapStore.update((s) => s ? { ...s, temporal: e.detail.temporal } : s)} on:close={() => { showTemporalModal = false; returnToSettings(); }} />
+  {/if}
+  {#if showWelcome}
+    <WelcomeModal on:close={dismissWelcome} on:help={() => { dismissWelcome(); showHelpMenu = true; }} />
+  {/if}
+  {#if showHelpMenu}
+    <HelpMenuModal on:close={() => showHelpMenu = false} />
+  {/if}
+  {#if showAbout}
+    <AboutModal rulePack={$systemStore ? effectiveRulePack : null} on:close={() => showAbout = false} />
+  {/if}
+
+  {#if showCompanionModal}
+    <CompanionModal sessionId={broadcastSessionId} on:close={() => showCompanionModal = false} />
+  {/if}
+
+  {#if showInterstellarModal && $starmapStore}
+    <InterstellarTransitModal starmap={$starmapStore} rulePack={effectiveRulePack || selectedRulepack} initialShipId={interstellarShipId} on:startjourney={handleStartJourney} on:close={() => showInterstellarModal = false} />
+  {/if}
+
+  {#if showAllBodies}
+    <div class="allbodies-overlay" role="presentation" on:click={() => (showAllBodies = false)}>
+      <div class="allbodies-card" role="dialog" aria-label="Find a body" on:click|stopPropagation>
+        <header class="allbodies-head">
+          <span>All bodies &amp; constructs</span>
+          <button class="allbodies-close" aria-label="Close" on:click={() => (showAllBodies = false)}>×</button>
+        </header>
+        <BodyPicker
+          inline
+          startOpen
+          nodes={allBodies}
+          focusedId={null}
+          placeholder="Search every system…"
+          emptyLabel="All bodies"
+          contextOf={allBodiesContext}
+          on:select={handleAllBodiesSelect}
+        />
+      </div>
+    </div>
+  {/if}
+
+  {#if shipPanel}
+    <ShipPanel
+      construct={shipPanel.construct}
+      system={shipPanel.system}
+      hostBody={shipPanel.host}
+      rulePack={effectiveRulePack || selectedRulepack}
+      status={shipPanel.status}
+      frac={shipPanel.frac}
+      fromName={shipPanel.fromName}
+      toName={shipPanel.toName}
+      on:resolve={(e) => handleShipResolve(shipPanel.journey.id, e.detail.outcome, e.detail.coast)}
+      on:resume={() => handleShipResume(shipPanel.journey.id)}
+      on:newtransit={() => { interstellarShipId = shipPanel.construct.id; showInterstellarModal = true; shipPanelJourneyId = null; }}
+      on:update={(e) => handleShipConstructUpdate(e.detail)}
+      on:refuel={() => handleShipRefuel(shipPanel.construct.id)}
+      on:close={() => (shipPanelJourneyId = null)}
+    />
+  {/if}
+
+  {#if showTagFinder}
+    <div class="allbodies-overlay" role="presentation" on:click={() => (showTagFinder = false)}>
+      <div class="allbodies-card" role="dialog" aria-label="Find by tag" on:click|stopPropagation>
+        <header class="allbodies-head">
+          <span>Find by tag</span>
+          <button class="allbodies-close" aria-label="Close" on:click={() => (showTagFinder = false)}>×</button>
+        </header>
+        <TagFinder
+          nodes={tagFinderNodes}
+          currentSystemId={currentSystemId}
+          systems={tagFinderSystems}
+          distanceOf={tagFinderDistance}
+          distanceUnit={$starmapStore?.distanceUnit ?? 'ly'}
+          contextOf={allBodiesContext}
+          on:select={handleTagFinderSelect}
+        />
+      </div>
+    </div>
+  {/if}
+
+  {#if showRoutes}
+    <div class="allbodies-overlay" role="presentation" on:click={() => (showRoutes = false)}>
+      <div class="allbodies-card" role="dialog" aria-label="Routes and journeys" on:click|stopPropagation>
+        <header class="allbodies-head">
+          <span>Routes &amp; journeys</span>
+          <button class="allbodies-close" aria-label="Close" on:click={() => (showRoutes = false)}>×</button>
+        </header>
+        <div class="routes-body">
+          <h4>In-system journeys ({routesData.journeys.length})</h4>
+          {#if routesData.journeys.length === 0}
+            <p class="routes-empty">No active or planned journeys.</p>
+          {:else}
+            {#each routesData.journeys as j (j.id)}
+              <button class="route-row" on:click={() => { showRoutes = false; enterSystemAndFocus(j.systemId, j.constructId); }}>
+                <span class="route-status {j.status}">{j.status}</span>
+                <span class="route-col">
+                  <span class="route-main"><strong>{j.constructName}</strong> · {j.origin} → {j.target}{j.legs > 1 ? ` (${j.legs} legs)` : ''}</span>
+                  <span class="route-when">{j.when} · {j.systemName}</span>
+                </span>
+              </button>
+            {/each}
+          {/if}
+          <h4>Interstellar journeys ({routesData.interstellarJourneys.length})</h4>
+          {#if routesData.interstellarJourneys.length === 0}
+            <p class="routes-empty">No interstellar journeys.</p>
+          {:else}
+            {#each routesData.interstellarJourneys as j (j.id)}
+              <div class="route-row interstellar">
+                <span class="route-status {j.status}">{j.status}{j.status === 'active' ? ` ${j.pct}%` : ''}</span>
+                <div class="route-pills">
+                  <button class="pill ship" title="Open the ship" on:click={() => { showRoutes = false; if (currentSystemId) handleBackToStarmap(); shipPanelJourneyId = j.id; }}>{j.shipName}</button>
+                  <button class="pill" title="Go to origin system" on:click={() => { showRoutes = false; enterSystemAndFocus(j.fromSystemId, null); }}>{j.from}</button>
+                  <span class="arrow">→</span>
+                  <button class="pill" title="Go to destination system" on:click={() => { showRoutes = false; enterSystemAndFocus(j.toSystemId, j.toBodyId); }}>{j.to}{j.toBodyName ? ` (${j.toBodyName})` : ''}</button>
+                </div>
+                <span class="route-when">{j.when}</span>
+              </div>
+            {/each}
+          {/if}
+          <h4>Charted interstellar links ({routesData.interstellar.length})</h4>
+          {#if routesData.interstellar.length === 0}
+            <p class="routes-empty">No interstellar routes.</p>
+          {:else}
+            {#each routesData.interstellar as r (r.id)}
+              <div class="route-row static">
+                <span class="route-main"><strong>{r.source}</strong> → <strong>{r.target}</strong></span>
+                <span class="route-sys">{r.distance} {r.unit}</span>
+              </div>
+            {/each}
+          {/if}
+          {#if routesData.stranded.length}
+            <h4>Stranded ships ({routesData.stranded.length})</h4>
+            {#each routesData.stranded as s (s.id)}
+              <div class="route-row static">
+                <span class="route-main">
+                  {#if s.interstellar && s.journeyId}
+                    <button class="pill ship" title="Open the ship" on:click={() => { showRoutes = false; if (currentSystemId) handleBackToStarmap(); shipPanelJourneyId = s.journeyId; }}>{s.constructName}</button>
+                  {:else if !s.interstellar}
+                    <button class="pill ship" title="Go to the ship" on:click={() => { showRoutes = false; enterSystemAndFocus(s.systemId, s.id); }}>{s.constructName}</button>
+                  {:else}<strong>{s.constructName}</strong>{/if}
+                  <span class="route-stranded"> · adrift, coasting</span>
+                </span>
+                <span class="route-sys">{s.where}{#if s.wasBound} · was bound {s.wasBound}{/if}</span>
+              </div>
+            {/each}
+          {/if}
+          {#if routesData.autopilotShips.length}
+            <h4 class="ap-heading"><AutopilotShipIcon size={14} /> Under autopilot ({routesData.autopilotShips.length})</h4>
+            {#each routesData.autopilotShips as a (a.id)}
+              <div class="route-row static ap-ship">
+                <span class="route-main">
+                  <button class="pill ship" title="Go to the ship" on:click={() => { showRoutes = false; enterSystemAndFocus(a.systemId, a.id); }}>{a.constructName}</button>
+                  {#if a.attention}<span class="route-attention {a.attention}" title={a.attentionLabel}>!</span>{/if}
+                  <span class="route-autopilot"> · {a.summary}</span>
+                </span>
+                <span class="route-sys">{a.where}</span>
+              </div>
+              {#if a.journeys.length}
+                <details class="ap-legs">
+                  <summary>{a.journeys.length} planned {a.journeys.length === 1 ? 'leg' : 'legs'}</summary>
+                  {#each a.journeys as j (j.id)}
+                    <button class="route-row ap-leg" on:click={() => { showRoutes = false; enterSystemAndFocus(j.systemId, j.constructId); }}>
+                      <span class="route-status {j.status}">{j.status}</span>
+                      <span class="route-col">
+                        <span class="route-main">{j.origin} → {j.target}{j.legs > 1 ? ` (${j.legs} legs)` : ''}</span>
+                        <span class="route-when">{j.when}</span>
+                      </span>
+                    </button>
+                  {/each}
+                </details>
+              {/if}
+            {/each}
+          {/if}
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  {#if showAllShips}
+    <div class="allbodies-overlay" role="presentation" on:click={() => (showAllShips = false)}>
+      <div class="allbodies-card" role="dialog" aria-label="Find a construct" on:click|stopPropagation>
+        <header class="allbodies-head">
+          <span>Constructs</span>
+          <button class="allbodies-close" aria-label="Close" on:click={() => (showAllShips = false)}>×</button>
+        </header>
+        <BodyPicker
+          inline
+          startOpen
+          nodes={allShips}
+          focusedId={null}
+          placeholder="Search every system…"
+          emptyLabel="All constructs"
+          contextOf={allBodiesContext}
+          on:select={(e) => { showAllShips = false; handleAllBodiesSelect(e); }}
+        />
+      </div>
+    </div>
   {/if}
 </main>
 
 <style>
   main {
     font-family: sans-serif;
-    padding: 0.5em;
+    /* padding removed: the AppShell fills the viewport (100vh); setup screens
+       (loading / new-starmap modal / wizard) provide their own spacing. */
+    padding: 0;
   }
+  .physics-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 4000;
+    background: var(--bg-app, #0b0d12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .physics-card {
+    width: min(440px, 100%);
+    text-align: center;
+    color: var(--text, #e8e8e8);
+  }
+  .physics-card h2 { margin: 0 0 18px; font-weight: 600; }
+  .physics-bar {
+    height: 10px;
+    background: var(--bg-control, #1c1f27);
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .physics-fill {
+    height: 100%;
+    background: var(--accent, #6aa0d8);
+    transition: width 0.15s ease;
+  }
+  .physics-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--text-faint, #8a8f9a);
+    margin-top: 8px;
+  }
+  .physics-joke { margin: 18px 0 0; color: var(--text-muted, #aab); font-style: italic; min-height: 1.4em; }
+  .allbodies-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1500;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .allbodies-card {
+    display: flex;
+    flex-direction: column;
+    width: min(520px, 100%);
+    height: min(70vh, 640px);
+    background: var(--bg-panel, #14161c);
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 12px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+    padding: 12px;
+    box-sizing: border-box;
+  }
+  .allbodies-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 4px 10px;
+    font-weight: 600;
+    color: var(--text, #e8e8e8);
+  }
+  /* Phones: use nearly the whole screen — vertical space is scarce. */
+  @media (max-width: 640px) {
+    .allbodies-overlay { padding: 6px; }
+    .allbodies-card { width: 100%; height: 94vh; padding: 10px; }
+    .allbodies-head { padding: 0 2px 8px; }
+  }
+  .allbodies-close {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 8px;
+    background: var(--bg-control, #1b1e26);
+    color: var(--text, #e8e8e8);
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .routes-body { overflow-y: auto; overflow-x: hidden; padding: 4px 2px; }
+  .ap-heading { display: flex; align-items: center; gap: 7px; }
+  .ap-ship { border-left: 2px solid var(--accent, #ff5a1f); }
+  .ap-legs { margin: 0 0 0.5em 0.6em; }
+  .ap-legs > summary { cursor: pointer; color: var(--text-muted); font-size: 0.82em; padding: 0.2em 0; list-style-position: inside; user-select: none; }
+  .ap-legs > summary:hover { color: var(--text); }
+  .ap-legs .ap-leg { margin: 0.2em 0 0 0.4em; border-left: 2px solid #2f5d76; opacity: 0.92; }
+  .routes-body .route-row { box-sizing: border-box; max-width: 100%; }
+  .routes-body h4 {
+    margin: 12px 0 6px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-faint, #8a8f9a);
+  }
+  .routes-body h4:first-child { margin-top: 0; }
+  .routes-empty { color: var(--text-faint, #8a8f9a); margin: 4px 0 8px; font-size: 0.9rem; }
+  .route-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    padding: 9px 10px;
+    margin-bottom: 4px;
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 8px;
+    background: var(--bg-control, #1b1e26);
+    color: var(--text, #e8e8e8);
+    cursor: pointer;
+  }
+  .route-row.static { cursor: default; }
+  .route-row:not(.static):hover { background: var(--bg-control-hover, #232733); }
+  .route-status {
+    flex: 0 0 auto;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 999px;
+  }
+  .route-status.active { background: color-mix(in srgb, var(--accent, #ff5a1f) 30%, transparent); color: var(--accent, #ff5a1f); }
+  .route-status.scheduled { background: var(--bg-panel, #14161c); color: var(--text-muted, #cfcfcf); }
+  .route-status.completed { background: color-mix(in srgb, #4fa86a 26%, transparent); color: #6fcf8f; }
+  .route-main { flex: 1 1 auto; min-width: 0; font-size: 0.9rem; }
+  .route-sys { flex: 0 0 auto; color: var(--text-faint, #8a8f9a); font-size: 0.8rem; }
+  .route-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+  .route-when { font-size: 0.74rem; color: var(--text-faint, #8a8f9a); flex-basis: 100%; }
+  .route-stranded { color: #e8a857; font-size: 0.82em; }
+  .route-autopilot { color: #6aa0d8; font-size: 0.82em; }
+  .route-attention { color: #fff; background: #cc5555; border-radius: 50%; font-weight: 700; font-size: 0.72em; padding: 0 5px; margin-left: 4px; }
+  .route-attention.stuck { background: #cc5555; }
+  .route-attention.intervention { background: #d8922f; }
+  .route-attention.done { background: #4a9e5c; }
+  /* Interstellar journey rows: source / destination / ship are individually clickable pills. */
+  .route-row.interstellar { cursor: default; flex-wrap: wrap; }
+  .route-pills { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; }
+  .route-pills .pill {
+    border: 1px solid var(--border, #2a2d36); border-radius: 6px; padding: 3px 9px;
+    background: var(--bg-panel, #14161c); color: var(--text, #e8e8e8); cursor: pointer; font-size: 0.85rem;
+  }
+  .route-pills .pill:hover { border-color: var(--accent, #ff5a1f); }
+  .route-pills .pill.ship { font-weight: 600; }
+  .route-pills .arrow { color: var(--text-faint, #8a8f9a); }
   footer {
       margin-top: 2em;
       padding-top: 1em;

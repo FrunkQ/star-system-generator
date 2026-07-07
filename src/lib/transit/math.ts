@@ -181,17 +181,45 @@ export function solveLambert(
         return 1/6;
     };
 
-    // Robust Bisection Method
-    // Range of z:
-    // Lower bound: Expanded to support high-energy hyperbolic transfers (Torchships)
-    // Upper bound: 4*pi^2 (Elliptic limit for multi-rev checks usually, but single rev fits here)
-    
-    let lower = -10000.0;
-    let upper = 4 * Math.PI * Math.PI;
+    const Z_LO = -10000.0, Z_HI = 4 * Math.PI * Math.PI;
     let z = 0;
     let loops = 0;
-    
-    while (loops < 200) {
+
+    // 04.3 — Newton-Raphson pre-pass (fast; quadratic convergence). Uses a NUMERICAL derivative to
+    // avoid the fragile analytic Stumpff derivatives. If it can't converge in-range it falls through
+    // to the robust bisection below, so correctness can never regress — bisection is the guarantee.
+    const tOfZ = (zz: number): number => {
+        const Cz = C(zz);
+        if (Cz <= 0 || !Number.isFinite(Cz)) return NaN;
+        const Sz = S(zz);
+        const yy = r1mag + r2mag + A * (zz * Sz - 1) / Math.sqrt(Cz);
+        if (yy < 0 || !Number.isFinite(yy)) return NaN;
+        const xx = Math.sqrt(yy / Cz);
+        return (xx * xx * xx * Sz + A * Math.sqrt(yy)) / Math.sqrt(mu);
+    };
+    let converged = false;
+    {
+        let zn = 0;
+        for (let it = 0; it < 40; it++) {
+            const t = tOfZ(zn);
+            if (!Number.isFinite(t)) break;
+            if (Math.abs(t - dt_sec) < 1e-6 * dt_sec) { z = zn; converged = true; break; }
+            const h = Math.max(1e-4, Math.abs(zn) * 1e-4);
+            const tp = tOfZ(zn + h), tm = tOfZ(zn - h);
+            if (!Number.isFinite(tp) || !Number.isFinite(tm)) break;
+            const deriv = (tp - tm) / (2 * h);
+            if (!Number.isFinite(deriv) || Math.abs(deriv) < 1e-30) break;
+            const next = zn + (dt_sec - t) / deriv;
+            if (!Number.isFinite(next) || next <= Z_LO || next >= Z_HI) break; // out of range → bisection
+            zn = next;
+        }
+    }
+
+    // Robust Bisection Method (fallback / guarantee). Range supports high-energy hyperbolic transfers.
+    let lower = Z_LO;
+    let upper = Z_HI;
+
+    while (!converged && loops < 200) {
         z = (lower + upper) / 2;
         const Sz = S(z);
         const Cz = C(z);

@@ -5,6 +5,7 @@ import { getGlobalState, calculateFuelMass } from './physics';
 import { AU_KM, G } from '../constants';
 
 const AU_M = AU_KM * 1000;
+const DEBUG_TRANSIT = false; // per-solve assist trace; off so it doesn't flood the console during playback
 
 interface AssistCandidate {
     body: CelestialBody | Barycenter;
@@ -85,7 +86,7 @@ function findAssistCandidates(sys: System, origin: CelestialBody | Barycenter, t
     }
 
     const result = candidates.sort((a, b) => b.score - a.score).slice(0, 3); // Top 3 only
-    if (result.length > 0) console.log(`[AssistDebug] Selected Candidates: ${result.map(c => c.body.name).join(', ')}`);
+    if (result.length > 0 && DEBUG_TRANSIT) console.log(`[AssistDebug] Selected Candidates: ${result.map(c => c.body.name).join(', ')}`);
     return result;
 }
 
@@ -99,7 +100,7 @@ export function calculateAssistPlan(
     root: CelestialBody | Barycenter,
     startTime: number,
     startState: StateVector,
-    params: { maxG: number; shipMass_kg?: number; shipIsp?: number; }
+    params: { maxG: number; shipMass_kg?: number; shipIsp?: number; costOnly?: boolean; }
 ): TransitPlan | null {
     
     const candidates = findAssistCandidates(sys, origin, target);
@@ -216,7 +217,7 @@ export function calculateAssistPlan(
                     continue; 
                 }
 
-                console.log(`[AssistDebug] FOUND PLAN! ${origin.name} -> ${flybyBody.name} -> ${target.name}`);
+                if (DEBUG_TRANSIT) console.log(`[AssistDebug] FOUND PLAN! ${origin.name} -> ${flybyBody.name} -> ${target.name}`);
                 // If we got here, this is a VALID Assist!
                 // Calculate Costs
                 // dV1 = Departure from Origin
@@ -260,7 +261,7 @@ function buildAssistTransitPlan(
     t1: number, t2: number, t3: number,
     s1: StateVector, leg1: {v1: Vector2, v2: Vector2}, leg2: {v1: Vector2, v2: Vector2},
     dv1: number, dv_assist: number, dv3: number,
-    params: { maxG: number; shipMass_kg?: number; shipIsp?: number; }
+    params: { maxG: number; shipMass_kg?: number; shipIsp?: number; costOnly?: boolean; }
 ): TransitPlan {
     const totalTimeDays = (t3 - t1) / (1000 * 86400);
     const totalDV = dv1 + dv_assist + dv3;
@@ -276,7 +277,7 @@ function buildAssistTransitPlan(
         const f3 = calculateFuelMass(m, dv3, params.shipIsp);
         fuelEst = f1 + f2 + f3;
     } else {
-        fuelEst = totalDV * 0.05; // Fallback
+        fuelEst = Infinity; // No engine/Isp → can't perform the assist burn; infeasible, not a fake number.
     }
     
     // Generate Segments for Visualization
@@ -291,9 +292,10 @@ function buildAssistTransitPlan(
     const t1_end = t2 - flybyDtSec * 1000;
     const t2_start = t2 + flybyDtSec * 1000;
     
-    // Dynamic steps for long coasts
-    const steps1 = Math.min(2000, Math.max(100, Math.ceil((t1_end - t1) / (1000 * 86400 * 2))));
-    const steps2 = Math.min(2000, Math.max(100, Math.ceil((t3 - t2_start) / (1000 * 86400 * 2))));
+    // Dynamic steps for long coasts (costOnly keeps the analytic cost but skips the dense display path).
+    const costOnly = params.costOnly;
+    const steps1 = costOnly ? 24 : Math.min(2000, Math.max(100, Math.ceil((t1_end - t1) / (1000 * 86400 * 2))));
+    const steps2 = costOnly ? 24 : Math.min(2000, Math.max(100, Math.ceil((t3 - t2_start) / (1000 * 86400 * 2))));
 
     // LEG 1 Path (Truncated) - WITH DRIFT CORRECTION
     // We generate the FULL path to T2 (Flyby Center), force it to hit the Planet, then slice it back.

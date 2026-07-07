@@ -7,7 +7,7 @@
   "nodes": [
     {
       "id": "polaris-inner-barycenter",
-      "parentId": null,
+      "parentId": "polaris-inner-barycenter-outer",
       "name": "Polaris Aa/Ab Barycenter",
       "kind": "barycenter",
       "memberIds": [
@@ -17,7 +17,20 @@
       "tags": [],
       "effectiveMassKg": 1.325e+31,
       "description": "The center of mass for the Supergiant Aa and its close dwarf companion Ab.",
-      "tidallyLocked": false
+      "tidallyLocked": false,
+      "orbit": {
+        "hostId": "polaris-inner-barycenter-outer",
+        "hostMu": 1.06855543e+21,
+        "t0": 1762339146908,
+        "elements": {
+          "a_AU": 413.74141161773883,
+          "e": 0.1,
+          "i_deg": 45,
+          "omega_deg": 180,
+          "Omega_deg": 0,
+          "M0_rad": 1.5
+        }
+      }
     },
     {
       "id": "polaris-aa",
@@ -39,14 +52,7 @@
       "image": {
         "url": "/images/star_types/F_supergiant.webp"
       },
-      "tags": [
-        {
-          "key": "Supergiant"
-        },
-        {
-          "key": "Cepheid Variable"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "orbit": {
         "hostId": "polaris-inner-barycenter",
@@ -83,7 +89,7 @@
       "magneticField": {
         "strengthGauss": 5
       },
-      "radiationOutput": 3.0,
+      "radiationOutput": 3,
       "image": {
         "url": "/images/star_types/F.webp"
       },
@@ -105,12 +111,12 @@
       },
       "description": "A main-sequence dwarf star trapped in a highly elliptical 30-year orbit around the Supergiant. At closest approach, it dives within 2 AU of the primary.",
       "isNameUserDefined": true,
-      "calculatedGravity_ms2": 206.0,
+      "calculatedGravity_ms2": 206,
       "orbital_period_days": 10811
     },
     {
       "id": "polaris-b",
-      "parentId": "polaris-inner-barycenter",
+      "parentId": "polaris-inner-barycenter-outer",
       "name": "Polaris B",
       "kind": "body",
       "roleHint": "star",
@@ -119,12 +125,11 @@
         "star/F3V"
       ],
       "orbit": {
-        "hostId": "polaris-inner-barycenter",
-        "hostMu": 1070000000000000000000,
+        "hostId": "polaris-inner-barycenter-outer",
+        "hostMu": 1.06855543e+21,
         "t0": 1762339146908,
-        "n_rad_per_s": 4.5e-12,
         "elements": {
-          "a_AU": 2400,
+          "a_AU": 1986.2585883822612,
           "e": 0.1,
           "i_deg": 45,
           "omega_deg": 0,
@@ -139,28 +144,29 @@
       "image": {
         "url": "/images/star_types/F.webp"
       },
-      "tags": [
-        {
-          "key": "Wide Companion"
-        }
-      ],
+      "tags": [],
       "areas": [],
       "description": "A distant companion star observable with small telescopes. It orbits the inner pair so slowly that it takes thousands of years to complete one revolution.",
       "isNameUserDefined": true,
-      "calculatedGravity_ms2": 200.0,
+      "calculatedGravity_ms2": 200,
       "orbital_period_days": 1500000
+    },
+    {
+      "id": "polaris-inner-barycenter-outer",
+      "parentId": null,
+      "kind": "barycenter",
+      "name": "Polaris Aa/Ab System Barycentre",
+      "memberIds": [
+        "polaris-inner-barycenter",
+        "polaris-b"
+      ],
+      "effectiveMassKg": 1.6010000000000001e+31,
+      "description": "The center of mass for the Supergiant Aa and its close dwarf companion Ab."
     }
   ],
   "rulePackId": "starter-sf-pack",
   "rulePackVersion": "0.1.4",
-  "tags": [
-    {
-      "key": "Triple Star System"
-    },
-    {
-      "key": "Supergiant Host"
-    }
-  ],
+  "tags": [],
   "visualScalingMultiplier": 0.01,
   "toytownFactor": 0,
   "isManuallyEdited": true

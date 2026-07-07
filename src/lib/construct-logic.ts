@@ -1,5 +1,6 @@
 import type { CelestialBody, EngineDefinition, FuelDefinition, PhysicalParameters, RulePack, Systems } from './types';
 import { AU_KM, THERMAL_LIMITS } from './constants';
+import { calculateFuelMass } from './transit/physics';
 
 // Define constants
 const g0 = 9.81; // Standard gravity for ISP and g-force calcs
@@ -293,11 +294,11 @@ export function calculateFullConstructSpecs(
   }
 
   // --- 4. FUEL CONSUMPTION CALCS ---
-  function calculateFuelForDeltaV(initialMass_kg: number, Isp: number, targetDeltaV_ms: number): number {
-    if (Isp <= 0 || targetDeltaV_ms <= 0) return 0;
-    const finalMass_kg = initialMass_kg / Math.exp(targetDeltaV_ms / (Isp * g0));
-    return initialMass_kg - finalMass_kg;
-  }
+  // Tsiolkovsky lives in transit/physics — ONE rocket equation for the whole app (transit solver, assist
+  // chain, autopilot, and these surface budgets). This wrapper only keeps the (mass, Isp, dV) argument
+  // order the call sites below read naturally.
+  const calculateFuelForDeltaV = (initialMass_kg: number, Isp: number, targetDeltaV_ms: number): number =>
+    targetDeltaV_ms > 0 ? calculateFuelMass(initialMass_kg, targetDeltaV_ms, Isp) : 0;
 
   // Takeoff Fuel
   const takeoffBudget_ms = (hostBody as any)?.loDeltaVBudget_ms || 0;

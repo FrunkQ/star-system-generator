@@ -60,22 +60,10 @@
       "parentId": "seed-1771085836100-star-a",
       "tags": [
         {
-          "key": "planet/gas-giant"
-        },
-        {
           "key": "lifting-gas"
         },
         {
           "key": "reducing"
-        },
-        {
-          "key": "noble-gas"
-        },
-        {
-          "key": "voice-changer"
-        },
-        {
-          "key": "leak-prone"
         },
         {
           "key": "habitability/none"

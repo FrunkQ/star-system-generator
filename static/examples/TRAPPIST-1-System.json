@@ -59,15 +59,6 @@
       "radiusKm": 7110,
       "tags": [
         {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "Airless Rock"
-        },
-        {
-          "key": "hot"
-        },
-        {
           "key": "habitability/none"
         }
       ],
@@ -126,13 +117,7 @@
       "radiusKm": 6989,
       "tags": [
         {
-          "key": "Tidally Locked"
-        },
-        {
           "key": "toxic-human"
-        },
-        {
-          "key": "Runaway Greenhouse Effect"
         },
         {
           "key": "habitability/alien"
@@ -203,15 +188,6 @@
       "radiusKm": 4906,
       "tags": [
         {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "m-dwarf-world"
-        },
-        {
-          "key": "eyeball-planet"
-        },
-        {
           "key": "habitability/alien"
         }
       ],
@@ -279,15 +255,6 @@
       "massKg": 4.134e+24,
       "radiusKm": 5861,
       "tags": [
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "m-dwarf-world"
-        },
-        {
-          "key": "eyeball-planet"
-        },
         {
           "key": "habitability/alien"
         }
@@ -357,15 +324,6 @@
       "radiusKm": 6658,
       "tags": [
         {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "m-dwarf-world"
-        },
-        {
-          "key": "eyeball-planet"
-        },
-        {
           "key": "habitability/none"
         }
       ],
@@ -433,12 +391,6 @@
       "massKg": 7.889e+24,
       "radiusKm": 7192,
       "tags": [
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "super-earth"
-        },
         {
           "key": "reducing"
         },
@@ -510,15 +462,6 @@
       "massKg": 1.947e+24,
       "radiusKm": 4810,
       "tags": [
-        {
-          "key": "Tidally Locked"
-        },
-        {
-          "key": "exosphere"
-        },
-        {
-          "key": "cryogenic"
-        },
         {
           "key": "habitability/none"
         }

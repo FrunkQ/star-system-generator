@@ -25,14 +25,11 @@
             title={hasSensors ? "Toggle Sensor Overlay" : "No Sensors Installed"}
             style="position: relative;"
         >
-            <!-- Satellite Dish Base Icon -->
+            <!-- Sensor waves (matches the ship panel) -->
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                  stroke={hasSensors ? (showSensors ? "#4ade80" : "#888") : "#666"}
                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 12.5a9 9 0 0 1-14.88 6.42" /> <!-- Dish Curve -->
-                <path d="M2 20l5-5" /> <!-- Stand -->
-                <path d="M12.5 7.5l-5 5" /> <!-- Feed Arm -->
-                <circle cx="13" cy="7" r="1.5" /> <!-- Feed Node -->
+                <path d="M4.9 19.1A10 10 0 0 1 4.9 4.9"/><path d="M7.8 16.2a6 6 0 0 1 0-8.4"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4"/><path d="M19.1 4.9a10 10 0 0 1 0 14.2"/>
             </svg>
 
             <!-- No Entry Overlay if no sensors -->
@@ -59,8 +56,21 @@
     <input type="text" value={focusedBody.name}
         on:change={(e) => dispatch('rename', { nodeId: focusedBody.id, newName: (e.currentTarget as HTMLInputElement).value })}
         class="name-input" title="Click to rename" />
-    {#if !isEditing && !isPlanning && !isShipLogOpen && (focusedBody.kind !== 'barycenter' || focusedBody.parentId)}
-        <button class="edit-btn small" on:click={() => dispatch('enteredit')} style="margin-left: 5px;">Edit</button>
+    {#if !isPlanning && !isShipLogOpen && focusedBody.kind === 'body' && focusedBody.roleHint !== 'star'}
+        <button class="edit-btn apple-btn" class:borderline={(focusedBody as any).classification?.borderline}
+                on:click={() => dispatch('showphysics')}
+                title={(focusedBody as any).classification?.borderline ? 'Borderline classification — click to see candidates and choose' : 'Show the working (physics & tag provenance)'}
+                aria-label="Show the physics working">
+            <!-- Newton's apple -->
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7c-1-2-3-2-4-1-2 1.5-2 5 0 8 1.2 1.8 2.6 3 4 3s2.8-1.2 4-3c2-3 2-6.5 0-8-1-1-3-1-4 1Z"/><path d="M12 7c0-2 .6-3.5 2-4.5"/></svg>
+            {#if (focusedBody as any).classification?.borderline}<span class="bl-dot" aria-hidden="true">!</span>{/if}
+        </button>
+    {/if}
+    {#if !isPlanning && !isShipLogOpen && (focusedBody.kind !== 'barycenter' || focusedBody.parentId)}
+        <!-- Edit is a TOGGLE — click again to close (no separate Done button). -->
+        <button class="edit-btn" class:on={isEditing} on:click={() => dispatch('toggleedit')} title={isEditing ? 'Close editor' : 'Edit'} aria-label="Toggle editor">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
     {/if}
 </div>
 
@@ -74,23 +84,23 @@
   }
   .visibility-btn {
       background: none;
-      border: 1px solid #444;
+      border: 1px solid var(--border);
       border-radius: 4px;
       cursor: pointer;
       padding: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background-color: #222;
+      background-color: var(--bg-panel);
   }
   .visibility-btn:hover {
-      background-color: #333;
-      border-color: #666;
+      background-color: var(--bg-control);
+      border-color: var(--border);
   }
   .name-input {
     background-color: transparent;
     border: 1px solid transparent;
-    color: #ff3e00;
+    color: var(--accent);
     font-size: 1.8em;
     font-weight: bold;
     padding: 0.1em;
@@ -102,6 +112,34 @@
   }
   .name-input:hover, .name-input:focus {
       background-color: #252525;
-      border-color: #444;
+      border-color: var(--border);
+  }
+  .edit-btn {
+      flex: 0 0 auto;
+      margin-left: 5px;
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-muted, #cfcfcf);
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+  }
+  /* Green apple = "the working is safe to peek at" (and a friendly nod to Newton's orchard). */
+  .apple-btn { color: var(--ok, #46c46a); position: relative; }
+  /* Borderline classification → orange apple + a "!" dot, nudging the GM to open it and choose. */
+  .apple-btn.borderline { color: #d8922f; }
+  .bl-dot { position: absolute; top: -3px; right: -3px; min-width: 12px; height: 12px; padding: 0 2px; border-radius: 6px; background: #d8922f; color: #fff; font-size: 9px; font-weight: 700; line-height: 12px; text-align: center; }
+  .edit-btn:hover {
+      background-color: var(--bg-control);
+      color: var(--accent);
+      border-color: var(--accent);
+  }
+  /* Active (editing) — highlight like the ship panel's edit toggle. */
+  .edit-btn.on {
+      color: var(--accent);
+      border-color: var(--accent);
   }
 </style>

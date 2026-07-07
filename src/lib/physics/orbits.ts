@@ -96,6 +96,9 @@ export interface StateVector {
   v: Vector2; // Velocity in AU/s
 }
 
+// One warning per session is enough — corrupt elements get hit every frame by the render loop.
+let warnedHyperbolic = false;
+
 /**
  * Propagates an orbit to a specific time and returns the full State Vector (Position and Velocity).
  * Position is in AU.
@@ -107,7 +110,23 @@ export function propagateState(node: CelestialBody | Barycenter | { orbit: any }
   }
 
   const { elements, hostMu, t0 } = node.orbit;
-  const { a_AU, e, M0_rad } = elements;
+  const { M0_rad } = elements;
+
+  // GUARD: this solver is ELLIPTICAL-ONLY — sqrt(1-e), n = sqrt(mu/a^3) and the [0,2pi) mean-anomaly
+  // normalisation all silently NaN (or worse, produce finite garbage) for e >= 1 or a <= 0. Stored orbits
+  // are always bound (editor clamps + sanitizer self-heal), so unbound elements here are corrupt input:
+  // clamp to a near-parabolic bound orbit instead of NaNing the whole position chain. Genuinely unbound
+  // COAST states are handled by keplerUniversal (twoBodyCoast), never by element propagation.
+  let { a_AU, e } = elements;
+  if (!(e >= 0)) e = 0;
+  if (e >= 1 || !(a_AU > 0)) {
+    if (import.meta.env?.DEV && !warnedHyperbolic) {
+      warnedHyperbolic = true;
+      console.warn(`[orbits] propagateState got unbound/corrupt elements (a=${a_AU} AU, e=${e}) on '${(node as any).id ?? '?'}' — clamped to a bound orbit. Elliptical solver only; unbound motion belongs to keplerUniversal.`);
+    }
+    e = Math.min(e, 0.999);
+    a_AU = Math.abs(a_AU) || 1e-6;
+  }
 
   // Handle trivial case (Star/Root)
   if (hostMu === 0 || !a_AU) return { r: { x: 0, y: 0 }, v: { x: 0, y: 0 } };

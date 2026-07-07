@@ -1,0 +1,1902 @@
+{
+  "id": "testion-system",
+  "name": "Testion",
+  "seed": "testion-demo",
+  "epochT0": 0,
+  "age_Gyr": 4.6,
+  "nodes": [
+    {
+      "id": "testion",
+      "parentId": null,
+      "name": "Testion",
+      "kind": "body",
+      "roleHint": "star",
+      "classes": [
+        "star/F",
+        "star/F2V"
+      ],
+      "massKg": 2.6e+30,
+      "radiusKm": 2750000,
+      "temperatureK": 6800,
+      "magneticField": {
+        "strengthGauss": 1
+      },
+      "radiationOutput": 1,
+      "image": {
+        "url": "/images/star_types/F.webp"
+      },
+      "tags": [],
+      "description": "Testion — a luminous F-type star hosting one of (nearly) every planet type. A classification test-bed: load it, run physics, and every world classifies to a distinct type."
+    },
+    {
+      "id": "t-1-sub-earth",
+      "parentId": "testion",
+      "name": "sub earth",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/sub-earth",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 5.4056,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.5855
+        }
+      },
+      "massKg": 1.493e+24,
+      "radiusKm": 4146.295694164703,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "CO2",
+        "main": "CO2",
+        "pressure_bar": 0.01,
+        "composition": {
+          "CO2": 1
+        }
+      }
+    },
+    {
+      "id": "t-2-terrestrial",
+      "parentId": "testion",
+      "name": "terrestrial",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/terrestrial",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 10.595,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.5537
+        }
+      },
+      "massKg": 4.7776000000000004e+24,
+      "radiusKm": 7017.713245093729,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "makeup": {
+        "rock": 1
+      },
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 0.5,
+        "composition": {
+          "N2": 0.9,
+          "Ar": 0.1
+        }
+      }
+    },
+    {
+      "id": "t-3-iron",
+      "parentId": "testion",
+      "name": "iron",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/iron",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 10.595,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.6272
+        }
+      },
+      "massKg": 8.958e+24,
+      "radiusKm": 7267.788764709121,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "makeup": {
+        "metal": 0.7,
+        "rock": 0.3
+      },
+      "atmosphere": {
+        "name": "CO2",
+        "main": "CO2",
+        "pressure_bar": 0.02,
+        "composition": {
+          "CO2": 1
+        }
+      }
+    },
+    {
+      "id": "t-4-silicate",
+      "parentId": "testion",
+      "name": "silicate",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/silicate",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 10.595,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.3983
+        }
+      },
+      "massKg": 7.1664e+24,
+      "radiusKm": 7792.235971657743,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "makeup": {
+        "rock": 0.85,
+        "metal": 0.15
+      }
+    },
+    {
+      "id": "t-5-coreless",
+      "parentId": "testion",
+      "name": "coreless",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/coreless",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 7.3577,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 2.3603
+        }
+      },
+      "massKg": 5.972e+24,
+      "radiusKm": 9700.845893812471,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "makeup": {
+        "rock": 0.55,
+        "ice": 0.45
+      },
+      "atmosphere": {
+        "name": "CO2",
+        "main": "CO2",
+        "pressure_bar": 0.1,
+        "composition": {
+          "CO2": 1
+        }
+      }
+    },
+    {
+      "id": "t-6-carbon",
+      "parentId": "testion",
+      "name": "carbon",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/carbon",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 10.595,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.1613
+        }
+      },
+      "massKg": 8.958e+24,
+      "radiusKm": 9348.733138399151,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "makeup": {
+        "carbon": 0.6,
+        "rock": 0.4
+      },
+      "atmosphere": {
+        "name": "CO",
+        "main": "CO",
+        "pressure_bar": 2,
+        "composition": {
+          "CO": 0.7,
+          "CH4": 0.3
+        }
+      }
+    },
+    {
+      "id": "t-7-super-earth",
+      "parentId": "testion",
+      "name": "super earth",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/super-earth",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 5.8135,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 2.8104
+        }
+      },
+      "massKg": 2.9860000000000004e+25,
+      "radiusKm": 10312.306640927705,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 3,
+        "composition": {
+          "N2": 0.8,
+          "CO2": 0.2
+        }
+      }
+    },
+    {
+      "id": "t-8-mega-earth",
+      "parentId": "testion",
+      "name": "mega earth",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/mega-earth",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 6.2692,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.7443
+        }
+      },
+      "massKg": 1.0749600000000001e+26,
+      "radiusKm": 13469.90929546474,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 4,
+        "composition": {
+          "N2": 0.9,
+          "CO2": 0.1
+        }
+      }
+    },
+    {
+      "id": "t-9-supermassive-terrestrial",
+      "parentId": "testion",
+      "name": "supermassive terrestrial",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/supermassive-terrestrial",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 6.7808,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.4903
+        }
+      },
+      "massKg": 3.2846e+26,
+      "radiusKm": 18695.22732739637,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 5,
+        "composition": {
+          "N2": 0.9,
+          "CO2": 0.1
+        }
+      }
+    },
+    {
+      "id": "t-10-lava",
+      "parentId": "testion",
+      "name": "lava",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/lava",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 0.1884,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 6.2495
+        }
+      },
+      "massKg": 5.972e+24,
+      "radiusKm": 7244.245838885031,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "None",
+        "main": "None",
+        "pressure_bar": 0,
+        "composition": {
+          "None": 1
+        }
+      }
+    },
+    {
+      "id": "t-11-desert",
+      "parentId": "testion",
+      "name": "desert",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/desert",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 4.1387,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.3608
+        }
+      },
+      "massKg": 5.3748e+24,
+      "radiusKm": 6994.242456917003,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 0.3,
+        "composition": {
+          "N2": 1
+        }
+      },
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.02
+      }
+    },
+    {
+      "id": "t-12-barren",
+      "parentId": "testion",
+      "name": "barren",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/barren",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 6.7808,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.1396
+        }
+      },
+      "massKg": 2.9860000000000002e+23,
+      "radiusKm": 2668.8029854347005,
+      "magneticField": {
+        "strengthGauss": 0
+      },
+      "tags": []
+    },
+    {
+      "id": "t-13-crater",
+      "parentId": "testion",
+      "name": "crater",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/crater",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 10.595,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 4.0338
+        }
+      },
+      "massKg": 7.1664e+22,
+      "radiusKm": 1911.3,
+      "magneticField": {
+        "strengthGauss": 0
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "CO2",
+        "main": "CO2",
+        "pressure_bar": 0.02,
+        "composition": {
+          "CO2": 1
+        }
+      }
+    },
+    {
+      "id": "t-14-ice",
+      "parentId": "testion",
+      "name": "ice",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/ice",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 29.4306,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.4127
+        }
+      },
+      "massKg": 4.7776000000000004e+24,
+      "radiusKm": 6817.096336462285,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.8
+      }
+    },
+    {
+      "id": "t-15-ocean",
+      "parentId": "testion",
+      "name": "ocean",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/ocean",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 5.0393,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.7477
+        }
+      },
+      "massKg": 6.569200000000001e+24,
+      "radiusKm": 7478.090930958548,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 1.2,
+        "composition": {
+          "N2": 0.9,
+          "CO2": 0.1
+        }
+      },
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.95
+      }
+    },
+    {
+      "id": "t-16-hycean",
+      "parentId": "testion",
+      "name": "hycean",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/hycean",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 3.4596,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.5702
+        }
+      },
+      "massKg": 2.3888e+25,
+      "radiusKm": 12742,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "H2",
+        "main": "H2",
+        "pressure_bar": 5,
+        "composition": {
+          "H2": 1
+        }
+      },
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.95
+      }
+    },
+    {
+      "id": "t-17-methane",
+      "parentId": "testion",
+      "name": "methane",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/methane",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 35.0249,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.881
+        }
+      },
+      "massKg": 3.5832e+24,
+      "radiusKm": 6110.033575991909,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 1.5,
+        "composition": {
+          "N2": 1
+        }
+      },
+      "hydrosphere": {
+        "composition": "methane",
+        "coverage": 0.6
+      }
+    },
+    {
+      "id": "t-18-chlorine",
+      "parentId": "testion",
+      "name": "chlorine",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/chlorine",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 8.7562,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.9696
+        }
+      },
+      "massKg": 5.3748e+24,
+      "radiusKm": 6994.242456917003,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "Cl2",
+        "main": "Cl2",
+        "pressure_bar": 1,
+        "composition": {
+          "Cl2": 1
+        }
+      }
+    },
+    {
+      "id": "t-19-fluorine",
+      "parentId": "testion",
+      "name": "fluorine",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/fluorine",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 8.7562,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.8092
+        }
+      },
+      "massKg": 5.3748e+24,
+      "radiusKm": 6994.242456917003,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "F2",
+        "main": "F2",
+        "pressure_bar": 1,
+        "composition": {
+          "F2": 1
+        }
+      }
+    },
+    {
+      "id": "t-20-phosphorus",
+      "parentId": "testion",
+      "name": "phosphorus",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/phosphorus",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 8.7562,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.5887
+        }
+      },
+      "massKg": 5.3748e+24,
+      "radiusKm": 6994.242456917003,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "PH3",
+        "main": "PH3",
+        "pressure_bar": 1,
+        "composition": {
+          "PH3": 1
+        }
+      }
+    },
+    {
+      "id": "t-21-ammonia-planet",
+      "parentId": "testion",
+      "name": "ammonia planet",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/ammonia-planet",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 8.7562,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.4589
+        }
+      },
+      "massKg": 5.3748e+24,
+      "radiusKm": 6994.242456917003,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "NH3",
+        "main": "NH3",
+        "pressure_bar": 1.5,
+        "composition": {
+          "NH3": 1
+        }
+      }
+    },
+    {
+      "id": "t-22-earth-analogue",
+      "parentId": "testion",
+      "name": "earth analogue",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/earth-analogue",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 5.1095,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.1342
+        }
+      },
+      "massKg": 5.972e+24,
+      "radiusKm": 6376.015626125337,
+      "magneticField": {
+        "strengthGauss": 0.5
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 1,
+        "composition": {
+          "N2": 0.78,
+          "O2": 0.21,
+          "Ar": 0.01
+        }
+      },
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.7
+      }
+    },
+    {
+      "id": "t-23-earth-like",
+      "parentId": "testion",
+      "name": "earth like",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/earth-like",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 5.4056,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.4563
+        }
+      },
+      "massKg": 1.07496e+25,
+      "radiusKm": 7756.0429930053415,
+      "magneticField": {
+        "strengthGauss": 0.5
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 1.1,
+        "composition": {
+          "N2": 0.79,
+          "O2": 0.2,
+          "CO2": 0.01
+        }
+      },
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.4
+      }
+    },
+    {
+      "id": "t-24-superhabitable",
+      "parentId": "testion",
+      "name": "superhabitable",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/superhabitable",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 4.7089,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.6271
+        }
+      },
+      "massKg": 1.7916e+25,
+      "radiusKm": 9195.80579705259,
+      "magneticField": {
+        "strengthGauss": 0.6
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 1.3,
+        "composition": {
+          "N2": 0.75,
+          "O2": 0.24,
+          "CO2": 0.01
+        }
+      },
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.8
+      }
+    },
+    {
+      "id": "t-25-forest",
+      "parentId": "testion",
+      "name": "forest",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/forest",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 4.7723,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.9258
+        }
+      },
+      "massKg": 5.972e+24,
+      "radiusKm": 6376.015626125337,
+      "magneticField": {
+        "strengthGauss": 0.5
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 1,
+        "composition": {
+          "N2": 0.78,
+          "O2": 0.21
+        }
+      },
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.4
+      },
+      "biosphere": {
+        "complexity": "complex",
+        "coverage": 0.8
+      }
+    },
+    {
+      "id": "t-26-jungle",
+      "parentId": "testion",
+      "name": "jungle",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/jungle",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 3.9877,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.1616
+        }
+      },
+      "massKg": 7.1664e+24,
+      "radiusKm": 6775.527642344321,
+      "magneticField": {
+        "strengthGauss": 0.5
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 1.2,
+        "composition": {
+          "N2": 0.77,
+          "O2": 0.22
+        }
+      },
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.6
+      },
+      "biosphere": {
+        "complexity": "complex",
+        "coverage": 0.8
+      }
+    },
+    {
+      "id": "t-27-swamp",
+      "parentId": "testion",
+      "name": "swamp",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/swamp",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 4.41,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.9757
+        }
+      },
+      "massKg": 5.972e+24,
+      "radiusKm": 6376.015626125337,
+      "magneticField": {
+        "strengthGauss": 0.5
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 1.1,
+        "composition": {
+          "N2": 0.78,
+          "O2": 0.21
+        }
+      },
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.8
+      },
+      "biosphere": {
+        "complexity": "complex",
+        "coverage": 0.8
+      }
+    },
+    {
+      "id": "t-28-eyeball",
+      "parentId": "testion",
+      "name": "eyeball",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/eyeball",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 5.0393,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.2112
+        }
+      },
+      "massKg": 5.972e+24,
+      "radiusKm": 7244.245838885031,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "tidallyLocked": true,
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 1,
+        "composition": {
+          "N2": 1
+        }
+      },
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.3
+      }
+    },
+    {
+      "id": "t-29-hot-eyeball",
+      "parentId": "testion",
+      "name": "hot eyeball",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/hot-eyeball",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 1.6952,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 2.9338
+        }
+      },
+      "massKg": 5.972e+24,
+      "radiusKm": 7244.245838885031,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "tidallyLocked": true,
+      "atmosphere": {
+        "name": "None",
+        "main": "None",
+        "pressure_bar": 0,
+        "composition": {
+          "None": 1
+        }
+      }
+    },
+    {
+      "id": "t-30-cold-eyeball",
+      "parentId": "testion",
+      "name": "cold eyeball",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/cold-eyeball",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 13.0803,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.3814
+        }
+      },
+      "massKg": 5.972e+24,
+      "radiusKm": 7244.245838885031,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "tidallyLocked": true
+    },
+    {
+      "id": "t-31-mini-neptune",
+      "parentId": "testion",
+      "name": "mini neptune",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/mini-neptune",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 4.7089,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.1411
+        }
+      },
+      "massKg": 4.1804e+25,
+      "radiusKm": 16564.600000000002,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "H2",
+        "main": "H2",
+        "pressure_bar": 50,
+        "composition": {
+          "H2": 0.8,
+          "He": 0.2
+        }
+      }
+    },
+    {
+      "id": "t-32-sub-neptune",
+      "parentId": "testion",
+      "name": "sub neptune",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/sub-neptune",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 5.4056,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.3759
+        }
+      },
+      "massKg": 3.5832e+25,
+      "radiusKm": 13379.1,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "N2",
+        "main": "N2",
+        "pressure_bar": 40,
+        "composition": {
+          "N2": 0.6,
+          "CO2": 0.4
+        }
+      }
+    },
+    {
+      "id": "t-33-ice-giant",
+      "parentId": "testion",
+      "name": "ice giant",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/ice-giant",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 86.49,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.2148
+        }
+      },
+      "massKg": 9.5552e+25,
+      "radiusKm": 24209.8,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "H2",
+        "main": "H2",
+        "pressure_bar": 100,
+        "composition": {
+          "H2": 0.8,
+          "He": 0.15,
+          "CH4": 0.05
+        }
+      }
+    },
+    {
+      "id": "t-34-super-neptune",
+      "parentId": "testion",
+      "name": "super neptune",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/super-neptune",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 25.077,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.3114
+        }
+      },
+      "massKg": 3.5832000000000005e+26,
+      "radiusKm": 41411.5,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "H2",
+        "main": "H2",
+        "pressure_bar": 100,
+        "composition": {
+          "H2": 0.8,
+          "He": 0.2
+        }
+      }
+    },
+    {
+      "id": "t-35-hot-neptune",
+      "parentId": "testion",
+      "name": "hot neptune",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/hot-neptune",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 0.4238,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 4.2783
+        }
+      },
+      "massKg": 1.1944000000000002e+26,
+      "radiusKm": 25484,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "H2",
+        "main": "H2",
+        "pressure_bar": 100,
+        "composition": {
+          "H2": 0.8,
+          "He": 0.2
+        }
+      }
+    },
+    {
+      "id": "t-36-ultra-hot-neptune",
+      "parentId": "testion",
+      "name": "ultra hot neptune",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/ultra-hot-neptune",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 0.106,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 2.3924
+        }
+      },
+      "massKg": 1.0749600000000001e+26,
+      "radiusKm": 25484,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "H2",
+        "main": "H2",
+        "pressure_bar": 100,
+        "composition": {
+          "H2": 0.8,
+          "He": 0.2
+        }
+      }
+    },
+    {
+      "id": "t-37-ammonia-clouds-gas-giant",
+      "parentId": "testion",
+      "name": "ammonia clouds gas giant",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/ammonia-clouds-gas-giant",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 29.4306,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.6798
+        }
+      },
+      "massKg": 1.7916e+27,
+      "radiusKm": 70081,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": []
+    },
+    {
+      "id": "t-38-water-clouds-gas-giant",
+      "parentId": "testion",
+      "name": "water clouds gas giant",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/water-clouds-gas-giant",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 8.7562,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 4.3756
+        }
+      },
+      "massKg": 1.4930000000000002e+27,
+      "radiusKm": 70081,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": []
+    },
+    {
+      "id": "t-39-cloudless-gas-giant",
+      "parentId": "testion",
+      "name": "cloudless gas giant",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/cloudless-gas-giant",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 1.1772,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 4.4696
+        }
+      },
+      "massKg": 1.1944e+27,
+      "radiusKm": 70081,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": []
+    },
+    {
+      "id": "t-40-alkali-metal-clouds-gas-giant",
+      "parentId": "testion",
+      "name": "alkali metal clouds gas giant",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/alkali-metal-clouds-gas-giant",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 0.3502,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 4.5152
+        }
+      },
+      "massKg": 1.7916e+27,
+      "radiusKm": 76452,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": []
+    },
+    {
+      "id": "t-41-silicate-clouds-gas-giant",
+      "parentId": "testion",
+      "name": "silicate clouds gas giant",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/silicate-clouds-gas-giant",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 0.1466,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 6.2222
+        }
+      },
+      "massKg": 1.7916e+27,
+      "radiusKm": 76452,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": []
+    },
+    {
+      "id": "t-42-gas-giant",
+      "parentId": "testion",
+      "name": "gas giant",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/gas-giant",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 4.1387,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 2.8259
+        }
+      },
+      "massKg": 8.958e+26,
+      "radiusKm": 70081,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": []
+    },
+    {
+      "id": "t-43-mini-jupiter",
+      "parentId": "testion",
+      "name": "mini jupiter",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/mini-jupiter",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 6.7808,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.6153
+        }
+      },
+      "massKg": 5.972e+26,
+      "radiusKm": 50968,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": []
+    },
+    {
+      "id": "t-44-super-jupiter",
+      "parentId": "testion",
+      "name": "super jupiter",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/super-jupiter",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 6.7808,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.2038
+        }
+      },
+      "massKg": 8.958000000000001e+27,
+      "radiusKm": 82823,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": []
+    },
+    {
+      "id": "t-ring",
+      "parentId": "t-44-super-jupiter",
+      "name": "Ring",
+      "kind": "body",
+      "roleHint": "ring",
+      "radiusInnerKm": 90000,
+      "radiusOuterKm": 140000,
+      "tags": [],
+      "orbit": {
+        "hostId": "t-44-super-jupiter",
+        "elements": {
+          "a_AU": 0.0008,
+          "e": 0,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 2.811
+        }
+      }
+    },
+    {
+      "id": "t-45-subsurface-ocean",
+      "parentId": "t-44-super-jupiter",
+      "name": "Subsurface Ocean",
+      "kind": "body",
+      "roleHint": "moon",
+      "__target": "planet/subsurface-ocean",
+      "orbit": {
+        "hostId": "t-44-super-jupiter",
+        "elements": {
+          "a_AU": 0.003,
+          "e": 0.04,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.798
+        }
+      },
+      "massKg": 1.1944000000000001e+23,
+      "radiusKm": 2683.618214329636,
+      "magneticField": {
+        "strengthGauss": 0
+      },
+      "tags": [],
+      "makeup": {
+        "rock": 0.5,
+        "ice": 0.5
+      },
+      "hydrosphere": {
+        "composition": "water",
+        "coverage": 0.4
+      }
+    },
+    {
+      "id": "t-46-sulfur",
+      "parentId": "t-44-super-jupiter",
+      "name": "Sulfur Moon",
+      "kind": "body",
+      "roleHint": "moon",
+      "__target": "planet/sulfur",
+      "orbit": {
+        "hostId": "t-44-super-jupiter",
+        "elements": {
+          "a_AU": 0.0018,
+          "e": 0.06,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 4.8303
+        }
+      },
+      "massKg": 8.958e+22,
+      "radiusKm": 1783.88,
+      "magneticField": {
+        "strengthGauss": 0
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "SO2",
+        "main": "SO2",
+        "pressure_bar": 0.4,
+        "composition": {
+          "SO2": 1
+        }
+      }
+    },
+    {
+      "id": "t-47-puffy",
+      "parentId": "testion",
+      "name": "puffy",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/puffy",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 0.5232,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 3.7305
+        }
+      },
+      "massKg": 3.5832000000000005e+26,
+      "radiusKm": 63710,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": []
+    },
+    {
+      "id": "t-48-super-puff",
+      "parentId": "testion",
+      "name": "super puff",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/super-puff",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 1.6952,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.0557
+        }
+      },
+      "massKg": 4.7776e+25,
+      "radiusKm": 50968,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": []
+    },
+    {
+      "id": "t-49-helium",
+      "parentId": "testion",
+      "name": "helium",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/helium",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 2.6488,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 2.4467
+        }
+      },
+      "massKg": 3.5832000000000005e+26,
+      "radiusKm": 31855,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "atmosphere": {
+        "name": "He",
+        "main": "He",
+        "pressure_bar": 0,
+        "composition": {
+          "He": 1
+        }
+      }
+    },
+    {
+      "id": "t-50-chthonian",
+      "parentId": "testion",
+      "name": "chthonian",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/chthonian",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 0.1466,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.3557
+        }
+      },
+      "massKg": 1.1944000000000002e+26,
+      "radiusKm": 16812.405296857298,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": []
+    },
+    {
+      "id": "t-51-dwarf-planet",
+      "parentId": "testion",
+      "name": "dwarf planet",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/dwarf-planet",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 117.7225,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.7094
+        }
+      },
+      "massKg": 2.9860000000000003e+22,
+      "radiusKm": 955.65,
+      "magneticField": {
+        "strengthGauss": 0
+      },
+      "tags": []
+    },
+    {
+      "id": "t-52-mesoplanet",
+      "parentId": "testion",
+      "name": "mesoplanet",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/mesoplanet",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 18.8356,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 0.1199
+        }
+      },
+      "massKg": 1.7916e+23,
+      "radiusKm": 1911.3,
+      "magneticField": {
+        "strengthGauss": 0
+      },
+      "tags": []
+    },
+    {
+      "id": "t-53-planetesimal",
+      "parentId": "testion",
+      "name": "planetesimal",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/planetesimal",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 42.3801,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.7465
+        }
+      },
+      "massKg": 5.972e+21,
+      "radiusKm": 637.1,
+      "magneticField": {
+        "strengthGauss": 0
+      },
+      "tags": []
+    },
+    {
+      "id": "t-54-sub-brown-dwarf",
+      "parentId": "testion",
+      "name": "sub brown dwarf",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/sub-brown-dwarf",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 10.595,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 2.0984
+        }
+      },
+      "massKg": 2.0902e+28,
+      "radiusKm": 70081,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": []
+    },
+    {
+      "id": "t-55-brown-dwarf",
+      "parentId": "testion",
+      "name": "brown dwarf",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/brown-dwarf",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 0.3502,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.5472
+        }
+      },
+      "massKg": 3.5832000000000004e+28,
+      "radiusKm": 76452,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": []
+    },
+    {
+      "id": "t-56-ultra-cool-dwarf",
+      "parentId": "testion",
+      "name": "ultra cool dwarf",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/ultra-cool-dwarf",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 2.6488,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 6.006
+        }
+      },
+      "massKg": 5.3748000000000006e+28,
+      "radiusKm": 82823,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": []
+    },
+    {
+      "id": "t-57-silicate",
+      "parentId": "testion",
+      "name": "Toroid",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/silicate",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 10.595,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 1.2108
+        }
+      },
+      "massKg": 5.972e+24,
+      "radiusKm": 7332.774794872706,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "rotation_period_hours": 1.5,
+      "makeup": {
+        "rock": 0.85,
+        "metal": 0.15
+      }
+    },
+    {
+      "id": "t-58-silicate",
+      "parentId": "testion",
+      "name": "Ellipsoid",
+      "kind": "body",
+      "roleHint": "planet",
+      "__target": "planet/silicate",
+      "orbit": {
+        "hostId": "testion",
+        "elements": {
+          "a_AU": 10.595,
+          "e": 0.02,
+          "i_deg": 0,
+          "omega_deg": 0,
+          "Omega_deg": 0,
+          "M0_rad": 5.4745
+        }
+      },
+      "massKg": 5.972e+24,
+      "radiusKm": 7332.774794872706,
+      "magneticField": {
+        "strengthGauss": 0.3
+      },
+      "tags": [],
+      "rotation_period_hours": 4,
+      "makeup": {
+        "rock": 0.85,
+        "metal": 0.15
+      }
+    }
+  ],
+  "rulePackId": "starter-sf",
+  "rulePackVersion": "1.0",
+  "tags": [],
+  "toytownFactor": 0.6,
+  "isManuallyEdited": false
+}

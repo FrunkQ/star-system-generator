@@ -8,6 +8,11 @@ import { AU_KM, G } from '../constants';
 
 const AU_M = AU_KM * 1000;
 const DAY_S = 86400;
+
+// Per-solve trace logging. OFF by default: the solver runs many times per autopilot generation (the
+// reorder/lookahead alone fires hundreds of quote calls), so logging on every call floods the console and
+// drags playback. Flip to true only when debugging a specific transfer.
+const DEBUG_TRANSIT = false;
 const SOLAR_MASS_KG = 1.989e30;
 
 function getNodeMass(sys: System, node: any): number {
@@ -188,9 +193,23 @@ export function calculateTransitPlan(
       initialDelay_days?: number;
       directAccelRatio?: number; // NEW
       directBrakeRatio?: number; // NEW
+      // Cost-only: keep the analytic time/Δv (computed before the integration) but skip generating the full
+      // display trajectory — drops the path-point count to a minimum. For the autopilot reorder search, which
+      // needs only time + Δv and runs the solver many times. Same core math; far cheaper. (Default: full path.)
+      costOnly?: boolean;
+      // Quote: the lightest tier, for the lookahead/reorder search that runs MANY times. Produces only the
+      // two analytic-cost families the search ranks on — "Efficient Now" (Lambert/Hohmann, depart-now) and
+      // "Direct Burn" (torch) — and skips the expensive Most-Efficient delayed-launch-window sweep (~100
+      // Lambert solves) + the gravity-assist candidate search + the display path. Both returned plans are the
+      // SAME real solver outputs the full call commits with, so a quoted leg cannot diverge from the flown one.
+      // (Implies costOnly.)
+      quote?: boolean;
   }
 ): TransitPlan[] {
   const plans: TransitPlan[] = [];
+  // Quote tier always skips the display trajectory (it only ever reports time/Δv).
+  if (params.quote) params.costOnly = true;
+  const quote = !!params.quote;
 
   // 1. Find Nodes
   const origin = sys.nodes.find(n => n.id === originId);
@@ -248,7 +267,7 @@ export function calculateTransitPlan(
       }
   }
 
-  console.log(`[TransitPlanner] Debug: Root mass=${getNodeMass(sys, root)}, Frame=${frameParentId || 'Global'}, FrameMu=${frameMu}`);
+  if (DEBUG_TRANSIT) console.log(`[TransitPlanner] Debug: Root mass=${getNodeMass(sys, root)}, Frame=${frameParentId || 'Global'}, FrameMu=${frameMu}`);
 
   // SANITIZATION: Check for "Impossible Orbit" (Sun Gravity around a Planet)
   let effectiveOrigin = origin;
@@ -325,6 +344,41 @@ export function calculateTransitPlan(
               forcedParkingRadiusAu = undefined; 
           }
       }
+  }
+
+  // BELT / RING DESTINATION (#13): a belt node's own anomaly is an arbitrary spot on the ring —
+  // it can sit on the far side of the star, which made Mars→belt plans fly PAST the sun to
+  // "rendezvous" with that phantom point. The intent of a belt/ring destination is "drop into a
+  // circular orbit at that radius" (the closest stretch of ring is fine), so retarget a massless
+  // phantom on a circular orbit at the annulus mid-radius, rotated to the ORIGIN's longitude.
+  // Rendezvous mode then matches the phantom's velocity = a circular orbit inside the belt.
+  if ((target.roleHint === 'belt' || target.roleHint === 'ring') && target.orbit) {
+      const midAu = (target.radiusInnerKm && target.radiusOuterKm)
+          ? ((target.radiusInnerKm + target.radiusOuterKm) / 2) / AU_KM
+          : target.orbit.elements.a_AU;
+      const phantom = {
+          ...target,
+          orbit: {
+              ...target.orbit,
+              elements: { ...target.orbit.elements, a_AU: midAu, e: 0 },
+              n_rad_per_s: undefined as any   // force recompute for the new radius
+          },
+          kind: 'construct' as any,           // massless → rendezvous mode, nothing to "orbit"
+          massKg: 0
+      };
+      if (effectiveOrigin) {
+          // Rotate the phantom so that at departure it sits at the origin's longitude around the
+          // belt's host (e=0 → adding Δangle to the anomaly rotates the position by exactly Δangle).
+          const beltHost = sys.nodes.find(n => n.id === target.orbit!.hostId) ?? root;
+          const hostR = getGlobalState(sys, beltHost as any, startTime).r;
+          const phR = getGlobalState(sys, phantom as any, startTime).r;
+          const origR = getGlobalState(sys, effectiveOrigin as any, startTime).r;
+          const cur = Math.atan2(phR.y - hostR.y, phR.x - hostR.x);
+          const want = Math.atan2(origR.y - hostR.y, origR.x - hostR.x);
+          phantom.orbit.elements.M0_rad += (want - cur);
+      }
+      effectiveTarget = phantom as CelestialBody;
+      forcedParkingRadiusAu = undefined;      // the ring itself IS the parking orbit
   }
 
   // Update params with potentially forced radius
@@ -429,7 +483,7 @@ export function calculateTransitPlan(
   const r2_m = r2 * AU_M;
   const t_hohmann_sec = Math.PI * Math.sqrt(Math.pow(r1_m + r2_m, 3) / (8 * frameMu));
   
-  console.log(`[TransitPlanner] Debug: startPos=${startPos.x.toFixed(4)},${startPos.y.toFixed(4)} | r1=${r1.toFixed(2)} AU | r2=${r2.toFixed(2)} AU | t_hohmann=${(t_hohmann_sec/86400).toFixed(1)}d`);
+  if (DEBUG_TRANSIT) console.log(`[TransitPlanner] Debug: startPos=${startPos.x.toFixed(4)},${startPos.y.toFixed(4)} | r1=${r1.toFixed(2)} AU | r2=${r2.toFixed(2)} AU | t_hohmann=${(t_hohmann_sec/86400).toFixed(1)}d`);
 
   const accel = (params.maxG || 0.1) * 9.81;
 
@@ -578,8 +632,10 @@ export function calculateTransitPlan(
       return solveVariantAt(startTime, startState, name, type, constraints);
   }
 
-  // 1. Most Efficient (Hohmann-like + delayed launch window search)
+  // 1. Most Efficient (Hohmann-like + delayed launch window search) — skipped under quote (its delayed-launch
+  // sweep is ~100 Lambert solves; the search ranks on "Efficient Now" + "Direct Burn" instead).
   let mostEfficientPlan: TransitPlan | null = null;
+  if (!quote) {
   const localTargetPeriodDays = frameParentId ? estimateOrbitalPeriodDays(effectiveTarget, frameMu) : null;
   // For local-frame transfers (planet->moon, moon->moon), search within about one target orbit.
   const maxSearchDelayDays = frameParentId
@@ -647,6 +703,7 @@ export function calculateTransitPlan(
       });
   }
   if (mostEfficientPlan) plans.push(mostEfficientPlan);
+  } // end !quote (Most Efficient delayed-window search)
 
   // 2. Balanced Alternative (Efficient Now)
   const balancedPlan = solveVariant('Efficient Now', 'Efficiency', {
@@ -678,13 +735,15 @@ export function calculateTransitPlan(
       plans.push(directPlan);
   }
 
-  // 4. Gravity Assist (Deep Space) - V2 Feature
+  // 4. Gravity Assist (Deep Space) - V2 Feature — skipped under quote (its candidate search is heavy and the
+  // assist plan is never the family the lookahead ranks on).
   const dist_start_au = distanceAU(getGlobalState(sys, effectiveOrigin!, startTime).r, getGlobalState(sys, effectiveTarget, startTime).r);
-  if (dist_start_au > 0.5 && !frameParentId) { // Only for interplanetary
+  if (!quote && dist_start_au > 0.5 && !frameParentId) { // Only for interplanetary
       const assistPlan = calculateAssistPlan(sys, effectiveOrigin, effectiveTarget, root, startTime, getGlobalState(sys, effectiveOrigin!, startTime), {
           maxG: finalParams.maxG,
           shipMass_kg: finalParams.shipMass_kg,
-          shipIsp: finalParams.shipIsp
+          shipIsp: finalParams.shipIsp,
+          costOnly: finalParams.costOnly
       });
       if (assistPlan) {
           assistPlan.planType = 'Complex';
@@ -711,7 +770,7 @@ export function calculateTransitPlan(
           p.hiddenReason = "Impractical Duration (>10x optimal)";
       }
       
-      if (p.hiddenReason) {
+      if (p.hiddenReason && DEBUG_TRANSIT) {
           console.log(`[TransitPlanner] Debug: Plan '${p.name}' hidden because: ${p.hiddenReason} (DV: ${p.totalDeltaV_ms.toFixed(0)}m/s, Time: ${p.totalTime_days.toFixed(1)}d)`);
       }
   });
@@ -831,7 +890,7 @@ function calculateLambertPlan(
         fuel1 = calculateFuelMass(m0, dv1_applied_mps, params.shipIsp!);
         m1 = m0 - fuel1;
     } else {
-        fuel1 = dv1_applied_mps * 0.01;
+        fuel1 = Infinity; // No engine/Isp → can't move; the plan is infeasible, not "cheap".
     }
 
     let dv2_applied_au_s = 0;
@@ -857,7 +916,7 @@ function calculateLambertPlan(
     if (useRocketEq) {
         fuel2 = calculateFuelMass(m1, dv2_applied_mps, params.shipIsp!);
     } else {
-        fuel2 = dv2_applied_mps * 0.01;
+        fuel2 = Infinity;
     }
 
     const totalBurnTime = accelTime_sec + brakeTime_sec;
@@ -866,7 +925,7 @@ function calculateLambertPlan(
         const dv2_capped_mps = Math.min(dv2_applied_mps, remainingForBrake * brakeAccel_mps2);
         dv2_applied_au_s = dv2_capped_mps / AU_M;
         brakeTime_sec = dv2_capped_mps / brakeAccel_mps2;
-        fuel2 = useRocketEq ? calculateFuelMass(m1, dv2_capped_mps, params.shipIsp!) : dv2_capped_mps * 0.01;
+        fuel2 = useRocketEq ? calculateFuelMass(m1, dv2_capped_mps, params.shipIsp!) : Infinity;
     }
 
     const totalDeltaV_ms = dv1_applied_mps + dv2_applied_mps;
@@ -877,20 +936,17 @@ function calculateLambertPlan(
     const displayBrakeTimeSec = brakeTime_sec;
     const accelEndTime = startTime + displayAccelTimeSec * 1000;
     const brakeStartTime = arrivalTime - displayBrakeTimeSec * 1000;
-    const totalPoints = Math.min(5000, Math.max(300, Math.ceil(durationSec / (86400 * 2))));
+    const totalPoints = params.costOnly ? 24 : Math.min(5000, Math.max(300, Math.ceil(durationSec / (86400 * 2))));
     
     // 5. N-Body & Path Integration
-    const massNodes = sys.nodes.filter(n => n.id !== (frameParentId || root.id) && (n.kind === 'body' || n.kind === 'barycenter'));
-    const nBodySources = massNodes.map(n => {
-        const state = getGlobalState(sys, n as any, startTime);
-        const parentState = frameParentId ? getGlobalState(sys, sys.nodes.find(fn => fn.id === frameParentId)!, startTime) : null;
-        return {
-            mu: getNodeMass(sys, n) * G / Math.pow(AU_M, 3),
-            pos: parentState ? subtract(state.r, parentState.r) : state.r
-        };
-    });
-
-    const integration = integrateBallisticPath(startState.r, result.v1, durationSec, mu_au, totalPoints, targetAimPos, nBodySources);
+    // Belts/rings are DISTRIBUTED mass — their `massKg` is a debris-density proxy, not gravitational
+    // mass, with no single point to pull toward — so exclude them as point-mass perturbers (mirrors
+    // gravity-assist). Otherwise a belt would inject a bogus point-gravity tug toward a ring location.
+    // NOTE: the DISPLAYED path is integrated 2-body to match the (2-body) Lambert solution. Feeding the
+    // full n-body perturber set here made the integrated path drift off the Lambert target, and the linear
+    // drift-correction then flattened the conic into a near-straight chord (the "straight transit lines"
+    // bug). Proper fix = solve Lambert against the n-body field; banked. Until then: draw what we solved.
+    const integration = integrateBallisticPath(startState.r, result.v1, durationSec, mu_au, totalPoints, targetAimPos);
     const localPath = integration.points;
     const totalDriftM = integration.drift_au * AU_M;
 
@@ -1240,20 +1296,11 @@ function calculateFastPlan(
     const brakeStartTime = startTime + (accelTime + coastTime) * 1000;
 
     const segments: TransitSegment[] = [];
-    const sampleCount = Math.min(3000, Math.max(240, Math.ceil(totalTime / (3600 * 2))));
+    const sampleCount = params.costOnly ? 24 : Math.min(3000, Math.max(240, Math.ceil(totalTime / (3600 * 2))));
     
-    // N-Body summation sources
-    const massNodes = sys.nodes.filter(n => n.id !== frameNode.id && (n.kind === 'body' || n.kind === 'barycenter'));
-    const nBodySources = massNodes.map(n => {
-        const state = getGlobalState(sys, n as any, startTime);
-        const parentState = getGlobalState(sys, frameNode, startTime);
-        return {
-            mu: getNodeMass(sys, n) * G / Math.pow(AU_M, 3),
-            pos: subtract(state.r, parentState.r)
-        };
-    });
-
-    const integration = integrateBallisticPath(rStart, v1, totalTime, muLocalAu, sampleCount, rEnd, nBodySources);
+    // 2-body displayed path (matches the solved trajectory) — see the note in calculateLambertPlan: the
+    // n-body perturbers here drove the straight-line bug via the drift-correction. Banked: n-body-aware solve.
+    const integration = integrateBallisticPath(rStart, v1, totalTime, muLocalAu, sampleCount, rEnd);
     const rawLocalPath = integration.points;
     const totalDriftM = integration.drift_au * AU_M;
 

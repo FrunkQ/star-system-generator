@@ -96,9 +96,9 @@
 
 <style>
   .tab-panel { padding: 10px; }
-  hr { border: 1px solid #555; margin: 1em 0; }
+  hr { border: 1px solid var(--border); margin: 1em 0; }
   .fuel-tank-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-  .fuel-tank-item { background-color: #444; padding: 8px; border-radius: 4px; display: flex; flex-direction: column; gap: 5px; }
+  .fuel-tank-item { background-color: var(--bg-control); padding: 8px; border-radius: 4px; display: flex; flex-direction: column; gap: 5px; }
   .fuel-info { display: flex; justify-content: flex-start; align-items: center; gap: 10px; }
   .fuel-info span { flex-grow: 1; }
   .capacity-info { margin-left: auto; }

@@ -1,6 +1,74 @@
 import type { Atmosphere, RulePack, CelestialBody, Barycenter, Tag } from '../types';
 import { evaluateTagTriggers } from '../utils';
-import { G, UNIVERSAL_GAS_CONSTANT } from '../constants';
+import { G, UNIVERSAL_GAS_CONSTANT, EARTH_MASS_KG } from '../constants';
+
+const BOLTZMANN = 1.380649e-23;     // J/K
+const AVOGADRO = 6.02214076e23;     // /mol
+const K_WIND = 1.5;                 // non-thermal (XUV/stellar-wind) erosion strength — calibrated to Sol
+
+// Atmospheric escape over the system's age (proposal: "atmospheres burn off over time unless shielded").
+// Two mechanisms, both age-integrated, applied to a body's atmosphere BEFORE greenhouse/radiation read
+// it — so a thinned atmosphere correctly gives less greenhouse and less shielding:
+//   • Thermal (Jeans): light gases (H2/He) escape any non-giant; heavy gases need a high escape
+//     parameter λ = G·M·m / (R·k·T_exo). Older worlds need a higher λ to have held on.
+//   • Non-thermal (XUV / stellar wind): strips small, hot, close-in, UNSHIELDED worlds — scaled by
+//     stellar flux, age and (1 − magnetosphere), and gated OFF above ~9 km/s escape velocity so
+//     Earth/Venus/super-Earths keep their air (and the Sol baseline is preserved).
+// Only thins or strips, never invents. Giants (≥10 M⊕) are exempt.
+export function applyAtmosphericEscape(
+  body: CelestialBody, equilibriumTempK: number, ageGyr: number, stellarFluxRel: number, magShield: number, pack: RulePack
+): void {
+  const atm = body.atmosphere;
+  if (!atm || atm.name === 'None' || !atm.composition || !body.massKg || !body.radiusKm) return;
+  if (body.massKg / EARTH_MASS_KG > 10) return;            // giants hold everything
+
+  const R = body.radiusKm * 1000;
+  const vEscKms = Math.sqrt((2 * G * body.massKg) / R) / 1000;
+  const Texo = Math.max(2 * (equilibriumTempK || 0), 800);  // XUV-heated thermosphere proxy
+  const lamCrit = 18 + 6 * Math.log(1 + Math.max(0, ageGyr));
+
+  // Non-thermal wind erosion: only bites below ~9 km/s (tapered), so high-gravity worlds are immune.
+  const windGate = Math.max(0, Math.min(1, (9 - vEscKms) / 4));
+  const windLoss = Math.min(1, K_WIND * Math.sqrt(Math.max(0, stellarFluxRel)) * (1 - magShield)
+    * Math.max(0, ageGyr) / Math.max(1, vEscKms * vEscKms) * windGate);
+
+  const molar = pack.gasMolarMassesKg || {};
+  const kept: Record<string, number> = {};
+  let totalKept = 0;
+  for (const [gas, frac] of Object.entries(atm.composition)) {
+    const m = (molar[gas] ?? 0.028) / AVOGADRO;           // per-molecule mass (kg)
+    const lambda = (G * body.massKg * m) / (R * BOLTZMANN * Texo);   // Jeans escape parameter
+    const thermal = Math.max(0, Math.min(1, (lambda - lamCrit * 0.6) / (lamCrit * 1.0)));
+    const keptFrac = Math.max(0, Math.min(1, thermal * (1 - windLoss)));
+    const a = frac * keptFrac;
+    if (a > 1e-6) { kept[gas] = a; totalKept += a; }
+  }
+
+  const newPressure = (atm.pressure_bar || 0) * totalKept;  // column shrinks by the retained fraction
+  if (totalKept <= 0 || newPressure < 0.001) {              // fully stripped → airless
+    body.atmosphere = { name: 'None', composition: {}, pressure_bar: 0 };
+    return;
+  }
+  for (const g in kept) kept[g] /= totalKept;               // renormalise the survivors
+  atm.composition = kept;
+  atm.pressure_bar = newPressure;
+  atm.main = Object.keys(kept).reduce((x, y) => (kept[x] > kept[y] ? x : y));
+  atm.molarMassKg = undefined;                              // force molar-mass recompute downstream
+}
+
+// Atmosphere tags that USED to exist (cosmetic flavour ditched for the RPG use case, duplicates,
+// or superseded by the apparent-colour / fluid-layer / geology models). Stripped on every run so
+// legacy/saved data from the old atmosphere-preset era self-heals.
+const RETIRED_ATMOSPHERE_TAGS = [
+    'voice-changer', 'almond-smell', 'rotten-egg-smell', 'pungent', 'nitrogen-narcosis', 'leak-prone',
+    'abrasive-wind', 'steambath', 'buffer-gas', 'noble-gas', 'acidic-rain', 'visible-fumes', 'visible-gas',
+    'reactive', 'cloud-former', 'condensible-metal', 'condensible-rock', 'condensible-fuel', 'glass-haze',
+    'refractory', 'opaque', 'conductive-atmosphere', 'metal-embrittlement', 'volcanic',
+    // haze is now carried by the atmosphere/apparent-colour model, not a standalone tag
+    'haze-former',
+    // legacy thickness / preset descriptors
+    'thin', 'thick', 'exosphere', 'haze', 'hot'
+];
 
 function clamp(value: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, value));
@@ -81,7 +149,11 @@ export function calculateMolarMass(atmosphere: Atmosphere, pack: RulePack): numb
 export function recalculateAtmosphereDerivedProperties(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], rulePack: RulePack) {
     if (!body.atmosphere || body.atmosphere.name === 'None') {
         body.greenhouseTempK = 0;
-        body.surfaceRadiation = undefined;
+        // NOTE: do NOT clear surfaceRadiation here. An airless body has NO atmospheric
+        // shielding, so it receives the FULL unshielded dose — it's the most-irradiated
+        // case, not zero. processEnvironment/calculateSurfaceRadiation already computed it
+        // (e.g. Luna ≈ 500 mSv/yr); wiping it to undefined was the Phase-04 "airless moon
+        // radiation" bug.
         return;
     }
 
@@ -106,9 +178,10 @@ export function recalculateAtmosphereDerivedProperties(body: CelestialBody, allN
     // 5. Dynamic Tags
     const dynamicTags = calculateAtmosphereTags(body, pack);
     
-    // Merge tags: Keep existing non-atmosphere tags, replace atmosphere ones
-    // Atmosphere tags are those defined in gasPhysics.
-    const gasPhysicsTags = new Set<string>();
+    // Merge tags: keep existing non-atmosphere tags, replace the atmosphere ones. We strip both
+    // the CURRENT gasPhysics tags AND a RETIRED set — so removing a gas tag from the rulepack (or
+    // loading legacy/saved data from the old atmosphere-preset era) never strands an orphan tag.
+    const gasPhysicsTags = new Set<string>(RETIRED_ATMOSPHERE_TAGS);
     if (pack.gasPhysics) {
         Object.values(pack.gasPhysics).forEach(g => g.tags?.forEach(t => gasPhysicsTags.add(t.name)));
     }
@@ -168,6 +241,24 @@ export function calculateGreenhouseEffect(body: CelestialBody, rulePack: RulePac
                 : (1 + (0.5 * ciaStrength));
             const gasContribution = baseContribution * cryoOverlap * ciaFactor;
             totalDeltaT += gasContribution;
+        }
+    }
+
+    // Cloud / ocean coupling: a liquid water ocean evaporates, adding water-vapour greenhouse the
+    // listed composition may omit. This is the warming counterpart to the cloud ALBEDO (cooling)
+    // now derived elsewhere. Gated OFF when H2O is already in the atmosphere, so calibrated worlds
+    // (Earth lists 0.4% H2O) are untouched — no double-count.
+    const h2oFrac = atm.composition['H2O'] || 0;
+    const hasWaterOcean = body.hydrosphere?.composition === 'water' && (body.hydrosphere?.coverage || 0) > 0.1;
+    const surfTForVapour = body.temperatureK || body.equilibriumTempK || 0;
+    if (hasWaterOcean && h2oFrac < 0.001 && surfTForVapour > 273 && surfTForVapour < 373) {
+        // Near-surface water-vapour fraction is small even over a warm ocean (Earth ≈ 0.4%); it rises
+        // gently with temperature. Kept Earth-realistic so it adds a few K, not a runaway.
+        const impliedH2O = clamp(0.004 + (surfTForVapour - 273) / 2500, 0, 0.025);
+        const pp = effectivePressure * impliedH2O;
+        const h2oPhysics = rulePack.gasPhysics['H2O'];
+        if (h2oPhysics && h2oPhysics.greenhouse > 0) {
+            totalDeltaT += h2oPhysics.greenhouse * Math.log(1 + Math.sqrt(100 * pp)) * cryoOverlap;
         }
     }
 
@@ -235,6 +326,10 @@ export function calculateAtmosphereTags(body: CelestialBody, rulePack: RulePack)
 
     return Array.from(tags);
 }
+
+// (Atmosphere → resource derivation now lives in the PoI reasons rules — deterministic chance-1.0 rules on
+//  hasO2 / hasNobleGas / atmMain / isGiant — so it's visible and tweakable in Edit Rule, not a hidden pass.
+//  See docs/tag-inheritance.md "Resource reconciliation".)
 
 /**
  * Checks if a specific gas can be retained by a planet's gravity.

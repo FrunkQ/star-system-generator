@@ -1,4 +1,10 @@
+<script lang="ts">
+	import { createEventDispatcher } from 'svelte';
+	const dispatch = createEventDispatcher();
+</script>
+
 <div class="zone-key-container">
+	<button class="zk-close" title="Close key (re-select Zones to show it again)" aria-label="Close zones key" on:click={() => dispatch('close')}>×</button>
 	<h4>Stellar Zones Key (likely order from star to edge)</h4>
 	<ul>
 		<li>
@@ -153,17 +159,37 @@
 
 <style>
 	.zone-key-container {
-		border: 1px solid #444;
+		position: relative;
+		border: 1px solid var(--border);
 		border-radius: 8px;
 		padding: 1em;
 		background-color: #252525;
 		font-size: 1em; /* You had this set to 1.0em, just tidied it */
 		font-family: sans-serif;
 	}
+	.zk-close {
+		position: absolute;
+		top: 8px;
+		right: 8px;
+		width: 24px;
+		height: 24px;
+		padding: 0;
+		border: none;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--text-faint, #8a8f99);
+		cursor: pointer;
+		line-height: 1;
+		font-size: 1.25rem;
+		transition: color .12s, background .12s;
+	}
+	.zk-close:hover { color: var(--status-bad, #e0484d); background: color-mix(in srgb, var(--status-bad, #e0484d) 14%, transparent); }
+	.zk-close:focus-visible { outline: 2px solid var(--accent, #e8963c); outline-offset: 1px; }
+	h4 { padding-right: 26px; }
 	h4 {
 		margin-top: 0;
-		color: #ff3e00;
-		border-bottom: 1px solid #444;
+		color: var(--accent);
+		border-bottom: 1px solid var(--border);
 		padding-bottom: 0.5em;
 	}
 	ul {
@@ -172,7 +198,7 @@
 	}
 	li {
 		margin-bottom: 1em;
-		background-color: #333; /* Added card background */
+		background-color: var(--bg-panel); /* Added card background */
 		padding: 1em; /* Added padding to card */
 		border-radius: 5px; /* Rounded corners for card */
 	}
@@ -189,7 +215,7 @@
 		width: 1em;
 		height: 1em;
 		margin-right: 0.5em;
-		border: 1px solid #555;
+		border: 1px solid var(--border);
 		vertical-align: middle; /* Aligns box with text */
 	}
 	.color-box.dashed {
@@ -199,44 +225,45 @@
 	.in-game-note {
 		font-style: italic;
 		color: #ff9a00; /* Bright orange for in-game notes */
-		border-top: 1px dashed #555;
+		border-top: 1px dashed var(--border);
 		padding-top: 0.75em;
 		font-size: 1.1em;
 	}
 
+	/* Legend swatches use the solid --zone-* tokens (clearer key + reskins with /palette). */
 	.color-box.red {
-		background-color: rgba(180, 0, 0, 0.2);
+		background-color: var(--zone-kill);
 	}
 	.color-box.orange {
-		background-color: rgba(200, 100, 0, 0.2);
+		background-color: var(--zone-danger);
 	}
 	.color-box.green {
-		background-color: rgba(0, 255, 0, 0.1);
+		background-color: var(--zone-habitable);
 	}
 	.color-box.lightblue {
-		background-color: rgba(173, 216, 230, 0.5);
+		background-color: var(--zone-frost-line);
 	}
 	.color-box.grey {
-		background-color: rgba(105, 105, 105, 0.5);
+		background-color: var(--zone-soot-line);
 	}
 	.color-box.brown {
-		background-color: rgba(165, 42, 42, 0.5);
+		background-color: var(--zone-rock-line);
 	}
 	.color-box.white {
-		background-color: rgba(255, 255, 255, 0.5);
+		background-color: var(--zone-co2-ice);
 	}
 	.color-box.blue {
-		background-color: rgba(0, 0, 255, 0.5);
+		background-color: var(--zone-co-ice);
 	}
 	.color-box.red-line {
-		background-color: rgba(180, 0, 0, 0.5);
+		background-color: var(--zone-roche);
 	}
 
 	.notes {
 		margin-top: 2em; /* More space above the notes */
 		font-size: 0.9em;
-		color: #aaa;
-		background-color: #333;
+		color: var(--text-muted);
+		background-color: var(--bg-panel);
 		padding: 1em;
 		border-radius: 5px;
 	}

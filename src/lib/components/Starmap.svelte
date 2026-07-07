@@ -1,31 +1,48 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { gestures } from '$lib/input/gestures';
+  import { getPlanetColor as getStarColor } from '$lib/rendering/colors';
+  import AppShell from './AppShell.svelte';
+  import RailNav from './RailNav.svelte';
+  import BodyPicker from './BodyPicker.svelte';
+  import FullscreenButton from './FullscreenButton.svelte';
   import type { Starmap, System, CelestialBody, RulePack, Barycenter } from '$lib/types';
-  import GmNotesEditor from './GmNotesEditor.svelte';
+  import { constructDisplayPlacement, flybyTurn, interstellarConstructIds } from '$lib/transit/interstellar';
+  import StarmapInfoPanel from './StarmapInfoPanel.svelte';
+  import BottomSheet from './BottomSheet.svelte';
+  import TimeDisplay from './TimeDisplay.svelte';
+  import { railCollapsed } from '$lib/railStore';
   import Grid from './Grid.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
-  import MarkdownModal from './MarkdownModal.svelte';
-  import AboutModal from './AboutModal.svelte';
-  import EditFuelAndDrivesModal from './EditFuelAndDrivesModal.svelte';
-  import EditAtmospheresModal from './EditAtmospheresModal.svelte';
-  import EditSensorsModal from './EditSensorsModal.svelte';
-  import EditTemporalModal from './EditTemporalModal.svelte';
   import SaveSystemModal from './SaveSystemModal.svelte';
   import ImportTravellerModal from './ImportTravellerModal.svelte';
   import AddTravellerSystemModal from './AddTravellerSystemModal.svelte';
   import StarmapScaleBar from './StarmapScaleBar.svelte';
   import { TravellerImporter } from '$lib/traveller/importer';
   import { computePlayerSnapshot } from '$lib/system/utils';
+  import { packsForStarmap, reasonsConfig } from '$lib/physics/reasonsToVisit';
+  import { coiForStarmap } from '$lib/constructs/coi';
+  import { get } from 'svelte/store';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
   import { ensureTemporalState, setMasterToDisplay } from '$lib/temporal/defaults';
   import TimeControls from './TimeControls.svelte';
 
   export let starmap: Starmap;
   export let rulePack: RulePack; // We need this prop to show defaults!
+  export let routesAttention: 'stuck' | 'intervention' | 'done' | null = null; // worst fleet attention → rail Routes dot
   export let linkingMode: boolean = false;
   export let selectedSystemForLink: string | null = null;
 
   const dispatch = createEventDispatcher();
+
+  // Phase 03: Starmap owns its own AppShell (same shared rail as SystemView). RailNav app
+  // nav forwards up to +page via dispatch; the niche bulk-editors stay in the header menu.
+  let mode: 'desktop' | 'phone' = 'desktop';
+  let railOpen = false; // phone slide-in rail (opened by the + menu FAB)
+  const starmapFabActions = [{ id: 'reset', label: 'Reset view', icon: '↺' }];
+  function handleStarmapFabAction(e: CustomEvent<string>) {
+    if (e.detail === 'reset') resetView();
+  }
 
   let svgElement: SVGSVGElement;
   let groupElement: SVGGElement;
@@ -40,14 +57,9 @@
 
   // Header State
   let showDropdown = false;
-  let showAboutModal = false;
-  let showFuelModal = false;
-  let showAtmosphereModal = false;
-  let showSensorsModal = false;
   let showSaveModal = false;
   let showImportModal = false;
   let showAddTravellerModal = false;
-  let showTemporalModal = false;
   
   let travellerImportCoords = { x: 0, y: 0 };
   
@@ -70,9 +82,14 @@
   let panY = 0;
   let zoom = 1;
 
-  let isPanning = false;
   let lastMouseX = 0;
   let lastMouseY = 0;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  // A node drag only "moves" (and so suppresses the follow-up select click) once it
+  // crosses this many screen px. Without it, finger jitter on a touch tap would mark
+  // a drag and you could never tap-to-select a system.
+  const NODE_DRAG_THRESHOLD_PX = 5;
 
   let gridSize = 50;
   let svgScale = 1;
@@ -185,13 +202,17 @@
     dispatch('updatestarmap', { ...starmap, invertDisplay: checked });
   }
 
-  function handleSystemMouseDown(event: MouseEvent, systemId: string) {
+  // Node drag (Phase 02): pointer-based. stopPropagation keeps the root gesture layer
+  // from ever registering this pointer (so it can't pan), and we track move/up on the
+  // window so a drag that leaves the node still works. No pointer-capture, so the node's
+  // own on:click (select) still fires for a tap.
+  function handleSystemPointerDown(event: PointerEvent, systemId: string) {
     if (event.button !== 0) return;
     event.stopPropagation();
     draggedSystemId = systemId;
     dragMoved = false;
-    lastMouseX = event.clientX;
-    lastMouseY = event.clientY;
+    lastMouseX = dragStartX = event.clientX;
+    lastMouseY = dragStartY = event.clientY;
 
     const svgRect = svgElement.getBoundingClientRect();
     const viewBox = svgElement.viewBox.baseVal;
@@ -202,15 +223,101 @@
 
     const draggedSystem = starmap.systems.find((s) => s.id === systemId);
     dragRawPosition = draggedSystem ? { x: draggedSystem.position.x, y: draggedSystem.position.y } : null;
+
+    window.addEventListener('pointermove', onSystemDragMove);
+    window.addEventListener('pointerup', onSystemDragEnd);
+    window.addEventListener('pointercancel', onSystemDragEnd);
+  }
+
+  function onSystemDragMove(event: PointerEvent) {
+    if (!draggedSystemId) return;
+    const deltaX = event.clientX - lastMouseX;
+    const deltaY = event.clientY - lastMouseY;
+    lastMouseX = event.clientX;
+    lastMouseY = event.clientY;
+
+    // Hold position until the press clearly becomes a drag, so a tap still selects.
+    if (!dragMoved) {
+      if (Math.hypot(event.clientX - dragStartX, event.clientY - dragStartY) < NODE_DRAG_THRESHOLD_PX) return;
+      dragMoved = true;
+    }
+
+    const worldDeltaX = (deltaX * dragSvgScale.x) / zoom;
+    const worldDeltaY = (deltaY * dragSvgScale.y) / zoom;
+    if (dragRawPosition) {
+      dragRawPosition = {
+        x: dragRawPosition.x + worldDeltaX,
+        y: dragRawPosition.y + worldDeltaY
+      };
+    }
+    const updatedSystems = starmap.systems.map((systemNode) => {
+      if (systemNode.id !== draggedSystemId) return systemNode;
+      const nextX = dragRawPosition ? dragRawPosition.x : systemNode.position.x + worldDeltaX;
+      const nextY = dragRawPosition ? dragRawPosition.y : systemNode.position.y + worldDeltaY;
+      const snapped = snapPointToCurrentGrid(nextX, nextY);
+      return { ...systemNode, position: { x: snapped.x, y: snapped.y } };
+    });
+    const updatedStarmap = {
+      ...starmap,
+      systems: updatedSystems,
+      routes: recomputeScaledRoutes(updatedSystems)
+    };
+    dispatch('updatestarmap', updatedStarmap);
+  }
+
+  function onSystemDragEnd() {
+    draggedSystemId = null;
+    dragRawPosition = null;
+    window.removeEventListener('pointermove', onSystemDragMove);
+    window.removeEventListener('pointerup', onSystemDragEnd);
+    window.removeEventListener('pointercancel', onSystemDragEnd);
+  }
+
+  // Traveller mode uses the 1-hex-=-1-parsec geometry for SNAPPING, parsec scaling, subsector
+  // detection and import placement — that logic stays on effectiveGridType.
+  $: effectiveGridType = $starmapUiStore.travellerMode ? 'traveller-hex' : $starmapUiStore.gridType;
+  // …but the VISIBLE grid obeys the snap-grid switch in Settings: Traveller mode no longer FORCES
+  // the numbered hex overlay. Choose "Hex" to see it; "None"/"Grid" hides it while Traveller data,
+  // parsec scale and snapping keep working underneath.
+  $: displayGridType = $starmapUiStore.travellerMode
+    ? ($starmapUiStore.gridType === 'hex' ? 'traveller-hex' : $starmapUiStore.gridType)
+    : $starmapUiStore.gridType;
+
+  // --- Active interstellar journeys: ships in flight along the starmap, driven by the game clock. ---
+  $: journeyNowSec = Number(ensuredTemporal?.displayTimeSec ?? 0);
+  $: activeJourneys = starmap.activeJourneys ?? [];
+  const systemById = (id: string) => starmap.systems.find((s) => s.id === id);
+  // The construct node behind a journey (for its assigned icon). It still lives in a system until reconcile.
+  const journeyShip = (j: any): any => {
+    for (const s of starmap.systems) { const n = (s.system?.nodes ?? []).find((x: any) => x.id === j.shipId); if (n) return n; }
+    return null;
+  };
+  // SVG path for a construct's icon_type (circle is rendered as a <circle> separately).
+  const iconPath = (type?: string): string => {
+    switch (type) {
+      case 'square': return 'M-4,-4 H4 V4 H-4 Z';
+      case 'triangle': return 'M0,-5 L5,4.5 L-5,4.5 Z';
+      case 'cross': return 'M-5,-1.6 H-1.6 V-5 H1.6 V-1.6 H5 V1.6 H1.6 V5 H-1.6 V1.6 H-5 Z';
+      default: return 'M0,-5 L5,0 L0,5 L-5,0 Z';   // diamond (and fallback)
+    }
+  };
+  // Edge colour by journey state: black under way, red stranded, green arrived.
+  const EDGE_TRANSIT = '#111', EDGE_STRANDED = '#d04545', EDGE_ARRIVED = '#2f9e57';
+
+  // Clicking a ship opens the starmap-level ship panel (+page owns it: full construct editor + the
+  // in-flight controls). All journey resolution + construct edits are handled there against the store.
+  function requestCancelJourney(j: any, mx?: number, my?: number) {
+    if (measureMode && mx !== undefined && my !== undefined) { measurePick(mx, my, j.shipName, j.shipId); return; }
+    dispatch('openship', { journeyId: j.id });
   }
 
   function snapPointToCurrentGrid(x: number, y: number): { x: number; y: number } {
-    if ($starmapUiStore.gridType === 'none') return { x, y };
+    if (effectiveGridType === 'none') return { x, y };
 
     const originX = 0;
     const originY = 0;
 
-    if ($starmapUiStore.gridType === 'grid') {
+    if (effectiveGridType === 'grid') {
       const cellIndexX = Math.floor((x - originX) / gridSize);
       const cellIndexY = Math.floor((y - originY) / gridSize);
       return {
@@ -219,7 +326,7 @@
       };
     }
 
-    if ($starmapUiStore.gridType === 'hex' || $starmapUiStore.gridType === 'traveller-hex') {
+    if (effectiveGridType === 'hex' || effectiveGridType === 'traveller-hex') {
       const hexSize = gridSize / 2;
       const hexHeight = Math.sqrt(3) * hexSize;
       const horizDist = 1.5 * hexSize;
@@ -255,7 +362,7 @@
     return { x, y };
   }
 
-  $: if ($starmapUiStore.gridType === 'traveller-hex') {
+  $: if (effectiveGridType === 'traveller-hex') {
     // Traveller convention: 1 hex center-to-center equals 1 parsec.
     const hexSize = gridSize / 2;
     const hexCenterToCenterPx = Math.sqrt(3) * hexSize;
@@ -284,24 +391,6 @@
     }
   }
 
-  function handleSaveFuelOverrides(event: CustomEvent<any>) {
-      const overrides = event.detail;
-      const newStarmap = { ...starmap, rulePackOverrides: { ...starmap.rulePackOverrides, ...overrides } };
-      dispatch('updatestarmap', newStarmap);
-  }
-
-  function handleSaveSensorOverrides(event: CustomEvent<any>) {
-      const overrides = event.detail;
-      const newStarmap = { ...starmap, rulePackOverrides: { ...starmap.rulePackOverrides, ...overrides } };
-      dispatch('updatestarmap', newStarmap);
-  }
-
-  function handleSaveTemporal(event: CustomEvent<{ temporal: NonNullable<Starmap['temporal']> }>) {
-      const temporal = event.detail.temporal;
-      const newStarmap = { ...starmap, temporal };
-      dispatch('updatestarmap', newStarmap);
-  }
-
   function handleSaveStarmap(event: CustomEvent<{mode: 'GM' | 'Player', includeConstructs: boolean}>) {
       const { mode, includeConstructs } = event.detail;
       
@@ -322,6 +411,15 @@
           return node;
       });
 
+      // A GM "Full Backup" must be self-contained: embed the user's PoI packs + reasons config so they
+      // travel inside the file (matching the rail's Download). The Player handout deliberately omits them
+      // (the computed tags are already baked into the redacted bodies; the rule definitions stay GM-side).
+      if (mode === 'GM') {
+          (starmapToSave as any).poiPacks = packsForStarmap();
+          (starmapToSave as any).reasonsConfig = get(reasonsConfig);
+          (starmapToSave as any).coiCategories = coiForStarmap();
+      }
+
       // Download
       const json = JSON.stringify(starmapToSave, null, 2);
       const blob = new Blob([json], { type: 'application/json' });
@@ -335,94 +433,41 @@
       URL.revokeObjectURL(url);
   }
 
-  function handleWheel(event: WheelEvent) {
-    if ($starmapUiStore.mouseZoomDisabled) return;
-    event.preventDefault();
-    const scaleAmount = 0.1;
-    const scale = event.deltaY > 0 ? 1 - scaleAmount : 1 + scaleAmount;
-
+  // Zoom about a canvas-relative point (old handleWheel logic, generalised to a factor so
+  // wheel and pinch share it). Respects the "disable mouse zoom" setting for both.
+  function zoomAt(factor: number, localX: number, localY: number) {
     const svgRect = svgElement.getBoundingClientRect();
     const viewBox = svgElement.viewBox.baseVal;
     const scaleX = viewBox.width / svgRect.width;
     const scaleY = viewBox.height / svgRect.height;
-
-    const mouseX = (event.clientX - svgRect.left) * scaleX;
-    const mouseY = (event.clientY - svgRect.top) * scaleY;
-
-    const newZoom = zoom * scale;
-
-    panX = mouseX - (mouseX - panX) * scale;
-    panY = mouseY - (mouseY - panY) * scale;
-    zoom = newZoom;
+    const mouseX = localX * scaleX;
+    const mouseY = localY * scaleY;
+    panX = mouseX - (mouseX - panX) * factor;
+    panY = mouseY - (mouseY - panY) * factor;
+    zoom = zoom * factor;
   }
 
-  function handleMouseDown(event: MouseEvent) {
-    if (event.button !== 0) return; // Left mouse button
-    if (event.target !== svgElement) return; // Only pan on blank space
-    isPanning = true;
-    lastMouseX = event.clientX;
-    lastMouseY = event.clientY;
+  // Bridge the gesture long-press / right-click (canvas-relative point) to the existing
+  // map context menu, which expects a MouseEvent with screen coords.
+  function openMapContextMenuAt(localX: number, localY: number) {
+    const svgRect = svgElement.getBoundingClientRect();
+    handleMapContextMenu({
+      clientX: localX + svgRect.left,
+      clientY: localY + svgRect.top,
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    } as unknown as MouseEvent);
   }
 
-  function handleMouseMove(event: MouseEvent) {
-    if (draggedSystemId) {
-      const deltaX = event.clientX - lastMouseX;
-      const deltaY = event.clientY - lastMouseY;
-      lastMouseX = event.clientX;
-      lastMouseY = event.clientY;
-
-      if (Math.abs(deltaX) > 0 || Math.abs(deltaY) > 0) {
-        dragMoved = true;
-      }
-
-      const worldDeltaX = (deltaX * dragSvgScale.x) / zoom;
-      const worldDeltaY = (deltaY * dragSvgScale.y) / zoom;
-      if (dragRawPosition) {
-        dragRawPosition = {
-          x: dragRawPosition.x + worldDeltaX,
-          y: dragRawPosition.y + worldDeltaY
-        };
-      }
-      const updatedSystems = starmap.systems.map((systemNode) => {
-        if (systemNode.id !== draggedSystemId) return systemNode;
-
-        const nextX = dragRawPosition ? dragRawPosition.x : systemNode.position.x + worldDeltaX;
-        const nextY = dragRawPosition ? dragRawPosition.y : systemNode.position.y + worldDeltaY;
-        const snapped = snapPointToCurrentGrid(nextX, nextY);
-        return {
-          ...systemNode,
-          position: {
-            x: snapped.x,
-            y: snapped.y
-          }
-        };
-      });
-
-      const updatedStarmap = {
-        ...starmap,
-        systems: updatedSystems,
-        routes: recomputeScaledRoutes(updatedSystems)
-      };
-      dispatch('updatestarmap', updatedStarmap);
-      return;
-    }
-
-    if (!isPanning) return;
-    const deltaX = event.clientX - lastMouseX;
-    const deltaY = event.clientY - lastMouseY;
-    lastMouseX = event.clientX;
-    lastMouseY = event.clientY;
-
-    panX += deltaX;
-    panY += deltaY;
-  }
-
-  function handleMouseUp(event: MouseEvent) {
-    if (event.button !== 0) return;
-    isPanning = false;
-    draggedSystemId = null;
-    dragRawPosition = null;
-  }
+  // Unified pointer gestures on the SVG root: pan / pinch-zoom / long-press menu. Pointers
+  // that start on a system node are stopPropagation'd by handleSystemPointerDown, so they
+  // never reach here (no pan-while-dragging-a-node). Tap on blank does nothing (as before),
+  // so onTap is intentionally omitted. Starmap pan has no inertia (unchanged).
+  const starmapGestures = {
+    onPan: ({ dx, dy }: { dx: number; dy: number }) => { panX += dx; panY += dy; },
+    onZoom: ({ factor, x, y }: { factor: number; x: number; y: number }) => zoomAt(factor, x, y),
+    onLongPress: ({ x, y }: { x: number; y: number }) => openMapContextMenuAt(x, y)
+  };
 
   function resetView() {
     if (starmap.systems.length === 0) {
@@ -484,6 +529,7 @@
   onDestroy(() => {
     document.removeEventListener('click', handleClickOutside);
     window.removeEventListener('resize', updateSvgScale);
+    onSystemDragEnd(); // clear any in-flight node-drag window listeners
   });
 
   function handleClickOutside(event: MouseEvent) {
@@ -492,30 +538,18 @@
     }
   }
 
-      function getStarColor(star: CelestialBody): string {
-      if (star && star.classes && star.classes.length > 0) {
-          if (star.classes.includes('star/magnetar')) return '#800080'; // Purple for Magnetar
-          if (star.classes.some(c => c.includes('BH'))) return '#000000'; // Black for all Black Holes (Active or Quiescent)
-          if (star.classes.includes('star/red-giant')) return '#8b0000'; // Deep Red for Red Giant
-          if (star.classes.includes('star/brown-dwarf')) return '#5d4037'; // Dark Brown for Brown Dwarf
-          const starClass = star.classes[0].split('/')[1]; // e.g., "star/G2V" -> "G2V"
-          const spectralType = starClass[0]; // e.g., "G2V" -> "G"
-          switch (spectralType) {
-              case 'O': return '#9bb0ff'; // Blue
-              case 'B': return '#aabfff'; // Blue-white
-              case 'A': return '#cad7ff'; // White
-              case 'F': return '#f8f7ff'; // Yellow-white
-              case 'G': return '#fff8e8'; // Yellow (Sun-like)
-              case 'K': return '#ffddb4'; // Orange
-              case 'M': return '#ff8f5a'; // Red
-              case 'L': return '#8a4a4a'; // Brown Dwarf (L-type)
-              case 'T': return '#4a2a2a'; // Brown Dwarf (T-type)
-              case 'Y': return '#2a1a1a'; // Brown Dwarf (Y-type)
-              default: return '#cccccc'; // Default for unknown
-          }
-      }
-      return '#cccccc'; // Default color
-    }
+      // getStarColor is now the canonical getPlanetColor (aliased on import) so a star is
+      // the SAME colour here, in the orrery, and on summary cards — all token-driven.
+  // A system is hidden from the players' field guide when its ROOT node is player-hidden — for a
+  // multi-star system that's the top barycenter, for a single star it's the star itself. Hiding an
+  // underlying star only hides that star (not the whole system). Flagged on the GM map with a
+  // crossed-eye reminder.
+  function isSystemHidden(node: Starmap['systems'][number]): boolean {
+      const ns = node.system?.nodes || [];
+      const root = ns.find((n) => n.kind === 'barycenter' && !n.parentId) || ns.find((n) => !n.parentId);
+      return !!root && !!(root as any).object_playerhidden;
+  }
+
   function getVisualNodes(system: System): CelestialBody[] {
       const stars = system.nodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
       if (stars.length > 0) {
@@ -528,11 +562,105 @@
       return [];
   }
 
+  // --- BodyPicker (starmap-scoped: pick a system by name, OR an interstellar ship) ---
+  // Ships in transit / stranded belong to no system, so the orrery pickers hide them; here at starmap
+  // level they DO belong — listed under their own "Interstellar" group (and findable by name).
+  $: interstellarPickerNodes = (() => {
+      const ids = interstellarConstructIds(starmap, journeyNowSec);
+      const out: any[] = [];
+      for (const id of ids) {
+          let construct: any = null, journeyId: string | null = null;
+          const j = (activeJourneys ?? []).find((x) => x.shipId === id);
+          if (j) { journeyId = j.id; construct = journeyShip(j); }
+          if (!construct) construct = (starmap.adriftConstructs ?? []).find((a) => a.construct?.id === id)?.construct;
+          if (!construct) continue;
+          const p = constructDisplayPlacement(starmap, id, journeyNowSec);
+          out.push({ ...construct, kind: 'construct', __interstellar: true, __journeyId: journeyId, __state: p.kind });
+      }
+      return out;
+  })();
+  $: pickerNodes = [...starmap.systems, ...interstellarPickerNodes];
+
+  const systemPickerCategorize = (n: any) => n?.kind === 'construct' ? ['Constructs'] : ['Systems'];
+  function systemPickerColor(sysNode: any): string {
+      if (sysNode?.kind === 'construct') return sysNode.icon_color || '#ffd23f';
+      const vis = getVisualNodes(sysNode.system);
+      return vis.length ? getStarColor(vis[0]) : '#888';
+  }
+  function countNodes(n: any[]) {
+      let stars = 0, planets = 0, moons = 0, constructs = 0;
+      for (const x of n) {
+          if (x.kind === 'construct') constructs++;
+          else if (x.kind === 'body') {
+              if (x.roleHint === 'star') stars++;
+              else if (x.roleHint === 'planet') planets++;
+              else if (x.roleHint === 'moon') moons++;
+          }
+      }
+      return { stars, planets, moons, constructs };
+  }
+  function systemPickerContext(sysNode: any): string {
+      if (sysNode?.kind === 'construct') return sysNode.__state === 'adrift' ? 'adrift in interstellar space' : 'in transit';
+      const c = countNodes(sysNode.system?.nodes ?? []);
+      const bits = [] as string[];
+      if (c.stars) bits.push(`${c.stars}★`);
+      if (c.planets) bits.push(`${c.planets} plt`);
+      if (c.moons) bits.push(`${c.moons} mn`);
+      if (c.constructs) bits.push(`${c.constructs} con`);
+      return bits.join(' · ');
+  }
+  // Aggregate summary across the whole starmap, shown at the top of the picker dropdown.
+  $: starmapSummary = (() => {
+      let stars = 0, planets = 0, moons = 0, constructs = 0;
+      for (const sys of starmap.systems) {
+          const c = countNodes(sys.system?.nodes ?? []);
+          stars += c.stars; planets += c.planets; moons += c.moons; constructs += c.constructs;
+      }
+      return `${starmap.systems.length} systems · ${stars} stars · ${planets} planets · ${moons} moons · ${constructs} constructs`;
+  })();
+  function handlePickSystem(e: CustomEvent<string>) {
+      const ship = interstellarPickerNodes.find((n) => n.id === e.detail);
+      if (ship) { if (ship.__journeyId) dispatch('openship', { journeyId: ship.__journeyId }); return; }
+      dispatch('systemclick', e.detail);
+  }
+
   function getBlackHoleType(body: CelestialBody): 'none' | 'BH' | 'BH_active' {
       if (body.classes.includes('star/BH_active') || body.classes.includes('BH_active')) return 'BH_active';
       if (body.classes.includes('star/BH') || body.classes.includes('BH')) return 'BH';
       return 'none';
   }
+
+  // --- Measure tool (scaled maps only): tap two targets — any stars or interstellar ships — to read the
+  //     distance between them, in the map's scale units. ---
+  let measureMode = false;
+  // An endpoint is a fixed point (star) or — when constructId is set — a moving construct, in which case
+  // its position is re-derived from the clock so the ruler TRACKS the ship as time advances.
+  type MeasureEnd = { x: number; y: number; label: string; constructId?: string };
+  let measureA: MeasureEnd | null = null;
+  let measureB: MeasureEnd | null = null;
+  function toggleMeasure() { measureMode = !measureMode; if (!measureMode) { measureA = null; measureB = null; } }
+  function measurePick(x: number, y: number, label: string, constructId?: string) {
+    const same = (e: MeasureEnd) => constructId ? e.constructId === constructId : (!e.constructId && x === e.x && y === e.y);
+    if (!measureA || (measureA && measureB)) { measureA = { x, y, label, constructId }; measureB = null; }
+    else if (!same(measureA)) { measureB = { x, y, label, constructId }; }
+  }
+  // Resolve an endpoint to a live position: a construct endpoint follows its clock-derived placement
+  // (transit/adrift point, or the system it's resting in); a plain point stays put. Takes nowSec + sm as
+  // args so the reactive statements below re-run when the clock or starmap changes.
+  function resolveMeasure(ep: MeasureEnd | null, nowSec: number, sm: Starmap): MeasureEnd | null {
+    if (!ep) return null;
+    if (ep.constructId) {
+      const pl = constructDisplayPlacement(sm, ep.constructId, nowSec);
+      if (pl.kind === 'transit' || pl.kind === 'adrift') return { ...ep, x: pl.x, y: pl.y };
+      if (pl.kind === 'system') { const s = systemById(pl.systemId); if (s) return { ...ep, x: s.position.x, y: s.position.y }; }
+    }
+    return ep;
+  }
+  $: mA = resolveMeasure(measureA, journeyNowSec, starmap);
+  $: mB = resolveMeasure(measureB, journeyNowSec, starmap);
+  $: measureDist = (mA && mB && activeScale.pixelsPerUnit > 0)
+    ? roundDistance(Math.hypot(mB.x - mA.x, mB.y - mA.y) / activeScale.pixelsPerUnit)
+    : null;
 
   function handleStarClick(event: MouseEvent, systemId: string) {
     if (dragMoved) {
@@ -540,7 +668,10 @@
       return;
     }
     if (event.button === 0) { // Left click
-      if (linkingMode) {
+      if (measureMode) {
+        const s = systemById(systemId);
+        if (s) measurePick(s.position.x, s.position.y, s.name);
+      } else if (linkingMode) {
         dispatch('selectsystemforlink', systemId);
       } else {
         dispatch('systemclick', systemId);
@@ -591,7 +722,7 @@
 
     // Subsector Detection
     detectedSubsector = null;
-    if ($starmapUiStore.gridType === 'traveller-hex' && starmap.travellerMetadata) {
+    if (effectiveGridType === 'traveller-hex' && starmap.travellerMetadata) {
         const size = gridSize / 2;
         const hexWidth = 2 * size;
         const hexHeight = Math.sqrt(3) * size;
@@ -667,7 +798,7 @@
 
   function handleContextMenuTravellerImport() {
       // Snap to nearest hex center if in hex mode
-      if ($starmapUiStore.gridType === 'hex' || $starmapUiStore.gridType === 'traveller-hex') {
+      if (effectiveGridType === 'hex' || effectiveGridType === 'traveller-hex') {
           // Re-calculate closest center using the logic from handleMapContextMenu
           // We can't reuse local vars from that function, so we must recalc or store the snapped coord.
           // contextMenuClickCoords is currently set to the snapped center in handleMapContextMenu!
@@ -764,88 +895,73 @@
 </script>
 
 <div class="starmap-container" class:invert-display={invertDisplay} style="touch-action: none;" bind:this={starmapContainer}>
-  <div class="starmap-header">
-    <div class="starmap-heading">
-      <h1>{starmap.name}</h1>
-    </div>
-    <div class="header-controls">
-      <label>
-        <input type="checkbox" bind:checked={$starmapUiStore.mouseZoomDisabled} />
-        Disable Mouse Zoom
-      </label>
-      <label>
-        <input type="checkbox" bind:checked={$starmapUiStore.showBackgroundImage} disabled={invertDisplay} />
-        Show Background
-      </label>
-      <label title="Print-friendly white background and dark labels. Background image is disabled while active.">
-        <input type="checkbox" checked={invertDisplay} on:change={handleInvertDisplayToggle} />
-        Invert Display
-      </label>
-      {#if isScaled}
-        <label>
-          <input type="checkbox" checked={scaleBarVisible} on:change={handleScaleBarToggle} />
-          Show Scale Bar
-        </label>
-      {/if}
-      <label>
-        Snap Grid:
-        <select bind:value={$starmapUiStore.gridType} class="grid-select inline">
-          <option value="none">No Grid</option>
-          <option value="grid">Grid</option>
-          <option value="hex">Hex</option>
-          <option value="traveller-hex">Traveller Hex</option>
-        </select>
-      </label>
-      <button on:click={resetView}>Reset View</button>
-      
-      <div class="dropdown">
-          <button on:click={() => showDropdown = !showDropdown} class="hamburger-button">&#9776;</button>
-          {#if showDropdown}
-              <div class="dropdown-content">
-                  <button on:click={() => dispatch('settings')}>Starmap Settings</button>
-                  <hr />
-                  <button on:click={() => showSaveModal = true}>Download Starmap</button>
-                  <button on:click={() => dispatch('upload')}>Upload Starmap</button>
-                  <hr />
-                  <button on:click={() => dispatch('clear')} class="danger">Clear Starmap</button>
-                  <hr />
-                  <button on:click={() => showFuelModal = true}>Edit Fuel & Drives</button>
-                  <button on:click={() => showAtmosphereModal = true}>Edit Atmospheres</button>
-                  <button on:click={() => showSensorsModal = true}>Edit Sensors</button>
-                  <button on:click={() => showTemporalModal = true}>Edit Time & Calendars</button>
-                  <button on:click={() => dispatch('llmsettings')}>LLM Settings</button>
-                  <hr />
-                  <button on:click={() => showAboutModal = true}>About</button>
-              </div>
-          {/if}
-      </div>
-    </div>
-  </div>
-  <TimeControls
-    temporal={ensuredTemporal}
-    on:updatetemporal={handleTemporalUpdate}
-    on:resetdisplay={handleResetDisplay}
-    on:setactual={handleSetActual}
-  />
+  <AppShell bind:mode bind:railOpen sheetTitle={starmap.name}>
+    <svelte:fragment slot="rail">
+      <RailNav
+        activeView="starmap"
+        rulerOn={measureMode}
+        rulerAvailable={isScaled}
+        {routesAttention}
+        on:ruler={() => { railOpen = false; toggleMeasure(); }}
+        on:starmap={() => { railOpen = false; }}
+        on:new={() => dispatch('new')}
+        on:open={() => dispatch('upload')}
+        on:save={() => dispatch('download')}
+        on:settings={() => dispatch('settings')}
+        on:llmsettings={() => dispatch('llmsettings')}
+        on:about={() => dispatch('about')}
+        on:help={() => dispatch('help')}
+        on:navigate={() => (railOpen = false)}
+        on:allbodies={() => { railOpen = false; dispatch('allbodies'); }}
+        on:findtag={() => { railOpen = false; dispatch('findtag'); }}
+        on:allships={() => { railOpen = false; dispatch('allships'); }}
+        on:routes={() => { railOpen = false; dispatch('routes'); }}
+        on:catalogue={() => { railOpen = false; dispatch('catalogue'); }}
+        on:clear={() => { railOpen = false; dispatch('clear'); }}
+      />
+    </svelte:fragment>
+    <svelte:fragment slot="canvas">
   <div class="starmap-canvas">
+    {#if ensuredTemporal}
+      <div class="time-display-overlay"><TimeDisplay temporal={ensuredTemporal} /></div>
+    {/if}
+    <BodyPicker
+      nodes={pickerNodes}
+      focusedId={null}
+      emptyLabel="Starmap"
+      placeholder="Search systems & ships…"
+      top={mode === 'phone' ? 64 : 56}
+      categorize={systemPickerCategorize}
+      colorOf={systemPickerColor}
+      contextOf={systemPickerContext}
+      summaryText={starmapSummary}
+      roleOf={(n) => n?.kind === 'construct' ? 'construct' : 'system'}
+      filterItems={() => true}
+      sections={true}
+      on:select={handlePickSystem}
+    />
+    <!-- Desktop: a draggable floating info panel. Phone uses the bottom sheet instead. -->
+    {#if mode !== 'phone'}
+      <StarmapInfoPanel {starmap} on:update={(e) => dispatch('updatestarmap', e.detail)} />
+    {/if}
+    <div class="ov-topright">
+      {#if mode === 'phone'}<FullscreenButton />{/if}
+      <button class="ov-reset" title="Reset view" aria-label="Reset view" on:click={resetView}>⟲{#if !$railCollapsed} Reset View{/if}</button>
+    </div>
     <svg
       bind:this={svgElement}
       class="starmap"
       class:with-background={$starmapUiStore.showBackgroundImage && !invertDisplay}
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 800 600"
-      on:contextmenu={handleMapContextMenu}
-      on:mousedown={handleMouseDown}
-      on:mousemove={handleMouseMove}
-      on:mouseup={handleMouseUp}
-      on:wheel|preventDefault={handleWheel}
+      use:gestures={starmapGestures}
       role="button"
       tabindex="0"
       style="touch-action: none;"
     >
       <g bind:this={groupElement} transform={`translate(${panX}, ${panY}) scale(${zoom})`}>
-      <Grid 
-        gridType={$starmapUiStore.gridType} 
+      <Grid
+        gridType={displayGridType}
         {gridSize} 
         {panX} 
         {panY} 
@@ -888,17 +1004,93 @@
         {/if}
       {/each}
 
+      <!-- Active journeys, placed by deriving from the log at the current clock: a moving ship
+           (trail behind, dashed path ahead) while in transit, or a static glyph when stranded. -->
+      {#each activeJourneys as journey (journey.id)}
+        {@const p = constructDisplayPlacement(starmap, journey.shipId, journeyNowSec)}
+        {@const ship = journeyShip(journey)}
+        {@const fill = ship?.icon_color || '#ffd23f'}
+        {#if p.kind === 'transit'}
+          {@const from = (journey.fromX != null && journey.fromY != null) ? { position: { x: journey.fromX, y: journey.fromY }, name: journey.fromLabel || 'Deep space' } : systemById(journey.fromSystemId)}
+          {@const to = (journey.toX != null && journey.toY != null) ? { position: { x: journey.toX, y: journey.toY }, name: journey.toLabel || 'Deep space' } : systemById(journey.toSystemId)}
+          {#if from && to}
+            <line class="journey-trail" x1={from.position.x} y1={from.position.y} x2={p.x} y2={p.y} />
+            <line class="journey-ahead" x1={p.x} y1={p.y} x2={to.position.x} y2={to.position.y} />
+            {#if journey.cannotStop}
+              <!-- Can't brake: the powered leg (yellow) reaches the destination, then it drifts on (red),
+                   shown from departure so you can see the overshoot — and the slingshot — coming. The
+                   drift heading is the incoming direction turned by the star's flyby deflection. -->
+              {@const turn = flybyTurn(starmap, journey, from.position, to.position)}
+              {@const ddx0 = to.position.x - from.position.x}
+              {@const ddy0 = to.position.y - from.position.y}
+              {@const ddx = turn ? ddx0 * Math.cos(turn) - ddy0 * Math.sin(turn) : ddx0}
+              {@const ddy = turn ? ddx0 * Math.sin(turn) + ddy0 * Math.cos(turn) : ddy0}
+              {@const dmag = Math.hypot(ddx, ddy) || 1}
+              <line class="journey-drift" x1={to.position.x} y1={to.position.y} x2={to.position.x + (ddx / dmag) * 4000} y2={to.position.y + (ddy / dmag) * 4000} />
+            {/if}
+            <g class="journey-ship" role="button" tabindex="0" transform="translate({p.x}, {p.y})"
+               on:pointerdown|stopPropagation={() => requestCancelJourney(journey, p.x, p.y)}
+               on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
+              <title>{journey.shipName} → {journey.toBodyName || to.name} ({Math.round(p.frac * 100)}%) — click for options</title>
+              {#if ship?.icon_type === 'circle'}<circle r="5" {fill} stroke={EDGE_TRANSIT} stroke-width="1.6" />
+              {:else}<path d={iconPath(ship?.icon_type)} {fill} stroke={EDGE_TRANSIT} stroke-width="1.6" />{/if}
+              <text class="journey-label" x="8" y="3">{journey.shipName}</text>
+              {#if ship?.object_playerhidden}<g class="hidden-eye" transform="translate(7,-7) scale(0.5)" pointer-events="none"><title>Hidden from players — not shown in the field guide</title><path d="M-5 0 C -3 -3.2, 3 -3.2, 5 0 C 3 3.2, -3 3.2, -5 0 Z" fill="none" stroke="#ff6b6b" stroke-width="1.4" /><circle cx="0" cy="0" r="1.5" fill="#ff6b6b" /><line x1="-6" y1="4.5" x2="6" y2="-4.5" stroke="#ff6b6b" stroke-width="1.6" /></g>{/if}
+            </g>
+          {/if}
+        {:else if p.kind === 'adrift'}
+          <g class="journey-ship adrift" role="button" tabindex="0" transform="translate({p.x}, {p.y})"
+             on:pointerdown|stopPropagation={() => requestCancelJourney(journey, p.x, p.y)}
+             on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
+            <title>{journey.shipName} — {(p.vx || p.vy) ? 'coasting (out of fuel to stop)' : 'stranded'} in interstellar space. Click for options.</title>
+            {#if p.vx || p.vy}
+              {@const mag = Math.hypot(p.vx, p.vy) || 1}
+              <!-- Project the onward heading a long way so a fly-by visibly tears off across (and off) the
+                   map; the SVG clips it at the edge. -->
+              <line class="journey-drift" x1="0" y1="0" x2={(p.vx / mag) * 4000} y2={(p.vy / mag) * 4000} />
+            {/if}
+            {#if ship?.icon_type === 'circle'}<circle r="5.5" {fill} stroke={EDGE_STRANDED} stroke-width="2.2" />
+            {:else}<path d={iconPath(ship?.icon_type)} {fill} stroke={EDGE_STRANDED} stroke-width="2.2" />{/if}
+            <text class="journey-label" x="8" y="3">{journey.shipName} (adrift)</text>
+            {#if ship?.object_playerhidden}<g class="hidden-eye" transform="translate(7,-7) scale(0.5)" pointer-events="none"><title>Hidden from players — not shown in the field guide</title><path d="M-5 0 C -3 -3.2, 3 -3.2, 5 0 C 3 3.2, -3 3.2, -5 0 Z" fill="none" stroke="#ff6b6b" stroke-width="1.4" /><circle cx="0" cy="0" r="1.5" fill="#ff6b6b" /><line x1="-6" y1="4.5" x2="6" y2="-4.5" stroke="#ff6b6b" stroke-width="1.6" /></g>{/if}
+          </g>
+        {:else if p.kind === 'system' && p.systemId === journey.toSystemId}
+          <!-- Arrived: parked marker at the destination (until reconcile moves the node into it). -->
+          {@const to = systemById(journey.toSystemId)}
+          {#if to}
+            <g class="journey-ship arrived" role="button" tabindex="0" transform="translate({to.position.x}, {to.position.y})"
+               on:pointerdown|stopPropagation={() => requestCancelJourney(journey, to.position.x, to.position.y)}
+               on:keydown={(e) => { if (e.key === 'Enter') requestCancelJourney(journey); }}>
+              <title>{journey.shipName} — arrived at {to.name}. Click for options.</title>
+              {#if ship?.icon_type === 'circle'}<circle r="5" {fill} stroke={EDGE_ARRIVED} stroke-width="1.8" />
+              {:else}<path d={iconPath(ship?.icon_type)} {fill} stroke={EDGE_ARRIVED} stroke-width="1.8" />{/if}
+              {#if ship?.object_playerhidden}<g class="hidden-eye" transform="translate(7,-7) scale(0.5)" pointer-events="none"><title>Hidden from players — not shown in the field guide</title><path d="M-5 0 C -3 -3.2, 3 -3.2, 5 0 C 3 3.2, -3 3.2, -5 0 Z" fill="none" stroke="#ff6b6b" stroke-width="1.4" /><circle cx="0" cy="0" r="1.5" fill="#ff6b6b" /><line x1="-6" y1="4.5" x2="6" y2="-4.5" stroke="#ff6b6b" stroke-width="1.6" /></g>{/if}
+            </g>
+          {/if}
+        {/if}
+      {/each}
+
       {#each starmap.systems as systemNode}
         {@const visualNodes = getVisualNodes(systemNode.system)}
         <g
           role="button"
           tabindex="0"
-          on:mousedown={(e) => handleSystemMouseDown(e, systemNode.id)}
+          on:pointerdown={(e) => handleSystemPointerDown(e, systemNode.id)}
           on:click={(e) => handleStarClick(e, systemNode.id)}
           on:dblclick={() => handleStarDblClick(systemNode.id)}
           on:contextmenu={(e) => handleStarContextMenu(e, systemNode.id)}
           on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStarClick(e, systemNode.id); }}
         >
+          {#if isSystemHidden(systemNode)}
+            <!-- Crossed-eye reminder: this system's main star is player-hidden, so it won't appear
+                 in the players' field guide. -->
+            <g class="hidden-eye" transform="translate({systemNode.position.x + 6}, {systemNode.position.y - 6}) scale(0.7)" pointer-events="none">
+              <title>Hidden from players (main star hidden) — not shown in the field guide</title>
+              <path d="M-5 0 C -3 -3.2, 3 -3.2, 5 0 C 3 3.2, -3 3.2, -5 0 Z" fill="none" stroke="#ff6b6b" stroke-width="1" />
+              <circle cx="0" cy="0" r="1.5" fill="#ff6b6b" />
+              <line x1="-6" y1="4.5" x2="6" y2="-4.5" stroke="#ff6b6b" stroke-width="1.2" />
+            </g>
+          {/if}
           {#if visualNodes.length === 0}
               <!-- Fallback for empty/invalid system -->
               <circle cx={systemNode.position.x} cy={systemNode.position.y} r={3} fill="#555" />
@@ -1033,6 +1225,16 @@
           {systemNode.name}
         </text>
       {/each}
+
+      <!-- Measure tool overlay: line + distance between the two picked targets (stars or ships). -->
+      {#if measureMode && mA}
+        <circle class="measure-pt" cx={mA.x} cy={mA.y} r="4" />
+        {#if mB}
+          <line class="measure-line" x1={mA.x} y1={mA.y} x2={mB.x} y2={mB.y} />
+          <circle class="measure-pt" cx={mB.x} cy={mB.y} r="4" />
+          <text class="measure-label" x={(mA.x + mB.x) / 2} y={(mA.y + mB.y) / 2 - 6} text-anchor="middle">{measureDist} {activeScale.unit}</text>
+        {/if}
+      {/if}
       </g>
     </svg>
     <StarmapScaleBar
@@ -1043,8 +1245,38 @@
       unitIsPrefix={starmap.unitIsPrefix}
       isScaled={scaleBarVisible}
     />
+    {#if ensuredTemporal}
+      <div class="time-overlay" class:phone={mode === 'phone'}>
+        <TimeControls
+          compact={mode === 'phone'}
+          temporal={ensuredTemporal}
+          on:updatetemporal={handleTemporalUpdate}
+          on:resetdisplay={handleResetDisplay}
+          on:setactual={handleSetActual}
+        />
+      </div>
+    {/if}
   </div>
-  <GmNotesEditor body={starmap} />
+    </svelte:fragment>
+  </AppShell>
+
+  <!-- Phone only: starmap Description + GM Notes in a bottom sheet (the draggable floating
+       panel is desktop-only). Rendered directly (not via the AppShell detail slot) so the
+       desktop right panel stays collapsed. -->
+  {#if mode === 'phone'}
+    <BottomSheet title={starmap.name}>
+      <div class="starmap-detail-mobile">
+        <label class="sdm-field">
+          <span class="sdm-label">Description</span>
+          <textarea bind:value={starmap.description} on:change={() => dispatch('updatestarmap', starmap)} placeholder="Describe this starmap…" rows="4"></textarea>
+        </label>
+        <label class="sdm-field">
+          <span class="sdm-label gm">GM Notes</span>
+          <textarea bind:value={starmap.gmNotes} on:change={() => dispatch('updatestarmap', starmap)} placeholder="Secret GM-only notes…" rows="5"></textarea>
+        </label>
+      </div>
+    </BottomSheet>
+  {/if}
 
   {#if showContextMenu}
     <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px;">
@@ -1063,7 +1295,7 @@
             <li on:click={handleContextMenuDelete}>Delete System</li>
         {:else}
                     <li on:click={handleContextMenuAddSystem}>Add System Here</li>
-                    {#if $starmapUiStore.gridType === 'traveller-hex'}
+                    {#if $starmapUiStore.travellerMode}
                         <li on:click={handleContextMenuAddTravellerSystem}>Add Traveller UWP Here</li>
                         <li on:click={handleContextMenuTravellerImport}>Add Traveller Map SubSector Here</li>
                         {#if detectedSubsector}
@@ -1076,9 +1308,6 @@
                 </ul>
               </div>
           {/if}
-            {#if showAboutModal}
-      <AboutModal on:close={() => showAboutModal = false} />
-  {/if}
 
   {#if showSaveModal}
       <SaveSystemModal on:save={handleSaveStarmap} on:close={() => showSaveModal = false} />
@@ -1097,45 +1326,6 @@
           showModal={showAddTravellerModal} 
           on:generate={handleAddTravellerSystem} 
           on:close={() => showAddTravellerModal = false} 
-      />
-  {/if}
-
-  {#if showFuelModal}
-      <EditFuelAndDrivesModal 
-          showModal={showFuelModal} 
-          {rulePack} 
-          {starmap} 
-          on:save={handleSaveFuelOverrides} 
-          on:close={() => showFuelModal = false} 
-      />
-  {/if}
-
-  {#if showAtmosphereModal}
-      <EditAtmospheresModal 
-          showModal={showAtmosphereModal} 
-          {rulePack} 
-          {starmap} 
-          on:save={handleSaveFuelOverrides} 
-          on:close={() => showAtmosphereModal = false} 
-      />
-  {/if}
-
-  {#if showSensorsModal}
-      <EditSensorsModal
-          showModal={showSensorsModal}
-          {rulePack}
-          {starmap}
-          on:save={handleSaveSensorOverrides}
-          on:close={() => showSensorsModal = false}
-      />
-  {/if}
-
-  {#if showTemporalModal}
-      <EditTemporalModal
-          showModal={showTemporalModal}
-          {starmap}
-          on:save={handleSaveTemporal}
-          on:close={() => showTemporalModal = false}
       />
   {/if}
 
@@ -1179,19 +1369,19 @@
   }
 
   .alpha-modal {
-    background: #1a202c;
-    border: 2px solid #e53e3e;
+    background: var(--bg-panel);
+    border: 2px solid var(--status-bad);
     padding: 2.5rem;
     border-radius: 12px;
     max-width: 600px;
     width: 90%;
     box-shadow: 0 0 50px rgba(229, 62, 62, 0.3);
     text-align: left;
-    color: #fff;
+    color: var(--text);
   }
 
   .alpha-modal h2 {
-    color: #e53e3e;
+    color: var(--status-bad);
     margin-top: 0;
     text-align: center;
     letter-spacing: 2px;
@@ -1207,7 +1397,7 @@
   .alpha-modal p {
     line-height: 1.6;
     margin-bottom: 1rem;
-    color: #e2e8f0;
+    color: var(--text);
   }
 
   .alpha-buttons {
@@ -1237,7 +1427,7 @@
   }
 
   .proceed-alpha {
-    background: #e53e3e;
+    background: var(--status-bad);
     color: white;
   }
 
@@ -1248,11 +1438,11 @@
 
   .context-menu {
     position: absolute;
-    background-color: #333;
-    border: 1px solid #555;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border);
     border-radius: 5px;
     z-index: 100;
-    color: #eee;
+    color: var(--text);
   }
   .context-menu ul {
     list-style: none;
@@ -1264,7 +1454,7 @@
     cursor: pointer;
   }
   .context-menu li:hover {
-    background-color: #555;
+    background-color: var(--bg-control-hover);
   }
 
   .starmap-container {
@@ -1275,10 +1465,91 @@
     flex-direction: column;
   }
 
+  .starmap-detail-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .sdm-field { display: flex; flex-direction: column; gap: 4px; }
+  .sdm-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-faint, #8a8f9a);
+  }
+  .sdm-label.gm { color: var(--accent, #ff5a1f); }
+  .starmap-detail-mobile textarea {
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+    background: var(--bg-panel, #14161c);
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 6px;
+    color: var(--text, #e8e8e8);
+    padding: 8px;
+    font: inherit;
+    font-size: 0.9rem;
+  }
+  .time-display-overlay {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 57;
+  }
+  .ov-topright {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 56;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .ov-reset {
+    height: 32px;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-panel, #14161c) 86%, transparent);
+    color: var(--text, #e8e8e8);
+    font-size: 0.9rem;
+    cursor: pointer;
+    opacity: 0.55;
+    backdrop-filter: blur(6px);
+    white-space: nowrap;
+  }
+  .ov-reset:hover { opacity: 1; background: var(--bg-control-hover, #232733); }
+  .ov-reset.active { opacity: 1; border-color: var(--accent, #5b8def); color: var(--accent, #5b8def); }
+  .measure-line { stroke: var(--accent, #5b8def); stroke-width: 1.5; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
+  .measure-pt { fill: var(--accent, #5b8def); }
+  .measure-label { fill: var(--accent, #5b8def); font-size: 11px; font-weight: 600; paint-order: stroke; stroke: #000; stroke-width: 3px; stroke-linejoin: round; }
+  .time-overlay {
+    position: absolute;
+    bottom: 14px;
+    left: 14px;
+    z-index: 55;
+    max-width: min(460px, calc(100% - 28px));
+  }
+  .time-overlay.phone {
+    position: fixed;
+    z-index: 1150;
+    bottom: 98px;
+    left: 84px; /* clear the bottom-left menu FAB */
+    right: 8px;
+    transform: none;
+    width: auto;
+  }
   .starmap-canvas {
     position: relative;
     flex: 1;
     min-height: 0;
+    /* Fill the AppShell canvas slot (desktop grid row / phone inset:0 wrapper),
+       which aren't flex containers — so flex:1 alone gives no height and the SVG
+       falls back to its 800x600 aspect ratio. height:100% makes it fill. */
+    height: 100%;
   }
 
   .starmap-header {
@@ -1315,7 +1586,7 @@
       align-items: center;
       gap: 5px;
       font-size: 0.9em;
-      color: #ccc;
+      color: var(--text-muted);
       cursor: pointer;
       white-space: nowrap;
   }
@@ -1328,18 +1599,18 @@
   .dropdown-content {
     display: block;
     position: absolute;
-    background-color: #333;
+    background-color: var(--bg-panel);
     min-width: 200px;
     box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
     z-index: 1000;
     right: 0;
-    border: 1px solid #555;
+    border: 1px solid var(--border);
     border-radius: 4px;
     padding: 5px 0;
   }
 
   .dropdown-content button {
-    color: #eee;
+    color: var(--text);
     padding: 10px 16px;
     text-decoration: none;
     display: block;
@@ -1350,15 +1621,15 @@
     cursor: pointer;
   }
 
-  .dropdown-content button:hover {background-color: #444;}
-  .dropdown-content button.danger { color: #ff4444; }
+  .dropdown-content button:hover {background-color: var(--bg-control);}
+  .dropdown-content button.danger { color: var(--status-bad); }
   .dropdown-content button.danger:hover { background-color: #442222; }
 
   .grid-select {
       padding: 4px;
-      background: #222;
-      color: #eee;
-      border: 1px solid #555;
+      background: var(--bg-panel);
+      color: var(--text);
+      border: 1px solid var(--border);
       border-radius: 3px;
   }
   .grid-select.inline {
@@ -1369,12 +1640,12 @@
     font-size: 1.5em;
     background: none;
     border: none;
-    color: #eee;
+    color: var(--text);
     cursor: pointer;
     padding: 0 10px;
   }
-  
-  hr { border: 0; border-top: 1px solid #555; margin: 5px 0; }
+
+  hr { border: 0; border-top: 1px solid var(--border); margin: 5px 0; }
 
   .starmap {
     width: 100%;
@@ -1470,4 +1741,35 @@
     stroke: #000;
     stroke-width: 2px;
   }
+
+  /* Active journeys: the travelled trail is a faint solid line; the path still to go is dashed. */
+  /* Powered journey = deep yellow (the planner's #ffcc00); the unavoidable drift = danger red. Yellow vs
+     red reads far more clearly than the old orange-vs-red. */
+  .journey-trail { stroke: #ffcc00; stroke-width: 1.5; opacity: 0.5; }
+  .journey-ahead { stroke: #ffcc00; stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.9; }
+  .journey-drift { stroke: #d04545; stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.9; }
+  .journey-ship { cursor: pointer; }
+  /* The ship marker uses the construct's own icon (fill = its icon_color) with a state-coloured edge
+     (black under way, red stranded, green arrived) applied inline. */
+  .journey-ship path, .journey-ship circle { paint-order: stroke; }
+  .journey-ship:hover path, .journey-ship:hover circle { filter: brightness(1.25); }
+  .journey-label {
+    fill: #ffd23f; font-size: 9px; paint-order: stroke; stroke: #000; stroke-width: 2px;
+    pointer-events: none;
+  }
+  .journey-cancel-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center; z-index: 2100;
+  }
+  .journey-cancel {
+    background: var(--bg-panel); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.2rem 1.4rem; width: 360px; max-width: 92vw;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  }
+  .journey-cancel h3 { margin: 0 0 0.5rem; }
+  .journey-cancel p { margin: 0 0 1rem; font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; }
+  .jc-buttons { display: flex; justify-content: flex-end; gap: 0.6rem; flex-wrap: wrap; }
+  .jc-buttons button { padding: 8px 14px; border: none; border-radius: 4px; cursor: pointer; background: var(--bg-control); color: var(--text); font: inherit; }
+  .jc-buttons button.danger { background: var(--status-bad, #e0484d); color: #fff; }
+  .jc-buttons button.primary { background: var(--accent, #ff5a1f); color: var(--on-accent, #fff); }
 </style>

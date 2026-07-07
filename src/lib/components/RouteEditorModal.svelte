@@ -77,24 +77,24 @@
   }
 
   .modal {
-    background-color: #333;
+    background-color: var(--bg-panel);
     padding: 20px;
     border-radius: 5px;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    color: #fff; /* Set text color to white */
+    color: var(--text); /* Set text color to white */
   }
 
   .modal label {
-    color: #fff; /* Ensure labels are white */
+    color: var(--text); /* Ensure labels are white */
   }
 
   .modal input[type="number"],
   .modal input[type="text"] { /* Added type="text" for consistency, though not currently used */
-    background-color: #555; /* Slightly lighter background for input fields */
-    color: #fff; /* White text for input fields */
-    border: 1px solid #777;
+    background-color: var(--bg-control); /* Slightly lighter background for input fields */
+    color: var(--text); /* White text for input fields */
+    border: 1px solid var(--border);
   }
 
   .buttons {
@@ -105,7 +105,7 @@
   }
 
   .delete-button {
-    background-color: #ff4d4d;
+    background-color: var(--status-bad);
     color: white;
   }
 </style>

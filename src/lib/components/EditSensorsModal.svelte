@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import type { Starmap, RulePack, SensorDefinition } from '$lib/types';
   import { AU_KM } from '$lib/constants';
+  import { fmt } from '$lib/stores';
 
   export let showModal: boolean;
   export let rulePack: RulePack;
@@ -86,11 +87,13 @@
       }
   }
 
-  function formatRange(km: number): string {
+  // Reactive so the km-branch re-renders when the in-system unit (km/miles) toggles.
+  // The AU-branch stays as an astronomer's AU regardless of unit (acceptable for large ranges).
+  $: formatRange = (km: number): string => {
       if (km >= AU_KM * 0.1) return `${(km / AU_KM).toFixed(2)} AU`;
       if (km >= 1000000) return `${(km / 1000000).toFixed(1)}M km`;
-      return `${Math.round(km).toLocaleString()} km`;
-  }
+      return $fmt.km(km);
+  };
 
   function handleSave() {
     const overrides: any = {};
@@ -164,26 +167,26 @@
     z-index: 2000;
   }
   .modal {
-    background: #1e1e1e;
+    background: var(--bg-panel);
     width: 600px;
     height: 80%;
     border-radius: 8px;
     display: flex; flex-direction: column;
-    border: 1px solid #444;
+    border: 1px solid var(--border);
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   }
   .header {
       padding: 15px;
-      border-bottom: 1px solid #333;
-      background: #252525;
+      border-bottom: 1px solid var(--border-soft);
+      background: var(--bg-panel);
   }
-  h2 { margin: 0; color: #eee; font-size: 1.2em; }
-  
+  h2 { margin: 0; color: var(--text); font-size: 1.2em; }
+
   .content {
       flex: 1;
       overflow-y: auto;
       padding: 15px;
-      background: #1a1a1a;
+      background: var(--bg-panel);
   }
 
   .list-container {
@@ -193,26 +196,26 @@
   }
 
   .item-card {
-      background: #2a2a2a;
-      border: 1px solid #444;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
       border-radius: 4px;
       padding: 10px;
   }
-  
+
   .item-header {
       display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px;
+      margin-bottom: 10px; border-bottom: 1px solid var(--border-soft); padding-bottom: 5px;
   }
   .name-input {
-      background: transparent; border: none; color: #fff; font-weight: bold; font-size: 1.1em;
+      background: transparent; border: none; color: var(--text); font-weight: bold; font-size: 1.1em;
       width: 100%;
   }
-  .name-input:focus { background: #333; outline: none; }
-  
+  .name-input:focus { background: var(--bg-panel); outline: none; }
+
   .delete-btn {
-      background: transparent; color: #666; border: none; cursor: pointer; font-size: 1.2em;
+      background: transparent; color: var(--text-faint); border: none; cursor: pointer; font-size: 1.2em;
   }
-  .delete-btn:hover { color: #ff4444; }
+  .delete-btn:hover { color: var(--status-bad); }
 
   .item-body {
       display: flex; flex-wrap: wrap; gap: 10px;
@@ -222,9 +225,9 @@
   }
   .field.full { flex-basis: 100%; }
   
-  label { font-size: 0.8em; color: #888; }
+  label { font-size: 0.8em; color: var(--text-faint); }
   input, select {
-      background: #333; border: 1px solid #444; color: #eee; padding: 4px; border-radius: 3px;
+      background: var(--bg-panel); border: 1px solid var(--border); color: var(--text); padding: 4px; border-radius: 3px;
   }
   
   .range-row {
@@ -237,21 +240,21 @@
   }
   
   .format-hint {
-      font-size: 0.75em; color: #666; margin-top: 2px; text-align: right;
+      font-size: 0.75em; color: var(--text-faint); margin-top: 2px; text-align: right;
   }
 
   .add-btn {
-      padding: 10px; background: #333; border: 1px dashed #555; color: #aaa; cursor: pointer;
+      padding: 10px; background: var(--bg-panel); border: 1px dashed var(--border); color: var(--text-muted); cursor: pointer;
       width: 100%; text-align: center;
   }
-  .add-btn:hover { background: #383838; color: #fff; border-color: #888; }
+  .add-btn:hover { background: var(--bg-control); color: var(--text); border-color: #888; }
 
   .footer {
-      padding: 15px; border-top: 1px solid #333; background: #252525;
+      padding: 15px; border-top: 1px solid var(--border-soft); background: var(--bg-panel);
       display: flex; justify-content: flex-end; gap: 10px;
   }
   .footer button {
       padding: 8px 20px; border-radius: 4px; border: none; cursor: pointer;
   }
-  .primary { background: #007bff; color: white; }
+  .primary { background: var(--accent); color: white; }
 </style>

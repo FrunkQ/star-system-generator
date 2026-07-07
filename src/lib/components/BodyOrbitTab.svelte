@@ -3,10 +3,12 @@
   import type { CelestialBody, RulePack } from '$lib/types';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
   import { AU_KM } from '$lib/constants';
+  import { fmt } from '$lib/stores';
   import OrbitalSlider from './OrbitalSlider.svelte';
 
   export let body: CelestialBody;
   export let parentBody: CelestialBody | null = null;
+  export let system: any = null;
   export let rulePack: RulePack | null = null;
 
   const dispatch = createEventDispatcher();
@@ -113,6 +115,11 @@
   }
 function updateOrbit() {
     if (!body.orbit) return;
+    // A negative/zero/NaN semi-major axis is unphysical and throws in ctx.ellipse
+    // (it froze the orrery in a user file). Clamp to a tiny positive floor.
+    if (!Number.isFinite(a_AU) || a_AU <= 0) {
+        a_AU = Math.max(minA, 1e-6);
+    }
     const boundedE = Math.max(0, Math.min(e, safeMaxE));
     if (Math.abs(boundedE - e) > 1e-9) {
         e = parseFloat(boundedE.toFixed(6));
@@ -151,12 +158,57 @@ function updateOrbit() {
       return safeKm / AU_KM;
   }
 
+  // This body is one half of a binary when its parent is a 2-member barycentre. Its own orbit (above)
+  // only sets the SEPARATION from its partner; the PAIR's position in the system lives on the
+  // barycentre's own orbit. We surface both here so the pair is fully editable from the one body
+  // (barycentres are no longer selectable). For the ROOT pair the barycentre IS the system centre, so
+  // its distance slider is greyed. Editing either coupled value re-derives the partner on the next pass.
+  $: isBinaryMember = !!parentBody
+      && (parentBody as any).kind === 'barycenter'
+      && ((parentBody as any).memberIds?.length === 2)
+      && ((parentBody as any).memberIds as string[])?.includes(body.id);
+  $: isRootPair = isBinaryMember && !(parentBody as any).parentId;
+  $: pairHost = (isBinaryMember && (parentBody as any).parentId && system?.nodes)
+      ? (system.nodes.find((n: any) => n.id === (parentBody as any).parentId) ?? null)
+      : null;
+  // A body can legitimately orbit a barycentre (a valid orbital point) even though only the barycentre's
+  // primary is selectable — so when the host IS a barycentre, name it AND its primary, e.g.
+  // "Pluto-Charon Barycentre (Pluto)", so it's clear what's being orbited.
+  function hostLabel(node: any, sys: any): string {
+      if (!node) return '';
+      if (node.kind === 'barycenter' && sys?.nodes) {
+          const members = ((node.memberIds || []) as string[]).map((id) => sys.nodes.find((n: any) => n.id === id)).filter(Boolean) as any[];
+          const primary = members.reduce((best: any, m: any) =>
+              ((m.massKg || m.effectiveMassKg || 0) > (best?.massKg || best?.effectiveMassKg || 0) ? m : best), null);
+          return primary ? `${node.name} (${primary.name})` : node.name;
+      }
+      return node.name ?? '';
+  }
+  $: pairHostName = pairHost ? hostLabel(pairHost, system) : 'the system centre';
+  // Name the actual bodies in the labels — on a multi-star system "partner"/"parent" is easy to lose.
+  $: partnerBody = (isBinaryMember && system?.nodes)
+      ? (system.nodes.find((n: any) => n.id !== body.id && ((parentBody as any).memberIds || []).includes(n.id)) ?? null)
+      : null;
+  $: partnerName = partnerBody ? partnerBody.name : 'its partner';
+  $: orbitHostName = hostLabel(parentBody, system);
+  let pairA_AU = 0;
+  $: if (isBinaryMember && (parentBody as any).orbit) pairA_AU = (parentBody as any).orbit.elements.a_AU ?? 0;
+  $: pairMaxA = Math.max(60, (pairA_AU || 0) * 1.5);
+
+  function handlePairDistance() {
+      const bary: any = parentBody;
+      if (!isBinaryMember || isRootPair || !bary?.orbit) return;
+      bary.orbit.elements.a_AU = Math.max(0.001, Number(pairA_AU) || 0);
+      bary.orbit.lastEditedT0 = Date.now();
+      dispatch('update');
+  }
+
   $: peri = a_AU * (1 - e);
   $: aph = a_AU * (1 + e);
   $: minSafePeriapsisAU = calculateMinSafePeriapsisAU();
   $: safeMaxE = a_AU > 0 ? Math.max(0, Math.min(0.999, 1 - (minSafePeriapsisAU / a_AU))) : 0.999;
-  $: rangeText = body.roleHint === 'moon' 
-      ? `Range: ${(peri * 149597870.7).toLocaleString(undefined, {maximumFractionDigits:0})} - ${(aph * 149597870.7).toLocaleString(undefined, {maximumFractionDigits:0})} km`
+  $: rangeText = body.roleHint === 'moon'
+      ? `Range: ${$fmt.km(peri * AU_KM)} - ${$fmt.km(aph * AU_KM)}`
       : `Range: ${peri.toFixed(3)} - ${aph.toFixed(3)} AU`;
 </script>
 
@@ -164,12 +216,26 @@ function updateOrbit() {
     {#if !body.orbit}
         <p>This body has no orbit (it might be the central star).</p>
     {:else}
+        {#if isBinaryMember}
+        <div class="form-group pair-group" class:rooted={isRootPair}>
+            <div class="label-row">
+                <label title="Moves the whole binary pair through the system. The control below only sets how far apart the two bodies sit.">Distance from {pairHostName} (AU)</label>
+                <input type="number" step="any" min="0.001" bind:value={pairA_AU} on:input={handlePairDistance} disabled={isRootPair} />
+            </div>
+            <div class="full-width-slider">
+                <input class="pair-slider" type="range" min="0.05" max={pairMaxA} step="0.05" bind:value={pairA_AU} on:input={handlePairDistance} disabled={isRootPair} />
+            </div>
+            <div class="info-row" style="font-size: 0.78em; color: var(--text-faint);">
+                {#if isRootPair}This pair is the system centre, so it has no distance to set. The control below sets how far apart the two bodies sit.{:else}Moves both bodies of the pair together. The control below sets their separation.{/if}
+            </div>
+        </div>
+        {/if}
         <div class="form-group">
             <div class="label-row">
-                <label>Semi-Major Axis (AU)</label>
+                <label>{isBinaryMember ? `Separation from ${partnerName} (AU)` : 'Semi-Major Axis (AU)'}</label>
                 <input type="number" step="any" bind:value={a_AU} on:input={handleNumberInput} />
             </div>
-            <div class="info-row" style="font-size: 0.8em; color: #888; margin-bottom: 4px;">{rangeText}</div>
+            <div class="info-row" style="font-size: 0.8em; color: var(--text-faint); margin-bottom: 4px;">{#if !isBinaryMember && orbitHostName}Orbits {orbitHostName} · {/if}{rangeText}</div>
             <!-- Custom Orbital Slider -->
             <div class="full-width-slider">
                 <OrbitalSlider value={a_AU} min={minA} max={maxA} {zones} on:input={handleOrbitalSliderInput} />
@@ -257,6 +323,16 @@ function updateOrbit() {
 <style>
   .tab-panel { padding: 10px; display: flex; flex-direction: column; gap: 15px; }
   .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .pair-group {
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent, #5b8def);
+      border-radius: 4px;
+      padding: 8px;
+      background: color-mix(in srgb, var(--accent, #5b8def) 7%, transparent);
+  }
+  .pair-slider { width: 100%; accent-color: var(--accent, #5b8def); }
+  .pair-group.rooted { opacity: 0.55; }
+  .pair-group input:disabled { cursor: not-allowed; }
   
   .label-row {
       display: flex;
@@ -264,14 +340,14 @@ function updateOrbit() {
       align-items: center;
   }
   
-  label { color: #ccc; font-size: 0.9em; }
-  
-  input[type="number"] { 
-      padding: 4px; 
-      background: #444; 
-      border: 1px solid #555; 
-      color: #eee; 
-      border-radius: 3px; 
+  label { color: var(--text-muted); font-size: 0.9em; }
+
+  input[type="number"] {
+      padding: 4px;
+      background: var(--bg-control);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 3px;
       width: 80px;
       text-align: right;
   }
@@ -283,7 +359,7 @@ function updateOrbit() {
   .full-width-slider input { width: 100%; }
   .info-row {
       font-size: 0.8em;
-      color: #888;
+      color: var(--text-faint);
       margin-top: 4px;
   }
 
@@ -293,6 +369,6 @@ function updateOrbit() {
       gap: 10px;
   }
   .checkbox-row label { margin: 0; }
-  
-  hr { border: 0; border-top: 1px solid #444; margin: 5px 0; width: 100%; }
+
+  hr { border: 0; border-top: 1px solid var(--border); margin: 5px 0; width: 100%; }
 </style>

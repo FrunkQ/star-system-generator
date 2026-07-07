@@ -14,6 +14,9 @@
   type Temporal = NonNullable<Starmap['temporal']>;
 
   export let temporal: Temporal;
+  // Compact layout for the phone bottom bar: hides the big clock glyph, drops the
+  // 390px min-width, and lets the panel wrap/scroll in a slim fixed-height bar.
+  export let compact = false;
   // Optional read-out overrides for when the parent animates the clocks (e.g.
   // SystemView's 5-sec align): masterOverrideSec drives the Actual read-out,
   // displayOverrideSec drives the Display read-out. Null/omitted → derive from
@@ -23,9 +26,76 @@
 
   const dispatch = createEventDispatcher();
 
+  // --- Transport UI state ---
+  let expanded = false; // the "⋯" secondary panel (actual time / reset / set-actual)
+
+  // --- Drag + minimise (desktop & mobile). The pill can be dragged anywhere by its grip (or the
+  //     minimised clock itself) and collapsed to just the display clock; both persist. ---
+  let dragDx = 0, dragDy = 0;
+  let minimized = false;
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const v = JSON.parse(localStorage.getItem('time-pill-offset') || 'null');
+      if (v) { dragDx = v.dx || 0; dragDy = v.dy || 0; }
+    } catch { /* corrupt — ignore */ }
+    minimized = localStorage.getItem('time-pill-min') === '1';
+  }
+  let rootEl: HTMLDivElement;
+  let dragging = false, dragMoved = false;
+  let dragStartX = 0, dragStartY = 0, dragBaseX = 0, dragBaseY = 0;
+
+  function onGripDown(e: PointerEvent) {
+    dragging = true; dragMoved = false;
+    dragStartX = e.clientX; dragStartY = e.clientY;
+    dragBaseX = dragDx; dragBaseY = dragDy;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+  function onGripMove(e: PointerEvent) {
+    if (!dragging) return;
+    const mx = e.clientX - dragStartX, my = e.clientY - dragStartY;
+    if (Math.abs(mx) + Math.abs(my) > 4) dragMoved = true;
+    dragDx = dragBaseX + mx; dragDy = dragBaseY + my;
+    // keep the pill on screen
+    if (rootEl && typeof window !== 'undefined') {
+      const r = rootEl.getBoundingClientRect();
+      if (r.left < 4) dragDx += 4 - r.left;
+      if (r.top < 4) dragDy += 4 - r.top;
+      if (r.right > window.innerWidth - 4) dragDx -= r.right - (window.innerWidth - 4);
+      if (r.bottom > window.innerHeight - 4) dragDy -= r.bottom - (window.innerHeight - 4);
+    }
+  }
+  function onGripUp() {
+    if (!dragging) return;
+    dragging = false;
+    try { localStorage.setItem('time-pill-offset', JSON.stringify({ dx: dragDx, dy: dragDy })); } catch { /* private mode */ }
+  }
+  function setMinimized(v: boolean) {
+    minimized = v;
+    try { localStorage.setItem('time-pill-min', v ? '1' : '0'); } catch { /* private mode */ }
+  }
+  function onClockTap() { if (!dragMoved) setMinimized(false); }
+
+  // Playback-speed ladder (sim seconds per real second). The +/- stepper walks this and
+  // Play runs at the selected rate, so time can keep advancing faster than 1s/s without
+  // any hidden "lock" toggle.
+  const RATE_STEPS = [1, 10, 60, 600, 3600, 21600, 86400, 604800, 2592000, 31536000, 315360000];
+  let rateIndex = 0;
+  $: playRate = RATE_STEPS[rateIndex];
+  // First-ever "+" press also starts playback, so a new user immediately SEES time advance (otherwise
+  // the rate number just changes while everything sits still). One-time nudge, persisted.
+  let fasterNudged = typeof localStorage !== 'undefined' && localStorage.getItem('time-faster-nudged') === '1';
+  function faster() {
+    if (rateIndex < RATE_STEPS.length - 1) rateIndex++;
+    if (!fasterNudged) {
+      fasterNudged = true;
+      try { localStorage.setItem('time-faster-nudged', '1'); } catch { /* private mode */ }
+      if (!isPlaying) setPlaying(true);
+    }
+  }
+  function slower() { if (rateIndex > 0) rateIndex--; }
+
   // --- Scrub / playback state (owned here) ---
   let scrubControlValue = 0;
-  let autoResetTimeScrub = true;
   let scrubRafId: number | null = null;
   let scrubLastTimestamp: number | null = null;
   let scrubCarrySeconds = 0;
@@ -63,16 +133,17 @@
     return sign + Math.round(years) + 'y/s';
   }
 
-  $: currentRate = scrubControlValue !== 0
-    ? scrubRateFromControl(scrubControlValue)
-    : (isPlaying ? 1 : 0);
-  $: formattedScrubRate = formatTimeRate(currentRate);
+  // Rate shown on the pill: the live scrub rate while jogging, else the selected play rate.
+  $: shownRate = scrubControlValue !== 0 ? scrubRateFromControl(scrubControlValue) : playRate;
+  $: formattedRate = formatTimeRate(shownRate);
 
-  $: if (!autoResetTimeScrub) {
-      // When unchecking, stop any active scrub and reset slider to 0
-      scrubControlValue = 0;
-      stopScrubLoop();
-  }
+  // Jump-to-now direction: if the display clock is BEHIND actual ("now"), jumping moves
+  // time FORWARD (⏭); if AHEAD, BACKWARD (⏮). At now → neutral/dimmed. Good at-a-glance
+  // cue for whether you're off the current time and which way the jump goes.
+  $: jumpBehind = (() => { try { return BigInt(displayClockSeconds || '0') < BigInt(masterClockSeconds || '0'); } catch { return false; } })();
+  $: jumpAhead = (() => { try { return BigInt(displayClockSeconds || '0') > BigInt(masterClockSeconds || '0'); } catch { return false; } })();
+  $: atNow = !jumpBehind && !jumpAhead;
+
 
   // Derive read-outs + sync play state from the authoritative temporal prop.
   $: {
@@ -109,6 +180,9 @@
   }
 
   function handleSetActual() {
+    // The only genuinely destructive time action: it moves the authoritative "now" anchor for
+    // the whole campaign to whatever you're currently viewing. Confirm before committing.
+    if (!confirm('Set the campaign’s current time ("now") to the time you are viewing?\n\nThis moves the authoritative clock for everyone and cannot be undone.')) return;
     setPlaying(false);
     dispatch('setactual');
   }
@@ -159,18 +233,17 @@
   }
 
   function handleScrubInput(event: Event) {
-    if (autoResetTimeScrub && isPlaying) setPlaying(false);
+    if (isPlaying) setPlaying(false);
     scrubControlValue = Number((event.target as HTMLInputElement).value);
-    if (autoResetTimeScrub && Math.abs(scrubControlValue) > 0.0001) {
+    if (Math.abs(scrubControlValue) > 0.0001) {
       ensureScrubLoopRunning();
     }
   }
 
+  // The shuttle is a momentary jog — always springs back to 0 (stop) on release.
   function handleScrubRelease() {
-    if (autoResetTimeScrub) {
-        scrubControlValue = 0;
-        stopScrubLoop();
-    }
+    scrubControlValue = 0;
+    stopScrubLoop();
   }
 
   function tickPlayback(timestamp: number) {
@@ -186,7 +259,7 @@
     const dt = (timestamp - playbackLastTimestamp) / 1000;
     playbackLastTimestamp = timestamp;
 
-    const rate = autoResetTimeScrub ? 1 : scrubRateFromControl(scrubControlValue);
+    const rate = playRate;
     timeScale = rate;
     playbackCarrySeconds += rate * dt;
 
@@ -219,10 +292,8 @@
     isPlaying = next;
     // Parity with SystemView for broadcast/sync
     if (isPlaying) {
-      if (autoResetTimeScrub) {
-          scrubControlValue = 0;
-          stopScrubLoop();
-      }
+      scrubControlValue = 0;
+      stopScrubLoop();
       ensurePlaybackRunning();
     } else {
       stopPlayback();
@@ -231,7 +302,7 @@
       applyTemporalUpdate((temporal) => ({
         ...temporal,
         playbackRunning: next,
-        playbackRateSecPerSec: temporal.playbackRateSecPerSec ?? 1
+        playbackRateSecPerSec: playRate
       }));
     }
   }
@@ -247,217 +318,273 @@
   });
 </script>
 
-<div class="time-panel">
-  <div class="time-title" title="Relativity mode is off. Time dilation sold separately.">🕒</div>
-  <div class="clock-line">
-    <div class="scrub-control">
-      <div class="scrub-label-row">
-        <label class="scrub-label" for="time-scrub">
-          Scrub Display Time
-          {#if currentRate !== 0}
-            <span class="scrub-rate">({formattedScrubRate})</span>
-          {/if}
-        </label>
-        <label class="checkbox-label" title="When checked, releasing the slider resets speed to zero and stops time. When unchecked, speed is maintained and only advances when Play is clicked.">
-          <input type="checkbox" bind:checked={autoResetTimeScrub} />
-          Auto-reset speed
-        </label>
-      </div>
-      <div class="scrub-slider-row">
-        <div class="scrub-slider-wrap">
-          <input
-            id="time-scrub"
-            class="scrub-slider"
-            type="range"
-            min="-1"
-            max="1"
-            step="0.01"
-            value={scrubControlValue}
-            on:input={handleScrubInput}
-            on:mouseup={handleScrubRelease}
-            on:touchend={handleScrubRelease}
-            on:pointerup={handleScrubRelease}
-            on:change={handleScrubRelease}
-          />
-          <div class="scrub-scale">
-            <span>-10y/s</span>
-            <span>slow</span>
-            <span>pause</span>
-            <span>slow</span>
-            <span>+10y/s</span>
-          </div>
-        </div>
-        <button
-          class="play-toggle"
-          on:click={togglePlayback}
-          title={isPlaying ? 'Pause real-time clock advance' : 'Play real-time clock advance (1s/s)'}
-          aria-label={isPlaying ? 'Pause time playback' : 'Start time playback'}
-          >{isPlaying ? '⏸' : '▶'}</button>
-      </div>
-    </div>
-    <div class="time-readouts">
-      <span class="display-time" title={"Display seconds from big bang: " + displayClockSeconds}>Display Time: <strong>{displayClockLabel}</strong></span>
-      <span class="actual-time" title={"Actual seconds from big bang: " + masterClockSeconds}><strong>Actual Time:</strong> [{masterCalendarLabel}]</span>
-    </div>
-    <div class="clock-actions">
-      <button class="clock-action btn-blue" on:click={handleResetDisplay} title="Reset display time to current actual time">Reset to Actual Time</button>
-      <button class="clock-action btn-red" on:click={handleSetActual} title="Set actual time to current display time">Set Actual Time to Display Time</button>
-    </div>
+<div class="tt-root" bind:this={rootEl} style="transform: translate({dragDx}px, {dragDy}px);">
+{#if minimized}
+  <button class="tt-clock" class:compact
+    on:pointerdown={onGripDown} on:pointermove={onGripMove} on:pointerup={onGripUp}
+    on:click={onClockTap}
+    title={`${displayClockLabel} — tap to expand the transport, drag to move`}
+    aria-label="Time ({displayClockLabel}) — tap to expand">
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+  </button>
+{:else}
+<div class="time-transport" class:expanded class:compact>
+  <span class="tt-grip" role="presentation" title="Drag to move"
+    on:pointerdown={onGripDown} on:pointermove={onGripMove} on:pointerup={onGripUp}>⠿</span>
+  <button
+    class="tt-btn tt-jump"
+    class:at-now={atNow}
+    on:click={handleResetDisplay}
+    title={atNow ? 'Display is at the current time' : (jumpBehind ? 'Jump forward to now' : 'Jump back to now')}
+    aria-label="Jump to now"
+  >{jumpBehind ? '⏭' : '⏮'}</button>
+  <button class="tt-btn tt-play" class:playing={isPlaying} on:click={togglePlayback} title={isPlaying ? 'Pause' : 'Play (real-time)'} aria-label={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '⏸' : '▶'}</button>
+
+  <div class="tt-shuttle" title="Scrub — drag to jog forward / back; release to stop">
+    <span class="tt-center" aria-hidden="true"></span>
+    <input
+      class="tt-slider"
+      type="range"
+      min="-1" max="1" step="0.01"
+      value={scrubControlValue}
+      on:input={handleScrubInput}
+      on:mouseup={handleScrubRelease}
+      on:touchend={handleScrubRelease}
+      on:pointerup={handleScrubRelease}
+      on:change={handleScrubRelease}
+      aria-label="Time scrub"
+    />
   </div>
+
+  <div class="tt-speed">
+    <button class="tt-step" on:click={slower} disabled={rateIndex === 0} title="Slower" aria-label="Slower">−</button>
+    <div class="tt-rate" class:active={isPlaying || scrubControlValue !== 0} title="Playback speed — Play advances time at this rate">{formattedRate}</div>
+    <button class="tt-step" on:click={faster} disabled={rateIndex === RATE_STEPS.length - 1} title="Faster" aria-label="Faster">+</button>
+  </div>
+
+  <button class="tt-btn tt-more tt-warn" class:on={expanded} on:click={() => (expanded = !expanded)} title="Danger: rewrite the campaign's current time" aria-label="Set current time (danger)">⚠</button>
+  <button class="tt-min-strip" on:click={() => setMinimized(true)} title="Minimise to a clock" aria-label="Minimise time controls">
+    <svg viewBox="0 0 6 24" width="6" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="4" x2="3" y2="20"/></svg>
+  </button>
+
+  {#if expanded}
+    <div class="tt-panel">
+      <button class="tt-action danger" on:click={handleSetActual}>Set current time to displayed time</button>
+      <p class="tt-warn-note">This is the only thing here that isn't on the bar already. It moves the authoritative "now" for the whole campaign to the time you're viewing.</p>
+    </div>
+  {/if}
+</div>
+{/if}
 </div>
 
 <style>
-  .time-panel {
-    border: 1px solid #3f3f3f;
-    border-radius: 6px;
-    background: rgba(18, 18, 18, 0.9);
-    padding: 8px 10px;
-    margin-bottom: 10px;
+  /* Draggable root: the parent overlay anchors it; the persisted translate moves it anywhere. */
+  .tt-root { display: inline-block; }
+  .tt-grip {
+    flex: 0 0 auto;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    color: var(--text-faint, #6b7280);
+    font-size: 0.95rem;
+    padding: 0 2px;
     display: flex;
-    gap: 12px;
     align-items: center;
-    width: 100%;
-    box-sizing: border-box;
   }
-  .time-title {
-    font-size: 3rem;
-    font-weight: 400;
-    color: #ddd;
-    line-height: 1;
+  .tt-grip:active { cursor: grabbing; }
+  /* Minimised: just a clock ICON — tap to expand, drag to move. */
+  .tt-clock {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--bg-panel, #14161c) 86%, transparent);
+    border: 1px solid var(--border, #2a2d36);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(7px);
+    color: var(--text, #e8e8e8);
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+  }
+  .tt-clock:hover { color: var(--accent, #ff5a1f); border-color: var(--accent, #ff5a1f); }
+  .tt-clock.compact { width: 28px; height: 28px; }
+  .tt-clock svg { flex: 0 0 auto; opacity: 0.85; }
+
+  /* Far-right minimise: a slim vertical strip, not a full button. */
+  .tt-min-strip {
+    flex: 0 0 auto;
+    width: 12px;
+    align-self: stretch;
     display: flex;
     align-items: center;
     justify-content: center;
-    white-space: nowrap;
-  }
-  .clock-line {
-    display: flex;
-    align-items: center;
-    gap: 1.2em;
-    color: #ccc;
-    font-size: 0.85em;
-    flex: 1 1 auto;
-    width: 100%;
-    min-width: 0;
-  }
-  .scrub-control {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    flex: 0 0 auto;
-    min-width: 390px;
-  }
-  .scrub-label-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-  }
-  .scrub-label {
-    color: #bbb;
-    font-size: 0.8rem;
-  }
-  .scrub-rate {
-    color: #00ffff;
-    font-weight: bold;
-    margin-left: 4px;
-  }
-  .checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.72rem;
-    color: #888;
+    padding: 0;
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 6px;
+    background: var(--bg-control, #1b1e26);
+    color: var(--text-faint, #8a8f9a);
     cursor: pointer;
   }
-  .checkbox-label input {
-    margin: 0;
-    cursor: pointer;
-  }
-  .scrub-slider-row {
+  .tt-min-strip:hover { color: var(--accent, #ff5a1f); border-color: var(--accent, #ff5a1f); }
+
+  /* Transport pill — a clean overlay over the orrery: jump-to-now, play/pause,
+     a spring-back shuttle scrub (the main interaction), the live date, and a
+     "..." that expands the secondary actions. */
+  .time-transport {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 6px;
+    padding: 5px 8px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg-panel, #14161c) 86%, transparent);
+    border: 1px solid var(--border, #2a2d36);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(7px);
+    color: var(--text, #e8e8e8);
+    font-size: 0.85rem;
+    box-sizing: border-box;
   }
-  .scrub-slider-wrap {
+  /* ~15% smaller overall (desktop pill); the phone compact bar keeps its own tighter sizing. */
+  .time-transport:not(.compact) { transform: scale(0.85); transform-origin: left bottom; }
+  .tt-btn {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
     display: flex;
-    flex-direction: column;
-    gap: 3px;
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-  .scrub-slider {
-    width: 100%;
-  }
-  .scrub-scale {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
-    font-size: 0.72rem;
-    color: #8f8f8f;
-  }
-  .scrub-scale span:nth-child(1) { text-align: left; }
-  .scrub-scale span:nth-child(2) { text-align: center; }
-  .scrub-scale span:nth-child(3) { text-align: center; }
-  .scrub-scale span:nth-child(4) { text-align: center; }
-  .scrub-scale span:nth-child(5) { text-align: right; }
-  .play-toggle {
-    width: 30px;
-    min-width: 30px;
-    height: 24px;
-    padding: 0;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 8px;
+    background: var(--bg-control, #1b1e26);
+    color: var(--text, #e8e8e8);
+    font-size: 0.95rem;
     line-height: 1;
-    font-size: 0.9rem;
-    background: #1f1f1f;
-    border: 1px solid #555;
-    color: #eee;
-    border-radius: 4px;
     cursor: pointer;
   }
-  .play-toggle:hover {
-    background: #2a2a2a;
+  .tt-btn:hover { background: var(--bg-control-hover, #232733); }
+  /* Jump-to-now stands out when the display is off "now"; dims when already at now. */
+  .tt-jump:not(.at-now) {
+    border-color: var(--accent, #ff5a1f);
+    color: var(--accent, #ff5a1f);
   }
-  .time-readouts {
+  .tt-jump.at-now { opacity: 0.4; }
+  .tt-play {
+    background: var(--accent, #ff5a1f);
+    border-color: var(--accent, #ff5a1f);
+    color: var(--on-accent, #fff);
+  }
+  .tt-play:hover { background: var(--accent-hover, #ff7a45); }
+  .tt-play.playing { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #ff5a1f) 45%, transparent); }
+
+  .tt-shuttle {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 78px;
     display: flex;
-    flex-direction: column;
-    gap: 2px;
-    justify-content: center;
-  }
-  .display-time {
-    font-size: 1rem;
-    white-space: nowrap;
-  }
-  .actual-time {
-    color: #888;
-    font-size: 0.9em;
-    white-space: nowrap;
-  }
-  .clock-actions {
-    margin-left: auto;
-    display: flex;
-    gap: 8px;
     align-items: center;
   }
-  .clock-action {
-    padding: 2px 6px;
-    background: #2a2a2a;
-    border: 1px solid #555;
-    color: #eee;
-    border-radius: 3px;
+  .tt-center {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 2px;
+    height: 14px;
+    transform: translate(-50%, -50%);
+    background: var(--text-faint, #6b7280);
+    border-radius: 1px;
+    pointer-events: none;
+  }
+  .tt-slider {
+    width: 100%;
+    margin: 0;
+    accent-color: var(--accent, #ff5a1f);
+    cursor: ew-resize;
+  }
+
+  .tt-speed {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .tt-step {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 7px;
+    background: var(--bg-control, #1b1e26);
+    color: var(--text, #e8e8e8);
+    font-size: 1rem;
+    line-height: 1;
     cursor: pointer;
   }
-  .clock-action.btn-blue {
-    background: #0a4d9b;
-    border-color: #2a6fc0;
+  .tt-step:hover { background: var(--bg-control-hover, #232733); }
+  .tt-step:disabled { opacity: 0.35; cursor: default; }
+  .tt-rate {
+    flex: 0 0 auto;
+    min-width: 44px;
+    text-align: center;
+    font-size: 0.76rem;
+    color: var(--text-faint, #8a8f9a);
+    font-variant-numeric: tabular-nums;
+  }
+  .tt-rate.active { color: #00e5ff; font-weight: 700; }
+
+  .tt-more.on { background: var(--bg-control-hover, #232733); }
+  /* The "more" trigger is a red warning: the sole action it hides is the destructive set-now. */
+  .tt-warn { color: var(--status-bad, #e0484d); border-color: color-mix(in srgb, var(--status-bad, #e0484d) 55%, var(--border, #2a2d36)); }
+  .tt-warn:hover { background: color-mix(in srgb, var(--status-bad, #e0484d) 18%, var(--bg-control, #1b1e26)); }
+  .tt-warn-note { margin: 0; font-size: 0.72rem; line-height: 1.4; color: var(--text-faint, #8a8f9a); }
+
+  .tt-panel {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    min-width: 240px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--bg-panel, #14161c);
+    border: 1px solid var(--border, #2a2d36);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+  }
+  .tt-prow { display: flex; justify-content: space-between; gap: 12px; font-size: 0.85rem; }
+  .tt-k { color: var(--text-faint, #8a8f9a); }
+  .tt-v { color: var(--text, #e8e8e8); }
+  .tt-action {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border, #2a2d36);
+    background: var(--bg-control, #1b1e26);
+    color: var(--text, #e8e8e8);
+    cursor: pointer;
+    text-align: left;
+  }
+  .tt-action:hover { background: var(--bg-control-hover, #232733); }
+  .tt-action.danger {
+    background: var(--status-bad, #b91c1c);
+    border-color: var(--status-bad, #b91c1c);
     color: #fff;
   }
-  .clock-action.btn-blue:hover {
-    background: #1362bf;
-  }
-  .clock-action.btn-red {
-    background: #8f1d1d;
-    border-color: #b23a3a;
-    color: #fff;
-  }
-  .clock-action.btn-red:hover {
-    background: #b32929;
-  }
+  .tt-action.danger:hover { filter: brightness(1.12); }
+
+  /* Phone: tighten the transport pill — smaller buttons, a shorter/slimmer shuttle. */
+  .time-transport.compact { gap: 4px; padding: 3px 5px; font-size: 0.78rem; }
+  .time-transport.compact .tt-rate { min-width: 0; font-size: 0.68rem; }
+  .time-transport.compact .tt-btn { width: 28px; height: 28px; font-size: 0.85rem; }
+  .time-transport.compact .tt-step { width: 20px; height: 24px; }
+  .time-transport.compact .tt-shuttle { min-width: 64px; }
+  .time-transport.compact .tt-slider { height: 3px; }
+  .time-transport.compact .tt-center { height: 10px; }
 </style>

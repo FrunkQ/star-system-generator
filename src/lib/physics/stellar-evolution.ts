@@ -17,44 +17,99 @@ export interface StarSeed {
     isMerged?: boolean;
 }
 
+// Main-sequence lifetime ∝ M / L ∝ M^(-2.5). Sun ≈ 10 Gyr; 2 M☉ ≈ 1.8 Gyr; 10 M☉ ≈ 30 Myr;
+// 0.5 M☉ ≈ 56 Gyr (longer than the universe — fine, it just never leaves the MS).
 export function getStarLifespanGyr(massKg: number): number {
     const mSolar = massKg / SOLAR_MASS_KG;
     return 10 / Math.pow(mSolar, 2.5);
 }
 
-export function ageStar(star: StarSeed, ageYears: number): StarSeed & { isDead?: boolean } {
+// Phase fractions beyond the main-sequence lifetime: the giant phase runs to ~1.3 t_MS.
+const GIANT_PHASE_FRACTION = 0.3;
+const AU_KM_LOCAL = 149597870.7;
+
+export type StarPhase = 'pre-main-sequence' | 'main-sequence' | 'subgiant' | 'giant' | 'white-dwarf' | 'neutron-star' | 'black-hole';
+
+// Evolve a star to an absolute age. Smooth MS brightening → red-giant swell (cool + luminous + huge)
+// → collapse to a remnant by progenitor mass. Calibrated for a believable preview, not a stellar code.
+export function ageStar(star: StarSeed, ageYears: number): StarSeed & { isDead?: boolean; phase?: StarPhase } {
     const ageGyr = ageYears / 1e9;
     const mSolar = star.massKg / SOLAR_MASS_KG;
-    const lifespanGyr = getStarLifespanGyr(star.massKg);
-    
-    let agedLum = star.luminositySolar;
-    let agedTemp = star.temperatureK;
-    let isDead = false;
+    const tMS = getStarLifespanGyr(star.massKg);
 
-    if (ageGyr > lifespanGyr) {
-        const deathProgress = Math.min(1.0, (ageGyr - lifespanGyr) / (lifespanGyr * 0.2));
-        if (deathProgress < 0.9) {
-            // Red Giant Phase: Massive expansion, luminosity spike
-            agedLum = star.luminositySolar * (1 + deathProgress * 500); 
-            agedTemp = star.temperatureK * (0.8 - deathProgress * 0.4);
+    let L = star.luminositySolar;
+    let T = star.temperatureK;
+    let isDead = false;
+    let phase: StarPhase = 'main-sequence';
+
+    // Pre-main-sequence contraction: a newborn star is large, COOL and far more LUMINOUS, shrinking
+    // onto the main sequence over a Kelvin-Helmholtz time that's LONGER for lower mass (~40 Myr for the
+    // Sun, several hundred Myr for an M dwarf). So a young M dwarf's habitable zone starts far out and
+    // migrates inward as it dims — the big age-dependence of low-mass-star zones.
+    const tPreMS = 0.04 / Math.max(0.08, mSolar); // Gyr
+    if (ageGyr <= tMS && ageGyr < tPreMS) {
+        const f = 1 - ageGyr / tPreMS;            // 1 at birth → 0 on reaching the main sequence
+        L = star.luminositySolar * (1 + 2.5 * f); // up to ~3.5× brighter at birth
+        T = star.temperatureK * (1 - 0.15 * f);   // cooler (puffy) when young
+        phase = 'pre-main-sequence';
+    } else if (ageGyr <= tMS) {
+        // Main sequence: a slow brightening + slight warming (the Sun ends ~1.7× brighter).
+        const p = ageGyr / tMS;
+        L = star.luminositySolar * (1 + 0.7 * p);
+        T = star.temperatureK * (1 + 0.04 * p);
+    } else {
+        const post = (ageGyr - tMS) / (tMS * GIANT_PHASE_FRACTION); // 0..1 across the giant phase
+        if (post < 1) {
+            // Subgiant → red giant: ease into a cool, luminous, hugely-swollen star.
+            const e = post * post;
+            phase = post < 0.35 ? 'subgiant' : 'giant';
+            const peakL = star.luminositySolar * (mSolar > 8 ? 1e5 : 2000); // super/red giant
+            L = star.luminositySolar + (peakL - star.luminositySolar) * e;
+            T = star.temperatureK * (1 - 0.55 * e); // cools toward ~2600–3500 K (reddens)
         } else {
-            // Remnant Phase: White Dwarf / Neutron Star / BH
+            // Remnant, by progenitor mass.
             isDead = true;
-            if (mSolar > 8) {
-                agedLum = 1e-6; agedTemp = 100000; 
-            } else {
-                agedLum = 1e-3; agedTemp = 25000; 
+            if (mSolar > 25) { phase = 'black-hole'; L = 1e-9; T = 0; } // bare quiescent horizon (feeding is set in the editor)
+            else if (mSolar > 8) { phase = 'neutron-star'; L = 1e-5; T = 600000; }
+            else {
+                phase = 'white-dwarf';
+                const coolGyr = Math.max(0, ageGyr - tMS * (1 + GIANT_PHASE_FRACTION));
+                T = Math.max(4000, 40000 * Math.exp(-coolGyr / 5)); // cools from ~40000 K
+                L = 1e-2 * Math.pow(T / 40000, 4);                  // L ∝ T⁴ at fixed WD radius
             }
         }
-    } else {
-        // Main Sequence: Gradual brightening
-        const msProgress = ageGyr / lifespanGyr;
-        agedLum = star.luminositySolar * (1 + msProgress * 0.8);
-        agedTemp = star.temperatureK * (1 + msProgress * 0.05);
     }
 
-    const props = deriveStarFromHR(Math.max(2000, agedTemp), agedLum, isDead, star.massKg);
-    return { ...star, ...props, isDead };
+    const props = deriveStarFromHR(Math.max(1500, T), Math.max(1e-9, L), isDead, star.massKg);
+    // A quiescent black hole has no thermal surface — the HR clamp (≥1500 K, needed for the radius/class
+    // math) must not leak into the displayed temperature. (Feeding raises it again via the editor.)
+    if (phase === 'black-hole') { props.temperatureK = 0; props.luminositySolar = 1e-9; }
+    return { ...star, ...props, isDead, phase };
+}
+
+// Magnetic flare activity 0..1. Flares are driven by rotation + a convective dynamo, so they're
+// strongest on LOW-mass dwarfs (deep convection — M dwarfs flare ferociously) and on YOUNG stars
+// (fast rotation), declining as the star spins down with age. This drives an episodic particle/UV dose
+// on close-in planets (shielded by a magnetosphere + atmosphere). NOT the steady luminosity.
+export function flareActivity(spectralClass: string | undefined, ageGyr: number): number {
+  const sp = (spectralClass || 'G').replace('star/', '')[0];
+  const base: Record<string, number> = { M: 0.85, K: 0.55, G: 0.35, F: 0.22, A: 0.16, B: 0.12, O: 0.12 };
+  const remnant = /[WNB]/.test(sp) && !'BAFGKM'.includes(sp); // WD/NS/BH letters → no flares
+  if (remnant) return 0;
+  const b = base[sp] ?? 0.3;
+  const ageFactor = Math.min(1, Math.pow(0.3 / Math.max(0.05, ageGyr), 0.7)); // young → ~1, old → small
+  return Math.max(0, Math.min(1, b * ageFactor));
+}
+
+// The star's radius in AU (for engulfment + zone work).
+export function stellarRadiusAU(star: { radiusKm: number }): number {
+    return star.radiusKm / AU_KM_LOCAL;
+}
+
+// Would a planet orbiting at `distAU` be swallowed by the (evolved) star? A red giant reaches ~1 AU
+// and engulfs the inner planets — exposing Chthonian cores and clearing the inner system.
+export function isEngulfedAt(star: { radiusKm: number }, distAU: number): boolean {
+    return distAU < stellarRadiusAU(star) * 1.2; // a little margin for tidal drag-in
 }
 export const SOLAR_TEMPERATURE_K = 5778;
 const G = 6.67430e-11;

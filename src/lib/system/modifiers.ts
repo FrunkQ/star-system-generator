@@ -140,7 +140,7 @@ export function addPlanetaryBody(sys: System, hostId: ID, planetType: string, pa
 
     const propertyOverrides: Partial<CelestialBody> = {};
     if (newA_AU < stellarZones.co2IceLine) {
-        propertyOverrides.tags = [{ key: 'Migrated Planet' }];
+        propertyOverrides.tags = [{ key: 'origin/migrated' }];
     }
 
     const newNodes = _generatePlanetaryBody(rng, pack, `${sys.seed}-custom`, siblings.length, host, orbit, name, sys.nodes, sys.age_Gyr, finalPlanetType, false, propertyOverrides);

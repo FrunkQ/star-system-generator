@@ -1,8 +1,8 @@
 // src/lib/system/utils.ts
-import type { System, ID, CelestialBody, Barycenter, BurnPlan, Orbit, RulePack, SystemNode } from '../types';
+import type { System, ID, CelestialBody, Barycenter, BurnPlan, Orbit, RulePack, SystemNode, Starmap } from '../types';
 import { G, AU_KM } from '../constants';
 import { propagateState } from '../physics/orbits';
-import { recalculateSystemPhysics } from './postprocessing';
+import { systemProcessor } from '../core/SystemProcessor';
 
 /**
  * Recursively calculates a node's average orbital distance (semi-major axis) from the root star in AU.
@@ -86,6 +86,48 @@ export function computePlayerSnapshot(sys: System, _scopeRootId?: ID): System {
   delete (playerSystem as any).gmNotes;
 
   return playerSystem;
+}
+
+/**
+ * Player-safe snapshot of a WHOLE starmap for the Companion App: every system the players may see,
+ * each redacted via computePlayerSnapshot. A system whose primary (main) star is player-hidden is
+ * dropped entirely — that's the GM's "hide this system" lever. GM notes (map-level) are stripped,
+ * and routes referencing a dropped system are removed.
+ */
+export function computePlayerStarmapSnapshot(map: Starmap): Starmap {
+  const clone: any = JSON.parse(JSON.stringify(map));
+  delete clone.gmNotes;
+
+  // A system is hidden when its ROOT node is player-hidden: the top barycenter for a multi-star
+  // system, or the lone star for a single. Hiding an underlying star just hides that star (handled
+  // by computePlayerSnapshot's subtree hiding), not the whole system.
+  const rootHidden = (sysNode: any): boolean => {
+    const ns = sysNode?.system?.nodes || [];
+    const root = ns.find((n: any) => n.kind === 'barycenter' && !n.parentId) || ns.find((n: any) => !n.parentId);
+    return !!root && !!root.object_playerhidden;
+  };
+
+  // Drop bulky fields the guide never shows — transit logs (with huge pathPoint arrays), classifier
+  // debug, drafts, AI context. Keeps the broadcast small enough to cross a WebRTC data channel.
+  const slimNode = (n: any) => {
+    delete n.scheduled_journeys;
+    delete n.draft_transit_plan;
+    delete n.classification;
+    delete n.aiContext;
+    return n;
+  };
+
+  clone.systems = (clone.systems || [])
+    .filter((sysNode: any) => !rootHidden(sysNode))
+    .map((sysNode: any) => {
+      const snap: any = computePlayerSnapshot(sysNode.system);
+      snap.nodes = (snap.nodes || []).map(slimNode);
+      return { id: sysNode.id, name: sysNode.name, position: sysNode.position, subsectorId: sysNode.subsectorId, system: snap };
+    });
+
+  const visibleIds = new Set(clone.systems.map((s: any) => s.id));
+  clone.routes = (clone.routes || []).filter((r: any) => visibleIds.has(r.sourceSystemId) && visibleIds.has(r.targetSystemId));
+  return clone as Starmap;
 }
 
 export function propagate(node: CelestialBody | Barycenter, tMs: number): {x: number, y: number} | null {
@@ -185,14 +227,9 @@ export function sanitizeSystem(system: System, rulePack: RulePack): System {
         return node;
     });
     
-    // 2. Physics Recalculation (Temperature, Radiation, Zones)
-    // We run this unconditionally to ensure all loaded saves are consistent with latest logic
+    // 2. Physics Recalculation — the ONE pipeline (same pass as load/generation), run unconditionally
+    // so repaired saves are consistent with the latest physics. process() mutates nodes in place and
+    // returns the system.
     const systemWithStructure = changed ? { ...system, nodes: newNodes, isManuallyEdited: true } : system;
-    const fullyUpdatedSystem = recalculateSystemPhysics(systemWithStructure, rulePack);
-
-    // If structure changed OR physics changed something (which recalculateSystemPhysics might not report as 'changed' boolean, but it mutates)
-    // Actually recalculateSystemPhysics mutates in place if we pass the object.
-    // So we should return the result.
-    
-    return fullyUpdatedSystem;
+    return systemProcessor.process(systemWithStructure, rulePack);
 }

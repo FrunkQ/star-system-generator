@@ -179,6 +179,74 @@ describe('Solar System Physics Baseline', () => {
         expect(io.tidalHeatK).toBeLessThanOrEqual(5);
         expect(io.tags?.some(t => t.key === 'tidal/hotspots')).toBe(true);
 
+        // --- Resonances + geology (the calibration set for the resonance-aware model) ---
+        const enceladus = processedSystem.nodes.find(n => n.name === 'Enceladus') as CelestialBody;
+        const dione = processedSystem.nodes.find(n => n.name === 'Dione') as CelestialBody;
+        const triton = processedSystem.nodes.find(n => n.name === 'Triton') as CelestialBody;
+        const pluto = processedSystem.nodes.find(n => n.name === 'Pluto') as CelestialBody;
+        const europa = processedSystem.nodes.find(n => n.name === 'Europa') as CelestialBody;
+        // Galilean Laplace chain + Enceladus–Dione 2:1 detected.
+        expect(io.tags?.some(t => t.key === 'resonance/laplace')).toBe(true);
+        expect(enceladus.tags?.some(t => t.key === 'resonance/2-1')).toBe(true);
+        // Enceladus: resonance-pumped ICE cryovolcanism (the 1000 K silicate bar doesn't apply).
+        expect(enceladus.geoActivity?.regime).toBe('cryovolcanic');
+        // Dione: same resonance, but barely-pumped e (0.0022) → stays quiet.
+        expect(dione.geoActivity?.regime).toBe('inactive');
+        // Triton: circular orbit, no tidal heat — solar-seasonal N2 geysers instead.
+        expect(triton.geoActivity?.regime).toBe('cryovolcanic');
+        expect(triton.geoActivity?.driver).toContain('solar');
+        // Pluto: the 3:2 with Neptune shapes its orbit but heats nothing.
+        expect(pluto.tags?.some(t => t.key === 'resonance/3-2')).toBe(true);
+        expect(pluto.geoActivity?.regime).toBe('inactive');
+        // Io/Europa keep their classic regimes.
+        expect(io.geoActivity?.regime).toBe('tidal-volcanic');
+        expect(europa.geoActivity?.regime).toBe('cryovolcanic');
+
+        // Resonance now FEEDS the numeric tidal-heat model: a resonance-maintained eccentricity
+        // dissipates real heat (Enceladus via Dione 2:1, the Galilean Laplace chain), monotonic
+        // Io > Europa > Enceladus; a coincidentally-eccentric moon (Ganymede, Dione, Luna) that
+        // would circularise stays at zero.
+        expect(enceladus.tidalHeatK).toBeGreaterThan(0);   // was 0 before resonance-fed heating
+        expect(io.tidalHeatK!).toBeGreaterThan(europa.tidalHeatK!);
+        expect(europa.tidalHeatK!).toBeGreaterThan(enceladus.tidalHeatK!);
+        expect(dione.tidalHeatK ?? 0).toBe(0);
+        expect(moon.tidalHeatK ?? 0).toBe(0);              // Luna's e is transient, not pumped
+
+        // Tidal LOCKING is now DERIVED (the Sol file carries no tidallyLocked flags): close-in
+        // bodies despin within the age, AU-distance ones never do. Surfaced as orbit/tidally-locked.
+        expect(io.tidallyLocked).toBe(true);
+        expect(enceladus.tidallyLocked).toBe(true);
+        expect(moon.tidallyLocked).toBe(true);             // Luna
+        expect(earth.tidallyLocked).toBeFalsy();
+        expect(mars.tidallyLocked).toBeFalsy();
+        expect(io.tags?.some(t => t.key === 'orbit/tidally-locked')).toBe(true);
+        expect(earth.tags?.some(t => t.key === 'orbit/tidally-locked')).toBeFalsy();
+
+        // --- Authored end-state preservation (the "double-aging" fix) ---
+        // Hand-authored bodies carry no evolveAtmosphere/autoClassify flags, so processing must
+        // NOT erode their deliberate trace exospheres nor overwrite their authored classes.
+        const mercury = processedSystem.nodes.find(n => n.name === 'Mercury') as CelestialBody;
+        expect(io.atmosphere?.main).toBe('SO2');                 // was wiped to 'None' pre-fix
+        expect(mercury.atmosphere?.main).toBe('Na');
+        expect(pluto.atmosphere?.main).toBe('N2');
+        expect(venus.classes?.[0]).toBe('planet/terrestrial');   // was reclassified 'desert' pre-fix
+        expect(io.classes?.[0]).toBe('planet/dwarf-planet');     // was reclassified 'barren' pre-fix
+        expect(mars.atmosphere?.pressure_bar).toBeCloseTo(0.006, 3); // no per-run erosion
+
+        // --- Opted-in aging is IDEMPOTENT (erodes from the atmosphere0 baseline) ---
+        // An evolving body must lose atmosphere ONCE for its age, not again on every re-process.
+        const agingInput = stripDerivedData(solSystem);
+        const marsIn = agingInput.nodes.find(n => n.name === 'Mars') as CelestialBody;
+        marsIn.evolveAtmosphere = true;
+        const aged1 = systemProcessor.process(agingInput, rulePack);
+        const mars1 = aged1.nodes.find(n => n.name === 'Mars') as CelestialBody;
+        const p1 = mars1.atmosphere?.pressure_bar ?? 0;             // capture BEFORE re-processing (in-place mutation)
+        expect(p1).toBeLessThan(0.006);                             // eroded once over 4.6 Gyr
+        expect(mars1.atmosphere0?.pressure_bar).toBeCloseTo(0.006, 3); // baseline preserved
+        const aged2 = systemProcessor.process(JSON.parse(JSON.stringify(aged1)), rulePack);
+        const mars2 = aged2.nodes.find(n => n.name === 'Mars') as CelestialBody;
+        expect(mars2.atmosphere?.pressure_bar).toBeCloseTo(p1, 10); // …and never again
+
         // --- Habitability ---
         expect(earth.habitabilityScore).toBeGreaterThan(90);
         expect(mars.habitabilityScore).toBeLessThan(40);
@@ -194,19 +262,10 @@ describe('Solar System Physics Baseline', () => {
         expect(earth.surfaceRadiation).toBeGreaterThan(2.0);
         expect(earth.surfaceRadiation).toBeLessThan(3.0);
 
-        // Luna Surface: ~500 mSv/year (Unshielded GCR + Solar)
-        // KNOWN PRE-EXISTING BUG (deferred to Phase 04 — "Physics honesty"):
-        // the engine does not compute surfaceRadiation for airless moons, so
-        // moon.surfaceRadiation is `undefined` here. The assertions below are
-        // moved to a skipped test so the rest of the baseline stays a usable
-        // regression guardrail. DO NOT "fix" inside a no-behaviour-change phase.
+        // Luna Surface: ~500 mSv/year (airless → unshielded GCR + solar). Fixed in Phase 04
+        // (the atmosphere recalc used to wipe surfaceRadiation to undefined for airless bodies).
         expect(moon).toBeDefined();
-    });
-
-    // eslint-disable-next-line vitest/no-disabled-tests
-    it.skip('reproduces Luna surface radiation (KNOWN BUG — fix in Phase 04)', () => {
-        // Expected once airless-body radiation is implemented:
-        //   expect(moon.surfaceRadiation).toBeGreaterThan(400);
-        //   expect(moon.surfaceRadiation).toBeLessThan(600);
+        expect(moon.surfaceRadiation).toBeGreaterThan(400);
+        expect(moon.surfaceRadiation).toBeLessThan(600);
     });
 });

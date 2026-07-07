@@ -8,19 +8,36 @@
 
   const dispatch = createEventDispatcher();
 
+  // The intro blurb alternates on each appearance: Option 1 (physics-forward) on the
+  // first display, Option 2 (GM-facing) on the next, and so on. The chosen index is
+  // persisted so it advances across sessions, not just within one.
+  const SPLASH_BLURBS = [
+    'A procedural generator for scientifically-plausible star systems, with a real-time orbital visualiser and a multi-system starmap. Every world is derived from real physics — composition, oceans, magnetism, geology and true colour — and you can fly your own spacecraft between them: efficient transfers, hard burns, or relativistic interstellar jumps, with fuel, time and hazard all calculated.',
+    "Build scientifically-plausible star systems for your sci-fi table and bring them to life. Every world is derived from real physics; a real-time orrery and starmap let you fly efficient transfers, hard burns or relativistic interstellar journeys; NPC ships run their own routes on autopilot; and you can serve a live, redacted Field Guide straight to your players' own devices.",
+  ];
+  let blurbIndex = 0;
+  if (typeof localStorage !== 'undefined') {
+    const stored = Number(localStorage.getItem('splash-blurb-index'));
+    blurbIndex = Number.isFinite(stored) ? ((stored % SPLASH_BLURBS.length) + SPLASH_BLURBS.length) % SPLASH_BLURBS.length : 0;
+    localStorage.setItem('splash-blurb-index', String((blurbIndex + 1) % SPLASH_BLURBS.length));
+  }
+
   let starmapName = 'My Starmap';
+  // Only one rule pack exists, so it is applied automatically rather than offered as a choice.
   let selectedRulepack: RulePack | undefined = rulepacks && rulepacks.length > 0 ? rulepacks[0] : undefined;
-  let distanceUnit = 'LY';
-  let unitIsPrefix = false;
-  let mapMode: 'diagrammatic' | 'scaled' = 'diagrammatic';
+  // The unit choice doubles as the scaling mode: ly/pc are scaled maps, diagrammatic is abstract.
+  let unitChoice: 'ly' | 'pc' | 'diagrammatic' = 'ly';
+  let abstractUnit = 'J';
+  let abstractOrder: 'prefix' | 'suffix' = 'prefix';
 
   function createStarmap() {
+    const diagrammatic = unitChoice === 'diagrammatic';
     dispatch('create', {
       name: starmapName,
       rulepack: selectedRulepack,
-      distanceUnit,
-      unitIsPrefix,
-      mapMode,
+      distanceUnit: diagrammatic ? (abstractUnit.trim() || 'J') : unitChoice,
+      unitIsPrefix: diagrammatic ? abstractOrder === 'prefix' : false,
+      mapMode: diagrammatic ? 'diagrammatic' : 'scaled',
       generationEngine: 'standard',
     });
   }
@@ -31,7 +48,7 @@
     <div class="left-pane">
         <img src="/images/ui/SSE-Logo.png" alt="Star System Explorer" class="main-logo" />
         
-        <p>A procedural generator for creating scientifically-plausible star systems, complete with a real-time orbital visualizer and starmap. Full astrodynamics simulation letting you easily model your own spacecraft and let them transit efficienctly or "hard burn" with fuel, time and hazard calculations.</p>
+        <p>{SPLASH_BLURBS[blurbIndex]}</p>
 
         <p>For discussion, feedback, bugs and suggestions go to <a href="https://discord.gg/UAEq4zzjD8" target="_blank">Our Discord</a>.</p>
 
@@ -50,34 +67,32 @@
             <span>Starmap Name:</span>
             <input type="text" bind:value={starmapName} />
             </label>
-            <label class="form-row">
-            <span>Rulepack:</span>
-            <select bind:value={selectedRulepack}>
-                {#each rulepacks as rp}
-                <option value={rp}>{rp.name}</option>
-                {/each}
-            </select>
-            </label>
 
             <div class="form-row-group">
                 <label>
-                Distance Unit:
-                <input type="text" bind:value={distanceUnit} />
-                </label>
-                <label>
-                Map Mode:
-                <select bind:value={mapMode}>
-                  <option value="diagrammatic">Diagrammatic</option>
-                  <option value="scaled">Scaled</option>
+                Distance/Scaling units:
+                <select bind:value={unitChoice}>
+                  <option value="ly">Light Years (ly)</option>
+                  <option value="pc">Parsecs (pc)</option>
+                  <option value="diagrammatic">Diagrammatic (not scaled)</option>
                 </select>
                 </label>
-                <label class="checkbox-label">
-                <input type="checkbox" bind:checked={unitIsPrefix} />
-                Unit is a prefix (e.g., "J 1" instead of "50 LY")
-                </label>
+                {#if unitChoice === 'diagrammatic'}
+                  <label>
+                  Abstract unit:
+                  <input type="text" bind:value={abstractUnit} placeholder="e.g. J for Jump" maxlength="6" />
+                  </label>
+                  <label>
+                  Unit order:
+                  <select bind:value={abstractOrder}>
+                    <option value="prefix">Before the number ({abstractUnit.trim() || 'J'}8)</option>
+                    <option value="suffix">After the number (8 {abstractUnit.trim() || 'J'})</option>
+                  </select>
+                  </label>
+                {/if}
             </div>
             <div class="buttons">
-            <button on:click={createStarmap}>Create</button>
+            <button on:click={createStarmap}>Create Vast Nothingness</button>
             </div>
         </div>
 
@@ -103,15 +118,17 @@
   }
 
   .modal {
-    background-color: #333;
+    background-color: var(--bg-panel);
     padding: 30px;
     border-radius: 8px;
     display: flex;
     flex-direction: row; /* Horizontal layout */
     gap: 30px;
-    color: #fff;
+    color: var(--text);
     max-width: 900px; /* Increased width to accommodate two panes */
     width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
     text-align: left;
     box-shadow: 0 4px 20px rgba(0,0,0,0.5);
   }
@@ -121,7 +138,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    border-right: 1px solid #555;
+    border-right: 1px solid var(--border);
     padding-right: 30px;
   }
 
@@ -143,22 +160,22 @@
     margin-top: 20px; /* Reduced gap instead of auto */
     padding-top: 10px;
     font-size: 0.75em;
-    color: #888;
+    color: var(--text-faint);
     text-align: right;
   }
 
   .modal input[type="text"],
   .modal select {
-    background-color: #555;
-    color: #fff;
-    border: 1px solid #777;
+    background-color: var(--bg-control);
+    color: var(--text);
+    border: 1px solid var(--border);
     padding: 5px;
     border-radius: 3px;
   }
 
   .modal button {
-    background-color: #007bff;
-    color: #fff;
+    background-color: var(--accent);
+    color: var(--text);
     border: none;
     padding: 8px 15px;
     border-radius: 4px;
@@ -171,7 +188,7 @@
   }
 
   .modal button:disabled {
-    background-color: #555;
+    background-color: var(--bg-control);
     cursor: not-allowed;
   }
 
@@ -181,7 +198,7 @@
     justify-content: center;
     margin-bottom: 2em;
     padding-bottom: 2em;
-    border-bottom: 1px solid #555;
+    border-bottom: 1px solid var(--border);
   }
   
   .load-options button {
@@ -220,7 +237,7 @@
     flex-direction: column; /* Stacked for better fit in column */
     gap: 0.5rem;
     margin-bottom: 1rem;
-    background: #444;
+    background: var(--bg-control);
     padding: 10px;
     border-radius: 4px;
   }
@@ -261,10 +278,12 @@
           flex-direction: column;
           padding: 15px;
           gap: 15px;
+          width: 96%;
+          max-height: 92vh;
       }
       .left-pane {
           border-right: none;
-          border-bottom: 1px solid #555;
+          border-bottom: 1px solid var(--border);
           padding-right: 0;
           padding-bottom: 15px;
       }

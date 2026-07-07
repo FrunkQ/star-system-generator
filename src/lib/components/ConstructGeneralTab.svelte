@@ -2,6 +2,8 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import type { CelestialBody, System } from '$lib/types';
   import { AU_KM } from '$lib/constants';
+  import { fmt } from '$lib/stores';
+  import { getPlanetColor } from '$lib/rendering/colors';
 
   export let system: System;
   export let construct: CelestialBody;
@@ -86,17 +88,9 @@
       }
   }
 
-  function getPlanetColorForSlider(node: CelestialBody): string {
-    if (node.roleHint === 'star') return '#fff'; // White
-    if (node.roleHint === 'belt') return '#888'; // Grey for belts
-    if (node.tags?.some(t => t.key === 'habitability/earth-like' || t.key === 'habitability/human')) return '#007bff'; // Blue
-    if (node.biosphere) return '#00ff00'; // Green
-    const isIceGiant = node.classes?.some(c => c.includes('ice-giant'));
-    if (isIceGiant) return '#add8e6'; // Light Blue
-    const isGasGiant = node.classes?.some(c => c.includes('gas-giant'));
-    if (isGasGiant) return '#cc0000'; // Darker Red for Gas Giants
-    return '#cc6600'; // Darker Orange/Brown for Terrestrial Bodies
-  }
+  // Planet-dot colour for the slider is the canonical getPlanetColor (token-driven),
+  // so it matches the orrery / starmap.
+  const getPlanetColorForSlider = getPlanetColor;
 
   function updateUIFromState() {
     updatePlacementsForParent();
@@ -396,17 +390,18 @@
   {#if showOrbitalSlider}
     <div class="form-group slider-group">
         <div class="label-row">
-            <label>Altitude (km)</label>
-            <input type="number" step="any" min="0" value={Math.round(((construct.orbit?.elements.a_AU || 0) * AU_KM) - parentRadiusKm)} on:input={(e) => {
-                const alt = parseFloat(e.currentTarget.value);
-                if (isNaN(alt)) return;
-                if (construct.orbit) construct.orbit.elements.a_AU = (alt + parentRadiusKm) / AU_KM;
+            <label>Altitude ({$fmt.distUnit})</label>
+            <input type="number" step="any" min="0" value={Math.round($fmt.toDist(((construct.orbit?.elements.a_AU || 0) * AU_KM) - parentRadiusKm))} on:input={(e) => {
+                const disp = parseFloat(e.currentTarget.value);
+                if (isNaN(disp)) return;
+                const altKm = $fmt.fromDist(disp);
+                if (construct.orbit) construct.orbit.elements.a_AU = (altKm + parentRadiusKm) / AU_KM;
                 updateSliderState();
                 dispatch('update');
             }} />
         </div>
         <div class="altitude-display">
-            <span class="radius-info">Radius: {parentRadiusKm.toLocaleString()} km</span>
+            <span class="radius-info">Radius: {$fmt.km(parentRadiusKm)}</span>
         </div>
         <svg bind:this={sliderEl} class="slider-svg" 
              on:mousedown={() => isDragging = true} on:mouseup={() => isDragging = false} on:mouseleave={() => isDragging = false}
@@ -514,35 +509,35 @@
       align-items: center;
       margin-bottom: 2px;
   }
-  label { margin-bottom: 0; color: #ccc; font-size: 0.9em; }
-  input, select { padding: 8px; border-radius: 4px; border: 1px solid #555; background-color: #444; color: #eee; font-size: 1em; }
-  
-  input[type="number"], select { 
-      padding: 4px; 
-      background: #444; 
-      border: 1px solid #555; 
-      color: #eee; 
-      border-radius: 3px; 
+  label { margin-bottom: 0; color: var(--text-muted); font-size: 0.9em; }
+  input, select { padding: 8px; border-radius: 4px; border: 1px solid var(--border); background-color: var(--bg-control); color: var(--text); font-size: 1em; }
+
+  input[type="number"], select {
+      padding: 4px;
+      background: var(--bg-control);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 3px;
       width: 100px;
       text-align: right;
   }
-  
+
   .full-width-slider { width: 100%; margin: 5px 0; }
   input[type="color"] { height: 38px; padding: 2px; }
-  hr { border: 1px solid #555; margin: 0.5em 0; }
+  hr { border: 1px solid var(--border); margin: 0.5em 0; }
   .icon-controls, .placement-controls { display: flex; gap: 15px; align-items: flex-end; }
   .icon-controls .form-group, .placement-controls .form-group { flex: 1; }
   .checkbox-group { display: flex; flex-direction: row; flex-wrap: wrap; gap: 15px; }
-  .checkbox-group label { display: flex; align-items: center; gap: 10px; color: #eee; }
-  .descriptor { font-size: 0.9em; color: #999; }
+  .checkbox-group label { display: flex; align-items: center; gap: 10px; color: var(--text); }
+  .descriptor { font-size: 0.9em; color: var(--text-muted); }
   .slider-group { margin-top: -10px; }
   .altitude-display { display: flex; justify-content: space-between; align-items: baseline; }
-  .radius-info { font-size: 0.8em; color: #999; }
+  .radius-info { font-size: 0.8em; color: var(--text-muted); }
   .slider-svg { width: 100%; height: 40px; cursor: pointer; user-select: none; }
-  .track { stroke: #666; stroke-width: 2; }
+  .track { stroke: var(--border); stroke-width: 2; }
   .boundary-tick { stroke: #fff; stroke-width: 1; }
-  .zone-label { font-size: 0.7em; fill: #999; text-anchor: middle; }
+  .zone-label { font-size: 0.7em; fill: var(--text-muted); text-anchor: middle; }
   .go-tick { stroke: #facc15; stroke-width: 2; }
   .go-label { fill: #facc15; font-weight: bold; }
-  .thumb { fill: #ff3e00; stroke: #fff; stroke-width: 2; pointer-events: none; }
+  .thumb { fill: var(--accent); stroke: #fff; stroke-width: 2; pointer-events: none; }
 </style>

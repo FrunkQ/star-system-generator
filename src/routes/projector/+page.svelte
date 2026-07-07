@@ -18,11 +18,14 @@
   let showMenu = false;
   let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
   let isCrtMode = false;
+  let isGreenscreen = false;
   let broadcastSessionId: string | null = null;
+  const GREENSCREEN_COLOR = '#00b140';
 
   // View Settings
   let showNames = true;
   let showZones = false;
+  let showHillSpheres = false;
   let showLPoints = false;
   let showTravellerZones = false;
 
@@ -91,8 +94,9 @@
           (settings) => {
               showNames = settings.showNames;
               showZones = settings.showZones;
+              showHillSpheres = settings.showHillSpheres ?? false;
               showLPoints = settings.showLPoints;
-              showTravellerZones = settings.showTravellerZones;
+              showTravellerZones = settings.showTravellerZones ?? false;
           },
           (time) => {
               isPlaying = time.isPlaying;
@@ -103,6 +107,9 @@
           },
           (crtMode) => {
               isCrtMode = crtMode;
+          },
+          (green) => {
+              isGreenscreen = green;
           },
           broadcastSessionId
       );
@@ -126,11 +133,12 @@
 
 </script>
 
-<main class="player-view" class:crt-mode={isCrtMode} 
-    on:mousedown={handleInteraction} 
+<main class="player-view" class:crt-mode={isCrtMode && !isGreenscreen} class:greenscreen={isGreenscreen}
+    style:background-color={isGreenscreen ? GREENSCREEN_COLOR : '#08090d'}
+    on:mousedown={handleInteraction}
     on:wheel|passive={handleInteraction}
     on:touchstart={handleInteraction}>
-    {#if isCrtMode}
+    {#if isCrtMode && !isGreenscreen}
         <CRTOverlay />
     {/if}
 
@@ -140,14 +148,17 @@
             {rulePack} 
             {currentTime} 
             {focusedBodyId}
-            {showNames} 
-            {showZones} 
+            {showNames}
+            {showZones}
+            {showHillSpheres}
             {showLPoints}
             {showTravellerZones}
             toytownFactor={$systemStore.toytownFactor || 0}
             fullScreen={true}
+            backgroundColor={isGreenscreen ? GREENSCREEN_COLOR : '#08090d'}
             bind:cameraMode={cameraMode}
         />
+        {#if !isGreenscreen}
         <div class="time-display">
             {#if isPlaying}
                 Running: 1s = {
@@ -174,6 +185,7 @@
                 </div>
             {/if}
         </div>
+        {/if}
     {:else}
         <div class="loading">
             <h1>Waiting for GM...</h1>

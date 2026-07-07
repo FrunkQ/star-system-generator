@@ -1,5 +1,15 @@
 import type { CelestialBody, Starmap } from '$lib/types';
 import type { ScheduledJourneyLog, TransitPlan, TransitSegment, Vector2 } from '$lib/transit/types';
+import { isLegacyTag } from '$lib/tags/tagPresentation';
+
+// Drop V1 legacy tags the new engine replaces (classes, namespaced physics, atmosphere model). Never
+// touches a hand-added (manual) tag. Self-heals persisted/imported data without a full reprocess.
+function sanitizeTags(node: CelestialBody): { node: CelestialBody; changed: boolean } {
+  if (!Array.isArray(node.tags) || !node.tags.length) return { node, changed: false };
+  const kept = node.tags.filter((t) => t?.manual || !isLegacyTag(t.key));
+  if (kept.length === node.tags.length) return { node, changed: false };
+  return { node: { ...node, tags: kept }, changed: true };
+}
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -94,6 +104,20 @@ function sanitizeJourneyLog(log: unknown): ScheduledJourneyLog | null {
   };
 }
 
+// A negative/NaN semi-major axis (sign slip during a manual orbit edit — seen in a user's Kerbol
+// import where Laythe had a_AU = -0.0018) throws IndexSizeError in ctx.ellipse and froze the
+// orrery. Self-heal it on load by taking the magnitude (the orbit size was right, just the sign).
+function sanitizeOrbit(node: CelestialBody): { node: CelestialBody; changed: boolean } {
+  const a = node.orbit?.elements?.a_AU;
+  if (typeof a !== 'number' || (Number.isFinite(a) && a > 0)) return { node, changed: false };
+  const fixed = Number.isFinite(a) ? Math.abs(a) : 0;
+  if (fixed === a) return { node, changed: false };
+  return {
+    node: { ...node, orbit: { ...node.orbit!, elements: { ...node.orbit!.elements, a_AU: fixed } } },
+    changed: true
+  };
+}
+
 function sanitizeConstructJourneys(node: CelestialBody): { node: CelestialBody; changed: boolean } {
   if (node.kind !== 'construct') return { node, changed: false };
   const logs = Array.isArray(node.scheduled_journeys)
@@ -112,8 +136,16 @@ export function sanitizeStarmapForRuntime(starmap: Starmap): Starmap {
     if (!Array.isArray(sysNode.system?.nodes)) return sysNode;
     let systemChanged = false;
     const nodes = sysNode.system.nodes.map((node) => {
-      if (!(node && typeof node === 'object' && (node as any).kind === 'construct')) return node;
-      const sanitized = sanitizeConstructJourneys(node as CelestialBody);
+      if (!(node && typeof node === 'object')) return node;
+      let current = node as CelestialBody;
+      // Self-heal a bad semi-major axis on any orbiting node (body or construct).
+      const orbitFix = sanitizeOrbit(current);
+      if (orbitFix.changed) { current = orbitFix.node; systemChanged = true; }
+      // Drop legacy duplicate tags (the new engine replaces them).
+      const tagFix = sanitizeTags(current);
+      if (tagFix.changed) { current = tagFix.node; systemChanged = true; }
+      if ((current as any).kind !== 'construct') return current;
+      const sanitized = sanitizeConstructJourneys(current);
       if (sanitized.changed) systemChanged = true;
       return sanitized.node;
     });
