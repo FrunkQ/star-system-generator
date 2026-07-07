@@ -51,13 +51,15 @@ install is on hand to churn out test saves). The shopping list — each saved fr
 US version, noting the version number:
 
 1. The default Sol simulation (baseline: known bodies, known answers). — RECEIVED 2026-07-07,
-   torn down; findings in §4a. NOTE: it contains no moons, so item 2 is now the top priority.
-2. Jupiter + Galilean moons focus (moon representation + hierarchy).
+   torn down; findings in §4a. NOTE: it contains no moons.
+2. Jupiter + Galilean moons focus (moon representation + hierarchy). — COVERED by "The Whole
+   Solar System" sample (212 moons; §4a second-sample findings).
 3. A binary/multi-star system (barycentre question).
 4. An O- or B-type star with planets (age-cap exercise, §7.4).
 5. A planet with a hand-edited atmosphere and surface water (which edits are stored, and how).
 6. A body mid-flyby / on a hyperbolic trajectory (unbound-body policy exercise).
-7. A sim containing an asteroid group (skippability + practical size).
+7. A sim containing an asteroid group (skippability + practical size). — COVERED: the whole-system
+   sample carries 7,687 ring/fragment particles (§4a).
 8. An **object** save (single body preset) as well as simulation saves, to see that variant.
 9. If any pre-update legacy `.ubox` files still exist, one of those too (old-format best effort).
 
@@ -164,14 +166,45 @@ per-gas atmosphere masses (`Nitrogen`, `Oxygen`, `Argon`, `Carbon Dioxide`).
 - **User edits are distinguishable** (open question 8 answered): `SurfaceTemperatureOverride`,
   `UserChanged*` / `UserSet*` flags and `LockedProperties` mark hand-set values — a US-pinned
   temperature can map to review context (and potentially SSG overrides where one exists).
-- **sso flood policy** (622 in the default save): always import `star` + `planet`; import `sso`
-  above a mass threshold (default ≥ 5e20 kg keeps Ceres + the major TNOs, ~20 bodies; CLI flag /
-  UI control to adjust); summarise the remainder as a count in the Import Review (belt aggregation
-  is the future refinement). Skip `"dummy"` utility entities.
+- **Small-body policy — a USER-CONTROLLED mass slider** (622 sso in the default save; 41 sso +
+  212 moons in the "whole" save): always import `star`, `planet`, `moon` above the slider, and
+  `sso` above the slider. The slider starts at a recommended default (≥ 5e20 kg keeps Ceres + the
+  major TNOs) and runs down to "include everything" — the cutoff is the user's call, since their
+  browser takes the hit; the UI shows a body-count preview and a performance advisory as the
+  slider goes down. Remainder summarised as a count in the Import Review (belt aggregation is the
+  future refinement). Skip `"dummy"` utility entities.
 
-**Still unconfirmed (samples wanted, §3 list):** moon representation (the default save contains NO
-moons — need the Jupiter-system save), multi-star saves, object-preset members, evolved-star
-distinguishability, the `StarType` enum, and the legacy format.
+### Second sample: "The Whole Solar System" (same build, torn down 2026-07-07)
+
+A 19.6 MB save with a 30.6 MB simulation JSON and **7,951 entities** — 1 star, 9 planets
+(including the hypothetical "Planet Nine"), 41 sso, **212 `moon`**, 1 `blackhole`, and 7,687
+uncategorised. Findings:
+
+- **Moon representation confirmed**: `Category: "moon"` is a dedicated category; moons carry the
+  full component set (Celestial / CompositionComponent.depots / HeatComponent) like planets. The
+  Moon (7.346e22 kg) and Europa (4.80e22 kg) verify. `HorizonID` is `null` on moons here — not a
+  reliable lookup key.
+- **`Parent` is `-1` even for moons** (Phobos, Europa, all 212) — Hill-sphere hierarchy inference
+  (§7.3) is confirmed as THE mechanism for every body, not a fallback.
+- **The uncategorised 7,687 are simulation particles** — "Saturn Ring Particle", "Sun Ring
+  Particle", "Fragment", masses from 0.4 kg to ~5e19 kg. NEVER imported as bodies regardless of
+  the slider; counted in the Import Review. Future nicety: the presence of "X Ring Particle"
+  entities implies a ring on X — could set SSG's ring flag on the host.
+- **Galactic-context guard needed**: the save includes Sagittarius A* (`Category: "blackhole"`,
+  7.9e36 kg at 4.4e20 m ≈ 46,000 ly). Naive "most massive = root" hierarchy inference would parent
+  the Sun to it. Policy: pick the LOCAL system root (the dominant mass among bodies within a sane
+  radius of the populated cluster, e.g. ≤ 1e15 m spread); supermassive far-field objects are
+  skipped with an Import Review note. A genuinely LOCAL black hole (within the system scale)
+  imports as an SSG black-hole primary — SSG supports those.
+- **The JSON is not strictly valid JSON**: bare `NaN` (and presumably `Infinity`) tokens occur
+  (e.g. a `Cohesion` field). The converter MUST use a tolerant parse — sanitise `:NaN` /
+  `:±Infinity` token positions to `null` before `JSON.parse`.
+- **Scale check**: 30.6 MB / 7,951 entities parses fine in Node; browser import at this size is
+  viable but is exactly why the §4a slider exists. Fictional/hypothetical bodies (Planet Nine)
+  arrive as ordinary planets — imported like any other.
+
+**Still unconfirmed (samples wanted, §3 list):** multi-star saves, object-preset members,
+evolved-star distinguishability, the `StarType` enum, and the legacy format.
 
 ## 5. Conversion principle: authored inputs only
 
