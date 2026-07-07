@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.314-beta - 7th Jul 2026
+
+* **Fixed impossibly-dense small planets from "Add planet".** A validation sweep of all 59 add-planet types found that the smallest bodies (planetesimal, dwarf-planet, mesoplanet) drew their radius independently of their mass, crushing a 0.0015 M⊕ planetesimal into a 66 g/cc "neutron pebble". Small bodies now derive radius from mass at rock density (a planetesimal is ~3.3 g/cc), while the fingerprint radius band still applies where it's physical. (Brown-dwarf densities of tens of g/cc are correct — that's real electron degeneracy.) Added a regression test that generates *every* type and checks all stats are physical and each round-trips its class.
+* **Radiation & temperature now clearly sum over all luminous sources.** The Newton panel shows a moon's self-luminous brown-dwarf host as a heat/radiation source alongside the star, with a note that flux and dose sum (Σ Lᵢ/4πdᵢ²); `/physics` spells out the summing for both equilibrium temperature and surface radiation.
+
 ## v2.0.313-beta - 7th Jul 2026
 
 * **Brown dwarfs now visibly glow.** A self-luminous brown dwarf gets an emission halo in the disc renderer (orrery + The Guide), coloured by its effective temperature — deep red when cold (a Y/T dwarf) through orange to amber for a hot young L-dwarf. Added a showcase row to the `/discgallery` reference page. (Also a regression test locking the add-planet brown-dwarf sizing to genuine 13–79 Jupiter masses.)

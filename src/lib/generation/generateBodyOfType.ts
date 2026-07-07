@@ -171,7 +171,14 @@ export function generateBodyOfType(
     const inflation = isGiant ? gasThermalInflationFactor(ctx.teqK ?? 0) : 1;
     out.radiusKm = radiusReFromMassMakeup(massMe, mk, inflation) * EARTH_RADIUS_KM;
   } else if (m['radius_Re']) {
-    out.radiusKm = pick(m['radius_Re'], rng, 1) * EARTH_RADIUS_KM;
+    // The fingerprint's radius band is often just an upper bound (a planetesimal is "< 0.1 R⊕"); drawing
+    // a radius straight from it INDEPENDENTLY of the mass crushed tiny bodies into impossible densities
+    // (a 0.0015 M⊕ planetesimal read as 66 g/cc). Use the band radius only if it implies a physical
+    // density; otherwise derive the radius from the mass at rock density (≈ 3.3 g/cc) so a small body is
+    // a small body, not a neutron pebble. (Degenerate giants take the makeup path above, not this one.)
+    const rRe = pick(m['radius_Re'], rng, 1);
+    const densityAtBand = rRe > 0 ? (5.513 * massMe) / (rRe * rRe * rRe) : Infinity;
+    out.radiusKm = (densityAtBand > 12 ? Math.cbrt((5.513 * massMe) / 3.3) : rRe) * EARTH_RADIUS_KM;
   } else if (Array.isArray(m['density'])) {
     const d = pick(m['density'], rng, 5.5);
     out.radiusKm = Math.cbrt((5.513 * massMe) / d) * EARTH_RADIUS_KM;

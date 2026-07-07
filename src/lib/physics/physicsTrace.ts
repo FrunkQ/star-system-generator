@@ -154,6 +154,10 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
         value: `${n(partnerSepKm, 0, 'km')} apart`
       }] : []),
       { label: 'Star', value: ctx.star?.name ?? '—' },
+      ...(ctx.host && (ctx.host as any).isSelfLuminous ? [{
+        label: `+ self-luminous host (${ctx.host.name})`,
+        value: `${n((ctx.host as any).selfLuminousTeffK, 0, 'K')} · ${(((ctx.host as any).internalLuminositySolar ?? 0) as number).toExponential(1)} L☉`
+      }] : []),
       ...(body.albedoBreakdown ? [{
         label: 'Albedo (derived)',
         value: `${body.albedoBreakdown.albedo} — ${body.albedoBreakdown.note}`
@@ -161,6 +165,7 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     ],
     outputs: tempOut,
     notes: [
+      ...(ctx.host && (ctx.host as any).isSelfLuminous ? [`Warmed and irradiated by BOTH ${ctx.star?.name ?? 'the star'} AND its self-luminous host ${ctx.host.name} (a brown dwarf, ${n((ctx.host as any).selfLuminousTeffK, 0, 'K')}). Flux and radiation SUM over every luminous source (Σ Lᵢ / 4πdᵢ²), so a close-in moon of a brown dwarf is far warmer and more irradiated than its distance from the system star alone would imply.`] : []),
       ...((body as any).isSelfLuminous && selfLumTeff ? [`Self-luminous: a brown dwarf (~${n((body.massKg ?? 0) / 1.898e27, 0)} M♃) that radiates its OWN heat from gravitational contraction and early deuterium burning. Its surface sits at ~${n(selfLumTeff, 0, 'K')} regardless of the distant star, it cools with age (L→T→Y, floor ~250 K), and it warms & irradiates its moons like a mini-star.`] : []),
       ...(bary ? [`Equilibrium temperature is set by the distance to ${ctx.star?.name ?? 'the star'} — the ${bary.name || 'barycentre'}'s ${n(heliocentricEl?.a_AU, 1, 'AU')} orbit — not the small orbit ${ctx.partner ? `around its partner ${ctx.partner.name}` : 'within the pair'}.`] : []),
       ...(body.temperatureRangeK && body.temperatureRangeK.max - body.temperatureRangeK.min > 5

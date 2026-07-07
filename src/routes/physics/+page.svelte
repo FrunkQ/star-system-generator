@@ -112,8 +112,13 @@
     <section id="temperature">
       <h2>Equilibrium temperature</h2>
       <p>For each star, luminosity <code>L = 4π·R★²·σ·T★⁴</code> (Stefan–Boltzmann). The blackbody equilibrium
-        temperature at distance <code>d</code> is <code>T_eq = [ L·(1−A) / (16·π·σ·d²) ]^¼</code>, summed over
-        all stars in the system (binaries add their fluxes).</p>
+        temperature is built by <strong>summing the flux from every luminous source</strong> at the body's
+        distance <code>dᵢ</code> from each — <code>T_eq = [ Σᵢ Lᵢ·(1−A) / (16·π·σ·dᵢ²) ]^¼</code>. A "luminous
+        source" is any star <em>and</em> any <a href="#temp-range">self-luminous brown dwarf</a>. So binaries add
+        their fluxes, and — importantly — a <strong>moon of a brown dwarf is heated by BOTH its distant system
+        star and its nearby brown-dwarf host</strong>, the near source usually dominating. The distance to each
+        source is the hierarchical path (a moon's distance to a star = its orbit around its planet + the planet's
+        orbit around the star).</p>
       <p><code>A</code>, the Bond albedo, is now <strong>derived</strong>, not dialled in: a surface reflectivity
         from the makeup (dark ocean ~0.06, rock ~0.15, bright ice ~0.62) plus the <strong>cloud decks</strong> that
         condense at the world's temperature (water ~0.5, CO₂ ~0.7, sulfuric ~0.75, methane haze ~0.3). A liquid
@@ -180,7 +185,10 @@
 
     <section id="radiation">
       <h2>Surface radiation</h2>
-      <p>Incident stellar flux (≈1 at Earth) splits into photons and particles, then is attenuated:
+      <p>Incident flux (≈1 at Earth) is <strong>summed over every luminous source</strong> — each star and each
+        <a href="#temp-range">self-luminous brown dwarf</a> contributes <code>Lᵢ / dᵢ²</code> — exactly as the
+        equilibrium temperature is (so a moon of a brown dwarf takes a dose from both its star and its host, the
+        host normally dominating). The total then splits into photons and particles and is attenuated:
         <strong>magnetosphere</strong> deflects particles (<code>log₁₀</code>-scaled by field strength);
         <strong>atmosphere</strong> blocks both (<code>exp(−shielding·pressure)</code>, per-gas shielding from the
         rulepack). The unshielded reference dose is <strong>{RADIATION_UNSHIELDED_DOSE_MSV_YR} mSv/yr</strong> at 1 AU.
