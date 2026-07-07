@@ -1,6 +1,7 @@
 import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
 import { AU_KM, SOLAR_RADIUS_KM, RADIATION_UNSHIELDED_DOSE_MSV_YR } from "$lib/constants";
 import { calculateDistanceRangeToStar, calculateDistanceToStar } from "./temperature";
+import { isLuminousSource } from "./substellar";
 
 const FLARE_PARTICLE_WEIGHT = 0.5;   // how much a star's flare activity adds to the particle dose
 
@@ -8,6 +9,9 @@ const FLARE_PARTICLE_WEIGHT = 0.5;   // how much a star's flare activity adds to
 // class. Cool dwarfs are wind/flare-dominated, so their particle fraction is much higher —
 // which matters because magnetospheres shield particles but not photons. (Phase 04.4)
 export function photonParticleSplit(star: CelestialBody): { ph: number; pa: number } {
+    // A self-luminous brown dwarf is a cool, wind- and (when young) flare-dominated source — treat it
+    // like a late-M/L dwarf: particle-heavy, so a moon needs a magnetosphere to be shielded from it.
+    if ((star as any).isSelfLuminous) return { ph: 0.75, pa: 0.25 };
     const cls = star.classes?.[0]?.split('/')[1]?.[0] || 'G';
     switch (cls) {
         case 'O':
@@ -29,7 +33,7 @@ export function calculateStellarRadiationComponents(
 ): { photon: number; particle: number; total: number } {
     let photon = 0;
     let particle = 0;
-    const allStars = allNodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
+    const allStars = allNodes.filter(n => isLuminousSource(n as any)) as CelestialBody[];
     for (const star of allStars) {
         const dist_au = calculateDistanceToStar(body, star, allNodes);
         if (dist_au > 0) {
@@ -52,7 +56,7 @@ export function calculateTotalStellarRadiation(
     let totalStellarRadiation = 0;
 
     // Find all stars in the system
-    const allStars = allNodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
+    const allStars = allNodes.filter(n => isLuminousSource(n as any)) as CelestialBody[];
 
     if (allStars.length > 0) {
         for (const star of allStars) {
@@ -71,7 +75,7 @@ export function calculateTotalStellarRadiationRange(
 ): { min: number; max: number } {
     let min = 0;
     let max = 0;
-    const allStars = allNodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
+    const allStars = allNodes.filter(n => isLuminousSource(n as any)) as CelestialBody[];
     for (const star of allStars) {
         const d = calculateDistanceRangeToStar(body, star, allNodes);
         if (d.max > 0) {

@@ -18,6 +18,7 @@ import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } f
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosphericEscape } from '../physics/atmosphere';
 import { flareActivity } from '../physics/stellar-evolution';
 import { predictTidalLock } from '../physics/tidalLock';
+import { brownDwarfThermal } from '../physics/substellar';
 
 // Planets are assumed to coalesce a few Myr into the system's life — the baseline for age-integrated
 // processes (atmospheric escape, etc.). Negligible vs Gyr ages but makes the assumption explicit.
@@ -85,6 +86,16 @@ export class SystemProcessor implements ISystemProcessor {
         //     environment pass so geology can see resonance-pumped tidal forcing (Enceladus–Dione),
         //     and before stability so protective resonances spare crossing orbits.
         annotateResonances(processedSystem);
+
+        // 1c. Substellar self-luminosity — a brown-dwarf-MASS body (~8–80 M_jup) radiates its own heat
+        //     (contraction + deuterium burning), so it self-heats AND becomes a light/radiation source
+        //     for its moons. Computed BEFORE the environment pass so a moon's temperature/radiation can
+        //     see its luminous host. Idempotent: clears the flags on anything no longer substellar.
+        for (const node of allNodes) {
+            if (node.kind === 'body' && (node as CelestialBody).roleHint !== 'star') {
+                this.applySubstellarSelfLuminosity(node as CelestialBody);
+            }
+        }
 
         // 2. Second Pass: Environment (Radiation, Temperature, Atmosphere Retention)
         // Requires basics to be set (like distance)
@@ -298,6 +309,33 @@ export class SystemProcessor implements ISystemProcessor {
         }
     }
 
+    // Flag a brown-dwarf-mass body as self-luminous and give it a photosphere temperature + luminosity
+    // + radiationOutput, so (a) its own surface reads ≈ its Teff and (b) it irradiates its moons. Runs
+    // before the environment pass. Fully idempotent — clears the markers if the body is no longer in the
+    // substellar mass window (e.g. the GM edited its mass down).
+    private applySubstellarSelfLuminosity(body: CelestialBody) {
+        const bd = brownDwarfThermal(body.massKg || 0, this.systemAgeGyr, body.radiusKm || 0);
+        body.tags = (body.tags || []).filter((t) => t.key !== 'thermal/self-luminous');
+        if (bd.isSubstellar) {
+            (body as any).isSelfLuminous = true;
+            (body as any).selfLuminousTeffK = bd.teffK;
+            (body as any).internalLuminositySolar = bd.luminositySolar;
+            // radiationOutput is the luminosity the radiation model reads for a source (L☉).
+            body.radiationOutput = bd.luminositySolar;
+            // Provisional surface temp so a moon processed before this body still sees ~Teff; this body's
+            // own environment pass recomputes it (to ≈ the same value) via the self-luminous flux term.
+            body.temperatureK = bd.teffK;
+            // Tag it (value = Teff) — surfaces in Find-by-tag/reports and drives the self-luminous disc glow.
+            body.tags.push({ key: 'thermal/self-luminous', value: Math.round(bd.teffK).toString() });
+        } else {
+            (body as any).isSelfLuminous = false;
+            delete (body as any).selfLuminousTeffK;
+            delete (body as any).internalLuminositySolar;
+            // Only stars keep a radiationOutput — a downgraded body must stop irradiating others.
+            if (body.roleHint !== 'star') delete (body as any).radiationOutput;
+        }
+    }
+
     private processEnvironment(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], pack: RulePack) {
         // Skip Stars for environment processing as they generate their own physics (Temp, Radiation)
         if (body.roleHint === 'star') return;
@@ -394,7 +432,8 @@ export class SystemProcessor implements ISystemProcessor {
             body.greenhouseTempK || 0,
             tidalHeatingK,
             radiogenicHeatK,
-            body.internalHeatK || 0
+            body.internalHeatK || 0,
+            (body as any).selfLuminousTeffK || 0   // brown dwarf: self-luminous photosphere temperature
         );
 
         // Surface temperature DECOMPOSED by cause (latitude / seasonal / day-night / locked faces /

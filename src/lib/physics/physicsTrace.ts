@@ -32,6 +32,7 @@ const pct = (v: number): string => `${Math.round(v * 100)}%`;
 // Which physics layer a tag namespace comes from.
 const NS_LAYER: Record<string, string> = {
   structure: 'Fluid layers', geology: 'Geological activity', magnetic: 'Magnetism',
+  thermal: 'Temperature & tidal heat',
   tidal: 'Temperature range & tidal heat', habitability: 'Habitability', atmosphere: 'Atmosphere',
   climate: 'Climate', hazard: 'Radiation / hazards', orbit: 'Orbit', origin: 'Generation',
   stability: 'Orbital stability', barycenter: 'Barycentres', shape: 'Rotational shape',
@@ -126,6 +127,13 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     { label: 'Internal heat Δ', value: n(body.internalHeatK, 1, 'K') },
     { label: 'Mean surface temp', value: n(body.temperatureK, 0, 'K') }
   ];
+  const selfLumTeff = (body as any).selfLuminousTeffK as number | undefined;
+  if ((body as any).isSelfLuminous && selfLumTeff) {
+    tempOut.splice(0, 0,
+      { label: 'Self-luminous Teff (own heat)', value: n(selfLumTeff, 0, 'K') },
+      { label: 'Own luminosity', value: `${(((body as any).internalLuminositySolar ?? 0) as number).toExponential(1)} L☉` }
+    );
+  }
   if (body.temperatureProfile) {
     const p = body.temperatureProfile;
     tempOut.push({ label: 'Total range', value: `${p.totalMinK}–${p.totalMaxK} K` });
@@ -153,6 +161,7 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     ],
     outputs: tempOut,
     notes: [
+      ...((body as any).isSelfLuminous && selfLumTeff ? [`Self-luminous: a brown dwarf (~${n((body.massKg ?? 0) / 1.898e27, 0)} M♃) that radiates its OWN heat from gravitational contraction and early deuterium burning. Its surface sits at ~${n(selfLumTeff, 0, 'K')} regardless of the distant star, it cools with age (L→T→Y, floor ~250 K), and it warms & irradiates its moons like a mini-star.`] : []),
       ...(bary ? [`Equilibrium temperature is set by the distance to ${ctx.star?.name ?? 'the star'} — the ${bary.name || 'barycentre'}'s ${n(heliocentricEl?.a_AU, 1, 'AU')} orbit — not the small orbit ${ctx.partner ? `around its partner ${ctx.partner.name}` : 'within the pair'}.`] : []),
       ...(body.temperatureRangeK && body.temperatureRangeK.max - body.temperatureRangeK.min > 5
         ? ['The mean averages heat over the whole body; the range captures cold night sides and localized (tidal-volcanic) hotspots.'] : [])

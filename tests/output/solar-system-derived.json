@@ -70,10 +70,6 @@
           "key": "orbit/tidally-locked"
         },
         {
-          "key": "structure/cloud-deck",
-          "value": "orange"
-        },
-        {
           "key": "magnetic/tenuous"
         },
         {
@@ -133,6 +129,7 @@
       "calculatedGravity_ms2": 3.683564214339057,
       "calculatedRotationPeriod_s": 5067360,
       "orbital_period_days": 87.9559820091742,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.203,
         "surfaceAlbedo": 0.169,
@@ -184,20 +181,6 @@
         "min": 3,
         "max": 796
       },
-      "hydrosphere": {
-        "layers": [
-          {
-            "liquid": "sodium",
-            "location": "cloud",
-            "colorHex": "#ffd700"
-          },
-          {
-            "liquid": "potassium",
-            "location": "cloud",
-            "colorHex": "#ee82ee"
-          }
-        ]
-      },
       "magnetism": {
         "source": "suppressed",
         "geometry": "multipolar",
@@ -226,7 +209,7 @@
         ]
       },
       "apparentColor": {
-        "hex": "#c6a625",
+        "hex": "#977e44",
         "palette": [
           {
             "hex": "#7e6855",
@@ -239,17 +222,11 @@
             "role": "atmosphere",
             "weight": 0.200000000003,
             "label": "Na haze"
-          },
-          {
-            "hex": "#ffd700",
-            "role": "cloud",
-            "weight": 0.45,
-            "label": "sodium clouds"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#c6a625",
+      "apparentColorHex": "#977e44",
       "classification": {
         "base": "planet/hot-eyeball",
         "baseScore": 1.56,
@@ -539,6 +516,7 @@
       "calculatedGravity_ms2": 8.869475448060673,
       "calculatedRotationPeriod_s": -20997000,
       "orbital_period_days": 224.6676322970732,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.689,
         "surfaceAlbedo": 0.155,
@@ -868,6 +846,10 @@
           "key": "magnetic/dynamo"
         },
         {
+          "key": "aurora/strong",
+          "value": "0.37"
+        },
+        {
           "key": "geology/plate-tectonics"
         },
         {
@@ -972,6 +954,7 @@
       "calculatedGravity_ms2": 9.819973426224687,
       "calculatedRotationPeriod_s": 86162.40000000001,
       "orbital_period_days": 365.202709145985,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.293,
         "surfaceAlbedo": 0.088,
@@ -1415,6 +1398,7 @@
       "calculatedGravity_ms2": 1.623381040294872,
       "calculatedRotationPeriod_s": 2360520,
       "orbital_period_days": 27.45940784723342,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.15,
         "surfaceAlbedo": 0.15,
@@ -1809,6 +1793,7 @@
       "calculatedGravity_ms2": 3.7122336687009745,
       "calculatedRotationPeriod_s": 88560,
       "orbital_period_days": 686.8701465472571,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.236,
         "surfaceAlbedo": 0.154,
@@ -2142,6 +2127,7 @@
       "calculatedGravity_ms2": 0.005639953762755102,
       "calculatedRotationPeriod_s": 27576,
       "orbital_period_days": 0.3191261941040896,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.308,
         "surfaceAlbedo": 0.308,
@@ -2517,6 +2503,7 @@
       "calculatedGravity_ms2": 0.0025523467741935483,
       "calculatedRotationPeriod_s": 109260,
       "orbital_period_days": 1.2554165528007006,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.386,
         "surfaceAlbedo": 0.386,
@@ -2855,6 +2842,7 @@
       "internalHeatK": 0,
       "massKg": 3e+21,
       "orbital_period_days": 1620.2410710761592,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.171,
         "surfaceAlbedo": 0.171,
@@ -2950,6 +2938,10 @@
           "key": "shape/oblate"
         },
         {
+          "key": "aurora/brilliant",
+          "value": "0.61"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -3008,6 +3000,7 @@
       "calculatedRotationPeriod_s": 35730,
       "orbital_period_days": 4336.00718171218,
       "resonanceNote": "5:2 mean-motion resonance with Saturn — pumps eccentricity.",
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.34,
         "surfaceAlbedo": 0.34,
@@ -3304,6 +3297,7 @@
       "internalHeatK": 0,
       "massKg": 150000000000000000000,
       "orbital_period_days": 0.40964800718269356,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.171,
         "surfaceAlbedo": 0.171,
@@ -3393,10 +3387,6 @@
           "key": "tidal/volcanism"
         },
         {
-          "key": "structure/cloud-deck",
-          "value": "yellow"
-        },
-        {
           "key": "magnetic/unshielded"
         },
         {
@@ -3451,6 +3441,7 @@
       "resonanceNote": "Laplace resonance chain (1:2:4) with Io/Europa/Ganymede — locked and tidally heated.",
       "resonanceTidal": true,
       "resonanceProtective": true,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.212,
         "surfaceAlbedo": 0.153,
@@ -3510,15 +3501,6 @@
         "min": 10,
         "max": 1240
       },
-      "hydrosphere": {
-        "layers": [
-          {
-            "liquid": "sulfur-dioxide",
-            "location": "cloud",
-            "colorHex": "#ffffe0"
-          }
-        ]
-      },
       "magnetism": {
         "source": "none",
         "geometry": "none",
@@ -3550,7 +3532,7 @@
         ]
       },
       "apparentColor": {
-        "hex": "#d6c9aa",
+        "hex": "#ac9274",
         "palette": [
           {
             "hex": "#987759",
@@ -3563,17 +3545,11 @@
             "role": "atmosphere",
             "weight": 0.200000003,
             "label": "SO2 haze"
-          },
-          {
-            "hex": "#ffffe0",
-            "role": "cloud",
-            "weight": 0.5,
-            "label": "sulfur-dioxide clouds"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#d6c9aa",
+      "apparentColorHex": "#ac9274",
       "classification": {
         "base": "planet/sulfur",
         "baseScore": 1.68,
@@ -3913,6 +3889,7 @@
       "resonanceNote": "Laplace resonance chain (1:2:4) with Io/Europa/Ganymede — locked and tidally heated.",
       "resonanceTidal": true,
       "resonanceProtective": true,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.62,
         "surfaceAlbedo": 0.62,
@@ -4327,6 +4304,7 @@
       "orbital_period_days": 7.147634571900399,
       "resonanceNote": "Laplace resonance chain (1:2:4) with Io/Europa/Ganymede — locked and tidally heated.",
       "resonanceProtective": true,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.62,
         "surfaceAlbedo": 0.62,
@@ -4699,6 +4677,7 @@
       "calculatedGravity_ms2": 1.2292700478429286,
       "calculatedRotationPeriod_s": 1441800,
       "orbital_period_days": 16.68108286378568,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.62,
         "surfaceAlbedo": 0.62,
@@ -5047,6 +5026,10 @@
           "key": "shape/oblate"
         },
         {
+          "key": "aurora/moderate",
+          "value": "0.31"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -5113,6 +5096,7 @@
       "calculatedRotationPeriod_s": 38361.6,
       "orbital_period_days": 10833.256613658901,
       "resonanceNote": "5:2 mean-motion resonance with Jupiter — pumps eccentricity.",
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.34,
         "surfaceAlbedo": 0.34,
@@ -5427,6 +5411,7 @@
       "internalHeatK": 0,
       "massKg": 5e+23,
       "orbital_period_days": 0.39340210282772653,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.169,
         "surfaceAlbedo": 0.169,
@@ -5604,6 +5589,7 @@
       "calculatedGravity_ms2": 1.3491407372632904,
       "calculatedRotationPeriod_s": 1377360,
       "orbital_period_days": 15.925672928999916,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.3,
         "surfaceAlbedo": 0.301,
@@ -5889,10 +5875,6 @@
           "key": "structure/subsurface-ocean"
         },
         {
-          "key": "structure/cloud-deck",
-          "value": "white"
-        },
-        {
           "key": "magnetic/induced"
         },
         {
@@ -5972,16 +5954,6 @@
             "location": "subsurface",
             "conductive": true,
             "colorHex": "#3a6ea5"
-          },
-          {
-            "liquid": "water",
-            "location": "cloud",
-            "colorHex": "#eef2f8"
-          },
-          {
-            "liquid": "methane",
-            "location": "cloud",
-            "colorHex": "#9fb6c8"
           }
         ]
       },
@@ -5990,6 +5962,7 @@
       "orbital_period_days": 1.3698034023218526,
       "resonanceNote": "2:1 mean-motion resonance with Dione — pumps eccentricity.",
       "resonanceTidal": true,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.602,
         "surfaceAlbedo": 0.62,
@@ -6073,7 +6046,7 @@
         ]
       },
       "apparentColor": {
-        "hex": "#688eb1",
+        "hex": "#5680a9",
         "palette": [
           {
             "hex": "#b5aaa0",
@@ -6086,17 +6059,11 @@
             "role": "ocean",
             "weight": 1,
             "label": "water ocean"
-          },
-          {
-            "hex": "#9fb6c8",
-            "role": "cloud",
-            "weight": 0.25,
-            "label": "methane clouds"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#688eb1",
+      "apparentColorHex": "#5680a9",
       "classification": {
         "base": "planet/subsurface-ocean",
         "baseScore": 2.16,
@@ -6346,6 +6313,7 @@
       "calculatedRotationPeriod_s": 163116,
       "orbital_period_days": 1.8882763886106706,
       "resonanceNote": "2:1 mean-motion resonance with Mimas — pumps eccentricity.",
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.597,
         "surfaceAlbedo": 0.597,
@@ -6721,6 +6689,7 @@
       "calculatedRotationPeriod_s": 236484,
       "orbital_period_days": 2.7376024143577125,
       "resonanceNote": "2:1 mean-motion resonance with Enceladus — pumps eccentricity.",
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.384,
         "surfaceAlbedo": 0.384,
@@ -7129,6 +7098,7 @@
       "orbital_period_days": 0.9433982837654266,
       "resonanceNote": "2:1 mean-motion resonance with Tethys — pumps eccentricity.",
       "resonanceTidal": true,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.505,
         "surfaceAlbedo": 0.505,
@@ -7524,6 +7494,7 @@
       "calculatedGravity_ms2": 0.2631323543800272,
       "calculatedRotationPeriod_s": 389520,
       "orbital_period_days": 4.512077487311608,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.469,
         "surfaceAlbedo": 0.469,
@@ -7882,6 +7853,7 @@
       "calculatedGravity_ms2": 0.22268687895657055,
       "calculatedRotationPeriod_s": 6852960,
       "orbital_period_days": 79.32827117553222,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.538,
         "surfaceAlbedo": 0.538,
@@ -8212,6 +8184,10 @@
           "key": "magnetic/dynamo"
         },
         {
+          "key": "aurora/strong",
+          "value": "0.32"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -8269,6 +8245,7 @@
       "calculatedGravity_ms2": 9.007587373223858,
       "calculatedRotationPeriod_s": -62063.99999999999,
       "orbital_period_days": 30768.7485731925,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.3,
         "surfaceAlbedo": 0.3,
@@ -8554,6 +8531,7 @@
       "internalHeatK": 0,
       "massKg": 400000000000000000000,
       "orbital_period_days": 0.5357248044609155,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.171,
         "surfaceAlbedo": 0.171,
@@ -8670,6 +8648,7 @@
       "calculatedGravity_ms2": 0.3650828309318193,
       "calculatedRotationPeriod_s": 751680,
       "orbital_period_days": 8.677727086295931,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.339,
         "surfaceAlbedo": 0.339,
@@ -9034,6 +9013,7 @@
       "calculatedGravity_ms2": 0.3453832194561757,
       "calculatedRotationPeriod_s": 1162800,
       "orbital_period_days": 13.463668641629502,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.347,
         "surfaceAlbedo": 0.347,
@@ -9402,6 +9382,7 @@
       "calculatedGravity_ms2": 0.25691433360086513,
       "calculatedRotationPeriod_s": 217728,
       "orbital_period_days": 2.5019123185718404,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.355,
         "surfaceAlbedo": 0.355,
@@ -9741,6 +9722,10 @@
           "key": "magnetic/dynamo"
         },
         {
+          "key": "aurora/moderate",
+          "value": "0.27"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -9797,6 +9782,7 @@
       "orbital_period_days": 60339.28002582727,
       "resonanceNote": "3:2 mean-motion resonance with Pluto-Charon Barycenter — protects against close approaches.",
       "resonanceProtective": true,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.3,
         "surfaceAlbedo": 0.3,
@@ -10109,6 +10095,7 @@
       "internalHeatK": 0,
       "massKg": 200000000000000000000,
       "orbital_period_days": 0.33380794636185507,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.171,
         "surfaceAlbedo": 0.171,
@@ -10275,6 +10262,7 @@
       "calculatedGravity_ms2": 0.7797711313361076,
       "calculatedRotationPeriod_s": 506880.00000000006,
       "orbital_period_days": 5.872512134112898,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.62,
         "surfaceAlbedo": 0.62,
@@ -10617,6 +10605,7 @@
       "internalHeatK": 0,
       "massKg": 1e+22,
       "orbital_period_days": 92389.78948522548,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.171,
         "surfaceAlbedo": 0.171,
@@ -10724,7 +10713,7 @@
           "key": "habitability/none"
         },
         {
-          "key": "stability/very-unstable"
+          "key": "stability/marginal"
         },
         {
           "key": "resource/fissiles",
@@ -10780,6 +10769,7 @@
       "orbital_period_days": 6.315988093199532,
       "resonanceNote": "3:2 mean-motion resonance with Neptune — protects against close approaches.",
       "resonanceProtective": true,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.299,
         "surfaceAlbedo": 0.299,
@@ -11072,8 +11062,8 @@
       "loDeltaVBudget_ms": 983.8068938552108,
       "propulsiveLandBudget_ms": 983.8068938552108,
       "aerobrakeLandBudget_ms": -1,
-      "orbitalStability": "Very Unstable",
-      "orbitalStabilityDetails": "Likely <1 kyr before major orbital disruption (collision/ejection/infall risk). Drivers: External orbit overlap with Neptune; External orbit overlap with Kuiper Belt."
+      "orbitalStability": "Marginal",
+      "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: its orbit crosses Neptune's — which on its own would be unstable — but a locked mean-motion resonance keeps their conjunctions away from the crossing point, so it stays stable."
     },
     {
       "id": "solar-system-charon",
@@ -11122,7 +11112,7 @@
           "key": "habitability/none"
         },
         {
-          "key": "stability/very-unstable"
+          "key": "stability/marginal"
         },
         {
           "key": "resource/helium-3",
@@ -11170,6 +11160,7 @@
       "orbital_period_days": 6.315988093199532,
       "resonanceNote": "3:2 mean-motion resonance with Neptune — protects against close approaches.",
       "resonanceProtective": true,
+      "isSelfLuminous": false,
       "albedoBreakdown": {
         "albedo": 0.33,
         "surfaceAlbedo": 0.33,
@@ -11459,8 +11450,8 @@
       "loDeltaVBudget_ms": 479.7256429374493,
       "propulsiveLandBudget_ms": 479.7256429374493,
       "aerobrakeLandBudget_ms": -1,
-      "orbitalStability": "Very Unstable",
-      "orbitalStabilityDetails": "Likely <1 kyr before major orbital disruption (collision/ejection/infall risk). Drivers: External orbit overlap with Neptune; External orbit overlap with Kuiper Belt."
+      "orbitalStability": "Marginal",
+      "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: its orbit crosses Neptune's — which on its own would be unstable — but a locked mean-motion resonance keeps their conjunctions away from the crossing point, so it stays stable."
     },
     {
       "id": "construct-iss",

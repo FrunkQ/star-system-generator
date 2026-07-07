@@ -163,6 +163,19 @@
         winter + night ↔ equator + summer + day, or a tidal hotspot). So Io reads a cold −210 °C night surface
         <em>and</em> ~970 °C lava vents in the same readout. Calibrated loosely to Earth / Mars / the Moon /
         Mercury — heuristic, and axial tilt defaults to 25° when a body doesn't specify one.</p>
+
+      <h3>Self-luminous brown dwarfs</h3>
+      <p>A <strong>brown-dwarf-mass</strong> body (~8–80 M♃, i.e. the sub-brown-dwarf, brown-dwarf and
+        ultra-cool-dwarf types) is not a passive planet: it radiates its <em>own</em> heat from gravitational
+        contraction and early deuterium (and, above ~65 M♃, lithium) fusion — a "failed star" that never sustains
+        hydrogen fusion (that needs ~80 M♃ / 0.075 M☉). So its surface sits at its own <strong>effective
+        temperature</strong>, added as an absolute σ·T⁴ term (not a delta) on top of the negligible starlight —
+        typically hundreds to a couple of thousand K, far above the equilibrium temperature a distant star would
+        give. It <strong>cools with age</strong> (L-dwarf → T → Y, floored near ~250 K — no brown dwarf is colder),
+        and — crucially — it becomes a genuine <strong>heat and radiation source for its own moons</strong>: a satellite
+        of a young brown dwarf is warmed and (lacking a magnetosphere) heavily irradiated by it, just as a moon of a
+        star would be. Tagged <code>thermal/self-luminous</code> (value = its Teff); the effective temperature and
+        luminosity show in the Newton panel.</p>
     </section>
 
     <section id="radiation">
@@ -526,6 +539,7 @@
         <li>Classification soft-edge tolerance (15%) and the diagnostic-type weights are tuned, not derived — the audit guard keeps them honest.</li>
         <li>Tidal hotspot peak, the cryo/silicate ceilings and the night-side cold factor are calibrated shapes, not a thermal solve.</li>
         <li>Magnetism reports a grounded <em>range</em>, not a computed field strength; the dynamo scaling is order-of-magnitude.</li>
+        <li>The brown-dwarf cooling law (self-luminous effective temperature vs mass &amp; age) is a calibrated fit to the Burrows/Baraffe cooling-track envelope, not a structural/atmosphere model — plausible (a young ~70 M♃ dwarf ~2000 K, an old ~13 M♃ one ~300 K), with a hard ~250 K floor and ~2800 K ceiling.</li>
         <li>Geological vigor is a relative, Earth-calibrated proxy (radiogenic decay + a cooling-retention term), and the regime thresholds are tuned.</li>
         <li>The habitability geology/magnetism modifiers and the subsurface-niche floor are <strong>heuristic guesswork</strong> — plausible and bounded, but judgement calls open to balancing.</li>
         <li>Flare dose is a time-averaged particle enhancement weighted by a calibrated activity model (spectral class + age), not an episodic-event simulation.</li>

@@ -44,6 +44,7 @@ const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boole
   geology:      { group: 'Geology',      color: '#c2733a' },
   tidal:        { group: 'Tidal',        color: '#d8843a' },
   magnetic:     { group: 'Magnetism',    color: '#6aa0d8' },
+  thermal:      { group: 'Thermal',      color: '#e0955a' },
   aurora:       { group: 'Aurora',       color: '#57d69a' },
   shape:        { group: 'Shape',        color: '#c9a0e0' },
   atmosphere:   { group: 'Atmosphere',   color: '#8aa0b0' },
@@ -237,6 +238,9 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'magnetic/tenuous':    { label: 'Tenuous magnetosphere', description: 'A real but very weak field (well under a tenth of Earth’s) — a small or slowly-spinning iron core (Mercury ≈ 0.003 G). Barely any stellar-wind shielding.' },
   'magnetic/unshielded': { label: 'No magnetosphere', description: 'No convecting conductor (or far too slow rotation) → the atmosphere is exposed to stellar-wind stripping.' },
   'magnetic/anomalous':  { label: 'Anomalous field',  description: 'A magnetic field with no interior dynamo to explain it — an imposed field of unknown or artificial origin (megastructure, exotic matter, a young system…).' },
+
+  // --- Thermal (self-luminosity) ---
+  'thermal/self-luminous': { label: 'Self-luminous', description: 'A brown-dwarf-mass body (~8–80 Jupiter masses) that radiates its OWN heat from gravitational contraction and early deuterium burning — a "failed star". It glows in the infrared, cools over gigayears (L→T→Y), and warms and irradiates its moons like a mini-star. The value is its effective temperature in K.' },
 
   // --- Aurorae (atmosphere + magnetosphere + ionising particle flux) ---
   'aurora/faint':     { label: 'Faint aurora',     description: 'A subtle polar shimmer — enough field to channel some ionising particles into the upper air, but a weak display.' },

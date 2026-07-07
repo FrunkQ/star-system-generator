@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.312-beta - 7th Jul 2026
+
+* **Brown dwarfs now self-heat — and warm & irradiate their moons.** A brown-dwarf-mass body (~8–80 Jupiter masses) is no longer treated as a cold passive planet: it radiates its own heat (gravitational contraction + deuterium burning), so its surface sits at its effective temperature (hundreds to ~2000 K), **cooling with age** (L→T→Y, floor ~250 K) rather than freezing at the distant star's equilibrium temperature. Crucially it becomes a genuine **heat and radiation source for its own moons** — a satellite of a young brown dwarf is warmed and heavily irradiated by it, like a moon of a mini-star. Tagged `thermal/self-luminous`; the effective temperature, luminosity and a full explanation show in the Newton panel and on `/physics`. (Ordinary gas giants — Jupiter included — are untouched.)
+
 ## v2.0.311-beta - 7th Jul 2026
 
 * **Help menu no longer shows a stray horizontal scrollbar.** The guide cards were a hair too wide (padding on top of a full-width box); fixed with border-box sizing.

@@ -281,6 +281,12 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   // Star-only: magnetic flare activity 0..1 (drives an episodic particle dose on close planets).
   flareActivity?: number;
 
+  // Self-luminous substellar (brown-dwarf-mass) body — set by the processor's substellar pass. Such a
+  // body radiates its own heat (so its surface reads ≈ selfLuminousTeffK) and irradiates its moons.
+  isSelfLuminous?: boolean;
+  selfLuminousTeffK?: number;       // own photosphere effective temperature (K)
+  internalLuminositySolar?: number; // own luminosity in L☉ (what it shines on its moons)
+
   // Surface Stats
   surfaceRadiation?: number;
   stellarRadiation?: number; // Raw incoming flux

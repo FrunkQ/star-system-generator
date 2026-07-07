@@ -1,5 +1,6 @@
 import type { CelestialBody, Barycenter, System, RulePack } from '../types';
 import { SOLAR_RADIUS_KM, AU_KM } from '../constants';
+import { isLuminousSource } from './substellar';
 import { equivalentFluxDistanceAU } from './zones';
 
 const STEFAN_BOLTZMANN_CONSTANT = 5.670374419e-8;
@@ -143,7 +144,11 @@ export function composeSurfaceTemperatureFromDeltaComponents(
     greenhouseDeltaK: number,
     tidalDeltaK: number,
     radiogenicDeltaK: number,
-    internalDeltaK: number = 0
+    internalDeltaK: number = 0,
+    // A self-luminous body (brown dwarf) sets its own photosphere temperature. Unlike the deltas above
+    // (which "raise by ΔK"), this is an ABSOLUTE flux term (σ·Teff⁴) added directly, so the surface reads
+    // ≈ its own Teff regardless of the faint equilibrium temperature from a distant star.
+    selfLuminousTeffK: number = 0
 ): number {
     const teq = Math.max(0, equilibriumTempK || 0);
     const baseFlux = STEFAN_BOLTZMANN_CONSTANT * Math.pow(teq, 4);
@@ -160,11 +165,15 @@ export function composeSurfaceTemperatureFromDeltaComponents(
         return STEFAN_BOLTZMANN_CONSTANT * (Math.pow(teq + d, 4) - Math.pow(teq, 4));
     };
 
+    const selfLumFlux = selfLuminousTeffK > 0
+        ? STEFAN_BOLTZMANN_CONSTANT * Math.pow(selfLuminousTeffK, 4)
+        : 0;
     const totalFlux = baseFlux
         + deltaToFlux(greenhouseDeltaK)
         + deltaToFlux(tidalDeltaK)
         + deltaToFlux(radiogenicDeltaK)
-        + deltaToFlux(internalDeltaK);
+        + deltaToFlux(internalDeltaK)
+        + selfLumFlux;
 
     if (totalFlux <= 0) return 0;
     return Math.pow(totalFlux / STEFAN_BOLTZMANN_CONSTANT, 0.25);
@@ -192,7 +201,7 @@ export function calculateEquilibriumTemperature(
     allNodes: (CelestialBody | Barycenter)[],
     albedo: number = estimateBondAlbedo(body)
 ): number {
-    const allStars = allNodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
+    const allStars = allNodes.filter(n => isLuminousSource(n as any)) as CelestialBody[];
     
     let totalLuminosityTimesArea = 0;
     
@@ -221,7 +230,7 @@ export function calculateEquilibriumTemperatureRange(
     allNodes: (CelestialBody | Barycenter)[],
     albedo: number = estimateBondAlbedo(body)
 ): { minK: number; maxK: number } {
-    const allStars = allNodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
+    const allStars = allNodes.filter(n => isLuminousSource(n as any)) as CelestialBody[];
     let fluxMin = 0;
     let fluxMax = 0;
 
