@@ -5,6 +5,32 @@ the schema ground truth). This document is the HOW: module layout, interfaces, a
 test matrix, written to be implemented mechanically without re-deriving decisions. Where this
 document and the spec disagree, the spec's policies win.
 
+## Phase 1 — IMPLEMENTED (2026-07-07)
+
+The module (`src/lib/import/ubox/`), CLI (`scripts/ubox2ssg.mjs`) and tests (`ubox.spec.ts`, 21 cases)
+are built and green; both real saves convert end-to-end with zero unexplained audit mismatches.
+Notes from the build that differ from or refine this design:
+
+- **Two test fixtures, horses-for-courses.** `sol-realistic.json` (from the OFFICIAL default save) is
+  trusted for per-body accuracy (composition, obliquity — Jupiter 3.12° ≈ real 3.13°, atmosphere,
+  orbits). `moons.json` (from the older hand-built "Whole Solar System" save) is used ONLY for
+  structure (moon→planet hierarchy, rings, the Sgr A* far-field guard) — its composition is unreliable
+  (its Earth has a hydrogen atmosphere), so no composition assertions run against it.
+- **Greenhouse fixed point needs iteration.** A freshly imported ocean world settles its
+  greenhouse⇄temperature fixed point over ~4 process passes (Earth climbs 277→289 K as the implied
+  ocean-vapour greenhouse converges — SSG iterates it BETWEEN passes, not within one). The CLI (and any
+  caller) therefore processes to convergence before presenting/auditing. Not a converter bug; a
+  candidate SSG improvement (converge greenhouse in one pass, like albedo) noted for later.
+- **CLI runs via vite-node** (`npx vite-node scripts/ubox2ssg.mjs -- <file>`) so `$lib` + `.ts` resolve;
+  plain `node` can't. `--out` writes the AUTHORED (pre-process) system; the review reflects the
+  converged one.
+- **Magnetic field is always "explained"** in the audit — US stores a surface gauss value, SSG derives
+  the magnetosphere; they diverge by design (Jupiter US 6220 G vs SSG 4.3 G). `makeup` IS imported from
+  depots (stable, idempotent, Earth 0.25/0.75 matches) — the earlier idempotence worry was the
+  greenhouse, not makeup.
+- **Phase 2 (in-app dialogue wiring + review modal) is NOT done** — deliberately deferred. The feature
+  is CLI-testable only until Phase 2 lands.
+
 ## 0. Ground rules for the implementer
 
 - Emit AUTHORED INPUTS ONLY (spec §5). Never copy a US-computed environment value onto the system;

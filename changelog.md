@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.324-beta - 7th Jul 2026
+
+* **Universe Sandbox (.ubox) import — Phase 1 (converter + CLI).** A new module (`src/lib/import/ubox/`) reads a Universe Sandbox save and converts it into an SSG system: it inflates the archive, resolves the simulation via the manifest (tolerating the bare NaN tokens real saves contain), turns each body's state vectors into Keplerian orbits (with a lossless round-trip check), infers the parent/child hierarchy the save doesn't store (moons→planets, planets→star) via Hill-sphere binding, and derives makeup/atmosphere/hydrosphere/obliquity from the save's mass inventory and orientation. It imports only authored inputs and lets SSG derive the rest, then AUDITS its derived results against the values it didn't import, flagging differences as aligned / explained / unexplained. A galactic-context guard skips far-field objects (e.g. Sagittarius A* in a full-galaxy save), a user mass threshold controls how many small bodies come in, and ring particles are reconstructed into ring nodes. Driveable now via `npx vite-node scripts/ubox2ssg.mjs -- <file.ubox>`; the in-app file-picker + review UI (Phase 2) is not wired yet. 21 tests against fixtures cut from two real Update 36.2.1 saves; the Sol physics baseline is untouched.
+
 ## v2.0.323-beta - 7th Jul 2026
 
 * Dev docs only: Universe Sandbox (.ubox) import specification + implementation design (`docs/dev/ubox-import-spec.md`, `docs/dev/ubox-import-design.md`), grounded in teardowns of two real Update 36.2.1 saves. No app changes.
