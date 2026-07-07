@@ -214,7 +214,8 @@
   const fmt = (n: number, d = 1) => n.toLocaleString(undefined, { maximumFractionDigits: d });
 </script>
 
-<div class="overlay" on:click|self={close} role="presentation">
+<!-- Hide the wizard while the Universe Sandbox importer is open, so it doesn't sit on top and block it. -->
+<div class="overlay" class:hidden={!!uboxBytes} on:click|self={close} role="presentation">
   <div class="modal" role="dialog" aria-label="Generate a new system">
     <header>
       <div>
@@ -379,6 +380,7 @@
 
 <style>
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 3vh 2vw; }
+  .overlay.hidden { display: none; }
   .modal { background: var(--bg-app, #0b0d12); border: 1px solid var(--border, #2a2d36); border-radius: 10px; width: min(820px, 97vw); max-height: 92vh; display: flex; flex-direction: column; color: var(--text, #e8e8e8); box-shadow: 0 12px 48px rgba(0,0,0,0.5); }
   header { display: flex; align-items: flex-start; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border, #2a2d36); }
   h2 { margin: 0; font-size: 1.1rem; color: var(--accent, #ff5a1f); }

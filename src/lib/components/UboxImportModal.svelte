@@ -240,7 +240,7 @@
 </div>
 
 <style>
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 3000; }
   .modal { background: var(--bg-panel, #1a1d24); color: var(--text, #e6e6e6); border: 1px solid var(--border, #333); border-radius: 8px; width: min(680px, 94vw); max-height: 90vh; display: flex; flex-direction: column; }
   header { display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 18px 12px; border-bottom: 1px solid var(--border, #333); }
   h2 { margin: 0; font-size: 1.15em; }
