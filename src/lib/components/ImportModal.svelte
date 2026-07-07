@@ -28,7 +28,10 @@
   let logThreshold = Math.log10(source.recommendedMinMass);
   let logMin = 15, logMax = 30;
   $: threshold = Math.pow(10, logThreshold);
-  $: includedCount = bodies.filter((b) => b.mass >= threshold).length;
+  // The endpoint thresholds are derived from a body's own mass via log10→pow10, whose round-trip lands a
+  // hair off; a tiny relative tolerance keeps the boundary body counted (fixes an off-by-one at the ends).
+  $: effectiveThreshold = threshold * (1 - 1e-9);
+  $: includedCount = bodies.filter((b) => b.mass >= effectiveThreshold).length;
   $: totalBodies = bodies.length;
   $: heavyImport = includedCount > 150;
 
@@ -69,7 +72,7 @@
     phase = 'importing';
     await new Promise((r) => setTimeout(r, 20)); // let the "importing" state paint
     try {
-      const result: ImportResultLike = source.convert(bytes, selectedSim, threshold);
+      const result: ImportResultLike = source.convert(bytes, selectedSim, effectiveThreshold);
       // Process to convergence: a fresh ocean world settles its greenhouse over a few passes.
       let sys = systemProcessor.process(fixUpImportedSystem(result.system, rulePack), rulePack) as System;
       const maxT = (s: System) => Math.max(0, ...s.nodes.map((n: any) => n.temperatureK ?? 0));
@@ -152,9 +155,9 @@
             your browser does the work, so it's your call.
           </p>
           <div class="slider-row">
-            <span class="end">Largest only</span>
-            <input type="range" min={logMin} max={logMax} step="0.01" bind:value={logThreshold} />
             <span class="end">All bodies</span>
+            <input type="range" min={logMin} max={logMax} step="0.01" bind:value={logThreshold} />
+            <span class="end">Largest only</span>
           </div>
           <div class="readout">
             <strong>{includedCount}</strong> of {totalBodies} bodies

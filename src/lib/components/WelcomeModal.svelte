@@ -18,7 +18,8 @@
     { title: 'The Newton panel', blurb: 'Click the apple on any world to see the working behind it, linked to a full physics reference.' },
     { title: 'Tags, Points & Constructs of Interest', blurb: 'Give players reasons to visit places; find worlds by tag; author your own flavour packs.' },
     { title: 'In-system autopilot', blurb: 'Set NPC ships loose on their own routes — mine, transport, patrol, explore or escort.' },
-    { title: 'Classification & visuals', blurb: '50+ planet types, brown dwarfs that glow, auroras, oblate fast-rotators, cratered dead worlds.' }
+    { title: 'Classification & visuals', blurb: '50+ planet types, brown dwarfs that glow, auroras, oblate fast-rotators, cratered dead worlds.' },
+    { title: 'Import from Universe Sandbox & SpaceEngine', blurb: 'Drop a Universe Sandbox (.ubox) or SpaceEngine (.sc) file into the New System dialogue — it converts into a playable system and SSG derives the physics.' }
   ];
 </script>
 
