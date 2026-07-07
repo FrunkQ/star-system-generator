@@ -76,6 +76,10 @@
 
   // --- Canvas and Rendering State ---
   let canvas: HTMLCanvasElement;
+  // Foreground overlay canvas: sits above the PlanetDisc HTML layer; constructs + labels draw here
+  // so they're never hidden behind a big planet disc. Sized to match `canvas` each frame.
+  let fgCanvas: HTMLCanvasElement;
+  let fgCtx: CanvasRenderingContext2D | null = null;
   let animationFrameId: number;
   let worldPositions = new Map<string, { x: number, y: number }>();
   let scaledWorldPositions = new Map<string, { x: number, y: number }>();
@@ -422,6 +426,16 @@
     if (canvas && system) {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
+      // Keep the foreground overlay canvas matched to the base canvas + wipe it for this frame.
+      if (fgCanvas) {
+        if (fgCanvas.width !== canvas.width || fgCanvas.height !== canvas.height) {
+          fgCanvas.width = canvas.width; fgCanvas.height = canvas.height;
+        }
+        fgCtx = fgCanvas.getContext('2d');
+        fgCtx?.clearRect(0, 0, fgCanvas.width, fgCanvas.height);
+      } else {
+        fgCtx = null;
+      }
       calculateScaledPositions();
       if (needsReset) { resetView(); needsReset = false; }
       calculateLagrangePointPositions();
@@ -823,8 +837,9 @@
       return false;
   }
 
-  function drawSystem(ctx: CanvasRenderingContext2D) {
+  function drawSystem(baseCtx: CanvasRenderingContext2D) {
       if (!system || !zoom) return;
+      const ctx = baseCtx;
       const { width, height } = canvas;
       const nextOverlays: typeof discOverlays = [];  // PlanetDisc overlays collected this frame
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
@@ -1269,6 +1284,13 @@
           }
       }
       
+      // --- Foreground overlay: constructs, vectors, ruler and ALL labels draw on the overlay
+      //     canvas (fgCtx) so they sit ABOVE the PlanetDisc overlays (which are an HTML layer over
+      //     the base canvas). We're already in screen space (transform restored above) and fgCtx is
+      //     a fresh identity-transform canvas, so worldToScreen coords match. Falls back to the base
+      //     canvas if the overlay isn't ready yet. `ctx` is re-bound for this block only. ---
+      {
+      const ctx = fgCtx ?? baseCtx;
       // Draw Constructs and Barycenters (Screen Space Overlay)
       for (const node of system.nodes) {
           const pos = getConstructDisplayPosition(node) || scaledWorldPositions.get(node.id);
@@ -1432,6 +1454,7 @@
               ctx.fillText(name, screenPos.x + 8, screenPos.y);
           }
       }
+      } // --- end foreground overlay block ---
   }
 
   function drawSensorOverlay(ctx: CanvasRenderingContext2D) {
@@ -1908,4 +1931,6 @@
       </div>
     {/each}
   </div>
+  <!-- Foreground overlay: constructs + labels, painted above the disc layer so they're never hidden. -->
+  <canvas bind:this={fgCanvas} style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;"></canvas>
 </div>
