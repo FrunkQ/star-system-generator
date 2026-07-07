@@ -107,10 +107,11 @@
 
   function loadSystem() { if (processedSystem) dispatch('load', { system: processedSystem }); }
 
+  // Always show Earth masses (the natural unit for the slider), with kg alongside.
   const fmtMass = (kg: number) => {
     const me = kg / 5.972e24;
-    if (me >= 0.001) return `${me.toFixed(me >= 10 ? 0 : 2)} M⊕`;
-    return `${kg.toExponential(1)} kg`;
+    const meStr = me >= 10 ? me.toFixed(0) : me >= 0.01 ? me.toFixed(2) : me >= 1e-4 ? me.toFixed(4) : me.toExponential(1);
+    return `${meStr} M⊕ (${kg.toExponential(1)} kg)`;
   };
   const bucketLabel = { aligned: 'aligned', explained: 'explained', unexplained: 'needs a look' } as const;
 </script>

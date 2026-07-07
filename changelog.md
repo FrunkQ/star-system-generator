@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.334-beta - 7th Jul 2026
+
+* **SpaceEngine import: gas/ice giants now look right.** An imported Neptune was rendering as a big cratered moon — SpaceEngine calls an ice giant's fluid mantle "Ices" (Neptune ≈ 78% ice), and SSG's visual keys off the *gas* fraction, so a low-gas makeup drew a solid icy surface. Gas/ice giants (mass > 8 M⊕, density < 2.5 g/cc) now leave their interior to SSG's own density inference — exactly like SSG's own Neptune — so they classify *and* render correctly as giants. Rocky worlds and moons still import their composition.
+* Import mass slider now shows the cutoff in **Earth masses** as well as kg.
+
 ## v2.0.333-beta - 7th Jul 2026
 
 * **Import fixes + docs.** The import mass slider had its end labels reversed (the "all bodies" end read "largest only") and its included-count was one too low at the extremes (a floating-point rounding artefact) — both fixed. The first-run V2 welcome popup now lists importing from Universe Sandbox and SpaceEngine among the new features, and the README, Getting Started guide and dev docs were refreshed to cover the importers.
