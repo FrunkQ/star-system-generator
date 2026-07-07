@@ -108,8 +108,9 @@ found", "unrecognised format version").
 
 ## 4a. Phase 0 findings — confirmed against a real sample (Update 36.2.1, BuildRevision 48569)
 
-Teardown of a fresh default "Solar System" save (28.9 MB) confirmed the following. All of this is
-the NEW format; legacy remains unknown.
+Teardown of a fresh default "Solar System" save (28.9 MB) from Universe Sandbox Update 36.2.1
+(released 2026-06-29 — the current release at time of writing) confirmed the following. All of
+this is the NEW format; legacy remains unknown.
 
 **Archive layout.** Standard ZIP. Members: `manifest.json` (container index),
 `simulation-<Name>.json` (the state — 3.2 MB here), `simulation-<Name>-info.json` (workshop
