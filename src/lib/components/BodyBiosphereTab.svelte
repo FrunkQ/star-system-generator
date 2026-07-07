@@ -52,6 +52,8 @@
 
   function toggleMorphology(morph: string) {
       if (!body.biosphere) return;
+      // A generated biosphere can lack morphologies entirely (just complexity + coverage) — seed it.
+      if (!body.biosphere.morphologies) body.biosphere.morphologies = [];
       if (body.biosphere.morphologies.includes(morph)) {
           body.biosphere.morphologies = body.biosphere.morphologies.filter(m => m !== morph);
       } else {

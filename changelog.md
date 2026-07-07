@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.308-beta - 7th Jul 2026
+
+* **Biosphere editor guard.** Toggling a morphology on a generated world whose biosphere had no `morphologies` list would throw — the list is now seeded on demand. (Companion to the v2.0.307 detail-panel fix.)
+
 ## v2.0.307-beta - 7th Jul 2026
 
 * **Fixed a UI lock-up on life-bearing generated worlds.** A world with a biosphere but no `morphologies` list (the shape the new generator produces) crashed the body detail panel (`morphologies.join` on undefined), which froze the whole view and made it unclickable — and made the planet vanish when you zoomed in. Every biosphere field is now guarded. (Also the likely cause of the "deleting objects locks up" reports.)
