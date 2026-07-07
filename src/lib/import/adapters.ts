@@ -46,6 +46,6 @@ export const spaceengineAdapter: ImportAdapter = {
 export function adapterForFile(name: string): ImportAdapter | null {
   const n = name.toLowerCase();
   if (n.endsWith('.ubox')) return uboxAdapter;
-  if (n.endsWith('.sc') || n.endsWith('.se') || n.endsWith('.pak')) return spaceengineAdapter;
+  if (n.endsWith('.sc') || n.endsWith('.pak')) return spaceengineAdapter;   // .pak (addon zip) handled for free; exports are .sc
   return null;
 }

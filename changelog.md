@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.332-beta - 7th Jul 2026
+
+* SpaceEngine import: removed an erroneous `.se` extension — SpaceEngine exports are `.sc` (with `.pak` addons also handled). The New System text names `.sc`.
+
 ## v2.0.331-beta - 7th Jul 2026
 
 * SpaceEngine import now also accepts `.se` as well as `.sc` and `.pak` (some exports use it), and the New System text names the SpaceEngine export formats.
