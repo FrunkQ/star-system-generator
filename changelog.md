@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.315-beta - 7th Jul 2026
+
+* **First-run V2 welcome.** A one-time popup introduces returning V1 users (and newcomers) to V2: all V1 functionality is still there and saved starmaps still load, plus a brief bulleted tour of what's new (new interface, interstellar travel, the Field Guide, physics-derived worlds, the Newton panel, tagging/PoI/CoI, autopilot, classification & visuals) with links to Getting Started, the physics reference, and the Help menu.
+
 ## v2.0.314-beta - 7th Jul 2026
 
 * **Fixed impossibly-dense small planets from "Add planet".** A validation sweep of all 59 add-planet types found that the smallest bodies (planetesimal, dwarf-planet, mesoplanet) drew their radius independently of their mass, crushing a 0.0015 M⊕ planetesimal into a 66 g/cc "neutron pebble". Small bodies now derive radius from mass at rock density (a planetesimal is ~3.3 g/cc), while the fingerprint radius band still applies where it's physical. (Brown-dwarf densities of tens of g/cc are correct — that's real electron degeneracy.) Added a regression test that generates *every* type and checks all stats are physical and each round-trips its class.

@@ -39,6 +39,7 @@
   import EditTemporalModal from '$lib/components/EditTemporalModal.svelte';
   import AboutModal from '$lib/components/AboutModal.svelte';
   import HelpMenuModal from '$lib/components/HelpMenuModal.svelte';
+  import WelcomeModal from '$lib/components/WelcomeModal.svelte';
   import EvolutionaryWizard from '$lib/components/EvolutionaryWizard.svelte';
   import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, STARTDATE_EPOCH_OFFSET_T } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
@@ -84,6 +85,13 @@
   let showTemporalModal = false;
   let showAbout = false;
   let showHelpMenu = false;
+  // First-run V2 welcome (shown once — returning V1 users need to know what changed).
+  const WELCOME_KEY = 'sse_welcome_v2_seen';
+  let showWelcome = false;
+  function dismissWelcome() {
+    showWelcome = false;
+    try { if (browser) localStorage.setItem(WELCOME_KEY, '1'); } catch { /* private mode */ }
+  }
   // Sub-editors opened FROM Settings reopen it (at the section they came from) when closed,
   // so Back/close walks up the hierarchy instead of dumping the user back in the app.
   let settingsReturnSection: 'starmap' | 'time' | 'technology' | 'planets' | 'system' | null = null;
@@ -568,6 +576,10 @@
     } finally {
       isLoading = false;
     }
+
+    // First-run V2 welcome — once per browser, independent of whether a starmap exists (V1 upgraders
+    // have a saved map; new users don't). Shown over whatever loads underneath.
+    try { if (browser && localStorage.getItem(WELCOME_KEY) !== '1') showWelcome = true; } catch { /* private mode */ }
 
     await migrateLegacyStarmapToIndexedDb();
     hasSavedStarmap = await hasPersistedStarmap();
@@ -1340,6 +1352,9 @@
   {/if}
   {#if showTemporalModal && $starmapStore}
     <EditTemporalModal showModal={showTemporalModal} starmap={$starmapStore} on:save={(e) => starmapStore.update((s) => s ? { ...s, temporal: e.detail.temporal } : s)} on:close={() => { showTemporalModal = false; returnToSettings(); }} />
+  {/if}
+  {#if showWelcome}
+    <WelcomeModal on:close={dismissWelcome} on:help={() => { dismissWelcome(); showHelpMenu = true; }} />
   {/if}
   {#if showHelpMenu}
     <HelpMenuModal on:close={() => showHelpMenu = false} />
