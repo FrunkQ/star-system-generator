@@ -240,10 +240,7 @@
             <button class="ghost" disabled={busy} on:click={() => fileInput?.click()}>Load saved system…</button>
             <input type="file" accept="application/json,.json,.ubox" bind:this={fileInput} on:change={loadSystemFile} style="display:none" />
           </div>
-          <div class="row load-saved">
-            <span class="muted">or bring in a Universe Sandbox save —</span>
-            <button class="ghost" disabled={busy} on:click={() => fileInput?.click()}>Import .ubox…</button>
-          </div>
+          <p class="muted accepts">Accepts an SSE v1 or v2 system file (.json) or a Universe Sandbox save (.ubox).</p>
         </section>
 
         <section class="block">
@@ -393,6 +390,7 @@
   .block h3 { margin: 0 0 8px; font-size: 0.9rem; color: var(--text, #fff); }
   .row { display: flex; gap: 8px; }
   .row.load-saved { margin-top: 8px; align-items: center; }
+  .accepts { margin: 4px 0 0; font-size: 0.78em; }
   .row.load-saved .muted { font-size: 0.8em; color: var(--text-muted, #cfcfcf); }
   .ghost { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--link); cursor: pointer; font-size: 0.85em; }
   .ghost:hover:not(:disabled) { background: var(--bg-control); border-color: var(--accent); }

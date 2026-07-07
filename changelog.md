@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.326-beta - 7th Jul 2026
+
+* New System dialogue: merged the redundant ".ubox" box into "Load saved system…" — one button now takes an SSE v1/v2 system file (.json) or a Universe Sandbox save (.ubox), with a note saying so.
+
 ## v2.0.325-beta - 7th Jul 2026
 
 * **Universe Sandbox import is now in the app (Phase 2).** You can drop a `.ubox` save straight into SSG: the file pickers on the New System dialogue and the in-system upload now accept `.ubox`. Choosing one opens a converter window that shows what's inside, lets you set a **mass slider** — from "largest only" down to "all bodies", with a live count so you decide how many of the (often thousands of) small bodies to bring in — and then imports. Afterwards it shows a **diff against Universe Sandbox**: what was imported, what was skipped and why, the assumptions it made, and every value SSG derived differently from US, flagged as aligned, explained, or "needs a look". A one-click **Copy for review** button drops the whole report onto your clipboard so you can paste it into a document and chase down anything that didn't come across right. Only the essentials are imported (mass, radius, orbit, composition); SSG derives the physics and the review points at whatever looks off for you to tweak.
