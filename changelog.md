@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.322-beta - 7th Jul 2026
+
+* **One physics pipeline — the duplicate edit-path recompute is gone.** The app had TWO physics pipelines: the full SystemProcessor (run on load/generation) and a lighter parallel recompute (run when editing a body's atmosphere or repairing structure). The fork drifted twice in as many days — the heat-model bugs and the habitability scorer both traced to it — and it also meant an edit scored habitability with an old V1 formula (different weights, no geology/magnetism modifiers) while the breakdown panel went stale. Edits and repairs now re-run the one true pipeline, so an edit can never disagree with a reload: same temperatures, same habitability (formula AND breakdown), same classification, geology, magnetism and resonance/stability annotations. The legacy V1 habitability scorer and the whole parallel recompute module are deleted. Bonus fix found during the sweep: the Technical Details panel's min/max and day/night temperature ranges were composed without the brown-dwarf self-luminous term — they now use the shared composer, so a brown dwarf's displayed extremes include its own heat. Full suite (455 tests) and the Sol baseline are green.
+
 ## v2.0.321-beta - 7th Jul 2026
 
 * **Habitability's liquid-solvent score is now presence-weighted, not a step.** Previously any standing surface liquid, however small, scored full marks — so a 2% sea tied a global ocean, which read like a bug. It's now a gentle ramp: presence alone earns ~60% of the solvent marks (a little water is genuinely high-value, and with a sample size of one the *amount* is a weak signal next to whether it stays liquid — which the temperature/pressure factors already carry), rising to full by ~18% coverage. A 2% sea still scores high, but no longer maximal. Non-water solvents take the same ramp at their lower quality ceiling. The Biosphere breakdown now carries a one-line rationale so the number reads as deliberate, and the physics reference explains the reasoning in full. Applied consistently across both habitability code paths; Earth (≈70% ocean) is unchanged, so the Sol baseline holds.

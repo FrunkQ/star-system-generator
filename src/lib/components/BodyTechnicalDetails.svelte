@@ -3,9 +3,9 @@
   import { describeTag } from "$lib/tags/tagPresentation";
   import { calculateOrbitalBoundaries, type OrbitalBoundaries, type PlanetData } from "$lib/physics/orbits";
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
-  import { calculateDeltaVBudgets, calculateSurfaceTemperature, calculateGreenhouseEffect } from '$lib/system/postprocessing';
-  import { isCryoImpactedGreenhouseGas } from '$lib/physics/atmosphere';
-  import { composeSurfaceTemperatureFromDeltaComponents } from '$lib/physics/temperature';
+  import { calculateDeltaVBudgets } from '$lib/physics/orbits';
+  import { isCryoImpactedGreenhouseGas, calculateGreenhouseEffect } from '$lib/physics/atmosphere';
+  import { calculateSurfaceTemperature, composeBodySurfaceTemperature } from '$lib/physics/temperature';
   import { systemStore, fmt } from '$lib/stores';
   import { get } from 'svelte/store';
   import { calculateSurfaceRadiation } from '$lib/physics/radiation';
@@ -273,22 +273,21 @@
             // Prefer post-processed multi-star/barycenter-aware range when available.
             const eqMinK = typeof (body as any).equilibriumTempMinK === 'number' ? (body as any).equilibriumTempMinK : null;
             const eqMaxK = typeof (body as any).equilibriumTempMaxK === 'number' ? (body as any).equilibriumTempMaxK : null;
-            const greenhouseK = body.greenhouseTempK || 0;
-            const tidalK = body.tidalHeatK || 0;
-            const radiogenicK = body.radiogenicHeatK || 0;
-            const internalK = body.internalHeatK || 0;
             const pressureBar = body.atmosphere?.pressure_bar || 0;
 
+            // Range variants recompose the body's OWN heat terms (greenhouse/tidal/radiogenic/internal/
+            // self-luminous) over a varied equilibrium via the shared helper — no per-term duplication,
+            // and the self-luminous term can't get dropped (the old 5-arg calls omitted it).
             if (pressureBar < 0.01 && body.roleHint !== 'star') {
                 // Airless/near-airless worlds should expose large day/night surface swings.
                 const tEq = body.equilibriumTempK || 0;
                 const eqMinAirless = Math.max(3, tEq * 0.5);
                 const eqMaxAirless = tEq * 1.45;
-                minTempC = composeSurfaceTemperatureFromDeltaComponents(eqMinAirless, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
-                maxTempC = composeSurfaceTemperatureFromDeltaComponents(eqMaxAirless, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
+                minTempC = composeBodySurfaceTemperature(body, eqMinAirless) - 273.15;
+                maxTempC = composeBodySurfaceTemperature(body, eqMaxAirless) - 273.15;
             } else if (eqMinK !== null && eqMaxK !== null) {
-                minTempC = composeSurfaceTemperatureFromDeltaComponents(eqMinK, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
-                maxTempC = composeSurfaceTemperatureFromDeltaComponents(eqMaxK, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
+                minTempC = composeBodySurfaceTemperature(body, eqMinK) - 273.15;
+                maxTempC = composeBodySurfaceTemperature(body, eqMaxK) - 273.15;
             } else if (body.orbit && body.equilibriumTempK) {
                 // Fallback for legacy bodies that do not have precomputed ranges.
                 const e = body.orbit.elements.e;
@@ -299,8 +298,8 @@
                 const tEq = body.equilibriumTempK;
                 const tEqMaxK = tEq * orbitMax * (1 + variability);
                 const tEqMinK = tEq * orbitMin * (1 - variability);
-                const tMaxK = composeSurfaceTemperatureFromDeltaComponents(tEqMaxK, greenhouseK, tidalK, radiogenicK, internalK);
-                const tMinK = composeSurfaceTemperatureFromDeltaComponents(tEqMinK, greenhouseK, tidalK, radiogenicK, internalK);
+                const tMaxK = composeBodySurfaceTemperature(body, tEqMaxK);
+                const tMinK = composeBodySurfaceTemperature(body, tEqMinK);
                 maxTempC = tMaxK - 273.15;
                 minTempC = tMinK - 273.15;
             }
@@ -320,10 +319,10 @@
                     const nightMinEq = Math.max(3, tEq * (body.tidallyLocked ? 0.33 : 0.40));
                     const nightMaxEq = tEq * (body.tidallyLocked ? 0.72 : 0.85);
 
-                    dayMinTempC = composeSurfaceTemperatureFromDeltaComponents(dayMinEq, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
-                    dayMaxTempC = composeSurfaceTemperatureFromDeltaComponents(dayMaxEq, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
-                    nightMinTempC = composeSurfaceTemperatureFromDeltaComponents(nightMinEq, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
-                    nightMaxTempC = composeSurfaceTemperatureFromDeltaComponents(nightMaxEq, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
+                    dayMinTempC = composeBodySurfaceTemperature(body, dayMinEq) - 273.15;
+                    dayMaxTempC = composeBodySurfaceTemperature(body, dayMaxEq) - 273.15;
+                    nightMinTempC = composeBodySurfaceTemperature(body, nightMinEq) - 273.15;
+                    nightMaxTempC = composeBodySurfaceTemperature(body, nightMaxEq) - 273.15;
                 } else {
                     // Atmosphere damps day/night swings.
                     let dayNightSpanC = (1 - pressureMix) * 70 + 8;

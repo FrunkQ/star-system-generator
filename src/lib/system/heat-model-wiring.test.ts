@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { systemProcessor } from '../core/SystemProcessor';
-import { recalculateSystemPhysics } from './postprocessing';
 import type { System, RulePack, CelestialBody } from '../types';
 
 // The heating-model audit (v2.0.320): every path that computes a body's surface temperature must agree,
@@ -86,27 +85,29 @@ describe('heating model — one authoritative surface temperature, wired everywh
     expect(factor(warm)).toBe(Math.round(warm.temperatureK!)); // still exactly the composed temp
   });
 
-  it('the postprocessing recompute agrees with the main processor (albedo + equilibrium aligned)', () => {
-    const viaProcessor = planet(systemProcessor.process(makeWaterWorld(20), pack));
+  it('the edit-path recompute (a second process run) is stable — no drift, no compounding', () => {
+    // Edits now re-run the ONE pipeline (systemProcessor.process), so "edit agrees with load" reduces
+    // to idempotence: processing an already-processed system must not move the physics.
+    const first = systemProcessor.process(makeWaterWorld(20), pack);
+    const p1 = { temp: planet(first).temperatureK!, eq: planet(first).equilibriumTempK!, hab: planet(first).habitabilityScore! };
 
-    const raw = makeWaterWorld(20);
-    recalculateSystemPhysics(raw, pack);
-    const viaPost = planet(raw);
+    const second = systemProcessor.process(first, pack);
+    const p2 = planet(second);
 
-    expect(viaPost.albedoBreakdown).toBeTruthy(); // now derives clouds like the main pipeline
-    // Same albedo model → same equilibrium temp → same mean surface temp (was ~15+ K adrift before).
-    expect(Math.abs(viaPost.equilibriumTempK! - viaProcessor.equilibriumTempK!)).toBeLessThan(2);
-    expect(Math.abs(viaPost.temperatureK! - viaProcessor.temperatureK!)).toBeLessThan(2);
+    expect(p2.albedoBreakdown).toBeTruthy();
+    expect(Math.abs(p2.equilibriumTempK! - p1.eq)).toBeLessThan(1);
+    expect(Math.abs(p2.temperatureK! - p1.temp)).toBeLessThan(1);
+    expect(Math.abs((p2.habitabilityScore ?? 0) - p1.hab)).toBeLessThan(1); // ONE scorer — an edit can no longer swap formulas
   });
 
-  it('a brown dwarf keeps its self-luminous heat through a postprocessing recompute (not dropped)', () => {
+  it('a brown dwarf keeps its self-luminous heat through an edit re-process (not dropped)', () => {
     const s = systemProcessor.process(makeBrownDwarf(40), pack);
     const before = planet(s, 'giant');
     expect((before as any).selfLuminousTeffK).toBeGreaterThan(600);
     expect(before.temperatureK!).toBeGreaterThan(600);
 
-    // An edit re-runs recalculateSystemPhysics in place — the self-luminous term must survive.
-    recalculateSystemPhysics(s, pack);
+    // An edit re-runs the full pipeline in place — the self-luminous term must survive.
+    systemProcessor.process(s, pack);
     const after = planet(s, 'giant');
     expect(after.temperatureK!).toBeGreaterThan(600); // would collapse to the ~120 K stellar value if dropped
   });

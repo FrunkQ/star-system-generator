@@ -38,7 +38,6 @@
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import { get } from 'svelte/store';
-  import { calculateSurfaceTemperature } from '$lib/system/postprocessing';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem, stripSystemForExport } from '$lib/system/importFixup';
   import { generateId, toRoman } from '$lib/utils';

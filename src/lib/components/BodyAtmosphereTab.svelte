@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { CelestialBody, RulePack, System, Tag } from '$lib/types';
   import { createEventDispatcher, onMount } from 'svelte';
-  import { recalculateSystemPhysics } from '$lib/system/postprocessing';
+  import { systemProcessor } from '$lib/core/SystemProcessor';
   import { systemStore, fmt } from '$lib/stores';
   import { checkGasRetention, isCryoImpactedGreenhouseGas } from '$lib/physics/atmosphere';
   import { evaluateTagTriggers as evalTrigger } from '$lib/utils';
@@ -198,8 +198,11 @@
   }
 
   function applyChanges() {
-      // 1. Recalculate Logic
-      recalculateSystemPhysics(system, rulePack);
+      // 1. Recalculate Logic — the ONE physics pipeline (same pass as load/generation), so an edit can
+      // never disagree with a reload. (The old light recalculateSystemPhysics fork drifted twice: the
+      // heat-model audit and the habitability scorer.) process() mutates the node objects in place,
+      // so the local `body` reference stays live.
+      systemProcessor.process(system, rulePack);
       
       // 2. Sync to global store
       systemStore.update(s => {

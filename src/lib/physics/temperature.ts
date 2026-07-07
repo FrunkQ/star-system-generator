@@ -2,6 +2,7 @@ import type { CelestialBody, Barycenter, System, RulePack } from '../types';
 import { SOLAR_RADIUS_KM, AU_KM } from '../constants';
 import { isLuminousSource } from './substellar';
 import { equivalentFluxDistanceAU } from './zones';
+import { deriveAlbedo } from './albedo';
 
 const STEFAN_BOLTZMANN_CONSTANT = 5.670374419e-8;
 
@@ -181,12 +182,12 @@ export function composeSurfaceTemperatureFromDeltaComponents(
 
 /**
  * THE authoritative surface temperature of a body from its already-committed heat components.
- * Single source of truth so every recompute path — the main SystemProcessor, the postprocessing
- * recalcs, and the editor's live preview — composes the SAME value. Reads every heat term off the
- * body (greenhouse, tidal, radiogenic, giant-internal, brown-dwarf self-luminous), so no call site
- * can silently drop one (the self-luminous term in particular kept being dropped by 5-arg calls,
- * which made re-processing a brown dwarf appear to COOL it). Pass equilibriumTempK when it has just
- * been recomputed and not yet written back to the body; otherwise it defaults to body.equilibriumTempK.
+ * Single source of truth so every compose site — the SystemProcessor, the single-body refresh below,
+ * the editor's live preview, and UI range variants — produces the SAME value. Reads every heat term
+ * off the body (greenhouse, tidal, radiogenic, giant-internal, brown-dwarf self-luminous), so no call
+ * site can silently drop one (the self-luminous term in particular kept being dropped by 5-arg calls,
+ * which made re-processing a brown dwarf appear to COOL it). Pass equilibriumTempK when composing a
+ * variant (min/max, day/night) or a value not yet written back; otherwise it defaults to the body's.
  */
 export function composeBodySurfaceTemperature(body: CelestialBody, equilibriumTempK?: number): number {
     return composeSurfaceTemperatureFromDeltaComponents(
@@ -197,6 +198,32 @@ export function composeBodySurfaceTemperature(body: CelestialBody, equilibriumTe
         body.internalHeatK || 0,
         (body as any).selfLuminousTeffK || 0
     );
+}
+
+/**
+ * Recalculates the equilibrium and total surface temperature for ONE body, in place — the same
+ * albedo ⇄ equilibrium fixed point and flux-space composition the SystemProcessor commits, exposed
+ * as a single-body refresh for live UI panels. (The full pipeline is systemProcessor.process(); use
+ * that for anything beyond a display preview — this helper deliberately duplicates no formulas,
+ * only orchestrates the shared ones.)
+ */
+export function calculateSurfaceTemperature(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[]) {
+    // Two fixed-point iterations off a 0.3 first guess — identical to SystemProcessor.processEnvironment.
+    let albedoInfo = deriveAlbedo(body, calculateEquilibriumTemperature(body, allNodes, 0.3));
+    let equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedoInfo.albedo);
+    albedoInfo = deriveAlbedo(body, equilibriumTempK);
+    equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedoInfo.albedo);
+    const range = calculateEquilibriumTemperatureRange(body, allNodes, albedoInfo.albedo);
+
+    if (equilibriumTempK > 0) {
+        body.equilibriumTempK = equilibriumTempK;
+        body.albedoBreakdown = albedoInfo;
+        (body as any).equilibriumTempMinK = range.minK;
+        (body as any).equilibriumTempMaxK = range.maxK;
+        // Radiogenic heat is a GM override — re-derive it so this path can't silently drop it.
+        body.radiogenicHeatK = body.overrides?.radiogenicHeatK ?? body.radiogenicHeatK ?? 0;
+        body.temperatureK = composeBodySurfaceTemperature(body, equilibriumTempK);
+    }
 }
 
 export function estimateInternalHeatK(body: CelestialBody, rulePack?: RulePack): number {

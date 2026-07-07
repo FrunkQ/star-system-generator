@@ -2,7 +2,7 @@
 import type { System, ID, CelestialBody, Barycenter, BurnPlan, Orbit, RulePack, SystemNode, Starmap } from '../types';
 import { G, AU_KM } from '../constants';
 import { propagateState } from '../physics/orbits';
-import { recalculateSystemPhysics } from './postprocessing';
+import { systemProcessor } from '../core/SystemProcessor';
 
 /**
  * Recursively calculates a node's average orbital distance (semi-major axis) from the root star in AU.
@@ -227,14 +227,9 @@ export function sanitizeSystem(system: System, rulePack: RulePack): System {
         return node;
     });
     
-    // 2. Physics Recalculation (Temperature, Radiation, Zones)
-    // We run this unconditionally to ensure all loaded saves are consistent with latest logic
+    // 2. Physics Recalculation — the ONE pipeline (same pass as load/generation), run unconditionally
+    // so repaired saves are consistent with the latest physics. process() mutates nodes in place and
+    // returns the system.
     const systemWithStructure = changed ? { ...system, nodes: newNodes, isManuallyEdited: true } : system;
-    const fullyUpdatedSystem = recalculateSystemPhysics(systemWithStructure, rulePack);
-
-    // If structure changed OR physics changed something (which recalculateSystemPhysics might not report as 'changed' boolean, but it mutates)
-    // Actually recalculateSystemPhysics mutates in place if we pass the object.
-    // So we should return the result.
-    
-    return fullyUpdatedSystem;
+    return systemProcessor.process(systemWithStructure, rulePack);
 }
