@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.0-rc.2 - 7th Jul 2026
+
+* **SpaceEngine import: dwarf planets no longer vanish.** Pluto, Eris, Haumea, Makemake and Quaoar are `DwarfPlanet` blocks, a body type the parser wasn't recognising — so they were dropped and their moons ended up stranded at the system centre. The importer now reads DwarfPlanet (and Planemo) bodies, so Pluto sits in the Pluto-Charon barycentre and the outer dwarfs keep their moons.
+
 ## v2.1.0-rc.1 - 7th Jul 2026
 
 **Star System Explorer V2** (release candidate). A ground-up rebuild. Where V1 let you sketch a system, V2 derives one from real physics and lets you live in it — fly it, share it, and bring worlds in from other tools. The headline additions since the V1 line:

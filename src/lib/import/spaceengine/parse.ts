@@ -17,7 +17,10 @@ export interface ScBlock {
   blocks: ScBlock[];                  // nested { } sub-blocks
 }
 
-const BODY_TYPES = new Set(['Star', 'Planet', 'Moon', 'DwarfMoon', 'Asteroid', 'Comet', 'Barycenter', 'Structure']);
+// SpaceEngine body-block keywords. DwarfPlanet is essential — Pluto/Eris/Haumea/Makemake/Quaoar are all
+// DwarfPlanet, and omitting it silently drops them (orphaning their moons). Planemo = a rogue/interstellar
+// planet.
+const BODY_TYPES = new Set(['Star', 'Planet', 'DwarfPlanet', 'Planemo', 'Moon', 'DwarfMoon', 'Asteroid', 'Comet', 'Barycenter', 'Structure']);
 
 // --- Tokeniser ---------------------------------------------------------------
 type Tok = { t: 'word' | 'string' | '{' | '}' | '(' | ')'; v: string };
@@ -113,7 +116,7 @@ export function parseSc(src: string): ScBlock[] {
 export function readScSources(bytes: Uint8Array): string[] {
   // A bare .sc is UTF-8 text (not a zip). A .pak is a zip of .sc files.
   const asText = decodeMember(bytes);
-  if (/^\s*(\/\/|Star|Planet|Moon|Barycenter|Comet|DwarfMoon|LogLevel|StarBarycenter)/m.test(asText.slice(0, 4000))) {
+  if (/^\s*(\/\/|Star|Planet|DwarfPlanet|Planemo|Moon|Barycenter|Comet|DwarfMoon|LogLevel|StarBarycenter)/m.test(asText.slice(0, 4000))) {
     return [asText];
   }
   const members = readZipMembers(bytes, ['.sc']);

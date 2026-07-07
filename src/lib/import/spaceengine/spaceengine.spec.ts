@@ -144,6 +144,43 @@ Planet "Neptune" { ParentBody "Sun" Mass 17.15 Radius 24622
   });
 });
 
+describe('spaceengine dwarf planets (DwarfPlanet body type)', () => {
+  // Regression: DwarfPlanet blocks were silently dropped, so Pluto/Eris/etc. vanished and their moons
+  // orphaned to the system centre. Two real shapes: a Pluto-Charon barycentre, and a bare dwarf + moon.
+  const src = `Star "Sun/Sol" { Class "G2V" MassSol 1.0 }
+Barycenter "Pluto-Charon" { ParentBody "Sun" Orbit { SemiMajorAxis 39.48 Eccentricity 0.25 } }
+DwarfPlanet "Pluto" { ParentBody "Pluto-Charon" Mass 0.0022 Radius 1188
+  Orbit { SemiMajorAxisKm 2126 Eccentricity 0 } }
+DwarfMoon "Charon" { ParentBody "Pluto-Charon" Mass 0.00025 Radius 606
+  Orbit { SemiMajorAxisKm 17536 Eccentricity 0 } }
+DwarfPlanet "Eris" { ParentBody "Sun" Mass 0.0028 Radius 1163
+  Orbit { SemiMajorAxis 67.8 Eccentricity 0.44 } }
+Moon "Dysnomia" { ParentBody "Eris" Mass 0.00003 Radius 350
+  Orbit { SemiMajorAxisKm 37273 Eccentricity 0 } }`;
+
+  it('imports DwarfPlanet primaries and keeps their moons attached', () => {
+    const sys = convertSc([src], { minBodyMassKg: 1 }).system;
+    const byId = new Map(sys.nodes.map((n) => [n.id, n]));
+    const name = (n: any) => n && byId.get(n.parentId)?.name;
+
+    // Pluto is present and a member of the Pluto-Charon barycentre (not dropped).
+    const pluto = node(sys, 'Pluto');
+    expect(pluto).toBeTruthy();
+    expect(byId.get(pluto.parentId as string)?.name).toBe('Pluto-Charon');
+    const bary = sys.nodes.find((n) => n.name === 'Pluto-Charon') as any;
+    expect(bary.memberIds).toContain(pluto.id);
+
+    // Eris (bare dwarf + moon, no barycentre) is a planet; Dysnomia orbits Eris, not the system root.
+    const eris = node(sys, 'Eris');
+    expect(eris.roleHint).toBe('planet');
+    const dysnomia = node(sys, 'Dysnomia');
+    expect(dysnomia.parentId).toBe(eris.id);
+    expect(dysnomia.orbit?.hostId).toBe(eris.id); // has a real host — not orphaned at 0,0
+    // No orphans: every non-root node has a resolvable parent.
+    for (const n of sys.nodes) if (n.parentId) expect(byId.has(n.parentId)).toBe(true);
+  });
+});
+
 describe('spaceengine end-to-end + review', () => {
   const pack = loadRulePack();
   it('convert → fixUp → process runs clean and classifies Earth; review renders', () => {
