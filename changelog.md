@@ -2,20 +2,16 @@
 
 All notable changes are listed here:
 
-## v2.1.0-rc.2 - 7th Jul 2026
+## v2.1.0 - 7th Jul 2026
 
-* **SpaceEngine import: dwarf planets no longer vanish.** Pluto, Eris, Haumea, Makemake and Quaoar are `DwarfPlanet` blocks, a body type the parser wasn't recognising — so they were dropped and their moons ended up stranded at the system centre. The importer now reads DwarfPlanet (and Planemo) bodies, so Pluto sits in the Pluto-Charon barycentre and the outer dwarfs keep their moons.
-
-## v2.1.0-rc.1 - 7th Jul 2026
-
-**Star System Explorer V2** (release candidate). A ground-up rebuild. Where V1 let you sketch a system, V2 derives one from real physics and lets you live in it — fly it, share it, and bring worlds in from other tools. The headline additions since the V1 line:
+**Star System Explorer V2.** A ground-up rebuild. Where V1 let you sketch a system, V2 derives one from real physics and lets you live in it — fly it, share it, and bring worlds in from other tools. The headline additions since the V1 line:
 
 * **Physics-derived worlds.** A world's interior makeup, density and radius, its oceans and ice caps, atmosphere, magnetic dynamo, geology, surface-temperature profile and true apparent colour are all *derived* from the underlying physics rather than dialled in by hand — and its classification follows from that physics. The Newton panel shows the working behind any number.
 * **Live orrery and starmap.** A real-time orbital view with true-colour bodies, rings, aurorae and axial tilt, sitting under a multi-system starmap you can scale in light years, parsecs or abstract jumps.
 * **Spacecraft and astrodynamics.** Model your own ships and fly them: efficient transfers or "hard burns", with fuel, time and hazard all calculated. In-system **autopilot** runs ships along resource and patrol routes indefinitely, keeping a flight log; **interstellar travel** carries relativistic time dilation.
 * **The Field Guide.** A live, redacted, player-facing companion you can serve straight to your players' own devices — they see what you choose to reveal, updated as the system runs.
 * **Tags, Points of Interest and Constructs of Interest.** Reasons to visit a place, surfaced across the map and driving the autopilot's route choices.
-* **Import from other tools.** Bring a system in from **Universe Sandbox** (.ubox) or **SpaceEngine** (.sc); the importer audits every value it derives against the source so you can see what came across.
+* **Import from other tools.** Bring a system in from **Universe Sandbox** (.ubox) or **SpaceEngine** (.sc) — including gas and ice giants (rendered correctly from their real composition) and dwarf planets like Pluto and Eris with their moons. The importer audits every value it derives against the source so you can see what came across.
 * **Rewritten documentation.** New Getting Started, physics, tags and autopilot guides, all covering the V2 feature set.
 
 ## v2.0.337-beta - 7th Jul 2026
