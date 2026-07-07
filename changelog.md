@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.0.327-beta - 7th Jul 2026
+
+* **Fixed: real .ubox files failed to import in the browser** ("not a valid archive — Array buffer allocation failed"). Universe Sandbox writes ZIP64 archives, and the zip library's browser build mis-read the ZIP64 size marker as a 4 GB allocation and crashed. The importer now reads the archive itself — pulling out only the JSON it needs (skipping the large terrain and image blobs entirely) and resolving ZIP64 sizes correctly — so full-size saves import quickly (an 18 MB, 8,000-object save loads in about half a second).
+
 ## v2.0.326-beta - 7th Jul 2026
 
 * New System dialogue: merged the redundant ".ubox" box into "Load saved system…" — one button now takes an SSE v1/v2 system file (.json) or a Universe Sandbox save (.ubox), with a note saying so.
