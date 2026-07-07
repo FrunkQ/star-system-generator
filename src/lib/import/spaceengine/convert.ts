@@ -121,6 +121,50 @@ function atmosphereFrom(b: ScBlock): CelestialBody['atmosphere'] | undefined {
   return { name: '', composition, ...(pressureAtm != null ? { pressure_bar: +pressureAtm.toFixed(4) } : {}), ...(main ? { main } : {}) };
 }
 
+const COLLAPSE_RATIO = 0.08; // matches SSG's PROMOTE_RATIO — below this a moon orbits its planet, not a shared barycentre
+
+// SpaceEngine models a planet+moon (e.g. Earth+Moon) as both orbiting a barycentre. SSG only shows a
+// barycentre for a near-equal pair, so for a lopsided one (ratio < COLLAPSE_RATIO) we dissolve it: the
+// heavy member takes the barycentre's orbit around its parent, the light member re-parents to orbit the
+// heavy directly at the full separation, and the barycentre node is dropped. (Pluto-Charon ~12% and
+// binary stars are near-equal, so they stay.)
+function collapseTrivialBarycentres(nodes: (CelestialBody | Barycenter)[], assumptions: string[]): (CelestialBody | Barycenter)[] {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const remove = new Set<string>();
+  for (const n of nodes) {
+    if (n.kind !== 'barycenter') continue;
+    const bary = n as Barycenter;
+    const members = (bary.memberIds ?? []).map((id) => byId.get(id)).filter((m): m is CelestialBody => !!m && m.kind === 'body');
+    if (members.length !== 2) continue;
+    const [x, y] = members;
+    const mx = x.massKg ?? 0, my = y.massKg ?? 0;
+    if (mx <= 0 || my <= 0) continue;
+    if (Math.min(mx, my) / Math.max(mx, my) >= COLLAPSE_RATIO) continue; // genuine co-orbiting pair — keep
+
+    const heavy = mx >= my ? x : y;
+    const light = mx >= my ? y : x;
+    const sepAU = (heavy.orbit?.elements.a_AU ?? 0) + (light.orbit?.elements.a_AU ?? 0);
+    const lel = light.orbit?.elements;
+
+    heavy.parentId = bary.parentId ?? null;
+    heavy.orbit = bary.orbit ? { ...bary.orbit, elements: { ...bary.orbit.elements } } : undefined;
+
+    light.parentId = heavy.id;
+    light.roleHint = 'moon';
+    light.orbit = {
+      hostId: heavy.id, hostMu: G * (heavy.massKg ?? 0), t0: 0,
+      elements: {
+        a_AU: sepAU, e: lel?.e ?? 0, i_deg: lel?.i_deg ?? 0,
+        Omega_deg: lel?.Omega_deg ?? 0, omega_deg: lel?.omega_deg ?? 0, M0_rad: lel?.M0_rad ?? 0
+      }
+    };
+    if ((light.orbit.elements.i_deg ?? 0) > 90) light.orbit.isRetrogradeOrbit = true;
+    remove.add(bary.id);
+    assumptions.push(`${light.name} now orbits ${heavy.name} directly — the ${heavy.name}-${light.name} barycentre was too lopsided to keep (SSG shows a shared barycentre only for near-equal pairs).`);
+  }
+  return remove.size ? nodes.filter((n) => !remove.has(n.id)) : nodes;
+}
+
 export function convertSc(sources: string[], options: ScImportOptions = {}): ScImportResult {
   const minMass = options.minBodyMassKg ?? SE_RECOMMENDED_MIN_MASS_KG;
   const simHash = hash8(sources.join('\n').slice(0, 100000));
@@ -165,7 +209,7 @@ export function convertSc(sources: string[], options: ScImportOptions = {}): ScI
   // mass slider: never skip a body that is someone's parent (would orphan children)
   const isParent = new Set<string>(); for (const pid of parentIdOf.values()) if (pid) isParent.add(pid);
 
-  const nodes: (CelestialBody | Barycenter)[] = [];
+  let nodes: (CelestialBody | Barycenter)[] = [];
   const counts: ImportCounts = { stars: 0, planets: 0, moons: 0, other: 0, rings: 0 };
   let belowThreshold = 0;
   const kept = new Set<string>();
@@ -230,6 +274,17 @@ export function convertSc(sources: string[], options: ScImportOptions = {}): ScI
     // reference snapshot (source values we did not import) for the audit
     snapshot[id] = { name, roleHint: role, albedo: num(b.keys.AlbedoBond), densityKgM3: undefined };
     nodes.push(node);
+  }
+
+  // Collapse lopsided imported barycentres (SpaceEngine models e.g. Earth+Moon as co-orbiting a
+  // barycentre, but SSG only shows one when the pair is near-equal). Then recompute the counts.
+  nodes = collapseTrivialBarycentres(nodes, assumptions);
+  counts.stars = counts.planets = counts.moons = counts.other = 0;
+  for (const n of nodes) {
+    if (n.kind === 'barycenter') { counts.other++; continue; }
+    const rh = (n as CelestialBody).roleHint;
+    if (rh === 'star') counts.stars++; else if (rh === 'planet') counts.planets++;
+    else if (rh === 'moon') counts.moons++; else counts.other++;
   }
 
   // system age from a star's Age (Gyr)

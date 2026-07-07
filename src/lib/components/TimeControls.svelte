@@ -81,7 +81,17 @@
   const RATE_STEPS = [1, 10, 60, 600, 3600, 21600, 86400, 604800, 2592000, 31536000, 315360000];
   let rateIndex = 0;
   $: playRate = RATE_STEPS[rateIndex];
-  function faster() { if (rateIndex < RATE_STEPS.length - 1) rateIndex++; }
+  // First-ever "+" press also starts playback, so a new user immediately SEES time advance (otherwise
+  // the rate number just changes while everything sits still). One-time nudge, persisted.
+  let fasterNudged = typeof localStorage !== 'undefined' && localStorage.getItem('time-faster-nudged') === '1';
+  function faster() {
+    if (rateIndex < RATE_STEPS.length - 1) rateIndex++;
+    if (!fasterNudged) {
+      fasterNudged = true;
+      try { localStorage.setItem('time-faster-nudged', '1'); } catch { /* private mode */ }
+      if (!isPlaying) setPlaying(true);
+    }
+  }
   function slower() { if (rateIndex > 0) rateIndex--; }
 
   // --- Scrub / playback state (owned here) ---

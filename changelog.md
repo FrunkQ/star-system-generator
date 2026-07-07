@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.0.335-beta - 7th Jul 2026
+
+* **SpaceEngine import: lopsided barycentres collapse.** SpaceEngine models a planet and a big moon (Earth + Moon) as both orbiting a shared barycentre. SSG only shows a barycentre for a near-equal pair, so an imported one that's very lopsided (mass ratio < 8%, the same test SSG uses) is now dissolved — the moon simply orbits the planet directly, like everywhere else. Genuine co-orbiting pairs (Pluto-Charon, binary stars) keep their barycentre.
+* **Time controls: the first "+" starts time moving.** The very first time you press the speed-up (+) button, playback begins too — so a new user immediately sees what it does, instead of just watching the rate number change while everything sits still. A one-time nudge; after that the speed buttons don't force playback.
+
 ## v2.0.334-beta - 7th Jul 2026
 
 * **SpaceEngine import: gas/ice giants now look right.** An imported Neptune was rendering as a big cratered moon — SpaceEngine calls an ice giant's fluid mantle "Ices" (Neptune ≈ 78% ice), and SSG's visual keys off the *gas* fraction, so a low-gas makeup drew a solid icy surface. Gas/ice giants (mass > 8 M⊕, density < 2.5 g/cc) now leave their interior to SSG's own density inference — exactly like SSG's own Neptune — so they classify *and* render correctly as giants. Rocky worlds and moons still import their composition.

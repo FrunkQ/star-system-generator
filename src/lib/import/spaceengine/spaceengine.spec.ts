@@ -44,7 +44,7 @@ describe('spaceengine convert — Sol fixture', () => {
     expect(sun.parentId).toBeNull();
   });
 
-  it('Earth: mass/radius/tilt/rotation + atmosphere + makeup, parented to the Earth-Moon barycentre', () => {
+  it('Earth: mass/radius/tilt/rotation + atmosphere + makeup, orbits the Sun (barycentre collapsed)', () => {
     const e = node(sys, 'Earth');
     const byId = new Map(sys.nodes.map((n) => [n.id, n]));
     expect(e.massKg! / 5.972e24).toBeCloseTo(1.0, 1);
@@ -54,18 +54,20 @@ describe('spaceengine convert — Sol fixture', () => {
     expect(e.atmosphere!.main).toBe('N2');
     expect(e.atmosphere!.pressure_bar!).toBeCloseTo(1.0, 1);
     expect((e.makeup!.metal ?? 0) + (e.makeup!.rock ?? 0)).toBeGreaterThan(0.9);
-    expect(byId.get(e.parentId as string)?.name).toBe('Earth-Moon');
+    // The lopsided Earth-Moon barycentre collapses → Earth orbits the Sun directly at ~1 AU.
+    expect(byId.get(e.parentId as string)?.name).toBe('Sun');
+    expect(e.orbit!.elements.a_AU).toBeCloseTo(1.0, 1);
   });
 
-  it('Earth-Moon barycentre: parented to the Sun, members include Earth + Moon, orbits at ~1 AU', () => {
-    const bary = sys.nodes.find((n) => n.name === 'Earth-Moon') as any;
+  it('lopsided Earth-Moon barycentre collapses: no barycentre node, Moon orbits Earth', () => {
     const byId = new Map(sys.nodes.map((n) => [n.id, n]));
-    expect(bary.kind).toBe('barycenter');
-    expect(byId.get(bary.parentId)?.name).toBe('Sun');
-    const memberNames = bary.memberIds.map((i: string) => byId.get(i)?.name);
-    expect(memberNames).toContain('Earth');
-    expect(memberNames).toContain('Moon');
-    expect(bary.orbit.elements.a_AU).toBeCloseTo(1.0, 1);
+    expect(sys.nodes.some((n) => n.name === 'Earth-Moon')).toBe(false); // barycentre dissolved
+    const moon = node(sys, 'Moon');
+    expect(byId.get(moon.parentId as string)?.name).toBe('Earth');
+    expect(moon.roleHint).toBe('moon');
+    // Moon's orbit around Earth is the full separation (~384,400 km).
+    expect(moon.orbit!.elements.a_AU * 149597870.7).toBeGreaterThan(370000);
+    expect(moon.orbit!.elements.a_AU * 149597870.7).toBeLessThan(400000);
   });
 
   it('system age comes from the star (4.57 Gyr)', () => {
