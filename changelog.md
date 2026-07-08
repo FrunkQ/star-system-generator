@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.10-beta - 8th Jul 2026
+
+* **Stars are real suns now.** Instead of a flat glow, each star is a textured photosphere sphere — granulation and sunspots (more spots on a more active star) — turning on its own axis, wrapped in a corona halo. An active, flaring star's corona visibly pulses and brightens; a calm star stays steady. The star still lights the system, and in a binary each star casts its own light, so a planet between two suns is lit from both.
+
 ## v2.1.9-beta - 8th Jul 2026
 
 * **GPU display filters on the Holo Table.** Real fragment-shader post-processing — a proper CRT (scanlines, barrel curvature, phosphor tint, chromatic aberration, flicker) in green or amber, plus night-vision and thermal looks. Pick one from the corner of the holo view. (Ported from the Mappadux filter engine; the shaders load only with the 3D view, so nothing else is affected. GM-tunable sliders and presets come next.)

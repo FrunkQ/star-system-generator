@@ -29,6 +29,7 @@ const ORBIT_SAMPLES = 96;
 const R0_AU = 0.35; // log-compression softening radius
 const DEFAULT_COMPRESSION = 0.65; // 0 = true scale, 1 = fully log-compressed (GM slider later)
 const AU_M = 1.495978707e11;
+const STAR_RADIUS = 0.5; // scene-unit radius of a star photosphere sphere
 
 export interface HoloController {
   setSystem(system: System | null): void;
@@ -128,6 +129,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let currentSystem: System | null = null;
   let bodies: BodyVisual[] = [];
   let starLights: { id: string; light: THREE.PointLight }[] = [];
+  let starVisuals: { corona: THREE.Sprite; coronaScale: number; activity: number }[] = [];
   let rMax = 1; // largest heliocentric distance in the system (AU), for the compression normaliser
   let compression = DEFAULT_COMPRESSION;
   let timeMs = 0;
@@ -263,6 +265,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const b of bodies) b.label?.remove();
     bodies = [];
     starLights = [];
+    starVisuals = [];
   }
 
   function setSystem(system: System | null) {
@@ -308,12 +311,26 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
       let mesh: THREE.Object3D;
       if (isStar) {
-        const mat = new THREE.SpriteMaterial({ map: glowTexture, color: colorHex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
-        const sprite = new THREE.Sprite(mat);
-        sprite.scale.setScalar(2.4);
-        mesh = sprite;
-        // The star also casts light: a point light co-located with the glow gives every body a real
-        // star-facing terminator. decay 0 so the compressed distances don't dim the outer planets.
+        const activity = Math.max(0, Math.min(1, (node.flareActivity ?? 0)));
+        // Photosphere: an emissive (unlit) textured sphere — granulation + sunspots (spot count
+        // scales with the star's flare activity), so you see surface detail and it spins.
+        const starMat = new THREE.MeshBasicMaterial();
+        const st = new THREE.CanvasTexture(makeStarTexture(colorHex, activity, node.id));
+        st.colorSpace = THREE.SRGBColorSpace;
+        starMat.map = st;
+        const sphere = new THREE.Mesh(new THREE.SphereGeometry(STAR_RADIUS, 32, 24), starMat);
+        mesh = sphere;
+        // Corona: an additive halo ringing the photosphere; bigger/brighter for an active star and
+        // pulsing (flaring) over time in updateStarFx. Parented to the sphere so it tracks position;
+        // the billboard ignores the sphere's spin.
+        const coronaMat = new THREE.SpriteMaterial({ map: glowTexture, color: colorHex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+        const corona = new THREE.Sprite(coronaMat);
+        const coronaScale = STAR_RADIUS * (5 + activity * 4);
+        corona.scale.setScalar(coronaScale);
+        sphere.add(corona);
+        starVisuals.push({ corona, coronaScale, activity });
+        // The star casts light: a point light co-located with the photosphere gives a real terminator.
+        // decay 0 so the compressed distances don't dim the outer planets.
         const light = new THREE.PointLight(colorHex, 2.2, 0, 0);
         contentGroup.add(light);
         starLights.push({ id: node.id, light });
@@ -340,10 +357,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // Every body gets a label element; which ones actually show is decided per-frame by the focus
       // visibility rule (getVisibleNodeIds) — so a planet's moons name themselves once it's selected.
       const label = makeLabel(String(node.name ?? ''), opts.labelLayer);
-      // Spin: sidereal rotation from the data, composed onto a fixed axial tilt each frame.
-      const spinPeriodSec = !isStar ? Math.abs(node.rotation_period_hours || 0) * 3600 : undefined;
+      // Spin: sidereal rotation from the data, composed onto a fixed axial tilt each frame. Stars
+      // spin too (their sunspots turn); the corona is a billboard child, unaffected by the spin.
+      const spinPeriodSec = Math.abs(node.rotation_period_hours || 0) * 3600 || undefined;
       const tiltRad = ((node.axial_tilt_deg || 0) * Math.PI) / 180;
-      const tiltQuat = !isStar ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), tiltRad) : undefined;
+      const tiltQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), tiltRad);
       bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, satellite: !systemLevel, spinPeriodSec, tiltQuat });
     }
     visibleSet = getVisibleNodeIds(system, focusedId);
@@ -421,13 +439,25 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
   }
 
+  // Flaring: an active star's corona pulses (and flickers brighter) over time; a quiet star is steady.
+  function updateStarFx(nowSec: number) {
+    for (const s of starVisuals) {
+      if (s.activity <= 0.01) continue;
+      const pulse = 1 + s.activity * (0.1 * Math.sin(nowSec * 2.3) + 0.06 * Math.sin(nowSec * 6.1));
+      s.corona.scale.setScalar(s.coronaScale * pulse);
+      (s.corona.material as THREE.SpriteMaterial).opacity = Math.min(1, 0.85 + s.activity * 0.15 * (0.5 + 0.5 * Math.sin(nowSec * 9.3)));
+    }
+  }
+
   function loop() {
     if (disposed) return;
+    const nowSec = filterClock.getElapsedTime();
     driveFocus();
     updateSpin();
+    updateStarFx(nowSec);
     controls.update();
     if (filterPass) {
-      filterPass.uniforms.time.value = filterClock.getElapsedTime(); // drive scanlines/flicker
+      filterPass.uniforms.time.value = nowSec; // drive scanlines/flicker
       composer.render();
     } else {
       renderer.render(scene, camera);
@@ -568,6 +598,52 @@ function buildStarfield(count = 1600, radius = 900): THREE.Points {
   return pts;
 }
 
+// A star photosphere: base colour + faint granulation + sunspots (dark umbra/penumbra), the spot
+// count scaling with flare activity. Seeded from the star id so it's stable frame-to-frame.
+function makeStarTexture(colorHex: number, activity: number, seedStr: string): HTMLCanvasElement {
+  const W = 256;
+  const H = 128;
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext('2d')!;
+  let s = 2166136261;
+  for (let i = 0; i < seedStr.length; i++) { s ^= seedStr.charCodeAt(i); s = Math.imul(s, 16777619); }
+  const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+  const base = new THREE.Color(colorHex);
+  const css = (f: number) => `rgb(${Math.round(Math.min(255, base.r * 255 * f))},${Math.round(Math.min(255, base.g * 255 * f))},${Math.round(Math.min(255, base.b * 255 * f))})`;
+
+  ctx.fillStyle = css(1);
+  ctx.fillRect(0, 0, W, H);
+  // Granulation: many faint brighter/darker cells.
+  for (let i = 0; i < 480; i++) {
+    ctx.globalAlpha = 0.1;
+    ctx.fillStyle = css(0.85 + rnd() * 0.3);
+    ctx.beginPath();
+    ctx.arc(rnd() * W, rnd() * H, 1.5 + rnd() * 3, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+  // Sunspots: a dark umbra inside a lighter penumbra, clustered off the poles. More when active.
+  const spots = Math.round(2 + activity * 12);
+  for (let i = 0; i < spots; i++) {
+    const x = rnd() * W;
+    const y = H * (0.22 + rnd() * 0.56);
+    const r = 2 + rnd() * 5;
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = css(0.55);
+    ctx.beginPath();
+    ctx.ellipse(x, y, r * 1.6, r, 0, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = css(0.3);
+    ctx.beginPath();
+    ctx.ellipse(x, y, r * 0.85, r * 0.55, 0, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  return c;
+}
+
 function buildPolarGrid(): THREE.Group {
   const group = new THREE.Group();
   const base = new THREE.Color(HOLO_TINT);
@@ -598,10 +674,13 @@ function makeGlowTexture(): THREE.Texture {
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d')!;
+  // A corona HALO: transparent through the centre (so the photosphere sphere shows) with a bright
+  // ring just outside it, fading to nothing — additive-blended around the star.
   const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  g.addColorStop(0, 'rgba(255,255,255,1)');
-  g.addColorStop(0.25, 'rgba(255,255,255,0.85)');
-  g.addColorStop(0.55, 'rgba(255,255,255,0.28)');
+  g.addColorStop(0, 'rgba(255,255,255,0)');
+  g.addColorStop(0.32, 'rgba(255,255,255,0.05)');
+  g.addColorStop(0.5, 'rgba(255,255,255,0.55)');
+  g.addColorStop(0.72, 'rgba(255,255,255,0.18)');
   g.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, size, size);
