@@ -54,9 +54,13 @@
   let sessionId: string | null = null;
   let themeKey: ThemeKey = 'guide';   // The Guide is the default pre-picked skin
 
-  // Holo GPU post-filter picker (hardcoded id+label so the filter package — which pulls in three —
-  // stays out of this route's chunk; HoloView lazy-loads the actual shaders).
-  let holoFilter = 'none';
+  // Holo look presets + live style. A GM picks a preset (one dropdown) or opens the control panel to
+  // tweak live and save a new preset. Filter ids are hardcoded here so the filter package (which pulls
+  // in three) stays out of this route's chunk; HoloView lazy-loads the actual shaders.
+  import { holoPresets, styleOf, saveHoloPreset, DEFAULT_STYLE, type HoloStyle } from '$lib/holo/holoStyle';
+  let holoStyle: HoloStyle = { ...DEFAULT_STYLE };
+  let holoPresetId = 'clean';
+  let showHoloControls = false;
   const HOLO_FILTERS = [
     { id: 'none', label: 'No filter' },
     { id: 'retro_sci_fi_green', label: 'CRT — Green' },
@@ -64,6 +68,16 @@
     { id: 'night_vision', label: 'Night Vision' },
     { id: 'thermal', label: 'Thermal' }
   ];
+  function applyHoloPreset(id: string) {
+    const p = $holoPresets.find((x) => x.id === id);
+    if (p) { holoStyle = styleOf(p); holoPresetId = id; }
+  }
+  function saveHoloStyleAsPreset() {
+    const name = (typeof prompt === 'function' ? prompt('Name this look:', 'My Preset') : '') || '';
+    if (!name.trim()) return;
+    const p = saveHoloPreset(name, holoStyle);
+    holoPresetId = p.id;
+  }
   // CRT "screen content" effects applied to <main> on the mono skin (overlay layers live in CRTOverlay).
   // Invert is a PALETTE SWAP (handled by the .crt-invert class below), not a luminance filter:
   // the terminal colour becomes the background and the content goes dark (green-on-black ↔
@@ -466,10 +480,33 @@
     <div class="console-stage">
       {#if rulePack && displaySystem}
         {#if theme.tier === 'holo'}
-          <HoloView system={displaySystem} {currentTime} {focusedBodyId} filter={holoFilter} on:focus={handleFocus} />
-          <select class="holo-filter" bind:value={holoFilter} aria-label="Display filter">
-            {#each HOLO_FILTERS as f}<option value={f.id}>{f.label}</option>{/each}
-          </select>
+          <HoloView system={displaySystem} {currentTime} {focusedBodyId} style={holoStyle} on:focus={handleFocus} />
+          <!-- Preset picker: the GM's one-dropdown "how does this look" control. -->
+          <div class="holo-presetbar">
+            <select class="holo-preset" value={holoPresetId} on:change={(e) => applyHoloPreset((e.currentTarget as HTMLSelectElement).value)} aria-label="Look preset">
+              {#each $holoPresets as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+            </select>
+            <button class="holo-tune" class:on={showHoloControls} on:click={() => (showHoloControls = !showHoloControls)} title="Adjust the look" aria-label="Adjust the look">⚙</button>
+          </div>
+          {#if showHoloControls}
+            <!-- Live control panel: tweak the look and save it as a new preset. -->
+            <div class="holo-panel">
+              <label>Filter
+                <select bind:value={holoStyle.filter}>
+                  {#each HOLO_FILTERS as f}<option value={f.id}>{f.label}</option>{/each}
+                </select>
+              </label>
+              <label>Scale <span class="hp-val">{holoStyle.compression === 0 ? 'true' : Math.round(holoStyle.compression * 100) + '%'}</span>
+                <input type="range" min="0" max="1" step="0.05" bind:value={holoStyle.compression} />
+              </label>
+              <label>View angle <span class="hp-val">{Math.round(holoStyle.angleDeg)}°</span>
+                <input type="range" min="0" max="80" step="1" bind:value={holoStyle.angleDeg} />
+              </label>
+              <label class="hp-check"><input type="checkbox" bind:checked={holoStyle.whole} /> Frame whole system</label>
+              <label class="hp-check"><input type="checkbox" bind:checked={holoStyle.skybox} /> Starfield</label>
+              <button class="hp-save" on:click={saveHoloStyleAsPreset}>Save as preset…</button>
+            </div>
+          {/if}
         {:else}
           <SystemVisualizer
             system={displaySystem}
@@ -773,21 +810,49 @@
     padding: 4px 9px;
     pointer-events: none;
   }
-  .holo-filter {
+  .holo-presetbar {
     position: absolute;
     bottom: 12px;
     right: 12px;
     z-index: 21;
+    display: flex;
+    gap: 6px;
+    align-items: stretch;
+  }
+  .holo-preset, .holo-tune, .holo-panel select, .holo-panel button {
     font-family: system-ui, sans-serif;
     font-size: 11.5px;
     color: #cfe0f5;
-    background: rgba(8, 11, 18, 0.72);
+    background: rgba(8, 11, 18, 0.78);
     border: 1px solid rgba(120, 180, 255, 0.3);
     border-radius: 6px;
-    padding: 5px 8px;
-    min-height: 32px; /* finger-friendly */
     cursor: pointer;
   }
+  .holo-preset { padding: 5px 8px; min-height: 34px; }
+  .holo-tune { width: 34px; min-height: 34px; font-size: 15px; }
+  .holo-tune.on { background: rgba(60, 110, 190, 0.5); }
+  .holo-panel {
+    position: absolute;
+    bottom: 54px;
+    right: 12px;
+    z-index: 21;
+    width: 210px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    background: rgba(8, 11, 18, 0.9);
+    border: 1px solid rgba(120, 180, 255, 0.3);
+    border-radius: 8px;
+    font-family: system-ui, sans-serif;
+    font-size: 11.5px;
+    color: #cfe0f5;
+  }
+  .holo-panel label { display: flex; flex-direction: column; gap: 3px; }
+  .holo-panel .hp-val { color: #8fa8c8; float: right; }
+  .holo-panel input[type='range'] { width: 100%; accent-color: #6aa0ff; }
+  .holo-panel .hp-check { flex-direction: row; align-items: center; gap: 6px; min-height: 30px; }
+  .holo-panel .hp-save { padding: 7px; min-height: 34px; text-align: center; }
   .console-hint {
     position: absolute;
     bottom: 14px;

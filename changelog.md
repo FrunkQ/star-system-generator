@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.12-beta - 8th Jul 2026
+
+* **Holo look presets.** The whole look of the 3D view — filter, scale, camera framing, starfield — is now a single preset you pick from a dropdown. Five starters ship (Clean Hologram, Green CRT Table, Amber Terminal, Night Ops, and a top-down true-scale Projector look). A gear button opens a live control panel to tweak any of it and save your own named preset, which is then available everywhere the holo view appears.
+
 ## v2.1.11-beta - 8th Jul 2026
 
 * **Constructs read as icons on the Holo Table.** Stations and ships now use their map icon shape (triangle, diamond, etc. in their own colour) at a fixed on-screen size instead of rendering as chunky spheres. They show full-size and named when their planet (or they) are selected, and shrink to a faint few-pixel dot otherwise, so distant traffic never blocks a world. Tapping near a tiny icon still selects it. The fan-out that keeps a busy orbit legible now eases off as you approach true scale.

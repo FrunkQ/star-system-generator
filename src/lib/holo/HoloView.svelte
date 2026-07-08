@@ -6,6 +6,7 @@
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import type { System } from '$lib/types';
   import type { HoloController } from '$lib/holo/scene';
+  import { DEFAULT_STYLE, type HoloStyle } from '$lib/holo/holoStyle';
 
   const dispatch = createEventDispatcher<{ focus: string }>();
 
@@ -13,7 +14,15 @@
   export let currentTime: number = 0;
   // Accepted for prop-parity with SystemVisualizer; wired to camera focus in a later increment.
   export let focusedBodyId: string | null = null;
-  export let filter: string = 'none'; // GPU post filter id (none/retro_sci_fi_green/…)
+  // The full look bundle (filter, compression, framing, skybox) — a GM preset or live-tweaked style.
+  export let style: HoloStyle = DEFAULT_STYLE;
+
+  function applyStyle(s: HoloStyle) {
+    controller?.setFilter(s.filter);
+    controller?.setFraming({ angleDeg: s.angleDeg, whole: s.whole });
+    controller?.setSkybox(s.skybox);
+    controller?.setCompression(s.compression);
+  }
 
   let container: HTMLDivElement;
   let canvas: HTMLCanvasElement;
@@ -41,7 +50,7 @@
       controller.setSystem(system);
       controller.setTime(currentTime);
       controller.focusBody(focusedBodyId);
-      controller.setFilter(filter);
+      applyStyle(style);
       const r = container.getBoundingClientRect();
       controller.resize(r.width, r.height);
       ro = new ResizeObserver((entries) => {
@@ -59,11 +68,12 @@
     controller = null;
   });
 
-  // Reactive feeds (guarded until the scene has loaded).
+  // Reactive feeds (guarded until the scene has loaded). setCompression/setFilter short-circuit when
+  // the value is unchanged, so re-applying the whole style on any tweak is cheap.
   $: controller?.setSystem(system);
   $: controller?.setTime(currentTime);
   $: controller?.focusBody(focusedBodyId);
-  $: controller?.setFilter(filter);
+  $: if (controller) applyStyle(style);
 </script>
 
 <div class="holo-root" bind:this={container}>

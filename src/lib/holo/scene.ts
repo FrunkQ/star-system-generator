@@ -40,6 +40,7 @@ export interface HoloController {
   // system rather than the focused body. overhead + whole = the projector's top-down plan view.
   setFraming(opts: { angleDeg?: number; whole?: boolean }): void;
   setSkybox(on: boolean): void;
+  setCompression(v: number): void; // toytown level 0 (true scale) .. 1 (fully compressed)
   // GPU post-processing filter (CRT, night-vision, thermal, …) from the ported Mappadux package.
   setFilter(id: string, params?: FilterParamValues): void;
   resetView(): void;
@@ -131,6 +132,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   starfield.visible = opts.skybox !== false;
   scene.add(starfield);
   function setSkybox(on: boolean) { starfield.visible = on; }
+
+  // Toytown compression 0..1. Body positions read `compression` live, but orbit rings and belt bands
+  // bake it at build time, so a change rebuilds the content (focus preserved). Call on slider RELEASE.
+  function setCompression(v: number) {
+    const clamped = Math.max(0, Math.min(1, v));
+    if (clamped === compression) return;
+    compression = clamped;
+    const keepFocus = focusedId;
+    if (currentSystem) setSystem(currentSystem);
+    if (keepFocus) focusBody(keepFocus);
+  }
 
   // Fill light so the night side of a lit body isn't pure black; the star's own light does the
   // day/night terminator (added per-star in setSystem so it tracks the star's position).
@@ -589,7 +601,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, setFraming, setSkybox, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, setFraming, setSkybox, setCompression, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----
