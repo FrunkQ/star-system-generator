@@ -23,6 +23,7 @@
     controller?.setSkybox(s.skybox);
     controller?.setCompression(s.compression);
     controller?.setBeltDetail(s.beltDetail);
+    controller?.setBodyStyle(s.bodyStyle);
   }
 
   let container: HTMLDivElement;

@@ -496,7 +496,14 @@
                   {#each HOLO_FILTERS as f}<option value={f.id}>{f.label}</option>{/each}
                 </select>
               </label>
-              <label>Scale <span class="hp-val">{holoStyle.compression === 0 ? 'true' : Math.round(holoStyle.compression * 100) + '%'}</span>
+              <label>Bodies
+                <select bind:value={holoStyle.bodyStyle}>
+                  <option value="textured">True colour</option>
+                  <option value="flat">Flat colour</option>
+                  <option value="tint">Holo tint</option>
+                </select>
+              </label>
+              <label>Spread <span class="hp-val">{holoStyle.compression === 0 ? 'true scale' : Math.round(holoStyle.compression * 100) + '%'}</span>
                 <input type="range" min="0" max="1" step="0.05" bind:value={holoStyle.compression} />
               </label>
               <label>View angle <span class="hp-val">{Math.round(holoStyle.angleDeg)}°</span>

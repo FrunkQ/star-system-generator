@@ -43,6 +43,7 @@ export interface HoloController {
   setSkybox(on: boolean): void;
   setCompression(v: number): void; // toytown level 0 (true scale) .. 1 (fully compressed)
   setBeltDetail(v: number): void; // GM belt particle-budget quality 0..1 (performance)
+  setBodyStyle(mode: 'textured' | 'flat' | 'tint'): void; // planet/moon surface look
   // GPU post-processing filter (CRT, night-vision, thermal, …) from the ported Mappadux package.
   setFilter(id: string, params?: FilterParamValues): void;
   resetView(): void;
@@ -153,6 +154,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     rebuildContent();
   }
 
+  // Planet/moon surface look: 'textured' (procedural true-colour), 'flat' (solid apparent colour),
+  // or 'tint' (monochrome holo colour). Rebuilds the bodies.
+  function setBodyStyle(mode: 'textured' | 'flat' | 'tint') {
+    if (mode === bodyStyle) return;
+    bodyStyle = mode;
+    rebuildContent();
+  }
+
   function rebuildContent() {
     const keepFocus = focusedId;
     if (currentSystem) setSystem(currentSystem);
@@ -200,6 +209,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let rMax = 1; // largest heliocentric distance in the system (AU), for the compression normaliser
   let compression = DEFAULT_COMPRESSION;
   let beltDetail = 0.6; // GM quality knob: scales belt particle budget (performance), not physics
+  let bodyStyle: 'textured' | 'flat' | 'tint' = 'textured'; // planet/moon surface look
   let timeMs = 0;
   let viewW = 1;
   let viewH = 1;
@@ -448,13 +458,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         // Moons are capped small so they read as satellites, not rival planets, when you zoom in.
         const radius = systemLevel ? bodyRadius(node) : Math.min(bodyRadius(node), 0.1);
         const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
-        const texCanvas = getPlanetTextureEquirect(node);
-        if (texCanvas) {
-          const t = new THREE.CanvasTexture(texCanvas);
-          t.colorSpace = THREE.SRGBColorSpace;
-          mat.map = t;
+        if (bodyStyle === 'tint') {
+          mat.color.set(HOLO_TINT); // monochrome hologram look
+        } else if (bodyStyle === 'flat') {
+          mat.color.set(colorHex); // solid apparent colour, no surface texture
         } else {
-          mat.color.set(colorHex);
+          const texCanvas = getPlanetTextureEquirect(node); // true-colour procedural surface
+          if (texCanvas) {
+            const t = new THREE.CanvasTexture(texCanvas);
+            t.colorSpace = THREE.SRGBColorSpace;
+            mat.map = t;
+          } else {
+            mat.color.set(colorHex);
+          }
         }
         const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 24), mat);
         // Oblateness: flatten along the spin (local Y) axis for a fast rotator.
@@ -617,7 +633,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, setFraming, setSkybox, setCompression, setBeltDetail, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, setFraming, setSkybox, setCompression, setBeltDetail, setBodyStyle, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----
