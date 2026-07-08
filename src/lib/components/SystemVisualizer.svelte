@@ -3,7 +3,7 @@
   import type { TransitPlan } from '$lib/transit/types';
   import { getJourneyBounds, coastPathUnderGravity, sampleJourneyKinematicsAtTime } from '$lib/transit/scheduler';
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
-  import { propagate } from "$lib/api";
+  import { computeWorldPositions } from "$lib/physics/worldPositions";
   import { AU_KM, EARTH_MASS_KG } from '../constants';
   import * as zones from "$lib/physics/zones";
   import { calculateLagrangePoints } from "$lib/physics/lagrange";
@@ -537,44 +537,13 @@
       lagrangePoints = allPoints.size > 0 ? allPoints : null;
   }
 
+  // Per-frame world positions now live in the shared physics/worldPositions module so the 2D orrery
+  // and the 3D holo view place bodies identically (they differ only in the propagator). The construct
+  // kinematics sampler is injected — it resolves a ship's position per-frame at the render clock
+  // (transit path, coast conic, or post-arrival parking orbit) in the same frame as its host, which
+  // stops the deep-zoom jitter a stored vector_position_au would cause between reconcile ticks.
   function calculateWorldPositions(system: System | null, currentTime: number): Map<string, { x: number, y: number }> {
-      if (!system) return new Map();
-      const nodesById = new Map(system.nodes.map(n => [n.id, n]));
-      const positions = new Map<string, { x: number, y: number }>();
-      function getPosition(nodeId: string): { x: number, y: number } {
-          if (positions.has(nodeId)) return positions.get(nodeId)!;
-          const node = nodesById.get(nodeId);
-          if (!node) return { x: 0, y: 0 };
-          if (node.kind === 'construct' && (node.scheduled_journeys || []).length) {
-              // Resolve a construct's position PER-FRAME at the render clock — transit path, coast conic, OR the
-              // post-arrival parking orbit (sampleJourneyKinematicsAtTime computes all of these relative to the
-              // HOST BODY at THIS time). Reading the stored vector_position_au instead pins the ship to the
-              // host's position at the last ~150ms reconcile tick; since the host itself is drawn per-frame, at
-              // a deep zoom the ship jitters against it by the host's orbital motion over that 150ms. Sampling
-              // here keeps both in the same coordinate frame at the same instant.
-              const s = sampleJourneyKinematicsAtTime(system, node as any, currentTime);
-              if (s) { const abs = { x: s.position_au.x, y: s.position_au.y }; positions.set(nodeId, abs); return abs; }
-              if (node.vector_position_au) {
-                  const absolute = { x: node.vector_position_au.x, y: node.vector_position_au.y };
-                  positions.set(nodeId, absolute);
-                  return absolute;
-              }
-          }
-          if (node.parentId === null) { positions.set(nodeId, { x: 0, y: 0 }); return { x: 0, y: 0 }; }
-          const parentPos = getPosition(node.parentId);
-          let relativePos = { x: 0, y: 0 };
-          if ((node.kind === 'body' || node.kind === 'construct' || node.kind === 'barycenter') && node.orbit) {
-              const isStationary = node.kind === 'construct' && (node.physical_parameters?.massKg || 0) === 0;
-              const timeToPropagate = isStationary ? node.orbit.t0 : currentTime;
-              const propagated = propagate(node, timeToPropagate);
-              if (propagated) relativePos = propagated;
-          }
-          const absolutePos = { x: parentPos.x + relativePos.x, y: parentPos.y + relativePos.y };
-          positions.set(nodeId, absolutePos);
-          return absolutePos;
-      }
-      for (const node of system.nodes) getPosition(node.id);
-      return positions;
+      return computeWorldPositions(system, currentTime, sampleJourneyKinematicsAtTime);
   }
 
   function getVisibleNodeIds(system: System, focusedBodyId: string | null): Set<string> {
