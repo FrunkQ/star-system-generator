@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.14-beta - 8th Jul 2026
+
+* **Belts are as dense as the data says — with a performance dial.** A belt's rock count now comes from its actual debris density (mass), and the rubble fills its real inner-to-outer width, so a rich belt looks rich and a thin ring looks thin. A new "Belt detail" control in the holo look panel scales the overall particle budget up or down for performance — turn it down on an older tablet, up on a powerful machine — and it's saved with your preset.
+
 ## v2.1.13-beta - 8th Jul 2026
 
 * **Belt debris looks like rubble, not squares.** Asteroid and Kuiper belts now scatter irregular rock silhouettes in a few shapes, sizes and grey/brown tints, so a belt reads as chaotic debris up close instead of a grid of identical squares. Still just point clouds — cheap to draw.

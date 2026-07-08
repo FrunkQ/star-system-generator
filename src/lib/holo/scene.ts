@@ -21,6 +21,7 @@ import { getNodeColor } from '$lib/rendering/colors';
 import { getPlanetTextureEquirect } from '$lib/rendering/planetTexture';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { getVisibleNodeIds } from '$lib/system/visibleNodes';
+import { EARTH_MASS_KG } from '$lib/constants';
 import type { System } from '$lib/types';
 
 const HOLO_TINT = 0x39c6ff; // cyan hologram chrome (skins wire in later)
@@ -41,6 +42,7 @@ export interface HoloController {
   setFraming(opts: { angleDeg?: number; whole?: boolean }): void;
   setSkybox(on: boolean): void;
   setCompression(v: number): void; // toytown level 0 (true scale) .. 1 (fully compressed)
+  setBeltDetail(v: number): void; // GM belt particle-budget quality 0..1 (performance)
   // GPU post-processing filter (CRT, night-vision, thermal, …) from the ported Mappadux package.
   setFilter(id: string, params?: FilterParamValues): void;
   resetView(): void;
@@ -139,6 +141,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const clamped = Math.max(0, Math.min(1, v));
     if (clamped === compression) return;
     compression = clamped;
+    rebuildContent();
+  }
+
+  // GM belt-detail quality knob (0..1). Physics density (belt mass) sets each belt's RELATIVE
+  // richness; this multiplies the overall particle budget for performance. Rebuilds the belts.
+  function setBeltDetail(v: number) {
+    const clamped = Math.max(0, Math.min(1, v));
+    if (clamped === beltDetail) return;
+    beltDetail = clamped;
+    rebuildContent();
+  }
+
+  function rebuildContent() {
     const keepFocus = focusedId;
     if (currentSystem) setSystem(currentSystem);
     if (keepFocus) focusBody(keepFocus);
@@ -184,6 +199,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let starVisuals: { corona: THREE.Sprite; coronaScale: number; activity: number }[] = [];
   let rMax = 1; // largest heliocentric distance in the system (AU), for the compression normaliser
   let compression = DEFAULT_COMPRESSION;
+  let beltDetail = 0.6; // GM quality knob: scales belt particle budget (performance), not physics
   let timeMs = 0;
   let viewW = 1;
   let viewH = 1;
@@ -375,7 +391,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const node of system.nodes as any[]) {
       // Belts: a debris band on their (compressed) orbit, never a lone sphere.
       if (isBelt(node)) {
-        const band = buildBeltBand(node, positionToScene);
+        const band = buildBeltBand(node, positionToScene, beltDetail);
         if (band) contentGroup.add(band);
         continue;
       }
@@ -601,7 +617,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, setFraming, setSkybox, setCompression, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, setFraming, setSkybox, setCompression, setBeltDetail, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----
@@ -687,19 +703,35 @@ function getRockTextures(): THREE.CanvasTexture[] {
   return rockTextures;
 }
 
+// Physical debris density from belt mass (log 1e-5..1 M⊕ → 0..1) — matches the 2D disc's densityFrac.
+function beltDensityFrac(massKg: number | undefined): number {
+  if (!massKg || massKg <= 0) return 0.35;
+  const me = massKg / EARTH_MASS_KG;
+  return Math.max(0, Math.min(1, (Math.log(me) - Math.log(1e-5)) / (0 - Math.log(1e-5))));
+}
+
 // A belt: a scatter of irregular debris rocks around its (inclined) orbit, radius-jittered into a
-// band. The rocks are split across a few silhouette textures at varied sizes/tints so they read as
-// chaotic rubble rather than a grid of identical squares. Still cheap — a handful of point clouds.
-function buildBeltBand(node: any, project: Projector): THREE.Object3D | null {
+// band. Rock COUNT = the belt's physical density (from mass) × the GM `detail` quality knob; the
+// radial spread uses the belt's real inner/outer radius. Rocks are split across a few silhouette
+// textures at varied sizes/tints so they read as chaotic rubble. Still cheap — point clouds.
+function buildBeltBand(node: any, project: Projector, detail: number): THREE.Object3D | null {
   const period = orbitPeriodMs(node.orbit);
   if (period === 0) return null;
   const t0 = node.orbit.t0 || 0;
-  const COUNT = 260;
+  const dens = beltDensityFrac(node.massKg);
+  const physical = 120 + dens * 520; // relative richness (120 sparse .. 640 dense)
+  const quality = 0.3 + Math.max(0, Math.min(1, detail)) * 1.7; // GM performance multiplier 0.3..2.0
+  const COUNT = Math.max(20, Math.min(1600, Math.round(physical * quality)));
+  // Radial band width from the real inner/outer radius, else a ±12% fallback.
+  let widthFrac = 0.12;
+  const innerKm = node.radiusInnerKm;
+  const outerKm = node.radiusOuterKm;
+  if (innerKm > 0 && outerKm > innerKm) widthFrac = (outerKm - innerKm) / (innerKm + outerKm);
   const rocks = getRockTextures();
   const buckets: number[][] = rocks.map(() => []);
   const v = new THREE.Vector3();
   for (let i = 0; i < COUNT; i++) {
-    const jitter = 1 + (Math.random() - 0.5) * 0.24; // ±12% radial band width
+    const jitter = 1 + (Math.random() - 0.5) * 2 * widthFrac;
     const r = propagateState3D(node, t0 + Math.random() * period).r;
     project({ x: r.x * jitter, y: r.y * jitter, z: r.z * jitter }, v);
     buckets[(Math.random() * rocks.length) | 0].push(v.x, v.y, v.z);

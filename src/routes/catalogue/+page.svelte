@@ -502,6 +502,9 @@
               <label>View angle <span class="hp-val">{Math.round(holoStyle.angleDeg)}°</span>
                 <input type="range" min="0" max="80" step="1" bind:value={holoStyle.angleDeg} />
               </label>
+              <label>Belt detail <span class="hp-val">{Math.round(holoStyle.beltDetail * 100)}%</span>
+                <input type="range" min="0" max="1" step="0.05" bind:value={holoStyle.beltDetail} />
+              </label>
               <label class="hp-check"><input type="checkbox" bind:checked={holoStyle.whole} /> Frame whole system</label>
               <label class="hp-check"><input type="checkbox" bind:checked={holoStyle.skybox} /> Starfield</label>
               <button class="hp-save" on:click={saveHoloStyleAsPreset}>Save as preset…</button>

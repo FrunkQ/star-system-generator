@@ -22,6 +22,7 @@
     controller?.setFraming({ angleDeg: s.angleDeg, whole: s.whole });
     controller?.setSkybox(s.skybox);
     controller?.setCompression(s.compression);
+    controller?.setBeltDetail(s.beltDetail);
   }
 
   let container: HTMLDivElement;
