@@ -647,24 +647,77 @@ function buildOrbitRing(node: any, project: Projector, color: number): THREE.Lin
   return new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat);
 }
 
-// A belt: a scatter of faint debris points around its (inclined) orbit, radius-jittered into a band.
-function buildBeltBand(node: any, project: Projector): THREE.Points | null {
+// A few irregular "rock" silhouette textures so debris reads as chaotic lumps, not square points.
+let rockTextures: THREE.CanvasTexture[] | null = null;
+function getRockTextures(): THREE.CanvasTexture[] {
+  if (rockTextures) return rockTextures;
+  rockTextures = [];
+  for (let seed = 0; seed < 4; seed++) {
+    const S = 32;
+    const c = document.createElement('canvas');
+    c.width = c.height = S;
+    const ctx = c.getContext('2d')!;
+    let s = seed * 9301 + 49297;
+    const rnd = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+    // A lumpy convex-ish polygon = an irregular rock silhouette (white; tinted by the point colour).
+    ctx.fillStyle = '#d4d9df';
+    ctx.beginPath();
+    const n = 7 + Math.floor(rnd() * 4);
+    const cx = S / 2;
+    const cy = S / 2;
+    const baseR = S * 0.32;
+    for (let i = 0; i <= n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const rr = baseR * (0.6 + rnd() * 0.6);
+      const x = cx + Math.cos(a) * rr;
+      const y = cy + Math.sin(a) * rr;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    // A darker facet for a hint of shading.
+    ctx.fillStyle = 'rgba(70,80,92,0.55)';
+    ctx.beginPath();
+    ctx.ellipse(cx + (rnd() - 0.5) * S * 0.2, cy + (rnd() - 0.5) * S * 0.2, S * 0.12, S * 0.09, rnd() * Math.PI, 0, 2 * Math.PI);
+    ctx.fill();
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    rockTextures.push(tex);
+  }
+  return rockTextures;
+}
+
+// A belt: a scatter of irregular debris rocks around its (inclined) orbit, radius-jittered into a
+// band. The rocks are split across a few silhouette textures at varied sizes/tints so they read as
+// chaotic rubble rather than a grid of identical squares. Still cheap — a handful of point clouds.
+function buildBeltBand(node: any, project: Projector): THREE.Object3D | null {
   const period = orbitPeriodMs(node.orbit);
   if (period === 0) return null;
   const t0 = node.orbit.t0 || 0;
-  const COUNT = 240;
+  const COUNT = 260;
+  const rocks = getRockTextures();
+  const buckets: number[][] = rocks.map(() => []);
   const v = new THREE.Vector3();
-  const arr: number[] = [];
   for (let i = 0; i < COUNT; i++) {
     const jitter = 1 + (Math.random() - 0.5) * 0.24; // ±12% radial band width
     const r = propagateState3D(node, t0 + Math.random() * period).r;
     project({ x: r.x * jitter, y: r.y * jitter, z: r.z * jitter }, v);
-    arr.push(v.x, v.y, v.z);
+    buckets[(Math.random() * rocks.length) | 0].push(v.x, v.y, v.z);
   }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
-  const mat = new THREE.PointsMaterial({ color: 0x9aa6b2, size: 0.06, transparent: true, opacity: 0.7, sizeAttenuation: true });
-  return new THREE.Points(geo, mat);
+  const sizes = [0.05, 0.08, 0.11, 0.065];
+  const tints = [0x9aa6b2, 0xb0a08c, 0x8a939e, 0xa89a86]; // grey/brown rubble
+  const group = new THREE.Group();
+  buckets.forEach((arr, i) => {
+    if (!arr.length) return;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+    const mat = new THREE.PointsMaterial({
+      map: rocks[i], color: tints[i], size: sizes[i], sizeAttenuation: true,
+      transparent: true, opacity: 0.85, alphaTest: 0.4, depthWrite: false
+    });
+    group.add(new THREE.Points(geo, mat));
+  });
+  return group;
 }
 
 function makeLabel(name: string, layer?: HTMLElement): HTMLElement | undefined {
