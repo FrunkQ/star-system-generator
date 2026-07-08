@@ -85,6 +85,8 @@ interface RingVisual {
   baseAng: Float32Array; // per-particle starting angle
   omega: Float32Array; // per-particle angular rate (rad per sim-second) — Keplerian, inner faster
   t0Sec: number; // sim time at build (seconds)
+  planetR: number; // rendered planet radius (scene units) — the shadow-casting sphere for ring shadow
+  baseColor: THREE.Color; // unshadowed particle tint
 }
 
 // A belt orbits the system centre (origin). Each rock advances around the vertical axis at its
@@ -253,6 +255,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const km = node.physical_parameters?.radiusKm || node.radiusKm || 3000;
     const trueScene = (km / AU_KM) * (GRID_RADIUS / rMax); // physical radius at the true-scale factor
     return Math.max(0.006, trueScene * (1 - bodySize) + readable * bodySize);
+  }
+
+  // Rendered star radius: readable STAR_RADIUS at the top of the dial, blending toward its true
+  // physical size (a star is still far larger than any planet, so it stays clearly visible).
+  function starRadiusScene(node: any): number {
+    if (bodySize >= 0.999) return STAR_RADIUS;
+    const km = node.physical_parameters?.radiusKm || node.radiusKm || 696000;
+    const trueScene = (km / AU_KM) * (GRID_RADIUS / rMax);
+    return Math.max(0.02, trueScene * (1 - bodySize) + STAR_RADIUS * bodySize);
   }
 
   function rebuildContent() {
@@ -551,14 +562,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         const st = new THREE.CanvasTexture(makeStarTexture(colorHex, activity, node.id));
         st.colorSpace = THREE.SRGBColorSpace;
         starMat.map = st;
-        const sphere = new THREE.Mesh(new THREE.SphereGeometry(STAR_RADIUS, 32, 24), starMat);
+        const starR = starRadiusScene(node); // responds to the body-size dial like the planets
+        const sphere = new THREE.Mesh(new THREE.SphereGeometry(starR, 32, 24), starMat);
         mesh = sphere;
         // Corona: an additive halo ringing the photosphere; bigger/brighter for an active star and
         // pulsing (flaring) over time in updateStarFx. Parented to the sphere so it tracks position;
         // the billboard ignores the sphere's spin.
         const coronaMat = new THREE.SpriteMaterial({ map: glowTexture, color: colorHex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
         const corona = new THREE.Sprite(coronaMat);
-        const coronaScale = STAR_RADIUS * (5 + activity * 4);
+        const coronaScale = starR * (5 + activity * 4);
         corona.scale.setScalar(coronaScale);
         sphere.add(corona);
         starVisuals.push({ corona, coronaScale, activity });
@@ -734,22 +746,59 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
   }
 
-  // Planetary rings: track the planet and advance each particle by its Keplerian rate (inner faster).
+  // Planetary rings: track the planet, advance each particle by its Keplerian rate (inner faster),
+  // and darken the arc that falls in the planet's shadow — the planet's own body casts a shadow band
+  // across its rings (the classic Cassini look). The shadow test runs in the pivot's local frame,
+  // where the planet centre sits at the origin, so we only need the star direction transformed in.
+  const _starLocal = new THREE.Vector3();
+  const _shadowDir = new THREE.Vector3();
   function updateRings() {
     const t = timeMs / 1000;
+    const starWorld = starLights[0]?.light.position;
     for (const rv of ringVisuals) {
       const parent = bodyById.get(rv.parentId);
       if (parent) rv.pivot.position.copy(parent.mesh.position);
       const dt = t - rv.t0Sec;
       const attr = rv.points.geometry.getAttribute('position') as THREE.BufferAttribute;
       const arr = attr.array as Float32Array;
+      // Star direction in the ring's local (tilted) frame; planet centre is the local origin.
+      let hasShadow = false;
+      if (starWorld) {
+        rv.pivot.updateMatrixWorld();
+        _starLocal.copy(starWorld);
+        rv.pivot.worldToLocal(_starLocal);
+        _shadowDir.copy(_starLocal).multiplyScalar(-1); // planet-centre(origin) → away from star
+        if (_shadowDir.lengthSq() > 1e-9) { _shadowDir.normalize(); hasShadow = true; }
+      }
+      const cattr = rv.points.geometry.getAttribute('color') as THREE.BufferAttribute;
+      const carr = cattr.array as Float32Array;
+      const cr = rv.baseColor.r, cg = rv.baseColor.g, cb = rv.baseColor.b;
+      const pr = rv.planetR;
       for (let i = 0; i < rv.radii.length; i++) {
         const ang = rv.baseAng[i] + rv.omega[i] * dt;
         const r = rv.radii[i];
-        arr[3 * i] = r * Math.cos(ang);
-        arr[3 * i + 2] = r * Math.sin(ang);
+        const x = r * Math.cos(ang);
+        const z = r * Math.sin(ang);
+        arr[3 * i] = x;
+        arr[3 * i + 2] = z;
+        let shade = 1;
+        if (hasShadow) {
+          // Distance behind the planet along the shadow axis, and perpendicular offset from it.
+          const along = x * _shadowDir.x + z * _shadowDir.z; // y is ~0 in the flat ring plane
+          if (along > 0) {
+            const px = x - along * _shadowDir.x;
+            const pz = z - along * _shadowDir.z;
+            const perp = Math.hypot(px, pz);
+            // Umbra inside the planet radius; soft penumbra over a small band beyond it.
+            shade = 0.22 + 0.78 * Math.min(1, Math.max(0, (perp - pr) / (pr * 0.35)));
+          }
+        }
+        carr[3 * i] = cr * shade;
+        carr[3 * i + 1] = cg * shade;
+        carr[3 * i + 2] = cb * shade;
       }
       attr.needsUpdate = true;
+      cattr.needsUpdate = true;
     }
   }
 
@@ -1132,8 +1181,13 @@ function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const baseColor = new THREE.Color(0xcdd6e2);
+  // Per-particle colour so updateRings can darken the arc that falls in the planet's shadow.
+  const colors = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) { colors[3 * i] = baseColor.r; colors[3 * i + 1] = baseColor.g; colors[3 * i + 2] = baseColor.b; }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   const size = Math.max(0.008, planetRenderedR * 0.06);
-  const mat = new THREE.PointsMaterial({ map: getDotTexture(), color: 0xcdd6e2, size, sizeAttenuation: true, transparent: true, opacity: ringOpacity, depthWrite: false });
+  const mat = new THREE.PointsMaterial({ map: getDotTexture(), vertexColors: true, size, sizeAttenuation: true, transparent: true, opacity: ringOpacity, depthWrite: false });
   const points = new THREE.Points(geo, mat);
 
   const pivot = new THREE.Group();
@@ -1142,7 +1196,7 @@ function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail
   const tiltRad = ((parent.axial_tilt_deg || 0) * Math.PI) / 180;
   pivot.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), tiltRad);
   pivot.add(points);
-  return { pivot, points, parentId: parent.id, radii, baseAng, omega, t0Sec: timeMs / 1000 };
+  return { pivot, points, parentId: parent.id, radii, baseAng, omega, t0Sec: timeMs / 1000, planetR: planetRenderedR, baseColor };
 }
 
 function buildPolarGrid(): THREE.Group {

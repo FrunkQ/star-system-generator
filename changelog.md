@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.27-beta - 8th Jul 2026
+
+* **Planets cast a shadow across their rings.** A ringed planet's body now throws a shadow band over the arc of ring that passes behind it (anti-sunward) — the ring is bright on the sunward side and darkens where the planet blocks the star, the classic Cassini look. Runs per-particle in the ring's own tilted frame, so it tracks the star and the planet's obliquity.
+* **The star responds to the body-size dial.** Like the planets, the central star now scales between its readable size and its true physical radius as you move the body-size slider, instead of staying a fixed size.
+
 ## v2.1.26-beta - 8th Jul 2026
 
 * **Belts can be framed from the selector.** Tapping a belt (Main Belt, Kuiper Belt) in the body list now frames it: the camera keeps the star centred at the preset view angle and pulls back so the whole annulus fits — the inner belt zooms to the inner system, the Kuiper belt pulls right out to the edge. Belts were previously un-framable because they're a ring about the star rather than a single body.
