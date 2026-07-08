@@ -62,6 +62,46 @@ interface BodyVisual {
   satellite: boolean; // a moon: positioned as a magnified offset around its (compressed) parent
   spinPeriodSec?: number; // sidereal rotation period; drives the texture turning
   tiltQuat?: THREE.Quaternion; // fixed axial-tilt rotation, composed with the live spin each frame
+  isConstruct?: boolean; // icon sprite: fixed screen size, focus-driven size/dim states
+}
+
+// Construct icons: the 2D orrery's glyph vocabulary (triangle/circle/diamond/cross/square in the
+// construct's own colour) drawn once to a small canvas and cached per (shape, colour).
+const iconCache = new Map<string, THREE.CanvasTexture>();
+function getConstructIconTexture(iconType: string | undefined, color: string): THREE.CanvasTexture {
+  const shape = iconType || 'triangle';
+  const key = `${shape}|${color}`;
+  let tex = iconCache.get(key);
+  if (tex) return tex;
+  const S = 48;
+  const c = document.createElement('canvas');
+  c.width = c.height = S;
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = color;
+  const m = S * 0.14; // margin
+  const size = S - 2 * m;
+  const cx = S / 2;
+  const cy = S / 2;
+  if (shape === 'circle') {
+    ctx.beginPath(); ctx.arc(cx, cy, size / 2, 0, 2 * Math.PI); ctx.fill();
+  } else if (shape === 'diamond') {
+    ctx.beginPath(); ctx.moveTo(cx, cy - size / 2); ctx.lineTo(cx + size / 2, cy);
+    ctx.lineTo(cx, cy + size / 2); ctx.lineTo(cx - size / 2, cy); ctx.closePath(); ctx.fill();
+  } else if (shape === 'cross') {
+    const t = size / 3;
+    ctx.fillRect(cx - t / 2, cy - size / 2, t, size);
+    ctx.fillRect(cx - size / 2, cy - t / 2, size, t);
+  } else if (shape === 'square') {
+    ctx.fillRect(cx - size / 2, cy - size / 2, size, size);
+  } else {
+    // triangle (default) — bodies are spheres, constructs read as triangles
+    ctx.beginPath(); ctx.moveTo(cx, cy - size / 2); ctx.lineTo(cx + size / 2, cy + size / 2);
+    ctx.lineTo(cx - size / 2, cy + size / 2); ctx.closePath(); ctx.fill();
+  }
+  tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  iconCache.set(key, tex);
+  return tex;
 }
 
 export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {}): HoloController {
@@ -194,13 +234,47 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (hits.length) {
       const b = bodies.find((x) => x.mesh === hits[0].object);
       if (b) opts.onSelect?.(b.id);
+      return;
     }
+    // Tap assist for the tiny construct icons: a 4 px sprite is untappable, so on a raycast miss
+    // pick the nearest construct within ~14 px of the tap in screen space (finger-friendly).
+    const tapX = e.clientX - rect.left;
+    const tapY = e.clientY - rect.top;
+    let best: BodyVisual | null = null;
+    let bestD = 14 * 14;
+    for (const b of bodies) {
+      if (!b.isConstruct) continue;
+      proj.copy(b.mesh.position).project(camera);
+      if (proj.z > 1) continue;
+      const sx = (proj.x * 0.5 + 0.5) * viewW;
+      const sy = (-proj.y * 0.5 + 0.5) * viewH;
+      const d = (sx - tapX) * (sx - tapX) + (sy - tapY) * (sy - tapY);
+      if (d < bestD) { bestD = d; best = b; }
+    }
+    if (best) opts.onSelect?.(best.id);
   }, { signal: pointer.signal });
 
   function frameDistance(b: BodyVisual): number {
+    if (b.isConstruct) return 1.6; // icons have no radius; frame them close
     const geo = (b.mesh as any).geometry;
     const rad = geo?.parameters?.radius ?? 0.6;
     return Math.max(2, rad * 9);
+  }
+
+  // Constructs render at fixed SCREEN size (sizeAttenuation: false): full-size when the focus rule
+  // has them in view (their parent, a sibling, or they are selected — same rule as naming), tiny and
+  // dimmed otherwise so distant traffic can never occlude a world. Scale maths: for a unit sprite
+  // quad, on-screen px = scale · viewH / (2·tan(fov/2)).
+  const CONSTRUCT_PX_FOCUS = 12;
+  const CONSTRUCT_PX_IDLE = 4;
+  function updateConstructs() {
+    const f = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, viewH);
+    for (const b of bodies) {
+      if (!b.isConstruct) continue;
+      const inFocus = visibleSet.has(b.id);
+      (b.mesh as THREE.Sprite).scale.setScalar((inFocus ? CONSTRUCT_PX_FOCUS : CONSTRUCT_PX_IDLE) * f);
+      ((b.mesh as THREE.Sprite).material as THREE.SpriteMaterial).opacity = inFocus ? 1 : 0.45;
+    }
   }
 
   // Ease the camera to the configured framing — either the whole system or the focused body — at the
@@ -334,6 +408,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         const light = new THREE.PointLight(colorHex, 2.2, 0, 0);
         contentGroup.add(light);
         starLights.push({ id: node.id, light });
+      } else if (node.kind === 'construct') {
+        // Constructs: the 2D orrery's icon glyph as a fixed-screen-size sprite (sized per frame by
+        // the focus rule in updateConstructs — full when in the focus set, tiny+dim otherwise).
+        const mat = new THREE.SpriteMaterial({
+          map: getConstructIconTexture(node.icon_type, node.icon_color || '#ffd24d'),
+          sizeAttenuation: false, transparent: true, depthTest: true
+        });
+        mesh = new THREE.Sprite(mat);
       } else {
         // Moons are capped small so they read as satellites, not rival planets, when you zoom in.
         const radius = systemLevel ? bodyRadius(node) : Math.min(bodyRadius(node), 0.1);
@@ -354,15 +436,20 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       }
       contentGroup.add(mesh);
 
+      const isConstruct = node.kind === 'construct';
       // Every body gets a label element; which ones actually show is decided per-frame by the focus
       // visibility rule (getVisibleNodeIds) — so a planet's moons name themselves once it's selected.
       const label = makeLabel(String(node.name ?? ''), opts.labelLayer);
       // Spin: sidereal rotation from the data, composed onto a fixed axial tilt each frame. Stars
       // spin too (their sunspots turn); the corona is a billboard child, unaffected by the spin.
-      const spinPeriodSec = Math.abs(node.rotation_period_hours || 0) * 3600 || undefined;
+      // Constructs are camera-facing sprites — no spin.
+      const spinPeriodSec = !isConstruct ? Math.abs(node.rotation_period_hours || 0) * 3600 || undefined : undefined;
       const tiltRad = ((node.axial_tilt_deg || 0) * Math.PI) / 180;
-      const tiltQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), tiltRad);
-      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, satellite: !systemLevel, spinPeriodSec, tiltQuat });
+      const tiltQuat = !isConstruct ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), tiltRad) : undefined;
+      // A ship mid-journey is positioned absolutely by the transit sampler — never apply the
+      // satellite spread to it, or the spread would distort its transit path.
+      const inTransit = isConstruct && (node.scheduled_journeys || []).length > 0;
+      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, satellite: !systemLevel && !inTransit, spinPeriodSec, tiltQuat, isConstruct });
     }
     visibleSet = getVisibleNodeIds(system, focusedId);
     updatePositions();
@@ -377,13 +464,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (!p) continue;
       const parent = b.satellite && b.parentId ? positions.get(b.parentId) : undefined;
       if (parent) {
-        // Moon: sit at a magnified, log-spaced offset around the parent's compressed position, so a
-        // moon system is legible instead of collapsing onto the planet under the distance squash.
+        // Satellite (moon or orbiting construct): the magnified log-spaced offset is a READABILITY
+        // device that belongs to the toytown end of the scale — so it is weighted by `compression`.
+        // At compression 0 (true scale / projector) satellites sit exactly where physics puts them;
+        // at the toytown end they fan out so a moon system doesn't collapse onto the planet.
         positionToScene(parent, tmpParent);
         const ox = p.x - parent.x, oy = p.y - parent.y, oz = p.z - parent.z; // AU offset
         const off = Math.hypot(ox, oy, oz);
         if (off > 1e-12) {
-          const dist = 0.45 + 0.16 * Math.log10(1 + off / 0.0005); // scene units from the planet
+          const spreadDist = 0.45 + 0.16 * Math.log10(1 + off / 0.0005); // scene units from the planet
+          const trueDist = off * (compressScalar(Math.hypot(p.x, p.y, p.z)) / Math.max(1e-12, Math.hypot(p.x, p.y, p.z))); // offset under the radial map
+          const dist = trueDist * (1 - compression) + spreadDist * compression;
           const k = dist / off;
           // axis-map the raw offset (x, z->y, y->z) and add to the compressed parent position
           b.mesh.position.set(tmpParent.x + ox * k, tmpParent.y + oz * k, tmpParent.z + oy * k);
@@ -455,6 +546,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     driveFocus();
     updateSpin();
     updateStarFx(nowSec);
+    updateConstructs();
     controls.update();
     if (filterPass) {
       filterPass.uniforms.time.value = nowSec; // drive scanlines/flicker

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.11-beta - 8th Jul 2026
+
+* **Constructs read as icons on the Holo Table.** Stations and ships now use their map icon shape (triangle, diamond, etc. in their own colour) at a fixed on-screen size instead of rendering as chunky spheres. They show full-size and named when their planet (or they) are selected, and shrink to a faint few-pixel dot otherwise, so distant traffic never blocks a world. Tapping near a tiny icon still selects it. The fan-out that keeps a busy orbit legible now eases off as you approach true scale.
+
 ## v2.1.10-beta - 8th Jul 2026
 
 * **Stars are real suns now.** Instead of a flat glow, each star is a textured photosphere sphere — granulation and sunspots (more spots on a more active star) — turning on its own axis, wrapped in a corona halo. An active, flaring star's corona visibly pulses and brightens; a calm star stays steady. The star still lights the system, and in a binary each star casts its own light, so a planet between two suns is lit from both.
