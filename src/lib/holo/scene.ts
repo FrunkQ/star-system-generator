@@ -998,7 +998,10 @@ function buildBeltBand(node: any, project: Projector, detail: number, timeMs: nu
   const quality = 0.3 + Math.max(0, Math.min(1, detail)) * 1.7; // GM performance multiplier 0.3..2.0
   const innerKm = node.radiusInnerKm;
   const outerKm = node.radiusOuterKm;
-  const { count: COUNT, opacity: beltOpacity } = particleBudget(node.massKg, innerKm, outerKm, quality);
+  const { count: COUNT, opacity: rawOpacity } = particleBudget(node.massKg, innerKm, outerKm, quality);
+  // A belt is viewed at whole-system scale (far), so a physically-tenuous surface density would wash
+  // out to nothing. Lift it to a clearly-readable dust band — density is carried by the rock COUNT.
+  const beltOpacity = Math.max(0.72, rawOpacity);
   // Radial band width from the real inner/outer radius, else a ±12% fallback.
   let widthFrac = 0.12;
   if (innerKm > 0 && outerKm > innerKm) widthFrac = (outerKm - innerKm) / (innerKm + outerKm);
@@ -1021,8 +1024,8 @@ function buildBeltBand(node: any, project: Projector, detail: number, timeMs: nu
     bucketPos[b].push(v.x, v.y, v.z);
     bucketOmega[b].push(om);
   }
-  const sizes = [0.05, 0.08, 0.11, 0.065];
-  const tints = [0x9aa6b2, 0xb0a08c, 0x8a939e, 0xa89a86]; // grey/brown rubble
+  const sizes = [0.1, 0.15, 0.2, 0.12];
+  const tints = [0xc4cdd8, 0xd2c3ab, 0xb3bcc8, 0xcabfa6]; // grey/brown rubble, lifted to read against space
   const group = new THREE.Group();
   const buckets: BeltVisual['buckets'] = [];
   bucketPos.forEach((arr, i) => {
@@ -1032,7 +1035,7 @@ function buildBeltBand(node: any, project: Projector, detail: number, timeMs: nu
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     const mat = new THREE.PointsMaterial({
       map: rocks[i], color: tints[i], size: sizes[i], sizeAttenuation: true,
-      transparent: true, opacity: beltOpacity, alphaTest: 0.4, depthWrite: false
+      transparent: true, opacity: beltOpacity, alphaTest: 0.25, depthWrite: false
     });
     const points = new THREE.Points(geo, mat);
     group.add(points);

@@ -150,7 +150,7 @@
     { label: '2 wk', sec: 1209600 }, { label: '1 mo', sec: 2592000 }, { label: '2 mo', sec: 5184000 }, { label: '6 mo', sec: 15552000 },
     { label: '1 yr', sec: 31557600 }, { label: '2 yr', sec: 63115200 }, { label: '5 yr', sec: 157788000 }, { label: '10 yr', sec: 315576000 }
   ];
-  let rateIndex = 4; // default 1 day/s
+  let rateIndex = 2; // default 1 s ≈ 1 h — inner planets visibly move, rings/belts shear
   let timeExpanded = false;
 
   // Interactive-tier selection.

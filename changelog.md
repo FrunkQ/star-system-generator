@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.28-beta - 8th Jul 2026
+
+* **Belts are visible again.** Asteroid and Kuiper belts were rendering but so faint (a tenuous surface density plus tiny attenuated rocks) they washed out to nothing at system scale. Belts now read as a clear dust band — larger, brighter rocks with a readable opacity floor — while their real density is still carried by the rock count (so the Kuiper belt is richer than the Main Belt).
+* **Holo starts moving.** The Field Guide now opens already playing at 1 second ≈ 1 hour, so a system is alive the moment you open it — inner planets visibly move and the rings shear — rather than sitting frozen until you find the play button.
+
 ## v2.1.27-beta - 8th Jul 2026
 
 * **Planets cast a shadow across their rings.** A ringed planet's body now throws a shadow band over the arc of ring that passes behind it (anti-sunward) — the ring is bright on the sunward side and darkens where the planet blocks the star, the classic Cassini look. Runs per-particle in the ring's own tilted frame, so it tracks the star and the planet's obliquity.
