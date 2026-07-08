@@ -27,6 +27,9 @@
   export function setFraming(opts: { angleDeg?: number; whole?: boolean }) {
     controller?.setFraming(opts);
   }
+  export function setSkybox(on: boolean) {
+    controller?.setSkybox(on);
+  }
 
   onMount(() => {
     let cancelled = false;

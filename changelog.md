@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.7-beta - 8th Jul 2026
+
+* **Holo Table worlds are lit now.** Each star casts real light, so every world shows a day/night terminator — the spheres read as solid 3D bodies instead of flat discs, even before textures arrive. Binary systems get a light per star.
+* **Background starfield.** An optional static starfield sits behind the hologram (on by default; a GM-selectable skybox slot comes later).
+
 ## v2.1.6-beta - 8th Jul 2026
 
 * **Holo Table names bodies like the main view.** You see the focused body plus its parents and siblings; a body's children (moons) name themselves only when it's selected — so focusing a planet reveals its moons by name, and the map stays uncluttered otherwise. (The rule now lives in one shared place used by both the 2D and 3D views.)

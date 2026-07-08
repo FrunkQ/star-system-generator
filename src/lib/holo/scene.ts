@@ -30,6 +30,7 @@ export interface HoloController {
   // tilt from straight down (0 = overhead top-down, ~64 = the 3/4 default); whole fits the entire
   // system rather than the focused body. overhead + whole = the projector's top-down plan view.
   setFraming(opts: { angleDeg?: number; whole?: boolean }): void;
+  setSkybox(on: boolean): void;
   resetView(): void;
   resize(w: number, h: number): void;
   dispose(): void;
@@ -38,6 +39,7 @@ export interface HoloController {
 export interface HoloOptions {
   onSelect?: (id: string) => void; // fired when the viewer taps a body
   labelLayer?: HTMLElement; // absolutely-positioned overlay the scene fills with body labels
+  skybox?: boolean; // background starfield (default true); a GM-selectable skybox slot later
 }
 
 interface BodyVisual {
@@ -71,9 +73,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const grid = buildPolarGrid();
   scene.add(grid);
 
+  // Background starfield (a static random field; a GM-selectable skybox slot comes later).
+  const starfield = buildStarfield();
+  starfield.visible = opts.skybox !== false;
+  scene.add(starfield);
+  function setSkybox(on: boolean) { starfield.visible = on; }
+
+  // Fill light so the night side of a lit body isn't pure black; the star's own light does the
+  // day/night terminator (added per-star in setSystem so it tracks the star's position).
+  const ambient = new THREE.HemisphereLight(0xaecbff, 0x0a0e16, 0.35);
+  scene.add(ambient);
+
   // --- Dynamic content ---
   let currentSystem: System | null = null;
   let bodies: BodyVisual[] = [];
+  let starLights: { id: string; light: THREE.PointLight }[] = [];
   let rMax = 1; // largest heliocentric distance in the system (AU), for the compression normaliser
   let compression = DEFAULT_COMPRESSION;
   let timeMs = 0;
@@ -207,6 +221,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     contentGroup.clear();
     for (const b of bodies) b.label?.remove();
     bodies = [];
+    starLights = [];
   }
 
   function setSystem(system: System | null) {
@@ -256,10 +271,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         const sprite = new THREE.Sprite(mat);
         sprite.scale.setScalar(2.4);
         mesh = sprite;
+        // The star also casts light: a point light co-located with the glow gives every body a real
+        // star-facing terminator. decay 0 so the compressed distances don't dim the outer planets.
+        const light = new THREE.PointLight(colorHex, 2.2, 0, 0);
+        contentGroup.add(light);
+        starLights.push({ id: node.id, light });
       } else {
         // Moons are capped small so they read as satellites, not rival planets, when you zoom in.
         const radius = systemLevel ? bodyRadius(node) : Math.min(bodyRadius(node), 0.1);
-        mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 20, 16), new THREE.MeshBasicMaterial({ color: colorHex }));
+        mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 24, 18), new THREE.MeshStandardMaterial({ color: colorHex, roughness: 1, metalness: 0 }));
       }
       contentGroup.add(mesh);
 
@@ -297,6 +317,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       } else {
         b.mesh.position.copy(positionToScene(p, tmp));
       }
+    }
+    // Keep each star's light co-located with the star (matters for binaries; the primary sits at 0).
+    for (const s of starLights) {
+      const sp = positions.get(s.id);
+      if (sp) s.light.position.copy(positionToScene(sp, tmp));
     }
   }
 
@@ -355,12 +380,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       any.geometry?.dispose?.();
       any.material?.dispose?.();
     });
+    (starfield.geometry as any)?.dispose?.();
+    (starfield.material as any)?.dispose?.();
     glowTexture.dispose();
     renderer.dispose();
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, setFraming, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, setFraming, setSkybox, resetView, resize, dispose };
 }
 
 // ---- helpers ----
@@ -434,6 +461,31 @@ function makeLabel(name: string, layer?: HTMLElement): HTMLElement | undefined {
   el.style.cssText = 'position:absolute;left:0;top:0;transform:translate(-9999px,-9999px);opacity:0;pointer-events:none;white-space:nowrap;font:600 11px/1.2 ui-monospace,monospace;color:#cfefff;text-shadow:0 0 4px rgba(0,0,0,0.9);letter-spacing:0.02em;';
   layer.appendChild(el);
   return el;
+}
+
+// A static random starfield backdrop: points on a large sphere, drawn at a fixed screen size
+// (no distance attenuation) so they read as pinprick stars regardless of zoom.
+function buildStarfield(count = 1600, radius = 900): THREE.Points {
+  const pos: number[] = [];
+  const col: number[] = [];
+  for (let i = 0; i < count; i++) {
+    const u = Math.random();
+    const v = Math.random();
+    const theta = 2 * Math.PI * u;
+    const phi = Math.acos(2 * v - 1);
+    const s = Math.sin(phi);
+    pos.push(radius * s * Math.cos(theta), radius * Math.cos(phi), radius * s * Math.sin(theta));
+    const b = 0.5 + Math.random() * 0.5; // brightness
+    const warm = Math.random() < 0.15; // a few warm/cool tints among mostly white
+    col.push(b, b * (warm ? 0.92 : 1), b * (warm ? 0.85 : 1));
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  const mat = new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false });
+  const pts = new THREE.Points(geo, mat);
+  pts.renderOrder = -1; // behind everything
+  return pts;
 }
 
 function buildPolarGrid(): THREE.Group {
