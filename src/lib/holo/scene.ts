@@ -20,6 +20,7 @@ import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor } from '$lib/rendering/colors';
 import { getPlanetTextureEquirect } from '$lib/rendering/planetTexture';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
+import { rendersAsGiant } from '$lib/physics/makeup';
 import { getVisibleNodeIds } from '$lib/system/visibleNodes';
 import { EARTH_MASS_KG } from '$lib/constants';
 import type { System } from '$lib/types';
@@ -77,34 +78,36 @@ interface BodyVisual {
 // darkens the direct light, with a soft penumbra from the occluder edge. Cheap (a few instructions),
 // no shadow map. Unique cache key per material so onBeforeCompile runs and binds its own uniforms.
 let eclipseMatSeq = 0;
-function applyEclipseShadow(mat: THREE.MeshStandardMaterial) {
+function applyEclipseShadow(mat: THREE.MeshStandardMaterial, penumbraFrac: number) {
   const uStarPos = { value: new THREE.Vector3() };
   const uOcc = { value: new THREE.Vector4() };
   const uHasOcc = { value: 0 };
+  const uPenumbra = { value: penumbraFrac }; // fraction of the occluder radius; ~0.03 hard, ~0.4 soft
   const cacheId = 'ecl' + eclipseMatSeq++;
   mat.customProgramCacheKey = () => cacheId;
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uStarPos = uStarPos;
     shader.uniforms.uOcc = uOcc;
     shader.uniforms.uHasOcc = uHasOcc;
+    shader.uniforms.uPenumbra = uPenumbra;
     shader.vertexShader = 'varying vec3 vEclWorld;\n' + shader.vertexShader.replace(
       '#include <project_vertex>',
       '#include <project_vertex>\n  vEclWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;'
     );
     shader.fragmentShader = shader.fragmentShader
-      .replace('void main() {', 'varying vec3 vEclWorld;\nuniform vec3 uStarPos;\nuniform vec4 uOcc;\nuniform float uHasOcc;\nvoid main() {')
+      .replace('void main() {', 'varying vec3 vEclWorld;\nuniform vec3 uStarPos;\nuniform vec4 uOcc;\nuniform float uHasOcc;\nuniform float uPenumbra;\nvoid main() {')
       .replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n' +
         'if (uHasOcc > 0.5) {\n' +
         '  vec3 toStar = uStarPos - vEclWorld; float dStar = length(toStar); vec3 Ld = toStar / max(dStar, 1e-4);\n' +
         '  vec3 oc = uOcc.xyz - vEclWorld; float tca = dot(oc, Ld);\n' +
         '  if (tca > 0.0 && tca < dStar) {\n' +
-        '    float dd = sqrt(max(dot(oc, oc) - tca * tca, 0.0)); float rr = uOcc.w; float pen = 0.35 * rr + 0.015;\n' +
+        '    float dd = sqrt(max(dot(oc, oc) - tca * tca, 0.0)); float rr = uOcc.w; float pen = uPenumbra * rr + 0.004;\n' +
         '    float sf = smoothstep(rr - pen, rr + pen, dd);\n' +
         '    reflectedLight.directDiffuse *= sf; reflectedLight.directSpecular *= sf;\n' +
         '  }\n' +
         '}');
   };
-  return { uStarPos, uOcc, uHasOcc };
+  return { uStarPos, uOcc, uHasOcc, uPenumbra };
 }
 
 // Construct icons: the 2D orrery's glyph vocabulary (triangle/circle/diamond/cross/square in the
@@ -437,6 +440,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     currentSystem = system;
     if (!system) return;
 
+    const nodesById = new Map((system.nodes as any[]).map((n) => [n.id, n]));
+    const atmPressure = (n: any) => (n?.atmosphere?.pressure_bar ?? n?.atmosphere?.pressure_atm ?? 0);
+    // A thick atmosphere softens a shadow's edge. Fluid (gas/ice) giants count — they're all
+    // atmosphere — even if no explicit atmosphere pressure is set on the node.
+    const softsShadow = (n: any) => !!n && (atmPressure(n) > 0.02 || rendersAsGiant(n));
     const rootId = (system.nodes.find((n) => n.parentId === null) as any)?.id ?? null;
     // "System-level" = one hop from the root, OR a member of a root-level barycentre (so Pluto and
     // binary-star members read as major bodies on their own heliocentric ring, not as satellites).
@@ -524,7 +532,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           }
         }
         // Moons can be eclipse-shadowed by their parent planet (analytic ray-sphere in the shader).
-        if (!systemLevel) shadow = applyEclipseShadow(mat);
+        // Edge is HARD by default; an atmosphere on the moon OR its shadowing planet softens it.
+        if (!systemLevel) {
+          const soft = softsShadow(node) || softsShadow(nodesById.get(node.parentId));
+          shadow = applyEclipseShadow(mat, soft ? 0.4 : 0.03);
+        }
         const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 24), mat);
         // Oblateness: flatten along the spin (local Y) axis for a fast rotator.
         const polF = oblatePolarFactor((node as any).oblateness);
