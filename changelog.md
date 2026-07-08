@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.4-beta - 8th Jul 2026
+
+* **Holo Table is now interactive.** Tap a world in the 3D view — or pick it from the body list — and the camera eases in to frame it from just above, looking back toward the star, while its file opens alongside. Selecting a body always opens its details now, in the hologram just as in the flat console.
+
 ## v2.1.3-beta - 8th Jul 2026
 
 * **Fix: the Holo Table skin can now actually be selected.** Picking it from the Field Guide launcher silently fell back to the standard Guide, because the config's skin whitelist didn't recognise the new key. It's on the list now, so the 3D view shows as chosen.

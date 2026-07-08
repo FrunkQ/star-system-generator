@@ -3,9 +3,11 @@
   // import of three or ./scene — the scene module is dynamically imported on mount so three.js is
   // code-split into its own chunk and the 2D app never pays for it. Mirrors the prop surface of
   // SystemVisualizer so the catalogue/projector can swap one for the other.
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import type { System } from '$lib/types';
   import type { HoloController } from '$lib/holo/scene';
+
+  const dispatch = createEventDispatcher<{ focus: string }>();
 
   export let system: System | null = null;
   export let currentTime: number = 0;
@@ -22,9 +24,10 @@
     (async () => {
       const { createHoloScene } = await import('$lib/holo/scene');
       if (cancelled || !canvas) return;
-      controller = createHoloScene(canvas);
+      controller = createHoloScene(canvas, { onSelect: (id) => dispatch('focus', id) });
       controller.setSystem(system);
       controller.setTime(currentTime);
+      controller.focusBody(focusedBodyId);
       const r = container.getBoundingClientRect();
       controller.resize(r.width, r.height);
       ro = new ResizeObserver((entries) => {
@@ -45,6 +48,7 @@
   // Reactive feeds (guarded until the scene has loaded).
   $: controller?.setSystem(system);
   $: controller?.setTime(currentTime);
+  $: controller?.focusBody(focusedBodyId);
 </script>
 
 <div class="holo-root" bind:this={container}>

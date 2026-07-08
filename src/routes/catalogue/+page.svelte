@@ -455,7 +455,7 @@
     <div class="console-stage">
       {#if rulePack && displaySystem}
         {#if theme.tier === 'holo'}
-          <HoloView system={displaySystem} {currentTime} {focusedBodyId} />
+          <HoloView system={displaySystem} {currentTime} {focusedBodyId} on:focus={handleFocus} />
         {:else}
           <SystemVisualizer
             system={displaySystem}

@@ -25,8 +25,13 @@ const ORBIT_SAMPLES = 96;
 export interface HoloController {
   setSystem(system: System | null): void;
   setTime(ms: number): void;
+  focusBody(id: string | null): void;
   resize(w: number, h: number): void;
   dispose(): void;
+}
+
+export interface HoloOptions {
+  onSelect?: (id: string) => void; // fired when the viewer taps a body
 }
 
 interface BodyVisual {
@@ -36,7 +41,7 @@ interface BodyVisual {
   hostId?: string;
 }
 
-export function createHoloScene(canvas: HTMLCanvasElement): HoloController {
+export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {}): HoloController {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setClearColor(0x05070c, 1);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -69,6 +74,69 @@ export function createHoloScene(canvas: HTMLCanvasElement): HoloController {
   const glowTexture = makeGlowTexture();
   const tmp = new THREE.Vector3();
 
+  // --- Selection (raycast pick) + camera focus ---
+  const raycaster = new THREE.Raycaster();
+  const ndc = new THREE.Vector2();
+  const UP = new THREE.Vector3(0, 1, 0);
+  const desiredTarget = new THREE.Vector3();
+  const desiredCam = new THREE.Vector3();
+  const outward = new THREE.Vector3();
+  let focusedId: string | null = null;
+  let focusDrive = 0; // frames of active camera easing remaining after a focus change
+
+  const pointer = new AbortController();
+  let downX = 0;
+  let downY = 0;
+  canvas.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY; }, { signal: pointer.signal });
+  canvas.addEventListener('pointerup', (e) => {
+    // A real drag is an orbit gesture, not a pick — only treat near-stationary taps as clicks.
+    if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return;
+    const rect = canvas.getBoundingClientRect();
+    ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(ndc, camera);
+    const hits = raycaster.intersectObjects(bodies.map((b) => b.mesh), false);
+    if (hits.length) {
+      const b = bodies.find((x) => x.mesh === hits[0].object);
+      if (b) opts.onSelect?.(b.id);
+    }
+  }, { signal: pointer.signal });
+
+  function frameDistance(b: BodyVisual): number {
+    const geo = b.mesh.geometry as any;
+    const rad = geo?.parameters?.radius ?? 0.6;
+    return Math.max(2, rad * 9);
+  }
+
+  // Ease the camera to a "just above the body, looking back toward the star" framing, then keep the
+  // body gently centred so it stays in view as it orbits (without fighting the user's rotate/zoom).
+  function driveFocus() {
+    if (!focusedId) return;
+    const b = bodies.find((x) => x.id === focusedId);
+    if (!b) return;
+    const bp = b.mesh.position;
+    desiredTarget.copy(bp);
+    outward.copy(bp);
+    const r = outward.length();
+    if (r > 1e-4) outward.multiplyScalar(1 / r);
+    else outward.set(0, 0, 1); // star at origin: no sunward direction, fall back to a side view
+    const dist = frameDistance(b);
+    desiredCam.copy(bp).addScaledVector(outward, dist).addScaledVector(UP, dist * 0.4);
+    if (focusDrive > 0) {
+      controls.target.lerp(desiredTarget, 0.18);
+      camera.position.lerp(desiredCam, 0.14);
+      focusDrive--;
+    } else {
+      controls.target.lerp(desiredTarget, 0.08);
+    }
+  }
+
+  function focusBody(id: string | null) {
+    if (id === focusedId) return;
+    focusedId = id;
+    focusDrive = id ? 48 : 0; // ~0.8 s of easing toward the framed shot
+  }
+
   function clearContent() {
     for (const b of bodies) {
       b.mesh.geometry.dispose();
@@ -80,6 +148,8 @@ export function createHoloScene(canvas: HTMLCanvasElement): HoloController {
 
   function setSystem(system: System | null) {
     clearContent();
+    focusedId = null;
+    focusDrive = 0;
     currentSystem = system;
     if (!system) return;
 
@@ -155,6 +225,7 @@ export function createHoloScene(canvas: HTMLCanvasElement): HoloController {
   let disposed = false;
   function loop() {
     if (disposed) return;
+    driveFocus();
     controls.update();
     renderer.render(scene, camera);
     raf = requestAnimationFrame(loop);
@@ -180,9 +251,10 @@ export function createHoloScene(canvas: HTMLCanvasElement): HoloController {
     });
     glowTexture.dispose();
     renderer.dispose();
+    pointer.abort();
   }
 
-  return { setSystem, setTime, resize, dispose };
+  return { setSystem, setTime, focusBody, resize, dispose };
 }
 
 // ---- helpers ----
