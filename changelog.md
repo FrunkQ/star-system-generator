@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.19-beta - 8th Jul 2026
+
+* **Body-size dial.** A new "Body size" control lets you scale planets and moons from their readable chunky size down toward their true physical scale — so on a true-scale layout the worlds become the tiny pinpoints they really are, while their labels and orbits still show where they sit. Fine-tune it to taste instead of accepting the fixed size; it's saved in your preset. (The star stays a readable anchor for now.)
+
 ## v2.1.18-beta - 8th Jul 2026
 
 * **Sharper eclipse shadows.** An eclipse now casts a hard-edged shadow by default, as an airless world would — the umbra only softens into a fuzzy penumbra when the shadowed moon or the planet casting the shadow has a real atmosphere (gas and ice giants count).

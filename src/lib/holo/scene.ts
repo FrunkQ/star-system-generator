@@ -22,7 +22,7 @@ import { getPlanetTextureEquirect } from '$lib/rendering/planetTexture';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { rendersAsGiant } from '$lib/physics/makeup';
 import { getVisibleNodeIds } from '$lib/system/visibleNodes';
-import { EARTH_MASS_KG } from '$lib/constants';
+import { EARTH_MASS_KG, AU_KM } from '$lib/constants';
 import type { System } from '$lib/types';
 
 const HOLO_TINT = 0x39c6ff; // cyan hologram chrome (skins wire in later)
@@ -46,6 +46,7 @@ export interface HoloController {
   setCompression(v: number): void; // toytown level 0 (true scale) .. 1 (fully compressed)
   setBeltDetail(v: number): void; // GM belt particle-budget quality 0..1 (performance)
   setBodyStyle(mode: 'textured' | 'flat' | 'tint'): void; // planet/moon surface look
+  setBodySize(v: number): void; // 1 readable .. 0 true physical scale
   // GPU post-processing filter (CRT, night-vision, thermal, …) from the ported Mappadux package.
   setFilter(id: string, params?: FilterParamValues): void;
   resetView(): void;
@@ -213,6 +214,24 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     rebuildContent();
   }
 
+  // Body-size dial: 1 = readable log-scaled sizes (default), 0 = true physical radius at the system's
+  // true-scale factor (planets become the tiny dots they really are). Blends between the two.
+  function setBodySize(v: number) {
+    const clamped = Math.max(0, Math.min(1, v));
+    if (clamped === bodySize) return;
+    bodySize = clamped;
+    rebuildContent();
+  }
+
+  // Rendered sphere radius for a body, blending its readable size toward its true physical size.
+  function bodyRadiusScene(node: any, systemLevel: boolean): number {
+    const readable = systemLevel ? bodyRadius(node) : Math.min(bodyRadius(node), 0.1);
+    if (bodySize >= 0.999) return readable;
+    const km = node.physical_parameters?.radiusKm || node.radiusKm || 3000;
+    const trueScene = (km / AU_KM) * (GRID_RADIUS / rMax); // physical radius at the true-scale factor
+    return Math.max(0.006, trueScene * (1 - bodySize) + readable * bodySize);
+  }
+
   function rebuildContent() {
     const keepFocus = focusedId;
     if (currentSystem) setSystem(currentSystem);
@@ -262,6 +281,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let compression = DEFAULT_COMPRESSION;
   let beltDetail = 0.6; // GM quality knob: scales belt particle budget (performance), not physics
   let bodyStyle: 'textured' | 'flat' | 'tint' = 'textured'; // planet/moon surface look
+  let bodySize = 1; // 1 = readable (chunky), 0 = true physical scale (tiny) — fine-tune body sizes
   let timeMs = 0;
   let viewW = 1;
   let viewH = 1;
@@ -514,8 +534,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         });
         mesh = new THREE.Sprite(mat);
       } else {
-        // Moons are capped small so they read as satellites, not rival planets, when you zoom in.
-        const radius = systemLevel ? bodyRadius(node) : Math.min(bodyRadius(node), 0.1);
+        // Moons are capped small so they read as satellites; the whole thing scales with bodySize.
+        const radius = bodyRadiusScene(node, systemLevel);
         const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
         if (bodyStyle === 'tint') {
           mat.color.set(HOLO_TINT); // monochrome hologram look
@@ -722,7 +742,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setBodySize, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----

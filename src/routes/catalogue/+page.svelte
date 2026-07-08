@@ -506,6 +506,9 @@
               <label>Spread <span class="hp-val">{holoStyle.compression === 0 ? 'true scale' : Math.round(holoStyle.compression * 100) + '%'}</span>
                 <input type="range" min="0" max="1" step="0.05" bind:value={holoStyle.compression} />
               </label>
+              <label>Body size <span class="hp-val">{holoStyle.bodySize === 0 ? 'true' : holoStyle.bodySize >= 1 ? 'readable' : Math.round(holoStyle.bodySize * 100) + '%'}</span>
+                <input type="range" min="0" max="1" step="0.05" bind:value={holoStyle.bodySize} />
+              </label>
               <label>View angle <span class="hp-val">{Math.round(holoStyle.angleDeg)}°</span>
                 <input type="range" min="0" max="80" step="1" bind:value={holoStyle.angleDeg} />
               </label>

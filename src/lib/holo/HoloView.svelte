@@ -25,6 +25,7 @@
     controller?.setCompression(s.compression);
     controller?.setBeltDetail(s.beltDetail);
     controller?.setBodyStyle(s.bodyStyle);
+    controller?.setBodySize(s.bodySize);
   }
 
   let container: HTMLDivElement;
