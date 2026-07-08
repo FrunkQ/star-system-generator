@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.8-beta - 8th Jul 2026
+
+* **Worlds are textured and they turn.** Each planet and moon now wears a procedurally generated surface — gas-giant bands, land and ocean, cloud decks, hot glow — the same look as The Guide's discs, wrapped onto the sphere. The sphere rotates on its own axis at the body's real rotation rate (with axial tilt and oblate flattening), so at a sensible time rate you watch worlds spin under the sunlight, day rolling into night across the terminator.
+
 ## v2.1.7-beta - 8th Jul 2026
 
 * **Holo Table worlds are lit now.** Each star casts real light, so every world shows a day/night terminator — the spheres read as solid 3D bodies instead of flat discs, even before textures arrive. Binary systems get a light per star.

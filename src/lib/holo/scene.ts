@@ -12,6 +12,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor } from '$lib/rendering/colors';
+import { getPlanetTextureEquirect } from '$lib/rendering/planetTexture';
+import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { getVisibleNodeIds } from '$lib/system/visibleNodes';
 import type { System } from '$lib/types';
 
@@ -49,6 +51,8 @@ interface BodyVisual {
   label?: HTMLElement;
   parentId?: string | null;
   satellite: boolean; // a moon: positioned as a magnified offset around its (compressed) parent
+  spinPeriodSec?: number; // sidereal rotation period; drives the texture turning
+  tiltQuat?: THREE.Quaternion; // fixed axial-tilt rotation, composed with the live spin each frame
 }
 
 export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {}): HoloController {
@@ -215,8 +219,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const any = o as any;
       any.geometry?.dispose?.();
       const m = any.material;
-      if (Array.isArray(m)) m.forEach((x) => x.dispose?.());
-      else m?.dispose?.();
+      const disposeMat = (mat: any) => { mat?.map?.dispose?.(); mat?.dispose?.(); };
+      if (Array.isArray(m)) m.forEach(disposeMat);
+      else disposeMat(m);
     });
     contentGroup.clear();
     for (const b of bodies) b.label?.remove();
@@ -279,14 +284,31 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       } else {
         // Moons are capped small so they read as satellites, not rival planets, when you zoom in.
         const radius = systemLevel ? bodyRadius(node) : Math.min(bodyRadius(node), 0.1);
-        mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 24, 18), new THREE.MeshStandardMaterial({ color: colorHex, roughness: 1, metalness: 0 }));
+        const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
+        const texCanvas = getPlanetTextureEquirect(node);
+        if (texCanvas) {
+          const t = new THREE.CanvasTexture(texCanvas);
+          t.colorSpace = THREE.SRGBColorSpace;
+          mat.map = t;
+        } else {
+          mat.color.set(colorHex);
+        }
+        const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 24), mat);
+        // Oblateness: flatten along the spin (local Y) axis for a fast rotator.
+        const polF = oblatePolarFactor((node as any).oblateness);
+        if (polF < 0.999) sphere.scale.set(1, polF, 1);
+        mesh = sphere;
       }
       contentGroup.add(mesh);
 
       // Every body gets a label element; which ones actually show is decided per-frame by the focus
       // visibility rule (getVisibleNodeIds) — so a planet's moons name themselves once it's selected.
       const label = makeLabel(String(node.name ?? ''), opts.labelLayer);
-      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, satellite: !systemLevel });
+      // Spin: sidereal rotation from the data, composed onto a fixed axial tilt each frame.
+      const spinPeriodSec = !isStar ? Math.abs(node.rotation_period_hours || 0) * 3600 : undefined;
+      const tiltRad = ((node.axial_tilt_deg || 0) * Math.PI) / 180;
+      const tiltQuat = !isStar ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), tiltRad) : undefined;
+      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, satellite: !systemLevel, spinPeriodSec, tiltQuat });
     }
     visibleSet = getVisibleNodeIds(system, focusedId);
     updatePositions();
@@ -351,9 +373,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // --- Render loop (continuous so OrbitControls damping stays smooth) ---
   let raf = 0;
   let disposed = false;
+  const spinQuat = new THREE.Quaternion();
+  const spinAxis = new THREE.Vector3(0, 1, 0);
+  function updateSpin() {
+    const tSec = timeMs / 1000;
+    for (const b of bodies) {
+      if (!b.tiltQuat || !b.spinPeriodSec) continue;
+      const angle = (tSec / b.spinPeriodSec) * Math.PI * 2;
+      spinQuat.setFromAxisAngle(spinAxis, angle); // spin about local (pre-tilt) pole
+      b.mesh.quaternion.copy(b.tiltQuat).multiply(spinQuat); // tilt the axis, then spin about it
+    }
+  }
+
   function loop() {
     if (disposed) return;
     driveFocus();
+    updateSpin();
     controls.update();
     renderer.render(scene, camera);
     updateLabels();
