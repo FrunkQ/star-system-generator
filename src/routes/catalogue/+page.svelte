@@ -136,7 +136,16 @@
   let currentTime = Date.now();
   let isPlaying = true;
   let rafId = 0;
-  let speedMul = 1; // player time-speed multiplier on top of the auto rate
+  // Player time rate: a discrete ladder of "in-sim time per real second", from 1 s (real time) up
+  // to 10 years/s. The control collapses to a play/pause icon and expands to a slider on click.
+  const RATE_STEPS: { label: string; sec: number }[] = [
+    { label: '1 s', sec: 1 }, { label: '1 min', sec: 60 }, { label: '1 h', sec: 3600 }, { label: '12 h', sec: 43200 },
+    { label: '1 d', sec: 86400 }, { label: '2 d', sec: 172800 }, { label: '4 d', sec: 345600 }, { label: '1 wk', sec: 604800 },
+    { label: '2 wk', sec: 1209600 }, { label: '1 mo', sec: 2592000 }, { label: '2 mo', sec: 5184000 }, { label: '6 mo', sec: 15552000 },
+    { label: '1 yr', sec: 31557600 }, { label: '2 yr', sec: 63115200 }, { label: '5 yr', sec: 157788000 }, { label: '10 yr', sec: 315576000 }
+  ];
+  let rateIndex = 4; // default 1 day/s
+  let timeExpanded = false;
 
   // Interactive-tier selection.
   let focusedBodyId: string | null = null;
@@ -275,7 +284,7 @@
     let last = performance.now();
     const tick = (ts: number) => {
       const dt = (ts - last) / 1000;
-      if (isPlaying) currentTime += dt * timeScale * speedMul * 1000;
+      if (isPlaying) currentTime += dt * RATE_STEPS[rateIndex].sec * 1000;
       last = ts;
       rafId = requestAnimationFrame(tick);
     };
@@ -558,12 +567,17 @@
         {/each}
       </nav>
       <!-- Adaptive clock read-out: the fastest body in view does ~1 orbit per 2 s. -->
-      <!-- Player time controls (Field Guide): pause/play + speed. The projector is GM-clock-driven. -->
-      <div class="time-controls">
-        <button class="tc-btn" on:click={() => (isPlaying = !isPlaying)} aria-label={isPlaying ? 'Pause' : 'Play'} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '❚❚' : '▶'}</button>
-        <button class="tc-btn" on:click={() => (speedMul = Math.max(0.125, speedMul / 2))} aria-label="Slower" title="Slower">−</button>
-        <span class="tc-rate">1 s ≈ {fmtTimeRate(timeScale * speedMul)}</span>
-        <button class="tc-btn" on:click={() => (speedMul = Math.min(16, speedMul * 2))} aria-label="Faster" title="Faster">+</button>
+      <!-- Player time controls (Field Guide): collapsed to a play/pause icon; click to expand a rate
+           slider (arbitrary — just to see movement). The projector is GM-clock-driven instead. -->
+      <div class="time-controls" class:expanded={timeExpanded}>
+        {#if timeExpanded}
+          <button class="tc-btn" on:click={() => (isPlaying = !isPlaying)} aria-label={isPlaying ? 'Pause' : 'Play'} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '❚❚' : '▶'}</button>
+          <input class="tc-slider" type="range" min="0" max={RATE_STEPS.length - 1} step="1" bind:value={rateIndex} aria-label="Time rate" />
+          <span class="tc-rate">1 s ≈ {RATE_STEPS[rateIndex].label}</span>
+          <button class="tc-btn" on:click={() => (timeExpanded = false)} aria-label="Collapse" title="Collapse">×</button>
+        {:else}
+          <button class="tc-btn tc-icon" on:click={() => (timeExpanded = true)} aria-label="Time controls" title="Time controls">{isPlaying ? '❚❚' : '▶'}</button>
+        {/if}
       </div>
       {#if selectedBody}
         <aside class="inspector">
@@ -851,7 +865,9 @@
     cursor: pointer;
   }
   .tc-btn:hover { background: rgba(40, 60, 96, 0.9); }
-  .tc-rate { padding: 0 4px; white-space: nowrap; }
+  .tc-rate { padding: 0 4px; white-space: nowrap; min-width: 68px; }
+  .tc-slider { width: 130px; accent-color: #6aa0ff; }
+  .time-controls:not(.expanded) { padding: 0; background: none; border: none; }
   .holo-presetbar {
     position: absolute;
     bottom: 12px;
