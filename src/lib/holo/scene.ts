@@ -22,7 +22,7 @@ import { getPlanetTextureEquirect } from '$lib/rendering/planetTexture';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { rendersAsGiant } from '$lib/physics/makeup';
 import { getVisibleNodeIds } from '$lib/system/visibleNodes';
-import { EARTH_MASS_KG, AU_KM, G } from '$lib/constants';
+import { AU_KM, G } from '$lib/constants';
 import type { System } from '$lib/types';
 
 const HOLO_TINT = 0x39c6ff; // cyan hologram chrome (skins wire in later)
@@ -905,11 +905,26 @@ function getRockTextures(): THREE.CanvasTexture[] {
   return rockTextures;
 }
 
-// Physical debris density from belt mass (log 1e-5..1 M⊕ → 0..1) — matches the 2D disc's densityFrac.
-function beltDensityFrac(massKg: number | undefined): number {
-  if (!massKg || massKg <= 0) return 0.35;
-  const me = massKg / EARTH_MASS_KG;
-  return Math.max(0, Math.min(1, (Math.log(me) - Math.log(1e-5)) / (0 - Math.log(1e-5))));
+// Physical SURFACE mass-density (mass / annulus area) → a 0..1 fraction, log10(σ) over ~[-2.5, 7].
+// This is what makes a belt/ring read dense or faint: Saturn's rings (σ ~1e7 kg/m²) dominate; a
+// gossamer Jupiter ring (σ ~1e3) or a tenuous asteroid belt (σ ~1e-2) is sparse and dim.
+function surfaceDensityFrac(massKg: number, innerKm: number, outerKm: number): number {
+  if (!(massKg > 0) || !(outerKm > innerKm)) return 0.4;
+  const iM = innerKm * 1000;
+  const oM = outerKm * 1000;
+  const sigma = massKg / (Math.PI * (oM * oM - iM * iM));
+  return Math.max(0.08, Math.min(1, (Math.log10(sigma) + 2.5) / 9.5));
+}
+
+// Particle budget for a belt/ring. COUNT follows the object's MASS (log 1e20..1e24 kg → 0..1) — more
+// stuff, more chunks — so Saturn's massive rings get a LOT of particles while a faint Uranus/Jupiter
+// ring gets few (and, spread over its wide annulus, reads correctly THIN). OPACITY tracks the surface
+// density so a gossamer ring is also dim. The GM detail slider scales the whole budget.
+function particleBudget(massKg: number, innerKm: number, outerKm: number, quality: number): { count: number; opacity: number } {
+  const massFrac = massKg > 0 ? Math.max(0, Math.min(1, (Math.log10(massKg) - 20) / 4)) : 0.3;
+  const dens = surfaceDensityFrac(massKg, innerKm, outerKm);
+  const count = Math.max(40, Math.min(5000, Math.round(3300 * quality * (0.1 + massFrac * 1.4))));
+  return { count, opacity: 0.3 + dens * 0.6 };
 }
 
 // A belt: a scatter of irregular debris rocks around its (inclined) orbit, radius-jittered into a
@@ -921,14 +936,12 @@ function buildBeltBand(node: any, project: Projector, detail: number, timeMs: nu
   if (period === 0) return null;
   const t0 = node.orbit.t0 || 0;
   const hostMu = node.orbit.hostMu || 0; // GM of the belt's host (star / barycentre)
-  const dens = beltDensityFrac(node.massKg);
-  const physical = 120 + dens * 520; // relative richness (120 sparse .. 640 dense)
   const quality = 0.3 + Math.max(0, Math.min(1, detail)) * 1.7; // GM performance multiplier 0.3..2.0
-  const COUNT = Math.max(20, Math.min(1600, Math.round(physical * quality)));
-  // Radial band width from the real inner/outer radius, else a ±12% fallback.
-  let widthFrac = 0.12;
   const innerKm = node.radiusInnerKm;
   const outerKm = node.radiusOuterKm;
+  const { count: COUNT, opacity: beltOpacity } = particleBudget(node.massKg, innerKm, outerKm, quality);
+  // Radial band width from the real inner/outer radius, else a ±12% fallback.
+  let widthFrac = 0.12;
   if (innerKm > 0 && outerKm > innerKm) widthFrac = (outerKm - innerKm) / (innerKm + outerKm);
   const rocks = getRockTextures();
   const bucketPos: number[][] = rocks.map(() => []);
@@ -957,7 +970,7 @@ function buildBeltBand(node: any, project: Projector, detail: number, timeMs: nu
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     const mat = new THREE.PointsMaterial({
       map: rocks[i], color: tints[i], size: sizes[i], sizeAttenuation: true,
-      transparent: true, opacity: 0.85, alphaTest: 0.4, depthWrite: false
+      transparent: true, opacity: beltOpacity, alphaTest: 0.4, depthWrite: false
     });
     const points = new THREE.Points(geo, mat);
     group.add(points);
@@ -1085,8 +1098,9 @@ function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail
   outerScene = Math.min(outerScene, planetRenderedR * 4.5); // don't let a ring dominate
   if (!(outerScene > innerScene)) return null;
 
-  const massKg = parent.massKg || 0;
-  const count = Math.max(60, Math.round(250 + Math.max(0, Math.min(1, detail)) * 650));
+  const massKg = parent.massKg || 0; // planet mass — host for the particles' orbital speed
+  const quality = 0.3 + Math.max(0, Math.min(1, detail)) * 1.7;
+  const { count, opacity: ringOpacity } = particleBudget(node.massKg, node.radiusInnerKm, node.radiusOuterKm, quality);
   const radii = new Float32Array(count);
   const baseAng = new Float32Array(count);
   const omega = new Float32Array(count);
@@ -1106,7 +1120,7 @@ function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   const size = Math.max(0.008, planetRenderedR * 0.06);
-  const mat = new THREE.PointsMaterial({ map: getDotTexture(), color: 0xcdd6e2, size, sizeAttenuation: true, transparent: true, opacity: 0.8, depthWrite: false });
+  const mat = new THREE.PointsMaterial({ map: getDotTexture(), color: 0xcdd6e2, size, sizeAttenuation: true, transparent: true, opacity: ringOpacity, depthWrite: false });
   const points = new THREE.Points(geo, mat);
 
   const pivot = new THREE.Group();
