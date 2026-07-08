@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.16-beta - 8th Jul 2026
+
+* **Moon eclipses.** A moon now falls into shadow when its planet passes between it and the star — computed analytically (a cheap ray-to-star test against the planet, no heavy shadow maps), with a soft edge to the umbra. Most visible in the true-scale and projector views, where bodies sit at their real positions.
+
 ## v2.1.15-beta - 8th Jul 2026
 
 * **Body style control.** The look panel now lets you render worlds three ways — True colour (the procedural textured surfaces), Flat colour (solid apparent-colour spheres), or Holo tint (a monochrome blueprint look) — and it's saved with your preset. A new "Blueprint" starter shows off the tinted mode. The "Scale" slider is now labelled "Spread" (true scale ↔ readable spread) to be clearer about what it does.

@@ -67,6 +67,43 @@ interface BodyVisual {
   spinPeriodSec?: number; // sidereal rotation period; drives the texture turning
   tiltQuat?: THREE.Quaternion; // fixed axial-tilt rotation, composed with the live spin each frame
   isConstruct?: boolean; // icon sprite: fixed screen size, focus-driven size/dim states
+  occluderId?: string | null; // body whose shadow can eclipse this one (a moon's parent planet)
+  shadow?: { uStarPos: { value: THREE.Vector3 }; uOcc: { value: THREE.Vector4 }; uHasOcc: { value: number } };
+}
+
+// Analytic eclipse shadow: inject a ray–sphere occlusion test into a MeshStandardMaterial. For each
+// fragment, a ray to the star is tested against the occluder sphere (a moon's parent planet); a hit
+// darkens the direct light, with a soft penumbra from the occluder edge. Cheap (a few instructions),
+// no shadow map. Unique cache key per material so onBeforeCompile runs and binds its own uniforms.
+let eclipseMatSeq = 0;
+function applyEclipseShadow(mat: THREE.MeshStandardMaterial) {
+  const uStarPos = { value: new THREE.Vector3() };
+  const uOcc = { value: new THREE.Vector4() };
+  const uHasOcc = { value: 0 };
+  const cacheId = 'ecl' + eclipseMatSeq++;
+  mat.customProgramCacheKey = () => cacheId;
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uStarPos = uStarPos;
+    shader.uniforms.uOcc = uOcc;
+    shader.uniforms.uHasOcc = uHasOcc;
+    shader.vertexShader = 'varying vec3 vEclWorld;\n' + shader.vertexShader.replace(
+      '#include <project_vertex>',
+      '#include <project_vertex>\n  vEclWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;'
+    );
+    shader.fragmentShader = shader.fragmentShader
+      .replace('void main() {', 'varying vec3 vEclWorld;\nuniform vec3 uStarPos;\nuniform vec4 uOcc;\nuniform float uHasOcc;\nvoid main() {')
+      .replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n' +
+        'if (uHasOcc > 0.5) {\n' +
+        '  vec3 toStar = uStarPos - vEclWorld; float dStar = length(toStar); vec3 Ld = toStar / max(dStar, 1e-4);\n' +
+        '  vec3 oc = uOcc.xyz - vEclWorld; float tca = dot(oc, Ld);\n' +
+        '  if (tca > 0.0 && tca < dStar) {\n' +
+        '    float dd = sqrt(max(dot(oc, oc) - tca * tca, 0.0)); float rr = uOcc.w; float pen = 0.35 * rr + 0.015;\n' +
+        '    float sf = smoothstep(rr - pen, rr + pen, dd);\n' +
+        '    reflectedLight.directDiffuse *= sf; reflectedLight.directSpecular *= sf;\n' +
+        '  }\n' +
+        '}');
+  };
+  return { uStarPos, uOcc, uHasOcc };
 }
 
 // Construct icons: the 2D orrery's glyph vocabulary (triangle/circle/diamond/cross/square in the
@@ -204,6 +241,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // --- Dynamic content ---
   let currentSystem: System | null = null;
   let bodies: BodyVisual[] = [];
+  let bodyById = new Map<string, BodyVisual>();
   let starLights: { id: string; light: THREE.PointLight }[] = [];
   let starVisuals: { corona: THREE.Sprite; coronaScale: number; activity: number }[] = [];
   let rMax = 1; // largest heliocentric distance in the system (AU), for the compression normaliser
@@ -376,6 +414,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     contentGroup.clear();
     for (const b of bodies) b.label?.remove();
     bodies = [];
+    bodyById = new Map();
     starLights = [];
     starVisuals = [];
   }
@@ -422,6 +461,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const colorHex = safeColor(node);
 
       let mesh: THREE.Object3D;
+      let shadow: BodyVisual['shadow'];
       if (isStar) {
         const activity = Math.max(0, Math.min(1, (node.flareActivity ?? 0)));
         // Photosphere: an emissive (unlit) textured sphere — granulation + sunspots (spot count
@@ -472,6 +512,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             mat.color.set(colorHex);
           }
         }
+        // Moons can be eclipse-shadowed by their parent planet (analytic ray-sphere in the shader).
+        if (!systemLevel) shadow = applyEclipseShadow(mat);
         const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 24), mat);
         // Oblateness: flatten along the spin (local Y) axis for a fast rotator.
         const polF = oblatePolarFactor((node as any).oblateness);
@@ -493,8 +535,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // A ship mid-journey is positioned absolutely by the transit sampler — never apply the
       // satellite spread to it, or the spread would distort its transit path.
       const inTransit = isConstruct && (node.scheduled_journeys || []).length > 0;
-      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, satellite: !systemLevel && !inTransit, spinPeriodSec, tiltQuat, isConstruct });
+      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, satellite: !systemLevel && !inTransit, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow });
     }
+    bodyById = new Map(bodies.map((b) => [b.id, b]));
     visibleSet = getVisibleNodeIds(system, focusedId);
     updatePositions();
   }
@@ -584,6 +627,28 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
   }
 
+  // Feed each shadow-capable body its occluder (parent planet) sphere + the primary star position,
+  // in scene space, so the shader can do its ray–sphere eclipse test.
+  const occCenter = new THREE.Vector3();
+  function updateShadows() {
+    if (!starLights.length) return;
+    const starPos = starLights[0].light.position; // primary star (scene coords)
+    for (const b of bodies) {
+      if (!b.shadow) continue;
+      const occ = b.occluderId ? bodyById.get(b.occluderId) : undefined;
+      const geo = occ && (occ.mesh as any).geometry;
+      if (occ && geo && !occ.isConstruct) {
+        occCenter.copy(occ.mesh.position);
+        const rr = geo.parameters?.radius ?? 0.2;
+        b.shadow.uOcc.value.set(occCenter.x, occCenter.y, occCenter.z, rr);
+        b.shadow.uHasOcc.value = 1;
+        b.shadow.uStarPos.value.copy(starPos);
+      } else {
+        b.shadow.uHasOcc.value = 0;
+      }
+    }
+  }
+
   function loop() {
     if (disposed) return;
     const nowSec = filterClock.getElapsedTime();
@@ -591,6 +656,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateSpin();
     updateStarFx(nowSec);
     updateConstructs();
+    updateShadows();
     controls.update();
     if (filterPass) {
       filterPass.uniforms.time.value = nowSec; // drive scanlines/flicker
