@@ -22,7 +22,7 @@ import { getPlanetTextureEquirect } from '$lib/rendering/planetTexture';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { rendersAsGiant } from '$lib/physics/makeup';
 import { getVisibleNodeIds } from '$lib/system/visibleNodes';
-import { EARTH_MASS_KG, AU_KM } from '$lib/constants';
+import { EARTH_MASS_KG, AU_KM, G } from '$lib/constants';
 import type { System } from '$lib/types';
 
 const HOLO_TINT = 0x39c6ff; // cyan hologram chrome (skins wire in later)
@@ -72,6 +72,19 @@ interface BodyVisual {
   isConstruct?: boolean; // icon sprite: fixed screen size, focus-driven size/dim states
   occluderId?: string | null; // body whose shadow can eclipse this one (a moon's parent planet)
   shadow?: { uStarPos: { value: THREE.Vector3 }; uOcc: { value: THREE.Vector4 }; uHasOcc: { value: number } };
+}
+
+// A planetary ring: a particle disc in the planet's tilted equatorial plane, spinning DIFFERENTIALLY
+// (inner particles orbit faster — that's what makes the rotation visible on an otherwise symmetric
+// ring). The pivot carries the tilt + tracks the planet; the particles advance in the local plane.
+interface RingVisual {
+  pivot: THREE.Group;
+  points: THREE.Points;
+  parentId: string;
+  radii: Float32Array; // per-particle radius in scene units
+  baseAng: Float32Array; // per-particle starting angle
+  omega: Float32Array; // per-particle angular rate (rad per sim-second) — Keplerian, inner faster
+  t0Sec: number; // sim time at build (seconds)
 }
 
 // Analytic eclipse shadow: inject a ray–sphere occlusion test into a MeshStandardMaterial. For each
@@ -275,6 +288,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let currentSystem: System | null = null;
   let bodies: BodyVisual[] = [];
   let bodyById = new Map<string, BodyVisual>();
+  let ringVisuals: RingVisual[] = [];
   let starLights: { id: string; light: THREE.PointLight }[] = [];
   let starVisuals: { corona: THREE.Sprite; coronaScale: number; activity: number }[] = [];
   let rMax = 1; // largest heliocentric distance in the system (AU), for the compression normaliser
@@ -449,6 +463,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const b of bodies) b.label?.remove();
     bodies = [];
     bodyById = new Map();
+    ringVisuals = [];
     starLights = [];
     starVisuals = [];
   }
@@ -483,8 +498,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         if (band) contentGroup.add(band);
         continue;
       }
-      // Planetary rings are drawn with their planet later; don't render the node as a sphere.
-      if (node.roleHint === 'ring') continue;
+      // Planetary rings: a differentially-spinning particle disc around the parent planet.
+      if (node.roleHint === 'ring') {
+        const parent = nodesById.get(node.parentId);
+        if (parent) {
+          const rv = buildPlanetRing(node, parent, bodyRadiusScene(parent, isSystemLevel(parent)), beltDetail, timeMs);
+          if (rv) { contentGroup.add(rv.pivot); ringVisuals.push(rv); }
+        }
+        continue;
+      }
 
       const systemLevel = isSystemLevel(node);
 
@@ -692,6 +714,25 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
   }
 
+  // Planetary rings: track the planet and advance each particle by its Keplerian rate (inner faster).
+  function updateRings() {
+    const t = timeMs / 1000;
+    for (const rv of ringVisuals) {
+      const parent = bodyById.get(rv.parentId);
+      if (parent) rv.pivot.position.copy(parent.mesh.position);
+      const dt = t - rv.t0Sec;
+      const attr = rv.points.geometry.getAttribute('position') as THREE.BufferAttribute;
+      const arr = attr.array as Float32Array;
+      for (let i = 0; i < rv.radii.length; i++) {
+        const ang = rv.baseAng[i] + rv.omega[i] * dt;
+        const r = rv.radii[i];
+        arr[3 * i] = r * Math.cos(ang);
+        arr[3 * i + 2] = r * Math.sin(ang);
+      }
+      attr.needsUpdate = true;
+    }
+  }
+
   function loop() {
     if (disposed) return;
     const nowSec = filterClock.getElapsedTime();
@@ -700,6 +741,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateStarFx(nowSec);
     updateConstructs();
     updateShadows();
+    updateRings();
     controls.update();
     if (filterPass) {
       filterPass.uniforms.time.value = nowSec; // drive scanlines/flicker
@@ -956,6 +998,77 @@ function makeStarTexture(colorHex: number, activity: number, seedStr: string): H
   }
   ctx.globalAlpha = 1;
   return c;
+}
+
+// A soft round dot for ring particles (icy grains), cached.
+let dotTexture: THREE.CanvasTexture | null = null;
+function getDotTexture(): THREE.CanvasTexture {
+  if (dotTexture) return dotTexture;
+  const S = 32;
+  const c = document.createElement('canvas');
+  c.width = c.height = S;
+  const ctx = c.getContext('2d')!;
+  const g = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.5, 'rgba(255,255,255,0.75)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, S, S);
+  dotTexture = new THREE.CanvasTexture(c);
+  dotTexture.colorSpace = THREE.SRGBColorSpace;
+  return dotTexture;
+}
+
+// A planetary ring as a particle disc in the planet's equatorial plane. Radii from the ring's real
+// inner/outer (relative to the planet's rendered size), particle count from the GM detail knob, and
+// per-particle Keplerian angular rate so it spins DIFFERENTIALLY (inner faster) — visible motion on
+// an otherwise symmetric ring. Positions are advanced each frame in updateRings.
+function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail: number, timeMs: number): RingVisual | null {
+  const planetKm = parent.physical_parameters?.radiusKm || parent.radiusKm || 60000;
+  let innerScene: number;
+  let outerScene: number;
+  if (node.radiusInnerKm > 0 && node.radiusOuterKm > node.radiusInnerKm) {
+    innerScene = (node.radiusInnerKm / planetKm) * planetRenderedR;
+    outerScene = (node.radiusOuterKm / planetKm) * planetRenderedR;
+  } else {
+    innerScene = planetRenderedR * 1.35;
+    outerScene = planetRenderedR * 2.3;
+  }
+  innerScene = Math.max(innerScene, planetRenderedR * 1.08); // clear the planet surface
+  outerScene = Math.min(outerScene, planetRenderedR * 4.5); // don't let a ring dominate
+  if (!(outerScene > innerScene)) return null;
+
+  const massKg = parent.massKg || 0;
+  const count = Math.max(60, Math.round(250 + Math.max(0, Math.min(1, detail)) * 650));
+  const radii = new Float32Array(count);
+  const baseAng = new Float32Array(count);
+  const omega = new Float32Array(count);
+  const pos = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    let rn = Math.random();
+    if (rn > 0.46 && rn < 0.54) rn = Math.random() * 0.4; // thin Cassini-style gap
+    const r = innerScene + rn * (outerScene - innerScene);
+    const ang = Math.random() * Math.PI * 2;
+    radii[i] = r;
+    baseAng[i] = ang;
+    const rM = (r / planetRenderedR) * planetKm * 1000; // this particle's physical radius (m)
+    omega[i] = massKg > 0 && rM > 0 ? Math.sqrt((G * massKg) / (rM * rM * rM)) : 0.4 * Math.pow(innerScene / r, 1.5);
+    pos[3 * i] = r * Math.cos(ang);
+    pos[3 * i + 2] = r * Math.sin(ang);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const size = Math.max(0.008, planetRenderedR * 0.06);
+  const mat = new THREE.PointsMaterial({ map: getDotTexture(), color: 0xcdd6e2, size, sizeAttenuation: true, transparent: true, opacity: 0.8, depthWrite: false });
+  const points = new THREE.Points(geo, mat);
+
+  const pivot = new THREE.Group();
+  // Ring plane = planet equator: lay the particles' local +Y normal along the planet's spin axis
+  // (tilt = rotation about Z by the axial tilt), matching how the planet sphere is tilted.
+  const tiltRad = ((parent.axial_tilt_deg || 0) * Math.PI) / 180;
+  pivot.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), tiltRad);
+  pivot.add(points);
+  return { pivot, points, parentId: parent.id, radii, baseAng, omega, t0Sec: timeMs / 1000 };
 }
 
 function buildPolarGrid(): THREE.Group {

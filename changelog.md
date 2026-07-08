@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.23-beta - 8th Jul 2026
+
+* **Ringed planets have rings.** Saturn, Jupiter, Uranus and Neptune now wear a particle ring disc in their tilted equatorial plane, sized from the ring's real inner and outer radius. The rings spin the way real rings do — differentially, with the inner edge orbiting faster than the outer — so as time runs you can watch them turn and shear. Particle count follows the same "belt detail" performance dial.
+
 ## v2.1.22-beta - 8th Jul 2026
 
 * **Time slider tidies itself away.** The expanded time-rate slider now closes on its own as soon as you interact with anything else, instead of needing a close button.
