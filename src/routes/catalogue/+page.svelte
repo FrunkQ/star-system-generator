@@ -157,6 +157,11 @@
   // Interactive-tier selection.
   let focusedBodyId: string | null = null;
   let selectedBody: CelestialBody | null = null;
+  // Phone: the body panel opens collapsed (name + type) and expands on a tap of the title.
+  // Reset to collapsed whenever the selected body changes so each new tap starts small.
+  let bodyExpanded = false;
+  let _lastBodyId: string | null = null;
+  $: if (selectedBody?.id !== _lastBodyId) { _lastBodyId = selectedBody?.id ?? null; bodyExpanded = false; }
 
   // --- Console navigation: a clickable star/planet list, with moons + constructs once a
   //     planet is focused. Jumping also focuses the visualizer on that body. ---
@@ -583,23 +588,31 @@
         {/if}
       </div>
       {#if selectedBody}
-        <aside class="inspector">
+        <aside class="inspector" class:expanded={bodyExpanded}>
           <div class="insp-head">
-            <h2>{selectedBody.name}</h2>
+            <!-- On phones the panel opens to just name + type; tapping the title reveals the
+                 picture and stats, so you can keep clicking around the system without a big
+                 sheet swallowing the screen. On desktop the detail is always shown. -->
+            <button class="insp-title" on:click={() => (bodyExpanded = !bodyExpanded)} aria-expanded={bodyExpanded} title="Show details">
+              <h2>{selectedBody.name}</h2>
+              <span class="insp-chevron" aria-hidden="true">▾</span>
+            </button>
             <button class="insp-close" on:click={() => (selectedBody = null)} aria-label="Close">×</button>
           </div>
           <div class="insp-sub">{(selectedBody.roleHint || 'body').toUpperCase()}{selectedBody.kind !== 'construct' && selectedBody.class ? ' · ' + selectedBody.class : ''}</div>
-          {#if selectedBody.image?.url}
-            <img class="insp-photo" src={selectedBody.image.url} alt={(selectedBody.kind === 'construct' ? 'Image of ' : "Artist's impression of ") + selectedBody.name} />
-          {/if}
-          <dl class="insp-grid">
-            {#each bodyFacts(selectedBody, units, tempUnit) as f}
-              <dt>{f.label}</dt><dd>{f.value}</dd>
-            {/each}
-          </dl>
-          {#if selectedBody.description}
-            <p class="insp-desc">{selectedBody.description}</p>
-          {/if}
+          <div class="insp-detail">
+            {#if selectedBody.image?.url}
+              <img class="insp-photo" src={selectedBody.image.url} alt={(selectedBody.kind === 'construct' ? 'Image of ' : "Artist's impression of ") + selectedBody.name} />
+            {/if}
+            <dl class="insp-grid">
+              {#each bodyFacts(selectedBody, units, tempUnit) as f}
+                <dt>{f.label}</dt><dd>{f.value}</dd>
+              {/each}
+            </dl>
+            {#if selectedBody.description}
+              <p class="insp-desc">{selectedBody.description}</p>
+            {/if}
+          </div>
         </aside>
       {:else}
         <div class="console-hint">Tap a world to read its file.</div>
@@ -904,8 +917,17 @@
     .inspector { left: auto; width: 340px; top: 0; bottom: 0; max-height: none; border-top: none; border-left: 1px solid rgba(120, 180, 255, 0.35); }
   }
   .insp-head { display: flex; align-items: baseline; gap: 10px; }
+  .insp-title { display: flex; align-items: baseline; gap: 8px; background: none; border: none; color: inherit; padding: 0; cursor: pointer; text-align: left; font: inherit; }
   .insp-head h2 { margin: 0; font-size: 20px; }
+  .insp-chevron { display: none; font-size: 13px; opacity: 0.6; transition: transform 0.15s ease; }
+  .inspector.expanded .insp-chevron { transform: rotate(180deg); }
   .insp-close { margin-left: auto; background: none; border: none; color: #9fb0c8; font-size: 22px; line-height: 1; cursor: pointer; }
+  /* Phone: collapse to name + type; the title toggles the rest. Desktop always shows detail. */
+  @media (max-width: 719px) {
+    .insp-chevron { display: inline; }
+    .inspector:not(.expanded) .insp-sub { margin-bottom: 0; }
+    .inspector:not(.expanded) .insp-detail { display: none; }
+  }
   .insp-sub { font-size: 11px; letter-spacing: 0.08em; opacity: 0.6; margin: 2px 0 12px; }
   .insp-photo { width: 100%; height: auto; border-radius: 6px; display: block; margin: 0 0 12px; }
   .insp-grid { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; margin: 0; font-size: 13px; }
