@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.24-beta - 8th Jul 2026
+
+* **Belts orbit now too.** Asteroid and Kuiper belt debris each rock advances at its true heliocentric orbital rate, so a belt slowly revolves (inner rocks faster) rather than sitting frozen. Because belts are so far out, the motion only shows once you wind time up to years-per-second — but it's there, and consistent with the rings and planets. Cheap: just a per-particle position update.
+
 ## v2.1.23-beta - 8th Jul 2026
 
 * **Ringed planets have rings.** Saturn, Jupiter, Uranus and Neptune now wear a particle ring disc in their tilted equatorial plane, sized from the ring's real inner and outer radius. The rings spin the way real rings do — differentially, with the inner edge orbiting faster than the outer — so as time runs you can watch them turn and shear. Particle count follows the same "belt detail" performance dial.

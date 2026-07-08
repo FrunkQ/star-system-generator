@@ -87,6 +87,14 @@ interface RingVisual {
   t0Sec: number; // sim time at build (seconds)
 }
 
+// A belt orbits the system centre (origin). Each rock advances around the vertical axis at its
+// heliocentric Keplerian rate (inner rocks faster). Rocks are split across texture buckets.
+interface BeltVisual {
+  group: THREE.Group;
+  buckets: { points: THREE.Points; basePos: Float32Array; omega: Float32Array }[];
+  t0Sec: number;
+}
+
 // Analytic eclipse shadow: inject a ray–sphere occlusion test into a MeshStandardMaterial. For each
 // fragment, a ray to the star is tested against the occluder sphere (a moon's parent planet); a hit
 // darkens the direct light, with a soft penumbra from the occluder edge. Cheap (a few instructions),
@@ -289,6 +297,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let bodies: BodyVisual[] = [];
   let bodyById = new Map<string, BodyVisual>();
   let ringVisuals: RingVisual[] = [];
+  let beltVisuals: BeltVisual[] = [];
   let starLights: { id: string; light: THREE.PointLight }[] = [];
   let starVisuals: { corona: THREE.Sprite; coronaScale: number; activity: number }[] = [];
   let rMax = 1; // largest heliocentric distance in the system (AU), for the compression normaliser
@@ -464,6 +473,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     bodies = [];
     bodyById = new Map();
     ringVisuals = [];
+    beltVisuals = [];
     starLights = [];
     starVisuals = [];
   }
@@ -494,8 +504,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const node of system.nodes as any[]) {
       // Belts: a debris band on their (compressed) orbit, never a lone sphere.
       if (isBelt(node)) {
-        const band = buildBeltBand(node, positionToScene, beltDetail);
-        if (band) contentGroup.add(band);
+        const belt = buildBeltBand(node, positionToScene, beltDetail, timeMs);
+        if (belt) { contentGroup.add(belt.group); beltVisuals.push(belt); }
         continue;
       }
       // Planetary rings: a differentially-spinning particle disc around the parent planet.
@@ -733,6 +743,30 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
   }
 
+  // Belts orbit the system centre (origin): rotate each rock's base position about the vertical axis
+  // by its Keplerian rate. Absolute (base × total angle) so there's no drift.
+  function updateBelts() {
+    const t = timeMs / 1000;
+    for (const bv of beltVisuals) {
+      const dt = t - bv.t0Sec;
+      for (const bk of bv.buckets) {
+        const attr = bk.points.geometry.getAttribute('position') as THREE.BufferAttribute;
+        const arr = attr.array as Float32Array;
+        const base = bk.basePos;
+        for (let i = 0; i < bk.omega.length; i++) {
+          const ang = bk.omega[i] * dt;
+          const c = Math.cos(ang);
+          const s = Math.sin(ang);
+          const x0 = base[3 * i];
+          const z0 = base[3 * i + 2];
+          arr[3 * i] = x0 * c - z0 * s;
+          arr[3 * i + 2] = x0 * s + z0 * c;
+        }
+        attr.needsUpdate = true;
+      }
+    }
+  }
+
   function loop() {
     if (disposed) return;
     const nowSec = filterClock.getElapsedTime();
@@ -742,6 +776,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateConstructs();
     updateShadows();
     updateRings();
+    updateBelts();
     controls.update();
     if (filterPass) {
       filterPass.uniforms.time.value = nowSec; // drive scanlines/flicker
@@ -881,10 +916,11 @@ function beltDensityFrac(massKg: number | undefined): number {
 // band. Rock COUNT = the belt's physical density (from mass) × the GM `detail` quality knob; the
 // radial spread uses the belt's real inner/outer radius. Rocks are split across a few silhouette
 // textures at varied sizes/tints so they read as chaotic rubble. Still cheap — point clouds.
-function buildBeltBand(node: any, project: Projector, detail: number): THREE.Object3D | null {
+function buildBeltBand(node: any, project: Projector, detail: number, timeMs: number): BeltVisual | null {
   const period = orbitPeriodMs(node.orbit);
   if (period === 0) return null;
   const t0 = node.orbit.t0 || 0;
+  const hostMu = node.orbit.hostMu || 0; // GM of the belt's host (star / barycentre)
   const dens = beltDensityFrac(node.massKg);
   const physical = 120 + dens * 520; // relative richness (120 sparse .. 640 dense)
   const quality = 0.3 + Math.max(0, Math.min(1, detail)) * 1.7; // GM performance multiplier 0.3..2.0
@@ -895,28 +931,39 @@ function buildBeltBand(node: any, project: Projector, detail: number): THREE.Obj
   const outerKm = node.radiusOuterKm;
   if (innerKm > 0 && outerKm > innerKm) widthFrac = (outerKm - innerKm) / (innerKm + outerKm);
   const rocks = getRockTextures();
-  const buckets: number[][] = rocks.map(() => []);
+  const bucketPos: number[][] = rocks.map(() => []);
+  const bucketOmega: number[][] = rocks.map(() => []);
   const v = new THREE.Vector3();
   for (let i = 0; i < COUNT; i++) {
     const jitter = 1 + (Math.random() - 0.5) * 2 * widthFrac;
     const r = propagateState3D(node, t0 + Math.random() * period).r;
-    project({ x: r.x * jitter, y: r.y * jitter, z: r.z * jitter }, v);
-    buckets[(Math.random() * rocks.length) | 0].push(v.x, v.y, v.z);
+    const jx = r.x * jitter, jy = r.y * jitter, jz = r.z * jitter;
+    project({ x: jx, y: jy, z: jz }, v);
+    // Each rock advances at its own heliocentric Keplerian rate (inner rocks faster).
+    const rM = Math.hypot(jx, jy, jz) * AU_M;
+    const om = hostMu > 0 && rM > 0 ? Math.sqrt(hostMu / (rM * rM * rM)) : 0;
+    const b = (Math.random() * rocks.length) | 0;
+    bucketPos[b].push(v.x, v.y, v.z);
+    bucketOmega[b].push(om);
   }
   const sizes = [0.05, 0.08, 0.11, 0.065];
   const tints = [0x9aa6b2, 0xb0a08c, 0x8a939e, 0xa89a86]; // grey/brown rubble
   const group = new THREE.Group();
-  buckets.forEach((arr, i) => {
+  const buckets: BeltVisual['buckets'] = [];
+  bucketPos.forEach((arr, i) => {
     if (!arr.length) return;
+    const pos = new Float32Array(arr);
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     const mat = new THREE.PointsMaterial({
       map: rocks[i], color: tints[i], size: sizes[i], sizeAttenuation: true,
       transparent: true, opacity: 0.85, alphaTest: 0.4, depthWrite: false
     });
-    group.add(new THREE.Points(geo, mat));
+    const points = new THREE.Points(geo, mat);
+    group.add(points);
+    buckets.push({ points, basePos: new Float32Array(pos), omega: new Float32Array(bucketOmega[i]) });
   });
-  return group;
+  return { group, buckets, t0Sec: timeMs / 1000 };
 }
 
 function makeLabel(name: string, layer?: HTMLElement): HTMLElement | undefined {
