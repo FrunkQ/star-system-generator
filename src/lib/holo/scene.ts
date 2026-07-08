@@ -93,6 +93,8 @@ interface BeltVisual {
   group: THREE.Group;
   buckets: { points: THREE.Points; basePos: Float32Array; omega: Float32Array }[];
   t0Sec: number;
+  id: string; // node id, so the belt is focusable from the selector like a body
+  outerScene: number; // outermost rock's horizontal radius (scene units) — used to frame the whole ring
 }
 
 // Analytic eclipse shadow: inject a ray–sphere occlusion test into a MeshStandardMaterial. For each
@@ -415,6 +417,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // stays in view as it orbits, without fighting the user's own rotate/zoom.
   function driveFocus() {
     const b = !framingWhole && focusedId ? bodies.find((x) => x.id === focusedId) : undefined;
+    // A focused belt isn't a body — it's an annulus about the star, framed specially below.
+    const beltFocus = !framingWhole && focusedId && !b ? beltVisuals.find((x) => x.id === focusedId) : undefined;
     let dist: number;
     if (b) {
       const bp = b.mesh.position;
@@ -428,6 +432,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       desiredTarget.set(0, 0, 0);
       outward.set(0, 0, 1); // azimuth reference for the whole-system framing
       dist = GRID_RADIUS * 1.5;
+    } else if (focusedId && beltFocus) {
+      // A belt/ring-of-debris is centred on the star: keep the star centred and pull back so the
+      // whole annulus fits — same overhead-at-angle shot, framed to the ring rather than one body.
+      desiredTarget.set(0, 0, 0);
+      outward.set(0, 0, 1);
+      dist = Math.max(GRID_RADIUS * 0.4, beltFocus.outerScene * 1.9);
     } else {
       return; // no focus, per-body framing → leave the camera where the user put it
     }
@@ -947,11 +957,14 @@ function buildBeltBand(node: any, project: Projector, detail: number, timeMs: nu
   const bucketPos: number[][] = rocks.map(() => []);
   const bucketOmega: number[][] = rocks.map(() => []);
   const v = new THREE.Vector3();
+  let outerScene = 0; // outermost rock's horizontal radius, for focus framing
   for (let i = 0; i < COUNT; i++) {
     const jitter = 1 + (Math.random() - 0.5) * 2 * widthFrac;
     const r = propagateState3D(node, t0 + Math.random() * period).r;
     const jx = r.x * jitter, jy = r.y * jitter, jz = r.z * jitter;
     project({ x: jx, y: jy, z: jz }, v);
+    const hr = Math.hypot(v.x, v.z);
+    if (hr > outerScene) outerScene = hr;
     // Each rock advances at its own heliocentric Keplerian rate (inner rocks faster).
     const rM = Math.hypot(jx, jy, jz) * AU_M;
     const om = hostMu > 0 && rM > 0 ? Math.sqrt(hostMu / (rM * rM * rM)) : 0;
@@ -976,7 +989,7 @@ function buildBeltBand(node: any, project: Projector, detail: number, timeMs: nu
     group.add(points);
     buckets.push({ points, basePos: new Float32Array(pos), omega: new Float32Array(bucketOmega[i]) });
   });
-  return { group, buckets, t0Sec: timeMs / 1000 };
+  return { group, buckets, t0Sec: timeMs / 1000, id: node.id, outerScene };
 }
 
 function makeLabel(name: string, layer?: HTMLElement): HTMLElement | undefined {

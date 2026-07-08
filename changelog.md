@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.26-beta - 8th Jul 2026
+
+* **Belts can be framed from the selector.** Tapping a belt (Main Belt, Kuiper Belt) in the body list now frames it: the camera keeps the star centred at the preset view angle and pulls back so the whole annulus fits — the inner belt zooms to the inner system, the Kuiper belt pulls right out to the edge. Belts were previously un-framable because they're a ring about the star rather than a single body.
+
 ## v2.1.25-beta - 8th Jul 2026
 
 * **Belts and rings now read their density from the data.** A belt or ring's particle count follows its actual mass, and its brightness follows its surface density — so Saturn's massive rings are dense and bright, while a gossamer Jupiter or Uranus ring is sparse and faint (Uranus, spread over its wide annulus, reads correctly thin). The "belt detail" dial is now a density control that scales the whole budget, so a big belt gets proportionally more rocks than a small ring rather than a flat count.
