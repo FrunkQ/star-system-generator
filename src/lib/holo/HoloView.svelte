@@ -16,15 +16,20 @@
 
   let container: HTMLDivElement;
   let canvas: HTMLCanvasElement;
+  let labelLayer: HTMLDivElement;
   let controller: HoloController | null = null;
   let ro: ResizeObserver | null = null;
+
+  export function resetView() {
+    controller?.resetView();
+  }
 
   onMount(() => {
     let cancelled = false;
     (async () => {
       const { createHoloScene } = await import('$lib/holo/scene');
       if (cancelled || !canvas) return;
-      controller = createHoloScene(canvas, { onSelect: (id) => dispatch('focus', id) });
+      controller = createHoloScene(canvas, { onSelect: (id) => dispatch('focus', id), labelLayer });
       controller.setSystem(system);
       controller.setTime(currentTime);
       controller.focusBody(focusedBodyId);
@@ -53,6 +58,7 @@
 
 <div class="holo-root" bind:this={container}>
   <canvas bind:this={canvas}></canvas>
+  <div class="holo-labels" bind:this={labelLayer}></div>
 </div>
 
 <style>
@@ -68,5 +74,11 @@
     width: 100%;
     height: 100%;
     touch-action: none; /* let OrbitControls own pinch/drag */
+  }
+  .holo-labels {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none; /* labels never intercept camera gestures */
   }
 </style>

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.5-beta - 8th Jul 2026
+
+* **Holo Table reads properly now.** Distances use a log "toytown" compression so a packed system like Sol spreads across the grid instead of collapsing into a central blob (this will become a GM slider). Asteroid and Kuiper belts render as debris rings rather than a single stray ball; moons fan out around their planet so a moon system is legible; and each planet carries a floating name label (moons stay unlabelled at this zoom to avoid clutter — they'll name themselves when you focus in).
+
 ## v2.1.4-beta - 8th Jul 2026
 
 * **Holo Table is now interactive.** Tap a world in the 3D view — or pick it from the body list — and the camera eases in to frame it from just above, looking back toward the star, while its file opens alongside. Selecting a body always opens its details now, in the hologram just as in the flat console.
