@@ -13,6 +13,7 @@
   import { bodyFacts } from '$lib/catalogue/bodyFacts';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import HoloView from '$lib/holo/HoloView.svelte';
+  import BodyPicker from '$lib/components/BodyPicker.svelte';
   import CRTOverlay from '$lib/components/CRTOverlay.svelte';
   import { crtControls, CRT_DEFAULTS } from '$lib/catalogue/crtControls';
   import { AU_KM, G } from '$lib/constants';
@@ -558,20 +559,17 @@
           />
         {/if}
       {/if}
-      <!-- Jump list: stars + planets; the focused planet unfolds its moons/constructs. -->
-      <nav class="console-nav" aria-label="System bodies">
-        {#each consoleStars as star (star.id)}
-          <button class="nav-item star" class:active={focusedBodyId === star.id} on:click={() => jumpTo(star.id)}>★ {star.name}</button>
-          {#each consoleNavOf(star.id) as p (p.id)}
-            <button class="nav-item" class:active={focusedBodyId === p.id} on:click={() => jumpTo(p.id)}>{p.icon} {p.label}</button>
-            {#if expandedPlanetId === p.id}
-              {#each expandedChildren as c (c.id)}
-                <button class="nav-item sub" class:active={focusedBodyId === c.id} on:click={() => jumpTo(c.id)}>{c.kind === 'construct' ? '◆' : '○'} {c.name}</button>
-              {/each}
-            {/if}
-          {/each}
-        {/each}
-      </nav>
+      <!-- Body selector: the same compact command-strip picker the main app uses (chip + search +
+           category drill-in), so it's tiny on mobile and needs no new learning. Replaces the old
+           full-height jump list. -->
+      {#if displaySystem}
+        <BodyPicker
+          nodes={displaySystem.nodes}
+          focusedId={focusedBodyId}
+          emptyLabel="Bodies"
+          on:select={(e) => jumpTo(e.detail)}
+        />
+      {/if}
       <!-- Adaptive clock read-out: the fastest body in view does ~1 orbit per 2 s. -->
       <!-- Player time controls (Field Guide): collapsed to a play/pause icon; click to expand a rate
            slider (arbitrary — just to see movement). The projector is GM-clock-driven instead. -->
@@ -805,43 +803,6 @@
 
   /* --- hi-tech console tier --- */
   .console-stage { flex: 1; position: relative; min-height: 0; }
-  .console-nav {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    z-index: 20;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    max-height: calc(100% - 70px);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    background: rgba(8, 11, 18, 0.78);
-    border: 1px solid rgba(120, 180, 255, 0.3);
-    border-radius: 8px;
-    padding: 6px;
-    min-width: 130px;
-    max-width: 190px;
-    font-family: system-ui, sans-serif;
-  }
-  .nav-item {
-    text-align: left;
-    background: transparent;
-    color: #cfd6e4;
-    border: none;
-    border-radius: 5px;
-    padding: 4px 8px;
-    font: inherit;
-    font-size: 12px;
-    cursor: pointer;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .nav-item:hover { background: rgba(120, 180, 255, 0.14); }
-  .nav-item.active { background: rgba(120, 180, 255, 0.26); color: #fff; }
-  .nav-item.star { font-weight: 700; }
-  .nav-item.sub { padding-left: 22px; opacity: 0.9; font-size: 11.5px; }
   .time-controls {
     position: absolute;
     bottom: 12px;

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.29-beta - 8th Jul 2026
+
+* **Field Guide body selector is now the app's own picker.** The holo/console body list was a full-height column that ate half a phone screen. It's been replaced with the same compact command-strip picker the main app uses — a chip + search + category drill-in (Stars / Planets / Moons / Belts / Rings / …) — so it's tiny, floats out of the way, and works exactly like the rest of the app. Belts are pickable from it too.
+
 ## v2.1.28-beta - 8th Jul 2026
 
 * **Belts are visible again.** Asteroid and Kuiper belts were rendering but so faint (a tenuous surface density plus tiny attenuated rocks) they washed out to nothing at system scale. Belts now read as a clear dust band — larger, brighter rocks with a readable opacity floor — while their real density is still carried by the rock count (so the Kuiper belt is richer than the Main Belt).
