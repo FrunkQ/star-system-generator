@@ -21,6 +21,7 @@
     controller?.setFilter(s.filter);
     controller?.setFraming({ angleDeg: s.angleDeg, whole: s.whole });
     controller?.setSkybox(s.skybox);
+    controller?.setBackground(s.background);
     controller?.setCompression(s.compression);
     controller?.setBeltDetail(s.beltDetail);
     controller?.setBodyStyle(s.bodyStyle);

@@ -512,6 +512,14 @@
               <label>Belt detail <span class="hp-val">{Math.round(holoStyle.beltDetail * 100)}%</span>
                 <input type="range" min="0" max="1" step="0.05" bind:value={holoStyle.beltDetail} />
               </label>
+              <label>Background
+                <select bind:value={holoStyle.background}>
+                  <option value="space">Space</option>
+                  <option value="green">Greenscreen</option>
+                  <option value="blue">Bluescreen</option>
+                  <option value="black">Black</option>
+                </select>
+              </label>
               <label class="hp-check"><input type="checkbox" bind:checked={holoStyle.whole} /> Frame whole system</label>
               <label class="hp-check"><input type="checkbox" bind:checked={holoStyle.skybox} /> Starfield</label>
               <button class="hp-save" on:click={saveHoloStyleAsPreset}>Save as preset…</button>

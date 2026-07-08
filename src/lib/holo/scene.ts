@@ -41,6 +41,7 @@ export interface HoloController {
   // system rather than the focused body. overhead + whole = the projector's top-down plan view.
   setFraming(opts: { angleDeg?: number; whole?: boolean }): void;
   setSkybox(on: boolean): void;
+  setBackground(bg: string): void; // 'space' | 'green' | 'blue' | 'black' (greenscreen for OBS)
   setCompression(v: number): void; // toytown level 0 (true scale) .. 1 (fully compressed)
   setBeltDetail(v: number): void; // GM belt particle-budget quality 0..1 (performance)
   setBodyStyle(mode: 'textured' | 'flat' | 'tint'): void; // planet/moon surface look
@@ -167,11 +168,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const grid = buildPolarGrid();
   scene.add(grid);
 
-  // Background starfield (a static random field; a GM-selectable skybox slot comes later).
+  // Background: 'space' (dark, starfield-friendly) or a flat chroma-key colour for the projector's
+  // greenscreen (OBS). Starfield only shows over space (chroma keys need a clean flat background).
+  const BG_COLORS: Record<string, number> = { space: 0x05070c, green: 0x00b140, blue: 0x0047bb, black: 0x000000 };
+  let skyboxOn = opts.skybox !== false;
+  let background = 'space';
   const starfield = buildStarfield();
-  starfield.visible = opts.skybox !== false;
   scene.add(starfield);
-  function setSkybox(on: boolean) { starfield.visible = on; }
+  function applyStarfield() { starfield.visible = skyboxOn && background === 'space'; }
+  applyStarfield();
+  function setSkybox(on: boolean) { skyboxOn = on; applyStarfield(); }
+  function setBackground(bg: string) {
+    background = bg;
+    renderer.setClearColor(BG_COLORS[bg] ?? BG_COLORS.space, 1);
+    applyStarfield();
+  }
 
   // Toytown compression 0..1. Body positions read `compression` live, but orbit rings and belt bands
   // bake it at build time, so a change rebuilds the content (focus preserved). Call on slider RELEASE.
@@ -699,7 +710,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, setFraming, setSkybox, setCompression, setBeltDetail, setBodyStyle, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----

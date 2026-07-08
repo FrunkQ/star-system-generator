@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.17-beta - 8th Jul 2026
+
+* **Greenscreen background for streaming.** The holo view can now sit on a flat chroma-key background (green, blue or black) instead of space, so you can key it out in OBS and float the hologram over your stream. It's in the look panel and there's a ready-made "Greenscreen (OBS)" preset (top-down, true scale, green). First piece of the coming projector mode.
+
 ## v2.1.16-beta - 8th Jul 2026
 
 * **Moon eclipses.** A moon now falls into shadow when its planet passes between it and the star — computed analytically (a cheap ray-to-star test against the planet, no heavy shadow maps), with a soft edge to the umbra. Most visible in the true-scale and projector views, where bodies sit at their real positions.
