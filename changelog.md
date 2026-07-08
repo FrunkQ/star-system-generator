@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.3-beta - 8th Jul 2026
+
+* **Fix: the Holo Table skin can now actually be selected.** Picking it from the Field Guide launcher silently fell back to the standard Guide, because the config's skin whitelist didn't recognise the new key. It's on the list now, so the 3D view shows as chosen.
+
 ## v2.1.2-beta - 8th Jul 2026
 
 * **New Field Guide skin: Holo Table (3D).** A rotatable 3D orbital hologram — a fading holographic grid with the star as a glowing billboard, worlds on their real orbit rings, and inclined orbits that genuinely tilt out of the plane. Drag to rotate, pinch/scroll to zoom. Pick it from the Field Guide launcher (or `?theme=holo`). First pass: bodies are flat-colour spheres for now; textured, lit, spinning worlds land next. The 3D engine loads only when you open this view, so the rest of the app is unaffected.
