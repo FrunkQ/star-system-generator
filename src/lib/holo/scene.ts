@@ -12,6 +12,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor } from '$lib/rendering/colors';
+import { getVisibleNodeIds } from '$lib/system/visibleNodes';
 import type { System } from '$lib/types';
 
 const HOLO_TINT = 0x39c6ff; // cyan hologram chrome (skins wire in later)
@@ -25,6 +26,10 @@ export interface HoloController {
   setSystem(system: System | null): void;
   setTime(ms: number): void;
   focusBody(id: string | null): void;
+  // The two framing knobs (surface as GM controls later, docs §A8/§A10): angleDeg is the camera's
+  // tilt from straight down (0 = overhead top-down, ~64 = the 3/4 default); whole fits the entire
+  // system rather than the focused body. overhead + whole = the projector's top-down plan view.
+  setFraming(opts: { angleDeg?: number; whole?: boolean }): void;
   resetView(): void;
   resize(w: number, h: number): void;
   dispose(): void;
@@ -107,6 +112,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const outward = new THREE.Vector3();
   let focusedId: string | null = null;
   let focusDrive = 0;
+  let visibleSet = new Set<string>(); // which body names show, per the orrery focus rule
+  let framingAngleRad = (64 * Math.PI) / 180; // camera tilt from vertical (0 = overhead)
+  let framingWhole = false; // frame the whole system instead of the focused body
+
+  function setFraming(o: { angleDeg?: number; whole?: boolean }) {
+    if (o.angleDeg != null) framingAngleRad = (Math.max(0, Math.min(85, o.angleDeg)) * Math.PI) / 180;
+    if (o.whole != null) framingWhole = o.whole;
+    // Let the camera actually reach an overhead framing (OrbitControls otherwise clamps the polar).
+    controls.minPolarAngle = Math.min(0.06, framingAngleRad);
+    focusDrive = 48; // re-ease into the new framing
+  }
 
   const pointer = new AbortController();
   let downX = 0;
@@ -131,20 +147,31 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return Math.max(2, rad * 9);
   }
 
-  // Ease the camera to a "just above the body, looking back toward the star" framing, then keep the
-  // body gently centred as it orbits (without fighting the user's rotate/zoom).
+  // Ease the camera to the configured framing — either the whole system or the focused body — at the
+  // configured tilt (angle from vertical). Then keep the target gently centred so a followed body
+  // stays in view as it orbits, without fighting the user's own rotate/zoom.
   function driveFocus() {
-    if (!focusedId) return;
-    const b = bodies.find((x) => x.id === focusedId);
-    if (!b) return;
-    const bp = b.mesh.position;
-    desiredTarget.copy(bp);
-    outward.copy(bp);
-    const r = outward.length();
-    if (r > 1e-4) outward.multiplyScalar(1 / r);
-    else outward.set(0, 0, 1); // star at origin: no sunward direction, fall back to a side view
-    const dist = frameDistance(b);
-    desiredCam.copy(bp).addScaledVector(outward, dist).addScaledVector(UP, dist * 0.4);
+    const b = !framingWhole && focusedId ? bodies.find((x) => x.id === focusedId) : undefined;
+    let dist: number;
+    if (b) {
+      const bp = b.mesh.position;
+      desiredTarget.copy(bp);
+      outward.copy(bp);
+      const r = outward.length();
+      if (r > 1e-4) outward.multiplyScalar(1 / r);
+      else outward.set(0, 0, 1); // star at origin: fall back to a fixed azimuth
+      dist = frameDistance(b);
+    } else if (framingWhole) {
+      desiredTarget.set(0, 0, 0);
+      outward.set(0, 0, 1); // azimuth reference for the whole-system framing
+      dist = GRID_RADIUS * 1.5;
+    } else {
+      return; // no focus, per-body framing → leave the camera where the user put it
+    }
+    // Camera offset = tilt from vertical: up·cos(angle) + outward·sin(angle). angle 0 => overhead.
+    const ca = Math.cos(framingAngleRad);
+    const sa = Math.sin(framingAngleRad);
+    desiredCam.copy(desiredTarget).addScaledVector(UP, ca * dist).addScaledVector(outward, sa * dist);
     if (focusDrive > 0) {
       controls.target.lerp(desiredTarget, 0.18);
       camera.position.lerp(desiredCam, 0.14);
@@ -158,6 +185,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (id === focusedId) return;
     focusedId = id;
     focusDrive = id ? 48 : 0; // ~0.8 s of easing toward the framed shot
+    visibleSet = getVisibleNodeIds(currentSystem, focusedId);
   }
 
   function resetView() {
@@ -165,6 +193,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     focusDrive = 0;
     camera.position.copy(HOME_CAM);
     controls.target.set(0, 0, 0);
+    visibleSet = getVisibleNodeIds(currentSystem, null);
   }
 
   function clearContent() {
@@ -228,15 +257,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         sprite.scale.setScalar(2.4);
         mesh = sprite;
       } else {
-        mesh = new THREE.Mesh(new THREE.SphereGeometry(bodyRadius(node), 20, 16), new THREE.MeshBasicMaterial({ color: colorHex }));
+        // Moons are capped small so they read as satellites, not rival planets, when you zoom in.
+        const radius = systemLevel ? bodyRadius(node) : Math.min(bodyRadius(node), 0.1);
+        mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 20, 16), new THREE.MeshBasicMaterial({ color: colorHex }));
       }
       contentGroup.add(mesh);
 
-      // Only system-level bodies get a standing label — moons would pile into unreadable mush at
-      // this zoom; they reveal on focus (future). Belts are obvious from their debris band.
-      const label = systemLevel ? makeLabel(String(node.name ?? ''), opts.labelLayer) : undefined;
+      // Every body gets a label element; which ones actually show is decided per-frame by the focus
+      // visibility rule (getVisibleNodeIds) — so a planet's moons name themselves once it's selected.
+      const label = makeLabel(String(node.name ?? ''), opts.labelLayer);
       bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, satellite: !systemLevel });
     }
+    visibleSet = getVisibleNodeIds(system, focusedId);
     updatePositions();
   }
 
@@ -255,7 +287,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         const ox = p.x - parent.x, oy = p.y - parent.y, oz = p.z - parent.z; // AU offset
         const off = Math.hypot(ox, oy, oz);
         if (off > 1e-12) {
-          const dist = 0.3 + 0.14 * Math.log10(1 + off / 0.0005); // scene units from the planet
+          const dist = 0.45 + 0.16 * Math.log10(1 + off / 0.0005); // scene units from the planet
           const k = dist / off;
           // axis-map the raw offset (x, z->y, y->z) and add to the compressed parent position
           b.mesh.position.set(tmpParent.x + ox * k, tmpParent.y + oz * k, tmpParent.z + oy * k);
@@ -272,6 +304,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (!opts.labelLayer) return;
     for (const b of bodies) {
       if (!b.label) continue;
+      if (!visibleSet.has(b.id)) { b.label.style.opacity = '0'; continue; } // focus-rule naming
       proj.copy(b.mesh.position).project(camera);
       const behind = proj.z > 1;
       const x = (proj.x * 0.5 + 0.5) * viewW;
@@ -327,7 +360,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, setFraming, resetView, resize, dispose };
 }
 
 // ---- helpers ----

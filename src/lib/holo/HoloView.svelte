@@ -23,6 +23,10 @@
   export function resetView() {
     controller?.resetView();
   }
+  // Two framing knobs (angle from overhead, whole-system vs body) — for GM/projector control later.
+  export function setFraming(opts: { angleDeg?: number; whole?: boolean }) {
+    controller?.setFraming(opts);
+  }
 
   onMount(() => {
     let cancelled = false;

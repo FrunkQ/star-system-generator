@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.6-beta - 8th Jul 2026
+
+* **Holo Table names bodies like the main view.** You see the focused body plus its parents and siblings; a body's children (moons) name themselves only when it's selected — so focusing a planet reveals its moons by name, and the map stays uncluttered otherwise. (The rule now lives in one shared place used by both the 2D and 3D views.)
+* **Two framing controls under the hood.** The camera framing is now driven by two values — tilt angle (overhead to 3/4) and whether to fit the whole system or the focused body. Overhead + whole gives a top-down plan view (the basis for the projector), while a lower angle framed to a body gives the Field Guide look. These will surface as GM controls later. Moons render smaller and fan out further so a focused moon system reads cleanly.
+
 ## v2.1.5-beta - 8th Jul 2026
 
 * **Holo Table reads properly now.** Distances use a log "toytown" compression so a packed system like Sol spreads across the grid instead of collapsing into a central blob (this will become a GM slider). Asteroid and Kuiper belts render as debris rings rather than a single stray ball; moons fan out around their planet so a moon system is legible; and each planet carries a floating name label (moons stay unlabelled at this zoom to avoid clutter — they'll name themselves when you focus in).

@@ -4,6 +4,7 @@
   import { getJourneyBounds, coastPathUnderGravity, sampleJourneyKinematicsAtTime } from '$lib/transit/scheduler';
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import { computeWorldPositions } from "$lib/physics/worldPositions";
+  import { getVisibleNodeIds } from "$lib/system/visibleNodes";
   import { AU_KM, EARTH_MASS_KG } from '../constants';
   import * as zones from "$lib/physics/zones";
   import { calculateLagrangePoints } from "$lib/physics/lagrange";
@@ -546,50 +547,8 @@
       return computeWorldPositions(system, currentTime, sampleJourneyKinematicsAtTime);
   }
 
-  function getVisibleNodeIds(system: System, focusedBodyId: string | null): Set<string> {
-      const visibleIds = new Set<string>();
-      if (!system) return visibleIds;
-      const nodesById = new Map(system.nodes.map(n => [n.id, n]));
-      const primaryStar = system.nodes.find(n => n.parentId === null);
-      let focusNode = nodesById.get(focusedBodyId || '');
-      if (!focusNode) focusNode = primaryStar;
-      if (!focusNode) return visibleIds;
-      let current: SystemNode | undefined = focusNode;
-      while (current) {
-          visibleIds.add(current.id);
-          current = current.parentId ? nodesById.get(current.parentId) : undefined;
-      }
-      const focusNodeHasChildren = system.nodes.some(n => n.parentId === focusNode.id);
-      let contextBody = focusNode;
-      if (!focusNodeHasChildren) contextBody = focusNode.parentId ? nodesById.get(focusNode.parentId) ?? focusNode : focusNode;
-      visibleIds.add(contextBody.id);
-      system.nodes.forEach(n => { if (n.parentId === contextBody.id) visibleIds.add(n.id); });
-      if (contextBody.parentId) {
-        const grandparentId = contextBody.parentId;
-        system.nodes.forEach(n => { if (n.parentId === grandparentId) visibleIds.add(n.id); });
-      }
-      // Barycentres are TRANSPARENT containers: whenever a barycentre is visible (e.g. a binary-planet
-      // pair shown as a child of the focused star), its member bodies are too — otherwise the binary
-      // planets (grandchildren of the star) would be invisible/unclickable. Iterate to handle nesting.
-      let expanded = true;
-      while (expanded) {
-        expanded = false;
-        for (const n of system.nodes) {
-          if (n.kind === 'barycenter' && visibleIds.has(n.id) && Array.isArray((n as any).memberIds)) {
-            for (const m of (n as any).memberIds) if (!visibleIds.has(m)) { visibleIds.add(m); expanded = true; }
-          }
-        }
-      }
-      // Free-floating constructs (in transit, deep space, or drifting/adrift) are positioned by an absolute
-      // vector_position_au, not by the orbital hierarchy — calculateWorldPositions draws their glyph
-      // regardless. They have no parent in the focus chain, so the hierarchy walk above misses them, which
-      // is why a drifting ship lost both its label and its clickability. Whatever is drawn free should also
-      // be nameable and selectable: add every absolutely-positioned construct here.
-      for (const n of system.nodes) {
-          if (n.kind === 'construct' && (n as any).vector_position_au) visibleIds.add(n.id);
-      }
-      return visibleIds;
-  }
+  // getVisibleNodeIds now lives in $lib/system/visibleNodes (imported above) so the 2D orrery and
+  // the 3D holo view apply the same focus-based naming/visibility rule.
 
   // Draw a construct's icon glyph (triangle/circle/diamond/cross/square) centred
   // at (x, y) with the given pixel size. Single source of truth for both the
