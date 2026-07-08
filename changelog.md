@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.20-beta - 8th Jul 2026
+
+* **Time controls on the player view.** The Field Guide's live view now has a pause/play button and speed (slower/faster) controls, so a player can stop the motion or speed the worlds along to watch them orbit. It's just for seeing movement — the projector will show the real in-universe clock from the GM.
+
 ## v2.1.19-beta - 8th Jul 2026
 
 * **Body-size dial.** A new "Body size" control lets you scale planets and moons from their readable chunky size down toward their true physical scale — so on a true-scale layout the worlds become the tiny pinpoints they really are, while their labels and orbits still show where they sit. Fine-tune it to taste instead of accepting the fixed size; it's saved in your preset. (The star stays a readable anchor for now.)

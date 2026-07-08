@@ -136,6 +136,7 @@
   let currentTime = Date.now();
   let isPlaying = true;
   let rafId = 0;
+  let speedMul = 1; // player time-speed multiplier on top of the auto rate
 
   // Interactive-tier selection.
   let focusedBodyId: string | null = null;
@@ -274,7 +275,7 @@
     let last = performance.now();
     const tick = (ts: number) => {
       const dt = (ts - last) / 1000;
-      if (isPlaying) currentTime += dt * timeScale * 1000;
+      if (isPlaying) currentTime += dt * timeScale * speedMul * 1000;
       last = ts;
       rafId = requestAnimationFrame(tick);
     };
@@ -557,7 +558,13 @@
         {/each}
       </nav>
       <!-- Adaptive clock read-out: the fastest body in view does ~1 orbit per 2 s. -->
-      <div class="time-rate">1 s ≈ {fmtTimeRate(timeScale)}</div>
+      <!-- Player time controls (Field Guide): pause/play + speed. The projector is GM-clock-driven. -->
+      <div class="time-controls">
+        <button class="tc-btn" on:click={() => (isPlaying = !isPlaying)} aria-label={isPlaying ? 'Pause' : 'Play'} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '❚❚' : '▶'}</button>
+        <button class="tc-btn" on:click={() => (speedMul = Math.max(0.125, speedMul / 2))} aria-label="Slower" title="Slower">−</button>
+        <span class="tc-rate">1 s ≈ {fmtTimeRate(timeScale * speedMul)}</span>
+        <button class="tc-btn" on:click={() => (speedMul = Math.min(16, speedMul * 2))} aria-label="Faster" title="Faster">+</button>
+      </div>
       {#if selectedBody}
         <aside class="inspector">
           <div class="insp-head">
@@ -816,21 +823,35 @@
   .nav-item.active { background: rgba(120, 180, 255, 0.26); color: #fff; }
   .nav-item.star { font-weight: 700; }
   .nav-item.sub { padding-left: 22px; opacity: 0.9; font-size: 11.5px; }
-  .time-rate {
+  .time-controls {
     position: absolute;
     bottom: 12px;
     left: 12px;
     z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-family: system-ui, sans-serif;
     font-size: 11.5px;
     letter-spacing: 0.04em;
     color: #9fb0c8;
-    background: rgba(8, 11, 18, 0.7);
+    background: rgba(8, 11, 18, 0.72);
     border: 1px solid rgba(120, 180, 255, 0.25);
-    border-radius: 6px;
-    padding: 4px 9px;
-    pointer-events: none;
+    border-radius: 8px;
+    padding: 4px 8px;
   }
+  .tc-btn {
+    min-width: 32px;
+    min-height: 32px; /* finger-friendly */
+    border: 1px solid rgba(120, 180, 255, 0.3);
+    border-radius: 6px;
+    background: rgba(20, 28, 42, 0.8);
+    color: #cfe0f5;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .tc-btn:hover { background: rgba(40, 60, 96, 0.9); }
+  .tc-rate { padding: 0 4px; white-space: nowrap; }
   .holo-presetbar {
     position: absolute;
     bottom: 12px;
