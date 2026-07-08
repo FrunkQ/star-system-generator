@@ -163,6 +163,23 @@
   let _lastBodyId: string | null = null;
   $: if (selectedBody?.id !== _lastBodyId) { _lastBodyId = selectedBody?.id ?? null; bodyExpanded = false; }
 
+  // Desktop: the right-hand body panel is drag-resizable from its left edge; the width is remembered.
+  let inspectorWidth = 340;
+  if (browser) { const s = Number(localStorage.getItem('holo-insp-width')); if (s >= 260 && s <= 640) inspectorWidth = s; }
+  function startInspectorResize(e: PointerEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = inspectorWidth;
+    const onMove = (ev: PointerEvent) => { inspectorWidth = Math.max(260, Math.min(640, startW + (startX - ev.clientX))); };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      try { localStorage.setItem('holo-insp-width', String(Math.round(inspectorWidth))); } catch { /* private mode */ }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+
   // --- Console navigation: a clickable star/planet list, with moons + constructs once a
   //     planet is focused. Jumping also focuses the visualizer on that body. ---
   function isStarNode(n: any): boolean {
@@ -545,6 +562,16 @@
                   <option value="black">Black</option>
                 </select>
               </label>
+              <label>Grid
+                <select bind:value={holoStyle.grid}>
+                  <option value="off">Off</option>
+                  <option value="plain">Grid</option>
+                  <option value="scaled">Grid + scale</option>
+                </select>
+              </label>
+              <label>View orbit <span class="hp-val">{holoStyle.orbitSpeed === 0 ? 'off' : Math.round(holoStyle.orbitSpeed * 100) + '%'}</span>
+                <input type="range" min="0" max="1" step="0.05" bind:value={holoStyle.orbitSpeed} />
+              </label>
               <label class="hp-check"><input type="checkbox" bind:checked={holoStyle.whole} /> Frame whole system</label>
               <label class="hp-check"><input type="checkbox" bind:checked={holoStyle.skybox} /> Starfield</label>
               <button class="hp-save" on:click={saveHoloStyleAsPreset}>Save as preset…</button>
@@ -568,12 +595,14 @@
            category drill-in), so it's tiny on mobile and needs no new learning. Replaces the old
            full-height jump list. -->
       {#if displaySystem}
-        <BodyPicker
-          nodes={displaySystem.nodes}
-          focusedId={focusedBodyId}
-          emptyLabel="Bodies"
-          on:select={(e) => jumpTo(e.detail)}
-        />
+        <div class="holo-picker-left">
+          <BodyPicker
+            nodes={displaySystem.nodes}
+            focusedId={focusedBodyId}
+            emptyLabel="Bodies"
+            on:select={(e) => jumpTo(e.detail)}
+          />
+        </div>
       {/if}
       <!-- Adaptive clock read-out: the fastest body in view does ~1 orbit per 2 s. -->
       <!-- Player time controls (Field Guide): collapsed to a play/pause icon; click to expand a rate
@@ -588,7 +617,9 @@
         {/if}
       </div>
       {#if selectedBody}
-        <aside class="inspector" class:expanded={bodyExpanded}>
+        <aside class="inspector" class:expanded={bodyExpanded} style="--insp-w:{inspectorWidth}px">
+          <!-- Desktop: drag the left edge to resize the panel (width persisted). Hidden on phone. -->
+          <div class="insp-resize" on:pointerdown={startInspectorResize} role="separator" aria-orientation="vertical" aria-label="Resize panel"></div>
           <div class="insp-head">
             <!-- On phones the panel opens to just name + type; tapping the title reveals the
                  picture and stats, so you can keep clicking around the system without a big
@@ -816,6 +847,8 @@
 
   /* --- hi-tech console tier --- */
   .console-stage { flex: 1; position: relative; min-height: 0; }
+  /* Object picker left-aligned (not centred) — matches the projector, leaves the centre clear. */
+  .holo-picker-left :global(.body-picker) { left: 10px; right: auto; transform: none; }
   .time-controls {
     position: absolute;
     bottom: 12px;
@@ -914,8 +947,19 @@
     font-family: system-ui, sans-serif;
   }
   @media (min-width: 720px) {
-    .inspector { left: auto; width: 340px; top: 0; bottom: 0; max-height: none; border-top: none; border-left: 1px solid rgba(120, 180, 255, 0.35); }
+    .inspector { left: auto; width: var(--insp-w, 340px); top: 0; bottom: 0; max-height: none; border-top: none; border-left: 1px solid rgba(120, 180, 255, 0.35); }
+    .insp-resize { display: block; }
   }
+  .insp-resize {
+    display: none;
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 8px;
+    cursor: ew-resize;
+    z-index: 2;
+    touch-action: none;
+  }
+  .insp-resize:hover { background: rgba(120, 180, 255, 0.28); }
   .insp-head { display: flex; align-items: baseline; gap: 10px; }
   .insp-title { display: flex; align-items: baseline; gap: 8px; background: none; border: none; color: inherit; padding: 0; cursor: pointer; text-align: left; font: inherit; }
   .insp-head h2 { margin: 0; font-size: 20px; }

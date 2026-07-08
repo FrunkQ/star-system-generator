@@ -17,7 +17,7 @@ import { buildShaderObject } from './filters/shaderMaterial';
 import type { FilterParamValues } from './filters/schema';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { propagateState3D } from '$lib/physics/orbits';
-import { getNodeColor } from '$lib/rendering/colors';
+import { getNodeColor, getClassColor } from '$lib/rendering/colors';
 import { getPlanetTextureEquirect } from '$lib/rendering/planetTexture';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { rendersAsGiant } from '$lib/physics/makeup';
@@ -47,6 +47,8 @@ export interface HoloController {
   setBeltDetail(v: number): void; // GM belt particle-budget quality 0..1 (performance)
   setBodyStyle(mode: 'textured' | 'flat' | 'tint'): void; // planet/moon surface look
   setBodySize(v: number): void; // 1 readable .. 0 true physical scale
+  setGrid(mode: 'off' | 'plain' | 'scaled'): void; // ground reference grid
+  setOrbitSpeed(v: number): void; // auto view-orbit turntable speed 0..1 (0 = static)
   // GPU post-processing filter (CRT, night-vision, thermal, …) from the ported Mappadux package.
   setFilter(id: string, params?: FilterParamValues): void;
   resetView(): void;
@@ -194,8 +196,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   controls.minPolarAngle = Math.PI * 0.06; // don't go fully top-down
   controls.maxPolarAngle = Math.PI * 0.49; // or under the table
 
-  const grid = buildPolarGrid();
-  scene.add(grid);
+  // Ground reference grid: 'off' | 'plain' (even polar rings) | 'scaled' (rings at round AU radii,
+  // labelled). 'scaled' depends on the live radial map (compression + rMax), so it rebuilds with the
+  // system / spread. Built after compressScalar/rMax are defined (rebuildGrid called there + on change).
+  let gridMode: 'off' | 'plain' | 'scaled' = 'plain';
+  const gridGroup = new THREE.Group();
+  scene.add(gridGroup);
 
   // Background: 'space' (dark, starfield-friendly) or a flat chroma-key colour for the projector's
   // greenscreen (OBS). Starfield only shows over space (chroma keys need a clean flat background).
@@ -345,6 +351,72 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return out.set(p.x * k, p.z * k, p.y * k);
   }
 
+  // Round-AU steps for the labelled grid, thinned to ~6 rings spanning the system's extent.
+  function gridAuSteps(): number[] {
+    const nice = [0.1, 0.2, 0.3, 0.5, 1, 2, 3, 5, 10, 20, 30, 50, 100, 200, 500, 1000];
+    const within = nice.filter((a) => a <= rMax * 1.02);
+    if (within.length <= 6) return within;
+    const step = Math.ceil(within.length / 6);
+    return within.filter((_, i) => i % step === 0 || i === within.length - 1);
+  }
+
+  function ringPoints(radius: number): THREE.Vector3[] {
+    const pts: THREE.Vector3[] = [];
+    for (let i = 0; i <= 64; i++) { const a = (i / 64) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius)); }
+    return pts;
+  }
+
+  function rebuildGrid() {
+    clearGroup(gridGroup);
+    gridGroup.visible = gridMode !== 'off';
+    if (gridMode === 'off') return;
+    const base = new THREE.Color(HOLO_TINT);
+    if (gridMode === 'scaled') {
+      // Concentric rings at round AU distances (mapped through the live compression), each labelled.
+      for (const au of gridAuSteps()) {
+        const radius = compressScalar(au);
+        if (radius <= 0.02) continue;
+        const mat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.4), transparent: true, opacity: 0.55 });
+        gridGroup.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(ringPoints(radius)), mat));
+        const label = makeGridLabel(au >= 1 ? `${au} AU` : `${au} AU`);
+        if (label) { label.position.set(radius, 0.02, 0); gridGroup.add(label); }
+      }
+    } else {
+      // Plain: six evenly-spaced polar rings (decorative, system-independent).
+      for (let ri = 1; ri <= 6; ri++) {
+        const radius = (GRID_RADIUS / 6) * ri;
+        const col = base.clone().multiplyScalar(0.45 * (1 - (ri - 1) / 8));
+        const mat = new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.6 });
+        gridGroup.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(ringPoints(radius)), mat));
+      }
+    }
+    // Radial spokes (both modes).
+    const spokes: THREE.Vector3[] = [];
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2;
+      spokes.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(Math.cos(a) * GRID_RADIUS, 0, Math.sin(a) * GRID_RADIUS));
+    }
+    const spokeMat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.22), transparent: true, opacity: 0.5 });
+    gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(spokes), spokeMat));
+  }
+
+  function setGrid(mode: 'off' | 'plain' | 'scaled') {
+    if (mode === gridMode) return;
+    gridMode = mode;
+    rebuildGrid();
+  }
+  rebuildGrid();
+
+  // Auto view-orbit ("turntable"): slowly circle the camera around the current target so the focused
+  // object rotates in front of the viewer. 0 = static (manual only). Uses OrbitControls' own
+  // autoRotate (driven each frame in the loop) so it composes with damping/user input; paused while
+  // the focus ease is still tweening so it doesn't fight the framing shot.
+  let orbitSpeed = 0;
+  function setOrbitSpeed(v: number) {
+    orbitSpeed = Math.max(0, Math.min(1, v));
+    controls.autoRotateSpeed = orbitSpeed * 4; // full ≈ one revolution per ~15 s
+  }
+
   // --- Selection (raycast pick) + camera focus ---
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
@@ -450,7 +522,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       outward.set(0, 0, 1);
       dist = Math.max(GRID_RADIUS * 0.4, beltFocus.outerScene * 1.9);
     } else {
-      return; // no focus, per-body framing → leave the camera where the user put it
+      // No focus, per-body framing → leave the camera where the user put it. Still drain focusDrive
+      // so a stale ease counter doesn't permanently block the auto view-orbit turntable.
+      if (focusDrive > 0) focusDrive--;
+      return;
     }
     // Camera offset = tilt from vertical: up·cos(angle) + outward·sin(angle). angle 0 => overhead.
     const ca = Math.cos(framingAngleRad);
@@ -478,6 +553,38 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     camera.position.copy(HOME_CAM);
     controls.target.set(0, 0, 0);
     visibleSet = getVisibleNodeIds(currentSystem, null);
+  }
+
+  // Dispose every geometry/material/texture under a group, then empty it.
+  function clearGroup(g: THREE.Object3D) {
+    g.traverse((o) => {
+      const any = o as any;
+      any.geometry?.dispose?.();
+      const m = any.material;
+      const disposeMat = (mat: any) => { mat?.map?.dispose?.(); mat?.dispose?.(); };
+      if (Array.isArray(m)) m.forEach(disposeMat);
+      else disposeMat(m);
+    });
+    g.clear();
+  }
+
+  // A billboarded AU tick label for the scaled grid (fixed screen size so it stays legible).
+  function makeGridLabel(text: string): THREE.Sprite | null {
+    const c = document.createElement('canvas');
+    const ctx = c.getContext('2d');
+    if (!ctx) return null;
+    c.width = 128; c.height = 40;
+    ctx.font = '600 24px ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(180,210,240,0.9)';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 6, 22);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false });
+    const sp = new THREE.Sprite(mat);
+    sp.scale.set(0.9, 0.28, 1);
+    sp.center.set(0, 0.5);
+    return sp;
   }
 
   function clearContent() {
@@ -521,6 +628,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     rMax = 0;
     for (const p of pos0.values()) rMax = Math.max(rMax, Math.hypot(p.x, p.y, p.z));
     if (rMax <= 0) rMax = 1;
+    rebuildGrid(); // scaled AU rings depend on rMax + compression
 
     for (const node of system.nodes as any[]) {
       // Belts: a debris band on their (compressed) orbit, never a lone sphere.
@@ -594,7 +702,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         if (bodyStyle === 'tint') {
           mat.color.set(HOLO_TINT); // monochrome hologram look
         } else if (bodyStyle === 'flat') {
-          mat.color.set(colorHex); // solid apparent colour, no surface texture
+          // Standard per-class swatch (terrestrial / gas / ice / …) — NOT the derived true colour.
+          mat.color.set(new THREE.Color(getClassColor(node)).getHex());
         } else {
           const texCanvas = getPlanetTextureEquirect(node); // true-colour procedural surface
           if (texCanvas) {
@@ -830,6 +939,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (disposed) return;
     const nowSec = filterClock.getElapsedTime();
     driveFocus();
+    controls.autoRotate = orbitSpeed > 0 && focusDrive === 0; // turntable, paused during the focus ease
     updateSpin();
     updateStarFx(nowSec);
     updateConstructs();
@@ -864,11 +974,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     cancelAnimationFrame(raf);
     controls.dispose();
     clearContent();
-    grid.traverse((o) => {
-      const any = o as any;
-      any.geometry?.dispose?.();
-      any.material?.dispose?.();
-    });
+    clearGroup(gridGroup);
     (starfield.geometry as any)?.dispose?.();
     (starfield.material as any)?.dispose?.();
     if (filterPass) (filterPass.material as THREE.Material).dispose();
@@ -878,7 +984,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setBodySize, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setBodySize, setGrid, setOrbitSpeed, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----
@@ -1202,30 +1308,6 @@ function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail
   return { pivot, points, parentId: parent.id, radii, baseAng, omega, t0Sec: timeMs / 1000, planetR: planetRenderedR, baseColor };
 }
 
-function buildPolarGrid(): THREE.Group {
-  const group = new THREE.Group();
-  const base = new THREE.Color(HOLO_TINT);
-  for (let ri = 1; ri <= 6; ri++) {
-    const radius = (GRID_RADIUS / 6) * ri;
-    const pts: THREE.Vector3[] = [];
-    for (let i = 0; i <= 64; i++) {
-      const a = (i / 64) * Math.PI * 2;
-      pts.push(new THREE.Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius));
-    }
-    const col = base.clone().multiplyScalar(0.45 * (1 - (ri - 1) / 8));
-    const mat = new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.6 });
-    group.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat));
-  }
-  const spokes: THREE.Vector3[] = [];
-  for (let i = 0; i < 24; i++) {
-    const a = (i / 24) * Math.PI * 2;
-    spokes.push(new THREE.Vector3(0, 0, 0));
-    spokes.push(new THREE.Vector3(Math.cos(a) * GRID_RADIUS, 0, Math.sin(a) * GRID_RADIUS));
-  }
-  const spokeMat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.22), transparent: true, opacity: 0.5 });
-  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(spokes), spokeMat));
-  return group;
-}
 
 function makeGlowTexture(): THREE.Texture {
   const size = 128;

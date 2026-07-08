@@ -26,6 +26,8 @@
     controller?.setBeltDetail(s.beltDetail);
     controller?.setBodyStyle(s.bodyStyle);
     controller?.setBodySize(s.bodySize);
+    controller?.setGrid(s.grid);
+    controller?.setOrbitSpeed(s.orbitSpeed);
   }
 
   let container: HTMLDivElement;

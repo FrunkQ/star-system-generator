@@ -2,6 +2,16 @@
 
 All notable changes are listed here:
 
+## v2.1.31-beta - 8th Jul 2026
+
+Field Guide look controls + panel polish (the look panel's full home will be the projector control window):
+
+* **View orbit.** New slider that slowly turns the camera around the scene (a turntable) — from static (default) up to about one revolution every 15 seconds. Pauses itself while a focus shot is settling.
+* **Grid dropdown.** The ground grid is now its own control: Off, a plain polar grid, or a scaled grid with round-AU distance rings labelled (1 AU, 3 AU, 10 AU…), mapped through the current spread.
+* **Flat Colour is the class colour.** "Flat colour" bodies now use the standard per-class swatch (terrestrial / gas giant / ice giant / habitable), never the derived true colour — that's what True Colour is for.
+* **Object picker on the left.** The body selector sits at the top-left of the view rather than centred, leaving the middle clear (and matching where the projector will put it).
+* **Resizable body panel (desktop).** Drag the left edge of the right-hand data panel to make it slimmer or wider; the width is remembered.
+
 ## v2.1.30-beta - 8th Jul 2026
 
 * **Phone body panel opens small.** On a phone, tapping a world now opens its file to just the name and type — the picture, stats and description stay tucked away until you tap the title to expand them. So a tap no longer throws a half-screen sheet over the map, and you can happily click from world to world. On desktop the full panel shows as before.

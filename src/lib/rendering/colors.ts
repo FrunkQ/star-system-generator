@@ -107,21 +107,29 @@ if (browser) paletteOverrides.subscribe(() => { _cache = null; _tokenCache.clear
 /**
  * Returns the primary visual color for a celestial body based on its type and tags.
  */
-export function getPlanetColor(node: CelestialBody): string {
+// The broad per-class swatch: star / belt / habitable / biosphere / brown-dwarf / ice-giant /
+// gas-giant / terrestrial. This is the "flat colour" representation — it deliberately IGNORES the
+// derived true colour, so it stays stable regardless of the true-colour toggle.
+export function getClassColor(node: CelestialBody): string {
   const p = pal();
-  if (node.roleHint === 'star') {
-    return p.star[starKey(node)] || p.star['default'];
-  }
+  if (node.roleHint === 'star') return p.star[starKey(node)] || p.star['default'];
   if (node.roleHint === 'belt') return p.body.belt;
   if (node.tags?.some(t => t.key === 'habitability/earth-like' || t.key === 'habitability/human')) return p.body.habitable;
   if (node.biosphere) return p.body.biosphere;
-  // Prefer the derived true colour (makeup + atmosphere + temperature) when present AND the
-  // orrery is in true-colour mode; otherwise fall through to the broad per-class swatch.
-  if (node.apparentColorHex && get(trueColorMode)) return node.apparentColorHex;
   if (node.classes?.some(c => c.includes('brown-dwarf'))) return p.body.brownDwarf;
   if (node.classes?.some(c => c.includes('ice-giant'))) return p.body.iceGiant;
   if (node.classes?.some(c => c.includes('gas-giant'))) return p.body.gasGiant;
   return p.body.terrestrial;
+}
+
+export function getPlanetColor(node: CelestialBody): string {
+  // Prefer the derived true colour (makeup + atmosphere + temperature) when present AND the orrery
+  // is in true-colour mode — but never for stars, belts, or the habitable/biosphere overrides,
+  // which keep their signal colour. Otherwise fall through to the broad per-class swatch.
+  const isOverride = node.roleHint === 'star' || node.roleHint === 'belt' || !!node.biosphere
+    || !!node.tags?.some(t => t.key === 'habitability/earth-like' || t.key === 'habitability/human');
+  if (!isOverride && node.apparentColorHex && get(trueColorMode)) return node.apparentColorHex;
+  return getClassColor(node);
 }
 
 /**

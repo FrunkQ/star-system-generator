@@ -11,9 +11,11 @@ export interface HoloStyle {
   whole: boolean; // frame the whole system vs the focused body
   skybox: boolean; // background starfield
   beltDetail: number; // belt particle-budget quality 0..1 (performance; physics sets relative density)
-  bodyStyle: 'textured' | 'flat' | 'tint'; // planet/moon surface: true-colour / solid colour / holo tint
+  bodyStyle: 'textured' | 'flat' | 'tint'; // planet/moon surface: true-colour / class colour / holo tint
   background: 'space' | 'green' | 'blue' | 'black'; // dark space, or a chroma-key colour for OBS
   bodySize: number; // 1 = readable (chunky) .. 0 = true physical scale
+  grid: 'off' | 'plain' | 'scaled'; // ground reference: none / plain polar grid / grid with AU scale labels
+  orbitSpeed: number; // auto view-orbit: how fast the camera slowly circles the focused object (0 = static)
 }
 
 export interface HoloPreset extends HoloStyle {
@@ -31,18 +33,20 @@ export const DEFAULT_STYLE: HoloStyle = {
   beltDetail: 0.6,
   bodyStyle: 'textured',
   background: 'space',
-  bodySize: 1
+  bodySize: 1,
+  grid: 'plain',
+  orbitSpeed: 0
 };
 
 // Shipped starter presets — enough to demo the range and skin the existing guides.
 export const STARTER_PRESETS: HoloPreset[] = [
-  { id: 'clean', name: 'Clean Hologram', builtIn: true, filter: 'none', compression: 0.65, angleDeg: 64, whole: false, skybox: true, beltDetail: 0.6, bodyStyle: 'textured', background: 'space', bodySize: 1 },
-  { id: 'crt-green', name: 'Green CRT Table', builtIn: true, filter: 'retro_sci_fi_green', compression: 0.7, angleDeg: 62, whole: false, skybox: true, beltDetail: 0.6, bodyStyle: 'textured', background: 'space', bodySize: 1 },
-  { id: 'crt-amber', name: 'Amber Terminal', builtIn: true, filter: 'retro_sci_fi_amber', compression: 0.7, angleDeg: 62, whole: false, skybox: true, beltDetail: 0.6, bodyStyle: 'textured', background: 'space', bodySize: 1 },
-  { id: 'night-ops', name: 'Night Ops', builtIn: true, filter: 'night_vision', compression: 0.6, angleDeg: 55, whole: false, skybox: true, beltDetail: 0.5, bodyStyle: 'textured', background: 'space', bodySize: 1 },
-  { id: 'blueprint', name: 'Blueprint (holo tint)', builtIn: true, filter: 'none', compression: 0.65, angleDeg: 64, whole: false, skybox: true, beltDetail: 0.6, bodyStyle: 'tint', background: 'space', bodySize: 1 },
-  { id: 'projector', name: 'Projector (top-down, true scale)', builtIn: true, filter: 'none', compression: 0, angleDeg: 0, whole: true, skybox: false, beltDetail: 0.8, bodyStyle: 'textured', background: 'space', bodySize: 0.5 },
-  { id: 'greenscreen', name: 'Greenscreen (OBS)', builtIn: true, filter: 'none', compression: 0, angleDeg: 0, whole: true, skybox: false, beltDetail: 0.8, bodyStyle: 'textured', background: 'green', bodySize: 0.5 }
+  { id: 'clean', name: 'Clean Hologram', builtIn: true, filter: 'none', compression: 0.65, angleDeg: 64, whole: false, skybox: true, beltDetail: 0.6, bodyStyle: 'textured', background: 'space', bodySize: 1, grid: 'plain', orbitSpeed: 0 },
+  { id: 'crt-green', name: 'Green CRT Table', builtIn: true, filter: 'retro_sci_fi_green', compression: 0.7, angleDeg: 62, whole: false, skybox: true, beltDetail: 0.6, bodyStyle: 'textured', background: 'space', bodySize: 1, grid: 'plain', orbitSpeed: 0 },
+  { id: 'crt-amber', name: 'Amber Terminal', builtIn: true, filter: 'retro_sci_fi_amber', compression: 0.7, angleDeg: 62, whole: false, skybox: true, beltDetail: 0.6, bodyStyle: 'textured', background: 'space', bodySize: 1, grid: 'plain', orbitSpeed: 0 },
+  { id: 'night-ops', name: 'Night Ops', builtIn: true, filter: 'night_vision', compression: 0.6, angleDeg: 55, whole: false, skybox: true, beltDetail: 0.5, bodyStyle: 'textured', background: 'space', bodySize: 1, grid: 'plain', orbitSpeed: 0 },
+  { id: 'blueprint', name: 'Blueprint (holo tint)', builtIn: true, filter: 'none', compression: 0.65, angleDeg: 64, whole: false, skybox: true, beltDetail: 0.6, bodyStyle: 'tint', background: 'space', bodySize: 1, grid: 'scaled', orbitSpeed: 0 },
+  { id: 'projector', name: 'Projector (top-down, true scale)', builtIn: true, filter: 'none', compression: 0, angleDeg: 0, whole: true, skybox: false, beltDetail: 0.8, bodyStyle: 'textured', background: 'space', bodySize: 0.5, grid: 'scaled', orbitSpeed: 0 },
+  { id: 'greenscreen', name: 'Greenscreen (OBS)', builtIn: true, filter: 'none', compression: 0, angleDeg: 0, whole: true, skybox: false, beltDetail: 0.8, bodyStyle: 'textured', background: 'green', bodySize: 0.5, grid: 'off', orbitSpeed: 0 }
 ];
 
 const KEY = 'holo-presets';
@@ -69,7 +73,7 @@ if (typeof window !== 'undefined') {
 }
 
 export function styleOf(preset: HoloPreset): HoloStyle {
-  return { filter: preset.filter, compression: preset.compression, angleDeg: preset.angleDeg, whole: preset.whole, skybox: preset.skybox, beltDetail: preset.beltDetail ?? 0.6, bodyStyle: preset.bodyStyle ?? 'textured', background: preset.background ?? 'space', bodySize: preset.bodySize ?? 1 };
+  return { filter: preset.filter, compression: preset.compression, angleDeg: preset.angleDeg, whole: preset.whole, skybox: preset.skybox, beltDetail: preset.beltDetail ?? 0.6, bodyStyle: preset.bodyStyle ?? 'textured', background: preset.background ?? 'space', bodySize: preset.bodySize ?? 1, grid: preset.grid ?? 'plain', orbitSpeed: preset.orbitSpeed ?? 0 };
 }
 
 // Add a custom preset from the current live style. Id is derived from the name + a short suffix so
