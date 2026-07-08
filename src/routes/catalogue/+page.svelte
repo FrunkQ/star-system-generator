@@ -68,6 +68,12 @@
     { id: 'night_vision', label: 'Night Vision' },
     { id: 'thermal', label: 'Thermal' }
   ];
+  // Collapse a popover when the user interacts anywhere outside it.
+  function clickOutside(node: HTMLElement, cb: () => void) {
+    const handler = (e: Event) => { if (!node.contains(e.target as Node)) cb(); };
+    document.addEventListener('pointerdown', handler, true);
+    return { destroy() { document.removeEventListener('pointerdown', handler, true); } };
+  }
   function applyHoloPreset(id: string) {
     const p = $holoPresets.find((x) => x.id === id);
     if (p) { holoStyle = styleOf(p); holoPresetId = id; }
@@ -569,12 +575,11 @@
       <!-- Adaptive clock read-out: the fastest body in view does ~1 orbit per 2 s. -->
       <!-- Player time controls (Field Guide): collapsed to a play/pause icon; click to expand a rate
            slider (arbitrary — just to see movement). The projector is GM-clock-driven instead. -->
-      <div class="time-controls" class:expanded={timeExpanded}>
+      <div class="time-controls" class:expanded={timeExpanded} use:clickOutside={() => (timeExpanded = false)}>
         {#if timeExpanded}
           <button class="tc-btn" on:click={() => (isPlaying = !isPlaying)} aria-label={isPlaying ? 'Pause' : 'Play'} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '❚❚' : '▶'}</button>
           <input class="tc-slider" type="range" min="0" max={RATE_STEPS.length - 1} step="1" bind:value={rateIndex} aria-label="Time rate" />
           <span class="tc-rate">1 s ≈ {RATE_STEPS[rateIndex].label}</span>
-          <button class="tc-btn" on:click={() => (timeExpanded = false)} aria-label="Collapse" title="Collapse">×</button>
         {:else}
           <button class="tc-btn tc-icon" on:click={() => (timeExpanded = true)} aria-label="Time controls" title="Time controls">{isPlaying ? '❚❚' : '▶'}</button>
         {/if}

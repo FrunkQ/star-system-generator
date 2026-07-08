@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.22-beta - 8th Jul 2026
+
+* **Time slider tidies itself away.** The expanded time-rate slider now closes on its own as soon as you interact with anything else, instead of needing a close button.
+
 ## v2.1.21-beta - 8th Jul 2026
 
 * **Rethought the player time control.** It now sits as a small play/pause icon and expands on click into a rate slider that steps through real time — 1 s per second — all the way up to 10 years per second (1 s · 1 min · 1 h · 12 h · 1 d · 2 d · 4 d · 1 wk · 2 wk · 1 mo · 2 mo · 6 mo · 1 yr · 2 yr · 5 yr · 10 yr). So you can crawl or fast-forward the orbits to taste, and it stays out of the way when you're not using it.
