@@ -9,6 +9,12 @@
 // collapse into a blob. Textured/lit spheroids, skins and GPU filters arrive in later increments.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { filterRegistry } from './filters/FilterRegistry';
+import { buildShaderObject } from './filters/shaderMaterial';
+import type { FilterParamValues } from './filters/schema';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor } from '$lib/rendering/colors';
@@ -33,6 +39,8 @@ export interface HoloController {
   // system rather than the focused body. overhead + whole = the projector's top-down plan view.
   setFraming(opts: { angleDeg?: number; whole?: boolean }): void;
   setSkybox(on: boolean): void;
+  // GPU post-processing filter (CRT, night-vision, thermal, …) from the ported Mappadux package.
+  setFilter(id: string, params?: FilterParamValues): void;
   resetView(): void;
   resize(w: number, h: number): void;
   dispose(): void;
@@ -87,6 +95,34 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // day/night terminator (added per-star in setSystem so it tracks the star's position).
   const ambient = new THREE.HemisphereLight(0xaecbff, 0x0a0e16, 0.35);
   scene.add(ambient);
+
+  // --- GPU post-processing filter chain (Mappadux filter package, ported) ---
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  const filterResolution = new THREE.Vector2(1, 1);
+  const filterClock = new THREE.Clock();
+  let filterPass: ShaderPass | null = null;
+  let filterId = 'none';
+  let filterParams: FilterParamValues = {};
+
+  function rebuildFilter() {
+    if (filterPass) {
+      composer.removePass(filterPass);
+      (filterPass.material as THREE.Material).dispose();
+      filterPass = null;
+    }
+    const def = filterRegistry.get(filterId);
+    if (!def || filterId === 'none') return;
+    const params = { ...filterRegistry.defaultParams(filterId), ...filterParams };
+    filterPass = new ShaderPass(buildShaderObject(def, params, filterResolution));
+    composer.addPass(filterPass);
+  }
+
+  function setFilter(id: string, params?: FilterParamValues) {
+    filterId = id || 'none';
+    filterParams = params || {};
+    rebuildFilter();
+  }
 
   // --- Dynamic content ---
   let currentSystem: System | null = null;
@@ -390,7 +426,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     driveFocus();
     updateSpin();
     controls.update();
-    renderer.render(scene, camera);
+    if (filterPass) {
+      filterPass.uniforms.time.value = filterClock.getElapsedTime(); // drive scanlines/flicker
+      composer.render();
+    } else {
+      renderer.render(scene, camera);
+    }
     updateLabels();
     raf = requestAnimationFrame(loop);
   }
@@ -401,6 +442,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     viewW = w;
     viewH = h;
     renderer.setSize(w, h, false);
+    composer.setSize(w, h);
+    filterResolution.set(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
   }
@@ -417,12 +460,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     });
     (starfield.geometry as any)?.dispose?.();
     (starfield.material as any)?.dispose?.();
+    if (filterPass) (filterPass.material as THREE.Material).dispose();
+    composer.dispose();
     glowTexture.dispose();
     renderer.dispose();
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, setFraming, setSkybox, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, setFraming, setSkybox, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----

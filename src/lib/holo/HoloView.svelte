@@ -13,6 +13,7 @@
   export let currentTime: number = 0;
   // Accepted for prop-parity with SystemVisualizer; wired to camera focus in a later increment.
   export let focusedBodyId: string | null = null;
+  export let filter: string = 'none'; // GPU post filter id (none/retro_sci_fi_green/…)
 
   let container: HTMLDivElement;
   let canvas: HTMLCanvasElement;
@@ -40,6 +41,7 @@
       controller.setSystem(system);
       controller.setTime(currentTime);
       controller.focusBody(focusedBodyId);
+      controller.setFilter(filter);
       const r = container.getBoundingClientRect();
       controller.resize(r.width, r.height);
       ro = new ResizeObserver((entries) => {
@@ -61,6 +63,7 @@
   $: controller?.setSystem(system);
   $: controller?.setTime(currentTime);
   $: controller?.focusBody(focusedBodyId);
+  $: controller?.setFilter(filter);
 </script>
 
 <div class="holo-root" bind:this={container}>

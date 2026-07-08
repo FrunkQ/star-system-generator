@@ -53,6 +53,17 @@
   let rulePack: RulePack | null = null;
   let sessionId: string | null = null;
   let themeKey: ThemeKey = 'guide';   // The Guide is the default pre-picked skin
+
+  // Holo GPU post-filter picker (hardcoded id+label so the filter package — which pulls in three —
+  // stays out of this route's chunk; HoloView lazy-loads the actual shaders).
+  let holoFilter = 'none';
+  const HOLO_FILTERS = [
+    { id: 'none', label: 'No filter' },
+    { id: 'retro_sci_fi_green', label: 'CRT — Green' },
+    { id: 'retro_sci_fi_amber', label: 'CRT — Amber' },
+    { id: 'night_vision', label: 'Night Vision' },
+    { id: 'thermal', label: 'Thermal' }
+  ];
   // CRT "screen content" effects applied to <main> on the mono skin (overlay layers live in CRTOverlay).
   // Invert is a PALETTE SWAP (handled by the .crt-invert class below), not a luminance filter:
   // the terminal colour becomes the background and the content goes dark (green-on-black ↔
@@ -455,7 +466,10 @@
     <div class="console-stage">
       {#if rulePack && displaySystem}
         {#if theme.tier === 'holo'}
-          <HoloView system={displaySystem} {currentTime} {focusedBodyId} on:focus={handleFocus} />
+          <HoloView system={displaySystem} {currentTime} {focusedBodyId} filter={holoFilter} on:focus={handleFocus} />
+          <select class="holo-filter" bind:value={holoFilter} aria-label="Display filter">
+            {#each HOLO_FILTERS as f}<option value={f.id}>{f.label}</option>{/each}
+          </select>
         {:else}
           <SystemVisualizer
             system={displaySystem}
@@ -758,6 +772,21 @@
     border-radius: 6px;
     padding: 4px 9px;
     pointer-events: none;
+  }
+  .holo-filter {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    z-index: 21;
+    font-family: system-ui, sans-serif;
+    font-size: 11.5px;
+    color: #cfe0f5;
+    background: rgba(8, 11, 18, 0.72);
+    border: 1px solid rgba(120, 180, 255, 0.3);
+    border-radius: 6px;
+    padding: 5px 8px;
+    min-height: 32px; /* finger-friendly */
+    cursor: pointer;
   }
   .console-hint {
     position: absolute;
