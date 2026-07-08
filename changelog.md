@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.2-beta - 8th Jul 2026
+
+* **New Field Guide skin: Holo Table (3D).** A rotatable 3D orbital hologram — a fading holographic grid with the star as a glowing billboard, worlds on their real orbit rings, and inclined orbits that genuinely tilt out of the plane. Drag to rotate, pinch/scroll to zoom. Pick it from the Field Guide launcher (or `?theme=holo`). First pass: bodies are flat-colour spheres for now; textured, lit, spinning worlds land next. The 3D engine loads only when you open this view, so the rest of the app is unaffected.
+
 ## v2.1.1-beta - 8th Jul 2026
 
 * **V2.2 groundwork (holo view).** Added an inclination-aware 3D orbit propagator (`propagateState3D`) alongside the flat one, both now sharing a single Kepler solve so the 2D orrery and the coming 3D view can never drift. Per-frame world positions moved into one shared module used by the orrery today and the holo view next. No visible change; internal only.

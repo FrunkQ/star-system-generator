@@ -43,7 +43,8 @@
     { key: 'mono',    label: 'Monochrome Terminal', blurb: 'Salvaged CRT — pick the phosphor colour' },
     { key: 'guide',   label: 'The Guide',           blurb: 'Friendly illustrated travel companion' },
     { key: 'clean',   label: 'Survey Datapad',      blurb: 'Clean instrument feed, no costume' },
-    { key: 'console', label: 'Starship Console',    blurb: 'Live orbital plot, tap a world to inspect' }
+    { key: 'console', label: 'Starship Console',    blurb: 'Live orbital plot, tap a world to inspect' },
+    { key: 'holo',    label: 'Holo Table',          blurb: '3D orbital hologram you can rotate and zoom' }
   ] as const;
   const MONO_KEYS = Object.keys(MONO_COLORS) as MonoColor[];
   let copied = false;

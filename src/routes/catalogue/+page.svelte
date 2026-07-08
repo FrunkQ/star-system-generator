@@ -12,6 +12,7 @@
   import CatalogueBrowser from '$lib/catalogue/CatalogueBrowser.svelte';
   import { bodyFacts } from '$lib/catalogue/bodyFacts';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
+  import HoloView from '$lib/holo/HoloView.svelte';
   import CRTOverlay from '$lib/components/CRTOverlay.svelte';
   import { crtControls, CRT_DEFAULTS } from '$lib/catalogue/crtControls';
   import { AU_KM, G } from '$lib/constants';
@@ -24,11 +25,11 @@
   // The view is GM-ENFORCED: the GM's Companion launcher broadcasts SYNC_GUIDECONFIG and the
   // guide applies it — there is no player-facing picker. The URL carries the initial choice so
   // the first paint matches before the broadcast lands.
-  type ThemeKey = 'mono' | 'guide' | 'clean' | 'console';
+  type ThemeKey = 'mono' | 'guide' | 'clean' | 'console' | 'holo';
   interface ThemeDef {
     label: string;
     blurb: string;
-    tier: 'static' | 'interactive';
+    tier: 'static' | 'interactive' | 'holo';
     reportTheme: string;            // which ReportDocument theme to render underneath
     tint: 'mono' | 'none';
   }
@@ -37,6 +38,7 @@
     guide:   { label: 'The Guide',           blurb: 'Friendly travel companion', tier: 'static',      reportTheme: 'standard', tint: 'none' },
     clean:   { label: 'Survey Datapad',      blurb: 'Clean instrument feed',     tier: 'static',      reportTheme: 'standard', tint: 'none' },
     console: { label: 'Starship Console',    blurb: 'Live orbital plot',         tier: 'interactive', reportTheme: 'standard', tint: 'none' },
+    holo:    { label: 'Holo Table',          blurb: '3D orbital hologram',       tier: 'holo',        reportTheme: 'standard', tint: 'none' },
   };
 
   const EARTH_GRAVITY = 9.80665;
@@ -448,21 +450,25 @@
         {/if}
       </div>
     </div>
-  {:else if theme.tier === 'interactive'}
-    <!-- Hi-tech: live orbital map + tap-to-inspect -->
+  {:else if theme.tier === 'interactive' || theme.tier === 'holo'}
+    <!-- Hi-tech: live orbital map (2D console or 3D holo table) + tap-to-inspect -->
     <div class="console-stage">
       {#if rulePack && displaySystem}
-        <SystemVisualizer
-          system={displaySystem}
-          {rulePack}
-          {currentTime}
-          {focusedBodyId}
-          showNames={true}
-          toytownFactor={displaySystem.toytownFactor || 0}
-          fullScreen={true}
-          backgroundColor="#05070c"
-          on:focus={handleFocus}
-        />
+        {#if theme.tier === 'holo'}
+          <HoloView system={displaySystem} {currentTime} {focusedBodyId} />
+        {:else}
+          <SystemVisualizer
+            system={displaySystem}
+            {rulePack}
+            {currentTime}
+            {focusedBodyId}
+            showNames={true}
+            toytownFactor={displaySystem.toytownFactor || 0}
+            fullScreen={true}
+            backgroundColor="#05070c"
+            on:focus={handleFocus}
+          />
+        {/if}
       {/if}
       <!-- Jump list: stars + planets; the focused planet unfolds its moons/constructs. -->
       <nav class="console-nav" aria-label="System bodies">
