@@ -31,6 +31,7 @@
     controller?.setCompression(s.compression);
     controller?.setBeltDetail(s.beltDetail);
     controller?.setBodyStyle(s.bodyStyle);
+    controller?.setRender(s.render ?? 'filled');
     controller?.setBodySize(s.bodySize);
     controller?.setGrid(s.grid);
     controller?.setOrbitSpeed(orbitPaused ? 0 : s.orbitSpeed);

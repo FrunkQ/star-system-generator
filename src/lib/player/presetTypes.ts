@@ -76,7 +76,8 @@ export interface PlayerPreset {
   // Look (generalised HoloStyle). Controls the editor shows are gated by the chosen view module.
   filter: string;                 // filter id — 'none' | 'crt' | 'night_vision' | 'thermal'
   filterParams: FilterParamValues; // e.g. CRT phosphor colour lives here
-  bodyStyle: 'textured' | 'flat' | 'tint';
+  bodyStyle: 'textured' | 'flat' | 'white'; // colour selection: true colour / class swatch / white
+  render: 'filled' | 'wire-glow' | 'wire-flat'; // filled spheres vs 80s vector wireframe
   background: 'space' | 'green' | 'blue' | 'black';
   grid: 'off' | 'plain' | 'scaled';
   compression: number; // toytown spread 0..1

@@ -45,7 +45,8 @@ export interface HoloController {
   setBackground(bg: string): void; // 'space' | 'green' | 'blue' | 'black' (greenscreen for OBS)
   setCompression(v: number): void; // toytown level 0 (true scale) .. 1 (fully compressed)
   setBeltDetail(v: number): void; // GM belt particle-budget quality 0..1 (performance)
-  setBodyStyle(mode: 'textured' | 'flat' | 'tint'): void; // planet/moon surface look
+  setBodyStyle(mode: 'textured' | 'flat' | 'white' | 'tint'): void; // colour selection ('tint' = legacy white)
+  setRender(mode: 'filled' | 'wire-glow' | 'wire-flat'): void; // filled spheres vs 80s vector wireframe
   setBodySize(v: number): void; // 1 readable .. 0 true physical scale
   setGrid(mode: 'off' | 'plain' | 'scaled'): void; // ground reference grid
   setOrbitSpeed(v: number): void; // auto view-orbit turntable speed 0..1 (0 = static)
@@ -241,11 +242,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     rebuildContent();
   }
 
-  // Planet/moon surface look: 'textured' (procedural true-colour), 'flat' (solid apparent colour),
-  // or 'tint' (monochrome holo colour). Rebuilds the bodies.
-  function setBodyStyle(mode: 'textured' | 'flat' | 'tint') {
-    if (mode === bodyStyle) return;
-    bodyStyle = mode;
+  // Body COLOUR selection: 'textured' (procedural true colour), 'flat' (per-class swatch), 'white'
+  // (rely on a screen filter to colour it). Shared by filled + wireframe renders. Rebuilds the bodies.
+  function setBodyStyle(mode: 'textured' | 'flat' | 'white' | 'tint') {
+    const m = mode === 'tint' ? 'white' : mode; // 'tint' is the legacy name for 'white'
+    if (m === bodyStyle) return;
+    bodyStyle = m;
+    rebuildContent();
+  }
+
+  // Render style: filled spheres, or an 80s vector wireframe (glowing or flat points). Rebuilds bodies.
+  function setRender(mode: 'filled' | 'wire-glow' | 'wire-flat') {
+    if (mode === renderStyle) return;
+    renderStyle = mode;
     rebuildContent();
   }
 
@@ -342,7 +351,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let rMax = 1; // largest heliocentric distance in the system (AU), for the compression normaliser
   let compression = DEFAULT_COMPRESSION;
   let beltDetail = 0.6; // GM quality knob: scales belt particle budget (performance), not physics
-  let bodyStyle: 'textured' | 'flat' | 'tint' = 'textured'; // planet/moon surface look
+  let bodyStyle: 'textured' | 'flat' | 'white' = 'textured'; // COLOUR selection: true-colour / class / white
+  let renderStyle: 'filled' | 'wire-glow' | 'wire-flat' = 'filled'; // filled spheres vs 80s vector wireframe
   let bodySize = 1; // 1 = readable (chunky), 0 = true physical scale (tiny) — fine-tune body sizes
   let timeMs = 0;
   let viewW = 1;
@@ -729,33 +739,42 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       } else {
         // Moons are capped small so they read as satellites; the whole thing scales with bodySize.
         const radius = bodyRadiusScene(node, systemLevel);
-        const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
-        if (bodyStyle === 'tint') {
-          mat.color.set(HOLO_TINT); // monochrome hologram look
-        } else if (bodyStyle === 'flat') {
-          // Standard per-class swatch (terrestrial / gas / ice / …) — NOT the derived true colour.
-          mat.color.set(new THREE.Color(getClassColor(node)).getHex());
+        // Colour selection (shared by filled + wireframe): white / class swatch / true colour.
+        const selHex = bodyStyle === 'white' ? 0xffffff
+          : bodyStyle === 'flat' ? new THREE.Color(getClassColor(node)).getHex()
+          : colorHex;
+        const polF = oblatePolarFactor((node as any).oblateness); // spin-axis flattening
+        if (renderStyle !== 'filled') {
+          // 80s vector wireframe: a low-poly globe as edges + brighter vertices, in the selected colour.
+          const wf = buildWireframeBody(radius, selHex, renderStyle === 'wire-glow');
+          if (polF < 0.999) wf.scale.set(1, polF, 1);
+          mesh = wf;
         } else {
-          const texCanvas = getPlanetTextureEquirect(node); // true-colour procedural surface
-          if (texCanvas) {
-            const t = new THREE.CanvasTexture(texCanvas);
-            t.colorSpace = THREE.SRGBColorSpace;
-            mat.map = t;
+          const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
+          if (bodyStyle === 'white') {
+            mat.color.set(0xffffff);
+          } else if (bodyStyle === 'flat') {
+            mat.color.set(selHex);
           } else {
-            mat.color.set(colorHex);
+            const texCanvas = getPlanetTextureEquirect(node); // true-colour procedural surface
+            if (texCanvas) {
+              const t = new THREE.CanvasTexture(texCanvas);
+              t.colorSpace = THREE.SRGBColorSpace;
+              mat.map = t;
+            } else {
+              mat.color.set(colorHex);
+            }
           }
+          // Moons can be eclipse-shadowed by their parent planet (analytic ray-sphere in the shader).
+          // Edge is HARD by default; an atmosphere on the moon OR its shadowing planet softens it.
+          if (!systemLevel) {
+            const soft = softsShadow(node) || softsShadow(nodesById.get(node.parentId));
+            shadow = applyEclipseShadow(mat, soft ? 0.4 : 0.03);
+          }
+          const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 24), mat);
+          if (polF < 0.999) sphere.scale.set(1, polF, 1);
+          mesh = sphere;
         }
-        // Moons can be eclipse-shadowed by their parent planet (analytic ray-sphere in the shader).
-        // Edge is HARD by default; an atmosphere on the moon OR its shadowing planet softens it.
-        if (!systemLevel) {
-          const soft = softsShadow(node) || softsShadow(nodesById.get(node.parentId));
-          shadow = applyEclipseShadow(mat, soft ? 0.4 : 0.03);
-        }
-        const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 24), mat);
-        // Oblateness: flatten along the spin (local Y) axis for a fast rotator.
-        const polF = oblatePolarFactor((node as any).oblateness);
-        if (polF < 0.999) sphere.scale.set(1, polF, 1);
-        mesh = sphere;
       }
       contentGroup.add(mesh);
 
@@ -1029,7 +1048,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----
@@ -1096,6 +1115,20 @@ function buildMoonOrbitRing(node: any, kHelio: number, compression: number, colo
   if (pts.length < 3) return null;
   const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.4 });
   return new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat);
+}
+
+// An 80s vector-display body: a low-poly globe drawn as wireframe EDGES plus its VERTICES as brighter
+// points (points read hotter than lines, like a phosphor vector screen). `glow` = additive blending so
+// overlapping strokes bloom. Returned as a Group so the caller can tilt/scale/spin it like a sphere.
+function buildWireframeBody(radius: number, color: number, glow: boolean): THREE.Group {
+  const g = new THREE.Group();
+  const geo = new THREE.SphereGeometry(radius, 16, 10); // low-poly for the faceted vector look
+  const blending = glow ? THREE.AdditiveBlending : THREE.NormalBlending;
+  const lineMat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: glow ? 0.55 : 0.7, blending, depthWrite: false });
+  g.add(new THREE.LineSegments(new THREE.WireframeGeometry(geo), lineMat));
+  const dotMat = new THREE.PointsMaterial({ color, size: Math.max(0.02, radius * 0.16), sizeAttenuation: true, transparent: true, opacity: 1, blending, depthWrite: false });
+  g.add(new THREE.Points(geo, dotMat));
+  return g;
 }
 
 // A few irregular "rock" silhouette textures so debris reads as chaotic lumps, not square points.

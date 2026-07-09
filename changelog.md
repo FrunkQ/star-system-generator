@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.36-beta - 9th Jul 2026
+
+* **Wireframe / vector "80s" mode.** New Render control: Filled (as before) or Wireframe — a low-poly vector globe drawn as glowing (or flat) edges with brighter vertex points, for that old-vector-display feel. Works in any colour.
+* **Colour is its own choice.** The body colour dropdown is now True colour / Flat colour / **White** — and it applies to both filled and wireframe bodies. "White" replaces the old fixed blue holo-tint, so a screen filter can colour the whole scene however you like.
+
 ## v2.1.35-beta - 9th Jul 2026
 
 * **Moon orbits appear with their moons.** In the Holo Table an orbit path now shows under exactly the same rule as the body's name — so selecting a planet reveals its moons *and* their orbit rings, on one clean rule. Moon rings are drawn in the planet's own frame with the same spread the moons use, so they sit right under them.

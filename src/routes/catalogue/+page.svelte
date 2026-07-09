@@ -558,11 +558,18 @@
               <label>Label size <span class="hp-val">{holoStyle.labelSize ?? 11}px</span>
                 <input type="range" min="8" max="24" step="1" bind:value={holoStyle.labelSize} />
               </label>
-              <label>Bodies
+              <label>Colour
                 <select bind:value={holoStyle.bodyStyle}>
                   <option value="textured">True colour</option>
                   <option value="flat">Flat colour</option>
-                  <option value="tint">Holo tint</option>
+                  <option value="white">White</option>
+                </select>
+              </label>
+              <label>Render
+                <select bind:value={holoStyle.render}>
+                  <option value="filled">Filled</option>
+                  <option value="wire-glow">Wireframe (glow)</option>
+                  <option value="wire-flat">Wireframe (flat)</option>
                 </select>
               </label>
               <label>Spread <span class="hp-val">{holoStyle.compression === 0 ? 'true scale' : Math.round(holoStyle.compression * 100) + '%'}</span>
