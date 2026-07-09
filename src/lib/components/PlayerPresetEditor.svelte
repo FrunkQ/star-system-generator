@@ -13,6 +13,7 @@
   import { systemStore } from '$lib/stores';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import HoloView from '$lib/holo/HoloView.svelte';
+  import FilterParamControls from './FilterParamControls.svelte';
   import type { RulePack } from '$lib/types';
 
   export let preset: PlayerPreset;
@@ -22,7 +23,6 @@
   // Edit a DRAFT; commit on Save so Cancel is a clean discard.
   let draft: PlayerPreset = structuredClone(preset);
   $: holoStyle = holoStyleOf(draft);
-  $: crtPhosphor = (draft.filterParams?.phosphor as string) || '#4dff88';
 
   const FILTERS = [
     { id: 'none', label: 'No filter' },
@@ -62,9 +62,6 @@
     return () => cancelAnimationFrame(raf);
   });
 
-  function setPhosphor(hex: string) {
-    draft = { ...draft, filterParams: { ...(draft.filterParams || {}), phosphor: hex } };
-  }
   function save() {
     updatePreset(draft);
     dispatch('saved', draft);
@@ -108,8 +105,11 @@
           <label>Filter
             <select bind:value={draft.filter}>{#each FILTERS as f}<option value={f.id}>{f.label}</option>{/each}</select>
           </label>
-          {#if draft.filter === 'crt'}
-            <label class="inline">Phosphor <input type="color" value={crtPhosphor} on:input={(e) => setPhosphor((e.currentTarget as HTMLInputElement).value)} /></label>
+          {#if draft.filter !== 'none'}
+            <div class="filter-params">
+              <FilterParamControls filterId={draft.filter} values={draft.filterParams}
+                on:change={(e) => (draft = { ...draft, filterParams: e.detail })} />
+            </div>
           {/if}
           <label>Colour
             <select bind:value={draft.bodyStyle}>
@@ -186,6 +186,7 @@
   input[type=text], select { background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 7px; font: inherit; }
   input[type=range] { width: 100%; accent-color: var(--accent, #6aa0ff); }
   .hint { font-size: 0.72rem; color: var(--text-muted); font-style: italic; margin: 0; }
+  .filter-params { border-left: 2px solid var(--border); padding-left: 8px; margin: 2px 0; }
   .preview { position: relative; background: #05070c; min-height: 0; }
   .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.85rem; }
   button { padding: 7px 15px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); font: inherit; }

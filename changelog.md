@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.39-beta - 9th Jul 2026
+
+* **Every filter knob in the editor.** Selecting a filter in the preset editor now exposes its full control set — brightness, contrast, invert, phosphor colour + strength, scanlines, barrel warp, vignette, and the collapsible Distortion / Signal-artifact groups — all driving the live preview. (Yes, you can finally crank the brightness and invert it.)
+
 ## v2.1.38-beta - 9th Jul 2026
 
 * **Live preset look editor.** Duplicate a preset and hit "Edit look…" to open the editor: the full set of look controls on the left (filter + phosphor, colour, 3D render style, grid, spread, sizes, framing, belts, view-orbit, labels, background, accent) and a **live 3D preview** on the right that reacts as you drag. The controls a view supports are shown for that view (3D controls appear for the holo view). Save writes it to the campaign. This is the heart of the unified player-view system taking shape.
