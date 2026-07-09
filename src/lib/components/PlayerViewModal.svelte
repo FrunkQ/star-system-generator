@@ -10,6 +10,9 @@
     playerPresetList, addPreset, updatePreset, deletePreset, duplicateIntoStarmap, runPresetMigration
   } from '$lib/player/presetStore';
   import { get } from 'svelte/store';
+  import PlayerPresetEditor from './PlayerPresetEditor.svelte';
+
+  let editing: PlayerPreset | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -108,10 +111,11 @@
           <label class="chk"><input type="checkbox" checked={selected.interactive} disabled={!editable} on:change={(e) => patch({ interactive: (e.currentTarget as HTMLInputElement).checked })} /> Players can click / focus / scrub</label>
 
           <div class="det-actions">
+            {#if editable}<button class="primary" on:click={() => (editing = selected)}>Edit look…</button>{/if}
             <button on:click={() => duplicate(selected)}>Duplicate</button>
             {#if editable}<button class="danger" on:click={() => remove(selected)}>Delete</button>{/if}
           </div>
-          <p class="soon">A live preview + the full look controls (filters, grid, wireframe, cover page, graphics) arrive in the editor next.</p>
+          <p class="soon">Edit a preset to open the live look editor (filters, grid, wireframe, framing). Cover page + graphics land next.</p>
         </aside>
       {/if}
     </div>
@@ -121,6 +125,10 @@
     </footer>
   </div>
 </div>
+
+{#if editing}
+  <PlayerPresetEditor preset={editing} on:close={() => (editing = null)} />
+{/if}
 
 <style>
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 2000; }
@@ -150,6 +158,7 @@
   .det-actions { display: flex; gap: 0.5rem; margin-top: 0.4rem; }
   .det-actions button { background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 12px; cursor: pointer; font: inherit; }
   .det-actions button.danger { color: #ff8080; border-color: #7a2f2f; }
+  .det-actions button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   .soon { font-size: 0.7rem; color: var(--text-muted); font-style: italic; margin: 0.3rem 0 0; }
   footer { display: flex; justify-content: flex-end; }
   footer button { padding: 8px 16px; cursor: pointer; border-radius: 4px; border: none; background: var(--bg-control); color: var(--text); font: inherit; }
