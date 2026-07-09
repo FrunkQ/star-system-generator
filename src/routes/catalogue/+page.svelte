@@ -65,6 +65,7 @@
   // Momentary GM overrides — deliberately NOT part of holoStyle (never saved to a preset).
   let holoLabelsOn = true;
   let holoFilterBypass = false;
+  let holoOrbitPaused = false;
   const HOLO_FILTERS = [
     { id: 'none', label: 'No filter' },
     { id: 'crt', label: 'CRT Terminal' },
@@ -171,13 +172,14 @@
   $: if (selectedBody?.id !== _lastBodyId) { _lastBodyId = selectedBody?.id ?? null; bodyExpanded = false; }
 
   // Desktop: the right-hand body panel is drag-resizable from its left edge; the width is remembered.
-  let inspectorWidth = 340;
-  if (browser) { const s = Number(localStorage.getItem('holo-insp-width')); if (s >= 260 && s <= 640) inspectorWidth = s; }
+  // Default is deliberately compact (~2/3 of the old 340px) so the map keeps the room.
+  let inspectorWidth = 230;
+  if (browser) { const s = Number(localStorage.getItem('holo-insp-width')); if (s >= 200 && s <= 640) inspectorWidth = s; }
   function startInspectorResize(e: PointerEvent) {
     e.preventDefault();
     const startX = e.clientX;
     const startW = inspectorWidth;
-    const onMove = (ev: PointerEvent) => { inspectorWidth = Math.max(260, Math.min(640, startW + (startX - ev.clientX))); };
+    const onMove = (ev: PointerEvent) => { inspectorWidth = Math.max(200, Math.min(640, startW + (startX - ev.clientX))); };
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
@@ -526,7 +528,7 @@
     <div class="console-stage">
       {#if rulePack && displaySystem}
         {#if theme.tier === 'holo'}
-          <HoloView system={displaySystem} {currentTime} {focusedBodyId} style={holoStyle} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} on:focus={handleFocus} />
+          <HoloView system={displaySystem} {currentTime} {focusedBodyId} style={holoStyle} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} on:focus={handleFocus} />
           <!-- Preset picker: the GM's one-dropdown "how does this look" control. -->
           <div class="holo-presetbar">
             <select class="holo-preset" value={holoPresetId} on:change={(e) => applyHoloPreset((e.currentTarget as HTMLSelectElement).value)} aria-label="Look preset">
@@ -535,6 +537,9 @@
             <!-- Momentary GM toggles (not saved to the preset): quick labels on/off and a filter bypass. -->
             <button class="holo-toggle" class:off={!holoLabelsOn} on:click={() => (holoLabelsOn = !holoLabelsOn)} title={holoLabelsOn ? 'Hide labels' : 'Show labels'} aria-label="Toggle labels" aria-pressed={holoLabelsOn}>A</button>
             <button class="holo-toggle" class:off={holoFilterBypass} on:click={() => (holoFilterBypass = !holoFilterBypass)} title={holoFilterBypass ? 'Filter suspended — click to restore' : 'Suspend the visual filter'} aria-label="Bypass filter" aria-pressed={!holoFilterBypass}>◎</button>
+            {#if (holoStyle.orbitSpeed ?? 0) > 0}
+              <button class="holo-toggle" class:off={holoOrbitPaused} on:click={() => (holoOrbitPaused = !holoOrbitPaused)} title={holoOrbitPaused ? 'Auto view-orbit paused — click to resume' : 'Pause auto view-orbit'} aria-label="Pause view orbit" aria-pressed={!holoOrbitPaused}>↻</button>
+            {/if}
             <button class="holo-tune" class:on={showHoloControls} on:click={() => (showHoloControls = !showHoloControls)} title="Adjust the look" aria-label="Adjust the look">⚙</button>
           </div>
           {#if showHoloControls}

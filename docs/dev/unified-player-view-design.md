@@ -174,3 +174,56 @@ in step 3 but render through the same components until steps 4–6 swap the inte
 - Migrate saved holo presets; built-ins duplicable.
 - Retire bespoke code (guide themes, `/projector`) one at a time after parity.
 - ONE CRT filter with a colour parameter replaces the green/amber pair.
+
+## 11. Refinements & backlog (2026-07-09 round 2 — fold into the build)
+
+### 11.1 Everything is a reusable, parameterised ELEMENT
+As each current preset is broken down, capture its distinctive parts as reusable ELEMENTS that can be
+added to ANY preset at ANY layer (cover / starmap / system), each self-contained and parameterised.
+Worked example — **The Guide's "guide messages"** (the friendly banner text top & bottom of screen):
+that becomes a `guideMessages` element with a placement dropdown **None / Top / Bottom / Top & Bottom**
+and the message text(s), addable at cover/starmap/system level. Recreate each built-in by composing
+elements, not by bespoke components. General rule: when you split something out, contain + parameterise
+it so it can be reused widely. (Candidate elements to extract: guide-messages banner, cover title/label,
+graphic placement, footer/credits, confidentiality stamp, logo/overlay.)
+
+### 11.2 Full filter controls in the editor
+The preset editor exposes the FULL param set of the chosen filter (brightness, invert, all CRT sliders,
+etc.) — generated from the filter definition's `params` (the FilterPanel pattern), grouped as the
+definition declares. Not a hand-picked subset. ("Desperately want to turn up brightness / invert.")
+
+### 11.3 Render style + colour selection (wireframe / low-poly "80s" mode)
+Split a body's appearance into TWO orthogonal choices:
+- **Colour selection** (shared dropdown, 3 options, used by BOTH filled and wireframe):
+  `True colour` / `Flat class colour (red/orange/…)` / `White`. **Holo-tint becomes White** — instead of a
+  fixed blue tint, render white and let a screen filter colour it (more flexible). Belts/rings/labels use
+  the same 3-way colour selection.
+- **Render style**: `Filled` (current solid spheres) / `Wireframe — glowing points` (vector look, points
+  brighter than lines) / `Wireframe — flat points` (non-glowing). Surface features still drawn, but as
+  coloured OUTLINES not fills. Belts & rings render as simpler points in wireframe. INVESTIGATION —
+  prototype the glowing/non-glowing vector look; adopt if it lands.
+
+### 11.4 Moon orbits follow the name rule
+In the Holo Table, draw a body's ORBIT under exactly the same rule as its NAME (`getVisibleNodeIds`):
+"if you show a name, show an orbit." So selecting a planet reveals its moons' orbits (their names already
+show). One rule, clean and aligned — replaces any separate orbit-visibility logic.
+
+### 11.5 Reactive player view — UPDATE GATE
+Player views are reactive to live GM editing (good). Add a throttle so live pushes fire **at most ~2×/sec**
+— don't hammer the render / the SYNC_PRESET channel on every keystroke/slider tick. (Leading + trailing
+edge; coalesce.)
+
+### 11.6 More momentary (non-saved) GM toggles
+Alongside hide-labels / filter-bypass, add **disable auto view-orbit** — kill the turntable on the fly if
+it's annoying, without touching the saved preset.
+
+### 11.7 Data panel (desktop) — width + filter
+The player-view body data panel is drag-resizable + remembered (done, v2.1.31). Refinements: default width
+to ~**2/3** of the current default; and the panel should receive the **same visual filter** as the main
+view (so a CRT/night-vision preset colours the data panel too, not just the map). DOM panel → approximate
+via CSS filter, or render it inside the filtered surface.
+
+### 11.8 Status (what's built vs pending, 2026-07-09)
+BUILT: steps 1-2 (schema+storage, CRT-colour). v2.1.34: CRT-coloured labels + label size/font + momentary
+labels/filter toggles. PENDING here + steps 3-8: everything in §11 above, plus picker/editor/follow-GM/
+cover-theme/starmap-layers/kill-list.

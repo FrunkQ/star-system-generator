@@ -334,6 +334,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let bodyById = new Map<string, BodyVisual>();
   let ringVisuals: RingVisual[] = [];
   let beltVisuals: BeltVisual[] = [];
+  // Orbit path rings, keyed by node id so they can follow the SAME visibility rule as the names
+  // ("if you show a name, show an orbit"). Moon rings carry trackParentId to follow the parent.
+  let orbitRings: { id: string; obj: THREE.Object3D; trackParentId?: string }[] = [];
   let starLights: { id: string; light: THREE.PointLight }[] = [];
   let starVisuals: { corona: THREE.Sprite; coronaScale: number; activity: number }[] = [];
   let rMax = 1; // largest heliocentric distance in the system (AU), for the compression normaliser
@@ -619,6 +622,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     bodyById = new Map();
     ringVisuals = [];
     beltVisuals = [];
+    orbitRings = [];
     starLights = [];
     starVisuals = [];
   }
@@ -666,10 +670,20 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
       const systemLevel = isSystemLevel(node);
 
-      // Heliocentric orbit ring for system-level orbiters (planets + barycentres). Static geometry.
-      if (systemLevel && node.orbit) {
-        const ring = buildOrbitRing(node, positionToScene, safeColor(node));
-        if (ring) contentGroup.add(ring);
+      // Orbit path rings — shown under the SAME rule as the body's name (updateOrbitRings). A
+      // system-level orbiter gets a heliocentric ring at the origin; a moon gets a ring in its
+      // parent's local frame (scaled by the parent's radial compression) that tracks the parent.
+      if (node.orbit && node.kind !== 'construct') {
+        if (systemLevel) {
+          const ring = buildOrbitRing(node, positionToScene, safeColor(node));
+          if (ring) { contentGroup.add(ring); orbitRings.push({ id: node.id, obj: ring }); }
+        } else if (node.parentId) {
+          const pHelio = pos0.get(node.parentId);
+          const rP = pHelio ? Math.hypot(pHelio.x, pHelio.y, pHelio.z) : 0;
+          const kP = rP > 1e-9 ? compressScalar(rP) / rP : 0;
+          const ring = kP > 0 ? buildMoonOrbitRing(node, kP, compression, safeColor(node)) : null;
+          if (ring) { contentGroup.add(ring); orbitRings.push({ id: node.id, obj: ring, trackParentId: node.parentId }); }
+        }
       }
 
       if (node.kind === 'barycenter') continue; // barycentres have a ring but no body of their own
@@ -799,6 +813,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const s of starLights) {
       const sp = positions.get(s.id);
       if (sp) s.light.position.copy(positionToScene(sp, tmp));
+    }
+  }
+
+  // Orbit rings follow the name rule: visible exactly when the body's name is (getVisibleNodeIds).
+  // Moon rings also track their parent's current scene position.
+  function updateOrbitRings() {
+    for (const r of orbitRings) {
+      r.obj.visible = visibleSet.has(r.id);
+      if (r.obj.visible && r.trackParentId) {
+        const p = bodyById.get(r.trackParentId);
+        if (p) r.obj.position.copy(p.mesh.position);
+      }
     }
   }
 
@@ -964,6 +990,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateShadows();
     updateRings();
     updateBelts();
+    updateOrbitRings();
     controls.update();
     if (filterPass) {
       filterPass.uniforms.time.value = nowSec; // drive scanlines/flicker
@@ -1045,6 +1072,29 @@ function buildOrbitRing(node: any, project: Projector, color: number): THREE.Lin
     pts.push(v.clone());
   }
   const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.45 });
+  return new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat);
+}
+
+// A moon's orbit path, in its PARENT's local scene frame. Each sample is placed with the SAME magnified
+// log-spread transform the moon's own position uses (see the satellite branch in setTime), so the ring
+// sits exactly under the moon. kHelio = the parent's radial compression factor (compressScalar(r)/r).
+function buildMoonOrbitRing(node: any, kHelio: number, compression: number, color: number): THREE.LineLoop | null {
+  const period = orbitPeriodMs(node.orbit);
+  if (period === 0) return null;
+  const t0 = node.orbit.t0 || 0;
+  const pts: THREE.Vector3[] = [];
+  for (let i = 0; i < ORBIT_SAMPLES; i++) {
+    const r = propagateState3D(node, t0 + (i / ORBIT_SAMPLES) * period).r; // moon relative to parent (AU)
+    const off = Math.hypot(r.x, r.y, r.z);
+    if (off < 1e-12) continue;
+    const spreadDist = 0.45 + 0.16 * Math.log10(1 + off / 0.0005);
+    const trueDist = off * kHelio;
+    const dist = trueDist * (1 - compression) + spreadDist * compression;
+    const k = dist / off;
+    pts.push(new THREE.Vector3(r.x * k, r.z * k, r.y * k)); // physics(x,y,z) → scene(x,z,y)
+  }
+  if (pts.length < 3) return null;
+  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.4 });
   return new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat);
 }
 

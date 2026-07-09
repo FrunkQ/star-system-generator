@@ -20,6 +20,7 @@
   // to briefly drop the visual filter if it's hard to read.
   export let labelsVisible: boolean = true;
   export let filterBypass: boolean = false;
+  export let orbitPaused: boolean = false; // momentarily stop the auto view-orbit turntable
 
   function applyStyle(s: HoloStyle) {
     // Filter can be momentarily bypassed without changing the saved style.
@@ -32,7 +33,7 @@
     controller?.setBodyStyle(s.bodyStyle);
     controller?.setBodySize(s.bodySize);
     controller?.setGrid(s.grid);
-    controller?.setOrbitSpeed(s.orbitSpeed);
+    controller?.setOrbitSpeed(orbitPaused ? 0 : s.orbitSpeed);
     controller?.setLabelSize(s.labelSize ?? 11);
     controller?.setLabelFont(s.font ?? null);
     // Labels are HTML over the canvas; match them to the CRT phosphor (they can't be shader-filtered).
@@ -92,7 +93,7 @@
   $: controller?.focusBody(focusedBodyId);
   $: if (controller) applyStyle(style);
   // Re-apply when the momentary overrides change (style is unchanged, so these need their own trigger).
-  $: if (controller) { labelsVisible; filterBypass; applyStyle(style); }
+  $: if (controller) { labelsVisible; filterBypass; orbitPaused; applyStyle(style); }
 </script>
 
 <div class="holo-root" bind:this={container}>

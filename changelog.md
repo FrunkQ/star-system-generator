@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.35-beta - 9th Jul 2026
+
+* **Moon orbits appear with their moons.** In the Holo Table an orbit path now shows under exactly the same rule as the body's name — so selecting a planet reveals its moons *and* their orbit rings, on one clean rule. Moon rings are drawn in the planet's own frame with the same spread the moons use, so they sit right under them.
+* **Pause the view-orbit on the fly.** When auto view-orbit is on, a quick control on the holo bar suspends it momentarily (not saved) — handy if the slow spin gets distracting.
+* **Slimmer data panel by default.** The player-view body panel now opens about two-thirds of its old width, leaving the map more room; drag its edge to taste (remembered).
+
 ## v2.1.34-beta - 9th Jul 2026
 
 * **Labels follow the CRT colour.** In-scene body labels are drawn over the 3D canvas, so the screen filter couldn't reach them and they stayed pale. They now match the CRT phosphor colour, so a green/amber terminal reads as one piece.
