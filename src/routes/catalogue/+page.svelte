@@ -62,6 +62,9 @@
   let holoStyle: HoloStyle = { ...DEFAULT_STYLE };
   let holoPresetId = 'clean';
   let showHoloControls = false;
+  // Momentary GM overrides — deliberately NOT part of holoStyle (never saved to a preset).
+  let holoLabelsOn = true;
+  let holoFilterBypass = false;
   const HOLO_FILTERS = [
     { id: 'none', label: 'No filter' },
     { id: 'crt', label: 'CRT Terminal' },
@@ -523,12 +526,15 @@
     <div class="console-stage">
       {#if rulePack && displaySystem}
         {#if theme.tier === 'holo'}
-          <HoloView system={displaySystem} {currentTime} {focusedBodyId} style={holoStyle} on:focus={handleFocus} />
+          <HoloView system={displaySystem} {currentTime} {focusedBodyId} style={holoStyle} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} on:focus={handleFocus} />
           <!-- Preset picker: the GM's one-dropdown "how does this look" control. -->
           <div class="holo-presetbar">
             <select class="holo-preset" value={holoPresetId} on:change={(e) => applyHoloPreset((e.currentTarget as HTMLSelectElement).value)} aria-label="Look preset">
               {#each $holoPresets as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
             </select>
+            <!-- Momentary GM toggles (not saved to the preset): quick labels on/off and a filter bypass. -->
+            <button class="holo-toggle" class:off={!holoLabelsOn} on:click={() => (holoLabelsOn = !holoLabelsOn)} title={holoLabelsOn ? 'Hide labels' : 'Show labels'} aria-label="Toggle labels" aria-pressed={holoLabelsOn}>A</button>
+            <button class="holo-toggle" class:off={holoFilterBypass} on:click={() => (holoFilterBypass = !holoFilterBypass)} title={holoFilterBypass ? 'Filter suspended — click to restore' : 'Suspend the visual filter'} aria-label="Bypass filter" aria-pressed={!holoFilterBypass}>◎</button>
             <button class="holo-tune" class:on={showHoloControls} on:click={() => (showHoloControls = !showHoloControls)} title="Adjust the look" aria-label="Adjust the look">⚙</button>
           </div>
           {#if showHoloControls}
@@ -544,6 +550,9 @@
                   <input type="color" value={crtPhosphor} on:input={(e) => setCrtPhosphor((e.currentTarget as HTMLInputElement).value)} />
                 </label>
               {/if}
+              <label>Label size <span class="hp-val">{holoStyle.labelSize ?? 11}px</span>
+                <input type="range" min="8" max="24" step="1" bind:value={holoStyle.labelSize} />
+              </label>
               <label>Bodies
                 <select bind:value={holoStyle.bodyStyle}>
                   <option value="textured">True colour</option>
@@ -898,7 +907,7 @@
     gap: 6px;
     align-items: stretch;
   }
-  .holo-preset, .holo-tune, .holo-panel select, .holo-panel button {
+  .holo-preset, .holo-tune, .holo-toggle, .holo-panel select, .holo-panel button {
     font-family: system-ui, sans-serif;
     font-size: 11.5px;
     color: #cfe0f5;
@@ -908,8 +917,10 @@
     cursor: pointer;
   }
   .holo-preset { padding: 5px 8px; min-height: 34px; }
-  .holo-tune { width: 34px; min-height: 34px; font-size: 15px; }
+  .holo-tune, .holo-toggle { width: 34px; min-height: 34px; font-size: 15px; }
   .holo-tune.on { background: rgba(60, 110, 190, 0.5); }
+  /* Momentary toggles read "active" (feature on) normally, dimmed/struck when the GM has turned it off. */
+  .holo-toggle.off { color: #7488a0; border-color: rgba(120, 180, 255, 0.15); text-decoration: line-through; }
   .holo-panel {
     position: absolute;
     bottom: 54px;

@@ -87,4 +87,5 @@ export interface PlayerPreset {
   angleDeg: number;      // camera tilt from overhead
   lockOverhead: boolean; // force top-down (recreates the flat 2D projector from the 3D engine)
   whole: boolean;        // frame the whole system vs the focused body
+  labelSize: number;     // in-scene body-label font size (px); the font is the theme `font`
 }

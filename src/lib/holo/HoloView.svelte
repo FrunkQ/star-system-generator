@@ -16,9 +16,14 @@
   export let focusedBodyId: string | null = null;
   // The full look bundle (filter, compression, framing, skybox) — a GM preset or live-tweaked style.
   export let style: HoloStyle = DEFAULT_STYLE;
+  // Momentary GM overrides (NOT part of the saved style): quick label show/hide and a filter bypass
+  // to briefly drop the visual filter if it's hard to read.
+  export let labelsVisible: boolean = true;
+  export let filterBypass: boolean = false;
 
   function applyStyle(s: HoloStyle) {
-    controller?.setFilter(s.filter, s.filterParams);
+    // Filter can be momentarily bypassed without changing the saved style.
+    controller?.setFilter(filterBypass ? 'none' : s.filter, filterBypass ? undefined : s.filterParams);
     controller?.setFraming({ angleDeg: s.angleDeg, whole: s.whole });
     controller?.setSkybox(s.skybox);
     controller?.setBackground(s.background);
@@ -28,6 +33,12 @@
     controller?.setBodySize(s.bodySize);
     controller?.setGrid(s.grid);
     controller?.setOrbitSpeed(s.orbitSpeed);
+    controller?.setLabelSize(s.labelSize ?? 11);
+    controller?.setLabelFont(s.font ?? null);
+    // Labels are HTML over the canvas; match them to the CRT phosphor (they can't be shader-filtered).
+    const crt = !filterBypass && s.filter === 'crt';
+    controller?.setLabelColor(crt ? ((s.filterParams?.phosphor as string) || '#4dff88') : null);
+    controller?.setLabelsVisible(labelsVisible);
   }
 
   let container: HTMLDivElement;
@@ -80,6 +91,8 @@
   $: controller?.setTime(currentTime);
   $: controller?.focusBody(focusedBodyId);
   $: if (controller) applyStyle(style);
+  // Re-apply when the momentary overrides change (style is unchanged, so these need their own trigger).
+  $: if (controller) { labelsVisible; filterBypass; applyStyle(style); }
 </script>
 
 <div class="holo-root" bind:this={container}>

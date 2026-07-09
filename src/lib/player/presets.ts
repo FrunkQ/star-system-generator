@@ -33,7 +33,8 @@ export const DEFAULT_PRESET: PlayerPreset = {
   skybox: true,
   angleDeg: 64,
   lockOverhead: false,
-  whole: false
+  whole: false,
+  labelSize: 11
 };
 
 function preset(p: Partial<PlayerPreset> & { id: string; name: string; description: string }): PlayerPreset {
@@ -117,7 +118,9 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
     background: p.background,
     bodySize: p.bodySize,
     grid: p.grid,
-    orbitSpeed: p.orbitSpeed
+    orbitSpeed: p.orbitSpeed,
+    labelSize: p.labelSize,
+    font: p.font
   };
 }
 

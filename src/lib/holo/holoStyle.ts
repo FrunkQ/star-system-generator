@@ -18,6 +18,8 @@ export interface HoloStyle {
   bodySize: number; // 1 = readable (chunky) .. 0 = true physical scale
   grid: 'off' | 'plain' | 'scaled'; // ground reference: none / plain polar grid / grid with AU scale labels
   orbitSpeed: number; // auto view-orbit: how fast the camera slowly circles the focused object (0 = static)
+  labelSize?: number; // in-scene body-label font size in px (default 11)
+  font?: string; // in-scene label font-family — inherited from the preset theme when set
 }
 
 export interface HoloPreset extends HoloStyle {
@@ -37,7 +39,8 @@ export const DEFAULT_STYLE: HoloStyle = {
   background: 'space',
   bodySize: 1,
   grid: 'plain',
-  orbitSpeed: 0
+  orbitSpeed: 0,
+  labelSize: 11
 };
 
 // Shipped starter presets — enough to demo the range and skin the existing guides.
@@ -75,7 +78,7 @@ if (typeof window !== 'undefined') {
 }
 
 export function styleOf(preset: HoloPreset): HoloStyle {
-  return { filter: preset.filter, filterParams: preset.filterParams ? { ...preset.filterParams } : undefined, compression: preset.compression, angleDeg: preset.angleDeg, whole: preset.whole, skybox: preset.skybox, beltDetail: preset.beltDetail ?? 0.6, bodyStyle: preset.bodyStyle ?? 'textured', background: preset.background ?? 'space', bodySize: preset.bodySize ?? 1, grid: preset.grid ?? 'plain', orbitSpeed: preset.orbitSpeed ?? 0 };
+  return { filter: preset.filter, filterParams: preset.filterParams ? { ...preset.filterParams } : undefined, compression: preset.compression, angleDeg: preset.angleDeg, whole: preset.whole, skybox: preset.skybox, beltDetail: preset.beltDetail ?? 0.6, bodyStyle: preset.bodyStyle ?? 'textured', background: preset.background ?? 'space', bodySize: preset.bodySize ?? 1, grid: preset.grid ?? 'plain', orbitSpeed: preset.orbitSpeed ?? 0, labelSize: preset.labelSize ?? 11, font: preset.font };
 }
 
 // Add a custom preset from the current live style. Id is derived from the name + a short suffix so

@@ -49,6 +49,10 @@ export interface HoloController {
   setBodySize(v: number): void; // 1 readable .. 0 true physical scale
   setGrid(mode: 'off' | 'plain' | 'scaled'): void; // ground reference grid
   setOrbitSpeed(v: number): void; // auto view-orbit turntable speed 0..1 (0 = static)
+  setLabelColor(hex: string | null): void; // in-scene label colour (null = default); matched to CRT phosphor
+  setLabelSize(px: number): void; // in-scene label font size
+  setLabelFont(font: string | null): void; // in-scene label font-family (theme font)
+  setLabelsVisible(on: boolean): void; // momentary show/hide of in-scene labels (not saved)
   // GPU post-processing filter (CRT, night-vision, thermal, …) from the ported Mappadux package.
   setFilter(id: string, params?: FilterParamValues): void;
   resetView(): void;
@@ -310,6 +314,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     filterParams = params || {};
     rebuildFilter();
   }
+
+  // In-scene body labels are HTML over the canvas (the post-process shader can't reach them), so their
+  // colour is matched to the phosphor here; size + font come from the preset. Visibility is a momentary
+  // GM toggle, not a saved setting.
+  let labelsVisible = true;
+  function setLabelVar(name: string, value: string | null) {
+    if (value == null) opts.labelLayer?.style.removeProperty(name);
+    else opts.labelLayer?.style.setProperty(name, value);
+  }
+  function setLabelColor(hex: string | null) { setLabelVar('--holo-label-color', hex); }
+  function setLabelSize(px: number) { setLabelVar('--holo-label-size', `${Math.max(6, Math.min(40, px))}px`); }
+  function setLabelFont(font: string | null) { setLabelVar('--holo-label-font', font && font.trim() ? font : null); }
+  function setLabelsVisible(on: boolean) { labelsVisible = on; }
 
   // --- Dynamic content ---
   let currentSystem: System | null = null;
@@ -787,6 +804,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   function updateLabels() {
     if (!opts.labelLayer) return;
+    if (!labelsVisible) { for (const b of bodies) if (b.label) b.label.style.opacity = '0'; return; }
     for (const b of bodies) {
       if (!b.label) continue;
       if (!visibleSet.has(b.id)) { b.label.style.opacity = '0'; continue; } // focus-rule naming
@@ -984,7 +1002,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setBodySize, setGrid, setOrbitSpeed, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----
@@ -1155,7 +1173,9 @@ function makeLabel(name: string, layer?: HTMLElement): HTMLElement | undefined {
   const el = document.createElement('div');
   el.className = 'holo-label';
   el.textContent = name;
-  el.style.cssText = 'position:absolute;left:0;top:0;transform:translate(-9999px,-9999px);opacity:0;pointer-events:none;white-space:nowrap;font:600 11px/1.2 ui-monospace,monospace;color:#cfefff;text-shadow:0 0 4px rgba(0,0,0,0.9);letter-spacing:0.02em;';
+  // Size / font / colour come from CSS variables on the label layer, so a single set recolours or
+  // resizes every label (font inherits the theme; colour matches the phosphor under a CRT filter).
+  el.style.cssText = 'position:absolute;left:0;top:0;transform:translate(-9999px,-9999px);opacity:0;pointer-events:none;white-space:nowrap;font-weight:600;line-height:1.2;font-size:var(--holo-label-size,11px);font-family:var(--holo-label-font,ui-monospace,monospace);color:var(--holo-label-color,#cfefff);text-shadow:0 0 4px rgba(0,0,0,0.9);letter-spacing:0.02em;';
   layer.appendChild(el);
   return el;
 }

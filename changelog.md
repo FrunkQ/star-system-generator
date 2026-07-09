@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.34-beta - 9th Jul 2026
+
+* **Labels follow the CRT colour.** In-scene body labels are drawn over the 3D canvas, so the screen filter couldn't reach them and they stayed pale. They now match the CRT phosphor colour, so a green/amber terminal reads as one piece.
+* **Label size + font.** Label size is a slider in the look controls, and the label font follows the preset theme (wired for the unified player view).
+* **Quick GM toggles.** Two momentary controls sit on the holo bar (not saved to the preset): hide/show labels, and suspend the visual filter for a moment if it's hard to read.
+
 ## v2.1.33-beta - 9th Jul 2026
 
 * **One CRT filter, any phosphor colour.** The separate green and amber CRT filters are replaced by a single "CRT Terminal" filter with a Phosphor Colour picker — green, amber, red, blue, whatever you like — driven live. Fewer filters, more flexibility, and it lays the groundwork for the unified player-view presets. Existing Green/Amber holo presets migrate automatically.
