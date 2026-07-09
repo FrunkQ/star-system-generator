@@ -148,6 +148,7 @@
 
     <div class="buttons">
       <button on:click={() => dispatch('close')}>Close</button>
+      <button on:click={() => dispatch('presets')} title="Manage the unified player-view presets (new)">Manage presets…</button>
       <button class="primary" on:click={open}>Open Local Field Guide Window</button>
     </div>
   </div>

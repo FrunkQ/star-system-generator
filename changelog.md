@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.37-beta - 9th Jul 2026
+
+* **Player View preset manager (early).** A first cut of the unified player-view system: a preset gallery reached from the Field Guide launcher ("Manage presets…"). It lists the shipped presets — The Guide, Datapad, Console, CRT, Holo Table, Projection — plus any you make; GM-driven ones are outlined. Duplicate a preset to get an editable copy, rename/retune its top-level settings, or delete it. Presets are saved with the campaign (and any old saved holo looks migrate in automatically). The full look editor with a live preview comes next; the existing Field Guide is untouched for now.
+
 ## v2.1.36-beta - 9th Jul 2026
 
 * **Wireframe / vector "80s" mode.** New Render control: Filled (as before) or Wireframe — a low-poly vector globe drawn as glowing (or flat) edges with brighter vertex points, for that old-vector-display feel. Works in any colour.
