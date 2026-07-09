@@ -14,6 +14,11 @@
   const dispatch = createEventDispatcher();
 
   let a_AU = 0;
+  // What the distance field DISPLAYS: for a binary member this is the pair SEPARATION
+  // (a_self + a_partner, matching the "Separation from X" label); otherwise it is a_AU itself.
+  // Editing writes both members' a_AU via the mass split, so the SystemProcessor's binary
+  // reciprocal pass reproduces the same numbers instead of transforming what was typed.
+  let dist_AU = 0;
   let a_slider = 0; // 0 to 1 linear representation of log scale
   let e = 0;
   let i_deg = 0;
@@ -58,9 +63,11 @@
 
       if (body.orbit) {
           a_AU = body.orbit.elements.a_AU;
+          const partner = binaryPartnerOf();
+          dist_AU = partner?.orbit ? a_AU + (partner.orbit.elements.a_AU || 0) : a_AU;
           // Initialize slider from real value
           updateSliderFromReal();
-          
+
           e = body.orbit.elements.e;
           i_deg = body.orbit.elements.i_deg;
           omega_deg = body.orbit.elements.omega_deg || 0;
@@ -83,28 +90,65 @@
       // Could add planetary zones here later if needed
   }
 
-  $: if (body) init();
+  // While any input in this panel has focus, do NOT re-init from the model: the processor's
+  // normalisation pass (binary reciprocal split, clamps) fires on every keystroke's dispatch and
+  // was overwriting the number the user was still typing (e.g. "23.7" became "23.737313…").
+  // On blur the guard lifts and the panel re-syncs to the (now idempotent) model.
+  let editing = false;
+  $: if (body && !editing) init();
   $: if (parentBody) calculateZones();
 
+  // The binary partner when this body is one half of a 2-member barycentre pair, else null.
+  function binaryPartnerOf(): any {
+      const bary: any = parentBody;
+      if (!bary || bary.kind !== 'barycenter' || bary.memberIds?.length !== 2
+          || !bary.memberIds.includes(body.id) || !system?.nodes) return null;
+      return system.nodes.find((n: any) => n.id !== body.id && bary.memberIds.includes(n.id)) ?? null;
+  }
+  function massOf(n: any): number {
+      return n?.kind === 'barycenter' ? (n.effectiveMassKg || 0) : (n?.massKg || 0);
+  }
+
+  // Convert the displayed distance into the model's a_AU. For a binary member the display is the
+  // SEPARATION: split it across both members by mass ratio (r_i = sep · m_other / M_total) — the
+  // exact split the SystemProcessor derives, so its pass reproduces (not transforms) the input.
+  function applyDistance() {
+      const partner = binaryPartnerOf();
+      if (partner?.orbit) {
+          const mSelf = massOf(body);
+          const mOther = massOf(partner);
+          const total = mSelf + mOther;
+          if (total > 0) {
+              a_AU = dist_AU * (mOther / total);
+              partner.orbit.elements.a_AU = dist_AU * (mSelf / total);
+          } else {
+              a_AU = dist_AU / 2;
+              partner.orbit.elements.a_AU = dist_AU / 2;
+          }
+      } else {
+          a_AU = dist_AU;
+      }
+  }
+
   function updateSliderFromReal() {
-      // a_AU -> slider (0-1)
-      const safeA = Math.max(a_AU, minA);
+      // dist_AU -> slider (0-1)
+      const safeA = Math.max(dist_AU, minA);
       const minLog = Math.log(minA);
       const maxLog = Math.log(maxA);
       a_slider = (Math.log(safeA) - minLog) / (maxLog - minLog);
   }
 
   function updateRealFromSlider() {
-      // slider -> a_AU
+      // slider -> dist_AU
       const minLog = Math.log(minA);
       const maxLog = Math.log(maxA);
       const val = Math.exp(minLog + (maxLog - minLog) * a_slider);
-      a_AU = parseFloat(val.toFixed(5)); // Round to reasonable precision
+      dist_AU = parseFloat(val.toFixed(5)); // Round to reasonable precision
       updateOrbit();
   }
-  
+
   function handleOrbitalSliderInput(event: CustomEvent<number>) {
-      a_AU = event.detail;
+      dist_AU = event.detail;
       updateSliderFromReal(); // Sync the internal 0-1 slider just in case
       updateOrbit();
   }
@@ -117,9 +161,10 @@ function updateOrbit() {
     if (!body.orbit) return;
     // A negative/zero/NaN semi-major axis is unphysical and throws in ctx.ellipse
     // (it froze the orrery in a user file). Clamp to a tiny positive floor.
-    if (!Number.isFinite(a_AU) || a_AU <= 0) {
-        a_AU = Math.max(minA, 1e-6);
+    if (!Number.isFinite(dist_AU) || dist_AU <= 0) {
+        dist_AU = Math.max(minA, 1e-6);
     }
+    applyDistance();
     const boundedE = Math.max(0, Math.min(e, safeMaxE));
     if (Math.abs(boundedE - e) > 1e-9) {
         e = parseFloat(boundedE.toFixed(6));
@@ -192,7 +237,7 @@ function updateOrbit() {
   $: partnerName = partnerBody ? partnerBody.name : 'its partner';
   $: orbitHostName = hostLabel(parentBody, system);
   let pairA_AU = 0;
-  $: if (isBinaryMember && (parentBody as any).orbit) pairA_AU = (parentBody as any).orbit.elements.a_AU ?? 0;
+  $: if (isBinaryMember && (parentBody as any).orbit && !editing) pairA_AU = (parentBody as any).orbit.elements.a_AU ?? 0;
   $: pairMaxA = Math.max(60, (pairA_AU || 0) * 1.5);
 
   function handlePairDistance() {
@@ -203,8 +248,8 @@ function updateOrbit() {
       dispatch('update');
   }
 
-  $: peri = a_AU * (1 - e);
-  $: aph = a_AU * (1 + e);
+  $: peri = dist_AU * (1 - e);
+  $: aph = dist_AU * (1 + e);
   $: minSafePeriapsisAU = calculateMinSafePeriapsisAU();
   $: safeMaxE = a_AU > 0 ? Math.max(0, Math.min(0.999, 1 - (minSafePeriapsisAU / a_AU))) : 0.999;
   $: rangeText = body.roleHint === 'moon'
@@ -212,7 +257,8 @@ function updateOrbit() {
       : `Range: ${peri.toFixed(3)} - ${aph.toFixed(3)} AU`;
 </script>
 
-<div class="tab-panel">
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<div class="tab-panel" on:focusin={() => (editing = true)} on:focusout={() => (editing = false)}>
     {#if !body.orbit}
         <p>This body has no orbit (it might be the central star).</p>
     {:else}
@@ -233,12 +279,12 @@ function updateOrbit() {
         <div class="form-group">
             <div class="label-row">
                 <label>{isBinaryMember ? `Separation from ${partnerName} (AU)` : 'Semi-Major Axis (AU)'}</label>
-                <input type="number" step="any" bind:value={a_AU} on:input={handleNumberInput} />
+                <input type="number" step="any" bind:value={dist_AU} on:input={handleNumberInput} />
             </div>
             <div class="info-row" style="font-size: 0.8em; color: var(--text-faint); margin-bottom: 4px;">{#if !isBinaryMember && orbitHostName}Orbits {orbitHostName} · {/if}{rangeText}</div>
             <!-- Custom Orbital Slider -->
             <div class="full-width-slider">
-                <OrbitalSlider value={a_AU} min={minA} max={maxA} {zones} on:input={handleOrbitalSliderInput} />
+                <OrbitalSlider value={dist_AU} min={minA} max={maxA} {zones} on:input={handleOrbitalSliderInput} />
             </div>
         </div>
 

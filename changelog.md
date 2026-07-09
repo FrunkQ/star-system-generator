@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.1 - 9th Jul 2026
+
+* **Fixed: editing a binary pair separation.** Typing a separation for two binary stars (e.g. 23.7 AU) was being transformed on every keystroke - the physics pass re-split the value by mass ratio and overwrote the box while you were still typing, so the number just drifted. The field now genuinely edits the pair separation (both stars are written with the correct mass split), and the editor no longer refreshes the input while it has focus.
+
 ## v2.1.0 - 7th Jul 2026
 
 **Star System Explorer V2.** A ground-up rebuild. Where V1 let you sketch a system, V2 derives one from real physics and lets you live in it — fly it, share it, and bring worlds in from other tools. The headline additions since the V1 line:
