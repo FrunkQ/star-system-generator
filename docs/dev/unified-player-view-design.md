@@ -1,193 +1,176 @@
-# Unified Player View — design guide
+# Unified Player View — design guide (FINAL, build-ready)
 
-Status: DESIGN / analysis (no code yet). Supersedes the standalone "§A8 projector" build in
-`v2.2-3d-design.md`. Draws every existing player-facing artifact into one engine.
+Status: DESIGN LOCKED (2026-07-09). All open questions resolved. This document is the build spec.
+Supersedes the standalone "projector" build (§A8) in `v2.2-3d-design.md`.
 
 ## 1. The core idea
 
-Today we ship several separate player-facing things:
+Today we ship several separate player-facing things: the five Field Guide themes, the 2D `/projector`,
+the printed Report, and the GM's own preview. They are all the same act — **take a (redacted) snapshot
+and present it** — differing only in what is drawn, how it looks, the chrome around it, and who drives
+it. So there is ONE engine and many **presets**. A preset is the complete parametrisation of a player
+presentation; every current artifact becomes a named preset of the one tool. New presentation ideas
+become new presets, not new code.
 
-- **Field Guide** — five hand-built themes (The Guide, Datapad, Console, CRT, Holo Table), player-driven.
-- **Projection** (`/projector`) — a GM-driven 2D orrery for a table screen, follows the GM's map.
-- **Report** — a static printed document.
-- **GM preview** — what the GM sees while building.
+> One tool, parametrised: GM preview, player view, guide, projector — all the same system, saved and
+> recalled as presets.
 
-They overlap heavily. Each is really the *same act*: **take a (redacted) system or starmap snapshot and
-present it**. They differ only in four dimensions:
+The exception is the printed **Report**: paper is a genuinely different medium and stays its own export
+path, outside this system.
 
-1. **What** is drawn — a text list, a 2D orrery, a 3D holo table.
-2. **How it looks** — filters/shaders, colours, grid, framing, body style, motion.
-3. **The chrome** — cover page, logo, company name, confidentiality label, overlays.
-4. **Who drives it** — the player interacts freely, or the GM drives it (follow-GM).
+## 2. The three GM-designable layers
 
-So there is one engine and many **presets**. A preset is the complete parametrisation — the DNA of a
-presentation. "Field Guide", "Projection", "Greenscreen for OBS", "CRT terminal" all stop being separate
-features and become **named presets** of one configurable tool. The GM builds/edits presets in the main app
-with a live preview, saves them, and hands them out (as a player link) or projects them (follow-GM).
+A preset styles three layers. Each layer picks a view module and inherits the preset-wide theme (§3).
 
-> One tool, parametrised: GM preview, player view, guide, projector — all the same system, saved and recalled
-> as presets. New presentation ideas become new presets, not new code.
+1. **Cover page** — the start/hold screen. Title text, subtitle, body text, logo/graphic, label
+   (e.g. CONFIDENTIAL). Must be able to recreate "DON'T PANIC" exactly — and equally
+   "ACME Corp + logo + CONFIDENTIAL".
+2. **Starmap view** — how the campaign map presents: `list` (text), `diagram2d` (the current clickable
+   starmap), or `holo3d` (galaxy 3D — to be written; the option ships disabled until it exists).
+3. **System view** — how a system presents: `list` (text/image file entries), `diagram2d` (the current
+   console orrery / old projector look), or `holo3d` (the holo table).
 
-## 2. Anatomy of a preset (the "cocktail")
+## 3. Preset-wide theme
 
-A `PlayerPreset` is a bundle of independent modules. Grouped by concern:
+Applied across all three layers so a preset reads as one designed object:
 
-### 2.1 Identity
-- `id`, `name`
-- `driver`: `'player'` | `'gm'` — see §3. Purely a label + default for `followGM`; the GM can name a preset
-  "Bridge Projection" or "Passenger Guide" and it reads correctly.
-- `builtIn`: shipped preset (can't be deleted; can be duplicated + edited).
+- **Font**: a single UI font choice for the whole player view (from a small curated set + system default).
+- **Colour scheme**: one broad accent colour picked from a spectrum — works exactly like the current
+  guide terminal colour (monoColor); drives chrome, labels, tints.
+- **Uploaded graphics**: a couple of image slots (logo + one auxiliary). Usable on the cover page AND as
+  an overlay on a 2D or 3D map (watermark/frame corner). Stored with the preset (see §6); keep them
+  small — they ride the starmap file and the broadcast channel's chunked path.
+- **Chrome text**: company/campaign name, footer/credits, confidentiality label.
 
-### 2.2 Driver / sync (the one real behavioural fork — §3)
-- `followGM`: boolean. When true the view honours the GM's broadcast focus, time and (optionally) framing.
-  When false the player drives their own focus and an arbitrary time rate.
-- (Later, granular: `followFocus`, `followTime`, `followCamera` — but ship the single flag first.)
+## 4. Anatomy of a `PlayerPreset`
 
-### 2.3 View module — what represents the system / starmap
-- `systemView`: `'list'` | `'diagram2d'` | `'holo3d'`
-- `starmapView`: `'list'` | `'diagram2d'` | `'holo3d'` (galaxy 3D is in scope later)
-- These are the current tiers, promoted to a free choice:
-  - `list` = the report/textual catalogue.
-  - `diagram2d` = `SystemVisualizer` (the console/guide 2D orrery).
-  - `holo3d` = `HoloView`.
+```
+PlayerPreset {
+  id, name, description        // name+description define purpose — shown on the picker card
+  builtIn?                     // shipped; not deletable, duplicable
+  // driver
+  followGM: boolean            // GM-driven (projection-style): honours SYNC_FOCUS/SYNC_TIME
+  interactive: boolean         // players may click/focus/scrub (false = pure display surface / kiosk)
+  // layers
+  cover:   { enabled, title, subtitle, body, label, graphic: assetRef | null }
+  starmap: { view: 'list' | 'diagram2d' | 'holo3d' }
+  system:  { view: 'list' | 'diagram2d' | 'holo3d' }
+  // theme (preset-wide)
+  font: string
+  accentColor: string          // the guide-style spectrum pick
+  assets: { logo?: dataUrl, aux?: dataUrl }
+  overlay: { asset: 'logo'|'aux'|null, corner, opacity }   // graphic over a 2D/3D map
+  companyName, footerText
+  // look (today's HoloStyle, generalised; module-dependent controls — §7)
+  filter: string               // shader id — see §5 (single parameterised CRT)
+  filterParams: Record<string, number | boolean | string>  // per-shader controls incl. CRT colour
+  bodyStyle: 'textured' | 'flat' | 'tint'
+  background: 'space' | 'green' | 'blue' | 'black'
+  grid: 'off' | 'plain' | 'scaled'
+  compression, bodySize, beltDetail, orbitSpeed, skybox
+  framing: { angleDeg, lockOverhead, whole }   // lockOverhead = lock icon by the angle slider
+}
+```
 
-### 2.4 Look (today's `HoloStyle`, generalised to all view modules where it applies)
-- `filter` (shader id) + `filterParams` (per-shader controls — currently missing; add for CRT/thermal/etc.)
-- `bodyStyle`: `textured` (true colour) | `flat` (class colour) | `tint` (mono holo)
-- `background`: `space` | `green` | `blue` | `black` (chroma keys for OBS)
-- `grid`: `off` | `plain` | `scaled`
-- `compression` (spread), `bodySize`, `beltDetail`, `orbitSpeed`, `skybox`
-- `framing`: `angleDeg` + **`lockOverhead`** (a lock toggle next to the angle — forces top-down) + `whole`
-- `monoColor` / tint colour (terminal colour for CRT-style skins)
+Notes:
+- `followGM` + `interactive` are independent flags. A projection is typically
+  `{followGM: true, interactive: false}`; a GM can also follow-drive an interactive guide, or make a
+  locked kiosk guide.
+- **Projection is NOT a category.** All presets live on one list; the name/description say what it's
+  for. GM-driven presets (`followGM`) are visually outlined in a different colour on the picker —
+  they are effectively read-only surfaces (RO) where player-driven ones are read/write (R/W).
+- Redaction is orthogonal: every preset renders the already-redacted `computePlayerSnapshot` /
+  `computePlayerStarmapSnapshot` output.
 
-### 2.5 Chrome / branding — the "presentation wrapper"
-- `cover`: the start/hold screen — `{ title, subtitle, logoUrl, label }`. "DON'T PANIC" is one cover;
-  "ACME Corp — CONFIDENTIAL" over a logo is another.
-- `logoUrl`, `companyName`
-- `overlays`: watermark / confidentiality banner / frame (optional list)
-- `creditsFooter`, etc.
+## 5. Filters: ONE parameterised CRT
 
-### 2.6 Behaviour
-- `interactive`: can the player click/focus/scrub, or is it locked (a pure display surface)?
-- Redaction is orthogonal and already handled by `computePlayerSnapshot` — every preset renders
-  already-redacted data.
+Consolidation (locked): **drop the separate amber filter.** There is one `crt` filter with a **colour
+parameter** — green, amber, red, blue, whatever the spectrum pick gives. This is more flexible and
+smaller than filter-per-colour, and it forces the per-filter parameter plumbing (`filterParams`) that
+night-vision/thermal etc. will also use. Filter ids after consolidation: `none`, `crt` (colour param),
+`night_vision`, `thermal`. Migration: presets referencing `retro_sci_fi_amber` become
+`{filter:'crt', filterParams:{color:'#ffb000'}}`; `retro_sci_fi_green` likewise with green.
 
-## 3. Follow-GM: the pivot that separates "guide" from "projection"
+Filters are a screen-space post-process and apply **uniformly across view modules** — a CRT preset
+looks CRT whether the layer is a list, the 2D map, or the holo table.
 
-The **only** essential behavioural difference between a Field Guide and a Projection is who drives it:
+## 6. Storage, delivery, migration
 
-- **Player-driven** (guide): the player picks the focus and an arbitrary time rate. Time is cosmetic.
-- **GM-driven** (projection): the view follows the GM's real focus + real display clock over the channel.
+- **Presets are saved WITH the starmap.** They are campaign data (the GM designed them for this
+  campaign), not browser data. `starmap.playerPresets: PlayerPreset[]`. Built-ins ship in code and are
+  not persisted; duplicating one writes a copy into the starmap.
+- **Migration**: existing localStorage holo presets (`holo-presets` key) are GM-created player presets —
+  on first open of the new picker, import them into the starmap (then clear the key). The five guide
+  themes + old projector become the six shipped built-ins (see §8).
+- **Delivery to players — both channels**:
+  - *Cold-open*: the share link embeds the preset (compressed JSON in the URL fragment) so a player's
+    browser can render before any sync arrives.
+  - *Live*: a `SYNC_PRESET` broadcast message (like today's `SYNC_GUIDECONFIG`, superseding it) pushes
+    the active preset + subsequent edits over the channel. Large assets ride the existing chunked path.
 
-Everything else (2D vs 3D, greenscreen, overhead, filters) is just *look*. So `followGM` is a **checkbox on
-the preset**, not a separate product. Consequences:
+## 7. UI: picker and editor
 
-- A "Projection" preset = `followGM: true`, usually `lockOverhead` or a clean framing, often a chroma-key
-  background. The old 2D `/projector` is reproduced by `{ systemView: 'diagram2d' | 'holo3d', followGM: true,
-  lockOverhead: true }`. Greenscreen/OBS mode = `{ ..., background: 'green' }`.
-- A GM can also tick `followGM` on a *guide* preset to **drive the players' guide** — pushing their focus as
-  the session moves. Same machinery, new capability, zero extra code.
+- **New "Player View" rail icon** replaces the Field Guide + Projector rail entries (unifying them).
+- **The picker** looks like the current Field Guide modal: a clean grid of preset cards
+  (name + description + tint swatch). No editing clutter. GM-driven presets get the coloured outline
+  (§4). Actions per card: activate/share, project, duplicate, edit, delete (non-built-in).
+- **The editor is a separate popup modal** (opened from a card's edit action or "New preset"), keeping
+  the picker clutter-free. Layout: controls left, **live preview** right (embedded player view), plus
+  an "open preview in a window" pop-out for checking on a real second screen. Save writes to the
+  starmap's preset list.
+- **Progressive disclosure**: the editor shows only the controls the chosen view module supports —
+  `bodyStyle`/`grid`/`orbitSpeed`/`compression` etc. hide for `list`; `lockOverhead` and 3D-only
+  controls show for `holo3d`; filter + theme + cover controls always show.
 
-The broadcast already carries `SYNC_SYSTEM` / `SYNC_FOCUS` / `SYNC_TIME`; `followGM` just decides whether a
-given view honours them. The existing `/projector` receiver is the reference implementation.
+## 8. Shipped built-in presets (the current five + projection)
 
-## 4. Mapping the current artifacts onto presets
-
-| Today | Becomes preset (sketch) |
+| Built-in | Sketch |
 |---|---|
-| The Guide (illustrated) | `systemView: diagram2d`, friendly cover, `followGM:false`, `filter:none` |
-| Datapad / Console | `systemView: diagram2d`, interactive, terminal chrome |
-| CRT | `filter: retro_sci_fi_green`, mono colour, scanline cover |
-| Holo Table | `systemView: holo3d` |
-| 2D Projector | `systemView: diagram2d` (or `holo3d` + `lockOverhead`), `followGM:true` |
-| Greenscreen / OBS | any projection preset + `background: green` |
-| Report (printed) | `systemView: list`, print chrome (kept as an export path) |
+| The Guide | system: diagram2d, friendly cover ("DON'T PANIC"), interactive, followGM off |
+| Datapad | system: diagram2d, terminal chrome, interactive |
+| Console | system: diagram2d, console tint, interactive |
+| CRT | filter: crt (green), mono colour, interactive |
+| Holo Table | system: holo3d, interactive |
+| **Projection** | system: holo3d (or diagram2d), followGM on, interactive off, lockOverhead, clean framing |
 
-Each shipped theme becomes a **built-in preset** in the picker; the current Field Guide popup becomes the
-**preset picker + editor**.
+Greenscreen/OBS is any preset with `background: 'green'` — the projection card's description points
+this out rather than shipping a seventh card.
 
-## 5. Where it lives — the preset-design screen (main app)
+## 9. Build order (for the implementing session)
 
-Decision (Alex): the look controls live in the **main app**, not a second pop-out. Rationale: designing a
-preset against a live preview is far easier than juggling two windows.
+1. **Schema + storage**: `PlayerPreset` type; `starmap.playerPresets`; built-ins in code; localStorage
+   holo-preset migration; picker reads the one list.
+2. **CRT consolidation**: single `crt` filter with colour param + `filterParams` plumbing through
+   HoloStyle/scene/composer; migrate old ids.
+3. **Picker rework**: Player View rail icon; current Field Guide modal becomes the preset card grid
+   (cards = presets); GM-driven outline colour.
+4. **Editor modal**: separate popup, controls + embedded live preview + preview pop-out; progressive
+   disclosure per module; save to starmap.
+5. **lockOverhead** + the Projection built-in; follow-GM in the unified viewer (`SYNC_FOCUS`/`SYNC_TIME`
+   honoured when `followGM`, ignoring when not); `interactive:false` disables input.
+6. **Cover page + theme**: cover layer renderer, font + accent application, uploaded graphics
+   (cover + map overlay); `SYNC_PRESET` + link-embed delivery.
+7. **Starmap layer views** (list/2D through the preset; holo3d galaxy view later — option disabled).
+8. **Kill-list**: after parity is confirmed per case, retire the bespoke guide theme components and
+   `/projector`, one at a time. Report/print stays (separate medium).
 
-- New **"Player View"** rail icon (unifies today's Field Guide + Projector rail entries). For now, reuse the
-  existing Field Guide popup as the shell.
-- The modal is a **preset picker** (built-ins + saved) plus an **editor**:
-  - Left: the control panel (today's `holo-panel`, generalised — view module, filters + params, colour,
-    grid, framing incl. lock-overhead, orbit, branding/cover, follow-GM).
-  - Right / centre: a **live preview** of the player view (embedded), with an **"Open preview"** pop-out to
-    see it full-screen on a second monitor while editing.
-  - Save → a named preset, tagged player-driven ("Field Guide …") or GM-driven ("Projection …").
-- Launch actions from a saved preset:
-  - **Share as player view** — a link/QR the players open (their browser renders the preset).
-  - **Project** — open the follow-GM view on the table screen.
+Each step ships to beta independently; the current guides keep working throughout (they become presets
+in step 3 but render through the same components until steps 4–6 swap the internals).
 
-## 6. Module inventory (what we already have vs. what's new)
+## 10. Decisions log (all locked 2026-07-09)
 
-We already have almost every ingredient — this is mostly wiring, not new engines.
-
-Have:
-- View modules: `SystemVisualizer` (2D), `HoloView` (3D), report/list rendering, `Starmap` (2D map).
-- Filters/shaders: the ported Mappadux package (none, CRT green/amber, night-vision, thermal).
-- Look controls: the whole `HoloStyle` set (filter, bodyStyle, background, grid, compression, bodySize,
-  beltDetail, orbitSpeed, framing angle, skybox) + `BodyPicker`.
-- Redaction: `computePlayerSnapshot` / `computePlayerStarmapSnapshot`.
-- Sync: `broadcast.ts` (`SYNC_SYSTEM/FOCUS/TIME/…`), the `/projector` follow-GM receiver.
-- Preset store: `holoPresets` (localStorage) — generalise to `playerPresets`.
-
-New / to build:
-- `lockOverhead` framing toggle (a lock icon by the angle slider) — trivial, high value (recreates 2D
-  projector from the 3D engine).
-- Shader **parameter** controls (per-filter sliders) — currently filters are on/off only.
-- `systemView` / `starmapView` selectors (list / 2D / 3D) inside the preset.
-- Chrome/branding modules: cover page, logo, company name, overlays.
-- The unified preset schema + editor screen + live preview.
-- Preset delivery to players (see §8 open questions).
-
-## 7. Phasing (build order, once the design is agreed)
-
-1. **Schema**: define `PlayerPreset` (superset of `HoloStyle` + view module + driver + chrome). Migrate the
-   seven holo presets and the five guide themes into built-in `PlayerPreset`s. Back-compat: map old
-   `?theme=` links to the matching preset.
-2. **lock-overhead** + surface a "Projection (2D-style)" built-in preset from the holo engine. Point
-   `/projector` at a preset (or fold it into the unified viewer) — begin retiring the bespoke 2D projector.
-3. **Preset editor screen** in the main app (rail icon → modal: control panel + live preview + save).
-   Reuse `holo-panel`, generalised.
-4. **Shader params** + `systemView` selector wired into the editor.
-5. **follow-GM for the holo/unified viewer** — the projection view honours `SYNC_FOCUS`/`SYNC_TIME`. Unify
-   the `/projector` and `/catalogue` receivers onto one path.
-6. **Chrome/branding** modules (cover page, logo, company, overlays).
-7. **Deprecate** the bespoke guide themes + 2D projector in favour of presets; keep the report export.
-
-Ship each phase to beta; the current guides keep working (they're just presets) throughout.
-
-## 8. Open questions / edge cases to resolve before building
-
-- **Preset delivery to players.** Player presets are the GM's local `localStorage`. For a *player-driven*
-  guide, the player's browser needs the preset. Options: embed the preset in the share link (fine — presets
-  are small), or push it over the channel (a `SYNC_PRESET` message, like today's `SYNC_GUIDECONFIG`). Likely
-  both: link for cold-open, channel for live changes.
-- **Which look controls apply to which view module.** `bodyStyle`/`grid`/`orbitSpeed` are meaningless for a
-  `list` view; the editor should show only the controls the chosen module supports (progressive disclosure).
-- **Filters across view modules.** The shader pass is a screen-space post-process; it should apply uniformly
-  to 2D and 3D (and maybe the list) so a "CRT" preset looks consistent regardless of view module.
-- **Interactivity vs projection.** A projection is usually non-interactive (a display surface); a guide is
-  interactive. Is that a separate flag or implied by `followGM`? Propose a distinct `interactive` flag so a
-  GM can make a *locked* guide (kiosk) too.
-- **Report/print.** Keep as an export path off the `list` module rather than forcing the printed document
-  into the live viewer.
-- **Naming & migration.** Users have saved holo presets already; migrate them, don't drop them. Built-in
-  presets should be duplicable so a GM starts from "CRT Green" and tweaks.
-- **Duplication kill-list.** Once the unified viewer covers a case, retire the older bespoke code (guide
-  theme components, `/projector`) deliberately, one at a time, after parity is confirmed.
-
-## 9. One-paragraph summary
-
-We already have all the elements — view modules (list / 2D / 3D), a shader filter stack, the full holo look
-controls, redaction, and GM-follow sync. This design pours them into one **preset-driven player-presentation
-engine**. A preset chooses a view module, a look (filters + colours + grid + framing, including an
-overhead-lock that recreates the 2D projector), chrome (cover, logo, labels), and a single `followGM` flag
-that turns any preset into a GM-driven projection. The GM designs presets in the main app against a live
-preview and either shares them as player guides or projects them. Every current artifact — Guide, Projection,
-Greenscreen, CRT, Holo — becomes a named preset of the one tool.
+- Editor is a separate modal from the picker; picker keeps the current clean look.
+- Three designable layers: cover page / starmap view / system view.
+- Preset-wide single font, spectrum accent colour, two uploaded graphic slots (cover + map overlay).
+- `interactive` is its own flag, independent of `followGM`.
+- **Presets are saved with the starmap** (campaign data), not localStorage; migrate existing
+  localStorage holo presets in.
+- Projection is not a category — one flat preset list; name/description carry purpose; GM-driven (RO)
+  presets outlined in a different colour.
+- Delivery: link-embed for cold-open + `SYNC_PRESET` channel for live changes.
+- Editor shows only the controls the chosen module supports.
+- Filters apply uniformly across view modules.
+- Report/print stays a separate export path.
+- Migrate saved holo presets; built-ins duplicable.
+- Retire bespoke code (guide themes, `/projector`) one at a time after parity.
+- ONE CRT filter with a colour parameter replaces the green/amber pair.
