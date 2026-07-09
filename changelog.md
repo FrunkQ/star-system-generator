@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.32-beta - 9th Jul 2026
+
+* **Binary separation is editable again.** Typing a separation for a binary pair (e.g. 23.7 AU) was being transformed on every keystroke — the field bound one member's barycentric distance, so the physics pass re-split what you typed by mass ratio and overwrote the box while you were still typing. The field now genuinely edits the pair separation (both members are written with the correct mass split, which the physics pass reproduces exactly), and the panel no longer refreshes from the model while one of its inputs has focus.
+
 ## v2.1.31-beta - 8th Jul 2026
 
 Field Guide look controls + panel polish (the look panel's full home will be the projector control window):
