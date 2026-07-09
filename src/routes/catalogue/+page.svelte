@@ -64,11 +64,15 @@
   let showHoloControls = false;
   const HOLO_FILTERS = [
     { id: 'none', label: 'No filter' },
-    { id: 'retro_sci_fi_green', label: 'CRT — Green' },
-    { id: 'retro_sci_fi_amber', label: 'CRT — Amber' },
+    { id: 'crt', label: 'CRT Terminal' },
     { id: 'night_vision', label: 'Night Vision' },
     { id: 'thermal', label: 'Thermal' }
   ];
+  // The CRT phosphor colour lives in filterParams; expose it as a colour picker when CRT is chosen.
+  $: crtPhosphor = (holoStyle.filterParams?.phosphor as string) || '#4dff88';
+  function setCrtPhosphor(hex: string) {
+    holoStyle = { ...holoStyle, filterParams: { ...(holoStyle.filterParams || {}), phosphor: hex } };
+  }
   // Collapse a popover when the user interacts anywhere outside it.
   function clickOutside(node: HTMLElement, cb: () => void) {
     const handler = (e: Event) => { if (!node.contains(e.target as Node)) cb(); };
@@ -535,6 +539,11 @@
                   {#each HOLO_FILTERS as f}<option value={f.id}>{f.label}</option>{/each}
                 </select>
               </label>
+              {#if holoStyle.filter === 'crt'}
+                <label class="hp-inline">Phosphor
+                  <input type="color" value={crtPhosphor} on:input={(e) => setCrtPhosphor((e.currentTarget as HTMLInputElement).value)} />
+                </label>
+              {/if}
               <label>Bodies
                 <select bind:value={holoStyle.bodyStyle}>
                   <option value="textured">True colour</option>

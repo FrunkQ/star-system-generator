@@ -11,7 +11,8 @@ uniform float uScanlineThickness;
 uniform float uCrtWarp;
 uniform float uBrightness;
 uniform float uContrast;
-uniform float uGreenTint;
+uniform float uTint;      // phosphor tint strength 0..1
+uniform vec3  uPhosphor;  // phosphor colour (green / amber / red / blue / …)
 uniform float uGhostIntensity;
 uniform float uGhostDistance;
 uniform float uTearFrequency;
@@ -100,14 +101,11 @@ vec3 processColor(vec3 aberrColor, vec2 screenCoord, vec2 baseUv, bool isInsideN
 
     processed = clamp(processed, 0.01, 0.99);
 
-    if (uGreenTint > 0.0) {
-        float t = uGreenTint;
-        vec3 tinted = vec3(
-            processed.r * (1.0 - t * 0.8),
-            min(processed.g * (1.0 + t * 0.1), 1.0),
-            processed.b * (1.0 - t * 0.6)
-        );
-        processed = tinted;
+    if (uTint > 0.0) {
+        // Monochrome phosphor: map luminance onto the chosen phosphor colour, blended by strength.
+        float lum = dot(processed, vec3(0.299, 0.587, 0.114));
+        vec3 tinted = lum * uPhosphor * 1.6; // 1.6 keeps a lit phosphor bright, not muddy
+        processed = mix(processed, clamp(tinted, 0.0, 1.0), uTint);
     }
 
     return processed;

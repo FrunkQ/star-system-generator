@@ -18,7 +18,7 @@
   export let style: HoloStyle = DEFAULT_STYLE;
 
   function applyStyle(s: HoloStyle) {
-    controller?.setFilter(s.filter);
+    controller?.setFilter(s.filter, s.filterParams);
     controller?.setFraming({ angleDeg: s.angleDeg, whole: s.whole });
     controller?.setSkybox(s.skybox);
     controller?.setBackground(s.background);

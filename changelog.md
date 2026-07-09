@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.33-beta - 9th Jul 2026
+
+* **One CRT filter, any phosphor colour.** The separate green and amber CRT filters are replaced by a single "CRT Terminal" filter with a Phosphor Colour picker — green, amber, red, blue, whatever you like — driven live. Fewer filters, more flexibility, and it lays the groundwork for the unified player-view presets. Existing Green/Amber holo presets migrate automatically.
+
 ## v2.1.32-beta - 9th Jul 2026
 
 * **Binary separation is editable again.** Typing a separation for a binary pair (e.g. 23.7 AU) was being transformed on every keystroke — the field bound one member's barycentric distance, so the physics pass re-split what you typed by mass ratio and overwrote the box while you were still typing. The field now genuinely edits the pair separation (both members are written with the correct mass split, which the physics pass reproduces exactly), and the panel no longer refreshes from the model while one of its inputs has focus.

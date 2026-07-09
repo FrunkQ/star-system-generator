@@ -2,11 +2,13 @@ import type { FilterDefinition } from '../../schema';
 import vertexShader from './vertex.glsl?raw';
 import fragmentShader from './fragment.glsl?raw';
 
+// One parameterised CRT filter (replaces the separate green + amber phosphor filters). The phosphor
+// COLOUR is a param, so any colour — green, amber, red, blue — is one preset, not a new shader.
 const definition: FilterDefinition = {
-  id: 'retro_sci_fi_green',
-  name: 'Retro Sci-Fi Green',
-  description: 'Classic green-phosphor CRT terminal. Ideal for Mothership, Traveller, Aliens RPG.',
-  animated: true,   // scanlines, flicker, noise bars all use time
+  id: 'crt',
+  name: 'CRT Terminal',
+  description: 'Phosphor CRT terminal with scanlines. Pick any phosphor colour.',
+  animated: true, // scanlines, flicker, noise bars all use time
   vertexShader,
   fragmentShader,
   groups: [
@@ -21,8 +23,9 @@ const definition: FilterDefinition = {
     { type: 'slider', id: 'brightness',         label: 'Brightness',         min: 0.1,   max: 2.0,   step: 0.05,   default: 1.0,  group: 'display' },
     { type: 'slider', id: 'contrast',           label: 'Contrast',           min: 0.5,   max: 3.0,   step: 0.05,   default: 1.2,  group: 'display' },
     { type: 'toggle', id: 'invertColors',       label: 'Invert',             default: false,                                       group: 'display' },
-    // Color
-    { type: 'slider', id: 'greenTint',          label: 'Green Tint',         min: 0,     max: 1,     step: 0.05,   default: 0.8,  group: 'color' },
+    // Colour — phosphor colour + strength
+    { type: 'color',  id: 'phosphor',           label: 'Phosphor Colour',    default: '#4dff88',                                    group: 'color' },
+    { type: 'slider', id: 'tint',               label: 'Phosphor Strength',  min: 0,     max: 1,     step: 0.05,   default: 0.8,  group: 'color' },
     // CRT Effects
     { type: 'slider', id: 'scanlineIntensity',  label: 'Scanline Intensity', min: 0,     max: 1,     step: 0.01,   default: 0.4,  group: 'crt' },
     { type: 'slider', id: 'scanlineThickness',  label: 'Scanline Width',     min: 2.0,   max: 8.0,   step: 0.5,    default: 3.0,  group: 'crt' },
