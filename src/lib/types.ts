@@ -680,6 +680,11 @@ export interface Starmap {
   temperatureUnit?: 'C' | 'F' | 'K';            // temperature display: °C (default) / °F / Kelvin — its own switch
   systemEdgeAu?: number;                        // "leaves the system" boundary in AU; unset = the star's Hill limit
 
+  // Unified player-view presets + their uploaded graphics are campaign data — saved with the map.
+  // See $lib/player and docs/dev/unified-player-view-design.md. Optional: absent on old maps.
+  playerPresets?: import('./player/presetTypes').PlayerPreset[];
+  playerAssets?: import('./player/presetTypes').PlayerAsset[];
+
   temporal?: TemporalState;
   rulePackOverrides?: RulePackOverrides;
   travellerMetadata?: {
