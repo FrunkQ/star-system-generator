@@ -37,15 +37,14 @@
     controller?.setOrbitSpeed(orbitPaused ? 0 : s.orbitSpeed);
     controller?.setLabelSize(s.labelSize ?? 11);
     controller?.setLabelFont(s.font ?? null);
-    // Labels are HTML over the canvas; match them to the CRT phosphor (they can't be shader-filtered).
-    const crt = !filterBypass && s.filter === 'crt';
-    controller?.setLabelColor(crt ? ((s.filterParams?.phosphor as string) || '#4dff88') : null);
+    // Labels are in-scene sprites now, so the shader tints them under CRT automatically — keep them a
+    // neutral light colour and let the filter do the colouring (true to "impacted by the filter").
+    controller?.setLabelColor(null);
     controller?.setLabelsVisible(labelsVisible);
   }
 
   let container: HTMLDivElement;
   let canvas: HTMLCanvasElement;
-  let labelLayer: HTMLDivElement;
   let controller: HoloController | null = null;
   let ro: ResizeObserver | null = null;
 
@@ -65,7 +64,7 @@
     (async () => {
       const { createHoloScene } = await import('$lib/holo/scene');
       if (cancelled || !canvas) return;
-      controller = createHoloScene(canvas, { onSelect: (id) => dispatch('focus', id), labelLayer });
+      controller = createHoloScene(canvas, { onSelect: (id) => dispatch('focus', id) });
       controller.setSystem(system);
       controller.setTime(currentTime);
       controller.focusBody(focusedBodyId);
@@ -99,7 +98,6 @@
 
 <div class="holo-root" bind:this={container}>
   <canvas bind:this={canvas}></canvas>
-  <div class="holo-labels" bind:this={labelLayer}></div>
 </div>
 
 <style>
@@ -115,11 +113,5 @@
     width: 100%;
     height: 100%;
     touch-action: none; /* let OrbitControls own pinch/drag */
-  }
-  .holo-labels {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-    pointer-events: none; /* labels never intercept camera gestures */
   }
 </style>

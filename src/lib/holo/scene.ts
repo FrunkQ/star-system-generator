@@ -67,15 +67,26 @@ export interface HoloController {
 
 export interface HoloOptions {
   onSelect?: (id: string) => void; // fired when the viewer taps a body
-  labelLayer?: HTMLElement; // absolutely-positioned overlay the scene fills with body labels
   skybox?: boolean; // background starfield (default true); a GM-selectable skybox slot later
+}
+
+// An in-scene text label: a canvas-textured sprite living in the 3D scene (NOT a DOM overlay) so the
+// post-process filter warps/tints it in lockstep with the bodies, and it stays aligned under CRT
+// barrel distortion. Drawn once per text/style change; positioned + sized to a constant screen size
+// each frame.
+interface LabelSprite {
+  sprite: THREE.Sprite;
+  canvas: HTMLCanvasElement;
+  text: string;
+  aspect: number;    // canvas width / height — keeps the sprite from stretching
+  heightRatio: number; // canvas full height / on-screen text height — converts labelSizePx to sprite size
 }
 
 interface BodyVisual {
   id: string;
   name: string;
   mesh: THREE.Object3D;
-  label?: HTMLElement;
+  label?: LabelSprite;
   parentId?: string | null;
   satellite: boolean; // a moon: positioned as a magnified offset around its (compressed) parent
   spinPeriodSec?: number; // sidereal rotation period; drives the texture turning
@@ -347,18 +358,63 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     rebuildFilter();
   }
 
-  // In-scene body labels are HTML over the canvas (the post-process shader can't reach them), so their
-  // colour is matched to the phosphor here; size + font come from the preset. Visibility is a momentary
-  // GM toggle, not a saved setting.
+  // In-scene body labels are canvas-textured sprites (see LabelSprite) so the post-process filter warps
+  // and tints them exactly like the bodies. Colour/font are baked into the canvas (redraw on change);
+  // size is applied per-frame via the sprite scale. Visibility is a momentary GM toggle, not saved.
   let labelsVisible = true;
-  function setLabelVar(name: string, value: string | null) {
-    if (value == null) opts.labelLayer?.style.removeProperty(name);
-    else opts.labelLayer?.style.setProperty(name, value);
-  }
-  function setLabelColor(hex: string | null) { setLabelVar('--holo-label-color', hex); }
-  function setLabelSize(px: number) { setLabelVar('--holo-label-size', `${Math.max(6, Math.min(40, px))}px`); }
-  function setLabelFont(font: string | null) { setLabelVar('--holo-label-font', font && font.trim() ? font : null); }
+  let labelColor = '#cfefff';
+  let labelSizePx = 11;
+  let labelFontFamily = 'ui-monospace, SFMono-Regular, Menlo, monospace';
+  function redrawAllLabels() { for (const b of bodies) if (b.label) drawLabel(b.label); }
+  function setLabelColor(hex: string | null) { labelColor = hex || '#cfefff'; redrawAllLabels(); }
+  function setLabelSize(px: number) { labelSizePx = Math.max(6, Math.min(40, px)); } // applied via sprite scale
+  function setLabelFont(font: string | null) { labelFontFamily = font && font.trim() ? font : 'ui-monospace, SFMono-Regular, Menlo, monospace'; redrawAllLabels(); }
   function setLabelsVisible(on: boolean) { labelsVisible = on; }
+
+  // Build a label sprite for a body and add it to the scene (so the filter processes it). The text is
+  // drawn to a canvas at high resolution; on-screen size is set each frame from labelSizePx.
+  function makeLabelSprite(text: string): LabelSprite | undefined {
+    if (!text) return undefined;
+    const canvas = document.createElement('canvas');
+    const mat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthTest: false, depthWrite: false, sizeAttenuation: false });
+    const sprite = new THREE.Sprite(mat);
+    sprite.center.set(0.5, -0.25); // anchor below the text so the label floats just above the body
+    sprite.renderOrder = 999;      // always drawn on top of the bodies
+    sprite.visible = false;
+    const ls: LabelSprite = { sprite, canvas, text, aspect: 1, heightRatio: 1 };
+    drawLabel(ls);
+    scene.add(sprite);
+    return ls;
+  }
+  // (Re)render a label's canvas in the current colour/font. Uses a fixed internal font size for
+  // crispness — the displayed size comes from the sprite scale, not this.
+  function drawLabel(ls: LabelSprite) {
+    const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
+    const fontPx = 40;
+    const pad = 6;
+    const font = `600 ${fontPx}px ${labelFontFamily}`;
+    const ctx = ls.canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.font = font;
+    const textW = Math.max(1, Math.ceil(ctx.measureText(ls.text).width));
+    const cw = textW + pad * 2;
+    const ch = Math.ceil(fontPx * 1.35) + pad * 2;
+    ls.canvas.width = Math.max(2, Math.round(cw * dpr));
+    ls.canvas.height = Math.max(2, Math.round(ch * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.font = font;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 4;
+    ctx.fillStyle = labelColor;
+    ctx.fillText(ls.text, cw / 2, ch / 2);
+    ls.aspect = cw / ch;
+    ls.heightRatio = ch / fontPx; // sprite full height ÷ text height
+    const map = (ls.sprite.material as THREE.SpriteMaterial).map;
+    if (map) map.needsUpdate = true;
+  }
 
   // --- Dynamic content ---
   let currentSystem: System | null = null;
@@ -650,7 +706,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       else disposeMat(m);
     });
     contentGroup.clear();
-    for (const b of bodies) b.label?.remove();
+    for (const b of bodies) {
+      if (!b.label) continue;
+      scene.remove(b.label.sprite);
+      const mat = b.label.sprite.material as THREE.SpriteMaterial;
+      mat.map?.dispose();
+      mat.dispose();
+    }
     bodies = [];
     bodyById = new Map();
     ringVisuals = [];
@@ -807,7 +869,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const isConstruct = node.kind === 'construct';
       // Every body gets a label element; which ones actually show is decided per-frame by the focus
       // visibility rule (getVisibleNodeIds) — so a planet's moons name themselves once it's selected.
-      const label = makeLabel(String(node.name ?? ''), opts.labelLayer);
+      const label = makeLabelSprite(String(node.name ?? ''));
       // Spin: sidereal rotation from the data, composed onto a fixed axial tilt each frame. Stars
       // spin too (their sunspots turn); the corona is a billboard child, unaffected by the spin.
       // Constructs are camera-facing sprites — no spin.
@@ -873,22 +935,23 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
   }
 
+  const labelWorld = new THREE.Vector3();
   function updateLabels() {
-    if (!opts.labelLayer) return;
-    if (!labelsVisible) { for (const b of bodies) if (b.label) b.label.style.opacity = '0'; return; }
     for (const b of bodies) {
-      if (!b.label) continue;
-      if (!visibleSet.has(b.id)) { b.label.style.opacity = '0'; continue; } // focus-rule naming
-      proj.copy(b.mesh.position).project(camera);
-      const behind = proj.z > 1;
-      const x = (proj.x * 0.5 + 0.5) * viewW;
-      const y = (-proj.y * 0.5 + 0.5) * viewH;
-      if (behind || x < 0 || x > viewW || y < 0 || y > viewH) {
-        b.label.style.opacity = '0';
-      } else {
-        b.label.style.opacity = b.id === focusedId ? '1' : '0.8';
-        b.label.style.transform = `translate(-50%, -140%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
-      }
+      const ls = b.label;
+      if (!ls) continue;
+      // Focus-rule naming + momentary hide: only visible bodies name themselves.
+      if (!labelsVisible || !visibleSet.has(b.id)) { ls.sprite.visible = false; continue; }
+      b.mesh.getWorldPosition(labelWorld);
+      proj.copy(labelWorld).project(camera);
+      if (proj.z > 1) { ls.sprite.visible = false; continue; } // behind the camera
+      ls.sprite.visible = true;
+      ls.sprite.position.copy(labelWorld);
+      (ls.sprite.material as THREE.SpriteMaterial).opacity = b.id === focusedId ? 1 : 0.85;
+      // Constant on-screen size: with sizeAttenuation off, sprite scale is in clip units (2 = full
+      // viewport height). Convert the desired text height in px, scaled up by the canvas padding ratio.
+      const hClip = (2 * labelSizePx * ls.heightRatio) / viewH;
+      ls.sprite.scale.set(hClip * ls.aspect, hClip, 1);
     }
   }
 
@@ -1037,13 +1100,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateBelts();
     updateOrbitRings();
     controls.update();
+    updateLabels(); // position/size the in-scene label sprites BEFORE rendering so the filter warps them
     if (filterPass) {
       filterPass.uniforms.time.value = nowSec; // drive scanlines/flicker
       composer.render();
     } else {
       renderer.render(scene, camera);
     }
-    updateLabels();
     raf = requestAnimationFrame(loop);
   }
   raf = requestAnimationFrame(loop);
@@ -1288,18 +1351,6 @@ function buildBeltBand(node: any, project: Projector, detail: number, timeMs: nu
     buckets.push({ points, basePos: new Float32Array(pos), omega: new Float32Array(bucketOmega[i]) });
   });
   return { group, buckets, t0Sec: timeMs / 1000, id: node.id, outerScene };
-}
-
-function makeLabel(name: string, layer?: HTMLElement): HTMLElement | undefined {
-  if (!layer || !name) return undefined;
-  const el = document.createElement('div');
-  el.className = 'holo-label';
-  el.textContent = name;
-  // Size / font / colour come from CSS variables on the label layer, so a single set recolours or
-  // resizes every label (font inherits the theme; colour matches the phosphor under a CRT filter).
-  el.style.cssText = 'position:absolute;left:0;top:0;transform:translate(-9999px,-9999px);opacity:0;pointer-events:none;white-space:nowrap;font-weight:600;line-height:1.2;font-size:var(--holo-label-size,11px);font-family:var(--holo-label-font,ui-monospace,monospace);color:var(--holo-label-color,#cfefff);text-shadow:0 0 4px rgba(0,0,0,0.9);letter-spacing:0.02em;';
-  layer.appendChild(el);
-  return el;
 }
 
 // A static random starfield backdrop: points on a large sphere, drawn at a fixed screen size

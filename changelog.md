@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.50-beta - 10th Jul 2026
+
+* **Holo labels now go through the visual filter.** Body labels used to be HTML drawn over the canvas, so under a CRT filter they stayed flat and drifted out of place as the barrel-warp bent the bodies underneath them. They are now rendered inside the 3D scene, so the filter tints, scanlines and warps them in lockstep with the bodies — they stay glued to each body and pick up the phosphor colour.
+
 ## v2.1.49-beta - 10th Jul 2026
 
 Player Views fixes:
