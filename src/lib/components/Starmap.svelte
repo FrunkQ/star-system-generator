@@ -917,6 +917,7 @@
         on:allships={() => { railOpen = false; dispatch('allships'); }}
         on:routes={() => { railOpen = false; dispatch('routes'); }}
         on:catalogue={() => { railOpen = false; dispatch('catalogue'); }}
+        on:playerviews={() => { railOpen = false; dispatch('playerviews'); }}
         on:clear={() => { railOpen = false; dispatch('clear'); }}
       />
     </svelte:fragment>

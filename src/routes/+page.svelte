@@ -1269,6 +1269,7 @@
         on:about={() => showAbout = true}
         on:help={() => showHelpMenu = true}
         on:catalogue={() => showCompanionModal = true}
+        on:playerviews={() => showPlayerPresets = true}
         on:interstellar={(e) => { interstellarShipId = e.detail?.shipId || ''; showInterstellarModal = true; }}
         on:back={handleBackToStarmap}
         on:deletesystem={handleDeleteSystem}
@@ -1284,6 +1285,7 @@
       routesAttention={routesData.worstAttention}
       on:new={handleRequestNewStarmap}
       on:catalogue={() => showCompanionModal = true}
+      on:playerviews={() => showPlayerPresets = true}
       on:systemclick={handleSystemClick}
       on:focusconstruct={(e) => enterSystemAndFocus(e.detail.systemId, e.detail.id)}
       on:openship={(e) => shipPanelJourneyId = e.detail.journeyId}

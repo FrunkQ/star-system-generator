@@ -6,6 +6,23 @@ import type { PlayerPreset, ViewModule, FilterParamValues } from './presetTypes'
 export const CRT_GREEN = '#4dff88';
 export const CRT_AMBER = '#ffb000';
 
+// Starter assets shipped with the app, so placement can be designed before any upload. `dataUrl`
+// here is a same-origin STATIC URL rather than a data: URL — <img src> treats both identically and
+// built-ins never need to ride the starmap file.
+export const BUILTIN_ASSETS: import('./presetTypes').PlayerAsset[] = [
+  { id: 'builtin-wy-logo', name: 'Weyland-Yutani (starter logo)', dataUrl: '/images/logo/Weyland-Yutani.png' }
+];
+
+// Curated zero-byte font stacks (no webfont files; native everywhere). `css` is a font-family list.
+export const FONT_STACKS: { id: string; label: string; css: string }[] = [
+  { id: 'sans', label: 'Clean sans', css: 'system-ui, sans-serif' },
+  { id: 'mono', label: 'Terminal mono', css: 'ui-monospace, "Cascadia Mono", Consolas, monospace' },
+  { id: 'serif', label: 'Book serif', css: 'Georgia, "Times New Roman", serif' },
+  { id: 'narrow', label: 'Narrow', css: '"Arial Narrow", "Helvetica Condensed", system-ui, sans-serif' },
+  { id: 'rounded', label: 'Rounded', css: '"Comic Sans MS", "Segoe UI", system-ui, sans-serif' },
+  { id: 'typewriter', label: 'Typewriter', css: '"Courier New", Courier, monospace' }
+];
+
 // A neutral base every preset (and the migration) builds on, so new fields always have a sane value.
 export const DEFAULT_PRESET: PlayerPreset = {
   id: 'default',
@@ -14,7 +31,9 @@ export const DEFAULT_PRESET: PlayerPreset = {
   followGM: false,
   interactive: true,
   cover: { enabled: false, title: '', subtitle: '', body: '', label: '', graphic: null },
+  starmapEnabled: true,
   starmapView: 'diagram2d',
+  systemEnabled: true,
   systemView: 'holo3d',
   font: 'system-ui',
   accentColor: '#6aa0ff',
@@ -74,6 +93,20 @@ export const BUILTIN_PRESETS: PlayerPreset[] = [
   })
 ];
 
+// Fill any missing fields on a stored preset with current defaults — presets saved by an older beta
+// (schema grows every increment) stay loadable without per-field guards everywhere.
+export function normalizePreset(p: Partial<PlayerPreset> & { id: string; name: string }): PlayerPreset {
+  const base = structuredClone(DEFAULT_PRESET);
+  return {
+    ...base,
+    ...p,
+    bodyStyle: (p.bodyStyle as string) === 'tint' ? 'white' : (p.bodyStyle ?? base.bodyStyle),
+    cover: { ...base.cover, ...(p.cover ?? {}) },
+    filterParams: { ...(p.filterParams ?? {}) },
+    description: p.description ?? ''
+  };
+}
+
 // Map the old localStorage HoloStyle filter ids onto the consolidated CRT + phosphor param.
 function migrateFilter(filter: string): { filter: string; filterParams: FilterParamValues } {
   if (filter === 'retro_sci_fi_green') return { filter: 'crt', filterParams: { phosphor: CRT_GREEN } };
@@ -111,6 +144,7 @@ export function holoPresetToPlayer(hp: HoloStyle & { id?: string; name?: string 
 export function holoStyleOf(p: PlayerPreset): HoloStyle {
   return {
     filter: p.filter,
+    filterParams: p.filterParams ? { ...p.filterParams } : undefined,
     compression: p.compression,
     angleDeg: p.lockOverhead ? 0 : p.angleDeg,
     whole: p.whole,

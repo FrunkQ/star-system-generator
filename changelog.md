@@ -2,6 +2,17 @@
 
 All notable changes are listed here:
 
+## v2.1.41-beta - 10th Jul 2026
+
+The preset editor becomes a proper five-step wizard, and every stage gets a live preview:
+
+* **General → Cover → Starmap → System → Visual filter.** Each step shows only its own controls; the filter is deliberately last so you design clean and costume at the end. Back/Next guides you through.
+* **Filter sliders now bite.** Filter parameter values weren't reaching the preview at all — fixed, and slider drags now update the shader in place (no flicker). The filter step has Cover / Starmap / System preview buttons: the 3D view uses the exact shader; text and 2D screens use a lighter matched version so their content stays readable.
+* **General step**: fonts (curated stacks), accent colour, company/footer, follow-GM and interactivity — plus a graphics library with a starter logo included; upload your own (PNG transparency kept, saved with the campaign).
+* **Cover graphics**: place any library image on the cover with a nine-point position, size and opacity.
+* **Starmap and System stages can be switched off** per preset — players simply never see navigation to a disabled stage.
+* **Player Views on the rail.** New rail entry opens the preset gallery; the right-hand pane now shows the selected preset's summary with Edit / Duplicate / Delete and the quick live-session overrides (Follow GM, suspend filter, pause view-orbit). Field Guide and Projector stay until the new system reaches full parity.
+
 ## v2.1.40-beta - 9th Jul 2026
 
 * **Cover pages.** The preset editor can now design a cover / hold screen — title, subtitle, body, a corner stamp (e.g. CONFIDENTIAL), and a company/footer line, themed by the preset's accent colour and font. A System / Cover tab in the preview shows it live, so you can recreate "DON'T PANIC" (or your own logo screen) and see exactly how it lands.

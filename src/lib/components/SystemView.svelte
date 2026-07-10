@@ -2141,6 +2141,7 @@
         on:projectorcrt={handleToggleCrt}
         on:report={() => { railOpen = false; showReportConfigModal = true; }}
         on:catalogue={() => { railOpen = false; dispatch('catalogue'); }}
+        on:playerviews={() => { railOpen = false; dispatch('playerviews'); }}
         on:ruler={() => { railOpen = false; rulerActive = !rulerActive; }}
         on:downloadsystem={() => { railOpen = false; handleDownloadJson(); }}
         on:uploadsystem={() => { railOpen = false; railUploadInput?.click(); }}

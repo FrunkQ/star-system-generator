@@ -61,9 +61,12 @@ export interface PlayerPreset {
   followGM: boolean;    // honour the GM's SYNC_FOCUS/SYNC_TIME (projection-style, effectively read-only)
   interactive: boolean; // players may click/focus/scrub (false = a locked display surface / kiosk)
 
-  // The three designable layers.
+  // The three designable layers. Each can be disabled — a preset need not have every layer; players
+  // simply never see navigation to a disabled layer (skip + hide).
   cover: CoverConfig;
+  starmapEnabled: boolean;
   starmapView: ViewModule;
+  systemEnabled: boolean;
   systemView: ViewModule;
 
   // Preset-wide theme.

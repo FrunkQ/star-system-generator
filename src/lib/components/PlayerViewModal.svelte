@@ -1,22 +1,22 @@
 <script lang="ts">
-  // Unified Player View — preset manager (design doc step 3). A clean card grid of player presets
-  // (shipped built-ins + the campaign's own, saved on the starmap), with a simple detail/edit pane.
-  // The full look-editor (live holo preview + every look control) is the next increment; this covers
-  // the preset-level fields + create/duplicate/delete + the one-time localStorage migration.
+  // Unified Player View — preset PICKER (replaces the Field Guide modal once parity lands). Left: the
+  // preset card grid. Right: the SELECTED preset's summary with Edit/Duplicate/Delete, plus the
+  // quick live-session overrides (Follow GM / disable filter / disable view orbit) — momentary, never
+  // saved into the preset. All design work happens in the wizard editor (PlayerPresetEditor).
   import { createEventDispatcher, onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import type { PlayerPreset, ViewModule } from '$lib/player/presetTypes';
   import { DEFAULT_PRESET, makePresetId } from '$lib/player/presets';
   import {
-    playerPresetList, addPreset, updatePreset, deletePreset, duplicateIntoStarmap, runPresetMigration
+    playerPresetList, addPreset, deletePreset, duplicateIntoStarmap, runPresetMigration
   } from '$lib/player/presetStore';
-  import { get } from 'svelte/store';
+  import { liveOverrides } from '$lib/player/liveOverrides';
   import PlayerPresetEditor from './PlayerPresetEditor.svelte';
-
-  let editing: PlayerPreset | null = null;
 
   const dispatch = createEventDispatcher();
 
   let selectedId: string | null = null;
+  let editing: PlayerPreset | null = null;
   $: presets = $playerPresetList;
   $: selected = presets.find((p) => p.id === selectedId) ?? null;
   $: editable = !!selected && !selected.builtIn;
@@ -27,6 +27,7 @@
   });
 
   const VIEW_LABELS: Record<ViewModule, string> = { list: 'Text list', diagram2d: '2D map', holo3d: '3D holo' };
+  const FILTER_LABELS: Record<string, string> = { none: 'None', crt: 'CRT Terminal', night_vision: 'Night Vision', thermal: 'Thermal' };
 
   function newPreset() {
     const existing = get(playerPresetList).map((p) => p.id);
@@ -34,6 +35,7 @@
     const p: PlayerPreset = { ...structuredClone(DEFAULT_PRESET), id, name: 'New preset', description: '', builtIn: false };
     addPreset(p);
     selectedId = id;
+    editing = p; // straight into the wizard
   }
   function duplicate(p: PlayerPreset) {
     const copy = duplicateIntoStarmap(p);
@@ -43,10 +45,13 @@
     deletePreset(p.id);
     selectedId = get(playerPresetList)[0]?.id ?? null;
   }
-  // Persist an edit to a campaign preset (built-ins are read-only — duplicate to edit).
-  function patch(changes: Partial<PlayerPreset>) {
-    if (!selected || selected.builtIn) return;
-    updatePreset({ ...selected, ...changes });
+  // Summary of what the preset shows: cover / starmap / system, with view modules.
+  function stages(p: PlayerPreset): string {
+    const parts: string[] = [];
+    if (p.cover.enabled) parts.push('Cover');
+    if (p.starmapEnabled) parts.push(`Starmap (${VIEW_LABELS[p.starmapView]})`);
+    if (p.systemEnabled) parts.push(`System (${VIEW_LABELS[p.systemView]})`);
+    return parts.join(' · ') || 'Nothing enabled';
   }
 </script>
 
@@ -55,9 +60,9 @@
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="modal" on:click|stopPropagation>
     <header>
-      <h2>Player View presets</h2>
+      <h2>Player Views</h2>
       <p class="lede">One tool for every player-facing view — guides, tables, projections. Pick a preset,
-        duplicate it, and make it your own. Presets are saved with this campaign.</p>
+        duplicate it, and make it your own in the editor. Presets are saved with this campaign.</p>
     </header>
 
     <div class="body">
@@ -88,34 +93,40 @@
         <aside class="detail">
           <div class="det-head">
             <h3>{selected.name}</h3>
-            {#if selected.builtIn}<span class="ro">Read-only · duplicate to edit</span>{/if}
+            {#if selected.builtIn}<span class="ro">Built-in · duplicate to edit</span>{/if}
           </div>
+          {#if selected.description}<p class="det-desc">{selected.description}</p>{/if}
 
-          <label>Name
-            <input type="text" value={selected.name} disabled={!editable} on:input={(e) => patch({ name: (e.currentTarget as HTMLInputElement).value })} />
-          </label>
-          <label>Description
-            <input type="text" value={selected.description} disabled={!editable} on:input={(e) => patch({ description: (e.currentTarget as HTMLInputElement).value })} />
-          </label>
-          <label>System view
-            <select value={selected.systemView} disabled={!editable} on:change={(e) => patch({ systemView: (e.currentTarget as HTMLSelectElement).value as ViewModule })}>
-              <option value="list">Text list</option>
-              <option value="diagram2d">2D map</option>
-              <option value="holo3d">3D holo</option>
-            </select>
-          </label>
-          <label>Accent colour
-            <input type="color" value={selected.accentColor} disabled={!editable} on:input={(e) => patch({ accentColor: (e.currentTarget as HTMLInputElement).value })} />
-          </label>
-          <label class="chk"><input type="checkbox" checked={selected.followGM} disabled={!editable} on:change={(e) => patch({ followGM: (e.currentTarget as HTMLInputElement).checked })} /> Follows the GM (projection-style, read-only for players)</label>
-          <label class="chk"><input type="checkbox" checked={selected.interactive} disabled={!editable} on:change={(e) => patch({ interactive: (e.currentTarget as HTMLInputElement).checked })} /> Players can click / focus / scrub</label>
+          <dl class="summary">
+            <dt>Stages</dt><dd>{stages(selected)}</dd>
+            <dt>Filter</dt><dd>{FILTER_LABELS[selected.filter] ?? selected.filter}</dd>
+            <dt>Driver</dt><dd>{selected.followGM ? 'Follows the GM' : 'Player-driven'}{selected.interactive ? ' · interactive' : ' · display only'}</dd>
+          </dl>
 
           <div class="det-actions">
-            {#if editable}<button class="primary" on:click={() => (editing = selected)}>Edit look…</button>{/if}
+            {#if editable}<button class="primary" on:click={() => (editing = selected)}>Edit…</button>{/if}
             <button on:click={() => duplicate(selected)}>Duplicate</button>
             {#if editable}<button class="danger" on:click={() => remove(selected)}>Delete</button>{/if}
           </div>
-          <p class="soon">Edit a preset to open the live look editor (filters, grid, wireframe, framing). Cover page + graphics land next.</p>
+
+          <div class="overrides">
+            <span class="ov-head">Quick overrides <span class="ov-sub">live session only — never saved</span></span>
+            <label class="chk">
+              <input type="checkbox" checked={$liveOverrides.followGM ?? selected.followGM}
+                on:change={(e) => liveOverrides.update((o) => ({ ...o, followGM: (e.currentTarget as HTMLInputElement).checked }))} />
+              Follow GM
+            </label>
+            <label class="chk">
+              <input type="checkbox" checked={$liveOverrides.filterBypass}
+                on:change={(e) => liveOverrides.update((o) => ({ ...o, filterBypass: (e.currentTarget as HTMLInputElement).checked }))} />
+              Suspend visual filter
+            </label>
+            <label class="chk">
+              <input type="checkbox" checked={$liveOverrides.orbitPaused}
+                on:change={(e) => liveOverrides.update((o) => ({ ...o, orbitPaused: (e.currentTarget as HTMLInputElement).checked }))} />
+              Pause auto view-orbit
+            </label>
+          </div>
         </aside>
       {/if}
     </div>
@@ -132,10 +143,10 @@
 
 <style>
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 2000; }
-  .modal { background: var(--bg-panel); color: var(--text); padding: 1.4rem; border-radius: 8px; width: 860px; max-width: 96vw; max-height: 92vh; overflow: hidden; display: flex; flex-direction: column; gap: 1rem; }
+  .modal { background: var(--bg-panel); color: var(--text); padding: 1.4rem; border-radius: 8px; width: 880px; max-width: 96vw; max-height: 92vh; overflow: hidden; display: flex; flex-direction: column; gap: 1rem; }
   header h2 { margin: 0 0 0.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; }
   .lede { margin: 0; font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; }
-  .body { display: grid; grid-template-columns: 1.4fr 1fr; gap: 1rem; min-height: 0; overflow: hidden; }
+  .body { display: grid; grid-template-columns: 1.5fr 1fr; gap: 1rem; min-height: 0; overflow: hidden; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; overflow-y: auto; padding-right: 4px; align-content: start; }
   .card { display: flex; flex-direction: column; gap: 3px; text-align: left; background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px; cursor: pointer; position: relative; }
   .card.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
@@ -148,18 +159,22 @@
   .tag.built { color: #7fb0ff; border-color: #395f9a; }
   .tag.gmtag { color: #e0a13a; border-color: #7a5a20; }
   .card.add { align-items: center; justify-content: center; min-height: 90px; color: var(--text-muted); font-weight: 600; border-style: dashed; }
-  .detail { display: flex; flex-direction: column; gap: 0.55rem; overflow-y: auto; border-left: 1px solid var(--border); padding-left: 1rem; }
+  .detail { display: flex; flex-direction: column; gap: 0.65rem; overflow-y: auto; border-left: 1px solid var(--border); padding-left: 1rem; }
   .det-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
   .det-head h3 { margin: 0; }
   .ro { font-size: 0.68rem; color: var(--text-muted); }
-  .detail label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; color: var(--text-muted); }
-  .detail label.chk { flex-direction: row; align-items: flex-start; gap: 8px; font-size: 0.8rem; color: var(--text); }
-  .detail input[type=text], .detail select { background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 7px; font: inherit; }
-  .det-actions { display: flex; gap: 0.5rem; margin-top: 0.4rem; }
+  .det-desc { margin: 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; }
+  .summary { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 0.76rem; }
+  .summary dt { color: var(--text-muted); }
+  .summary dd { margin: 0; }
+  .det-actions { display: flex; gap: 0.5rem; }
   .det-actions button { background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 12px; cursor: pointer; font: inherit; }
   .det-actions button.danger { color: #ff8080; border-color: #7a2f2f; }
   .det-actions button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .soon { font-size: 0.7rem; color: var(--text-muted); font-style: italic; margin: 0.3rem 0 0; }
+  .overrides { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin-top: 0.2rem; }
+  .ov-head { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+  .ov-sub { text-transform: none; letter-spacing: 0; font-style: italic; opacity: 0.8; }
+  .chk { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
   footer { display: flex; justify-content: flex-end; }
   footer button { padding: 8px 16px; cursor: pointer; border-radius: 4px; border: none; background: var(--bg-control); color: var(--text); font: inherit; }
 </style>

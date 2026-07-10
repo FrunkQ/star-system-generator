@@ -13,7 +13,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { filterRegistry } from './filters/FilterRegistry';
-import { buildShaderObject } from './filters/shaderMaterial';
+import { buildShaderObject, updateUniforms } from './filters/shaderMaterial';
 import type { FilterParamValues } from './filters/schema';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { propagateState3D } from '$lib/physics/orbits';
@@ -319,8 +319,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   function setFilter(id: string, params?: FilterParamValues) {
-    filterId = id || 'none';
-    filterParams = params || {};
+    const nextId = id || 'none';
+    const nextParams = params || {};
+    // Same filter, new param values (a slider drag): update the uniforms in place — no pass rebuild,
+    // no flicker. A different filter id still rebuilds the pass.
+    if (nextId === filterId && filterPass) {
+      filterParams = nextParams;
+      const def = filterRegistry.get(filterId);
+      if (def) updateUniforms(filterPass.uniforms, def, { ...filterRegistry.defaultParams(filterId), ...nextParams });
+      return;
+    }
+    if (nextId === filterId && filterId === 'none') return;
+    filterId = nextId;
+    filterParams = nextParams;
     rebuildFilter();
   }
 

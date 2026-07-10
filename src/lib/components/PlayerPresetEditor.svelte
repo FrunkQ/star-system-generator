@@ -1,77 +1,112 @@
 <script lang="ts">
-  // Unified Player View — preset EDITOR (design doc step 4 + §7). A separate modal off the picker:
-  // the full look controls on the left, a LIVE holo preview on the right, driven by a draft copy of
-  // the preset. Save writes the draft to the campaign. Controls are progressively disclosed by the
-  // chosen view module (holo controls only for the 3D holo view). The existing catalogue is untouched.
+  // Unified Player View — preset editor as a WIZARD (Alex 2026-07-10): General → Cover → Starmap →
+  // System → Filter. Each tab has its controls on the left and a live preview of THAT stage on the
+  // right. The filter is deliberately LAST (set everything up clean, then costume it) with its own
+  // cover/starmap/system preview buttons: the 3D view gets the true GLSL filter, DOM views get the
+  // CSS approximation (FilterFrame). Edits a DRAFT; Save commits to the campaign.
   import { createEventDispatcher, onMount } from 'svelte';
   import { browser } from '$app/environment';
   import { get } from 'svelte/store';
-  import type { System } from '$lib/types';
-  import type { PlayerPreset, ViewModule } from '$lib/player/presetTypes';
-  import { holoStyleOf } from '$lib/player/presets';
-  import { updatePreset } from '$lib/player/presetStore';
+  import type { System, RulePack } from '$lib/types';
+  import type { PlayerPreset, ViewModule, PinPosition } from '$lib/player/presetTypes';
+  import { PIN_POSITIONS } from '$lib/player/presetTypes';
+  import { holoStyleOf, FONT_STACKS } from '$lib/player/presets';
+  import { updatePreset, playerAssetList, addAssetFromFile, deleteAsset } from '$lib/player/presetStore';
   import { systemStore } from '$lib/stores';
+  import { starmapStore } from '$lib/starmapStore';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import HoloView from '$lib/holo/HoloView.svelte';
+  import SystemVisualizer from './SystemVisualizer.svelte';
   import FilterParamControls from './FilterParamControls.svelte';
   import CoverView from './CoverView.svelte';
-  import type { RulePack } from '$lib/types';
-
-  let previewMode: 'system' | 'cover' = 'system';
+  import FilterFrame from './FilterFrame.svelte';
 
   export let preset: PlayerPreset;
 
   const dispatch = createEventDispatcher();
 
-  // Edit a DRAFT; commit on Save so Cancel is a clean discard.
   let draft: PlayerPreset = structuredClone(preset);
-  $: holoStyle = holoStyleOf(draft);
 
-  const FILTERS = [
-    { id: 'none', label: 'No filter' },
-    { id: 'crt', label: 'CRT Terminal' },
-    { id: 'night_vision', label: 'Night Vision' },
-    { id: 'thermal', label: 'Thermal' }
-  ];
+  // ── Wizard tabs ─────────────────────────────────────────────────────────────
+  const TABS = [
+    { id: 'general', label: 'General' },
+    { id: 'cover', label: 'Cover' },
+    { id: 'starmap', label: 'Starmap' },
+    { id: 'system', label: 'System' },
+    { id: 'filter', label: 'Visual filter' }
+  ] as const;
+  type TabId = (typeof TABS)[number]['id'];
+  let tab: TabId = 'general';
+  $: tabIndex = TABS.findIndex((t) => t.id === tab);
 
-  // Preview system + rulepack. Prefer the currently-open system; else a bundled example so the preview
-  // always has something rich to show.
+  // What the preview pane shows. The filter tab picks a layer with its own buttons; other tabs
+  // preview themselves (general shows a theme sample).
+  let filterPreview: 'cover' | 'starmap' | 'system' = 'system';
+  $: if (tab === 'filter') {
+    // default to the first ENABLED layer, preferring system
+    if (filterPreview === 'system' && !draft.systemEnabled) filterPreview = draft.starmapEnabled ? 'starmap' : 'cover';
+  }
+  $: previewLayer = tab === 'filter' ? filterPreview : tab === 'general' ? 'theme' : tab;
+  $: filterActive = tab === 'filter' && draft.filter !== 'none';
+
+  // The 3D style: filter only applied on the filter tab (set up clean, costume last).
+  $: holoStyle = { ...holoStyleOf(draft), ...(tab === 'filter' ? {} : { filter: 'none', filterParams: undefined }) };
+
+  // ── Preview data ────────────────────────────────────────────────────────────
   let previewSystem: System | null = get(systemStore);
   let rulePack: RulePack | null = null;
   let currentTime = 0;
-  let previewTime = 0;
   let raf = 0;
 
   onMount(() => {
     (async () => {
-      try { rulePack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json'); } catch { /* preview still ok */ }
+      try { rulePack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json'); } catch { /* ok */ }
       if (!previewSystem && browser) {
-        try {
-          const r = await fetch('/examples/Sol_2030-System.json');
-          if (r.ok) previewSystem = await r.json();
-        } catch { /* no preview system */ }
+        try { const r = await fetch('/examples/Sol_2030-System.json'); if (r.ok) previewSystem = await r.json(); } catch { /* ok */ }
       }
     })();
-    // A gently advancing clock so the preview is alive (planets move, rings shear).
-    currentTime = 0;
     let last = 0;
     const tick = (t: number) => {
-      if (last) currentTime += (t - last) * 3600; // ~1s ≈ 1h
+      if (last) currentTime += (t - last) * 3600; // preview clock ~1s ≈ 1h
       last = t;
-      previewTime = currentTime;
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   });
 
+  // Mini starmap projection for the starmap-layer preview (dots + names in the accent colour).
+  $: mapSystems = ($starmapStore?.systems ?? []).map((s: any) => ({ id: s.id, name: s.name, x: s.position?.x ?? 0, y: s.position?.y ?? 0 }));
+  $: mapView = (() => {
+    if (!mapSystems.length) return { W: 600, H: 340, pts: [] as any[] };
+    const xs = mapSystems.map((s) => s.x), ys = mapSystems.map((s) => s.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const W = 600, H = 340, pad = 50;
+    const sx = (maxX - minX) || 1, sy = (maxY - minY) || 1;
+    const k = Math.min((W - pad * 2) / sx, (H - pad * 2) / sy);
+    return { W, H, pts: mapSystems.map((s) => ({ ...s, px: pad + (s.x - minX) * k, py: pad + (s.y - minY) * k })) };
+  })();
+
+  // ── Assets (General tab) ────────────────────────────────────────────────────
+  let fileInput: HTMLInputElement;
+  function onAssetPick(e: Event) {
+    const f = (e.target as HTMLInputElement).files?.[0];
+    if (f) addAssetFromFile(f, f.name.replace(/\.[a-z0-9]+$/i, ''), () => { /* list is reactive */ });
+    (e.target as HTMLInputElement).value = '';
+  }
+  function setCoverGraphic(assetId: string) {
+    draft = { ...draft, cover: { ...draft.cover, graphic: assetId ? { assetId, pin: draft.cover.graphic?.pin ?? 'center', sizePct: draft.cover.graphic?.sizePct ?? 40, opacity: draft.cover.graphic?.opacity ?? 1 } : null } };
+  }
+  function patchGraphic(changes: Partial<NonNullable<PlayerPreset['cover']['graphic']>>) {
+    if (!draft.cover.graphic) return;
+    draft = { ...draft, cover: { ...draft.cover, graphic: { ...draft.cover.graphic, ...changes } } };
+  }
+
   function save() {
     updatePreset(draft);
     dispatch('saved', draft);
     dispatch('close');
   }
-
-  $: isHolo = draft.systemView === 'holo3d';
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -80,6 +115,13 @@
   <div class="modal" on:click|stopPropagation>
     <header>
       <h2>Edit preset — {draft.name}</h2>
+      <div class="tabs" role="tablist">
+        {#each TABS as t, i (t.id)}
+          <button role="tab" class:on={tab === t.id} aria-selected={tab === t.id} on:click={() => (tab = t.id)}>
+            <span class="step">{i + 1}</span> {t.label}
+          </button>
+        {/each}
+      </div>
       <div class="hbtns">
         <button on:click={() => dispatch('close')}>Cancel</button>
         <button class="primary" on:click={save}>Save</button>
@@ -88,104 +130,250 @@
 
     <div class="body">
       <div class="controls">
-        <fieldset>
-          <legend>Preset</legend>
-          <label>Name <input type="text" bind:value={draft.name} /></label>
-          <label>Description <input type="text" bind:value={draft.description} /></label>
-          <label>System view
-            <select bind:value={draft.systemView}>
-              <option value="list">Text list</option>
-              <option value="diagram2d">2D map</option>
-              <option value="holo3d">3D holo</option>
-            </select>
-          </label>
-          <label class="chk"><input type="checkbox" bind:checked={draft.followGM} /> Follows the GM</label>
-          <label class="chk"><input type="checkbox" bind:checked={draft.interactive} /> Players can interact</label>
-        </fieldset>
-
-        <fieldset>
-          <legend>Cover page</legend>
-          <label class="chk"><input type="checkbox" bind:checked={draft.cover.enabled} /> Show a cover / hold screen</label>
-          {#if draft.cover.enabled}
-            <label>Title <input type="text" bind:value={draft.cover.title} placeholder="DON'T PANIC" /></label>
-            <label>Subtitle <input type="text" bind:value={draft.cover.subtitle} /></label>
-            <label>Body <input type="text" bind:value={draft.cover.body} /></label>
-            <label>Label / stamp <input type="text" bind:value={draft.cover.label} placeholder="CONFIDENTIAL" /></label>
-            <label>Company / footer <input type="text" bind:value={draft.companyName} /></label>
-          {/if}
-        </fieldset>
-
-        <fieldset>
-          <legend>Look</legend>
-          <label>Filter
-            <select bind:value={draft.filter}>{#each FILTERS as f}<option value={f.id}>{f.label}</option>{/each}</select>
-          </label>
-          {#if draft.filter !== 'none'}
-            <div class="filter-params">
-              <FilterParamControls filterId={draft.filter} values={draft.filterParams}
-                on:change={(e) => (draft = { ...draft, filterParams: e.detail })} />
+        {#if tab === 'general'}
+          <fieldset>
+            <legend>Identity</legend>
+            <label>Name <input type="text" bind:value={draft.name} /></label>
+            <label>Description <input type="text" bind:value={draft.description} /></label>
+          </fieldset>
+          <fieldset>
+            <legend>Behaviour</legend>
+            <label class="chk"><input type="checkbox" bind:checked={draft.followGM} /> Follows the GM (projection-style)</label>
+            <label class="chk"><input type="checkbox" bind:checked={draft.interactive} /> Players can click / focus / scrub</label>
+          </fieldset>
+          <fieldset>
+            <legend>Theme (used by every stage)</legend>
+            <label>Font
+              <select bind:value={draft.font}>
+                {#each FONT_STACKS as f}<option value={f.css}>{f.label}</option>{/each}
+              </select>
+            </label>
+            <label class="inline">Accent colour <input type="color" bind:value={draft.accentColor} /></label>
+            <label>Company / faction <input type="text" bind:value={draft.companyName} /></label>
+            <label>Footer text <input type="text" bind:value={draft.footerText} /></label>
+          </fieldset>
+          <fieldset>
+            <legend>Graphics library</legend>
+            <div class="assets">
+              {#each $playerAssetList as a (a.id)}
+                <div class="asset">
+                  <img src={a.dataUrl} alt={a.name} />
+                  <span class="a-name">{a.name}</span>
+                  {#if !a.id.startsWith('builtin-')}
+                    <button class="a-del" title="Remove" on:click={() => deleteAsset(a.id)}>×</button>
+                  {/if}
+                </div>
+              {/each}
             </div>
+            <button on:click={() => fileInput?.click()}>Upload image…</button>
+            <input type="file" accept="image/*" bind:this={fileInput} on:change={onAssetPick} style="display:none" />
+            <p class="hint">PNG keeps transparency. Auto-shrunk; saved with the campaign. Use these on the cover and as map overlays.</p>
+          </fieldset>
+        {:else if tab === 'cover'}
+          <fieldset>
+            <legend>Cover page</legend>
+            <label class="chk"><input type="checkbox" bind:checked={draft.cover.enabled} /> This preset has a cover / hold screen</label>
+            {#if draft.cover.enabled}
+              <label>Title <input type="text" bind:value={draft.cover.title} placeholder="DON'T PANIC" /></label>
+              <label>Subtitle <input type="text" bind:value={draft.cover.subtitle} /></label>
+              <label>Body <input type="text" bind:value={draft.cover.body} /></label>
+              <label>Label / stamp <input type="text" bind:value={draft.cover.label} placeholder="CONFIDENTIAL" /></label>
+            {/if}
+          </fieldset>
+          {#if draft.cover.enabled}
+            <fieldset>
+              <legend>Graphic</legend>
+              <label>Image
+                <select value={draft.cover.graphic?.assetId ?? ''} on:change={(e) => setCoverGraphic((e.currentTarget as HTMLSelectElement).value)}>
+                  <option value="">None</option>
+                  {#each $playerAssetList as a}<option value={a.id}>{a.name}</option>{/each}
+                </select>
+              </label>
+              {#if draft.cover.graphic}
+                <label>Position
+                  <select value={draft.cover.graphic.pin} on:change={(e) => patchGraphic({ pin: (e.currentTarget as HTMLSelectElement).value as PinPosition })}>
+                    {#each PIN_POSITIONS as p}<option value={p}>{p.replace('-', ' ')}</option>{/each}
+                  </select>
+                </label>
+                <label>Size <span>{draft.cover.graphic.sizePct}%</span>
+                  <input type="range" min="5" max="100" step="1" value={draft.cover.graphic.sizePct} on:input={(e) => patchGraphic({ sizePct: parseInt((e.currentTarget as HTMLInputElement).value) })} />
+                </label>
+                <label>Opacity <span>{Math.round(draft.cover.graphic.opacity * 100)}%</span>
+                  <input type="range" min="0.05" max="1" step="0.05" value={draft.cover.graphic.opacity} on:input={(e) => patchGraphic({ opacity: parseFloat((e.currentTarget as HTMLInputElement).value) })} />
+                </label>
+              {/if}
+            </fieldset>
           {/if}
-          <label>Colour
-            <select bind:value={draft.bodyStyle}>
-              <option value="textured">True colour</option>
-              <option value="flat">Flat colour</option>
-              <option value="white">White</option>
-            </select>
-          </label>
-          {#if isHolo}
-            <label>Render
-              <select bind:value={draft.render}>
-                <option value="filled">Filled</option>
-                <option value="wire-glow">Wireframe (glow)</option>
-                <option value="wire-flat">Wireframe (flat)</option>
+        {:else if tab === 'starmap'}
+          <fieldset>
+            <legend>Starmap stage</legend>
+            <label class="chk"><input type="checkbox" bind:checked={draft.starmapEnabled} /> Players get a starmap level</label>
+            {#if draft.starmapEnabled}
+              <label>View
+                <select bind:value={draft.starmapView}>
+                  <option value="list">Text list</option>
+                  <option value="diagram2d">2D map</option>
+                  <option value="holo3d" disabled>3D (coming later)</option>
+                </select>
+              </label>
+            {:else}
+              <p class="hint">Disabled: players skip straight to the system level; no back-to-systems navigation is shown.</p>
+            {/if}
+          </fieldset>
+        {:else if tab === 'system'}
+          <fieldset>
+            <legend>System stage</legend>
+            <label class="chk"><input type="checkbox" bind:checked={draft.systemEnabled} /> Players can open systems</label>
+            {#if draft.systemEnabled}
+              <label>View
+                <select bind:value={draft.systemView}>
+                  <option value="list">Text list</option>
+                  <option value="diagram2d">2D map</option>
+                  <option value="holo3d">3D holo</option>
+                </select>
+              </label>
+            {:else}
+              <p class="hint">Disabled: systems aren't openable; the starmap (or cover) is the whole guide.</p>
+            {/if}
+          </fieldset>
+          {#if draft.systemEnabled}
+            <fieldset>
+              <legend>Appearance</legend>
+              <label>Colour
+                <select bind:value={draft.bodyStyle}>
+                  <option value="textured">True colour</option>
+                  <option value="flat">Flat colour</option>
+                  <option value="white">White</option>
+                </select>
+              </label>
+              <label>Background
+                <select bind:value={draft.background}>
+                  <option value="space">Space</option>
+                  <option value="green">Greenscreen</option>
+                  <option value="blue">Bluescreen</option>
+                  <option value="black">Black</option>
+                </select>
+              </label>
+              {#if draft.systemView === 'holo3d'}
+                <label>Render
+                  <select bind:value={draft.render}>
+                    <option value="filled">Filled</option>
+                    <option value="wire-glow">Wireframe (glow)</option>
+                    <option value="wire-flat">Wireframe (flat)</option>
+                  </select>
+                </label>
+                <label>Grid
+                  <select bind:value={draft.grid}>
+                    <option value="off">Off</option>
+                    <option value="plain">Grid</option>
+                    <option value="scaled">Grid + scale</option>
+                  </select>
+                </label>
+                <label>Spread <span>{Math.round(draft.compression * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.compression} /></label>
+                <label>Body size <span>{draft.bodySize === 0 ? 'true' : draft.bodySize >= 1 ? 'readable' : Math.round(draft.bodySize * 100) + '%'}</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.bodySize} /></label>
+                <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} disabled={draft.lockOverhead} /></label>
+                <label class="chk"><input type="checkbox" bind:checked={draft.lockOverhead} /> Lock overhead (2D look)</label>
+                <label>Belt detail <span>{Math.round(draft.beltDetail * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.beltDetail} /></label>
+                <label>View orbit <span>{draft.orbitSpeed === 0 ? 'off' : Math.round(draft.orbitSpeed * 100) + '%'}</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.orbitSpeed} /></label>
+                <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
+                <label class="chk"><input type="checkbox" bind:checked={draft.whole} /> Frame whole system</label>
+                <label class="chk"><input type="checkbox" bind:checked={draft.skybox} /> Starfield</label>
+              {/if}
+            </fieldset>
+          {/if}
+        {:else if tab === 'filter'}
+          <fieldset>
+            <legend>Visual filter</legend>
+            <label>Filter
+              <select bind:value={draft.filter}>
+                <option value="none">No filter</option>
+                <option value="crt">CRT Terminal</option>
+                <option value="night_vision">Night Vision</option>
+                <option value="thermal">Thermal</option>
               </select>
             </label>
-            <label>Grid
-              <select bind:value={draft.grid}>
-                <option value="off">Off</option>
-                <option value="plain">Grid</option>
-                <option value="scaled">Grid + scale</option>
-              </select>
-            </label>
-            <label>Spread <span>{Math.round(draft.compression * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.compression} /></label>
-            <label>Body size <span>{draft.bodySize === 0 ? 'true' : draft.bodySize >= 1 ? 'readable' : Math.round(draft.bodySize * 100) + '%'}</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.bodySize} /></label>
-            <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} disabled={draft.lockOverhead} /></label>
-            <label class="chk"><input type="checkbox" bind:checked={draft.lockOverhead} /> Lock overhead (2D look)</label>
-            <label>Belt detail <span>{Math.round(draft.beltDetail * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.beltDetail} /></label>
-            <label>View orbit <span>{draft.orbitSpeed === 0 ? 'off' : Math.round(draft.orbitSpeed * 100) + '%'}</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.orbitSpeed} /></label>
-            <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
-            <label class="chk"><input type="checkbox" bind:checked={draft.whole} /> Frame whole system</label>
-            <label class="chk"><input type="checkbox" bind:checked={draft.skybox} /> Starfield</label>
-          {:else}
-            <p class="hint">3D look controls appear when the system view is set to 3D holo.</p>
-          {/if}
-          <label>Background
-            <select bind:value={draft.background}>
-              <option value="space">Space</option>
-              <option value="green">Greenscreen</option>
-              <option value="blue">Bluescreen</option>
-              <option value="black">Black</option>
-            </select>
-          </label>
-          <label>Accent <input type="color" bind:value={draft.accentColor} /></label>
-        </fieldset>
+            {#if draft.filter !== 'none'}
+              <div class="filter-params">
+                <FilterParamControls filterId={draft.filter} values={draft.filterParams}
+                  on:change={(e) => (draft = { ...draft, filterParams: e.detail })} />
+              </div>
+              <p class="hint">The 3D view uses the exact shader; text and 2D screens use a lighter matched version so their content stays readable.</p>
+            {/if}
+          </fieldset>
+        {/if}
+
+        <div class="wiz-nav">
+          <button disabled={tabIndex === 0} on:click={() => (tab = TABS[tabIndex - 1].id)}>‹ Back</button>
+          <button disabled={tabIndex === TABS.length - 1} on:click={() => (tab = TABS[tabIndex + 1].id)}>Next ›</button>
+        </div>
       </div>
 
       <div class="preview-col">
         <div class="preview-tabs">
-          <button class:on={previewMode === 'system'} on:click={() => (previewMode = 'system')}>System view</button>
-          <button class:on={previewMode === 'cover'} on:click={() => (previewMode = 'cover')} disabled={!draft.cover.enabled} title={draft.cover.enabled ? '' : 'Enable the cover page first'}>Cover</button>
+          {#if tab === 'filter'}
+            <span class="pt-label">Preview filter on:</span>
+            <button class:on={filterPreview === 'cover'} disabled={!draft.cover.enabled} on:click={() => (filterPreview = 'cover')}>Cover</button>
+            <button class:on={filterPreview === 'starmap'} disabled={!draft.starmapEnabled} on:click={() => (filterPreview = 'starmap')}>Starmap</button>
+            <button class:on={filterPreview === 'system'} disabled={!draft.systemEnabled} on:click={() => (filterPreview = 'system')}>System</button>
+          {:else}
+            <span class="pt-label">Preview — {TABS[tabIndex].label}</span>
+          {/if}
         </div>
         <div class="preview">
-          {#if previewMode === 'cover' && draft.cover.enabled}
-            <CoverView cover={draft.cover} accentColor={draft.accentColor} font={draft.font} companyName={draft.companyName} footerText={draft.footerText} assets={[]} />
-          {:else if isHolo && previewSystem && rulePack}
-            <HoloView system={previewSystem} currentTime={previewTime} style={holoStyle} />
-          {:else if isHolo}
-            <div class="ph">Loading preview…</div>
-          {:else}
-            <div class="ph">Live preview is available for the 3D holo view. Other view modules render in the player window.</div>
+          {#if previewLayer === 'theme'}
+            <div class="theme-sample" style="font-family:{draft.font}; --accent:{draft.accentColor}">
+              <span class="ts-label">{draft.companyName || 'Theme sample'}</span>
+              <h1>Aa Bb 0123</h1>
+              <p>The quick brown fox orbits the lazy gas giant.</p>
+              <span class="ts-foot">{draft.footerText || 'footer text'}</span>
+            </div>
+          {:else if previewLayer === 'cover'}
+            {#if draft.cover.enabled}
+              <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
+                <CoverView cover={draft.cover} accentColor={draft.accentColor} font={draft.font} companyName={draft.companyName} footerText={draft.footerText} assets={$playerAssetList} />
+              </FilterFrame>
+            {:else}
+              <div class="ph">Cover page is disabled for this preset.</div>
+            {/if}
+          {:else if previewLayer === 'starmap'}
+            {#if !draft.starmapEnabled}
+              <div class="ph">Starmap stage is disabled — players go straight to systems.</div>
+            {:else}
+              <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
+                <div class="sm-preview" style="font-family:{draft.font}; --accent:{draft.accentColor}">
+                  {#if !mapSystems.length}
+                    <div class="ph">No starmap loaded — open or create a campaign map to preview this stage.</div>
+                  {:else if draft.starmapView === 'list'}
+                    <ul class="sm-list">{#each mapSystems as s (s.id)}<li>{s.name}</li>{/each}</ul>
+                  {:else}
+                    <svg viewBox="0 0 {mapView.W} {mapView.H}" preserveAspectRatio="xMidYMid meet">
+                      {#each mapView.pts as p (p.id)}
+                        <circle cx={p.px} cy={p.py} r="5" fill="var(--accent)" />
+                        <text x={p.px + 9} y={p.py + 4}>{p.name}</text>
+                      {/each}
+                    </svg>
+                  {/if}
+                </div>
+              </FilterFrame>
+            {/if}
+          {:else if previewLayer === 'system'}
+            {#if !draft.systemEnabled}
+              <div class="ph">System stage is disabled for this preset.</div>
+            {:else if draft.systemView === 'holo3d' && previewSystem && rulePack}
+              <HoloView system={previewSystem} {currentTime} style={holoStyle} />
+            {:else if draft.systemView === 'diagram2d' && previewSystem && rulePack}
+              <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
+                <SystemVisualizer system={previewSystem} {rulePack} {currentTime} showNames={true} toytownFactor={previewSystem.toytownFactor || 0} fullScreen={true} backgroundColor="#05070c" />
+              </FilterFrame>
+            {:else if draft.systemView === 'list' && previewSystem}
+              <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
+                <div class="sm-preview" style="font-family:{draft.font}; --accent:{draft.accentColor}">
+                  <ul class="sm-list">{#each previewSystem.nodes.filter((n) => n.kind === 'body') as b (b.id)}<li>{b.name}</li>{/each}</ul>
+                </div>
+              </FilterFrame>
+            {:else}
+              <div class="ph">Loading preview…</div>
+            {/if}
           {/if}
         </div>
       </div>
@@ -195,12 +383,17 @@
 
 <style>
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.72); display: flex; justify-content: center; align-items: center; z-index: 2100; }
-  .modal { background: var(--bg-panel); color: var(--text); border-radius: 8px; width: 1040px; max-width: 97vw; height: 88vh; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
-  header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.9rem 1.2rem; border-bottom: 1px solid var(--border); }
-  header h2 { margin: 0; font-size: 1.05rem; }
+  .modal { background: var(--bg-panel); color: var(--text); border-radius: 8px; width: 1100px; max-width: 97vw; height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+  header { display: flex; align-items: center; gap: 1rem; padding: 0.7rem 1.1rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  header h2 { margin: 0; font-size: 1rem; flex: 0 0 auto; }
+  .tabs { display: flex; gap: 4px; flex: 1 1 auto; }
+  .tabs button { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; padding: 5px 11px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text-muted); cursor: pointer; }
+  .tabs button.on { color: var(--text); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--bg-control)); }
+  .tabs .step { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: var(--border); font-size: 0.62rem; }
+  .tabs button.on .step { background: var(--accent); color: #fff; }
   .hbtns { display: flex; gap: 0.5rem; }
-  .body { display: grid; grid-template-columns: 320px 1fr; min-height: 0; flex: 1; }
-  .controls { overflow-y: auto; padding: 0.9rem 1rem; display: flex; flex-direction: column; gap: 1rem; border-right: 1px solid var(--border); }
+  .body { display: grid; grid-template-columns: 330px 1fr; min-height: 0; flex: 1; }
+  .controls { overflow-y: auto; padding: 0.9rem 1rem; display: flex; flex-direction: column; gap: 0.9rem; border-right: 1px solid var(--border); }
   fieldset { border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.8rem 0.8rem; display: flex; flex-direction: column; gap: 0.5rem; margin: 0; }
   legend { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: 0 4px; }
   label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; color: var(--text-muted); }
@@ -208,15 +401,32 @@
   label.inline, label.chk { flex-direction: row; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text); }
   input[type=text], select { background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 7px; font: inherit; }
   input[type=range] { width: 100%; accent-color: var(--accent, #6aa0ff); }
-  .hint { font-size: 0.72rem; color: var(--text-muted); font-style: italic; margin: 0; }
+  .hint { font-size: 0.72rem; color: var(--text-muted); font-style: italic; margin: 0; line-height: 1.4; }
   .filter-params { border-left: 2px solid var(--border); padding-left: 8px; margin: 2px 0; }
+  .assets { display: flex; flex-direction: column; gap: 6px; }
+  .asset { display: flex; align-items: center; gap: 8px; background: var(--bg-control); border: 1px solid var(--border); border-radius: 5px; padding: 4px 6px; }
+  .asset img { width: 44px; height: 28px; object-fit: contain; background: repeating-conic-gradient(#2a2d36 0 25%, #1b1e26 0 50%) 0 0/12px 12px; border-radius: 3px; }
+  .a-name { flex: 1; font-size: 0.72rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .a-del { background: none; border: none; color: #ff8080; cursor: pointer; font-size: 1rem; }
+  .wiz-nav { display: flex; justify-content: space-between; margin-top: auto; padding-top: 0.4rem; }
   .preview-col { display: flex; flex-direction: column; min-height: 0; }
-  .preview-tabs { display: flex; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--border); background: var(--bg-panel); }
+  .preview-tabs { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  .pt-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
   .preview-tabs button { font-size: 0.72rem; padding: 3px 10px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text-muted); cursor: pointer; }
   .preview-tabs button.on { color: var(--text); border-color: var(--accent); }
-  .preview-tabs button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .preview-tabs button:disabled { opacity: 0.35; cursor: not-allowed; }
   .preview { position: relative; background: #05070c; min-height: 0; flex: 1; }
   .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.85rem; }
-  button { padding: 7px 15px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); font: inherit; }
+  .theme-sample { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; color: #e8edf4; }
+  .theme-sample h1 { margin: 0; font-size: 3.4rem; color: var(--accent); }
+  .theme-sample p { margin: 0; opacity: 0.75; }
+  .ts-label { font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
+  .ts-foot { position: absolute; bottom: 6%; font-size: 0.7rem; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.08em; }
+  .sm-preview { position: absolute; inset: 0; color: #dfe7f0; }
+  .sm-preview svg { width: 100%; height: 100%; }
+  .sm-preview text { fill: #cfd8e4; font-size: 12px; }
+  .sm-list { margin: 0; padding: 2rem 2.4rem; list-style: none; columns: 2; }
+  .sm-list li { padding: 4px 0; border-bottom: 1px solid rgba(140,170,210,0.15); font-size: 0.9rem; }
+  button { padding: 7px 14px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); font: inherit; }
   button.primary { background: var(--accent); border-color: var(--accent); }
 </style>
