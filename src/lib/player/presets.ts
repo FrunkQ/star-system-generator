@@ -45,7 +45,8 @@ export const DEFAULT_PRESET: PlayerPreset = {
   systemView: 'holo3d',
   font: 'system-ui',
   accentColor: '#6aa0ff',
-  overlay: null,
+  starmapOverlay: null,
+  systemOverlay: null,
   companyName: '',
   footerText: '',
   filter: 'none',
@@ -116,7 +117,8 @@ export function normalizePreset(p: Partial<PlayerPreset> & { id: string; name: s
     ...p,
     bodyStyle: (p.bodyStyle as string) === 'tint' ? 'white' : (p.bodyStyle ?? base.bodyStyle),
     cover,
-    overlay: fixGraphic(p.overlay),
+    starmapOverlay: fixGraphic((p as any).starmapOverlay ?? (p as any).overlay),
+    systemOverlay: fixGraphic((p as any).systemOverlay ?? (p as any).overlay),
     filterParams: { ...(p.filterParams ?? {}) },
     description: p.description ?? ''
   };

@@ -73,7 +73,10 @@ export interface PlayerPreset {
   // Preset-wide theme.
   font: string;            // one UI font across the player view
   accentColor: string;     // broad colour scheme (spectrum pick) — drives chrome/labels/tints
-  overlay: GraphicPlacement | null; // a graphic over the 2D/3D map (under the filter)
+  // Per-screen overlays: each screen can place ANY uploaded image, independently (different image,
+  // different position). The cover's own image lives in cover.graphic.
+  starmapOverlay: GraphicPlacement | null;
+  systemOverlay: GraphicPlacement | null;
   companyName: string;
   footerText: string;
 

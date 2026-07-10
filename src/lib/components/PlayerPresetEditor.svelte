@@ -89,6 +89,8 @@
 
   // A real colour for CSS vars / non-cover components (rainbow → representative mid colour).
   $: accentCss = accentSolid(draft.accentColor);
+  // Which overlay the current preview shows (cover's own image is inside CoverView).
+  $: currentOverlay = previewLayer === 'starmap' ? draft.starmapOverlay : previewLayer === 'system' ? draft.systemOverlay : null;
 
   function save() {
     updatePreset(draft);
@@ -144,12 +146,6 @@
             <label>Footer text <input type="text" bind:value={draft.footerText} /></label>
           </fieldset>
           <fieldset>
-            <legend>Overlay (on every screen)</legend>
-            <GraphicPlacementControls placement={draft.overlay} assets={$playerAssetList} label="Overlay image"
-              on:change={(e) => (draft = { ...draft, overlay: e.detail })} />
-            <p class="hint">A watermark / frame shown over the cover, starmap and system views alike.</p>
-          </fieldset>
-          <fieldset>
             <legend>Graphics library</legend>
             <div class="assets">
               {#each $playerAssetList as a (a.id)}
@@ -164,7 +160,7 @@
             </div>
             <button on:click={() => fileInput?.click()}>Upload image…</button>
             <input type="file" accept="image/*" bind:this={fileInput} on:change={onAssetPick} style="display:none" />
-            <p class="hint">PNG keeps transparency. Auto-shrunk; saved with the campaign. Use these on the cover and as map overlays.</p>
+            <p class="hint">PNG keeps transparency. Auto-shrunk; saved with the campaign. Upload here, then place any of them on the Cover, Starmap and System stages — different images and positions per screen.</p>
           </fieldset>
         {:else if tab === 'cover'}
           <fieldset>
@@ -211,6 +207,13 @@
               <p class="hint">Disabled: players skip straight to the system level; no back-to-systems navigation is shown.</p>
             {/if}
           </fieldset>
+          {#if draft.starmapEnabled}
+            <fieldset>
+              <legend>Starmap overlay</legend>
+              <GraphicPlacementControls placement={draft.starmapOverlay} assets={$playerAssetList} label="Overlay image"
+                on:change={(e) => (draft = { ...draft, starmapOverlay: e.detail })} />
+            </fieldset>
+          {/if}
         {:else if tab === 'system'}
           <fieldset>
             <legend>System stage</legend>
@@ -270,6 +273,11 @@
                 <label class="chk"><input type="checkbox" bind:checked={draft.whole} /> Frame whole system</label>
                 <label class="chk"><input type="checkbox" bind:checked={draft.skybox} /> Starfield</label>
               {/if}
+            </fieldset>
+            <fieldset>
+              <legend>System overlay</legend>
+              <GraphicPlacementControls placement={draft.systemOverlay} assets={$playerAssetList} label="Overlay image"
+                on:change={(e) => (draft = { ...draft, systemOverlay: e.detail })} />
             </fieldset>
           {/if}
         {:else if tab === 'filter'}
@@ -363,11 +371,12 @@
             {/if}
           {/if}
 
-          <!-- All-screens overlay (watermark/frame) — over every stage, under the filter. -->
-          {#if draft.overlay && previewLayer !== 'theme'}
+          <!-- Per-screen overlay (watermark/frame/logo) — this stage's own, under the filter. The
+               cover's image is drawn by CoverView itself, so only starmap/system add a layer here. -->
+          {#if currentOverlay}
             <div class="overlay-wrap">
               <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
-                <GraphicLayer placement={draft.overlay} assets={$playerAssetList} />
+                <GraphicLayer placement={currentOverlay} assets={$playerAssetList} />
               </FilterFrame>
             </div>
           {/if}
