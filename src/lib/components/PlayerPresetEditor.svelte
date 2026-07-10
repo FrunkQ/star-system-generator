@@ -14,7 +14,10 @@
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import HoloView from '$lib/holo/HoloView.svelte';
   import FilterParamControls from './FilterParamControls.svelte';
+  import CoverView from './CoverView.svelte';
   import type { RulePack } from '$lib/types';
+
+  let previewMode: 'system' | 'cover' = 'system';
 
   export let preset: PlayerPreset;
 
@@ -101,6 +104,18 @@
         </fieldset>
 
         <fieldset>
+          <legend>Cover page</legend>
+          <label class="chk"><input type="checkbox" bind:checked={draft.cover.enabled} /> Show a cover / hold screen</label>
+          {#if draft.cover.enabled}
+            <label>Title <input type="text" bind:value={draft.cover.title} placeholder="DON'T PANIC" /></label>
+            <label>Subtitle <input type="text" bind:value={draft.cover.subtitle} /></label>
+            <label>Body <input type="text" bind:value={draft.cover.body} /></label>
+            <label>Label / stamp <input type="text" bind:value={draft.cover.label} placeholder="CONFIDENTIAL" /></label>
+            <label>Company / footer <input type="text" bind:value={draft.companyName} /></label>
+          {/if}
+        </fieldset>
+
+        <fieldset>
           <legend>Look</legend>
           <label>Filter
             <select bind:value={draft.filter}>{#each FILTERS as f}<option value={f.id}>{f.label}</option>{/each}</select>
@@ -157,14 +172,22 @@
         </fieldset>
       </div>
 
-      <div class="preview">
-        {#if isHolo && previewSystem && rulePack}
-          <HoloView system={previewSystem} currentTime={previewTime} style={holoStyle} />
-        {:else if isHolo}
-          <div class="ph">Loading preview…</div>
-        {:else}
-          <div class="ph">Live preview is available for the 3D holo view. Other view modules render in the player window.</div>
-        {/if}
+      <div class="preview-col">
+        <div class="preview-tabs">
+          <button class:on={previewMode === 'system'} on:click={() => (previewMode = 'system')}>System view</button>
+          <button class:on={previewMode === 'cover'} on:click={() => (previewMode = 'cover')} disabled={!draft.cover.enabled} title={draft.cover.enabled ? '' : 'Enable the cover page first'}>Cover</button>
+        </div>
+        <div class="preview">
+          {#if previewMode === 'cover' && draft.cover.enabled}
+            <CoverView cover={draft.cover} accentColor={draft.accentColor} font={draft.font} companyName={draft.companyName} footerText={draft.footerText} assets={[]} />
+          {:else if isHolo && previewSystem && rulePack}
+            <HoloView system={previewSystem} currentTime={previewTime} style={holoStyle} />
+          {:else if isHolo}
+            <div class="ph">Loading preview…</div>
+          {:else}
+            <div class="ph">Live preview is available for the 3D holo view. Other view modules render in the player window.</div>
+          {/if}
+        </div>
       </div>
     </div>
   </div>
@@ -187,7 +210,12 @@
   input[type=range] { width: 100%; accent-color: var(--accent, #6aa0ff); }
   .hint { font-size: 0.72rem; color: var(--text-muted); font-style: italic; margin: 0; }
   .filter-params { border-left: 2px solid var(--border); padding-left: 8px; margin: 2px 0; }
-  .preview { position: relative; background: #05070c; min-height: 0; }
+  .preview-col { display: flex; flex-direction: column; min-height: 0; }
+  .preview-tabs { display: flex; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--border); background: var(--bg-panel); }
+  .preview-tabs button { font-size: 0.72rem; padding: 3px 10px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text-muted); cursor: pointer; }
+  .preview-tabs button.on { color: var(--text); border-color: var(--accent); }
+  .preview-tabs button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .preview { position: relative; background: #05070c; min-height: 0; flex: 1; }
   .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.85rem; }
   button { padding: 7px 15px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); font: inherit; }
   button.primary { background: var(--accent); border-color: var(--accent); }
