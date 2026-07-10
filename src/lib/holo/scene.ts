@@ -1149,11 +1149,14 @@ function buildMoonOrbitRing(node: any, kHelio: number, compression: number, colo
 // vector globe) instead of see-through. Returned as a Group so the caller can tilt/scale/spin it.
 function buildWireframeBody(radius: number, color: number, glow: boolean, occluded: boolean): THREE.Group {
   const g = new THREE.Group();
-  const geo = new THREE.SphereGeometry(radius, 16, 10); // low-poly for the faceted vector look
+  const SEG_LON = 16, SEG_LAT = 10;
+  const geo = new THREE.SphereGeometry(radius, SEG_LON, SEG_LAT); // low-poly for the faceted vector look
   if (occluded) {
-    // Writes depth only (no colour) so the back edges fail the depth test and vanish. Slightly inset
-    // to keep the front edges in front of it (no z-fighting).
-    const occ = new THREE.Mesh(new THREE.SphereGeometry(radius * 0.985, 24, 16), new THREE.MeshBasicMaterial({ colorWrite: false }));
+    // Depth-only occluder (no colour) so back edges fail the depth test and vanish. It MUST use the
+    // SAME faceting as the wireframe and sit just inside it — a rounder/larger sphere would bulge past
+    // the flat facets and clip the near-side edges. Matching segments keeps every occluder facet nested
+    // parallel-inside its wireframe facet, so only the far side is hidden; the front stays intact.
+    const occ = new THREE.Mesh(new THREE.SphereGeometry(radius * 0.97, SEG_LON, SEG_LAT), new THREE.MeshBasicMaterial({ colorWrite: false }));
     g.add(occ);
   }
   const blending = glow ? THREE.AdditiveBlending : THREE.NormalBlending;

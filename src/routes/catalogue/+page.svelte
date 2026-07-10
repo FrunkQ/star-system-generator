@@ -308,9 +308,6 @@
   let appliedPresetId: string | null = null;
   let presetHold = false; // GM closed the view → show a hold screen
   const BUILTIN_THEME: Record<string, ThemeKey> = { guide: 'guide', datapad: 'clean', console: 'console', crt: 'mono', holo: 'holo', projection: 'holo' };
-  function resolvePreset(id: string): PlayerPreset | null {
-    return BUILTIN_PRESETS.find((p) => p.id === id) || (starmap?.playerPresets ?? []).find((p) => p.id === id) || null;
-  }
   function applyPlayerPreset(p: PlayerPreset) {
     themeKey = BUILTIN_THEME[p.id] ?? (p.systemView === 'holo3d' ? 'holo' : p.systemView === 'list' ? 'guide' : 'console');
     includeConstructs = true;
@@ -322,10 +319,16 @@
     holoFilterBypass = ov.filterBypass;
     holoOrbitPaused = ov.orbitPaused;
   }
-  // Apply as soon as the preset is resolvable (built-ins immediately; custom once the starmap arrives).
-  $: if (activePresetId && appliedPresetId !== activePresetId) {
-    const p = resolvePreset(activePresetId);
-    if (p) { appliedPresetId = activePresetId; applyPlayerPreset(p); }
+  // Resolve reactively so BOTH `activePresetId` AND `starmap` are tracked dependencies: a freshly
+  // opened window sets activePresetId at mount while the starmap is still null, so we must re-resolve
+  // (and apply) the moment the campaign's presets arrive — otherwise a custom preset never applies and
+  // the window is stuck on the default skin. (resolvePreset() alone hides `starmap` inside a function.)
+  $: pendingPreset = activePresetId
+    ? (BUILTIN_PRESETS.find((p) => p.id === activePresetId) || (starmap?.playerPresets ?? []).find((p) => p.id === activePresetId) || null)
+    : null;
+  $: if (pendingPreset && appliedPresetId !== pendingPreset.id) {
+    appliedPresetId = pendingPreset.id;
+    applyPlayerPreset(pendingPreset);
   }
 
   function startClock() {

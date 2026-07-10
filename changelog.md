@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.49-beta - 10th Jul 2026
+
+Player Views fixes:
+
+* **Opening a player view now shows the preset you picked.** A freshly-opened player window was falling back to a default look because it resolved the preset before the campaign map had loaded and never re-checked. It now applies the chosen preset the moment the map arrives.
+* Edit preset / General: removed the Company / faction and Footer text fields (not needed); the General preview now shows a clean cover-format sample of the chosen font and accent colour.
+* Occluded wireframe render styles look right: the hidden-surface sphere now matches the wireframe's faceting so it no longer bulges past the front edges — clean solid globes with the far side hidden.
+
 ## v2.1.48-beta - 10th Jul 2026
 
 Player Views modal:

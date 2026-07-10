@@ -142,8 +142,6 @@
             {#if !isRainbow(draft.accentColor)}
               <label class="inline">Accent colour <input type="color" bind:value={draft.accentColor} /></label>
             {/if}
-            <label>Company / faction <input type="text" bind:value={draft.companyName} /></label>
-            <label>Footer text <input type="text" bind:value={draft.footerText} /></label>
           </fieldset>
           <fieldset>
             <legend>Graphics library</legend>
@@ -323,10 +321,10 @@
         <div class="preview">
           {#if previewLayer === 'theme'}
             <div class="theme-sample" class:rainbow={isRainbow(draft.accentColor)} style="font-family:{draft.font}; --accent:{accentCss}; --rainbow:{RAINBOW_GRADIENT}">
-              <span class="ts-label">{draft.companyName || 'Theme sample'}</span>
+              <span class="ts-label">Cover heading</span>
               <h1>Aa Bb 0123</h1>
               <p>The quick brown fox orbits the lazy gas giant.</p>
-              <span class="ts-foot">{draft.footerText || 'footer text'}</span>
+              <span class="ts-foot">Font &amp; accent preview</span>
             </div>
           {:else if previewLayer === 'cover'}
             {#if draft.cover.enabled}
