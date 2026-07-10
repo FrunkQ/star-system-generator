@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.43-beta - 10th Jul 2026
+
+* **Open a preset for players.** The Player Views screen now carries the Field Guide's sharing tools: a QR code and copy-link for the selected preset, and an "Open player view" button. Players scan or open the link and it launches that preset live — a 3D holo table, a projection, a guide — driven by the preset you picked. Built-in and your own custom presets both work; the campaign's presets travel with the shared map. Quick overrides (Follow GM, suspend filter, pause view-orbit) sit alongside.
+
 ## v2.1.42-beta - 10th Jul 2026
 
 * **Starmap gets three player-view modules — including a new 3D map.** The starmap stage can now present as a **text list**, a **2D map**, or a **3D map**. The 3D map lays systems out as glowing stars on a rotatable plane, with routes, name labels, and an optional distance grid (plain, or with light-year rings labelled). The System-view look controls have starmap cousins (grid, view angle, label size).

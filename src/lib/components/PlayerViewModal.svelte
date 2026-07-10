@@ -4,7 +4,11 @@
   // quick live-session overrides (Follow GM / disable filter / disable view orbit) — momentary, never
   // saved into the preset. All design work happens in the wizard editor (PlayerPresetEditor).
   import { createEventDispatcher, onMount } from 'svelte';
+  import { browser } from '$app/environment';
   import { get } from 'svelte/store';
+  import QRCode from 'qrcode';
+  import { broadcastService } from '$lib/broadcast';
+  import { measurementUnit, temperatureUnit } from '$lib/stores';
   import type { PlayerPreset, ViewModule } from '$lib/player/presetTypes';
   import { DEFAULT_PRESET, makePresetId } from '$lib/player/presets';
   import {
@@ -13,7 +17,27 @@
   import { liveOverrides } from '$lib/player/liveOverrides';
   import PlayerPresetEditor from './PlayerPresetEditor.svelte';
 
+  export let sessionId: string | null = null;
+
   const dispatch = createEventDispatcher();
+
+  // Share/open the SELECTED preset — the catalogue reads ?preset=<id> and drives the whole view.
+  let origin = '';
+  let qrDataUrl = '';
+  let copied = false;
+  $: shareUrl = selected
+    ? `${origin}/catalogue?sid=${sessionId ?? ''}&preset=${selected.id}&units=${$measurementUnit}&temp=${$temperatureUnit}`
+    : '';
+  $: if (browser && shareUrl) {
+    QRCode.toDataURL(shareUrl, { margin: 1, width: 220, color: { dark: '#0a0d14', light: '#ffffff' } })
+      .then((d) => (qrDataUrl = d)).catch(() => (qrDataUrl = ''));
+  }
+  function openWindow() {
+    if (shareUrl) window.open(shareUrl, 'StarSystemPlayerView', 'width=520,height=900,menubar=no,toolbar=no,location=no');
+  }
+  async function copyLink() {
+    try { await navigator.clipboard.writeText(shareUrl); copied = true; setTimeout(() => (copied = false), 1500); } catch { /* blocked */ }
+  }
 
   let selectedId: string | null = null;
   let editing: PlayerPreset | null = null;
@@ -24,6 +48,8 @@
   onMount(() => {
     runPresetMigration(); // fold any legacy localStorage holo presets into this campaign, once
     selectedId = presets[0]?.id ?? null;
+    if (browser) origin = window.location.origin;
+    broadcastService.enableRemote(); // sharing intent: allow cross-device players to connect
   });
 
   const VIEW_LABELS: Record<ViewModule, string> = { list: 'Text list', diagram2d: '2D map', holo3d: '3D holo' };
@@ -104,9 +130,19 @@
           </dl>
 
           <div class="det-actions">
-            {#if editable}<button class="primary" on:click={() => (editing = selected)}>Edit…</button>{/if}
+            <button class="primary" on:click={openWindow}>Open player view</button>
+            {#if editable}<button on:click={() => (editing = selected)}>Edit…</button>{/if}
             <button on:click={() => duplicate(selected)}>Duplicate</button>
             {#if editable}<button class="danger" on:click={() => remove(selected)}>Delete</button>{/if}
+          </div>
+
+          <div class="share">
+            {#if qrDataUrl}<img class="qr" src={qrDataUrl} alt="QR code to open this preset" />{/if}
+            <div class="share-col">
+              <span class="ov-head">Share with players</span>
+              <p class="share-hint">Players scan the code or open the link — it opens this preset live. Keep this app running.</p>
+              <button on:click={copyLink}>{copied ? 'Copied' : 'Copy link'}</button>
+            </div>
           </div>
 
           <div class="overrides">
@@ -171,6 +207,11 @@
   .det-actions button { background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 12px; cursor: pointer; font: inherit; }
   .det-actions button.danger { color: #ff8080; border-color: #7a2f2f; }
   .det-actions button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .share { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+  .qr { width: 92px; height: 92px; border-radius: 5px; background: #fff; flex: 0 0 auto; }
+  .share-col { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .share-hint { margin: 0; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; }
+  .share-col button { align-self: flex-start; background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 11px; cursor: pointer; font: inherit; }
   .overrides { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin-top: 0.2rem; }
   .ov-head { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
   .ov-sub { text-transform: none; letter-spacing: 0; font-style: italic; opacity: 0.8; }

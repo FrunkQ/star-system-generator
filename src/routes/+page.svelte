@@ -1377,7 +1377,7 @@
   {/if}
 
   {#if showPlayerPresets}
-    <PlayerViewModal on:close={() => showPlayerPresets = false} />
+    <PlayerViewModal sessionId={broadcastSessionId} on:close={() => showPlayerPresets = false} />
   {/if}
 
   {#if showInterstellarModal && $starmapStore}

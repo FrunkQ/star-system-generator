@@ -59,6 +59,10 @@
   // tweak live and save a new preset. Filter ids are hardcoded here so the filter package (which pulls
   // in three) stays out of this route's chunk; HoloView lazy-loads the actual shaders.
   import { holoPresets, styleOf, saveHoloPreset, DEFAULT_STYLE, type HoloStyle } from '$lib/holo/holoStyle';
+  // Unified player presets: opening one via ?preset=<id> drives the view. holoStyleOf + BUILTIN_PRESETS
+  // are three-free (only types), so importing them keeps three out of this route's chunk.
+  import { BUILTIN_PRESETS, holoStyleOf } from '$lib/player/presets';
+  import type { PlayerPreset } from '$lib/player/presetTypes';
   let holoStyle: HoloStyle = { ...DEFAULT_STYLE };
   let holoPresetId = 'clean';
   let showHoloControls = false;
@@ -317,6 +321,29 @@
     if (themeChanged) selectedBody = null;
   }
 
+  // --- Opening a unified PlayerPreset (?preset=<id>) -------------------------------------------------
+  // Additive + guarded: only active when a preset id is in the URL; otherwise the classic theme path is
+  // untouched. Maps the preset's system view module to a catalogue skin, and for the 3D holo feeds the
+  // full holoStyle (filter/colour/render/grid/framing) so a holo/projection preset deploys at full
+  // fidelity. Custom presets ride the broadcast starmap; built-ins resolve from code.
+  let presetIdParam: string | null = null;
+  let appliedPresetId: string | null = null;
+  const BUILTIN_THEME: Record<string, ThemeKey> = { guide: 'guide', datapad: 'clean', console: 'console', crt: 'mono', holo: 'holo', projection: 'holo' };
+  function resolvePreset(id: string): PlayerPreset | null {
+    return BUILTIN_PRESETS.find((p) => p.id === id) || (starmap?.playerPresets ?? []).find((p) => p.id === id) || null;
+  }
+  function applyPlayerPreset(p: PlayerPreset) {
+    themeKey = BUILTIN_THEME[p.id] ?? (p.systemView === 'holo3d' ? 'holo' : p.systemView === 'list' ? 'guide' : 'console');
+    includeConstructs = true;
+    if (themeKey === 'holo') { holoStyle = holoStyleOf(p); holoPresetId = ''; }
+    selectedBody = null;
+  }
+  // Apply as soon as the preset is resolvable (built-ins immediately; custom once the starmap arrives).
+  $: if (presetIdParam && appliedPresetId !== presetIdParam) {
+    const p = resolvePreset(presetIdParam);
+    if (p) { appliedPresetId = presetIdParam; applyPlayerPreset(p); }
+  }
+
   function startClock() {
     if (!browser) return;
     let last = performance.now();
@@ -392,6 +419,7 @@
   onMount(async () => {
     const params = new URLSearchParams(window.location.search);
     sessionId = params.get('sid');
+    presetIdParam = params.get('preset');
     units = params.get('units') === 'imperial' ? 'imperial' : 'metric';
     { const tp = params.get('temp'); tempUnit = tp === 'F' || tp === 'K' ? tp : 'C'; }
     // Initial view from the URL (legacy green/amber theme keys fold into mono + colour);
@@ -427,7 +455,8 @@
       connected = true;
     };
     broadcastService.onBrandingUpdate = (b) => { branding = b || { name: '', logo: null }; };
-    broadcastService.onGuideConfigUpdate = (c) => { if (c) applyGuideConfig(c); };
+    // A preset (?preset=) owns the view; ignore the GM's classic guide-config in that mode.
+    broadcastService.onGuideConfigUpdate = (c) => { if (c && !presetIdParam) applyGuideConfig(c); };
     broadcastService.sendMessage({ type: 'REQUEST_STARMAP', payload: sessionId });
     startClock();
   });
