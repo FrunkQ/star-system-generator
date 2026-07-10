@@ -21,6 +21,7 @@ import { getNodeColor, getClassColor } from '$lib/rendering/colors';
 import { getPlanetTextureEquirect } from '$lib/rendering/planetTexture';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { rendersAsGiant } from '$lib/physics/makeup';
+import { deriveAurora, auroraEmitter } from '$lib/physics/aurora';
 import { getVisibleNodeIds } from '$lib/system/visibleNodes';
 import { AU_KM, G } from '$lib/constants';
 import type { System } from '$lib/types';
@@ -430,6 +431,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let bodyById = new Map<string, BodyVisual>();
   let ringVisuals: RingVisual[] = [];
   let beltVisuals: BeltVisual[] = [];
+  // Aurora glow shells (additive, emissive), flickering over time; base opacity scales with strength.
+  let auroraVisuals: { mat: THREE.MeshBasicMaterial; base: number; seed: number }[] = [];
   // Orbit path rings, keyed by node id so they can follow the SAME visibility rule as the names
   // ("if you show a name, show an orbit"). Moon rings carry trackParentId to follow the parent.
   let orbitRings: { id: string; obj: THREE.Object3D; trackParentId?: string }[] = [];
@@ -732,6 +735,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     orbitRings = [];
     starLights = [];
     starVisuals = [];
+    auroraVisuals = [];
   }
 
   function setSystem(system: System | null) {
@@ -802,26 +806,34 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       let shadow: BodyVisual['shadow'];
       if (isStar) {
         const activity = Math.max(0, Math.min(1, (node.flareActivity ?? 0)));
-        // Photosphere: an emissive (unlit) textured sphere — granulation + sunspots (spot count
-        // scales with the star's flare activity), so you see surface detail and it spins.
-        const starMat = new THREE.MeshBasicMaterial();
-        const st = new THREE.CanvasTexture(makeStarTexture(colorHex, activity, node.id));
-        st.colorSpace = THREE.SRGBColorSpace;
-        starMat.map = st;
         const starR = starRadiusScene(node); // responds to the body-size dial like the planets
-        const sphere = new THREE.Mesh(new THREE.SphereGeometry(starR, 32, 24), starMat);
-        mesh = sphere;
-        // Corona: an additive halo ringing the photosphere; bigger/brighter for an active star and
-        // pulsing (flaring) over time in updateStarFx. Parented to the sphere so it tracks position;
-        // the billboard ignores the sphere's spin.
-        const coronaMat = new THREE.SpriteMaterial({ map: glowTexture, color: colorHex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
-        const corona = new THREE.Sprite(coronaMat);
-        const coronaScale = starR * (5 + activity * 4);
-        corona.scale.setScalar(coronaScale);
-        sphere.add(corona);
-        starVisuals.push({ corona, coronaScale, activity });
-        // The star casts light: a point light co-located with the photosphere gives a real terminator.
-        // decay 0 so the compressed distances don't dim the outer planets.
+        if (renderStyle !== 'filled') {
+          // In wireframe modes the star is a wireframe too (no photosphere/corona): flat draws plain
+          // non-emissive polys, glow adds the emissive glowing vertices — same as the other bodies.
+          const glow = renderStyle === 'wire-glow' || renderStyle === 'wire-glow-occ';
+          const occluded = renderStyle === 'wire-glow-occ' || renderStyle === 'wire-flat-occ';
+          mesh = buildWireframeBody(starR, colorHex, glow, occluded);
+        } else {
+          // Photosphere: an emissive (unlit) textured sphere — granulation + sunspots (spot count
+          // scales with the star's flare activity), so you see surface detail and it spins.
+          const starMat = new THREE.MeshBasicMaterial();
+          const st = new THREE.CanvasTexture(makeStarTexture(colorHex, activity, node.id));
+          st.colorSpace = THREE.SRGBColorSpace;
+          starMat.map = st;
+          const sphere = new THREE.Mesh(new THREE.SphereGeometry(starR, 32, 24), starMat);
+          mesh = sphere;
+          // Corona: an additive halo ringing the photosphere; bigger/brighter for an active star and
+          // pulsing (flaring) over time in updateStarFx. Parented to the sphere so it tracks position;
+          // the billboard ignores the sphere's spin.
+          const coronaMat = new THREE.SpriteMaterial({ map: glowTexture, color: colorHex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+          const corona = new THREE.Sprite(coronaMat);
+          const coronaScale = starR * (5 + activity * 4);
+          corona.scale.setScalar(coronaScale);
+          sphere.add(corona);
+          starVisuals.push({ corona, coronaScale, activity });
+        }
+        // The star casts light regardless of render style: a point light co-located with it gives the
+        // planets a real terminator. decay 0 so the compressed distances don't dim the outer planets.
         const light = new THREE.PointLight(colorHex, 2.2, 0, 0);
         contentGroup.add(light);
         starLights.push({ id: node.id, light });
@@ -877,6 +889,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 24), mat);
           if (polF < 0.999) sphere.scale.set(1, polF, 1);
           mesh = sphere;
+          // Aurora: an additive emissive shell glowing at the (tilted) magnetic poles, flickering over
+          // time. deriveAurora needs air + a field + ionising flux — returns 0 otherwise, so most bodies
+          // add nothing. Parented to the sphere, so it tracks position + axial tilt (spin is harmless —
+          // the ovals are polar rings). Skipped in the flat/unlit "2D map" look.
+          if (!unlit) {
+            const aur = deriveAurora(node as any);
+            if (aur.strength > 0.06) {
+              const built = buildAuroraShell(radius, auroraEmitter(node as any).hex, aur.strength);
+              sphere.add(built.shell);
+              let seed = 0; for (const ch of String(node.id)) seed = (seed + ch.charCodeAt(0)) % 997;
+              auroraVisuals.push({ mat: built.mat, base: built.base, seed: seed / 997 });
+            }
+          }
         }
       }
       contentGroup.add(mesh);
@@ -1002,6 +1027,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
   }
 
+  // Aurora shimmer: modulate each shell's opacity around its strength-based base with a couple of
+  // out-of-phase sines (per-body seed) for a slow, uneven flicker.
+  function updateAuroras(nowSec: number) {
+    for (const a of auroraVisuals) {
+      const s = 0.5 + 0.5 * (0.62 * Math.sin(nowSec * 2.6 + a.seed * 6.283) + 0.38 * Math.sin(nowSec * 5.9 + a.seed * 12.57));
+      a.mat.opacity = a.base * (0.4 + 0.6 * Math.max(0, Math.min(1, s)));
+    }
+  }
+
   // Feed each shadow-capable body its occluder (parent planet) sphere + the primary star position,
   // in scene space, so the shader can do its ray–sphere eclipse test.
   const occCenter = new THREE.Vector3();
@@ -1111,6 +1145,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     controls.autoRotate = orbitSpeed > 0 && focusDrive === 0; // turntable, paused during the focus ease
     updateSpin();
     updateStarFx(nowSec);
+    updateAuroras(nowSec);
     updateConstructs();
     updateShadows();
     updateRings();
@@ -1221,6 +1256,45 @@ function buildMoonOrbitRing(node: any, kHelio: number, compression: number, colo
   if (pts.length < 3) return null;
   const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.4 });
   return new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat);
+}
+
+// An equirect aurora texture: coloured curtains at the two polar rings (transparent elsewhere). Under
+// additive blending the alpha carries the glow, so bright rings around the poles emit and the rest adds
+// nothing. Horizontal streaks give it a curtain-like shimmer.
+function makeAuroraTexture(hex: string): HTMLCanvasElement {
+  const w = 160, h = 80;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d')!;
+  const col = new THREE.Color(hex);
+  const r = Math.round(col.r * 255), g = Math.round(col.g * 255), b = Math.round(col.b * 255);
+  const img = ctx.createImageData(w, h);
+  for (let y = 0; y < h; y++) {
+    const v = y / (h - 1); // 0 = north pole .. 1 = south pole
+    const ring = (centre: number) => Math.exp(-Math.pow((v - centre) / 0.085, 2)); // gaussian polar oval
+    const band = Math.max(ring(0.15), ring(0.85));
+    for (let x = 0; x < w; x++) {
+      const u = x / w;
+      const streak = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(u * Math.PI * 22 + Math.sin(u * 7) * 2)); // curtains
+      const a = Math.max(0, Math.min(1, band * streak));
+      const i = (y * w + x) * 4;
+      img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = Math.round(a * 255);
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
+
+// A flickering aurora glow: an additive emissive shell just above the body. `base` opacity scales with
+// aurora strength; the render loop shimmers it around that.
+function buildAuroraShell(radius: number, hex: string, strength: number): { shell: THREE.Mesh; mat: THREE.MeshBasicMaterial; base: number } {
+  const tex = new THREE.CanvasTexture(makeAuroraTexture(hex));
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  const base = Math.min(0.85, 0.28 + strength * 0.6);
+  mat.opacity = base;
+  const shell = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.06, 28, 20), mat);
+  shell.renderOrder = 2; // draw over the body surface
+  return { shell, mat, base };
 }
 
 // An 80s vector-display body: a low-poly globe drawn as wireframe EDGES. `glow` ALSO draws the vertices

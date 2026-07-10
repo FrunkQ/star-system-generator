@@ -313,7 +313,10 @@
   // modal drives it live). Maps the preset's system view to a catalogue skin; for the 3D holo it feeds
   // the full holoStyle so it deploys at full fidelity. The GM's momentary overrides (hide labels /
   // suspend filter / pause orbit) come down the same channel. A null broadcast = hold screen.
-  let activePresetId: string | null = null;
+  // Read the preset id from the URL SYNCHRONOUSLY (not in onMount) so the very first paint already knows
+  // a preset is in play — otherwise the default 'guide' skin's DON'T PANIC cover flashes for a frame
+  // before the preset resolves.
+  let activePresetId: string | null = browser ? new URLSearchParams(window.location.search).get('preset') : null;
   let appliedPresetId: string | null = null;
   let presetHold = false; // GM closed the view → show a hold screen
   const BUILTIN_THEME: Record<string, ThemeKey> = { guide: 'guide', datapad: 'clean', console: 'console', crt: 'mono', holo: 'holo', projection: 'holo' };
@@ -538,7 +541,7 @@
     </span>
   </header>
 
-  {#if themeKey === 'guide' && !guideCoverDismissed && !activePreset}
+  {#if themeKey === 'guide' && !guideCoverDismissed && !activePresetId}
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
     <div class="guide-cover" role="button" tabindex="0" on:click={dismissGuideCover} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') dismissGuideCover(); }}>
       <div class="cover-inner">

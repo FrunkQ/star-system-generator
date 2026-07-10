@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.56-beta - 11th Jul 2026
+
+* **Auroras in the 3D holo.** Worlds with an atmosphere, a magnetic field and enough stellar flux now glow with a flickering aurora at their (tilted) magnetic poles — coloured by the atmosphere (Earth green, a gas giant red-pink, etc.) and scaled by strength, just like the 2D disc.
+* **The Sun renders correctly in wireframe modes.** In the vector-wireframe render styles the star is now drawn as a wireframe too — flat draws plain polygons, glow adds the emissive glowing vertices — instead of staying a solid photosphere.
+* **No more "DON'T PANIC" flash when opening a player view.** The default Guide cover briefly appeared for a frame before the chosen preset took over; the preset is now recognised on the first paint, so it never shows.
+
 ## v2.1.55-beta - 11th Jul 2026
 
 * **Info panel width is now set in the editor.** The body info panel's desktop width is a preset setting (System step), so you size it once per preset; mobile keeps its own layout.
