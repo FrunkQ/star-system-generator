@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.53-beta - 11th Jul 2026
+
+* **Holo labels no longer balloon as you zoom.** The in-scene labels were computed without the camera's field-of-view factor, so they rendered far too big (and drifted in size). They now hold a correct, constant on-screen size at any zoom — which also restores easy tapping, since oversized labels had been sitting over the planets and swallowing clicks.
+* **Tapping a star now selects it.** Body picking is more robust: it walks up from whatever mesh the ray hits, so stars (drawn as a photosphere + corona group) and wireframe bodies are selectable, not just simple planet spheres.
+* **The body info block now takes the visual filter.** In the player view, a selected body's panel (image + data) picks up the same CRT / night-vision / thermal look as the rest of the screen, instead of sitting outside it.
+
 ## v2.1.52-beta - 10th Jul 2026
 
 * **The player view now renders what the preset actually says.** Until now, opening a preset mapped it onto a legacy skin, so a custom preset's cover never appeared and the starmap always showed as the 2D diagram regardless of the module you picked. The catalogue now deploys the preset's real layers:

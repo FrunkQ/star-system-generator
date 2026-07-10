@@ -557,11 +557,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     raycaster.setFromCamera(ndc, camera);
-    const hits = raycaster.intersectObjects(bodies.map((b) => b.mesh), false);
+    // Recursive: a body's mesh can be a Group (a star's photosphere+corona, a wireframe body), so hits
+    // land on a child — walk up to find the owning body.
+    const hits = raycaster.intersectObjects(bodies.map((b) => b.mesh), true);
     if (hits.length) {
-      const b = bodies.find((x) => x.mesh === hits[0].object);
-      if (b) opts.onSelect?.(b.id);
-      return;
+      let obj: THREE.Object3D | null = hits[0].object;
+      let b: BodyVisual | undefined;
+      while (obj && !(b = bodies.find((x) => x.mesh === obj))) obj = obj.parent;
+      if (b) { opts.onSelect?.(b.id); return; }
     }
     // Tap assist for the tiny construct icons: a 4 px sprite is untappable, so on a raycast miss
     // pick the nearest construct within ~14 px of the tap in screen space (finger-friendly).
@@ -948,10 +951,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       ls.sprite.visible = true;
       ls.sprite.position.copy(labelWorld);
       (ls.sprite.material as THREE.SpriteMaterial).opacity = b.id === focusedId ? 1 : 0.85;
-      // Constant on-screen size: with sizeAttenuation off, sprite scale is in clip units (2 = full
-      // viewport height). Convert the desired text height in px, scaled up by the canvas padding ratio.
-      const hClip = (2 * labelSizePx * ls.heightRatio) / viewH;
-      ls.sprite.scale.set(hClip * ls.aspect, hClip, 1);
+      // Constant on-screen size. For a sizeAttenuation:false sprite, on-screen px = scale · viewH /
+      // (2·tan(fov/2)), so scale = px · 2·tan(fov/2) / viewH (same conversion the constructs use). The
+      // full sprite is labelSizePx·heightRatio tall so the TEXT inside lands at labelSizePx.
+      const pxToScale = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, viewH);
+      const hFull = labelSizePx * ls.heightRatio * pxToScale;
+      ls.sprite.scale.set(hFull * ls.aspect, hFull, 1);
     }
   }
 

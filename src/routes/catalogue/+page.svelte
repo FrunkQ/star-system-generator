@@ -67,6 +67,7 @@
   // The unified player-view layers — the preset drives WHICH of these render (cover / starmap module /
   // system module) so a preset is deployed at full fidelity, not mapped onto a legacy skin.
   import CoverView from '$lib/components/CoverView.svelte';
+  import { cssFilterApprox } from '$lib/player/cssFilterApprox';
   import FilterFrame from '$lib/components/FilterFrame.svelte';
   import GraphicLayer from '$lib/components/GraphicLayer.svelte';
   import StarmapListView from '$lib/starmap/StarmapListView.svelte';
@@ -352,6 +353,9 @@
   $: presetFilterActive = !!activePreset && activePreset.filter !== 'none' && !holoFilterBypass;
   $: presetFilterId = presetFilterActive ? activePreset!.filter : 'none';
   $: presetFilterParams = activePreset?.filterParams;
+  // The body info block is DOM over the holo canvas, so the GLSL shader can't reach it. Give it the
+  // matched CSS approximation so it reads as part of the same filtered surface (static — just a style).
+  $: inspFx = presetFilterActive ? cssFilterApprox(presetFilterId, presetFilterParams) : null;
   // The system level reuses the existing console/holo/doc stages; pick which by the preset's systemView.
   $: effectiveSystemTier = activePreset
     ? (activePreset.systemView === 'holo3d' ? 'holo' : activePreset.systemView === 'diagram2d' ? 'interactive' : 'static')
@@ -678,7 +682,13 @@
         {/if}
       </div>
       {#if selectedBody}
-        <aside class="inspector" class:expanded={bodyExpanded} style="--insp-w:{inspectorWidth}px">
+        <aside class="inspector" class:expanded={bodyExpanded} style="--insp-w:{inspectorWidth}px; filter:{inspFx ? inspFx.containerFilter : 'none'}">
+          <!-- The info block is DOM over the holo canvas, so the GLSL filter can't reach it; the CSS
+               approximation (tint + scanlines + the container filter above) makes it match. -->
+          {#if inspFx}
+            {#if inspFx.tint}<div class="insp-fx-tint" style="background:{inspFx.tint}; opacity:{inspFx.tintOpacity * 0.5}"></div>{/if}
+            {#if inspFx.scanlineIntensity > 0}<div class="insp-fx-scan" style="opacity:{inspFx.scanlineIntensity * 0.6}; background-size:100% {inspFx.scanlineWidth}px"></div>{/if}
+          {/if}
           <!-- Desktop: drag the left edge to resize the panel (width persisted). Hidden on phone. -->
           <div class="insp-resize" on:pointerdown={startInspectorResize} role="separator" aria-orientation="vertical" aria-label="Resize panel"></div>
           <div class="insp-head">
@@ -937,6 +947,9 @@
   .overlay-wrap { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
   .preset-cover { position: absolute; inset: 0; z-index: 60; cursor: pointer; background: #05070c; }
   .preset-cover-hint { position: absolute; bottom: 6%; left: 0; right: 0; text-align: center; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; color: #cfd6e4; pointer-events: none; }
+  /* Filter approximation laid over the body info block so it reads as part of the filtered surface. */
+  .insp-fx-tint { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: color; z-index: 5; }
+  .insp-fx-scan { position: absolute; inset: 0; pointer-events: none; z-index: 5; background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,0.55) 0, rgba(0,0,0,0.55) 1px, transparent 1px, transparent 100%); }
   /* Object picker left-aligned (not centred) — matches the projector, leaves the centre clear. */
   .holo-picker-left :global(.body-picker) { left: 10px; right: auto; transform: none; }
   .time-controls {

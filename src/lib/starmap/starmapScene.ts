@@ -314,9 +314,11 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       if (proj.z > 1) { ls.sprite.visible = false; continue; } // behind the camera
       ls.sprite.visible = true;
       ls.sprite.position.copy(p.center);
-      // Constant on-screen size (sizeAttenuation off → scale is in clip units; 2 = full viewport height).
-      const hClip = (2 * labelSizePx * ls.heightRatio) / viewH;
-      ls.sprite.scale.set(hClip * ls.aspect, hClip, 1);
+      // Constant on-screen size. sizeAttenuation:false → on-screen px = scale · viewH / (2·tan(fov/2)),
+      // so scale = px · 2·tan(fov/2) / viewH. Full sprite = labelSizePx·heightRatio so the text lands at px.
+      const pxToScale = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, viewH);
+      const hFull = labelSizePx * ls.heightRatio * pxToScale;
+      ls.sprite.scale.set(hFull * ls.aspect, hFull, 1);
     }
   }
   function loop() {
