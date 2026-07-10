@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.48-beta - 10th Jul 2026
+
+Player Views modal:
+
+* The main action (Open / Change / Close player view) now sits on its own full-width row, with Edit / Duplicate / Delete moved to a separate row below it.
+* Mobile pass: the modal goes full-screen and stacks the card grid over the detail pane in a single scrolling column; the share block stacks with a centred QR, and buttons and checkboxes get larger tap targets.
+
 ## v2.1.47-beta - 10th Jul 2026
 
 Editor feedback fixes:

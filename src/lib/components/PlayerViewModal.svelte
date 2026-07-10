@@ -156,7 +156,7 @@
             <dt>Driver</dt><dd>{selected.followGM ? 'Follows the GM' : 'Player-driven'}{selected.interactive ? ' · interactive' : ' · display only'}</dd>
           </dl>
 
-          <div class="det-actions">
+          <div class="det-actions primary-row">
             {#if isRunningSelected}
               <button class="danger" on:click={closePlayer}>Close player view</button>
             {:else if $runningPresetId}
@@ -164,6 +164,8 @@
             {:else}
               <button class="primary" on:click={() => openPlayer(selected)}>Open player view</button>
             {/if}
+          </div>
+          <div class="det-actions manage-row">
             {#if editable}<button on:click={() => (editing = selected)}>Edit…</button>{/if}
             <button on:click={() => duplicate(selected)}>Duplicate</button>
             {#if editable}<button class="danger" on:click={() => remove(selected)}>Delete</button>{/if}
@@ -243,10 +245,14 @@
   .summary { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 0.76rem; }
   .summary dt { color: var(--text-muted); }
   .summary dd { margin: 0; }
-  .det-actions { display: flex; gap: 0.5rem; }
+  .det-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
   .det-actions button { background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 12px; cursor: pointer; font: inherit; }
   .det-actions button.danger { color: #ff8080; border-color: #7a2f2f; }
   .det-actions button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  /* The live action (Open/Change/Close) gets its own full-width row; manage buttons sit below it. */
+  .primary-row button { flex: 1; padding: 8px 12px; font-weight: 600; }
+  .manage-row { margin-top: -0.15rem; }
+  .manage-row button { flex: 1; }
   .share { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
   .qr { width: 92px; height: 92px; border-radius: 5px; background: #fff; flex: 0 0 auto; }
   .share-col { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
@@ -258,4 +264,24 @@
   .chk { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
   footer { display: flex; justify-content: flex-end; }
   footer button { padding: 8px 16px; cursor: pointer; border-radius: 4px; border: none; background: var(--bg-control); color: var(--text); font: inherit; }
+
+  /* --- Mobile: stack the card grid over the detail pane; everything scrolls in one column. --- */
+  @media (max-width: 719px) {
+    .modal { padding: 1rem; width: 100%; max-width: 100vw; max-height: 100vh; height: 100dvh; border-radius: 0; gap: 0.7rem; }
+    .lede { font-size: 0.78rem; }
+    .body { grid-template-columns: 1fr; overflow-y: auto; gap: 0.8rem; }
+    .grid { grid-template-columns: 1fr 1fr; overflow: visible; padding-right: 0; }
+    .card .desc { min-height: 0; }
+    .detail { border-left: none; padding-left: 0; overflow: visible; border-top: 1px solid var(--border); padding-top: 0.8rem; }
+    .primary-row button { padding: 11px 12px; } /* larger tap target for the main action */
+    .manage-row button { padding: 9px 12px; }
+    .share { flex-direction: column; align-items: stretch; }
+    .qr { width: 132px; height: 132px; align-self: center; }
+    .share-col button { align-self: stretch; text-align: center; padding: 9px 11px; }
+    .chk { padding: 3px 0; font-size: 0.84rem; }
+    .chk input { width: 18px; height: 18px; }
+  }
+  @media (max-width: 400px) {
+    .grid { grid-template-columns: 1fr; }
+  }
 </style>
