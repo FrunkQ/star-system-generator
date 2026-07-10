@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.54-beta - 11th Jul 2026
+
+* **Body "Type" now shows the classification, not the kind.** The info block's Type line reads the scientific classification (e.g. "G2V", "Ringed · Ammonia clouds gas giant", "Terrestrial") instead of just "star" / "planet".
+* **The editor preview now shows true colour, matching the player view.** True-colour needs the derived colour palette that only lives on a processed system; the editor was previewing a raw example (no palette), so it fell back to flat swatches. It now previews one of the campaign's actual processed systems, so worlds render textured just as players see them.
+
 ## v2.1.53-beta - 11th Jul 2026
 
 * **Holo labels no longer balloon as you zoom.** The in-scene labels were computed without the camera's field-of-view factor, so they rendered far too big (and drifted in size). They now hold a correct, constant on-screen size at any zoom — which also restores easy tapping, since oversized labels had been sitting over the planets and swallowing clicks.

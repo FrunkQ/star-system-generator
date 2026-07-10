@@ -57,7 +57,18 @@
   $: holoStyle = { ...holoStyleOf(draft), ...(tab === 'filter' ? {} : { filter: 'none', filterParams: undefined }) };
 
   // ── Preview data ────────────────────────────────────────────────────────────
-  let previewSystem: System | null = get(systemStore);
+  // Prefer a REAL, processed campaign system: the open one, else the first starmap system that carries
+  // apparentColor (SystemProcessor's derived true-colour palette). A raw example fetched off disk has no
+  // apparentColor, so true-colour would fall back to flat swatches — which is why the preview looked flat
+  // while the player view (fed the GM's processed system) rendered textured.
+  function firstProcessedSystem(): System | null {
+    const sm = get(starmapStore);
+    const list = (sm?.systems ?? []) as any[];
+    const textured = list.find((s) => s.system?.nodes?.some((n: any) => n.apparentColor));
+    const anySys = list.find((s) => s.system?.nodes?.length);
+    return (textured ?? anySys)?.system ?? null;
+  }
+  let previewSystem: System | null = get(systemStore) ?? firstProcessedSystem();
   let rulePack: RulePack | null = null;
   let currentTime = 0;
   let raf = 0;
