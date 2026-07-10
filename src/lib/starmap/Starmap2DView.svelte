@@ -1,6 +1,7 @@
 <script lang="ts">
   // Starmap as a read-only 2D diagram — the player-view module. Multi-star systems render as MULTIPLE
   // star glyphs (the binaries-as-single fix), with route lines and name labels. Themeable.
+  import { createEventDispatcher } from 'svelte';
   import type { Starmap } from '$lib/types';
   import { systemVisualStars, starClusterOffsets } from './systemStars';
 
@@ -8,7 +9,10 @@
   export let accentColor = '#6aa0ff';
   export let font = 'system-ui';
   export let showLabels = true;
+  export let selectable = false;      // live view: systems become tappable
+  export let selectedId: string | null = null;
 
+  const dispatch = createEventDispatcher<{ select: string }>();
   const R = 4.5; // glyph radius (viewBox units)
 
   $: systems = starmap?.systems ?? [];
@@ -42,7 +46,11 @@
       {@const stars = systemVisualStars(node.system)}
       {@const offs = starClusterOffsets(stars.length)}
       {#if c}
-        <g>
+        <g class="sys" class:selectable class:sel={node.id === selectedId}
+           role={selectable ? 'button' : undefined} tabindex={selectable ? 0 : undefined}
+           on:click={() => selectable && dispatch('select', node.id)}
+           on:keydown={(e) => { if (selectable && (e.key === 'Enter' || e.key === ' ')) dispatch('select', node.id); }}>
+          {#if selectable}<circle cx={c.x} cy={c.y} r={R * 3} class="hit" />{/if}
           {#each stars as s, i}
             <circle cx={c.x + (offs[i]?.dx ?? 0) * R} cy={c.y + (offs[i]?.dy ?? 0) * R} r={R} style="fill:{s.color}" class="star" />
           {/each}
@@ -60,4 +68,8 @@
   .route.dashed { stroke-dasharray: 5 4; }
   .star { stroke: rgba(0,0,0,0.4); stroke-width: 0.6; filter: drop-shadow(0 0 3px currentColor); }
   .lbl { fill: #d6deea; font-size: 12px; }
+  .sys.selectable { cursor: pointer; }
+  .hit { fill: transparent; }
+  .sys.selectable:hover .star, .sys.sel .star { stroke: var(--accent); stroke-width: 1.4; }
+  .sys.sel .lbl { fill: var(--accent); }
 </style>

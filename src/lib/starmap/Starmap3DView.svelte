@@ -1,7 +1,7 @@
 <script lang="ts">
   // Thin wrapper around the imperative 3D starmap scene. Lazy-imports starmapScene so three lands in
   // its own chunk. Feeds it systems (map x/y + multi-star colours) + routes, and the theme/look props.
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import type { Starmap } from '$lib/types';
   import type { StarmapController, SmSystem, SmRoute } from './starmapScene';
   import { systemVisualStars } from './systemStars';
@@ -15,6 +15,9 @@
   export let labelSize = 12;
   export let filter = 'none';
   export let filterParams: Record<string, number | boolean | string> | undefined = undefined;
+  export let selectable = false; // live view: tapping a system fires `select`
+
+  const dispatch = createEventDispatcher<{ select: string }>();
 
   let container: HTMLDivElement;
   let canvas: HTMLCanvasElement;
@@ -45,7 +48,7 @@
     (async () => {
       const { createStarmapScene } = await import('./starmapScene');
       if (cancelled || !canvas) return;
-      controller = createStarmapScene(canvas, { distanceUnit: starmap?.distanceUnit });
+      controller = createStarmapScene(canvas, { distanceUnit: starmap?.distanceUnit, onSelect: selectable ? (id) => dispatch('select', id) : undefined });
       apply();
       const r = container.getBoundingClientRect();
       controller.resize(r.width, r.height);

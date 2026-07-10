@@ -32,6 +32,7 @@ interface LabelSprite {
 
 export interface StarmapSceneOptions {
   distanceUnit?: string; // 'ly' | 'pc' | … — the scale label suffix
+  onSelect?: (id: string) => void; // fired when the viewer taps a system (live view)
 }
 
 export interface StarmapController {
@@ -278,6 +279,28 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     rebuildGrid();
   }
 
+  // --- Tap-to-select (live view) — pick the nearest system to the pointer, ignoring orbit drags.
+  // Distance-in-screen-space is robust and needs no per-sprite raycast bookkeeping.
+  let downX = 0, downY = 0, downT = 0;
+  function onPointerDown(e: PointerEvent) { downX = e.clientX; downY = e.clientY; downT = performance.now(); }
+  function onPointerUp(e: PointerEvent) {
+    if (!opts.onSelect) return;
+    if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6 || performance.now() - downT > 700) return; // a drag, not a tap
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    let best: string | null = null, bestD = 34; // px hit radius
+    for (const p of placed) {
+      proj.copy(p.center).project(camera);
+      if (proj.z > 1) continue;
+      const sx = (proj.x * 0.5 + 0.5) * viewW, sy = (-proj.y * 0.5 + 0.5) * viewH;
+      const d = Math.hypot(sx - mx, sy - my);
+      if (d < bestD) { bestD = d; best = p.id; }
+    }
+    if (best) opts.onSelect(best);
+  }
+  canvas.addEventListener('pointerdown', onPointerDown);
+  canvas.addEventListener('pointerup', onPointerUp);
+
   // --- Loop ---
   let raf = 0, disposed = false;
   const proj = new THREE.Vector3();
@@ -315,6 +338,8 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
 
   function dispose() {
     disposed = true; cancelAnimationFrame(raf);
+    canvas.removeEventListener('pointerdown', onPointerDown);
+    canvas.removeEventListener('pointerup', onPointerUp);
     controls.dispose(); clearContent(); clearGroup(gridGroup);
     (starfield.geometry as any)?.dispose?.(); (starfield.material as any)?.dispose?.();
     if (filterPass) (filterPass.material as THREE.Material).dispose();

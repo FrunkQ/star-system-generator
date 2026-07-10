@@ -2,6 +2,15 @@
 
 All notable changes are listed here:
 
+## v2.1.52-beta - 10th Jul 2026
+
+* **The player view now renders what the preset actually says.** Until now, opening a preset mapped it onto a legacy skin, so a custom preset's cover never appeared and the starmap always showed as the 2D diagram regardless of the module you picked. The catalogue now deploys the preset's real layers:
+  * the **cover page** you designed shows as the entry screen (tap to enter);
+  * the **starmap** renders in the module you chose — text list, 2D map or 3D — and tapping a system opens it;
+  * the **system view** renders in your chosen module (text list, 2D or 3D holo);
+  * the preset's **theme** (font + accent), **visual filter** and **per-screen overlays** are applied throughout.
+* Starmap list / 2D / 3D views gained tap-to-select so players can navigate from any of them.
+
 ## v2.1.51-beta - 10th Jul 2026
 
 * **3D starmap labels now go through the visual filter too.** Same fix as the system holo view: system name labels were HTML over the canvas, so they stayed flat and drifted under a CRT barrel-warp. They are now rendered inside the 3D scene, so the filter tints and warps them in lockstep with the system stars, and they keep the theme accent colour.

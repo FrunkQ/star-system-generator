@@ -62,8 +62,16 @@
   // Unified player presets: the view is driven by a preset (URL ?preset= on open, then live SYNC_PRESET
   // from the GM's Player Views modal). holoStyleOf + BUILTIN_PRESETS are three-free (only types), so
   // importing them keeps three out of this route's chunk.
-  import { BUILTIN_PRESETS, holoStyleOf } from '$lib/player/presets';
+  import { BUILTIN_PRESETS, BUILTIN_ASSETS, holoStyleOf, accentSolid } from '$lib/player/presets';
   import type { PlayerPreset } from '$lib/player/presetTypes';
+  // The unified player-view layers — the preset drives WHICH of these render (cover / starmap module /
+  // system module) so a preset is deployed at full fidelity, not mapped onto a legacy skin.
+  import CoverView from '$lib/components/CoverView.svelte';
+  import FilterFrame from '$lib/components/FilterFrame.svelte';
+  import GraphicLayer from '$lib/components/GraphicLayer.svelte';
+  import StarmapListView from '$lib/starmap/StarmapListView.svelte';
+  import Starmap2DView from '$lib/starmap/Starmap2DView.svelte';
+  import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
   let holoStyle: HoloStyle = { ...DEFAULT_STYLE };
   // Momentary GM overrides — driven by the GM's Player Views modal via SYNC_PRESET (never saved).
   let holoLabelsOn = true;
@@ -309,9 +317,11 @@
   let presetHold = false; // GM closed the view → show a hold screen
   const BUILTIN_THEME: Record<string, ThemeKey> = { guide: 'guide', datapad: 'clean', console: 'console', crt: 'mono', holo: 'holo', projection: 'holo' };
   function applyPlayerPreset(p: PlayerPreset) {
+    // themeKey still drives the page chrome (background/status bar); the preset's own layers render on
+    // top of it. holoStyle is always derived so a holo3d system view deploys at full fidelity.
     themeKey = BUILTIN_THEME[p.id] ?? (p.systemView === 'holo3d' ? 'holo' : p.systemView === 'list' ? 'guide' : 'console');
     includeConstructs = true;
-    if (themeKey === 'holo') { holoStyle = holoStyleOf(p); }
+    holoStyle = holoStyleOf(p);
     selectedBody = null;
   }
   function applyOverrides(ov: { filterBypass: boolean; orbitPaused: boolean; labelsHidden: boolean }) {
@@ -329,6 +339,31 @@
   $: if (pendingPreset && appliedPresetId !== pendingPreset.id) {
     appliedPresetId = pendingPreset.id;
     applyPlayerPreset(pendingPreset);
+  }
+
+  // ── Preset-driven rendering (the deployed player view) ─────────────────────────────────────────
+  // When a preset is active it OWNS the layers: its cover, its chosen starmap module, its chosen system
+  // module, its theme + filter — rather than the legacy skin's fixed UI.
+  $: activePreset = pendingPreset;
+  $: presetAccent = activePreset ? accentSolid(activePreset.accentColor) : '#6aa0ff';
+  $: presetFont = activePreset?.font || 'system-ui';
+  $: presetAssets = [...BUILTIN_ASSETS, ...(starmap?.playerAssets ?? [])];
+  // A DOM-layer filter (cover / list / 2D) — the holo3d modules run the real GLSL shader themselves.
+  $: presetFilterActive = !!activePreset && activePreset.filter !== 'none' && !holoFilterBypass;
+  $: presetFilterId = presetFilterActive ? activePreset!.filter : 'none';
+  $: presetFilterParams = activePreset?.filterParams;
+  // The system level reuses the existing console/holo/doc stages; pick which by the preset's systemView.
+  $: effectiveSystemTier = activePreset
+    ? (activePreset.systemView === 'holo3d' ? 'holo' : activePreset.systemView === 'diagram2d' ? 'interactive' : 'static')
+    : theme.tier;
+  // Cover: show once per preset until the player taps through.
+  let coverDismissed = false;
+  let coverForId: string | null = null;
+  $: if (activePreset?.cover?.enabled && coverForId !== activePreset.id) { coverForId = activePreset.id; coverDismissed = false; }
+  $: showPresetCover = !!activePreset?.cover?.enabled && !coverDismissed && !!starmap && !presetHold;
+  // Starmap disabled → players skip straight to the (first) system, no back-to-systems navigation.
+  $: if (activePreset && activePreset.starmapEnabled === false && starmap?.systems?.length && !selectedSystemId) {
+    selectedSystemId = starmap.systems[0].id;
   }
 
   function startClock() {
@@ -475,9 +510,19 @@
       <p>The GM has paused the display.</p>
     </div>
   {/if}
+  {#if showPresetCover && activePreset}
+    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+    <div class="preset-cover" role="button" tabindex="0" on:click={() => (coverDismissed = true)} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') coverDismissed = true; }}>
+      <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
+        <CoverView cover={activePreset.cover} accentColor={activePreset.accentColor} font={presetFont}
+          companyName={activePreset.companyName} footerText={activePreset.footerText} assets={presetAssets} />
+      </FilterFrame>
+      <span class="preset-cover-hint">tap to enter</span>
+    </div>
+  {/if}
   <!-- Device status bar -->
   <header class="statusbar">
-    {#if selectedSystemId}
+    {#if selectedSystemId && !(activePreset && activePreset.starmapEnabled === false)}
       <button class="back-btn" on:click={() => { selectedSystemId = null; selectedBody = null; }} title="Back to all systems">‹ Systems</button>
     {/if}
     {#if branding.logo}<img class="brand-logo" src={branding.logo} alt="" />{/if}
@@ -488,7 +533,7 @@
     </span>
   </header>
 
-  {#if themeKey === 'guide' && !guideCoverDismissed}
+  {#if themeKey === 'guide' && !guideCoverDismissed && !activePreset}
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
     <div class="guide-cover" role="button" tabindex="0" on:click={dismissGuideCover} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') dismissGuideCover(); }}>
       <div class="cover-inner">
@@ -501,7 +546,7 @@
     </div>
   {/if}
 
-  {#if themeKey === 'guide' && (selectedSystemNode || starmap)}
+  {#if themeKey === 'guide' && (selectedSystemNode || starmap) && !activePreset}
     <div class="guide-banner">A traveller's guide to {selectedSystemNode?.name ?? starmap?.name} — friendly, illustrated, and mostly accurate.</div>
     {#if topNote}<div class="guide-note top">{topNote}</div>{/if}
   {/if}
@@ -518,6 +563,32 @@
           Retry
         </button>
       </div>
+    </div>
+  {:else if !selectedSystemId && activePreset && activePreset.starmapEnabled}
+    <!-- Starmap level, PRESET-DRIVEN: the chosen module (text list / 2D / 3D), tap a system to enter. -->
+    <div class="preset-stage" style="font-family:{presetFont}; --accent:{presetAccent}">
+      {#if activePreset.starmapView === 'holo3d'}
+        <!-- 3D runs its own GLSL filter; selection via the scene's raycast. -->
+        <Starmap3DView {starmap} accentColor={presetAccent} font={presetFont} grid={activePreset.grid}
+          background={activePreset.background} angleDeg={activePreset.angleDeg} labelSize={activePreset.labelSize}
+          filter={presetFilterActive ? activePreset.filter : 'none'} filterParams={activePreset.filterParams}
+          selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
+      {:else}
+        <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
+          {#if activePreset.starmapView === 'list'}
+            <StarmapListView {starmap} accentColor={presetAccent} font={presetFont}
+              selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
+          {:else}
+            <Starmap2DView {starmap} accentColor={presetAccent} font={presetFont}
+              selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
+          {/if}
+        </FilterFrame>
+      {/if}
+      {#if activePreset.starmapOverlay}
+        <div class="overlay-wrap"><FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
+          <GraphicLayer placement={activePreset.starmapOverlay} assets={presetAssets} />
+        </FilterFrame></div>
+      {/if}
     </div>
   {:else if !selectedSystemId}
     <!-- Starmap level: choose a system -->
@@ -554,25 +625,32 @@
         {/if}
       </div>
     </div>
-  {:else if theme.tier === 'interactive' || theme.tier === 'holo'}
+  {:else if effectiveSystemTier === 'interactive' || effectiveSystemTier === 'holo'}
     <!-- Hi-tech: live orbital map (2D console or 3D holo table) + tap-to-inspect -->
     <div class="console-stage">
       {#if rulePack && displaySystem}
-        {#if theme.tier === 'holo'}
+        {#if effectiveSystemTier === 'holo'}
           <HoloView system={displaySystem} {currentTime} {focusedBodyId} style={holoStyle} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} on:focus={handleFocus} />
         {:else}
-          <SystemVisualizer
-            system={displaySystem}
-            {rulePack}
-            {currentTime}
-            {focusedBodyId}
-            showNames={true}
-            toytownFactor={displaySystem.toytownFactor || 0}
-            fullScreen={true}
-            backgroundColor="#05070c"
-            on:focus={handleFocus}
-          />
+          <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
+            <SystemVisualizer
+              system={displaySystem}
+              {rulePack}
+              {currentTime}
+              {focusedBodyId}
+              showNames={true}
+              toytownFactor={displaySystem.toytownFactor || 0}
+              fullScreen={true}
+              backgroundColor="#05070c"
+              on:focus={handleFocus}
+            />
+          </FilterFrame>
         {/if}
+      {/if}
+      {#if activePreset?.systemOverlay}
+        <div class="overlay-wrap"><FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
+          <GraphicLayer placement={activePreset.systemOverlay} assets={presetAssets} />
+        </FilterFrame></div>
       {/if}
       <!-- Body selector: the same compact command-strip picker the main app uses (chip + search +
            category drill-in), so it's tiny on mobile and needs no new learning. Replaces the old
@@ -632,6 +710,18 @@
         <div class="console-hint">Tap a world to read its file.</div>
       {/if}
     </div>
+  {:else if activePreset}
+    <!-- Preset text-list system view: the diagrammatic browser under the preset theme + filter. -->
+    <div class="doc-scroll preset-doc" style="font-family:{presetFont}; --accent:{presetAccent}">
+      <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
+        <CatalogueBrowser system={displaySystem} {includeConstructs} {units} {tempUnit} colorful={false} imagery="none" />
+      </FilterFrame>
+      {#if activePreset.systemOverlay}
+        <div class="overlay-wrap"><FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
+          <GraphicLayer placement={activePreset.systemOverlay} assets={presetAssets} />
+        </FilterFrame></div>
+      {/if}
+    </div>
   {:else}
     <!-- Lo-fi / datapad / Guide: diagrammatic browser — clickable layout + a body panel. -->
     <div class="doc-scroll">
@@ -640,7 +730,7 @@
     </div>
   {/if}
 
-  {#if themeKey === 'guide' && starmap && bottomNote}
+  {#if themeKey === 'guide' && starmap && bottomNote && !activePreset}
     <div class="guide-note bottom">{bottomNote}</div>
   {/if}
 
@@ -840,6 +930,13 @@
 
   /* --- hi-tech console tier --- */
   .console-stage { flex: 1; position: relative; min-height: 0; }
+
+  /* Preset-driven layers (deployed player view). */
+  .preset-stage { flex: 1; position: relative; min-height: 0; overflow: hidden; }
+  .preset-doc { position: relative; }
+  .overlay-wrap { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+  .preset-cover { position: absolute; inset: 0; z-index: 60; cursor: pointer; background: #05070c; }
+  .preset-cover-hint { position: absolute; bottom: 6%; left: 0; right: 0; text-align: center; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; color: #cfd6e4; pointer-events: none; }
   /* Object picker left-aligned (not centred) — matches the projector, leaves the centre clear. */
   .holo-picker-left :global(.body-picker) { left: 10px; right: auto; transform: none; }
   .time-controls {
