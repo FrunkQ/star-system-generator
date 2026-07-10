@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.47-beta - 10th Jul 2026
+
+Editor feedback fixes:
+
+* **Rainbow shows in the editor preview.** The General-step theme sample now renders the rainbow accent as the actual spectrum gradient, instead of a flat yellow.
+* **White colour greys the orbits.** With the body colour set to White, the orbit rings now draw in neutral grey (matching the bodies) rather than keeping their old per-body colours.
+* **Wireframe flat vs glow are now distinct.** Flat draws just the edges; Glow adds the brighter vertex points (the vector-screen highlight). Two new render styles — Wireframe glow (solid) and flat (solid) — hide the far side of each globe so it reads as a solid vector object rather than see-through.
+
 ## v2.1.46-beta - 10th Jul 2026
 
 * **The GM drives the players' view from one place.** The player window is now a clean display — the on-screen preset picker, look gear and quick toggles are gone. Everything moves to the "Player Views…" screen: the live view is highlighted, and one button reads **Open** (nothing running), **Change** (a different preset selected) or **Close** player view. Closing shows the players a calm "Please stand by" hold screen. The quick overrides (Follow GM, hide labels, suspend filter, pause view-orbit) live here too and push to the players instantly (rate-limited so a rapid toggle never floods the link).

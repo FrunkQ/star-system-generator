@@ -26,6 +26,10 @@ import { AU_KM, G } from '$lib/constants';
 import type { System } from '$lib/types';
 
 const HOLO_TINT = 0x39c6ff; // cyan hologram chrome (skins wire in later)
+
+// Body render style: solid, or an 80s vector wireframe — glowing/flat points, see-through or with the
+// back hidden (an invisible depth-writing occluder culls the far-side edges).
+export type RenderStyle = 'filled' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ';
 const GRID_RADIUS = 12; // scene units the outermost data maps to
 const ORBIT_SAMPLES = 96;
 const R0_AU = 0.35; // log-compression softening radius
@@ -46,7 +50,7 @@ export interface HoloController {
   setCompression(v: number): void; // toytown level 0 (true scale) .. 1 (fully compressed)
   setBeltDetail(v: number): void; // GM belt particle-budget quality 0..1 (performance)
   setBodyStyle(mode: 'textured' | 'flat' | 'white' | 'tint'): void; // colour selection ('tint' = legacy white)
-  setRender(mode: 'filled' | 'wire-glow' | 'wire-flat'): void; // filled spheres vs 80s vector wireframe
+  setRender(mode: RenderStyle): void; // filled spheres vs 80s vector wireframe (see-through / back-occluded)
   setBodySize(v: number): void; // 1 readable .. 0 true physical scale
   setGrid(mode: 'off' | 'plain' | 'scaled'): void; // ground reference grid
   setOrbitSpeed(v: number): void; // auto view-orbit turntable speed 0..1 (0 = static)
@@ -252,10 +256,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   // Render style: filled spheres, or an 80s vector wireframe (glowing or flat points). Rebuilds bodies.
-  function setRender(mode: 'filled' | 'wire-glow' | 'wire-flat') {
+  function setRender(mode: RenderStyle) {
     if (mode === renderStyle) return;
     renderStyle = mode;
     rebuildContent();
+  }
+
+  // Orbit-ring colour follows the body COLOUR selection: white → neutral grey, flat → class swatch,
+  // textured → the body's own (true) colour.
+  function orbitColor(node: any): number {
+    if (bodyStyle === 'white') return 0x8a93a0;
+    if (bodyStyle === 'flat') return new THREE.Color(getClassColor(node)).getHex();
+    return safeColor(node);
   }
 
   // Body-size dial: 1 = readable log-scaled sizes (default), 0 = true physical radius at the system's
@@ -363,7 +375,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let compression = DEFAULT_COMPRESSION;
   let beltDetail = 0.6; // GM quality knob: scales belt particle budget (performance), not physics
   let bodyStyle: 'textured' | 'flat' | 'white' = 'textured'; // COLOUR selection: true-colour / class / white
-  let renderStyle: 'filled' | 'wire-glow' | 'wire-flat' = 'filled'; // filled spheres vs 80s vector wireframe
+  let renderStyle: RenderStyle = 'filled'; // filled spheres vs 80s vector wireframe
   let bodySize = 1; // 1 = readable (chunky), 0 = true physical scale (tiny) — fine-tune body sizes
   let timeMs = 0;
   let viewW = 1;
@@ -696,13 +708,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // parent's local frame (scaled by the parent's radial compression) that tracks the parent.
       if (node.orbit && node.kind !== 'construct') {
         if (systemLevel) {
-          const ring = buildOrbitRing(node, positionToScene, safeColor(node));
+          const ring = buildOrbitRing(node, positionToScene, orbitColor(node));
           if (ring) { contentGroup.add(ring); orbitRings.push({ id: node.id, obj: ring }); }
         } else if (node.parentId) {
           const pHelio = pos0.get(node.parentId);
           const rP = pHelio ? Math.hypot(pHelio.x, pHelio.y, pHelio.z) : 0;
           const kP = rP > 1e-9 ? compressScalar(rP) / rP : 0;
-          const ring = kP > 0 ? buildMoonOrbitRing(node, kP, compression, safeColor(node)) : null;
+          const ring = kP > 0 ? buildMoonOrbitRing(node, kP, compression, orbitColor(node)) : null;
           if (ring) { contentGroup.add(ring); orbitRings.push({ id: node.id, obj: ring, trackParentId: node.parentId }); }
         }
       }
@@ -756,8 +768,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           : colorHex;
         const polF = oblatePolarFactor((node as any).oblateness); // spin-axis flattening
         if (renderStyle !== 'filled') {
-          // 80s vector wireframe: a low-poly globe as edges + brighter vertices, in the selected colour.
-          const wf = buildWireframeBody(radius, selHex, renderStyle === 'wire-glow');
+          // 80s vector wireframe: a low-poly globe as edges (+ glowing vertices for the glow modes),
+          // see-through or with the far side occluded, in the selected colour.
+          const glow = renderStyle === 'wire-glow' || renderStyle === 'wire-glow-occ';
+          const occluded = renderStyle === 'wire-glow-occ' || renderStyle === 'wire-flat-occ';
+          const wf = buildWireframeBody(radius, selHex, glow, occluded);
           if (polF < 0.999) wf.scale.set(1, polF, 1);
           mesh = wf;
         } else {
@@ -1128,17 +1143,27 @@ function buildMoonOrbitRing(node: any, kHelio: number, compression: number, colo
   return new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat);
 }
 
-// An 80s vector-display body: a low-poly globe drawn as wireframe EDGES plus its VERTICES as brighter
-// points (points read hotter than lines, like a phosphor vector screen). `glow` = additive blending so
-// overlapping strokes bloom. Returned as a Group so the caller can tilt/scale/spin it like a sphere.
-function buildWireframeBody(radius: number, color: number, glow: boolean): THREE.Group {
+// An 80s vector-display body: a low-poly globe drawn as wireframe EDGES. `glow` ALSO draws the vertices
+// as brighter additive points (hotter at the points, like a phosphor vector screen); flat is edges
+// only. `occluded` adds an invisible depth-writing sphere so the far-side edges are hidden (a solid
+// vector globe) instead of see-through. Returned as a Group so the caller can tilt/scale/spin it.
+function buildWireframeBody(radius: number, color: number, glow: boolean, occluded: boolean): THREE.Group {
   const g = new THREE.Group();
   const geo = new THREE.SphereGeometry(radius, 16, 10); // low-poly for the faceted vector look
+  if (occluded) {
+    // Writes depth only (no colour) so the back edges fail the depth test and vanish. Slightly inset
+    // to keep the front edges in front of it (no z-fighting).
+    const occ = new THREE.Mesh(new THREE.SphereGeometry(radius * 0.985, 24, 16), new THREE.MeshBasicMaterial({ colorWrite: false }));
+    g.add(occ);
+  }
   const blending = glow ? THREE.AdditiveBlending : THREE.NormalBlending;
-  const lineMat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: glow ? 0.55 : 0.7, blending, depthWrite: false });
+  const lineMat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: glow ? 0.55 : 0.85, blending, depthWrite: occluded });
   g.add(new THREE.LineSegments(new THREE.WireframeGeometry(geo), lineMat));
-  const dotMat = new THREE.PointsMaterial({ color, size: Math.max(0.02, radius * 0.16), sizeAttenuation: true, transparent: true, opacity: 1, blending, depthWrite: false });
-  g.add(new THREE.Points(geo, dotMat));
+  if (glow) {
+    // Vertices brighter than lines — the vector-screen highlight. Flat modes omit these.
+    const dotMat = new THREE.PointsMaterial({ color, size: Math.max(0.02, radius * 0.16), sizeAttenuation: true, transparent: true, opacity: 1, blending, depthWrite: occluded });
+    g.add(new THREE.Points(geo, dotMat));
+  }
   return g;
 }
 

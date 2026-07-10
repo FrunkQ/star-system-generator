@@ -9,7 +9,7 @@
   import { get } from 'svelte/store';
   import type { System, RulePack } from '$lib/types';
   import type { PlayerPreset, ViewModule } from '$lib/player/presetTypes';
-  import { holoStyleOf, FONT_STACKS, isRainbow, RAINBOW, accentSolid } from '$lib/player/presets';
+  import { holoStyleOf, FONT_STACKS, isRainbow, RAINBOW, RAINBOW_GRADIENT, accentSolid } from '$lib/player/presets';
   import { updatePreset, playerAssetList, addAssetFromFile, deleteAsset } from '$lib/player/presetStore';
   import { systemStore } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
@@ -252,8 +252,10 @@
                 <label>Render
                   <select bind:value={draft.render}>
                     <option value="filled">Filled</option>
-                    <option value="wire-glow">Wireframe (glow)</option>
-                    <option value="wire-flat">Wireframe (flat)</option>
+                    <option value="wire-glow">Wireframe — glow</option>
+                    <option value="wire-flat">Wireframe — flat</option>
+                    <option value="wire-glow-occ">Wireframe — glow (solid)</option>
+                    <option value="wire-flat-occ">Wireframe — flat (solid)</option>
                   </select>
                 </label>
                 <label>Grid
@@ -320,7 +322,7 @@
         </div>
         <div class="preview">
           {#if previewLayer === 'theme'}
-            <div class="theme-sample" style="font-family:{draft.font}; --accent:{accentCss}">
+            <div class="theme-sample" class:rainbow={isRainbow(draft.accentColor)} style="font-family:{draft.font}; --accent:{accentCss}; --rainbow:{RAINBOW_GRADIENT}">
               <span class="ts-label">{draft.companyName || 'Theme sample'}</span>
               <h1>Aa Bb 0123</h1>
               <p>The quick brown fox orbits the lazy gas giant.</p>
@@ -425,6 +427,8 @@
   .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.85rem; }
   .theme-sample { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; color: #e8edf4; }
   .theme-sample h1 { margin: 0; font-size: 3.4rem; color: var(--accent); }
+  .theme-sample.rainbow h1 { background: var(--rainbow); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .theme-sample.rainbow .ts-label { background: var(--rainbow); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .theme-sample p { margin: 0; opacity: 0.75; }
   .ts-label { font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
   .ts-foot { position: absolute; bottom: 6%; font-size: 0.7rem; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.08em; }
