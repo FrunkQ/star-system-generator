@@ -34,7 +34,22 @@ export type BroadcastMessage =
   | { type: 'SYNC_BRANDING'; payload: { name: string; logo: string | null } }
   // GM-enforced Field Guide view (skin + terminal colour + constructs + CRT effect) — players
   // can't override; the CRT controls live on the GM, so `crt` carries the GM's chosen settings.
-  | { type: 'SYNC_GUIDECONFIG'; payload: { theme: string; monoColor: string; includeConstructs: boolean; crt?: Record<string, number | boolean> } };
+  | { type: 'SYNC_GUIDECONFIG'; payload: { theme: string; monoColor: string; includeConstructs: boolean; crt?: Record<string, number | boolean> } }
+  // Unified player-view: the GM's Player Views modal drives the open player window — which preset is
+  // live + the momentary overrides (hide labels / suspend filter / pause orbit / follow GM). A null
+  // payload means "closed" (the player window shows a hold screen). Supersedes SYNC_GUIDECONFIG.
+  | { type: 'SYNC_PRESET'; payload: PresetBroadcast | null };
+
+export interface PresetOverrides {
+  followGM: boolean | null; // null = use the preset's own flag
+  filterBypass: boolean;
+  orbitPaused: boolean;
+  labelsHidden: boolean;
+}
+export interface PresetBroadcast {
+  presetId: string;
+  overrides: PresetOverrides;
+}
 
 type BroadcastEnvelope = {
   sessionId: string | null;
@@ -225,6 +240,7 @@ class BroadcastService {
   public onRequestStarmap: ((requestingId: string | null) => void) | null = null;
   public onBrandingUpdate: ((b: { name: string; logo: string | null }) => void) | null = null;
   public onGuideConfigUpdate: ((c: { theme: string; monoColor: string; includeConstructs: boolean; crt?: Record<string, number | boolean> }) => void) | null = null;
+  public onPresetUpdate: ((p: PresetBroadcast | null) => void) | null = null;
 
   private handleMessage(data: any) {
       // Check if this is an envelope or legacy message
@@ -294,6 +310,9 @@ class BroadcastService {
               break;
           case 'SYNC_GUIDECONFIG':
               if (!this.isSender && this.onGuideConfigUpdate) this.onGuideConfigUpdate(msg.payload);
+              break;
+          case 'SYNC_PRESET':
+              if (!this.isSender && this.onPresetUpdate) this.onPresetUpdate(msg.payload);
               break;
           case 'REQUEST_STARMAP':
               if (this.isSender && this.onRequestStarmap) {

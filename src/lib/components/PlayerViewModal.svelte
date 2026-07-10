@@ -14,7 +14,7 @@
   import {
     playerPresetList, addPreset, deletePreset, duplicateIntoStarmap, runPresetMigration
   } from '$lib/player/presetStore';
-  import { liveOverrides } from '$lib/player/liveOverrides';
+  import { liveOverrides, runningPresetId } from '$lib/player/liveOverrides';
   import PlayerPresetEditor from './PlayerPresetEditor.svelte';
 
   export let sessionId: string | null = null;
@@ -32,11 +32,34 @@
     QRCode.toDataURL(shareUrl, { margin: 1, width: 220, color: { dark: '#0a0d14', light: '#ffffff' } })
       .then((d) => (qrDataUrl = d)).catch(() => (qrDataUrl = ''));
   }
-  function openWindow() {
-    if (shareUrl) window.open(shareUrl, 'StarSystemPlayerView', 'width=520,height=900,menubar=no,toolbar=no,location=no');
-  }
   async function copyLink() {
     try { await navigator.clipboard.writeText(shareUrl); copied = true; setTimeout(() => (copied = false), 1500); } catch { /* blocked */ }
+  }
+
+  // --- Driving the live player window (SYNC_PRESET) ---------------------------------------------
+  // The GM opens/changes/closes the players' view from here; the momentary overrides ride along.
+  let bTmr: ReturnType<typeof setTimeout> | null = null;
+  let bPending = false;
+  function broadcastNow() {
+    const pid = get(runningPresetId);
+    broadcastService.sendMessage({ type: 'SYNC_PRESET', payload: pid ? { presetId: pid, overrides: get(liveOverrides) } : null });
+  }
+  // Throttle live pushes to ~2×/sec (leading + trailing) so dragging a toggle doesn't hammer the pipe.
+  function broadcastThrottled() {
+    if (bTmr) { bPending = true; return; }
+    broadcastNow();
+    bTmr = setTimeout(() => { bTmr = null; if (bPending) { bPending = false; broadcastThrottled(); } }, 500);
+  }
+  function openPlayer(p: PlayerPreset) {
+    runningPresetId.set(p.id);
+    broadcastNow();
+    if (shareUrl) window.open(shareUrl, 'StarSystemPlayerView', 'width=520,height=900,menubar=no,toolbar=no,location=no');
+  }
+  function changePlayer(p: PlayerPreset) { runningPresetId.set(p.id); broadcastNow(); }
+  function closePlayer() { runningPresetId.set(null); broadcastNow(); }
+  function setOverride(changes: Partial<import('$lib/player/liveOverrides').LiveOverrides>) {
+    liveOverrides.update((o) => ({ ...o, ...changes }));
+    if (get(runningPresetId)) broadcastThrottled();
   }
 
   let selectedId: string | null = null;
@@ -44,10 +67,12 @@
   $: presets = $playerPresetList;
   $: selected = presets.find((p) => p.id === selectedId) ?? null;
   $: editable = !!selected && !selected.builtIn;
+  $: isRunningSelected = !!selected && $runningPresetId === selected.id;
 
   onMount(() => {
     runPresetMigration(); // fold any legacy localStorage holo presets into this campaign, once
-    selectedId = presets[0]?.id ?? null;
+    // Highlight/select whatever is currently live; else the first preset.
+    selectedId = get(runningPresetId) ?? presets[0]?.id ?? null;
     if (browser) origin = window.location.origin;
     broadcastService.enableRemote(); // sharing intent: allow cross-device players to connect
   });
@@ -98,10 +123,12 @@
             class="card"
             class:sel={p.id === selectedId}
             class:gm={p.followGM}
+            class:live={p.id === $runningPresetId}
             role="option"
             aria-selected={p.id === selectedId}
             on:click={() => (selectedId = p.id)}
           >
+            {#if p.id === $runningPresetId}<span class="live-badge">● LIVE</span>{/if}
             <span class="swatch" style="background:{p.accentColor}"></span>
             <span class="name">{p.name}</span>
             <span class="desc">{p.description || VIEW_LABELS[p.systemView]}</span>
@@ -130,7 +157,13 @@
           </dl>
 
           <div class="det-actions">
-            <button class="primary" on:click={openWindow}>Open player view</button>
+            {#if isRunningSelected}
+              <button class="danger" on:click={closePlayer}>Close player view</button>
+            {:else if $runningPresetId}
+              <button class="primary" on:click={() => changePlayer(selected)}>Change player view</button>
+            {:else}
+              <button class="primary" on:click={() => openPlayer(selected)}>Open player view</button>
+            {/if}
             {#if editable}<button on:click={() => (editing = selected)}>Edit…</button>{/if}
             <button on:click={() => duplicate(selected)}>Duplicate</button>
             {#if editable}<button class="danger" on:click={() => remove(selected)}>Delete</button>{/if}
@@ -140,26 +173,31 @@
             {#if qrDataUrl}<img class="qr" src={qrDataUrl} alt="QR code to open this preset" />{/if}
             <div class="share-col">
               <span class="ov-head">Share with players</span>
-              <p class="share-hint">Players scan the code or open the link — it opens this preset live. Keep this app running.</p>
+              <p class="share-hint">Players scan the code or open the link. It shows whatever view is live; change or close it from here.</p>
               <button on:click={copyLink}>{copied ? 'Copied' : 'Copy link'}</button>
             </div>
           </div>
 
           <div class="overrides">
-            <span class="ov-head">Quick overrides <span class="ov-sub">live session only — never saved</span></span>
+            <span class="ov-head">Quick overrides <span class="ov-sub">live · never saved{$runningPresetId ? '' : ' · start a view first'}</span></span>
             <label class="chk">
-              <input type="checkbox" checked={$liveOverrides.followGM ?? selected.followGM}
-                on:change={(e) => liveOverrides.update((o) => ({ ...o, followGM: (e.currentTarget as HTMLInputElement).checked }))} />
+              <input type="checkbox" checked={$liveOverrides.followGM ?? selected.followGM} disabled={!$runningPresetId}
+                on:change={(e) => setOverride({ followGM: (e.currentTarget as HTMLInputElement).checked })} />
               Follow GM
             </label>
             <label class="chk">
-              <input type="checkbox" checked={$liveOverrides.filterBypass}
-                on:change={(e) => liveOverrides.update((o) => ({ ...o, filterBypass: (e.currentTarget as HTMLInputElement).checked }))} />
+              <input type="checkbox" checked={$liveOverrides.labelsHidden} disabled={!$runningPresetId}
+                on:change={(e) => setOverride({ labelsHidden: (e.currentTarget as HTMLInputElement).checked })} />
+              Hide labels
+            </label>
+            <label class="chk">
+              <input type="checkbox" checked={$liveOverrides.filterBypass} disabled={!$runningPresetId}
+                on:change={(e) => setOverride({ filterBypass: (e.currentTarget as HTMLInputElement).checked })} />
               Suspend visual filter
             </label>
             <label class="chk">
-              <input type="checkbox" checked={$liveOverrides.orbitPaused}
-                on:change={(e) => liveOverrides.update((o) => ({ ...o, orbitPaused: (e.currentTarget as HTMLInputElement).checked }))} />
+              <input type="checkbox" checked={$liveOverrides.orbitPaused} disabled={!$runningPresetId}
+                on:change={(e) => setOverride({ orbitPaused: (e.currentTarget as HTMLInputElement).checked })} />
               Pause auto view-orbit
             </label>
           </div>
@@ -187,6 +225,8 @@
   .card { display: flex; flex-direction: column; gap: 3px; text-align: left; background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px; cursor: pointer; position: relative; }
   .card.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
   .card.gm { border-left: 3px solid #e0a13a; }
+  .card.live { border-color: #47d16a; }
+  .live-badge { position: absolute; top: 6px; right: 6px; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.06em; color: #47d16a; }
   .card .swatch { width: 20px; height: 20px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(255,255,255,0.15) inset; }
   .card .name { font-weight: 700; font-size: 0.92rem; }
   .card .desc { font-size: 0.72rem; color: var(--text-muted); line-height: 1.35; min-height: 1.9em; }

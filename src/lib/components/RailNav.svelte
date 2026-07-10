@@ -88,12 +88,8 @@
   <button class="rail-btn" title={routesAttention ? `Routes & journeys — a ship needs attention (${routesAttention})` : 'Routes & journeys'} on:click={() => go('routes')}>
     <span class="ic">{@html svg(I.routes)}{#if routesAttention}<span class="rail-dot {routesAttention}"></span>{/if}</span><span class="rail-label">Routes…{#if routesAttention}<span class="rail-dot inline {routesAttention}"></span>{/if}</span>
   </button>
-  <!-- Field Guide is campaign-wide (whole starmap), so it's available from BOTH the starmap and a system. -->
-  <button class="rail-btn" title="Open the players' live field guide (Companion App)" on:click={() => go('catalogue')}>
-    <span class="ic">{@html svg(I.catalogue)}</span><span class="rail-label">Field Guide…</span>
-  </button>
-  <!-- Unified player-view presets (will absorb Field Guide + Projector once at parity). -->
-  <button class="rail-btn" title="Design and manage player-view presets (guides, tables, projections)" on:click={() => go('playerviews')}>
+  <!-- Player Views: the unified players' presentation system (replaced the old Field Guide launcher). -->
+  <button class="rail-btn" title="Design, open and manage the players' views (guides, tables, projections)" on:click={() => go('playerviews')}>
     <span class="ic">{@html svg(I.playerviews)}</span><span class="rail-label">Player Views…</span>
   </button>
 

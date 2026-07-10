@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.46-beta - 10th Jul 2026
+
+* **The GM drives the players' view from one place.** The player window is now a clean display — the on-screen preset picker, look gear and quick toggles are gone. Everything moves to the "Player Views…" screen: the live view is highlighted, and one button reads **Open** (nothing running), **Change** (a different preset selected) or **Close** player view. Closing shows the players a calm "Please stand by" hold screen. The quick overrides (Follow GM, hide labels, suspend filter, pause view-orbit) live here too and push to the players instantly (rate-limited so a rapid toggle never floods the link).
+* **Field Guide retired from the rail.** The old Field Guide launcher is gone — Player Views does it all now.
+
 ## v2.1.45-beta - 10th Jul 2026
 
 * **A separate overlay per screen.** Instead of one overlay everywhere, each stage now places its own image independently: upload to the shared library on the General step, then drop any of them onto the Cover, Starmap and System stages — a different image, position, size or opacity on each screen if you like (or none). Same nine-point / size / stretch / opacity controls throughout.

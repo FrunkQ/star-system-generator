@@ -58,44 +58,22 @@
   // Holo look presets + live style. A GM picks a preset (one dropdown) or opens the control panel to
   // tweak live and save a new preset. Filter ids are hardcoded here so the filter package (which pulls
   // in three) stays out of this route's chunk; HoloView lazy-loads the actual shaders.
-  import { holoPresets, styleOf, saveHoloPreset, DEFAULT_STYLE, type HoloStyle } from '$lib/holo/holoStyle';
-  // Unified player presets: opening one via ?preset=<id> drives the view. holoStyleOf + BUILTIN_PRESETS
-  // are three-free (only types), so importing them keeps three out of this route's chunk.
+  import { DEFAULT_STYLE, type HoloStyle } from '$lib/holo/holoStyle';
+  // Unified player presets: the view is driven by a preset (URL ?preset= on open, then live SYNC_PRESET
+  // from the GM's Player Views modal). holoStyleOf + BUILTIN_PRESETS are three-free (only types), so
+  // importing them keeps three out of this route's chunk.
   import { BUILTIN_PRESETS, holoStyleOf } from '$lib/player/presets';
   import type { PlayerPreset } from '$lib/player/presetTypes';
   let holoStyle: HoloStyle = { ...DEFAULT_STYLE };
-  let holoPresetId = 'clean';
-  let showHoloControls = false;
-  // Momentary GM overrides — deliberately NOT part of holoStyle (never saved to a preset).
+  // Momentary GM overrides — driven by the GM's Player Views modal via SYNC_PRESET (never saved).
   let holoLabelsOn = true;
   let holoFilterBypass = false;
   let holoOrbitPaused = false;
-  const HOLO_FILTERS = [
-    { id: 'none', label: 'No filter' },
-    { id: 'crt', label: 'CRT Terminal' },
-    { id: 'night_vision', label: 'Night Vision' },
-    { id: 'thermal', label: 'Thermal' }
-  ];
-  // The CRT phosphor colour lives in filterParams; expose it as a colour picker when CRT is chosen.
-  $: crtPhosphor = (holoStyle.filterParams?.phosphor as string) || '#4dff88';
-  function setCrtPhosphor(hex: string) {
-    holoStyle = { ...holoStyle, filterParams: { ...(holoStyle.filterParams || {}), phosphor: hex } };
-  }
   // Collapse a popover when the user interacts anywhere outside it.
   function clickOutside(node: HTMLElement, cb: () => void) {
     const handler = (e: Event) => { if (!node.contains(e.target as Node)) cb(); };
     document.addEventListener('pointerdown', handler, true);
     return { destroy() { document.removeEventListener('pointerdown', handler, true); } };
-  }
-  function applyHoloPreset(id: string) {
-    const p = $holoPresets.find((x) => x.id === id);
-    if (p) { holoStyle = styleOf(p); holoPresetId = id; }
-  }
-  function saveHoloStyleAsPreset() {
-    const name = (typeof prompt === 'function' ? prompt('Name this look:', 'My Preset') : '') || '';
-    if (!name.trim()) return;
-    const p = saveHoloPreset(name, holoStyle);
-    holoPresetId = p.id;
   }
   // CRT "screen content" effects applied to <main> on the mono skin (overlay layers live in CRTOverlay).
   // Invert is a PALETTE SWAP (handled by the .crt-invert class below), not a luminance filter:
@@ -321,13 +299,14 @@
     if (themeChanged) selectedBody = null;
   }
 
-  // --- Opening a unified PlayerPreset (?preset=<id>) -------------------------------------------------
-  // Additive + guarded: only active when a preset id is in the URL; otherwise the classic theme path is
-  // untouched. Maps the preset's system view module to a catalogue skin, and for the 3D holo feeds the
-  // full holoStyle (filter/colour/render/grid/framing) so a holo/projection preset deploys at full
-  // fidelity. Custom presets ride the broadcast starmap; built-ins resolve from code.
-  let presetIdParam: string | null = null;
+  // --- Unified PlayerPreset deploy (?preset=<id> + live SYNC_PRESET) --------------------------------
+  // Guarded/additive: only active once a preset is in play (URL on open, then the GM's Player Views
+  // modal drives it live). Maps the preset's system view to a catalogue skin; for the 3D holo it feeds
+  // the full holoStyle so it deploys at full fidelity. The GM's momentary overrides (hide labels /
+  // suspend filter / pause orbit) come down the same channel. A null broadcast = hold screen.
+  let activePresetId: string | null = null;
   let appliedPresetId: string | null = null;
+  let presetHold = false; // GM closed the view → show a hold screen
   const BUILTIN_THEME: Record<string, ThemeKey> = { guide: 'guide', datapad: 'clean', console: 'console', crt: 'mono', holo: 'holo', projection: 'holo' };
   function resolvePreset(id: string): PlayerPreset | null {
     return BUILTIN_PRESETS.find((p) => p.id === id) || (starmap?.playerPresets ?? []).find((p) => p.id === id) || null;
@@ -335,13 +314,18 @@
   function applyPlayerPreset(p: PlayerPreset) {
     themeKey = BUILTIN_THEME[p.id] ?? (p.systemView === 'holo3d' ? 'holo' : p.systemView === 'list' ? 'guide' : 'console');
     includeConstructs = true;
-    if (themeKey === 'holo') { holoStyle = holoStyleOf(p); holoPresetId = ''; }
+    if (themeKey === 'holo') { holoStyle = holoStyleOf(p); }
     selectedBody = null;
   }
+  function applyOverrides(ov: { filterBypass: boolean; orbitPaused: boolean; labelsHidden: boolean }) {
+    holoLabelsOn = !ov.labelsHidden;
+    holoFilterBypass = ov.filterBypass;
+    holoOrbitPaused = ov.orbitPaused;
+  }
   // Apply as soon as the preset is resolvable (built-ins immediately; custom once the starmap arrives).
-  $: if (presetIdParam && appliedPresetId !== presetIdParam) {
-    const p = resolvePreset(presetIdParam);
-    if (p) { appliedPresetId = presetIdParam; applyPlayerPreset(p); }
+  $: if (activePresetId && appliedPresetId !== activePresetId) {
+    const p = resolvePreset(activePresetId);
+    if (p) { appliedPresetId = activePresetId; applyPlayerPreset(p); }
   }
 
   function startClock() {
@@ -419,7 +403,7 @@
   onMount(async () => {
     const params = new URLSearchParams(window.location.search);
     sessionId = params.get('sid');
-    presetIdParam = params.get('preset');
+    activePresetId = params.get('preset');
     units = params.get('units') === 'imperial' ? 'imperial' : 'metric';
     { const tp = params.get('temp'); tempUnit = tp === 'F' || tp === 'K' ? tp : 'C'; }
     // Initial view from the URL (legacy green/amber theme keys fold into mono + colour);
@@ -455,8 +439,15 @@
       connected = true;
     };
     broadcastService.onBrandingUpdate = (b) => { branding = b || { name: '', logo: null }; };
-    // A preset (?preset=) owns the view; ignore the GM's classic guide-config in that mode.
-    broadcastService.onGuideConfigUpdate = (c) => { if (c && !presetIdParam) applyGuideConfig(c); };
+    // A preset owns the view; ignore the GM's classic guide-config in that mode.
+    broadcastService.onGuideConfigUpdate = (c) => { if (c && !activePresetId) applyGuideConfig(c); };
+    // Live GM control (Player Views modal): switch preset, apply overrides, or hold (null).
+    broadcastService.onPresetUpdate = (p) => {
+      if (!p) { presetHold = true; return; }
+      presetHold = false;
+      activePresetId = p.presetId;
+      if (p.overrides) applyOverrides(p.overrides);
+    };
     broadcastService.sendMessage({ type: 'REQUEST_STARMAP', payload: sessionId });
     startClock();
   });
@@ -473,6 +464,14 @@
 </svelte:head>
 
 <main class="catalogue tint-{theme.tint} skin-{themeKey}" class:interactive={theme.tier === 'interactive'} class:crt-invert={theme.tint === 'mono' && $crtControls.invert} style="--mono:{MONO_COLORS[monoColor].hex}; {crtStyle}">
+  {#if presetHold}
+    <!-- GM closed the live view: a calm hold screen until they open one again. -->
+    <div class="hold-screen">
+      <div class="hold-badge">{branding.name || 'STANDBY'}</div>
+      <h1>Please stand by</h1>
+      <p>The GM has paused the display.</p>
+    </div>
+  {/if}
   <!-- Device status bar -->
   <header class="statusbar">
     {#if selectedSystemId}
@@ -558,84 +557,6 @@
       {#if rulePack && displaySystem}
         {#if theme.tier === 'holo'}
           <HoloView system={displaySystem} {currentTime} {focusedBodyId} style={holoStyle} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} on:focus={handleFocus} />
-          <!-- Preset picker: the GM's one-dropdown "how does this look" control. -->
-          <div class="holo-presetbar">
-            <select class="holo-preset" value={holoPresetId} on:change={(e) => applyHoloPreset((e.currentTarget as HTMLSelectElement).value)} aria-label="Look preset">
-              {#each $holoPresets as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
-            </select>
-            <!-- Momentary GM toggles (not saved to the preset): quick labels on/off and a filter bypass. -->
-            <button class="holo-toggle" class:off={!holoLabelsOn} on:click={() => (holoLabelsOn = !holoLabelsOn)} title={holoLabelsOn ? 'Hide labels' : 'Show labels'} aria-label="Toggle labels" aria-pressed={holoLabelsOn}>A</button>
-            <button class="holo-toggle" class:off={holoFilterBypass} on:click={() => (holoFilterBypass = !holoFilterBypass)} title={holoFilterBypass ? 'Filter suspended — click to restore' : 'Suspend the visual filter'} aria-label="Bypass filter" aria-pressed={!holoFilterBypass}>◎</button>
-            {#if (holoStyle.orbitSpeed ?? 0) > 0}
-              <button class="holo-toggle" class:off={holoOrbitPaused} on:click={() => (holoOrbitPaused = !holoOrbitPaused)} title={holoOrbitPaused ? 'Auto view-orbit paused — click to resume' : 'Pause auto view-orbit'} aria-label="Pause view orbit" aria-pressed={!holoOrbitPaused}>↻</button>
-            {/if}
-            <button class="holo-tune" class:on={showHoloControls} on:click={() => (showHoloControls = !showHoloControls)} title="Adjust the look" aria-label="Adjust the look">⚙</button>
-          </div>
-          {#if showHoloControls}
-            <!-- Live control panel: tweak the look and save it as a new preset. -->
-            <div class="holo-panel">
-              <label>Filter
-                <select bind:value={holoStyle.filter}>
-                  {#each HOLO_FILTERS as f}<option value={f.id}>{f.label}</option>{/each}
-                </select>
-              </label>
-              {#if holoStyle.filter === 'crt'}
-                <label class="hp-inline">Phosphor
-                  <input type="color" value={crtPhosphor} on:input={(e) => setCrtPhosphor((e.currentTarget as HTMLInputElement).value)} />
-                </label>
-              {/if}
-              <label>Label size <span class="hp-val">{holoStyle.labelSize ?? 11}px</span>
-                <input type="range" min="8" max="24" step="1" bind:value={holoStyle.labelSize} />
-              </label>
-              <label>Colour
-                <select bind:value={holoStyle.bodyStyle}>
-                  <option value="textured">True colour</option>
-                  <option value="flat">Flat colour</option>
-                  <option value="white">White</option>
-                </select>
-              </label>
-              <label>Render
-                <select bind:value={holoStyle.render}>
-                  <option value="filled">Filled</option>
-                  <option value="wire-glow">Wireframe (glow)</option>
-                  <option value="wire-flat">Wireframe (flat)</option>
-                </select>
-              </label>
-              <label>Spread <span class="hp-val">{holoStyle.compression === 0 ? 'true scale' : Math.round(holoStyle.compression * 100) + '%'}</span>
-                <input type="range" min="0" max="1" step="0.05" bind:value={holoStyle.compression} />
-              </label>
-              <label>Body size <span class="hp-val">{holoStyle.bodySize === 0 ? 'true' : holoStyle.bodySize >= 1 ? 'readable' : Math.round(holoStyle.bodySize * 100) + '%'}</span>
-                <input type="range" min="0" max="1" step="0.05" bind:value={holoStyle.bodySize} />
-              </label>
-              <label>View angle <span class="hp-val">{Math.round(holoStyle.angleDeg)}°</span>
-                <input type="range" min="0" max="80" step="1" bind:value={holoStyle.angleDeg} />
-              </label>
-              <label>Belt detail <span class="hp-val">{Math.round(holoStyle.beltDetail * 100)}%</span>
-                <input type="range" min="0" max="1" step="0.05" bind:value={holoStyle.beltDetail} />
-              </label>
-              <label>Background
-                <select bind:value={holoStyle.background}>
-                  <option value="space">Space</option>
-                  <option value="green">Greenscreen</option>
-                  <option value="blue">Bluescreen</option>
-                  <option value="black">Black</option>
-                </select>
-              </label>
-              <label>Grid
-                <select bind:value={holoStyle.grid}>
-                  <option value="off">Off</option>
-                  <option value="plain">Grid</option>
-                  <option value="scaled">Grid + scale</option>
-                </select>
-              </label>
-              <label>View orbit <span class="hp-val">{holoStyle.orbitSpeed === 0 ? 'off' : Math.round(holoStyle.orbitSpeed * 100) + '%'}</span>
-                <input type="range" min="0" max="1" step="0.05" bind:value={holoStyle.orbitSpeed} />
-              </label>
-              <label class="hp-check"><input type="checkbox" bind:checked={holoStyle.whole} /> Frame whole system</label>
-              <label class="hp-check"><input type="checkbox" bind:checked={holoStyle.skybox} /> Starfield</label>
-              <button class="hp-save" on:click={saveHoloStyleAsPreset}>Save as preset…</button>
-            </div>
-          {/if}
         {:else}
           <SystemVisualizer
             system={displaySystem}
@@ -740,6 +661,16 @@
     display: flex;
     flex-direction: column;
   }
+
+  .hold-screen {
+    position: absolute; inset: 0; z-index: 500;
+    background: radial-gradient(ellipse at center, #0b1119 0%, #05070c 75%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem;
+    text-align: center; color: #cfd6e4;
+  }
+  .hold-screen h1 { margin: 0; font-size: clamp(1.6rem, 5vw, 3rem); letter-spacing: 0.06em; }
+  .hold-screen p { margin: 0; opacity: 0.6; }
+  .hold-badge { font-size: 0.72rem; letter-spacing: 0.28em; text-transform: uppercase; opacity: 0.5; margin-bottom: 0.4rem; }
 
   /* --- status bar (device chrome) --- */
   .statusbar {
@@ -939,51 +870,6 @@
   .tc-rate { padding: 0 4px; white-space: nowrap; min-width: 68px; }
   .tc-slider { width: 130px; accent-color: #6aa0ff; }
   .time-controls:not(.expanded) { padding: 0; background: none; border: none; }
-  .holo-presetbar {
-    position: absolute;
-    bottom: 12px;
-    right: 12px;
-    z-index: 21;
-    display: flex;
-    gap: 6px;
-    align-items: stretch;
-  }
-  .holo-preset, .holo-tune, .holo-toggle, .holo-panel select, .holo-panel button {
-    font-family: system-ui, sans-serif;
-    font-size: 11.5px;
-    color: #cfe0f5;
-    background: rgba(8, 11, 18, 0.78);
-    border: 1px solid rgba(120, 180, 255, 0.3);
-    border-radius: 6px;
-    cursor: pointer;
-  }
-  .holo-preset { padding: 5px 8px; min-height: 34px; }
-  .holo-tune, .holo-toggle { width: 34px; min-height: 34px; font-size: 15px; }
-  .holo-tune.on { background: rgba(60, 110, 190, 0.5); }
-  /* Momentary toggles read "active" (feature on) normally, dimmed/struck when the GM has turned it off. */
-  .holo-toggle.off { color: #7488a0; border-color: rgba(120, 180, 255, 0.15); text-decoration: line-through; }
-  .holo-panel {
-    position: absolute;
-    bottom: 54px;
-    right: 12px;
-    z-index: 21;
-    width: 210px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 12px;
-    background: rgba(8, 11, 18, 0.9);
-    border: 1px solid rgba(120, 180, 255, 0.3);
-    border-radius: 8px;
-    font-family: system-ui, sans-serif;
-    font-size: 11.5px;
-    color: #cfe0f5;
-  }
-  .holo-panel label { display: flex; flex-direction: column; gap: 3px; }
-  .holo-panel .hp-val { color: #8fa8c8; float: right; }
-  .holo-panel input[type='range'] { width: 100%; accent-color: #6aa0ff; }
-  .holo-panel .hp-check { flex-direction: row; align-items: center; gap: 6px; min-height: 30px; }
-  .holo-panel .hp-save { padding: 7px; min-height: 34px; text-align: center; }
   .console-hint {
     position: absolute;
     bottom: 14px;
