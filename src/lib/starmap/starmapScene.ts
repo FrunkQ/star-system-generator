@@ -20,8 +20,17 @@ const HOLO_TINT = 0x63b3ff;
 export interface SmSystem { id: string; name: string; x: number; y: number; stars: { color: string }[] }
 export interface SmRoute { fromId: string; toId: string; dashed?: boolean }
 
+// An in-scene name label: a canvas-textured sprite in the 3D scene (not a DOM overlay) so the
+// post-process filter warps/tints it in lockstep with the system stars. Mirrors scene.ts.
+interface LabelSprite {
+  sprite: THREE.Sprite;
+  canvas: HTMLCanvasElement;
+  text: string;
+  aspect: number;      // canvas width / height
+  heightRatio: number; // canvas full height / text height — converts labelSizePx to sprite size
+}
+
 export interface StarmapSceneOptions {
-  labelLayer?: HTMLElement;
   distanceUnit?: string; // 'ly' | 'pc' | … — the scale label suffix
 }
 
@@ -163,29 +172,63 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   // --- Content: system stars + routes ---
   const content = new THREE.Group();
   scene.add(content);
-  interface Placed { id: string; name: string; center: THREE.Vector3; label?: HTMLElement }
+  interface Placed { id: string; name: string; center: THREE.Vector3; label?: LabelSprite }
   let placed: Placed[] = [];
   let labelsVisible = true;
-
-  function setLabelVar(name: string, v: string | null) { if (v == null) opts.labelLayer?.style.removeProperty(name); else opts.labelLayer?.style.setProperty(name, v); }
-  const setLabelColor = (hex: string | null) => setLabelVar('--sm-label-color', hex);
-  const setLabelSize = (px: number) => setLabelVar('--sm-label-size', `${Math.max(6, Math.min(40, px))}px`);
-  const setLabelFont = (f: string | null) => setLabelVar('--sm-label-font', f && f.trim() ? f : null);
+  let labelColor = '#d6e2f2';
+  let labelSizePx = 12;
+  let labelFontFamily = 'ui-monospace, SFMono-Regular, Menlo, monospace';
+  function redrawAllLabels() { for (const p of placed) if (p.label) drawLabel(p.label); }
+  const setLabelColor = (hex: string | null) => { labelColor = hex || '#d6e2f2'; redrawAllLabels(); };
+  const setLabelSize = (px: number) => { labelSizePx = Math.max(6, Math.min(40, px)); }; // applied via sprite scale
+  const setLabelFont = (f: string | null) => { labelFontFamily = f && f.trim() ? f : 'ui-monospace, SFMono-Regular, Menlo, monospace'; redrawAllLabels(); };
   const setLabelsVisible = (on: boolean) => { labelsVisible = on; };
 
-  function makeLabel(name: string): HTMLElement | undefined {
-    if (!opts.labelLayer || !name) return undefined;
-    const el = document.createElement('div');
-    el.className = 'sm-label';
-    el.textContent = name;
-    el.style.cssText = 'position:absolute;left:0;top:0;transform:translate(-9999px,-9999px);opacity:0;pointer-events:none;white-space:nowrap;font-weight:600;font-size:var(--sm-label-size,12px);font-family:var(--sm-label-font,ui-monospace,monospace);color:var(--sm-label-color,#d6e2f2);text-shadow:0 0 4px rgba(0,0,0,0.9);letter-spacing:0.02em;';
-    opts.labelLayer.appendChild(el);
-    return el;
+  // A name label as an in-scene sprite (added to `content`, so it warps/tints with the stars).
+  function makeLabelSprite(name: string): LabelSprite | undefined {
+    if (!name) return undefined;
+    const canvas = document.createElement('canvas');
+    const mat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthTest: false, depthWrite: false, sizeAttenuation: false });
+    const sprite = new THREE.Sprite(mat);
+    sprite.center.set(0.5, -0.35); // anchor below the text so it floats above the star glyph
+    sprite.renderOrder = 999;
+    sprite.visible = false;
+    const ls: LabelSprite = { sprite, canvas, text: name, aspect: 1, heightRatio: 1 };
+    drawLabel(ls);
+    content.add(sprite);
+    return ls;
+  }
+  function drawLabel(ls: LabelSprite) {
+    const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
+    const fontPx = 40, pad = 6;
+    const font = `600 ${fontPx}px ${labelFontFamily}`;
+    const ctx = ls.canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.font = font;
+    const textW = Math.max(1, Math.ceil(ctx.measureText(ls.text).width));
+    const cw = textW + pad * 2, ch = Math.ceil(fontPx * 1.35) + pad * 2;
+    ls.canvas.width = Math.max(2, Math.round(cw * dpr));
+    ls.canvas.height = Math.max(2, Math.round(ch * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 4;
+    ctx.fillStyle = labelColor;
+    ctx.fillText(ls.text, cw / 2, ch / 2);
+    ls.aspect = cw / ch;
+    ls.heightRatio = ch / fontPx;
+    const map = (ls.sprite.material as THREE.SpriteMaterial).map;
+    if (map) map.needsUpdate = true;
   }
 
   function clearContent() {
     clearGroup(content);
-    for (const p of placed) p.label?.remove();
+    for (const p of placed) {
+      if (!p.label) continue;
+      content.remove(p.label.sprite);
+      const mat = p.label.sprite.material as THREE.SpriteMaterial;
+      mat.map?.dispose(); mat.dispose();
+    }
     placed = [];
   }
 
@@ -216,7 +259,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
         sp.scale.setScalar(R * 3.2);
         content.add(sp);
       });
-      placed.push({ id: sys.id, name: sys.name, center, label: makeLabel(sys.name) });
+      placed.push({ id: sys.id, name: sys.name, center, label: makeLabelSprite(sys.name) });
     }
     // Routes as plane lines.
     const routePts: THREE.Vector3[] = [];
@@ -240,23 +283,25 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   const proj = new THREE.Vector3();
   let viewW = 1, viewH = 1;
   function updateLabels() {
-    if (!opts.labelLayer) return;
     for (const p of placed) {
-      if (!p.label) continue;
-      if (!labelsVisible) { p.label.style.opacity = '0'; continue; }
+      const ls = p.label;
+      if (!ls) continue;
+      if (!labelsVisible) { ls.sprite.visible = false; continue; }
       proj.copy(p.center).project(camera);
-      const behind = proj.z > 1;
-      const x = (proj.x * 0.5 + 0.5) * viewW, y = (-proj.y * 0.5 + 0.5) * viewH;
-      if (behind || x < 0 || x > viewW || y < 0 || y > viewH) { p.label.style.opacity = '0'; }
-      else { p.label.style.opacity = '0.9'; p.label.style.transform = `translate(-50%, -160%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`; }
+      if (proj.z > 1) { ls.sprite.visible = false; continue; } // behind the camera
+      ls.sprite.visible = true;
+      ls.sprite.position.copy(p.center);
+      // Constant on-screen size (sizeAttenuation off → scale is in clip units; 2 = full viewport height).
+      const hClip = (2 * labelSizePx * ls.heightRatio) / viewH;
+      ls.sprite.scale.set(hClip * ls.aspect, hClip, 1);
     }
   }
   function loop() {
     if (disposed) return;
     const t = clock.getElapsedTime();
     controls.update();
+    updateLabels(); // position/size the in-scene label sprites BEFORE rendering so the filter warps them
     if (filterPass) { filterPass.uniforms.time.value = t; composer.render(); } else renderer.render(scene, camera);
-    updateLabels();
     raf = requestAnimationFrame(loop);
   }
   raf = requestAnimationFrame(loop);

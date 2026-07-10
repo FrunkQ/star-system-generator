@@ -18,7 +18,6 @@
 
   let container: HTMLDivElement;
   let canvas: HTMLCanvasElement;
-  let labelLayer: HTMLDivElement;
   let controller: StarmapController | null = null;
   let ro: ResizeObserver | null = null;
 
@@ -36,8 +35,8 @@
     controller.setFraming(angleDeg);
     controller.setLabelSize(labelSize);
     controller.setLabelFont(font);
-    const crt = filter === 'crt';
-    controller.setLabelColor(crt ? ((filterParams?.phosphor as string) || '#4dff88') : accentColor);
+    // Labels are in-scene sprites: draw them in the theme accent; the shader tints them under CRT.
+    controller.setLabelColor(accentColor);
     controller.setFilter(filter, filterParams);
   }
 
@@ -46,7 +45,7 @@
     (async () => {
       const { createStarmapScene } = await import('./starmapScene');
       if (cancelled || !canvas) return;
-      controller = createStarmapScene(canvas, { labelLayer, distanceUnit: starmap?.distanceUnit });
+      controller = createStarmapScene(canvas, { distanceUnit: starmap?.distanceUnit });
       apply();
       const r = container.getBoundingClientRect();
       controller.resize(r.width, r.height);
@@ -63,11 +62,9 @@
 
 <div class="sm3d-root" bind:this={container}>
   <canvas bind:this={canvas}></canvas>
-  <div class="sm-labels" bind:this={labelLayer}></div>
 </div>
 
 <style>
   .sm3d-root { position: absolute; inset: 0; overflow: hidden; }
   canvas { display: block; width: 100%; height: 100%; }
-  .sm-labels { position: absolute; inset: 0; pointer-events: none; }
 </style>
