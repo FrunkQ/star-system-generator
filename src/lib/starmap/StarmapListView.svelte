@@ -38,21 +38,15 @@
     <ul>
       {#each systems as node (node.id)}
         <li>
-          {#if selectable}
-            <button class="row" class:sel={node.id === selectedId} on:click={() => dispatch('select', node.id)}>
-              <span class="dots">
-                {#each systemVisualStars(node.system) as s}<span class="dot" style="background:{s.color}"></span>{/each}
-              </span>
-              <span class="nm">{node.name}</span>
-              <span class="sum">{summary(node)}</span>
-            </button>
-          {:else}
+          <svelte:element this={selectable ? 'button' : 'div'} class="row" class:selectable class:sel={node.id === selectedId}
+            role={selectable ? 'button' : undefined}
+            on:click={() => selectable && dispatch('select', node.id)}>
             <span class="dots">
               {#each systemVisualStars(node.system) as s}<span class="dot" style="background:{s.color}"></span>{/each}
             </span>
             <span class="nm">{node.name}</span>
             <span class="sum">{summary(node)}</span>
-          {/if}
+          </svelte:element>
         </li>
       {/each}
     </ul>
@@ -63,13 +57,14 @@
   .sm-list { position: absolute; inset: 0; overflow-y: auto; color: #e6ecf4; padding: 6% 8%; }
   h2 { margin: 0 0 1rem; color: var(--accent); font-size: 1.6rem; }
   ul { list-style: none; margin: 0; padding: 0; }
-  li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(140,170,210,0.15); }
-  .row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; width: 100%; background: none; border: none; color: inherit; font: inherit; text-align: left; padding: 2px 4px; margin: -2px -4px; border-radius: 5px; cursor: pointer; }
-  .row:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  li { padding: 0; border-bottom: 1px solid rgba(140,170,210,0.15); }
+  .row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; background: none; border: none; color: inherit; font: inherit; text-align: left; padding: 9px 4px; border-radius: 5px; }
+  .row.selectable { cursor: pointer; }
+  .row.selectable:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
   .row.sel { background: color-mix(in srgb, var(--accent) 22%, transparent); }
-  .dots { display: inline-flex; gap: 3px; }
+  .dots { display: inline-flex; gap: 3px; flex: 0 0 auto; }
   .dot { width: 11px; height: 11px; border-radius: 50%; box-shadow: 0 0 6px currentColor; }
-  .nm { font-weight: 600; }
-  .sum { color: #9fb0c8; font-size: 0.82rem; text-align: right; }
+  .nm { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sum { color: #9fb0c8; font-size: 0.82rem; text-align: right; white-space: nowrap; flex: 0 0 auto; }
   .empty { color: #9fb0c8; }
 </style>

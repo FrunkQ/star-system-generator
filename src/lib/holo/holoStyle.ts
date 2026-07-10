@@ -15,6 +15,7 @@ export interface HoloStyle {
   beltDetail: number; // belt particle-budget quality 0..1 (performance; physics sets relative density)
   bodyStyle: 'textured' | 'flat' | 'white' | 'tint'; // colour selection ('tint' = legacy alias for white)
   render?: 'filled' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ'; // solid vs 80s wireframe
+  unlit?: boolean; // flat lighting (no terminator) — the efficient "2D map" look
   background: 'space' | 'green' | 'blue' | 'black'; // dark space, or a chroma-key colour for OBS
   bodySize: number; // 1 = readable (chunky) .. 0 = true physical scale
   grid: 'off' | 'plain' | 'scaled'; // ground reference: none / plain polar grid / grid with AU scale labels

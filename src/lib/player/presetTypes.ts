@@ -85,6 +85,7 @@ export interface PlayerPreset {
   filterParams: FilterParamValues; // e.g. CRT phosphor colour lives here
   bodyStyle: 'textured' | 'flat' | 'white'; // colour selection: true colour / class swatch / white
   render: 'filled' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ'; // solid vs 80s wireframe
+  unlit: boolean; // flat lighting (no day/night terminator) — the efficient "2D map" look for overhead
   background: 'space' | 'green' | 'blue' | 'black';
   grid: 'off' | 'plain' | 'scaled';
   compression: number; // toytown spread 0..1
@@ -96,4 +97,5 @@ export interface PlayerPreset {
   lockOverhead: boolean; // force top-down (recreates the flat 2D projector from the 3D engine)
   whole: boolean;        // frame the whole system vs the focused body
   labelSize: number;     // in-scene body-label font size (px); the font is the theme `font`
+  inspectorWidth: number; // desktop body info-panel width in px (mobile ignores it and does its own layout)
 }

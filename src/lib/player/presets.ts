@@ -53,6 +53,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   filterParams: {},
   bodyStyle: 'textured',
   render: 'filled',
+  unlit: false,
   background: 'space',
   grid: 'plain',
   compression: 0.65,
@@ -63,7 +64,8 @@ export const DEFAULT_PRESET: PlayerPreset = {
   angleDeg: 64,
   lockOverhead: false,
   whole: false,
-  labelSize: 11
+  labelSize: 11,
+  inspectorWidth: 340
 };
 
 function preset(p: Partial<PlayerPreset> & { id: string; name: string; description: string }): PlayerPreset {
@@ -169,6 +171,7 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
     beltDetail: p.beltDetail,
     bodyStyle: p.bodyStyle,
     render: p.render,
+    unlit: p.unlit,
     background: p.background,
     bodySize: p.bodySize,
     grid: p.grid,

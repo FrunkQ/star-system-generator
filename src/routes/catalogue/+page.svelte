@@ -323,6 +323,7 @@
     themeKey = BUILTIN_THEME[p.id] ?? (p.systemView === 'holo3d' ? 'holo' : p.systemView === 'list' ? 'guide' : 'console');
     includeConstructs = true;
     holoStyle = holoStyleOf(p);
+    if (p.inspectorWidth) inspectorWidth = Math.max(200, Math.min(640, p.inspectorWidth)); // desktop; mobile ignores it
     selectedBody = null;
   }
   function applyOverrides(ov: { filterBypass: boolean; orbitPaused: boolean; labelsHidden: boolean }) {

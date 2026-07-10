@@ -51,6 +51,7 @@ export interface HoloController {
   setBeltDetail(v: number): void; // GM belt particle-budget quality 0..1 (performance)
   setBodyStyle(mode: 'textured' | 'flat' | 'white' | 'tint'): void; // colour selection ('tint' = legacy white)
   setRender(mode: RenderStyle): void; // filled spheres vs 80s vector wireframe (see-through / back-occluded)
+  setUnlit(on: boolean): void; // flat lighting (no terminator) for the efficient "2D map" look
   setBodySize(v: number): void; // 1 readable .. 0 true physical scale
   setGrid(mode: 'off' | 'plain' | 'scaled'): void; // ground reference grid
   setOrbitSpeed(v: number): void; // auto view-orbit turntable speed 0..1 (0 = static)
@@ -273,6 +274,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     rebuildContent();
   }
 
+  // Flat lighting: unlit bodies (no day/night terminator) for the "2D map" look + efficiency. Rebuilds.
+  function setUnlit(on: boolean) {
+    if (on === unlit) return;
+    unlit = on;
+    rebuildContent();
+  }
+
   // Orbit-ring colour follows the body COLOUR selection: white → neutral grey, flat → class swatch,
   // textured → the body's own (true) colour.
   function orbitColor(node: any): number {
@@ -431,6 +439,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let compression = DEFAULT_COMPRESSION;
   let beltDetail = 0.6; // GM quality knob: scales belt particle budget (performance), not physics
   let bodyStyle: 'textured' | 'flat' | 'white' = 'textured'; // COLOUR selection: true-colour / class / white
+  let unlit = false; // flat lighting (MeshBasic, no terminator) — the efficient "2D map" look
   let renderStyle: RenderStyle = 'filled'; // filled spheres vs 80s vector wireframe
   let bodySize = 1; // 1 = readable (chunky), 0 = true physical scale (tiny) — fine-tune body sizes
   let timeMs = 0;
@@ -841,7 +850,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           if (polF < 0.999) wf.scale.set(1, polF, 1);
           mesh = wf;
         } else {
-          const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
+          // Unlit mode (flat, no terminator): a cheaper MeshBasic for the "2D map" look — reuse the 3D
+          // renderer locked overhead so the view still gets the real GPU filter, without lighting cost.
+          const mat = unlit ? new THREE.MeshBasicMaterial() : new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
           if (bodyStyle === 'white') {
             mat.color.set(0xffffff);
           } else if (bodyStyle === 'flat') {
@@ -858,9 +869,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           }
           // Moons can be eclipse-shadowed by their parent planet (analytic ray-sphere in the shader).
           // Edge is HARD by default; an atmosphere on the moon OR its shadowing planet softens it.
-          if (!systemLevel) {
+          // Unlit bodies have no lighting to darken, so eclipses are skipped there.
+          if (!systemLevel && !unlit) {
             const soft = softsShadow(node) || softsShadow(nodesById.get(node.parentId));
-            shadow = applyEclipseShadow(mat, soft ? 0.4 : 0.03);
+            shadow = applyEclipseShadow(mat as THREE.MeshStandardMaterial, soft ? 0.4 : 0.03);
           }
           const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 24), mat);
           if (polF < 0.999) sphere.scale.set(1, polF, 1);
@@ -1142,7 +1154,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----

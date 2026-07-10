@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.55-beta - 11th Jul 2026
+
+* **Info panel width is now set in the editor.** The body info panel's desktop width is a preset setting (System step), so you size it once per preset; mobile keeps its own layout.
+* **New "Flat / no lighting" option for an efficient 2D-map look.** Ticking it (with "Lock overhead") renders the system through the 3D engine as flat, unlit discs — the clean top-down map look, but it gets the *real* GPU visual filter (CRT / night-vision / thermal), not the lighter CSS approximation. Reuses the existing renderer, so text/labels render in-scene too.
+* **Fixed the starmap text-list formatting** — each system is now a single tidy row (stars · name · summary) instead of the summary wrapping onto a second line.
+
 ## v2.1.54-beta - 11th Jul 2026
 
 * **Body "Type" now shows the classification, not the kind.** The info block's Type line reads the scientific classification (e.g. "G2V", "Ringed · Ammonia clouds gas giant", "Terrestrial") instead of just "star" / "planet".
