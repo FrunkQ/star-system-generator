@@ -34,8 +34,9 @@ export interface PlayerAsset {
 export interface GraphicPlacement {
   assetId: string;
   pin: PinPosition;
-  sizePct: number; // 1..100
+  sizePct: number; // 1..100 — width as % of the surface (height follows aspect) unless `stretch`
   opacity: number; // 0..1
+  stretch: boolean; // fill the whole surface, ignoring aspect ratio (pin/size ignored)
 }
 
 // The cover / hold screen. Must be able to recreate "DON'T PANIC" or "ACME — CONFIDENTIAL + logo".

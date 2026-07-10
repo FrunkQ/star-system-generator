@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.44-beta - 10th Jul 2026
+
+* **Image overlays on every screen.** A preset can carry an overlay image (watermark, frame, logo) shown over the cover, starmap and system views alike — with the standard placement options now shared everywhere: a nine-point anchor, size as a percentage of the screen, opacity, and a "stretch to fill" toggle for any aspect ratio. The cover graphic uses the same controls.
+* **Rainbow accent.** A new theme option renders the accent as a rainbow — recreating The Guide's original colourful title look (the cover title fills with a spectrum gradient). Everything else falls back to a representative colour where a single hue is needed.
+
 ## v2.1.43-beta - 10th Jul 2026
 
 * **Open a preset for players.** The Player Views screen now carries the Field Guide's sharing tools: a QR code and copy-link for the selected preset, and an "Open player view" button. Players scan or open the link and it launches that preset live — a 3D holo table, a projection, a guide — driven by the preset you picked. Built-in and your own custom presets both work; the campaign's presets travel with the shared map. Quick overrides (Follow GM, suspend filter, pause view-orbit) sit alongside.

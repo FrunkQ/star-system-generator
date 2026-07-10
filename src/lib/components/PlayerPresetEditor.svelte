@@ -8,9 +8,8 @@
   import { browser } from '$app/environment';
   import { get } from 'svelte/store';
   import type { System, RulePack } from '$lib/types';
-  import type { PlayerPreset, ViewModule, PinPosition } from '$lib/player/presetTypes';
-  import { PIN_POSITIONS } from '$lib/player/presetTypes';
-  import { holoStyleOf, FONT_STACKS } from '$lib/player/presets';
+  import type { PlayerPreset, ViewModule } from '$lib/player/presetTypes';
+  import { holoStyleOf, FONT_STACKS, isRainbow, RAINBOW, accentSolid } from '$lib/player/presets';
   import { updatePreset, playerAssetList, addAssetFromFile, deleteAsset } from '$lib/player/presetStore';
   import { systemStore } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
@@ -20,6 +19,8 @@
   import FilterParamControls from './FilterParamControls.svelte';
   import CoverView from './CoverView.svelte';
   import FilterFrame from './FilterFrame.svelte';
+  import GraphicLayer from './GraphicLayer.svelte';
+  import GraphicPlacementControls from './GraphicPlacementControls.svelte';
   import StarmapListView from '$lib/starmap/StarmapListView.svelte';
   import Starmap2DView from '$lib/starmap/Starmap2DView.svelte';
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
@@ -85,13 +86,9 @@
     if (f) addAssetFromFile(f, f.name.replace(/\.[a-z0-9]+$/i, ''), () => { /* list is reactive */ });
     (e.target as HTMLInputElement).value = '';
   }
-  function setCoverGraphic(assetId: string) {
-    draft = { ...draft, cover: { ...draft.cover, graphic: assetId ? { assetId, pin: draft.cover.graphic?.pin ?? 'center', sizePct: draft.cover.graphic?.sizePct ?? 40, opacity: draft.cover.graphic?.opacity ?? 1 } : null } };
-  }
-  function patchGraphic(changes: Partial<NonNullable<PlayerPreset['cover']['graphic']>>) {
-    if (!draft.cover.graphic) return;
-    draft = { ...draft, cover: { ...draft.cover, graphic: { ...draft.cover.graphic, ...changes } } };
-  }
+
+  // A real colour for CSS vars / non-cover components (rainbow → representative mid colour).
+  $: accentCss = accentSolid(draft.accentColor);
 
   function save() {
     updatePreset(draft);
@@ -139,9 +136,18 @@
                 {#each FONT_STACKS as f}<option value={f.css}>{f.label}</option>{/each}
               </select>
             </label>
-            <label class="inline">Accent colour <input type="color" bind:value={draft.accentColor} /></label>
+            <label class="chk"><input type="checkbox" checked={isRainbow(draft.accentColor)} on:change={(e) => (draft = { ...draft, accentColor: (e.currentTarget as HTMLInputElement).checked ? RAINBOW : '#6aa0ff' })} /> Rainbow (The Guide look)</label>
+            {#if !isRainbow(draft.accentColor)}
+              <label class="inline">Accent colour <input type="color" bind:value={draft.accentColor} /></label>
+            {/if}
             <label>Company / faction <input type="text" bind:value={draft.companyName} /></label>
             <label>Footer text <input type="text" bind:value={draft.footerText} /></label>
+          </fieldset>
+          <fieldset>
+            <legend>Overlay (on every screen)</legend>
+            <GraphicPlacementControls placement={draft.overlay} assets={$playerAssetList} label="Overlay image"
+              on:change={(e) => (draft = { ...draft, overlay: e.detail })} />
+            <p class="hint">A watermark / frame shown over the cover, starmap and system views alike.</p>
           </fieldset>
           <fieldset>
             <legend>Graphics library</legend>
@@ -173,26 +179,9 @@
           </fieldset>
           {#if draft.cover.enabled}
             <fieldset>
-              <legend>Graphic</legend>
-              <label>Image
-                <select value={draft.cover.graphic?.assetId ?? ''} on:change={(e) => setCoverGraphic((e.currentTarget as HTMLSelectElement).value)}>
-                  <option value="">None</option>
-                  {#each $playerAssetList as a}<option value={a.id}>{a.name}</option>{/each}
-                </select>
-              </label>
-              {#if draft.cover.graphic}
-                <label>Position
-                  <select value={draft.cover.graphic.pin} on:change={(e) => patchGraphic({ pin: (e.currentTarget as HTMLSelectElement).value as PinPosition })}>
-                    {#each PIN_POSITIONS as p}<option value={p}>{p.replace('-', ' ')}</option>{/each}
-                  </select>
-                </label>
-                <label>Size <span>{draft.cover.graphic.sizePct}%</span>
-                  <input type="range" min="5" max="100" step="1" value={draft.cover.graphic.sizePct} on:input={(e) => patchGraphic({ sizePct: parseInt((e.currentTarget as HTMLInputElement).value) })} />
-                </label>
-                <label>Opacity <span>{Math.round(draft.cover.graphic.opacity * 100)}%</span>
-                  <input type="range" min="0.05" max="1" step="0.05" value={draft.cover.graphic.opacity} on:input={(e) => patchGraphic({ opacity: parseFloat((e.currentTarget as HTMLInputElement).value) })} />
-                </label>
-              {/if}
+              <legend>Cover graphic</legend>
+              <GraphicPlacementControls placement={draft.cover.graphic} assets={$playerAssetList} label="Image"
+                on:change={(e) => (draft = { ...draft, cover: { ...draft.cover, graphic: e.detail } })} />
             </fieldset>
           {/if}
         {:else if tab === 'starmap'}
@@ -323,7 +312,7 @@
         </div>
         <div class="preview">
           {#if previewLayer === 'theme'}
-            <div class="theme-sample" style="font-family:{draft.font}; --accent:{draft.accentColor}">
+            <div class="theme-sample" style="font-family:{draft.font}; --accent:{accentCss}">
               <span class="ts-label">{draft.companyName || 'Theme sample'}</span>
               <h1>Aa Bb 0123</h1>
               <p>The quick brown fox orbits the lazy gas giant.</p>
@@ -344,13 +333,13 @@
               <div class="ph">No starmap loaded — open or create a campaign map to preview this stage.</div>
             {:else if draft.starmapView === 'holo3d'}
               <!-- 3D map runs the exact shader itself; DOM views get the CSS approximation. -->
-              <Starmap3DView starmap={$starmapStore} accentColor={draft.accentColor} font={draft.font} grid={draft.grid} background={draft.background} angleDeg={draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
+              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} background={draft.background} angleDeg={draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
             {:else}
               <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
                 {#if draft.starmapView === 'list'}
-                  <StarmapListView starmap={$starmapStore} accentColor={draft.accentColor} font={draft.font} />
+                  <StarmapListView starmap={$starmapStore} accentColor={accentCss} font={draft.font} />
                 {:else}
-                  <Starmap2DView starmap={$starmapStore} accentColor={draft.accentColor} font={draft.font} />
+                  <Starmap2DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} />
                 {/if}
               </FilterFrame>
             {/if}
@@ -365,13 +354,22 @@
               </FilterFrame>
             {:else if draft.systemView === 'list' && previewSystem}
               <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
-                <div class="sm-preview" style="font-family:{draft.font}; --accent:{draft.accentColor}">
+                <div class="sm-preview" style="font-family:{draft.font}; --accent:{accentCss}">
                   <ul class="sm-list">{#each previewSystem.nodes.filter((n) => n.kind === 'body') as b (b.id)}<li>{b.name}</li>{/each}</ul>
                 </div>
               </FilterFrame>
             {:else}
               <div class="ph">Loading preview…</div>
             {/if}
+          {/if}
+
+          <!-- All-screens overlay (watermark/frame) — over every stage, under the filter. -->
+          {#if draft.overlay && previewLayer !== 'theme'}
+            <div class="overlay-wrap">
+              <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
+                <GraphicLayer placement={draft.overlay} assets={$playerAssetList} />
+              </FilterFrame>
+            </div>
           {/if}
         </div>
       </div>
@@ -401,6 +399,7 @@
   input[type=range] { width: 100%; accent-color: var(--accent, #6aa0ff); }
   .hint { font-size: 0.72rem; color: var(--text-muted); font-style: italic; margin: 0; line-height: 1.4; }
   .filter-params { border-left: 2px solid var(--border); padding-left: 8px; margin: 2px 0; }
+  .overlay-wrap { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
   .assets { display: flex; flex-direction: column; gap: 6px; }
   .asset { display: flex; align-items: center; gap: 8px; background: var(--bg-control); border: 1px solid var(--border); border-radius: 5px; padding: 4px 6px; }
   .asset img { width: 44px; height: 28px; object-fit: contain; background: repeating-conic-gradient(#2a2d36 0 25%, #1b1e26 0 50%) 0 0/12px 12px; border-radius: 3px; }

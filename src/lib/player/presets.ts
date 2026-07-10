@@ -6,6 +6,14 @@ import type { PlayerPreset, ViewModule, FilterParamValues } from './presetTypes'
 export const CRT_GREEN = '#4dff88';
 export const CRT_AMBER = '#ffb000';
 
+// Accent can be a hex colour OR the sentinel 'rainbow' (recreates The Guide's original colourful
+// look — chrome/labels use the gradient where they can, else a representative mid colour).
+export const RAINBOW = 'rainbow';
+export const RAINBOW_GRADIENT = 'linear-gradient(90deg,#ff4d4d,#ff9f43,#ffd93d,#4dff88,#4db8ff,#9d6bff,#ff5ecd)';
+export const RAINBOW_MID = '#ffd93d'; // fallback where a single colour is needed (a solid swatch)
+export const isRainbow = (accent: string | undefined): boolean => accent === RAINBOW;
+export const accentSolid = (accent: string | undefined): string => (isRainbow(accent) ? RAINBOW_MID : (accent || '#6aa0ff'));
+
 // Starter assets shipped with the app, so placement can be designed before any upload. `dataUrl`
 // here is a same-origin STATIC URL rather than a data: URL — <img src> treats both identically and
 // built-ins never need to ride the starmap file.
@@ -95,13 +103,20 @@ export const BUILTIN_PRESETS: PlayerPreset[] = [
 
 // Fill any missing fields on a stored preset with current defaults — presets saved by an older beta
 // (schema grows every increment) stay loadable without per-field guards everywhere.
+function fixGraphic(g: any): any {
+  if (!g) return null;
+  return { assetId: g.assetId, pin: g.pin ?? 'center', sizePct: g.sizePct ?? 40, opacity: g.opacity ?? 1, stretch: !!g.stretch };
+}
 export function normalizePreset(p: Partial<PlayerPreset> & { id: string; name: string }): PlayerPreset {
   const base = structuredClone(DEFAULT_PRESET);
+  const cover = { ...base.cover, ...(p.cover ?? {}) };
+  cover.graphic = fixGraphic(cover.graphic);
   return {
     ...base,
     ...p,
     bodyStyle: (p.bodyStyle as string) === 'tint' ? 'white' : (p.bodyStyle ?? base.bodyStyle),
-    cover: { ...base.cover, ...(p.cover ?? {}) },
+    cover,
+    overlay: fixGraphic(p.overlay),
     filterParams: { ...(p.filterParams ?? {}) },
     description: p.description ?? ''
   };
