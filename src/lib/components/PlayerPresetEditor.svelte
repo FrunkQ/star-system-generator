@@ -20,6 +20,9 @@
   import FilterParamControls from './FilterParamControls.svelte';
   import CoverView from './CoverView.svelte';
   import FilterFrame from './FilterFrame.svelte';
+  import StarmapListView from '$lib/starmap/StarmapListView.svelte';
+  import Starmap2DView from '$lib/starmap/Starmap2DView.svelte';
+  import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
 
   export let preset: PlayerPreset;
 
@@ -74,18 +77,6 @@
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   });
-
-  // Mini starmap projection for the starmap-layer preview (dots + names in the accent colour).
-  $: mapSystems = ($starmapStore?.systems ?? []).map((s: any) => ({ id: s.id, name: s.name, x: s.position?.x ?? 0, y: s.position?.y ?? 0 }));
-  $: mapView = (() => {
-    if (!mapSystems.length) return { W: 600, H: 340, pts: [] as any[] };
-    const xs = mapSystems.map((s) => s.x), ys = mapSystems.map((s) => s.y);
-    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-    const W = 600, H = 340, pad = 50;
-    const sx = (maxX - minX) || 1, sy = (maxY - minY) || 1;
-    const k = Math.min((W - pad * 2) / sx, (H - pad * 2) / sy);
-    return { W, H, pts: mapSystems.map((s) => ({ ...s, px: pad + (s.x - minX) * k, py: pad + (s.y - minY) * k })) };
-  })();
 
   // ── Assets (General tab) ────────────────────────────────────────────────────
   let fileInput: HTMLInputElement;
@@ -213,9 +204,20 @@
                 <select bind:value={draft.starmapView}>
                   <option value="list">Text list</option>
                   <option value="diagram2d">2D map</option>
-                  <option value="holo3d" disabled>3D (coming later)</option>
+                  <option value="holo3d">3D map</option>
                 </select>
               </label>
+              {#if draft.starmapView === 'holo3d'}
+                <label>Grid
+                  <select bind:value={draft.grid}>
+                    <option value="off">Off</option>
+                    <option value="plain">Grid</option>
+                    <option value="scaled">Grid + scale</option>
+                  </select>
+                </label>
+                <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} /></label>
+                <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
+              {/if}
             {:else}
               <p class="hint">Disabled: players skip straight to the system level; no back-to-systems navigation is shown.</p>
             {/if}
@@ -338,22 +340,18 @@
           {:else if previewLayer === 'starmap'}
             {#if !draft.starmapEnabled}
               <div class="ph">Starmap stage is disabled — players go straight to systems.</div>
+            {:else if !($starmapStore?.systems?.length)}
+              <div class="ph">No starmap loaded — open or create a campaign map to preview this stage.</div>
+            {:else if draft.starmapView === 'holo3d'}
+              <!-- 3D map runs the exact shader itself; DOM views get the CSS approximation. -->
+              <Starmap3DView starmap={$starmapStore} accentColor={draft.accentColor} font={draft.font} grid={draft.grid} background={draft.background} angleDeg={draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
             {:else}
               <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
-                <div class="sm-preview" style="font-family:{draft.font}; --accent:{draft.accentColor}">
-                  {#if !mapSystems.length}
-                    <div class="ph">No starmap loaded — open or create a campaign map to preview this stage.</div>
-                  {:else if draft.starmapView === 'list'}
-                    <ul class="sm-list">{#each mapSystems as s (s.id)}<li>{s.name}</li>{/each}</ul>
-                  {:else}
-                    <svg viewBox="0 0 {mapView.W} {mapView.H}" preserveAspectRatio="xMidYMid meet">
-                      {#each mapView.pts as p (p.id)}
-                        <circle cx={p.px} cy={p.py} r="5" fill="var(--accent)" />
-                        <text x={p.px + 9} y={p.py + 4}>{p.name}</text>
-                      {/each}
-                    </svg>
-                  {/if}
-                </div>
+                {#if draft.starmapView === 'list'}
+                  <StarmapListView starmap={$starmapStore} accentColor={draft.accentColor} font={draft.font} />
+                {:else}
+                  <Starmap2DView starmap={$starmapStore} accentColor={draft.accentColor} font={draft.font} />
+                {/if}
               </FilterFrame>
             {/if}
           {:else if previewLayer === 'system'}

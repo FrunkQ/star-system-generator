@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.42-beta - 10th Jul 2026
+
+* **Starmap gets three player-view modules — including a new 3D map.** The starmap stage can now present as a **text list**, a **2D map**, or a **3D map**. The 3D map lays systems out as glowing stars on a rotatable plane, with routes, name labels, and an optional distance grid (plain, or with light-year rings labelled). The System-view look controls have starmap cousins (grid, view angle, label size).
+* **Binaries look like binaries.** Multi-star systems now render as multiple stars in every starmap view (2D, 3D, and the list says "2 stars") — fixing the long-standing "shows a binary as a single star" issue, from one shared source of truth.
+
 ## v2.1.41-beta - 10th Jul 2026
 
 The preset editor becomes a proper five-step wizard, and every stage gets a live preview:
