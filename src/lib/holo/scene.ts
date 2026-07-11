@@ -431,8 +431,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let bodyById = new Map<string, BodyVisual>();
   let ringVisuals: RingVisual[] = [];
   let beltVisuals: BeltVisual[] = [];
-  // Aurora glow shells (additive, emissive), flickering over time; base opacity scales with strength.
-  let auroraVisuals: { mat: THREE.MeshBasicMaterial; base: number; seed: number }[] = [];
+  // Aurora emitters (additive), flickering over time; base opacity scales with strength. Filled bodies
+  // use a glow shell (MeshBasicMaterial); wireframe bodies use a few emissive polar arcs (LineBasic).
+  let auroraVisuals: { mat: THREE.Material & { opacity: number }; base: number; seed: number }[] = [];
   // Orbit path rings, keyed by node id so they can follow the SAME visibility rule as the names
   // ("if you show a name, show an orbit"). Moon rings carry trackParentId to follow the parent.
   let orbitRings: { id: string; obj: THREE.Object3D; trackParentId?: string }[] = [];
@@ -765,7 +766,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const node of system.nodes as any[]) {
       // Belts: a debris band on their (compressed) orbit, never a lone sphere.
       if (isBelt(node)) {
-        const belt = buildBeltBand(node, positionToScene, beltDetail, timeMs);
+        const belt = buildBeltBand(node, positionToScene, beltDetail, timeMs, renderStyle !== 'filled');
         if (belt) { contentGroup.add(belt.group); beltVisuals.push(belt); }
         continue;
       }
@@ -863,6 +864,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           const wf = buildWireframeBody(radius, selHex, glow, occluded, terrain);
           if (polF < 0.999) wf.scale.set(1, polF, 1);
           mesh = wf;
+          // Wireframe aurora: don't light the whole body — just add a few flickering emissive polar arcs
+          // in the aurora colour (true-colour mode only), so it reads as a vector-display aurora.
+          if (bodyStyle === 'textured') {
+            const aur = deriveAurora(node as any);
+            if (aur.strength > 0.06) {
+              const wa = buildWireAurora(radius, auroraEmitter(node as any).hex, aur.strength);
+              wf.add(wa.group);
+              let seed = 0; for (const ch of String(node.id || 'x')) seed = (seed + ch.charCodeAt(0)) % 997;
+              for (const m of wa.mats) auroraVisuals.push({ mat: m, base: m.opacity, seed: seed / 997 });
+            }
+          }
         } else {
           // Unlit mode (flat, no terminator): a cheaper MeshBasic for the "2D map" look — reuse the 3D
           // renderer locked overhead so the view still gets the real GPU filter, without lighting cost.
@@ -1286,6 +1298,31 @@ function makeAuroraTexture(hex: string): HTMLCanvasElement {
   return c;
 }
 
+// Wireframe aurora: a FEW emissive polar arcs (line loops near each pole) in the aurora colour, rather
+// than an emissive body — the vector-display take on an aurora. Materials returned for the flicker loop.
+function buildWireAurora(radius: number, hex: string, strength: number): { group: THREE.Group; mats: THREE.LineBasicMaterial[] } {
+  const g = new THREE.Group();
+  const mats: THREE.LineBasicMaterial[] = [];
+  const col = new THREE.Color(hex);
+  const base = Math.min(0.7, 0.24 + strength * 0.4); // subtle — the flicker takes it lower still
+  const R = radius * 1.02;
+  const theta = (22 * Math.PI) / 180; // colatitude of the auroral oval, measured from the pole
+  const ringR = R * Math.sin(theta), y = R * Math.cos(theta);
+  for (const sign of [1, -1]) {
+    const pts: THREE.Vector3[] = [];
+    const N = 24;
+    for (let i = 0; i <= N; i++) {
+      const a = (i / N) * Math.PI * 2;
+      const rr = ringR * (0.9 + 0.1 * Math.sin(a * 5)); // gentle wobble so it reads as a curtain
+      pts.push(new THREE.Vector3(Math.cos(a) * rr, sign * y, Math.sin(a) * rr));
+    }
+    const mat = new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: base, blending: THREE.AdditiveBlending, depthWrite: false });
+    mats.push(mat);
+    g.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat));
+  }
+  return { group: g, mats };
+}
+
 // A flickering aurora glow: an additive emissive shell just above the body. `base` opacity scales with
 // aurora strength; the render loop shimmers it around that.
 function buildAuroraShell(radius: number, hex: string, strength: number): { shell: THREE.Mesh; mat: THREE.MeshBasicMaterial; base: number } {
@@ -1447,7 +1484,7 @@ function particleBudget(massKg: number, innerKm: number, outerKm: number, qualit
 // band. Rock COUNT = the belt's physical density (from mass) × the GM `detail` quality knob; the
 // radial spread uses the belt's real inner/outer radius. Rocks are split across a few silhouette
 // textures at varied sizes/tints so they read as chaotic rubble. Still cheap — point clouds.
-function buildBeltBand(node: any, project: Projector, detail: number, timeMs: number): BeltVisual | null {
+function buildBeltBand(node: any, project: Projector, detail: number, timeMs: number, wire: boolean): BeltVisual | null {
   const period = orbitPeriodMs(node.orbit);
   if (period === 0) return null;
   const t0 = node.orbit.t0 || 0;
@@ -1490,10 +1527,13 @@ function buildBeltBand(node: any, project: Projector, detail: number, timeMs: nu
     const pos = new Float32Array(arr);
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    const mat = new THREE.PointsMaterial({
-      map: rocks[i], color: tints[i], size: sizes[i], sizeAttenuation: true,
-      transparent: true, opacity: beltOpacity, alphaTest: 0.25, depthWrite: false
-    });
+    // Wireframe modes simplify the lumpy rock silhouettes to plain small points (vector-display dots).
+    const mat = wire
+      ? new THREE.PointsMaterial({ color: tints[i], size: sizes[i] * 0.5, sizeAttenuation: true, transparent: true, opacity: beltOpacity })
+      : new THREE.PointsMaterial({
+          map: rocks[i], color: tints[i], size: sizes[i], sizeAttenuation: true,
+          transparent: true, opacity: beltOpacity, alphaTest: 0.25, depthWrite: false
+        });
     const points = new THREE.Points(geo, mat);
     group.add(points);
     buckets.push({ points, basePos: new Float32Array(pos), omega: new Float32Array(bucketOmega[i]) });

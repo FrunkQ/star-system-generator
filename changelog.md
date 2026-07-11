@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.58-beta - 11th Jul 2026
+
+* **Wireframe belts are simplified to plain points.** In the vector-wireframe render styles, asteroid belts and debris now draw as small points instead of the lumpy rock silhouettes, keeping the clean vector look.
+* **Wireframe auroras.** In true-colour wireframe modes, an auroral world no longer lights up its whole body — instead it shows a couple of flickering emissive arcs at its magnetic poles in the correct aurora colour (Earth green, a gas giant red-pink), like an aurora drawn on an old vector display.
+
 ## v2.1.57-beta - 11th Jul 2026
 
 * **Wireframe worlds show rough continents.** In true-colour wireframe modes, a world with a coastline now fills its land facets with flat low-poly polygons in the land colour — chunky and indicative rather than accurate, like the continents on an 80s vector display — over the wireframe "ocean". Airless/all-ocean worlds and gas giants stay plain.
