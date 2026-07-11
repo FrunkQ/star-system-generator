@@ -258,6 +258,14 @@
                   <option value="white">Monochrome (for tinting filters)</option>
                 </select>
               </label>
+              <label>Body graphics
+                <select bind:value={draft.bodyGfx}>
+                  <option value="sphere">3D sphere</option>
+                  <option value="photo">Photo</option>
+                  <option value="disc">Simple disc</option>
+                  <option value="flat">Flat shape</option>
+                </select>
+              </label>
               <label>Background
                 <select bind:value={draft.background}>
                   <option value="space">Space</option>
