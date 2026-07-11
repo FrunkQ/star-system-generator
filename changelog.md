@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.64-beta - 11th Jul 2026
+
+* **Surface and low-orbit constructs now sit where they should.** Ships/stations orbiting a planet are placed just outside the planet's rendered size and ramp outward by true distance — so a surface or low-orbit construct hugs a true-scale planet instead of being flung out near the moons. (Same fix applies to moons.)
+
 ## v2.1.63-beta - 11th Jul 2026
 
 * **The cover screen is now filtered for real too.** It's drawn to a canvas and run through the actual GPU shader on its own surface, so it warps, rolls and tints exactly like the rest of the screen — the cover graphic included. The only player-view surfaces still using the lighter CSS approximation are the plain text-list readouts.

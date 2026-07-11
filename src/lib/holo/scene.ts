@@ -92,6 +92,7 @@ interface BodyVisual {
   label?: LabelSprite;
   parentId?: string | null;
   satellite: boolean; // a moon: positioned as a magnified offset around its (compressed) parent
+  radiusScene?: number; // rendered radius in scene units (so satellites can sit just outside the parent)
   spinPeriodSec?: number; // sidereal rotation period; drives the texture turning
   tiltQuat?: THREE.Quaternion; // fixed axial-tilt rotation, composed with the live spin each frame
   isConstruct?: boolean; // icon sprite: fixed screen size, focus-driven size/dim states
@@ -850,7 +851,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           const pHelio = pos0.get(node.parentId);
           const rP = pHelio ? Math.hypot(pHelio.x, pHelio.y, pHelio.z) : 0;
           const kP = rP > 1e-9 ? compressScalar(rP) / rP : 0;
-          const ring = kP > 0 ? buildMoonOrbitRing(node, kP, compressScalar(rP), compression, orbitColor(node)) : null;
+          const parentNode = nodesById.get(node.parentId);
+          const parentRad = parentNode ? bodyRadiusScene(parentNode, true) : 0;
+          const ring = kP > 0 ? buildMoonOrbitRing(node, kP, compressScalar(rP), parentRad, compression, orbitColor(node)) : null;
           if (ring) { contentGroup.add(ring); orbitRings.push({ id: node.id, obj: ring, trackParentId: node.parentId }); }
         }
       }
@@ -990,7 +993,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // A ship mid-journey is positioned absolutely by the transit sampler — never apply the
       // satellite spread to it, or the spread would distort its transit path.
       const inTransit = isConstruct && (node.scheduled_journeys || []).length > 0;
-      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, satellite: !systemLevel && !inTransit, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow });
+      const radiusScene = isConstruct ? 0 : (isStar ? starRadiusScene(node) : bodyRadiusScene(node, systemLevel));
+      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, satellite: !systemLevel && !inTransit, radiusScene, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow });
     }
     bodyById = new Map(bodies.map((b) => [b.id, b]));
     visibleSet = getVisibleNodeIds(system, focusedId);
@@ -1015,7 +1019,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         const off = Math.hypot(ox, oy, oz);
         if (off > 1e-12) {
           const parentR = Math.hypot(parent.x, parent.y, parent.z);
-          const spreadDist = moonSpread(off, compressScalar(parentR)); // a fraction of the parent's orbit radius
+          const parentRad = bodyById.get(b.parentId!)?.radiusScene ?? 0;
+          const spreadDist = moonSpread(off, compressScalar(parentR), parentRad); // just outside the parent, ramped by true distance
           const trueDist = off * (compressScalar(Math.hypot(p.x, p.y, p.z)) / Math.max(1e-12, Math.hypot(p.x, p.y, p.z))); // offset under the radial map
           const dist = trueDist * (1 - compression) + spreadDist * compression;
           const k = dist / off;
@@ -1313,15 +1318,18 @@ function buildOrbitRing(node: any, project: Projector, color: number): THREE.Lin
 // to its planet and never grows into a neighbouring planet's orbit — even for tightly log-packed inner
 // planets (the old fixed 0.45 base made Luna's ring nearly reach Venus). The log term still ranks the
 // moons by true distance so a moon system reads correctly (Io in … Callisto out).
-function moonSpread(off: number, localScale: number): number {
-  return localScale * (0.035 + 0.05 * Math.log10(1 + off / 0.0004));
+function moonSpread(off: number, localScale: number, parentRadius: number): number {
+  // Sit just OUTSIDE the rendered planet, then ramp out by true distance. Scaling the base to the
+  // parent's rendered radius means a surface / low-orbit object hugs a tiny true-scale planet but still
+  // clears a chunky readable one — instead of a fixed base that flung close constructs out into "space".
+  return parentRadius * 1.15 + localScale * 0.05 * Math.log10(1 + off / 0.0006);
 }
 
 // A moon's orbit path, in its PARENT's local scene frame. Each sample is placed with the SAME magnified
 // spread transform the moon's own position uses (see the satellite branch in setTime), so the ring sits
 // exactly under the moon. kHelio = the parent's radial compression factor (compressScalar(r)/r);
 // localScale = the parent's orbit radius in scene units (compressScalar(r)).
-function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, compression: number, color: number): THREE.LineLoop | null {
+function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, parentRadius: number, compression: number, color: number): THREE.LineLoop | null {
   const period = orbitPeriodMs(node.orbit);
   if (period === 0) return null;
   const t0 = node.orbit.t0 || 0;
@@ -1330,7 +1338,7 @@ function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, compr
     const r = propagateState3D(node, t0 + (i / ORBIT_SAMPLES) * period).r; // moon relative to parent (AU)
     const off = Math.hypot(r.x, r.y, r.z);
     if (off < 1e-12) continue;
-    const spreadDist = moonSpread(off, localScale);
+    const spreadDist = moonSpread(off, localScale, parentRadius);
     const trueDist = off * kHelio;
     const dist = trueDist * (1 - compression) + spreadDist * compression;
     const k = dist / off;
