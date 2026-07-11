@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.73-beta - 12th Jul 2026
+
+* **Lo-poly now includes the star.** Under the lo-poly render styles the central star is faceted too (and gets glowing vector edges/points in "filled + lines"), instead of being left as a smooth sphere.
+* **2D map gets the 3D look controls.** Since the 2D map is the 3D engine locked overhead, its editor now exposes the same controls that were previously 3D-only where they make sense — render style, grid, spread/scale, body size, belt detail, view orbit, label size, starfield and auroras. (The genuinely 3D-only knobs — tilt, lock-overhead, lighting, frame-whole — stay hidden for 2D.)
+
 ## v2.1.72-beta - 12th Jul 2026
 
 * **Body graphics options for the 2D (and 3D) view.** A new "Body graphics" choice lets a preset draw worlds as a 3D sphere (as before) or as a flat camera-facing disc in one of three styles: Photo (the body's stock image), Simple disc (the procedural true-colour disc), or Flat shape (a plain class-colour disc). Belts and rings still show around a flat world. Photos are loaded safely — if one can't be used (cross-origin), it falls back to the procedural disc rather than breaking the view.

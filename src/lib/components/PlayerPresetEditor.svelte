@@ -274,7 +274,9 @@
                   <option value="black">Black</option>
                 </select>
               </label>
-              {#if draft.systemView === 'holo3d'}
+              <!-- The 2D map is the SAME 3D engine locked overhead, so its look controls apply too;
+                   only the genuinely 3D-only knobs (tilt / lock / lighting / framing) are hidden for 2D. -->
+              {#if draft.systemView === 'holo3d' || draft.systemView === 'diagram2d'}
                 <label>Render
                   <select bind:value={draft.render}>
                     <option value="filled">Filled</option>
@@ -295,13 +297,17 @@
                 </label>
                 <label>Spread <span>{Math.round(draft.compression * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.compression} /></label>
                 <label>Body size <span>{draft.bodySize === 0 ? 'true' : draft.bodySize >= 1 ? 'readable' : Math.round(draft.bodySize * 100) + '%'}</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.bodySize} /></label>
-                <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} disabled={draft.lockOverhead} /></label>
-                <label class="chk"><input type="checkbox" bind:checked={draft.lockOverhead} /> Lock overhead (2D look)</label>
-                <label class="chk"><input type="checkbox" bind:checked={draft.unlit} /> Flat / no lighting (efficient 2D map)</label>
+                {#if draft.systemView === 'holo3d'}
+                  <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} disabled={draft.lockOverhead} /></label>
+                  <label class="chk"><input type="checkbox" bind:checked={draft.lockOverhead} /> Lock overhead (2D look)</label>
+                  <label class="chk"><input type="checkbox" bind:checked={draft.unlit} /> Flat / no lighting (efficient 2D map)</label>
+                {/if}
                 <label>Belt detail <span>{Math.round(draft.beltDetail * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.beltDetail} /></label>
                 <label>View orbit <span>{draft.orbitSpeed === 0 ? 'off' : Math.round(draft.orbitSpeed * 100) + '%'}</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.orbitSpeed} /></label>
                 <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
-                <label class="chk"><input type="checkbox" bind:checked={draft.whole} /> Frame whole system</label>
+                {#if draft.systemView === 'holo3d'}
+                  <label class="chk"><input type="checkbox" bind:checked={draft.whole} /> Frame whole system</label>
+                {/if}
                 <label class="chk"><input type="checkbox" bind:checked={draft.skybox} /> Starfield</label>
                 <label class="chk"><input type="checkbox" bind:checked={draft.auroras} /> Auroras</label>
               {/if}

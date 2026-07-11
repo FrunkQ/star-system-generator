@@ -903,13 +903,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           mesh = buildWireframeBody(starR, colorHex, glow, occluded);
         } else {
           // Photosphere: an emissive (unlit) textured sphere — granulation + sunspots (spot count
-          // scales with the star's flare activity), so you see surface detail and it spins.
-          const starMat = new THREE.MeshBasicMaterial();
+          // scales with the star's flare activity), so you see surface detail and it spins. Under the
+          // lo-poly render the star is faceted too (fewer segments), so it isn't left out of the look.
+          const isLopolyStar = renderStyle === 'lopoly-filled' || renderStyle === 'lopoly-lines';
+          const starMat = new THREE.MeshBasicMaterial({ flatShading: isLopolyStar });
           const st = new THREE.CanvasTexture(makeStarTexture(colorHex, activity, node.id));
           st.colorSpace = THREE.SRGBColorSpace;
           starMat.map = st;
-          const sphere = new THREE.Mesh(new THREE.SphereGeometry(starR, 32, 24), starMat);
+          const sphere = new THREE.Mesh(new THREE.SphereGeometry(starR, isLopolyStar ? 16 : 32, isLopolyStar ? 10 : 24), starMat);
           mesh = sphere;
+          // Lo-poly LINES: glowing vector edges + vertices over the faceted star, matching the planets.
+          if (renderStyle === 'lopoly-lines') {
+            const lineMat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
+            sphere.add(new THREE.LineSegments(new THREE.WireframeGeometry(sphere.geometry), lineMat));
+            const dotMat = new THREE.PointsMaterial({ color: colorHex, size: Math.max(0.02, starR * 0.13), sizeAttenuation: true, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+            sphere.add(new THREE.Points(sphere.geometry, dotMat));
+          }
           // Corona: an additive halo ringing the photosphere; bigger/brighter for an active star and
           // pulsing (flaring) over time in updateStarFx. Parented to the sphere so it tracks position;
           // the billboard ignores the sphere's spin.
