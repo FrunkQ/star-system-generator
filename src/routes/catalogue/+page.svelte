@@ -397,9 +397,13 @@
       })
     : null;
   // The system level reuses the existing console/holo/doc stages; pick which by the preset's systemView.
+  // The "2D map" is now the holo renderer LOCKED OVERHEAD + flat/unlit — a real top-down view that goes
+  // through the same GPU filter and picking, instead of a separate SVG orrery + CSS approximation.
   $: effectiveSystemTier = activePreset
-    ? (activePreset.systemView === 'holo3d' ? 'holo' : activePreset.systemView === 'diagram2d' ? 'interactive' : 'static')
+    ? (activePreset.systemView === 'holo3d' ? 'holo' : activePreset.systemView === 'diagram2d' ? 'holo' : 'static')
     : theme.tier;
+  $: system2dOverhead = !!activePreset && activePreset.systemView === 'diagram2d';
+  $: systemHoloStyle = system2dOverhead ? { ...holoStyle, angleDeg: 0, unlit: true, whole: true } : holoStyle;
   // Cover: show once per preset until the player taps through.
   let coverDismissed = false;
   let coverForId: string | null = null;
@@ -611,21 +615,18 @@
   {:else if !selectedSystemId && activePreset && activePreset.starmapEnabled}
     <!-- Starmap level, PRESET-DRIVEN: the chosen module (text list / 2D / 3D), tap a system to enter. -->
     <div class="preset-stage" style="font-family:{presetFont}; --accent:{presetAccent}">
-      {#if activePreset.starmapView === 'holo3d'}
-        <!-- 3D runs its own GLSL filter; selection via the scene's raycast. -->
+      {#if activePreset.starmapView === 'holo3d' || activePreset.starmapView === 'diagram2d'}
+        <!-- 3D (or 2D = the same renderer LOCKED OVERHEAD): real GLSL filter + raycast selection. -->
         <Starmap3DView {starmap} accentColor={presetAccent} font={presetFont} grid={activePreset.grid}
-          background={activePreset.background} angleDeg={activePreset.angleDeg} labelSize={activePreset.labelSize}
+          background={activePreset.background} angleDeg={activePreset.starmapView === 'diagram2d' ? 0 : activePreset.angleDeg}
+          labelSize={activePreset.labelSize}
           filter={presetFilterActive ? activePreset.filter : 'none'} filterParams={activePreset.filterParams}
           selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
       {:else}
+        <!-- Text list stays DOM (approx filter); it's a static readout, not a picture to warp. -->
         <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
-          {#if activePreset.starmapView === 'list'}
-            <StarmapListView {starmap} accentColor={presetAccent} font={presetFont}
-              selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
-          {:else}
-            <Starmap2DView {starmap} accentColor={presetAccent} font={presetFont}
-              selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
-          {/if}
+          <StarmapListView {starmap} accentColor={presetAccent} font={presetFont}
+            selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
         </FilterFrame>
       {/if}
       {#if activePreset.starmapOverlay}
@@ -674,7 +675,7 @@
     <div class="console-stage" bind:clientWidth={hudW} bind:clientHeight={hudH} style={activePreset ? `font-family:${presetFont}` : ''}>
       {#if rulePack && displaySystem}
         {#if effectiveSystemTier === 'holo'}
-          <HoloView system={displaySystem} {currentTime} {focusedBodyId} style={holoStyle} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} on:focus={handleFocus} />
+          <HoloView system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} on:focus={handleFocus} />
         {:else}
           <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
             <SystemVisualizer

@@ -607,8 +607,25 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   canvas.addEventListener('pointerup', (e) => {
     if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return; // a drag = orbit, not a pick
     const rect = canvas.getBoundingClientRect();
-    ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    // Shader-space uv of the cursor (y up). If a distorting filter is active the on-screen image is
+    // barrel-warped / rolled / skewed by the post-pass, so the body under the cursor actually lives at
+    // the shader's SAMPLE uv — apply the same forward transform the shader does before raycasting, so a
+    // tap lands where the eye sees the body even mid-roll.
+    let su = (e.clientX - rect.left) / rect.width;
+    let sv = 1 - (e.clientY - rect.top) / rect.height;
+    if (filterPass) {
+      const U = filterPass.uniforms as any;
+      const warp = U.uCrtWarp?.value ?? 0, roll = U.uPictureRoll?.value ?? 0, skew = U.uSkew?.value ?? 0, t = U.time?.value ?? 0;
+      if (warp || roll || skew) {
+        const cx = su * 2 - 1, cy = sv * 2 - 1, d = cx * cx + cy * cy;
+        su = (cx * (1 + warp * d) + 1) / 2;
+        sv = (cy * (1 + warp * d) + 1) / 2;
+        sv = sv + t * roll; sv -= Math.floor(sv);      // fract(sv + time*roll)
+        su += (sv - 0.5) * skew;
+      }
+    }
+    ndc.x = su * 2 - 1;
+    ndc.y = sv * 2 - 1;
     raycaster.setFromCamera(ndc, camera);
     // Recursive: a body's mesh can be a Group (a star's photosphere+corona, a wireframe body), so hits
     // land on a child — walk up to find the owning body.
