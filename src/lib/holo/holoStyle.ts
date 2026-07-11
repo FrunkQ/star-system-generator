@@ -16,6 +16,7 @@ export interface HoloStyle {
   bodyStyle: 'textured' | 'flat' | 'white' | 'tint'; // colour selection ('tint' = legacy alias for white)
   render?: 'filled' | 'lopoly-filled' | 'lopoly-lines' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ'; // solid vs 80s wireframe
   unlit?: boolean; // flat lighting (no terminator) — the efficient "2D map" look
+  auroras?: boolean; // show the emissive polar aurora shells (default on)
   background: 'space' | 'green' | 'blue' | 'black'; // dark space, or a chroma-key colour for OBS
   bodySize: number; // 1 = readable (chunky) .. 0 = true physical scale
   grid: 'off' | 'plain' | 'scaled'; // ground reference: none / plain polar grid / grid with AU scale labels
@@ -43,7 +44,8 @@ export const DEFAULT_STYLE: HoloStyle = {
   grid: 'plain',
   orbitSpeed: 0,
   labelSize: 11,
-  render: 'filled'
+  render: 'filled',
+  auroras: true
 };
 
 // Shipped starter presets — enough to demo the range and skin the existing guides.
@@ -81,7 +83,7 @@ if (typeof window !== 'undefined') {
 }
 
 export function styleOf(preset: HoloPreset): HoloStyle {
-  return { filter: preset.filter, filterParams: preset.filterParams ? { ...preset.filterParams } : undefined, compression: preset.compression, angleDeg: preset.angleDeg, whole: preset.whole, skybox: preset.skybox, beltDetail: preset.beltDetail ?? 0.6, bodyStyle: preset.bodyStyle ?? 'textured', background: preset.background ?? 'space', bodySize: preset.bodySize ?? 1, grid: preset.grid ?? 'plain', orbitSpeed: preset.orbitSpeed ?? 0, labelSize: preset.labelSize ?? 11, font: preset.font, render: preset.render ?? 'filled' };
+  return { filter: preset.filter, filterParams: preset.filterParams ? { ...preset.filterParams } : undefined, compression: preset.compression, angleDeg: preset.angleDeg, whole: preset.whole, skybox: preset.skybox, beltDetail: preset.beltDetail ?? 0.6, bodyStyle: preset.bodyStyle ?? 'textured', background: preset.background ?? 'space', bodySize: preset.bodySize ?? 1, grid: preset.grid ?? 'plain', orbitSpeed: preset.orbitSpeed ?? 0, labelSize: preset.labelSize ?? 11, font: preset.font, render: preset.render ?? 'filled', auroras: preset.auroras ?? true };
 }
 
 // Add a custom preset from the current live style. Id is derived from the name + a short suffix so

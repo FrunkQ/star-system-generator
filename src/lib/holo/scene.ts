@@ -53,6 +53,7 @@ export interface HoloController {
   setBodyStyle(mode: 'textured' | 'flat' | 'white' | 'tint'): void; // colour selection ('tint' = legacy white)
   setRender(mode: RenderStyle): void; // filled spheres vs 80s vector wireframe (see-through / back-occluded)
   setUnlit(on: boolean): void; // flat lighting (no terminator) for the efficient "2D map" look
+  setAuroras(on: boolean): void; // show/hide the emissive polar aurora shells
   setBodySize(v: number): void; // 1 readable .. 0 true physical scale
   setGrid(mode: 'off' | 'plain' | 'scaled'): void; // ground reference grid
   setOrbitSpeed(v: number): void; // auto view-orbit turntable speed 0..1 (0 = static)
@@ -291,6 +292,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     rebuildContent();
   }
 
+  // Aurora toggle: no rebuild — updateAuroras just stops modulating (opacity 0) when off.
+  function setAuroras(on: boolean) { aurorasOn = on; }
+
   // Orbit-ring colour follows the body COLOUR selection: white → neutral grey, flat → class swatch,
   // textured → the body's own (true) colour.
   function orbitColor(node: any): number {
@@ -491,6 +495,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let beltDetail = 0.6; // GM quality knob: scales belt particle budget (performance), not physics
   let bodyStyle: 'textured' | 'flat' | 'white' = 'textured'; // COLOUR selection: true-colour / class / white
   let unlit = false; // flat lighting (MeshBasic, no terminator) — the efficient "2D map" look
+  let aurorasOn = true; // GM toggle: show the emissive polar aurora shells (updateAuroras hides when off)
   let renderStyle: RenderStyle = 'filled'; // filled spheres vs 80s vector wireframe
   let bodySize = 1; // 1 = readable (chunky), 0 = true physical scale (tiny) — fine-tune body sizes
   let timeMs = 0;
@@ -1157,6 +1162,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // out-of-phase sines (per-body seed) for a slow, uneven flicker.
   function updateAuroras(nowSec: number) {
     for (const a of auroraVisuals) {
+      if (!aurorasOn) { a.mat.opacity = 0; continue; } // GM toggle off → hide (additive, so opacity 0 = gone)
       const s = 0.5 + 0.5 * (0.62 * Math.sin(nowSec * 2.6 + a.seed * 6.283) + 0.38 * Math.sin(nowSec * 5.9 + a.seed * 12.57));
       a.mat.opacity = a.base * (0.4 + 0.6 * Math.max(0, Math.min(1, s)));
     }
@@ -1317,7 +1323,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----

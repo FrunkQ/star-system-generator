@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.71-beta - 12th Jul 2026
+
+* **Aurora toggle.** The System look options gain an "Auroras" checkbox (on by default), so a preset can switch the emissive polar aurora glow on or off across both the 2D and 3D views.
+
 ## v2.1.70-beta - 12th Jul 2026
 
 * **Starmap routes now glow.** Links between systems render as an emissive filament (a soft additive halo along the ground plus a bright core line) instead of a flat dim line, in both the 2D (overhead) and 3D starmap views — they read as lit hyperlanes and pick up the CRT/filter bloom.

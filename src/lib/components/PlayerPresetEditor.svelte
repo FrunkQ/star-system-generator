@@ -295,6 +295,7 @@
                 <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
                 <label class="chk"><input type="checkbox" bind:checked={draft.whole} /> Frame whole system</label>
                 <label class="chk"><input type="checkbox" bind:checked={draft.skybox} /> Starfield</label>
+                <label class="chk"><input type="checkbox" bind:checked={draft.auroras} /> Auroras</label>
               {/if}
               {#if draft.systemView !== 'list'}
                 <label>Info panel width (desktop) <span>{draft.inspectorWidth}px</span><input type="range" min="240" max="560" step="10" bind:value={draft.inspectorWidth} /></label>

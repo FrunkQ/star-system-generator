@@ -89,6 +89,7 @@ export interface PlayerPreset {
   bodyStyle: 'textured' | 'flat' | 'white'; // colour selection: true colour / class swatch / white
   render: 'filled' | 'lopoly-filled' | 'lopoly-lines' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ'; // solid vs 80s wireframe
   unlit: boolean; // flat lighting (no day/night terminator) — the efficient "2D map" look for overhead
+  auroras: boolean; // show the emissive polar aurora shells on bodies that have them
   background: 'space' | 'green' | 'blue' | 'black';
   grid: 'off' | 'plain' | 'scaled';
   compression: number; // toytown spread 0..1

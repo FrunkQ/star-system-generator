@@ -36,6 +36,7 @@
     controller?.setBodyStyle(s.bodyStyle);
     controller?.setRender(s.render ?? 'filled');
     controller?.setUnlit(s.unlit ?? false);
+    controller?.setAuroras(s.auroras ?? true);
     controller?.setBodySize(s.bodySize);
     controller?.setGrid(s.grid);
     controller?.setOrbitSpeed(orbitPaused ? 0 : s.orbitSpeed);
