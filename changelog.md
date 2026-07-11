@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.57-beta - 11th Jul 2026
+
+* **Wireframe worlds show rough continents.** In true-colour wireframe modes, a world with a coastline now fills its land facets with flat low-poly polygons in the land colour — chunky and indicative rather than accurate, like the continents on an 80s vector display — over the wireframe "ocean". Airless/all-ocean worlds and gas giants stay plain.
+
 ## v2.1.56-beta - 11th Jul 2026
 
 * **Auroras in the 3D holo.** Worlds with an atmosphere, a magnetic field and enough stellar flux now glow with a flickering aurora at their (tilted) magnetic poles — coloured by the atmosphere (Earth green, a gas giant red-pink, etc.) and scaled by strength, just like the 2D disc.

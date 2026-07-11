@@ -855,10 +855,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         const polF = oblatePolarFactor((node as any).oblateness); // spin-axis flattening
         if (renderStyle !== 'filled') {
           // 80s vector wireframe: a low-poly globe as edges (+ glowing vertices for the glow modes),
-          // see-through or with the far side occluded, in the selected colour.
+          // see-through or with the far side occluded, in the selected colour. In TRUE-COLOUR mode a
+          // world with a coastline also gets rough filled land facets (indicative continents).
           const glow = renderStyle === 'wire-glow' || renderStyle === 'wire-glow-occ';
           const occluded = renderStyle === 'wire-glow-occ' || renderStyle === 'wire-flat-occ';
-          const wf = buildWireframeBody(radius, selHex, glow, occluded);
+          const terrain = bodyStyle === 'textured' ? wireTerrain(node) : null;
+          const wf = buildWireframeBody(radius, selHex, glow, occluded, terrain);
           if (polF < 0.999) wf.scale.set(1, polF, 1);
           mesh = wf;
         } else {
@@ -1297,14 +1299,69 @@ function buildAuroraShell(radius: number, hex: string, strength: number): { shel
   return { shell, mat, base };
 }
 
+// Land/sea for the vector globe: the true-colour palette's land + ocean stops and the land fraction.
+interface WireTerrain { landHex: string; oceanHex: string; landFrac: number; seed: number; }
+function wireTerrain(node: any): WireTerrain | null {
+  const ap = node.apparentColor;
+  if (!ap || (ap.banding || 0) > 0) return null; // no palette, or a banded giant (no continents)
+  const palette: any[] = ap.palette || [];
+  const surface = palette.find((p) => p.role === 'surface');
+  const ocean = palette.find((p) => p.role === 'ocean');
+  if (!surface || !ocean) return null; // need both land AND sea for a recognisable coastline
+  const cover = Math.min(0.98, Math.max(0, ocean.weight ?? 0)); // ocean coverage fraction
+  if (cover < 0.04 || cover > 0.96) return null; // ~all land / ~all ocean → no shapes worth drawing
+  let seed = 0; for (const ch of String(node.id || 'x')) seed = (seed + ch.charCodeAt(0)) % 997;
+  return { landHex: surface.hex, oceanHex: ocean.hex, landFrac: 1 - cover, seed };
+}
+
+// A smooth blobby field over the unit sphere (seeded) → contiguous "continents" once thresholded.
+function terrainNoise(x: number, y: number, z: number, seed: number): number {
+  const s = seed * 0.61803;
+  return Math.sin(x * 1.7 + s) * Math.cos(y * 1.9 + s * 1.3)
+    + 0.6 * Math.sin(x * 3.1 + y * 2.2 + s * 2.1) * Math.cos(z * 2.7 + s * 0.7)
+    + 0.4 * Math.sin(z * 4.3 + s * 3.3) * Math.sin(y * 3.7 + s);
+}
+
+// Filled low-poly LAND facets for the vector globe: classify each triangle land/ocean by the noise
+// field (threshold picked so ~landFrac of facets are land), keep the land ones as flat coloured polys
+// just inside the wireframe. Chunky + indicative — the continents of an 80s vector display, not a map.
+function buildLandPolys(geo: THREE.SphereGeometry, radius: number, t: WireTerrain): THREE.Mesh | null {
+  const src = geo.toNonIndexed();
+  const pos = src.attributes.position as THREE.BufferAttribute;
+  const tri = pos.count / 3;
+  const vals = new Float32Array(tri);
+  for (let i = 0; i < tri; i++) {
+    let cx = 0, cy = 0, cz = 0;
+    for (let k = 0; k < 3; k++) { cx += pos.getX(i * 3 + k); cy += pos.getY(i * 3 + k); cz += pos.getZ(i * 3 + k); }
+    const inv = 1 / (Math.hypot(cx, cy, cz) || 1);
+    vals[i] = terrainNoise(cx * inv, cy * inv, cz * inv, t.seed);
+  }
+  const thr = [...vals].sort((a, b) => a - b)[Math.floor((1 - t.landFrac) * tri)] ?? Infinity;
+  const out: number[] = [];
+  for (let i = 0; i < tri; i++) {
+    if (vals[i] < thr) continue; // ocean facet → left as wireframe
+    for (let k = 0; k < 3; k++) out.push(pos.getX(i * 3 + k) * 0.99, pos.getY(i * 3 + k) * 0.99, pos.getZ(i * 3 + k) * 0.99);
+  }
+  src.dispose();
+  if (!out.length) return null;
+  const lgeo = new THREE.BufferGeometry();
+  lgeo.setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
+  return new THREE.Mesh(lgeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(t.landHex) }));
+}
+
 // An 80s vector-display body: a low-poly globe drawn as wireframe EDGES. `glow` ALSO draws the vertices
 // as brighter additive points (hotter at the points, like a phosphor vector screen); flat is edges
 // only. `occluded` adds an invisible depth-writing sphere so the far-side edges are hidden (a solid
-// vector globe) instead of see-through. Returned as a Group so the caller can tilt/scale/spin it.
-function buildWireframeBody(radius: number, color: number, glow: boolean, occluded: boolean): THREE.Group {
+// vector globe) instead of see-through. `terrain` fills the land facets so worlds with coastlines show
+// rough continents. Returned as a Group so the caller can tilt/scale/spin it.
+function buildWireframeBody(radius: number, color: number, glow: boolean, occluded: boolean, terrain?: WireTerrain | null): THREE.Group {
   const g = new THREE.Group();
   const SEG_LON = 16, SEG_LAT = 10;
   const geo = new THREE.SphereGeometry(radius, SEG_LON, SEG_LAT); // low-poly for the faceted vector look
+  if (terrain) {
+    const land = buildLandPolys(geo, radius, terrain);
+    if (land) g.add(land); // opaque, so it also hides the far side behind the continents
+  }
   if (occluded) {
     // Depth-only occluder (no colour) so back edges fail the depth test and vanish. It MUST use the
     // SAME faceting as the wireframe and sit just inside it — a rounder/larger sphere would bulge past
