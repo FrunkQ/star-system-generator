@@ -96,6 +96,11 @@ interface BodyVisual {
   spinPeriodSec?: number; // sidereal rotation period; drives the texture turning
   tiltQuat?: THREE.Quaternion; // fixed axial-tilt rotation, composed with the live spin each frame
   isConstruct?: boolean; // icon sprite: fixed screen size, focus-driven size/dim states
+  physRadiusAu?: number; // true physical radius in AU (for detecting surface-locked constructs)
+  // A construct sitting AT (or below) its parent's physical surface: glued to a fixed surface point
+  // that co-rotates with the planet's spin, instead of following its own (Keplerian) orbit — so it
+  // slides over the surface at the planet's rotation rate. dir0 is that point in the parent's local frame.
+  surfaceLock?: { dir0: THREE.Vector3 } | null;
   occluderId?: string | null; // body whose shadow can eclipse this one (a moon's parent planet)
   shadow?: { uStarPos: { value: THREE.Vector3 }; uOcc: { value: THREE.Vector4 }; uHasOcc: { value: number } };
 }
@@ -1008,7 +1013,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // satellite spread to it, or the spread would distort its transit path.
       const inTransit = isConstruct && (node.scheduled_journeys || []).length > 0;
       const radiusScene = isConstruct ? 0 : (isStar ? starRadiusScene(node) : bodyRadiusScene(node, systemLevel));
-      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, satellite: !systemLevel && !inTransit, radiusScene, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow });
+      const physRadiusAu = isConstruct ? 0 : (node.physical_parameters?.radiusKm || node.radiusKm || (isStar ? 696000 : 3000)) / AU_KM;
+      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow });
     }
     bodyById = new Map(bodies.map((b) => [b.id, b]));
     visibleSet = getVisibleNodeIds(system, focusedId);
@@ -1031,9 +1037,23 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         positionToScene(parent, tmpParent);
         const ox = p.x - parent.x, oy = p.y - parent.y, oz = p.z - parent.z; // AU offset
         const off = Math.hypot(ox, oy, oz);
+        const pv = bodyById.get(b.parentId!);
+        // Surface-locked construct: it sits AT (or below) the parent's physical surface, so instead of
+        // riding its own orbit it glues to a fixed surface point that co-rotates with the planet's spin.
+        // Capture that point (in the parent's local frame) once, then leave the per-frame placement to
+        // updateSurfaceConstructs. Threshold 3% ≈ keeps genuine LEO orbiters (ISS/Tiangong) orbiting.
+        if (b.isConstruct && off > 1e-12 && pv && pv.physRadiusAu && off <= pv.physRadiusAu * 1.03) {
+          if (!b.surfaceLock) {
+            const sceneDir = tmp.set(ox, oz, oy).normalize(); // same axis-map as the satellite placement
+            const dir0 = sceneDir.clone().applyQuaternion(pv.mesh.quaternion.clone().invert());
+            b.surfaceLock = { dir0 };
+          }
+          continue; // updateSurfaceConstructs positions it each frame from the parent's live spin
+        }
+        b.surfaceLock = null; // moved above the surface again → back to a normal orbiter
         if (off > 1e-12) {
           const parentR = Math.hypot(parent.x, parent.y, parent.z);
-          const parentRad = bodyById.get(b.parentId!)?.radiusScene ?? 0;
+          const parentRad = pv?.radiusScene ?? 0;
           const spreadDist = moonSpread(off, compressScalar(parentR), parentRad); // just outside the parent, ramped by true distance
           const trueDist = off * (compressScalar(Math.hypot(p.x, p.y, p.z)) / Math.max(1e-12, Math.hypot(p.x, p.y, p.z))); // offset under the radial map
           const dist = trueDist * (1 - compression) + spreadDist * compression;
@@ -1105,6 +1125,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const angle = (tSec / b.spinPeriodSec) * Math.PI * 2;
       spinQuat.setFromAxisAngle(spinAxis, angle); // spin about local (pre-tilt) pole
       b.mesh.quaternion.copy(b.tiltQuat).multiply(spinQuat); // tilt the axis, then spin about it
+    }
+  }
+
+  // Surface-locked constructs (see BodyVisual.surfaceLock): re-glue each to its fixed surface point,
+  // rotated by the parent's LIVE spin+tilt, so it rides the rendered surface exactly — right at the
+  // rendered radius at any scale, and turning with the planet. Runs AFTER updateSpin (fresh parent
+  // quaternion) and reuses the parent's stable scene position (set by updatePositions on time change).
+  const _surfDir = new THREE.Vector3();
+  function updateSurfaceConstructs() {
+    for (const b of bodies) {
+      if (!b.surfaceLock || !b.parentId) continue;
+      const pv = bodyById.get(b.parentId);
+      if (!pv) continue;
+      _surfDir.copy(b.surfaceLock.dir0).applyQuaternion(pv.mesh.quaternion);
+      b.mesh.position.copy(pv.mesh.position).addScaledVector(_surfDir, pv.radiusScene ?? 0.01);
     }
   }
 
@@ -1235,6 +1270,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     driveFocus();
     controls.autoRotate = orbitSpeed > 0 && focusDrive === 0; // turntable, paused during the focus ease
     updateSpin();
+    updateSurfaceConstructs();
     updateStarFx(nowSec);
     updateAuroras(nowSec);
     updateConstructs();
