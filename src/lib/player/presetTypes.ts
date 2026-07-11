@@ -84,7 +84,7 @@ export interface PlayerPreset {
   filter: string;                 // filter id — 'none' | 'crt' | 'night_vision' | 'thermal'
   filterParams: FilterParamValues; // e.g. CRT phosphor colour lives here
   bodyStyle: 'textured' | 'flat' | 'white'; // colour selection: true colour / class swatch / white
-  render: 'filled' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ'; // solid vs 80s wireframe
+  render: 'filled' | 'lopoly-filled' | 'lopoly-lines' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ'; // solid vs 80s wireframe
   unlit: boolean; // flat lighting (no day/night terminator) — the efficient "2D map" look for overhead
   background: 'space' | 'green' | 'blue' | 'black';
   grid: 'off' | 'plain' | 'scaled';

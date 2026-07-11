@@ -30,7 +30,7 @@ const HOLO_TINT = 0x39c6ff; // cyan hologram chrome (skins wire in later)
 
 // Body render style: solid, or an 80s vector wireframe — glowing/flat points, see-through or with the
 // back hidden (an invisible depth-writing occluder culls the far-side edges).
-export type RenderStyle = 'filled' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ';
+export type RenderStyle = 'filled' | 'lopoly-filled' | 'lopoly-lines' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ';
 const GRID_RADIUS = 12; // scene units the outermost data maps to
 const ORBIT_SAMPLES = 96;
 const R0_AU = 0.35; // log-compression softening radius
@@ -873,7 +873,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (isStar) {
         const activity = Math.max(0, Math.min(1, (node.flareActivity ?? 0)));
         const starR = starRadiusScene(node); // responds to the body-size dial like the planets
-        if (renderStyle !== 'filled') {
+        if (renderStyle.startsWith('wire')) {
           // In wireframe modes the star is a wireframe too (no photosphere/corona): flat draws plain
           // non-emissive polys, glow adds the emissive glowing vertices — same as the other bodies.
           const glow = renderStyle === 'wire-glow' || renderStyle === 'wire-glow-occ';
@@ -919,7 +919,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           : bodyStyle === 'flat' ? new THREE.Color(getClassColor(node)).getHex()
           : colorHex;
         const polF = oblatePolarFactor((node as any).oblateness); // spin-axis flattening
-        if (renderStyle !== 'filled') {
+        const isLopoly = renderStyle === 'lopoly-filled' || renderStyle === 'lopoly-lines';
+        if (renderStyle.startsWith('wire')) {
           // 80s vector wireframe: a low-poly globe as edges (+ glowing vertices for the glow modes),
           // see-through or with the far side occluded, in the selected colour. In TRUE-COLOUR mode a
           // world with a coastline also gets rough filled land facets (indicative continents).
@@ -941,9 +942,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             }
           }
         } else {
-          // Unlit mode (flat, no terminator): a cheaper MeshBasic for the "2D map" look — reuse the 3D
-          // renderer locked overhead so the view still gets the real GPU filter, without lighting cost.
-          const mat = unlit ? new THREE.MeshBasicMaterial() : new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
+          // Filled family: 'filled' = smooth sphere; 'lopoly-*' = a chunky low-poly globe (flat-shaded
+          // facets). Unlit mode ('2D map') stays MeshBasic; lo-poly is always lit so the facets read.
+          const useUnlit = unlit && !isLopoly;
+          const mat = useUnlit ? new THREE.MeshBasicMaterial() : new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0, flatShading: isLopoly });
           if (bodyStyle === 'white') {
             mat.color.set(0xffffff);
           } else if (bodyStyle === 'flat') {
@@ -965,9 +967,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             const soft = softsShadow(node) || softsShadow(nodesById.get(node.parentId));
             shadow = applyEclipseShadow(mat as THREE.MeshStandardMaterial, soft ? 0.4 : 0.03);
           }
-          const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 24), mat);
+          const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, isLopoly ? 16 : 32, isLopoly ? 10 : 24), mat);
           if (polF < 0.999) sphere.scale.set(1, polF, 1);
           mesh = sphere;
+          // Lo-poly LINES: keep the filled facets but add glowing edge lines + vertex points on top.
+          if (renderStyle === 'lopoly-lines') {
+            const lineMat = new THREE.LineBasicMaterial({ color: selHex, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
+            sphere.add(new THREE.LineSegments(new THREE.WireframeGeometry(sphere.geometry), lineMat));
+            const dotMat = new THREE.PointsMaterial({ color: selHex, size: Math.max(0.02, radius * 0.13), sizeAttenuation: true, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+            sphere.add(new THREE.Points(sphere.geometry, dotMat));
+          }
           // Aurora: an additive emissive shell glowing at the (tilted) magnetic poles, flickering over
           // time. deriveAurora needs air + a field + ionising flux — returns 0 otherwise, so most bodies
           // add nothing. Parented to the sphere, so it tracks position + axial tilt (spin is harmless —

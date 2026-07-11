@@ -261,6 +261,8 @@
                 <label>Render
                   <select bind:value={draft.render}>
                     <option value="filled">Filled</option>
+                    <option value="lopoly-filled">Lo-poly — filled</option>
+                    <option value="lopoly-lines">Lo-poly — filled + lines</option>
                     <option value="wire-glow">Wireframe — glow</option>
                     <option value="wire-flat">Wireframe — flat</option>
                     <option value="wire-glow-occ">Wireframe — glow (solid)</option>

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.66-beta - 11th Jul 2026
+
+* **Two new low-poly render styles.** "Lo-poly — filled" draws chunky faceted planets (respecting the colour choice — true-colour continents, flat class colour or monochrome); "Lo-poly — filled + lines" adds glowing vector edges and vertex points on top. Sit alongside the wireframe styles in the system look options.
+
 ## v2.1.65-beta - 11th Jul 2026
 
 * **Zoom works at true scale.** Focusing a body now frames it by its actual rendered size and relaxes the minimum zoom to match, so a tiny true-scale world can be brought up large on screen just like an expanded one — no need to know the size first.
