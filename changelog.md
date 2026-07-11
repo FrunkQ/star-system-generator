@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.59-beta - 11th Jul 2026
+
+* **The body info block now clearly takes the visual filter.** Its tint was too weak to reach the text, so only the image looked filtered — the tint now recolours the whole panel, so a selected body's data reads as part of the CRT / night-vision / thermal screen.
+* **The preset's font is used across the player view.** The chosen theme font now also applies to the body info block, the status bar and the system-view chrome — not just the cover, starmap and in-scene labels — so the whole view reads in one typeface.
+
 ## v2.1.58-beta - 11th Jul 2026
 
 * **Wireframe belts are simplified to plain points.** In the vector-wireframe render styles, asteroid belts and debris now draw as small points instead of the lumpy rock silhouettes, keeping the clean vector look.

@@ -529,7 +529,7 @@
     </div>
   {/if}
   <!-- Device status bar -->
-  <header class="statusbar">
+  <header class="statusbar" style={activePreset ? `font-family:${presetFont}` : ''}>
     {#if selectedSystemId && !(activePreset && activePreset.starmapEnabled === false)}
       <button class="back-btn" on:click={() => { selectedSystemId = null; selectedBody = null; }} title="Back to all systems">‹ Systems</button>
     {/if}
@@ -635,7 +635,7 @@
     </div>
   {:else if effectiveSystemTier === 'interactive' || effectiveSystemTier === 'holo'}
     <!-- Hi-tech: live orbital map (2D console or 3D holo table) + tap-to-inspect -->
-    <div class="console-stage">
+    <div class="console-stage" style={activePreset ? `font-family:${presetFont}` : ''}>
       {#if rulePack && displaySystem}
         {#if effectiveSystemTier === 'holo'}
           <HoloView system={displaySystem} {currentTime} {focusedBodyId} style={holoStyle} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} on:focus={handleFocus} />
@@ -686,11 +686,13 @@
         {/if}
       </div>
       {#if selectedBody}
-        <aside class="inspector" class:expanded={bodyExpanded} style="--insp-w:{inspectorWidth}px; filter:{inspFx ? inspFx.containerFilter : 'none'}">
+        <aside class="inspector" class:expanded={bodyExpanded} class:filtered={!!inspFx}
+          style="--insp-w:{inspectorWidth}px; filter:{inspFx ? inspFx.containerFilter : 'none'}; {activePreset ? `font-family:${presetFont};` : ''}">
           <!-- The info block is DOM over the holo canvas, so the GLSL filter can't reach it; the CSS
-               approximation (tint + scanlines + the container filter above) makes it match. -->
+               approximation (tint + scanlines + the container filter above) makes it match. The tint sits
+               ABOVE the content with mix-blend so it recolours the text + image, not just the backdrop. -->
           {#if inspFx}
-            {#if inspFx.tint}<div class="insp-fx-tint" style="background:{inspFx.tint}; opacity:{inspFx.tintOpacity * 0.5}"></div>{/if}
+            {#if inspFx.tint}<div class="insp-fx-tint" style="background:{inspFx.tint}; opacity:{Math.min(0.9, inspFx.tintOpacity)}"></div>{/if}
             {#if inspFx.scanlineIntensity > 0}<div class="insp-fx-scan" style="opacity:{inspFx.scanlineIntensity * 0.6}; background-size:100% {inspFx.scanlineWidth}px"></div>{/if}
           {/if}
           <!-- Desktop: drag the left edge to resize the panel (width persisted). Hidden on phone. -->
