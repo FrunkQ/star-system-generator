@@ -1,22 +1,24 @@
-// Draws the body "info card" onto a canvas so it can be composited INTO the holo render (a HUD quad
-// in scene.ts) and thus warped/rolled/tinted by the SAME GPU filter as the 3D — no CSS approximation.
-// It's a static, once-per-selection draw (cheap). Text is drawn light-on-dark so the CRT/NV shader
-// tints it by luminance, exactly like the rest of the picture. The body photo is deliberately omitted
-// (a cross-origin image would taint the canvas and break the WebGL texture upload).
+// Builds the holo "HUD" canvas — the per-screen overlay bitmap and/or the body info card — so it can be
+// composited INTO the holo render (a HUD quad in scene.ts) and thus warped/rolled/tinted by the SAME
+// GPU filter as the 3D. Static, once-per-change (cheap). Text is drawn light-on-dark so the CRT/NV
+// shader tints it by luminance; in the WHITE colour scheme everything is pure white/grey (a filter is
+// meant to colour it). The body photo is omitted (a cross-origin image would taint the WebGL texture).
 import type { Fact } from './bodyFacts';
+import type { GraphicPlacement } from '$lib/player/presetTypes';
 
-export interface InfoCardOpts {
-  viewW: number;      // holo canvas size (css px)
-  viewH: number;
-  panelW: number;     // info panel width (css px) — drawn flush to the right edge
+export interface HudOverlay { img: HTMLImageElement; placement: GraphicPlacement; }
+export interface HudCard {
+  panelW: number;     // info panel width (css px) — flush to the right (inside a bezel margin)
   title: string;
-  sub: string;        // e.g. "PLANET"
+  sub: string;
   facts: Fact[];
   description: string;
-  accent: string;     // theme accent (title)
-  font: string;       // theme font-family
-  fontScale: number;  // info-block font-size slider (~0.8..1.6)
+  accent: string;     // theme accent (title) — ignored when mono
+  font: string;
+  fontScale: number;
+  mono: boolean;      // white scheme: draw everything white/grey so a filter colours it
 }
+export interface HudOpts { viewW: number; viewH: number; overlay?: HudOverlay | null; card?: HudCard | null; }
 
 function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
   const words = text.split(/\s+/);
@@ -31,28 +33,39 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number): string
   return lines;
 }
 
-export function drawInfoCard(opts: InfoCardOpts): HTMLCanvasElement {
-  const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
-  const { viewW, viewH, font, accent } = opts;
-  const panelW = Math.min(viewW, opts.panelW);
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.max(2, Math.round(viewW * dpr));
-  canvas.height = Math.max(2, Math.round(viewH * dpr));
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return canvas;
-  ctx.scale(dpr, dpr);
+// The per-screen overlay bitmap, placed by the standard 9-pin + size%/stretch + opacity rules.
+function drawOverlay(ctx: CanvasRenderingContext2D, o: HudOverlay, W: number, H: number) {
+  const iw = o.img.naturalWidth || o.img.width, ih = o.img.naturalHeight || o.img.height;
+  if (!iw || !ih) return;
+  ctx.globalAlpha = Math.max(0, Math.min(1, o.placement.opacity ?? 1));
+  if (o.placement.stretch) {
+    ctx.drawImage(o.img, 0, 0, W, H);
+  } else {
+    let w = W * (o.placement.sizePct / 100);
+    let h = w * (ih / iw);
+    if (h > H) { h = H; w = h * (iw / ih); } // contain
+    const p = o.placement.pin;
+    const x = p.endsWith('left') ? 0 : p.endsWith('right') ? W - w : (W - w) / 2;
+    const y = p.startsWith('top') ? 0 : p.startsWith('bottom') ? H - h : (H - h) / 2;
+    ctx.drawImage(o.img, x, y, w, h);
+  }
+  ctx.globalAlpha = 1;
+}
 
-  // Keep the panel INSIDE a bezel margin: the CRT shader wraps (fract) at the screen edges under barrel
-  // warp, so content flush to the edge would wrap around. An inset reads like a screen with a bezel.
+function drawCard(ctx: CanvasRenderingContext2D, c: HudCard, viewW: number, viewH: number) {
+  const panelW = Math.min(viewW, c.panelW);
+  const font = c.font;
+  // Bezel margin: the CRT shader samples with fract() at the edges, so content flush to the edge wraps
+  // around under barrel warp — inset keeps it in the safe area (reads like a screen with a bezel).
   const mx = Math.round(viewW * 0.035), my = Math.round(viewH * 0.045);
   const x0 = viewW - mx - panelW;
   const pTop = my, pBot = viewH - my;
   const pad = 18;
-  const s = Math.max(0.7, Math.min(1.8, opts.fontScale || 1));
+  const s = Math.max(0.7, Math.min(1.8, c.fontScale || 1));
   const cx = x0 + pad;
-  const rx = viewW - mx - pad; // right edge for values
+  const rx = viewW - mx - pad;
+  const titleCol = c.mono ? '#f2f5fa' : (c.accent && c.accent !== 'rainbow' ? c.accent : '#e8edf4');
 
-  // Screen panel (opaque, rounded — reads as part of the picture, not a translucent overlay).
   const r = 10;
   ctx.beginPath();
   ctx.moveTo(x0 + r, pTop);
@@ -64,9 +77,9 @@ export function drawInfoCard(opts: InfoCardOpts): HTMLCanvasElement {
   ctx.fillStyle = 'rgba(6,8,13,0.97)';
   ctx.fill();
   ctx.save();
-  ctx.clip(); // keep all text within the panel
+  ctx.clip();
 
-  // Close glyph, top-right (the invisible DOM × sits here to take the actual click).
+  // Close glyph (the invisible DOM × takes the real click).
   ctx.strokeStyle = 'rgba(200,214,232,0.5)';
   ctx.lineWidth = 2;
   const xcx = x0 + panelW - pad - 4, xcy = pTop + pad + 2, hs = 6;
@@ -77,49 +90,55 @@ export function drawInfoCard(opts: InfoCardOpts): HTMLCanvasElement {
 
   let y = pTop + pad + 20 * s;
   ctx.textBaseline = 'alphabetic';
-
-  // Title + sub
   ctx.textAlign = 'left';
-  ctx.fillStyle = accent && accent !== 'rainbow' ? accent : '#e8edf4';
+  ctx.fillStyle = titleCol;
   ctx.font = `700 ${Math.round(22 * s)}px ${font}`;
-  ctx.fillText(opts.title, cx, y);
+  ctx.fillText(c.title, cx, y);
   y += 8 * s;
   ctx.fillStyle = 'rgba(200,214,232,0.6)';
   ctx.font = `${Math.round(11 * s)}px ${font}`;
   y += 14 * s;
-  ctx.fillText(opts.sub.toUpperCase(), cx, y);
+  ctx.fillText(c.sub.toUpperCase(), cx, y);
   y += 16 * s;
 
-  // Stats grid: label left (muted), value right (bright).
   const rowH = Math.round(18 * s);
-  const labelFont = `${Math.round(12 * s)}px ${font}`;
-  const valFont = `${Math.round(12 * s)}px ${font}`;
-  for (const f of opts.facts) {
+  const rowFont = `${Math.round(12 * s)}px ${font}`;
+  for (const f of c.facts) {
     if (y > pBot - pad - rowH) break;
-    ctx.font = labelFont;
+    ctx.font = rowFont;
     ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(190,205,224,0.7)';
     ctx.fillText(f.label, cx, y);
-    ctx.font = valFont;
     ctx.textAlign = 'right';
     ctx.fillStyle = '#e8edf4';
     ctx.fillText(f.value, rx, y);
     y += rowH;
   }
 
-  // Description (wrapped, muted italic).
-  if (opts.description && y < pBot - pad - 20 * s) {
+  if (c.description && y < pBot - pad - 20 * s) {
     y += 10 * s;
     ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(200,214,232,0.8)';
     ctx.font = `italic ${Math.round(12 * s)}px ${font}`;
-    const lines = wrap(ctx, opts.description, panelW - pad * 2);
-    for (const ln of lines) {
+    for (const ln of wrap(ctx, c.description, panelW - pad * 2)) {
       if (y > pBot - pad) break;
       ctx.fillText(ln, cx, y);
       y += Math.round(16 * s);
     }
   }
   ctx.restore();
+}
+
+export function drawHud(opts: HudOpts): HTMLCanvasElement {
+  const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
+  const { viewW, viewH } = opts;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(2, Math.round(viewW * dpr));
+  canvas.height = Math.max(2, Math.round(viewH * dpr));
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+  ctx.scale(dpr, dpr);
+  if (opts.overlay) drawOverlay(ctx, opts.overlay, viewW, viewH);
+  if (opts.card) drawCard(ctx, opts.card, viewW, viewH);
   return canvas;
 }

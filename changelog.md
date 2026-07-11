@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.61-beta - 11th Jul 2026
+
+* **Moon orbits stay local to their planet.** A moon system is now sized as a fraction of its planet's own orbit radius, so it never grows into a neighbouring planet's orbit (Luna's ring no longer reaches toward Venus). Moons are still ranked by true distance.
+* **You can zoom right in on a body**, even at true scale — the minimum zoom distance was relaxed so a small world can be brought up large on screen.
+* **The per-screen overlay bitmap now goes through the real filter too** (3D view): it's composited into the holo render like the info card, so it warps/rolls/tints with the GPU shader.
+* **White colour scheme keeps the info panel monochrome** (white/greys), so a visual filter colours it — rather than using the accent.
+
 ## v2.1.60-beta - 11th Jul 2026
 
 * **The body info block is now part of the actual filtered picture (3D view).** Instead of a CSS approximation, the info panel is drawn once to a canvas and composited into the holo render itself, so it warps, picture-rolls and tints through the *real* GPU shader exactly like the rest of the screen — no fake. It's a static, once-per-selection draw, so it's cheap. (The panel sits inside a small bezel margin so the CRT edge-warp doesn't wrap it.)

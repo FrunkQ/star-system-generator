@@ -11,7 +11,7 @@
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import CatalogueBrowser from '$lib/catalogue/CatalogueBrowser.svelte';
   import { bodyFacts } from '$lib/catalogue/bodyFacts';
-  import { drawInfoCard } from '$lib/catalogue/infoCard';
+  import { drawHud } from '$lib/catalogue/infoCard';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import HoloView from '$lib/holo/HoloView.svelte';
   import BodyPicker from '$lib/components/BodyPicker.svelte';
@@ -367,18 +367,33 @@
   // view is filtered — otherwise the normal DOM inspector shows (no filter needed). The DOM inspector is
   // kept underneath (invisible) purely for its buttons.
   let hudW = 0, hudH = 0;
-  // Desktop only (>=720): on phones the info panel is a bottom sheet, so the DOM inspector keeps its own layout.
-  $: hudActive = effectiveSystemTier === 'holo' && !!selectedBody && presetFilterActive && hudW >= 720;
   $: hudMx = Math.round(hudW * 0.035);
   $: hudMy = Math.round(hudH * 0.045);
-  $: hudCanvas = hudActive && selectedBody
-    ? drawInfoCard({
-        viewW: hudW, viewH: hudH, panelW: inspectorWidth,
-        title: selectedBody.name,
-        sub: (selectedBody.roleHint || 'body'),
-        facts: bodyFacts(selectedBody, units, tempUnit),
-        description: selectedBody.description || '',
-        accent: presetAccent, font: presetFont, fontScale: infoFontScale
+  // Preload the per-screen overlay bitmap (asset dataUrls are same-origin, so no WebGL taint).
+  let overlayImg: HTMLImageElement | null = null;
+  $: overlayAsset = activePreset?.systemOverlay ? presetAssets.find((a) => a.id === activePreset.systemOverlay!.assetId) : null;
+  $: if (browser && overlayAsset) {
+    const im = new Image();
+    im.onload = () => { if (overlayAsset && im.src.endsWith(overlayAsset.dataUrl.slice(-24))) overlayImg = im; };
+    im.src = overlayAsset.dataUrl;
+  } else { overlayImg = null; }
+  // The info card is desktop-only (phones keep the bottom-sheet DOM inspector); the overlay filters at any size.
+  $: hudCardOn = effectiveSystemTier === 'holo' && !!selectedBody && presetFilterActive && hudW >= 720;
+  $: hudOverlayOn = effectiveSystemTier === 'holo' && presetFilterActive && !!activePreset?.systemOverlay && !!overlayImg;
+  $: hudActive = (hudCardOn || hudOverlayOn) && hudW > 0;
+  $: hudCanvas = hudActive
+    ? drawHud({
+        viewW: hudW, viewH: hudH,
+        overlay: hudOverlayOn && overlayImg && activePreset?.systemOverlay ? { img: overlayImg, placement: activePreset.systemOverlay } : null,
+        card: hudCardOn && selectedBody ? {
+          panelW: inspectorWidth,
+          title: selectedBody.name,
+          sub: selectedBody.roleHint || 'body',
+          facts: bodyFacts(selectedBody, units, tempUnit),
+          description: selectedBody.description || '',
+          accent: presetAccent, font: presetFont, fontScale: infoFontScale,
+          mono: activePreset?.bodyStyle === 'white'
+        } : null
       })
     : null;
   // The system level reuses the existing console/holo/doc stages; pick which by the preset's systemView.
@@ -676,7 +691,7 @@
           </FilterFrame>
         {/if}
       {/if}
-      {#if activePreset?.systemOverlay}
+      {#if activePreset?.systemOverlay && !hudOverlayOn}
         <div class="overlay-wrap"><FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
           <GraphicLayer placement={activePreset.systemOverlay} assets={presetAssets} />
         </FilterFrame></div>
@@ -707,12 +722,12 @@
         {/if}
       </div>
       {#if selectedBody}
-        <aside class="inspector" class:expanded={bodyExpanded} class:filtered={!!inspFx && !hudActive} class:hud-hidden={hudActive}
-          style="--insp-w:{inspectorWidth}px; font-size:{Math.round(13 * infoFontScale)}px; filter:{inspFx && !hudActive ? inspFx.containerFilter : 'none'}; {activePreset ? `font-family:${presetFont};` : ''} {hudActive ? `right:${hudMx}px; top:${hudMy}px; bottom:${hudMy}px;` : ''}">
+        <aside class="inspector" class:expanded={bodyExpanded} class:filtered={!!inspFx && !hudCardOn} class:hud-hidden={hudCardOn}
+          style="--insp-w:{inspectorWidth}px; font-size:{Math.round(13 * infoFontScale)}px; filter:{inspFx && !hudCardOn ? inspFx.containerFilter : 'none'}; {activePreset ? `font-family:${presetFont};` : ''} {hudCardOn ? `right:${hudMx}px; top:${hudMy}px; bottom:${hudMy}px;` : ''}">
           <!-- The info block is DOM over the holo canvas, so the GLSL filter can't reach it; the CSS
                approximation (tint + scanlines + the container filter above) makes it match. The tint sits
                ABOVE the content with mix-blend so it recolours the text + image, not just the backdrop. -->
-          {#if inspFx && !hudActive}
+          {#if inspFx && !hudCardOn}
             {#if inspFx.tint}<div class="insp-fx-tint" style="background:{inspFx.tint}; opacity:{Math.min(0.9, inspFx.tintOpacity)}"></div>{/if}
             {#if inspFx.scanlineIntensity > 0}<div class="insp-fx-scan" style="opacity:{inspFx.scanlineIntensity * 0.6}; background-size:100% {inspFx.scanlineWidth}px"></div>{/if}
           {/if}

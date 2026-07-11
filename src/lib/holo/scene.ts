@@ -215,7 +215,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   controls.enablePan = false;
-  controls.minDistance = 2;
+  controls.minDistance = 0.05; // let the viewer zoom right in on a body even at true scale (tiny bodies)
   controls.maxDistance = GRID_RADIUS * 6;
   controls.minPolarAngle = Math.PI * 0.06; // don't go fully top-down
   controls.maxPolarAngle = Math.PI * 0.49; // or under the table
@@ -833,7 +833,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           const pHelio = pos0.get(node.parentId);
           const rP = pHelio ? Math.hypot(pHelio.x, pHelio.y, pHelio.z) : 0;
           const kP = rP > 1e-9 ? compressScalar(rP) / rP : 0;
-          const ring = kP > 0 ? buildMoonOrbitRing(node, kP, compression, orbitColor(node)) : null;
+          const ring = kP > 0 ? buildMoonOrbitRing(node, kP, compressScalar(rP), compression, orbitColor(node)) : null;
           if (ring) { contentGroup.add(ring); orbitRings.push({ id: node.id, obj: ring, trackParentId: node.parentId }); }
         }
       }
@@ -997,7 +997,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         const ox = p.x - parent.x, oy = p.y - parent.y, oz = p.z - parent.z; // AU offset
         const off = Math.hypot(ox, oy, oz);
         if (off > 1e-12) {
-          const spreadDist = 0.45 + 0.16 * Math.log10(1 + off / 0.0005); // scene units from the planet
+          const parentR = Math.hypot(parent.x, parent.y, parent.z);
+          const spreadDist = moonSpread(off, compressScalar(parentR)); // a fraction of the parent's orbit radius
           const trueDist = off * (compressScalar(Math.hypot(p.x, p.y, p.z)) / Math.max(1e-12, Math.hypot(p.x, p.y, p.z))); // offset under the radial map
           const dist = trueDist * (1 - compression) + spreadDist * compression;
           const k = dist / off;
@@ -1290,10 +1291,20 @@ function buildOrbitRing(node: any, project: Projector, color: number): THREE.Lin
   return new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat);
 }
 
+// The magnified "toytown" distance of a moon from its planet, in scene units. It is a FRACTION of the
+// parent's own orbit radius (localScale = compressScalar(parentR)), so a moon system always stays local
+// to its planet and never grows into a neighbouring planet's orbit — even for tightly log-packed inner
+// planets (the old fixed 0.45 base made Luna's ring nearly reach Venus). The log term still ranks the
+// moons by true distance so a moon system reads correctly (Io in … Callisto out).
+function moonSpread(off: number, localScale: number): number {
+  return localScale * (0.035 + 0.05 * Math.log10(1 + off / 0.0004));
+}
+
 // A moon's orbit path, in its PARENT's local scene frame. Each sample is placed with the SAME magnified
-// log-spread transform the moon's own position uses (see the satellite branch in setTime), so the ring
-// sits exactly under the moon. kHelio = the parent's radial compression factor (compressScalar(r)/r).
-function buildMoonOrbitRing(node: any, kHelio: number, compression: number, color: number): THREE.LineLoop | null {
+// spread transform the moon's own position uses (see the satellite branch in setTime), so the ring sits
+// exactly under the moon. kHelio = the parent's radial compression factor (compressScalar(r)/r);
+// localScale = the parent's orbit radius in scene units (compressScalar(r)).
+function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, compression: number, color: number): THREE.LineLoop | null {
   const period = orbitPeriodMs(node.orbit);
   if (period === 0) return null;
   const t0 = node.orbit.t0 || 0;
@@ -1302,7 +1313,7 @@ function buildMoonOrbitRing(node: any, kHelio: number, compression: number, colo
     const r = propagateState3D(node, t0 + (i / ORBIT_SAMPLES) * period).r; // moon relative to parent (AU)
     const off = Math.hypot(r.x, r.y, r.z);
     if (off < 1e-12) continue;
-    const spreadDist = 0.45 + 0.16 * Math.log10(1 + off / 0.0005);
+    const spreadDist = moonSpread(off, localScale);
     const trueDist = off * kHelio;
     const dist = trueDist * (1 - compression) + spreadDist * compression;
     const k = dist / off;
