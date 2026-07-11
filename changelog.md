@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.74-beta - 12th Jul 2026
+
+* **Starmap grid + route options.** The 2D/3D starmap grid now offers a **Hex** lattice (aligned to the map) alongside Polar and Polar+scale, and a **Glowing routes** toggle switches the emissive transit lines on or off (off = plain lines). Both starmap look controls are available for the 2D map too, since it's the same engine.
+
 ## v2.1.73-beta - 12th Jul 2026
 
 * **Lo-poly now includes the star.** Under the lo-poly render styles the central star is faceted too (and gets glowing vector edges/points in "filled + lines"), instead of being left as a smooth sphere.

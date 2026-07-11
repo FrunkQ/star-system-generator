@@ -19,6 +19,7 @@ const HOLO_TINT = 0x63b3ff;
 
 export interface SmSystem { id: string; name: string; x: number; y: number; stars: { color: string }[] }
 export interface SmRoute { fromId: string; toId: string; dashed?: boolean }
+export type GridMode = 'off' | 'plain' | 'scaled' | 'hex';
 
 // An in-scene name label: a canvas-textured sprite in the 3D scene (not a DOM overlay) so the
 // post-process filter warps/tints it in lockstep with the system stars. Mirrors scene.ts.
@@ -37,7 +38,8 @@ export interface StarmapSceneOptions {
 
 export interface StarmapController {
   setData(systems: SmSystem[], routes: SmRoute[]): void;
-  setGrid(mode: 'off' | 'plain' | 'scaled'): void;
+  setGrid(mode: GridMode): void;
+  setRouteGlow(on: boolean): void; // emissive glow on routes (vs plain lines)
   setBackground(bg: string): void;
   setFraming(angleDeg: number): void;
   setLabelsVisible(on: boolean): void;
@@ -121,8 +123,10 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   const starfield = buildStarfield();
   scene.add(starfield);
 
-  // --- Grid (LY rings) ---
-  let gridMode: 'off' | 'plain' | 'scaled' = 'plain';
+  // --- Grid (LY rings / hex lattice) ---
+  let gridMode: GridMode = 'plain';
+  let routeGlowOn = true; // emissive glow on routes (vs plain lines)
+  let lastData: { systems: SmSystem[]; routes: SmRoute[] } | null = null; // for rebuilds (route-glow toggle)
   const gridGroup = new THREE.Group();
   scene.add(gridGroup);
   let extent = 1; // world half-extent of the map (map units), for LY labels
@@ -150,6 +154,22 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     if (gridMode === 'off') return;
     const base = new THREE.Color(HOLO_TINT);
     const unit = (opts.distanceUnit || 'ly').toLowerCase() === 'diagrammatic' ? '' : (opts.distanceUnit || 'ly');
+    if (gridMode === 'hex') {
+      // A hex lattice on the ground plane, clipped to the map disc — aligned to the starmap.
+      const s = GRID_RADIUS / 7;              // hex circumradius
+      const pts: THREE.Vector3[] = [];
+      const corner = (cx: number, cz: number, k: number) => new THREE.Vector3(cx + s * Math.cos((Math.PI / 180) * (60 * k - 30)), 0.01, cz + s * Math.sin((Math.PI / 180) * (60 * k - 30)));
+      const rng = 7;
+      for (let q = -rng; q <= rng; q++) {
+        for (let r = -rng; r <= rng; r++) {
+          const cx = s * Math.sqrt(3) * (q + r / 2), cz = s * 1.5 * r;
+          if (Math.hypot(cx, cz) > GRID_RADIUS + s) continue;
+          for (let k = 0; k < 6; k++) { pts.push(corner(cx, cz, k), corner(cx, cz, k + 1)); } // 6 edges (overlaps are harmless)
+        }
+      }
+      gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.4), transparent: true, opacity: 0.4 })));
+      return;
+    }
     for (let ri = 1; ri <= 6; ri++) {
       const radius = (GRID_RADIUS / 6) * ri;
       const col = base.clone().multiplyScalar(0.45 * (1 - (ri - 1) / 8));
@@ -164,7 +184,9 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2; spokes.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(Math.cos(a) * GRID_RADIUS, 0, Math.sin(a) * GRID_RADIUS)); }
     gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(spokes), new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.22), transparent: true, opacity: 0.5 })));
   }
-  function setGrid(mode: 'off' | 'plain' | 'scaled') { if (mode === gridMode) return; gridMode = mode; rebuildGrid(); }
+  function setGrid(mode: GridMode) { if (mode === gridMode) return; gridMode = mode; rebuildGrid(); }
+  // Toggle the emissive glow on routes (vs plain lines). Rebuilds the content (routes live there).
+  function setRouteGlow(on: boolean) { if (on === routeGlowOn) return; routeGlowOn = on; if (lastData) setData(lastData.systems, lastData.routes); }
 
   // --- Filter chain (shared package) ---
   const composer = new EffectComposer(renderer);
@@ -256,6 +278,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   }
 
   function setData(systems: SmSystem[], routes: SmRoute[]) {
+    lastData = { systems, routes };
     clearContent();
     if (!systems.length) return;
     // Normalise map (x,y) into the ground plane, centred, fitting GRID_RADIUS.
@@ -293,8 +316,8 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       const a = centers.get(r.fromId), b = centers.get(r.toId);
       if (!a || !b) continue;
       (r.dashed ? routePtsDash : routePts).push(a.clone().setY(0.02), b.clone().setY(0.02));
-      // Glow band (skipped for dashed — the dash pattern reads better as a plain bright line).
-      if (!r.dashed) {
+      // Glow band (skipped when the glow is toggled off, or for dashed — the dash reads better plain).
+      if (!r.dashed && routeGlowOn) {
         const dx = b.x - a.x, dz = b.z - a.z, len = Math.hypot(dx, dz);
         if (len > 1e-4) {
           const mat = new THREE.MeshBasicMaterial({ map: routeGlow(), color: HOLO_TINT, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -307,10 +330,11 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
         }
       }
     }
-    const coreMat = () => new THREE.LineBasicMaterial({ color: HOLO_TINT, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
+    const blend = routeGlowOn ? THREE.AdditiveBlending : THREE.NormalBlending; // glow off → plain lines
+    const coreMat = () => new THREE.LineBasicMaterial({ color: HOLO_TINT, transparent: true, opacity: routeGlowOn ? 0.95 : 0.55, blending: blend, depthWrite: false });
     if (routePts.length) content.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(routePts), coreMat()));
     if (routePtsDash.length) {
-      const lm = new THREE.LineDashedMaterial({ color: HOLO_TINT, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, dashSize: 0.3, gapSize: 0.2 });
+      const lm = new THREE.LineDashedMaterial({ color: HOLO_TINT, transparent: true, opacity: routeGlowOn ? 0.9 : 0.5, blending: blend, depthWrite: false, dashSize: 0.3, gapSize: 0.2 });
       const seg = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(routePtsDash), lm);
       seg.computeLineDistances(); content.add(seg);
     }
@@ -425,7 +449,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   }
 
   rebuildGrid();
-  return { setData, setGrid, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
+  return { setData, setGrid, setRouteGlow, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
 }
 
 function buildStarfield(count = 1400, radius = 900): THREE.Points {

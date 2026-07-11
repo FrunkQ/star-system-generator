@@ -665,7 +665,7 @@
           background={activePreset.background} angleDeg={activePreset.starmapView === 'diagram2d' ? 0 : activePreset.angleDeg}
           labelSize={activePreset.labelSize}
           filter={presetFilterActive ? activePreset.filter : 'none'} filterParams={activePreset.filterParams}
-          tipTop={tipTop} tipBottom={tipBottom} tipMono={tipMono}
+          tipTop={tipTop} tipBottom={tipBottom} tipMono={tipMono} routeGlow={activePreset.starmapRouteGlow}
           selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
       {:else}
         <!-- Text list rendered to canvas + the REAL GPU filter (no CSS fake), still tap-to-select + scroll. -->

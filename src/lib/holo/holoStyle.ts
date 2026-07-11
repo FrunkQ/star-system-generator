@@ -20,7 +20,7 @@ export interface HoloStyle {
   bodyGfx?: 'sphere' | 'photo' | 'disc' | 'flat'; // 3D sphere vs flat disc (photo / procedural / flat)
   background: 'space' | 'green' | 'blue' | 'black'; // dark space, or a chroma-key colour for OBS
   bodySize: number; // 1 = readable (chunky) .. 0 = true physical scale
-  grid: 'off' | 'plain' | 'scaled'; // ground reference: none / plain polar grid / grid with AU scale labels
+  grid: 'off' | 'plain' | 'scaled' | 'hex'; // ground reference: none / polar rings / scale rings / hex (hex is starmap-only; the system view treats it as plain)
   orbitSpeed: number; // auto view-orbit: how fast the camera slowly circles the focused object (0 = static)
   labelSize?: number; // in-scene body-label font size in px (default 11)
   font?: string; // in-scene label font-family — inherited from the preset theme when set

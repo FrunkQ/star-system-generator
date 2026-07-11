@@ -10,7 +10,8 @@
   export let starmap: Starmap | null = null;
   export let accentColor = '#6aa0ff';
   export let font = 'system-ui';
-  export let grid: 'off' | 'plain' | 'scaled' = 'plain';
+  export let grid: 'off' | 'plain' | 'scaled' | 'hex' = 'plain';
+  export let routeGlow = true; // emissive glow on the transit routes
   export let background: 'space' | 'green' | 'blue' | 'black' = 'space';
   export let angleDeg = 58;
   export let labelSize = 12;
@@ -45,6 +46,7 @@
 
   function apply() {
     if (!controller) return;
+    controller.setRouteGlow(routeGlow); // before setData so the rebuild picks it up
     controller.setData(smSystems, smRoutes);
     controller.setGrid(grid);
     controller.setBackground(background);
@@ -75,7 +77,7 @@
   onDestroy(() => { ro?.disconnect(); controller?.dispose(); controller = null; });
 
   // Re-apply on any prop change (setData/setFilter short-circuit cheaply).
-  $: if (controller) { smSystems; smRoutes; grid; background; angleDeg; labelSize; font; filter; filterParams; accentColor; apply(); }
+  $: if (controller) { smSystems; smRoutes; grid; routeGlow; background; angleDeg; labelSize; font; filter; filterParams; accentColor; apply(); }
   // Rebuild the tip HUD when the notes (or their theme) change.
   $: if (controller) { tipTop; tipBottom; tipMono; accentColor; font; applyTips(); }
 </script>

@@ -92,7 +92,8 @@ export interface PlayerPreset {
   auroras: boolean; // show the emissive polar aurora shells on bodies that have them
   bodyGfx: 'sphere' | 'photo' | 'disc' | 'flat'; // 3D sphere vs a flat disc (photo / procedural / flat shape)
   background: 'space' | 'green' | 'blue' | 'black';
-  grid: 'off' | 'plain' | 'scaled';
+  grid: 'off' | 'plain' | 'scaled' | 'hex';
+  starmapRouteGlow: boolean; // 2D/3D starmap: glowing transit lines (vs plain lines)
   compression: number; // toytown spread 0..1
   bodySize: number;    // 1 readable .. 0 true scale
   beltDetail: number;  // 0..1

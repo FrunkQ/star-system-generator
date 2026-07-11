@@ -59,7 +59,7 @@ export interface HoloController {
   setAuroras(on: boolean): void; // show/hide the emissive polar aurora shells
   setBodyGfx(mode: BodyGfx): void; // 3D sphere vs flat disc (photo / procedural / flat)
   setBodySize(v: number): void; // 1 readable .. 0 true physical scale
-  setGrid(mode: 'off' | 'plain' | 'scaled'): void; // ground reference grid
+  setGrid(mode: 'off' | 'plain' | 'scaled' | 'hex'): void; // ground reference grid
   setOrbitSpeed(v: number): void; // auto view-orbit turntable speed 0..1 (0 = static)
   setLabelColor(hex: string | null): void; // in-scene label colour (null = default); matched to CRT phosphor
   setLabelSize(px: number): void; // in-scene label font size
@@ -235,7 +235,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // Ground reference grid: 'off' | 'plain' (even polar rings) | 'scaled' (rings at round AU radii,
   // labelled). 'scaled' depends on the live radial map (compression + rMax), so it rebuilds with the
   // system / spread. Built after compressScalar/rMax are defined (rebuildGrid called there + on change).
-  let gridMode: 'off' | 'plain' | 'scaled' = 'plain';
+  let gridMode: 'off' | 'plain' | 'scaled' | 'hex' = 'plain';
   const gridGroup = new THREE.Group();
   scene.add(gridGroup);
 
@@ -586,7 +586,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(spokes), spokeMat));
   }
 
-  function setGrid(mode: 'off' | 'plain' | 'scaled') {
+  function setGrid(mode: 'off' | 'plain' | 'scaled' | 'hex') {
     if (mode === gridMode) return;
     gridMode = mode;
     rebuildGrid();

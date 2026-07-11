@@ -210,15 +210,20 @@
                   <option value="holo3d">3D map</option>
                 </select>
               </label>
-              {#if draft.starmapView === 'holo3d'}
+              <!-- 2D and 3D starmap are the same engine (2D = overhead), so both get the look controls. -->
+              {#if draft.starmapView === 'holo3d' || draft.starmapView === 'diagram2d'}
                 <label>Grid
                   <select bind:value={draft.grid}>
                     <option value="off">Off</option>
-                    <option value="plain">Grid</option>
-                    <option value="scaled">Grid + scale</option>
+                    <option value="plain">Polar</option>
+                    <option value="scaled">Polar + scale</option>
+                    <option value="hex">Hex</option>
                   </select>
                 </label>
-                <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} /></label>
+                <label class="chk"><input type="checkbox" bind:checked={draft.starmapRouteGlow} /> Glowing routes</label>
+                {#if draft.starmapView === 'holo3d'}
+                  <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} /></label>
+                {/if}
                 <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
               {/if}
             {:else}
@@ -383,7 +388,7 @@
               <div class="ph">No starmap loaded — open or create a campaign map to preview this stage.</div>
             {:else if draft.starmapView === 'holo3d'}
               <!-- 3D map runs the exact shader itself; DOM views get the CSS approximation. -->
-              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} background={draft.background} angleDeg={draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
+              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} routeGlow={draft.starmapRouteGlow} background={draft.background} angleDeg={draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
             {:else}
               <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
                 {#if draft.starmapView === 'list'}
