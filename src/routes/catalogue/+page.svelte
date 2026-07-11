@@ -73,9 +73,11 @@
   import { cssFilterApprox } from '$lib/player/cssFilterApprox';
   import FilterFrame from '$lib/components/FilterFrame.svelte';
   import GraphicLayer from '$lib/components/GraphicLayer.svelte';
-  import StarmapListView from '$lib/starmap/StarmapListView.svelte';
   import Starmap2DView from '$lib/starmap/Starmap2DView.svelte';
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
+  import FilteredListView from '$lib/components/FilteredListView.svelte';
+  import { systemVisualStars } from '$lib/starmap/systemStars';
+  import type { ListModel } from '$lib/catalogue/listCanvas';
   let holoStyle: HoloStyle = { ...DEFAULT_STYLE };
   // Momentary GM overrides — driven by the GM's Player Views modal via SYNC_PRESET (never saved).
   let holoLabelsOn = true;
@@ -362,6 +364,17 @@
   $: tipBottom = guideTipsMode === 'bottom' || guideTipsMode === 'both' ? bottomNote : '';
   $: tipsOn = !!(tipTop || tipBottom);
   $: tipMono = activePreset?.bodyStyle === 'white';
+  // Starmap "list" module, rendered to canvas through the real filter (FilteredListView).
+  $: starmapListModel = {
+    heading: starmap?.name || 'Known Space',
+    rows: (starmap?.systems ?? []).map((node) => ({
+      id: node.id,
+      title: node.name,
+      sub: systemSummary(node),
+      dots: systemVisualStars(node.system).map((s) => s.color),
+      selectable: true
+    }))
+  } as ListModel;
   $: presetAssets = [...BUILTIN_ASSETS, ...(starmap?.playerAssets ?? [])];
   // A DOM-layer filter (cover / list / 2D) — the holo3d modules run the real GLSL shader themselves.
   $: presetFilterActive = !!activePreset && activePreset.filter !== 'none' && !holoFilterBypass;
@@ -655,11 +668,11 @@
           tipTop={tipTop} tipBottom={tipBottom} tipMono={tipMono}
           selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
       {:else}
-        <!-- Text list stays DOM (approx filter); it's a static readout, not a picture to warp. -->
-        <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
-          <StarmapListView {starmap} accentColor={presetAccent} font={presetFont}
-            selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
-        </FilterFrame>
+        <!-- Text list rendered to canvas + the REAL GPU filter (no CSS fake), still tap-to-select + scroll. -->
+        <FilteredListView model={starmapListModel} accent={presetAccent} font={presetFont} mono={tipMono}
+          filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
+          tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null}
+          selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
       {/if}
       {#if activePreset.starmapOverlay}
         <div class="overlay-wrap"><FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>

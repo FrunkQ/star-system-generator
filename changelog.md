@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.69-beta - 12th Jul 2026
+
+* **The starmap text-list now runs through the real filter, not a CSS fake.** The "list" starmap module is drawn to a canvas and passed through the same GPU shader as everything else, so the CRT/night-vision/thermal look is genuine and matched to the other stages — and it stays interactive: tap a system to enter it (the tap is warp-corrected so it hits the right row even under barrel distortion or picture-roll), drag or scroll-wheel to scroll, and guide tips ride along inside the filter. (The system "list" view is a richer interactive browser rather than a simple list, so it keeps its own treatment for now.)
+
 ## v2.1.68-beta - 11th Jul 2026
 
 * **Surface constructs now ride the planet's surface.** A construct sitting at (or below) its parent's physical radius — a surface installation like the Ascension Heavy Lifter, as opposed to a genuine low orbiter like the ISS — is now glued to a fixed point on the rendered surface and turns with the planet's own spin, so it slides over the surface at the right rate instead of drifting on its own orbit. It also sits exactly on the rendered surface at every zoom, including true scale, fixing the mis-placement when magnified right in.

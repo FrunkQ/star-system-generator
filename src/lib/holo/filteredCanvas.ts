@@ -13,6 +13,9 @@ import type { FilterParamValues } from './filters/schema';
 export interface FilteredCanvasController {
   setSource(src: HTMLCanvasElement): void;
   setFilter(id: string, params?: FilterParamValues): void;
+  // Forward-map a screen-space uv (y-up, 0..1) through the SAME barrel/roll/skew the shader applies,
+  // giving the SOURCE uv the eye sees there — so a tap on a warped, rolling list still hits the right row.
+  warpPoint(su: number, sv: number): [number, number];
   resize(w: number, h: number): void;
   dispose(): void;
 }
@@ -63,6 +66,18 @@ export function createFilteredCanvas(canvas: HTMLCanvasElement): FilteredCanvasC
     if (nextId === filterId && filterId === 'none') return;
     filterId = nextId; filterParams = next; rebuildFilter();
   }
+  function warpPoint(su: number, sv: number): [number, number] {
+    if (!filterPass) return [su, sv];
+    const U = filterPass.uniforms as any;
+    const warp = U.uCrtWarp?.value ?? 0, roll = U.uPictureRoll?.value ?? 0, skew = U.uSkew?.value ?? 0, t = U.time?.value ?? 0;
+    if (!warp && !roll && !skew) return [su, sv];
+    const cx = su * 2 - 1, cy = sv * 2 - 1, d = cx * cx + cy * cy;
+    let u = (cx * (1 + warp * d) + 1) / 2;
+    let v = (cy * (1 + warp * d) + 1) / 2;
+    v = v + t * roll; v -= Math.floor(v); // fract(v + time*roll)
+    u += (v - 0.5) * skew;
+    return [u, v];
+  }
   function resize(w: number, h: number) {
     if (w <= 0 || h <= 0) return;
     renderer.setSize(w, h, false);
@@ -87,5 +102,5 @@ export function createFilteredCanvas(canvas: HTMLCanvasElement): FilteredCanvasC
     composer.dispose(); renderer.dispose();
   }
 
-  return { setSource, setFilter, resize, dispose };
+  return { setSource, setFilter, warpPoint, resize, dispose };
 }
