@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.65-beta - 11th Jul 2026
+
+* **Zoom works at true scale.** Focusing a body now frames it by its actual rendered size and relaxes the minimum zoom to match, so a tiny true-scale world can be brought up large on screen just like an expanded one — no need to know the size first.
+* **"White" colour is now "Monochrome (for tinting filters)"** in the editor, making its purpose clear (draw the bodies neutral so a filter colours them).
+
 ## v2.1.64-beta - 11th Jul 2026
 
 * **Surface and low-orbit constructs now sit where they should.** Ships/stations orbiting a planet are placed just outside the planet's rendered size and ramp outward by true distance — so a surface or low-orbit construct hugs a true-scale planet instead of being flung out near the moons. (Same fix applies to moons.)

@@ -216,7 +216,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   controls.enablePan = false;
-  controls.minDistance = 0.05; // let the viewer zoom right in on a body even at true scale (tiny bodies)
+  const DEFAULT_MIN_DIST = 0.05;
+  controls.minDistance = DEFAULT_MIN_DIST; // overview floor; focusBody tightens it to the focused body's size
   controls.maxDistance = GRID_RADIUS * 6;
   controls.minPolarAngle = Math.PI * 0.06; // don't go fully top-down
   controls.maxPolarAngle = Math.PI * 0.49; // or under the table
@@ -656,10 +657,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }, { signal: pointer.signal });
 
   function frameDistance(b: BodyVisual): number {
-    if (b.isConstruct) return 1.6; // icons have no radius; frame them close
-    const geo = (b.mesh as any).geometry;
-    const rad = geo?.parameters?.radius ?? 0.6;
-    return Math.max(2, rad * 9);
+    if (b.isConstruct) return Math.max(controls.minDistance * 3, 0.5); // icons have no radius; frame close
+    const rad = b.radiusScene ?? 0.2; // rendered radius (scales with the body-size dial), NOT a fixed floor
+    return Math.max(controls.minDistance * 1.1, rad * 3.4); // fill a good chunk of the view at any scale
   }
 
   // Constructs render at fixed SCREEN size (sizeAttenuation: false): full-size when the focus rule
@@ -726,6 +726,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function focusBody(id: string | null) {
     if (id === focusedId) return;
     focusedId = id;
+    // Tighten the min-zoom to the focused body's rendered size so a tiny true-scale world can still be
+    // brought up large on screen — the viewer doesn't need to know the size to get the right zoom.
+    const rad = id ? (bodies.find((x) => x.id === id)?.radiusScene ?? 0) : 0;
+    controls.minDistance = id ? Math.max(0.004, Math.min(DEFAULT_MIN_DIST, rad * 1.15)) : DEFAULT_MIN_DIST;
     focusDrive = id ? 48 : 0; // ~0.8 s of easing toward the framed shot
     visibleSet = getVisibleNodeIds(currentSystem, focusedId);
   }
@@ -733,6 +737,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function resetView() {
     focusedId = null;
     focusDrive = 0;
+    controls.minDistance = DEFAULT_MIN_DIST;
     camera.position.copy(HOME_CAM);
     controls.target.set(0, 0, 0);
     visibleSet = getVisibleNodeIds(currentSystem, null);

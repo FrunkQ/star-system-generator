@@ -246,7 +246,7 @@
                 <select bind:value={draft.bodyStyle}>
                   <option value="textured">True colour</option>
                   <option value="flat">Flat colour</option>
-                  <option value="white">White</option>
+                  <option value="white">Monochrome (for tinting filters)</option>
                 </select>
               </label>
               <label>Background
