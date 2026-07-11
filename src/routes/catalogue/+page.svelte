@@ -12,6 +12,8 @@
   import CatalogueBrowser from '$lib/catalogue/CatalogueBrowser.svelte';
   import { bodyFacts } from '$lib/catalogue/bodyFacts';
   import { drawHud } from '$lib/catalogue/infoCard';
+  import { drawCover } from '$lib/catalogue/coverCard';
+  import FilteredCanvas from '$lib/components/FilteredCanvas.svelte';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import HoloView from '$lib/holo/HoloView.svelte';
   import BodyPicker from '$lib/components/BodyPicker.svelte';
@@ -404,6 +406,20 @@
     : theme.tier;
   $: system2dOverhead = !!activePreset && activePreset.systemView === 'diagram2d';
   $: systemHoloStyle = system2dOverhead ? { ...holoStyle, angleDeg: 0, unlit: true, whole: true } : holoStyle;
+  // Cover through the REAL filter: draw it to a canvas + a FilteredCanvas surface (the cover has no 3D
+  // scene behind it, so it gets its own GPU-filtered quad instead of a CSS approximation).
+  let coverW = 0, coverH = 0;
+  let coverGraphicImg: HTMLImageElement | null = null;
+  $: coverGraphicAsset = activePreset?.cover?.graphic ? presetAssets.find((a) => a.id === activePreset.cover.graphic!.assetId) : null;
+  $: if (browser && coverGraphicAsset) {
+    const im = new Image(); im.onload = () => { coverGraphicImg = im; }; im.src = coverGraphicAsset.dataUrl;
+  } else { coverGraphicImg = null; }
+  $: coverFiltered = presetFilterActive && coverW > 0;
+  $: coverCanvas = coverFiltered && activePreset
+    ? drawCover({ viewW: coverW, viewH: coverH, cover: activePreset.cover, accent: activePreset.accentColor, font: presetFont, companyName: activePreset.companyName, footerText: activePreset.footerText,
+        graphic: coverGraphicImg && activePreset.cover.graphic ? { img: coverGraphicImg, placement: activePreset.cover.graphic } : null })
+    : null;
+
   // Cover: show once per preset until the player taps through.
   let coverDismissed = false;
   let coverForId: string | null = null;
@@ -560,11 +576,15 @@
   {/if}
   {#if showPresetCover && activePreset}
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-    <div class="preset-cover" role="button" tabindex="0" on:click={() => (coverDismissed = true)} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') coverDismissed = true; }}>
-      <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
+    <div class="preset-cover" role="button" tabindex="0" bind:clientWidth={coverW} bind:clientHeight={coverH}
+      on:click={() => (coverDismissed = true)} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') coverDismissed = true; }}>
+      {#if coverCanvas}
+        <!-- Filtered: the cover is drawn to a canvas and run through the REAL GPU shader (warp/roll/tint). -->
+        <FilteredCanvas source={coverCanvas} filterId={presetFilterId} filterParams={presetFilterParams ?? {}} />
+      {:else}
         <CoverView cover={activePreset.cover} accentColor={activePreset.accentColor} font={presetFont}
           companyName={activePreset.companyName} footerText={activePreset.footerText} assets={presetAssets} />
-      </FilterFrame>
+      {/if}
       <span class="preset-cover-hint">tap to enter</span>
     </div>
   {/if}

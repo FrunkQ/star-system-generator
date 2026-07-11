@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.63-beta - 11th Jul 2026
+
+* **The cover screen is now filtered for real too.** It's drawn to a canvas and run through the actual GPU shader on its own surface, so it warps, rolls and tints exactly like the rest of the screen — the cover graphic included. The only player-view surfaces still using the lighter CSS approximation are the plain text-list readouts.
+
 ## v2.1.62-beta - 11th Jul 2026
 
 * **The 2D map is now a real top-down 3D view, filtered for real.** Both the 2D system map and the 2D starmap are now drawn by the holo renderer locked overhead (flat/unlit), instead of a separate flat diagram under a CSS approximation. So they go through the actual GPU filter (warp, roll, tint) and share the 3D picking — one renderer, not two.
