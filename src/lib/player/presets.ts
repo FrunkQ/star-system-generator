@@ -65,7 +65,8 @@ export const DEFAULT_PRESET: PlayerPreset = {
   lockOverhead: false,
   whole: false,
   labelSize: 11,
-  inspectorWidth: 340
+  inspectorWidth: 340,
+  infoFontScale: 1
 };
 
 function preset(p: Partial<PlayerPreset> & { id: string; name: string; description: string }): PlayerPreset {

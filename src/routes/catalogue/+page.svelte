@@ -11,6 +11,7 @@
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import CatalogueBrowser from '$lib/catalogue/CatalogueBrowser.svelte';
   import { bodyFacts } from '$lib/catalogue/bodyFacts';
+  import { drawInfoCard } from '$lib/catalogue/infoCard';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import HoloView from '$lib/holo/HoloView.svelte';
   import BodyPicker from '$lib/components/BodyPicker.svelte';
@@ -360,6 +361,26 @@
   // The body info block is DOM over the holo canvas, so the GLSL shader can't reach it. Give it the
   // matched CSS approximation so it reads as part of the same filtered surface (static — just a style).
   $: inspFx = presetFilterActive ? cssFilterApprox(presetFilterId, presetFilterParams) : null;
+  $: infoFontScale = activePreset?.infoFontScale ?? 1;
+  // HOLO info block goes through the REAL GPU filter: draw the (static) card to a canvas and composite
+  // it into the holo render as a HUD quad, so it warps/rolls/tints with the shader. Only when the holo
+  // view is filtered — otherwise the normal DOM inspector shows (no filter needed). The DOM inspector is
+  // kept underneath (invisible) purely for its buttons.
+  let hudW = 0, hudH = 0;
+  // Desktop only (>=720): on phones the info panel is a bottom sheet, so the DOM inspector keeps its own layout.
+  $: hudActive = effectiveSystemTier === 'holo' && !!selectedBody && presetFilterActive && hudW >= 720;
+  $: hudMx = Math.round(hudW * 0.035);
+  $: hudMy = Math.round(hudH * 0.045);
+  $: hudCanvas = hudActive && selectedBody
+    ? drawInfoCard({
+        viewW: hudW, viewH: hudH, panelW: inspectorWidth,
+        title: selectedBody.name,
+        sub: (selectedBody.roleHint || 'body'),
+        facts: bodyFacts(selectedBody, units, tempUnit),
+        description: selectedBody.description || '',
+        accent: presetAccent, font: presetFont, fontScale: infoFontScale
+      })
+    : null;
   // The system level reuses the existing console/holo/doc stages; pick which by the preset's systemView.
   $: effectiveSystemTier = activePreset
     ? (activePreset.systemView === 'holo3d' ? 'holo' : activePreset.systemView === 'diagram2d' ? 'interactive' : 'static')
@@ -635,10 +656,10 @@
     </div>
   {:else if effectiveSystemTier === 'interactive' || effectiveSystemTier === 'holo'}
     <!-- Hi-tech: live orbital map (2D console or 3D holo table) + tap-to-inspect -->
-    <div class="console-stage" style={activePreset ? `font-family:${presetFont}` : ''}>
+    <div class="console-stage" bind:clientWidth={hudW} bind:clientHeight={hudH} style={activePreset ? `font-family:${presetFont}` : ''}>
       {#if rulePack && displaySystem}
         {#if effectiveSystemTier === 'holo'}
-          <HoloView system={displaySystem} {currentTime} {focusedBodyId} style={holoStyle} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} on:focus={handleFocus} />
+          <HoloView system={displaySystem} {currentTime} {focusedBodyId} style={holoStyle} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} on:focus={handleFocus} />
         {:else}
           <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
             <SystemVisualizer
@@ -686,12 +707,12 @@
         {/if}
       </div>
       {#if selectedBody}
-        <aside class="inspector" class:expanded={bodyExpanded} class:filtered={!!inspFx}
-          style="--insp-w:{inspectorWidth}px; filter:{inspFx ? inspFx.containerFilter : 'none'}; {activePreset ? `font-family:${presetFont};` : ''}">
+        <aside class="inspector" class:expanded={bodyExpanded} class:filtered={!!inspFx && !hudActive} class:hud-hidden={hudActive}
+          style="--insp-w:{inspectorWidth}px; font-size:{Math.round(13 * infoFontScale)}px; filter:{inspFx && !hudActive ? inspFx.containerFilter : 'none'}; {activePreset ? `font-family:${presetFont};` : ''} {hudActive ? `right:${hudMx}px; top:${hudMy}px; bottom:${hudMy}px;` : ''}">
           <!-- The info block is DOM over the holo canvas, so the GLSL filter can't reach it; the CSS
                approximation (tint + scanlines + the container filter above) makes it match. The tint sits
                ABOVE the content with mix-blend so it recolours the text + image, not just the backdrop. -->
-          {#if inspFx}
+          {#if inspFx && !hudActive}
             {#if inspFx.tint}<div class="insp-fx-tint" style="background:{inspFx.tint}; opacity:{Math.min(0.9, inspFx.tintOpacity)}"></div>{/if}
             {#if inspFx.scanlineIntensity > 0}<div class="insp-fx-scan" style="opacity:{inspFx.scanlineIntensity * 0.6}; background-size:100% {inspFx.scanlineWidth}px"></div>{/if}
           {/if}
@@ -954,6 +975,9 @@
   .preset-cover { position: absolute; inset: 0; z-index: 60; cursor: pointer; background: #05070c; }
   .preset-cover-hint { position: absolute; bottom: 6%; left: 0; right: 0; text-align: center; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; color: #cfd6e4; pointer-events: none; }
   /* Filter approximation laid over the body info block so it reads as part of the filtered surface. */
+  /* The holo view draws the info card INTO the filtered render (a HUD quad), so the DOM panel is kept
+     only for its buttons: invisible but still interactive (close / resize / mobile toggle). */
+  .inspector.hud-hidden { opacity: 0; }
   .insp-fx-tint { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: color; z-index: 5; }
   .insp-fx-scan { position: absolute; inset: 0; pointer-events: none; z-index: 5; background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,0.55) 0, rgba(0,0,0,0.55) 1px, transparent 1px, transparent 100%); }
   /* Object picker left-aligned (not centred) — matches the projector, leaves the centre clear. */

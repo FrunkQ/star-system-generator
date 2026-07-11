@@ -21,6 +21,9 @@
   export let labelsVisible: boolean = true;
   export let filterBypass: boolean = false;
   export let orbitPaused: boolean = false; // momentarily stop the auto view-orbit turntable
+  // A pre-rendered static info-card canvas composited INTO the scene so the GPU filter warps/tints it
+  // like the 3D (no CSS approximation). null = no HUD.
+  export let hudCanvas: HTMLCanvasElement | null = null;
 
   function applyStyle(s: HoloStyle) {
     // Filter can be momentarily bypassed without changing the saved style.
@@ -93,6 +96,7 @@
   $: controller?.setTime(currentTime);
   $: controller?.focusBody(focusedBodyId);
   $: if (controller) applyStyle(style);
+  $: controller?.setHud(hudCanvas);
   // Re-apply when the momentary overrides change (style is unchanged, so these need their own trigger).
   $: if (controller) { labelsVisible; filterBypass; orbitPaused; applyStyle(style); }
 </script>

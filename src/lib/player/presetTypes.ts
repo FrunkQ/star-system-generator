@@ -98,4 +98,5 @@ export interface PlayerPreset {
   whole: boolean;        // frame the whole system vs the focused body
   labelSize: number;     // in-scene body-label font size (px); the font is the theme `font`
   inspectorWidth: number; // desktop body info-panel width in px (mobile ignores it and does its own layout)
+  infoFontScale: number;  // body info-panel font-size multiplier (~0.8..1.6)
 }

@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.60-beta - 11th Jul 2026
+
+* **The body info block is now part of the actual filtered picture (3D view).** Instead of a CSS approximation, the info panel is drawn once to a canvas and composited into the holo render itself, so it warps, picture-rolls and tints through the *real* GPU shader exactly like the rest of the screen — no fake. It's a static, once-per-selection draw, so it's cheap. (The panel sits inside a small bezel margin so the CRT edge-warp doesn't wrap it.)
+* **Info-panel font-size slider** added to the 3D system settings, so you can scale the readout text.
+
+
+
 ## v2.1.59-beta - 11th Jul 2026
 
 * **The body info block now clearly takes the visual filter.** Its tint was too weak to reach the text, so only the image looked filtered — the tint now recolours the whole panel, so a selected body's data reads as part of the CRT / night-vision / thermal screen.

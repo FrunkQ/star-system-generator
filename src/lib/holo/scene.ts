@@ -60,6 +60,7 @@ export interface HoloController {
   setLabelSize(px: number): void; // in-scene label font size
   setLabelFont(font: string | null): void; // in-scene label font-family (theme font)
   setLabelsVisible(on: boolean): void; // momentary show/hide of in-scene labels (not saved)
+  setHud(canvas: HTMLCanvasElement | null): void; // static info-card overlay, composited INTO the filter
   // GPU post-processing filter (CRT, night-vision, thermal, …) from the ported Mappadux package.
   setFilter(id: string, params?: FilterParamValues): void;
   resetView(): void;
@@ -208,6 +209,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 2000);
   const HOME_CAM = new THREE.Vector3(0, GRID_RADIUS * 1.1, GRID_RADIUS * 1.4);
   camera.position.copy(HOME_CAM);
+  scene.add(camera); // so camera-attached screen overlays (the HUD info card) render via RenderPass
 
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true;
@@ -379,6 +381,44 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function setLabelSize(px: number) { labelSizePx = Math.max(6, Math.min(40, px)); } // applied via sprite scale
   function setLabelFont(font: string | null) { labelFontFamily = font && font.trim() ? font : 'ui-monospace, SFMono-Regular, Menlo, monospace'; redrawAllLabels(); }
   function setLabelsVisible(on: boolean) { labelsVisible = on; }
+
+  // HUD: a static, pre-rendered canvas (the body info card) shown as a full-screen quad attached to the
+  // camera, so it is part of the SAME render the post-process filter processes — it warps, rolls and
+  // tints with the GPU shader exactly like the 3D, no CSS fake needed. The canvas draws the panel where
+  // it wants (transparent elsewhere); we only re-upload when it changes.
+  let hudMesh: THREE.Mesh | null = null;
+  let hudTex: THREE.CanvasTexture | null = null;
+  function sizeHud() {
+    if (!hudMesh) return;
+    const d = 1;
+    const h = 2 * d * Math.tan((camera.fov * Math.PI) / 360);
+    hudMesh.scale.set(h * camera.aspect, h, 1); // cover the frustum at distance d
+  }
+  function setHud(canvas: HTMLCanvasElement | null) {
+    if (!canvas) {
+      if (hudMesh) {
+        camera.remove(hudMesh);
+        hudTex?.dispose();
+        (hudMesh.material as THREE.Material).dispose();
+        hudMesh.geometry.dispose();
+        hudMesh = null; hudTex = null;
+      }
+      return;
+    }
+    if (!hudMesh) {
+      hudTex = new THREE.CanvasTexture(canvas);
+      hudTex.colorSpace = THREE.SRGBColorSpace;
+      const mat = new THREE.MeshBasicMaterial({ map: hudTex, transparent: true, depthTest: false, depthWrite: false });
+      hudMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+      hudMesh.renderOrder = 30; // above the 3D + labels, still before the post filter
+      hudMesh.position.set(0, 0, -1); // 1 unit in front of the camera
+      camera.add(hudMesh);
+    } else {
+      (hudMesh.material as THREE.MeshBasicMaterial).map!.image = canvas;
+    }
+    hudTex!.needsUpdate = true;
+    sizeHud();
+  }
 
   // Build a label sprite for a body and add it to the scene (so the filter processes it). The text is
   // drawn to a canvas at high resolution; on-screen size is set each frame from labelSizePx.
@@ -1186,6 +1226,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     filterResolution.set(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    sizeHud();
   }
 
   function dispose() {
@@ -1203,7 +1244,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----
