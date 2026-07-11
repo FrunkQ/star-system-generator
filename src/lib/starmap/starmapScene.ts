@@ -66,6 +66,26 @@ function starGlow(): THREE.Texture {
   return glowTex;
 }
 
+// A soft cross-section band (bright core row fading to transparent edges) for an emissively-glowing
+// route: mapped onto a flat ground quad it reads as a glowing filament between two systems.
+let routeTex: THREE.Texture | null = null;
+function routeGlow(): THREE.Texture {
+  if (routeTex) return routeTex;
+  const h = 64, c = document.createElement('canvas'); c.width = 4; c.height = h;
+  const ctx = c.getContext('2d')!;
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, 'rgba(255,255,255,0)');
+  g.addColorStop(0.42, 'rgba(255,255,255,0.28)');
+  g.addColorStop(0.5, 'rgba(255,255,255,1)');
+  g.addColorStop(0.58, 'rgba(255,255,255,0.28)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 4, h);
+  routeTex = new THREE.CanvasTexture(c); routeTex.colorSpace = THREE.SRGBColorSpace;
+  return routeTex;
+}
+// Flat unit quad lying in the ground plane, length along local X, width along local Z (glow tex across Z).
+const ROUTE_QUAD = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+
 export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapSceneOptions = {}): StarmapController {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setClearColor(0x05070c, 1);
@@ -264,17 +284,33 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       });
       placed.push({ id: sys.id, name: sys.name, center, label: makeLabelSprite(sys.name) });
     }
-    // Routes as plane lines.
+    // Routes: an emissively-GLOWING filament — a soft additive ground-quad halo + a bright additive
+    // core line — so the link reads like a lit hyperlane in both the 2D (overhead) and 3D starmap.
     const routePts: THREE.Vector3[] = [];
     const routePtsDash: THREE.Vector3[] = [];
+    const glowW = GRID_RADIUS * 0.02; // filament half-width in scene units
     for (const r of routes) {
       const a = centers.get(r.fromId), b = centers.get(r.toId);
       if (!a || !b) continue;
-      (r.dashed ? routePtsDash : routePts).push(a.clone().setY(0.01), b.clone().setY(0.01));
+      (r.dashed ? routePtsDash : routePts).push(a.clone().setY(0.02), b.clone().setY(0.02));
+      // Glow band (skipped for dashed — the dash pattern reads better as a plain bright line).
+      if (!r.dashed) {
+        const dx = b.x - a.x, dz = b.z - a.z, len = Math.hypot(dx, dz);
+        if (len > 1e-4) {
+          const mat = new THREE.MeshBasicMaterial({ map: routeGlow(), color: HOLO_TINT, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false });
+          const quad = new THREE.Mesh(ROUTE_QUAD.clone(), mat); // clone: clearContent disposes per-route geometry
+          quad.position.set((a.x + b.x) / 2, 0.015, (a.z + b.z) / 2);
+          quad.rotation.y = -Math.atan2(dz, dx);
+          quad.scale.set(len, 1, glowW * 2);
+          quad.renderOrder = 1;
+          content.add(quad);
+        }
+      }
     }
-    if (routePts.length) content.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(routePts), new THREE.LineBasicMaterial({ color: HOLO_TINT, transparent: true, opacity: 0.5 })));
+    const coreMat = () => new THREE.LineBasicMaterial({ color: HOLO_TINT, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
+    if (routePts.length) content.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(routePts), coreMat()));
     if (routePtsDash.length) {
-      const lm = new THREE.LineDashedMaterial({ color: HOLO_TINT, transparent: true, opacity: 0.5, dashSize: 0.3, gapSize: 0.2 });
+      const lm = new THREE.LineDashedMaterial({ color: HOLO_TINT, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, dashSize: 0.3, gapSize: 0.2 });
       const seg = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(routePtsDash), lm);
       seg.computeLineDistances(); content.add(seg);
     }
