@@ -45,6 +45,7 @@ export interface StarmapController {
   setLabelSize(px: number): void;
   setLabelFont(font: string | null): void;
   setFilter(id: string, params?: FilterParamValues): void;
+  setHud(canvas: HTMLCanvasElement | null): void; // static overlay bitmap composited INTO the filter
   resize(w: number, h: number): void;
   dispose(): void;
 }
@@ -74,6 +75,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 3000);
   const HOME = new THREE.Vector3(0, GRID_RADIUS * 1.15, GRID_RADIUS * 1.5);
   camera.position.copy(HOME);
+  scene.add(camera); // so a camera-attached HUD quad (the guide-tip banners) renders via RenderPass → filter
 
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true;
@@ -336,10 +338,48 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     viewW = w; viewH = h;
     renderer.setSize(w, h, false); composer.setSize(w, h); filterRes.set(w, h);
     camera.aspect = w / h; camera.updateProjectionMatrix();
+    sizeHud();
+  }
+
+  // A camera-attached full-frame quad carrying a static overlay bitmap (the guide-tip banners), so it
+  // is part of the SAME render the post filter processes — it warps/rolls/tints with the shader.
+  let hudMesh: THREE.Mesh | null = null;
+  let hudTex: THREE.CanvasTexture | null = null;
+  function sizeHud() {
+    if (!hudMesh) return;
+    const d = 1;
+    const h = 2 * d * Math.tan((camera.fov * Math.PI) / 360);
+    hudMesh.scale.set(h * camera.aspect, h, 1);
+  }
+  function setHud(hud: HTMLCanvasElement | null) {
+    if (!hud) {
+      if (hudMesh) {
+        camera.remove(hudMesh);
+        hudTex?.dispose();
+        (hudMesh.material as THREE.Material).dispose();
+        hudMesh.geometry.dispose();
+        hudMesh = null; hudTex = null;
+      }
+      return;
+    }
+    if (!hudMesh) {
+      hudTex = new THREE.CanvasTexture(hud);
+      hudTex.colorSpace = THREE.SRGBColorSpace;
+      const mat = new THREE.MeshBasicMaterial({ map: hudTex, transparent: true, depthTest: false, depthWrite: false });
+      hudMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+      hudMesh.renderOrder = 30;
+      hudMesh.position.set(0, 0, -1);
+      camera.add(hudMesh);
+    } else {
+      (hudMesh.material as THREE.MeshBasicMaterial).map!.image = hud;
+    }
+    hudTex!.needsUpdate = true;
+    sizeHud();
   }
 
   function dispose() {
     disposed = true; cancelAnimationFrame(raf);
+    setHud(null);
     canvas.removeEventListener('pointerdown', onPointerDown);
     canvas.removeEventListener('pointerup', onPointerUp);
     controls.dispose(); clearContent(); clearGroup(gridGroup);
@@ -349,7 +389,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   }
 
   rebuildGrid();
-  return { setData, setGrid, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, resize, dispose };
+  return { setData, setGrid, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
 }
 
 function buildStarfield(count = 1400, radius = 900): THREE.Points {

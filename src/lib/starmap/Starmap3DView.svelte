@@ -5,6 +5,7 @@
   import type { Starmap } from '$lib/types';
   import type { StarmapController, SmSystem, SmRoute } from './starmapScene';
   import { systemVisualStars } from './systemStars';
+  import { drawHud } from '$lib/catalogue/infoCard';
 
   export let starmap: Starmap | null = null;
   export let accentColor = '#6aa0ff';
@@ -16,6 +17,9 @@
   export let filter = 'none';
   export let filterParams: Record<string, number | boolean | string> | undefined = undefined;
   export let selectable = false; // live view: tapping a system fires `select`
+  export let tipTop = '';    // "The Guide" margin note for the top edge ('' = none)
+  export let tipBottom = ''; // …and the bottom edge — drawn INTO the filtered render as a HUD quad
+  export let tipMono = false;
 
   const dispatch = createEventDispatcher<{ select: string }>();
 
@@ -23,6 +27,15 @@
   let canvas: HTMLCanvasElement;
   let controller: StarmapController | null = null;
   let ro: ResizeObserver | null = null;
+  let vw = 0, vh = 0;
+
+  // Build (or clear) the guide-tip banner HUD — a static overlay bitmap composited into the filter.
+  function applyTips() {
+    if (!controller) return;
+    if ((!tipTop && !tipBottom) || vw <= 0 || vh <= 0) { controller.setHud(null); return; }
+    const hud = drawHud({ viewW: vw, viewH: vh, tips: { top: tipTop, bottom: tipBottom, accent: accentColor, font, mono: tipMono } });
+    controller.setHud(hud);
+  }
 
   $: smSystems = ((starmap?.systems ?? []) as any[]).map<SmSystem>((s) => ({
     id: s.id, name: s.name, x: s.position?.x ?? 0, y: s.position?.y ?? 0,
@@ -51,8 +64,10 @@
       controller = createStarmapScene(canvas, { distanceUnit: starmap?.distanceUnit, onSelect: selectable ? (id) => dispatch('select', id) : undefined });
       apply();
       const r = container.getBoundingClientRect();
+      vw = r.width; vh = r.height;
       controller.resize(r.width, r.height);
-      ro = new ResizeObserver((e) => { const cr = e[0]?.contentRect; if (cr) controller?.resize(cr.width, cr.height); });
+      applyTips();
+      ro = new ResizeObserver((e) => { const cr = e[0]?.contentRect; if (cr) { controller?.resize(cr.width, cr.height); vw = cr.width; vh = cr.height; applyTips(); } });
       ro.observe(container);
     })();
     return () => { cancelled = true; };
@@ -61,6 +76,8 @@
 
   // Re-apply on any prop change (setData/setFilter short-circuit cheaply).
   $: if (controller) { smSystems; smRoutes; grid; background; angleDeg; labelSize; font; filter; filterParams; accentColor; apply(); }
+  // Rebuild the tip HUD when the notes (or their theme) change.
+  $: if (controller) { tipTop; tipBottom; tipMono; accentColor; font; applyTips(); }
 </script>
 
 <div class="sm3d-root" bind:this={container}>

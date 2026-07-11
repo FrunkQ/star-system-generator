@@ -79,6 +79,9 @@ export interface PlayerPreset {
   systemOverlay: GraphicPlacement | null;
   companyName: string;
   footerText: string;
+  // "The Guide" margin notes (funny in-universe advisories) drawn INSIDE the filtered layer, on any
+  // page, refreshing as the view changes. off / top edge / bottom edge / both.
+  guideTips: 'off' | 'top' | 'bottom' | 'both';
 
   // Look (generalised HoloStyle). Controls the editor shows are gated by the chosen view module.
   filter: string;                 // filter id — 'none' | 'crt' | 'night_vision' | 'thermal'

@@ -286,8 +286,9 @@
     topNote = t;
     bottomNote = randomGuideNote(t);
   }
-  // Fresh notes every time the reader moves between systems (or back to the map).
-  $: rollNotes(selectedSystemId);
+  // Fresh notes every time the reader MOVES — between systems, in/out of a body focus, or across the
+  // cover/starmap/system layers. A fresh funny line each time the view changes (the guide "updates").
+  $: rollNotes(`${selectedSystemId}|${focusedBodyId}|${showPresetCover}`);
   // Words wrap as units (letters are individually coloured, so each word is a nowrap group).
   const PANIC_WORDS = "DON'T PANIC!!!!".split(' ').map((w, wi, arr) => ({
     letters: w.split(''),
@@ -355,6 +356,12 @@
   $: activePreset = pendingPreset;
   $: presetAccent = activePreset ? accentSolid(activePreset.accentColor) : '#6aa0ff';
   $: presetFont = activePreset?.font || 'system-ui';
+  // Guide tips: the preset picks off / top / bottom / both; the rolled notes fill the chosen edges.
+  $: guideTipsMode = activePreset?.guideTips ?? 'off';
+  $: tipTop = guideTipsMode === 'top' || guideTipsMode === 'both' ? topNote : '';
+  $: tipBottom = guideTipsMode === 'bottom' || guideTipsMode === 'both' ? bottomNote : '';
+  $: tipsOn = !!(tipTop || tipBottom);
+  $: tipMono = activePreset?.bodyStyle === 'white';
   $: presetAssets = [...BUILTIN_ASSETS, ...(starmap?.playerAssets ?? [])];
   // A DOM-layer filter (cover / list / 2D) — the holo3d modules run the real GLSL shader themselves.
   $: presetFilterActive = !!activePreset && activePreset.filter !== 'none' && !holoFilterBypass;
@@ -382,7 +389,9 @@
   // The info card is desktop-only (phones keep the bottom-sheet DOM inspector); the overlay filters at any size.
   $: hudCardOn = effectiveSystemTier === 'holo' && !!selectedBody && presetFilterActive && hudW >= 720;
   $: hudOverlayOn = effectiveSystemTier === 'holo' && presetFilterActive && !!activePreset?.systemOverlay && !!overlayImg;
-  $: hudActive = (hudCardOn || hudOverlayOn) && hudW > 0;
+  // Tips ride the same HUD quad, and render even without the filter (the quad is part of the holo render).
+  $: hudTipsOn = effectiveSystemTier === 'holo' && tipsOn && hudW > 0;
+  $: hudActive = (hudCardOn || hudOverlayOn || hudTipsOn) && hudW > 0;
   $: hudCanvas = hudActive
     ? drawHud({
         viewW: hudW, viewH: hudH,
@@ -395,7 +404,8 @@
           description: selectedBody.description || '',
           accent: presetAccent, font: presetFont, fontScale: infoFontScale,
           mono: activePreset?.bodyStyle === 'white'
-        } : null
+        } : null,
+        tips: hudTipsOn ? { top: tipTop, bottom: tipBottom, accent: presetAccent, font: presetFont, mono: tipMono } : null
       })
     : null;
   // The system level reuses the existing console/holo/doc stages; pick which by the preset's systemView.
@@ -417,7 +427,8 @@
   $: coverFiltered = presetFilterActive && coverW > 0;
   $: coverCanvas = coverFiltered && activePreset
     ? drawCover({ viewW: coverW, viewH: coverH, cover: activePreset.cover, accent: activePreset.accentColor, font: presetFont, companyName: activePreset.companyName, footerText: activePreset.footerText,
-        graphic: coverGraphicImg && activePreset.cover.graphic ? { img: coverGraphicImg, placement: activePreset.cover.graphic } : null })
+        graphic: coverGraphicImg && activePreset.cover.graphic ? { img: coverGraphicImg, placement: activePreset.cover.graphic } : null,
+        tips: tipsOn ? { top: tipTop, bottom: tipBottom } : null })
     : null;
 
   // Cover: show once per preset until the player taps through.
@@ -641,6 +652,7 @@
           background={activePreset.background} angleDeg={activePreset.starmapView === 'diagram2d' ? 0 : activePreset.angleDeg}
           labelSize={activePreset.labelSize}
           filter={presetFilterActive ? activePreset.filter : 'none'} filterParams={activePreset.filterParams}
+          tipTop={tipTop} tipBottom={tipBottom} tipMono={tipMono}
           selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
       {:else}
         <!-- Text list stays DOM (approx filter); it's a static readout, not a picture to warp. -->

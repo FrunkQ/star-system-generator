@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.67-beta - 11th Jul 2026
+
+* **Guide tips are now a preset option on every stage.** A new "Guide tips" control (Theme section) shows the funny in-universe advisories on the top edge, bottom edge, both, or off — and they now render INSIDE the filter (drawn into the holo/cover GLSL layer, so the CRT/night-vision/thermal shader warps and tints them like everything else) rather than as a plain caption on the legacy Guide skin only. A fresh line each time the view changes (moving between systems, focusing a body, or crossing to the cover). Live on the cover, the 3D system view and the 3D starmap; the text-list stages pick it up when they move to the graphics pipeline.
+
 ## v2.1.66-beta - 11th Jul 2026
 
 * **Two new low-poly render styles.** "Lo-poly — filled" draws chunky faceted planets (respecting the colour choice — true-colour continents, flat class colour or monochrome); "Lo-poly — filled + lines" adds glowing vector edges and vertex points on top. Sit alongside the wireframe styles in the system look options.

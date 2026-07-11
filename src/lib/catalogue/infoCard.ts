@@ -7,6 +7,15 @@ import type { Fact } from './bodyFacts';
 import type { GraphicPlacement } from '$lib/player/presetTypes';
 
 export interface HudOverlay { img: HTMLImageElement; placement: GraphicPlacement; }
+// "The Guide" margin notes drawn INTO the filtered HUD (so the CRT/NV/thermal shader catches them),
+// pinned to the top and/or bottom edge. Each carries its own funny line; empty = that edge is off.
+export interface HudTips {
+  top?: string;
+  bottom?: string;
+  accent: string; // theme accent for the prefix stamp (ignored when mono)
+  font: string;
+  mono: boolean;  // white scheme: draw grey/white so a filter colours it
+}
 export interface HudCard {
   panelW: number;     // info panel width (css px) — flush to the right (inside a bezel margin)
   title: string;
@@ -18,7 +27,7 @@ export interface HudCard {
   fontScale: number;
   mono: boolean;      // white scheme: draw everything white/grey so a filter colours it
 }
-export interface HudOpts { viewW: number; viewH: number; overlay?: HudOverlay | null; card?: HudCard | null; }
+export interface HudOpts { viewW: number; viewH: number; overlay?: HudOverlay | null; card?: HudCard | null; tips?: HudTips | null; }
 
 function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
   const words = text.split(/\s+/);
@@ -50,6 +59,71 @@ function drawOverlay(ctx: CanvasRenderingContext2D, o: HudOverlay, W: number, H:
     ctx.drawImage(o.img, x, y, w, h);
   }
   ctx.globalAlpha = 1;
+}
+
+// A single "Guide" margin banner pinned to the top or bottom edge (inside the bezel safe-area).
+// Prefix stamp + wrapped note, on a dark translucent pill so the filter tints it by luminance.
+// Exported so the cover and the (gfx) list views draw an identical banner.
+export function drawTipBanner(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  edge: 'top' | 'bottom',
+  viewW: number,
+  viewH: number,
+  opts: { accent: string; font: string; mono: boolean }
+) {
+  if (!text) return;
+  const mx = Math.round(viewW * 0.035), my = Math.round(viewH * 0.045);
+  const pad = 12;
+  const barW = viewW - mx * 2;
+  const innerW = barW - pad * 2;
+  const prefix = edge === 'top' ? 'TRAVELLER ADVISORY' : 'THE GUIDE SAYS';
+  const font = opts.font;
+  const stampFont = `700 11px ${font}`;
+  const noteFont = `italic 13px ${font}`;
+
+  ctx.font = stampFont;
+  const stampW = ctx.measureText(prefix + '  ').width;
+  ctx.font = noteFont;
+  const lines = wrap(ctx, text, innerW - stampW);
+  const lineH = 17;
+  const barH = pad * 2 + Math.max(lineH, lines.length * lineH);
+  const x0 = mx;
+  const y0 = edge === 'top' ? my : viewH - my - barH;
+
+  const r = 8;
+  ctx.beginPath();
+  ctx.moveTo(x0 + r, y0);
+  ctx.arcTo(x0 + barW, y0, x0 + barW, y0 + barH, r);
+  ctx.arcTo(x0 + barW, y0 + barH, x0, y0 + barH, r);
+  ctx.arcTo(x0, y0 + barH, x0, y0, r);
+  ctx.arcTo(x0, y0, x0 + barW, y0, r);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(6,8,13,0.9)';
+  ctx.fill();
+  ctx.save();
+  ctx.clip();
+
+  const accent = opts.mono ? '#cfd6e4' : (opts.accent && opts.accent !== 'rainbow' ? opts.accent : '#8ed0ff');
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'left';
+  let ty = y0 + pad + 12;
+  ctx.font = stampFont;
+  ctx.fillStyle = accent;
+  ctx.fillText(prefix, x0 + pad, ty);
+  ctx.font = noteFont;
+  ctx.fillStyle = 'rgba(226,234,246,0.92)';
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], x0 + pad + (i === 0 ? stampW : 0), ty);
+    ty += lineH;
+  }
+  ctx.restore();
+}
+
+function drawTips(ctx: CanvasRenderingContext2D, t: HudTips, viewW: number, viewH: number) {
+  const o = { accent: t.accent, font: t.font, mono: t.mono };
+  if (t.top) drawTipBanner(ctx, t.top, 'top', viewW, viewH, o);
+  if (t.bottom) drawTipBanner(ctx, t.bottom, 'bottom', viewW, viewH, o);
 }
 
 function drawCard(ctx: CanvasRenderingContext2D, c: HudCard, viewW: number, viewH: number) {
@@ -139,6 +213,7 @@ export function drawHud(opts: HudOpts): HTMLCanvasElement {
   if (!ctx) return canvas;
   ctx.scale(dpr, dpr);
   if (opts.overlay) drawOverlay(ctx, opts.overlay, viewW, viewH);
-  if (opts.card) drawCard(ctx, opts.card, viewW, viewH);
+  if (opts.tips) drawTips(ctx, opts.tips, viewW, viewH);
+  if (opts.card) drawCard(ctx, opts.card, viewW, viewH); // card panel sits OVER a banner where they meet
   return canvas;
 }

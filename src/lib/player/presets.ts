@@ -49,6 +49,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   systemOverlay: null,
   companyName: '',
   footerText: '',
+  guideTips: 'off',
   filter: 'none',
   filterParams: {},
   bodyStyle: 'textured',
@@ -78,7 +79,7 @@ function preset(p: Partial<PlayerPreset> & { id: string; name: string; descripti
 export const BUILTIN_PRESETS: PlayerPreset[] = [
   preset({
     id: 'guide', name: 'The Guide', description: "A traveller's field guide — friendly, illustrated, mostly accurate.",
-    systemView: 'diagram2d', bodyStyle: 'textured',
+    systemView: 'diagram2d', bodyStyle: 'textured', guideTips: 'both',
     cover: { enabled: true, title: "DON'T PANIC", subtitle: '', body: '', label: '', graphic: null }
   }),
   preset({

@@ -3,6 +3,7 @@
 // Mirrors CoverView's layout closely enough to read the same; the graphic is placed by the standard
 // 9-pin/size/stretch/opacity rules. Static (once per change).
 import type { CoverConfig, GraphicPlacement } from '$lib/player/presetTypes';
+import { drawTipBanner } from './infoCard';
 
 const RAINBOW_STOPS = ['#ff4d4d', '#ff9f43', '#ffd93d', '#4dff88', '#4db8ff', '#9d6bff', '#ff5ecd'];
 
@@ -15,6 +16,7 @@ export interface CoverOpts {
   companyName: string;
   footerText: string;
   graphic?: { img: HTMLImageElement; placement: GraphicPlacement } | null;
+  tips?: { top?: string; bottom?: string } | null; // "The Guide" margin notes, inside the filter
 }
 
 function drawGraphic(ctx: CanvasRenderingContext2D, g: NonNullable<CoverOpts['graphic']>, W: number, H: number) {
@@ -101,6 +103,12 @@ export function drawCover(opts: CoverOpts): HTMLCanvasElement {
   ctx.fillStyle = 'rgba(200,214,232,0.5)';
   if (opts.companyName) { ctx.textAlign = 'left'; ctx.fillText(opts.companyName.toUpperCase(), W * 0.06, H * 0.94); }
   if (opts.footerText) { ctx.textAlign = 'right'; ctx.fillText(opts.footerText, W * 0.94, H * 0.94); }
+
+  if (opts.tips) {
+    const to = { accent: opts.accent, font, mono: false };
+    if (opts.tips.top) drawTipBanner(ctx, opts.tips.top, 'top', W, H, to);
+    if (opts.tips.bottom) drawTipBanner(ctx, opts.tips.bottom, 'bottom', W, H, to);
+  }
 
   return canvas;
 }

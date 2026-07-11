@@ -153,6 +153,15 @@
             {#if !isRainbow(draft.accentColor)}
               <label class="inline">Accent colour <input type="color" bind:value={draft.accentColor} /></label>
             {/if}
+            <label>Guide tips
+              <select bind:value={draft.guideTips}>
+                <option value="off">Off</option>
+                <option value="top">Top edge</option>
+                <option value="bottom">Bottom edge</option>
+                <option value="both">Top &amp; bottom</option>
+              </select>
+            </label>
+            <p class="hint">Funny in-universe advisories ("The Guide" margin notes) shown inside the filter on every stage; a fresh line each time the view changes.</p>
           </fieldset>
           <fieldset>
             <legend>Graphics library</legend>
