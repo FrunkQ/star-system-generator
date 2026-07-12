@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.76-beta - 12th Jul 2026
+
+* **System text-list now runs through the real filter too.** The "list" system view is drawn to a canvas and passed through the actual GPU shader (like the starmap list), retiring the CSS approximation for it. It stays interactive — a coloured body list you can scroll, and tapping a body opens its file in the shared inspector. (The inspector panel keeps its own approximated filter for now.)
+
 ## v2.1.75-beta - 12th Jul 2026
 
 * **Monochrome starmap option.** A new "Monochrome (for tints)" toggle renders the 2D/3D starmap — stars, routes, grid and labels — in white/grey, so a colour filter tints the whole map cleanly.

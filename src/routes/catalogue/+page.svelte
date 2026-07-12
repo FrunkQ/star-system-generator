@@ -78,6 +78,7 @@
   import FilteredListView from '$lib/components/FilteredListView.svelte';
   import { systemVisualStars } from '$lib/starmap/systemStars';
   import type { ListModel } from '$lib/catalogue/listCanvas';
+  import { getClassColor } from '$lib/rendering/colors';
   let holoStyle: HoloStyle = { ...DEFAULT_STYLE };
   // Momentary GM overrides — driven by the GM's Player Views modal via SYNC_PRESET (never saved).
   let holoLabelsOn = true;
@@ -187,6 +188,13 @@
 
   // --- Console navigation: a clickable star/planet list, with moons + constructs once a
   //     planet is focused. Jumping also focuses the visualizer on that body. ---
+  // Short type label for a body row in the system list.
+  function bodyTypeLabel(n: any): string {
+    if (n.kind === 'construct') return String(n.construct_type || 'Construct').replace(/(^|[-_ ])(\w)/g, (_: string, s: string, c: string) => (s ? ' ' : '') + c.toUpperCase());
+    if (isStarNode(n)) return 'Star';
+    const r = String(n.roleHint || 'body').replace('-', ' ');
+    return r.charAt(0).toUpperCase() + r.slice(1);
+  }
   function isStarNode(n: any): boolean {
     return n?.roleHint === 'star' || (Array.isArray(n?.classes) && n.classes.some((c: string) => String(c).startsWith('star/')));
   }
@@ -375,6 +383,24 @@
       selectable: true
     }))
   } as ListModel;
+  // System "list" module → a canvas body list (real filter). Bodies + constructs, a coloured dot each.
+  $: systemListModel = {
+    heading: displaySystem?.name || 'System',
+    rows: ((displaySystem?.nodes ?? []) as any[])
+      .filter((n) => (n.kind === 'body' || n.kind === 'construct') && n.roleHint !== 'ring' && n.roleHint !== 'barycenter' && (includeConstructs || n.kind !== 'construct'))
+      .map((n) => ({
+        id: n.id,
+        title: String(n.name ?? ''),
+        sub: bodyTypeLabel(n),
+        dots: [getClassColor(n)],
+        selectable: true
+      }))
+  } as ListModel;
+  function selectBodyById(id: string) {
+    const n = (displaySystem?.nodes ?? []).find((x: any) => x.id === id) as CelestialBody | undefined;
+    selectedBody = n && (n.kind === 'body' || n.kind === 'construct') ? n : null;
+    bodyExpanded = false;
+  }
   $: presetAssets = [...BUILTIN_ASSETS, ...(starmap?.playerAssets ?? [])];
   // A DOM-layer filter (cover / list / 2D) — the holo3d modules run the real GLSL shader themselves.
   $: presetFilterActive = !!activePreset && activePreset.filter !== 'none' && !holoFilterBypass;
@@ -589,6 +615,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 </svelte:head>
 
+<!-- The body info panel — shared by the holo/console tier AND the text-list tier (tap a body → its file). -->
+{#snippet inspectorAside()}
+  {#if selectedBody}
+    <aside class="inspector" class:expanded={bodyExpanded} class:filtered={!!inspFx && !hudCardOn} class:hud-hidden={hudCardOn}
+      style="--insp-w:{inspectorWidth}px; font-size:{Math.round(13 * infoFontScale)}px; filter:{inspFx && !hudCardOn ? inspFx.containerFilter : 'none'}; {activePreset ? `font-family:${presetFont};` : ''} {hudCardOn ? `right:${hudMx}px; top:${hudMy}px; bottom:${hudMy}px;` : ''}">
+      {#if inspFx && !hudCardOn}
+        {#if inspFx.tint}<div class="insp-fx-tint" style="background:{inspFx.tint}; opacity:{Math.min(0.9, inspFx.tintOpacity)}"></div>{/if}
+        {#if inspFx.scanlineIntensity > 0}<div class="insp-fx-scan" style="opacity:{inspFx.scanlineIntensity * 0.6}; background-size:100% {inspFx.scanlineWidth}px"></div>{/if}
+      {/if}
+      <div class="insp-resize" on:pointerdown={startInspectorResize} role="separator" aria-orientation="vertical" aria-label="Resize panel"></div>
+      <div class="insp-head">
+        <button class="insp-title" on:click={() => (bodyExpanded = !bodyExpanded)} aria-expanded={bodyExpanded} title="Show details">
+          <h2>{selectedBody.name}</h2>
+          <span class="insp-chevron" aria-hidden="true">▾</span>
+        </button>
+        <button class="insp-close" on:click={() => (selectedBody = null)} aria-label="Close">×</button>
+      </div>
+      <div class="insp-sub">{(selectedBody.roleHint || 'body').toUpperCase()}{selectedBody.kind !== 'construct' && selectedBody.class ? ' · ' + selectedBody.class : ''}</div>
+      <div class="insp-detail">
+        {#if selectedBody.image?.url}
+          <img class="insp-photo" src={selectedBody.image.url} alt={(selectedBody.kind === 'construct' ? 'Image of ' : "Artist's impression of ") + selectedBody.name} />
+        {/if}
+        <dl class="insp-grid">
+          {#each bodyFacts(selectedBody, units, tempUnit) as f}
+            <dt>{f.label}</dt><dd>{f.value}</dd>
+          {/each}
+        </dl>
+        {#if selectedBody.description}
+          <p class="insp-desc">{selectedBody.description}</p>
+        {/if}
+      </div>
+    </aside>
+  {/if}
+{/snippet}
+
 <main class="catalogue tint-{theme.tint} skin-{themeKey}" class:interactive={theme.tier === 'interactive'} class:crt-invert={theme.tint === 'mono' && $crtControls.invert} style="--mono:{MONO_COLORS[monoColor].hex}; {crtStyle}">
   {#if presetHold}
     <!-- GM closed the live view: a calm hold screen until they open one again. -->
@@ -768,57 +829,26 @@
         {/if}
       </div>
       {#if selectedBody}
-        <aside class="inspector" class:expanded={bodyExpanded} class:filtered={!!inspFx && !hudCardOn} class:hud-hidden={hudCardOn}
-          style="--insp-w:{inspectorWidth}px; font-size:{Math.round(13 * infoFontScale)}px; filter:{inspFx && !hudCardOn ? inspFx.containerFilter : 'none'}; {activePreset ? `font-family:${presetFont};` : ''} {hudCardOn ? `right:${hudMx}px; top:${hudMy}px; bottom:${hudMy}px;` : ''}">
-          <!-- The info block is DOM over the holo canvas, so the GLSL filter can't reach it; the CSS
-               approximation (tint + scanlines + the container filter above) makes it match. The tint sits
-               ABOVE the content with mix-blend so it recolours the text + image, not just the backdrop. -->
-          {#if inspFx && !hudCardOn}
-            {#if inspFx.tint}<div class="insp-fx-tint" style="background:{inspFx.tint}; opacity:{Math.min(0.9, inspFx.tintOpacity)}"></div>{/if}
-            {#if inspFx.scanlineIntensity > 0}<div class="insp-fx-scan" style="opacity:{inspFx.scanlineIntensity * 0.6}; background-size:100% {inspFx.scanlineWidth}px"></div>{/if}
-          {/if}
-          <!-- Desktop: drag the left edge to resize the panel (width persisted). Hidden on phone. -->
-          <div class="insp-resize" on:pointerdown={startInspectorResize} role="separator" aria-orientation="vertical" aria-label="Resize panel"></div>
-          <div class="insp-head">
-            <!-- On phones the panel opens to just name + type; tapping the title reveals the
-                 picture and stats, so you can keep clicking around the system without a big
-                 sheet swallowing the screen. On desktop the detail is always shown. -->
-            <button class="insp-title" on:click={() => (bodyExpanded = !bodyExpanded)} aria-expanded={bodyExpanded} title="Show details">
-              <h2>{selectedBody.name}</h2>
-              <span class="insp-chevron" aria-hidden="true">▾</span>
-            </button>
-            <button class="insp-close" on:click={() => (selectedBody = null)} aria-label="Close">×</button>
-          </div>
-          <div class="insp-sub">{(selectedBody.roleHint || 'body').toUpperCase()}{selectedBody.kind !== 'construct' && selectedBody.class ? ' · ' + selectedBody.class : ''}</div>
-          <div class="insp-detail">
-            {#if selectedBody.image?.url}
-              <img class="insp-photo" src={selectedBody.image.url} alt={(selectedBody.kind === 'construct' ? 'Image of ' : "Artist's impression of ") + selectedBody.name} />
-            {/if}
-            <dl class="insp-grid">
-              {#each bodyFacts(selectedBody, units, tempUnit) as f}
-                <dt>{f.label}</dt><dd>{f.value}</dd>
-              {/each}
-            </dl>
-            {#if selectedBody.description}
-              <p class="insp-desc">{selectedBody.description}</p>
-            {/if}
-          </div>
-        </aside>
+        {@render inspectorAside()}
       {:else}
         <div class="console-hint">Tap a world to read its file.</div>
       {/if}
     </div>
   {:else if activePreset}
-    <!-- Preset text-list system view: the diagrammatic browser under the preset theme + filter. -->
-    <div class="doc-scroll preset-doc" style="font-family:{presetFont}; --accent:{presetAccent}">
-      <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
-        <CatalogueBrowser system={displaySystem} {includeConstructs} {units} {tempUnit} colorful={false} imagery="none" />
-      </FilterFrame>
+    <!-- Preset text-list system view: a canvas-rendered body list through the REAL filter (no CSS fake),
+         tap a body to open its file in the shared inspector. -->
+    <div class="preset-stage preset-doc" style="font-family:{presetFont}; --accent:{presetAccent}">
+      <FilteredListView model={systemListModel} accent={presetAccent} font={presetFont} mono={activePreset.bodyStyle === 'white'}
+        filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
+        tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null}
+        selectable selectedId={selectedBody?.id ?? null}
+        on:select={(e) => selectBodyById(e.detail)} />
       {#if activePreset.systemOverlay}
         <div class="overlay-wrap"><FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
           <GraphicLayer placement={activePreset.systemOverlay} assets={presetAssets} />
         </FilterFrame></div>
       {/if}
+      {@render inspectorAside()}
     </div>
   {:else}
     <!-- Lo-fi / datapad / Guide: diagrammatic browser — clickable layout + a body panel. -->
