@@ -437,7 +437,7 @@
   $: starmapOverlayHud = starmapOverlayImg && activePreset?.starmapOverlay ? { img: starmapOverlayImg, placement: activePreset.starmapOverlay } : null;
   $: systemOverlayHud = overlayImg && activePreset?.systemOverlay ? { img: overlayImg, placement: activePreset.systemOverlay } : null;
   // The info card is desktop-only (phones keep the bottom-sheet DOM inspector); the overlay filters at any size.
-  $: hudCardOn = effectiveSystemTier === 'holo' && !!selectedBody && presetFilterActive && hudW >= 720;
+  $: hudCardOn = effectiveSystemTier === 'holo' && !!selectedBody && presetFilterActive && hudW >= 720 && !activePreset?.hideInfoPanel;
   $: hudOverlayOn = effectiveSystemTier === 'holo' && !!activePreset?.systemOverlay && !!overlayImg; // HUD renders it whether or not a filter is active (the quad is part of the scene)
   // Tips ride the same HUD quad, and render even without the filter (the quad is part of the holo render).
   $: hudTipsOn = effectiveSystemTier === 'holo' && tipsOn && hudW > 0;
@@ -835,9 +835,9 @@
           <button class="tc-btn tc-icon" on:click={() => (timeExpanded = true)} aria-label="Time controls" title="Time controls">{isPlaying ? '❚❚' : '▶'}</button>
         {/if}
       </div>
-      {#if selectedBody}
+      {#if selectedBody && !activePreset?.hideInfoPanel}
         {@render inspectorAside()}
-      {:else}
+      {:else if !selectedBody && !activePreset?.hideInfoPanel}
         <div class="console-hint">Tap a world to read its file.</div>
       {/if}
     </div>
@@ -850,7 +850,7 @@
         tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null} overlay={systemOverlayHud}
         selectable selectedId={selectedBody?.id ?? null}
         on:select={(e) => selectBodyById(e.detail)} />
-      {@render inspectorAside()}
+      {#if !activePreset.hideInfoPanel}{@render inspectorAside()}{/if}
     </div>
   {:else}
     <!-- Lo-fi / datapad / Guide: diagrammatic browser — clickable layout + a body panel. -->

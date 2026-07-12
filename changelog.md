@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.80-beta - 12th Jul 2026
+
+* **Option to hide the body info panel.** A preset can now suppress the body info panel entirely on the system page for a clean display — tapping a body still frames it, it just doesn't open a panel.
+
 ## v2.1.79-beta - 12th Jul 2026
 
 * **Image overlays now go through the real filter everywhere.** Previously the starmap and list overlays used the CSS approximation, so they didn't warp/roll with the CRT like the system-map overlay did. The starmap (2D/3D) overlay is now composited into the map's real shader pass, and the starmap-list and system-list overlays into their canvases — so every overlay, and the cover graphic, now bends and tints with the filter consistently.

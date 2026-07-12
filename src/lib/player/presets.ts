@@ -70,6 +70,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   lockOverhead: false,
   whole: false,
   labelSize: 11,
+  hideInfoPanel: false,
   inspectorWidth: 340,
   infoFontScale: 1
 };

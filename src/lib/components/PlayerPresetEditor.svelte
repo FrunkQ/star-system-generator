@@ -317,7 +317,8 @@
                 <label class="chk"><input type="checkbox" bind:checked={draft.skybox} /> Starfield</label>
                 <label class="chk"><input type="checkbox" bind:checked={draft.auroras} /> Auroras</label>
               {/if}
-              {#if draft.systemView !== 'list'}
+              <label class="chk"><input type="checkbox" bind:checked={draft.hideInfoPanel} /> Hide body info panel (clean display)</label>
+              {#if draft.systemView !== 'list' && !draft.hideInfoPanel}
                 <label>Info panel width (desktop) <span>{draft.inspectorWidth}px</span><input type="range" min="240" max="560" step="10" bind:value={draft.inspectorWidth} /></label>
                 <label>Info panel font size <span>{Math.round(draft.infoFontScale * 100)}%</span><input type="range" min="0.8" max="1.6" step="0.05" bind:value={draft.infoFontScale} /></label>
               {/if}
