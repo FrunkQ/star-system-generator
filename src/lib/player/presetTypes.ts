@@ -94,6 +94,7 @@ export interface PlayerPreset {
   background: 'space' | 'green' | 'blue' | 'black';
   grid: 'off' | 'plain' | 'scaled' | 'hex';
   starmapRouteGlow: boolean; // 2D/3D starmap: glowing transit lines (vs plain lines)
+  starmapMono: boolean; // 2D/3D starmap: monochrome palette (white/grey) for tinting filters
   compression: number; // toytown spread 0..1
   bodySize: number;    // 1 readable .. 0 true scale
   beltDetail: number;  // 0..1

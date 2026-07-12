@@ -58,6 +58,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   auroras: true,
   bodyGfx: 'sphere',
   starmapRouteGlow: true,
+  starmapMono: false,
   background: 'space',
   grid: 'plain',
   compression: 0.65,

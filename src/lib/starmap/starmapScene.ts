@@ -40,6 +40,7 @@ export interface StarmapController {
   setData(systems: SmSystem[], routes: SmRoute[]): void;
   setGrid(mode: GridMode): void;
   setRouteGlow(on: boolean): void; // emissive glow on routes (vs plain lines)
+  setMono(on: boolean): void; // monochrome palette for tinting filters
   setBackground(bg: string): void;
   setFraming(angleDeg: number): void;
   setLabelsVisible(on: boolean): void;
@@ -126,7 +127,10 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   // --- Grid (LY rings / hex lattice) ---
   let gridMode: GridMode = 'plain';
   let routeGlowOn = true; // emissive glow on routes (vs plain lines)
-  let lastData: { systems: SmSystem[]; routes: SmRoute[] } | null = null; // for rebuilds (route-glow toggle)
+  let monoOn = false; // monochrome palette (white/grey) so a tint filter colours the whole map
+  let lastData: { systems: SmSystem[]; routes: SmRoute[] } | null = null; // for rebuilds (route-glow / mono toggle)
+  const MONO_HEX = 0xdfe6f0;
+  const routeColor = () => (monoOn ? MONO_HEX : HOLO_TINT);
   const gridGroup = new THREE.Group();
   scene.add(gridGroup);
   let extent = 1; // world half-extent of the map (map units), for LY labels
@@ -152,7 +156,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     clearGroup(gridGroup);
     gridGroup.visible = gridMode !== 'off';
     if (gridMode === 'off') return;
-    const base = new THREE.Color(HOLO_TINT);
+    const base = new THREE.Color(routeColor());
     const unit = (opts.distanceUnit || 'ly').toLowerCase() === 'diagrammatic' ? '' : (opts.distanceUnit || 'ly');
     if (gridMode === 'hex') {
       // A hex lattice on the ground plane, clipped to the map disc — aligned to the starmap.
@@ -187,6 +191,8 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   function setGrid(mode: GridMode) { if (mode === gridMode) return; gridMode = mode; rebuildGrid(); }
   // Toggle the emissive glow on routes (vs plain lines). Rebuilds the content (routes live there).
   function setRouteGlow(on: boolean) { if (on === routeGlowOn) return; routeGlowOn = on; if (lastData) setData(lastData.systems, lastData.routes); }
+  // Monochrome palette: white/grey stars + routes + grid (labels handled by setLabelColor). Rebuilds.
+  function setMono(on: boolean) { if (on === monoOn) return; monoOn = on; if (lastData) setData(lastData.systems, lastData.routes); rebuildGrid(); }
 
   // --- Filter chain (shared package) ---
   const composer = new EffectComposer(renderer);
@@ -299,7 +305,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       const offs = starClusterOffsets(stars.length);
       const R = 0.22; // star glyph radius in scene units
       stars.forEach((st, i) => {
-        const mat = new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(st.color), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+        const mat = new THREE.SpriteMaterial({ map: glow, color: monoOn ? new THREE.Color(MONO_HEX) : new THREE.Color(st.color), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
         const sp = new THREE.Sprite(mat);
         sp.position.copy(center).add(new THREE.Vector3((offs[i]?.dx ?? 0) * R, 0.0, (offs[i]?.dy ?? 0) * R));
         sp.scale.setScalar(R * 3.2);
@@ -320,7 +326,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       if (!r.dashed && routeGlowOn) {
         const dx = b.x - a.x, dz = b.z - a.z, len = Math.hypot(dx, dz);
         if (len > 1e-4) {
-          const mat = new THREE.MeshBasicMaterial({ map: routeGlow(), color: HOLO_TINT, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false });
+          const mat = new THREE.MeshBasicMaterial({ map: routeGlow(), color: routeColor(), transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false });
           const quad = new THREE.Mesh(ROUTE_QUAD.clone(), mat); // clone: clearContent disposes per-route geometry
           quad.position.set((a.x + b.x) / 2, 0.015, (a.z + b.z) / 2);
           quad.rotation.y = -Math.atan2(dz, dx);
@@ -331,10 +337,10 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       }
     }
     const blend = routeGlowOn ? THREE.AdditiveBlending : THREE.NormalBlending; // glow off → plain lines
-    const coreMat = () => new THREE.LineBasicMaterial({ color: HOLO_TINT, transparent: true, opacity: routeGlowOn ? 0.95 : 0.55, blending: blend, depthWrite: false });
+    const coreMat = () => new THREE.LineBasicMaterial({ color: routeColor(), transparent: true, opacity: routeGlowOn ? 0.95 : 0.55, blending: blend, depthWrite: false });
     if (routePts.length) content.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(routePts), coreMat()));
     if (routePtsDash.length) {
-      const lm = new THREE.LineDashedMaterial({ color: HOLO_TINT, transparent: true, opacity: routeGlowOn ? 0.9 : 0.5, blending: blend, depthWrite: false, dashSize: 0.3, gapSize: 0.2 });
+      const lm = new THREE.LineDashedMaterial({ color: routeColor(), transparent: true, opacity: routeGlowOn ? 0.9 : 0.5, blending: blend, depthWrite: false, dashSize: 0.3, gapSize: 0.2 });
       const seg = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(routePtsDash), lm);
       seg.computeLineDistances(); content.add(seg);
     }
@@ -449,7 +455,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   }
 
   rebuildGrid();
-  return { setData, setGrid, setRouteGlow, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
+  return { setData, setGrid, setRouteGlow, setMono, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
 }
 
 function buildStarfield(count = 1400, radius = 900): THREE.Points {

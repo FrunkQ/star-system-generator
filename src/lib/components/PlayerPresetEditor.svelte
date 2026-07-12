@@ -221,6 +221,7 @@
                   </select>
                 </label>
                 <label class="chk"><input type="checkbox" bind:checked={draft.starmapRouteGlow} /> Glowing routes</label>
+                <label class="chk"><input type="checkbox" bind:checked={draft.starmapMono} /> Monochrome (for tints)</label>
                 {#if draft.starmapView === 'holo3d'}
                   <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} /></label>
                 {/if}
@@ -388,7 +389,7 @@
               <div class="ph">No starmap loaded — open or create a campaign map to preview this stage.</div>
             {:else if draft.starmapView === 'holo3d'}
               <!-- 3D map runs the exact shader itself; DOM views get the CSS approximation. -->
-              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} routeGlow={draft.starmapRouteGlow} background={draft.background} angleDeg={draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
+              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} routeGlow={draft.starmapRouteGlow} mono={draft.starmapMono} background={draft.background} angleDeg={draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
             {:else}
               <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
                 {#if draft.starmapView === 'list'}
