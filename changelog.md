@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.83-beta - 12th Jul 2026
+
+* **Fix: rainbow preset name showed as a solid colour bar.** A rainbow-accent preset's name on the Player Views card was rendering as a full gradient block instead of gradient-coloured text; it now clips to the name correctly.
+
 ## v2.1.82-beta - 12th Jul 2026
 
 * **Player Views cards read cleaner.** The little colour dot on each preset card is gone; the preset name is now shown in its accent colour instead (rainbow presets get the rainbow name), so the card is tidier and the colour still tells them apart.
