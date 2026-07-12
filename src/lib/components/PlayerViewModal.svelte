@@ -10,7 +10,7 @@
   import { broadcastService } from '$lib/broadcast';
   import { measurementUnit, temperatureUnit } from '$lib/stores';
   import type { PlayerPreset, ViewModule } from '$lib/player/presetTypes';
-  import { DEFAULT_PRESET, makePresetId } from '$lib/player/presets';
+  import { DEFAULT_PRESET, makePresetId, accentSolid, isRainbow, RAINBOW_GRADIENT } from '$lib/player/presets';
   import {
     playerPresetList, addPreset, deletePreset, duplicateIntoStarmap, runPresetMigration
   } from '$lib/player/presetStore';
@@ -130,8 +130,8 @@
             on:click={() => (selectedId = p.id)}
           >
             {#if p.id === $runningPresetId}<span class="live-badge">● LIVE</span>{/if}
-            <span class="swatch" style="background:{p.accentColor}"></span>
-            <span class="name">{p.name}</span>
+            <span class="name" class:rainbow={isRainbow(p.accentColor)}
+              style={isRainbow(p.accentColor) ? `background:${RAINBOW_GRADIENT}` : `color:${accentSolid(p.accentColor)}`}>{p.name}</span>
             <span class="desc">{p.description || VIEW_LABELS[p.systemView]}</span>
             <span class="tags">
               {#if p.builtIn}<span class="tag built">Built-in</span>{/if}
@@ -243,8 +243,8 @@
   .card.gm { border-left: 3px solid #e0a13a; }
   .card.live { border-color: #47d16a; }
   .live-badge { position: absolute; top: 6px; right: 6px; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.06em; color: #47d16a; }
-  .card .swatch { width: 20px; height: 20px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(255,255,255,0.15) inset; }
   .card .name { font-weight: 700; font-size: 0.92rem; }
+  .card .name.rainbow { -webkit-background-clip: text; background-clip: text; color: transparent; }
   .card .desc { font-size: 0.72rem; color: var(--text-muted); line-height: 1.35; min-height: 1.9em; }
   .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
   .tag { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; }

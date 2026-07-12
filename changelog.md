@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.82-beta - 12th Jul 2026
+
+* **Player Views cards read cleaner.** The little colour dot on each preset card is gone; the preset name is now shown in its accent colour instead (rainbow presets get the rainbow name), so the card is tidier and the colour still tells them apart.
+
 ## v2.1.81-beta - 12th Jul 2026
 
 * **Follow the GM.** A "Follows the GM" preset (or the live override) now makes the player view track the GM: the first body the GM focuses gets the players past the cover, then every body the GM clicks is framed on the players' view the standard way — switching to the right system if needed. Works for the 2D map and 3D holo (same framing) and highlights the body in the list views.
