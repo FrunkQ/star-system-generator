@@ -12,6 +12,7 @@
   import { validateStarmap, generateId } from '$lib/utils';
   import { broadcastService } from '$lib/broadcast';
   import { computePlayerStarmapSnapshot } from '$lib/system/utils';
+  import { starmapUiStore } from '$lib/starmapUiStore';
   import CompanionModal from '$lib/components/CompanionModal.svelte';
   import PlayerViewModal from '$lib/components/PlayerViewModal.svelte';
   import InterstellarTransitModal from '$lib/components/InterstellarTransitModal.svelte';
@@ -593,20 +594,27 @@
   });
 
   // --- Companion App broadcast (whole redacted starmap) ---
+  // The player snapshot carries the GM's LIVE snap-grid (type + cell size) so the player-view starmap
+  // draws the identical grid — the grid shape is UI state, not saved on the map, so it's injected here.
+  function starmapSnapshotForPlayers(map: import('$lib/types').Starmap) {
+    const ui = get(starmapUiStore);
+    const type = ui.travellerMode ? 'traveller-hex' : ui.gridType;
+    return { ...computePlayerStarmapSnapshot(map), mapGrid: { type, size: 50 } };
+  }
   onMount(() => {
     if (!browser) return;
     broadcastService.initSender(broadcastSessionId);
     broadcastService.onRequestStarmap = (requestingId) => {
       if (requestingId && requestingId !== broadcastSessionId) return;
       const map = get(starmapStore);
-      if (map) broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: computePlayerStarmapSnapshot(map) });
+      if (map) broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: starmapSnapshotForPlayers(map) });
       broadcastService.sendMessage({ type: 'SYNC_BRANDING', payload: get(brandingStore) });
       broadcastService.sendMessage({ type: 'SYNC_GUIDECONFIG', payload: { ...get(guideConfigStore), crt: get(crtControls) } });
     };
   });
-  // Re-broadcast the redacted starmap whenever it changes, so connected guides stay live.
-  $: if (browser && $starmapStore) {
-    broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: computePlayerStarmapSnapshot($starmapStore) });
+  // Re-broadcast the redacted starmap whenever it (or the GM's grid choice) changes, so guides stay live.
+  $: if (browser && $starmapStore && $starmapUiStore) {
+    broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: starmapSnapshotForPlayers($starmapStore) });
   }
   // Push branding (company name + logo) to guides whenever the GM edits it.
   $: if (browser && $brandingStore) {

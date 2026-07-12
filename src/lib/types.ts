@@ -674,6 +674,9 @@ export interface Starmap {
   generationEngine?: 'standard' | 'evolutionary';
   invertDisplay?: boolean;
   scale?: StarmapScaleConfig;
+  // The GM's live snap-grid, injected into the player broadcast (not persisted) so the player-view
+  // starmap can draw the IDENTICAL grid at the same cell size. `size` is the cell size in map units.
+  mapGrid?: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number };
   distanceUnit: string;                        // INTERSTELLAR map unit (ly / pc / diagrammatic) — see mapMode
   unitIsPrefix: boolean;
   measurementUnits?: 'metric' | 'imperial';    // IN-SYSTEM distance/speed display: km/km·s (default) vs miles/mph

@@ -41,6 +41,7 @@ export interface StarmapController {
   setGrid(mode: GridMode): void;
   setRouteGlow(on: boolean): void; // emissive glow on routes (vs plain lines)
   setMono(on: boolean): void; // monochrome palette for tinting filters
+  setMapGrid(cfg: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number } | null): void; // GM's snap-grid
   setBackground(bg: string): void;
   setFraming(angleDeg: number): void;
   setLabelsVisible(on: boolean): void;
@@ -134,6 +135,8 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   const gridGroup = new THREE.Group();
   scene.add(gridGroup);
   let extent = 1; // world half-extent of the map (map units), for LY labels
+  let mapCx = 0, mapCy = 0, mapK = 1; // the fit transform from setData (scene = (mapPos - c)*k)
+  let mapGridCfg: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number } | null = null;
 
   function clearGroup(g: THREE.Object3D) {
     g.traverse((o) => { const a = o as any; a.geometry?.dispose?.(); const m = a.material; (Array.isArray(m) ? m : [m]).forEach((x: any) => { x?.map?.dispose?.(); x?.dispose?.(); }); });
@@ -152,12 +155,46 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
     sp.scale.set(0.9, 0.28, 1); sp.center.set(0, 0.5); return sp;
   }
+  // The GM's live snap-grid, drawn at the SAME cell size + origin as the GM map (transformed by the fit),
+  // so snapped systems land on the grid exactly like the GM sees them. Overrides the decorative grid.
+  function renderMapGrid(base: THREE.Color) {
+    const cfg = mapGridCfg!;
+    const cell0 = cfg.size * mapK;
+    if (cell0 <= 1e-4) return;
+    const half = GRID_RADIUS * 1.03;
+    const originX = -mapCx * mapK, originZ = -mapCy * mapK; // scene coords of map (0,0)
+    const draw = Math.max(1, Math.ceil(0.22 / cell0)); // thin out if the cells are tiny on screen
+    const cell = cell0 * draw;
+    const mat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.42), transparent: true, opacity: 0.42 });
+    const pts: THREE.Vector3[] = [];
+    if (cfg.type === 'grid') {
+      for (let n = Math.ceil((-half - originX) / cell); n <= Math.floor((half - originX) / cell); n++) {
+        const x = originX + n * cell; pts.push(new THREE.Vector3(x, 0.01, -half), new THREE.Vector3(x, 0.01, half));
+      }
+      for (let n = Math.ceil((-half - originZ) / cell); n <= Math.floor((half - originZ) / cell); n++) {
+        const z = originZ + n * cell; pts.push(new THREE.Vector3(-half, 0.01, z), new THREE.Vector3(half, 0.01, z));
+      }
+    } else {
+      // hex / traveller-hex: a pointy-top lattice at the cell size, seeded on the map origin.
+      const s = cell / Math.sqrt(3); // circumradius so the flat-to-flat width ≈ one cell
+      const corner = (cxp: number, czp: number, kk: number) => new THREE.Vector3(cxp + s * Math.cos((Math.PI / 180) * (60 * kk - 30)), 0.01, czp + s * Math.sin((Math.PI / 180) * (60 * kk - 30)));
+      const rng = Math.min(40, Math.ceil(half / (s * 1.5)) + 1);
+      for (let q = -rng; q <= rng; q++) for (let r = -rng; r <= rng; r++) {
+        const cxp = originX + s * Math.sqrt(3) * (q + r / 2), czp = originZ + s * 1.5 * r;
+        if (Math.abs(cxp) > half + s || Math.abs(czp) > half + s) continue;
+        for (let kk = 0; kk < 6; kk++) pts.push(corner(cxp, czp, kk), corner(cxp, czp, kk + 1));
+      }
+    }
+    gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), mat));
+  }
   function rebuildGrid() {
     clearGroup(gridGroup);
     gridGroup.visible = gridMode !== 'off';
     if (gridMode === 'off') return;
     const base = new THREE.Color(routeColor());
     const unit = (opts.distanceUnit || 'ly').toLowerCase() === 'diagrammatic' ? '' : (opts.distanceUnit || 'ly');
+    // The GM's snap-grid, when present, takes precedence over the decorative polar/hex grid.
+    if (mapGridCfg && mapGridCfg.type !== 'none' && mapK > 0) { renderMapGrid(base); return; }
     if (gridMode === 'hex') {
       // A hex lattice on the ground plane, clipped to the map disc — aligned to the starmap.
       const s = GRID_RADIUS / 7;              // hex circumradius
@@ -189,6 +226,13 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(spokes), new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.22), transparent: true, opacity: 0.5 })));
   }
   function setGrid(mode: GridMode) { if (mode === gridMode) return; gridMode = mode; rebuildGrid(); }
+  // The GM's live snap-grid config (type + cell size). Null/none → the decorative grid is used instead.
+  function setMapGrid(cfg: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number } | null) {
+    const same = (!cfg && !mapGridCfg) || (cfg && mapGridCfg && cfg.type === mapGridCfg.type && cfg.size === mapGridCfg.size);
+    if (same) return;
+    mapGridCfg = cfg && cfg.type !== 'none' ? cfg : null;
+    rebuildGrid();
+  }
   // Toggle the emissive glow on routes (vs plain lines). Rebuilds the content (routes live there).
   function setRouteGlow(on: boolean) { if (on === routeGlowOn) return; routeGlowOn = on; if (lastData) setData(lastData.systems, lastData.routes); }
   // Monochrome palette: white/grey stars + routes + grid (labels handled by setLabelColor). Rebuilds.
@@ -294,6 +338,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     const spanMap = Math.max(maxX - minX, maxY - minY, 1e-6);
     extent = spanMap / 2; // half-extent in map units (for LY labels)
     const k = (GRID_RADIUS * 0.92) / (spanMap / 2);
+    mapCx = cx; mapCy = cy; mapK = k; // keep the fit transform so the map-grid aligns to the systems
     const toScene = (x: number, y: number) => new THREE.Vector3((x - cx) * k, 0, (y - cy) * k);
 
     const centers = new Map<string, THREE.Vector3>();
@@ -455,7 +500,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   }
 
   rebuildGrid();
-  return { setData, setGrid, setRouteGlow, setMono, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
+  return { setData, setGrid, setRouteGlow, setMono, setMapGrid, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
 }
 
 function buildStarfield(count = 1400, radius = 900): THREE.Points {

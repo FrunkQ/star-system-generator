@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.84-beta - 12th Jul 2026
+
+* **The player-view starmap now matches the GM's grid.** The GM's live snap-grid (square / hex / Traveller) and its cell size are broadcast to the player, and the 2D/3D player starmap draws the identical grid calibrated to the same cells — so snapped systems sit on the grid exactly like the GM sees them (and it shows in the editor preview). When the GM has no grid, the decorative polar/hex grid is used as before.
+
 ## v2.1.83-beta - 12th Jul 2026
 
 * **Fix: rainbow preset name showed as a solid colour bar.** A rainbow-accent preset's name on the Player Views card was rendering as a full gradient block instead of gradient-coloured text; it now clips to the name correctly.
