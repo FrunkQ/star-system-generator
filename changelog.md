@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.78-beta - 12th Jul 2026
+
+* **Black holes render as black holes.** A black hole now shows a pure-black event horizon instead of a star surface. A quiescent hole has only a faint photon-ring glow and barely lights its surroundings; a feeding one (active / with accretion) gets a bright, hot blue-white accretion glow that flickers over time and lights the system like a real star (its accretion disc still renders as its own ring).
+
 ## v2.1.77-beta - 12th Jul 2026
 
 * **Moons and orbiting constructs no longer sink into the planet in readable views.** The true-scale fix had let satellites fall inside a magnified globe; there's now a clearance rule that scales with the rendered globe size, so a satellite always sits just outside the parent's surface (staggered by orbital order) in readable views, while true-scale positions are preserved. Moon orbit rings follow the same rule so a moon still sits on its ring.

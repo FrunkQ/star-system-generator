@@ -895,12 +895,27 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (isStar) {
         const activity = Math.max(0, Math.min(1, (node.flareActivity ?? 0)));
         const starR = starRadiusScene(node); // responds to the body-size dial like the planets
+        const isBH = isBlackHoleNode(node);
+        const feeding = isBH && bhFeeding(node);
         if (renderStyle.startsWith('wire')) {
           // In wireframe modes the star is a wireframe too (no photosphere/corona): flat draws plain
           // non-emissive polys, glow adds the emissive glowing vertices — same as the other bodies.
           const glow = renderStyle === 'wire-glow' || renderStyle === 'wire-glow-occ';
           const occluded = renderStyle === 'wire-glow-occ' || renderStyle === 'wire-flat-occ';
           mesh = buildWireframeBody(starR, colorHex, glow, occluded);
+        } else if (isBH) {
+          // Black hole: a pure-black event horizon. A quiescent hole shows only a faint photon-ring
+          // glow; a FEEDING hole (star/BH_active or accretionEddington>0) gets a bright, hot blue-white
+          // accretion glow that flickers over time (the accretion DISC itself is a separate ring node).
+          const eh = new THREE.Mesh(new THREE.SphereGeometry(starR, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+          mesh = eh;
+          const edd = Math.max(0, Math.min(1, (node as any).accretionEddington ?? (feeding ? 0.5 : 0)));
+          const glowMat = new THREE.SpriteMaterial({ map: glowTexture, color: feeding ? 0xbfe0ff : 0x7f93b5, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: feeding ? 1 : 0.42 });
+          const glow = new THREE.Sprite(glowMat);
+          const glowScale = starR * (feeding ? 3.5 + edd * 3.5 : 2.3);
+          glow.scale.setScalar(glowScale);
+          eh.add(glow);
+          if (feeding) starVisuals.push({ corona: glow, coronaScale: glowScale, activity: Math.max(0.5, edd) }); // flickering accretion
         } else {
           // Photosphere: an emissive (unlit) textured sphere — granulation + sunspots (spot count
           // scales with the star's flare activity), so you see surface detail and it spins. Under the
@@ -931,7 +946,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         }
         // The star casts light regardless of render style: a point light co-located with it gives the
         // planets a real terminator. decay 0 so the compressed distances don't dim the outer planets.
-        const light = new THREE.PointLight(colorHex, 2.2, 0, 0);
+        // A quiescent black hole barely lights its surroundings; a feeding one blazes like a real star.
+        const light = new THREE.PointLight(isBH && feeding ? 0xcfe4ff : colorHex, isBH ? (feeding ? 2.4 : 0.12) : 2.2, 0, 0);
         contentGroup.add(light);
         starLights.push({ id: node.id, light });
       } else if (node.kind === 'construct') {
@@ -1375,6 +1391,15 @@ function safeColor(node: any): number {
 function bodyRadius(node: any): number {
   const km = node.physical_parameters?.radiusKm || node.radiusKm || 3000;
   return 0.14 + 0.1 * Math.max(0, Math.log10(km / 1000));
+}
+
+// A black hole is a star-class 'star/BH' or 'star/BH_active'. Feeding = the active class, or any
+// accretion (Eddington fraction > 0) — drives the bright hot accretion glow vs a bare quiescent horizon.
+function isBlackHoleNode(node: any): boolean {
+  return (node.classes || []).some((c: string) => String(c).includes('BH') || String(c).includes('black-hole'));
+}
+function bhFeeding(node: any): boolean {
+  return node.classes?.[0] === 'star/BH_active' || ((node.accretionEddington ?? 0) > 0.01);
 }
 
 // A plain filled disc (class colour) with a soft rim shade, transparent outside — the "flat shape".
