@@ -79,6 +79,8 @@ export interface PlayerPreset {
   systemOverlay: GraphicPlacement | null;
   companyName: string;
   footerText: string;
+  defaultRateIndex: number; // starting time rate (index into RATE_STEPS; default 2 = 1 s ≈ 1 h)
+  defaultPlaying: boolean;  // start playing vs paused
   // "The Guide" margin notes (funny in-universe advisories) drawn INSIDE the filtered layer, on any
   // page, refreshing as the view changes. off / top edge / bottom edge / both.
   guideTips: 'off' | 'top' | 'bottom' | 'both';

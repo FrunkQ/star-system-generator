@@ -45,6 +45,7 @@ export interface PresetOverrides {
   filterBypass: boolean;
   orbitPaused: boolean;
   labelsHidden: boolean;
+  time?: { rateIndex: number; playing: boolean } | null; // GM live time override (null = player's own time)
 }
 export interface PresetBroadcast {
   presetId: string;

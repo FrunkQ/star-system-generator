@@ -79,6 +79,7 @@
   import { systemVisualStars } from '$lib/starmap/systemStars';
   import type { ListModel } from '$lib/catalogue/listCanvas';
   import { getClassColor } from '$lib/rendering/colors';
+  import { RATE_STEPS, DEFAULT_RATE_INDEX } from '$lib/player/timeRates';
   let holoStyle: HoloStyle = { ...DEFAULT_STYLE };
   // Momentary GM overrides — driven by the GM's Player Views modal via SYNC_PRESET (never saved).
   let holoLabelsOn = true;
@@ -150,13 +151,8 @@
   let rafId = 0;
   // Player time rate: a discrete ladder of "in-sim time per real second", from 1 s (real time) up
   // to 10 years/s. The control collapses to a play/pause icon and expands to a slider on click.
-  const RATE_STEPS: { label: string; sec: number }[] = [
-    { label: '1 s', sec: 1 }, { label: '1 min', sec: 60 }, { label: '1 h', sec: 3600 }, { label: '12 h', sec: 43200 },
-    { label: '1 d', sec: 86400 }, { label: '2 d', sec: 172800 }, { label: '4 d', sec: 345600 }, { label: '1 wk', sec: 604800 },
-    { label: '2 wk', sec: 1209600 }, { label: '1 mo', sec: 2592000 }, { label: '2 mo', sec: 5184000 }, { label: '6 mo', sec: 15552000 },
-    { label: '1 yr', sec: 31557600 }, { label: '2 yr', sec: 63115200 }, { label: '5 yr', sec: 157788000 }, { label: '10 yr', sec: 315576000 }
-  ];
-  let rateIndex = 2; // default 1 s ≈ 1 h — inner planets visibly move, rings/belts shear
+  let rateIndex = DEFAULT_RATE_INDEX; // default 1 s ≈ 1 h — inner planets visibly move, rings/belts shear
+  let timeOverride: { rateIndex: number; playing: boolean } | null = null; // GM live time override (Player Views)
   let timeExpanded = false;
 
   // Interactive-tier selection.
@@ -341,12 +337,34 @@
     includeConstructs = true;
     holoStyle = holoStyleOf(p);
     if (p.inspectorWidth) inspectorWidth = Math.max(200, Math.min(640, p.inspectorWidth)); // desktop; mobile ignores it
+    // Default time: the preset picks the starting rate + play state (a GM time override can change it live).
+    if (timeOverride == null) {
+      rateIndex = Math.max(0, Math.min(RATE_STEPS.length - 1, p.defaultRateIndex ?? DEFAULT_RATE_INDEX));
+      isPlaying = p.defaultPlaying ?? true;
+    }
     selectedBody = null;
   }
-  function applyOverrides(ov: { filterBypass: boolean; orbitPaused: boolean; labelsHidden: boolean }) {
+  function applyOverrides(ov: import('$lib/broadcast').PresetOverrides) {
     holoLabelsOn = !ov.labelsHidden;
     holoFilterBypass = ov.filterBypass;
     holoOrbitPaused = ov.orbitPaused;
+    overrideFollowGM = ov.followGM ?? null;
+    timeOverride = ov.time ?? null; // GM live time override (rate + play)
+  }
+  let overrideFollowGM: boolean | null = null;
+  // Following the GM = the override (if set) else the preset's own followGM flag.
+  $: followGMActive = (overrideFollowGM ?? activePreset?.followGM) ?? false;
+  // Apply the GM's live time override the instant it changes.
+  $: if (timeOverride) { rateIndex = timeOverride.rateIndex; isPlaying = timeOverride.playing; }
+  // Follow the GM: on the GM focusing a body, get past the cover, switch to its system, and frame it —
+  // the holo (2D overhead or 3D) frames it the standard way; the list highlights + opens it.
+  function followFocus(id: string | null) {
+    if (!followGMActive || !id) return;
+    coverDismissed = true; // the first real GM click gets past the cover
+    const sys = (starmap?.systems ?? []).find((s: any) => (s.system?.nodes ?? []).some((n: any) => n.id === id));
+    if (sys && sys.id !== selectedSystemId) selectedSystemId = sys.id;
+    focusedBodyId = id;
+    selectBodyById(id);
   }
   // Resolve reactively so BOTH `activePresetId` AND `starmap` are tracked dependencies: a freshly
   // opened window sets activePresetId at mount while the starmap is still null, so we must re-resolve
@@ -588,7 +606,7 @@
     broadcastService.initReceiver(
       () => {},
       (pack) => { rulePack = pack; },
-      () => {},
+      (id) => followFocus(id), // GM focus → follow (only acts when followGMActive)
       () => {},
       () => {},
       () => {},

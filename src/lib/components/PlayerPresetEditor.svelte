@@ -10,6 +10,7 @@
   import type { System, RulePack } from '$lib/types';
   import type { PlayerPreset, ViewModule } from '$lib/player/presetTypes';
   import { holoStyleOf, FONT_STACKS, isRainbow, RAINBOW, RAINBOW_GRADIENT, accentSolid } from '$lib/player/presets';
+  import { RATE_STEPS } from '$lib/player/timeRates';
   import { updatePreset, playerAssetList, addAssetFromFile, deleteAsset } from '$lib/player/presetStore';
   import { systemStore } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
@@ -141,6 +142,12 @@
             <legend>Behaviour</legend>
             <label class="chk"><input type="checkbox" bind:checked={draft.followGM} /> Follows the GM (projection-style)</label>
             <label class="chk"><input type="checkbox" bind:checked={draft.interactive} /> Players can click / focus / scrub</label>
+            <label>Default time
+              <select bind:value={draft.defaultRateIndex}>
+                {#each RATE_STEPS as r, i}<option value={i}>1 s ≈ {r.label}</option>{/each}
+              </select>
+            </label>
+            <label class="chk"><input type="checkbox" bind:checked={draft.defaultPlaying} /> Start playing (unticked = paused)</label>
           </fieldset>
           <fieldset>
             <legend>Theme (used by every stage)</legend>

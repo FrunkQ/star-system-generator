@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.81-beta - 12th Jul 2026
+
+* **Follow the GM.** A "Follows the GM" preset (or the live override) now makes the player view track the GM: the first body the GM focuses gets the players past the cover, then every body the GM clicks is framed on the players' view the standard way — switching to the right system if needed. Works for the 2D map and 3D holo (same framing) and highlights the body in the list views.
+* **GM live time control.** The Player Views panel gains a "Control player time" quick override — a play/pause and rate slider the GM can drive live, so everyone's clock matches the table.
+* **Default time per preset.** The editor's General step now sets a preset's starting time — a rate (default 1 s ≈ 1 h) and whether it starts playing or paused.
+
 ## v2.1.80-beta - 12th Jul 2026
 
 * **Option to hide the body info panel.** A preset can now suppress the body info panel entirely on the system page for a clean display — tapping a body still frames it, it just doesn't open a panel.

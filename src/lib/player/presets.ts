@@ -49,6 +49,8 @@ export const DEFAULT_PRESET: PlayerPreset = {
   systemOverlay: null,
   companyName: '',
   footerText: '',
+  defaultRateIndex: 2,
+  defaultPlaying: true,
   guideTips: 'off',
   filter: 'none',
   filterParams: {},
