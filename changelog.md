@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.77-beta - 12th Jul 2026
+
+* **Moons and orbiting constructs no longer sink into the planet in readable views.** The true-scale fix had let satellites fall inside a magnified globe; there's now a clearance rule that scales with the rendered globe size, so a satellite always sits just outside the parent's surface (staggered by orbital order) in readable views, while true-scale positions are preserved. Moon orbit rings follow the same rule so a moon still sits on its ring.
+
 ## v2.1.76-beta - 12th Jul 2026
 
 * **System text-list now runs through the real filter too.** The "list" system view is drawn to a canvas and passed through the actual GPU shader (like the starmap list), retiring the CSS approximation for it. It stays interactive — a coloured body list you can scroll, and tapping a body opens its file in the shared inspector. (The inspector panel keeps its own approximated filter for now.)

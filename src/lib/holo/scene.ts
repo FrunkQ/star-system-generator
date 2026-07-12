@@ -880,7 +880,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           const kP = rP > 1e-9 ? compressScalar(rP) / rP : 0;
           const parentNode = nodesById.get(node.parentId);
           const parentRad = parentNode ? bodyRadiusScene(parentNode, true) : 0;
-          const ring = kP > 0 ? buildMoonOrbitRing(node, kP, compressScalar(rP), parentRad, compression, orbitColor(node)) : null;
+          const ring = kP > 0 ? buildMoonOrbitRing(node, kP, compressScalar(rP), parentRad, bodyRadiusScene(node, false), compression, orbitColor(node)) : null;
           if (ring) { contentGroup.add(ring); orbitRings.push({ id: node.id, obj: ring, trackParentId: node.parentId }); }
         }
       }
@@ -1086,7 +1086,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           const parentRad = pv?.radiusScene ?? 0;
           const spreadDist = moonSpread(off, compressScalar(parentR), parentRad); // just outside the parent, ramped by true distance
           const trueDist = off * (compressScalar(Math.hypot(p.x, p.y, p.z)) / Math.max(1e-12, Math.hypot(p.x, p.y, p.z))); // offset under the radial map
-          const dist = trueDist * (1 - compression) + spreadDist * compression;
+          // Globe-relative clearance: a satellite must always clear the parent's RENDERED surface, so at
+          // readable body sizes (big globe) moons/constructs are pushed just outside it, staggered by true
+          // orbital order — while at true scale (tiny globe) the floor is tiny and real positions stand.
+          const moonRad = b.radiusScene ?? 0;
+          const clearance = parentRad * 1.12 + moonRad + parentRad * 0.4 * Math.log10(1 + off / 0.0006);
+          const dist = Math.max(clearance, trueDist * (1 - compression) + spreadDist * compression);
           const k = dist / off;
           // axis-map the raw offset (x, z->y, y->z) and add to the compressed parent position
           b.mesh.position.set(tmpParent.x + ox * k, tmpParent.y + oz * k, tmpParent.z + oy * k);
@@ -1463,7 +1468,7 @@ function moonSpread(off: number, localScale: number, parentRadius: number): numb
 // spread transform the moon's own position uses (see the satellite branch in setTime), so the ring sits
 // exactly under the moon. kHelio = the parent's radial compression factor (compressScalar(r)/r);
 // localScale = the parent's orbit radius in scene units (compressScalar(r)).
-function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, parentRadius: number, compression: number, color: number): THREE.LineLoop | null {
+function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, parentRadius: number, moonRadius: number, compression: number, color: number): THREE.LineLoop | null {
   const period = orbitPeriodMs(node.orbit);
   if (period === 0) return null;
   const t0 = node.orbit.t0 || 0;
@@ -1474,7 +1479,9 @@ function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, paren
     if (off < 1e-12) continue;
     const spreadDist = moonSpread(off, localScale, parentRadius);
     const trueDist = off * kHelio;
-    const dist = trueDist * (1 - compression) + spreadDist * compression;
+    // Same globe-relative clearance as the moon body (updatePositions), so the ring sits under the moon.
+    const clearance = parentRadius * 1.12 + moonRadius + parentRadius * 0.4 * Math.log10(1 + off / 0.0006);
+    const dist = Math.max(clearance, trueDist * (1 - compression) + spreadDist * compression);
     const k = dist / off;
     pts.push(new THREE.Vector3(r.x * k, r.z * k, r.y * k)); // physics(x,y,z) → scene(x,z,y)
   }
