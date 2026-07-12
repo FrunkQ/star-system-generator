@@ -74,22 +74,27 @@ export function drawTipBanner(
   opts: { accent: string; font: string; mono: boolean }
 ) {
   if (!text) return;
-  const mx = Math.round(viewW * 0.035), my = Math.round(viewH * 0.045);
-  const pad = 12;
-  const barW = viewW - mx * 2;
+  const my = Math.round(viewH * 0.045);
+  // Font + box are sized as a FRACTION of the view (the HUD canvas maps 1:1 onto the display), so the
+  // banner reads at a consistent on-screen size and never stretches edge-to-edge on a wide screen: it's
+  // a centred, bounded box that reflows. Sizes scale with the smaller of a width- and height-based cap.
+  const fontPx = Math.max(12, Math.min(viewW * 0.011, viewH * 0.026, 20));
+  const stampPx = Math.round(fontPx * 0.82);
+  const pad = Math.round(fontPx * 1.0);
+  const lineH = Math.round(fontPx * 1.32);
+  const barW = Math.min(viewW * 0.92, Math.max(viewW * 0.42, fontPx * 44)); // centred, bounded to ~mid-width
+  const x0 = Math.round((viewW - barW) / 2);
   const innerW = barW - pad * 2;
   const prefix = edge === 'top' ? 'TRAVELLER ADVISORY' : 'THE GUIDE SAYS';
   const font = opts.font;
-  const stampFont = `700 11px ${font}`;
-  const noteFont = `italic 13px ${font}`;
+  const stampFont = `700 ${stampPx}px ${font}`;
+  const noteFont = `italic ${Math.round(fontPx)}px ${font}`;
 
   ctx.font = stampFont;
   const stampW = ctx.measureText(prefix + '  ').width;
   ctx.font = noteFont;
   const lines = wrap(ctx, text, innerW - stampW);
-  const lineH = 17;
   const barH = pad * 2 + Math.max(lineH, lines.length * lineH);
-  const x0 = mx;
   const y0 = edge === 'top' ? my : viewH - my - barH;
 
   const r = 8;
@@ -108,7 +113,7 @@ export function drawTipBanner(
   const accent = opts.mono ? '#cfd6e4' : (opts.accent && opts.accent !== 'rainbow' ? opts.accent : '#8ed0ff');
   ctx.textBaseline = 'alphabetic';
   ctx.textAlign = 'left';
-  let ty = y0 + pad + 12;
+  let ty = y0 + pad + Math.round(fontPx * 0.92);
   ctx.font = stampFont;
   ctx.fillStyle = accent;
   ctx.fillText(prefix, x0 + pad, ty);

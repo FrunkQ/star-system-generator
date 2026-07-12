@@ -34,8 +34,11 @@
   let vw = 0, vh = 0;
 
   // Build (or clear) the HUD — guide-tip banners + a per-screen image overlay, composited into the filter.
+  // Re-measure the container each build: the HUD canvas MUST match the current display size, else a stale
+  // (smaller) size upscales onto the full-frame quad and the banners render several times too large.
   function applyTips() {
     if (!controller) return;
+    if (container) { const r = container.getBoundingClientRect(); if (r.width > 0) { vw = r.width; vh = r.height; } }
     const hasTips = !!(tipTop || tipBottom);
     if ((!hasTips && !overlay) || vw <= 0 || vh <= 0) { controller.setHud(null); return; }
     const hud = drawHud({ viewW: vw, viewH: vh, overlay, tips: hasTips ? { top: tipTop, bottom: tipBottom, accent: accentColor, font, mono: tipMono } : null });

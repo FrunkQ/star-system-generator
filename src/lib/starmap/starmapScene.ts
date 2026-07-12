@@ -175,14 +175,30 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
         const z = originZ + n * cell; pts.push(new THREE.Vector3(-half, 0.01, z), new THREE.Vector3(half, 0.01, z));
       }
     } else {
-      // hex / traveller-hex: a pointy-top lattice at the cell size, seeded on the map origin.
-      const s = cell / Math.sqrt(3); // circumradius so the flat-to-flat width ≈ one cell
-      const corner = (cxp: number, czp: number, kk: number) => new THREE.Vector3(cxp + s * Math.cos((Math.PI / 180) * (60 * kk - 30)), 0.01, czp + s * Math.sin((Math.PI / 180) * (60 * kk - 30)));
-      const rng = Math.min(40, Math.ceil(half / (s * 1.5)) + 1);
-      for (let q = -rng; q <= rng; q++) for (let r = -rng; r <= rng; r++) {
-        const cxp = originX + s * Math.sqrt(3) * (q + r / 2), czp = originZ + s * 1.5 * r;
-        if (Math.abs(cxp) > half + s || Math.abs(czp) > half + s) continue;
-        for (let kk = 0; kk < 6; kk++) pts.push(corner(cxp, czp, kk), corner(cxp, czp, kk + 1));
+      // hex / traveller-hex: replicate the GM's FLAT-TOPPED lattice EXACTLY (Grid.svelte geometry) so
+      // snapped systems land dead-centre in their hex. size = cell/2; centres at col·horizDist,
+      // row·hexHeight + (col odd ? hexHeight/2 : 0), origin (0,0) — all transformed by the fit.
+      const sizeS = (cfg.size / 2) * mapK;      // hex "radius" (centre→L/R vertex) in scene units
+      const hd = 1.5 * sizeS;                   // column spacing
+      const hh = Math.sqrt(3) * sizeS;          // row spacing = hex height
+      if (hd < 0.06 || hh < 0.06) return;       // too dense on screen to be useful
+      // vertices relative to a centre (flat-top): R, top-R, top-L, L, bot-L, bot-R
+      const V: [number, number][] = [[sizeS, 0], [sizeS / 2, hh / 2], [-sizeS / 2, hh / 2], [-sizeS, 0], [-sizeS / 2, -hh / 2], [sizeS / 2, -hh / 2]];
+      const clampRange = (lo: number, hiV: number) => ({ a: Math.max(lo, hiV - 200), b: hiV }); // safety cap
+      const colLo = Math.floor((-half - originX) / hd) - 1, colHi = Math.ceil((half - originX) / hd) + 1;
+      const rowLo = Math.floor((-half - originZ) / hh) - 1, rowHi = Math.ceil((half - originZ) / hh) + 1;
+      const cR = clampRange(colLo, colHi), rR = clampRange(rowLo, rowHi);
+      for (let col = cR.a; col <= cR.b; col++) {
+        const cxp = originX + col * hd;
+        const zBase = originZ + (Math.abs(col) % 2) * (hh / 2);
+        for (let row = rR.a; row <= rR.b; row++) {
+          const czp = zBase + row * hh;
+          if (Math.abs(cxp) > half + sizeS || Math.abs(czp) > half + hh) continue;
+          for (let i = 0; i < 6; i++) {
+            const a = V[i], b = V[(i + 1) % 6];
+            pts.push(new THREE.Vector3(cxp + a[0], 0.01, czp + a[1]), new THREE.Vector3(cxp + b[0], 0.01, czp + b[1]));
+          }
+        }
       }
     }
     gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), mat));

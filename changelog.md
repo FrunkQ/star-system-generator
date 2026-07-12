@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.86-beta - 12th Jul 2026
+
+* **Player-view hexes now line up with the GM's.** The hex grid was drawn with a different (pointy-top) geometry, so it sat offset from the GM's map; it now uses the GM's exact flat-topped hex layout, so snapped systems sit dead-centre in their hex just like on the GM side.
+* **Guide headers/footers no longer stretch across the screen.** The "Traveller Advisory" / "The Guide Says" banners are now a tidy, centred, bounded box that reflows and scales to the screen (they were rendering oversized and edge-to-edge on wide displays, caused by the overlay being built at a stale size and upscaled).
+
 ## v2.1.85-beta - 12th Jul 2026
 
 * **The built-in presets now recreate the old skins.** Each built-in was tuned to match the artifact it replaces: The Guide gets illustrated procedural discs + rainbow chrome, Datapad shows body photos, Console uses flat schematic shapes, and CRT Terminal is the monochrome body list under the green-phosphor filter. The old skins are still available for side-by-side comparison.
