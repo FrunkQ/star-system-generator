@@ -7,6 +7,7 @@
   import type { FilteredCanvasController } from '$lib/holo/filteredCanvas';
   import type { FilterParamValues } from '$lib/holo/filters/schema';
   import { drawList, type ListModel, type ListTips, type RowHit } from '$lib/catalogue/listCanvas';
+  import type { HudOverlay } from '$lib/catalogue/infoCard';
 
   export let model: ListModel;
   export let accent = '#6aa0ff';
@@ -17,6 +18,7 @@
   export let selectedId: string | null = null;
   export let selectable = false;
   export let tips: ListTips | null = null;
+  export let overlay: HudOverlay | null = null; // per-screen image overlay, composited into the filter
 
   const dispatch = createEventDispatcher<{ select: string }>();
 
@@ -34,7 +36,7 @@
     const maxScroll = Math.max(0, contentH - vh);
     if (scrollY > maxScroll) scrollY = maxScroll;
     if (scrollY < 0) scrollY = 0;
-    const res = drawList({ viewW: vw, viewH: vh, scrollY, model, accent, font, mono, selectedId, tips });
+    const res = drawList({ viewW: vw, viewH: vh, scrollY, model, accent, font, mono, selectedId, tips, overlay });
     rowHits = res.rows; contentH = res.contentH;
     ctrl.setSource(res.canvas);
   }
@@ -58,7 +60,7 @@
   onDestroy(() => { ro?.disconnect(); ctrl?.dispose(); ctrl = null; });
 
   // Re-render on data / theme / selection / scroll change; re-apply the filter separately.
-  $: if (ctrl) { model; accent; font; mono; selectedId; tips; scrollY; render(); }
+  $: if (ctrl) { model; accent; font; mono; selectedId; tips; overlay; scrollY; render(); }
   $: ctrl?.setFilter(filterId, filterParams);
 
   function onWheel(e: WheelEvent) {

@@ -43,7 +43,8 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number): string
 }
 
 // The per-screen overlay bitmap, placed by the standard 9-pin + size%/stretch + opacity rules.
-function drawOverlay(ctx: CanvasRenderingContext2D, o: HudOverlay, W: number, H: number) {
+// Exported so the (gfx) list + cover surfaces composite an identical overlay INTO the real filter.
+export function drawOverlay(ctx: CanvasRenderingContext2D, o: HudOverlay, W: number, H: number) {
   const iw = o.img.naturalWidth || o.img.width, ih = o.img.naturalHeight || o.img.height;
   if (!iw || !ih) return;
   ctx.globalAlpha = Math.max(0, Math.min(1, o.placement.opacity ?? 1));

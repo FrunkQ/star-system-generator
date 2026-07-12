@@ -2,7 +2,7 @@
 // it can be shown through the REAL GPU filter (FilteredCanvas) instead of a CSS approximation — the
 // same treatment as the cover/info-card. Static: redrawn only on data / scroll / size change (cheap).
 // Returns the row hit-boxes (in CSS px of the logical view) so a warp-mapped tap can find its row.
-import { drawTipBanner } from './infoCard';
+import { drawTipBanner, drawOverlay, type HudOverlay } from './infoCard';
 
 export interface ListRow {
   id: string;
@@ -26,6 +26,7 @@ export interface DrawListOpts {
   mono: boolean;        // white/monochrome scheme: draw grey so a filter colours it
   selectedId?: string | null;
   tips?: ListTips | null;
+  overlay?: HudOverlay | null; // a per-screen image overlay, composited so the filter catches it
 }
 export interface RowHit { id: string; y0: number; y1: number; } // in CSS px of the view (post-scroll)
 export interface DrawListResult { canvas: HTMLCanvasElement; rows: RowHit[]; contentH: number; }
@@ -110,6 +111,8 @@ export function drawList(opts: DrawListOpts): DrawListResult {
     ctx.font = `600 15px ${font}`;
     ctx.fillText(ellipsise(ctx, r.title, Math.max(20, sumLeft - tx)), tx, mid);
   }
+
+  if (opts.overlay) drawOverlay(ctx, opts.overlay, viewW, viewH);
 
   if (opts.tips) {
     const to = { accent: opts.accent, font, mono: opts.mono };

@@ -425,9 +425,20 @@
     im.onload = () => { if (overlayAsset && im.src.endsWith(overlayAsset.dataUrl.slice(-24))) overlayImg = im; };
     im.src = overlayAsset.dataUrl;
   } else { overlayImg = null; }
+  // Starmap overlay bitmap (its own image — the starmap/list surfaces composite it INTO the real filter).
+  let starmapOverlayImg: HTMLImageElement | null = null;
+  $: starmapOverlayAsset = activePreset?.starmapOverlay ? presetAssets.find((a) => a.id === activePreset.starmapOverlay!.assetId) : null;
+  $: if (browser && starmapOverlayAsset) {
+    const im = new Image();
+    im.onload = () => { if (starmapOverlayAsset && im.src.endsWith(starmapOverlayAsset.dataUrl.slice(-24))) starmapOverlayImg = im; };
+    im.src = starmapOverlayAsset.dataUrl;
+  } else { starmapOverlayImg = null; }
+  // Resolved {img, placement} overlays for the gfx surfaces (null until the image has loaded).
+  $: starmapOverlayHud = starmapOverlayImg && activePreset?.starmapOverlay ? { img: starmapOverlayImg, placement: activePreset.starmapOverlay } : null;
+  $: systemOverlayHud = overlayImg && activePreset?.systemOverlay ? { img: overlayImg, placement: activePreset.systemOverlay } : null;
   // The info card is desktop-only (phones keep the bottom-sheet DOM inspector); the overlay filters at any size.
   $: hudCardOn = effectiveSystemTier === 'holo' && !!selectedBody && presetFilterActive && hudW >= 720;
-  $: hudOverlayOn = effectiveSystemTier === 'holo' && presetFilterActive && !!activePreset?.systemOverlay && !!overlayImg;
+  $: hudOverlayOn = effectiveSystemTier === 'holo' && !!activePreset?.systemOverlay && !!overlayImg; // HUD renders it whether or not a filter is active (the quad is part of the scene)
   // Tips ride the same HUD quad, and render even without the filter (the quad is part of the holo render).
   $: hudTipsOn = effectiveSystemTier === 'holo' && tipsOn && hudW > 0;
   $: hudActive = (hudCardOn || hudOverlayOn || hudTipsOn) && hudW > 0;
@@ -727,18 +738,14 @@
           labelSize={activePreset.labelSize}
           filter={presetFilterActive ? activePreset.filter : 'none'} filterParams={activePreset.filterParams}
           tipTop={tipTop} tipBottom={tipBottom} tipMono={tipMono} routeGlow={activePreset.starmapRouteGlow} mono={activePreset.starmapMono}
+          overlay={starmapOverlayHud}
           selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
       {:else}
         <!-- Text list rendered to canvas + the REAL GPU filter (no CSS fake), still tap-to-select + scroll. -->
         <FilteredListView model={starmapListModel} accent={presetAccent} font={presetFont} mono={tipMono}
           filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
-          tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null}
+          tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null} overlay={starmapOverlayHud}
           selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
-      {/if}
-      {#if activePreset.starmapOverlay}
-        <div class="overlay-wrap"><FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
-          <GraphicLayer placement={activePreset.starmapOverlay} assets={presetAssets} />
-        </FilterFrame></div>
       {/if}
     </div>
   {:else if !selectedSystemId}
@@ -840,14 +847,9 @@
     <div class="preset-stage preset-doc" style="font-family:{presetFont}; --accent:{presetAccent}">
       <FilteredListView model={systemListModel} accent={presetAccent} font={presetFont} mono={activePreset.bodyStyle === 'white'}
         filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
-        tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null}
+        tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null} overlay={systemOverlayHud}
         selectable selectedId={selectedBody?.id ?? null}
         on:select={(e) => selectBodyById(e.detail)} />
-      {#if activePreset.systemOverlay}
-        <div class="overlay-wrap"><FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
-          <GraphicLayer placement={activePreset.systemOverlay} assets={presetAssets} />
-        </FilterFrame></div>
-      {/if}
       {@render inspectorAside()}
     </div>
   {:else}

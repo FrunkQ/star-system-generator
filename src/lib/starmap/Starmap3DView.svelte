@@ -22,6 +22,7 @@
   export let tipTop = '';    // "The Guide" margin note for the top edge ('' = none)
   export let tipBottom = ''; // …and the bottom edge — drawn INTO the filtered render as a HUD quad
   export let tipMono = false;
+  export let overlay: import('$lib/catalogue/infoCard').HudOverlay | null = null; // image overlay into the filter
 
   const dispatch = createEventDispatcher<{ select: string }>();
 
@@ -31,11 +32,12 @@
   let ro: ResizeObserver | null = null;
   let vw = 0, vh = 0;
 
-  // Build (or clear) the guide-tip banner HUD — a static overlay bitmap composited into the filter.
+  // Build (or clear) the HUD — guide-tip banners + a per-screen image overlay, composited into the filter.
   function applyTips() {
     if (!controller) return;
-    if ((!tipTop && !tipBottom) || vw <= 0 || vh <= 0) { controller.setHud(null); return; }
-    const hud = drawHud({ viewW: vw, viewH: vh, tips: { top: tipTop, bottom: tipBottom, accent: accentColor, font, mono: tipMono } });
+    const hasTips = !!(tipTop || tipBottom);
+    if ((!hasTips && !overlay) || vw <= 0 || vh <= 0) { controller.setHud(null); return; }
+    const hud = drawHud({ viewW: vw, viewH: vh, overlay, tips: hasTips ? { top: tipTop, bottom: tipBottom, accent: accentColor, font, mono: tipMono } : null });
     controller.setHud(hud);
   }
 
@@ -81,7 +83,7 @@
   // Re-apply on any prop change (setData/setFilter short-circuit cheaply).
   $: if (controller) { smSystems; smRoutes; grid; routeGlow; mono; background; angleDeg; labelSize; font; filter; filterParams; accentColor; apply(); }
   // Rebuild the tip HUD when the notes (or their theme) change.
-  $: if (controller) { tipTop; tipBottom; tipMono; accentColor; font; applyTips(); }
+  $: if (controller) { tipTop; tipBottom; tipMono; overlay; accentColor; font; applyTips(); }
 </script>
 
 <div class="sm3d-root" bind:this={container}>
