@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.85-beta - 12th Jul 2026
+
+* **The built-in presets now recreate the old skins.** Each built-in was tuned to match the artifact it replaces: The Guide gets illustrated procedural discs + rainbow chrome, Datapad shows body photos, Console uses flat schematic shapes, and CRT Terminal is the monochrome body list under the green-phosphor filter. The old skins are still available for side-by-side comparison.
+* **Export / import presets.** The Player Views panel has Export (saves all presets to a JSON file and copies them to the clipboard) and Import buttons, so a fine-tuned set of presets can be saved out of the tool, shared, or brought into another campaign.
+
 ## v2.1.84-beta - 12th Jul 2026
 
 * **The player-view starmap now matches the GM's grid.** The GM's live snap-grid (square / hex / Traveller) and its cell size are broadcast to the player, and the 2D/3D player starmap draws the identical grid calibrated to the same cells — so snapped systems sit on the grid exactly like the GM sees them (and it shows in the editor preview). When the GM has no grid, the decorative polar/hex grid is used as before.

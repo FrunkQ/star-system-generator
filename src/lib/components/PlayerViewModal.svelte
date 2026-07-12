@@ -10,7 +10,7 @@
   import { broadcastService } from '$lib/broadcast';
   import { measurementUnit, temperatureUnit } from '$lib/stores';
   import type { PlayerPreset, ViewModule } from '$lib/player/presetTypes';
-  import { DEFAULT_PRESET, makePresetId, accentSolid, isRainbow, RAINBOW_GRADIENT } from '$lib/player/presets';
+  import { DEFAULT_PRESET, makePresetId, accentSolid, isRainbow, RAINBOW_GRADIENT, normalizePreset } from '$lib/player/presets';
   import {
     playerPresetList, addPreset, deletePreset, duplicateIntoStarmap, runPresetMigration
   } from '$lib/player/presetStore';
@@ -97,6 +97,43 @@
     deletePreset(p.id);
     selectedId = get(playerPresetList)[0]?.id ?? null;
   }
+  // Capture the whole set of presets to a JSON file (+ clipboard) — so a fine-tuned "ideal set" can be
+  // saved out of the tool, handed around, or re-imported. Import adds them as new editable presets.
+  let importInput: HTMLInputElement;
+  let exported = false;
+  function exportPresets() {
+    const data = JSON.stringify(get(playerPresetList), null, 2);
+    try {
+      const url = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+      const a = document.createElement('a'); a.href = url; a.download = 'player-presets.json'; a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* download blocked — clipboard still works */ }
+    try { navigator.clipboard?.writeText(data); } catch { /* ignore */ }
+    exported = true; setTimeout(() => (exported = false), 1500);
+  }
+  function onImportFile(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    file.text().then((txt) => {
+      try {
+        const parsed = JSON.parse(txt);
+        const list: any[] = Array.isArray(parsed) ? parsed : [parsed];
+        const existing = get(playerPresetList).map((p) => p.id);
+        let firstId: string | null = null;
+        for (const raw of list) {
+          if (!raw || typeof raw !== 'object') continue;
+          const id = makePresetId((raw.name || 'Imported') + ' (import)', existing);
+          existing.push(id);
+          const p = normalizePreset({ ...raw, id, name: raw.name || 'Imported', builtIn: false });
+          addPreset(p);
+          firstId = firstId ?? id;
+        }
+        if (firstId) selectedId = firstId;
+      } catch { /* malformed file — ignore */ }
+      input.value = '';
+    });
+  }
   // Summary of what the preset shows: cover / starmap / system, with view modules.
   function stages(p: PlayerPreset): string {
     const parts: string[] = [];
@@ -112,7 +149,14 @@
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="modal" on:click|stopPropagation>
     <header>
-      <h2>Player Views</h2>
+      <div class="head-row">
+        <h2>Player Views</h2>
+        <div class="head-actions">
+          <button class="link-btn" on:click={exportPresets} title="Save all presets to a JSON file (and copy to clipboard)">{exported ? 'Exported ✓' : 'Export…'}</button>
+          <button class="link-btn" on:click={() => importInput?.click()} title="Import presets from a JSON file">Import…</button>
+          <input type="file" accept="application/json,.json" bind:this={importInput} on:change={onImportFile} style="display:none" />
+        </div>
+      </div>
       <p class="lede">One tool for every player-facing view — guides, tables, projections. Pick a preset,
         duplicate it, and make it your own in the editor. Presets are saved with this campaign.</p>
     </header>
@@ -234,7 +278,11 @@
 <style>
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 2000; }
   .modal { background: var(--bg-panel); color: var(--text); padding: 1.4rem; border-radius: 8px; width: 880px; max-width: 96vw; max-height: 92vh; overflow: hidden; display: flex; flex-direction: column; gap: 1rem; }
-  header h2 { margin: 0 0 0.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; }
+  .head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; margin-bottom: 0.3rem; }
+  header h2 { margin: 0; }
+  .head-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+  .link-btn { background: none; border: 1px solid var(--border); border-radius: 5px; color: var(--text-muted); font-size: 0.74rem; padding: 3px 8px; cursor: pointer; white-space: nowrap; }
+  .link-btn:hover { color: var(--text); border-color: var(--accent); }
   .lede { margin: 0; font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; }
   .body { display: grid; grid-template-columns: 1.5fr 1fr; gap: 1rem; min-height: 0; overflow: hidden; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; overflow-y: auto; padding-right: 4px; align-content: start; }

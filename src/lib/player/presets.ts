@@ -83,28 +83,43 @@ function preset(p: Partial<PlayerPreset> & { id: string; name: string; descripti
 
 // The shipped presets — every current artifact as a named card on one list. Projection is just the
 // last card (followGM + non-interactive + overhead), not a separate category.
+// Font stacks referenced by the built-ins (kept in sync with FONT_STACKS below).
+const F_SERIF = 'Georgia, "Times New Roman", serif';
+const F_MONO = 'ui-monospace, "Cascadia Mono", Consolas, monospace';
+const F_TYPEWRITER = '"Courier New", Courier, monospace';
+
 export const BUILTIN_PRESETS: PlayerPreset[] = [
+  // The Guide: friendly + ILLUSTRATED — procedural true-colour discs, rainbow chrome, funny margin notes,
+  // DON'T PANIC cover. Mirrors the old 'guide' skin (CatalogueBrowser disc imagery + guide notes).
   preset({
     id: 'guide', name: 'The Guide', description: "A traveller's field guide — friendly, illustrated, mostly accurate.",
-    systemView: 'diagram2d', bodyStyle: 'textured', guideTips: 'both',
+    systemView: 'diagram2d', bodyStyle: 'textured', bodyGfx: 'disc', accentColor: RAINBOW, font: F_SERIF,
+    guideTips: 'both',
     cover: { enabled: true, title: "DON'T PANIC", subtitle: '', body: '', label: '', graphic: null }
   }),
+  // Datapad: a hand-held instrument feed — stock body PHOTOS on a clean cyan terminal. Old 'clean' skin.
   preset({
     id: 'datapad', name: 'Datapad', description: 'A hand-held data terminal readout.',
-    systemView: 'diagram2d', accentColor: '#5bd7ff'
+    systemView: 'diagram2d', bodyGfx: 'photo', accentColor: '#5bd7ff', font: F_MONO
   }),
+  // Console: a ship-console orbital plot — flat schematic body shapes, green mono. Old 'console' skin.
   preset({
     id: 'console', name: 'Console', description: 'A ship-console orbital plot.',
-    systemView: 'diagram2d', accentColor: '#7dff9e'
+    systemView: 'diagram2d', bodyGfx: 'flat', accentColor: '#7dff9e', font: F_MONO, grid: 'plain'
   }),
+  // CRT Terminal: a salvaged green-phosphor TEXT terminal — the body list in monochrome under the CRT
+  // filter (so the phosphor tints it) + scanlines. Old 'mono' skin (retro report, mono tint).
   preset({
     id: 'crt', name: 'CRT Terminal', description: 'A green-phosphor CRT terminal with scanlines.',
-    systemView: 'diagram2d', filter: 'crt', filterParams: { phosphor: CRT_GREEN }, accentColor: CRT_GREEN
+    systemView: 'list', filter: 'crt', filterParams: { phosphor: CRT_GREEN }, accentColor: CRT_GREEN,
+    bodyStyle: 'white', starmapMono: true, font: F_TYPEWRITER
   }),
+  // Holo Table: the 3D holographic orrery — textured spheres, tilted, starfield. Old 'holo' skin.
   preset({
     id: 'holo', name: 'Holo Table', description: 'A 3D holographic orrery table.',
     systemView: 'holo3d'
   }),
+  // Projection: overhead table projection that follows the GM (kiosk); greenscreen-ready for OBS.
   preset({
     id: 'projection', name: 'Projection (GM-driven)',
     description: 'Overhead table projection that follows the GM. Set Background to Greenscreen for OBS.',
