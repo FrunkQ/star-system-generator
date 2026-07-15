@@ -190,6 +190,7 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
     filterParams: p.filterParams ? { ...p.filterParams } : undefined,
     compression: p.compression,
     angleDeg: p.lockOverhead ? 0 : p.angleDeg,
+    lockOverhead: p.lockOverhead,
     whole: p.whole,
     skybox: p.skybox,
     beltDetail: p.beltDetail,

@@ -485,7 +485,7 @@
   $: system2dOverhead = !!activePreset && activePreset.systemView === 'diagram2d';
   // 2D map = the holo locked overhead + flat. `whole` is NOT forced: with it off, tapping a body frames
   // (zooms) it just like the GM's orrery; a preset can still tick "Frame whole system" for a fixed plan view.
-  $: systemHoloStyle = system2dOverhead ? { ...holoStyle, angleDeg: 0, unlit: true } : holoStyle;
+  $: systemHoloStyle = system2dOverhead ? { ...holoStyle, angleDeg: 0, unlit: true, lockOverhead: true } : holoStyle;
   // Cover through the REAL filter: draw it to a canvas + a FilteredCanvas surface (the cover has no 3D
   // scene behind it, so it gets its own GPU-filtered quad instead of a CSS approximation).
   let coverW = 0, coverH = 0;

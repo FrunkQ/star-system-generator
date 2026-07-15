@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.89-beta - 12th Jul 2026
+
+* **The 2D system map no longer tilts or spins.** Dragging could still rotate it out of its flat top-down view; it's now pinned like a proper 2D map — zoom and the click-to-frame behaviour still work. This also applies to any 3D preset with "Lock overhead" ticked (such as Projection); the normal 3D holo still tilts freely.
+
 ## v2.1.88-beta - 12th Jul 2026
 
 * **Player views now click and frame exactly like the GM's orrery.** Tapping a body steps the same familiar ladder: first click frames it with its parent, a second frames it with its moons (skipped if it hasn't any), and a third fills the view with the body itself. The 2D map and the 3D holo use identical framing — only the viewing angle differs (flat overhead vs the preset's tilt).

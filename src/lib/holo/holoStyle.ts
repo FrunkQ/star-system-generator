@@ -16,6 +16,7 @@ export interface HoloStyle {
   bodyStyle: 'textured' | 'flat' | 'white' | 'tint'; // colour selection ('tint' = legacy alias for white)
   render?: 'filled' | 'lopoly-filled' | 'lopoly-lines' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ'; // solid vs 80s wireframe
   unlit?: boolean; // flat lighting (no terminator) — the efficient "2D map" look
+  lockOverhead?: boolean; // pin the camera flat top-down and forbid tilt/rotate (the "2D map" view)
   auroras?: boolean; // show the emissive polar aurora shells (default on)
   bodyGfx?: 'sphere' | 'photo' | 'disc' | 'flat'; // 3D sphere vs flat disc (photo / procedural / flat)
   background: 'space' | 'green' | 'blue' | 'black'; // dark space, or a chroma-key colour for OBS

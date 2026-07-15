@@ -61,6 +61,7 @@ export interface HoloController {
   setRender(mode: RenderStyle): void; // filled spheres vs 80s vector wireframe (see-through / back-occluded)
   setUnlit(on: boolean): void; // flat lighting (no terminator) for the efficient "2D map" look
   setAuroras(on: boolean): void; // show/hide the emissive polar aurora shells
+  setLock2D(on: boolean): void; // flat "2D map": no tilt/rotate by drag (zoom + the click ladder stay)
   setBodyGfx(mode: BodyGfx): void; // 3D sphere vs flat disc (photo / procedural / flat)
   setBodySize(v: number): void; // 1 readable .. 0 true physical scale
   setGrid(mode: 'off' | 'plain' | 'scaled' | 'hex'): void; // ground reference grid
@@ -621,13 +622,31 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let focusLevel = 1; // the click-ladder level for the focused body (see viewport/camera FRAME_LEVELS)
   let framingAngleRad = (64 * Math.PI) / 180; // camera tilt from vertical (0 = overhead)
   let framingWhole = false; // frame the whole system instead of the focused body
+  let lock2d = false; // "2D map": pin the tilt overhead and forbid rotating (zoom still works)
+
+  // Pin the polar angle. Locked = a fixed flat top-down map; otherwise let the camera reach the
+  // configured framing (OrbitControls would otherwise clamp it). LOCK_POLAR sits a hair off true
+  // vertical because an exactly-overhead orbit camera is gimbal-degenerate (view axis parallel to `up`).
+  const LOCK_POLAR = 0.02;
+  function applyPolarLimits() {
+    controls.minPolarAngle = lock2d ? LOCK_POLAR : Math.min(0.06, framingAngleRad);
+    controls.maxPolarAngle = lock2d ? LOCK_POLAR : Math.PI * 0.49;
+  }
 
   function setFraming(o: { angleDeg?: number; whole?: boolean }) {
     if (o.angleDeg != null) framingAngleRad = (Math.max(0, Math.min(85, o.angleDeg)) * Math.PI) / 180;
     if (o.whole != null) framingWhole = o.whole;
-    // Let the camera actually reach an overhead framing (OrbitControls otherwise clamps the polar).
-    controls.minPolarAngle = Math.min(0.06, framingAngleRad);
+    applyPolarLimits();
     focusDrive = 48; // re-ease into the new framing
+  }
+
+  // The flat "2D map" look: no tilting or rotating by drag — zoom (and the click ladder) still work.
+  function setLock2D(on: boolean) {
+    if (on === lock2d) return;
+    lock2d = on;
+    controls.enableRotate = !on;
+    applyPolarLimits();
+    focusDrive = 48; // ease back to the pinned framing
   }
 
   const pointer = new AbortController();
@@ -1419,7 +1438,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setBodyGfx, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setLock2D, setBodyGfx, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----
