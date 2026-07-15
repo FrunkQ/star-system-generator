@@ -65,7 +65,7 @@
   // Unified player presets: the view is driven by a preset (URL ?preset= on open, then live SYNC_PRESET
   // from the GM's Player Views modal). holoStyleOf + BUILTIN_PRESETS are three-free (only types), so
   // importing them keeps three out of this route's chunk.
-  import { BUILTIN_PRESETS, BUILTIN_ASSETS, holoStyleOf, accentSolid } from '$lib/player/presets';
+  import { BUILTIN_PRESETS, BUILTIN_ASSETS, holoStyleOf, systemStageStyle, accentSolid } from '$lib/player/presets';
   import type { PlayerPreset } from '$lib/player/presetTypes';
   // The unified player-view layers — the preset drives WHICH of these render (cover / starmap module /
   // system module) so a preset is deployed at full fidelity, not mapped onto a legacy skin.
@@ -485,11 +485,9 @@
   $: system2dOverhead = !!activePreset && activePreset.systemView === 'diagram2d';
   // 2D map = the holo locked overhead + flat. `whole` is NOT forced: with it off, tapping a body frames
   // (zooms) it just like the GM's orrery; a preset can still tick "Frame whole system" for a fixed plan view.
-  // A 2D map is flat + fixed: overhead, locked per the preset's Lock rotation (default on), and NEVER
-  // turntabled — "View orbit" is a 3D-only idea, so it's forced off here regardless of the saved value.
-  $: systemHoloStyle = system2dOverhead
-    ? { ...holoStyle, angleDeg: 0, unlit: true, lockOverhead: activePreset!.lockRotation !== false, orbitSpeed: 0 }
-    : holoStyle;
+  // What the system stage renders with (the 2D map = the holo locked flat). Shared with the editor
+  // preview via systemStageStyle, so the preview always shows exactly what players get.
+  $: systemHoloStyle = activePreset ? systemStageStyle(activePreset, holoStyle) : holoStyle;
   // Cover through the REAL filter: draw it to a canvas + a FilteredCanvas surface (the cover has no 3D
   // scene behind it, so it gets its own GPU-filtered quad instead of a CSS approximation).
   let coverW = 0, coverH = 0;
@@ -763,7 +761,8 @@
           filter={presetFilterActive ? activePreset.filter : 'none'} filterParams={activePreset.filterParams}
           tipTop={tipTop} tipBottom={tipBottom} tipMono={tipMono} routeGlow={activePreset.starmapRouteGlow} mono={activePreset.starmapMono}
           overlay={starmapOverlayHud} mapGrid={starmap?.mapGrid ?? null}
-          lock2d={activePreset.starmapView === 'diagram2d' && activePreset.lockRotation !== false}
+          flat={activePreset.starmapView === 'diagram2d'}
+          lockRotation={activePreset.starmapView === 'diagram2d' && activePreset.lockRotation !== false}
           selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
       {:else}
         <!-- Text list rendered to canvas + the REAL GPU filter (no CSS fake), still tap-to-select + scroll. -->

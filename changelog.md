@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.92-beta - 12th Jul 2026
+
+* **The editor preview was showing the wrong renderer.** For a 2D map it was drawing the old orrery instead of the view players actually get — so Colour and Body graphics appeared to do nothing there while working fine in the live player view. The preview now uses the same engine and the same settings as the player view, so what you tune is what they see.
+* **Unticking "Lock rotation" no longer turns a 2D map into a 3D one.** Lock rotation now only fixes the heading; a 2D map always stays flat. With it off you can spin the flat map; with it on the view keeps a focused body centred by panning (the star may drift off-screen at times, which is expected).
+
 ## v2.1.91-beta - 12th Jul 2026
 
 * **The 2D map now pans instead of spinning to follow a body.** Keeping a focused planet centred was swinging the camera around the star as the planet orbited, which turned the whole map. A locked 2D map now holds its heading and simply slides to keep the focus centred.

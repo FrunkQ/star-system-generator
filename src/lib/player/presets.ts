@@ -192,6 +192,7 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
     compression: p.compression,
     angleDeg: p.lockOverhead ? 0 : p.angleDeg,
     lockOverhead: p.lockOverhead,
+    lockRotation: p.lockOverhead ? p.lockRotation !== false : false, // 3D spins freely unless pinned flat
     whole: p.whole,
     skybox: p.skybox,
     beltDetail: p.beltDetail,
@@ -207,6 +208,20 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
     labelSize: p.labelSize,
     font: p.font
   };
+}
+
+/**
+ * The HoloStyle a preset's SYSTEM stage actually renders with. The "2D map" is the same holo engine
+ * locked flat: overhead, unlit, no turntable (that's a 3D idea), and pinned unless the GM unticked Lock
+ * rotation. ONE definition so the editor preview and the live player view can never drift apart — they
+ * did exactly that once, and the preview quietly lied about colour and body graphics for weeks.
+ */
+export function systemStageStyle(p: PlayerPreset, base?: HoloStyle): HoloStyle {
+  const s = base ?? holoStyleOf(p);
+  if (p.systemView !== 'diagram2d') return s;
+  // A 2D map is ALWAYS flat — lockOverhead is not the GM's to unset here, or unticking Lock rotation
+  // would tilt it into a 3D view. Lock rotation only fixes the HEADING (spin + follow-by-pan).
+  return { ...s, angleDeg: 0, unlit: true, lockOverhead: true, lockRotation: p.lockRotation !== false, orbitSpeed: 0 };
 }
 
 // Slug-based id, made unique against a set of existing ids (deterministic — no RNG).

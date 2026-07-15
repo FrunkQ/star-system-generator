@@ -61,7 +61,8 @@ export interface HoloController {
   setRender(mode: RenderStyle): void; // filled spheres vs 80s vector wireframe (see-through / back-occluded)
   setUnlit(on: boolean): void; // flat lighting (no terminator) for the efficient "2D map" look
   setAuroras(on: boolean): void; // show/hide the emissive polar aurora shells
-  setLock2D(on: boolean): void; // flat "2D map": no tilt/rotate by drag (zoom + the click ladder stay)
+  setFlatOverhead(on: boolean): void; // "2D map": tilt pinned top-down (+ pan enabled). Never a 3D view.
+  setLockRotation(on: boolean): void; // fix the heading: no spin by drag, and follow a body by PANNING
   setBodyGfx(mode: BodyGfx): void; // 3D sphere vs flat disc (photo / procedural / flat)
   setBodySize(v: number): void; // 1 readable .. 0 true physical scale
   setGrid(mode: 'off' | 'plain' | 'scaled' | 'hex'): void; // ground reference grid
@@ -622,15 +623,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let focusLevel = 1; // the click-ladder level for the focused body (see viewport/camera FRAME_LEVELS)
   let framingAngleRad = (64 * Math.PI) / 180; // camera tilt from vertical (0 = overhead)
   let framingWhole = false; // frame the whole system instead of the focused body
-  let lock2d = false; // "2D map": pin the tilt overhead and forbid rotating (zoom still works)
+  // TWO independent ideas — conflating them turned an unlocked 2D map into a 3D one:
+  //   flatOverhead — the view is a MAP: the tilt is pinned top-down. A 2D map is always flat.
+  //   lockRotate   — the heading is fixed: no spinning by drag, and following a body PANS (below).
+  // With flat on and lockRotate off you get a flat map you can still spin (azimuth only) — the tilt
+  // stays pinned because OrbitControls clamps the polar, so drag can only change the heading.
+  let flatOverhead = false;
+  let lockRotate = false;
 
-  // Pin the polar angle. Locked = a fixed flat top-down map; otherwise let the camera reach the
-  // configured framing (OrbitControls would otherwise clamp it). LOCK_POLAR sits a hair off true
-  // vertical because an exactly-overhead orbit camera is gimbal-degenerate (view axis parallel to `up`).
+  // Pin the polar angle. Flat = a top-down map; otherwise let the camera reach the configured framing
+  // (OrbitControls would otherwise clamp it). LOCK_POLAR sits a hair off true vertical because an
+  // exactly-overhead orbit camera is gimbal-degenerate (view axis parallel to `up`).
   const LOCK_POLAR = 0.02;
   function applyPolarLimits() {
-    controls.minPolarAngle = lock2d ? LOCK_POLAR : Math.min(0.06, framingAngleRad);
-    controls.maxPolarAngle = lock2d ? LOCK_POLAR : Math.PI * 0.49;
+    controls.minPolarAngle = flatOverhead ? LOCK_POLAR : Math.min(0.06, framingAngleRad);
+    controls.maxPolarAngle = flatOverhead ? LOCK_POLAR : Math.PI * 0.49;
   }
 
   function setFraming(o: { angleDeg?: number; whole?: boolean }) {
@@ -640,15 +647,23 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     focusDrive = 48; // re-ease into the new framing
   }
 
-  // The flat "2D map" look: lose ROTATE only. Zoom, pan and the click ladder all still work — a flat map
-  // you can't drag around is worse than useless, so panning is enabled here (the 3D holo stays orbit-only).
-  function setLock2D(on: boolean) {
-    if (on === lock2d) return;
-    lock2d = on;
-    controls.enableRotate = !on;
+  // The "2D map": the tilt is pinned top-down — it can never become a 3D view. Pan + zoom are enabled
+  // (a flat map you can't drag is useless); the 3D holo stays orbit-only.
+  function setFlatOverhead(on: boolean) {
+    if (on === flatOverhead) return;
+    flatOverhead = on;
     controls.enablePan = on;
     applyPolarLimits();
     focusDrive = 48; // ease back to the pinned framing
+  }
+
+  // Fix the heading: no spinning by drag, and driveFocus keeps the focus centred by PANNING. Off = the
+  // view may rotate (on a flat map the polar stays clamped, so that's an azimuth-only spin).
+  function setLockRotation(on: boolean) {
+    if (on === lockRotate) return;
+    lockRotate = on;
+    controls.enableRotate = !on;
+    focusDrive = 48;
   }
 
   const pointer = new AbortController();
@@ -781,10 +796,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (b) {
       const bp = b.mesh.position;
       desiredTarget.copy(bp);
-      if (lock2d) {
-        // A locked 2D map must never spin. Following a body by its RADIAL direction swings the camera's
-        // azimuth around the star as the body orbits — which reads as the whole map rotating. Pinning the
-        // azimuth means the camera only translates: the map PANS to keep the focus centred.
+      if (lockRotate) {
+        // Heading locked: following a body by its RADIAL direction swings the camera's azimuth around the
+        // star as the body orbits — which reads as the whole map rotating. Pinning the azimuth means the
+        // camera only translates: the map PANS to keep the focus centred. The framing is held on the
+        // FOCUS; a secondary object (the parent star) may drift off periodically, which is fine.
         outward.set(0, 0, 1);
       } else {
         outward.copy(bp);
@@ -1400,9 +1416,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (disposed) return;
     const nowSec = filterClock.getElapsedTime();
     driveFocus();
-    // Turntable, paused during the focus ease — and NEVER on a locked 2D map: autoRotate spins the camera
-    // independently of enableRotate, so the lock has to kill it too or a flat map still drifts round.
-    controls.autoRotate = !lock2d && orbitSpeed > 0 && focusDrive === 0;
+    // Turntable, paused during the focus ease — and never when the heading is locked: autoRotate spins the
+    // camera independently of enableRotate, so the lock has to kill it too or the map still drifts round.
+    controls.autoRotate = !lockRotate && orbitSpeed > 0 && focusDrive === 0;
     updateSpin();
     updateSurfaceConstructs();
     updateStarFx(nowSec);
@@ -1451,7 +1467,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setLock2D, setBodyGfx, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----

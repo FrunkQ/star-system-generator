@@ -9,7 +9,7 @@
   import { get } from 'svelte/store';
   import type { System, RulePack } from '$lib/types';
   import type { PlayerPreset, ViewModule } from '$lib/player/presetTypes';
-  import { holoStyleOf, FONT_STACKS, isRainbow, RAINBOW, RAINBOW_GRADIENT, accentSolid } from '$lib/player/presets';
+  import { holoStyleOf, systemStageStyle, FONT_STACKS, isRainbow, RAINBOW, RAINBOW_GRADIENT, accentSolid } from '$lib/player/presets';
   import { RATE_STEPS } from '$lib/player/timeRates';
   import { updatePreset, playerAssetList, addAssetFromFile, deleteAsset } from '$lib/player/presetStore';
   import { systemStore } from '$lib/stores';
@@ -19,7 +19,6 @@
   $: previewMapGrid = { type: ($starmapUiStore.travellerMode ? 'traveller-hex' : $starmapUiStore.gridType) as 'grid' | 'hex' | 'traveller-hex' | 'none', size: 50 };
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import HoloView from '$lib/holo/HoloView.svelte';
-  import SystemVisualizer from './SystemVisualizer.svelte';
   import FilterParamControls from './FilterParamControls.svelte';
   import CoverView from './CoverView.svelte';
   import FilterFrame from './FilterFrame.svelte';
@@ -59,6 +58,8 @@
 
   // The 3D style: filter only applied on the filter tab (set up clean, costume last).
   $: holoStyle = { ...holoStyleOf(draft), ...(tab === 'filter' ? {} : { filter: 'none', filterParams: undefined }) };
+  // What the system stage REALLY renders with (2D map = the holo locked flat) — shared with the player view.
+  $: systemPreviewStyle = systemStageStyle(draft, holoStyle);
 
   // ── Preview data ────────────────────────────────────────────────────────────
   // Prefer a REAL, processed campaign system: the open one, else the first starmap system that carries
@@ -413,7 +414,7 @@
               <div class="ph">No starmap loaded — open or create a campaign map to preview this stage.</div>
             {:else if draft.starmapView === 'holo3d'}
               <!-- 3D map runs the exact shader itself; DOM views get the CSS approximation. -->
-              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} routeGlow={draft.starmapRouteGlow} mono={draft.starmapMono} mapGrid={previewMapGrid} lock2d={draft.starmapView === 'diagram2d' && draft.lockRotation !== false} background={draft.background} angleDeg={draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
+              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} routeGlow={draft.starmapRouteGlow} mono={draft.starmapMono} mapGrid={previewMapGrid} flat={draft.starmapView === 'diagram2d'} lockRotation={draft.starmapView === 'diagram2d' && draft.lockRotation !== false} background={draft.background} angleDeg={draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
             {:else}
               <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
                 {#if draft.starmapView === 'list'}
@@ -426,12 +427,11 @@
           {:else if previewLayer === 'system'}
             {#if !draft.systemEnabled}
               <div class="ph">System stage is disabled for this preset.</div>
-            {:else if draft.systemView === 'holo3d' && previewSystem && rulePack}
-              <HoloView system={previewSystem} {currentTime} style={holoStyle} />
-            {:else if draft.systemView === 'diagram2d' && previewSystem && rulePack}
-              <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
-                <SystemVisualizer system={previewSystem} {rulePack} {currentTime} showNames={true} toytownFactor={previewSystem.toytownFactor || 0} fullScreen={true} backgroundColor="#05070c" />
-              </FilterFrame>
+            <!-- BOTH map views are the holo (the 2D map is it locked flat) and run the real shader
+                 themselves — systemStageStyle is the same one the live player view uses, so this preview
+                 can't drift from what players actually get. -->
+            {:else if (draft.systemView === 'holo3d' || draft.systemView === 'diagram2d') && previewSystem && rulePack}
+              <HoloView system={previewSystem} {currentTime} style={systemPreviewStyle} />
             {:else if draft.systemView === 'list' && previewSystem}
               <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
                 <div class="sm-preview" style="font-family:{draft.font}; --accent:{accentCss}">
