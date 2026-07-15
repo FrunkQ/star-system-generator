@@ -22,7 +22,7 @@ import { getPlanetTextureEquirect, getPlanetTexture } from '$lib/rendering/plane
 // The ONE click-ladder ruleset, shared with the GM's 2D orrery (viewport/camera). We measure the
 // distances in SCENE units and it hands back a half-extent in the same space — so the holo (2D locked
 // overhead AND 3D at its configured tilt) frames a click exactly like the orrery does.
-import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, frameHalfExtent } from '$lib/viewport/camera';
+import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, prevFrameLevel, frameHalfExtent, autoFrameStep } from '$lib/viewport/camera';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { rendersAsGiant } from '$lib/physics/makeup';
 import { deriveAurora, auroraEmitter } from '$lib/physics/aurora';
@@ -49,6 +49,7 @@ export interface HoloController {
   setSystem(system: System | null): void;
   setTime(ms: number): void;
   focusBody(id: string | null): void;
+  stepFocusUp(): boolean; // browser Back: out one ladder level; false = nothing left to step out of
   // The two framing knobs (surface as GM controls later, docs §A8/§A10): angleDeg is the camera's
   // tilt from straight down (0 = overhead top-down, ~64 = the 3/4 default); whole fits the entire
   // system rather than the focused body. overhead + whole = the projector's top-down plan view.
@@ -902,6 +903,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     visibleSet = getVisibleNodeIds(currentSystem, focusedId);
   }
 
+  /**
+   * Step back OUT one ladder level — the inverse of a re-click, for browser Back. Returns false when
+   * there's nothing left to step out of (no focus, or already at this object's first level), so the
+   * caller can carry on up the view hierarchy: unfocus → back to the starmap → leave the page.
+   */
+  function stepFocusUp(): boolean {
+    if (!focusedId) return false;
+    const prev = prevFrameLevel(levelsForBody(focusedId), focusLevel);
+    if (prev === focusLevel) return false;
+    focusLevel = prev;
+    focusDrive = 48; // ease back out to the wider shot
+    userZoomOverride = false; // an explicit re-frame re-engages auto-framing
+    lastAutoDist = 0;
+    return true;
+  }
+
   function resetView() {
     focusedId = null;
     focusDrive = 0;
@@ -1519,7 +1536,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----

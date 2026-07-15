@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.95-beta - 12th Jul 2026
+
+* **Fix: the player view's system map stopped responding after the first click.** A crash in the camera code killed the render loop as soon as the opening move finished, so the view framed the body once and then ignored everything — no stepping down through the framing levels, no time movement.
+* **Browser Back now steps back out.** Back walks up the view hierarchy one step at a time — out through the framing levels you clicked in through, then off the body, then out to the starmap — and only leaves the page once there's nothing left to step out of. Handy on a tablet, where Back is a system gesture.
+
 ## v2.1.94-beta - 12th Jul 2026
 
 * **The rotation-locked 2D player view now behaves exactly like the GM orrery** — because it now runs the orrery's own camera logic rather than an imitation of it. A focused body is held dead-centre and the map slides with it as it orbits, easing the framing toward the current click level, and backing off the moment you drive the zoom yourself. This replaces the approximation that kept letting the view drift and swing.

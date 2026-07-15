@@ -66,6 +66,11 @@
   export function setSkybox(on: boolean) {
     controller?.setSkybox(on);
   }
+  // Browser Back: step OUT one click-ladder level. False = nothing left here, so the caller keeps
+  // walking up the view hierarchy (unfocus → starmap → leave the page).
+  export function stepFocusUp(): boolean {
+    return controller?.stepFocusUp() ?? false;
+  }
 
   onMount(() => {
     let cancelled = false;

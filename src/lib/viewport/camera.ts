@@ -102,6 +102,14 @@ export function nextFrameLevel(levels: number[], current: number): number {
 	return idx >= 0 && idx < levels.length - 1 ? levels[idx + 1] : levels[levels.length - 1] ?? current;
 }
 /**
+ * The inverse — step back OUT one level (browser Back). Returns the same level when already at the
+ * object's first, so the caller knows to keep going up the view hierarchy (unfocus → starmap) instead.
+ */
+export function prevFrameLevel(levels: number[], current: number): number {
+	const idx = levels.indexOf(current);
+	return idx > 0 ? levels[idx - 1] : levels[0] ?? current;
+}
+/**
  * Level → the half-extent that should fit in HALF the viewport's min dimension, in the caller's own
  * units. `radius` is the object's rendered radius; `parentDist` / `maxSatelliteDist` are measured by the
  * caller in the same space. Returns 0 for a radius-less object at level 3 (constructs) — the caller

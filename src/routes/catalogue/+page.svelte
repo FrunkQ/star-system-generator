@@ -526,11 +526,27 @@
   }
 
   function handleFocus(e: CustomEvent<string | null>) {
+    if (e.detail) pushNavStep(); // each tap drills IN — give Back something to step out of
     focusedBodyId = e.detail;
     const node = displaySystem?.nodes.find((n) => n.id === e.detail);
     // Surface natural bodies and artificial constructs alike (both are CelestialBody-shaped);
     // barycenters have no player-facing file, so they just clear the inspector.
     selectedBody = node && (node.kind === 'body' || node.kind === 'construct') ? (node as CelestialBody) : null;
+  }
+
+  // ── Browser Back walks back UP the view hierarchy ──────────────────────────────────────────────
+  // Drilling in is a sequence of steps (system → body → deeper ladder levels), so Back should undo them
+  // one at a time — the ladder's own inverse first, then unfocus, then out to the starmap — and only
+  // leave the page once there's nothing left to step out of. Every forward step pushes one entry.
+  let holoView: HoloView;
+  function pushNavStep() {
+    if (browser) history.pushState({ sseNav: true }, '');
+  }
+  function onPopState() {
+    if (holoView?.stepFocusUp?.()) return; // out one ladder level (level 3 → 2 → 1)
+    if (focusedBodyId) { focusedBodyId = null; selectedBody = null; return; } // drop the focus
+    if (selectedSystemId && activePreset?.starmapEnabled !== false) { selectedSystemId = null; selectedBody = null; return; } // back to the starmap
+    // Nothing left to step out of — the browser has already navigated away.
   }
 
   // --- player-safe derived display helpers (snapshot is already redacted) ---
@@ -618,6 +634,7 @@
       () => {},
       sessionId
     );
+    window.addEventListener('popstate', onPopState);
     broadcastService.onStarmapUpdate = (map) => {
       starmap = map;
       lastUpdate = Date.now();
@@ -639,7 +656,7 @@
 
   onDestroy(() => {
     broadcastService.close();
-    if (browser) cancelAnimationFrame(rafId);
+    if (browser) { cancelAnimationFrame(rafId); window.removeEventListener('popstate', onPopState); }
   });
 </script>
 
@@ -763,13 +780,13 @@
           overlay={starmapOverlayHud} mapGrid={starmap?.mapGrid ?? null}
           flat={activePreset.starmapView === 'diagram2d'}
           lockRotation={activePreset.starmapView === 'diagram2d' && activePreset.lockRotation !== false}
-          selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
+          selectable on:select={(e) => { pushNavStep(); selectedSystemId = e.detail; selectedBody = null; }} />
       {:else}
         <!-- Text list rendered to canvas + the REAL GPU filter (no CSS fake), still tap-to-select + scroll. -->
         <FilteredListView model={starmapListModel} accent={presetAccent} font={presetFont} mono={tipMono}
           filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
           tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null} overlay={starmapOverlayHud}
-          selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
+          selectable on:select={(e) => { pushNavStep(); selectedSystemId = e.detail; selectedBody = null; }} />
       {/if}
     </div>
   {:else if !selectedSystemId}
@@ -799,7 +816,7 @@
             <section class="sm-preview">
               <h2>★ {previewNode.name}</h2>
               <p class="sm-sum">{systemSummary(previewNode)}</p>
-              <button class="explore-btn" on:click={() => { selectedSystemId = previewNode.id; previewSystemId = null; selectedBody = null; }}>Explore system →</button>
+              <button class="explore-btn" on:click={() => { pushNavStep(); selectedSystemId = previewNode.id; previewSystemId = null; selectedBody = null; }}>Explore system →</button>
             </section>
           {:else}
             <p class="sm-hint">Tap a system to preview it, then explore.</p>
@@ -812,7 +829,7 @@
     <div class="console-stage" bind:clientWidth={hudW} bind:clientHeight={hudH} style={activePreset ? `font-family:${presetFont}` : ''}>
       {#if rulePack && displaySystem}
         {#if effectiveSystemTier === 'holo'}
-          <HoloView system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} on:focus={handleFocus} />
+          <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} on:focus={handleFocus} />
         {:else}
           <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
             <SystemVisualizer

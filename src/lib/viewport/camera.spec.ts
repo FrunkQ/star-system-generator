@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   availableFrameLevels, frameForLevel, frameLevelsFrom, firstFrameLevel, nextFrameLevel,
-  frameHalfExtent, autoFrameStep, AUTO_FRAME_MIN_UPDATE_MS
+  prevFrameLevel, frameHalfExtent, autoFrameStep, AUTO_FRAME_MIN_UPDATE_MS
 } from './camera';
 import type { System } from '../types';
 
@@ -80,6 +80,22 @@ describe('shared click ladder', () => {
     // A moon has no satellites → level 2 is skipped entirely.
     let m = firstFrameLevel(moon);
     expect([m, (m = nextFrameLevel(moon, m)), nextFrameLevel(moon, m)]).toEqual([1, 3, 3]);
+  });
+
+  it('steps back OUT (browser Back) as the exact inverse, and reports when it is done', () => {
+    const planet = frameLevelsFrom({ hasParent: true, hasSatellites: true });
+    const moon = frameLevelsFrom({ hasParent: true, hasSatellites: false });
+    expect(prevFrameLevel(planet, 3)).toBe(2);
+    expect(prevFrameLevel(planet, 2)).toBe(1);
+    expect(prevFrameLevel(moon, 3)).toBe(1);   // skips the level that doesn't exist, same as going in
+    // At the first level it returns the SAME level — the signal to stop stepping the ladder and instead
+    // carry on up the view hierarchy (unfocus → starmap → leave the page).
+    expect(prevFrameLevel(planet, 1)).toBe(1);
+    expect(prevFrameLevel(moon, 1)).toBe(1);
+    // In and back out again round-trips exactly.
+    const walkIn = [1, nextFrameLevel(planet, 1), nextFrameLevel(planet, 2)];
+    expect(walkIn).toEqual([1, 2, 3]);
+    expect([3, prevFrameLevel(planet, 3), prevFrameLevel(planet, 2)]).toEqual([3, 2, 1]);
   });
 
   it('sizes each level in the CALLER units (so the orrery and holo agree)', () => {
