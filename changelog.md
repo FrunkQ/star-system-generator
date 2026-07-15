@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.97-beta - 12th Jul 2026
+
+* **Clicking bodies in the editor preview now works.** The preview never fed a tap's selection back into the view (the live player view does), so clicks there did nothing — no framing, no click-ladder. The preview now selects and frames exactly like the player view: first click frames the body with its parent, again with its moons, again close up.
+
 ## v2.1.96-beta - 12th Jul 2026
 
 * **Belts & rings can be drawn as grey bands, like the GM orrery.** A new "Belts & rings" option on the system view switches between the tumbling rock field (default) and a flat translucent band whose solidity tracks the belt's density — the same look, and the same density rule, as the GM's own map. Handy for a preset meant to mirror what the GM sees.

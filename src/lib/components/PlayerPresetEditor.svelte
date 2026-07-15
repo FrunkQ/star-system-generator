@@ -102,6 +102,11 @@
     (e.target as HTMLInputElement).value = '';
   }
 
+  // The preview's click focus. HoloView deliberately owns no focus state — a tap dispatches 'focus' and
+  // the PARENT feeds it back as the prop; that loop-back is what makes click-to-frame (and the click
+  // ladder) work. The catalogue always wired it; the preview didn't, so clicks there did nothing.
+  let previewFocusId: string | null = null;
+
   // A real colour for CSS vars / non-cover components (rainbow → representative mid colour).
   $: accentCss = accentSolid(draft.accentColor);
   // Which overlay the current preview shows (cover's own image is inside CoverView).
@@ -439,7 +444,8 @@
                  themselves — systemStageStyle is the same one the live player view uses, so this preview
                  can't drift from what players actually get. -->
             {:else if (draft.systemView === 'holo3d' || draft.systemView === 'diagram2d') && previewSystem && rulePack}
-              <HoloView system={previewSystem} {currentTime} style={systemPreviewStyle} />
+              <HoloView system={previewSystem} {currentTime} style={systemPreviewStyle}
+                focusedBodyId={previewFocusId} on:focus={(e) => (previewFocusId = e.detail)} />
             {:else if draft.systemView === 'list' && previewSystem}
               <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
                 <div class="sm-preview" style="font-family:{draft.font}; --accent:{accentCss}">
