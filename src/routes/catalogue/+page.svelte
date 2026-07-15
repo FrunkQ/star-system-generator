@@ -485,7 +485,11 @@
   $: system2dOverhead = !!activePreset && activePreset.systemView === 'diagram2d';
   // 2D map = the holo locked overhead + flat. `whole` is NOT forced: with it off, tapping a body frames
   // (zooms) it just like the GM's orrery; a preset can still tick "Frame whole system" for a fixed plan view.
-  $: systemHoloStyle = system2dOverhead ? { ...holoStyle, angleDeg: 0, unlit: true, lockOverhead: true } : holoStyle;
+  // A 2D map is flat + fixed: overhead, locked per the preset's Lock rotation (default on), and NEVER
+  // turntabled — "View orbit" is a 3D-only idea, so it's forced off here regardless of the saved value.
+  $: systemHoloStyle = system2dOverhead
+    ? { ...holoStyle, angleDeg: 0, unlit: true, lockOverhead: activePreset!.lockRotation !== false, orbitSpeed: 0 }
+    : holoStyle;
   // Cover through the REAL filter: draw it to a canvas + a FilteredCanvas surface (the cover has no 3D
   // scene behind it, so it gets its own GPU-filtered quad instead of a CSS approximation).
   let coverW = 0, coverH = 0;
@@ -758,7 +762,8 @@
           labelSize={activePreset.labelSize}
           filter={presetFilterActive ? activePreset.filter : 'none'} filterParams={activePreset.filterParams}
           tipTop={tipTop} tipBottom={tipBottom} tipMono={tipMono} routeGlow={activePreset.starmapRouteGlow} mono={activePreset.starmapMono}
-          overlay={starmapOverlayHud} mapGrid={starmap?.mapGrid ?? null} lock2d={activePreset.starmapView === 'diagram2d'}
+          overlay={starmapOverlayHud} mapGrid={starmap?.mapGrid ?? null}
+          lock2d={activePreset.starmapView === 'diagram2d' && activePreset.lockRotation !== false}
           selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
       {:else}
         <!-- Text list rendered to canvas + the REAL GPU filter (no CSS fake), still tap-to-select + scroll. -->

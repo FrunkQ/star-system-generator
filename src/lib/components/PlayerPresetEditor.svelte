@@ -234,6 +234,9 @@
                 <label class="chk"><input type="checkbox" bind:checked={draft.starmapMono} /> Monochrome (for tints)</label>
                 {#if draft.starmapView === 'holo3d'}
                   <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} /></label>
+                {:else}
+                  <!-- 2D only: keeps the classic flat fixed starmap. Zoom + pan still work either way. -->
+                  <label class="chk"><input type="checkbox" bind:checked={draft.lockRotation} /> Lock rotation (fixed flat map)</label>
                 {/if}
                 <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
               {/if}
@@ -290,9 +293,12 @@
                   <option value="black">Black</option>
                 </select>
               </label>
-              <!-- The 2D map is the SAME 3D engine locked overhead, so its look controls apply too;
-                   only the genuinely 3D-only knobs (tilt / lock / lighting / framing) are hidden for 2D. -->
+              <!-- The 2D map is the same engine locked flat, so the LOOK controls apply to both. Only the
+                   genuinely 3D ideas (tilt, lock-overhead, lighting, the turntable) are 3D-only — a flat map
+                   can't use them — and 2D gets its own "Lock rotation" in their place. -->
               {#if draft.systemView === 'holo3d' || draft.systemView === 'diagram2d'}
+                <!-- Styles the star, and the bodies when Body graphics is a 3D sphere (the flat disc looks
+                     draw their own way and ignore it). -->
                 <label>Render
                   <select bind:value={draft.render}>
                     <option value="filled">Filled</option>
@@ -313,19 +319,26 @@
                 </label>
                 <label>Spread <span>{Math.round(draft.compression * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.compression} /></label>
                 <label>Body size <span>{draft.bodySize === 0 ? 'true' : draft.bodySize >= 1 ? 'readable' : Math.round(draft.bodySize * 100) + '%'}</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.bodySize} /></label>
+                <label>Belt detail <span>{Math.round(draft.beltDetail * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.beltDetail} /></label>
+                <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
                 {#if draft.systemView === 'holo3d'}
+                  <!-- 3D only: a flat map has no tilt to set, and no turntable to spin. -->
                   <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} disabled={draft.lockOverhead} /></label>
                   <label class="chk"><input type="checkbox" bind:checked={draft.lockOverhead} /> Lock overhead (2D look)</label>
                   <label class="chk"><input type="checkbox" bind:checked={draft.unlit} /> Flat / no lighting (efficient 2D map)</label>
+                  <label>View orbit <span>{draft.orbitSpeed === 0 ? 'off' : Math.round(draft.orbitSpeed * 100) + '%'}</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.orbitSpeed} /></label>
+                {:else}
+                  <!-- 2D only, in the turntable's place: a flat map stays fixed unless you say otherwise. -->
+                  <label class="chk"><input type="checkbox" bind:checked={draft.lockRotation} /> Lock rotation (fixed flat map)</label>
                 {/if}
-                <label>Belt detail <span>{Math.round(draft.beltDetail * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.beltDetail} /></label>
-                <label>View orbit <span>{draft.orbitSpeed === 0 ? 'off' : Math.round(draft.orbitSpeed * 100) + '%'}</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.orbitSpeed} /></label>
-                <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
-                <!-- Also meaningful in 2D: off = tapping a body zooms to it (GM-orrery style); on = a fixed
-                     whole-system plan view that never zooms. -->
+                <!-- Both: off = tapping a body zooms to it (GM-orrery style); on = a fixed whole-system
+                     plan view that never zooms. -->
                 <label class="chk"><input type="checkbox" bind:checked={draft.whole} /> Frame whole system (never zoom to a body)</label>
                 <label class="chk"><input type="checkbox" bind:checked={draft.skybox} /> Starfield</label>
-                <label class="chk"><input type="checkbox" bind:checked={draft.auroras} /> Auroras</label>
+                {#if draft.bodyGfx === 'sphere'}
+                  <!-- Auroras are an emissive shell on the 3D globe — the flat disc looks don't draw them. -->
+                  <label class="chk"><input type="checkbox" bind:checked={draft.auroras} /> Auroras</label>
+                {/if}
               {/if}
               <label class="chk"><input type="checkbox" bind:checked={draft.hideInfoPanel} /> Hide body info panel (clean display)</label>
               {#if draft.systemView !== 'list' && !draft.hideInfoPanel}
@@ -400,7 +413,7 @@
               <div class="ph">No starmap loaded — open or create a campaign map to preview this stage.</div>
             {:else if draft.starmapView === 'holo3d'}
               <!-- 3D map runs the exact shader itself; DOM views get the CSS approximation. -->
-              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} routeGlow={draft.starmapRouteGlow} mono={draft.starmapMono} mapGrid={previewMapGrid} lock2d={draft.starmapView === 'diagram2d'} background={draft.background} angleDeg={draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
+              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} routeGlow={draft.starmapRouteGlow} mono={draft.starmapMono} mapGrid={previewMapGrid} lock2d={draft.starmapView === 'diagram2d' && draft.lockRotation !== false} background={draft.background} angleDeg={draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
             {:else}
               <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
                 {#if draft.starmapView === 'list'}

@@ -1389,7 +1389,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (disposed) return;
     const nowSec = filterClock.getElapsedTime();
     driveFocus();
-    controls.autoRotate = orbitSpeed > 0 && focusDrive === 0; // turntable, paused during the focus ease
+    // Turntable, paused during the focus ease — and NEVER on a locked 2D map: autoRotate spins the camera
+    // independently of enableRotate, so the lock has to kill it too or a flat map still drifts round.
+    controls.autoRotate = !lock2d && orbitSpeed > 0 && focusDrive === 0;
     updateSpin();
     updateSurfaceConstructs();
     updateStarFx(nowSec);

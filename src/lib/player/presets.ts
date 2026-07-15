@@ -67,6 +67,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   bodySize: 1,
   beltDetail: 0.6,
   orbitSpeed: 0,
+  lockRotation: true, // 2D views are fixed maps by default
   skybox: true,
   angleDeg: 64,
   lockOverhead: false,

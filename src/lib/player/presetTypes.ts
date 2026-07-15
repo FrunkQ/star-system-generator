@@ -100,7 +100,8 @@ export interface PlayerPreset {
   compression: number; // toytown spread 0..1
   bodySize: number;    // 1 readable .. 0 true scale
   beltDetail: number;  // 0..1
-  orbitSpeed: number;  // auto view-orbit 0..1
+  orbitSpeed: number;  // auto view-orbit 0..1 (3D only — a 2D map never turntables)
+  lockRotation: boolean; // 2D views: pin the flat top-down view (no tilt, no rotate, no turntable)
   skybox: boolean;
   angleDeg: number;      // camera tilt from overhead
   lockOverhead: boolean; // force top-down (recreates the flat 2D projector from the 3D engine)

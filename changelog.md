@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.90-beta - 12th Jul 2026
+
+* **2D maps really do stay still now.** The culprit was "View orbit" — the slow turntable spins the camera on its own, so locking the drag-rotation didn't stop it. View orbit is a 3D-only idea and is now switched off for 2D maps entirely (including on presets where it was already set), and in its place the 2D map and 2D starmap get a **Lock rotation** option, on by default.
+* **A tidy-up of which controls appear where.** The 2D and 3D views no longer offer each other's settings: the tilt, lock-overhead, lighting and turntable controls are 3D-only, Lock rotation is 2D-only, and Auroras only appear when bodies are drawn as 3D spheres (the flat disc styles don't draw them).
+
 ## v2.1.89-beta - 12th Jul 2026
 
 * **The 2D system map no longer tilts or spins.** Dragging could still rotate it out of its flat top-down view; it's now pinned like a proper 2D map — zoom and the click-to-frame behaviour still work. This also applies to any 3D preset with "Lock overhead" ticked (such as Projection); the normal 3D holo still tilts freely.
