@@ -14,6 +14,7 @@
   export let routeGlow = true; // emissive glow on the transit routes
   export let mono = false; // monochrome palette (white/grey) for tinting filters
   export let mapGrid: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number } | null = null; // GM's snap-grid
+  export let lock2d = false; // fixed flat 2D starmap: no tilt/rotate (zoom + pan still work)
   export let background: 'space' | 'green' | 'blue' | 'black' = 'space';
   export let angleDeg = 58;
   export let labelSize = 12;
@@ -60,6 +61,7 @@
     controller.setGrid(grid);
     controller.setBackground(background);
     controller.setFraming(angleDeg);
+    controller.setLock2D(lock2d); // after setFraming: the lock pins the tilt overhead
     controller.setLabelSize(labelSize);
     controller.setLabelFont(font);
     // Labels are in-scene sprites: theme accent, or grey in mono so a tint filter colours them.
@@ -86,7 +88,7 @@
   onDestroy(() => { ro?.disconnect(); controller?.dispose(); controller = null; });
 
   // Re-apply on any prop change (setData/setFilter short-circuit cheaply).
-  $: if (controller) { smSystems; smRoutes; grid; routeGlow; mono; mapGrid; background; angleDeg; labelSize; font; filter; filterParams; accentColor; apply(); }
+  $: if (controller) { smSystems; smRoutes; grid; routeGlow; mono; mapGrid; lock2d; background; angleDeg; labelSize; font; filter; filterParams; accentColor; apply(); }
   // Rebuild the tip HUD when the notes (or their theme) change.
   $: if (controller) { tipTop; tipBottom; tipMono; overlay; accentColor; font; applyTips(); }
 </script>

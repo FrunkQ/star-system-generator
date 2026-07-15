@@ -42,6 +42,7 @@ export interface StarmapController {
   setRouteGlow(on: boolean): void; // emissive glow on routes (vs plain lines)
   setMono(on: boolean): void; // monochrome palette for tinting filters
   setMapGrid(cfg: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number } | null): void; // GM's snap-grid
+  setLock2D(on: boolean): void; // fixed top-down 2D starmap: no tilt/rotate, zoom + pan still allowed
   setBackground(bg: string): void;
   setFraming(angleDeg: number): void;
   setLabelsVisible(on: boolean): void;
@@ -242,6 +243,16 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(spokes), new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.22), transparent: true, opacity: 0.5 })));
   }
   function setGrid(mode: GridMode) { if (mode === gridMode) return; gridMode = mode; rebuildGrid(); }
+  // 2D starmap: a FIXED top-down view like the classic flat starmap — no tilting or rotating, but zoom
+  // (and pan) stay. Pinned just off true vertical (0.05) because an exactly-overhead orbit camera is
+  // gimbal-degenerate (view axis parallel to `up`); at ~3° the ground plane still reads perfectly flat.
+  function setLock2D(on: boolean) {
+    controls.enableRotate = !on;
+    controls.minPolarAngle = 0.05;
+    controls.maxPolarAngle = on ? 0.05 : Math.PI * 0.49;
+    if (on) setFraming(0);
+    controls.update();
+  }
   // The GM's live snap-grid config (type + cell size). Null/none → the decorative grid is used instead.
   function setMapGrid(cfg: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number } | null) {
     const same = (!cfg && !mapGridCfg) || (cfg && mapGridCfg && cfg.type === mapGridCfg.type && cfg.size === mapGridCfg.size);
@@ -516,7 +527,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   }
 
   rebuildGrid();
-  return { setData, setGrid, setRouteGlow, setMono, setMapGrid, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
+  return { setData, setGrid, setRouteGlow, setMono, setMapGrid, setLock2D, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
 }
 
 function buildStarfield(count = 1400, radius = 900): THREE.Points {

@@ -19,6 +19,10 @@ import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
 import { getPlanetTextureEquirect, getPlanetTexture } from '$lib/rendering/planetTexture';
+// The ONE click-ladder ruleset, shared with the GM's 2D orrery (viewport/camera). We measure the
+// distances in SCENE units and it hands back a half-extent in the same space — so the holo (2D locked
+// overhead AND 3D at its configured tilt) frames a click exactly like the orrery does.
+import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, frameHalfExtent } from '$lib/viewport/camera';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { rendersAsGiant } from '$lib/physics/makeup';
 import { deriveAurora, auroraEmitter } from '$lib/physics/aurora';
@@ -96,6 +100,7 @@ interface BodyVisual {
   mesh: THREE.Object3D;
   label?: LabelSprite;
   parentId?: string | null;
+  framingParentId?: string | null; // the click-ladder's parent (a construct's UI host, else the real parent)
   satellite: boolean; // a moon: positioned as a magnified offset around its (compressed) parent
   radiusScene?: number; // rendered radius in scene units (so satellites can sit just outside the parent)
   spinPeriodSec?: number; // sidereal rotation period; drives the texture turning
@@ -612,7 +617,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const outward = new THREE.Vector3();
   let focusedId: string | null = null;
   let focusDrive = 0;
-  let visibleSet = new Set<string>(); // which body names show, per the orrery focus rule
+  let visibleSet = new Set<string>(); // which body names show — AND what can be clicked (one rule, both)
+  let focusLevel = 1; // the click-ladder level for the focused body (see viewport/camera FRAME_LEVELS)
   let framingAngleRad = (64 * Math.PI) / 180; // camera tilt from vertical (0 = overhead)
   let framingWhole = false; // frame the whole system instead of the focused body
 
@@ -651,14 +657,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     ndc.x = su * 2 - 1;
     ndc.y = sv * 2 - 1;
     raycaster.setFromCamera(ndc, camera);
+    // Selection obeys the SAME rule as naming (getVisibleNodeIds) — regardless of whether labels are
+    // currently drawn. So you always click a planet before its moons (they can't be in the way), and from
+    // a moon you can still reach its parent, its peers and other planets/stars — but never another
+    // planet's moons.
+    const clickable = bodies.filter((b) => visibleSet.has(b.id));
     // Recursive: a body's mesh can be a Group (a star's photosphere+corona, a wireframe body), so hits
     // land on a child — walk up to find the owning body.
-    const hits = raycaster.intersectObjects(bodies.map((b) => b.mesh), true);
+    const hits = raycaster.intersectObjects(clickable.map((b) => b.mesh), true);
     if (hits.length) {
       let obj: THREE.Object3D | null = hits[0].object;
       let b: BodyVisual | undefined;
-      while (obj && !(b = bodies.find((x) => x.mesh === obj))) obj = obj.parent;
-      if (b) { opts.onSelect?.(b.id); return; }
+      while (obj && !(b = clickable.find((x) => x.mesh === obj))) obj = obj.parent;
+      if (b) { pickBody(b.id); return; }
     }
     // Tap assist for the tiny construct icons: a 4 px sprite is untappable, so on a raycast miss
     // pick the nearest construct within ~14 px of the tap in screen space (finger-friendly).
@@ -666,7 +677,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const tapY = e.clientY - rect.top;
     let best: BodyVisual | null = null;
     let bestD = 14 * 14;
-    for (const b of bodies) {
+    for (const b of clickable) {
       if (!b.isConstruct) continue;
       proj.copy(b.mesh.position).project(camera);
       if (proj.z > 1) continue;
@@ -675,13 +686,51 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const d = (sx - tapX) * (sx - tapX) + (sy - tapY) * (sy - tapY);
       if (d < bestD) { bestD = d; best = b; }
     }
-    if (best) opts.onSelect?.(best.id);
+    if (best) pickBody(best.id);
   }, { signal: pointer.signal });
 
+  // A tap. A NEW body starts at its first existing ladder level (focusBody, driven by the app's focus
+  // change). Re-tapping the FOCUSED body steps one level deeper — we own that step here because the id
+  // doesn't change on a re-tap, so the reactive focusBody() would never re-fire.
+  function pickBody(id: string) {
+    if (id === focusedId) {
+      focusLevel = nextFrameLevel(levelsForBody(id), focusLevel);
+      focusDrive = 48; // re-ease into the deeper shot
+    }
+    opts.onSelect?.(id);
+  }
+
+  // Which of the ladder's levels exist for a body, by the SHARED rule (no parent → no 1; no satellites → no 2).
+  function levelsForBody(id: string | null): number[] {
+    const b = id ? bodyById.get(id) : undefined;
+    if (!b) return [3];
+    const pid = b.framingParentId;
+    return frameLevelsFrom({
+      hasParent: !!(pid && bodyById.has(pid)),
+      hasSatellites: bodies.some((x) => x.framingParentId === id)
+    });
+  }
+
+  // The camera distance that frames the focused body at the CURRENT ladder level. The level→extent maths
+  // is the shared ruleset; we measure parent/satellite distances in scene units and convert the returned
+  // half-extent into a perspective distance (fitting it into half the viewport's min dimension — exactly
+  // what the 2D orrery's zoom does). The framing ANGLE is separate, so 2D (overhead) and 3D (tilted) get
+  // identical framing from the same click.
   function frameDistance(b: BodyVisual): number {
-    if (b.isConstruct) return Math.max(controls.minDistance * 3, 0.5); // icons have no radius; frame close
-    const rad = b.radiusScene ?? 0.2; // rendered radius (scales with the body-size dial), NOT a fixed floor
-    return Math.max(controls.minDistance * 1.1, rad * 3.4); // fill a good chunk of the view at any scale
+    const radius = b.isConstruct ? 0 : (b.radiusScene ?? 0);
+    const pv = b.framingParentId ? bodyById.get(b.framingParentId) : undefined;
+    const parentDist = pv ? b.mesh.position.distanceTo(pv.mesh.position) : 0;
+    let maxSatelliteDist = 0;
+    for (const x of bodies) {
+      if (x.framingParentId !== b.id) continue;
+      maxSatelliteDist = Math.max(maxSatelliteDist, x.mesh.position.distanceTo(b.mesh.position));
+    }
+    // 0 = a radius-less construct at level 3: give it a small patch (its glyph is screen-fixed anyway).
+    const half = frameHalfExtent({ level: focusLevel, radius, parentDist, maxSatelliteDist })
+      || Math.max(0.35, controls.minDistance * 3);
+    const tan = Math.tan((camera.fov * Math.PI) / 360);
+    const dist = half / Math.max(1e-6, tan * Math.min(1, camera.aspect));
+    return Math.max(controls.minDistance * 1.05, dist);
   }
 
   // Constructs render at fixed SCREEN size (sizeAttenuation: false): full-size when the focus rule
@@ -746,8 +795,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   function focusBody(id: string | null) {
-    if (id === focusedId) return;
+    if (id === focusedId) return; // same body: a re-CLICK steps the ladder (see the pointer handler)
     focusedId = id;
+    focusLevel = firstFrameLevel(levelsForBody(id)); // a NEW selection starts at its first existing level
     // Tighten the min-zoom to the focused body's rendered size so a tiny true-scale world can still be
     // brought up large on screen — the viewer doesn't need to know the size to get the right zoom.
     const rad = id ? (bodies.find((x) => x.id === id)?.radiusScene ?? 0) : 0;
@@ -1060,7 +1110,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const inTransit = isConstruct && (node.scheduled_journeys || []).length > 0;
       const radiusScene = isConstruct ? 0 : (isStar ? starRadiusScene(node) : bodyRadiusScene(node, systemLevel));
       const physRadiusAu = isConstruct ? 0 : (node.physical_parameters?.radiusKm || node.radiusKm || (isStar ? 696000 : 3000)) / AU_KM;
-      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow });
+      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow });
     }
     bodyById = new Map(bodies.map((b) => [b.id, b]));
     visibleSet = getVisibleNodeIds(system, focusedId);

@@ -45,6 +45,56 @@ export const FRAME_LEVELS = {
 };
 export type FrameLevelConfig = typeof FRAME_LEVELS;
 
+// ── THE click-ladder ruleset (one definition, every renderer) ─────────────────────────────────────
+// Selecting an object frames its first EXISTING level; each re-click steps one level deeper:
+//   1 object + its parent · 2 object + its satellites · 3 object fills the view
+// Levels that don't apply are skipped (no parent → no 1; no satellites → no 2), and the deepest level
+// clamps (no wrap). The maths below is UNIT-AGNOSTIC: a caller measures distances in whatever space it
+// renders — AU for the 2D orrery, scene units for the holo — and gets a half-extent back in that space.
+// Pair it with getVisibleNodeIds (system/visibleNodes), which is the one rule for BOTH what gets a name
+// and what can be clicked.
+
+/** Which levels exist, in zoom-in order, from the two predicates that decide it. */
+export function frameLevelsFrom(has: { hasParent: boolean; hasSatellites: boolean }): number[] {
+	const levels: number[] = [];
+	if (has.hasParent) levels.push(1);
+	if (has.hasSatellites) levels.push(2);
+	levels.push(3);
+	return levels;
+}
+/** A NEW selection starts at the object's first existing level. */
+export function firstFrameLevel(levels: number[]): number {
+	return levels[0] ?? 3;
+}
+/** A re-click on the focused object steps to the next existing level; clamps at the deepest. */
+export function nextFrameLevel(levels: number[], current: number): number {
+	const idx = levels.indexOf(current);
+	return idx >= 0 && idx < levels.length - 1 ? levels[idx + 1] : levels[levels.length - 1] ?? current;
+}
+/**
+ * Level → the half-extent that should fit in HALF the viewport's min dimension, in the caller's own
+ * units. `radius` is the object's rendered radius; `parentDist` / `maxSatelliteDist` are measured by the
+ * caller in the same space. Returns 0 for a radius-less object at level 3 (constructs) — the caller
+ * substitutes its own small patch, since such glyphs draw at a fixed screen size anyway.
+ */
+export function frameHalfExtent(args: {
+	level: number;
+	radius: number;
+	parentDist?: number;
+	maxSatelliteDist?: number;
+	config?: FrameLevelConfig;
+}): number {
+	const cfg = args.config ?? FRAME_LEVELS;
+	const { level, radius } = args;
+	if (level <= 1 && (args.parentDist ?? 0) > 0) {
+		return Math.max(args.parentDist!, radius * 2, 1e-9) / Math.max(0.05, 1 - cfg.parentBorderFrac);
+	}
+	if (level <= 2 && (args.maxSatelliteDist ?? 0) > 0) {
+		return Math.max(args.maxSatelliteDist!, radius * 2, 1e-9) / Math.max(0.05, 1 - cfg.satelliteBorderFrac);
+	}
+	return radius > 0 ? radius / Math.max(0.05, cfg.fillFrac) : 0;
+}
+
 function bodyRadiusAUof(node: any, toytownFactor: number, x0_distance: number): number {
 	if (!node || node.kind !== 'body' || !node.radiusKm) return 0;
 	let r = node.radiusKm / AU_KM;
@@ -70,13 +120,11 @@ export function availableFrameLevels(args: {
 	const node = system.nodes.find((n) => n.id === nodeId);
 	if (!node) return [3];
 	const positions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
-	const levels: number[] = [];
 	const parentId = framingParentId(node);
-	if (parentId && positions.get(parentId)) levels.push(1);
-	const hasSatellite = system.nodes.some((n) => n.parentId === nodeId && positions.get(n.id));
-	if (hasSatellite) levels.push(2);
-	levels.push(3);
-	return levels;
+	return frameLevelsFrom({
+		hasParent: !!(parentId && positions.get(parentId)),
+		hasSatellites: system.nodes.some((n) => n.parentId === nodeId && positions.get(n.id))
+	});
 }
 
 // --- State-dependent framing helpers (arg-bag; the consumer supplies its
@@ -252,33 +300,17 @@ export function frameForLevel(args: {
 		return { pan: pos, zoom: clampZoom((minDimension / 2) / Math.max(half, 1e-9)) };
 	}
 
-	// Level 1 — object + parent, parent border-fraction in from the edge.
-	if (level <= 1) {
-		const parentId = framingParentId(node);
-		const ppos = parentId ? positions.get(parentId) : undefined;
-		if (ppos) {
-			const d = Math.hypot(pos.x - ppos.x, pos.y - ppos.y);
-			const half = Math.max(d, radiusAU * 2, 1e-9) / Math.max(0.05, 1 - cfg.parentBorderFrac);
-			return { pan: pos, zoom: clampZoom((minDimension / 2) / half) };
-		}
+	// Measure this renderer's own distances (AU), then let the shared ladder decide the extent.
+	const parentId = framingParentId(node);
+	const ppos = parentId ? positions.get(parentId) : undefined;
+	const parentDist = ppos ? Math.hypot(pos.x - ppos.x, pos.y - ppos.y) : 0;
+	let maxSatelliteDist = 0;
+	for (const c of system.nodes) {
+		if (c.parentId !== nodeId) continue;
+		const cp = positions.get(c.id);
+		if (cp) maxSatelliteDist = Math.max(maxSatelliteDist, Math.hypot(cp.x - pos.x, cp.y - pos.y));
 	}
-
-	// Level 2 — object + all its satellites, furthest one border-fraction from the edge.
-	if (level <= 2) {
-		let maxD = 0;
-		for (const c of system.nodes) {
-			if (c.parentId !== nodeId) continue;
-			const cp = positions.get(c.id);
-			if (cp) maxD = Math.max(maxD, Math.hypot(cp.x - pos.x, cp.y - pos.y));
-		}
-		if (maxD > 0) {
-			const half = Math.max(maxD, radiusAU * 2, 1e-9) / Math.max(0.05, 1 - cfg.satelliteBorderFrac);
-			return { pan: pos, zoom: clampZoom((minDimension / 2) / half) };
-		}
-	}
-
-	// Level 3 — object fills ~fillFrac of the screen. Radius-less nodes (constructs) get a small
-	// fixed patch since their glyph is screen-fixed anyway.
-	const half = radiusAU > 0 ? radiusAU / Math.max(0.05, cfg.fillFrac) : 0.005;
+	// Radius-less nodes (constructs) get a small fixed patch — their glyph is screen-fixed anyway.
+	const half = frameHalfExtent({ level, radius: radiusAU, parentDist, maxSatelliteDist, config: cfg }) || 0.005;
 	return { pan: pos, zoom: clampZoom((minDimension / 2) / Math.max(half, 1e-9)) };
 }

@@ -12,7 +12,7 @@
   import { fmt } from '$lib/stores';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import type { PanState } from '$lib/viewport/stores';
-  import { clampZoom, dampedZoomStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM, frameForLevel, availableFrameLevels, suppressAutoZoomNearPeriapsis } from '$lib/viewport/camera';
+  import { clampZoom, dampedZoomStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM, frameForLevel, availableFrameLevels, firstFrameLevel, nextFrameLevel, suppressAutoZoomNearPeriapsis } from '$lib/viewport/camera';
   import { gestures } from '$lib/input/gestures';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
   import { hillSpheresAu } from '$lib/physics/twoBodyCoast';
@@ -302,14 +302,12 @@
   function levelsFor(nodeId: string): number[] {
       return availableFrameLevels({ nodeId, system, toytownFactor, scaledWorldPositions, worldPositions });
   }
+  // Ladder stepping comes from the shared ruleset (viewport/camera) — the holo uses the very same rules.
   function firstLevelFor(nodeId: string): number {
-      return levelsFor(nodeId)[0] ?? 3;
+      return firstFrameLevel(levelsFor(nodeId));
   }
   function nextLevelFor(nodeId: string, current: number): number {
-      const levels = levelsFor(nodeId);
-      const idx = levels.indexOf(current);
-      // Advance to the next existing level; clamp at the deepest (no wrap).
-      return idx >= 0 && idx < levels.length - 1 ? levels[idx + 1] : levels[levels.length - 1] ?? current;
+      return nextFrameLevel(levelsFor(nodeId), current);
   }
 
   function calculateFrameForNode(nodeId: string): { pan: PanState, zoom: number } {

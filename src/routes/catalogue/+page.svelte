@@ -483,7 +483,9 @@
     ? (activePreset.systemView === 'holo3d' ? 'holo' : activePreset.systemView === 'diagram2d' ? 'holo' : 'static')
     : theme.tier;
   $: system2dOverhead = !!activePreset && activePreset.systemView === 'diagram2d';
-  $: systemHoloStyle = system2dOverhead ? { ...holoStyle, angleDeg: 0, unlit: true, whole: true } : holoStyle;
+  // 2D map = the holo locked overhead + flat. `whole` is NOT forced: with it off, tapping a body frames
+  // (zooms) it just like the GM's orrery; a preset can still tick "Frame whole system" for a fixed plan view.
+  $: systemHoloStyle = system2dOverhead ? { ...holoStyle, angleDeg: 0, unlit: true } : holoStyle;
   // Cover through the REAL filter: draw it to a canvas + a FilteredCanvas surface (the cover has no 3D
   // scene behind it, so it gets its own GPU-filtered quad instead of a CSS approximation).
   let coverW = 0, coverH = 0;
@@ -756,7 +758,7 @@
           labelSize={activePreset.labelSize}
           filter={presetFilterActive ? activePreset.filter : 'none'} filterParams={activePreset.filterParams}
           tipTop={tipTop} tipBottom={tipBottom} tipMono={tipMono} routeGlow={activePreset.starmapRouteGlow} mono={activePreset.starmapMono}
-          overlay={starmapOverlayHud} mapGrid={starmap?.mapGrid ?? null}
+          overlay={starmapOverlayHud} mapGrid={starmap?.mapGrid ?? null} lock2d={activePreset.starmapView === 'diagram2d'}
           selectable on:select={(e) => { selectedSystemId = e.detail; selectedBody = null; }} />
       {:else}
         <!-- Text list rendered to canvas + the REAL GPU filter (no CSS fake), still tap-to-select + scroll. -->

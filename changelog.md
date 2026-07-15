@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.88-beta - 12th Jul 2026
+
+* **Player views now click and frame exactly like the GM's orrery.** Tapping a body steps the same familiar ladder: first click frames it with its parent, a second frames it with its moons (skipped if it hasn't any), and a third fills the view with the body itself. The 2D map and the 3D holo use identical framing — only the viewing angle differs (flat overhead vs the preset's tilt).
+* **You can only click what's named.** Selection now follows the same rule as labelling, so you always click a planet before its moons (they can't get in the way), and from a moon you can still reach its parent, its peers and other planets — but not another planet's moons. This holds even when labels are hidden.
+* **The 2D starmap is a proper flat map.** It no longer tilts or rotates — zoom and pan still work — so it reads like the classic fixed 2D starmap.
+* **Under the hood:** the framing ladder is now one shared ruleset used by the GM orrery, the player views, labelling and selection, instead of separate copies drifting apart in each view.
+
 ## v2.1.87-beta - 12th Jul 2026
 
 * **Fix: orbit lines cut through planets in the 2D views.** A body sitting on its own orbit is exactly the same distance from the camera as its orbit line, and the line was winning that tie — so the orbit drew a thin line straight across the planet's face (and its moons). Orbit and grid lines no longer punch through bodies, and the flat body discs now draw over them.
