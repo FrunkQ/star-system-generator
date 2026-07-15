@@ -306,6 +306,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // Aurora toggle: no rebuild — updateAuroras just stops modulating (opacity 0) when off.
   function setAuroras(on: boolean) { aurorasOn = on; }
 
+
   // Body graphics: 3D sphere vs a flat camera-facing disc (photo / procedural / flat). Rebuilds.
   function setBodyGfx(mode: BodyGfx) {
     if (mode === bodyGfx) return;
@@ -618,6 +619,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const desiredCam = new THREE.Vector3();
   const outward = new THREE.Vector3();
   const followDelta = new THREE.Vector3(); // per-frame target movement, reapplied to the camera = a PAN
+  const camDir = new THREE.Vector3();      // target→camera offset direction (re-seating the auto-framed distance)
+  // Auto-frame bookkeeping, mirroring the orrery: once the user drives zoom we stop re-framing (never
+  // fight them) until the next explicit (re)selection re-engages it.
+  let userZoomOverride = false;
+  let lastAutoDist = 0;
+  let lastAutoDistMs = 0;
   let focusedId: string | null = null;
   let focusDrive = 0;
   let visibleSet = new Set<string>(); // which body names show — AND what can be clicked (one rule, both)
@@ -677,6 +684,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let downX = 0;
   let downY = 0;
   canvas.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY; }, { signal: pointer.signal });
+  // The user driving zoom (wheel / pinch) takes the camera off auto-framing — the orrery's rule, so the
+  // view never fights someone looking around. Cleared by the next explicit (re)frame (focusBody/pickBody).
+  canvas.addEventListener('wheel', () => { userZoomOverride = true; }, { passive: true, signal: pointer.signal });
   canvas.addEventListener('pointerup', (e) => {
     if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return; // a drag = orbit, not a pick
     const rect = canvas.getBoundingClientRect();
@@ -739,6 +749,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (id === focusedId) {
       focusLevel = nextFrameLevel(levelsForBody(id), focusLevel);
       focusDrive = 48; // re-ease into the deeper shot
+      userZoomOverride = false; // an explicit re-frame re-engages auto-framing
+      lastAutoDist = 0;
     }
     opts.onSelect?.(id);
   }
@@ -840,25 +852,48 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       controls.target.lerp(desiredTarget, 0.18);
       camera.position.lerp(desiredCam, 0.14);
       focusDrive--;
-    } else if (lockRotate) {
-      // Heading locked: follow by PANNING — move the camera by the SAME delta as the target, so the
-      // offset (and with it the screen heading) never changes. Lerping only the target here is what made
-      // the "locked" map still rotate: the offset direction from the moving target to a stationary
-      // camera swings as the body orbits, and with the polar clamped flat that swing is pure azimuth.
-      followDelta.copy(controls.target);
-      controls.target.lerp(desiredTarget, 0.08);
-      camera.position.add(followDelta.subVectors(controls.target, followDelta));
-    } else {
-      // Free heading (3D): gently re-aim at the body — the camera stays put and turns to track, which
-      // is the natural hologram feel and never fights the user's own rotate/zoom.
-      controls.target.lerp(desiredTarget, 0.08);
+      return;
     }
+    if (lockRotate) {
+      // Heading locked = BE the GM orrery. Its follow is: snap the pan straight onto the body every
+      // frame (renderPan = targetPosition — no easing, or it lags and the offset direction swings, which
+      // on a flat map IS the map rotating), then ease only the FRAMING via the shared auto-frame policy.
+      // Moving the camera by the SAME delta as the target preserves the offset exactly — a pure pan, so
+      // the heading provably cannot change. Framing is held on the FOCUS; the parent may drift off.
+      followDelta.subVectors(desiredTarget, controls.target);
+      controls.target.copy(desiredTarget);
+      camera.position.add(followDelta);
+      if (!userZoomOverride) {
+        const now = performance.now();
+        const cur = camera.position.distanceTo(controls.target);
+        const next = autoFrameStep({
+          current: lastAutoDist > 0 ? lastAutoDist : cur,
+          ideal: dist,                       // the current ladder level's framing distance
+          userOverride: userZoomOverride,
+          sinceLastMs: now - lastAutoDistMs
+        });
+        if (next !== null) {
+          // Re-seat the camera at the new distance along the UNCHANGED offset direction — framing only.
+          camDir.subVectors(camera.position, controls.target);
+          const len = camDir.length();
+          if (len > 1e-6) camera.position.copy(controls.target).addScaledVector(camDir.multiplyScalar(1 / len), next);
+          lastAutoDist = next;
+          lastAutoDistMs = now;
+        }
+      }
+      return;
+    }
+    // Free heading (3D): gently re-aim at the body — the camera stays put and turns to track, which
+    // is the natural hologram feel and never fights the user's own rotate/zoom.
+    controls.target.lerp(desiredTarget, 0.08);
   }
 
   function focusBody(id: string | null) {
     if (id === focusedId) return; // same body: a re-CLICK steps the ladder (see the pointer handler)
     focusedId = id;
     focusLevel = firstFrameLevel(levelsForBody(id)); // a NEW selection starts at its first existing level
+    userZoomOverride = false; // an explicit (re)frame re-engages auto-framing, as in the orrery
+    lastAutoDist = 0;
     // Tighten the min-zoom to the focused body's rendered size so a tiny true-scale world can still be
     // brought up large on screen — the viewer doesn't need to know the size to get the right zoom.
     const rad = id ? (bodies.find((x) => x.id === id)?.radiusScene ?? 0) : 0;

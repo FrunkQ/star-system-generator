@@ -15,6 +15,8 @@ export const MIN_CAMERA_ZOOM = 0.05;
 // require very high zoom to be visually distinguishable.
 export const MAX_CAMERA_ZOOM = 500000000;
 export const AUTO_ZOOM_MAX_STEP_RATIO = 1.2;
+export const AUTO_FRAME_MIN_UPDATE_MS = 180; // rate-limit: don't re-frame every frame
+export const AUTO_FRAME_DEADBAND = 0.02;     // ignore sub-2% corrections (stops hunting)
 
 export function clampZoom(value: number): number {
 	if (!Number.isFinite(value)) return MIN_CAMERA_ZOOM;
@@ -27,6 +29,34 @@ export function dampedZoomStep(current: number, target: number): number {
 	const ratio = safeTarget / safeCurrent;
 	const clampedRatio = Math.max(1 / AUTO_ZOOM_MAX_STEP_RATIO, Math.min(AUTO_ZOOM_MAX_STEP_RATIO, ratio));
 	return clampZoom(safeCurrent * clampedRatio);
+}
+
+/**
+ * THE auto-frame follow policy — the GM orrery's behaviour, encoded once so the player views can BE it
+ * rather than imitate it. While an object is focused, the view holds it dead-centre (the caller snaps its
+ * pan/target straight to the body — no easing, or it drifts) and eases the FRAMING toward the current
+ * ladder level's ideal. This decides that easing.
+ *
+ * The quantity is whatever the renderer frames with — the orrery's zoom scalar, or the holo's camera
+ * distance — since the damping is purely ratio-based. Returns the next value, or null to leave it alone:
+ * don't fight a user who's driving, don't jitter near periapsis, don't re-frame every frame, and ignore
+ * corrections too small to be worth the motion.
+ */
+export function autoFrameStep(args: {
+	current: number;
+	ideal: number;
+	userOverride: boolean;   // the user is driving zoom — back off entirely
+	suppress?: boolean;      // e.g. suppressAutoZoomNearPeriapsis
+	sinceLastMs: number;
+	minUpdateMs?: number;
+	deadband?: number;
+}): number | null {
+	const { current, ideal, userOverride, suppress = false, sinceLastMs } = args;
+	if (userOverride || suppress) return null;
+	if (sinceLastMs < (args.minUpdateMs ?? AUTO_FRAME_MIN_UPDATE_MS)) return null;
+	const next = dampedZoomStep(current, ideal);
+	const delta = Math.abs(next - current) / Math.max(current, MIN_CAMERA_ZOOM);
+	return delta > (args.deadband ?? AUTO_FRAME_DEADBAND) ? next : null;
 }
 
 // --- Multi-level click framing -------------------------------------------------------------

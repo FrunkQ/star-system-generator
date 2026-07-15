@@ -12,7 +12,7 @@
   import { fmt } from '$lib/stores';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import type { PanState } from '$lib/viewport/stores';
-  import { clampZoom, dampedZoomStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM, frameForLevel, availableFrameLevels, firstFrameLevel, nextFrameLevel, suppressAutoZoomNearPeriapsis } from '$lib/viewport/camera';
+  import { clampZoom, dampedZoomStep, autoFrameStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM, frameForLevel, availableFrameLevels, firstFrameLevel, nextFrameLevel, suppressAutoZoomNearPeriapsis } from '$lib/viewport/camera';
   import { gestures } from '$lib/input/gestures';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
   import { hillSpheresAu } from '$lib/physics/twoBodyCoast';
@@ -441,18 +441,20 @@
       if (focusedBodyId && cameraMode === 'FOLLOW' && !isPanning && !isAnimatingFocus) {
           const targetPosition = toytownFactor > 0 ? scaledWorldPositions.get(focusedBodyId) : worldPositions.get(focusedBodyId);
           if (targetPosition) {
+              // Hold the focus dead-centre, then ease the framing via the SHARED auto-frame policy
+              // (viewport/camera) — the same one the player views' 2D map runs.
               renderPan = targetPosition;
-              const idealFrame = calculateFrameForNode(focusedBodyId);
-              const idealZoom = clampZoom(idealFrame.zoom);
               const now = performance.now();
-              const tooSoon = now - lastAutoZoomUpdateMs < AUTO_ZOOM_MIN_UPDATE_MS;
-              const suppressNearPeriapsis = shouldSuppressAutoZoomNearPeriapsis(focusedBodyId);
-              const currentZoom = get(zoomStore);
-              const baseZoom = lastAutoZoomTarget > 0 ? lastAutoZoomTarget : currentZoom;
-              const nextZoom = dampedZoomStep(baseZoom, idealZoom);
-              const deltaRatio = Math.abs(nextZoom - baseZoom) / Math.max(baseZoom, MIN_CAMERA_ZOOM);
-
-              if (!userZoomOverride && !suppressNearPeriapsis && !tooSoon && deltaRatio > 0.02) {
+              const baseZoom = lastAutoZoomTarget > 0 ? lastAutoZoomTarget : get(zoomStore);
+              const nextZoom = autoFrameStep({
+                  current: baseZoom,
+                  ideal: clampZoom(calculateFrameForNode(focusedBodyId).zoom),
+                  userOverride: userZoomOverride,
+                  suppress: shouldSuppressAutoZoomNearPeriapsis(focusedBodyId),
+                  sinceLastMs: now - lastAutoZoomUpdateMs,
+                  minUpdateMs: AUTO_ZOOM_MIN_UPDATE_MS
+              });
+              if (nextZoom !== null) {
                   zoomStore.set(nextZoom, { duration: 200 });
                   lastAutoZoomTarget = nextZoom;
                   lastAutoZoomUpdateMs = now;

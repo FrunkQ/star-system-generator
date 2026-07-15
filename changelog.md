@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.94-beta - 12th Jul 2026
+
+* **The rotation-locked 2D player view now behaves exactly like the GM orrery** — because it now runs the orrery's own camera logic rather than an imitation of it. A focused body is held dead-centre and the map slides with it as it orbits, easing the framing toward the current click level, and backing off the moment you drive the zoom yourself. This replaces the approximation that kept letting the view drift and swing.
+* **Unlocked rotation** keeps the free-tracking behaviour, turning to hold the best framing as time runs.
+
 ## v2.1.93-beta - 12th Jul 2026
 
 * **Left-drag now pans the 2D maps.** The camera controls' default put rotate on left-drag and pan on right-drag only — so on a flat map the obvious gesture either rotated it or did nothing. On the 2D system map and 2D starmap the primary gesture is now pan (one finger on touch); rotate moves to right-drag, and is off entirely when Lock rotation is on. Zoom is unchanged.
