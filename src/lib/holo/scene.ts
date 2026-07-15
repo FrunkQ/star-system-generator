@@ -562,7 +562,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       for (const au of gridAuSteps()) {
         const radius = compressScalar(au);
         if (radius <= 0.02) continue;
-        const mat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.4), transparent: true, opacity: 0.55 });
+        const mat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.4), transparent: true, opacity: 0.55, depthWrite: false });
         gridGroup.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(ringPoints(radius)), mat));
         const label = makeGridLabel(au >= 1 ? `${au} AU` : `${au} AU`);
         if (label) { label.position.set(radius, 0.02, 0); gridGroup.add(label); }
@@ -572,7 +572,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       for (let ri = 1; ri <= 6; ri++) {
         const radius = (GRID_RADIUS / 6) * ri;
         const col = base.clone().multiplyScalar(0.45 * (1 - (ri - 1) / 8));
-        const mat = new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.6 });
+        const mat = new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.6, depthWrite: false });
         gridGroup.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(ringPoints(radius)), mat));
       }
     }
@@ -582,7 +582,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const a = (i / 24) * Math.PI * 2;
       spokes.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(Math.cos(a) * GRID_RADIUS, 0, Math.sin(a) * GRID_RADIUS));
     }
-    const spokeMat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.22), transparent: true, opacity: 0.5 });
+    const spokeMat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.22), transparent: true, opacity: 0.5, depthWrite: false });
     gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(spokes), spokeMat));
   }
 
@@ -1452,6 +1452,7 @@ function buildBodyDisc(node: any, radius: number, mode: BodyGfx): THREE.Sprite {
   if (mode === 'photo') loadPhotoDiscInto(mat, node.image?.url); // async swap when a clean photo arrives
   const sp = new THREE.Sprite(mat);
   sp.scale.setScalar(radius * 2); // diameter in world units, matching the sphere's size
+  sp.renderOrder = 3; // draw AFTER the orbit rings so the disc covers them (a 3D sphere occludes naturally)
   return sp;
 }
 
@@ -1473,7 +1474,9 @@ function buildOrbitRing(node: any, project: Projector, color: number): THREE.Lin
     project(propagateState3D(node, t0 + (i / ORBIT_SAMPLES) * period).r, v);
     pts.push(v.clone());
   }
-  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.45 });
+  // depthWrite OFF: a transparent ring must not write depth, or a body sitting ON its own orbit (which is
+  // coincident in depth) loses the test along the line and the orbit cuts straight through the disc.
+  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.45, depthWrite: false });
   return new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat);
 }
 
@@ -1511,7 +1514,7 @@ function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, paren
     pts.push(new THREE.Vector3(r.x * k, r.z * k, r.y * k)); // physics(x,y,z) → scene(x,z,y)
   }
   if (pts.length < 3) return null;
-  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.4 });
+  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.4, depthWrite: false }); // see buildOrbitRing
   return new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat);
 }
 

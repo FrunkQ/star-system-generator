@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.87-beta - 12th Jul 2026
+
+* **Fix: orbit lines cut through planets in the 2D views.** A body sitting on its own orbit is exactly the same distance from the camera as its orbit line, and the line was winning that tie — so the orbit drew a thin line straight across the planet's face (and its moons). Orbit and grid lines no longer punch through bodies, and the flat body discs now draw over them.
+
 ## v2.1.86-beta - 12th Jul 2026
 
 * **Player-view hexes now line up with the GM's.** The hex grid was drawn with a different (pointy-top) geometry, so it sat offset from the GM's map; it now uses the GM's exact flat-topped hex layout, so snapped systems sit dead-centre in their hex just like on the GM side.
