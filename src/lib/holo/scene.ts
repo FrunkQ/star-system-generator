@@ -640,11 +640,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     focusDrive = 48; // re-ease into the new framing
   }
 
-  // The flat "2D map" look: no tilting or rotating by drag — zoom (and the click ladder) still work.
+  // The flat "2D map" look: lose ROTATE only. Zoom, pan and the click ladder all still work — a flat map
+  // you can't drag around is worse than useless, so panning is enabled here (the 3D holo stays orbit-only).
   function setLock2D(on: boolean) {
     if (on === lock2d) return;
     lock2d = on;
     controls.enableRotate = !on;
+    controls.enablePan = on;
     applyPolarLimits();
     focusDrive = 48; // ease back to the pinned framing
   }
@@ -779,10 +781,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (b) {
       const bp = b.mesh.position;
       desiredTarget.copy(bp);
-      outward.copy(bp);
-      const r = outward.length();
-      if (r > 1e-4) outward.multiplyScalar(1 / r);
-      else outward.set(0, 0, 1); // star at origin: fall back to a fixed azimuth
+      if (lock2d) {
+        // A locked 2D map must never spin. Following a body by its RADIAL direction swings the camera's
+        // azimuth around the star as the body orbits — which reads as the whole map rotating. Pinning the
+        // azimuth means the camera only translates: the map PANS to keep the focus centred.
+        outward.set(0, 0, 1);
+      } else {
+        outward.copy(bp);
+        const r = outward.length();
+        if (r > 1e-4) outward.multiplyScalar(1 / r);
+        else outward.set(0, 0, 1); // star at origin: fall back to a fixed azimuth
+      }
       dist = frameDistance(b);
     } else if (framingWhole) {
       desiredTarget.set(0, 0, 0);
@@ -990,7 +999,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // scales with the star's flare activity), so you see surface detail and it spins. Under the
           // lo-poly render the star is faceted too (fewer segments), so it isn't left out of the look.
           const isLopolyStar = renderStyle === 'lopoly-filled' || renderStyle === 'lopoly-lines';
-          const starMat = new THREE.MeshBasicMaterial({ flatShading: isLopolyStar });
+          // NB: no flatShading — a star is emissive/unlit (MeshBasicMaterial ignores normals and warns
+          // about the property). The faceted look comes from the reduced segment count below.
+          const starMat = new THREE.MeshBasicMaterial();
           const st = new THREE.CanvasTexture(makeStarTexture(colorHex, activity, node.id));
           st.colorSpace = THREE.SRGBColorSpace;
           starMat.map = st;
@@ -1030,7 +1041,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       } else if (bodyGfx !== 'sphere') {
         // Flat "2D map" body: a camera-facing disc (photo / procedural / flat), sized to the body.
         // Belts & rings still render as their own nodes, so a flat world keeps its ring.
-        mesh = buildBodyDisc(node, bodyRadiusScene(node, systemLevel), bodyGfx);
+        mesh = buildBodyDisc(node, bodyRadiusScene(node, systemLevel), bodyGfx, bodyStyle === 'tint' ? 'white' : bodyStyle);
       } else {
         // Moons are capped small so they read as satellites; the whole thing scales with bodySize.
         const radius = bodyRadiusScene(node, systemLevel);
@@ -1514,13 +1525,17 @@ function loadPhotoDiscInto(mat: THREE.SpriteMaterial, url: string | undefined) {
 
 // Build a flat camera-facing disc for a body (the "2D map" body look): photo / procedural disc / flat
 // class-colour shape. Sized to the body's rendered radius; belts & rings render as their own nodes.
-function buildBodyDisc(node: any, radius: number, mode: BodyGfx): THREE.Sprite {
+function buildBodyDisc(node: any, radius: number, mode: BodyGfx, bodyStyle: 'textured' | 'flat' | 'white'): THREE.Sprite {
   const mat = new THREE.SpriteMaterial({ transparent: true, depthWrite: false, depthTest: true });
-  const fallback = () => getPlanetTexture(node) || makeFlatDiscTexture(getClassColor(node));
-  const canvas = mode === 'flat' ? makeFlatDiscTexture(getClassColor(node)) : fallback();
+  // The COLOUR choice outranks the imagery, exactly as it does for spheres: true colour keeps the photo /
+  // procedural disc, flat paints the class swatch, and monochrome goes white so a filter tints it.
+  const trueColour = bodyStyle === 'textured';
+  const canvas = (mode === 'flat' || !trueColour)
+    ? makeFlatDiscTexture(bodyStyle === 'white' ? '#e8edf4' : getClassColor(node))
+    : (getPlanetTexture(node) || makeFlatDiscTexture(getClassColor(node)));
   const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace;
   mat.map = tex;
-  if (mode === 'photo') loadPhotoDiscInto(mat, node.image?.url); // async swap when a clean photo arrives
+  if (mode === 'photo' && trueColour) loadPhotoDiscInto(mat, node.image?.url); // async swap when a clean photo arrives
   const sp = new THREE.Sprite(mat);
   sp.scale.setScalar(radius * 2); // diameter in world units, matching the sphere's size
   sp.renderOrder = 3; // draw AFTER the orbit rings so the disc covers them (a 3D sphere occludes naturally)

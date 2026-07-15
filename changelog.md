@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.91-beta - 12th Jul 2026
+
+* **The 2D map now pans instead of spinning to follow a body.** Keeping a focused planet centred was swinging the camera around the star as the planet orbited, which turned the whole map. A locked 2D map now holds its heading and simply slides to keep the focus centred.
+* **2D maps can be panned again.** Dragging to move a flat map was disabled; zoom and pan both work now, and only rotation is locked (unless you're in 3D).
+* **Colour now works on the flat body styles.** Choosing True colour / Flat colour / Monochrome had no effect when bodies were drawn as photos or discs — the colour choice was being ignored. It now applies to those styles too, so Monochrome tints properly and Flat colour paints the class swatch.
+* **Fixed a console warning** when using the lo-poly render styles.
+
 ## v2.1.90-beta - 12th Jul 2026
 
 * **2D maps really do stay still now.** The culprit was "View orbit" — the slow turntable spins the camera on its own, so locking the drag-rotation didn't stop it. View orbit is a 3D-only idea and is now switched off for 2D maps entirely (including on presets where it was already set), and in its place the 2D map and 2D starmap get a **Lock rotation** option, on by default.
