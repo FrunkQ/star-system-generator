@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.93-beta - 12th Jul 2026
+
+* **Left-drag now pans the 2D maps.** The camera controls' default put rotate on left-drag and pan on right-drag only — so on a flat map the obvious gesture either rotated it or did nothing. On the 2D system map and 2D starmap the primary gesture is now pan (one finger on touch); rotate moves to right-drag, and is off entirely when Lock rotation is on. Zoom is unchanged.
+* **Locked follow really pans now.** With Lock rotation on, following a focused body was still turning the map: the fix only covered the first moment of the move, after which the camera aimed at the moving body from a fixed spot — which reads as rotation. The camera now slides with the body, keeping it centred by panning with the heading truly fixed.
+
 ## v2.1.92-beta - 12th Jul 2026
 
 * **The editor preview was showing the wrong renderer.** For a 2D map it was drawing the old orrery instead of the view players actually get — so Colour and Body graphics appeared to do nothing there while working fine in the live player view. The preview now uses the same engine and the same settings as the player view, so what you tune is what they see.

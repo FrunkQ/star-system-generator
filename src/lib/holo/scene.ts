@@ -617,6 +617,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const desiredTarget = new THREE.Vector3();
   const desiredCam = new THREE.Vector3();
   const outward = new THREE.Vector3();
+  const followDelta = new THREE.Vector3(); // per-frame target movement, reapplied to the camera = a PAN
   let focusedId: string | null = null;
   let focusDrive = 0;
   let visibleSet = new Set<string>(); // which body names show — AND what can be clicked (one rule, both)
@@ -648,11 +649,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   // The "2D map": the tilt is pinned top-down — it can never become a 3D view. Pan + zoom are enabled
-  // (a flat map you can't drag is useless); the 3D holo stays orbit-only.
+  // (a flat map you can't drag is useless); the 3D holo stays orbit-only. The PRIMARY gesture flips:
+  // OrbitControls' default puts rotate on left-drag and pan on right-drag, which on a map reads as
+  // "click doesn't pan" — so flat maps get LEFT/one-finger = PAN (rotate moves to right-drag, azimuth
+  // only, and dies entirely when the heading is locked).
   function setFlatOverhead(on: boolean) {
     if (on === flatOverhead) return;
     flatOverhead = on;
     controls.enablePan = on;
+    controls.mouseButtons.LEFT = on ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+    controls.mouseButtons.RIGHT = on ? THREE.MOUSE.ROTATE : THREE.MOUSE.PAN;
+    controls.touches.ONE = on ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
     applyPolarLimits();
     focusDrive = 48; // ease back to the pinned framing
   }
@@ -833,7 +840,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       controls.target.lerp(desiredTarget, 0.18);
       camera.position.lerp(desiredCam, 0.14);
       focusDrive--;
+    } else if (lockRotate) {
+      // Heading locked: follow by PANNING — move the camera by the SAME delta as the target, so the
+      // offset (and with it the screen heading) never changes. Lerping only the target here is what made
+      // the "locked" map still rotate: the offset direction from the moving target to a stationary
+      // camera swings as the body orbits, and with the polar clamped flat that swing is pure azimuth.
+      followDelta.copy(controls.target);
+      controls.target.lerp(desiredTarget, 0.08);
+      camera.position.add(followDelta.subVectors(controls.target, followDelta));
     } else {
+      // Free heading (3D): gently re-aim at the body — the camera stays put and turns to track, which
+      // is the natural hologram feel and never fights the user's own rotate/zoom.
       controls.target.lerp(desiredTarget, 0.08);
     }
   }

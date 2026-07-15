@@ -250,6 +250,11 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   function setFlatOverhead(on: boolean) {
     controls.minPolarAngle = 0.05;
     controls.maxPolarAngle = on ? 0.05 : Math.PI * 0.49;
+    // Flat map: the primary gesture is PAN — left-drag/one-finger pans (OrbitControls' default puts
+    // rotate there); rotate moves to right-drag (azimuth only, and off entirely when heading-locked).
+    controls.mouseButtons.LEFT = on ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+    controls.mouseButtons.RIGHT = on ? THREE.MOUSE.ROTATE : THREE.MOUSE.PAN;
+    controls.touches.ONE = on ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
     if (on) setFraming(0);
     controls.update();
   }
