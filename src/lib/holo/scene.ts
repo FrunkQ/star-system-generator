@@ -19,6 +19,7 @@ import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
 import { getPlanetTextureEquirect, getPlanetTexture } from '$lib/rendering/planetTexture';
+import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLOR } from '$lib/rendering/debris';
 // The ONE click-ladder ruleset, shared with the GM's 2D orrery (viewport/camera). We measure the
 // distances in SCENE units and it hands back a half-extent in the same space — so the holo (2D locked
 // overhead AND 3D at its configured tilt) frames a click exactly like the orrery does.
@@ -38,6 +39,8 @@ export type RenderStyle = 'filled' | 'lopoly-filled' | 'lopoly-lines' | 'wire-gl
 // Body graphics: a 3D 'sphere' (the render/style options above), or a flat camera-facing DISC — with a
 // photo, the procedural true-colour disc, or a plain class-colour shape. The "2D map" body look.
 export type BodyGfx = 'sphere' | 'photo' | 'disc' | 'flat';
+// Belts & rings: individual tumbling rocks, or the GM orrery's flat translucent band.
+export type BeltStyle = 'rocks' | 'band';
 const GRID_RADIUS = 12; // scene units the outermost data maps to
 const ORBIT_SAMPLES = 96;
 const R0_AU = 0.35; // log-compression softening radius
@@ -65,6 +68,7 @@ export interface HoloController {
   setFlatOverhead(on: boolean): void; // "2D map": tilt pinned top-down (+ pan enabled). Never a 3D view.
   setLockRotation(on: boolean): void; // fix the heading: no spin by drag, and follow a body by PANNING
   setBodyGfx(mode: BodyGfx): void; // 3D sphere vs flat disc (photo / procedural / flat)
+  setBeltStyle(mode: BeltStyle): void; // belts/rings as rocks, or the orrery's flat band
   setBodySize(v: number): void; // 1 readable .. 0 true physical scale
   setGrid(mode: 'off' | 'plain' | 'scaled' | 'hex'): void; // ground reference grid
   setOrbitSpeed(v: number): void; // auto view-orbit turntable speed 0..1 (0 = static)
@@ -308,6 +312,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function setAuroras(on: boolean) { aurorasOn = on; }
 
 
+  // Belts & rings: tumbling rocks vs the GM orrery's flat band. Rebuilds.
+  function setBeltStyle(mode: BeltStyle) {
+    if (mode === beltStyle) return;
+    beltStyle = mode;
+    rebuildContent();
+  }
+
   // Body graphics: 3D sphere vs a flat camera-facing disc (photo / procedural / flat). Rebuilds.
   function setBodyGfx(mode: BodyGfx) {
     if (mode === bodyGfx) return;
@@ -517,6 +528,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let unlit = false; // flat lighting (MeshBasic, no terminator) — the efficient "2D map" look
   let aurorasOn = true; // GM toggle: show the emissive polar aurora shells (updateAuroras hides when off)
   let bodyGfx: BodyGfx = 'sphere'; // sphere (3D) vs flat disc (photo / procedural / flat)
+  let beltStyle: BeltStyle = 'rocks'; // rocks vs the orrery's flat band
   let renderStyle: RenderStyle = 'filled'; // filled spheres vs 80s vector wireframe
   let bodySize = 1; // 1 = readable (chunky), 0 = true physical scale (tiny) — fine-tune body sizes
   let timeMs = 0;
@@ -1014,7 +1026,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const node of system.nodes as any[]) {
       // Belts: a debris band on their (compressed) orbit, never a lone sphere.
       if (isBelt(node)) {
-        const belt = buildBeltBand(node, positionToScene, beltDetail, timeMs, renderStyle !== 'filled');
+        const belt = beltStyle === 'band'
+          ? buildBeltRing(node, positionToScene)
+          : buildBeltBand(node, positionToScene, beltDetail, timeMs, renderStyle !== 'filled');
         if (belt) { contentGroup.add(belt.group); beltVisuals.push(belt); }
         continue;
       }
@@ -1536,7 +1550,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----
@@ -1901,6 +1915,53 @@ function particleBudget(massKg: number, innerKm: number, outerKm: number, qualit
 // band. Rock COUNT = the belt's physical density (from mass) × the GM `detail` quality knob; the
 // radial spread uses the belt's real inner/outer radius. Rocks are split across a few silhouette
 // textures at varied sizes/tints so they read as chaotic rubble. Still cheap — point clouds.
+/**
+ * A belt/ring as a flat translucent BAND — the GM orrery's look, for GMs who want the player map to read
+ * like their own. The orrery strokes an annulus whose opacity tracks debris density; we sample the belt's
+ * real orbit and sweep a strip between its inner and outer edges, so an eccentric belt bends exactly as it
+ * does there (and through the same compression as the rocks would). Density → opacity is the SHARED rule,
+ * so a belt is equally solid in both views. Static: no buckets, so updateBelts skips it.
+ */
+function buildBeltRing(node: any, project: Projector): BeltVisual | null {
+  const period = orbitPeriodMs(node.orbit);
+  if (period === 0) return null;
+  const t0 = node.orbit.t0 || 0;
+  const innerKm = node.radiusInnerKm, outerKm = node.radiusOuterKm;
+  // Match buildBeltBand's band width so the two styles cover the same ground (±12% fallback).
+  let widthFrac = 0.12;
+  if (innerKm > 0 && outerKm > innerKm) widthFrac = (outerKm - innerKm) / (innerKm + outerKm);
+  const SAMPLES = 128;
+  const inner: THREE.Vector3[] = [], outer: THREE.Vector3[] = [];
+  const v = new THREE.Vector3();
+  let outerScene = 0;
+  for (let i = 0; i <= SAMPLES; i++) {
+    const r = propagateState3D(node, t0 + (i / SAMPLES) * period).r;
+    const lo = 1 - widthFrac, hi = 1 + widthFrac;
+    project({ x: r.x * lo, y: r.y * lo, z: r.z * lo }, v); inner.push(v.clone());
+    project({ x: r.x * hi, y: r.y * hi, z: r.z * hi }, v); outer.push(v.clone());
+    outerScene = Math.max(outerScene, Math.hypot(v.x, v.z));
+  }
+  const pos: number[] = [];
+  for (let i = 0; i < SAMPLES; i++) {
+    const a = inner[i], b = outer[i], c = inner[i + 1], d = outer[i + 1];
+    pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+    pos.push(b.x, b.y, b.z, d.x, d.y, d.z, c.x, c.y, c.z);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  const isRing = node.roleHint === 'ring';
+  const mat = new THREE.MeshBasicMaterial({
+    color: isRing ? DEBRIS_RING_COLOR : DEBRIS_BELT_COLOR,
+    transparent: true,
+    opacity: debrisBandAlpha(node.roleHint, debrisDensityFrac(node.massKg)),
+    side: THREE.DoubleSide,
+    depthWrite: false // a translucent band must not punch through the bodies (see buildOrbitRing)
+  });
+  const group = new THREE.Group();
+  group.add(new THREE.Mesh(geo, mat));
+  return { group, buckets: [], t0Sec: 0, id: node.id, outerScene };
+}
+
 function buildBeltBand(node: any, project: Projector, detail: number, timeMs: number, wire: boolean): BeltVisual | null {
   const period = orbitPeriodMs(node.orbit);
   if (period === 0) return null;

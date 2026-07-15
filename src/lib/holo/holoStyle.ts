@@ -20,6 +20,7 @@ export interface HoloStyle {
   lockRotation?: boolean; // fix the heading: no spin by drag, and follow a focused body by PANNING
   auroras?: boolean; // show the emissive polar aurora shells (default on)
   bodyGfx?: 'sphere' | 'photo' | 'disc' | 'flat'; // 3D sphere vs flat disc (photo / procedural / flat)
+  beltStyle?: 'rocks' | 'band'; // belts/rings as tumbling rocks, or the GM orrery's flat grey band
   background: 'space' | 'green' | 'blue' | 'black'; // dark space, or a chroma-key colour for OBS
   bodySize: number; // 1 = readable (chunky) .. 0 = true physical scale
   grid: 'off' | 'plain' | 'scaled' | 'hex'; // ground reference: none / polar rings / scale rings / hex (hex is starmap-only; the system view treats it as plain)
@@ -49,7 +50,8 @@ export const DEFAULT_STYLE: HoloStyle = {
   labelSize: 11,
   render: 'filled',
   auroras: true,
-  bodyGfx: 'sphere'
+  bodyGfx: 'sphere',
+  beltStyle: 'rocks'
 };
 
 // Shipped starter presets — enough to demo the range and skin the existing guides.
@@ -87,7 +89,7 @@ if (typeof window !== 'undefined') {
 }
 
 export function styleOf(preset: HoloPreset): HoloStyle {
-  return { filter: preset.filter, filterParams: preset.filterParams ? { ...preset.filterParams } : undefined, compression: preset.compression, angleDeg: preset.angleDeg, whole: preset.whole, skybox: preset.skybox, beltDetail: preset.beltDetail ?? 0.6, bodyStyle: preset.bodyStyle ?? 'textured', background: preset.background ?? 'space', bodySize: preset.bodySize ?? 1, grid: preset.grid ?? 'plain', orbitSpeed: preset.orbitSpeed ?? 0, labelSize: preset.labelSize ?? 11, font: preset.font, render: preset.render ?? 'filled', auroras: preset.auroras ?? true, bodyGfx: preset.bodyGfx ?? 'sphere' };
+  return { filter: preset.filter, filterParams: preset.filterParams ? { ...preset.filterParams } : undefined, compression: preset.compression, angleDeg: preset.angleDeg, whole: preset.whole, skybox: preset.skybox, beltDetail: preset.beltDetail ?? 0.6, bodyStyle: preset.bodyStyle ?? 'textured', background: preset.background ?? 'space', bodySize: preset.bodySize ?? 1, grid: preset.grid ?? 'plain', orbitSpeed: preset.orbitSpeed ?? 0, labelSize: preset.labelSize ?? 11, font: preset.font, render: preset.render ?? 'filled', auroras: preset.auroras ?? true, bodyGfx: preset.bodyGfx ?? 'sphere', beltStyle: preset.beltStyle ?? 'rocks' };
 }
 
 // Add a custom preset from the current live style. Id is derived from the name + a short suffix so

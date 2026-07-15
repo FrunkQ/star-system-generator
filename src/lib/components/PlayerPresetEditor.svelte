@@ -25,7 +25,6 @@
   import GraphicLayer from './GraphicLayer.svelte';
   import GraphicPlacementControls from './GraphicPlacementControls.svelte';
   import StarmapListView from '$lib/starmap/StarmapListView.svelte';
-  import Starmap2DView from '$lib/starmap/Starmap2DView.svelte';
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
 
   export let preset: PlayerPreset;
@@ -320,7 +319,16 @@
                 </label>
                 <label>Spread <span>{Math.round(draft.compression * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.compression} /></label>
                 <label>Body size <span>{draft.bodySize === 0 ? 'true' : draft.bodySize >= 1 ? 'readable' : Math.round(draft.bodySize * 100) + '%'}</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.bodySize} /></label>
-                <label>Belt detail <span>{Math.round(draft.beltDetail * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.beltDetail} /></label>
+                <label>Belts &amp; rings
+                  <select bind:value={draft.beltStyle}>
+                    <option value="rocks">Rocks</option>
+                    <option value="band">Grey bands (like the GM orrery)</option>
+                  </select>
+                </label>
+                {#if draft.beltStyle !== 'band'}
+                  <!-- Only the rock field has a particle budget; a band is one flat shape. -->
+                  <label>Belt detail <span>{Math.round(draft.beltDetail * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.beltDetail} /></label>
+                {/if}
                 <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
                 {#if draft.systemView === 'holo3d'}
                   <!-- 3D only: a flat map has no tilt to set, and no turntable to spin. -->
@@ -412,16 +420,16 @@
               <div class="ph">Starmap stage is disabled — players go straight to systems.</div>
             {:else if !($starmapStore?.systems?.length)}
               <div class="ph">No starmap loaded — open or create a campaign map to preview this stage.</div>
-            {:else if draft.starmapView === 'holo3d'}
-              <!-- 3D map runs the exact shader itself; DOM views get the CSS approximation. -->
-              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} routeGlow={draft.starmapRouteGlow} mono={draft.starmapMono} mapGrid={previewMapGrid} flat={draft.starmapView === 'diagram2d'} lockRotation={draft.starmapView === 'diagram2d' && draft.lockRotation !== false} background={draft.background} angleDeg={draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
+            {:else if draft.starmapView === 'holo3d' || draft.starmapView === 'diagram2d'}
+              <!-- BOTH map views are the same engine (2D = it locked flat) and run the real shader
+                   themselves — mirroring the live player view exactly, so this preview can't drift. -->
+              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} routeGlow={draft.starmapRouteGlow} mono={draft.starmapMono} mapGrid={previewMapGrid}
+                flat={draft.starmapView === 'diagram2d'}
+                lockRotation={draft.starmapView === 'diagram2d' && draft.lockRotation !== false}
+                background={draft.background} angleDeg={draft.starmapView === 'diagram2d' ? 0 : draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
             {:else}
               <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
-                {#if draft.starmapView === 'list'}
-                  <StarmapListView starmap={$starmapStore} accentColor={accentCss} font={draft.font} />
-                {:else}
-                  <Starmap2DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} />
-                {/if}
+                <StarmapListView starmap={$starmapStore} accentColor={accentCss} font={draft.font} />
               </FilterFrame>
             {/if}
           {:else if previewLayer === 'system'}

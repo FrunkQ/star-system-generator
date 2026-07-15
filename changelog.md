@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.96-beta - 12th Jul 2026
+
+* **Belts & rings can be drawn as grey bands, like the GM orrery.** A new "Belts & rings" option on the system view switches between the tumbling rock field (default) and a flat translucent band whose solidity tracks the belt's density — the same look, and the same density rule, as the GM's own map. Handy for a preset meant to mirror what the GM sees.
+* **Fixed the starmap preview showing the wrong renderer for a 2D map** — the same drift the system preview had. Both map previews now match the live player view exactly.
+
 ## v2.1.95-beta - 12th Jul 2026
 
 * **Fix: the player view's system map stopped responding after the first click.** A crash in the camera code killed the render loop as soon as the opening move finished, so the view framed the body once and then ignored everything — no stepping down through the framing levels, no time movement.

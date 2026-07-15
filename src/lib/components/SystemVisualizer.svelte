@@ -6,6 +6,7 @@
   import { computeWorldPositions } from "$lib/physics/worldPositions";
   import { getVisibleNodeIds } from "$lib/system/visibleNodes";
   import { AU_KM, EARTH_MASS_KG } from '../constants';
+  import { debrisDensityFrac } from '$lib/rendering/debris';
   import * as zones from "$lib/physics/zones";
   import { calculateLagrangePoints } from "$lib/physics/lagrange";
   import { get } from 'svelte/store';
@@ -716,15 +717,6 @@
   };
 
   // "#rrggbb" / "#rgb" / "rgb(...)" → "r,g,b" for building rgba() gradients.
-  // Belt/ring DENSITY as a 0..1 fraction from its massKg debris-density proxy (log scale,
-  // 1e-5..1.0 Earth masses — mirrors getBeltDensityDescription). Drives how solid we draw it.
-  // Undefined density (legacy data) → a moderate default so it stays visible.
-  function debrisDensityFrac(massKg: number | undefined): number {
-      if (massKg === undefined || massKg <= 0) return 0.3;
-      const me = massKg / EARTH_MASS_KG;
-      const lo = Math.log(1e-5), hi = Math.log(1.0);
-      return Math.max(0, Math.min(1, (Math.log(me) - lo) / (hi - lo)));
-  }
 
   function hexToRgbTriplet(c: string): string {
       if (!c) return '255,255,255';

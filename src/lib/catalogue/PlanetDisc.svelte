@@ -10,6 +10,7 @@
   import { auroraEmitter } from '$lib/physics/aurora';
   import { rendersAsGiant } from '$lib/physics/makeup';
   import { EARTH_MASS_KG } from '$lib/constants';
+  import { debrisDensityFrac } from '$lib/rendering/debris';
 
   export let body: CelestialBody;
   export let ringed = false;
@@ -108,12 +109,8 @@
     return Array.from({ length: n }, (_, i) => ({ y: (i / n) * 100, h: 100 / n + 0.5, fill: cols[i % cols.length] }));
   })();
 
-  // Belt: a grey field of rocks, sparse → dense by debris density (massKg proxy, log 1e-5..1 Me).
-  function densityFrac(massKg: number | undefined): number {
-    if (!massKg || massKg <= 0) return 0.35;
-    const me = massKg / EARTH_MASS_KG;
-    return Math.max(0, Math.min(1, (Math.log(me) - Math.log(1e-5)) / (Math.log(1) - Math.log(1e-5))));
-  }
+  // Belt: a grey field of rocks, sparse → dense by debris density. Shared rule (rendering/debris).
+  const densityFrac = debrisDensityFrac;
   $: rocks = (() => {
     if (!isBelt(body)) return [] as { x: number; y: number; r: number }[];
     const d = densityFrac(body.massKg);

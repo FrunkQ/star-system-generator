@@ -93,6 +93,7 @@ export interface PlayerPreset {
   unlit: boolean; // flat lighting (no day/night terminator) — the efficient "2D map" look for overhead
   auroras: boolean; // show the emissive polar aurora shells on bodies that have them
   bodyGfx: 'sphere' | 'photo' | 'disc' | 'flat'; // 3D sphere vs a flat disc (photo / procedural / flat shape)
+  beltStyle: 'rocks' | 'band'; // belts/rings: tumbling rocks, or the GM orrery's flat grey band
   background: 'space' | 'green' | 'blue' | 'black';
   grid: 'off' | 'plain' | 'scaled' | 'hex';
   starmapRouteGlow: boolean; // 2D/3D starmap: glowing transit lines (vs plain lines)
