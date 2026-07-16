@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.114-beta - 16th Jul 2026
+
+* Route names now show in the Routes & journeys list (Charted interstellar links).
+
 ## v2.1.113-beta - 16th Jul 2026
 
 * **Starmap route editor is back, plus route names.** Clicking (or tapping) a route's distance label — or anywhere on the line itself, including right-click — opens the Edit Route dialog again (change distance, solid/dashed, delete; rescale on scaled maps). It had been unreachable since the V2 touch-gesture layer began capturing the click. Routes can now also be named ("Hyperspace Bypass 342"); the name is drawn in small letters along the line.

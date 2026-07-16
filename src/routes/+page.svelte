@@ -185,7 +185,7 @@
     if (!map) return { interstellar: [] as any[], journeys: [] as any[], interstellarJourneys: [] as any[], stranded: [] as any[], autopilotShips: [] as any[] };
     const sysName = (id: string) => map.systems.find((s) => s.id === id)?.name ?? id;
     const interstellar = (map.routes ?? []).map((r) => ({
-      id: r.id, source: sysName(r.sourceSystemId), target: sysName(r.targetSystemId), distance: r.distance, unit: r.unit
+      id: r.id, source: sysName(r.sourceSystemId), target: sysName(r.targetSystemId), distance: r.distance, unit: r.unit, name: r.name
     }));
     // Live interstellar flights (ships in transit between systems) — stored on the starmap, not on a
     // construct, so they're gathered separately. Status/progress + timing come from the game clock.
@@ -1534,7 +1534,7 @@
           {:else}
             {#each routesData.interstellar as r (r.id)}
               <div class="route-row static">
-                <span class="route-main"><strong>{r.source}</strong> → <strong>{r.target}</strong></span>
+                <span class="route-main"><strong>{r.source}</strong> → <strong>{r.target}</strong>{#if r.name}<span class="route-name-tag">{r.name}</span>{/if}</span>
                 <span class="route-sys">{r.distance} {r.unit}</span>
               </div>
             {/each}
@@ -1743,6 +1743,7 @@
   .route-status.scheduled { background: var(--bg-panel, #14161c); color: var(--text-muted, #cfcfcf); }
   .route-status.completed { background: color-mix(in srgb, #4fa86a 26%, transparent); color: #6fcf8f; }
   .route-main { flex: 1 1 auto; min-width: 0; font-size: 0.9rem; }
+  .route-name-tag { margin-left: 8px; color: #8fd6ff; font-size: 0.78rem; font-style: italic; }
   .route-sys { flex: 0 0 auto; color: var(--text-faint, #8a8f9a); font-size: 0.8rem; }
   .route-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
   .route-when { font-size: 0.74rem; color: var(--text-faint, #8a8f9a); flex-basis: 100%; }
