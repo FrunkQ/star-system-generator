@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.111-beta - 16th Jul 2026
+
+* **Rail: Field Guide restored beside Player Views, and Projector + Report no longer disappear (beta).** The old Field Guide launcher is back on the rail alongside the new Player Views so both player-view systems can be tested side by side. Projector and Report were previously system-view only (they vanished on the starmap); they now show in both views and act on the last-loaded system when invoked from the starmap. This is beta scaffolding — Field Guide and the Player Views/Projector split get tidied before the production cut.
+
 ## v2.1.110-beta - 16th Jul 2026
 
 * **Forming a stellar barycentre now re-homes the rest of the system.** When a companion grows massive enough to promote its host into a binary pair, every other child of that host is re-parented by orbit size: orbits enclosing the pair (outer planets, belts, nested pairs like Pluto-Charon) become circumbinary — they orbit the barycentre, keeping their distance and shape, with the pair's combined mass setting their periods — while orbits inside the pair separation stay on their own star (physically correct circumstellar orbits). Fully reversible: deleting the companion, or shrinking it below the binary threshold, silently puts everything back on the star exactly where it was. Previously the whole system kept "orbiting" the displaced star and every view scrambled.

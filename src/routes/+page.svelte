@@ -8,7 +8,8 @@
   import { get } from 'svelte/store';
   import type { RulePack, System, Starmap as StarmapType, StarSystemNode, Route } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
-  import { generateSystem, renameNode } from '$lib/api';
+  import { generateSystem, renameNode, computePlayerSnapshot } from '$lib/api';
+  import ReportConfigModal from '$lib/components/ReportConfigModal.svelte';
   import { validateStarmap, generateId } from '$lib/utils';
   import { broadcastService } from '$lib/broadcast';
   import { computePlayerStarmapSnapshot } from '$lib/system/utils';
@@ -63,6 +64,27 @@
   let broadcastSessionId = generateId();
   let showCompanionModal = false;
   let showPlayerPresets = false;
+  // BETA: Projector + Report on the STARMAP rail act on the last-loaded system ($systemStore). The
+  // system view has its own copies inside SystemView; these mirror them so the rail entries work from
+  // the starmap too. Delete alongside the Field Guide beta-scaffolding before the production cut.
+  let showReportConfigModal = false;
+  let starmapProjectorWindow: Window | null = null;
+  function openProjectorFromStarmap() {
+    starmapProjectorWindow = window.open(`/projector?sid=${broadcastSessionId}`, 'StarSystemProjector', 'width=1280,height=720,menubar=no,toolbar=no,location=no');
+    const sys = get(systemStore);
+    if (sys) broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: computePlayerSnapshot(sys) });
+  }
+  function handleStarmapReport(event: CustomEvent<{ mode: 'GM' | 'Player'; theme: string; includeConstructs: boolean }>) {
+    const sys = get(systemStore);
+    showReportConfigModal = false;
+    if (!sys) return;
+    sessionStorage.setItem('reportData', JSON.stringify({
+      system: sys, mode: event.detail.mode, theme: event.detail.theme,
+      includeConstructs: event.detail.includeConstructs,
+      units: get(measurementUnit), tempUnit: get(temperatureUnit)
+    }));
+    window.open('/report', '_blank');
+  }
   let showInterstellarModal = false;
   let interstellarShipId = '';
 
@@ -1303,6 +1325,8 @@
       on:new={handleRequestNewStarmap}
       on:catalogue={() => showCompanionModal = true}
       on:playerviews={() => showPlayerPresets = true}
+      on:projector={openProjectorFromStarmap}
+      on:report={() => showReportConfigModal = true}
       on:systemclick={handleSystemClick}
       on:focusconstruct={(e) => enterSystemAndFocus(e.detail.systemId, e.detail.id)}
       on:openship={(e) => shipPanelJourneyId = e.detail.journeyId}
@@ -1391,6 +1415,10 @@
     <CompanionModal sessionId={broadcastSessionId}
       on:close={() => showCompanionModal = false}
       on:presets={() => { showCompanionModal = false; showPlayerPresets = true; }} />
+  {/if}
+
+  {#if showReportConfigModal}
+    <ReportConfigModal on:generate={handleStarmapReport} on:close={() => showReportConfigModal = false} />
   {/if}
 
   {#if showPlayerPresets}

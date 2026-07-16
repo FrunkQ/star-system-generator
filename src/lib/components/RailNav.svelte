@@ -88,25 +88,30 @@
   <button class="rail-btn" title={routesAttention ? `Routes & journeys — a ship needs attention (${routesAttention})` : 'Routes & journeys'} on:click={() => go('routes')}>
     <span class="ic">{@html svg(I.routes)}{#if routesAttention}<span class="rail-dot {routesAttention}"></span>{/if}</span><span class="rail-label">Routes…{#if routesAttention}<span class="rail-dot inline {routesAttention}"></span>{/if}</span>
   </button>
-  <!-- Player Views: the unified players' presentation system (replaced the old Field Guide launcher). -->
+  <!-- BETA: the OLD Field Guide launcher, kept alongside the new Player Views for side-by-side testing.
+       Hide this (and restore the single Player Views entry) before the production cut. -->
+  <button class="rail-btn" title="Field Guide — the original player-view launcher (legacy, beta only)" on:click={() => go('catalogue')}>
+    <span class="ic">{@html svg(I.catalogue)}</span><span class="rail-label">Field Guide…</span>
+  </button>
+  <!-- Player Views: the unified players' presentation system (the eventual replacement for Field Guide). -->
   <button class="rail-btn" title="Design, open and manage the players' views (guides, tables, projections)" on:click={() => go('playerviews')}>
     <span class="ic">{@html svg(I.playerviews)}</span><span class="rail-label">Player Views…</span>
   </button>
 
-  {#if activeView === 'system'}
-    {#if projectorOpen}
-      <button class="rail-btn" class:gs-on={crtOn} title="Toggle the projector's green-CRT look" on:click={() => dispatch('projectorcrt')}>
-        <span class="ic">{@html svg(I.greenscreen)}</span><span class="rail-label">Greenscreen CRT</span>
-      </button>
-    {:else}
-      <button class="rail-btn" title="Open the projector window" on:click={() => go('projector')}>
-        <span class="ic">{@html svg(I.projector)}</span><span class="rail-label">Projector</span>
-      </button>
-    {/if}
-    <button class="rail-btn" title="Generate a report" on:click={() => go('report')}>
-      <span class="ic">{@html svg(I.report)}</span><span class="rail-label">Report…</span>
+  <!-- Projector + Report act on the loaded system. Shown in BOTH views for beta (they target the
+       last-loaded system when invoked from the starmap). Greenscreen toggle only when a projector is live. -->
+  {#if projectorOpen}
+    <button class="rail-btn" class:gs-on={crtOn} title="Toggle the projector's green-CRT look" on:click={() => dispatch('projectorcrt')}>
+      <span class="ic">{@html svg(I.greenscreen)}</span><span class="rail-label">Greenscreen CRT</span>
+    </button>
+  {:else}
+    <button class="rail-btn" title="Open the projector window" on:click={() => go('projector')}>
+      <span class="ic">{@html svg(I.projector)}</span><span class="rail-label">Projector</span>
     </button>
   {/if}
+  <button class="rail-btn" title="Generate a report" on:click={() => go('report')}>
+    <span class="ic">{@html svg(I.report)}</span><span class="rail-label">Report…</span>
+  </button>
 
   <slot />
 

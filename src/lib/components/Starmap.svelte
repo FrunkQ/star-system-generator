@@ -918,6 +918,8 @@
         on:routes={() => { railOpen = false; dispatch('routes'); }}
         on:catalogue={() => { railOpen = false; dispatch('catalogue'); }}
         on:playerviews={() => { railOpen = false; dispatch('playerviews'); }}
+        on:projector={() => { railOpen = false; dispatch('projector'); }}
+        on:report={() => { railOpen = false; dispatch('report'); }}
         on:clear={() => { railOpen = false; dispatch('clear'); }}
       />
     </svelte:fragment>
