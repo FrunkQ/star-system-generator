@@ -21,7 +21,7 @@ export type BroadcastMessage =
   | { type: 'SYNC_SYSTEM'; payload: System }
   | { type: 'SYNC_RULEPACK'; payload: RulePack }
   | { type: 'SYNC_FOCUS'; payload: string | null }
-  | { type: 'SYNC_CAMERA'; payload: { pan: PanState; zoom: number; isManual: boolean } }
+  | { type: 'SYNC_CAMERA'; payload: { pan: PanState; zoom: number; isManual: boolean; viewMin?: number } }
   | { type: 'SYNC_VIEW_SETTINGS'; payload: ViewSettings }
   | { type: 'SYNC_TIME'; payload: TimeState }
   | { type: 'SYNC_CRT_MODE'; payload: boolean }
@@ -189,7 +189,7 @@ class BroadcastService {
       onSystemUpdate: (sys: System) => void,
       onRulePackUpdate: (pack: RulePack) => void,
       onFocusUpdate: (id: string | null) => void,
-      onCameraUpdate: (pan: PanState, zoom: number, isManual: boolean) => void,
+      onCameraUpdate: (pan: PanState, zoom: number, isManual: boolean, viewMin?: number) => void,
       onViewSettingsUpdate: (settings: ViewSettings) => void,
       onTimeUpdate: (time: TimeState) => void,
       onCrtModeUpdate: (isCrt: boolean) => void,
@@ -226,7 +226,7 @@ class BroadcastService {
   private onSystemUpdate: ((sys: System) => void) | null = null;
   private onRulePackUpdate: ((pack: RulePack) => void) | null = null;
   private onFocusUpdate: ((id: string | null) => void) | null = null;
-  private onCameraUpdate: ((pan: PanState, zoom: number, isManual: boolean) => void) | null = null;
+  private onCameraUpdate: ((pan: PanState, zoom: number, isManual: boolean, viewMin?: number) => void) | null = null;
   private onViewSettingsUpdate: ((settings: ViewSettings) => void) | null = null;
   private onTimeUpdate: ((time: TimeState) => void) | null = null;
   private onCrtModeUpdate: ((isCrt: boolean) => void) | null = null;
@@ -281,7 +281,7 @@ class BroadcastService {
               if (!this.isSender && this.onFocusUpdate) this.onFocusUpdate(msg.payload);
               break;
           case 'SYNC_CAMERA':
-              if (!this.isSender && this.onCameraUpdate) this.onCameraUpdate(msg.payload.pan, msg.payload.zoom, msg.payload.isManual);
+              if (!this.isSender && this.onCameraUpdate) this.onCameraUpdate(msg.payload.pan, msg.payload.zoom, msg.payload.isManual, msg.payload.viewMin);
               break;
           case 'SYNC_VIEW_SETTINGS':
               if (!this.isSender && this.onViewSettingsUpdate) this.onViewSettingsUpdate(msg.payload);

@@ -598,7 +598,7 @@
   // draws the identical grid — the grid shape is UI state, not saved on the map, so it's injected here.
   function starmapSnapshotForPlayers(map: import('$lib/types').Starmap) {
     const ui = get(starmapUiStore);
-    const type = ui.travellerMode ? 'traveller-hex' : ui.gridType;
+    const type = (ui.travellerMode ? 'traveller-hex' : ui.gridType) as 'grid' | 'hex' | 'traveller-hex' | 'none';
     return { ...computePlayerStarmapSnapshot(map), mapGrid: { type, size: 50 } };
   }
   onMount(() => {

@@ -53,6 +53,7 @@ export interface HoloController {
   setTime(ms: number): void;
   focusBody(id: string | null): void;
   stepFocusUp(): boolean; // browser Back: out one ladder level; false = nothing left to step out of
+  setViewportAU(cx: number, cy: number, halfExtentAU: number): void; // follow the GM's manual viewport (rough)
   // The two framing knobs (surface as GM controls later, docs §A8/§A10): angleDeg is the camera's
   // tilt from straight down (0 = overhead top-down, ~64 = the 3/4 default); whole fits the entire
   // system rather than the focused body. overhead + whole = the projector's top-down plan view.
@@ -950,6 +951,34 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return true;
   }
 
+  /**
+   * Follow the GM's MANUAL viewport (rough, by design): centre + half-extent in TRUE AU, mapped through
+   * this scene's own compression. 2D keeps its frozen heading; 3D takes the same shot raised to its
+   * configured tilt. The GM's hand replaces any local follow until the player (re)selects something.
+   */
+  function setViewportAU(cx: number, cy: number, halfExtentAU: number) {
+    followEngaged = false;
+    focusDrive = 0;
+    positionToScene({ x: cx, y: cy, z: 0 }, tmp);
+    controls.target.copy(tmp);
+    // Half-extent through the LOCAL radial compression ratio (global ratio when the centre ≈ origin).
+    const rAU = Math.hypot(cx, cy);
+    const rScene = Math.hypot(tmp.x, tmp.z);
+    const k = rAU > 1e-6 ? rScene / rAU : GRID_RADIUS / Math.max(1e-6, rMax);
+    const halfScene = Math.max(1e-4, halfExtentAU * k);
+    const tan = Math.tan((camera.fov * Math.PI) / 360);
+    const distV = Math.min(controls.maxDistance, Math.max(controls.minDistance,
+      halfScene / Math.max(1e-6, tan * Math.min(1, camera.aspect))));
+    const pol = flatOverhead ? LOCK_POLAR : framingAngleRad;
+    let az = lockedHeading;
+    if (!lockRotate) {
+      camDir.subVectors(camera.position, controls.target);
+      az = Math.hypot(camDir.x, camDir.z) > 1e-6 ? Math.atan2(camDir.x, camDir.z) : lockedHeading;
+    }
+    headingDir.set(Math.sin(pol) * Math.sin(az), Math.cos(pol), Math.sin(pol) * Math.cos(az));
+    camera.position.copy(controls.target).addScaledVector(headingDir, distV);
+  }
+
   function resetView() {
     focusedId = null;
     focusDrive = 0;
@@ -1574,7 +1603,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setViewportAU, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----

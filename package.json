@@ -1,6 +1,6 @@
 {
   "name": "star-system-generator",
-  "version": "2.1.99-beta",
+  "version": "2.1.100-beta",
   "type": "module",
   "scripts": {
     "dev": "vite dev",

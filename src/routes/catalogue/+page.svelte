@@ -80,6 +80,7 @@
   import type { ListModel } from '$lib/catalogue/listCanvas';
   import { getClassColor } from '$lib/rendering/colors';
   import { RATE_STEPS, DEFAULT_RATE_INDEX } from '$lib/player/timeRates';
+  import { inverseBoxCox } from '$lib/physics/scaling';
   let holoStyle: HoloStyle = { ...DEFAULT_STYLE };
   // Momentary GM overrides — driven by the GM's Player Views modal via SYNC_PRESET (never saved).
   let holoLabelsOn = true;
@@ -356,6 +357,33 @@
   $: followGMActive = (overrideFollowGM ?? activePreset?.followGM) ?? false;
   // Apply the GM's live time override the instant it changes.
   $: if (timeOverride) { rateIndex = timeOverride.rateIndex; isPlaying = timeOverride.playing; }
+  // Follow the GM's MANUAL viewport (a pan/zoom of their orrery, not a body focus): mirror it as a
+  // ROUGH viewport — the 2D map matches it flat; the 3D holo takes the same shot raised to its tilt.
+  // The GM's pan/zoom live in the orrery's render space (Box-Cox-scaled AU under toytown), so convert
+  // to TRUE AU here — the holo then maps through its own compression. Auto (FOLLOW) camera messages are
+  // ignored: body-follow already rides SYNC_FOCUS and frames with the player's own ladder.
+  function followViewport(pan: { x: number; y: number }, zoom: number, isManual: boolean, viewMin?: number) {
+    if (!followGMActive || !isManual || !holoView || effectiveSystemTier !== 'holo' || !displaySystem) return;
+    if (!(zoom > 0)) return;
+    const halfGm = (viewMin ?? 900) / (2 * zoom); // half-extent in the GM's render space
+    const factor = (displaySystem as any).toytownFactor || 0;
+    let cx = pan.x, cy = pan.y, halfAU = halfGm;
+    if (factor > 0) {
+      // Same x0 the orrery derives (min orbit a × 0.1) — computable identically from the snapshot.
+      const orbitAs = (displaySystem.nodes as any[])
+        .filter((n) => (n.kind === 'body' || n.kind === 'construct') && n.orbit?.elements?.a_AU > 0)
+        .map((n) => n.orbit.elements.a_AU);
+      const x0 = Math.max((orbitAs.length ? Math.min(...orbitAs) : 0.01) * 0.1, 1e-8);
+      const rGm = Math.hypot(pan.x, pan.y);
+      const rTrue = inverseBoxCox(rGm, factor, x0);
+      const k = rGm > 1e-9 ? rTrue / rGm : 1;
+      cx = pan.x * k;
+      cy = pan.y * k;
+      halfAU = inverseBoxCox(rGm + halfGm, factor, x0) - rTrue; // outward half-width — rough is fine
+    }
+    holoView.setViewportAU(cx, cy, halfAU);
+  }
+
   // Follow the GM: on the GM focusing a body, get past the cover, switch to its system, and frame it —
   // the holo (2D overhead or 3D) frames it the standard way; the list highlights + opens it.
   function followFocus(id: string | null) {
@@ -627,7 +655,7 @@
       () => {},
       (pack) => { rulePack = pack; },
       (id) => followFocus(id), // GM focus → follow (only acts when followGMActive)
-      () => {},
+      (pan, zoom, isManual, viewMin) => followViewport(pan, zoom, isManual, viewMin), // GM manual pan/zoom → rough viewport
       () => {},
       () => {},
       () => {},

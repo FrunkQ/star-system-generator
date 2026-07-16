@@ -1474,7 +1474,7 @@
                 broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: snapshot });
                 broadcastService.sendMessage({ type: 'SYNC_RULEPACK', payload: rulePack });
                 broadcastService.sendMessage({ type: 'SYNC_FOCUS', payload: focusedBodyId });
-                broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' } });
+                broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: get(zoomStore), isManual: cameraMode === 'MANUAL', viewMin: Math.min(window.innerWidth, window.innerHeight) } });
                 broadcastService.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: { showNames, showZones, showHillSpheres, showLPoints, showTravellerZones } });
                 broadcastService.sendMessage({ type: 'SYNC_TIME', payload: { currentTime, isPlaying, timeScale } });
                 broadcastService.sendMessage({ type: 'SYNC_CRT_MODE', payload: isCrtMode });
@@ -1492,11 +1492,11 @@
 
     unsubscribePanStore = panStore.subscribe(panState => {
         viewportStore.update(v => ({ ...v, pan: panState }));
-        broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: panState, zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' } });
+        broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: panState, zoom: get(zoomStore), isManual: cameraMode === 'MANUAL', viewMin: Math.min(window.innerWidth, window.innerHeight) } });
     });
     unsubscribeZoomStore = zoomStore.subscribe(zoomState => {
         viewportStore.update(v => ({ ...v, zoom: zoomState }));
-        broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: zoomState, isManual: cameraMode === 'MANUAL' } });
+        broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: zoomState, isManual: cameraMode === 'MANUAL', viewMin: Math.min(window.innerWidth, window.innerHeight) } });
     });
 
     document.addEventListener('click', handleClickOutside);

@@ -72,6 +72,10 @@
   export function stepFocusUp(): boolean {
     return controller?.stepFocusUp() ?? false;
   }
+  // Follow the GM's manual viewport (rough): centre + half-extent in TRUE AU.
+  export function setViewportAU(cx: number, cy: number, halfExtentAU: number) {
+    controller?.setViewportAU(cx, cy, halfExtentAU);
+  }
 
   onMount(() => {
     let cancelled = false;

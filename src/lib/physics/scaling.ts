@@ -8,6 +8,17 @@ import { AU_KM } from "$lib/constants";
  * @param x0 A small pivot point where the curve "bends".
  * @returns The scaled value.
  */
+// Exact inverse of scaleBoxCox — maps a scaled (render-space) distance back to true AU. Used to
+// translate the GM orrery's viewport (whose pan/zoom live in toytown space) for other renderers.
+export function inverseBoxCox(y: number, t: number, x0: number): number {
+    if (y <= 0) return y;
+    t = Math.max(0, Math.min(1, t));
+    if (t < 1.0) {
+        return Math.pow(y * (1.0 - t) + Math.pow(x0, 1.0 - t), 1.0 / (1.0 - t)) - x0;
+    }
+    return x0 * (Math.exp(y) - 1.0);
+}
+
 export function scaleBoxCox(x: number, t: number, x0: number): number {
     if (x <= 0) return x; // Handle non-positive values, though distances/radii should be > 0
 

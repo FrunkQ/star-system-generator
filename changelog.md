@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.100-beta - 12th Jul 2026
+
+* **Follow the GM now mirrors manual panning too (experimental).** When a player view follows the GM, the GM's hand-panned viewport is broadcast and mirrored as a rough viewport — the 2D map matches it flat, and the 3D holo takes the same shot raised to its configured angle. Body clicks still frame with the player's own click ladder as before; only manual pans ride this new path. The centre calibration is first-cut and may land off target on toytown-compressed views — feedback welcome.
+
 ## v2.1.99-beta - 12th Jul 2026
 
 * **"Grey bands" now covers planetary rings too.** Choosing the orrery-style bands for belts and rings previously only changed the asteroid belts — Saturn's rings stayed as particles. Rings now draw as the same translucent shaded annulus the GM orrery uses, tilted with the planet's equator, with the shared density rule driving how solid they look.
