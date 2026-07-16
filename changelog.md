@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.103-beta - 12th Jul 2026
+
+* **The grey band rings now carry the planet's shadow.** The flat orrery-style rings take the same Cassini-shadow treatment as the particle rings: the arc behind the planet darkens (hard umbra, soft penumbra), and the shadow sweeps around the band as the planet orbits its star.
+
 ## v2.1.102-beta - 12th Jul 2026
 
 * **Clicking past the close-up now cycles back out.** At an object's closest framing, a further click wraps back out to its widest — so re-clicking a star from its close-up shows the whole system again (a built-in Reset view), and a planet cycles parent → moons → close-up → parent. Works in the GM orrery and the player views alike.

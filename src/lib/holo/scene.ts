@@ -129,6 +129,7 @@ interface BodyVisual {
 interface RingVisual {
   pivot: THREE.Group;
   points: THREE.Points | null; // null for the flat BAND style (no particles to advance)
+  bandMesh?: THREE.Mesh | null; // the flat annulus (band style) — shaded per-vertex by the planet's shadow
   parentId: string;
   radii: Float32Array; // per-particle radius in scene units
   baseAng: Float32Array; // per-particle starting angle
@@ -1488,10 +1489,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const rv of ringVisuals) {
       const parent = bodyById.get(rv.parentId);
       if (parent) rv.pivot.position.copy(parent.mesh.position);
-      if (!rv.points) continue; // flat band: nothing to advance or shadow
-      const dt = t - rv.t0Sec;
-      const attr = rv.points.geometry.getAttribute('position') as THREE.BufferAttribute;
-      const arr = attr.array as Float32Array;
+      if (!rv.points && !rv.bandMesh) continue;
       // Star direction in the ring's local (tilted) frame; planet centre is the local origin.
       let hasShadow = false;
       if (starWorld) {
@@ -1501,10 +1499,39 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         _shadowDir.copy(_starLocal).multiplyScalar(-1); // planet-centre(origin) → away from star
         if (_shadowDir.lengthSq() > 1e-9) { _shadowDir.normalize(); hasShadow = true; }
       }
-      const cattr = rv.points.geometry.getAttribute('color') as THREE.BufferAttribute;
-      const carr = cattr.array as Float32Array;
       const cr = rv.baseColor.r, cg = rv.baseColor.g, cb = rv.baseColor.b;
       const pr = rv.planetR;
+      // The planet's shadow at a point of the flat ring plane: umbra (0.22) inside the planet radius
+      // behind it, soft penumbra over a further 0.35·R. One rule for particles AND the flat band.
+      const shadeAt = (x: number, z: number): number => {
+        if (!hasShadow) return 1;
+        const along = x * _shadowDir.x + z * _shadowDir.z; // y is ~0 in the flat ring plane
+        if (along <= 0) return 1;
+        const px = x - along * _shadowDir.x;
+        const pz = z - along * _shadowDir.z;
+        const perp = Math.hypot(px, pz);
+        return 0.22 + 0.78 * Math.min(1, Math.max(0, (perp - pr) / (pr * 0.35)));
+      };
+      if (rv.bandMesh) {
+        // The band's vertices never move — only the shadow sweeps around as the planet orbits.
+        const geo = rv.bandMesh.geometry;
+        const parr = (geo.getAttribute('position') as THREE.BufferAttribute).array as Float32Array;
+        const cattrB = geo.getAttribute('color') as THREE.BufferAttribute;
+        const carrB = cattrB.array as Float32Array;
+        for (let i = 0; i < cattrB.count; i++) {
+          const shade = shadeAt(parr[3 * i], parr[3 * i + 2]);
+          carrB[3 * i] = cr * shade;
+          carrB[3 * i + 1] = cg * shade;
+          carrB[3 * i + 2] = cb * shade;
+        }
+        cattrB.needsUpdate = true;
+        continue;
+      }
+      const dt = t - rv.t0Sec;
+      const attr = rv.points!.geometry.getAttribute('position') as THREE.BufferAttribute;
+      const arr = attr.array as Float32Array;
+      const cattr = rv.points!.geometry.getAttribute('color') as THREE.BufferAttribute;
+      const carr = cattr.array as Float32Array;
       for (let i = 0; i < rv.radii.length; i++) {
         const ang = rv.baseAng[i] + rv.omega[i] * dt;
         const r = rv.radii[i];
@@ -1512,18 +1539,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         const z = r * Math.sin(ang);
         arr[3 * i] = x;
         arr[3 * i + 2] = z;
-        let shade = 1;
-        if (hasShadow) {
-          // Distance behind the planet along the shadow axis, and perpendicular offset from it.
-          const along = x * _shadowDir.x + z * _shadowDir.z; // y is ~0 in the flat ring plane
-          if (along > 0) {
-            const px = x - along * _shadowDir.x;
-            const pz = z - along * _shadowDir.z;
-            const perp = Math.hypot(px, pz);
-            // Umbra inside the planet radius; soft penumbra over a small band beyond it.
-            shade = 0.22 + 0.78 * Math.min(1, Math.max(0, (perp - pr) / (pr * 0.35)));
-          }
-        }
+        const shade = shadeAt(x, z);
         carr[3 * i] = cr * shade;
         carr[3 * i + 1] = cg * shade;
         carr[3 * i + 2] = cb * shade;
@@ -2195,8 +2211,15 @@ function buildPlanetRingBand(node: any, parent: any, planetRenderedR: number): R
 
   const geo = new THREE.RingGeometry(innerScene, outerScene, 96, 1);
   geo.rotateX(-Math.PI / 2); // annulus into the pivot's ground plane (its +Y = the ring normal)
+  // Vertex colours carry the grey AND the planet's shadow (updateRings darkens the arc behind the
+  // planet, same test as the particle ring) — so the material colour stays white.
+  const base = new THREE.Color(DEBRIS_RING_COLOR);
+  const vcount = geo.getAttribute('position').count;
+  const colors = new Float32Array(vcount * 3);
+  for (let i = 0; i < vcount; i++) { colors[3 * i] = base.r; colors[3 * i + 1] = base.g; colors[3 * i + 2] = base.b; }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   const mat = new THREE.MeshBasicMaterial({
-    color: DEBRIS_RING_COLOR,
+    vertexColors: true,
     transparent: true,
     opacity: debrisBandAlpha('ring', debrisDensityFrac(node.massKg)),
     side: THREE.DoubleSide,
@@ -2206,11 +2229,12 @@ function buildPlanetRingBand(node: any, parent: any, planetRenderedR: number): R
   // Ring plane = planet equator, same as the particle ring.
   const tiltRad = ((parent.axial_tilt_deg || 0) * Math.PI) / 180;
   pivot.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), tiltRad);
-  pivot.add(new THREE.Mesh(geo, mat));
+  const bandMesh = new THREE.Mesh(geo, mat);
+  pivot.add(bandMesh);
   return {
-    pivot, points: null, parentId: parent.id,
+    pivot, points: null, bandMesh, parentId: parent.id,
     radii: new Float32Array(0), baseAng: new Float32Array(0), omega: new Float32Array(0),
-    t0Sec: 0, planetR: planetRenderedR, baseColor: new THREE.Color(DEBRIS_RING_COLOR)
+    t0Sec: 0, planetR: planetRenderedR, baseColor: base
   };
 }
 
