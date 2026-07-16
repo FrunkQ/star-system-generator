@@ -96,10 +96,15 @@ export function frameLevelsFrom(has: { hasParent: boolean; hasSatellites: boolea
 export function firstFrameLevel(levels: number[]): number {
 	return levels[0] ?? 3;
 }
-/** A re-click on the focused object steps to the next existing level; clamps at the deepest. */
+/**
+ * A re-click on the focused object steps to the next existing level — and WRAPS: at the deepest level a
+ * further click cycles back out to the object's first (a star's close-up clicks back out to the full
+ * system, like Reset view; a planet's close-up back out to planet + parent).
+ */
 export function nextFrameLevel(levels: number[], current: number): number {
 	const idx = levels.indexOf(current);
-	return idx >= 0 && idx < levels.length - 1 ? levels[idx + 1] : levels[levels.length - 1] ?? current;
+	if (idx < 0) return levels[levels.length - 1] ?? current;
+	return levels[(idx + 1) % levels.length] ?? current;
 }
 /**
  * The inverse — step back OUT one level (browser Back). Returns the same level when already at the

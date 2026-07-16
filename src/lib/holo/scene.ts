@@ -766,14 +766,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       while (obj && !(b = clickable.find((x) => x.mesh === obj))) obj = obj.parent;
       if (b) { pickBody(b.id); return; }
     }
-    // Tap assist for the tiny construct icons: a 4 px sprite is untappable, so on a raycast miss
-    // pick the nearest construct within ~14 px of the tap in screen space (finger-friendly).
+    // Tap assist for tiny targets: construct icons AND small bodies (a moon at whole-system zoom is a
+    // 4 px disc hugging its planet — selectable in principle, unclickable in practice). On a raycast
+    // miss, pick the nearest clickable body within ~14 px of the tap in screen space (finger-friendly).
     const tapX = e.clientX - rect.left;
     const tapY = e.clientY - rect.top;
     let best: BodyVisual | null = null;
     let bestD = 14 * 14;
     for (const b of clickable) {
-      if (!b.isConstruct) continue;
       proj.copy(b.mesh.position).project(camera);
       if (proj.z > 1) continue;
       const sx = (proj.x * 0.5 + 0.5) * viewW;

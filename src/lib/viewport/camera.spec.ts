@@ -63,23 +63,32 @@ describe('multi-level click framing', () => {
 // The ladder + follow policy are SHARED with the player views' holo (2D locked = the orrery's behaviour).
 // These pin the rules themselves, independent of any renderer.
 describe('shared click ladder', () => {
-  it('steps first → next, skipping missing levels and clamping at the deepest', () => {
+  it('steps first → next, skipping missing levels and WRAPPING at the deepest', () => {
     const planet = frameLevelsFrom({ hasParent: true, hasSatellites: true });
     const moon = frameLevelsFrom({ hasParent: true, hasSatellites: false });
     const lone = frameLevelsFrom({ hasParent: false, hasSatellites: false });
+    const star = frameLevelsFrom({ hasParent: false, hasSatellites: true });
     expect(planet).toEqual([1, 2, 3]);
     expect(moon).toEqual([1, 3]);
     expect(lone).toEqual([3]);
+    expect(star).toEqual([2, 3]);
 
-    // A planet: parent → satellites → close, then clamps (no wrap back to 1).
+    // A planet: parent → satellites → close, then WRAPS back out to parent context.
     let l = firstFrameLevel(planet);
     const walk = [l];
     for (let i = 0; i < 3; i++) walk.push((l = nextFrameLevel(planet, l)));
-    expect(walk).toEqual([1, 2, 3, 3]);
+    expect(walk).toEqual([1, 2, 3, 1]);
 
-    // A moon has no satellites → level 2 is skipped entirely.
+    // A moon has no satellites → level 2 is skipped entirely, in both directions.
     let m = firstFrameLevel(moon);
-    expect([m, (m = nextFrameLevel(moon, m)), nextFrameLevel(moon, m)]).toEqual([1, 3, 3]);
+    expect([m, (m = nextFrameLevel(moon, m)), nextFrameLevel(moon, m)]).toEqual([1, 3, 1]);
+
+    // A star's close-up clicks back out to the FULL SYSTEM (its satellites level) — Reset view.
+    let st = firstFrameLevel(star);
+    expect([st, (st = nextFrameLevel(star, st)), nextFrameLevel(star, st)]).toEqual([2, 3, 2]);
+
+    // A lone object only has its close-up; clicking cycles in place.
+    expect(nextFrameLevel(lone, 3)).toBe(3);
   });
 
   it('steps back OUT (browser Back) as the exact inverse, and reports when it is done', () => {

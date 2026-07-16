@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.102-beta - 12th Jul 2026
+
+* **Clicking past the close-up now cycles back out.** At an object's closest framing, a further click wraps back out to its widest — so re-clicking a star from its close-up shows the whole system again (a built-in Reset view), and a planet cycles parent → moons → close-up → parent. Works in the GM orrery and the player views alike.
+* **Tiny moons are now practically clickable.** Selecting a planet already unlocked its moons, but at whole-system zoom they're only a few pixels wide and nearly impossible to hit. The near-miss snap that construct icons use now applies to every clickable body: a tap within ~14 px picks the nearest small target.
+
 ## v2.1.101-beta - 12th Jul 2026
 
 * **"Frame whole system" on the 2D map is now a truly fixed plan view.** With it ticked, the map holds the whole-system overhead shot and nothing moves it: clicks select a body (its file still opens) but never re-frame, and panning and zooming are disabled. Previously a click could still ease the camera about. A whole-framed 3D holo keeps its orbit and zoom — it's a hologram, not a map.
