@@ -76,6 +76,10 @@
   export function setViewportAU(cx: number, cy: number, halfExtentAU: number) {
     controller?.setViewportAU(cx, cy, halfExtentAU);
   }
+  // Follow the GM's click-ladder: focus + exact framing level.
+  export function setFocusLevel(id: string, level: number) {
+    controller?.setFocusLevel(id, level);
+  }
 
   onMount(() => {
     let cancelled = false;

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.104-beta - 12th Jul 2026
+
+* **Follow the GM now mirrors the click-ladder and Reset View.** Re-clicking a body on the GM's map steps the framing deeper (or wraps back out) — those steps now ride to following player views, which take the exact same framing level. The GM's Reset View passes through too. Previously only the first click on a body was mirrored, because deeper clicks don't change which body is focused and nothing else was broadcast.
+* **Groundwork for the random-slowdown hunt.** A lightweight tracker now watches the frame rate and counts scene rebuilds and campaign syncs; when a slow spell hits (a 5-second window under 45fps) it logs one compact console line with those counters and the JS heap size. Next time a window opens up janky, open the console and the `[sse-perf]` lines will say what was busy (also inspectable any time via `window.__ssePerf`).
+
 ## v2.1.103-beta - 12th Jul 2026
 
 * **The grey band rings now carry the planet's shadow.** The flat orrery-style rings take the same Cassini-shadow treatment as the particle rings: the arc behind the planet darkens (hard umbra, soft penumbra), and the shadow sweeps around the band as the planet orbits its star.

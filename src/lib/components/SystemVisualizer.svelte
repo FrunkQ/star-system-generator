@@ -66,6 +66,7 @@
 
   const dispatch = createEventDispatcher<{
     focus: string | null,
+    levelchange: { id: string; level: number },
     showBodyContextMenu: { node: CelestialBody, x: number, y: number },
     backgroundContextMenu: { x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number }
   }>();
@@ -328,6 +329,7 @@
       const targetId = focusedBodyId || system.nodes.find(n => n.parentId === null)?.id;
       if (targetId) {
           focusLevel = firstLevelFor(targetId);
+          dispatch('levelchange', { id: targetId, level: focusLevel }); // Reset View rides to followers too
           const frame = calculateFrameForNode(targetId);
           panStore.set(frame.pan, { duration: 0 });
           zoomStore.set(clampZoom(frame.zoom), { duration: 0 });
@@ -347,6 +349,7 @@
       if (targetNode && targetNode.kind === 'body' && targetNode.roleHint === 'belt') return;
       // A NEW selection starts at the object's first existing framing level.
       focusLevel = firstLevelFor(targetId);
+      dispatch('levelchange', { id: targetId, level: focusLevel });
       startFocusAnimation(targetId);
   }
 
@@ -644,6 +647,7 @@
         if (picked.node.id === focusedBodyId) {
           // Re-click the focused object → step DOWN to the next existing framing level.
           focusLevel = nextLevelFor(picked.node.id, focusLevel);
+          dispatch('levelchange', { id: picked.node.id, level: focusLevel }); // ladder steps ride to followers
           startFocusAnimation(picked.node.id);
         } else {
           dispatch("focus", picked.node.id);

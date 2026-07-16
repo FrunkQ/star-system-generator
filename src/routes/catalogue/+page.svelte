@@ -81,6 +81,7 @@
   import { getClassColor } from '$lib/rendering/colors';
   import { RATE_STEPS, DEFAULT_RATE_INDEX } from '$lib/player/timeRates';
   import { inverseBoxCox } from '$lib/physics/scaling';
+  import { perfCount } from '$lib/perfTrace';
   let holoStyle: HoloStyle = { ...DEFAULT_STYLE };
   // Momentary GM overrides — driven by the GM's Player Views modal via SYNC_PRESET (never saved).
   let holoLabelsOn = true;
@@ -386,8 +387,17 @@
 
   // Follow the GM: on the GM focusing a body, get past the cover, switch to its system, and frame it —
   // the holo (2D overhead or 3D) frames it the standard way; the list highlights + opens it.
-  function followFocus(id: string | null) {
+  // The GM's ladder LEVEL (re-clicks / Reset View don't change the focus id, so this is the only
+  // signal that the framing changed): focus the body, then take the exact level.
+  function followFocusLevel(id: string, level: number) {
     if (!followGMActive || !id) return;
+    followFocus(id); // cover/system/selection plumbing
+    holoView?.setFocusLevel?.(id, level);
+  }
+
+  function followFocus(id: string | null) {
+    if (!followGMActive) return;
+    if (!id) { focusedBodyId = null; selectedBody = null; return; } // GM cleared focus → unfocus (camera stays)
     coverDismissed = true; // the first real GM click gets past the cover
     const sys = (starmap?.systems ?? []).find((s: any) => (s.system?.nodes ?? []).some((n: any) => n.id === id));
     if (sys && sys.id !== selectedSystemId) selectedSystemId = sys.id;
@@ -663,7 +673,9 @@
       sessionId
     );
     window.addEventListener('popstate', onPopState);
+    broadcastService.onFocusLevelUpdate = (p) => followFocusLevel(p.id, p.level);
     broadcastService.onStarmapUpdate = (map) => {
+      perfCount('sync.starmap'); // each one re-clones the campaign + rebuilds the scene — track it
       starmap = map;
       lastUpdate = Date.now();
       connected = true;

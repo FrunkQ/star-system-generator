@@ -21,6 +21,9 @@ export type BroadcastMessage =
   | { type: 'SYNC_SYSTEM'; payload: System }
   | { type: 'SYNC_RULEPACK'; payload: RulePack }
   | { type: 'SYNC_FOCUS'; payload: string | null }
+  // The GM's click-ladder framing level for the focused body — re-clicks and Reset View don't change
+  // the focus ID, so followers need the LEVEL to mirror the framing (SYNC_FOCUS alone can't carry it).
+  | { type: 'SYNC_FOCUS_LEVEL'; payload: { id: string; level: number } }
   | { type: 'SYNC_CAMERA'; payload: { pan: PanState; zoom: number; isManual: boolean; viewMin?: number } }
   | { type: 'SYNC_VIEW_SETTINGS'; payload: ViewSettings }
   | { type: 'SYNC_TIME'; payload: TimeState }
@@ -242,6 +245,7 @@ class BroadcastService {
   public onBrandingUpdate: ((b: { name: string; logo: string | null }) => void) | null = null;
   public onGuideConfigUpdate: ((c: { theme: string; monoColor: string; includeConstructs: boolean; crt?: Record<string, number | boolean> }) => void) | null = null;
   public onPresetUpdate: ((p: PresetBroadcast | null) => void) | null = null;
+  public onFocusLevelUpdate: ((p: { id: string; level: number }) => void) | null = null;
 
   private handleMessage(data: any) {
       // Check if this is an envelope or legacy message
@@ -279,6 +283,9 @@ class BroadcastService {
               break;
           case 'SYNC_FOCUS':
               if (!this.isSender && this.onFocusUpdate) this.onFocusUpdate(msg.payload);
+              break;
+          case 'SYNC_FOCUS_LEVEL':
+              if (!this.isSender && this.onFocusLevelUpdate) this.onFocusLevelUpdate(msg.payload);
               break;
           case 'SYNC_CAMERA':
               if (!this.isSender && this.onCameraUpdate) this.onCameraUpdate(msg.payload.pan, msg.payload.zoom, msg.payload.isManual, msg.payload.viewMin);

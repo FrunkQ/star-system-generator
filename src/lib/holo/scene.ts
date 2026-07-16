@@ -24,6 +24,7 @@ import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLO
 // distances in SCENE units and it hands back a half-extent in the same space — so the holo (2D locked
 // overhead AND 3D at its configured tilt) frames a click exactly like the orrery does.
 import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, prevFrameLevel, frameHalfExtent, autoFrameStep } from '$lib/viewport/camera';
+import { perfCount, perfFrame } from '$lib/perfTrace';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { rendersAsGiant } from '$lib/physics/makeup';
 import { deriveAurora, auroraEmitter } from '$lib/physics/aurora';
@@ -53,6 +54,7 @@ export interface HoloController {
   setTime(ms: number): void;
   focusBody(id: string | null): void;
   stepFocusUp(): boolean; // browser Back: out one ladder level; false = nothing left to step out of
+  setFocusLevel(id: string, level: number): void; // follow the GM's ladder: focus + exact framing level
   setViewportAU(cx: number, cy: number, halfExtentAU: number): void; // follow the GM's manual viewport (rough)
   // The two framing knobs (surface as GM controls later, docs §A8/§A10): angleDeg is the camera's
   // tilt from straight down (0 = overhead top-down, ~64 = the 3/4 default); whole fits the entire
@@ -945,6 +947,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   /**
+   * Follow the GM's ladder: focus the body AND take its exact framing level (a re-click or Reset View
+   * on the GM's side doesn't change the focus id, so the level is the only way to mirror the framing).
+   * Under whole framing the camera stays fixed — selection still updates.
+   */
+  function setFocusLevel(id: string, level: number) {
+    if (id !== focusedId) focusBody(id); // selection first (sets first level, name set, min-zoom)
+    if (framingWhole) return;            // fixed plan view: select-only
+    const levels = levelsForBody(id);
+    focusLevel = levels.includes(level) ? level : firstFrameLevel(levels);
+    focusDrive = 48; // ease into the GM's shot
+    followEngaged = true;
+    userZoomOverride = false;
+    lastAutoDist = 0;
+  }
+
+  /**
    * Step back OUT one ladder level — the inverse of a re-click, for browser Back. Returns false when
    * there's nothing left to step out of (no focus, or already at this object's first level), so the
    * caller can carry on up the view hierarchy: unfocus → back to the starmap → leave the page.
@@ -1060,6 +1078,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   function setSystem(system: System | null) {
+    perfCount('holo.setSystem'); // a full scene rebuild — the prime suspect for the random slowdowns
     clearContent();
     focusedId = null;
     focusDrive = 0;
@@ -1575,6 +1594,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   function loop() {
     if (disposed) return;
+    perfFrame(performance.now()); // slow-spell tracker (logs only when a 5s window dips below 45fps)
     const nowSec = filterClock.getElapsedTime();
     driveFocus();
     // Turntable, paused during the focus ease — and never when the heading is locked: autoRotate spins the
@@ -1628,7 +1648,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setViewportAU, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----

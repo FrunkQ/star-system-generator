@@ -2252,6 +2252,7 @@
                 transitPreviewPos={transitPreviewPos}
                 isExecuting={isTransitExecuting}
                 on:focus={handleFocus}
+                on:levelchange={(e) => broadcastService.sendMessage({ type: 'SYNC_FOCUS_LEVEL', payload: e.detail })}
                 on:showBodyContextMenu={handleShowBodyContextMenu}
                 on:backgroundContextMenu={handleBackgroundContextMenu}
             />
