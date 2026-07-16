@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.112-beta - 16th Jul 2026
+
+* **Construct import no longer wrecks the target's orbit.** Importing a construct file over an existing construct replaces the ship's spec only — the target keeps its orbit, journeys, flight state and log. Previously the file carried the source ship's journey/flight data, which silently outranked the preserved orbit at render time: the ship jumped to coordinates from the source system and later orbit edits appeared to do nothing. Exports no longer carry flight data either, and template loads preserve the same fields.
+
 ## v2.1.111-beta - 16th Jul 2026
 
 * **Rail: Field Guide restored beside Player Views, and Projector + Report no longer disappear (beta).** The old Field Guide launcher is back on the rail alongside the new Player Views so both player-view systems can be tested side by side. Projector and Report were previously system-view only (they vanished on the starmap); they now show in both views and act on the last-loaded system when invoked from the starmap. This is beta scaffolding — Field Guide and the Player Views/Projector split get tidied before the production cut.
