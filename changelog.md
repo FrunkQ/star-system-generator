@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.109-beta - 16th Jul 2026
+
+* **Holo positioning survives a displaced host star.** When a massive body forms a stellar barycentre, the star (and everything still parented to it) moves off the scene origin — belts baked around the origin smeared into a tall torus spinning about the wrong centre, and moons anchored to raw physics positions drifted off their displaced planets. Belts now ride their host's rendered position (and their Keplerian rock motion spins about the host), and satellites anchor to their parent's rendered globe, updated in parent-before-child order. No visual change for ordinary systems. (The deeper question — re-parenting planets to a newly-formed stellar barycentre where physics demands it — is a separate, backlogged piece of work.)
+
 ## v2.1.108-beta - 16th Jul 2026
 
 * **The holo reframes gently around the open info panel (desktop/tablet).** With the panel open the framed body used to sit half-hidden under it; the scene now eases a projection offset so the shot centres in the visible strip, and slides back when the panel closes. Picking, labels and the visual filter all track the shift exactly (it lives in the camera projection). Phones skip the reframe — their collapsed panel is just a name bar.

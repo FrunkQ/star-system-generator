@@ -149,6 +149,11 @@ interface BeltVisual {
   t0Sec: number;
   id: string; // node id, so the belt is focusable from the selector like a body
   outerScene: number; // outermost rock's horizontal radius (scene units) — used to frame the whole ring
+  // The belt's host body. Rocks are baked HOST-relative (the builders sample the belt's own orbit), so
+  // the group rides the host's rendered position — a no-op for a star at the origin, but essential when
+  // the host itself orbits something (a binary member, or a star knocked off-centre by a stellar
+  // barycentre) or the belt smears into a torus spinning about the wrong centre.
+  parentId?: string | null;
 }
 
 // Analytic eclipse shadow: inject a ray–sphere occlusion test into a MeshStandardMaterial. For each
@@ -1352,6 +1357,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const physRadiusAu = isConstruct ? 0 : (node.physical_parameters?.radiusKm || node.radiusKm || (isStar ? 696000 : 3000)) / AU_KM;
       bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow });
     }
+    // Parents must be POSITIONED before their satellites each frame (satellites anchor to the parent's
+    // rendered globe), so order the bodies by tree depth once here rather than trusting node order.
+    const depthOf = (id: string | null | undefined): number => {
+      let d = 0;
+      let cur = id ? nodesById.get(id) : undefined;
+      while (cur && cur.parentId && d < 32) { d++; cur = nodesById.get(cur.parentId); }
+      return d;
+    };
+    bodies.sort((a, b) => depthOf(a.id) - depthOf(b.id));
     bodyById = new Map(bodies.map((b) => [b.id, b]));
     // Partner radii for barycentre members (Pluto↔Charon, binary stars) — see baryCoR above.
     baryCoR = new Map();
@@ -1388,6 +1402,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         const ox = p.x - parent.x, oy = p.y - parent.y, oz = p.z - parent.z; // AU offset
         const off = Math.hypot(ox, oy, oz);
         const pv = bodyById.get(b.parentId!);
+        // Anchor to the parent's RENDERED position, not its raw compressed physics position: whenever the
+        // parent itself is displaced (a barycentre member pushed clear of its partner, or a body that is
+        // itself a satellite), its moons and stations must ride the globe they orbit — bodies update in
+        // parent-before-child order so this is always current. (Unrendered parents — barycentres — keep
+        // the physics anchor.)
+        if (pv) tmpParent.copy(pv.mesh.position);
         // Surface-locked construct: it sits AT (or below) the parent's physical surface, so instead of
         // riding its own orbit it glues to a fixed surface point that co-rotates with the planet's spin.
         // Capture that point (in the parent's local frame) once, then leave the per-frame placement to
@@ -1627,6 +1647,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function updateBelts() {
     const t = timeMs / 1000;
     for (const bv of beltVisuals) {
+      // Ride the host: rocks are baked host-relative, so the group sits AT the host's rendered position
+      // (origin for a lone star — no change; a displaced host takes its belt with it, and the Keplerian
+      // rock rotation below then spins about the host, not the scene origin).
+      const host = bv.parentId ? bodyById.get(bv.parentId) : undefined;
+      if (host) bv.group.position.copy(host.mesh.position);
       const dt = t - bv.t0Sec;
       for (const bk of bv.buckets) {
         const attr = bk.points.geometry.getAttribute('position') as THREE.BufferAttribute;
@@ -2121,7 +2146,7 @@ function buildBeltRing(node: any, project: Projector): BeltVisual | null {
   });
   const group = new THREE.Group();
   group.add(new THREE.Mesh(geo, mat));
-  return { group, buckets: [], t0Sec: 0, id: node.id, outerScene };
+  return { group, buckets: [], t0Sec: 0, id: node.id, outerScene, parentId: node.parentId ?? null };
 }
 
 function buildBeltBand(node: any, project: Projector, detail: number, timeMs: number, wire: boolean): BeltVisual | null {
@@ -2178,7 +2203,7 @@ function buildBeltBand(node: any, project: Projector, detail: number, timeMs: nu
     group.add(points);
     buckets.push({ points, basePos: new Float32Array(pos), omega: new Float32Array(bucketOmega[i]) });
   });
-  return { group, buckets, t0Sec: timeMs / 1000, id: node.id, outerScene };
+  return { group, buckets, t0Sec: timeMs / 1000, id: node.id, outerScene, parentId: node.parentId ?? null };
 }
 
 // A static random starfield backdrop: points on a large sphere, drawn at a fixed screen size
