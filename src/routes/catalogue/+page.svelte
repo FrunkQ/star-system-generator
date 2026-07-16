@@ -168,6 +168,12 @@
   let bodyExpanded = false;
   let _lastBodyId: string | null = null;
   $: if (selectedBody?.id !== _lastBodyId) { _lastBodyId = selectedBody?.id ?? null; bodyExpanded = false; }
+  // Phone vs desktop drives two behaviours: the holo's panel reframe (desktop only — on a phone the
+  // collapsed panel is just a name bar) and the panel's × (phone: minimise back to the name bar;
+  // desktop: close outright). matchMedia rather than a resize listener: it matches the CSS breakpoint
+  // exactly and its change event fires for every viewport change (emulation included).
+  const phoneMq = browser ? window.matchMedia('(max-width: 719px)') : null;
+  let isPhone = phoneMq?.matches ?? false;
 
   // Desktop: the right-hand body panel is drag-resizable from its left edge; the width is remembered.
   // Default is deliberately compact (~2/3 of the old 340px) so the map keeps the room.
@@ -470,6 +476,9 @@
     selectedBody = n && (n.kind === 'body' || n.kind === 'construct') ? n : null;
     bodyExpanded = false;
   }
+  // The info panel eats the right edge of the holo stage on desktop/tablet, so the scene reframes
+  // gently around the remaining strip while it's open (a phone panel is just a name bar — no reframe).
+  $: holoPanelInset = !isPhone && selectedBody && !activePreset?.hideInfoPanel ? inspectorWidth : 0;
   $: presetAssets = [...BUILTIN_ASSETS, ...(starmap?.playerAssets ?? [])];
   // A DOM-layer filter (cover / list / 2D) — the holo3d modules run the real GLSL shader themselves.
   $: presetFilterActive = !!activePreset && activePreset.filter !== 'none' && !holoFilterBypass;
@@ -707,11 +716,15 @@
       if (p.overrides) applyOverrides(p.overrides);
     };
     broadcastService.sendMessage({ type: 'REQUEST_STARMAP', payload: sessionId });
+    phoneMq?.addEventListener('change', onPhoneMq);
     startClock();
   });
 
+  const onPhoneMq = () => (isPhone = phoneMq?.matches ?? false);
+
   onDestroy(() => {
     broadcastService.close();
+    phoneMq?.removeEventListener('change', onPhoneMq);
     if (browser) { cancelAnimationFrame(rafId); window.removeEventListener('popstate', onPopState); }
   });
 </script>
@@ -736,7 +749,9 @@
           <h2>{selectedBody.name}</h2>
           <span class="insp-chevron" aria-hidden="true">▾</span>
         </button>
-        <button class="insp-close" on:click={() => (selectedBody = null)} aria-label="Close">×</button>
+        <!-- Phone: × only MINIMISES back to the name bar (tap the title to reopen) — closing outright
+             left no way back to the data until another body was selected. Desktop closes as before. -->
+        <button class="insp-close" on:click={() => { if (isPhone) bodyExpanded = false; else selectedBody = null; }} aria-label={isPhone ? 'Minimise' : 'Close'}>×</button>
       </div>
       <div class="insp-sub">{(selectedBody.roleHint || 'body').toUpperCase()}{selectedBody.kind !== 'construct' && selectedBody.class ? ' · ' + selectedBody.class : ''}</div>
       <div class="insp-detail">
@@ -885,7 +900,7 @@
     <div class="console-stage" class:frozen={!presetInteractive} bind:clientWidth={hudW} bind:clientHeight={hudH} style={activePreset ? `font-family:${presetFont}` : ''}>
       {#if rulePack && displaySystem}
         {#if effectiveSystemTier === 'holo'}
-          <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} on:focus={handleFocus} />
+          <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} on:focus={handleFocus} />
         {:else}
           <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
             <SystemVisualizer
@@ -1247,7 +1262,8 @@
   }
   .insp-resize:hover { background: rgba(120, 180, 255, 0.28); }
   .insp-head { display: flex; align-items: baseline; gap: 10px; }
-  .insp-title { display: flex; align-items: baseline; gap: 8px; background: none; border: none; color: inherit; padding: 0; cursor: pointer; text-align: left; font: inherit; }
+  /* The title button fills the whole row so the toggle target is "anywhere on the title", not just the text. */
+  .insp-title { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 8px; background: none; border: none; color: inherit; padding: 0; cursor: pointer; text-align: left; font: inherit; }
   .insp-head h2 { margin: 0; font-size: 20px; }
   .insp-chevron { display: none; font-size: 13px; opacity: 0.6; transition: transform 0.15s ease; }
   .inspector.expanded .insp-chevron { transform: rotate(180deg); }
@@ -1255,8 +1271,12 @@
   /* Phone: collapse to name + type; the title toggles the rest. Desktop always shows detail. */
   @media (max-width: 719px) {
     .insp-chevron { display: inline; }
+    /* A comfortable full-width tap target on the collapsed bar (padding kept inside the row height). */
+    .insp-title { padding: 10px 0; margin: -10px 0; }
     .inspector:not(.expanded) .insp-sub { margin-bottom: 0; }
     .inspector:not(.expanded) .insp-detail { display: none; }
+    /* Collapsed = just the name bar; the × (minimise) only makes sense while expanded. */
+    .inspector:not(.expanded) .insp-close { display: none; }
   }
   .insp-sub { font-size: 11px; letter-spacing: 0.08em; opacity: 0.6; margin: 2px 0 12px; }
   .insp-photo { width: 100%; height: auto; border-radius: 6px; display: block; margin: 0 0 12px; }

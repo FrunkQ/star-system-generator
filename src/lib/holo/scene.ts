@@ -723,6 +723,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     focusDrive = 48;
   }
 
+  // Info-panel reframe: how many pixels of the right edge are covered by the panel (0 = none). The
+  // current value eases toward the target each frame — a gentle slide as the panel opens/closes.
+  let viewInsetTarget = 0;
+  let viewInsetCur = 0;
+  function setViewInset(px: number) {
+    viewInsetTarget = Math.max(0, Math.min(px, viewW * 0.6)); // never inset more than 60% of the view
+  }
+
   const pointer = new AbortController();
   let downX = 0;
   let downY = 0;
@@ -1642,6 +1650,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (disposed) return;
     perfFrame(performance.now()); // slow-spell tracker (logs only when a 5s window dips below 45fps)
     const nowSec = filterClock.getElapsedTime();
+    // Gentle horizontal reframe while the info panel is open: ease a camera VIEW OFFSET that shifts the
+    // projection centre left, so the framed body sits in the middle of the VISIBLE strip instead of
+    // half-hidden under the panel. Because the offset is part of the projection matrix, picking, label
+    // projection and the post filter all stay consistent for free.
+    if (viewInsetCur !== viewInsetTarget) {
+      viewInsetCur += (viewInsetTarget - viewInsetCur) * 0.08;
+      if (Math.abs(viewInsetTarget - viewInsetCur) < 0.5) viewInsetCur = viewInsetTarget;
+    }
+    if (viewInsetCur > 0.5) camera.setViewOffset(viewW, viewH, viewInsetCur / 2, 0, viewW, viewH);
+    else if (camera.view && camera.view.enabled) camera.clearViewOffset();
     driveFocus();
     // Turntable, paused during the focus ease — and never when the heading is locked: autoRotate spins the
     // camera independently of enableRotate, so the lock has to kill it too or the map still drifts round.
@@ -1694,7 +1712,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
 }
 
 // ---- helpers ----

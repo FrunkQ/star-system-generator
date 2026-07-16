@@ -24,6 +24,9 @@
   // A pre-rendered static info-card canvas composited INTO the scene so the GPU filter warps/tints it
   // like the 3D (no CSS approximation). null = no HUD.
   export let hudCanvas: HTMLCanvasElement | null = null;
+  // Pixels of the right edge covered by the info panel — the scene gently shifts its projection centre
+  // left so the framed body stays centred in the VISIBLE strip (0 = no panel / mobile).
+  export let viewInsetRight: number = 0;
 
   function applyStyle(s: HoloStyle) {
     // Filter can be momentarily bypassed without changing the saved style.
@@ -115,6 +118,7 @@
   $: controller?.focusBody(focusedBodyId);
   $: if (controller) applyStyle(style);
   $: controller?.setHud(hudCanvas);
+  $: controller?.setViewInset(viewInsetRight);
   // Re-apply when the momentary overrides change (style is unchanged, so these need their own trigger).
   $: if (controller) { labelsVisible; filterBypass; orbitPaused; applyStyle(style); }
 </script>

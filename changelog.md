@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.108-beta - 16th Jul 2026
+
+* **The holo reframes gently around the open info panel (desktop/tablet).** With the panel open the framed body used to sit half-hidden under it; the scene now eases a projection offset so the shot centres in the visible strip, and slides back when the panel closes. Picking, labels and the visual filter all track the shift exactly (it lives in the camera projection). Phones skip the reframe — their collapsed panel is just a name bar.
+* **Phone info panel: proper minimise.** The collapsed bar's tap target is now the whole title row, and the × minimises back to the name bar instead of deleting the panel — tap the name to reopen the data. (Previously a closed panel could not be reopened until another body was selected.)
+
 ## v2.1.107-beta - 16th Jul 2026
 
 * **Follow the GM now inherits the GM's clock.** Following player views run on the GM's absolute time and rate (orbital positions match the GM's map exactly; heartbeats snap any drift), and their own time controls disappear — time is part of GM-view tracking, like viewport and focus. The "Control player time" quick override is gone: it's simply inherited when you run GM-driven views.
