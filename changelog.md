@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.116-beta - 16th Jul 2026
+
+* Composition redesign stage 2 (editor UI): range bars over the radius/density sliders show the composition's allowable envelope — inside it a drag varies porosity/inflation only (type, image and makeup all hold); past the edge a chip announces the recompose and the type updates on slider release, not mid-drag. Editing no longer silently re-arms auto-classification; pinned types stay pinned (with a "physics reads:" advisory when they disagree). Sliders reach asteroid/comet scale; Rubble pile and Comet presets appear for small bodies.
+
 ## v2.1.115-beta - 16th Jul 2026
 
 * Composition redesign stage 1 (engine): anchored editing (composition holds; radius/density drags move a porosity/inflation trim inside a physical envelope, flow through outside it), macroporosity model, rubble-pile + comet presets, mass/radius floors down to asteroid scale. Design: docs/dev/composition-editor-redesign.md. No UI change yet.

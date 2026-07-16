@@ -8,8 +8,9 @@
   import { fileToDownscaledDataUrl } from '$lib/util/imageUpload';
   import {
     densityGcc, editMass, editRadius, editDensity, editMakeup, setMakeupComponent,
-    COMPOSITION_PRESETS, presetValidAt, presetActive,
-    type EditLock, type BodyEditState
+    COMPOSITION_PRESETS, presetValidAt, presetActive, applyPresetAnchored,
+    trimEnvelope, editMassAnchored, editRadiusAnchored, editDensityAnchored,
+    type EditLock, type BodyEditState, type CompositionPreset
   } from '$lib/physics/bodyEdit';
 
   export let body: CelestialBody;
@@ -159,9 +160,10 @@
   let lock: EditLock = null;
   function toggleLock(which: Exclude<EditLock, null>) { lock = lock === which ? null : which; }
 
-  // Slider ranges (log scale). Bounds mirror bodyEdit.ts clamps.
-  const pMassMin = 1e-4, pMassMax = 1e5;   // Earth masses (moonlet -> past brown dwarf)
-  const pRadMin = 0.02,  pRadMax = 40;      // Earth radii
+  // Slider ranges (log scale). Bounds mirror bodyEdit.ts clamps — the low ends reach
+  // asteroid/comet scale (log mapping keeps the bottom decades finely tunable).
+  const pMassMin = 1e-12, pMassMax = 1e5;  // Earth masses (small comet -> past brown dwarf)
+  const pRadMin = 5e-5,  pRadMax = 40;      // Earth radii (~0.3 km up)
   const pDenMin = 0.1,   pDenMax = 30;      // g/cc
   const logPos = (v: number, lo: number, hi: number) =>
       clamp((Math.log(clamp(v, lo, hi)) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)), 0, 1);
@@ -208,15 +210,27 @@
           makeup: normalizeMakeup(makeupFractions(body))
       };
   }
-  // Every edit through this panel commits back to the body and hands the TYPE to the
-  // physics: autoClassify on -> the fingerprint classifier re-derives class + image on
-  // the next process (so terrestrial -> gas giant actually flips as you cross the bands).
+  // Every edit through this panel commits back to the body. The TYPE is no longer handed to
+  // the physics on every touch (that snatched hand-pinned classes + images out from under the
+  // GM): edits inside the composition's trim envelope leave the classify mode alone, and only
+  // a FLOW-THROUGH edit (dragged outside the envelope, composition morphing) re-arms
+  // autoClassify — on slider RELEASE, so the type commits once, not mid-drag.
   function commit(out: BodyEditState) {
       body.massKg = out.massMe * EARTH_MASS_KG;
       body.radiusKm = out.radiusRe * EARTH_RADIUS_KM;
       body.makeup = { ...out.makeup };
-      body.autoClassify = true;
       body = body; // trigger local reactivity now, without waiting on the parent reprocess
+      dispatch('update');
+  }
+
+  // Flow-through tracking: set while a drag has left the envelope (drives the transition chip);
+  // cleared when the edit is finalised. finalizeEdit() runs on slider release / number-input edits.
+  let pendingFlowThrough = false;
+  function finalizeEdit() {
+      if (!pendingFlowThrough) return;
+      pendingFlowThrough = false;
+      body.autoClassify = true; // hand the type to the physics ONCE — the announced morph commits
+      body = body;
       dispatch('update');
   }
 
@@ -231,15 +245,44 @@
 
   const heldDensity = () =>
       (lock === 'density' ? densityGcc((body.massKg ?? 0) / EARTH_MASS_KG, (body.radiusKm ?? 0) / EARTH_RADIUS_KM) : undefined);
-  function applyMass(v: number)   { if (Number.isFinite(v)) commit(editMass(pState(), v, lock, heldDensity(), effInflation())); }
-  function applyRadius(v: number) { if (Number.isFinite(v)) commit(editRadius(pState(), v, lock, heldDensity())); }
-  function applyDensity(v: number){ if (Number.isFinite(v)) commit(editDensity(pState(), v, lock)); }
+  // Unlocked = ANCHORED editing (composition holds inside the trim envelope; outside it the edit
+  // flows through — makeup morphs — flagged for the transition chip + autoClassify-on-release).
+  // A lock keeps the classic per-lock behaviours.
+  function applyMass(v: number) {
+      if (!Number.isFinite(v)) return;
+      if (lock === null) { commit(editMassAnchored(pState(), v)); return; }
+      commit(editMass(pState(), v, lock, heldDensity(), effInflation()));
+  }
+  function applyRadius(v: number) {
+      if (!Number.isFinite(v)) return;
+      if (lock === null) {
+          const out = editRadiusAnchored(pState(), v);
+          if (out.outOfBand) pendingFlowThrough = true;
+          commit(out);
+          return;
+      }
+      commit(editRadius(pState(), v, lock, heldDensity()));
+  }
+  function applyDensity(v: number) {
+      if (!Number.isFinite(v)) return;
+      if (lock === null) {
+          const out = editDensityAnchored(pState(), v);
+          if (out.outOfBand) pendingFlowThrough = true;
+          commit(out);
+          return;
+      }
+      commit(editDensity(pState(), v, lock));
+  }
   function applyMakeupComp(k: keyof Makeup, pctVal: number) {
       const nm = setMakeupComponent(pState().makeup, k, clamp(pctVal, 0, 100) / 100);
       commit(editMakeup(pState(), nm, lock, effInflation()));
+      pendingFlowThrough = true; // a deliberate recompose hands the type to the physics on release
   }
-  function applyPreset(mk: Makeup) {
-      commit(editMakeup(pState(), normalizeMakeup(mk), lock, effInflation()));
+  function applyPreset(p: CompositionPreset) {
+      if (lock === null) commit(applyPresetAnchored(pState(), p, effInflation()));
+      else commit(editMakeup(pState(), normalizeMakeup(p.makeup), lock, effInflation()));
+      pendingFlowThrough = true;
+      finalizeEdit(); // a preset click is a discrete choice — commit the type immediately
   }
 
   // Thermal-inflation override controls (gas giants). Changing it re-derives the radius from the mass.
@@ -273,10 +316,25 @@
   // Live classification the physics has assigned (updated after each commit -> process()).
   function prettyClass(c: string | undefined): string {
       if (!c) return '—';
-      return c.replace(/^(planet|star)\//, '').replace(/-/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
+      return c.replace(/^(planet|star|asteroid)\//, '').replace(/-/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
   }
   $: liveType = prettyClass(body.classes?.[0]);
   $: makeupLocked = lock === 'density'; // density-lock === composition-lock
+
+  // The composition's trim ENVELOPE — drawn as range bars over the radius & density sliders.
+  // Inside the bars a drag varies only porosity/inflation (type, image and makeup all hold);
+  // past the edge the composition morphs (transition chip) and the type commits on release.
+  $: pEnv = isPlanetMoon ? trimEnvelope(pMassMe, pMakeup) : null;
+  $: radBandLeft = pEnv ? logPos(pEnv.radLo, pRadMin, pRadMax) * 100 : 0;
+  $: radBandWidth = pEnv ? Math.max(0.8, (logPos(pEnv.radHi, pRadMin, pRadMax) - logPos(pEnv.radLo, pRadMin, pRadMax)) * 100) : 0;
+  $: denBandLeft = pEnv ? logPos(pEnv.denLo, pDenMin, pDenMax) * 100 : 0;
+  $: denBandWidth = pEnv ? Math.max(0.8, (logPos(pEnv.denHi, pDenMin, pDenMax) - logPos(pEnv.denLo, pDenMin, pDenMax)) * 100) : 0;
+
+  // What the morphing composition currently reads as (transition chip) + the advisory line
+  // for a pinned type ("physics reads" only shown when it disagrees with the pinned class).
+  $: morphTarget = COMPOSITION_PRESETS.find((p) => presetActive(p, pMakeup))?.name ?? 'custom mix';
+  $: physicsReads = prettyClass(body.classification?.base);
+  $: showAdvisory = body.autoClassify === false && body.classification?.base && physicsReads !== liveType;
 
   function updateVisualType(e: Event) {
       const val = (e.target as HTMLSelectElement).value;
@@ -395,17 +453,20 @@
         <div class="sc-title">Size &amp; Composition</div>
         <div class="sc-type"><span class="sc-type-label">Type</span> <span class="sc-type-val">{liveType}</span></div>
     </div>
-    <div class="sc-sub"><span class="category-badge">{sizeCategory}</span></div>
+    <div class="sc-sub">
+        <span class="category-badge">{sizeCategory}</span>
+        {#if showAdvisory}<span class="sc-advisory" title="The type is pinned; this is what the classifier would call the current physics.">physics reads: {physicsReads}</span>{/if}
+    </div>
 
     <!-- MASS -->
     <div class="sc-field" class:locked={lock === 'mass'}>
         <div class="sc-row">
             <button class="lock" class:on={lock === 'mass'} title={lock === 'mass' ? 'Mass pinned - click to release' : 'Pin the mass'} on:click={() => toggleLock('mass')} aria-label="Lock mass">{lock === 'mass' ? '🔒' : '🔓'}</button>
             <label>Mass</label>
-            <input class="sc-num" type="number" step="any" value={r4(massDisp)} on:input={onMassNum} disabled={lock === 'mass'} />
+            <input class="sc-num" type="number" step="any" value={r4(massDisp)} on:input={onMassNum} on:change={finalizeEdit} disabled={lock === 'mass'} />
             <button class="sc-unit-cycle" on:click={cycleMassUnit} title={massUnitTitle} aria-label="Change mass units">{massUnitSym}</button>
         </div>
-        <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pMassPos} on:input={onMassSlider} disabled={lock === 'mass'} />
+        <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pMassPos} on:input={onMassSlider} on:change={finalizeEdit} disabled={lock === 'mass'} />
         <div class="sub-label">{(body.massKg || 0).toExponential(2)} kg{#if pMassMe >= 318} · {(pMassMe / 317.8).toFixed(2)} M♃{/if}</div>
     </div>
 
@@ -414,10 +475,13 @@
         <div class="sc-row">
             <button class="lock" class:on={lock === 'radius'} title={lock === 'radius' ? 'Radius pinned - click to release' : 'Pin the radius'} on:click={() => toggleLock('radius')} aria-label="Lock radius">{lock === 'radius' ? '🔒' : '🔓'}</button>
             <label>Radius</label>
-            <input class="sc-num" type="number" step="any" value={r4(radDisp)} on:input={onRadNum} disabled={lock === 'radius'} />
+            <input class="sc-num" type="number" step="any" value={r4(radDisp)} on:input={onRadNum} on:change={finalizeEdit} disabled={lock === 'radius'} />
             <button class="sc-unit-cycle" on:click={cycleRadUnit} title={radUnitTitle} aria-label="Change radius units">{radUnitSym}</button>
         </div>
-        <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pRadPos} on:input={onRadSlider} disabled={lock === 'radius'} />
+        <div class="sc-slider-wrap">
+            {#if pEnv && lock === null}<div class="sc-band" style="left: {radBandLeft}%; width: {radBandWidth}%;" title="Allowable range for this composition — inside it only the {pEnv.kind} varies; past the edge the composition morphs."></div>{/if}
+            <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pRadPos} on:input={onRadSlider} on:change={finalizeEdit} disabled={lock === 'radius'} />
+        </div>
         <div class="sub-label">{$fmt.km(body.radiusKm || 0)}</div>
     </div>
 
@@ -426,12 +490,19 @@
         <div class="sc-row">
             <button class="lock" class:on={lock === 'density'} title={lock === 'density' ? 'Density & composition pinned - click to release' : 'Pin the density (holds the interior makeup)'} on:click={() => toggleLock('density')} aria-label="Lock density">{lock === 'density' ? '🔒' : '🔓'}</button>
             <label>Density</label>
-            <input class="sc-num" type="number" step="any" value={r4(pDensity)} on:input={onDenNum} disabled={lock === 'density'} />
+            <input class="sc-num" type="number" step="any" value={r4(pDensity)} on:input={onDenNum} on:change={finalizeEdit} disabled={lock === 'density'} />
             <span class="sc-unit">g/cc</span>
         </div>
-        <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pDenPos} on:input={onDenSlider} disabled={lock === 'density'} />
-        <div class="sub-label">{lock === 'density' ? 'composition held' : 'infers the interior makeup below'}</div>
+        <div class="sc-slider-wrap">
+            {#if pEnv && lock === null}<div class="sc-band" style="left: {denBandLeft}%; width: {denBandWidth}%;" title="Allowable range for this composition — inside it only the {pEnv.kind} varies; past the edge the composition morphs."></div>{/if}
+            <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pDenPos} on:input={onDenSlider} on:change={finalizeEdit} disabled={lock === 'density'} />
+        </div>
+        <div class="sub-label">{lock === 'density' ? 'composition held' : (pEnv && lock === null ? `inside the bar: varies ${pEnv.kind} only` : 'infers the interior makeup below')}</div>
     </div>
+
+    {#if pendingFlowThrough}
+        <div class="sc-morph-chip" role="status">Outside the envelope — recomposing → <strong>{morphTarget}</strong>; type updates on release</div>
+    {/if}
 
     {#if pMassMe >= 25000}
         <button class="action-btn ignite-btn" on:click={igniteStar}>🔥 Ignite into Star</button>
@@ -445,9 +516,12 @@
         {#each COMPOSITION_PRESETS as p}
             <button class="preset"
                     class:active={presetActive(p, pMakeup)}
-                    disabled={makeupLocked || !presetValidAt(p, pDensity)}
-                    title={makeupLocked ? 'Unlock density to recompose' : (presetValidAt(p, pDensity) ? `Set a ${p.name} interior` : `Out of band at ${pDensity.toFixed(1)} g/cc (needs ${p.band[0]}-${p.band[1]})`)}
-                    on:click={() => applyPreset(p.makeup)}>{p.name}</button>
+                    disabled={makeupLocked || !presetValidAt(p, pDensity, pMassMe)}
+                    title={makeupLocked ? 'Unlock density to recompose'
+                        : presetValidAt(p, pDensity, pMassMe) ? `Set a ${p.name} interior`
+                        : (p.maxMassMe !== undefined && pMassMe > p.maxMassMe) ? `Small-body mix — needs mass below ${p.maxMassMe} M⊕`
+                        : `Out of band at ${pDensity.toFixed(1)} g/cc (needs ${p.band[0]}-${p.band[1]})`}
+                    on:click={() => applyPreset(p)}>{p.name}</button>
         {/each}
     </div>
 
@@ -461,8 +535,8 @@
             <div class="mk-row">
                 <span class="swatch" style="background-color: {MK_SWATCH[k]}"></span>
                 <label for="mk-{k}">{MK_LABEL[k]}</label>
-                <input id="mk-{k}" type="range" min="0" max="100" step="1" value={Math.round((pMakeup[k] ?? 0) * 100)} on:input={(e) => onMkSlider(k, e)} disabled={makeupLocked} />
-                <input class="mk-num" type="number" min="0" max="100" step="1" value={Math.round((pMakeup[k] ?? 0) * 100)} on:input={(e) => onMkNum(k, e)} disabled={makeupLocked} />
+                <input id="mk-{k}" type="range" min="0" max="100" step="1" value={Math.round((pMakeup[k] ?? 0) * 100)} on:input={(e) => onMkSlider(k, e)} on:change={finalizeEdit} disabled={makeupLocked} />
+                <input class="mk-num" type="number" min="0" max="100" step="1" value={Math.round((pMakeup[k] ?? 0) * 100)} on:input={(e) => onMkNum(k, e)} on:change={finalizeEdit} disabled={makeupLocked} />
                 <span class="mk-pct">%</span>
             </div>
         {/each}
@@ -732,6 +806,19 @@
   /* Larger, more prominent primary sliders */
   .sc-slider { width: 100%; height: 22px; cursor: pointer; margin: 0; accent-color: var(--accent, #ff5a1f); }
   .sc-slider:disabled { cursor: not-allowed; opacity: 0.5; }
+
+  /* Trim-envelope range bar: the allowable band for the current composition, drawn above the
+     slider track. Inside it a drag varies porosity/inflation only; past it the composition morphs. */
+  .sc-slider-wrap { position: relative; }
+  .sc-band {
+    position: absolute; top: -3px; height: 4px; border-radius: 2px;
+    background: rgba(41, 199, 122, 0.65); pointer-events: auto; z-index: 1;
+  }
+  .sc-morph-chip {
+    align-self: flex-start; font-size: 0.76em; padding: 2px 8px; border-radius: 10px;
+    background: rgba(232, 168, 87, 0.15); border: 1px solid rgba(232, 168, 87, 0.5); color: #e8a857;
+  }
+  .sc-advisory { margin-left: 8px; font-size: 0.78em; font-style: italic; color: var(--text-faint, #8a8f9a); }
 
   .sc-presets-label { font-size: 0.8em; color: var(--text-muted); }
   .sc-presets-sub { color: var(--text-faint); }
