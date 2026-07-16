@@ -113,6 +113,23 @@ function promoteMassiveCompanion(system: System): boolean {
       }
     };
 
+    // Re-home the members' OTHER children by orbit size. A child whose orbit is LARGER than the pair
+    // separation encloses both members, so it must orbit the BARYCENTRE (circumbinary / P-type) — its
+    // a/e/angles are kept, only the host changes (the combined mass then sets the correct period on the
+    // next process pass). A child inside the separation stays with its own member (circumstellar /
+    // S-type: orbits around the star remain physically correct). Without this, a star promoted into a
+    // binary left every planet, belt and nested pair "orbiting" a displaced star. Reversal is free:
+    // deleting the companion runs dissolveStaleBinary, which re-homes barycentre children onto the
+    // survivor; a mass reduction runs demoteWeakBinary, which does the same explicitly.
+    for (const n of system.nodes) {
+      if (n.parentId !== heavy.id && n.parentId !== light.id) continue;
+      if (n.id === heavy.id || n.id === light.id || n.id === baryId) continue;
+      const a = n.orbit?.elements?.a_AU ?? 0;
+      if (!(a > separationAU)) continue; // inside the pair: stays circumstellar (no orbit → stays put)
+      n.parentId = baryId;
+      n.orbit = { ...n.orbit!, hostId: baryId, hostMu: pairMu };
+    }
+
     system.nodes.push(barycenter);
     return true;
   }
@@ -166,6 +183,15 @@ function demoteWeakBinary(system: System): boolean {
         a_AU: fallbackSeparation
       }
     };
+
+    // Circumbinary children (planets/belts promoteMassiveCompanion re-homed onto the pair) return to
+    // the primary — the inverse of the promotion re-home, keeping a/e/angles; the primary's mass sets
+    // their periods on the next process pass. Without this they'd dangle and fall to the system root.
+    for (const n of system.nodes) {
+      if (n.parentId !== bary.id || n.id === primary.id || n.id === secondary.id) continue;
+      n.parentId = primary.id;
+      if (n.orbit) n.orbit = { ...n.orbit, hostId: primary.id, hostMu: G * primaryMass };
+    }
 
     system.nodes = system.nodes.filter((n) => n.id !== bary.id);
     return true;

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.110-beta - 16th Jul 2026
+
+* **Forming a stellar barycentre now re-homes the rest of the system.** When a companion grows massive enough to promote its host into a binary pair, every other child of that host is re-parented by orbit size: orbits enclosing the pair (outer planets, belts, nested pairs like Pluto-Charon) become circumbinary — they orbit the barycentre, keeping their distance and shape, with the pair's combined mass setting their periods — while orbits inside the pair separation stay on their own star (physically correct circumstellar orbits). Fully reversible: deleting the companion, or shrinking it below the binary threshold, silently puts everything back on the star exactly where it was. Previously the whole system kept "orbiting" the displaced star and every view scrambled.
+
 ## v2.1.109-beta - 16th Jul 2026
 
 * **Holo positioning survives a displaced host star.** When a massive body forms a stellar barycentre, the star (and everything still parented to it) moves off the scene origin — belts baked around the origin smeared into a tall torus spinning about the wrong centre, and moons anchored to raw physics positions drifted off their displaced planets. Belts now ride their host's rendered position (and their Keplerian rock motion spins about the host), and satellites anchor to their parent's rendered globe, updated in parent-before-child order. No visual change for ordinary systems. (The deeper question — re-parenting planets to a newly-formed stellar barycentre where physics demands it — is a separate, backlogged piece of work.)
