@@ -5,7 +5,7 @@ import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEqui
 import { deriveAlbedo } from '../physics/albedo';
 import { calculateSurfaceRadiation, calculateTotalStellarRadiation } from '../physics/radiation';
 import { classifyBody, explainClassification } from '../system/classification';
-import { makeupFractions } from '../physics/makeup';
+import { makeupFractions, derivedPorosity } from '../physics/makeup';
 import { surfaceTempProfile } from '../physics/surfaceTemperature';
 import { deriveFluidLayers, cloudColourName } from '../physics/fluidLayers';
 import { phaseAt, liquidDef, biosolventScore, solventCoverageWeight } from '../physics/liquids';
@@ -544,6 +544,9 @@ export class SystemProcessor implements ISystemProcessor {
         features['makeup.carbon'] = mk.carbon;
         features['makeup.ice'] = mk.ice;
         features['makeup.gas'] = mk.gas;
+        // Macroporosity (derived from massKg + radiusKm vs the mix's compacted density) — lets
+        // the rubble-pile modifier key on actual void fraction, not a proxy density band.
+        features['porosity'] = derivedPorosity(body);
 
         // Fluid layers (surface/subsurface oceans, cloud decks, interior conductive) — feed
         // classification (subsurface-ocean), apparent colour (clouds) and §2d magnetism.
