@@ -537,6 +537,7 @@ export interface Route {
   distance: number;
   unit: string;
   lineStyle: 'solid' | 'dashed';
+  name?: string; // optional label, drawn in small text along the route line
 }
 
 // A ship in flight between two systems, started from the transit planner. Progress is read off the

@@ -10,9 +10,10 @@
 
   let editedDistance: number = route.distance;
   let editedLineStyle: 'solid' | 'dashed' = route.lineStyle || 'solid';
+  let editedName: string = route.name ?? '';
 
   function saveChanges() {
-    dispatch('save', { ...route, distance: editedDistance, unit: starmap.distanceUnit, lineStyle: editedLineStyle });
+    dispatch('save', { ...route, distance: editedDistance, unit: starmap.distanceUnit, lineStyle: editedLineStyle, name: editedName.trim() || undefined });
     showModal = false;
   }
 
@@ -35,6 +36,10 @@
   <div class="modal-background">
     <div class="modal">
       <h2>Edit Route</h2>
+      <label>
+        Name:
+        <input type="text" bind:value={editedName} placeholder="e.g. Hyperspace Bypass 342" />
+      </label>
       <label>
         Distance:
         <input type="number" step="0.01" bind:value={editedDistance} />

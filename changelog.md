@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.113-beta - 16th Jul 2026
+
+* **Starmap route editor is back, plus route names.** Clicking (or tapping) a route's distance label — or anywhere on the line itself, including right-click — opens the Edit Route dialog again (change distance, solid/dashed, delete; rescale on scaled maps). It had been unreachable since the V2 touch-gesture layer began capturing the click. Routes can now also be named ("Hyperspace Bypass 342"); the name is drawn in small letters along the line.
+
 ## v2.1.112-beta - 16th Jul 2026
 
 * **Construct import no longer wrecks the target's orbit.** Importing a construct file over an existing construct replaces the ship's spec only — the target keeps its orbit, journeys, flight state and log. Previously the file carried the source ship's journey/flight data, which silently outranked the preserved orbit at render time: the ship jumped to coordinates from the source system and later orbit edits appeared to do nothing. Exports no longer carry flight data either, and template loads preserve the same fields.
