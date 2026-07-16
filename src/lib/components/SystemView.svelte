@@ -1504,7 +1504,7 @@
 
   // Reactive Broadcasts for View Settings
   $: if (browser && $systemStore) {
-      broadcastService.sendMessage({
+      broadcastService.sendIfChanged({
           type: 'SYNC_VIEW_SETTINGS',
           payload: { showNames, showZones, showHillSpheres, showLPoints, showTravellerZones }
       });
@@ -1515,11 +1515,13 @@
       broadcastService.sendMessage({ type: 'SYNC_FOCUS', payload: focusedBodyId });
   }
 
-  // Reactive Broadcast for System State (e.g. edits, generation)
+  // Reactive Broadcast for System State (e.g. edits, generation). systemStore ticks several times a
+  // second while idle, so this MUST go through the fingerprint gate — the ~200KB snapshot only leaves
+  // when it actually changed (32 of every 33 sends used to be byte-identical).
   $: if (browser && $systemStore) {
       // We compute the snapshot to avoid sending GM secrets
       const snapshot = computePlayerSnapshot($systemStore);
-      broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: snapshot });
+      broadcastService.sendIfChanged({ type: 'SYNC_SYSTEM', payload: snapshot });
   }
 
   onDestroy(() => {

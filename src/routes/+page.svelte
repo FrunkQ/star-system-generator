@@ -13,6 +13,7 @@
   import { broadcastService } from '$lib/broadcast';
   import { computePlayerStarmapSnapshot } from '$lib/system/utils';
   import { starmapUiStore } from '$lib/starmapUiStore';
+  import { runningPresetId, liveOverrides } from '$lib/player/liveOverrides';
   import CompanionModal from '$lib/components/CompanionModal.svelte';
   import PlayerViewModal from '$lib/components/PlayerViewModal.svelte';
   import InterstellarTransitModal from '$lib/components/InterstellarTransitModal.svelte';
@@ -610,19 +611,27 @@
       if (map) broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: starmapSnapshotForPlayers(map) });
       broadcastService.sendMessage({ type: 'SYNC_BRANDING', payload: get(brandingStore) });
       broadcastService.sendMessage({ type: 'SYNC_GUIDECONFIG', payload: { ...get(guideConfigStore), crt: get(crtControls) } });
+      // A player joining (or reloading) AFTER the GM set the live overrides never used to hear about
+      // them — Follow GM et al. only rode the modal's own broadcasts, so late windows silently ignored
+      // the GM. Re-state the running view + overrides on every join. (Never send null here: a player
+      // opened directly by URL is valid without the GM "running" a view — null means hold screen.)
+      const pid = get(runningPresetId);
+      if (pid) broadcastService.sendMessage({ type: 'SYNC_PRESET', payload: { presetId: pid, overrides: get(liveOverrides) } });
     };
   });
-  // Re-broadcast the redacted starmap whenever it (or the GM's grid choice) changes, so guides stay live.
+  // Re-broadcast the redacted starmap whenever it (or the GM's grid choice) changes, so guides stay
+  // live. starmapStore ticks with every systemStore emission (several per second while idle) and the
+  // snapshot runs to hundreds of KB, so this goes through the fingerprint gate — only real changes leave.
   $: if (browser && $starmapStore && $starmapUiStore) {
-    broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: starmapSnapshotForPlayers($starmapStore) });
+    broadcastService.sendIfChanged({ type: 'SYNC_STARMAP', payload: starmapSnapshotForPlayers($starmapStore) });
   }
   // Push branding (company name + logo) to guides whenever the GM edits it.
   $: if (browser && $brandingStore) {
-    broadcastService.sendMessage({ type: 'SYNC_BRANDING', payload: $brandingStore });
+    broadcastService.sendIfChanged({ type: 'SYNC_BRANDING', payload: $brandingStore });
   }
   // Push the GM-enforced guide view (skin/colour/constructs + CRT effect) whenever the GM changes it.
   $: if (browser && ($guideConfigStore || $crtControls)) {
-    broadcastService.sendMessage({ type: 'SYNC_GUIDECONFIG', payload: { ...$guideConfigStore, crt: $crtControls } });
+    broadcastService.sendIfChanged({ type: 'SYNC_GUIDECONFIG', payload: { ...$guideConfigStore, crt: $crtControls } });
   }
 
   // Keep the runtime display units in sync with the loaded starmap (source of truth).

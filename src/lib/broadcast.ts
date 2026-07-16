@@ -226,6 +226,24 @@ class BroadcastService {
     this.sendPeer(envelope); // mirror over the cross-device pipe
   }
 
+  // Fingerprints of the last payload sent per message type, for sendIfChanged.
+  private lastSentByType = new Map<string, string>();
+
+  /**
+   * Gate for REACTIVE broadcast sites (Svelte `$:` statements that fire on every store tick): skip the
+   * send when the payload is byte-identical to the last one sent for this type. The GM's stores tick
+   * several times a second while idle, and the snapshot payloads run to hundreds of KB — without this
+   * gate every player window receives (and rebuilds from) megabytes of unchanged JSON per second.
+   * Request-response sites (onRequestSync / onRequestStarmap join bursts) must keep using sendMessage:
+   * a NEW listener needs the current state even though it hasn't changed.
+   */
+  public sendIfChanged(msg: BroadcastMessage) {
+    const json = JSON.stringify((msg as { payload?: unknown }).payload ?? null);
+    if (this.lastSentByType.get(msg.type) === json) return;
+    this.lastSentByType.set(msg.type, json);
+    this.sendMessage(msg);
+  }
+
   private onSystemUpdate: ((sys: System) => void) | null = null;
   private onRulePackUpdate: ((pack: RulePack) => void) | null = null;
   private onFocusUpdate: ((id: string | null) => void) | null = null;

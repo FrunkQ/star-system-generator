@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.105-beta - 16th Jul 2026
+
+* **The random slowdowns are found and fixed: the GM was multicasting megabytes of unchanged state every second.** The reactive broadcasts (whole starmap ~400KB, system snapshot ~200KB, view settings) re-sent on every internal store tick — about five times a second while completely idle, with 32 of every 33 payloads byte-identical. Every open player window received (and rebuilt its scene from) all of it, degrading until the window froze outright. Reactive broadcast sites now go through a fingerprint gate that only sends a payload when it actually changed; join bursts still send unconditionally so new windows get current state.
+* **Follow the GM's ladder steps and Reset View now reach late-joining players.** The live overrides (Follow GM et al.) were only broadcast at toggle-time, so a player window opened or reloaded afterwards silently ignored the GM. The join burst now re-states the running view and its overrides. Together with the flood fix above, multi-click zoom in/out and Reset View verifiably mirror on player windows.
+
 ## v2.1.104-beta - 12th Jul 2026
 
 * **Follow the GM now mirrors the click-ladder and Reset View.** Re-clicking a body on the GM's map steps the framing deeper (or wraps back out) — those steps now ride to following player views, which take the exact same framing level. The GM's Reset View passes through too. Previously only the first click on a body was mirrored, because deeper clicks don't change which body is focused and nothing else was broadcast.
