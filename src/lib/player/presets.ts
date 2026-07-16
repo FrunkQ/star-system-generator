@@ -18,6 +18,7 @@ export const accentSolid = (accent: string | undefined): string => (isRainbow(ac
 // here is a same-origin STATIC URL rather than a data: URL — <img src> treats both identically and
 // built-ins never need to ride the starmap file.
 export const BUILTIN_ASSETS: import('./presetTypes').PlayerAsset[] = [
+  { id: 'builtin-sse-logo', name: 'SSE2 (starter logo)', dataUrl: '/images/logo/SSE.png' },
   { id: 'builtin-wy-logo', name: 'Weyland-Yutani (starter logo)', dataUrl: '/images/logo/Weyland-Yutani.png' }
 ];
 

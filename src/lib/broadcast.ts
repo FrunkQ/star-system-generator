@@ -226,21 +226,54 @@ class BroadcastService {
     this.sendPeer(envelope); // mirror over the cross-device pipe
   }
 
-  // Fingerprints of the last payload sent per message type, for sendIfChanged.
+  // sendIfChanged state: last fingerprint + send time per type, and a trailing-send timer.
   private lastSentByType = new Map<string, string>();
+  private lastSentAtByType = new Map<string, number>();
+  private pendingByType = new Map<string, { timer: ReturnType<typeof setTimeout>; msg: BroadcastMessage }>();
+  // The GM clock is EMBEDDED in the snapshots (temporal.masterTimeSec/displayTimeSec), so with time
+  // playing every tick made the payload "different" and the whole ~400KB starmap went out ~5×/sec
+  // again. Players take their time from SYNC_TIME, so the clock fields are ignored when deciding
+  // whether a snapshot changed. (They still ride along in the payload itself.)
+  private static readonly VOLATILE_KEYS = new Set(['masterTimeSec', 'displayTimeSec']);
+  // Backstop for volatile fields this list doesn't know about: at most one send per type per interval,
+  // with a trailing send so the final state always lands.
+  private static readonly SEND_MIN_INTERVAL_MS = 500;
 
   /**
    * Gate for REACTIVE broadcast sites (Svelte `$:` statements that fire on every store tick): skip the
-   * send when the payload is byte-identical to the last one sent for this type. The GM's stores tick
-   * several times a second while idle, and the snapshot payloads run to hundreds of KB — without this
-   * gate every player window receives (and rebuilds from) megabytes of unchanged JSON per second.
+   * send when the payload is unchanged (ignoring the embedded GM clock), and rate-limit genuinely
+   * changing payloads to one per interval. The GM's stores tick several times a second and the
+   * snapshot payloads run to hundreds of KB — without this gate every player window receives (and
+   * rebuilds from) megabytes of JSON per second and eventually freezes.
    * Request-response sites (onRequestSync / onRequestStarmap join bursts) must keep using sendMessage:
    * a NEW listener needs the current state even though it hasn't changed.
    */
   public sendIfChanged(msg: BroadcastMessage) {
-    const json = JSON.stringify((msg as { payload?: unknown }).payload ?? null);
+    const json = JSON.stringify((msg as { payload?: unknown }).payload ?? null, (key, value) =>
+      BroadcastService.VOLATILE_KEYS.has(key) ? undefined : value
+    );
     if (this.lastSentByType.get(msg.type) === json) return;
+    const now = Date.now();
+    const wait = BroadcastService.SEND_MIN_INTERVAL_MS - (now - (this.lastSentAtByType.get(msg.type) ?? 0));
+    if (wait > 0) {
+      // Too soon — remember the LATEST message and send it when the interval is up.
+      const pending = this.pendingByType.get(msg.type);
+      if (pending) {
+        pending.msg = msg;
+      } else {
+        this.pendingByType.set(msg.type, {
+          msg,
+          timer: setTimeout(() => {
+            const p = this.pendingByType.get(msg.type);
+            this.pendingByType.delete(msg.type);
+            if (p) this.sendIfChanged(p.msg);
+          }, wait)
+        });
+      }
+      return;
+    }
     this.lastSentByType.set(msg.type, json);
+    this.lastSentAtByType.set(msg.type, now);
     this.sendMessage(msg);
   }
 

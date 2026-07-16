@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.106-beta - 16th Jul 2026
+
+* **Flood fix round two: a RUNNING clock defeated the fingerprint gate.** The GM clock is embedded in the snapshots (`displayTimeSec`), so with time playing every tick made the payload "different" and the full starmap went out ~5×/second again — exactly the slow window reported after v2.1.105. The change check now ignores the embedded clock fields (players take their time from the dedicated time message), and as a backstop any genuinely changing payload type is rate-limited to one send per half-second with a trailing send so the final state always lands.
+* **The SSE2 logo ships as a starter graphic.** Available alongside Weyland-Yutani in the preset editor's graphics library and every image placement dropdown.
+
 ## v2.1.105-beta - 16th Jul 2026
 
 * **The random slowdowns are found and fixed: the GM was multicasting megabytes of unchanged state every second.** The reactive broadcasts (whole starmap ~400KB, system snapshot ~200KB, view settings) re-sent on every internal store tick — about five times a second while completely idle, with 32 of every 33 payloads byte-identical. Every open player window received (and rebuilt its scene from) all of it, degrading until the window froze outright. Reactive broadcast sites now go through a fingerprint gate that only sends a payload when it actually changed; join bursts still send unconditionally so new windows get current state.
