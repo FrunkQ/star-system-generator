@@ -7,10 +7,9 @@ export interface LiveOverrides {
   filterBypass: boolean;    // temporarily drop the visual filter (readability)
   orbitPaused: boolean;     // temporarily stop the auto view-orbit turntable
   labelsHidden: boolean;    // temporarily hide in-scene labels
-  time: { rateIndex: number; playing: boolean } | null; // GM live time control (null = player's own time)
 }
 
-export const DEFAULT_OVERRIDES: LiveOverrides = { followGM: null, filterBypass: false, orbitPaused: false, labelsHidden: false, time: null };
+export const DEFAULT_OVERRIDES: LiveOverrides = { followGM: null, filterBypass: false, orbitPaused: false, labelsHidden: false };
 
 export const liveOverrides = writable<LiveOverrides>({ ...DEFAULT_OVERRIDES });
 

@@ -515,6 +515,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let currentSystem: System | null = null;
   let bodies: BodyVisual[] = [];
   let bodyById = new Map<string, BodyVisual>();
+  // Barycentre members: bodyId → the largest CO-MEMBER's rendered radius. A barycentre is an empty
+  // point, so the usual parent-globe clearance is zero there — in readable mode Charon vanished
+  // INSIDE Pluto. Each member instead clears its partner (both push outward along their own — mutually
+  // opposite — offsets, so the pair's separation always exceeds the sum of the rendered radii).
+  let baryCoR = new Map<string, number>();
   let ringVisuals: RingVisual[] = [];
   let beltVisuals: BeltVisual[] = [];
   // Aurora emitters (additive), flickering over time; base opacity scales with strength. Filled bodies
@@ -930,7 +935,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     controls.target.lerp(desiredTarget, 0.08);
   }
 
+  // A planetary RING has no body of its own in the holo — selecting one (GM menu, follow-GM) frames
+  // its PARENT PLANET with the ring in shot, matching the orrery's behaviour. Level 2 (planet + its
+  // satellites) is the natural "planet and its ring" framing when it exists.
+  function ringParentOf(id: string | null): string | null {
+    if (!id || !currentSystem) return null;
+    const n = (currentSystem.nodes as any[]).find((x) => x.id === id);
+    return n && n.roleHint === 'ring' && n.parentId ? n.parentId : null;
+  }
+
   function focusBody(id: string | null) {
+    const ringParent = ringParentOf(id);
+    if (ringParent) {
+      focusBody(ringParent);
+      if (!framingWhole && levelsForBody(ringParent).includes(2)) focusLevel = 2;
+      return;
+    }
     if (id === focusedId) return; // same body: a re-CLICK steps the ladder (see the pointer handler)
     focusedId = id;
     focusLevel = firstFrameLevel(levelsForBody(id)); // a NEW selection starts at its first existing level
@@ -952,6 +972,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
    * Under whole framing the camera stays fixed — selection still updates.
    */
   function setFocusLevel(id: string, level: number) {
+    const ringParent = ringParentOf(id);
+    if (ringParent) { setFocusLevel(ringParent, 2); return; } // a ring frames its planet (+ ring) instead
     if (id !== focusedId) focusBody(id); // selection first (sets first level, name set, min-zoom)
     if (framingWhole) return;            // fixed plan view: select-only
     const levels = levelsForBody(id);
@@ -1323,6 +1345,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow });
     }
     bodyById = new Map(bodies.map((b) => [b.id, b]));
+    // Partner radii for barycentre members (Pluto↔Charon, binary stars) — see baryCoR above.
+    baryCoR = new Map();
+    {
+      const baryIds = new Set((system.nodes as any[]).filter((n) => n.kind === 'barycenter').map((n) => n.id));
+      for (const b of bodies) {
+        if (b.isConstruct || !b.parentId || !baryIds.has(b.parentId)) continue;
+        let m = 0;
+        for (const o of bodies) if (o !== b && !o.isConstruct && o.parentId === b.parentId) m = Math.max(m, o.radiusScene ?? 0);
+        if (m > 0) baryCoR.set(b.id, m);
+      }
+    }
     visibleSet = getVisibleNodeIds(system, focusedId);
     updatePositions();
   }
@@ -1334,7 +1367,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const b of bodies) {
       const p = positions.get(b.id);
       if (!p) continue;
-      const parent = b.satellite && b.parentId ? positions.get(b.parentId) : undefined;
+      // Satellites AND barycentre members are placed relative to their (compressed) parent point —
+      // members are system-level (not satellites) but still need partner clearance around the bary.
+      const coRad = baryCoR.get(b.id) ?? 0;
+      const parent = b.parentId && (b.satellite || coRad > 0) ? positions.get(b.parentId) : undefined;
       if (parent) {
         // Satellite (moon or orbiting construct): the magnified log-spaced offset is a READABILITY
         // device that belongs to the toytown end of the scale — so it is weighted by `compression`.
@@ -1366,8 +1402,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // readable body sizes (big globe) moons/constructs are pushed just outside it, staggered by true
           // orbital order — while at true scale (tiny globe) the floor is tiny and real positions stand.
           const moonRad = b.radiusScene ?? 0;
-          const clearance = parentRad * 1.12 + moonRad + parentRad * 0.4 * Math.log10(1 + off / 0.0006);
-          const dist = Math.max(clearance, trueDist * (1 - compression) + spreadDist * compression);
+          // Barycentre member: clear the PARTNER's globe (the bary point itself has no surface). Both
+          // members push outward along mutually opposite offsets, so 0.62×(sum of radii) each side
+          // keeps the pair separated by ≥1.24× the sum — Charon stays outside Pluto in readable mode.
+          // (Their heliocentric orbit line can sit a body-width off in that regime — same trade the
+          // moon clearance makes; at true scale the radii are tiny and physics stands.)
+          const clearance = coRad > 0
+            ? (moonRad + coRad) * 0.62
+            : parentRad * 1.12 + moonRad + parentRad * 0.4 * Math.log10(1 + off / 0.0006);
+          const blend = coRad > 0 && !b.satellite
+            ? trueDist // major bodies never take the moon fan-out — just physics + the clearance floor
+            : trueDist * (1 - compression) + spreadDist * compression;
+          const dist = Math.max(clearance, blend);
           const k = dist / off;
           // axis-map the raw offset (x, z->y, y->z) and add to the compressed parent position
           b.mesh.position.set(tmpParent.x + ox * k, tmpParent.y + oz * k, tmpParent.z + oy * k);

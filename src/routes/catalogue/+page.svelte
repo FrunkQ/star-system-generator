@@ -154,7 +154,10 @@
   // Player time rate: a discrete ladder of "in-sim time per real second", from 1 s (real time) up
   // to 10 years/s. The control collapses to a play/pause icon and expands to a slider on click.
   let rateIndex = DEFAULT_RATE_INDEX; // default 1 s ≈ 1 h — inner planets visibly move, rings/belts shear
-  let timeOverride: { rateIndex: number; playing: boolean } | null = null; // GM live time override (Player Views)
+  // The GM's clock (SYNC_TIME heartbeat, 1/s). While following the GM the player view runs on THIS —
+  // absolute time and rate — so orbital positions match the GM's map exactly. Projector pattern:
+  // advance locally at the GM's rate between heartbeats, snap on >1s drift.
+  let gmTime: { currentTime: number; isPlaying: boolean; timeScale: number } | null = null;
   let timeExpanded = false;
 
   // Interactive-tier selection.
@@ -329,7 +332,7 @@
   // a preset is in play — otherwise the default 'guide' skin's DON'T PANIC cover flashes for a frame
   // before the preset resolves.
   let activePresetId: string | null = browser ? new URLSearchParams(window.location.search).get('preset') : null;
-  let appliedPresetId: string | null = null;
+  let appliedPresetJson: string | null = null;
   let presetHold = false; // GM closed the view → show a hold screen
   const BUILTIN_THEME: Record<string, ThemeKey> = { guide: 'guide', datapad: 'clean', console: 'console', crt: 'mono', holo: 'holo', projection: 'holo' };
   function applyPlayerPreset(p: PlayerPreset) {
@@ -339,11 +342,10 @@
     includeConstructs = true;
     holoStyle = holoStyleOf(p);
     if (p.inspectorWidth) inspectorWidth = Math.max(200, Math.min(640, p.inspectorWidth)); // desktop; mobile ignores it
-    // Default time: the preset picks the starting rate + play state (a GM time override can change it live).
-    if (timeOverride == null) {
-      rateIndex = Math.max(0, Math.min(RATE_STEPS.length - 1, p.defaultRateIndex ?? DEFAULT_RATE_INDEX));
-      isPlaying = p.defaultPlaying ?? true;
-    }
+    // Default time: the preset picks the starting rate + play state (ignored while following the GM,
+    // whose clock takes over wholesale).
+    rateIndex = Math.max(0, Math.min(RATE_STEPS.length - 1, p.defaultRateIndex ?? DEFAULT_RATE_INDEX));
+    isPlaying = p.defaultPlaying ?? true;
     selectedBody = null;
   }
   function applyOverrides(ov: import('$lib/broadcast').PresetOverrides) {
@@ -351,13 +353,18 @@
     holoFilterBypass = ov.filterBypass;
     holoOrbitPaused = ov.orbitPaused;
     overrideFollowGM = ov.followGM ?? null;
-    timeOverride = ov.time ?? null; // GM live time override (rate + play)
   }
   let overrideFollowGM: boolean | null = null;
   // Following the GM = the override (if set) else the preset's own followGM flag.
   $: followGMActive = (overrideFollowGM ?? activePreset?.followGM) ?? false;
-  // Apply the GM's live time override the instant it changes.
-  $: if (timeOverride) { rateIndex = timeOverride.rateIndex; isPlaying = timeOverride.playing; }
+  // Follow the GM's clock: snap to their absolute time when it drifts (a fresh follow, a GM scrub, or
+  // rate change) — between heartbeats the local loop advances at the GM's own timeScale.
+  function followTime(t: { currentTime: number; isPlaying: boolean; timeScale: number }) {
+    gmTime = t;
+    if (!followGMActive) return;
+    isPlaying = t.isPlaying;
+    if (Math.abs(currentTime - t.currentTime) > 1000) currentTime = t.currentTime;
+  }
   // Follow the GM's MANUAL viewport (a pan/zoom of their orrery, not a body focus): mirror it as a
   // ROUGH viewport — the 2D map matches it flat; the 3D holo takes the same shot raised to its tilt.
   // The GM's pan/zoom live in the orrery's render space (Box-Cox-scaled AU under toytown), so convert
@@ -411,8 +418,11 @@
   $: pendingPreset = activePresetId
     ? (BUILTIN_PRESETS.find((p) => p.id === activePresetId) || (starmap?.playerPresets ?? []).find((p) => p.id === activePresetId) || null)
     : null;
-  $: if (pendingPreset && appliedPresetId !== pendingPreset.id) {
-    appliedPresetId = pendingPreset.id;
+  // Re-apply on CONTENT change, not just id change: saving an edit in the Player Views editor updates
+  // the preset in place (same id) and rides the next SYNC_STARMAP — the open window must refresh live.
+  $: pendingPresetJson = pendingPreset ? JSON.stringify(pendingPreset) : null;
+  $: if (pendingPreset && pendingPresetJson && appliedPresetJson !== pendingPresetJson) {
+    appliedPresetJson = pendingPresetJson;
     applyPlayerPreset(pendingPreset);
   }
 
@@ -420,6 +430,9 @@
   // When a preset is active it OWNS the layers: its cover, its chosen starmap module, its chosen system
   // module, its theme + filter — rather than the legacy skin's fixed UI.
   $: activePreset = pendingPreset;
+  // "Players can click / focus / scrub" — false locks the surface: no picking, no camera, no clock,
+  // no body picker, list rows not tappable. The view is a display driven by the GM (or its presets).
+  $: presetInteractive = activePreset?.interactive !== false;
   $: presetAccent = activePreset ? accentSolid(activePreset.accentColor) : '#6aa0ff';
   $: presetFont = activePreset?.font || 'system-ui';
   // Guide tips: the preset picks off / top / bottom / both; the rolled notes fill the chosen edges.
@@ -556,7 +569,10 @@
     let last = performance.now();
     const tick = (ts: number) => {
       const dt = (ts - last) / 1000;
-      if (isPlaying) currentTime += dt * RATE_STEPS[rateIndex].sec * 1000;
+      // Following the GM: run at THEIR rate so positions match their map (heartbeats snap any drift).
+      // Otherwise the player's own arbitrary clock.
+      const rate = followGMActive && gmTime ? gmTime.timeScale : RATE_STEPS[rateIndex].sec;
+      if (isPlaying) currentTime += dt * rate * 1000;
       last = ts;
       rafId = requestAnimationFrame(tick);
     };
@@ -667,7 +683,7 @@
       (id) => followFocus(id), // GM focus → follow (only acts when followGMActive)
       (pan, zoom, isManual, viewMin) => followViewport(pan, zoom, isManual, viewMin), // GM manual pan/zoom → rough viewport
       () => {},
-      () => {},
+      (t) => followTime(t), // GM clock → inherited wholesale while following (absolute time + rate)
       () => {},
       () => {},
       sessionId
@@ -809,7 +825,7 @@
     </div>
   {:else if !selectedSystemId && activePreset && activePreset.starmapEnabled}
     <!-- Starmap level, PRESET-DRIVEN: the chosen module (text list / 2D / 3D), tap a system to enter. -->
-    <div class="preset-stage" style="font-family:{presetFont}; --accent:{presetAccent}">
+    <div class="preset-stage" class:frozen={!presetInteractive} style="font-family:{presetFont}; --accent:{presetAccent}">
       {#if activePreset.starmapView === 'holo3d' || activePreset.starmapView === 'diagram2d'}
         <!-- 3D (or 2D = the same renderer LOCKED OVERHEAD): real GLSL filter + raycast selection. -->
         <Starmap3DView {starmap} accentColor={presetAccent} font={presetFont} grid={activePreset.grid}
@@ -820,13 +836,13 @@
           overlay={starmapOverlayHud} mapGrid={starmap?.mapGrid ?? null}
           flat={activePreset.starmapView === 'diagram2d'}
           lockRotation={activePreset.starmapView === 'diagram2d' && activePreset.lockRotation !== false}
-          selectable on:select={(e) => { pushNavStep(); selectedSystemId = e.detail; selectedBody = null; }} />
+          selectable={presetInteractive} on:select={(e) => { pushNavStep(); selectedSystemId = e.detail; selectedBody = null; }} />
       {:else}
         <!-- Text list rendered to canvas + the REAL GPU filter (no CSS fake), still tap-to-select + scroll. -->
         <FilteredListView model={starmapListModel} accent={presetAccent} font={presetFont} mono={tipMono}
           filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
           tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null} overlay={starmapOverlayHud}
-          selectable on:select={(e) => { pushNavStep(); selectedSystemId = e.detail; selectedBody = null; }} />
+          selectable={presetInteractive} on:select={(e) => { pushNavStep(); selectedSystemId = e.detail; selectedBody = null; }} />
       {/if}
     </div>
   {:else if !selectedSystemId}
@@ -866,7 +882,7 @@
     </div>
   {:else if effectiveSystemTier === 'interactive' || effectiveSystemTier === 'holo'}
     <!-- Hi-tech: live orbital map (2D console or 3D holo table) + tap-to-inspect -->
-    <div class="console-stage" bind:clientWidth={hudW} bind:clientHeight={hudH} style={activePreset ? `font-family:${presetFont}` : ''}>
+    <div class="console-stage" class:frozen={!presetInteractive} bind:clientWidth={hudW} bind:clientHeight={hudH} style={activePreset ? `font-family:${presetFont}` : ''}>
       {#if rulePack && displaySystem}
         {#if effectiveSystemTier === 'holo'}
           <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} on:focus={handleFocus} />
@@ -894,7 +910,7 @@
       <!-- Body selector: the same compact command-strip picker the main app uses (chip + search +
            category drill-in), so it's tiny on mobile and needs no new learning. Replaces the old
            full-height jump list. -->
-      {#if displaySystem}
+      {#if displaySystem && presetInteractive}
         <div class="holo-picker-left">
           <BodyPicker
             nodes={displaySystem.nodes}
@@ -906,16 +922,19 @@
       {/if}
       <!-- Adaptive clock read-out: the fastest body in view does ~1 orbit per 2 s. -->
       <!-- Player time controls (Field Guide): collapsed to a play/pause icon; click to expand a rate
-           slider (arbitrary — just to see movement). The projector is GM-clock-driven instead. -->
-      <div class="time-controls" class:expanded={timeExpanded} use:clickOutside={() => (timeExpanded = false)}>
-        {#if timeExpanded}
-          <button class="tc-btn" on:click={() => (isPlaying = !isPlaying)} aria-label={isPlaying ? 'Pause' : 'Play'} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '❚❚' : '▶'}</button>
-          <input class="tc-slider" type="range" min="0" max={RATE_STEPS.length - 1} step="1" bind:value={rateIndex} aria-label="Time rate" />
-          <span class="tc-rate">1 s ≈ {RATE_STEPS[rateIndex].label}</span>
-        {:else}
-          <button class="tc-btn tc-icon" on:click={() => (timeExpanded = true)} aria-label="Time controls" title="Time controls">{isPlaying ? '❚❚' : '▶'}</button>
-        {/if}
-      </div>
+           slider (arbitrary — just to see movement). Hidden while following the GM (time is INHERITED
+           from the GM's clock — positions match their map) and on non-interactive presets. -->
+      {#if presetInteractive && !followGMActive}
+        <div class="time-controls" class:expanded={timeExpanded} use:clickOutside={() => (timeExpanded = false)}>
+          {#if timeExpanded}
+            <button class="tc-btn" on:click={() => (isPlaying = !isPlaying)} aria-label={isPlaying ? 'Pause' : 'Play'} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '❚❚' : '▶'}</button>
+            <input class="tc-slider" type="range" min="0" max={RATE_STEPS.length - 1} step="1" bind:value={rateIndex} aria-label="Time rate" />
+            <span class="tc-rate">1 s ≈ {RATE_STEPS[rateIndex].label}</span>
+          {:else}
+            <button class="tc-btn tc-icon" on:click={() => (timeExpanded = true)} aria-label="Time controls" title="Time controls">{isPlaying ? '❚❚' : '▶'}</button>
+          {/if}
+        </div>
+      {/if}
       {#if selectedBody && !activePreset?.hideInfoPanel}
         {@render inspectorAside()}
       {:else if !selectedBody && !activePreset?.hideInfoPanel}
@@ -925,11 +944,11 @@
   {:else if activePreset}
     <!-- Preset text-list system view: a canvas-rendered body list through the REAL filter (no CSS fake),
          tap a body to open its file in the shared inspector. -->
-    <div class="preset-stage preset-doc" style="font-family:{presetFont}; --accent:{presetAccent}">
+    <div class="preset-stage preset-doc" class:frozen={!presetInteractive} style="font-family:{presetFont}; --accent:{presetAccent}">
       <FilteredListView model={systemListModel} accent={presetAccent} font={presetFont} mono={activePreset.bodyStyle === 'white'}
         filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
         tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null} overlay={systemOverlayHud}
-        selectable selectedId={selectedBody?.id ?? null}
+        selectable={presetInteractive} selectedId={selectedBody?.id ?? null}
         on:select={(e) => selectBodyById(e.detail)} />
       {#if !activePreset.hideInfoPanel}{@render inspectorAside()}{/if}
     </div>
@@ -1144,6 +1163,9 @@
 
   /* Preset-driven layers (deployed player view). */
   .preset-stage { flex: 1; position: relative; min-height: 0; overflow: hidden; }
+  /* Non-interactive preset ("Players can click / focus / scrub" off): the surface is a locked display —
+     no picking, no camera orbit/pan/zoom, no scrolling. The GM drives it (follow / preset switches). */
+  .frozen { pointer-events: none; }
   .preset-doc { position: relative; }
   .overlay-wrap { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
   .preset-cover { position: absolute; inset: 0; z-index: 60; cursor: pointer; background: #05070c; }

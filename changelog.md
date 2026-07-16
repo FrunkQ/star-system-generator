@@ -2,6 +2,15 @@
 
 All notable changes are listed here:
 
+## v2.1.107-beta - 16th Jul 2026
+
+* **Follow the GM now inherits the GM's clock.** Following player views run on the GM's absolute time and rate (orbital positions match the GM's map exactly; heartbeats snap any drift), and their own time controls disappear — time is part of GM-view tracking, like viewport and focus. The "Control player time" quick override is gone: it's simply inherited when you run GM-driven views.
+* **"Players can click / focus / scrub" off now truly locks the surface.** No picking, no camera, no scrolling, no body picker, no clock — a kiosk display the GM drives.
+* **GM zoom over a focused body mirrors immediately.** Wheel-zooming without panning first used to be ignored by followers (only a pan flipped the camera to manual); the zoom override now counts as manual for the viewport broadcast.
+* **Selecting a planetary ring frames its planet on player views.** A ring pick (GM menu or follow) now zooms the follower to the parent planet with the ring in shot, matching the GM's behaviour.
+* **Charon no longer vanishes inside Pluto in readable views.** Barycentre members now clear their PARTNER's rendered globe (the barycentre itself is an empty point, so the parent-surface rule never applied) — both members push outward along their opposite offsets, so binary pairs always read as two bodies.
+* **Saving a Player View edit refreshes open player windows live.** The window re-applies the preset on content change, not only when switching to a different preset.
+
 ## v2.1.106-beta - 16th Jul 2026
 
 * **Flood fix round two: a RUNNING clock defeated the fingerprint gate.** The GM clock is embedded in the snapshots (`displayTimeSec`), so with time playing every tick made the payload "different" and the full starmap went out ~5×/second again — exactly the slow window reported after v2.1.105. The change check now ignores the embedded clock fields (players take their time from the dedicated time message), and as a backstop any genuinely changing payload type is rate-limited to one send per half-second with a trailing send so the final state always lands.

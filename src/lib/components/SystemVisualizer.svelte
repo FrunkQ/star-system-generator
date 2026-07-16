@@ -118,7 +118,7 @@
   // frame" (which otherwise fights the wheel during playback). Pan-follow continues, so the object stays
   // centred at the user's chosen zoom. Cleared by any deliberate re-frame (new selection, re-click-to-step,
   // Reset view).
-  let userZoomOverride = false;
+  export let userZoomOverride = false; // bindable: SystemView treats a zoom-driving user as MANUAL for camera broadcast
   let beltLabelClickAreas = new Map<string, { x1: number, y1: number, x2: number, y2: number }>();
   let x0_distance = 0.01; // Default pivot for distance scaling
   // Cache of coasting ships' forecast polylines, keyed by ship+clock so the conic isn't re-sampled per frame.

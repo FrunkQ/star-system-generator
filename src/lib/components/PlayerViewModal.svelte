@@ -15,7 +15,6 @@
     playerPresetList, addPreset, deletePreset, duplicateIntoStarmap, runPresetMigration
   } from '$lib/player/presetStore';
   import { liveOverrides, runningPresetId } from '$lib/player/liveOverrides';
-  import { RATE_STEPS } from '$lib/player/timeRates';
   import PlayerPresetEditor from './PlayerPresetEditor.svelte';
 
   export let sessionId: string | null = null;
@@ -247,19 +246,6 @@
                 on:change={(e) => setOverride({ orbitPaused: (e.currentTarget as HTMLInputElement).checked })} />
               Pause auto view-orbit
             </label>
-            <label class="chk">
-              <input type="checkbox" checked={!!$liveOverrides.time} disabled={!$runningPresetId}
-                on:change={(e) => setOverride({ time: (e.currentTarget as HTMLInputElement).checked ? { rateIndex: 2, playing: true } : null })} />
-              Control player time
-            </label>
-            {#if $liveOverrides.time}
-              <div class="ov-time">
-                <button class="ov-play" on:click={() => setOverride({ time: { rateIndex: $liveOverrides.time!.rateIndex, playing: !$liveOverrides.time!.playing } })} title={$liveOverrides.time.playing ? 'Pause' : 'Play'}>{$liveOverrides.time.playing ? '❚❚' : '▶'}</button>
-                <input type="range" min="0" max={RATE_STEPS.length - 1} step="1" value={$liveOverrides.time.rateIndex}
-                  on:input={(e) => setOverride({ time: { rateIndex: +(e.currentTarget as HTMLInputElement).value, playing: $liveOverrides.time!.playing } })} />
-                <span class="ov-rate">1 s ≈ {RATE_STEPS[$liveOverrides.time.rateIndex].label}</span>
-              </div>
-            {/if}
           </div>
         </aside>
       {/if}
@@ -324,10 +310,6 @@
   .ov-head { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
   .ov-sub { text-transform: none; letter-spacing: 0; font-style: italic; opacity: 0.8; }
   .chk { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
-  .ov-time { display: flex; align-items: center; gap: 8px; padding-left: 26px; }
-  .ov-time input[type="range"] { flex: 1; min-width: 0; }
-  .ov-play { width: 28px; flex: 0 0 auto; cursor: pointer; }
-  .ov-rate { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
   footer { display: flex; justify-content: flex-end; }
   footer button { padding: 8px 16px; cursor: pointer; border-radius: 4px; border: none; background: var(--bg-control); color: var(--text); font: inherit; }
 
