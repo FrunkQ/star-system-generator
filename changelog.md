@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.99-beta - 12th Jul 2026
+
+* **"Grey bands" now covers planetary rings too.** Choosing the orrery-style bands for belts and rings previously only changed the asteroid belts — Saturn's rings stayed as particles. Rings now draw as the same translucent shaded annulus the GM orrery uses, tilted with the planet's equator, with the shared density rule driving how solid they look.
+
 ## v2.1.98-beta - 12th Jul 2026
 
 * **You can take the view back from the follow.** Framing was too aggressive: once a body was followed, dragging the map got yanked straight back. Like the GM orrery, a pan drag now hands the view to you — it stays where you put it — and clicking a body re-engages the follow (a re-click still steps the framing deeper).

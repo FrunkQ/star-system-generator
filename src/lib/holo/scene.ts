@@ -127,7 +127,7 @@ interface BodyVisual {
 // ring). The pivot carries the tilt + tracks the planet; the particles advance in the local plane.
 interface RingVisual {
   pivot: THREE.Group;
-  points: THREE.Points;
+  points: THREE.Points | null; // null for the flat BAND style (no particles to advance)
   parentId: string;
   radii: Float32Array; // per-particle radius in scene units
   baseAng: Float32Array; // per-particle starting angle
@@ -1057,7 +1057,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (node.roleHint === 'ring') {
         const parent = nodesById.get(node.parentId);
         if (parent) {
-          const rv = buildPlanetRing(node, parent, bodyRadiusScene(parent, isSystemLevel(parent)), beltDetail, timeMs);
+          const rv = beltStyle === 'band'
+            ? buildPlanetRingBand(node, parent, bodyRadiusScene(parent, isSystemLevel(parent)))
+            : buildPlanetRing(node, parent, bodyRadiusScene(parent, isSystemLevel(parent)), beltDetail, timeMs);
           if (rv) { contentGroup.add(rv.pivot); ringVisuals.push(rv); }
         }
         continue;
@@ -1448,6 +1450,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const rv of ringVisuals) {
       const parent = bodyById.get(rv.parentId);
       if (parent) rv.pivot.position.copy(parent.mesh.position);
+      if (!rv.points) continue; // flat band: nothing to advance or shadow
       const dt = t - rv.t0Sec;
       const attr = rv.points.geometry.getAttribute('position') as THREE.BufferAttribute;
       const arr = attr.array as Float32Array;
@@ -2134,6 +2137,45 @@ function getDotTexture(): THREE.CanvasTexture {
 // inner/outer (relative to the planet's rendered size), particle count from the GM detail knob, and
 // per-particle Keplerian angular rate so it spins DIFFERENTIALLY (inner faster) — visible motion on
 // an otherwise symmetric ring. Positions are advanced each frame in updateRings.
+// The GM orrery's look for a planetary ring: a flat translucent annulus (a shaded disc with a hole)
+// instead of orbiting particles — same radius maths and tilt as the particle ring, opacity from the
+// SHARED debris-density rule so it reads exactly as solid as the orrery draws it.
+function buildPlanetRingBand(node: any, parent: any, planetRenderedR: number): RingVisual | null {
+  const planetKm = parent.physical_parameters?.radiusKm || parent.radiusKm || 60000;
+  let innerScene: number;
+  let outerScene: number;
+  if (node.radiusInnerKm > 0 && node.radiusOuterKm > node.radiusInnerKm) {
+    innerScene = (node.radiusInnerKm / planetKm) * planetRenderedR;
+    outerScene = (node.radiusOuterKm / planetKm) * planetRenderedR;
+  } else {
+    innerScene = planetRenderedR * 1.35;
+    outerScene = planetRenderedR * 2.3;
+  }
+  innerScene = Math.max(innerScene, planetRenderedR * 1.08); // clear the planet surface
+  outerScene = Math.min(outerScene, planetRenderedR * 4.5); // don't let a ring dominate
+  if (!(outerScene > innerScene)) return null;
+
+  const geo = new THREE.RingGeometry(innerScene, outerScene, 96, 1);
+  geo.rotateX(-Math.PI / 2); // annulus into the pivot's ground plane (its +Y = the ring normal)
+  const mat = new THREE.MeshBasicMaterial({
+    color: DEBRIS_RING_COLOR,
+    transparent: true,
+    opacity: debrisBandAlpha('ring', debrisDensityFrac(node.massKg)),
+    side: THREE.DoubleSide,
+    depthWrite: false // translucent: must not punch through bodies (see buildOrbitRing)
+  });
+  const pivot = new THREE.Group();
+  // Ring plane = planet equator, same as the particle ring.
+  const tiltRad = ((parent.axial_tilt_deg || 0) * Math.PI) / 180;
+  pivot.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), tiltRad);
+  pivot.add(new THREE.Mesh(geo, mat));
+  return {
+    pivot, points: null, parentId: parent.id,
+    radii: new Float32Array(0), baseAng: new Float32Array(0), omega: new Float32Array(0),
+    t0Sec: 0, planetR: planetRenderedR, baseColor: new THREE.Color(DEBRIS_RING_COLOR)
+  };
+}
+
 function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail: number, timeMs: number): RingVisual | null {
   const planetKm = parent.physical_parameters?.radiusKm || parent.radiusKm || 60000;
   let innerScene: number;
