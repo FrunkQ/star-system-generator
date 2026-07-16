@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.115-beta - 16th Jul 2026
+
+* Composition redesign stage 1 (engine): anchored editing (composition holds; radius/density drags move a porosity/inflation trim inside a physical envelope, flow through outside it), macroporosity model, rubble-pile + comet presets, mass/radius floors down to asteroid scale. Design: docs/dev/composition-editor-redesign.md. No UI change yet.
+
 ## v2.1.114-beta - 16th Jul 2026
 
 * Route names now show in the Routes & journeys list (Charted interstellar links).

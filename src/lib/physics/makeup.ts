@@ -43,6 +43,32 @@ export function compressedDensityFromMakeup(mass_Me: number, m: Makeup): number 
   return bulkDensityFromMakeup(m) * compressionFactor(mass_Me, m);
 }
 
+// MACROPOROSITY ceiling: voids survive self-gravity only in small bodies. Rubble piles and comets
+// (km-scale, ≲1e-11 M⊕) hold up to ~65% void space (67P ≈ 70%, Bennu ≈ 50%); by Ceres/Hygiea mass
+// (~1e-4 M⊕) hydrostatic equilibrium has crushed it all out. Log-linear ramp between the two.
+// Phobos (1.8e-9 M⊕, measured ~30%) lands under a ~44% ceiling — consistent.
+const POROSITY_MAX = 0.65, POROSITY_X0 = -11, POROSITY_X1 = -4; // log10(M⊕) full → none
+export function maxPorosity(mass_Me: number): number {
+  const x = Math.log10(Math.max(1e-15, mass_Me));
+  const t = Math.max(0, Math.min(1, (POROSITY_X1 - x) / (POROSITY_X1 - POROSITY_X0)));
+  return POROSITY_MAX * t;
+}
+
+// The porosity a body's MEASURED size implies for its makeup: 1 − ρ_geom/ρ_solid, where ρ_solid is
+// the fully-compacted (compressed) density of its mix. Zero for gas-dominated bodies (their "trim"
+// is thermal inflation, not voids) and never negative (an overdense body just reads as compacted).
+// Derived, not stored — massKg + radiusKm already carry it. Used by the classifier (rubble piles).
+export function derivedPorosity(body: CelestialBody): number {
+  const m = makeupFractions(body);
+  if (m.gas > 0.5) return 0;
+  const massKg = body.massKg || 0;
+  const radiusM = (body.radiusKm || 0) * 1000;
+  if (massKg <= 0 || radiusM <= 0) return 0;
+  const geom = (massKg / ((4 / 3) * Math.PI * radiusM ** 3)) / 1000;
+  const solid = compressedDensityFromMakeup(massKg / EARTH_MASS_KG, m);
+  return Math.max(0, Math.min(0.95, 1 - geom / solid));
+}
+
 const JUPITER_ME = 317.8;
 const JUPITER_RE = 11.2;
 
@@ -84,7 +110,7 @@ export function radiusReFromMassMakeup(mass_Me: number, m: Makeup, inflation = 1
 // radius — the caller should keep those mass-driven; this still returns a best-effort value.)
 export function massMeFromRadiusMakeup(radius_Re: number, m: Makeup, inflation = 1): number {
   const target = Math.max(1e-6, radius_Re);
-  let lo = 1e-7, hi = 1e6; // tiny moonlet → well past brown-dwarf
+  let lo = 1e-16, hi = 1e6; // sub-km comet → well past brown-dwarf
   for (let i = 0; i < 60; i++) {
     const mid = Math.sqrt(lo * hi);
     if (radiusReFromMassMakeup(mid, m, inflation) < target) lo = mid; else hi = mid;
