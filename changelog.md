@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.98-beta - 12th Jul 2026
+
+* **You can take the view back from the follow.** Framing was too aggressive: once a body was followed, dragging the map got yanked straight back. Like the GM orrery, a pan drag now hands the view to you — it stays where you put it — and clicking a body re-engages the follow (a re-click still steps the framing deeper).
+* **Selections no longer rotate the locked map.** Clicking body to body kept turning the grid; the locked view's heading is now frozen outright, so every framing move is pure pan and zoom. Verified click-to-click: the grid and the sun's bearing hold to within a pixel.
+
 ## v2.1.97-beta - 12th Jul 2026
 
 * **Clicking bodies in the editor preview now works.** The preview never fed a tap's selection back into the view (the live player view does), so clicks there did nothing — no framing, no click-ladder. The preview now selects and frames exactly like the player view: first click frames the body with its parent, again with its moons, again close up.

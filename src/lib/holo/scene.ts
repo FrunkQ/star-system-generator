@@ -631,13 +631,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const desiredTarget = new THREE.Vector3();
   const desiredCam = new THREE.Vector3();
   const outward = new THREE.Vector3();
-  const followDelta = new THREE.Vector3(); // per-frame target movement, reapplied to the camera = a PAN
   const camDir = new THREE.Vector3();      // target→camera offset direction (re-seating the auto-framed distance)
   // Auto-frame bookkeeping, mirroring the orrery: once the user drives zoom we stop re-framing (never
   // fight them) until the next explicit (re)selection re-engages it.
   let userZoomOverride = false;
   let lastAutoDist = 0;
   let lastAutoDistMs = 0;
+  // The orrery's FOLLOW/MANUAL split: following holds until the USER takes the view (a pan drag) —
+  // then it's theirs until the next explicit (re)selection re-engages the follow.
+  let followEngaged = false;
+  // The locked view's heading is an explicit INVARIANT, captured when the lock engages — never derived
+  // from the live camera. (Deriving it re-fed the ease's own transient drift back into itself: the
+  // target and camera lerp at different rates, so the offset direction swings mid-ease, the polar clamp
+  // turns that swing into heading, and the map settled rotated.)
+  let lockedHeading = 0;
+  const headingDir = new THREE.Vector3();
   let focusedId: string | null = null;
   let focusDrive = 0;
   let visibleSet = new Set<string>(); // which body names show — AND what can be clicked (one rule, both)
@@ -690,6 +698,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (on === lockRotate) return;
     lockRotate = on;
     controls.enableRotate = !on;
+    if (on) {
+      // Freeze the CURRENT heading — every locked shot is built on this azimuth from here on.
+      camDir.subVectors(camera.position, controls.target);
+      lockedHeading = Math.hypot(camDir.x, camDir.z) > 1e-6 ? Math.atan2(camDir.x, camDir.z) : 0;
+    }
     focusDrive = 48;
   }
 
@@ -697,6 +710,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let downX = 0;
   let downY = 0;
   canvas.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY; }, { signal: pointer.signal });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!flatOverhead || e.buttons === 0) return; // pan is the primary drag only on a flat map
+    if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) {
+      followEngaged = false; // the user took the view (the orrery's MANUAL) — stop re-framing it
+      focusDrive = 0;        // and don't finish an in-flight ease against their drag
+    }
+  }, { signal: pointer.signal });
   // The user driving zoom (wheel / pinch) takes the camera off auto-framing — the orrery's rule, so the
   // view never fights someone looking around. Cleared by the next explicit (re)frame (focusBody/pickBody).
   canvas.addEventListener('wheel', () => { userZoomOverride = true; }, { passive: true, signal: pointer.signal });
@@ -762,6 +782,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (id === focusedId) {
       focusLevel = nextFrameLevel(levelsForBody(id), focusLevel);
       focusDrive = 48; // re-ease into the deeper shot
+      followEngaged = true;
       userZoomOverride = false; // an explicit re-frame re-engages auto-framing
       lastAutoDist = 0;
     }
@@ -821,25 +842,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // configured tilt (angle from vertical). Then keep the target gently centred so a followed body
   // stays in view as it orbits, without fighting the user's own rotate/zoom.
   function driveFocus() {
-    const b = !framingWhole && focusedId ? bodies.find((x) => x.id === focusedId) : undefined;
+    const b = !framingWhole && focusedId && followEngaged ? bodies.find((x) => x.id === focusedId) : undefined;
     // A focused belt isn't a body — it's an annulus about the star, framed specially below.
-    const beltFocus = !framingWhole && focusedId && !b ? beltVisuals.find((x) => x.id === focusedId) : undefined;
+    const beltFocus = !framingWhole && focusedId && followEngaged && !b ? beltVisuals.find((x) => x.id === focusedId) : undefined;
     let dist: number;
     if (b) {
       const bp = b.mesh.position;
       desiredTarget.copy(bp);
-      if (lockRotate) {
-        // Heading locked: following a body by its RADIAL direction swings the camera's azimuth around the
-        // star as the body orbits — which reads as the whole map rotating. Pinning the azimuth means the
-        // camera only translates: the map PANS to keep the focus centred. The framing is held on the
-        // FOCUS; a secondary object (the parent star) may drift off periodically, which is fine.
-        outward.set(0, 0, 1);
-      } else {
-        outward.copy(bp);
-        const r = outward.length();
-        if (r > 1e-4) outward.multiplyScalar(1 / r);
-        else outward.set(0, 0, 1); // star at origin: fall back to a fixed azimuth
-      }
+      outward.copy(bp);
+      const r = outward.length();
+      if (r > 1e-4) outward.multiplyScalar(1 / r);
+      else outward.set(0, 0, 1); // star at origin: fall back to a fixed azimuth
       dist = frameDistance(b);
     } else if (framingWhole) {
       desiredTarget.set(0, 0, 0);
@@ -857,6 +870,39 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (focusDrive > 0) focusDrive--;
       return;
     }
+    if (lockRotate) {
+      // Heading locked = BE the GM orrery: the shot is target + distance on a FROZEN heading, placed
+      // exactly every frame — rotation is impossible by construction, mid-ease included. (Lerping the
+      // camera as a free point let the ease's own transients rotate the settled shot.)
+      const pol = flatOverhead ? LOCK_POLAR : framingAngleRad;
+      headingDir.set(Math.sin(pol) * Math.sin(lockedHeading), Math.cos(pol), Math.sin(pol) * Math.cos(lockedHeading));
+      if (focusDrive > 0) {
+        // Ease: the target slides to the body while the DISTANCE eases to the level's framing.
+        controls.target.lerp(desiredTarget, 0.18);
+        const curD = camera.position.distanceTo(controls.target);
+        camera.position.copy(controls.target).addScaledVector(headingDir, curD + (dist - curD) * 0.14);
+        focusDrive--;
+        return;
+      }
+      // Follow: snap the target onto the body (the orrery's renderPan — no easing, or it lags) and
+      // keep the user's distance, auto-framing it via the shared policy. Wheel zoom changes the
+      // distance; the heading cannot move.
+      let d = camera.position.distanceTo(controls.target);
+      controls.target.copy(desiredTarget);
+      if (!userZoomOverride) {
+        const now = performance.now();
+        const next = autoFrameStep({
+          current: lastAutoDist > 0 ? lastAutoDist : d,
+          ideal: dist,                       // the current ladder level's framing distance
+          userOverride: userZoomOverride,
+          sinceLastMs: now - lastAutoDistMs
+        });
+        if (next !== null) { d = next; lastAutoDist = next; lastAutoDistMs = now; }
+        else if (lastAutoDist > 0) d = lastAutoDist;
+      }
+      camera.position.copy(controls.target).addScaledVector(headingDir, d);
+      return;
+    }
     // Camera offset = tilt from vertical: up·cos(angle) + outward·sin(angle). angle 0 => overhead.
     const ca = Math.cos(framingAngleRad);
     const sa = Math.sin(framingAngleRad);
@@ -865,35 +911,6 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       controls.target.lerp(desiredTarget, 0.18);
       camera.position.lerp(desiredCam, 0.14);
       focusDrive--;
-      return;
-    }
-    if (lockRotate) {
-      // Heading locked = BE the GM orrery. Its follow is: snap the pan straight onto the body every
-      // frame (renderPan = targetPosition — no easing, or it lags and the offset direction swings, which
-      // on a flat map IS the map rotating), then ease only the FRAMING via the shared auto-frame policy.
-      // Moving the camera by the SAME delta as the target preserves the offset exactly — a pure pan, so
-      // the heading provably cannot change. Framing is held on the FOCUS; the parent may drift off.
-      followDelta.subVectors(desiredTarget, controls.target);
-      controls.target.copy(desiredTarget);
-      camera.position.add(followDelta);
-      if (!userZoomOverride) {
-        const now = performance.now();
-        const cur = camera.position.distanceTo(controls.target);
-        const next = autoFrameStep({
-          current: lastAutoDist > 0 ? lastAutoDist : cur,
-          ideal: dist,                       // the current ladder level's framing distance
-          userOverride: userZoomOverride,
-          sinceLastMs: now - lastAutoDistMs
-        });
-        if (next !== null) {
-          // Re-seat the camera at the new distance along the UNCHANGED offset direction — framing only.
-          camDir.subVectors(camera.position, controls.target);
-          const len = camDir.length();
-          if (len > 1e-6) camera.position.copy(controls.target).addScaledVector(camDir.multiplyScalar(1 / len), next);
-          lastAutoDist = next;
-          lastAutoDistMs = now;
-        }
-      }
       return;
     }
     // Free heading (3D): gently re-aim at the body — the camera stays put and turns to track, which
@@ -905,6 +922,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (id === focusedId) return; // same body: a re-CLICK steps the ladder (see the pointer handler)
     focusedId = id;
     focusLevel = firstFrameLevel(levelsForBody(id)); // a NEW selection starts at its first existing level
+    followEngaged = !!id; // a selection (re)engages the follow; a pan drag hands the view to the user
     userZoomOverride = false; // an explicit (re)frame re-engages auto-framing, as in the orrery
     lastAutoDist = 0;
     // Tighten the min-zoom to the focused body's rendered size so a tiny true-scale world can still be
@@ -926,6 +944,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (prev === focusLevel) return false;
     focusLevel = prev;
     focusDrive = 48; // ease back out to the wider shot
+    followEngaged = true;
     userZoomOverride = false; // an explicit re-frame re-engages auto-framing
     lastAutoDist = 0;
     return true;
@@ -934,6 +953,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function resetView() {
     focusedId = null;
     focusDrive = 0;
+    followEngaged = false;
+    lockedHeading = 0; // HOME sits on x=0, azimuth 0
     controls.minDistance = DEFAULT_MIN_DIST;
     camera.position.copy(HOME_CAM);
     controls.target.set(0, 0, 0);
@@ -1140,7 +1161,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       } else if (bodyGfx !== 'sphere') {
         // Flat "2D map" body: a camera-facing disc (photo / procedural / flat), sized to the body.
         // Belts & rings still render as their own nodes, so a flat world keeps its ring.
-        mesh = buildBodyDisc(node, bodyRadiusScene(node, systemLevel), bodyGfx, bodyStyle === 'tint' ? 'white' : bodyStyle);
+        mesh = buildBodyDisc(node, bodyRadiusScene(node, systemLevel), bodyGfx, bodyStyle);
       } else {
         // Moons are capped small so they read as satellites; the whole thing scales with bodySize.
         const radius = bodyRadiusScene(node, systemLevel);
