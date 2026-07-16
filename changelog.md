@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.101-beta - 12th Jul 2026
+
+* **"Frame whole system" on the 2D map is now a truly fixed plan view.** With it ticked, the map holds the whole-system overhead shot and nothing moves it: clicks select a body (its file still opens) but never re-frame, and panning and zooming are disabled. Previously a click could still ease the camera about. A whole-framed 3D holo keeps its orbit and zoom — it's a hologram, not a map.
+
 ## v2.1.100-beta - 12th Jul 2026
 
 * **Follow the GM now mirrors manual panning too (experimental).** When a player view follows the GM, the GM's hand-panned viewport is broadcast and mirrored as a rough viewport — the 2D map matches it flat, and the 3D holo takes the same shot raised to its configured angle. Body clicks still frame with the player's own click ladder as before; only manual pans ride this new path. The centre calibration is first-cut and may land off target on toytown-compressed views — feedback welcome.

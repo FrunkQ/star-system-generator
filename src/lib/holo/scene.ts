@@ -669,11 +669,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     controls.minPolarAngle = flatOverhead ? LOCK_POLAR : Math.min(0.06, framingAngleRad);
     controls.maxPolarAngle = flatOverhead ? LOCK_POLAR : Math.PI * 0.49;
   }
+  // Whole-framed FLAT map = a FIXED plan view (Alex: "just a fixed overhead — no pan/zoom"): freeze the
+  // user's pan and zoom too. A whole-framed 3D holo keeps its orbit/zoom (it's a hologram, not a map).
+  function applyInteractionLocks() {
+    const fixedPlan = flatOverhead && framingWhole;
+    controls.enablePan = flatOverhead && !fixedPlan;
+    controls.enableZoom = !fixedPlan;
+  }
 
   function setFraming(o: { angleDeg?: number; whole?: boolean }) {
     if (o.angleDeg != null) framingAngleRad = (Math.max(0, Math.min(85, o.angleDeg)) * Math.PI) / 180;
     if (o.whole != null) framingWhole = o.whole;
     applyPolarLimits();
+    applyInteractionLocks();
     focusDrive = 48; // re-ease into the new framing
   }
 
@@ -685,7 +693,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function setFlatOverhead(on: boolean) {
     if (on === flatOverhead) return;
     flatOverhead = on;
-    controls.enablePan = on;
+    applyInteractionLocks();
     controls.mouseButtons.LEFT = on ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
     controls.mouseButtons.RIGHT = on ? THREE.MOUSE.ROTATE : THREE.MOUSE.PAN;
     controls.touches.ONE = on ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
@@ -780,7 +788,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // change). Re-tapping the FOCUSED body steps one level deeper — we own that step here because the id
   // doesn't change on a re-tap, so the reactive focusBody() would never re-fire.
   function pickBody(id: string) {
-    if (id === focusedId) {
+    if (id === focusedId && !framingWhole) { // whole framing: clicks select, never re-frame
       focusLevel = nextFrameLevel(levelsForBody(id), focusLevel);
       focusDrive = 48; // re-ease into the deeper shot
       followEngaged = true;
@@ -925,6 +933,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     focusLevel = firstFrameLevel(levelsForBody(id)); // a NEW selection starts at its first existing level
     followEngaged = !!id; // a selection (re)engages the follow; a pan drag hands the view to the user
     userZoomOverride = false; // an explicit (re)frame re-engages auto-framing, as in the orrery
+    if (framingWhole) { visibleSet = getVisibleNodeIds(currentSystem, focusedId); return; } // whole: select only — the camera never moves
     lastAutoDist = 0;
     // Tighten the min-zoom to the focused body's rendered size so a tiny true-scale world can still be
     // brought up large on screen — the viewer doesn't need to know the size to get the right zoom.
