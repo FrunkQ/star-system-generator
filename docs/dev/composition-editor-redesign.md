@@ -191,3 +191,27 @@ hand-authored preset envelopes, and give the GM direct type selection:
   presets remain for tests/generation). Composition is set via the makeup sliders.
 - **Typed values are respected**: number boxes apply on change (Enter/blur), never
   per keystroke — a typed value must survive exactly, not be fought by re-derivation.
+
+## 12. REVISION 2 (agreed 2026-07-17): class-ranged sliders + range metadata
+
+- **Fingerprints gain an optional `range` block** — `mass_Me` / `radius_Re` / `density` /
+  `Teq_K` — EDITOR metadata only, never read by the scorer, so ranging is tunable with
+  zero classification risk. `src/lib/system/typeRanges.ts` is the single consumer-facing
+  module: `rangeOf`, `isPickable`, `pickableTypes(ctx)`, `bestTypeFor(ctx)`, `sliderSpan`.
+- **Ranges gate the picker**: classes WITHOUT a range (climate/biosphere/atmosphere/
+  structure-derived: swamp, jungle, eyeballs, earth-analogue family, halogen worlds,
+  rogue…) are never offered — they classify normally but are reached through the tabs
+  that define them. ~45 physical classes are authored.
+- **Sliders re-range to the pinned/current class**: span = class range log-padded ±15%
+  (minimum ×2 window), with end-labels showing the window. High resolution inside a
+  class; the full 17-decade span appears only for Unknown (or an unranged current class).
+- **Hard clamp at the ends — never auto-switch**: hitting an end shows a nudge chip
+  ("End of X's range — pick another type below, or type a value"). Progression through
+  types is by choosing, not by silent flips.
+- **Typed values always accepted** (engine floors only). A typed value outside the
+  current class's range deselects to `bestTypeFor` at the new state, or to
+  **`planet/unknown`** (full-range sliders, no bands) when nothing fits — the "GM
+  insists" escape hatch. Unknown is also a pickable chip.
+- **Reuse (planned)**: the add-body flow should call the same `pickableTypes` with the
+  known orbit Teq + a parent-derived mass range so creation offers only valid types —
+  one logic, no parallel systems.

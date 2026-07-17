@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.119-beta - 17th Jul 2026
+
+* Composition redesign stage 2c (class-ranged sliders): the mass/radius/density sliders now span the pinned type's range (log-padded, with window end-labels) instead of 17 orders of magnitude — real resolution inside a class, and hitting an end nudges you to pick the neighbouring type (never an automatic flip). Typed values are always accepted verbatim; a value outside the current type deselects to the best-fitting type, or to the new Unknown class (the one remaining full-range case). Ranges are editor-only metadata on ~45 physical classes; specialist derived types (swamp, eyeballs, halogen worlds…) no longer clutter the picker. Porosity now has a live readout on the density row.
+
 ## v2.1.118-beta - 16th Jul 2026
 
 * Composition redesign stage 2b (the classifier, rolled in): the preset row is now a Planet type list — every classifier type reachable at the current mass and orbital temperature, ranked by live match score (bright = fits now, dim = needs tuning). Clicking pins the type without moving any slider and draws that type's fingerprint bands on the mass/radius/density sliders; a note explains that pinning does not force the physics. Number boxes now apply on Enter/blur so typed values are never fought mid-entry.

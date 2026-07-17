@@ -3,7 +3,7 @@
   import type { CelestialBody, RulePack, Makeup } from '$lib/types';
   import { fmt } from '$lib/stores';
   import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '$lib/constants';
-  import { makeupFractions, normalizeMakeup, gasThermalInflationFactor } from '$lib/physics/makeup';
+  import { makeupFractions, normalizeMakeup, gasThermalInflationFactor, derivedPorosity, maxPorosity } from '$lib/physics/makeup';
   import { breakupPeriodHours, rotationalDeform, type RotationalShape } from '$lib/physics/rotation';
   import { fileToDownscaledDataUrl } from '$lib/util/imageUpload';
   import {
@@ -12,6 +12,7 @@
     type EditLock, type BodyEditState
   } from '$lib/physics/bodyEdit';
   import { bandFit } from '$lib/system/classification';
+  import { pickableTypes, bestTypeFor, sliderSpan, rangeOf, UNKNOWN_CLASS } from '$lib/system/typeRanges';
   import type { Fingerprint } from '$lib/types';
 
   export let body: CelestialBody;
@@ -176,9 +177,9 @@
   $: pRadiusRe = (body.radiusKm ?? 0) / EARTH_RADIUS_KM;
   $: pMakeup = normalizeMakeup(makeupFractions(body));
   $: pDensity = densityGcc(pMassMe, pRadiusRe);
-  $: pMassPos = logPos(pMassMe, pMassMin, pMassMax);
-  $: pRadPos = logPos(pRadiusRe, pRadMin, pRadMax);
-  $: pDenPos = logPos(pDensity, pDenMin, pDenMax);
+  $: pMassPos = logPos(pMassMe, massSpan[0], massSpan[1]);
+  $: pRadPos = logPos(pRadiusRe, radSpan[0], radSpan[1]);
+  $: pDenPos = logPos(pDensity, denSpan[0], denSpan[1]);
 
   // Unit selectors for the Mass & Radius number fields — a 3-way click cycler shown in the label gap, so
   // a tiny moon (awkward as 1e-8 M⊕) can be edited in tonnes or km instead. The SLIDER stays in canonical
@@ -299,12 +300,12 @@
   const onInflSlider = (e: Event) => setInflation(+(e.target as HTMLInputElement).value);
   const onInflNum = (e: Event)    => setInflation(parseFloat((e.target as HTMLInputElement).value));
 
-  const onMassSlider = (e: Event)  => applyMass(logVal(+(e.target as HTMLInputElement).value, pMassMin, pMassMax));
-  const onRadSlider = (e: Event)   => applyRadius(logVal(+(e.target as HTMLInputElement).value, pRadMin, pRadMax));
-  const onDenSlider = (e: Event)   => applyDensity(logVal(+(e.target as HTMLInputElement).value, pDenMin, pDenMax));
-  const onMassNum = (e: Event)     => applyMass(massMeFromDisp(parseFloat((e.target as HTMLInputElement).value)));
-  const onRadNum = (e: Event)      => applyRadius(radReFromDisp(parseFloat((e.target as HTMLInputElement).value)));
-  const onDenNum = (e: Event)      => applyDensity(parseFloat((e.target as HTMLInputElement).value));
+  const onMassSlider = (e: Event)  => { const p = +(e.target as HTMLInputElement).value; applyMass(logVal(p, massSpan[0], massSpan[1])); checkEdge(p, 'mass'); };
+  const onRadSlider = (e: Event)   => { const p = +(e.target as HTMLInputElement).value; applyRadius(logVal(p, radSpan[0], radSpan[1])); checkEdge(p, 'radius'); };
+  const onDenSlider = (e: Event)   => { const p = +(e.target as HTMLInputElement).value; applyDensity(logVal(p, denSpan[0], denSpan[1])); checkEdge(p, 'density'); };
+  const onMassNum = (e: Event)     => { applyMass(massMeFromDisp(parseFloat((e.target as HTMLInputElement).value))); reselectAfterTyped('mass_Me'); };
+  const onRadNum = (e: Event)      => { applyRadius(radReFromDisp(parseFloat((e.target as HTMLInputElement).value))); reselectAfterTyped('radius_Re'); };
+  const onDenNum = (e: Event)      => { applyDensity(parseFloat((e.target as HTMLInputElement).value)); reselectAfterTyped('density'); };
   const onMkSlider = (k: keyof Makeup, e: Event) => applyMakeupComp(k, +(e.target as HTMLInputElement).value);
   const onMkNum = (k: keyof Makeup, e: Event)    => applyMakeupComp(k, parseFloat((e.target as HTMLInputElement).value) || 0);
 
@@ -320,10 +321,19 @@
   // Inside the bars a drag varies only porosity/inflation (type, image and makeup all hold);
   // past the edge the composition morphs (transition chip) and the type commits on release.
   $: pEnv = isPlanetMoon ? trimEnvelope(pMassMe, pMakeup) : null;
-  $: radBandLeft = pEnv ? logPos(pEnv.radLo, pRadMin, pRadMax) * 100 : 0;
-  $: radBandWidth = pEnv ? Math.max(0.8, (logPos(pEnv.radHi, pRadMin, pRadMax) - logPos(pEnv.radLo, pRadMin, pRadMax)) * 100) : 0;
-  $: denBandLeft = pEnv ? logPos(pEnv.denLo, pDenMin, pDenMax) * 100 : 0;
-  $: denBandWidth = pEnv ? Math.max(0.8, (logPos(pEnv.denHi, pDenMin, pDenMax) - logPos(pEnv.denLo, pDenMin, pDenMax)) * 100) : 0;
+  // Live macroporosity readout (solids): derived from mass+radius vs the mix's compacted
+  // density — the void fraction the current size implies. Shown when it's meaningful.
+  $: pPorosity = isPlanetMoon && !pGasDominated ? derivedPorosity(body) : 0;
+  $: pPorosityMax = maxPorosity(pMassMe);
+  // Mapped into the (class-ranged) slider spans; hidden when the envelope falls outside the window.
+  function clipBand(lo: number, hi: number, span: number[]): { left: number; width: number } | null {
+      const l = logPos(Math.max(lo, span[0]), span[0], span[1]);
+      const r = logPos(Math.min(hi, span[1]), span[0], span[1]);
+      if (r <= 0 || l >= 1 || r <= l) return null;
+      return { left: l * 100, width: Math.max(0.8, (r - l) * 100) };
+  }
+  $: radTrimBand = pEnv ? clipBand(pEnv.radLo, pEnv.radHi, radSpan) : null;
+  $: denTrimBand = pEnv ? clipBand(pEnv.denLo, pEnv.denHi, denSpan) : null;
 
   // The advisory line for a pinned type ("physics reads" only shown when it disagrees).
   $: physicsReads = prettyClass(body.classification?.base);
@@ -338,23 +348,15 @@
   // move) and shows its fingerprint bands on the sliders.
   $: baseFps = ((rulePack?.classifier?.fingerprints ?? []) as Fingerprint[]).filter((f) => (f.kind ?? 'base') === 'base');
   $: pTeqK = body.equilibriumTempK ?? 0;
-  $: typeList = (() => {
-      const seen = new Set<string>();
-      const out: { cls: string; fp: Fingerprint; score: number; fits: boolean }[] = [];
-      for (const f of baseFps) {
-          if (seen.has(f.class)) continue;
-          const mb = (f.match as any)?.mass_Me;
-          if (mb && bandFit(pMassMe, mb) <= 0) continue;   // not reachable at this mass
-          const tb = (f.match as any)?.Teq_K;
-          if (tb && bandFit(pTeqK, tb) <= 0) continue;     // wrong climate for this orbit
-          seen.add(f.class);
+  $: typeList = pickableTypes(baseFps, { massMe: pMassMe, teqK: pTeqK })
+      .map((f) => {
           const cand = body.classification?.candidates?.find((c) => c.class === f.class);
-          out.push({ cls: f.class, fp: f, score: cand?.score ?? 0, fits: !!cand });
-      }
-      return out.sort((a, b) => b.score - a.score || a.cls.localeCompare(b.cls));
-  })();
+          return { cls: f.class, fp: f, score: cand?.score ?? 0, fits: !!cand };
+      })
+      .sort((a, b) => b.score - a.score || a.cls.localeCompare(b.cls));
 
-  // Pin a type from the list: classes[0] + autoClassify off + the type image. Sliders untouched.
+  // Pin a type from the list: classes[0] + autoClassify off + the type image. Sliders keep
+  // their VALUES (they re-range to the new class's span, but the body doesn't change).
   function pinType(val: string) {
       if (!body.classes) body.classes = [];
       body.classes[0] = val;
@@ -363,22 +365,63 @@
           if (!body.image) body.image = { url: '' };
           body.image.url = rulePack.classifier.planetImages[val];
       }
+      edgeHint = null;
       body = body;
       dispatch('update');
   }
 
-  // The pinned/current type's fingerprint bands, mapped onto the three sliders (log positions).
+  // ——— CLASS-RANGED sliders (design §12) ————————————————————————————————————————————————
+  // Each slider spans the pinned/current class's range (log-padded ±15%, min ×2) instead of
+  // the full 17-decade span — high resolution where it matters, and reaching an end nudges
+  // the GM to pick the neighbouring type. Unknown (or a class with no range on that axis)
+  // falls back to the full span — the one place a full-range slider still appears.
   $: bandFp = baseFps.find((f) => f.class === body.classes?.[0]) ?? null;
-  function typeBandFor(fp: Fingerprint | null, key: string, lo: number, hi: number): { left: number; width: number } | null {
-      const b = (fp?.match as any)?.[key];
-      if (!Array.isArray(b) || typeof b[0] !== 'number' || typeof b[1] !== 'number') return null;
-      const l = logPos(Math.max(b[0], lo), lo, hi);
-      const r = logPos(Math.min(b[1], hi), lo, hi);
+  $: isUnknown = body.classes?.[0] === UNKNOWN_CLASS;
+  $: massSpan = isUnknown ? [pMassMin, pMassMax] : sliderSpan(rangeOf(bandFp, 'mass_Me'), pMassMin, pMassMax);
+  $: radSpan = isUnknown ? [pRadMin, pRadMax] : sliderSpan(rangeOf(bandFp, 'radius_Re'), pRadMin, pRadMax);
+  $: denSpan = isUnknown ? [pDenMin, pDenMax] : sliderSpan(rangeOf(bandFp, 'density'), pDenMin, pDenMax);
+
+  // The class's own band drawn INSIDE the padded span (the padding at each end is the
+  // "leaving the class" zone).
+  function typeBandFor(fp: Fingerprint | null, key: 'mass_Me' | 'radius_Re' | 'density', span: number[]): { left: number; width: number } | null {
+      const b = rangeOf(fp, key);
+      if (!b) return null;
+      const l = logPos(Math.max(b[0], span[0]), span[0], span[1]);
+      const r = logPos(Math.min(b[1], span[1]), span[0], span[1]);
+      if (r <= 0 || l >= 1) return null;
       return { left: l * 100, width: Math.max(0.8, (r - l) * 100) };
   }
-  $: massTypeBand = typeBandFor(bandFp, 'mass_Me', pMassMin, pMassMax);
-  $: radTypeBand = typeBandFor(bandFp, 'radius_Re', pRadMin, pRadMax);
-  $: denTypeBand = typeBandFor(bandFp, 'density', pDenMin, pDenMax);
+  $: massTypeBand = typeBandFor(bandFp, 'mass_Me', massSpan);
+  $: radTypeBand = typeBandFor(bandFp, 'radius_Re', radSpan);
+  $: denTypeBand = typeBandFor(bandFp, 'density', denSpan);
+
+  // Compact end-labels so the GM always knows the current window.
+  function fmtEnd(v: number): string {
+      if (!Number.isFinite(v)) return '';
+      if (v !== 0 && (Math.abs(v) < 1e-3 || Math.abs(v) >= 1e5)) return v.toExponential(0);
+      return Number(v.toPrecision(3)).toString();
+  }
+
+  // Edge hint: released at a span end → nudge toward the type list (never auto-switch).
+  let edgeHint: string | null = null;
+  function checkEdge(pos: number, axis: string) {
+      edgeHint = (!isUnknown && bandFp && (pos >= 0.995 || pos <= 0.005))
+          ? `End of ${liveType}'s ${axis} range — pick another type below, or type a value`
+          : null;
+  }
+
+  // A TYPED value is always accepted (engine floors only). If it leaves the current class's
+  // range, deselect to the best-fitting pickable type at the new state — or Unknown when
+  // nothing sensible fits (the "GM insists" case).
+  function reselectAfterTyped(axis: 'mass_Me' | 'radius_Re' | 'density') {
+      const s = pState();
+      const value = axis === 'mass_Me' ? s.massMe : axis === 'radius_Re' ? s.radiusRe : densityGcc(s.massMe, s.radiusRe);
+      const r = rangeOf(bandFp, axis);
+      if (!r || bandFit(value, r) > 0) return;   // still fits (or class doesn't constrain this axis)
+      const best = bestTypeFor(baseFps, { massMe: s.massMe, radiusRe: s.radiusRe, density: densityGcc(s.massMe, s.radiusRe), teqK: pTeqK });
+      pinType(best ?? UNKNOWN_CLASS);
+      edgeHint = null;
+  }
 
   function updateVisualType(e: Event) {
       pinType((e.target as HTMLSelectElement).value); // an explicit pick is end-state
@@ -505,6 +548,7 @@
         <div class="sc-slider-wrap">
             {#if massTypeBand}<div class="sc-typeband" style="left: {massTypeBand.left}%; width: {massTypeBand.width}%;" title="{liveType}: mass range for this type"></div>{/if}
             <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pMassPos} on:input={onMassSlider} on:change={finalizeEdit} disabled={lock === 'mass'} />
+            <div class="sc-ends"><span>{fmtEnd(massSpan[0])}</span><span>{fmtEnd(massSpan[1])} M⊕</span></div>
         </div>
         <div class="sub-label">{(body.massKg || 0).toExponential(2)} kg{#if pMassMe >= 318} · {(pMassMe / 317.8).toFixed(2)} M♃{/if}</div>
     </div>
@@ -519,8 +563,9 @@
         </div>
         <div class="sc-slider-wrap">
             {#if radTypeBand}<div class="sc-typeband" style="left: {radTypeBand.left}%; width: {radTypeBand.width}%;" title="{liveType}: radius range for this type"></div>{/if}
-            {#if pEnv && lock === null}<div class="sc-band" style="left: {radBandLeft}%; width: {radBandWidth}%;" title="This mix's physical envelope — inside it only the {pEnv.kind} varies; past the edge the composition morphs."></div>{/if}
+            {#if radTrimBand && lock === null}<div class="sc-band" style="left: {radTrimBand.left}%; width: {radTrimBand.width}%;" title="This mix's physical envelope — inside it only the {pEnv?.kind} varies; past the edge the composition morphs."></div>{/if}
             <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pRadPos} on:input={onRadSlider} on:change={finalizeEdit} disabled={lock === 'radius'} />
+            <div class="sc-ends"><span>{fmtEnd(radSpan[0])}</span><span>{fmtEnd(radSpan[1])} R⊕</span></div>
         </div>
         <div class="sub-label">{$fmt.km(body.radiusKm || 0)}</div>
     </div>
@@ -535,12 +580,16 @@
         </div>
         <div class="sc-slider-wrap">
             {#if denTypeBand}<div class="sc-typeband" style="left: {denTypeBand.left}%; width: {denTypeBand.width}%;" title="{liveType}: density range for this type"></div>{/if}
-            {#if pEnv && lock === null}<div class="sc-band" style="left: {denBandLeft}%; width: {denBandWidth}%;" title="This mix's physical envelope — inside it only the {pEnv.kind} varies; past the edge the composition morphs."></div>{/if}
+            {#if denTrimBand && lock === null}<div class="sc-band" style="left: {denTrimBand.left}%; width: {denTrimBand.width}%;" title="This mix's physical envelope — inside it only the {pEnv?.kind} varies; past the edge the composition morphs."></div>{/if}
             <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pDenPos} on:input={onDenSlider} on:change={finalizeEdit} disabled={lock === 'density'} />
+            <div class="sc-ends"><span>{fmtEnd(denSpan[0])}</span><span>{fmtEnd(denSpan[1])} g/cc</span></div>
         </div>
-        <div class="sub-label">{lock === 'density' ? 'composition held' : (pEnv && lock === null ? `inside the green tick: varies ${pEnv.kind} only` : 'infers the interior makeup below')}</div>
+        <div class="sub-label">{lock === 'density' ? 'composition held' : (pEnv && lock === null ? `inside the green tick: varies ${pEnv.kind} only` : 'infers the interior makeup below')}{#if pPorosity > 0.02}<span class="sc-porosity" title="Void fraction this size implies for the mix (ceiling {Math.round(pPorosityMax * 100)}% at this mass — self-gravity crushes the rest). High porosity at low mass reads as a rubble pile."> · porosity ~{Math.round(pPorosity * 100)}%</span>{/if}</div>
     </div>
 
+    {#if edgeHint}
+        <div class="sc-edge-chip" role="status">{edgeHint}</div>
+    {/if}
     {#if pendingFlowThrough}
         <div class="sc-morph-chip" role="status">Outside this mix's envelope — recomposing; the type re-reads on release</div>
     {/if}
@@ -563,6 +612,10 @@
                     title={t.fits ? `Matches the current physics (score ${t.score.toFixed(2)}) — click to pin` : 'Reachable at this mass — click to pin, then tune radius/density into its bands'}
                     on:click={() => pinType(t.cls)}>{prettyClass(t.cls)}</button>
         {/each}
+        <button class="preset type-chip unknown"
+                class:active={isUnknown}
+                title="No classification — full-range sliders, no bands. For when the numbers deliberately fit no known type."
+                on:click={() => pinType(UNKNOWN_CLASS)}>Unknown</button>
         {#if typeList.length === 0}<span class="sc-presets-sub">no classified types at this mass</span>{/if}
     </div>
     <p class="sc-type-note">Pinning a type sets the label and image — it does not force the physics. Many
@@ -866,6 +919,14 @@
   /* Planet-type list: bright = matches the current physics now; dim = reachable at this mass. */
   .sc-typelist { max-height: 120px; overflow-y: auto; }
   .sc-type-note { font-size: 0.74em; color: var(--text-faint, #8a8f9a); margin: 4px 0 0; }
+  .type-chip.unknown { border-style: dashed; opacity: 0.8; }
+
+  /* Class-ranged slider furniture: window end-labels + the end-of-range nudge. */
+  .sc-ends { display: flex; justify-content: space-between; font-size: 0.68em; color: var(--text-faint, #8a8f9a); margin-top: -2px; }
+  .sc-edge-chip {
+    align-self: flex-start; font-size: 0.76em; padding: 2px 8px; border-radius: 10px;
+    background: rgba(255, 90, 31, 0.12); border: 1px solid rgba(255, 90, 31, 0.45); color: var(--accent, #ff5a1f);
+  }
   .type-chip { opacity: 0.55; }
   .type-chip.fits { opacity: 1; }
   .type-chip.active { border-color: var(--accent, #ff5a1f); color: var(--accent, #ff5a1f); opacity: 1; }
