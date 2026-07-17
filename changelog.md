@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.128-beta - 17th Jul 2026
+
+* Composition editor: new "Reset to type" picker regenerates a body as a plausible example of any classification viable in its orbit and under the host-mass limit (reusing the add-body generator) — pick "Gas Giant" on a rocky world and it becomes a real one, keeping its identity, name and orbit. The mass and radius sliders each get an expand/collapse toggle next to their lock (◄► to open to the full range, ►◄ to snap back to the type's band). The overview under a zoomed slider is now a funnel that tapers from the full-width slider down to the slice of the whole range it covers, with a tick marking the current value; it slides and reshapes as you change type. The tab's palette is calmer — the size and composition sliders use a muted slate instead of brand orange, which is now reserved for the selected type.
+
 ## v2.1.127-beta - 17th Jul 2026
 
 * Composition editor polish: the interior cutaway gets its own roomy centred block (bigger, no longer squashed beside the makeup sliders), the density slider is always full-range (its span is small enough that zooming bought nothing), a "Full range" switch expands every slider to its full span at once, and each zoomed mass/radius slider now shows a full-scale strip beneath it with the current window highlighted — so you always see where the zoom sits in the whole range.

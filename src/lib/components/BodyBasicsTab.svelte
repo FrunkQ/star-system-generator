@@ -2,7 +2,8 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack, Makeup } from '$lib/types';
   import { fmt } from '$lib/stores';
-  import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '$lib/constants';
+  import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, G } from '$lib/constants';
+  import { generateBodyOfType } from '$lib/generation/generateBodyOfType';
   import { makeupFractions, normalizeMakeup, gasThermalInflationFactor, derivedPorosity, maxPorosity } from '$lib/physics/makeup';
   import { breakupPeriodHours, rotationalDeform, type RotationalShape } from '$lib/physics/rotation';
   import { fileToDownscaledDataUrl } from '$lib/util/imageUpload';
@@ -371,6 +372,45 @@
       dispatch('update');
   }
 
+  // ——— RESET-TO-TYPE picker (Alex) ————————————————————————————————————————————————————————
+  // Regenerate the body AS a chosen classification, using the same generateBodyOfType recipe the
+  // add-body flow uses — gated by what's viable in THIS orbit (Teq) and under the host-mass ceiling
+  // (a moon can't outweigh its planet). Unlike pinning (label only), this RESETS the physical +
+  // composition parameters to a plausible example of that type; identity, name, orbit and any custom
+  // image are preserved, and the processor re-derives the rest.
+  $: hostMassKgCtx = body.orbit?.hostMu ? body.orbit.hostMu / G : SOLAR_MASS_KG;
+  $: hostMassMeCtx = hostMassKgCtx / EARTH_MASS_KG;
+  $: resetTypes = pickableTypes(baseFps, { teqK: pTeqK }, ['Teq_K'])
+      .filter((f) => { const r = rangeOf(f, 'mass_Me'); return !r || r[0] < hostMassMeCtx * 0.5; })
+      .sort((a, b) => a.class.localeCompare(b.class));
+  function resetToType(cls: string) {
+      const fp = baseFps.find((f) => f.class === cls);
+      if (!fp) return;
+      const gen = generateBodyOfType(fp, {
+          distAU: body.orbit?.elements?.a_AU ?? 1,
+          hostMassKg: hostMassKgCtx,
+          role: (body.roleHint as any) ?? 'planet',
+          teqK: pTeqK
+      });
+      // MUTATE in place (matches commit()), so the parent's body reference updates. gen carries the
+      // type's mass/radius/makeup/hydrosphere/atmosphere/biosphere/classes/tags; identity, name and
+      // orbit aren't in gen, so they're preserved. autoClassify on: the params land in the type's
+      // bands, so the processor confirms the class (and any temperature-refined subtype) next pass.
+      const keepImage = body.image?.custom ? body.image : undefined;
+      Object.assign(body, gen);
+      body.autoClassify = true;
+      if (keepImage) body.image = keepImage;
+      pendingFlowThrough = false;
+      body = body;
+      dispatch('update');
+  }
+  function onResetSelect(e: Event) {
+      const el = e.target as HTMLSelectElement;
+      const val = el.value;
+      el.value = ''; // snap back to the placeholder — this is an action, not a persistent selection
+      if (val) resetToType(val);
+  }
+
   // ——— CLASS-RANGED sliders (design §12) ————————————————————————————————————————————————
   // Each slider spans the pinned/current class's range (log-padded ±15%, min ×2) instead of
   // the full 17-decade span — high resolution where it matters, and reaching an end nudges
@@ -378,13 +418,20 @@
   // falls back to the full span — the one place a full-range slider still appears.
   $: bandFp = baseFps.find((f) => f.class === body.classes?.[0]) ?? null;
   $: isUnknown = body.classes?.[0] === UNKNOWN_CLASS;
-  // Full-range toggle (Alex): switch every slider back to its full span instead of zooming to the
-  // pinned type's range. Density is ALWAYS full range — its span (0.1–30 g/cc) is small enough that
-  // zooming buys nothing and the mass/radius trim tricks aren't worth it there.
-  let fullRange = false;
-  $: zoomSliders = !fullRange && !isUnknown;
-  $: massSpan = zoomSliders ? sliderSpan(rangeOf(bandFp, 'mass_Me'), pMassMin, pMassMax) : [pMassMin, pMassMax];
-  $: radSpan = zoomSliders ? sliderSpan(rangeOf(bandFp, 'radius_Re'), pRadMin, pRadMax) : [pRadMin, pRadMax];
+  // Per-slider full-range toggles (Alex): each of mass/radius can independently expand from the
+  // pinned type's zoomed band to its full span (<-> to open, >-< to collapse). Density is ALWAYS
+  // full range — its span (0.1–30 g/cc) is small enough that zooming buys nothing.
+  let massFull = false;
+  let radFull = false;
+  // Only offer the expand/collapse toggle (and the funnel) when the current type actually has a
+  // range on that axis to zoom to — a specialist class (Swamp, eyeballs…) has none, so its slider
+  // is already full and there is nothing to collapse.
+  $: massHasRange = !isUnknown && !!rangeOf(bandFp, 'mass_Me');
+  $: radHasRange = !isUnknown && !!rangeOf(bandFp, 'radius_Re');
+  $: massZoom = massHasRange && !massFull;
+  $: radZoom = radHasRange && !radFull;
+  $: massSpan = massZoom ? sliderSpan(rangeOf(bandFp, 'mass_Me'), pMassMin, pMassMax) : [pMassMin, pMassMax];
+  $: radSpan = radZoom ? sliderSpan(rangeOf(bandFp, 'radius_Re'), pRadMin, pRadMax) : [pRadMin, pRadMax];
   $: denSpan = [pDenMin, pDenMax];
 
   // Overview strip under a zoomed mass/radius slider: the FULL log scale with the current window
@@ -393,8 +440,12 @@
     left: logPos(span[0], fullLo, fullHi) * 100,
     width: Math.max(1.5, (logPos(span[1], fullLo, fullHi) - logPos(span[0], fullLo, fullHi)) * 100)
   });
-  $: massOverview = zoomSliders ? overview(massSpan, pMassMin, pMassMax) : null;
-  $: radOverview = zoomSliders ? overview(radSpan, pRadMin, pRadMax) : null;
+  $: massOverview = massZoom ? overview(massSpan, pMassMin, pMassMax) : null;
+  $: radOverview = radZoom ? overview(radSpan, pRadMin, pRadMax) : null;
+  // The pointer's position in the FULL range (the funnel's track is the whole scale), so a tick can
+  // mark exactly where the current value sits within the shown window.
+  $: massPtr = logPos(pMassMe, pMassMin, pMassMax) * 100;
+  $: radPtr = logPos(pRadiusRe, pRadMin, pRadMax) * 100;
 
   // The class's own band drawn INSIDE the padded span (the padding at each end is the
   // "leaving the class" zone).
@@ -550,15 +601,35 @@
     <div class="sc-sub">
         <span class="category-badge">{sizeCategory}</span>
         {#if showAdvisory}<span class="sc-advisory" title="The type is pinned; this is what the classifier would call the current physics.">physics reads: {physicsReads}</span>{/if}
-        <label class="sc-fullrange" title="Show every slider at its full range instead of zooming to the current type's band. The full-scale strip under each slider shows where the type's window sits.">
-            <input type="checkbox" bind:checked={fullRange} /> Full range
-        </label>
     </div>
+
+    <!-- Reset the body's parameters to a plausible example of another classification viable in this
+         orbit (Teq) and under the host-mass ceiling. Regenerates size/composition/environment. -->
+    {#if resetTypes.length}
+        <div class="sc-reset">
+            <label for="sc-reset-sel">Reset to type</label>
+            <select id="sc-reset-sel" on:change={onResetSelect} title="Regenerate this body as a plausible example of the chosen type — resets mass, radius, composition and environment. Identity, name and orbit are kept.">
+                <option value="">Choose a classification…</option>
+                {#each resetTypes as t}
+                    <option value={t.class}>{prettyClass(t.class)}</option>
+                {/each}
+            </select>
+        </div>
+    {/if}
 
     <!-- MASS -->
     <div class="sc-field" class:locked={lock === 'mass'}>
         <div class="sc-row">
             <button class="lock" class:on={lock === 'mass'} title={lock === 'mass' ? 'Mass pinned - click to release' : 'Pin the mass'} on:click={() => toggleLock('mass')} aria-label="Lock mass">{lock === 'mass' ? '🔒' : '🔓'}</button>
+            {#if massHasRange}
+                <button class="sc-rangetgl" title={massFull ? 'Collapse to this type’s range' : 'Expand to the full mass range'} aria-label={massFull ? 'Collapse mass range' : 'Expand mass range'} on:click={() => massFull = !massFull}>
+                    {#if massFull}
+                        <svg viewBox="0 0 16 16" width="13" height="13"><path d="M7 4 L4 8 L7 12 M9 4 L12 8 L9 12 M4 8 H12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {:else}
+                        <svg viewBox="0 0 16 16" width="13" height="13"><path d="M4 4 L1 8 L4 12 M12 4 L15 8 L12 12 M1 8 H15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {/if}
+                </button>
+            {/if}
             <label>Mass</label>
             <input class="sc-num" type="number" step="any" value={r4(massDisp)} on:change={(e) => { onMassNum(e); finalizeEdit(); }} disabled={lock === 'mass'} />
             <button class="sc-unit-cycle" on:click={cycleMassUnit} title={massUnitTitle} aria-label="Change mass units">{massUnitSym}</button>
@@ -567,7 +638,14 @@
             {#if massTypeBand}<div class="sc-typeband" style="left: {massTypeBand.left}%; width: {massTypeBand.width}%;" title="{liveType}: mass range for this type"></div>{/if}
             <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pMassPos} on:input={onMassSlider} on:change={finalizeEdit} disabled={lock === 'mass'} />
             <div class="sc-ends"><span>{fmtEnd(massSpan[0])}</span><span>{fmtEnd(massSpan[1])} M⊕</span></div>
-            {#if massOverview}<div class="sc-overview" title="Where this zoomed window sits in the full mass range ({fmtEnd(pMassMin)}–{fmtEnd(pMassMax)} M⊕)"><div class="sc-overview-win" style="left: {massOverview.left}%; width: {massOverview.width}%;"></div></div>{/if}
+            {#if massOverview}
+                <svg class="sc-funnel" viewBox="0 0 100 14" preserveAspectRatio="none" role="img" aria-label="This slider covers {fmtEnd(massSpan[0])}–{fmtEnd(massSpan[1])} of the full {fmtEnd(pMassMin)}–{fmtEnd(pMassMax)} M⊕ range">
+                    <polygon class="funnel-tz" points="0,0 100,0 {massOverview.left + massOverview.width},10 {massOverview.left},10" />
+                    <rect class="funnel-track" x="0" y="10.5" width="100" height="2.5" />
+                    <rect class="funnel-win" x={massOverview.left} y="10" width={massOverview.width} height="3.5" />
+                    <rect class="funnel-ptr" x={massPtr - 0.5} y="8.5" width="1" height="5.5" />
+                </svg>
+            {/if}
         </div>
         <div class="sub-label">{(body.massKg || 0).toExponential(2)} kg{#if pMassMe >= 318} · {(pMassMe / 317.8).toFixed(2)} M♃{/if}</div>
     </div>
@@ -576,6 +654,15 @@
     <div class="sc-field" class:locked={lock === 'radius'}>
         <div class="sc-row">
             <button class="lock" class:on={lock === 'radius'} title={lock === 'radius' ? 'Radius pinned - click to release' : 'Pin the radius'} on:click={() => toggleLock('radius')} aria-label="Lock radius">{lock === 'radius' ? '🔒' : '🔓'}</button>
+            {#if radHasRange}
+                <button class="sc-rangetgl" title={radFull ? 'Collapse to this type’s range' : 'Expand to the full radius range'} aria-label={radFull ? 'Collapse radius range' : 'Expand radius range'} on:click={() => radFull = !radFull}>
+                    {#if radFull}
+                        <svg viewBox="0 0 16 16" width="13" height="13"><path d="M7 4 L4 8 L7 12 M9 4 L12 8 L9 12 M4 8 H12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {:else}
+                        <svg viewBox="0 0 16 16" width="13" height="13"><path d="M4 4 L1 8 L4 12 M12 4 L15 8 L12 12 M1 8 H15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {/if}
+                </button>
+            {/if}
             <label>Radius</label>
             <input class="sc-num" type="number" step="any" value={r4(radDisp)} on:change={(e) => { onRadNum(e); finalizeEdit(); }} disabled={lock === 'radius'} />
             <button class="sc-unit-cycle" on:click={cycleRadUnit} title={radUnitTitle} aria-label="Change radius units">{radUnitSym}</button>
@@ -585,7 +672,14 @@
             {#if radTrimBand && lock === null}<div class="sc-band" style="left: {radTrimBand.left}%; width: {radTrimBand.width}%;" title="This mix's physical envelope — inside it only the {pEnv?.kind} varies; past the edge the composition morphs."></div>{/if}
             <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pRadPos} on:input={onRadSlider} on:change={finalizeEdit} disabled={lock === 'radius'} />
             <div class="sc-ends"><span>{fmtEnd(radSpan[0])}</span><span>{fmtEnd(radSpan[1])} R⊕</span></div>
-            {#if radOverview}<div class="sc-overview" title="Where this zoomed window sits in the full radius range ({fmtEnd(pRadMin)}–{fmtEnd(pRadMax)} R⊕)"><div class="sc-overview-win" style="left: {radOverview.left}%; width: {radOverview.width}%;"></div></div>{/if}
+            {#if radOverview}
+                <svg class="sc-funnel" viewBox="0 0 100 14" preserveAspectRatio="none" role="img" aria-label="This slider covers {fmtEnd(radSpan[0])}–{fmtEnd(radSpan[1])} of the full {fmtEnd(pRadMin)}–{fmtEnd(pRadMax)} R⊕ range">
+                    <polygon class="funnel-tz" points="0,0 100,0 {radOverview.left + radOverview.width},10 {radOverview.left},10" />
+                    <rect class="funnel-track" x="0" y="10.5" width="100" height="2.5" />
+                    <rect class="funnel-win" x={radOverview.left} y="10" width={radOverview.width} height="3.5" />
+                    <rect class="funnel-ptr" x={radPtr - 0.5} y="8.5" width="1" height="5.5" />
+                </svg>
+            {/if}
         </div>
         <div class="sub-label">{$fmt.km(body.radiusKm || 0)}</div>
     </div>
@@ -930,16 +1024,18 @@
   .lock.on { background: var(--accent, #ff5a1f); border-color: var(--accent, #ff5a1f); }
 
   /* Larger, more prominent primary sliders */
-  .sc-slider { width: 100%; height: 22px; cursor: pointer; margin: 0; accent-color: var(--accent, #ff5a1f); }
+  /* Calmer than the brand orange: the size/makeup sliders are the biggest colour mass on this tab,
+     so they use a muted slate. Orange is reserved for genuinely SELECTED states (active chip/preset). */
+  .sc-slider { width: 100%; height: 22px; cursor: pointer; margin: 0; accent-color: #6f8bad; }
   .sc-slider:disabled { cursor: not-allowed; opacity: 0.5; }
 
-  /* Slider range bands. Orange = the pinned/current TYPE's fingerprint band (stay inside to
-     remain that type); the thinner green tick = the current MIX's physical envelope (inside it
-     a drag varies porosity/inflation only; past it the composition morphs). */
+  /* Slider range bands. Slate = the pinned/current TYPE's fingerprint band (stay inside to remain
+     that type); the thinner green tick = the current MIX's physical envelope (inside it a drag varies
+     porosity/inflation only; past it the composition morphs). */
   .sc-slider-wrap { position: relative; }
   .sc-typeband {
     position: absolute; top: -3px; height: 5px; border-radius: 2px;
-    background: rgba(255, 90, 31, 0.5); pointer-events: auto; z-index: 1;
+    background: rgba(111, 139, 173, 0.55); pointer-events: auto; z-index: 1;
   }
   .sc-band {
     position: absolute; top: -7px; height: 3px; border-radius: 2px;
@@ -952,11 +1048,19 @@
 
   /* Class-ranged slider furniture: window end-labels + the end-of-range nudge. */
   .sc-ends { display: flex; justify-content: space-between; font-size: 0.68em; color: var(--text-faint, #8a8f9a); margin-top: -2px; }
-  .sc-fullrange { margin-left: auto; font-size: 0.78em; color: var(--text-muted, #cfcfcf); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
-  .sc-fullrange input { width: auto; margin: 0; }
-  /* Full-scale overview strip: the whole range as a faint bar, the zoomed window shaded on it. */
-  .sc-overview { position: relative; height: 3px; margin-top: 3px; border-radius: 2px; background: var(--bg-panel, #1a1c22); border: 1px solid var(--border, #2a2d36); }
-  .sc-overview-win { position: absolute; top: -1px; bottom: -1px; background: var(--accent, #ff5a1f); opacity: 0.55; border-radius: 2px; min-width: 2px; }
+  /* Per-slider expand/collapse toggle sits next to the lock: <-> opens to the full range, >-< back. */
+  .sc-rangetgl { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; padding: 0; width: 20px; height: 20px; background: transparent; border: 1px solid transparent; border-radius: 4px; color: var(--text-faint, #8a8f9a); cursor: pointer; }
+  .sc-rangetgl:hover { color: #9fb2c8; border-color: var(--border, #2a2d36); }
+  .sc-reset { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+  .sc-reset label { font-size: 0.82em; color: var(--text-muted, #cfcfcf); flex: 0 0 auto; }
+  .sc-reset select { flex: 1 1 auto; min-width: 0; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); font-size: 0.85em; }
+  /* Funnel: the full-width slider above tapers down to the slice of the whole range it actually
+     covers, drawn on a full-scale track below. Slides + reshapes as the window changes with type. */
+  .sc-funnel { display: block; width: 100%; height: 14px; margin-top: 1px; overflow: visible; }
+  .sc-funnel .funnel-tz { fill: #6f8bad; opacity: 0.16; }
+  .sc-funnel .funnel-track { fill: var(--border, #2a2d36); }
+  .sc-funnel .funnel-win { fill: #6f8bad; opacity: 0.7; }
+  .sc-funnel .funnel-ptr { fill: #dfe7f0; }
   /* Interior cutaway gets breathing room — centred, with its note reading as a caption. */
   .sc-xsec-figure { margin: 8px 0 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
   .sc-xsec-figure .compress-note { text-align: center; max-width: 340px; }
@@ -993,7 +1097,7 @@
   .mk-row { display: grid; grid-template-columns: 14px 52px 1fr 52px 14px; align-items: center; gap: 8px; }
   .swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.2); }
   .mk-row label { font-size: 0.85em; color: var(--text-muted); }
-  .mk-row input[type="range"] { width: 100%; accent-color: var(--accent, #ff5a1f); }
+  .mk-row input[type="range"] { width: 100%; accent-color: #6f8bad; }
   .mk-num { width: 52px; padding: 2px 4px; font-size: 0.85em; }
   .mk-pct { font-size: 0.8em; color: var(--text-faint); }
   .compress-note { margin: 2px 0 0; font-size: 0.72em; color: var(--text-faint); line-height: 1.4; }
