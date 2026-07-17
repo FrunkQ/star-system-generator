@@ -10,6 +10,7 @@
   import type { CelestialBody, Makeup } from '$lib/types';
   import { EARTH_MASS_KG } from '$lib/constants';
   import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
+  import { isSmallBodyShape, smallBodyOutline } from '$lib/catalogue/smallBodyShape';
 
   export let body: CelestialBody;
   export let makeup: Required<Makeup>;
@@ -23,26 +24,19 @@
   const GRAIN: Required<Makeup> = { metal: 7.9, rock: 3.3, carbon: 2.3, ice: 0.95, gas: 0.12 };
   // Inside → out. Colours match the makeup-slider swatches.
   const ORDER: Array<keyof Makeup> = ['metal', 'rock', 'carbon', 'ice', 'gas'];
-  const COLOUR: Record<string, string> = { metal: '#9c8d7a', rock: '#a9805a', carbon: '#3a3a40', ice: '#cfe6ff', gas: '#d8c79a' };
+  const COLOUR: Record<string, string> = { metal: '#8e939e', rock: '#a9805a', carbon: '#3a3a40', ice: '#cfe6ff', gas: '#d8c79a' };
   const LABEL: Record<string, string> = { metal: 'Metal core', rock: 'Rock mantle', carbon: 'Carbon layer', ice: 'Ice shell', gas: 'Gas envelope' };
 
   // Half cutaway: the RIGHT half of the disc is the rendered planet surface; the LEFT half is the
   // cross-section, split into an upper quarter (composition layers) and a lower quarter (internal-
-  // heat gradient). Interior radii match the PlanetDisc sphere (r=30). Clean pie sectors + a divider
-  // down the cut plane. (y-down angles: 0=right, 90=down, 180=left, 270=up.)
+  // heat gradient). Everything is drawn as FULL concentric circles — identical geometry to the
+  // planet disc itself — and simply clipped to its quarter, so every arc and corner lines up
+  // exactly with the disc and with the other quarter (no hand-built pie-sector paths).
   const R_MAX = 30;
   const CX = 50, CY = 50;
-  const pt = (deg: number, r: number) => [50 + r * Math.cos((deg * Math.PI) / 180), 50 + r * Math.sin((deg * Math.PI) / 180)];
-  const sector = (a0: number, a1: number, r: number): string => {
-    const [x0, y0] = pt(a0, r);
-    const [x1, y1] = pt(a1, r);
-    const large = ((a1 - a0 + 360) % 360) > 180 ? 1 : 0;
-    return `M ${CX} ${CY} L ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(1)} ${y1.toFixed(1)} Z`;
-  };
-  const COMP0 = 180, COMP1 = 270;    // composition: upper-left quarter (left → up)
-  const TEMP0 = 90, TEMP1 = 180;     // temperature: lower-left quarter (down → left)
-  const compFace = sector(COMP0, COMP1, R_MAX);
-  const tempFace = sector(TEMP0, TEMP1, R_MAX);
+  // Small bodies render as a seeded potato, not a circle — clip the whole cutaway to the SAME
+  // silhouette PlanetDisc draws so the cut faces stop at the rendered edge, not at r=30.
+  $: bodyOutline = isSmallBodyShape(body) ? smallBodyOutline(body) : '';
 
   $: layers = (() => {
       const vols = ORDER.map((k) => (makeup[k] ?? 0) / GRAIN[k]);
@@ -136,11 +130,14 @@
       : coreTempK >= 800 ? 'Hot core'
       : coreTempK >= 400 ? 'Warm core'
       : 'Cool core';
-  // Cold → hot thermal ramp for the temperature wedge + key.
+  // Cold → hot thermal ramp for the temperature wedge + key. Blues are ALWAYS the cold end and
+  // nothing on the warm side reads cooler than what's inside it — navy → blue → pale steel →
+  // warm grey → red → orange → amber. (No green: it sat between blue and yellow and made a
+  // 300 K layer look "warmer" than intuition allows next to a 90 K blue.)
   function tempColour(K: number): string {
       const stops: Array<[number, [number, number, number]]> = [
-          [0, [26, 30, 66]], [90, [34, 68, 128]], [220, [40, 130, 140]], [300, [64, 165, 120]],
-          [650, [150, 120, 45]], [1300, [172, 55, 22]], [2600, [220, 92, 26]], [4800, [240, 155, 55]], [8000, [255, 224, 160]]
+          [0, [16, 20, 58]], [80, [30, 54, 122]], [200, [62, 102, 170]], [285, [122, 150, 188]],
+          [450, [152, 132, 118]], [800, [148, 60, 28]], [1600, [204, 76, 24]], [3000, [234, 130, 44]], [5500, [250, 190, 92]], [8000, [255, 228, 170]]
       ];
       const c = Math.max(0, K);
       for (let i = 1; i < stops.length; i++) {
@@ -175,12 +172,13 @@
 </script>
 
 <div class="xsec" style="width:{size}px">
-  <div class="stack" style="width:{size}px; height:{size}px" title={compNote ? compNote + '\n\nLeft face: internal-heat gradient (core hot → surface cool, estimated). Right face: composition layers.' : ''}>
+  <div class="stack" style="width:{size}px; height:{size}px" title={compNote ? compNote + '\n\nUpper-left: composition layers. Lower-left: internal heat (estimated). Right: surface.' : ''}>
     <PlanetDisc {body} {size} showStamp={false} />
     <svg viewBox="0 0 100 100" width={size} height={size} class="cut" role="img" aria-label="Half cutaway: surface on the right; composition (upper) and internal heat (lower) on the left">
       <defs>
-        <!-- Spherical shading for the 3D look: highlight upper-left, shadow lower-right. -->
-        <radialGradient id="xsec-shade-{seed}" cx="38%" cy="30%" r="75%">
+        <!-- Spherical shading for the 3D look: highlight upper-left, shadow lower-right (anchored
+             to the disc in user units so both quarters share one light). -->
+        <radialGradient id="xsec-shade-{seed}" gradientUnits="userSpaceOnUse" cx="42" cy="36" r="46">
           <stop offset="0%" stop-color="rgba(255,255,255,0.16)" />
           <stop offset="46%" stop-color="rgba(255,255,255,0)" />
           <stop offset="100%" stop-color="rgba(0,0,0,0.5)" />
@@ -198,36 +196,50 @@
             <stop offset="100%" stop-color={coreColour} stop-opacity="0" />
           </radialGradient>
         {/if}
+        <!-- Quarter masks + the body's own silhouette: every face is a FULL concentric circle
+             clipped to its quarter, then to the silhouette — so all corners and arcs line up with
+             the rendered disc exactly (including irregular small bodies). -->
+        <clipPath id="xsec-q-comp-{seed}"><rect x="0" y="0" width="50" height="50" /></clipPath>
+        <clipPath id="xsec-q-temp-{seed}"><rect x="0" y="50" width="50" height="50" /></clipPath>
+        <clipPath id="xsec-half-{seed}"><rect x="0" y="0" width="50" height="100" /></clipPath>
+        <clipPath id="xsec-body-{seed}">
+          {#if bodyOutline}<path d={bodyOutline} />{:else}<circle cx={CX} cy={CY} r={R_MAX} />{/if}
+        </clipPath>
       </defs>
 
-      <!-- LEFT-UPPER quarter: composition layers as nested sectors (outer → inner). -->
-      <path d={compFace} fill="#0a0c12" />
-      {#each [...layers].reverse() as l}
-        <path d={sector(COMP0, COMP1, l.r)} fill={l.fill}><title>{l.label}</title></path>
-      {/each}
+      <g clip-path="url(#xsec-body-{seed})">
+        <!-- UPPER-LEFT quarter: composition layers, outermost first (a rect so it reaches the
+             silhouette edge even on a lumpy outline), then inner circles on top. -->
+        <g clip-path="url(#xsec-q-comp-{seed})">
+          <rect x="0" y="0" width="50" height="50" fill={[...layers].pop()?.fill ?? '#0a0c12'}><title>{[...layers].pop()?.label ?? ''}</title></rect>
+          {#each [...layers].reverse().slice(1) as l}
+            <circle cx={CX} cy={CY} r={l.r} fill={l.fill}><title>{l.label}</title></circle>
+          {/each}
+        </g>
 
-      <!-- LEFT-LOWER quarter: the internal-heat gradient. -->
-      <path d={tempFace} fill="url(#xsec-temp-{seed})"><title>Internal heat (estimated) — hot core to cool surface</title></path>
+        <!-- LOWER-LEFT quarter: the internal-heat gradient (rect: the gradient's rim colour IS the
+             surface temperature, so overrun past r=30 stays correct on lumpy outlines). -->
+        <g clip-path="url(#xsec-q-temp-{seed})">
+          <rect x="0" y="50" width="50" height="50" fill="url(#xsec-temp-{seed})"><title>Internal heat (estimated) — hot core to cool surface</title></rect>
+        </g>
 
-      <!-- Molten-core emission across both left quarters. -->
-      {#if coreHeat > 0.02}
-        <path d={sector(COMP0, COMP1, coreGlowR)} fill="url(#xsec-core-{seed})" />
-        <path d={sector(TEMP0, TEMP1, coreGlowR)} fill="url(#xsec-core-{seed})" />
-      {/if}
+        <!-- Molten-core emission + 3D shade across the whole cut half. -->
+        <g clip-path="url(#xsec-half-{seed})">
+          {#if coreHeat > 0.02}
+            <circle cx={CX} cy={CY} r={coreGlowR} fill="url(#xsec-core-{seed})" />
+          {/if}
+          <rect x="0" y="0" width="50" height="100" fill="url(#xsec-shade-{seed})" />
+        </g>
 
-      <!-- 3D shade over the cut half so it sits inside a sphere. -->
-      <path d={compFace} fill="url(#xsec-shade-{seed})" />
-      <path d={tempFace} fill="url(#xsec-shade-{seed})" />
-      <!-- Cut plane down the middle (surface | interior) + the divider between the two quarters. -->
-      <line x1={CX} y1={CY - R_MAX} x2={CX} y2={CY + R_MAX} stroke="rgba(255,255,255,0.22)" stroke-width="0.7" />
-      <line x1={CX} y1={CY} x2={CX - R_MAX} y2={CY} stroke="rgba(8,8,12,0.5)" stroke-width="0.6" />
+        <!-- Cut plane down the middle (surface | interior) + the divider between the two quarters. -->
+        <line x1={CX} y1="0" x2={CX} y2="100" stroke="rgba(255,255,255,0.22)" stroke-width="0.7" />
+        <line x1="0" y1={CY} x2={CX} y2={CY} stroke="rgba(8,8,12,0.5)" stroke-width="0.6" />
+      </g>
     </svg>
   </div>
-  <div class="tempkey" style="width:{size}px" title="Estimated internal heat. The surface temperature is computed; the core is hotter (an adiabat / radiogenic geotherm) but its exact value is model-dependent, so it's shown as a band, not a number.">
+  <div class="tempkey" style="width:{size}px" title="Internal heat (estimated): {Math.round(surfaceK)} K at the surface, rising inward to a {coreBand.toLowerCase()}. The surface temperature is computed; the core's exact value is model-dependent, so it's a qualitative band.">
     <div class="tempkey-bar" style="background: linear-gradient(to right, {tempSurfCol}, {tempMidCol}, {tempCoreCol});"></div>
-    <div class="tempkey-labels"><span>{Math.round(surfaceK)} K surface</span><span>{coreBand}</span></div>
   </div>
-  <div class="cap">cutaway{coreHeat > 0.25 ? ' · molten core' : ''}{porosity >= 0.03 ? ` · ${Math.round(porosity * 100)}% voids` : ''}</div>
 </div>
 
 <style>
@@ -235,8 +247,6 @@
   .stack { position: relative; }
   .stack :global(.disc-wrap) { position: absolute; inset: 0; }
   .cut { position: absolute; inset: 0; pointer-events: none; }
-  .cap { font-size: 0.66em; color: var(--text-faint, #8a8f9a); }
   .tempkey { display: flex; flex-direction: column; gap: 1px; }
   .tempkey-bar { height: 5px; border-radius: 2px; border: 1px solid rgba(0,0,0,0.4); }
-  .tempkey-labels { display: flex; justify-content: space-between; font-size: 0.6em; color: var(--text-faint, #8a8f9a); }
 </style>

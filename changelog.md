@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.138-beta - 17th Jul 2026
+
+* Cutaway rebuilt on concentric circles clipped to quarters (and to the body's own irregular silhouette for small bodies) so every corner and arc aligns with the rendered disc; thermal ramp reworked so blues are always the cold end (no green); caption and scale text removed (tooltips keep the detail).
+
 ## v2.1.137-beta - 17th Jul 2026
 
 * Icy worlds now LOOK icy: ices float, so a body with a real ice fraction wears it as its visible crust (bulk rock+ice no longer averages to brown), and a frozen hydrosphere paints a bright ice sheet instead of nothing. Enceladus/Europa render near-white.
