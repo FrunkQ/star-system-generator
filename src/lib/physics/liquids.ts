@@ -5,7 +5,7 @@
 import type { LiquidDef, RulePack } from '$lib/types';
 import { LIQUIDS } from '$lib/constants';
 
-export type Phase = 'solid' | 'liquid' | 'gas';
+export type Phase = 'solid' | 'liquid' | 'gas' | 'supercritical';
 
 export function allLiquids(pack?: RulePack | null): LiquidDef[] {
   return pack?.liquids && pack.liquids.length ? pack.liquids : LIQUIDS;
@@ -16,7 +16,8 @@ export function liquidDef(name: string | undefined, pack?: RulePack | null): Liq
   return allLiquids(pack).find((l) => l.name === name);
 }
 
-// Phase of a named substance at a temperature, from its melt/boil points.
+// Phase of a named substance at a temperature, from its 1-atm melt/boil points. Kept as the
+// legacy no-pressure read; prefer phaseAtP wherever a surface pressure is known.
 export function phaseAt(name: string | undefined, tempK: number, pack?: RulePack | null): Phase {
   const def = liquidDef(name, pack);
   if (!def) return 'liquid';            // unknown → assume liquid (don't over-constrain)
@@ -25,8 +26,67 @@ export function phaseAt(name: string | undefined, tempK: number, pack?: RulePack
   return 'liquid';
 }
 
+// Boiling point at a given pressure: piecewise log-linear through the known anchors —
+// (tripleBar → meltK), (1 bar → boilK, when the triple sits below 1 bar), (criticalBar →
+// criticalK). Clausius-Clapeyron-shaped, monotonic, and continuous at the triple pressure
+// (so CO₂, whose triple point sits ABOVE 1 bar, gets a single triple→critical segment and
+// its 1-atm "boilK" is never consulted).
+export function boilKAt(def: LiquidDef, pressureBar: number): number {
+  if (def.tripleBar === undefined || def.criticalK === undefined || def.criticalBar === undefined) return def.boilK;
+  const anchors: { p: number; t: number }[] =
+    def.tripleBar < 1 && def.criticalBar > 1
+      ? [{ p: def.tripleBar, t: def.meltK }, { p: 1, t: def.boilK }, { p: def.criticalBar, t: def.criticalK }]
+      : [{ p: def.tripleBar, t: def.meltK }, { p: def.criticalBar, t: def.criticalK }];
+  const P = Math.max(def.tripleBar, Math.min(def.criticalBar, pressureBar));
+  for (let i = 1; i < anchors.length; i++) {
+    if (P <= anchors[i].p) {
+      const a = anchors[i - 1], b = anchors[i];
+      const f = (Math.log(P) - Math.log(a.p)) / (Math.log(b.p) - Math.log(a.p));
+      return a.t + (b.t - a.t) * f;
+    }
+  }
+  return def.criticalK;
+}
+
+// PRESSURE-AWARE phase (docs/dev/liquids-phase-tags.md §3). pressureBar undefined — or a def
+// without pressure anchors — falls back to the legacy 1-atm behaviour, so old call sites and
+// rulepack liquids without the new fields keep working unchanged.
+export function phaseAtP(name: string | undefined, tempK: number, pressureBar: number | undefined, pack?: RulePack | null): Phase {
+  const def = liquidDef(name, pack);
+  if (!def) return 'liquid';            // unknown → assume liquid (don't over-constrain)
+  const hasCurve = def.tripleBar !== undefined && def.criticalK !== undefined && def.criticalBar !== undefined;
+  if (pressureBar === undefined || !hasCurve) {
+    if (tempK < def.meltK) return 'solid';
+    if (tempK > def.boilK) return 'gas';
+    return 'liquid';
+  }
+  if (tempK > def.criticalK!) return pressureBar > def.criticalBar! ? 'supercritical' : 'gas';
+  if (pressureBar < def.tripleBar!) return tempK < def.meltK ? 'solid' : 'gas';   // sublimation regime
+  if (tempK < def.meltK) return 'solid';
+  return tempK > boilKAt(def, pressureBar) ? 'gas' : 'liquid';
+}
+
 export function isLiquidAt(name: string | undefined, tempK: number, pack?: RulePack | null): boolean {
   return phaseAt(name, tempK, pack) === 'liquid';
+}
+
+export function isLiquidAtP(name: string | undefined, tempK: number, pressureBar: number | undefined, pack?: RulePack | null): boolean {
+  return phaseAtP(name, tempK, pressureBar, pack) === 'liquid';
+}
+
+// Human phrase for WHY a solvent is not liquid at (T, P) — the editor's reason line.
+export function phaseReason(name: string | undefined, tempK: number, pressureBar: number | undefined, pack?: RulePack | null): string | null {
+  const def = liquidDef(name, pack);
+  if (!def) return null;
+  const phase = phaseAtP(name, tempK, pressureBar, pack);
+  if (phase === 'liquid') return null;
+  if (phase === 'supercritical') return `beyond its critical point (${Math.round(def.criticalK!)} K / ${Math.round(def.criticalBar!)} bar) — supercritical fluid`;
+  if (phase === 'solid') return `frozen — melts at ${Math.round(def.meltK)} K`;
+  if (pressureBar !== undefined && def.tripleBar !== undefined && pressureBar < def.tripleBar) {
+    return `below its triple point (${def.tripleBar} bar) — sublimates, never liquid at this pressure`;
+  }
+  const bp = pressureBar !== undefined ? boilKAt(def, pressureBar) : def.boilK;
+  return `boils at ${Math.round(bp)} K here${def.criticalBar !== undefined && pressureBar !== undefined && pressureBar < def.criticalBar ? ' — higher pressure would raise that' : ''}`;
 }
 
 // The liquids that are actually LIQUID at a given temperature — what the hydrosphere selector should

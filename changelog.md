@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.123-beta - 17th Jul 2026
+
+* Liquids overhaul stage 1 (pressure-phase physics): every solvent now carries triple point / critical point data, and phase is pressure-aware — ices below their triple pressure sublimate (no ocean on an airless warm world), boiling rises with pressure (a 100-bar world stays liquid far past 100°C), and past the critical point a substance is supercritical (neither sea nor sky). Adds molten sulfur and brine, real definitions for every cloud/interior fluid (fixing a bug where undefined fluids were assumed liquid at any temperature), and honest CO₂ (no liquid at 1 bar). No behaviour change yet where pressure isn't supplied — derivation and displays follow in stage 2.
+
 ## v2.1.122-beta - 17th Jul 2026
 
 * The composition diagram is now a proper CUTAWAY: the body's rendered surface (oceans, ice caps, craters, irregular asteroids) with a wedge cut out revealing the interior layers — including subsurface oceans. Liquids-overhaul design doc added (docs/dev/liquids-phase-tags.md).

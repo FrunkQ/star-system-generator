@@ -397,18 +397,23 @@ export interface ViewPresetSpec { defaultPlayerVisibility: { discoveredBasics: b
 export interface TableSpec { name: string; entries: Array<{ weight: number; value: unknown }>; }
 export interface MetricDef { key: string; label: string; min: number; max: number; default?: number; }
 
-export type LiquidFamily = 'water' | 'hydrocarbon' | 'cryo' | 'acid' | 'molten' | 'exotic';
+export type LiquidFamily = 'water' | 'hydrocarbon' | 'cryo' | 'acid' | 'molten' | 'exotic' | 'internal';
 export interface LiquidDef {
     name: string;
     label: string;
     meltK: number;            // melting point (K) — below this it is solid (ice)
-    boilK: number;            // boiling point (K) — above this it is vapour
+    boilK: number;            // boiling point (K) at 1 bar — above this it is vapour
     colorHex?: string;        // representative surface/ocean colour (intrinsic absorption tint)
     refractiveIndex?: number; // n at visible wavelengths — sets the specular starlight share of the apparent colour
     density_gcc?: number;     // liquid density, for layering
     conductive?: boolean;     // electrically conductive (acids, molten metal) → can drive a dynamo
     biosolvent?: 'ideal' | 'alternative' | 'none';  // suitability as a solvent for life
     family?: LiquidFamily;
+    // Pressure-phase data (docs/dev/liquids-phase-tags.md §3). All optional — absent means the
+    // legacy 1-atm behaviour with no sublimation floor and no supercritical ceiling.
+    tripleBar?: number;       // below this pressure there is NO liquid phase (sublimation regime)
+    criticalK?: number;       // above this temperature the substance is supercritical at any pressure
+    criticalBar?: number;     // pressure at the critical point (upper anchor of the boil curve)
 }
 
 export interface FuelDefinition {
